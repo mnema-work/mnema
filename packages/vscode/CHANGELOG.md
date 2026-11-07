@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.6
+
+- The extension's addresses moved with the project: the repository, the issues page and the install link in the
+  status bar tooltip are now under `github.com/mnema-work/mnema`, and the homepage is `https://mnema.work/`. The
+  extension id and its behavior do not change.
+- It still needs the `mnema` command line (`@mnema/code`) where the editor can start it, and it
+  adds no verifier of its own: what it shows is what `mnema` printed.
+
 ## 0.1.5
 
 - The status bar tooltip says when the command line is on another version than the extension. It

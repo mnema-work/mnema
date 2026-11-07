@@ -10,6 +10,8 @@ with its own changelog.
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-11-07
+
 ### Changed
 
 - **mnema lives in the organization `mnema-work` now.** The repository is `github.com/mnema-work/mnema` (the old address
@@ -2801,6 +2803,7 @@ Requires Node ≥ 22.12.0; the packages are ESM-only.
   committed tree (`packages/chain/FORMAT.md` §4.1).
 
 [Unreleased]: https://github.com/mnema-work/mnema/commits/main
+[0.1.6]: https://github.com/mnema-work/mnema/releases/tag/v0.1.6
 [0.1.5]: https://github.com/mnema-work/mnema/releases/tag/v0.1.5
 [0.1.4]: https://github.com/mnema-work/mnema/releases/tag/v0.1.4
 [0.1.3]: https://github.com/mnema-work/mnema/releases/tag/v0.1.3
