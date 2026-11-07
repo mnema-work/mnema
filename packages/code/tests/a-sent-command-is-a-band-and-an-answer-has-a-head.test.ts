@@ -29,7 +29,7 @@
  * are read the way an id is (`support/a-page-held-to-a-run.ts`).
  */
 
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -37,6 +37,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { doneLine, sentLine } from '../src/presentation/echo.js';
 import { renderPlain } from '../src/presentation/plain.js';
 import { widthOfText } from '../src/presentation/width.js';
+import { run } from '../src/program.js';
 import { THE_FLOOR } from '../src/repl/floor.js';
 import { insideAnAnswer, insideTheMargin, THE_INSET } from '../src/repl/inset.js';
 import { openSession } from '../src/repl/session.js';
@@ -53,7 +54,7 @@ import {
   withoutLayout,
 } from './support/console.js';
 import { aFrameSince, inPty, leavesTheSession, opensAConsole, type Step } from './support/pty.js';
-import { screenOf, theSettledScreen } from './support/screen.js';
+import { theSettledScreen } from './support/screen.js';
 
 /** The built CLI: the same file the `mnema` bin points at. */
 const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
@@ -244,12 +245,16 @@ async function driven(how: Drive): Promise<{ bytes: string; said: readonly strin
   await until(() => terminal.bytes().includes('a session over this project'), 'opened');
   for (const [at, line] of how.typed.entries()) {
     terminal.type(`${line}\r`);
-    // THE END OF THIS ANSWER, which is the line under it: asked of the page replayed, because the
-    // window is drawn again on every frame and an earlier answer's line is in the bytes many times.
-    await until(
-      () => screenOf(terminal.bytes(), columns, rows).text.split(DONE).length - 1 > at,
-      `answered ${line}`,
-    );
+    // THE END OF THIS ANSWER, which is the line under it, counted on what cannot scroll out: the
+    // bytes the session has written, which only grow. The window is drawn again on every frame, so
+    // an earlier answer's line is in them many times, and the page replayed (`screenOf`) is a
+    // window an earlier mark leaves once a long answer fills it. So the wait is for THIS answer's
+    // own line, spelled from the two instants it was handed, and each case hands answers that
+    // measure differently so that no line is another's.
+    const started = how.instants[2 * at] as number;
+    const ended = how.instants[2 * at + 1] as number;
+    const mine = `${DONE} ${firstWordOf(line)} · ${tookWords(ended - started)} · done ${hourWords(ended)}`;
+    await until(() => plainOf(terminal.bytes()).includes(mine), `answered ${line}`);
   }
   terminal.type(ENDS_THE_INPUT);
   await closed;
@@ -277,6 +282,34 @@ describe('the line under an answer says what was measured, on the clock the sess
       `${DONE} verify · 2.5s · done 16:32`,
       `${DONE} verify · 42ms · done 16:32`,
       `${DONE} verify · 1m 01s · done 00:00`,
+    ]);
+  }, 180_000);
+
+  it('stands in a project of its own and never in the checkout', () => {
+    // THE SESSION READS WHERE THE PROCESS STANDS, so this is what keeps it off the record of the
+    // repository the tests live in: that one may hold a private tree that makes `verify` long, and
+    // a developer's own record is not a fixture.
+    const checkout = fileURLToPath(new URL('../../..', import.meta.url));
+    expect(realpathSync(process.cwd())).toBe(realpathSync(project));
+    expect(realpathSync(process.cwd())).not.toBe(realpathSync(checkout));
+    expect(realpathSync(project).startsWith(realpathSync(checkout))).toBe(false);
+  });
+
+  it('counts each answer by its own line, however long the answers before it were', async () => {
+    // SIXTY TASKS MAKE `search` ANSWER WITH MORE ROWS THAN THE WINDOW HAS, so by the second answer
+    // the first one's line has left the page.
+    const quiet = { out: () => undefined, err: () => undefined, fail: () => undefined };
+    for (let n = 0; n < 60; n++)
+      await run(['task', 'create', `a long answer needs task ${n}`], quiet);
+    const { said } = await driven({
+      typed: ['search task', 'search task', 'search task'],
+      instants: [AT(8, 0), AT(8, 0) + 1500, AT(8, 1), AT(8, 1) + 25, AT(8, 2), AT(8, 2) + 3000],
+    });
+    const under = said.map((row) => plainOf(row).trim()).filter((row) => row.startsWith(DONE));
+    expect(under).toEqual([
+      `${DONE} search · 1.5s · done 08:00`,
+      `${DONE} search · 25ms · done 08:01`,
+      `${DONE} search · 3.0s · done 08:02`,
     ]);
   }, 180_000);
 
@@ -344,18 +377,30 @@ let sandbox: string;
 let project: string;
 let environment: NodeJS.ProcessEnv;
 
-beforeAll(() => {
+const before = { cwd: process.cwd(), env: { ...process.env } };
+
+beforeAll(async () => {
+  // A PROJECT OF ITS OWN, FOUNDED HERE: every session this file opens in this process stands where
+  // the process stands, so it stands in the sandbox and never in the checkout, whose own record
+  // (and the private tree beside it, on a machine that has one) is not this file's to read.
   sandbox = mkdtempSync(join(tmpdir(), 'mnema-sent-'));
   project = join(sandbox, 'project');
   mkdirSync(project, { recursive: true });
+  process.env.HOME = join(sandbox, 'home');
+  process.env.XDG_DATA_HOME = join(sandbox, 'data');
+  delete process.env.MNEMA_RUN;
+  process.chdir(project);
+  await run(['init'], { out: () => undefined, err: () => undefined, fail: () => undefined });
   environment = {
     PATH: process.env.PATH ?? '',
     HOME: join(sandbox, 'home'),
     TERM: 'xterm-256color',
   };
-});
+}, 180_000);
 
 afterAll(() => {
+  process.chdir(before.cwd);
+  process.env = before.env;
   rmSync(sandbox, { recursive: true, force: true });
 });
 
