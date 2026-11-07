@@ -99,9 +99,10 @@ describe('the page of what comes next', () => {
     const changelog = readFileSync(join(ROOT, 'CHANGELOG.md'), 'utf-8');
     // The entry sits under Unreleased until the release that carries the page cuts that section,
     // and under the newest released section after it: either says it.
+    const firstReleased = changelog.indexOf('\n## [0.');
     const unreleased = changelog.slice(
       changelog.indexOf('## [Unreleased]'),
-      changelog.indexOf('\n## [0.'),
+      changelog.indexOf('\n## [0.', firstReleased + 1),
     );
     expect(unreleased).toContain('docs/what-comes-next.md');
   });
@@ -168,7 +169,7 @@ describe('every decision the page cites is in the record committed at HEAD, publ
 
 describe('what it would take to be accused (the planted spellings)', () => {
   it('a will is found', () => {
-    expect(promisesOrDates('0.1.6 will bring it.')).toEqual(['will']);
+    expect(promisesOrDates('The next release will bring it.')).toEqual(['will']);
   });
 
   it('a year and a month are found', () => {
