@@ -12,41 +12,6 @@ with its own changelog.
 
 ### Changed
 
-- **A record's README from an earlier release is replaced by the current page.** `.mnema/README.md` was written only
-  where it was missing, so a record founded before the move to `mnema-work` kept the old clone address. A README whose
-  bytes are exactly the page the releases 0.1.2 to 0.1.5 wrote is now replaced by the next signed write to the record or
-  by `mnema init`, with one line saying so. A README with any other bytes, and the current page, are never touched; the
-  page is not signed and neither reader reads it.
-- **`record commit` finds the forge behind an ssh alias.** A remote written as `git@<alias>:owner/repo.git`, where the
-  alias stands for github.com in your ssh configuration, got the generic sentence. For a host that is not a known forge,
-  reached over ssh, the host is read from `ssh -G <alias>` (three seconds at most) before the command is chosen; where ssh
-  is absent or fails, the sentence is the same as before.
-- **A key whose tail was cut is told what happened.** When the next write of a key that the record names among the keys
-  lost with a cut founds an identity beside others, the sentence no longer says it is how everyone after the first
-  arrives and there is nothing to do, nor points to `key request --anchor` of another identity: it says the key was lost
-  with the cut and that this write started a new identity.
-- **A decision accepted again says it is already accepted.** `decision move accept` and `decision_transition` on a
-  decision that is accepted keep the refusal `ILLEGAL_TRANSITION` and now say that it is already accepted, by a person or
-  by which agent, and when, and that nothing changed.
-- **A session is told about the rules that live only in the private tree.** The document a session opens with carries the
-  committed record alone, so a decision or pattern recorded with `--scope private` never reached an agent and nothing said
-  so. Where the private tree holds decisions in force or adopted patterns, the session's copy now ends with one line
-  saying how many and the `mnema search --scope private` commands that list them. Their text is not in it, and the file
-  `mnema brief` prints is unchanged.
-
-- **In a project with no git, the reply to a public write and the line `mnema site` ends with stop saying the tree is
-  committed.** `Landed in the public tree: committed with the repository, so it reaches every clone` is still what a
-  repository is told, byte for byte. Without git, both the command line and the tools say that the public tree is a
-  folder of the project, not committed, which travels only as the project's files are copied, and `mnema site` says
-  `only the public tree is in the page`. The notice that a link reaches a rule or task its tree does not hold, and the
-  refusal of an address outside the project, likewise say "every copy of the project" and "the project's files are
-  copied" where they said "every clone".
-- **`mnema init` says the Biome entries.** In a repository whose Biome configuration does not leave `.mnema/` alone,
-  `biome check .` goes red after init on `tailproof.json` and, with Biome 2, on the front matter of the Copilot
-  instructions file. `init` still edits no formatter's configuration: it now ends by naming the file and the entries to
-  add (`!.mnema`, and the Copilot instructions file where it was written), and `mnema doctor` and the session brief say the
-  same entries.
-
 - **mnema lives in the organization `mnema-work` now.** The repository is `github.com/mnema-work/mnema` (the old address
   redirects), and the install line for the plugins is `mnema-work/mnema` (`claude plugin marketplace add mnema-work/mnema`,
   and the same for Codex and Copilot CLI); the plugin is still `mnema@mnema`, the extension id and the package names do not
@@ -54,29 +19,66 @@ with its own changelog.
   https://mnema.work. `SECURITY.md` names security@mnema.work beside GitHub's private vulnerability reporting.
 - **From the next release the MCP Registry entry is `io.github.mnema-work/mnema`.** `@mnema/code` carries that `mcpName`
   and `server.json` that name; the entry made for 0.1.5 keeps the name it was made under.
+- **The page of what is coming is `docs/what-comes-next.md`.** `docs/what-0-1-6-is-expected-to-bring.md` is renamed and
+  carries no version in its name or its title, so its address does not change with each release. It keeps the plans a
+  release does not carry, each linked to the accepted decision that holds it; what a release carries is said here.
+  The earlier entry for the page, under 0.1.5, is history and keeps the name the page had then.
+- **`mnema init` says the Biome entries.** In a repository whose Biome configuration does not leave `.mnema/` alone,
+  `biome check .` goes red after init on `tailproof.json` and, with Biome 2, on the front matter of the Copilot
+  instructions file. `init` still edits no formatter's configuration: it now ends by naming the file and the entries to
+  add (`!.mnema`, and the Copilot instructions file where it was written), and `mnema doctor` and the session brief say the
+  same entries.
+- **A session is told about the rules that live only in the private tree.** The document a session opens with carries the
+  committed record alone, so a decision or pattern recorded with `--scope private` never reached an agent and nothing said
+  so. Where the private tree holds decisions in force or adopted patterns, the session's copy now ends with one line
+  saying how many and the `mnema search --scope private` commands that list them. Their text is not in it, and the file
+  `mnema brief` prints is unchanged.
+- **In a project with no git, the reply to a public write and the line `mnema site` ends with stop saying the tree is
+  committed.** `Landed in the public tree: committed with the repository, so it reaches every clone` is still what a
+  repository is told, byte for byte. Without git, both the command line and the tools say that the public tree is a
+  folder of the project, not committed, which travels only as the project's files are copied, and `mnema site` says
+  `only the public tree is in the page`. The notice that a link reaches a rule or task its tree does not hold, and the
+  refusal of an address outside the project, likewise say "every copy of the project" and "the project's files are
+  copied" where they said "every clone".
+- **`record commit` finds the forge behind an ssh alias.** A remote written as `git@<alias>:owner/repo.git`, where the
+  alias stands for github.com in your ssh configuration, got the generic sentence. For a host that is not a known forge,
+  reached over ssh, the host is read from `ssh -G <alias>` (three seconds at most) before the command is chosen; where ssh
+  is absent or fails, the sentence is the same as before.
+- **A record's README from an earlier release is replaced by the current page.** `.mnema/README.md` was written only
+  where it was missing, so a record founded before the move to `mnema-work` kept the old clone address. A README whose
+  bytes are exactly the page an earlier release wrote is now replaced by the next signed write to the record or
+  by `mnema init`, with one line saying so. A README with any other bytes, and the current page, are never touched; the
+  page is not signed and neither reader reads it.
 - **The site has its own repository.** The pages at https://mnema.work are built in `mnema-work/mnema.work`, from the
   latest release of this one, and no longer from a folder here. A pull request that changes `docs/` runs the site's build
   over the docs of the pull request, so a page the site could not publish is red before it is merged.
 
 ### Fixed
 
+- **A supersede by a proposal says who may accept it as the switch stands.** The line that says nothing is in force on
+  the subject until the successor is accepted no longer says a person must, while `agent-accepts` is on: it says an agent
+  may accept it where the person dictated it, and a person otherwise; with the switch off, or unreadable, it says a person.
+- **A decision accepted again says it is already accepted.** `decision move accept` and `decision_transition` on a
+  decision that is accepted keep the refusal `ILLEGAL_TRANSITION` and now say that it is already accepted, by a person or
+  by which agent, and when, and that nothing changed.
+- **A key whose tail was cut is told what happened.** When the next write of a key that the record names among the keys
+  lost with a cut founds an identity beside others, the sentence no longer says it is how everyone after the first
+  arrives and there is nothing to do, nor points to `key request --anchor` of another identity: it says the key was lost
+  with the cut and that this write started a new identity.
 - **A write refused before it appended anything no longer says it went to a new tail.** The line `mnema: wrote to a new
   tail` was printed as soon as the writer moved to a new tail, so a refusal such as `STALE_ANCHOR` came after a line that
   read as if something was written. It is said once the new tail holds something.
-- **`verify --since` and `verify` agree on a tail that holds only its proof.** A tail directory with a tail proof and no
-  segment holds nothing and names no record for `verify`; `verify --since` counted the record it names as a tail of
-  another record that arrived. It now leaves it out too.
+- **A refused relink no longer names a tail that does not exist.** Where the refused
+  event is the relink itself, in the new tail it would be written in, the message says a new tail of that key.
 - **A relink is checked against the tail the join reads.** Where both trees hold a tail of the same id, the check of
   what a join would break (`tail relink`, `doctor --fix private-tree`) set aside as already broken an event of the tree
   it does not read, and could pass a relink that leaves the record failing `verify`. It now sets aside only what the
   tree it reads refuses already.
-- **A supersede by a proposal says who may accept it as the switch stands.** The line that says nothing is in force on
-  the subject until the successor is accepted no longer says a person must, while `agent-accepts` is on: it says an agent
-  may accept it where the person dictated it, and a person otherwise; with the switch off, or unreadable, it says a person.
+- **`verify --since` and `verify` agree on a tail that holds only its proof.** A tail directory with a tail proof and no
+  segment holds nothing and names no record for `verify`; `verify --since` counted the record it names as a tail of
+  another record that arrived. It now leaves it out too.
 - **On Windows the doctor finds `mnema.cmd`.** The check of the merge driver written by an earlier mnema looked only
   for a file named `mnema` on the PATH, so a working driver was called dead. It looks for the extensions `PATHEXT` lists.
-- **A refused relink no longer names a tail that does not exist.** Where the refused
-  event is the relink itself, in the new tail it would be written in, the message says a new tail of that key.
 
 ## [0.1.5] - 2026-11-04
 

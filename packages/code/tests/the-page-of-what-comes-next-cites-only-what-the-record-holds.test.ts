@@ -1,7 +1,7 @@
 // @reads-the-tree
 /**
- * THE PAGE OF WHAT 0.1.6 IS EXPECTED TO BRING SAYS PLANS, AND CITES ONLY WHAT THE RECORD HOLDS. The page
- * (`docs/what-0-1-6-is-expected-to-bring.md`) promises nothing, and every line of it leans on a decision a stranger
+ * THE PAGE OF WHAT COMES NEXT SAYS PLANS, AND CITES ONLY WHAT THE RECORD HOLDS. The page
+ * (`docs/what-comes-next.md`) promises nothing, and every line of it leans on a decision a stranger
  * can look up. What is held here:
  *
  *   - EVERY LINE OF A LIST CITES AT LEAST ONE DECISION, as a link to that decision on the record page, and the label in
@@ -24,7 +24,7 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ROOT } from './support/published-examples.js';
 
-const PAGE = 'docs/what-0-1-6-is-expected-to-bring.md';
+const PAGE = 'docs/what-comes-next.md';
 const page = readFileSync(join(ROOT, PAGE), 'utf-8');
 
 /** The record page's address of a decision, the one every link of the page must have. */
@@ -65,9 +65,9 @@ function promisesOrDates(markdown: string): string[] {
   return found;
 }
 
-describe('the page of what 0.1.6 is expected to bring', () => {
+describe('the page of what comes next', () => {
   it('is a page that says plans, with items to read', () => {
-    expect(page.startsWith('# What 0.1.6 is expected to bring\n'), 'its title').toBe(true);
+    expect(page.startsWith('# What comes next\n'), 'its title').toBe(true);
     expect(page).toMatch(/<!-- description: [^>]{20,} -->/);
     expect(page).toContain('plans, not promises');
     expect(itemsOf(page).length, 'RULER BROKEN: the page has no item').toBeGreaterThanOrEqual(8);
@@ -99,12 +99,11 @@ describe('the page of what 0.1.6 is expected to bring', () => {
     const changelog = readFileSync(join(ROOT, 'CHANGELOG.md'), 'utf-8');
     // The entry sits under Unreleased until the release that carries the page cuts that section,
     // and under the newest released section after it: either says it.
-    const firstReleased = changelog.indexOf('\n## [0.');
     const unreleased = changelog.slice(
       changelog.indexOf('## [Unreleased]'),
-      changelog.indexOf('\n## [0.', firstReleased + 1),
+      changelog.indexOf('\n## [0.'),
     );
-    expect(unreleased).toContain('docs/what-0-1-6-is-expected-to-bring.md');
+    expect(unreleased).toContain('docs/what-comes-next.md');
   });
 });
 
@@ -114,7 +113,7 @@ describe('every decision the page cites is in the record committed at HEAD, publ
   let home = '';
 
   beforeAll(() => {
-    dir = mkdtempSync(join(tmpdir(), 'what-0-1-6-'));
+    dir = mkdtempSync(join(tmpdir(), 'what-comes-next-'));
     home = join(dir, 'home');
     tree = join(dir, 'tree');
     mkdirSync(home);
