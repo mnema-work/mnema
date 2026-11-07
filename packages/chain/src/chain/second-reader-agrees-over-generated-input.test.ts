@@ -19,7 +19,6 @@
  * It needs `python3` and fails rather than skips without it, as its siblings do.
  */
 
-import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -35,13 +34,14 @@ import {
 } from '../events/canonical.js';
 import { catalogUpcasters } from '../events/registry.js';
 import { openChainForWriting, verify } from './chain.js';
+import { python3 } from './second-reader-session.js';
 
 const VERIFIER = fileURLToPath(new URL('../../verifier/mnema_verify.py', import.meta.url));
 const SEED = Number(process.env.FC_SEED ?? 20_261_007);
 const CASE_TIMEOUT = 120_000;
 
 function python(args: readonly string[], input?: string) {
-  const run = spawnSync('python3', args, { encoding: 'utf-8', input });
+  const run = python3(args, input);
   if (run.error !== undefined) {
     throw new Error(
       `python3 could not be run, and this suite requires it: ${run.error.message}. The second ` +

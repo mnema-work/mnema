@@ -29,7 +29,6 @@
  * readers refuse it and name the same line.
  */
 
-import { spawnSync } from 'node:child_process';
 import {
   cpSync,
   mkdtempSync,
@@ -49,6 +48,7 @@ import { keyList, parseCanonicalLine } from '../events/stored-json.js';
 import { verify } from './chain.js';
 import { parseCheckpoint } from './checkpoint.js';
 import { parseEntry } from './entry.js';
+import { python3 } from './second-reader-session.js';
 import { parseTailProof } from './tailproof.js';
 import { readStoredWitness } from './witness.js';
 
@@ -65,7 +65,7 @@ interface Finding {
 }
 
 function python(args: readonly string[]) {
-  const run = spawnSync('python3', args, { encoding: 'utf-8' });
+  const run = python3(args);
   if (run.error !== undefined) throw new Error(`python3 could not be run: ${run.error.message}`);
   return run;
 }
@@ -1029,11 +1029,16 @@ describe('the two readers name the same check first on a line broken where the o
 });
 
 describe('the rule has one place', () => {
-  /** Every non-test TypeScript file under `src`. */
+  /**
+   * Every non-test TypeScript file under `src` that ships. `second-reader-session.ts` is a seam
+   * for the tests (the build leaves it out), and what it parses is the second reader's own answer,
+   * not a stored line.
+   */
   function sources(dir: string): string[] {
     return readdirSync(dir).flatMap((name) => {
       const path = join(dir, name);
       if (statSync(path).isDirectory()) return name === '__fixtures__' ? [] : sources(path);
+      if (name === 'second-reader-session.ts') return [];
       return name.endsWith('.ts') && !name.endsWith('.test.ts') ? [path] : [];
     });
   }
