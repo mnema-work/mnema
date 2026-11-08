@@ -99,9 +99,9 @@ export function floorRefusal(running: string, range: string): string | undefined
 /** The range `engines.node` declares in this package's `package.json`, or undefined. */
 export function declaredRange(): string | undefined {
   try {
-    const at = packageFile('package.json');
-    if (at === undefined) return undefined;
-    const manifest = JSON.parse(readFileSync(at, 'utf-8')) as { engines?: { node?: unknown } };
+    const manifest = JSON.parse(readFileSync(packageFile('package.json'), 'utf-8')) as {
+      engines?: { node?: unknown };
+    };
     const range = manifest.engines?.node;
     return typeof range === 'string' ? range : undefined;
   } catch {

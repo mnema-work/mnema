@@ -17,20 +17,15 @@ import { fileURLToPath } from 'node:url';
 
 const NAME = '@mnema/code';
 
-let root: URL | undefined;
-
-function theRoot(): URL | undefined {
-  if (root !== undefined) return root;
-  let at = new URL('.', import.meta.url);
+/** The first folder at or above `start` whose `package.json` names this package, or undefined. */
+export function rootAbove(start: URL): URL | undefined {
+  let at = start;
   for (;;) {
     try {
       const manifest = JSON.parse(readFileSync(new URL('package.json', at), 'utf-8')) as {
         name?: unknown;
       };
-      if (manifest.name === NAME) {
-        root = at;
-        return root;
-      }
+      if (manifest.name === NAME) return at;
     } catch {
       // No manifest here, or one that does not parse: keep walking.
     }
@@ -40,11 +35,14 @@ function theRoot(): URL | undefined {
   }
 }
 
+let root: URL | undefined;
+
 /**
- * The path of `relative` inside this package, or undefined when no folder above the running
- * module holds the package's manifest.
+ * The path of `relative` inside this package. It throws when no folder above the running module
+ * holds the package's manifest, which is an install that lost its own `package.json`.
  */
-export function packageFile(relative: string): string | undefined {
-  const at = theRoot();
-  return at === undefined ? undefined : fileURLToPath(new URL(relative, at));
+export function packageFile(relative: string): string {
+  root ??= rootAbove(new URL('.', import.meta.url));
+  if (root === undefined) throw new Error(`no folder above ${import.meta.url} is ${NAME}`);
+  return fileURLToPath(new URL(relative, root));
 }

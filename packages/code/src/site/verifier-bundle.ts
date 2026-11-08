@@ -8,12 +8,9 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { packageFile } from '../package-root.js';
 
-const BUNDLE =
-  packageFile('dist/site-verifier.js') ??
-  fileURLToPath(new URL('../../dist/site-verifier.js', import.meta.url));
+const BUNDLE = packageFile('dist/site-verifier.js');
 
 /** The verifier script's text. */
 export function theSiteVerifier(): string {

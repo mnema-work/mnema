@@ -36,10 +36,6 @@ const LISTED: Readonly<Record<string, string>> = {
     'compares its own URL with the path it was run by; the bundled entry is the file that is run',
   'packages/code/src/package-root.ts':
     'walks up from its chunk to the folder whose package.json is this package, at any depth',
-  'packages/code/src/commands/stack-index.ts':
-    'names the index from the package root; its own place is only the fallback when no root is found',
-  'packages/code/src/site/verifier-bundle.ts':
-    'names the script from the package root; its own place is only the fallback when no root is found',
   'packages/code/src/presentation/width.ts':
     'requires string-width, which the bundle leaves outside, so it resolves from node_modules above the chunk',
   'packages/core/src/projections/cache-meta.ts':

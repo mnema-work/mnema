@@ -6,7 +6,7 @@
 import { mkdtempSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ensureSchema } from '../db/schema.js';
 import { IN_MEMORY, openDatabase } from '../db/sqlite.js';
 import {
@@ -53,6 +53,18 @@ describe('the stamp', () => {
   it('is one value for the code that is running, and a digest of it', () => {
     expect(productStamp()).toBe(productStamp());
     expect(productStamp()).toMatch(/^[0-9a-f]{32}$/);
+  });
+
+  it('is the one the build wrote in, when it wrote one, without reading a file', async () => {
+    vi.resetModules();
+    vi.stubGlobal('MNEMA_PRODUCT_STAMP', 'written-by-the-bundle');
+    try {
+      const fresh = await import('./cache-meta.js');
+      expect(fresh.productStamp()).toBe('written-by-the-bundle');
+    } finally {
+      vi.unstubAllGlobals();
+      vi.resetModules();
+    }
   });
 });
 
