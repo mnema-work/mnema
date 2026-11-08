@@ -4,7 +4,11 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { closeSecondReaderSession, pythonAlone, pythonRun } from './second-reader-session.js';
+import {
+  closeSecondReaderSession,
+  pythonAlone,
+  pythonRun,
+} from '../../tests/support/second-reader-session.js';
 
 /**
  * ONE python3 FOR MANY READINGS ANSWERS WHAT A python3 OF ITS OWN ANSWERS. The seam the

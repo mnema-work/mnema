@@ -37,7 +37,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fc from 'fast-check';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-
+import { pythonRun } from '../../tests/support/second-reader-session.js';
 import {
   agentEnrolled,
   agentEnrollmentMessage,
@@ -71,7 +71,6 @@ import { serializeCheckpoint, signCheckpoint } from './checkpoint.js';
 import { entryHash, writtenAsBuilt } from './hash.js';
 import { deriveAnchor, generateKeyPair, type KeyPair, publicKeyToPem, sign } from './keys.js';
 import { checkpointsPath, publicKeyPath, segmentPath, tailDir, tailProofPath } from './layout.js';
-import { pythonRun } from './second-reader-session.js';
 import { serializeTailProof, signTailProof } from './tailproof.js';
 
 const VERIFIER = fileURLToPath(new URL('../../verifier/mnema_verify.py', import.meta.url));

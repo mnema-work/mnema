@@ -39,7 +39,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { pythonRun } from './second-reader-session.js';
+import { pythonRun } from '../../tests/support/second-reader-session.js';
 
 const VERIFIER_DIR = fileURLToPath(new URL('../../verifier/', import.meta.url));
 const VERIFIER = fileURLToPath(new URL('../../verifier/mnema_verify.py', import.meta.url));

@@ -32,7 +32,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fc from 'fast-check';
 import { afterEach, describe, expect, it } from 'vitest';
-
+import { pythonRun } from '../../tests/support/second-reader-session.js';
 import {
   decisionRecorded,
   decisionTransitioned,
@@ -51,7 +51,6 @@ import type { CatalogEvent } from '../events/catalog.js';
 import { catalogUpcasters } from '../events/registry.js';
 import { WORKFLOWS } from '../events/workflow.js';
 import { openChainForWriting, verify } from './chain.js';
-import { pythonRun } from './second-reader-session.js';
 
 const VERIFIER = fileURLToPath(new URL('../../verifier/mnema_verify.py', import.meta.url));
 const SEED = Number(process.env.FC_SEED ?? 20_261_007);

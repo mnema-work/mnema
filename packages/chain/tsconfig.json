@@ -7,5 +7,5 @@
     "types": ["node"]
   },
   "include": ["src/**/*"],
-  "exclude": ["src/**/*.test.ts", "src/**/second-reader-session.ts", "dist"]
+  "exclude": ["src/**/*.test.ts", "dist"]
 }

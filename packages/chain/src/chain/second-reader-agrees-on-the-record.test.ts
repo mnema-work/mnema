@@ -84,7 +84,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-
+import { pythonRun } from '../../tests/support/second-reader-session.js';
 import { accountLinked, identityFounded } from '../events/build.js';
 import type { CatalogEvent } from '../events/catalog.js';
 import { catalogUpcasters } from '../events/registry.js';
@@ -94,7 +94,6 @@ import { sealEntry, serializeEntry } from './entry.js';
 import { deriveAnchor, generateKeyPair, publicKeyToPem } from './keys.js';
 import { witnessSigstorePath } from './layout.js';
 import { meetsRequirement } from './level.js';
-import { pythonRun } from './second-reader-session.js';
 import { readTailCheckpoints } from './store.js';
 import { serializeTailProof, signTailProof } from './tailproof.js';
 import { canonicalIdentityForm } from './verify.js';

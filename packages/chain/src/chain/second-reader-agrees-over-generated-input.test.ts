@@ -25,7 +25,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fc from 'fast-check';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-
+import { pythonRun } from '../../tests/support/second-reader-session.js';
 import { decisionBirth, identityFounded, taskCreated } from '../events/build.js';
 import {
   CanonicalizationError,
@@ -34,7 +34,6 @@ import {
 } from '../events/canonical.js';
 import { catalogUpcasters } from '../events/registry.js';
 import { openChainForWriting, verify } from './chain.js';
-import { pythonRun } from './second-reader-session.js';
 
 const VERIFIER = fileURLToPath(new URL('../../verifier/mnema_verify.py', import.meta.url));
 const SEED = Number(process.env.FC_SEED ?? 20_261_007);

@@ -16,10 +16,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-
+import { pythonRun } from '../../tests/support/second-reader-session.js';
 import { catalogUpcasters } from '../events/registry.js';
 import { verify } from './chain.js';
-import { pythonRun } from './second-reader-session.js';
 import { arrivalsSince, tailsReadAt } from './tail-names.js';
 
 const VERIFIER_DIR = fileURLToPath(new URL('../../verifier/', import.meta.url));
