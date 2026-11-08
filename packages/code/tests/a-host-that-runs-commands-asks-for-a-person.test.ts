@@ -36,9 +36,10 @@ import { runBeforeAWrite } from '../src/commands/before-a-write.js';
 import { pathsOfAWrite, writeToolsOf } from '../src/host-hook.js';
 import { HOOK_HOSTS } from '../src/host-names.js';
 import { type CliIo, run } from '../src/program.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 const REPO = fileURLToPath(new URL('../../../', import.meta.url));
-const CLI = join(REPO, 'packages', 'code', 'dist', 'cli.js');
+const CLI = MNEMA_CLI;
 const PLUGIN = join(REPO, 'plugin');
 const HOOKS = join(PLUGIN, 'hooks', 'hooks.json');
 

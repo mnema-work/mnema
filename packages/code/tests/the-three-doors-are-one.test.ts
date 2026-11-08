@@ -22,7 +22,7 @@ import { spawnSync } from 'node:child_process';
 import { appendFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 import { catalogUpcasters } from '@mnema/chain';
 import { type DiscoveryEnv, orderedEvents, PROJECT_DIR } from '@mnema/core';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -57,8 +57,9 @@ import type { CliIo } from '../src/program.js';
 import { registerVerbs } from '../src/wiring/index.js';
 import { NO_PROJECT } from '../src/wiring/report.js';
 import type { PinnedRun } from '../src/wiring/run-pin.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 /** The name every door writes as. */
 const AGENT = 'the-agent';
 

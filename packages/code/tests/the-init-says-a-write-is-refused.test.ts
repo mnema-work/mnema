@@ -43,9 +43,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
 import { argvOf } from './support/reading-a-shell-line.js';
 import { codeOnly, sourceFiles } from './support/reading-source.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 /** The built binary: what a person runs. */
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 
 /** How a refused write's line opens, and how `init`'s line about that write opens. */
 const REFUSED = 'Refused (STALE_ANCHOR): ';

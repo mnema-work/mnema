@@ -21,14 +21,14 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { fixMergeDriver, mergeDriverLines } from '../src/commands/doctor-merge-driver.js';
 import { driverCommand, runRecordPull } from '../src/commands/record-pull.js';
 import { type CliIo, run } from '../src/program.js';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 
 let sandbox: string;
 

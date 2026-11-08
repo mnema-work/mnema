@@ -12,12 +12,12 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
 import { arrivedSince, inPty } from './support/pty.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 
 let sandbox: string;
 let home: string;

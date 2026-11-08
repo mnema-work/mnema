@@ -60,7 +60,7 @@ jobs:
           IDENTITY: https://github.com/${{ github.workflow_ref }}
         run: |
           set -euo pipefail
-          bin="$GITHUB_WORKSPACE/packages/code/dist/cli.js"
+          bin="$GITHUB_WORKSPACE/packages/code/dist/bundle/cli.js"
           work="$(mktemp -d "$RUNNER_TEMP/sigstore-probe.XXXXXX")"
           export HOME="$work/home"
           mkdir -p "$HOME" "$work/record"

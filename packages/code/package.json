@@ -27,7 +27,7 @@
   "license": "Apache-2.0",
   "type": "module",
   "bin": {
-    "mnema": "./dist/cli.js"
+    "mnema": "./dist/bundle/cli.js"
   },
   "exports": {
     ".": {
@@ -45,7 +45,8 @@
     "dist/",
     "!dist/.tsbuildinfo",
     "!dist/**/*.map",
-    "NOTICE"
+    "NOTICE",
+    "THIRD-PARTY-NOTICES.md"
   ],
   "homepage": "https://mnema.work/",
   "repository": {

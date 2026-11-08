@@ -20,11 +20,11 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { read } from './support/published-examples.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 const FORMAT = 'packages/chain/FORMAT.md';
 
 let sandbox: string;

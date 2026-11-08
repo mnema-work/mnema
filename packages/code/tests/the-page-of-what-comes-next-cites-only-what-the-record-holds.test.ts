@@ -23,6 +23,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ROOT } from './support/published-examples.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 const PAGE = 'docs/what-comes-next.md';
 const page = readFileSync(join(ROOT, PAGE), 'utf-8');
@@ -138,7 +139,7 @@ describe('every decision the page cites is in the record committed at HEAD, publ
 
   /** What `mnema show <label>` says over the committed public tree, with a home of its own. */
   const show = (label: string): string => {
-    const cli = join(ROOT, 'packages/code/dist/cli.js');
+    const cli = MNEMA_CLI;
     expect(existsSync(cli), 'RULER BROKEN: the binary is not built (pnpm build)').toBe(true);
     const said = spawnSync(process.execPath, [cli, 'show', label], {
       cwd: tree,

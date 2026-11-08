@@ -42,9 +42,10 @@ import { runGoverningRulesTool, runRulesBeforeAnEditTool } from '../src/mcp/tool
 import { acceptedBy } from '../src/presentation/accepted-by.js';
 import { type CliIo, run } from '../src/program.js';
 import { A_CHARGE_WAITS_MS } from '../src/what-a-write-meets.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 const REPO = fileURLToPath(new URL('../../../', import.meta.url));
-const CLI = join(REPO, 'packages', 'code', 'dist', 'cli.js');
+const CLI = MNEMA_CLI;
 const PLUGIN = join(REPO, 'plugin');
 
 let sandbox: string;

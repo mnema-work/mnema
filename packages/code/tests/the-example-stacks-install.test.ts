@@ -17,8 +17,9 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 const EXAMPLES = fileURLToPath(new URL('../../stacks/examples', import.meta.url));
 const INDEX = fileURLToPath(new URL('../../../stack-index/index.json', import.meta.url));
 

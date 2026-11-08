@@ -52,9 +52,10 @@ import {
 } from './support/pty.js';
 import { codeOnly, sourceFiles } from './support/reading-source.js';
 import { screenOf } from './support/screen.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 /** The built CLI: the same file the `mnema` bin points at. */
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 
 /** The mark a command that was SENT carries on the roll: the row being typed carries the prompt. */
 const SENT = '\u276f';

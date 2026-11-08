@@ -62,7 +62,6 @@
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { fact } from '../src/presentation/detail.js';
 import { renderPlain, widthOf } from '../src/presentation/plain.js';
@@ -87,9 +86,10 @@ import {
   type Step,
 } from './support/pty.js';
 import { promptRow, type Screen, screenOf, theSettledScreen } from './support/screen.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 /** The built CLI: the same file the `mnema` bin points at. */
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 
 /** What the caller types in front of, as the layout writes it: trimmed at the end. */
 const PROMPT = 'mnema>';

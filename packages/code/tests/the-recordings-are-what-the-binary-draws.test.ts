@@ -31,7 +31,7 @@
  * HOW EACH IS MADE AGAIN, from the root of a built checkout (`pnpm build`):
  *
  *     asciinema rec --overwrite -q --cols 96 --rows 34 \
- *       -c "bash recordings/first-record.sh $PWD/packages/code/dist/cli.js" recordings/first-record.cast
+ *       -c "bash recordings/first-record.sh $PWD/packages/code/dist/bundle/cli.js" recordings/first-record.cast
  *     agg --theme github-dark --font-size 16 recordings/first-record.cast recordings/first-record.gif
  *
  *     (and so for each command-line script, whose own header names the line that makes it)
@@ -65,7 +65,6 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { THE_FLOOR } from '../src/repl/floor.js';
 import { accountsFor, asMinted } from './support/a-page-held-to-a-run.js';
@@ -74,9 +73,10 @@ import { aFrameSince, FRAME_IS_DRAWN, inPty, type Ran, type Step } from './suppo
 import { ROOT, read } from './support/published-examples.js';
 import { linesOf } from './support/reading-a-shell-line.js';
 import { screenOf } from './support/screen.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 /** The built binary: what a person runs, and what both recordings were made with. */
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 
 /** Where the recordings and their scripts live, beside the page that shows them. */
 const RECORDINGS = join(ROOT, 'recordings');
@@ -86,7 +86,7 @@ const THE_WAY_BACK = {
   cli: (name: string): string =>
     `recordings/${name}.cast no longer shows what the binary prints. Make it again: ` +
     `asciinema rec --overwrite -q --cols 96 --rows 34 -c "bash recordings/${name}.sh ` +
-    `$PWD/packages/code/dist/cli.js" recordings/${name}.cast, then agg --theme github-dark --font-size 16 ` +
+    `$PWD/packages/code/dist/bundle/cli.js" recordings/${name}.cast, then agg --theme github-dark --font-size 16 ` +
     `recordings/${name}.cast recordings/${name}.gif`,
   console:
     'recordings/console.cast no longer shows what the console draws. Make it again: ' +

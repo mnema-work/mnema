@@ -33,8 +33,9 @@ import {
   theDefaultBranch,
 } from '../src/events-not-in-git.js';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 const SRC = fileURLToPath(new URL('../src/', import.meta.url));
 
 let sandbox: string;

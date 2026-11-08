@@ -45,7 +45,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 import { catalogUpcasters } from '@mnema/chain';
 import { orderedEvents } from '@mnema/core';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -55,9 +55,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildMcpServer } from '../src/mcp/server.js';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
 import { argvOf } from './support/reading-a-shell-line.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 /** The built binary: what a person runs. */
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 
 const REFUSED = 'Refused (AMBIGUOUS_MEMBERSHIP): ';
 

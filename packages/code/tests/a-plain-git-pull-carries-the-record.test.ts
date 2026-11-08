@@ -32,7 +32,6 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   fixMergeDriver,
@@ -46,8 +45,9 @@ import { withoutSequences } from '../src/presentation/width.js';
 import { type CliIo, run } from '../src/program.js';
 import { fakeTerminal, hooksNothing, until } from './support/console.js';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 
 /** The command the fix writes for the built binary: its node and its script, by absolute path. */
 const DRIVER = driverCommand(process.execPath, CLI);

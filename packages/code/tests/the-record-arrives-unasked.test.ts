@@ -63,6 +63,7 @@ import {
 } from '../src/record-framing.js';
 import { IDENTITY } from '../src/version.js';
 import { EVENTS } from './support/hook-keys-the-host-reads.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 import { held } from './support/the-record-held.js';
 
 /** The repository root: `packages/code/tests/` is three levels under it. */
@@ -74,7 +75,7 @@ const HOOKS = join(PLUGIN, 'hooks', 'hooks.json');
 /** The marketplace at the repository root: how the plugin is installed from here. */
 const MARKETPLACE = join(REPO, '.claude-plugin', 'marketplace.json');
 /** The built CLI: the same file the `mnema` bin points at. */
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 
 /**
  * A handler path written against the plugin's root, and the path it names.

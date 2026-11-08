@@ -10,6 +10,22 @@ with its own changelog.
 
 ## [Unreleased]
 
+### Changed
+
+- **The `mnema` command starts in about half the time.** The `bin` of `@mnema/code` is now `dist/bundle/cli.js`, one
+  bundle of the command and of the code it reaches, its dependencies included (all but `string-width`), split into
+  chunks so the Node version check still runs before anything else is loaded. Median of 20 starts on one machine,
+  before and after: `mnema --version` 179 to 91 ms, `verify` 197 to 110 ms, `decision record` 246 to 153 ms, `brief`
+  (what the session hook runs) 208 to 119 ms, and the MCP server's reply to `initialize` 308 to 164 ms.
+- **The dependencies the command runs are inside the package.** They are covered by the provenance of `@mnema/code`,
+  not each by its own: npm still installs the declared dependencies and `npm audit signatures` still checks them, but the
+  command does not load them. The package now carries `THIRD-PARTY-NOTICES.md`, with the version and the license of
+  each package the bundle carries, and [Install](docs/install.md#where-the-package-came-from) says it.
+- **A stack trace names a chunk of the bundle** (a file of `dist/bundle/` and a line in it), not a file of the compiled
+  output. The bundle is not minified, so the line reads as the code it came from.
+- **From source, the binary is `packages/code/dist/bundle/cli.js`.** [Build from source](docs/build-from-source.md) and
+  [the site page](docs/site.md) name it; the compiled `dist/cli.js` is still built and still runs.
+
 ## [0.1.6] - 2026-11-07
 
 ### Changed

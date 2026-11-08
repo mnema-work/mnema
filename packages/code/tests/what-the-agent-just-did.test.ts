@@ -64,12 +64,13 @@ import { ENDS_THE_INPUT, ESC } from './support/console.js';
 import { lastIndexWhere } from './support/last-index-where.js';
 import { type Fixture, inPty, opensAConsole, type Ran, type Step } from './support/pty.js';
 import { screenOf } from './support/screen.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 /** `packages/code/src`, for the guards that read this surface's own source. */
 const SRC = fileURLToPath(new URL('../src', import.meta.url));
 
 /** The built CLI: the same file the `mnema` bin points at, and what the other process runs. */
-const CLI = new URL('../dist/cli.js', import.meta.url).pathname;
+const CLI = MNEMA_CLI;
 
 /** What the caller types in front of, as the layout writes it: trimmed at the end. */
 const PROMPT = 'mnema>';

@@ -33,8 +33,9 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
 import { ROOT } from './support/published-examples.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
-const BINARY = join(ROOT, 'packages/code/dist/cli.js');
+const BINARY = MNEMA_CLI;
 /** A record an earlier binary wrote, before records were named: its one tail names none. */
 const WRITTEN_BEFORE = join(
   ROOT,

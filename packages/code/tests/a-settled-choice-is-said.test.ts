@@ -32,9 +32,10 @@ import { renderPlain } from '../src/presentation/plain.js';
 import { type CliIo, run } from '../src/program.js';
 import { tellsWhatToDo } from '../src/record-framing.js';
 import { registerSettled } from '../src/wiring/settled.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 const REPO = fileURLToPath(new URL('../../../', import.meta.url));
-const CLI = join(REPO, 'packages', 'code', 'dist', 'cli.js');
+const CLI = MNEMA_CLI;
 const PLUGIN = join(REPO, 'plugin');
 
 /** What a project that never touched `agent-accepts` is handed: the switch is on by default. */

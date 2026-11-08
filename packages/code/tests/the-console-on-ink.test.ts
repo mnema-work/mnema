@@ -68,9 +68,10 @@ import {
 } from './support/console.js';
 import { arrivedSince, sizedTo, theDeviceWasTheSizeAskedFor } from './support/pty.js';
 import { screenOf } from './support/screen.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 /** The built CLI: the same file the `mnema` bin points at. */
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 
 /** The built program, which `run` is imported from where a case needs the same entry without the binary's checks. */
 const PROGRAM = fileURLToPath(new URL('../dist/program.js', import.meta.url));

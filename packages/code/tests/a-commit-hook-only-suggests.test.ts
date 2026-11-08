@@ -30,8 +30,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   HOOK_SCRIPT,
@@ -42,8 +41,9 @@ import {
 import { discoveryEnv } from '../src/env.js';
 import { type CliIo, run } from '../src/program.js';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
-const CLI = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'dist', 'cli.js');
+const CLI = MNEMA_CLI;
 
 let sandbox: string;
 let repo: string;

@@ -76,6 +76,13 @@ want="$(node -p 'require("./packages/code/package.json").version')"
 got="$("${base_env[@]}" mnema --version 2>&1)" || true
 [ "$got" = "$want" ] || fail "the installed binary says '$got', the package is $want"
 
+# The `mnema` npm linked is the bundle, and the licenses of what the bundle carries came with it.
+installed="$prefix/lib/node_modules/@mnema/code"
+linked="$(readlink -f "$prefix/bin/mnema")"
+[ "$linked" = "$(readlink -f "$installed/dist/bundle/cli.js")" ] ||
+  fail "the installed mnema is $linked, not the bundle dist/bundle/cli.js"
+[ -s "$installed/THIRD-PARTY-NOTICES.md" ] || fail "the installed package carries no THIRD-PARTY-NOTICES.md"
+
 project="$work/project"
 mkdir "$project"
 cd "$project" || exit 1

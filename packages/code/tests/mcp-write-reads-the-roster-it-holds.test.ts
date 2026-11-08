@@ -18,7 +18,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 import { chainRootForScope, ProjectionCache, resolveTrees } from '@mnema/core';
 import { captureMemory } from '@mnema/core/write';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -28,8 +28,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCacheRegistry } from '../src/mcp/cache-registry.js';
 import { buildMcpServer } from '../src/mcp/server.js';
 import { writeContext } from '../src/mcp/session.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 
 let sandbox: string;
 let homeDir: string;

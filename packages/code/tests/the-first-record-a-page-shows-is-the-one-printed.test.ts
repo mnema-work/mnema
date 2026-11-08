@@ -37,13 +37,13 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { accountsFor, asMinted, blockUnder } from './support/a-page-held-to-a-run.js';
 import { read } from './support/published-examples.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 /** The built binary: what a person runs. */
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 
 /** The page, and the headings its steps live under (`## 1. Found the record`, and so on). */
 const PAGE = 'docs/first-record.md';

@@ -63,13 +63,14 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { VERSION } from '../src/version.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 /** The built binary: the artifact a global install puts behind `mnema`. */
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 
 /** The package's own dependencies, borrowed by the copy that runs from an escaped path. */
 const NODE_MODULES = fileURLToPath(new URL('../node_modules', import.meta.url));
@@ -141,7 +142,9 @@ describe('the binary a page promises is the one that speaks', () => {
       filter: (src) => !src.endsWith('.map') && !src.endsWith('.d.ts'),
     });
     symlinkSync(NODE_MODULES, join(home, 'node_modules'), 'dir');
-    expect(speaks(join(home, 'dist', 'cli.js'), sandbox)).toBe(VERSION);
+    // The manifest goes too: the bundled entry finds its package by it.
+    cpSync(join(DIST, '..', 'package.json'), join(home, 'package.json'));
+    expect(speaks(join(home, relative(join(DIST, '..'), CLI)), sandbox)).toBe(VERSION);
   });
 
   it('stays quiet when imported, even by a process that was handed --version', () => {

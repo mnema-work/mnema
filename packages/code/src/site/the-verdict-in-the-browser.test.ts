@@ -29,6 +29,7 @@ import { generateKeyPair, publicKeyToPem, sealEntry, serializeEntry, verify } fr
 import type { DiscoveryEnv } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { anAgentThatSignedAndWasRetired } from '../../tests/support/a-tail-from-another-machine.js';
+import { MNEMA_CLI } from '../../tests/support/the-cli.js';
 import { runDecision } from '../commands/decision.js';
 import { runDecisionTransition } from '../commands/decision-transition.js';
 import { runInit } from '../commands/init.js';
@@ -36,7 +37,7 @@ import { runSite } from '../commands/site.js';
 import { theSiteVerifier } from './verifier-bundle.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const CLI = join(HERE, '..', '..', 'dist', 'cli.js');
+const CLI = MNEMA_CLI;
 const FROZEN = join(HERE, '..', '..', '..', 'chain', 'src', 'chain', '__fixtures__');
 
 let sandbox: string;

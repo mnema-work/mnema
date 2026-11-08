@@ -17,12 +17,11 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type DoctorContext, runDoctor } from '../src/commands/doctor.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
-const REPO = fileURLToPath(new URL('../../../', import.meta.url));
-const CLI = join(REPO, 'packages', 'code', 'dist', 'cli.js');
+const CLI = MNEMA_CLI;
 
 let sandbox: string;
 let home: string;

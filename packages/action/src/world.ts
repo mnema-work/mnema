@@ -10,7 +10,7 @@
  */
 
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -37,10 +37,17 @@ function rulesOf(cwd: string, path: string, failed: string): unknown {
   return JSON.parse(JSON.stringify(done.governed)) as unknown;
 }
 
-/** The `mnema` binary of the installed `@mnema/code`, resolved the way `node` would. */
+/**
+ * The `mnema` binary of the installed `@mnema/code`: the package is resolved the way `node`
+ * would, and the file is the one its `bin` names, the one npm links onto a user's PATH.
+ */
 export function theMnemaBinary(): string {
   const entry = createRequire(import.meta.url).resolve('@mnema/code');
-  return join(dirname(entry), 'cli.js');
+  const root = dirname(dirname(entry));
+  const { bin } = JSON.parse(readFileSync(join(root, 'package.json'), 'utf-8')) as {
+    bin: { mnema: string };
+  };
+  return join(root, bin.mnema);
 }
 
 /**

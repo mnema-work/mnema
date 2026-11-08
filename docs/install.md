@@ -66,6 +66,14 @@ attestations; `npm audit signatures --json --include-attestations` names each, a
 `@mnema/*` package carries an SLSA provenance attestation. The registry serves one tarball per
 version, so this checks the same package a global install of that version fetches.
 
+From the release after 0.1.6, the `mnema` command is one bundle inside `@mnema/code`
+(`dist/bundle/`): the code of its dependencies is copied into it at build time, so the
+dependencies the command runs are covered by the provenance of `@mnema/code`, not each by its own.
+npm still installs the dependencies `@mnema/code` declares, and `npm audit signatures` still checks
+those, but the command does not load them, except `string-width`, which the bundle leaves outside.
+What the bundle carries, with each license, is in the package's
+[`THIRD-PARTY-NOTICES.md`](../packages/code/THIRD-PARTY-NOTICES.md).
+
 <!-- not-on-the-site -->
 ## In the MCP Registry
 

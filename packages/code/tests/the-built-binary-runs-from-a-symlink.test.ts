@@ -10,8 +10,8 @@
  * WHAT IS RUN. The recipe itself, on the binary the gates built: a directory of its own on the
  * `PATH`, a symlink there named `mnema`, and `mnema --version` asked of the shell's own lookup.
  * Beside it the file's mode (every reader of the file may run it) and the root `build` script
- * (`tsc -b && node .github/the-binary-runs/mark-it-runnable.mjs`), because the mode is only as lasting as
- * the step that sets it: `tsc` rewriting the file would take it away again.
+ * (which ends with `node .github/the-binary-runs/mark-it-runnable.mjs`), because the mode is only as
+ * lasting as the step that sets it: `tsc` or the bundle step rewriting the file would take it away again.
  */
 
 import { spawnSync } from 'node:child_process';
@@ -21,9 +21,10 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { VERSION } from '../src/version.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
-const BINARY = join(ROOT, 'packages', 'code', 'dist', 'cli.js');
+const BINARY = MNEMA_CLI;
 
 let sandbox: string;
 
@@ -65,7 +66,7 @@ describe('the binary a build leaves', () => {
       scripts: Record<string, string>;
     };
     expect(manifest.scripts.build).toBe(
-      'tsc -b && node .github/the-binary-runs/mark-it-runnable.mjs && node packages/code/build/the-site-verifier.mjs && node packages/code/build/the-stack-index.mjs && node packages/code/build/the-cli-bundle.mjs',
+      'tsc -b && node packages/code/build/the-site-verifier.mjs && node packages/code/build/the-stack-index.mjs && node packages/code/build/the-cli-bundle.mjs && node .github/the-binary-runs/mark-it-runnable.mjs',
     );
   });
 
@@ -73,7 +74,7 @@ describe('the binary a build leaves', () => {
     // The sentence the recipe comes from. If the page stops saying it, this case is the one to
     // read before deleting the step that makes it true.
     const page = readFileSync(join(ROOT, 'docs', 'build-from-source.md'), 'utf-8');
-    expect(page).toContain('`pnpm build` leaves the binary at `packages/code/dist/cli.js`');
+    expect(page).toContain('`pnpm build` leaves the binary at `packages/code/dist/bundle/cli.js`');
     expect(page).toContain('symlink it onto your `PATH` under the name `mnema`');
   });
 });

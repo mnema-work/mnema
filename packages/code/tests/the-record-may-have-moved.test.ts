@@ -45,9 +45,10 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { closeSession, openSession, type Session } from '../src/mcp/session.js';
 import { runCaptureMemory, runCreateTask, runSearchTool } from '../src/mcp/tools.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 /** The built CLI: the same file the `mnema` bin points at. */
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 /** `packages/code`, so a spawned script resolves `@mnema/*` the way this test does. */
 const PACKAGE_DIR = fileURLToPath(new URL('..', import.meta.url));
 

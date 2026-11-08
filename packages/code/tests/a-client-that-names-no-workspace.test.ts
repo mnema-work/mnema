@@ -32,7 +32,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 import { catalogUpcasters, ensureTree } from '@mnema/chain';
 import { type DiscoveryEnv, orderedEvents, PROJECT_DIR, resolveTrees } from '@mnema/core';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -42,9 +42,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildMcpServer } from '../src/mcp/server.js';
 import { decodedWhole } from './support/arriving.js';
 import { until } from './support/console.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 /** The built binary: what a host spawns when its configuration says `mnema mcp`. */
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 
 /**
  * The `initialize` Cursor's command-line agent (2026.09.18) sends, captured on the wire

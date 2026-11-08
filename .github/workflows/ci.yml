@@ -357,12 +357,13 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
 
+      # The bundle the `bin` names, which links chunks the bundler chose.
       - name: The built binary refuses it in one line
         run: bash .github/the-binary-runs/it-refuses-an-old-node.sh
 
-      # The bundle `pnpm build` writes beside it links its own chunks, so it is run the same way.
-      - name: The bundled binary refuses it in one line
-        run: bash .github/the-binary-runs/it-refuses-an-old-node.sh packages/code/dist/bundle/cli.js
+      # The compiled entry the bundle is built from is still in the package, so it is run the same way.
+      - name: The compiled binary refuses it in one line
+        run: bash .github/the-binary-runs/it-refuses-an-old-node.sh packages/code/dist/cli.js
 
   # THE DOCS BUILD ON THE SITE. The pages of `docs/` are published by the site, which is built in its own repository
   # (mnema-work/mnema.work) from the latest release of this one. A page the site could not build, such as a link that

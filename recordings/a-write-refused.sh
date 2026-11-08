@@ -18,14 +18,14 @@
 # HOW IT IS MADE, from the root of a built checkout (`pnpm build`):
 #
 #   asciinema rec --overwrite -q --cols 96 --rows 34 \
-#     -c "bash recordings/a-write-refused.sh $PWD/packages/code/dist/cli.js" recordings/a-write-refused.cast
+#     -c "bash recordings/a-write-refused.sh $PWD/packages/code/dist/bundle/cli.js" recordings/a-write-refused.cast
 #   agg --theme github-dark --font-size 16 recordings/a-write-refused.cast recordings/a-write-refused.gif
 #
 # HOW IT IS HELD TO THE BINARY: packages/code/tests/the-recordings-are-what-the-binary-draws.test.ts
 # runs this same script with PACE=0 and compares what it prints with the text of the committed .cast.
 set -euo pipefail
 
-CLI=${1:?usage: a-write-refused.sh <absolute path to packages/code/dist/cli.js>}
+CLI=${1:?usage: a-write-refused.sh <absolute path to packages/code/dist/bundle/cli.js>}
 case $CLI in /*) ;; *) echo "a-write-refused.sh: the path to cli.js must be absolute" >&2; exit 2 ;; esac
 command -v jq >/dev/null || { echo "a-write-refused.sh: jq is not on the PATH" >&2; exit 2; }
 

@@ -38,8 +38,9 @@ import {
   REPORT_FIELD,
 } from '../src/report-link.js';
 import { VERSION } from '../src/version.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 const PROGRAM = pathToFileURL(fileURLToPath(new URL('../dist/program.js', import.meta.url))).href;
 const WIRING_IO = pathToFileURL(
   fileURLToPath(new URL('../dist/wiring/io.js', import.meta.url)),

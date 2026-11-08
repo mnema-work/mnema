@@ -41,12 +41,13 @@ import { SESSION_WORDS } from '../src/session-words.js';
 import { REPL_VERB } from '../src/wiring/repl.js';
 import type { Declared } from '../src/wiring/verb.js';
 import { ENDS_THE_INPUT, fakeTerminal, hooksNothing, until } from './support/console.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 import { held } from './support/the-record-held.js';
 
 /** `packages/code/src`, for the guard that reads the session's own source. */
 const SRC = fileURLToPath(new URL('../src', import.meta.url));
 /** The built CLI: the same file the `mnema` bin points at. */
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 
 /** One escape byte, written as an escape so no control byte enters this file. */
 const ESC = '\u001b';

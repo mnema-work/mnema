@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MNEMA_CLI } from '../../code/tests/support/the-cli.js';
 import { type CliResult, createRun, type Run } from './cli.js';
 import { activate, QUIET_MS, VERIFY_EVERY_MS, type VscodeApi } from './extension.js';
 import { rulesArgs } from './rules.js';
@@ -1886,7 +1887,7 @@ describe('no control of the extension turns a hook on', () => {
 });
 
 describe('the same acts against the built command line, in a project of their own', () => {
-  const CLI = fileURLToPath(new URL('../../code/dist/cli.js', import.meta.url));
+  const CLI = MNEMA_CLI;
   const HELLO = fileURLToPath(new URL('../../stacks/fixtures/hello-stack', import.meta.url));
 
   it('lists, adds from a folder and from the index, shows, checks, exports and removes', async () => {
@@ -2525,7 +2526,7 @@ describe('the folder of the record wears a mark in the Explorer, and no file doe
 });
 
 describe('the same two commands against the built command line, with files named like options', () => {
-  const CLI = fileURLToPath(new URL('../../code/dist/cli.js', import.meta.url));
+  const CLI = MNEMA_CLI;
 
   it('reads rules and why of a file named -x, which the order before -- could not', async () => {
     vi.useRealTimers();

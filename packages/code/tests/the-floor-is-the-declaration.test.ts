@@ -97,11 +97,12 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 /** `packages/code/src`, where the walk starts and stays. */
 const SRC = fileURLToPath(new URL('../src', import.meta.url));
 /** The built CLI: the same file the `mnema` bin points at. */
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 
 // ---------------------------------------------------------------------------
 // What a module loads when it is loaded

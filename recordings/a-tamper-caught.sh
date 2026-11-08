@@ -25,14 +25,14 @@
 # HOW IT IS MADE, from the root of a built checkout (`pnpm build`):
 #
 #   asciinema rec --overwrite -q --cols 96 --rows 34 \
-#     -c "bash recordings/a-tamper-caught.sh $PWD/packages/code/dist/cli.js" recordings/a-tamper-caught.cast
+#     -c "bash recordings/a-tamper-caught.sh $PWD/packages/code/dist/bundle/cli.js" recordings/a-tamper-caught.cast
 #   agg --theme github-dark --font-size 16 recordings/a-tamper-caught.cast recordings/a-tamper-caught.gif
 #
 # HOW IT IS HELD TO THE BINARY: packages/code/tests/the-recordings-are-what-the-binary-draws.test.ts
 # runs this same script with PACE=0 and compares what it prints with the text of the committed .cast.
 set -euo pipefail
 
-CLI=${1:?usage: a-tamper-caught.sh <absolute path to packages/code/dist/cli.js>}
+CLI=${1:?usage: a-tamper-caught.sh <absolute path to packages/code/dist/bundle/cli.js>}
 case $CLI in /*) ;; *) echo "a-tamper-caught.sh: the path to cli.js must be absolute" >&2; exit 2 ;; esac
 
 PACE=${PACE:-1}

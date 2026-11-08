@@ -28,9 +28,10 @@ import {
   writeJournal,
 } from '../src/session-journal.js';
 import { emptyReading } from '../src/what-the-session-did.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 const REPO = fileURLToPath(new URL('../../../', import.meta.url));
-const CLI = join(REPO, 'packages', 'code', 'dist', 'cli.js');
+const CLI = MNEMA_CLI;
 const PLUGIN = join(REPO, 'plugin');
 
 let sandbox: string;

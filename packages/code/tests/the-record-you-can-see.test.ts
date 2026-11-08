@@ -54,9 +54,10 @@ import {
   theFirstScreenWith,
   theSettledScreen,
 } from './support/screen.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 /** The built CLI: the same file the `mnema` bin points at. */
-const CLI = new URL('../dist/cli.js', import.meta.url).pathname;
+const CLI = MNEMA_CLI;
 
 /** What the caller types in front of, as the layout writes it: trimmed at the end. */
 const PROMPT = 'mnema>';

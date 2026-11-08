@@ -21,10 +21,11 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GIT_WITHOUT_MAINTENANCE } from '../../support/git-without-maintenance.js';
+import { MNEMA_CLI } from '../../support/the-cli.js';
 
 /** The root of this working tree. */
 export const REPO = fileURLToPath(new URL('../../../../../', import.meta.url));
-const CLI = join(REPO, 'packages', 'code', 'dist', 'cli.js');
+const CLI = MNEMA_CLI;
 
 /** The plugin of this tree, as a host loads it from its directory. */
 export const PLUGIN = join(REPO, 'plugin');

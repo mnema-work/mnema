@@ -31,14 +31,14 @@ import { spawnSync } from 'node:child_process';
 import { closeSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { accountsFor, asMinted } from './support/a-page-held-to-a-run.js';
 import { read } from './support/published-examples.js';
 import { argvOf } from './support/reading-a-shell-line.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 /** The built binary: what a person runs. */
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 
 const PAGE = 'docs/convergence.md';
 const SECTION = '## Two machines, one decision';

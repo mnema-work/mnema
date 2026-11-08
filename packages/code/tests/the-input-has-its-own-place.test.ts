@@ -77,9 +77,10 @@ import {
   type Step,
 } from './support/pty.js';
 import { screenOf, theSettledScreen } from './support/screen.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 /** The built CLI: the same file the `mnema` bin points at. */
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 /** `packages/code/src`, for the guards that read the surface's own source. */
 const SRC = fileURLToPath(new URL('../src', import.meta.url));
 

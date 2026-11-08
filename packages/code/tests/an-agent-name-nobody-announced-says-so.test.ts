@@ -13,7 +13,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 import { catalogUpcasters } from '@mnema/chain';
 import { orderedEvents, PROJECT_DIR } from '@mnema/core';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -22,8 +22,9 @@ import { type JSONRPCMessage, ListRootsRequestSchema } from '@modelcontextprotoc
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildMcpServer } from '../src/mcp/server.js';
 import { pageModel } from '../src/site/model.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 const SAID = 'no name announced in an MCP handshake';
 
 let sandbox: string;

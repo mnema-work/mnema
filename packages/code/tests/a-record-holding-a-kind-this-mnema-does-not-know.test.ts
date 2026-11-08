@@ -25,8 +25,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildMcpServer } from '../src/mcp/server.js';
 import { FUTURE, aNewerMnemaWrites as writeFuture } from './support/a-newer-mnema-writes.js';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 const SECOND_READER = fileURLToPath(
   new URL('../../chain/verifier/mnema_verify.py', import.meta.url),
 );

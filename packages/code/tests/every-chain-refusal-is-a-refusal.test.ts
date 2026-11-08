@@ -35,8 +35,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { answeringThrownRefusals, buildMcpServer } from '../src/mcp/server.js';
 import type { Session } from '../src/mcp/session.js';
 import { sourceFiles } from './support/reading-source.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 
 /** The classes that carry a `code`, found in the source of the two packages that throw. */
 function classesCarryingACode(): string[] {

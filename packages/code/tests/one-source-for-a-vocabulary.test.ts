@@ -73,6 +73,7 @@ import { SHELLS } from '../src/wiring/completion.js';
 import * as vocabulary from '../src/wiring/enumerated.js';
 import { enumeratedArgument, SCOPES, valuesDeclaredOn } from '../src/wiring/enumerated.js';
 import { everyCommandOf } from '../src/wiring/misuse.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 /** A silent port: everything that reads declarations writes nothing. */
 const silent: CliIo = { out: () => {}, err: () => {}, fail: () => {} };
@@ -84,7 +85,7 @@ const declared = buildProgram(silent).program;
 const SRC = fileURLToPath(new URL('../src', import.meta.url));
 
 /** The built CLI: the same file the `mnema` bin points at. */
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 
 /** The words that reach a command, without the program's own name. */
 function pathOf(command: Command): string {

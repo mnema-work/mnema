@@ -40,10 +40,11 @@ import {
 } from '../src/host-names.js';
 import { type CliIo, run } from '../src/program.js';
 import { decodedWhole } from './support/arriving.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 import { copilotHooksJson, geminiHookScript, geminiHooksJson } from './support/the-host-files.js';
 
 const SRC = fileURLToPath(new URL('../src/', import.meta.url));
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 const HANDLER = fileURLToPath(
   new URL('../../../plugin/hooks/edit-rules-beside.mjs', import.meta.url),
 );

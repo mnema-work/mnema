@@ -26,8 +26,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ROOT } from './support/published-examples.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
-const BINARY = join(ROOT, 'packages/code/dist/cli.js');
+const BINARY = MNEMA_CLI;
 const VERIFIER = join(ROOT, 'packages/chain/verifier/mnema_verify.py');
 
 let sandbox: string;

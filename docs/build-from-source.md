@@ -39,7 +39,10 @@ pnpm lint
 pnpm test
 ```
 
-`pnpm build` leaves the binary at `packages/code/dist/cli.js`, and that file is
-the whole command line: run it as `node packages/code/dist/cli.js --version`, or
+`pnpm build` leaves the binary at `packages/code/dist/bundle/cli.js`, the entry
+the package's `bin` names: run it as `node packages/code/dist/bundle/cli.js --version`, or
 symlink it onto your `PATH` under the name `mnema`, which is the shape a
-published install takes. To change the code, start with [`CONTRIBUTING.md`](../CONTRIBUTING.md).
+published install takes. It is one bundle of the compiled `packages/code/dist/cli.js` and
+of everything that file reaches, split into chunks beside it in `dist/bundle/`, so a stack
+trace names a chunk and a line in it, not a file of `src`. The compiled `dist/cli.js` is
+still built and still runs, as the library and the tests in this repository use it. To change the code, start with [`CONTRIBUTING.md`](../CONTRIBUTING.md).

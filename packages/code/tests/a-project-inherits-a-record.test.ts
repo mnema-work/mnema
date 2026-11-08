@@ -34,8 +34,9 @@ import {
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { POINTER_FILE } from '../src/inherited-record.js';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 /** A record an earlier binary wrote, before records were named: its one tail names none. */
 const WRITTEN_BEFORE = fileURLToPath(
   new URL('../../chain/src/chain/__fixtures__/written-by-an-earlier-binary', import.meta.url),

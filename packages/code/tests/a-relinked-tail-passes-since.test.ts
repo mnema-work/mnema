@@ -23,7 +23,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
 import { ROOT } from './support/published-examples.js';
 
-const BINARY = join(ROOT, 'packages/code/dist/cli.js');
+const BINARY = MNEMA_CLI;
 const VERIFIER_DIR = join(ROOT, 'packages/chain/verifier');
 const MUTATE = join(VERIFIER_DIR, 'mutate.py');
 const WITNESSED = join(ROOT, 'packages/chain/src/chain/__fixtures__/witnessed-record');
@@ -55,6 +55,8 @@ first, second = open(os.path.join(folder, "000001.jsonl"), "rb").read().splitlin
 open(os.path.join(folder, "000001.jsonl"), "wb").write(first)
 open(os.path.join(folder, "000002.jsonl"), "wb").write(second)
 `;
+
+import { MNEMA_CLI } from './support/the-cli.js';
 
 let sandbox: string;
 

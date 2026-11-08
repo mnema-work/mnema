@@ -50,6 +50,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { buildProgram } from '../src/program.js';
 import { PRODUCT_PROMISE, PRODUCT_PROMISE_CAVEAT } from '../src/promise.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 /**
  * The workspace root, found by its MARKER and never by counting `..` upwards. A count is
@@ -97,7 +98,7 @@ describe('the sentence reaches every door', () => {
   });
 
   it('the BUILT binary carries it, read off the program and not off the golden', () => {
-    const binary = join(ROOT, 'packages/code/dist/cli.js');
+    const binary = MNEMA_CLI;
     expect(
       existsSync(binary),
       'packages/code/dist is missing: this case reads the built binary, so run `pnpm build` first',

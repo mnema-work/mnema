@@ -39,9 +39,10 @@ import { type CliIo, run } from '../src/program.js';
 import { STARTS_OFF } from '../src/record-framing.js';
 import { registerAfterAWrite } from '../src/wiring/after-a-write.js';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 const REPO = fileURLToPath(new URL('../../../', import.meta.url));
-const CLI = join(REPO, 'packages', 'code', 'dist', 'cli.js');
+const CLI = MNEMA_CLI;
 const HOOKS = join(REPO, 'plugin', 'hooks', 'hooks.json');
 
 let sandbox: string;

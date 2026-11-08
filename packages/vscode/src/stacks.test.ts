@@ -1,8 +1,8 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { MNEMA_CLI } from '../../code/tests/support/the-cli.js';
 import { createRun } from './cli.js';
 import {
   digestOf,
@@ -103,7 +103,7 @@ describe('the plan the digest is read from', () => {
 
 describe('the extension runs the command line without a terminal', () => {
   it('is refused a hook by the built binary, though it is started the way every act is', async () => {
-    const cli = fileURLToPath(new URL('../../code/dist/cli.js', import.meta.url));
+    const cli = MNEMA_CLI;
     const sandbox = mkdtempSync(join(tmpdir(), 'mnema-extension-hook-'));
     const kept = process.env.HOME;
     process.env.HOME = join(sandbox, 'home');

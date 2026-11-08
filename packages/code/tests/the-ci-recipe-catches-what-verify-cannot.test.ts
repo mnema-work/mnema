@@ -48,12 +48,13 @@ import {
 } from '@mnema/chain';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
-import { ROOT, read } from './support/published-examples.js';
+import { read } from './support/published-examples.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 const PAGE = 'docs/cli-reference.md';
 const BEGIN = '<!-- BEGIN ci-recipe -->';
 const END = '<!-- END ci-recipe -->';
-const BINARY = join(ROOT, 'packages/code/dist/cli.js');
+const BINARY = MNEMA_CLI;
 
 /** The recipe's shell, fence removed and nothing else touched; throws when a marker is gone. */
 function publishedRecipe(): string {

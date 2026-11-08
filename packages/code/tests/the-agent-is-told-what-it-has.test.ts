@@ -25,7 +25,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 import { ensureTree } from '@mnema/chain';
 import { type DiscoveryEnv, INITIAL_DECISION_STATE, PROJECT_DIR } from '@mnema/core';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -37,9 +37,10 @@ import { SERVER_INSTRUCTIONS } from '../src/mcp/instructions.js';
 import { buildMcpServer } from '../src/mcp/server.js';
 import { buildProgram } from '../src/program.js';
 import { tellsWhatToDo } from '../src/record-framing.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 /** The built binary: what `npm i -g @mnema/code` puts on a PATH. */
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 
 let sandbox: string;
 let env: DiscoveryEnv;

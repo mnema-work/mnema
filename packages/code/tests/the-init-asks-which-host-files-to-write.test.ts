@@ -41,8 +41,9 @@ import { type CliIo, run } from '../src/program.js';
 import { fakeTerminal, hooksNothing, until } from './support/console.js';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
 import { arrivedSince, inPty } from './support/pty.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 const REFERENCE = fileURLToPath(new URL('../../../docs/cli-reference.md', import.meta.url));
 
 const PATHS = CHOOSABLE_INSTRUCTIONS.map((target) => target.path);

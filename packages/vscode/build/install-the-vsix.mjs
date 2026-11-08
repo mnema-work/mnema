@@ -38,7 +38,7 @@ const vsix = readdirSync(pkgDir).find((file) => /^mnema-.*\.vsix$/.test(file));
 if (!vsix) throw new Error('No .vsix here: run `pnpm --filter @mnema/vscode package` first.');
 
 const scratch = mkdtempSync(join(tmpdir(), 'mnema-editor-'));
-const mnemaCli = join(pkgDir, '..', 'code', 'dist', 'cli.js');
+const mnemaCli = join(pkgDir, '..', 'code', 'dist', 'bundle', 'cli.js');
 
 /** A `mnema` that logs what it is asked, runs the one built here, and never sees the real HOME. */
 function wrapper(name, log, home) {

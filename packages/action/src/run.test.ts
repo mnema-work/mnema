@@ -16,16 +16,15 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { GIT_WITHOUT_MAINTENANCE } from '../../code/tests/support/git-without-maintenance.js';
+import { MNEMA_CLI } from '../../code/tests/support/the-cli.js';
 import { MARKER } from './comment.js';
 import type { Fetch } from './github.js';
 import { main, requestFrom } from './run.js';
 import { theMnemaBinary, withoutTheInputs } from './world.js';
 
-const REPO = fileURLToPath(new URL('../../../', import.meta.url));
-const CLI = join(REPO, 'packages', 'code', 'dist', 'cli.js');
+const CLI = MNEMA_CLI;
 
 let sandbox: string;
 let repo: string;

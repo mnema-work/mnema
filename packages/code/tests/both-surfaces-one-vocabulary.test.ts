@@ -34,7 +34,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 import { ensureTree } from '@mnema/chain';
 import {
   DECISION_ACTIONS,
@@ -59,9 +59,10 @@ import * as shared from '../src/vocabulary.js';
 import { actionsRequiring, listed, orListed, SCOPE_CHOICES, SCOPES } from '../src/vocabulary.js';
 import { valuesDeclaredOn } from '../src/wiring/enumerated.js';
 import { everyCommandOf } from '../src/wiring/misuse.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 /** The built CLI: the same file the `mnema` bin points at. */
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 
 /** A silent port: everything that reads declarations writes nothing. */
 const silent: CliIo = { out: () => {}, err: () => {}, fail: () => {} };

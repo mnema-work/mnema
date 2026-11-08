@@ -55,9 +55,10 @@ import {
 } from './support/console.js';
 import { aFrameSince, inPty, leavesTheSession, opensAConsole, type Step } from './support/pty.js';
 import { theSettledScreen } from './support/screen.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 /** The built CLI: the same file the `mnema` bin points at. */
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 
 /** What the caller types in front of. */
 const PROMPT = 'mnema>';

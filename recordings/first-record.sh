@@ -15,7 +15,7 @@
 # HOW IT IS MADE, from the root of a built checkout (`pnpm build`):
 #
 #   asciinema rec --overwrite -q --cols 96 --rows 34 \
-#     -c "bash recordings/first-record.sh $PWD/packages/code/dist/cli.js" recordings/first-record.cast
+#     -c "bash recordings/first-record.sh $PWD/packages/code/dist/bundle/cli.js" recordings/first-record.cast
 #   agg --theme github-dark --font-size 16 recordings/first-record.cast recordings/first-record.gif
 #
 # HOW IT IS HELD TO THE BINARY: packages/code/tests/the-recordings-are-what-the-binary-draws.test.ts
@@ -24,7 +24,7 @@
 # to anything the binary prints turns that case red until the recording is made again.
 set -euo pipefail
 
-CLI=${1:?usage: first-record.sh <absolute path to packages/code/dist/cli.js>}
+CLI=${1:?usage: first-record.sh <absolute path to packages/code/dist/bundle/cli.js>}
 case $CLI in /*) ;; *) echo "first-record.sh: the path to cli.js must be absolute" >&2; exit 2 ;; esac
 
 # PACE=0 is the case's pace: the same text, with nothing waited for.

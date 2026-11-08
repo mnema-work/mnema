@@ -36,9 +36,10 @@ import { runDoctor } from '../src/commands/doctor.js';
 import { acceptedBy, floorRefusal } from '../src/node-floor.js';
 import { type CliIo, run } from '../src/program.js';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 const REPO = fileURLToPath(new URL('../../../', import.meta.url));
-const CLI = join(REPO, 'packages', 'code', 'dist', 'cli.js');
+const CLI = MNEMA_CLI;
 const PLUGIN = join(REPO, 'plugin');
 const HOOKS = join(PLUGIN, 'hooks', 'hooks.json');
 const BELOW_THE_FLOOR = '24.5.0';

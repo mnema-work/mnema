@@ -31,8 +31,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { THE_FLOOR } from '../src/repl/floor.js';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
 import { arrivedUnpainted, inPty, leavesTheSession, opensAConsole } from './support/pty.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 const HELLO = fileURLToPath(new URL('../../stacks/fixtures/hello-stack', import.meta.url));
 const INDEX = fileURLToPath(new URL('../../../stack-index', import.meta.url));
 const PROMPT = 'mnema>';

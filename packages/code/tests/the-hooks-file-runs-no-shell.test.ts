@@ -33,10 +33,11 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 const ROOT = new URL('../../../', import.meta.url).pathname;
 const PLUGIN = join(ROOT, 'plugin');
-const CLI = join(ROOT, 'packages', 'code', 'dist', 'cli.js');
+const CLI = MNEMA_CLI;
 
 type Group = { matcher?: string; hooks: { type: string; command?: string }[] };
 const HOOKS = (

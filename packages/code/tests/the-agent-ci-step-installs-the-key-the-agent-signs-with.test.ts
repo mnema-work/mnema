@@ -40,11 +40,12 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
 import { ROOT, read } from './support/published-examples.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 const PAGE = 'packages/action/README.md';
 const BEGIN = '<!-- BEGIN agent-ci-recipe -->';
 const END = '<!-- END agent-ci-recipe -->';
-const BINARY = join(ROOT, 'packages/code/dist/cli.js');
+const BINARY = MNEMA_CLI;
 const READER = join(ROOT, 'packages/chain/verifier/mnema_verify.py');
 
 /** The `run:` script of the step the page marks, de-indented and nothing else touched. */

@@ -30,8 +30,9 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
 import { ROOT } from './support/published-examples.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
-const BINARY = join(ROOT, 'packages/code/dist/cli.js');
+const BINARY = MNEMA_CLI;
 const VERIFIER = join(ROOT, 'packages/chain/verifier/mnema_verify.py');
 const FIXTURES = join(ROOT, 'packages/chain/src/chain/__fixtures__');
 

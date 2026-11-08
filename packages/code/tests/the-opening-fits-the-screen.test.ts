@@ -55,12 +55,13 @@ import {
 } from './support/pty.js';
 import { codeOnly } from './support/reading-source.js';
 import { screenOf } from './support/screen.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 /** This package's own tests: the corpus the guard over the pty drivers enumerates. */
 const TESTS = fileURLToPath(new URL('.', import.meta.url));
 
 /** The built CLI: the same file the `mnema` bin points at. */
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 /** `packages/code/src`, for the guard that reads the surface's own source. */
 const SRC = fileURLToPath(new URL('../src', import.meta.url));
 

@@ -10,10 +10,10 @@
 # failed (a Node before 22.13 throws `ERR_UNKNOWN_BUILTIN_MODULE`) or after the builtin has warned
 # (a 24 before 24.15 prints `ExperimentalWarning: SQLite is an experimental feature`).
 #
-# Usage: it-refuses-an-old-node.sh [path to the built entry]
+# Usage: it-refuses-an-old-node.sh [path to the built entry; the bundle the `bin` names by default]
 set -u
 
-entry="${1:-packages/code/dist/cli.js}"
+entry="${1:-packages/code/dist/bundle/cli.js}"
 running="$(node --version)"
 running="${running#v}"
 home="$(mktemp -d)"

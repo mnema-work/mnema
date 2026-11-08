@@ -29,9 +29,10 @@ import { type CliIo, run } from '../src/program.js';
 import { tellsWhatToDo } from '../src/record-framing.js';
 import { journalsDir, takeTheFirstServing } from '../src/session-journal.js';
 import { decodedWhole } from './support/arriving.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 const SRC = fileURLToPath(new URL('../src/', import.meta.url));
-const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+const CLI = MNEMA_CLI;
 
 let sandbox: string;
 let repo: string;

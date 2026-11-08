@@ -19,11 +19,11 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { fixVscode, runDoctor } from '../src/commands/doctor.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
-const CLI = join(fileURLToPath(new URL('../../../', import.meta.url)), 'packages/code/dist/cli.js');
+const CLI = MNEMA_CLI;
 const VERSION = '9.9.9';
 
 let sandbox: string;
