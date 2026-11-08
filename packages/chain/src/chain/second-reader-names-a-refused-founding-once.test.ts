@@ -71,7 +71,7 @@ import { serializeCheckpoint, signCheckpoint } from './checkpoint.js';
 import { entryHash, writtenAsBuilt } from './hash.js';
 import { deriveAnchor, type KeyPair, keyPairFromPrivatePem, publicKeyToPem, sign } from './keys.js';
 import { checkpointsPath, publicKeyPath, segmentPath, tailDir, tailProofPath } from './layout.js';
-import { python3 } from './second-reader-session.js';
+import { pythonRun } from './second-reader-session.js';
 import { serializeTailProof, signTailProof } from './tailproof.js';
 
 const VERIFIER = fileURLToPath(new URL('../../verifier/mnema_verify.py', import.meta.url));
@@ -89,7 +89,7 @@ const BOM_REFUSED =
   'not JSON: Unexpected UTF-8 BOM (decode using utf-8-sig): line 1 column 1 (char 0)';
 
 function python(args: readonly string[]) {
-  const run = python3(args);
+  const run = pythonRun('python3', args);
   if (run.error !== undefined) {
     throw new Error(
       `python3 could not be run, and this suite requires it: ${run.error.message}. The second ` +

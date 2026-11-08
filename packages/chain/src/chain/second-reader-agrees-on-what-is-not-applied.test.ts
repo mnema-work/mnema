@@ -51,14 +51,14 @@ import type { CatalogEvent } from '../events/catalog.js';
 import { catalogUpcasters } from '../events/registry.js';
 import { WORKFLOWS } from '../events/workflow.js';
 import { openChainForWriting, verify } from './chain.js';
-import { python3 } from './second-reader-session.js';
+import { pythonRun } from './second-reader-session.js';
 
 const VERIFIER = fileURLToPath(new URL('../../verifier/mnema_verify.py', import.meta.url));
 const SEED = Number(process.env.FC_SEED ?? 20_261_007);
 const CASE_TIMEOUT = 120_000;
 
 function python(args: readonly string[]) {
-  const run = python3(args);
+  const run = pythonRun('python3', args);
   if (run.error !== undefined) {
     throw new Error(
       `python3 could not be run, and this suite requires it: ${run.error.message}. The second ` +

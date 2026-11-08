@@ -34,14 +34,14 @@ import {
 } from '../events/canonical.js';
 import { catalogUpcasters } from '../events/registry.js';
 import { openChainForWriting, verify } from './chain.js';
-import { python3 } from './second-reader-session.js';
+import { pythonRun } from './second-reader-session.js';
 
 const VERIFIER = fileURLToPath(new URL('../../verifier/mnema_verify.py', import.meta.url));
 const SEED = Number(process.env.FC_SEED ?? 20_261_007);
 const CASE_TIMEOUT = 120_000;
 
 function python(args: readonly string[], input?: string) {
-  const run = python3(args, input);
+  const run = pythonRun('python3', args, input);
   if (run.error !== undefined) {
     throw new Error(
       `python3 could not be run, and this suite requires it: ${run.error.message}. The second ` +

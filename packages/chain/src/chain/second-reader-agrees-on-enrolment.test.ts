@@ -71,7 +71,7 @@ import { serializeCheckpoint, signCheckpoint } from './checkpoint.js';
 import { entryHash, writtenAsBuilt } from './hash.js';
 import { deriveAnchor, generateKeyPair, type KeyPair, publicKeyToPem, sign } from './keys.js';
 import { checkpointsPath, publicKeyPath, segmentPath, tailDir, tailProofPath } from './layout.js';
-import { python3 } from './second-reader-session.js';
+import { pythonRun } from './second-reader-session.js';
 import { serializeTailProof, signTailProof } from './tailproof.js';
 
 const VERIFIER = fileURLToPath(new URL('../../verifier/mnema_verify.py', import.meta.url));
@@ -95,7 +95,7 @@ interface SecondReading {
 }
 
 function secondReading(record: string): SecondReading {
-  const run = python3([VERIFIER, '--json', 'record', record]);
+  const run = pythonRun('python3', [VERIFIER, '--json', 'record', record]);
   if (run.stdout === '') {
     throw new Error(`the second reader produced no verdict. stderr: ${run.stderr}`);
   }

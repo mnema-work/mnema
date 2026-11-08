@@ -48,7 +48,7 @@ import { keyList, parseCanonicalLine } from '../events/stored-json.js';
 import { verify } from './chain.js';
 import { parseCheckpoint } from './checkpoint.js';
 import { parseEntry } from './entry.js';
-import { python3 } from './second-reader-session.js';
+import { pythonRun } from './second-reader-session.js';
 import { parseTailProof } from './tailproof.js';
 import { readStoredWitness } from './witness.js';
 
@@ -65,7 +65,7 @@ interface Finding {
 }
 
 function python(args: readonly string[]) {
-  const run = python3(args);
+  const run = pythonRun('python3', args);
   if (run.error !== undefined) throw new Error(`python3 could not be run: ${run.error.message}`);
   return run;
 }

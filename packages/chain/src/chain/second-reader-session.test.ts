@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { closeSecondReaderSession, python3, python3Alone } from './second-reader-session.js';
+import { closeSecondReaderSession, pythonAlone, pythonRun } from './second-reader-session.js';
 
 /**
  * ONE python3 FOR MANY READINGS ANSWERS WHAT A python3 OF ITS OWN ANSWERS. The seam the
@@ -42,7 +42,7 @@ const SAMPLE = [
 ];
 
 describe('one python3 for many readings answers what a python3 of its own answers', () => {
-  const offered = (JSON.parse(python3Alone([MUTATE, 'list']).stdout) as string[]).sort();
+  const offered = (JSON.parse(pythonAlone('python3', [MUTATE, 'list']).stdout) as string[]).sort();
   const names = process.env.SECOND_READER_ALL === '1' ? offered : SAMPLE;
 
   it('offers the sampled mutations', () => {
@@ -51,8 +51,8 @@ describe('one python3 for many readings answers what a python3 of its own answer
 
   it.each(names)('builds %s and reads it with the same answer both ways', (name) => {
     const [aloneRecord, togetherRecord] = [copy(), copy()];
-    const mutatedAlone = python3Alone([MUTATE, name, aloneRecord]);
-    const mutatedTogether = python3([MUTATE, name, togetherRecord]);
+    const mutatedAlone = pythonAlone('python3', [MUTATE, name, aloneRecord]);
+    const mutatedTogether = pythonRun('python3', [MUTATE, name, togetherRecord]);
     expect(mutatedTogether.status).toBe(mutatedAlone.status);
     expect(mutatedTogether.stderr).toBe(mutatedAlone.stderr);
     expect(mutatedTogether.stdout.split(togetherRecord).join('R')).toBe(
@@ -60,8 +60,8 @@ describe('one python3 for many readings answers what a python3 of its own answer
     );
 
     for (const flags of [['--json'], []]) {
-      const alone = python3Alone([VERIFIER, ...flags, 'record', aloneRecord]);
-      const together = python3([VERIFIER, ...flags, 'record', togetherRecord]);
+      const alone = pythonAlone('python3', [VERIFIER, ...flags, 'record', aloneRecord]);
+      const together = pythonRun('python3', [VERIFIER, ...flags, 'record', togetherRecord]);
       expect(alone.stdout).not.toBe('');
       expect(together.status).toBe(alone.status);
       expect(together.stderr).toBe(alone.stderr);
@@ -82,8 +82,8 @@ describe('one python3 for many readings answers what a python3 of its own answer
     [['not-a-command']],
     [[]],
   ])('answers %j with the same exit, stdout and stderr both ways', (args) => {
-    const together = python3([VERIFIER, ...args]);
-    const alone = python3Alone([VERIFIER, ...args]);
+    const together = pythonRun('python3', [VERIFIER, ...args]);
+    const alone = pythonAlone('python3', [VERIFIER, ...args]);
     expect(together.status).toBe(alone.status);
     expect(together.stderr).toBe(alone.stderr);
     expect(together.stdout).toBe(alone.stdout);
@@ -91,8 +91,8 @@ describe('one python3 for many readings answers what a python3 of its own answer
 
   it('answers a request the mutation tool refuses with the same exit and words', () => {
     for (const args of [['no-such-mutation', '/tmp'], ['list'], []]) {
-      const together = python3([MUTATE, ...args]);
-      const alone = python3Alone([MUTATE, ...args]);
+      const together = pythonRun('python3', [MUTATE, ...args]);
+      const alone = pythonAlone('python3', [MUTATE, ...args]);
       expect(together.status).toBe(alone.status);
       expect(together.stderr).toBe(alone.stderr);
       expect(together.stdout).toBe(alone.stdout);
@@ -100,7 +100,9 @@ describe('one python3 for many readings answers what a python3 of its own answer
   });
 
   it('leaves what is not the verifier to a python3 of its own', () => {
-    expect(python3(['-c', 'print(1+1)']).stdout).toBe('2\n');
-    expect(python3(['--version']).stdout).toBe(python3Alone(['--version']).stdout);
+    expect(pythonRun('python3', ['-c', 'print(1+1)']).stdout).toBe('2\n');
+    expect(pythonRun('python3', ['--version']).stdout).toBe(
+      pythonAlone('python3', ['--version']).stdout,
+    );
   });
 });

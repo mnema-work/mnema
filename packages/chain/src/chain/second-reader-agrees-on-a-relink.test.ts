@@ -19,7 +19,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { catalogUpcasters } from '../events/registry.js';
 import { verify } from './chain.js';
-import { python3 } from './second-reader-session.js';
+import { pythonRun } from './second-reader-session.js';
 import { arrivalsSince, tailsReadAt } from './tail-names.js';
 
 const VERIFIER_DIR = fileURLToPath(new URL('../../verifier/', import.meta.url));
@@ -34,7 +34,7 @@ interface Finding {
 }
 
 function python(args: readonly string[]) {
-  const run = python3(args);
+  const run = pythonRun('python3', args);
   if (run.error !== undefined) throw new Error(`python3 could not be run: ${run.error.message}`);
   return run;
 }

@@ -9,7 +9,7 @@ import { MessageChannel, receiveMessageOnPort, Worker } from 'node:worker_thread
  * Each case of the second-reader suites used to start its own `python3`, which is most of what
  * they cost. `python3` here answers the same question the command line does, but for the two
  * scripts of the verifier it asks one long-lived process (`second-reader-runner.py`) to run the
- * entry the script ends in, and reads the answer back in the same call. `python3Alone` always
+ * entry the script ends in, and reads the answer back in the same call. `pythonAlone` always
  * starts a process of its own; the two are compared case by case in
  * `second-reader-session.test.ts`.
  *
@@ -33,9 +33,9 @@ const WAIT_MS = 120_000;
 const WORKER = `
 const { workerData, parentPort } = require('node:worker_threads');
 const { spawn } = require('node:child_process');
-const { port, flag, runner, verifier } = workerData;
+const { port, flag, interpreter, runner, verifier } = workerData;
 const flagView = new Int32Array(flag);
-const child = spawn('python3', [runner, verifier], { stdio: ['pipe', 'pipe', 'pipe'] });
+const child = spawn(interpreter, [runner, verifier], { stdio: ['pipe', 'pipe', 'pipe'] });
 let buffered = '';
 let stderr = '';
 let asked = 0;
@@ -73,12 +73,18 @@ interface Session {
 
 let session: Session | undefined;
 
-function open(): Session {
+function open(interpreter: string): Session {
   const channel = new MessageChannel();
   const shared = new SharedArrayBuffer(4);
   const worker = new Worker(WORKER, {
     eval: true,
-    workerData: { port: channel.port2, flag: shared, runner: RUNNER, verifier: VERIFIER_DIR },
+    workerData: {
+      port: channel.port2,
+      flag: shared,
+      interpreter,
+      runner: RUNNER,
+      verifier: VERIFIER_DIR,
+    },
     transferList: [channel.port2],
   });
   worker.unref();
@@ -94,8 +100,8 @@ export function closeSecondReaderSession(): void {
   session = undefined;
 }
 
-function batched(args: readonly string[]): PythonRun {
-  session ??= open();
+function batched(interpreter: string, args: readonly string[]): PythonRun {
+  session ??= open(interpreter);
   Atomics.store(session.flag, 0, 0);
   session.worker.postMessage({ argv: args });
   if (Atomics.wait(session.flag, 0, 0, WAIT_MS) === 'timed-out') {
@@ -113,15 +119,19 @@ function batched(args: readonly string[]): PythonRun {
 }
 
 /** A `python3` of its own, the way the command line starts one. */
-export function python3Alone(args: readonly string[], stdin?: string): PythonRun {
-  return spawnSync('python3', args, { encoding: 'utf-8', input: stdin });
+export function pythonAlone(
+  interpreter: string,
+  args: readonly string[],
+  stdin?: string,
+): PythonRun {
+  return spawnSync(interpreter, args, { encoding: 'utf-8', input: stdin });
 }
 
-/** The same answer as `python3Alone`; the verifier's two scripts are asked of the long-lived process. */
-export function python3(args: readonly string[], stdin?: string): PythonRun {
+/** The same answer as `pythonAlone`; the verifier's two scripts are asked of the long-lived process. */
+export function pythonRun(interpreter: string, args: readonly string[], stdin?: string): PythonRun {
   const script = args[0];
   if (stdin !== undefined || script === undefined || !BATCHED.has(script)) {
-    return python3Alone(args, stdin);
+    return pythonAlone(interpreter, args, stdin);
   }
-  return batched(args);
+  return batched(interpreter, args);
 }
