@@ -15,6 +15,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isStackName, isStackVersion } from '@mnema/core';
 import { oneLine } from '../one-line.js';
+import { packageFile } from '../package-root.js';
 import { refuse, type StackRefused } from './stack-install.js';
 
 /** One entry of the index, as it is shown. */
@@ -132,10 +133,12 @@ export function readStackIndex(
 
 /**
  * The index that comes with the installed package: `dist/stack-index/`, which the build writes from
- * the repository's `stack-index/` and the example stacks it lists. The same address holds in the
- * built `dist/commands/` and in `src/commands/`, so a run from source finds what the build wrote.
+ * the repository's `stack-index/` and the example stacks it lists. It is named from the package's
+ * root (`package-root.ts`), so the source, the compiled copy and the bundle find what the build wrote.
  */
-export const BUILT_IN_INDEX = fileURLToPath(new URL('../../dist/stack-index', import.meta.url));
+export const BUILT_IN_INDEX =
+  packageFile('dist/stack-index') ??
+  fileURLToPath(new URL('../../dist/stack-index', import.meta.url));
 
 /**
  * The index to read: the one in `folder` when a folder is given, else the built-in one, each entry

@@ -359,6 +359,10 @@ jobs:
       - name: The built binary refuses it in one line
         run: bash .github/the-binary-runs/it-refuses-an-old-node.sh
 
+      # The bundle `pnpm build` writes beside it links its own chunks, so it is run the same way.
+      - name: The bundled binary refuses it in one line
+        run: bash .github/the-binary-runs/it-refuses-an-old-node.sh packages/code/dist/bundle/cli.js
+
   # THE DOCS BUILD ON THE SITE. The pages of `docs/` are published by the site, which is built in its own repository
   # (mnema-work/mnema.work) from the latest release of this one. A page the site could not build, such as a link that
   # leaves the repository or a marker that does not pair, would stop the next publication, and nothing here would have

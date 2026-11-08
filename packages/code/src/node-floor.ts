@@ -21,6 +21,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { packageFile } from './package-root.js';
 
 /** A version as the numbers that order it. */
 type Version = readonly [number, number, number];
@@ -98,9 +99,9 @@ export function floorRefusal(running: string, range: string): string | undefined
 /** The range `engines.node` declares in this package's `package.json`, or undefined. */
 export function declaredRange(): string | undefined {
   try {
-    const manifest = JSON.parse(
-      readFileSync(new URL('../package.json', import.meta.url), 'utf-8'),
-    ) as { engines?: { node?: unknown } };
+    const at = packageFile('package.json');
+    if (at === undefined) return undefined;
+    const manifest = JSON.parse(readFileSync(at, 'utf-8')) as { engines?: { node?: unknown } };
     const range = manifest.engines?.node;
     return typeof range === 'string' ? range : undefined;
   } catch {

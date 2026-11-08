@@ -369,6 +369,10 @@ describe('every place that repeats the floor repeats this number', () => {
     const ci = WORKFLOWS.find((file) => file.where === WHERE_IT_RUNS);
     expect(ci?.text).toContain(`\n  ${REFUSES_AN_OLD_NODE}:\n`);
     expect(ci?.text).toContain('run: bash .github/the-binary-runs/it-refuses-an-old-node.sh');
+    // And over the bundle, whose entry links chunks the bundler chose, not the modules of `src`.
+    expect(ci?.text).toContain(
+      'run: bash .github/the-binary-runs/it-refuses-an-old-node.sh packages/code/dist/bundle/cli.js',
+    );
     const text = ci?.text ?? '';
     // And the matrix really does pin Nodes below the floor, or there would be nothing to excuse.
     expect(pinned(text, /^\s*node: \[(.+)\]\s*$/gm)).toContain('20.20.2');

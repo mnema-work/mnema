@@ -30,6 +30,8 @@ import { acceptedBy, declaredRange, floorRefusal } from '../src/node-floor.js';
 
 const PACKAGE = fileURLToPath(new URL('../', import.meta.url));
 const BINARY = join(PACKAGE, 'dist', 'cli.js');
+/** The same entry as `build/the-cli-bundle.mjs` folds it, one folder deeper than the compiler's. */
+const BUNDLE = join(PACKAGE, 'dist', 'bundle', 'cli.js');
 const DECLARED = (
   JSON.parse(readFileSync(join(PACKAGE, 'package.json'), 'utf-8')) as {
     engines: { node: string };
@@ -48,20 +50,30 @@ afterAll(() => {
 
 /** Runs the built binary as if the Node under it were `version`. */
 function asIfNode(version: string, ...argv: string[]) {
+  return asIfNodeRan(BINARY, version, ...argv);
+}
+
+/** Runs `entry` as if the Node under it were `version`. */
+function asIfNodeRan(entry: string, version: string, ...argv: string[]) {
   const preload = join(sandbox, `as-${version}.mjs`);
   writeFileSync(
     preload,
     `Object.defineProperty(process.versions, 'node', { value: ${JSON.stringify(version)}, configurable: true });\n`,
   );
-  return spawnSync(process.execPath, ['--import', preload, BINARY, ...argv], {
+  return spawnSync(process.execPath, ['--import', preload, entry, ...argv], {
+    // A guard that does not speak lets the verb run: not in the checkout.
+    cwd: sandbox,
     encoding: 'utf-8',
     env: { PATH: process.env.PATH ?? '', HOME: join(sandbox, 'home') },
   });
 }
 
 describe('the built binary, under a Node below the floor', () => {
-  it('says one line on stderr, writes nothing to stdout, and exits 1', () => {
-    const ran = asIfNode('20.20.2', 'search', 'anything');
+  it.each([
+    ['the compiled entry', BINARY],
+    ['the bundled entry', BUNDLE],
+  ])('says one line on stderr, writes nothing to stdout, and exits 1: %s', (_, entry) => {
+    const ran = asIfNodeRan(entry, '20.20.2', 'search', 'anything');
     expect(ran.status).toBe(1);
     expect(ran.stdout).toBe('');
     expect(ran.stderr).toBe(
@@ -196,9 +208,15 @@ describe('the guard’s parts', () => {
     expect([...imports].sort()).toEqual(['./node-floor.js', 'node:fs', 'node:url']);
     // The program arrives through a dynamic import, past the guard.
     expect(source).toMatch(/import\('\.\/program\.js'\)/);
-    // And the guard itself imports nothing that needs a newer Node: only `node:fs`.
-    const guard = readFileSync(join(PACKAGE, 'src', 'node-floor.ts'), 'utf-8');
-    const guardImports = [...guard.matchAll(/^import\s.*?['"]([^'"]+)['"];?$/gm)].map((m) => m[1]);
-    expect(guardImports).toEqual(['node:fs']);
+    // And the guard itself imports nothing that needs a newer Node: `node:fs`, and the module
+    // that finds the package's manifest, which imports `node:fs` and `node:url` and nothing else.
+    const importsOf = (file: string) =>
+      [
+        ...readFileSync(join(PACKAGE, 'src', file), 'utf-8').matchAll(
+          /^import\s.*?['"]([^'"]+)['"];?$/gm,
+        ),
+      ].map((m) => m[1]);
+    expect(importsOf('node-floor.ts')).toEqual(['node:fs', './package-root.js']);
+    expect(importsOf('package-root.ts')).toEqual(['node:fs', 'node:url']);
   });
 });

@@ -11,7 +11,8 @@
  * against: the old Node threw `ERR_UNKNOWN_BUILTIN_MODULE` out of the link, and the sentence
  * never came. The program is therefore loaded by a dynamic `import()` that is reached only past
  * the guard, and this file imports nothing but `node:fs` and `node:url` (and `node-floor.ts`,
- * which imports `node:fs`), which every Node a person can have carries.
+ * which imports `node:fs` and `package-root.ts`, which imports those two), which every Node a
+ * person can have carries.
  * The CI job `the binary refuses an old Node` (`.github/the-binary-runs/it-refuses-an-old-node.sh`)
  * holds it on real Nodes, and `tests/the-node-below-the-floor-is-refused.test.ts` holds it here.
  *

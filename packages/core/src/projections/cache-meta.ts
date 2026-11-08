@@ -56,6 +56,14 @@ export interface CacheMeta {
   readonly sealed: Readonly<Record<string, string>>;
 }
 
+/**
+ * The stamp, when the build wrote it in. A bundle folds this module and the files it would hash
+ * into chunks of another folder, so there is nothing beside it to read: `the-cli-bundle.mjs`
+ * computes the stamp the compiled package computes, from the same files, and replaces this name
+ * with it. Anywhere else the name is not defined and the files are read.
+ */
+declare const MNEMA_PRODUCT_STAMP: string | undefined;
+
 /** The directories whose code decides what a projection row contains, relative to this file. */
 const CODE_THAT_DECIDES_THE_ROWS = ['.', '../db'] as const;
 
@@ -71,6 +79,10 @@ let stamp: string | undefined;
  */
 export function productStamp(): string {
   if (stamp !== undefined) return stamp;
+  if (typeof MNEMA_PRODUCT_STAMP === 'string') {
+    stamp = MNEMA_PRODUCT_STAMP;
+    return stamp;
+  }
   const here = dirname(fileURLToPath(import.meta.url));
   const hash = createHash('sha256');
   for (const relative of CODE_THAT_DECIDES_THE_ROWS) {
