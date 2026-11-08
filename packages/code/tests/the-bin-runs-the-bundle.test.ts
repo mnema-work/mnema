@@ -1,3 +1,4 @@
+// @reads-the-tree
 /**
  * THE `bin` RUNS THE BUNDLE, AND THE TESTS RUN WHAT THE `bin` NAMES.
  *
@@ -9,16 +10,18 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { BUNDLE_DIR } from '../build/the-cli-bundle.mjs';
 import { literalsOnly } from './support/reading-source.js';
 import { MNEMA_CLI } from './support/the-cli.js';
 
 const REPO = fileURLToPath(new URL('../../../', import.meta.url));
 const PACKAGE = join(REPO, 'packages', 'code');
+
+/** Where `build/the-cli-bundle.mjs` writes the bundle's entry. */
+const BUNDLE_ENTRY = join(PACKAGE, 'dist', 'bundle', 'cli.js');
 
 /**
  * The compiled entry, in the string literals of a test: one path (`'../dist/cli.js'`), or its
@@ -62,8 +65,9 @@ describe('the bin of @mnema/code', () => {
       bin: Record<string, string>;
     };
     expect(Object.keys(bin)).toEqual(['mnema']);
-    expect(join(PACKAGE, bin.mnema ?? '')).toBe(join(BUNDLE_DIR, 'cli.js'));
-    expect(MNEMA_CLI).toBe(join(BUNDLE_DIR, 'cli.js'));
+    expect(join(PACKAGE, bin.mnema ?? '')).toBe(BUNDLE_ENTRY);
+    expect(MNEMA_CLI).toBe(BUNDLE_ENTRY);
+    expect(existsSync(BUNDLE_ENTRY)).toBe(true);
   });
 
   it('is what every test that starts the CLI starts, but those that mean the compiled build', () => {

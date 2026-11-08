@@ -38,8 +38,12 @@ const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 /** What a case does when it reads the tree: asks git for it, or globs it. */
 const WALKS_THE_TREE = /['"]ls-files['"]|globSync\(/;
 
-/** What a marked case must still do: read something. */
-const READS_A_FILE = /ls-files|globSync|readdirSync|readFileSync|existsSync|import\.meta\.url/;
+/**
+ * What a marked case must still do: read something, itself or through the support module that
+ * reads the published pages for it (`support/published-examples.ts`).
+ */
+const READS_A_FILE =
+  /ls-files|globSync|readdirSync|readFileSync|existsSync|import\.meta\.url|\/support\/published-examples\.js'/;
 
 /** The guards that went red in CI in one week, kept as the floor of what the mark covers. */
 const WENT_RED = [
