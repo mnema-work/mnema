@@ -29,7 +29,6 @@
  * readers refuse it and name the same line.
  */
 
-import { spawnSync } from 'node:child_process';
 import {
   cpSync,
   mkdtempSync,
@@ -43,7 +42,7 @@ import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-
+import { pythonRun } from '../../tests/support/second-reader-session.js';
 import { catalogUpcasters } from '../events/registry.js';
 import { keyList, parseCanonicalLine } from '../events/stored-json.js';
 import { verify } from './chain.js';
@@ -65,7 +64,7 @@ interface Finding {
 }
 
 function python(args: readonly string[]) {
-  const run = spawnSync('python3', args, { encoding: 'utf-8' });
+  const run = pythonRun('python3', args);
   if (run.error !== undefined) throw new Error(`python3 could not be run: ${run.error.message}`);
   return run;
 }

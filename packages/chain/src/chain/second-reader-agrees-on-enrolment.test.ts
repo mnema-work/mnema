@@ -31,14 +31,13 @@
  * reach the branches is a differential test over nothing.
  */
 
-import { spawnSync } from 'node:child_process';
 import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fc from 'fast-check';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-
+import { pythonRun } from '../../tests/support/second-reader-session.js';
 import {
   agentEnrolled,
   agentEnrollmentMessage,
@@ -95,7 +94,7 @@ interface SecondReading {
 }
 
 function secondReading(record: string): SecondReading {
-  const run = spawnSync('python3', [VERIFIER, '--json', 'record', record], { encoding: 'utf-8' });
+  const run = pythonRun('python3', [VERIFIER, '--json', 'record', record]);
   if (run.stdout === '') {
     throw new Error(`the second reader produced no verdict. stderr: ${run.stderr}`);
   }

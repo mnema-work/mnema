@@ -11,13 +11,12 @@
  * that the namer the surfaces ask (`tailsReadAt`) names a directory as `verify` does.
  */
 
-import { spawnSync } from 'node:child_process';
 import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-
+import { pythonRun } from '../../tests/support/second-reader-session.js';
 import { catalogUpcasters } from '../events/registry.js';
 import { verify } from './chain.js';
 import { arrivalsSince, tailsReadAt } from './tail-names.js';
@@ -34,7 +33,7 @@ interface Finding {
 }
 
 function python(args: readonly string[]) {
-  const run = spawnSync('python3', args, { encoding: 'utf-8' });
+  const run = pythonRun('python3', args);
   if (run.error !== undefined) throw new Error(`python3 could not be run: ${run.error.message}`);
   return run;
 }

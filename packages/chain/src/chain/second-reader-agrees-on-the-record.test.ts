@@ -69,7 +69,6 @@
  * interpreter the cases call to one number.
  */
 
-import { spawnSync } from 'node:child_process';
 import {
   appendFileSync,
   cpSync,
@@ -85,7 +84,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-
+import { pythonRun } from '../../tests/support/second-reader-session.js';
 import { accountLinked, identityFounded } from '../events/build.js';
 import type { CatalogEvent } from '../events/catalog.js';
 import { catalogUpcasters } from '../events/registry.js';
@@ -121,7 +120,7 @@ interface SecondReading {
 }
 
 function python(args: readonly string[], stdin?: string) {
-  const run = spawnSync('python3', args, { encoding: 'utf-8', input: stdin });
+  const run = pythonRun('python3', args, stdin);
   if (run.error !== undefined) {
     throw new Error(
       `python3 could not be run, and this suite requires it: ${run.error.message}. The second ` +

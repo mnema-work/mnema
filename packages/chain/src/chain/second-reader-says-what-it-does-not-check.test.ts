@@ -39,6 +39,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { pythonRun } from '../../tests/support/second-reader-session.js';
+
 const VERIFIER_DIR = fileURLToPath(new URL('../../verifier/', import.meta.url));
 const VERIFIER = fileURLToPath(new URL('../../verifier/mnema_verify.py', import.meta.url));
 const MUTATE = fileURLToPath(new URL('../../verifier/mutate.py', import.meta.url));
@@ -92,7 +94,7 @@ interface Verdict {
 }
 
 function python(args: readonly string[]) {
-  const run = spawnSync('python3', args, { encoding: 'utf-8' });
+  const run = pythonRun('python3', args);
   if (run.error !== undefined) {
     throw new Error(
       `python3 could not be run, and this suite requires it: ${run.error.message}. The second ` +

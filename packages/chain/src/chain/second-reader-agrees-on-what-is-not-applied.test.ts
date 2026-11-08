@@ -26,14 +26,13 @@
  * It needs `python3` and fails rather than skips without it, as its siblings do.
  */
 
-import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fc from 'fast-check';
 import { afterEach, describe, expect, it } from 'vitest';
-
+import { pythonRun } from '../../tests/support/second-reader-session.js';
 import {
   decisionRecorded,
   decisionTransitioned,
@@ -58,7 +57,7 @@ const SEED = Number(process.env.FC_SEED ?? 20_261_007);
 const CASE_TIMEOUT = 120_000;
 
 function python(args: readonly string[]) {
-  const run = spawnSync('python3', args, { encoding: 'utf-8' });
+  const run = pythonRun('python3', args);
   if (run.error !== undefined) {
     throw new Error(
       `python3 could not be run, and this suite requires it: ${run.error.message}. The second ` +
