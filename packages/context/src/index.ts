@@ -51,6 +51,8 @@ export {
   type Brief,
   type BriefChannels,
   brief,
+  type PrivateRules,
+  rulesHeldPrivately,
   rulesKeptPrivate,
 } from './context/brief.js';
 // The TYPE only, still, and the prediction that used to be written here was wrong.

@@ -35,6 +35,7 @@ import { runInit } from './init.js';
 import { runMemory } from './memory.js';
 import { runSkill } from './skill.js';
 import { runSkillTransition } from './skill-transition.js';
+import { runSwitch } from './switch.js';
 import { runTask } from './task.js';
 
 let sandbox: string;
@@ -415,6 +416,7 @@ describe('mnema brief (what governs the work here)', () => {
         undefined,
         undefined,
         done.keptPrivate,
+        done.privateRules,
       ).join('\n');
     };
     const file = (here: { cwd: string; env: DiscoveryEnv }): string => {
@@ -423,7 +425,7 @@ describe('mnema brief (what governs the work here)', () => {
       return briefDocument(done.brief).join('\n');
     };
 
-    it('says how many there are and the commands that list them, without their text', () => {
+    it('hands them over by name after the committed ones, marked as this machine’s', () => {
       const { repo, env } = setup();
       runInit({ cwd: repo, env });
       const here = { cwd: repo, env };
@@ -434,6 +436,42 @@ describe('mnema brief (what governs the work here)', () => {
       accepted(here, 'What I settled for myself', 'global');
 
       const copy = hookCopy(here);
+      expect(copy).toContain('## Recorded privately on this machine (3)');
+      expect(copy).toContain(
+        'Decisions in force and adopted patterns of this machine’s private tree, not committed:',
+      );
+      for (const text of [
+        'The staging secret lives in the vault',
+        'Never print the vault path',
+        'How this machine works',
+      ]) {
+        expect(copy).toContain(text);
+        expect(copy.indexOf(text)).toBeGreaterThan(copy.indexOf('What the team settled'));
+        expect(copy.indexOf(text)).toBeGreaterThan(
+          copy.indexOf('## Recorded privately on this machine'),
+        );
+      }
+      // The machine-global tree is not this project's private tree, and the count line is the
+      // switch-off form only.
+      expect(copy).not.toContain('What I settled for myself');
+      expect(copy).not.toContain('not handed to you');
+      expect(copy).toContain('and, in its last section, the rules recorded privately');
+    });
+
+    it('says how many there are and the commands that list them, without their text, where the switch is off', () => {
+      const { repo, env } = setup();
+      runInit({ cwd: repo, env });
+      const here = { cwd: repo, env };
+      accepted(here, 'What the team settled', 'public');
+      accepted(here, 'The staging secret lives in the vault', 'private');
+      accepted(here, 'Never print the vault path', 'private');
+      adopted(here, 'How this machine works', 'private');
+      accepted(here, 'What I settled for myself', 'global');
+      expect(runSwitch(here, { channel: 'private-rules', on: false }).ok).toBe(true);
+
+      const copy = hookCopy(here);
+      expect(copy).not.toContain('## Recorded privately on this machine');
+      expect(copy).not.toContain('in its last section');
       expect(copy).toContain(
         'Recorded privately on this machine and not handed to you: 2 decisions in force and 1 adopted pattern.',
       );
@@ -467,6 +505,7 @@ describe('mnema brief (what governs the work here)', () => {
 
       expect(file(here)).toBe(without);
       expect(file(here)).not.toContain('Recorded privately');
+      expect(file(here)).not.toContain('How this machine works');
     });
   });
 });

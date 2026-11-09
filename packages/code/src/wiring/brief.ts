@@ -265,6 +265,7 @@ export function registerBrief(program: Command, wiring: Wiring): Declared {
               result.stacks,
               result.formatter,
               result.keptPrivate,
+              result.privateRules,
             )
           : briefDocument(result.brief, result.inherited),
       );

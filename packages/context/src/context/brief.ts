@@ -473,6 +473,31 @@ export function rulesKeptPrivate(sources: readonly ScopedCache[]): {
   return { decisions: decisionsInForce(kept).length, patterns: adoptedSkills(kept).length };
 }
 
+/** The rules of this machine's private tree, in the shape {@link Brief} lists its own. */
+export interface PrivateRules {
+  readonly decisions: Brief['decisions'];
+  readonly skills: Brief['skills'];
+}
+
+/**
+ * The decisions in force and the adopted patterns of this machine's private tree, by name, in
+ * the order and the shape {@link brief} gives the committed ones: the rules
+ * {@link rulesKeptPrivate} counts.
+ *
+ * NOT PART OF {@link Brief}, for {@link rulesKeptPrivate}'s reason: the brief is the text of a
+ * file somebody commits. A caller that hands a session a copy which is read once and thrown away
+ * (the hook) asks this separately and marks it there as this machine's. The provenance is read
+ * from the private tree itself, so a `derived-from` asserted there rides with its rule. The
+ * machine-global tree is not read.
+ */
+export function rulesHeldPrivately(sources: readonly ScopedCache[]): PrivateRules {
+  const kept = sources.filter((source) => source.scope === 'private').map((source) => source.cache);
+  return {
+    decisions: decisionsInForce(kept).map((decision) => withOrigin(kept, decision)),
+    skills: adoptedSkills(kept).map(({ id, name }) => withOrigin(kept, { id, name })),
+  };
+}
+
 /**
  * One rule with the provenance the committed record asserts for it, or the rule
  * unchanged when it asserts none.

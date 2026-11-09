@@ -77,6 +77,7 @@ import {
   HOST_MEMORY_MIRROR_CHANNEL,
   LAST_SESSION_CHANNEL,
   NOT_SWITCHABLE,
+  PRIVATE_RULES_CHANNEL,
   RECALL_CHANNEL,
   REFUSES_A_WRITE_CHANNEL,
   SESSION_JOURNAL_CHANNEL,
@@ -374,6 +375,22 @@ const HONOURED: Readonly<
     speaks: async () => {
       const said = await mnema('brief');
       return !said.failed && said.out.length > 0;
+    },
+  },
+  [PRIVATE_RULES_CHANNEL]: {
+    // A SECTION OF THE HOOK'S COPY of the document, driven the way the plugin asks for it: a rule
+    // in force in this machine's private tree, and `brief --hook`. "Speaks" is the section there.
+    setUp: async () => {
+      const id = idIn(
+        await did('decision', 'record', 'A call of mine', 'why mine', '--scope', 'private'),
+      );
+      await did('decision', 'move', 'accept', id, '--note', 'agreed');
+    },
+    speaks: async () => {
+      const said = await mnema('brief', '--hook');
+      return (
+        !said.failed && said.out.join('\n').includes('## Recorded privately on this machine (')
+      );
     },
   },
   [RECALL_CHANNEL]: {
