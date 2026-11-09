@@ -216,6 +216,7 @@ claim about the agent hosts is held, and which are not held yet, is in [`docs/ev
 
 - **Use.** [Install](docs/install.md) · [Hosts](docs/hosts.md) · [Your first record](docs/first-record.md) · [How it works](docs/how-it-works.md) ·
   [What a session is handed](docs/agent-hosts.md) · [Features](docs/features.md) · [Switches](docs/switches.md) · [The command reference](docs/cli-reference.md) ·
+  [Commands](docs/reference/commands.md) · [MCP tools](docs/reference/mcp-tools.md) ·
   [Where it fits](docs/where-it-fits.md) · [mnema next to a folder of ADRs](docs/mnema-next-to-a-folder-of-adrs.md) · [Glossary](docs/glossary.md) ·
   [What comes next](docs/what-comes-next.md)
 - **Verify.** [What it proves](docs/what-it-proves.md) · [How each claim is held](docs/evidence.md) · [Windows and macOS](docs/platforms.md) ·

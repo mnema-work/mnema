@@ -12,7 +12,8 @@
  *     contribute) and every link in them lands on a file that exists.
  *   - EVERY PAGE OF `docs/` IS IN ONE GROUP, or is on {@link LEFT_OUT} with its reason. A page added
  *     to `docs/` and linked from nowhere fails here, rather than being found by whoever looks for
- *     it. {@link LEFT_OUT} is held in both directions: a page on it that is now linked, or that
+ *     it. A page of a subfolder (`docs/reference/cli/`) may instead be reached through its index,
+ *     a page in a group that links it. {@link LEFT_OUT} is held in both directions: a page on it that is now linked, or that
  *     is gone, fails too.
  *
  * WHAT IT DOES NOT CHECK: whether a page sits in the group a reader would look in. The groups are a
@@ -20,7 +21,7 @@
  */
 
 import { existsSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, posix, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ROOT, read } from './support/published-examples.js';
 
@@ -155,13 +156,24 @@ describe('"Docs" on the front page', () => {
 
   it('puts every page of docs/ in a group, or on the list of what is left out with a reason', () => {
     const linked = new Set(grouped.flatMap((g) => g.links));
-    const pages = readdirSync(join(ROOT, 'docs'))
+    const pages = (readdirSync(join(ROOT, 'docs'), { recursive: true }) as string[])
       .filter((f) => f.endsWith('.md'))
-      .map((f) => `docs/${f}`);
+      .map((f) => `docs/${f.split(sep).join('/')}`);
+    // A page of a subfolder is reached through its index: a page in a group that links it.
+    const reached = new Set(
+      [...linked]
+        .filter((page) => page.startsWith('docs/') && existsSync(join(ROOT, page)))
+        .flatMap((index) =>
+          [...read(index).matchAll(/\]\(([^)\s#]+\.md)(?:#[^)]*)?\)/g)].map((m) =>
+            posix.join(posix.dirname(index), m[1] ?? ''),
+          ),
+        ),
+    );
     for (const page of pages) {
+      const inSubfolder = page.split('/').length > 2;
       expect(
-        linked.has(page) || page in LEFT_OUT,
-        `${page} is in no group of "Docs" and is not left out with a reason`,
+        linked.has(page) || (inSubfolder && reached.has(page)) || page in LEFT_OUT,
+        `${page} is in no group of "Docs", is reached by no index in one, and is not left out with a reason`,
       ).toBe(true);
     }
     for (const [page, why] of Object.entries(LEFT_OUT)) {
