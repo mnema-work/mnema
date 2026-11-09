@@ -114,8 +114,8 @@ afterEach(() => {
  *
  * The three that carry a FOREIGN id in their payload (an observation about an
  * entity, a handoff on a task, a link between two) are in the table beside the four
- * births, and they are the ones the argument matters most for: the reference they
- * carry is deliberately not validated, so nothing about it can reveal that the fact
+ * births, and they are the ones the argument matters most for: the record they name
+ * lives in a third project, so nothing about the reference can reveal that the fact
  * landed in the wrong project.
  */
 const WRITE_VERBS: readonly {
@@ -130,7 +130,12 @@ const WRITE_VERBS: readonly {
    * a check against one tree for every verb would have read an empty tree and passed.
    */
   readonly tree: 'public' | 'private';
-  readonly write: (session: Session, project?: string) => { readonly ok: boolean };
+  /** `existing` is a task some project of the workspace holds: what an observation and a handoff are about. */
+  readonly write: (
+    session: Session,
+    project: string | undefined,
+    existing: string,
+  ) => { readonly ok: boolean };
 }[] = [
   {
     name: 'capture_memory',
@@ -175,9 +180,9 @@ const WRITE_VERBS: readonly {
     name: 'record_observation',
     tree: 'private',
     kinds: ['observation.recorded'],
-    write: (session, project) =>
+    write: (session, project, existing) =>
       runRecordObservation(session, {
-        about: 'some-id-from-elsewhere',
+        about: existing,
         topic: 'shape',
         text: 'it looks like this',
         ...(project !== undefined ? { project } : {}),
@@ -187,9 +192,9 @@ const WRITE_VERBS: readonly {
     name: 'record_handoff',
     tree: 'public',
     kinds: ['handoff.recorded'],
-    write: (session, project) =>
+    write: (session, project, existing) =>
       runRecordHandoff(session, {
-        task: 'some-id-from-elsewhere',
+        task: existing,
         from: 'claude-code',
         to: 'claude-code',
         ...(project !== undefined ? { project } : {}),
@@ -209,14 +214,28 @@ const WRITE_VERBS: readonly {
   },
 ];
 
+/** The two verbs whose record has to exist: an observation and a handoff are refused about an id no tree holds. */
+const needsATask = (verb: string): boolean =>
+  verb === 'record_observation' || verb === 'record_handoff';
+
+/** A task in `project`, a project of the workspace: the record a write about another id names. */
+function aTaskOfElsewhere(session: Session, project: string): string {
+  const made = runCreateTask(session, { title: 'a task of elsewhere', project });
+  if (!made.ok) throw new Error('setup: the task was refused');
+  return made.id;
+}
+
 describe('every write verb takes the project it belongs to', () => {
   for (const verb of WRITE_VERBS) {
     it(`${verb.name} lands in the project it names, and in NO other`, () => {
       const first = makeProject('first');
       const second = makeProject('second');
-      const session = openOn(first, second);
+      const session = openOn(first, second, makeProject('elsewhere'));
+      const existing = needsATask(verb.name)
+        ? aTaskOfElsewhere(session, join(sandbox, 'elsewhere'))
+        : '';
 
-      expect(verb.write(session, second).ok).toBe(true);
+      expect(verb.write(session, second, existing).ok).toBe(true);
 
       // Read off both disks. The tool's own `ok` says a write happened, never where.
       expect(factsIn(treeOf(second, verb.tree))).toEqual(verb.kinds);
@@ -230,10 +249,14 @@ describe('every write verb takes the project it belongs to', () => {
       const first = makeProject('first');
       const second = makeProject('second');
       const session = openOn(first, second);
+      // A handoff follows its task, so the task is the session's own project's: where the handoff
+      // goes when the call names no project, and one more pair of facts in that tree.
+      const existing = needsATask(verb.name) ? aTaskOfElsewhere(session, first) : '';
 
-      expect(verb.write(session).ok).toBe(true);
+      expect(verb.write(session, undefined, existing).ok).toBe(true);
 
-      expect(factsIn(treeOf(first, verb.tree))).toEqual(verb.kinds);
+      const ofTheTask = verb.name === 'record_handoff' ? ['task.created', 'task.transitioned'] : [];
+      expect(factsIn(treeOf(first, verb.tree))).toEqual([...ofTheTask, ...verb.kinds]);
       expect(factsIn(treeOf(second, verb.tree))).toEqual([]);
       closeSession(session);
     });

@@ -217,10 +217,16 @@ describe('a write routed by `project` to a project that does not enrol the agent
     it(`${verb.name}: says once that the person signed it, and the disk agrees`, async () => {
       const agent = await anAgent();
       await aSecondProject();
+      const task = (await did('task', 'create', 'a task to be about')).match(
+        /\(([0-9a-f-]{36})\)/,
+      )?.[1];
 
       let text = '';
       await connected('claude', async (client) => {
-        text = await say(client, verb.name, { ...verb.args, project: other });
+        text = await say(client, verb.name, {
+          ...JSON.parse(JSON.stringify(verb.args).replaceAll('some-id', task as string)),
+          project: other,
+        });
       });
 
       expect(noticesIn(text)).toEqual([THE_LINE(other)]);

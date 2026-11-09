@@ -50,7 +50,7 @@
  * `usage` reports, an edge's RELATION (`--rel`, which the record takes verbatim) and the
  * ids around it, the agent that adopted an exported pattern, and, the sharpest of them,
  * the fields `show` prints as FACTS under a subject, where an observation's `about` is
- * the value `observe` does not validate.
+ * the value a record can carry whatever wrote it.
  *
  * WHAT IS DELIBERATELY NOT ONE LINE is one thing and it is written down twice, here and
  * in `record.ts`: the BODY of a record. `show` exists to serve it whole, and every one of
@@ -1435,7 +1435,7 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
   },
   'record.ts «about {} · recorded {}» oneLine(body.record.about) #1': {
     verdict: 'collapsed',
-    why: 'what the observation is about: the positional `observe` does not validate',
+    why: 'what the observation is about: `observe` refuses an id no tree holds, so no argv forges one here, and a record written by any other hand is read the same',
   },
   'record.ts «about {} · recorded {}» body.record.recordedAt #1': {
     verdict: 'minted',
@@ -3001,6 +3001,8 @@ interface Probe {
 
 /** Where the forged value goes in a probe's argv. */
 const VALUE = '<value>';
+/** Where a task that exists goes: an observation has to be about a record, so the probe makes one. */
+const TASK = '<task>';
 /** Where the id the WRITE minted goes: a read that has to be asked by it. */
 const RECORDED = '<recorded>';
 /** Where the identity `init` recorded goes. */
@@ -3011,7 +3013,7 @@ const ACTOR = '<actor>';
  * entering exactly as somebody would type it.
  *
  * Four of the six take TWO verbs, and those are the sharpest: a forged value enters the
- * record through one verb (`observe`, which does not validate its positional, `task`,
+ * record through one verb (`observe`, `task`,
  * `link`, `run start`) and comes back out through another, as a FACT under a subject in
  * `show`, as a ROW of a counted list in `status`, as an edge in `refs`. The rest are
  * named in {@link UNREACHABLE} with what stands in the way, and the two lists are
@@ -3034,14 +3036,8 @@ const PROBES: readonly Probe[] = [
     says: 'its own edges',
   },
   {
-    keys: ['record.ts «about {} · recorded {}» oneLine(body.record.about) #1'],
-    first: ['observe', VALUE, '--topic', 'a topic', '--text', 'an observation'],
-    argv: ['show', RECORDED],
-    says: 'about ',
-  },
-  {
     keys: ['record.ts «topic: {}» oneLine(body.record.topic) #1'],
-    first: ['observe', 'a-subject', '--topic', VALUE, '--text', 'an observation'],
+    first: ['observe', TASK, '--topic', VALUE, '--text', 'an observation'],
     argv: ['show', RECORDED],
     says: 'topic: ',
   },
@@ -3073,10 +3069,15 @@ describe('a value from outside cannot forge a second line', () => {
   for (const [nth, probe] of PROBES.entries()) {
     it(`keeps it to one line: ${probe.keys.join(' + ')}`, async () => {
       const value = forged(nth);
+      const task = probe.first?.includes(TASK)
+        ? mintedId((await invoke('task', 'create', 'a task to observe')).out)
+        : '';
       const wrote =
         probe.first === undefined
           ? { out: [] as string[] }
-          : await invoke(...probe.first.map((word) => (word === VALUE ? value : word)));
+          : await invoke(
+              ...probe.first.map((word) => (word === VALUE ? value : word === TASK ? task : word)),
+            );
       const recorded = mintedId(wrote.out);
       const said = await invoke(
         ...probe.argv.map((word) =>

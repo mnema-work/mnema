@@ -28,9 +28,10 @@
  * `git commit` / `init` / `verify` shape), because a knowledge fact is one
  * atomic append with no CRUD family and no `move`; there is no state to
  * transition and so no subcommand. They are FACTS: one append, no gate, no
- * state. Each takes the birth `--scope` override (they are all births), and
- * NONE validates the ids it references: the core resolves a dangling reference
- * on read (an honest cross-tree assertion), and the surface only forwards.
+ * state. Each takes the birth `--scope` override (they are all births). A link
+ * does not validate the ids it references: the core resolves a dangling reference
+ * on read (an honest cross-tree assertion), and the surface only forwards. An
+ * observation and a handoff are refused about an id no tree of the project holds.
  *
  * The two CONTEXT reads: `status` and `resume`. Like
  * init/verify they are top-level verbs (heterogeneous shapes, not an

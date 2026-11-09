@@ -59,6 +59,7 @@ import {
   type DiscoveryEnv,
   resolveScope,
   resolveTrees,
+  type Scope,
   systemClock,
   withAgentKey,
 } from '@mnema/core';
@@ -70,6 +71,7 @@ import {
   recordChannelServed,
   recordedAnchorOf,
   signerFor,
+  signerHeldFor,
 } from '@mnema/core/write';
 import { anchorsBefore, foundingsSince, treesOf } from '../a-new-identity.js';
 import { editRulesToldAcross, readThePush, type ThePush } from '../edit-rules-push.js';
@@ -263,6 +265,15 @@ function whatAPathMeets(ctx: BeforeAWriteContext, input: APathAsked): BeforeAWri
   // THE CHARGE STANDS WHETHER ITS FACTS LAND OR NOT ({@link recordTheCharge}): decided by reading,
   // it is answered whatever the append does, and a fact that could not be written is said in the
   // reason and on the second stream, never by letting the write through.
+  // A MACHINE WITH NO KEY IS NEVER GIVEN ONE HERE: recording the charge would found an identity nobody
+  // chose, so the write is refused instead, with the command that founds one.
+  if (met !== undefined && wouldFoundAnIdentity(trees, met)) {
+    return {
+      ok: true,
+      reply: input.reply({ refuse: [met.reason, NO_KEY_HERE].join('\n\n') }),
+      notes: [],
+    };
+  }
   const before = anchorsBefore(treesOf(trees));
   const recorded =
     met === undefined
@@ -295,6 +306,30 @@ function whatAPathMeets(ctx: BeforeAWriteContext, input: APathAsked): BeforeAWri
       ? { refuse: reason }
       : { ask: reason, ...(pushed.text === undefined ? {} : { context: pushed.text }) };
   return { ok: true, reply: input.reply(said), notes: [...unrecorded, ...pushed.notes] };
+}
+
+/** What a write that would have to found an identity is refused with. */
+const NO_KEY_HERE =
+  'This machine has no key, so the record cannot show this write, and a hook never founds an ' +
+  'identity. Run `mnema init` to found one here, then try again.';
+
+/**
+ * Whether signing in the tree `scope` would be a first use: the person's key signs there and this
+ * machine has none, so the signer would be a key made for the write ({@link signerHeldFor} answers
+ * nobody there). A tree the write cannot be signed in at all (an agent that is not enrolled, a key
+ * that cannot be read) is not this: that refusal is the one the record already says.
+ */
+function wouldBeAFirstUse(trees: ReturnType<typeof resolveTrees>, scope: Scope): boolean {
+  try {
+    return signerHeldFor(trees, scope) === undefined;
+  } catch {
+    return false;
+  }
+}
+
+/** Whether recording what `met` found would found an identity here, in any tree its facts go to. */
+function wouldFoundAnIdentity(trees: ReturnType<typeof resolveTrees>, met: WriteVerdict): boolean {
+  return factsByTree(met.at).some((held) => wouldBeAFirstUse(trees, held.tree));
 }
 
 /** What the second stream says where a push was owed and the payload gave no session to remember it by. */
@@ -345,6 +380,12 @@ function recordTheService(
   if (taken === undefined) return;
   try {
     const scope = resolveScope('channel.served', { which });
+    // The fact is signed by a key, and a hook never makes one: with none here it is not written,
+    // and the marker is given back for a session that has one.
+    if (wouldBeAFirstUse(trees, scope)) {
+      taken.release();
+      return;
+    }
     const named = agentSignsIn(trees, scope)?.name ?? which;
     const writer = openTreeForWriting(trees, scope);
     const ctx = {

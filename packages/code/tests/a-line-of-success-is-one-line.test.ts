@@ -678,10 +678,6 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'the id of the observation the write just minted',
   },
-  'handoff.ts «  No tree here holds {}, so the handoff took the default tree ({}).» #1': {
-    verdict: 'collapsed',
-    why: 'the task, a positional nothing validates, said again where the handoff did not find it',
-  },
   'handoff.ts «  The brief is observation {} about the task.» #1': {
     verdict: 'minted',
     why: 'the id of the observation the write just minted',
@@ -1037,6 +1033,14 @@ async function invoke(...argv: string[]): Promise<{ out: string[]; err: string[]
   return { out, err };
 }
 
+/** A task of this sandbox, made the way a person makes one, for a verb that has to name a task that exists. */
+async function aTask(): Promise<string> {
+  const made = await invoke('task', 'create', 'a task to hand off');
+  const id = made.out.join(LF).match(/Created task \S+ \((\S+)\)/)?.[1];
+  if (id === undefined) throw new Error(`setup: no task was made: ${made.err.join(LF)}`);
+  return id;
+}
+
 /** An ordinary value: well formed, nothing in it for anything to object to. */
 const ORDINARY = '0198c2f1-4b7e-7a2d-8f31-6cd0a91e4b55';
 
@@ -1145,7 +1149,8 @@ describe('every line this wiring words is classified', () => {
     // 175 without the line `init` printed of an answer to which host files that was not on the list: the
     // question is asked with arrows now, and an answer cannot be off the list.
     // 186 with the two lines `init` prints of the answer it recorded about agents accepting, without a screen.
-    expect(FOUND.sites.length).toBe(186);
+    // 185 without the line a handoff printed of a task no tree held, which it now refuses.
+    expect(FOUND.sites.length).toBe(185);
   });
 
   it('reads the verdict off the source rather than believing the table', () => {
@@ -1165,9 +1170,9 @@ describe('every line this wiring words is classified', () => {
   it('found sites of both kinds, and the scanner sees a tag when there is one', () => {
     // Neither arm of the case above may be empty, or half of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
-    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(103);
+    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(102);
     expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(83);
-    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(103);
+    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(102);
   });
 
   it('every reason says where the value comes from', () => {
@@ -1218,6 +1223,9 @@ interface Probe {
 /** Where the forged value goes in a probe's argv and in its expected line. */
 const VALUE = '<value>';
 
+/** Where a task that exists goes in a probe: a handoff has to name one, so the probe makes it. */
+const TASK = '<task>';
+
 /**
  * How each REACHABLE closed site is driven, with the forged value entering by the argv
  * exactly as somebody would type it.
@@ -1230,11 +1238,6 @@ const VALUE = '<value>';
  */
 const PROBES: readonly Probe[] = [
   {
-    keys: ['observe.ts «Recorded observation {} about {}» #1'],
-    argv: ['observe', VALUE, '--topic', 'a topic', '--text', 'an observation'],
-    says: `about ${VALUE}`,
-  },
-  {
     keys: ['link.ts «Linked {} -{}→ {}» #1'],
     argv: ['link', VALUE, 'a-target', '--rel', 'relates-to'],
     says: `Linked ${VALUE} -relates-to→ a-target`,
@@ -1243,15 +1246,8 @@ const PROBES: readonly Probe[] = [
   },
   {
     keys: ['handoff.ts «Recorded handoff on {}: {} → {}» #1'],
-    argv: ['task', 'handoff', 'a-task', VALUE, 'to-agent'],
-    says: `Recorded handoff on a-task: ${VALUE} → to-agent`,
-  },
-  {
-    keys: ['handoff.ts «  No tree here holds {}, so the handoff took the default tree ({}).» #1'],
-    argv: ['task', 'handoff', VALUE, 'from-agent', 'to-agent'],
-    says: `  No tree here holds ${VALUE}, so the handoff took the default tree (public).`,
-    // The line the handoff acknowledges itself on names the task too.
-    lines: 2,
+    argv: ['task', 'handoff', TASK, VALUE, 'to-agent'],
+    says: `Recorded handoff on ${TASK}: ${VALUE} → to-agent`,
   },
   {
     keys: ['skill.ts «Proposed skill "{}" ({})» #1'],
@@ -1274,12 +1270,17 @@ describe('a value from outside cannot forge a second line', () => {
   for (const [nth, probe] of PROBES.entries()) {
     it(`keeps it to one line: ${probe.keys.join(' + ')}`, async () => {
       const value = forged(nth);
-      const said = await invoke(...probe.argv.map((word) => (word === VALUE ? value : word)));
+      const task = probe.argv.includes(TASK) ? await aTask() : TASK;
+      const said = await invoke(
+        ...probe.argv.map((word) => (word === VALUE ? value : word === TASK ? task : word)),
+      );
       const whole = said.out.join(LF);
       // THAT THIS PROBE REACHED ITS SITE. Every line of this surface is one line, so a
       // count alone passes for a probe that never got there, which is exactly what a
       // refusal one branch earlier looks like.
-      expect(whole, probe.keys[0]).toContain(probe.says.slice(0, probe.says.indexOf(VALUE)));
+      expect(whole, probe.keys[0]).toContain(
+        probe.says.replace(TASK, task).slice(0, probe.says.replace(TASK, task).indexOf(VALUE)),
+      );
       // The forged half is INSIDE the sentence rather than under it. Asserted on the
       // line that carries the id, so a run where the break survived fails HERE: that
       // line would end at the id and the words after it would be a line of their own.
@@ -1309,6 +1310,10 @@ describe('a value from outside cannot forge a second line', () => {
  * somebody closed and nobody drove, and the reconciliation below is what says so.
  */
 const UNREACHABLE: Readonly<Record<string, string>> = {
+  'observe.ts «Recorded observation {} about {}» #1':
+    'the `about` has to be a record some tree holds, and a record has an id that was minted, so no ' +
+    'value that forges a line gets as far as this line: the refusal that names it goes through ' +
+    '`oneLine` too, held in `observe.test.ts`',
   'record.ts «Pulled {}.» #1':
     'needs a git repository whose branch follows a remote, which no in-process argv here holds; the ' +
     'built binary prints it over real git in `a-tail-merges-and-pulls.test.ts`',
@@ -1517,12 +1522,13 @@ describe('every closed site is either driven or named', () => {
 
 describe('theListGainsNoItem', () => {
   it('adds no row to the timeline, in the two steps a forged value really takes', async () => {
-    // THE ONE FORGEABLE LIST HEADER, and it takes two verbs. `observe` does not validate
-    // its positional, so the value lands in the record; `timeline` then reads it back and
+    // THE ONE FORGEABLE LIST HEADER, and it takes two verbs. `link` does not validate
+    // its subject (an observation and a handoff refuse an id no tree holds, so they no longer
+    // carry a forged one), so the value lands in the record; `timeline` then reads it back and
     // puts it at the HEAD of a list, with the count beside it. On the base this printed
     // three lines where two were the record's, and the middle one was indented exactly
     // like the item under it.
-    await invoke('observe', FORGED, '--topic', 'a topic', '--text', 'an observation');
+    await invoke('link', FORGED, 'a-target', '--rel', 'relates-to');
     const said = await invoke('timeline', FORGED);
     const lines = said.out.filter((line) => line.length > 0);
     // The COUNT the header states, and the number of rows under it, have to agree, which

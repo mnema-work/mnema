@@ -194,7 +194,9 @@ describe('the same three doors on the other writes with a long text', () => {
   });
 
   it('observe takes --text, --stdin or --body-file, and refuses two', async () => {
-    const base = ['observe', 'T-1', '--topic', 'why'];
+    const made = await mnema(['task', 'create', 'a task to note']);
+    const task = /\(([0-9a-f-]{36})\)/.exec(made.out)?.[1] as string;
+    const base = ['observe', task, '--topic', 'why'];
     const typed = await mnema([...base, '--text', 'typed note']);
     const piped = await mnema([...base, '--stdin'], 'piped note\n');
     const filed = await mnema([...base, '--body-file', file('filed note\n')]);

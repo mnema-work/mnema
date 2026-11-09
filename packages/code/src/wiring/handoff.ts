@@ -4,7 +4,8 @@
  * `mnema task handoff <task> <from> <to>`: record a handoff on a task. Three
  * positionals: all short ids/labels, none a body of text. It mints no id (the
  * subject IS the task), so the report echoes the fact. `from == to` is
- * legitimate (a chat restart) and the `task` reference is not validated.
+ * legitimate (a chat restart) and the `task` has to be one some tree of the project
+ * holds, else the handoff is refused.
  *
  * It is a subcommand of `task`, hung on it by `registerTask`, and it declares `--scope` and
  * `--which` as `task create` does: both land on the group wherever they are written, and are
@@ -77,11 +78,6 @@ export function registerHandoff(task: Command, wiring: Wiring): Declared {
         );
         if (result.briefId !== undefined) {
           io.out(`  The brief is observation ${result.briefId} about the task.`);
-        }
-        if (result.taskNotHeld === true) {
-          io.out(
-            onOneLine`  No tree here holds ${result.task}, so the handoff took the default tree (${result.scope}).`,
-          );
         }
         reportRecorded(result, io);
         return;

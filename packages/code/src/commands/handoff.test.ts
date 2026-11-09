@@ -31,6 +31,13 @@ function setup(): { repo: string; env: DiscoveryEnv } {
   return { repo, env: { home: join(sandbox, 'home') } };
 }
 
+/** A task of the project, made the way a person makes one: the id a handoff has to name. */
+function aTaskOf(repo: string, env: DiscoveryEnv): string {
+  const made = runTask({ cwd: repo, env }, { title: 'A task to hand off' });
+  if (!made.ok) throw new Error('setup: the task was refused');
+  return made.id;
+}
+
 /** Reads the handoffs projected from a tree root. */
 function handoffsOf(root: string) {
   return projectHandoffs(orderedEvents({ root }, catalogUpcasters()));
@@ -40,24 +47,24 @@ describe('mnema task handoff', () => {
   it('records a handoff on a task, echoing the fact (there is no id)', () => {
     const { repo, env } = setup();
     runInit({ cwd: repo, env });
+    const taskId = aTaskOf(repo, env);
 
     const result = runHandoff(
       { cwd: repo, env },
-      { task: 'a-task-id', fromAgent: 'claude-code', toAgent: 'cursor' },
+      { task: taskId, fromAgent: 'claude-code', toAgent: 'cursor' },
     );
     // The whole result, so a field added here has to be declared: the tree it landed
     // in travels back with the echo, because nothing in the call named one.
     expect(result).toEqual({
       ok: true,
-      task: 'a-task-id',
+      task: taskId,
       fromAgent: 'claude-code',
       toAgent: 'cursor',
       scope: 'public',
-      taskNotHeld: true,
     });
     // The handoff really landed, keyed by the task.
     const root = resolveTrees(repo, env).projectPublic as string;
-    const list = handoffsOf(root).get('a-task-id');
+    const list = handoffsOf(root).get(taskId);
     expect(list?.length).toBe(1);
     expect(list?.[0]?.fromAgent).toBe('claude-code');
     expect(list?.[0]?.toAgent).toBe('cursor');
@@ -66,32 +73,56 @@ describe('mnema task handoff', () => {
   it('from == to is legitimate (a chat restart with the same agent), not refused', () => {
     const { repo, env } = setup();
     runInit({ cwd: repo, env });
+    const taskId = aTaskOf(repo, env);
     const result = runHandoff(
       { cwd: repo, env },
-      { task: 'a-task-id', fromAgent: 'claude-code', toAgent: 'claude-code' },
+      { task: taskId, fromAgent: 'claude-code', toAgent: 'claude-code' },
     );
     expect(result.ok).toBe(true);
     const root = resolveTrees(repo, env).projectPublic as string;
-    expect(handoffsOf(root).get('a-task-id')?.[0]?.toAgent).toBe('claude-code');
+    expect(handoffsOf(root).get(taskId)?.[0]?.toAgent).toBe('claude-code');
   });
 
-  it('does NOT validate the `task` reference: a dangling task is accepted', () => {
+  it('refuses a task no tree holds, in whichever tree it was told to land, and records nothing', () => {
+    const { repo, env } = setup();
+    runInit({ cwd: repo, env });
+    const ghost = '00000000-0000-7000-8000-000000000000';
+    const trees = resolveTrees(repo, env);
+    for (const scope of [undefined, 'public', 'private'] as const) {
+      const result = runHandoff(
+        { cwd: repo, env },
+        { task: ghost, fromAgent: 'a', toAgent: 'b', ...(scope !== undefined ? { scope } : {}) },
+      );
+      expect(result).toEqual({
+        ok: false,
+        reason: 'REFUSED',
+        code: 'UNKNOWN_TASK',
+        message: `task "${ghost}" was not found in any tree this project reads`,
+      });
+    }
+    expect(handoffsOf(trees.projectPublic as string).size).toBe(0);
+    expect(handoffsOf(trees.projectPrivate as string).size).toBe(0);
+  });
+
+  it('says the refusal of a task whose id carries a line break on one line', () => {
     const { repo, env } = setup();
     runInit({ cwd: repo, env });
     const result = runHandoff(
       { cwd: repo, env },
-      { task: '00000000-0000-7000-8000-000000000000', fromAgent: 'a', toAgent: 'b' },
+      { task: 'a-task\nRefused (UNKNOWN_TASK): a second line', fromAgent: 'a', toAgent: 'b' },
     );
-    expect(result.ok).toBe(true);
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && 'message' in result ? result.message : '').not.toContain('\n');
   });
 
   it('multiple handoffs on one task accumulate into a list', () => {
     const { repo, env } = setup();
     runInit({ cwd: repo, env });
-    runHandoff({ cwd: repo, env }, { task: 'T', fromAgent: 'a', toAgent: 'b' });
-    runHandoff({ cwd: repo, env }, { task: 'T', fromAgent: 'b', toAgent: 'c' });
+    const taskT = aTaskOf(repo, env);
+    runHandoff({ cwd: repo, env }, { task: taskT, fromAgent: 'a', toAgent: 'b' });
+    runHandoff({ cwd: repo, env }, { task: taskT, fromAgent: 'b', toAgent: 'c' });
     const root = resolveTrees(repo, env).projectPublic as string;
-    const list = handoffsOf(root).get('T');
+    const list = handoffsOf(root).get(taskT);
     expect(list?.length).toBe(2);
     expect(list?.map((h) => h.toAgent)).toEqual(['b', 'c']);
   });
@@ -99,7 +130,8 @@ describe('mnema task handoff', () => {
   it('leaves the tree fully signed after recording a handoff', () => {
     const { repo, env } = setup();
     runInit({ cwd: repo, env });
-    runHandoff({ cwd: repo, env }, { task: 'T', fromAgent: 'a', toAgent: 'b' });
+    const taskT = aTaskOf(repo, env);
+    runHandoff({ cwd: repo, env }, { task: taskT, fromAgent: 'a', toAgent: 'b' });
     const root = resolveTrees(repo, env).projectPublic as string;
     const verdict = verify(root);
     expect(verdict.ok).toBe(true);
@@ -117,14 +149,15 @@ describe('mnema task handoff', () => {
   it('--scope private is honored: the handoff is born in the private tree', () => {
     const { repo, env } = setup();
     runInit({ cwd: repo, env });
+    const taskT = aTaskOf(repo, env);
     const result = runHandoff(
       { cwd: repo, env },
-      { task: 'T', fromAgent: 'a', toAgent: 'b', scope: 'private' },
+      { task: taskT, fromAgent: 'a', toAgent: 'b', scope: 'private' },
     );
     expect(result.ok).toBe(true);
     const trees = resolveTrees(repo, env);
-    expect(handoffsOf(trees.projectPrivate as string).has('T')).toBe(true);
-    expect(handoffsOf(trees.projectPublic as string).has('T')).toBe(false);
+    expect(handoffsOf(trees.projectPrivate as string).has(taskT)).toBe(true);
+    expect(handoffsOf(trees.projectPublic as string).has(taskT)).toBe(false);
   });
 });
 
@@ -139,16 +172,17 @@ describe('mnema task handoff --which: the agent that RECORDED it', () => {
   it('records the declared agent on the fact, distinct from the two it is about', () => {
     const { repo, env } = setup();
     runInit({ cwd: repo, env });
+    const taskT = aTaskOf(repo, env);
 
     const result = runHandoff(
       { cwd: repo, env },
-      { task: 'T', fromAgent: 'alpha', toAgent: 'beta', which: 'ci-runner', scope: 'public' },
+      { task: taskT, fromAgent: 'alpha', toAgent: 'beta', which: 'ci-runner', scope: 'public' },
     );
     expect(result.ok).toBe(true);
     const root = resolveTrees(repo, env).projectPublic as string;
     // The author is the recorder, not `from` or `to`: those are the subject.
-    expect(handoffsIn(root).find((e) => e.subject === 'T')?.which).toBe('ci-runner');
-    expect(handoffsOf(root).get('T')?.[0]?.fromAgent).toBe('alpha');
+    expect(handoffsIn(root).find((e) => e.subject === taskT)?.which).toBe('ci-runner');
+    expect(handoffsOf(root).get(taskT)?.[0]?.fromAgent).toBe('alpha');
   });
 
   it('does NOT move the tree: a handoff coordinates actors, so it lands public', () => {
@@ -156,20 +190,22 @@ describe('mnema task handoff --which: the agent that RECORDED it', () => {
     // a tree that stays on one machine reaches neither of them.
     const { repo, env } = setup();
     runInit({ cwd: repo, env });
+    const taskT = aTaskOf(repo, env);
+    const taskU = aTaskOf(repo, env);
     const trees = resolveTrees(repo, env);
 
     const byAgent = runHandoff(
       { cwd: repo, env },
-      { task: 'T', fromAgent: 'alpha', toAgent: 'beta', which: 'ci-runner' },
+      { task: taskT, fromAgent: 'alpha', toAgent: 'beta', which: 'ci-runner' },
     );
     const byPerson = runHandoff(
       { cwd: repo, env },
-      { task: 'U', fromAgent: 'alpha', toAgent: 'beta' },
+      { task: taskU, fromAgent: 'alpha', toAgent: 'beta' },
     );
     expect(byAgent.ok && byPerson.ok).toBe(true);
     const inPublic = handoffsOf(trees.projectPublic as string);
-    expect(inPublic.has('T')).toBe(true);
-    expect(inPublic.has('U')).toBe(true);
+    expect(inPublic.has(taskT)).toBe(true);
+    expect(inPublic.has(taskU)).toBe(true);
     expect(handoffsOf(trees.projectPrivate as string).size).toBe(0);
     if (byAgent.ok) expect(byAgent.scope).toBe('public');
   });
@@ -177,19 +213,21 @@ describe('mnema task handoff --which: the agent that RECORDED it', () => {
   it('an explicit scope still wins over the kind', () => {
     const { repo, env } = setup();
     runInit({ cwd: repo, env });
+    const taskT = aTaskOf(repo, env);
 
     const result = runHandoff(
       { cwd: repo, env },
-      { task: 'T', fromAgent: 'alpha', toAgent: 'beta', scope: 'private' },
+      { task: taskT, fromAgent: 'alpha', toAgent: 'beta', scope: 'private' },
     );
     expect(result.ok).toBe(true);
-    expect(handoffsOf(resolveTrees(repo, env).projectPrivate as string).has('T')).toBe(true);
+    expect(handoffsOf(resolveTrees(repo, env).projectPrivate as string).has(taskT)).toBe(true);
     if (result.ok) expect(result.scope).toBe('private');
   });
 
   it('refuses WHO_IS_WHICH when the agent IS the authorizing identity, recording nothing', () => {
     const { repo, env } = setup();
     const { anchor } = found({ cwd: repo, env });
+    const taskT = aTaskOf(repo, env);
 
     const trees = resolveTrees(repo, env);
     const roots = [trees.projectPublic, trees.projectPrivate, trees.global].filter(
@@ -199,7 +237,7 @@ describe('mnema task handoff --which: the agent that RECORDED it', () => {
 
     const result = runHandoff(
       { cwd: repo, env },
-      { task: 'T', fromAgent: 'alpha', toAgent: 'beta', which: anchor },
+      { task: taskT, fromAgent: 'alpha', toAgent: 'beta', which: anchor },
     );
     expect(result).toEqual({
       ok: false,
@@ -222,27 +260,34 @@ describe('mnema task handoff --brief: what the next agent must read', () => {
   it('records the handoff and, in the same call, a `brief` observation about the task', () => {
     const { repo, env } = setup();
     runInit({ cwd: repo, env });
+    const taskT = aTaskOf(repo, env);
     const result = runHandoff(
       { cwd: repo, env },
-      { task: 'T', fromAgent: 'a', toAgent: 'b', brief: 'The schema is done.\nStart at src/x.ts.' },
+      {
+        task: taskT,
+        fromAgent: 'a',
+        toAgent: 'b',
+        brief: 'The schema is done.\nStart at src/x.ts.',
+      },
     );
     if (!result.ok) throw new Error('the handoff was refused');
     const root = resolveTrees(repo, env).projectPublic as string;
     expect(observationsIn(root)).toEqual([
       {
         id: result.briefId,
-        about: 'T',
+        about: taskT,
         topic: 'brief',
         text: 'The schema is done.\nStart at src/x.ts.',
       },
     ]);
-    expect(handoffsOf(root).get('T')?.length).toBe(1);
+    expect(handoffsOf(root).get(taskT)?.length).toBe(1);
   });
 
   it('records no observation, and names no id, when no brief was given', () => {
     const { repo, env } = setup();
     runInit({ cwd: repo, env });
-    const result = runHandoff({ cwd: repo, env }, { task: 'T', fromAgent: 'a', toAgent: 'b' });
+    const taskT = aTaskOf(repo, env);
+    const result = runHandoff({ cwd: repo, env }, { task: taskT, fromAgent: 'a', toAgent: 'b' });
     expect(result.ok && 'briefId' in result).toBe(false);
     expect(observationsIn(resolveTrees(repo, env).projectPublic as string)).toEqual([]);
   });
@@ -250,25 +295,27 @@ describe('mnema task handoff --brief: what the next agent must read', () => {
   it('refuses a brief over 64 KiB and leaves NO handoff behind', () => {
     const { repo, env } = setup();
     runInit({ cwd: repo, env });
+    const taskT = aTaskOf(repo, env);
     const result = runHandoff(
       { cwd: repo, env },
-      { task: 'T', fromAgent: 'a', toAgent: 'b', brief: 'x'.repeat(65_537) },
+      { task: taskT, fromAgent: 'a', toAgent: 'b', brief: 'x'.repeat(65_537) },
     );
     expect(result).toMatchObject({ ok: false, reason: 'REFUSED', code: 'CONTENT_TOO_LARGE' });
     // The field the person passed, not the note's own `text`.
     expect(!result.ok && result.reason === 'REFUSED' && result.message).toContain('"brief" is');
     expect(!result.ok && result.reason === 'REFUSED' && result.message).not.toContain('"text"');
     const root = resolveTrees(repo, env).projectPublic as string;
-    expect(handoffsOf(root).has('T')).toBe(false);
+    expect(handoffsOf(root).has(taskT)).toBe(false);
     expect(observationsIn(root)).toEqual([]);
   });
 
   it('accepts a brief of exactly 64 KiB', () => {
     const { repo, env } = setup();
     runInit({ cwd: repo, env });
+    const taskT = aTaskOf(repo, env);
     const result = runHandoff(
       { cwd: repo, env },
-      { task: 'T', fromAgent: 'a', toAgent: 'b', brief: 'x'.repeat(65_536) },
+      { task: taskT, fromAgent: 'a', toAgent: 'b', brief: 'x'.repeat(65_536) },
     );
     expect(result.ok).toBe(true);
   });
@@ -302,7 +349,6 @@ describe('a handoff with no scope follows its task', () => {
       { task, fromAgent: 'alice', toAgent: 'bob', brief: 'PRIVBRIEF yak' },
     );
     expect(result).toMatchObject({ ok: true, scope: 'private' });
-    expect(result.ok && result.taskNotHeld).toBeUndefined();
     const trees = resolveTrees(repo, env);
     expect(heldIn(trees.projectPrivate as string)).toEqual({
       handoffs: 1,

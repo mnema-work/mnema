@@ -4,8 +4,8 @@
  * `mnema observe <about> --topic "<t>" --text "<obs>"`: record an observation
  * about an entity. `about` is a positional (a short id); the topic and the text
  * are flags: the text would compete with about/topic for the tail of the line,
- * so it is named (the `gh issue comment --body` convention). `about` is NOT
- * validated: a dangling reference is honest cross-tree.
+ * so it is named (the `gh issue comment --body` convention). `about` has to be a
+ * record some tree of the project holds, else the observation is refused.
  */
 
 import type { Command } from 'commander';
@@ -80,9 +80,8 @@ export function registerObserve(program: Command, wiring: Wiring): Declared {
         return;
       }
       if (result.ok) {
-        // The id is minted here; `about` is the positional, and the doc above says it
-        // is NOT validated: a dangling reference is honest cross-tree. So the value
-        // reaches this line exactly as typed (see {@link onOneLine}).
+        // The id is minted here; `about` is the positional, found in a tree before the write,
+        // but it reaches this line exactly as typed (see {@link onOneLine}).
         io.out(onOneLine`Recorded observation ${result.id} about ${about}`);
         reportRecorded(result, io);
         return;

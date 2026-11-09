@@ -119,15 +119,15 @@ describe('record_handoff with no scope follows the task', () => {
     ).toContain('PUBBRIEF');
   });
 
-  it('says so when no tree holds the task, and keeps the default', async () => {
+  it('refuses a task no tree holds, and writes nothing', async () => {
     const said = await call('record_handoff', {
       task: '00000000-0000-7000-8000-000000000000',
       from: 'alice',
       to: 'bob',
     });
-    expect(said).toContain('No tree of this workspace holds 00000000-0000-7000-8000-000000000000');
-    expect(said).toContain('took the default tree (public)');
-    expect(said).toContain('Landed in the public tree');
+    expect(said).toContain('UNKNOWN_TASK');
+    expect(said).toContain('task "00000000-0000-7000-8000-000000000000" was not found in any tree');
+    expect(said).not.toContain('Landed in');
   });
 });
 

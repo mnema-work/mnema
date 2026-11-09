@@ -35,6 +35,7 @@ import {
   locateEntityScopeWith,
   ProjectionCache,
   type ResolvedTrees,
+  replayingRecordProbe,
   type Scope,
 } from '@mnema/core';
 import type { ScopedTree } from './intelligence-source.js';
@@ -115,6 +116,23 @@ export function locateEntityScopeKept(
         cache.getSkill(canonical) !== null,
     );
   return locateEntityScopeWith(trees, id, kept) ?? locateEntityScope(trees, id, upcasters);
+}
+
+/**
+ * The tree that holds a RECORD of any kind, an entity or a note, or undefined when no tree this
+ * project reads does. {@link locateEntityScopeKept} for the entities, then a replay that also
+ * knows the notes, so an observation about another note is found where it lives. The read a
+ * write about an id makes before it accepts the id.
+ */
+export function locateRecordScopeKept(
+  trees: ResolvedTrees,
+  id: string,
+  upcasters: UpcasterRegistry,
+): Scope | undefined {
+  return (
+    locateEntityScopeKept(trees, id, upcasters) ??
+    locateEntityScopeWith(trees, id, replayingRecordProbe(upcasters))
+  );
 }
 
 /**

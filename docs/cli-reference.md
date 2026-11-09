@@ -120,7 +120,7 @@ CLI and the MCP tools behave identically, because they are the same call.
   host. Copilot CLI and Gemini CLI, whose hook before a write has no field for text, hand over the same
   rules from the hook that runs after it (`mnema beside-a-write --host copilot` or `gemini`): it asks
   the record what `before-a-write` asks and records the same one `channel.served` per session, but it
-  never refuses or asks and records no refusal or asking. The fifth is `mnema tally`, run at `Stop`: when the session's own tool calls wrote a file in
+  never refuses or asks and records no refusal or asking. Where the machine has no key, `before-a-write` refuses a write it would have had to record, says to run `mnema init`, and makes no key. The fifth is `mnema tally`, run at `Stop`: when the session's own tool calls wrote a file in
   the last response, it prints a `systemMessage` of one line saying how many files they wrote and how
   many decisions were recorded in the project since the session opened, counted off the
   transcript the host names and off the record, and, when events of the record are in no git
@@ -2096,6 +2096,16 @@ absent in the other differ). If there is one, nothing is written and the answer 
 in the <scope> tree with this title, rationale and alternatives. Nothing was written.`, with the existing label and id and none
 of the offers below. This is what makes a call repeated after a lost reply safe. A rejected or superseded decision is not
 matched: the same words recorded again are a new proposal.
+
+### A handoff or an observation names a record that exists
+
+The `task handoff` command and `record_handoff` refuse a task, and `observe` and `record_observation` an `about`, that
+no tree they read holds, and write nothing: `UNKNOWN_TASK` for the handoff, `UNKNOWN_RECORD` for the observation (an
+observation can be about a task, a decision, a pattern or another note), with the sentence `task "<id>" was not found in
+any tree this project reads` on the command line. The tools read every project the client announced, and their sentence
+names them; an id held by two records is `AMBIGUOUS_RECORD`. It holds whichever tree the write was told to land in with
+`--scope`. The `link` command still takes an id it cannot find, and says so in its answer, because an edge may point at
+a record of another project.
 
 ### Recording the same memory or observation twice
 

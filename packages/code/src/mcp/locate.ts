@@ -298,7 +298,7 @@ function settled(holders: readonly WorkspaceTree[]): EntityLocation {
 }
 
 /** The three workflow entities a session locates, and the notes a retraction locates: what a refusal names. */
-export type LocatableKind = 'task' | 'decision' | 'skill' | 'note';
+export type LocatableKind = 'task' | 'decision' | 'skill' | 'note' | 'record';
 
 /**
  * The code each kind's "no such entity" refusal carries: the vocabulary the tools
@@ -310,6 +310,7 @@ const UNKNOWN_CODE = {
   decision: 'UNKNOWN_DECISION',
   skill: 'UNKNOWN_SKILL',
   note: 'UNKNOWN_NOTE',
+  record: 'UNKNOWN_RECORD',
 } as const;
 
 /** `AMBIGUOUS_RECORD` when several records hold the id, else the kind's own code. */

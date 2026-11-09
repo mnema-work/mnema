@@ -147,24 +147,33 @@ describe('a write is visible to the next read in the same session', () => {
     see: (cache) => cache.listMemories().some((m) => m.content === 'the auth flow uses PKCE'),
   });
 
+  // The task a write about another record names, made in the same session just before.
+  let subject = '';
+  const aTask = (s: Session): string => {
+    const made = runCreateTask(s, { title: 'a task to be about' });
+    if (!made.ok) throw new Error(`create refused: ${made.code}`);
+    subject = made.id;
+    return made.id;
+  };
+
   cases.push({
     tool: 'record_observation',
     lands: 'private',
     write: (s) => {
-      const done = runRecordObservation(s, { about: 'subject-1', topic: 'perf', text: 'slow' });
+      const done = runRecordObservation(s, { about: aTask(s), topic: 'perf', text: 'slow' });
       if (!done.ok) throw new Error(`observe refused: ${done.code}`);
     },
-    see: (cache) => cache.listObservationsAbout('subject-1').length === 1,
+    see: (cache) => cache.listObservationsAbout(subject).length === 1,
   });
 
   cases.push({
     tool: 'record_handoff',
     lands: 'public',
     write: (s) => {
-      const done = runRecordHandoff(s, { task: 'task-1', from: 'a', to: 'b' });
+      const done = runRecordHandoff(s, { task: aTask(s), from: 'a', to: 'b' });
       if (!done.ok) throw new Error(`handoff refused: ${done.code}`);
     },
-    see: (cache) => cache.listHandoffs('task-1').length === 1,
+    see: (cache) => cache.listHandoffs(subject).length === 1,
   });
 
   cases.push({

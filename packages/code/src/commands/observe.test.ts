@@ -6,6 +6,7 @@ import { type DiscoveryEnv, orderedEvents, projectObservations, resolveTrees } f
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type InitContext, type InitResult, runInit } from './init.js';
 import { runObserve } from './observe.js';
+import { runTask } from './task.js';
 
 /** Founds the project; a refusal here is a broken setup, not a case. */
 function found(ctx: InitContext): InitResult {
@@ -30,6 +31,13 @@ function setup(): { repo: string; env: DiscoveryEnv } {
   return { repo, env: { home: join(sandbox, 'home') } };
 }
 
+/** A task of the project: a record an observation can be about. */
+function aTaskOf(repo: string, env: DiscoveryEnv): string {
+  const made = runTask({ cwd: repo, env }, { title: 'A task to observe' });
+  if (!made.ok) throw new Error('setup: the task was refused');
+  return made.id;
+}
+
 /** Reads the observations projected from a tree root. */
 function observationsOf(root: string) {
   return projectObservations(orderedEvents({ root }, catalogUpcasters()));
@@ -39,10 +47,11 @@ describe('mnema observe', () => {
   it('records an observation about an entity, returning its OWN minted id', () => {
     const { repo, env } = setup();
     runInit({ cwd: repo, env });
+    const aboutId = aTaskOf(repo, env);
 
     const result = runObserve(
       { cwd: repo, env },
-      { about: 'some-task-id', topic: 'perf', text: 'this query is O(n^2)' },
+      { about: aboutId, topic: 'perf', text: 'this query is O(n^2)' },
     );
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -50,37 +59,73 @@ describe('mnema observe', () => {
       expect(result.id).toMatch(
         /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
       );
-      expect(result.id).not.toBe('some-task-id');
+      expect(result.id).not.toBe(aboutId);
       const root = resolveTrees(repo, env).projectPublic as string;
       const o = observationsOf(root).get(result.id);
-      expect(o?.about).toBe('some-task-id');
+      expect(o?.about).toBe(aboutId);
       expect(o?.topic).toBe('perf');
       expect(o?.text).toBe('this query is O(n^2)');
     }
   });
 
-  it('does NOT validate the `about` reference: a dangling id is accepted, not refused', () => {
+  it('refuses an `about` no tree holds, in whichever tree it was told to land, and records nothing', () => {
     const { repo, env } = setup();
     runInit({ cwd: repo, env });
-    // No such entity exists anywhere: the observation is still recorded.
+    const ghost = '00000000-0000-7000-8000-000000000000';
+    const trees = resolveTrees(repo, env);
+    for (const scope of [undefined, 'public', 'private'] as const) {
+      const result = runObserve(
+        { cwd: repo, env },
+        {
+          about: ghost,
+          topic: 't',
+          text: 'about a ghost',
+          ...(scope !== undefined ? { scope } : {}),
+        },
+      );
+      expect(result).toEqual({
+        ok: false,
+        reason: 'REFUSED',
+        code: 'UNKNOWN_RECORD',
+        message: `record "${ghost}" was not found in any tree this project reads`,
+      });
+    }
+    expect(observationsOf(trees.projectPublic as string).size).toBe(0);
+    expect(observationsOf(trees.projectPrivate as string).size).toBe(0);
+  });
+
+  it('accepts an `about` that is itself a note, found in the tree that holds it', () => {
+    const { repo, env } = setup();
+    runInit({ cwd: repo, env });
+    const first = runObserve(
+      { cwd: repo, env },
+      { about: aTaskOf(repo, env), topic: 'a', text: 'first', scope: 'private' },
+    );
+    if (!first.ok) throw new Error('setup: the first observation was refused');
+    const second = runObserve(
+      { cwd: repo, env },
+      { about: first.id, topic: 'b', text: 'about the first' },
+    );
+    expect(second.ok).toBe(true);
+  });
+
+  it('says the refusal of an `about` that carries a line break on one line', () => {
+    const { repo, env } = setup();
+    runInit({ cwd: repo, env });
     const result = runObserve(
       { cwd: repo, env },
-      { about: '00000000-0000-7000-8000-000000000000', topic: 't', text: 'about a ghost' },
+      { about: 'a-task\nRefused (UNKNOWN_RECORD): a second line', topic: 't', text: 'x' },
     );
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      const root = resolveTrees(repo, env).projectPublic as string;
-      expect(observationsOf(root).get(result.id)?.about).toBe(
-        '00000000-0000-7000-8000-000000000000',
-      );
-    }
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && 'message' in result ? result.message : '').not.toContain('\n');
   });
 
   it('two observations about the same entity are distinct rows, never colliding', () => {
     const { repo, env } = setup();
     runInit({ cwd: repo, env });
-    const first = runObserve({ cwd: repo, env }, { about: 'x', topic: 'a', text: 'first' });
-    const second = runObserve({ cwd: repo, env }, { about: 'x', topic: 'b', text: 'second' });
+    const aboutId = aTaskOf(repo, env);
+    const first = runObserve({ cwd: repo, env }, { about: aboutId, topic: 'a', text: 'first' });
+    const second = runObserve({ cwd: repo, env }, { about: aboutId, topic: 'b', text: 'second' });
     expect(first.ok && second.ok).toBe(true);
     if (first.ok && second.ok) {
       expect(first.id).not.toBe(second.id);
@@ -94,7 +139,8 @@ describe('mnema observe', () => {
   it('leaves the tree fully signed after recording an observation', () => {
     const { repo, env } = setup();
     runInit({ cwd: repo, env });
-    runObserve({ cwd: repo, env }, { about: 'x', topic: 't', text: 'obs' });
+    const aboutId = aTaskOf(repo, env);
+    runObserve({ cwd: repo, env }, { about: aboutId, topic: 't', text: 'obs' });
     const root = resolveTrees(repo, env).projectPublic as string;
     const verdict = verify(root);
     expect(verdict.ok).toBe(true);
@@ -112,9 +158,10 @@ describe('mnema observe', () => {
   it('--scope private is honored: the observation is born in the private tree', () => {
     const { repo, env } = setup();
     runInit({ cwd: repo, env });
+    const aboutId = aTaskOf(repo, env);
     const result = runObserve(
       { cwd: repo, env },
-      { about: 'x', topic: 't', text: 'private note', scope: 'private' },
+      { about: aboutId, topic: 't', text: 'private note', scope: 'private' },
     );
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -147,10 +194,17 @@ describe('mnema observe --which: the agent that executed', () => {
   it('records the declared agent on the fact', () => {
     const { repo, env } = setup();
     runInit({ cwd: repo, env });
+    const aboutId = aTaskOf(repo, env);
 
     const result = runObserve(
       { cwd: repo, env },
-      { about: 'T', topic: 'flake', text: 'fails on retry', which: 'ci-runner', scope: 'public' },
+      {
+        about: aboutId,
+        topic: 'flake',
+        text: 'fails on retry',
+        which: 'ci-runner',
+        scope: 'public',
+      },
     );
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -162,10 +216,11 @@ describe('mnema observe --which: the agent that executed', () => {
   it('a declared agent shifts the OMITTED scope default to private', () => {
     const { repo, env } = setup();
     runInit({ cwd: repo, env });
+    const aboutId = aTaskOf(repo, env);
 
     const result = runObserve(
       { cwd: repo, env },
-      { about: 'T', topic: 'flake', text: 'noticed by a script', which: 'ci-runner' },
+      { about: aboutId, topic: 'flake', text: 'noticed by a script', which: 'ci-runner' },
     );
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -178,6 +233,7 @@ describe('mnema observe --which: the agent that executed', () => {
   it('refuses WHO_IS_WHICH when the agent IS the authorizing identity, recording nothing', () => {
     const { repo, env } = setup();
     const { anchor } = found({ cwd: repo, env });
+    const aboutId = aTaskOf(repo, env);
 
     const trees = resolveTrees(repo, env);
     const roots = [trees.projectPublic, trees.projectPrivate, trees.global].filter(
@@ -187,7 +243,7 @@ describe('mnema observe --which: the agent that executed', () => {
 
     const result = runObserve(
       { cwd: repo, env },
-      { about: 'T', topic: 't', text: 'self-authorized', which: anchor },
+      { about: aboutId, topic: 't', text: 'self-authorized', which: anchor },
     );
     expect(result).toEqual({
       ok: false,

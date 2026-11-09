@@ -109,7 +109,10 @@ export type EnrollRequestErrorCode =
   /** Never earned today either: an enrollment carries no title. Here for the same reason. */
   | 'NOT_A_TITLE'
   /** Never earned today either: an enrollment names no reference a caller typed. */
-  | 'NOT_A_REFERENCE';
+  | 'NOT_A_REFERENCE'
+  /** Never earned today either: an enrollment is about no record a surface looks up. */
+  | 'UNKNOWN_TASK'
+  | 'UNKNOWN_RECORD';
 
 /** The enrollment was refused; nothing was written. */
 export interface EnrollRequestErr {
@@ -281,7 +284,10 @@ export type RevokeMemberErrorCode =
    */
   | 'NOT_A_TITLE'
   /** Never earned today either: an enrollment names no reference a caller typed. */
-  | 'NOT_A_REFERENCE';
+  | 'NOT_A_REFERENCE'
+  /** Never earned today either: an enrollment is about no record a surface looks up. */
+  | 'UNKNOWN_TASK'
+  | 'UNKNOWN_RECORD';
 
 /** The revocation was refused; nothing was written. */
 export interface RevokeMemberErr {
