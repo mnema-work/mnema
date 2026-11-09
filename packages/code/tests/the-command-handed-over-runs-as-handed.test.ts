@@ -58,8 +58,8 @@ import { buildProgram, type CliIo } from '../src/program.js';
 import { everyCommandOf } from '../src/wiring/misuse.js';
 import { ROOT } from './support/published-examples.js';
 import { invocationsIn, linesOf, trackedPages, unquoted } from './support/reading-a-shell-line.js';
-import { writtenByHand } from './support/the-reference-pages.js';
 import { codeOnly, INTERPOLATED, LITERAL_EDGE, literalsOnly } from './support/reading-source.js';
+import { writtenByHand } from './support/the-reference-pages.js';
 
 /** A silent port: nothing here runs a verb, it only reads what they declare. */
 const silent: CliIo = { out: () => {}, err: () => {}, fail: () => {} };
