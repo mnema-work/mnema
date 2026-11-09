@@ -1397,7 +1397,7 @@ mnema commits ADR-4
 # saying what it does there (governs, refuses a write, asks for a person), and the commits that
 # touched it and carry a trailer. A rule the project inherits is listed too, naming its origin.
 mnema why src/billing/invoice.ts
-# With `edit-rules-push` switched off, `mnema rules` and `mnema why` add, on the second stream, that
+# With `edit-rules-push` switched off, `rules` and `why` add, on the second stream, that
 # the rules governing the path are not handed to an agent when it edits there.
 
 # Accepted decisions whose addressed paths changed in many commits since they were accepted.
@@ -2062,7 +2062,7 @@ no answer, and what the agent was told is not what the gate checks (`agent-accep
 
 A supersede whose successor is still `proposed` leaves nothing in force on that subject until it is accepted, and the
 move says so. Rejecting that successor leaves the decision it replaced `superseded`, by a decision that never governed,
-and the rejection says so too, naming it, in `mnema decision move reject` and in `decision_transition`.
+and the rejection says so too, naming it, from the command line and in `decision_transition`.
 
 ### What a recorded decision offers
 

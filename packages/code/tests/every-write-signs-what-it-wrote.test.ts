@@ -756,7 +756,7 @@ describe('every write path leaves the record fully signed', () => {
         // The gate as a host whose hooks are processes asks for it: reaching the writer takes
         // a rule in force that asks for a person at the path, or the verb answers `{}` and
         // this row passes having driven nothing.
-        at: 'commands/before-a-write.ts:recordWhatItMet',
+        at: 'commands/before-a-write.ts:recordInTree',
         drive: () => {
           void ok(
             'asks-for-a-person',
@@ -1118,7 +1118,7 @@ describe('every write path leaves the record fully signed', () => {
         // (which makes the charge) and one that governs it (which makes the push
         // speak). Without those links the gate answers and writes nothing, and these
         // two rows would pass having driven nothing at all.
-        at: 'mcp/tools.ts:recordFacts',
+        at: 'mcp/tools.ts:recordFactsInTree',
         drive: () => {
           void ok(
             'asks-for-a-person',
