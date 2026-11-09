@@ -10,6 +10,14 @@ with its own changelog.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`mnema record commit` carries the record's README when mnema itself rewrote it.** A project founded with an older
+  `.mnema/README.md` has it replaced by the current page at the next write, and the commit that `record commit` cut left
+  that file out, so the rewrite never reached git through it. The commit now carries the `README.md` and the
+  `.editorconfig` of `.mnema/` when their bytes are exactly the text this mnema writes; a page you edited stays out and
+  is still named as left out.
+
 ### Changed
 
 - **The text a session opens with carries this machine's private rules, marked as such.** After the committed record's

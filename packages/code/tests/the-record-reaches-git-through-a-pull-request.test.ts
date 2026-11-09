@@ -36,6 +36,7 @@ import {
   runRecordCommit,
   whatInitWritesInTheRecord,
 } from '../src/commands/record-commit.js';
+import { OLDER_RECORD_READMES, RECORD_README } from '../src/commands/the-record-page.js';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
 import { MNEMA_CLI } from './support/the-cli.js';
 
@@ -282,6 +283,40 @@ describe('mnema record commit', SLOW, () => {
     expect(git(local, 'show', `${made.commit}:.mnema/.gitattributes`).out).toBe(older);
     expect(made.left.files).toEqual(['.mnema/.gitattributes']);
     expect(mnema(local, 'record', 'commit').out).toContain('.mnema/.gitattributes');
+  });
+
+  it('carries the README mnema itself rewrote, and still leaves out one a person edited', () => {
+    const remote = join(sandbox, 'remote.git');
+    const local = join(sandbox, 'local');
+    expect(git(sandbox, 'init', '-q', '--bare', remote).status).toBe(0);
+    expect(git(sandbox, 'clone', '-q', remote, local).status).toBe(0);
+    expect(mnema(local, 'init', '--all-hosts').status).toBe(0);
+    // The base holds the page an earlier release wrote.
+    const older = OLDER_RECORD_READMES[0] as string;
+    writeFileSync(join(local, '.mnema', 'README.md'), older);
+    expect(git(local, 'add', '.').status).toBe(0);
+    expect(git(local, 'commit', '-qm', 'the record').status).toBe(0);
+    expect(git(local, 'push', '-q', 'origin', 'main').status).toBe(0);
+    expect(git(local, 'remote', 'set-head', 'origin', 'main').status).toBe(0);
+    // The next write replaces it with the current page.
+    decide(local, 'one');
+    expect(readFileSync(join(local, '.mnema', 'README.md'), 'utf-8')).toBe(RECORD_README);
+    const made = commitIn(local);
+    if (!made.ok || made.kind !== 'made') throw new Error(JSON.stringify(made));
+    expect(git(local, 'show', `${made.commit}:.mnema/README.md`).out).toBe(RECORD_README);
+    expect(made.left.files).toEqual([]);
+    const apart = join(sandbox, 'apart');
+    expect(git(sandbox, 'clone', '-q', '-b', made.branch, local, apart).status).toBe(0);
+    expect(mnema(apart, 'verify', '--require', 'signed').status).toBe(0);
+    expect(mnema(apart, 'verify', '--since', 'origin/main').status).toBe(0);
+
+    // A page a person edited is not the text mnema writes: it stays out, named, as the base has it.
+    appendFileSync(join(local, '.mnema', 'README.md'), 'a line of mine\n');
+    decide(local, 'two');
+    const again = commitIn(local);
+    if (!again.ok || again.kind !== 'made') throw new Error(JSON.stringify(again));
+    expect(again.left.files).toEqual(['.mnema/README.md']);
+    expect(git(local, 'show', `${again.commit}:.mnema/README.md`).out).toBe(older);
   });
 
   it('leaves out the events above the last checkpoint, and counts them', () => {
