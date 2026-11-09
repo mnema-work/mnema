@@ -19,6 +19,7 @@ import { runBeforeAWrite } from '../src/commands/before-a-write.js';
 import { openSession } from '../src/mcp/session.js';
 import { runRulesBeforeAnEditTool } from '../src/mcp/tools.js';
 import { type CliIo, run } from '../src/program.js';
+import { factsByTree } from '../src/what-a-write-meets.js';
 
 let sandbox: string;
 let repo: string;
@@ -173,5 +174,23 @@ describe.each([
     expect(factsOf(publicRoot())).toEqual([`channel.asked ${shared}`]);
     expect(factsOf(privateRoot())).toEqual([`channel.asked ${secret}`]);
     expect(everythingIn(publicRoot())).not.toContain(secret);
+  });
+});
+
+describe('a rule built without the tree that holds it', () => {
+  const rule = (id: string, travels: boolean) => ({ id, name: id, address: 'src', travels });
+
+  it('is filed where the clone gets it only when it is known to travel', () => {
+    const at = {
+      path: 'src/a.ts',
+      relative: 'src/a.ts',
+      rules: [rule('travels', true), rule('stays', false)],
+    };
+    expect(
+      factsByTree([at]).map((held) => [held.tree, held.at[0]?.rules.map((r) => r.id)]),
+    ).toEqual([
+      ['public', ['travels']],
+      ['private', ['stays']],
+    ]);
   });
 });

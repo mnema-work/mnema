@@ -879,13 +879,12 @@ export interface PushedRule {
 }
 
 /**
- * The tree a fact caused by `rule` is written to: the tree that holds the rule, or, for a rule
- * built without one, `private` when it does not travel and `undefined` (the kind's own default)
- * when it does. The direction that cannot leak: a rule that is not known to travel never has its
- * id written where a clone gets it.
+ * The tree a fact caused by `rule` is written to: the tree that holds the rule, or, for a rule built
+ * without one, `private` when it does not travel and `public` when it does. The direction that
+ * cannot leak: a rule that is not known to travel never has its id written where a clone gets it.
  */
-export function ruleTree(rule: Pick<PushedRule, 'travels' | 'scope'>): Scope | undefined {
-  return rule.scope ?? (rule.travels ? undefined : 'private');
+export function ruleTree(rule: Pick<PushedRule, 'travels' | 'scope'>): Scope {
+  return rule.scope ?? (rule.travels ? 'public' : 'private');
 }
 
 /** The rules in force addressed at a path, and the path they were matched against. */

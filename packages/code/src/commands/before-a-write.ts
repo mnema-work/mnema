@@ -393,8 +393,7 @@ function recordInTree(
   which: string,
 ): { readonly ok: boolean; readonly why?: string } {
   const refusing = met.grade === 'refuse';
-  const scope =
-    held.tree ?? resolveScope(refusing ? 'channel.refused' : 'channel.asked', { which });
+  const scope = held.tree;
   // WHERE THE RECORD ENROLS THE AGENT'S KEY, THE FACTS ARE ITS: signed by it, under the name the
   // record gave it. The host's name stands everywhere else (the person's key signs there).
   const named = agentSignsIn(trees, scope)?.name ?? which;

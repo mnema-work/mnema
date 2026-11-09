@@ -289,6 +289,27 @@ describe('a supersede by a proposal', () => {
     expect(said.out).not.toContain('still proposed');
   });
 
+  it('says, in the plural, that two decisions a rejected successor replaced stay superseded', async () => {
+    repo();
+    await mnema('init');
+    const first = idOf((await mnema('decision', 'record', 'Use UTC', 'three zones')).out);
+    const second = idOf((await mnema('decision', 'record', 'Use local', 'two zones')).out);
+    const third = idOf((await mnema('decision', 'record', 'Use offsets', 'one zone')).out);
+    for (const id of [first, second, third])
+      await mnema('decision', 'move', 'accept', id, '--note', 'ok');
+    const next = idOf((await mnema('decision', 'record', 'Use ISO instants', 'one format')).out);
+    for (const id of [first, second, third])
+      await mnema('decision', 'supersede', id, next, '--reason', 'newer');
+    const shown = await mnema('show', next);
+    const named = shown.out.split('\n').filter((line) => line.includes('supersedes ADR-'));
+    expect(named).toHaveLength(3);
+    // The one the projection names (the last replaced) first, the others by their labels.
+    expect(named.map((line) => /ADR-\d+/.exec(line)?.[0])).toEqual(['ADR-3', 'ADR-1', 'ADR-2']);
+    const said = await mnema('decision', 'move', 'reject', next, '--note', 'no');
+    expect(said.out).toContain('were superseded by this decision and stay superseded');
+    expect(said.out).toContain('nothing is in force on those subjects');
+  });
+
   it('names every decision a successor replaced when it replaced more than one', async () => {
     repo();
     await mnema('init');

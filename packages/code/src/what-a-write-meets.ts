@@ -178,8 +178,8 @@ export interface WriteVerdict {
 
 /** The facts of one tree: the paths and rules whose facts are written there. */
 export interface FactsOfATree {
-  /** The tree the rules' facts go to; absent for the kind's own default (the public tree). */
-  readonly tree: Scope | undefined;
+  /** The tree the rules' facts go to. */
+  readonly tree: Scope;
   /** The paths that met a rule held by that tree, each with only those rules. */
   readonly at: readonly RulesAtPath[];
 }
@@ -191,7 +191,7 @@ export interface FactsOfATree {
  * first rule appears.
  */
 export function factsByTree(ats: readonly RulesAtPath[]): readonly FactsOfATree[] {
-  const trees = new Map<Scope | undefined, RulesAtPath[]>();
+  const trees = new Map<Scope, RulesAtPath[]>();
   for (const at of ats) {
     for (const tree of new Set(at.rules.map(ruleTree))) {
       const rules = at.rules.filter((rule) => ruleTree(rule) === tree);

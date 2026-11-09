@@ -3194,7 +3194,7 @@ function recordFactsInTree(
 ): { readonly ok: boolean } {
   const refusing = channel === REFUSES_A_WRITE_CHANNEL;
   const kind = refusing ? 'channel.refused' : 'channel.asked';
-  const route = routeWrite(session, kind, held.tree === undefined ? {} : { scope: held.tree });
+  const route = routeWrite(session, kind, { scope: held.tree });
   if (!route.ok) return { ok: false };
   const { ctx, run, which } = openWrite(session, route.scope);
   return ctx.writer.exclusively(() => {

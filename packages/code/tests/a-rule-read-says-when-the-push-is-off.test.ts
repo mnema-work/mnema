@@ -76,6 +76,18 @@ describe.each([
   });
 });
 
+describe('two rules over one path', () => {
+  it('says the rules, in the plural, are not handed over', async () => {
+    const said = await mnema('decision', 'record', 'Bill in cents', 'integers');
+    const id = said.out.match(/\(([0-9a-f-]{20,})\)/)?.[1] as string;
+    await mnema('decision', 'move', 'accept', id, '--note', 'agreed');
+    await mnema('link', id, 'src/billing', '--rel', 'governs');
+    await mnema('switch', 'off', 'edit-rules-push');
+    const off = await mnema('rules', 'src/billing/invoice.ts');
+    expect(off.err).toContain('the rules that govern this path are not handed to an agent');
+  });
+});
+
 describe('the sentence', () => {
   it('is silent for a path no rule governs, whatever the channel', () => {
     expect(rulesNotPushedLine([], 0)).toBeUndefined();

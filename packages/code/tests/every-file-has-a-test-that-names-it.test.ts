@@ -1020,7 +1020,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-passphrase-in-the-environment-opens-the-persons-key.test.ts': 12,
   'packages/code/tests/a-picture-of-the-record.test.ts': 8,
   'packages/code/tests/a-plain-git-pull-carries-the-record.test.ts': 13,
-  'packages/code/tests/a-private-rule-keeps-its-facts-private.test.ts': 11,
+  'packages/code/tests/a-private-rule-keeps-its-facts-private.test.ts': 12,
   'packages/code/tests/a-private-write-asks-git.test.ts': 14,
   'packages/code/tests/a-project-inherits-a-record.test.ts': 10,
   'packages/code/tests/a-read-asked-again-draws-what-changed.test.ts': 19,
