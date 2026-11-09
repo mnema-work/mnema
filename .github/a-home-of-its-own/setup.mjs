@@ -229,9 +229,11 @@ export function listRecordPlaces(places) {
     } catch {
       return; // gone between the listing and the look: nothing to say about it
     }
+    // The folder of lock and cache files is not a record, and neither is its appearing: a read
+    // with the checkout as its place (a hook of the person's session) creates it.
+    if (stat.isDirectory() && basename(at) === 'locks') return;
     listed.set(at, stat.isDirectory() ? 'dir' : `${stat.size} ${stat.mtimeMs}`);
     if (!stat.isDirectory()) return;
-    if (basename(at) === 'locks') return; // lock and cache files: not a record
     let names;
     try {
       names = readdirSync(at);

@@ -236,6 +236,27 @@ describe('the record of the checkout is not written by a file of the suite', () 
     }
   });
 
+  it('says nothing of the folder of lock and cache files appearing: a read creates it, and it holds no record', () => {
+    const sandbox = mkdtempSync(join(tmpdir(), 'mnema-checkout-locks-'));
+    try {
+      const place = join(sandbox, '.mnema');
+      mkdirSync(join(place, 'tails'), { recursive: true });
+      writeFileSync(join(place, 'tails', 'kept'), 'a');
+      const before = listRecordPlaces([place]);
+
+      mkdirSync(join(place, 'locks'));
+      writeFileSync(join(place, 'locks', 'projection.db'), 'a cache');
+      expect(whatMovedBetween(before, listRecordPlaces([place]))).toEqual([]);
+
+      writeFileSync(join(place, 'tails', 'new'), 'x');
+      expect(whatMovedBetween(before, listRecordPlaces([place]))).toEqual([
+        `appeared: ${join(place, 'tails', 'new')}`,
+      ]);
+    } finally {
+      rmSync(sandbox, { recursive: true, force: true });
+    }
+  });
+
   it('names a file that appeared, one written to and one removed, and says nothing when nothing moved', () => {
     const sandbox = mkdtempSync(join(tmpdir(), 'mnema-checkout-moved-'));
     try {

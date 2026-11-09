@@ -33,6 +33,12 @@ with its own changelog.
   and so in the repository's git. The fact is now written to the tree that holds the rule, by the hook command and by
   the MCP tool alike; a public rule at the same path keeps its fact in the public tree. Facts already written stay as
   they are.
+- **Rejecting the successor of a supersede says what it leaves.** `mnema decision move reject` and `decision_transition`
+  now name the decisions the rejected one had replaced: they stay `superseded`, so nothing is in force on that subject.
+- **`show` and `read_record` name every decision a successor replaced.** A decision that superseded two or more printed
+  only the last; it now prints a `supersedes` line for each, and the JSON carries the others in `alsoSupersedes`.
+- **`mnema rules` and `mnema why` say when the rules are not pushed.** With `edit-rules-push` switched off, a path that a
+  rule governs gets a line on the second stream: those rules are not handed to an agent when it edits there.
 
 ## [0.1.6] - 2026-11-07
 

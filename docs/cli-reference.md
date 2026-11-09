@@ -1397,6 +1397,8 @@ mnema commits ADR-4
 # saying what it does there (governs, refuses a write, asks for a person), and the commits that
 # touched it and carry a trailer. A rule the project inherits is listed too, naming its origin.
 mnema why src/billing/invoice.ts
+# With `edit-rules-push` switched off, `mnema rules` and `mnema why` add, on the second stream, that
+# the rules governing the path are not handed to an agent when it edits there.
 
 # Accepted decisions whose addressed paths changed in many commits since they were accepted.
 mnema aging --min-commits 10
@@ -2058,6 +2060,10 @@ that only a person accepts here. To the command with no `--which`, it says that 
 A decision recorded a second time wrote nothing and says nothing of its state. It is a sentence of words: the product reads
 no answer, and what the agent was told is not what the gate checks (`agent-accepts` is).
 
+A supersede whose successor is still `proposed` leaves nothing in force on that subject until it is accepted, and the
+move says so. Rejecting that successor leaves the decision it replaced `superseded`, by a decision that never governed,
+and the rejection says so too, naming it, in `mnema decision move reject` and in `decision_transition`.
+
 ### What a recorded decision offers
 
 After "Recorded decision ADR-n (id)", `mnema decision record <title> <rationale>` and the `record_decision` tool may add lines that
@@ -2605,7 +2611,9 @@ A decision that replaced another says which, on the same line as the rule: the l
 `supersedes` field, beside the id, as `{ found, id, adr, title, state }`; `found: false` with only the `id` says the trees read
 do not hold the replaced decision. `read_record` and `show --json` carry `supersedes` and `supersededBy` the same way
 beside the raw ids of `record`, and the `show` verb prints each on one line, with the id after the name:
-`supersedes ADR-<n>: <title> (<state>) · <id>`. The committed brief document carries only the trees that travel, so it
+`supersedes ADR-<n>: <title> (<state>) · <id>`. A decision that replaced more than one prints one such line for each; the
+`supersedes` field of `read_record` and `show --json` is the last one it was named by, and the others are in
+`alsoSupersedes`. The committed brief document carries only the trees that travel, so it
 names a replaced decision only when the committed tree holds it.
 
 The same field rides where the rules addressed at a file are told: each rule `governing_rules` lists carries `supersedes`
