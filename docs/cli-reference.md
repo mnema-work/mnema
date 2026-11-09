@@ -2083,7 +2083,7 @@ line names the call that would do it.
   `rules_before_an_edit` before an edit, which only Claude Code does. The reply lists up to ten of them, the latest first,
   and the `link_knowledge` call with `rel: "governs"` that would address the decision at the latest. A path outside the
   project is not kept, and a restarted server starts with none. In a host that does not call `rules_before_an_edit` only the
-  paths asked of `governing_rules` appear. The command line has no connection and so no path to list: `mnema decision record` always adds the two lines that say the decision is addressed at no path and that nothing was linked, and name the call, `mnema link <id> <path> --rel governs` (with `--scope private` for a decision in the private tree), to fill in with the files it governs.
+  paths asked of `governing_rules` appear. The command line has no connection and so no path to list: the command that records a decision always adds the two lines that say the decision is addressed at no path and that nothing was linked, and name the call, `mnema link <id> <path> --rel governs` (with `--scope private` for a decision in the private tree), to fill in with the files it governs.
 
 The working tree's changes are never read to find the paths: they could credit the session with what it did not do.
 

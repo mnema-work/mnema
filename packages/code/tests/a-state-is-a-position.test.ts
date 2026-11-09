@@ -314,9 +314,19 @@ afterAll(() => {
   rmSync(sandbox, { recursive: true, force: true });
 });
 
-/** The one line of a report that carries `id`, or a failure that says it was not there. */
+/**
+ * The one line of a report that is about `id` (the id is its first column: the line of a replaced
+ * decision names the other end by id too, and that is a mention, not the line), or a failure that
+ * says it was not there.
+ */
 function lineFor(report: readonly string[], id: string): string {
-  const found = report.filter((line) => line.includes(id));
+  const found = report.filter((line) =>
+    line
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: the styled report paints with escapes
+      .replace(/\u001b\[[0-9;]*m/g, '')
+      .trimStart()
+      .startsWith(id),
+  );
   expect(found.length, `no single line for ${id} in ${report.join(' / ')}`).toBe(1);
   return found[0] as string;
 }
@@ -404,8 +414,11 @@ describe('every position reads as what it is, and paints only where it is news',
         // The words, either way: the state is named in both, so nothing lives in the hue.
         // Asserted as the END of the line and with the DOUBLE space refused, because
         // `toContain` alone reads a state joined as a column as if nothing had moved,
-        // which is exactly the mutation that turned the golden red and left this green.
-        expect(bare, where).toMatch(new RegExp(`[^ ] \\(${state}\\)$`));
+        // which is exactly the mutation that turned the golden red and left this green. The one
+        // thing that may follow it is the clause naming the other end of a replaced decision.
+        expect(bare, where).toMatch(
+          new RegExp(`[^ ] \\(${state}\\)(?: {2}(?:supersedes|superseded by) [^ ].*)?$`),
+        );
         expect(stripped(painted), where).toBe(bare);
         if (hue === undefined) {
           // Unpainted is asserted as the PLAIN sequence surviving verbatim: the space,

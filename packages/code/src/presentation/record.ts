@@ -215,7 +215,7 @@ function storyLines(render: Render, story: TaskStory): string[] {
 }
 
 /** `supersedes ADR-16: <title> (superseded) · <id>`: the named end, then the id that opens it. */
-function replacementFact(verb: string, named: NamedDecision): string {
+export function replacementFact(verb: string, named: NamedDecision): string {
   const text = namedDecisionText(named);
   return named.found ? `${verb} ${text} · ${oneLine(named.id)}` : `${verb} ${text}`;
 }

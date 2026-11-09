@@ -19,7 +19,7 @@ import type { RecordSearch } from '@mnema/context';
 import { SEARCH_KINDS } from '@mnema/core';
 import { oneLine } from '../one-line.js';
 import { asId, asScope, asWhen, itemLine } from './items.js';
-import { namedDecisionText } from './named-decision.js';
+import { replacementFact } from './record.js';
 import type { Render } from './render.js';
 import { asState } from './state.js';
 
@@ -97,10 +97,8 @@ export function searchReport(
  * is the current one.
  */
 function replacementParts(hit: RecordSearch['hits'][number]): string[] {
-  const end = (verb: string, named: NonNullable<RecordSearch['hits'][number]['supersedes']>) =>
-    `${verb} ${namedDecisionText(named)}${named.found ? ` · ${oneLine(named.id)}` : ''}`;
   return [
-    ...(hit.supersededBy !== undefined ? [end('superseded by', hit.supersededBy)] : []),
-    ...(hit.supersedes !== undefined ? [end('supersedes', hit.supersedes)] : []),
+    ...(hit.supersededBy !== undefined ? [replacementFact('superseded by', hit.supersededBy)] : []),
+    ...(hit.supersedes !== undefined ? [replacementFact('supersedes', hit.supersedes)] : []),
   ];
 }
