@@ -1108,7 +1108,8 @@ function inForceOf(
           // not a case, and it prints something true either way.
           address: rule.address ?? rule.recorded,
           travels: rule.scope === TRAVELS_TO_A_CLONE,
-          ...(rule.scope !== undefined ? { scope: rule.scope } : {}),
+          // Defined for everything that reaches this point: the rule is in force, so a tree holds it.
+          scope: rule.scope as Scope,
           ...(rule.acceptance !== undefined ? { acceptance: rule.acceptance } : {}),
           ...(rule.supersedes !== undefined ? { supersedes: rule.supersedes } : {}),
           // Absent, never empty: a rule decided here has no provenance, and an empty

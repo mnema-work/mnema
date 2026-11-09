@@ -18,6 +18,7 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { type CatalogEvent, catalogUpcasters } from '@mnema/chain';
+import { resolveTrees } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runDecisionTransition } from '../src/commands/decision-transition.js';
 import { resolveAddress } from '../src/label-as-address.js';
@@ -459,6 +460,29 @@ describe('a switch met by a line the record cannot read', () => {
     expect(said.err).toContain('Switching a channel off is a write to the same record');
     expect(said.err).toContain('`mnema verify` lists every unreadable line');
     expect(readFileSync(segment, 'utf-8')).toBe(bytes);
+  });
+});
+
+describe('a write met by a line of the global record, outside any project', () => {
+  it('names the global record and what it closes', async () => {
+    const dir = repo('plain', { git: false });
+    const recorded = await mnema(
+      'decision',
+      'record',
+      'Use UTC',
+      'three zones',
+      '--scope',
+      'global',
+    );
+    expect(recorded.failed, recorded.err).toBe(false);
+    const { global } = resolveTrees(dir, { home });
+    const tails = join(global, 'tails');
+    const segment = join(tails, readdirSync(tails)[0] as string, '000001.jsonl');
+    writeFileSync(segment, `${readFileSync(segment, 'utf-8')}{"this is not json\n`, 'utf-8');
+    const said = await mnema('decision', 'record', 'Use ISO', 'one format', '--scope', 'global');
+    expect(said.failed).toBe(true);
+    expect(said.err).toContain('this machine’s global record holds a line this mnema cannot read');
+    expect(said.err).toContain('closes every project on this machine');
   });
 });
 
