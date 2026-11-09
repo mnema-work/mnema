@@ -832,6 +832,13 @@ export interface PushedRule {
    */
   readonly travels: boolean;
   /**
+   * The tree that holds the rule: `public`, `private` or `global`. A fact the rule causes
+   * (a refusal, an asking) belongs to this tree and no other, so the rule's id is never
+   * written where the rule does not travel to. Absent only where a caller built the rule by
+   * hand; {@link ruleTree} then falls back on {@link travels}.
+   */
+  readonly scope?: Scope;
+  /**
    * Who accepted the rule, when it is a decision that was accepted: the line a push carries says
    * it as the opening document does, so a rule is not told in one voice here and another there.
    */
@@ -869,6 +876,16 @@ export interface PushedRule {
    * ({@link AddressedRule.heldIn}): where the rule opens, which `mnema show` here does not.
    */
   readonly heldIn?: InheritedFrom;
+}
+
+/**
+ * The tree a fact caused by `rule` is written to: the tree that holds the rule, or, for a rule
+ * built without one, `private` when it does not travel and `undefined` (the kind's own default)
+ * when it does. The direction that cannot leak: a rule that is not known to travel never has its
+ * id written where a clone gets it.
+ */
+export function ruleTree(rule: Pick<PushedRule, 'travels' | 'scope'>): Scope | undefined {
+  return rule.scope ?? (rule.travels ? undefined : 'private');
 }
 
 /** The rules in force addressed at a path, and the path they were matched against. */
@@ -1092,6 +1109,7 @@ function inForceOf(
           // not a case, and it prints something true either way.
           address: rule.address ?? rule.recorded,
           travels: rule.scope === TRAVELS_TO_A_CLONE,
+          ...(rule.scope !== undefined ? { scope: rule.scope } : {}),
           ...(rule.acceptance !== undefined ? { acceptance: rule.acceptance } : {}),
           ...(rule.supersedes !== undefined ? { supersedes: rule.supersedes } : {}),
           // Absent, never empty: a rule decided here has no provenance, and an empty

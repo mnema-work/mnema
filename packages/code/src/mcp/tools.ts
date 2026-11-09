@@ -209,6 +209,8 @@ import {
 } from '../tree-sources.js';
 import {
   type ChargeRecorded,
+  type FactsOfATree,
+  factsByTree,
   movedApartLine,
   reasonTold,
   recordTheCharge,
@@ -3173,14 +3175,28 @@ function recordFacts(
   ats: readonly RulesAtPath[],
   channel: SwitchableChannel,
 ): { readonly ok: boolean } {
+  // A FACT GOES TO THE TREE OF THE RULE THAT CAUSED IT: the id of a rule that does not travel is
+  // never written where a clone gets it. Rules of two trees are two writes, one in each.
+  for (const held of factsByTree(ats)) {
+    const done = recordFactsInTree(session, held, channel);
+    if (!done.ok) return done;
+  }
+  return { ok: true };
+}
+
+function recordFactsInTree(
+  session: Session,
+  held: FactsOfATree,
+  channel: SwitchableChannel,
+): { readonly ok: boolean } {
   const refusing = channel === REFUSES_A_WRITE_CHANNEL;
   const kind = refusing ? 'channel.refused' : 'channel.asked';
-  const route = routeWrite(session, kind, {});
+  const route = routeWrite(session, kind, held.tree === undefined ? {} : { scope: held.tree });
   if (!route.ok) return { ok: false };
   const { ctx, run, which } = openWrite(session, route.scope);
   return ctx.writer.exclusively(() => {
     let appended = 0;
-    for (const at of ats) {
+    for (const at of held.at) {
       for (const rule of at.rules) {
         const input = {
           channel,

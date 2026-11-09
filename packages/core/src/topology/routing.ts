@@ -178,6 +178,8 @@ const TREE_BY_KIND: { readonly [K in RoutedKind]: Scope | typeof BY_ORIGIN } = {
   // arrive, or auditing what the record charged for, and filed where only the machine
   // that produced them can read, neither question has an answer. `--scope private` is
   // still there for somebody who wants the fact on one machine only.
+  // A fact a PRIVATE rule causes is not routed by this table: the code that writes it sends it to the
+  // tree that holds the rule, so a rule's id never reaches a tree its rule does not travel in.
   'channel.served': 'public',
   'channel.asked': 'public',
   // A refusal travels for the asking's reason, and with more at stake: the teammate whose

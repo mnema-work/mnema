@@ -26,6 +26,14 @@ with its own changelog.
 - **From source, the binary is `packages/code/dist/bundle/cli.js`.** [Build from source](docs/build-from-source.md) and
   [the site page](docs/site.md) name it; the compiled `dist/cli.js` is still built and still runs.
 
+### Fixed
+
+- **A private rule's refusals and askings stay private.** A rule recorded with `--scope private` that refused a write
+  or asked for a person used to leave its `channel.refused` or `channel.asked` in the public tree, with the rule's id,
+  and so in the repository's git. The fact is now written to the tree that holds the rule, by the hook command and by
+  the MCP tool alike; a public rule at the same path keeps its fact in the public tree. Facts already written stay as
+  they are.
+
 ## [0.1.6] - 2026-11-07
 
 ### Changed

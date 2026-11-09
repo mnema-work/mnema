@@ -87,6 +87,8 @@ import {
 import { sessionIdOf, takeTheFirstServing } from '../session-journal.js';
 import { caches, withScopedCaches } from '../tree-sources.js';
 import {
+  type FactsOfATree,
+  factsByTree,
   recordTheCharge,
   refusalOfAnUnreadableRecord,
   UNREADABLE_RECORD_NOTE,
@@ -366,14 +368,33 @@ function recordTheService(
  * asking only, the one `channel.served` of this asking, under one checkpoint: the facts the MCP
  * tool appends, in the tree they are routed to. The facts decide the answer; the service fact is
  * attempted and never un-asks. A refusal has no service fact, because it is itself the fact.
+ *
+ * A FACT GOES TO THE TREE OF THE RULE THAT CAUSED IT: the id of a rule that does not travel is never
+ * written where a clone gets it. One asking that met rules of two trees is two writes, one in each,
+ * each with the service fact of the asking.
  */
 function recordWhatItMet(
   trees: ReturnType<typeof resolveTrees>,
   met: WriteVerdict,
   which: string,
 ): { readonly ok: boolean; readonly why?: string } {
+  for (const held of factsByTree(met.at)) {
+    const done = recordInTree(trees, met, held, which);
+    if (!done.ok) return done;
+  }
+  return { ok: true };
+}
+
+/** The facts of the rules one tree holds, in that tree, signed as the record has the agent sign there. */
+function recordInTree(
+  trees: ReturnType<typeof resolveTrees>,
+  met: WriteVerdict,
+  held: FactsOfATree,
+  which: string,
+): { readonly ok: boolean; readonly why?: string } {
   const refusing = met.grade === 'refuse';
-  const scope = resolveScope(refusing ? 'channel.refused' : 'channel.asked', { which });
+  const scope =
+    held.tree ?? resolveScope(refusing ? 'channel.refused' : 'channel.asked', { which });
   // WHERE THE RECORD ENROLS THE AGENT'S KEY, THE FACTS ARE ITS: signed by it, under the name the
   // record gave it. The host's name stands everywhere else (the person's key signs there).
   const named = agentSignsIn(trees, scope)?.name ?? which;
@@ -386,7 +407,7 @@ function recordWhatItMet(
   const channel = refusing ? REFUSES_A_WRITE_CHANNEL : ASKS_A_PERSON_CHANNEL;
   // The facts, the service fact and their signature in ONE hold of the tail's lock.
   return writer.exclusively(() => {
-    for (const at of met.at) {
+    for (const at of held.at) {
       for (const rule of at.rules) {
         const input = {
           channel,

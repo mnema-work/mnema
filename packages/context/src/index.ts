@@ -260,6 +260,7 @@ export {
   type RulesAtPath,
   refusesAWriteAt,
   rulesInForceAt,
+  ruleTree,
   type TreeWalk,
   type WalkOutcome,
 } from './intelligence/governance.js';

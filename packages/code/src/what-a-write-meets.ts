@@ -25,7 +25,13 @@
 
 import { sep } from 'node:path';
 import { DEFAULT_WAIT_MS, TailBusyError, UnreadableLineError } from '@mnema/chain';
-import { channelIsOn, type PushedRule, type RulesAtPath, type ScopedCache } from '@mnema/context';
+import {
+  channelIsOn,
+  type PushedRule,
+  type RulesAtPath,
+  ruleTree,
+  type ScopedCache,
+} from '@mnema/context';
 import {
   ASKS_FOR_A_PERSON_RELATION,
   acceptedAgainstRetired,
@@ -168,6 +174,31 @@ export interface WriteVerdict {
   readonly reason: string;
   /** The notices that make up {@link reason}, one per entry of {@link at}, in the same order. */
   readonly notices: readonly string[];
+}
+
+/** The facts of one tree: the paths and rules whose facts are written there. */
+export interface FactsOfATree {
+  /** The tree the rules' facts go to; absent for the kind's own default (the public tree). */
+  readonly tree: Scope | undefined;
+  /** The paths that met a rule held by that tree, each with only those rules. */
+  readonly at: readonly RulesAtPath[];
+}
+
+/**
+ * Splits what a write met by the tree that holds each rule: a fact a rule causes is written to the
+ * rule's own tree, so the id of a rule that does not travel never reaches the tree a clone gets.
+ * The order of paths and of rules is kept inside each tree, and the trees come in the order their
+ * first rule appears.
+ */
+export function factsByTree(ats: readonly RulesAtPath[]): readonly FactsOfATree[] {
+  const trees = new Map<Scope | undefined, RulesAtPath[]>();
+  for (const at of ats) {
+    for (const tree of new Set(at.rules.map(ruleTree))) {
+      const rules = at.rules.filter((rule) => ruleTree(rule) === tree);
+      trees.set(tree, [...(trees.get(tree) ?? []), { ...at, rules }]);
+    }
+  }
+  return [...trees].map(([tree, at]) => ({ tree, at }));
 }
 
 /** How many times a session hears a rule's notice whole before it is told in one line. */
