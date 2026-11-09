@@ -719,13 +719,24 @@ describe('the record arrives unasked', () => {
       /Regenerate this file with `mnema brief > <this file>`[\s\S]*?survives a regeneration\.\n\n/;
     expect(cli('brief')).toMatch(recipe);
     expect(document).not.toMatch(/Regenerate this file/);
-    // The one addition is the line saying the private tree holds a rule in force (this project
-    // has one) that the file, being committed, never carries.
-    const privately =
-      /\nRecorded privately on this machine and not handed to you: 1 decision in force\. [^\n]*\n$/;
-    expect(document).toMatch(privately);
+    // The one addition is this machine's private rules (this project has one in force), in a
+    // section of their own at the end, which the file, being committed, never carries; and the
+    // sentence on what the text carries says so.
+    expect(document).toMatch(/\n## Recorded privately on this machine \(1\)\n[\s\S]*\n$/);
+    expect(document).toContain('and, in its last section, the rules recorded privately');
     expect(cli('brief')).not.toMatch(/Recorded privately/);
-    expect(document.replace(privately, '')).toBe(cli('brief').replace(recipe, ''));
+    // With the switch off, that section is one line counting them, and the rest is the file's.
+    cli('switch', 'off', 'private-rules', '--scope', 'private');
+    try {
+      const counted = cli('brief', '--hook');
+      const privately =
+        /\nRecorded privately on this machine and not handed to you: 1 decision in force\. [^\n]*\n$/;
+      expect(counted).toMatch(privately);
+      expect(counted.replace(privately, '')).toBe(cli('brief').replace(recipe, ''));
+    } finally {
+      cli('switch', 'on', 'private-rules', '--scope', 'private');
+    }
+    expect(cli('brief', '--hook')).toBe(document);
     expect(notes).toBe(cli('recall'));
 
     // Each handler, and the text of the verb IT runs: the two are one rule over two verbs.
@@ -1249,7 +1260,7 @@ describe('the record arrives unasked', () => {
     });
   });
 
-  it('carries the committed record by name, not the private tree, and not the bodies', () => {
+  it('carries the committed record by name, this machine’s private rules apart, and not the bodies', () => {
     // The two absences the plugin's README states out loud, asserted where the README
     // states them: about what reaches the SESSION, not about what the verb composes.
     const ran = runHook(hookRunning(DOCUMENT_HOOK), project);
@@ -1258,8 +1269,12 @@ describe('the record arrives unasked', () => {
 
     expect(context).toContain(COMMITTED_TITLE);
     expect(context).toContain(PATTERN_NAME);
-    // Committed, and accepted, and still not here, because it is this machine's.
-    expect(context).not.toContain(PRIVATE_TITLE);
+    // Accepted in this machine's private tree: not among the committed rules, and handed over
+    // after them under a heading of its own that says whose it is.
+    const apart = context.indexOf('\n## Recorded privately on this machine (');
+    expect(apart).toBeGreaterThan(0);
+    expect(context.slice(0, apart)).not.toContain(PRIVATE_TITLE);
+    expect(context.slice(apart)).toContain(PRIVATE_TITLE);
     // And no note of any tree: a note governs nothing, and the private one is exactly what a
     // committed document may not carry. The notes have their own handler, below.
     expect(context).not.toContain(PRIVATE_NOTE);

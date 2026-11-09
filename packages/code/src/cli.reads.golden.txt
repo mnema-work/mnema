@@ -355,7 +355,7 @@ $ mnema tail list
 | 1 tail(s) holding events (the ones a cut can name):
 |   <tail-own>  public   3 event(s) through <tail-head-an-empty-project-1>  the tail of <anchor>  ·  no waiver  holds 2 key(s) the record needs (prune refuses it)
 $ mnema switch
-| 18 channel(s), looked in public, private, global:
+| 19 channel(s), looked in public, private, global:
 |   brief-document         on   the document `mnema brief` prints, which a session opens with and a subagent starts with: the decisions in force and the adopted patterns of the committed record, by name
 |   recall-document        on   the notes `mnema recall` prints, which a session opens with: the memories and observations recorded for this project, from every tree this machine holds for it, the ones near what the session touches first
 |   edit-rules-push        on   the rules addressed at a file, handed over at each edit of it, beside the result of that write
@@ -370,6 +370,7 @@ $ mnema switch
 |   subagent-handback      on   the return of a subagent that ends its final reply without the block of decisions the record asks for: with it on, a `SubagentStop` hook sends the subagent back once, with the format; off, a subagent stops as it would without the plugin
 |   tool-call-count        on   the local count of tool calls: with it off, the server keeps no line of the calls it answers and `mnema usage --tools` shows what was kept before. The count is a file on this machine, outside the record, with the tool’s name and its result and nothing of the arguments
 |   last-session           on   the section of the notes `mnema recall` prints that says where the last session stopped: its goal, the decisions it recorded and the counts of what it left, read from its journal when it was another session and a recent one
+|   private-rules          on   the section of the text a session opens with and a subagent starts with that lists, by name, the decisions in force and the adopted patterns of this machine’s private tree, marked as not committed. Off, that text only counts them. The committed file `mnema brief` prints carries neither
 |   after-a-compaction     on   the sentence a conversation is handed right after it was compacted, saying what entered the project's record since the session opened, and what it did beside it (decisions by label, notes copied, files edited, questions answered with no decision after), read from its journal
 |   session-journal        on   the session journal: with it off, no file is kept of what a session did with the record, and nothing can say, to a later session, to a compaction or on the run that closes, what this one did. The journal is a file on this machine, outside the record, holding ids and counts and none of the session’s words
 |   agent-mirror           on   the mirror of what a session hands to other agents: with it on, a `PostToolUse` hook on the host’s `Agent` tool records a private task for the session and a private handoff for each dispatch (its short description and the path of a brief file, never the prompt), and the session’s end closes the task with the count. It needs `session-journal` on, and records nothing to the tree a clone gets
@@ -1890,7 +1891,7 @@ $ mnema tail list
 |   <tail-private>  private  8 event(s) through <tail-head-a-populated-project-2>  the tail of <anchor>  ·  no waiver  holds 1 key(s) the record needs (prune refuses it)
 |   <tail-global>  global   4 event(s) through <tail-head-a-populated-project-3>  the tail of <anchor>  ·  no waiver  holds 1 key(s) the record needs (prune refuses it)
 $ mnema switch
-| 18 channel(s), looked in public, private, global:
+| 19 channel(s), looked in public, private, global:
 |   brief-document         on   the document `mnema brief` prints, which a session opens with and a subagent starts with: the decisions in force and the adopted patterns of the committed record, by name
 |   recall-document        on   the notes `mnema recall` prints, which a session opens with: the memories and observations recorded for this project, from every tree this machine holds for it, the ones near what the session touches first
 |   edit-rules-push        on   the rules addressed at a file, handed over at each edit of it, beside the result of that write
@@ -1905,6 +1906,7 @@ $ mnema switch
 |   subagent-handback      on   the return of a subagent that ends its final reply without the block of decisions the record asks for: with it on, a `SubagentStop` hook sends the subagent back once, with the format; off, a subagent stops as it would without the plugin
 |   tool-call-count        on   the local count of tool calls: with it off, the server keeps no line of the calls it answers and `mnema usage --tools` shows what was kept before. The count is a file on this machine, outside the record, with the tool’s name and its result and nothing of the arguments
 |   last-session           on   the section of the notes `mnema recall` prints that says where the last session stopped: its goal, the decisions it recorded and the counts of what it left, read from its journal when it was another session and a recent one
+|   private-rules          on   the section of the text a session opens with and a subagent starts with that lists, by name, the decisions in force and the adopted patterns of this machine’s private tree, marked as not committed. Off, that text only counts them. The committed file `mnema brief` prints carries neither
 |   after-a-compaction     on   the sentence a conversation is handed right after it was compacted, saying what entered the project's record since the session opened, and what it did beside it (decisions by label, notes copied, files edited, questions answered with no decision after), read from its journal
 |   session-journal        on   the session journal: with it off, no file is kept of what a session did with the record, and nothing can say, to a later session, to a compaction or on the run that closes, what this one did. The journal is a file on this machine, outside the record, holding ids and counts and none of the session’s words
 |   agent-mirror           on   the mirror of what a session hands to other agents: with it on, a `PostToolUse` hook on the host’s `Agent` tool records a private task for the session and a private handoff for each dispatch (its short description and the path of a brief file, never the prompt), and the session’s end closes the task with the count. It needs `session-journal` on, and records nothing to the tree a clone gets
