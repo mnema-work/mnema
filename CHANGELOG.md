@@ -25,6 +25,11 @@ with its own changelog.
   than its opening: Codex 0.167 lists each server it defers by its first 250 characters. The rest of the text says what
   it said, a little shorter, and stays under 2,048 characters.
 
+- **The host contract holds Codex 0.167.0, Claude Code 2.1.311 and Copilot CLI 1.0.108.** Codex 0.167 lists a server in a
+  developer message, `<tools> Deferred tool namespaces:`, and no longer in the description of its search entry (699
+  bytes, 151 tokens), so the cases read both. Claude Code 2.1.311 asks again for a summary when a reply carries no
+  summary block, so the compaction case answers with one.
+
 - **The text a session opens with carries this machine's private rules, marked as such.** After the committed record's
   rules, the copy the plugin hands a session and a subagent (`mnema brief --hook`) ends with a section, `Recorded
   privately on this machine`, that lists by name the decisions in force and the adopted patterns of this machine's

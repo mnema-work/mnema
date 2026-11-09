@@ -40,7 +40,7 @@ describe("what Codex sends of the plugin's tools", () => {
     expect(named('mnema')).toEqual([]);
     expect(named('mcp__mnema')).toEqual([]);
     expect(theServersTheHostListsSay(session)).toMatch(/- (?:mcp__)?mnema\w*: /);
-    expect(weigh(JSON.stringify(search))).toEqual({ bytes: 2_866, tokens: 678 });
+    expect(weigh(JSON.stringify(search))).toEqual({ bytes: 699, tokens: 151 });
   }, 180_000);
 
   it('returns, for a query, one namespace of the definitions it ranked first, and they weigh this much', async () => {

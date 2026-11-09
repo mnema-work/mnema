@@ -14,7 +14,9 @@ to its model. The host is the real binary, unmodified, in a network namespace th
 loopback, against a stand-in for its model that answers what the case scripts. The same cases run
 for the version the workflow pins on every pull request and for the newest one every week; the
 version is in each run's "Host measured" summary, and a host that changes what it does turns that
-host's job red.
+host's job red. The Claude Code cells are measured on 2.1.311, the version pinned (2.1.296 before; the
+host asks for a summary again when a reply carries no summary block from 2.1.311, so the case's stand-in
+answers with one).
 
 **Where the rule is kept** (the rows):
 

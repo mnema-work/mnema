@@ -477,7 +477,7 @@ const MNEMA_IS_LISTED = /- (?:mcp__)?mnema\w*: /;
 
 /**
  * Where the host tells the model which servers it can search, in one string with its white space
- * folded: the description of the search tool (Codex 0.161), and the developer message
+ * folded: the description of the search tool (Codex 0.161 and before), and the developer message
  * `<tools> Deferred tool namespaces: ...` of the first request (Codex 0.167 and after, which
  * lists each server there, by the first 250 characters of its instructions, and no longer in the
  * description). A case that holds that the server came up reads both, so it holds on either.
