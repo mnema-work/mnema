@@ -12,6 +12,14 @@ with its own changelog.
 
 ### Changed
 
+- **The text a session opens with carries this machine's private rules, marked as such.** After the committed record's
+  rules, the copy the plugin hands a session and a subagent (`mnema brief --hook`) ends with a section, `Recorded
+  privately on this machine`, that lists by name the decisions in force and the adopted patterns of this machine's
+  private tree and says they are not committed. It is the first part cut at the hook's ceiling, and says what it left
+  out. A new switch, `private-rules`, on to begin with, turns it off: `mnema switch off private-rules` gives back the
+  line that only counts them. The file `mnema brief` prints is unchanged, and the machine's global tree reaches
+  neither.
+
 - **The `mnema` command starts in about half the time.** The `bin` of `@mnema/code` is now `dist/bundle/cli.js`, one
   bundle of the command and of the code it reaches, its dependencies included (all but `string-width`), split into
   chunks so the Node version check still runs before anything else is loaded. Median of 20 starts on one machine,

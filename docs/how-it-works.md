@@ -40,11 +40,15 @@ turned down, the patterns your team works by, tasks and handoffs: typed facts in
 `.mnema/`, committed with the code, in the diff of the pull request that adds them,
 and handed to every clone. Notes go there when a person writes them; an agent's
 stay in a private tree on its machine unless it names the shared one, and a global
-tree keeps what outlives a project. Every write says which tree it landed in. A rule
-recorded in the private tree governs no agent: the document a session opens with
-carries only the committed record, and says how many decisions in force and adopted
-patterns the private tree holds and the commands that list them (never their text),
-and nothing when it holds none. Not a
+tree keeps what outlives a project. Every write says which tree it landed in. The text
+a session opens with through the plugin (and a subagent starts with) carries the
+committed record, and this machine's private rules marked as such: after the committed
+ones, a section lists the decisions in force and the adopted patterns of the private
+tree by name, under a heading and a line that say they are this machine's and not
+committed. `mnema switch off private-rules` replaces that section by one line that says
+how many there are and the commands that list them. The file `mnema brief` prints
+carries the committed record alone, with or without private rules, and the machine's
+global tree reaches neither. Not a
 file on one person's machine: a record the team shares, and one that no command
 rewrites.
 
