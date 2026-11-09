@@ -69,7 +69,7 @@ const LINES: readonly { label: string; rests: readonly string[] }[] = [
   {
     label: 'Not a copy somewhere else.',
     rests: [
-      "what you record privately stays on this machine, apart from the notes your agent's host receives, when a session opens through the plugin and when the agent asks for them, which the host sends to its model",
+      "what you record privately stays on this machine, apart from the notes and the private rules your agent's host receives, when a session opens through the plugin and when the agent asks for them, which the host sends to its model",
       'only when you run them',
     ],
   },

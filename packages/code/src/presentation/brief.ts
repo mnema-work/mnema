@@ -121,6 +121,7 @@ import type {
   ChannelState,
   DisputedDecision,
   NamedDecision,
+  PrivateRules,
 } from '@mnema/context';
 import type { DivergentMove } from '@mnema/core';
 import { isStackName, isStackVersion } from '@mnema/core';
@@ -219,6 +220,18 @@ const WHAT_TRAVELS = [
   'It carries what is COMMITTED to this project: the record a clone of the repository',
   'gets, and nothing kept privately on one machine or for one person. A rule recorded',
   'that way is not below, and each heading counts what is printed under it. Recording',
+  'changes `.mnema/`, and that change goes in the same commit as the work it describes.',
+];
+
+/**
+ * {@link WHAT_TRAVELS} for the copy a hook carries when it ends with this machine's private
+ * rules ({@link privateSection}): the same scope, said with the one section that is not of it.
+ * Only the hook's copy says it, because only the hook's copy carries that section.
+ */
+const WHAT_TRAVELS_WITH_PRIVATE = [
+  'It carries what is COMMITTED to this project: the record a clone of the repository',
+  'gets, and, in its last section, the rules recorded privately on this machine, marked',
+  'as such: no clone gets those. Each heading counts what is printed under it. Recording',
   'changes `.mnema/`, and that change goes in the same commit as the work it describes.',
 ];
 
@@ -786,20 +799,117 @@ export function briefWithin(
   stacks?: StacksHere,
   formatter?: readonly string[],
   keptPrivate?: BriefDone['keptPrivate'],
+  privateRules?: PrivateRules,
 ): string[] {
   const late = [
-    ...keptPrivateSection(keptPrivate),
     ...notInTheRecord(outside),
     ...stacksSection(stacks),
     ...formatterSection(formatter),
     ...inheritedSection(inherited),
   ];
+  const committed = rulesIn(governance);
+  const mine =
+    privateRules === undefined ? 0 : privateRules.decisions.length + privateRules.skills.length;
+  // ONE CUT OVER BOTH LISTS, the committed rules first: the private ones are the tail of the
+  // order, so they are the first to be left out, and a committed rule is never dropped to make
+  // room for a private one.
   return fitWhole(
-    rulesIn(governance),
+    committed + mine,
     room,
-    (shown) => [...composed(governance, shown, ceiling, false, inherited), ...late],
+    (shown) => [
+      ...composed(
+        governance,
+        Math.min(shown, committed),
+        ceiling,
+        false,
+        inherited,
+        mine > 0 ? WHAT_TRAVELS_WITH_PRIVATE : WHAT_TRAVELS,
+      ),
+      ...(mine > 0 && privateRules !== undefined
+        ? privateSection(privateRules, Math.max(0, shown - committed), ceiling)
+        : keptPrivateSection(keptPrivate)),
+      ...late,
+    ],
     ceiling.lengthOf,
   );
+}
+
+/** The line under the heading of {@link privateSection}: whose the rules are, and where they are not. */
+const PRIVATE_RULES_ARE = [
+  'Decisions in force and adopted patterns of this machine’s private tree, not committed:',
+  'a clone of the repository does not get them, and the headings above do not count them.',
+];
+
+/**
+ * What the copy a hook carries lists of the rules recorded in this machine's private tree, after
+ * the committed ones: one heading, the line that says whose they are, and each rule in the shape
+ * the committed ones take, up to the `shown` that fit.
+ *
+ * IT IS THE HOOK'S COPY ONLY, for the reason {@link keptPrivateSection} is, and it takes that
+ * section's place while `private-rules` is on: the file somebody commits never carries a fact
+ * about one machine's private tree. What did not fit is said the way {@link leftOut} says it,
+ * with the doors that list the private tree.
+ */
+function privateSection(rules: PrivateRules, shown: number, ceiling: HookCeiling): string[] {
+  const decisions = rules.decisions.slice(0, shown);
+  const skills = rules.skills.slice(0, Math.max(0, shown - rules.decisions.length));
+  const items = [
+    ...decisions.map((decision) =>
+      rule(
+        `${privateLabel(decision.adr)}: ${decision.title}`,
+        decision.id,
+        decision.origin,
+        decision.acceptance,
+        decision.supersedes === undefined ? undefined : privatelyNamed(decision.supersedes),
+      ),
+    ),
+    ...skills.map((skill) => rule(skill.name, skill.id, skill.origin)),
+  ];
+  const leftDecisions = rules.decisions.length - decisions.length;
+  const leftPatterns = rules.skills.length - skills.length;
+  return [
+    '',
+    `## Recorded privately on this machine (${items.length})`,
+    '',
+    ...PRIVATE_RULES_ARE,
+    ...(items.length > 0 ? ['', ...items] : []),
+    ...privateLeftOut(leftDecisions, leftPatterns, ceiling),
+  ];
+}
+
+/**
+ * The label a private rule is printed with: `private ADR-<n>`, never the bare `ADR-<n>`.
+ *
+ * EACH CHAIN NUMBERS ITS OWN, so the private tree's `ADR-1` and the committed record's `ADR-1`
+ * are two different decisions printed in one text. A bare label here would let a citation of one
+ * mean the other; the word in front of it, and the id the line carries, keep them apart.
+ */
+function privateLabel(adr: string): string {
+  return `private ${adr}`;
+}
+
+/**
+ * The decision a private rule replaced, labelled as private with its id: it was read from the
+ * private tree alone, so its label is that chain's, for {@link privateLabel}'s reason.
+ */
+function privatelyNamed(named: NamedDecision): NamedDecision {
+  return named.found ? { ...named, adr: `${privateLabel(named.adr)} \`${named.id}\`` } : named;
+}
+
+/** {@link leftOut} for {@link privateSection}: the same four things, with the private doors. */
+function privateLeftOut(decisions: number, patterns: number, ceiling: HookCeiling): string[] {
+  if (decisions + patterns === 0) return [];
+  const parts = [
+    ...(decisions > 0 ? [counted(decisions, 'decision in force', 'decisions in force')] : []),
+    ...(patterns > 0 ? [counted(patterns, 'adopted pattern', 'adopted patterns')] : []),
+  ].join(' and ');
+  return [
+    '',
+    `Left out of this section: ${parts}, the last ${decisions + patterns === 1 ? 'one' : 'ones'} in the order above.`,
+    `A hook hands a session at most ${ceilingInWords(ceiling)}, so this one stops at a whole rule.`,
+    '`mnema search --scope private --kind decision --state accepted` and',
+    '`mnema search --scope private --kind skill --state adopted` list every one of them.',
+  ];
 }
 
 /**
@@ -1032,6 +1142,7 @@ function composed(
   ceiling: HookCeiling = CLAUDE_CODE_CEILING,
   forAFile = true,
   inherited?: InheritedReading,
+  travels: readonly string[] = WHAT_TRAVELS,
 ): string[] {
   const decisions = governance.decisions.slice(0, shown);
   const skills = governance.skills.slice(0, Math.max(0, shown - governance.decisions.length));
@@ -1042,7 +1153,7 @@ function composed(
     '',
     ...WHAT_THIS_IS,
     '',
-    ...WHAT_TRAVELS,
+    ...travels,
     '',
     // How to regenerate is for whoever holds the file; a session that is handed this text
     // has no use for how to regenerate the file, and carries the paragraph at every opening.

@@ -34,7 +34,7 @@ Said as scope, because each of these is a choice with a reason behind it:
   and records what the agent decides.
 - **Not a copy somewhere else.** The committed record travels with the repository,
   to every clone, and what you record privately stays on this machine, apart from the
-  notes your agent's host receives, when a session opens through the plugin and when the
+  notes and the private rules your agent's host receives, when a session opens through the plugin and when the
   agent asks for them, which the host sends to its model (what the plugin hands over when
   a session opens reads every tree this machine holds, the private one included, and has a
   switch of its own: see [the plugin](../plugin/README.md); what the agent asks for, with

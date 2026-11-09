@@ -387,7 +387,8 @@ export type SwitchableChannel =
   | 'tool-call-count'
   | 'session-journal'
   | 'agent-mirror'
-  | 'last-session';
+  | 'last-session'
+  | 'private-rules';
 
 /**
  * The two switchable channels, each named once, so no consumer spells one.
@@ -509,6 +510,16 @@ export const SESSION_JOURNAL_CHANNEL: SwitchableChannel = 'session-journal';
  * the document `mnema recall` prints, and it is framed by that document's declaration.
  */
 export const LAST_SESSION_CHANNEL: SwitchableChannel = 'last-session';
+
+/**
+ * The switch of the section of the text a session opens with (and a subagent starts with) that
+ * lists the decisions in force and the adopted patterns of this machine's private tree, by name,
+ * marked as this machine's. It is text in front of a model, inside the document `mnema brief
+ * --hook` prints, and it is framed by that document's declaration. ON until switched off; off,
+ * the section is replaced by the line that only counts them. The committed file `mnema brief`
+ * prints never carries either.
+ */
+export const PRIVATE_RULES_CHANNEL: SwitchableChannel = 'private-rules';
 
 /**
  * The switch of the reminder a conversation gets right after it was compacted: what entered the
@@ -706,6 +717,9 @@ export const NOT_COUNTED_AS_SERVED: {
     'the section is printed by `mnema recall`, which reads the journal and the record and writes ' +
     'nothing (no event, no key, no run), so telling a session where the last one stopped never ' +
     'moves the record',
+  'private-rules':
+    'the section is printed by `mnema brief --hook`, a read that writes nothing, for the reason the ' +
+    'document is not counted',
   'after-a-compaction':
     'the sentence is printed by `mnema recall --after-a-compaction`, which reads the journal and the ' +
     'record and writes nothing (no event, no key, no run), so reminding a session of what it did never ' +
@@ -807,6 +821,11 @@ export const WHAT_STOPS: { readonly [K in SwitchableChannel]: string } = {
     'the section of the notes `mnema recall` prints that says where the last session stopped: its ' +
     'goal, the decisions it recorded and the counts of what it left, read from its journal when it ' +
     'was another session and a recent one',
+  'private-rules':
+    'the section of the text a session opens with and a subagent starts with that lists, by name, ' +
+    'the decisions in force and the adopted patterns of this machine’s private tree, marked as ' +
+    'not committed. Off, that text only counts them. The committed file `mnema brief` prints ' +
+    'carries neither',
   'after-a-compaction':
     'the sentence a conversation is handed right after it was compacted, saying what entered the ' +
     "project's record since the session opened, and what it did beside it (decisions by label, notes copied, files edited, questions answered with no " +

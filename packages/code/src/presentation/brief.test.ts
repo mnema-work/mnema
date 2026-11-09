@@ -947,6 +947,79 @@ describe('the hook’s copy stops at a whole rule, and says so', () => {
   });
 });
 
+describe('the hook’s copy with this machine’s private rules', () => {
+  const long = (n: number) =>
+    `A private call numbered ${n} about ${'the staging run and its retries '.repeat(6)}`;
+  const committed = governance({
+    decisions: Array.from({ length: 10 }, (_, at) => decision(at + 1)),
+    skills: [pattern(1)],
+  });
+  const many = {
+    decisions: Array.from({ length: 80 }, (_, at) => decision(at + 50, long(at + 50))),
+    skills: [pattern(60)],
+  };
+  const withPrivate = (room: number, rules: Parameters<typeof briefWithin>[8]) =>
+    briefWithin(
+      committed,
+      room,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      rules,
+    );
+  const bullets = (lines: readonly string[]) => lines.filter((line) => line.startsWith('- **'));
+
+  it('stays within the ceiling, keeps every committed rule, and says what it left out', () => {
+    const handed = withPrivate(HOOK_TEXT_CEILING, many);
+    expect(printedLength(handed)).toBeLessThanOrEqual(HOOK_TEXT_CEILING);
+    // Every committed rule first, whole, in the file's order: the private ones are the tail.
+    const committedBullets = bullets(theHooksCopy(committed));
+    expect(bullets(handed).slice(0, committedBullets.length)).toEqual(committedBullets);
+    const privateShown = bullets(handed).length - committedBullets.length;
+    expect(privateShown).toBeGreaterThan(0);
+    expect(privateShown).toBeLessThan(81);
+    expect(handed).toContain(`## Recorded privately on this machine (${privateShown})`);
+    expect(handed.join('\n')).toContain(
+      `Left out of this section: ${80 - privateShown} decisions in force and 1 adopted pattern, the last ones in the order above.`,
+    );
+    expect(handed.join('\n')).not.toContain('Left out of this text');
+  });
+
+  it('labels a private rule, and the private decision it replaced, as private', () => {
+    const replaced = decision(1, 'The old private call');
+    const handed = withPrivate(HOOK_TEXT_CEILING, {
+      decisions: [
+        {
+          ...decision(2, 'The new private call'),
+          supersedes: { found: true, ...replaced, state: 'superseded' },
+        },
+      ],
+      skills: [],
+    }).join('\n');
+    expect(handed).toContain(
+      `- **private ADR-2: The new private call** · \`${decision(2).id}\` · supersedes private ADR-1 \`${replaced.id}\`: The old private call (superseded)`,
+    );
+    // The committed ADR-1 and ADR-2 of the same text stay bare.
+    expect(handed).toContain('- **ADR-1: A call numbered 1**');
+  });
+
+  it('is cut nowhere when it fits, and has no section when there are none', () => {
+    const handed = withPrivate(HOOK_TEXT_CEILING, {
+      decisions: [decision(70, 'Mine alone')],
+      skills: [],
+    }).join('\n');
+    expect(handed).toContain('## Recorded privately on this machine (1)');
+    expect(handed).toContain('Mine alone');
+    expect(handed).not.toContain('Left out of');
+    expect(withPrivate(HOOK_TEXT_CEILING, { decisions: [], skills: [] })).toEqual(
+      briefWithin(committed, HOOK_TEXT_CEILING),
+    );
+  });
+});
+
 describe('the hook’s copy for a host that counts in its own unit', () => {
   /** Titles whose letters take two bytes each, so a text runs to more bytes than units. */
   const accented = (n: number) =>

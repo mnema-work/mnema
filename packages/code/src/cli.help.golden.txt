@@ -2281,8 +2281,8 @@ $ mnema switch off --help
 |                    agent-accepts, edit-first-write-gate, user-corrections,
 |                    choice-settled, host-memory-mirror, decision-file-written,
 |                    subagent-handback, tool-call-count, last-session,
-|                    after-a-compaction, session-journal, agent-mirror,
-|                    session-tally)
+|                    private-rules, after-a-compaction, session-journal,
+|                    agent-mirror, session-tally)
 |
 | Options:
 |   --reason <text>  why (recorded in the fact; never required)
@@ -2321,8 +2321,8 @@ $ mnema switch on --help
 |                    agent-accepts, edit-first-write-gate, user-corrections,
 |                    choice-settled, host-memory-mirror, decision-file-written,
 |                    subagent-handback, tool-call-count, last-session,
-|                    after-a-compaction, session-journal, agent-mirror,
-|                    session-tally)
+|                    private-rules, after-a-compaction, session-journal,
+|                    agent-mirror, session-tally)
 |
 | Options:
 |   --reason <text>  why (recorded in the fact; never required)

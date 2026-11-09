@@ -68,7 +68,15 @@
 
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { type Brief, brief, channelIsOn, channelStates, rulesKeptPrivate } from '@mnema/context';
+import {
+  type Brief,
+  brief,
+  channelIsOn,
+  channelStates,
+  type PrivateRules,
+  rulesHeldPrivately,
+  rulesKeptPrivate,
+} from '@mnema/context';
 import { chainRootForScope, type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { type InheritedReading, readProjectInherited } from '../inherited-record.js';
 import {
@@ -81,6 +89,7 @@ import {
   ASKS_A_PERSON_CHANNEL,
   DOCUMENT_CHANNEL,
   EDIT_PUSH_CHANNEL,
+  PRIVATE_RULES_CHANNEL,
   REFUSES_A_WRITE_CHANNEL,
   type SwitchableChannel,
 } from '../record-framing.js';
@@ -157,9 +166,17 @@ export interface BriefDone {
    * How many decisions in force and patterns adopted live only in this machine's private tree, so
    * the brief does not carry them: counts, never text. Present only when the caller asked
    * ({@link runBrief}'s `outside`), for the reason {@link outside} is: the file somebody commits
-   * never carries a fact about one machine's private tree. Absent when there are none.
+   * never carries a fact about one machine's private tree. Absent when there are none, and
+   * absent while `private-rules` is on, when {@link privateRules} carries them by name instead.
    */
   readonly keptPrivate?: { readonly decisions: number; readonly patterns: number };
+  /**
+   * The decisions in force and patterns adopted of this machine's private tree, by name, for the
+   * copy a hook hands a session, which marks them as this machine's. Present only when the caller
+   * asked ({@link runBrief}'s `outside`), while `private-rules` is on, and when there is one: the
+   * file somebody commits never carries them.
+   */
+  readonly privateRules?: PrivateRules;
 }
 
 /** The read was refused: there is no project to compose a brief for. */
@@ -280,7 +297,7 @@ export function runBrief(
       ...(asked.outside === true
         ? {
             stacks: asked.stacks(ctx),
-            ...keptPrivateOf(sources),
+            ...privateOf(sources),
             ...formatterOf(dirname(trees.projectPublic as string)),
             outside: {
               drift: decisionsOutsideTheRecord(sources, dirname(trees.projectPublic as string)),
@@ -319,9 +336,19 @@ function formatterOf(project: string): { formatter?: readonly string[] } {
   return lines.length > 0 ? { formatter: lines } : {};
 }
 
-function keptPrivateOf(sources: Parameters<typeof rulesKeptPrivate>[0]): {
+/**
+ * What the copy a hook carries says of this machine's private rules, as a field to spread: the
+ * rules by name while `private-rules` is on, their count while it is off, and nothing where there
+ * are none. The switch is asked over every tree, for the reason the document's own is.
+ */
+function privateOf(sources: Parameters<typeof rulesKeptPrivate>[0]): {
   keptPrivate?: { readonly decisions: number; readonly patterns: number };
+  privateRules?: PrivateRules;
 } {
+  if (channelIsOn(sources, PRIVATE_RULES_CHANNEL)) {
+    const rules = rulesHeldPrivately(sources);
+    return rules.decisions.length + rules.skills.length > 0 ? { privateRules: rules } : {};
+  }
   const kept = rulesKeptPrivate(sources);
   return kept.decisions + kept.patterns > 0 ? { keptPrivate: kept } : {};
 }
