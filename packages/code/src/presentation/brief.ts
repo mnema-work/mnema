@@ -856,11 +856,11 @@ function privateSection(rules: PrivateRules, shown: number, ceiling: HookCeiling
   const items = [
     ...decisions.map((decision) =>
       rule(
-        `${decision.adr}: ${decision.title}`,
+        `${privateLabel(decision.adr)}: ${decision.title}`,
         decision.id,
         decision.origin,
         decision.acceptance,
-        decision.supersedes,
+        decision.supersedes === undefined ? undefined : privatelyNamed(decision.supersedes),
       ),
     ),
     ...skills.map((skill) => rule(skill.name, skill.id, skill.origin)),
@@ -875,6 +875,25 @@ function privateSection(rules: PrivateRules, shown: number, ceiling: HookCeiling
     ...(items.length > 0 ? ['', ...items] : []),
     ...privateLeftOut(leftDecisions, leftPatterns, ceiling),
   ];
+}
+
+/**
+ * The label a private rule is printed with: `private ADR-<n>`, never the bare `ADR-<n>`.
+ *
+ * EACH CHAIN NUMBERS ITS OWN, so the private tree's `ADR-1` and the committed record's `ADR-1`
+ * are two different decisions printed in one text. A bare label here would let a citation of one
+ * mean the other; the word in front of it, and the id the line carries, keep them apart.
+ */
+function privateLabel(adr: string): string {
+  return `private ${adr}`;
+}
+
+/**
+ * The decision a private rule replaced, labelled as private with its id: it was read from the
+ * private tree alone, so its label is that chain's, for {@link privateLabel}'s reason.
+ */
+function privatelyNamed(named: NamedDecision): NamedDecision {
+  return named.found ? { ...named, adr: `${privateLabel(named.adr)} \`${named.id}\`` } : named;
 }
 
 /** {@link leftOut} for {@link privateSection}: the same four things, with the private doors. */

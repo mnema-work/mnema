@@ -988,6 +988,24 @@ describe('the hook’s copy with this machine’s private rules', () => {
     expect(handed.join('\n')).not.toContain('Left out of this text');
   });
 
+  it('labels a private rule, and the private decision it replaced, as private', () => {
+    const replaced = decision(1, 'The old private call');
+    const handed = withPrivate(HOOK_TEXT_CEILING, {
+      decisions: [
+        {
+          ...decision(2, 'The new private call'),
+          supersedes: { found: true, ...replaced, state: 'superseded' },
+        },
+      ],
+      skills: [],
+    }).join('\n');
+    expect(handed).toContain(
+      `- **private ADR-2: The new private call** · \`${decision(2).id}\` · supersedes private ADR-1 \`${replaced.id}\`: The old private call (superseded)`,
+    );
+    // The committed ADR-1 and ADR-2 of the same text stay bare.
+    expect(handed).toContain('- **ADR-1: A call numbered 1**');
+  });
+
   it('is cut nowhere when it fits, and has no section when there are none', () => {
     const handed = withPrivate(HOOK_TEXT_CEILING, {
       decisions: [decision(70, 'Mine alone')],

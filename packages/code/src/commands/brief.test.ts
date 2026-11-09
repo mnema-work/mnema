@@ -458,6 +458,21 @@ describe('mnema brief (what governs the work here)', () => {
       expect(copy).toContain('and, in its last section, the rules recorded privately');
     });
 
+    it('labels a private rule as private, so its number cannot cite the committed one', () => {
+      const { repo, env } = setup();
+      runInit({ cwd: repo, env });
+      const here = { cwd: repo, env };
+      // Each chain numbers its own: the first decision of each tree is ADR-1 in both.
+      accepted(here, 'What the team settled', 'public');
+      accepted(here, 'What this machine settled', 'private');
+
+      const copy = hookCopy(here);
+      expect(copy).toContain('- **ADR-1: What the team settled** · `');
+      expect(copy).toContain('- **private ADR-1: What this machine settled** · `');
+      expect(copy).not.toContain('**ADR-1: What this machine settled**');
+      expect(copy.match(/\*\*ADR-1: /g)).toHaveLength(1);
+    });
+
     it('says how many there are and the commands that list them, without their text, where the switch is off', () => {
       const { repo, env } = setup();
       runInit({ cwd: repo, env });
