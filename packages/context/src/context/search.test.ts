@@ -419,6 +419,29 @@ describe('readRecord: the decision a decision replaced is named, not only number
     expect(replaced.record.supersededBy).toBe('d-new');
   });
 
+  it('names the other end on the hits of a search, as the read of the record does', () => {
+    const b = bench();
+    accepted(b, 'd-old', 'The first call');
+    accepted(b, 'd-new', 'The call that replaced it');
+    supersedeDecision(b, 'd-old', 'd-new');
+    const sources = [tree(b, 'public')];
+
+    const found = searchRecords(sources, { kind: 'decision' });
+    const old = found.hits.find((h) => h.id === 'd-old');
+    const next = found.hits.find((h) => h.id === 'd-new');
+    expect(old?.supersededBy).toEqual(decisionBody(sources, 'd-old').supersededBy);
+    expect(old?.supersededBy).toEqual({
+      found: true,
+      id: 'd-new',
+      adr: 'ADR-d-new',
+      title: 'The call that replaced it',
+      state: 'accepted',
+    });
+    expect(old?.supersedes).toBeUndefined();
+    expect(next?.supersedes).toEqual(decisionBody(sources, 'd-new').supersedes);
+    expect(next?.supersededBy).toBeUndefined();
+  });
+
   it('names both ends of a chain of three from its middle', () => {
     const b = bench();
     accepted(b, 'd-1', 'First');

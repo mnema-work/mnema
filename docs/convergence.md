@@ -26,6 +26,8 @@ mnema decision record "Use SQLite for the cache" "Embedded, and fast enough at o
 #> Recorded decision ADR-1 (01a14265-a017-7000-a83b-c9516d78ff90)
 #>   Born proposed, so not yet in force. A person accepts it with `mnema decision review`.
 #>   Landed in the public tree: committed with the repository, so it reaches every clone.
+#> ADR-1 is addressed at no path; nothing was linked. To say which files it governs:
+#>   mnema link 01a14265-a017-7000-a83b-c9516d78ff90 <path> --rel governs
 git add .mnema
 git commit -m "Record ADR-1"
 

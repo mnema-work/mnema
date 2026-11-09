@@ -138,6 +138,16 @@ describe('addressOfferLines', () => {
     expect(tellsWhatToDo(lines.join('\n'))).toBeUndefined();
   });
 
+  it('names the command line call for an address when it has no path to name', () => {
+    const lines = addressOfferLines([], recorded, 'public', 'cli');
+    expect(lines.join('\n')).toContain(`${recorded.adr} is addressed at no path`);
+    expect(lines.join('\n')).toContain('nothing was linked');
+    expect(lines[1]).toBe(`  mnema link ${NEW} <path> --rel governs`);
+    expect(addressOfferLines([], recorded, 'private', 'cli')[1]).toBe(
+      `  mnema link ${NEW} <path> --rel governs --scope private`,
+    );
+  });
+
   it('keeps the tree the decision landed in on the call, and caps the list', () => {
     const paths = Array.from({ length: 12 }, (_, at) => `src/f${at}.ts`);
     const lines = addressOfferLines(paths, recorded, 'private');

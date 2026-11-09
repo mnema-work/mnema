@@ -462,8 +462,8 @@ $ mnema search
 |
 | decision (3)
 |   <decision-imported>  public  <date:01>  Keep the runbook where the work is (proposed)
-|   <decision-wiki>  public  <date:01>  Keep the runbook in the wiki (superseded)
-|   <decision-runbook>  public  <date:01>  Keep the runbook in the record (accepted)
+|   <decision-wiki>  public  <date:01>  Keep the runbook in the wiki (superseded)  superseded by ADR-1: Keep the runbook in the record (accepted) · <decision-runbook>
+|   <decision-runbook>  public  <date:01>  Keep the runbook in the record (accepted)  supersedes ADR-2: Keep the runbook in the wiki (superseded) · <decision-wiki>
 |
 | task (3)
 |   <task-errand>  global  <date:01>  Read the release notes (DRAFT)
@@ -484,9 +484,9 @@ $ mnema search runbook
 |   <observation-rollback>  public  <date:01>  review
 |
 | decision (3)
-|   <decision-wiki>  public  <date:01>  Keep the runbook in the wiki (superseded)
+|   <decision-wiki>  public  <date:01>  Keep the runbook in the wiki (superseded)  superseded by ADR-1: Keep the runbook in the record (accepted) · <decision-runbook>
 |   <decision-imported>  public  <date:01>  Keep the runbook where the work is (proposed)
-|   <decision-runbook>  public  <date:01>  Keep the runbook in the record (accepted)
+|   <decision-runbook>  public  <date:01>  Keep the runbook in the record (accepted)  supersedes ADR-2: Keep the runbook in the wiki (superseded) · <decision-wiki>
 |
 | task (1)
 |   <task-runbook>  public  <date:01>  Write the deploy runbook (IN_PROGRESS)
@@ -495,7 +495,7 @@ $ mnema search spreadsheet
 |
 | decision (2)
 |   <decision-imported>  public  <date:01>  Keep the runbook where the work is (proposed)
-|   <decision-runbook>  public  <date:01>  Keep the runbook in the record (accepted)
+|   <decision-runbook>  public  <date:01>  Keep the runbook in the record (accepted)  supersedes ADR-2: Keep the runbook in the wiki (superseded) · <decision-wiki>
 $ mnema search runbook --json
 | {
 |   "hits": [
@@ -506,7 +506,14 @@ $ mnema search runbook --json
 |       "at": "<at:06>",
 |       "title": "Keep the runbook in the wiki",
 |       "derived": false,
-|       "state": "superseded"
+|       "state": "superseded",
+|       "supersededBy": {
+|         "found": true,
+|         "id": "<decision-runbook>",
+|         "adr": "ADR-1",
+|         "title": "Keep the runbook in the record",
+|         "state": "accepted"
+|       }
 |     },
 |     {
 |       "id": "<decision-imported>",
@@ -533,7 +540,14 @@ $ mnema search runbook --json
 |       "at": "<at:05>",
 |       "title": "Keep the runbook in the record",
 |       "derived": false,
-|       "state": "accepted"
+|       "state": "accepted",
+|       "supersedes": {
+|         "found": true,
+|         "id": "<decision-wiki>",
+|         "adr": "ADR-2",
+|         "title": "Keep the runbook in the wiki",
+|         "state": "superseded"
+|       }
 |     },
 |     {
 |       "id": "<observation-rollback>",

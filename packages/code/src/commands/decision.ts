@@ -38,6 +38,7 @@ import {
 import { openTreeForWriting, recordDecision } from '@mnema/core/write';
 import { type AcceptState, acceptStateHere, stateOfANewDecision } from '../agent-accepts.js';
 import {
+  addressOfferLines,
   type DecisionText,
   decisionsCited,
   decisionsInView,
@@ -191,9 +192,9 @@ export function stateBesideADecision(
  * record a hundred more times to look for citations nobody asked about.
  *
  * THE SAME DETECTION THE MCP TOOL ASKS (`offers-beside-a-recorded-decision.ts`), read after the
- * write over the tree the decision landed in. There is no address offer here: a
- * command has no session, so no path it looked at. A read that cannot be made is no offer, since
- * the write already stands.
+ * write over the tree the decision landed in. The address offer is the tool's function
+ * too, with no path listed: a command has no session, so no path it looked at. A read that
+ * cannot be made leaves the address offer alone, since the write already stands.
  */
 export function offeredBesideADecision(
   ctx: Pick<DecisionContext, 'cwd' | 'env'>,
@@ -204,8 +205,11 @@ export function offeredBesideADecision(
     const held = withScopedCaches(resolveTrees(ctx.cwd, ctx.env), (sources) =>
       decisionsInView(sources, recorded.scope, (source) => source.cache.listDecisions()),
     );
-    return supersedeOfferLines(decisionsCited(text, held, recorded.id), recorded, 'cli');
+    return [
+      ...addressOfferLines([], recorded, recorded.scope, 'cli'),
+      ...supersedeOfferLines(decisionsCited(text, held, recorded.id), recorded, 'cli'),
+    ];
   } catch {
-    return [];
+    return addressOfferLines([], recorded, recorded.scope, 'cli');
   }
 }

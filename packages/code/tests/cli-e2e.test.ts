@@ -625,6 +625,12 @@ describe('mnema CLI: decision, end to end', () => {
     const c = capture();
     await run(['decision', 'record', 'adopt the ledger', 'it is the audit surface'], c.io);
     expect(c.failed()).toBe(false);
+    // The address offer closes the reply, in the shape of the command line: two more lines.
+    expect(c.out.at(-2)).toBe(
+      'ADR-1 is addressed at no path; nothing was linked. To say which files it governs:',
+    );
+    expect(c.out.at(-1)).toMatch(/^ {2}mnema link [0-9a-f-]{36} <path> --rel governs$/);
+    c.out.length -= 2;
     // The human name is the ADR, never a `t-xxxx`-style alias, which a decision
     // does not have. The output is `ADR-<n> (<uuid>)`: the label and the id, and
     // no alias in between.

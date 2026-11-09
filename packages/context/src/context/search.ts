@@ -111,6 +111,14 @@ export interface RecordHit {
   readonly derived: boolean;
   /** Its current state, for the kinds that have one. */
   readonly state?: string;
+  /**
+   * For a decision that replaced another: that one, NAMED as {@link readRecord} names it (see
+   * {@link NamedDecision}). Read from the tree the hit lives in, since a supersede finds its
+   * other end in the tree of the decision it replaces.
+   */
+  readonly supersedes?: NamedDecision;
+  /** For a decision that was replaced: the one that replaced it, named the same way. */
+  readonly supersededBy?: NamedDecision;
 }
 
 /** The hits, and how many records matched across the trees before the limit. */
@@ -557,6 +565,29 @@ function toRecordHit({ hit, source }: { hit: SearchHit; source: ScopedCache }): 
     title: hit.title,
     derived: hit.derived,
     ...(hit.state !== undefined ? { state: hit.state } : {}),
+    ...otherEndsOf(hit, source),
+  };
+}
+
+/**
+ * The decisions a decision hit replaced and was replaced by, named by the ONE reading of that
+ * end ({@link nameDecision}) over the tree the hit lives in: a hit that is not a decision, or
+ * that replaced nothing and was replaced by nothing, carries neither.
+ */
+function otherEndsOf(
+  hit: SearchHit,
+  source: ScopedCache,
+): { readonly supersedes?: NamedDecision; readonly supersededBy?: NamedDecision } {
+  if (hit.kind !== 'decision') return {};
+  const held = source.cache.getDecision(hit.id);
+  if (held === null) return {};
+  return {
+    ...(held.supersedes !== undefined
+      ? { supersedes: nameDecision([source.cache], held.supersedes) }
+      : {}),
+    ...(held.supersededBy !== undefined
+      ? { supersededBy: nameDecision([source.cache], held.supersededBy) }
+      : {}),
   };
 }
 

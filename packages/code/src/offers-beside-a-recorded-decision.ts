@@ -154,15 +154,25 @@ export function supersedeOfferLines(
 }
 
 /**
- * The lines the offer of an address owes: the paths this connection looked at, that nothing was
- * linked, and the call that would address the decision at the most recent of them. None when the
- * connection looked at no path of the project.
+ * The lines the offer of an address owes, in the shape of the door that names it. The tool lists
+ * the paths its connection looked at, the latest first, and names the call that would address the
+ * decision at the most recent; with no path looked at it says nothing. The command line has no
+ * session and so no path to list: it says the decision is addressed at no path and names the
+ * call with a `<path>` to fill in. Neither links anything.
  */
 export function addressOfferLines(
   paths: readonly string[],
   recorded: { readonly id: string; readonly adr: string },
   scope: Scope,
+  door: OfferedBy = 'mcp',
 ): string[] {
+  if (door === 'cli') {
+    const where = scope === 'public' ? '' : ` --scope ${scope}`;
+    return [
+      `${recorded.adr} is addressed at no path; nothing was linked. To say which files it governs:`,
+      `  mnema link ${recorded.id} <path> --rel governs${where}`,
+    ];
+  }
   const [latest] = paths;
   if (latest === undefined) return [];
   const named = paths.slice(0, MOST_PATHS_NAMED);

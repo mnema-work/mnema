@@ -12,6 +12,16 @@ with its own changelog.
 
 ### Changed
 
+- **The command line says what the tool says about an address.** After "Recorded decision ADR-n (id)", the
+  command that records a decision now adds, as `record_decision` does, that the decision is addressed at no path and that nothing was linked, and
+  names the call that would address it: `mnema link <id> <path> --rel governs` (with `--scope private` in the private
+  tree). The command has no connection and so no path it looked at: the `<path>` is left for you to fill in. Both doors
+  build the lines in one function.
+- **`mnema search` and the `search` tool name the other end of a replaced decision.** A decision hit that was superseded
+  carries `superseded by ADR-n: <title> (<state>) · <id>`, and one that replaced another carries `supersedes ...`,
+  worded as the read of a whole record words them and read from the tree the hit is in (`(not in the trees read)` when that tree does
+  not hold the other end). `--json` and the tool's result gain the optional `supersedes` and `supersededBy` on a decision
+  hit, shaped as in `show`.
 - **A handoff or an observation about an id nobody holds is refused.** The `task handoff` command, `record_handoff`,
   `observe` and `record_observation` used to record the fact about any id they were given, so a mistyped task kept a
   brief nobody could find from the task. They now refuse (`UNKNOWN_TASK` for a handoff, `UNKNOWN_RECORD` for an
