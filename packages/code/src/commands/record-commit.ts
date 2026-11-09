@@ -28,7 +28,9 @@
  *      files `init` writes beside the record ({@link whatInitWritesInTheRecord}: `.gitattributes`
  *      with `* -text` and the tails' merge line, `.gitignore`, `README.md`, `.editorconfig`) go in
  *      with a cut where the base holds none of them, so the first commit of a record carries
- *      them; one the base holds stays as the base has it, and is named when this clone's differs.
+ *      them; one the base holds stays as the base has it, and is named when this clone's differs,
+ *      except the README and the `.editorconfig` when this clone's bytes are exactly the text this
+ *      mnema writes for them: those go in too.
  *      Every other file (`inherit.json`, what a person leaves) stays as the base has it, named
  *      when it differs.
  *   3. THE COMMIT is built with git's plumbing over the base's tree: blobs, a temporary index,
@@ -67,7 +69,12 @@ import { type DecisionFacts, nameOf, readDecisionFacts } from '../decisions-in-g
 import { theDefaultBranch } from '../events-not-in-git.js';
 import { withTreesRead } from '../tree-sources.js';
 import { joinGrownTail } from './record-merge-tail.js';
-import { EDITORCONFIG_NAME, README_NAME } from './the-record-page.js';
+import {
+  EDITORCONFIG_NAME,
+  README_NAME,
+  RECORD_EDITORCONFIG,
+  RECORD_README,
+} from './the-record-page.js';
 import { runVerify } from './verify.js';
 import { sinceBase, sinceHolds } from './verify-since.js';
 
@@ -761,6 +768,17 @@ function cut(
       if (!held.has(path) && existsSync(join(record, name))) {
         writes.set(path, readFileSync(join(record, name)));
       }
+    }
+    // The page and the `.editorconfig` the base holds, where this clone's are exactly the text
+    // this mnema writes for them: mnema put them there (a write replaces an older page), so the
+    // cut carries them. Any other bytes are a person's and stay out, named below.
+    for (const [name, text] of [
+      [README_NAME, RECORD_README],
+      [EDITORCONFIG_NAME, RECORD_EDITORCONFIG],
+    ] as const) {
+      const path = `${recordDir}${name}`;
+      const ours = existsSync(join(record, name)) ? readFileSync(join(record, name)) : undefined;
+      if (held.has(path) && ours?.equals(Buffer.from(text, 'utf-8'))) writes.set(path, ours);
     }
   }
 

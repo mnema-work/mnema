@@ -1468,9 +1468,10 @@ checkpoints cut there, a new tail's proof and each key file a line of the cut na
 the private tree. Where the base holds none of the files `mnema init` writes beside the record
 (`.gitattributes`, `.gitignore`, `README.md`, `.editorconfig`), they go in too, so the first commit
 of a record carries `* -text` and the tails' merge line. The events above the cut stay out and are
-counted; a file of `.mnema/` the base already holds stays as the base has it, and every other file
-that differs from the base (an `inherit.json`, say) stays out too, each named as left out: commit
-those with git.
+counted; a file of `.mnema/` the base already holds stays as the base has it, except the `README.md`
+and the `.editorconfig` when yours are exactly the text this mnema writes for them (a write replaces
+an older page with the current one): those go in. Every other file that differs from the base (an
+`inherit.json`, a README you edited, say) stays out, each named as left out: commit those with git.
 
 It builds the commit with git's plumbing on top of the base, signed when `commit.gpgSign` is set, as
 `git commit` would sign it. Before a branch exists, the tree is checked out apart and verified at the

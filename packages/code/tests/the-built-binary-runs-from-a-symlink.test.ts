@@ -33,6 +33,7 @@ beforeAll(() => {
   mkdirSync(join(sandbox, 'bin'));
   mkdirSync(join(sandbox, 'home'));
   symlinkSync(BINARY, join(sandbox, 'bin', 'mnema'));
+  symlinkSync(process.execPath, join(sandbox, 'bin', 'node'));
 });
 
 afterAll(() => {
@@ -51,7 +52,9 @@ describe('the binary a build leaves', () => {
     const ran = spawnSync('mnema', ['--version'], {
       encoding: 'utf-8',
       env: {
-        PATH: `${join(sandbox, 'bin')}:${process.env.PATH ?? ''}`,
+        // Only the folder holding the test's own links (`mnema` and `node`, which the shebang asks
+        // `env` for): another `mnema` on the machine's PATH must not answer in this build's place.
+        PATH: join(sandbox, 'bin'),
         HOME: join(sandbox, 'home'),
       },
     });
