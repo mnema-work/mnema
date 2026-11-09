@@ -2358,10 +2358,11 @@ thing about the whole record, chain by chain, without anyone generating the file
 
 Beside the document, the plugin hands a session the **notes** recorded here: the
 memories and the observations, out of every tree this machine holds for the project: the
-committed one, this machine's own, and your personal one. It is the one text this product
-pushes that carries the private tree, and that is why it is not part of the document: a
-note an agent records lands in the tree that does not travel, and the document is written
-to be committed. Until it existed, what an agent noted here reached no later session
+committed one, this machine's own, and your personal one. They include the notes of the
+private tree, and that is why they are not part of the document: a note an agent records
+lands in the tree that does not travel, and the document is written to be committed. The
+document carries the private tree only as its last section (the names of the decisions in
+force and of the adopted patterns), while the `private-rules` switch is on. Until it existed, what an agent noted here reached no later session
 unless that session went looking.
 
 ```sh
