@@ -11,15 +11,14 @@ No version is given for any line: what a release carries is said by the [CHANGEL
 ## Using mnema alone, and keeping a copy of what is not in git
 
 - **A repository whose team has not adopted mnema.** A local mode of `init` is expected to keep the record in `.mnema/`, listed in
-  `.git/info/exclude` and never in `.gitignore`, to write no block into the team's files, and to say that the record is local to this
-  clone; a `local leave` step and then `mnema record commit` are expected to adopt it. [ADR-179](https://mnema.work/record/#ADR-179)
+  `.git/info/exclude` and never in `.gitignore`, and to write no block into the team's files; `mnema record commit` is expected to
+  refuse to build a record branch in it. [ADR-232](https://mnema.work/record/#ADR-232)
 - **A guided backup and restore.** A `backup` verb is expected to copy the private and global trees (and a `backup keys` verb the cold
   key only, always encrypted) to a folder by default, or to a git repository the person chooses, with its history kept; to run only when
   called, or from an after-commit hook installed on request; and to restore only tails and public keys, never a machine key.
   [ADR-131](https://mnema.work/record/#ADR-131), [ADR-144](https://mnema.work/record/#ADR-144)
-- **The backup, in the local mode.** It is expected to copy the excluded public tree too, to keep several targets on one machine with
-  every project assigned to one explicitly (none by default), and, at first, not to encrypt the copy: a sentence is expected to say
-  who can read the target. [ADR-179](https://mnema.work/record/#ADR-179)
+- **The backup, in the local mode.** It is expected to copy the excluded public tree too.
+  [ADR-232](https://mnema.work/record/#ADR-232)
 
 ## Reading the record
 
