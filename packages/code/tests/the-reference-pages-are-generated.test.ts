@@ -33,6 +33,7 @@ import {
   toolsIndex,
   verbFile,
   verbPage,
+  writtenByHand,
 } from './support/the-reference-pages.js';
 
 const ROOT = join(import.meta.dirname, '..', '..', '..');
@@ -185,5 +186,15 @@ describe('the part written by hand', () => {
       expect(page.split(HAND_BEGIN).length, path).toBe(2);
       expect(page.indexOf(HAND_END), path).toBeGreaterThan(page.indexOf(HAND_BEGIN));
     }
+  });
+
+  it('is all the guards that read what a page hands over read of a reference page', () => {
+    const path = 'docs/reference/cli/site.md';
+    const page = readFileSync(join(ROOT, path), 'utf8');
+    const written = page.replace(HAND_END, `Run \`mnema verify\` first.\n${HAND_END}`);
+    const read = writtenByHand(path, written).split('\n');
+    expect(read).toHaveLength(written.split('\n').length);
+    expect(read.filter((line) => line !== '')).toEqual(['Run `mnema verify` first.']);
+    expect(writtenByHand('docs/install.md', written)).toBe(written);
   });
 });

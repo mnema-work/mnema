@@ -312,3 +312,32 @@ export function toolsIndex(tools: readonly ServedTool[], committed: string | und
   }
   return out.join('\n');
 }
+
+/** Whether a page is one of the generated reference pages. */
+export function isAReferencePage(page: string): boolean {
+  return (
+    /^docs\/reference\/(cli|mcp)\/[^/]+\.md$/.test(page) ||
+    page === 'docs/reference/commands.md' ||
+    page === 'docs/reference/mcp-tools.md'
+  );
+}
+
+/**
+ * What a person wrote on a page, for the guards that read what a page hands over: on a generated
+ * reference page every line outside the part written by hand is blanked (the lines keep their
+ * numbers), because what the generator wrote there is the help and the tool definitions, which
+ * the same guards read at their source; any other page is returned whole.
+ */
+export function writtenByHand(page: string, text: string): string {
+  if (!isAReferencePage(page)) return text;
+  let inside = false;
+  return text
+    .split('\n')
+    .map((line) => {
+      if (line === HAND_BEGIN) inside = true;
+      const kept = inside && line !== HAND_BEGIN && line !== HAND_END ? line : '';
+      if (line === HAND_END) inside = false;
+      return kept;
+    })
+    .join('\n');
+}

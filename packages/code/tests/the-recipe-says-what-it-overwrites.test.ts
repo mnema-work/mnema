@@ -57,6 +57,7 @@ import { REACHES_AN_AGENT, THE_LINE_IN_THEIRS } from '../src/wiring/init.js';
 import { everyCommandOf, pathOf } from '../src/wiring/misuse.js';
 import { read } from './support/published-examples.js';
 import { linesOf, trackedPages } from './support/reading-a-shell-line.js';
+import { writtenByHand } from './support/the-reference-pages.js';
 
 /** A silent port: nothing here runs a verb, it only reads what they declare. */
 const silent: CliIo = { out: () => {}, err: () => {}, fail: () => {} };
@@ -176,7 +177,7 @@ function passagesOf(
 function everyPublishedPassage(): ReadonlyMap<string, string> {
   const found = new Map<string, string>();
   for (const page of trackedPages()) {
-    const passages = passagesOf(read(page));
+    const passages = passagesOf(writtenByHand(page, read(page)));
     passages.forEach((passage, index) => {
       if (!PUBLISHES_THE_RECIPE.test(passage.text)) return;
       const before = passage.fenced ? (passages[index - 1]?.text ?? '') : '';

@@ -18,6 +18,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { ROOT, read } from './published-examples.js';
+import { writtenByHand } from './the-reference-pages.js';
 
 /**
  * The shell's own words, longest first so `&&` is never read as two `&` and `>>` never as
@@ -204,7 +205,7 @@ export function commandsOn(page: string, markdown: string): readonly PublishedCo
 
 /** The same reading over the pages on disk. One function, so the corpus below cannot drift. */
 export function publishedCommands(pages: readonly string[]): readonly PublishedCommand[] {
-  return pages.flatMap((page) => commandsOn(page, read(page)));
+  return pages.flatMap((page) => commandsOn(page, writtenByHand(page, read(page))));
 }
 
 /** Every Markdown page this repository publishes: the reach, and never a list. */

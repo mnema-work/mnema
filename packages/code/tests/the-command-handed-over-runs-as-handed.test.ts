@@ -58,6 +58,7 @@ import { buildProgram, type CliIo } from '../src/program.js';
 import { everyCommandOf } from '../src/wiring/misuse.js';
 import { ROOT } from './support/published-examples.js';
 import { invocationsIn, linesOf, trackedPages, unquoted } from './support/reading-a-shell-line.js';
+import { writtenByHand } from './support/the-reference-pages.js';
 import { codeOnly, INTERPOLATED, LITERAL_EDGE, literalsOnly } from './support/reading-source.js';
 
 /** A silent port: nothing here runs a verb, it only reads what they declare. */
@@ -390,6 +391,8 @@ export const NOT_CHECKED: Readonly<Record<string, string>> = {
     'The mirror copies what commander lets a declaration be read back as: commands, arguments, options, mandatoriness, defaults, the version, and whether a command acts. A setting commander keeps with no getter (excess arguments, unknown options, positional or pass-through options, conflicts, implications, environment variables) is not copied. The program uses none of them, and a case below reads the source to keep that true.',
   RUNNING_IS_NOT_READING:
     'Whether a line SUCCEEDS against a record: the roster that decides a revocation, the gate that decides a move, the run a close names. Parsing is what a line must pass before any of that is asked, and `the-refusal-names-the-way-out.test.ts` runs the one line whose success the words promise, in git clones, end to end.',
+  THE_GENERATED_REFERENCE_PAGES:
+    'On the pages of `docs/reference/` only the part written by hand is read. The rest is generated from the help the program prints and from the tools the server serves (`the-reference-pages-are-generated.test.ts`), and both are read here at their source; read again inside a fenced block of help, a line of prose that begins with the name of the program would be taken for a command.',
   TESTS_HAND_NOTHING_OVER:
     'The corpus is what the product delivers: its sources and its pages. The sweep that found the class read the tests too, and the tests that pin the form of a handed-over command changed with it; but a string in a test is handed to nobody, and reading one as a command would accuse fixtures that are exactly right.',
 };
@@ -944,7 +947,9 @@ const verbs = new Set(program.commands.map((one) => one.name()));
 // The signed record in `.mnema/` is not prose to read (ADR-38): the same skip the sentence guard
 // makes, so a README written there by the product is not a page this guard reads.
 const pages = trackedPages().filter((page) => !page.startsWith('.mnema/'));
-const onPages = pages.map((page) => handedOnPage(page, readFileSync(join(ROOT, page), 'utf8')));
+const onPages = pages.map((page) =>
+  handedOnPage(page, writtenByHand(page, readFileSync(join(ROOT, page), 'utf8'))),
+);
 const inSources = speakingSources().map((file) =>
   handedInSource(file, readFileSync(join(ROOT, file), 'utf8'), verbs),
 );
