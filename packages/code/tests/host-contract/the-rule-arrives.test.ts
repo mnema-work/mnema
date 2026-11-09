@@ -63,7 +63,8 @@ describe('where a rule arrives in Claude Code', () => {
             fillsTheWindowAfter: 3,
             isTheSummaryRequest: (body) =>
               JSON.stringify(body['messages'] ?? []).includes(ASKS_FOR_THE_SUMMARY),
-            summary: THE_SUMMARY,
+            // Claude Code from 2.1.311 asks again when the reply carries no summary block.
+            summary: `<analysis>none</analysis><summary>${THE_SUMMARY}</summary>`,
           }),
         allow: ['Bash'],
         env: { CLAUDE_CODE_AUTO_COMPACT_WINDOW: '100000' },
@@ -74,7 +75,11 @@ describe('where a rule arrives in Claude Code', () => {
       // The instrument: the host did compact, and the request after the summary is the compacted one.
       expect(asked, 'the host never asked for a summary').toBeGreaterThan(1);
       const before = long.messages[asked - 1];
-      const after = long.messages[asked + 1];
+      // The first request that carries the summary: the one after it is the compacted conversation,
+      // and a request that merely asks again for the summary does not carry it.
+      const after = long.messages
+        .slice(asked + 1)
+        .find((request) => JSON.stringify(request.body.messages ?? []).includes(THE_SUMMARY));
       expect(before, 'a request before the summary').toBeDefined();
       expect(after, 'a request after the summary').toBeDefined();
       expect(JSON.stringify(after?.body.messages)).toContain(THE_SUMMARY);

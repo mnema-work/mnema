@@ -20,6 +20,11 @@ with its own changelog.
 
 ### Changed
 
+- **The MCP server's instructions open with what to do.** Their first 250 characters now say to call `record_decision`
+  when a choice is settled that someone could later question, then what mnema is. A host may show a server by no more
+  than its opening: Codex 0.167 lists each server it defers by its first 250 characters. The rest of the text says what
+  it said, a little shorter, and stays under 2,048 characters.
+
 - **The text a session opens with carries this machine's private rules, marked as such.** After the committed record's
   rules, the copy the plugin hands a session and a subagent (`mnema brief --hook`) ends with a section, `Recorded
   privately on this machine`, that lists by name the decisions in force and the adopted patterns of this machine's

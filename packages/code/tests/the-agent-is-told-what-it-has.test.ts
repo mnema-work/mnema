@@ -148,6 +148,13 @@ describe('the server says what its tools are for, before any is chosen', () => {
     expect(SERVER_INSTRUCTIONS.length).toBeLessThanOrEqual(2048);
   });
 
+  it('names record_decision and when to call it in its first 250 characters, which a host may show alone', () => {
+    // Codex 0.167 lists a deferred server by the first 250 characters of its instructions.
+    const opening = SERVER_INSTRUCTIONS.slice(0, 250).replace(/\n/g, ' ');
+    expect(opening).toContain('`record_decision`');
+    expect(opening).toContain('when a choice is settled that someone could later question');
+  });
+
   it('says a decision is born in the state the workflow gives it', () => {
     // The one claim about the WORKFLOW the text makes, read off the workflow rather than
     // typed: were the first state ever to change, a manual still saying `proposed` would be

@@ -2533,7 +2533,10 @@ the two is enough.
 ```
 
 In the handshake the server sends **instructions**, which a host that defers tools reads
-before it has chosen any: when a decision or a note is worth recording, which reads to
+before it has chosen any. Their first 250 characters say to call `record_decision` when a
+choice is settled that someone could later question, because a host may show a server by
+no more than its opening (Codex 0.167 lists each server by its first 250 characters).
+The rest says when a decision or a note is worth recording, which reads to
 make before deciding, what does not belong in the record, that it is the place for what is
 also kept elsewhere, and what comes back to the next session. They are the same text for every connection, because they are sent before the
 server knows which project it serves, and they stay under 2,048 characters, which is

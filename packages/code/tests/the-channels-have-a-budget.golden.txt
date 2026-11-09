@@ -5,7 +5,7 @@ session start: brief --hook                  2557 B      682 tok
 session start: recall --hook                  812 B      200 tok
 subagent start: brief --hook                 2557 B      682 tok
 file form: brief (what MNEMA.md carries)     2614 B      698 tok
-instructions                                 2019 B      476 tok
+instructions                                 2041 B      478 tok
 edit: rules pushed                            331 B       92 tok
 edit: asks for a person                       515 B      137 tok
 edit: refuses the write                       643 B      184 tok

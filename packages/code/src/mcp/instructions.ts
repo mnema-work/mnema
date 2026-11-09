@@ -50,7 +50,10 @@
  * sent more arrived as exactly the ceiling and the marker, and the host's documentation
  * says the same ("truncates tool descriptions and server instructions at 2KB each"). THE
  * CEILING HERE STAYS 2,048: it is the lower of the two, so the text fits whichever host
- * reads it. What a cut takes is the END, so what matters most is first. Held by
+ * reads it. What a cut takes is the END, so what matters most is first. A host may show
+ * only the opening of the text: Codex 0.167 lists each deferred server by its first 250
+ * characters, so those name `record_decision` and when to call it (held by
+ * `the-agent-is-told-what-it-has.test.ts`). The ceiling is held by
  * `every-description-reaches-the-model.test.ts`, which is where the same ceiling is held
  * for every tool description.
  *
@@ -89,16 +92,16 @@
  * the wire and one here.
  */
 const LINES = [
-  'mnema is this project’s record of the decisions behind the work, each with its reasons',
-  'and the alternatives turned down, and of notes about the project: signed, append-only,',
-  'kept with the repository.',
+  'Call `record_decision` when a choice is settled that someone could later question: a library,',
+  'an approach, a trade-off. mnema is this project’s record of the decisions behind the work,',
+  'each with its reasons and the alternatives turned down, and of notes about the project:',
+  'signed, append-only, kept with the repository.',
   '',
   'Record as the work happens, not in a batch at the end, and record here even what is also',
   'kept elsewhere (a plan, a ledger, CLAUDE.md, this host’s own memory): this is the signed',
   'copy, and the one later sessions read back:',
-  '- `record_decision` when a choice is settled that someone could later question: a',
-  '  library, an approach, a trade-off. Give the `rationale`, and in `alternatives` what was',
-  '  turned down and why. A decision is born `proposed`; once accepted, it is in force here.',
+  '- `record_decision`: give the `rationale`, and in `alternatives` what was turned down and',
+  '  why. A decision is born `proposed`; once accepted, it is in force here.',
   '- `capture_memory` when something about this project is learnt that its code does not',
   '  show and the next session would otherwise work out again: how the build really behaves,',
   '  a trap already hit, where a thing lives. `record_observation` is the same kind of note,',

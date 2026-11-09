@@ -283,7 +283,7 @@ function aCodexSession(
 ): Promise<TheCodexSession> {
   return openWithOneRetry(
     () => aCodexSessionOnce(spec, keep),
-    (session) => theToolSearchSays(session).includes('- mnema:'),
+    (session) => MNEMA_IS_LISTED.test(theServersTheHostListsSay(session)),
     spec.mnemaOnPath !== false,
     sayInTheJobSummary,
   );
@@ -470,6 +470,23 @@ export function theToolSearchSays(session: TheCodexSession): string {
     (tool) => (tool as { type?: unknown } | null)?.type === 'tool_search',
   );
   return String((search as { description?: unknown } | undefined)?.description ?? '');
+}
+
+/** A line of a listing of the servers whose tools wait behind the search: `- <name>: <description>`. */
+const MNEMA_IS_LISTED = /- (?:mcp__)?mnema\w*: /;
+
+/**
+ * Where the host tells the model which servers it can search, in one string with its white space
+ * folded: the description of the search tool (Codex 0.161), and the developer message
+ * `<tools> Deferred tool namespaces: ...` of the first request (Codex 0.167 and after, which
+ * lists each server there, by the first 250 characters of its instructions, and no longer in the
+ * description). A case that holds that the server came up reads both, so it holds on either.
+ */
+export function theServersTheHostListsSay(session: TheCodexSession): string {
+  const first = session.requests[0];
+  const messages = first === undefined ? [] : theMessagesOf(first);
+  const world = messages.filter((text) => text.includes('Deferred tool namespaces:'));
+  return [theToolSearchSays(session), ...world].join('\n').replace(/\s+/g, ' ');
 }
 
 /**

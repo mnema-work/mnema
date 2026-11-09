@@ -14,7 +14,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { aCodexForEachCase, theResultOfTheSearch } from './support/the-codex.js';
+import {
+  aCodexForEachCase,
+  theResultOfTheSearch,
+  theServersTheHostListsSay,
+} from './support/the-codex.js';
 import {
   theEntriesOf,
   theFirstThatOffersTools,
@@ -35,7 +39,7 @@ describe("what Codex sends of the plugin's tools", () => {
     expect(entries.map((entry) => entry['name']).filter(Boolean)).toContain('exec_command');
     expect(named('mnema')).toEqual([]);
     expect(named('mcp__mnema')).toEqual([]);
-    expect(String(search?.['description'])).toContain('- mnema:');
+    expect(theServersTheHostListsSay(session)).toMatch(/- (?:mcp__)?mnema\w*: /);
     expect(weigh(JSON.stringify(search))).toEqual({ bytes: 2_866, tokens: 678 });
   }, 180_000);
 

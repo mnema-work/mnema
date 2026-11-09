@@ -32,7 +32,15 @@ describe('what the Copilot CLI hands the hook it runs before a write', () => {
     expect(payload['hook_event_name']).toBe('PreToolUse');
     expect(payload['tool_name']).toBe('Write');
     expect(theShapeOf(payload)).toEqual({
-      fields: ['cwd', 'hook_event_name', 'session_id', 'timestamp', 'tool_input', 'tool_name'],
+      fields: [
+        'cwd',
+        'hook_event_name',
+        'session_id',
+        'timestamp',
+        'tool_input',
+        'tool_name',
+        'tool_use_id',
+      ],
       input: ['file_text', 'path'],
     });
   }, 180_000);
@@ -47,7 +55,15 @@ describe('what the Copilot CLI hands the hook it runs before a write', () => {
 
     expect(payload['tool_name']).toBe('Edit');
     expect(theShapeOf(payload)).toEqual({
-      fields: ['cwd', 'hook_event_name', 'session_id', 'timestamp', 'tool_input', 'tool_name'],
+      fields: [
+        'cwd',
+        'hook_event_name',
+        'session_id',
+        'timestamp',
+        'tool_input',
+        'tool_name',
+        'tool_use_id',
+      ],
       input: 'string',
     });
   }, 180_000);

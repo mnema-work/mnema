@@ -23,7 +23,7 @@ import {
   aPatchAdding,
   theMessagesOf,
   theResultOfTheCall,
-  theToolSearchSays,
+  theServersTheHostListsSay,
 } from './support/the-codex.js';
 import { A_HOOK_THAT_SAYS_EXACTLY } from './support/the-host.js';
 import {
@@ -51,8 +51,9 @@ describe('codex opens with the record and refuses the write', () => {
     expect(opening).toHaveLength(1);
     expect(opening[0]).toContain('Bill in UTC');
     // The plugin's server came up: Codex lists it, with the instructions only its handshake gives.
-    expect(theToolSearchSays(session)).toContain(
-      '- mnema: mnema is this project’s record of the decisions behind the work',
+    // Whichever way the host lists it, the server's description is the opening of its instructions.
+    expect(theServersTheHostListsSay(session)).toMatch(
+      /- (?:mcp__)?mnema\w*: Call `record_decision` when a choice is settled that someone could later question/,
     );
   }, 180_000);
 
