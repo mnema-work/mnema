@@ -16,14 +16,19 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { TailBusyError, UnreadableLineError } from '@mnema/chain';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { whatAWriteAsks } from '../src/edit-asks-a-person.js';
 import { ourWordsInRefusing } from '../src/edit-refuses-a-write.js';
 import { type CliIo, run } from '../src/program.js';
 import { tellsWhatToDo } from '../src/record-framing.js';
 import { withScopedCaches } from '../src/tree-sources.js';
 import {
+  A_CHARGE_WAITS_MS,
+  NOTICES_SAID_WHOLE,
+  reasonTold,
+  recordTheCharge,
   refusalOfAnUnreadableRecord,
+  unreadableLineSentence,
   type WriteVerdict,
   whatAWriteMeets,
 } from '../src/what-a-write-meets.js';
@@ -379,5 +384,89 @@ describe('a record that cannot be read refuses the write, and nothing else does'
       refusalOfAnUnreadableRecord(new Error('unreadable stored line at x: y'), trees),
     ).toBeUndefined();
     expect(refusalOfAnUnreadableRecord('unreadable stored line', trees)).toBeUndefined();
+  });
+});
+
+describe('what a charge says when its fact cannot be recorded', () => {
+  it('names the holder of a busy tail, or says another process when none is known', () => {
+    // The patience is spent at once: the clock jumps past it after the first attempt.
+    let now = 0;
+    const clock = vi.spyOn(Date, 'now').mockImplementation(() => {
+      now += A_CHARGE_WAITS_MS;
+      return now;
+    });
+    const known = recordTheCharge(() => {
+      throw new TailBusyError('/x/locks/t.lock', 4242, 7000);
+    });
+    expect(known.ok).toBe(false);
+    expect(known.ok === false && known.why).toContain('process 4242 was writing the record');
+    const unknown = recordTheCharge(() => {
+      throw new TailBusyError('/x/locks/t.lock', undefined, 7000);
+    });
+    expect(unknown.ok === false && unknown.why).toContain('another process was writing the record');
+    clock.mockRestore();
+  });
+
+  it('carries the message of an error, the text of a thrown string, and a default for a refusal with no reason', () => {
+    const error = recordTheCharge(() => {
+      throw new Error('disk full');
+    });
+    expect(error).toEqual({ ok: false, why: 'disk full' });
+    const text = recordTheCharge(() => {
+      throw 'no space';
+    });
+    expect(text).toEqual({ ok: false, why: 'no space' });
+    expect(recordTheCharge(() => ({ ok: false }))).toEqual({
+      ok: false,
+      why: 'the record would not take the fact',
+    });
+    expect(recordTheCharge(() => ({ ok: true }))).toEqual({ ok: true });
+  });
+});
+
+describe('a rule told again in one session', () => {
+  const rule = { id: 'r1', name: 'n', address: 'a', travels: true };
+
+  it('is told whole until the allowed times, then in one line naming the path as the host wrote it when it lies outside the project', () => {
+    const met: WriteVerdict = {
+      grade: 'refuse',
+      at: [{ path: '/elsewhere/file.ts', rules: [rule] }],
+      reason: 'whole',
+      notices: ['the whole notice'],
+    };
+    const seen = new Map<string, number>();
+    for (let i = 0; i < NOTICES_SAID_WHOLE; i += 1) {
+      expect(reasonTold(met, seen)).toBe('the whole notice');
+    }
+    expect(reasonTold(met, seen)).toBe(
+      `#${NOTICES_SAID_WHOLE + 1}: r1 refuses at /elsewhere/file.ts again; the notice is the one above.`,
+    );
+  });
+});
+
+describe('a line the record cannot read, said by the command line', () => {
+  const error = new UnreadableLineError(
+    '/some/where/else/000001.jsonl byte offset 9',
+    'not valid JSON',
+  );
+
+  it('says each tree by what it closes, and "the record" for a line outside every tree it read', () => {
+    const trees = [
+      { scope: 'public' as const, chainRoot: '/r/.mnema' },
+      { scope: 'private' as const, chainRoot: '/r/.git/mnema/private' },
+      { scope: 'global' as const, chainRoot: '/h/.mnema/global' },
+    ];
+    const at = (root: string) =>
+      new UnreadableLineError(`${root}/tails/t/000001.jsonl byte offset 1`, 'x');
+    expect(unreadableLineSentence(at('/r/.mnema'), trees)).toContain(
+      'the project’s public record holds',
+    );
+    expect(unreadableLineSentence(at('/r/.git/mnema/private'), trees)).toContain(
+      'private record on this machine',
+    );
+    expect(unreadableLineSentence(at('/h/.mnema/global'), trees)).toContain('closes every project');
+    const outside = unreadableLineSentence(error, trees);
+    expect(outside).toContain('Nothing was done: the record holds a line this mnema cannot read.');
+    expect(outside).toContain('/some/where/else/000001.jsonl byte offset 9');
   });
 });
