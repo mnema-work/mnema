@@ -82,6 +82,67 @@ describe('the search index prints one line per hit', () => {
   });
 });
 
+describe('the search index names the other end of a replaced decision on the hit line', () => {
+  const decision = (over: Partial<RecordSearch['hits'][number]>): RecordSearch['hits'][number] => ({
+    id: 'the-id',
+    kind: 'decision',
+    scope: 'public',
+    at: '2026-07-31T10:00:00.000Z',
+    title: 'Use SQLite',
+    derived: false,
+    state: 'superseded',
+    ...over,
+  });
+  const named = (title: string) => ({
+    found: true as const,
+    id: 'the-other-id',
+    adr: 'ADR-2',
+    title,
+    state: 'accepted',
+  });
+
+  it('says what replaced it, and what it replaced, on the hit line', () => {
+    const lines = printed(
+      searchReport(
+        renderPlain,
+        {
+          hits: [
+            decision({ supersededBy: named('Use SQLite WAL') }),
+            decision({ state: 'accepted', supersedes: named('Use a flat file') }),
+          ],
+          total: 2,
+        },
+        undefined,
+      ),
+    );
+    expect(lines).toHaveLength(5);
+    expect(lines[3]).toContain('superseded by ADR-2: Use SQLite WAL (accepted) · the-other-id');
+    expect(lines[4]).toContain('supersedes ADR-2: Use a flat file (accepted) · the-other-id');
+  });
+
+  it('keeps a forged title of the other end inside the line', () => {
+    const lines = printed(
+      searchReport(
+        renderPlain,
+        { hits: [decision({ supersededBy: named('a\nforged-id  public  x') })], total: 1 },
+        undefined,
+      ),
+    );
+    expect(lines).toHaveLength(4);
+  });
+
+  it('says so when the other end is in none of the trees read', () => {
+    const lines = printed(
+      searchReport(
+        renderPlain,
+        { hits: [decision({ supersededBy: { found: false, id: 'gone' } })], total: 1 },
+        undefined,
+      ),
+    );
+    expect(lines[3]).toContain('superseded by gone (not in the trees read)');
+  });
+});
+
 describe('the provenance report prints one line per pattern', () => {
   const pattern = (over: Partial<PatternProvenance>): PatternProvenance => ({
     id: 'the-id',

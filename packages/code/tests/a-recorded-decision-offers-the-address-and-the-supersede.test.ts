@@ -391,8 +391,11 @@ describe('mnema decision record', () => {
     expect(second.out).toContain(
       `mnema decision supersede ${firstId} ${secondId} --reason "<why>"`,
     );
-    // The command line has no session: no address is offered.
+    // The command line has no session and so no path it looked at: it names the link call with a
+    // placeholder, in its own shape, and never the tool's.
     expect(second.out).not.toContain('link_knowledge');
+    expect(second.out).toContain(`mnema link ${secondId} <path> --rel governs`);
+    expect(second.out).toContain('ADR-2 is addressed at no path');
     // And the first decision, which cites nothing, is acknowledged and nothing more.
     expect(first.out).not.toContain('supersede');
     expect(moves()).toBe(0);

@@ -19,6 +19,7 @@ import type { RecordSearch } from '@mnema/context';
 import { SEARCH_KINDS } from '@mnema/core';
 import { oneLine } from '../one-line.js';
 import { asId, asScope, asWhen, itemLine } from './items.js';
+import { namedDecisionText } from './named-decision.js';
 import type { Render } from './render.js';
 import { asState } from './state.js';
 
@@ -80,10 +81,26 @@ export function searchReport(
             asWhen(hit.at.slice(0, DATE_LENGTH)),
             oneLine(hit.title),
             ...(state !== undefined ? [asState(state)] : []),
+            ...replacementParts(hit),
           ]),
         ),
       );
     }
   }
   return lines;
+}
+
+/**
+ * What a decision hit replaced and what replaced it, named as `show` names them (the same
+ * {@link namedDecisionText}), each as one more column of the hit's own line: a search that
+ * printed `(superseded)` and not by what left a reader to open the record to learn which call
+ * is the current one.
+ */
+function replacementParts(hit: RecordSearch['hits'][number]): string[] {
+  const end = (verb: string, named: NonNullable<RecordSearch['hits'][number]['supersedes']>) =>
+    `${verb} ${namedDecisionText(named)}${named.found ? ` · ${oneLine(named.id)}` : ''}`;
+  return [
+    ...(hit.supersededBy !== undefined ? [end('superseded by', hit.supersededBy)] : []),
+    ...(hit.supersedes !== undefined ? [end('supersedes', hit.supersedes)] : []),
+  ];
 }

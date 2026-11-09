@@ -10,6 +10,19 @@ with its own changelog.
 
 ## [Unreleased]
 
+### Changed
+
+- **The command line says what the tool says about an address.** After "Recorded decision ADR-n (id)", `mnema decision
+  record` now adds, as `record_decision` does, that the decision is addressed at no path and that nothing was linked, and
+  names the call that would address it: `mnema link <id> <path> --rel governs` (with `--scope private` in the private
+  tree). The command has no connection and so no path it looked at: the `<path>` is left for you to fill in. Both doors
+  build the lines in one function.
+- **`mnema search` and the `search` tool name the other end of a replaced decision.** A decision hit that was superseded
+  carries `superseded by ADR-n: <title> (<state>) · <id>`, and one that replaced another carries `supersedes ...`,
+  worded as `mnema show` words them and read from the tree the hit is in (`(not in the trees read)` when that tree does
+  not hold the other end). `--json` and the tool's result gain the optional `supersedes` and `supersededBy` on a decision
+  hit, shaped as in `show`.
+
 ## [0.1.7] - 2026-11-09
 
 ### Changed

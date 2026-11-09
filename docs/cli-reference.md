@@ -385,7 +385,7 @@ handoff that names no `--scope` follows its task to the tree that holds it, brie
 `read_record` count the notes about a task over every tree this machine holds. `mnema refs <path>` and `audit_refs`,
 for an id no tree authored that reads as a path under the project, add whether the file exists now and the SHA-256
 of its bytes: a reading of the working tree, written nowhere. A path that leads out of the project, even through a
-directory link inside it, is not read; a link that stays inside is followed. `mnema search "ADR-48"` finds the decision by its label, as `mnema show ADR-48` does.
+directory link inside it, is not read; a link that stays inside is followed. `mnema search "ADR-48"` finds the decision by its label, as `mnema show ADR-48` does. A decision that replaced another, or was replaced, says so on its line in `mnema search` and in the `search` tool: `superseded by ADR-n: <title> (<state>) · <id>`, or `supersedes ...`, named from the tree the decision is in (and `(not in the trees read)` when that tree does not hold the other end).
 
 `mnema verify` exits non-zero when the record is **broken** (in **either** tree, in
 **any** project it was told to cover, and the line says which), so it drops into
@@ -2083,7 +2083,7 @@ line names the call that would do it.
   `rules_before_an_edit` before an edit, which only Claude Code does. The reply lists up to ten of them, the latest first,
   and the `link_knowledge` call with `rel: "governs"` that would address the decision at the latest. A path outside the
   project is not kept, and a restarted server starts with none. In a host that does not call `rules_before_an_edit` only the
-  paths asked of `governing_rules` appear, and the command line, which has no connection, offers no address.
+  paths asked of `governing_rules` appear. The command line has no connection and so no path to list: `mnema decision record` always adds the two lines that say the decision is addressed at no path and that nothing was linked, and name the call, `mnema link <id> <path> --rel governs` (with `--scope private` for a decision in the private tree), to fill in with the files it governs.
 
 The working tree's changes are never read to find the paths: they could credit the session with what it did not do.
 
