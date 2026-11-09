@@ -431,6 +431,23 @@ describe('readRecord: the decision a decision replaced is named, not only number
     expect(middle.supersededBy).toMatchObject({ found: true, id: 'd-3', title: 'Third' });
   });
 
+  it('names every decision a successor replaced, the one the projection holds first and the others by label', () => {
+    const b = bench();
+    for (const id of ['d-1', 'd-2', 'd-3', 'd-4']) accepted(b, id, `Call ${id}`);
+    supersedeDecision(b, 'd-3', 'd-4');
+    supersedeDecision(b, 'd-2', 'd-4');
+    supersedeDecision(b, 'd-1', 'd-4');
+    const successor = decisionBody([tree(b, 'public')], 'd-4');
+    expect(successor.supersedes).toMatchObject({ id: 'd-1' });
+    expect(successor.alsoSupersedes?.map((one) => one.id)).toEqual(['d-2', 'd-3']);
+    // A decision that replaced one carries no list of others.
+    const only = bench();
+    accepted(only, 'a', 'A');
+    accepted(only, 'b', 'B');
+    supersedeDecision(only, 'a', 'b');
+    expect(decisionBody([tree(only, 'public')], 'b')).not.toHaveProperty('alsoSupersedes');
+  });
+
   it('carries neither field for a decision that replaced nothing and was replaced by nothing', () => {
     const b = bench();
     accepted(b, 'd-1', 'Alone');
