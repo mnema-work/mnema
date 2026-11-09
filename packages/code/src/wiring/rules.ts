@@ -54,6 +54,7 @@ export function registerRules(program: Command, wiring: Wiring): Declared {
       if (result.severalRecords.length > 0) {
         io.err(render(fact(severalRecordsSentence(result.severalRecords))));
       }
+      if (result.notPushed !== undefined) io.err(render(fact(result.notPushed)));
       if (opts.json === true) {
         io.out(
           JSON.stringify(

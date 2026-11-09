@@ -167,6 +167,7 @@ import {
 } from '../link-target.js';
 import {
   movedDisplay,
+  rejectLeavesNothingInForce,
   successorOnlyForASupersede,
   supersedeLeavesNothingInForce,
 } from '../moved-record.js';
@@ -1135,14 +1136,16 @@ export function runDecisionTransition(
   // included.
   const adr = movedDisplay('decision', located.home.chainRoot, input.id, upcasters);
   const notice =
-    input.action === 'supersede' && input.by !== undefined
-      ? supersedeLeavesNothingInForce(
-          located.home.chainRoot,
-          input.by,
-          upcasters,
-          agentsAcceptInThisSession(session),
-        )
-      : undefined;
+    input.action === 'reject'
+      ? rejectLeavesNothingInForce(located.home.chainRoot, input.id, upcasters)
+      : input.action === 'supersede' && input.by !== undefined
+        ? supersedeLeavesNothingInForce(
+            located.home.chainRoot,
+            input.by,
+            upcasters,
+            agentsAcceptInThisSession(session),
+          )
+        : undefined;
   return {
     ok: true,
     id: input.id,

@@ -52,6 +52,7 @@ import { type AcceptState, acceptStateHere, agentMayAccept } from '../agent-acce
 import { resolveAddress } from '../label-as-address.js';
 import {
   movedDisplay,
+  rejectLeavesNothingInForce,
   successorOnlyForASupersede,
   supersedeLeavesNothingInForce,
 } from '../moved-record.js';
@@ -256,14 +257,16 @@ export function runDecisionTransition(
   // reflects the move that just landed.
   const adr = movedDisplay('decision', root, input.id, upcasters);
   const notice =
-    input.action === 'supersede' && input.by !== undefined
-      ? supersedeLeavesNothingInForce(
-          root,
-          input.by,
-          upcasters,
-          acceptStateOrUnreadable(() => withScopedCaches(trees, acceptStateHere)),
-        )
-      : undefined;
+    input.action === 'reject'
+      ? rejectLeavesNothingInForce(root, input.id, upcasters)
+      : input.action === 'supersede' && input.by !== undefined
+        ? supersedeLeavesNothingInForce(
+            root,
+            input.by,
+            upcasters,
+            acceptStateOrUnreadable(() => withScopedCaches(trees, acceptStateHere)),
+          )
+        : undefined;
   return {
     ok: true,
     id: input.id,

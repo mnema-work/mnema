@@ -262,6 +262,9 @@ export function recordReport(render: Render, body: RecordBody, context: RecordCo
       } else if (body.record.supersedes !== undefined) {
         lines.push(render(fact(`supersedes ${oneLine(body.record.supersedes)}`)));
       }
+      for (const also of body.alsoSupersedes ?? []) {
+        lines.push(render(fact(replacementFact('supersedes', also))));
+      }
       if (body.supersededBy !== undefined) {
         lines.push(render(fact(replacementFact('superseded by', body.supersededBy))));
       } else if (body.record.supersededBy !== undefined) {

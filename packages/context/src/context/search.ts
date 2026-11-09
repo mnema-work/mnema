@@ -66,6 +66,7 @@ import {
   type MemoryProjection,
   type ObservationProjection,
   type PertinenceQuery,
+  type ProjectionCache,
   type Scope,
   type SearchHit,
   type SearchKind,
@@ -189,6 +190,12 @@ export type RecordBody =
        */
       readonly supersedes?: NamedDecision;
       readonly supersededBy?: NamedDecision;
+      /**
+       * The other decisions this one replaced, when it replaced more than one: the projection keeps
+       * one id in `record.supersedes` (the last it was named by), and each decision it replaced
+       * says so in its own `supersededBy`. Absent when this decision replaced one or none.
+       */
+      readonly alsoSupersedes?: readonly NamedDecision[];
     }
   | {
       readonly kind: 'task';
@@ -519,6 +526,7 @@ export function readRecord(sources: readonly ScopedCache[], id: string): RecordB
         ...(decision.supersededBy !== undefined
           ? { supersededBy: nameDecision(caches, decision.supersededBy) }
           : {}),
+        ...alsoSupersededBy(caches, decision),
       };
     }
     const task = cache.getTask(id);
@@ -549,5 +557,30 @@ function toRecordHit({ hit, source }: { hit: SearchHit; source: ScopedCache }): 
     title: hit.title,
     derived: hit.derived,
     ...(hit.state !== undefined ? { state: hit.state } : {}),
+  };
+}
+
+/**
+ * The decisions, besides the one the projection names, that `decision` replaced: those whose own
+ * `supersededBy` is its id. Read from every tree in hand, since a decision may be replaced by one
+ * recorded in another tree. Absent rather than empty when there is none.
+ */
+function alsoSupersededBy(
+  caches: readonly ProjectionCache[],
+  decision: DecisionProjection,
+): { readonly alsoSupersedes?: readonly NamedDecision[] } {
+  const others = new Map<string, DecisionProjection>();
+  for (const cache of caches) {
+    for (const other of cache.listDecisions()) {
+      if (other.supersededBy === decision.id && other.id !== decision.supersedes) {
+        others.set(other.id, other);
+      }
+    }
+  }
+  if (others.size === 0) return {};
+  return {
+    alsoSupersedes: [...others.values()]
+      .sort((a, b) => (a.adr < b.adr ? -1 : a.adr > b.adr ? 1 : 0))
+      .map((other) => nameDecision(caches, other.id)),
   };
 }

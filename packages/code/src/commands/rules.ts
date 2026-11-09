@@ -38,6 +38,7 @@ import type { GoverningRules } from '@mnema/context';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { readGoverningRulesWhereItLands } from '../governed-tree.js';
 import { type InheritedReading, withInheritedSource } from '../inherited-record.js';
+import { rulesNotPushedLine } from '../rules-not-pushed.js';
 import {
   linkBreaksOf,
   type ScopedLinkBreak,
@@ -76,6 +77,11 @@ export interface RulesDone {
    * `--json`, in the answer's `severalRecords`. Empty for a record of one name.
    */
   readonly severalRecords: readonly RecordGroup[];
+  /**
+   * What to say when a rule governs the path and `edit-rules-push` is off: those rules are not
+   * handed to an agent at an edit ({@link rulesNotPushedLine}). Absent otherwise.
+   */
+  readonly notPushed?: string;
 }
 
 /** The read was refused before it ran. */
@@ -100,12 +106,21 @@ export function runRules(ctx: RulesContext, input: { path: string }): RulesDone 
   // in the record is written against.
   const root = dirname(trees.projectPublic);
   return withScopedCaches(trees, (sources) =>
-    withInheritedSource(trees, sources, (all, inherited) => ({
-      ok: true,
-      linkBreaks: linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE),
-      governed: readGoverningRulesWhereItLands(all, { path: input.path, root, from: ctx.cwd }),
-      severalRecords: all.flatMap((source) => source.cache.severalRecords()),
-      ...(inherited !== undefined ? { inherited } : {}),
-    })),
+    withInheritedSource(trees, sources, (all, inherited) => {
+      const governed = readGoverningRulesWhereItLands(all, {
+        path: input.path,
+        root,
+        from: ctx.cwd,
+      });
+      const notPushed = rulesNotPushedLine(sources, governed.rules.length);
+      return {
+        ok: true,
+        linkBreaks: linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE),
+        governed,
+        severalRecords: all.flatMap((source) => source.cache.severalRecords()),
+        ...(inherited !== undefined ? { inherited } : {}),
+        ...(notPushed !== undefined ? { notPushed } : {}),
+      };
+    }),
   );
 }

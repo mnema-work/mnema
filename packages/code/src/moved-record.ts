@@ -186,6 +186,32 @@ export function supersedeLeavesNothingInForce(
 }
 
 /**
+ * What a rejection leaves unsaid when the decision it rejects was the successor of a supersede, or
+ * undefined when it replaced nothing.
+ *
+ * THE SILENCE. `decision supersede <old> <new>` may name a successor that is still `proposed`, and
+ * rejecting that successor answered `→ rejected` and nothing else: the decision it replaced stays
+ * `superseded`, by a decision that never governed, so the subject has no rule in force and the move
+ * did not say so. Read AFTER the append, from the decisions the rejected one replaced.
+ *
+ * Both surfaces that move a decision ask this one function, as they do {@link supersedeLeavesNothingInForce}.
+ */
+export function rejectLeavesNothingInForce(
+  root: string,
+  rejected: string,
+  upcasters: UpcasterRegistry,
+): string | undefined {
+  const orphaned = withCache(root, upcasters, (cache) =>
+    cache
+      .listDecisions()
+      .filter((decision) => decision.supersededBy === rejected && decision.state === 'superseded'),
+  );
+  if (orphaned.length === 0) return undefined;
+  const named = orphaned.map((decision) => `${oneLine(decision.adr)} (${oneLine(decision.id)})`);
+  return `${named.join(', ')} ${orphaned.length === 1 ? 'was' : 'were'} superseded by this decision and stay${orphaned.length === 1 ? 's' : ''} superseded, so nothing is in force on ${orphaned.length === 1 ? 'that subject' : 'those subjects'}: record a new decision for ${orphaned.length === 1 ? 'it' : 'them'}`;
+}
+
+/**
  * The refusal a decision move earns when it is handed a successor (`by`) and the action takes
  * none, or undefined. Only a supersede reads `by`; accept and reject have no channel for it.
  *

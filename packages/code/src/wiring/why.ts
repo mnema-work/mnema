@@ -34,8 +34,17 @@ export function registerWhy(program: Command, wiring: Wiring): Declared {
       const { fact } = await import('../presentation/detail.js');
       const notRead = inheritedNotReadLine(result.inherited);
       if (notRead !== undefined) io.err(render(fact(notRead)));
+      if (result.about === 'file' && result.notPushed !== undefined) {
+        io.err(render(fact(result.notPushed)));
+      }
       if (opts.json === true) {
-        const { linkBreaks: _breaks, ok: _ok, inherited: _inherited, ...reading } = result;
+        const {
+          linkBreaks: _breaks,
+          ok: _ok,
+          inherited: _inherited,
+          notPushed: _notPushed,
+          ...reading
+        } = result as typeof result & { notPushed?: string };
         io.out(JSON.stringify(reading, null, 2));
         return;
       }

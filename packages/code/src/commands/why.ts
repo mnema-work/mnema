@@ -32,6 +32,7 @@ import {
   resolveCommit,
 } from '../git-log.js';
 import { type InheritedReading, withInheritedSource } from '../inherited-record.js';
+import { rulesNotPushedLine } from '../rules-not-pushed.js';
 import {
   linkBreaksOf,
   type ScopedLinkBreak,
@@ -93,6 +94,11 @@ export interface WhyFile {
   readonly linkBreaks: readonly ScopedLinkBreak[];
   /** What reading the record this project inherits came to, when it points at one. */
   readonly inherited?: InheritedReading;
+  /**
+   * What to say when a rule governs the file and `edit-rules-push` is off: those rules are not
+   * handed to an agent at an edit ({@link rulesNotPushedLine}). Absent otherwise.
+   */
+  readonly notPushed?: string;
 }
 
 /** The answer for a commit. */
@@ -207,6 +213,10 @@ export function runWhy(
     const touched =
       at.relative !== undefined && gitHere ? commitsWithTrailer(root, [at.relative]) : [];
     const listed = touched ?? [];
+    const notPushed = rulesNotPushedLine(
+      sources,
+      at.rules.filter((rule) => rule.relation === 'governs').length,
+    );
     return {
       ok: true,
       about: 'file',
@@ -218,6 +228,7 @@ export function runWhy(
       commits: listed.slice(0, LISTED).map((one) => describe(all, one)),
       more: listed.length > LISTED,
       linkBreaks,
+      ...(notPushed !== undefined ? { notPushed } : {}),
     };
   }
 }
