@@ -419,6 +419,28 @@ describe('timeline', () => {
   });
 });
 
+describe('a switch met by a line the record cannot read', () => {
+  it('is refused with the line, the tail and the way out named, and nothing is written', async () => {
+    const dir = repo();
+    await mnema('init');
+    await mnema('decision', 'record', 'Use UTC', 'three zones');
+    const tails = join(dir, '.mnema', 'tails');
+    const tail = readdirSync(tails)[0] as string;
+    const segment = join(tails, tail, '000001.jsonl');
+    writeFileSync(segment, `${readFileSync(segment, 'utf-8')}{"this is not json\n`, 'utf-8');
+    const bytes = readFileSync(segment, 'utf-8');
+    const said = await mnema('switch', 'off', 'edit-rules-push');
+    expect(said.failed).toBe(true);
+    expect(said.err).toContain(`unreadable stored line at ${segment} byte offset`);
+    expect(said.err).toContain(tail);
+    expect(said.err).toContain('the project’s public record holds a line this mnema cannot read');
+    expect(said.err).toContain('restore the line from the repository’s history');
+    expect(said.err).toContain('Switching a channel off is a write to the same record');
+    expect(said.err).toContain('`mnema verify` lists every unreadable line');
+    expect(readFileSync(segment, 'utf-8')).toBe(bytes);
+  });
+});
+
 describe('the agent’s surface says what the command line says', () => {
   const read = (path: string): string =>
     readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf-8');

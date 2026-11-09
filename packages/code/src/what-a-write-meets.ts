@@ -308,6 +308,25 @@ export function refusalOfAnUnreadableRecord(
 }
 
 /**
+ * What a command line says when it met a stored line it cannot read: the line (file and position, so
+ * the tail), what the unreadable tree closes, the ways out the refusal of a write names, and the
+ * command that lists every such line. Every write is refused until the line reads, and so is
+ * `switch off`: the switch is a fact of the same record.
+ */
+export function unreadableLineSentence(
+  error: UnreadableLineError,
+  trees: readonly Pick<ScopedCache, 'scope' | 'chainRoot'>[],
+): string {
+  const words = UNREADABLE_IN[treeOfTheLine(error.locus, trees) ?? 'unknown'];
+  return [
+    `Nothing was done: ${words.tree} holds a line this mnema cannot read.`,
+    error.message,
+    words.out,
+    'Switching a channel off is a write to the same record, so it is refused too. `mnema verify` lists every unreadable line with its tail and position.',
+  ].join('\n\n');
+}
+
+/**
  * The tree whose chain holds the file a locus names, among the trees the door resolved: the
  * DEEPEST chain root it lies under, because outside a repository the private tree's chain sits
  * inside the public one's.

@@ -37,6 +37,10 @@ with its own changelog.
   now name the decisions the rejected one had replaced: they stay `superseded`, so nothing is in force on that subject.
 - **`show` and `read_record` name every decision a successor replaced.** A decision that superseded two or more printed
   only the last; it now prints a `supersedes` line for each, and the JSON carries the others in `alsoSupersedes`.
+- **A line the record cannot read is named when a switch meets it.** Switching a channel off with an unreadable stored line
+  in a tail is still refused, like every write, and now says so in words: the line and its position in its tail, which
+  record it closes, the ways out (update mnema, restore the line from history or the file from a copy), and that
+  `mnema verify` lists every such line. There is no command that repairs a line.
 - **`rules` and `why` say when the rules are not pushed.** With `edit-rules-push` switched off, a path that a
   rule governs gets a line on the second stream: those rules are not handed to an agent when it edits there.
 

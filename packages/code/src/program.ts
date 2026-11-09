@@ -479,6 +479,23 @@ export async function parseWith(built: BuiltProgram, argv: readonly string[]): P
       reportIdentityRefusal({ io, render }, { code: error.code, message: error.message });
       return;
     }
+    // A stored line no parser can open stops every read and write of its record, a switch included:
+    // said with its file and position, what it closes and the ways out.
+    const { UnreadableLineError } = await import('@mnema/chain');
+    if (error instanceof UnreadableLineError) {
+      const { unreadableLineSentence } = await import('./what-a-write-meets.js');
+      const resolved = resolveTrees(here().cwd, here().env);
+      const places = [
+        { scope: 'public' as const, chainRoot: resolved.projectPublic },
+        { scope: 'private' as const, chainRoot: resolved.projectPrivate },
+        { scope: 'global' as const, chainRoot: resolved.global },
+      ].flatMap((one) =>
+        one.chainRoot === undefined ? [] : [{ ...one, chainRoot: one.chainRoot }],
+      );
+      io.err(render(refusalSentence(unreadableLineSentence(error, places))));
+      io.fail();
+      return;
+    }
     // A throw the product did not write for anybody (an engine error out of its own code, a
     // value that is not an Error) is a FAULT, not a no, and it is said as one with its own
     // exit (`internal-error.ts` decides which is which).
