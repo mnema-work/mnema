@@ -10,24 +10,7 @@ with its own changelog.
 
 ## [Unreleased]
 
-### Fixed
-
-- **`mnema record commit` carries the record's README when mnema itself rewrote it.** A project founded with an older
-  `.mnema/README.md` has it replaced by the current page at the next write, and the commit that `record commit` cut left
-  that file out, so the rewrite never reached git through it. The commit now carries the `README.md` and the
-  `.editorconfig` of `.mnema/` when their bytes are exactly the text this mnema writes; a page you edited stays out and
-  is still named as left out.
-
 ### Changed
-
-- **The text a session opens with carries this machine's private rules, marked as such.** After the committed record's
-  rules, the copy the plugin hands a session and a subagent (`mnema brief --hook`) ends with a section, `Recorded
-  privately on this machine`, that lists by name the decisions in force and the adopted patterns of this machine's
-  private tree and says they are not committed. Each private decision is labelled `private ADR-<n>` with its id, never
-  the bare label, since the private tree numbers its own and its `ADR-1` is not the committed `ADR-1`. It is the first
-  part cut at the hook's ceiling, and says what it left out. A new switch, `private-rules`, on to begin with, turns it off: `mnema switch off private-rules` gives back the
-  line that only counts them. The file `mnema brief` prints is unchanged, and the machine's global tree reaches
-  neither.
 
 - **The `mnema` command starts in about half the time.** The `bin` of `@mnema/code` is now `dist/bundle/cli.js`, one
   bundle of the command and of the code it reaches, its dependencies included (all but `string-width`), split into
@@ -35,13 +18,21 @@ with its own changelog.
   before and after: `mnema --version` 179 to 91 ms, `verify` 197 to 110 ms, `decision record` 246 to 153 ms, `brief`
   (what the session hook runs) 208 to 119 ms, and the MCP server's reply to `initialize` 308 to 164 ms.
 - **The dependencies the command runs are inside the package.** They are covered by the provenance of `@mnema/code`,
-  not each by its own: npm still installs the declared dependencies and `npm audit signatures` still checks them, but the
-  command does not load them. The package now carries `THIRD-PARTY-NOTICES.md`, with the version and the license of
-  each package the bundle carries, and [Install](docs/install.md#where-the-package-came-from) says it.
-- **A stack trace names a chunk of the bundle** (a file of `dist/bundle/` and a line in it), not a file of the compiled
-  output. The bundle is not minified, so the line reads as the code it came from.
+  not each by its own: npm still installs the declared dependencies and `npm audit signatures` still checks them, but
+  the command does not load them. The package now carries `THIRD-PARTY-NOTICES.md`, with the version and the license
+  of each package the bundle carries, and [Install](docs/install.md#where-the-package-came-from) says it.
+- **A stack trace names a chunk of the bundle** (a file of `dist/bundle/` and a line in it), not a file of the
+  compiled output. The bundle is not minified, so the line reads as the code it came from.
 - **From source, the binary is `packages/code/dist/bundle/cli.js`.** [Build from source](docs/build-from-source.md) and
   [the site page](docs/site.md) name it; the compiled `dist/cli.js` is still built and still runs.
+- **The text a session opens with carries this machine's private rules, marked as such.** After the committed
+  record's rules, the copy the plugin hands a session and a subagent (`mnema brief --hook`) ends with a section,
+  `Recorded privately on this machine`, that lists by name the decisions in force and the adopted patterns of this
+  machine's private tree and says they are not committed. Each private decision is labelled `private ADR-<n>` with
+  its id, never the bare label, since the private tree numbers its own and its `ADR-1` is not the committed `ADR-1`.
+  It is the first part cut at the hook's ceiling, and says what it left out. A new switch, `private-rules`, on to
+  begin with, turns it off: `mnema switch off private-rules` gives back the line that only counts them. The file
+  `mnema brief` prints is unchanged, and the machine's global tree reaches neither.
 
 ### Fixed
 
@@ -50,16 +41,23 @@ with its own changelog.
   and so in the repository's git. The fact is now written to the tree that holds the rule, by the hook command and by
   the MCP tool alike; a public rule at the same path keeps its fact in the public tree. Facts already written stay as
   they are.
-- **Rejecting the successor of a supersede says what it leaves.** The reject move, from the command line (`decision move`) and from `decision_transition`,
-  now name the decisions the rejected one had replaced: they stay `superseded`, so nothing is in force on that subject.
-- **`show` and `read_record` name every decision a successor replaced.** A decision that superseded two or more printed
-  only the last; it now prints a `supersedes` line for each, and the JSON carries the others in `alsoSupersedes`.
-- **A line the record cannot read is named when a switch meets it.** Switching a channel off with an unreadable stored line
-  in a tail is still refused, like every write, and now says so in words: the line and its position in its tail, which
-  record it closes, the ways out (update mnema, restore the line from history or the file from a copy), and that
-  `mnema verify` lists every such line. There is no command that repairs a line.
+- **Rejecting the successor of a supersede says what it leaves.** The reject move, from the command line
+  (`decision move`) and from `decision_transition`, now names the decisions the rejected one had replaced: they stay
+  `superseded`, so nothing is in force on that subject.
+- **`show` and `read_record` name every decision a successor replaced.** A decision that superseded two or more
+  printed only the last; it now prints a `supersedes` line for each, and the JSON carries the others in
+  `alsoSupersedes`.
+- **A line the record cannot read is named when a command meets it, a switch included.** Switching a channel off with
+  an unreadable stored line in a tail is still refused, like every write, and now says so in words: the line and its
+  position in its tail, which record it closes, the ways out (update mnema, restore the line from history or the file
+  from a copy), and that `mnema verify` lists every such line. There is no command that repairs a line.
 - **`rules` and `why` say when the rules are not pushed.** With `edit-rules-push` switched off, a path that a
   rule governs gets a line on the second stream: those rules are not handed to an agent when it edits there.
+- **`mnema record commit` carries the record's README when mnema itself rewrote it.** A project founded with an older
+  `.mnema/README.md` has it replaced by the current page at the next write, and the commit that `record commit` cut
+  left that file out, so the rewrite never reached git through it. The commit now carries the `README.md` and the
+  `.editorconfig` of `.mnema/` when their bytes are exactly the text this mnema writes; a page you edited stays out
+  and is still named as left out.
 
 ## [0.1.6] - 2026-11-07
 
