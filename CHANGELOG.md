@@ -10,17 +10,14 @@ with its own changelog.
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-11-09
+
 ### Changed
 
 - **The MCP server's instructions open with what to do.** Their first 250 characters now say to call `record_decision`
   when a choice is settled that someone could later question, then what mnema is. A host may show a server by no more
   than its opening: Codex 0.167 lists each server it defers by its first 250 characters. The rest of the text says what
   it said, a little shorter, and stays under 2,048 characters.
-
-- **The host contract holds Codex 0.167.0, Claude Code 2.1.311 and Copilot CLI 1.0.108.** Codex 0.167 lists a server in a
-  developer message, `<tools> Deferred tool namespaces:`, and no longer in the description of its search entry (699
-  bytes, 151 tokens), so the cases read both. Claude Code 2.1.311 asks again for a summary when a reply carries no
-  summary block, so the compaction case answers with one.
 
 - **The `mnema` command starts in about half the time.** The `bin` of `@mnema/code` is now `dist/bundle/cli.js`, one
   bundle of the command and of the code it reaches, its dependencies included (all but `string-width`), split into
@@ -43,6 +40,11 @@ with its own changelog.
   It is the first part cut at the hook's ceiling, and says what it left out. A new switch, `private-rules`, on to
   begin with, turns it off: `mnema switch off private-rules` gives back the line that only counts them. The file
   `mnema brief` prints is unchanged, and the machine's global tree reaches neither.
+
+- **The host contract holds Codex 0.167.0, Claude Code 2.1.311 and Copilot CLI 1.0.108.** Codex 0.167 lists a server in a
+  developer message, `<tools> Deferred tool namespaces:`, and no longer in the description of its search entry (699
+  bytes, 151 tokens), so the cases read both. Claude Code 2.1.311 asks again for a summary when a reply carries no
+  summary block, so the compaction case answers with one.
 
 ### Fixed
 
@@ -2862,6 +2864,7 @@ Requires Node ≥ 22.12.0; the packages are ESM-only.
   committed tree (`packages/chain/FORMAT.md` §4.1).
 
 [Unreleased]: https://github.com/mnema-work/mnema/commits/main
+[0.1.7]: https://github.com/mnema-work/mnema/releases/tag/v0.1.7
 [0.1.6]: https://github.com/mnema-work/mnema/releases/tag/v0.1.6
 [0.1.5]: https://github.com/mnema-work/mnema/releases/tag/v0.1.5
 [0.1.4]: https://github.com/mnema-work/mnema/releases/tag/v0.1.4

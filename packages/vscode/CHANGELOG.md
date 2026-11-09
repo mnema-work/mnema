@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.7
+
+- No change to the extension itself, only its version, so that it matches the command line it is released with.
+- It still needs the `mnema` command line (`@mnema/code`) where the editor can start it, and it
+  adds no verifier of its own: what it shows is what `mnema` printed.
+
 ## 0.1.6
 
 - The extension's addresses moved with the project: the repository, the issues page and the install link in the

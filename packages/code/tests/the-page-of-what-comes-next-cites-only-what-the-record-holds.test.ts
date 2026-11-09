@@ -98,14 +98,8 @@ describe('the page of what comes next', () => {
       'the Docs list of the front page, which the site navigation is read from',
     ).toContain(`(${PAGE})`);
     const changelog = readFileSync(join(ROOT, 'CHANGELOG.md'), 'utf-8');
-    // The entry sits under Unreleased until the release that carries the page cuts that section,
-    // and under the newest released section after it: either says it.
-    const firstReleased = changelog.indexOf('\n## [0.');
-    const unreleased = changelog.slice(
-      changelog.indexOf('## [Unreleased]'),
-      changelog.indexOf('\n## [0.', firstReleased + 1),
-    );
-    expect(unreleased).toContain('docs/what-comes-next.md');
+    // The entry sits in the section of the release that added the page, which later releases leave behind.
+    expect(changelog).toContain('docs/what-comes-next.md');
   });
 });
 
