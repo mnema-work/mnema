@@ -2,6 +2,8 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 // @ts-expect-error plain ESM under .github/, read by the config and by the test that keeps it honest
 import { markedGuards } from './.github/the-fast-guards/marked.mjs';
+// @ts-expect-error plain ESM under .github/, read by the config and by the test that keeps it honest
+import { retryFor } from './.github/a-timeout-is-run-once-more/retry.mjs';
 
 /**
  * THE CASES THAT READ THE WHOLE TREE, run on their own: `pnpm test:guards`. They are the test
@@ -15,6 +17,7 @@ export default defineConfig({
     include: markedGuards(root),
     exclude: ['**/dist/**', '**/node_modules/**'],
     environment: 'node',
+    retry: retryFor(process.env),
     setupFiles: ['./.github/a-home-of-its-own/setup.mjs'],
   },
 });

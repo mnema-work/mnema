@@ -12,7 +12,6 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-
 import {
   identityFounded,
   runStarted,
@@ -1082,8 +1081,61 @@ describe('chain: crash resilience beyond the torn last entry (audit)', () => {
     expect(() => {
       const w = openChain(root, { maxUnsignedEvents: 2 });
       w.append(taskCreated(env(w, 't-after'), { title: 'after crash' }));
+      // One append writes no checkpoint here (two unsigned events allowed), so the resume has to
+      // SIGN to prove the fragment is not buried: the checkpoint lands after the cut, or glued.
+      w.checkpoint();
     }).not.toThrow();
-    expect(verify(root).ok).toBe(true);
+    const result = verify(root);
+    expect(result.ok).toBe(true);
+    expect(result.tails[0]?.checkpointedThrough).toBe(5);
+    const stored = readFileSync(checkpointsPath({ root }, tailIdOf(root)), 'utf-8');
+    expect(stored.endsWith('\n')).toBe(true);
+    expect(
+      stored
+        .trimEnd()
+        .split('\n')
+        .every((line) => line.startsWith('{"') && line.endsWith('}')),
+    ).toBe(true);
+  });
+
+  it('counts one tail once when its segment and its checkpoints file both end torn', () => {
+    writeSome(4, { maxUnsignedEvents: 2 });
+    openChain(root, { maxUnsignedEvents: 2 }).checkpoint();
+    appendFileSync(orderedSegments({ root }, tailIdOf(root))[0] as string, '{"event":{"kind":');
+    appendFileSync(checkpointsPath({ root }, tailIdOf(root)), '{"scheme":"mnema-checkp');
+    const result = verify(root);
+    expect(result.census.filter((note) => note.kind === 'partial-final-line')).toHaveLength(2);
+    expect(result.summary).toContain('1 tail(s) ending in a dropped partial line');
+  });
+
+  it('a cut anywhere in the last checkpoint line is healed by the next write', () => {
+    for (const keep of [30, 'all-but-newline'] as const) {
+      rmSync(root, { recursive: true, force: true });
+      mkdirSync(root, { recursive: true });
+      writeSome(4, { maxUnsignedEvents: 2 });
+      openChain(root, { maxUnsignedEvents: 2 }).checkpoint();
+      const file = checkpointsPath({ root }, tailIdOf(root));
+      const whole = readFileSync(file);
+      const lastStart = whole.lastIndexOf(0x0a, whole.length - 2) + 1;
+      // Cut mid-line, or lose only the newline: the line still parses and must be kept, not glued.
+      writeFileSync(
+        file,
+        keep === 'all-but-newline' ? whole.subarray(0, -1) : whole.subarray(0, lastStart + keep),
+      );
+      const before = verify(root);
+      expect(before.ok).toBe(true);
+      // Named only when the piece was DROPPED: a line that lost its newline alone is kept, as the
+      // Python reader keeps it.
+      expect(before.census.map((note) => note.kind).includes('partial-final-line')).toBe(
+        keep !== 'all-but-newline',
+      );
+      const w = openChain(root, { maxUnsignedEvents: 2 });
+      w.append(taskCreated(env(w, 't-after'), { title: 'after crash' }));
+      w.checkpoint();
+      const after = verify(root);
+      expect(after.ok).toBe(true);
+      expect(after.census.map((note) => note.kind)).not.toContain('partial-final-line');
+    }
   });
 
   it('heals a torn last entry on recovery so the NEXT append does not bury it', () => {

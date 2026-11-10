@@ -72,6 +72,19 @@ jobs:
       # test` now also leaves the ledger the step below reads, which carries the ceiling each
       # case ran under as well as its duration, and answers that question on every run instead
       # of on the day somebody downloads this artifact and reads it by hand.
+      # HOW LONG AN FSYNC TAKES ON THIS RUNNER WHILE THE SUITE RUNS, on the plain cell of the
+      # floor node only. Cases that take 0.03 s have been seen stopped for 5 to 10 s with the
+      # machine reporting one runnable thread, and the record's appends are fsynced. The probe
+      # writes one small file, fsynced, every 250 ms in the temp directory the suite writes in,
+      # and the step after the suite stops it: it reports the median, the p99 and the worst
+      # instants to the job summary and to an artifact, beside the ledger's own clock. It is
+      # a measurement and gates nothing.
+      - name: Start the fsync probe
+        if: matrix.node == '24.15.0'
+        run: |
+          node .github/the-disk-answers/fsync-probe.mjs --out "$RUNNER_TEMP/fsync-probe.json" &
+          echo $! > "$RUNNER_TEMP/fsync-probe.pid"
+
       - name: Test
         if: matrix.node != '24'
         run: pnpm test --reporter=json --outputFile.json=vitest-report.json
@@ -88,7 +101,26 @@ jobs:
         if: matrix.node == '24'
         run: pnpm test:coverage --reporter=json --outputFile.json=vitest-report.json
 
-      # WHY IT WENT RED, AND ONLY WHEN IT DID. `pnpm test` leaves a ledger behind: a duration,
+      - name: Stop the fsync probe
+        if: always() && matrix.node == '24.15.0'
+        continue-on-error: true
+        run: |
+          kill -TERM "$(cat "$RUNNER_TEMP/fsync-probe.pid")"
+          for _ in $(seq 1 50); do [ -s "$RUNNER_TEMP/fsync-probe.json" ] && break; sleep 0.1; done
+          # THE PAGE IS WRITTEN HERE, NOT BY THE PROBE: a job summary belongs to the step that
+          # writes it, and the probe starts in an earlier step that is closed by now.
+          node .github/the-disk-answers/fsync-probe.mjs --render "$RUNNER_TEMP/fsync-probe.json" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the fsync probe
+        if: always() && matrix.node == '24.15.0'
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fsync-probe-node${{ matrix.node }}
+          path: ${{ runner.temp }}/fsync-probe.json
+          if-no-files-found: warn
+
+      # WHY IT WENT RED, AND WHAT A RETRY HID. `pnpm test` leaves a ledger behind: a duration,
       # the ceiling each case actually ran under, and what the machine was doing in that case's
       # own window. This reads it and RE-RUNS every red on its own, so the page says which reds
       # reproduce alone (the guard catching something) and which do not. Two deliveries had to
@@ -97,13 +129,20 @@ jobs:
       # It cannot turn a red green: the step above has already failed by the time this runs, and
       # this one is `continue-on-error` so that a broken ruler here never masks the red it was
       # asked to explain.
+      #
+      # IT ALSO RUNS ON A GREEN RUN, because a case that ended on its ceiling is run once more in
+      # CI and passes on the retry (`.github/a-timeout-is-run-once-more/retry.mjs`): the run is
+      # green and the first attempt is only in the ledger. The page names each such case as a
+      # flake, so a retry that keeps the run green never keeps it quiet. On a green run the page is
+      # titled for what it is and the step exits 0 (`--run-passed`): a failure annotation on a
+      # green job would say the opposite of the job.
       - name: Why it went red
-        if: failure()
+        if: success() || failure()
         continue-on-error: true
-        run: pnpm why-it-went-red --summary "$GITHUB_STEP_SUMMARY" --json why-it-went-red-verdict.json
+        run: pnpm why-it-went-red ${{ job.status == 'success' && '--run-passed' || '' }} --summary "$GITHUB_STEP_SUMMARY" --json why-it-went-red-verdict.json
 
       - name: Upload the verdict
-        if: failure()
+        if: success() || failure()
         continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

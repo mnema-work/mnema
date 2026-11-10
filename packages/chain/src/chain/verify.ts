@@ -1306,11 +1306,15 @@ function verifyReading(
     const read = readTail(layout, tail, upcasters, refusedLine(layout, tail, issues), relaid);
     // A refused EVENT line leaves a hole in the entries; a refused checkpoint line does not.
     const holed = issues.length > 0;
+    let checkpointsPartial = false;
     const checkpoints = readTailCheckpoints(
       layout,
       tail,
       refusedLine(layout, tail, issues),
       relaid,
+      () => {
+        checkpointsPartial = true;
+      },
     );
     const lineRefused = issues.length > 0;
     const entries = read.entries;
@@ -1321,6 +1325,15 @@ function verifyReading(
         detail:
           `tail ${oneLine(tail)} ends in a partial line that was dropped: the mark of a write ` +
           'interrupted mid-append, and indistinguishable from an appended fragment',
+      });
+    }
+    if (checkpointsPartial) {
+      notes.push({
+        kind: 'partial-final-line',
+        tail,
+        detail:
+          `the checkpoints file of tail ${oneLine(tail)} ends in a partial line that was dropped: ` +
+          'the mark of a write interrupted mid-append, and indistinguishable from an appended fragment',
       });
     }
 
@@ -3014,7 +3027,12 @@ function censusClauses(census: readonly CensusNote[]): string[] {
   const clauses: string[] = [];
   for (const [kind, clause] of Object.entries(CENSUS_CLAUSE)) {
     if (clause === null) continue;
-    const count = census.filter((note) => note.kind === kind).length;
+    const ofKind = census.filter((note) => note.kind === kind);
+    // A tail whose segment and checkpoints file are both torn has two notes and is one tail.
+    const count =
+      kind === 'partial-final-line'
+        ? new Set(ofKind.map((note) => ('tail' in note ? note.tail : ''))).size
+        : ofKind.length;
     if (count > 0) clauses.push(clause(count));
   }
   return clauses;

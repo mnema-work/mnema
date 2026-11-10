@@ -80,6 +80,11 @@ with its own changelog.
   (OpenCode), a mark on a white square (Factory Droid) or padded far inside the file (Goose) are now the vendor's own square
   or mark file of the same brand page or repository, listed in `assets/hosts/SOURCES.md` with its source, date and sha256,
   and a test holds that no image of the table carries a width.
+- **A torn last line of `checkpoints.jsonl` is healed by the next write, not buried.** A crash while signing a checkpoint leaves a
+  piece with no newline. Reading tolerated it, but the next write appended its checkpoint glued to the piece, and the tail
+  became unreadable to `mnema verify` and to the Python reader for good. The writer now cuts a piece that does not parse, or
+  completes one that lost only its newline, the way it already healed a segment's. `verify` names a dropped piece of the
+  checkpoints file in its census, as the Python reader already did.
 - **The comparison with a base reads one segment at a time.** The comparison `verify --since` makes kept the bytes of
   every segment the base commit held until the end, and only then wrote them down for the check of the tails that
   arrived, so the comparison's own peak was all the record's tails. Each file is now taken out of git once, compared,

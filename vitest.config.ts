@@ -1,4 +1,6 @@
 import { defineConfig } from 'vitest/config';
+// @ts-expect-error plain ESM under .github/, read by the config and by the test that keeps it honest
+import { retryFor } from './.github/a-timeout-is-run-once-more/retry.mjs';
 
 export default defineConfig({
   test: {
@@ -6,6 +8,9 @@ export default defineConfig({
     // The host contract starts the real host in a network namespace of its own, with a config of its own.
     exclude: ['**/dist/**', '**/node_modules/**', 'packages/code/tests/host-contract/**'],
     environment: 'node',
+    // In CI only, a case that ended on its ceiling is run once more, and the ledger keeps the
+    // first attempt visible. What it retries, and why, is in the file it comes from.
+    retry: retryFor(process.env),
     // EVERY TEST PROCESS RUNS IN A HOME OF ITS OWN, and no process it starts may resolve the
     // machine's: the key root lives under `HOME`, so a case that sees the real one signs with the
     // real key. What the file does, and what it cannot reach, is in its header.

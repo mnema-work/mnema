@@ -76,6 +76,18 @@
  * SO THE REPAIR THIS BAN REFUSES WAS PRICED, and it is still the wrong one: the cheap line
  * would have been written at the number this measurement produced, and the measurement says no
  * case is anywhere near needing it.
+ *
+ * THAT READING IS OF ITS DAY AND NO LONGER HOLDS. Over 39 runs of the trunk on 10 Nov 2026 (11441
+ * cases), 204 cases had a slowest plain run between 2 and 5 s, 89 above 3 s and 16 above 4.5 s;
+ * the sweep in `no-classification-table-reaches-the-surface` reached 5.1 s under the coverage cell
+ * and now carries a ceiling of its own with the wait named. And three cases that take 0.03 to
+ * 1.7 s were each seen stopped for 5.6 to 9.9 s inside one run (the same case ran in under 1.1 s
+ * alone, with one runnable thread), so a case of any size can be the victim of a stop that no
+ * ceiling at the case answers. THE BAN IS UNCHANGED, because lifting the ceiling for everybody is
+ * still the line that hides growth. What answers the stop is elsewhere: in CI a case that ends on
+ * its ceiling is run once more (`.github/a-timeout-is-run-once-more/retry.mjs`), only for an error
+ * that says it timed out, and the ledger and the page `why-it-went-red` writes count each case
+ * that passed on the retry as a flake, so the first attempt is never lost.
  */
 
 import { readdirSync, readFileSync } from 'node:fs';

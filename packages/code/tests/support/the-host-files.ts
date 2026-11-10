@@ -1479,7 +1479,7 @@ const SHOWN: {
   goose: {
     name: 'Goose',
     by: 'Agentic AI Foundation · desktop and command line',
-    logo: { file: 'goose-desktop-icon.svg', alt: 'Goose' },
+    logo: { file: 'goose.svg', dark: 'logo_dark.png', alt: 'Goose' },
   },
 };
 

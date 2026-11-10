@@ -66,6 +66,7 @@ import type { UpcasterRegistry } from '../events/upcaster.js';
 import {
   type Checkpoint,
   checkpointHash,
+  parseCheckpoint,
   serializeCheckpoint,
   signCheckpoint,
 } from './checkpoint.js';
@@ -790,6 +791,7 @@ export class ChainWriter {
     // ends in a newline, so this only ever removes a genuine crash fragment.
     if (lastSegment !== undefined && fragment !== undefined)
       truncateSync(lastSegment, fragment.start);
+    healCheckpointsEnd(checkpointsPath(this.layout, this.tailId));
     if (last !== undefined) {
       this.head = last.link.hash;
       this.nextSeq = last.link.seq + 1;
@@ -1209,6 +1211,25 @@ function sizeOf(filePath: string): number {
 function ensureDir(filePath: string): void {
   const dir = dirname(filePath);
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+}
+
+/**
+ * Heals the end of `checkpoints.jsonl` the way the segment's is healed: a last line with no
+ * newline is a crash's piece, and the next checkpoint appended after it would glue to it and
+ * make the file unreadable for good. A piece that does not parse is cut at its start; one that
+ * parses lost only its newline and is completed, because `lastTailCheckpoint` already counts it
+ * as the tail's last checkpoint and the next one links to it. Under the tail lock, like the cut
+ * of the segment, and only on a tail this installation goes on writing.
+ */
+function healCheckpointsEnd(path: string): void {
+  if (!existsSync(path)) return;
+  for (const line of linesFromEnd(path)) {
+    if (line.bytes.length === 0) return; // ends in a newline: intact
+    const parses = parseStoredLine(line.bytes, true, parseCheckpoint, () => path) !== null;
+    if (parses) appendDurably(path, '\n');
+    else truncateSync(path, line.start);
+    return;
+  }
 }
 
 /** The unterminated piece a segment ends in: where it begins, and whether it reads as an entry. */

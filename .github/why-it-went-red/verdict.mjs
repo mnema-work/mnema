@@ -130,6 +130,18 @@ import { fileURLToPath } from 'node:url';
  *   ceiling: number | null,
  *   says: string,
  * }} Accused
+ *
+ * A CASE THAT FAILED AND PASSED ON A RETRY: a flake, counted here because the attempt that failed
+ * is not in the result any other reader sees. `duration` is the attempt that passed.
+ *
+ * @typedef {{
+ *   file: string,
+ *   name: string,
+ *   retries: number,
+ *   duration: number,
+ *   ceiling: number | null,
+ *   load: Load | null,
+ * }} Flake
  */
 
 /**
@@ -150,6 +162,7 @@ import { fileURLToPath } from 'node:url';
  *   broken: string[],
  *   reds: Red[],
  *   accused: Accused[],
+ *   flaky: Flake[],
  *   budget: number,
  *   retimed: number,
  *   caught: number,
@@ -384,6 +397,17 @@ export function decide({ ledger, alone, budget = BUDGET, limit = ACCUSATION_LIMI
     if (red.says === UNREADABLE) broken.push(`a red could not be re-run: ${red.name}: ${red.why}`);
   }
 
+  const flaky = ledger.cases
+    .filter((one) => one.state === 'passed' && one.flaky === true)
+    .map((one) => ({
+      file: one.file,
+      name: namesOf(one.titles).shown,
+      retries: one.retries,
+      duration: Math.round(one.duration),
+      ceiling: one.ceiling,
+      load: one.load ?? null,
+    }));
+
   const candidates = ledger.cases.filter(
     (one) =>
       one.state === 'passed' && one.ceiling === ledger.sharedCeiling && one.duration > budget,
@@ -420,10 +444,14 @@ export function decide({ ledger, alone, budget = BUDGET, limit = ACCUSATION_LIMI
 
   if (broken.length > 0) return { verdict: 'RULER BROKEN', broken, reds, accused: [] };
   return {
-    verdict: reds.length === 0 && accused.length === 0 ? 'CLEAN' : 'SOMETHING TO READ',
+    verdict:
+      reds.length === 0 && accused.length === 0 && flaky.length === 0
+        ? 'CLEAN'
+        : 'SOMETHING TO READ',
     broken,
     reds,
     accused,
+    flaky,
     budget,
     retimed,
     caught: reds.filter((red) => red.says === CAUGHT).length,
@@ -435,11 +463,15 @@ export function decide({ ledger, alone, budget = BUDGET, limit = ACCUSATION_LIMI
  * What the exit code is for a reading. Two reds, and they mean different things.
  *
  * @param {Reading} result
+ * @param {boolean} [passed] the suite itself passed
  * @returns {number}
  */
-export function exitCodeOf(result) {
+export function exitCodeOf(result, passed = false) {
   if (result.verdict === 'RULER BROKEN') return EXIT.BROKEN;
   if (result.verdict === 'CLEAN') return EXIT.CLEAN;
+  // A run that passed has nothing red to explain: what the page left to read is read from the
+  // page, and a failure annotation on a green job would say the opposite of the job.
+  if (passed) return EXIT.CLEAN;
   return EXIT.SOMETHING;
 }
 
@@ -465,9 +497,10 @@ function loadSaid(load, cores) {
  *
  * @param {Reading} result
  * @param {number} [cores]
+ * @param {boolean} [passed] the suite itself passed, so the page is not about a red
  * @returns {string}
  */
-export function render(result, cores = 0) {
+export function render(result, cores = 0, passed = false) {
   const out = [];
   if (result.verdict === 'RULER BROKEN') {
     out.push('## RULER BROKEN');
@@ -481,7 +514,11 @@ export function render(result, cores = 0) {
   out.push(
     result.verdict === 'CLEAN'
       ? '## Nothing went red, and nothing waits without saying so'
-      : '## Why it went red',
+      : passed
+        ? '## What this green run left to read'
+        : result.reds.length === 0 && result.accused.length === 0
+          ? '## A retry made this run green'
+          : '## Why it went red',
   );
   out.push('');
   if (result.reds.length > 0) {
@@ -504,6 +541,24 @@ export function render(result, cores = 0) {
     out.push(
       `A verdict of **${NOT_ALONE}** is not a claim that the machine was busy. It is the absence of a property of this commit, and an order dependence or a race in the product lives there too. The load beside the row is evidence for a reader, and no verdict above was decided by it.`,
     );
+    out.push('');
+  }
+
+  if (result.flaky.length > 0) {
+    out.push(
+      `**${result.flaky.length}** case${result.flaky.length === 1 ? '' : 's'} failed once and passed on a retry. Each is a flake, and the run is green only because of the retry.`,
+    );
+    out.push('');
+    out.push(
+      '| case | file | retries | the attempt that passed | ceiling | the machine, while it ran |',
+    );
+    out.push('|---|---|---:|---:|---:|---|');
+    for (const one of result.flaky) {
+      const name = one.name.replaceAll('|', '\\|');
+      out.push(
+        `| ${name} | \`${one.file}\` | ${one.retries} | ${one.duration} ms | ${one.ceiling} ms | ${loadSaid(one.load, cores)} |`,
+      );
+    }
     out.push('');
   }
 
@@ -547,15 +602,18 @@ export function render(result, cores = 0) {
 }
 
 /**
- * @param {readonly string[]} argv
- * @returns {{ ledger: string, summary: string, json: string }}
+ * @param {readonly string[]} all
+ * @returns {{ ledger: string, summary: string, json: string, passed: boolean }}
  */
-function readArgs(argv) {
+function readArgs(all) {
   const args = {
     ledger: 'node_modules/.cache/mnema-workspace/why-it-went-red.json',
     summary: '',
     json: '',
   };
+  // `--run-passed` takes no value, so it is taken out before the flags that do.
+  const passed = all.includes('--run-passed');
+  const argv = all.filter((one) => one !== '--run-passed');
   /** @type {Record<string, keyof typeof args>} */
   const takes = { '--ledger': 'ledger', '--summary': 'summary', '--json': 'json' };
   for (let index = 0; index < argv.length; index += 2) {
@@ -566,7 +624,7 @@ function readArgs(argv) {
     if (value === undefined) throw new Error(`argument ${flag} was given no value`);
     args[into] = value;
   }
-  return args;
+  return { ...args, passed };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -580,10 +638,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
   if (ledger !== null) {
     const result = decide({ ledger, alone: runAlone });
-    const page = render(result, ledger.cores ?? 0);
+    const page = render(result, ledger.cores ?? 0, args.passed);
     process.stdout.write(page);
     if (args.summary !== '') appendFileSync(args.summary, page);
     if (args.json !== '') writeFileSync(args.json, `${JSON.stringify(result, null, 2)}\n`);
-    process.exitCode = exitCodeOf(result);
+    process.exitCode = exitCodeOf(result, args.passed);
   }
 }

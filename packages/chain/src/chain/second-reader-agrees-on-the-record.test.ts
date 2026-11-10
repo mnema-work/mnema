@@ -1957,6 +1957,48 @@ describe('both readers over a Sigstore bundle and the claim that names its ident
   });
 });
 
+describe('both readers over a checkpoints file whose last line was torn by a crash and then written to', () => {
+  const keyRoot = () => join(root, 'keys');
+  const envelope = (fp: string) => {
+    const anchor = deriveAnchor(fp);
+    return { at: '2026-10-06T00:00:00.000Z', who: anchor, signerFp: fp, subject: anchor };
+  };
+  const account = 'sha256:12d216f5096c445e7248035ac7d85e586c647ce185aca31774ab10088f7ae51f';
+
+  for (const cut of ['mid-line', 'only the newline'] as const) {
+    it(`heals a cut that leaves ${cut}: the next checkpoint is not glued, and both readers verify`, () => {
+      const record = join(root, `torn-${cut.replace(' ', '-')}`);
+      const first = openChainForWriting(record, { keyRoot: keyRoot() });
+      const fp = first.signerFingerprint;
+      first.append(identityFounded(envelope(fp), { foundingFp: fp }));
+      first.checkpoint();
+      first.append(accountLinked(envelope(fp), { service: 'sigstore', account }));
+      first.checkpoint();
+      const tail = readdirSync(join(record, 'tails'))[0] as string;
+      const file = join(record, 'tails', tail, 'checkpoints.jsonl');
+      const whole = readFileSync(file);
+      const lastStart = whole.lastIndexOf(0x0a, whole.length - 2) + 1;
+      writeFileSync(
+        file,
+        cut === 'mid-line' ? whole.subarray(0, lastStart + 40) : whole.subarray(0, -1),
+      );
+      // Both readers read the torn file the same way: a dropped piece is named, a lost newline is not.
+      expect(notes(secondReading(record)).includes('partial line')).toBe(cut === 'mid-line');
+
+      const resumed = openChainForWriting(record, { keyRoot: keyRoot() });
+      resumed.append(accountLinked(envelope(fp), { service: 'sigstore', account: `${account}0` }));
+      resumed.checkpoint();
+
+      const ours = verify(record, catalogUpcasters());
+      const theirs = secondReading(record);
+      expect(ours.ok).toBe(true);
+      expect(refusals(theirs)).toEqual([]);
+      expect(theirs.verdict).toBe('VERIFIED');
+      expect(notes(theirs)).not.toContain('partial line');
+    });
+  }
+});
+
 describe('both readers over an event written after the last checkpoint, with and without --require signed', () => {
   /**
    * A record whose events are signed, with ONE MORE appended keylessly after the checkpoint:
