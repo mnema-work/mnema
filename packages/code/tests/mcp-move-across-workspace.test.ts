@@ -58,6 +58,8 @@ import {
   runGuardTool,
   runNextActionsTool,
   runRecordDecision,
+  runRecordHandoff,
+  runRecordObservation,
   runSkillTransition,
   runTaskTransition,
   workspaceTrees,
@@ -491,6 +493,25 @@ describe('two records holding one id is refused, not guessed', () => {
     // Nothing was appended anywhere, not even a run.
     expect([privateOf(here), privateOf(there)].map((root) => factsIn(root).length)).toEqual(before);
     expect(session.runs.size).toBe(0);
+    closeSession(session);
+  });
+
+  it('a handoff and an observation about it are refused the same way, and write nothing', () => {
+    const here = makeProject('here');
+    const there = makeProject('there');
+    const session = openOn(here, there);
+    forgeBirth(resolveTrees(here, env), 'private', NOWHERE, 'mine');
+    forgeBirth(resolveTrees(there, env), 'private', NOWHERE, 'a chain copied over');
+
+    const before = [privateOf(here), privateOf(there)].map((root) => factsIn(root).length);
+    const handoff = runRecordHandoff(session, { task: NOWHERE, from: 'a', to: 'b' });
+    const observation = runRecordObservation(session, { about: NOWHERE, topic: 't', text: 'x' });
+    for (const refused of [handoff, observation]) {
+      if (refused.ok) throw new Error('expected a refusal');
+      expect(refused.code).toBe('AMBIGUOUS_RECORD');
+      expect(refused.message).toContain('is held by 2 records');
+    }
+    expect([privateOf(here), privateOf(there)].map((root) => factsIn(root).length)).toEqual(before);
     closeSession(session);
   });
 

@@ -180,21 +180,29 @@ describe('record_observation, repeated', () => {
       client
         .callTool({ name: 'record_observation', arguments: { scope: 'public', ...args } })
         .then(said);
-    const first = await call({ about: 'task-1', topic: 'finding', text: 'it is slow' });
-    const id = idIn(first, /Recorded observation (\S+) about task-1/);
+    const task = async (title: string): Promise<string> =>
+      idIn(
+        await client
+          .callTool({ name: 'create_task', arguments: { title, scope: 'public' } })
+          .then(said),
+        /\(([0-9a-f-]{36})\)/,
+      );
+    const [task1, task2] = [await task('one'), await task('two')];
+    const first = await call({ about: task1, topic: 'finding', text: 'it is slow' });
+    const id = idIn(first, new RegExp(`Recorded observation (\\S+) about ${task1}`));
 
-    expect(await call({ about: 'task-1', topic: 'finding', text: 'it is slow' })).toContain(
-      observationAlready(id, 'task-1'),
+    expect(await call({ about: task1, topic: 'finding', text: 'it is slow' })).toContain(
+      observationAlready(id, task1),
     );
     expect(written('observation.recorded')).toBe(1);
 
-    expect(await call({ about: 'task-2', topic: 'finding', text: 'it is slow' })).toContain(
+    expect(await call({ about: task2, topic: 'finding', text: 'it is slow' })).toContain(
       'Recorded observation',
     );
-    expect(await call({ about: 'task-1', topic: 'other', text: 'it is slow' })).toContain(
+    expect(await call({ about: task1, topic: 'other', text: 'it is slow' })).toContain(
       'Recorded observation',
     );
-    expect(await call({ about: 'task-1', topic: 'finding', text: 'it is fast' })).toContain(
+    expect(await call({ about: task1, topic: 'finding', text: 'it is fast' })).toContain(
       'Recorded observation',
     );
     expect(written('observation.recorded')).toBe(4);
@@ -203,13 +211,15 @@ describe('record_observation, repeated', () => {
 
 describe('mnema observe, repeated', () => {
   it('prints the observation that is there, and a retracted one is not a twin', async () => {
+    const made = await mnema('task', 'create', 'a flaky thing', '--scope', 'public');
+    const task = idIn(made.out, /\(([0-9a-f-]{36})\)/);
     const run = () =>
-      mnema('observe', 'task-9', '--topic', 'finding', '--text', 'flaky', '--scope', 'public');
+      mnema('observe', task, '--topic', 'finding', '--text', 'flaky', '--scope', 'public');
     const first = await run();
-    const id = idIn(first.out, /Recorded observation (\S+) about task-9/);
+    const id = idIn(first.out, new RegExp(`Recorded observation (\\S+) about ${task}`));
     const again = await run();
     expect(again.failed, again.out).toBe(false);
-    expect(again.out).toBe(observationAlready(id, 'task-9'));
+    expect(again.out).toBe(observationAlready(id, task));
     expect(written('observation.recorded')).toBe(1);
 
     await mnema('retract', id, '--reason', 'it was not');

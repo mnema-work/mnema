@@ -18,8 +18,8 @@
  * imitate, and the lines above the body are not a body: they are the indented facts
  * under a subject, and a second line at that same depth is a FACT THIS RECORD DOES NOT
  * HOLD. An observation's `about` is the sharpest of them, because it is the value
- * `observe` does not validate (`tests/a-line-of-success-is-one-line.test.ts` measured
- * that door), so a forged one enters the record through one verb and comes back out
+ * a record carries whatever wrote it (`observe` and `record_observation` now refuse an id no tree
+ * holds, but a record written by any other hand is read the same), so a forged one comes back out
  * here as `topic: …` about a record nobody wrote. A title, a name, a topic and the two
  * ids a decision supersedes by are the same shape of value; the instants, the
  * `ADR-<n>`, the kind, the tree and the anchor are the record's own and are left alone.

@@ -15,10 +15,9 @@
  * matching the posture the skill's `--body` established (nothing forces a flag on
  * a sibling verb).
  *
- * The `about` target is NOT verified to exist. The core deliberately does not
- * refuse a dangling `about` (the observed entity may live in another tree the
- * writer cannot see, an honest cross-tree assertion resolved on read) and the
- * surface only forwards it. There is no `UNKNOWN_*` for the reference here.
+ * The `about` target has to exist in a tree this project reads, as an entity or as a
+ * note: an id no tree holds is refused (`UNKNOWN_RECORD`) before anything is written. The
+ * core itself still accepts a dangling `about`, so the refusal is this surface's.
  *
  * The birth scope is a per-action choice, exactly as for a memory: an explicit
  * `scope` wins; when omitted, this is the other kind the rule still answers from the
@@ -30,7 +29,9 @@
 import { catalogUpcasters } from '@mnema/chain';
 import { chainRootForScope, type DiscoveryEnv, resolveScope, type Scope } from '@mnema/core';
 import { openTreeForWriting, recordObservation } from '@mnema/core/write';
+import { oneLine } from '../one-line.js';
 import { forwardReplacement, type Landed, type Replacement } from '../recorded-content.js';
+import { locateRecordScopeKept } from '../tree-sources.js';
 import {
   type AgentWrites,
   originOfTheWrite,
@@ -71,8 +72,7 @@ export type ObserveRefused =
  * Records an observation, routing its birth to the resolved scope. The scope
  * rule is identical to a memory's: an explicit `scope` wins, else the author decides
  * (public for a person, private for an agent). A PROJECT scope needs a project; with
- * none this refuses `NO_PROJECT`. The `about` reference is forwarded to the core as-is
- * and never validated: a dangling reference is honest cross-tree, not a refusal. A
+ * none this refuses `NO_PROJECT`. An `about` no tree holds is refused `UNKNOWN_RECORD`. A
  * declared `which` shifts the omitted default to private and is recorded on the
  * event; the resolved scope comes back on the result.
  */
@@ -107,6 +107,15 @@ export function runObserve(
         writer,
         layout: { root: chainRootForScope(trees, scope) as string },
         upcasters: catalogUpcasters(),
+        // Asked by the door after every refusal of the fact's shape, before anything is founded.
+        askedBeforeFounding: () =>
+          locateRecordScopeKept(trees, input.about, catalogUpcasters()) === undefined
+            ? {
+                ok: false,
+                code: 'UNKNOWN_RECORD',
+                message: `record "${oneLine(input.about)}" was not found in any tree this project reads`,
+              }
+            : undefined,
       },
       {
         about: input.about,

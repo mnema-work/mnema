@@ -1010,8 +1010,8 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
         'Record an observation ABOUT an entity (a task, decision, …) into the ' +
         'mnema chain, attributed to this agent and pinned to the current session. ' +
         'It carries the observed entity id (`about`), a short `topic`, and the ' +
-        'observation `text`. The `about` id is NOT checked to exist: a reference ' +
-        'to an entity in another tree is honest and resolved on read. Optionally ' +
+        'observation `text`. The `about` id must be a record some tree of the ' +
+        'workspace holds, else the observation is refused. Optionally ' +
         'pick the scope and the project it lands in; omitted, both follow the ' +
         'session default (private for an agent in a project, global outside one). ' +
         'Returns the observation’s own minted id, and says which tree it landed in.' +
@@ -1117,11 +1117,10 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
         'Record a handoff on a task (work passed from one agent to another) into ' +
         'the mnema chain, attributed to this agent and pinned to the current ' +
         'session. It carries the `task` and the two agent labels (`from`, `to`); ' +
-        '`from == to` is legitimate (a chat restart). The `task` id is NOT checked ' +
-        'to exist. Optionally pick the scope and the project; omitted, the handoff follows ' +
-        'the task to the tree that holds it (a private task keeps its brief private) and ' +
-        'lands PUBLIC (global outside a project) only when no tree holds the task, which ' +
-        'the reply says. A handoff has no id of its own: its ' +
+        '`from == to` is legitimate (a chat restart). The `task` id must be held by a tree of ' +
+        'the workspace, else the handoff is refused. Optionally pick the scope and the ' +
+        'project; omitted, the handoff follows the task to the tree that holds it (a ' +
+        'private task keeps its brief private). A handoff has no id of its own: its ' +
         'subject is the task. Optionally give a `brief` (up to 64 KiB of text, refused ' +
         'beyond it): what the next agent must read, recorded in the same call as an ' +
         'observation about the task (topic `brief`) whose id the reply names. The reply ' +

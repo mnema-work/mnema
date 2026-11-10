@@ -105,10 +105,27 @@ export interface NotAReferenceErr {
 }
 
 /**
+ * A write refused because the record it is about is held by no tree the writer's surface reads,
+ * or by several records at once. Nothing was appended. Not the door's own: the door judges the shape of the fact and this the
+ * world around it, so a surface asks it through `WriteContext.askedBeforeFounding`, after every
+ * refusal of the shape and before anything is founded.
+ */
+export interface UnknownRecordErr {
+  readonly ok: false;
+  readonly code: 'UNKNOWN_TASK' | 'UNKNOWN_RECORD' | 'AMBIGUOUS_RECORD';
+  readonly message: string;
+}
+
+/**
  * Why the door refused an event: a read could not open it, its why says nothing, its title is a
  * marker or names nothing, or a reference it is looked up by is a marker.
  */
-export type AppendRefusal = UnreadableEventErr | NotAReasonErr | NotATitleErr | NotAReferenceErr;
+export type AppendRefusal =
+  | UnreadableEventErr
+  | NotAReasonErr
+  | NotATitleErr
+  | NotAReferenceErr
+  | UnknownRecordErr;
 
 /** One event appended, or the refusal it earned before anything was sealed. */
 export type AppendedEvent = { readonly ok: true; readonly entry: Entry } | AppendRefusal;

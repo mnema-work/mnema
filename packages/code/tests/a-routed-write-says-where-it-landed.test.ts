@@ -68,6 +68,23 @@ async function connect(...projects: readonly string[]): Promise<Client> {
   return client;
 }
 
+/**
+ * The arguments with the id a write is about made real: a task made in `elsewhere`, a third project
+ * of the workspace, because a handoff and an observation are refused about an id no tree holds.
+ */
+async function aboutARealTask(
+  client: Client,
+  elsewhere: string,
+  args: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const made = await say(client, 'create_task', {
+    title: 'a task of elsewhere',
+    project: elsewhere,
+  });
+  const task = made.match(/\(([0-9a-f-]{36})\)/)?.[1] as string;
+  return JSON.parse(JSON.stringify(args).replaceAll('some-id', task));
+}
+
 /** Every file under `dir` with its bytes: what a directory holds, read off the disk. */
 function held(dir: string): Record<string, string> {
   const out: Record<string, string> = {};
@@ -131,9 +148,11 @@ describe('a write routed by `project` says the absolute path it fell in', () => 
     it(`${verb.name}: the path routes it, and the reply says the same path`, async () => {
       const first = makeProject('area', 'first');
       const second = makeProject('area', 'second');
-      const client = await connect(first, second);
+      const elsewhere = makeProject('area', 'elsewhere');
+      const client = await connect(first, second, elsewhere);
+      const args = await aboutARealTask(client, elsewhere, verb.args);
 
-      const text = await say(client, verb.name, { ...verb.args, project: first });
+      const text = await say(client, verb.name, { ...args, project: first });
 
       expect(text.split(`\n  In the project at ${first}.`)).toHaveLength(2);
       expect(text.split('In the project at')).toHaveLength(2);
@@ -145,8 +164,11 @@ describe('a write routed by `project` says the absolute path it fell in', () => 
       const first = makeProject('area', 'first');
       const second = makeProject('area', 'second');
       const client = await connect(first, second);
+      // A handoff follows its task, so the task is the session's own project's: it is where the
+      // handoff goes when the call names no project.
+      const args = await aboutARealTask(client, first, verb.args);
 
-      const text = await say(client, verb.name, verb.args);
+      const text = await say(client, verb.name, args);
 
       expect(text.split(`\n  In the project at ${first}.`)).toHaveLength(2);
       expect(text.split('In the project at')).toHaveLength(2);
@@ -194,11 +216,13 @@ describe('a write routed by `project` says the absolute path it fell in', () => 
     it(`${verb.name}: a write to the global tree through a project says no project (it fell in none)`, async () => {
       const first = makeProject('area', 'first');
       const second = makeProject('area', 'second');
-      const client = await connect(first, second);
+      const elsewhere = makeProject('area', 'elsewhere');
+      const client = await connect(first, second, elsewhere);
+      const args = await aboutARealTask(client, elsewhere, verb.args);
       const before = { first: held(first), second: held(second) };
 
       const text = await say(client, verb.name, {
-        ...verb.args,
+        ...args,
         project: second,
         scope: 'global',
       });

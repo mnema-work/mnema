@@ -35,8 +35,9 @@
  * workspace holds, opening no cache and no writer; `runExposureTool` keeps them
  * separate because its answer has to name the tree). The knowledge
  * FACTS (observation/handoff/link) share the
- * memory mold exactly (one append, no gate) and forward the ids they reference
- * without validating them (a dangling reference is honest cross-tree). The server
+ * memory mold exactly (one append, no gate). A link forwards the ids it references
+ * without validating them (a dangling reference is honest cross-tree); an observation
+ * and a handoff are refused about an id no tree of the workspace holds. The server
  * wires these onto the protocol; the wiring adds nothing but the schema and the
  * response envelope.
  *
@@ -143,6 +144,7 @@ import {
   reviewSkill,
   supersedeDecision,
   transitionTask,
+  type WriteContext,
 } from '@mnema/core/write';
 import { type AcceptState, acceptStateHere, agentMayAccept } from '../agent-accepts.js';
 import { editRulesTold, firstWriteNotice, readThePush } from '../edit-rules-push.js';
@@ -500,8 +502,8 @@ export type FactRecordedResult =
         /** The observation that carries a handoff's brief, when one was given. */
         readonly briefId?: string;
         /**
-         * Present when a handoff named no scope and no tree of the workspace holds the task
-         * (or several records do), so it took the default tree: the sentence the reply adds.
+         * Present when a handoff named another project than the one that holds the task, so it
+         * took the default tree there: the sentence the reply adds.
          */
         readonly followedNoTree?: string;
       })
@@ -521,12 +523,9 @@ export type FactRecordedResult =
  * an agent's observation goes private. An observation mints its OWN id (it is an
  * entity), which is returned.
  *
- * The `about` reference is forwarded to the core as-is and NEVER validated: the
- * observed entity may live in a tree this session cannot see, an honest
- * cross-tree assertion resolved on read. That is also why `project` matters most
- * here and on the other two verbs that carry a foreign id: nothing about the
- * reference can tell this tool it landed in the wrong project, so the caller
- * naming one is the only thing that can. Opens the destination's writer, records
+ * The `about` has to be a record some tree of the workspace holds, an entity or a note: an
+ * id none holds is refused (`UNKNOWN_RECORD`), several records holding it `AMBIGUOUS_RECORD`.
+ * `project` still names the project the observation lands in. Opens the destination's writer, records
  * the observation attributed to the connecting agent (`which`) and pinned to that
  * destination's run, then checkpoints. A destination it cannot resolve is refused
  * as data, never thrown.
@@ -539,7 +538,12 @@ export function runRecordObservation(
   if (!about.ok) return ambiguousLabel(about.message);
   const route = routeWrite(session, 'observation.recorded', input);
   if (!route.ok) return route;
-  const { ctx, run, which } = openWrite(session, route.scope, route.target);
+  // What an observation is about has to be a record some tree of the workspace holds: asked by the
+  // door after every refusal of the fact's shape, before anything is founded.
+  const located = locateEntity(session, about.id, 'records');
+  const opened = openWrite(session, route.scope, route.target);
+  const { run, which } = opened;
+  const ctx = unlessLocated(session, opened.ctx, 'record', about.id, located);
   const recorded = ctx.writer.exclusively(() => {
     const written = recordObservation(ctx, {
       about: about.id,
@@ -571,9 +575,8 @@ export function runRecordObservation(
  * defaults (`project`, then `scope`). A handoff mints NO id (its subject IS the
  * task), so the result carries no id, only whether it landed.
  *
- * The `task` reference is forwarded as-is and NEVER validated, so, as with
- * `record_observation` and `link_knowledge`, the reference cannot reveal a write
- * that went to the wrong project, and `project` is the only thing that can.
+ * The `task` has to be held by a tree of the workspace: an id none holds is refused
+ * (`UNKNOWN_TASK`), several records holding it `AMBIGUOUS_RECORD`.
  * `from == to` is legitimate (a chat restart) and is not refused. Opens the
  * destination's writer, records the handoff attributed to the agent (`which`) and
  * pinned to that destination's run, checkpoints. A destination it cannot resolve is
@@ -595,31 +598,28 @@ export function runRecordHandoff(
   // With no scope named, the handoff and its brief FOLLOW THE TASK to the tree that holds it,
   // as a move does: a private task's brief (up to 64 KiB) is never committed by a handoff that
   // named no tree. A `project` the caller named keeps the write in that project.
+  // The task has to be held by a tree of the workspace, whichever tree the handoff lands in: asked by
+  // the door after every refusal of the fact's shape, before anything is founded.
+  const located = locateEntity(session, input.task, 'tasks');
   let route = named;
   let followedNoTree: string | undefined;
-  if (input.scope === undefined) {
-    const located = locateEntity(session, input.task);
-    if (located.outcome === 'found') {
-      const homeDir = located.home.target?.dir ?? session.project;
-      const namedDir = named.target?.dir ?? session.project;
-      if (input.project === undefined || homeDir === namedDir || located.home.scope === 'global') {
-        const target = input.project === undefined ? located.home.target : named.target;
-        route = {
-          ok: true,
-          scope: located.home.scope,
-          ...(target !== undefined ? { target } : {}),
-        };
-      } else {
-        followedNoTree = `  No tree of that project holds ${oneLine(input.task)}, so the handoff took the default tree (${named.scope}).`;
-      }
+  if (input.scope === undefined && located.outcome === 'found') {
+    const homeDir = located.home.target?.dir ?? session.project;
+    const namedDir = named.target?.dir ?? session.project;
+    if (input.project === undefined || homeDir === namedDir || located.home.scope === 'global') {
+      const target = input.project === undefined ? located.home.target : named.target;
+      route = {
+        ok: true,
+        scope: located.home.scope,
+        ...(target !== undefined ? { target } : {}),
+      };
     } else {
-      followedNoTree =
-        located.outcome === 'several'
-          ? `  Several records hold ${oneLine(input.task)}, so the handoff took the default tree (${named.scope}).`
-          : `  No tree of this workspace holds ${oneLine(input.task)}, so the handoff took the default tree (${named.scope}).`;
+      followedNoTree = `  No tree of that project holds ${oneLine(input.task)}, so the handoff took the default tree (${named.scope}).`;
     }
   }
-  const { ctx, run, which } = openWrite(session, route.scope, route.target);
+  const opened = openWrite(session, route.scope, route.target);
+  const { run, which } = opened;
+  const ctx = unlessLocated(session, opened.ctx, 'task', input.task, located);
   const recorded = ctx.writer.exclusively(() => {
     const written = recordHandoff(ctx, {
       task: input.task,
@@ -1633,6 +1633,29 @@ export function workspaceTrees(session: Session): WorkspaceTree[] {
 }
 
 /**
+ * The write context with one more thing asked before anything is founded: that the record the fact
+ * is about was found. The door's own refusals of the fact's shape come first, as they always did, so
+ * an empty or marked id is still refused as one; an id no tree holds is refused after them, with the
+ * code and the sentence {@link refuseUnlocated} gives every tool that locates, and nothing written.
+ */
+function unlessLocated(
+  session: Session,
+  ctx: WriteContext,
+  kind: 'task' | 'record',
+  id: string,
+  located: EntityLocation,
+): WriteContext {
+  if (located.outcome === 'found') return ctx;
+  const refusal = refuseUnlocated(session, kind, id, located);
+  const owed = ctx.askedBeforeFounding;
+  return {
+    ...ctx,
+    askedBeforeFounding: () =>
+      owed?.() ?? { ok: false, code: refusal.code, message: refusal.message },
+  };
+}
+
+/**
  * Where an entity lives, across every tree of the workspace: the ONE locate every
  * entity-keyed tool asks, and the only place the coverage and the walk are put
  * together.
@@ -2159,7 +2182,7 @@ export function runSkillsTool(session: Session, input: { id?: string } = {}): Sk
  * The subject may name a skill that lives in ANOTHER tree: the read serves patterns
  * from every tree the session can see, so a consultation of a privately adopted one
  * is recorded in the committed tree and points across. That is the same honest
- * cross-tree reference a link or an observation makes, resolved on read; unlike a
+ * cross-tree reference a link makes, resolved on read; unlike a
  * `run`, it is a reference the caller chose and not one the envelope imposes.
  *
  * The dedup is asked per run, and the run is identified by the tree these facts go

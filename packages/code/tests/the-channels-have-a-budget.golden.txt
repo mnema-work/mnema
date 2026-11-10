@@ -26,10 +26,10 @@ tool answer: audit_antipatterns               301 B       74 tok
 tool answer: record_decision                  852 B      231 tok
 tool answer: capture_memory                   178 B       53 tok
 tool definition: capture_memory              2117 B      456 tok
-tool definition: record_observation          2425 B      528 tok
+tool definition: record_observation          2411 B      524 tok
 tool definition: retract_note                1839 B      416 tok
 tool definition: retract_link                2064 B      470 tok
-tool definition: record_handoff              2812 B      642 tok
+tool definition: record_handoff              2758 B      631 tok
 tool definition: link_knowledge              2731 B      610 tok
 tool definition: create_task                 2605 B      575 tok
 tool definition: task_transition             2020 B      447 tok
@@ -52,4 +52,4 @@ tool definition: rules_before_an_edit        2427 B      546 tok
 tool definition: audit_accountability        1986 B      440 tok
 tool definition: audit_exposure              1626 B      364 tok
 tool definition: audit_antipatterns          1447 B      314 tok
-tool definitions: all 27                    55204 B    12529 tok
+tool definitions: all 27                    55136 B    12514 tok

@@ -68,7 +68,13 @@ beforeEach(() => {
   // gets an argument wrong.
   const warmPrivate = runCaptureMemory(session, { content: 'the record already exists' });
   expect(warmPrivate.ok).toBe(true);
-  const warmPublic = runRecordHandoff(session, { task: 'a-task', from: 'a', to: 'b' });
+  const aTask = runCreateTask(session, { title: 'a task to hand off' });
+  expect(aTask.ok).toBe(true);
+  const warmPublic = runRecordHandoff(session, {
+    task: aTask.ok ? aTask.id : '',
+    from: 'a',
+    to: 'b',
+  });
   expect(warmPublic.ok).toBe(true);
 });
 
@@ -172,12 +178,14 @@ describe('the agent surface relays the refusal instead of throwing', () => {
   it('still records the same facts when the fields are there', () => {
     // The non-vacuity half: the tools above are refusing an ARGUMENT, not refusing
     // to work. Without this, a door that refused everything would pass every case.
-    expect(runCreateTask(session, { title: 'a real task' }).ok).toBe(true);
+    const realTask = runCreateTask(session, { title: 'a real task' });
+    expect(realTask.ok).toBe(true);
+    const taskId = realTask.ok ? realTask.id : '';
     expect(runCaptureMemory(session, { content: 'a real memory' }).ok).toBe(true);
     expect(runRecordDecision(session, { title: 't', rationale: 'why' }).ok).toBe(true);
     expect(runCreateSkill(session, { name: 'n', body: 'b' }).ok).toBe(true);
-    expect(runRecordObservation(session, { about: 'x', topic: 'k', text: 't' }).ok).toBe(true);
-    expect(runRecordHandoff(session, { task: 't', from: 'a', to: 'b' }).ok).toBe(true);
+    expect(runRecordObservation(session, { about: taskId, topic: 'k', text: 't' }).ok).toBe(true);
+    expect(runRecordHandoff(session, { task: taskId, from: 'a', to: 'b' }).ok).toBe(true);
     expect(runLinkKnowledge(session, { subject: 'x', target: 'y', rel: 'r' }).ok).toBe(true);
     // And the record opens, with every one of those facts in it.
     const kinds = recordedEvents().map((event) => event.kind);

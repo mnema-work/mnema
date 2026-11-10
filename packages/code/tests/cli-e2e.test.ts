@@ -1089,14 +1089,15 @@ describe('mnema CLI: knowledge (memory, observe, handoff, link), end to end', ()
     expect(publicMems.has(id)).toBe(false);
   });
 
-  it('observe records an observation about an entity (dangling `about` accepted), and verifies', async () => {
+  it('observe records an observation about an entity, and verifies', async () => {
     await run(['init'], capture().io);
+    const made = capture();
+    await run(['task', 'create', 'Speed up the importer'], made.io);
+    const task = (
+      made.out.join('\n').match(/\(([0-9a-f-]{36})\)/) as RegExpMatchArray
+    )[1] as string;
     const c = capture();
-    // `about` names an entity that does not exist: accepted, not refused.
-    await run(
-      ['observe', '00000000-0000-7000-8000-000000000000', '--topic', 'perf', '--text', 'O(n^2)'],
-      c.io,
-    );
+    await run(['observe', task, '--topic', 'perf', '--text', 'O(n^2)'], c.io);
     expect(c.failed()).toBe(false);
     expect(c.out.join('\n')).toMatch(/^Recorded observation [0-9a-f-]{36} about /);
     const id = (
@@ -1105,7 +1106,7 @@ describe('mnema CLI: knowledge (memory, observe, handoff, link), end to end', ()
 
     const root = treesOf().projectPublic as string;
     const o = projectObservations(orderedEvents({ root }, catalogUpcasters())).get(id);
-    expect(o?.about).toBe('00000000-0000-7000-8000-000000000000');
+    expect(o?.about).toBe(task);
     expect(o?.topic).toBe('perf');
     expect(verify(root).fullySigned).toBe(true);
   });
@@ -1119,18 +1120,22 @@ describe('mnema CLI: knowledge (memory, observe, handoff, link), end to end', ()
 
   it('handoff records the fact (no id), from == to accepted, and verifies', async () => {
     await run(['init'], capture().io);
+    const made = capture();
+    await run(['task', 'create', 'Speed up the importer'], made.io);
+    const task = (
+      made.out.join('\n').match(/\(([0-9a-f-]{36})\)/) as RegExpMatchArray
+    )[1] as string;
     const c = capture();
     // The same agent from and to: a chat restart, legitimate.
-    await run(['task', 'handoff', 'a-task-id', 'claude-code', 'claude-code'], c.io);
+    await run(['task', 'handoff', task, 'claude-code', 'claude-code'], c.io);
     expect(c.failed()).toBe(false);
     expect(c.out.join('\n')).toBe(
-      'Recorded handoff on a-task-id: claude-code → claude-code\n' +
-        '  No tree here holds a-task-id, so the handoff took the default tree (public).\n' +
+      `Recorded handoff on ${task}: claude-code → claude-code\n` +
         "  Landed in the public tree: a folder of this project, not committed (there is no git here); it travels only as the project's files are copied.",
     );
 
     const root = treesOf().projectPublic as string;
-    const list = projectHandoffs(orderedEvents({ root }, catalogUpcasters())).get('a-task-id');
+    const list = projectHandoffs(orderedEvents({ root }, catalogUpcasters())).get(task);
     expect(list?.length).toBe(1);
     expect(list?.[0]?.toAgent).toBe('claude-code');
     expect(verify(root).fullySigned).toBe(true);

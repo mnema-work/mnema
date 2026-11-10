@@ -33,8 +33,10 @@ import {
   chainRootForScope,
   locateEntityScope,
   locateEntityScopeWith,
+  orderedEvents,
   ProjectionCache,
   type ResolvedTrees,
+  replayingRecordProbe,
   type Scope,
 } from '@mnema/core';
 import type { ScopedTree } from './intelligence-source.js';
@@ -115,6 +117,45 @@ export function locateEntityScopeKept(
         cache.getSkill(canonical) !== null,
     );
   return locateEntityScopeWith(trees, id, kept) ?? locateEntityScope(trees, id, upcasters);
+}
+
+/**
+ * The tree that holds a TASK, or undefined when no tree this project reads does: a decision or a
+ * pattern is an entity but not a task, and what a handoff is about is a task. The projection first,
+ * then a replay for a birth the projection cannot see.
+ */
+export function locateTaskScopeKept(
+  trees: ResolvedTrees,
+  id: string,
+  upcasters: UpcasterRegistry,
+): Scope | undefined {
+  return (
+    locateEntityScopeWith(trees, id, (chainRoot, canonical) =>
+      withCache(chainRoot, upcasters, (cache) => cache.getTask(canonical) !== null),
+    ) ??
+    locateEntityScopeWith(trees, id, (chainRoot, canonical) =>
+      orderedEvents({ root: chainRoot }, upcasters).some(
+        (event) => event.kind === 'task.created' && event.subject === canonical,
+      ),
+    )
+  );
+}
+
+/**
+ * The tree that holds a RECORD of any kind, an entity or a note, or undefined when no tree this
+ * project reads does. {@link locateEntityScopeKept} for the entities, then a replay that also
+ * knows the notes, so an observation about another note is found where it lives. The read a
+ * write about an id makes before it accepts the id.
+ */
+export function locateRecordScopeKept(
+  trees: ResolvedTrees,
+  id: string,
+  upcasters: UpcasterRegistry,
+): Scope | undefined {
+  return (
+    locateEntityScopeKept(trees, id, upcasters) ??
+    locateEntityScopeWith(trees, id, replayingRecordProbe(upcasters))
+  );
 }
 
 /**

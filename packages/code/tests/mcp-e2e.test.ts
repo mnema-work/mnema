@@ -85,6 +85,13 @@ import { isTheDerivedCache } from './support/the-cache-is-not-the-record.js';
 let sandbox: string;
 let env: DiscoveryEnv;
 
+/** A task of the session's own project: the record an observation or a handoff has to be about. */
+function aTaskIn(session: Session): string {
+  const made = runCreateTask(session, { title: 'a task to be about' });
+  if (!made.ok) throw new Error('setup: the task was refused');
+  return made.id;
+}
+
 /** Makes a directory that IS a project (has a `.mnema/` tree), returns its path. */
 function makeProject(name: string): string {
   const dir = join(sandbox, name);
@@ -486,13 +493,14 @@ describe('MCP session + tools: unit', () => {
       env,
     });
 
+    const task = aTaskIn(session);
     const result = runRecordObservation(session, {
-      about: 'a-task-id',
+      about: task,
       topic: 'perf',
       text: 'this query is O(n^2)',
     });
     if (!result.ok) throw new Error('setup: observe refused');
-    expect(result.id).not.toBe('a-task-id');
+    expect(result.id).not.toBe(task);
 
     const chainRoot = chainRootForScope(session.trees, knowledgeTree(session)) as string;
     expect(verify(chainRoot, catalogUpcasters()).ok).toBe(true);
@@ -501,8 +509,7 @@ describe('MCP session + tools: unit', () => {
     expect(recorded).toBeDefined();
     expect(recorded?.which).toBe('claude-code');
     expect(recorded?.who).not.toBe('claude-code');
-    // The `about` is forwarded as-is, never validated against existence.
-    expect(projectObservations(events).get(result.id)?.about).toBe('a-task-id');
+    expect(projectObservations(events).get(result.id)?.about).toBe(task);
   });
 
   it('record_observation scope arg overrides the session default', () => {
@@ -514,7 +521,7 @@ describe('MCP session + tools: unit', () => {
     });
     expect(knowledgeTree(session)).toBe('private');
     const recorded = runRecordObservation(session, {
-      about: 'x',
+      about: aTaskIn(session),
       topic: 't',
       text: 'team-visible',
       scope: 'public',
@@ -554,8 +561,9 @@ describe('MCP session + tools: unit', () => {
     });
 
     // from == to: a chat restart with the same agent, not refused.
+    const task = aTaskIn(session);
     const result = runRecordHandoff(session, {
-      task: 'a-task-id',
+      task,
       from: 'claude-code',
       to: 'claude-code',
     });
@@ -566,8 +574,6 @@ describe('MCP session + tools: unit', () => {
     expect(result).toEqual({
       ok: true,
       recorded: ['claude-code', 'claude-code'],
-      followedNoTree:
-        '  No tree of this workspace holds a-task-id, so the handoff took the default tree (public).',
       scope: 'public',
       project,
     });
@@ -575,11 +581,59 @@ describe('MCP session + tools: unit', () => {
     const chainRoot = chainRootForScope(session.trees, travelTree(session)) as string;
     expect(verify(chainRoot, catalogUpcasters()).ok).toBe(true);
     const events = orderedEvents({ root: chainRoot }, catalogUpcasters());
-    const handoff = projectHandoffs(events).get('a-task-id')?.[0];
+    const handoff = projectHandoffs(events).get(task)?.[0];
     expect(handoff?.fromAgent).toBe('claude-code');
     expect(handoff?.toAgent).toBe('claude-code');
     // Attributed to the agent, authorized by the machine.
     expect(events.find((e) => e.kind === 'handoff.recorded')?.which).toBe('claude-code');
+  });
+
+  it('record_handoff and record_observation refuse an id no tree of the workspace holds, and write nothing', () => {
+    const project = makeProject('proj');
+    const session = openSession({
+      clientName: 'claude-code',
+      roots: [pathToFileURL(project).href],
+      env,
+    });
+    const task = aTaskIn(session);
+    const ghost = '00000000-0000-7000-8000-000000000000';
+    const held = (): number =>
+      ['public', 'private'].reduce(
+        (n, scope) =>
+          n +
+          orderedEvents(
+            { root: chainRootForScope(session.trees, scope as Scope) as string },
+            catalogUpcasters(),
+          ).length,
+        0,
+      );
+    const before = held();
+
+    for (const scope of [undefined, 'public', 'private'] as const) {
+      const given = scope === undefined ? {} : { scope };
+      expect(
+        runRecordHandoff(session, { task: ghost, from: 'a', to: 'b', ...given }),
+      ).toMatchObject({ ok: false, code: 'UNKNOWN_TASK' });
+      expect(
+        runRecordObservation(session, { about: ghost, topic: 't', text: 'x', ...given }),
+      ).toMatchObject({ ok: false, code: 'UNKNOWN_RECORD' });
+    }
+    expect(held()).toBe(before);
+
+    // A handoff is about a task: a decision's id is a record, but not one a handoff can name.
+    const decision = runRecordDecision(session, { title: 'Use X', rationale: 'because' });
+    if (!decision.ok) throw new Error('setup: decision refused');
+    expect(runRecordHandoff(session, { task: decision.id, from: 'a', to: 'b' })).toMatchObject({
+      ok: false,
+      code: 'UNKNOWN_TASK',
+    });
+
+    // A note is a record too: an observation about another observation is found where it lives.
+    const first = runRecordObservation(session, { about: task, topic: 't', text: 'first' });
+    if (!first.ok) throw new Error('setup: observe refused');
+    expect(
+      runRecordObservation(session, { about: first.id, topic: 't', text: 'about the first' }).ok,
+    ).toBe(true);
   });
 
   it('record_handoff refuses a scope absent here as data', () => {
@@ -648,7 +702,7 @@ describe('MCP session + tools: unit', () => {
       env,
     });
     const obs = runRecordObservation(session, {
-      about: 'x',
+      about: aTaskIn(session),
       topic: 't',
       text: 'public note',
       scope: 'public',
@@ -711,7 +765,8 @@ describe('MCP session + tools: unit', () => {
     if (!runCaptureMemory(session, { content: 'an honest fact, to open the run' }).ok) {
       throw new Error('setup: capture refused');
     }
-    if (!runRecordHandoff(session, { task: 'e', from: 'a', to: 'b' }).ok) {
+    const task = aTaskIn(session);
+    if (!runRecordHandoff(session, { task, from: 'a', to: 'b' }).ok) {
       throw new Error('setup: handoff refused');
     }
     const forged: Session = {
@@ -722,8 +777,8 @@ describe('MCP session + tools: unit', () => {
 
     const results = [
       runCaptureMemory(forged, { content: 'x' }),
-      runRecordObservation(forged, { about: 'e', topic: 't', text: 'x' }),
-      runRecordHandoff(forged, { task: 'e', from: 'a', to: 'b' }),
+      runRecordObservation(forged, { about: task, topic: 't', text: 'x' }),
+      runRecordHandoff(forged, { task, from: 'a', to: 'b' }),
       runLinkKnowledge(forged, { subject: 's', target: 't', rel: 'relates_to' }),
     ];
     for (const result of results) {
@@ -3038,25 +3093,32 @@ describe('MCP server: end to end over a real client', () => {
     const { server } = buildMcpServer({ cwd: sandbox, env, log: () => {} });
     const client = await connectClient(server, [pathToFileURL(project).href]);
 
+    const made = await client.callTool({
+      name: 'create_task',
+      arguments: { title: 'a task to be about' },
+    });
+    const task = /\(([0-9a-f-]{36})\)/.exec(textOf(made))?.[1] as string;
+
     // observe returns its own minted id in the text envelope.
     const observed = await client.callTool({
       name: 'record_observation',
-      arguments: { about: 'some-id', topic: 'perf', text: 'slow path here' },
+      arguments: { about: task, topic: 'perf', text: 'slow path here' },
     });
     expect(observed.isError).toBeFalsy();
     expect(textOf(observed)).toMatch(
-      /^Recorded observation .+ about some-id\n {2}Landed in the private tree: this machine's own; it is not committed and does not travel\.\n {2}In the project at .+\.$/,
+      new RegExp(
+        `^Recorded observation .+ about ${task}\\n {2}Landed in the private tree: this machine's own; it is not committed and does not travel\\.\\n {2}In the project at .+\\.$`,
+      ),
     );
 
     // handoff echoes the fact; from == to accepted.
     const handed = await client.callTool({
       name: 'record_handoff',
-      arguments: { task: 'some-id', from: 'claude-code', to: 'claude-code' },
+      arguments: { task, from: 'claude-code', to: 'claude-code' },
     });
     expect(handed.isError).toBeFalsy();
     expect(textOf(handed)).toBe(
-      'Recorded handoff on some-id: claude-code → claude-code\n' +
-        '  No tree of this workspace holds some-id, so the handoff took the default tree (public).\n' +
+      `Recorded handoff on ${task}: claude-code → claude-code\n` +
         "  Landed in the public tree: a folder of this project, not committed (there is no git here); it travels only as the project's files are copied.\n" +
         `  In the project at ${project}.`,
     );
