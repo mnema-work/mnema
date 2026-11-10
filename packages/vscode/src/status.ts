@@ -37,13 +37,15 @@ export function readVerdict(stdout: string): Verdict {
 
 /**
  * One tree of the record as `mnema verify --json` says it in a line: the tree's name, the line the
- * command line wrote for it (`headline`, the console's own), and, where a newer mnema wrote lines
+ * command line wrote for it (`short`, in plain words; `headline`, the console's own, where `short` is absent), and, where a newer mnema wrote lines
  * this one does not read, the sentence it says that in. The words are the command line's: nothing
  * here words a verdict.
  */
 export interface TreeLine {
   readonly scope: string;
   readonly headline: string;
+  /** The same verdict in plain words, when the command line serves it; the tooltip shows this one. */
+  readonly short: string | undefined;
   readonly newerMnema: string | undefined;
   /** How the line is marked: a tree that is broken, a level below the signed ones, or neither. */
   readonly mark: 'error' | 'info' | undefined;
@@ -75,6 +77,7 @@ export function readTrees(stdout: string): TreeLine[] {
     lines.push({
       scope: tree.scope,
       headline: tree.headline,
+      short: typeof tree.short === 'string' ? tree.short : undefined,
       newerMnema: typeof tree.newerMnema === 'string' ? tree.newerMnema : undefined,
       mark:
         result.ok === false
@@ -236,7 +239,7 @@ const settingLink = (label: string, setting: string): string =>
 /** The lines of one tree: its own line with its mark, and the sentence about a newer mnema under it. */
 function treeBlock(tree: TreeLine): string[] {
   const icon = tree.mark === undefined ? '' : `$(${tree.mark}) `;
-  const own = `${icon}**${plain(tree.scope)}**: ${plain(tree.headline)}`;
+  const own = `${icon}**${plain(tree.scope)}**: ${plain(tree.short ?? tree.headline)}`;
   return tree.newerMnema === undefined ? [own] : [own, `$(info) ${plain(tree.newerMnema)}`];
 }
 

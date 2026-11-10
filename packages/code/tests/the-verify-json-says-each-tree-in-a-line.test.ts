@@ -44,6 +44,7 @@ interface JsonTree {
   kind: string;
   scope: string;
   headline?: string;
+  short?: string;
   newerMnema?: string;
   result?: { clauses: { of: string; text: string }[] };
 }
@@ -75,8 +76,10 @@ describe('the line of each tree in verify --json', { timeout: 120_000 }, () => {
     expect(pub.scope).toBe('public');
     expect(pub.headline).toBe('local integrity verified (T1/T2/T4)');
     expect(pub.newerMnema).toBeUndefined();
+    expect(pub.short).toBe('verified, signed');
     expect(priv.kind).toBe('no-record');
     expect(priv.headline).toBe('no record here');
+    expect(priv.short).toBe('no record here');
   });
 
   it('is the clause the verdict itself carries, not a second wording of it', () => {

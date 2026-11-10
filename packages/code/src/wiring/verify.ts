@@ -1197,7 +1197,7 @@ type SaysNewerLines = typeof import('../record-integrity.js').newerLinesSentence
 /**
  * WHAT `--json` SAYS OF EACH TREE IN A LINE, for a surface with room for one and no business wording
  * it: `headline` is the text {@link treeHeadline} renders (one source, so the line and the panel
- * cannot come to say two things), and `newerMnema` is the sentence every surface says about lines a
+ * cannot come to say two things), `short` is the same verdict in plain words ({@link shortLine}), and `newerMnema` is the sentence every surface says about lines a
  * newer mnema wrote, on the tree that holds them and on no other. Both are added beside the reading
  * the chain produced and take nothing from it; the exit and the prose are not touched.
  *
@@ -1218,12 +1218,15 @@ function withTreeLines<T extends object>(reading: T, newer: SaysNewerLines): T {
 function treeWithLines(
   tree: TreeReport,
   newerLinesSentence: SaysNewerLines,
-): TreeReport & { headline: string; newerMnema?: string } {
-  if (tree.kind === 'no-record') return { ...tree, headline: NO_RECORD_HEADLINE };
+): TreeReport & { headline: string; short: string; newerMnema?: string } {
+  if (tree.kind === 'no-record') {
+    return { ...tree, headline: NO_RECORD_HEADLINE, short: NO_RECORD_HEADLINE };
+  }
   const unread = tree.result.census.filter((note) => note.kind === 'unread-kind');
   const lines = unread.reduce((sum, note) => sum + note.lines, 0);
   return {
     ...tree,
+    short: shortLine(tree.result),
     headline: headline(tree.result)
       .map((clause) => clause.text)
       .join('; '),
@@ -1236,6 +1239,36 @@ function treeWithLines(
           }),
         }),
   };
+}
+
+/** What each level says in plain words, for a surface that has no room for the layer names. */
+const SHORT_BY_LEVEL: Readonly<Record<ProvenLevel, string>> = {
+  unreadable: 'unreadable: a stored line could not be read',
+  // A broken tree says its first issue instead: see {@link shortLine}.
+  broken: 'failed',
+  'hash-chain-only': 'verified, hash chain only: no signature was checked',
+  'signed-through-last-checkpoint': 'verified, signed through the last checkpoint',
+  'fully-signed': 'verified, signed',
+  'externally-witnessed': 'verified, witnessed',
+};
+
+/** The longest an issue is carried into a short line; the whole of it is in `verify`. */
+const SHORT_ISSUE_AT = 100;
+
+/**
+ * THE SHORT FORM OF ONE TREE'S VERDICT, in plain words and without the names of the layers
+ * (`T1/T2/T4`), which stay in the console's text and in `headline`. One place says it, and it is
+ * total over the levels by type, as {@link levelSeverity}'s table is: a level added to the chain does
+ * not build until someone says how it reads short. A broken tree says its first issue, as the chain
+ * wrote it, cut at {@link SHORT_ISSUE_AT} characters, and how many more there are.
+ */
+export function shortLine(result: Pick<VerifyResult, 'level' | 'issues'>): string {
+  const first = result.issues[0];
+  if (result.level !== 'broken' || first === undefined) return SHORT_BY_LEVEL[result.level];
+  const said = oneLine(first.detail);
+  const cut = said.length > SHORT_ISSUE_AT ? `${said.slice(0, SHORT_ISSUE_AT)}...` : said;
+  const more = result.issues.length - 1;
+  return `failed: ${cut}${more > 0 ? ` (and ${more} more)` : ''}`;
 }
 
 /** The clause that is the answer, alone, or every clause, when none says it is one. */

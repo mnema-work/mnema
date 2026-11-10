@@ -85,6 +85,7 @@ describe('the channels, as `mnema switch` lists them', () => {
 const PUBLIC_LINE: TreeLine = {
   scope: 'public',
   headline: 'local integrity verified (T1/T2/T4)',
+  short: 'verified, signed',
   newerMnema: undefined,
   mark: undefined,
 };
@@ -271,6 +272,7 @@ const verdict = (scope: string, level: string, more: object = {}) => ({
   kind: 'verdict',
   scope,
   headline: `the line of ${scope}`,
+  short: `the short line of ${scope}`,
   result: { ok: true, level },
   ...more,
 });
@@ -281,6 +283,7 @@ describe('the lines of the trees, as `mnema verify --json` says them', () => {
       {
         scope: 'public',
         headline: 'local integrity verified (T1/T2/T4)',
+        short: 'verified, signed',
         newerMnema: undefined,
         mark: undefined,
       },
@@ -292,6 +295,7 @@ describe('the lines of the trees, as `mnema verify --json` says them', () => {
       {
         scope: 'public',
         headline: 'local integrity FAILED: see issues',
+        short: 'failed: entry hash mismatch: content or link was altered (and 1 more)',
         newerMnema: undefined,
         mark: 'error',
       },
@@ -343,7 +347,7 @@ describe('the tooltip', () => {
     expect(bar(STRONG, { awaiting: 2 }).tooltip).toBe(
       [
         '**mnema** · fully\\-signed',
-        `**public**: ${inert('local integrity verified (T1/T2/T4)')}\\\n**private**: ${inert('local integrity verified (T1/T2/T4)')}`,
+        `**public**: ${inert('verified, signed')}\\\n**private**: ${inert('verified, signed')}`,
         `[2 decisions await a judgment](command:${CONTAINER_COMMAND}) · [What to do](command:mnema.whatToDo)`,
         'Channels off: edit\\-first\\-write\\-gate, user\\-corrections',
         `Read at 14:03:09 · [Refresh](command:mnema.refresh) · [Settings](command:workbench.action.openSettings?${encodeURIComponent('["mnema.statusBar"]')}) · [Show the full verification](command:mnema.showVerification)`,
@@ -354,12 +358,12 @@ describe('the tooltip', () => {
   it('marks a tree that is not clean with the editor icon of its kind, and a clean tree with none', () => {
     const tip = bar(FAILED, {
       trees: [
-        { ...PUBLIC_LINE, headline: 'local integrity FAILED: see issues', mark: 'error' },
+        { ...PUBLIC_LINE, short: 'failed: entry hash mismatch', mark: 'error' },
         { ...PRIVATE_LINE, mark: 'info' },
         { ...PRIVATE_LINE, scope: 'global' },
       ],
     }).tooltip;
-    expect(tip).toContain(`$(error) **public**: ${inert('local integrity FAILED: see issues')}`);
+    expect(tip).toContain(`$(error) **public**: ${inert('failed: entry hash mismatch')}`);
     expect(tip).toContain('$(info) **private**: ');
     expect(tip).toMatch(/\n\*\*global\*\*: /);
   });
@@ -367,7 +371,7 @@ describe('the tooltip', () => {
   it('says a newer mnema wrote lines in the command line own sentence, under the tree it is about', () => {
     const tip = bar(STRONG, { trees: [withNewer, PRIVATE_LINE] }).tooltip;
     expect(tip).toContain(
-      `**public**: ${inert('local integrity verified (T1/T2/T4)')}\\\n$(info) ${inert(withNewer.newerMnema as string)}\\\n**private**: `,
+      `**public**: ${inert('verified, signed')}\\\n$(info) ${inert(withNewer.newerMnema as string)}\\\n**private**: `,
     );
   });
 
@@ -380,19 +384,19 @@ describe('the tooltip', () => {
 
   it('says only what the command line wrote: every word about a tree is in the field it came from', () => {
     const invented = 'a word the command line never wrote';
-    const tip = bar(STRONG, { trees: [{ ...PUBLIC_LINE, headline: invented }] }).tooltip;
+    const tip = bar(STRONG, { trees: [{ ...PUBLIC_LINE, short: invented }] }).tooltip;
     expect(tip).toContain(inert(invented));
-    const fromTheField = readTrees(printed('verify-lines-intact'))[0]?.headline as string;
+    const fromTheField = readTrees(printed('verify-lines-intact'))[0]?.short as string;
     const shown = bar(STRONG, { trees: readTrees(printed('verify-lines-intact')) }).tooltip;
     expect(shown).toContain(inert(fromTheField));
   });
 
   it('says a failure with the line the command line wrote for the tree, and no line of its own that judges', () => {
     const tip = bar(FAILED, {
-      trees: [{ ...PUBLIC_LINE, headline: 'local integrity FAILED: see issues', mark: 'error' }],
+      trees: [{ ...PUBLIC_LINE, short: 'failed: entry hash mismatch', mark: 'error' }],
     }).tooltip;
     expect(tip).toContain('**mnema** · verify failed');
-    expect(tip).toContain(inert('local integrity FAILED: see issues'));
+    expect(tip).toContain(inert('failed: entry hash mismatch'));
   });
 
   it('says the channels were not read, or that every one is on, and invents nothing', () => {
@@ -407,7 +411,7 @@ describe('the tooltip', () => {
     const tip = bar(STRONG, {
       channels: [{ name: hostile, on: false }],
       trees: [
-        { ...PUBLIC_LINE, scope: hostile, headline: `${hostile} <b>x</b>`, newerMnema: hostile },
+        { ...PUBLIC_LINE, scope: hostile, short: `${hostile} <b>x</b>`, newerMnema: hostile },
       ],
     }).tooltip;
     expect(tip).toContain('\\[judge\\]\\(command\\:mnema\\.accept\\)');

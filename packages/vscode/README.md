@@ -144,7 +144,8 @@ the `mnema` command line, which the extension does not bring: `@mnema/code` stay
   and, when decisions await a judgment, how many (`fully-signed · 2 to judge`, the same number as the
   badge). The text is short on purpose: nothing about the channels is in it. The tooltip, in markdown,
   has the level, one line per tree of the record (`public`, `private`, the line the command line
-  wrote for that tree in `mnema verify --json`, and under it the command line's own sentence when a
+  wrote for that tree in `mnema verify --json` (`short`, in plain words: `verified, signed`, `verified, hash chain only: no
+  signature was checked`, `failed: <the first issue>`; the layer names stay in the full verification), and under it the command line's own sentence when a
   newer mnema wrote lines this one does not read; a tree that is not clean has the editor's error or
   info icon in front, and a tree with nothing in it has no line), a link to the container with the
   number awaiting, the channels off by name, the time of the reading, and links to Refresh, to the

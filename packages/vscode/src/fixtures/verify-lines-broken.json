@@ -11,18 +11,18 @@
         "level": "broken",
         "tails": [
           {
-            "tail": "412bda4dd98407446b28c92164e8e60d030f26f3de3a556e48917c19d6f49108-788668dfc6c5a39c131bd0c66cb74c0a",
+            "tail": "b1260404b4735040b6c8493ccac1b1873533ecbf21a5e46f10f7561fc7656676-49ff1c2f25d715138d509d4e3e34219a",
             "entryCount": 5,
             "checkpointedThrough": 2,
             "issues": [
               {
-                "tail": "412bda4dd98407446b28c92164e8e60d030f26f3de3a556e48917c19d6f49108-788668dfc6c5a39c131bd0c66cb74c0a",
+                "tail": "b1260404b4735040b6c8493ccac1b1873533ecbf21a5e46f10f7561fc7656676-49ff1c2f25d715138d509d4e3e34219a",
                 "layer": "T1",
                 "seq": 3,
                 "detail": "entry hash mismatch: content or link was altered"
               },
               {
-                "tail": "412bda4dd98407446b28c92164e8e60d030f26f3de3a556e48917c19d6f49108-788668dfc6c5a39c131bd0c66cb74c0a",
+                "tail": "b1260404b4735040b6c8493ccac1b1873533ecbf21a5e46f10f7561fc7656676-49ff1c2f25d715138d509d4e3e34219a",
                 "layer": "T2/T4",
                 "seq": 3,
                 "detail": "checkpoint failed: content-root-mismatch"
@@ -32,13 +32,13 @@
         ],
         "issues": [
           {
-            "tail": "412bda4dd98407446b28c92164e8e60d030f26f3de3a556e48917c19d6f49108-788668dfc6c5a39c131bd0c66cb74c0a",
+            "tail": "b1260404b4735040b6c8493ccac1b1873533ecbf21a5e46f10f7561fc7656676-49ff1c2f25d715138d509d4e3e34219a",
             "layer": "T1",
             "seq": 3,
             "detail": "entry hash mismatch: content or link was altered"
           },
           {
-            "tail": "412bda4dd98407446b28c92164e8e60d030f26f3de3a556e48917c19d6f49108-788668dfc6c5a39c131bd0c66cb74c0a",
+            "tail": "b1260404b4735040b6c8493ccac1b1873533ecbf21a5e46f10f7561fc7656676-49ff1c2f25d715138d509d4e3e34219a",
             "layer": "T2/T4",
             "seq": 3,
             "detail": "checkpoint failed: content-root-mismatch"
@@ -47,15 +47,15 @@
         "census": [
           {
             "kind": "backup-key",
-            "fingerprint": "c0f98eba5b1e135f44d65463533849ea791716c3042d63b2256b5b9c96ee6ef2",
-            "anchor": "mnid:a6cdc4e1c8555b5b897667d208feb73fb4f92a8002d1d62dd676a2c5e5a04bcb",
-            "detail": "the backup key of mnid:a6cdc4e1c8555b5b897667d208feb73fb4f92a8002d1d62dd676a2c5e5a04bcb, as the record declares it: a backup signs nothing until it is restored, so it has no tail (if it was restored and has signed, that tail is not here)"
+            "fingerprint": "06806e35ed8a070beab2094c78a6620f081e8b82fe2fed01661a76da27803e61",
+            "anchor": "mnid:512f1fdffbe32a4231b32b666db5959fb30222eb86fbbc1bc4899208735f3d9c",
+            "detail": "the backup key of mnid:512f1fdffbe32a4231b32b666db5959fb30222eb86fbbc1bc4899208735f3d9c, as the record declares it: a backup signs nothing until it is restored, so it has no tail (if it was restored and has signed, that tail is not here)"
           }
         ],
         "record": {
           "state": "named",
-          "name": "8115abe069e078604469be579797ce4d0fbb116e01a6490f0d405d1a87a28b13",
-          "genesis": "412bda4dd98407446b28c92164e8e60d030f26f3de3a556e48917c19d6f49108-788668dfc6c5a39c131bd0c66cb74c0a",
+          "name": "d8faa99c5508858ade3af94a0d80aa71fa228a39d42864d20dfadb3f789e65c8",
+          "genesis": "b1260404b4735040b6c8493ccac1b1873533ecbf21a5e46f10f7561fc7656676-49ff1c2f25d715138d509d4e3e34219a",
           "unnamed": []
         },
         "uncheckpointedEvents": 2,
@@ -84,13 +84,15 @@
         ],
         "summary": "local integrity FAILED: see issues; 1 tail(s); 2 event(s) above the last checkpoint are hash-chained but NOT yet signature-covered; 1 backup key(s), which sign nothing until restored (informational, not a break; --verbose names the key); external witness (T3): not covered, nothing outside this machine attests this record"
       },
+      "short": "failed: entry hash mismatch: content or link was altered (and 1 more)",
       "headline": "local integrity FAILED: see issues"
     },
     {
       "kind": "no-record",
       "scope": "private",
       "root": "/tmp/tmp.8XygkYmCTt/repo/.git/mnema/%2E/private",
-      "headline": "no record here"
+      "headline": "no record here",
+      "short": "no record here"
     }
   ],
   "record": {

@@ -75,9 +75,17 @@ const aTree = (
   kind: 'verdict',
   scope,
   headline,
+  short: SHORT[headline] ?? headline,
   result,
 });
 const SIGNED = 'local integrity verified (T1/T2/T4)';
+/** What the command line serves as the short form of each headline these tests use. */
+const SHORT: Record<string, string> = {
+  [SIGNED]: 'verified, signed',
+  'local integrity FAILED: see issues': 'failed: entry hash mismatch',
+  'local integrity verified (T1 only): no signature was checked':
+    'verified, hash chain only: no signature was checked',
+};
 const verifyJson = (record: object, trees: object[]): CliResult =>
   ok(JSON.stringify({ ok: (record as { ok: boolean }).ok, trees, record }));
 const VERIFY = verifyJson({ ok: true, level: 'fully-signed' }, [
@@ -552,8 +560,8 @@ describe('the extension reads the record through the command line', () => {
     expect(w.bar.backgroundColor).toBeUndefined();
     const tip = w.tooltip();
     expect(tip).toContain('[1 decision awaits a judgment](command:workbench.view.extension.mnema)');
-    expect(tip).toContain('**public**: local integrity verified \\(T1\\/T2\\/T4\\)');
-    expect(tip).toContain('**private**: local integrity verified \\(T1\\/T2\\/T4\\)');
+    expect(tip).toContain('**public**: verified\\, signed');
+    expect(tip).toContain('**private**: verified\\, signed');
     expect(tip).not.toContain('```');
     expect(w.icons()).toBe(true);
     expect(tip).toContain('Channels off: user\\-corrections');
@@ -605,8 +613,8 @@ describe('the extension reads the record through the command line', () => {
     await settle();
     expect(w.bar.text).toBe('$(error) verify failed · 1 to judge');
     expect(w.bar.backgroundColor).toEqual({ id: 'statusBarItem.warningBackground' });
-    expect(w.tooltip()).toContain('$(error) **public**: local integrity FAILED\\: see issues');
-    expect(w.tooltip()).toContain('**private**: local integrity verified');
+    expect(w.tooltip()).toContain('$(error) **public**: failed\\: entry hash mismatch');
+    expect(w.tooltip()).toContain('**private**: verified\\, signed');
     // A later reading that verifies takes the color away again.
     answers['verify --json'] = VERIFY;
     await w.command('mnema.refresh')();
