@@ -73,9 +73,16 @@ import {
 import { type Cited, HeadsToCite } from './cited-heads.js';
 import { CodedError } from './coded-error.js';
 import { appendDurably } from './durable.js';
-import { type Entry, parseEntry, sealEntry, serializeEntry } from './entry.js';
-import type { WrittenEvent } from './hash.js';
-import { type KeptHead, keepHead, readKeptHead } from './kept-head.js';
+import { type ChainEntry, type Entry, parseEntry, sealEntry, serializeEntry } from './entry.js';
+import { entryHash, type WrittenEvent } from './hash.js';
+import {
+  type KeptHead,
+  keepHead,
+  keepWrittenHead,
+  readKeptHead,
+  readWrittenHead,
+  type WrittenHead,
+} from './kept-head.js';
 import type { KeyPair } from './keys.js';
 import { materializePublicKey, signerOf, writeAnchor } from './keystore.js';
 import {
@@ -180,11 +187,14 @@ export interface NewTail {
    * Why else the writer left `from`, where it still ended where this installation left it: its
    * owner relinked it into this record (`relinked`, FORMAT.md section 6.11: a relinked tail is
    * frozen at the head the relink names), or this write joins another record than the one it
-   * names (`joins`, {@link WriterOptions.joins}).
+   * names (`joins`, {@link WriterOptions.joins}); or it holds events above its last checkpoint
+   * that the note this installation signed does not vouch for (`unvouched`, how many): this key
+   * does not sign them (ADR-301).
    */
   readonly left?:
     | { readonly relinked: string }
-    | { readonly names: string; readonly joins: string };
+    | { readonly names: string; readonly joins: string }
+    | { readonly unvouched: number };
 }
 
 /** The sentence a {@link NewTail} is told in: one wording for every surface that tells it. */
@@ -192,9 +202,11 @@ export function describeNewTail(opened: NewTail): string {
   const left = opened.left;
   if (left !== undefined) {
     const why =
-      'relinked' in left
-        ? `its owner relinked it into record ${left.relinked.slice(0, 12)}..., which freezes it at the entry the relink names, and appending there would undo the relink`
-        : `it names record ${left.names.slice(0, 12)}..., and this write joins record ${left.joins.slice(0, 12)}...: a tail names one record, so the write is made from a tail of this key born in the record it joins`;
+      'unvouched' in left
+        ? `${left.unvouched} event(s) above its last checkpoint are not ones this installation's signed note says it wrote, so this key does not sign them; they stay unsigned, and \`mnema verify --require=signed\` fails on them`
+        : 'relinked' in left
+          ? `its owner relinked it into record ${left.relinked.slice(0, 12)}..., which freezes it at the entry the relink names, and appending there would undo the relink`
+          : `it names record ${left.names.slice(0, 12)}..., and this write joins record ${left.joins.slice(0, 12)}...: a tail names one record, so the write is made from a tail of this key born in the record it joins`;
     return `mnema: wrote to a new tail, ${opened.to}, and left tail ${opened.from} as it is: ${why}.`;
   }
   const held = (opened.found?.seq ?? -1) + 1;
@@ -253,6 +265,8 @@ interface TailMark {
 
 export class ChainWriter {
   private head: string | null = null;
+  /** The entry hash {@link head} was chained onto, or null at seq 0: kept in the signed note. */
+  private headPrev: string | null = null;
   private nextSeq = 0;
   private segment = 1;
   private segmentBytes = 0;
@@ -333,6 +347,8 @@ export class ChainWriter {
   private unsaid: NewTail | undefined;
   /** The head last kept in the note ({@link keepHead}), so an act that wrote nothing writes no note. */
   private keptHash: string | null = null;
+  /** The signed note last kept or read ({@link keepWrittenHead}), as {@link noteSaying} says it. */
+  private keptNote: string | null = null;
   /**
    * The record this tail's proof and checkpoints name, once {@link recordName} resolved it: per
    * tail, so a writer that moves to a new tail resolves it again (from the tail it left, which the
@@ -529,6 +545,7 @@ export class ChainWriter {
   /** Everything this writer believed about the tail it left, back to a tail it has not read. */
   private resetForTail(): void {
     this.head = null;
+    this.headPrev = null;
     this.nextSeq = 0;
     this.segment = 1;
     this.segmentBytes = 0;
@@ -538,6 +555,7 @@ export class ChainWriter {
     this.damage = undefined;
     this.movedOn = undefined;
     this.keptHash = null;
+    this.keptNote = null;
     this.record = undefined;
     this.namesRead = undefined;
     this.born = false;
@@ -546,11 +564,27 @@ export class ChainWriter {
 
   /**
    * Keeps the last entry this writer wrote ({@link keepHead}), on the way out of every hold and
-   * only when it moved: a note per act that appended, none for one that did not.
+   * only when it moved: a note per act that appended, none for one that did not. The signed note
+   * ({@link keepWrittenHead}) is kept first, and also when only the coverage moved, so a crash
+   * between the two leaves the clear-text note behind the tail: a new tail, as a crash before
+   * the note always cost.
    */
   private keepHeadIfWritten(): void {
-    if (this.movedOn !== undefined || this.head === null || this.head === this.keptHash) return;
-    keepHead(this.layout, this.tailId, { seq: this.nextSeq - 1, hash: this.head });
+    if (this.movedOn !== undefined || this.damage !== undefined || this.head === null) return;
+    const note: WrittenHead = {
+      seq: this.nextSeq - 1,
+      hash: this.head,
+      prev: this.headPrev,
+      coveredThrough: this.lastCheckpointedSeq,
+      checkpoint: this.lastCheckpointHash,
+    };
+    const saying = noteSaying(note);
+    if (saying !== this.keptNote) {
+      keepWrittenHead(this.layout, this.tailId, note, this.keyPair);
+      this.keptNote = saying;
+    }
+    if (this.head === this.keptHash) return;
+    keepHead(this.layout, this.tailId, { seq: note.seq, hash: note.hash });
     this.keptHash = this.head;
   }
 
@@ -703,11 +737,11 @@ export class ChainWriter {
    * was rebuilt to remove.
    */
   private recover(): void {
+    // The coverage is the disk's, a checkpoint that lost only its newline included: a process
+    // that held another one goes by what the file holds now, not by what it last read.
     const lastCp = lastTailCheckpoint(this.layout, this.tailId);
-    if (lastCp !== undefined) {
-      this.lastCheckpointedSeq = lastCp.toSeq;
-      this.lastCheckpointHash = checkpointHash(lastCp);
-    }
+    this.lastCheckpointedSeq = lastCp?.toSeq ?? -1;
+    this.lastCheckpointHash = lastCp === undefined ? null : checkpointHash(lastCp);
     const segments = orderedSegments(this.layout, this.tailId);
     const lastSegment = segments.at(-1);
     let fragment: TornFragment | undefined;
@@ -782,8 +816,59 @@ export class ChainWriter {
         return;
       }
     }
+    // WHAT IS FOUND ABOVE THE COVERAGE IS SIGNED ONLY UNDER AN END THIS INSTALLATION'S SIGNED NOTE
+    // VOUCHES FOR (ADR-301, ADR-302). The note above is clear text in the tree, and so is this
+    // tail: a party that can write the checkout and cannot use the key rewrote the tail,
+    // re-chained it, emptied the checkpoints and fixed the note, and this recovery took every
+    // event above the (now absent) coverage as owed a signature, which the next checkpoint gave
+    // it. The note that settles it is signed with this tail's key ({@link readWrittenHead}), and
+    // the end it is compared with is the end the bytes compute ({@link endAsComputed}), not the
+    // hashes stored beside them. Decided before anything is cut or healed, so a write that goes
+    // elsewhere or is refused leaves every file of this tail as it found it.
+    // `a-history-rewritten-without-the-key-is-never-signed.test.ts` holds each case.
+    const above = tip.filter((entry) => entry.link.seq > this.lastCheckpointedSeq).length;
+    const note = readWrittenHead(this.layout, this.tailId, this.keyPair.publicKey);
+    const computed = endAsComputed(tip, this.lastCheckpointedSeq, this.tailId);
+    const vouched =
+      note !== undefined &&
+      computed &&
+      ((found !== undefined && note.seq === found.seq && note.hash === found.hash) ||
+        // This installation's own last entry, torn by a power cut after its note was signed: the
+        // note names the entry chained onto this end, and only that entry's line is gone.
+        (tornOwnWrite &&
+          note.seq === (found?.seq ?? -1) + 1 &&
+          note.prev === (found?.hash ?? null)));
+    if (vouched) {
+      if (
+        this.lastCheckpointedSeq < note.coveredThrough ||
+        (this.lastCheckpointedSeq === note.coveredThrough &&
+          this.lastCheckpointHash !== note.checkpoint)
+      ) {
+        // Checkpoints this key signed are gone or replaced under an end it vouches for: what
+        // they covered would be owed a signature again. Nothing is cut and nothing is signed.
+        this.damage = new TailDamagedError(
+          this.tailId,
+          note.coveredThrough,
+          lastComplete,
+          this.lastCheckpointedSeq,
+        );
+        this.nextSeq = this.lastCheckpointedSeq + 1;
+        this.pending = [];
+        return;
+      }
+    } else if (above > 0) {
+      this.movedOn = {
+        from: this.tailId,
+        to: this.tailId,
+        kept,
+        found,
+        left: { unvouched: above },
+      };
+      return;
+    }
     this.movedOn = undefined;
     this.keptHash = kept?.hash ?? null;
+    this.keptNote = note === undefined ? null : noteSaying(note);
     // Truncates back to the end of the last COMPLETE line, so the next append
     // continues a clean tail instead of landing after the fragment, which
     // would turn a once-benign torn line into a mid-file malformed line that
@@ -793,6 +878,7 @@ export class ChainWriter {
       truncateSync(lastSegment, fragment.start);
     healCheckpointsEnd(checkpointsPath(this.layout, this.tailId));
     if (last !== undefined) {
+      this.headPrev = last.link.prev;
       this.head = last.link.hash;
       this.nextSeq = last.link.seq + 1;
     }
@@ -862,6 +948,7 @@ export class ChainWriter {
     const path = segmentPath(this.layout, this.tailId, this.segment);
     appendDurably(path, line);
 
+    this.headPrev = entry.link.prev;
     this.head = entry.link.hash;
     this.nextSeq += 1;
     this.segmentBytes += Buffer.byteLength(line, 'utf-8');
@@ -932,6 +1019,7 @@ export class ChainWriter {
     const path = segmentPath(this.layout, this.tailId, this.segment);
     appendDurably(path, lines);
 
+    this.headPrev = (entries.at(-1) as Entry).link.prev;
     this.head = prev;
     this.nextSeq = seq;
     this.segmentBytes += Buffer.byteLength(lines, 'utf-8');
@@ -1104,19 +1192,51 @@ export class TailDamagedError extends CodedError {
     readonly tail: string,
     readonly signedThrough: number,
     readonly lastComplete: number,
+    /**
+     * Set when the lines are whole and it is the CHECKPOINTS that fell short (ADR-302): the
+     * `toSeq` of the last one on disk (-1 for none), below or beside the coverage the note this
+     * installation signed says this key signed ({@link readWrittenHead}).
+     */
+    readonly checkpointsEndAt?: number,
   ) {
-    const found =
-      lastComplete < 0 ? 'no complete line' : `its last complete line is seq ${lastComplete}`;
-    super(
-      `this machine's tail ${tail} is signed through seq ${signedThrough}, and ${found}: a line ` +
-        'its last checkpoint signed is cut, is missing or has lost its newline, which no crash ' +
-        'leaves. This write was not appended, and the tail was left as it was. `mnema verify` fails ' +
-        'on a signed line that is cut or missing, and passes on a signed line that only lost its ' +
-        'newline, so a pass does not clear this tail: compare its files with the last copy you ' +
-        'trust (the repository, a backup) and put them back before writing again.',
-    );
+    super(tailDamage(tail, signedThrough, lastComplete, checkpointsEndAt));
     this.name = 'TailDamagedError';
   }
+}
+
+/** The sentence a {@link TailDamagedError} says, by what fell short: a line, or the checkpoints. */
+function tailDamage(
+  tail: string,
+  signedThrough: number,
+  lastComplete: number,
+  checkpointsEndAt: number | undefined,
+): string {
+  if (checkpointsEndAt !== undefined) {
+    const now =
+      checkpointsEndAt < 0
+        ? 'it holds no checkpoint now'
+        : checkpointsEndAt < signedThrough
+          ? `its checkpoints now end at seq ${checkpointsEndAt}`
+          : 'its last checkpoint, through that seq, is not the one this key signed';
+    return (
+      `this machine's tail ${tail} was signed by this key through seq ${signedThrough}, as the ` +
+      `note this installation signed when it last wrote there says, and ${now}: checkpoints ` +
+      'this key signed were taken out or replaced, which no crash leaves. This write was not ' +
+      'appended, nothing was signed, and the tail was left as it was. The events above the ' +
+      'checkpoints that remain are not signed again: compare its files with the last copy you ' +
+      'trust (the repository, a backup) and put them back before writing again.'
+    );
+  }
+  const found =
+    lastComplete < 0 ? 'no complete line' : `its last complete line is seq ${lastComplete}`;
+  return (
+    `this machine's tail ${tail} is signed through seq ${signedThrough}, and ${found}: a line ` +
+    'its last checkpoint signed is cut, is missing or has lost its newline, which no crash ' +
+    'leaves. This write was not appended, and the tail was left as it was. `mnema verify` fails ' +
+    'on a signed line that is cut or missing, and passes on a signed line that only lost its ' +
+    'newline, so a pass does not clear this tail: compare its files with the last copy you ' +
+    'trust (the repository, a backup) and put them back before writing again.'
+  );
 }
 
 /**
@@ -1268,4 +1388,41 @@ function tornFragment(segmentPath: string, upcasters: UpcasterRegistry): TornFra
     return { start: line.start, parses: read !== null };
   }
   return undefined; // an empty file: nothing torn
+}
+
+/** The signed note as one string, to tell whether the one to keep is the one already kept. */
+function noteSaying(note: WrittenHead): string {
+  return [note.seq, note.hash, note.prev, note.coveredThrough, note.checkpoint].join(' ');
+}
+
+/**
+ * Whether the entries of `tip` above `coveredThrough` are what their bytes compute: each one's
+ * entry hash taken again over its written event, its tail, its seq and the hash of the entry
+ * before it, with each seq the one before plus one, starting from the entry AT the coverage (or
+ * from seq 0 and no predecessor when nothing is covered).
+ *
+ * The reading takes the stored hashes on trust (`parseEntry` does not check the chain), and a
+ * checkpoint signs a root over event content alone, so an event edited with its stored hashes
+ * kept matches every hash the recovery compares. A signed note vouches for an end; this is what
+ * makes the end it vouches for the end of these bytes. It costs the entries above the coverage,
+ * which are usually none.
+ */
+function endAsComputed(tip: readonly ChainEntry[], coveredThrough: number, tail: string): boolean {
+  let at = tip.length - 1;
+  while (at >= 0 && (tip[at] as ChainEntry).link.seq > coveredThrough) at -= 1;
+  let prev: string | null = null;
+  if (coveredThrough >= 0) {
+    const boundary = tip[at];
+    if (boundary === undefined || boundary.link.seq !== coveredThrough) return false;
+    prev = boundary.link.hash;
+  }
+  let seq = coveredThrough + 1;
+  for (const entry of tip.slice(at + 1)) {
+    if (entry.link.seq !== seq || entry.link.prev !== prev) return false;
+    const hash = entryHash({ event: entry.written, tail, seq, prev });
+    if (hash !== entry.link.hash) return false;
+    prev = hash;
+    seq += 1;
+  }
+  return true;
 }

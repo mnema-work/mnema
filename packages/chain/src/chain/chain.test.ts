@@ -25,7 +25,7 @@ import { openChainForWriting, signerAt, verify } from './chain.js';
 import { checkpointHash, serializeCheckpoint, signCheckpoint } from './checkpoint.js';
 import { readEntries } from './entry.js';
 import { entryHash, writtenAsBuilt, writtenAsStored } from './hash.js';
-import { keepHead } from './kept-head.js';
+import { keepHead, keepWrittenHead, writtenHeadPath } from './kept-head.js';
 import { deriveAnchor, generateKeyPair, publicKeyToPem } from './keys.js';
 import { loadOrCreateKeyPair } from './keystore.js';
 import { checkpointsPath, publicKeyPath, segmentPath, tailProofPath } from './layout.js';
@@ -489,10 +489,25 @@ describe('chain: T4 (anonymous verify with only committed material)', () => {
       seg,
       `${entries.map((e) => canonicalStringify(e as unknown as CanonicalValue)).join('\n')}\n`,
     );
-    // The forger holds the key and this machine's local state with it, so the writer's note of
-    // the last entry it wrote (`kept-head.ts`) is rewritten too: without it the writer would
-    // leave a tail that does not end where it left it, and sign nothing.
-    keepHead({ root }, tail, { seq: entries.length - 1, hash: String(prev) });
+    // The forger holds the key and this machine's local state with it, so the writer's notes of
+    // the last entry it wrote (`kept-head.ts`) are rewritten too, the signed one with that key:
+    // without them the writer would leave a tail that does not end where it left it, or that holds
+    // events no note of its own vouches for, and sign nothing.
+    const last = entries.at(-1) as RawEntry;
+    keepHead({ root }, tail, { seq: last.link.seq, hash: String(prev) });
+    keepWrittenHead(
+      { root },
+      tail,
+      {
+        seq: last.link.seq,
+        hash: String(prev),
+        prev: last.link.prev,
+        // Nothing of this tail is signed yet: its whole window is open.
+        coveredThrough: -1,
+        checkpoint: null,
+      },
+      loadOrCreateKeyPair({ root }),
+    );
     openChain(root).checkpoint(); // honest key re-signs the forged range
 
     const result = verify(root);
@@ -1113,7 +1128,12 @@ describe('chain: crash resilience beyond the torn last entry (audit)', () => {
       rmSync(root, { recursive: true, force: true });
       mkdirSync(root, { recursive: true });
       writeSome(4, { maxUnsignedEvents: 2 });
+      // A crash while signing ends the process before the hold's notes are kept: the signed note
+      // still says the coverage it had before this checkpoint (`kept-head.ts`).
+      const note = writtenHeadPath({ root }, tailIdOf(root));
+      const noted = readFileSync(note);
       openChain(root, { maxUnsignedEvents: 2 }).checkpoint();
+      writeFileSync(note, noted);
       const file = checkpointsPath({ root }, tailIdOf(root));
       const whole = readFileSync(file);
       const lastStart = whole.lastIndexOf(0x0a, whole.length - 2) + 1;
