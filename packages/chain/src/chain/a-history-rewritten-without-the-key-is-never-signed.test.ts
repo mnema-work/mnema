@@ -415,7 +415,7 @@ describe('an end the signed note vouches for, below the coverage it says this ke
 });
 
 describe('what this installation wrote is still signed', () => {
-  it('6. a tail as 0.1.7 leaves it, with no signed note, goes on and gets one', () => {
+  it('6. a tail as a version before this one leaves it, with no signed note, goes on and gets one', () => {
     const tail = history();
     rmSync(writtenHeadPath({ root }, tail));
 
