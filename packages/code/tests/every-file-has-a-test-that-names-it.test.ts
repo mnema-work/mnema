@@ -997,6 +997,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-floor-under-the-window.test.ts': 17,
   'packages/code/tests/a-gate-says-the-rule-it-stands-on-was-moved-apart.test.ts': 17,
   'packages/code/tests/a-handoff-follows-its-task-and-the-reads-agree.test.ts': 16,
+  'packages/code/tests/a-heading-of-the-docs-is-on-one-page.test.ts': 6,
   'packages/code/tests/a-home-of-its-own.test.ts': 9,
   'packages/code/tests/a-hook-is-turned-on-by-a-person.test.ts': 8,
   'packages/code/tests/a-hook-that-cannot-record-still-asks-and-says-so-once.test.ts': 9,
