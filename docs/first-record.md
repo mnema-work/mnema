@@ -49,6 +49,11 @@ without asking them ([the reference](reference/cli/instructions.md#the-mnema-ins
 
 ## 2. Record a call, and accept it
 
+The number in `ADR` below is the one printed on the first line of the record command's answer. The page shows
+`ADR-1`, which is what an init that is not at a terminal gives; after an `init` at a terminal, which records a decision of
+its own first, the line says `ADR-2`, and you set `ADR` to that. Pasting `ADR-1` there would have the accept
+refused and the link bind init's decision.
+
 ```sh
 mnema decision record "Keep money as integer cents" "Float sums drift; cents are exact."
 #> Recorded decision ADR-1 (01a0af84-7eab-7000-8888-79c0dd5690e2)
@@ -56,7 +61,7 @@ mnema decision record "Keep money as integer cents" "Float sums drift; cents are
 #>   Landed in the public tree: committed with the repository, so it reaches every clone.
 #> ADR-1 is addressed at no path; nothing was linked. To say which files it governs:
 #>   mnema link 01a0af84-7eab-7000-8888-79c0dd5690e2 <path> --rel governs
-ADR=ADR-1   # the number printed above: yours may differ, because an init at a terminal records a decision of its own first
+ADR=ADR-1   # replace with the number printed on the line above
 mnema decision move accept "$ADR" --note "Agreed in review."
 #> Decision ADR-1 (01a0af84-7eab-7000-8888-79c0dd5690e2) → accepted
 ```

@@ -110,10 +110,24 @@ describe('the Quick start on the front page', () => {
     expect(ran.status, `${PAGE} failed: ${ran.stderr}${ran.stdout}`).toBe(0);
     expect(ran.stderr, `${PAGE} printed on stderr`).toBe('');
     // The page calls the linked decision "a rule in force": the move it teaches has to accept it.
-    expect(ran.stdout).toContain('→ accepted');
-    expect(ran.stdout).toContain('refuses-a-write');
-    expect(ran.stdout).toContain('src/billing');
-    expect(ran.stdout).toContain('local integrity verified');
+    const lines = ran.stdout.split('\n');
+    expect(lines.filter((line) => /^Decision ADR-\d+ .* → accepted$/.test(line))).toHaveLength(1);
+    expect(
+      lines.filter(
+        (line) => line.startsWith('Linked ') && /refuses-a-write.*src\/billing/.test(line),
+      ),
+    ).toHaveLength(1);
+    expect(lines.filter((line) => line.includes('local integrity verified'))).toHaveLength(1);
+  });
+
+  it('gives fish the same capture as the shell block, on its own line', () => {
+    // fish does not parse `ADR=$(...)`: the page says the form that it does, and the pattern that
+    // takes the number out of the answer must be the one the block uses.
+    const bash = /ADR=\$\(mnema decision record .*\| (grep -o -m1 '[^']+')\)/.exec(read(PAGE));
+    const fish = /set ADR \(mnema decision record .*\| (grep -o -m1 '[^']+')\)/.exec(read(PAGE));
+    expect(bash, `${PAGE} no longer captures the number in the block`).not.toBeNull();
+    expect(fish, `${PAGE} no longer gives fish its form`).not.toBeNull();
+    expect(fish?.[1]).toBe(bash?.[1]);
   });
 
   it('teaches exactly init, decision record, decision move, link and verify, in that order', () => {

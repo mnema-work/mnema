@@ -85,8 +85,9 @@ mnema verify   # reads the signed record; one line saying it is intact is the gr
 ```
 
 No agent has run yet: that is the record, a rule in force, and the proof. `ADR` holds the number
-mnema printed for the decision you just recorded. To hand the record to an agent, install the plugin for your host; in
-Claude Code:
+mnema printed for the decision you just recorded. In fish, whose
+syntax differs, the first line is `set ADR (mnema decision record ... | grep -o -m1 'ADR-[0-9]*')`.
+To hand the record to an agent, install the plugin for your host; in Claude Code:
 
 ```sh
 claude plugin marketplace add mnema-work/mnema
