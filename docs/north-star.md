@@ -6,9 +6,9 @@ One page on what mnema is for, so a change can be weighed against it.
 
 mnema is a signed, append-only record of the decisions behind the work of AI agents, kept in
 the repository where the work happens. A second reader, with no key and no network, can run
-`mnema verify` over the files and learn whether the record is the one that was written.
+the verify command over the files and learn whether the record is the one that was written.
 
-## What it is not
+## What mnema is not
 
 - **Not a semantic memory.** Search is by the words written in a record; there are no embeddings.
 - **Not an agent runner.** It calls no model and runs no tool for the agent.
@@ -22,7 +22,7 @@ The reasons are in [Where it fits](where-it-fits.md#what-it-is-not).
 When two ways of doing something pull apart, the one that keeps the record checkable wins over
 the one that is more convenient. For the scope of a version this means three things:
 
-- A high finding on the proof (something `mnema verify` or a page promises that is not held) is
+- A high finding on the proof (something the verify command or a page promises that is not held) is
   fixed before any new surface enters the version: no new host, verb or page while one is open.
 - Every version's cut cites the line of this page it serves.
 - A cut gains an item only by losing one, by a decision that says which.

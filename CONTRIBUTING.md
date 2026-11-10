@@ -103,7 +103,7 @@ for: a guard that has never been seen to fail looks exactly like one that cannot
 
 ## How changes are made here
 
-Each line is a rule in force in this repository's record; `mnema show ADR-<n>` says why.
+Each line is a rule in force in this repository's record; the decision it cites, read from the record, says why.
 
 - A sentence of [what it proves](docs/what-it-proves.md) has a threat test that fails when the sentence stops being true (ADR-287).
 - No raw error reaches a person and no `catch` is silent (ADR-288).
