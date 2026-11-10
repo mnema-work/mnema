@@ -9,8 +9,8 @@
  * under `src/billing` to init's decision, in silence. The guards that held the pages to a run
  * drove `init` through a pipe, which records no decision of its own and so printed `ADR-1`.
  *
- * WHAT IS CHECKED. `init` is run the way a newcomer runs it: on a pseudo-terminal (`script`), with
- * Enter pressed to take each default. Then the commands of the README's Quick start, and of the
+ * WHAT IS CHECKED. `init` is run the way a newcomer runs it: on a pseudo-terminal (`support/pty.ts`),
+ * with Enter pressed to take each default. Then the commands of the README's Quick start, and of the
  * steps the first-record page publishes after `init`, run in that repository, and
  *   - no command is refused;
  *   - the decision the user recorded is the one the rule is linked to, read from the record's own
@@ -22,12 +22,13 @@
  * holds those, through a pipe), and every other page that cites a label.
  */
 
-import { type ChildProcess, spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { blockUnder } from './support/a-page-held-to-a-run.js';
+import { arrivedSince, inPty } from './support/pty.js';
 import { read } from './support/published-examples.js';
 import { linesOf } from './support/reading-a-shell-line.js';
 import { MNEMA_CLI } from './support/the-cli.js';
@@ -57,30 +58,27 @@ afterEach(() => {
   rmSync(sandbox, { recursive: true, force: true });
 });
 
-/** `mnema init` on a pseudo-terminal, Enter pressed until it ends: a newcomer taking the defaults. */
+/**
+ * `mnema init` on a pseudo-terminal (the one instrument that drives one, `support/pty.ts`),
+ * Enter pressed until it ends: a newcomer taking every default.
+ */
 async function initAtATerminal(): Promise<void> {
-  const child: ChildProcess = spawn('script', ['-qec', 'mnema init', '/dev/null'], {
-    cwd: repo,
-    env: environment(),
-    stdio: ['pipe', 'pipe', 'pipe'],
-  });
-  let printed = '';
-  child.stdout?.on('data', (chunk: Buffer) => {
-    printed += chunk.toString('utf-8');
-  });
-  const keys = setInterval(() => child.stdin?.write('\r'), 300);
-  const code = await new Promise<number | null>((resolve) => {
-    const timer = setTimeout(() => {
-      child.kill('SIGKILL');
-      resolve(null);
-    }, 60_000);
-    child.on('close', (was) => {
-      clearTimeout(timer);
-      resolve(was);
-    });
-  });
-  clearInterval(keys);
-  expect(code, `init at a terminal did not end well: ${printed.slice(-600)}`).toBe(0);
+  const ran = await inPty(
+    { cli: MNEMA_CLI, verb: 'init', project: repo, scratch: sandbox, environment: environment() },
+    {
+      columns: 120,
+      rows: 40,
+      // Each question is waited for and answered with Enter, which takes its default: the hosts
+      // the folder shows, an agent may accept what the person chooses, and the plan as shown.
+      steps: [
+        { until: arrivedSince('Which agent hosts'), what: 'asked which hosts' },
+        { types: '\r', until: arrivedSince('May an agent accept'), what: 'asked about accepting' },
+        { types: '\r', until: arrivedSince('everything init will do'), what: 'shown its plan' },
+        { types: '\r', until: arrivedSince('Founded'), what: 'founded the record' },
+      ],
+    },
+  );
+  expect(ran.code, `init at a terminal did not end well: ${ran.bytes.slice(-600)}`).toBe(0);
 }
 
 /** Runs a shell script in the repository, stopping at the first command that fails. */
