@@ -75,6 +75,11 @@ with its own changelog.
 
 ### Fixed
 
+- **The quick start accepts and links the decision the reader just recorded.** After an `init` at a terminal, which
+  records a decision of its own, the reader's first decision is `ADR-2`, and the README and the first-record page told
+  them to accept and to link `ADR-1`: the accept was refused and the link bound the rule to init's decision without a
+  word. Both pages now read the number the record command printed (the README captures it into `ADR`; the first-record
+  page sets it from the line shown), and a case runs both after an `init` driven on a pseudo-terminal.
 - **The comparison with a base reads one segment at a time.** The comparison `verify --since` makes kept the bytes of
   every segment the base commit held until the end, and only then wrote them down for the check of the tails that
   arrived, so the comparison's own peak was all the record's tails. Each file is now taken out of git once, compared,

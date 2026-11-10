@@ -78,14 +78,14 @@ was not changed since it was signed. What is measured, and what is not, is on [t
 npm i -g @mnema/code                              # the binary
 cd your-repository
 mnema init                                        # founds the record in .mnema/
-mnema decision record "Keep money as integer cents" "Float sums drift; cents are exact."
-mnema decision move accept ADR-1 --note "Agreed in review."   # a decision enters proposed; accepting puts it in force
-mnema link ADR-1 src/billing --rel refuses-a-write             # the rule, addressed at a path
+ADR=$(mnema decision record "Keep money as integer cents" "Float sums drift; cents are exact." | grep -o -m1 'ADR-[0-9]*')
+mnema decision move accept "$ADR" --note "Agreed in review."  # a decision enters proposed; accepting puts it in force
+mnema link "$ADR" src/billing --rel refuses-a-write            # the rule, addressed at a path
 mnema verify   # reads the signed record; one line saying it is intact is the green
 ```
 
-No agent has run yet: that is the record, a rule in force, and the proof. `ADR-1` names the first
-decision of a new record. To hand the record to an agent, install the plugin for your host; in
+No agent has run yet: that is the record, a rule in force, and the proof. `ADR` holds the number
+mnema printed for the decision you just recorded. To hand the record to an agent, install the plugin for your host; in
 Claude Code:
 
 ```sh

@@ -56,14 +56,15 @@ mnema decision record "Keep money as integer cents" "Float sums drift; cents are
 #>   Landed in the public tree: committed with the repository, so it reaches every clone.
 #> ADR-1 is addressed at no path; nothing was linked. To say which files it governs:
 #>   mnema link 01a0af84-7eab-7000-8888-79c0dd5690e2 <path> --rel governs
-mnema decision move accept ADR-1 --note "Agreed in review."
+ADR=ADR-1   # the number printed above: yours may differ, because an init at a terminal records a decision of its own first
+mnema decision move accept "$ADR" --note "Agreed in review."
 #> Decision ADR-1 (01a0af84-7eab-7000-8888-79c0dd5690e2) → accepted
 ```
 
-A decision enters awaiting a judgement, and it is the accepted ones that govern the work. `ADR-1`
-names the first decision of a new record. A long rationale can come from a file (`--body-file
-why.md`) or a pipe (`--stdin`) instead of the line, which keeps it out of the shell history; from
-two places at once, it is refused.
+A decision enters awaiting a judgement, and it is the accepted ones that govern the work. The number
+is the one mnema printed for the decision you recorded, so it is read from that line, never assumed.
+A long rationale can come from a file (`--body-file why.md`) or a pipe (`--stdin`) instead of the line, which keeps
+it out of the shell history; from two places at once, it is refused.
 
 The line about the public tree is the one a project in a repository earns. In a folder with no git it says
 instead that the tree is a folder of the project, not committed, which travels only as the project's files are
@@ -72,7 +73,7 @@ copied; `mnema site` likewise stops calling the tree "committed" there.
 ## 3. Put the rule where it applies
 
 ```sh
-mnema link ADR-1 src/billing --rel refuses-a-write
+mnema link "$ADR" src/billing --rel refuses-a-write
 #> Linked 01a0af84-7eab-7000-8888-79c0dd5690e2 -refuses-a-write→ src/billing
 #>   src/billing covers … file(s) counted in the working tree; not counted: .git, .mnema.
 #>   Files on disk, not edits: a directory nobody touches counts the same as a busy one.

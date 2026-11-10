@@ -104,13 +104,18 @@ afterEach(() => {
 describe('the first record the first-record page shows', () => {
   it('is what the binary prints, step after step in one repository, cut only where the page says so', () => {
     const block = theBlock();
+    // The page has the reader keep the number mnema printed in ADR; it is read the same way,
+    // from the label the record command printed.
+    let adr = '';
     for (const { at, argv, shown } of block) {
-      const ran = spawnSync(process.execPath, [CLI, ...argv.slice(1)], {
+      const words = argv.slice(1).map((word) => (word === '$ADR' ? adr : word));
+      const ran = spawnSync(process.execPath, [CLI, ...words], {
         cwd: repo,
         encoding: 'utf-8',
         env: { PATH: process.env.PATH ?? '', HOME: home },
       });
       const where = `${PAGE}:${at} ${argv.join(' ')}`;
+      adr = /Recorded decision (ADR-\d+) /.exec(ran.stdout)?.[1] ?? adr;
       expect(ran.status, `${where} failed: ${ran.stderr}`).toBe(0);
       expect(ran.stderr, `${where} printed on the stream the page does not show`).toBe('');
       // The repository by both of its spellings: the one it was made at, and the one a
@@ -160,8 +165,8 @@ describe('the first record the first-record page shows', () => {
     // The rationale is one word, as the shell reads it.
     expect(block[1]?.argv).toHaveLength(5);
     // The third step addresses the decision the second one recorded and accepted.
-    expect(block[2]?.argv).toContain('ADR-1');
-    expect(block[3]?.argv).toContain('ADR-1');
+    expect(block[2]?.argv).toContain('$ADR');
+    expect(block[3]?.argv).toContain('$ADR');
   });
 });
 
