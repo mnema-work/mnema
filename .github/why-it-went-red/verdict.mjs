@@ -602,7 +602,7 @@ export function render(result, cores = 0, passed = false) {
 }
 
 /**
- * @param {readonly string[]} argv
+ * @param {readonly string[]} all
  * @returns {{ ledger: string, summary: string, json: string, passed: boolean }}
  */
 function readArgs(all) {
