@@ -777,6 +777,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/action/src/world.test.ts': 9,
   'packages/chain/src/boundaries.test.ts': 3,
   'packages/chain/src/chain/a-batch-remembers-the-heads-it-cited.test.ts': 9,
+  'packages/chain/src/chain/a-history-rewritten-without-the-key-is-never-signed.test.ts': 16,
   'packages/chain/src/chain/a-key-file-named-for-another-key-is-refused.test.ts': 8,
   'packages/chain/src/chain/a-key-file-that-holds-no-key-is-refused.test.ts': 13,
   'packages/chain/src/chain/a-kind-this-reader-does-not-know-is-read-past.test.ts': 16,

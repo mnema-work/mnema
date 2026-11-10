@@ -78,6 +78,17 @@ with its own changelog.
 - **The rules read before an edit no longer slows with the number of rules.** Naming what replaced each rule re-read
   every decision once per rule, so a project with 600 rules and 3,000 decisions waited several seconds on each edit, even
   for a path no rule names; it is now one indexed lookup per rule, with the same answers.
+- **A history rewritten without the key is no longer signed by the key holder's next write.** A writer signed every event
+  it found above its tail's last checkpoint, so anyone who could write the checkout, and not use the key, could rewrite a
+  tail, recompute its keyless hashes, empty `checkpoints.jsonl` and fix the note of the last entry in `locks/`, and the
+  holder's next write signed the forgery: both readers then passed `--require signed`. The writer now keeps beside that
+  note the same note signed with the tail's key (`locks/<tail>.head.sig`), and signs the events it finds above the last
+  checkpoint only under an end that note vouches for, after hashing each of them again from its bytes. An end it does not
+  vouch for, with such events, gets a new tail and a notice that names how many stay unsigned; an end it vouches for whose
+  checkpoints are fewer than the note says this key signed is refused (`TAIL_DAMAGED`) and left as it is. The format and
+  both readers are unchanged. It holds while every mnema that writes with that key is this version or later: an older one
+  still signs what it finds unsigned.
+
 - **The quick start accepts and links the decision the reader just recorded.** After an `init` at a terminal, which
   records a decision of its own, the reader's first decision is `ADR-2`, and the README and the first-record page told
   them to accept and to link `ADR-1`: the accept was refused and the link bound the rule to init's decision without a
