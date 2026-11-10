@@ -80,6 +80,10 @@ with its own changelog.
 
 ### Fixed
 
+- **Verifying against a base reads one segment at a time.** `verify --since` kept the bytes of every segment the base commit held
+  until the end and only then wrote them down for the comparison of the tails that arrived, so its peak memory was the
+  whole record's tails. Each file is now taken out of git once, compared, written down and dropped before the next.
+  The base is still read as the commit held it, and the verdicts and findings are unchanged.
 - **A private rule's refusals and askings stay private.** A rule recorded with `--scope private` that refused a write
   or asked for a person used to leave its `channel.refused` or `channel.asked` in the public tree, with the rule's id,
   and so in the repository's git. The fact is now written to the tree that holds the rule, by the hook command and by

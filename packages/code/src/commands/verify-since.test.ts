@@ -9,10 +9,18 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GIT_WITHOUT_MAINTENANCE } from '../../tests/support/git-without-maintenance.js';
 import { sinceBase } from './verify-since.js';
 
@@ -129,5 +137,54 @@ describe('sinceBase', () => {
       kind: 'refused',
       why: 'the record is not inside a git repository',
     });
+  });
+
+  it('takes each base file out of git once, and writes it down before it asks for the next', () => {
+    // A git that says, at every blob it is asked for, how many files the base directory already
+    // holds: a change that kept every buffer until the end would write none until the last one.
+    for (const n of [2, 3, 4, 5]) write(`${TAIL}/00000${n}.jsonl`, `segment ${n}\n`);
+    git(repo, 'add', '-A');
+    git(repo, 'commit', '-q', '-m', 'more segments');
+    const real = spawnSync('sh', ['-c', 'command -v git'], { encoding: 'utf-8' }).stdout.trim();
+    const bin = mkdtempSync(join(tmpdir(), 'mnema-since-bin-'));
+    const scratch = mkdtempSync(join(tmpdir(), 'mnema-since-scratch-'));
+    const log = join(bin, 'asked.log');
+    writeFileSync(
+      join(bin, 'git'),
+      [
+        '#!/bin/sh',
+        'for a in "$@"; do',
+        '  if [ "$a" = cat-file ]; then',
+        `    echo "$* $(find "$TMPDIR" -type f | wc -l)" >> '${log}'`,
+        '  fi',
+        'done',
+        `exec '${real}' "$@"`,
+        '',
+      ].join('\n'),
+    );
+    chmodSync(join(bin, 'git'), 0o755);
+    vi.stubEnv('PATH', `${bin}:${process.env.PATH ?? ''}`);
+    vi.stubEnv('TMPDIR', scratch);
+    try {
+      expect(findings().findings).toEqual([]);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+    const asked = readFileSync(log, 'utf-8').trim().split('\n');
+    rmSync(bin, { recursive: true, force: true });
+    rmSync(scratch, { recursive: true, force: true });
+    // Every segment, the checkpoints, the proof and the key, each once.
+    expect(asked.map((line) => line.split(' ').slice(-2, -1)[0]?.split(':')[1]).sort()).toEqual([
+      '.mnema/keys/ab.pub',
+      `.mnema/${TAIL}/000001.jsonl`,
+      `.mnema/${TAIL}/000002.jsonl`,
+      `.mnema/${TAIL}/000003.jsonl`,
+      `.mnema/${TAIL}/000004.jsonl`,
+      `.mnema/${TAIL}/000005.jsonl`,
+      `.mnema/${TAIL}/checkpoints.jsonl`,
+      `.mnema/${TAIL}/tailproof.json`,
+    ]);
+    // The Nth blob is asked for with the N-1 before it already written down.
+    expect(asked.map((line) => Number(line.split(' ').at(-1)))).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
   });
 });
