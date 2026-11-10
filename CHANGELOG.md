@@ -80,6 +80,11 @@ with its own changelog.
   them to accept and to link `ADR-1`: the accept was refused and the link bound the rule to init's decision without a
   word. Both pages now read the number the record command printed (the README captures it into `ADR`; the first-record
   page sets it from the line shown), and a case runs both after an `init` driven on a pseudo-terminal.
+- **The hosts table of the README shows every logo at one height.** Each image is given a height and no width, so none is
+  stretched or squashed and the first column is as narrow as its logos; the logos that were a wide card (Cursor), a badge
+  (OpenCode), a mark on a white square (Factory Droid) or padded far inside the file (Goose) are now the vendor's own square
+  or mark file of the same brand page or repository, listed in `assets/hosts/SOURCES.md` with its source, date and sha256,
+  and a test holds that no image of the table carries a width.
 - **A torn last line of `checkpoints.jsonl` is healed by the next write, not buried.** A crash while signing a checkpoint leaves a
   piece with no newline. Reading tolerated it, but the next write appended its checkpoint glued to the piece, and the tail
   became unreadable to `mnema verify` and to the Python reader for good. The writer now cuts a piece that does not parse, or

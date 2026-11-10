@@ -5,7 +5,9 @@
  * Every image in the README's table of hosts is a file of `assets/hosts/`, and that folder's
  * SOURCES.md has a row for the file with the hash of its bytes. No image of the table is a link to
  * a third party's redraw of a logo (an icon CDN) or to a file of somebody else's repository, and
- * a host whose vendor publishes no logo file (Codex) has no image at all.
+ * a host whose vendor publishes no logo file (Codex) has no image at all. Each image is given one
+ * height and no width, so the file's own proportion decides how wide it is and nothing is
+ * distorted.
  */
 
 import { createHash } from 'node:crypto';
@@ -61,6 +63,16 @@ describe('the images of the README table of hosts', () => {
       ).toBe(true);
     }
     for (const row of rows) expect(existsSync(join(ROOT, DIR, row.file)), row.file).toBe(true);
+  });
+
+  it('carry a height and no width, so none is stretched or squashed, the same height for all', () => {
+    const tags = [...table.matchAll(/<img\b[^>]*>/g)].map((m) => m[0]);
+    expect(tags.length).toBe(11);
+    for (const tag of tags) {
+      expect(tag, tag).not.toMatch(/\swidth=/);
+      expect(tag, tag).toMatch(/\sheight="20"/);
+      expect(tag, tag).toMatch(/\salign="middle"/);
+    }
   });
 
   it('leave Codex with no image: its vendor publishes no file the table can use', () => {
