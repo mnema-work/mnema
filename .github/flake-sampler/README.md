@@ -29,6 +29,10 @@ same time.
 A pull request that touches the sampler runs it once per job: that run proves it counts, and it
 opens no issue. A night asked for by hand takes the number typed, which wins over both.
 
+The sampler runs with `MNEMA_FIRST_ATTEMPT_ONLY=1`: CI retries a case that ended on its ceiling
+once, a JSON report carries only the final state, and a case that passed on the retry would be
+counted as never having failed. With the retry off, every first-attempt failure is a failure here.
+
 ## Reading a night
 
 **A green night is not evidence that there is no flake.** With `p` the rate of a flake, N runs

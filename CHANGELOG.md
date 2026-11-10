@@ -80,6 +80,11 @@ with its own changelog.
   them to accept and to link `ADR-1`: the accept was refused and the link bound the rule to init's decision without a
   word. Both pages now read the number the record command printed (the README captures it into `ADR`; the first-record
   page sets it from the line shown), and a case runs both after an `init` driven on a pseudo-terminal.
+- **A torn last line of `checkpoints.jsonl` is healed by the next write, not buried.** A crash while signing a checkpoint leaves a
+  piece with no newline. Reading tolerated it, but the next write appended its checkpoint glued to the piece, and the tail
+  became unreadable to `mnema verify` and to the Python reader for good. The writer now cuts a piece that does not parse, or
+  completes one that lost only its newline, the way it already healed a segment's. `verify` names a dropped piece of the
+  checkpoints file in its census, as the Python reader already did.
 - **The comparison with a base reads one segment at a time.** The comparison `verify --since` makes kept the bytes of
   every segment the base commit held until the end, and only then wrote them down for the check of the tails that
   arrived, so the comparison's own peak was all the record's tails. Each file is now taken out of git once, compared,

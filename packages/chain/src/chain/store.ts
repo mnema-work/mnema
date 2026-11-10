@@ -697,13 +697,15 @@ export function readTailSince(
  * Torn-fragment tolerance is {@link parseStoredLine}'s: a crash while signing a
  * checkpoint can leave a partial final line, and without the tolerance BOTH the
  * verifier and the writer's own recovery would throw; the machine could neither
- * verify nor resume its own tail after a crash mid-checkpoint.
+ * verify nor resume its own tail after a crash mid-checkpoint. A piece it drops is
+ * announced to `onPartialFinalLine`, so the verifier can name it.
  */
 export function readTailCheckpoints(
   layout: ChainLayout,
   tailId: string,
   refused?: RefusedLine,
   relaid?: RelaidLine,
+  onPartialFinalLine?: () => void,
 ): Checkpoint[] {
   const file = checkpointsPath(layout, tailId);
   if (!existsSync(file)) return [];
@@ -723,7 +725,8 @@ export function readTailCheckpoints(
     const checkpoint = readOn(refused, () =>
       parseStoredLine(line, couldBeTorn, couldBeTorn ? parseCheckpoint : relaidCheckpointOf, where),
     );
-    if (checkpoint !== null && checkpoint !== REFUSED) checkpoints.push(checkpoint);
+    if (checkpoint === null) onPartialFinalLine?.();
+    else if (checkpoint !== REFUSED) checkpoints.push(checkpoint);
   }
   return checkpoints;
 }

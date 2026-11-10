@@ -56,6 +56,19 @@ over source has none. The ledger has one. A case over the budget is re-timed **a
 function that re-runs the reds, and is accused only if it is still over it with the machine to
 itself, so contention cannot manufacture an accusation, and one rule cannot grow two meanings.
 
+## A retry that kept the run green
+
+In CI a case that ends on its ceiling is run once more
+([`../a-timeout-is-run-once-more/retry.mjs`](../a-timeout-is-run-once-more/retry.mjs)), and only for
+an error that says it timed out. The result keeps only the last attempt, so the ledger writes down
+every case that passed on a retry (`flaky: true`, whatever the last attempt took) and the page
+names each one under "A retry made this run green". The step runs on a green run too, for that; there
+the page is titled "What this green run left to read" and the step exits 0 (`--run-passed`), so a
+green job carries no failure annotation.
+
+The jobs that run the guards, the python floor and the example stacks retry too but leave no ledger:
+there a retried case is named only by the reporter's own list of flaky tests in the job log.
+
 ## What it does not cover
 
 - *did not reproduce alone* is **not** *the machine was busy*. It is the absence of a property of

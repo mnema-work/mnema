@@ -145,6 +145,11 @@ jobs:
           # this loop found the first run's report and failed them. The runner's temp directory is
           # not the tree, so the loop leaves the tree as it found it.
           REPORTS_DIR: ${{ runner.temp }}/flake-reports
+          # THE SAMPLER COUNTS FIRST ATTEMPTS. CI retries a case that ended on its ceiling once
+          # (`.github/a-timeout-is-run-once-more/retry.mjs`), and a JSON report carries only the
+          # final state, so a case that passed on the retry would be counted as never having
+          # failed. With this set the retry is off, and every first-attempt failure is a failure.
+          MNEMA_FIRST_ATTEMPT_ONLY: '1'
         run: |
           set -euo pipefail
           N="$REPETITIONS"

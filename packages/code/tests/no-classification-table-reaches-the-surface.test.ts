@@ -591,6 +591,10 @@ describe('no classification table reaches the surface', () => {
     // second one arrives as a failure here rather than as an undecided export.
     expect(accessorsInProduction()).toEqual(ASKED_NOT_COPIED.map((entry) => entry.accessor).sort());
   });
+  // THIS CASE WAITS ON A SWEEP: it reads every production file of every package and runs the
+  // lexical scanner over each. Measured on the runner over 39 runs of the trunk, it took 0.7 to
+  // 1.7 s plain and 1.9 to 5.1 s under the coverage cell, which is the one run that crossed the
+  // shared 5 s. 20 s is four times the worst of those.
   it('finds no production file writing a classification out for itself', () => {
     // THE THIRD NET, over the text rather than the surface. The two above keep the TABLE off
     // the surface and the ACCESSOR on it; neither sees a surface that asks neither and writes
@@ -601,7 +605,7 @@ describe('no classification table reaches the surface', () => {
     // shared by decisions and patterns. A vocabulary that emptied would clear everything.
     expect(STATE_WORDS.size).toBeGreaterThanOrEqual(14);
     expect(accused).toEqual([]);
-  });
+  }, 20_000);
 
   it('reads the rewrite in the spellings it names, and not the innocent: on input of its own', () => {
     // THE SCAN'S OWN CASE, from both sides. The five spellings are the five the refusal of

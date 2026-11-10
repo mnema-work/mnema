@@ -249,6 +249,14 @@ export function reconcileFollowed(
  * gives.
  */
 const LED_NOWHERE: Readonly<Record<string, string>> = {
+  'packages/code/tests/a-retried-timeout-is-counted.test.ts -> ../../../.github/a-timeout-is-run-once-more/retry.mjs':
+    'The rule that says where CI runs a case that ended on its ceiling once more, and for which error. The vitest configurations read it before any test exists, so it is plain ESM under .github/, outside the packages/ walk, and this resolver only ever names a .ts: the specifier is right and the scanner cannot follow it.',
+  'packages/code/tests/a-retried-timeout-is-counted.test.ts -> ../../../.github/why-it-went-red/ledger.mjs':
+    'The reporter whose ledger the retry must not hide a flake from, imported here to feed it a stand-in for a case that passed on its second attempt. Plain ESM under .github/, so the scanner cannot follow the specifier, which is right.',
+  'packages/code/tests/a-retried-timeout-is-counted.test.ts -> ../../../.github/why-it-went-red/verdict.mjs':
+    'The reader that turns that ledger into the page naming each retried case as a flake. Same tree and extension as the reporter beside it, so the specifier is right and the scanner cannot follow it.',
+  'packages/code/tests/the-disk-probe-says-what-it-measured.test.ts -> ../../../.github/the-disk-answers/fsync-probe.mjs':
+    'The probe that samples how long an fsync takes in the suite temp directory while the suite runs. It is a script a CI step starts, plain ESM under .github/, so the specifier is right and the scanner cannot follow it.',
   'packages/code/tests/a-home-of-its-own.test.ts -> ../../../.github/a-home-of-its-own/setup.mjs':
     'The setup file every test process runs under, which gives each one a HOME of its own and stands in front of every process a test starts. The case importing it reads what the guard caught, so the specifier is the proof of the guard and not a dependency the scanner could follow.',
   'packages/code/tests/the-red-says-why-it-went-red.test.ts -> ../../../.github/why-it-went-red/ledger.mjs':
@@ -1040,6 +1048,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-report-is-built-from-an-allowlist.test.ts': 10,
   'packages/code/tests/a-report-needs-a-person.test.ts': 20,
   'packages/code/tests/a-retired-agent-key-without-a-tail-is-called-retired.test.ts': 7,
+  'packages/code/tests/a-retried-timeout-is-counted.test.ts': 7,
   'packages/code/tests/a-routed-write-says-where-it-landed.test.ts': 11,
   'packages/code/tests/a-rule-carries-its-check.test.ts': 10,
   'packages/code/tests/a-rule-is-handed-after-a-write.test.ts': 15,
@@ -1273,6 +1282,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-corner-says-what-its-level-covers.test.ts': 15,
   'packages/code/tests/the-cost-comes-from-the-host.test.ts': 6,
   'packages/code/tests/the-cursor-editor-rises-only-with-a-capture.test.ts': 4,
+  'packages/code/tests/the-disk-probe-says-what-it-measured.test.ts': 7,
   'packages/code/tests/the-document-is-a-function-of-the-record.test.ts': 6,
   'packages/code/tests/the-echo-names-the-record.test.ts': 13,
   'packages/code/tests/the-evidence-page-cites-what-exists.test.ts': 4,
@@ -2287,8 +2297,8 @@ describe('every file has a test that names it', () => {
     });
     // Non-vacuity in both parts: the walk really did follow specifiers, and the list
     // really does hold rows; a scanner returning nothing would satisfy the line above.
-    expect(unresolved.length).toBe(19);
-    expect(Object.keys(LED_NOWHERE)).toHaveLength(19);
+    expect(unresolved.length).toBe(23);
+    expect(Object.keys(LED_NOWHERE)).toHaveLength(23);
     // And each row says what THAT module is, by the ledger's rule, at the ledger's floor.
     const why = Object.values(LED_NOWHERE);
     expect(new Set(why).size).toBe(why.length);
