@@ -1213,7 +1213,6 @@ function ensureDir(filePath: string): void {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 }
 
-/** The unterminated piece a segment ends in: where it begins, and whether it reads as an entry. */
 /**
  * Heals the end of `checkpoints.jsonl` the way the segment's is healed: a last line with no
  * newline is a crash's piece, and the next checkpoint appended after it would glue to it and
@@ -1233,6 +1232,7 @@ function healCheckpointsEnd(path: string): void {
   }
 }
 
+/** The unterminated piece a segment ends in: where it begins, and whether it reads as an entry. */
 interface TornFragment {
   /** The byte after the segment's last newline, where a cut leaves the segment. */
   readonly start: number;

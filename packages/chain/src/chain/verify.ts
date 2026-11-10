@@ -3027,7 +3027,12 @@ function censusClauses(census: readonly CensusNote[]): string[] {
   const clauses: string[] = [];
   for (const [kind, clause] of Object.entries(CENSUS_CLAUSE)) {
     if (clause === null) continue;
-    const count = census.filter((note) => note.kind === kind).length;
+    const ofKind = census.filter((note) => note.kind === kind);
+    // A tail whose segment and checkpoints file are both torn has two notes and is one tail.
+    const count =
+      kind === 'partial-final-line'
+        ? new Set(ofKind.map((note) => ('tail' in note ? note.tail : ''))).size
+        : ofKind.length;
     if (count > 0) clauses.push(clause(count));
   }
   return clauses;

@@ -1098,6 +1098,16 @@ describe('chain: crash resilience beyond the torn last entry (audit)', () => {
     ).toBe(true);
   });
 
+  it('counts one tail once when its segment and its checkpoints file both end torn', () => {
+    writeSome(4, { maxUnsignedEvents: 2 });
+    openChain(root, { maxUnsignedEvents: 2 }).checkpoint();
+    appendFileSync(orderedSegments({ root }, tailIdOf(root))[0] as string, '{"event":{"kind":');
+    appendFileSync(checkpointsPath({ root }, tailIdOf(root)), '{"scheme":"mnema-checkp');
+    const result = verify(root);
+    expect(result.census.filter((note) => note.kind === 'partial-final-line')).toHaveLength(2);
+    expect(result.summary).toContain('1 tail(s) ending in a dropped partial line');
+  });
+
   it('a cut anywhere in the last checkpoint line is healed by the next write', () => {
     for (const keep of [30, 'all-but-newline'] as const) {
       rmSync(root, { recursive: true, force: true });
