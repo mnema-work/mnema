@@ -154,7 +154,11 @@ describe('the rules a host pushes beside a write, on a machine with no key', () 
 
     const done = runBesideAWrite({ cwd: repo, env }, { host: 'copilot', payload });
 
-    expect(JSON.stringify(done.reply)).not.toContain('deny');
+    // The rules ARE handed over (the hook cannot refuse a write that has happened), and no refusal is said.
+    const said = JSON.stringify(done.reply);
+    expect(said).not.toBe('{}');
+    expect(said).toContain('Docs are plain');
+    expect(said).not.toContain('`mnema init`');
     // Only the session's marker may be there; no key and no identity.
     expect(existsSync(join(bareHome, '.mnema', 'identity'))).toBe(false);
     expect(theTailsOfTheRepo()).toEqual(tails);
