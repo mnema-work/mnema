@@ -164,7 +164,7 @@ export function sinceBase(ask: {
   const prefix = record === '' ? '' : `${record}/`;
   // The base is read as the commit held it, never off the disk a pull request may have changed:
   // each file is taken out of git once, compared, written into a directory of its own for
-  // `arrivalsSince`, and dropped before the next, so the peak is one file and not the record.
+  // `arrivalsSince`, and dropped before the next, so this comparison holds one file at a time and not the record's tails.
   const base = mkdtempSync(join(tmpdir(), 'mnema-since-'));
   try {
     let unreadable = false;
