@@ -75,6 +75,11 @@ with its own changelog.
 
 ### Fixed
 
+- **The hosts table of the README shows every logo at one height.** Each image is given a height and no width, so none is
+  stretched or squashed and the first column is as narrow as its logos; the logos that were a wide card (Cursor), a badge
+  (OpenCode), a mark on a white square (Factory Droid) or padded far inside the file (Goose) are now the vendor's own square
+  or mark file of the same brand page or repository, listed in `assets/hosts/SOURCES.md` with its source, date and sha256,
+  and a test holds that no image of the table carries a width.
 - **The comparison with a base reads one segment at a time.** The comparison `verify --since` makes kept the bytes of
   every segment the base commit held until the end, and only then wrote them down for the check of the tails that
   arrived, so the comparison's own peak was all the record's tails. Each file is now taken out of git once, compared,
