@@ -224,9 +224,6 @@ describe('the edge of an edit, with a second agent in the project', () => {
     expect(reasonOfTheHook('src/billing/ledger.ts')).not.toMatch(SENTENCE);
   });
 
-  // THIS CASE WAITS ON THE HOOK: it runs the hook several times against a record and a key root. It
-  // takes 0.13 to 0.9 s on the runner, and has been seen stopped for 5.6 s inside one run while
-  // the same case ran in 0.8 s alone. 20 s is more than three times the longest stop seen.
   it('names nobody from a machine with no key of its own, and from one whose keys cannot be listed', async () => {
     const codex = await connect('codex');
     await edge(codex, 'src/billing/invoice.ts');
@@ -248,7 +245,7 @@ describe('the edge of an edit, with a second agent in the project', () => {
     // No key at all: nobody is looked for, and no key is founded to look.
     rmSync(keysDir, { recursive: true, force: true });
     expect(reasonOfTheHook('src/billing/invoice.ts')).not.toContain('(codex)');
-  }, 20_000);
+  });
 
   it('ignores a run left open past the ceiling of age, and keeps one just inside it', async () => {
     vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-10-09T10:00:00.000Z') });

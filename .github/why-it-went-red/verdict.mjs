@@ -130,6 +130,18 @@ import { fileURLToPath } from 'node:url';
  *   ceiling: number | null,
  *   says: string,
  * }} Accused
+ *
+ * A CASE THAT FAILED AND PASSED ON A RETRY: a flake, counted here because the attempt that failed
+ * is not in the result any other reader sees. `duration` is the attempt that passed.
+ *
+ * @typedef {{
+ *   file: string,
+ *   name: string,
+ *   retries: number,
+ *   duration: number,
+ *   ceiling: number | null,
+ *   load: Load | null,
+ * }} Flake
  */
 
 /**
@@ -150,6 +162,7 @@ import { fileURLToPath } from 'node:url';
  *   broken: string[],
  *   reds: Red[],
  *   accused: Accused[],
+ *   flaky: Flake[],
  *   budget: number,
  *   retimed: number,
  *   caught: number,
@@ -384,6 +397,17 @@ export function decide({ ledger, alone, budget = BUDGET, limit = ACCUSATION_LIMI
     if (red.says === UNREADABLE) broken.push(`a red could not be re-run: ${red.name}: ${red.why}`);
   }
 
+  const flaky = ledger.cases
+    .filter((one) => one.state === 'passed' && one.flaky === true)
+    .map((one) => ({
+      file: one.file,
+      name: namesOf(one.titles).shown,
+      retries: one.retries,
+      duration: Math.round(one.duration),
+      ceiling: one.ceiling,
+      load: one.load ?? null,
+    }));
+
   const candidates = ledger.cases.filter(
     (one) =>
       one.state === 'passed' && one.ceiling === ledger.sharedCeiling && one.duration > budget,
@@ -420,10 +444,14 @@ export function decide({ ledger, alone, budget = BUDGET, limit = ACCUSATION_LIMI
 
   if (broken.length > 0) return { verdict: 'RULER BROKEN', broken, reds, accused: [] };
   return {
-    verdict: reds.length === 0 && accused.length === 0 ? 'CLEAN' : 'SOMETHING TO READ',
+    verdict:
+      reds.length === 0 && accused.length === 0 && flaky.length === 0
+        ? 'CLEAN'
+        : 'SOMETHING TO READ',
     broken,
     reds,
     accused,
+    flaky,
     budget,
     retimed,
     caught: reds.filter((red) => red.says === CAUGHT).length,
@@ -481,7 +509,9 @@ export function render(result, cores = 0) {
   out.push(
     result.verdict === 'CLEAN'
       ? '## Nothing went red, and nothing waits without saying so'
-      : '## Why it went red',
+      : result.reds.length === 0 && result.accused.length === 0
+        ? '## A retry made this run green'
+        : '## Why it went red',
   );
   out.push('');
   if (result.reds.length > 0) {
@@ -504,6 +534,24 @@ export function render(result, cores = 0) {
     out.push(
       `A verdict of **${NOT_ALONE}** is not a claim that the machine was busy. It is the absence of a property of this commit, and an order dependence or a race in the product lives there too. The load beside the row is evidence for a reader, and no verdict above was decided by it.`,
     );
+    out.push('');
+  }
+
+  if (result.flaky.length > 0) {
+    out.push(
+      `**${result.flaky.length}** case${result.flaky.length === 1 ? '' : 's'} failed once and passed on a retry. Each is a flake, and the run is green only because of the retry.`,
+    );
+    out.push('');
+    out.push(
+      '| case | file | retries | the attempt that passed | ceiling | the machine, while it ran |',
+    );
+    out.push('|---|---|---:|---:|---:|---|');
+    for (const one of result.flaky) {
+      const name = one.name.replaceAll('|', '\\|');
+      out.push(
+        `| ${name} | \`${one.file}\` | ${one.retries} | ${one.duration} ms | ${one.ceiling} ms | ${loadSaid(one.load, cores)} |`,
+      );
+    }
     out.push('');
   }
 

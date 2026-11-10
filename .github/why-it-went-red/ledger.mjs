@@ -74,6 +74,7 @@ import { dirname, relative, resolve } from 'node:path';
  *   startTime: number,
  *   ceiling: number | null,
  *   retries: number,
+ *   flaky: boolean,
  *   errors: { message: string, shape: string }[],
  * }} Entry
  */
@@ -306,7 +307,9 @@ export default class Ledger {
     // the whole run, and a mode taken over the slow tail alone would be the tail's mode.
     this.#ceilings.push(testCase.options.timeout ?? null);
     const failed = result.state === 'failed';
-    if (!failed && diagnostic.duration < RECORDING_FLOOR) return;
+    // A CASE THAT PASSED ON A RETRY IS WRITTEN DOWN WHATEVER ITS LAST ATTEMPT TOOK: the attempt
+    // that failed is gone from the result, and this entry is the only place it is still counted.
+    if (!failed && !diagnostic.flaky && diagnostic.duration < RECORDING_FLOOR) return;
     this.#cases.push({
       file: relative(this.#root, testCase.module.moduleId),
       titles: titlesOf(testCase),
@@ -315,6 +318,7 @@ export default class Ledger {
       startTime: diagnostic.startTime,
       ceiling: testCase.options.timeout ?? null,
       retries: diagnostic.retryCount,
+      flaky: diagnostic.flaky,
       errors: failed
         ? (result.errors ?? []).map((error) => ({
             message: (error.message ?? '').split('\n')[0]?.slice(0, 300) ?? '',
