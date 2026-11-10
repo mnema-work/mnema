@@ -126,7 +126,10 @@ const GROUPS = ['Get started', 'Learn', 'Reference', 'Project'] as const;
  * Pages of `docs/` the groups do not list, each with the reason. Empty today: every page is in a
  * group. A page is added here only with the reason it is not for any of the four groups.
  */
-const LEFT_OUT: Readonly<Record<string, string>> = {};
+const LEFT_OUT: Readonly<Record<string, string>> = {
+  'docs/assets/hosts/SOURCES.md':
+    'the sources of the logo files of the README hosts table, which links it from under the table; not a page to read',
+};
 
 /** `[label](target)` of a bullet, the target with no anchor. */
 function linksOf(bullet: string): string[] {
