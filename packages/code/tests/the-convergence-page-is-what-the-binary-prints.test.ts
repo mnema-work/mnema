@@ -216,9 +216,9 @@ describe('the two machines the convergence page shows', () => {
       line.kind === 'mnema' ? [line.argv.slice(1, 4).join(' ')] : [],
     );
     expect(commands).toEqual([
-      'init',
+      'init --yes',
       'decision record Use SQLite for the cache',
-      'init',
+      'init --yes',
       'decision move reject',
       'decision move accept',
       'show ADR-1',

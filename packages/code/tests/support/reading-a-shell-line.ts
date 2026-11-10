@@ -55,7 +55,22 @@ interface Token {
  * the alternative, throwing, would turn a typo into a guard that cannot run at all.
  */
 export function tokenize(line: string): readonly Token[] {
+  return scan(line).tokens;
+}
+
+/**
+ * Whether a line runs a command and then carries a comment: a word that opens with `#` after at
+ * least one word. A line that is only a comment is not one. An interactive zsh without
+ * `interactivecomments` (macOS's shell) hands such a comment to the command as arguments.
+ */
+export function endsInAComment(line: string): boolean {
+  const { tokens, commented } = scan(line);
+  return commented && tokens.length > 0;
+}
+
+function scan(line: string): { readonly tokens: readonly Token[]; readonly commented: boolean } {
   const tokens: Token[] = [];
+  let commented = false;
   let current = '';
   const flush = (): void => {
     if (current !== '') {
@@ -76,7 +91,10 @@ export function tokenize(line: string): readonly Token[] {
       at = close + 1;
       continue;
     }
-    if (char === '#' && current === '' && (at === 0 || /\s/.test(line[at - 1] as string))) break;
+    if (char === '#' && current === '' && (at === 0 || /\s/.test(line[at - 1] as string))) {
+      commented = true;
+      break;
+    }
     if (/\s/.test(char)) {
       flush();
       at += 1;
@@ -93,7 +111,7 @@ export function tokenize(line: string): readonly Token[] {
     at += 1;
   }
   flush();
-  return tokens;
+  return { tokens, commented };
 }
 
 /**
