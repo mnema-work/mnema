@@ -75,6 +75,14 @@ with its own changelog.
 
 ### Fixed
 
+- **Four pages said what the binary does not.** The two-machines page (`docs/convergence.md`) typed `ADR-1` after an `mnema init` that, at a
+  terminal, records a decision of its own first, so on a newcomer's machine the commands named init's decision; it now runs
+  `mnema init --yes`, which asks nothing, and says why. The how-it-works page said `decision move` refuses a label, but it
+  moves the decision when exactly one carries the label and refuses only when several do. The README's Quick start and
+  three install pages had `#` comments after commands, which an interactive zsh without `interactivecomments` (macOS's
+  default) hands to the command as arguments; the comments are prose now. A case holds the four pages to no trailing
+  comment, and another holds every page that runs an `init` that asks from typing a fixed label after it.
+
 - **The quick start accepts and links the decision the reader just recorded.** After an `init` at a terminal, which
   records a decision of its own, the reader's first decision is `ADR-2`, and the README and the first-record page told
   them to accept and to link `ADR-1`: the accept was refused and the link bound the rule to init's decision without a
@@ -82,8 +90,9 @@ with its own changelog.
   page sets it from the line shown), and a case runs both after an `init` driven on a pseudo-terminal.
 - **The hosts table of the README shows every logo at one height.** Each image is given a height and no width, so none is
   stretched or squashed and the first column is as narrow as its logos; the logos that were a wide card (Cursor), a badge
-  (OpenCode), a mark on a white square (Factory Droid) or padded far inside the file (Goose) are now the vendor's own square
-  or mark file of the same brand page or repository, listed in `assets/hosts/SOURCES.md` with its source, date and sha256,
+  (OpenCode) or a mark on a white square (Factory Droid) are now the vendor's own square or mark file of the same brand page
+  or repository, and Goose, which was padded far inside its file, is now the project's own mark with no margin on the light
+  page (on the dark page it is still the project's white-mark file, which keeps a margin around the goose), listed in `assets/hosts/SOURCES.md` with its source, date and sha256,
   and a test holds that no image of the table carries a width.
 - **A torn last line of `checkpoints.jsonl` is healed by the next write, not buried.** A crash while signing a checkpoint leaves a
   piece with no newline. Reading tolerated it, but the next write appended its checkpoint glued to the piece, and the tail

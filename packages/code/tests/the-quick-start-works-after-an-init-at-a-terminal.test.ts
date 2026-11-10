@@ -30,7 +30,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { blockUnder } from './support/a-page-held-to-a-run.js';
 import { arrivedSince, inPty } from './support/pty.js';
 import { read } from './support/published-examples.js';
-import { linesOf } from './support/reading-a-shell-line.js';
+import { invocationsIn, linesOf, trackedPages } from './support/reading-a-shell-line.js';
 import { MNEMA_CLI } from './support/the-cli.js';
 
 let sandbox: string;
@@ -179,6 +179,35 @@ describe('the quick start, after an init at a terminal', () => {
     }
     expect(linked).toBe(idOfTheDecisionTitled('Keep money as integer cents'));
   }, 90_000);
+
+  it('has no page type a fixed label after an init that asks, on any tracked page', () => {
+    // An `init` that is not given an answer to its questions records a decision of its own at a
+    // terminal, so a label typed after it is not the first decision's. A page that runs such an
+    // init and later types `ADR-<n>` as an argument is accused; `init --yes` asks nothing.
+    const asks = (words: readonly string[]) =>
+      words[0] === 'init' &&
+      !words.some((word) =>
+        ['--yes', '-y', '--all-hosts', '--accepts', '--dry-run'].includes(word),
+      );
+    const accused: string[] = [];
+    for (const page of trackedPages()) {
+      let askedAt = 0;
+      for (const { at, fence, source } of linesOf(read(page))) {
+        if (fence === null) {
+          askedAt = 0;
+          continue;
+        }
+        for (const words of invocationsIn(source)) {
+          if (asks(words)) askedAt = at;
+          else if (askedAt > 0 && words.some((word) => /^ADR-\d+$/.test(word)))
+            accused.push(
+              `${page}:${at} types a label after the init at line ${askedAt}: ${source.trim()}`,
+            );
+        }
+      }
+    }
+    expect(accused).toEqual([]);
+  });
 
   it('reads the commands the pages have the reader type, or it holds nothing', () => {
     // NON-VACUITY: a quick start the reader no longer finds would run no command.

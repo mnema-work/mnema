@@ -70,7 +70,7 @@ The diagram is part of the format ([`FORMAT.md`](../packages/chain/FORMAT.md) §
 a move written past the gate, by hand, is one no reader applies, and `verify` names it.
 
 The `ADR-1` that `decision record` printed is the decision's **label**, and the move takes
-its **id**, the value in the parentheses beside it:
+either the label or the **id**, the value in the parentheses beside it:
 
 ```sh
 mnema decision move accept 01a0af84-7eab-7000-8888-79c0dd5690e2 --note "agreed in review"
@@ -78,8 +78,9 @@ mnema decision move accept 01a0af84-7eab-7000-8888-79c0dd5690e2 --note "agreed i
 ```
 
 A label is numbered inside one tree, so the committed tree and a machine's private one can
-each hold an `ADR-1`, and a name that can mean two decisions is no address. Hand `move` the
-label and it refuses, and says which id, or which ids, carry it here.
+each hold an `ADR-1`, and a name that can mean two decisions is no address. Hand `move` a
+label that exactly one decision here carries and it moves that decision; hand it one that
+several carry and it refuses, and says which ids carry it, so that you can hand it the id.
 
 To rule on what is waiting without copying an id, run `mnema decision review` at a terminal. It
 shows each proposed decision with its reason and what it turned down, and asks whether to accept,
