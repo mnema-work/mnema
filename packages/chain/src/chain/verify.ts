@@ -1306,20 +1306,25 @@ function verifyReading(
     const read = readTail(layout, tail, upcasters, refusedLine(layout, tail, issues), relaid);
     // A refused EVENT line leaves a hole in the entries; a refused checkpoint line does not.
     const holed = issues.length > 0;
+    let checkpointsPartial = false;
     const checkpoints = readTailCheckpoints(
       layout,
       tail,
       refusedLine(layout, tail, issues),
       relaid,
+      () => {
+        checkpointsPartial = true;
+      },
     );
     const lineRefused = issues.length > 0;
     const entries = read.entries;
-    if (read.partialFinalLine) {
+    if (read.partialFinalLine || checkpointsPartial) {
       notes.push({
         kind: 'partial-final-line',
         tail,
         detail:
-          `tail ${oneLine(tail)} ends in a partial line that was dropped: the mark of a write ` +
+          `tail ${oneLine(tail)} ${read.partialFinalLine ? 'ends' : 'has a checkpoints file that ends'} ` +
+          'in a partial line that was dropped: the mark of a write ' +
           'interrupted mid-append, and indistinguishable from an appended fragment',
       });
     }
