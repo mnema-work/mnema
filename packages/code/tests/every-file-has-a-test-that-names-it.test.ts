@@ -983,6 +983,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/src/site/model.test.ts': 4,
   'packages/code/src/site/page.test.ts': 9,
   'packages/code/src/site/the-lists-are-checked-in-the-browser.test.ts': 22,
+  'packages/code/src/site/the-page-model-does-work-in-proportion-to-the-record.test.ts': 2,
   'packages/code/src/site/the-page-script-writes-no-markup.test.ts': 8,
   'packages/code/src/site/the-raw-lines-are-drawn-from-the-files.test.ts': 13,
   'packages/code/src/site/the-verdict-in-the-browser.test.ts': 16,

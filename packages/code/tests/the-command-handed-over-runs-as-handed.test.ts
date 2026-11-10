@@ -828,7 +828,7 @@ export const HANDED_OVER: Readonly<
   '.claude/rules/mnema-instructions.md': { line: 2 },
   '.github/instructions/mnema-instructions.instructions.md': { line: 2 },
   'AGENTS.md': { line: 2, name: 1 },
-  'CHANGELOG.md': { line: 96, name: 207, flag: 4 },
+  'CHANGELOG.md': { line: 96, name: 208, flag: 4 },
   'README.md': { line: 4, name: 8 },
   'SECURITY.md': { name: 2 },
   'docs/a-record-inheriting-another.md': { line: 9, name: 8 },
