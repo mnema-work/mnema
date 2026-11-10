@@ -620,6 +620,14 @@ describe('MCP session + tools: unit', () => {
     }
     expect(held()).toBe(before);
 
+    // A handoff is about a task: a decision's id is a record, but not one a handoff can name.
+    const decision = runRecordDecision(session, { title: 'Use X', rationale: 'because' });
+    if (!decision.ok) throw new Error('setup: decision refused');
+    expect(runRecordHandoff(session, { task: decision.id, from: 'a', to: 'b' })).toMatchObject({
+      ok: false,
+      code: 'UNKNOWN_TASK',
+    });
+
     // A note is a record too: an observation about another observation is found where it lives.
     const first = runRecordObservation(session, { about: task, topic: 't', text: 'first' });
     if (!first.ok) throw new Error('setup: observe refused');

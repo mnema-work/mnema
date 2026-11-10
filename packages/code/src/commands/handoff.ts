@@ -28,7 +28,7 @@ import { chainRootForScope, type DiscoveryEnv, resolveScope, type Scope } from '
 import { openTreeForWriting, recordHandoff } from '@mnema/core/write';
 import { oneLine } from '../one-line.js';
 import { forwardReplacement, type Landed, type Replacement } from '../recorded-content.js';
-import { locateEntityScopeKept } from '../tree-sources.js';
+import { locateTaskScopeKept } from '../tree-sources.js';
 import {
   type AgentWrites,
   originOfTheWrite,
@@ -94,7 +94,7 @@ export function runHandoff(
   // The tree that holds the task, which a handoff with no scope follows. A task no tree holds is
   // refused below, by the door's own ask, so a handoff the door refuses for its shape is refused
   // for that first, and nothing is founded for either.
-  const home = locateEntityScopeKept(trees, input.task, catalogUpcasters());
+  const home = locateTaskScopeKept(trees, input.task, catalogUpcasters());
   // With no scope named, the task's own tree: the brief is up to 64 KiB of text and
   // belongs where the task does. Only a task no tree holds falls to the kind's default.
   const scope =

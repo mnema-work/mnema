@@ -105,14 +105,14 @@ export interface NotAReferenceErr {
 }
 
 /**
- * A write refused because the record it is about is held by no tree the writer's surface reads.
- * Nothing was appended. Not the door's own: the door judges the shape of the fact and this the
+ * A write refused because the record it is about is held by no tree the writer's surface reads,
+ * or by several records at once. Nothing was appended. Not the door's own: the door judges the shape of the fact and this the
  * world around it, so a surface asks it through `WriteContext.askedBeforeFounding`, after every
  * refusal of the shape and before anything is founded.
  */
 export interface UnknownRecordErr {
   readonly ok: false;
-  readonly code: 'UNKNOWN_TASK' | 'UNKNOWN_RECORD';
+  readonly code: 'UNKNOWN_TASK' | 'UNKNOWN_RECORD' | 'AMBIGUOUS_RECORD';
   readonly message: string;
 }
 

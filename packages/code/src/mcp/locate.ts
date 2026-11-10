@@ -108,6 +108,7 @@ import { catalogUpcasters } from '@mnema/chain';
 import {
   type BirthProbe,
   canonicalId,
+  orderedEvents,
   replayingBirthProbe,
   replayingRecordProbe,
 } from '@mnema/core';
@@ -163,6 +164,19 @@ export function cachedBirthProbe(caches: CacheRegistry): BirthProbe {
   };
 }
 
+/** The projecting half of the probe a TASK is located by: only a task answers. */
+function cachedTaskProbe(caches: CacheRegistry): BirthProbe {
+  return (chainRoot, id) => caches.get(chainRoot).getTask(id) !== null;
+}
+
+/** The replaying half: the chain holds the birth of a task with this subject. */
+function replayingTaskProbe(): BirthProbe {
+  return (chainRoot, id) =>
+    orderedEvents({ root: chainRoot }, catalogUpcasters()).some(
+      (event) => event.kind === 'task.created' && event.subject === id,
+    );
+}
+
 /**
  * {@link cachedBirthProbe} widened to the notes: the probe a retraction is located by, and the
  * projecting half of `replayingRecordProbe` in the core.
@@ -182,7 +196,7 @@ function cachedRecordProbe(caches: CacheRegistry): BirthProbe {
  * what a retraction has to find, so that a retraction of a decision is refused in the
  * decision's own tree for not being a note.
  */
-export type Reach = 'entities' | 'records';
+export type Reach = 'entities' | 'records' | 'tasks';
 
 /** Where the walk found an entity, or why it cannot say. */
 export type EntityLocation =
@@ -230,7 +244,9 @@ export function locateEntityAcross(
   const [cached, replaying] =
     reach === 'records'
       ? [cachedRecordProbe(session.caches), replayingRecordProbe(catalogUpcasters())]
-      : [cachedBirthProbe(session.caches), replayingBirthProbe(catalogUpcasters())];
+      : reach === 'tasks'
+        ? [cachedTaskProbe(session.caches), replayingTaskProbe()]
+        : [cachedBirthProbe(session.caches), replayingBirthProbe(catalogUpcasters())];
   const fromProjections = holdersOf(records, canonical, cached);
   if (fromProjections.length > 0) return settled(fromProjections);
   return settled(holdersOf(records, canonical, replaying));

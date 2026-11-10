@@ -26,11 +26,13 @@ with its own changelog.
   `observe` and `record_observation` used to record the fact about any id they were given, so a mistyped task kept a
   brief nobody could find from the task. They now refuse (`UNKNOWN_TASK` for a handoff, `UNKNOWN_RECORD` for an
   observation, `AMBIGUOUS_RECORD` where two records hold the id) and write nothing, whichever tree the write was told to
-  land in. The command line looks in the trees of its own project; the tools look in every project the client
+  land in. A handoff names a task: the id of a decision or a pattern is refused as `UNKNOWN_TASK` too. The command
+  line looks in the trees of its own project; the tools look in every project the client
   announced. The `link` command is unchanged: it records the edge and says when it names nothing a reader can open.
 - **The hook before a write no longer founds an identity.** On a machine with no key, a write the record charges (a
   rule that asks a person or refuses) used to make a key to record the charge. The write is now refused, and the reply
-  says to run `mnema init`; nothing is recorded and no key is made. A machine that has a key is unchanged.
+  says to run `mnema init`; nothing is recorded and no key is made. So is the write a host hands the rules beside, where
+  its hook is the gate; a hook that runs after the write records nothing there. A machine that has a key is unchanged.
 
 ## [0.1.7] - 2026-11-09
 

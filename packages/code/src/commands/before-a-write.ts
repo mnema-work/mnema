@@ -274,6 +274,18 @@ function whatAPathMeets(ctx: BeforeAWriteContext, input: APathAsked): BeforeAWri
       notes: [],
     };
   }
+  // THE SAME FOR THE PUSH AT THE GATE: handing the rules over records that the push was live in this
+  // session, which is a fact a key signs. A host whose hook is the gate is refused, since the write
+  // has not happened; a hook that runs after the write cannot refuse it, and writes no fact.
+  if (
+    met === undefined &&
+    pushes.length > 0 &&
+    input.push?.session !== undefined &&
+    input.push.only !== true &&
+    wouldBeAFirstUse(trees, resolveScope('channel.served', { which: input.which }))
+  ) {
+    return { ok: true, reply: input.reply({ refuse: NO_KEY_HERE }), notes: [] };
+  }
   const before = anchorsBefore(treesOf(trees));
   const recorded =
     met === undefined

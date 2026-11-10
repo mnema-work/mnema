@@ -600,7 +600,7 @@ export function runRecordHandoff(
   // named no tree. A `project` the caller named keeps the write in that project.
   // The task has to be held by a tree of the workspace, whichever tree the handoff lands in: asked by
   // the door after every refusal of the fact's shape, before anything is founded.
-  const located = locateEntity(session, input.task);
+  const located = locateEntity(session, input.task, 'tasks');
   let route = named;
   let followedNoTree: string | undefined;
   if (input.scope === undefined && located.outcome === 'found') {
@@ -1651,11 +1651,7 @@ function unlessLocated(
   return {
     ...ctx,
     askedBeforeFounding: () =>
-      owed?.() ?? {
-        ok: false,
-        code: refusal.code as 'UNKNOWN_TASK' | 'UNKNOWN_RECORD',
-        message: refusal.message,
-      },
+      owed?.() ?? { ok: false, code: refusal.code, message: refusal.message },
   };
 }
 

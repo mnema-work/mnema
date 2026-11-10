@@ -2099,12 +2099,13 @@ matched: the same words recorded again are a new proposal.
 
 ### A handoff or an observation names a record that exists
 
-The `task handoff` command and `record_handoff` refuse a task, and `observe` and `record_observation` an `about`, that
-no tree they read holds, and write nothing: `UNKNOWN_TASK` for the handoff, `UNKNOWN_RECORD` for the observation (an
-observation can be about a task, a decision, a pattern or another note), with the sentence `task "<id>" was not found in
-any tree this project reads` on the command line. The tools read every project the client announced, and their sentence
-names them; an id held by two records is `AMBIGUOUS_RECORD`. It holds whichever tree the write was told to land in with
-`--scope`. The `link` command still takes an id it cannot find, and says so in its answer, because an edge may point at
+The `task handoff` command and `record_handoff` refuse a `task` that is not a task some tree they read holds (a
+decision or a pattern is not one), and `observe` and `record_observation` an `about` that no tree they read holds, and
+write nothing: `UNKNOWN_TASK` for the handoff, `UNKNOWN_RECORD` for the observation (an observation can be about a
+task, a decision, a pattern or another note). On the command line the sentences are `task "<id>" was not found in any
+tree this project reads` and `record "<id>" was not found in any tree this project reads`. The tools read every project
+the client announced, and their sentence names them; an id held by two records is `AMBIGUOUS_RECORD`. It holds
+whichever tree the write was told to land in with `--scope`. The `link` command still takes an id it cannot find, and says so in its answer, because an edge may point at
 a record of another project.
 
 ### Recording the same memory or observation twice

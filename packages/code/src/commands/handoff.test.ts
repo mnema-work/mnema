@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { catalogUpcasters, verify } from '@mnema/chain';
 import { type DiscoveryEnv, orderedEvents, projectHandoffs, resolveTrees } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { runDecision } from './decision.js';
 import { runHandoff } from './handoff.js';
 import { type InitContext, type InitResult, runInit } from './init.js';
 import { runTask } from './task.js';
@@ -113,6 +114,18 @@ describe('mnema task handoff', () => {
     );
     expect(result.ok).toBe(false);
     expect(result.ok === false && 'message' in result ? result.message : '').not.toContain('\n');
+  });
+
+  it('refuses the id of a decision: a handoff is about a task', () => {
+    const { repo, env } = setup();
+    runInit({ cwd: repo, env });
+    const decided = runDecision({ cwd: repo, env }, { title: 'Use X', rationale: 'because' });
+    if (!decided.ok) throw new Error('setup: the decision was refused');
+    const result = runHandoff(
+      { cwd: repo, env },
+      { task: decided.id, fromAgent: 'a', toAgent: 'b' },
+    );
+    expect(result).toMatchObject({ ok: false, reason: 'REFUSED', code: 'UNKNOWN_TASK' });
   });
 
   it('multiple handoffs on one task accumulate into a list', () => {

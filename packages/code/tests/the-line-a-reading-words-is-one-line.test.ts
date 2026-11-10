@@ -61,6 +61,9 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { catalogUpcasters } from '@mnema/chain';
+import { chainRootForScope, resolveTrees } from '@mnema/core';
+import { openTreeForWriting, recordObservation } from '@mnema/core/write';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { run } from '../src/program.js';
 import { sourceFiles } from './support/reading-source.js';
@@ -2997,6 +3000,12 @@ interface Probe {
   readonly keys: readonly string[];
   /** What has to be written BEFORE it, so the read has something to read. */
   readonly first?: readonly string[];
+  /**
+   * An observation about the forged value, written through the core: the command line refuses an
+   * `about` no tree holds, but a record written by any other hand carries one, and the read has to
+   * word it on one line whatever wrote it.
+   */
+  readonly forgedAbout?: true;
   /** What a caller types, with the forged value written {@link VALUE}. */
   readonly argv: readonly string[];
   /** A word of the line the value lands on, so a probe that never arrived fails. */
@@ -3024,6 +3033,12 @@ const ACTOR = '<actor>';
  * reconciled against the classification.
  */
 const PROBES: readonly Probe[] = [
+  {
+    keys: ['record.ts «about {} · recorded {}» oneLine(body.record.about) #1'],
+    forgedAbout: true,
+    argv: ['show', RECORDED],
+    says: 'about ',
+  },
   {
     keys: ['search.ts « matching "{}"» oneLine(term) #1'],
     argv: ['search', VALUE],
@@ -3062,6 +3077,26 @@ const PROBES: readonly Probe[] = [
   },
 ];
 
+/** Writes an observation whose `about` is `about` through the core, and returns its id. */
+function observationAbout(about: string): string {
+  const trees = resolveTrees(join(sandbox, 'project'), { home: join(sandbox, 'home') });
+  const writer = openTreeForWriting(trees, 'public');
+  const done = writer.exclusively(() => {
+    const written = recordObservation(
+      {
+        writer,
+        layout: { root: chainRootForScope(trees, 'public') as string },
+        upcasters: catalogUpcasters(),
+      },
+      { about, topic: 'a topic', text: 'an observation' },
+    );
+    if (written.ok) writer.checkpoint();
+    return written;
+  });
+  if (!done.ok) throw new Error(`setup: the observation was refused: ${done.message}`);
+  return done.id;
+}
+
 /** The uuid a write reports back, so the read after it can be asked by that id. */
 function mintedId(said: readonly string[]): string {
   return (
@@ -3082,7 +3117,7 @@ describe('a value from outside cannot forge a second line', () => {
           : await invoke(
               ...probe.first.map((word) => (word === VALUE ? value : word === TASK ? task : word)),
             );
-      const recorded = mintedId(wrote.out);
+      const recorded = probe.forgedAbout === true ? observationAbout(value) : mintedId(wrote.out);
       const said = await invoke(
         ...probe.argv.map((word) =>
           word === VALUE ? value : word === RECORDED ? recorded : word === ACTOR ? actor : word,

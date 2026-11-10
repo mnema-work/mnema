@@ -6,13 +6,14 @@
  * founds nothing, refuses the write, and says the command that founds an identity.
  */
 
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { type CatalogEvent, catalogUpcasters } from '@mnema/chain';
 import { type DiscoveryEnv, orderedEvents, resolveTrees } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runBeforeAWrite } from '../src/commands/before-a-write.js';
+import { runBesideAWrite } from '../src/commands/beside-a-write.js';
 import { type CliIo, run } from '../src/program.js';
 
 let sandbox: string;
@@ -54,6 +55,7 @@ beforeEach(async () => {
   sandbox = mkdtempSync(join(tmpdir(), 'mnema-hook-no-founding-'));
   repo = join(sandbox, 'repo');
   mkdirSync(join(repo, 'src', 'billing'), { recursive: true });
+  mkdirSync(join(repo, 'src', 'docs'), { recursive: true });
   founderHome = join(sandbox, 'founder');
   bareHome = join(sandbox, 'bare');
   mkdirSync(founderHome, { recursive: true });
@@ -71,6 +73,11 @@ beforeEach(async () => {
   )?.[1] as string;
   await did('decision', 'move', 'accept', decision, '--note', 'agreed');
   await did('link', decision, 'src/billing', '--rel', 'asks-for-a-person');
+  const governing = (await did('decision', 'record', 'Docs are plain', 'Readers skim')).match(
+    /\(([0-9a-f-]{20,})\)/,
+  )?.[1] as string;
+  await did('decision', 'move', 'accept', governing, '--note', 'agreed');
+  await did('link', governing, 'src/docs', '--rel', 'governs');
 });
 
 afterEach(() => {
@@ -103,5 +110,53 @@ describe('a write the record asks a person about, on a machine with no key', () 
     // Nothing was founded and nothing was appended: the bare home is still bare.
     expect(existsSync(join(bareHome, '.mnema'))).toBe(false);
     expect(askedEvents(env)).toHaveLength(before);
+  });
+});
+
+/** Every file under the project's committed record with its size: what a write would change. */
+function theTailsOfTheRepo(): string[] {
+  const root = join(repo, '.mnema', 'tails');
+  if (!existsSync(root)) return [];
+  return (readdirSync(root, { recursive: true, encoding: 'utf8' }) as string[])
+    .filter((name) => statSync(join(root, name)).isFile())
+    .map((name) => `${name} ${statSync(join(root, name)).size}`)
+    .sort();
+}
+
+describe('the rules a host pushes beside a write, on a machine with no key', () => {
+  it('are refused at a hook that is the gate, with the command that founds an identity, and nothing is made', () => {
+    const env: DiscoveryEnv = { home: bareHome };
+    const tails = theTailsOfTheRepo();
+    const payload = JSON.stringify({
+      session_id: 's-keyless',
+      tool_name: 'write_file',
+      tool_input: { file_path: join(repo, 'src', 'docs', 'a.md') },
+    });
+
+    const done = runBeforeAWrite({ cwd: repo, env }, { host: 'qwen', payload });
+
+    const reply = JSON.parse(JSON.stringify(done.reply)) as Record<string, unknown>;
+    const said = JSON.stringify(reply);
+    expect(said).toContain('deny');
+    expect(said).toContain('`mnema init`');
+    expect(existsSync(join(bareHome, '.mnema'))).toBe(false);
+    expect(theTailsOfTheRepo()).toEqual(tails);
+  });
+
+  it('write no fact from a hook that runs after the write, and make no key', () => {
+    const env: DiscoveryEnv = { home: bareHome };
+    const tails = theTailsOfTheRepo();
+    const payload = JSON.stringify({
+      session_id: 's-keyless-after',
+      tool_name: 'Write',
+      tool_input: { path: join(repo, 'src', 'docs', 'a.md') },
+    });
+
+    const done = runBesideAWrite({ cwd: repo, env }, { host: 'copilot', payload });
+
+    expect(JSON.stringify(done.reply)).not.toContain('deny');
+    // Only the session's marker may be there; no key and no identity.
+    expect(existsSync(join(bareHome, '.mnema', 'identity'))).toBe(false);
+    expect(theTailsOfTheRepo()).toEqual(tails);
   });
 });
