@@ -3,9 +3,9 @@
  * by its first issue. It is the field `short` of `verify --json`, and what the editor's tooltip shows.
  */
 
-import type { ProvenLevel } from '@mnema/chain';
+import type { ProvenLevel, VerifyResult } from '@mnema/chain';
 import { describe, expect, it } from 'vitest';
-import { shortLine } from '../src/wiring/verify.js';
+import { headlineText, shortLine } from '../src/wiring/verify.js';
 
 const WORDS: Record<ProvenLevel, string> = {
   unreadable: 'unreadable: a stored line could not be read',
@@ -45,5 +45,25 @@ describe('the short line of a tree', () => {
     const said = shortLine({ level: 'broken', issues: [issue(`a\nb ${'x'.repeat(300)}`)] });
     expect(said).not.toContain('\n');
     expect(said).toBe(`failed: a b ${'x'.repeat(96)}...`);
+  });
+});
+
+describe('the headline of a tree, as text', () => {
+  const clauses = [
+    { of: 'tails', text: '2 tail(s)' },
+    { of: 'coverage', text: 'all events are signature-covered' },
+  ];
+
+  it('is the level clause alone when the verdict has one', () => {
+    const result = {
+      level: 'fully-signed',
+      clauses: [{ of: 'level', text: 'local integrity verified (T1/T2/T4)' }, ...clauses],
+    } as unknown as VerifyResult;
+    expect(headlineText(result)).toBe('local integrity verified (T1/T2/T4)');
+  });
+
+  it('joins the clauses of a verdict that has no level clause with the separator the console uses', () => {
+    const result = { level: 'fully-signed', clauses } as unknown as VerifyResult;
+    expect(headlineText(result)).toBe('2 tail(s); all events are signature-covered');
   });
 });

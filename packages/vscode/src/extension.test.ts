@@ -629,20 +629,22 @@ describe('the extension reads the record through the command line', () => {
     expect(TOOLTIP_COMMANDS).toContain('mnema.showVerification');
   });
 
-  it('shows the private tree whatever the public tree carries: five tails that name no record cut nothing', async () => {
+  it('shows a line for every tree, whatever the number of notes and the number of trees: nothing is cut', async () => {
     // Before, the tooltip held the first six lines of the text `mnema verify` printed: the public
     // line and five census lines filled them, and the private tree's line, the seventh, was not shown.
     const census = Array.from({ length: 5 }, () => ({ kind: 'unnamed-tail' }));
+    const scopes = ['public', 'private', 'global', 'a', 'b', 'c', 'd', 'e', 'f'];
     const w = world({
       ...base(),
-      'verify --json': verifyJson({ ok: true, level: 'fully-signed' }, [
-        aTree('public', SIGNED, { ok: true, level: 'fully-signed', census }),
-        aTree('private', SIGNED),
-      ]),
+      'verify --json': verifyJson(
+        { ok: true, level: 'fully-signed' },
+        scopes.map((scope) => aTree(scope, SIGNED, { ok: true, level: 'fully-signed', census })),
+      ),
     });
     await settle();
-    expect(w.tooltip()).toContain('**public**: ');
-    expect(w.tooltip()).toContain('**private**: ');
+    for (const scope of scopes) {
+      expect(w.tooltip(), scope).toContain(`**${scope}**: verified\\, signed`);
+    }
   });
 
   it('shows no line for a tree with nothing in it, and none for a tree the command line wrote no line for', async () => {

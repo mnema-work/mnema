@@ -100,4 +100,17 @@ describe('the line of each tree in verify --json', { timeout: 120_000 }, () => {
     expect(pub.headline).toBe('local integrity verified (T1/T2/T4)');
     expect(priv.newerMnema).toBeUndefined();
   });
+
+  it('is on the trees of every project of a named set, as it is on those of one project', () => {
+    expect(mnema('decision', 'record', 'Use Postgres', 'The team knows it.').status).toBe(0);
+    const ran = mnema('verify', '--json', '--workspace', repo);
+    expect(ran.status, ran.err).toBe(0);
+    const set = JSON.parse(ran.out) as { projects: { trees: JsonTree[] }[] };
+    expect(set.projects).toHaveLength(1);
+    const [pub, priv] = (set.projects[0] as { trees: JsonTree[] }).trees as [JsonTree, JsonTree];
+    expect(pub.headline).toBe('local integrity verified (T1/T2/T4)');
+    expect(pub.short).toBe('verified, signed');
+    expect(priv.headline).toBe('no record here');
+    expect(priv.short).toBe('no record here');
+  });
 });

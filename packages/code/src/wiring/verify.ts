@@ -60,6 +60,7 @@ import type { SinceReading } from '../commands/verify-since.js';
 import { oneLine } from '../one-line.js';
 import { fact } from '../presentation/detail.js';
 import type { Line, Severity } from '../presentation/line.js';
+import { CLAUSE_SEPARATOR } from '../presentation/plain.js';
 import type { Render } from '../presentation/render.js';
 import { type Clause, clauseStatement, statement } from '../presentation/verdict.js';
 import { whenLogged } from '../sigstore/when-logged.js';
@@ -1227,9 +1228,7 @@ function treeWithLines(
   return {
     ...tree,
     short: shortLine(tree.result),
-    headline: headline(tree.result)
-      .map((clause) => clause.text)
-      .join('; '),
+    headline: headlineText(tree.result),
     ...(unread.length === 0
       ? {}
       : {
@@ -1269,6 +1268,13 @@ export function shortLine(result: Pick<VerifyResult, 'level' | 'issues'>): strin
   const cut = said.length > SHORT_ISSUE_AT ? `${said.slice(0, SHORT_ISSUE_AT)}...` : said;
   const more = result.issues.length - 1;
   return `failed: ${cut}${more > 0 ? ` (and ${more} more)` : ''}`;
+}
+
+/** {@link headline} as one line of text, its clauses joined as the console joins them. */
+export function headlineText(result: VerifyResult): string {
+  return headline(result)
+    .map((clause) => clause.text)
+    .join(CLAUSE_SEPARATOR);
 }
 
 /** The clause that is the answer, alone, or every clause, when none says it is one. */
