@@ -75,6 +75,9 @@ with its own changelog.
 
 ### Fixed
 
+- **The rules read before an edit no longer slows with the number of rules.** Naming what replaced each rule re-read
+  every decision once per rule, so a project with 600 rules and 3,000 decisions waited several seconds on each edit, even
+  for a path no rule names; it is now one indexed lookup per rule, with the same answers.
 - **The quick start accepts and links the decision the reader just recorded.** After an `init` at a terminal, which
   records a decision of its own, the reader's first decision is `ADR-2`, and the README and the first-record page told
   them to accept and to link `ADR-1`: the accept was refused and the link bound the rule to init's decision without a

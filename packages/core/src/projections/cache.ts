@@ -47,6 +47,7 @@ import {
   getDecision,
   listDecisions,
   listDecisionsByState,
+  listDecisionsSupersededBy,
 } from './decision-store.js';
 import type { DivergentMove } from './divergent-moves.js';
 import type {
@@ -707,6 +708,11 @@ export class ProjectionCache {
   /** Lists decisions currently in the given state. */
   listDecisionsByState(state: string): DecisionProjection[] {
     return listDecisionsByState(this.db, state);
+  }
+
+  /** Lists the decisions whose `supersededBy` is `id`, read through an index. */
+  listDecisionsSupersededBy(id: string): DecisionProjection[] {
+    return listDecisionsSupersededBy(this.db, id);
   }
 
   /**

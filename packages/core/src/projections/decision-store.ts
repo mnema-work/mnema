@@ -108,6 +108,14 @@ export function listDecisionsByState(db: SqliteDatabase, state: string): Decisio
   return rows.map(toProjection);
 }
 
+/** Lists the decisions whose `superseded_by` is `id`, by the index on that column. */
+export function listDecisionsSupersededBy(db: SqliteDatabase, id: string): DecisionProjection[] {
+  const rows = db
+    .prepare('SELECT * FROM decisions WHERE superseded_by = ? ORDER BY id')
+    .all(id) as DecisionRow[];
+  return rows.map(toProjection);
+}
+
 /** Binds a projection to parameters: fill every column, optional links as null. */
 function toParams(decision: DecisionProjection): DecisionParams {
   return {
