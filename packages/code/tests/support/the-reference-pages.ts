@@ -47,6 +47,7 @@ interface SchemaProperty {
 
 const HELP_SOURCE = 'packages/code/src/cli.help.golden.txt';
 const UPDATE = 'pnpm vitest run packages/code/tests/the-reference-pages-are-generated.test.ts -u';
+const HELP_UPDATE = 'pnpm vitest run packages/code/src/cli.golden.test.ts -u';
 
 /** Every `mnema <words> --help` block of the transcript, in its order; the program's own are left out. */
 export function helpBlocks(transcript: string): readonly HelpBlock[] {
@@ -147,10 +148,17 @@ function describedAs(lines: readonly string[]): string {
   return paragraph.join(' ');
 }
 
-/** The note every generated page opens with. */
+/** The note a tool's page and the index of the tools open with. */
 function generatedFrom(source: string): string {
   return `<!-- This page is generated from ${source}: edit it there and run \`${UPDATE}\`. -->`;
 }
+
+/**
+ * The note a verb's page and the index of the verbs open with. The help transcript is itself
+ * generated, so the note sends a reader to where a command's help is written, and names the two
+ * runs that carry an edit there to the transcript and then to the page.
+ */
+const GENERATED_FROM_THE_HELP = `<!-- This page is generated from the help of the command, written where the command is defined under packages/code/src/wiring/: edit it there, then run \`${HELP_UPDATE}\` (which rewrites ${HELP_SOURCE}) and \`${UPDATE}\`. -->`;
 
 /** The page of one verb. */
 export function verbPage(
@@ -171,7 +179,7 @@ export function verbPage(
       one.words.length === block.words.length + 1 &&
       block.words.every((word, at) => word === one.words[at]),
   );
-  const out = [`# ${name}`, '', generatedFrom(`the help of the command line (${HELP_SOURCE})`), ''];
+  const out = [`# ${name}`, '', GENERATED_FROM_THE_HELP, ''];
   out.push(cell(describedAs(block.lines)), '');
   const under =
     parent === undefined
@@ -214,7 +222,7 @@ export function commandsIndex(
   const out = [
     '# Commands',
     '',
-    generatedFrom(`the help of the command line (${HELP_SOURCE})`),
+    GENERATED_FROM_THE_HELP,
     '',
     'One page per command of `mnema`, in the groups `mnema --help` lists them in. Each page',
     'carries the help the command prints, word for word.',
