@@ -62,6 +62,7 @@ import { fact } from '../presentation/detail.js';
 import type { Line, Severity } from '../presentation/line.js';
 import type { Render } from '../presentation/render.js';
 import { type Clause, clauseStatement, statement } from '../presentation/verdict.js';
+import { newerLinesSentence } from '../record-integrity.js';
 import { whenLogged } from '../sigstore/when-logged.js';
 import { globalTreeGloss } from '../vocabulary.js';
 import { here } from './context.js';
@@ -858,7 +859,13 @@ function reportAsJson(
   // `ok` is overwritten with the verdict: the reading carries `ok: true` for "the command ran",
   // which was `true` over a tampered record. `false` where nothing was covered (no `record`).
   const { ok: _ran, ...rest } = reading;
-  io.out(JSON.stringify({ ok: reading.record?.ok === true, ...rest, notAnswered }, null, 2));
+  io.out(
+    JSON.stringify(
+      { ok: reading.record?.ok === true, ...withTreeLines(rest), notAnswered },
+      null,
+      2,
+    ),
+  );
   if (!met) io.fail();
 }
 
@@ -1176,6 +1183,47 @@ export function treeHeadline(tree: TreeReport, depth: number): Line {
     return statement(tree.scope, NO_RECORD_HEADLINE, undefined, depth);
   }
   return clauseStatement(tree.scope, headline(tree.result), depth);
+}
+
+/**
+ * WHAT `--json` SAYS OF EACH TREE IN A LINE, for a surface with room for one and no business wording
+ * it: `headline` is the text {@link treeHeadline} renders (one source, so the line and the panel
+ * cannot come to say two things), and `newerMnema` is the sentence every surface says about lines a
+ * newer mnema wrote, on the tree that holds them and on no other. Both are added beside the reading
+ * the chain produced and take nothing from it; the exit and the prose are not touched.
+ *
+ * A reading is one project's (`trees`) or a set's (`projects`, each with its `trees`).
+ */
+function withTreeLines<T extends object>(reading: T): T {
+  const lined = (trees: readonly TreeReport[]) => trees.map(treeWithLines);
+  const out: Record<string, unknown> = { ...(reading as Record<string, unknown>) };
+  if (Array.isArray(out.trees)) out.trees = lined(out.trees as TreeReport[]);
+  if (Array.isArray(out.projects)) {
+    out.projects = out.projects.map((project: { trees?: TreeReport[] }) =>
+      Array.isArray(project.trees) ? { ...project, trees: lined(project.trees) } : project,
+    );
+  }
+  return out as T;
+}
+
+function treeWithLines(tree: TreeReport): TreeReport & { headline: string; newerMnema?: string } {
+  if (tree.kind === 'no-record') return { ...tree, headline: NO_RECORD_HEADLINE };
+  const unread = tree.result.census.filter((note) => note.kind === 'unread-kind');
+  const lines = unread.reduce((sum, note) => sum + note.lines, 0);
+  return {
+    ...tree,
+    headline: headline(tree.result)
+      .map((clause) => clause.text)
+      .join('; '),
+    ...(unread.length === 0
+      ? {}
+      : {
+          newerMnema: newerLinesSentence({
+            lines,
+            kinds: unread.map((note) => ({ kind: note.eventKind, lines: note.lines })),
+          }),
+        }),
+  };
 }
 
 /** The clause that is the answer, alone, or every clause, when none says it is one. */
