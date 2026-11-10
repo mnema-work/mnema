@@ -1026,6 +1026,14 @@ const unreadable = [...onPages, ...inSources].flatMap((one) => one.unreadable);
 /** Every handed-over command with its readings, computed once. */
 const read = handed.map((one) => ({ ...one, readings: readingsOf(program, one.text) }));
 
+/**
+ * The file a count is kept under. A changelog entry file is written to be gathered into
+ * `CHANGELOG.md`, so what it hands over is counted there: the rows do not move when a release
+ * gathers the entries, and a new entry file is not a row somebody has to write.
+ */
+const homeOf = (file: string): string =>
+  file.startsWith('changelog/unreleased/') ? 'CHANGELOG.md' : file;
+
 /** How a failure names one command: the address and the words. */
 const where = (one: Handed): string => `${one.where}  ${shown(one.text)}`;
 
@@ -1051,7 +1059,7 @@ describe('the command handed over runs as handed', () => {
       ...new Set(
         read
           .filter((one) => one.readings.some((reading) => reading.kind === 'unwritten'))
-          .map((one) => `${one.where.split(':')[0]}: ${shown(one.text)}`),
+          .map((one) => `${homeOf(one.where.split(':')[0] as string)}: ${shown(one.text)}`),
       ),
     ].sort();
     expect(found).toEqual(Object.keys(THE_VERB_IS_NOT_WRITTEN).sort());
@@ -1064,7 +1072,7 @@ describe('a name whose verb needs more is one somebody looked at', () => {
     for (const one of read) {
       for (const reading of one.readings) {
         if (reading.kind !== 'name' || refusalOf(program, reading.path) === undefined) continue;
-        const key = `${one.where.split(':')[0]}: mnema ${reading.path.join(' ')}`;
+        const key = `${homeOf(one.where.split(':')[0] as string)}: mnema ${reading.path.join(' ')}`;
         found[key] = (found[key] ?? 0) + 1;
       }
     }
@@ -1093,7 +1101,7 @@ describe('the readings know what they read', () => {
   it('each file hands over what the count says, and no other file hands over any', () => {
     const counted: Record<string, Partial<Record<Reading['kind'], number>>> = {};
     for (const one of read) {
-      const file = one.where.split(':')[0] as string;
+      const file = homeOf(one.where.split(':')[0] as string);
       const row = counted[file] ?? {};
       counted[file] = row;
       for (const reading of one.readings) row[reading.kind] = (row[reading.kind] ?? 0) + 1;

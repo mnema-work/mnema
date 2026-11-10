@@ -5,7 +5,7 @@ record to the host's sessions. Install the binary first, then the plugin for you
 
 <!-- not-on-the-site -->
 These pages describe the next version, the `main` branch. What the version on npm does not have yet is
-listed under Unreleased in the [Changelog](../CHANGELOG.md).
+listed in [`changelog/unreleased/`](../changelog/unreleased), one file for each change; the [Changelog](../CHANGELOG.md) holds what each release carried.
 <!-- /not-on-the-site -->
 
 ## The binary

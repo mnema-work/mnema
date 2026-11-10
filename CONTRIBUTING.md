@@ -229,6 +229,13 @@ the SHA-256 the packing job exposes, and publish with `--skip-duplicate`, so a r
 - **One change per pull request.** If the work has two parts, it is two pull requests.
 - **A decision made in the work is recorded in `.mnema/` in the same pull request**, signed by
   your own key; [`AGENTS.md`](AGENTS.md) says how, and what never to commit.
+- **A change that shows to a reader has its changelog entry as a file of its own**, not a line in
+  `CHANGELOG.md`, where every pull request wrote at the same place and collided. Add
+  `changelog/unreleased/<short-slug>.md`: the section on its first line (`Added`, `Changed`,
+  `Deprecated`, `Removed`, `Fixed` or `Security`), then the entry as a bullet, the way `CHANGELOG.md`
+  prints them (`- **What changed.** Why it matters, in a sentence or two.`). `pnpm release:prepare`
+  gathers the files into the new section of `CHANGELOG.md`, grouped by section, and removes them, so
+  `Unreleased` in `CHANGELOG.md` stays empty between releases.
 - **A title in English that says what changes**, as a sentence, the way the history already
   reads: `git log --oneline` shows the form.
 - **When two ways of doing something pull apart, the one that keeps the record checkable wins

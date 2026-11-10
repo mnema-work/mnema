@@ -18,7 +18,15 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -49,14 +57,6 @@ const CHANGELOG = `# Changelog
 
 ## [Unreleased]
 
-### Added
-
-- A thing.
-
-### Fixed
-
-- Another.
-
 ## [0.2.0-beta] - 2026-10-11
 
 ### Added
@@ -67,6 +67,15 @@ const CHANGELOG = `# Changelog
 [0.2.0-beta]: https://github.com/mnema-work/mnema/tree/abc
 `;
 
+/** The entries waiting under `changelog/unreleased/`: file name to its text. */
+const FRAGMENTS: Record<string, string> = {
+  'b-a-thing.md': 'Added\n\n- **A thing.** It has a second line\n  that is indented.\n',
+  'a-another.md': 'Fixed\n\n- Another.\n',
+  'c-more.md': 'Added\n\n- More.\n',
+};
+const GATHERED =
+  '### Added\n\n- **A thing.** It has a second line\n  that is indented.\n- More.\n\n### Fixed\n\n- Another.\n';
+
 const git = (cwd: string, ...args: string[]): string =>
   execFileSync('git', args, { cwd, encoding: 'utf-8' });
 
@@ -76,7 +85,10 @@ afterAll(() => {
 });
 
 /** A throwaway repository with a copy of the real manifests and sources, committed. */
-function fixture(changelog = CHANGELOG): { dir: string; manifests: string[] } {
+function fixture(
+  changelog = CHANGELOG,
+  fragments: Record<string, string> = FRAGMENTS,
+): { dir: string; manifests: string[] } {
   const dir = mkdtempSync(join(tmpdir(), 'release-prepare-'));
   made.push(dir);
   git(dir, 'init', '-q');
@@ -96,6 +108,10 @@ function fixture(changelog = CHANGELOG): { dir: string; manifests: string[] } {
   writeFileSync(join(dir, extra), `{\n  "name": "zz-new",\n  "version": "${VERSION}"\n}\n`);
   manifests.push(extra);
   writeFileSync(join(dir, 'CHANGELOG.md'), changelog);
+  mkdirSync(join(dir, 'changelog/unreleased'), { recursive: true });
+  for (const [name, text] of Object.entries(fragments)) {
+    writeFileSync(join(dir, 'changelog/unreleased', name), text);
+  }
   git(dir, 'add', '.');
   return { dir, manifests };
 }
@@ -137,7 +153,10 @@ describe('release:prepare with a number', () => {
     expect([entry.version, entry.packages[0]?.version]).toEqual([TARGET, TARGET]);
 
     const log = readFileSync(join(dir, 'CHANGELOG.md'), 'utf-8');
-    expect(log).toContain(`## [Unreleased]\n\n## [${TARGET}] - 2030-01-02\n\n### Added`);
+    expect(log).toContain(
+      `## [Unreleased]\n\n## [${TARGET}] - 2030-01-02\n\n${GATHERED}\n## [0.2.0-beta]`,
+    );
+    expect(readdirSync(join(dir, 'changelog/unreleased'))).toEqual([]);
     expect(log).toContain(
       '[Unreleased]: https://github.com/mnema-work/mnema/commits/main\n' +
         `[${TARGET}]: https://github.com/mnema-work/mnema/releases/tag/v${TARGET}\n`,
@@ -165,6 +184,7 @@ describe('release:prepare --check', () => {
     expect(out).toContain('would write CHANGELOG.md');
     expect(out).toContain('would write packages/zz-new/package.json');
     expect(out).toContain('would write server.json');
+    expect(out).toContain('would remove changelog/unreleased/a-another.md');
     expect(git(dir, 'status', '--porcelain')).toBe(before);
     expect(readFileSync(join(dir, 'CHANGELOG.md'), 'utf-8')).toBe(CHANGELOG);
   });
@@ -179,15 +199,24 @@ describe('release:prepare without a number', () => {
   });
 
   it('proposes a patch when Unreleased has only Fixed', () => {
-    const { dir } = fixture(CHANGELOG.replace('### Added\n\n- A thing.\n\n', ''));
+    const { dir } = fixture(CHANGELOG, { 'a-another.md': FRAGMENTS['a-another.md'] ?? '' });
     const { out } = run(dir, '--check');
     expect(out).toContain(`proposed ${NEXT_PATCH} (patch: Unreleased has only Fixed)`);
   });
 
   it('refuses an empty Unreleased', () => {
-    const { dir } = fixture('# Changelog\n\n## [Unreleased]\n\n## [0.2.0-beta] - 2026-10-11\n');
+    const { dir } = fixture(CHANGELOG, {});
     const { code, out } = run(dir, '--check');
     expect(code).not.toBe(0);
     expect(out).toContain('nothing to release');
+  });
+
+  it('refuses an entry file with an unknown section or no entry', () => {
+    const unknown = run(fixture(CHANGELOG, { 'x.md': 'Improved\n\n- X.\n' }).dir, '--check');
+    expect(unknown.code).not.toBe(0);
+    expect(unknown.out).toContain('x.md: "Improved" is not a section');
+    const empty = run(fixture(CHANGELOG, { 'y.md': 'Added\n\n' }).dir, '--check');
+    expect(empty.code).not.toBe(0);
+    expect(empty.out).toContain('y.md: the entry is empty');
   });
 });

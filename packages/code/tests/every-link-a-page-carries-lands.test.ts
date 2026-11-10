@@ -210,6 +210,14 @@ function ownAddress(
 }
 
 /** Every path the repository tracks, and every directory one of them sits in. */
+/**
+ * The folder a page's relative links start from. A changelog entry file is written for the
+ * `CHANGELOG.md` it is gathered into at the root, so its links are read from the root, where they land.
+ */
+function linksAreRelativeTo(page: string): string {
+  return page.startsWith('changelog/unreleased/') ? '.' : dirname(page);
+}
+
 function trackedAndTheirDirectories(files: readonly string[]): Set<string> {
   const tracked = new Set<string>(files);
   for (const file of files) {
@@ -267,7 +275,7 @@ function unlanded(corpus: Corpus): { key: string; why: string }[] {
       if (path !== '') {
         const decoded = decodeURIComponent(path);
         target = normalize(
-          decoded.startsWith('/') ? decoded.slice(1) : join(dirname(page), decoded),
+          decoded.startsWith('/') ? decoded.slice(1) : join(linksAreRelativeTo(page), decoded),
         ).replace(/\/$/, '');
         if (!corpus.tracked.has(target)) {
           found.push({ key, why: `${page}:${at}: no tracked path ${target}` });
@@ -430,6 +438,15 @@ describe('the reading, on pages of its own', () => {
       'docs/c.md:1: docs/b.md has no heading #the-other',
       'docs/c.md:1: #top on docs/code.ts, which is not a page',
       'docs/c.md:1: docs/code.ts has 2 lines',
+    ]);
+  });
+
+  it('reads the links of a changelog entry file from the root it is gathered into', () => {
+    const entry = (text: string): Corpus =>
+      at({ 'CHANGELOG.md': '# C\n', 'changelog/unreleased/x.md': `Added\n\n${text}\n` });
+    expect(unlanded(entry('- [page](docs/b.md#b)'))).toEqual([]);
+    expect(unlanded(entry('- [gone](docs/d.md)')).map((one) => one.why)).toEqual([
+      'changelog/unreleased/x.md:3: no tracked path docs/d.md',
     ]);
   });
 

@@ -1,8 +1,8 @@
 // Prepares a release: writes ONE version number everywhere the workspace spells it, and cuts the
-// CHANGELOG. `pnpm release:prepare [x.y.z] [--check] [--date YYYY-MM-DD]`.
+// CHANGELOG, gathering `changelog/unreleased/*.md` into the new section and removing them. `pnpm release:prepare [x.y.z] [--check] [--date YYYY-MM-DD]`.
 //
 // Without a number it takes the current one from the root `package.json` and proposes the next
-// from the `## [Unreleased]` section (anything under Added, Changed or Removed is a minor; only
+// from the entries under `changelog/unreleased/`, one file each (anything under Added, Changed or Removed is a minor; only
 // Fixed, or anything else, is a patch; in 0.x a breaking change is a minor too), prints why, and
 // applies it. With a number it applies that one. `--check` changes nothing: it lists what would
 // change and exits 1 if anything would, 0 if the tree is already as the release would leave it.
@@ -18,7 +18,7 @@
 // `packages/code/tests/the-release-prepare-writes-every-number.test.ts` holds all of this.
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { serverJson } from './server-json.mjs';
@@ -32,6 +32,8 @@ const INSTALL_PAGE = 'docs/install.md';
 const PINNED = /^(npm i (?:-g|--ignore-scripts) @mnema\/code@)\d+\.\d+\.\d+( *)$/gm;
 const SERVER_JSON = 'server.json';
 const CHANGELOG = 'CHANGELOG.md';
+const UNRELEASED = 'changelog/unreleased';
+const SECTIONS = ['Added', 'Changed', 'Deprecated', 'Removed', 'Fixed', 'Security'];
 const RELEASES = 'https://github.com/mnema-work/mnema/releases/tag/';
 const RETIRED = ', a pre-release withdrawn, from before this line';
 const SEMVER = /^\d+\.\d+\.\d+$/;
@@ -60,40 +62,54 @@ export function trackedManifests(root) {
 }
 
 /**
- * The headings of the Unreleased section that have something under them.
- * @param {string} changelog
- * @returns {string[]}
+ * The entries waiting for the next release: one file each under `changelog/unreleased/`, the
+ * section on its first line and the entry (the bullet as CHANGELOG.md prints it) after it. A
+ * file whose section is not one of SECTIONS, or whose entry is empty, is an error, not skipped.
+ * @param {string} root
+ * @returns {{ file: string, section: string, entry: string }[]}
  */
-export function unreleasedKinds(changelog) {
-  const at = changelog.indexOf('## [Unreleased]');
-  if (at < 0) throw new Error('CHANGELOG.md has no "## [Unreleased]" section');
-  const rest = changelog.slice(at + 1);
-  const end = rest.search(/^## \[/m);
-  const section = end < 0 ? rest : rest.slice(0, end);
-  const filled = section
-    .split(/^### /m)
-    .slice(1)
-    .map((part) => {
-      const lines = part.split('\n');
-      return { name: (lines[0] ?? '').trim(), body: lines.slice(1).join('\n').trim() };
-    })
-    .filter(({ body }) => body !== '')
-    .map(({ name }) => name);
-  if (filled.length === 0) {
-    throw new Error('"## [Unreleased]" is empty: there is nothing to release');
-  }
-  return filled;
+export function unreleasedEntries(root) {
+  const dir = join(root, UNRELEASED);
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter((file) => file.endsWith('.md'))
+    .sort()
+    .map((file) => {
+      const [first = '', ...rest] = readFileSync(join(dir, file), 'utf-8').split('\n');
+      const section = first.trim();
+      const entry = rest.join('\n').trim();
+      if (!SECTIONS.includes(section)) {
+        throw new Error(
+          `${UNRELEASED}/${file}: "${section}" is not a section (${SECTIONS.join(', ')})`,
+        );
+      }
+      if (entry === '') throw new Error(`${UNRELEASED}/${file}: the entry is empty`);
+      return { file, section, entry };
+    });
 }
 
 /**
- * The next number the CHANGELOG's Unreleased section asks for.
+ * The sections that have something waiting, in the changelog's order.
+ * @param {string} root
+ * @returns {string[]}
+ */
+export function unreleasedKinds(root) {
+  const entries = unreleasedEntries(root);
+  if (entries.length === 0) {
+    throw new Error(`${UNRELEASED}/ is empty: there is nothing to release`);
+  }
+  return SECTIONS.filter((name) => entries.some(({ section }) => section === name));
+}
+
+/**
+ * The next number the waiting entries ask for.
  * @param {string} current
- * @param {string} changelog
+ * @param {string} root
  * @returns {{ version: string, why: string }}
  */
-export function propose(current, changelog) {
+export function propose(current, root) {
   const [major = 0, minor = 0, patch = 0] = (current.split(/[-+]/)[0] ?? '').split('.').map(Number);
-  const filled = unreleasedKinds(changelog);
+  const filled = unreleasedKinds(root);
   const minorKinds = filled.filter((name) => ['Added', 'Changed', 'Removed'].includes(name));
   return minorKinds.length > 0
     ? { version: `${major}.${minor + 1}.0`, why: `minor: Unreleased has ${minorKinds.join(', ')}` }
@@ -119,10 +135,10 @@ function rewrite(text, pattern, version, where) {
  * @param {string} root
  * @param {string} version
  * @param {string} date
- * @returns {Map<string, string>}
+ * @returns {Map<string, string | null>} null: the file is removed
  */
 export function plan(root, version, date) {
-  /** @type {Map<string, string>} */
+  /** @type {Map<string, string | null>} */
   const edits = new Map();
   const read = (/** @type {string} */ where) => readFileSync(join(root, where), 'utf-8');
   const put = (/** @type {string} */ where, /** @type {string} */ text) => {
@@ -158,9 +174,23 @@ export function plan(root, version, date) {
 
   let log = read(CHANGELOG);
   if (!new RegExp(`^## \\[${version.replace(/\./g, '\\.')}\\]`, 'm').test(log)) {
-    unreleasedKinds(log);
-    log = log.replace('## [Unreleased]\n', `## [Unreleased]\n\n## [${version}] - ${date}\n`);
+    unreleasedKinds(root);
+    const waiting = unreleasedEntries(root);
+    const section = SECTIONS.filter((name) => waiting.some((w) => w.section === name))
+      .map(
+        (name) =>
+          `### ${name}\n\n${waiting
+            .filter((w) => w.section === name)
+            .map((w) => w.entry)
+            .join('\n')}\n`,
+      )
+      .join('\n');
+    log = log.replace(
+      '## [Unreleased]\n',
+      `## [Unreleased]\n\n## [${version}] - ${date}\n\n${section}`,
+    );
     log = log.replace(/^(\[Unreleased\]: .*\n)/m, `$1[${version}]: ${RELEASES}v${version}\n`);
+    for (const { file } of waiting) edits.set(`${UNRELEASED}/${file}`, null);
   }
   log = log.replace(/^(## \[\d+\.\d+\.\d+-[^\]]+\] - \d{4}-\d{2}-\d{2})$/gm, `$1${RETIRED}`);
   put(CHANGELOG, log);
@@ -182,13 +212,16 @@ function main() {
   /** @type {string} */
   let version = named[0] ?? '';
   if (version === '') {
-    const proposal = propose(current, readFileSync(join(root, CHANGELOG), 'utf-8'));
+    const proposal = propose(current, root);
     version = proposal.version;
     console.log(`proposed ${version} (${proposal.why})`);
   }
   const edits = plan(root, version, date);
   const remake = existsSync(join(root, 'recordings/console.cast')) && version !== current;
-  for (const where of edits.keys()) console.log(`${check ? 'would write' : 'writes'} ${where}`);
+  for (const where of edits.keys())
+    console.log(
+      `${check ? 'would ' : ''}${edits.get(where) === null ? 'remove' : 'write'}${check ? '' : 's'} ${where}`,
+    );
   if (remake) {
     console.log(`${check ? 'would make' : 'makes'} recordings/console.cast and console.gif again`);
   }
@@ -197,7 +230,10 @@ function main() {
     console.log('nothing to change');
     return;
   }
-  for (const [where, text] of edits) writeFileSync(join(root, where), text);
+  for (const [where, text] of edits) {
+    if (text === null) rmSync(join(root, where));
+    else writeFileSync(join(root, where), text);
+  }
   if (remake) {
     const run = (/** @type {string} */ cmd, /** @type {string[]} */ argv, env = {}) =>
       execFileSync(cmd, argv, { cwd: root, stdio: 'inherit', env: { ...process.env, ...env } });
