@@ -78,15 +78,16 @@ was not changed since it was signed. What is measured, and what is not, is on [t
 npm i -g @mnema/code                              # the binary
 cd your-repository
 mnema init                                        # founds the record in .mnema/
-mnema decision record "Keep money as integer cents" "Float sums drift; cents are exact."
-mnema decision move accept ADR-1 --note "Agreed in review."   # a decision enters proposed; accepting puts it in force
-mnema link ADR-1 src/billing --rel refuses-a-write             # the rule, addressed at a path
+ADR=$(mnema decision record "Keep money as integer cents" "Float sums drift; cents are exact." | grep -o -m1 'ADR-[0-9]*')
+mnema decision move accept "$ADR" --note "Agreed in review."  # a decision enters proposed; accepting puts it in force
+mnema link "$ADR" src/billing --rel refuses-a-write            # the rule, addressed at a path
 mnema verify   # reads the signed record; one line saying it is intact is the green
 ```
 
-No agent has run yet: that is the record, a rule in force, and the proof. `ADR-1` names the first
-decision of a new record. To hand the record to an agent, install the plugin for your host; in
-Claude Code:
+No agent has run yet: that is the record, a rule in force, and the proof. `ADR` holds the number
+mnema printed for the decision you just recorded. In fish, whose
+syntax differs, the first line is `set ADR (mnema decision record ... | grep -o -m1 'ADR-[0-9]*')`.
+To hand the record to an agent, install the plugin for your host; in Claude Code:
 
 ```sh
 claude plugin marketplace add mnema-work/mnema
@@ -128,18 +129,18 @@ of a session, (c) a refusal before a write, (d) a pause for a person.
 
 | | Host | Rung | What it gets | Install |
 | :---: | :--- | :---: | :--- | :--- |
-| <img src="assets/hosts/claude-icon.svg" width="20" height="20" alt="Claude Code"> | **Claude Code**<br><sub>Anthropic · terminal and editors</sub> | **(d)** | MCP server · rules file · opening · refusal · pause · rules at an edit | [Plugin](docs/hosts.md#claude-code) |
-| <img src="assets/hosts/vscode.svg" width="20" height="20" alt="VS Code"> | **VS Code**<br><sub>Microsoft · the agent of the editor</sub> | **(d)** | rules file · refusal · pause<br><sub>MCP server · opening: read once</sub> | [Plugin](docs/hosts.md#vs-code-and-cursor) |
-| <img src="assets/hosts/cursor-brand-logo-12.svg" width="20" height="20" alt="Cursor CLI"> | **Cursor CLI**<br><sub>Cursor · command line</sub> | **(c)** | rules file<br><sub>MCP server · opening · refusal: read once</sub> | [Plugin](docs/hosts.md#vs-code-and-cursor) |
+| <img src="assets/hosts/claude-icon.svg" height="20" align="middle" alt="Claude Code"> | **Claude Code**<br><sub>Anthropic · terminal and editors</sub> | **(d)** | MCP server · rules file · opening · refusal · pause · rules at an edit | [Plugin](docs/hosts.md#claude-code) |
+| <img src="assets/hosts/vscode.svg" height="20" align="middle" alt="VS Code"> | **VS Code**<br><sub>Microsoft · the agent of the editor</sub> | **(d)** | rules file · refusal · pause<br><sub>MCP server · opening: read once</sub> | [Plugin](docs/hosts.md#vs-code-and-cursor) |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="assets/hosts/cursor-cube-2d-dark.svg"><img src="assets/hosts/cursor-cube-2d-light.svg" height="20" align="middle" alt="Cursor CLI"></picture> | **Cursor CLI**<br><sub>Cursor · command line</sub> | **(c)** | rules file<br><sub>MCP server · opening · refusal: read once</sub> | [Plugin](docs/hosts.md#vs-code-and-cursor) |
 |  | **Codex**<br><sub>OpenAI · command line</sub> | **(c)** | MCP server · rules file · opening · refusal · rules at an edit | [Plugin](docs/hosts.md#codex) |
-| <picture><source media="(prefers-color-scheme: dark)" srcset="assets/hosts/GitHub_Invertocat_White.svg"><img src="assets/hosts/GitHub_Invertocat_Black.svg" width="20" height="20" alt="GitHub"></picture> | **Copilot CLI**<br><sub>GitHub · command line</sub> | **(d)** | MCP server · rules file · opening · refusal · pause · rules at an edit | [Plugin](docs/hosts.md#github-copilot-cli) |
-| <img src="assets/hosts/opencode-works-with-a-dark-20.svg" width="153" height="20" alt="Works with OpenCode"> | **OpenCode**<br><sub>Anomaly · command line</sub> | **(c)** | MCP server · rules file · opening · refusal · rules at an edit | [Plugin](docs/hosts.md#opencode) |
-| <img src="assets/hosts/gemini-cli-icon.png" width="20" height="20" alt="Gemini CLI"> | **Gemini CLI**<br><sub>Google · command line</sub> | **(c)** | MCP server · rules file · opening · refusal · rules at an edit | [Plugin](docs/hosts.md#gemini-cli) |
-| <img src="assets/hosts/qwen-code-logo.svg" width="20" height="20" alt="Qwen Code"> | **Qwen Code**<br><sub>Qwen · command line</sub> | **(c)** | MCP server · rules file · opening · refusal · rules at an edit | [Plugin](docs/hosts.md#qwen-code) |
-| <img src="assets/hosts/cursor-brand-logo-12.svg" width="20" height="20" alt="Cursor"> | **Cursor**<br><sub>Cursor · editor</sub> | **(a)** | MCP server · rules file<br><sub>documented, not measured</sub> | [MCP server](docs/hosts.md#any-other-host-with-an-mcp-client) |
-| <img src="assets/hosts/antigravity-favicon.svg" width="20" height="20" alt="Antigravity CLI"> | **Antigravity CLI**<br><sub>Google · command line (`agy`)</sub> | **(a)** | MCP server · rules file<br><sub>documented, not measured</sub> | [MCP server](docs/hosts.md#any-other-host-with-an-mcp-client) |
-| <img src="assets/hosts/factory-favicon.svg" width="20" height="20" alt="Factory Droid"> | **Factory Droid**<br><sub>Factory · command line</sub> | **(a)** | MCP server · rules file<br><sub>documented, not measured</sub> | [MCP server](docs/hosts.md#any-other-host-with-an-mcp-client) |
-| <picture><source media="(prefers-color-scheme: dark)" srcset="assets/hosts/logo_dark.png"><img src="assets/hosts/logo_light.png" width="20" height="20" alt="Goose"></picture> | **Goose**<br><sub>Agentic AI Foundation · desktop and command line</sub> | **(a)** | MCP server · rules file<br><sub>documented, not measured</sub> | [MCP server](docs/hosts.md#any-other-host-with-an-mcp-client) |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="assets/hosts/GitHub_Invertocat_White.svg"><img src="assets/hosts/GitHub_Invertocat_Black.svg" height="20" align="middle" alt="GitHub"></picture> | **Copilot CLI**<br><sub>GitHub · command line</sub> | **(d)** | MCP server · rules file · opening · refusal · pause · rules at an edit | [Plugin](docs/hosts.md#github-copilot-cli) |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="assets/hosts/opencode-logo-transparent-dark.svg"><img src="assets/hosts/opencode-logo-transparent-light.svg" height="20" align="middle" alt="OpenCode"></picture> | **OpenCode**<br><sub>Anomaly · command line</sub> | **(c)** | MCP server · rules file · opening · refusal · rules at an edit | [Plugin](docs/hosts.md#opencode) |
+| <img src="assets/hosts/gemini-cli-icon.png" height="20" align="middle" alt="Gemini CLI"> | **Gemini CLI**<br><sub>Google · command line</sub> | **(c)** | MCP server · rules file · opening · refusal · rules at an edit | [Plugin](docs/hosts.md#gemini-cli) |
+| <img src="assets/hosts/qwen-code-logo.svg" height="20" align="middle" alt="Qwen Code"> | **Qwen Code**<br><sub>Qwen · command line</sub> | **(c)** | MCP server · rules file · opening · refusal · rules at an edit | [Plugin](docs/hosts.md#qwen-code) |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="assets/hosts/cursor-cube-2d-dark.svg"><img src="assets/hosts/cursor-cube-2d-light.svg" height="20" align="middle" alt="Cursor"></picture> | **Cursor**<br><sub>Cursor · editor</sub> | **(a)** | MCP server · rules file<br><sub>documented, not measured</sub> | [MCP server](docs/hosts.md#any-other-host-with-an-mcp-client) |
+| <img src="assets/hosts/antigravity-favicon.svg" height="20" align="middle" alt="Antigravity CLI"> | **Antigravity CLI**<br><sub>Google · command line (`agy`)</sub> | **(a)** | MCP server · rules file<br><sub>documented, not measured</sub> | [MCP server](docs/hosts.md#any-other-host-with-an-mcp-client) |
+| <img src="assets/hosts/factory-docs-favicon.svg" height="20" align="middle" alt="Factory Droid"> | **Factory Droid**<br><sub>Factory · command line</sub> | **(a)** | MCP server · rules file<br><sub>documented, not measured</sub> | [MCP server](docs/hosts.md#any-other-host-with-an-mcp-client) |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="assets/hosts/logo_dark.png"><img src="assets/hosts/goose.svg" height="20" align="middle" alt="Goose"></picture> | **Goose**<br><sub>Agentic AI Foundation · desktop and command line</sub> | **(a)** | MCP server · rules file<br><sub>documented, not measured</sub> | [MCP server](docs/hosts.md#any-other-host-with-an-mcp-client) |
 
 <!-- End of the generated host summary. -->
 

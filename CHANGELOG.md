@@ -86,12 +86,21 @@ with its own changelog.
   both readers are unchanged. It holds while every mnema that writes with that key is this version or later: an older one
   still signs what it finds unsigned.
 
+- **The quick start accepts and links the decision the reader just recorded.** After an `init` at a terminal, which
+  records a decision of its own, the reader's first decision is `ADR-2`, and the README and the first-record page told
+  them to accept and to link `ADR-1`: the accept was refused and the link bound the rule to init's decision without a
+  word. Both pages now read the number the record command printed (the README captures it into `ADR`; the first-record
+  page sets it from the line shown), and a case runs both after an `init` driven on a pseudo-terminal.
+- **The hosts table of the README shows every logo at one height.** Each image is given a height and no width, so none is
+  stretched or squashed and the first column is as narrow as its logos; the logos that were a wide card (Cursor), a badge
+  (OpenCode), a mark on a white square (Factory Droid) or padded far inside the file (Goose) are now the vendor's own square
+  or mark file of the same brand page or repository, listed in `assets/hosts/SOURCES.md` with its source, date and sha256,
+  and a test holds that no image of the table carries a width.
 - **A torn last line of `checkpoints.jsonl` is healed by the next write, not buried.** A crash while signing a checkpoint leaves a
   piece with no newline. Reading tolerated it, but the next write appended its checkpoint glued to the piece, and the tail
   became unreadable to `mnema verify` and to the Python reader for good. The writer now cuts a piece that does not parse, or
   completes one that lost only its newline, the way it already healed a segment's. `verify` names a dropped piece of the
   checkpoints file in its census, as the Python reader already did.
-
 - **The comparison with a base reads one segment at a time.** The comparison `verify --since` makes kept the bytes of
   every segment the base commit held until the end, and only then wrote them down for the check of the tails that
   arrived, so the comparison's own peak was all the record's tails. Each file is now taken out of git once, compared,

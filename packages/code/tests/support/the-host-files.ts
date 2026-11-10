@@ -1391,12 +1391,14 @@ function withTheTable(page: string, base: string, path: string): string {
 /** Where the vendors' own logo files are kept, from the root of the repository, with the row that sources each. */
 export const HOST_LOGOS_DIR = 'assets/hosts';
 
+/** The one height every logo of the summary is shown at, in pixels. No width is written: the file's own proportion sets it, so no logo is stretched or squashed. */
+const LOGO_HEIGHT = 20;
+
 /** A host's logo: the vendor's file in {@link HOST_LOGOS_DIR}, and a second one for a dark page where the vendor gives two. */
 interface Logo {
   readonly file: string;
   readonly dark?: string;
   readonly alt: string;
-  readonly width: number;
 }
 
 /**
@@ -1415,17 +1417,17 @@ const SHOWN: {
   claude: {
     name: 'Claude Code',
     by: 'Anthropic · terminal and editors',
-    logo: { file: 'claude-icon.svg', alt: 'Claude Code', width: 20 },
+    logo: { file: 'claude-icon.svg', alt: 'Claude Code' },
   },
   vscode: {
     name: 'VS Code',
     by: 'Microsoft · the agent of the editor',
-    logo: { file: 'vscode.svg', alt: 'VS Code', width: 20 },
+    logo: { file: 'vscode.svg', alt: 'VS Code' },
   },
   cursor: {
     name: 'Cursor CLI',
     by: 'Cursor · command line',
-    logo: { file: 'cursor-brand-logo-12.svg', alt: 'Cursor CLI', width: 20 },
+    logo: { file: 'cursor-cube-2d-light.svg', dark: 'cursor-cube-2d-dark.svg', alt: 'Cursor CLI' },
   },
   codex: {
     name: 'Codex',
@@ -1438,43 +1440,46 @@ const SHOWN: {
       file: 'GitHub_Invertocat_Black.svg',
       dark: 'GitHub_Invertocat_White.svg',
       alt: 'GitHub',
-      width: 20,
     },
   },
   opencode: {
     name: 'OpenCode',
     by: 'Anomaly · command line',
-    logo: { file: 'opencode-works-with-a-dark-20.svg', alt: 'Works with OpenCode', width: 153 },
+    logo: {
+      file: 'opencode-logo-transparent-light.svg',
+      dark: 'opencode-logo-transparent-dark.svg',
+      alt: 'OpenCode',
+    },
   },
   gemini: {
     name: 'Gemini CLI',
     by: 'Google · command line',
-    logo: { file: 'gemini-cli-icon.png', alt: 'Gemini CLI', width: 20 },
+    logo: { file: 'gemini-cli-icon.png', alt: 'Gemini CLI' },
   },
   cursorIde: {
     name: 'Cursor',
     by: 'Cursor · editor',
-    logo: { file: 'cursor-brand-logo-12.svg', alt: 'Cursor', width: 20 },
+    logo: { file: 'cursor-cube-2d-light.svg', dark: 'cursor-cube-2d-dark.svg', alt: 'Cursor' },
   },
   antigravity: {
     name: 'Antigravity CLI',
     by: 'Google · command line (`agy`)',
-    logo: { file: 'antigravity-favicon.svg', alt: 'Antigravity CLI', width: 20 },
+    logo: { file: 'antigravity-favicon.svg', alt: 'Antigravity CLI' },
   },
   droid: {
     name: 'Factory Droid',
     by: 'Factory · command line',
-    logo: { file: 'factory-favicon.svg', alt: 'Factory Droid', width: 20 },
+    logo: { file: 'factory-docs-favicon.svg', alt: 'Factory Droid' },
   },
   qwen: {
     name: 'Qwen Code',
     by: 'Qwen · command line',
-    logo: { file: 'qwen-code-logo.svg', alt: 'Qwen Code', width: 20 },
+    logo: { file: 'qwen-code-logo.svg', alt: 'Qwen Code' },
   },
   goose: {
     name: 'Goose',
     by: 'Agentic AI Foundation · desktop and command line',
-    logo: { file: 'logo_light.png', dark: 'logo_dark.png', alt: 'Goose', width: 20 },
+    logo: { file: 'goose.svg', dark: 'logo_dark.png', alt: 'Goose' },
   },
 };
 
@@ -1523,7 +1528,7 @@ function logoOf(name: HostName, base: string): string {
   const logo = SHOWN[name].logo;
   if (logo === undefined) return '';
   const at = (file: string) => `${base}${HOST_LOGOS_DIR}/${file}`;
-  const img = `<img src="${at(logo.file)}" width="${logo.width}" height="20" alt="${logo.alt}">`;
+  const img = `<img src="${at(logo.file)}" height="${LOGO_HEIGHT}" align="middle" alt="${logo.alt}">`;
   if (logo.dark === undefined) return img;
   return `<picture><source media="(prefers-color-scheme: dark)" srcset="${at(logo.dark)}">${img}</picture>`;
 }

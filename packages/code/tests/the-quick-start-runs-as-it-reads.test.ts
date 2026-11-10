@@ -1,7 +1,8 @@
 // @reads-the-tree
 /**
  * THE QUICK START ON THE FRONT PAGE RUNS AS IT IS WRITTEN: every `mnema` line of its first
- * block, in order, through the built binary, in a repository and a home of their own.
+ * block, in order, as a shell runs them (the record's number is captured from the line that
+ * printed it), in a repository and a home of their own.
  *
  * WHAT WAS UNCHECKED, AND WHAT IT HID. The Quick start was the first thing a stranger types and
  * the one block nothing RAN. `the-shell-a-page-publishes-is-the-shell-that-runs.test.ts` reads
@@ -10,10 +11,9 @@
  * addressed at a flag that had been renamed, or an `accept` aimed at an id a new record does
  * not mint would all have passed them and failed the person at their third line.
  *
- * WHAT IS CHECKED. The first fenced block under `## Quick start` is read by the one reading
- * every case that holds a page to a run shares (`blockUnder`), and each command runs in order in
- * a sandbox (its own `HOME`, a `git init` repository):
- *   - each exits 0 and prints nothing on stderr;
+ * WHAT IS CHECKED. The first fenced block under `## Quick start` is read, and its lines run in
+ * order in a sandbox (its own `HOME`, a repository), `mnema` being the built binary:
+ *   - each exits 0 and the run prints nothing on stderr;
  *   - `mnema link` says the relation and the path it was given;
  *   - `mnema verify` says `local integrity verified`;
  *   - and the verbs read are exactly `init`, `decision record`, `decision move`, `link` and
@@ -27,11 +27,12 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { blockUnder } from './support/a-page-held-to-a-run.js';
+import { read } from './support/published-examples.js';
+import { linesOf } from './support/reading-a-shell-line.js';
 import { MNEMA_CLI } from './support/the-cli.js';
 
 /** The built binary: what a person runs. */
@@ -43,20 +44,46 @@ const SECTION = '## Quick start';
 /** The verbs the block teaches, in the order it teaches them. */
 const VERBS = ['init', 'decision record', 'decision move', 'link', 'verify'];
 
+/**
+ * The lines of the first block under the Quick start that run `mnema`, as the reader types them
+ * (a line may set a variable from one: `ADR=$(mnema decision record ...)`), without the
+ * `npm i` and the `cd` that are the reader's own.
+ */
+function theBlock(): readonly string[] {
+  const text = read(PAGE);
+  const heading = text.split('\n').indexOf(SECTION) + 1;
+  if (heading === 0) throw new Error(`${PAGE} no longer carries "${SECTION}"`);
+  const lines = linesOf(text);
+  const start = lines.findIndex((line) => line.at > heading && line.fence !== null);
+  if (start < 0) throw new Error(`${PAGE} carries "${SECTION}" and no block under it`);
+  const block: string[] = [];
+  let previous = (lines[start] as { at: number }).at - 1;
+  for (const line of lines.slice(start)) {
+    if (line.fence === null || line.at !== previous + 1) break;
+    if (/\bmnema /.test(line.source) && !line.source.startsWith('npm ')) block.push(line.source);
+    previous = line.at;
+  }
+  return block;
+}
+
 /** The words after `mnema` that name the verb: the command and, for a group, its subcommand. */
-const verbOf = (argv: readonly string[]): string =>
-  argv[1] === 'decision' ? `decision ${argv[2]}` : (argv[1] as string);
+const verbOf = (line: string): string =>
+  /\bmnema (decision \w+|\w+)/.exec(line)?.[1] ?? `no verb in ${line}`;
 
 let sandbox: string;
 let repo: string;
 let home: string;
+let bin: string;
 
 beforeEach(() => {
   sandbox = mkdtempSync(join(tmpdir(), 'mnema-quick-start-'));
   repo = join(sandbox, 'your-repository');
   home = join(sandbox, 'home');
-  mkdirSync(repo, { recursive: true });
-  mkdirSync(home, { recursive: true });
+  bin = join(sandbox, 'bin');
+  for (const dir of [repo, home, bin]) mkdirSync(dir, { recursive: true });
+  // `mnema` on the PATH as an install puts it, so the block runs as the reader types it.
+  writeFileSync(join(bin, 'mnema'), `#!/bin/sh\nexec "${process.execPath}" "${CLI}" "$@"\n`);
+  chmodSync(join(bin, 'mnema'), 0o755);
   spawnSync('git', ['init', '-q'], { cwd: repo });
 });
 
@@ -70,37 +97,42 @@ describe('the Quick start on the front page', () => {
     if (!existsSync(CLI)) {
       throw new Error(`RULER BROKEN: the built binary is not at ${CLI}, so no line was run`);
     }
-    const commands = blockUnder(PAGE, SECTION).flatMap((step) =>
-      step.kind === 'command' ? [step] : [],
-    );
-    if (commands.length === 0) {
+    const block = theBlock();
+    if (block.length === 0) {
       throw new Error(`RULER BROKEN: no mnema command was read under "${SECTION}" in ${PAGE}`);
     }
-    const out: Record<string, string> = {};
-    for (const { at, argv } of commands) {
-      const ran = spawnSync(process.execPath, [CLI, ...argv.slice(1)], {
-        cwd: repo,
-        encoding: 'utf-8',
-        env: { PATH: process.env.PATH ?? '', HOME: home },
-      });
-      const where = `${PAGE}:${at} ${argv.join(' ')}`;
-      expect(ran.status, `${where} failed: ${ran.stderr}${ran.stdout}`).toBe(0);
-      expect(ran.stderr, `${where} printed on stderr`).toBe('');
-      out[verbOf(argv)] = ran.stdout;
-    }
+    // The shell stops at the first command that fails (`-e`), as a reader's would on the next.
+    const ran = spawnSync('bash', ['-ec', block.join('\n')], {
+      cwd: repo,
+      encoding: 'utf-8',
+      env: { PATH: `${bin}:${process.env.PATH ?? ''}`, HOME: home },
+    });
+    expect(ran.status, `${PAGE} failed: ${ran.stderr}${ran.stdout}`).toBe(0);
+    expect(ran.stderr, `${PAGE} printed on stderr`).toBe('');
     // The page calls the linked decision "a rule in force": the move it teaches has to accept it.
-    expect(out['decision move']).toContain('→ accepted');
-    expect(out.link).toContain('refuses-a-write');
-    expect(out.link).toContain('src/billing');
-    expect(out.verify).toContain('local integrity verified');
+    const lines = ran.stdout.split('\n');
+    expect(lines.filter((line) => /^Decision ADR-\d+ .* → accepted$/.test(line))).toHaveLength(1);
+    expect(
+      lines.filter(
+        (line) => line.startsWith('Linked ') && /refuses-a-write.*src\/billing/.test(line),
+      ),
+    ).toHaveLength(1);
+    expect(lines.filter((line) => line.includes('local integrity verified'))).toHaveLength(1);
+  });
+
+  it('gives fish the same capture as the shell block, on its own line', () => {
+    // fish does not parse `ADR=$(...)`: the page says the form that it does, and the pattern that
+    // takes the number out of the answer must be the one the block uses.
+    const bash = /ADR=\$\(mnema decision record .*\| (grep -o -m1 '[^']+')\)/.exec(read(PAGE));
+    const fish = /set ADR \(mnema decision record .*\| (grep -o -m1 '[^']+')\)/.exec(read(PAGE));
+    expect(bash, `${PAGE} no longer captures the number in the block`).not.toBeNull();
+    expect(fish, `${PAGE} no longer gives fish its form`).not.toBeNull();
+    expect(fish?.[1]).toBe(bash?.[1]);
   });
 
   it('teaches exactly init, decision record, decision move, link and verify, in that order', () => {
     // NON-VACUITY. A block that stopped being found, or lost a step, would make the case above
     // hold over fewer commands than the page promises.
-    const commands = blockUnder(PAGE, SECTION).flatMap((step) =>
-      step.kind === 'command' ? [step] : [],
-    );
-    expect(commands.map((one) => verbOf(one.argv))).toEqual(VERBS);
+    expect(theBlock().map(verbOf)).toEqual(VERBS);
   });
 });

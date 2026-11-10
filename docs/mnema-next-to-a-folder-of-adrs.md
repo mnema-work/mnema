@@ -29,7 +29,7 @@ and the team is the one that rejects it.
 
 ```sh
 mnema decision import docs/decisions --write
-mnema decision move accept ADR-1 --note "Agreed in review."
+mnema decision move accept ADR-<n> --note "Agreed in review."   # the label import printed for the one you accept
 ```
 
 ## What a decision becomes
@@ -40,7 +40,7 @@ Once the team has judged a proposal, it is a decision of the record like any oth
   anything in the record has been touched since.
 - **Superseded, not lost.** A decision that replaces another is recorded and the earlier one is marked with the new
   one's id (`mnema decision supersede <old-id> <new-id> --reason "..."`); both stay in the record.
-- **Addressed to the code it governs.** `mnema link ADR-1 src/billing --rel governs` says which part of the code the
+- **Addressed to the code it governs.** `mnema link ADR-<n> src/billing --rel governs` says which part of the code the
   decision is about. That address is how a rule reaches an agent at an edit it governs, on the hosts that do it
   ([Hosts](hosts.md)). A separate, stronger relation, `refuses-a-write`, makes the rule refuse a write there instead
   of only informing it.
