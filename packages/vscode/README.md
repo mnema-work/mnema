@@ -143,13 +143,18 @@ the `mnema` command line, which the extension does not bring: `@mnema/code` stay
   never a check mark or a seal),
   and, when decisions await a judgment, how many (`fully-signed · 2 to judge`, the same number as the
   badge). The text is short on purpose: nothing about the channels is in it. The tooltip, in markdown,
-  has the level, a link to the container with the number awaiting, the lines `mnema verify` printed
-  (up to six, in a code block, as they came; for a failure also the first three issues it listed),
-  the channels off by name with a link to [what they are](../../docs/switches.md), the time of the
-  reading, and links to Refresh and to the setting. What a level covers is what the command line
-  says, and the extension adds no sentence of its own about it. The words that came from the command
+  has the level, one line per tree of the record (`public`, `private`, the line the command line
+  wrote for that tree in `mnema verify --json`, and under it the command line's own sentence when a
+  newer mnema wrote lines this one does not read; a tree that is not clean has the editor's error or
+  info icon in front, and a tree with nothing in it has no line), a link to the container with the
+  number awaiting, the channels off by name, the time of the reading, and links to Refresh, to the
+  setting and to Show the full verification. That last one runs `mnema verify --verbose` and
+  `mnema switch` when it is clicked and shows what they printed in the output channel `mnema
+  verification`: the census notes, the issues and what each channel carries are there, not in the
+  tooltip. What a level covers is what the command line says, and the extension adds no sentence of
+  its own about it. The words that came from the command
   line or from the record are escaped, so a name or a line written by someone else cannot become a
-  link, and the only commands a link may run are the container, What To Do, Refresh and the settings editor:
+  link, and the only commands a link may run are the container, What To Do, Refresh, Show Full Verification and the settings editor:
   never a verdict. A click on the item opens the container, in every state. When `mnema verify`
   fails the item wears the theme's warning background and the tooltip carries what failed; a weaker
   level is not a warning. The item has an accessibility label that spells the whole sentence out
@@ -176,15 +181,14 @@ the `mnema` command line, which the extension does not bring: `@mnema/code` stay
   newer one; a newer one, a line that says to update the extension; the same version, nothing. It is a line of the
   tooltip, never a notification, and it asks no network.
 - **Few processes per reading.** Reading the record after a change starts one `mnema status --json` (and the `search`
-  only when `status` cut its list); `--version` is not asked again while the command is there. `mnema verify`, `mnema verify
-  --json` and `mnema switch` run when the extension starts, on Refresh, after a judgment or a stack act of yours and when the
+  only when `status` cut its list); `--version` is not asked again while the command is there. `mnema verify --json` and `mnema switch` run when the extension starts, on Refresh, after a judgment or a stack act of yours and when the
   setting changes, and after a change of the record at most once in ten seconds, with a last run ten seconds after the
   last write of a burst, so the bar is never more than about ten seconds behind the record and its tooltip says when
   it read. They are not run while the status bar item is switched off. `mnema stack list --json` runs only when the Stacks
   view is on screen (and on Refresh); hidden, the list is marked old, and read when the view appears. Measured in the tests
-  with the command line replaced by a recorder: starting with two proposals costs 5 processes with the Stacks view hidden
-  and 6 with it shown (it was 8), a change of the record costs 1 (it was 6, and one `show` for each new proposal), a
-  Refresh costs 6 (as before), and twenty changes 1.6 seconds apart cost 32 processes (they were 120).
+  with the command line replaced by a recorder: starting with two proposals costs 4 processes with the Stacks view hidden
+  and 5 with it shown (it was 8), a change of the record costs 1 (it was 6, and one `show` for each new proposal), a
+  Refresh costs 5 (it was 6), and twenty changes 1.6 seconds apart cost 28 processes (they were 120).
 - **A walkthrough of three steps** (Help > Welcome > Walkthroughs, "Get started with mnema"): make the
   command available, run `mnema init`, run `mnema verify` and read what it prints. It says to read the
   command's output, never that the record is safe or verified.
@@ -253,7 +257,7 @@ draws it is read by eye (the script for a person), not by a test.
 - It proves nothing itself. Every verdict, every rule and every state shown is what the `mnema`
   command line printed, and the extension adds no second verifier: `mnema verify` is the check, and
   the status bar shows only the level it reports, never what that level does not cover. Its tooltip
-  holds the lines `mnema verify` printed, in a block, and nothing the extension says of them.
+  holds the line the command line wrote for each tree, and nothing the extension says of them.
 - "A rule in force" is a decision whose state the record's own classification calls in force; a
   proposed, rejected or superseded decision gets no lens. A rule whose recorded address matches the
   file is the one the command line named: no path is matched here.

@@ -35,6 +35,58 @@ export function readVerdict(stdout: string): Verdict {
   return ok ? { kind: 'unreadable' } : { kind: 'failed', level };
 }
 
+/**
+ * One tree of the record as `mnema verify --json` says it in a line: the tree's name, the line the
+ * command line wrote for it (`headline`, the console's own), and, where a newer mnema wrote lines
+ * this one does not read, the sentence it says that in. The words are the command line's: nothing
+ * here words a verdict.
+ */
+export interface TreeLine {
+  readonly scope: string;
+  readonly headline: string;
+  readonly newerMnema: string | undefined;
+  /** How the line is marked: a tree that is broken, a level below the signed ones, or neither. */
+  readonly mark: 'error' | 'info' | undefined;
+}
+
+/** The levels that need no mark: the proof reached a signature and nothing is pending on it. */
+const CLEAN_LEVELS: readonly string[] = ['fully-signed', 'externally-witnessed'];
+
+/**
+ * The lines of `mnema verify --json`, one per tree that holds a record, in the order the command
+ * line gave them. A tree with nothing in it is left out, as the command line leaves it out of its
+ * own text, and a tree whose line the command did not write (a command line older than the field)
+ * is left out too: the extension does not word one in its place.
+ */
+export function readTrees(stdout: string): TreeLine[] {
+  let answer: unknown;
+  try {
+    answer = JSON.parse(stdout);
+  } catch {
+    return [];
+  }
+  const trees = (answer as { trees?: unknown } | null)?.trees;
+  if (!Array.isArray(trees)) return [];
+  const lines: TreeLine[] = [];
+  for (const tree of trees as Record<string, unknown>[]) {
+    if (tree?.kind !== 'verdict') continue;
+    if (typeof tree.scope !== 'string' || typeof tree.headline !== 'string') continue;
+    const result = (tree.result ?? {}) as { ok?: unknown; level?: unknown };
+    lines.push({
+      scope: tree.scope,
+      headline: tree.headline,
+      newerMnema: typeof tree.newerMnema === 'string' ? tree.newerMnema : undefined,
+      mark:
+        result.ok === false
+          ? 'error'
+          : typeof result.level === 'string' && !CLEAN_LEVELS.includes(result.level)
+            ? 'info'
+            : undefined,
+    });
+  }
+  return lines;
+}
+
 /** One channel of `mnema switch`, with whether it is on. */
 export interface Channel {
   readonly name: string;
@@ -139,11 +191,9 @@ export const TOOLTIP_COMMANDS: readonly string[] = [
   CONTAINER_COMMAND,
   'mnema.whatToDo',
   'mnema.refresh',
+  'mnema.showVerification',
   'workbench.action.openSettings',
 ];
-
-/** The page that says what each channel carries. */
-export const SWITCHES_PAGE = 'https://github.com/mnema-work/mnema/blob/main/docs/switches.md';
 
 /** What is said of the decisions awaiting a judgment, for the badge, the tooltip and the screen reader. */
 export const awaitingPhrase = (total: number): string =>
@@ -177,31 +227,32 @@ export const iconFor = (verdict: Verdict): string =>
 const plain = (text: string): string =>
   text.replace(/\r?\n/g, ' ').replace(/[!-/:-@[-`{-~]/g, '\\$&');
 
-/** Lines as a code block, with a fence longer than any run of backticks inside them. */
-function fenced(lines: readonly string[]): string {
-  const longest = Math.max(0, ...(lines.join('\n').match(/`+/g) ?? []).map((run) => run.length));
-  const fence = '`'.repeat(Math.max(3, longest + 1));
-  return `${fence}\n${lines.join('\n')}\n${fence}`;
-}
-
 const two = (n: number): string => String(n).padStart(2, '0');
 
 /** A link that opens the settings editor on one setting. */
 const settingLink = (label: string, setting: string): string =>
   `[${label}](command:workbench.action.openSettings?${encodeURIComponent(JSON.stringify([setting]))})`;
 
+/** The lines of one tree: its own line with its mark, and the sentence about a newer mnema under it. */
+function treeBlock(tree: TreeLine): string[] {
+  const icon = tree.mark === undefined ? '' : `$(${tree.mark}) `;
+  const own = `${icon}**${plain(tree.scope)}**: ${plain(tree.headline)}`;
+  return tree.newerMnema === undefined ? [own] : [own, `$(info) ${plain(tree.newerMnema)}`];
+}
+
 /**
  * The item as a whole. The words about the record are the command line's: the level is what
- * `verify --json` reports, and the tooltip carries the lines `mnema verify` printed, in a code
- * block, as they came. The extension's own words are only about itself (the command is missing,
- * how many decisions await, when it read).
+ * `verify --json` reports and each tree's line is the one the command line wrote for it
+ * ({@link TreeLine}); the full text of the verification is behind a link, not in the tooltip. The
+ * extension's own words are only about itself (the command is missing, how many decisions await,
+ * when it read, the names of its links).
  */
 export function describeBar(input: {
   readonly cli: CliState;
   readonly verdict: Verdict;
   readonly channels: readonly Channel[] | undefined;
-  /** The lines `mnema verify` printed, and for a failure the issues it listed. */
-  readonly printed: readonly string[];
+  /** One line per tree that holds a record, as `verify --json` said them. */
+  readonly trees: readonly TreeLine[];
   /** The decisions awaiting a judgment, as the command line counted them; undefined when not read. */
   readonly awaiting: number | undefined;
   readonly readAt: Date;
@@ -230,23 +281,24 @@ export function describeBar(input: {
   const awaiting = input.awaiting !== undefined && input.awaiting > 0 ? input.awaiting : undefined;
   const off = (input.channels ?? []).filter((c) => !c.on).map((c) => plain(c.name));
   const parts = [`**mnema** · ${plain(proof)}`];
+  // Every tree is shown: the number of lines is the number of trees, never a cut of a longer text.
+  if (input.trees.length > 0) parts.push(input.trees.flatMap(treeBlock).join('\\\n'));
   if (awaiting !== undefined) {
     parts.push(
       `[${awaitingPhrase(awaiting)}](command:${CONTAINER_COMMAND}) · [What to do](command:mnema.whatToDo)`,
     );
   }
-  if (input.printed.length > 0) parts.push(fenced(input.printed));
   if (input.channels === undefined || input.channels.length === 0) {
     parts.push('Channels: not read.');
   } else if (off.length > 0) {
-    parts.push(`Channels off: ${off.join(', ')} ([what they carry](${SWITCHES_PAGE}))`);
+    parts.push(`Channels off: ${off.join(', ')}`);
   } else {
     parts.push('Every channel is on.');
   }
   if (input.notice !== undefined) parts.push(input.notice);
   const at = `${two(input.readAt.getHours())}:${two(input.readAt.getMinutes())}:${two(input.readAt.getSeconds())}`;
   parts.push(
-    `Read at ${at} · [Refresh](command:mnema.refresh) · ${settingLink('Settings', 'mnema.statusBar')}`,
+    `Read at ${at} · [Refresh](command:mnema.refresh) · ${settingLink('Settings', 'mnema.statusBar')} · [Show the full verification](command:mnema.showVerification)`,
   );
   const tail = awaiting === undefined ? '' : ` · ${awaiting} to judge`;
   return {

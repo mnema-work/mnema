@@ -21,6 +21,13 @@ In the help under **Verify**.
 | `--json` | emit the verdict as JSON instead of prose: the whole reading, per tree, plus what NO --require value answers. The top "ok" is the verdict on the record, the same as "record.ok": false over a broken record, and false where no path covered a record. "requirementMet" says whether --require was reached. The exit code is unchanged: this changes the shape of the answer, never the answer |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
+**Each tree carries a one-line reading.** In `trees`, a tree that holds a record has `headline`: the line the console's panel
+shows for it (the clause that is the verdict, such as `local integrity verified (T1/T2/T4)`), made by the same function as the
+panel; a tree that holds nothing has `headline` `no record here`. A tree that holds lines a newer mnema wrote, which this one
+checks and does not read, also has `newerMnema`: the sentence every surface says about them, and no other tree has the field. A
+surface with room for one line per tree (the VS Code status bar tooltip) shows these and words nothing itself. They are added beside
+the reading: the prose, `record`, `requirementMet` and the exit code are the ones they were. In a `--workspace` reading the fields
+are on the trees of each project.
 <!-- End of the part written by hand. -->
 
 ## The whole help

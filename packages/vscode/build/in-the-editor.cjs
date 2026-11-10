@@ -121,7 +121,7 @@ exports.run = async () => {
     }
     if (!shown.tooltip.includes('local integrity verified')) {
       throw new Error(
-        `the tooltip does not carry what mnema verify printed: ${JSON.stringify(shown.tooltip)}`,
+        `the tooltip does not carry the line mnema wrote for the tree: ${JSON.stringify(shown.tooltip)}`,
       );
     }
     const lines = asked();
@@ -131,7 +131,7 @@ exports.run = async () => {
     if (colors.length !== 1 || !/^mnema\.recordFolder$/.test(colors[0].id)) {
       throw new Error('the installed manifest does not declare the colour of the record folder');
     }
-    for (const wanted of ['--version', 'verify --json', 'verify']) {
+    for (const wanted of ['--version', 'verify --json']) {
       if (!lines.includes(wanted)) {
         throw new Error(`mnema was never asked "${wanted}": ${JSON.stringify(lines)}`);
       }

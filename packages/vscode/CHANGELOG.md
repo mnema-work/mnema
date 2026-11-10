@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- The status bar tooltip is the verdict and one line per tree, and the long text is behind a link. The block of
+  `mnema verify` text it held is gone: it cut at six lines and left the private tree's line out whenever the public
+  tree carried five notes, and it showed a 97 character id twice per note. Each tree now has its own line, the one
+  `mnema verify --json` carries for it (the same words as the console), with the editor's error or info icon in front of
+  a tree that is not clean, and under it the command line's sentence when a newer mnema wrote lines this one does not
+  read. The channels off are named without the link to the page about them.
+- A new command, `mnema: Show Full Verification`, linked from the tooltip, runs `mnema verify --verbose` and
+  `mnema switch` at that moment and shows what they printed in the output channel `mnema verification`.
+- A reading is one `mnema verify --json` and one `mnema switch` (it was a second `mnema verify` as well).
+- It needs a command line that serves those lines (the release that adds `headline` to the trees of `verify --json`); with an older
+  one the tooltip shows the level and no line per tree, and says nothing in their place.
+
 ## 0.1.7
 
 - No change to the extension itself, only its version, so that it matches the command line it is released with.
