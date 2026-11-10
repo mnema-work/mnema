@@ -1,0 +1,113 @@
+{
+  "ok": false,
+  "trees": [
+    {
+      "kind": "verdict",
+      "scope": "public",
+      "root": "/tmp/tmp.8XygkYmCTt/repo/.mnema",
+      "result": {
+        "ok": false,
+        "fullySigned": false,
+        "level": "broken",
+        "tails": [
+          {
+            "tail": "b1260404b4735040b6c8493ccac1b1873533ecbf21a5e46f10f7561fc7656676-49ff1c2f25d715138d509d4e3e34219a",
+            "entryCount": 5,
+            "checkpointedThrough": 2,
+            "issues": [
+              {
+                "tail": "b1260404b4735040b6c8493ccac1b1873533ecbf21a5e46f10f7561fc7656676-49ff1c2f25d715138d509d4e3e34219a",
+                "layer": "T1",
+                "seq": 3,
+                "detail": "entry hash mismatch: content or link was altered"
+              },
+              {
+                "tail": "b1260404b4735040b6c8493ccac1b1873533ecbf21a5e46f10f7561fc7656676-49ff1c2f25d715138d509d4e3e34219a",
+                "layer": "T2/T4",
+                "seq": 3,
+                "detail": "checkpoint failed: content-root-mismatch"
+              }
+            ]
+          }
+        ],
+        "issues": [
+          {
+            "tail": "b1260404b4735040b6c8493ccac1b1873533ecbf21a5e46f10f7561fc7656676-49ff1c2f25d715138d509d4e3e34219a",
+            "layer": "T1",
+            "seq": 3,
+            "detail": "entry hash mismatch: content or link was altered"
+          },
+          {
+            "tail": "b1260404b4735040b6c8493ccac1b1873533ecbf21a5e46f10f7561fc7656676-49ff1c2f25d715138d509d4e3e34219a",
+            "layer": "T2/T4",
+            "seq": 3,
+            "detail": "checkpoint failed: content-root-mismatch"
+          }
+        ],
+        "census": [
+          {
+            "kind": "backup-key",
+            "fingerprint": "06806e35ed8a070beab2094c78a6620f081e8b82fe2fed01661a76da27803e61",
+            "anchor": "mnid:512f1fdffbe32a4231b32b666db5959fb30222eb86fbbc1bc4899208735f3d9c",
+            "detail": "the backup key of mnid:512f1fdffbe32a4231b32b666db5959fb30222eb86fbbc1bc4899208735f3d9c, as the record declares it: a backup signs nothing until it is restored, so it has no tail (if it was restored and has signed, that tail is not here)"
+          }
+        ],
+        "record": {
+          "state": "named",
+          "name": "d8faa99c5508858ade3af94a0d80aa71fa228a39d42864d20dfadb3f789e65c8",
+          "genesis": "b1260404b4735040b6c8493ccac1b1873533ecbf21a5e46f10f7561fc7656676-49ff1c2f25d715138d509d4e3e34219a",
+          "unnamed": []
+        },
+        "uncheckpointedEvents": 2,
+        "witness": "not-covered",
+        "clauses": [
+          {
+            "of": "level",
+            "text": "local integrity FAILED: see issues"
+          },
+          {
+            "of": "tails",
+            "text": "1 tail(s)"
+          },
+          {
+            "of": "coverage",
+            "text": "2 event(s) above the last checkpoint are hash-chained but NOT yet signature-covered"
+          },
+          {
+            "of": "census",
+            "text": "1 backup key(s), which sign nothing until restored (informational, not a break; --verbose names the key)"
+          },
+          {
+            "of": "witness",
+            "text": "external witness (T3): not covered, nothing outside this machine attests this record"
+          }
+        ],
+        "summary": "local integrity FAILED: see issues; 1 tail(s); 2 event(s) above the last checkpoint are hash-chained but NOT yet signature-covered; 1 backup key(s), which sign nothing until restored (informational, not a break; --verbose names the key); external witness (T3): not covered, nothing outside this machine attests this record"
+      },
+      "short": "failed: entry hash mismatch: content or link was altered (and 1 more)",
+      "headline": "local integrity FAILED: see issues"
+    },
+    {
+      "kind": "no-record",
+      "scope": "private",
+      "root": "/tmp/tmp.8XygkYmCTt/repo/.git/mnema/%2E/private",
+      "headline": "no record here",
+      "short": "no record here"
+    }
+  ],
+  "record": {
+    "ok": false,
+    "level": "broken",
+    "scopes": [
+      "public"
+    ]
+  },
+  "requirement": "chained",
+  "requirementMet": false,
+  "notAnswered": [
+    "One tail removed whole while another remains is not a break: with its committed key left it IS reported, as a census note (informational, not a break, so the exit stays 0), and with its key removed too it may leave nothing to report. A record in which no tail holds anything is refused.",
+    "The newest events cut together with their checkpoint read as an honest record, under --require signed too.",
+    "A record erased and founded again reads as an honest record, under --require signed too.",
+    "One tail removed whole in a commit older than the revision --since compares with is not found by it. Only a copy of the record from before (--since <rev>, a git remote) shows any of these; the external witness dates a checkpoint and keeps no copy."
+  ]
+}

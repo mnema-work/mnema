@@ -9,9 +9,10 @@ import {
   MIN_CLI_VERSION,
   readChannels,
   readCli,
+  readTrees,
   readVerdict,
-  SWITCHES_PAGE,
   TOOLTIP_COMMANDS,
+  type TreeLine,
   type Verdict,
   versionNotice,
 } from './status.js';
@@ -81,8 +82,14 @@ describe('the channels, as `mnema switch` lists them', () => {
   });
 });
 
-const COVERAGE =
-  'public: local integrity verified (T1/T2/T4); external witness (T3): not covered, nothing outside this machine attests this record';
+const PUBLIC_LINE: TreeLine = {
+  scope: 'public',
+  headline: 'local integrity verified (T1/T2/T4)',
+  short: 'verified, signed',
+  newerMnema: undefined,
+  mark: undefined,
+};
+const PRIVATE_LINE: TreeLine = { ...PUBLIC_LINE, scope: 'private' };
 const READY = { kind: 'ready' } as const;
 const channelsOn = readChannels(SWITCH);
 const AT = new Date(2026, 9, 27, 14, 3, 9);
@@ -115,7 +122,7 @@ describe('whether the mnema command line can be run at all', () => {
       cli: slow,
       verdict: { kind: 'unreadable' },
       channels: undefined,
-      printed: [],
+      trees: [],
       awaiting: undefined,
       readAt: AT,
     });
@@ -139,7 +146,7 @@ const bar = (
     cli: READY,
     verdict,
     channels: channelsOn,
-    printed: [COVERAGE],
+    trees: [PUBLIC_LINE, PRIVATE_LINE],
     awaiting: undefined,
     readAt: AT,
     ...more,
@@ -221,7 +228,7 @@ describe('the status bar item: the level and what awaits, short, with the detail
       cli: { kind: 'missing', reason: 'spawn mnema ENOENT' },
       verdict: UNREADABLE,
       channels: undefined,
-      printed: [],
+      trees: [],
       awaiting: undefined,
       readAt: AT,
     });
@@ -248,7 +255,7 @@ describe('the status bar item: the level and what awaits, short, with the detail
       cli: { kind: 'missing', reason: 'spawn mnema ENOENT' },
       verdict: UNREADABLE,
       channels: undefined,
-      printed: [],
+      trees: [],
       awaiting: undefined,
       readAt: AT,
     });
@@ -260,27 +267,136 @@ describe('the status bar item: the level and what awaits, short, with the detail
   });
 });
 
+const json = (trees: unknown[]) => JSON.stringify({ ok: true, trees });
+const verdict = (scope: string, level: string, more: object = {}) => ({
+  kind: 'verdict',
+  scope,
+  headline: `the line of ${scope}`,
+  short: `the short line of ${scope}`,
+  result: { ok: true, level },
+  ...more,
+});
+
+describe('the lines of the trees, as `mnema verify --json` says them', () => {
+  it('reads one line per tree that holds a record, the command line words and nothing else', () => {
+    expect(readTrees(printed('verify-lines-intact'))).toEqual([
+      {
+        scope: 'public',
+        headline: 'local integrity verified (T1/T2/T4)',
+        short: 'verified, signed',
+        newerMnema: undefined,
+        mark: undefined,
+      },
+    ]);
+  });
+
+  it('marks a tree that is broken as an error, and gives its line as the command line wrote it', () => {
+    expect(readTrees(printed('verify-lines-broken'))).toEqual([
+      {
+        scope: 'public',
+        headline: 'local integrity FAILED: see issues',
+        short: 'failed: entry hash mismatch: content or link was altered (and 1 more)',
+        newerMnema: undefined,
+        mark: 'error',
+      },
+    ]);
+  });
+
+  it('marks a level below the signed ones as information, and the signed ones not at all', () => {
+    const marks = (level: string) => readTrees(json([verdict('public', level)]))[0]?.mark;
+    expect(marks('fully-signed')).toBeUndefined();
+    expect(marks('externally-witnessed')).toBeUndefined();
+    expect(marks('hash-chain-only')).toBe('info');
+    expect(marks('signed-through-last-checkpoint')).toBe('info');
+  });
+
+  it('carries the sentence about a newer mnema on the tree the command line put it on', () => {
+    const sentence = 'A newer mnema wrote 1 line into this record (x).';
+    const read = readTrees(json([verdict('public', 'fully-signed', { newerMnema: sentence })]));
+    expect(read[0]?.newerMnema).toBe(sentence);
+  });
+
+  it('leaves out a tree with nothing in it and a tree the command line wrote no line for', () => {
+    const older = {
+      kind: 'verdict',
+      scope: 'private',
+      result: { ok: true, level: 'fully-signed' },
+    };
+    const empty = { kind: 'no-record', scope: 'private', headline: 'no record here' };
+    expect(readTrees(json([verdict('public', 'fully-signed'), empty]))).toHaveLength(1);
+    expect(readTrees(json([older]))).toEqual([]);
+  });
+
+  it('reads none out of what is not a verdict', () => {
+    expect(readTrees('')).toEqual([]);
+    expect(readTrees('null')).toEqual([]);
+    expect(readTrees('{"ok": true}')).toEqual([]);
+  });
+});
+
+/** How text from the command line reads in the tooltip: every ASCII punctuation mark escaped. */
+const inert = (text: string): string => text.replace(/[!-/:-@[-`{-~]/g, '\\$&');
+
 describe('the tooltip', () => {
-  it('lays out the level, what awaits, what mnema verify printed, the channels off, when it was read and the links', () => {
+  const withNewer: TreeLine = {
+    ...PUBLIC_LINE,
+    newerMnema: 'A newer mnema wrote 1 line into this record ("x.new"). Update mnema to read them.',
+  };
+
+  it('lays out the level, one line per tree, what awaits, the channels off, when it was read and the links', () => {
     expect(bar(STRONG, { awaiting: 2 }).tooltip).toBe(
       [
         '**mnema** · fully\\-signed',
+        `**public**: ${inert('verified, signed')}\\\n**private**: ${inert('verified, signed')}`,
         `[2 decisions await a judgment](command:${CONTAINER_COMMAND}) · [What to do](command:mnema.whatToDo)`,
-        `\`\`\`\n${COVERAGE}\n\`\`\``,
-        `Channels off: edit\\-first\\-write\\-gate, user\\-corrections ([what they carry](${SWITCHES_PAGE}))`,
-        `Read at 14:03:09 · [Refresh](command:mnema.refresh) · [Settings](command:workbench.action.openSettings?${encodeURIComponent('["mnema.statusBar"]')})`,
+        'Channels off: edit\\-first\\-write\\-gate, user\\-corrections',
+        `Read at 14:03:09 · [Refresh](command:mnema.refresh) · [Settings](command:workbench.action.openSettings?${encodeURIComponent('["mnema.statusBar"]')}) · [Show the full verification](command:mnema.showVerification)`,
       ].join('\n\n'),
     );
   });
 
-  it('says a failure with the lines the command line printed, and no line of its own that judges', () => {
-    const lines = [
-      'public: local integrity FAILED: see issues',
-      'issue [T1] tail#3: entry hash mismatch',
-    ];
-    const tip = bar(FAILED, { printed: lines }).tooltip;
+  it('marks a tree that is not clean with the editor icon of its kind, and a clean tree with none', () => {
+    const tip = bar(FAILED, {
+      trees: [
+        { ...PUBLIC_LINE, short: 'failed: entry hash mismatch', mark: 'error' },
+        { ...PRIVATE_LINE, mark: 'info' },
+        { ...PRIVATE_LINE, scope: 'global' },
+      ],
+    }).tooltip;
+    expect(tip).toContain(`$(error) **public**: ${inert('failed: entry hash mismatch')}`);
+    expect(tip).toContain('$(info) **private**: ');
+    expect(tip).toMatch(/\n\*\*global\*\*: /);
+  });
+
+  it('says a newer mnema wrote lines in the command line own sentence, under the tree it is about', () => {
+    const tip = bar(STRONG, { trees: [withNewer, PRIVATE_LINE] }).tooltip;
+    expect(tip).toContain(
+      `**public**: ${inert('verified, signed')}\\\n$(info) ${inert(withNewer.newerMnema as string)}\\\n**private**: `,
+    );
+  });
+
+  it('holds no text `mnema verify` printed, no block of code and no id of a tail', () => {
+    for (const shown of [bar(STRONG), bar(WEAK), bar(FAILED)]) {
+      expect(shown.tooltip).not.toContain('```');
+      expect(shown.tooltip).not.toMatch(/[0-9a-f]{40}/);
+    }
+  });
+
+  it('says only what the command line wrote: every word about a tree is in the field it came from', () => {
+    const invented = 'a word the command line never wrote';
+    const tip = bar(STRONG, { trees: [{ ...PUBLIC_LINE, short: invented }] }).tooltip;
+    expect(tip).toContain(inert(invented));
+    const fromTheField = readTrees(printed('verify-lines-intact'))[0]?.short as string;
+    const shown = bar(STRONG, { trees: readTrees(printed('verify-lines-intact')) }).tooltip;
+    expect(shown).toContain(inert(fromTheField));
+  });
+
+  it('says a failure with the line the command line wrote for the tree, and no line of its own that judges', () => {
+    const tip = bar(FAILED, {
+      trees: [{ ...PUBLIC_LINE, short: 'failed: entry hash mismatch', mark: 'error' }],
+    }).tooltip;
     expect(tip).toContain('**mnema** · verify failed');
-    expect(tip).toContain(`\`\`\`\n${lines.join('\n')}\n\`\`\``);
+    expect(tip).toContain(inert('failed: entry hash mismatch'));
   });
 
   it('says the channels were not read, or that every one is on, and invents nothing', () => {
@@ -288,25 +404,24 @@ describe('the tooltip', () => {
     expect(
       bar(STRONG, { channels: channelsOn.map((c) => ({ ...c, on: true })) }).tooltip,
     ).toContain('Every channel is on.');
-    expect(bar(STRONG, { printed: [] }).tooltip).not.toContain('```');
   });
 
   it('makes text from the command line inert: a channel or a line that carries a command link is not a link', () => {
     const hostile = '[judge](command:mnema.accept)';
     const tip = bar(STRONG, {
       channels: [{ name: hostile, on: false }],
-      printed: [`${hostile} \`\`\` <b>x</b>`],
+      trees: [
+        { ...PUBLIC_LINE, scope: hostile, short: `${hostile} <b>x</b>`, newerMnema: hostile },
+      ],
     }).tooltip;
-    const outside = tip.replace(/(`{3,})\n[\s\S]*?\n\1/g, '');
-    expect(outside).toContain('\\[judge\\]\\(command\\:mnema\\.accept\\)');
-    expect(outside).not.toContain('[judge](command:mnema.accept)');
-    // The fence is longer than the run of backticks inside it, so the block does not end early.
-    expect(tip).toContain(`\`\`\`\`\n${hostile} \`\`\` <b>x</b>\n\`\`\`\``);
+    expect(tip).toContain('\\[judge\\]\\(command\\:mnema\\.accept\\)');
+    expect(tip).not.toContain('[judge](command:mnema.accept)');
+    expect(tip).not.toContain('<b>');
     const reason = describeBar({
       cli: { kind: 'missing', reason: `${hostile} <i>x</i>\nsecond line` },
       verdict: UNREADABLE,
       channels: undefined,
-      printed: [],
+      trees: [],
       awaiting: undefined,
       readAt: AT,
     }).tooltip;
@@ -319,6 +434,7 @@ describe('the tooltip', () => {
       'workbench.view.extension.mnema',
       'mnema.whatToDo',
       'mnema.refresh',
+      'mnema.showVerification',
       'workbench.action.openSettings',
     ]);
     const all = [
@@ -328,7 +444,7 @@ describe('the tooltip', () => {
         cli: { kind: 'missing', reason: 'x' },
         verdict: UNREADABLE,
         channels: undefined,
-        printed: [],
+        trees: [],
         awaiting: undefined,
         readAt: AT,
       }).tooltip,
@@ -340,18 +456,18 @@ describe('the tooltip', () => {
     }
   });
 
-  it('claims nothing the command line did not say: no word of verification outside what it printed', () => {
+  it('claims nothing the command line did not say: no word of verification once the lines of the trees are taken away', () => {
     const claim = /\b(verified|secure|safe|trusted|proven)\b|\byour record is\b/i;
     const states = [
-      bar(STRONG, { awaiting: 2, printed: [] }),
-      bar(WEAK, { printed: [] }),
-      bar(FAILED, { printed: [] }),
-      bar(UNREADABLE, { awaiting: 1, printed: [] }),
+      bar(STRONG, { awaiting: 2, trees: [] }),
+      bar(WEAK, { trees: [] }),
+      bar(FAILED, { trees: [] }),
+      bar(UNREADABLE, { awaiting: 1, trees: [] }),
       describeBar({
         cli: { kind: 'missing', reason: 'spawn mnema ENOENT' },
         verdict: UNREADABLE,
         channels: undefined,
-        printed: [],
+        trees: [],
         awaiting: undefined,
         readAt: AT,
       }),
@@ -361,7 +477,7 @@ describe('the tooltip', () => {
       expect(shown.tooltip).not.toMatch(claim);
       expect(shown.accessibility.label).not.toMatch(claim);
     }
-    // What `mnema verify` printed says "verified" itself, inside its own block.
+    // The line the command line wrote for a tree says "verified" itself, and is shown as it came.
     expect(bar(STRONG).tooltip).toMatch(claim);
   });
 

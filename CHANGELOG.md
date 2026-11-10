@@ -17,6 +17,13 @@ with its own changelog.
   longer links to a third party's redraw of a logo. Codex, whose vendor publishes no file that was found, is shown by its
   name. A line under the table names the owners of the logos and says they imply no endorsement, and a test holds that
   every image of the table is one of those files with a row and a matching hash.
+- **`mnema verify --json` says each tree in a line.** Every tree of the reading has a `headline`: the text of the line the
+  console's panel shows for it (the level clause of a tree that holds a record, `no record here` for one that does not), made
+  by the same function as the panel, so the two cannot say two things; a `short`, the same verdict in plain words without the
+  layer names (`verified, signed`, `verified, hash chain only: no signature was checked`, `failed: <its first issue>`); and a tree that holds lines a newer mnema wrote has
+  `newerMnema`, the sentence every surface says about them. Both are added beside the reading and change neither the prose
+  nor the exit code. A set (`--workspace`) carries them on the trees of each project. The VS Code extension shows them
+  in its status bar tooltip.
 - **A reference page for each command and each MCP tool.** `docs/reference/cli/` has one page per command of `mnema`,
   made from the help the command prints, and `docs/reference/mcp/` one per tool the MCP server serves, made from its
   description, parameters and annotations; [Commands](docs/reference/commands.md) and
@@ -24,6 +31,12 @@ with its own changelog.
   from the help or from what the server serves.
 
 ### Changed
+
+- **The VS Code status bar tooltip is a verdict and one line per tree.** The block of `mnema verify` text it held, cut at six
+  lines (the private tree's line was the one that fell out), is replaced by the `short` line `verify --json` carries for each tree (plain words; the `T1/T2/T4` terms stay in the console and behind the link),
+  with the sentence about a newer mnema under its tree and the editor's error or info icon on a tree that is not clean. The long
+  text is behind a link, the new command `mnema: Show Full Verification`, which runs `mnema verify --verbose` and `mnema switch`
+  when it is clicked and shows them in an output channel. A reading no longer runs a second `mnema verify`.
 
 - **The command reference is split into guides and the page of each command, and the docs are grouped as Get started,
   Learn, Reference and Project.** The long sections of `docs/cli-reference.md` moved: nine guides

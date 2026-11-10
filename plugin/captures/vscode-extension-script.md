@@ -50,8 +50,10 @@ a finding, and a good capture.
    text are legible on each, at 100 and at 200 percent zoom: the M is ten pixels square at the editor's
    16 pixel icon size, so look at it in high contrast in particular, where it must not vanish. With a
    record that fails `mnema verify` the M gives way to the editor's error icon. The item never shows a check mark or a seal: only the level `mnema verify`
-   printed, and `N to judge` when something awaits. Hover it: the tooltip is markdown, and the lines
-   in its block are the ones `mnema verify` printed. Change one byte of a file in `.mnema/tails/` in a
+   printed, and `N to judge` when something awaits. Hover it: the tooltip is markdown, with one line per tree
+   (the words are the ones `mnema verify --json` carries for the tree, the private tree's included) and an
+   error or info icon in front of a tree that is not clean; the link Show the full verification opens the
+   output channel with what `mnema verify --verbose` and `mnema switch` print. Change one byte of a file in `.mnema/tails/` in a
    throwaway copy and refresh: the item takes the warning background of the theme and the tooltip
    says what failed. Set `mnema.statusBar.enabled` to false in the user settings: the item goes away
    with no reload; a `.vscode/settings.json` that sets it has no effect.

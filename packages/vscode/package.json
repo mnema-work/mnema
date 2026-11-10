@@ -190,6 +190,12 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "mnema.showVerification",
+        "title": "Show Full Verification",
+        "category": "mnema",
+        "icon": "$(checklist)"
+      },
+      {
         "command": "mnema.showRules",
         "title": "Show File Rules",
         "category": "mnema",
@@ -365,6 +371,10 @@
         },
         {
           "command": "mnema.refresh",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "mnema.showVerification",
           "when": "workspaceFolderCount > 0"
         },
         {

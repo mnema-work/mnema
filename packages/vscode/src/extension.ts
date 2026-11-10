@@ -73,8 +73,10 @@ import {
   describeBar,
   readChannels,
   readCli,
+  readTrees,
   readVerdict,
   TOOLTIP_COMMANDS,
+  type TreeLine,
   type Verdict,
   versionNotice,
 } from './status.js';
@@ -85,7 +87,7 @@ export const QUIET_MS = 1500;
 
 /**
  * The most often the record's verification is run again because the record changed: `mnema verify`
- * (twice) and `mnema switch` are three processes, and an agent that writes every few seconds keeps
+ * and `mnema switch` are two processes, and an agent that writes every few seconds keeps
  * the quiet period above from ever being long. A write inside the interval is verified at its end.
  */
 export const VERIFY_EVERY_MS = 10_000;
@@ -198,7 +200,7 @@ export interface VscodeApi {
   readonly TreeItem: new (label: string, state: number) => TreeItemLike;
   readonly TreeItemCollapsibleState: { readonly None: number };
   readonly StatusBarAlignment: { readonly Left: number };
-  readonly MarkdownString: new (value: string) => MarkdownLike;
+  readonly MarkdownString: new (value: string, supportThemeIcons?: boolean) => MarkdownLike;
   readonly ThemeColor: new (id: string) => unknown;
   readonly FileDecoration: new (badge: string, tooltip: string, color: unknown) => unknown;
   readonly ThemeIcon: new (id: string, color?: unknown) => unknown;
@@ -248,12 +250,12 @@ interface Session {
   cli: CliState | undefined;
   /** The version `mnema --version` printed when the command line was usable. */
   cliVersion: string | undefined;
-  /** What the last run of `mnema verify` and `mnema switch` said, and when. */
+  /** What the last run of `mnema verify --json` and `mnema switch` said, and when. */
   bar:
     | {
         readonly verdict: Verdict;
         readonly channels: Channel[] | undefined;
-        readonly printed: string[];
+        readonly trees: TreeLine[];
         readonly readAt: Date;
       }
     | undefined;
@@ -381,7 +383,7 @@ export function activate(
   function applyBar(shown: ReturnType<typeof describeBar>): void {
     placeBar();
     bar.text = shown.text;
-    const tooltip = new api.MarkdownString(shown.tooltip);
+    const tooltip = new api.MarkdownString(shown.tooltip, true);
     tooltip.isTrusted = { enabledCommands: TOOLTIP_COMMANDS };
     tooltip.supportHtml = false;
     bar.tooltip = tooltip;
@@ -440,7 +442,7 @@ export function activate(
         cli,
         verdict: { kind: 'unreadable' },
         channels: undefined,
-        printed: [],
+        trees: [],
         awaiting: undefined,
         readAt: new Date(),
       }),
@@ -460,39 +462,26 @@ export function activate(
   };
 
   /**
-   * The verification: `mnema verify --json`, `mnema verify` and `mnema switch`. True when a call was
-   * lost. The bar is painted at the end unless the reading that asked for it paints once, when it
-   * holds the count of what awaits too, so the level is never shown for a moment without it.
+   * The verification: `mnema verify --json` and `mnema switch`. True when a call was lost. The text
+   * of `mnema verify` is not read here: the tooltip shows the lines `verify --json` carries, and
+   * the whole text is run on demand (`mnema.showVerification`). The bar is painted at the end
+   * unless the reading that asked for it paints once, when it holds the count of what awaits too,
+   * so the level is never shown for a moment without it.
    */
   async function readBar(paint = true): Promise<boolean> {
     verifiedAt = Date.now();
     if (trailing !== undefined) clearTimeout(trailing);
     trailing = undefined;
-    const [verify, coverage, channels] = await Promise.all([
-      read(['verify', '--json']),
-      read(['verify']),
-      read(['switch']),
-    ]);
-    const verdict = readVerdict(verify.stdout);
-    const lines = (text: string, most: number): string[] =>
-      text
-        .split('\n')
-        .map((line) => line.trim())
-        .filter((line) => line !== '')
-        .slice(0, most);
+    const [verify, channels] = await Promise.all([read(['verify', '--json']), read(['switch'])]);
     session.bar = {
-      verdict,
+      verdict: readVerdict(verify.stdout),
       channels: channels.code === 0 ? readChannels(channels.stdout) : undefined,
-      // The words are the command line's own: what `mnema verify` printed, up to a few lines,
-      // and when it failed, the first issues it listed on its error output.
-      printed: [
-        ...lines(coverage.stdout, 6),
-        ...(verdict.kind === 'failed' ? lines(coverage.stderr, 3) : []),
-      ],
+      // Every tree's line is the command line's own, one per tree: none is cut away.
+      trees: readTrees(verify.stdout),
       readAt: new Date(),
     };
     if (paint) paintBar();
-    return [verify, coverage, channels].some((result) => result.code === null);
+    return [verify, channels].some((result) => result.code === null);
   }
 
   /** The verification of a record that changed inside the interval, run once the interval is over. */
@@ -812,6 +801,32 @@ export function activate(
       // Reading again in a folder with no record reads nothing: it says so, and shows no bar.
       needsRecord();
       await refresh('explicit');
+    }),
+  );
+  // The whole verification, on demand and read at that moment: the tooltip holds one line per tree
+  // and this holds everything `mnema verify --verbose` and `mnema switch` print.
+  const verification = keep(api.window.createOutputChannel('mnema verification'));
+  keep(
+    api.commands.registerCommand('mnema.showVerification', async () => {
+      if (!needsRecord()) return;
+      const [verify, switches] = await Promise.all([
+        read(['verify', '--verbose']),
+        read(['switch']),
+      ]);
+      verification.clear();
+      for (const [args, result] of [
+        [['verify', '--verbose'], verify],
+        [['switch'], switches],
+      ] as const) {
+        verification.appendLine(['mnema', ...args].join(' '));
+        const said = `${result.stdout}${result.stderr}`.trimEnd();
+        for (const line of (said === '' ? 'it printed nothing' : said).split('\n')) {
+          verification.appendLine(line);
+        }
+        verification.appendLine('');
+      }
+      verification.show(true);
+      await settleLost([verify, switches].some((result) => result.code === null));
     }),
   );
   keep(

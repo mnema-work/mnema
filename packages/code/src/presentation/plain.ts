@@ -63,6 +63,9 @@ export function indentOf(depth: number): string {
   return INDENT.repeat(depth);
 }
 
+/** What stands between two clauses of one verdict: the chain's own separator, held here once. */
+export const CLAUSE_SEPARATOR = '; ';
+
 /**
  * What precedes a part of each role when it is not the first on its line.
  *
@@ -127,7 +130,7 @@ export function indentOf(depth: number): string {
 const PRECEDED_BY: { readonly [R in Role]: string } = {
   label: '',
   detail: ': ',
-  clause: '; ',
+  clause: CLAUSE_SEPARATOR,
   field: '  ',
   id: '  ',
   when: '  ',

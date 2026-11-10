@@ -119,10 +119,17 @@ exports.run = async () => {
     if (shown.command !== 'workbench.view.extension.mnema') {
       throw new Error(`a click on the bar runs ${JSON.stringify(shown.command)}, not the container`);
     }
-    if (!shown.tooltip.includes('local integrity verified')) {
-      throw new Error(
-        `the tooltip does not carry what mnema verify printed: ${JSON.stringify(shown.tooltip)}`,
-      );
+    // Each tree's `short` line, as `mnema verify --json` served it to the harness, shown in the
+    // tooltip with every ASCII punctuation mark escaped (text from the command line is inert there).
+    const inert = (text) => text.replace(/[!-/:-@[-`{-~]/g, '\\$&');
+    const treeLines = JSON.parse(process.env.MNEMA_CHECK_TREE_LINES ?? '[]');
+    if (treeLines.length === 0) throw new Error('the harness read no tree line from mnema verify --json');
+    for (const { scope, short } of treeLines) {
+      if (!shown.tooltip.includes(`**${scope}**: ${inert(short)}`)) {
+        throw new Error(
+          `the tooltip does not carry the line mnema wrote for the ${scope} tree: ${JSON.stringify(shown.tooltip)}`,
+        );
+      }
     }
     const lines = asked();
     // What it cost to settle, written to the log of the run: the processes started until the bar and the badge were read.
@@ -131,7 +138,7 @@ exports.run = async () => {
     if (colors.length !== 1 || !/^mnema\.recordFolder$/.test(colors[0].id)) {
       throw new Error('the installed manifest does not declare the colour of the record folder');
     }
-    for (const wanted of ['--version', 'verify --json', 'verify']) {
+    for (const wanted of ['--version', 'verify --json']) {
       if (!lines.includes(wanted)) {
         throw new Error(`mnema was never asked "${wanted}": ${JSON.stringify(lines)}`);
       }

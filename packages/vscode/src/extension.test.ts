@@ -66,7 +66,36 @@ const awaiting = (...items: ReturnType<typeof decision>[]): CliResult =>
       awaitingJudgementTotal: items.length,
     }),
   );
-const VERIFY = ok(JSON.stringify({ ok: true, record: { ok: true, level: 'fully-signed' } }));
+/** What `verify --json` says of a tree: its scope, the line the command line wrote, and its result. */
+const aTree = (
+  scope: string,
+  headline: string,
+  result: object = { ok: true, level: 'fully-signed' },
+) => ({
+  kind: 'verdict',
+  scope,
+  headline,
+  short: SHORT[headline] ?? headline,
+  result,
+});
+const SIGNED = 'local integrity verified (T1/T2/T4)';
+/** What the command line serves as the short form of each headline these tests use. */
+const SHORT: Record<string, string> = {
+  [SIGNED]: 'verified, signed',
+  'local integrity FAILED: see issues': 'failed: entry hash mismatch',
+  'local integrity verified (T1 only): no signature was checked':
+    'verified, hash chain only: no signature was checked',
+};
+const verifyJson = (record: object, trees: object[]): CliResult =>
+  ok(JSON.stringify({ ok: (record as { ok: boolean }).ok, trees, record }));
+const VERIFY = verifyJson({ ok: true, level: 'fully-signed' }, [
+  aTree('public', SIGNED),
+  aTree('private', SIGNED),
+]);
+const BROKEN = verifyJson({ ok: false, level: 'broken' }, [
+  aTree('public', 'local integrity FAILED: see issues', { ok: false, level: 'broken' }),
+  aTree('private', SIGNED),
+]);
 const SWITCH = ok('2 channel(s):\n  brief-document  on  x\n  user-corrections  off  y\n');
 
 /** A stand-in for the members of `vscode` the extension uses, recording what it is asked. */
@@ -141,6 +170,7 @@ function world(
   /** The addresses the extension told the Explorer to ask about again. */
   const redecorated: string[] = [];
   const channel: string[] = [];
+  const outputs = new Map<string, { lines: string[]; shown: boolean }>();
   const picks: string[] = [];
   const picked: string[][] = [];
   const pickOptions: { title: string; ignoreFocusOut?: boolean }[] = [];
@@ -239,12 +269,19 @@ function world(
         treeViews.set(id, view);
         return view;
       },
-      createOutputChannel: () => ({
-        clear: () => channel.splice(0),
-        appendLine: (line: string) => channel.push(line),
-        show() {},
-        dispose() {},
-      }),
+      createOutputChannel: (name: string) => {
+        const lines = name === 'mnema stacks' ? channel : [];
+        const record = { lines, shown: false };
+        outputs.set(name, record);
+        return {
+          clear: () => lines.splice(0),
+          appendLine: (line: string) => lines.push(line),
+          show() {
+            record.shown = true;
+          },
+          dispose() {},
+        };
+      },
       showInputBox: async (o: {
         validateInput: (v: string) => string | undefined;
         title: string;
@@ -336,7 +373,10 @@ function world(
     MarkdownString: class {
       isTrusted: unknown;
       supportHtml: unknown;
-      constructor(readonly value: string) {}
+      constructor(
+        readonly value: string,
+        readonly supportThemeIcons?: boolean,
+      ) {}
     },
     ThemeColor: class {
       constructor(readonly id: string) {}
@@ -414,6 +454,7 @@ function world(
     stackTree: () => trees.get('mnema.stacks') as Tree,
     badge: () => treeViews.get('mnema.proposed')?.badge,
     channel,
+    outputs,
     ids: () => [...commands.keys()],
     picks,
     picked,
@@ -443,16 +484,15 @@ function world(
     tooltip: () => (bar.tooltip as { value: string }).value,
     trust: () => (bar.tooltip as { isTrusted: unknown }).isTrusted,
     html: () => (bar.tooltip as { supportHtml: unknown }).supportHtml,
+    icons: () => (bar.tooltip as { supportThemeIcons: unknown }).supportThemeIcons,
   };
 }
 
 const LIST = 'search --kind decision --state proposed --limit 200 --json';
 const STATUS = 'status --json';
 const STACK_LIST = 'stack list --json';
-const COVERAGE = 'public: local integrity verified (T1/T2/T4); external witness (T3): not covered';
 const base = (): Record<string, CliResult> => ({
   '--version': ok(`${MIN_CLI_VERSION}\n`),
-  verify: ok(`${COVERAGE}\n`),
   [STACK_LIST]: ok(JSON.stringify({ stacks: [] })),
   [STATUS]: awaiting(decision('d1', 'Use X', 'ADR-1')),
   'verify --json': VERIFY,
@@ -520,7 +560,10 @@ describe('the extension reads the record through the command line', () => {
     expect(w.bar.backgroundColor).toBeUndefined();
     const tip = w.tooltip();
     expect(tip).toContain('[1 decision awaits a judgment](command:workbench.view.extension.mnema)');
-    expect(tip).toContain(`\`\`\`\n${COVERAGE}\n\`\`\``);
+    expect(tip).toContain('**public**: verified\\, signed');
+    expect(tip).toContain('**private**: verified\\, signed');
+    expect(tip).not.toContain('```');
+    expect(w.icons()).toBe(true);
     expect(tip).toContain('Channels off: user\\-corrections');
     expect(tip).toMatch(/Read at \d\d:\d\d:\d\d/);
     expect(w.executed).toContainEqual(['setContext', 'mnema.cliMissing', false]);
@@ -556,7 +599,7 @@ describe('the extension reads the record through the command line', () => {
     expect(w.bar.text).toBe('$(warning) mnema not found');
     expect(w.bar.command).toBe('workbench.view.extension.mnema');
     answers['--version'] = ok(`${MIN_CLI_VERSION}\n`);
-    answers['verify --json'] = ok('{"ok": false, "record": {"ok": false, "level": "broken"}}');
+    answers['verify --json'] = BROKEN;
     await w.command('mnema.refresh')();
     expect(w.bar.command).toBe('workbench.view.extension.mnema');
   });
@@ -564,52 +607,146 @@ describe('the extension reads the record through the command line', () => {
   it('wears the warning background of the theme when mnema verify failed, and says what failed', async () => {
     const answers: Record<string, CliResult> = {
       ...base(),
-      'verify --json': ok('{"ok": false, "record": {"ok": false, "level": "broken"}}'),
+      'verify --json': BROKEN,
     };
     const w = world(answers);
     await settle();
     expect(w.bar.text).toBe('$(error) verify failed · 1 to judge');
     expect(w.bar.backgroundColor).toEqual({ id: 'statusBarItem.warningBackground' });
-    expect(w.tooltip()).toContain(COVERAGE);
+    expect(w.tooltip()).toContain('$(error) **public**: failed\\: entry hash mismatch');
+    expect(w.tooltip()).toContain('**private**: verified\\, signed');
     // A later reading that verifies takes the color away again.
     answers['verify --json'] = VERIFY;
     await w.command('mnema.refresh')();
     expect(w.bar.backgroundColor).toBeUndefined();
   });
 
-  it('carries the issues mnema verify listed on its error output when it failed, as they came', async () => {
+  it('never runs the text of mnema verify to fill the tooltip: the whole verification is a command of its own', async () => {
+    const w = world({ ...base(), 'verify --json': BROKEN });
+    await settle();
+    expect(calls(w)).not.toContain('verify');
+    expect(w.tooltip()).toContain('[Show the full verification](command:mnema.showVerification)');
+    expect(TOOLTIP_COMMANDS).toContain('mnema.showVerification');
+  });
+
+  it('shows a line for every tree, whatever the number of notes and the number of trees: nothing is cut', async () => {
+    // Before, the tooltip held the first six lines of the text `mnema verify` printed: the public
+    // line and five census lines filled them, and the private tree's line, the seventh, was not shown.
+    const census = Array.from({ length: 5 }, () => ({ kind: 'unnamed-tail' }));
+    const scopes = ['public', 'private', 'global', 'a', 'b', 'c', 'd', 'e', 'f'];
+    const w = world({
+      ...base(),
+      'verify --json': verifyJson(
+        { ok: true, level: 'fully-signed' },
+        scopes.map((scope) => aTree(scope, SIGNED, { ok: true, level: 'fully-signed', census })),
+      ),
+    });
+    await settle();
+    for (const scope of scopes) {
+      expect(w.tooltip(), scope).toContain(`**${scope}**: verified\\, signed`);
+    }
+  });
+
+  it('shows no line for a tree with nothing in it, and none for a tree the command line wrote no line for', async () => {
+    const w = world({
+      ...base(),
+      'verify --json': ok(
+        JSON.stringify({
+          ok: true,
+          record: { ok: true, level: 'fully-signed' },
+          trees: [
+            aTree('public', SIGNED),
+            { kind: 'no-record', scope: 'private', headline: 'no record here' },
+          ],
+        }),
+      ),
+    });
+    await settle();
+    expect(w.tooltip()).toContain('**public**: ');
+    expect(w.tooltip()).not.toContain('private');
+    const older = world({
+      ...base(),
+      'verify --json': ok(
+        JSON.stringify({
+          ok: true,
+          record: { ok: true, level: 'fully-signed' },
+          trees: [{ kind: 'verdict', scope: 'public', result: {} }],
+        }),
+      ),
+    });
+    await settle();
+    expect(older.tooltip()).toContain('**mnema** · fully');
+    expect(older.tooltip()).not.toContain('**public**');
+  });
+
+  it('says a newer mnema wrote lines in the sentence the command line wrote, under its tree', async () => {
+    const sentence =
+      'A newer mnema wrote 2 lines into this record (2 of "x.new"). Update mnema to read them.';
+    const w = world({
+      ...base(),
+      'verify --json': verifyJson({ ok: true, level: 'fully-signed' }, [
+        { ...aTree('public', SIGNED), newerMnema: sentence },
+        aTree('private', SIGNED),
+      ]),
+    });
+    await settle();
+    expect(w.tooltip()).toContain('$(info) A newer mnema wrote 2 lines into this record');
+  });
+
+  it('shows a hash-chain-only tree as information, and a broken one as an error', async () => {
+    const w = world({
+      ...base(),
+      'verify --json': verifyJson({ ok: true, level: 'hash-chain-only' }, [
+        aTree('public', SIGNED),
+        aTree('private', 'local integrity verified (T1 only): no signature was checked', {
+          ok: true,
+          level: 'hash-chain-only',
+        }),
+      ]),
+    });
+    await settle();
+    expect(w.tooltip()).toContain('$(info) **private**: ');
+    expect(w.bar.backgroundColor).toBeUndefined();
+  });
+
+  it('runs the whole verification and the channels when asked, into an output channel, at that moment', async () => {
     const answers: Record<string, CliResult> = {
       ...base(),
-      'verify --json': ok('{"ok": false, "record": {"ok": false, "level": "broken"}}'),
-      verify: {
-        code: 1,
-        stdout: 'public: local integrity FAILED: see issues\n',
-        stderr: '  issue [T1] public tail#3: entry hash mismatch\n',
-      },
+      'verify --verbose': ok(
+        'public: local integrity verified (T1/T2/T4)\ncensus [backup-key] x\n',
+      ),
     };
     const w = world(answers);
     await settle();
-    expect(w.tooltip()).toContain('public: local integrity FAILED: see issues');
-    expect(w.tooltip()).toContain('issue [T1] public tail#3: entry hash mismatch');
+    expect(calls(w)).not.toContain('verify --verbose');
+    await w.command('mnema.showVerification')();
+    expect(calls(w)).toContain('verify --verbose');
+    expect(calls(w).filter((c) => c === 'switch').length).toBe(2);
+    const shown = w.outputs.get('mnema verification');
+    expect(shown?.lines.join('\n')).toContain('mnema verify --verbose');
+    expect(shown?.lines.join('\n')).toContain('census [backup-key] x');
+    expect(shown?.lines.join('\n')).toContain('mnema switch');
+    expect(shown?.lines.join('\n')).toContain('user-corrections');
+    expect(shown?.shown).toBe(true);
   });
 
   it('shows a lens text that carries a command link as plain text, never as a link', async () => {
     const channel = '[judge](command:mnema.accept)';
-    const hostile = `${channel} \`x\` <b>y</b>`;
+    const hostile = channel + ' <b>y</b>';
     const answers: Record<string, CliResult> = {
       ...base(),
       switch: ok(`2 channel(s):\n  ${channel}  off  y\n  brief-document  on  x\n`),
-      verify: ok(`${hostile}\n\`\`\`\n[z](command:mnema.reject)\n`),
+      'verify --json': verifyJson({ ok: true, level: 'fully-signed' }, [
+        { ...aTree('public', hostile), newerMnema: hostile },
+      ]),
     };
     const w = world(answers);
     await settle();
     const tip = w.tooltip();
-    // Outside the code blocks there is no link left: every punctuation mark of the name is escaped.
-    const outside = tip.replace(/(`{3,})\n[\s\S]*?\n\1/g, '');
-    expect(outside).toContain('\\[judge\\]\\(command\\:mnema\\.accept\\)');
-    expect(outside).not.toContain('[judge](command:mnema.accept)');
-    // What `mnema verify` printed is in a fence longer than any run of backticks it carries.
-    expect(tip).toContain('````\n' + `${hostile}\n\`\`\`\n[z](command:mnema.reject)` + '\n````');
+    // There is no link left: every punctuation mark of the name is escaped.
+    expect(tip).toContain('\\[judge\\]\\(command\\:mnema\\.accept\\)');
+    expect(tip).not.toContain('[judge](command:mnema.accept)');
+    expect(tip).not.toContain('<b>');
   });
 
   it('is shown and hidden by the setting, without a reload, and no repository can hide it', async () => {
@@ -1978,7 +2115,7 @@ const withTwo = (): Record<string, CliResult> => ({
 });
 
 describe('the record is read with few processes, and the work waits for what is on screen', () => {
-  const AT_START = ['--version', 'status --json', 'verify --json', 'verify', 'switch'];
+  const AT_START = ['--version', 'status --json', 'verify --json', 'switch'];
   const STACKS = 'stack list --json';
   const verifies = (w: { ran: string[][] }): number =>
     calls(w).filter((c) => c === 'verify --json').length;
@@ -1990,7 +2127,7 @@ describe('the record is read with few processes, and the work waits for what is 
     return w;
   };
 
-  it('starts five processes with two proposals when the stacks are not on screen, six when they are, and asks show for none', async () => {
+  it('starts four processes with two proposals when the stacks are not on screen, five when they are, and asks show for none', async () => {
     const hidden = await started();
     expect(calls(hidden).sort()).toEqual([...AT_START].sort());
     const visible = await started(withTwo(), []);
@@ -2068,7 +2205,6 @@ describe('the record is read with few processes, and the work waits for what is 
     expect(verifies(w)).toBe(1);
     await vi.advanceTimersByTimeAsync(VERIFY_EVERY_MS - 6000);
     expect(verifies(w)).toBe(2);
-    expect(calls(w).filter((c) => c === 'verify').length).toBe(2);
     expect(calls(w).filter((c) => c === 'switch').length).toBe(2);
     // Nothing more is asked once nothing changes.
     await vi.advanceTimersByTimeAsync(60_000);
@@ -2093,10 +2229,10 @@ describe('the record is read with few processes, and the work waits for what is 
     await vi.advanceTimersByTimeAsync(VERIFY_EVERY_MS);
     expect(calls(w).filter((c) => c === STATUS).length).toBe(20);
     expect(verifies(w)).toBe(4);
-    expect(w.ran.length).toBe(20 + 4 * 3);
+    expect(w.ran.length).toBe(20 + 4 * 2);
   });
 
-  it('verifies at once on a refresh, inside the interval, and a refresh costs six processes, the stacks included', async () => {
+  it('verifies at once on a refresh, inside the interval, and a refresh costs five processes, the stacks included', async () => {
     const w = await started();
     w.ran.length = 0;
     await w.command('mnema.refresh')();

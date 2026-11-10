@@ -389,6 +389,8 @@ record has no `record` field). `requirementMet` says whether the level `--requir
 reached. The exit code is the one the prose reading has, and `--json` changes the shape of the
 answer and never the answer. What no `--require` value answers is in `notAnswered`.
 
+Each tree of `trees` also has `headline`, the one line the console shows for it, `short`, the same verdict in plain words without the layer names, and a tree that holds lines a newer mnema wrote has `newerMnema`, the sentence every surface says about them ([`mnema verify`](reference/cli/verify.md)).
+
 **A break is not the only way a record can lie, and the default does not catch the
 others.** This paragraph used to say `verify` exits non-zero "when the record is
 broken" and leave it there, which reads as a promise about forgery. It is not one.
