@@ -240,7 +240,7 @@ claim about the agent hosts is held, and which are not held yet, is in [`docs/ev
   [Porting it to a host](plugin/porting-to-a-host.md)
 - **Project.** [How each claim is held](docs/evidence.md) · [The page that verifies itself](docs/site.md) ·
   [Verify without installing](docs/verify-without-installing.md) · [What comes next](docs/what-comes-next.md) ·
-  [Contributing](CONTRIBUTING.md) · [Build from source](docs/build-from-source.md) ·
+  [North star](docs/north-star.md) · [Contributing](CONTRIBUTING.md) · [Build from source](docs/build-from-source.md) ·
   [Security policy](SECURITY.md) · [Changelog](CHANGELOG.md)
 
 ## License

@@ -101,6 +101,28 @@ the ones a first change usually meets:
 A new guard is expected to come with a case that shows it failing on the defect it exists
 for: a guard that has never been seen to fail looks exactly like one that cannot.
 
+## How changes are made here
+
+Each line is a rule in force in this repository's record; `mnema show ADR-<n>` says why.
+
+- A sentence of [what it proves](docs/what-it-proves.md) has a threat test that fails when the sentence stops being true (ADR-287).
+- No raw error reaches a person and no `catch` is silent (ADR-288).
+- The hot path keeps its budget, one file holds the counts, and the published packages keep the fewest dependencies (ADR-289).
+- CI runs the newcomer's path from the packed tarball (ADR-290).
+- An integrity test runs with the projection cache cold and warm (ADR-291).
+- A new guard is proved by putting the original defect back, and the pull request names that mutation (ADR-292).
+- Lint, typecheck and the coverage gate of the touched package pass before every push (ADR-293).
+- A decision cites the premise it read: a file and line, a URL, or a reproduced probe (ADR-294).
+- One agent's probe is reproduced by another before it is a fact (ADR-295).
+- The review verdict is posted, summarised, on the pull request (ADR-296).
+- A change in behaviour changes its page and the changelog (ADR-297).
+- The architecture page (`docs/architecture.md`, once it exists) maps the packages and their layers (ADR-298).
+- A module's header comment states its invariant and the test that holds it (ADR-299).
+- A comparison with another tool is an honest one, and says when to choose the other (ADR-300).
+- Every delivery an agent hands over is reviewed and adversarially verified, amendments included (ADR-284).
+
+What these serve is on the [north star](docs/north-star.md).
+
 ## Changing a skill
 
 The skills the plugin ships are in [`plugin/skills/`](plugin/skills/). **A change to a skill, or a
