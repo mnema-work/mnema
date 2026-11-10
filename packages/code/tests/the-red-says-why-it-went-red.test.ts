@@ -577,8 +577,11 @@ describe('the instrument is wired to the thing that starts the suite', () => {
     expect(manifest.scripts['why-it-went-red']).toContain('.github/why-it-went-red/verdict.mjs');
     const ci = readFileSync(join(ROOT, '.github/workflows/ci.yml'), 'utf-8');
     expect(ci).toContain('pnpm why-it-went-red');
-    // And it can only ever run after a red, so it cannot turn one green.
-    expect(ci).toMatch(/if: failure\(\)\n\s+continue-on-error: true\n\s+run: pnpm why-it-went-red/);
+    // It runs after the suite, red or green (a retry can keep a run green), and `continue-on-error`
+    // means it can never turn either result into the other.
+    expect(ci).toMatch(
+      /if: success\(\) \|\| failure\(\)\n\s+continue-on-error: true\n\s+run: pnpm why-it-went-red/,
+    );
   });
 
   it('and what a run leaves behind is not committed', () => {
