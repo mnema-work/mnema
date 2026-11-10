@@ -59,7 +59,7 @@ on an identity nobody else has ruled with.
 
 An agent key is a second key of your identity that an agent host signs with, so that a fact it records says
 `which` by a name the record enrolled, not by a name the client announced. Three verbs, in the order you run them
-(the [reference](cli-reference.md) has the rest):
+(the [guide on a second machine and your key](a-second-machine-and-your-key.md#a-key-that-signs-for-its-person-under-a-name) has the rest):
 
 ```sh
 mnema key request --agent claude --anchor <your identity>   # makes the key, prints a line
