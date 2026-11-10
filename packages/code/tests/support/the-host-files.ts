@@ -1388,95 +1388,93 @@ function withTheTable(page: string, base: string, path: string): string {
 // The summary on the front page
 // ---------------------------------------------------------------------------
 
-/** Where the logos of most hosts come from: LobeHub's icons, MIT, one release pinned. */
-const LOBEHUB = 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@1.97.1';
+/** Where the vendors' own logo files are kept, from the root of the repository, with the row that sources each. */
+export const HOST_LOGOS_DIR = 'docs/assets/hosts';
 
-/** A file in a host's own repository, at the commit the host table already pins for it. */
-const RAW = 'https://raw.githubusercontent.com';
+/** A host's logo: the vendor's file in {@link HOST_LOGOS_DIR}, and a second one for a dark page where the vendor gives two. */
+interface Logo {
+  readonly file: string;
+  readonly dark?: string;
+  readonly alt: string;
+  readonly width: number;
+}
 
 /**
  * How each host is shown in the summary: the name a reader knows it by, who makes it and what kind
- * of tool it is, and its own logo (one file for a light page and one for a dark one, where the
- * logo has two). The logos are their owners' marks, linked and not copied into this repository. A
- * host added to the table without a row here does not compile.
+ * of tool it is, and its logo where its vendor publishes a file (the vendor's own, unmodified, in
+ * {@link HOST_LOGOS_DIR}, listed in the SOURCES.md beside it). A host with no `logo` is shown by
+ * its name. A host added to the table without a row here does not compile.
  */
 const SHOWN: {
   readonly [H in HostName]: {
     readonly name: string;
     readonly by: string;
-    readonly light: string;
-    readonly dark?: string;
+    readonly logo?: Logo;
   };
 } = {
   claude: {
     name: 'Claude Code',
     by: 'Anthropic · terminal and editors',
-    light: `${LOBEHUB}/light/claudecode-color.png`,
-    dark: `${LOBEHUB}/dark/claudecode-color.png`,
+    logo: { file: 'claude-icon.svg', alt: 'Claude Code', width: 20 },
   },
   vscode: {
     name: 'VS Code',
     by: 'Microsoft · the agent of the editor',
-    light: 'https://cdn.jsdelivr.net/gh/devicons/devicon@v2.17.0/icons/vscode/vscode-original.svg',
+    logo: { file: 'vscode.svg', alt: 'VS Code', width: 20 },
   },
   cursor: {
     name: 'Cursor CLI',
     by: 'Cursor · command line',
-    light: `${LOBEHUB}/light/cursor.png`,
-    dark: `${LOBEHUB}/dark/cursor.png`,
+    logo: { file: 'cursor-brand-logo-12.svg', alt: 'Cursor CLI', width: 20 },
   },
   codex: {
     name: 'Codex',
     by: 'OpenAI · command line',
-    light: `${LOBEHUB}/light/codex-color.png`,
-    dark: `${LOBEHUB}/dark/codex-color.png`,
   },
   copilot: {
     name: 'Copilot CLI',
     by: 'GitHub · command line',
-    light: `${LOBEHUB}/light/githubcopilot.png`,
-    dark: `${LOBEHUB}/dark/githubcopilot.png`,
+    logo: {
+      file: 'GitHub_Invertocat_Black.svg',
+      dark: 'GitHub_Invertocat_White.svg',
+      alt: 'GitHub',
+      width: 20,
+    },
   },
   opencode: {
     name: 'OpenCode',
     by: 'Anomaly · command line',
-    light: `${LOBEHUB}/light/opencode.png`,
-    dark: `${LOBEHUB}/dark/opencode.png`,
+    logo: { file: 'opencode-works-with-a-dark-20.svg', alt: 'Works with OpenCode', width: 153 },
   },
   gemini: {
     name: 'Gemini CLI',
     by: 'Google · command line',
-    light: `${LOBEHUB}/light/geminicli-color.png`,
-    dark: `${LOBEHUB}/dark/geminicli-color.png`,
+    logo: { file: 'gemini-cli-icon.png', alt: 'Gemini CLI', width: 20 },
   },
   cursorIde: {
     name: 'Cursor',
     by: 'Cursor · editor',
-    light: `${LOBEHUB}/light/cursor.png`,
-    dark: `${LOBEHUB}/dark/cursor.png`,
+    logo: { file: 'cursor-brand-logo-12.svg', alt: 'Cursor', width: 20 },
   },
   antigravity: {
     name: 'Antigravity CLI',
     by: 'Google · command line (`agy`)',
-    light: `${LOBEHUB}/light/antigravity-color.png`,
-    dark: `${LOBEHUB}/dark/antigravity-color.png`,
+    logo: { file: 'antigravity-favicon.svg', alt: 'Antigravity CLI', width: 20 },
   },
   droid: {
     name: 'Factory Droid',
     by: 'Factory · command line',
-    light: `${RAW}/Factory-AI/factory/c6ea47082007a32a8a76bb99da42e387565f119a/docs/favicon.svg`,
+    logo: { file: 'factory-favicon.svg', alt: 'Factory Droid', width: 20 },
   },
   qwen: {
     name: 'Qwen Code',
     by: 'Qwen · command line',
-    light: `${LOBEHUB}/light/qwen-color.png`,
-    dark: `${LOBEHUB}/dark/qwen-color.png`,
+    logo: { file: 'qwen-code-logo.svg', alt: 'Qwen Code', width: 20 },
   },
   goose: {
     name: 'Goose',
     by: 'Agentic AI Foundation · desktop and command line',
-    light: `${LOBEHUB}/light/goose.png`,
-    dark: `${LOBEHUB}/dark/goose.png`,
+    logo: { file: 'goose-logo.svg', alt: 'Goose', width: 20 },
   },
 };
 
@@ -1520,12 +1518,14 @@ function whatItGets(name: HostName): string {
   return under;
 }
 
-/** A host's logo, the dark one where the page is dark. */
-function logoOf(name: HostName): string {
-  const shown = SHOWN[name];
-  const img = `<img src="${shown.light}" width="24" height="24" alt="${shown.name}">`;
-  if (shown.dark === undefined) return img;
-  return `<picture><source media="(prefers-color-scheme: dark)" srcset="${shown.dark}">${img}</picture>`;
+/** A host's logo, for a page at `base` from the root: the dark file where the page is dark. Empty where the host has none. */
+function logoOf(name: HostName, base: string): string {
+  const logo = SHOWN[name].logo;
+  if (logo === undefined) return '';
+  const at = (file: string) => `${base}${HOST_LOGOS_DIR}/${file}`;
+  const img = `<img src="${at(logo.file)}" width="${logo.width}" height="20" alt="${logo.alt}">`;
+  if (logo.dark === undefined) return img;
+  return `<picture><source media="(prefers-color-scheme: dark)" srcset="${at(logo.dark)}">${img}</picture>`;
 }
 
 /** The heading of `docs/hosts.md` for a host this repository has no plugin for. */
@@ -1539,7 +1539,7 @@ export function hostSummary(base: string): string {
     const at = HOSTS[name].install.at;
     const install = `[${at === ANY_HOST ? 'MCP server' : 'Plugin'}](${base}docs/hosts.md#${at})`;
     const host = `**${shown.name}**<br><sub>${shown.by}</sub>`;
-    return `| ${logoOf(name)} | ${host} | **${rung}** | ${whatItGets(name)} | ${install} |`;
+    return `| ${logoOf(name, base)} | ${host} | **${rung}** | ${whatItGets(name)} | ${install} |`;
   });
   return [
     '| | Host | Rung | What it gets | Install |',
