@@ -268,8 +268,10 @@ function whatTheCallDid(
   // THE WRITER'S NOTE OF THE LAST ENTRY IT WROTE TO ITS TAIL (`locks/<tailId>.head`, ADR-123) is
   // replaced by every write that appends, so its earlier bytes go: it is machinery beside the
   // tail's lock, never read by a reader, and losing it costs the next write a new tail, never a
-  // fact. It is excused from `destroyed` by its shape and nothing else, and only for a call that
-  // appends anyway: a read that touched it is still in `changed`.
+  // fact. The same note signed with the tail's key (`<tailId>.head.sig`, ADR-301) is replaced with
+  // it, and also when only the coverage moved. Both are excused from `destroyed` by their shape and
+  // nothing else, and only for a call that appends anyway: a read that touched one is still in
+  // `changed`.
   return {
     changed: changed.filter((at) => at !== counted && !ownCache(at)).sort(),
     destroyed: destroyed
@@ -278,9 +280,9 @@ function whatTheCallDid(
   };
 }
 
-/** The writer's note of the last entry it wrote to a tail: `locks/<tailId>.head`. */
+/** The writer's notes of the last entry it wrote to a tail: `locks/<tailId>.head` and `.head.sig`. */
 function isTheKeptHead(path: string): boolean {
-  return /(?:^|[\\/])locks[\\/][0-9a-f]+-[0-9a-f]+\.head$/.test(path);
+  return /(?:^|[\\/])locks[\\/][0-9a-f]+-[0-9a-f]+\.head(?:\.sig)?$/.test(path);
 }
 
 /** The path, relative to the sandbox, of the count the code keeps for a project. */

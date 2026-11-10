@@ -1973,8 +1973,13 @@ describe('both readers over a checkpoints file whose last line was torn by a cra
       first.append(identityFounded(envelope(fp), { foundingFp: fp }));
       first.checkpoint();
       first.append(accountLinked(envelope(fp), { service: 'sigstore', account }));
-      first.checkpoint();
       const tail = readdirSync(join(record, 'tails'))[0] as string;
+      // A crash while signing ends the process before the hold's notes are kept: the signed note
+      // still says the coverage it had before this checkpoint (`kept-head.ts`).
+      const note = join(record, 'locks', `${tail}.head.sig`);
+      const noted = readFileSync(note);
+      first.checkpoint();
+      writeFileSync(note, noted);
       const file = join(record, 'tails', tail, 'checkpoints.jsonl');
       const whole = readFileSync(file);
       const lastStart = whole.lastIndexOf(0x0a, whole.length - 2) + 1;

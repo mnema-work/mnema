@@ -65,7 +65,7 @@ describe('the install line', () => {
   it('is the line of the README quick start, and the README says nothing of 404 or the source', () => {
     const readme = read('README.md');
     const quick = readme.slice(readme.indexOf('## Quick start'), readme.indexOf('## How it works'));
-    expect(quick).toContain(`${INSTALL_LINE} `);
+    expect(quick).toContain(`${INSTALL_LINE}\n`);
     expect(readme).not.toMatch(NOT_ON_NPM);
     expect(readme).not.toMatch(RELEASE_URL);
     expect(readme).not.toMatch(/releases\/tag|\/releases"/);

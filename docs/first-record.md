@@ -61,7 +61,7 @@ mnema decision record "Keep money as integer cents" "Float sums drift; cents are
 #>   Landed in the public tree: committed with the repository, so it reaches every clone.
 #> ADR-1 is addressed at no path; nothing was linked. To say which files it governs:
 #>   mnema link 01a0af84-7eab-7000-8888-79c0dd5690e2 <path> --rel governs
-ADR=ADR-1   # replace with the number printed on the line above
+ADR=ADR-1
 mnema decision move accept "$ADR" --note "Agreed in review."
 #> Decision ADR-1 (01a0af84-7eab-7000-8888-79c0dd5690e2) → accepted
 ```

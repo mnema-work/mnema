@@ -531,6 +531,34 @@ describe('governance: the relation that refuses a write is a walk of its own', (
   });
 });
 
+describe('governance: the cost of a read does not grow with the rules it describes', () => {
+  it('lists the whole decision table a constant number of times however many rules govern the path', () => {
+    const reads = (rules: number): number => {
+      const b = bench();
+      for (let i = 0; i < rules; i += 1) {
+        birthDecision(b, `dec-${i}`, `rule ${i}`);
+        link(b, `dec-${i}`, 'src/collate', 'governs');
+      }
+      const held = tree(b);
+      let listed = 0;
+      const list = held.cache.listDecisions.bind(held.cache);
+      held.cache.listDecisions = () => {
+        listed += 1;
+        return list();
+      };
+      const reading = governingRules([held], asking('src/collate/fold.ts', ['src/collate']));
+      expect(reading.rules).toHaveLength(rules);
+      return listed;
+    };
+
+    // Two whole-table readings per relation asked (acceptances, replacements), three relations: a
+    // constant of the read. A reading per rule described would make the second number 12 more.
+    const few = reads(1);
+    expect(few).toBeLessThanOrEqual(6);
+    expect(reads(12)).toBe(few);
+  });
+});
+
 describe('pathInProject', () => {
   it('spells a path as an address spells it, and says nothing for what is not this project', () => {
     const root = '/work/repo';

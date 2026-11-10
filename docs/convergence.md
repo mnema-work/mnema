@@ -12,6 +12,10 @@ Ana records a decision and commits it. Bob clones the repository. Neither has pu
 tail when Ana rejects the decision and Bob, later by the clock, accepts it. Each machine keeps its
 own key under `$MNEMA_HOME`, as two machines do.
 
+`init --yes` asks nothing. Run at a terminal without it, `init` asks whether an agent may accept what you choose and records
+the answer as a decision of its own, so the first decision you record is `ADR-2`, and the commands below, which name
+`ADR-1`, would name init's decision instead.
+
 ```sh
 mkdir two-machines
 cd two-machines
@@ -20,7 +24,7 @@ cd two-machines
 git init ana
 cd ana
 export MNEMA_HOME="$PWD/../ana-home"
-mnema init
+mnema init --yes
 #> …
 mnema decision record "Use SQLite for the cache" "Embedded, and fast enough at our sizes."
 #> Recorded decision ADR-1 (01a14265-a017-7000-a83b-c9516d78ff90)
@@ -36,7 +40,7 @@ cd ..
 git clone ana bob
 cd bob
 export MNEMA_HOME="$PWD/../bob-home"
-mnema init
+mnema init --yes
 #> …
 
 # On Ana's machine, ADR-1 is rejected.

@@ -146,6 +146,8 @@ CREATE INDEX IF NOT EXISTS idx_decisions_state ON decisions (state);
 -- The adr label is not unique (a collision is possible and reported), so this
 -- index speeds the collision scan and by-label lookups, not a uniqueness guard.
 CREATE INDEX IF NOT EXISTS idx_decisions_adr ON decisions (adr);
+-- Who replaced this one: answered per rule read, so it is a lookup and not a scan.
+CREATE INDEX IF NOT EXISTS idx_decisions_superseded_by ON decisions (superseded_by);
 
 CREATE TABLE IF NOT EXISTS memories (
   -- The memory's id (the event subject). One row per captured memory.

@@ -602,8 +602,8 @@ function alsoSupersededBy(
 ): { readonly alsoSupersedes?: readonly NamedDecision[] } {
   const others = new Map<string, DecisionProjection>();
   for (const cache of caches) {
-    for (const other of cache.listDecisions()) {
-      if (other.supersededBy === decision.id && other.id !== decision.supersedes) {
+    for (const other of cache.listDecisionsSupersededBy(decision.id)) {
+      if (other.id !== decision.supersedes) {
         others.set(other.id, other);
       }
     }

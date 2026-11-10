@@ -75,14 +75,18 @@ was not changed since it was signed. What is measured, and what is not, is on [t
 ## Quick start
 
 ```sh
-npm i -g @mnema/code                              # the binary
+npm i -g @mnema/code
 cd your-repository
-mnema init                                        # founds the record in .mnema/
+mnema init
 ADR=$(mnema decision record "Keep money as integer cents" "Float sums drift; cents are exact." | grep -o -m1 'ADR-[0-9]*')
-mnema decision move accept "$ADR" --note "Agreed in review."  # a decision enters proposed; accepting puts it in force
-mnema link "$ADR" src/billing --rel refuses-a-write            # the rule, addressed at a path
-mnema verify   # reads the signed record; one line saying it is intact is the green
+mnema decision move accept "$ADR" --note "Agreed in review."
+mnema link "$ADR" src/billing --rel refuses-a-write
+mnema verify
 ```
+
+In order: the binary; the record founded in `.mnema/`; a decision, which enters proposed; accepting it, which puts it
+in force; the rule, addressed at a path; and `verify`, which reads the signed record, one line saying it is intact
+being the green. The block has no comments so it can be pasted into any shell, macOS's zsh included.
 
 No agent has run yet: that is the record, a rule in force, and the proof. `ADR` holds the number
 mnema printed for the decision you just recorded. In fish, whose

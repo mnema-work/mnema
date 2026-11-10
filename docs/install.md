@@ -24,8 +24,10 @@ its `bin` on the `PATH`:
 
 ```sh
 npm i -g --prefix ~/.local @mnema/code
-export PATH="$HOME/.local/bin:$PATH"     # add this line to your shell's startup file
+export PATH="$HOME/.local/bin:$PATH"
 ```
+
+Add the `export` line to your shell's startup file so it lasts.
 
 To update, run the same install again. To run the `main` branch instead of the published version,
 see [Building it from source](build-from-source.md).

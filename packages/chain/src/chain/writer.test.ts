@@ -19,6 +19,7 @@
 
 import {
   appendFileSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -485,21 +486,28 @@ describe('the writer resumes from the end of the tail', () => {
     expect(result.tails[0]?.checkpointedThrough).toBe(5);
   });
 
-  it('refuses to sign when the buffered events do not fill the range', () => {
+  it('does not sign a range a line is missing from: the events it finds there are not its own', () => {
     const w = openFounded({ maxUnsignedEvents: NEVER });
     appendTasks(w, 3); // seq 0..3, none of them covered
+    const tail = tailIdOf();
 
     // A lost line is a gap: the last entry still says seq 3, so the range is
     // 0..3, but only three events read back. Signing a content root over three
-    // events while claiming four would be a silent break of the proof.
-    const segment = segmentPath(layout(), tailIdOf(), 1);
+    // events while claiming four would be a silent break of the proof. THIS USED TO BE
+    // REFUSED AT THE SIGNING, by the count of the buffer against the range; the recovery now
+    // hashes every event it finds above the coverage again, seq by seq, before it may sign one,
+    // so a gap is not this installation's end and the write goes to a new tail
+    // (`a-history-rewritten-without-the-key-is-never-signed.test.ts`).
+    const segment = segmentPath(layout(), tail, 1);
     const lines = readFileSync(segment, 'utf-8')
       .split('\n')
       .filter((line) => line.length > 0);
     writeFileSync(segment, `${[lines[0], lines[2], lines[3]].join('\n')}\n`, 'utf-8');
 
     const resumed = openChain({ maxUnsignedEvents: NEVER });
-    expect(() => resumed.checkpoint()).toThrow(/seq 0\.\.3: the range covers 4 event\(s\) but 3/);
+    expect(resumed.checkpoint()).toBeNull();
+    expect(resumed.tail).not.toBe(tail);
+    expect(existsSync(checkpointsPath(layout(), tail))).toBe(false);
   });
 });
 
@@ -791,8 +799,9 @@ describe('a tail is born at its first append, not when its writer opens', () => 
       [
         `keys/${w.signerFingerprint}.inst`,
         `keys/${w.signerFingerprint}.pub`,
-        // The note of the last entry written (`kept-head.ts`), in `locks/`, out of the record.
+        // The notes of the last entry written (`kept-head.ts`), in `locks/`, out of the record.
         `locks/${w.tail}.head`,
+        `locks/${w.tail}.head.sig`,
         `tails/${w.tail}/000001.jsonl`,
         `tails/${w.tail}/tailproof.json`,
       ].sort(),

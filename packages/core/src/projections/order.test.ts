@@ -430,10 +430,13 @@ describe('chainArrivals: a break planted at the boundary', () => {
     const file = join(tails, tail, '000001.jsonl');
     const linesOf = (): string[] => readFileSync(file, 'utf-8').trimEnd().split('\n');
     const base = linesOf();
-    // The writer's note of the last entry it wrote, restored with the segment below as a backup
-    // restored whole would: without it the second branch goes to a tail of its own.
+    // The writer's notes of the last entry it wrote, the clear one and the signed one, restored
+    // with the segment below as a backup restored whole would: without them the second branch
+    // goes to a tail of its own.
     const note = join(rootA, 'locks', `${tail}.head`);
     const baseNote = readFileSync(note);
+    const signedNote = join(rootA, 'locks', `${tail}.head.sig`);
+    const baseSignedNote = readFileSync(signedNote);
 
     // Branch one: a fourth fact, kept for its LINE alone.
     const w1 = openChainForWriting(rootA, { keyRoot: rootA });
@@ -443,6 +446,7 @@ describe('chainArrivals: a break planted at the boundary', () => {
     // Branch two, from the same three facts: a different fourth, then a fifth on top of it.
     writeFileSync(file, `${base.join('\n')}\n`, 'utf-8');
     writeFileSync(note, baseNote);
+    writeFileSync(signedNote, baseSignedNote);
     const w2 = openChainForWriting(rootA, { keyRoot: rootA });
     w2.append(taskCreated(env('t-4b', '2026-07-21T00:00:03.000Z'), { title: 'other branch' }));
     w2.append(taskCreated(env('t-5', '2026-07-21T00:00:04.000Z'), { title: 'fifth' }));
@@ -484,8 +488,10 @@ describe('chainArrivals: a break planted at the boundary', () => {
     const tail = readdirSync(tails)[0] as string;
     const file = join(tails, tail, '000001.jsonl');
     const note = join(rootA, 'locks', `${tail}.head`);
+    const signedNote = join(rootA, 'locks', `${tail}.head.sig`);
     const base = readFileSync(file, 'utf-8');
     const baseNote = readFileSync(note);
+    const baseSignedNote = readFileSync(signedNote);
     w.append(taskCreated(env('t-3a', '2026-07-21T00:00:02.000Z'), { title: 'one side' }));
     const before = chainReplay({ root: rootA }, upcasters);
     const oneSide = readFileSync(file, 'utf-8');
@@ -494,6 +500,7 @@ describe('chainArrivals: a break planted at the boundary', () => {
     // then both sides kept, ours first.
     writeFileSync(file, base);
     writeFileSync(note, baseNote);
+    writeFileSync(signedNote, baseSignedNote);
     openChainForWriting(rootA, { keyRoot: rootA }).append(
       taskCreated(env('t-3b', '2026-07-21T00:00:02.000Z'), { title: 'other side' }),
     );
