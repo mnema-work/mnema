@@ -48,6 +48,25 @@ describe('the short line of a tree', () => {
   });
 });
 
+describe('the cut of a long issue', () => {
+  const failed = (detail: string) => shortLine({ level: 'broken', issues: [issue(detail)] });
+
+  it('keeps an issue of exactly 100 characters whole, and cuts one of 101', () => {
+    expect(failed('x'.repeat(100))).toBe(`failed: ${'x'.repeat(100)}`);
+    expect(failed('x'.repeat(101))).toBe(`failed: ${'x'.repeat(100)}...`);
+  });
+
+  it('counts an astral character as one and never leaves half of it', () => {
+    const rocket = String.fromCodePoint(0x1f680);
+    // The 100th character is astral: a cut by UTF-16 code unit would stop in the middle of it.
+    const cut = failed(`${'x'.repeat(99)}${rocket}tail`);
+    expect(cut).toBe(`failed: ${'x'.repeat(99)}${rocket}...`);
+    expect(cut).not.toMatch(/[\ud800-\udbff](?![\udc00-\udfff])/);
+    // 100 astral characters are 100 characters, not 200.
+    expect(failed(rocket.repeat(100))).toBe(`failed: ${rocket.repeat(100)}`);
+  });
+});
+
 describe('the headline of a tree, as text', () => {
   const clauses = [
     { of: 'tails', text: '2 tail(s)' },

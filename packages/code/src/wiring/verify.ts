@@ -1265,7 +1265,10 @@ export function shortLine(result: Pick<VerifyResult, 'level' | 'issues'>): strin
   const first = result.issues[0];
   if (result.level !== 'broken' || first === undefined) return SHORT_BY_LEVEL[result.level];
   const said = oneLine(first.detail);
-  const cut = said.length > SHORT_ISSUE_AT ? `${said.slice(0, SHORT_ISSUE_AT)}...` : said;
+  // Cut on a code point, so a character outside the BMP is never left as half a surrogate pair.
+  const points = Array.from(said);
+  const cut =
+    points.length > SHORT_ISSUE_AT ? `${points.slice(0, SHORT_ISSUE_AT).join('')}...` : said;
   const more = result.issues.length - 1;
   return `failed: ${cut}${more > 0 ? ` (and ${more} more)` : ''}`;
 }
