@@ -2,7 +2,7 @@
 /**
  * THE HOSTS TABLE SHOWS EACH HOST BY ITS VENDOR'S OWN LOGO FILE, OR BY ITS NAME.
  *
- * Every image in the README's table of hosts is a file of `docs/assets/hosts/`, and that folder's
+ * Every image in the README's table of hosts is a file of `assets/hosts/`, and that folder's
  * SOURCES.md has a row for the file with the hash of its bytes. No image of the table is a link to
  * a third party's redraw of a logo (an icon CDN) or to a file of somebody else's repository, and
  * a host whose vendor publishes no logo file (Codex) has no image at all.
@@ -14,7 +14,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const ROOT = join(import.meta.dirname, '..', '..', '..');
-const DIR = 'docs/assets/hosts';
+const DIR = 'assets/hosts';
 const BEGIN = '<!-- The host summary below is generated';
 const END = '<!-- End of the generated host summary. -->';
 

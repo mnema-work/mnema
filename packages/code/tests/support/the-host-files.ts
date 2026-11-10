@@ -1389,7 +1389,7 @@ function withTheTable(page: string, base: string, path: string): string {
 // ---------------------------------------------------------------------------
 
 /** Where the vendors' own logo files are kept, from the root of the repository, with the row that sources each. */
-export const HOST_LOGOS_DIR = 'docs/assets/hosts';
+export const HOST_LOGOS_DIR = 'assets/hosts';
 
 /** A host's logo: the vendor's file in {@link HOST_LOGOS_DIR}, and a second one for a dark page where the vendor gives two. */
 interface Logo {
@@ -1474,7 +1474,7 @@ const SHOWN: {
   goose: {
     name: 'Goose',
     by: 'Agentic AI Foundation · desktop and command line',
-    logo: { file: 'goose-logo.svg', alt: 'Goose', width: 20 },
+    logo: { file: 'logo_light.png', dark: 'logo_dark.png', alt: 'Goose', width: 20 },
   },
 };
 
