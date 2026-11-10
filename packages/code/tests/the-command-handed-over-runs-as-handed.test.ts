@@ -491,7 +491,7 @@ export const NAMES_THAT_NEED_MORE: Readonly<
   },
   'docs/reference/cli/stack.md: mnema stack add': {
     times: 1,
-    why: 'the verb named in the page of the stack family, as what writes the adoption kinds and takes a folder, an archive or an address; the block above hands the line over with <source>',
+    why: 'the verb named in the page of the stack family, as what writes the adoption kinds and takes a folder, an archive or an address; the block above hands the line over with `../evidence-first --dry-run`',
   },
   'docs/reference/cli/stack.md: mnema stack remove': {
     times: 1,
@@ -535,7 +535,7 @@ export const NAMES_THAT_NEED_MORE: Readonly<
   },
   'docs/cli-reference.md: mnema show': {
     times: 1,
-    why: 'the read named in sentences about what it serves and prints, in the overview and in the tour; the blocks of the tour hand its lines over',
+    why: 'the read named in sentences about what it serves and prints; every one of them is in the part of the page on the terminal, and the blocks there hand its lines over',
   },
   'docs/reference/cli/recall.md: mnema retract': {
     times: 1,
@@ -695,7 +695,7 @@ export const NAMES_THAT_NEED_MORE: Readonly<
   },
   'docs/a-record-inheriting-another.md: mnema rules': {
     times: 2,
-    why: 'the read named in the passages on inherited rules, as what labels a rule inherited and counts it apart from the project’s own; the lines that hand it over, with a path, are in the tour',
+    why: 'the read named in the passages on inherited rules, as what labels a rule inherited and counts it apart from the project’s own; the line that hands it over, with a path, is in the passage on how an inherited rule is read; the two it names are prose naming the verb',
   },
   'docs/a-record-inheriting-another.md: mnema show': {
     times: 1,
