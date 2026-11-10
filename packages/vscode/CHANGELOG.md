@@ -9,7 +9,7 @@
   a tree that is not clean, and under it the command line's sentence when a newer mnema wrote lines this one does not
   read. The channels off are named without the link to the page about them.
 - A new command, `mnema: Show Full Verification`, linked from the tooltip, runs `mnema verify --verbose` and
-  `mnema switch` at that moment and shows what they printed in the output channel `mnema verification`.
+  `mnema switch` at that moment and shows what they printed in the "mnema verification" output channel.
 - A reading is one `mnema verify --json` and one `mnema switch` (it was a second `mnema verify` as well).
 - It needs a command line that serves those lines (the release that adds `headline` to the trees of `verify --json`); with an older
   one the tooltip shows the level and no line per tree, and says nothing in their place.

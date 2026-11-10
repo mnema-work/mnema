@@ -62,7 +62,6 @@ import { fact } from '../presentation/detail.js';
 import type { Line, Severity } from '../presentation/line.js';
 import type { Render } from '../presentation/render.js';
 import { type Clause, clauseStatement, statement } from '../presentation/verdict.js';
-import { newerLinesSentence } from '../record-integrity.js';
 import { whenLogged } from '../sigstore/when-logged.js';
 import { globalTreeGloss } from '../vocabulary.js';
 import { here } from './context.js';
@@ -506,6 +505,7 @@ export function registerVerify(program: Command, wiring: Wiring): Declared {
               set,
               set.requirementMet && set.coverageMet,
               NOT_ANSWERED_BY_ANY_REQUIREMENT,
+              (await import('../record-integrity.js')).newerLinesSentence,
             );
             return;
           }
@@ -566,6 +566,7 @@ export function registerVerify(program: Command, wiring: Wiring): Declared {
             },
             result.requirementMet && grewOnly,
             NOT_ANSWERED_BY_ANY_REQUIREMENT,
+            (await import('../record-integrity.js')).newerLinesSentence,
           );
           return;
         }
@@ -854,6 +855,7 @@ function reportAsJson(
   reading: { readonly ok: true; readonly record?: { readonly ok: boolean } },
   met: boolean,
   notAnswered: readonly string[],
+  newerLinesSentence: SaysNewerLines,
 ): void {
   const { io } = wiring;
   // `ok` is overwritten with the verdict: the reading carries `ok: true` for "the command ran",
@@ -861,7 +863,7 @@ function reportAsJson(
   const { ok: _ran, ...rest } = reading;
   io.out(
     JSON.stringify(
-      { ok: reading.record?.ok === true, ...withTreeLines(rest), notAnswered },
+      { ok: reading.record?.ok === true, ...withTreeLines(rest, newerLinesSentence), notAnswered },
       null,
       2,
     ),
@@ -1186,6 +1188,13 @@ export function treeHeadline(tree: TreeReport, depth: number): Line {
 }
 
 /**
+ * The sentence every surface says about lines a newer mnema wrote. It is handed in rather than
+ * imported: the module that words it reaches the domain, and this file is on the floor of every
+ * invocation (the verb loads it only when `--json` is asked for).
+ */
+type SaysNewerLines = typeof import('../record-integrity.js').newerLinesSentence;
+
+/**
  * WHAT `--json` SAYS OF EACH TREE IN A LINE, for a surface with room for one and no business wording
  * it: `headline` is the text {@link treeHeadline} renders (one source, so the line and the panel
  * cannot come to say two things), and `newerMnema` is the sentence every surface says about lines a
@@ -1194,8 +1203,8 @@ export function treeHeadline(tree: TreeReport, depth: number): Line {
  *
  * A reading is one project's (`trees`) or a set's (`projects`, each with its `trees`).
  */
-function withTreeLines<T extends object>(reading: T): T {
-  const lined = (trees: readonly TreeReport[]) => trees.map(treeWithLines);
+function withTreeLines<T extends object>(reading: T, newer: SaysNewerLines): T {
+  const lined = (trees: readonly TreeReport[]) => trees.map((tree) => treeWithLines(tree, newer));
   const out: Record<string, unknown> = { ...(reading as Record<string, unknown>) };
   if (Array.isArray(out.trees)) out.trees = lined(out.trees as TreeReport[]);
   if (Array.isArray(out.projects)) {
@@ -1206,7 +1215,10 @@ function withTreeLines<T extends object>(reading: T): T {
   return out as T;
 }
 
-function treeWithLines(tree: TreeReport): TreeReport & { headline: string; newerMnema?: string } {
+function treeWithLines(
+  tree: TreeReport,
+  newerLinesSentence: SaysNewerLines,
+): TreeReport & { headline: string; newerMnema?: string } {
   if (tree.kind === 'no-record') return { ...tree, headline: NO_RECORD_HEADLINE };
   const unread = tree.result.census.filter((note) => note.kind === 'unread-kind');
   const lines = unread.reduce((sum, note) => sum + note.lines, 0);

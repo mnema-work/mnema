@@ -1429,6 +1429,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-verdict-says-what-it-covered.test.ts': 7,
   'packages/code/tests/the-verdict-tells-the-truth.test.ts': 7,
   'packages/code/tests/the-verifier-a-page-publishes-runs.test.ts': 8,
+  'packages/code/tests/the-verify-json-says-each-tree-in-a-line.test.ts': 8,
   'packages/code/tests/the-version-is-one-number.test.ts': 7,
   'packages/code/tests/the-versions-are-compared-alike.test.ts': 4,
   'packages/code/tests/the-wait-asks-the-page.test.ts': 2,

@@ -149,8 +149,7 @@ the `mnema` command line, which the extension does not bring: `@mnema/code` stay
   info icon in front, and a tree with nothing in it has no line), a link to the container with the
   number awaiting, the channels off by name, the time of the reading, and links to Refresh, to the
   setting and to Show the full verification. That last one runs `mnema verify --verbose` and
-  `mnema switch` when it is clicked and shows what they printed in the output channel `mnema
-  verification`: the census notes, the issues and what each channel carries are there, not in the
+  `mnema switch` when it is clicked and shows what they printed in the "mnema verification" output channel: the census notes, the issues and what each channel carries are there, not in the
   tooltip. What a level covers is what the command line says, and the extension adds no sentence of
   its own about it. The words that came from the command
   line or from the record are escaped, so a name or a line written by someone else cannot become a
