@@ -194,7 +194,8 @@ function everyPublishedPassage(): ReadonlyMap<string, string> {
  */
 const PAGES_PUBLISHING: Readonly<Record<string, number>> = {
   'docs/first-record.md': 1,
-  'docs/cli-reference.md': 2,
+  'docs/cli-reference.md': 1,
+  'docs/reference/cli/brief.md': 1,
   'plugin/README.md': 1,
   'plugin/captures/antigravity-cli-script.md': 1,
 };

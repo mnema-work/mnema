@@ -429,7 +429,7 @@ export const NAMES_THAT_NEED_MORE: Readonly<
     times: 3,
     why: 'the verb named in prose, as the one that cuts a tail (and, beside the CI recipe, as the cut that recipe fails on by design); its own section hands the line over',
   },
-  'docs/cli-reference.md: mnema key restore': {
+  'docs/what-it-proves.md: mnema key restore': {
     times: 1,
     why: 'the verb named in the table row; the same row hands the whole restore over as a line',
   },
@@ -453,9 +453,9 @@ export const NAMES_THAT_NEED_MORE: Readonly<
     times: 1,
     why: 'the merge driver named in the entry, as the verb git runs for a tail file; git hands it the files, and a person never types it',
   },
-  'docs/cli-reference.md: mnema record merge-tail': {
+  'docs/committing-the-record.md: mnema record merge-tail': {
     times: 1,
-    why: 'the merge driver named in prose, as what a tail file merges through; git hands it the files, and a person never types it',
+    why: 'the merge driver named in the entry, as the verb git runs for a tail file; git hands it the files, and a person never types it',
   },
   'CHANGELOG.md: mnema retract': {
     times: 1,
@@ -489,15 +489,15 @@ export const NAMES_THAT_NEED_MORE: Readonly<
     times: 1,
     why: 'the verb named in the line on the skills and agents a project adopts; the package page hands the line over',
   },
-  'docs/cli-reference.md: mnema stack add': {
+  'docs/reference/cli/stack.md: mnema stack add': {
     times: 1,
-    why: 'the verb named in prose, as the one that reads a stack and shows its plan; the block above it hands the line over, with --dry-run',
+    why: 'the verb named, beside its removal, as what writes the adoption kinds, and in the entry on the index that comes with the package, where it takes the folder of an entry; the entry above hands the line over with <source>',
   },
-  'docs/cli-reference.md: mnema stack remove': {
+  'docs/reference/cli/stack.md: mnema stack remove': {
     times: 1,
-    why: 'the verb named as the one that keeps every file changed since it was written; its `--help` hands the name it needs',
+    why: 'the verb named, beside its adoption, as what writes the removal kind; its `--help` hands the name it needs',
   },
-  'docs/cli-reference.md: mnema stack enable': {
+  'docs/reference/cli/stack.md: mnema stack enable': {
     times: 1,
     why: 'the verb named as what turns a declared hook on, at a terminal; its `--help` hands the stack and the hook it needs',
   },
@@ -534,15 +534,19 @@ export const NAMES_THAT_NEED_MORE: Readonly<
     why: 'the verb named in the sentence about what leaves the record as a file',
   },
   'docs/cli-reference.md: mnema show': {
-    times: 5,
+    times: 1,
     why: 'the read named in sentences about what it serves; its lines are in the reading section',
   },
-  'docs/cli-reference.md: mnema retract': {
+  'docs/reference/cli/recall.md: mnema retract': {
     times: 1,
-    why: 'the verb named in a sentence about taking a note back, with the id and the reason it takes',
+    why: 'the verb named in the entry that says only the identity that wrote a note retracts it; the package page names the id and the reason it takes',
   },
-  'docs/cli-reference.md: mnema observe': {
-    times: 2,
+  'docs/a-second-machine-and-your-key.md: mnema observe': {
+    times: 1,
+    why: 'a verb named beside `mnema memory`, in the same list, and again where the pages say that both go to the private tree when an agent asked for by the environment writes without `--scope`',
+  },
+  'docs/recording-decisions.md: mnema observe': {
+    times: 1,
     why: 'a verb named beside `mnema memory`, in the same list, and again where the pages say that both go to the private tree when an agent asked for by the environment writes without `--scope`',
   },
   'CHANGELOG.md: mnema observe': {
@@ -565,12 +569,12 @@ export const NAMES_THAT_NEED_MORE: Readonly<
     times: 2,
     why: 'the verb named in the entry on the rules a project inherits, beside `rules`, and in the entry on the VS Code extension that shows what it printed in a document; the reference hands it over with a path or a commit',
   },
-  'docs/cli-reference.md: mnema before-a-write': {
+  'docs/a-record-inheriting-another.md: mnema before-a-write': {
     times: 1,
-    why: 'the command door of the gate, named in the paragraph on what an inherited rule reaches; the section on hosts hands it over with its host',
+    why: 'the hook named in the entry that says it reads the agent from the environment, the flag winning, and in the one on the rules a project inherits; the package page hands the whole line over, with its host',
   },
   'docs/cli-reference.md: mnema rules': {
-    times: 3,
+    times: 1,
     why: 'the verb named where the paragraphs on inherited rules say what it labels inherited and what it counts apart, and among the readings that say a tail of another record was left out; the first of them hands it over with the path',
   },
   'docs/features.md: mnema rules': {
@@ -613,13 +617,13 @@ export const NAMES_THAT_NEED_MORE: Readonly<
     times: 1,
     why: 'the verb named in the opening sentence of the section that brings the files in; the block under it hands the whole line over, with a directory',
   },
-  'docs/cli-reference.md: mnema decision record': {
+  'docs/reference/cli/instructions.md: mnema decision record': {
     times: 1,
     why: 'the command the mnema instructions name for a session without the tools; the block itself hands the whole line over, markers and all',
   },
-  'docs/cli-reference.md: mnema decision import': {
+  'docs/importing-the-decisions-you-already-wrote.md: mnema decision import': {
     times: 1,
-    why: 'the verb named in the sentence about reading decision files; its block has the line',
+    why: 'the verb named in the same list, as what reads decision documents; the package page hands the line over, with a directory',
   },
   'packages/code/src/edit-refuses-a-write.ts: mnema show': {
     times: 2,
@@ -688,6 +692,46 @@ export const NAMES_THAT_NEED_MORE: Readonly<
   'packages/vscode/README.md: mnema why': {
     times: 1,
     why: 'names the verb whose output the document of a file holds, in the sentence about what it printed; the reference hands it over with a path or a commit',
+  },
+  'docs/a-record-inheriting-another.md: mnema rules': {
+    times: 2,
+    why: 'the read named in prose, as what the Action asks about each changed file; the same page hands the whole line over, with its path and `--json`',
+  },
+  'docs/a-record-inheriting-another.md: mnema show': {
+    times: 1,
+    why: 'the read named in the known limits of the entry on the rules a project inherits, as one that does not list the addresses the origin holds, in the entry on the VS Code extension that no longer asks it for each proposal, and among the readings that say an agent name no client announced; the reference hands it over with the id',
+  },
+  'docs/cli-reference.md: mnema completion': {
+    times: 1,
+    why: 'the verb named by the list of where the sections of the page went, as the page that now holds one; it is not a line to type',
+  },
+  'docs/cli-reference.md: mnema run': {
+    times: 1,
+    why: 'the verb named by the list of where the sections of the page went, as the page that now holds one; it is not a line to type',
+  },
+  'docs/cli-reference.md: mnema stack': {
+    times: 1,
+    why: 'the verb named by the list of where the sections of the page went, as the page that now holds one; it is not a line to type',
+  },
+  'docs/reference/cli/doctor.md: mnema tail relink': {
+    times: 1,
+    why: 'the new verb named in prose, in its entry, in the sentence of the refusal that points at it, and in the fix that refuses a relink the record would not verify with; the reference hands the whole line over',
+  },
+  'docs/reference/cli/recall.md: mnema show': {
+    times: 1,
+    why: 'the read named in the known limits of the entry on the rules a project inherits, as one that does not list the addresses the origin holds, in the entry on the VS Code extension that no longer asks it for each proposal, and among the readings that say an agent name no client announced; the reference hands it over with the id',
+  },
+  'docs/what-it-proves.md: mnema show': {
+    times: 2,
+    why: 'the read named in the known limits of the entry on the rules a project inherits, as one that does not list the addresses the origin holds, in the entry on the VS Code extension that no longer asks it for each proposal, and among the readings that say an agent name no client announced; the reference hands it over with the id',
+  },
+  'docs/what-it-proves.md: mnema skill export': {
+    times: 1,
+    why: 'the verb named in the sentence about what leaves the record as a file',
+  },
+  'docs/what-it-proves.md: mnema tail prune': {
+    times: 1,
+    why: 'the verb named in prose, as the cut the new refusal of a host tail is about; the reference hands the whole line over',
   },
 };
 
@@ -787,7 +831,11 @@ export const HANDED_OVER: Readonly<
   'CHANGELOG.md': { line: 94, name: 203, flag: 4 },
   'README.md': { line: 4, name: 8 },
   'SECURITY.md': { name: 2 },
+  'docs/a-record-inheriting-another.md': { line: 9, name: 8 },
+  'docs/a-second-machine-and-your-key.md': { line: 12, name: 15 },
   'docs/agent-hosts.md': { line: 4, name: 3 },
+  'docs/as-an-mcp-server.md': { line: 1, name: 3 },
+  'docs/committing-the-record.md': { line: 7, name: 18 },
   'docs/convergence.md': { line: 4, name: 4 },
   'docs/evidence.md': { line: 1, flag: 1 },
   'docs/features.md': { line: 10, name: 16 },
@@ -795,15 +843,33 @@ export const HANDED_OVER: Readonly<
   'docs/glossary.md': { name: 3 },
   'docs/how-it-works.md': { line: 3, name: 3 },
   'docs/hosts.md': { line: 2, name: 4 },
+  'docs/importing-the-decisions-you-already-wrote.md': { line: 2, name: 2 },
   'docs/install.md': { line: 3, name: 2 },
   'docs/mnema-next-to-a-folder-of-adrs.md': { line: 5, name: 2 },
   'docs/packages.md': { line: 2, name: 3 },
   'docs/platforms.md': { line: 1, name: 3 },
+  'docs/recording-decisions.md': { line: 8, name: 6 },
+  'docs/reference/cli/brief.md': { line: 5, name: 5 },
+  'docs/reference/cli/completion.md': { line: 6, flag: 1 },
+  'docs/reference/cli/doctor.md': { line: 2, name: 10 },
+  'docs/reference/cli/instructions.md': { line: 10, name: 11 },
+  'docs/reference/cli/recall.md': { line: 3, name: 10 },
+  'docs/reference/cli/report.md': { name: 2 },
+  'docs/reference/cli/run.md': { line: 5 },
+  'docs/reference/cli/skill-export.md': { line: 1 },
+  'docs/reference/cli/stack.md': { line: 3, name: 7 },
+  'docs/reference/cli/tail-prune.md': { line: 2, name: 1 },
+  'docs/reference/cli/tail-relink.md': { line: 1, name: 1 },
+  'docs/reference/cli/usage.md': { line: 4, name: 3 },
+  'docs/reference/cli/witness.md': { line: 1, name: 3 },
   'docs/rule-arrival.md': { line: 1 },
+  'docs/rules-and-the-commits-that-cite-them.md': { line: 7, name: 6, flag: 1 },
   'docs/site.md': { line: 3, name: 7 },
   'docs/switches.md': { line: 21, name: 5 },
+  'docs/switching-off-what-is-handed-to-a-model.md': { line: 1, name: 2 },
+  'docs/the-session-journal-and-compaction.md': { line: 5, name: 5 },
   'docs/verify-without-installing.md': { name: 1 },
-  'docs/what-it-proves.md': { line: 7, name: 10 },
+  'docs/what-it-proves.md': { line: 15, name: 29 },
   'docs/what-comes-next.md': { name: 1 },
   'docs/where-it-fits.md': { line: 1, name: 2 },
   'examples/rules/README.md': { line: 1, name: 1 },
@@ -814,7 +880,7 @@ export const HANDED_OVER: Readonly<
   'packages/chain/src/chain/relink-plan.ts': { name: 5 },
   'packages/chain/src/chain/tree.ts': { name: 1 },
   'packages/chain/src/chain/writer.ts': { name: 4 },
-  'docs/cli-reference.md': { line: 142, name: 185, flag: 2 },
+  'docs/cli-reference.md': { line: 39, name: 63 },
   'packages/code/README.md': { line: 8, name: 14 },
   'packages/code/src/a-new-identity.ts': { line: 2, name: 2 },
   'packages/code/src/agent-accepts.ts': { line: 5, name: 1 },

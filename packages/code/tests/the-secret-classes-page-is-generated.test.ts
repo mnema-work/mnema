@@ -2,7 +2,7 @@
 /**
  * THE LIST OF WHAT THE DOOR RECOGNIZES IS GENERATED, AND A FORMAT WITHOUT A LINE ON THE PAGE IS RED.
  *
- * `docs/cli-reference.md` (What goes into the record) lists the classes of credential the door
+ * `docs/recording-decisions.md` (What goes into the record) lists the classes of credential the door
  * replaces before anything is recorded, and the e-mail address it replaces beside them. The
  * classes are `SECRET_CLASSES` of `@mnema/core` and the placeholder of an address is
  * `EMAIL_PLACEHOLDER`: this file makes the table from them, one row each in the order the door
@@ -25,7 +25,7 @@ import {
 import { describe, expect, it } from 'vitest';
 
 const ROOT = join(import.meta.dirname, '..', '..', '..');
-const PAGE = 'docs/cli-reference.md';
+const PAGE = 'docs/recording-decisions.md';
 
 const BEGIN =
   '<!-- The table below is generated from packages/core/src/content/secrets.ts: edit the words in the-secret-classes-page-is-generated.test.ts. -->';
@@ -89,8 +89,8 @@ describe('the list of recognized formats on the page', () => {
     expect(dropped).not.toBe(committed);
     expect(generatedPage(dropped)).toBe(committed);
     const prose = committed.replace(
-      '### What goes into the record',
-      '### What goes into the record!',
+      '## What goes into the record',
+      '## What goes into the record!',
     );
     expect(prose).not.toBe(committed);
     expect(generatedPage(prose)).toBe(prose);

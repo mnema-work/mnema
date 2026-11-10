@@ -1796,7 +1796,7 @@ export const FAMILY_LINES = Object.freeze({
   site: [said('mnema site', 'docs/site.md')],
   siteSays: [said('A page that verifies itself', 'README.md')],
   stacks: [said('Stacks', 'docs/glossary.md')],
-  stacksSays: [said('mnema stack add', 'docs/cli-reference.md')],
+  stacksSays: [said('mnema stack add', 'docs/reference/cli/stack.md')],
 });
 
 /** The family's text alternative: on the picture itself and on every page that shows it. */

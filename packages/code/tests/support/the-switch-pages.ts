@@ -1,6 +1,6 @@
 /**
  * What the switch table (`src/record-framing.ts`: `WHAT_STOPS`, `STARTS_OFF`, `flipCommand`)
- * generates on the pages: the table of `docs/switches.md`, the listing `docs/cli-reference.md`
+ * generates on the pages: the table of `docs/switches.md`, the listing of `docs/switching-off-what-is-handed-to-a-model.md`
  * shows for `mnema switch`, and the sentence of `plugin/README.md` that says which channels begin
  * off. `the-switch-pages-are-generated.test.ts` compares each page with what this makes.
  *
@@ -18,7 +18,7 @@ import {
 /** The pages that carry a generated part, by their path from the repository's root. */
 export const SWITCH_PAGES = [
   'docs/switches.md',
-  'docs/cli-reference.md',
+  'docs/switching-off-what-is-handed-to-a-model.md',
   'plugin/README.md',
 ] as const;
 
@@ -57,7 +57,7 @@ const OFF_SENTENCE: Part = {
 /** Which part each page carries. */
 const PARTS: Readonly<Record<(typeof SWITCH_PAGES)[number], Part>> = {
   'docs/switches.md': TABLE,
-  'docs/cli-reference.md': LISTING,
+  'docs/switching-off-what-is-handed-to-a-model.md': LISTING,
   'plugin/README.md': OFF_SENTENCE,
 };
 

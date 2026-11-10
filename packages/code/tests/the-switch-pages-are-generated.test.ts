@@ -2,7 +2,7 @@
 /**
  * THE SWITCH PAGES ARE GENERATED, AND ONE EDITED BY HAND IS RED.
  *
- * `docs/switches.md` (its table), the listing of `mnema switch` in `docs/cli-reference.md` and the
+ * `docs/switches.md` (its table), the listing of `mnema switch` in `docs/switching-off-what-is-handed-to-a-model.md` and the
  * sentence of `plugin/README.md` that names the channels beginning off are what
  * `support/the-switch-pages.ts` makes of the switch table in `src/record-framing.ts`. Each page is
  * compared with its own prose kept and that part regenerated. The listing once said 14 channels
@@ -32,19 +32,26 @@ describe('the pages the switch table generates', () => {
   });
 
   it('accuses a listing that dropped a channel, and keeps the prose around it', () => {
-    const committed = readFileSync(join(ROOT, 'docs/cli-reference.md'), 'utf-8');
+    const committed = readFileSync(
+      join(ROOT, 'docs/switching-off-what-is-handed-to-a-model.md'),
+      'utf-8',
+    );
     const dropped = committed
       .split('\n')
       .filter((line) => !line.startsWith('#>   edit-refuses-a-write'))
       .join('\n');
     expect(dropped).not.toBe(committed);
-    expect(generatedSwitchPage('docs/cli-reference.md', dropped)).toBe(committed);
+    expect(generatedSwitchPage('docs/switching-off-what-is-handed-to-a-model.md', dropped)).toBe(
+      committed,
+    );
     const prose = committed.replace(
-      '### Switching off what mnema hands to a model',
-      '### Switching off what mnema hands to a model!',
+      '# Switching off what mnema hands to a model',
+      '# Switching off what mnema hands to a model!',
     );
     expect(prose).not.toBe(committed);
-    expect(generatedSwitchPage('docs/cli-reference.md', prose)).toBe(prose);
+    expect(generatedSwitchPage('docs/switching-off-what-is-handed-to-a-model.md', prose)).toBe(
+      prose,
+    );
   });
 
   it('accuses a table row edited by hand', () => {

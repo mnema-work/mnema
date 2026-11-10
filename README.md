@@ -214,19 +214,26 @@ claim about the agent hosts is held, and which are not held yet, is in [`docs/ev
 
 ## Docs
 
-- **Use.** [Install](docs/install.md) · [Hosts](docs/hosts.md) · [Your first record](docs/first-record.md) · [How it works](docs/how-it-works.md) ·
-  [What a session is handed](docs/agent-hosts.md) · [Features](docs/features.md) · [Switches](docs/switches.md) · [The command reference](docs/cli-reference.md) ·
-  [Commands](docs/reference/commands.md) · [MCP tools](docs/reference/mcp-tools.md) ·
-  [Where it fits](docs/where-it-fits.md) · [mnema next to a folder of ADRs](docs/mnema-next-to-a-folder-of-adrs.md) · [Glossary](docs/glossary.md) ·
-  [What comes next](docs/what-comes-next.md)
-- **Verify.** [What it proves](docs/what-it-proves.md) · [How each claim is held](docs/evidence.md) · [Windows and macOS](docs/platforms.md) ·
-  [Where a rule arrives](docs/rule-arrival.md) ·
-  [Verify without installing](docs/verify-without-installing.md) · [The page that verifies itself](docs/site.md) ·
-  [When two machines disagree](docs/convergence.md) · [The record format](packages/chain/FORMAT.md)
-- **Integrate.** [Packages](docs/packages.md) · [SDK](packages/sdk/README.md) · [GitHub Action](packages/action/README.md) ·
+- **Get started.** [Install](docs/install.md) · [Your first record](docs/first-record.md) · [Hosts](docs/hosts.md)
+- **Learn.** [How it works](docs/how-it-works.md) · [What a session is handed](docs/agent-hosts.md) ·
+  [Where a rule arrives](docs/rule-arrival.md) · [What it proves](docs/what-it-proves.md) ·
+  [Recording decisions](docs/recording-decisions.md) · [Rules and the commits that cite them](docs/rules-and-the-commits-that-cite-them.md) ·
+  [Committing the record](docs/committing-the-record.md) · [A second machine and your key](docs/a-second-machine-and-your-key.md) ·
+  [A record that inherits another](docs/a-record-inheriting-another.md) ·
+  [Importing the decisions you already wrote](docs/importing-the-decisions-you-already-wrote.md) ·
+  [Switching off what is handed to a model](docs/switching-off-what-is-handed-to-a-model.md) ·
+  [The session journal and compaction](docs/the-session-journal-and-compaction.md) · [As an MCP server](docs/as-an-mcp-server.md) ·
+  [Features](docs/features.md) · [Where it fits](docs/where-it-fits.md) ·
+  [mnema next to a folder of ADRs](docs/mnema-next-to-a-folder-of-adrs.md) · [Windows and macOS](docs/platforms.md) ·
+  [When two machines disagree](docs/convergence.md) · [Glossary](docs/glossary.md)
+- **Reference.** [Commands](docs/reference/commands.md) · [MCP tools](docs/reference/mcp-tools.md) · [Switches](docs/switches.md) ·
+  [The command reference](docs/cli-reference.md) · [The record format](packages/chain/FORMAT.md) · [Packages](docs/packages.md) ·
+  [SDK](packages/sdk/README.md) · [GitHub Action](packages/action/README.md) ·
   [VS Code extension](packages/vscode/README.md) · [Stacks](packages/stacks/README.md) · [The plugin](plugin/README.md) ·
   [Porting it to a host](plugin/porting-to-a-host.md)
-- **Contribute.** [Contributing](CONTRIBUTING.md) · [Build from source](docs/build-from-source.md) ·
+- **Project.** [How each claim is held](docs/evidence.md) · [The page that verifies itself](docs/site.md) ·
+  [Verify without installing](docs/verify-without-installing.md) · [What comes next](docs/what-comes-next.md) ·
+  [Contributing](CONTRIBUTING.md) · [Build from source](docs/build-from-source.md) ·
   [Security policy](SECURITY.md) · [Changelog](CHANGELOG.md)
 
 ## License

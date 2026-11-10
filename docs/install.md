@@ -39,7 +39,7 @@ mnema doctor
 
 `doctor` says, one line to a finding and with what to do about it, whether the first `mnema` on
 your `PATH` is the one you meant and whether the `node` it uses takes it. It writes nothing.
-[Everything it checks](cli-reference.md#is-mnema-set-up-on-this-machine).
+[Everything it checks](reference/cli/doctor.md#is-mnema-set-up-on-this-machine).
 
 ## Pin a version
 

@@ -356,7 +356,7 @@ describe('every link a page carries lands', () => {
 
   it('reaches the pages, and asks the anchors a reader follows', () => {
     // NON-VACUITY. A sweep that read no page, or a reading that lost the anchors, leaves the
-    // first case holding over nothing. These three are links a reader of the front page and of
+    // first case holding over nothing. These are links a reader of the front page and of
     // the command line's manual follows today.
     expect(corpus.pages.length).toBeGreaterThan(40);
     const asked = corpus.pages.flatMap((page) =>
@@ -369,6 +369,7 @@ describe('every link a page carries lands', () => {
         'README.md → #what-it-proves-and-what-it-does-not',
         'docs/hosts.md → ../plugin/README.md#in-vs-code-and-cursor',
         'docs/cli-reference.md → ../plugin/README.md#in-vs-code-and-cursor',
+        'docs/cli-reference.md → the-session-journal-and-compaction.md#the-session-journal',
       ]),
     );
     expect(anchorsOf(corpus.read('plugin/README.md')).has('in-vs-code-and-cursor')).toBe(true);

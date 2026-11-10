@@ -8,8 +8,8 @@
  *     rests on ({@link LINES}): were the page to change one, the front page could not go on saying
  *     another thing without this failing. The page carries the reason; the front page carries the
  *     claim and a link to the page.
- *   - "DOCS" has four groups, in the order a reader comes to them (use, verify, integrate,
- *     contribute) and every link in them lands on a file that exists.
+ *   - "DOCS" has four groups, in the order a reader comes to them (get started, learn, reference,
+ *     project) and every link in them lands on a file that exists.
  *   - EVERY PAGE OF `docs/` IS IN ONE GROUP, or is on {@link LEFT_OUT} with its reason. A page added
  *     to `docs/` and linked from nowhere fails here, rather than being found by whoever looks for
  *     it. A page of a subfolder (`docs/reference/cli/`) may instead be reached through its index,
@@ -120,11 +120,11 @@ describe('"What it is not" on the front page', () => {
 });
 
 /** The groups of "Docs", in the order the front page shows them. */
-const GROUPS = ['Use', 'Verify', 'Integrate', 'Contribute'] as const;
+const GROUPS = ['Get started', 'Learn', 'Reference', 'Project'] as const;
 
 /**
  * Pages of `docs/` the groups do not list, each with the reason. Empty today: every page is in a
- * group. A page is added here only with the reason it is not for any of the four readers.
+ * group. A page is added here only with the reason it is not for any of the four groups.
  */
 const LEFT_OUT: Readonly<Record<string, string>> = {};
 
@@ -140,9 +140,9 @@ describe('"Docs" on the front page', () => {
     links: linksOf(b),
   }));
 
-  it('has four groups (use, verify, integrate, contribute) in that order', () => {
+  it('has four groups (get started, learn, reference, project) in that order', () => {
     expect(grouped.map((g) => g.label)).toEqual([...GROUPS]);
-    for (const b of bullets) expect(b).toMatch(/^\*\*[A-Z][a-z]+\.\*\* \[/);
+    for (const b of bullets) expect(b).toMatch(/^\*\*[A-Z][a-z]+(?: [a-z]+)*\.\*\* \[/);
   });
 
   it('links only files that exist', () => {
@@ -188,9 +188,9 @@ describe('"Docs" on the front page', () => {
     expect(all.filter((l, i) => all.indexOf(l) !== i)).toEqual([]);
   });
 
-  it('carries the glossary among the readers of the product, and the convergence among the proofs', () => {
+  it('carries the glossary and the convergence among what a reader learns', () => {
     const at = (label: string) => grouped.find((g) => g.label === label)?.links ?? [];
-    expect(at('Use')).toContain('docs/glossary.md');
-    expect(at('Verify')).toContain('docs/convergence.md');
+    expect(at('Learn')).toContain('docs/glossary.md');
+    expect(at('Learn')).toContain('docs/convergence.md');
   });
 });

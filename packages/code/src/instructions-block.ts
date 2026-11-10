@@ -299,7 +299,7 @@ export interface InstructionsTarget {
   readonly own?: string;
   /**
    * For a file a person CHOOSES at `mnema init` (the `always` ones): the hosts that read it, in the
-   * words `docs/cli-reference.md` gives them. The question `init` asks prints these, and
+   * words `docs/reference/cli/instructions.md` gives them. The question `init` asks prints these, and
    * `the-init-asks-which-host-files-to-write.test.ts` holds the page's table to them.
    */
   readonly readers?: string;

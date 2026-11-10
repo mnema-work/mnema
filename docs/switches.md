@@ -11,7 +11,7 @@ repository by default, so a reader can tell *"no rule addressed that file"* from
 the push off that week"*. Only a person at a shell switches a channel: the MCP server has no tool
 for it, so an agent cannot switch off what governs its own work through the door built for agents.
 `mnema switch` prints where each one stands now and who switched it; the verbs and their flags are
-in [the command reference](cli-reference.md#switching-off-what-mnema-hands-to-a-model).
+in [the command reference](switching-off-what-is-handed-to-a-model.md).
 
 <!-- The table below is generated from packages/code/src/record-framing.ts: edit the table there. -->
 

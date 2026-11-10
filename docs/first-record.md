@@ -45,7 +45,7 @@ hosts should read the mnema instructions (the arrows move, Space marks, Enter co
 an agent may accept what you choose (in a repository with a remote it also asks whether to make a plain `git pull`
 carry the record), and shows everything it is about to write, once, before it writes any of it.
 `mnema init --dry-run` prints that plan and writes nothing; `--hosts`, `--yes`, `--accepts` and `--git-pull` answer the questions
-without asking them ([the reference](cli-reference.md#the-mnema-instructions-in-the-files-a-host-reads)).
+without asking them ([the reference](reference/cli/instructions.md#the-mnema-instructions-in-the-files-a-host-reads)).
 
 ## 2. Record a call, and accept it
 
@@ -134,7 +134,7 @@ what it prints with no terminal, or with `mnema init --all-hosts`, which asks no
 the plan and writes nothing.
 Where it wrote any,
 the block above then reads "mnema writes no other file of yours". They say when to call the mnema tools and
-what never goes in the record ([the reference](cli-reference.md#the-mnema-instructions-in-the-files-a-host-reads)),
+what never goes in the record ([the reference](reference/cli/instructions.md#the-mnema-instructions-in-the-files-a-host-reads)),
 and `mnema instructions --remove` takes them out. Run again in a project founded before `init` did this, it adds what that project
 lacks of the README, the `.editorconfig` and the `.prettierignore` line, and says so; where nothing is missing it
 answers as before. It never writes the instructions again: in a project founded before, or where you took them

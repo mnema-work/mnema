@@ -44,7 +44,9 @@ import { arrivedSince, inPty } from './support/pty.js';
 import { MNEMA_CLI } from './support/the-cli.js';
 
 const CLI = MNEMA_CLI;
-const REFERENCE = fileURLToPath(new URL('../../../docs/cli-reference.md', import.meta.url));
+const REFERENCE = fileURLToPath(
+  new URL('../../../docs/reference/cli/instructions.md', import.meta.url),
+);
 
 const PATHS = CHOOSABLE_INSTRUCTIONS.map((target) => target.path);
 const [AGENTS, CLAUDE_RULE, COPILOT_RULE, CURSOR_RULE] = PATHS as [string, string, string, string];

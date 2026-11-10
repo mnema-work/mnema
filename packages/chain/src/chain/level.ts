@@ -178,7 +178,7 @@ export const LEVEL_REQUIREMENTS = ['chained', 'signed', 'witnessed'] as const;
  * external witness dates a checkpoint and keeps no copy, so it does not.
  *
  * IT IS A CONSTANT AND NOT A PARAGRAPH, because it is printed in two places that must
- * not drift: `docs/cli-reference.md` says it in prose to a person, and `verify
+ * not drift: `docs/what-it-proves.md` says it in prose to a person, and `verify
  * --json` carries it as a field to whatever reads the verdict. A reader of the JSON who
  * had to find the README to learn this is a reader who will not.
  *

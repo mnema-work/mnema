@@ -71,7 +71,7 @@ export interface EventsNotInGit {
   readonly pullDue: number;
 }
 
-/** The rule the sentence marks an event old by: written in `docs/cli-reference.md`. */
+/** The rule the sentence marks an event old by: written in `docs/committing-the-record.md`. */
 export const OLD_AFTER_HOURS = 24;
 
 /** What a git run answered. */
