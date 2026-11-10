@@ -1318,14 +1318,22 @@ function verifyReading(
     );
     const lineRefused = issues.length > 0;
     const entries = read.entries;
-    if (read.partialFinalLine || checkpointsPartial) {
+    if (read.partialFinalLine) {
       notes.push({
         kind: 'partial-final-line',
         tail,
         detail:
-          `tail ${oneLine(tail)} ${read.partialFinalLine ? 'ends' : 'has a checkpoints file that ends'} ` +
-          'in a partial line that was dropped: the mark of a write ' +
+          `tail ${oneLine(tail)} ends in a partial line that was dropped: the mark of a write ` +
           'interrupted mid-append, and indistinguishable from an appended fragment',
+      });
+    }
+    if (checkpointsPartial) {
+      notes.push({
+        kind: 'partial-final-line',
+        tail,
+        detail:
+          `the checkpoints file of tail ${oneLine(tail)} ends in a partial line that was dropped: ` +
+          'the mark of a write interrupted mid-append, and indistinguishable from an appended fragment',
       });
     }
 

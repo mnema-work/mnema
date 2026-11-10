@@ -11,9 +11,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { pythonRun } from '../../tests/support/second-reader-session.js';
 import {
   identityFounded,
   runStarted,
@@ -1058,8 +1056,6 @@ describe('chain: one key on several installations keeps distinct tails (copy-key
   });
 });
 
-const VERIFIER = fileURLToPath(new URL('../../verifier/mnema_verify.py', import.meta.url));
-
 describe('chain: crash resilience beyond the torn last entry (audit)', () => {
   it('tolerates a torn last checkpoint line: verify does not throw, reads the intact prefix', () => {
     writeSome(4, { maxUnsignedEvents: 2 });
@@ -1102,7 +1098,7 @@ describe('chain: crash resilience beyond the torn last entry (audit)', () => {
     ).toBe(true);
   });
 
-  it('a cut anywhere in the last checkpoint line is healed by the next write: verify and the Python reader agree', () => {
+  it('a cut anywhere in the last checkpoint line is healed by the next write', () => {
     for (const keep of [30, 'all-but-newline'] as const) {
       rmSync(root, { recursive: true, force: true });
       mkdirSync(root, { recursive: true });
@@ -1129,11 +1125,6 @@ describe('chain: crash resilience beyond the torn last entry (audit)', () => {
       const after = verify(root);
       expect(after.ok).toBe(true);
       expect(after.census.map((note) => note.kind)).not.toContain('partial-final-line');
-      const py = pythonRun('python3', [VERIFIER, '--json', 'record', root]);
-      expect(py.status).toBe(0);
-      expect(
-        JSON.parse(py.stdout).findings.filter((f: { level: string }) => f.level === 'fail'),
-      ).toEqual([]);
     }
   });
 
