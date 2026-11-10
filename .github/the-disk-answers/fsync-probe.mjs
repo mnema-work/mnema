@@ -17,7 +17,9 @@
  * evidence that the stalls are not the disk.
  *
  * USE. `node fsync-probe.mjs --out probe.json [--summary page.md] [--every 250]` runs until it is
- * sent SIGTERM or SIGINT, then writes the JSON, appends the page to the summary and exits 0.
+ * sent SIGTERM or SIGINT, then writes the JSON, appends the page to the summary if one is named and
+ * exits 0. `--render probe.json` prints the page of a JSON already written, for a later step to
+ * append to its own job summary (a summary belongs to the step that writes it).
  */
 
 import {
@@ -26,6 +28,7 @@ import {
   fsyncSync,
   mkdtempSync,
   openSync,
+  readFileSync,
   rmSync,
   unlinkSync,
   writeFileSync,
@@ -141,7 +144,12 @@ export function readArgs(argv) {
   return args;
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (process.argv[1] === fileURLToPath(import.meta.url) && process.argv[2] === '--render') {
+  // `--render <json>`: the page for a probe's own output, printed for a later step to append to
+  // its own job summary.
+  const written = JSON.parse(readFileSync(process.argv[3] ?? '', 'utf-8'));
+  process.stdout.write(render(written, written.tmpdir ?? ''));
+} else if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = readArgs(process.argv.slice(2));
   const dir = mkdtempSync(join(tmpdir(), 'fsync-probe-'));
   /** @type {Sample[]} */

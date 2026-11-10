@@ -463,11 +463,15 @@ export function decide({ ledger, alone, budget = BUDGET, limit = ACCUSATION_LIMI
  * What the exit code is for a reading. Two reds, and they mean different things.
  *
  * @param {Reading} result
+ * @param {boolean} [passed] the suite itself passed
  * @returns {number}
  */
-export function exitCodeOf(result) {
+export function exitCodeOf(result, passed = false) {
   if (result.verdict === 'RULER BROKEN') return EXIT.BROKEN;
   if (result.verdict === 'CLEAN') return EXIT.CLEAN;
+  // A run that passed has nothing red to explain: what the page left to read is read from the
+  // page, and a failure annotation on a green job would say the opposite of the job.
+  if (passed) return EXIT.CLEAN;
   return EXIT.SOMETHING;
 }
 
@@ -493,9 +497,10 @@ function loadSaid(load, cores) {
  *
  * @param {Reading} result
  * @param {number} [cores]
+ * @param {boolean} [passed] the suite itself passed, so the page is not about a red
  * @returns {string}
  */
-export function render(result, cores = 0) {
+export function render(result, cores = 0, passed = false) {
   const out = [];
   if (result.verdict === 'RULER BROKEN') {
     out.push('## RULER BROKEN');
@@ -509,9 +514,11 @@ export function render(result, cores = 0) {
   out.push(
     result.verdict === 'CLEAN'
       ? '## Nothing went red, and nothing waits without saying so'
-      : result.reds.length === 0 && result.accused.length === 0
-        ? '## A retry made this run green'
-        : '## Why it went red',
+      : passed
+        ? '## What this green run left to read'
+        : result.reds.length === 0 && result.accused.length === 0
+          ? '## A retry made this run green'
+          : '## Why it went red',
   );
   out.push('');
   if (result.reds.length > 0) {
@@ -596,14 +603,17 @@ export function render(result, cores = 0) {
 
 /**
  * @param {readonly string[]} argv
- * @returns {{ ledger: string, summary: string, json: string }}
+ * @returns {{ ledger: string, summary: string, json: string, passed: boolean }}
  */
-function readArgs(argv) {
+function readArgs(all) {
   const args = {
     ledger: 'node_modules/.cache/mnema-workspace/why-it-went-red.json',
     summary: '',
     json: '',
   };
+  // `--run-passed` takes no value, so it is taken out before the flags that do.
+  const passed = all.includes('--run-passed');
+  const argv = all.filter((one) => one !== '--run-passed');
   /** @type {Record<string, keyof typeof args>} */
   const takes = { '--ledger': 'ledger', '--summary': 'summary', '--json': 'json' };
   for (let index = 0; index < argv.length; index += 2) {
@@ -614,7 +624,7 @@ function readArgs(argv) {
     if (value === undefined) throw new Error(`argument ${flag} was given no value`);
     args[into] = value;
   }
-  return args;
+  return { ...args, passed };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -628,10 +638,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
   if (ledger !== null) {
     const result = decide({ ledger, alone: runAlone });
-    const page = render(result, ledger.cores ?? 0);
+    const page = render(result, ledger.cores ?? 0, args.passed);
     process.stdout.write(page);
     if (args.summary !== '') appendFileSync(args.summary, page);
     if (args.json !== '') writeFileSync(args.json, `${JSON.stringify(result, null, 2)}\n`);
-    process.exitCode = exitCodeOf(result);
+    process.exitCode = exitCodeOf(result, args.passed);
   }
 }

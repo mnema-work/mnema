@@ -82,7 +82,7 @@ jobs:
       - name: Start the fsync probe
         if: matrix.node == '24.15.0'
         run: |
-          node .github/the-disk-answers/fsync-probe.mjs --out "$RUNNER_TEMP/fsync-probe.json" --summary "$GITHUB_STEP_SUMMARY" &
+          node .github/the-disk-answers/fsync-probe.mjs --out "$RUNNER_TEMP/fsync-probe.json" &
           echo $! > "$RUNNER_TEMP/fsync-probe.pid"
 
       - name: Test
@@ -107,6 +107,9 @@ jobs:
         run: |
           kill -TERM "$(cat "$RUNNER_TEMP/fsync-probe.pid")"
           for _ in $(seq 1 50); do [ -s "$RUNNER_TEMP/fsync-probe.json" ] && break; sleep 0.1; done
+          # THE PAGE IS WRITTEN HERE, NOT BY THE PROBE: a job summary belongs to the step that
+          # writes it, and the probe starts in an earlier step that is closed by now.
+          node .github/the-disk-answers/fsync-probe.mjs --render "$RUNNER_TEMP/fsync-probe.json" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload the fsync probe
         if: always() && matrix.node == '24.15.0'
@@ -130,11 +133,13 @@ jobs:
       # IT ALSO RUNS ON A GREEN RUN, because a case that ended on its ceiling is run once more in
       # CI and passes on the retry (`.github/a-timeout-is-run-once-more/retry.mjs`): the run is
       # green and the first attempt is only in the ledger. The page names each such case as a
-      # flake, so a retry that keeps the run green never keeps it quiet.
+      # flake, so a retry that keeps the run green never keeps it quiet. On a green run the page is
+      # titled for what it is and the step exits 0 (`--run-passed`): a failure annotation on a
+      # green job would say the opposite of the job.
       - name: Why it went red
         if: success() || failure()
         continue-on-error: true
-        run: pnpm why-it-went-red --summary "$GITHUB_STEP_SUMMARY" --json why-it-went-red-verdict.json
+        run: pnpm why-it-went-red ${{ job.status == 'success' && '--run-passed' || '' }} --summary "$GITHUB_STEP_SUMMARY" --json why-it-went-red-verdict.json
 
       - name: Upload the verdict
         if: success() || failure()

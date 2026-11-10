@@ -6,7 +6,7 @@
  * one runnable thread: a pause of the process or of the disk, not work the case does. Any case
  * can be the victim, so a ceiling at each case cannot cover it.
  *
- * WHAT IT RETRIES. Only an error whose message says the case or a hook timed out. A failed
+ * WHAT IT RETRIES. Only an error whose message BEGINS by saying the case or a hook timed out. A failed
  * assertion, a thrown error and a crash are red on the first attempt, as before. A case that
  * ends on its ceiling twice is red.
  *
@@ -18,8 +18,12 @@
  * passed on a retry, and the page `verdict.mjs` writes names each one as a flake.
  */
 
-/** What the message of a timed-out case or hook says: `Test timed out in 5000ms.` */
-export const A_TIMEOUT = /timed out in \d+ms/;
+/**
+ * What the message of a timed-out case or hook says, ANCHORED: vitest writes `Test timed out in
+ * 5000ms.` or `Hook timed out in 10000ms.` as the first words of the error, and a phrase merely
+ * carried inside another message (an assertion that quotes what a child process said) is not one.
+ */
+export const A_TIMEOUT = /^(?:Test|Hook) timed out in \d+ms/;
 
 /**
  * @param {Record<string, string | undefined>} env

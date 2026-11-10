@@ -17,6 +17,7 @@ import { A_TIMEOUT, retryFor } from '../../../.github/a-timeout-is-run-once-more
 import Ledger, { type Book } from '../../../.github/why-it-went-red/ledger.mjs';
 import {
   decide,
+  exitCodeOf,
   type Published,
   type Reading,
   render,
@@ -86,6 +87,18 @@ describe('where a timed-out case is run once more', () => {
     expect(rule.condition.test('expected 1 to be 2')).toBe(false);
     expect(rule.condition.test('Error: spawnSync node ETIMEDOUT')).toBe(false);
     expect(rule.condition.test('AssertionError: timed out')).toBe(false);
+    // The phrase carried inside another message is not a timeout: this is what an assertion over
+    // a child's output says, and it must be red on the first attempt.
+    expect(rule.condition.test("expected 'child said: Test timed out in 123ms' to be 'ok'")).toBe(
+      false,
+    );
+    expect(rule.condition.test('child said: Hook timed out in 10000ms')).toBe(false);
+    // The phrase carried inside another message is not a timeout: this is what an assertion over
+    // a child's output says, and it must be red on the first attempt.
+    expect(rule.condition.test("expected 'child said: Test timed out in 123ms' to be 'ok'")).toBe(
+      false,
+    );
+    expect(rule.condition.test('child said: Hook timed out in 10000ms')).toBe(false);
   });
 });
 
@@ -139,5 +152,86 @@ describe('a case that passed on a retry is a flake, counted', () => {
     expect(clean.verdict).toBe('CLEAN');
     expect(clean.flaky).toEqual([]);
     expect(render(clean)).not.toContain('passed on a retry');
+  });
+});
+
+/** The workspace root: this file is `packages/code/tests/…`. */
+const ROOT = join(import.meta.dirname, '../../..');
+
+/** What a file says, as the text the wiring is read from. */
+function textOf(path: string): string {
+  return readFileSync(join(ROOT, path), 'utf-8');
+}
+
+/** The text of the step of a workflow that runs `needle`, from its `- name:` down to it. */
+function stepRunning(workflow: string, needle: string): string {
+  const at = workflow.indexOf(needle);
+  if (at < 0) throw new Error(`no step runs ${needle}`);
+  const from = workflow.lastIndexOf('\n      - name:', at);
+  return workflow.slice(from, at);
+}
+
+/** What is wrong with the way the retry is wired, as sentences; empty when it is wired as said. */
+function wiringFaults(files: { config: string; guards: string; sampler: string }): string[] {
+  const faults: string[] = [];
+  for (const [name, text] of [
+    ['vitest.config.ts', files.config],
+    ['vitest.guards.config.ts', files.guards],
+  ] as const) {
+    if (!text.includes('retry: retryFor(process.env),')) {
+      faults.push(`${name} does not take its retry from retryFor(process.env)`);
+    }
+    if ((text.match(/\bretry\s*:/g) ?? []).length !== 1) {
+      faults.push(`${name} names a retry other than the one retryFor gives`);
+    }
+  }
+  if (!stepRunning(files.sampler, 'pnpm test \\').includes("MNEMA_FIRST_ATTEMPT_ONLY: '1'")) {
+    faults.push('the sampler step that runs the suite does not turn the retry off');
+  }
+  return faults;
+}
+
+describe('the retry is wired as said, and nowhere else', () => {
+  const files = () => ({
+    config: textOf('vitest.config.ts'),
+    guards: textOf('vitest.guards.config.ts'),
+    sampler: textOf('.github/workflows/flake-sampler.yml'),
+  });
+
+  it('is the one rule in both configurations, and off in the sampler step', () => {
+    expect(wiringFaults(files())).toEqual([]);
+  });
+
+  it('is not turned off for the CI runs that gate a merge', () => {
+    expect(textOf('.github/workflows/ci.yml')).not.toContain('MNEMA_FIRST_ATTEMPT_ONLY');
+  });
+
+  it('goes red on a number written in the configuration, and on the sampler env deleted', () => {
+    const kept = files();
+    const number = kept.config.replace('retry: retryFor(process.env),', 'retry: 3,');
+    expect(wiringFaults({ ...kept, config: number })).toEqual([
+      'vitest.config.ts does not take its retry from retryFor(process.env)',
+    ]);
+    const deleted = kept.sampler.replace("MNEMA_FIRST_ATTEMPT_ONLY: '1'", '');
+    expect(wiringFaults({ ...kept, sampler: deleted })).toEqual([
+      'the sampler step that runs the suite does not turn the retry off',
+    ]);
+    expect(wiringFaults({ ...kept, guards: `${kept.guards}\n// retry: 2,` })).toEqual([
+      'vitest.guards.config.ts names a retry other than the one retryFor gives',
+    ]);
+  });
+});
+
+describe('a green run is not reported as a failure', () => {
+  it('titles the page for what it is and exits 0 when the suite passed', () => {
+    const book = ledgerOf([passedOnTheRetry()]);
+    const result = published(
+      decide({ ledger: book, alone: () => ({ ran: true, failed: false, duration: 1 }) }),
+    );
+    expect(render(result, 0, true)).toContain('What this green run left to read');
+    expect(render(result, 0, true)).not.toContain('Why it went red');
+    expect(exitCodeOf(result, true)).toBe(0);
+    // And when the suite did not pass, the same reading still exits 1.
+    expect(exitCodeOf(result)).toBe(1);
   });
 });
