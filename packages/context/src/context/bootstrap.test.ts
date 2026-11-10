@@ -26,6 +26,10 @@ describe('bootstrap: the opening context, focused on the actor', () => {
     if (bench) rmSync(bench.root, { recursive: true, force: true });
   });
 
+  // THIS CASE WAITS ON THE DISK: it appends a handful of events, and each append is fsynced. It takes
+  // 0.03 to 0.15 s on the runner, and has been seen stopped for 9.2 s inside one run while the
+  // same case ran in 27 ms alone, with the machine reporting one runnable thread. 20 s is twice
+  // the longest stop seen.
   it('composes the actor’s resume and the live work, NAMED', () => {
     bench = makeBench();
     startRun(bench, 'run-1', { agent: 'claude', goal: 'in flight' });
@@ -52,7 +56,7 @@ describe('bootstrap: the opening context, focused on the actor', () => {
     } finally {
       cache.close();
     }
-  });
+  }, 20_000);
 
   it('carries no moves on a work item: the ABSENCE of the key, not an empty one', () => {
     bench = makeBench();

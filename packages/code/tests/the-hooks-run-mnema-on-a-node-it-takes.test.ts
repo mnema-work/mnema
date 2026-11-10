@@ -236,6 +236,9 @@ afterEach(() => {
 });
 
 describe('a node below the floor in front of the PATH', () => {
+  // THIS CASE WAITS ON PROCESSES: two hook runs, the second through a node that refuses and then
+  // a node that takes mnema. It takes 0.65 to 1.7 s on the runner, and has been seen stopped for
+  // 9.9 s inside one run while the same case ran in 1.1 s alone. 20 s is twice the longest stop seen.
   it('is gone around: the gate runs mnema on the node that takes it, and the rule refuses the write', () => {
     // The control: the same record on a PATH whose first node takes mnema refuses it.
     const control = aHook(CURSOR(), cursorWrite(), pathOf('real', 'mnema', 'tools'), CURSOR_ENV);
@@ -251,7 +254,7 @@ describe('a node below the floor in front of the PATH', () => {
     expect(met.status).toBe(0);
     expect(met.decision).toBe('deny');
     expect(met.reason).toContain(rule);
-  });
+  }, 20_000);
 
   it('is gone around for the document too: the session opens with the record', () => {
     const opened = aHook(
