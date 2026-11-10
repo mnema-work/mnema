@@ -103,6 +103,7 @@ try {
     mkdirSync(home);
     writeFileSync(log, '');
     let decisionId = '';
+    let treeLines = '[]';
     const command =
       scenario.command === 'wrapper' ? wrapper(`mnema-${scenario.name}`, log, home) : scenario.command;
     if (scenario.record) {
@@ -135,6 +136,18 @@ try {
         // The id the editor check opens whole: `Recorded decision ADR-1 (<id>)`.
         decisionId = /\(([0-9a-f-]{36})\)/.exec(String(proposed.stdout))?.[1] ?? '';
         if (decisionId === '') throw new Error(`no decision id in: ${proposed.stdout}`);
+        // What the command line says of each tree, read from the same `verify --json` the extension
+        // reads, so the check compares the tooltip with what `mnema` wrote and types no word of it.
+        const verified = spawnSync(command, ['verify', '--json'], {
+          cwd: workspace,
+          env: { PATH: process.env.PATH },
+          encoding: 'utf8',
+        });
+        const trees = JSON.parse(verified.stdout).trees.filter(
+          (tree) => tree.kind === 'verdict' && typeof tree.short === 'string',
+        );
+        if (trees.length === 0) throw new Error(`no tree line in: ${verified.stdout}`);
+        treeLines = JSON.stringify(trees.map((tree) => ({ scope: tree.scope, short: tree.short })));
         writeFileSync(log, '');
       } else {
         mkdirSync(join(workspace, '.mnema'));
@@ -149,6 +162,7 @@ try {
         MNEMA_CHECK: scenario.name,
         MNEMA_CHECK_LOG: log,
         MNEMA_CHECK_DECISION: decisionId,
+        MNEMA_CHECK_TREE_LINES: treeLines,
       },
       // `--disable-gpu`: under `xvfb` there is no GPU, and on some runner images the renderer hangs
       // trying to use one (the window is then reported unresponsive and the run exits with 1).
