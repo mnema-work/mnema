@@ -267,8 +267,6 @@ const LED_NOWHERE: Readonly<Record<string, string>> = {
     'The summariser the flake sampler folds N runs with. It lives under .github/ beside the workflow that calls it rather than in a package, because nothing the product ships imports it, which is exactly why the scanner cannot reach it.',
   'packages/code/tests/a-broken-link-after-the-merge-opens-one-issue.test.ts -> ../../../.github/the-links-after-the-merge/check.mjs':
     'The scan that asks the network for every image and absolute link of the READMEs once a change is on main, and the issue it opens or adds to. It runs on a runner after the merge, with the network and the issue book handed in here, and it sits under .github/ where no walk of packages/ can reach it.',
-  'packages/code/tests/the-link-cannot-come-back.test.ts -> ../../../.github/the-link-cannot-come-back/scan.mjs':
-    'The scan that refuses an attribution footer in a commit message or a pull request description before either reaches the trunk. It runs on a runner against the event payload rather than inside the suite, so like the three .mjs rows above it sits under .github/ where no walk of packages/ can reach it.',
   'packages/code/tests/the-pull-request-text.test.ts -> ../../../.github/the-pull-request-text/check.mjs':
     'The check that refuses a pull request whose title, description or commit message carries the em dash, and names where. It runs on a runner against the event payload, so like the .mjs rows above it sits under .github/ where no walk of packages/ can reach it.',
   'packages/code/tests/the-architecture-page-is-what-the-code-draws.test.ts -> ../../../.github/the-architecture-page/graph.mjs':
@@ -997,7 +995,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/src/wiring/from-the-group.test.ts': 5,
   'packages/code/src/wiring/io.test.ts': 3,
   'packages/code/src/wiring/review.test.ts': 2,
-  'packages/code/tests/a-block-a-reader-pastes-has-no-trailing-comment.test.ts': 4,
+  'packages/code/tests/a-block-a-reader-pastes-has-no-trailing-comment.test.ts': 6,
   'packages/code/tests/a-broken-link-after-the-merge-opens-one-issue.test.ts': 5,
   'packages/code/tests/a-check-runs-as-declared.test.ts': 5,
   'packages/code/tests/a-client-that-names-no-workspace.test.ts': 15,
@@ -1351,7 +1349,6 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-key-lives-in-one-place.test.ts': 8,
   'packages/code/tests/the-last-session-is-told-to-the-next.test.ts': 13,
   'packages/code/tests/the-line-a-reading-words-is-one-line.test.ts': 10,
-  'packages/code/tests/the-link-cannot-come-back.test.ts': 8,
   'packages/code/tests/the-margins-are-the-same-width.test.ts': 9,
   'packages/code/tests/the-moves-say-what-they-said.test.ts': 18,
   'packages/code/tests/the-name-and-the-hints.test.ts': 17,
@@ -2309,8 +2306,8 @@ describe('every file has a test that names it', () => {
     });
     // Non-vacuity in both parts: the walk really did follow specifiers, and the list
     // really does hold rows; a scanner returning nothing would satisfy the line above.
-    expect(unresolved.length).toBe(24);
-    expect(Object.keys(LED_NOWHERE)).toHaveLength(24);
+    expect(unresolved.length).toBe(23);
+    expect(Object.keys(LED_NOWHERE)).toHaveLength(23);
     // And each row says what THAT module is, by the ledger's rule, at the ledger's floor.
     const why = Object.values(LED_NOWHERE);
     expect(new Set(why).size).toBe(why.length);

@@ -20,10 +20,14 @@ In the help under **This machine**.
 nothing and writes to no file: where the script goes is your choice:
 
 ```sh
-source <(mnema completion bash)                                # this shell, now
-mnema completion bash > /etc/bash_completion.d/mnema           # every bash
-mnema completion zsh > "${fpath[1]}/_mnema"                    # every zsh
-mnema completion fish > ~/.config/fish/completions/mnema.fish  # every fish
+# this shell, now
+source <(mnema completion bash)
+# every bash
+mnema completion bash > /etc/bash_completion.d/mnema
+# every zsh
+mnema completion zsh > "${fpath[1]}/_mnema"
+# every fish
+mnema completion fish > ~/.config/fish/completions/mnema.fish
 ```
 
 It completes **verbs, subcommands and option names** (including an option a parent group
