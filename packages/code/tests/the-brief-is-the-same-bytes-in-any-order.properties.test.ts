@@ -30,8 +30,8 @@ import { type Brief, brief } from '@mnema/context';
 import { ProjectionCache } from '@mnema/core';
 import fc from 'fast-check';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { propertySeed } from '../../chain/tests/support/property-seed.js';
 import { briefDocument } from '../src/presentation/brief.js';
-import { propertySeed } from './support/property-seed.js';
 
 /** Each case writes and signs real chains many times over, which five seconds does not hold. */
 const CASE_TIMEOUT = 120_000;

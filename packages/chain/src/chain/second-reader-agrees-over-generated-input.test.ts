@@ -25,7 +25,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fc from 'fast-check';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { propertySeed } from '../../../code/tests/support/property-seed.js';
+import { propertySeed } from '../../tests/support/property-seed.js';
 import { pythonRun } from '../../tests/support/second-reader-session.js';
 import { decisionBirth, identityFounded, taskCreated } from '../events/build.js';
 import {

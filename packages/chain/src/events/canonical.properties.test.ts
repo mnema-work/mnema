@@ -20,7 +20,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { propertySeed } from '../../../code/tests/support/property-seed.js';
+import { propertySeed } from '../../tests/support/property-seed.js';
 import { CanonicalizationError, type CanonicalValue, canonicalStringify } from './canonical.js';
 import { parseCanonicalLine } from './stored-json.js';
 

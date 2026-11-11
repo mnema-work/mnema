@@ -20,7 +20,7 @@
 import type { Brief } from '@mnema/context';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { propertySeed } from '../../tests/support/property-seed.js';
+import { propertySeed } from '../../../chain/tests/support/property-seed.js';
 import { briefDocument, briefWithin, HOW_TO_REGENERATE } from './brief.js';
 import { fitWhole, HOOK_TEXT_CEILING, printedLength } from './within-a-hook.js';
 
