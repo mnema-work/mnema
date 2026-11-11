@@ -588,9 +588,9 @@ export class ChainWriter {
   /**
    * Keeps the last entry this writer wrote ({@link keepHead}), on the way out of every hold and
    * only when it moved: a note per act that appended, none for one that did not. The signed note
-   * ({@link keepWrittenHead}) is kept first, and also when only the coverage moved, so a crash
-   * between the two leaves the clear-text note behind the tail: a new tail, as a crash before
-   * the note always cost.
+   * ({@link keepWrittenHead}) is kept first, and also when only the coverage moved, with `next`
+   * null: the act ended. A crash before either leaves the note {@link keepIntent} kept before the
+   * line, which names the end the tail then has, so the next recovery signs it in this tail.
    */
   private keepHeadIfWritten(): void {
     if (this.movedOn !== undefined || this.damage !== undefined || this.head === null) return;
