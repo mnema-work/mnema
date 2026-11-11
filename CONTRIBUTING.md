@@ -89,10 +89,10 @@ the ones a first change usually meets:
   written in any tracked file is refused
   ([`a-label-a-stranger-can-look-up.test.ts`](packages/code/tests/a-label-a-stranger-can-look-up.test.ts)).
   Write the principle out in words instead.
-- **No credit to the tool that wrote a change.** A commit message or a pull request
-  description that credits a coding assistant as co-author, or carries its generated-by
-  footer, fails the `the-link-cannot-come-back` job
-  ([its page](.github/the-link-cannot-come-back/README.md)).
+- **Crediting the assistant is fine.** A commit or the pull request may credit a coding
+  assistant as co-author; say which model, host and version in the field the pull request
+  template asks for. A `users.noreply.github.com` address is recommended for your privacy, and
+  no check enforces it.
 
 A new guard is expected to come with a case that shows it failing on the defect it exists
 for: a guard that has never been seen to fail looks exactly like one that cannot.

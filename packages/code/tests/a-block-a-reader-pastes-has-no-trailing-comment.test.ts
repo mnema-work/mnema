@@ -17,8 +17,10 @@
  * harmless "command not found: #" line, and a block in a language other than the shell's.
  */
 
+import { readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { read } from './support/published-examples.js';
+import { ROOT, read } from './support/published-examples.js';
 import { endsInAComment, linesOf } from './support/reading-a-shell-line.js';
 import { writtenByHand } from './support/the-reference-pages.js';
 
@@ -27,7 +29,17 @@ import { writtenByHand } from './support/the-reference-pages.js';
  * still; a page joins the list when
  * it is cleaned, and the list is never longer than what holds.
  */
-const PAGES = ['README.md', 'docs/install.md', 'docs/build-from-source.md', 'docs/first-record.md'];
+const PAGES = [
+  'README.md',
+  'docs/install.md',
+  'docs/build-from-source.md',
+  'docs/first-record.md',
+  'docs/cli-reference.md',
+  ...readdirSync(join(ROOT, 'docs/reference/cli'))
+    .filter((file) => file.endsWith('.md'))
+    .sort()
+    .map((file) => `docs/reference/cli/${file}`),
+];
 
 /** The fence labels a reader pastes into a shell, and a fence with no label. */
 const SHELL = new Set(['sh', 'bash', 'shell', 'zsh', 'console', '<none>']);

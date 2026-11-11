@@ -28,11 +28,10 @@ guard caught a defect or the machine was busy.
 ## Commits and pull requests
 
 - Branch, commit message and pull request in English, descriptive: what changes, as a sentence.
-- Commit with a `users.noreply.github.com` address, not a work or personal one
-  (`git config user.email` shows which you will use).
-- No `Co-Authored-By` trailer and no generated-with footer: the
-  `the-link-cannot-come-back` job fails on them. If an agent wrote the change, say which model,
-  host and version in the field the pull request template asks for.
+- Commit with a `users.noreply.github.com` address, not a work or personal one: a recommendation
+  for your privacy, which no check enforces (`git config user.email` shows which you will use).
+- Crediting the assistant in a commit or the pull request is fine. If an agent wrote the change,
+  say which model, host and version in the field the pull request template asks for.
 - One change per pull request. Add files by path; never `git add -A` or `git add .`.
 
 ## Probing the product
