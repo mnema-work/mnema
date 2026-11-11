@@ -105,15 +105,15 @@ for: a guard that has never been seen to fail looks exactly like one that cannot
 
 Each line is a rule in force in this repository's record; the decision it cites, read from the record, says why.
 
-- A sentence of [what it proves](docs/what-it-proves.md) has a threat test that fails when the sentence stops being true (ADR-287).
+- Every sentence of [what it proves](docs/what-it-proves.md) points at a threat test written from the attacker's side (no key, write access, a cold cache) that fails when the sentence stops being true (ADR-287).
 - No raw error reaches a person and no `catch` is silent (ADR-288).
-- The hot path keeps its budget, one file holds the counts, and the published packages keep the fewest dependencies (ADR-289).
+- The hot path keeps its budget, one file holds the counts, and a published package declares only what its bundle imports (ADR-289).
 - CI runs the newcomer's path from the packed tarball (ADR-290).
 - An integrity test runs with the projection cache cold and warm (ADR-291).
 - A new guard is proved by putting the original defect back, and the pull request names that mutation (ADR-292).
 - Lint, typecheck and the coverage gate of the touched package pass before every push (ADR-293).
 - A decision cites the premise it read: a file and line, a URL, or a reproduced probe (ADR-294).
-- One agent's probe is reproduced by another before it is a fact (ADR-295).
+- One agent's probe is reproduced by another before it is a fact or a question to the maintainer (ADR-295).
 - The review verdict is posted, summarised, on the pull request (ADR-296).
 - A change in behaviour changes its page and the changelog (ADR-297).
 - The architecture page (`docs/architecture.md`, once it exists) maps the packages and their layers (ADR-298).

@@ -846,6 +846,7 @@ export const HANDED_OVER: Readonly<
   'docs/importing-the-decisions-you-already-wrote.md': { line: 2, name: 2 },
   'docs/install.md': { line: 3, name: 2 },
   'docs/mnema-next-to-a-folder-of-adrs.md': { line: 5, name: 2 },
+  'docs/north-star.md': { name: 1 },
   'docs/packages.md': { line: 2, name: 3 },
   'docs/platforms.md': { line: 1, name: 3 },
   'docs/recording-decisions.md': { line: 8, name: 6 },

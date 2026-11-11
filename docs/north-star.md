@@ -5,14 +5,16 @@ One page on what mnema is for, so a change can be weighed against it.
 ## What it is
 
 mnema is a signed, append-only record of the decisions behind the work of AI agents, kept in
-the repository where the work happens. A second reader, with no key and no network, can run
-the verify command over the files and learn whether the record is the one that was written.
+the repository where the work happens. Anyone with the files, and no private key and no network,
+can run `mnema verify` (or the [second reader](verify-without-installing.md)) and learn whether
+the events are the ones that were signed, in order; what that does not prove is in
+[What it proves](what-it-proves.md).
 
 ## What mnema is not
 
 - **Not a semantic memory.** Search is by the words written in a record; there are no embeddings.
 - **Not an agent runner.** It calls no model and runs no tool for the agent.
-- **Not a capture of sessions.** It keeps what was decided and why, not a transcript of what was said.
+- **Not a copy somewhere else.** The committed record travels with the repository, and what you record privately stays on this machine, apart from the notes and the private rules your agent's host receives, when a session opens through the plugin and when the agent asks for them, which the host sends to its model; the witness verbs send a digest out, and with Sigstore the identity too, only when you run them.
 - **Not access control.** The gate refuses an illegal move; it does not decide who may write.
 
 The reasons are in [Where it fits](where-it-fits.md#what-it-is-not).
