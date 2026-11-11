@@ -156,9 +156,18 @@ function mutated(mutation: string): string {
   return record;
 }
 
-/** The tails of a record that hold a segment, and the first segment of one. */
+/**
+ * The tails of a record that hold a segment, and the first segment of one.
+ *
+ * A symbolic link under `tails/` is no tail (FORMAT.md section 4): no reader reads a line through
+ * it, and the record is refused by its name whatever the link holds, so a line put there is not
+ * a line of a tail and the property has nothing to say of it (`tail-linked-beside-a-real-one`).
+ * The tails beside it are damaged as in any record.
+ */
 function tailsWithSegments(record: string): string[] {
-  return readdirSync(join(record, 'tails'))
+  return readdirSync(join(record, 'tails'), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
     .sort()
     .filter((t) => readdirSync(join(record, 'tails', t)).some((n) => /^\d{6}\.jsonl$/.test(n)));
 }
