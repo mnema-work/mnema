@@ -1140,7 +1140,10 @@ describe('the act, the claim and the reading, over a record', () => {
         (found) => found.checkpoint === first.checkpoint,
       );
       expect(carried?.reading.kind).toBe('not-covered');
-      expect(carried?.reading).toMatchObject({ kind: 'not-covered', why: expect.stringContaining('does not prove') });
+      expect(carried?.reading).toMatchObject({
+        kind: 'not-covered',
+        why: expect.stringContaining('does not prove'),
+      });
     } finally {
       vi.useRealTimers();
     }
