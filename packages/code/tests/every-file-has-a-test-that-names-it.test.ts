@@ -269,8 +269,6 @@ const LED_NOWHERE: Readonly<Record<string, string>> = {
     'The scan that asks the network for every image and absolute link of the READMEs once a change is on main, and the issue it opens or adds to. It runs on a runner after the merge, with the network and the issue book handed in here, and it sits under .github/ where no walk of packages/ can reach it.',
   'packages/code/tests/the-link-cannot-come-back.test.ts -> ../../../.github/the-link-cannot-come-back/scan.mjs':
     'The scan that refuses an attribution footer in a commit message or a pull request description before either reaches the trunk. It runs on a runner against the event payload rather than inside the suite, so like the three .mjs rows above it sits under .github/ where no walk of packages/ can reach it.',
-  'packages/code/tests/the-pull-request-text.test.ts -> ../../../.github/the-pull-request-text/check.mjs':
-    'The check that refuses a pull request whose title, description or commit message carries the em dash, and names where. It runs on a runner against the event payload, so like the .mjs rows above it sits under .github/ where no walk of packages/ can reach it.',
   'packages/code/tests/the-architecture-page-is-what-the-code-draws.test.ts -> ../../../.github/the-architecture-page/graph.mjs':
     "The script that draws the architecture page's import graph from the code, which the case holds the page to. Plain ESM under .github/, outside the packages/ walk, so the scanner cannot follow the specifier, which is right.",
   'packages/code/tests/the-fast-guards-are-the-marked-ones.test.ts -> ../../../.github/the-fast-guards/marked.mjs':
@@ -1386,9 +1384,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-prompt-is-painted-where-you-type.test.ts': 16,
   'packages/code/tests/the-proof-answers-a-machine.test.ts': 7,
   'packages/code/tests/the-prose-carries-its-own-emphasis.test.ts': 5,
-  'packages/code/tests/the-prose-carries-no-em-dash.test.ts': 5,
   'packages/code/tests/the-public-tree-says-what-holds-without-git.test.ts': 13,
-  'packages/code/tests/the-pull-request-text.test.ts': 7,
   'packages/code/tests/the-python-floor-is-declared-once.test.ts': 5,
   'packages/code/tests/the-quick-start-runs-as-it-reads.test.ts': 8,
   'packages/code/tests/the-quick-start-works-after-an-init-at-a-terminal.test.ts': 10,
