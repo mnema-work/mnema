@@ -5,7 +5,7 @@
  * Every image in the README's table of hosts is a file of `assets/hosts/`, and that folder's
  * SOURCES.md has a row for the file with the hash of its bytes. No image of the table is a link to
  * a third party's redraw of a logo (an icon CDN) or to a file of somebody else's repository, and
- * a host whose vendor publishes no logo file (Codex) has no image at all. Each image is given one
+ * a host whose vendor publishes no logo file has no image at all. Each image is given one
  * height and no width, so the file's own proportion decides how wide it is and nothing is
  * distorted.
  */
@@ -67,7 +67,7 @@ describe('the images of the README table of hosts', () => {
 
   it('carry a height and no width, so none is stretched or squashed, the same height for all', () => {
     const tags = [...table.matchAll(/<img\b[^>]*>/g)].map((m) => m[0]);
-    expect(tags.length).toBe(11);
+    expect(tags.length).toBe(12);
     for (const tag of tags) {
       expect(tag, tag).not.toMatch(/\swidth=/);
       expect(tag, tag).toMatch(/\sheight="20"/);
@@ -75,10 +75,10 @@ describe('the images of the README table of hosts', () => {
     }
   });
 
-  it('leave Codex with no image: its vendor publishes no file the table can use', () => {
+  it('show Codex by the Blossom mark of OpenAI, a pair for the light and the dark page', () => {
     const codex = table.split('\n').find((line) => line.includes('**Codex**')) ?? '';
-    expect(codex).not.toBe('');
-    expect(codex).not.toMatch(/<img|<picture|srcset/);
+    expect(codex).toContain('srcset="assets/hosts/OAI_OpenAI-Blossom_White.svg"');
+    expect(codex).toContain('<img src="assets/hosts/OAI_OpenAI-Blossom_Black.svg"');
   });
 
   it('are not drawn from a third-party icon CDN anywhere on the page', () => {
