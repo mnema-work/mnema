@@ -7,5 +7,6 @@ Fixed
   is now kept before each line as well, naming in a new field, `next`, the last entry the write is about to append, and
   the next write signs what a killed one left, whatever point the kill came at. And an end the signed note names that the
   tail no longer holds (its newest entries and their checkpoints cut, the clear note set back) is not written over: the
-  write goes to a new tail and says which entries are not there. The format of the record and both readers are
+  write goes to a new tail and says which entries are not there; an earlier signed note put back with the cut is not told
+  apart, and the write chains on. The format of the record and both readers are
   unchanged; the field is in a note under `locks/`, which no reader reads.
