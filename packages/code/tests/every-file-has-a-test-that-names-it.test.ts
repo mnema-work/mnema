@@ -271,6 +271,8 @@ const LED_NOWHERE: Readonly<Record<string, string>> = {
     'The scan that refuses an attribution footer in a commit message or a pull request description before either reaches the trunk. It runs on a runner against the event payload rather than inside the suite, so like the three .mjs rows above it sits under .github/ where no walk of packages/ can reach it.',
   'packages/code/tests/the-pull-request-text.test.ts -> ../../../.github/the-pull-request-text/check.mjs':
     'The check that refuses a pull request whose title, description or commit message carries the em dash, and names where. It runs on a runner against the event payload, so like the .mjs rows above it sits under .github/ where no walk of packages/ can reach it.',
+  'packages/code/tests/the-architecture-page-is-what-the-code-draws.test.ts -> ../../../.github/the-architecture-page/graph.mjs':
+    "The script that draws the architecture page's import graph from the code, which the case holds the page to. Plain ESM under .github/, outside the packages/ walk, so the scanner cannot follow the specifier, which is right.",
   'packages/code/tests/the-fast-guards-are-the-marked-ones.test.ts -> ../../../.github/the-fast-guards/marked.mjs':
     'The finder of the test files that carry the line which puts them in the fast run. The vitest config for that run reads it before any test exists, so it is plain ESM under .github/, outside the packages/ walk either corpus makes, and the scanner follows only a .ts specifier.',
   'packages/code/tests/what-the-suite-left-behind.test.ts -> ../../../.github/what-the-suite-left-behind/sweep.mjs':
@@ -1253,6 +1255,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-agent-is-told-the-record-does-not-chain.test.ts': 11,
   'packages/code/tests/the-agent-is-told-what-it-has.test.ts': 17,
   'packages/code/tests/the-antigravity-cli-rises-only-with-a-capture.test.ts': 4,
+  'packages/code/tests/the-architecture-page-is-what-the-code-draws.test.ts': 5,
   'packages/code/tests/the-arrival-page-is-the-table.test.ts': 5,
   'packages/code/tests/the-bare-name-asks.test.ts': 16,
   'packages/code/tests/the-bare-name-says-what-is-off.test.ts': 8,
@@ -2304,8 +2307,8 @@ describe('every file has a test that names it', () => {
     });
     // Non-vacuity in both parts: the walk really did follow specifiers, and the list
     // really does hold rows; a scanner returning nothing would satisfy the line above.
-    expect(unresolved.length).toBe(23);
-    expect(Object.keys(LED_NOWHERE)).toHaveLength(23);
+    expect(unresolved.length).toBe(24);
+    expect(Object.keys(LED_NOWHERE)).toHaveLength(24);
     // And each row says what THAT module is, by the ledger's rule, at the ledger's floor.
     const why = Object.values(LED_NOWHERE);
     expect(new Set(why).size).toBe(why.length);
