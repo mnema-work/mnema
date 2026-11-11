@@ -25,9 +25,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { MNEMA_CLI } from './support/the-cli.js';
 
-const VERIFIER = fileURLToPath(
-  new URL('../../chain/verifier/mnema_verify.py', import.meta.url),
-);
+const VERIFIER = fileURLToPath(new URL('../../chain/verifier/mnema_verify.py', import.meta.url));
 
 /**
  * Kills this process with SIGKILL just before the call `KILL_AT` names, as `fn:pattern`, the
@@ -125,7 +123,8 @@ describe('a write killed at a point of its hold, then a write by the same key', 
         const killed = mnema(['memory', 'the fact the kill interrupts'], kill);
         expect(killed.signal, killed.stderr).toBe('SIGKILL');
 
-        if (cache === 'cold') rmSync(join(repo, '.mnema', 'locks', 'projection.db'), { force: true });
+        if (cache === 'cold')
+          rmSync(join(repo, '.mnema', 'locks', 'projection.db'), { force: true });
         const next = mnema(['memory', 'the fact after the kill']);
         expect(next.status, next.stderr).toBe(0);
         expect(`${next.stdout}${next.stderr}`).not.toMatch(/new tail|branch switch/);
