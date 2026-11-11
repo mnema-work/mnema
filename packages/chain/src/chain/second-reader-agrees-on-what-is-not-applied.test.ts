@@ -32,6 +32,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fc from 'fast-check';
 import { afterEach, describe, expect, it } from 'vitest';
+import { propertySeed } from '../../../code/tests/support/property-seed.js';
 import { pythonRun } from '../../tests/support/second-reader-session.js';
 import {
   decisionRecorded,
@@ -53,7 +54,7 @@ import { WORKFLOWS } from '../events/workflow.js';
 import { openChainForWriting, verify } from './chain.js';
 
 const VERIFIER = fileURLToPath(new URL('../../verifier/mnema_verify.py', import.meta.url));
-const SEED = Number(process.env.FC_SEED ?? 20_261_007);
+const SEED = propertySeed();
 const CASE_TIMEOUT = 120_000;
 
 function python(args: readonly string[]) {

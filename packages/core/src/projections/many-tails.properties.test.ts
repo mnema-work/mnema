@@ -69,6 +69,7 @@ import {
 } from '@mnema/chain';
 import fc from 'fast-check';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { propertySeed } from '../../../code/tests/support/property-seed.js';
 import { ProjectionCache } from './cache.js';
 import { projectDecisions } from './decision.js';
 import { divergentMoves } from './divergent-moves.js';
@@ -77,7 +78,7 @@ import { chainArrivals, chainReplay, orderedEvents, orderedEventsOfRecord } from
 /** Each case writes and signs real chains many times over, which five seconds does not hold. */
 const CASE_TIMEOUT = 120_000;
 
-const SEED = Number(process.env.FC_SEED ?? 20_261_007);
+const SEED = propertySeed();
 const upcasters = catalogUpcasters();
 const SLOTS = 3;
 /** The instant each machine's founding is stamped with: before any drawn one, and its own. */

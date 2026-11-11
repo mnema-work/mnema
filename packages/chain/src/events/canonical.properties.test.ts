@@ -20,10 +20,11 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { propertySeed } from '../../../code/tests/support/property-seed.js';
 import { CanonicalizationError, type CanonicalValue, canonicalStringify } from './canonical.js';
 import { parseCanonicalLine } from './stored-json.js';
 
-const SEED = Number(process.env.FC_SEED ?? 20_261_007);
+const SEED = propertySeed();
 
 /** Text as people type it: composed and decomposed, astral, and anything the encoding holds. */
 const textArb: fc.Arbitrary<string> = fc.oneof(

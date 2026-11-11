@@ -20,10 +20,11 @@
 import type { Brief } from '@mnema/context';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { propertySeed } from '../../tests/support/property-seed.js';
 import { briefDocument, briefWithin, HOW_TO_REGENERATE } from './brief.js';
 import { fitWhole, HOOK_TEXT_CEILING, printedLength } from './within-a-hook.js';
 
-const SEED = Number(process.env.FC_SEED ?? 20_261_007);
+const SEED = propertySeed();
 
 describe('what a hook carries is counted the way the host counts', () => {
   it('is the length of the lines each followed by its newline, in UTF-16 units', () => {

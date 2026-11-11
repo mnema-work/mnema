@@ -23,11 +23,12 @@
 import { type EventKind, LATEST_VERSION } from '@mnema/chain';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { propertySeed } from '../../../code/tests/support/property-seed.js';
 import { fieldNature, leafKey, type ScreenedKey, screenedFieldsOf } from './fields.js';
 import { screenContent } from './screen.js';
 import { type SecretClass, secretPlaceholder } from './secrets.js';
 
-const SEED = Number(process.env.FC_SEED ?? 20_261_007);
+const SEED = propertySeed();
 
 const UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const LOWER = 'abcdefghijklmnopqrstuvwxyz';

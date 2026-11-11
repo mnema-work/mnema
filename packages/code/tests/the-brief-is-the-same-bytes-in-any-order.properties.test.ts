@@ -31,11 +31,12 @@ import { ProjectionCache } from '@mnema/core';
 import fc from 'fast-check';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { briefDocument } from '../src/presentation/brief.js';
+import { propertySeed } from './support/property-seed.js';
 
 /** Each case writes and signs real chains many times over, which five seconds does not hold. */
 const CASE_TIMEOUT = 120_000;
 
-const SEED = Number(process.env.FC_SEED ?? 20_261_007);
+const SEED = propertySeed();
 const upcasters = catalogUpcasters();
 const MACHINES = 2;
 const CHANNELS = {
