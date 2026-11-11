@@ -995,7 +995,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/src/wiring/from-the-group.test.ts': 5,
   'packages/code/src/wiring/io.test.ts': 3,
   'packages/code/src/wiring/review.test.ts': 2,
-  'packages/code/tests/a-block-a-reader-pastes-has-no-trailing-comment.test.ts': 4,
+  'packages/code/tests/a-block-a-reader-pastes-has-no-trailing-comment.test.ts': 6,
   'packages/code/tests/a-broken-link-after-the-merge-opens-one-issue.test.ts': 5,
   'packages/code/tests/a-check-runs-as-declared.test.ts': 5,
   'packages/code/tests/a-client-that-names-no-workspace.test.ts': 15,

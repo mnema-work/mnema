@@ -103,10 +103,14 @@ file; Copilot CLI reads them all) reads it more than once rather than two versio
 is 2,390 characters (the one before was 1,721).
 
 ```sh
-mnema instructions            # write the block where it is missing or an earlier version's
-mnema instructions --check    # say what each file holds; exits 1 where one lacks this version's block
-mnema instructions --remove   # take it out of each file
-mnema instructions --all-hosts   # write all four offered files, asking nothing, whichever are there
+# write the block where it is missing or an earlier version's
+mnema instructions
+# say what each file holds; exits 1 where one lacks this version's block
+mnema instructions --check
+# take it out of each file
+mnema instructions --remove
+# write all four offered files, asking nothing, whichever are there
+mnema instructions --all-hosts
 ```
 
 The files on disk are the choice. Of the four offered files, `mnema instructions`, `--check`, `--remove` and
