@@ -93,10 +93,6 @@ the ones a first change usually meets:
   assistant as co-author; say which model, host and version in the field the pull request
   template asks for. A `users.noreply.github.com` address is recommended for your privacy, and
   no check enforces it.
-- **No em dash.** A text file in the repository that holds U+2014 is a red, at its line and
-  column ([`the-prose-carries-no-em-dash.test.ts`](packages/code/tests/the-prose-carries-no-em-dash.test.ts)).
-  The areas not yet rewritten are listed there, each with a ceiling that only goes down. Where the
-  character is data, its escape is allowed only in the files that test lists, each with its reason.
 
 A new guard is expected to come with a case that shows it failing on the defect it exists
 for: a guard that has never been seen to fail looks exactly like one that cannot.
