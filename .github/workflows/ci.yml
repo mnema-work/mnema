@@ -621,6 +621,39 @@ jobs:
       - name: Pack, install, init, record, verify, the second reader, doctor, the hooks
         run: node .github/the-other-systems/smoke.mjs
 
+  # THE NEWCOMER'S PATH. Every other job runs the workspace's own `dist`, or installs the binary and
+  # drives it through a pipe; none of them runs what the README tells a person to type. This packs the
+  # five as the release does (`pnpm pack`), installs the tarballs with `npm i -g` into an empty prefix
+  # and an empty HOME, and runs the Quick start block of the README, read from the README at run time,
+  # in a git repository and under a pseudo-terminal that answers the questions `mnema init` asks with
+  # Enter. Then it checks that the decision the block recorded is the one accepted and linked, and that
+  # `verify` is green. A block that stops running makes this red. It runs on the Node at the floor, on
+  # every pull request and push (no path filter), so it can be made a required check without a pull
+  # request that leaves the README alone waiting for it; making it one is the maintainer's call.
+  # `the-newcomer-path-runs-the-page.test.ts` reads this job and the script.
+  the-newcomer-path:
+    name: the newcomer's path from the packed files
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.15.0'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Pack, install the tarballs, run the README's quick start in a terminal, verify
+        run: bash .github/the-newcomer-path/run.sh
+
   # THE LINK CANNOT COME BACK. This repository does not credit the tool that wrote a change in
   # the change's own record, and for 243 pull requests that held because somebody remembered it.
   # A sweep on 2026-09-11 found the trunk carrying one co-author trailer and thirteen
