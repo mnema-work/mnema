@@ -1149,7 +1149,7 @@ describe('the act, the claim and the reading, over a record', () => {
       trustedRoot: sigstore.trustedRoot,
     }).findings;
     expect(finding?.reading).toMatchObject({ kind: 'signed', identity: 'stranger@example.org' });
-    expect(typeof (finding?.reading as { loggedAt?: string }).loggedAt).toBe('string');
+    expect(typeof (finding?.reading as { loggedAt?: string } | undefined)?.loggedAt).toBe('string');
     expect(finding?.namedBy).toBeUndefined();
   });
 
