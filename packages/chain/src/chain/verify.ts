@@ -159,8 +159,8 @@ import {
 import {
   type CommittedKeys,
   committedKeys,
-  listPublicKeyFingerprints,
   listLinkedTails,
+  listPublicKeyFingerprints,
   listTails,
   type RefusedLine,
   type RelaidLine,

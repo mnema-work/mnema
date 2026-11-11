@@ -416,7 +416,8 @@ const AGREEMENTS: readonly Agreement[] = [
     second: {
       section: '4',
       says: 'is a symbolic link',
-      where: 'tails/7e5a72fd0ea237237651690087e4a87133dab8b78847efadde778f633214cca4-05e27e636158e547a09e594545603717',
+      where:
+        'tails/7e5a72fd0ea237237651690087e4a87133dab8b78847efadde778f633214cca4-05e27e636158e547a09e594545603717',
       refusals: 2,
     },
   },
@@ -429,7 +430,8 @@ const AGREEMENTS: readonly Agreement[] = [
     second: {
       section: '4',
       says: 'is a symbolic link',
-      where: 'tails/deb2ded39dc26fce0e6085b6fc34bf6b5941913bbfe2ea614113cff9e004c170-cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd',
+      where:
+        'tails/deb2ded39dc26fce0e6085b6fc34bf6b5941913bbfe2ea614113cff9e004c170-cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd',
       refusals: 1,
     },
   },
