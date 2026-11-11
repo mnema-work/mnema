@@ -276,6 +276,15 @@ is the private tree of a project outside a git repository and, inside one, where
 version kept it before it moved into the repository's git directory; the product names one
 still there as left behind and, when asked, moves it.
 
+**A tail is a directory, and a symbolic link under `tails/` is refused by name**, whatever it
+points at (a directory, a file, nothing). A reader does not follow it, does not count it as a
+tail and reads nothing through it, and refuses the record naming `tails/<name>`, with or
+without other tails beside it: a link can point outside the repository, and a reader that
+followed it would verify events another reader of the same bytes never sees
+(`packages/chain/src/chain/both-readers-read-the-same-bytes.test.ts`, `tail-linked` and
+`tail-linked-beside-a-real-one`). Any other entry under `tails/` that is not a directory is
+not read.
+
 The tail is the concatenation of its segments in name order, and sequence numbers
 are contiguous across that concatenation: **which segment a given sequence number
 falls in is not specified**, and a verifier should not depend on it. Nothing else
@@ -545,7 +554,16 @@ The second scheme signs one key more, `record`: the name of the record the tail 
 - `contentRoot` is §5 folded over the events of the range, in order.
 - `prev` is the SHA-256 of the **previous checkpoint's signed message**, or `null`
   for the first. So checkpoints form their own chain: dropping an earlier one
-  while keeping a later one breaks the link.
+  while keeping a later one breaks the link. **The previous checkpoint is the line
+  before it in `checkpoints.jsonl`**, and the first line is the first checkpoint: the
+  order of the lines is part of what is checked, and a reader never sorts them (by
+  `fromSeq` or anything else) before it does. Two lines swapped, each byte for byte as
+  it was signed, are refused at the first line whose `prev` is not the line before it.
+  No writer leaves them out of order: a writer only appends, under the tail's lock,
+  the end of a torn last line is cut or completed in place, and the merge driver keeps
+  the longer of two copies one of which begins the other, so it never interleaves them
+  (`packages/chain/src/chain/both-readers-read-the-same-bytes.test.ts`,
+  `checkpoints-out-of-order`).
 - `prev` is lower-case hex, like every digest here.
 - `signerFp` is the full fingerprint of the signing key, bound into the signed
   bytes so a signature cannot be re-pointed at another key. **The fingerprint is

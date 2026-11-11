@@ -642,7 +642,8 @@ def _check_tail_naming(
     `record-mismatch` is two verified artifacts naming two records. Each is said once per tail,
     at the first that breaks, in the product's words.
     """
-    ordered = sorted(checkpoints, key=lambda cp: cp.from_seq)
+    # The tail's order is the order of its lines (section 6), as in the chain check.
+    ordered = checkpoints
     proof_names = proof.record if proof is not None else None
     first_named = next(
         (i for i, cp in enumerate(ordered) if cp.stored["scheme"] == NAMED_CHECKPOINT_SCHEME), None
@@ -1103,14 +1104,20 @@ def verify_record(root: str, report: Report, require: str = "chained") -> None:
         report.unchecked("6", "no keys/ directory, so no signature can be checked", gap="G03")
 
     tails_dir = os.path.join(root, "tails")
-    tail_ids = (
-        sorted(
-            (name for name in os.listdir(tails_dir) if os.path.isdir(os.path.join(tails_dir, name))),
-            key=utf16_order,
-        )
-        if os.path.isdir(tails_dir)
-        else []
+    # Section 4: a symbolic link under tails/ is no tail, whatever it points at. It is not
+    # followed (os.path.isdir would follow it) and is refused by name, as the product does.
+    names = os.listdir(tails_dir) if os.path.isdir(tails_dir) else []
+    tail_ids = sorted(
+        (
+            name for name in names
+            if not os.path.islink(os.path.join(tails_dir, name))
+            and os.path.isdir(os.path.join(tails_dir, name))
+        ),
+        key=utf16_order,
     )
+    for name in sorted(names, key=utf16_order):
+        if os.path.islink(os.path.join(tails_dir, name)):
+            report.fail("4", f"tails/{name} {LINKED_TAIL}", f"tails/{name}")
 
     declarations = _load_declarations(report)
 
@@ -1169,6 +1176,12 @@ def verify_record(root: str, report: Report, require: str = "chained") -> None:
 
 
 NO_TAIL_HELD = "no tail in this record holds an event or a checkpoint"
+
+# How a tail that is a symbolic link is named, in the product's words (section 4).
+LINKED_TAIL = (
+    "is a symbolic link, and a tail is a directory of the record: no reader follows a link "
+    "there, which can point outside it"
+)
 
 
 def _refuse_a_record_no_tail_holds(

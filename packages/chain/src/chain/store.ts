@@ -45,12 +45,33 @@ import {
 
 const NEWLINE = 0x0a;
 
-/** Lists the tail ids present in a chain (each is one machine's directory). */
+/**
+ * Lists the tail ids present in a chain (each is one machine's directory).
+ *
+ * A symbolic link under `tails/` is not one, whatever it points at: `readdirSync` reports the
+ * entry itself, never its target, so a link is no directory here. No reading and no writer
+ * follows it, and the verifier refuses it by name ({@link listLinkedTails}, FORMAT.md section 4).
+ */
 export function listTails(layout: ChainLayout): string[] {
   const dir = tailsDir(layout);
   if (!existsSync(dir)) return [];
   return readdirSync(dir, { withFileTypes: true })
     .filter((e) => e.isDirectory())
+    .map((e) => e.name)
+    .sort();
+}
+
+/**
+ * The names under `tails/` that are symbolic links (FORMAT.md section 4): what {@link listTails}
+ * leaves out and the verifier refuses by name, so a link is never read by one reader and
+ * skipped in silence by the other (`tail-linked-beside-a-real-one`,
+ * `both-readers-read-the-same-bytes.test.ts`).
+ */
+export function listLinkedTails(layout: ChainLayout): string[] {
+  const dir = tailsDir(layout);
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isSymbolicLink())
     .map((e) => e.name)
     .sort();
 }
@@ -742,10 +763,11 @@ export function readTailCheckpoints(
  * put an unbounded cost on every single write.
  *
  * The answer is the last line STORED, which is what taking the last of
- * {@link readTailCheckpoints} means, not the highest `toSeq`. For a tail with one
- * writer the two coincide (the verifier sorts by defence, not because the file
- * is out of order) and picking the highest instead would be a change of
- * behaviour wearing an optimization's clothes.
+ * {@link readTailCheckpoints} means, not the highest `toSeq`. That is the one rule of
+ * FORMAT.md section 6: the lines are in chain order and `prev` names the line before, so
+ * the last line is the head of the checkpoint chain. Both readers check the lines in that
+ * order and refuse two swapped ones (`checkpoints-out-of-order`); a writer only appends,
+ * and the merge driver keeps the longer of two sides one of which begins the other.
  *
  * The one thing it cannot see is corruption further up: a malformed line in the
  * MIDDLE of the file makes {@link readTailCheckpoints} refuse and leaves this

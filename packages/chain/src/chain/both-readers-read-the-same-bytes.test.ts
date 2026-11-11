@@ -395,6 +395,45 @@ const AGREEMENTS: readonly Agreement[] = [
     },
   },
   {
+    // Section 6: `prev` names the LINE before. The product sorted the lines by `fromSeq` and
+    // verified two swapped lines; the second reader refused them. Both refuse, at the first.
+    name: 'checkpoints-out-of-order',
+    verdict: 'refused',
+    product: { layer: 'T2/T4', says: 'checkpoint chain break' },
+    second: {
+      section: '6',
+      says: 'prev is',
+      where: 'checkpoints.jsonl:2 cp[3..3]',
+      refusals: 2,
+    },
+  },
+  {
+    // Section 4: a tail that is a symbolic link is refused by name in both. The product skipped
+    // it (no tail held) and the second reader followed it (verified).
+    name: 'tail-linked',
+    verdict: 'refused',
+    product: { layer: 'T1', says: 'LINKED TAIL: tails/7e5a72fd' },
+    second: {
+      section: '4',
+      says: 'is a symbolic link',
+      where: 'tails/7e5a72fd0ea237237651690087e4a87133dab8b78847efadde778f633214cca4-05e27e636158e547a09e594545603717',
+      refusals: 2,
+    },
+  },
+  {
+    // Beside a tail both read, which is where the split was silent: the product verified the
+    // record over one tail and the second reader over two.
+    name: 'tail-linked-beside-a-real-one',
+    verdict: 'refused',
+    product: { layer: 'T1', says: 'LINKED TAIL: tails/deb2ded39dc2' },
+    second: {
+      section: '4',
+      says: 'is a symbolic link',
+      where: 'tails/deb2ded39dc26fce0e6085b6fc34bf6b5941913bbfe2ea614113cff9e004c170-cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd',
+      refusals: 1,
+    },
+  },
+  {
     // ADR-123: one tail written from one head in two places and joined. Both readers used to
     // call it a gap in the sequence, which says nothing of what happened; both name it a fork,
     // at the second line that holds the seq, and say it once.

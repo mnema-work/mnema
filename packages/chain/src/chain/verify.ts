@@ -160,6 +160,7 @@ import {
   type CommittedKeys,
   committedKeys,
   listPublicKeyFingerprints,
+  listLinkedTails,
   listTails,
   type RefusedLine,
   type RelaidLine,
@@ -1436,6 +1437,7 @@ function verifyReading(
   const allIssues: TailIssue[] = [
     ...keyFilesWithoutAKey(committedFingerprints, keys),
     ...misnamedKeys(committedFingerprints, keys),
+    ...listLinkedTails(layout).map(linkedTail),
     ...(counted.length === 0 ? [noTailHeld(layout, tails)] : []),
     // A refused relink before the record's agreement, which it explains: the tail it did not move
     // is what leaves the directory two records, and both readers say the cause first.
@@ -1640,6 +1642,26 @@ function noTailHeld(layout: ChainLayout, tails: readonly string[]): TailIssue {
   return {
     layer: 'T1',
     detail: `NO TAIL: ${NO_TAIL_HELD}: ${why}, so the record asserts no fact, and nothing verifies over nothing`,
+  };
+}
+
+/**
+ * How a tail that is a symbolic link is named: the words both readers refuse it by (FORMAT.md
+ * section 4; the second reader says the same sentence after the same `tails/<name>`).
+ */
+export const LINKED_TAIL =
+  'is a symbolic link, and a tail is a directory of the record: no reader follows a link there, which can point outside it';
+
+/**
+ * A TAIL THAT IS A SYMBOLIC LINK, refused by name (FORMAT.md section 4), whatever it points at.
+ * The product skipped it in silence while the second reader followed it, so over a record with
+ * one tail beside it the two verified different events.
+ */
+function linkedTail(name: string): TailIssue {
+  return {
+    tail: name,
+    layer: 'T1',
+    detail: `LINKED TAIL: tails/${oneLine(name)} ${LINKED_TAIL}`,
   };
 }
 
@@ -2398,7 +2420,10 @@ function verifyCheckpointsOnce(
   signatures: SignaturesChecked,
 ): CheckpointCoverage & { readonly lastAccepted?: Checkpoint } {
   let lastAccepted: Checkpoint | undefined;
-  const checkpoints = [...stored].sort((a, b) => a.fromSeq - b.fromSeq);
+  // IN THE ORDER OF THE LINES, never sorted (FORMAT.md section 6): `prev` names the line before.
+  // A sort by `fromSeq` read two swapped lines as an intact chain while the second reader
+  // refused them (`checkpoints-out-of-order`, `both-readers-read-the-same-bytes.test.ts`).
+  const checkpoints = stored;
   const proven: ProvenCheckpoint[] = [];
   const named: NamedCheckpoint[] = [];
   let covered = -1;
@@ -2590,9 +2615,7 @@ function verifyTailSigner(
   issues: TailIssue[],
 ): void {
   const owner = tailFingerprint(tail);
-  const checkpoint = [...checkpoints]
-    .sort((x, y) => x.fromSeq - y.fromSeq)
-    .find((cp) => cp.signerFp !== owner);
+  const checkpoint = checkpoints.find((cp) => cp.signerFp !== owner);
   if (checkpoint !== undefined) {
     issues.push({
       tail,
@@ -2713,7 +2736,8 @@ function verifyTailNaming(
   named: readonly NamedCheckpoint[],
   issues: TailIssue[],
 ): string | undefined {
-  const ordered = [...checkpoints].sort((a, b) => a.fromSeq - b.fromSeq);
+  // The tail's order is the order of its lines (section 6), as in the chain check.
+  const ordered = checkpoints;
   const proofNames = proof?.scheme === NAMED_TAILPROOF_SCHEME ? proof.record : undefined;
   const firstNamed = ordered.findIndex((cp) => cp.scheme === NAMED_SCHEME);
   const downgrade = ordered.find(

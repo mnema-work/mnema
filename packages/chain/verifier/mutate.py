@@ -990,6 +990,57 @@ def reordered_lines(root: str) -> tuple[bool, str]:
     return _rewrite(path, lines), "the lines of seq 2 and seq 3 swapped"
 
 
+def checkpoints_out_of_order(root: str) -> tuple[bool, str]:
+    """Two checkpoint lines swapped, each left byte for byte as it was signed.
+
+    Section 6: the lines of `checkpoints.jsonl` are in chain order, and a checkpoint's `prev`
+    is the hash of the line before it. A reader that sorted them by `fromSeq` first read the
+    swapped file as an intact chain, while one that took the line before refused it.
+    """
+    path = _checkpoints(root)
+    lines = _read_lines(path)
+    if len(lines) < 3:
+        return False, "the tail holds fewer than three checkpoints"
+    lines[1], lines[2] = lines[2], lines[1]
+    return _rewrite(path, lines), "checkpoint lines 2 and 3 swapped"
+
+
+def _link_tail(root: str, tail: str) -> str:
+    """Move the tail out of the record, beside it, and leave a symbolic link in its place."""
+    place = os.path.join(root, "tails", tail)
+    outside = os.path.join(os.path.dirname(os.path.abspath(root)), "linked-" + tail[:12])
+    shutil.move(place, outside)
+    os.symlink(os.path.relpath(outside, os.path.dirname(place)), place)
+    return place
+
+
+def tail_linked(root: str) -> tuple[bool, str]:
+    """The one tail moved out of the record and a symbolic link to it left under `tails/`.
+
+    Section 4: a tail is a directory of the record, and a reader does not follow a link
+    there, which can point anywhere. Both readers refuse it by name.
+    """
+    tail = os.path.basename(_tail_dir(root))
+    place = _link_tail(root, tail)
+    return os.path.islink(place), f"tails/{tail[:20]}... is a link to a directory outside"
+
+
+def tail_linked_beside_a_real_one(root: str) -> tuple[bool, str]:
+    """Two tails both readers verify, and the second moved out and linked in its place.
+
+    The case a reader that skips a link reads silently: the record still verifies over the
+    tail it reads, while the other reader verified a tail more.
+    """
+    _refound(root, "a named record with a tail beside it")
+    template = _last_event(root)
+    other = _tail_name(CHECKER_SECRET, "cd")
+    _found_tail(
+        root, CHECKER_SECRET, other, template["at"], "a note in a linked tail", None, None, ANOTHER_NOTE
+    )
+    place = _link_tail(root, other)
+    return os.path.islink(place), f"tails/{other[:20]}... is a link, beside a real tail"
+
+
 def forked_tail(root: str) -> tuple[bool, str]:
     """A second, different line at the last seq, following the same line the first one follows.
 
@@ -1955,6 +2006,9 @@ MUTATIONS = {
     "aligned-cut": aligned_cut,
     "reordered-lines": reordered_lines,
     "forked-tail": forked_tail,
+    "checkpoints-out-of-order": checkpoints_out_of_order,
+    "tail-linked": tail_linked,
+    "tail-linked-beside-a-real-one": tail_linked_beside_a_real_one,
     "named-record": named_record,
     "tail-of-another-record": tail_of_another_record,
     "tail-names-two-records": tail_names_two_records,

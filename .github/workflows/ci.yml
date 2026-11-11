@@ -295,6 +295,7 @@ jobs:
           packages/code/tests/a-relinked-tail-passes-since.test.ts
           packages/code/tests/a-tail-that-holds-keys-is-not-cut-without-naming-them.test.ts
           packages/code/tests/a-write-killed-at-any-point-is-signed-by-the-next.test.ts
+          packages/code/tests/both-readers-refuse-swapped-checkpoints-and-a-linked-tail.test.ts
           packages/code/tests/every-verifier-gives-one-ed25519-verdict.test.ts
           packages/code/tests/ten-writers-one-record.test.ts
           packages/code/tests/the-agent-ci-step-installs-the-key-the-agent-signs-with.test.ts
