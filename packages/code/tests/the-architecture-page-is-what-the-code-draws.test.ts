@@ -20,7 +20,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-// @ts-expect-error plain ESM under .github/, run by hand to redraw the page and read here to hold it
 import {
   BEGIN,
   blockOf,
