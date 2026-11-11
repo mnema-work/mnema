@@ -13,8 +13,8 @@
  * and `tsc` with `checkJs` over the five reported 88 errors, two of which were a field
  * whose declared type could not hold what its own second line assigned to it.
  *
- * IT SAID FIVE UNTIL 2026-09-12, and what changed it is `.github/the-link-cannot-come-back/`:
- * the sixth instrument, and the first one that judges what goes INTO the trunk rather than
+ * IT SAID FIVE UNTIL 2026-09-12, and what changed it was a sixth
+ * instrument, since removed, the first one that judged what goes INTO the trunk rather than
  * what came out of a run. The sentence above is left in the past tense rather than edited to
  * six, because the 88 errors were counted over the five that existed then. The count that is
  * about today is asserted, not narrated: `holds every one of them` reads the disk.
@@ -41,8 +41,8 @@
  *     run these two, which is also true of every other case in this suite;
  *   - it says nothing about what the rulers DO. That is
  *     `the-red-says-why-it-went-red`, `the-sampler-counts-or-refuses`,
- *     `what-the-suite-left-behind`, `the-link-cannot-come-back` and
- *     `the-record-arrives-unasked`, which run all six.
+ *     `what-the-suite-left-behind` and
+ *     `the-record-arrives-unasked`, which run the rulers.
  */
 
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -160,7 +160,6 @@ describe('the same globs reach every instrument this repository ships or runs', 
       '.github/the-fast-guards/marked.mjs',
       '.github/the-front-page/accent.mjs',
       '.github/the-front-page/draw.mjs',
-      '.github/the-link-cannot-come-back/scan.mjs',
       '.github/the-links-after-the-merge/check.mjs',
       '.github/the-other-systems/smoke.mjs',
       '.github/the-plugin-icon/make.mjs',
