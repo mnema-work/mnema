@@ -834,6 +834,7 @@ export const HANDED_OVER: Readonly<
   'docs/a-record-inheriting-another.md': { line: 9, name: 8 },
   'docs/a-second-machine-and-your-key.md': { line: 12, name: 15 },
   'docs/agent-hosts.md': { line: 4, name: 3 },
+  'docs/architecture.md': { name: 5 },
   'docs/as-an-mcp-server.md': { line: 1, name: 3 },
   'docs/committing-the-record.md': { line: 7, name: 18 },
   'docs/convergence.md': { line: 6, name: 2 },

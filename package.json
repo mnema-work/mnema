@@ -49,6 +49,7 @@
     "@biomejs/biome": "^2.6.4",
     "@types/node": "^26.6.6",
     "@vitest/coverage-v8": "^4.1.12",
+    "dependency-cruiser": "18.7.2",
     "fast-check": "^4.10.2",
     "gpt-tokenizer": "^4.1.0",
     "typescript": "^7.0.2",

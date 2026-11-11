@@ -71,7 +71,7 @@ Each line is a rule in force in this repository's record; the decision it cites,
 - One agent's probe is reproduced by another before it is a fact or a question to the maintainer (ADR-295).
 - The review verdict is posted, summarised, on the pull request (ADR-296).
 - A change in behaviour changes its page and adds its changelog entry as a file under `changelog/unreleased/` (ADR-297, ADR-311).
-- The architecture page (`docs/architecture.md`, once it exists) maps the packages and their layers (ADR-298).
+- The [architecture page](docs/architecture.md) maps the packages and their layers (ADR-298).
 - A module's header comment states its invariant and the test that holds it (ADR-299).
 - A comparison with another tool is an honest one, and says when to choose the other (ADR-300).
 - Every delivery an agent hands over is reviewed and adversarially verified, amendments included (ADR-284).
