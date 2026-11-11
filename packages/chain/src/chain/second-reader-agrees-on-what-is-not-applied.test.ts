@@ -167,6 +167,7 @@ function machine(record: string) {
   return { writer, env };
 }
 
+// @proves every-move-on-the-record-followed-the-workflow
 describe('one record per rule of §6.7: both readers name the same move, by the same rule', () => {
   type Step =
     | { kind: 'decision' | 'task'; payload: Parameters<typeof decisionTransitioned>[1] }

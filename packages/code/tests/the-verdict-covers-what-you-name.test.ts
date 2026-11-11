@@ -251,6 +251,7 @@ describe('without the flag, nothing moved', () => {
   });
 });
 
+// @proves verify-covered-every-project
 describe('two sound projects', () => {
   it('gives each its own lines and ONE verdict over both', async () => {
     await found('alpha');
@@ -439,6 +440,7 @@ describe('a named path that holds no record', () => {
   });
 });
 
+// @proves verify-covered-every-project
 describe('naming a path is asserting that it is a project', () => {
   it('exits non-zero and NAMES the path, beside projects that verified', async () => {
     // The defect this rule closes, in the shape it was measured in: one sound project

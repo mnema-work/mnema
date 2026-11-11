@@ -31,6 +31,7 @@ function aFrozenFile(project: TheProject): void {
   aFile(project, PATH, 'rate = old\n');
 }
 
+// @proves the-refusal-of-a-write-holds-everywhere
 describe('the shell goes round the rule', () => {
   const start = aHostForEachCase();
 

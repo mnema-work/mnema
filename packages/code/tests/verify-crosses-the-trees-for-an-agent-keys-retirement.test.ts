@@ -136,6 +136,7 @@ const attested = (tree: TreeVerdict): readonly string[] =>
     note.kind === 'attested-which' ? [`${note.name} ${note.events}`] : [],
   );
 
+// @proves verify-covered-the-record
 describe('mnema verify, over a project whose trees disagree about a retirement', () => {
   it('refuses, in the private tree, what the agent signed there after the committed tree retired it', async () => {
     const fingerprint = await anEnrolledAgent();

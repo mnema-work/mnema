@@ -109,6 +109,7 @@ const POINTS: Record<string, { at: string; arm?: string }> = {
   },
 };
 
+// @proves an-edit-is-caught
 describe('a write killed at a point of its hold, then a write by the same key', () => {
   for (const [point, kill] of Object.entries(POINTS)) {
     for (const cache of ['warm', 'cold'] as const) {

@@ -85,6 +85,7 @@ describe('backward: a record an earlier binary wrote is read by this one', () =>
   });
 });
 
+// @proves any-version-of-the-tool-can-read-the-record
 describe('forward: a newer version of a kind is refused by name, a kind not known is read past', () => {
   let root: string;
   beforeEach(() => {

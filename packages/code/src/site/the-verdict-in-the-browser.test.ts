@@ -171,6 +171,7 @@ function segmentOf(root: string): string {
   return join(tails, tail, '000001.jsonl');
 }
 
+// @proves a-pages-verdict-is-mnema-verifys
 describe('the verdict a page computes', () => {
   it('is the verdict mnema verify gives over an honest record', () => {
     const out = honestRecord();

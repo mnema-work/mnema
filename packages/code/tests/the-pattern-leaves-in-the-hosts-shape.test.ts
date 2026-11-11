@@ -185,6 +185,7 @@ describe('mnema skill export', () => {
     expect(said.out[0]).toContain(join(out, 'stacked-prs', 'SKILL.md'));
   });
 
+  // @proves an-exported-skill-is-what-the-record-proves
   it('carries the recorded body verbatim, and the file ends where the body ends', async () => {
     const id = await anAdoptedPattern('stacked-prs');
     await mnema('skill', 'export', id, '--out', out);

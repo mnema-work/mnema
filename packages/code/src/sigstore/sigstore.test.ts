@@ -194,6 +194,7 @@ const DIGEST = createHash('sha256').update(MESSAGE).digest('hex');
 const certificateIn = (content: string): X509Certificate =>
   new X509Certificate(Buffer.from(content, 'base64').toString('utf-8'));
 
+// @proves what-leaves-the-machine-and-when
 describe('what leaves the machine', () => {
   it('sends Fulcio the token, the key and its proof, and Rekor the digest, never the message', async () => {
     const sigstore = await aSigstore();
@@ -603,6 +604,7 @@ describe('when Sigstore answers badly, or not at all', () => {
   });
 });
 
+// @proves checking-a-sigstore-bundle-needs-the-network
 describe('reading a bundle, offline', () => {
   async function aBundle() {
     const sigstore = await aSigstore();
@@ -614,6 +616,7 @@ describe('reading a bundle, offline', () => {
     return { text: JSON.stringify(signed.checkpoints[0].bundle), root: sigstore.trustedRoot };
   }
 
+  // @proves a-sigstore-bundle-dates-the-checkpoint
   it('reads who signed and when Rekor logged it, by Sigstore’s own checks', async () => {
     const { text, root } = await aBundle();
     const reading = readSigstoreBundle(text, { digest: DIGEST, message: MESSAGE }, root);
@@ -852,6 +855,7 @@ describe('reading a bundle, offline', () => {
     expect(noRun.kind === 'signed' && noRun.ran).not.toHaveProperty('run');
   });
 
+  // @proves a-sigstore-bundle-names-the-agent-or-the-model-that-worked-in-the-run
   it('says it in the note, and says the bundle names a run, not the agent inside it', async () => {
     const { text, root } = await anActionsBundle();
     const reading = readSigstoreBundle(text, { digest: DIGEST, message: MESSAGE }, root);
@@ -877,6 +881,7 @@ describe('reading a bundle, offline', () => {
     expect(line).not.toContain('/runs/777/');
   });
 
+  // @proves a-signed-and-countersigned-record-is-honest
   it('refuses the bundle over any other message, recomputed rather than taken from it', async () => {
     const { text, root } = await aBundle();
     const other = Buffer.from(MESSAGE.toString('utf-8').replace('"toSeq":3', '"toSeq":4'));
@@ -1010,6 +1015,7 @@ describe('the act, the claim and the reading, over a record', () => {
     expect(sigstore.asked.length).toBe(asked);
   });
 
+  // @proves the-record-does-not-keep-my-e-mail
   it('keeps the hash of the e-mail address in the record, and the address nowhere in it', () => {
     const ctx = aProject();
     const claimed = runKeySigstore(ctx, { identity: ` ${EMAIL.toUpperCase()} ` });
@@ -1037,6 +1043,7 @@ describe('the act, the claim and the reading, over a record', () => {
     expect(holding).toEqual([]);
   });
 
+  // @proves a-sigstore-signature-names-the-person
   it('keeps a workflow in the record as it is: a workflow is not a person', () => {
     const ctx = aProject();
     const workflow =
@@ -1045,6 +1052,8 @@ describe('the act, the claim and the reading, over a record', () => {
     expect(claimed).toMatchObject({ ok: true, identity: workflow, recorded: workflow });
   });
 
+  // @proves a-sigstore-signature-names-the-person
+  // @proves whoever-holds-the-e-mail-wrote-the-record
   it('says a bundle no identity of the record names speaks for nobody', async () => {
     const ctx = aProject();
     const sigstore = await aSigstore();
@@ -1062,6 +1071,7 @@ describe('the act, the claim and the reading, over a record', () => {
     expect(receipts.findings[0]?.namedBy).toBeUndefined();
   });
 
+  // @proves a-signed-and-countersigned-record-is-honest
   it('reads a bundle filed under a checkpoint the tail does not prove as not covered', async () => {
     const ctx = aProject();
     const root = join(ctx.cwd, '.mnema');

@@ -295,6 +295,7 @@ describe('the name the record gives the agent is the which of what it signs', ()
 });
 
 describe('an agent the record does not enrol, and a person who can sign', () => {
+  // @proves the-agent-named-on-a-fact-did-the-work
   it('is signed by the person and declares the name the variable asked for', async () => {
     await did(undefined, 'key', 'request', '--agent', 'ci', '--anchor', await identity());
 

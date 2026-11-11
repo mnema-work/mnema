@@ -116,6 +116,7 @@ function establishThenLoseTheKey(protectedWith?: string): {
   return { anchorBefore: established.anchor, primaryFp, backupFp, vaultCopy };
 }
 
+// @proves a-lost-key-can-be-restored
 describe('restoreKey: the identity after the loss is the identity from before it', () => {
   it('adopts the anchor the tree proves, and the machine signs as it again', () => {
     const lost = establishThenLoseTheKey();

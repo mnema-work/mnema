@@ -239,6 +239,7 @@ function refused(write: () => unknown): TailDamagedError {
   throw new Error('the write was not refused');
 }
 
+// @proves an-edit-is-caught
 describe('a rewritten history goes to a new tail, unsigned', () => {
   it('1. the rewrite with the checkpoints emptied and the note fixed', () => {
     const tail = history();

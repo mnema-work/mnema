@@ -163,6 +163,7 @@ afterEach(() => {
   rmSync(sandbox, { recursive: true, force: true });
 });
 
+// @proves a-green-verify-means-the-record-is-honest
 describe('the forged record: the one the README used to promise a non-zero exit on', () => {
   it('1 (rehashed and stripped of its checkpoints): the DEFAULT exits 0 and search serves it', async () => {
     await record('the fact as it was written');
@@ -198,6 +199,7 @@ describe('the forged record: the one the README used to promise a non-zero exit 
     expect(gated.err).toContain('this record is hash-chain-only');
   });
 
+  // @proves an-edit-is-caught
   it('3 (the CONTRAST): the same edit WITHOUT the rehash is caught by the default', async () => {
     // Without this case, case 1 would pass over a `verify` that never fails at all.
     // The attacker's rehash is the only difference between the two records.

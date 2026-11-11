@@ -578,6 +578,7 @@ const EVERY_CLI_WRITE = 30_000;
  */
 const IN_PROCESS_SWEEP = 15_000;
 
+// @proves every-event-is-signed
 describe('every write path leaves the record fully signed', () => {
   /**
    * The CLI surface, driven in one project, in order, so each act builds on the last.

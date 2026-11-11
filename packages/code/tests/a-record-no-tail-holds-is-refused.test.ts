@@ -95,6 +95,8 @@ function aRecord(): string {
 
 const tails = (): string[] => readdirSync(join(repo, '.mnema', 'tails'));
 
+// @proves nothing-was-removed
+// @proves nothing-was-deleted
 describe('mnema verify over a record in which no tail holds anything', () => {
   it('exits 1 with its one tail deleted, names it as the record, and still names the keys', () => {
     aRecord();

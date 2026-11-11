@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { EMAIL_PLACEHOLDER, scrubEmails } from './personal.js';
 
+// @proves email-addresses-stay-out-of-a-body
 describe('an email address in recorded text', () => {
   it('is replaced by a marker, and the words around it survive', () => {
     const scrubbed = scrubEmails('reported by jane.doe+work@example.com on the call');

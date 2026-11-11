@@ -136,6 +136,7 @@ afterEach(() => {
   rmSync(sandbox, { recursive: true, force: true });
 });
 
+// @proves verify-covered-the-record
 describe('the record is two trees, and the verdict names both', () => {
   it('covers a fact that lives ONLY in the private tree', async () => {
     // The defect, through the surface. Before this, the whole sentence was about the
@@ -249,6 +250,7 @@ describe('a line in the SECOND tree that will not parse', () => {
   });
 });
 
+// @proves a-tree-with-no-record
 describe('a tree with nothing in it', () => {
   it('a fresh CLONE has no private tree: a note, and the verdict is untouched', async () => {
     // THE CASE THAT MUST NOT BREAK. `private/` is gitignored, so it never travels: a

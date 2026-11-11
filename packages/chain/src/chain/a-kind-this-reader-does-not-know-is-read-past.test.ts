@@ -131,6 +131,7 @@ function aRecordWith(kind: string, payload: Line, covered?: number): { tail: str
 /** A payload no contract declares: fields of every type a newer writer could use. */
 const NEW_PAYLOAD: Line = { says: 'what a newer mnema means', count: 3, nested: { yes: true } };
 
+// @proves any-version-of-the-tool-can-read-the-record
 describe('a signed, covered line of a kind this reader does not know', () => {
   it('is read past by the product: verified, every line signed, and the kind named once', () => {
     const { tail } = aRecordWith(FUTURE, NEW_PAYLOAD);

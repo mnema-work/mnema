@@ -100,6 +100,7 @@ afterEach(() => {
   for (const dir of scratch) rmSync(dir, { recursive: true, force: true });
 });
 
+// @proves only-whoever-wrote-a-note-can-take-it-back
 describe('only the identity that wrote a note retracts it', () => {
   it('refuses another identity at the write, says whose the note is, and appends nothing', () => {
     const a = machine('mnema-author-a-');
@@ -213,6 +214,7 @@ describe('only the identity that wrote a note retracts it', () => {
  * now takes the first writing in the merged order, and both arrangements of the two tails are
  * asked, since the order of their ids is what the census used to depend on.
  */
+// @proves only-whoever-wrote-a-note-can-take-it-back
 describe('a note is the identity that first wrote it', () => {
   const at = (seconds: number) => new Date(Date.now() + seconds * 1000).toISOString();
 

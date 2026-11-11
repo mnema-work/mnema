@@ -108,6 +108,7 @@ function runPublished(recordPath: string): { out: string; status: number } {
   }
 }
 
+// @proves a-pages-verdict-is-mnema-verifys
 describe('the verifier the verify-without-installing page publishes', () => {
   let sandbox: string;
 

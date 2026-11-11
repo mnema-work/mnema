@@ -105,7 +105,7 @@ for: a guard that has never been seen to fail looks exactly like one that cannot
 
 Each line is a rule in force in this repository's record; the decision it cites, read from the record, says why.
 
-- Every sentence of [what it proves](docs/what-it-proves.md) points at a threat test written from the attacker's side (no key, write access, a cold cache) that fails when the sentence stops being true (ADR-287).
+- Every sentence of [what it proves](docs/what-it-proves.md) points at a threat test written from the attacker's side (no key, write access, a cold cache) that fails when the sentence stops being true (ADR-287). A row's id is its bold claim in lower case, the words joined by hyphens (`An edit is caught` is `an-edit-is-caught`); a test holds a row with a comment `// @proves <id>` above the case, and [`every-claim-of-what-it-proves-has-a-threat-test.test.ts`](packages/code/tests/every-claim-of-what-it-proves-has-a-threat-test.test.ts) fails for a row no test names and for a name no row has.
 - No raw error reaches a person and no `catch` is silent (ADR-288).
 - The hot path keeps its budget, one file holds the counts, and a published package declares only what its bundle imports (ADR-289).
 - CI runs the newcomer's path from the packed tarball (ADR-290).

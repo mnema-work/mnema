@@ -174,6 +174,7 @@ afterEach(() => {
   rmSync(sandbox, { recursive: true, force: true });
 });
 
+// @proves an-exported-audit-feed-is-the-record
 describe('mnema export: the feed leaves the bodies behind', () => {
   it('emits not one byte of any body, over a record that is full of them', async () => {
     await aRecordFullOfBodies();

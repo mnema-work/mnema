@@ -108,6 +108,7 @@ afterEach(() => {
   for (const dir of scratch) rmSync(dir, { recursive: true, force: true });
 });
 
+// @proves a-link-taken-back-stops-acting-everywhere
 describe('only the identity that recorded a link retracts it', () => {
   it('the author retracts it, the edge stops standing, and a second retraction is refused', () => {
     const a = machine('mnema-linker-a-');

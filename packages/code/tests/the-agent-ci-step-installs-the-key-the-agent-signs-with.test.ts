@@ -295,6 +295,7 @@ describe('the step the page publishes for an agent in CI', () => {
     expect(readdirSync(r.home)).toEqual([]);
   });
 
+  // @proves a-fact-signed-by-an-agent-key-was-signed-by-that-agent
   it('lets the agent write as itself, which both readers read as attested, and founds no identity beside the project’s', async () => {
     const r = runner('writes');
     expect(theStep(r, pem).status).toBe(0);

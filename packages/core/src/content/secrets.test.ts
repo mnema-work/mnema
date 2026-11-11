@@ -68,6 +68,8 @@ function wrote(sample: Sample): string {
   return `deploying with ${sample.holder} against staging`;
 }
 
+// @proves secrets-stay-out
+// @proves credentials-stay-out-of-the-record
 describe('scrubSecrets: the value is absent from the output', () => {
   it('carries one sample per recognized class: the ruler the loops below measure with', () => {
     // Both directions. A class with no sample would be skipped by every loop in

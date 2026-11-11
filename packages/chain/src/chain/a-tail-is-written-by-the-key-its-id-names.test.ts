@@ -118,6 +118,7 @@ function aPersonWithTwoKeys(): {
 const mismatches = (issues: readonly { detail: string }[]): string[] =>
   issues.map((issue) => issue.detail).filter((detail) => detail.includes('tail-signer-mismatch'));
 
+// @proves a-tail-is-written-by-its-own-key
 describe('a tail and the key its id begins with', () => {
   it('verifies a second key that writes in its OWN tail, checkpointed or not', () => {
     const { a, b, ownRuns, byB } = aPersonWithTwoKeys();

@@ -93,6 +93,7 @@ function readings(id: string) {
   }
 }
 
+// @proves every-move-on-the-record-followed-the-workflow
 describe('a move written by hand past the gate is not applied', () => {
   it('reads a decision rejected, then moved rejected → accepted by hand, as rejected everywhere', () => {
     const ctx = writing();

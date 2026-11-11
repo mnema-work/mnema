@@ -156,6 +156,7 @@ afterEach(() => {
   rmSync(sandbox, { recursive: true, force: true });
 });
 
+// @proves a-cut-can-be-told-from-a-tampering
 describe('the record names the cut, and the verb is what writes it', () => {
   it('writes the waiver, and the verify that follows the cut names the account', async () => {
     const foreign = mergeAForeignTail();

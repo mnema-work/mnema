@@ -127,6 +127,7 @@ afterEach(() => {
   rmSync(sandbox, { recursive: true, force: true });
 });
 
+// @proves verify-passes
 describe('the six probes, as the verdict answers them now', () => {
   it('A (a record whose every event is signed): verified (T1/T2/T4), exit 0', async () => {
     // The wording that must NOT change. A reader learned this line; the whole point
@@ -140,6 +141,7 @@ describe('the six probes, as the verdict answers them now', () => {
     expect(said.failed).toBe(false);
   });
 
+  // @proves events-are-signed
   it('B (the signatures deleted): T1 only, and it says NO signature was checked', async () => {
     // Measured before: `verified (T1/T2/T4)` beside `6 event(s) … NOT yet
     // signature-covered` (two claims about one chain, contradicting each other on
@@ -200,6 +202,7 @@ describe('the six probes, as the verdict answers them now', () => {
     expect(said.failed).toBe(true);
   });
 
+  // @proves the-record-could-be-read
   it('D (a corrupted line in the MIDDLE): a verdict with the position, not a parser message', async () => {
     // Measured before: `not valid JSON: Unexpected end of JSON input`, exit 1.
     // Right in the exit code and not a finding: no tail, no line, no word for
@@ -312,6 +315,7 @@ describe('the caller declares the minimum: `--require`', () => {
     expect(said.issues).toEqual([]);
   });
 
+  // @proves the-record-is-as-old-as-it-says
   it('fails --require=witnessed on a record nobody stamped, and says which layer is missing', async () => {
     // THIS CASE USED TO SAY *NEVER PASSES*, and that was true for as long as nothing
     // could produce an attestation. `mnema witness` can now, so what is pinned is the

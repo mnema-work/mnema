@@ -95,6 +95,7 @@ function forgedRecord(): string {
   return tree;
 }
 
+// @proves a-decision-says-what-was-accepted
 describe('a decision is the text its first judgment saw', () => {
   it('is what the cache serves by id, in the list, and in the full-text index', () => {
     const tree = forgedRecord();
@@ -215,6 +216,7 @@ function read(tree: string) {
   }
 }
 
+// @proves a-decision-says-what-was-accepted
 describe('a decision is the text its acceptance was made on', () => {
   it('serves the text accepted, and names the writing dated back from an older tail after the accept', () => {
     const tree = backdatedRecord('after-the-accept');

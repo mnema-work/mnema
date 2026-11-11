@@ -97,6 +97,7 @@ function filesUnder(dir: string): string[] {
   return found;
 }
 
+// @proves how-often-an-agent-used-a-tool
 describe('the local count of tool calls', () => {
   it('counts each tool by name, with its refusals and the code they carried', async () => {
     const client = await connect();

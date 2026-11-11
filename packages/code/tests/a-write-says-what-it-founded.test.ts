@@ -124,6 +124,7 @@ function founded(stream: string): string[] {
   return stream.split('\n').filter((line) => line.includes(FOUNDED));
 }
 
+// @proves your-machines-are-one-author
 describe('the command line says it on stderr, once, after the answer', () => {
   it('for a key whose first write founds beside another identity, and names both', () => {
     expect(founded(mnema(homeA, 'init').stderr)).toEqual([]);

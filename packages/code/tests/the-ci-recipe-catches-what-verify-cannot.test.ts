@@ -259,6 +259,7 @@ function recipe(dir: string): { status: number; out: string } {
   return { status: ran.status ?? -1, out: `${ran.stdout}${ran.stderr}` };
 }
 
+// @proves a-green-verify-means-the-record-is-honest
 describe('the CI recipe the page publishes', () => {
   it('passes a record that only grew', () => {
     const dir = changed('honest', (at) => {

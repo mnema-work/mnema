@@ -237,6 +237,7 @@ describe('mnema check', () => {
     expect(events()).toHaveLength(before);
   });
 
+  // @proves a-key-that-signs-only-check-results-can-do-no-harm
   it('a retired runner key runs nothing, and what it signed before is named by verify', async () => {
     const rule = await acceptedRule('Money is kept in integer cents');
     await did('check', 'declare', rule, 'node', '--', '-e', 'process.exit(0)');

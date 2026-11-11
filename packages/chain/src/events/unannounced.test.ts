@@ -32,6 +32,7 @@ const fact = (id: string, run: string | undefined, signerFp: string) =>
     { content: 'a note' },
   );
 
+// @proves the-agent-named-on-a-fact-did-the-work
 describe('which facts carry a `which` nobody announced (FORMAT.md section 6.9)', () => {
   const events = [birth('r-1', KEY_A), mark('r-1', KEY_A), birth('r-2', KEY_A)];
   const marked = unannouncedRuns(events);

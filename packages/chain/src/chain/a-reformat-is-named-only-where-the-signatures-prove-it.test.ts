@@ -136,6 +136,7 @@ function secondReader(root: string): { verdict: string; text: string } {
   return { verdict: reading.verdict, text: run.stdout };
 }
 
+// @proves a-formatter-rewrote-the-record
 describe('a record a formatter rewrote is still refused, and the reformat is named', () => {
   it('names an indented tail proof (prettier, Biome, dprint, pretty-format-json)', () => {
     const r = aRecord(3);

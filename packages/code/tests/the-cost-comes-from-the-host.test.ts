@@ -189,6 +189,7 @@ async function aRunWithATranscript(): Promise<void> {
   writeTranscript('session-in-the-window', now, now);
 }
 
+// @proves what-a-run-cost
 describe('mnema usage', () => {
   it('reports tokens and a model id, and never a currency', async () => {
     await aRunWithATranscript();
