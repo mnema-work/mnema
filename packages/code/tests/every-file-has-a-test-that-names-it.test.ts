@@ -71,6 +71,7 @@ import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { codeOnly, sourceFiles } from './support/reading-source.js';
+import { holdTheCounts } from './support/the-counts-a-guard-keeps.js';
 import {
   assertionStatements,
   boundNames,
@@ -1113,7 +1114,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/every-chain-refusal-is-a-refusal.test.ts': 15,
   'packages/code/tests/every-claim-of-what-it-proves-has-a-threat-test.test.ts': 5,
   'packages/code/tests/every-description-reaches-the-model.test.ts': 12,
-  'packages/code/tests/every-file-has-a-test-that-names-it.test.ts': 6,
+  'packages/code/tests/every-file-has-a-test-that-names-it.test.ts': 7,
   'packages/code/tests/every-git-that-writes-runs-without-maintenance.test.ts': 9,
   'packages/code/tests/every-group-flag-is-read-or-refused.test.ts': 9,
   'packages/code/tests/every-instant-is-its-own.test.ts': 4,
@@ -1240,6 +1241,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/support/screen.ts': 3,
   'packages/code/tests/support/the-cache-is-not-the-record.ts': 1,
   'packages/code/tests/support/the-cli.ts': 3,
+  'packages/code/tests/support/the-counts-a-guard-keeps.ts': 3,
   'packages/code/tests/support/the-host-files.ts': 8,
   'packages/code/tests/support/the-line-a-path-takes.ts': 4,
   'packages/code/tests/support/the-record-held.ts': 3,
@@ -1281,7 +1283,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-ci-recipe-catches-what-verify-cannot.test.ts': 9,
   'packages/code/tests/the-citation-that-arrives-opens.test.ts': 13,
   'packages/code/tests/the-clean-verify-is-short.test.ts': 8,
-  'packages/code/tests/the-command-handed-over-runs-as-handed.test.ts': 11,
+  'packages/code/tests/the-command-handed-over-runs-as-handed.test.ts': 12,
   'packages/code/tests/the-command-line-signs-as-its-agent.test.ts': 10,
   'packages/code/tests/the-compaction-hands-back-what-was-recorded.test.ts': 12,
   'packages/code/tests/the-console-on-ink.test.ts': 20,
@@ -1291,6 +1293,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-converter-a-page-publishes-runs.test.ts': 9,
   'packages/code/tests/the-corner-says-what-its-level-covers.test.ts': 15,
   'packages/code/tests/the-cost-comes-from-the-host.test.ts': 6,
+  'packages/code/tests/the-counts-a-guard-keeps.test.ts': 6,
   'packages/code/tests/the-cursor-editor-rises-only-with-a-capture.test.ts': 4,
   'packages/code/tests/the-disk-probe-says-what-it-measured.test.ts': 7,
   'packages/code/tests/the-document-is-a-function-of-the-record.test.ts': 6,
@@ -1394,7 +1397,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-quick-start-works-after-an-init-at-a-terminal.test.ts': 10,
   'packages/code/tests/the-read-says-the-record-does-not-chain.test.ts': 6,
   'packages/code/tests/the-reads-follow-a-link-to-where-it-lands.test.ts': 10,
-  'packages/code/tests/the-recipe-says-what-it-overwrites.test.ts': 9,
+  'packages/code/tests/the-recipe-says-what-it-overwrites.test.ts': 10,
   'packages/code/tests/the-record-arrives-unasked.test.ts': 15,
   'packages/code/tests/the-record-asks-for-a-person.test.ts': 15,
   'packages/code/tests/the-record-is-kept-between-reads.test.ts': 7,
@@ -1437,7 +1440,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-session-knows-who-you-are.test.ts': 16,
   'packages/code/tests/the-session-learns-where-it-is.test.ts': 12,
   'packages/code/tests/the-session-the-manual-shows-is-the-one-printed.test.ts': 8,
-  'packages/code/tests/the-shell-a-page-publishes-is-the-shell-that-runs.test.ts': 5,
+  'packages/code/tests/the-shell-a-page-publishes-is-the-shell-that-runs.test.ts': 6,
   'packages/code/tests/the-shell-knows-the-verbs.test.ts': 17,
   'packages/code/tests/the-short-line-of-a-tree.test.ts': 3,
   'packages/code/tests/the-strict-gate-catches-the-forgery.test.ts': 7,
@@ -2919,7 +2922,13 @@ describe('the scanner’s parts, each on input of its own', () => {
     // red says which file and what it read.
     const read = new Map(TEST_TREE.map((one) => [one.path, 0]));
     for (const one of clauses) read.set(one.where, (read.get(one.where) ?? 0) + 1);
-    expect(reconcileCensus(read, CLAUSES_PER_FILE)).toEqual({
+    const clausesPerFile = holdTheCounts({
+      testFile: import.meta.url,
+      name: 'CLAUSES_PER_FILE',
+      read,
+      declared: CLAUSES_PER_FILE,
+    });
+    expect(reconcileCensus(read, clausesPerFile)).toEqual({
       unlisted: [],
       gone: [],
       miscounted: [],

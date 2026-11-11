@@ -77,6 +77,11 @@ the ones a first change usually meets:
   same file keeps a line for every product file and a line for every test file with the number
   of import clauses in it, so a new file, a removed one, or a changed import is red: the failing
   case names the file and what it read, and you write that line into the file on purpose.
+- **A red count in these guards is fixed by the command it names.** Where a guard keeps a count per file
+  (the import clauses above, the commands each page hands over), a count that moved fails with the line
+  and the number to write, and `pnpm vitest run <the guard's file> -u` rewrites those numbers in place.
+  It does not list a new file or drop a gone one: that stays a line someone writes on purpose. When you
+  cannot run it, say so on the pull request and a maintainer does it on your branch.
 - **Pages are checked against the binary.** A `mnema` command in a shell block, or in an
   inline code span, of a tracked Markdown page is parsed by the real command tree, and a verb
   or a flag the binary does not have is a red

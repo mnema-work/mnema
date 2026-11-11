@@ -84,6 +84,7 @@ import {
   publishedCommands,
   trackedPages,
 } from './support/reading-a-shell-line.js';
+import { holdTheCounts } from './support/the-counts-a-guard-keeps.js';
 
 /** A silent port: nothing here runs a verb, it only reads what they declare. */
 const silent: CliIo = { out: () => {}, err: () => {}, fail: () => {} };
@@ -288,7 +289,13 @@ describe('the sweep knows what it swept', () => {
     // Both directions in one comparison: a page that grew commands appears on the left and
     // not the right, and a page the sweep stopped reaching appears on the right and not the
     // left. A sweep pointed at nothing empties the left side entirely.
-    expect(found).toEqual(PAGES);
+    const pages = holdTheCounts({
+      testFile: import.meta.url,
+      name: 'PAGES',
+      read: found,
+      declared: PAGES,
+    });
+    expect(found).toEqual(pages);
   });
 
   it('reads blocks by what they carry and not by what they are labelled', () => {

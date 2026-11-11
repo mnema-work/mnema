@@ -57,6 +57,7 @@ import { REACHES_AN_AGENT, THE_LINE_IN_THEIRS } from '../src/wiring/init.js';
 import { everyCommandOf, pathOf } from '../src/wiring/misuse.js';
 import { read } from './support/published-examples.js';
 import { linesOf, trackedPages } from './support/reading-a-shell-line.js';
+import { holdTheCounts } from './support/the-counts-a-guard-keeps.js';
 import { writtenByHand } from './support/the-reference-pages.js';
 
 /** A silent port: nothing here runs a verb, it only reads what they declare. */
@@ -272,7 +273,13 @@ describe('every place that publishes the recipe says what the redirection does',
       const page = where.slice(0, where.lastIndexOf(':'));
       perPage[page] = (perPage[page] ?? 0) + 1;
     }
-    expect(perPage).toEqual(PAGES_PUBLISHING);
+    const pages = holdTheCounts({
+      testFile: import.meta.url,
+      name: 'PAGES_PUBLISHING',
+      read: perPage,
+      declared: PAGES_PUBLISHING,
+    });
+    expect(perPage).toEqual(pages);
     const silent = [...passages]
       .filter(([, text]) => !SAYS_WHAT_IT_DOES.test(text))
       .map(([where]) => where);
