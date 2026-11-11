@@ -18,6 +18,7 @@ import {
   X509Certificate,
 } from 'node:crypto';
 import {
+  copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -28,7 +29,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import {
   accountLinked,
   checkpointHash,
@@ -1096,7 +1097,7 @@ describe('the act, the claim and the reading, over a record', () => {
   });
 
   // @proves a-signed-and-countersigned-record-is-honest
-  it('a record rebuilt and countersigned again by the same e-mail is dated the day of the rebuild, and the first bundle covers nothing in it', async () => {
+  it('a record rebuilt and countersigned again by the same e-mail is dated the day of the rebuild, and the first bundle filed under the rebuild covers nothing in it', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     try {
       const countersigned = async (day: string, where: string) => {
@@ -1110,22 +1111,35 @@ describe('the act, the claim and the reading, over a record', () => {
           token: async () => aToken(LOCAL_CLAIMS),
         });
         if (!act.ok) throw new Error(act.message);
+        // Read long after the signing: the date is the bundle's, never the reader's clock.
+        vi.setSystemTime(new Date('2027-01-01T00:00:00Z'));
         const [finding] = readSigstoreReceipts(verdict(ctx).trees, {
           trustedRoot: sigstore.trustedRoot,
         }).findings;
         const reading = finding?.reading;
         if (reading?.kind !== 'signed') throw new Error(JSON.stringify(reading));
-        return { checkpoint: finding?.checkpoint, loggedAt: reading.loggedAt as string };
+        return {
+          ctx,
+          tail: finding?.tail as string,
+          checkpoint: finding?.checkpoint as string,
+          loggedAt: reading.loggedAt as string,
+        };
       };
       const first = await countersigned('2026-03-01T10:00:00Z', 'original');
       const rebuilt = await countersigned('2026-09-01T10:00:00Z', 'rebuild');
-      // The rebuild is its own checkpoint, so nothing the first bundle dated is in it, and the
-      // date it carries is the day it was rebuilt.
-      expect(rebuilt.checkpoint).not.toBe(first.checkpoint);
       expect(first.loggedAt.slice(0, 7)).toBe('2026-03');
-      expect(Date.parse(rebuilt.loggedAt)).toBeGreaterThanOrEqual(
-        Date.parse('2026-09-01T10:00:00Z'),
+      expect(rebuilt.loggedAt.slice(0, 7)).toBe('2026-09');
+      // The first bundle, put under the rebuilt record, dates nothing in it: the rebuild is its own
+      // checkpoint, and the file is under one the rebuilt tail does not prove.
+      expect(rebuilt.checkpoint).not.toBe(first.checkpoint);
+      const from = witnessSigstorePath(theTail(first.ctx), first.tail, first.checkpoint);
+      const into = witnessSigstorePath(theTail(rebuilt.ctx), rebuilt.tail, first.checkpoint);
+      mkdirSync(dirname(into), { recursive: true });
+      copyFileSync(from, into);
+      const carried = readSigstoreReceipts(verdict(rebuilt.ctx).trees).findings.find(
+        (found) => found.checkpoint === first.checkpoint,
       );
+      expect(carried?.reading.kind).toBe('not-covered');
     } finally {
       vi.useRealTimers();
     }

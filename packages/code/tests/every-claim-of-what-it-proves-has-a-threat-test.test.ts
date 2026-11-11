@@ -67,7 +67,18 @@ export function tagsThatHoldNothing(text: string): string[] {
       /^\s*(it|test|describe)\.(skip|todo|skipIf|runIf|fails)\b|^\s*x(it|describe)\b/.test(
         next ?? '',
       );
-    if (!case_ || off)
+    // A case inside a describe that is skipped, todo or conditional does not run either.
+    const OFF_DESCRIBE = /^\s*describe\.(skip|todo|skipIf|runIf)\b|^\s*xdescribe\b/;
+    const indent = (l: string) => (/^\s*/.exec(l) as RegExpExecArray)[0].length;
+    let enclosedByOff = false;
+    let depth = indent(next ?? '');
+    for (let j = index - 1; j >= 0; j--) {
+      const above = lines[j] as string;
+      if (above.trim() === '' || indent(above) >= depth) continue;
+      depth = indent(above);
+      if (OFF_DESCRIBE.test(above)) enclosedByOff = true;
+    }
+    if (!case_ || off || enclosedByOff)
       accused.push(`line ${index + 1}: above ${JSON.stringify((next ?? '').trim().slice(0, 50))}`);
   });
   return accused;
@@ -117,6 +128,16 @@ describe('the rows of what it proves and the tests that name them', () => {
     ])
       expect(tagsThatHoldNothing(`${tag}\n${off}('off', () => {});\n`), off).toHaveLength(1);
     expect(tagsThatHoldNothing(`${tag}\nconst a = 1;\n`)).toHaveLength(1);
+    for (const off of ['describe.skip', 'describe.todo', 'describe.skipIf(x)', 'describe.runIf(x)'])
+      expect(
+        tagsThatHoldNothing(
+          `${off}('off', () => {\n  describe('inner', () => {\n    ${tag}\n    it('x', () => {});\n  });\n});\n`,
+        ),
+        off,
+      ).toHaveLength(1);
+    expect(
+      tagsThatHoldNothing(`describe('on', () => {\n  ${tag}\n  it('x', () => {});\n});\n`),
+    ).toEqual([]);
   });
 
   it('has no tag above a case that does not run', () => {
