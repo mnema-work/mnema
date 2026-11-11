@@ -29,7 +29,7 @@ import { identityFounded, memoryCaptured } from '../events/build.js';
 import { catalogUpcasters } from '../events/registry.js';
 import { openChainForWriting, verify } from './chain.js';
 import { NAMED_SCHEME } from './checkpoint.js';
-import { keptHeadPath } from './kept-head.js';
+import { keptHeadPath, writtenHeadPath } from './kept-head.js';
 import {
   checkpointsPath,
   installationIdPath,
@@ -312,8 +312,10 @@ describe('a tail that moves on', () => {
     const root = aRecord('moved');
     const tail = write(root, 'alice', 'one');
     const fingerprint = tail.slice(0, 64);
-    // No note of the last entry written: ADR-135's writer opens a new tail.
+    // No note of the last entry written, clear or signed: ADR-135's writer opens a new tail. The
+    // signed one alone still names the end as this installation's (ADR-314).
     rmSync(keptHeadPath({ root }, tail));
+    rmSync(writtenHeadPath({ root }, tail));
     const next = write(root, 'alice', 'two');
     expect(next).not.toBe(tail);
     expect(existsSync(installationIdPath({ root }, fingerprint))).toBe(true);

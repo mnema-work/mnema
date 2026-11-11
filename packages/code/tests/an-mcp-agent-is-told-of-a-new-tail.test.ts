@@ -90,7 +90,10 @@ function idIn(said: string): string {
   return found[0];
 }
 
-/** Takes away the writer's note of the last entry it wrote to each tail, as a branch switch does. */
+/**
+ * Takes away the writer's notes of the last entry it wrote to each tail, the clear one and its
+ * signed twin, as a branch switch does; counted by tail.
+ */
 function forgetWhatWasWritten(dir: string): number {
   let taken = 0;
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -98,6 +101,7 @@ function forgetWhatWasWritten(dir: string): number {
     if (entry.isDirectory()) taken += forgetWhatWasWritten(path);
     else if (/^[0-9a-f]+-[0-9a-f]+\.head$/.test(entry.name) && dirname(path).endsWith('locks')) {
       rmSync(path);
+      rmSync(`${path}.sig`, { force: true });
       taken += 1;
     }
   }

@@ -36,7 +36,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { identityFounded, memoryCaptured } from '../events/build.js';
 import { openChainForWriting, verify } from './chain.js';
-import { keptHeadPath, readKeptHead } from './kept-head.js';
+import { keptHeadPath, readKeptHead, writtenHeadPath } from './kept-head.js';
 import { installationIdPath } from './layout.js';
 import { listTails } from './store.js';
 import { ensureTree } from './tree.js';
@@ -335,6 +335,7 @@ describe('the note of the last entry', () => {
     const a = join(sandbox, 'a');
     const tail = foundedRepository(a);
     rmSync(keptHeadPath({ root: recordOf(a) }, tail));
+    rmSync(writtenHeadPath({ root: recordOf(a) }, tail));
     const next = write(a, 'no note');
     expect(next).not.toBe(tail);
     expect(verify(recordOf(a)).issues).toEqual([]);

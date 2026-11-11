@@ -330,14 +330,14 @@ describe('the index of the other projects', () => {
     await seed.close();
     vcs('add', '-A');
     vcs('commit', '-qm', 'base');
-    // The writer's note of the last entry it wrote (`locks/<tailId>.head`, which git does not
-    // see) is put back as it was at the base before each branch writes, as a checkout copied
+    // The writer's notes of the last entry it wrote (`locks/<tailId>.head` and its signed twin
+    // `.head.sig`, which git does not see) are put back as it was at the base before each branch writes, as a checkout copied
     // whole would carry it: without it the second branch goes to a tail of its own (ADR-123),
     // and the same-size live segment this case is about is never made.
     const locks = join(second, PROJECT_DIR, 'locks');
     const notes = new Map(
       readdirSync(locks)
-        .filter((name) => name.endsWith('.head'))
+        .filter((name) => /\.head(?:\.sig)?$/.test(name))
         .map((name) => [join(locks, name), readFileSync(join(locks, name))] as const),
     );
     for (const [branch, title] of [
