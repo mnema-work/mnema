@@ -18,7 +18,7 @@ export const PAGE = 'docs/architecture.md';
 export const BEGIN = '<!-- the-import-graph:begin -->';
 export const END = '<!-- the-import-graph:end -->';
 
-/** @typedef {{ packages: string[], edges: [string, string][] }} Graph */
+/** @typedef {{ packages: string[], edges: [string, string][], evidence: [string, string, string][] }} Graph */
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -59,22 +59,42 @@ export function importGraph(root = ROOT) {
   const packages = [...bySource.keys()].sort().map((dir) => `@mnema/${dir}`);
   /** @type {Set<string>} */
   const edges = new Set();
+  /** @type {Map<string, string>} the first module that makes each edge */
+  const evidence = new Map();
   for (const [dir, files] of bySource) {
     const out = execFileSync(
-      join(root, 'node_modules', '.bin', 'depcruise'),
-      ['--no-config', '--ts-pre-compilation-deps', '-T', 'json', ...files],
+      process.execPath,
+      [
+        join(root, 'node_modules', 'dependency-cruiser', 'bin', 'dependency-cruiser.mjs'),
+        '--no-config',
+        '--ts-pre-compilation-deps',
+        '-T',
+        'json',
+        ...files,
+      ],
       { cwd: root, encoding: 'utf-8', maxBuffer: 256 * 1024 * 1024 },
     );
     for (const module of JSON.parse(out).modules) {
+      // Only the files handed over: a followed module (a package's built dist) is not this package's source.
+      if (!module.source.startsWith(`packages/${dir}/src/`)) continue;
       for (const dependency of module.dependencies) {
         const named = /^(@mnema\/[a-z]+)(\/|$)/.exec(dependency.module);
-        if (named !== null && named[1] !== `@mnema/${dir}`) edges.add(`@mnema/${dir}\t${named[1]}`);
+        if (named !== null && named[1] !== `@mnema/${dir}`) {
+          edges.add(`@mnema/${dir}\t${named[1]}`);
+          evidence.set(
+            `@mnema/${dir}\t${named[1]}`,
+            evidence.get(`@mnema/${dir}\t${named[1]}`) ?? module.source,
+          );
+        }
       }
     }
   }
   return {
     packages,
     edges: [...edges].sort().map((edge) => /** @type {[string, string]} */ (edge.split('\t'))),
+    evidence: [...evidence]
+      .sort()
+      .map(([edge, source]) => [.../** @type {[string, string]} */ (edge.split('\t')), source]),
   };
 }
 

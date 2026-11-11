@@ -37,7 +37,6 @@ flowchart TD
   code --> context
   code --> core
   code --> stacks
-  context --> chain
   context --> core
   core --> chain
   sdk --> chain
@@ -64,7 +63,7 @@ What each is for:
 A record is three places, and what each holds decides what a clone receives.
 
 - **The public tree, `.mnema/` in the repository, committed.** `tails/<fingerprint>-<installation>/` holds a tail: `000001.jsonl` and later segments (a segment is sealed at 4 MiB), `checkpoints.jsonl`, `tailproof.json`, and `witness/`. `keys/<fingerprint>.pub` is a public key. `keys/*.inst` and `keys/*.anchor` are local and ignored, as are the writer's private files in `locks/` and the page in `site/`. [`layout.ts`](../packages/chain/src/chain/layout.ts) draws the layout; [`tree.ts`](../packages/chain/src/chain/tree.ts) writes the `.gitignore` and `.gitattributes`.
-- **`locks/`, inside that tree and ignored.** Machinery, never proof: `<tail>.lock` (held while a writer appends), `<tail>.head` (the last entry this installation wrote), `<tail>.head.sig` (the same entry, signed, with what it was chained onto and what an append is about to write), `<tail>.cited` (heads of other tails already cited), and `projection.db`, the cache reads keep. [`kept-head.ts`](../packages/chain/src/chain/kept-head.ts) says what the notes are for; losing any costs a rebuild or a new tail, never a proof.
+- **`locks/`, inside that tree and ignored.** Machinery, never proof: `<tail>.lock` (held while a writer appends), `<tail>.head` (the last entry this installation wrote), `<tail>.head.sig` (the same entry, signed, with what it was chained onto and what an append is about to write), `<tail>.cited` (heads of other tails already cited), and `projection.db`, the cache reads keep. [`kept-head.ts`](../packages/chain/src/chain/kept-head.ts) says what the notes are for; losing one costs a rebuild, a repeated citation or at worst a new tail, never a proof.
 - **The private tree, `.git/mnema/<encoded path>/private/`.** Inside a git repository it lives under the common git directory, so `git add` cannot reach it ([`privateTreeUnder`](../packages/core/src/topology/git-place.ts)); outside one it is `.mnema/private/`. Same tail layout.
 - **`~/.mnema`, or `$MNEMA_HOME`.** `identity/` is the key root (the private key, never copied into a tree, and the cold backup key), `global/` is the tree for this machine across projects, `agents/<name>/` holds an agent's key root, and `sessions/` holds the session journal. [`appDataDir`](../packages/core/src/topology/resolve.ts) names it.
 
@@ -84,21 +83,21 @@ Each step names the function where it happens; the link goes to its definition. 
 6. The command then calls [`checkpoint`](../packages/chain/src/chain/writer.ts#L1168), which signs what is above the last checkpoint ([`signLocked`](../packages/chain/src/chain/writer.ts#L1190)); leaving the lock keeps the notes ([`keepHeadIfWritten`](../packages/chain/src/chain/writer.ts#L595)).
 7. Nothing updates the projection at write time. The next read's [`refresh`](../packages/core/src/projections/cache.ts#L470) advances it from the new lines, or replays the whole record when it cannot prove they are a suffix.
 
-Through MCP the tool `record_decision` ([`server.ts`](../packages/code/src/mcp/server.ts#L1330)) calls [`runRecordDecision`](../packages/code/src/mcp/tools.ts#L935), which routes the write to a project and reaches the same [`recordDecision`](../packages/core/src/workflow/decision-operations.ts#L190) and the same writer.
+Through MCP the tool `record_decision` ([`mutatesTheRecord`](../packages/code/src/mcp/server.ts#L1330)) calls [`runRecordDecision`](../packages/code/src/mcp/tools.ts#L935), which routes the write to a project and reaches the same [`recordDecision`](../packages/core/src/workflow/decision-operations.ts#L190) and the same writer.
 
 ### Verify
 
 1. [`registerVerify`](../packages/code/src/wiring/verify.ts#L376) declares `mnema verify` and its options; [`runVerify`](../packages/code/src/commands/verify.ts#L189) covers the public tree, the private one, and the global one on request.
 2. [`verify`](../packages/chain/src/chain/chain.ts#L134) calls [`verifyChain`](../packages/chain/src/chain/verify.ts#L1160), which reads each tail in [`verifyReading`](../packages/chain/src/chain/verify.ts#L1249): the hash chain ([`verifyHashChain`](../packages/chain/src/chain/verify.ts#L2291)), then the checkpoints and their signatures against the committed keys ([`verifyCheckpoints`](../packages/chain/src/chain/verify.ts#L2391)), then who was a member of the identity at each point. A tail that is a symbolic link is refused by name ([`linkedTail`](../packages/chain/src/chain/verify.ts#L1660)).
 3. The level reached is named by [`level.ts`](../packages/chain/src/chain/level.ts); `--require` is the level that makes the exit code non-zero.
-4. The second reader, [`mnema_verify.py`](../packages/chain/verifier/mnema_verify.py#L125), reads the same files with its own code and must agree; the `second-reader-*` cases in `packages/chain/src/chain/` hold that. The page `mnema site` writes ([`runSite`](../packages/code/src/commands/site.ts#L171)) embeds the same TypeScript `verifyChain`, so a browser runs the first reader, not the Python one.
+4. The second reader, [`main`](../packages/chain/verifier/mnema_verify.py#L125), reads the same files with its own code and must agree; the `second-reader-*` cases in `packages/chain/src/chain/` hold that. The page `mnema site` writes ([`runSite`](../packages/code/src/commands/site.ts#L171)) embeds the same TypeScript `verifyChain`, so a browser runs the first reader, not the Python one.
 
 ### The rules before an edit
 
-1. In Claude Code, [`hooks.json`](../plugin/hooks/hooks.json) declares a `PreToolUse` hook on `Write|Edit|NotebookEdit` that calls the MCP tool `rules_before_an_edit` ([`server.ts`](../packages/code/src/mcp/server.ts#L2028)), which reaches [`rulesBeforeAnEdit`](../packages/code/src/mcp/tools.ts#L2999).
+1. In Claude Code, [`hooks.json`](../plugin/hooks/hooks.json) declares a `PreToolUse` hook on `Write|Edit|NotebookEdit` that calls the MCP tool `rules_before_an_edit` ([`mutatesTheRecord`](../packages/code/src/mcp/server.ts#L2028)), which reaches [`rulesBeforeAnEdit`](../packages/code/src/mcp/tools.ts#L2999).
 2. [`whatAWriteMeets`](../packages/code/src/what-a-write-meets.ts#L241) is the one place that decides: a refusal first ([`readRefusesAWriteAt`](../packages/code/src/governed-tree.ts#L254), over the rules [`refusesAWriteAt`](../packages/context/src/intelligence/governance.ts#L1011) finds by address), and only when nothing refuses, whether a person is asked.
 3. The reply is shaped for the host by [`hookReply`](../packages/code/src/mcp/hook-reply.ts#L212); a refusal is recorded with [`recordTheCharge`](../packages/code/src/what-a-write-meets.ts#L422).
-4. The other hosts run a command hook: [`edit-refuses-a-write.mjs`](../plugin/hooks/edit-refuses-a-write.mjs) calls [`whatTheGateAnswers`](../plugin/hooks/hand-over.mjs#L492), which spawns the `before-a-write` verb ([`runBeforeAWrite`](../packages/code/src/commands/before-a-write.ts#L143), then [`whatAPathMeets`](../packages/code/src/commands/before-a-write.ts#L214)) and answers in the host's own shape ([`replyFor`](../packages/code/src/host-hook.ts#L224)). When the binary is missing or fails and a rule reaches the path, the hook denies rather than lets the write through.
+4. The other hosts run a command hook: [`edit-refuses-a-write.mjs`](../plugin/hooks/edit-refuses-a-write.mjs) calls [`whatTheGateAnswers`](../plugin/hooks/hand-over.mjs#L492), which spawns the `before-a-write` verb ([`runBeforeAWrite`](../packages/code/src/commands/before-a-write.ts#L143), then [`whatAPathMeets`](../packages/code/src/commands/before-a-write.ts#L214)) and answers in the host's own shape ([`replyFor`](../packages/code/src/host-hook.ts#L224)). When `mnema` is there but does not answer (it exits non-zero, times out, or prints no reply) and a rule reaches the path, the hook denies; with no `mnema` at all it stays silent and the write goes through.
 
 ### Committing the record
 
@@ -107,5 +106,5 @@ Through MCP the tool `record_decision` ([`server.ts`](../packages/code/src/mcp/s
 ### The merge driver
 
 1. [`tree.ts`](../packages/chain/src/chain/tree.ts) writes the `.gitattributes` line that names the driver ([`TAIL_MERGE_DRIVER`](../packages/chain/src/chain/tree.ts#L100)) for `tails/*/*.jsonl`. The git configuration that makes git call it is written by `mnema init` when asked, or by [`fixMergeDriver`](../packages/code/src/commands/doctor-merge-driver.ts#L259); without it git merges the files as text.
-2. Git runs `record merge-tail` ([`record.ts`](../packages/code/src/wiring/record.ts#L276), then [`mergeTailFiles`](../packages/code/src/commands/record-merge-tail.ts#L69)).
+2. Git runs `record merge-tail` ([`merge-tail`](../packages/code/src/wiring/record.ts#L276), then [`mergeTailFiles`](../packages/code/src/commands/record-merge-tail.ts#L69)).
 3. [`joinGrownTail`](../packages/code/src/commands/record-merge-tail.ts#L47) keeps the longer side when one is a byte prefix of the other, which is a tail that only grew. Anything else is a fork: it exits 1 and leaves our side untouched.

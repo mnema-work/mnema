@@ -36,6 +36,7 @@ const page = readFileSync(join(ROOT, PAGE), 'utf-8');
 interface Graph {
   packages: string[];
   edges: [string, string][];
+  evidence: [string, string, string][];
 }
 
 describe('the architecture page', () => {
@@ -51,6 +52,15 @@ describe('the architecture page', () => {
     expect(withBlock(edited, blockOf(graph))).toBe(page);
     expect(() => withBlock(page.replace(END, ''), blockOf(graph))).toThrow(/once each/);
     expect(page.split(BEGIN)).toHaveLength(2);
+  });
+
+  it("draws an edge only from a module of the importing package's own source", () => {
+    expect(graph.evidence.length).toBe(graph.edges.length);
+    for (const [from, to, source] of graph.evidence) {
+      expect(source, `${from} to ${to}`).toMatch(
+        new RegExp(`^packages/${from.replace('@mnema/', '')}/src/`),
+      );
+    }
   });
 
   it('draws only imports the importing package declares, in layers with no ring', () => {
@@ -70,7 +80,7 @@ describe('the architecture page', () => {
   });
 
   it('has every anchored link on a line that holds the name it is labelled with', () => {
-    const anchored = [...page.matchAll(/\[`([A-Za-z_]\w*)`\]\((\.\.\/[^)#]+)#L(\d+)\)/g)];
+    const anchored = [...page.matchAll(/\[`([A-Za-z_][\w-]*)`\]\((\.\.\/[^)#]+)#L(\d+)\)/g)];
     expect(anchored.length).toBeGreaterThan(20);
     for (const [, name, path, line] of anchored) {
       const lines = readFileSync(join(ROOT, 'docs', path as string), 'utf-8').split('\n');
