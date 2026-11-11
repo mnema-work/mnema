@@ -1022,6 +1022,7 @@ describe('the two readers agree on records the product itself wrote: a checker',
     );
   }
 
+  // @proves a-key-that-signs-only-check-results-can-do-no-harm
   it('a result signed before the retirement: green on both', () => {
     const { a, c, anchor } = personAndChecker();
     writeTail(
@@ -1051,6 +1052,7 @@ describe('the two readers agree on records the product itself wrote: a checker',
     ]);
   });
 
+  // @proves a-key-that-signs-only-check-results-can-do-no-harm
   it('a result signed after the retirement: refused by both', () => {
     // The defect this kind exists for: a leaked key went on signing passes the verifier took.
     const { a, c, anchor } = personAndChecker();

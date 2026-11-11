@@ -110,6 +110,8 @@ function anchored(): Response {
   );
 }
 
+// @proves what-leaves-the-machine-and-when
+// @proves the-record-is-as-old-as-it-says
 describe('asking for an attestation', () => {
   it('sends one 32-byte commitment per calendar and nothing else', async () => {
     const { fetch, sent } = stubbed((url) => promise(url.replace('/digest', '')));

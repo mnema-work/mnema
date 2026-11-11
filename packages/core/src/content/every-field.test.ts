@@ -947,6 +947,7 @@ describe('no field slips past the door', () => {
   }
 });
 
+// @proves credentials-stay-out-of-the-record
 describe('a name carrying a credential refuses the write, on every field of every kind', () => {
   // THE OTHER OUTCOME, driven one field at a time. Poisoning them together would
   // prove only that SOME name refuses; each is driven alone so the refusal is

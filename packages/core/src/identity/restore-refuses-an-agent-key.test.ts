@@ -50,6 +50,7 @@ const clock: Clock = () => {
   return `2026-10-12T01:00:${String(tick % 60).padStart(2, '0')}.000Z`;
 };
 
+// @proves a-lost-key-can-be-restored
 describe('restoring the key of an agent', () => {
   it('is refused with AN_AGENT_KEY, and nothing is installed or recorded', () => {
     // A person founds the identity and enrols an agent, whose key lives in its own folder.

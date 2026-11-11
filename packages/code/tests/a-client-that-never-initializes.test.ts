@@ -77,6 +77,7 @@ async function aServerNobodyInitialized() {
   };
 }
 
+// @proves the-agent-named-on-a-fact-did-the-work
 describe('a client that sends no initialize', () => {
   it('is answered: tools/list and tools/call need no handshake', async () => {
     const wire = await aServerNobodyInitialized();

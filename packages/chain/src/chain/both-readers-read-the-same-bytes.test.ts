@@ -802,6 +802,7 @@ describe('the two readers reach the same verdict on the same bytes, and name the
  * checkpoint another key signs, and the naming check names a `/1` checkpoint after a `/2` one.
  * Read sorted by `fromSeq`, the first would name `cp[2..2]` and the second nothing at all.
  */
+// @proves a-tail-is-written-by-its-own-key
 describe('the two readers read the checkpoints of a tail in the order of their lines', () => {
   const ROWS = [
     [

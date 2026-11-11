@@ -420,6 +420,7 @@ describe('an end the signed note vouches for, below the coverage it says this ke
   });
 });
 
+// @proves nothing-was-removed
 describe('an end the signed note names, cut from the disk with the clear note set back', () => {
   it('12. the newest entry and its checkpoint cut, the clear note fixed: a new tail that says what is missing', () => {
     const tail = history();

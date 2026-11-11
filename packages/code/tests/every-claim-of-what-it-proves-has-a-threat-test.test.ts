@@ -51,6 +51,28 @@ export function namedIn(text: string): string[] {
   return [...text.matchAll(MARK)].map((found) => found[1] as string);
 }
 
+/**
+ * What is wrong with the place of each tag in a text: a tag holds a row only where the next line of
+ * code is a case that runs, `it`, `test` or `describe` (and their `each`), so a tag above a skipped,
+ * todo or conditionally run case, or above no case at all, is accused with its line number.
+ */
+export function tagsThatHoldNothing(text: string): string[] {
+  const lines = text.split('\n');
+  const accused: string[] = [];
+  lines.forEach((line, index) => {
+    if (!/^\s*\/\/ @proves [a-z0-9-]+\s*$/.test(line)) return;
+    const next = lines.slice(index + 1).find((l) => l.trim() !== '' && !l.trim().startsWith('//'));
+    const case_ = /^\s*(it|test|describe)(\.each\b|\()/.test(next ?? '');
+    const off =
+      /^\s*(it|test|describe)\.(skip|todo|skipIf|runIf|fails)\b|^\s*x(it|describe)\b/.test(
+        next ?? '',
+      );
+    if (!case_ || off)
+      accused.push(`line ${index + 1}: above ${JSON.stringify((next ?? '').trim().slice(0, 50))}`);
+  });
+  return accused;
+}
+
 function testFiles(): string[] {
   const out = execFileSync(
     'git',
@@ -76,6 +98,33 @@ describe('the rows of what it proves and the tests that name them', () => {
     const ids = claimsOf(page);
     expect(ids.filter((id) => !named.includes(id))).toEqual(['another-claim']);
     expect(named.filter((id) => !ids.includes(id))).toEqual(['a-claim-nobody-wrote']);
+  });
+
+  it('accuses a tag above a skipped, todo or conditional case, and above no case (the guard seen to fire)', () => {
+    const tag = '// @proves a-claim';
+    expect(tagsThatHoldNothing(`${tag}\nit('runs', () => {});\n`)).toEqual([]);
+    expect(
+      tagsThatHoldNothing(`${tag}\n// a comment between\ndescribe('runs', () => {});\n`),
+    ).toEqual([]);
+    expect(tagsThatHoldNothing(`${tag}\nit.each([1])('runs', () => {});\n`)).toEqual([]);
+    for (const off of [
+      'it.skip',
+      'it.todo',
+      'it.skipIf(x)',
+      'describe.runIf(x)',
+      'xit',
+      'it.fails',
+    ])
+      expect(tagsThatHoldNothing(`${tag}\n${off}('off', () => {});\n`), off).toHaveLength(1);
+    expect(tagsThatHoldNothing(`${tag}\nconst a = 1;\n`)).toHaveLength(1);
+  });
+
+  it('has no tag above a case that does not run', () => {
+    const accused: string[] = [];
+    for (const file of testFiles())
+      for (const problem of tagsThatHoldNothing(readFileSync(join(ROOT, file), 'utf-8')))
+        accused.push(`${file}: ${problem}`);
+    expect(accused).toEqual([]);
   });
 
   it('has a test that names every row', () => {

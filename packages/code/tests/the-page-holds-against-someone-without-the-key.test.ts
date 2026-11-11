@@ -49,11 +49,11 @@ class Project {
     for (const dir of [this.repo, this.home]) mkdirSync(dir, { recursive: true });
   }
 
-  mnema(args: string[]) {
+  mnema(args: string[], home = this.home) {
     return spawnSync(process.execPath, [MNEMA_CLI, ...args], {
       cwd: this.repo,
       encoding: 'utf-8',
-      env: { PATH: process.env.PATH ?? '', HOME: this.home, GIT_CONFIG_NOSYSTEM: '1' },
+      env: { PATH: process.env.PATH ?? '', HOME: home, GIT_CONFIG_NOSYSTEM: '1' },
     });
   }
 
@@ -83,6 +83,23 @@ class Project {
 
   checkpoints(tail = this.tails()[0] as string): string {
     return join(this.record, 'tails', tail, 'checkpoints.jsonl');
+  }
+
+  /**
+   * Sets the clear note of the tail (`locks/<tail>.head`, the seq and hash of the last entry this
+   * installation wrote) to the end the disk holds now, as somebody who rewrote the files would
+   * to hide the rewrite from the installation's own bookkeeping. The signed note beside it is left.
+   */
+  setClearNoteToTheEnd(): void {
+    const [tail] = this.tails();
+    const last = JSON.parse(
+      readFileSync(this.segment(tail), 'utf-8').split('\n').filter(Boolean).at(-1) as string,
+    ) as { link: { seq: number; hash: string } };
+    writeFileSync(
+      join(this.record, 'locks', `${tail}.head`),
+      `${last.link.seq} ${last.link.hash}\n`,
+      'utf-8',
+    );
   }
 
   /** The product's verdict and the second reader's, the projection warm or removed first. */
@@ -168,9 +185,9 @@ describe('an edit made without the key', () => {
       );
       const second = rebuilt.verdicts(cache);
       expect(second.product.status, second.said).toBe(1);
-      expect(second.said).toContain('local integrity FAILED');
+      expect(second.said).toContain('content-root-mismatch');
       expect(second.second.status, second.secondSaid).toBe(1);
-      expect(second.secondSaid).toMatch(/\[\s+FAIL\]/);
+      expect(second.secondSaid).toContain('the content root does not match');
     }, 90_000);
 
     // @proves an-edit-is-caught
@@ -190,8 +207,12 @@ describe('an edit made without the key', () => {
       expect(strict.said).toContain('requirement not met');
       expect(strict.second.status, strict.secondSaid).toBe(1);
 
-      // The holder writes again: what it signs is what it wrote, not the rewritten tail it finds.
+      // The files were rewritten and the clear note put to the new end, so the installation's own
+      // note looks right. The holder writes again: what it signs is what it wrote, not the
+      // rewritten tail it finds, because the signed note still names the end it really wrote.
+      forged.setClearNoteToTheEnd();
       forged.write('a fact the holder writes after the rewrite');
+      expect(forged.tails()).toHaveLength(2);
       const after = forged.verdicts(cache, '--require=signed');
       expect(after.product.status, after.said).toBe(1);
       expect(after.second.status, after.secondSaid).toBe(1);
@@ -203,18 +224,23 @@ describe('what a hash chain cannot show: a removal', () => {
   for (const cache of CACHES) {
     // @proves nothing-was-removed
     // @proves nothing-was-deleted
-    it(`a whole tail deleted, while another remains, verifies clean in both readers, the projection ${cache}`, () => {
-      const project = new Project('removed').found(['a fact in the first tail']);
-      for (const name of readdirSync(join(project.record, 'locks')))
-        if (name.endsWith('.head') || name.endsWith('.head.sig'))
-          rmSync(join(project.record, 'locks', name));
-      project.write('a fact in the second tail');
+    it(`a second identity's tail deleted together with its key files, while another tail remains, verifies clean in both readers, the projection ${cache}`, () => {
+      const project = new Project('removed').found(['a fact in the first identity tail']);
+      const otherHome = join(sandbox, 'removed', 'other-home');
+      mkdirSync(otherHome, { recursive: true });
+      const firstTails = project.tails();
+      // Another machine, another key: it founds an identity of its own and writes in its own tail.
+      const wrote = project.mnema(['memory', 'a fact only the second identity wrote'], otherHome);
+      expect(wrote.status, wrote.stderr).toBe(0);
       expect(project.tails()).toHaveLength(2);
-      // Nothing cites the later tail, so nothing on disk is left to cross once it is gone.
-      const later = project
-        .tails()
-        .find((tail) => !readFileSync(project.segment(tail), 'utf-8').includes('identity.founded'));
-      rmSync(join(project.record, 'tails', later as string), { recursive: true });
+      expect(project.verdicts(cache, '--require=signed').product.status).toBe(0);
+
+      const second = project.tails().find((tail) => !firstTails.includes(tail));
+      expect(second).toBeDefined();
+      const fingerprint = (second as string).split('-')[0] as string;
+      rmSync(join(project.record, 'tails', second as string), { recursive: true });
+      for (const name of readdirSync(join(project.record, 'keys')))
+        if (name.startsWith(fingerprint)) rmSync(join(project.record, 'keys', name));
       expect(project.tails()).toHaveLength(1);
 
       const verdicts = project.verdicts(cache, '--require=signed');
@@ -246,6 +272,8 @@ describe('what a hash chain cannot show: a removal', () => {
       const checkpoints = readFileSync(project.checkpoints(), 'utf-8').split('\n').filter(Boolean);
       writeFileSync(project.segment(), `${before.slice(0, -1).join('\n')}\n`, 'utf-8');
       writeFileSync(project.checkpoints(), `${checkpoints.slice(0, -1).join('\n')}\n`, 'utf-8');
+      // The clear note set back to the cut end: only the signed note still names the entry cut.
+      project.setClearNoteToTheEnd();
       if (cache === 'cold') rmSync(join(project.record, 'locks', 'projection.db'), { force: true });
 
       const wrote = project.mnema(['memory', 'written after the cut']);
@@ -275,6 +303,16 @@ describe('a record forged whole', () => {
       expect(b.second.status, b.secondSaid).toBe(0);
       expect(b.secondSaid).toContain('VERDICT: VERIFIED');
       expect(a.secondSaid).toContain('VERDICT: VERIFIED');
+      // The second reader's whole report, once the fingerprints and the places are taken out, is
+      // the same sentence for both records: nothing in it tells them apart either.
+      const report = (text: string, project: Project) =>
+        text
+          .split(project.record)
+          .join('<record>')
+          .replace(/[0-9a-f]{64}(-[0-9a-f]{32})?/g, '<id>')
+          .replace(/[0-9a-f]{12}\.\.\./g, '<fp>')
+          .replace(/mnid:[0-9a-f]{64}/g, 'mnid:<id>');
+      expect(report(b.secondSaid, forged)).toBe(report(a.secondSaid, honest));
     }, 90_000);
   }
 });
@@ -291,7 +329,9 @@ describe('the gate', () => {
 
     // The shape: a rejected decision cannot be accepted.
     const illegal = project.mnema(['decision', 'move', 'accept', id, '--note', 'second thoughts']);
-    expect(illegal.status).not.toBe(0);
+    expect(illegal.status, illegal.stderr).toBe(1);
+    expect(illegal.stderr).toContain('ILLEGAL_TRANSITION');
+    expect(illegal.stderr).toContain('cannot "accept" a decision in rejected');
 
     // The content: a false rationale and any `--which` name are written and signed, by one key.
     const another = project.mnema([

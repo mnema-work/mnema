@@ -616,7 +616,6 @@ describe('reading a bundle, offline', () => {
     return { text: JSON.stringify(signed.checkpoints[0].bundle), root: sigstore.trustedRoot };
   }
 
-  // @proves a-sigstore-bundle-dates-the-checkpoint
   it('reads who signed and when Rekor logged it, by Sigstore’s own checks', async () => {
     const { text, root } = await aBundle();
     const reading = readSigstoreBundle(text, { digest: DIGEST, message: MESSAGE }, root);
@@ -629,6 +628,7 @@ describe('reading a bundle, offline', () => {
     expect(reading.kind === 'signed' && reading.loggedAt).toMatch(/^20[2-9]\d-\d\d-\d\dT/);
   });
 
+  // @proves a-sigstore-bundle-dates-the-checkpoint
   it('reads the time from a later entry that holds the promise, not only the first', () => {
     const none = { timestamps: [] } as unknown as Parameters<typeof verifiedTime>[0];
     const bare = { integratedTime: '0' };
@@ -881,7 +881,6 @@ describe('reading a bundle, offline', () => {
     expect(line).not.toContain('/runs/777/');
   });
 
-  // @proves a-signed-and-countersigned-record-is-honest
   it('refuses the bundle over any other message, recomputed rather than taken from it', async () => {
     const { text, root } = await aBundle();
     const other = Buffer.from(MESSAGE.toString('utf-8').replace('"toSeq":3', '"toSeq":4'));
@@ -931,6 +930,7 @@ describe('reading a bundle, offline', () => {
     ]);
   });
 
+  // @proves checking-a-sigstore-bundle-needs-the-network
   it('reads a bundle the carried root does not reach as not covered, never as signed', async () => {
     const { text } = await aBundle();
     expect(readSigstoreBundle(text, { digest: DIGEST, message: MESSAGE })).toMatchObject({
@@ -1071,7 +1071,6 @@ describe('the act, the claim and the reading, over a record', () => {
     expect(receipts.findings[0]?.namedBy).toBeUndefined();
   });
 
-  // @proves a-signed-and-countersigned-record-is-honest
   it('reads a bundle filed under a checkpoint the tail does not prove as not covered', async () => {
     const ctx = aProject();
     const root = join(ctx.cwd, '.mnema');
@@ -1094,6 +1093,64 @@ describe('the act, the claim and the reading, over a record', () => {
       },
     ]);
     expect(readFileSync(stray, 'utf-8')).toBe('{}');
+  });
+
+  // @proves a-signed-and-countersigned-record-is-honest
+  it('a record rebuilt and countersigned again by the same e-mail is dated the day of the rebuild, and the first bundle covers nothing in it', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      const countersigned = async (day: string, where: string) => {
+        vi.setSystemTime(new Date(day));
+        sandbox = join(sandboxRoot, where);
+        const ctx = aProject();
+        expect(runKeySigstore(ctx, { identity: EMAIL })).toMatchObject({ ok: true });
+        const sigstore = await aSigstore();
+        const act = await runWitnessSigstore(ctx, {
+          fetch: sigstore.fetch,
+          token: async () => aToken(LOCAL_CLAIMS),
+        });
+        if (!act.ok) throw new Error(act.message);
+        const [finding] = readSigstoreReceipts(verdict(ctx).trees, {
+          trustedRoot: sigstore.trustedRoot,
+        }).findings;
+        const reading = finding?.reading;
+        if (reading?.kind !== 'signed') throw new Error(JSON.stringify(reading));
+        return { checkpoint: finding?.checkpoint, loggedAt: reading.loggedAt as string };
+      };
+      const first = await countersigned('2026-03-01T10:00:00Z', 'original');
+      const rebuilt = await countersigned('2026-09-01T10:00:00Z', 'rebuild');
+      // The rebuild is its own checkpoint, so nothing the first bundle dated is in it, and the
+      // date it carries is the day it was rebuilt.
+      expect(rebuilt.checkpoint).not.toBe(first.checkpoint);
+      expect(first.loggedAt.slice(0, 7)).toBe('2026-03');
+      expect(Date.parse(rebuilt.loggedAt)).toBeGreaterThanOrEqual(
+        Date.parse('2026-09-01T10:00:00Z'),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // @proves whoever-holds-the-e-mail-wrote-the-record
+  it('is countersigned by a stranger holding another e-mail, and the bundle then dates the checkpoint and names nobody of the record', async () => {
+    const ctx = aProject();
+    const sigstore = await aSigstore();
+    const act = await runWitnessSigstore(ctx, {
+      fetch: sigstore.fetch,
+      token: async () =>
+        aToken({
+          iss: 'https://oauth2.sigstore.dev/auth',
+          email: 'stranger@example.org',
+          sub: 'x',
+        }),
+    });
+    if (!act.ok) throw new Error(act.message);
+    const [finding] = readSigstoreReceipts(verdict(ctx).trees, {
+      trustedRoot: sigstore.trustedRoot,
+    }).findings;
+    expect(finding?.reading).toMatchObject({ kind: 'signed', identity: 'stranger@example.org' });
+    expect(typeof (finding?.reading as { loggedAt?: string }).loggedAt).toBe('string');
+    expect(finding?.namedBy).toBeUndefined();
   });
 
   /** The tail of a project's public tree, and where its files are. */
