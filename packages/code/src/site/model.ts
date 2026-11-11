@@ -252,12 +252,11 @@ function notesOf(events: readonly CatalogEvent[], whichOf: ActOf): PageNote[] {
   return notes;
 }
 
-/** Whether `link` stands between `one` and `other`, in either direction. */
-function joins(link: LinkEdge, one: string, other: string): boolean {
-  return (
-    (link.subject === one && link.target === other) ||
-    (link.subject === other && link.target === one)
-  );
+/** `item` under `key`, kept in the order the items arrive. */
+function push<T>(index: Map<string, T[]>, key: string, item: T): void {
+  const list = index.get(key);
+  if (list === undefined) index.set(key, [item]);
+  else list.push(item);
 }
 
 /** The model of the page, from the events of the public tree in the record's own order. */
@@ -291,14 +290,38 @@ export function pageModel(events: readonly CatalogEvent[]): PageModel {
     moves.set(event.subject, list);
   }
 
+  // Each lookup below is one map read, so the page is built in work proportional to the record
+  // (decisions, notes, links and events), not to their products.
+  const linksBySubject = new Map<string, LinkEdge[]>();
+  const linksByTarget = new Map<string, LinkEdge[]>();
+  for (const link of links) {
+    push(linksBySubject, link.subject, link);
+    push(linksByTarget, link.target, link);
+  }
+  // A note sits under the decision it is about and under every decision a link joins it to, once.
+  const notesByOwner = new Map<string, PageNote[]>();
+  for (const note of notes) {
+    const owners = new Set<string>();
+    if (note.about !== undefined) owners.add(note.about);
+    for (const link of linksBySubject.get(note.id) ?? []) owners.add(link.target);
+    for (const link of linksByTarget.get(note.id) ?? []) owners.add(link.subject);
+    for (const owner of owners) push(notesByOwner, owner, note);
+  }
+  const recordings = new Map<string, CatalogEvent[]>();
+  const acceptances = new Map<string, CatalogEvent>();
+  for (const event of events) {
+    if (event.kind === 'decision.recorded') push(recordings, event.subject, event);
+    else if (event.kind === 'decision.transitioned' && event.payload.to === 'accepted') {
+      acceptances.set(event.subject, event);
+    }
+  }
+
   const owned = new Set<string>();
   const decisions: PageDecision[] = [...projected.values()].map((d) => {
-    const mine = notes.filter(
-      (note) => note.about === d.id || links.some((link) => joins(link, note.id, d.id)),
-    );
+    const mine = notesByOwner.get(d.id) ?? [];
     for (const note of mine) owned.add(note.id);
-    const out = links.filter((link) => link.subject === d.id);
-    const into = links.filter((link) => link.target === d.id && !noteIds.has(link.subject));
+    const out = linksBySubject.get(d.id) ?? [];
+    const into = (linksByTarget.get(d.id) ?? []).filter((link) => !noteIds.has(link.subject));
     const addresses = out
       .filter((link) => (ADDRESS_RELATIONS as readonly string[]).includes(link.rel))
       .map((link) => ({ rel: link.rel, target: link.target }));
@@ -326,10 +349,10 @@ export function pageModel(events: readonly CatalogEvent[]): PageModel {
       ...(d.supersededBy !== undefined ? { supersededBy: d.supersededBy } : {}),
       createdAt: d.createdAt,
       ...(d.recordedBy !== undefined
-        ? { recordedBy: actorOf(d.recordedBy, recordingOf(events, d), whichOf) }
+        ? { recordedBy: actorOf(d.recordedBy, recordingOf(recordings.get(d.id) ?? [], d), whichOf) }
         : {}),
       ...(d.acceptedBy !== undefined
-        ? { acceptedBy: actorOf(d.acceptedBy, acceptanceOf(events, d.id), whichOf) }
+        ? { acceptedBy: actorOf(d.acceptedBy, acceptances.get(d.id), whichOf) }
         : {}),
       moves: moves.get(d.id) ?? [],
       notes: mine,
@@ -353,34 +376,15 @@ export function pageModel(events: readonly CatalogEvent[]): PageModel {
   };
 }
 
-/** The `decision.recorded` the projection applied: the first writing, by its author and time. */
+/** The `decision.recorded` of the decision, among its writings, the projection applied: the first writing, by its author and time. */
 function recordingOf(
-  events: readonly CatalogEvent[],
+  writings: readonly CatalogEvent[],
   d: {
-    readonly id: string;
     readonly createdAt: string;
     readonly recordedBy?: { readonly who: string };
   },
 ): CatalogEvent | undefined {
-  return events.find(
-    (event) =>
-      event.kind === 'decision.recorded' &&
-      event.subject === d.id &&
-      event.at === d.createdAt &&
-      event.who === d.recordedBy?.who,
-  );
-}
-
-/** The latest move of decision `id` to `accepted`: the act the projection names its acceptor by. */
-function acceptanceOf(events: readonly CatalogEvent[], id: string): CatalogEvent | undefined {
-  return events
-    .filter(
-      (event) =>
-        event.kind === 'decision.transitioned' &&
-        event.subject === id &&
-        event.payload.to === 'accepted',
-    )
-    .at(-1);
+  return writings.find((event) => event.at === d.createdAt && event.who === d.recordedBy?.who);
 }
 
 /** The projection's actor, marked when the event it came from has a name nobody announced. */
