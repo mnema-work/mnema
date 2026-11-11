@@ -37,7 +37,6 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fc from 'fast-check';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { propertySeed } from '../../tests/support/property-seed.js';
 import { pythonRun } from '../../tests/support/second-reader-session.js';
 import {
   agentEnrolled,
@@ -2184,7 +2183,7 @@ describe('the two readers agree on the order a citation gives: a machine whose c
           rmSync(root, { recursive: true, force: true });
         }
       }),
-      { seed: propertySeed(), numRuns: 16 },
+      { seed: Number(process.env.FC_SEED), numRuns: 16 },
     );
     root = outer;
   });

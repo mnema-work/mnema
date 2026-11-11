@@ -22,10 +22,9 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { propertySeed } from '../../tests/support/property-seed.js';
 import { causalOrder, type OrderKeys, type TailToOrder } from './causal-order.js';
 
-const SEED = propertySeed();
+const SEED = Number(process.env.FC_SEED);
 const RUNS = 300;
 
 /** One entry as drawn: its instant, its hash, and what it cites. */

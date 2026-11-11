@@ -58,7 +58,6 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fc from 'fast-check';
 import { afterEach, describe, expect, it } from 'vitest';
-import { propertySeed } from '../../tests/support/property-seed.js';
 import { pythonRun } from '../../tests/support/second-reader-session.js';
 import {
   agentEnrolled,
@@ -78,7 +77,7 @@ const VERIFIER = fileURLToPath(new URL('../../verifier/mnema_verify.py', import.
 const VERIFIER_DIR = fileURLToPath(new URL('../../verifier/', import.meta.url));
 const MUTATE = fileURLToPath(new URL('../../verifier/mutate.py', import.meta.url));
 const FIXTURE = fileURLToPath(new URL('./__fixtures__/witnessed-record', import.meta.url));
-const SEED = propertySeed();
+const SEED = Number(process.env.FC_SEED);
 const CASE_TIMEOUT = 120_000;
 
 /** What a line that is not an entry reads as, and what both readers refuse it with. */
