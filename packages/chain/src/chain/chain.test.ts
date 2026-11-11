@@ -505,6 +505,7 @@ describe('chain: T4 (anonymous verify with only committed material)', () => {
         // Nothing of this tail is signed yet: its whole window is open.
         coveredThrough: -1,
         checkpoint: null,
+        next: null,
       },
       loadOrCreateKeyPair({ root }),
     );

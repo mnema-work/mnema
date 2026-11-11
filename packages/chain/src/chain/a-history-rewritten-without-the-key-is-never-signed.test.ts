@@ -398,19 +398,52 @@ describe('an end the signed note vouches for, below the coverage it says this ke
     expect(filesOf(tail)).toEqual(before);
   });
 
-  it('5. the two steps: a forgery below a coverage left in place, then the checkpoints emptied', () => {
+  it('5. a forgery below a coverage left in place and the clear note fixed: not chained over, then nothing signed', () => {
     const tail = history();
     rewrite(tail, 'act one');
     fixHead(tail);
-    // The holder appends to the forged end: nothing of it is pending, so nothing forged is signed.
-    expect(act("the holder's first act")).toBe(tail);
-    expect(told).toEqual([]);
+    // The holder's write used to append to the forged end (nothing of it was pending), and the
+    // second step below was then refused. The signed note names another entry at that seq now, so
+    // the forged end is not this installation's: a new tail, before anything is appended to it.
+    const after = act("the holder's first act");
+    expect(after).not.toBe(tail);
+    expect(told.map((opened) => [opened.kept?.seq, opened.found?.seq, opened.left])).toEqual([
+      [3, 3, undefined],
+    ]);
     emptyCheckpoints(tail);
     fixHead(tail);
 
-    const error = refused(() => act("the holder's act"));
-    expect([error.signedThrough, error.checkpointsEndAt]).toEqual([4, -1]);
+    expect(act("the holder's act")).toBe(after);
     nothingForgedIsSigned(tail, 0, "the holder's act");
+    expect(tailsHolding("the holder's first act")).toEqual([after]);
+  });
+});
+
+describe('an end the signed note names, cut from the disk with the clear note set back', () => {
+  it('12. the newest entry and its checkpoint cut, the clear note fixed: a new tail that says what is missing', () => {
+    const tail = history();
+    const entries = entriesOf(tail);
+    writeSegment(tail, entries.slice(0, -1));
+    const path = checkpointsPath({ root }, tail);
+    const checkpoints = readFileSync(path, 'utf-8').split('\n').filter(Boolean);
+    writeFileSync(path, `${checkpoints.slice(0, -1).join('\n')}\n`);
+    fixHead(tail);
+    // Both readers pass the cut tail: what it holds is all signed, and nothing says it held more.
+    expect(verify(root).fullySigned).toBe(true);
+    const before = filesOf(tail);
+
+    const after = act("the holder's act");
+    expect(after).not.toBe(tail);
+    expect(describeNewTail(told[0] as NewTail)).toBe(
+      `mnema: wrote to a new tail, ${after}, and left tail ${tail} as it is: it ends at seq 2, and ` +
+        'the entries after it, up to the one this installation wrote last (seq 3), are not in it. ' +
+        'A branch switch, a merge, a restored backup or a copied checkout does that, and appending ' +
+        'there would fork the tail.',
+    );
+    expect(filesOf(tail)).toEqual(before);
+    expect(tailsHolding("the holder's act")).toEqual([after]);
+    expect(verify(root).fullySigned).toBe(true);
+    expect(secondReader(root)).toEqual({ exit: 0, verdict: 'VERIFIED' });
   });
 });
 

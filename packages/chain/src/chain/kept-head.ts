@@ -29,6 +29,15 @@
  * end this note vouches for (`recover()` in `writer.ts`), which
  * `a-history-rewritten-without-the-key-is-never-signed.test.ts` holds. The clear-text note stays
  * exactly as it was, so an older mnema keeps reading it.
+ *
+ * AND IT IS SIGNED BEFORE THE LINE, NOT ONLY AFTER (ADR-314). Kept only on the way out of the hold,
+ * the note was behind the tail between the fsync of a line and the end of the act, and a kill
+ * there left an event no note vouched for: the next write sent it to a new tail, unsigned for
+ * good. So an append first keeps the note naming the end it chains onto and, in `next`, the last
+ * entry it is about to write; the hold ends by keeping the note again with `next` null. A recovery
+ * that finds either end is this installation's, which
+ * `packages/code/tests/a-write-killed-at-any-point-is-signed-by-the-next.test.ts` holds; an end
+ * the note names that the disk no longer holds is not chained over, whatever the clear note says.
  */
 
 import { readFileSync, renameSync, writeFileSync } from 'node:fs';
@@ -84,14 +93,24 @@ export function keepHead(layout: ChainLayout, tailId: string, head: KeptHead): v
  */
 export const WRITTEN_HEAD_SCHEME = 'mnema-written-head/1';
 
-/** The last entry this installation wrote to a tail, as the signed note vouches for it. */
-export interface WrittenHead extends KeptHead {
+/**
+ * The last entry this installation wrote to a tail, as the signed note vouches for it. `seq` is -1
+ * and `hash` null only in a note kept before the first append of a tail, which holds no entry yet.
+ */
+export interface WrittenHead {
+  readonly seq: number;
+  readonly hash: string | null;
   /** The entry hash at `seq - 1`, or null at seq 0: what a torn last entry was chained onto. */
   readonly prev: string | null;
   /** The last checkpoint's `toSeq` when the note was written, or -1 when there was none. */
   readonly coveredThrough: number;
   /** That checkpoint's hash, or null when there was none. */
   readonly checkpoint: string | null;
+  /**
+   * In a note kept before an append, the last entry that append is about to write, chained onto
+   * the end above: until the hold ends, the tail ends at one or the other. Null once it ended.
+   */
+  readonly next: KeptHead | null;
 }
 
 /** Where a tail keeps the signed note, beside the clear-text one. */
@@ -105,6 +124,7 @@ function signedFields(tailId: string, head: WrittenHead) {
     checkpoint: head.checkpoint,
     coveredThrough: head.coveredThrough,
     hash: head.hash,
+    next: head.next === null ? null : { hash: head.next.hash, seq: head.next.seq },
     prev: head.prev,
     scheme: WRITTEN_HEAD_SCHEME,
     seq: head.seq,
@@ -112,7 +132,27 @@ function signedFields(tailId: string, head: WrittenHead) {
   };
 }
 
-const NOTE_KEYS = ['checkpoint', 'coveredThrough', 'hash', 'prev', 'scheme', 'seq', 'sig', 'tail'];
+const NOTE_KEYS = [
+  'checkpoint',
+  'coveredThrough',
+  'hash',
+  'next',
+  'prev',
+  'scheme',
+  'seq',
+  'sig',
+  'tail',
+];
+
+/** `next` as the note holds it: null, or an entry's seq and hash. */
+function nextOf(value: unknown): KeptHead | null | undefined {
+  if (value === null) return null;
+  if (typeof value !== 'object' || !holdsExactly(value, ['hash', 'seq'])) return undefined;
+  const { hash, seq } = value as Record<string, unknown>;
+  if (typeof hash !== 'string' || typeof seq !== 'number' || !Number.isSafeInteger(seq) || seq < 0)
+    return undefined;
+  return { seq, hash };
+}
 
 /**
  * Signs the note with the tail's key and replaces it whole, as {@link keepHead} replaces its
@@ -160,16 +200,19 @@ export function readWrittenHead(
     string,
     unknown
   >;
+  const next = nextOf((note as Record<string, unknown>).next);
   if (
     scheme !== WRITTEN_HEAD_SCHEME ||
     tail !== tailId ||
     typeof seq !== 'number' ||
     !Number.isSafeInteger(seq) ||
-    seq < 0 ||
+    seq < -1 ||
+    (seq === -1) !== (hash === null) ||
+    next === undefined ||
     typeof coveredThrough !== 'number' ||
     !Number.isSafeInteger(coveredThrough) ||
     coveredThrough < -1 ||
-    typeof hash !== 'string' ||
+    (hash !== null && typeof hash !== 'string') ||
     (prev !== null && typeof prev !== 'string') ||
     (checkpoint !== null && typeof checkpoint !== 'string') ||
     typeof sig !== 'string' ||
@@ -177,7 +220,7 @@ export function readWrittenHead(
   ) {
     return undefined;
   }
-  const head: WrittenHead = { seq, hash, prev, coveredThrough, checkpoint };
+  const head: WrittenHead = { seq, hash, prev, coveredThrough, checkpoint, next };
   const signed = canonicalBytes(signedFields(tailId, head));
   return verify(signed, Buffer.from(sig, 'hex'), publicKey) ? head : undefined;
 }

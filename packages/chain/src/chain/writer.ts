@@ -216,8 +216,11 @@ export function describeNewTail(opened: NewTail): string {
         'installation id copied from another checkout, or a write from before this note was kept)'
       : opened.found === undefined
         ? `the last entry this installation wrote to it (seq ${opened.kept.seq}) is gone from it`
-        : `it ends at seq ${opened.found.seq}, not at the entry this installation wrote last ` +
-          `(seq ${opened.kept.seq})`;
+        : opened.found.seq < opened.kept.seq
+          ? `it ends at seq ${opened.found.seq}, and the entries after it, up to the one this ` +
+            `installation wrote last (seq ${opened.kept.seq}), are not in it`
+          : `it ends at seq ${opened.found.seq}, not at the entry this installation wrote last ` +
+            `(seq ${opened.kept.seq})`;
   return (
     `mnema: wrote to a new tail, ${opened.to}, and left tail ${opened.from} as it is: ${why}. ` +
     'A branch switch, a merge, a restored backup or a copied checkout does that, and appending ' +
@@ -563,6 +566,26 @@ export class ChainWriter {
   }
 
   /**
+   * Keeps the signed note BEFORE an append's line ({@link keepWrittenHead}): the end the append
+   * chains onto, and in `next` the last entry it is about to write, so a kill anywhere after this
+   * leaves the tail ending at an entry the note names and the next recovery signs it ({@link
+   * recover}). A note that could not be kept costs what it always cost: an entry that lands with
+   * no note vouching for it goes to a new tail, unsigned.
+   */
+  private keepIntent(last: Entry): void {
+    const note: WrittenHead = {
+      seq: this.nextSeq - 1,
+      hash: this.head,
+      prev: this.headPrev,
+      coveredThrough: this.lastCheckpointedSeq,
+      checkpoint: this.lastCheckpointHash,
+      next: { seq: last.link.seq, hash: last.link.hash },
+    };
+    keepWrittenHead(this.layout, this.tailId, note, this.keyPair);
+    this.keptNote = noteSaying(note);
+  }
+
+  /**
    * Keeps the last entry this writer wrote ({@link keepHead}), on the way out of every hold and
    * only when it moved: a note per act that appended, none for one that did not. The signed note
    * ({@link keepWrittenHead}) is kept first, and also when only the coverage moved, so a crash
@@ -577,6 +600,7 @@ export class ChainWriter {
       prev: this.headPrev,
       coveredThrough: this.lastCheckpointedSeq,
       checkpoint: this.lastCheckpointHash,
+      next: null,
     };
     const saying = noteSaying(note);
     if (saying !== this.keptNote) {
@@ -584,7 +608,7 @@ export class ChainWriter {
       this.keptNote = saying;
     }
     if (this.head === this.keptHash) return;
-    keepHead(this.layout, this.tailId, { seq: note.seq, hash: note.hash });
+    keepHead(this.layout, this.tailId, { seq: note.seq, hash: this.head });
     this.keptHash = this.head;
   }
 
@@ -781,6 +805,24 @@ export class ChainWriter {
     const last = tip.at(-1);
     const kept = readKeptHead(this.layout, this.tailId);
     const found = last === undefined ? undefined : { seq: last.link.seq, hash: last.link.hash };
+    // THE SIGNED NOTE SAYS IT FIRST (ADR-314). It is kept before every append as well as after the
+    // hold ({@link keepIntent}), so an end it names, or the entry its pending append was about to
+    // write, is this installation's whatever the clear note says: a kill between the line and the
+    // clear note left the clear note behind, and that end used to go to a new tail, unsigned.
+    const note = readWrittenHead(this.layout, this.tailId, this.keyPair.publicKey);
+    const endSeq = found?.seq ?? -1;
+    const isEnd = (end: { seq: number; hash: string | null }): boolean =>
+      end.seq === endSeq && end.hash === (found?.hash ?? null);
+    const ownBySignedNote =
+      note !== undefined &&
+      (isEnd(note) ||
+        (note.next !== null && isEnd(note.next)) ||
+        // This installation's own last entry, torn by a power cut after its note was signed: the
+        // note names the entry chained onto this end, and only that entry's line is gone.
+        (fragment !== undefined &&
+          note.seq === endSeq + 1 &&
+          note.prev === (found?.hash ?? null) &&
+          (!fragment.parses || walked.at(-1)?.link.hash === note.hash)));
     // The one end that is not the noted entry and is still this installation's: the noted entry
     // itself, torn by a crash into the fragment the cut below removes (whole but for its
     // newline, it parses and is that entry; cut shorter, it sits at the seq after the end).
@@ -790,6 +832,7 @@ export class ChainWriter {
       kept.seq === (found?.seq ?? -1) + 1 &&
       (!fragment.parses || walked.at(-1)?.link.hash === kept.hash);
     const endsWhereLeft =
+      ownBySignedNote ||
       tornOwnWrite ||
       (kept === undefined
         ? found === undefined
@@ -827,17 +870,8 @@ export class ChainWriter {
     // elsewhere or is refused leaves every file of this tail as it found it.
     // `a-history-rewritten-without-the-key-is-never-signed.test.ts` holds each case.
     const above = tip.filter((entry) => entry.link.seq > this.lastCheckpointedSeq).length;
-    const note = readWrittenHead(this.layout, this.tailId, this.keyPair.publicKey);
     const computed = endAsComputed(tip, this.lastCheckpointedSeq, this.tailId);
-    const vouched =
-      note !== undefined &&
-      computed &&
-      ((found !== undefined && note.seq === found.seq && note.hash === found.hash) ||
-        // This installation's own last entry, torn by a power cut after its note was signed: the
-        // note names the entry chained onto this end, and only that entry's line is gone.
-        (tornOwnWrite &&
-          note.seq === (found?.seq ?? -1) + 1 &&
-          note.prev === (found?.hash ?? null)));
+    const vouched = note !== undefined && computed && ownBySignedNote;
     if (vouched) {
       if (
         this.lastCheckpointedSeq < note.coveredThrough ||
@@ -863,6 +897,19 @@ export class ChainWriter {
         kept,
         found,
         left: { unvouched: above },
+      };
+      return;
+    } else if (note !== undefined && note.hash !== null && note.seq >= endSeq) {
+      // AN END THIS KEY SIGNED FOR IS NOT ON THE DISK, and the clear note says it is (ADR-314): the
+      // newest entries were cut, their checkpoints with them, and the clear note set back to what
+      // was left. Chained over, the next entry reused a seq this key had already written and
+      // signed, and a copy pushed before the cut forked. The clear note is not asked: the end the
+      // signed note names is the one this installation wrote last, so the act goes to a new tail.
+      this.movedOn = {
+        from: this.tailId,
+        to: this.tailId,
+        kept: { seq: note.seq, hash: note.hash },
+        found,
       };
       return;
     }
@@ -946,6 +993,7 @@ export class ChainWriter {
     });
     const line = `${serializeEntry(entry)}\n`;
     const path = segmentPath(this.layout, this.tailId, this.segment);
+    this.keepIntent(entry);
     appendDurably(path, line);
 
     this.headPrev = entry.link.prev;
@@ -1017,6 +1065,7 @@ export class ChainWriter {
       seq += 1;
     }
     const path = segmentPath(this.layout, this.tailId, this.segment);
+    this.keepIntent(entries.at(-1) as Entry);
     appendDurably(path, lines);
 
     this.headPrev = (entries.at(-1) as Entry).link.prev;
@@ -1392,7 +1441,8 @@ function tornFragment(segmentPath: string, upcasters: UpcasterRegistry): TornFra
 
 /** The signed note as one string, to tell whether the one to keep is the one already kept. */
 function noteSaying(note: WrittenHead): string {
-  return [note.seq, note.hash, note.prev, note.coveredThrough, note.checkpoint].join(' ');
+  const next = note.next === null ? null : `${note.next.seq}:${note.next.hash}`;
+  return [note.seq, note.hash, note.prev, note.coveredThrough, note.checkpoint, next].join(' ');
 }
 
 /**
