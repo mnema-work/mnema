@@ -6,8 +6,7 @@
  * payload over a real range, and read the findings as values.
  */
 
-import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -38,38 +37,31 @@ describe('the pull request text', () => {
     expect(dashesIn({ title: 'ok', body })).toEqual([`body, line 3: three ${DASH} three`]);
   });
 
-  it('does not accuse a commit message that carries the dash, since commits are not read', () => {
-    const repo = mkdtempSync(join(tmpdir(), 'pr-text-'));
-    const git = (...args: string[]) =>
-      execFileSync('git', args, { cwd: repo, encoding: 'utf-8' }).trim();
-    git('init', '-q');
-    git('config', 'user.email', 'a@example.invalid');
-    git('config', 'user.name', 'a');
-    git('commit', '-q', '--allow-empty', '-m', 'base');
-    const base = git('rev-parse', 'HEAD');
-    git('commit', '-q', '--allow-empty', '-m', `subject ${DASH} here`);
-    const head = git('rev-parse', 'HEAD');
-    const payload = (title: string) => {
-      const file = join(repo, `event-${title.length}.json`);
-      writeFileSync(
-        file,
-        JSON.stringify({
-          pull_request: { title, body: 'clean', base: { sha: base }, head: { sha: head } },
-        }),
-      );
-      return file;
-    };
-    const cwd = vi.spyOn(process, 'cwd').mockReturnValue(repo);
-    const out = vi.spyOn(console, 'log').mockImplementation(() => undefined);
-    const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  it('does not read the commits: a range git cannot resolve is not a broken ruler', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pr-text-'));
     try {
-      expect(main(payload('Fix the thing'))).toBe(0);
-      expect(out).toHaveBeenCalledWith('NO EM DASH in the title or the description.');
-      expect(main(payload(`Fix ${DASH} the thing`))).toBe(1);
+      const payload = (title: string) => {
+        const file = join(dir, `event-${title.length}.json`);
+        writeFileSync(
+          file,
+          JSON.stringify({
+            pull_request: { title, body: 'clean', base: { sha: 'x' }, head: { sha: 'y' } },
+          }),
+        );
+        return file;
+      };
+      const out = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+      const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      try {
+        expect(main(payload('Fix the thing'))).toBe(0);
+        expect(out).toHaveBeenCalledWith('NO EM DASH in the title or the description.');
+        expect(main(payload(`Fix ${DASH} the thing`))).toBe(1);
+      } finally {
+        out.mockRestore();
+        err.mockRestore();
+      }
     } finally {
-      cwd.mockRestore();
-      out.mockRestore();
-      err.mockRestore();
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 
