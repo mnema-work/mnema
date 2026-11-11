@@ -46,7 +46,7 @@ your `PATH` is the one you meant and whether the `node` it uses takes it. It wri
 ## Pin a version
 
 ```sh
-npm i -g @mnema/code@0.1.7
+npm i -g @mnema/code@0.1.8
 ```
 
 To update, run the unpinned install again.
@@ -59,7 +59,7 @@ install (it fails with `EAUDITGLOBAL`), so check the version you installed in an
 
 ```sh
 mkdir mnema-check && cd mnema-check && npm init -y > /dev/null
-npm i --ignore-scripts @mnema/code@0.1.7
+npm i --ignore-scripts @mnema/code@0.1.8
 npm audit signatures
 ```
 

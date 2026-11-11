@@ -10,6 +10,139 @@ with its own changelog.
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-11-11
+
+### Added
+
+- **A reference page for each command and each MCP tool.** `docs/reference/cli/` has one page per command of `mnema`,
+  made from the help the command prints, and `docs/reference/mcp/` one per tool the MCP server serves, made from its
+  description, parameters and annotations; [Commands](docs/reference/commands.md) and
+  [MCP tools](docs/reference/mcp-tools.md) index them. The pages are generated, and a test is red when one differs
+  from the help or from what the server serves.
+- **`mnema verify --json` says each tree in a line.** Every tree of the reading has a `headline`: the text of the line the
+  console's panel shows for it (the level clause of a tree that holds a record, `no record here` for one that does not), made
+  by the same function as the panel, so the two cannot say two things; a `short`, the same verdict in plain words without the
+  layer names (`verified, signed`, `verified, hash chain only: no signature was checked`, `failed: <its first issue>`); and a tree that holds lines a newer mnema wrote has
+  `newerMnema`, the sentence every surface says about them. All three are fields added beside the reading, and they change neither the prose
+  nor the exit code. A set (`--workspace`) carries them on the trees of each project. The VS Code extension shows them
+  in its status bar tooltip.
+- **The README's hosts table shows each host by its vendor's own logo file.** The files are in `assets/hosts/`, as
+  published and unmodified, with a `SOURCES.md` beside them that gives each file's source, date and sha256; the table no
+  longer links to a third party's redraw of a logo. Codex, whose vendor publishes no file that was found, is shown by its
+  name. A line under the table names the owners of the logos and says they imply no endorsement, and a test holds that
+  every image of the table is one of those files with a row and a matching hash.
+
+### Changed
+
+- **A handoff or an observation about an id nobody holds is refused.** The `task handoff` command, `record_handoff`,
+  `observe` and `record_observation` used to record the fact about any id they were given, so a mistyped task kept a
+  brief nobody could find from the task. They now refuse (`UNKNOWN_TASK` for a handoff, `UNKNOWN_RECORD` for an
+  observation, `AMBIGUOUS_RECORD` where two records hold the id) and write nothing, whichever tree the write was told to
+  land in. A handoff names a task: the id of a decision or a pattern is refused as `UNKNOWN_TASK` too. The command
+  line looks in the trees of its own project; the tools look in every project the client
+  announced. The `link` command is unchanged: it records the edge and says when it names nothing a reader can open.
+- **`mnema search` and the `search` tool name the other end of a replaced decision.** A decision hit that was superseded
+  carries `superseded by ADR-n: <title> (<state>) · <id>`, and one that replaced another carries `supersedes ...`,
+  worded as the read of a whole record words them and read from the tree the hit is in (`(not in the trees read)` when that tree does
+  not hold the other end). `--json` and the tool's result gain the optional `supersedes` and `supersededBy` on a decision
+  hit, shaped as in `show`.
+- **The command line says what the tool says about an address.** After "Recorded decision ADR-n (id)", the
+  command that records a decision now adds, as `record_decision` does, that the decision is addressed at no path and that nothing was linked, and
+  names the call that would address it: `mnema link <id> <path> --rel governs` (with `--scope private` in the private
+  tree). The command has no connection and so no path it looked at: the `<path>` is left for you to fill in. Both doors
+  build the lines in one function.
+- **The command reference is split into guides and the page of each command, and the docs are grouped as Get started,
+  Learn, Reference and Project.** The long sections of `docs/cli-reference.md` moved: nine guides
+  ([recording decisions](docs/recording-decisions.md), [rules and the commits that cite them](docs/rules-and-the-commits-that-cite-them.md),
+  [committing the record](docs/committing-the-record.md), [a second machine and your key](docs/a-second-machine-and-your-key.md),
+  [a record that inherits another](docs/a-record-inheriting-another.md),
+  [importing the decisions you already wrote](docs/importing-the-decisions-you-already-wrote.md),
+  [switching off what is handed to a model](docs/switching-off-what-is-handed-to-a-model.md),
+  [the session journal and compaction](docs/the-session-journal-and-compaction.md) and
+  [the MCP server](docs/as-an-mcp-server.md)); what belongs to one command is on that command's page under
+  [Commands](docs/reference/commands.md); and the long form of what the record proves is the end of
+  [What it proves](docs/what-it-proves.md). [The command reference](docs/cli-reference.md) stays as the index, with the
+  tour of the command line and the exit codes, and keeps a heading, with a link to where its text went, for each anchor
+  a page already cites. The "Docs" block of the front page lists the pages in the four groups.
+- **The hook before a write no longer founds an identity.** On a machine with no key, a write the record charges (a
+  rule that asks a person or refuses) used to make a key to record the charge. The write is now refused, and the reply
+  says to run `mnema init`; nothing is recorded and no key is made. So is the write a host hands the rules beside, where
+  its hook is the gate; a hook that runs after the write records nothing there. A machine that has a key is unchanged.
+- **The VS Code status bar tooltip is a verdict and one line per tree.** The block of `mnema verify` text it held, cut at six
+  lines (the private tree's line was the one that fell out), is replaced by the `short` line `verify --json` carries for each tree (plain words; the `T1/T2/T4` terms stay in the console and behind the link),
+  with the sentence about a newer mnema under its tree and the editor's error or info icon on a tree that is not clean. The long
+  text is behind a link, the new command `mnema: Show Full Verification`, which runs `mnema verify --verbose` and `mnema switch`
+  when it is clicked and shows them in an output channel. A reading no longer runs a second `mnema verify`.
+
+### Fixed
+
+- **A history rewritten without the key is no longer signed by the key holder's next write.** A writer signed every event
+  it found above its tail's last checkpoint, so anyone who could write the checkout, and not use the key, could rewrite a
+  tail, recompute its keyless hashes, empty `checkpoints.jsonl` and fix the note of the last entry in `locks/`, and the
+  holder's next write signed the forgery: both readers then passed `--require signed`. The writer now keeps beside that
+  note the same note signed with the tail's key (`locks/<tail>.head.sig`), and signs the events it finds above the last
+  checkpoint only under an end that note vouches for, after hashing each of them again from its bytes. An end it does not
+  vouch for, with such events, gets a new tail and a notice that names how many stay unsigned; an end it vouches for whose
+  checkpoints are fewer than the note says this key signed is refused (`TAIL_DAMAGED`) and left as it is. The format and
+  both readers are unchanged. It holds while every mnema that writes with that key is this version or later: an older one
+  still signs what it finds unsigned.
+- **A torn last line of `checkpoints.jsonl` is healed by the next write, not buried.** A crash while signing a checkpoint leaves a
+  piece with no newline. Reading tolerated it, but the next write appended its checkpoint glued to the piece, and the tail
+  became unreadable to `mnema verify` and to the Python reader for good. The writer now cuts a piece that does not parse, or
+  completes one that lost only its newline, the way it already healed a segment's. `verify` names a dropped piece of the
+  checkpoints file in its census, as the Python reader already did.
+- **A write killed before its end is signed by the next write, in the same tail.** The notes of the last entry an
+  installation wrote (`locks/<tail>.head` and the signed `locks/<tail>.head.sig`) were kept only once the act ended, so a
+  kill after the event's line reached the disk left an event no note vouched for: the next write opened a new tail, said
+  a branch switch or a merge did it, and `mnema verify --require=signed` failed on that record for good. The signed note
+  is now kept before each line as well, naming in a new field, `next`, the last entry the write is about to append, and
+  the next write signs what a killed one left, whatever point the kill came at. And an end the signed note names that the
+  tail no longer holds (its newest entries and their checkpoints cut, the clear note set back) is not written over: the
+  write goes to a new tail and says which entries are not there; an earlier signed note put back with the cut is not told
+  apart, and the write chains on. The format of the record and both readers are
+  unchanged; the field is in a note under `locks/`, which no reader reads.
+- **Both readers give one verdict on two checkpoint lines swapped and on a tail that is a symbolic link.** `mnema verify`
+  sorted a tail's checkpoints by `fromSeq` before it checked their chain, so two lines of `checkpoints.jsonl` swapped, each
+  as it was signed, passed `--require=signed` while the second reader refused them. The previous checkpoint is now the
+  line before, in both readers and in the writer (FORMAT.md section 6), and the swap is refused as a checkpoint chain
+  break. A symbolic link under `tails/` was skipped by `mnema verify` (a record whose one tail was linked read as holding
+  no tail, and one beside another tail verified over the other alone) and followed by the second reader. Both now refuse
+  it by name, `LINKED TAIL: tails/<name>`, whatever it points at, and no reading follows it (FORMAT.md section 4). An
+  earlier version still accepts the swapped lines and still skips the link.
+- **Four pages said what the binary does not.** The two-machines page (`docs/convergence.md`) typed `ADR-1` after an `mnema init` that, at a
+  terminal, records a decision of its own first, so on a newcomer's machine the commands named init's decision; it now runs
+  `mnema init --yes`, which asks nothing, and says why. The how-it-works page said `decision move` refuses a label, but it
+  moves the decision when exactly one carries the label and refuses only when several do. The README's Quick start and
+  three install pages had `#` comments after commands, which an interactive zsh without `interactivecomments` (macOS's
+  default) hands to the command as arguments; the comments are prose now. A case holds the four pages to no trailing
+  comment, and another holds every page that runs an `init` that asks from typing a fixed label after it.
+- **`mnema site` no longer grows faster than the record.** Building the page looked each decision up through every note, every
+  note through every link and every recorded or accepted decision through every event, so a record of 3,003 decisions took
+  230 s and one of 1,000 took 10.7 s; each is now one read of an index made once, and the same record takes 6 s. The page is
+  the same: every byte outside the verifier's own script is unchanged, and that script differs only because it bundles the
+  changed model.
+- **The comparison with a base reads one segment at a time.** The comparison `verify --since` makes kept the bytes of
+  every segment the base commit held until the end, and only then wrote them down for the check of the tails that
+  arrived, so the comparison's own peak was all the record's tails. Each file is now taken out of git once, compared,
+  written down and dropped before the next. The command as a whole still runs the full verify first, and where the
+  tails name two records or more the check of the arrivals reads the record's events, so what you measure of the whole
+  command shrinks less than the comparison's own peak does. The base is still read as the commit held it, and the
+  verdicts and findings are unchanged.
+- **The hosts table of the README shows every logo at one height.** Each image is given a height and no width, so none is
+  stretched or squashed and the first column is as narrow as its logos; the logos that were a wide card (Cursor), a badge
+  (OpenCode) or a mark on a white square (Factory Droid) are now the vendor's own square or mark file of the same brand page
+  or repository, and Goose, which was padded far inside its file, is now the project's own mark with no margin on the light
+  page (on the dark page it is still the project's white-mark file, which keeps a margin around the goose), listed in `assets/hosts/SOURCES.md` with its source, date and sha256,
+  and a test holds that no image of the table carries a width.
+- **The quick start accepts and links the decision the reader just recorded.** After an `init` at a terminal, which
+  records a decision of its own, the reader's first decision is `ADR-2`, and the README and the first-record page told
+  them to accept and to link `ADR-1`: the accept was refused and the link bound the rule to init's decision without a
+  word. Both pages now read the number the record command printed (the README captures it into `ADR`; the first-record
+  page sets it from the line shown), and a case runs both after an `init` driven on a pseudo-terminal.
+- **The rules read before an edit no longer slows with the number of rules.** Naming what replaced each rule re-read
+  every decision once per rule, so a project with 600 rules and 3,000 decisions waited several seconds on each edit, even
+  for a path no rule names; it is now one indexed lookup per rule, with the same answers.
+
 ## [0.1.7] - 2026-11-09
 
 ### Changed
@@ -2864,6 +2997,7 @@ Requires Node ≥ 22.12.0; the packages are ESM-only.
   committed tree (`packages/chain/FORMAT.md` §4.1).
 
 [Unreleased]: https://github.com/mnema-work/mnema/commits/main
+[0.1.8]: https://github.com/mnema-work/mnema/releases/tag/v0.1.8
 [0.1.7]: https://github.com/mnema-work/mnema/releases/tag/v0.1.7
 [0.1.6]: https://github.com/mnema-work/mnema/releases/tag/v0.1.6
 [0.1.5]: https://github.com/mnema-work/mnema/releases/tag/v0.1.5
