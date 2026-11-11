@@ -1,15 +1,18 @@
 // @reads-the-tree
 /**
- * A pull request whose title, description or commit message carries the em dash is refused,
- * and the finding says where. The text is the pull request's own, so the cases hand the
- * function titles, descriptions and commits and read the findings as values.
+ * A pull request whose title or description carries the em dash is refused, and the finding
+ * says where. The commit messages are not read: the squash commit is the title and the
+ * description. The cases hand the function titles and descriptions, and run the check on a
+ * payload over a real range, and read the findings as values.
  */
 
-import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
-import { dashesIn, THE_DASH } from '../../../.github/the-pull-request-text/check.mjs';
+import { describe, expect, it, vi } from 'vitest';
+import { dashesIn, main, THE_DASH } from '../../../.github/the-pull-request-text/check.mjs';
 
 const REPO = join(fileURLToPath(new URL('.', import.meta.url)), '..', '..', '..');
 const DASH = String.fromCharCode(0x2014);
@@ -21,10 +24,7 @@ describe('the pull request text', () => {
   });
 
   it('lets a clean pull request through', () => {
-    const commits = [
-      { sha: 'a'.repeat(40), message: 'Fix the thing\n\nA body, with a colon: ok.' },
-    ];
-    expect(dashesIn({ title: 'Fix the thing', body: 'one\ntwo\nthree', commits })).toEqual([]);
+    expect(dashesIn({ title: 'Fix the thing', body: 'one\ntwo\nthree' })).toEqual([]);
   });
 
   it('names the title', () => {
@@ -38,14 +38,49 @@ describe('the pull request text', () => {
     expect(dashesIn({ title: 'ok', body })).toEqual([`body, line 3: three ${DASH} three`]);
   });
 
-  it('names the commit and its line', () => {
-    const commits = [
-      { sha: 'b'.repeat(40), message: 'clean' },
-      { sha: 'c'.repeat(40), message: `subject\n\nbody ${DASH} here` },
-    ];
-    expect(dashesIn({ title: 'ok', body: null, commits })).toEqual([
-      `commit ${'c'.repeat(12)}, line 3: body ${DASH} here`,
-    ]);
+  it('does not accuse a commit message that carries the dash, since commits are not read', () => {
+    const repo = mkdtempSync(join(tmpdir(), 'pr-text-'));
+    const git = (...args: string[]) =>
+      execFileSync('git', args, { cwd: repo, encoding: 'utf-8' }).trim();
+    git('init', '-q');
+    git('config', 'user.email', 'a@example.invalid');
+    git('config', 'user.name', 'a');
+    git('commit', '-q', '--allow-empty', '-m', 'base');
+    const base = git('rev-parse', 'HEAD');
+    git('commit', '-q', '--allow-empty', '-m', `subject ${DASH} here`);
+    const head = git('rev-parse', 'HEAD');
+    const payload = (title: string) => {
+      const file = join(repo, `event-${title.length}.json`);
+      writeFileSync(
+        file,
+        JSON.stringify({
+          pull_request: { title, body: 'clean', base: { sha: base }, head: { sha: head } },
+        }),
+      );
+      return file;
+    };
+    const cwd = vi.spyOn(process, 'cwd').mockReturnValue(repo);
+    const out = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      expect(main(payload('Fix the thing'))).toBe(0);
+      expect(out).toHaveBeenCalledWith('NO EM DASH in the title or the description.');
+      expect(main(payload(`Fix ${DASH} the thing`))).toBe(1);
+    } finally {
+      cwd.mockRestore();
+      out.mockRestore();
+      err.mockRestore();
+    }
+  });
+
+  it('breaks the ruler when there is no payload', () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      expect(main(undefined)).toBe(2);
+      expect(err).toHaveBeenCalledWith(expect.stringContaining('RULER BROKEN'));
+    } finally {
+      err.mockRestore();
+    }
   });
 });
 
@@ -56,6 +91,7 @@ describe('the job that runs it', () => {
     expect(workflow).toContain('name: the pull request text');
     expect(workflow).toContain('types: [opened, edited, synchronize, reopened]');
     expect(workflow).toContain('run: node .github/the-pull-request-text/check.mjs');
+    expect(workflow).not.toContain('fetch-depth');
     expect(workflow).not.toContain('github.event.pull_request.title');
     expect(workflow).not.toContain('github.event.pull_request.body');
   });
