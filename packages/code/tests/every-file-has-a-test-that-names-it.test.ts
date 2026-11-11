@@ -2306,8 +2306,8 @@ describe('every file has a test that names it', () => {
     });
     // Non-vacuity in both parts: the walk really did follow specifiers, and the list
     // really does hold rows; a scanner returning nothing would satisfy the line above.
-    expect(unresolved.length).toBe(24);
-    expect(Object.keys(LED_NOWHERE)).toHaveLength(24);
+    expect(unresolved.length).toBe(23);
+    expect(Object.keys(LED_NOWHERE)).toHaveLength(23);
     // And each row says what THAT module is, by the ledger's rule, at the ledger's floor.
     const why = Object.values(LED_NOWHERE);
     expect(new Set(why).size).toBe(why.length);
