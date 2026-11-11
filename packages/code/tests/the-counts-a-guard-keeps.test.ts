@@ -59,4 +59,12 @@ describe('a count a guard keeps by hand', () => {
     const same = { ...ledger(path, false), read: { 'a.md': 4, 'b.md': { line: 2, name: 7 } } };
     expect(holdTheCounts(same)).toEqual(same.declared);
   });
+
+  it('detects the update mode on its own, and a plain run never rewrites a file', () => {
+    const path = ledgerFile();
+    const before = readFileSync(path, 'utf8');
+    const { updating: _unset, ...detected } = ledger(path, false);
+    expect(() => holdTheCounts(detected)).toThrow(/says 4, the guard read 6/);
+    expect(readFileSync(path, 'utf8')).toBe(before);
+  });
 });
