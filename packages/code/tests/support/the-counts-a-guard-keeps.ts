@@ -98,7 +98,7 @@ export function holdTheCounts<T extends Readonly<Record<string, Counts>>>(
   const places = stale.map((one) => ({ one, place: placeOf(lines, ledger.name, one) }));
   const updating =
     ledger.updating ??
-    (expect.getState() as { snapshotState?: { _updateSnapshot?: string } }).snapshotState
+    (expect.getState() as unknown as { snapshotState?: { _updateSnapshot?: string } }).snapshotState
       ?._updateSnapshot === 'all';
   if (!updating) {
     const says = places.map(({ one, place }) => {

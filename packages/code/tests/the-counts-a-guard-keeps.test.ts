@@ -1,12 +1,19 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { holdTheCounts } from './support/the-counts-a-guard-keeps.js';
 
+let sandbox = '';
+
+afterEach(() => {
+  rmSync(sandbox, { recursive: true, force: true });
+});
+
 function ledgerFile(): string {
-  const path = join(mkdtempSync(join(tmpdir(), 'counts-')), 'guard.test.ts');
+  sandbox = mkdtempSync(join(tmpdir(), 'counts-'));
+  const path = join(sandbox, 'guard.test.ts');
   writeFileSync(
     path,
     ['const A_LEDGER = {', "  'a.md': 4,", "  'b.md': { line: 2, name: 7 },", '};', ''].join('\n'),
