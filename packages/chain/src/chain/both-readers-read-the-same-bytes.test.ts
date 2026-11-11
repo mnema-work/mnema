@@ -795,6 +795,42 @@ describe('the two readers reach the same verdict on the same bytes, and name the
   });
 });
 
+/**
+ * THE ORDER OF THE LINES DECIDES WHICH CHECKPOINT A CHECK NAMES, in both readers (FORMAT.md
+ * section 6). On these two the first cause is the chain break both readers name at line 2, so
+ * the cause compared here is the one the order decides: the signer check names the first
+ * checkpoint another key signs, and the naming check names a `/1` checkpoint after a `/2` one.
+ * Read sorted by `fromSeq`, the first would name `cp[2..2]` and the second nothing at all.
+ */
+describe('the two readers read the checkpoints of a tail in the order of their lines', () => {
+  const ROWS = [
+    [
+      'checkpoints-out-of-order-by-another-key',
+      'checkpoint cp[3..3] is signed by 6bc98177967e...',
+      'tail-signer-mismatch',
+    ],
+    [
+      'checkpoints-out-of-order-one-names-a-record',
+      'checkpoint cp[2..2] names no record, and an earlier checkpoint names one',
+      'scheme-downgrade',
+    ],
+  ] as const;
+
+  it.each(ROWS)('names the same checkpoint for %s', (name, says, code) => {
+    const record = mutated(name);
+    const here = verify(record, catalogUpcasters());
+    const there = secondReading(record);
+    expect(here.ok).toBe(false);
+    expect(there.verdict).toBe('REFUSED');
+    expect(here.issues[0]?.detail).toContain('checkpoint chain break');
+    expect(there.refusals[0]?.what).toContain('prev is');
+    const product = here.issues.filter((issue) => issue.detail.includes(`(${code})`));
+    const second = there.refusals.filter((finding) => finding.what.includes(`(${code})`));
+    expect(product.map((issue) => issue.detail)).toEqual([expect.stringContaining(says)]);
+    expect(second.map((finding) => finding.what)).toEqual([expect.stringContaining(says)]);
+  });
+});
+
 describe('a key no writer puts there, beside the keys a structure has', () => {
   it('is named before the bytes, so a re-spelled line with one is refused for the key in both', () => {
     const record = copyOf('witnessed-record');

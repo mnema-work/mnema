@@ -1005,6 +1005,60 @@ def checkpoints_out_of_order(root: str) -> tuple[bool, str]:
     return _rewrite(path, lines), "checkpoint lines 2 and 3 swapped"
 
 
+def _swapped_with_one_changed(root: str, change, what: str) -> tuple[bool, str]:
+    """Checkpoint lines 2 and 3 swapped, after the one that was line 3 is changed by `change`.
+
+    The change is made without the tail's key, so its signature fails; what it shows is read
+    over every checkpoint line, verified or not, and which line a reader names depends on the
+    order it reads them in, which is the order of the lines (section 6).
+    """
+    path = _checkpoints(root)
+    lines = _read_lines(path)
+    if len(lines) < 3:
+        return False, "the tail holds fewer than three checkpoints"
+    checkpoint = strict_loads(lines[2].decode("utf-8"))
+    change(checkpoint)
+    lines[2] = canonical_bytes(checkpoint)
+    lines[1], lines[2] = lines[2], lines[1]
+    return _rewrite(path, lines), what
+
+
+def checkpoints_out_of_order_by_another_key(root: str) -> tuple[bool, str]:
+    """Checkpoint lines 2 and 3 pointed at another key, then swapped.
+
+    A tail is signed only by its own key (section 6), said once, at the first checkpoint that
+    is not. In the order of the lines that is the one now on line 2, `cp[3..3]`; a reader that
+    sorted by `fromSeq` would name `cp[2..2]`, now on line 3.
+    """
+    path = _checkpoints(root)
+    lines = _read_lines(path)
+    if len(lines) < 3:
+        return False, "the tail holds fewer than three checkpoints"
+    for at in (1, 2):
+        checkpoint = strict_loads(lines[at].decode("utf-8"))
+        checkpoint["signerFp"] = OTHER_KEY
+        lines[at] = canonical_bytes(checkpoint)
+    lines[1], lines[2] = lines[2], lines[1]
+    return _rewrite(path, lines), "checkpoint lines 2 and 3 pointed at another key and swapped"
+
+
+def checkpoints_out_of_order_one_names_a_record(root: str) -> tuple[bool, str]:
+    """Two checkpoint lines swapped, the one now second signed under the scheme naming a record.
+
+    In the order of the lines, a `/1` checkpoint (line 3) follows a `/2` one (line 2): a scheme
+    downgrade (section 6.10). Sorted by `fromSeq`, the `/2` one would come last and nothing
+    would be downgraded.
+    """
+
+    def change(checkpoint: dict) -> None:
+        checkpoint["scheme"] = NAMED_CHECKPOINT_SCHEME
+        checkpoint["record"] = "a" * 64
+
+    return _swapped_with_one_changed(
+        root, change, "checkpoint lines 2 and 3 swapped, line 2 now names a record"
+    )
+
+
 def _link_tail(root: str, tail: str) -> str:
     """Move the tail out of the record, beside it, and leave a symbolic link in its place."""
     place = os.path.join(root, "tails", tail)
@@ -2007,6 +2061,8 @@ MUTATIONS = {
     "reordered-lines": reordered_lines,
     "forked-tail": forked_tail,
     "checkpoints-out-of-order": checkpoints_out_of_order,
+    "checkpoints-out-of-order-by-another-key": checkpoints_out_of_order_by_another_key,
+    "checkpoints-out-of-order-one-names-a-record": checkpoints_out_of_order_one_names_a_record,
     "tail-linked": tail_linked,
     "tail-linked-beside-a-real-one": tail_linked_beside_a_real_one,
     "named-record": named_record,

@@ -883,6 +883,28 @@ const MUTATIONS = [
     productBreaks: 'ok',
   },
   {
+    // The same swap, with both lines pointed at another key: the signer check names the first
+    // in the order of the lines (`both-readers-read-the-same-bytes.test.ts`).
+    name: 'checkpoints-out-of-order-by-another-key',
+    refusals: 5,
+    section: '6',
+    says: 'checkpoint cp[3..3] is signed by',
+    productSays: 'checkpoint cp[3..3] is signed by',
+    productLayer: 'T2/T4',
+    productBreaks: 'ok',
+  },
+  {
+    // The same swap, the line now second naming a record: a downgrade in the order of the lines,
+    // none in the order of `fromSeq`.
+    name: 'checkpoints-out-of-order-one-names-a-record',
+    refusals: 4,
+    section: '6.10',
+    says: 'checkpoint cp[2..2] names no record',
+    productSays: 'checkpoint cp[2..2] names no record',
+    productLayer: 'T2/T4',
+    productBreaks: 'ok',
+  },
+  {
     // Section 4: a link under `tails/` is refused by name. The product skipped it and read the
     // record as holding no tail; the second reader followed it and verified.
     name: 'tail-linked',

@@ -787,7 +787,8 @@ def _check_tail_signer(
         f"a tail is written only by the key its id begins with, {owner[:12]}... "
         f"({TAIL_SIGNER_MISMATCH})"
     )
-    for checkpoint in sorted(checkpoints, key=lambda cp: cp.from_seq):
+    # In the order of the lines (section 6), as the product reads them; never sorted.
+    for checkpoint in checkpoints:
         signer = checkpoint.stored["signerFp"]
         if signer != owner:
             report.fail(
