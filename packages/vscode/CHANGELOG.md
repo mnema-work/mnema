@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.8
 
 - The status bar tooltip is the verdict and one line per tree, and the long text is behind a link. The block of
   `mnema verify` text it held is gone: it cut at six lines and left the private tree's line out whenever the public
