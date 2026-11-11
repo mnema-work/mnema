@@ -62,7 +62,9 @@ function caughtOnce(): string {
 describe('every test process runs in a home of its own', () => {
   it('is wired to what starts every test file, and the file it names exists', () => {
     const config = readFileSync(join(ROOT, 'vitest.config.ts'), 'utf-8');
-    expect(config).toContain("setupFiles: ['./.github/a-home-of-its-own/setup.mjs']");
+    // The setup files are a list (the property-test seed is set by another file of it), and
+    // this file must be in it, whatever else the list holds.
+    expect(config).toMatch(/setupFiles: \[[^\]]*'\.\/\.github\/a-home-of-its-own\/setup\.mjs'/);
     expect(statSync(join(ROOT, '.github/a-home-of-its-own/setup.mjs')).isFile()).toBe(true);
   });
 
