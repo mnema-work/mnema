@@ -98,7 +98,8 @@ grep -q "local integrity verified" "$log" || { echo "FAIL: verify did not say th
 # The decision the block recorded is the one accepted and linked: read it back, from the record.
 cd "$repo"
 # `init` records a decision of its own (the first), so the one to read is the one `accept` named.
-adr="$(sed -n 's/^Decision \(ADR-[0-9]*\) .*accepted.*/\1/p' "$log" | head -n 1)"
+# Not anchored: the line can open with the escape that shows the cursor again after init's prompts.
+adr="$(sed -n 's/.*Decision \(ADR-[0-9]*\) .*accepted.*/\1/p' "$log" | head -n 1)"
 [ -n "$adr" ] || { echo "FAIL: the block accepted no decision"; exit 1; }
 "${envv[@]}" mnema show "$adr" >"$work/show.txt" 2>&1 || { cat "$work/show.txt"; echo "FAIL: mnema show $adr"; exit 1; }
 cat "$work/show.txt"
