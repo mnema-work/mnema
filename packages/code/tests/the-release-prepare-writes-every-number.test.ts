@@ -109,6 +109,8 @@ function fixture(
   manifests.push(extra);
   writeFileSync(join(dir, 'CHANGELOG.md'), changelog);
   mkdirSync(join(dir, 'changelog/unreleased'), { recursive: true });
+  // Kept so the folder stays tracked once a release has gathered every entry.
+  writeFileSync(join(dir, 'changelog/unreleased/.gitkeep'), '');
   for (const [name, text] of Object.entries(fragments)) {
     writeFileSync(join(dir, 'changelog/unreleased', name), text);
   }
@@ -156,7 +158,7 @@ describe('release:prepare with a number', () => {
     expect(log).toContain(
       `## [Unreleased]\n\n## [${TARGET}] - 2030-01-02\n\n${GATHERED}\n## [0.2.0-beta]`,
     );
-    expect(readdirSync(join(dir, 'changelog/unreleased'))).toEqual([]);
+    expect(readdirSync(join(dir, 'changelog/unreleased'))).toEqual(['.gitkeep']);
     expect(log).toContain(
       '[Unreleased]: https://github.com/mnema-work/mnema/commits/main\n' +
         `[${TARGET}]: https://github.com/mnema-work/mnema/releases/tag/v${TARGET}\n`,
