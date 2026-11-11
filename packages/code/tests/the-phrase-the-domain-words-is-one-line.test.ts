@@ -1368,6 +1368,14 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'collapsed',
       why: 'the reason the reader of the key file gives, which carries a byte offset read off the file',
     },
+  '@mnema/chain chain/verify.ts «LINKED TAIL: tails/{} {}» LINKED_TAIL #1': {
+    verdict: 'minted',
+    why: 'the words a tail that is a symbolic link is refused by, a constant of the module',
+  },
+  '@mnema/chain chain/verify.ts «LINKED TAIL: tails/{} {}» oneLine(name) #1': {
+    verdict: 'collapsed',
+    why: 'the name of a link under `tails/`: whoever wrote the directory chose it',
+  },
   '@mnema/chain chain/verify.ts «MISNAMED KEY: the key file keys/{}.pub {} (it hashes to » MISNAMED_KEY #1':
     {
       verdict: 'minted',
@@ -2881,8 +2889,8 @@ describe('every value the domain puts in a sentence is classified', () => {
     // are equal. The scale is stated, and so is what the HANDOFF said (twenty-three
     // sites, twelve in `core` and eleven in `chain`), because it counted sentences
     // written at a `message:` or a `detail:` directly, and a value is not a sentence.
-    expect(SITES.length).toBe(448);
-    expect(FOUND[0]?.sites.length).toBe(229);
+    expect(SITES.length).toBe(450);
+    expect(FOUND[0]?.sites.length).toBe(231);
     expect(FOUND[1]?.sites.length).toBe(219);
     expect(FOUND.flatMap((layer) => layer.wording).length).toBeGreaterThan(15);
   });
@@ -2933,11 +2941,11 @@ describe('every value the domain puts in a sentence is classified', () => {
     // No arm of the case above may be empty, or that much of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
     const count = (verdict: Verdict): number => verdicts.filter((said) => said === verdict).length;
-    expect(count('collapsed')).toBe(308);
-    expect(count('minted')).toBe(108);
+    expect(count('collapsed')).toBe(309);
+    expect(count('minted')).toBe(109);
     expect(count('composed')).toBe(32);
     expect(SITES.filter((site) => new RegExp(`\\b${DOOR}\\b`).test(site.expression))).toHaveLength(
-      308,
+      309,
     );
   });
 

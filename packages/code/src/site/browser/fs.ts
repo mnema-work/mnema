@@ -64,6 +64,8 @@ interface Entry {
   readonly name: string;
   isDirectory(): boolean;
   isFile(): boolean;
+  /** Never: a file a person hands the page is bytes, and no link survives the hand-over. */
+  isSymbolicLink(): boolean;
 }
 
 export function readdirSync(path: string, options?: { withFileTypes: true }): string[] | Entry[] {
@@ -82,6 +84,7 @@ export function readdirSync(path: string, options?: { withFileTypes: true }): st
     name,
     isDirectory: () => children.get(name) === true,
     isFile: () => children.get(name) === false,
+    isSymbolicLink: () => false,
   }));
 }
 

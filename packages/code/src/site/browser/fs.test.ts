@@ -37,11 +37,16 @@ describe('the files a page carries', () => {
     expect(existsSync('/r/tails/a-1/000002.jsonl')).toBe(false);
     expect(readdirSync('/r/keys')).toEqual(['k.pub']);
     const kinds = (
-      readdirSync('/r', { withFileTypes: true }) as { name: string; isDirectory(): boolean }[]
-    ).map((entry) => [entry.name, entry.isDirectory()]);
+      readdirSync('/r', { withFileTypes: true }) as {
+        name: string;
+        isDirectory(): boolean;
+        isSymbolicLink(): boolean;
+      }[]
+    ).map((entry) => [entry.name, entry.isDirectory(), entry.isSymbolicLink()]);
+    // No entry is a link: the chain refuses a linked tail, and a page holds none.
     expect(kinds).toEqual([
-      ['keys', true],
-      ['tails', true],
+      ['keys', true, false],
+      ['tails', true, false],
     ]);
     expect(readdirSync('/r/tails')).toEqual(['a-1', 'b-2']);
     expect(() => readdirSync('/r/nowhere')).toThrow(/ENOENT/);
