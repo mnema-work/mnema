@@ -1432,6 +1432,11 @@ const SHOWN: {
   codex: {
     name: 'Codex',
     by: 'OpenAI · command line',
+    logo: {
+      file: 'OAI_OpenAI-Blossom_Black.svg',
+      dark: 'OAI_OpenAI-Blossom_White.svg',
+      alt: 'Codex',
+    },
   },
   copilot: {
     name: 'Copilot CLI',

@@ -211,7 +211,6 @@ describe('the repository leans on no label and no word that only the workbench d
         'packages/chain/src/chain/second-reader-says-what-it-does-not-check.test.ts',
         'packages/code/tests/the-bare-name-asks.test.ts',
         'packages/code/tests/support/screen.ts',
-        '.github/the-link-cannot-come-back/scan.mjs',
         'plugin/hooks/session-start.mjs',
       ]),
     );

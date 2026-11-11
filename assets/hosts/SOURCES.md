@@ -3,8 +3,7 @@
 The files in this folder are the vendors' own, as published, untouched: not recoloured, not resized in the file, not
 redrawn, and never a third party's redraw of a logo. Each is fetched from the vendor's brand page, its own repository or
 its own site, and the table of hosts in the README shows a host by its logo only for a file listed here. A host whose
-vendor publishes no logo file stays by its name: Codex is shown by its name alone, because no file published by OpenAI was
-found and its brand page was not read. The table of the README gives every file the same height and no width, so no file is shown stretched or squashed; where a vendor
+vendor publishes no logo file stays by its name. The table of the README gives every file the same height and no width, so no file is shown stretched or squashed; where a vendor
 publishes a file for a dark page, the table uses it there. The logos identify the hosts mnema works with and imply no endorsement; a vendor's
 request to remove its logo is followed. The site follows these files in its own change: until then its home page may still show the files it had.
 
@@ -12,6 +11,8 @@ request to remove its logo is followed. The site follows these files in its own 
 |---|---|---|---|---|
 | `claude-icon.svg` | Claude Code | https://claude.com/icon.svg (the icon claude.com/product/claude-code serves) | 2026-11-09 | `b150888bc7257af83e3b85d3c2be4294f88986026f8168f6c12fc1fde6697350` |
 | `vscode.svg` | VS Code | `vscode.svg` in https://code.visualstudio.com/assets/branding/visual-studio-code-icons.zip (linked from https://code.visualstudio.com/brand; the zip is sha256 `04c5292a117bbc619f1ce574cc59b6c5e2e26374d6e64b92619e848612f2d9cb`) | 2026-11-09 | `74ad401c6487a0dc5af1f6b2935556ab2d3553ae45effc7e1697b4d117d046b6` |
+| `OAI_OpenAI-Blossom_Black.svg` | Codex (the light page) | `OAI_OpenAI-Blossom_Black.svg` in OpenAI's logo kit, downloaded from https://openai.com/brand/ (OpenAI's own brand page) | 2026-11-11 | `75c1e9fffa5e8c437bec1d67197a73992bca45d166c6ff23215185dea8fae92a` |
+| `OAI_OpenAI-Blossom_White.svg` | Codex | `OAI_OpenAI-Blossom_White.svg` in OpenAI's logo kit, downloaded from https://openai.com/brand/ (the same kit as the black file) | 2026-11-11 | `01d158767c4eec0e47bd617e67759c33da0accd1438be1a8d29dfdb99ce87285` |
 | `GitHub_Invertocat_White.svg` | Copilot CLI | `GitHub Logos/SVG/GitHub_Invertocat_White.svg` in https://brand.github.com/GitHub_Logos.zip (from https://brand.github.com/foundations/logo; the zip is sha256 `e2a67d6cc51d990a52c46c1cf6bcab688db4830982174bca50e0be7a5c2f3194`) | 2026-11-09 | `ccd84c89b1056345608fc3489357f8acc7397e49a3cdc2d418b6c8016911d47b` |
 | `GitHub_Invertocat_Black.svg` | Copilot CLI (the light page) | `GitHub Logos/SVG/GitHub_Invertocat_Black.svg` in https://brand.github.com/GitHub_Logos.zip (the same zip as the white file, sha256 `e2a67d6cc51d990a52c46c1cf6bcab688db4830982174bca50e0be7a5c2f3194`) | 2026-11-09 | `693d7abe6f899646cc2e96856723b45e95f71885a54910b2749f6decdf7e1ee1` |
 | `gemini-cli-icon.png` | Gemini CLI | https://raw.githubusercontent.com/google-gemini/gemini-cli/1930f25394c4b6338b64ffdb43083fca41614798/packages/vscode-ide-companion/assets/icon.png (the vendor's own repository) | 2026-11-09 | `351e9f5b1bf863d738cd7be4ed040a625a1419450ae7fc490143e4042b7c2438` |

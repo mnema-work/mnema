@@ -3,9 +3,6 @@ dist/
 *.tsbuildinfo
 coverage/
 
-# What `.github/the-link-cannot-come-back/` found, written on a runner so a red build can hand
-# the lines over as an artifact. An artifact of a run, like coverage/ above.
-the-link-cannot-come-back.json
 *.log
 *.tgz
 .DS_Store
