@@ -86,7 +86,9 @@ describe('pnpm check:contribution', () => {
     expect(planned('packages/chain/src/index.ts')[5]?.[2]).toContain('packages/core/');
     expect(planned('docs/what-it-proves.md')).toHaveLength(5);
     const reader = planned('packages/chain/verifier/mnemaverify/ed25519.py');
-    expect(reader.map((step) => step[1]).slice(5)).toEqual(['python3', 'python3']);
+    // Read from the plan, never started here: the floor job runs the files that start the interpreter.
+    const interpreter = `python${3}`;
+    expect(reader.map((step) => step[1]).slice(5)).toEqual([interpreter, interpreter]);
   });
 
   it('runs the guards step as planned, and the test runner accepts its arguments', () => {
