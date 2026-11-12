@@ -133,6 +133,10 @@ describe('the comment a stranger cannot write into', () => {
           'after',
           // Tag characters (hidden text for an agent), the Arabic letter mark and a line separator.
           `tag${String.fromCodePoint(0xe0041, 0xe0042)} mark${String.fromCodePoint(0x061c)} line${String.fromCodePoint(0x2028)}end`,
+          // The rest of the supplementary block: its first point, unassigned, and a variation selector.
+          `block${String.fromCodePoint(0xe0000)} selector${String.fromCodePoint(0xe0100)}end`,
+          // An emoji's own variation selector is not hidden text, and stays.
+          `heart\u2764\ufe0f`,
         ].join('\n'),
       },
     ],
@@ -184,7 +188,12 @@ describe('the comment a stranger cannot write into', () => {
 
   it('takes out the tag characters, the Arabic letter mark and the line separator', () => {
     expect(body).toContain('tag mark lineend');
-    for (const point of [0xe0041, 0xe0042, 0x061c, 0x2028, 0x2029, 0x202e, 0xfeff]) {
+    expect(body).toContain('block selectorend');
+    expect(body).toContain('heart\u2764\ufe0f');
+    const gone = [
+      0xe0000, 0xe0041, 0xe0042, 0xe0100, 0xe01ef, 0x061c, 0x2028, 0x2029, 0x202e, 0xfeff,
+    ];
+    for (const point of gone) {
       expect(body, point.toString(16)).not.toContain(String.fromCodePoint(point));
     }
   });
@@ -268,6 +277,22 @@ describe('what the comment says', () => {
     });
     expect(body).toContain('CI failed on `a1b2c3d`');
     expect(body).toContain('could not be read (the report is not JSON)');
+  });
+
+  it('keeps the tab and the line end of a diff, so it reads as lines', () => {
+    const report = plainReport();
+    (report.lint as { diff: string }).diff = '\t- a\n\t+ b\n';
+    const got = read(report);
+    if (!got.ok) throw new Error(got.why);
+    const body = buildComment({
+      conclusion: 'failure',
+      report: got.report,
+      sha: SHA,
+      run: RUN,
+      contributor: { login: 'x', firstTime: false },
+      repository: REPO,
+    });
+    expect(body).toContain('```diff\n\t- a\n\t+ b\n```');
   });
 
   it('says that biome cannot fix a lint it has no fix for', () => {
@@ -405,6 +430,18 @@ describe('one comment per pull request, on the pull request whose head ran', () 
       repository: REPO,
     });
     expect(cancelled.done).toEqual([]);
+  });
+
+  it('writes nothing for a run whose event names no head repository or no head branch', async () => {
+    for (const drop of ['head_repository', 'head_branch'] as const) {
+      const given = event('failure');
+      delete (given.workflow_run as Partial<typeof given.workflow_run>)[drop];
+      const { api, done } = github([pull(7, SHA)], {});
+      expect(await tell({ event: given, report: fromReport, api, repository: REPO })).toEqual([
+        'no head branch',
+      ]);
+      expect(done).toEqual([]);
+    }
   });
 });
 

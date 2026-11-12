@@ -9,11 +9,11 @@
  *     refused whole if one field is not of the shape and the limit below (an unknown field
  *     included). A refused report is named by a reason of ours, never by a word of the report;
  *   - every text of the report goes into the comment inside a fenced block longer than any run of
- *     backticks in it, with every control and format character (Unicode `Cc`, `Cf`) and the line
- *     and paragraph separators taken out, and every
- *     `@` followed by a zero-width space, so it renders as text, closes nothing and notifies nobody;
- *   - the pull request is found through the API by the head SHA of the run, never by a number in
- *     the report and never by `workflow_run.pull_requests`, which is empty for a fork's run. A pull
+ *     backticks in it, with every control and format character (Unicode `Cc`, `Cf`), the line and
+ *     paragraph separators and the supplementary block of tags and variation selectors
+ *     (U+E0000 to U+E01EF) taken out, the tab and the line end kept, and every `@` followed by a zero-width space, so it renders as text, closes nothing and notifies nobody;
+ *   - the pull request is found through the API by the head SHA, head repository and head branch
+ *     of the run, never by a number in the report and never by `workflow_run.pull_requests`, which is empty for a fork's run. A pull
  *     request whose head has moved past the run is left for the run of its new head;
  *   - the one mention the comment makes is the welcome of a first pull request, built from the
  *     login the API gave for the pull request's author;
@@ -208,8 +208,11 @@ export function readReport(text) {
 /**
  * A STRANGER'S TEXT, MADE INERT: line ends made plain, every control and format character taken
  * out (Unicode's `Cc` and `Cf`: zero-width and bidirectional marks, the tag characters an agent
- * reading the comment could be handed hidden text in) and the line and paragraph separators, the
- * tab and the line end kept, and a zero-width space after every `@`.
+ * reading the comment could be handed hidden text in), the line and paragraph separators and the
+ * whole supplementary block U+E0000 to U+E01EF (tags, unassigned points among them included, and
+ * the supplementary variation selectors, none of which a report has a use for), the tab and the
+ * line end kept, and a zero-width space after every `@`. The variation selectors U+FE00 to U+FE0F
+ * stay: they choose how an emoji is drawn.
  *
  * @param {string} text
  */
@@ -223,7 +226,7 @@ function inert(text) {
 }
 
 /** What a reader cannot see, or what reorders or breaks the text around it. */
-const HIDDEN = /[\p{Cc}\p{Cf}\u2028\u2029]/u;
+const HIDDEN = /[\p{Cc}\p{Cf}\u2028\u2029\u{E0000}-\u{E01EF}]/u;
 
 /**
  * A FENCED BLOCK NOTHING INSIDE CAN CLOSE: its fence is longer than the longest run of backticks in

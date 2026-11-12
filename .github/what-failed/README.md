@@ -50,8 +50,11 @@ stranger's data, and runs nothing of the pull request:
   never by a word of the report;
 - every text of the report goes into the comment **inside a fenced block** longer than any run of
   backticks in it, with every control and format character (Unicode `Cc` and `Cf`: zero-width and
-  bidirectional marks, the tag characters that can hide text from a person and hand it to an agent)
-  and the line and paragraph separators taken out, and a zero-width space after every `@`: it renders as text, closes no fence, carries no HTML and notifies nobody.
+  bidirectional marks, the tag characters that can hide text from a person and hand it to an agent),
+  the line and paragraph separators and the whole block U+E0000 to U+E01EF (tags and supplementary
+  variation selectors) taken out, the tab and the line end kept, and a zero-width space after every
+  `@`: it renders as text, closes no fence, carries no HTML and notifies nobody. The variation
+  selectors U+FE00 to U+FE0F stay, since they choose how an emoji is drawn.
   A path that goes into a command must be a plain path of this repository (no leading `-`, no
   `..`). The comment is kept under 60,000 characters, the diff dropped first;
 - the pull request is found **by the run's head SHA, head repository and head branch**, listing the
@@ -75,6 +78,9 @@ reader and the builder a hostile report (a mention, HTML, a fence breaker, a fie
   on the pull request's checks, not in the comment.
 - **Dependabot's pull requests.** A run Dependabot started gets a read-only token even here, so a
   comment could not be written; the job is skipped for it.
+- **One branch open in two pull requests against different bases of this repository.** The run
+  carries its head repository, branch and SHA but not the base it was for, so both pull requests
+  are told what that run reported.
 - **A cancelled run.** A run that was cancelled (a newer push cancels the one before) comments
   nothing; the run of the newer push does.
 - **A first pull request before approval.** A contributor's first pull request from a fork waits

@@ -12,7 +12,7 @@ name: What failed
 # installs nothing and runs no package script; it downloads the report outside the workspace and
 # reads it as JSON data, refused whole past a size or a shape; every text of it goes into the
 # comment inside a fence it cannot close, with no `@` that notifies; and the pull request is found
-# by the run's head SHA through the API. No expression of the event is put into a shell line: the
+# by the run's head SHA, head repository and head branch through the API. No expression of the event is put into a shell line: the
 # script reads the event file GitHub wrote. `.github/what-failed/README.md` says the rest, and
 # `the-comment-runs-nothing-of-the-fork.test.ts` holds these lines.
 #
