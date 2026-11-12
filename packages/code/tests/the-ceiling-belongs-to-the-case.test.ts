@@ -111,6 +111,15 @@ const HERE = fileURLToPath(import.meta.url);
  */
 const LIFTS_THE_CEILING = new RegExp(`${'test'}[-_]?${'timeout'}`, 'i');
 
+/**
+ * THE ONE COMMAND THAT MAY SET A CEILING OF ITS OWN.
+ * `pnpm check:contribution` runs on a contributor's small machine, where the whole suite's 5 s
+ * ceiling is missed for no defect; it sets 30 s for that one run. No workflow and no
+ * configuration may: the other files stay accused, its test spells the flag in parts, and that test
+ * asserts that no workflow names the command.
+ */
+const SETS_ITS_OWN = new Set(['.github/check-contribution/run.mjs']);
+
 /** The extensions text is carried in here: sources, manifests, and CI's own files. */
 const TEXT = /\.(ts|mts|cts|js|mjs|cjs|json|ya?ml)$/;
 
@@ -145,6 +154,7 @@ describe('the ceiling a case waits under is that case’s own', () => {
   it('is lifted nowhere the workspace configures a run', () => {
     const lifting = SCANNED.filter((file) => LIFTS_THE_CEILING.test(readFileSync(file, 'utf-8')))
       .map((file) => file.slice(ROOT.length))
+      .filter((file) => !SETS_ITS_OWN.has(file))
       .sort();
     expect(lifting, 'something raises the ceiling for every case at once').toEqual([]);
     // THE SCAN REACHES ALL THREE PLACES, or the line above is true of nothing: the

@@ -151,6 +151,7 @@ describe('the same globs reach every instrument this repository ships or runs', 
     expect(theInstruments()).toEqual([
       '.github/a-home-of-its-own/setup.mjs',
       '.github/a-timeout-is-run-once-more/retry.mjs',
+      '.github/check-contribution/run.mjs',
       '.github/flake-sampler/summarize.mjs',
       '.github/release-prepare/prepare.mjs',
       '.github/release-prepare/server-json.mjs',

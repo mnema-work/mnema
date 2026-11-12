@@ -18,9 +18,27 @@ the product is, and what it does and does not prove, is on the [front page](READ
 - **git**, and the `script` and `stty` of util-linux: the cases that drive the console through
   a pseudo-terminal call both. CI runs on Ubuntu.
 
+## Before a pull request
+
+Run `pnpm check:contribution`. It is the check to run before you open a pull request: lint,
+build, typecheck, the guards below and only the tests tied to the files you changed (against the
+merge base with `upstream/main`, or with `origin/main` if there is no `upstream`, which it asks you to fetch if it is missing; set `MNEMA_BASE` to compare with another ref), with
+one worker and a 30 s test timeout so it finishes on a small machine. It is a subset: CI runs
+the whole suite on Node 24.15.0, 24 and 26 and is the check that counts, so a green here can still
+be red there.
+
+A test of one package does not follow an import of another across the built `dist`, so when you change
+`packages/<name>/src`, the command also runs every test of the packages that import it (a change in `chain`
+reaches `core`, `code` and the rest). That step is never skipped, even if a changed `package.json` already makes
+vitest run every test, so some files then run twice. When you change the Python reader under `packages/chain/verifier/`, it also runs the
+reader's `self-test` and `vectors`, which take a fraction of a second.
+
+If you have no Node, pnpm or `python3` to hand, [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json)
+gives them: Node at the floor, pnpm through corepack, `python3`, and a frozen-lockfile install.
+
 ## The gates
 
-In this order:
+The whole of them, in this order, for a machine that can run the whole suite:
 
 ```sh
 pnpm install --frozen-lockfile
@@ -56,7 +74,8 @@ a finding that is not on that list is a credential to rotate, not a line to add 
 
 `pnpm test:guards` runs only the cases that walk the whole tree (every page, every workflow,
 every file that needs a test), the ones a change breaks without touching them. Run it after
-a change to text, a page, the changelog or a list of files; it does not replace `pnpm test`.
+a change to text, a page, the changelog or a list of files; it does not replace `pnpm test`, and
+`pnpm check:contribution` runs it for you.
 A case joins it by carrying `// @reads-the-tree` as its first line.
 
 **When a case goes red, keep the output before you run it again**, then run
