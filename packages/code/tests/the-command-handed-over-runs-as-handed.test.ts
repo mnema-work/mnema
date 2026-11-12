@@ -59,6 +59,7 @@ import { everyCommandOf } from '../src/wiring/misuse.js';
 import { ROOT } from './support/published-examples.js';
 import { invocationsIn, linesOf, trackedPages, unquoted } from './support/reading-a-shell-line.js';
 import { codeOnly, INTERPOLATED, LITERAL_EDGE, literalsOnly } from './support/reading-source.js';
+import { holdTheCounts } from './support/the-counts-a-guard-keeps.js';
 import { writtenByHand } from './support/the-reference-pages.js';
 
 /** A silent port: nothing here runs a verb, it only reads what they declare. */
@@ -1112,7 +1113,13 @@ describe('the readings know what they read', () => {
     for (const [file, row] of Object.entries(counted)) {
       if (Object.keys(row).length === 0) delete counted[file];
     }
-    expect(counted).toEqual(HANDED_OVER);
+    const handed = holdTheCounts({
+      testFile: import.meta.url,
+      name: 'HANDED_OVER',
+      read: counted,
+      declared: HANDED_OVER,
+    });
+    expect(counted).toEqual(handed);
   });
 
   it('the pages it reads are the documentation', () => {
