@@ -51,6 +51,10 @@ describe('pnpm check:contribution', () => {
 
   it('plans lint, build, typecheck, the guards and the changed tests, in that order', () => {
     const steps = plan();
+    const head = spawnSync('git', ['rev-parse', 'HEAD'], {
+      cwd: ROOT,
+      encoding: 'utf-8',
+    }).stdout.trim();
     expect(
       steps.map((step) => (step[2][0] === 'exec' ? step[2].slice(0, 5).join(' ') : step[2][0])),
     ).toEqual([
@@ -58,13 +62,31 @@ describe('pnpm check:contribution', () => {
       'build',
       'typecheck',
       'exec vitest run --config vitest.guards.config.ts',
-      'exec vitest run --config vitest.contribution.config.ts',
+      `exec vitest run --changed ${head}`,
     ]);
     for (const step of steps.slice(3)) {
       expect(step[2]).toContain('--maxWorkers=1');
       expect(step[2]).toContain(`${CEILING}=30000`);
     }
     expect(steps[4]?.[2]).toContain('--changed');
+  });
+
+  it('adds the tests of the packages that import a changed one, because --changed stops at dist', () => {
+    const planned = (changed: string): Step[] => {
+      const asked = spawnSync('node', [join(ROOT, SCRIPT), '--plan'], {
+        cwd: ROOT,
+        encoding: 'utf-8',
+        env: { ...process.env, MNEMA_BASE: 'HEAD', MNEMA_CHANGED: changed },
+      });
+      return JSON.parse(asked.stdout) as Step[];
+    };
+    const core = planned('packages/core/src/index.ts')[5];
+    expect(core?.[2]).toEqual(expect.arrayContaining(['packages/code/', 'packages/context/']));
+    expect(core?.[2]).not.toContain('packages/core/');
+    expect(planned('packages/chain/src/index.ts')[5]?.[2]).toContain('packages/core/');
+    expect(planned('docs/what-it-proves.md')).toHaveLength(5);
+    const reader = planned('packages/chain/verifier/mnemaverify/ed25519.py');
+    expect(reader.map((step) => step[1]).slice(5)).toEqual(['python3', 'python3']);
   });
 
   it('runs the guards step as planned, and the test runner accepts its arguments', () => {

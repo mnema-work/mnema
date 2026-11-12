@@ -4,8 +4,10 @@
 // so it finishes in a small sandbox, and both are set here and in no workflow. CI runs the whole suite.
 //
 // `--plan` prints the steps as JSON and runs nothing (the test of this file runs the test steps).
+// `MNEMA_CHANGED` (newline-separated paths) stands for the changed files, for the test of this file.
 // `MNEMA_BASE` names the ref to compare with, for a clone whose remotes are named otherwise.
 import { spawnSync } from 'node:child_process';
+import { readdirSync, readFileSync } from 'node:fs';
 
 /** @param {...string} args */
 const git = (...args) => spawnSync('git', args, { encoding: 'utf-8' });
@@ -37,10 +39,52 @@ if (base === '') {
   process.exit(1);
 }
 
-const changed = [
-  ...out(git('diff', '--name-only', base)).split('\n'),
-  ...out(git('ls-files', '--others', '--exclude-standard')).split('\n'),
-].filter((file) => file !== '');
+const changed = (
+  process.env.MNEMA_CHANGED !== undefined
+    ? process.env.MNEMA_CHANGED.split('\n')
+    : [
+        ...out(git('diff', '--name-only', base)).split('\n'),
+        ...out(git('ls-files', '--others', '--exclude-standard')).split('\n'),
+      ]
+).filter((file) => file !== '');
+
+/**
+ * THE PACKAGES THAT IMPORT A CHANGED ONE. A test of `packages/code` that imports `@mnema/core`
+ * reaches the package's built `dist`, not its source, so the module graph that `--changed` walks
+ * ties a change under `packages/core/src` to the tests of core alone. These are the directories of
+ * every package that depends on one whose source or manifest changed, followed through the
+ * workspace dependencies, and their tests run whole.
+ */
+function dependentsOfChanged() {
+  /** @type {Map<string, { name: string, needs: string[] }>} */
+  const packages = new Map();
+  for (const dir of readdirSync('packages')) {
+    try {
+      const manifest = JSON.parse(readFileSync(`packages/${dir}/package.json`, 'utf-8'));
+      const needs = Object.keys({ ...manifest.dependencies, ...manifest.devDependencies });
+      packages.set(dir, { name: manifest.name, needs });
+    } catch {}
+  }
+  const touched = new Set(
+    changed
+      .map((file) => /^packages\/([^/]+)\/(src\/|package\.json$)/.exec(file)?.[1])
+      .filter((dir) => dir !== undefined && packages.has(dir)),
+  );
+  const reached = new Set(touched);
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const [dir, { needs }] of packages) {
+      if (reached.has(dir)) continue;
+      const names = [...reached].map((d) => packages.get(d)?.name);
+      if (needs.some((name) => names.includes(name))) {
+        reached.add(dir);
+        grew = true;
+      }
+    }
+  }
+  return [...reached].filter((dir) => !touched.has(dir)).sort();
+}
+const dependents = dependentsOfChanged();
 const pythonChanged = changed.some((file) => /^packages\/chain\/verifier\/.*\.py$/.test(file));
 
 const slow = ['--maxWorkers=1', '--testTimeout=30000'];
@@ -51,21 +95,25 @@ const steps = [
   ['typecheck', 'pnpm', ['typecheck']],
   ['guards', 'pnpm', ['exec', 'vitest', 'run', '--config', 'vitest.guards.config.ts', ...slow]],
   [
-    `tests tied to the files changed since ${base.slice(0, 8)} (@mnema/* read from source, so a change in a package reaches the tests that import it)`,
+    `tests tied to the files changed since ${base.slice(0, 8)}`,
+    'pnpm',
+    ['exec', 'vitest', 'run', '--changed', base, ...slow, '--passWithNoTests'],
+  ],
+];
+if (dependents.length > 0) {
+  steps.push([
+    `every test of the packages that import a changed one (${dependents.join(', ')}), added because --changed does not follow @mnema/* across packages`,
     'pnpm',
     [
       'exec',
       'vitest',
       'run',
-      '--config',
-      'vitest.contribution.config.ts',
-      '--changed',
-      base,
+      ...dependents.map((dir) => `packages/${dir}/`),
       ...slow,
       '--passWithNoTests',
     ],
-  ],
-];
+  ]);
+}
 if (pythonChanged) {
   const reader = 'packages/chain/verifier/mnema_verify.py';
   steps.push(['second reader: self-test', 'python3', [reader, 'self-test']]);
