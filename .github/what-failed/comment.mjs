@@ -45,6 +45,8 @@ export const LIMITS = Object.freeze({
   verdicts: 10,
   reds: 30,
   tests: 30,
+  guards: 10,
+  says: 1500,
   message: 2000,
   files: 50,
   path: 300,
@@ -69,6 +71,7 @@ const REPOSITORY = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
  * @typedef {{ file: string, name: string, says: string }} Red
  * @typedef {{ cell: string, verdict: string, reds: Red[] }} Verdict
  * @typedef {{ file: string, name: string, message: string }} FailedTest
+ * @typedef {{ file: string, says: string }} Guard
  * @typedef {{ files: string[], diff: string, diffCut: boolean }} Lint
  * @typedef {{
  *   version: 1,
@@ -76,6 +79,7 @@ const REPOSITORY = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
  *   verdicts: Verdict[],
  *   tests: FailedTest[],
  *   testsLeftOut: number,
+ *   guards: Guard[],
  *   lint: Lint | null,
  * }} Report
  */
@@ -135,7 +139,9 @@ const isList = (value, max, each) =>
  * @returns {report is Report}
  */
 function isReport(report) {
-  if (!hasKeys(report, ['version', 'checks', 'verdicts', 'tests', 'testsLeftOut', 'lint'])) {
+  if (
+    !hasKeys(report, ['version', 'checks', 'verdicts', 'tests', 'testsLeftOut', 'guards', 'lint'])
+  ) {
     return false;
   }
   const shape = [
@@ -173,6 +179,11 @@ function isReport(report) {
         isPath(one.file) &&
         isText(one.name, LIMITS.name) &&
         isText(one.message, LIMITS.message),
+    ),
+    isList(
+      report.guards,
+      LIMITS.guards,
+      (one) => hasKeys(one, ['file', 'says']) && isPath(one.file) && isText(one.says, LIMITS.says),
     ),
     Number.isSafeInteger(report.testsLeftOut) && /** @type {number} */ (report.testsLeftOut) >= 0,
     report.lint === null ||
@@ -267,20 +278,37 @@ const shorter = (text, max) => (text.length <= max ? text : `${text.slice(0, max
  * @returns {string}
  */
 export function buildComment(input) {
-  const full = compose(input, { diff: true, tests: LIMITS.tests });
+  const full = compose(input, { diff: true, tests: LIMITS.tests, guards: LIMITS.guards });
   if (full.length <= MAX_COMMENT) return full;
   let tests = input.report?.tests.length ?? 0;
-  let body = compose(input, { diff: false, tests });
-  while (body.length > MAX_COMMENT && tests > 0) {
+  let guards = input.report?.guards.length ?? 0;
+  let body = compose(input, { diff: false, tests, guards });
+  while (body.length > MAX_COMMENT && (tests > 0 || guards > 0)) {
     tests = Math.floor(tests / 2);
-    body = compose(input, { diff: false, tests });
+    guards = Math.floor(guards / 2);
+    body = compose(input, { diff: false, tests, guards });
   }
   return body;
 }
 
 /**
+ * WHERE A FILE OF THE PULL REQUEST'S HEAD IS READ ON GITHUB: this repository, the run's head SHA,
+ * and a path `isPath` accepted, so no word of the report reaches the address. A commit of a fork's
+ * pull request is served under the repository it was opened against.
+ *
  * @param {CommentInput} input
- * @param {{ diff: boolean, tests: number }} room
+ * @param {string} file
+ */
+function fileLink(input, file) {
+  const at = HEX_SHA.test(input.sha) && REPOSITORY.test(input.repository);
+  return at && isPath(file)
+    ? `https://github.com/${input.repository}/blob/${input.sha}/${file}`
+    : '';
+}
+
+/**
+ * @param {CommentInput} input
+ * @param {{ diff: boolean, tests: number, guards: number }} room
  */
 function compose(input, room) {
   const sha = HEX_SHA.test(input.sha) ? input.sha.slice(0, 7) : 'this commit';
@@ -360,6 +388,21 @@ function compose(input, room) {
     out.push(fenced(lines.join('\n').trimEnd(), 'text'));
     const files = [...new Set(tests.map((test) => test.file))].filter(isPath);
     out.push('To run them on your machine:', fenced(`pnpm vitest run ${files.join(' ')}`, 'sh'));
+  }
+
+  const guards = report.guards.slice(0, room.guards);
+  if (guards.length > 0) {
+    out.push(
+      '',
+      '**What each guard that failed checks**, in the words at the top of its file. A guard is a test that reads the repository, and the message above says which line or file it found wrong:',
+    );
+    for (const guard of guards) {
+      const link = fileLink(input, guard.file);
+      out.push(
+        link === '' ? `\`${guard.file}\`` : `[${guard.file}](${link})`,
+        fenced(guard.says, 'text'),
+      );
+    }
   }
 
   if (report.lint !== null) {

@@ -27,6 +27,8 @@ one worker and a 30 s test timeout so it finishes on a small machine. It is a su
 the whole suite on Node 24.15.0, 24 and 26 and is the check that counts, so a green here can still
 be red there.
 
+When a guard fails in it, the check prints under the guard's path the paragraph at the top of its file that says what it checks; the comment CI leaves on your pull request does the same.
+
 A test of one package does not follow an import of another across the built `dist`, so when you change
 `packages/<name>/src`, the command also runs every test of the packages that import it (a change in `chain`
 reaches `core`, `code` and the rest). That step is never skipped, even if a changed `package.json` already makes

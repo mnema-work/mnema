@@ -14,6 +14,9 @@
  * pull request's run uses (`collect`). Nothing here talks to GitHub.
  */
 
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { collect, lintFailed } from '../../../.github/what-failed/collect.mjs';
 import { buildComment, MARKER, readReport, tell } from '../../../.github/what-failed/comment.mjs';
@@ -38,6 +41,9 @@ function plainReport(): Record<string, unknown> {
       { file: 'packages/code/tests/a.test.ts', name: 'a case', message: 'expected 1 to be 2' },
     ],
     testsLeftOut: 0,
+    guards: [
+      { file: 'packages/code/tests/a.test.ts', says: 'WHAT IS CHECKED. That a names its command.' },
+    ],
     lint: {
       files: ['packages/code/src/a.ts'],
       diff: '--- a/packages/code/src/a.ts\n+++ b/packages/code/src/a.ts\n-const a=1\n+const a = 1;\n',
@@ -111,6 +117,23 @@ describe('the report is read as data', () => {
 
     expect(read({ ...plainReport(), version: 2 }).ok).toBe(false);
   });
+
+  it('refuses a guard paragraph over its limit, a guard path that climbs out, too many guards, and a field it does not know', () => {
+    const guard = { file: 'packages/code/tests/a.test.ts', says: 'x' };
+    const over = { ...plainReport(), guards: [{ ...guard, says: 'x'.repeat(1501) }] };
+    expect(read(over).ok).toBe(false);
+    expect(read({ ...plainReport(), guards: [{ ...guard, file: '../a.test.ts' }] }).ok).toBe(false);
+    expect(read({ ...plainReport(), guards: [{ ...guard, file: '-a.test.ts' }] }).ok).toBe(false);
+    expect(read({ ...plainReport(), guards: Array.from({ length: 11 }, () => guard) }).ok).toBe(
+      false,
+    );
+    expect(
+      read({ ...plainReport(), guards: [{ ...guard, link: 'https://evil.example' }] }).ok,
+    ).toBe(false);
+    const without: Record<string, unknown> = plainReport();
+    delete without.guards;
+    expect(read(without).ok).toBe(false);
+  });
 });
 
 describe('the comment a stranger cannot write into', () => {
@@ -141,6 +164,19 @@ describe('the comment a stranger cannot write into', () => {
       },
     ],
     testsLeftOut: 0,
+    guards: [
+      {
+        file: 'packages/code/tests/a.test.ts',
+        says: [
+          'WHAT IS CHECKED. cc @felipesauer',
+          '``````',
+          '<script>alert(1)</script>',
+          '[click](https://evil.example)',
+          `tag${String.fromCodePoint(0xe0041)}end`,
+          '``````',
+        ].join('\n'),
+      },
+    ],
     lint: {
       files: ['packages/code/src/a.ts'],
       diff: '+// @octocat <a href="x">x</a>\n+````````````\n+# out\n',
@@ -202,6 +238,27 @@ describe('the comment a stranger cannot write into', () => {
     expect(body.startsWith(`${MARKER}\n`)).toBe(true);
     const outside = outsideFences(body).replace(MARKER, '');
     expect(outside).not.toMatch(/[<>]/);
+  });
+
+  it('puts what a failed guard checks in a fence it cannot close, with a link built here to the head', () => {
+    const at = body.indexOf('**What each guard that failed checks**');
+    expect(at).toBeGreaterThan(-1);
+    expect(outsideFences(body)).toContain(
+      `[packages/code/tests/a.test.ts](https://github.com/${REPO}/blob/${SHA}/packages/code/tests/a.test.ts)`,
+    );
+    const guarded = body.slice(at);
+    expect(guarded).toContain('WHAT IS CHECKED. cc @\u200bfelipesauer');
+    expect(guarded).not.toContain(String.fromCodePoint(0xe0041));
+    expect(outsideFences(body)).not.toContain('evil.example');
+    expect(outsideFences(body)).not.toContain('<script>');
+    // The link carries only the repository, the run's SHA and a path the reader accepted.
+    for (const link of outsideFences(body).matchAll(
+      /\]\((https:\/\/github\.com\/[^)]*blob[^)]*\.test\.ts)\)/g,
+    )) {
+      expect(link[1]).toMatch(
+        /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/blob\/[0-9a-f]{40}\/[\w./-]+$/,
+      );
+    }
   });
 
   it('says what failed and the command that fixes the lint', () => {
@@ -526,6 +583,8 @@ describe('the report the pull request run writes', () => {
       },
     ]);
     expect(report.verdicts).toEqual([{ cell: 'node24', ...verdict }]);
+    // Neither file is a guard of the root given (there is none there), so none is explained.
+    expect(report.guards).toEqual([]);
     expect(report.lint).toEqual({
       files: ['packages/code/src/a.ts'],
       diff: '-a\n+b\n',
@@ -559,5 +618,48 @@ describe('the report the pull request run writes', () => {
     expect(report.testsLeftOut).toBe(50);
     expect(report.lint?.diffCut).toBe(true);
     expect(readReport(JSON.stringify(report)).ok).toBe(true);
+  });
+});
+
+describe('the report says what each failed guard checks', () => {
+  it('reads the paragraph from the checkout, once per guard, and takes it for data of the limits', () => {
+    const root = mkdtempSync(join(tmpdir(), 'what-failed-guards-'));
+    try {
+      const dir = join(root, 'packages/code/tests');
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(
+        join(dir, 'a.test.ts'),
+        `// @reads-the-tree\n/**\n * WHAT IS CHECKED. ${'long '.repeat(600)}\n */\n`,
+      );
+      writeFileSync(join(dir, 'plain.test.ts'), '/**\n * Not marked.\n */\n');
+      const vitest = {
+        testResults: [
+          {
+            name: join(dir, 'a.test.ts'),
+            status: 'failed',
+            assertionResults: [
+              { fullName: 'one', status: 'failed', failureMessages: ['x'] },
+              { fullName: 'two', status: 'failed', failureMessages: ['y'] },
+            ],
+          },
+          { name: join(dir, 'plain.test.ts'), status: 'failed', assertionResults: [] },
+        ],
+      };
+      const report = collect({
+        jobs: [],
+        reports: [
+          { cell: 'node24', report: vitest },
+          { cell: 'node26', report: vitest },
+        ],
+        verdicts: [],
+        lint: null,
+        root,
+      });
+      expect(report.guards.map((one) => one.file)).toEqual(['packages/code/tests/a.test.ts']);
+      expect(report.guards[0]?.says.startsWith('WHAT IS CHECKED. long')).toBe(true);
+      expect(readReport(JSON.stringify(report))).toEqual({ ok: true, report });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

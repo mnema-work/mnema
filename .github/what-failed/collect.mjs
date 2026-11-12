@@ -3,11 +3,13 @@
  * WHAT FAILED, WRITTEN DOWN BY THE RUN THAT FAILED. This runs in the last job of CI on a pull
  * request (`what-failed` in `.github/workflows/ci.yml`), with the run's read-only token and no
  * secret, and writes the small report that `comment.mjs` turns into a comment once the run is
- * over. It reads four things the run already has:
+ * over. It reads five things the run already has:
  *
  *   - the jobs of this run attempt, from the API: which failed and at which step;
  *   - the JSON report of each vitest run (`vitest-report-<cell>`): the cases that failed and the
  *     first thing each said, stack frames and colours taken out;
+ *   - for each guard (a test file marked `@reads-the-tree`) that failed, the paragraph at the top of
+ *     its file that says what it checks, read from this checkout by `.github/what-a-guard-checks/`;
  *   - the verdict of `.github/why-it-went-red/` for each cell that ran the suite;
  *   - when a step named `Lint` failed, the files `biome check --write` changed and the diff.
  *
@@ -19,6 +21,7 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { failedGuards } from '../what-a-guard-checks/header.mjs';
 import { isPath, LIMITS } from './comment.mjs';
 
 /** @typedef {import('./comment.mjs').Report} Report */
@@ -148,6 +151,16 @@ export function collect({ jobs, reports, verdicts, lint, root }) {
     }
   }
 
+  /** @type {{ file: string, says: string }[]} */
+  const guards = [];
+  for (const { report } of reports) {
+    for (const one of failedGuards(report, root)) {
+      if (isPath(one.file) && !guards.some((seen) => seen.file === one.file)) {
+        guards.push({ file: one.file, says: cut(one.says, LIMITS.says) });
+      }
+    }
+  }
+
   const readings = verdicts.slice(0, LIMITS.verdicts).map(({ cell, reading }) => {
     const read = /** @type {any} */ (reading) ?? {};
     const reds = Array.isArray(read.reds) ? read.reds : [];
@@ -183,6 +196,7 @@ export function collect({ jobs, reports, verdicts, lint, root }) {
     verdicts: readings,
     tests: tests.slice(0, LIMITS.tests),
     testsLeftOut: Math.max(0, tests.length - LIMITS.tests),
+    guards: guards.slice(0, LIMITS.guards),
     lint: linted,
   };
 }
