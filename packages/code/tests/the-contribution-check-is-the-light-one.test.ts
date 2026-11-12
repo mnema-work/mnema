@@ -140,20 +140,22 @@ describe('pnpm check:contribution', () => {
   );
 
   it(
-    'leaves out the dependents step when a changed package.json already makes vitest run every test',
+    'keeps the dependents step beside a changed vitest configuration or package.json, which do not stand for the dependents',
     () => {
-      const asked = spawnSync('node', [join(ROOT, SCRIPT), '--plan'], {
-        cwd: ROOT,
-        encoding: 'utf-8',
-        env: {
-          ...process.env,
-          MNEMA_BASE: 'HEAD',
-          MNEMA_CHANGED: 'packages/core/src/index.ts\npackage.json',
-        },
-      });
-      const steps = JSON.parse(asked.stdout) as Step[];
-      expect(steps).toHaveLength(5);
-      expect(steps[4]?.[0]).toContain('makes vitest run every test');
+      for (const beside of ['vitest.config.ts', 'package.json', 'packages/core/package.json']) {
+        const asked = spawnSync('node', [join(ROOT, SCRIPT), '--plan'], {
+          cwd: ROOT,
+          encoding: 'utf-8',
+          env: {
+            ...process.env,
+            MNEMA_BASE: 'HEAD',
+            MNEMA_CHANGED: `packages/core/src/index.ts\n${beside}`,
+          },
+        });
+        const steps = JSON.parse(asked.stdout) as Step[];
+        expect(steps, beside).toHaveLength(6);
+        expect(steps[5]?.[2], beside).toContain('packages/code/');
+      }
     },
     SPAWNS,
   );

@@ -29,8 +29,8 @@ be red there.
 
 A test of one package does not follow an import of another across the built `dist`, so when you change
 `packages/<name>/src`, the command also runs every test of the packages that import it (a change in `chain`
-reaches `core`, `code` and the rest), unless a changed `package.json` or test configuration already makes
-vitest run everything. When you change the Python reader under `packages/chain/verifier/`, it also runs the
+reaches `core`, `code` and the rest). That step is never skipped, even if a changed `package.json` already makes
+vitest run every test, so some files then run twice. When you change the Python reader under `packages/chain/verifier/`, it also runs the
 reader's `self-test` and `vectors`, which take a fraction of a second.
 
 If you have no Node, pnpm or `python3` to hand, [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json)
