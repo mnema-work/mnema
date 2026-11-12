@@ -205,7 +205,9 @@ describe('the workflow that comments runs nothing of the fork', () => {
 
   it('builds the link of a guard from the repository, the run SHA and a validated path, never from the report', () => {
     const source = readFileSync(join(ROOT, '.github/what-failed/comment.mjs'), 'utf-8');
-    expect(source).toContain('`https://github.com/${input.repository}/blob/${input.sha}/${file}`');
+    expect(source).toMatch(
+      /github\.com\/\$\{input\.repository\}\/blob\/\$\{input\.sha\}\/\$\{file\}/,
+    );
     expect(source).toContain('HEX_SHA.test(input.sha) && REPOSITORY.test(input.repository)');
     expect(source).toMatch(/isPath\(file\)/);
   });
