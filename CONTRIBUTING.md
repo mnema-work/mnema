@@ -113,10 +113,10 @@ the ones a first change usually meets:
   written in any tracked file is refused
   ([`a-label-a-stranger-can-look-up.test.ts`](packages/code/tests/a-label-a-stranger-can-look-up.test.ts)).
   Write the principle out in words instead.
-- **Crediting the assistant is fine.** A commit or the pull request may credit a coding
-  assistant as co-author; say which model, host and version in the field the pull request
-  template asks for. A `users.noreply.github.com` address is recommended for your privacy, and
-  no check enforces it.
+- **Crediting the assistant is fine.** A `Co-Authored-By` trailer or a generated-with line in your
+  commits is not refused. What is asked is the agent field of the pull request template (see
+  [Using an AI agent](#using-an-ai-agent)). A `users.noreply.github.com` address is recommended for
+  your privacy, and no check enforces it.
 
 A new guard is expected to come with a case that shows it failing on the defect it exists
 for: a guard that has never been seen to fail looks exactly like one that cannot.
@@ -265,6 +265,40 @@ The VS Code extension is published by two jobs of `release.yml`, both asking for
 
 Both install their command line from `.github/release-tools` with `npm ci --ignore-scripts`, check the file against
 the SHA-256 the packing job exposes, and publish with `--skip-duplicate`, so a run that stopped halfway runs again.
+
+## Using an AI agent
+
+An agent is welcome here, and it is your tool, not a contributor. The person who opens the pull request
+answers for every line of it and for the review that follows: reading the diff is yours to do, and an
+agent's summary does not stand in for it. You are the one who replies to review comments, and you should
+be able to explain any line.
+
+- **Say that an agent was used.** The pull request template has a required field, "Written with an agent",
+  for the model and the host (the program it ran in). Write `none` if no agent wrote or helped write the
+  change. A pull request that leaves the field out will be asked to fill it in before review.
+- **Credit.** You do not need a commit trailer. When the pull request is squash-merged, the maintainer puts
+  one line in the commit message, taken from that field: `Assisted-by: <model> via <host>`.
+- **Check it first.** Run `pnpm check:contribution` before you open the pull request (see
+  [Before a pull request](#before-a-pull-request)), and keep one change per pull request.
+
+## Review and merge
+
+- **A first response from a person within 3 working days**, on a pull request or an issue. If you have
+  heard nothing after that, add one comment that mentions the maintainer listed in
+  [`.github/CODEOWNERS`](.github/CODEOWNERS). That is the expected way to ask, not a nuisance.
+- **Once CI has run on your first pull request, an automatic comment welcomes you** and says what failed and
+  the command that fixes it, or that every check passed (see the comment CI writes, described under
+  [A pull request](#a-pull-request)). A first pull request from a fork waits for a maintainer to approve
+  its workflows, so the comment comes after that approval. It says what CI reported; it is not a review.
+- **Order.** Pull requests are reviewed in the order they arrive and merged in the order they are ready,
+  which means CI green and the review approved. A pull request that is ready is not held for an earlier
+  one that is not.
+- **What a maintainer may push to your branch.** Only bookkeeping and formatting: the counts that guards
+  keep inside the repository, and the formatting the linter applies (`pnpm exec biome check --write`), such
+  as the order of imports. Each time, the maintainer says so
+  in a comment on the pull request. A change to what your code does comes as a suggestion with the reason
+  written. Please leave "Allow edits by maintainers" ticked when you open the pull request, so this can
+  be done on your branch instead of asking you to.
 
 ## A pull request
 

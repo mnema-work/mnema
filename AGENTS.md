@@ -34,8 +34,11 @@ guard caught a defect or the machine was busy.
 - Branch, commit message and pull request in English, descriptive: what changes, as a sentence.
 - Commit with a `users.noreply.github.com` address, not a work or personal one: a recommendation
   for your privacy, which no check enforces (`git config user.email` shows which you will use).
-- Crediting the assistant in a commit or the pull request is fine. If an agent wrote the change,
-  say which model, host and version in the field the pull request template asks for.
+- Fill the agent field of the pull request template (required): the model and the host, or `none`.
+  The maintainer credits the agent in the squash commit from it; no trailer is needed, and one is not
+  refused. The person who opens the pull request answers for the change and its review.
+- Before opening it, run `pnpm check:contribution`. A first response comes within 3 working days;
+  [`CONTRIBUTING.md`](CONTRIBUTING.md) says how review and merge go and what a maintainer may push to a branch.
 - One change per pull request. Add files by path; never `git add -A` or `git add .`.
 
 ## Probing the product
