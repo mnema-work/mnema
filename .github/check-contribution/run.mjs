@@ -75,7 +75,7 @@ function dependentsOfChanged() {
     grew = false;
     for (const [dir, { needs }] of packages) {
       if (reached.has(dir)) continue;
-      const names = [...reached].map((d) => packages.get(d)?.name);
+      const names = [...reached].map((d) => String(packages.get(d)?.name));
       if (needs.some((name) => names.includes(name))) {
         reached.add(dir);
         grew = true;
