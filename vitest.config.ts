@@ -14,7 +14,7 @@ export default defineConfig({
     // EVERY TEST PROCESS RUNS IN A HOME OF ITS OWN, and no process it starts may resolve the
     // machine's: the key root lives under `HOME`, so a case that sees the real one signs with the
     // real key. What the file does, and what it cannot reach, is in its header.
-    setupFiles: ['./.github/a-home-of-its-own/setup.mjs'],
+    setupFiles: ['./.github/a-home-of-its-own/setup.mjs', './.github/the-property-seed/setup.mjs'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],

@@ -18,6 +18,6 @@ export default defineConfig({
     exclude: ['**/dist/**', '**/node_modules/**'],
     environment: 'node',
     retry: retryFor(process.env),
-    setupFiles: ['./.github/a-home-of-its-own/setup.mjs'],
+    setupFiles: ['./.github/a-home-of-its-own/setup.mjs', './.github/the-property-seed/setup.mjs'],
   },
 });

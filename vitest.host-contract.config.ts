@@ -55,7 +55,7 @@ export default defineConfig({
       ...(host === 'claude-code' ? Object.values(OTHER_HOSTS) : []),
     ],
     environment: 'node',
-    setupFiles: ['./.github/a-home-of-its-own/setup.mjs'],
+    setupFiles: ['./.github/a-home-of-its-own/setup.mjs', './.github/the-property-seed/setup.mjs'],
     // Each case starts a host; one at a time keeps a case's wait its own.
     fileParallelism: false,
   },

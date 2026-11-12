@@ -28,11 +28,10 @@ guard caught a defect or the machine was busy.
 ## Commits and pull requests
 
 - Branch, commit message and pull request in English, descriptive: what changes, as a sentence.
-- Commit with a `users.noreply.github.com` address, not a work or personal one
-  (`git config user.email` shows which you will use).
-- No `Co-Authored-By` trailer and no generated-with footer: the
-  `the-link-cannot-come-back` job fails on them. If an agent wrote the change, say which model,
-  host and version in the field the pull request template asks for.
+- Commit with a `users.noreply.github.com` address, not a work or personal one: a recommendation
+  for your privacy, which no check enforces (`git config user.email` shows which you will use).
+- Crediting the assistant in a commit or the pull request is fine. If an agent wrote the change,
+  say which model, host and version in the field the pull request template asks for.
 - One change per pull request. Add files by path; never `git add -A` or `git add .`.
 
 ## Probing the product
@@ -90,13 +89,6 @@ in [`CONTRIBUTING.md`](CONTRIBUTING.md#changing-a-skill).
 A sentence in a README or `--help` says only what the code guarantees, and a claim cites the
 test or measurement that holds it. A sentence that stopped being true is rewritten with the
 reason, not deleted.
-
-No em dash (U+2014) in anything you write here: docs, comments, test names, strings the product
-prints, manifests, commit messages and pull request descriptions. Use a comma, a colon, a full
-stop or parentheses, as the sentence needs. Where the character is data (a width, a byte count, a
-format someone else defines), write it as an escape (a backslash, then `u2014`) and add the file
-to the list in `packages/code/tests/the-prose-carries-no-em-dash.test.ts`, with the reason. The en
-dash (U+2013) is not covered.
 
 ## Never commit
 

@@ -63,7 +63,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## @sigstore/bundle@5.0.0
+## @sigstore/bundle@5.0.1
 
 License: Apache-2.0
 
@@ -696,7 +696,7 @@ LICENSE:
    limitations under the License.
 ```
 
-## @sigstore/verify@4.1.2
+## @sigstore/verify@4.1.3
 
 License: Apache-2.0
 
@@ -936,7 +936,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-## commander@15.0.0
+## commander@15.1.0
 
 License: MIT
 

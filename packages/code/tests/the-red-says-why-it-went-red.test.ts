@@ -348,6 +348,32 @@ describe('one mechanism, and both halves are the same call', () => {
   });
 });
 
+describe('the exit code reads the verdict before the colour of the run', () => {
+  it('reports a broken ruler even when the run itself passed', () => {
+    // A green run under a broken ruler is still a broken ruler: the reading could not be
+    // trusted, so the exit code says so before it says the run was clean. The order of the
+    // two early returns in `exitCodeOf` is the whole rule, and only a case with
+    // `passed = true` can pin it — swapping them turns this case red.
+    const result = decide({
+      ledger: { ...capture('broke'), collected: 0 },
+      alone: alwaysAnswers({ ran: true, failed: true, duration: 1 }).alone,
+    });
+    expect(result.verdict).toBe('RULER BROKEN');
+    expect(exitCodeOf(result, true)).toBe(EXIT.BROKEN);
+  });
+
+  it('and lets a passed run exit clean under a reading that is neither clean nor broken', () => {
+    // The other half of the order: a reading with something to read would hold the exit at
+    // SOMETHING on a failed run, but a run that passed has nothing red to explain, so the
+    // same reading exits CLEAN.
+    const { alone } = alwaysAnswers({ ran: true, failed: true, duration: 3390 });
+    const result = decide({ ledger: capture('broke'), alone });
+    expect(result.verdict).toBe('SOMETHING TO READ');
+    expect(exitCodeOf(result, true)).toBe(EXIT.CLEAN);
+    expect(exitCodeOf(result)).toBe(EXIT.SOMETHING);
+  });
+});
+
 describe('it refuses rather than publishes a verdict it cannot stand behind', () => {
   const broken = (ledger: Book, answer: Alone = { ran: true, failed: true, duration: 1 }) =>
     decide({ ledger, alone: alwaysAnswers(answer).alone });

@@ -5,8 +5,7 @@
  *
  * WHAT WAS UNCHECKED. Nothing asked whether `[the plugin's page](plugin/README.md#in-vs-code-
  * and-cursor)` still lands anywhere. A heading renamed or a file moved leaves a page pointing
- * at nothing, in silence, and the reader is the one who finds out. The guard with a link in
- * its name, `the-link-cannot-come-back`, is about an attribution footer in a commit.
+ * at nothing, in silence, and the reader is the one who finds out.
  *
  * WHAT IS CHECKED, AND NOTHING ASKS THE NETWORK. Every tracked Markdown page
  * ({@link trackedPages}, the reach and never a list), read outside its fenced blocks

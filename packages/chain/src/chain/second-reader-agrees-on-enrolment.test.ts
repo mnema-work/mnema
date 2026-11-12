@@ -2183,7 +2183,7 @@ describe('the two readers agree on the order a citation gives: a machine whose c
           rmSync(root, { recursive: true, force: true });
         }
       }),
-      { seed: Number(process.env.FC_SEED ?? 20_261_007), numRuns: 16 },
+      { seed: Number(process.env.FC_SEED), numRuns: 16 },
     );
     root = outer;
   });

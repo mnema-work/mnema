@@ -306,7 +306,8 @@ mnema init
 # with any other bytes is yours and is never touched. Only these two are made this way; the `.prettierignore`
 # is never edited outside `init`.
 
-ME=mnid:c0fc3c713f09a43384ac08f7d91fca43…   # the identity printed above
+# the identity printed above
+ME=mnid:c0fc3c713f09a43384ac08f7d91fca43…
 
 # Create a task. It is named by its id; `t-0b76` is a display alias derived
 # from that id, not a second key you can look it up by.
@@ -651,9 +652,11 @@ it is what the eye lands on. In a pipe, a file or a CI log, nothing is: the capa
 is resolved once per invocation and the default is what the destination can show.
 
 ```sh
-mnema --color=never verify   # never any escape, whatever the terminal says
+# never any escape, whatever the terminal says
+mnema --color=never verify
 mnema --color=always verify | less -R
-NO_COLOR=1 mnema verify      # and FORCE_COLOR, both as everywhere else
+# and FORCE_COLOR, both as everywhere else
+NO_COLOR=1 mnema verify
 ```
 
 An explicit `--color` beats both variables. The help says only the three values and the two
