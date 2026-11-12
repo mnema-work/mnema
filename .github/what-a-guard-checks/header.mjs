@@ -34,8 +34,9 @@ const SHORT_TITLE = 100;
 const CHECKED = /^WHAT IS CHECKED\b/;
 
 /**
- * The text of the first block comment that starts a line (`/**`), one string per line, the comment
- * leaders taken out; `null` when the file has none.
+ * The text of the block comment that opens the file (the first that starts a line, with only the
+ * mark, line comments and imports before it), one string per line, the comment leaders taken out;
+ * `null` when the file has none.
  *
  * @param {string} source
  * @returns {string[] | null}
@@ -44,6 +45,14 @@ function topBlock(source) {
   const lines = source.replace(/\r\n?/g, '\n').split('\n');
   const start = lines.findIndex((line) => line.startsWith('/**'));
   if (start === -1) return null;
+  // The top comment: nothing but the mark, line comments and imports comes before it, so a comment
+  // that documents a helper further down is not taken for the guard's own.
+  const before = lines
+    .slice(0, start)
+    .join('\n')
+    .replace(/^import\b[^;]*;/gm, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+  if (before.trim() !== '') return null;
   const body = [];
   for (let at = start; at < lines.length; at += 1) {
     const line = lines[at] ?? '';

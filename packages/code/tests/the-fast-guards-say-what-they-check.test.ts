@@ -66,6 +66,12 @@ describe('what a guard checks, read from the top of its file', () => {
     expect(whatIsChecked(late)).toContain('Holds the boundary');
     expect(whatIsChecked('// @reads-the-tree\nconst a = 1;\n')).toBeNull();
     expect(whatIsChecked('/**\n *\n */\n')).toBeNull();
+    // A comment on a helper, after code, is not the guard's own.
+    expect(
+      whatIsChecked(
+        '// @reads-the-tree\nconst a = 1;\n/**\n * Documents the helper below it, at length.\n */\n',
+      ),
+    ).toBeNull();
   });
 
   it('keeps a paragraph to the size the report is read with', () => {
