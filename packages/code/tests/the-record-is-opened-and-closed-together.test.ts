@@ -44,6 +44,7 @@ import { readFileSync } from 'node:fs';
 import { join, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { codeOnly, sourceFiles } from './support/reading-source.js';
+import { theDifference } from './support/the-difference.js';
 
 const SRC = join(import.meta.dirname, '..', 'src');
 
@@ -84,14 +85,27 @@ describe('a cache is opened where it is closed, and nowhere else', () => {
   });
 
   it('lets no module but the two that own a lifetime open a cache', () => {
-    expect(shipped.filter(opensACache).sort()).toEqual([...MAY_OPEN_A_CACHE].sort());
+    const opening = shipped.filter(opensACache).sort();
+    const may = [...MAY_OPEN_A_CACHE].sort();
+    expect(
+      opening,
+      theDifference(
+        opening,
+        may,
+        'Open the cache through withCache in packages/code/src/tree-sources.ts instead of ProjectionCache.open( in these files (paths from packages/code/src)',
+        'Remove from MAY_OPEN_A_CACHE (the module no longer opens a cache)',
+      ),
+    ).toEqual(may);
   });
 
   it('names no module that stopped opening one', () => {
     // The other half, and it is the half that rots: a name left in the list above after
     // its module changed is an exemption for a door that no longer exists, and the next
     // reader takes it for a classification of a module that opens one.
-    expect(MAY_OPEN_A_CACHE.filter((named) => !opensACache(named))).toEqual([]);
+    expect(
+      MAY_OPEN_A_CACHE.filter((named) => !opensACache(named)),
+      'Remove these from MAY_OPEN_A_CACHE: the module no longer opens a cache with ProjectionCache.open(',
+    ).toEqual([]);
   });
 
   it('would accuse the three that leaked: on the text they held', () => {

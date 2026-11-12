@@ -98,12 +98,19 @@ describe('what the job reads from the pages', () => {
 
   it('reads the real pages of this repository, so the ruler is not empty', () => {
     const real = pagesIn(ROOT);
-    expect(real.map((one) => one.path)).toEqual(
-      expect.arrayContaining(['README.md', 'packages/code/README.md', 'docs/install.md']),
-    );
-    expect(real.every((one) => one.path.endsWith('.md'))).toBe(true);
+    expect(
+      real.map((one) => one.path),
+      'pagesIn must still reach README.md, packages/code/README.md and docs/install.md: restore the reading of the pages the job checks',
+    ).toEqual(expect.arrayContaining(['README.md', 'packages/code/README.md', 'docs/install.md']));
+    expect(
+      real.every((one) => one.path.endsWith('.md')),
+      'pagesIn must return only Markdown pages',
+    ).toBe(true);
     const urls = real.flatMap((one) => addressesIn(one)).map((one) => one.url);
-    expect(urls.some((url) => url.startsWith('https://raw.githubusercontent.com/'))).toBe(true);
+    expect(
+      urls.some((url) => url.startsWith('https://raw.githubusercontent.com/')),
+      'addressesIn must still read the raw.githubusercontent.com images of the READMEs',
+    ).toBe(true);
   });
 });
 
@@ -265,16 +272,32 @@ describe('the workflow that runs it', () => {
 
   it('runs on a push to main and by hand, never on a pull request', () => {
     const triggers = workflow.slice(workflow.indexOf('\non:'), workflow.indexOf('\npermissions:'));
-    expect(triggers).toContain('push:');
-    expect(triggers).toContain('branches: [main]');
-    expect(triggers).toContain('workflow_dispatch:');
-    expect(triggers).not.toContain('pull_request');
+    expect(triggers, '.github/workflows/after-merge-links.yml: run on push').toContain('push:');
+    expect(triggers, '.github/workflows/after-merge-links.yml: run on branches: [main]').toContain(
+      'branches: [main]',
+    );
+    expect(triggers, '.github/workflows/after-merge-links.yml: allow workflow_dispatch').toContain(
+      'workflow_dispatch:',
+    );
+    expect(
+      triggers,
+      '.github/workflows/after-merge-links.yml: take pull_request out of the triggers',
+    ).not.toContain('pull_request');
   });
 
   it('writes issues in the one job that opens them, and nowhere else', () => {
-    expect(workflow.match(/issues: write/g)).toHaveLength(1);
+    expect(
+      workflow.match(/issues: write/g),
+      '.github/workflows/after-merge-links.yml: grant issues: write once, in the tell-somebody job only',
+    ).toHaveLength(1);
     const tell = workflow.slice(workflow.indexOf('tell-somebody:'));
-    expect(tell).toContain('issues: write');
-    expect(workflow).not.toMatch(/secrets\./);
+    expect(
+      tell,
+      '.github/workflows/after-merge-links.yml: the tell-somebody job must hold issues: write',
+    ).toContain('issues: write');
+    expect(
+      workflow,
+      '.github/workflows/after-merge-links.yml: use no secrets.* in this workflow',
+    ).not.toMatch(/secrets\./);
   });
 });

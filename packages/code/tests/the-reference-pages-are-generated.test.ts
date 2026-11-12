@@ -16,7 +16,7 @@
 
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -103,7 +103,7 @@ describe('the page of each verb', () => {
       const path = join(CLI, verbFile(block.words));
       await expect(verbPage(block, blocks, groups, committed(path))).toMatchFileSnapshot(
         path,
-        `${path} is generated from the help: run pnpm vitest run packages/code/tests/the-reference-pages-are-generated.test.ts -u, and commit the page`,
+        `${relative(ROOT, path)} is generated from the help: run pnpm vitest run packages/code/tests/the-reference-pages-are-generated.test.ts -u, and commit the page`,
       );
     },
   );
@@ -132,7 +132,7 @@ describe('the page of each verb', () => {
     const index = commandsIndex(blocks, groups, committed(COMMANDS));
     await expect(index).toMatchFileSnapshot(
       COMMANDS,
-      `${COMMANDS} is generated from the help: run pnpm vitest run packages/code/tests/the-reference-pages-are-generated.test.ts -u, and commit the page`,
+      `${relative(ROOT, COMMANDS)} is generated from the help: run pnpm vitest run packages/code/tests/the-reference-pages-are-generated.test.ts -u, and commit the page`,
     );
     expect(linkedBy(index, 'cli')).toEqual(pagesIn(CLI));
     const called = index.split('## Called by a host')[1] ?? '';
@@ -154,7 +154,7 @@ describe('the page of each MCP tool', () => {
       const path = join(MCP, toolFile(tool.name));
       await expect(toolPage(tool, committed(path))).toMatchFileSnapshot(
         path,
-        `${path} is generated from the tool: run pnpm vitest run packages/code/tests/the-reference-pages-are-generated.test.ts -u, and commit the page`,
+        `${relative(ROOT, path)} is generated from the tool: run pnpm vitest run packages/code/tests/the-reference-pages-are-generated.test.ts -u, and commit the page`,
       );
     }
   });
@@ -175,7 +175,7 @@ describe('the page of each MCP tool', () => {
     const index = toolsIndex(tools, committed(TOOLS));
     await expect(index).toMatchFileSnapshot(
       TOOLS,
-      `${TOOLS} is generated from the tools: run pnpm vitest run packages/code/tests/the-reference-pages-are-generated.test.ts -u, and commit the page`,
+      `${relative(ROOT, TOOLS)} is generated from the tools: run pnpm vitest run packages/code/tests/the-reference-pages-are-generated.test.ts -u, and commit the page`,
     );
     expect(linkedBy(index, 'mcp')).toEqual(pagesIn(MCP));
     const [reads, writes] = (index.split('## Read only')[1] ?? '').split('## May write');

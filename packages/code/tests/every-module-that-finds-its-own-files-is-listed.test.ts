@@ -65,7 +65,7 @@ describe('the modules the bundle carries that find their own files', () => {
   it('reads the workspace packages the CLI is built from', () => {
     expect(
       theBundledPackages(),
-      'The packages the CLI is built from changed: update this list, and check build/the-cli-bundle.mjs still carries them',
+      'The packages the CLI is built from changed: update this list, and check packages/code/build/the-cli-bundle.mjs still carries them',
     ).toEqual(['chain', 'code', 'context', 'core', 'stacks']);
   });
 

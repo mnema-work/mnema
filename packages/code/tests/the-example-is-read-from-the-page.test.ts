@@ -188,7 +188,7 @@ describe('the example a package publishes is the example that runs', () => {
       // mapping would otherwise be compared against nothing.
       expect(
         Object.keys(onThePage).sort(),
-        `${example.readme}: map each specifier the page imports in this file's list (specifiers), or take the import off the page`,
+        `${example.readme}: map each specifier the page imports in the specifiers of its entry in packages/code/tests/support/published-examples.ts, or take the import off the page`,
       ).toEqual(declared);
       for (const [published, inSource] of Object.entries(example.specifiers)) {
         expect(
@@ -226,8 +226,8 @@ describe('the list of pages is the list on disk', () => {
       theDifference(
         listed,
         onDisk,
-        'Remove from PUBLISHED_EXAMPLES or NO_RUNNABLE_EXAMPLE (the package has no README)',
-        'Add to PUBLISHED_EXAMPLES, or to NO_RUNNABLE_EXAMPLE with why (the package has a README)',
+        'Remove from PUBLISHED_EXAMPLES or NO_RUNNABLE_EXAMPLE in packages/code/tests/support/published-examples.ts (the package has no README)',
+        'Add to PUBLISHED_EXAMPLES, or to NO_RUNNABLE_EXAMPLE with why, in packages/code/tests/support/published-examples.ts (the package has a README)',
       ),
     ).toEqual(onDisk);
   });

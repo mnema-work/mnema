@@ -69,13 +69,19 @@ function unsaid(section: string, install: Install) {
 
 describe('the install line of a host', () => {
   it.each(HOST_NAMES)('%s: its anchor is a section of docs/hosts.md', (name) => {
-    expect(sectionOf(HOSTS_PAGE, HOSTS[name].install.at)).toBeDefined();
+    expect(
+      sectionOf(HOSTS_PAGE, HOSTS[name].install.at),
+      `docs/hosts.md: add a "## " section whose anchor is #${HOSTS[name].install.at}, or point the install of ${name} in packages/code/src/host-names.ts at a section that exists`,
+    ).toBeDefined();
   });
 
   it.each(HOST_NAMES)('%s: says nothing its section does not', (name) => {
     const install = HOSTS[name].install;
     const section = sectionOf(HOSTS_PAGE, install.at) ?? '';
-    expect(unsaid(section, install)).toEqual([]);
+    expect(
+      unsaid(section, install),
+      `docs/hosts.md, section #${install.at}: write each of these commands, letter for letter, as a line of a code block there (or each backticked word in its text), or change the install of ${name} in packages/code/src/host-names.ts`,
+    ).toEqual([]);
   });
 
   // The Claude Code plugin is installed by two lines that four pages write as a block. The host
@@ -85,9 +91,13 @@ describe('the install line of a host', () => {
     (page) => {
       const written = fencedLinesOf(readFileSync(join(ROOT, page), 'utf-8'));
       const install = HOSTS.claude.install;
-      expect('commands' in install ? install.commands : []).toHaveLength(2);
+      expect(
+        'commands' in install ? install.commands : [],
+        'packages/code/src/host-names.ts: the Claude Code install must hold exactly its two command lines',
+      ).toHaveLength(2);
       expect(
         ('commands' in install ? install.commands : []).filter((line) => !written.includes(line)),
+        `${page}: write each of these Claude Code install lines, letter for letter, as a line of a code block`,
       ).toEqual([]);
     },
   );
@@ -112,8 +122,14 @@ describe('the install line of a host', () => {
         .replace(/\s+/g, ' ');
       const install = HOSTS.claude.install;
       const command = 'commands' in install ? install.commands[which] : undefined;
-      expect(command).toBeDefined();
-      expect(text.split(`\`${command}\``).length - 1).toBeGreaterThanOrEqual(times);
+      expect(
+        command,
+        'packages/code/src/host-names.ts: the Claude Code install must hold this command',
+      ).toBeDefined();
+      expect(
+        text.split(`\`${command}\``).length - 1,
+        `${page}: write the command \`${command}\` in backticks in its text, at least ${times} time(s)`,
+      ).toBeGreaterThanOrEqual(times);
     },
   );
 

@@ -71,15 +71,15 @@ describe('the bin of @mnema/code', () => {
     ).toEqual(['mnema']);
     expect(
       join(PACKAGE, bin.mnema ?? ''),
-      'packages/code/package.json: point bin.mnema at dist/bundle/cli.js, the entry build/the-cli-bundle.mjs writes',
+      'packages/code/package.json: point bin.mnema at dist/bundle/cli.js, the entry packages/code/build/the-cli-bundle.mjs writes',
     ).toBe(BUNDLE_ENTRY);
     expect(
       MNEMA_CLI,
-      'tests/support/the-cli.ts: read the bin of packages/code/package.json, do not spell another entry',
+      'packages/code/tests/support/the-cli.ts: read the bin of packages/code/package.json, do not spell another entry',
     ).toBe(BUNDLE_ENTRY);
     expect(
       existsSync(BUNDLE_ENTRY),
-      'dist/bundle/cli.js is missing: run pnpm build before the tests',
+      'packages/code/dist/bundle/cli.js is missing: run pnpm build before the tests',
     ).toBe(true);
   });
 
@@ -91,7 +91,7 @@ describe('the bin of @mnema/code', () => {
       theDifference(
         naming,
         meant,
-        'Start the CLI through tests/support/the-cli.ts instead of spelling the compiled entry, or list the test in MEANT with why',
+        'Start the CLI through packages/code/tests/support/the-cli.ts instead of spelling the compiled entry, or list the test in MEANT with why',
         'Remove from MEANT (the test no longer names the compiled entry)',
       ),
     ).toEqual(meant);

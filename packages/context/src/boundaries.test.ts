@@ -65,12 +65,15 @@ describe('@mnema/context boundaries', () => {
     for (const file of sourceFiles(srcDir)) {
       const text = readFileSync(file, 'utf-8');
       for (const spec of FORBIDDEN_IMPORTS) {
-        if (spec.test(text)) offenders.push(`${file.slice(srcDir.length)} names ${spec.source}`);
+        if (spec.test(text))
+          offenders.push(
+            `${file.slice(srcDir.length)} names ${spec.source.replace(/\\\//g, '/').replace(/\(\?!.*\)$/, '')}`,
+          );
       }
     }
     expect(
       offenders,
-      'Remove the named import from packages/context/src; this package reads the record and goes through @mnema/core',
+      'Remove each mention of the named package from these files of packages/context/src (import, dynamic import, comment or string); this package reads the record and goes through @mnema/core',
     ).toEqual([]);
   });
 

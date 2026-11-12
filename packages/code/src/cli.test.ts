@@ -40,7 +40,7 @@ describe('the CLI loads the MCP server only for the verb that serves it', () => 
       .map((file) => file.slice(srcDir.length));
     expect(
       offenders,
-      'Name @modelcontextprotocol/sdk only inside packages/code/src/mcp/: import it dynamically from there, so every command does not pay for it',
+      'Remove each mention of @modelcontextprotocol/sdk (import, dynamic import, comment or string) from these files: it may be named only inside packages/code/src/mcp/, which the CLI reaches dynamically, so every command does not pay for it',
     ).toEqual([]);
   });
 
