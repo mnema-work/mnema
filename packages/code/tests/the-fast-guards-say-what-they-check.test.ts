@@ -200,6 +200,9 @@ describe('a red guard is explained', () => {
       expect(ran.stderr).toContain('What each guard that failed checks:');
       expect(ran.stderr).toContain(`${guard}\n  WHAT IS CHECKED. That the page names its command.`);
       expect(ran.stderr).toContain('Failed at "guards"');
+      expect(ran.stdout).toMatch(
+        /== guards: .*--reporter=json --outputFile\.json=\S+vitest-report\.json/,
+      );
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

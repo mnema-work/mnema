@@ -136,7 +136,11 @@ describe('the report is read as data', () => {
     expect(
       buildComment({
         conclusion: 'failure',
-        report: (read(without) as { report: never }).report,
+        report: (() => {
+          const got = read(without);
+          if (!got.ok) throw new Error(got.why);
+          return got.report;
+        })(),
         sha: SHA,
         run: RUN,
         contributor: { login: 'x', firstTime: false },
@@ -694,8 +698,10 @@ describe('the report says what each failed guard checks', () => {
         lint: null,
         root,
       });
-      expect(report.guards.map((one) => one.file)).toEqual(['packages/code/tests/a.test.ts']);
-      expect(report.guards[0]?.says.startsWith('WHAT IS CHECKED. long')).toBe(true);
+      expect((report.guards ?? []).map((one) => one.file)).toEqual([
+        'packages/code/tests/a.test.ts',
+      ]);
+      expect(report.guards?.[0]?.says.startsWith('WHAT IS CHECKED. long')).toBe(true);
       expect(readReport(JSON.stringify(report))).toEqual({ ok: true, report });
     } finally {
       rmSync(root, { recursive: true, force: true });
