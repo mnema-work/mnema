@@ -7,7 +7,10 @@
 // `MNEMA_CHANGED` (newline-separated paths) stands for the changed files, for the test of this file.
 // `MNEMA_BASE` names the ref to compare with, for a clone whose remotes are named otherwise.
 import { spawnSync } from 'node:child_process';
-import { readdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { failedGuards } from '../what-a-guard-checks/header.mjs';
 
 /** @param {...string} args */
 const git = (...args) => spawnSync('git', args, { encoding: 'utf-8' });
@@ -135,10 +138,61 @@ if (process.argv.includes('--plan')) {
   process.exit(0);
 }
 
+/**
+ * FOR EACH GUARD THAT FAILED, WHAT IT CHECKS. The guards step also writes vitest's JSON report to a
+ * file of its own, beside the normal output, and this prints the path and the paragraph at the top
+ * of each guard that is red, since a guard's message says what differed and this says what it is for.
+ *
+ * @param {string} reportPath
+ */
+function sayWhatTheFailedGuardsCheck(reportPath) {
+  let guards = [];
+  try {
+    guards = failedGuards(JSON.parse(readFileSync(reportPath, 'utf-8')), process.cwd());
+  } catch {
+    return;
+  }
+  if (guards.length > 0) console.error('\nWhat each guard that failed checks:');
+  for (const { file, says } of guards) {
+    console.error(`\n${file}\n${says.replace(/^/gm, '  ')}`);
+  }
+}
+
+/**
+ * RUN ONE STEP. The guards step also writes vitest's JSON report to a file of its own, so that a red
+ * guard can be explained; the flags that do it are in the line this prints, and the directory the
+ * file is in is removed whatever happens.
+ *
+ * @param {string} name
+ * @param {string} command
+ * @param {string[]} args
+ */
+function runStep(name, command, args) {
+  if (name !== 'guards') {
+    console.log(`\n== ${name}: ${[command, ...args].join(' ')}`);
+    return spawnSync(command, args, { stdio: 'inherit' });
+  }
+  const scratch = mkdtempSync(join(tmpdir(), 'check-contribution-'));
+  try {
+    const report = join(scratch, 'vitest-report.json');
+    const withReport = [
+      ...args,
+      '--reporter=default',
+      '--reporter=json',
+      `--outputFile.json=${report}`,
+    ];
+    console.log(`\n== ${name}: ${[command, ...withReport].join(' ')}`);
+    const result = spawnSync(command, withReport, { stdio: 'inherit' });
+    if (result.status !== 0) sayWhatTheFailedGuardsCheck(report);
+    return result;
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+}
+
 const ran = [];
 for (const [name, command, args] of steps) {
-  console.log(`\n== ${name}: ${[command, ...args].join(' ')}`);
-  const result = spawnSync(command, args, { stdio: 'inherit' });
+  const result = runStep(name, command, args);
   if (result.status !== 0) {
     console.error(`\nFailed at "${name}". Fix it and run pnpm check:contribution again.`);
     process.exit(result.status ?? 1);

@@ -196,6 +196,21 @@ describe('the workflow that comments runs nothing of the fork', () => {
     expect(children).toEqual(['gh']);
     expect(source).not.toMatch(/\bexecSync\(|\bspawn(?:Sync)?\(|\bexec\(/);
   });
+
+  it('imports nothing of the repository, so what it runs is the one file checked out from the default branch', () => {
+    const source = readFileSync(join(ROOT, '.github/what-failed/comment.mjs'), 'utf-8');
+    const from = [...source.matchAll(/^import[\s\S]*?from '([^']+)'/gm)].map((m) => m[1]);
+    expect(from.every((one) => one?.startsWith('node:'))).toBe(true);
+  });
+
+  it('builds the link of a guard from the repository, the run SHA and a validated path, never from the report', () => {
+    const source = readFileSync(join(ROOT, '.github/what-failed/comment.mjs'), 'utf-8');
+    expect(source).toMatch(
+      /github\.com\/\$\{input\.repository\}\/blob\/\$\{input\.sha\}\/\$\{file\}/,
+    );
+    expect(source).toContain('HEX_SHA.test(input.sha) && REPOSITORY.test(input.repository)');
+    expect(source).toMatch(/isPath\(file\)/);
+  });
 });
 
 describe('the CI job that writes the report', () => {

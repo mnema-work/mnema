@@ -1,8 +1,4 @@
 // @reads-the-tree
-import { readdirSync, readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
-
 /**
  * The proof engine must stay a pure, zero-dependency core: it is the surface
  * that carries tamper-evidence, so it cannot be contaminated by the domain,
@@ -10,6 +6,10 @@ import { describe, expect, it } from 'vitest';
  * moment that invariant is about to erode: a broken boundary here is a design
  * regression, not a passing test with a warning.
  */
+import { readdirSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+
 describe('@mnema/chain boundaries', () => {
   const manifest = JSON.parse(
     readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf-8'),

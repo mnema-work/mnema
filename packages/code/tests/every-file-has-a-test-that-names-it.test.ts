@@ -272,6 +272,12 @@ const LED_NOWHERE: Readonly<Record<string, string>> = {
     "The collector CI's last job runs on a pull request to write the report of what failed, handed the jobs, the test reports and the lint diff here. A script a workflow step runs, plain ESM under .github/, so the specifier is right and the scanner cannot follow it.",
   'packages/code/tests/the-pull-request-is-told-what-failed.test.ts -> ../../../.github/what-failed/comment.mjs':
     'The reader of that report and the builder of the one comment on the pull request, run by the workflow_run job that can write. The case hands it a hostile report and a stand-in for the API; it lives under .github/ beside that workflow, where no walk of packages/ reaches.',
+  'packages/code/tests/the-fast-guards-say-what-they-check.test.ts -> ../../../.github/the-fast-guards/marked.mjs':
+    'The finder of the marked guards, which the case walks to hold every one of them to a paragraph that says what it checks. Plain ESM under .github/, outside the packages/ walk, so the scanner cannot follow the specifier, which is right.',
+  'packages/code/tests/the-fast-guards-say-what-they-check.test.ts -> ../../../.github/what-a-guard-checks/header.mjs':
+    "The reader of the paragraph at the top of a guard that says what it checks, which CI's collector and the check before a pull request both run. Plain ESM under .github/ beside them, outside the packages/ walk, so the scanner cannot follow the specifier, which is right.",
+  'packages/code/tests/the-fast-guards-say-what-they-check.test.ts -> ../../../.github/what-failed/comment.mjs':
+    'The limits the report of what failed is read with, which the case holds the size of a paragraph to. Plain ESM under .github/ beside its workflow, outside the packages/ walk, so the scanner cannot follow the specifier, which is right.',
   'packages/code/tests/the-architecture-page-is-what-the-code-draws.test.ts -> ../../../.github/the-architecture-page/graph.mjs':
     "The script that draws the architecture page's import graph from the code, which the case holds the page to. Plain ESM under .github/, outside the packages/ walk, so the scanner cannot follow the specifier, which is right.",
   'packages/code/tests/the-fast-guards-are-the-marked-ones.test.ts -> ../../../.github/the-fast-guards/marked.mjs':
@@ -1307,6 +1313,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-example-stacks-install.test.ts': 8,
   'packages/code/tests/the-exit-codes-page-is-what-the-code-says.test.ts': 6,
   'packages/code/tests/the-fast-guards-are-the-marked-ones.test.ts': 6,
+  'packages/code/tests/the-fast-guards-say-what-they-check.test.ts': 10,
   'packages/code/tests/the-feed-covers-this-project.test.ts': 10,
   'packages/code/tests/the-feed-leaves-the-bodies-behind.test.ts': 7,
   'packages/code/tests/the-first-record-a-page-shows-is-the-one-printed.test.ts': 8,
@@ -1391,7 +1398,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-proof-answers-a-machine.test.ts': 7,
   'packages/code/tests/the-prose-carries-its-own-emphasis.test.ts': 5,
   'packages/code/tests/the-public-tree-says-what-holds-without-git.test.ts': 13,
-  'packages/code/tests/the-pull-request-is-told-what-failed.test.ts': 3,
+  'packages/code/tests/the-pull-request-is-told-what-failed.test.ts': 6,
   'packages/code/tests/the-pull-request-template-asks-for-the-agent.test.ts': 4,
   'packages/code/tests/the-python-floor-is-declared-once.test.ts': 5,
   'packages/code/tests/the-quick-start-runs-as-it-reads.test.ts': 8,
@@ -2313,8 +2320,8 @@ describe('every file has a test that names it', () => {
     });
     // Non-vacuity in both parts: the walk really did follow specifiers, and the list
     // really does hold rows; a scanner returning nothing would satisfy the line above.
-    expect(unresolved.length).toBe(24);
-    expect(Object.keys(LED_NOWHERE)).toHaveLength(24);
+    expect(unresolved.length).toBe(27);
+    expect(Object.keys(LED_NOWHERE)).toHaveLength(27);
     // And each row says what THAT module is, by the ledger's rule, at the ledger's floor.
     const why = Object.values(LED_NOWHERE);
     expect(new Set(why).size).toBe(why.length);
