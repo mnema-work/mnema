@@ -2,8 +2,8 @@
 /**
  * EVERY VALUE THE DOMAIN PUTS IN A SENTENCE, AND WHERE IT CAME FROM.
  *
- * Every value the domain packages put in a sentence goes through the one rule of the line before
- * it reaches the surface: a sentence `@mnema/chain` or `@mnema/core` wrote is handed to the
+ * Every value the domain packages put in a sentence that can hold a newline goes through the one
+ * rule of the line before it reaches the surface: a sentence `@mnema/chain` or `@mnema/core` wrote is handed to the
  * surface ALREADY JOINED, so no rule the surface applies can reach inside it. The lines the
  * surface words itself are held by `a-line-of-success-is-one-line.test.ts` (the wiring) and
  * `the-line-a-reading-words-is-one-line.test.ts` (the readings).

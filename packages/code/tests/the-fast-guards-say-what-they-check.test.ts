@@ -105,7 +105,7 @@ describe('every guard says what it checks', () => {
     });
     expect(
       without,
-      `These guards have no comment at the top that says what they check, so a red one cannot be explained to a contributor. Start the file, below the // @reads-the-tree line and the imports if you like, with a block comment (/** ... */) whose first paragraph says what it holds true, or add a paragraph that opens "WHAT IS CHECKED.": ${without.join(', ')}`,
+      `These guards have no comment at the top that says what they check, so a red one cannot be explained to a contributor. Start the file, below the // @reads-the-tree line and above the imports, with a block comment (/** ... */) whose first paragraph says what it holds true, or add a paragraph that opens "WHAT IS CHECKED.": ${without.join(', ')}`,
     ).toEqual([]);
   });
 });

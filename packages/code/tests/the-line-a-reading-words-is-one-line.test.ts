@@ -2,8 +2,8 @@
 /**
  * EVERY VALUE THIS LAYER PUTS ON A LINE, AND WHERE IT CAME FROM.
  *
- * Every value the presentation layer puts on a line goes through `oneLine` where it enters the
- * line. The lines the wiring words are held by `tests/a-line-of-success-is-one-line.test.ts`; this
+ * Every value the presentation layer puts on a line that can hold a newline goes through `oneLine`
+ * where it enters the line. The lines the wiring words are held by `tests/a-line-of-success-is-one-line.test.ts`; this
  * holds the layer that builds a line out of parts. Nothing here is found by a list:
  * {@link sitesInSource} walks the layer and {@link CLASSIFIED} answers it, in both directions.
  *
