@@ -9,7 +9,8 @@
  *     refused whole if one field is not of the shape and the limit below (an unknown field
  *     included). A refused report is named by a reason of ours, never by a word of the report;
  *   - every text of the report goes into the comment inside a fenced block longer than any run of
- *     backticks in it, with control, zero-width and bidirectional characters taken out and every
+ *     backticks in it, with every control and format character (Unicode `Cc`, `Cf`) and the line
+ *     and paragraph separators taken out, and every
  *     `@` followed by a zero-width space, so it renders as text, closes nothing and notifies nobody;
  *   - the pull request is found through the API by the head SHA of the run, never by a number in
  *     the report and never by `workflow_run.pull_requests`, which is empty for a fork's run. A pull
@@ -205,37 +206,24 @@ export function readReport(text) {
 }
 
 /**
- * A STRANGER'S TEXT, MADE INERT: line ends made plain, control, zero-width and bidirectional
- * characters taken out, and a zero-width space after every `@`.
+ * A STRANGER'S TEXT, MADE INERT: line ends made plain, every control and format character taken
+ * out (Unicode's `Cc` and `Cf`: zero-width and bidirectional marks, the tag characters an agent
+ * reading the comment could be handed hidden text in) and the line and paragraph separators, the
+ * tab and the line end kept, and a zero-width space after every `@`.
  *
  * @param {string} text
  */
 function inert(text) {
   let out = '';
   for (const char of text.replace(/\r\n?/g, '\n')) {
-    const point = char.codePointAt(0) ?? 0;
-    if (!hidden(point)) out += char === '@' ? '@\u200b' : char;
+    if (char !== '\t' && char !== '\n' && HIDDEN.test(char)) continue;
+    out += char === '@' ? '@\u200b' : char;
   }
   return out;
 }
 
-/**
- * Control characters but the tab and the line end, the soft hyphen, the zero-width ones, the
- * bidirectional controls and the byte-order mark: what a reader cannot see or what reorders text.
- *
- * @param {number} point
- */
-function hidden(point) {
-  return (
-    (point < 0x20 && point !== 0x09 && point !== 0x0a) ||
-    (point >= 0x7f && point <= 0x9f) ||
-    point === 0xad ||
-    (point >= 0x200b && point <= 0x200f) ||
-    (point >= 0x202a && point <= 0x202e) ||
-    (point >= 0x2060 && point <= 0x2069) ||
-    point === 0xfeff
-  );
-}
+/** What a reader cannot see, or what reorders or breaks the text around it. */
+const HIDDEN = /[\p{Cc}\p{Cf}\u2028\u2029]/u;
 
 /**
  * A FENCED BLOCK NOTHING INSIDE CAN CLOSE: its fence is longer than the longest run of backticks in
@@ -416,6 +404,12 @@ export async function tell({ event, report, why, api, repository }) {
     return [`concluded ${String(conclusion)}`];
   if (typeof sha !== 'string' || !HEX_SHA.test(sha)) return ['no head SHA'];
   if (!REPOSITORY.test(repository)) return ['no repository'];
+  // The same commit can be the head of two pull requests (two branches, or a fork and this
+  // repository); the run belongs to one branch of one repository, and only that one is told.
+  const headRepository = isObject(run.head_repository) ? run.head_repository.full_name : undefined;
+  if (typeof headRepository !== 'string' || typeof run.head_branch !== 'string') {
+    return ['no head branch'];
+  }
 
   const pulls = (await api.list(`repos/${repository}/pulls?state=open&per_page=100`)).filter(
     (one) =>
@@ -425,6 +419,9 @@ export async function tell({ event, report, why, api, repository }) {
       isObject(one.base) &&
       isObject(one.base.repo) &&
       one.base.repo.full_name === repository &&
+      isObject(one.head.repo) &&
+      one.head.repo.full_name === headRepository &&
+      one.head.ref === run.head_branch &&
       Number.isSafeInteger(one.number) &&
       /** @type {number} */ (one.number) > 0,
   );

@@ -16,6 +16,9 @@ name: What failed
 # script reads the event file GitHub wrote. `.github/what-failed/README.md` says the rest, and
 # `the-comment-runs-nothing-of-the-fork.test.ts` holds these lines.
 #
+# A run Dependabot started is skipped: GitHub hands this workflow a read-only token for it, and the
+# comment could not be written.
+#
 # GitHub starts it only from the workflow file on the default branch, so a pull request that
 # changes this file does not change what runs for that pull request.
 
@@ -31,6 +34,7 @@ jobs:
     name: comment what failed
     if: >-
       github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.actor.login != 'dependabot[bot]' &&
       (github.event.workflow_run.conclusion == 'success' ||
       github.event.workflow_run.conclusion == 'failure')
     runs-on: ubuntu-24.04

@@ -131,6 +131,8 @@ describe('the comment a stranger cannot write into', () => {
           `${MARKER}`,
           '``````',
           'after',
+          // Tag characters (hidden text for an agent), the Arabic letter mark and a line separator.
+          `tag${String.fromCodePoint(0xe0041, 0xe0042)} mark${String.fromCodePoint(0x061c)} line${String.fromCodePoint(0x2028)}end`,
         ].join('\n'),
       },
     ],
@@ -174,10 +176,17 @@ describe('the comment a stranger cannot write into', () => {
   });
 
   it('lets no @ of the report notify anybody: the only mention is the welcome, from the API', () => {
-    const mentions = [...body.matchAll(/@(?!​)[A-Za-z0-9-]/g)].map((m) => m.index);
+    const mentions = [...body.matchAll(/@(?!\u200b)[A-Za-z0-9-]/g)].map((m) => m.index);
     expect(mentions).toHaveLength(1);
     expect(body).toContain('Welcome, @new-person');
-    expect(body).toContain('@​everyone');
+    expect(body).toContain('@\u200beveryone');
+  });
+
+  it('takes out the tag characters, the Arabic letter mark and the line separator', () => {
+    expect(body).toContain('tag mark lineend');
+    for (const point of [0xe0041, 0xe0042, 0x061c, 0x2028, 0x2029, 0x202e, 0xfeff]) {
+      expect(body, point.toString(16)).not.toContain(String.fromCodePoint(point));
+    }
   });
 
   it('carries no HTML outside a fence but the hidden marker it opens with', () => {
@@ -187,7 +196,7 @@ describe('the comment a stranger cannot write into', () => {
   });
 
   it('says what failed and the command that fixes the lint', () => {
-    expect(body).toContain('lint @​everyone');
+    expect(body).toContain('lint @\u200beveryone');
     expect(body).toContain('pnpm exec biome check --write packages/code/src/a.ts');
     expect(body).toContain(RUN);
     expect(body).toContain('a1b2c3d');
@@ -301,9 +310,14 @@ function github(pulls: unknown[], comments: Record<number, unknown[]>) {
   };
 }
 
-const pull = (number: number, sha: string, association = 'CONTRIBUTOR') => ({
+const pull = (
+  number: number,
+  sha: string,
+  association = 'CONTRIBUTOR',
+  from: { repo: string; ref: string } = { repo: 'someone/mnema', ref: 'fix-it' },
+) => ({
   number,
-  head: { sha },
+  head: { sha, ref: from.ref, repo: { full_name: from.repo } },
   base: { repo: { full_name: REPO } },
   user: { login: 'someone' },
   author_association: association,
@@ -315,6 +329,8 @@ const event = (conclusion: string) => ({
     conclusion,
     head_sha: SHA,
     html_url: RUN,
+    head_repository: { full_name: 'someone/mnema' },
+    head_branch: 'fix-it',
     // A fork's run carries no pull request here: the one to comment on is found by the head.
     pull_requests: [],
   },
@@ -332,6 +348,19 @@ describe('one comment per pull request, on the pull request whose head ran', () 
 
   it('finds the pull request by the head of the run and writes one comment on it', async () => {
     const { api, done } = github([pull(7, SHA), pull(8, 'f'.repeat(40))], {});
+    await tell({ event: event('failure'), report: fromReport, api, repository: REPO });
+    expect(done).toEqual([`POST repos/${REPO}/issues/7/comments **CI failed on \`a1b2c3d\`.**`]);
+  });
+
+  it('tells only the pull request of the repository and branch that ran, when two share the head', async () => {
+    const { api, done } = github(
+      [
+        pull(6, SHA, 'CONTRIBUTOR', { repo: REPO, ref: 'fix-it' }),
+        pull(7, SHA),
+        pull(8, SHA, 'CONTRIBUTOR', { repo: 'someone/mnema', ref: 'other-branch' }),
+      ],
+      {},
+    );
     await tell({ event: event('failure'), report: fromReport, api, repository: REPO });
     expect(done).toEqual([`POST repos/${REPO}/issues/7/comments **CI failed on \`a1b2c3d\`.**`]);
   });

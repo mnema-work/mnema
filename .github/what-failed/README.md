@@ -49,12 +49,13 @@ stranger's data, and runs nothing of the pull request:
   and limit, an unknown field included. A refusal is named on the comment by a reason of ours,
   never by a word of the report;
 - every text of the report goes into the comment **inside a fenced block** longer than any run of
-  backticks in it, with control, zero-width and bidirectional characters taken out and a zero-width
-  space after every `@`: it renders as text, closes no fence, carries no HTML and notifies nobody.
+  backticks in it, with every control and format character (Unicode `Cc` and `Cf`: zero-width and
+  bidirectional marks, the tag characters that can hide text from a person and hand it to an agent)
+  and the line and paragraph separators taken out, and a zero-width space after every `@`: it renders as text, closes no fence, carries no HTML and notifies nobody.
   A path that goes into a command must be a plain path of this repository (no leading `-`, no
   `..`). The comment is kept under 60,000 characters, the diff dropped first;
-- the pull request is found **by the run's head SHA**, listing the open pull requests through the
-  API: `workflow_run.pull_requests` is empty for a fork's run, and a number in the report is never
+- the pull request is found **by the run's head SHA, head repository and head branch**, listing the
+  open pull requests through the API: `workflow_run.pull_requests` is empty for a fork's run, and a number in the report is never
   read. A pull request whose head has moved past the run is left to the run of its new head;
 - the one `@` mention is the welcome's, built from the login the API gave for the author;
 - its own comment is found by the hidden marker it opens with **and** by its author being the
@@ -72,6 +73,8 @@ reader and the builder a hostile report (a mention, HTML, a fence breaker, a fie
   request are the authority.
 - **Other workflows.** Only CI's jobs are read. A red in another workflow on the pull request is
   on the pull request's checks, not in the comment.
+- **Dependabot's pull requests.** A run Dependabot started gets a read-only token even here, so a
+  comment could not be written; the job is skipped for it.
 - **A cancelled run.** A run that was cancelled (a newer push cancels the one before) comments
   nothing; the run of the newer push does.
 - **A first pull request before approval.** A contributor's first pull request from a fork waits

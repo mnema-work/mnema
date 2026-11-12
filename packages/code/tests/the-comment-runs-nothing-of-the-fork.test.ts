@@ -175,7 +175,7 @@ describe('the workflow that comments runs nothing of the fork', () => {
     expect(STARTED_BY_A_RUN.flatMap((where) => offences(where, text(where)))).toEqual([]);
   });
 
-  it('is started by CI completing, and only for a run that ended green or red', () => {
+  it('is started by CI completing, only for a run that ended green or red and not one Dependabot started', () => {
     const all = text('.github/workflows/what-failed.yml');
     expect(code(all)).toMatch(
       /^ {2}workflow_run:\n {4}workflows: \[CI\]\n {4}types: \[completed\]$/m,
@@ -183,6 +183,8 @@ describe('the workflow that comments runs nothing of the fork', () => {
     // The name it waits for is the name CI has.
     expect(text('.github/workflows/ci.yml')).toMatch(/^name: CI$/m);
     expect(code(all)).toContain("github.event.workflow_run.event == 'pull_request'");
+    // Dependabot's run gets a read-only token even here: the comment could not be written.
+    expect(code(all)).toContain("github.event.workflow_run.actor.login != 'dependabot[bot]'");
   });
 
   it('reads the report as data: a parse through readReport, no code run, only gh as a child', () => {
