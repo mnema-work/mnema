@@ -18,9 +18,21 @@ the product is, and what it does and does not prove, is on the [front page](READ
 - **git**, and the `script` and `stty` of util-linux: the cases that drive the console through
   a pseudo-terminal call both. CI runs on Ubuntu.
 
+## Before a pull request
+
+Run `pnpm check:contribution`. It is the check to run before you open a pull request: lint,
+build, typecheck, the guards below and only the tests tied to the files you changed (against the
+merge base with `origin/main`, which it asks you to `git fetch origin main` if it is missing), with
+one worker and a 30 s test timeout so it finishes on a small machine. It is a subset: CI runs
+the whole suite on Node 24.15.0, 24 and 26 and is the check that counts, so a green here can still
+be red there.
+
+If you have no Node, pnpm or `python3` to hand, [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json)
+gives them: Node at the floor, pnpm through corepack, `python3`, and a frozen-lockfile install.
+
 ## The gates
 
-In this order:
+The whole of them, in this order, for a machine that can run the whole suite:
 
 ```sh
 pnpm install --frozen-lockfile
@@ -56,7 +68,8 @@ a finding that is not on that list is a credential to rotate, not a line to add 
 
 `pnpm test:guards` runs only the cases that walk the whole tree (every page, every workflow,
 every file that needs a test), the ones a change breaks without touching them. Run it after
-a change to text, a page, the changelog or a list of files; it does not replace `pnpm test`.
+a change to text, a page, the changelog or a list of files; it does not replace `pnpm test`, and
+`pnpm check:contribution` runs it for you.
 A case joins it by carrying `// @reads-the-tree` as its first line.
 
 **When a case goes red, keep the output before you run it again**, then run
