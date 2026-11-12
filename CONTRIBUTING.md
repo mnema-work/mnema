@@ -278,6 +278,10 @@ the SHA-256 the packing job exposes, and publish with `--skip-duplicate`, so a r
   prints them (`- **What changed.** Why it matters, in a sentence or two.`). `pnpm release:prepare`
   gathers the files into the new section of `CHANGELOG.md`, grouped by section, and removes them, so
   `Unreleased` in `CHANGELOG.md` stays empty between releases.
+- **When CI is over, one comment on the pull request says what failed** and the command that fixes
+  it (for lint, the `biome check --write` command and the diff it applies), and is rewritten after
+  every run. It is written from what the run reported, as text; [its page](.github/what-failed/README.md)
+  says how it runs nothing of the pull request.
 - **A title in English that says what changes**, as a sentence, the way the history already
   reads: `git log --oneline` shows the form.
 - **When two ways of doing something pull apart, the one that keeps the record checkable wins
