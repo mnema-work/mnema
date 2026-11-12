@@ -19,14 +19,19 @@ const contributing = readFileSync(join(ROOT, 'CONTRIBUTING.md'), 'utf-8');
 describe('the pull request template', () => {
   it('has a required agent field with a line for the model and one for the host', () => {
     expect(template).toMatch(/^## Written with an agent \(required\)$/m);
-    expect(template).toMatch(/^- Model:/m);
-    expect(template).toMatch(/^- Host:/m);
+    expect(template).toMatch(/^- (\*\*)?Model:/m);
+    expect(template).toMatch(/^- (\*\*)?Host:/m);
+  });
+
+  it('keeps the two sections the contribution guide sends a reader to', () => {
+    expect(template).toMatch(/^## What changes and why$/m);
+    expect(template).toMatch(/^## Proof$/m);
   });
 
   it('says in the field that it is required and that `none` is an answer', () => {
     const comment = template.slice(template.indexOf('## Written with an agent'));
     expect(comment).toContain('Required');
-    expect(comment).toContain('"none"');
+    expect(comment).toMatch(/["`]none["`]/);
   });
 
   it('is described by CONTRIBUTING.md with the same field name and the credit line made from it', () => {

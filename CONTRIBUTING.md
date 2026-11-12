@@ -284,18 +284,18 @@ be able to explain any line.
 ## Review and merge
 
 - **A first response from a person within 3 working days**, on a pull request or an issue. If you have
-  heard nothing after that, add one comment that mentions the maintainer, `@felipesauer`. That is the
-  expected way to ask, not a nuisance.
-- **Your first pull request gets an automatic message** that welcomes you and, once CI has run, says what
-  failed and the command that fixes it (see the comment CI writes, described under
-  [A pull request](#a-pull-request)). A first pull request from a fork waits for a maintainer to
-  approve its workflows before CI runs, so that message comes after the approval. The message says what
-  CI reported; it is not a review.
+  heard nothing after that, add one comment that mentions the maintainer listed in
+  [`.github/CODEOWNERS`](.github/CODEOWNERS). That is the expected way to ask, not a nuisance.
+- **Once CI has run on your first pull request, an automatic comment welcomes you** and says what failed and
+  the command that fixes it, or that every check passed (see the comment CI writes, described under
+  [A pull request](#a-pull-request)). A first pull request from a fork waits for a maintainer to approve
+  its workflows, so the comment comes after that approval. It says what CI reported; it is not a review.
 - **Order.** Pull requests are reviewed in the order they arrive and merged in the order they are ready,
   which means CI green and the review approved. A pull request that is ready is not held for an earlier
   one that is not.
 - **What a maintainer may push to your branch.** Only bookkeeping and formatting: the counts that guards
-  keep inside the repository, and the order of imports the linter wants. Each time, the maintainer says so
+  keep inside the repository, and the formatting the linter applies (`pnpm exec biome check --write`), such
+  as the order of imports. Each time, the maintainer says so
   in a comment on the pull request. A change to what your code does comes as a suggestion with the reason
   written. Please leave "Allow edits by maintainers" ticked when you open the pull request, so this can
   be done on your branch instead of asking you to.
