@@ -56,7 +56,10 @@ describe('a shell block a reader pastes', () => {
     const found = PAGES.flatMap((page) =>
       commentsAfterACommand(page, writtenByHand(page, read(page))),
     );
-    expect(found).toEqual([]);
+    expect(
+      found,
+      'Move the comment out of these shell blocks, onto a line of its own or into the prose around the block (each entry is page:line)',
+    ).toEqual([]);
   });
 
   it('reads what it is meant to read, or it holds nothing', () => {

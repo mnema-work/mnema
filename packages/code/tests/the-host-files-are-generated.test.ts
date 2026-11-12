@@ -29,7 +29,10 @@ const ROOT = join(import.meta.dirname, '..', '..', '..');
 describe('the files the host table generates', () => {
   it.each(GENERATED)('%s is what the table generates', async (path) => {
     const committed = readFileSync(join(ROOT, path), 'utf-8');
-    await expect(generated(path, committed)).toMatchFileSnapshot(join(ROOT, path));
+    await expect(generated(path, committed)).toMatchFileSnapshot(
+      join(ROOT, path),
+      `${path} is generated from the code: run pnpm vitest run packages/code/tests/the-host-files-are-generated.test.ts -u, and commit the file`,
+    );
   });
 
   it('accuses a hooks file edited by hand', () => {

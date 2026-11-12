@@ -153,7 +153,10 @@ describe('what this repository publishes cites only what this repository publish
     const accused = PUBLISHED.flatMap((where) =>
       citationsIn(textOf(where)).map(({ line, spelling }) => `${where}:${line}: ${spelling}`),
     );
-    expect(accused).toEqual([]);
+    expect(
+      accused,
+      'Take each of these citations (file:line: spelling) out of the published source: it names a path a stranger cannot open; state the fact inline instead',
+    ).toEqual([]);
   });
 
   /**

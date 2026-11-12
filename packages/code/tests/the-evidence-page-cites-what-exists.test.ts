@@ -56,7 +56,10 @@ describe('the evidence page cites only what exists', () => {
 
   it('names a file of the tree for every claim it says a test holds', () => {
     const files = tracked();
-    expect(cited.filter((file) => !files.has(file))).toEqual([]);
+    expect(
+      cited.filter((file) => !files.has(file)),
+      `${PAGE}: point each of these at a file that exists in the tree, or remove the row`,
+    ).toEqual([]);
   });
 
   it('names enough files to be a table and not an empty promise', () => {
@@ -81,12 +84,18 @@ describe('the evidence page cites only what exists', () => {
     // and the existence check above has nothing to look at on it.
     const held = text.split('\n').filter((line) => /^\|[^|]*\|\s*a test\s*\|/.test(line));
     expect(held.length).toBeGreaterThan(5);
-    expect(held.filter((line) => filesCitedBy(PAGE, line).length === 0)).toEqual([]);
+    expect(
+      held.filter((line) => filesCitedBy(PAGE, line).length === 0),
+      `${PAGE}: name the test file on each of these rows that say a test holds the claim`,
+    ).toEqual([]);
   });
 
   it('gives each claim it does not hold the words "not held yet", with no file beside them', () => {
     const notHeld = text.split('\n').filter((line) => line.includes('not held yet'));
     expect(notHeld.length).toBeGreaterThan(5);
-    expect(notHeld.filter((line) => filesCitedBy(PAGE, line).length > 0)).toEqual([]);
+    expect(
+      notHeld.filter((line) => filesCitedBy(PAGE, line).length > 0),
+      `${PAGE}: take the file off each of these rows that say "not held yet"`,
+    ).toEqual([]);
   });
 });

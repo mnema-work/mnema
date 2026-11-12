@@ -268,7 +268,10 @@ describe('the shell a page publishes is the shell that runs', () => {
     const invented = published
       .filter((one) => resolve(program, one.words).strays.length > 0)
       .map((one) => `${where(one)}: not a verb: ${resolve(program, one.words).strays.join(' ')}`);
-    expect(invented).toEqual([]);
+    expect(
+      invented,
+      'Fix each page named (page:line): type a verb that mnema has (see mnema --help), or take the line out',
+    ).toEqual([]);
   });
 
   it('every flag a page publishes is a flag the command it is typed at has', () => {
@@ -278,7 +281,10 @@ describe('the shell a page publishes is the shell that runs', () => {
         if (!option.known) invented.push(`${where(one)}: no such flag: ${option.flag}`);
       }
     }
-    expect(invented).toEqual([]);
+    expect(
+      invented,
+      'Fix each page named (page:line): use a flag the command has (see mnema <verb> --help), or take it out',
+    ).toEqual([]);
   });
 });
 
@@ -295,7 +301,10 @@ describe('the sweep knows what it swept', () => {
       read: found,
       declared: PAGES,
     });
-    expect(found).toEqual(pages);
+    expect(
+      found,
+      'PAGES: add a row for each page that now publishes commands, and remove the row of each that no longer does',
+    ).toEqual(pages);
   });
 
   it('reads blocks by what they carry and not by what they are labelled', () => {
@@ -324,7 +333,10 @@ describe('what it does not check is written down', () => {
     const mute = Object.entries(NOT_CHECKED)
       .filter(([, why]) => why.length < 80)
       .map(([what]) => what);
-    expect(mute).toEqual([]);
+    expect(
+      mute,
+      'Write why, in at least 80 characters, for each of these exemptions in NOT_CHECKED',
+    ).toEqual([]);
   });
 
   it('the exemptions are about classes the corpus really has', () => {
@@ -332,13 +344,16 @@ describe('what it does not check is written down', () => {
     // that exists on a page today; if one stops existing, this case says which.
     const everyLine = Object.keys(PAGES).flatMap((page) => read(page).split('\n'));
     const carries = (needle: string): boolean => everyLine.some((line) => line.includes(needle));
-    expect({
-      ANOTHER_PROGRAM: carries('pnpm add -g @mnema/code'),
-      A_VALUE_IS_NOT_A_NAME: carries('--which release-bot'),
-      A_GATE_DECIDES_THE_MOVE: carries('mnema task move submit'),
-      THE_SHELL_IS_NOT_OURS: carries('mnema brief > MNEMA.md'),
-      THE_OUTPUT_IS_A_SECOND_RULE: carries('#> '),
-    }).toEqual({
+    expect(
+      {
+        ANOTHER_PROGRAM: carries('pnpm add -g @mnema/code'),
+        A_VALUE_IS_NOT_A_NAME: carries('--which release-bot'),
+        A_GATE_DECIDES_THE_MOVE: carries('mnema task move submit'),
+        THE_SHELL_IS_NOT_OURS: carries('mnema brief > MNEMA.md'),
+        THE_OUTPUT_IS_A_SECOND_RULE: carries('#> '),
+      },
+      'NOT_CHECKED: remove the exemptions whose value is false below; no page carries that line any more',
+    ).toEqual({
       ANOTHER_PROGRAM: true,
       A_VALUE_IS_NOT_A_NAME: true,
       A_GATE_DECIDES_THE_MOVE: true,

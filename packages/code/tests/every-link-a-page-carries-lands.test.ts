@@ -347,8 +347,14 @@ function relativeOnPackagePages(
 describe('every link a page carries lands', () => {
   it.each(PUBLISHED)('says every destination of packages/%s/README.md by a full address', (dir) => {
     const page = `packages/${dir}/README.md`;
-    expect(relativeOnPackagePages(corpus.read, [page])).toEqual([]);
-    expect(repoOf(dir)).toBe(corpus.repo);
+    expect(
+      relativeOnPackagePages(corpus.read, [page]),
+      `${page}: write each of these destinations as a full address of the repository, since npm shows this page away from the repository`,
+    ).toEqual([]);
+    expect(
+      repoOf(dir),
+      `packages/${dir}/package.json: its repository must be the one the pages link to`,
+    ).toBe(corpus.repo);
     // NON-VACUITY. The page does carry addresses of the repository, and they are asked.
     const own = destinationsOf(corpus.read(page)).filter(
       ({ dest }) => ownAddress(dest, corpus.repo) !== null,
@@ -358,7 +364,10 @@ describe('every link a page carries lands', () => {
 
   it('lands every relative link on a tracked path, and every anchor on a heading', () => {
     const found = unlanded(corpus);
-    expect(found.map((one) => one.why)).toEqual([]);
+    expect(
+      found.map((one) => one.why),
+      'Fix each of these links (the page and line are named): point it at a tracked path and an existing heading, or remove it',
+    ).toEqual([]);
   });
 
   it('reaches the pages, and asks the anchors a reader follows', () => {

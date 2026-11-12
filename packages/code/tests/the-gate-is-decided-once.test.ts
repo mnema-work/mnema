@@ -19,6 +19,7 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { codeOnly, sourceFiles } from './support/reading-source.js';
+import { theDifference } from './support/the-difference.js';
 
 const REPO = fileURLToPath(new URL('../../../', import.meta.url));
 const PACKAGES = join(REPO, 'packages');
@@ -49,25 +50,39 @@ function callersOf(name: string): string[] {
     .sort();
 }
 
+/** The assertion of a case: the callers of `name` are exactly `only`, and the red says whose call to move. */
+function expectOnlyCallers(name: string, only: string[]): void {
+  const found = callersOf(name);
+  expect(
+    found,
+    theDifference(
+      found,
+      only,
+      `Stop calling ${name}() from these files, and go through the gate module`,
+      `${name}() is no longer called from these files: update the expected callers`,
+    ),
+  ).toEqual(only);
+}
+
 describe('the gate is decided once', () => {
   it('reaches the derivation and composes the notice in one module only', () => {
     // The derivation's own module defines it; the gate's module is the one caller. A door that
     // called either directly is red here by its path.
-    expect(callersOf('readAsksForAPersonAt')).toEqual(['packages/code/src/edit-asks-a-person.ts']);
-    expect(callersOf('editAsksNotice')).toEqual(['packages/code/src/edit-asks-a-person.ts']);
+    expectOnlyCallers('readAsksForAPersonAt', ['packages/code/src/edit-asks-a-person.ts']);
+    expectOnlyCallers('editAsksNotice', ['packages/code/src/edit-asks-a-person.ts']);
     // And the refusal's, one grade up: only the module that decides what a write meets reads
     // which rules refuse and composes what a refusal says.
-    expect(callersOf('readRefusesAWriteAt')).toEqual(['packages/code/src/what-a-write-meets.ts']);
-    expect(callersOf('editRefusesNotice')).toEqual(['packages/code/src/what-a-write-meets.ts']);
+    expectOnlyCallers('readRefusesAWriteAt', ['packages/code/src/what-a-write-meets.ts']);
+    expectOnlyCallers('editRefusesNotice', ['packages/code/src/what-a-write-meets.ts']);
   });
 
   it('is asked by every door, and by nothing else', () => {
     // ONE CALLER, since every door answers a refusal too. `whatAWriteMeets` decides both grades,
     // refusal over asking, and calls this for the asking; a door that called it directly would
     // ask about a write a rule refuses.
-    expect(callersOf('whatAWriteAsks')).toEqual(['packages/code/src/what-a-write-meets.ts']);
+    expectOnlyCallers('whatAWriteAsks', ['packages/code/src/what-a-write-meets.ts']);
     // And the doors are the ones that decide what a write meets: the MCP tool and the command.
-    expect(callersOf('whatAWriteMeets')).toEqual([
+    expectOnlyCallers('whatAWriteMeets', [
       'packages/code/src/commands/before-a-write.ts',
       'packages/code/src/mcp/tools.ts',
     ]);

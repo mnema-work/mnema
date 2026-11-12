@@ -315,6 +315,7 @@ describe('the budget is written in ONE place', () => {
       productionFiles()
         .filter((file) => BUDGET_LITERAL.test(file.text))
         .map((file) => file.path),
+      'Write the one-read budget only in packages/context/src/context/skills.ts: import it where these files need it',
     ).toEqual([join('context', 'src', 'context', 'skills.ts')]);
   });
 

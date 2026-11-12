@@ -87,6 +87,7 @@ import {
   read,
   TYPESCRIPT_FENCES,
 } from './support/published-examples.js';
+import { theDifference } from './support/the-difference.js';
 
 /**
  * What the sandbox project changes about `tsconfig.base.json`, and why each one. Everything
@@ -298,7 +299,10 @@ afterAll(() => {
 describe('the example a package publishes type-checks against what the package publishes', () => {
   for (const example of PUBLISHED_EXAMPLES) {
     it(`${example.specifier}: the page's block compiles against the built declarations`, () => {
-      expect(about(sourceName(example, '')).map((one) => `TS${one.code}: ${one.text}`)).toEqual([]);
+      expect(
+        about(sourceName(example, '')).map((one) => `TS${one.code}: ${one.text}`),
+        `${example.readme}: fix the type errors named in its ts block (and in the case that runs it, if they are the same text); the block is compiled against the built declarations of ${example.specifier}`,
+      ).toEqual([]);
     });
 
     it(`${example.specifier}: the preamble declares every name the page needs, and no other`, () => {
@@ -313,8 +317,14 @@ describe('the example a package publishes type-checks against what the package p
         // that the preamble happens to be hiding: named rather than counted away.
         else unaccounted.push(`TS${one.code}: ${one.text}`);
       }
-      expect(unaccounted).toEqual([]);
-      expect([...names].sort()).toEqual(declaredNames(example.pagePreamble));
+      expect(
+        unaccounted,
+        `${example.readme}: fix each error named in the ts block; it is not a name the page leaves undeclared`,
+      ).toEqual([]);
+      expect(
+        [...names].sort(),
+        `${example.specifier}: declare in its pagePreamble exactly the names the page leaves undeclared, no more and no fewer`,
+      ).toEqual(declaredNames(example.pagePreamble));
     });
   }
 });
@@ -332,14 +342,20 @@ describe('the preamble cannot accept anything', () => {
     const reaching = PUBLISHED_EXAMPLES.flatMap((example) =>
       reachesForSilence(example.pagePreamble).map((why) => `${example.specifier}: ${why}`),
     );
-    expect(reaching).toEqual([]);
+    expect(
+      reaching,
+      'Give each of these declarations in pagePreamble a real type instead of any, never or a cast',
+    ).toEqual([]);
   });
 
   it('every preamble says, in prose, why the page elides what it declares', () => {
     const silent = PUBLISHED_EXAMPLES.filter(
       (example) => example.pagePreamble.length > 0 && example.whyPreamble.length < 40,
     ).map((example) => example.specifier);
-    expect(silent).toEqual([]);
+    expect(
+      silent,
+      'Write in whyPreamble, in at least 40 characters, why the page elides what these preambles declare',
+    ).toEqual([]);
   });
 });
 
@@ -348,17 +364,26 @@ describe('the check is not laxer than the repository', () => {
     const mute = Object.entries(RELAXED)
       .filter(([, relaxation]) => relaxation.why.length < 20)
       .map(([key]) => key);
-    expect(mute).toEqual([]);
+    expect(
+      mute,
+      'Write why, in at least 20 characters, for each of these entries of RELAXED',
+    ).toEqual([]);
   });
 
   it('no relaxation touches strictness', () => {
-    expect(Object.keys(RELAXED).filter((key) => STRICTNESS.includes(key))).toEqual([]);
+    expect(
+      Object.keys(RELAXED).filter((key) => STRICTNESS.includes(key)),
+      'Remove these keys from RELAXED: the check may not be laxer than the repository about strictness',
+    ).toEqual([]);
   });
 
   it('the strictness it inherits is the file the repository builds with', () => {
     // The sandbox extends this by absolute path; if it ever stopped existing, every block
     // would be compiled under `tsc`'s defaults and this guard would go soft in silence.
-    expect(existsSync(join(ROOT, 'tsconfig.base.json'))).toBe(true);
+    expect(
+      existsSync(join(ROOT, 'tsconfig.base.json')),
+      'tsconfig.base.json is missing: the sandbox extends it, so restore it',
+    ).toBe(true);
     const base = JSON.parse(read('tsconfig.base.json')) as {
       compilerOptions: {
         strict?: boolean;
@@ -366,9 +391,15 @@ describe('the check is not laxer than the repository', () => {
         exactOptionalPropertyTypes?: boolean;
       };
     };
-    expect(base.compilerOptions.strict).toBe(true);
-    expect(base.compilerOptions.noUncheckedIndexedAccess).toBe(true);
-    expect(base.compilerOptions.exactOptionalPropertyTypes).toBe(true);
+    expect(base.compilerOptions.strict, 'tsconfig.base.json: set strict to true').toBe(true);
+    expect(
+      base.compilerOptions.noUncheckedIndexedAccess,
+      'tsconfig.base.json: set noUncheckedIndexedAccess to true',
+    ).toBe(true);
+    expect(
+      base.compilerOptions.exactOptionalPropertyTypes,
+      'tsconfig.base.json: set exactOptionalPropertyTypes to true',
+    ).toBe(true);
   });
 });
 
@@ -390,7 +421,10 @@ describe('the roster is every TYPESCRIPT block this workspace publishes', () => 
       };
       return !existsSync(join(ROOT, 'packages', example.pkg, manifest.types ?? 'dist/index.d.ts'));
     }).map((example) => example.specifier);
-    expect(missing).toEqual([]);
+    expect(
+      missing,
+      'Run pnpm build: the declarations of these packages are missing from dist',
+    ).toEqual([]);
   });
 
   it('every tracked file publishing a TypeScript block is a page this guard reads', () => {
@@ -404,7 +438,16 @@ describe('the roster is every TYPESCRIPT block this workspace publishes', () => 
       .filter((file) => file.endsWith('.md'))
       .filter((file) => publishesTypeScript(read(file)))
       .sort();
-    expect(publishing).toEqual(PUBLISHED_EXAMPLES.map((example) => example.readme).sort());
+    const rostered = PUBLISHED_EXAMPLES.map((example) => example.readme).sort();
+    expect(
+      publishing,
+      theDifference(
+        publishing,
+        rostered,
+        'Add to PUBLISHED_EXAMPLES, with the case that runs it (the page publishes a ts block)',
+        'Remove from PUBLISHED_EXAMPLES (the page no longer publishes a ts block)',
+      ),
+    ).toEqual(rostered);
   });
 
   it('every file the sandbox was given was compiled, and nothing else was', () => {

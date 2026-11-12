@@ -101,7 +101,10 @@ describe('the page of each verb', () => {
     'mnema %s is what its help generates',
     async (_, block) => {
       const path = join(CLI, verbFile(block.words));
-      await expect(verbPage(block, blocks, groups, committed(path))).toMatchFileSnapshot(path);
+      await expect(verbPage(block, blocks, groups, committed(path))).toMatchFileSnapshot(
+        path,
+        `${path} is generated from the help: run pnpm vitest run packages/code/tests/the-reference-pages-are-generated.test.ts -u, and commit the page`,
+      );
     },
   );
 
@@ -127,7 +130,10 @@ describe('the page of each verb', () => {
 
   it('is listed by the index, once, in the group of its verb', async () => {
     const index = commandsIndex(blocks, groups, committed(COMMANDS));
-    await expect(index).toMatchFileSnapshot(COMMANDS);
+    await expect(index).toMatchFileSnapshot(
+      COMMANDS,
+      `${COMMANDS} is generated from the help: run pnpm vitest run packages/code/tests/the-reference-pages-are-generated.test.ts -u, and commit the page`,
+    );
     expect(linkedBy(index, 'cli')).toEqual(pagesIn(CLI));
     const called = index.split('## Called by a host')[1] ?? '';
     expect(called).toContain('](cli/before-a-write.md)');
@@ -146,7 +152,10 @@ describe('the page of each MCP tool', () => {
   it('is what the served tool generates', async () => {
     for (const tool of tools) {
       const path = join(MCP, toolFile(tool.name));
-      await expect(toolPage(tool, committed(path))).toMatchFileSnapshot(path);
+      await expect(toolPage(tool, committed(path))).toMatchFileSnapshot(
+        path,
+        `${path} is generated from the tool: run pnpm vitest run packages/code/tests/the-reference-pages-are-generated.test.ts -u, and commit the page`,
+      );
     }
   });
 
@@ -164,7 +173,10 @@ describe('the page of each MCP tool', () => {
 
   it('is listed by the index, once, in the family its annotations put it in', async () => {
     const index = toolsIndex(tools, committed(TOOLS));
-    await expect(index).toMatchFileSnapshot(TOOLS);
+    await expect(index).toMatchFileSnapshot(
+      TOOLS,
+      `${TOOLS} is generated from the tools: run pnpm vitest run packages/code/tests/the-reference-pages-are-generated.test.ts -u, and commit the page`,
+    );
     expect(linkedBy(index, 'mcp')).toEqual(pagesIn(MCP));
     const [reads, writes] = (index.split('## Read only')[1] ?? '').split('## May write');
     expect(reads).toContain('](mcp/bootstrap.md)');

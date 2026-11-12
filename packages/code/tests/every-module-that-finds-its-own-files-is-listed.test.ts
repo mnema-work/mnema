@@ -19,6 +19,7 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { codeOnly, sourceFiles } from './support/reading-source.js';
+import { theDifference } from './support/the-difference.js';
 
 const PACKAGE = fileURLToPath(new URL('../', import.meta.url));
 const PACKAGES = join(PACKAGE, '..');
@@ -62,10 +63,23 @@ function readers(): string[] {
 
 describe('the modules the bundle carries that find their own files', () => {
   it('reads the workspace packages the CLI is built from', () => {
-    expect(theBundledPackages()).toEqual(['chain', 'code', 'context', 'core', 'stacks']);
+    expect(
+      theBundledPackages(),
+      'The packages the CLI is built from changed: update this list, and check build/the-cli-bundle.mjs still carries them',
+    ).toEqual(['chain', 'code', 'context', 'core', 'stacks']);
   });
 
   it('are each listed with why they hold in the bundle, and the list names no other', () => {
-    expect(readers()).toEqual(Object.keys(LISTED).sort());
+    const found = readers();
+    const listed = Object.keys(LISTED).sort();
+    expect(
+      found,
+      theDifference(
+        found,
+        listed,
+        'Add to LISTED, with why it holds in the bundle, or stop it reading its own place',
+        'Remove from LISTED (the file no longer reads its own place, or is gone)',
+      ),
+    ).toEqual(listed);
   });
 });

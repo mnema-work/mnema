@@ -77,7 +77,10 @@ export function generatedPage(committed: string): string {
 describe('the list of recognized formats on the page', () => {
   it('is what the door recognizes', async () => {
     const committed = readFileSync(join(ROOT, PAGE), 'utf-8');
-    await expect(generatedPage(committed)).toMatchFileSnapshot(join(ROOT, PAGE));
+    await expect(generatedPage(committed)).toMatchFileSnapshot(
+      join(ROOT, PAGE),
+      `${PAGE} is generated from the code: run pnpm vitest run packages/code/tests/the-secret-classes-page-is-generated.test.ts -u, and commit the page`,
+    );
   });
 
   it('accuses a page that dropped a class, and keeps the prose around it', () => {
