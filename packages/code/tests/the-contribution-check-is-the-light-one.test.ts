@@ -43,7 +43,7 @@ const plan = (): Step[] => {
 
 /** A step's command as the script would start it, with a filter that keeps it small. */
 const run = (step: Step, filter: string) => {
-  const env = { ...process.env, NO_COLOR: '1' };
+  const env: NodeJS.ProcessEnv = { ...process.env, NO_COLOR: '1' };
   for (const key of Object.keys(env)) {
     if (key.startsWith('VITEST') || key === 'FORCE_COLOR') delete env[key];
   }
