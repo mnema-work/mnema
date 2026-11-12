@@ -27,7 +27,7 @@ import { fieldNature, leafKey, type ScreenedKey, screenedFieldsOf } from './fiel
 import { screenContent } from './screen.js';
 import { type SecretClass, secretPlaceholder } from './secrets.js';
 
-const SEED = Number(process.env.FC_SEED ?? 20_261_007);
+const SEED = Number(process.env.FC_SEED);
 
 const UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const LOWER = 'abcdefghijklmnopqrstuvwxyz';
