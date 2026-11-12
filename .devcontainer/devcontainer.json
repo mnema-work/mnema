@@ -1,0 +1,9 @@
+{
+  "name": "mnema",
+  "image": "mcr.microsoft.com/devcontainers/base:3.0.12-ubuntu24.04",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1.7.1": { "version": "24.15.0", "pnpmVersion": "none" },
+    "ghcr.io/devcontainers/features/python:1.7.1": { "version": "3.12" }
+  },
+  "postCreateCommand": "corepack enable && pnpm install --frozen-lockfile"
+}
