@@ -32,7 +32,6 @@ describe('what a guard checks, read from the top of its file', () => {
   it('takes the WHAT IS CHECKED paragraph, with the ones after it up to the next heading in capitals', () => {
     const file = [
       '// @reads-the-tree',
-      "import { it } from 'vitest';",
       '/**',
       ' * THE TITLE. Why this exists.',
       ' *',
@@ -45,6 +44,7 @@ describe('what a guard checks, read from the top of its file', () => {
       ' *',
       ' * WHAT IT DOES NOT DO. Something else.',
       ' */',
+      "import { it } from 'vitest';",
     ].join('\n');
     expect(whatIsChecked(file)).toBe(
       'WHAT IS CHECKED. Every page names its\ncommand:\n  - one;\n  - two.\n\nA second paragraph that belongs to the same thing.',
@@ -60,10 +60,13 @@ describe('what a guard checks, read from the top of its file', () => {
     expect(whatIsChecked(title)).toBe('THE TITLE OF IT.\n\nWhat it holds, in a line.');
   });
 
-  it('finds a block that comes after the imports, and says nothing for a file without one', () => {
-    const late =
-      "// @reads-the-tree\nimport a from 'a';\n\n/**\n * Holds the boundary of the package, said at length here for a reader.\n */\n";
-    expect(whatIsChecked(late)).toContain('Holds the boundary');
+  it("takes only the comment above the imports: one below them is a constant's, and no guard's", () => {
+    const above =
+      "// @reads-the-tree\n/**\n * Holds the boundary of the package, said at length here for a reader.\n */\nimport a from 'a';\n";
+    expect(whatIsChecked(above)).toContain('Holds the boundary');
+    const below =
+      "// @reads-the-tree\nimport a from 'a';\n\n/**\n * The built CLI: the same file the bin points at, said at length.\n */\nconst CLI = a;\n";
+    expect(whatIsChecked(below)).toBeNull();
     expect(whatIsChecked('// @reads-the-tree\nconst a = 1;\n')).toBeNull();
     expect(whatIsChecked('/**\n *\n */\n')).toBeNull();
     // A comment on a helper, after code, is not the guard's own.
@@ -72,6 +75,16 @@ describe('what a guard checks, read from the top of its file', () => {
         '// @reads-the-tree\nconst a = 1;\n/**\n * Documents the helper below it, at length.\n */\n',
       ),
     ).toBeNull();
+  });
+
+  it('keeps a title and what it introduces, and does not pull in a paragraph that opens with a heading', () => {
+    const heading = '/**\n * THE TITLE OF IT.\n *\n * WHERE THIS COMES FROM. A history.\n */\n';
+    expect(whatIsChecked(heading)).toBe('THE TITLE OF IT.');
+    const list =
+      '/**\n * What this holds, said at length so it is not a title and reads as a rule of the repository:\n *\n *   - one;\n *   - two.\n *\n * SOMETHING ELSE. More.\n */\n';
+    expect(whatIsChecked(list)).toBe(
+      'What this holds, said at length so it is not a title and reads as a rule of the repository:\n\n  - one;\n  - two.',
+    );
   });
 
   it('keeps a paragraph to the size the report is read with', () => {

@@ -1,4 +1,33 @@
 // @reads-the-tree
+/**
+ * The invariant this file exists for: EVERY append asks whether a READ would
+ * accept the event, and no write path can skip the asking.
+ *
+ * The defect it closes was the widest one this codebase has had. The catalog's
+ * shape rules lived only in the parser, which runs on the way OUT, so a write that
+ * built an event the parser forbids (a task with an empty title, a link with an
+ * empty relation, a session with an empty goal) was appended, SIGNED, and reported
+ * as a success. Every later read of that project then failed: not the one record,
+ * the WHOLE tree, because a replay refuses the tail rather than the line. Eighteen
+ * commands of the shipped CLI could do it with one empty argument, and the record is
+ * append-only, so nothing takes the line back out.
+ *
+ * So the tests come in two halves, and neither is sufficient alone:
+ *
+ *   1. THE SOURCE GUARD. No module of the core may reach `writer.append` on its
+ *      own: the door is the only way through. This is the half that catches a
+ *      write path added TOMORROW, which no behavioural test can, because a test
+ *      cannot drive an operation nobody has written yet.
+ *   2. THE BEHAVIOURAL SWEEP. Every operation that CAN be handed an empty value is
+ *      handed one, in every field that reaches a required event field, and must come
+ *      back with a typed refusal, never a throw, having appended nothing. And the
+ *      set of operations swept is checked against the writing surface's own exports,
+ *      so a new export must be classified or the test fails.
+ *
+ * The assertion is always the same pair: a REFUSAL WITH A CODE, and the chain still
+ * reads. Not "it did not crash": the point of the door is that the caller is told
+ * what to fix, and that the record it did not enter is still openable.
+ */
 import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
@@ -43,36 +72,6 @@ import { authorizeTailPrune } from './prune-operations.js';
 import { relinkTails } from './relink-operations.js';
 import { endRun, prepareRun, startRun } from './session-operations.js';
 import { createSkill, recordConsultation } from './skill-operations.js';
-
-/**
- * The invariant this file exists for: EVERY append asks whether a READ would
- * accept the event, and no write path can skip the asking.
- *
- * The defect it closes was the widest one this codebase has had. The catalog's
- * shape rules lived only in the parser, which runs on the way OUT, so a write that
- * built an event the parser forbids (a task with an empty title, a link with an
- * empty relation, a session with an empty goal) was appended, SIGNED, and reported
- * as a success. Every later read of that project then failed: not the one record,
- * the WHOLE tree, because a replay refuses the tail rather than the line. Eighteen
- * commands of the shipped CLI could do it with one empty argument, and the record is
- * append-only, so nothing takes the line back out.
- *
- * So the tests come in two halves, and neither is sufficient alone:
- *
- *   1. THE SOURCE GUARD. No module of the core may reach `writer.append` on its
- *      own: the door is the only way through. This is the half that catches a
- *      write path added TOMORROW, which no behavioural test can, because a test
- *      cannot drive an operation nobody has written yet.
- *   2. THE BEHAVIOURAL SWEEP. Every operation that CAN be handed an empty value is
- *      handed one, in every field that reaches a required event field, and must come
- *      back with a typed refusal, never a throw, having appended nothing. And the
- *      set of operations swept is checked against the writing surface's own exports,
- *      so a new export must be classified or the test fails.
- *
- * The assertion is always the same pair: a REFUSAL WITH A CODE, and the chain still
- * reads. Not "it did not crash": the point of the door is that the caller is told
- * what to fix, and that the record it did not enter is still openable.
- */
 
 const upcasters = catalogUpcasters();
 const HERE = dirname(fileURLToPath(import.meta.url));

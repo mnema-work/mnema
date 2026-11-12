@@ -79,7 +79,7 @@ const REPOSITORY = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
  *   verdicts: Verdict[],
  *   tests: FailedTest[],
  *   testsLeftOut: number,
- *   guards: Guard[],
+ *   guards?: Guard[],
  *   lint: Lint | null,
  * }} Report
  */
@@ -139,11 +139,10 @@ const isList = (value, max, each) =>
  * @returns {report is Report}
  */
 function isReport(report) {
-  if (
-    !hasKeys(report, ['version', 'checks', 'verdicts', 'tests', 'testsLeftOut', 'guards', 'lint'])
-  ) {
-    return false;
-  }
+  // `guards` may be absent (a report from a run that predates the field); present, it is held to its shape.
+  const keys = ['version', 'checks', 'verdicts', 'tests', 'testsLeftOut', 'lint'];
+  const withGuards = isObject(report) && Object.hasOwn(report, 'guards');
+  if (!hasKeys(report, withGuards ? [...keys, 'guards'] : keys)) return false;
   const shape = [
     report.version === 1,
     isList(
@@ -180,11 +179,13 @@ function isReport(report) {
         isText(one.name, LIMITS.name) &&
         isText(one.message, LIMITS.message),
     ),
-    isList(
-      report.guards,
-      LIMITS.guards,
-      (one) => hasKeys(one, ['file', 'says']) && isPath(one.file) && isText(one.says, LIMITS.says),
-    ),
+    report.guards === undefined ||
+      isList(
+        report.guards,
+        LIMITS.guards,
+        (one) =>
+          hasKeys(one, ['file', 'says']) && isPath(one.file) && isText(one.says, LIMITS.says),
+      ),
     Number.isSafeInteger(report.testsLeftOut) && /** @type {number} */ (report.testsLeftOut) >= 0,
     report.lint === null ||
       (hasKeys(report.lint, ['files', 'diff', 'diffCut']) &&
@@ -281,7 +282,7 @@ export function buildComment(input) {
   const full = compose(input, { diff: true, tests: LIMITS.tests, guards: LIMITS.guards });
   if (full.length <= MAX_COMMENT) return full;
   let tests = input.report?.tests.length ?? 0;
-  let guards = input.report?.guards.length ?? 0;
+  let guards = input.report?.guards?.length ?? 0;
   let body = compose(input, { diff: false, tests, guards });
   while (body.length > MAX_COMMENT && (tests > 0 || guards > 0)) {
     tests = Math.floor(tests / 2);
@@ -390,7 +391,7 @@ function compose(input, room) {
     out.push('To run them on your machine:', fenced(`pnpm vitest run ${files.join(' ')}`, 'sh'));
   }
 
-  const guards = report.guards.slice(0, room.guards);
+  const guards = (report.guards ?? []).slice(0, room.guards);
   if (guards.length > 0) {
     out.push(
       '',

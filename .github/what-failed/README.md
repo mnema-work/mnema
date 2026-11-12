@@ -22,7 +22,7 @@ artifact `what-failed`:
 | `checks` | the jobs of the run that failed or timed out, with the steps that failed in each |
 | `verdicts` | for each cell that ran the suite, the verdict of [`../why-it-went-red/`](../why-it-went-red/README.md) and each red case with what it says (`THE GUARD CAUGHT`, `IT DID NOT REPRODUCE ALONE`, ...) |
 | `tests` | the cases that failed in each vitest report (the suite's cells and the guards' job), with the first thing each said, stack frames and colours taken out; at most 30, and how many more |
-| `guards` | for each failed test file marked `@reads-the-tree`, the paragraph at the top of the file that says what the guard checks (`WHAT IS CHECKED`, or else its opening paragraph), read from the job's own checkout by [`../what-a-guard-checks/`](../what-a-guard-checks/header.mjs); at most 10, 1,500 characters each |
+| `guards` | for each failed test file marked `@reads-the-tree`, the paragraph at the top of the file that says what the guard checks (`WHAT IS CHECKED`, or else its opening paragraph), read from the job's own checkout by [`../what-a-guard-checks/`](../what-a-guard-checks/header.mjs); at most 10, 1,500 characters each; the reader takes a report without the field and shows no section |
 | `lint` | when a step named `Lint` failed: the files `biome check --write` changes and the diff it applies, cut at 30,000 characters |
 
 **`comment.mjs`**, in `.github/workflows/what-failed.yml`, started by GitHub on `workflow_run`

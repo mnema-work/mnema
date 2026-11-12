@@ -2,13 +2,11 @@
 /**
  * EVERY VALUE THE DOMAIN PUTS IN A SENTENCE, AND WHERE IT CAME FROM.
  *
- * Two slices before this one closed the lines the SURFACE words: the wiring's, with a
- * template tag (`a-line-of-success-is-one-line.test.ts`), and the readings', value by
- * value (`the-line-a-reading-words-is-one-line.test.ts`). Both stopped at the same wall
- * and both named it: a sentence `@mnema/chain` or `@mnema/core` wrote is handed to the
- * surface ALREADY JOINED, so no rule the surface applies can reach inside it. The
- * wiring's table carries two entries whose verdict is `elsewhere` for exactly this, and
- * the readings' slice named `core`'s two prune refusals the same way.
+ * Every value the domain packages put in a sentence goes through the one rule of the line before
+ * it reaches the surface: a sentence `@mnema/chain` or `@mnema/core` wrote is handed to the
+ * surface ALREADY JOINED, so no rule the surface applies can reach inside it. The lines the
+ * surface words itself are held by `a-line-of-success-is-one-line.test.ts` (the wiring) and
+ * `the-line-a-reading-words-is-one-line.test.ts` (the readings).
  *
  * SO THE RULE CAME DOWN, and it came down further than the debt said. `@mnema/core` is
  * where the refusals of the whole product are worded, but it cannot hold the rule:

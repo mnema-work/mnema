@@ -1,81 +1,4 @@
 // @reads-the-tree
-import { spawnSync } from 'node:child_process';
-import {
-  cpSync,
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  unlinkSync,
-  writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, relative } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import { ChainWriter, catalogUpcasters, ensureTree, verify } from '@mnema/chain';
-import {
-  chainRootForScope,
-  type DiscoveryEnv,
-  PROJECT_DIR,
-  type ResolvedTrees,
-  resolveTrees,
-  type Scope,
-} from '@mnema/core';
-import { createTask, ensureFounded, openTreeForWriting } from '@mnema/core/write';
-import { readStackFiles } from '@mnema/stacks';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { runBeforeAWrite } from '../src/commands/before-a-write.js';
-import { runCheckDeclare, runCheckRun } from '../src/commands/check.js';
-import { runDecision } from '../src/commands/decision.js';
-import { runDecisionImport } from '../src/commands/decision-import.js';
-import { runDecisionTransition } from '../src/commands/decision-transition.js';
-import { runHandoff } from '../src/commands/handoff.js';
-import { type InitRefused, type InitResult, runInit } from '../src/commands/init.js';
-import { runAgentEnroll, runCheckerEnroll, runKeyEnroll } from '../src/commands/key-enroll.js';
-import { runKeyGithub } from '../src/commands/key-github.js';
-import { runAgentRequest, runKeyRequest } from '../src/commands/key-request.js';
-import { runAgentRetire, runCheckerRetire, runKeyRevoke } from '../src/commands/key-revoke.js';
-import { runKeySigstore } from '../src/commands/key-sigstore.js';
-import { runLink } from '../src/commands/link.js';
-import { runMemory } from '../src/commands/memory.js';
-import { runObserve } from '../src/commands/observe.js';
-import { runRetract } from '../src/commands/retract.js';
-import { runRunEnd } from '../src/commands/run-end.js';
-import { runRunStart } from '../src/commands/run-start.js';
-import { runSkill } from '../src/commands/skill.js';
-import { runSkillTransition } from '../src/commands/skill-transition.js';
-import {
-  applyStackInstall,
-  planStackInstall,
-  removeInstalledStack,
-} from '../src/commands/stack-install.js';
-import { runSwitch } from '../src/commands/switch.js';
-import { runTailPrune } from '../src/commands/tail-prune.js';
-import { runTailRelink } from '../src/commands/tail-relink.js';
-import { runTask } from '../src/commands/task.js';
-import { runTaskTransition } from '../src/commands/task-transition.js';
-import { runUnlink } from '../src/commands/unlink.js';
-import { closeSession, openSession, openWrite, type Session } from '../src/mcp/session.js';
-import {
-  runCaptureMemory,
-  runCreateSkill,
-  runCreateTask,
-  runLinkKnowledge,
-  runDecisionTransition as runMcpDecisionTransition,
-  runSkillTransition as runMcpSkillTransition,
-  runTaskTransition as runMcpTaskTransition,
-  runRecordDecision,
-  runRecordHandoff,
-  runRecordObservation,
-  runRetractLink,
-  runRetractNote,
-  runRulesBeforeAnEditTool,
-  runSkillsTool,
-} from '../src/mcp/tools.js';
-import { cloneTheRecord } from './support/a-tail-from-another-machine.js';
-import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
-
 /**
  * The invariant this file exists for: EVERY path that puts an event on a tail SIGNS
  * what it wrote before it returns, and no write path can skip the signing.
@@ -158,6 +81,82 @@ import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
  *     is not re-litigated here; the ceiling under it is a different mechanism and has
  *     its own case at the end of this file.
  */
+import { spawnSync } from 'node:child_process';
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, relative } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { ChainWriter, catalogUpcasters, ensureTree, verify } from '@mnema/chain';
+import {
+  chainRootForScope,
+  type DiscoveryEnv,
+  PROJECT_DIR,
+  type ResolvedTrees,
+  resolveTrees,
+  type Scope,
+} from '@mnema/core';
+import { createTask, ensureFounded, openTreeForWriting } from '@mnema/core/write';
+import { readStackFiles } from '@mnema/stacks';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { runBeforeAWrite } from '../src/commands/before-a-write.js';
+import { runCheckDeclare, runCheckRun } from '../src/commands/check.js';
+import { runDecision } from '../src/commands/decision.js';
+import { runDecisionImport } from '../src/commands/decision-import.js';
+import { runDecisionTransition } from '../src/commands/decision-transition.js';
+import { runHandoff } from '../src/commands/handoff.js';
+import { type InitRefused, type InitResult, runInit } from '../src/commands/init.js';
+import { runAgentEnroll, runCheckerEnroll, runKeyEnroll } from '../src/commands/key-enroll.js';
+import { runKeyGithub } from '../src/commands/key-github.js';
+import { runAgentRequest, runKeyRequest } from '../src/commands/key-request.js';
+import { runAgentRetire, runCheckerRetire, runKeyRevoke } from '../src/commands/key-revoke.js';
+import { runKeySigstore } from '../src/commands/key-sigstore.js';
+import { runLink } from '../src/commands/link.js';
+import { runMemory } from '../src/commands/memory.js';
+import { runObserve } from '../src/commands/observe.js';
+import { runRetract } from '../src/commands/retract.js';
+import { runRunEnd } from '../src/commands/run-end.js';
+import { runRunStart } from '../src/commands/run-start.js';
+import { runSkill } from '../src/commands/skill.js';
+import { runSkillTransition } from '../src/commands/skill-transition.js';
+import {
+  applyStackInstall,
+  planStackInstall,
+  removeInstalledStack,
+} from '../src/commands/stack-install.js';
+import { runSwitch } from '../src/commands/switch.js';
+import { runTailPrune } from '../src/commands/tail-prune.js';
+import { runTailRelink } from '../src/commands/tail-relink.js';
+import { runTask } from '../src/commands/task.js';
+import { runTaskTransition } from '../src/commands/task-transition.js';
+import { runUnlink } from '../src/commands/unlink.js';
+import { closeSession, openSession, openWrite, type Session } from '../src/mcp/session.js';
+import {
+  runCaptureMemory,
+  runCreateSkill,
+  runCreateTask,
+  runLinkKnowledge,
+  runDecisionTransition as runMcpDecisionTransition,
+  runSkillTransition as runMcpSkillTransition,
+  runTaskTransition as runMcpTaskTransition,
+  runRecordDecision,
+  runRecordHandoff,
+  runRecordObservation,
+  runRetractLink,
+  runRetractNote,
+  runRulesBeforeAnEditTool,
+  runSkillsTool,
+} from '../src/mcp/tools.js';
+import { cloneTheRecord } from './support/a-tail-from-another-machine.js';
+import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
 
 // ---------------------------------------------------------------------------
 // Half 1: the source guard

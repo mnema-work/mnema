@@ -2,13 +2,10 @@
 /**
  * EVERY VALUE THIS LAYER PUTS ON A LINE, AND WHERE IT CAME FROM.
  *
- * The sibling slice closed the lines the WIRING words (`tests/a-line-of-success-is-one-line.test.ts`)
- * and named `presentation/` as debt, in a note that said "six of the ten modules". There
- * are twenty-four modules, and the count in the note was of the word `oneLine` rather
- * than of a call: four of the modules it counted only MENTION it in a comment. That is
- * the fourth miss of this series from the same cause: a list of addresses standing in for
- * a rule. So nothing here is found by a list. {@link sitesInSource} walks the layer and
- * {@link CLASSIFIED} answers it, in both directions.
+ * Every value the presentation layer puts on a line goes through `oneLine` where it enters the
+ * line. The lines the wiring words are held by `tests/a-line-of-success-is-one-line.test.ts`; this
+ * holds the layer that builds a line out of parts. Nothing here is found by a list:
+ * {@link sitesInSource} walks the layer and {@link CLASSIFIED} answers it, in both directions.
  *
  * THE DISCRIMINANT IS THE ORIGIN OF THE VALUE, and the question is the one the family
  * has always asked: CAN THIS HOLD A NEWLINE. A uuid, an `ADR-<n>`, an anchor, a content

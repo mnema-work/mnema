@@ -13,7 +13,9 @@
  *      after it), with the paragraphs after it up to the next one that opens with a heading in
  *      capitals;
  *   2. otherwise the opening paragraph of the comment, which is where the other guards say what
- *      they hold (and the one after it when the opening is only a title of under 100 characters).
+ *      they hold (and the one after it when the opening is only a title of under 100 characters and
+ *      the next does not open with a heading of its own).
+ * A paragraph that ends in a colon brings the one after it, which is the list it introduces.
  * It is cut at `MAX_SAID` characters. A marked file with neither is red in
  * `the-fast-guards-say-what-they-check`.
  */
@@ -35,7 +37,7 @@ const CHECKED = /^WHAT IS CHECKED\b/;
 
 /**
  * The text of the block comment that opens the file (the first that starts a line, with only the
- * mark, line comments and imports before it), one string per line, the comment leaders taken out;
+ * mark and line comments before it, so above the imports), one string per line, the comment leaders taken out;
  * `null` when the file has none.
  *
  * @param {string} source
@@ -45,12 +47,11 @@ function topBlock(source) {
   const lines = source.replace(/\r\n?/g, '\n').split('\n');
   const start = lines.findIndex((line) => line.startsWith('/**'));
   if (start === -1) return null;
-  // The top comment: nothing but the mark, line comments and imports comes before it, so a comment
-  // that documents a helper further down is not taken for the guard's own.
+  // The top comment: only the mark and line comments come before it, never an import, so the comment
+  // of a constant or a helper further down is not taken for the guard's own.
   const before = lines
     .slice(0, start)
     .join('\n')
-    .replace(/^import\b[^;]*;/gm, '')
     .replace(/^\s*\/\/.*$/gm, '');
   if (before.trim() !== '') return null;
   const body = [];
@@ -99,11 +100,24 @@ export function whatIsChecked(source) {
   const from = all.findIndex((one) => CHECKED.test(one));
   /** @type {string[]} */
   let chosen;
-  if (from === -1) chosen = all.slice(0, (all[0] ?? '').length < SHORT_TITLE ? 2 : 1);
-  else {
+  let next = from + 1;
+  if (from === -1) {
+    // A short opening is only a title, so the paragraph after it is kept too, unless that one opens
+    // with a heading of its own.
+    const second = all[1] ?? '';
+    const title = (all[0] ?? '').length < SHORT_TITLE && second !== '' && !HEADING.test(second);
+    chosen = all.slice(0, title ? 2 : 1);
+    next = chosen.length;
+  } else {
     const rest = all.slice(from + 1);
-    const next = rest.findIndex((one) => HEADING.test(one));
-    chosen = [all[from] ?? '', ...(next === -1 ? rest : rest.slice(0, next))];
+    const heading = rest.findIndex((one) => HEADING.test(one));
+    chosen = [all[from] ?? '', ...(heading === -1 ? rest : rest.slice(0, heading))];
+    next = from + chosen.length;
+  }
+  // A paragraph that ends in a colon introduces the one after it (the list), which is kept.
+  const after = all[next];
+  if ((chosen.at(-1) ?? '').endsWith(':') && after !== undefined && !HEADING.test(after)) {
+    chosen.push(after);
   }
   const said = chosen.join('\n\n').trim();
   if (said === '') return null;

@@ -1,8 +1,4 @@
 // @reads-the-tree
-import { readdirSync, readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
-
 /**
  * The context package is a READ-only layer. It reads the proven record (the core's
  * projections and its gate) and composes context from it: it never emits an
@@ -30,6 +26,10 @@ import { describe, expect, it } from 'vitest';
  * The `.append(` guard below is a third, independent net for a writer obtained
  * some other way (passed in as a parameter, say).
  */
+import { readdirSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+
 describe('@mnema/context boundaries', () => {
   const manifest = JSON.parse(
     readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf-8'),

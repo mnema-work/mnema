@@ -158,21 +158,41 @@ function sayWhatTheFailedGuardsCheck(reportPath) {
   }
 }
 
+/**
+ * RUN ONE STEP. The guards step also writes vitest's JSON report to a file of its own, so that a red
+ * guard can be explained; the flags that do it are in the line this prints, and the directory the
+ * file is in is removed whatever happens.
+ *
+ * @param {string} name
+ * @param {string} command
+ * @param {string[]} args
+ */
+function runStep(name, command, args) {
+  if (name !== 'guards') {
+    console.log(`\n== ${name}: ${[command, ...args].join(' ')}`);
+    return spawnSync(command, args, { stdio: 'inherit' });
+  }
+  const scratch = mkdtempSync(join(tmpdir(), 'check-contribution-'));
+  try {
+    const report = join(scratch, 'vitest-report.json');
+    const withReport = [
+      ...args,
+      '--reporter=default',
+      '--reporter=json',
+      `--outputFile.json=${report}`,
+    ];
+    console.log(`\n== ${name}: ${[command, ...withReport].join(' ')}`);
+    const result = spawnSync(command, withReport, { stdio: 'inherit' });
+    if (result.status !== 0) sayWhatTheFailedGuardsCheck(report);
+    return result;
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+}
+
 const ran = [];
 for (const [name, command, args] of steps) {
-  console.log(`\n== ${name}: ${[command, ...args].join(' ')}`);
-  const guards = name === 'guards';
-  const scratch = mkdtempSync(join(tmpdir(), 'check-contribution-'));
-  const report = join(scratch, 'vitest-report.json');
-  const result = spawnSync(
-    command,
-    guards
-      ? [...args, '--reporter=default', '--reporter=json', `--outputFile.json=${report}`]
-      : args,
-    { stdio: 'inherit' },
-  );
-  if (guards && result.status !== 0) sayWhatTheFailedGuardsCheck(report);
-  rmSync(scratch, { recursive: true, force: true });
+  const result = runStep(name, command, args);
   if (result.status !== 0) {
     console.error(`\nFailed at "${name}". Fix it and run pnpm check:contribution again.`);
     process.exit(result.status ?? 1);

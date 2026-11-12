@@ -199,7 +199,7 @@ describe('the workflow that comments runs nothing of the fork', () => {
 
   it('imports nothing of the repository, so what it runs is the one file checked out from the default branch', () => {
     const source = readFileSync(join(ROOT, '.github/what-failed/comment.mjs'), 'utf-8');
-    const from = [...source.matchAll(/^import .* from '([^']+)'/gm)].map((m) => m[1]);
+    const from = [...source.matchAll(/^import[\s\S]*?from '([^']+)'/gm)].map((m) => m[1]);
     expect(from.every((one) => one?.startsWith('node:'))).toBe(true);
   });
 

@@ -118,7 +118,7 @@ describe('the report is read as data', () => {
     expect(read({ ...plainReport(), version: 2 }).ok).toBe(false);
   });
 
-  it('refuses a guard paragraph over its limit, a guard path that climbs out, too many guards, and a field it does not know', () => {
+  it('refuses a guard paragraph over its limit, a guard path that climbs out, too many guards, and a field it does not know; takes a report without guards', () => {
     const guard = { file: 'packages/code/tests/a.test.ts', says: 'x' };
     const over = { ...plainReport(), guards: [{ ...guard, says: 'x'.repeat(1501) }] };
     expect(read(over).ok).toBe(false);
@@ -132,7 +132,17 @@ describe('the report is read as data', () => {
     ).toBe(false);
     const without: Record<string, unknown> = plainReport();
     delete without.guards;
-    expect(read(without).ok).toBe(false);
+    expect(read(without).ok).toBe(true);
+    expect(
+      buildComment({
+        conclusion: 'failure',
+        report: (read(without) as { report: never }).report,
+        sha: SHA,
+        run: RUN,
+        contributor: { login: 'x', firstTime: false },
+        repository: REPO,
+      }),
+    ).not.toContain('What each guard that failed checks');
   });
 });
 
@@ -266,6 +276,35 @@ describe('the comment a stranger cannot write into', () => {
     expect(body).toContain('pnpm exec biome check --write packages/code/src/a.ts');
     expect(body).toContain(RUN);
     expect(body).toContain('a1b2c3d');
+  });
+
+  it('cuts the guards with the tests when a comment is over the size GitHub takes', () => {
+    const big = plainReport();
+    big.tests = Array.from({ length: 30 }, (_, n) => ({
+      file: 'packages/code/tests/a.test.ts',
+      name: `case ${n} ${'n'.repeat(480)}`,
+      message: 'm'.repeat(2000),
+    }));
+    big.guards = Array.from({ length: 10 }, (_, n) => ({
+      file: `packages/code/tests/guard-${n}.test.ts`,
+      says: `WHAT IS CHECKED. ${'g'.repeat(1480)}`,
+    }));
+    const got = read(big);
+    if (!got.ok) throw new Error(got.why);
+    const input = {
+      conclusion: 'failure',
+      report: got.report,
+      sha: SHA,
+      run: RUN,
+      contributor: { login: 'x', firstTime: false },
+      repository: REPO,
+    };
+    const long = buildComment(input);
+    expect(long.length).toBeLessThanOrEqual(60_000);
+    const shown = (long.match(/\/blob\/[0-9a-f]{40}\/packages\/code\/tests\/guard-/g) ?? []).length;
+    expect(shown).toBeGreaterThan(0);
+    expect(shown).toBeLessThan(10);
+    outsideFences(long);
   });
 
   it('cuts a comment that would pass the size GitHub takes, dropping the diff first', () => {

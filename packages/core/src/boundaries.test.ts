@@ -1,9 +1,4 @@
 // @reads-the-tree
-import { readdirSync, readFileSync } from 'node:fs';
-import { dirname, relative, resolve, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
-
 /**
  * The core is the domain, and the dependency direction is context -> core -> chain and
  * code -> core: the surfaces above read the core, the core knows nothing of them. A core
@@ -18,6 +13,11 @@ import { describe, expect, it } from 'vitest';
  * under this package are read too: a test that reaches up is the same arrow pointing the
  * wrong way, and a `devDependency` is how it would be declared.
  */
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, relative, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+
 const PACKAGE = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const ABOVE = ['@mnema/context', '@mnema/code'] as const;
 /** This file spells every forbidden import as a sample, so the walk reads everything BUT it. */
