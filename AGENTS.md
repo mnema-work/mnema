@@ -22,7 +22,7 @@ A change that shows to a reader adds its changelog entry as its own file,
 `CHANGELOG.md`; [`CONTRIBUTING.md`](CONTRIBUTING.md) says how.
 **`pnpm check:contribution` is the check before a pull request.** It runs lint, build, typecheck, the
 guards and only the tests tied to what you changed, with one worker and a long timeout, so it finishes in a
-small sandbox. It needs `origin/main` fetched (`git fetch origin main`). CI runs the whole suite, on three
+small sandbox. It needs the project's main fetched (`git fetch origin main`; in a fork, add the project as `upstream` first); it says what to run. CI runs the whole suite, on three
 Node versions; a green here is not a green there. The
 [dev container](.devcontainer/devcontainer.json) has Node, pnpm and `python3` set up. With a
 full machine, `pnpm test` is still the whole suite.

@@ -22,7 +22,7 @@ the product is, and what it does and does not prove, is on the [front page](READ
 
 Run `pnpm check:contribution`. It is the check to run before you open a pull request: lint,
 build, typecheck, the guards below and only the tests tied to the files you changed (against the
-merge base with `origin/main`, which it asks you to `git fetch origin main` if it is missing), with
+merge base with `upstream/main`, or with `origin/main` if there is no `upstream`, which it asks you to fetch if it is missing; set `MNEMA_BASE` to compare with another ref), with
 one worker and a 30 s test timeout so it finishes on a small machine. It is a subset: CI runs
 the whole suite on Node 24.15.0, 24 and 26 and is the check that counts, so a green here can still
 be red there.

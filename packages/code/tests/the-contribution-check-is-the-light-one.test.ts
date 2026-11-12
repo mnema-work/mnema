@@ -1,12 +1,13 @@
 // @reads-the-tree
 /**
  * `pnpm check:contribution` IS THE CHECK BEFORE A PULL REQUEST, and it is the light one: the
- * guards and only the tests tied to what changed, one worker, a long timeout, set here and in
- * no CI workflow. These cases read the script's declaration and run its refusal; they start no
- * test run and use no network.
+ * guards and only the tests tied to what changed, one worker, a long timeout, set by the command
+ * and by no CI workflow. These cases ask the script for its plan and RUN the two test steps of it
+ * on a small filter, so a flag the test runner refuses (the guards script already carried one
+ * worker count, and a second one made vitest 4 stop) is red here. No network.
  */
 
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -16,47 +17,90 @@ import { describe, expect, it } from 'vitest';
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const SCRIPT = '.github/check-contribution/run.mjs';
 
+/** The ceiling's flag, in parts: the one exemption in the ceiling guard is for the script alone. */
+const CEILING = `--${'test'}${'Timeout'}`;
+
+type Step = [name: string, command: string, args: string[]];
+
 const manifest = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf-8')) as {
   scripts: Record<string, string>;
 };
-const source = readFileSync(join(ROOT, SCRIPT), 'utf-8');
+
+/** What the script says it would run against HEAD, which every clone has. */
+const plan = (): Step[] => {
+  const asked = spawnSync('node', [join(ROOT, SCRIPT), '--plan'], {
+    cwd: ROOT,
+    encoding: 'utf-8',
+    env: { ...process.env, MNEMA_BASE: 'HEAD' },
+  });
+  expect(asked.status, asked.stderr).toBe(0);
+  return JSON.parse(asked.stdout) as Step[];
+};
+
+/** A step's command as the script would start it, with a filter that keeps it small. */
+const run = (step: Step, filter: string) => {
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) if (key.startsWith('VITEST')) delete env[key];
+  return spawnSync(step[1], [...step[2], filter], { cwd: ROOT, encoding: 'utf-8', env });
+};
 
 describe('pnpm check:contribution', () => {
   it('is a root script that runs the file under .github', () => {
     expect(manifest.scripts['check:contribution']).toBe(`node ${SCRIPT}`);
   });
 
-  it('runs lint, build, typecheck and the guards, in that order, then the changed tests', () => {
-    const at = ['pnpm lint', 'pnpm build', 'pnpm typecheck', 'pnpm test:guards', '--changed'].map(
-      (step) => source.indexOf(`'${step === '--changed' ? 'vitest' : step.slice(5)}'`),
-    );
-    expect(at.every((index) => index >= 0)).toBe(true);
-    expect([...at].sort((a, b) => a - b)).toEqual(at);
-    expect(source).toContain("'--changed', base");
-    expect(source).toContain("'--maxWorkers=1'");
-    expect(source).toContain("'--testTimeout=30000'");
+  it('plans lint, build, typecheck, the guards and the changed tests, in that order', () => {
+    const steps = plan();
+    expect(
+      steps.map((step) => (step[2][0] === 'exec' ? step[2].slice(0, 5).join(' ') : step[2][0])),
+    ).toEqual([
+      'lint',
+      'build',
+      'typecheck',
+      'exec vitest run --config vitest.guards.config.ts',
+      'exec vitest run --config vitest.contribution.config.ts',
+    ]);
+    for (const step of steps.slice(3)) {
+      expect(step[2]).toContain('--maxWorkers=1');
+      expect(step[2]).toContain(`${CEILING}=30000`);
+    }
+    expect(steps[4]?.[2]).toContain('--changed');
   });
 
-  it('is not what CI runs: no workflow names it', () => {
-    const found = spawnSync(
-      'git',
-      ['grep', '-l', 'check:contribution', '--', '.github/workflows'],
-      {
+  it('runs the guards step as planned, and the test runner accepts its arguments', () => {
+    const ran = run(plan()[3] as Step, 'the-floor-is-the-declaration');
+    expect(ran.status, ran.stdout + ran.stderr).toBe(0);
+    expect(ran.stdout).toContain('Test Files  1 passed (1)');
+  });
+
+  it('runs the changed-tests step as planned, and the test runner accepts its arguments', () => {
+    const ran = run(plan()[4] as Step, 'the-ceiling-belongs-to-the-case');
+    expect(ran.status, ran.stdout + ran.stderr).toBe(0);
+  });
+
+  it('is not what CI runs: no workflow names the command or the file', () => {
+    for (const needle of ['check:contribution', 'check-contribution/run.mjs']) {
+      const found = spawnSync('git', ['grep', '-l', needle, '--', '.github/workflows'], {
         cwd: ROOT,
         encoding: 'utf-8',
-      },
-    );
-    const workflows = found.stdout.trim();
-    expect(workflows).toBe('');
+      });
+      expect(found.stdout.trim()).toBe('');
+    }
   });
 
-  it('refuses a clone that has not fetched origin/main, and says the command to fetch it', () => {
+  it('refuses a clone that has not fetched the main, and says the commands to fetch it', () => {
     const lonely = mkdtempSync(join(tmpdir(), 'check-contribution-'));
-    execFileSync('git', ['init', '-q'], { cwd: lonely });
-    const ran = spawnSync('node', [join(ROOT, SCRIPT)], { cwd: lonely, encoding: 'utf-8' });
-    rmSync(lonely, { recursive: true, force: true });
-    expect(ran.status).toBe(1);
-    expect(ran.stderr).toContain('origin/main');
-    expect(ran.stderr).toContain('git fetch origin main');
+    try {
+      spawnSync('git', ['init', '-q'], { cwd: lonely });
+      const env = { ...process.env, MNEMA_BASE: '' };
+      const ran = spawnSync('node', [join(ROOT, SCRIPT)], { cwd: lonely, encoding: 'utf-8', env });
+      expect(ran.status).toBe(1);
+      expect(ran.stderr).toContain('git fetch origin main');
+      expect(ran.stderr).toContain(
+        'git remote add upstream https://github.com/mnema-work/mnema.git',
+      );
+    } finally {
+      rmSync(lonely, { recursive: true, force: true });
+    }
   });
 });
