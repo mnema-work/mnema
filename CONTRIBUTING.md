@@ -27,6 +27,12 @@ one worker and a 30 s test timeout so it finishes on a small machine. It is a su
 the whole suite on Node 24.15.0, 24 and 26 and is the check that counts, so a green here can still
 be red there.
 
+A test of one package does not follow an import of another across the built `dist`, so when you change
+`packages/<name>/src`, the command also runs every test of the packages that import it (a change in `chain`
+reaches `core`, `code` and the rest), unless a changed `package.json` or test configuration already makes
+vitest run everything. When you change the Python reader under `packages/chain/verifier/`, it also runs the
+reader's `self-test` and `vectors`, which take a fraction of a second.
+
 If you have no Node, pnpm or `python3` to hand, [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json)
 gives them: Node at the floor, pnpm through corepack, `python3`, and a frozen-lockfile install.
 

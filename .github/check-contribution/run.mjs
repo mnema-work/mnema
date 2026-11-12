@@ -18,6 +18,13 @@ const refs = process.env.MNEMA_BASE
   : ['refs/remotes/upstream/main', 'refs/remotes/origin/main'];
 const ref = refs.find((r) => git('rev-parse', '--verify', '--quiet', r).status === 0);
 
+if (ref === undefined && process.env.MNEMA_BASE) {
+  console.error(
+    `MNEMA_BASE=${process.env.MNEMA_BASE} does not name a ref in this clone. Give a branch, tag or commit that exists here.`,
+  );
+  process.exit(1);
+}
+
 if (ref === undefined) {
   console.error(
     `No main to compare with: ${refs.join(' or ')} is not fetched here, and the changed tests are chosen against it.\n` +
@@ -87,6 +94,14 @@ function dependentsOfChanged() {
 const dependents = dependentsOfChanged();
 const pythonChanged = changed.some((file) => /^packages\/chain\/verifier\/.*\.py$/.test(file));
 
+// vitest re-runs every test when a package.json, a vitest or vite configuration or one of the setup
+// files changed, so `--changed` already covers the dependents and their step would repeat files.
+const rerunsEverything = changed.some((file) =>
+  /(^|\/)package\.json$|(^|\/)v(itest|ite)\.[^/]*config\.|^\.github\/(a-home-of-its-own|the-property-seed)\/setup\.mjs$/.test(
+    file,
+  ),
+);
+
 const slow = ['--maxWorkers=1', '--testTimeout=30000'];
 /** @type {Array<[string, string, string[]]>} */
 const steps = [
@@ -95,12 +110,12 @@ const steps = [
   ['typecheck', 'pnpm', ['typecheck']],
   ['guards', 'pnpm', ['exec', 'vitest', 'run', '--config', 'vitest.guards.config.ts', ...slow]],
   [
-    `tests tied to the files changed since ${base.slice(0, 8)}`,
+    `tests tied to the files changed since ${base.slice(0, 8)}${rerunsEverything ? ' (a changed package.json or test configuration makes vitest run every test)' : ''}`,
     'pnpm',
     ['exec', 'vitest', 'run', '--changed', base, ...slow, '--passWithNoTests'],
   ],
 ];
-if (dependents.length > 0) {
+if (dependents.length > 0 && !rerunsEverything) {
   steps.push([
     `every test of the packages that import a changed one (${dependents.join(', ')}), added because --changed does not follow @mnema/* across packages`,
     'pnpm',
