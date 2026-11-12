@@ -60,6 +60,7 @@ import { ROOT } from './support/published-examples.js';
 import { invocationsIn, linesOf, trackedPages, unquoted } from './support/reading-a-shell-line.js';
 import { codeOnly, INTERPOLATED, LITERAL_EDGE, literalsOnly } from './support/reading-source.js';
 import { holdTheCounts } from './support/the-counts-a-guard-keeps.js';
+import { theDifference } from './support/the-difference.js';
 import { writtenByHand } from './support/the-reference-pages.js';
 
 /** A silent port: nothing here runs a verb, it only reads what they declare. */
@@ -1050,11 +1051,17 @@ describe('the command handed over runs as handed', () => {
         if (no !== undefined) refused.push(`${where(one)}: ${no.message}`);
       }
     }
-    expect(refused).toEqual([]);
+    expect(
+      refused,
+      'Fix each command named (file:line): write the verb and every required flag or argument it needs, so the line parses as handed',
+    ).toEqual([]);
   });
 
   it('every command is read whole: none opens a span it does not close', () => {
-    expect(unreadable.map((one) => `${one.where}  ${one.text}`)).toEqual([]);
+    expect(
+      unreadable.map((one) => `${one.where}  ${one.text}`),
+      'Close the backtick span at each place named (file:line), or write the command on a line of its own',
+    ).toEqual([]);
   });
 
   it('the commands whose verb is not written are the ones the roster names', () => {
@@ -1065,7 +1072,16 @@ describe('the command handed over runs as handed', () => {
           .map((one) => `${homeOf(one.where.split(':')[0] as string)}: ${shown(one.text)}`),
       ),
     ].sort();
-    expect(found).toEqual(Object.keys(THE_VERB_IS_NOT_WRITTEN).sort());
+    const rostered = Object.keys(THE_VERB_IS_NOT_WRITTEN).sort();
+    expect(
+      found,
+      theDifference(
+        found,
+        rostered,
+        'Write the verb in each of these commands, or add it to THE_VERB_IS_NOT_WRITTEN with why',
+        'Remove from THE_VERB_IS_NOT_WRITTEN (the command now writes its verb, or is gone)',
+      ),
+    ).toEqual(rostered);
   });
 });
 
@@ -1082,7 +1098,10 @@ describe('a name whose verb needs more is one somebody looked at', () => {
     const listed = Object.fromEntries(
       Object.entries(NAMES_THAT_NEED_MORE).map(([key, said]) => [key, said.times]),
     );
-    expect(found).toEqual(listed);
+    expect(
+      found,
+      'Give each name its verb, or set the times it appears in NAMES_THAT_NEED_MORE (a name is "file: mnema verb"); remove the rows that no longer appear',
+    ).toEqual(listed);
     // NON-VACUITY: the names the finding was about are among them.
     expect(Object.keys(found)).toContain('packages/code/src/wiring/key.ts: mnema key revoke');
     expect(Object.keys(found)).toContain('packages/code/src/wiring/run.ts: mnema run end');
@@ -1119,7 +1138,10 @@ describe('the readings know what they read', () => {
       read: counted,
       declared: HANDED_OVER,
     });
-    expect(counted).toEqual(handed);
+    expect(
+      counted,
+      'HANDED_OVER: add a row for each file that now hands commands over, and remove the row of each that no longer does',
+    ).toEqual(handed);
   });
 
   it('the pages it reads are the documentation', () => {
@@ -1130,7 +1152,10 @@ describe('the readings know what they read', () => {
     const mute = Object.entries({ ...NOT_CHECKED, ...THE_VERB_IS_NOT_WRITTEN })
       .filter(([, why]) => why.length < 80)
       .map(([what]) => what);
-    expect(mute).toEqual([]);
+    expect(
+      mute,
+      'Write why, in at least 80 characters, for each of these exemptions (NOT_CHECKED or THE_VERB_IS_NOT_WRITTEN)',
+    ).toEqual([]);
   });
 
   it('the program uses no parse setting the mirror cannot copy', () => {
@@ -1148,7 +1173,10 @@ describe('the readings know what they read', () => {
     // named it as the one exception. It asks commander's default parse over prefixes of the line
     // now, which answers the same without the setting, so no exception is left to cover a real
     // verb's.
-    expect(using).toEqual([]);
+    expect(
+      using,
+      'Stop using a commander parse setting in these files, or teach the mirror in this test to copy it',
+    ).toEqual([]);
   });
 });
 

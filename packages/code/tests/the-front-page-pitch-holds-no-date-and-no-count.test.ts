@@ -103,16 +103,28 @@ describe('the README hero and Why hold no date and no count', () => {
   const pitch = pitchOf(readme);
 
   it('reads a hero and a Why of real length', () => {
-    expect(pitch.hero).toContain('decision record for AI coding agents');
-    expect(pitch.why).toContain('Your agents settle choices all day');
+    expect(
+      pitch.hero,
+      'README.md: the hero must still say "decision record for AI coding agents"; if the pitch changed, update this guard',
+    ).toContain('decision record for AI coding agents');
+    expect(
+      pitch.why,
+      'README.md: the "## Why" section must still open as this guard expects; if it changed, update this guard',
+    ).toContain('Your agents settle choices all day');
   });
 
   it('holds nothing forbidden in the hero', () => {
-    expect(violations(pitch.hero)).toEqual([]);
+    expect(
+      violations(pitch.hero),
+      'README.md: take each named kind of date or count out of the hero (above "## Why"); a number or date there goes stale',
+    ).toEqual([]);
   });
 
   it('holds nothing forbidden in the Why section', () => {
-    expect(violations(pitch.why)).toEqual([]);
+    expect(
+      violations(pitch.why),
+      'README.md: take each named kind of date or count out of the "## Why" section; a number or date there goes stale',
+    ).toEqual([]);
   });
 });
 

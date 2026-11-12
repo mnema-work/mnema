@@ -53,7 +53,10 @@ function handlerOf(file: Copy, event: string): Handler {
 
 describe('plugin/hooks/hooks.json', () => {
   it('names only events and keys the host documents', () => {
-    expect(whatTheHostDoesNotRead(theRealFile())).toEqual([]);
+    expect(
+      whatTheHostDoesNotRead(theRealFile()),
+      'plugin/hooks/hooks.json: remove or rename each of these entries; the host reads only the events and keys it documents',
+    ).toEqual([]);
   });
 
   it('is not vacuous: it reads events, matcher groups and both kinds of handler', () => {

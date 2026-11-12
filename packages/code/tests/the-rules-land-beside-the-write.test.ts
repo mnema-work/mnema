@@ -182,23 +182,36 @@ describe('every text that says what the per-edit push hands over says when', () 
   it('in the document a session opens with, while the push is on', () => {
     // The sentence the count explains. With the push off the document says nothing arrives,
     // which needs no "when", so that half is not asked for it.
-    expect(flat(documentWith(ON('edit-rules-push'), ON('edit-asks-a-person')))).toContain(WHEN);
-    expect(flat(documentWith(OFF('edit-rules-push'), ON('edit-asks-a-person')))).not.toContain(
-      WHEN,
-    );
+    expect(
+      flat(documentWith(ON('edit-rules-push'), ON('edit-asks-a-person'))),
+      `The session document must say "${WHEN}" where it says the push hands rules over: edit the sentence that builds it`,
+    ).toContain(WHEN);
+    expect(
+      flat(documentWith(OFF('edit-rules-push'), ON('edit-asks-a-person'))),
+      `The session document must not say "${WHEN}" while the push is off`,
+    ).not.toContain(WHEN);
   });
 
   it('in the switch listing', () => {
-    expect(WHAT_STOPS['edit-rules-push']).toContain(WHEN);
+    expect(
+      WHAT_STOPS['edit-rules-push'],
+      `The switch listing for edit-rules-push must say "${WHEN}"`,
+    ).toContain(WHEN);
   });
 
   it('in the description of the tool the host calls', async () => {
     const tool = (await described()).find((one) => one.name === 'rules_before_an_edit');
-    expect(tool?.description).toContain(WHEN);
+    expect(
+      tool?.description,
+      `The description of the rules_before_an_edit tool must say "${WHEN}"`,
+    ).toContain(WHEN);
   });
 
   it("in the plugin's manifest of hooks", () => {
-    expect(hooksDescription()).toContain(WHEN);
+    expect(
+      hooksDescription(),
+      `plugin/hooks/hooks.json: its description must say "${WHEN}"`,
+    ).toContain(WHEN);
   });
 
   it.each([
@@ -209,7 +222,10 @@ describe('every text that says what the per-edit push hands over says when', () 
     ['plugin/README.md', '| **The rules at each edit** |'],
     ['docs/cli-reference.md', 'A `PreToolUse` hook on'],
   ])('on %s, where it says "%s"', (page, anchor) => {
-    expect(passageAt(page, anchor)).toContain(WHEN);
+    expect(
+      passageAt(page, anchor),
+      `${page}: the passage at "${anchor}" must say "${WHEN}"`,
+    ).toContain(WHEN);
   });
 });
 
@@ -217,7 +233,10 @@ describe('no text a reader is handed says the rules arrive before the write', ()
   it('in any document, whichever channel is switched off', () => {
     for (const push of [ON('edit-rules-push'), OFF('edit-rules-push')]) {
       for (const gate of [ON('edit-asks-a-person'), OFF('edit-asks-a-person')]) {
-        expect(saysBefore(documentWith(push, gate))).toEqual([]);
+        expect(
+          saysBefore(documentWith(push, gate)),
+          'The session document says the rules arrive before the write: say "beside the result of that write" instead',
+        ).toEqual([]);
       }
     }
   });
@@ -231,7 +250,10 @@ describe('no text a reader is handed says the rules arrive before the write', ()
       read('plugin/.claude-plugin/plugin.json'),
       read('.claude-plugin/marketplace.json'),
     ];
-    expect(texts.flatMap(saysBefore)).toEqual([]);
+    expect(
+      texts.flatMap(saysBefore),
+      'Each of these sentences says the rules arrive before the write: say "beside the result of that write" instead',
+    ).toEqual([]);
   });
 
   it.each([
@@ -242,7 +264,10 @@ describe('no text a reader is handed says the rules arrive before the write', ()
     'packages/core/README.md',
     'packages/chain/README.md',
   ])('on %s', (page) => {
-    expect(saysBefore(read(page))).toEqual([]);
+    expect(
+      saysBefore(read(page)),
+      `${page}: each of these sentences says the rules arrive before the write; say "beside the result of that write" instead`,
+    ).toEqual([]);
   });
 
   it('and the list reads what it names: a page carrying one is found', () => {

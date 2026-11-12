@@ -89,16 +89,26 @@ describe('every test file is type-checked', () => {
   });
 
   it.each(packageNames())('reaches every test file of %s through its test config', (pkg) => {
-    expect(readdirSync(join(PACKAGES, pkg))).toContain('tsconfig.test.json');
-    expect(unreached(pkg, join(PACKAGES, pkg, 'tsconfig.test.json'))).toEqual([]);
+    expect(
+      readdirSync(join(PACKAGES, pkg)),
+      `packages/${pkg}: add a tsconfig.test.json that includes its test files`,
+    ).toContain('tsconfig.test.json');
+    expect(
+      unreached(pkg, join(PACKAGES, pkg, 'tsconfig.test.json')),
+      `packages/${pkg}/tsconfig.test.json: include each of these test files, so pnpm typecheck checks them`,
+    ).toEqual([]);
   });
 
   it('is run by `pnpm typecheck`, and CI runs `pnpm typecheck`', () => {
     const scripts = JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8')).scripts;
-    expect(scripts.typecheck).toContain('tsconfig.test.json');
-    expect(readFileSync(join(REPO, '.github', 'workflows', 'ci.yml'), 'utf8')).toMatch(
-      /run: pnpm typecheck\b/,
-    );
+    expect(
+      scripts.typecheck,
+      'package.json: the typecheck script must run the tsconfig.test.json of each package',
+    ).toContain('tsconfig.test.json');
+    expect(
+      readFileSync(join(REPO, '.github', 'workflows', 'ci.yml'), 'utf8'),
+      '.github/workflows/ci.yml: add a step "run: pnpm typecheck"',
+    ).toMatch(/run: pnpm typecheck\b/);
   });
 
   it('accuses a test directory taken out of the include (the instrument is not blind)', () => {

@@ -211,14 +211,20 @@ describe('every package page words its honest guarantee as a proof', () => {
     const missing = pagesThatProve().filter(
       (page) => read(page).split(`\n## ${HONEST_GUARANTEE}\n`).length !== 2,
     );
-    expect(missing).toEqual([]);
+    expect(
+      missing,
+      `Give each of these pages the heading "## ${HONEST_GUARANTEE}", exactly once`,
+    ).toEqual([]);
   });
 
   it('each section says what it does NOT cover, not only what it does', () => {
     const thin = pagesThatProve()
       .map((page) => ({ page, found: negatives(sectionBody(read(page), HONEST_GUARANTEE)) }))
       .filter(({ found }) => found < NEGATIVES_FLOOR);
-    expect(thin).toEqual([]);
+    expect(
+      thin,
+      `Say in the "${HONEST_GUARANTEE}" section of each of these pages what it does NOT cover (at least ${NEGATIVES_FLOOR} negations)`,
+    ).toEqual([]);
   });
 });
 
@@ -261,14 +267,20 @@ describe('nowhere names the section by another wording', () => {
 
   it('nothing tracked words it otherwise, but what is declared to', () => {
     const allowed = new Set(WORDED_OTHERWISE.map(({ file, heading }) => `${file} :: ${heading}`));
-    expect(otherWordings(trackedText()).filter((hit) => !allowed.has(hit))).toEqual([]);
+    expect(
+      otherWordings(trackedText()).filter((hit) => !allowed.has(hit)),
+      `Word each of these headings as "## ${HONEST_GUARANTEE}", or declare it in WORDED_OTHERWISE with why`,
+    ).toEqual([]);
   });
 
   it('every declared exception still reads the way it says it does', () => {
     const stale = WORDED_OTHERWISE.filter(({ file, heading }) => !read(file).includes(heading)).map(
       ({ file }) => file,
     );
-    expect(stale).toEqual([]);
+    expect(
+      stale,
+      'Remove these files from WORDED_OTHERWISE: they no longer carry the heading it declares',
+    ).toEqual([]);
   });
 });
 

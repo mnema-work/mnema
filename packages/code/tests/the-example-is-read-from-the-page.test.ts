@@ -84,6 +84,7 @@ import {
   ROOT,
   read,
 } from './support/published-examples.js';
+import { theDifference } from './support/the-difference.js';
 
 /** The marked region of a case, dedented to the page's margin. */
 function runnableBody(source: string): string[] {
@@ -169,8 +170,14 @@ describe('the example a package publishes is the example that runs', () => {
       const runs = runnableBody(read(example.test));
       // Named first so a failure reads as the one line that moved rather than as two
       // fifty-line arrays a reader has to diff by eye.
-      expect(firstDifference(page, runs)).toEqual([]);
-      expect(page).toEqual(runs);
+      expect(
+        firstDifference(page, runs),
+        `${example.readme}: make the example block and ${example.test} the same code, line by line (the first line that differs is named)`,
+      ).toEqual([]);
+      expect(
+        page,
+        `${example.readme}: make the example block and ${example.test} the same code, line by line`,
+      ).toEqual(runs);
     });
 
     it(`@mnema/${example.pkg}: the page imports what the case imports`, () => {
@@ -179,15 +186,24 @@ describe('the example a package publishes is the example that runs', () => {
       const declared = Object.keys(example.specifiers).sort();
       // Every specifier the page uses is mapped: an import added to the page with no
       // mapping would otherwise be compared against nothing.
-      expect(Object.keys(onThePage).sort()).toEqual(declared);
+      expect(
+        Object.keys(onThePage).sort(),
+        `${example.readme}: map each specifier the page imports in the specifiers of its entry in packages/code/tests/support/published-examples.ts, or take the import off the page`,
+      ).toEqual(declared);
       for (const [published, inSource] of Object.entries(example.specifiers)) {
-        expect({ [published]: inTheCase[inSource] }).toEqual({ [published]: onThePage[published] });
+        expect(
+          { [published]: inTheCase[inSource] },
+          `${example.readme} and ${example.test}: import the same names from ${published}`,
+        ).toEqual({ [published]: onThePage[published] });
       }
     });
 
     it(`@mnema/${example.pkg}: every elided line is still on the page`, () => {
       const below = belowTheImports(publishedBlock(read(example.readme)));
-      expect(below.slice(0, example.elided.length)).toEqual([...example.elided]);
+      expect(
+        below.slice(0, example.elided.length),
+        `${example.readme}: put back the elided lines listed for it, directly under the imports of the block`,
+      ).toEqual([...example.elided]);
     });
   }
 });
@@ -205,14 +221,25 @@ describe('the list of pages is the list on disk', () => {
       ...PUBLISHED_EXAMPLES.map((example) => example.pkg),
       ...NO_RUNNABLE_EXAMPLE.map((entry) => entry.pkg),
     ].sort();
-    expect(listed).toEqual(onDisk);
+    expect(
+      listed,
+      theDifference(
+        listed,
+        onDisk,
+        'Remove from PUBLISHED_EXAMPLES or NO_RUNNABLE_EXAMPLE in packages/code/tests/support/published-examples.ts (the package has no README)',
+        'Add to PUBLISHED_EXAMPLES, or to NO_RUNNABLE_EXAMPLE with why, in packages/code/tests/support/published-examples.ts (the package has a README)',
+      ),
+    ).toEqual(onDisk);
   });
 
   it('a README excused from running publishes no TypeScript to run', () => {
     const wrongly = NO_RUNNABLE_EXAMPLE.filter(({ pkg }) =>
       read(`packages/${pkg}/README.md`).includes('\n```ts\n'),
     ).map(({ pkg }) => pkg);
-    expect(wrongly).toEqual([]);
+    expect(
+      wrongly,
+      'These packages are excused from a runnable example but their README has a ts block: move them to PUBLISHED_EXAMPLES, or change the block',
+    ).toEqual([]);
   });
 
   it('the cases named here are the files named `readme-example` in the workspace', () => {
@@ -220,7 +247,16 @@ describe('the list of pages is the list on disk', () => {
       .split('\0')
       .filter((file) => file.endsWith('readme-example.test.ts'))
       .sort();
-    expect(tracked).toEqual(PUBLISHED_EXAMPLES.map((example) => example.test).sort());
+    const named = PUBLISHED_EXAMPLES.map((example) => example.test).sort();
+    expect(
+      tracked,
+      theDifference(
+        tracked,
+        named,
+        'Add to PUBLISHED_EXAMPLES (the file exists)',
+        'Remove from PUBLISHED_EXAMPLES (no such file)',
+      ),
+    ).toEqual(named);
   });
 });
 

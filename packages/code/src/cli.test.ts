@@ -38,7 +38,10 @@ describe('the CLI loads the MCP server only for the verb that serves it', () => 
       .filter((file) => !file.slice(srcDir.length).startsWith('mcp/'))
       .filter((file) => /@modelcontextprotocol\/sdk/.test(readFileSync(file, 'utf-8')))
       .map((file) => file.slice(srcDir.length));
-    expect(offenders).toEqual([]);
+    expect(
+      offenders,
+      'Remove each mention of @modelcontextprotocol/sdk (import, dynamic import, comment or string) from these files: it may be named only inside packages/code/src/mcp/, which the CLI reaches dynamically, so every command does not pay for it',
+    ).toEqual([]);
   });
 
   it('reaches the server module only through a dynamic import', () => {
@@ -48,12 +51,21 @@ describe('the CLI loads the MCP server only for the verb that serves it', () => 
     const naming = sourceFiles(srcDir)
       .filter((file) => !file.slice(srcDir.length).startsWith('mcp/'))
       .filter((file) => /mcp\/server\.js/.test(readFileSync(file, 'utf-8')));
-    expect(naming.map((file) => file.slice(srcDir.length))).toEqual(['wiring/mcp.ts']);
+    expect(
+      naming.map((file) => file.slice(srcDir.length)),
+      'Only packages/code/src/wiring/mcp.ts may name mcp/server.js: reach the server through that file',
+    ).toEqual(['wiring/mcp.ts']);
     // A static import is `from '<spec>'`; making it dynamic is the whole point,
     // so the static form must be absent and the dynamic one present.
     const source = readFileSync(naming[0] as string, 'utf-8');
-    expect(source).not.toMatch(/from '\.\.\/mcp\/server\.js'/);
-    expect(source).toMatch(/await import\('\.\.\/mcp\/server\.js'\)/);
+    expect(
+      source,
+      "packages/code/src/wiring/mcp.ts: import ../mcp/server.js dynamically (await import('../mcp/server.js')), not with a static import",
+    ).not.toMatch(/from '\.\.\/mcp\/server\.js'/);
+    expect(
+      source,
+      "packages/code/src/wiring/mcp.ts: import ../mcp/server.js dynamically (await import('../mcp/server.js'))",
+    ).toMatch(/await import\('\.\.\/mcp\/server\.js'\)/);
   });
 
   it('still builds a server from the module that verb loads', async () => {

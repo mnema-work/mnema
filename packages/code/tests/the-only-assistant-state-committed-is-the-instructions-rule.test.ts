@@ -25,7 +25,10 @@ const tracked = (): string[] =>
 
 describe('the only assistant state committed is the instructions rule', () => {
   it('finds nothing else under .claude/ in the index', () => {
-    expect(strangers(tracked())).toEqual([]);
+    expect(
+      strangers(tracked()),
+      'Untrack each of these files (git rm --cached <file>) and ignore it: the only tracked file under .claude/ is .claude/rules/mnema-instructions.md',
+    ).toEqual([]);
   });
 
   it('accuses a second file under .claude/, and any file in a subdirectory of it', () => {

@@ -42,7 +42,10 @@ describe('@mnema/context boundaries', () => {
     // writer/builders. (The chain appears in devDependencies only, so the test
     // support can build fixture chains: the shipped package never loads it.)
     const deps = manifest.dependencies ?? {};
-    expect(Object.keys(deps)).toEqual(['@mnema/core']);
+    expect(
+      Object.keys(deps),
+      'packages/context/package.json: dependencies must hold only @mnema/core',
+    ).toEqual(['@mnema/core']);
   });
 
   it('never imports a writing surface (@mnema/core/write, nor @mnema/chain directly)', () => {
@@ -62,10 +65,16 @@ describe('@mnema/context boundaries', () => {
     for (const file of sourceFiles(srcDir)) {
       const text = readFileSync(file, 'utf-8');
       for (const spec of FORBIDDEN_IMPORTS) {
-        if (spec.test(text)) offenders.push(`${file.slice(srcDir.length)} names ${spec.source}`);
+        if (spec.test(text))
+          offenders.push(
+            `${file.slice(srcDir.length)} names ${spec.source.replace(/\\\//g, '/').replace(/\(\?!.*\)$/, '')}`,
+          );
       }
     }
-    expect(offenders).toEqual([]);
+    expect(
+      offenders,
+      'Remove each mention of the named package from these files of packages/context/src (import, dynamic import, comment or string); this package reads the record and goes through @mnema/core',
+    ).toEqual([]);
   });
 
   it('appends to no ChainWriter (no `.append(` call anywhere)', () => {
@@ -79,7 +88,10 @@ describe('@mnema/context boundaries', () => {
       const text = readFileSync(file, 'utf-8');
       if (/\.append\s*\(/.test(text)) offenders.push(file.slice(srcDir.length));
     }
-    expect(offenders).toEqual([]);
+    expect(
+      offenders,
+      'Remove the .append( call from these files of packages/context/src; this package never writes the record',
+    ).toEqual([]);
   });
 });
 

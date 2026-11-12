@@ -34,8 +34,14 @@ describe('the changelog entries are files', () => {
       .map((name) => ({ name, why: whyNotAnEntry(readFileSync(join(DIR, name), 'utf-8')) }))
       .filter(({ why }) => why !== undefined)
       .map(({ name, why }) => `${name}: ${why}`);
-    expect(wrong).toEqual([]);
-    expect(files.filter((name) => !name.endsWith('.md'))).toEqual([]);
+    expect(
+      wrong,
+      'changelog/unreleased: start each file with one section line (Added, Changed, Deprecated, Removed, Fixed or Security), then the entry',
+    ).toEqual([]);
+    expect(
+      files.filter((name) => !name.endsWith('.md')),
+      'changelog/unreleased: rename these files to end in .md, or delete them',
+    ).toEqual([]);
   });
 
   it('tells an unknown section and an empty entry from an entry', () => {
@@ -47,9 +53,12 @@ describe('the changelog entries are files', () => {
   it('keeps Unreleased in CHANGELOG.md empty', () => {
     const log = readFileSync(join(ROOT, 'CHANGELOG.md'), 'utf-8');
     const at = log.indexOf('## [Unreleased]\n');
-    expect(at).toBeGreaterThan(-1);
+    expect(at, 'CHANGELOG.md: restore the "## [Unreleased]" heading').toBeGreaterThan(-1);
     const rest = log.slice(at + 1);
     const end = rest.search(/^## \[/m);
-    expect(rest.slice(0, end).split('\n').slice(1).join('\n').trim()).toBe('');
+    expect(
+      rest.slice(0, end).split('\n').slice(1).join('\n').trim(),
+      'CHANGELOG.md: empty the Unreleased section and write the entry as a file in changelog/unreleased/ instead',
+    ).toBe('');
   });
 });

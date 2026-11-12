@@ -16,11 +16,17 @@ describe('@mnema/chain boundaries', () => {
   ) as { dependencies?: Record<string, string>; peerDependencies?: Record<string, string> };
 
   it('declares no runtime dependencies', () => {
-    expect(manifest.dependencies ?? {}).toEqual({});
+    expect(
+      manifest.dependencies ?? {},
+      'packages/chain/package.json: remove every entry of dependencies; the proof engine ships with none',
+    ).toEqual({});
   });
 
   it('declares no peer dependencies', () => {
-    expect(manifest.peerDependencies ?? {}).toEqual({});
+    expect(
+      manifest.peerDependencies ?? {},
+      'packages/chain/package.json: remove every entry of peerDependencies; the proof engine ships with none',
+    ).toEqual({});
   });
 
   // A clean package.json is necessary but not sufficient: an import of
@@ -41,7 +47,10 @@ describe('@mnema/chain boundaries', () => {
         }
       }
     }
-    expect(offenders).toEqual([]);
+    expect(
+      offenders,
+      'Import only relative modules or node: builtins in packages/chain/src; move the code that needs a package to another package',
+    ).toEqual([]);
   });
 });
 

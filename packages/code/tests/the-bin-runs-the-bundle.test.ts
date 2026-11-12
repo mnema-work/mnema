@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { literalsOnly } from './support/reading-source.js';
 import { MNEMA_CLI } from './support/the-cli.js';
+import { theDifference } from './support/the-difference.js';
 
 const REPO = fileURLToPath(new URL('../../../', import.meta.url));
 const PACKAGE = join(REPO, 'packages', 'code');
@@ -64,13 +65,35 @@ describe('the bin of @mnema/code', () => {
     const { bin } = JSON.parse(readFileSync(join(PACKAGE, 'package.json'), 'utf-8')) as {
       bin: Record<string, string>;
     };
-    expect(Object.keys(bin)).toEqual(['mnema']);
-    expect(join(PACKAGE, bin.mnema ?? '')).toBe(BUNDLE_ENTRY);
-    expect(MNEMA_CLI).toBe(BUNDLE_ENTRY);
-    expect(existsSync(BUNDLE_ENTRY)).toBe(true);
+    expect(
+      Object.keys(bin),
+      'packages/code/package.json: the bin must hold the single entry "mnema"',
+    ).toEqual(['mnema']);
+    expect(
+      join(PACKAGE, bin.mnema ?? ''),
+      'packages/code/package.json: point bin.mnema at dist/bundle/cli.js, the entry packages/code/build/the-cli-bundle.mjs writes',
+    ).toBe(BUNDLE_ENTRY);
+    expect(
+      MNEMA_CLI,
+      'packages/code/tests/support/the-cli.ts: read the bin of packages/code/package.json, do not spell another entry',
+    ).toBe(BUNDLE_ENTRY);
+    expect(
+      existsSync(BUNDLE_ENTRY),
+      'packages/code/dist/bundle/cli.js is missing: run pnpm build before the tests',
+    ).toBe(true);
   });
 
   it('is what every test that starts the CLI starts, but those that mean the compiled build', () => {
-    expect(testsNamingTheCompiledEntry()).toEqual(Object.keys(MEANT).sort());
+    const naming = testsNamingTheCompiledEntry();
+    const meant = Object.keys(MEANT).sort();
+    expect(
+      naming,
+      theDifference(
+        naming,
+        meant,
+        'Start the CLI through packages/code/tests/support/the-cli.ts instead of spelling the compiled entry, or list the test in MEANT with why',
+        'Remove from MEANT (the test no longer names the compiled entry)',
+      ),
+    ).toEqual(meant);
   });
 });

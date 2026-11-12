@@ -28,7 +28,10 @@ const ROOT = join(import.meta.dirname, '..', '..', '..');
 describe('the pages the switch table generates', () => {
   it.each(SWITCH_PAGES)('%s is what the table generates', async (path) => {
     const committed = readFileSync(join(ROOT, path), 'utf-8');
-    await expect(generatedSwitchPage(path, committed)).toMatchFileSnapshot(join(ROOT, path));
+    await expect(generatedSwitchPage(path, committed)).toMatchFileSnapshot(
+      join(ROOT, path),
+      `${path} is generated from the switch table: run pnpm vitest run packages/code/tests/the-switch-pages-are-generated.test.ts -u, and commit the page`,
+    );
   });
 
   it('accuses a listing that dropped a channel, and keeps the prose around it', () => {
