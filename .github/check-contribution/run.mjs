@@ -67,15 +67,15 @@ function dependentsOfChanged() {
   }
   const touched = new Set(
     changed
-      .map((file) => /^packages\/([^/]+)\/(src\/|package\.json$)/.exec(file)?.[1])
-      .filter((dir) => dir !== undefined && packages.has(dir)),
+      .flatMap((file) => /^packages\/([^/]+)\/(src\/|package\.json$)/.exec(file)?.[1] ?? [])
+      .filter((dir) => packages.has(dir)),
   );
   const reached = new Set(touched);
   for (let grew = true; grew; ) {
     grew = false;
     for (const [dir, { needs }] of packages) {
       if (reached.has(dir)) continue;
-      const names = [...reached].map((d) => String(packages.get(d)?.name));
+      const names = [...reached].map((d) => packages.get(d)?.name);
       if (needs.some((name) => names.includes(name))) {
         reached.add(dir);
         grew = true;
