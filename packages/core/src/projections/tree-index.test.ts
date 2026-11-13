@@ -22,6 +22,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  type Stats,
   statSync,
   utimesSync,
   writeFileSync,
@@ -176,7 +177,7 @@ describe('the facts of a tree that moved', () => {
   });
 
   /** Rewrites the channel a line before the last names, to the same size, and says what it was. */
-  function rewriteTheChannelInPlace(): { file: string; before: ReturnType<typeof statSync> } {
+  function rewriteTheChannelInPlace(): { file: string; before: Stats } {
     const [tail] = listTails({ root });
     const file = orderedSegments({ root }, tail as string).at(-1) as string;
     const before = statSync(file);
