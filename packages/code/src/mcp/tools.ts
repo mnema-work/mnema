@@ -1087,6 +1087,8 @@ export function runDecisionTransition(
   const turnedAway = agentMayAccept(workspaceCaches(session), {
     action: input.action,
     agent: whichOfWrite(session, located.home.scope, located.home.target),
+    // The server's stdio is the host's pipe: no person is at a terminal through this door.
+    atATerminal: false,
   });
   if (turnedAway !== undefined) return { ok: false, ...turnedAway };
 
@@ -1098,7 +1100,11 @@ export function runDecisionTransition(
   // exactly as it is on a task move.
   // Asked again inside the write, under the tail's lock (`DecisionTransitionInput.refusedWhen`).
   const refusedWhen = () =>
-    agentMayAccept(workspaceCaches(session), { action: input.action, agent: which });
+    agentMayAccept(workspaceCaches(session), {
+      action: input.action,
+      agent: which,
+      atATerminal: false,
+    });
   const stamp = { which, run, refusedWhen };
   const moved = ctx.writer.exclusively(() => {
     const written =

@@ -217,6 +217,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
         proof: { ...(opts.note !== undefined ? { note: opts.note } : {}) },
         ...(given.which !== undefined ? { which: given.which } : {}),
         ...(run !== undefined ? { run } : {}),
+        atATerminal: io.aPersonIsHere === true,
       });
       await reportDecisionMove(result, id, wiring);
       if (result.ok) moved += 1;

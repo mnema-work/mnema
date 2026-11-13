@@ -64,7 +64,7 @@ export async function reviewDecisions(wiring: Wiring): Promise<void> {
     return;
   }
   for (const line of linkBreakNotice(read.linkBreaks)) io.err(render(line));
-  const { proposals } = read;
+  const { proposals, acceptIsOff } = read;
   if (proposals.length === 0) {
     io.out('Nothing awaiting a judgement.');
     return;
@@ -76,7 +76,9 @@ export async function reviewDecisions(wiring: Wiring): Promise<void> {
       code: NEEDS_A_PERSON,
       message:
         `a review is asked at a terminal, and this is not one. ${proposals.length} decision(s) await a judgement, ` +
-        `and \`mnema decision move accept ${ids} --note "<why>"\` (or \`reject\`) rules them without one. ` +
+        (acceptIsOff
+          ? `and \`mnema decision move reject ${ids} --note "<why>"\` rules them without one: \`agent-accepts\` is switched off, so only a person at a terminal accepts. `
+          : `and \`mnema decision move accept ${ids} --note "<why>"\` (or \`reject\`) rules them without one. `) +
         'Nothing was written.',
     });
     return;
@@ -131,6 +133,7 @@ export async function reviewDecisions(wiring: Wiring): Promise<void> {
         action: verdict.action,
         proof: { note: verdict.note ?? shared },
         ...(run !== undefined ? { run } : {}),
+        atATerminal: io.aPersonIsHere === true,
       },
     );
     if (result.ok) {

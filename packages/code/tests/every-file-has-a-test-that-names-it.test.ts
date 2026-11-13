@@ -1101,6 +1101,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-write-the-person-signs-for-an-agent-says-so.test.ts': 15,
   'packages/code/tests/accepting-an-accepted-decision-says-it-is-accepted.test.ts': 11,
   'packages/code/tests/an-accept-and-a-retirement-that-crossed-are-in-force-nowhere.test.ts': 19,
+  'packages/code/tests/an-accept-without-an-agent-needs-a-terminal.test.ts': 15,
   'packages/code/tests/an-actors-runs-are-read-where-the-session-wrote.test.ts': 11,
   'packages/code/tests/an-agent-key-is-told-by-its-fingerprint-wherever-its-file-is.test.ts': 9,
   'packages/code/tests/an-agent-key-of-another-kind-is-named-with-its-article.test.ts': 3,

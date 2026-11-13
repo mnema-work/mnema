@@ -120,6 +120,9 @@ export function recordWhoMayAccept(
     action: 'accept',
     proof: { note: said },
     ...(by.run !== undefined ? { run: by.run } : {}),
+    // The decision of opening is accepted by the person who founded the project, and the switch
+    // is only ever turned off after it (below), so the seat is asked and the answer is the screen.
+    atATerminal: by.given === 'screen',
   });
   if (!accepted.ok) {
     return accepted.reason === 'REFUSED'

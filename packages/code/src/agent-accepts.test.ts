@@ -26,25 +26,65 @@ function sources(switched: 'never' | 'off' | 'on'): ScopedCache[] {
 describe('whether an agent may accept', () => {
   it('may, when nobody ever switched it, and when it was switched back on', () => {
     for (const switched of ['never', 'on'] as const) {
-      expect(agentMayAccept(sources(switched), { action: 'accept', agent: 'claude-code' })).toBe(
+      expect(
+        agentMayAccept(sources(switched), {
+          action: 'accept',
+          agent: 'claude-code',
+          atATerminal: false,
+        }),
+      ).toBe(undefined);
+    }
+  });
+
+  it('may not, when it is off, and the refusal says who, how a person accepts, and how to turn it on', () => {
+    const turnedAway = agentMayAccept(sources('off'), {
+      action: 'accept',
+      agent: 'claude-code',
+      atATerminal: false,
+    });
+    expect(turnedAway?.code).toBe(AGENT_ACCEPTS_IS_OFF);
+    expect(turnedAway?.message).toContain('mnid:0123456789abcdef');
+    expect(turnedAway?.message).not.toContain('mnema decision move');
+    expect(turnedAway?.message).toContain('mnema switch on agent-accepts');
+    expect(turnedAway?.message).toContain('The decision was not moved.');
+  });
+
+  it('asks only about an accept: a person at a terminal, and every other action, pass while it is off', () => {
+    expect(
+      agentMayAccept(sources('off'), { action: 'accept', agent: undefined, atATerminal: true }),
+    ).toBe(undefined);
+    for (const action of ['reject', 'supersede']) {
+      expect(
+        agentMayAccept(sources('off'), { action, agent: 'claude-code', atATerminal: false }),
+      ).toBe(undefined);
+      expect(agentMayAccept(sources('off'), { action, agent: undefined, atATerminal: false })).toBe(
         undefined,
       );
     }
   });
 
-  it('may not, when it is off, and the refusal says who, how a person accepts, and how to turn it on', () => {
-    const turnedAway = agentMayAccept(sources('off'), { action: 'accept', agent: 'claude-code' });
+  it('turns away an accept with no agent declared outside a terminal, in words that hand no way round', () => {
+    const turnedAway = agentMayAccept(sources('off'), {
+      action: 'accept',
+      agent: undefined,
+      atATerminal: false,
+    });
     expect(turnedAway?.code).toBe(AGENT_ACCEPTS_IS_OFF);
-    expect(turnedAway?.message).toContain('mnid:0123456789abcdef');
-    expect(turnedAway?.message).toContain('mnema decision move accept');
-    expect(turnedAway?.message).toContain('mnema switch on agent-accepts');
+    expect(turnedAway?.message).toContain('no agent declared');
+    expect(turnedAway?.message).toContain('only a person at a terminal accepts');
+    expect(turnedAway?.message).not.toContain('mnema decision move');
     expect(turnedAway?.message).toContain('The decision was not moved.');
   });
 
-  it('asks only about an agent’s accept: a person, and every other action, pass while it is off', () => {
-    expect(agentMayAccept(sources('off'), { action: 'accept', agent: undefined })).toBe(undefined);
-    for (const action of ['reject', 'supersede']) {
-      expect(agentMayAccept(sources('off'), { action, agent: 'claude-code' })).toBe(undefined);
+  it('still lets it through while the switch is on or was never touched', () => {
+    for (const switched of ['never', 'on'] as const) {
+      expect(
+        agentMayAccept(sources(switched), {
+          action: 'accept',
+          agent: undefined,
+          atATerminal: false,
+        }),
+      ).toBe(undefined);
     }
   });
 });
