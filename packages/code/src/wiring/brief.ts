@@ -233,6 +233,7 @@ export function registerBrief(program: Command, wiring: Wiring): Declared {
           wiring,
           result,
           result.reason === 'SWITCHED_OFF' ? { SWITCHED_OFF: switchedOff(result) } : {},
+          opts.hook === true,
         );
         return;
       }

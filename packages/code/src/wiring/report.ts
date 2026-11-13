@@ -140,6 +140,20 @@ export function reportOfferSentence(): Line {
 }
 
 /**
+ * The first line a refusal puts on the error stream when it is asked FOR A HOOK (`--hook`): the
+ * refusal's code, alone on its line, and nothing else on it.
+ *
+ * A hook that hands a model a document has to tell "there is no project here" and "this channel is
+ * switched off", which it keeps silent about, from a record that would not answer, which it says,
+ * and a sentence nobody typed for is not a thing to match on. The exit code cannot say it (every
+ * refusal is 1), so the code is printed. Without the flag nothing is added: a person who typed the
+ * verb reads the same lines as before.
+ */
+export function saysTheCode(io: CliIo, code: string): void {
+  io.err(code);
+}
+
+/**
  * Reports a refusal and records the non-zero exit.
  *
  * `said` gives the verb its own wording for the reasons only it knows about: the
@@ -152,7 +166,9 @@ export function reportRefusal(
   to: Reporter,
   refusal: { readonly reason: string; readonly code?: string; readonly message?: string },
   said: Readonly<Record<string, string>> = {},
+  hook = false,
 ): void {
+  if (hook) saysTheCode(to.io, refusal.code ?? refusal.reason);
   const wording =
     said[refusal.reason] ?? (refusal.reason === 'NO_PROJECT' ? NO_PROJECT : undefined);
   // A worded reason is ONE sentence and takes no detail: "No task <id> here." has no

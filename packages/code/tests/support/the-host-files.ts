@@ -450,7 +450,8 @@ export function copilotHooksJson(): string {
  * WHAT IT HOLDS IS THE ROW'S, NOT A SECOND READING: the tools it writes through are the reader's
  * (`writeToolsOf`), the host it names to the verb is the row's, and how long it waits is the
  * hooks files' (`TIMEOUT`). WHAT IT DOES IS THE HANDLERS' RULE IN FEWER WORDS (`hand-over.mjs`):
- * every outcome that is not an answer is silence, a `mnema` that is not this product is not run,
+ * every outcome that is not an answer is silence save a record that would not answer the opening,
+ * which is said in one line, a `mnema` that is not this product is not run,
  * and the opening is asked of the verb for a hook (`--hook`) and handed over byte for byte, with
  * what the same run said about the record under it.
  */
@@ -546,6 +547,17 @@ function run(args, cwd, input, timeout = WAIT) {
 }
 
 /**
+ * What the opening says: the two verbs share ONE budget, so that the search for a node, \`--identify\`
+ * and both verbs stay under the host's own cap and a \`mnema\` that hangs is answered by a line, not by
+ * the host's kill, which a host reads as nothing to say.
+ */
+const OPENING_WAIT = 9000;
+function openingOf(cwd) {
+  const until = Date.now() + OPENING_WAIT;
+  return ['brief', 'recall'].flatMap((verb) => whatItSays(verb, cwd, until));
+}
+
+/**
  * Whether a run did not happen to the end. A CLOSED INPUT IS NOT THAT: a \`mnema\` that answers before it
  * has read the payload leaves a write that lost the race to its exit a closed one, and \`spawnSync\`
  * reports \`EPIPE\` with the \`status\` and the streams the program left, so what it said is read as it
@@ -569,10 +581,23 @@ function whoIsThere(cwd) {
   return ran.stdout.startsWith(THIS_PRODUCT) ? 'this' : 'other';
 }
 
-/** What a verb printed for a hook, or nothing: the second stream rides under the first. */
-function whatItSays(verb, cwd) {
-  const ran = run([verb, '--hook'], cwd);
-  if (ran.error !== undefined || ran.status !== 0 || ran.stdout.trim() === '') return [];
+/**
+ * What a verb printed for a hook, or nothing: the second stream rides under the first. A record that
+ * would not answer is said in one line (\`whatARefusalSays\`), a run cut by \`until\` is said, and no
+ * project and a channel switched off are silence.
+ */
+function whatItSays(verb, cwd, until) {
+  const ran = run([verb, '--hook'], cwd, undefined, Math.max(1, until - Date.now()));
+  if (ran.error !== undefined) {
+    return /** @type {NodeJS.ErrnoException} */ (ran.error).code === 'ETIMEDOUT'
+      ? [notConsulted(didNotAnswerIn(OPENING_WAIT))]
+      : [];
+  }
+  if (ran.status !== 0) {
+    const said = whatARefusalSays(ran.stderr);
+    return said === null ? [] : [said];
+  }
+  if (ran.stdout.trim() === '') return [];
   const alsoSaid = ran.stderr.trim();
   return [alsoSaid === '' ? ran.stdout : [ran.stdout, alsoSaid].join('\n\n')];
 }
@@ -621,7 +646,7 @@ export const Mnema = async ({ directory }) => {
         opened.set(
           session,
           who() === 'this'
-            ? ['brief', 'recall'].flatMap((verb) => whatItSays(verb, directory))
+            ? openingOf(directory)
             : [],
         );
       }
@@ -699,10 +724,13 @@ export const Mnema = async ({ directory }) => {
     '// which tool records a choice it settled. Copy this file into `.opencode/plugins/` of the',
     '// project, or into `~/.config/opencode/plugins/`. It runs `mnema` from the PATH, and every',
     '// outcome that is not an answer, such as no `mnema`, no project or a program of that name that',
-    '// is not @mnema/code, leaves the session as it would have been without it. One outcome is not',
-    '// silence: a `mnema` that is there and cannot answer (no node on the PATH takes it, it exits',
+    '// is not @mnema/code, leaves the session as it would have been without it. Two outcomes are not',
+    '// silence. A `mnema` that is there and cannot answer (no node on the PATH takes it, it exits',
     '// non-zero, it does not finish) refuses a write at a path that a rule which refuses it, or asks',
-    '// for a person at it, addresses; any other write goes through.',
+    '// for a person at it, addresses; any other write goes through. And where the opening asks the',
+    '// record and it refuses (a line it cannot read, a record held by another process, a run cut by',
+    '// its time), the session is told in one line: no project and a switched-off channel stay silent,',
+    '// because the verb names which refusal it is by a code on the first line of its error stream.',
     ...kit.imports,
     '',
     '// ---- the reading of what to do where `mnema` cannot answer, as the plugin ships it ----',
@@ -795,7 +823,7 @@ export function geminiHooksJson(): string {
  * WHAT IT HOLDS IS THE ROW'S, NOT A SECOND READING: the tools it gates are the reader's
  * (`writeToolsOf`), the host it names to the verb is the row's, and how long it waits is the hooks
  * files'. WHAT IT DOES IS THE HANDLERS' RULE (`hand-over.mjs`): every outcome that is not an answer
- * is silence and exit 0, a `mnema` that is not this product is not run, the opening is the text of
+ * is silence and exit 0, save a record that would not answer the opening, which is said in one line, a `mnema` that is not this product is not run, the opening is the text of
  * the verbs for a hook (`--hook`) with what the same run said about the record under it, and the
  * gate's payload goes to the verb as the host sent it. The reply it prints is the verb's, and only
  * when it is a refusal: anything else it received is dropped, not forwarded.
@@ -865,6 +893,17 @@ function run(args, cwd, input, timeout = WAIT) {
 }
 
 /**
+ * What the opening says: the two verbs share ONE budget, so that the search for a node, \`--identify\`
+ * and both verbs stay under the host's own cap and a \`mnema\` that hangs is answered by a line, not by
+ * the host's kill, which a host reads as nothing to say.
+ */
+const OPENING_WAIT = 9000;
+function openingOf(cwd) {
+  const until = Date.now() + OPENING_WAIT;
+  return ['brief', 'recall'].flatMap((verb) => whatItSays(verb, cwd, until));
+}
+
+/**
  * Whether a run did not happen to the end. A CLOSED INPUT IS NOT THAT: a \`mnema\` that answers before it
  * has read the payload, or refuses an option at its arguments, leaves a payload larger than the pipe
  * (or a write that lost the race to its exit) a closed one, and \`spawnSync\` reports \`EPIPE\` with the
@@ -891,13 +930,25 @@ function whoIsThere(cwd) {
 }
 
 /**
- * What a verb printed for a hook, or nothing: the second stream rides under the first.
+ * What a verb printed for a hook, or nothing: the second stream rides under the first. A record that
+ * would not answer is said in one line (\`whatARefusalSays\`), a run cut by \`until\` is said, and no
+ * project and a channel switched off are silence.
  * @param {string} verb
  * @param {string} cwd
+ * @param {number} until the time, in milliseconds since the epoch, by which both verbs of the opening are done
  */
-function whatItSays(verb, cwd) {
-  const ran = run([verb, '--hook'], cwd);
-  if (ran.error !== undefined || ran.status !== 0 || ran.stdout.trim() === '') return [];
+function whatItSays(verb, cwd, until) {
+  const ran = run([verb, '--hook'], cwd, undefined, Math.max(1, until - Date.now()));
+  if (ran.error !== undefined) {
+    return /** @type {NodeJS.ErrnoException} */ (ran.error).code === 'ETIMEDOUT'
+      ? [notConsulted(didNotAnswerIn(OPENING_WAIT))]
+      : [];
+  }
+  if (ran.status !== 0) {
+    const said = whatARefusalSays(ran.stderr);
+    return said === null ? [] : [said];
+  }
+  if (ran.stdout.trim() === '') return [];
   const alsoSaid = ran.stderr.trim();
   return [alsoSaid === '' ? ran.stdout : [ran.stdout, alsoSaid].join('\n\n')];
 }
@@ -943,7 +994,7 @@ function answer(mode, raw) {
   }
   if (who !== 'this') return undefined;
   if (mode === 'open') {
-    const text = ['brief', 'recall'].flatMap((verb) => whatItSays(verb, cwd)).join('\n\n');
+    const text = openingOf(cwd).join('\n\n');
     return text === ''
       ? undefined
       : { hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: text } };
@@ -1001,10 +1052,13 @@ try {
     '// `beside`, after a write, hands over the rules of the record addressed at the file.',
     '// It runs `mnema` from the PATH, and every outcome that is not an answer, such as no `mnema`, no',
     '// project or a program of that name that is not @mnema/code, leaves the session as it would',
-    '// have been without it: nothing on stdout, exit 0. One outcome is not silence: a `mnema` that is',
+    '// have been without it: nothing on stdout, exit 0. Two outcomes are not silence. A `mnema` that is',
     '// there and cannot answer (no node on the PATH takes it, it exits non-zero, it does not finish)',
     '// refuses a write at a path that a rule which refuses it, or asks for a person at it, addresses;',
-    '// any other write goes through.',
+    '// any other write goes through. And where `open` asks the record and it refuses (a line it cannot',
+    '// read, a record held by another process, a run cut by its time), the session is told in one line:',
+    '// no project and a switched-off channel stay silent, because the verb names which refusal it is',
+    '// by a code on the first line of its error stream.',
     ...kit.imports,
     '',
     '// ---- the reading of what to do where `mnema` cannot answer, as the plugin ships it ----',

@@ -109,6 +109,7 @@ export function registerRecall(program: Command, wiring: Wiring): Declared {
               wiring,
               reminder,
               reminder.reason === 'SWITCHED_OFF' ? { SWITCHED_OFF: switchedOff(reminder) } : {},
+              opts.hook === true,
             );
             return;
           }
@@ -126,6 +127,7 @@ export function registerRecall(program: Command, wiring: Wiring): Declared {
             wiring,
             result,
             result.reason === 'SWITCHED_OFF' ? { SWITCHED_OFF: switchedOff(result) } : {},
+            opts.hook === true,
           );
           return;
         }
