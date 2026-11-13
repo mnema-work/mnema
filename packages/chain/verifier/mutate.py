@@ -662,6 +662,27 @@ def non_utf8_named_file_in_a_tail(root: str) -> tuple[bool, str]:
     return applied, "a file named a, the byte 0xff and b, in the tail directory"
 
 
+def strays_in_the_order_of_their_names(root: str) -> tuple[bool, str]:
+    """Three stray names of one tail, one of them not UTF-8, where the filesystem allows it.
+
+    `a`, U+E000 / U+FF10 / U+FFFC, `b`, and `a`, the byte 0xff, `b`: the readers name them in
+    the order of the names as said (U+FFFD for the byte), UTF-16 order, and not in the order of
+    the raw names, where that byte sorts below U+E000.
+    """
+
+    def write(path: str) -> None:
+        with open(path, "wb") as handle:
+            handle.write(b"junk")
+
+    try:
+        names = ["a\ue000b", "a\uff10b", "a\ufffcb", os.fsdecode(b"a\xffb")]
+        for name in names:
+            _beside_the_segments(root, name, write)
+    except OSError:
+        return False, "the filesystem refuses a name that is not UTF-8"
+    return True, "four stray names, one of them not UTF-8, in the tail directory"
+
+
 def file_named_witness_in_a_tail(root: str) -> tuple[bool, str]:
     """A FILE named `witness`, in the place of the directory of that name: a stray entry, not read.
 
@@ -2167,6 +2188,7 @@ MUTATIONS = {
     "segment-name-with-a-newline": segment_name_with_a_newline,
     "odd-named-file-in-a-tail": odd_named_file_in_a_tail,
     "non-utf8-named-file-in-a-tail": non_utf8_named_file_in_a_tail,
+    "strays-in-the-order-of-their-names": strays_in_the_order_of_their_names,
     "file-named-witness-in-a-tail": file_named_witness_in_a_tail,
     "folder-named-like-a-segment-in-a-tail": folder_named_like_a_segment_in_a_tail,
     "refused-line-beside-a-forged-signature": refused_line_beside_a_forged_signature,

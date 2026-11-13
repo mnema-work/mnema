@@ -1369,7 +1369,8 @@ def _stray_entries(tail_dir: str) -> list[str]:
     symbolic link is not said here. Nothing is read.
     """
     stray: list[str] = []
-    for name in sorted(os.listdir(tail_dir), key=utf16_order):
+    # In the order of the name the sentence says (U+FFFD for a byte that is not UTF-8), as the product sorts.
+    for name in sorted(os.listdir(tail_dir), key=lambda n: utf16_order(_as_the_product_reads(n))):
         if name == ".DS_Store" or name.startswith(APPLE_DOUBLE_PREFIX):
             continue
         path = os.path.join(tail_dir, name)
@@ -1393,7 +1394,7 @@ def _as_the_product_reads(name: str) -> str:
 def _say_stray_entries(report: Report, tail_dir: str, tail_id: str) -> None:
     """Section 4: each stray entry named once, never read and never refused.
 
-    The sentence is the product's, byte for byte: JSON's quoting with every non-ASCII
+    The sentence is the product's, byte for byte: JSON's quoting with every character outside printable ASCII
     character escaped is what the product's `strayEntrySentence` writes too.
     """
     for name in _stray_entries(tail_dir):

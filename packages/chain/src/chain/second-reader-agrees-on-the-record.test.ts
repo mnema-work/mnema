@@ -1315,6 +1315,15 @@ const MUTATIONS = [
     agreedAccepted: true,
   },
   {
+    name: 'strays-in-the-order-of-their-names',
+    refusals: 0,
+    section: '4',
+    says: '',
+    productLayer: 'T2/T4',
+    productBreaks: 'ok',
+    agreedAccepted: true,
+  },
+  {
     name: 'blank-segment-same-size',
     // The SECOND row that is not a refusal, and the reason the count below is 2. See the
     // INCOMPLETE describe: a checkpoint whose range outruns the entries present is a shape
@@ -1373,8 +1382,8 @@ describe('the second reader refuses, and the mutation that earns each refusal sh
     (mutation) => !('incomplete' in mutation) && !('agreedAccepted' in mutation),
   );
 
-  it('leaves exactly EIGHTEEN rows out of the refusal loop, and no row is an acceptance by one reader alone', () => {
-    expect(MUTATIONS.length - REFUSING.length).toBe(18);
+  it('leaves exactly NINETEEN rows out of the refusal loop, and no row is an acceptance by one reader alone', () => {
+    expect(MUTATIONS.length - REFUSING.length).toBe(19);
     expect(
       MUTATIONS.filter((m) => 'incomplete' in m || 'agreedAccepted' in m)
         .map((m) => m.name)
@@ -1397,6 +1406,7 @@ describe('the second reader refuses, and the mutation that earns each refusal sh
       'segment-name-with-a-newline',
       'stray-file-in-a-tail',
       'stray-folder-in-a-tail',
+      'strays-in-the-order-of-their-names',
       'unnamed-tail-beside-named-ones',
     ]);
     // NO ROW MAY BE AN ACCEPTANCE. This is the assertion the delivery is measured by: every

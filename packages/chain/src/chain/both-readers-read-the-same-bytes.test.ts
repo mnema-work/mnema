@@ -564,6 +564,7 @@ const AGREEMENTS: readonly Agreement[] = [
   { name: 'non-utf8-named-file-in-a-tail', verdict: 'accepted' },
   { name: 'file-named-witness-in-a-tail', verdict: 'accepted' },
   { name: 'folder-named-like-a-segment-in-a-tail', verdict: 'accepted' },
+  { name: 'strays-in-the-order-of-their-names', verdict: 'accepted' },
   { name: 'aligned-cut', verdict: 'accepted' },
   { name: 'refounded-record', verdict: 'accepted' },
   { name: 'named-record', verdict: 'accepted' },
@@ -836,6 +837,28 @@ describe('an entry in a tail directory that is not of the format, to both reader
       here.census.filter((note) => note.kind === 'stray-entry').map((note) => note.detail),
     ).toEqual([sentence]);
     expect(strays.map((finding) => [finding.where, finding.what])).toEqual([[tail, sentence]]);
+  });
+
+  it('names strays in the same order, a name that is not UTF-8 among them, where the filesystem allows one', () => {
+    const record = copyOf('witnessed-record');
+    const run = python([MUTATE, 'strays-in-the-order-of-their-names', record]);
+    const applied = JSON.parse(run.stdout) as { applied: boolean; detail: string };
+    if (!applied.applied) {
+      expect(applied.detail).toContain('refuses a name that is not UTF-8');
+      return;
+    }
+    const { here, status, verdict, strays } = bothSayOf(record);
+    // UTF-16 order of the names as said: U+FFFD, the byte that is not UTF-8, comes last.
+    const said = ['a\\ue000b', 'a\\uff10b', 'a\\ufffcb', 'a\\ufffdb'].map((name) =>
+      strayEntry(`"${name}"`),
+    );
+    expect(here.ok).toBe(true);
+    expect(status).toBe(0);
+    expect(verdict).toBe('VERIFIED');
+    expect(
+      here.census.filter((note) => note.kind === 'stray-entry').map((note) => note.detail),
+    ).toEqual(said);
+    expect(strays.map((finding) => finding.what)).toEqual(said);
   });
 
   it('skips what the operating system writes, in both, and says nothing of it', () => {
