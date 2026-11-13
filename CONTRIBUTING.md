@@ -7,7 +7,7 @@ the product is, and what it does and does not prove, is on the [front page](READ
 
 - **Node.** Requires Node 24.15.0 or a later 24, or 26.0.0 or later: that is the range `engines.node` declares in the root
   `package.json`, and `.npmrc` sets `engine-strict=true`, so an older runtime is refused at
-  install rather than failing later. CI runs the suite on Node 24.15.0 (the floor), the current 24 and 26.
+  install rather than failing later. CI runs the suite on Node 24.15.0 (the floor), the current 24 and 26, each in three shards that run at the same time.
 - **pnpm**, at the version the root `package.json` pins in `packageManager`. This is a pnpm
   workspace, and every step below goes through it.
 - **Python 3**, as `python3` on the `PATH`. The second reader in
@@ -24,7 +24,7 @@ Run `pnpm check:contribution`. It is the check to run before you open a pull req
 build, typecheck, the guards below and only the tests tied to the files you changed (against the
 merge base with `upstream/main`, or with `origin/main` if there is no `upstream`, which it asks you to fetch if it is missing; set `MNEMA_BASE` to compare with another ref), with
 one worker and a 30 s test timeout so it finishes on a small machine. It is a subset: CI runs
-the whole suite on Node 24.15.0, 24 and 26 and is the check that counts, so a green here can still
+the whole suite on Node 24.15.0, 24 and 26 (three shards each) and is the check that counts, so a green here can still
 be red there.
 
 When a guard fails in it, the check prints under the guard's path the paragraph at the top of its file that says what it checks; the comment CI leaves on your pull request does the same.

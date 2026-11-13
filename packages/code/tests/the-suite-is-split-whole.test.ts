@@ -84,7 +84,10 @@ describe('the suite is split whole', () => {
   });
 
   it('is red for a step that splits by another count, and for a merge that counts nothing', () => {
-    const other = CI.replace(/(--shard=\$\{\{ matrix\.shard \}\})\/3 --reporter=json/, '$1/4 --reporter=json');
+    const other = CI.replace(
+      /(--shard=\$\{\{ matrix\.shard \}\})\/3 --reporter=json/,
+      '$1/4 --reporter=json',
+    );
     expect(other).not.toBe(CI);
     expect(faults(other)[0]).toBe('the steps split the suite by different counts: 4, 3');
     const uncounted = CI.replace('if [ "$found" != \'3\' ]', 'if false');
