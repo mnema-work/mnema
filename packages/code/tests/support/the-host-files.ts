@@ -643,12 +643,7 @@ export const Mnema = async ({ directory }) => {
     'experimental.chat.system.transform': async (input, output) => {
       const session = input.sessionID ?? '';
       if (!opened.has(session)) {
-        opened.set(
-          session,
-          who() === 'this'
-            ? openingOf(directory)
-            : [],
-        );
+        opened.set(session, who() === 'this' ? openingOf(directory) : []);
       }
       output.system.push(...opened.get(session));
     },
