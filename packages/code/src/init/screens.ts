@@ -187,9 +187,12 @@ export function hostItems(files: ReadonlyMap<string, InstructionsPeek>): readonl
 }
 
 /** What a file of the instructions is, in the few words a row carries. */
-export function stateOfAFile(peek: InstructionsPeek): string {
+export function stateOfAFile(peek: InstructionsPeek, agentsWritten = false): string {
   const state = peek.found;
   if (peek.unwritable !== undefined) return `${peek.unwritable}: left as it is`;
+  if (peek.imports && agentsWritten && state.state === 'missing') {
+    return 'imports AGENTS.md: no block added';
+  }
   switch (state.state) {
     case 'missing':
       return peek.exists ? 'yours: block added' : 'new';
@@ -245,6 +248,7 @@ export function hostsPage(
   question: string = HOSTS_QUESTION,
 ): readonly Line[] {
   const items = hostItems(around.files);
+  const agentsWritten = state.marks.has(hostMark('codex'));
   const widest = widestOf(HOST_ROWS.map((row) => row.label)) + 2;
   const lines: Line[] = [step(ASKED, question), theGuide];
   for (const item of items) {
@@ -271,7 +275,7 @@ export function hostsPage(
           ...noted(
             trail,
             [plain(`        ${path}`)],
-            peek === undefined ? undefined : dim(stateOfAFile(peek)),
+            peek === undefined ? undefined : dim(stateOfAFile(peek, agentsWritten)),
             width,
             UNDER_THE_LABEL,
           ),
@@ -287,7 +291,7 @@ export function hostsPage(
             checked ? accent('       [x]') : plain('     [ ]'),
             plain(item.path as string),
           ],
-          peek === undefined ? undefined : dim(stateOfAFile(peek)),
+          peek === undefined ? undefined : dim(stateOfAFile(peek, agentsWritten)),
           width,
           UNDER_THE_NAME,
         ),
@@ -460,6 +464,57 @@ export function pullAnswered(answer: 'yes' | 'no', width: number): readonly Line
       answer === 'yes'
         ? 'four settings in .git/config, shown in the plan'
         : 'git’s configuration is left alone',
+      width,
+      '  ',
+    ),
+    theGuide,
+  ];
+}
+
+/** The two answers about a block a file that imports AGENTS.md holds, in the order they are listed. */
+export const TAKE_OUT_OPTIONS: readonly CompletionWord[] = [
+  { word: 'no', description: 'No, leave the block where it is' },
+  { word: 'yes', description: 'Yes, take the block out of the files named' },
+];
+
+/** The question about the block a file that imports AGENTS.md holds, as rows. */
+export function takeOutPage(
+  paths: readonly string[],
+  picked: string,
+  width: number,
+): readonly Line[] {
+  const lines: Line[] = [
+    step(
+      ASKED,
+      `Take the mnema block out of ${paths.join(' and ')}? ${paths.length === 1 ? 'It imports' : 'They import'} AGENTS.md, so Claude Code reads the instructions twice.`,
+    ),
+    theGuide,
+  ];
+  for (const option of TAKE_OUT_OPTIONS) {
+    lines.push(
+      ...noted(
+        trail,
+        [pointerCell(option.word === picked, 0), plain(option.description)],
+        option.word === 'no' ? dim('(the default)') : undefined,
+        width,
+        4,
+      ),
+    );
+  }
+  lines.push(
+    theGuide,
+    ...hints(keysOf(`${UP_DOWN} move`, 'Enter confirms', 'Esc leaves, nothing taken out'), width),
+  );
+  return lines;
+}
+
+/** The answer, collapsed. */
+export function takeOutAnswered(answer: 'yes' | 'no', width: number): readonly Line[] {
+  return [
+    heading(DONE, `Take the block out of the files that import AGENTS.md: ${answer}`),
+    ...paragraph(
+      trail,
+      answer === 'yes' ? 'taken out, as said below' : 'the blocks are left where they are',
       width,
       '  ',
     ),

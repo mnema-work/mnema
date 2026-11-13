@@ -372,6 +372,53 @@ export function withoutTheBlock(text: string): string {
   return kept + text.slice(from);
 }
 
+const IMPORT_AGENTS = /^@(?:\.\/)?AGENTS\.md[ \t]*$/;
+
+/**
+ * Whether `text`, a `CLAUDE.md` or a `.claude/CLAUDE.md`, imports `AGENTS.md`: a line of its own that is
+ * `@AGENTS.md` or `@./AGENTS.md`, and not inside a fenced code block (a page that shows the line as an
+ * example imports nothing). Claude Code reads the imported file as if its text stood where the line is,
+ * so the instructions in that `AGENTS.md` reach it without a block of their own (ADR-375). A fence that is
+ * never closed hides nothing, as in {@link markerLines}. Only this one file is looked at: an import
+ * inside `AGENTS.md` itself, or any other file, is not followed.
+ */
+export function importsAgents(text: string): boolean {
+  let fence: { readonly char: string; readonly length: number } | undefined;
+  let hidden = false;
+  let found = false;
+  for (const raw of text.split('\n')) {
+    const line = raw.endsWith('\r') ? raw.slice(0, -1) : raw;
+    const opens = FENCE.exec(line);
+    if (fence !== undefined) {
+      const closes = opens?.[1];
+      if (
+        opens !== null &&
+        closes !== undefined &&
+        closes[0] === fence.char &&
+        closes.length >= fence.length &&
+        (opens[2] ?? '').trim() === ''
+      ) {
+        fence = undefined;
+        hidden = false;
+      } else if (IMPORT_AGENTS.test(line)) {
+        hidden = true;
+      }
+    } else if (opens !== null) {
+      const ticks = opens[1] as string;
+      if (ticks[0] === '~' || !(opens[2] as string).includes('`')) {
+        fence = { char: ticks[0] as string, length: ticks.length };
+      }
+    } else if (IMPORT_AGENTS.test(line)) {
+      found = true;
+    }
+  }
+  // An import inside a fence that never closed is not hidden: the fence is no fence.
+  return found || hidden;
+}
+
+/** The files of the person's whose import of `AGENTS.md` Claude Code follows (ADR-375). */
+export const IMPORTING_FILES: readonly string[] = ['CLAUDE.md', '.claude/CLAUDE.md'];
+
 /**
  * `text` as its blocks, with the line breaks and the spaces a formatter may move taken out: the lines
  * of a paragraph or of one list item are one line, every run of white space is one space, and
@@ -425,4 +472,48 @@ function blocksOf(text: string): string {
  */
 export function sameInstructionsText(held: string, written: string): boolean {
   return held.replace(/\r\n/g, '\n') === written || blocksOf(held) === blocksOf(written);
+}
+
+/** The keys and values of a front matter, quoting set aside; `undefined` where a line is not `key: value`. */
+function frontMatterValues(lines: readonly string[]): ReadonlyMap<string, string> | undefined {
+  const values = new Map<string, string>();
+  for (const line of lines) {
+    if (line.trim() === '') continue;
+    const pair = /^([A-Za-z][\w-]*):[ \t]*(.*?)[ \t]*$/.exec(line);
+    if (pair === null) return undefined;
+    const value = pair[2] as string;
+    const quoted = /^(["'])(.*)\1$/.exec(value);
+    values.set(pair[1] as string, quoted === null ? value : (quoted[2] as string));
+  }
+  return values;
+}
+
+/** A text split at its front matter: the lines between the two `---` lines, and what follows the second. */
+function splitFrontMatter(
+  text: string,
+): { readonly lines: readonly string[]; readonly rest: string } | undefined {
+  const all = text.replace(/\r\n/g, '\n').split('\n');
+  if (all[0] !== '---') return undefined;
+  const close = all.indexOf('---', 1);
+  if (close === -1) return undefined;
+  return { lines: all.slice(1, close), rest: all.slice(close + 1).join('\n') };
+}
+
+/**
+ * Whether `held`, a file wholly mnema's, is `written` once a formatter has had it: the front matter has the same
+ * keys with the same values (their quotes and their order do not matter: prettier with `singleQuote` turns
+ * `applyTo: "**"` into `applyTo: '**'`), and the text after it is the same by {@link sameInstructionsText}.
+ * Another key, or another value, is a person's edit and is not the same (ADR-376). A file with no front matter
+ * (`.claude/rules`) is compared whole.
+ */
+export function sameOwnFile(held: string, written: string): boolean {
+  const mine = splitFrontMatter(written);
+  if (mine === undefined) return sameInstructionsText(held, written);
+  const theirs = splitFrontMatter(held);
+  if (theirs === undefined) return false;
+  const wanted = frontMatterValues(mine.lines);
+  const present = frontMatterValues(theirs.lines);
+  if (wanted === undefined || present === undefined || wanted.size !== present.size) return false;
+  for (const [key, value] of wanted) if (present.get(key) !== value) return false;
+  return sameInstructionsText(theirs.rest, mine.rest);
 }

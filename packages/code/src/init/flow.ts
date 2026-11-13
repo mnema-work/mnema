@@ -51,6 +51,9 @@ import {
   planPage,
   pullAnswered,
   pullPage,
+  TAKE_OUT_OPTIONS,
+  takeOutAnswered,
+  takeOutPage,
   theFirstScreen,
 } from './screens.js';
 
@@ -270,6 +273,21 @@ async function askAboutThePull(asking: Asking, opening: Accepts): Promise<Asked<
     on: (picked, stroke) => onTheOptions(PULL_OPTIONS, picked, stroke),
     answered: (answer, width) => pullAnswered(answer as Accepts, width),
     left: [leftLine()],
+  });
+  return asked.kind === 'left' ? asked : { kind: 'answered', answer: asked.answer as Accepts };
+}
+
+/** The question of taking the block out of the files that import AGENTS.md: `yes` or `no`, or that the person left. */
+export async function askToTakeTheBlockOut(
+  asking: Asking,
+  paths: readonly string[],
+): Promise<Asked<Accepts>> {
+  const asked = await putTheQuestion<string, string>(asking, {
+    initial: 'no',
+    page: (picked, width) => takeOutPage(paths, picked, width),
+    on: (picked, stroke) => onTheOptions(TAKE_OUT_OPTIONS, picked, stroke),
+    answered: (answer, width) => takeOutAnswered(answer as Accepts, width),
+    left: [leftLine('Left. Nothing was taken out.')],
   });
   return asked.kind === 'left' ? asked : { kind: 'answered', answer: asked.answer as Accepts };
 }

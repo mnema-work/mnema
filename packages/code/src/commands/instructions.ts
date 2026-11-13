@@ -45,15 +45,18 @@ import { HOST_ROWS } from '../init/hosts.js';
 import {
   beginMarker,
   CHOOSABLE_INSTRUCTIONS,
+  IMPORTING_FILES,
   INSTRUCTIONS_BLOCK,
   INSTRUCTIONS_END,
   INSTRUCTIONS_TARGETS,
   INSTRUCTIONS_VERSION,
   type InstructionsTarget,
+  importsAgents,
   KNOWN_BODIES,
   type Located,
   locateBlock,
   sameInstructionsText,
+  sameOwnFile,
 } from '../instructions-block.js';
 
 /** What a file holds of the block, read without writing. */
@@ -75,6 +78,8 @@ export type InstructionsChange =
   | 'added'
   | 'replaced'
   | 'unchanged'
+  /** A file that imports `AGENTS.md`, which holds the instructions: nothing is written in it (ADR-375). */
+  | 'left'
   | 'removed'
   | 'deleted'
   | 'refused'
@@ -91,6 +96,12 @@ export interface InstructionsFile {
   readonly error?: string;
   /** For a removal: whether putting the block back would give the file back as it is now. */
   readonly asItWas?: boolean;
+  /**
+   * Set on a file of the person's that imports `AGENTS.md` while `AGENTS.md` is one of the files (ADR-375):
+   * `covered` where it holds no block, `doubled` where it holds one this product wrote, which Claude Code
+   * then reads twice.
+   */
+  readonly imports?: 'covered' | 'doubled';
   /** For `refused` and `failed`: the command that tries again. */
   readonly again?: string;
 }
@@ -122,12 +133,12 @@ function stateOf(target: InstructionsTarget, text: string | undefined): Instruct
   if (target.own !== undefined) {
     const own = target.own;
     const held = lf(text);
-    if (sameInstructionsText(held, ownText(own, INSTRUCTIONS_VERSION) as string)) {
+    if (sameOwnFile(held, ownText(own, INSTRUCTIONS_VERSION) as string)) {
       return { state: 'current' };
     }
     if (
       Object.keys(KNOWN_BODIES).some((version) =>
-        sameInstructionsText(held, ownText(own, version) as string),
+        sameOwnFile(held, ownText(own, version) as string),
       )
     ) {
       return { state: 'outdated' };
@@ -260,6 +271,37 @@ export const EVERY_HOST_FILE: readonly string[] = CHOOSABLE_INSTRUCTIONS.map(
   (target) => target.path,
 );
 
+/** Whether the person's file at `relative` imports `AGENTS.md` (ADR-375). A file that is not there or cannot be read does not. */
+function importsTheAgentsFile(project: string, relative: string): boolean {
+  if (!IMPORTING_FILES.includes(relative)) return false;
+  if (linkRefusal(project, relative) !== undefined) return false;
+  try {
+    const text = read(join(project, relative));
+    return text !== undefined && importsAgents(text);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The files of the person's that import `AGENTS.md` while `AGENTS.md` is one of the files in play (`choice`, or
+ * else what the disk shows chosen, or else every one): Claude Code reads the instructions in them from there,
+ * so no block is written in them (ADR-375). Where `AGENTS.md` is not in play the import covers nothing.
+ */
+function coveredByTheImport(project: string, choice?: readonly string[]): readonly string[] {
+  const onDisk = chosenOnDisk(project);
+  const chosen = choice ?? (onDisk.length > 0 ? onDisk : EVERY_HOST_FILE);
+  if (!chosen.includes('AGENTS.md')) return [];
+  return IMPORTING_FILES.filter((path) => importsTheAgentsFile(project, path));
+}
+
+/** What the import says of a file whose state is `found`: covered with no block, doubled with one this product wrote. */
+function importOf(found: InstructionsState): Pick<InstructionsFile, 'imports'> {
+  if (found.state === 'missing') return { imports: 'covered' };
+  if (found.state === 'current' || found.state === 'outdated') return { imports: 'doubled' };
+  return {};
+}
+
 /**
  * The targets this project has: the offered files that were chosen (`choice`, or else the ones the files
  * on disk show chosen, or else every one when nothing shows it), and the person's own files
@@ -301,8 +343,10 @@ export function leftOut(project: string): readonly string[] {
     ['current', 'outdated', 'edited'].includes(peek.found.state),
   );
   if (!holdsOne) return [];
+  const covered = coveredByTheImport(project);
   return peeks
     .filter((peek) => !peek.own && peek.exists && peek.found.state === 'missing')
+    .filter((peek) => !covered.includes(peek.path))
     .filter(
       (peek) => INSTRUCTIONS_TARGETS.find((target) => target.path === peek.path)?.when === 'exists',
     )
@@ -325,6 +369,8 @@ export interface InstructionsPeek {
   readonly own: boolean;
   /** What it holds of the block: the state a write is decided by. */
   readonly found: InstructionsState;
+  /** Whether it is a file of the person's that imports `AGENTS.md`, whichever files are chosen (ADR-375). */
+  readonly imports: boolean;
   /** Why a write would be refused (read-only, a directory in its place, no permission on its folder), when it would. */
   readonly unwritable?: string;
 }
@@ -367,6 +413,7 @@ export function peekInstructions(project: string): readonly InstructionsPeek[] {
       exists: existsAsALink(join(project, target.path)),
       own: target.own !== undefined,
       found: inspect(project, target).found,
+      imports: importsTheAgentsFile(project, target.path),
       ...(unwritable !== undefined ? { unwritable } : {}),
     };
   });
@@ -374,15 +421,20 @@ export function peekInstructions(project: string): readonly InstructionsPeek[] {
 
 /** What each instructions file of the project at `project` holds of the block. Reads only. */
 export function checkInstructions(project: string): readonly InstructionsFile[] {
-  return targetsOf(project).map((target) => ({
-    path: target.path,
-    found: inspect(project, target).found,
-  }));
+  const covered = coveredByTheImport(project);
+  return targetsOf(project).map((target) => {
+    const found = inspect(project, target).found;
+    return {
+      path: target.path,
+      found,
+      ...(covered.includes(target.path) ? importOf(found) : {}),
+    };
+  });
 }
 
 /** Whether every instructions file of the project holds this version's block. */
 export function instructionsAreCurrent(files: readonly InstructionsFile[]): boolean {
-  return files.every((file) => file.found.state === 'current');
+  return files.every((file) => file.found.state === 'current' || file.imports === 'covered');
 }
 
 /** `left` with the block after it, as `mnema instructions` adds it to a file of the person's. */
@@ -464,7 +516,27 @@ export function writeInstructions(
   choice?: readonly string[],
   yours?: readonly string[],
 ): readonly InstructionsFile[] {
-  return targetsOf(project, choice, yours).map((target) => writeOne(project, target));
+  const covered = coveredByTheImport(project, choice);
+  return targetsOf(project, choice, yours).map((target) => {
+    if (!covered.includes(target.path)) return writeOne(project, target);
+    // A file that imports AGENTS.md is left as it is, said and not written (ADR-375); one whose block somebody
+    // edited is refused as it always was.
+    const found = inspect(project, target).found;
+    const imports = importOf(found);
+    return imports.imports === undefined
+      ? writeOne(project, target)
+      : { path: target.path, found, did: 'left' as const, ...imports };
+  });
+}
+
+/**
+ * Takes the block out of the files named, which are the ones the person said yes to: a file that imports
+ * `AGENTS.md` and holds a block of its own (ADR-375). Only what was named is touched.
+ */
+export function removeFrom(project: string, paths: readonly string[]): readonly InstructionsFile[] {
+  return INSTRUCTIONS_TARGETS.filter((target) => paths.includes(target.path)).map((target) =>
+    removeOne(project, target),
+  );
 }
 
 /** Removes the directories `from` and above it, up to `project`, while each is empty. */
@@ -535,6 +607,12 @@ export function removeInstructions(project: string): readonly InstructionsFile[]
 
 /** The sentence `mnema instructions --check` and `mnema doctor` say about one file. */
 export function stateLine(file: InstructionsFile): string {
+  if (file.imports === 'covered') {
+    return `${file.path} imports AGENTS.md, so Claude Code reads the mnema instructions from there and none is written here.`;
+  }
+  if (file.imports === 'doubled') {
+    return `${file.path} imports AGENTS.md and holds a mnema block of its own, so Claude Code reads the instructions twice: at a terminal \`mnema instructions\` asks whether to take this one out.`;
+  }
   const found = file.found;
   switch (found.state) {
     case 'current':
@@ -567,6 +645,8 @@ export function changeLine(file: InstructionsFile): string {
         : `Took the mnema instructions out of ${file.path}: the lines around them are left as they were.`;
     case 'deleted':
       return `Deleted ${file.path}: it held the mnema instructions and nothing else.`;
+    case 'left':
+      return stateLine(file);
     case 'failed':
       return `Did not change ${file.path}: ${file.error ?? 'the file system refused it'}. Once that is fixed, \`${again}\` tries again.`;
     case 'refused':

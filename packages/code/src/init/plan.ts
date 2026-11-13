@@ -74,9 +74,21 @@ const ORDER: readonly Verb[] = [
 ];
 
 /** What a file of the instructions gets, said as a row. */
-function rowForAFile(peek: InstructionsPeek): PlanRow {
+function rowForAFile(peek: InstructionsPeek, agentsWritten: boolean): PlanRow {
   const state = peek.found;
   const what = peek.path;
+  // A FILE THAT IMPORTS AGENTS.md GETS NO BLOCK WHILE AGENTS.md IS WRITTEN (ADR-375): Claude Code reads it from there.
+  if (peek.imports && agentsWritten && ['missing', 'current', 'outdated'].includes(state.state)) {
+    return {
+      section: 'repository',
+      verb: 'leave',
+      what,
+      note:
+        state.state === 'missing'
+          ? 'it imports AGENTS.md, which holds the instructions'
+          : 'it imports AGENTS.md and holds a block: read twice',
+    };
+  }
   // A FILE THE WRITE WOULD REFUSE IS LEFT, with the reason: the plan never promises a write that then fails.
   if (peek.unwritable !== undefined) {
     return { section: 'repository', verb: 'leave', what, note: `(${peek.unwritable})` };
@@ -206,7 +218,7 @@ export function instructionRows(
     .filter((path) => wanted.includes(path))
     .flatMap((path) => {
       const peek = around.files.get(path);
-      return peek === undefined ? [] : [rowForAFile(peek)];
+      return peek === undefined ? [] : [rowForAFile(peek, ownFilesOf(marks).includes('AGENTS.md'))];
     });
   return [...rows].sort((a, b) => ORDER.indexOf(a.verb) - ORDER.indexOf(b.verb));
 }

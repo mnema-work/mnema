@@ -162,6 +162,22 @@ export function registerInstructions(program: Command, wiring: Wiring): Declared
           const out = leftOut(root);
           if (out.length > 0) io.out(render(fact(leftOutLine(out))));
         }
+        // A FILE THAT IMPORTS AGENTS.md AND HOLDS A BLOCK OF OURS is read twice (ADR-375). The block comes out only on a
+        // person's yes, at a terminal; without one the line above has said it and nothing is changed.
+        const doubled = files.filter((file) => file.imports === 'doubled').map((file) => file.path);
+        if (
+          opts.remove !== true &&
+          doubled.length > 0 &&
+          io.aPersonIsHere === true &&
+          io.terminal !== undefined
+        ) {
+          const { askToTakeTheBlockOut } = await import('../init/flow.js');
+          const { removeFrom } = await import('../commands/instructions.js');
+          const answer = await askToTakeTheBlockOut({ io, render, terminal: io.terminal }, doubled);
+          if (answer.kind === 'answered' && answer.answer === 'yes') {
+            for (const file of removeFrom(root, doubled)) io.out(render(fact(changeLine(file))));
+          }
+        }
         if (files.some((file) => file.did === 'refused' || file.did === 'failed')) io.fail();
       },
     );
