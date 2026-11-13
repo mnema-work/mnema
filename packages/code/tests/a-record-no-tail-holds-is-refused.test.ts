@@ -31,6 +31,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { inEveryCacheState, type Planted } from './support/every-cache-state.js';
 import { MNEMA_CLI } from './support/the-cli.js';
 
 /** The built binary: what a person runs. */
@@ -93,25 +94,51 @@ function aRecord(): string {
   return anchor as string;
 }
 
-const tails = (): string[] => readdirSync(join(repo, '.mnema', 'tails'));
+/** The record `aRecord` founds, in a directory of its own, for a case that runs in every cache state. */
+function aRecordIn(dir: string): Planted {
+  const planted = { repo: join(dir, 'repo'), home: join(dir, 'home') };
+  for (const path of [planted.repo, planted.home]) mkdirSync(path, { recursive: true });
+  const mnemaHere = (...argv: string[]) => {
+    const ran = mnemaIn(planted.repo, planted.home, ...argv);
+    expect(ran.status, `${argv.join(' ')}: ${ran.stderr}`).toBe(0);
+    return ran.stdout;
+  };
+  mnemaHere('init');
+  mnemaHere('decision', 'record', 'Use the standard library', 'Because it is there');
+  mnemaHere('decision', 'record', 'Keep the record in the repository', 'Because it travels');
+  return planted;
+}
+
+const tailsOf = (planted: Planted): string[] => readdirSync(join(planted.repo, '.mnema', 'tails'));
 
 // @proves nothing-was-removed
 // @proves nothing-was-deleted
 describe('mnema verify over a record in which no tail holds anything', () => {
-  it('exits 1 with its one tail deleted, names it as the record, and still names the keys', () => {
-    aRecord();
-    expect(tails()).toHaveLength(1);
-    rmSync(join(repo, '.mnema', 'tails', tails()[0] as string), { recursive: true });
-
-    const said = mnema('verify');
-    expect(said.status).toBe(1);
-    expect(said.stdout).toContain('public: local integrity FAILED');
-    const issue = said.stderr.split('\n').find((line) => line.includes(NO_TAIL));
-    expect(issue, said.stderr).toBeDefined();
-    expect(issue).toContain('issue [T1] public the record:');
-    expect(issue).toContain('there are no tails');
-    // Section 6.5 still runs: the key that wrote the deleted tail is named.
-    expect(said.stdout).toContain('census [key-without-tail] public');
+  it('exits 1 with its one tail deleted, names it as the record, and still names the keys, in every state of the projection', () => {
+    inEveryCacheState({
+      found(dir) {
+        const planted = aRecordIn(dir);
+        expect(tailsOf(planted)).toHaveLength(1);
+        return planted;
+      },
+      damage(planted) {
+        rmSync(join(planted.repo, '.mnema', 'tails', tailsOf(planted)[0] as string), {
+          recursive: true,
+        });
+      },
+      run(planted) {
+        const said = mnemaIn(planted.repo, planted.home, 'verify');
+        expect(said.status).toBe(1);
+        expect(said.stdout).toContain('public: local integrity FAILED');
+        const issue = said.stderr.split('\n').find((line) => line.includes(NO_TAIL));
+        expect(issue, said.stderr).toBeDefined();
+        expect(issue).toContain('issue [T1] public the record:');
+        expect(issue).toContain('there are no tails');
+        // Section 6.5 still runs: the key that wrote the deleted tail is named.
+        expect(said.stdout).toContain('census [key-without-tail] public');
+        return said;
+      },
+    });
   });
 
   it('exits 0 on a project init has just founded', () => {
@@ -175,7 +202,7 @@ describe('mnema verify over a record in which no tail holds anything', () => {
 });
 
 describe('the two readers exit alike over a record with no tail that holds anything', () => {
-  const SHAPES: readonly { name: string; cut: (tailsDir: string) => void }[] = [
+  const SHAPES: readonly { name: string; cut: (tailsDir: string, tail: string) => void }[] = [
     { name: 'no tails/ directory', cut: (dir) => rmSync(dir, { recursive: true }) },
     {
       name: 'a tails/ directory with nothing in it',
@@ -186,27 +213,36 @@ describe('the two readers exit alike over a record with no tail that holds anyth
     },
     {
       name: 'a tail whose segment is empty',
-      cut: (dir) => {
-        const tail = join(dir, tails()[0] as string);
+      cut: (dir, name) => {
+        const tail = join(dir, name);
         for (const name of readdirSync(tail)) rmSync(join(tail, name), { recursive: true });
         writeFileSync(join(tail, '000001.jsonl'), '');
       },
     },
   ];
 
-  it.each(SHAPES)('$name: both exit 1 and both say there is no tail', ({ cut }) => {
-    aRecord();
-    cut(join(repo, '.mnema', 'tails'));
+  it.each(SHAPES)(
+    '$name: both exit 1 and both say there is no tail, in every state of the projection',
+    ({ cut }) => {
+      inEveryCacheState({
+        found: aRecordIn,
+        damage: (planted) =>
+          cut(join(planted.repo, '.mnema', 'tails'), tailsOf(planted)[0] as string),
+        run(planted) {
+          const product = mnemaIn(planted.repo, planted.home, 'verify');
+          expect(product.status, product.stderr).toBe(1);
+          expect(product.stderr).toContain(NO_TAIL);
 
-    const product = mnema('verify');
-    expect(product.status, product.stderr).toBe(1);
-    expect(product.stderr).toContain(NO_TAIL);
-
-    const second = spawnSync('python3', ['-I', SECOND_READER, 'record', join(repo, '.mnema')], {
-      encoding: 'utf-8',
-      env: { PATH: process.env.PATH ?? '', HOME: home },
-    });
-    expect(second.status, second.stdout).toBe(1);
-    expect(second.stdout).toContain(NO_TAIL);
-  });
+          const second = spawnSync(
+            'python3',
+            ['-I', SECOND_READER, 'record', join(planted.repo, '.mnema')],
+            { encoding: 'utf-8', env: { PATH: process.env.PATH ?? '', HOME: planted.home } },
+          );
+          expect(second.status, second.stdout).toBe(1);
+          expect(second.stdout).toContain(NO_TAIL);
+          return product;
+        },
+      });
+    },
+  );
 });

@@ -18,11 +18,11 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { inEveryCacheState, type Planted } from './support/every-cache-state.js';
 import { MNEMA_CLI } from './support/the-cli.js';
 
 const VERIFIER = fileURLToPath(new URL('../../chain/verifier/mnema_verify.py', import.meta.url));
@@ -53,36 +53,23 @@ for (const fn of new Set([kill.fn, arm?.fn].filter(Boolean))) wrap(fn);
 syncBuiltinESMExports();
 `;
 
-let sandbox: string;
-let repo: string;
-let home: string;
-let preload: string;
+/** A project the helper gives a directory, and the preload that kills a write in it. */
+interface Killable extends Planted {
+  readonly preload: string;
+}
 
-beforeEach(() => {
-  sandbox = mkdtempSync(join(tmpdir(), 'mnema-killed-write-'));
-  repo = join(sandbox, 'repo');
-  home = join(sandbox, 'home');
-  for (const dir of [repo, home]) mkdirSync(dir, { recursive: true });
-  preload = join(sandbox, 'kill-at.cjs');
-  writeFileSync(preload, PRELOAD);
-});
-
-afterEach(() => {
-  rmSync(sandbox, { recursive: true, force: true });
-});
-
-function mnema(args: string[], kill?: { at: string; arm?: string }) {
+function mnema(planted: Killable, args: string[], kill?: { at: string; arm?: string }) {
   return spawnSync(process.execPath, [MNEMA_CLI, ...args], {
-    cwd: repo,
+    cwd: planted.repo,
     encoding: 'utf-8',
     env: {
       PATH: process.env.PATH ?? '',
-      HOME: home,
+      HOME: planted.home,
       GIT_CONFIG_NOSYSTEM: '1',
       ...(kill === undefined
         ? {}
         : {
-            NODE_OPTIONS: `--require ${preload}`,
+            NODE_OPTIONS: `--require ${planted.preload}`,
             KILL_AT: kill.at,
             ...(kill.arm === undefined ? {} : { ARM_AT: kill.arm }),
           }),
@@ -112,34 +99,47 @@ const POINTS: Record<string, { at: string; arm?: string }> = {
 // @proves an-edit-is-caught
 describe('a write killed at a point of its hold, then a write by the same key', () => {
   for (const [point, kill] of Object.entries(POINTS)) {
-    for (const cache of ['warm', 'cold'] as const) {
-      it(`${point}, the projection ${cache}: one tail, every event signed, nothing blamed on git`, () => {
-        const init = mnema(['init', '--yes', '--hosts', 'none']);
-        expect(init.status, init.stderr).toBe(0);
-        for (const text of ['the first fact', 'the second fact']) {
-          const wrote = mnema(['memory', text]);
-          expect(wrote.status, wrote.stderr).toBe(0);
-        }
+    it(`${point}, in every state of the projection: one tail, every event signed, nothing blamed on git`, () => {
+      inEveryCacheState<Killable>({
+        found(dir) {
+          const planted = {
+            repo: join(dir, 'repo'),
+            home: join(dir, 'home'),
+            preload: join(dir, 'kill-at.cjs'),
+          };
+          for (const path of [planted.repo, planted.home]) mkdirSync(path, { recursive: true });
+          writeFileSync(planted.preload, PRELOAD);
+          const init = mnema(planted, ['init', '--yes', '--hosts', 'none']);
+          expect(init.status, init.stderr).toBe(0);
+          for (const text of ['the first fact', 'the second fact']) {
+            const wrote = mnema(planted, ['memory', text]);
+            expect(wrote.status, wrote.stderr).toBe(0);
+          }
+          return planted;
+        },
+        damage(planted) {
+          const killed = mnema(planted, ['memory', 'the fact the kill interrupts'], kill);
+          expect(killed.signal, killed.stderr).toBe('SIGKILL');
+        },
+        run(planted) {
+          const next = mnema(planted, ['memory', 'the fact after the kill']);
+          expect(next.status, next.stderr).toBe(0);
+          expect(`${next.stdout}${next.stderr}`).not.toMatch(/new tail|branch switch/);
 
-        const killed = mnema(['memory', 'the fact the kill interrupts'], kill);
-        expect(killed.signal, killed.stderr).toBe('SIGKILL');
-
-        if (cache === 'cold')
-          rmSync(join(repo, '.mnema', 'locks', 'projection.db'), { force: true });
-        const next = mnema(['memory', 'the fact after the kill']);
-        expect(next.status, next.stderr).toBe(0);
-        expect(`${next.stdout}${next.stderr}`).not.toMatch(/new tail|branch switch/);
-
-        expect(readdirSync(join(repo, '.mnema', 'tails'))).toHaveLength(1);
-        const verified = mnema(['verify', '--require', 'signed']);
-        expect(verified.status, `${verified.stdout}${verified.stderr}`).toBe(0);
-        const second = spawnSync(
-          'python3',
-          ['-I', VERIFIER, 'record', join(repo, '.mnema'), '--require', 'signed'],
-          { encoding: 'utf-8' },
-        );
-        expect(second.status, second.stdout).toBe(0);
-      }, 60_000);
-    }
+          expect(readdirSync(join(planted.repo, '.mnema', 'tails'))).toHaveLength(1);
+          const verified = mnema(planted, ['verify', '--require', 'signed']);
+          expect(verified.status, `${verified.stdout}${verified.stderr}`).toBe(0);
+          const second = spawnSync(
+            'python3',
+            ['-I', VERIFIER, 'record', join(planted.repo, '.mnema'), '--require', 'signed'],
+            { encoding: 'utf-8' },
+          );
+          expect(second.status, second.stdout).toBe(0);
+          return verified;
+        },
+        // The next write names the fact it recorded by id and time, which are not the same twice.
+        normalize: (said) => said.replace(/[0-9a-f]{12,64}/g, '<id>'),
+      });
+    }, 120_000);
   }
 });
