@@ -24,7 +24,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { entryHash } from '@mnema/chain';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { inEveryCacheState } from './support/every-cache-state.js';
+import { inEveryCacheState, type RunContext } from './support/every-cache-state.js';
 import { MNEMA_CLI } from './support/the-cli.js';
 
 const VERIFIER = fileURLToPath(new URL('../../chain/verifier/mnema_verify.py', import.meta.url));
@@ -108,7 +108,8 @@ class Project {
   }
 
   /** The product's verdict and the second reader's, over whatever the projection is now. */
-  verdicts(...flags: string[]) {
+  verdicts(ctx: RunContext | undefined, ...flags: string[]) {
+    ctx?.forget(this.repo);
     const product = this.mnema(['verify', ...flags]);
     const second = spawnSync(
       'python3',
@@ -174,14 +175,14 @@ describe('an edit made without the key', () => {
     inEveryCacheState({
       found(dir) {
         const kept = projectIn(dir).found(['a fact as it was written', 'another fact']);
-        expect(kept.verdicts('--require=signed').product.status).toBe(0);
+        expect(kept.verdicts(undefined, '--require=signed').product.status).toBe(0);
         return kept;
       },
       damage(kept) {
         expect(kept.rewrite('as it was written', 'as somebody rewrote it', edit)).toBe(1);
       },
-      run(kept) {
-        const first = kept.verdicts();
+      run(kept, ctx) {
+        const first = kept.verdicts(ctx);
         expect(first.product.status, first.said).toBe(1);
         expect(first.said).toContain('entry hash mismatch');
         expect(first.second.status, first.secondSaid).toBe(1);
@@ -199,8 +200,8 @@ describe('an edit made without the key', () => {
           rebuilt.rewrite('as it was written', 'as somebody rewrote it', { rehash: true }),
         ).toBe(1);
       },
-      run(rebuilt) {
-        const second = rebuilt.verdicts();
+      run(rebuilt, ctx) {
+        const second = rebuilt.verdicts(ctx);
         expect(second.product.status, second.said).toBe(1);
         expect(second.said).toContain('content-root-mismatch');
         expect(second.second.status, second.secondSaid).toBe(1);
@@ -219,13 +220,13 @@ describe('an edit made without the key', () => {
         forged.rewrite('as it was written', 'as somebody rewrote it', { rehash: true });
         writeFileSync(forged.checkpoints(), '', 'utf-8');
       },
-      run(forged) {
-        const lenient = forged.verdicts();
+      run(forged, ctx) {
+        const lenient = forged.verdicts(ctx);
         expect(lenient.product.status, lenient.said).toBe(0);
         expect(lenient.said).toContain('T1 only');
         expect(lenient.second.status, lenient.secondSaid).toBe(0);
 
-        const strict = forged.verdicts('--require=signed');
+        const strict = forged.verdicts(ctx, '--require=signed');
         expect(strict.product.status, strict.said).toBe(1);
         expect(strict.said).toContain('requirement not met');
         expect(strict.second.status, strict.secondSaid).toBe(1);
@@ -236,7 +237,7 @@ describe('an edit made without the key', () => {
         forged.setClearNoteToTheEnd();
         forged.write('a fact the holder writes after the rewrite');
         expect(forged.tails()).toHaveLength(2);
-        const after = forged.verdicts('--require=signed');
+        const after = forged.verdicts(ctx, '--require=signed');
         expect(after.product.status, after.said).toBe(1);
         expect(after.second.status, after.secondSaid).toBe(1);
         return strict.product;
@@ -268,7 +269,7 @@ describe('what a hash chain cannot show: a removal', () => {
         const wrote = project.mnema(['memory', 'a fact only the second identity wrote'], otherHome);
         expect(wrote.status, wrote.stderr).toBe(0);
         expect(project.tails()).toHaveLength(2);
-        expect(project.verdicts('--require=signed').product.status).toBe(0);
+        expect(project.verdicts(undefined, '--require=signed').product.status).toBe(0);
         const second = project.tails().find((tail) => !firstTails.includes(tail));
         expect(second).toBeDefined();
         removed.set(project, second as string);
@@ -282,8 +283,8 @@ describe('what a hash chain cannot show: a removal', () => {
           if (name.startsWith(fingerprint)) rmSync(join(project.record, 'keys', name));
         expect(project.tails()).toHaveLength(1);
       },
-      run(project) {
-        const verdicts = project.verdicts('--require=signed');
+      run(project, ctx) {
+        const verdicts = project.verdicts(ctx, '--require=signed');
         expect(verdicts.product.status, verdicts.said).toBe(0);
         expect(verdicts.second.status, verdicts.secondSaid).toBe(0);
         return verdicts.product;
@@ -299,8 +300,8 @@ describe('what a hash chain cannot show: a removal', () => {
       damage(project) {
         lengths.set(project, cutTheNewest(project));
       },
-      run(project) {
-        const verdicts = project.verdicts('--require=signed');
+      run(project, ctx) {
+        const verdicts = project.verdicts(ctx, '--require=signed');
         expect(verdicts.product.status, verdicts.said).toBe(0);
         expect(verdicts.second.status, verdicts.secondSaid).toBe(0);
         expect(readFileSync(project.segment(), 'utf-8').split('\n').filter(Boolean)).toHaveLength(
@@ -349,10 +350,10 @@ describe('a record forged whole', () => {
       },
       // Nothing is damaged: a record forged whole has no damage in it, which is the claim.
       damage: () => undefined,
-      run(forged) {
+      run(forged, ctx) {
         const honestOne = honest.get(forged) as Project;
-        const a = honestOne.verdicts('--require=signed');
-        const b = forged.verdicts('--require=signed');
+        const a = honestOne.verdicts(ctx, '--require=signed');
+        const b = forged.verdicts(ctx, '--require=signed');
         expect(a.product.status, a.said).toBe(0);
         expect(b.product.status, b.said).toBe(0);
         // Different keys, so the fingerprints differ; the verdict sentence does not.
@@ -406,7 +407,7 @@ describe('the gate', () => {
     ]);
     expect(another.status, another.stderr).toBe(0);
     expect(project.tails()).toHaveLength(1);
-    expect(project.verdicts('--require=signed').product.status).toBe(0);
+    expect(project.verdicts(undefined, '--require=signed').product.status).toBe(0);
   }, 90_000);
 });
 

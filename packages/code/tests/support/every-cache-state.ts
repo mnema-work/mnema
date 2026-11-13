@@ -15,6 +15,21 @@
  * says: a warm run with no file, or a cold run with one, or a session that opened over nothing,
  * is accused here and not left to read as agreement.
  *
+ * THE SESSION IS ASKED, NOT ONLY OPENED. After the case's own question, the helper asks the record
+ * of the connection that was open before the damage (a search through the MCP tool the server
+ * runs, `runSearchTool`) and of a connection opened after it, and holds that they answer alike: a
+ * server whose memory of the record is older than the bytes on disk must not say what a fresh
+ * reader would not. The case reaches the same connection through `ctx.session` for a question of
+ * its own. A session that read nothing before the damage is accused, so the state cannot be
+ * satisfied by opening a connection and leaving it idle.
+ *
+ * `workspace` gives the session a second project before the damage, for the caches that hold
+ * more than the project in hand (the tree index).
+ *
+ * `run` MUST BE A NEW PROCESS in the warm and the cold state (the built binary, a reader of
+ * another language), or the case must isolate whatever it runs in this process: a run in process
+ * inherits the caches of the previous state and the three would not be three.
+ *
  * THE CACHE IS NOT A MODE OF THE PRODUCT: nothing is switched. The file is the one a read of the
  * tree keeps (`isTheDerivedCache`) and deleting it changes no answer, which is what is held.
  */
@@ -25,7 +40,7 @@ import { basename, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { expect } from 'vitest';
 import { closeSession, openSession, type Session } from '../../src/mcp/session.js';
-import { runBootstrap } from '../../src/mcp/tools.js';
+import { runSearchTool } from '../../src/mcp/tools.js';
 import { isTheDerivedCache } from './the-cache-is-not-the-record.js';
 
 export const CACHE_STATES = ['warm', 'cold', 'session'] as const;
@@ -44,13 +59,28 @@ export interface Answered {
   readonly stderr: string;
 }
 
+/** What a run is given: the state, the connection of the session state, and the way to forget the cache. */
+export interface RunContext {
+  readonly state: CacheState;
+  /** The connection opened before the damage: set in the session state only. */
+  readonly session: Session | undefined;
+  /**
+   * Removes the cache of the project, and of each repo named, when the state is cold, and does
+   * nothing otherwise. A case that asks more than once calls it before EACH answer: a run that
+   * wrote left a cache behind, and the next answer would not be cold.
+   */
+  forget(...repos: string[]): void;
+}
+
 export interface TheCase<P extends Planted> {
   /** Builds the record in `dir`, a directory that is new for this state. */
   found(dir: string): P;
   /** Does the damage. It runs after the session is open, and before the cache is removed or not. */
   damage(planted: P): void;
-  /** Asks the question the case is about, through the built binary or a reader. */
-  run(planted: P): Answered;
+  /** A second project the session has open before the damage; the case builds it and answers its path. */
+  workspace?(dir: string): string;
+  /** Asks the question the case is about, through the built binary or a reader, in a new process. */
+  run(planted: P, ctx: RunContext): Answered;
   /** Takes out of what was said whatever may differ between the states without being a difference. */
   normalize?(said: string, planted: P): string;
 }
@@ -67,6 +97,20 @@ export interface Seen {
   readonly cacheWhenAsked: boolean;
   /** Whether a connection was open over the record when it was damaged. */
   readonly sessionOpenAtDamage: boolean;
+  /** What the connection of the session state said of the record before and after the damage, and what a fresh one said after. */
+  readonly session: { before: string; after: string; fresh: string } | undefined;
+}
+
+/** What a read of the whole record through the session's search says, in one line. */
+function askTheRecord(session: Session): string {
+  try {
+    const said = runSearchTool(session, {});
+    return said.ok
+      ? `ok ${said.value.total} ${JSON.stringify(said.value.hits.map((hit) => hit.id))}`
+      : `${said.code}: ${said.message}`;
+  } catch (error) {
+    return `threw: ${firstLineOf(error instanceof Error ? error.message : String(error))}`;
+  }
 }
 
 /** Every cache file of a project: the public tree's, the private tree's, and what SQLite keeps beside them. */
@@ -88,6 +132,8 @@ export function firstLineOf(said: string): string {
 function runInState<P extends Planted>(state: CacheState, one: TheCase<P>): Seen {
   const dir = mkdtempSync(join(tmpdir(), `mnema-${state}-`));
   let session: Session | undefined;
+  let fresh: Session | undefined;
+  let before: string | undefined;
   try {
     const planted = one.found(dir);
     const leftByTheLastWrite = cacheFilesOf(planted.repo).length > 0;
@@ -99,17 +145,39 @@ function runInState<P extends Planted>(state: CacheState, one: TheCase<P>): Seen
     if (state === 'session') {
       session = openSession({
         clientName: 'claude-code',
-        roots: [pathToFileURL(planted.repo).href],
+        roots: [planted.repo, ...(one.workspace ? [one.workspace(dir)] : [])].map(
+          (root) => pathToFileURL(root).href,
+        ),
         env: { home: planted.home },
       });
-      // Asking for the bootstrap is what makes the connection read the record before the damage.
-      runBootstrap(session);
+      // The connection reads the record before the damage: this is what makes its memory old.
+      before = askTheRecord(session);
     }
     one.damage(planted);
     if (state === 'cold') removeTheCache(planted.repo);
 
     const cacheWhenAsked = cacheFilesOf(planted.repo).length > 0;
-    const answered = one.run(planted);
+    const ctx: RunContext = {
+      state,
+      session,
+      forget: (...repos) => {
+        if (state === 'cold') for (const repo of [planted.repo, ...repos]) removeTheCache(repo);
+      },
+    };
+    const answered = one.run(planted, ctx);
+    let asked: Seen['session'];
+    if (session !== undefined) {
+      fresh = openSession({
+        clientName: 'claude-code',
+        roots: [pathToFileURL(planted.repo).href],
+        env: { home: planted.home },
+      });
+      asked = {
+        before: before as string,
+        after: askTheRecord(session),
+        fresh: askTheRecord(fresh),
+      };
+    }
     const raw = `${answered.stdout}${answered.stderr}`;
     const said = (one.normalize ? one.normalize(raw, planted) : raw)
       .split(dir)
@@ -124,8 +192,10 @@ function runInState<P extends Planted>(state: CacheState, one: TheCase<P>): Seen
       planted,
       cacheWhenAsked,
       sessionOpenAtDamage: session !== undefined,
+      session: asked,
     };
   } finally {
+    if (fresh !== undefined) closeSession(fresh);
     if (session !== undefined) closeSession(session);
     rmSync(dir, { recursive: true, force: true });
   }
@@ -147,6 +217,11 @@ export function inEveryCacheState<P extends Planted>(one: TheCase<P>): Record<Ca
   expect(cold.cacheWhenAsked, 'the cold state asks with no cache at all').toBe(false);
   expect(session.sessionOpenAtDamage, 'the session was open before the damage').toBe(true);
 
+  expect(session.session?.before, 'the session read the record before the damage').toBeDefined();
+  expect(
+    session.session?.after,
+    'the connection opened before the damage answers as one opened after it',
+  ).toBe(session.session?.fresh);
   for (const other of [cold, session]) {
     expect(other.status, `exit: ${other.state} against warm`).toBe(warm.status);
     expect(other.firstLine, `first line: ${other.state} against warm`).toBe(warm.firstLine);

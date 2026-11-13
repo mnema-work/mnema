@@ -1,3 +1,4 @@
+// @plants-damage
 /**
  * A key whose founding or enrolment lived in a tail that was cut is told what happened when its
  * next write founds an identity beside the others, and a write that is refused says nothing of a

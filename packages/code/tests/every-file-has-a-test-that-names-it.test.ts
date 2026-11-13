@@ -1465,7 +1465,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-suite-is-split-whole.test.ts': 4,
   'packages/code/tests/the-switch-is-a-fact.test.ts': 28,
   'packages/code/tests/the-switch-pages-are-generated.test.ts': 5,
-  'packages/code/tests/the-three-cache-states-answer-alike.test.ts': 6,
+  'packages/code/tests/the-three-cache-states-answer-alike.test.ts': 8,
   'packages/code/tests/the-three-doors-are-one.test.ts': 31,
   'packages/code/tests/the-tool-calls-stay-on-this-machine.test.ts': 17,
   'packages/code/tests/the-tools-that-rewrite-files.test.ts': 10,

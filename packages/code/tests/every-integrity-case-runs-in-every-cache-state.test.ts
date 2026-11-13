@@ -7,10 +7,14 @@
  * way. `support/every-cache-state.ts` runs a case warm, cold and with a session open before the
  * damage, and holds that the three answer alike. This keeps that from being optional.
  *
- * WHICH FILES. A test file is an integrity file when it carries a `@proves` tag (a row of the page
- * of what it proves, which is a claim about the record) or imports a module of `tests/support/`
- * that plants damage, a module whose text carries `@plants-damage`. An integrity file imports the
- * helper, or is in EXEMPT below with the reason it is not.
+ * WHICH FILES, in every package and under `src/` as well as `tests/`. A test file is an integrity
+ * file when it carries a `@proves` tag (a row of the page of what it proves, which is a claim about
+ * the record), when a line of its own reads `// @plants-damage` (the file edits, cuts or deletes
+ * bytes of a record and judges what is left), or when it imports a module of `tests/support/`
+ * that carries that line. The mark is put by hand where the damage is: no shape of code says it
+ * without taking every test that writes a fixture for one that damages. A file that damages and
+ * has no mark is found by a review, and the mark is what makes the guard follow it from then on.
+ * An integrity file imports the helper, or is in EXEMPT below with the reason it is not.
  *
  * WHAT THIS DOES NOT KNOW. That the file calls the helper for the case that damages: a review
  * reads that. It holds the way the rule rots: a file that proves something and never meets the
@@ -76,6 +80,56 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'DEBT: the six probes of an edited record through the in-process CLI entry (run of program.ts); each case needs the split and an in-process run',
   'packages/code/tests/verify-crosses-the-trees-for-an-agent-keys-retirement.test.ts':
     'DEBT: a retirement seen across the two trees of a project through runVerify and the in-process entry; each case needs the split and an in-process run',
+  'packages/chain/src/chain/a-history-rewritten-without-the-key-is-never-signed.test.ts':
+    'DEBT, the centre of the T-01 work and to be converted when that is built: a history rewritten without the key, judged by the chain readers; it damages tails and so needs the found/damage/run split',
+  'packages/chain/src/chain/a-kind-this-reader-does-not-know-is-read-past.test.ts':
+    'DEBT: a chain library test that damages bytes and judges them with the chain readers and the second reader; the chain package has no projection cache, so the cold and session states apply through the product that calls it',
+  'packages/chain/src/chain/a-reformat-is-named-only-where-the-signatures-prove-it.test.ts':
+    'DEBT: a chain library test that damages bytes and judges them with the chain readers and the second reader; the chain package has no projection cache, so the cold and session states apply through the product that calls it',
+  'packages/chain/src/chain/a-tail-is-written-by-the-key-its-id-names.test.ts':
+    'DEBT: a chain library test that damages bytes and judges them with the chain readers and the second reader; the chain package has no projection cache, so the cold and session states apply through the product that calls it',
+  'packages/chain/src/chain/both-readers-read-the-same-bytes.test.ts':
+    'DEBT: a chain library test that damages bytes and judges them with the chain readers and the second reader; the chain package has no projection cache, so the cold and session states apply through the product that calls it',
+  'packages/chain/src/chain/second-reader-agrees-on-enrolment.test.ts':
+    'DEBT: a chain library test that damages bytes and judges them with the chain readers and the second reader; the chain package has no projection cache, so the cold and session states apply through the product that calls it',
+  'packages/chain/src/chain/the-promise-between-versions.test.ts':
+    'DEBT: a chain library test that damages bytes and judges them with the chain readers and the second reader; the chain package has no projection cache, so the cold and session states apply through the product that calls it',
+  'packages/chain/src/chain/second-reader-agrees-on-what-is-not-applied.test.ts':
+    'holds that both readers leave a move the workflow does not allow unapplied; it reads bytes and has no projection cache beneath it',
+  'packages/chain/src/chain/witness-request.test.ts':
+    'holds the witness request a record produces; it damages no record and has no projection cache beneath it',
+  'packages/chain/src/events/unannounced.test.ts':
+    'holds how an event of a kind nobody announced is read; no record is damaged and no cache is read',
+  'packages/code/src/sigstore/sigstore.test.ts':
+    'holds what a sigstore bundle says and what leaves the machine; it judges bundles and certificates, and no projection cache is read',
+  'packages/code/src/site/the-verdict-in-the-browser.test.ts':
+    'holds the verdict a page computes in the browser from the files; it has no projection cache and runs the page script, not the product',
+  'packages/core/src/content/every-field.test.ts':
+    'holds that every free-text field goes through the content gate; it damages no record',
+  'packages/core/src/content/personal.test.ts':
+    'holds what the content gate refuses of personal data; no record is damaged',
+  'packages/core/src/content/secrets.test.ts':
+    'holds what the content gate refuses of secrets; no record is damaged',
+  'packages/core/src/identity/restore-refuses-an-agent-key.test.ts':
+    'holds that a key restore refuses an agent key; no record is damaged',
+  'packages/core/src/identity/restore.test.ts':
+    'holds what a key restore does and refuses; the keys are the subject, not a damaged record',
+  'packages/core/src/knowledge/only-the-identity-that-linked-retracts-it.test.ts':
+    'holds who may retract a link, over records the test writes by the product; none is damaged',
+  'packages/core/src/knowledge/only-the-identity-that-wrote-a-note-retracts-it.test.ts':
+    'holds who may retract a note, over records the test writes by the product; none is damaged',
+  'packages/core/src/projections/a-decision-is-the-text-its-first-judgment-saw.test.ts':
+    'holds which text a projection keeps for a decision; the records are built by the product and not damaged',
+  'packages/core/src/projections/a-move-the-workflow-does-not-allow-is-not-applied.test.ts':
+    'holds that a projection leaves a disallowed move unapplied; the move is written, not a byte of the tail damaged',
+  'packages/code/tests/the-read-says-the-record-does-not-chain.test.ts':
+    'DEBT: a read over a record whose last line was repeated, through the in-process CLI entry (run of program.ts); needs the split and an in-process run',
+  'packages/code/tests/verify-json-says-whether-the-record-is-ok.test.ts':
+    'DEBT: one fact rewritten, then verify --json through the built binary; a plain found/damage/run conversion that is owed',
+  'packages/code/tests/the-verdict-is-parts.test.ts':
+    'DEBT: checkpoints emptied or cut, then the verdict painted, through the in-process CLI entry; needs the split and an in-process run',
+  'packages/code/tests/a-key-whose-tail-was-cut-is-told-what-happened.test.ts':
+    'DEBT: a founder tail deleted and the next write judged, through the built binary; a plain found/damage/run conversion that is owed',
 };
 
 /** What the guard reads of one test file. */
@@ -86,6 +140,7 @@ export interface Source {
 }
 
 const TAG = /^\s*\/\/ @proves [a-z0-9-]+\s*$/m;
+const PLANTS = /^\/\/ @plants-damage\s*$/m;
 
 /** The `support/` modules a text imports, by name. */
 export function supportImports(text: string): string[] {
@@ -96,7 +151,11 @@ export function supportImports(text: string): string[] {
 
 /** Whether a file is about integrity: it proves a row of the page, or plants damage through support. */
 export function isIntegrity(source: Source, planters: ReadonlySet<string>): boolean {
-  return TAG.test(source.text) || source.imports.some((name) => planters.has(name));
+  return (
+    TAG.test(source.text) ||
+    PLANTS.test(source.text) ||
+    source.imports.some((name) => planters.has(name))
+  );
 }
 
 /** What is wrong, by file: an integrity file with no helper and no reason, and a reason that excuses nothing. */
@@ -129,18 +188,18 @@ export function accusations(
 function read(): { sources: Map<string, Source>; planters: Set<string> } {
   const listed = execFileSync(
     'git',
-    ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', 'packages/**/*.ts'],
+    ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', 'packages'],
     { cwd: ROOT, encoding: 'utf-8' },
   )
     .split('\0')
     .filter(Boolean);
   const planters = new Set<string>();
   for (const file of listed)
-    if (file.startsWith(SUPPORT) && /@plants-damage/.test(readFileSync(join(ROOT, file), 'utf-8')))
+    if (file.startsWith(SUPPORT) && PLANTS.test(readFileSync(join(ROOT, file), 'utf-8')))
       planters.add(file.slice(SUPPORT.length).replace(/\.ts$/, ''));
   const sources = new Map<string, Source>();
   for (const file of listed) {
-    if (!file.endsWith('.test.ts') || file.includes('/src/')) continue;
+    if (!file.endsWith('.test.ts')) continue;
     const text = readFileSync(join(ROOT, file), 'utf-8');
     sources.set(file, { text, imports: supportImports(text) });
   }
@@ -160,7 +219,7 @@ describe('the integrity tests and the states of the projection cache', () => {
   it('is reading the files that carry the tags, so a read of nothing cannot pass', () => {
     const { sources } = read();
     const proving = [...sources.entries()].filter(([, source]) => TAG.test(source.text));
-    expect(proving.length).toBeGreaterThanOrEqual(20);
+    expect(proving.length).toBeGreaterThanOrEqual(40);
     expect(
       proving.filter(([, source]) => source.imports.includes(HELPER)).length,
     ).toBeGreaterThanOrEqual(3);
@@ -210,6 +269,26 @@ describe('the integrity tests and the states of the projection cache', () => {
         { 'd.test.ts': 'todo' },
       ),
     ).toEqual(['d.test.ts is in EXEMPT with no reason worth the name: write the sentence']);
+  });
+
+  it('accuses a file that plants damage by its own mark with no tag, and reads the mark only on a line of its own', () => {
+    const marked: Source = { text: '// @plants-damage\n/** doc */\nit(1)', imports: [] };
+    const quoted: Source = { text: ' * says `// @plants-damage` in prose\nit(1)', imports: [] };
+    const sources = new Map([
+      ['packages/code/tests/a-marked.test.ts', marked],
+      ['packages/code/tests/a-quoted.test.ts', quoted],
+    ]);
+    const said = accusations(sources, new Set(), {});
+    expect(said).toHaveLength(1);
+    expect(said[0]).toContain('a-marked.test.ts');
+  });
+
+  it('reads the tests of src as well as of tests, and the marks that are really in the tree', () => {
+    const { sources } = read();
+    expect([...sources.keys()].some((file) => file.startsWith('packages/chain/src/'))).toBe(true);
+    expect([...sources.keys()].some((file) => file.startsWith('packages/core/src/'))).toBe(true);
+    const marked = [...sources.entries()].filter(([, source]) => PLANTS.test(source.text));
+    expect(marked.length).toBeGreaterThanOrEqual(4);
   });
 
   it('reads the imports of a test under tests/ and of one a directory down', () => {

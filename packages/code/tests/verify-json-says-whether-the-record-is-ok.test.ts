@@ -1,3 +1,4 @@
+// @plants-damage
 /**
  * THE TOP `ok` OF `mnema verify --json` IS THE VERDICT ON THE RECORD.
  *
