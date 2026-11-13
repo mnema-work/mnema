@@ -523,11 +523,15 @@ describe('the hooks that call the verb', () => {
     expect(JSON.parse(ran.stdout)).toBe('the answer\n\nthe settled rule');
   }, 60_000);
 
-  it('stops waiting for a mnema that does not answer, silent, well inside the host’s own 15 seconds', () => {
+  it('stops waiting for a mnema that does not answer, says so in the reply, well inside the host’s own 15 seconds', () => {
     const began = Date.now();
     const ran = handlerWith('exec sleep 30');
     expect(ran.status).toBe(0);
-    expect(ran.stdout).toBe('');
+    // The write is done and the gate before it has no field for text: the line rides in the flat reply.
+    expect(JSON.parse(ran.stdout)).toEqual({
+      additionalContext:
+        "The project's mnema record was not consulted for this: mnema did not answer within 6 seconds and was stopped.",
+    });
     expect(Date.now() - began).toBeLessThan(12_000);
   }, 30_000);
 

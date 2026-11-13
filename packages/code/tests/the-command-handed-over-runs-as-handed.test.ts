@@ -1002,7 +1002,7 @@ export const HANDED_OVER: Readonly<
   'plugin/captures/cursor-ide-script.md': { line: 4, name: 2 },
   'plugin/captures/cursor-script.md': { line: 3, name: 3 },
   'plugin/captures/vscode-extension-script.md': { line: 2, name: 6 },
-  'plugin/gemini/hooks/mnema.mjs': { line: 1, name: 2 },
+  'plugin/gemini/hooks/mnema.mjs': { line: 2, name: 2 },
   'plugin/hooks/edit-asks-a-person.mjs': { name: 1 },
   'plugin/hooks/edit-refuses-a-write.mjs': { name: 1 },
   'plugin/hooks/hand-over.mjs': { line: 1 },

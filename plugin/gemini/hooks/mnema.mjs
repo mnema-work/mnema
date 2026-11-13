@@ -12,7 +12,8 @@
 // any other write goes through. And where `open` asks the record and it refuses (a line it cannot
 // read, a record held by another process, a run cut by its time), the session is told in one line:
 // no project and a switched-off channel stay silent, because the verb names which refusal it is
-// by a code on the first line of its error stream.
+// by a code on the first line of its error stream. `settled` and `beside`, which run after the
+// work, say the same line, in the field that carries context, where the record did not answer.
 import { spawnSync } from 'node:child_process';
 import { accessSync, constants, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { homedir, userInfo } from 'node:os';
@@ -395,6 +396,24 @@ function whatARefusalSays(stderr) {
   const where = /^unreadable stored line at (.+?): /.exec(after.trim())?.[1];
   const line = oneLine(where === undefined ? opening : `${opening} (${where})`);
   return `The project's mnema record was not handed to this session (${code}): ${line}`;
+}
+
+/**
+ * The one line a run of a verb says where it was not an answer, or `null` where it says nothing: a
+ * run cut by its time says the record was not consulted, a refusal says what its code says
+ * ({@link whatARefusalSays}), and a program that could not be started, an exit that carries no code,
+ * and a run that succeeded are silence.
+ *
+ * @param {import('node:child_process').SpawnSyncReturns<string>} ran
+ * @param {number} timeout The milliseconds the run was given.
+ * @returns {string | null}
+ */
+function whatARunSays(ran, timeout) {
+  const code = /** @type {NodeJS.ErrnoException | undefined} */ (ran.error)?.code;
+  if (code === 'ETIMEDOUT') return notConsulted(didNotAnswerIn(timeout));
+  // A closed input is not a failure to run (a `mnema` that refuses an option exits before it reads).
+  if ((code !== undefined && code !== 'EPIPE') || ran.status === 0) return null;
+  return whatARefusalSays(ran.stderr ?? '');
 }
 
 /** A reason to run `mnema` rather than answer here. */
@@ -931,6 +950,15 @@ function closedWhere(because, cwd, raw) {
 }
 
 /**
+ * The reply of a hook that runs after the work, for a line to say to the model: the field of
+ * `AfterTool` that carries context.
+ * @param {string} line
+ */
+function besideTheResult(line) {
+  return { hookSpecificOutput: { hookEventName: 'AfterTool', additionalContext: line } };
+}
+
+/**
  * What the hook answers for one payload, or nothing.
  * @param {string | undefined} mode `open`, `gate`, `settled` or `beside`
  * @param {string} raw what the host wrote to stdin
@@ -956,6 +984,11 @@ function answer(mode, raw) {
   if (who === 'broken' && mode === 'gate') {
     return closedWhere('it did not answer `mnema --identify`', cwd, raw);
   }
+  // A `mnema` that did not say which program it is leaves the hooks after the work with a line to say
+  // in the field that carries context: the record was not consulted.
+  if (who === 'broken' && (mode === 'settled' || mode === 'beside')) {
+    return besideTheResult(notConsulted('it did not answer `mnema --identify`.'));
+  }
   if (who !== 'this') return undefined;
   if (mode === 'open') {
     const text = openingOf(cwd).join('\n\n');
@@ -964,7 +997,9 @@ function answer(mode, raw) {
       : { hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: text } };
   }
   if (mode === 'settled') {
-    const ran = run(['settled'], cwd, raw);
+    const ran = run(['settled'], cwd, raw, GATE_WAIT);
+    const line = whatARunSays(ran, GATE_WAIT);
+    if (line !== null) return besideTheResult(line);
     if (didNotRun(ran) || ran.status !== 0) return undefined;
     const said = JSON.parse(ran.stdout);
     return said.hookSpecificOutput === undefined ? undefined : said;
@@ -972,12 +1007,16 @@ function answer(mode, raw) {
   if (mode === 'beside') {
     // AFTER THE WRITE: nothing to close, so every outcome that is not an answer is silence. A
     // `mnema` too old to know the verb or the option refuses it by name and exits non-zero.
+    // A record that did not answer is the one line that says so, in the same field: the gate before
+    // this write has no field for text, so this is where the session is told.
     const beside = ['beside-a-write', '--host', 'gemini'];
     const began = Date.now();
     let heard = run([...beside, ...AGENT], cwd, raw, GATE_WAIT);
     if (heard.status !== 0 && heard.stderr.includes('--agent-key')) {
       heard = run(beside, cwd, raw, Math.max(1, GATE_WAIT - (Date.now() - began)));
     }
+    const line = whatARunSays(heard, GATE_WAIT);
+    if (line !== null) return besideTheResult(line);
     if (didNotRun(heard) || heard.status !== 0) return undefined;
     const handed = JSON.parse(heard.stdout);
     return handed.hookSpecificOutput === undefined ? undefined : handed;

@@ -13,6 +13,8 @@
 // record and it refuses (a line it cannot read, a record held by another process, a run cut by
 // its time), the session is told in one line: no project and a switched-off channel stay silent,
 // because the verb names which refusal it is by a code on the first line of its error stream.
+// The same line rides beside the result of a write the gate let through for want of an answer,
+// and beside the answer to a question, when the record did not answer there.
 import { spawnSync } from 'node:child_process';
 import { accessSync, constants, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { homedir, userInfo } from 'node:os';
@@ -395,6 +397,24 @@ function whatARefusalSays(stderr) {
   const where = /^unreadable stored line at (.+?): /.exec(after.trim())?.[1];
   const line = oneLine(where === undefined ? opening : `${opening} (${where})`);
   return `The project's mnema record was not handed to this session (${code}): ${line}`;
+}
+
+/**
+ * The one line a run of a verb says where it was not an answer, or `null` where it says nothing: a
+ * run cut by its time says the record was not consulted, a refusal says what its code says
+ * ({@link whatARefusalSays}), and a program that could not be started, an exit that carries no code,
+ * and a run that succeeded are silence.
+ *
+ * @param {import('node:child_process').SpawnSyncReturns<string>} ran
+ * @param {number} timeout The milliseconds the run was given.
+ * @returns {string | null}
+ */
+function whatARunSays(ran, timeout) {
+  const code = /** @type {NodeJS.ErrnoException | undefined} */ (ran.error)?.code;
+  if (code === 'ETIMEDOUT') return notConsulted(didNotAnswerIn(timeout));
+  // A closed input is not a failure to run (a `mnema` that refuses an option exits before it reads).
+  if ((code !== undefined && code !== 'EPIPE') || ran.status === 0) return null;
+  return whatARefusalSays(ran.stderr ?? '');
 }
 
 /** A reason to run `mnema` rather than answer here. */
@@ -919,10 +939,16 @@ function askTheGate(cwd, input) {
 
 /**
  * The refusal, or nothing: where `mnema` could not answer, a write is refused only where a rule that
- * refuses it or asks for a person at it addresses the path.
+ * refuses it or asks for a person at it addresses the path. Any other write goes through, and what
+ * `keep` is given is the line that the record was not consulted for it: this event has no field for
+ * text, so the call hands it over after the write, where the result is.
  */
-function closedWhere(because, directory, input) {
-  if (!aRuleReaches(directory, process.env, input)) return undefined;
+function closedWhere(because, directory, input, keep) {
+  if (!aRuleReaches(directory, process.env, input)) {
+    const why = oneLine(because);
+    keep(notConsulted(why.replace(/\.?$/, '.')));
+    return undefined;
+  }
   throw new Error(couldNotAnswer(because));
 }
 
@@ -955,15 +981,21 @@ export const Mnema = async ({ directory }) => {
         tool_input: output.args,
         session_id: input.sessionID,
       });
-      if (theRuntime().refusal !== null) closedWhere(theRuntime().refusal, directory, payload);
+      const keep = (line) => {
+        if (input.callID !== undefined) beside.set(input.callID, line);
+      };
+      if (theRuntime().refusal !== null) {
+        closedWhere(theRuntime().refusal, directory, payload, keep);
+      }
       const there = who();
       if (there === 'other') return;
-      if (there === 'broken')
-        closedWhere('it did not answer `mnema --identify`', directory, payload);
+      if (there === 'broken') {
+        closedWhere('it did not answer `mnema --identify`', directory, payload, keep);
+      }
       const ran = askTheGate(directory, payload);
       const failed = whyItDidNotAnswer(ran, GATE_WAIT);
       if (failed === null) return;
-      if (failed !== undefined) closedWhere(failed, directory, payload);
+      if (failed !== undefined) closedWhere(failed, directory, payload, keep);
       let said;
       try {
         said = JSON.parse(ran.stdout).hookSpecificOutput;
@@ -989,12 +1021,28 @@ export const Mnema = async ({ directory }) => {
         if (typeof output.output === 'string') output.output = [output.output, kept].join('\n\n');
         return;
       }
-      if (input.tool !== ASKS || who() !== 'this') return;
+      if (input.tool !== ASKS) return;
+      // A record that did not answer is a line beside the result, as the rules are: the same field.
+      const besideTheResult = (line) => {
+        if (typeof output.output === 'string') output.output = [output.output, line].join('\n\n');
+      };
+      const there = who();
+      if (there === 'broken') {
+        besideTheResult(notConsulted('it did not answer `mnema --identify`.'));
+        return;
+      }
+      if (there !== 'this') return;
       const ran = run(
         ['settled'],
         directory,
         JSON.stringify({ hook_event_name: 'PostToolUse', tool_name: input.tool }),
+        GATE_WAIT,
       );
+      const line = whatARunSays(ran, GATE_WAIT);
+      if (line !== null) {
+        besideTheResult(line);
+        return;
+      }
       if (didNotRun(ran) || ran.status !== 0) return;
       let said;
       try {
@@ -1002,9 +1050,7 @@ export const Mnema = async ({ directory }) => {
       } catch {
         return;
       }
-      if (typeof said === 'string' && typeof output.output === 'string') {
-        output.output = [output.output, said].join('\n\n');
-      }
+      if (typeof said === 'string') besideTheResult(said);
     },
   };
 };

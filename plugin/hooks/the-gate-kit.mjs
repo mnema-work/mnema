@@ -399,3 +399,21 @@ export function whatARefusalSays(stderr) {
   const line = oneLine(where === undefined ? opening : `${opening} (${where})`);
   return `The project's mnema record was not handed to this session (${code}): ${line}`;
 }
+
+/**
+ * The one line a run of a verb says where it was not an answer, or `null` where it says nothing: a
+ * run cut by its time says the record was not consulted, a refusal says what its code says
+ * ({@link whatARefusalSays}), and a program that could not be started, an exit that carries no code,
+ * and a run that succeeded are silence.
+ *
+ * @param {import('node:child_process').SpawnSyncReturns<string>} ran
+ * @param {number} timeout The milliseconds the run was given.
+ * @returns {string | null}
+ */
+export function whatARunSays(ran, timeout) {
+  const code = /** @type {NodeJS.ErrnoException | undefined} */ (ran.error)?.code;
+  if (code === 'ETIMEDOUT') return notConsulted(didNotAnswerIn(timeout));
+  // A closed input is not a failure to run (a `mnema` that refuses an option exits before it reads).
+  if ((code !== undefined && code !== 'EPIPE') || ran.status === 0) return null;
+  return whatARefusalSays(ran.stderr ?? '');
+}

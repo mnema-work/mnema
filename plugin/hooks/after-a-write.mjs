@@ -8,7 +8,9 @@
  * IT DECIDES NOTHING, AND IT CARRIES NO TEXT OF ITS OWN. The payload goes to the verb byte for byte
  * and its answer comes back byte for byte; which file is which, what is copied and what the line says
  * are the verb's. The rule for running a verb is `hand-over.mjs`'s, and so is the silence: no `mnema`
- * on the PATH, no project, a file it could not read, the channel off.
+ * on the PATH, no project, the channel off. A record that would not answer, one held by another
+ * process and a run cut by its time are one line, as the `additionalContext` of a `PostToolUse` reply:
+ * the record was not consulted for this write.
  *
  * MOST WRITES NEVER REACH THE VERB. The hooks file hands this handler no shell to filter in front of
  * it (a hook command is one program and its arguments), so the handler reads the path out of the
@@ -71,15 +73,20 @@ const canBeOne = (path, project) => {
 };
 
 try {
-  const { aHostYields, whatTheVerbAnswers, whereTheSessionIs } = await import('./hand-over.mjs');
+  const { aHostYields, reply, whatTheVerbReports, whereTheSessionIs } = await import(
+    './hand-over.mjs'
+  );
   if (!aHostYields(process.argv.slice(2), process.env)) {
     const chunks = [];
     for await (const chunk of process.stdin) chunks.push(chunk);
     const payload = Buffer.concat(chunks).toString('utf-8');
     const path = JSON.parse(payload)?.tool_input?.file_path;
     if (typeof path === 'string' && canBeOne(path, process.env.CLAUDE_PROJECT_DIR ?? '')) {
-      const answer = whatTheVerbAnswers(VERB, whereTheSessionIs(), payload);
+      const { answer, said } = whatTheVerbReports(VERB, whereTheSessionIs(), payload);
+      // A record that did not answer is a line beside the write's result, in the field the host
+      // reads as context, and never outside the reply.
       if (answer !== null) process.stdout.write(answer);
+      else if (said !== null) process.stdout.write(reply('PostToolUse', said));
     }
   }
 } catch {

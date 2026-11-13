@@ -12,7 +12,9 @@
  * IT DECIDES NOTHING, AND IT CARRIES NO TEXT OF ITS OWN. The payload goes to the verb byte for byte
  * and its answer comes back byte for byte; which prompts are corrections, what is recorded and what
  * the line says are the verb's. The rule for running a verb is `hand-over.mjs`'s, and so is the
- * silence: no `mnema` on the PATH, no project, a transcript it could not read, the channel off.
+ * silence: no `mnema` on the PATH, no project, a transcript it could not read, the channel off. A
+ * record that would not answer, one held by another process and a run cut by its time are one line in
+ * the `systemMessage` (a `Stop` has no field the model reads without being sent back to work).
  */
 
 /**
@@ -26,15 +28,19 @@ export const MODEL_CHANNEL = 'user-corrections';
 const VERB = ['corrections'];
 
 try {
-  const { whatTheVerbAnswers, whereTheSessionIs } = await import('./hand-over.mjs');
+  const { whatTheVerbReports, whereTheSessionIs } = await import('./hand-over.mjs');
   const chunks = [];
   for await (const chunk of process.stdin) chunks.push(chunk);
-  const answer = whatTheVerbAnswers(
+  const { answer, said } = whatTheVerbReports(
     VERB,
     whereTheSessionIs(),
     Buffer.concat(chunks).toString('utf-8'),
   );
+  // A hook at the end of a response has no field the model reads without being sent back to work,
+  // so a record that did not answer is said in the `systemMessage`, the channel the line above
+  // already uses, and never outside the reply.
   if (answer !== null) process.stdout.write(answer);
+  else if (said !== null) process.stdout.write(`${JSON.stringify({ systemMessage: said })}\n`);
 } catch {
   // Silence: the one thing this handler must never do is make somebody else's session worse
   // than it would have been without the plugin installed.

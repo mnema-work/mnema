@@ -422,6 +422,23 @@ function topLevelVerbOf(command: Command): string {
 }
 
 /**
+ * The verbs only a host's hook runs, never a person (each reads a payload the host hands it on stdin and
+ * answers in the shape the host reads): a refusal from any of them opens with its code, as one asked
+ * `--hook` does, because the hook that runs them says a record that would not answer in one line and
+ * reads the code to tell it from a project with nothing to hand over. `brief` and `recall` are also
+ * typed, so they open a refusal with its code only when asked for a hook (`--hook`).
+ */
+const VERBS_A_HOST_RUNS: ReadonlySet<string> = new Set([
+  'after-a-write',
+  'beside-a-write',
+  'corrections',
+  'dispatched',
+  'handback',
+  'settled',
+  'tally',
+]);
+
+/**
  * Parses one command line with a program that is already built, turning a throw into
  * an honest failure.
  *
@@ -435,11 +452,13 @@ function topLevelVerbOf(command: Command): string {
  */
 export async function parseWith(built: BuiltProgram, argv: readonly string[]): Promise<void> {
   const { program, render, io } = built;
-  // A hook that hands a model a document asks with `--hook`, and a refusal then opens with its
-  // code on a line of its own (`saysTheCode`), whatever door it came through: a throw below the
-  // verb is reported only here.
+  // A hook that hands a model a document asks with `--hook` (and the verbs only a host runs need not
+  // ask), and a refusal then opens with its code on a line of its own (`saysTheCode`), whatever door
+  // it came through: a throw below the verb is reported only here.
   const code = (what: string): void => {
-    if (argv.includes('--hook')) saysTheCode({ io, render }, what);
+    if (argv.includes('--hook') || VERBS_A_HOST_RUNS.has(program.args[0] ?? '')) {
+      saysTheCode({ io, render }, what);
+    }
   };
   try {
     await program.parseAsync(argv, { from: 'user' });

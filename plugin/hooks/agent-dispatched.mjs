@@ -9,9 +9,10 @@
  * rule for running a verb is `hand-over.mjs`'s, and so is the silence: no `mnema` on the PATH, no
  * project, the channel off.
  *
- * IT WRITES NOTHING TO THE HOST, and carries no channel of the product's framing: what the verb
- * prints is `{}`, and the second stream, where it says what it could not do, is not handed on, so
- * nothing is put in front of the model.
+ * IT CARRIES NO CHANNEL OF THE PRODUCT'S FRAMING: what the verb prints is `{}`. What it writes to the
+ * host is one line, and only where the record did not answer (a record that would not read, one held
+ * by another process, a run cut by its time): after the host's agent tool, as the `additionalContext`
+ * of a `PostToolUse` reply; at the end of a session, nothing, since nobody reads a line there.
  *
  * THE HOOKS FILE HANDS IT `--tools Agent,Task` on the hook after the host's agent tool, and no shell
  * in front: a hook command is one program and its arguments. VS Code runs a plugin's command on every
@@ -24,8 +25,23 @@
 /** The verb and nothing else: the event, the tool and the session are in the payload. */
 const VERB = ['dispatched'];
 
+/**
+ * The event a payload names, or `''` where it names none or is not JSON.
+ *
+ * @param {string} payload
+ * @returns {string}
+ */
+function eventOf(payload) {
+  try {
+    const event = JSON.parse(payload)?.hook_event_name;
+    return typeof event === 'string' ? event : '';
+  } catch {
+    return '';
+  }
+}
+
 try {
-  const { theToolIsNotNamed, whatTheVerbAnswers, whereTheSessionIs } = await import(
+  const { reply, theToolIsNotNamed, whatTheVerbReports, whereTheSessionIs } = await import(
     './hand-over.mjs'
   );
   const chunks = [];
@@ -34,7 +50,10 @@ try {
   // `--tools Agent,Task` is the hooks file's, on the hook after the host's agent tool; the hook at
   // the end of a session is given none and always runs.
   if (!theToolIsNotNamed(process.argv.slice(2), payload)) {
-    whatTheVerbAnswers(VERB, whereTheSessionIs(), payload);
+    const { said } = whatTheVerbReports(VERB, whereTheSessionIs(), payload);
+    if (said !== null && eventOf(payload) === 'PostToolUse') {
+      process.stdout.write(reply('PostToolUse', said));
+    }
   }
 } catch {
   // Silence: the one thing this handler must never do is make somebody else's session worse

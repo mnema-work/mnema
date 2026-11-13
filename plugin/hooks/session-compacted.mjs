@@ -21,7 +21,9 @@
  *
  * IT NEVER BLOCKS BY FAILING. Every outcome that is not a sentence is silence and exit 0: no
  * `mnema` on the PATH, no project, no session id on the payload, no journal, nothing recorded, the
- * channel switched off (`mnema switch off after-a-compaction`).
+ * channel switched off (`mnema switch off after-a-compaction`). The exception is a record that would
+ * not answer, one held by another process or a run cut by its time: one line, that the record was
+ * not consulted.
  */
 
 /** The event this handler answers, echoed back so the host can route the reply. */
@@ -49,16 +51,18 @@ function sessionOf(payload) {
 }
 
 try {
-  const { reply, whatTheVerbAnswers, whereTheSessionIs } = await import('./hand-over.mjs');
+  const { reply, whatTheVerbReports, whereTheSessionIs } = await import('./hand-over.mjs');
   const chunks = [];
   if (!process.stdin.isTTY) for await (const chunk of process.stdin) chunks.push(chunk);
   const session = sessionOf(Buffer.concat(chunks).toString('utf-8'));
   if (session !== undefined) {
-    const sentence = whatTheVerbAnswers(
-      ['recall', '--after-a-compaction', '--session', session],
+    const { answer, said } = whatTheVerbReports(
+      ['recall', '--after-a-compaction', '--session', session, '--hook'],
       whereTheSessionIs(),
       '',
     );
+    // What the verb printed, or, where the record did not answer, the one line that says so.
+    const sentence = answer ?? said;
     if (sentence !== null) {
       process.stdout.write(reply(HOOK_EVENT, sentence.trim(), process.argv.slice(2)));
     }
