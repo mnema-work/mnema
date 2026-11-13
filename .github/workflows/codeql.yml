@@ -7,17 +7,18 @@ name: CodeQL
 #
 # THREE LANGUAGES, ONE ANALYSIS EACH: JavaScript and TypeScript (the packages), the Python of the
 # repository (every `.py` file: the second reader of the record in `packages/chain/verifier`, and
-# the scripts of the tests and of the measurements), and the workflows themselves (`actions`). None of them needs a build, so each runs with `build-mode: none`.
+# the scripts of the tests and of the measurements), and the workflows themselves (`actions`).
+# None of them needs a build, so each runs with `build-mode: none`.
 #
 # THE DEFAULT QUERY SUITE, and no other: neither `security-extended` nor `security-and-quality`.
 #
-# IT RUNS ON A PULL REQUEST, ON `main`, ONCE A WEEK AND BY HAND (`workflow_dispatch`). The weekly run exists because a query is
-# improved without a commit here: the same code can be read again tomorrow and give an alert that
-# today's reading did not.
+# IT RUNS ON A PULL REQUEST, ON `main`, ONCE A WEEK AND BY HAND (`workflow_dispatch`). The weekly
+# run exists because a query is improved without a commit here: the same code can be read again
+# tomorrow and give an alert that today's reading did not.
 #
-# IT IS NOT ONE OF THE CHECKS A PULL REQUEST MUST CARRY: a query is improved without a commit here,
-# so a required check would turn red on code nobody touched and stop an unrelated merge. An alert
-# is read in the Security tab, and the maintainer decides each one.
+# IT IS NOT ONE OF THE CHECKS A PULL REQUEST MUST CARRY: an alert asks for the maintainer's
+# judgement (dismiss it or fix it), so it should not block a merge by itself. An alert is read in
+# the Security tab, and the maintainer decides each one.
 #
 # NO TRIGGER HERE HANDS A FORK'S CODE A WRITE TOKEN: the pull request runs on `pull_request`, with
 # the token GitHub gives that event.
