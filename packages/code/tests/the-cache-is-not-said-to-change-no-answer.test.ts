@@ -2,9 +2,9 @@
 /**
  * THE CACHE IS NOT SAID TO CHANGE NO ANSWER.
  *
- * Deleting `locks/projection.db` costs a rebuild, and it does change one kind of answer: an edit
- * in place, to the same size, of a line before the last of a live segment is a thing only a full
- * replay (or `verify`) sees. A sentence that says deleting the cache "changes no answer" is
+ * Deleting `locks/projection.db` costs a rebuild, and it does change one kind of answer: a rewrite
+ * that puts the modification time back on purpose, or lands inside the filesystem clock's resolution, is a thing only a
+ * full replay (or `verify`) sees. A sentence that says deleting the cache "changes no answer" is
  * therefore false, and it came back in four comments and a changelog before this read for it.
  *
  * This reads every file git carries outside the tests, joins comment lines, and fails on that

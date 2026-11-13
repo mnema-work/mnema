@@ -976,15 +976,18 @@ def checkpoint_by_an_unenrolled_key(root: str) -> tuple[bool, str]:
 def blank_segment_same_size(root: str) -> tuple[bool, str]:
     """Every segment replaced by its own length in newlines - THE FRESHNESS PROBE'S BLIND SPOT.
 
-    `chainExtent` pairs each tail with its last segment and that segment's SIZE, which is
-    monotone under the only operation a writer performs, and its docstring declares what it
-    therefore cannot see: "a rewrite that preserves the size". This is that rewrite, in the
+    `chainExtent` pairs each tail with its last segment, that segment's SIZE and its
+    modification time, and its docstring declares what it therefore cannot see: a rewrite that
+    preserves the size and puts the modification time back on purpose (or lands inside the
+    clock's resolution). This mutation keeps the size and does NOT restore the time, so the
+    probe in the product now sees it; what it stands for is the rewrite that does restore it,
+    which a reader never sees from the files' stat. It is that rewrite's bytes, in the
     form that takes the most away - every event of every segment gone, every file the byte
     count it had, so a reader holding a projection is handed a record it has no reason to
     re-read.
 
     It is not a hypothetical. A reader that RETAINS a replay decides whether to rebuild by
-    comparing sizes, so a record edited this way is one it has no reason to read again - and
+    comparing sizes and times, so a record edited this way is one it has no reason to read again - and
     a freshness signal chosen for costing one `stat` is entitled to miss it, since answering
     it means recomputing hashes and checking signatures. That is this program's job, and what
     was missing was any input asking what a verifier SAYS once the cheap signal has waved a

@@ -64,7 +64,7 @@ export {
   type UnreadLine,
   unreadLinesOf,
 } from './chain/entry.js';
-export { type ChainExtent, chainExtent } from './chain/freshness.js';
+export { type ChainExtent, chainExtent, rewrittenInPlace } from './chain/freshness.js';
 export {
   contentRoot,
   entryHash,

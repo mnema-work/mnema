@@ -118,6 +118,7 @@ import {
   type ChainExtent,
   catalogUpcasters,
   chainExtent,
+  rewrittenInPlace,
   type UpcasterRegistry,
 } from '@mnema/chain';
 import {
@@ -282,7 +283,15 @@ export function createCacheRegistry(
           // out of here with the entry still marked stale and still holding the
           // older extent, so the next reader tries again instead of being served
           // a cache we know is behind.
-          existing.cache.refresh();
+          //
+          // A last segment that changed WITHOUT growing is the exception: a rewrite is no
+          // suffix, and the arrivals are read from the byte the cache stopped at and never see
+          // what is below it, so it is replayed whole and not asked what arrived.
+          if (existing.extent !== extent && rewrittenInPlace(existing.extent, extent)) {
+            existing.cache.rebuild();
+          } else {
+            existing.cache.refresh();
+          }
           existing.stale = false;
           existing.extent = extent;
         } else {

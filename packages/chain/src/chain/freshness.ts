@@ -28,11 +28,18 @@
  * replay reads" a property of the code rather than a claim, so a file the replay
  * starts reading cannot be one the extent quietly ignores.
  *
- * WHAT IT DOES NOT SEE, and must not: a rewrite that preserves the size, and any
- * edit to a segment already sealed. Both are tampering, and tampering is
- * {@link verifyChain}'s subject: it recomputes hashes and checks signatures,
- * which is the only honest way to answer it. A freshness probe that pretended to
- * detect tampering would be offering a guarantee it cannot keep, on a signal
+ * The extent also carries the last segment's modification time, to the nanosecond, so that a
+ * rewrite of the same size moves it where the size alone would not: the size is what an append
+ * changes, the time is what a rewrite cannot keep. {@link rewrittenInPlace} says which of the
+ * two moved, because a reader that retains a replay brings a chain that GREW forward from what
+ * arrived and has to replay one that did not.
+ *
+ * WHAT IT DOES NOT SEE, and must not: an edit to a segment already sealed, and a rewrite that
+ * puts the modification time back on purpose or that lands inside the resolution of the
+ * filesystem's clock (one second on HFS+, two on FAT and exFAT, whatever a network filesystem
+ * reports). Those are tampering, and tampering is {@link verifyChain}'s subject: it recomputes
+ * hashes and checks signatures, which is the only honest way to answer it. A freshness probe
+ * that pretended to detect tampering would be offering a guarantee it cannot keep, on a signal
  * chosen for being cheap.
  *
  * It is also not a checkpoint of anything: two equal extents mean "nothing
@@ -47,9 +54,9 @@ import { listTails, orderedSegments } from './store.js';
 
 /**
  * An opaque mark of how far a chain reaches on disk. Compare two of them with
- * `!==` and nothing else: the shape is this module's business, and a caller
- * that parsed it would be depending on a format that exists only to be
- * different when the chain is.
+ * `!==` and {@link rewrittenInPlace} and nothing else: the shape is this module's
+ * business, and a caller that parsed it would be depending on a format that
+ * exists only to be different when the chain is.
  */
 export type ChainExtent = string;
 
@@ -79,7 +86,7 @@ export function chainExtent(layout: ChainLayout): ChainExtent {
   return tails.map((tail) => `${tail}=${tailExtent(layout, tail)}`).join('|');
 }
 
-/** One tail's reach: its last segment file and that file's size. */
+/** One tail's reach: its last segment file, that file's size and its modification time. */
 function tailExtent(layout: ChainLayout, tailId: string): string {
   try {
     const last = orderedSegments(layout, tailId).at(-1);
@@ -87,7 +94,8 @@ function tailExtent(layout: ChainLayout, tailId: string): string {
     // of ownership) before the first append lands. Distinct from every extent a
     // written tail can have, so the first event still moves the mark.
     if (last === undefined) return '-';
-    return `${basename(last)}:${statSync(last).size}`;
+    const { size, mtimeNs } = statSync(last, { bigint: true });
+    return `${basename(last)}:${size}:${mtimeNs}`;
   } catch (error) {
     return `!${errorCode(error)}`;
   }
@@ -97,4 +105,44 @@ function tailExtent(layout: ChainLayout, tailId: string): string {
 function errorCode(error: unknown): string {
   const code = (error as NodeJS.ErrnoException | null)?.code;
   return typeof code === 'string' ? code : 'UNREADABLE';
+}
+
+/** What one tail's mark says when it names a segment: the file, its size and its time. */
+function readReach(mark: string): { file: string; size: bigint; mtime: string } | undefined {
+  const [file, size, mtime, ...rest] = mark.split(':');
+  if (file === undefined || size === undefined || mtime === undefined || rest.length > 0) {
+    return undefined;
+  }
+  if (!/^\d+$/.test(size)) return undefined;
+  return { file, size: BigInt(size), mtime };
+}
+
+function readExtent(extent: ChainExtent): Map<string, string> {
+  const tails = new Map<string, string>();
+  for (const part of extent.split('|')) {
+    const at = part.lastIndexOf('=');
+    if (at > 0) tails.set(part.slice(0, at), part.slice(at + 1));
+  }
+  return tails;
+}
+
+/**
+ * Whether a tail's last segment changed WITHOUT GROWING between two extents: the same file, and a
+ * size that is the same or smaller with a mark that is not the one it was. That is a rewrite (or
+ * a cut), and it is the one move of an extent that no suffix describes, so a reader that holds a
+ * replay of the chain takes it whole and never asks what arrived. An append, a rotation, a tail
+ * that appears or vanishes, and a tail that could not be read are not this: they are what the
+ * extent was always for.
+ */
+export function rewrittenInPlace(before: ChainExtent, after: ChainExtent): boolean {
+  const was = readExtent(before);
+  for (const [tail, mark] of readExtent(after)) {
+    const earlier = was.get(tail);
+    if (earlier === undefined || earlier === mark) continue;
+    const now = readReach(mark);
+    const then = readReach(earlier);
+    if (now === undefined || then === undefined || now.file !== then.file) continue;
+    if (now.size <= then.size) return true;
+  }
+  return false;
 }

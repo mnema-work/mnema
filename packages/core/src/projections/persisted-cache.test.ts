@@ -33,6 +33,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  type CatalogEvent,
   catalogUpcasters,
   decisionTransitioned,
   openChainForWriting,
@@ -40,6 +41,8 @@ import {
   readEntries,
   readTail,
   tailDir,
+  UpcasterRegistry,
+  type VersionedEvent,
 } from '@mnema/chain';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ensureSchema, PROJECTION_TABLES } from '../db/schema.js';
@@ -359,9 +362,25 @@ describe('deleting the cache changes no answer', () => {
 
 describe('a cache that cannot be vouched for is replaced, never trusted', () => {
   /** Opens the file once, so there is a cache to distrust, and plants the marker a replay erases. */
-  function aWarmFile(options: { maxSegmentBytes?: number } = {}): WriteContext {
+  function aWarmFile(
+    options: { maxSegmentBytes?: number; wholeSeconds?: boolean } = {},
+  ): WriteContext {
     const ctx = writing(options);
     aRecord(ctx);
+    if (options.wholeSeconds) {
+      // A modification time a script can put back exactly: utimes goes through a float, so only
+      // a whole second survives it to the nanosecond, and a file stamped at one is a file whose
+      // time the same call restores.
+      const dir = tailDir({ root }, ctx.writer.tail);
+      for (const name of readdirSync(dir).filter((each) => /^\d{6}\.jsonl$/.test(each))) {
+        const stamped = statSync(join(dir, name));
+        utimesSync(
+          join(dir, name),
+          stamped.atime,
+          new Date(Math.floor(stamped.mtimeMs / 1000) * 1000),
+        );
+      }
+    }
     const warm = persisted();
     warm.refresh();
     warm.close();
@@ -440,6 +459,207 @@ describe('a cache that cannot be vouched for is replaced, never trusted', () => 
     expect(theMarkerSurvived(cache), 'a rewritten sealed segment was served in silence').toBe(
       false,
     );
+  });
+
+  /** The live segment of the tail the writer signs, its bytes, and where the title the cases rewrite starts. */
+  function theLiveSegment(ctx: WriteContext): { file: string; held: Buffer; at: number } {
+    const file = join(tailDir({ root }, ctx.writer.tail), '000001.jsonl');
+    const held = readFileSync(file);
+    const at = held.indexOf('a task');
+    expect(at, 'the segment holds the title the case rewrites').toBeGreaterThan(0);
+    return { file, held, at };
+  }
+
+  it('a live segment rewritten to the same size, below what the cache read', () => {
+    const ctx = aWarmFile();
+    const { file, held, at } = theLiveSegment(ctx);
+    const before = statSync(file);
+    const rewritten = Buffer.from(held);
+    rewritten.write('A', at);
+    writeFileSync(file, rewritten);
+    // Moved on, as a rewrite always moves it, whatever the clock's grain: what is under test is
+    // that the cache looks, not that the filesystem ticks.
+    utimesSync(file, new Date(before.atimeMs + 5_000), new Date(before.mtimeMs + 5_000));
+    expect(statSync(file).size).toBe(before.size);
+    const cache = persisted();
+    cache.refresh();
+    expect(theMarkerSurvived(cache), 'a rewritten live segment was served in silence').toBe(false);
+    expect(answersOf(cache)).toEqual(answersOf(replayed()));
+  });
+
+  it('a live segment edited to another size, below what the cache read', () => {
+    const ctx = aWarmFile();
+    const { file, held, at } = theLiveSegment(ctx);
+    writeFileSync(file, Buffer.concat([held.subarray(0, at), Buffer.from('X'), held.subarray(at)]));
+    const cache = persisted();
+    cache.refresh();
+    expect(theMarkerSurvived(cache), 'an edit of another size was served in silence').toBe(false);
+    expect(answersOf(cache)).toEqual(answersOf(replayed()));
+  });
+
+  it('a live segment that only grew is brought forward and not read again below the boundary', () => {
+    const ctx = aWarmFile();
+    landed(createTask(ctx, { title: 'a task that arrived after the cache' }));
+    ctx.writer.checkpoint();
+    const cache = persisted();
+    cache.refresh();
+    expect(theMarkerSurvived(cache), 'an append sent the cache back to a replay').toBe(true);
+    expect(cache.listTasks().map((task) => task.title)).toContain(
+      'a task that arrived after the cache',
+    );
+  });
+
+  it('a touch over the same bytes is hashed once: the mark is kept with the new time, so the next open reads two numbers', () => {
+    const ctx = aWarmFile();
+    const { file } = theLiveSegment(ctx);
+    const before = statSync(file);
+    utimesSync(file, before.atime, new Date(before.mtimeMs + 5_000));
+    const markOnDisk = (): string => {
+      const db = openDatabase(projectionCachePath({ root }));
+      try {
+        const row = db.prepare("SELECT value FROM cache_meta WHERE key = 'active'").get() as {
+          value: string;
+        };
+        return (JSON.parse(row.value) as Record<string, string>)[file] as string;
+      } finally {
+        db.close();
+      }
+    };
+    expect(markOnDisk().split(':')[1], 'before the open the mark holds the old time').not.toBe(
+      String(statSync(file, { bigint: true }).mtimeNs),
+    );
+    const cache = persisted();
+    cache.refresh();
+    expect(theMarkerSurvived(cache), 'a touch sent the cache back to a replay').toBe(true);
+    // The read had nothing to store, and still left the mark of the file as it now is.
+    expect(markOnDisk().split(':')[1]).toBe(String(statSync(file, { bigint: true }).mtimeNs));
+  });
+
+  it('a segment rewritten to the same size while a replay reads it is not served as the bytes that were read', () => {
+    const ctx = writing();
+    aRecord(ctx);
+    for (const suffix of ['', '-wal', '-shm']) {
+      rmSync(`${projectionCachePath({ root })}${suffix}`, { force: true });
+    }
+    const { file, held, at } = theLiveSegment(ctx);
+    const before = statSync(file);
+    // The rewrite lands once the replay has started to read: the rows hold the old bytes.
+    let rewritten = false;
+    const racing = new (class extends UpcasterRegistry {
+      override upcast(event: VersionedEvent): CatalogEvent {
+        if (!rewritten) {
+          rewritten = true;
+          const bytes = Buffer.from(held);
+          bytes.write('A', at);
+          writeFileSync(file, bytes);
+          utimesSync(file, before.atime, new Date(before.mtimeMs + 5_000));
+        }
+        return super.upcast(event);
+      }
+    })();
+    const first = ProjectionCache.open(root, { upcasters: racing, persist: true });
+    open.push(first);
+    first.refresh();
+    expect(rewritten, 'the rewrite happened during the replay').toBe(true);
+    first.close();
+    const second = persisted();
+    second.refresh();
+    expect(second.listTasks().map((task) => task.title)).toEqual(['A task that was already here']);
+  });
+
+  it('a segment rewritten to the same size while the arrivals are read is not served as the bytes that were read', () => {
+    const ctx = aWarmFile();
+    landed(createTask(ctx, { title: 'a task that arrived after the cache' }));
+    ctx.writer.checkpoint();
+    const { file } = theLiveSegment(ctx);
+    const before = statSync(file);
+    // The rewrite lands once the reading of the arrivals has started: the rows then advance
+    // over bytes that are no longer the ones below the frontier.
+    let rewritten = false;
+    const racing = new (class extends UpcasterRegistry {
+      override upcast(event: VersionedEvent): CatalogEvent {
+        if (!rewritten) {
+          rewritten = true;
+          const bytes = readFileSync(file);
+          bytes.write('A', bytes.indexOf('a task'));
+          writeFileSync(file, bytes);
+          utimesSync(file, before.atime, new Date(before.mtimeMs + 5_000));
+        }
+        return super.upcast(event);
+      }
+    })();
+    const first = ProjectionCache.open(root, { upcasters: racing, persist: true });
+    open.push(first);
+    first.refresh();
+    expect(rewritten, 'the rewrite happened while the arrivals were read').toBe(true);
+    expect(theMarkerSurvived(first), 'the arrivals were brought forward, not replayed').toBe(true);
+    first.close();
+    const second = persisted();
+    second.refresh();
+    expect(second.listTasks().map((task) => task.title)).toContain('A task that was already here');
+  });
+
+  it('a touch is not a reason to give the file up when the mark cannot be kept: the rows are still the file’s', () => {
+    const ctx = aWarmFile();
+    const { file } = theLiveSegment(ctx);
+    const stamped = statSync(file);
+    utimesSync(file, stamped.atime, new Date(stamped.mtimeMs + 5_000));
+    const cache = persisted();
+    // A writer holds the file, and the connection keeps its ordinary wait of five seconds: the
+    // mark is not worth any of it.
+    const holder = openDatabase(projectionCachePath({ root }));
+    holder.exec('BEGIN IMMEDIATE');
+    const started = performance.now();
+    try {
+      cache.refresh();
+    } finally {
+      holder.exec('ROLLBACK');
+      holder.close();
+    }
+    expect(performance.now() - started, 'the restamp waited for the writer').toBeLessThan(1_000);
+    expect(theMarkerSurvived(cache), 'the failed write sent the cache to memory').toBe(true);
+    expect(answersOf(cache).tasks).toEqual(answersOf(replayed()).tasks);
+  });
+
+  it('THE LIMIT: a live segment rewritten to the same size with its modification time put back is not seen', () => {
+    const ctx = aWarmFile({ wholeSeconds: true });
+    const { file, held, at } = theLiveSegment(ctx);
+    const before = statSync(file, { bigint: true });
+    const rewritten = Buffer.from(held);
+    rewritten.write('A', at);
+    writeFileSync(file, rewritten);
+    utimesSync(file, new Date(Number(before.atimeMs)), new Date(Number(before.mtimeMs)));
+    expect(statSync(file, { bigint: true }).mtimeNs).toBe(before.mtimeNs);
+    const cache = persisted();
+    cache.refresh();
+    expect(theMarkerSurvived(cache), 'the limit moved: update what-it-proves.md').toBe(true);
+    // And the replay, which the cache does not take the place of, does see it.
+    expect(
+      replayed()
+        .listTasks()
+        .map((task) => task.title),
+    ).toContain('A task that was already here');
+  });
+
+  it('THE LIMIT: a sealed segment rewritten with its size and modification time put back is not seen', () => {
+    const ctx = aWarmFile({ maxSegmentBytes: 2048, wholeSeconds: true });
+    const dir = tailDir({ root }, ctx.writer.tail);
+    const sealed = readdirSync(dir)
+      .filter((name) => /^\d{6}\.jsonl$/.test(name))
+      .sort()[0] as string;
+    const file = join(dir, sealed);
+    const held = readFileSync(file);
+    const before = statSync(file, { bigint: true });
+    const rewritten = Buffer.from(held);
+    const at = rewritten.indexOf('a task');
+    expect(at, 'the segment holds the title the case rewrites').toBeGreaterThan(0);
+    rewritten.write('A', at);
+    writeFileSync(file, rewritten);
+    utimesSync(file, new Date(Number(before.atimeMs)), new Date(Number(before.mtimeMs)));
+    expect(statSync(file, { bigint: true }).mtimeNs).toBe(before.mtimeNs);
+    const cache = persisted();
+    cache.refresh();
+    expect(theMarkerSurvived(cache), 'the limit moved: update what-it-proves.md').toBe(true);
   });
 
   it('facts arriving stamped before something already covered', () => {

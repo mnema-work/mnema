@@ -144,7 +144,7 @@ export function tailLockPath(layout: ChainLayout, tailId: string): string {
  * it exists, so a new line could not reach an old tree) was false from the start for `/locks/`
  * and is false for `/site/`: `ensureTree` appends a missing line at the tree's next write. The
  * sharing stays because it costs nothing, not because it was the only way. It is derived and never
- * the record: deleting it costs the next reader a rebuild and, bar the one edit it can miss (see
+ * the record: deleting it costs the next reader a rebuild and, bar a rewrite that restores the modification time on purpose (see
  * `CacheOptions.persist`), changes no answer, and a clone never carries it.
  */
 export function projectionCachePath(layout: ChainLayout): string {

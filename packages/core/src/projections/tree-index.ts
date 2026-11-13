@@ -16,18 +16,23 @@
  * this reads is the one the machine's own home names.
  *
  * WHAT THE FILE IS. A JSON document with a MARK of the tree as it stood when the lists were read
- * (the stamp of the code that folds them, the chain's extent, the fingerprint of every sealed
- * segment and the hash of the last line of every tail) and the lists as the projection gives
- * them. It is derived and deletable: no reader depends on it existing, and a missing, unreadable,
- * unparseable, differently-marked or ill-shaped file is not an error but a reason to read the
- * tree and write the file again.
+ * (the stamp of the code that folds them, the tails, the fingerprint of every sealed segment, the
+ * size and modification time of the live segment of every tail, and the hash of the last line
+ * of every tail) and the lists as the projection gives them. It is derived and deletable: no
+ * reader depends on it existing, and a missing, unreadable, unparseable, differently-marked or
+ * ill-shaped file is not an error but a reason to read the tree and write the file again.
  *
- * WHEN IT IS BELIEVED. Only while the mark it carries is the mark the tree has now: the extent
- * moves when any tail appends, rotates, appears or vanishes, a sealed segment rewritten changes
- * its fingerprint, and a checkout that swaps the live segment for another of the SAME size
- * changes the last line, which is the hash of the last event and so of everything before it. The
- * one thing not seen is an edit in place, to the same size, of a line before the last of a
- * live segment that leaves the last line alone, which is `verify`'s. The mark is read BEFORE the
+ * WHEN IT IS BELIEVED. Only while the mark it carries is the mark the tree has now: a tail that
+ * appends, rotates, appears or vanishes changes the live segment's size or name, a sealed
+ * segment rewritten changes its fingerprint, a live segment rewritten changes its modification
+ * time whatever its size, and a checkout that swaps the live segment for another of the SAME
+ * size changes the last line, which is the hash of the last event and so of everything before it.
+ * The live segment is not hashed below its last line: a mark that differs is already the whole
+ * tree read again, so a hash of the bytes could only ever excuse that, and nothing is hashed on
+ * a read that finds the mark as it was left. The one thing not seen is a rewrite to the same
+ * size that puts the modification time back on purpose (or lands inside the resolution of the
+ * filesystem's clock: one second on HFS+, two on FAT and exFAT, whatever a network filesystem
+ * reports) and leaves the last line alone, which is `verify`'s. The mark is read BEFORE the
  * tree is, as the registry reads the extent before a replay, so an append that lands during the
  * read leaves a mark that is behind the tree and is read again next time.
  *
@@ -94,7 +99,7 @@ export function treeFactsFrom(
   const extent = chainExtent(layout);
   if (extent === '' || extent.startsWith('!')) return { extent: undefined, facts: read() };
   if (remembered?.extent === extent) return remembered;
-  const mark = markOf(layout, extent);
+  const mark = markOf(layout);
   if (mark === undefined) return { extent: undefined, facts: read() };
   const held = readIndex(indexFile);
   if (held?.mark === mark) return { extent, facts: held.facts };
@@ -132,21 +137,37 @@ function lastLineOf(path: string): string {
   }
 }
 
-/** The tree as it stands, or undefined when its segments cannot be listed. */
-function markOf(layout: ChainLayout, extent: string): string | undefined {
-  const sealed: Record<string, string> = {};
-  const last: Record<string, string> = {};
+/** `<size>:<mtimeNs>` of a live segment, or `unreadable`: what a rewrite of it cannot keep. */
+function liveFingerprintOf(path: string): string {
   try {
-    for (const tail of listTails(layout)) {
+    const { size, mtimeNs } = statSync(path, { bigint: true });
+    return `${size}:${mtimeNs}`;
+  } catch {
+    return 'unreadable';
+  }
+}
+
+/** The tree as it stands, or undefined when its segments cannot be listed. */
+function markOf(layout: ChainLayout): string | undefined {
+  const sealed: Record<string, string> = {};
+  const live: Record<string, string> = {};
+  const last: Record<string, string> = {};
+  let tails: readonly string[];
+  try {
+    tails = listTails(layout);
+    for (const tail of tails) {
       const segments = orderedSegments(layout, tail);
       for (const segment of segments.slice(0, -1)) sealed[segment] = fingerprintOf(segment);
-      const live = segments.at(-1);
-      if (live !== undefined) last[live] = lastLineOf(live);
+      const current = segments.at(-1);
+      if (current !== undefined) {
+        live[current] = liveFingerprintOf(current);
+        last[current] = lastLineOf(current);
+      }
     }
   } catch {
     return undefined;
   }
-  return JSON.stringify({ stamp: productStamp(), extent, sealed, last });
+  return JSON.stringify({ stamp: productStamp(), tails, sealed, live, last });
 }
 
 const isText = (value: unknown): value is string => typeof value === 'string';

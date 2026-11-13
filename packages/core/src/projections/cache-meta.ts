@@ -21,23 +21,39 @@
  *     cache was built would be served in silence for as long as the cache lasted, where a
  *     replay reads every line and is told. A sealed segment is never written again, so its
  *     size and modification time are what a rewrite cannot keep; any difference sends the
- *     cache back to a full replay.
+ *     cache back to a full replay. The ACTIVE segment of a tail is still appended to, so its
+ *     size and its modification time move legitimately and cannot say as much; what it records
+ *     is its size, its modification time (to the nanosecond the filesystem keeps) and the
+ *     sha256 of the bytes below the frontier. Opened, a segment with the size and the time it
+ *     had is the segment it was, and costs two numbers. A segment with either one changed has
+ *     the sha256 of the prefix computed again, once, and a prefix that hashes differently
+ *     sends the cache back to a full replay. Nothing is hashed on a read that finds the
+ *     segment as it was left, and no sealed segment is ever hashed.
  *
- * WHAT THE FINGERPRINTS DO NOT SEE, and the limit is the same one a long-lived session has
- * always had. The ACTIVE segment has only its size checked, since it is still being appended
- * to and its modification time moves legitimately: bytes of it rewritten to the same size are
- * not seen. A sealed segment has size and modification time checked: an edit that restores
- * both is not seen either. The projection is not a tamper detector. Tampering is `verify`'s,
- * which recomputes every hash and checks every signature, and which never reads the
- * projection.
+ * WHAT THE FINGERPRINTS DO NOT SEE, and the limit is a declared one. A rewrite that restores
+ * the modification time on purpose, to the size the file had, is not seen: in a sealed segment
+ * for the same reason, and in an active one because nothing but the two numbers is looked at
+ * while they hold. Neither is a rewrite inside the resolution of the filesystem's clock (one
+ * second on HFS+, two on FAT and exFAT, whatever a network filesystem reports) of the moment
+ * the cache was written. Whoever restores the time on purpose can rewrite `projection.db` the
+ * same way. The projection is not a tamper detector. Tampering is `verify`'s, which recomputes
+ * every hash and checks every signature, and which never reads the projection.
  */
 
 import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { closeSync, openSync, readdirSync, readFileSync, readSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LATEST_VERSION, type LinkBreak, type UnreadLine, WORKFLOWS } from '@mnema/chain';
-import type { SqliteDatabase } from '../db/sqlite.js';
+import {
+  type ChainLayout,
+  LATEST_VERSION,
+  type LinkBreak,
+  listTails,
+  orderedSegments,
+  type UnreadLine,
+  WORKFLOWS,
+} from '@mnema/chain';
+import { BUSY_TIMEOUT_MS, inTransaction, type SqliteDatabase } from '../db/sqlite.js';
 import type { ChainFrontier, TailReach } from './order.js';
 
 /** What is stored under the cache's own keys. */
@@ -54,6 +70,11 @@ export interface CacheMeta {
   readonly unread: readonly UnreadLine[];
   /** Size and modification time of every sealed segment the frontier covers, by path. */
   readonly sealed: Readonly<Record<string, string>>;
+  /**
+   * Size, modification time and the sha256 of the bytes below the frontier of the segment each
+   * tail is still appending to, by path ({@link activeMarks}).
+   */
+  readonly active: Readonly<Record<string, string>>;
 }
 
 /**
@@ -116,13 +137,15 @@ export function readMeta(db: SqliteDatabase): CacheMeta | undefined {
   const breaks = byKey.get('breaks');
   const unread = byKey.get('unread');
   const sealed = byKey.get('sealed');
+  const active = byKey.get('active');
   if (
     stampHere === undefined ||
     generation === undefined ||
     frontier === undefined ||
     breaks === undefined ||
     unread === undefined ||
-    sealed === undefined
+    sealed === undefined ||
+    active === undefined
   ) {
     return undefined;
   }
@@ -133,6 +156,7 @@ export function readMeta(db: SqliteDatabase): CacheMeta | undefined {
     breaks: JSON.parse(breaks) as LinkBreak[],
     unread: JSON.parse(unread) as UnreadLine[],
     sealed: JSON.parse(sealed) as Record<string, string>,
+    active: JSON.parse(active) as Record<string, string>,
   };
 }
 
@@ -153,6 +177,7 @@ export function writeMeta(db: SqliteDatabase, meta: CacheMeta): void {
   put.run('breaks', JSON.stringify(meta.breaks));
   put.run('unread', JSON.stringify(meta.unread));
   put.run('sealed', JSON.stringify(meta.sealed));
+  put.run('active', JSON.stringify(meta.active));
 }
 
 function encodeFrontier(frontier: ChainFrontier): string {
@@ -207,5 +232,178 @@ export function fingerprintOf(path: string): string {
     return `${stat.size}:${stat.mtimeMs}`;
   } catch {
     return 'unreadable';
+  }
+}
+
+/** `<size>:<mtimeNs>` of a file, or undefined when it cannot be stat'ed. */
+function stampOf(path: string): string | undefined {
+  const stat = statOf(path);
+  return stat === undefined ? undefined : `${stat.size}:${stat.mtimeNs}`;
+}
+
+/**
+ * The size and modification time, by path, of the segment each tail is appending to, taken BEFORE
+ * a reading of the chain begins. {@link activeMarks} records these and not what the file says
+ * after the reading, so a rewrite that lands during a long replay leaves a mark older than the
+ * bytes (the next open hashes and finds them moved) and never the mark of bytes the rows do not
+ * describe.
+ */
+export function activeStampsBefore(layout: ChainLayout): Readonly<Record<string, string>> {
+  const stamps: Record<string, string> = {};
+  try {
+    for (const tail of listTails(layout)) {
+      const last = orderedSegments(layout, tail).at(-1);
+      const stamp = last === undefined ? undefined : stampOf(last);
+      if (last !== undefined && stamp !== undefined) stamps[last] = stamp;
+    }
+  } catch {
+    // Nothing stamped: every mark below is then `unreadable`, and the next open replays.
+  }
+  return stamps;
+}
+
+/**
+ * What each tail's ACTIVE segment was when the frontier was taken, by path, as
+ * `<size>:<mtimeNs>:<bytes>:<sha256>`: the size and the modification time the file had BEFORE the
+ * reading (`before`, from {@link activeStampsBefore}), and the sha256 of its first `bytes` bytes,
+ * which is where the reading stopped.
+ *
+ * The prefix is hashed after the reading, and the mark is kept only if the file still has the
+ * stamp it was given before it: a file that moved while it was read, or while it was hashed, is
+ * recorded as `unreadable`, which no later open believes. A segment that is not the last the
+ * reading reached (a later one stands beside it, so it is sealed) is left to
+ * {@link sealedFingerprints} and not hashed.
+ */
+export function activeMarks(
+  frontier: ChainFrontier,
+  before: Readonly<Record<string, string>>,
+): Readonly<Record<string, string>> {
+  const marks: Record<string, string> = {};
+  for (const reach of frontier.tails.values()) {
+    const boundary = reach.boundary;
+    if (boundary === undefined || reach.segments.at(-1) !== boundary.segment) continue;
+    marks[boundary.segment] = markOfActive(boundary.segment, boundary.bytes, before);
+  }
+  return marks;
+}
+
+/**
+ * The marks to keep when every active segment a cache recorded is still what it recorded, or
+ * undefined when one is not: the same size and the same modification time, or else the same bytes
+ * below the frontier (the sha256 computed once, because something moved).
+ *
+ * A segment whose time moved over the same bytes (a `touch`, a checkout that wrote the file back)
+ * comes back with the mark of its new size and time, so the caller can keep it and the next open
+ * finds the two numbers equal instead of hashing again.
+ */
+export function activeSegmentsHold(
+  recorded: Readonly<Record<string, string>>,
+): Readonly<Record<string, string>> | undefined {
+  const kept: Record<string, string> = {};
+  for (const [segment, mark] of Object.entries(recorded)) {
+    const parts = mark.split(':');
+    const [size, mtime, bytes, digest] = parts;
+    if (parts.length !== 4 || bytes === undefined || digest === undefined) return undefined;
+    const before = stampOf(segment);
+    if (before === undefined) return undefined;
+    if (before === `${size}:${mtime}`) {
+      kept[segment] = mark;
+      continue;
+    }
+    if (prefixDigest(segment, Number(bytes)) !== digest) return undefined;
+    // Re-stamped only if the file did not move while it was hashed.
+    kept[segment] = stampOf(segment) === before ? `${before}:${bytes}:${digest}` : mark;
+  }
+  return kept;
+}
+
+function markOfActive(
+  path: string,
+  bytes: number,
+  before: Readonly<Record<string, string>>,
+): string {
+  const stamp = before[path];
+  const digest = prefixDigest(path, bytes);
+  if (stamp === undefined || digest === undefined || stampOf(path) !== stamp) return 'unreadable';
+  return `${stamp}:${bytes}:${digest}`;
+}
+
+function statOf(path: string): { size: bigint; mtimeNs: bigint } | undefined {
+  try {
+    const { size, mtimeNs } = statSync(path, { bigint: true });
+    return { size, mtimeNs };
+  } catch {
+    return undefined;
+  }
+}
+
+/** The sha256 of the first `bytes` bytes of a file, or undefined when it is shorter or cannot be read. */
+function prefixDigest(path: string, bytes: number): string | undefined {
+  let fd: number | undefined;
+  try {
+    fd = openSync(path, 'r');
+    const hash = createHash('sha256');
+    const chunk = Buffer.allocUnsafe(Math.min(Math.max(bytes, 1), 1 << 20));
+    let at = 0;
+    while (at < bytes) {
+      const read = readSync(fd, chunk, 0, Math.min(chunk.length, bytes - at), at);
+      if (read === 0) return undefined;
+      hash.update(chunk.subarray(0, read));
+      at += read;
+    }
+    return hash.digest('hex');
+  } catch {
+    return undefined;
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+  }
+}
+
+/** SQLite's primary result codes for a file somebody else holds or that cannot be written. */
+const SQLITE_BUSY = 5;
+const SQLITE_LOCKED = 6;
+const SQLITE_READONLY = 8;
+
+/**
+ * Replaces the active marks alone, leaving the generation where it is (nothing the rows say
+ * changed), and only while the generation in the file is still `generation`, the one the marks
+ * were checked against: a file another process advanced since holds a frontier these marks do not
+ * describe, and is left as that process wrote it. Says whether it wrote.
+ *
+ * IT NEVER WAITS. The mark is an optimization, and a read that used to wait for nobody must not
+ * wait the connection's five seconds (twice, in a verb a hook cuts at nine) for a writer that holds
+ * the file: with the wait taken to zero for this one transaction, a busy, locked or read-only file
+ * is a mark not kept and `false`, and the connection's wait is put back. Any other failure goes up.
+ */
+export function keepActiveMarks(
+  db: SqliteDatabase,
+  active: Readonly<Record<string, string>>,
+  generation: number,
+): boolean {
+  db.exec('PRAGMA busy_timeout = 0');
+  try {
+    return inTransaction(
+      db,
+      () => {
+        if (readGeneration(db) !== generation) return false;
+        db.prepare("UPDATE cache_meta SET value = ? WHERE key = 'active'").run(
+          JSON.stringify(active),
+        );
+        return true;
+      },
+      { immediate: true },
+    );
+  } catch (error) {
+    const failure = error as { code?: unknown; errcode?: unknown } | null;
+    const primary = typeof failure?.errcode === 'number' ? failure.errcode & 0xff : -1;
+    if (
+      failure?.code === 'ERR_SQLITE_ERROR' &&
+      (primary === SQLITE_BUSY || primary === SQLITE_LOCKED || primary === SQLITE_READONLY)
+    ) {
+      return false;
+    }
+    throw error;
+  } finally {
+    db.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
   }
 }
