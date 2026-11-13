@@ -1350,6 +1350,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-hooks-file-says-only-what-the-host-reads.test.ts': 5,
   'packages/code/tests/the-hooks-have-stable-ids.test.ts': 4,
   'packages/code/tests/the-hooks-run-mnema-on-a-node-it-takes.test.ts': 11,
+  'packages/code/tests/the-hooks-say-what-the-record-refused.test.ts': 13,
   'packages/code/tests/the-host-contract-checks-have-stable-names.test.ts': 3,
   'packages/code/tests/the-host-files-are-generated.test.ts': 5,
   'packages/code/tests/the-hosts-table-shows-the-vendors-own-logos.test.ts': 4,

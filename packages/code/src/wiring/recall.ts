@@ -79,7 +79,9 @@ export function registerRecall(program: Command, wiring: Wiring): Declared {
     .option(
       '--hook',
       'print it for a Claude Code hook: whole notes up to what a hook carries, each section ' +
-        'saying how many it left out',
+        'saying how many it left out' +
+        ', and a refusal opens with its code alone on the first line of the error stream ' +
+        '(a refusal of usage, such as an invalid --host, carries none: the hook is silent for it)',
     )
     .addOption(hookHostOption('the notes'))
     .option(
@@ -109,6 +111,7 @@ export function registerRecall(program: Command, wiring: Wiring): Declared {
               wiring,
               reminder,
               reminder.reason === 'SWITCHED_OFF' ? { SWITCHED_OFF: switchedOff(reminder) } : {},
+              opts.hook === true,
             );
             return;
           }
@@ -126,6 +129,7 @@ export function registerRecall(program: Command, wiring: Wiring): Declared {
             wiring,
             result,
             result.reason === 'SWITCHED_OFF' ? { SWITCHED_OFF: switchedOff(result) } : {},
+            opts.hook === true,
           );
           return;
         }

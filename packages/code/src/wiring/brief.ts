@@ -213,7 +213,9 @@ export function registerBrief(program: Command, wiring: Wiring): Declared {
     .option(
       '--hook',
       'print it for a Claude Code hook: whole rules up to what a hook carries, and a ' +
-        'closing paragraph saying how many were left out and what serves them',
+        'closing paragraph saying how many were left out and what serves them' +
+        ', and a refusal opens with its code alone on the first line of the error stream ' +
+        '(a refusal of usage, such as an invalid --host, carries none: the hook is silent for it)',
     )
     .addOption(hookHostOption('the rules'))
     .action(async (opts: { hook?: boolean; host?: string }) => {
@@ -233,6 +235,7 @@ export function registerBrief(program: Command, wiring: Wiring): Declared {
           wiring,
           result,
           result.reason === 'SWITCHED_OFF' ? { SWITCHED_OFF: switchedOff(result) } : {},
+          opts.hook === true,
         );
         return;
       }
