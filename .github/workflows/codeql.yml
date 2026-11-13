@@ -20,8 +20,8 @@ name: CodeQL
 # Security tab, and the maintainer decides each one.
 #
 # A PULL REQUEST FROM A FORK gets a read-only token, so its results cannot be uploaded to the
-# Security tab. This workflow does not use `pull_request_target` to get around that: that trigger
-# runs with a write token on code the fork wrote.
+# Security tab. This workflow does not get around that with the trigger that hands a fork's code
+# a write token.
 
 on:
   push:
