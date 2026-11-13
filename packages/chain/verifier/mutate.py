@@ -623,6 +623,73 @@ def os_file_in_a_tail(root: str) -> tuple[bool, str]:
     return first and second, "a .DS_Store and a ._000001.jsonl in the tail directory"
 
 
+def segment_name_with_a_newline(root: str) -> tuple[bool, str]:
+    """`000001.jsonl` and a line feed: a copy of the segment under a name that is not one.
+
+    A pattern that lets `$` match before a final line feed reads it as a second segment.
+    NOT a refusal: both readers name it and read nothing of it.
+    """
+
+    def write(path: str) -> None:
+        shutil.copyfile(_segment(root), path)
+
+    applied, _ = _beside_the_segments(root, "000001.jsonl\n", write)
+    return applied, "a copy of the segment named 000001.jsonl and a line feed"
+
+
+def odd_named_file_in_a_tail(root: str) -> tuple[bool, str]:
+    """A file named with an accent, an emoji and a DEL: what the sentence must escape alike."""
+
+    def write(path: str) -> None:
+        with open(path, "wb") as handle:
+            handle.write(b"junk")
+
+    applied, _ = _beside_the_segments(root, "caf\u00e9-\U0001f600-\x7f", write)
+    return applied, "a file named with an accent, an emoji and a DEL, in the tail directory"
+
+
+def non_utf8_named_file_in_a_tail(root: str) -> tuple[bool, str]:
+    """A file whose name holds a byte that is not UTF-8 (`a\\xffb`), where the filesystem allows it."""
+
+    def write(path: str) -> None:
+        with open(path, "wb") as handle:
+            handle.write(b"junk")
+
+    try:
+        applied, _ = _beside_the_segments(root, os.fsdecode(b"a\xffb"), write)
+    except OSError:
+        return False, "the filesystem refuses a name that is not UTF-8"
+    return applied, "a file named a, the byte 0xff and b, in the tail directory"
+
+
+def file_named_witness_in_a_tail(root: str) -> tuple[bool, str]:
+    """A FILE named `witness`, in the place of the directory of that name: a stray entry, not read.
+
+    The tail's witness directory is taken away first (a file cannot share its name), so the
+    record is witnessed no more; it is still VERIFIED, and that is what is asserted.
+    """
+
+    def write(path: str) -> None:
+        shutil.rmtree(path, ignore_errors=True)
+        with open(path, "wb") as handle:
+            handle.write(b"junk")
+
+    applied, _ = _beside_the_segments(root, "witness", write)
+    return applied and os.path.isfile(os.path.join(_tail_dir(root), "witness")), (
+        "a file named witness in the place of the witness directory"
+    )
+
+
+def folder_named_like_a_segment_in_a_tail(root: str) -> tuple[bool, str]:
+    """A folder `000002.jsonl`: a stray entry by what it is, and no segment to read."""
+
+    def write(path: str) -> None:
+        os.mkdir(path)
+
+    applied, _ = _beside_the_segments(root, "000002.jsonl", write)
+    return applied, "a folder named 000002.jsonl in the tail directory"
+
+
 def refused_line_beside_a_forged_signature(root: str) -> tuple[bool, str]:
     """Two causes in one tail: a line no reader can read, and a checkpoint whose signature fails.
 
@@ -2097,6 +2164,11 @@ MUTATIONS = {
     "stray-file-in-a-tail": stray_file_in_a_tail,
     "stray-folder-in-a-tail": stray_folder_in_a_tail,
     "os-file-in-a-tail": os_file_in_a_tail,
+    "segment-name-with-a-newline": segment_name_with_a_newline,
+    "odd-named-file-in-a-tail": odd_named_file_in_a_tail,
+    "non-utf8-named-file-in-a-tail": non_utf8_named_file_in_a_tail,
+    "file-named-witness-in-a-tail": file_named_witness_in_a_tail,
+    "folder-named-like-a-segment-in-a-tail": folder_named_like_a_segment_in_a_tail,
     "refused-line-beside-a-forged-signature": refused_line_beside_a_forged_signature,
     "forged-payload-field-appended": forged_payload_field_appended,
     "appended-event-missing-a-declared-field": appended_event_missing_a_declared_field,

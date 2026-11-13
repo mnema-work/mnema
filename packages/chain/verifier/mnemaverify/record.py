@@ -62,7 +62,8 @@ from .record_name import record_of, relinked_naming
 from .root import which_reading_closes
 from .verdict import Refusal, Report
 
-SEGMENT_NAME = re.compile(r"^[0-9]{6}\.jsonl$")
+# `\Z`, not `$`: `$` also matches before a final line feed, and `000001.jsonl` and a line feed is no segment.
+SEGMENT_NAME = re.compile(r"^[0-9]{6}\.jsonl\Z")
 CHECKPOINTS_FILE = "checkpoints.jsonl"
 TAILPROOF_FILE = "tailproof.json"
 WITNESS_DIR = "witness"
@@ -156,11 +157,13 @@ def _read_entries(
     findings that name a cut or an edit the record does not contain. The caller therefore
     gets the places back, and says "not checked" about the checks the hole would make lie.
     """
-    segments = sorted(name for name in os.listdir(tail_dir) if SEGMENT_NAME.match(name))
+    segments = sorted(name for name in os.listdir(tail_dir) if _is_segment(tail_dir, name))
     skipped = sorted(
         name
         for name in os.listdir(tail_dir)
-        if name.endswith(".jsonl") and not SEGMENT_NAME.match(name)
+        if name.endswith(".jsonl")
+        and not _is_segment(tail_dir, name)
+        and not _is_a_folder(os.path.join(tail_dir, name))
     )
     report.note(
         "4",
@@ -1341,11 +1344,21 @@ def _holds_nothing(tail_dir: str) -> bool:
     """
     names = os.listdir(tail_dir)
     for name in names:
-        if (SEGMENT_NAME.match(name) or name == CHECKPOINTS_FILE) and _lines(
+        if (_is_segment(tail_dir, name) or name == CHECKPOINTS_FILE) and _lines(
             os.path.join(tail_dir, name)
         ):
             return False
     return True
+
+
+def _is_a_folder(path: str) -> bool:
+    """A directory by what the directory listing says: a link to one is a link."""
+    return os.path.isdir(path) and not os.path.islink(path)
+
+
+def _is_segment(tail_dir: str, name: str) -> bool:
+    """A segment is named `NNNNNN.jsonl` and is not a folder: a folder of that name is read by nobody."""
+    return bool(SEGMENT_NAME.match(name)) and not _is_a_folder(os.path.join(tail_dir, name))
 
 
 def _stray_entries(tail_dir: str) -> list[str]:
@@ -1372,6 +1385,11 @@ def _stray_entries(tail_dir: str) -> list[str]:
     return stray
 
 
+def _as_the_product_reads(name: str) -> str:
+    """The name as Node decodes it: a byte that is not UTF-8 is U+FFFD, not a lone surrogate."""
+    return os.fsencode(name).decode("utf-8", "replace")
+
+
 def _say_stray_entries(report: Report, tail_dir: str, tail_id: str) -> None:
     """Section 4: each stray entry named once, never read and never refused.
 
@@ -1381,7 +1399,7 @@ def _say_stray_entries(report: Report, tail_dir: str, tail_id: str) -> None:
     for name in _stray_entries(tail_dir):
         report.note(
             "4",
-            f"holds {json.dumps(name, ensure_ascii=True)}, which is not part of the format: "
+            f"holds {json.dumps(_as_the_product_reads(name), ensure_ascii=True)}, which is not part of the format: "
             "it is named here, never read, and nothing in it is vouched for",
             tail_id,
         )

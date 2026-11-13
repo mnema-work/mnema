@@ -559,6 +559,11 @@ const AGREEMENTS: readonly Agreement[] = [
   { name: 'stray-file-in-a-tail', verdict: 'accepted' },
   { name: 'stray-folder-in-a-tail', verdict: 'accepted' },
   { name: 'os-file-in-a-tail', verdict: 'accepted' },
+  { name: 'segment-name-with-a-newline', verdict: 'accepted' },
+  { name: 'odd-named-file-in-a-tail', verdict: 'accepted' },
+  { name: 'non-utf8-named-file-in-a-tail', verdict: 'accepted' },
+  { name: 'file-named-witness-in-a-tail', verdict: 'accepted' },
+  { name: 'folder-named-like-a-segment-in-a-tail', verdict: 'accepted' },
   { name: 'aligned-cut', verdict: 'accepted' },
   { name: 'refounded-record', verdict: 'accepted' },
   { name: 'named-record', verdict: 'accepted' },
@@ -752,12 +757,16 @@ const AGREEMENTS: readonly Agreement[] = [
  * already uses, and is not named: naming it would make every Mac clone look tampered with.
  */
 describe('an entry in a tail directory that is not of the format, to both readers', () => {
-  const strayEntry = (name: string): string =>
-    `holds ${JSON.stringify(name)}, which is not part of the format: it is named here, never read, and nothing in it is vouched for`;
+  const strayEntry = (quoted: string): string =>
+    `holds ${quoted}, which is not part of the format: it is named here, never read, and nothing in it is vouched for`;
 
   /** What each reader said about the record, by the census note and by the finding. */
   function bothSay(name: string) {
     const record = mutated(name);
+    return bothSayOf(record);
+  }
+
+  function bothSayOf(record: string) {
     const here = verify(record, catalogUpcasters());
     const run = python([VERIFIER, '--json', 'record', record]);
     const there = JSON.parse(run.stdout) as { verdict: string; findings: readonly Finding[] };
@@ -771,26 +780,62 @@ describe('an entry in a tail directory that is not of the format, to both reader
     };
   }
 
-  it.each([
-    ['stray-file-in-a-tail', '000001.jsonl.bak'],
-    ['stray-folder-in-a-tail', 'notes'],
-  ])('names it in the census of both, the same sentence, for %s', (mutation, entry) => {
-    const { tail, here, status, verdict, strays } = bothSay(mutation);
-    // Named and not refused: exit 0 and VERIFIED, with nothing a break in either reader.
+  /** The name as the sentence quotes it: JSON, with everything outside printable ASCII escaped. */
+  const CASES: readonly (readonly [string, string, string])[] = [
+    ['stray-file-in-a-tail', '000001.jsonl.bak', '"000001.jsonl.bak"'],
+    ['stray-folder-in-a-tail', 'notes', '"notes"'],
+    // `$` of a pattern matches before a final line feed: this copy of the segment was read as a
+    // second one by the second reader and refused.
+    ['segment-name-with-a-newline', '000001.jsonl\n', '"000001.jsonl\\n"'],
+    // An accent, an emoji and a DEL: escaped the same by both, or the sentences differ.
+    ['odd-named-file-in-a-tail', 'caf\u00e9-\u{1f600}-\x7f', '"caf\\u00e9-\\ud83d\\ude00-\\u007f"'],
+    // A directory named `witness` is a tail's; a file of that name is not, and read as one it
+    // threw ENOTDIR in the product.
+    ['file-named-witness-in-a-tail', 'witness', '"witness"'],
+    // A directory named like a segment is no segment: both readers threw reading it as one.
+    ['folder-named-like-a-segment-in-a-tail', '000002.jsonl', '"000002.jsonl"'],
+  ];
+
+  it.each(CASES)(
+    'names it in the census of both, the same sentence, for %s',
+    (mutation, entry, quoted) => {
+      const { tail, here, status, verdict, strays } = bothSay(mutation);
+      // Named and not refused: exit 0 and VERIFIED, with nothing a break in either reader.
+      expect(here.ok).toBe(true);
+      expect(here.issues).toEqual([]);
+      expect(status).toBe(0);
+      expect(verdict).toBe('VERIFIED');
+      expect(here.census.filter((note) => note.kind === 'stray-entry')).toEqual([
+        { kind: 'stray-entry', tail, entry, detail: strayEntry(quoted) },
+      ]);
+      expect(
+        strays.map((finding) => [finding.level, finding.section, finding.where, finding.what]),
+      ).toEqual([['note', '4', tail, strayEntry(quoted)]]);
+      // Nothing of it was read: the copy of the segment is not counted as a second one.
+      expect(here.summary).toContain(
+        '1 stray entry(ies) in a tail directory, named and not read (see census: informational, not a break)',
+      );
+    },
+  );
+
+  it('says a name that is not UTF-8 the same in both, where the filesystem allows one', () => {
+    const record = copyOf('witnessed-record');
+    const run = python([MUTATE, 'non-utf8-named-file-in-a-tail', record]);
+    const applied = JSON.parse(run.stdout) as { applied: boolean; detail: string };
+    // A filesystem that refuses a name that is not UTF-8 (macOS, APFS) cannot build the case.
+    if (!applied.applied) {
+      expect(applied.detail).toContain('refuses a name that is not UTF-8');
+      return;
+    }
+    const { tail, here, status, verdict, strays } = bothSayOf(record);
+    const sentence = strayEntry('"a\\ufffdb"');
     expect(here.ok).toBe(true);
-    expect(here.issues).toEqual([]);
     expect(status).toBe(0);
     expect(verdict).toBe('VERIFIED');
-    expect(here.census.filter((note) => note.kind === 'stray-entry')).toEqual([
-      { kind: 'stray-entry', tail, entry, detail: strayEntry(entry) },
-    ]);
     expect(
-      strays.map((finding) => [finding.level, finding.section, finding.where, finding.what]),
-    ).toEqual([['note', '4', tail, strayEntry(entry)]]);
-    // Nothing of it was read: the copy of the segment is not counted as a second one.
-    expect(here.summary).toContain(
-      '1 stray entry(ies) in a tail directory, named and not read (see census: informational, not a break)',
-    );
+      here.census.filter((note) => note.kind === 'stray-entry').map((note) => note.detail),
+    ).toEqual([sentence]);
+    expect(strays.map((finding) => [finding.where, finding.what])).toEqual([[tail, sentence]]);
   });
 
   it('skips what the operating system writes, in both, and says nothing of it', () => {

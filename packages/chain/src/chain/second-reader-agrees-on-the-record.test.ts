@@ -1270,6 +1270,51 @@ const MUTATIONS = [
     agreedAccepted: true,
   },
   {
+    name: 'segment-name-with-a-newline',
+    refusals: 0,
+    section: '4',
+    says: '',
+    productLayer: 'T2/T4',
+    productBreaks: 'ok',
+    agreedAccepted: true,
+  },
+  {
+    name: 'odd-named-file-in-a-tail',
+    refusals: 0,
+    section: '4',
+    says: '',
+    productLayer: 'T2/T4',
+    productBreaks: 'ok',
+    agreedAccepted: true,
+  },
+  {
+    name: 'non-utf8-named-file-in-a-tail',
+    refusals: 0,
+    section: '4',
+    says: '',
+    productLayer: 'T2/T4',
+    productBreaks: 'ok',
+    agreedAccepted: true,
+  },
+  {
+    name: 'file-named-witness-in-a-tail',
+    refusals: 0,
+    section: '4',
+    says: '',
+    productLayer: 'T2/T4',
+    productBreaks: 'ok',
+    agreedAccepted: true,
+  },
+  {
+    name: 'folder-named-like-a-segment-in-a-tail',
+    refusals: 0,
+    section: '4',
+    says: '',
+    productLayer: 'T2/T4',
+    productBreaks: 'ok',
+    agreedAccepted: true,
+  },
+  {
     name: 'blank-segment-same-size',
     // The SECOND row that is not a refusal, and the reason the count below is 2. See the
     // INCOMPLETE describe: a checkpoint whose range outruns the entries present is a shape
@@ -1328,8 +1373,8 @@ describe('the second reader refuses, and the mutation that earns each refusal sh
     (mutation) => !('incomplete' in mutation) && !('agreedAccepted' in mutation),
   );
 
-  it('leaves exactly THIRTEEN rows out of the refusal loop, and no row is an acceptance by one reader alone', () => {
-    expect(MUTATIONS.length - REFUSING.length).toBe(13);
+  it('leaves exactly EIGHTEEN rows out of the refusal loop, and no row is an acceptance by one reader alone', () => {
+    expect(MUTATIONS.length - REFUSING.length).toBe(18);
     expect(
       MUTATIONS.filter((m) => 'incomplete' in m || 'agreedAccepted' in m)
         .map((m) => m.name)
@@ -1338,13 +1383,18 @@ describe('the second reader refuses, and the mutation that earns each refusal sh
       'aligned-cut',
       'appended-move-the-workflow-does-not-allow',
       'blank-segment-same-size',
+      'file-named-witness-in-a-tail',
+      'folder-named-like-a-segment-in-a-tail',
       'key-metadata-file-beside-the-keys',
       'keys-removed',
       'named-record',
+      'non-utf8-named-file-in-a-tail',
+      'odd-named-file-in-a-tail',
       'os-file-in-a-tail',
       'refounded-record',
       'relinked-by-the-genesis-founder',
       'relinked-tail',
+      'segment-name-with-a-newline',
       'stray-file-in-a-tail',
       'stray-folder-in-a-tail',
       'unnamed-tail-beside-named-ones',

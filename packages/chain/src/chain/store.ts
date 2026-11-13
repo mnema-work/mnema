@@ -296,8 +296,10 @@ export function holdsRecord(layout: ChainLayout): boolean {
 export function orderedSegments(layout: ChainLayout, tailId: string): string[] {
   const dir = tailDir(layout, tailId);
   if (!existsSync(dir)) return [];
-  return readdirSync(dir)
-    .filter(isSegmentFile)
+  // A folder named like a segment is no segment: nothing reads it, and it is named as a stray entry.
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((entry) => isSegmentFile(entry.name) && !entry.isDirectory())
+    .map((entry) => entry.name)
     .sort((a, b) => segmentNumberOf(a) - segmentNumberOf(b))
     .map((name) => `${dir}/${name}`);
 }

@@ -452,10 +452,10 @@ export function strayEntrySentence(entry: string): string {
   return `holds ${jsonAscii(entry)}, which is not part of the format: it is named here, never read, and nothing in it is vouched for`;
 }
 
-/** JSON's quoting with every non-ASCII code unit escaped, as Python's `ensure_ascii` writes it. */
+/** JSON's quoting with every code unit outside printable ASCII escaped, as Python's `ensure_ascii` writes it. */
 function jsonAscii(text: string): string {
   return JSON.stringify(text).replace(
-    /[\u0080-\uffff]/g,
+    /[\u007f-\uffff]/g,
     (unit) => `\\u${unit.charCodeAt(0).toString(16).padStart(4, '0')}`,
   );
 }

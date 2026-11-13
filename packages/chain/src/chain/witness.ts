@@ -565,7 +565,8 @@ const PROOF_SUFFIX = '.ots';
  */
 function stampedCheckpoints(layout: ChainLayout, tailId: string): ReadonlySet<string> {
   const dir = witnessDir(layout, tailId);
-  if (!existsSync(dir)) return new Set();
+  // A file named `witness` is no witness directory (it is named as a stray entry, FORMAT.md section 4).
+  if (!existsSync(dir) || !statSync(dir).isDirectory()) return new Set();
   return new Set(
     readdirSync(dir)
       .filter((name) => name.endsWith(PROOF_SUFFIX))
