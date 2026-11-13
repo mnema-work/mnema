@@ -287,8 +287,9 @@ describe('keeping the active marks', () => {
   });
 
   it('lets a failure that is not the file\u2019s being held go up', () => {
-    const db = aFileAt(4);
+    // A database with no cache_meta at all: SQLite refuses, and not for a busy or read-only file.
+    const db = openDatabase(IN_MEMORY);
+    expect(() => keepActiveMarks(db, {}, 4)).toThrow(/cache_meta/);
     db.close();
-    expect(() => keepActiveMarks(db, {}, 4)).toThrow();
   });
 });
