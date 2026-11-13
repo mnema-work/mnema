@@ -16,8 +16,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # THE SUITE IN THREE SHARDS PER NODE. One job of the whole suite took 11 to 14 minutes and sat
+  # on the critical path of every pull request; three shards run at the same time, and each takes
+  # a third of the files. `--shard=k/3` splits the FILES, so what is run is the same set: the
+  # guard `the-suite-is-split-whole` checks that `shard:` lists 1 to N and that every step that
+  # takes `--shard` takes `/N` of the same N, and the case count of the three together is the
+  # case count the unsplit run had. Lint and the type-check are not here: they do not depend on
+  # the Node under the suite, so they run once, in `lint-and-typecheck` below.
   test:
-    name: lint + build + test (node ${{ matrix.node }})
+    name: test (node ${{ matrix.node }}, shard ${{ matrix.shard }}/3)
     # Pinned rather than `ubuntu-latest`. Not because the next image breaks the suite: the
     # primitives `tests/support/pty.ts` needs (`script -qec`, `stty -F`) were checked on
     # util-linux 2.39.3 and 2.41.3 and behave identically on both. It is pinned because a
@@ -34,6 +41,7 @@ jobs:
         # that never runs the runtime the code is written on is not checking what is being
         # written. 26 is the open end of the range.
         node: ['24.15.0', '24', '26']
+        shard: ['1', '2', '3']
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -48,14 +56,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        run: pnpm lint
-
       - name: Build
         run: pnpm build
-
-      - name: Type-check the tests
-        run: pnpm typecheck
 
       # WHAT THE SUITE LEAVES IN /tmp, half one. 187 prefixes are built under `tmpdir()` by this
       # workspace and exactly one of them is watched by a test, because the obvious watch, list
@@ -87,19 +89,41 @@ jobs:
 
       - name: Test
         if: matrix.node != '24'
-        run: pnpm test --reporter=json --outputFile.json=vitest-report.json
+        run: pnpm test --shard=${{ matrix.shard }}/3 --reporter=json --outputFile.json=vitest-report.json
 
-      # ONE PASS ON NODE 24: this step is the suite for that cell, instrumented, and the gate
-      # in it, `thresholds` in `vitest.config.ts`, is read off the same run. It used to be a
-      # SECOND run of the suite, kept apart because instrumentation costs the slowest case that
-      # shares the five-second ceiling more than it costs the wall clock. Measured on the runner
-      # (three runs of this step alone, node 24, 7447 cases, no timeout): the slowest case at the
-      # shared ceiling, instrumented, took 0.77 of it (3.8 to 3.9 s) and the wall clock was 490
-      # to 505 s; three or four cases per run sat above 0.70. The suite is still run plain on
-      # 24.15.0 and 26, so the matrix still has both kinds of run.
-      - name: Coverage gate
+      # ONE PASS ON NODE 24: this step is the suite for that cell, instrumented. The gate, the
+      # `thresholds` of `vitest.config.ts`, is read off the three shards MERGED, in
+      # `the-coverage-gate` below, because a third of the suite covers a third of the code and
+      # would never meet a floor measured on the whole. Vitest checks `thresholds` after every
+      # run that has coverage on, so here each one is set to 0 on the command line: that turns
+      # the check off in this step and nowhere else, and the numbers still go into the blob that
+      # the merge reads. The blob is written outside a hidden directory because an artifact
+      # upload leaves hidden paths out. It used to be a SECOND run of the suite, kept apart
+      # because instrumentation costs the slowest case that shares the five-second ceiling more
+      # than it costs the wall clock; measured on the runner, the slowest case instrumented took
+      # 0.77 of that ceiling. The suite is still run plain on 24.15.0 and 26, so the matrix still
+      # has both kinds of run.
+      - name: Coverage of the shard
         if: matrix.node == '24'
-        run: pnpm test:coverage --reporter=json --outputFile.json=vitest-report.json
+        run: pnpm test:coverage
+          --shard=${{ matrix.shard }}/3
+          --coverage.thresholds.statements=0
+          --coverage.thresholds.branches=0
+          --coverage.thresholds.functions=0
+          --coverage.thresholds.lines=0
+          --reporter=blob
+          --outputFile.blob=vitest-blob/blob-${{ matrix.shard }}-3.json
+          --reporter=json
+          --outputFile.json=vitest-report.json
+
+      - name: Upload the coverage of the shard
+        if: matrix.node == '24' && (success() || failure())
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: vitest-blob-node${{ matrix.node }}-shard${{ matrix.shard }}
+          path: vitest-blob/
+          if-no-files-found: error
 
       - name: Stop the fsync probe
         if: always() && matrix.node == '24.15.0'
@@ -116,7 +140,7 @@ jobs:
         continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: fsync-probe-node${{ matrix.node }}
+          name: fsync-probe-node${{ matrix.node }}-shard${{ matrix.shard }}
           path: ${{ runner.temp }}/fsync-probe.json
           if-no-files-found: warn
 
@@ -146,7 +170,7 @@ jobs:
         continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: why-it-went-red-node${{ matrix.node }}
+          name: why-it-went-red-node${{ matrix.node }}-shard${{ matrix.shard }}
           path: |
             node_modules/.cache/mnema-workspace/why-it-went-red.json
             why-it-went-red-verdict.json
@@ -156,7 +180,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: vitest-report-node${{ matrix.node }}
+          name: vitest-report-node${{ matrix.node }}-shard${{ matrix.shard }}
           path: vitest-report.json
           if-no-files-found: warn
 
@@ -176,9 +200,80 @@ jobs:
         continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: what-the-suite-left-behind-node${{ matrix.node }}
+          name: what-the-suite-left-behind-node${{ matrix.node }}-shard${{ matrix.shard }}
           path: what-the-suite-left-behind-verdict.json
           if-no-files-found: ignore
+
+  # THE THRESHOLDS, READ OFF THE WHOLE SUITE. The three shards of node 24 each leave a blob (the
+  # step `Coverage of the shard`), and this job merges them and checks `thresholds` of
+  # `vitest.config.ts` against the merged figures, which are the ones the unsplit run measured.
+  # It runs no test: `pnpm exec vitest --merge-reports` reads what the shards wrote, so it is not
+  # a run of the suite that `what-the-suite-left-behind` has to bracket, and it must never
+  # become one (`what-the-suite-left-behind.test.ts` fails if it runs `pnpm test` here). It
+  # counts the blobs first: a merge of two would report a lower figure and blame the code.
+  the-coverage-gate:
+    name: the coverage gate
+    needs: test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download the coverage of the shards
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: vitest-blob-*
+          merge-multiple: true
+          path: vitest-blob
+
+      - name: Count the blobs
+        run: |
+          found="$(find vitest-blob -name 'blob-*-3.json' | wc -l)"
+          if [ "$found" != '3' ]; then
+            echo "::error::expected the 3 blobs of the 3 shards, found $found"
+            exit 1
+          fi
+
+      - name: Merge the shards and check the thresholds
+        run: pnpm exec vitest --merge-reports=vitest-blob --coverage
+
+  # LINT AND THE TYPE-CHECK, ONCE. They used to run in every cell of the test matrix, three times
+  # for a result that does not depend on the Node under the suite. The steps keep their names:
+  # `Lint` is what `.github/what-failed/collect.mjs` looks for to put the files `biome check
+  # --write` changes on the comment of a pull request.
+  lint-and-typecheck:
+    name: lint + typecheck
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.15.0'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type-check the tests
+        run: pnpm typecheck
 
   # THE SECOND READER ON ITS PYTHON FLOOR. Two pages promise that `packages/chain/verifier/` runs
   # on the Python its own README names "or later", and until this job every case that starts it
@@ -671,6 +766,8 @@ jobs:
     if: ${{ !cancelled() && github.event_name == 'pull_request' }}
     needs:
       - test
+      - the-coverage-gate
+      - lint-and-typecheck
       - the-second-reader-on-its-python-floor
       - the-extension-as-a-file
       - the-binary-refuses-an-old-node
