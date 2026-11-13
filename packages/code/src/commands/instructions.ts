@@ -370,7 +370,7 @@ export interface InstructionsPeek {
   /** What it holds of the block: the state a write is decided by. */
   readonly found: InstructionsState;
   /** Whether it is a file of the person's that imports `AGENTS.md`, whichever files are chosen (ADR-375). */
-  readonly imports: boolean;
+  readonly imports?: boolean;
   /** Why a write would be refused (read-only, a directory in its place, no permission on its folder), when it would. */
   readonly unwritable?: string;
 }
