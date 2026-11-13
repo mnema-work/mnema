@@ -56,6 +56,16 @@ another instructions file holds it, counts as left out, so `mnema instructions -
 without a terminal leave it alone and say in one line that it was left out, with the form that adds the block to it alone, `mnema instructions --hosts claude` (or the host it belongs to). `--hosts` takes what `init --hosts` takes and writes only the hosts it names, a file of yours under them where it exists; it cannot be given with `--check`, `--remove` or `--all-hosts`.
 Where no file holds a block, nothing was left out.
 
+A `CLAUDE.md` or `.claude/CLAUDE.md` that imports `AGENTS.md` (a line of its own, `@AGENTS.md` or `@./AGENTS.md`, outside
+a code fence) gets no block while `AGENTS.md` is one of the files written: Claude Code reads an imported file as if its
+text stood where the line is, so the block there would be read twice. It is not counted as left out, and `init`,
+`mnema instructions`, `--check` and `mnema doctor` say in one line why nothing is written in it. A block that is in it
+already is said by `--check` and `mnema doctor` to be read twice (it is never taken out without being asked): `mnema
+instructions` asks at a terminal whether to take it out and does so only on a yes, and without a terminal says it and
+changes nothing. `.claude/rules/mnema-instructions.md` keeps its file. Where `AGENTS.md` is not among the files written
+(`--hosts claude`), the import covers nothing and the block is written as before. Only the line in that one file is read:
+an import inside `AGENTS.md`, or a chain of imports, is not followed, and `GEMINI.md` is not looked at.
+
 The question of who may accept is whether an agent may accept at once what you pick among the options it offered, or
 dictate, quoting your words, while what it proposes on its own waits for you (`mnema decision review`). The answer is
 recorded in the public tree, so the team reads it, as a decision of your own, accepted by you with a note that quotes
@@ -125,12 +135,12 @@ The block is written the way a Markdown formatter (prettier) leaves it: a blank 
 marker and before the end marker, the examples as indented code. In a repository that formats its
 Markdown, `format:check` passes over the files `init` writes, with one exception: prettier writes
 the `applyTo: "**"` of the `.github/instructions` file with the quotes your own configuration
-asks for, so with `singleQuote: true` that one file is reported until you run the formatter over it
-(it keeps the block). `init` writes that `applyTo` with double quotes, prettier's default. A project
-with `singleQuote: true` can leave the file out of prettier (a line in `.prettierignore`) or accept the
-rewrite to `applyTo: '**'`: the two are the same YAML value, and VS Code's own page on custom
-instructions writes the field with single quotes in its example
-(`code.visualstudio.com/docs/agent-customization/custom-instructions`). An earlier version's block
+asks for. `init` writes that `applyTo` with double quotes, prettier's default; with `singleQuote: true`
+the formatter rewrites it to `applyTo: '**'`, the same YAML value, and the file still counts as mnema's:
+the front matter of the two files wholly mnema's (`applyTo` in `.github/instructions`, `alwaysApply` in
+`.cursor/rules`) is read as keys and values, with the quotes and the order set aside, and the text between
+the markers by its words as below. Another key, or another value (an `applyTo` you changed), is your edit:
+the file is left as it is, said, and the run exits 1. An earlier version's block
 (the begin marker names it, `v2`) is replaced by the current one. A formatter that re-wraps prose
 (`proseWrap: "always"`) moves line breaks and spaces inside a paragraph or a list item and nothing
 else, and the block it leaves still counts as mnema's (checked against prettier with `always`,
@@ -195,4 +205,9 @@ to confirm; a CLAUDE.md or GEMINI.md that exists is a mark of its own), and with
 four are written. --all-hosts writes all four, whichever are there. --hosts writes only the hosts
 it names (claude, cursor, vscode, codex; a person’s CLAUDE.md or GEMINI.md under the host that
 is named), which is how to add the block to one file without writing the others.
+
+A CLAUDE.md or .claude/CLAUDE.md that imports AGENTS.md (a line of its own, @AGENTS.md or
+@./AGENTS.md) gets no block while AGENTS.md is written: Claude Code reads that file from
+there. One that holds a block already is said to be read twice, and at a terminal the block
+comes out only if you say yes.
 ```
