@@ -124,6 +124,7 @@ import {
   type ChainEntry,
   describeLinkBreak,
   type Entry,
+  entryHashHolds,
   groupUnreadLines,
   isRead,
   linkBreakAt,
@@ -131,7 +132,7 @@ import {
   sealEntry,
   unreadLinesOf,
 } from './entry.js';
-import { contentRoot, entryHash } from './hash.js';
+import { contentRoot } from './hash.js';
 import {
   type ChainLayout,
   isSegmentFile,
@@ -2364,15 +2365,8 @@ function verifyHashChain(tail: string, entries: readonly ChainEntry[], issues: T
       });
       return;
     }
-    // Over the WRITTEN event, never the lifted one the reader holds: see
-    // hash.ts and the note at the top of this file.
-    const recomputed = entryHash({
-      event: entry.written,
-      tail: entry.link.tail,
-      seq: entry.link.seq,
-      prev: entry.link.prev,
-    });
-    if (recomputed !== entry.link.hash) {
+    // Over the WRITTEN event, never the lifted one: `entryHashHolds` asks it.
+    if (!entryHashHolds(entry)) {
       issues.push({
         tail,
         layer: 'T1',
