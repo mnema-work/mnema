@@ -6,3 +6,6 @@ Changed
   library, never through the MCP server. The refusal (`AGENT_ACCEPTS_IS_OFF`) says no agent was declared and no terminal was there, and
   no longer prints the command that would have got round it. A terminal is a heuristic for a person, not a
   proof of one, and the seat is not recorded.
+  The VS Code extension runs the command with no terminal, so with the switch off its Accept button is refused too; a person accepts
+  with `mnema decision review` in a terminal. `decision review`, when it is not at a terminal, no longer offers an accept line while
+  the switch is off.

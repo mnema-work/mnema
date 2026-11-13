@@ -149,6 +149,28 @@ describe('mnema decision review, on the built binary', () => {
     expect(readdirSync(project, { recursive: true }).length).toBe(before);
   });
 
+  it('with agent-accepts off, refuses without a terminal and offers no accept line', {
+    timeout: 60_000,
+  }, () => {
+    recordThree();
+    expect(mnema('switch', 'off', 'agent-accepts', '--reason', 'people rule').status).toBe(0);
+    const refused = mnema('decision', 'review');
+    expect(refused.status).toBe(1);
+    expect(refused.err).toContain('DECISION_REVIEW_NEEDS_A_PERSON');
+    expect(refused.err).not.toContain('mnema decision move accept');
+    expect(refused.err).toContain('mnema decision move reject');
+  });
+
+  it('with agent-accepts off, still lets a person at a terminal accept', {
+    timeout: 60_000,
+  }, async () => {
+    const [, , third] = recordThree() as [string, string, string];
+    expect(mnema('switch', 'off', 'agent-accepts', '--reason', 'people rule').status).toBe(0);
+    const done = await atATerminal(['', 'a ruled by a person', 'q']);
+    expect(done.shown).toContain('Reviewed: 1 accepted');
+    expect(stateOf(third)).toBe('accepted');
+  });
+
   it('says so in one line when nothing awaits, and exits 0', { timeout: 60_000 }, () => {
     const none = mnema('decision', 'review');
     expect(none.status).toBe(0);

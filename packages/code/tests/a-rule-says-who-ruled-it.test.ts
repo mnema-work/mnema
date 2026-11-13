@@ -290,7 +290,7 @@ describe('the setting', () => {
     // The words of THIS switch: it hands nothing to a model, so the sentences the other channels
     // use for being off would be false of it.
     expect(off.out).toContain("agent-accepts is now OFF: an agent's accept is refused.");
-    expect(off.out).toContain('a person at the command line still accepts a decision');
+    expect(off.out).toContain('a person at a terminal still accepts a decision');
     expect(off.out).not.toContain('reaches a model');
     expect(off.out).not.toContain('in front of a model');
 

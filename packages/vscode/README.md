@@ -60,6 +60,7 @@ the `mnema` command line, which the extension does not bring: `@mnema/code` stay
   `mnema decision move accept <id> --note <note>` (or `reject`), started with an argument array and
   no shell, and what the command line answers is what is shown: `ADR-2 accepted.` when it said the
   decision was accepted, its own line when it said anything else, its refusal when it refused.
+  The extension runs the command with no terminal, so with `agent-accepts` switched off the Accept button is refused (`AGENT_ACCEPTS_IS_OFF`) and nothing is written; a person accepts then with `mnema decision review` in a terminal. Reject is not affected.
 - **What To Do.** `mnema: What To Do`, in the Command Palette, in the `...` menu of the awaiting view and as a link in
   the status bar's tooltip, is a pick made of one `mnema status --json` read when it opens: a line per decision
   awaiting a judgment, in the order `mnema` gave (`ADR-2  <title>`), each opening that decision whole, and, when
