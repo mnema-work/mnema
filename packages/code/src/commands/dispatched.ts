@@ -153,6 +153,9 @@ export const BRIEF_TRIGGERS: readonly string[] = [
   'conforme',
 ];
 
+/** A word right before a trigger that turns it round: "do not read X" does not point at X. */
+const NEGATIONS: readonly string[] = ['not', "don't", 'dont', 'never', 'não', 'nao', 'nunca'];
+
 /** How many words before a path or an id are looked at for a trigger. */
 const TRIGGER_REACH = 3;
 
@@ -165,7 +168,10 @@ function pointedAt(prompt: string, at: number): boolean {
     .map((word) => word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ''))
     .filter((word) => word !== '')
     .slice(-TRIGGER_REACH);
-  return words.some((word) => BRIEF_TRIGGERS.includes(word));
+  return words.some(
+    (word, at) =>
+      BRIEF_TRIGGERS.includes(word) && !(at > 0 && NEGATIONS.includes(words[at - 1] ?? '')),
+  );
 }
 
 /** An id of this registry's shape. */
@@ -175,7 +181,7 @@ const AN_ID = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/
  * A word of a prompt that has the shape of a place on disk, of any extension and a folder too:
  * absolute, `~/`, `./` or `../`. It is for telling whose work a prompt is, not for the brief.
  */
-const A_PLACE = /(?:^|[\s"'`(<[=])((?:~\/|\.{1,2}\/|\/)[^\s"'`)>\]<,;:]*[^\s"'`)>\]<,;:.])/g;
+const A_PLACE = /(?:^|[\s"'`(<[=,;])((?:~\/|\.{1,2}\/|\/)[^\s"'`)>\]<,;:]*[^\s"'`)>\]<,;:.])/g;
 
 /** The path with every link resolved, or the path itself when it cannot be. */
 function resolved(path: string): string {
@@ -471,7 +477,7 @@ function dispatched(
     // of the session says it.
     countAnotherProjectsDispatch(file);
     return silent([
-      `A dispatch to ${to} was not mirrored: the files its prompt cites are in another repository.`,
+      `A dispatch to ${to} was not mirrored: the places its prompt cites are in another repository and none is in this project.`,
     ]);
   }
   const fileCited = briefFileOf(prompt, ctx.cwd, root);

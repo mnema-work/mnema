@@ -541,9 +541,37 @@ describe('a prompt that cites a file', () => {
         'Fix it per CHANGELOG.md',
         'According to CHANGELOG.md it is fine',
         'Tarefa: ajustar README.md',
+        'Do not read ./README.md',
+        "Don't read ./README.md",
+        'Não leia ./README.md',
+        'Nunca siga ./README.md',
       ]) {
         expect(briefFileOf(prompt, repo, repo), prompt).toBeUndefined();
       }
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'takes a comma or a semicolon as the separator before a place',
+    () => {
+      const other = anotherRepository('other', 'handoff.md');
+      writeFileSync(join(repo, 'a.ts'), 'x');
+      expect(isAnotherProjectsWork(`Edit ${other},${repo}/a.ts`, repo, repo)).toBe(false);
+      expect(isAnotherProjectsWork(`Edit ${other};${repo}/a.ts`, repo, repo)).toBe(false);
+      expect(isAnotherProjectsWork(`Edit ${repo}/a.ts,${other}`, repo, repo)).toBe(false);
+      expect(isAnotherProjectsWork(`Edit ${other},${other}`, repo, repo)).toBe(true);
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'names a file when a word that points follows no negation, and not when it follows one',
+    () => {
+      writeFileSync(join(repo, 'brief.md'), 'x');
+      expect(briefFileOf(`Read ${repo}/brief.md`, repo, repo)).toBe('brief.md');
+      expect(briefFileOf(`Do not read ${repo}/brief.md`, repo, repo)).toBeUndefined();
+      expect(briefFileOf(`Não leia ${repo}/brief.md`, repo, repo)).toBeUndefined();
     },
     WAITS_ON_WRITES,
   );

@@ -76,8 +76,9 @@ cites the id of a task, decision or pattern of this project that exists, no poin
 folders, of any extension: an absolute path, `~/` or `./`), one of them in another repository and none in this project, is not
 recorded here and nothing is recorded there; the second stream says so and the task's closing note counts it. A place is taken
 to its repository by climbing to the folder that holds a `.git`, with no `git` run, and links are resolved first. A place in no
-repository (a scratch folder) says nothing either way: a call that cites only those, or no place at all, is mirrored. Only the
-first twelve places a prompt cites are looked at. **The prompt is never recorded**, and neither is the subagent's reply. When the session ends
+repository (a scratch folder) says nothing either way: a call that cites only those, or no place at all, is mirrored. Only an absolute path, `~/` or `./` counts as a place, so a call
+that cites another repository's file and its own file written without `./` is left out. Only the
+first twelve places a prompt cites are looked at. A word such as `read` that follows `not`, `don't` or `não` does not point at a file. **The prompt is never recorded**, and neither is the subagent's reply. When the session ends
 (`SessionEnd`), the task is moved to done with the count of handoffs as its note.
 
 Nothing goes to the tree a clone gets: the task and its handoffs are in this machine's private tree. The task's id and the count
