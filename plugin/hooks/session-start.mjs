@@ -16,10 +16,13 @@
  * THIS HANDLER NEVER BLOCKS AND NEVER FAILS LOUD, AND THAT IS STILL TRUE: and the rule
  * that makes it so is no longer written here. It lives in `hand-over.mjs`, beside the spawn,
  * because a second handler now hands a session what a verb prints (`session-recall.mjs`,
- * the notes) and two copies of one rule are the shape that drifts. Every outcome that is not
- * a document is silence and exit 0 (no project here, no `mnema` on the PATH, a record that
- * will not read) and asserted in `packages/code/tests/the-record-arrives-unasked.test.ts`
- * ("says nothing at all where there is no project"). Save one, which this handler alone says: a
+ * the notes) and two copies of one rule are the shape that drifts. An outcome that is not a
+ * document is silence and exit 0 only where there is nothing wrong to say (no project here, a
+ * channel switched off, no `mnema` on the PATH), asserted in
+ * `packages/code/tests/the-record-arrives-unasked.test.ts` ("says nothing at all where there is no
+ * project"). A record that will not read, one held by another process, and a run cut by its own
+ * time are told in one line, because a session that opens without the record it believes it has
+ * is worse off for not knowing. Save one, which this handler alone says: a
  * `mnema` on the PATH that is another program is not run, and the session is told which program
  * answered (`hand-over.mjs`, `whoAnswers`): exit 0 still, and a fact rather than an error.
  *

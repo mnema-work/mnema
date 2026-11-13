@@ -7,7 +7,8 @@
  * opened, so what governs the work reaches it only if something hands it over. This is the same
  * verb, the same channel and the same switch as the opening's (`mnema switch off brief-document`
  * silences both), and the rule for running a verb and for staying silent is `hand-over.mjs`'s:
- * every outcome that is not a document is silence and exit 0.
+ * every outcome that is not a document is silence and exit 0, save a record that would not answer,
+ * which is said in one line.
  *
  * IT DECIDES NOTHING ABOUT WHAT THE SUBAGENT READS. The document goes over byte for byte, under the
  * event the host routes the reply by.

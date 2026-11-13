@@ -88,9 +88,12 @@ import { fileURLToPath } from 'node:url';
 import { anAddressCanBeMet } from './an-address-can-be-met.mjs';
 import {
   couldNotAnswer,
+  didNotAnswerIn,
+  notConsulted,
   notStarted,
   settleTheRuntime,
   spawnTarget,
+  whatARefusalSays,
   whyItDidNotAnswer,
 } from './the-gate-kit.mjs';
 import { aRuleReaches } from './where-the-record-is.mjs';
@@ -250,15 +253,22 @@ const QUOTED = 120;
  * existed, and the question changes nothing about a PATH with no `mnema` on it.
  *
  * @param {string} cwd
- * @returns {{ readonly kind: 'this', readonly version: string } | { readonly kind: 'older' | 'absent' } | { readonly kind: 'stranger', readonly said: string, readonly status: number | null }}
+ * @returns {{ readonly kind: 'this', readonly version: string } | { readonly kind: 'older' | 'absent' | 'slow' } | { readonly kind: 'stranger', readonly said: string, readonly status: number | null }}
  */
 export function whoAnswers(cwd) {
   const ran = startMnema([WHICH_PROGRAM], {
     cwd,
     env: theRuntime().env,
+    timeout: IDENTIFY_TIMEOUT,
+    killSignal: 'SIGKILL',
     encoding: 'utf-8',
     stdio: ['ignore', 'pipe', 'pipe'],
   });
+  // A `mnema` that does not say which program it is in time is a record not consulted, said once
+  // (a program that is not there at all is `absent`, which is silence).
+  if (/** @type {NodeJS.ErrnoException | undefined} */ (ran.error)?.code === 'ETIMEDOUT') {
+    return { kind: 'slow' };
+  }
   if (ran.error !== undefined) return { kind: 'absent' };
   const out = (ran.stdout ?? '').trim();
   if (ran.status === 0 && out.startsWith(`${THIS_PRODUCT} `)) {
@@ -330,11 +340,16 @@ export function theMismatch(who, plugin = thePluginVersion()) {
 /**
  * What a verb has to say here, or `null` when it has nothing.
  *
- * BOTH STREAMS ARE KEPT AND THE EXIT CODE IS WHAT PICKS. A refusal arrives with a non-zero
- * status, which is this function's `null`, so stderr is only ever read on the path where the
- * verb succeeded, and on that path it is empty unless the record itself has something to
- * say. A text that is empty is silence too: `mnema recall` over a project with no notes
- * prints nothing and exits 0, and a session there is handed nothing.
+ * BOTH STREAMS ARE KEPT AND THE EXIT CODE IS WHAT PICKS. On a success stderr is empty unless the
+ * record itself has something to say, and it goes under the document. A text that is empty is
+ * silence: `mnema recall` over a project with no notes prints nothing and exits 0.
+ *
+ * A REFUSAL IS NO LONGER SILENCE, AND THE OLD REASON IS NARROWED, NOT DROPPED. It was addressed to a
+ * person who typed a verb and nobody typed this one, which still holds for the two refusals that are
+ * not news: no project here, and a channel somebody switched off. Everything else (a record that
+ * will not read, a record held by another process, a run cut by its own time) is a session opened
+ * without the record it believes it has, and it is told so in one line ({@link whatARefusalSays}).
+ * The verb says which refusal it is by a code on the first line of its error stream.
  *
  * @param {string} verb The verb to run: each handler names its own.
  * @param {string} cwd Where to run it: the host's project directory, or this process's own
@@ -355,6 +370,7 @@ export function whatTheVerbSays(verb, cwd, { namesAStranger = false } = {}, hand
   if (refusal !== null) return namesAStranger ? `mnema could not run: ${refusal}` : null;
   const who = whoAnswers(cwd);
   if (who.kind === 'absent') return null;
+  if (who.kind === 'slow') return notConsulted(didNotAnswerIn(IDENTIFY_TIMEOUT));
   if (who.kind === 'stranger') return namesAStranger ? aStranger(who) : null;
   const text = textOf(verb, cwd, handed);
   const mismatch = namesAStranger ? theMismatch(who) : null;
@@ -374,14 +390,33 @@ function textOf(verb, cwd, handed) {
   const flags = [FOR_A_HOOK, ...hostFlags(handed), ...sessionFlags(handed)];
   const asked = running(verb, flags, cwd);
   const ran = refusesTheFlag(asked, flags) ? running(verb, [], cwd) : asked;
-  // EVERY NON-ZERO OUTCOME IS STILL SILENCE, and the refusal on stderr goes with it: it
-  // is addressed to a person who typed a verb, and nobody typed this one.
-  if (ran.error !== undefined || ran.status !== 0) return null;
+  // A RUN THAT WAS CUT BY ITS OWN TIME is said, and any other failure to run is not a refusal of
+  // the record at all (there is nothing to quote).
+  if (ran.error !== undefined) {
+    return /** @type {NodeJS.ErrnoException} */ (ran.error).code === 'ETIMEDOUT'
+      ? notConsulted(didNotAnswerIn(VERB_TIMEOUT))
+      : null;
+  }
+  if (ran.status !== 0) return whatARefusalSays(ran.stderr ?? '');
   const text = ran.stdout ?? '';
   if (text.trim() === '') return null;
   const alsoSaid = (ran.stderr ?? '').trim();
   return alsoSaid === '' ? text : `${text}${BETWEEN_THE_STREAMS}${alsoSaid}`;
 }
+
+/**
+ * How long the verb is given, in milliseconds. With the search for a node and the question of which
+ * program answers it stays under the hooks file's 15 seconds, so the line
+ * that says the record was not consulted is what the session gets, and not the host's kill, which a
+ * host reads as nothing to say.
+ */
+const VERB_TIMEOUT = 9_000;
+
+/**
+ * How long `mnema --identify` is given. The search for a node (3 s at most), this and the verb stay
+ * under the hooks file's 15 seconds together: 3 + 2 + 9 = 14.
+ */
+const IDENTIFY_TIMEOUT = 2_000;
 
 /**
  * What a verb ANSWERS to the payload a host handed this hook, or `null` when it answers nothing.
@@ -682,6 +717,8 @@ function running(verb, flags, cwd) {
   return startMnema([verb, ...flags], {
     cwd,
     env: theRuntime().env,
+    timeout: VERB_TIMEOUT,
+    killSignal: 'SIGKILL',
     encoding: 'utf-8',
     stdio: ['ignore', 'pipe', 'pipe'],
   });

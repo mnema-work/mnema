@@ -6,10 +6,13 @@
 // `beside`, after a write, hands over the rules of the record addressed at the file.
 // It runs `mnema` from the PATH, and every outcome that is not an answer, such as no `mnema`, no
 // project or a program of that name that is not @mnema/code, leaves the session as it would
-// have been without it: nothing on stdout, exit 0. One outcome is not silence: a `mnema` that is
+// have been without it: nothing on stdout, exit 0. Two outcomes are not silence. A `mnema` that is
 // there and cannot answer (no node on the PATH takes it, it exits non-zero, it does not finish)
 // refuses a write at a path that a rule which refuses it, or asks for a person at it, addresses;
-// any other write goes through.
+// any other write goes through. And where `open` asks the record and it refuses (a line it cannot
+// read, a record held by another process, a run cut by its time), the session is told in one line:
+// no project and a switched-off channel stay silent, because the verb names which refusal it is
+// by a code on the first line of its error stream.
 import { spawnSync } from 'node:child_process';
 import { accessSync, constants, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { homedir, userInfo } from 'node:os';
@@ -299,6 +302,99 @@ function whyItDidNotAnswer(ran, timeout) {
     return `it exited ${ran.status ?? ran.signal}${said === '' ? '' : `: ${said.slice(0, QUOTED)}`}`;
   }
   return isAReply(ran.stdout ?? '') ? undefined : 'what it printed is not a reply a host reads';
+}
+
+/**
+ * What a run cut by its own time says as the reason: how long it was given.
+ *
+ * @param {number} milliseconds
+ * @returns {string}
+ */
+function didNotAnswerIn(milliseconds) {
+  return `mnema did not answer within ${milliseconds / 1000} seconds and was stopped.`;
+}
+
+/** The refusals that are silence, because there is nothing to hand over and nothing is wrong. */
+const SILENT_REFUSALS = new Set(['NO_PROJECT', 'SWITCHED_OFF']);
+
+/** The refusals that say the record was busy, not that it was refused. */
+const BUSY_REFUSALS = new Set(['TAIL_BUSY', 'KEY_ROOT_BUSY']);
+
+/** The most of a refusal that goes to the model: one line, cut whole. */
+const REFUSAL_CEILING = 400;
+
+/**
+ * The one line a session is told when the record was not read for it.
+ *
+ * @param {string} why
+ * @returns {string}
+ */
+function notConsulted(why) {
+  return `The project's mnema record was not consulted for this: ${why}`;
+}
+
+/**
+ * A text as one line a model reads, and nothing of it that a terminal would obey: a whole ANSI
+ * sequence (CSI and OSC) goes and not only its escape, then every other control character (C0 and
+ * C1, and the line and paragraph separators) becomes a space, and the characters that reorder
+ * what is read (the bidirectional controls) go. Cut at REFUSAL_CEILING without splitting a surrogate
+ * pair.
+ *
+ * @param {string} text
+ * @returns {string}
+ */
+function oneLine(text) {
+  const said = text
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what is removed
+    .replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, '')
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what is removed
+    .replace(/\u001b\][^\u0007\u001b]*(?:\u0007|\u001b\\)/g, '')
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what is removed
+    .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, ' ')
+    .replace(/[\u202a-\u202e\u2066-\u2069]/g, '')
+    .replace(/ +/g, ' ')
+    .trim();
+  if (said.length <= REFUSAL_CEILING) return said;
+  const last = said.charCodeAt(REFUSAL_CEILING - 1);
+  const cut = last >= 0xd800 && last <= 0xdbff ? REFUSAL_CEILING - 1 : REFUSAL_CEILING;
+  return `${said.slice(0, cut)}...`;
+}
+
+/**
+ * What a refusal on the error stream says, as ONE line, or `null` where it is silence.
+ *
+ * THE CODE DECIDES, AND THE SENTENCE IS ONLY QUOTED. A verb run with `--hook` opens a refusal with
+ * its code alone on a line (`saysTheCode`): `NO_PROJECT` and `SWITCHED_OFF` are the two this
+ * plugin keeps silent about (a project with no record has nothing to hand over, and a channel
+ * somebody switched off is a person's choice); the busy codes say the record was not consulted;
+ * every other code is a record that would not answer, and the session is told that in the opening
+ * paragraph of the refusal, cut to REFUSAL_CEILING. A refusal with NO code (a `mnema` from
+ * before the codes existed, or a failure that is not the record's) is silence, as it always was.
+ *
+ * AN UNREADABLE LINE NAMES ITS TAIL, which the opening paragraph does not: the file and position
+ * are read out of the paragraph after it, and the reason that follows them (which quotes the
+ * stored line) is not carried.
+ *
+ * @param {string} stderr
+ * @returns {string | null}
+ */
+function whatARefusalSays(stderr) {
+  const lines = stderr.split('\n').map((line) => line.replace(/\r$/, ''));
+  const at = lines.findIndex((line) => /^[A-Z][A-Z0-9_]*$/.test(line));
+  if (at === -1) return null;
+  const code = /** @type {string} */ (lines[at]);
+  if (SILENT_REFUSALS.has(code)) return null;
+  if (BUSY_REFUSALS.has(code)) {
+    return notConsulted(`another process holds the record (${code}); try again in a moment.`);
+  }
+  const [opening = '', after = ''] = lines
+    .slice(at + 1)
+    .join('\n')
+    .trim()
+    .split(/\n\s*\n/);
+  const where = /^unreadable stored line at (.+?): /.exec(after.trim())?.[1];
+  const line = oneLine(where === undefined ? opening : `${opening} (${where})`);
+  return `The project's mnema record was not handed to this session (${code}): ${line}`;
 }
 
 /** A reason to run `mnema` rather than answer here. */
@@ -746,6 +842,28 @@ function run(args, cwd, input, timeout = WAIT) {
   });
 }
 
+/** How long both verbs of the opening are given together, in milliseconds. */
+const OPENING_WAIT = 9000;
+
+/**
+ * What the opening says: the two verbs share ONE budget (OPENING_WAIT), so that the search for a node,
+ * `--identify` and both verbs stay under the host's own cap and a `mnema` that hangs is answered by
+ * a line, not by the host's kill, which a host reads as nothing to say.
+ * @param {string} cwd
+ */
+function openingOf(cwd) {
+  const until = Date.now() + OPENING_WAIT;
+  const said = [];
+  for (const verb of ['brief', 'recall']) {
+    // THE BUDGET IS ONE: a verb that used it up says so, and the next does not run on what is left.
+    if (until - Date.now() <= 0) break;
+    const { lines, cut } = whatItSays(verb, cwd, until);
+    said.push(...lines);
+    if (cut) break;
+  }
+  return said;
+}
+
 /**
  * Whether a run did not happen to the end. A CLOSED INPUT IS NOT THAT: a `mnema` that answers before it
  * has read the payload, or refuses an option at its arguments, leaves a payload larger than the pipe
@@ -773,15 +891,30 @@ function whoIsThere(cwd) {
 }
 
 /**
- * What a verb printed for a hook, or nothing: the second stream rides under the first.
+ * What a verb printed for a hook, or nothing: the second stream rides under the first. A record that
+ * would not answer is said in one line (`whatARefusalSays`), a run cut by `until` is said, and no
+ * project and a channel switched off are silence. `cut` says the run used up the budget.
  * @param {string} verb
  * @param {string} cwd
+ * @param {number} until the time, in milliseconds since the epoch, by which both verbs of the opening are done
  */
-function whatItSays(verb, cwd) {
-  const ran = run([verb, '--hook'], cwd);
-  if (ran.error !== undefined || ran.status !== 0 || ran.stdout.trim() === '') return [];
+function whatItSays(verb, cwd, until) {
+  const ran = run([verb, '--hook'], cwd, undefined, Math.max(1, until - Date.now()));
+  if (ran.error !== undefined) {
+    return /** @type {NodeJS.ErrnoException} */ (ran.error).code === 'ETIMEDOUT'
+      ? { lines: [notConsulted(didNotAnswerIn(OPENING_WAIT))], cut: true }
+      : { lines: [], cut: false };
+  }
+  if (ran.status !== 0) {
+    const said = whatARefusalSays(ran.stderr);
+    return { lines: said === null ? [] : [said], cut: false };
+  }
+  if (ran.stdout.trim() === '') return { lines: [], cut: false };
   const alsoSaid = ran.stderr.trim();
-  return [alsoSaid === '' ? ran.stdout : [ran.stdout, alsoSaid].join('\n\n')];
+  return {
+    lines: [alsoSaid === '' ? ran.stdout : [ran.stdout, alsoSaid].join('\n\n')],
+    cut: false,
+  };
 }
 
 /**
@@ -825,7 +958,7 @@ function answer(mode, raw) {
   }
   if (who !== 'this') return undefined;
   if (mode === 'open') {
-    const text = ['brief', 'recall'].flatMap((verb) => whatItSays(verb, cwd)).join('\n\n');
+    const text = openingOf(cwd).join('\n\n');
     return text === ''
       ? undefined
       : { hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: text } };

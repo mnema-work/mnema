@@ -48,6 +48,7 @@ import {
   refusalSentence,
   reportIdentityRefusal,
   reportOfferSentence,
+  saysTheCode,
 } from './wiring/report.js';
 import { pinnedRunResolver } from './wiring/run-pin.js';
 import type { Declared } from './wiring/verb.js';
@@ -434,6 +435,12 @@ function topLevelVerbOf(command: Command): string {
  */
 export async function parseWith(built: BuiltProgram, argv: readonly string[]): Promise<void> {
   const { program, render, io } = built;
+  // A hook that hands a model a document asks with `--hook`, and a refusal then opens with its
+  // code on a line of its own (`saysTheCode`), whatever door it came through: a throw below the
+  // verb is reported only here.
+  const code = (what: string): void => {
+    if (argv.includes('--hook')) saysTheCode({ io, render }, what);
+  };
   try {
     await program.parseAsync(argv, { from: 'user' });
   } catch (error) {
@@ -452,6 +459,7 @@ export async function parseWith(built: BuiltProgram, argv: readonly string[]): P
     // that already turns a throw into an honest failure, and it reads exactly like
     // any other refusal.
     if (error instanceof IdentityUnavailableError) {
+      code(error.code);
       // Where the way out is a restore of this machine's key file, the file is said here: the
       // key root is this side's to resolve, and the words were written below it. The path
       // helper is imported on this path only, so the floor every other command starts on does
@@ -476,6 +484,7 @@ export async function parseWith(built: BuiltProgram, argv: readonly string[]): P
     // top: only a throw wants it (`the-floor-is-the-declaration.test.ts`).
     const { CodedError } = await import('@mnema/chain');
     if (error instanceof CodedError) {
+      code(error.code);
       reportIdentityRefusal({ io, render }, { code: error.code, message: error.message });
       return;
     }
@@ -483,6 +492,7 @@ export async function parseWith(built: BuiltProgram, argv: readonly string[]): P
     // said with its file and position, what it closes and the ways out.
     const { UnreadableLineError } = await import('@mnema/chain');
     if (error instanceof UnreadableLineError) {
+      code('UNREADABLE_LINE');
       const { unreadableLineSentence } = await import('./what-a-write-meets.js');
       const resolved = resolveTrees(here().cwd, here().env);
       const places = [
@@ -505,6 +515,7 @@ export async function parseWith(built: BuiltProgram, argv: readonly string[]): P
       './internal-error.js'
     );
     if (isInternalError(error)) {
+      code('INTERNAL_ERROR');
       io.err(render(internalErrorSentence(describeInternal(error))));
       // Logged to this machine's own file, outside the record, and offered at most once per kind
       // of error and three times a day. It sends nothing; a failure here never replaces the error.
@@ -529,6 +540,7 @@ export async function parseWith(built: BuiltProgram, argv: readonly string[]): P
     // answers with a verdict naming the tail and the line.) It is a message somebody wrote
     // for a reader, so it is rendered like every other no on this surface: the command did
     // not do what was asked.
+    code('REFUSED');
     io.err(render(refusalSentence(error instanceof Error ? error.message : String(error))));
     io.fail();
   }
