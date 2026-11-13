@@ -26,14 +26,22 @@ function sources(switched: 'never' | 'off' | 'on'): ScopedCache[] {
 describe('whether an agent may accept', () => {
   it('may, when nobody ever switched it, and when it was switched back on', () => {
     for (const switched of ['never', 'on'] as const) {
-      expect(agentMayAccept(sources(switched), { action: 'accept', agent: 'claude-code', atATerminal: false })).toBe(
-        undefined,
-      );
+      expect(
+        agentMayAccept(sources(switched), {
+          action: 'accept',
+          agent: 'claude-code',
+          atATerminal: false,
+        }),
+      ).toBe(undefined);
     }
   });
 
   it('may not, when it is off, and the refusal says who, how a person accepts, and how to turn it on', () => {
-    const turnedAway = agentMayAccept(sources('off'), { action: 'accept', agent: 'claude-code', atATerminal: false });
+    const turnedAway = agentMayAccept(sources('off'), {
+      action: 'accept',
+      agent: 'claude-code',
+      atATerminal: false,
+    });
     expect(turnedAway?.code).toBe(AGENT_ACCEPTS_IS_OFF);
     expect(turnedAway?.message).toContain('mnid:0123456789abcdef');
     expect(turnedAway?.message).not.toContain('mnema decision move');
@@ -49,9 +57,9 @@ describe('whether an agent may accept', () => {
       expect(
         agentMayAccept(sources('off'), { action, agent: 'claude-code', atATerminal: false }),
       ).toBe(undefined);
-      expect(
-        agentMayAccept(sources('off'), { action, agent: undefined, atATerminal: false }),
-      ).toBe(undefined);
+      expect(agentMayAccept(sources('off'), { action, agent: undefined, atATerminal: false })).toBe(
+        undefined,
+      );
     }
   });
 

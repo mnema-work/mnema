@@ -222,10 +222,10 @@ export function runDecisionTransition(
   const stillAllowed = () =>
     withScopedCaches(trees, (sources) =>
       agentMayAccept(sources, {
-      action: input.action,
-      agent: which,
-      atATerminal: input.atATerminal === true,
-    }),
+        action: input.action,
+        agent: which,
+        atATerminal: input.atATerminal === true,
+      }),
     );
   const stamp = {
     refusedWhen: stillAllowed,

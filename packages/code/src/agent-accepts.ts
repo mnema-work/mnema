@@ -125,7 +125,8 @@ export function stateOfANewDecision(
 /** Whether an agent may accept here now, asked with no decision in hand: a source that cannot be read is `unreadable`. */
 export function acceptStateHere(sources: readonly ScopedCache[]): AcceptState {
   try {
-    return agentMayAccept(sources, { action: ACCEPT, agent: 'an-agent', atATerminal: false }) === undefined
+    return agentMayAccept(sources, { action: ACCEPT, agent: 'an-agent', atATerminal: false }) ===
+      undefined
       ? 'on'
       : 'off';
   } catch {

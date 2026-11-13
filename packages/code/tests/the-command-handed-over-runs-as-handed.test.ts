@@ -887,7 +887,7 @@ export const HANDED_OVER: Readonly<
   'docs/cli-reference.md': { line: 39, name: 64 },
   'packages/code/README.md': { line: 8, name: 14 },
   'packages/code/src/a-new-identity.ts': { line: 2, name: 2 },
-  'packages/code/src/agent-accepts.ts': { line: 5, name: 1 },
+  'packages/code/src/agent-accepts.ts': { line: 4, name: 2 },
   'packages/code/src/commands/after-a-write.ts': { line: 2 },
   'packages/code/src/commands/before-a-write.ts': { name: 1 },
   'packages/code/src/commands/brief.ts': { name: 1 },

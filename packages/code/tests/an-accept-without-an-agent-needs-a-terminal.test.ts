@@ -21,8 +21,8 @@ import { openRecord } from '../../sdk/src/record.js';
 import { buildMcpServer } from '../src/mcp/server.js';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
 import { arrivedSince, inPty } from './support/pty.js';
-import { held } from './support/the-record-held.js';
 import { MNEMA_CLI } from './support/the-cli.js';
+import { held } from './support/the-record-held.js';
 
 let sandbox: string;
 let home: string;
@@ -46,8 +46,7 @@ function mnema(extra: Record<string, string>, ...argv: string[]) {
   return { status: ran.status, out: `${ran.stdout}${ran.stderr}` };
 }
 
-const idOf = (printed: string): string =>
-  /[0-9a-f]{8}-[0-9a-f-]{27}/.exec(printed)?.[0] as string;
+const idOf = (printed: string): string => /[0-9a-f]{8}-[0-9a-f-]{27}/.exec(printed)?.[0] as string;
 
 /** A project whose switch is off and which holds one proposal. */
 function aProposalWithTheSwitchOff(): string {
@@ -189,7 +188,7 @@ describe('the library door', () => {
     timeout: 60_000,
   }, () => {
     const id = aProposalWithTheSwitchOff();
-    const record = openRecord({ cwd: project, env: { home } });
+    const record = openRecord({ cwd: project, agent: undefined, env: { home } });
     const before = held(sandbox);
     const refused = seatedAs(false, () => record.acceptDecision({ id, note: 'ok' }));
     expect(refused).toMatchObject({ ok: false, reason: 'REFUSED', code: 'AGENT_ACCEPTS_IS_OFF' });
