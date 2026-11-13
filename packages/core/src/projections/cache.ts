@@ -30,7 +30,11 @@ import { agentKeysIn, rosterIn, rosterOf } from '../identity/membership.js';
 import { advance } from './advance.js';
 import { readCacheFileFor } from './cache-home.js';
 import {
+  activeMarks,
+  activeSegmentsHold,
+  activeStampsBefore,
   type CacheMeta,
+  keepActiveMarks,
   productStamp,
   readGeneration,
   readMeta,
@@ -158,11 +162,13 @@ export interface CacheOptions {
    *   - it carries the stamp of the code that wrote it, and a stamp that is not this code's
    *     replays (`cache-meta.ts`);
    *   - a sealed segment whose size or modification time is not what the cache recorded
-   *     replays, so a rewrite of what was already read is not served in silence;
+   *     replays, and so does an active one whose size or time moved and whose bytes below the
+   *     frontier no longer hash as recorded, so a rewrite of what was already read is not served
+   *     in silence;
    *   - a file that cannot be had (the directory is read-only, the database is corrupt, a
    *     writer held it past the wait) is not an error: the cache lives in memory for this
    *     process and answers the same, slower. DELETING IT COSTS A REBUILD, AND CHANGES AN ANSWER
-   *     ONLY WHERE THE CACHE HAD MISSED AN EDIT IN PLACE (below).
+   *     ONLY WHERE THE CACHE HAD MISSED A REWRITE THAT PUT THE MODIFICATION TIME BACK (below).
    *
    * What it does not promise is what a reading that resumes can never promise: that bytes the
    * last reading already accepted were not edited since. `cache-meta.ts` says where the line
@@ -478,6 +484,9 @@ export class ProjectionCache {
           this.replay();
           return;
         }
+        // The stamps of the segments each tail appends to, BEFORE the reading, are what the marks
+        // record: see {@link activeStampsBefore}.
+        const before = this.persisted ? activeStampsBefore(this.layout) : {};
         const arrived = chainArrivals(this.layout, this.upcasters, this.frontier);
         if (!arrived.suffix) {
           this.replay();
@@ -504,6 +513,7 @@ export class ProjectionCache {
               this.breaks,
               [...this.unreadLines, ...arrived.unread],
               expected + 1,
+              before,
             );
             return true;
           },
@@ -543,13 +553,14 @@ export class ProjectionCache {
 
   /** Replays the chain whole into the tables: the one place a rebuild is written. */
   private replay(): void {
+    const before = this.persisted ? activeStampsBefore(this.layout) : {};
     const replay = chainReplay(this.layout, this.upcasters);
     this.generation = inTransaction(
       this.db,
       () => {
         const generation = readGeneration(this.db) + 1;
         rebuild(this.db, replay.events, { schemaPresent: this.untouched });
-        this.store(replay.frontier, replay.linkBreaks, replay.unread, generation);
+        this.store(replay.frontier, replay.linkBreaks, replay.unread, generation, before);
         return generation;
       },
       { immediate: true },
@@ -567,6 +578,7 @@ export class ProjectionCache {
     breaks: readonly LinkBreak[],
     unread: readonly UnreadLine[],
     generation: number,
+    before: Readonly<Record<string, string>>,
   ): void {
     const meta: CacheMeta = {
       stamp: productStamp(),
@@ -575,6 +587,7 @@ export class ProjectionCache {
       breaks,
       unread,
       sealed: this.persisted ? sealedFingerprints(frontier) : {},
+      active: this.persisted ? activeMarks(frontier, before) : {},
     };
     writeMeta(this.db, meta);
   }
@@ -602,7 +615,11 @@ export class ProjectionCache {
     }
     if (meta.generation === this.generation && this.frontier !== undefined) return;
     this.generation = meta.generation;
-    if (meta.stamp !== productStamp() || (this.persisted && !sealedSegmentsHold(meta.sealed))) {
+    const active = this.persisted ? activeSegmentsHold(meta.active) : meta.active;
+    if (
+      meta.stamp !== productStamp() ||
+      (this.persisted && !(sealedSegmentsHold(meta.sealed) && active !== undefined))
+    ) {
       this.frontier = undefined;
       this.breaks = [];
       this.unreadLines = [];
@@ -611,6 +628,13 @@ export class ProjectionCache {
     this.frontier = meta.frontier;
     this.breaks = meta.breaks;
     this.unreadLines = meta.unread;
+    // A segment whose time moved over the same bytes was hashed to be believed: its new stamp is
+    // kept, so the next open does not hash it again (and a read that finds nothing new, which
+    // never stores, would otherwise hash on every open until the next write).
+    if (active !== undefined && JSON.stringify(active) !== JSON.stringify(meta.active)) {
+      // An optimization that never waits and never gives the file up: see {@link keepActiveMarks}.
+      keepActiveMarks(this.db, active, meta.generation);
+    }
   }
 
   /**

@@ -74,8 +74,8 @@ Each line says what it does and what it leaves unproven; the page it points to h
   the link stays in the record. Another identity is refused.
 - **A read pays for what arrived, not for the whole record.** A read keeps what it built in each tree's gitignored
   `locks/projection.db` and takes only what was appended since. It is derived, never the record:
-  deleting it never makes an answer wrong, and a clone does not carry it. The one thing it can miss is an edit in place, to the
-  same size, of a line before the last of a live segment: only a full verification sees that. The MCP server keeps it for the two trees of
+  deleting it never makes an answer wrong, and a clone does not carry it. The one thing it can miss is a rewrite that puts the modification time back on
+  purpose, or one inside the resolution of the filesystem's clock (a second on HFS+, two on FAT and exFAT): only a full verification sees that. The MCP server keeps it for the two trees of
   the project it is in too, so its first answer in a session of a large record takes what the file holds instead of
   building the record again; a tool that only reads may therefore update that one file (and nothing else).
   For the other projects of the workspace it keeps only the runs and the channel switches of each, on this

@@ -774,8 +774,9 @@ Moved to [Switching off what mnema hands to a model](switching-off-what-is-hande
 
 A read keeps what it built in `locks/projection.db` of each tree it read, so the next
 read takes only what was appended since instead of building it again. It is derived and
-never the record: deleting it costs the next read one rebuild (the one edit it can miss is an in-place edit, to the same size, of a
-line before the last of a live segment, which only `mnema verify` sees), it
+never the record: deleting it costs the next read one rebuild (an edit that keeps the size is seen through the live segment's modification time; what it can miss
+is a rewrite that puts that time back on purpose, or one inside the resolution of the filesystem's clock, a second on HFS+ and two on
+FAT and exFAT, which only `mnema verify` sees), it
 sits where the tree's own `.gitignore` already looks away, and a clone never carries it.
 A read of a tree nobody has written to creates nothing, and where the file cannot be
 had (a read-only directory, a damaged file), the read builds it in memory and answers
@@ -799,8 +800,8 @@ checkout of another commit) is read by the next call, and a file that does not f
 record is built again. The line a stored position ends on is read back and has to be the entry it ended on, so a
 live segment replaced by another branch's, longer or not, is read again, by the command line and
 by a server that is already up; and a file another process or version of the code rewrote is taken
-again before the next answer. What it does not see is an edit, in place and to the same size, to a
-line before the last one of a live segment (`mnema verify` is what rules on that).
+again before the next answer. What it does not see is a rewrite that puts the modification time back on purpose, or one inside the
+resolution of the filesystem's clock, a second on HFS+ and two on FAT and exFAT (`mnema verify` is what rules on that).
 
 `MNEMA_CACHE_DIR` keeps that file somewhere else: set to an absolute directory that exists
 and can be written to, every read (the command line, the MCP server and the library)

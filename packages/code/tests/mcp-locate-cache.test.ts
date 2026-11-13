@@ -39,6 +39,7 @@ import {
   readFileSync,
   rmSync,
   statSync,
+  utimesSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -169,19 +170,39 @@ function unusedId(): string {
   return '019fa622-0000-7000-8000-000000000000';
 }
 
+/** The segments of every tail of a chain. */
+function segmentsOf(chainRoot: string): string[] {
+  const tails = join(chainRoot, 'tails');
+  return readdirSync(tails).flatMap((tail) =>
+    readdirSync(join(tails, tail))
+      .filter((name) => /^\d+\.jsonl$/.test(name))
+      .map((name) => join(tails, tail, name)),
+  );
+}
+
+/**
+ * Stamps every segment with a whole second, the one modification time a script can put back to
+ * the nanosecond (utimes goes through a float): a file left at one is a file whose time a rewrite
+ * can restore.
+ */
+function stampWholeSeconds(chainRoot: string): void {
+  for (const file of segmentsOf(chainRoot)) {
+    const stamped = statSync(file);
+    utimesSync(file, stamped.atime, new Date(Math.floor(stamped.mtimeMs / 1000) * 1000));
+  }
+}
+
 /**
  * Replaces every segment of a chain with the same number of bytes of blank
  * lines: a replay of it yields no events, and every file keeps the size it had.
- * The one edit a freshness probe built on size cannot see, by construction.
+ * With `restoreTheTime`, each file also gets back the modification time it had, which is the
+ * one edit the freshness probe cannot see (a size and a time it can).
  */
-function emptySegmentsInPlace(chainRoot: string): void {
-  const tails = join(chainRoot, 'tails');
-  for (const tail of readdirSync(tails)) {
-    for (const name of readdirSync(join(tails, tail))) {
-      if (!/^\d+\.jsonl$/.test(name)) continue;
-      const file = join(tails, tail, name);
-      writeFileSync(file, '\n'.repeat(statSync(file).size));
-    }
+function emptySegmentsInPlace(chainRoot: string, restoreTheTime: boolean): void {
+  for (const file of segmentsOf(chainRoot)) {
+    const before = statSync(file);
+    writeFileSync(file, '\n'.repeat(before.size));
+    if (restoreTheTime) utimesSync(file, before.atime, before.mtime);
   }
 }
 
@@ -320,21 +341,23 @@ describe('the projections answer first: the chain is not replayed for an entity 
     // still locates it. If the locate had gone to the chain first (or at all,
     // for an entity the projection holds) this would not come back 'public'.
     //
-    // Emptied WITHOUT changing a byte count, which is the only way to take the
-    // events away and leave the session's view of the tree standing. That is not
-    // a trick around the test: it is the freshness probe's declared blind spot,
-    // exercised. A rewrite that preserves the size is tampering, and tampering is
-    // `verify`'s subject: the probe answers "did anything move", and here
-    // nothing observably did.
+    // Emptied WITHOUT changing a byte count, and with the modification time put back: the
+    // only way to take the events away and leave the session's view of the tree standing.
+    // That is not a trick around the test: it is the freshness probe's declared limit,
+    // exercised. A rewrite that restores the time on purpose is tampering, and tampering is
+    // `verify`'s subject: the probe answers "did anything move", and here nothing
+    // observably did.
     const project = makeProject('proj');
     const session = openOn(project);
     const created = runCreateTask(session, { title: 'in the projection', scope: 'public' });
     if (!created.ok) throw new Error('setup: create refused');
+    // A time a script can restore to the nanosecond, read by the session once before the edit.
+    stampWholeSeconds(chainRootForScope(session.trees, 'public') as string);
     expect(viaProjectionsOnly(session, created.id)).toBe('public'); // warm
 
     // Only the public tree's tails: the private tree lives beneath it and must
     // stay intact, or this would be testing an empty context instead.
-    emptySegmentsInPlace(chainRootForScope(session.trees, 'public') as string);
+    emptySegmentsInPlace(chainRootForScope(session.trees, 'public') as string, true);
 
     const byReplay = (() => {
       try {
@@ -361,6 +384,25 @@ describe('the projections answer first: the chain is not replayed for an entity 
     expect(verdict.level).toBe('broken');
     expect(verdict.issues.map((issue) => issue.detail).join('\n')).toContain('range-mismatch');
 
+    closeSession(session);
+  });
+});
+
+describe('a session that is not left to a rewrite of the same size', () => {
+  it('does not locate a task the chain was emptied of, when the rewrite left its own modification time', () => {
+    const session = openOn(makeProject('proj'));
+    const created = runCreateTask(session, { title: 'in the projection', scope: 'public' });
+    if (!created.ok) throw new Error('setup: create refused');
+    const root = chainRootForScope(session.trees, 'public') as string;
+    stampWholeSeconds(root);
+    expect(viaProjectionsOnly(session, created.id)).toBe('public'); // warm
+    // The same bytes, and the clock moved on: what any editor, script or checkout leaves behind.
+    emptySegmentsInPlace(root, false);
+    for (const file of segmentsOf(root)) {
+      const now = statSync(file);
+      utimesSync(file, now.atime, new Date(now.mtimeMs + 5_000));
+    }
+    expect(viaSession(session, created.id)).not.toBe('public');
     closeSession(session);
   });
 });

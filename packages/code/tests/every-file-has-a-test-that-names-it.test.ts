@@ -1067,6 +1067,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-report-needs-a-person.test.ts': 20,
   'packages/code/tests/a-retired-agent-key-without-a-tail-is-called-retired.test.ts': 7,
   'packages/code/tests/a-retried-timeout-is-counted.test.ts': 7,
+  'packages/code/tests/a-rewrite-below-the-frontier-is-seen-in-every-cache-state.test.ts': 8,
   'packages/code/tests/a-routed-write-says-where-it-landed.test.ts': 11,
   'packages/code/tests/a-rule-carries-its-check.test.ts': 10,
   'packages/code/tests/a-rule-is-handed-after-a-write.test.ts': 15,
