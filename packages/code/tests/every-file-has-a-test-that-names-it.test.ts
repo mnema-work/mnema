@@ -1413,6 +1413,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-proof-answers-a-machine.test.ts': 7,
   'packages/code/tests/the-prose-carries-its-own-emphasis.test.ts': 5,
   'packages/code/tests/the-public-tree-says-what-holds-without-git.test.ts': 13,
+  'packages/code/tests/the-published-package-declares-what-the-bundle-imports.test.ts': 7,
   'packages/code/tests/the-pull-request-is-told-what-failed.test.ts': 6,
   'packages/code/tests/the-pull-request-template-asks-for-the-agent.test.ts': 4,
   'packages/code/tests/the-python-floor-is-declared-once.test.ts': 5,
