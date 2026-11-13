@@ -390,15 +390,43 @@ const IMPORT_LINE = /^ {0,3}@(\S+)[ \t]*$/;
 export function importsAgents(text: string, file = 'CLAUDE.md'): boolean {
   const covers = (line: string): boolean => {
     const named = IMPORT_LINE.exec(line)?.[1];
-    return (
-      named !== undefined && posix.normalize(posix.join(posix.dirname(file), named)) === 'AGENTS.md'
-    );
+    // A path the host reads as absolute (`@/AGENTS.md`) is not the file at the root of the project.
+    if (named === undefined || posix.isAbsolute(named)) return false;
+    return posix.normalize(posix.join(posix.dirname(file), named)) === 'AGENTS.md';
   };
-  const bare = text.replace(/^\uFEFF/, '').replace(/<!--[\s\S]*?-->/g, '');
+  const source = text.startsWith('\uFEFF') ? text.slice(1) : text;
   let fence: { readonly char: string; readonly length: number } | undefined;
   let hidden = false;
   let found = false;
-  for (const raw of bare.split('\n')) {
+  // ONE PASS, IN THE ORDER OF THE TEXT: inside a fence a line is only looked at as the fence's end, and outside one a
+  // comment is taken out as the line is read, so a `<!--` shown in a code block hides nothing that follows it.
+  for (let at = 0; at <= source.length; ) {
+    let end = source.indexOf('\n', at);
+    if (end === -1) end = source.length;
+    let raw: string;
+    let next: number;
+    if (fence !== undefined) {
+      raw = source.slice(at, end);
+      next = end + 1;
+    } else {
+      // The line with each comment that closes taken out (a comment may run over lines); one that never closes hides nothing.
+      let visible = '';
+      let from = at;
+      for (;;) {
+        const open = source.indexOf('<!--', from);
+        const close = open === -1 || open > end ? -1 : source.indexOf('-->', open + 4);
+        if (close === -1) {
+          visible += source.slice(from, end);
+          break;
+        }
+        visible += source.slice(from, open);
+        from = close + 3;
+        end = source.indexOf('\n', from);
+        if (end === -1) end = source.length;
+      }
+      raw = visible;
+      next = end + 1;
+    }
     const line = raw.endsWith('\r') ? raw.slice(0, -1) : raw;
     const opens = FENCE.exec(line);
     if (fence !== undefined) {
@@ -423,6 +451,7 @@ export function importsAgents(text: string, file = 'CLAUDE.md'): boolean {
     } else if (covers(line)) {
       found = true;
     }
+    at = next;
   }
   // An import inside a fence that never closed is not hidden: the fence is no fence.
   return found || hidden;
@@ -494,8 +523,8 @@ interface Scalar {
 
 /**
  * The keys and values of a front matter, with the quotes set aside but kept in the type of the value; `undefined`
- * where a line is not `key: value`, a key is given twice, or a bare value starts with a character YAML reserves
- * (`*` an alias, `&`, `!`, `|`, `>`, `%`, `@`, a backtick), which is not the plain text it looks like.
+ * where a line is not `key: value`, or a key is given twice. A bare value and a quoted one are different values (a bare `**` is a YAML alias,
+ * not the string it looks like), so the type decides it.
  */
 function frontMatterValues(lines: readonly string[]): ReadonlyMap<string, Scalar> | undefined {
   const values = new Map<string, Scalar>();
@@ -505,7 +534,6 @@ function frontMatterValues(lines: readonly string[]): ReadonlyMap<string, Scalar
     if (pair === null || values.has(pair[1] as string)) return undefined;
     const value = pair[2] as string;
     const quoted = /^(["'])(.*)\1$/.exec(value);
-    if (quoted === null && /^[*&!|>%@`]/.test(value)) return undefined;
     values.set(
       pair[1] as string,
       quoted === null

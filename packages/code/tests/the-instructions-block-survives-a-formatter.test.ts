@@ -198,14 +198,4 @@ describe('the type of a front matter value', () => {
     expect(stateOf(path)).toBe('edited');
     expect(get(path)).toBe(edited);
   });
-
-  it.each(['*', '&', '!', '|', '>', '%', '@', '`'])(
-    'counts a bare value that starts with %s as the person’s edit',
-    (mark) => {
-      const path = '.github/instructions/mnema-instructions.instructions.md';
-      writeInstructions(project);
-      put(path, get(path).replace('"**"', `${mark}x`));
-      expect(stateOf(path)).toBe('edited');
-    },
-  );
 });

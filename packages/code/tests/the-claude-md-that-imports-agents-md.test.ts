@@ -45,6 +45,17 @@ describe('importsAgents', () => {
     ['a fence that is never closed hides nothing', '```\n@AGENTS.md\n', 'CLAUDE.md'],
     ['after a fence that was closed', '```\ncode\n```\n@AGENTS.md\n', 'CLAUDE.md'],
     ['after a comment that was closed', '<!-- note -->\n@AGENTS.md\n', 'CLAUDE.md'],
+    [
+      'a comment shown in a code block, then the real import',
+      '```\n<!-- a comment\n```\n@AGENTS.md\n```\n-->\n```\n',
+      'CLAUDE.md',
+    ],
+    ['a comment that never closes hides nothing', '<!-- note\n@AGENTS.md\n', 'CLAUDE.md'],
+    [
+      'an import after two comments closed on one line',
+      '<!-- a --> <!-- b -->\n@AGENTS.md\n',
+      'CLAUDE.md',
+    ],
     ['the root file reached from .claude/CLAUDE.md', '@../AGENTS.md\n', '.claude/CLAUDE.md'],
     ['the ./../ form from .claude/CLAUDE.md', '@./../AGENTS.md\n', '.claude/CLAUDE.md'],
   ])('is true for %s', (_name, text, file) => {
@@ -63,6 +74,17 @@ describe('importsAgents', () => {
     ['another case', '@agents.md\n', 'CLAUDE.md'],
     ['the import in an HTML comment', '<!-- @AGENTS.md -->\n', 'CLAUDE.md'],
     ['the import in a comment of several lines', '<!--\nold:\n@AGENTS.md\n-->\n', 'CLAUDE.md'],
+    [
+      'an absolute path, which the host reads from the root of the disk',
+      '@/AGENTS.md\n',
+      'CLAUDE.md',
+    ],
+    ['an absolute path from .claude/CLAUDE.md', '@/AGENTS.md\n', '.claude/CLAUDE.md'],
+    [
+      'a comment closed before a fence, with the import in the fence',
+      '<!-- a -->\n```\n@AGENTS.md\n```\n',
+      'CLAUDE.md',
+    ],
     [
       '@AGENTS.md in .claude/CLAUDE.md, which names .claude/AGENTS.md',
       '@AGENTS.md\n',
