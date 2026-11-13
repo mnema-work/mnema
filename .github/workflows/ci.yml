@@ -750,6 +750,37 @@ jobs:
       - name: Pack, install the tarballs, run the README's quick start in a terminal, verify
         run: bash .github/the-newcomer-path/run.sh
 
+  # THE PAGE MOVES WITH THE BEHAVIOUR. On a pull request that changes a golden of the surface (the
+  # program's help, its transcripts, its completions, its init screens), the files changed must
+  # include a page written by hand and an entry in `changelog/unreleased/`; the generated pages of
+  # `docs/reference/` do not count. `.github/the-page-moves-with-the-behaviour/check.mjs` says which
+  # goldens and what is missing. It reads only the list of files, so the text of a pull request cannot
+  # excuse it, and it is not a required check: nothing waits for it to merge but the person who reads it.
+  the-page-moves-with-the-behaviour:
+    name: the page moves with the behaviour
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+
+      - name: The goldens that changed, and the page and the entry that go with them
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$BASE_SHA"
+          node .github/the-page-moves-with-the-behaviour/check.mjs "$BASE_SHA"
+
   # WHAT FAILED, FOR THE COMMENT. On a pull request, once every other job is over, this writes down
   # what failed in a small JSON artifact: the failing jobs and steps, the verdict of
   # `.github/why-it-went-red/`, the failing cases with what each said, and, when a `Lint` step
@@ -777,6 +808,7 @@ jobs:
       - the-guards
       - the-other-systems
       - the-newcomer-path
+      - the-page-moves-with-the-behaviour
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     continue-on-error: true
