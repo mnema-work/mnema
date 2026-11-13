@@ -30,6 +30,8 @@ import { agentKeysIn, rosterIn, rosterOf } from '../identity/membership.js';
 import { advance } from './advance.js';
 import { readCacheFileFor } from './cache-home.js';
 import {
+  activeMarks,
+  activeSegmentsHold,
   type CacheMeta,
   productStamp,
   readGeneration,
@@ -575,6 +577,7 @@ export class ProjectionCache {
       breaks,
       unread,
       sealed: this.persisted ? sealedFingerprints(frontier) : {},
+      active: this.persisted ? activeMarks(frontier) : {},
     };
     writeMeta(this.db, meta);
   }
@@ -602,7 +605,10 @@ export class ProjectionCache {
     }
     if (meta.generation === this.generation && this.frontier !== undefined) return;
     this.generation = meta.generation;
-    if (meta.stamp !== productStamp() || (this.persisted && !sealedSegmentsHold(meta.sealed))) {
+    if (
+      meta.stamp !== productStamp() ||
+      (this.persisted && !(sealedSegmentsHold(meta.sealed) && activeSegmentsHold(meta.active)))
+    ) {
       this.frontier = undefined;
       this.breaks = [];
       this.unreadLines = [];

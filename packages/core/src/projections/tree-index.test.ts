@@ -175,6 +175,52 @@ describe('the facts of a tree that moved', () => {
     expect(touched.opened()).toBe(1);
   });
 
+  /** Rewrites the channel a line before the last names, to the same size, and says what it was. */
+  function rewriteTheChannelInPlace(): { file: string; before: ReturnType<typeof statSync> } {
+    const [tail] = listTails({ root });
+    const file = orderedSegments({ root }, tail as string).at(-1) as string;
+    const before = statSync(file);
+    const held = readFileSync(file, 'utf-8');
+    expect(held.includes('a-channel'), 'the live segment holds the channel the case rewrites').toBe(
+      true,
+    );
+    writeFileSync(file, held.replace('a-channel', 'b-channel'));
+    expect(statSync(file).size).toBe(before.size);
+    return { file, before };
+  }
+
+  it('are read again when the live segment is rewritten to the same size below its last line', () => {
+    aTreeWithARun();
+    treeFactsFrom({ root }, indexFile, reader().read);
+    const { file, before } = rewriteTheChannelInPlace();
+    // Moved on, as a rewrite always moves it: the last line, which the mark also holds, is left alone.
+    utimesSync(file, before.atime, new Date(before.mtimeMs + 5_000));
+
+    const again = reader();
+    const served = treeFactsFrom({ root }, indexFile, again.read);
+    expect(again.opened(), 'a rewrite of the live segment was served from the file').toBe(1);
+    expect(served.facts.channelSwitches).toMatchObject([{ channel: 'b-channel' }]);
+    expect(served.facts).toEqual(replayedFacts());
+  });
+
+  it('THE LIMIT: are served from the file when the rewrite put the modification time back', () => {
+    aTreeWithARun();
+    const [tail] = listTails({ root });
+    const live = orderedSegments({ root }, tail as string).at(-1) as string;
+    // A time a script can put back to the nanosecond: only a whole second survives utimes.
+    const stamped = statSync(live);
+    utimesSync(live, stamped.atime, new Date(Math.floor(stamped.mtimeMs / 1000) * 1000));
+    treeFactsFrom({ root }, indexFile, reader().read);
+    const marked = statSync(live, { bigint: true });
+    const { file } = rewriteTheChannelInPlace();
+    utimesSync(file, new Date(Number(marked.atimeMs)), new Date(Number(marked.mtimeMs)));
+    expect(statSync(file, { bigint: true }).mtimeNs).toBe(marked.mtimeNs);
+
+    const again = reader();
+    treeFactsFrom({ root }, indexFile, again.read);
+    expect(again.opened(), 'the limit moved: update what-it-proves.md').toBe(0);
+  });
+
   it('are read again when the file is garbage or carries the mark of other code', () => {
     aTreeWithARun();
     treeFactsFrom({ root }, indexFile, reader().read);

@@ -21,19 +21,27 @@
  *     cache was built would be served in silence for as long as the cache lasted, where a
  *     replay reads every line and is told. A sealed segment is never written again, so its
  *     size and modification time are what a rewrite cannot keep; any difference sends the
- *     cache back to a full replay.
+ *     cache back to a full replay. The ACTIVE segment of a tail is still appended to, so its
+ *     size and its modification time move legitimately and cannot say as much; what it records
+ *     is its size, its modification time (to the nanosecond the filesystem keeps) and the
+ *     sha256 of the bytes below the frontier. Opened, a segment with the size and the time it
+ *     had is the segment it was, and costs two numbers. A segment with either one changed has
+ *     the sha256 of the prefix computed again, once, and a prefix that hashes differently
+ *     sends the cache back to a full replay. Nothing is hashed on a read that finds the
+ *     segment as it was left, and no sealed segment is ever hashed.
  *
- * WHAT THE FINGERPRINTS DO NOT SEE, and the limit is the same one a long-lived session has
- * always had. The ACTIVE segment has only its size checked, since it is still being appended
- * to and its modification time moves legitimately: bytes of it rewritten to the same size are
- * not seen. A sealed segment has size and modification time checked: an edit that restores
- * both is not seen either. The projection is not a tamper detector. Tampering is `verify`'s,
- * which recomputes every hash and checks every signature, and which never reads the
- * projection.
+ * WHAT THE FINGERPRINTS DO NOT SEE, and the limit is a declared one. A rewrite that restores
+ * the modification time on purpose, to the size the file had, is not seen: in a sealed segment
+ * for the same reason, and in an active one because nothing but the two numbers is looked at
+ * while they hold. Neither is a rewrite inside the resolution of the filesystem's clock (one
+ * second on HFS+, two on FAT and exFAT, whatever a network filesystem reports) of the moment
+ * the cache was written. Whoever restores the time on purpose can rewrite `projection.db` the
+ * same way. The projection is not a tamper detector. Tampering is `verify`'s, which recomputes
+ * every hash and checks every signature, and which never reads the projection.
  */
 
 import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { closeSync, openSync, readdirSync, readFileSync, readSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LATEST_VERSION, type LinkBreak, type UnreadLine, WORKFLOWS } from '@mnema/chain';
@@ -54,6 +62,11 @@ export interface CacheMeta {
   readonly unread: readonly UnreadLine[];
   /** Size and modification time of every sealed segment the frontier covers, by path. */
   readonly sealed: Readonly<Record<string, string>>;
+  /**
+   * Size, modification time and the sha256 of the bytes below the frontier of the segment each
+   * tail is still appending to, by path ({@link activeMarks}).
+   */
+  readonly active: Readonly<Record<string, string>>;
 }
 
 /**
@@ -116,13 +129,15 @@ export function readMeta(db: SqliteDatabase): CacheMeta | undefined {
   const breaks = byKey.get('breaks');
   const unread = byKey.get('unread');
   const sealed = byKey.get('sealed');
+  const active = byKey.get('active');
   if (
     stampHere === undefined ||
     generation === undefined ||
     frontier === undefined ||
     breaks === undefined ||
     unread === undefined ||
-    sealed === undefined
+    sealed === undefined ||
+    active === undefined
   ) {
     return undefined;
   }
@@ -133,6 +148,7 @@ export function readMeta(db: SqliteDatabase): CacheMeta | undefined {
     breaks: JSON.parse(breaks) as LinkBreak[],
     unread: JSON.parse(unread) as UnreadLine[],
     sealed: JSON.parse(sealed) as Record<string, string>,
+    active: JSON.parse(active) as Record<string, string>,
   };
 }
 
@@ -153,6 +169,7 @@ export function writeMeta(db: SqliteDatabase, meta: CacheMeta): void {
   put.run('breaks', JSON.stringify(meta.breaks));
   put.run('unread', JSON.stringify(meta.unread));
   put.run('sealed', JSON.stringify(meta.sealed));
+  put.run('active', JSON.stringify(meta.active));
 }
 
 function encodeFrontier(frontier: ChainFrontier): string {
@@ -207,5 +224,82 @@ export function fingerprintOf(path: string): string {
     return `${stat.size}:${stat.mtimeMs}`;
   } catch {
     return 'unreadable';
+  }
+}
+
+/**
+ * What each tail's ACTIVE segment was when the frontier was taken, by path, as
+ * `<size>:<mtimeNs>:<bytes>:<sha256>`: the size and the modification time the file had, and the
+ * sha256 of its first `bytes` bytes, which is where the reading stopped.
+ *
+ * The file is stat'ed BEFORE the prefix is read, so a write that lands in between leaves a mark
+ * whose time is older than the bytes: the next open finds it moved and hashes again, which is the
+ * direction a cache errs in safely. A segment that is not the last the reading reached (a later
+ * one stands beside it, so it is sealed) is left to {@link sealedFingerprints} and not hashed.
+ */
+export function activeMarks(frontier: ChainFrontier): Readonly<Record<string, string>> {
+  const marks: Record<string, string> = {};
+  for (const reach of frontier.tails.values()) {
+    const boundary = reach.boundary;
+    if (boundary === undefined || reach.segments.at(-1) !== boundary.segment) continue;
+    marks[boundary.segment] = markOfActive(boundary.segment, boundary.bytes);
+  }
+  return marks;
+}
+
+/**
+ * Whether every active segment a cache recorded is still what it recorded: the same size and the
+ * same modification time, or else the same bytes below the frontier (the sha256 computed once,
+ * because something moved).
+ */
+export function activeSegmentsHold(recorded: Readonly<Record<string, string>>): boolean {
+  for (const [segment, mark] of Object.entries(recorded)) {
+    const parts = mark.split(':');
+    const [size, mtime, bytes, digest] = parts;
+    if (parts.length !== 4 || bytes === undefined || digest === undefined) return false;
+    const now = statOf(segment);
+    if (now === undefined) return false;
+    if (`${now.size}` === size && `${now.mtimeNs}` === mtime) continue;
+    if (prefixDigest(segment, Number(bytes)) !== digest) return false;
+  }
+  return true;
+}
+
+function markOfActive(path: string, bytes: number): string {
+  const stat = statOf(path);
+  const digest = prefixDigest(path, bytes);
+  return stat === undefined || digest === undefined
+    ? 'unreadable'
+    : `${stat.size}:${stat.mtimeNs}:${bytes}:${digest}`;
+}
+
+function statOf(path: string): { size: bigint; mtimeNs: bigint } | undefined {
+  try {
+    const { size, mtimeNs } = statSync(path, { bigint: true });
+    return { size, mtimeNs };
+  } catch {
+    return undefined;
+  }
+}
+
+/** The sha256 of the first `bytes` bytes of a file, or undefined when it is shorter or cannot be read. */
+function prefixDigest(path: string, bytes: number): string | undefined {
+  let fd: number | undefined;
+  try {
+    fd = openSync(path, 'r');
+    const hash = createHash('sha256');
+    const chunk = Buffer.allocUnsafe(Math.min(Math.max(bytes, 1), 1 << 20));
+    let at = 0;
+    while (at < bytes) {
+      const read = readSync(fd, chunk, 0, Math.min(chunk.length, bytes - at), at);
+      if (read === 0) return undefined;
+      hash.update(chunk.subarray(0, read));
+      at += read;
+    }
+    return hash.digest('hex');
+  } catch {
+    return undefined;
+  } finally {
+    if (fd !== undefined) closeSync(fd);
   }
 }

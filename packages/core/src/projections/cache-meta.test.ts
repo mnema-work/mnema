@@ -82,6 +82,7 @@ describe('what is stored', () => {
       breaks: [{ tail: 'a-tail', seq: 3, detail: 'seq gap: expected 3, found 4' }],
       unread: [{ kind: 'x.from-the-future', tail: 'a-tail', subject: 'a-subject' }],
       sealed: { '/x/000001.jsonl': '10:1' },
+      active: { '/x/000002.jsonl': '10:1:10:abc' },
     };
     writeMeta(db, meta);
     expect(readMeta(db)).toEqual(meta);

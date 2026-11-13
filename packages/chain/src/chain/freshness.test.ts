@@ -7,11 +7,19 @@
  * in `@mnema/code` runs the whole of it against real other processes.
  */
 
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { chainExtent } from './freshness.js';
+import { chainExtent, rewrittenInPlace } from './freshness.js';
 import { type ChainLayout, segmentPath, tailDir } from './layout.js';
 
 let root: string;
@@ -104,22 +112,57 @@ describe('every way a chain moves changes it', () => {
   });
 });
 
-describe('what it does not see, and must not', () => {
-  it('a rewrite that preserves the size', () => {
-    // The declared blind spot. This is tampering, and answering it means
-    // recomputing hashes and checking signatures, which is `verifyChain`'s
-    // subject, on a chain the extent has no business making claims about. A probe
-    // that pretended to catch this would be promising proof on a signal chosen
-    // for being one `stat`.
-    const original = 'the original line\n';
-    const forged = 'the forged   line\n';
+describe('a rewrite of the last segment to the same size', () => {
+  const original = 'the original line\n';
+  const forged = 'the forged   line\n';
+
+  it('moves the extent, because the segment cannot keep the time it had', () => {
     expect(forged).toHaveLength(original.length); // or this case is not the case
     writeSegment('tail-a', 1, original);
     const before = chainExtent(layout);
     writeSegment('tail-a', 1, forged);
-    expect(chainExtent(layout)).toBe(before);
+    const stamped = statSync(segmentPath(layout, 'tail-a', 1));
+    // Whatever the clock's grain made of two writes in one tick, a rewrite is a later time.
+    utimesSync(segmentPath(layout, 'tail-a', 1), stamped.atime, new Date(stamped.mtimeMs + 5_000));
+    const after = chainExtent(layout);
+    expect(after).not.toBe(before);
+    expect(rewrittenInPlace(before, after)).toBe(true);
   });
 
+  it('is not seen when the time was put back to the nanosecond (the declared limit)', () => {
+    // A time utimes can restore exactly: only a whole second goes through its float unchanged.
+    writeSegment('tail-a', 1, original);
+    const file = segmentPath(layout, 'tail-a', 1);
+    const first = statSync(file);
+    utimesSync(file, first.atime, new Date(Math.floor(first.mtimeMs / 1000) * 1000));
+    const before = chainExtent(layout);
+    const stamped = statSync(file);
+    writeSegment('tail-a', 1, forged);
+    utimesSync(file, stamped.atime, stamped.mtime);
+    expect(chainExtent(layout)).toBe(before);
+  });
+});
+
+describe('what moved without growing', () => {
+  const mark = (name: string, size: number, time: number): string =>
+    `tail-a=${name}:${size}:${time}`;
+
+  it('is a rewrite or a cut of the same file, and never an append, a rotation or a tail coming or going', () => {
+    const was = mark('000001.jsonl', 100, 1);
+    expect(rewrittenInPlace(was, mark('000001.jsonl', 100, 2)), 'same size, later time').toBe(true);
+    expect(rewrittenInPlace(was, mark('000001.jsonl', 90, 2)), 'cut').toBe(true);
+    expect(rewrittenInPlace(was, mark('000001.jsonl', 100, 1)), 'nothing').toBe(false);
+    expect(rewrittenInPlace(was, mark('000001.jsonl', 120, 2)), 'an append').toBe(false);
+    expect(rewrittenInPlace(was, mark('000002.jsonl', 10, 2)), 'a rotation').toBe(false);
+    expect(rewrittenInPlace(was, `${was}|tail-b=000001.jsonl:5:1`), 'a tail appears').toBe(false);
+    expect(rewrittenInPlace(`${was}|tail-b=000001.jsonl:5:1`, was), 'a tail vanishes').toBe(false);
+    expect(rewrittenInPlace(was, 'tail-a=!ENOENT'), 'a tail that cannot be read').toBe(false);
+    expect(rewrittenInPlace(was, 'tail-a=-'), 'a tail with no segment').toBe(false);
+    expect(rewrittenInPlace('', was)).toBe(false);
+  });
+});
+
+describe('what it does not see, and must not', () => {
   it('an edit to a segment already sealed', () => {
     // Same blind spot, one file earlier: only the last segment is stat'ed,
     // because only the last segment is one an append can reach. An earlier one
