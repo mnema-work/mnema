@@ -296,9 +296,11 @@ entry of a tail directory once, in its notes, and reads nothing of it: it does n
 refuse the record for one, and it does not count a copy of a segment (a
 `000001.jsonl.bak` whose lines are signed) as a second one. The sentence both readers
 say is `holds "<name>", which is not part of the format: it is named here, never read,
-and nothing in it is vouched for`, the name quoted as JSON with every non-ASCII
-character escaped. What an operating system writes on its own, `.DS_Store` and any
-name starting `._`, is skipped and not named, by the rule `keys/` uses. A symbolic
+and nothing in it is vouched for`, the name quoted as JSON with every character
+outside printable ASCII escaped (a byte that is not UTF-8 reads as U+FFFD). What an operating system writes on its own, `.DS_Store` and any
+name starting `._`, is skipped and not named, by the rule `keys/` uses. A segment is a regular file whose whole name is
+`NNNNNN.jsonl`: a folder of that name, and a file named `witness`, are named like any
+other entry and read by nobody. A symbolic
 link is classified and not said. `witness/` and the record's root are not covered by
 this note (`packages/chain/src/chain/both-readers-read-the-same-bytes.test.ts`,
 `stray-file-in-a-tail`, `stray-folder-in-a-tail` and `os-file-in-a-tail`).

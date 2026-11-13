@@ -1760,7 +1760,7 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
   '@mnema/chain chain/verify.ts «holds {}, which is not part of the format: it is named here, never read, and nothing in it is vouched for» jsonAscii(entry) #1':
     {
       verdict: 'composed',
-      why: 'the name of an entry a tail directory holds, quoted as JSON with every control and non-ASCII character escaped (`jsonAscii`), which is how the second reader writes it: it cannot hold a line break, and collapsing whitespace would make the two sentences differ',
+      why: 'the name of an entry a tail directory holds, quoted as JSON with every character outside printable ASCII escaped (`jsonAscii`: controls, DEL and non-ASCII), which is how the second reader writes it: it cannot hold a line break, and collapsing whitespace would make the two sentences differ',
     },
   '@mnema/chain chain/verify.ts «no committed public key for signer {}» oneLine(checkpoint.signerFp) #1':
     {
