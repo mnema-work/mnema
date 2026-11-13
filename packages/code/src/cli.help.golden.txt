@@ -572,7 +572,8 @@ $ mnema brief --help
 | Options:
 |   --hook         print it for a Claude Code hook: whole rules up to what a hook
 |                  carries, and a closing paragraph saying how many were left out
-|                  and what serves them
+|                  and what serves them, and a refusal opens with its code alone
+|                  on the first line of the error stream
 |   --host <host>  with --hook, the host whose own ceiling to cut the rules to:
 |                  codex; without it, Claude Code’s
 |   -h, --help     display help for command
@@ -626,7 +627,9 @@ $ mnema recall --help
 |
 | Options:
 |   --hook                print it for a Claude Code hook: whole notes up to what
-|                         a hook carries, each section saying how many it left out
+|                         a hook carries, each section saying how many it left
+|                         out, and a refusal opens with its code alone on the
+|                         first line of the error stream
 |   --host <host>         with --hook, the host whose own ceiling to cut the notes
 |                         to: codex; without it, Claude Code’s
 |   --session <id>        the host’s id for the session these notes are for: the
