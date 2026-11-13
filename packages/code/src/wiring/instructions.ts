@@ -58,10 +58,11 @@ export function registerInstructions(program: Command, wiring: Wiring): Declared
         'it names (claude, cursor, vscode, codex; a person’s CLAUDE.md or GEMINI.md under the host that',
         'is named), which is how to add the block to one file without writing the others.',
         '',
-        'A CLAUDE.md or .claude/CLAUDE.md that imports AGENTS.md (a line of its own, @AGENTS.md or',
-        '@./AGENTS.md) gets no block while AGENTS.md is written: Claude Code reads that file from',
-        'there. One that holds a block already is said to be read twice, and at a terminal the block',
-        'comes out only if you say yes.',
+        'A CLAUDE.md that imports AGENTS.md (a line of its own, @AGENTS.md or @./AGENTS.md) or a',
+        '.claude/CLAUDE.md that does (@../AGENTS.md: a relative import is read from the folder of the',
+        'file that holds it) gets no block while AGENTS.md is written: Claude Code reads that file',
+        'from there. One that holds a block already is said to be read twice, and at a terminal the',
+        'block comes out only if you say yes; on a no, an earlier version of it is brought up to date.',
       ].join('\n'),
     )
     .action(
@@ -177,10 +178,17 @@ export function registerInstructions(program: Command, wiring: Wiring): Declared
           io.terminal !== undefined
         ) {
           const { askToTakeTheBlockOut } = await import('../init/flow.js');
-          const { removeFrom } = await import('../commands/instructions.js');
+          const { refreshIn, removeFrom } = await import('../commands/instructions.js');
           const answer = await askToTakeTheBlockOut({ io, render, terminal: io.terminal }, doubled);
-          if (answer.kind === 'answered' && answer.answer === 'yes') {
-            for (const file of removeFrom(root, doubled)) io.out(render(fact(changeLine(file))));
+          if (answer.kind === 'answered') {
+            // A no keeps the block, and a block of an earlier version is brought up to date: it is mnema's, and the
+            // person chose to keep it.
+            const kept = files
+              .filter((file) => file.imports === 'doubled' && file.found.state === 'outdated')
+              .map((file) => file.path);
+            const done =
+              answer.answer === 'yes' ? removeFrom(root, doubled) : refreshIn(root, kept);
+            for (const file of done) io.out(render(fact(changeLine(file))));
           }
         }
         if (files.some((file) => file.did === 'refused' || file.did === 'failed')) io.fail();

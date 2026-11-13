@@ -23,6 +23,8 @@
  * says so. A new wording is a new version here, with the old one kept.
  */
 
+import { posix } from 'node:path';
+
 /** The version of the text {@link INSTRUCTIONS_BODY} is. */
 export const INSTRUCTIONS_VERSION = 'v4';
 
@@ -372,21 +374,31 @@ export function withoutTheBlock(text: string): string {
   return kept + text.slice(from);
 }
 
-const IMPORT_AGENTS = /^@(?:\.\/)?AGENTS\.md[ \t]*$/;
+const IMPORT_LINE = /^ {0,3}@(\S+)[ \t]*$/;
 
 /**
- * Whether `text`, a `CLAUDE.md` or a `.claude/CLAUDE.md`, imports `AGENTS.md`: a line of its own that is
- * `@AGENTS.md` or `@./AGENTS.md`, and not inside a fenced code block (a page that shows the line as an
- * example imports nothing). Claude Code reads the imported file as if its text stood where the line is,
- * so the instructions in that `AGENTS.md` reach it without a block of their own (ADR-375). A fence that is
- * never closed hides nothing, as in {@link markerLines}. Only this one file is looked at: an import
- * inside `AGENTS.md` itself, or any other file, is not followed.
+ * Whether `text`, the content of `file` (a `CLAUDE.md` or a `.claude/CLAUDE.md`, by its path from the project's
+ * root), imports the project's `AGENTS.md`: a line of its own that is `@<path>`, where the path, resolved from the
+ * folder of `file` (Claude Code resolves a relative import from the file that holds it), is the `AGENTS.md` at the
+ * root. In `CLAUDE.md` that is `@AGENTS.md` or `@./AGENTS.md`; in `.claude/CLAUDE.md`, `@../AGENTS.md`, while
+ * `@AGENTS.md` there names `.claude/AGENTS.md` and covers nothing. A line inside a fenced code block or an HTML
+ * comment (the host takes comments out before it reads) imports nothing, nor does an indented code line (four
+ * spaces or more); a leading byte order mark is set aside. A fence that is never closed hides nothing, as in
+ * {@link markerLines}. Only this one file is looked at: an import inside `AGENTS.md` itself, or a chain of imports,
+ * is not followed, and one in the middle of a sentence is not read (ADR-375).
  */
-export function importsAgents(text: string): boolean {
+export function importsAgents(text: string, file = 'CLAUDE.md'): boolean {
+  const covers = (line: string): boolean => {
+    const named = IMPORT_LINE.exec(line)?.[1];
+    return (
+      named !== undefined && posix.normalize(posix.join(posix.dirname(file), named)) === 'AGENTS.md'
+    );
+  };
+  const bare = text.replace(/^\uFEFF/, '').replace(/<!--[\s\S]*?-->/g, '');
   let fence: { readonly char: string; readonly length: number } | undefined;
   let hidden = false;
   let found = false;
-  for (const raw of text.split('\n')) {
+  for (const raw of bare.split('\n')) {
     const line = raw.endsWith('\r') ? raw.slice(0, -1) : raw;
     const opens = FENCE.exec(line);
     if (fence !== undefined) {
@@ -400,7 +412,7 @@ export function importsAgents(text: string): boolean {
       ) {
         fence = undefined;
         hidden = false;
-      } else if (IMPORT_AGENTS.test(line)) {
+      } else if (covers(line)) {
         hidden = true;
       }
     } else if (opens !== null) {
@@ -408,7 +420,7 @@ export function importsAgents(text: string): boolean {
       if (ticks[0] === '~' || !(opens[2] as string).includes('`')) {
         fence = { char: ticks[0] as string, length: ticks.length };
       }
-    } else if (IMPORT_AGENTS.test(line)) {
+    } else if (covers(line)) {
       found = true;
     }
   }
@@ -416,7 +428,7 @@ export function importsAgents(text: string): boolean {
   return found || hidden;
 }
 
-/** The files of the person's whose import of `AGENTS.md` Claude Code follows (ADR-375). */
+/** The files of the person's whose import of the root `AGENTS.md` Claude Code follows (ADR-375). */
 export const IMPORTING_FILES: readonly string[] = ['CLAUDE.md', '.claude/CLAUDE.md'];
 
 /**
@@ -474,16 +486,32 @@ export function sameInstructionsText(held: string, written: string): boolean {
   return held.replace(/\r\n/g, '\n') === written || blocksOf(held) === blocksOf(written);
 }
 
-/** The keys and values of a front matter, quoting set aside; `undefined` where a line is not `key: value`. */
-function frontMatterValues(lines: readonly string[]): ReadonlyMap<string, string> | undefined {
-  const values = new Map<string, string>();
+/** A front matter value: its text, and whether it was quoted (a quoted `"true"` is a string, a bare `true` a boolean). */
+interface Scalar {
+  readonly text: string;
+  readonly quoted: boolean;
+}
+
+/**
+ * The keys and values of a front matter, with the quotes set aside but kept in the type of the value; `undefined`
+ * where a line is not `key: value`, a key is given twice, or a bare value starts with a character YAML reserves
+ * (`*` an alias, `&`, `!`, `|`, `>`, `%`, `@`, a backtick), which is not the plain text it looks like.
+ */
+function frontMatterValues(lines: readonly string[]): ReadonlyMap<string, Scalar> | undefined {
+  const values = new Map<string, Scalar>();
   for (const line of lines) {
     if (line.trim() === '') continue;
     const pair = /^([A-Za-z][\w-]*):[ \t]*(.*?)[ \t]*$/.exec(line);
-    if (pair === null) return undefined;
+    if (pair === null || values.has(pair[1] as string)) return undefined;
     const value = pair[2] as string;
     const quoted = /^(["'])(.*)\1$/.exec(value);
-    values.set(pair[1] as string, quoted === null ? value : (quoted[2] as string));
+    if (quoted === null && /^[*&!|>%@`]/.test(value)) return undefined;
+    values.set(
+      pair[1] as string,
+      quoted === null
+        ? { text: value, quoted: false }
+        : { text: quoted[2] as string, quoted: true },
+    );
   }
   return values;
 }
@@ -514,6 +542,10 @@ export function sameOwnFile(held: string, written: string): boolean {
   const wanted = frontMatterValues(mine.lines);
   const present = frontMatterValues(theirs.lines);
   if (wanted === undefined || present === undefined || wanted.size !== present.size) return false;
-  for (const [key, value] of wanted) if (present.get(key) !== value) return false;
+  for (const [key, value] of wanted) {
+    const held = present.get(key);
+    if (held === undefined || held.text !== value.text || held.quoted !== value.quoted)
+      return false;
+  }
   return sameInstructionsText(theirs.rest, mine.rest);
 }

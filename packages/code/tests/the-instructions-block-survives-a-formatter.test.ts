@@ -166,6 +166,11 @@ describe('the front matter of the files wholly mnema’s', () => {
       (text: string) => text.replace('---\n\n', 'name: mine\n---\n\n'),
     ],
     [
+      'an applyTo with no quotes, which YAML reads as an alias',
+      (text: string) => text.replace('"**"', '**'),
+    ],
+    ['a key given twice', (text: string) => text.replace('---\n\n', 'applyTo: "**"\n---\n\n')],
+    [
       'a changed word in the block',
       (text: string) => text.replace('call `bootstrap`', 'never call `bootstrap`'),
     ],
@@ -181,4 +186,26 @@ describe('the front matter of the files wholly mnema’s', () => {
     expect(written?.did).toBe('refused');
     expect(get(path)).toBe(edited);
   });
+});
+
+describe('the type of a front matter value', () => {
+  it('counts a quoted "true" for alwaysApply as the person’s edit, where the original is the boolean', () => {
+    const path = '.cursor/rules/mnema-instructions.mdc';
+    writeInstructions(project);
+    const edited = get(path).replace('alwaysApply: true', 'alwaysApply: "true"');
+    expect(edited).not.toBe(get(path));
+    put(path, edited);
+    expect(stateOf(path)).toBe('edited');
+    expect(get(path)).toBe(edited);
+  });
+
+  it.each(['*', '&', '!', '|', '>', '%', '@', '`'])(
+    'counts a bare value that starts with %s as the person’s edit',
+    (mark) => {
+      const path = '.github/instructions/mnema-instructions.instructions.md';
+      writeInstructions(project);
+      put(path, get(path).replace('"**"', `${mark}x`));
+      expect(stateOf(path)).toBe('edited');
+    },
+  );
 });

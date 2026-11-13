@@ -56,15 +56,20 @@ another instructions file holds it, counts as left out, so `mnema instructions -
 without a terminal leave it alone and say in one line that it was left out, with the form that adds the block to it alone, `mnema instructions --hosts claude` (or the host it belongs to). `--hosts` takes what `init --hosts` takes and writes only the hosts it names, a file of yours under them where it exists; it cannot be given with `--check`, `--remove` or `--all-hosts`.
 Where no file holds a block, nothing was left out.
 
-A `CLAUDE.md` or `.claude/CLAUDE.md` that imports `AGENTS.md` (a line of its own, `@AGENTS.md` or `@./AGENTS.md`, outside
-a code fence) gets no block while `AGENTS.md` is one of the files written: Claude Code reads an imported file as if its
-text stood where the line is, so the block there would be read twice. It is not counted as left out, and `init`,
+A `CLAUDE.md` that imports the `AGENTS.md` at the root (a line of its own, `@AGENTS.md` or `@./AGENTS.md`), or a
+`.claude/CLAUDE.md` that does (`@../AGENTS.md`), gets no block while `AGENTS.md` is one of the files written: Claude Code
+reads an imported file as if its text stood where the line is, so the block there would be read twice. A relative import is
+resolved from the folder of the file that holds it, so `@AGENTS.md` in `.claude/CLAUDE.md` names `.claude/AGENTS.md` and
+covers nothing: that file gets the block. A line inside a code fence or an HTML comment, or indented as code, is not an
+import; a line in the middle of a sentence is not read. The file is not counted as left out, and `init`,
 `mnema instructions`, `--check` and `mnema doctor` say in one line why nothing is written in it. A block that is in it
-already is said by `--check` and `mnema doctor` to be read twice (it is never taken out without being asked): `mnema
-instructions` asks at a terminal whether to take it out and does so only on a yes, and without a terminal says it and
-changes nothing. `.claude/rules/mnema-instructions.md` keeps its file. Where `AGENTS.md` is not among the files written
-(`--hosts claude`), the import covers nothing and the block is written as before. Only the line in that one file is read:
-an import inside `AGENTS.md`, or a chain of imports, is not followed, and `GEMINI.md` is not looked at.
+already is said by `--check` and `mnema doctor` to be read twice, and is never taken out without being asked:
+`mnema instructions` asks at a terminal whether to take it out and does so only on a yes; on a no, a block of an
+earlier version is brought up to date in place (so `--check`, which exits 1 for an out-of-date block, then exits 0 and
+still says it is read twice); without a terminal it says it and changes nothing. `.claude/rules/mnema-instructions.md`
+keeps its file. Where `AGENTS.md` is not among the files written (`--hosts claude`), the import covers nothing and the
+block is written as before. Only the line in that one file is read: an import inside `AGENTS.md`, or a chain of imports,
+is not followed, and `GEMINI.md` is not looked at.
 
 The question of who may accept is whether an agent may accept at once what you pick among the options it offered, or
 dictate, quoting your words, while what it proposes on its own waits for you (`mnema decision review`). The answer is

@@ -473,7 +473,7 @@ export function pullAnswered(answer: 'yes' | 'no', width: number): readonly Line
 
 /** The two answers about a block a file that imports AGENTS.md holds, in the order they are listed. */
 export const TAKE_OUT_OPTIONS: readonly CompletionWord[] = [
-  { word: 'no', description: 'No, leave the block where it is' },
+  { word: 'no', description: 'No, keep the block (an earlier version’s is brought up to date)' },
   { word: 'yes', description: 'Yes, take the block out of the files named' },
 ];
 
@@ -514,7 +514,7 @@ export function takeOutAnswered(answer: 'yes' | 'no', width: number): readonly L
     heading(DONE, `Take the block out of the files that import AGENTS.md: ${answer}`),
     ...paragraph(
       trail,
-      answer === 'yes' ? 'taken out, as said below' : 'the blocks are left where they are',
+      answer === 'yes' ? 'taken out, as said below' : 'the blocks are kept',
       width,
       '  ',
     ),

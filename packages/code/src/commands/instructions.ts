@@ -277,7 +277,7 @@ function importsTheAgentsFile(project: string, relative: string): boolean {
   if (linkRefusal(project, relative) !== undefined) return false;
   try {
     const text = read(join(project, relative));
-    return text !== undefined && importsAgents(text);
+    return text !== undefined && importsAgents(text, relative);
   } catch {
     return false;
   }
@@ -530,6 +530,16 @@ export function writeInstructions(
 }
 
 /**
+ * Brings the block of the files named up to this version, where the person chose to keep a block in a file that
+ * imports `AGENTS.md`: it is mnema's, and an earlier version of it is replaced in place.
+ */
+export function refreshIn(project: string, paths: readonly string[]): readonly InstructionsFile[] {
+  return INSTRUCTIONS_TARGETS.filter((target) => paths.includes(target.path)).map((target) =>
+    writeOne(project, target),
+  );
+}
+
+/**
  * Takes the block out of the files named, which are the ones the person said yes to: a file that imports
  * `AGENTS.md` and holds a block of its own (ADR-375). Only what was named is touched.
  */
@@ -609,6 +619,9 @@ export function removeInstructions(project: string): readonly InstructionsFile[]
 export function stateLine(file: InstructionsFile): string {
   if (file.imports === 'covered') {
     return `${file.path} imports AGENTS.md, so Claude Code reads the mnema instructions from there and none is written here.`;
+  }
+  if (file.imports === 'doubled' && file.found.state === 'outdated') {
+    return `${file.path} imports AGENTS.md and holds an earlier version’s mnema block of its own, so Claude Code reads the instructions twice and this block is out of date: at a terminal \`mnema instructions\` asks whether to take it out, and brings it up to date if you say no.`;
   }
   if (file.imports === 'doubled') {
     return `${file.path} imports AGENTS.md and holds a mnema block of its own, so Claude Code reads the instructions twice: at a terminal \`mnema instructions\` asks whether to take this one out.`;
