@@ -184,17 +184,20 @@ describe('the library door', () => {
     }
   }
 
-  it('refuses with no terminal and accepts at one, with no agent either way', {
+  // The library door always declares an agent (`RecordOptions.agent` is required), so with the
+  // switch off it is refused at a terminal as well: the seat is passed and the declaration decides.
+  it('refuses with no terminal, and at one too because it always declares an agent', {
     timeout: 60_000,
   }, () => {
     const id = aProposalWithTheSwitchOff();
-    const record = openRecord({ cwd: project, agent: undefined, env: { home } });
+    const record = openRecord({ cwd: project, agent: 'a-program', env: { home } });
     const before = held(sandbox);
-    const refused = seatedAs(false, () => record.acceptDecision({ id, note: 'ok' }));
-    expect(refused).toMatchObject({ ok: false, reason: 'REFUSED', code: 'AGENT_ACCEPTS_IS_OFF' });
-    expect(JSON.stringify(refused)).not.toContain('mnema decision move');
-    expect(held(sandbox)).toEqual(before);
-    const accepted = seatedAs(true, () => record.acceptDecision({ id, note: 'ok' }));
-    expect(accepted.ok, JSON.stringify(accepted)).toBe(true);
+    for (const tty of [false, true]) {
+      const refused = seatedAs(tty, () => record.acceptDecision({ id, note: 'ok' }));
+      expect(refused).toMatchObject({ ok: false, reason: 'REFUSED', code: 'AGENT_ACCEPTS_IS_OFF' });
+      expect(JSON.stringify(refused)).not.toContain('mnema decision move');
+      expect(held(sandbox)).toEqual(before);
+    }
+    expect(state(id)).toContain('(proposed)');
   });
 });
