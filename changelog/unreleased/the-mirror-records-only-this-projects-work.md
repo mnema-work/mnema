@@ -1,0 +1,3 @@
+Changed
+
+- **The mirror of what a session hands to other agents records only this project's work, and names a brief only when the prompt points at one.** A dispatch whose prompt cites files that exist, all of them in another repository, is no longer recorded: the second stream says so and the session task's closing note counts it. The brief names a file only when a word such as `read`, `see`, `follow` or `leia` points at it and it is not in another repository (a file that is only mentioned, like `CHANGELOG.md`, is not named), and the id of a task, decision or pattern of this project that the prompt points at becomes `Brief in the record: <id>`. The prompt itself is still never recorded.

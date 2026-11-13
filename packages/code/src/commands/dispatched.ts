@@ -6,10 +6,16 @@
  * ONE TASK PER SESSION. The first dispatch of a session opens a PRIVATE task, "Work handed over in this
  * session" and the instant, moved to in progress; every dispatch records a private handoff on it,
  * from `orchestrator` to the subagent type the call named, with a brief that is the call's short
- * description and, when the prompt cites a file that exists, that file's path. The end of the session
+ * description and, when the prompt POINTS at a file of this project that exists (a word such as "read"
+ * before the path), that file's path, or the id of a record of this project it points at. The end of the session
  * moves the task to done, with the number of handoffs as its note. The task's id and the count live in
  * the session journal (`session-journal.ts`), the one file this machine keeps per session: no second
  * mechanism, and a session whose journal switch is off is a session this does nothing for.
+ *
+ * ONLY THIS PROJECT'S WORK. A call whose prompt cites files that exist, all of them in another
+ * repository (found by climbing from each path to the folder that holds a `.git`, with no `git`
+ * spawned), is work for that project: it is not mirrored here, the second stream says so, and the
+ * session's closing note counts it with its own counter.
  *
  * THE PROMPT IS NEVER RECORDED. A prompt is the longest text a session writes and it can hold anything
  * the person pasted; the record gets the description the host's own call carries (a few words the
@@ -28,12 +34,14 @@
  * mirror never holds a dispatch.
  */
 
-import { existsSync, statSync } from 'node:fs';
-import { dirname, isAbsolute, relative, resolve } from 'node:path';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { channelIsOn } from '@mnema/context';
 import { type DiscoveryEnv, type ResolvedTrees, resolveTrees, sweptReason } from '@mnema/core';
 import { AGENT_MIRROR_CHANNEL, SESSION_JOURNAL_CHANNEL } from '../record-framing.js';
 import {
+  anotherProjectsOf,
+  countAnotherProjectsDispatch,
   countASkip,
   exclusivelyOn,
   type HandedOver,
@@ -113,14 +121,106 @@ const A_PATH =
 const CANDIDATES = 12;
 
 /**
- * The first path in `prompt` that is a file on disk, as the project knows it: relative to the
- * project when inside it, absolute otherwise. Never the prompt, and never a path that is not a file.
+ * The words that, shortly before a path or an id, say the prompt POINTS at it as the brief: a path
+ * that is only mentioned ("add a line to CHANGELOG.md") is not one. Lower case, English and
+ * Portuguese.
  */
-export function briefFileOf(prompt: string, cwd: string, root: string): string | undefined {
+export const BRIEF_TRIGGERS: readonly string[] = [
+  'read',
+  'see',
+  'follow',
+  'open',
+  'consult',
+  'brief',
+  'handoff',
+  'hand-off',
+  'spec',
+  'specification',
+  'instructions',
+  'task',
+  'per',
+  'according',
+  'leia',
+  'ler',
+  'veja',
+  'ver',
+  'siga',
+  'seguir',
+  'abra',
+  'abrir',
+  'consulte',
+  'pedido',
+  'especificacao',
+  'especificação',
+  'instrucoes',
+  'instruções',
+  'tarefa',
+  'conforme',
+  'segundo',
+];
+
+/** How many words before a path or an id are looked at for a trigger. */
+const TRIGGER_REACH = 3;
+
+/** Whether one of the words just before `at` in `prompt` is a trigger. */
+function pointedAt(prompt: string, at: number): boolean {
+  const words = prompt
+    .slice(Math.max(0, at - 240), at)
+    .toLowerCase()
+    .split(/\s+/)
+    .map((word) => word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ''))
+    .filter((word) => word !== '')
+    .slice(-TRIGGER_REACH);
+  return words.some((word) => BRIEF_TRIGGERS.includes(word));
+}
+
+/** An id of this registry's shape. */
+const AN_ID = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
+
+/**
+ * The repository a path belongs to, found by climbing the folders to the first that holds a `.git`
+ * (a folder, or the file a worktree has): the folder of the repository's own `.git` for a clone, and
+ * for a worktree the same, so two worktrees of one repository are one. Undefined for a path in no
+ * repository. Only `statSync` and one small read: no `git` runs per path.
+ */
+function repositoryOf(absolute: string): string | undefined {
+  let at = dirname(absolute);
+  for (;;) {
+    const dot = join(at, '.git');
+    try {
+      const stat = statSync(dot);
+      if (stat.isDirectory()) return dot;
+      const named = /^gitdir:\s*(.+)$/m.exec(readFileSync(dot, 'utf-8'))?.[1]?.trim();
+      if (named === undefined) return at;
+      const gitdir = resolve(at, named);
+      // `<common>/worktrees/<name>`: the repository is `<common>`.
+      return basename(dirname(gitdir)) === 'worktrees' ? dirname(dirname(gitdir)) : gitdir;
+    } catch {
+      // Not here: the next folder up.
+    }
+    const up = dirname(at);
+    if (up === at) return undefined;
+    at = up;
+  }
+}
+
+/** A file the prompt cites that exists, and whose it is. */
+interface Cited {
+  readonly absolute: string;
+  /** Where the prompt names it, for the words before it. */
+  readonly at: number;
+  /** In another repository than the project's. */
+  readonly elsewhere: boolean;
+}
+
+/** The files of the head of a prompt that exist, in the order cited, with whose each is. */
+function citedFiles(prompt: string, cwd: string, root: string): Cited[] {
+  const mine = repositoryOf(join(root, '.mnema'));
+  const found: Cited[] = [];
   let seen = 0;
-  for (const found of prompt.matchAll(A_PATH)) {
+  for (const match of prompt.matchAll(A_PATH)) {
     if (seen++ >= CANDIDATES) break;
-    const word = found[1];
+    const word = match[1];
     if (word === undefined || word.startsWith('~')) continue;
     const absolute = isAbsolute(word) ? resolve(word) : resolve(cwd, word);
     try {
@@ -129,16 +229,73 @@ export function briefFileOf(prompt: string, cwd: string, root: string): string |
       continue;
     }
     const inside = relative(root, absolute);
-    return inside === '' || inside.startsWith('..') || isAbsolute(inside) ? absolute : inside;
+    const here = inside === '' || !(inside.startsWith('..') || isAbsolute(inside));
+    const theirs = here ? undefined : repositoryOf(absolute);
+    found.push({
+      absolute,
+      at: (match.index ?? 0) + match[0].length - word.length,
+      elsewhere: theirs !== undefined && theirs !== mine,
+    });
+  }
+  return found;
+}
+
+/**
+ * Whether the work is another project's: the prompt cites files that exist and every one of them is
+ * in another repository. A call that cites none, or one of this project's, or one in no repository
+ * (a scratch folder), is this project's.
+ */
+export function isAnotherProjectsWork(prompt: string, cwd: string, root: string): boolean {
+  const cited = citedFiles(prompt, cwd, root);
+  return cited.length > 0 && cited.every((one) => one.elsewhere);
+}
+
+/**
+ * The first file in `prompt` that the prompt points at, that exists, and that is not in another
+ * repository, as the project knows it: relative to the project when inside it, absolute otherwise
+ * (a scratch folder). Never the prompt, never a path that is not a file, never a file that is only
+ * mentioned.
+ */
+export function briefFileOf(prompt: string, cwd: string, root: string): string | undefined {
+  for (const one of citedFiles(prompt, cwd, root)) {
+    if (one.elsewhere || !pointedAt(prompt, one.at)) continue;
+    const inside = relative(root, one.absolute);
+    return inside === '' || inside.startsWith('..') || isAbsolute(inside) ? one.absolute : inside;
   }
   return undefined;
 }
 
-/** The brief of one handoff: the short description, and the file the prompt cites when one is there. */
-export function briefOf(description: string | undefined, file: string | undefined): string {
+/** The first id the prompt points at that names a record of this project, or undefined. */
+export function briefRecordOf(prompt: string, trees: ResolvedTrees): string | undefined {
+  const ids = [...prompt.matchAll(AN_ID)].slice(0, CANDIDATES);
+  if (!ids.some((one) => pointedAt(prompt, one.index ?? 0))) return undefined;
+  return withScopedCaches(trees, (sources) => {
+    for (const one of ids) {
+      if (!pointedAt(prompt, one.index ?? 0)) continue;
+      const id = one[0].toLowerCase();
+      for (const { cache } of sources) {
+        if (
+          cache.getTask(id) !== null ||
+          cache.getDecision(id) !== null ||
+          cache.getSkill(id) !== null
+        )
+          return id;
+      }
+    }
+    return undefined;
+  });
+}
+
+/** The brief of one handoff: the short description, and the file or the record the prompt points at. */
+export function briefOf(
+  description: string | undefined,
+  file: string | undefined,
+  record?: string,
+): string {
   const said = (description ?? '').replace(/\s+/g, ' ').trim().slice(0, MAX_DESCRIPTION);
   const parts = [said === '' ? 'Work handed to a subagent.' : said];
   if (file !== undefined) parts.push(`Brief in the file: ${file}`);
+  else if (record !== undefined) parts.push(`Brief in the record: ${record}`);
   return parts.join('\n\n');
 }
 
@@ -221,12 +378,15 @@ function move(
 }
 
 /** The note a session's task is closed with: counts and nothing else. */
-function closingNote(handoffs: number, skipped: number): string {
+function closingNote(handoffs: number, skipped: number, elsewhere: number): string {
   return (
     `${handoffs} ${handoffs === 1 ? 'handoff' : 'handoffs'} recorded in this session.` +
     (skipped === 0
       ? ''
-      : ` ${skipped} ${skipped === 1 ? 'dispatch was' : 'dispatches were'} not mirrored.`)
+      : ` ${skipped} ${skipped === 1 ? 'dispatch was' : 'dispatches were'} not mirrored.`) +
+    (elsewhere === 0
+      ? ''
+      : ` ${elsewhere} ${elsewhere === 1 ? 'dispatch was' : 'dispatches were'} left out as work for another repository.`)
   );
 }
 
@@ -261,11 +421,23 @@ function dispatched(
   if (file === undefined) return silent();
   const now = ctx.now ?? new Date();
   const input = payload['tool_input'];
+  const prompt = text(input, 'prompt') ?? '';
+  const root = dirname(trees.projectPublic);
+  const to = (text(input, 'subagent_type') ?? '').trim() || ANY_SUBAGENT;
+  if (isAnotherProjectsWork(prompt, ctx.cwd, root)) {
+    // Work for another repository: nothing is recorded here, and nothing there. Counted, so the end
+    // of the session says it.
+    countAnotherProjectsDispatch(file);
+    return silent([
+      `A dispatch to ${to} was not mirrored: the files its prompt cites are in another repository.`,
+    ]);
+  }
+  const fileCited = briefFileOf(prompt, ctx.cwd, root);
   const brief = briefOf(
     text(input, 'description'),
-    briefFileOf(text(input, 'prompt') ?? '', ctx.cwd, dirname(trees.projectPublic)),
+    fileCited,
+    fileCited === undefined ? briefRecordOf(prompt, trees) : undefined,
   );
-  const to = (text(input, 'subagent_type') ?? '').trim() || ANY_SUBAGENT;
 
   const done = exclusivelyOn(
     file,
@@ -338,7 +510,9 @@ function ended(ctx: DispatchedContext, trees: ResolvedTrees, session: string): D
       const unblocked = held.swept === true ? move(ctx, held.task, 'unblock', {}) : undefined;
       const refused =
         unblocked ??
-        move(ctx, held.task, 'complete', { note: closingNote(held.handoffs, skippedOf(file)) });
+        move(ctx, held.task, 'complete', {
+          note: closingNote(held.handoffs, skippedOf(file), anotherProjectsOf(file)),
+        });
       const { swept: _swept, ...rest } = held;
       writeJournal(
         file,
