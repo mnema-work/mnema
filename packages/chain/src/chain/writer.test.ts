@@ -907,13 +907,18 @@ describe('the buffer a checkpoint signs must be exactly the range it claims', ()
     expect(() => assertBufferCoversRange('t', 3, 3, [3])).not.toThrow();
   });
 
-  it('refuses a hole at the start, at the end and in the middle of the range', () => {
+  it('refuses a buffer one event short, wherever the missing one was', () => {
     expect(() => assertBufferCoversRange('t', 5, 8, [6, 7, 8])).toThrow(refusal(5, 8, 4, 3));
     expect(() => assertBufferCoversRange('t', 5, 8, [5, 6, 7])).toThrow(refusal(5, 8, 4, 3));
     expect(() => assertBufferCoversRange('t', 5, 8, [5, 6, 8])).toThrow(refusal(5, 8, 4, 3));
   });
 
-  it('refuses an empty buffer and one that holds more than the range', () => {
+  it('checks the count and not the seqs: a buffer of the right size with other seqs passes', () => {
+    // Outside what the function confirms, said here so nobody reads it as more.
+    expect(() => assertBufferCoversRange('t', 5, 8, [5, 6, 8, 9])).not.toThrow();
+  });
+
+  it('refuses an empty buffer and one event too many', () => {
     expect(() => assertBufferCoversRange('t', 5, 8, [])).toThrow(refusal(5, 8, 4, 0));
     expect(() => assertBufferCoversRange('t', 5, 6, [5, 6, 7])).toThrow(refusal(5, 6, 2, 3));
   });
@@ -924,8 +929,15 @@ describe('the buffer a checkpoint signs must be exactly the range it claims', ()
     const source = readFileSync(new URL('./writer.ts', import.meta.url), 'utf-8');
     const start = source.indexOf('private signLocked(');
     expect(start).toBeGreaterThan(-1);
-    const body = source.slice(start, source.indexOf('\n  }\n', start));
-    const call = body.indexOf('assertBufferCoversRange(this.tailId, fromSeq, toSeq, this.pending)');
+    // Only what runs counts: comments and string or template literals are blanked first.
+    const body = source
+      .slice(start, source.indexOf('\n  }\n', start))
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '')
+      .replace(/`(?:\\.|[^`\\])*`|'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"/g, '""');
+    const call = body.search(
+      /^\s*assertBufferCoversRange\(this\.tailId, fromSeq, toSeq, this\.pending\);/m,
+    );
     expect(call).toBeGreaterThan(-1);
     expect(call).toBeLessThan(body.indexOf('signCheckpoint('));
   });

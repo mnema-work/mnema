@@ -1157,12 +1157,12 @@ export class ChainWriter {
    * `[fromSeq..toSeq]`, so signing a content root over a set that is not exactly
    * that range would be a silent break of the proof; a verifier recomputing the
    * root from the bytes would then read an honest tail as tampered. It refuses
-   * loudly instead. The mismatch is not reachable by any legitimate use: the
-   * buffer is appended to on every successful write and emptied only here, AND the
-   * coverage it reads is brought back in line with the disk under the lock first, so
-   * a range another process has already signed is not signed a second time. That is why the
-   * refusal, {@link assertBufferCoversRange}, is not reachable by legitimate use: the test of
-   * that function in `writer.test.ts` is what holds it, and it also holds that signing calls it.
+   * loudly instead, through {@link assertBufferCoversRange}. No legitimate use reaches
+   * that refusal: the buffer is appended to on every successful write and is emptied by a
+   * signature or rebuilt from the disk by recovery, AND the coverage it reads is brought back
+   * in line with the disk under the lock first, so a range another process has already signed
+   * is not signed a second time. The test of that function in `writer.test.ts` is what holds
+   * it, and it also holds that signing calls it.
    *
    * @throws {TailBusyError} if another process holds the tail past the wait budget.
    * Nothing is signed.
@@ -1215,13 +1215,18 @@ export class ChainWriter {
 }
 
 /**
- * Refuses, before anything is signed, a buffer that is not exactly the range a checkpoint is about
- * to claim: a content root over any other set of events would be a silent break of the proof.
+ * Refuses, before anything is signed, a buffer that does not hold as many events as the range a
+ * checkpoint is about to claim: a content root over any other set of events would be a silent
+ * break of the proof.
+ *
+ * It checks the COUNT: `pending` must hold `toSeq - fromSeq + 1` events. A buffer of the right
+ * size whose events are other seqs than the range passes, and is outside what this function
+ * confirms.
  *
  * No legitimate use reaches the refusal: the buffer grows on every successful write and is emptied
- * only by a signature, and the coverage is brought back in line with the disk under the lock first.
- * It stays as a last line, and `writer.test.ts` holds this function directly (the range covered,
- * a hole at the start, at the end and in the middle, an empty buffer) and holds that
+ * by a signature or rebuilt from the disk by recovery, and the coverage is brought back in line
+ * with the disk under the lock first. It stays as a last line, and `writer.test.ts` holds this
+ * function directly (the range covered, one event short, one over, an empty buffer) and holds that
  * `signLocked` calls it.
  *
  * @throws {Error} when `pending` does not hold exactly `toSeq - fromSeq + 1` events.
