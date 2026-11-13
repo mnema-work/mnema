@@ -1,7 +1,7 @@
 // @reads-the-tree
 /**
  * THE PACKED INSTALL RUNS WHERE IT IS MEANT TO. `.github/workflows/packed-install.yml` packs the
- * five publishable packages and installs them together, and it is meant to run on a push to `main`
+ * five publishable packages and installs the `@mnema/code` tarball alone, and it is meant to run on a push to `main`
  * and on a `v*` tag and NOT on a pull request, and to run the one script that does the work.
  *
  * What this reads is the file, and a file that says it runs is not a run: the script itself was
@@ -46,8 +46,11 @@ describe('the packed install runs where it is meant to', () => {
     expect(statSync(SCRIPT_PATH).mode & 0o111, 'the script is not executable').not.toBe(0);
   });
 
-  it('installs every tarball in one command, then init, record and verify', () => {
-    expect(SCRIPT).toMatch(/npm i -g --prefix "\$prefix"[^\n]*"\$\{tarballs\[@\]\}"/);
+  it('installs the @mnema/code tarball alone, counts what npm put there, then init, record and verify', () => {
+    expect(SCRIPT).toMatch(/npm i -g --prefix "\$prefix"[^\n]*"\$code_tarball"/);
+    expect(SCRIPT).not.toMatch(/npm i -g[^\n]*\$\{tarballs\[@\]\}/);
+    expect(SCRIPT).toMatch(/npm ls -g --all --parseable/);
+    expect(SCRIPT).toMatch(/\[ "\$installed_count" -le 5 \]/);
     expect(SCRIPT).toMatch(/^run init$/m);
     expect(SCRIPT).toMatch(/^run decision record /m);
     expect(SCRIPT).toMatch(/^run verify$/m);

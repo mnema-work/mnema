@@ -1,8 +1,9 @@
 # Windows and macOS
 
 Every pull request runs one job on `windows-latest` and one on `macos-latest`, each on Node 24.15.0 (the floor)
-and on the latest 24. The job packs the five packages, installs them together with `npm i -g` into an empty
-home (so the launcher is the one npm writes there, `mnema.cmd` on Windows), and drives the installed binary:
+and on the latest 24. The job packs `@mnema/code`, installs that one tarball with `npm i -g` into an empty home (so the launcher is the
+one npm writes there, `mnema.cmd` on Windows), checks that npm put no more than five packages on the machine, and
+drives the installed binary:
 
 - `mnema init`, recording a decision and accepting it, linking a rule that refuses a write at a folder, and
   `mnema verify --require signed`, which must say the record is intact;

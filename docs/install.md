@@ -71,8 +71,8 @@ version, so this checks the same package a global install of that version fetche
 From 0.1.7, the `mnema` command is one bundle inside `@mnema/code`
 (`dist/bundle/`): the code of its dependencies is copied into it at build time, so the
 dependencies the command runs are covered by the provenance of `@mnema/code`, not each by its own.
-npm still installs the dependencies `@mnema/code` declares, and `npm audit signatures` still checks
-those, but the command does not load them, except `string-width`, which the bundle leaves outside.
+After 0.1.8, `@mnema/code` declares only `string-width`, which the bundle leaves outside: an install puts five
+packages on the machine (`@mnema/code`, `string-width` and the three it needs), and `npm audit signatures` checks those.
 What the bundle carries, with each license, is in the package's
 [`THIRD-PARTY-NOTICES.md`](../packages/code/THIRD-PARTY-NOTICES.md).
 

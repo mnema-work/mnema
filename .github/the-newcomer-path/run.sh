@@ -36,6 +36,12 @@ else
   tarballs=("$work"/tarballs/*.tgz)
 fi
 [ "${#tarballs[@]}" -eq 5 ] || { echo "FAIL: expected five tarballs, found ${#tarballs[@]}"; exit 1; }
+# A person's `npm i -g @mnema/code` fetches that one package: the other four are carried in its bundle.
+code_tarball=""
+for tarball in "${tarballs[@]}"; do
+  case "$(basename "$tarball")" in mnema-code-*.tgz) code_tarball="$tarball" ;; esac
+done
+[ -n "$code_tarball" ] || { echo "FAIL: no mnema-code tarball among the five"; exit 1; }
 
 # The block: the first fenced sh block after the Quick start heading, as written.
 block="$work/block.sh"
@@ -72,7 +78,7 @@ runner="$work/runner.sh"
   echo 'npm() {'
   echo '  if [ "$*" = "i -g @mnema/code" ]; then'
   printf '    command npm i -g --prefix %q --no-audit --no-fund' "$prefix"
-  printf ' %q' "${tarballs[@]}"
+  printf ' %q' "$code_tarball"
   echo
   echo '  else echo "FAIL: the block calls npm $*" >&2; return 1; fi'
   echo '}'

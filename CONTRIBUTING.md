@@ -184,9 +184,9 @@ a workflow publishes, but only when a person approves it. A release needs no tok
 repository: npm trusts `.github/workflows/release.yml` (see below) and signs a provenance statement with
 each package.
 
-The check that runs before any of this packs the five publishable packages, installs them together into
-an empty prefix and an empty `HOME`, and runs `init`, `decision record` and `verify` with the installed
-binary, and it fails if a tarball carries a source map. CI runs it on Node 24.15.0, 24 and 26, and you can
+The check that runs before any of this packs the five publishable packages, installs the `@mnema/code` tarball
+alone (as a person does) into an empty prefix and an empty `HOME`, and runs `init`, `decision record` and `verify`
+with the installed binary, and it fails if a tarball carries a source map or npm installs more than five packages. CI runs it on Node 24.15.0, 24 and 26, and you can
 run it yourself:
 
 ```sh

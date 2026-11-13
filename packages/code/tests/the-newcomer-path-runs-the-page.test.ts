@@ -1,7 +1,7 @@
 // @reads-the-tree
 /**
  * THE NEWCOMER'S PATH RUNS THE PAGE. `.github/workflows/ci.yml` has a job that packs the five
- * packages, installs the tarballs with `npm i -g` into an empty prefix and runs, in a terminal, the
+ * packages, installs the `@mnema/code` tarball alone with `npm i -g` into an empty prefix and runs, in a terminal, the
  * Quick start block of the README, read from the README when the job runs, then checks that the
  * decision it recorded is accepted and linked and that `verify` is green.
  *

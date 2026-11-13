@@ -1,6 +1,6 @@
 /**
  * THE BUILT-IN INDEX IS THE REPOSITORY'S. `mnema stack index` with no folder reads the index that
- * ships inside the package (`dist/stack-index/`), because in a folder that is not a mnema checkout
+ * ships inside the package (`dist/bundle/stack-index/`), because in a folder that is not a mnema checkout
  * there is no `stack-index/` to read. The repository's `stack-index/index.json` stays the one file
  * people edit; the build copies it, and the example stacks it lists, into the package.
  *
@@ -23,7 +23,7 @@ import { MNEMA_CLI } from './support/the-cli.js';
 
 const CLI = MNEMA_CLI;
 const REPO = fileURLToPath(new URL('../../../', import.meta.url));
-const BUILT = fileURLToPath(new URL('../dist/stack-index/', import.meta.url));
+const BUILT = fileURLToPath(new URL('../dist/bundle/stack-index/', import.meta.url));
 
 interface Entry {
   name: string;
