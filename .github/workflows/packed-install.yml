@@ -1,10 +1,10 @@
 name: Packed install
 
-# THE FIVE PACKAGES, PACKED AND INSTALLED TOGETHER, THE WAY A PERSON INSTALLS THEM. Every other job
+# THE PACKAGES PACKED, AND `@mnema/code` INSTALLED ALONE, THE WAY A PERSON INSTALLS IT. Every other job
 # runs the workspace's own `dist` beside its own `node_modules`, where a package that the tarballs
 # leave out, a file `files` does not list and a `workspace:*` that never became a version all
-# resolve anyway. This one packs the publishable packages with `pnpm pack`, installs the tarballs
-# in ONE `npm i -g` into an empty prefix with an empty HOME and cache, and runs the installed
+# resolve anyway. This one packs the publishable packages with `pnpm pack`, installs the
+# `@mnema/code` tarball alone in ONE `npm i -g` into an empty prefix with an empty HOME and cache, and runs the installed
 # binary through `init`, `decision record` and `verify` in an empty project. It goes red if a
 # package is missing, if the install cannot resolve, if the binary does not print the version of
 # the package or does not run, or if `verify` does not say the record is intact.
@@ -56,5 +56,5 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Pack the five, install them together, init, record, verify
+      - name: Pack the five, install @mnema/code alone, init, record, verify
         run: bash .github/the-packed-install/run.sh

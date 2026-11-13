@@ -17,12 +17,21 @@
  * `packages/code/tests/the-built-in-index-is-the-repositorys.test.ts` holds the result.
  */
 
-import { copyFileSync, cpSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const out = join(root, 'packages', 'code', 'dist', 'bundle', 'stack-index');
+
+// The bundle step empties `dist/bundle/` when it runs, so this step goes after it, and a bundle
+// made alone afterwards takes the index with it: the build says so instead of writing into a
+// folder the bundle has not made.
+if (!existsSync(join(out, '..', 'cli.js'))) {
+  throw new Error(
+    'dist/bundle/cli.js is missing: run the-cli-bundle.mjs before this step (it empties dist/bundle/), and run this one again after it',
+  );
+}
 
 const index = join(root, 'stack-index', 'index.json');
 const { stacks } = JSON.parse(readFileSync(index, 'utf8'));

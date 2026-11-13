@@ -1,7 +1,7 @@
 // @reads-the-tree
 /**
  * THE PACKED INSTALL RUNS WHERE IT IS MEANT TO. `.github/workflows/packed-install.yml` packs the
- * five publishable packages and installs them together, and it is meant to run on a push to `main`
+ * five publishable packages and installs the `@mnema/code` tarball alone, and it is meant to run on a push to `main`
  * and on a `v*` tag and NOT on a pull request, and to run the one script that does the work.
  *
  * What this reads is the file, and a file that says it runs is not a run: the script itself was

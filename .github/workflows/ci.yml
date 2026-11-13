@@ -660,7 +660,7 @@ jobs:
 
   # THE USER'S OWN PATH ON WINDOWS AND ON macOS. Every other job runs on `ubuntu-24.04`, while
   # `docs/install.md` tells people on both of the others to install and run mnema. This job packs
-  # the five packages, installs them together with `npm i -g` (so the launcher is the one npm
+  # `@mnema/code`, installs that tarball alone with `npm i -g` (so the launcher is the one npm
   # writes on that system: `mnema.cmd` on Windows), and drives the INSTALLED binary through `init`,
   # `decision record`, a rule that refuses a write, `verify`, a clone checked out with
   # `core.autocrlf=true` (the record must still verify), the Python reader over it, `doctor`, and

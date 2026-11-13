@@ -99,11 +99,14 @@ describe('the package as it is published', () => {
     expect(imported).toEqual(LEFT_OUTSIDE.filter((name) => !OPTIONAL.includes(name)).sort());
   });
 
-  it('carries nothing of dist/ outside dist/bundle/', () => {
-    const stray = tarball.files.filter(
-      (path) => path.startsWith('dist/') && !path.startsWith('dist/bundle/'),
-    );
-    expect(stray).toEqual([]);
+  it('carries only the bundle, the notices, the license, the readme and the manifest', () => {
+    // A closed list: a `src/`, a `build/` or a `dist/` outside `dist/bundle/` named in `files`
+    // is an entry no install reads, and fails here instead of passing for being under no folder
+    // the test knew to look at.
+    const allowed = (path: string): boolean =>
+      path.startsWith('dist/bundle/') ||
+      ['NOTICE', 'THIRD-PARTY-NOTICES.md', 'LICENSE', 'README.md', 'package.json'].includes(path);
+    expect(tarball.files.filter((path) => !allowed(path))).toEqual([]);
   });
 
   it('exports nothing but its manifest, so the library is not a way in', () => {
