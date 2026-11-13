@@ -305,7 +305,7 @@ describe('the setting', () => {
     expect(served?.isError, told).toBe(true);
     expect(told.startsWith('Refused (AGENT_ACCEPTS_IS_OFF): '), told).toBe(true);
     expect(told).toContain('mnema switch on agent-accepts');
-    expect(told).toContain('mnema decision move accept');
+    expect(told).not.toContain('mnema decision move');
 
     // The agent, declared on the command line.
     const declared = mnema(
@@ -326,8 +326,12 @@ describe('the setting', () => {
     // Neither moved. A person, with no agent on the act, is not asked.
     expect(mnema(atA, a, 'show', one).out).toContain('(proposed)');
     expect(mnema(atA, a, 'show', two).out).toContain('(proposed)');
-    const person = mnema(atA, a, 'decision', 'move', 'accept', three, '--note', 'a person rules');
-    expect(person.status, person.out).toBe(0);
+    // With no agent declared and no terminal (the pipes here), the accept is turned away too:
+    // `an-accept-without-an-agent-needs-a-terminal.test.ts` has the person at a pty accepting.
+    const nobody = mnema(atA, a, 'decision', 'move', 'accept', three, '--note', 'no one declared');
+    expect(nobody.status).toBe(1);
+    expect(nobody.out).toContain('no agent declared');
+    expect(mnema(atA, a, 'show', three).out).toContain('(proposed)');
 
     // And a reject by an agent is not what the switch is about.
     const rejected = mnema(

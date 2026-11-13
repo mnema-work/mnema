@@ -131,6 +131,7 @@ export async function reviewDecisions(wiring: Wiring): Promise<void> {
         action: verdict.action,
         proof: { note: verdict.note ?? shared },
         ...(run !== undefined ? { run } : {}),
+        atATerminal: io.aPersonIsHere === true,
       },
     );
     if (result.ok) {

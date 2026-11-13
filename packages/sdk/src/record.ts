@@ -72,6 +72,15 @@ export type BriefRead =
   | { readonly ok: true; readonly document: string }
   | Exclude<ReturnType<typeof runBrief>, { readonly ok: true }>;
 
+/**
+ * Whether a person is at a terminal: the same test the command line makes of its own process
+ * (standard input and standard error are both a TTY). It is the seat that is asked, whatever the
+ * door, and it is not recorded.
+ */
+function aPersonIsHere(): boolean {
+  return process.stdin.isTTY === true && process.stderr.isTTY === true;
+}
+
 /** Opens the record of the project `options.cwd` is in. Nothing is read or written until a method is called. */
 export function openRecord(options: RecordOptions): MnemaRecord {
   const here = { cwd: options.cwd, env: options.env ?? discoveryEnv() };
@@ -79,7 +88,13 @@ export function openRecord(options: RecordOptions): MnemaRecord {
   return {
     recordDecision: (input) => runDecision(here, { ...input, which }),
     acceptDecision: ({ id, note }) =>
-      runDecisionTransition(here, { id, action: 'accept', proof: { note }, which }),
+      runDecisionTransition(here, {
+        id,
+        action: 'accept',
+        proof: { note },
+        which,
+        atATerminal: aPersonIsHere(),
+      }),
     rejectDecision: ({ id, note }) =>
       runDecisionTransition(here, { id, action: 'reject', proof: { note }, which }),
     addNote: (input) => runMemory(here, { ...input, which }),

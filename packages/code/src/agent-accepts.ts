@@ -13,8 +13,8 @@
  *     it too, when an agent drives it with `--which`), and the document the next session opens
  *     with marks every rule an agent accepted (`presentation/brief.ts`);
  *   - the setting: `agent-accepts` is a channel like the others, a fact recorded by `mnema
- *     switch off agent-accepts`, and with it off an agent's accept is refused in words that
- *     say how to turn it back on and how a person accepts instead.
+ *     switch off agent-accepts`, and with it off an accept with no person at a terminal is refused in
+ *     words that say how to turn it back on and where a person accepts instead.
  *
  * WHO IS AN AGENT HERE is who the envelope says: an act with a `which` on it. Through the MCP
  * server that is every act (the server's `which` is the connecting client); through the command
@@ -34,24 +34,36 @@ const ACCEPT: DecisionAction = 'accept';
 export const AGENT_ACCEPTS_IS_OFF = 'AGENT_ACCEPTS_IS_OFF';
 
 /**
- * Whether `agent` may accept: `undefined` when it may, and the refusal's code and words when
- * the switch is off. A person (no agent) and every action other than `accept` are not asked:
- * the switch is about an agent ruling a decision in force and about nothing else it does.
+ * Whether this accept may be made: `undefined` when it may, and the refusal's code and words when
+ * the switch is off and the act is not a person's. Every action other than `accept` is not asked.
+ *
+ * WHO IS A PERSON HERE, with the switch off, is read from the SEAT as well as from the envelope:
+ * an accept that declares an agent is refused, and an accept that declares none is refused too
+ * unless it is made at a terminal (`atATerminal`: the door's own answer, a pair of TTYs on the
+ * command line and in the library, never true through the MCP server, whose stdio is the host's
+ * pipe). That is a heuristic, said as one in `docs/what-it-proves.md`: a script run in a terminal
+ * is a person's seat to it. The seat is asked and not recorded.
  */
 export function agentMayAccept(
   sources: readonly ScopedCache[],
-  move: { readonly action: string; readonly agent: string | undefined },
+  move: {
+    readonly action: string;
+    readonly agent: string | undefined;
+    readonly atATerminal: boolean;
+  },
 ): { readonly code: string; readonly message: string } | undefined {
-  if (move.agent === undefined || move.action !== ACCEPT) return undefined;
+  if (move.action !== ACCEPT) return undefined;
+  if (move.agent === undefined && move.atATerminal) return undefined;
   const state = channelStates(sources, [AGENT_ACCEPTS_CHANNEL])[0];
   if (state === undefined || state.on) return undefined;
+  const who = move.agent === undefined ? 'no agent declared and no terminal here' : 'an agent';
   return {
     code: AGENT_ACCEPTS_IS_OFF,
     message:
-      `an agent cannot accept a decision here: ${AGENT_ACCEPTS_CHANNEL} was switched off by ` +
-      `${oneLine(state.by ?? '')} at ${oneLine(state.at ?? '')}. ` +
-      'A person accepts it with `mnema decision move accept <id> --note "<why>"`, ' +
-      'and `mnema switch on agent-accepts` lets an agent accept again. The decision was not moved.',
+      `${AGENT_ACCEPTS_CHANNEL} was switched off by ${oneLine(state.by ?? '')} at ${oneLine(state.at ?? '')}, ` +
+      `and this accept is from ${who}: only a person at a terminal accepts a decision here ` +
+      '(`mnema decision review`), and `mnema switch on agent-accepts` lets an agent accept again. ' +
+      'The decision was not moved.',
   };
 }
 
@@ -113,7 +125,7 @@ export function stateOfANewDecision(
 /** Whether an agent may accept here now, asked with no decision in hand: a source that cannot be read is `unreadable`. */
 export function acceptStateHere(sources: readonly ScopedCache[]): AcceptState {
   try {
-    return agentMayAccept(sources, { action: ACCEPT, agent: 'an-agent' }) === undefined
+    return agentMayAccept(sources, { action: ACCEPT, agent: 'an-agent', atATerminal: false }) === undefined
       ? 'on'
       : 'off';
   } catch {

@@ -142,6 +142,11 @@ export function runDecisionTransition(
     proof?: DecisionTransitionProof;
     which?: string;
     run?: string;
+    /**
+     * Whether a person is at a terminal here: the door's own answer (`agent-accepts.ts`). A door
+     * that does not say is not at one, so the accept it carries is the one the switch turns away.
+     */
+    atATerminal?: boolean;
   },
 ): DecisionTransitioned | DecisionTransitionRefused {
   const upcasters = catalogUpcasters();
@@ -197,12 +202,16 @@ export function runDecisionTransition(
   if (unread !== undefined) {
     return { ok: false, reason: 'REFUSED', code: 'UNREAD_FIELD', message: unread };
   }
-  // AN AGENT'S ACCEPT IS FREE UNLESS THE SWITCH IS OFF (`agent-accepts.ts`). Asked after the
-  // action is known to be one and before anything is appended, so a refusal leaves the record
-  // as it found it. Only an act declared with `--which` is an agent's on this surface; a person
-  // at the prompt is not asked, and neither is any action but `accept`.
+  // AN ACCEPT IS FREE UNLESS THE SWITCH IS OFF (`agent-accepts.ts`). Asked after the action is
+  // known to be one and before anything is appended, so a refusal leaves the record as it found
+  // it. With it off, an act declared with `--which` is refused and so is one declared by no one
+  // outside a terminal; a person at a terminal is not asked, and neither is any action but `accept`.
   const turnedAway = withScopedCaches(trees, (sources) =>
-    agentMayAccept(sources, { action: input.action, agent: which }),
+    agentMayAccept(sources, {
+      action: input.action,
+      agent: which,
+      atATerminal: input.atATerminal === true,
+    }),
   );
   if (turnedAway !== undefined) return { ok: false, reason: 'REFUSED', ...turnedAway };
 
@@ -212,7 +221,11 @@ export function runDecisionTransition(
   // above and before the append is still seen (`DecisionTransitionInput.refusedWhen`).
   const stillAllowed = () =>
     withScopedCaches(trees, (sources) =>
-      agentMayAccept(sources, { action: input.action, agent: which }),
+      agentMayAccept(sources, {
+      action: input.action,
+      agent: which,
+      atATerminal: input.atATerminal === true,
+    }),
     );
   const stamp = {
     refusedWhen: stillAllowed,
