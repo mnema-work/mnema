@@ -573,6 +573,144 @@ def key_metadata_file_beside_the_keys(root: str) -> tuple[bool, str]:
     return applied, "a ._<fingerprint>.pub of junk beside the keys"
 
 
+def _beside_the_segments(root: str, name: str, write) -> tuple[bool, str]:
+    """An entry in the tail directory that is not of the format, written by `write(path)`."""
+    path = os.path.join(_tail_dir(root), name)
+    write(path)
+    return os.path.lexists(path), name
+
+
+def stray_file_in_a_tail(root: str) -> tuple[bool, str]:
+    """`000001.jsonl.bak` beside the segment: a copy of it, whose signed lines are valid.
+
+    NOT a refusal: both readers name it in the census and read nothing of it, so the record is
+    still VERIFIED. A reader that took it for a segment would count every event twice.
+    """
+
+    def write(path: str) -> None:
+        shutil.copyfile(_segment(root), path)
+
+    applied, _ = _beside_the_segments(root, "000001.jsonl.bak", write)
+    return applied, "a copy of the segment named 000001.jsonl.bak, in the tail directory"
+
+
+def stray_folder_in_a_tail(root: str) -> tuple[bool, str]:
+    """A folder `notes/` in the tail directory, holding a copy of the segment.
+
+    NOT a refusal: named in the census by both readers, and nothing in it is read.
+    """
+
+    def write(path: str) -> None:
+        os.mkdir(path)
+        shutil.copyfile(_segment(root), os.path.join(path, "000001.jsonl"))
+
+    applied, _ = _beside_the_segments(root, "notes", write)
+    return applied, "a folder notes/ holding a copy of the segment, in the tail directory"
+
+
+def os_file_in_a_tail(root: str) -> tuple[bool, str]:
+    """`.DS_Store` and `._000001.jsonl` in the tail directory: what the operating system writes.
+
+    NOT a refusal and NOT a note: both readers skip them, as they skip them under `keys/`.
+    """
+
+    def write_junk(path: str) -> None:
+        with open(path, "wb") as handle:
+            handle.write(b"\x00\x05\x16\x07\xff junk")
+
+    first, _ = _beside_the_segments(root, ".DS_Store", write_junk)
+    second, _ = _beside_the_segments(root, "._000001.jsonl", write_junk)
+    return first and second, "a .DS_Store and a ._000001.jsonl in the tail directory"
+
+
+def segment_name_with_a_newline(root: str) -> tuple[bool, str]:
+    """`000001.jsonl` and a line feed: a copy of the segment under a name that is not one.
+
+    A pattern that lets `$` match before a final line feed reads it as a second segment.
+    NOT a refusal: both readers name it and read nothing of it.
+    """
+
+    def write(path: str) -> None:
+        shutil.copyfile(_segment(root), path)
+
+    applied, _ = _beside_the_segments(root, "000001.jsonl\n", write)
+    return applied, "a copy of the segment named 000001.jsonl and a line feed"
+
+
+def odd_named_file_in_a_tail(root: str) -> tuple[bool, str]:
+    """A file named with an accent, an emoji and a DEL: what the sentence must escape alike."""
+
+    def write(path: str) -> None:
+        with open(path, "wb") as handle:
+            handle.write(b"junk")
+
+    applied, _ = _beside_the_segments(root, "caf\u00e9-\U0001f600-\x7f", write)
+    return applied, "a file named with an accent, an emoji and a DEL, in the tail directory"
+
+
+def non_utf8_named_file_in_a_tail(root: str) -> tuple[bool, str]:
+    """A file whose name holds a byte that is not UTF-8 (`a\\xffb`), where the filesystem allows it."""
+
+    def write(path: str) -> None:
+        with open(path, "wb") as handle:
+            handle.write(b"junk")
+
+    try:
+        applied, _ = _beside_the_segments(root, os.fsdecode(b"a\xffb"), write)
+    except OSError:
+        return False, "the filesystem refuses a name that is not UTF-8"
+    return applied, "a file named a, the byte 0xff and b, in the tail directory"
+
+
+def strays_in_the_order_of_their_names(root: str) -> tuple[bool, str]:
+    """Three stray names of one tail, one of them not UTF-8, where the filesystem allows it.
+
+    `a`, U+E000 / U+FF10 / U+FFFC, `b`, and `a`, the byte 0xff, `b`: the readers name them in
+    the order of the names as said (U+FFFD for the byte), UTF-16 order, and not in the order of
+    the raw names, where that byte sorts below U+E000.
+    """
+
+    def write(path: str) -> None:
+        with open(path, "wb") as handle:
+            handle.write(b"junk")
+
+    try:
+        names = ["a\ue000b", "a\uff10b", "a\ufffcb", os.fsdecode(b"a\xffb")]
+        for name in names:
+            _beside_the_segments(root, name, write)
+    except OSError:
+        return False, "the filesystem refuses a name that is not UTF-8"
+    return True, "four stray names, one of them not UTF-8, in the tail directory"
+
+
+def file_named_witness_in_a_tail(root: str) -> tuple[bool, str]:
+    """A FILE named `witness`, in the place of the directory of that name: a stray entry, not read.
+
+    The tail's witness directory is taken away first (a file cannot share its name), so the
+    record is witnessed no more; it is still VERIFIED, and that is what is asserted.
+    """
+
+    def write(path: str) -> None:
+        shutil.rmtree(path, ignore_errors=True)
+        with open(path, "wb") as handle:
+            handle.write(b"junk")
+
+    applied, _ = _beside_the_segments(root, "witness", write)
+    return applied and os.path.isfile(os.path.join(_tail_dir(root), "witness")), (
+        "a file named witness in the place of the witness directory"
+    )
+
+
+def folder_named_like_a_segment_in_a_tail(root: str) -> tuple[bool, str]:
+    """A folder `000002.jsonl`: a stray entry by what it is, and no segment to read."""
+
+    def write(path: str) -> None:
+        os.mkdir(path)
+
+    applied, _ = _beside_the_segments(root, "000002.jsonl", write)
+    return applied, "a folder named 000002.jsonl in the tail directory"
+
+
 def refused_line_beside_a_forged_signature(root: str) -> tuple[bool, str]:
     """Two causes in one tail: a line no reader can read, and a checkpoint whose signature fails.
 
@@ -2044,6 +2182,15 @@ MUTATIONS = {
     "key-file-not-utf8": key_file_not_utf8,
     "key-file-unreadable": key_file_unreadable,
     "key-metadata-file-beside-the-keys": key_metadata_file_beside_the_keys,
+    "stray-file-in-a-tail": stray_file_in_a_tail,
+    "stray-folder-in-a-tail": stray_folder_in_a_tail,
+    "os-file-in-a-tail": os_file_in_a_tail,
+    "segment-name-with-a-newline": segment_name_with_a_newline,
+    "odd-named-file-in-a-tail": odd_named_file_in_a_tail,
+    "non-utf8-named-file-in-a-tail": non_utf8_named_file_in_a_tail,
+    "strays-in-the-order-of-their-names": strays_in_the_order_of_their_names,
+    "file-named-witness-in-a-tail": file_named_witness_in_a_tail,
+    "folder-named-like-a-segment-in-a-tail": folder_named_like_a_segment_in_a_tail,
     "refused-line-beside-a-forged-signature": refused_line_beside_a_forged_signature,
     "forged-payload-field-appended": forged_payload_field_appended,
     "appended-event-missing-a-declared-field": appended_event_missing_a_declared_field,

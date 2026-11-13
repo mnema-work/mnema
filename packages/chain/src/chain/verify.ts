@@ -158,6 +158,7 @@ import {
 } from './record-name.js';
 import {
   type CommittedKeys,
+  classifyTailDirectory,
   committedKeys,
   listLinkedTails,
   listPublicKeyFingerprints,
@@ -224,6 +225,7 @@ export type CensusNote =
   | KeyWithoutTailNote
   | BackupKeyNote
   | EmptyTailNote
+  | StrayEntryNote
   | PartialFinalLineNote
   | ForeignRetractionNote
   | ForeignRewriteNote
@@ -424,6 +426,49 @@ function emptyTail(tail: string): EmptyTailNote {
       'counted as a tail: what an older writer left when a first write was refused, and what a ' +
       'tail emptied of its events with its ownership proof kept looks like too',
   };
+}
+
+/**
+ * An entry in a tail's directory that is not of the format (FORMAT.md section 4): not a
+ * segment, `checkpoints.jsonl`, `tailproof.json` or `witness/`, and not what an operating
+ * system writes on its own (`.DS_Store`, `._*`, skipped by the rule `keys/` already uses).
+ *
+ * Named and never read, and never a break: a `000001.jsonl.bak` holding a signed copy of the
+ * segment counts for nothing, and a person is told it is there. A symbolic link is classified
+ * apart ({@link classifyTailDirectory}) and is not said here. Both readers say the same
+ * sentence ({@link strayEntrySentence}).
+ */
+export interface StrayEntryNote {
+  readonly kind: 'stray-entry';
+  /** The tail directory that holds it. */
+  readonly tail: string;
+  /** The name of the entry. */
+  readonly entry: string;
+  readonly detail: string;
+}
+
+/** The ONE sentence both readers say of a stray entry: `record.py` says it byte for byte. */
+export function strayEntrySentence(entry: string): string {
+  return `holds ${jsonAscii(entry)}, which is not part of the format: it is named here, never read, and nothing in it is vouched for`;
+}
+
+/** JSON's quoting with every code unit outside printable ASCII escaped, as Python's `ensure_ascii` writes it. */
+function jsonAscii(text: string): string {
+  return JSON.stringify(text).replace(
+    /[\u007f-\uffff]/g,
+    (unit) => `\\u${unit.charCodeAt(0).toString(16).padStart(4, '0')}`,
+  );
+}
+
+function strayEntries(layout: ChainLayout, tail: string): StrayEntryNote[] {
+  return classifyTailDirectory(layout, tail)
+    .filter((held) => held.kind === 'stray')
+    .map((held) => ({
+      kind: 'stray-entry',
+      tail,
+      entry: held.name,
+      detail: strayEntrySentence(held.name),
+    }));
 }
 
 /**
@@ -1471,6 +1516,7 @@ function verifyReading(
       identity.backups,
     ),
     ...[...empty].map(emptyTail),
+    ...tails.flatMap((tail) => strayEntries(layout, tail)),
     ...notes,
     ...foreignNotes(tails, entriesByTail),
     ...foreignLinkRetractions(tails, entriesByTail),
@@ -3007,6 +3053,8 @@ const CENSUS_CLAUSE: Readonly<Record<CensusNote['kind'], ((count: number) => str
     `${count} backup key(s), which sign nothing until restored (informational, not a break; --verbose names the key)`,
   'empty-tail': (count) =>
     `${count} empty tail(s), which hold no event and are not counted (see census: informational, not a break)`,
+  'stray-entry': (count) =>
+    `${count} stray entry(ies) in a tail directory, named and not read (see census: informational, not a break)`,
   'partial-final-line': (count) =>
     `${count} tail(s) ending in a dropped partial line (see census: informational, not a break)`,
   'foreign-retraction': (count) =>

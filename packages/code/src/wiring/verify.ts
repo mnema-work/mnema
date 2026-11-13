@@ -1047,6 +1047,7 @@ function censusLocus(note: CensusNote): string {
     case 'retired-agent':
       return note.fingerprint;
     case 'empty-tail':
+    case 'stray-entry':
     case 'partial-final-line':
     case 'citation-not-held':
     case 'clock-behind-what-it-read':

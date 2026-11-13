@@ -1757,6 +1757,11 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'collapsed',
       why: 'the proof reader’s own complaint, which quotes the stored bytes it choked on',
     },
+  '@mnema/chain chain/verify.ts «holds {}, which is not part of the format: it is named here, never read, and nothing in it is vouched for» jsonAscii(entry) #1':
+    {
+      verdict: 'composed',
+      why: 'the name of an entry a tail directory holds, quoted as JSON with every character outside printable ASCII escaped (`jsonAscii`: controls, DEL and non-ASCII), which is how the second reader writes it: it cannot hold a line break, and collapsing whitespace would make the two sentences differ',
+    },
   '@mnema/chain chain/verify.ts «no committed public key for signer {}» oneLine(checkpoint.signerFp) #1':
     {
       verdict: 'collapsed',
@@ -2773,6 +2778,8 @@ const NOT_A_SENTENCE: Readonly<Record<string, string>> = {
     'half of where a relink sits, `<host>#<seq>`, a key of a `Map` that a refusal quotes through `oneLine`',
   '@mnema/chain chain/relink-plan.ts «{}#{}» host':
     'the other half of the same `Map` key, a tail id the disk named',
+  "@mnema/chain chain/verify.ts «\\\\u{}» unit.charCodeAt(0).toString(16).padStart(4, '0')":
+    'four hex digits of one UTF-16 code unit, the escape `jsonAscii` writes for a character outside ASCII',
   '@mnema/chain chain/verify.ts «{}#{}» issue.seq':
     'half of where an event the identity fold refused sits, `<tail>#<seq>`, a key of a `Set` that is never printed',
   '@mnema/chain chain/verify.ts «{}#{}» issue.tail':
@@ -2810,6 +2817,8 @@ const NOT_A_SENTENCE: Readonly<Record<string, string>> = {
   '@mnema/chain chain/verify.ts «{} backup key(s), which sign nothing until restored (informational, not a break; --verbose names the key)» count':
     'another clause of that same table, and a count on the same terms',
   '@mnema/chain chain/verify.ts «{} kind(s) this reader does not know, checked and not read (see census: informational, not a break)» count':
+    'another clause of that same table, and a count on the same terms',
+  '@mnema/chain chain/verify.ts «{} stray entry(ies) in a tail directory, named and not read (see census: informational, not a break)» count':
     'another clause of that same table, and a count on the same terms',
   '@mnema/chain chain/verify.ts «{} tail(s) ending in a dropped partial line (see census: informational, not a break)» count':
     'another clause of that same table, and a count on the same terms',
@@ -2887,8 +2896,8 @@ describe('every value the domain puts in a sentence is classified', () => {
     // are equal. The scale is stated, and so is what the HANDOFF said (twenty-three
     // sites, twelve in `core` and eleven in `chain`), because it counted sentences
     // written at a `message:` or a `detail:` directly, and a value is not a sentence.
-    expect(SITES.length).toBe(450);
-    expect(FOUND[0]?.sites.length).toBe(231);
+    expect(SITES.length).toBe(451);
+    expect(FOUND[0]?.sites.length).toBe(232);
     expect(FOUND[1]?.sites.length).toBe(219);
     expect(FOUND.flatMap((layer) => layer.wording).length).toBeGreaterThan(15);
   });
@@ -2941,7 +2950,7 @@ describe('every value the domain puts in a sentence is classified', () => {
     const count = (verdict: Verdict): number => verdicts.filter((said) => said === verdict).length;
     expect(count('collapsed')).toBe(309);
     expect(count('minted')).toBe(109);
-    expect(count('composed')).toBe(32);
+    expect(count('composed')).toBe(33);
     expect(SITES.filter((site) => new RegExp(`\\b${DOOR}\\b`).test(site.expression))).toHaveLength(
       309,
     );

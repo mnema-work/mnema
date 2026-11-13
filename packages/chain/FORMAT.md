@@ -290,6 +290,21 @@ are contiguous across that concatenation: **which segment a given sequence numbe
 falls in is not specified**, and a verifier should not depend on it. Nothing else
 in the tail directory is a segment.
 
+**What else a tail directory holds is named, not read.** Besides the segments,
+`checkpoints.jsonl`, `tailproof.json` and `witness/`, a reader names every other
+entry of a tail directory once, in its notes, and reads nothing of it: it does not
+refuse the record for one, and it does not count a copy of a segment (a
+`000001.jsonl.bak` whose lines are signed) as a second one. The sentence both readers
+say is `holds "<name>", which is not part of the format: it is named here, never read,
+and nothing in it is vouched for`, the name quoted as JSON with every character
+outside printable ASCII escaped (a byte that is not UTF-8 reads as U+FFFD). What an operating system writes on its own, `.DS_Store` and any
+name starting `._`, is skipped and not named, by the rule `keys/` uses. A segment is a regular file whose whole name is
+`NNNNNN.jsonl`: a folder of that name, and a file named `witness`, are named like any
+other entry and read by nobody. A symbolic
+link is classified and not said. `witness/` and the record's root are not covered by
+this note (`packages/chain/src/chain/both-readers-read-the-same-bytes.test.ts`,
+`stray-file-in-a-tail`, `stray-folder-in-a-tail` and `os-file-in-a-tail`).
+
 **A tail that holds no event is not counted as a tail.** A tail directory whose
 segments hold no line and that holds no checkpoint line (in practice one holding
 only its `tailproof.json`, which is what an older writer left when a new key's

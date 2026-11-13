@@ -447,6 +447,11 @@ A tail that holds nothing (its directory with only its ownership proof, which an
 version left when a key's first write was refused) is not counted as a tail: `verify` says
 `N empty tail(s), which hold no event and are not counted`, and it moves neither the level nor
 the witness. A tail emptied of its events with its proof kept reads the same way.
+Any other entry in a tail's directory (a `000001.jsonl.bak`, a folder, a note someone left) is
+named once and never read: `verify` says `N stray entry(ies) in a tail directory, named and not read`,
+prints each name in the census, and exits as it would without it. The files an operating system writes
+on its own (`.DS_Store`, `._*`) are skipped and not named. The second reader, `mnema_verify.py`, says the
+same sentence.
 A tail removed *together with its key*, while another remains, may leave nothing to report at
 all, and only a history outside this record (the one a git remote keeps) can testify to what
 was taken out.
