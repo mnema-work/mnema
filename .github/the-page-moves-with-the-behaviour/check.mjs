@@ -12,9 +12,11 @@
 // of files is the only input, and the pages that count are fixed here.
 //
 // WHAT COUNTS AS A PAGE: `docs/**/*.md` outside `docs/reference/`, the README of the package the
-// golden lives in, and `plugin/README.md`. The pages of `docs/reference/cli/` and
-// `docs/reference/mcp/` are generated from the golden itself and change every time it does, so
-// counting them would make the check pass always. WHAT IT DOES NOT SAY: that the page says the right
+// golden lives in, and `plugin/README.md`. The pages of `docs/reference/cli/` are
+// generated from the help golden and change every time it does, so counting them would make the check
+// pass always; `docs/reference/` as a whole stays out (`mcp/` comes from the server's `tools/list`).
+// TWO SLACKS, since only names are read: a deleted page counts as a page, and a changed old
+// changelog entry counts as an entry. WHAT IT DOES NOT SAY: that the page says the right
 // thing, or that the entry describes the change; it holds that a person had to touch both.
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';

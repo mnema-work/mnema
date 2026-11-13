@@ -21,7 +21,7 @@ the product is, and what it does and does not prove, is on the [front page](READ
 ## Before a pull request
 
 Run `pnpm check:contribution`. It is the check to run before you open a pull request: lint,
-build, typecheck, the guards below and only the tests tied to the files you changed (against the
+build, typecheck, the guards below, only the tests tied to the files you changed and, last, the check that a changed golden of the surface comes with a page and a changelog entry (against the
 merge base with `upstream/main`, or with `origin/main` if there is no `upstream`, which it asks you to fetch if it is missing; set `MNEMA_BASE` to compare with another ref), with
 one worker and a 30 s test timeout so it finishes on a small machine. It is a subset: CI runs
 the whole suite on Node 24.15.0, 24 and 26 (three shards each) and is the check that counts, so a green here can still
@@ -137,7 +137,7 @@ Each line is a rule in force in this repository's record; the decision it cites,
 - A decision cites the premise it read: a file and line, a URL, or a reproduced probe (ADR-294).
 - One agent's probe is reproduced by another before it is a fact or a question to the maintainer (ADR-295).
 - The review verdict is posted, summarised, on the pull request (ADR-296).
-- A change in behaviour changes its page and adds its changelog entry as a file under `changelog/unreleased/` (ADR-297, ADR-311). A pull request that changes a golden of the surface (the help, the transcripts, the completions, the init screens) is checked for both: it must change a page written by hand and add an entry, and the pages generated under `docs/reference/` do not count; the job `the page moves with the behaviour` and `pnpm check:contribution` say which golden and what is missing (ADR-362).
+- A change in behaviour changes its page and adds its changelog entry as a file under `changelog/unreleased/` (ADR-297, ADR-311). A pull request that changes a golden of the surface (the help, the transcripts, the completions, the init screens) is checked for both: it must change a page written by hand and add an entry, and the pages generated under `docs/reference/` do not count; the job `the page moves with the behaviour` and `pnpm check:contribution` say which golden and what is missing (ADR-362). The check has two slacks: deleting a page counts as changing it, and changing an old changelog entry counts as adding one, because it reads only the names of the files changed.
 - The [architecture page](docs/architecture.md) maps the packages and their layers (ADR-298).
 - A module's header comment states its invariant and the test that holds it (ADR-299).
 - A comparison with another tool is an honest one, and says when to choose the other (ADR-300).
