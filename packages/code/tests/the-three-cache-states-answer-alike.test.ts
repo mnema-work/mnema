@@ -136,14 +136,15 @@ describe('the three states of the projection cache', () => {
     const present: string[] = [];
     inEveryCacheState<Founded>({
       ...aRealCase(),
+      // Nothing is damaged here: a write on an intact record is what leaves a cache behind.
+      damage: () => undefined,
       run(planted, ctx) {
         for (let answer = 0; answer < 2; answer++) {
-          // A first answer leaves a cache behind, as a read of the tree does.
-          mnemaRun(planted, ['verify']);
+          mnemaRun(planted, ['memory', `an answer that leaves a cache ${answer}`]);
           ctx.forget();
           present.push(`${ctx.state}:${cacheFilesOf(planted.repo).length > 0}`);
         }
-        return mnemaRun(planted, ['status']);
+        return mnemaRun(planted, ['verify']);
       },
     });
     expect(present).toEqual([
