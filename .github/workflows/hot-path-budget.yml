@@ -1,0 +1,110 @@
+name: Hot path budget
+
+# WHAT THIS IS. The commands the plugin runs at every edit and when a session opens, measured once a
+# week against records of 1,000 and 3,000 decisions, cold and warm, and judged against the numbers in
+# `.github/the-hot-path-budget/budget.json`. When the verdict is over, ONE issue is opened under a
+# title that never changes, or the open one gets a comment. `.github/the-hot-path-budget/README.md`
+# says what is measured and what the two numbers mean.
+#
+# IT IS NOT A GATE. It runs on a schedule and by hand, never as a check a pull request has to pass,
+# so it must never be added to branch protection. An issue blocks nothing: that is the point of
+# putting the signal there. A pull request that changes the instrument runs it once to prove it
+# measures, and opens no issue.
+
+on:
+  schedule:
+    # Mondays, 05:00 UTC: the small hours of the timezone this is developed in, before the nightly
+    # flake sampler (06:00) takes its runners.
+    - cron: '0 5 * * 1'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/hot-path-budget.yml'
+      - '.github/the-hot-path-budget/**'
+      - '!.github/the-hot-path-budget/*.md'
+
+permissions:
+  contents: read
+
+# A run is not trampled by the one that follows it: the one that is measuring finishes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  measure:
+    name: measure the hot path
+    runs-on: ubuntu-24.04
+    # THE FIXTURE IS THE SLOW PART: the product writes every decision (6,899 writes for the two
+    # records, 167 seconds on the run the first measurement was taken on, 4 minutes for the whole
+    # job). Forty minutes is ten times that; a run that needs more says so by being cancelled.
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    outputs:
+      over: ${{ steps.measure.outputs.over }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      # `env -i` and a home of its own: the generator writes a record and the commands read it, and
+      # neither may reach the home of the runner user. The generator refuses a directory outside
+      # the temporary folder as well, so this is the second lock on the same door.
+      - name: Measure
+        id: measure
+        run: |
+          set -euo pipefail
+          sandbox="$(mktemp -d)"
+          env -i HOME="$sandbox" PATH="$PATH" GIT_CONFIG_NOSYSTEM=1 \
+            node .github/the-hot-path-budget/measure.mjs scan --out "$RUNNER_TEMP/reading.json" \
+            | tee -a "$GITHUB_STEP_SUMMARY" > "$RUNNER_TEMP/table.md"
+          if grep -q '^Verdict: within' "$RUNNER_TEMP/table.md"; then echo "over=false" >> "$GITHUB_OUTPUT"; else echo "over=true" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: hot-path-reading
+          path: ${{ runner.temp }}/reading.json
+          if-no-files-found: error
+
+  # THE ONLY JOB THAT MAY WRITE, and only on a schedule or by hand, and only when the verdict is over.
+  tell-somebody:
+    name: open an issue about the hot path
+    needs: measure
+    if: ${{ needs.measure.outputs.over == 'true' && github.event_name != 'pull_request' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: hot-path-reading
+          path: reading
+
+      - name: Open the issue, or add to the one that is open
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/the-hot-path-budget/measure.mjs tell reading/reading.json
