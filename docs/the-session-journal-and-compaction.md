@@ -73,10 +73,10 @@ line `Brief in the file: <path>` (a file in a scratch folder, which belongs to n
 mentioned (`add a line to CHANGELOG.md`) is not named, and neither is a file of another repository. Otherwise, when the prompt
 cites the id of a task, decision or pattern of this project that exists, no pointing word needed, the line is
 `Brief in the record: <id>`. **Only work of this project is mirrored**: a call whose prompt cites places that exist (files or
-folders, of any extension: an absolute path, `~/` or `./`), one of them in another repository and none in this project, is not
+folders, of any extension: an absolute path, `~/`, `./` or `../`), one of them in another repository and none in this project, is not
 recorded here and nothing is recorded there; the second stream says so and the task's closing note counts it. A place is taken
 to its repository by climbing to the folder that holds a `.git`, with no `git` run, and links are resolved first. A place in no
-repository (a scratch folder) says nothing either way: a call that cites only those, or no place at all, is mirrored. Only an absolute path, `~/` or `./` counts as a place, so a call
+repository (a scratch folder) says nothing either way: a call that cites only those, or no place at all, is mirrored. Only an absolute path, `~/`, `./` or `../` counts as a place, so a call
 that cites another repository's file and its own file written without `./` is left out. Only the
 first twelve places a prompt cites are looked at. A word such as `read` that follows `not`, `don't` or `não` does not point at a file. **The prompt is never recorded**, and neither is the subagent's reply. When the session ends
 (`SessionEnd`), the task is moved to done with the count of handoffs as its note.

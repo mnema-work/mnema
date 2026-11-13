@@ -12,7 +12,7 @@
  * the session journal (`session-journal.ts`), the one file this machine keeps per session: no second
  * mechanism, and a session whose journal switch is off is a session this does nothing for.
  *
- * ONLY THIS PROJECT'S WORK. A call whose prompt cites places that exist (of any kind: absolute, `~/`
+ * ONLY THIS PROJECT'S WORK. A call whose prompt cites places that exist (of any kind: absolute, `~/`, `../`
  * or `./`), one in another repository and none in this project, is work for that project: it is not
  * mirrored here, the second stream says so, and the session's closing note counts it with its own
  * counter. A place is taken to its repository by climbing to the folder that holds a `.git`, with
@@ -161,17 +161,21 @@ const TRIGGER_REACH = 3;
 
 /** Whether one of the words just before `at` in `prompt` is a trigger. */
 function pointedAt(prompt: string, at: number): boolean {
-  const words = prompt
+  const raw = prompt
     .slice(Math.max(0, at - 240), at)
     .toLowerCase()
+    .replaceAll('’', "'")
     .split(/\s+/)
-    .map((word) => word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ''))
-    .filter((word) => word !== '')
-    .slice(-TRIGGER_REACH);
-  return words.some(
-    (word, at) =>
-      BRIEF_TRIGGERS.includes(word) && !(at > 0 && NEGATIONS.includes(words[at - 1] ?? '')),
-  );
+    .filter((word) => word !== '');
+  const bare = (word: string): string => word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+  for (let i = Math.max(0, raw.length - TRIGGER_REACH); i < raw.length; i++) {
+    if (!BRIEF_TRIGGERS.includes(bare(raw[i] ?? ''))) continue;
+    // A negation right before it, with no stop between ("if not, read" is not one), turns it round.
+    const before = raw[i - 1] ?? '';
+    const negated = NEGATIONS.includes(bare(before)) && !/[,;.:!?]$/.test(before);
+    if (!negated) return true;
+  }
+  return false;
 }
 
 /** An id of this registry's shape. */

@@ -458,6 +458,7 @@ describe('a prompt that cites a file', () => {
       expect(isAnotherProjectsWork(`work in ${top}/src/ and nowhere else`, repo, repo)).toBe(true);
       expect(isAnotherProjectsWork(`work in (${top})`, repo, repo)).toBe(true);
       expect(isAnotherProjectsWork(`edit ${other}`, repo, repo)).toBe(true);
+      expect(isAnotherProjectsWork('edit ../other/handoff.md', repo, repo)).toBe(true);
       mirror(dispatch({ prompt: `edit ${top}/src/app.php` }));
       expect(whatTheRecordHolds().handoffs).toEqual([]);
     },
@@ -545,6 +546,9 @@ describe('a prompt that cites a file', () => {
         "Don't read ./README.md",
         'Não leia ./README.md',
         'Nunca siga ./README.md',
+        'Do not read the file ./README.md',
+        'Não leia o arquivo ./README.md',
+        'Don’t read ./README.md',
       ]) {
         expect(briefFileOf(prompt, repo, repo), prompt).toBeUndefined();
       }
@@ -572,6 +576,11 @@ describe('a prompt that cites a file', () => {
       expect(briefFileOf(`Read ${repo}/brief.md`, repo, repo)).toBe('brief.md');
       expect(briefFileOf(`Do not read ${repo}/brief.md`, repo, repo)).toBeUndefined();
       expect(briefFileOf(`Não leia ${repo}/brief.md`, repo, repo)).toBeUndefined();
+      expect(briefFileOf(`Do not read the file ${repo}/brief.md`, repo, repo)).toBeUndefined();
+      expect(briefFileOf(`Não leia o arquivo ${repo}/brief.md`, repo, repo)).toBeUndefined();
+      expect(briefFileOf(`If not, read ${repo}/brief.md`, repo, repo)).toBe('brief.md');
+      expect(briefFileOf(`Se não, leia ${repo}/brief.md`, repo, repo)).toBe('brief.md');
+      expect(briefFileOf(`If not; read ${repo}/brief.md`, repo, repo)).toBe('brief.md');
     },
     WAITS_ON_WRITES,
   );

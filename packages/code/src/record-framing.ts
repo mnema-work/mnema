@@ -842,7 +842,7 @@ export const WHAT_STOPS: { readonly [K in SwitchableChannel]: string } = {
     'host’s `Agent` tool records a private task for the session and a private handoff for each ' +
     'dispatch (its short description and the path of a brief file, never the prompt), leaves out a ' +
     'dispatch whose prompt cites a place in another repository and none in this project (only ' +
-    'absolute, `~/` and `./` paths count, and a place in no repository counts for neither), and the ' +
+    'absolute, `~/`, `./` and `../` paths count, and a place in no repository counts for neither), and the ' +
     'session’s end closes the task with the count. It needs `session-journal` on, and records ' +
     'nothing to the tree a clone gets',
   'session-tally':

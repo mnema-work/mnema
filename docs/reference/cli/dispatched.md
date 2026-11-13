@@ -27,7 +27,7 @@ What it reads and what it does:
   orchestrator to the subagent type, with the call’s short description and the path of a
   file that the prompt points at and that exists outside any other repository, or else the
   id of a record of this project that it cites. A call whose prompt cites places (files or
-  folders, written absolute, `~/` or `./`) in another repository and none in this project is
+  folders, written absolute, `~/`, `./` or `../`) in another repository and none in this project is
   not recorded, so a mixed call whose own path is written without `./` is left out too; only the first
   twelve places a prompt cites are looked at.
   The prompt itself is never recorded.
