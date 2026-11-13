@@ -57,7 +57,7 @@ from .checkpoint import (
 )
 from .ed25519 import verify as ed25519_verify
 from .entry import Entry, entry_hash, read_line
-from .keys import HOLDS_NO_KEY, PublicKey, load_keyring
+from .keys import APPLE_DOUBLE_PREFIX, HOLDS_NO_KEY, PublicKey, load_keyring
 from .record_name import record_of, relinked_naming
 from .root import which_reading_closes
 from .verdict import Refusal, Report
@@ -1133,6 +1133,7 @@ def verify_record(root: str, report: Report, require: str = "chained") -> None:
     for tail_id in tail_ids:
         tail_dir = os.path.join(tails_dir, tail_id)
         _check_tail_id(report, tail_id, ring)
+        _say_stray_entries(report, tail_dir, tail_id)
         if _holds_nothing(tail_dir):
             _say_empty_tail(report, tail_dir, tail_id, ring)
             continue
@@ -1345,6 +1346,45 @@ def _holds_nothing(tail_dir: str) -> bool:
         ):
             return False
     return True
+
+
+def _stray_entries(tail_dir: str) -> list[str]:
+    """Section 4: the entries of a tail directory that are not of the format, by `lstat`.
+
+    A segment, `checkpoints.jsonl` and `tailproof.json` are files, `witness` a directory; what
+    the operating system writes (`.DS_Store`, `._*`) is skipped by the rule `keys/` uses, and a
+    symbolic link is not said here. Nothing is read.
+    """
+    stray: list[str] = []
+    for name in sorted(os.listdir(tail_dir), key=utf16_order):
+        if name == ".DS_Store" or name.startswith(APPLE_DOUBLE_PREFIX):
+            continue
+        path = os.path.join(tail_dir, name)
+        if os.path.islink(path):
+            continue
+        if os.path.isfile(path) and (
+            SEGMENT_NAME.match(name) or name in (CHECKPOINTS_FILE, TAILPROOF_FILE)
+        ):
+            continue
+        if os.path.isdir(path) and name == WITNESS_DIR:
+            continue
+        stray.append(name)
+    return stray
+
+
+def _say_stray_entries(report: Report, tail_dir: str, tail_id: str) -> None:
+    """Section 4: each stray entry named once, never read and never refused.
+
+    The sentence is the product's, byte for byte: JSON's quoting with every non-ASCII
+    character escaped is what the product's `strayEntrySentence` writes too.
+    """
+    for name in _stray_entries(tail_dir):
+        report.note(
+            "4",
+            f"holds {json.dumps(name, ensure_ascii=True)}, which is not part of the format: "
+            "it is named here, never read, and nothing in it is vouched for",
+            tail_id,
+        )
 
 
 def _say_empty_tail(

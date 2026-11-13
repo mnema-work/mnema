@@ -77,6 +77,56 @@ export function listLinkedTails(layout: ChainLayout): string[] {
 }
 
 /**
+ * What an entry of a tail's directory is (FORMAT.md section 4), by the directory listing and never by
+ * following anything: `segment`, `checkpoints`, `tailproof` and `witness` are what a tail
+ * holds, `os` is what an operating system writes on its own (skipped, never named), `link` is
+ * a symbolic link (classified here and not treated), and `stray` is the rest.
+ */
+export type TailEntryKind =
+  | 'segment'
+  | 'checkpoints'
+  | 'tailproof'
+  | 'witness'
+  | 'os'
+  | 'link'
+  | 'stray';
+
+/**
+ * The entries of one tail directory by what they are, in name order. Reads no entry: the
+ * directory listing says what each one is without opening it or following a link.
+ */
+export function classifyTailDirectory(
+  layout: ChainLayout,
+  tailId: string,
+): { readonly name: string; readonly kind: TailEntryKind }[] {
+  return readdirSync(tailDir(layout, tailId), { withFileTypes: true })
+    .map((entry) => ({ name: entry.name, kind: classifyTailEntry(entry) }))
+    .sort((a, b) => compareUtf16(a.name, b.name));
+}
+
+function classifyTailEntry(entry: {
+  readonly name: string;
+  isSymbolicLink(): boolean;
+  isFile(): boolean;
+  isDirectory(): boolean;
+}): TailEntryKind {
+  const { name } = entry;
+  if (name === '.DS_Store' || name.startsWith(APPLE_DOUBLE_PREFIX)) return 'os';
+  if (entry.isSymbolicLink()) return 'link';
+  if (entry.isFile()) {
+    if (isSegmentFile(name)) return 'segment';
+    if (name === 'checkpoints.jsonl') return 'checkpoints';
+    if (name === 'tailproof.json') return 'tailproof';
+  }
+  if (entry.isDirectory() && name === 'witness') return 'witness';
+  return 'stray';
+}
+
+function compareUtf16(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
  * A name under `keys/` that starts with this is the metadata macOS writes beside a file on a
  * volume that cannot hold it (AppleDouble), not a key: both readers skip it as they skip
  * `.DS_Store`, byte for byte the same rule. Every other `*.pub` must hold an Ed25519 key.

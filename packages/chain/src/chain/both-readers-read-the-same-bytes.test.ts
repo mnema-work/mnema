@@ -556,6 +556,9 @@ const AGREEMENTS: readonly Agreement[] = [
   },
   { name: 'appended-move-the-workflow-does-not-allow', verdict: 'accepted' },
   { name: 'key-metadata-file-beside-the-keys', verdict: 'accepted' },
+  { name: 'stray-file-in-a-tail', verdict: 'accepted' },
+  { name: 'stray-folder-in-a-tail', verdict: 'accepted' },
+  { name: 'os-file-in-a-tail', verdict: 'accepted' },
   { name: 'aligned-cut', verdict: 'accepted' },
   { name: 'refounded-record', verdict: 'accepted' },
   { name: 'named-record', verdict: 'accepted' },
@@ -737,6 +740,69 @@ const AGREEMENTS: readonly Agreement[] = [
     },
   },
 ];
+
+/**
+ * WHAT A TAIL DIRECTORY HOLDS THAT IS NOT OF THE FORMAT IS NAMED, NOT REFUSED AND NOT READ
+ * (FORMAT.md section 4), and both readers say the SAME sentence about it.
+ *
+ * The threat is `000001.jsonl.bak` holding a copy of the segment, every line of it validly
+ * signed: a reader that read it would count each event twice, a reader that skipped it in
+ * silence would leave a person believing the directory holds only what the record says. What
+ * the operating system writes on its own (`.DS_Store`, `._*`) is skipped by the rule `keys/`
+ * already uses, and is not named: naming it would make every Mac clone look tampered with.
+ */
+describe('an entry in a tail directory that is not of the format, to both readers', () => {
+  const strayEntry = (name: string): string =>
+    `holds ${JSON.stringify(name)}, which is not part of the format: it is named here, never read, and nothing in it is vouched for`;
+
+  /** What each reader said about the record, by the census note and by the finding. */
+  function bothSay(name: string) {
+    const record = mutated(name);
+    const here = verify(record, catalogUpcasters());
+    const run = python([VERIFIER, '--json', 'record', record]);
+    const there = JSON.parse(run.stdout) as { verdict: string; findings: readonly Finding[] };
+    const tail = readdirSync(join(record, 'tails'))[0] as string;
+    return {
+      tail,
+      here,
+      status: run.status,
+      verdict: there.verdict,
+      strays: there.findings.filter((finding) => finding.what.startsWith('holds ')),
+    };
+  }
+
+  it.each([
+    ['stray-file-in-a-tail', '000001.jsonl.bak'],
+    ['stray-folder-in-a-tail', 'notes'],
+  ])('names it in the census of both, the same sentence, for %s', (mutation, entry) => {
+    const { tail, here, status, verdict, strays } = bothSay(mutation);
+    // Named and not refused: exit 0 and VERIFIED, with nothing a break in either reader.
+    expect(here.ok).toBe(true);
+    expect(here.issues).toEqual([]);
+    expect(status).toBe(0);
+    expect(verdict).toBe('VERIFIED');
+    expect(here.census.filter((note) => note.kind === 'stray-entry')).toEqual([
+      { kind: 'stray-entry', tail, entry, detail: strayEntry(entry) },
+    ]);
+    expect(
+      strays.map((finding) => [finding.level, finding.section, finding.where, finding.what]),
+    ).toEqual([['note', '4', tail, strayEntry(entry)]]);
+    // Nothing of it was read: the copy of the segment is not counted as a second one.
+    expect(here.summary).toContain(
+      '1 stray entry(ies) in a tail directory, named and not read (see census: informational, not a break)',
+    );
+  });
+
+  it('skips what the operating system writes, in both, and says nothing of it', () => {
+    const { here, status, verdict, strays } = bothSay('os-file-in-a-tail');
+    expect(here.ok).toBe(true);
+    expect(here.census.filter((note) => note.kind === 'stray-entry')).toEqual([]);
+    expect(here.summary).not.toContain('stray entry');
+    expect(status).toBe(0);
+    expect(verdict).toBe('VERIFIED');
+    expect(strays).toEqual([]);
+  });
+});
 
 describe('the two readers reach the same verdict on the same bytes, and name the same cause', () => {
   it('covers exactly the mutations the table in the record test marks as agreed or byte-level', () => {

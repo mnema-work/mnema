@@ -573,6 +573,56 @@ def key_metadata_file_beside_the_keys(root: str) -> tuple[bool, str]:
     return applied, "a ._<fingerprint>.pub of junk beside the keys"
 
 
+def _beside_the_segments(root: str, name: str, write) -> tuple[bool, str]:
+    """An entry in the tail directory that is not of the format, written by `write(path)`."""
+    path = os.path.join(_tail_dir(root), name)
+    write(path)
+    return os.path.lexists(path), name
+
+
+def stray_file_in_a_tail(root: str) -> tuple[bool, str]:
+    """`000001.jsonl.bak` beside the segment: a copy of it, whose signed lines are valid.
+
+    NOT a refusal: both readers name it in the census and read nothing of it, so the record is
+    still VERIFIED. A reader that took it for a segment would count every event twice.
+    """
+
+    def write(path: str) -> None:
+        shutil.copyfile(_segment(root), path)
+
+    applied, _ = _beside_the_segments(root, "000001.jsonl.bak", write)
+    return applied, "a copy of the segment named 000001.jsonl.bak, in the tail directory"
+
+
+def stray_folder_in_a_tail(root: str) -> tuple[bool, str]:
+    """A folder `notes/` in the tail directory, holding a copy of the segment.
+
+    NOT a refusal: named in the census by both readers, and nothing in it is read.
+    """
+
+    def write(path: str) -> None:
+        os.mkdir(path)
+        shutil.copyfile(_segment(root), os.path.join(path, "000001.jsonl"))
+
+    applied, _ = _beside_the_segments(root, "notes", write)
+    return applied, "a folder notes/ holding a copy of the segment, in the tail directory"
+
+
+def os_file_in_a_tail(root: str) -> tuple[bool, str]:
+    """`.DS_Store` and `._000001.jsonl` in the tail directory: what the operating system writes.
+
+    NOT a refusal and NOT a note: both readers skip them, as they skip them under `keys/`.
+    """
+
+    def write_junk(path: str) -> None:
+        with open(path, "wb") as handle:
+            handle.write(b"\x00\x05\x16\x07\xff junk")
+
+    first, _ = _beside_the_segments(root, ".DS_Store", write_junk)
+    second, _ = _beside_the_segments(root, "._000001.jsonl", write_junk)
+    return first and second, "a .DS_Store and a ._000001.jsonl in the tail directory"
+
+
 def refused_line_beside_a_forged_signature(root: str) -> tuple[bool, str]:
     """Two causes in one tail: a line no reader can read, and a checkpoint whose signature fails.
 
@@ -2044,6 +2094,9 @@ MUTATIONS = {
     "key-file-not-utf8": key_file_not_utf8,
     "key-file-unreadable": key_file_unreadable,
     "key-metadata-file-beside-the-keys": key_metadata_file_beside_the_keys,
+    "stray-file-in-a-tail": stray_file_in_a_tail,
+    "stray-folder-in-a-tail": stray_folder_in_a_tail,
+    "os-file-in-a-tail": os_file_in_a_tail,
     "refused-line-beside-a-forged-signature": refused_line_beside_a_forged_signature,
     "forged-payload-field-appended": forged_payload_field_appended,
     "appended-event-missing-a-declared-field": appended_event_missing_a_declared_field,
