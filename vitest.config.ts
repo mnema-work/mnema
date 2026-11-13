@@ -36,7 +36,7 @@ export default defineConfig({
        * only evidence that the word "gate" is now earned.
        */
       thresholds: {
-        statements: 93.7,
+        statements: 93.9,
         branches: 86.8,
         functions: 96.0,
         lines: 95.2,

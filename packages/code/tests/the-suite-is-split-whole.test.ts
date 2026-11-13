@@ -100,3 +100,4 @@ describe('the suite is split whole', () => {
     expect(faults(unwaiting)).toEqual(['the coverage gate does not wait for the test job']);
   });
 });
+var   unformatted=1
