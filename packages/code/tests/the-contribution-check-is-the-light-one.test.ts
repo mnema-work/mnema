@@ -56,7 +56,7 @@ describe('pnpm check:contribution', () => {
   });
 
   it(
-    'plans lint, build, typecheck, the guards and the changed tests, in that order',
+    'plans lint, build, typecheck, the guards, the changed tests and the page check, in that order',
     () => {
       const steps = plan();
       const head = spawnSync('git', ['rev-parse', 'HEAD'], {
@@ -71,8 +71,9 @@ describe('pnpm check:contribution', () => {
         'typecheck',
         'exec vitest run --config vitest.guards.config.ts',
         `exec vitest run --changed ${head}`,
+        '.github/the-page-moves-with-the-behaviour/check.mjs',
       ]);
-      for (const step of steps.slice(3)) {
+      for (const step of steps.slice(3, 5)) {
         expect(step[2]).toContain('--maxWorkers=1');
         expect(step[2]).toContain(`${CEILING}=30000`);
       }
@@ -96,11 +97,11 @@ describe('pnpm check:contribution', () => {
       expect(core?.[2]).toEqual(expect.arrayContaining(['packages/code/', 'packages/context/']));
       expect(core?.[2]).not.toContain('packages/core/');
       expect(planned('packages/chain/src/index.ts')[5]?.[2]).toContain('packages/core/');
-      expect(planned('docs/what-it-proves.md')).toHaveLength(5);
+      expect(planned('docs/what-it-proves.md')).toHaveLength(6);
       const reader = planned('packages/chain/verifier/mnemaverify/ed25519.py');
       // Read from the plan, never started here: the floor job runs the files that start the interpreter.
       const interpreter = `python${3}`;
-      expect(reader.map((step) => step[1]).slice(5)).toEqual([interpreter, interpreter]);
+      expect(reader.map((step) => step[1]).slice(5, 7)).toEqual([interpreter, interpreter]);
     },
     SPAWNS,
   );
@@ -153,7 +154,7 @@ describe('pnpm check:contribution', () => {
           },
         });
         const steps = JSON.parse(asked.stdout) as Step[];
-        expect(steps, beside).toHaveLength(6);
+        expect(steps, beside).toHaveLength(7);
         expect(steps[5]?.[2], beside).toContain('packages/code/');
       }
     },

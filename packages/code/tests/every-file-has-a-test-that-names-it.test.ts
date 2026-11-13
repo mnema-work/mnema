@@ -272,6 +272,8 @@ const LED_NOWHERE: Readonly<Record<string, string>> = {
     'The measurer the weekly run starts and the issue it opens or adds to, handed here a hand-made reading and an issue book that records what was asked of it. A script a workflow step runs, plain ESM under .github/, so the specifier is right and the scanner cannot follow it.',
   'packages/code/tests/the-hot-path-keeps-its-budget.test.ts -> ../../../.github/the-hot-path-budget/verdict.mjs':
     'The verdict on a measurement, pure, fed medians the case makes up so each sentence of the budget can be broken alone. It lives under .github/ beside the measurer that calls it, where no walk of packages/ reaches.',
+  'packages/code/tests/the-page-moves-with-the-behaviour.test.ts -> ../../../.github/the-page-moves-with-the-behaviour/check.mjs':
+    'The pure check of the files a pull request changes, handed lists here so each way of owing a page or an entry can be shown alone. A script a workflow step and pnpm check:contribution run, plain ESM under .github/, so the specifier is right and the scanner cannot follow it.',
   'packages/code/tests/the-pull-request-is-told-what-failed.test.ts -> ../../../.github/what-failed/collect.mjs':
     "The collector CI's last job runs on a pull request to write the report of what failed, handed the jobs, the test reports and the lint diff here. A script a workflow step runs, plain ESM under .github/, so the specifier is right and the scanner cannot follow it.",
   'packages/code/tests/the-pull-request-is-told-what-failed.test.ts -> ../../../.github/what-failed/comment.mjs':
@@ -1391,6 +1393,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-owner-relinks-a-tail.test.ts': 8,
   'packages/code/tests/the-packed-install-runs-on-main-and-tags.test.ts': 4,
   'packages/code/tests/the-page-holds-against-someone-without-the-key.test.ts': 9,
+  'packages/code/tests/the-page-moves-with-the-behaviour.test.ts': 6,
   'packages/code/tests/the-page-of-what-comes-next-cites-only-what-the-record-holds.test.ts': 7,
   'packages/code/tests/the-page-shows-its-seams.test.ts': 20,
   'packages/code/tests/the-panel.test.ts': 21,
@@ -2332,8 +2335,8 @@ describe('every file has a test that names it', () => {
     });
     // Non-vacuity in both parts: the walk really did follow specifiers, and the list
     // really does hold rows; a scanner returning nothing would satisfy the line above.
-    expect(unresolved.length).toBe(29);
-    expect(Object.keys(LED_NOWHERE)).toHaveLength(29);
+    expect(unresolved.length).toBe(30);
+    expect(Object.keys(LED_NOWHERE)).toHaveLength(30);
     // And each row says what THAT module is, by the ledger's rule, at the ledger's floor.
     const why = Object.values(LED_NOWHERE);
     expect(new Set(why).size).toBe(why.length);

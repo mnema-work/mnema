@@ -133,6 +133,14 @@ if (pythonChanged) {
   steps.push(['second reader: vectors', 'python3', [reader, 'vectors']]);
 }
 
+// Last, and light: a golden of the surface that changed owes a page written by hand and a changelog
+// entry, which is what CI's job of the same name holds (it reads the same list of files).
+steps.push([
+  'the page moves with the behaviour',
+  'node',
+  ['.github/the-page-moves-with-the-behaviour/check.mjs', base],
+]);
+
 if (process.argv.includes('--plan')) {
   console.log(JSON.stringify(steps));
   process.exit(0);

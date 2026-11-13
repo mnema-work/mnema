@@ -21,7 +21,7 @@ A change that shows to a reader adds its changelog entry as its own file,
 `changelog/unreleased/<short-slug>.md` (the section on its first line, then the bullet), never a line in
 `CHANGELOG.md`; [`CONTRIBUTING.md`](CONTRIBUTING.md) says how.
 **`pnpm check:contribution` is the check before a pull request.** It runs lint, build, typecheck, the
-guards and only the tests tied to what you changed, with one worker and a long timeout, so it finishes in a
+guards, only the tests tied to what you changed and, last, the check that a changed golden of the surface comes with a page and a changelog entry, with one worker and a long timeout, so it finishes in a
 small sandbox. It needs the project's main fetched (`git fetch origin main`; in a fork, add the project as `upstream` first); it says what to run. A change under `packages/<name>/src` also runs the tests of the packages that import it, and one under `packages/chain/verifier/` runs the Python reader's own checks. CI runs the whole suite, on three
 Node versions; a green here is not a green there. The
 [dev container](.devcontainer/devcontainer.json) has Node, pnpm and `python3` set up. With a
@@ -76,7 +76,7 @@ Each line is a rule in force in this repository's record; the decision it cites,
 - A decision cites the premise it read: a file and line, a URL, or a reproduced probe (ADR-294).
 - One agent's probe is reproduced by another before it is a fact or a question to the maintainer (ADR-295).
 - The review verdict is posted, summarised, on the pull request (ADR-296).
-- A change in behaviour changes its page and adds its changelog entry as a file under `changelog/unreleased/` (ADR-297, ADR-311).
+- A change in behaviour changes its page and adds its changelog entry as a file under `changelog/unreleased/` (ADR-297, ADR-311). A pull request that changes a golden of the surface (the help, the transcripts, the completions, the init screens) needs a page written by hand and an entry in `changelog/unreleased/`, and a check confers it (ADR-362).
 - The [architecture page](docs/architecture.md) maps the packages and their layers (ADR-298).
 - A module's header comment states its invariant and the test that holds it (ADR-299).
 - A comparison with another tool is an honest one, and says when to choose the other (ADR-300).
