@@ -73,10 +73,9 @@ pull request must carry: `gitleaks` reads the whole history for a committed cred
 `osv-scanner` reads `pnpm-lock.yaml` for a dependency with a published advisory (and again every
 Monday, against the lockfile as it is). `.gitleaks.toml` lists what is public or made up and why;
 a finding that is not on that list is a credential to rotate, not a line to add to it.
-CodeQL reads the JavaScript and TypeScript, the Python verifier and the workflows with its default
+CodeQL reads the JavaScript and TypeScript, the Python of the repository and the workflows with its default
 query suite, on every pull request, on `main` and every Tuesday, also outside the required checks;
-its alerts are in the repository's Security tab, and the maintainer decides each one. A pull request
-from a fork has a read-only token, so its results are not uploaded there.
+its alerts are in the repository's Security tab, and the maintainer decides each one.
 
 `pnpm test:guards` runs only the cases that walk the whole tree (every page, every workflow,
 every file that needs a test), the ones a change breaks without touching them. Run it after

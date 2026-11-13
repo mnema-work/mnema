@@ -5,23 +5,22 @@ name: CodeQL
 # It reads the code for the shapes of a known weakness (a path built from input, a pattern that
 # backtracks without end, a workflow that runs text it did not write). It does not run the product.
 #
-# THREE LANGUAGES, ONE ANALYSIS EACH: JavaScript and TypeScript (the packages), Python (the
-# second reader of the record, `packages/chain/verifier`), and the workflows themselves
-# (`actions`). None of them needs a build, so each runs with `build-mode: none`.
+# THREE LANGUAGES, ONE ANALYSIS EACH: JavaScript and TypeScript (the packages), the Python of the
+# repository (every `.py` file: the second reader of the record in `packages/chain/verifier`, and
+# the scripts of the tests and of the measurements), and the workflows themselves (`actions`). None of them needs a build, so each runs with `build-mode: none`.
 #
 # THE DEFAULT QUERY SUITE, and no other: neither `security-extended` nor `security-and-quality`.
 #
-# IT RUNS ON A PULL REQUEST, ON `main` AND ONCE A WEEK. The weekly run exists because a query is
+# IT RUNS ON A PULL REQUEST, ON `main`, ONCE A WEEK AND BY HAND (`workflow_dispatch`). The weekly run exists because a query is
 # improved without a commit here: the same code can be read again tomorrow and give an alert that
 # today's reading did not.
 #
-# IT IS NOT ONE OF THE CHECKS A PULL REQUEST MUST CARRY, for the reason `scanners.yml` is not: an
-# improvement to a query would otherwise stop an unrelated merge. An alert is read in the
-# Security tab, and the maintainer decides each one.
+# IT IS NOT ONE OF THE CHECKS A PULL REQUEST MUST CARRY: a query is improved without a commit here,
+# so a required check would turn red on code nobody touched and stop an unrelated merge. An alert
+# is read in the Security tab, and the maintainer decides each one.
 #
-# A PULL REQUEST FROM A FORK gets a read-only token, so its results cannot be uploaded to the
-# Security tab. This workflow does not get around that with the trigger that hands a fork's code
-# a write token.
+# NO TRIGGER HERE HANDS A FORK'S CODE A WRITE TOKEN: the pull request runs on `pull_request`, with
+# the token GitHub gives that event.
 
 on:
   push:
