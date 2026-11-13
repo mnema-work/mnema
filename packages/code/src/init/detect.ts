@@ -120,7 +120,11 @@ export function saysAboutAFile(peek: InstructionsPeek): string {
     case 'blocked':
       return `left as it is: ${state.why}`;
     case 'missing':
-      return peek.own ? 'not there yet' : 'yours, no mnema block in it';
+      return peek.own
+        ? 'not there yet'
+        : peek.imports
+          ? 'yours, imports AGENTS.md'
+          : 'yours, no mnema block in it';
   }
 }
 

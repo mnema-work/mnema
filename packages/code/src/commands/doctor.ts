@@ -982,10 +982,11 @@ function instructionsFindings(ctx: DoctorContext): Finding[] {
   if (trees.projectPublic === undefined) return [];
   const root = dirname(trees.projectPublic);
   const said = checkInstructions(root)
-    .filter((file) => file.found.state !== 'current')
+    .filter((file) => file.found.state !== 'current' || file.imports !== undefined)
     .map((file) => ({
       topic: 'instructions' as const,
-      state: 'attention' as const,
+      // A file that imports AGENTS.md and holds no block is as it should be (ADR-375): one line, saying why.
+      state: file.imports === 'covered' ? ('fine' as const) : ('attention' as const),
       line: stateLine(file),
     }));
   const out = leftOut(root);
