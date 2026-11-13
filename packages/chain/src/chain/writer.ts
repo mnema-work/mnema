@@ -1160,7 +1160,9 @@ export class ChainWriter {
    * loudly instead. The mismatch is not reachable by any legitimate use: the
    * buffer is appended to on every successful write and emptied only here, AND the
    * coverage it reads is brought back in line with the disk under the lock first, so
-   * a range another process has already signed is not signed a second time.
+   * a range another process has already signed is not signed a second time. That is why the
+   * refusal, {@link assertBufferCoversRange}, is not reachable by legitimate use: the test of
+   * that function in `writer.test.ts` is what holds it, and it also holds that signing calls it.
    *
    * @throws {TailBusyError} if another process holds the tail past the wait budget.
    * Nothing is signed.
@@ -1191,13 +1193,7 @@ export class ChainWriter {
     const fromSeq = this.lastCheckpointedSeq + 1;
     const toSeq = this.nextSeq - 1;
     if (toSeq < fromSeq) return null;
-    const covered = toSeq - fromSeq + 1;
-    if (this.pending.length !== covered) {
-      throw new Error(
-        `chain: refusing to sign a checkpoint over ${this.tailId} seq ${fromSeq}..${toSeq}: ` +
-          `the range covers ${covered} event(s) but ${this.pending.length} are buffered`,
-      );
-    }
+    assertBufferCoversRange(this.tailId, fromSeq, toSeq, this.pending);
     const checkpoint = signCheckpoint({
       tail: this.tailId,
       fromSeq,
@@ -1215,6 +1211,33 @@ export class ChainWriter {
     this.lastCheckpointHash = checkpointHash(checkpoint);
     this.pending = [];
     return checkpoint;
+  }
+}
+
+/**
+ * Refuses, before anything is signed, a buffer that is not exactly the range a checkpoint is about
+ * to claim: a content root over any other set of events would be a silent break of the proof.
+ *
+ * No legitimate use reaches the refusal: the buffer grows on every successful write and is emptied
+ * only by a signature, and the coverage is brought back in line with the disk under the lock first.
+ * It stays as a last line, and `writer.test.ts` holds this function directly (the range covered,
+ * a hole at the start, at the end and in the middle, an empty buffer) and holds that
+ * `signLocked` calls it.
+ *
+ * @throws {Error} when `pending` does not hold exactly `toSeq - fromSeq + 1` events.
+ */
+export function assertBufferCoversRange(
+  tail: string,
+  fromSeq: number,
+  toSeq: number,
+  pending: readonly unknown[],
+): void {
+  const covered = toSeq - fromSeq + 1;
+  if (pending.length !== covered) {
+    throw new Error(
+      `chain: refusing to sign a checkpoint over ${tail} seq ${fromSeq}..${toSeq}: ` +
+        `the range covers ${covered} event(s) but ${pending.length} are buffered`,
+    );
   }
 }
 

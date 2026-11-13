@@ -54,7 +54,7 @@ import {
   readTailEntries,
   readTailTip,
 } from './store.js';
-import { type ChainWriter, TailDamagedError } from './writer.js';
+import { assertBufferCoversRange, type ChainWriter, TailDamagedError } from './writer.js';
 
 let root: string;
 
@@ -894,5 +894,39 @@ describe("a machine's first key is made at its writer's first append, not when i
     expect(filesUnder(root)).toEqual([]);
     // And the next writer signs with the key that is there.
     expect(openChainForWriting(root, { keyRoot }).signerFingerprint).toBe(theirs.fingerprint);
+  });
+});
+
+describe('the buffer a checkpoint signs must be exactly the range it claims', () => {
+  const refusal = (from: number, to: number, covers: number, held: number) =>
+    `chain: refusing to sign a checkpoint over t seq ${from}..${to}: ` +
+    `the range covers ${covers} event(s) but ${held} are buffered`;
+
+  it('lets a buffer that holds the whole range through', () => {
+    expect(() => assertBufferCoversRange('t', 5, 8, [5, 6, 7, 8])).not.toThrow();
+    expect(() => assertBufferCoversRange('t', 3, 3, [3])).not.toThrow();
+  });
+
+  it('refuses a hole at the start, at the end and in the middle of the range', () => {
+    expect(() => assertBufferCoversRange('t', 5, 8, [6, 7, 8])).toThrow(refusal(5, 8, 4, 3));
+    expect(() => assertBufferCoversRange('t', 5, 8, [5, 6, 7])).toThrow(refusal(5, 8, 4, 3));
+    expect(() => assertBufferCoversRange('t', 5, 8, [5, 6, 8])).toThrow(refusal(5, 8, 4, 3));
+  });
+
+  it('refuses an empty buffer and one that holds more than the range', () => {
+    expect(() => assertBufferCoversRange('t', 5, 8, [])).toThrow(refusal(5, 8, 4, 0));
+    expect(() => assertBufferCoversRange('t', 5, 6, [5, 6, 7])).toThrow(refusal(5, 6, 2, 3));
+  });
+
+  it('is called by the signing path, before anything is signed', () => {
+    // No legitimate use reaches the refusal, so there is no seam to drive it through: the
+    // signing body is read, and it must call the function before it builds the checkpoint.
+    const source = readFileSync(new URL('./writer.ts', import.meta.url), 'utf-8');
+    const start = source.indexOf('private signLocked(');
+    expect(start).toBeGreaterThan(-1);
+    const body = source.slice(start, source.indexOf('\n  }\n', start));
+    const call = body.indexOf('assertBufferCoversRange(this.tailId, fromSeq, toSeq, this.pending)');
+    expect(call).toBeGreaterThan(-1);
+    expect(call).toBeLessThan(body.indexOf('signCheckpoint('));
   });
 });
