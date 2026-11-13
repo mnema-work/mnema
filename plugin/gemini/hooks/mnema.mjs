@@ -820,12 +820,15 @@ function run(args, cwd, input, timeout = WAIT) {
   });
 }
 
-/**
- * What the opening says: the two verbs share ONE budget, so that the search for a node, `--identify`
- * and both verbs stay under the host's own cap and a `mnema` that hangs is answered by a line, not by
- * the host's kill, which a host reads as nothing to say.
- */
+/** How long both verbs of the opening are given together, in milliseconds. */
 const OPENING_WAIT = 9000;
+
+/**
+ * What the opening says: the two verbs share ONE budget (OPENING_WAIT), so that the search for a node,
+ * `--identify` and both verbs stay under the host's own cap and a `mnema` that hangs is answered by
+ * a line, not by the host's kill, which a host reads as nothing to say.
+ * @param {string} cwd
+ */
 function openingOf(cwd) {
   const until = Date.now() + OPENING_WAIT;
   return ['brief', 'recall'].flatMap((verb) => whatItSays(verb, cwd, until));
