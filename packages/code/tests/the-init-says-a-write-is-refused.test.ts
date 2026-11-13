@@ -188,7 +188,7 @@ function initIn(
 ): { status: number | null; lines: string[]; stderr: string } {
   const tree = join(dir, '.mnema');
   // A read the checkout has already made: the projection kept in the tree has been brought to
-  // the segments as the pull left them (their modification time included), as it is by the first
+  // the files as the pull left them (their modification time included), as it is by the first
   // command run after one. What is asserted is that `init` itself adds nothing after that.
   mnema(dir, homeDir, 'status');
   const [treeBefore, homeBefore] = [contentsUnder(tree), contentsUnder(homeDir)];
