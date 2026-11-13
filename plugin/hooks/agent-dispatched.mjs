@@ -22,6 +22,12 @@
  * IT NEVER FAILS A DISPATCH. Every outcome is exit 0.
  */
 
+/**
+ * WHICH channel of the product's framing this handler carries: the name `record-framing.ts` knows it
+ * by. Read from this SOURCE by the channel guard, never imported: importing this module would run it.
+ */
+export const MODEL_CHANNEL = 'agent-mirror';
+
 /** The verb and nothing else: the event, the tool and the session are in the payload. */
 const VERB = ['dispatched'];
 
