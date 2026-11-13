@@ -260,5 +260,4 @@ describe('the weekly run', () => {
     expect(workflow).toContain('-i HOME="$sandbox"');
     expect(workflow).toContain('measure.mjs scan');
   });
-
 });
