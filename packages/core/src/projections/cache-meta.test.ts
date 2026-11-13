@@ -252,4 +252,43 @@ describe('keeping the active marks', () => {
     expect(activeOf(db)).toEqual({ '/x/000001.jsonl': 'old' });
     db.close();
   });
+
+  it('does not wait for a writer that holds the file, and puts the connection\u2019s wait back', () => {
+    const dirOfFile = mkdtempSync(join(tmpdir(), 'mnema-keep-'));
+    const file = join(dirOfFile, 'projection.db');
+    try {
+      const db = openDatabase(file);
+      ensureSchema(db);
+      writeMeta(db, {
+        stamp: productStamp(),
+        generation: 4,
+        frontier: frontierOver([]),
+        breaks: [],
+        unread: [],
+        sealed: {},
+        active: {},
+      });
+      const holder = openDatabase(file);
+      holder.exec('BEGIN IMMEDIATE');
+      const started = performance.now();
+      try {
+        expect(keepActiveMarks(db, { a: 'b' }, 4)).toBe(false);
+      } finally {
+        holder.exec('ROLLBACK');
+        holder.close();
+      }
+      expect(performance.now() - started).toBeLessThan(1_000);
+      const waits = db.prepare('PRAGMA busy_timeout').get() as { timeout: number };
+      expect(waits.timeout).toBe(5_000);
+      db.close();
+    } finally {
+      rmSync(dirOfFile, { recursive: true, force: true });
+    }
+  });
+
+  it('lets a failure that is not the file\u2019s being held go up', () => {
+    const db = aFileAt(4);
+    db.close();
+    expect(() => keepActiveMarks(db, {}, 4)).toThrow();
+  });
 });

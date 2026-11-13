@@ -632,14 +632,8 @@ export class ProjectionCache {
     // kept, so the next open does not hash it again (and a read that finds nothing new, which
     // never stores, would otherwise hash on every open until the next write).
     if (active !== undefined && JSON.stringify(active) !== JSON.stringify(meta.active)) {
-      // An optimization, and never a reason to give the file up: a write that cannot be made (a
-      // read-only file, a writer holding it) leaves the cache as valid as it was, and the next
-      // open hashes once more.
-      try {
-        keepActiveMarks(this.db, active, meta.generation);
-      } catch {
-        // Nothing kept.
-      }
+      // An optimization that never waits and never gives the file up: see {@link keepActiveMarks}.
+      keepActiveMarks(this.db, active, meta.generation);
     }
   }
 

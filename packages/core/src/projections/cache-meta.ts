@@ -53,7 +53,7 @@ import {
   type UnreadLine,
   WORKFLOWS,
 } from '@mnema/chain';
-import { inTransaction, type SqliteDatabase } from '../db/sqlite.js';
+import { BUSY_TIMEOUT_MS, inTransaction, type SqliteDatabase } from '../db/sqlite.js';
 import type { ChainFrontier, TailReach } from './order.js';
 
 /** What is stored under the cache's own keys. */
@@ -359,26 +359,51 @@ function prefixDigest(path: string, bytes: number): string | undefined {
   }
 }
 
+/** SQLite's primary result codes for a file somebody else holds or that cannot be written. */
+const SQLITE_BUSY = 5;
+const SQLITE_LOCKED = 6;
+const SQLITE_READONLY = 8;
+
 /**
  * Replaces the active marks alone, leaving the generation where it is (nothing the rows say
  * changed), and only while the generation in the file is still `generation`, the one the marks
  * were checked against: a file another process advanced since holds a frontier these marks do not
  * describe, and is left as that process wrote it. Says whether it wrote.
+ *
+ * IT NEVER WAITS. The mark is an optimization, and a read that used to wait for nobody must not
+ * wait the connection's five seconds (twice, in a verb a hook cuts at nine) for a writer that holds
+ * the file: with the wait taken to zero for this one transaction, a busy, locked or read-only file
+ * is a mark not kept and `false`, and the connection's wait is put back. Any other failure goes up.
  */
 export function keepActiveMarks(
   db: SqliteDatabase,
   active: Readonly<Record<string, string>>,
   generation: number,
 ): boolean {
-  return inTransaction(
-    db,
-    () => {
-      if (readGeneration(db) !== generation) return false;
-      db.prepare("UPDATE cache_meta SET value = ? WHERE key = 'active'").run(
-        JSON.stringify(active),
-      );
-      return true;
-    },
-    { immediate: true },
-  );
+  db.exec('PRAGMA busy_timeout = 0');
+  try {
+    return inTransaction(
+      db,
+      () => {
+        if (readGeneration(db) !== generation) return false;
+        db.prepare("UPDATE cache_meta SET value = ? WHERE key = 'active'").run(
+          JSON.stringify(active),
+        );
+        return true;
+      },
+      { immediate: true },
+    );
+  } catch (error) {
+    const failure = error as { code?: unknown; errcode?: unknown } | null;
+    const primary = typeof failure?.errcode === 'number' ? failure.errcode & 0xff : -1;
+    if (
+      failure?.code === 'ERR_SQLITE_ERROR' &&
+      (primary === SQLITE_BUSY || primary === SQLITE_LOCKED || primary === SQLITE_READONLY)
+    ) {
+      return false;
+    }
+    throw error;
+  } finally {
+    db.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
+  }
 }

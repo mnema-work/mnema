@@ -605,16 +605,18 @@ describe('a cache that cannot be vouched for is replaced, never trusted', () => 
     const stamped = statSync(file);
     utimesSync(file, stamped.atime, new Date(stamped.mtimeMs + 5_000));
     const cache = persisted();
-    // A writer holds the file past a short wait, so the mark cannot be written.
-    (cache as unknown as { db: SqliteDatabase }).db.exec('PRAGMA busy_timeout = 20');
+    // A writer holds the file, and the connection keeps its ordinary wait of five seconds: the
+    // mark is not worth any of it.
     const holder = openDatabase(projectionCachePath({ root }));
     holder.exec('BEGIN IMMEDIATE');
+    const started = performance.now();
     try {
       cache.refresh();
     } finally {
       holder.exec('ROLLBACK');
       holder.close();
     }
+    expect(performance.now() - started, 'the restamp waited for the writer').toBeLessThan(1_000);
     expect(theMarkerSurvived(cache), 'the failed write sent the cache to memory').toBe(true);
     expect(answersOf(cache).tasks).toEqual(answersOf(replayed()).tasks);
   });
