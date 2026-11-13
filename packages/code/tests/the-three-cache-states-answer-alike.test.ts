@@ -114,6 +114,10 @@ describe('the three states of the projection cache', () => {
     const given: Record<string, boolean> = {};
     const seen = inEveryCacheState<Founded>({
       ...aRealCase(),
+      // A damage the search survives: a write after the session read, so the answer is `ok` and
+      // lists what both projects hold, which is what the comparison has to see.
+      damage: (planted) =>
+        expect(mnemaRun(planted, ['memory', 'written after the session opened']).status).toBe(0),
       workspace(dir) {
         const second = join(dir, 'second-project');
         mkdirSync(second, { recursive: true });
@@ -135,6 +139,10 @@ describe('the three states of the projection cache', () => {
   it('holds a second project that has a record of its own: the fresh connection opens the same roots', () => {
     const seen = inEveryCacheState<Founded>({
       ...aRealCase(),
+      // A damage the search survives: a write after the session read, so the answer is `ok` and
+      // lists what both projects hold, which is what the comparison has to see.
+      damage: (planted) =>
+        expect(mnemaRun(planted, ['memory', 'written after the session opened']).status).toBe(0),
       workspace(dir) {
         const second = { repo: join(dir, 'second-project'), home: join(dir, 'home') };
         mkdirSync(second.repo, { recursive: true });
@@ -146,6 +154,7 @@ describe('the three states of the projection cache', () => {
       },
     });
     expect(seen.session.session?.before).toContain('A choice of the second');
+    expect(seen.session.session?.after).toMatch(/^ok .*A choice of the second/);
     expect(seen.session.session?.after).toBe(seen.session.session?.fresh);
   }, 90_000);
 

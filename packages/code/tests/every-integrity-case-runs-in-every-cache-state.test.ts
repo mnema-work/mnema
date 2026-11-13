@@ -29,7 +29,6 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
-const SUPPORT = 'packages/code/tests/support/';
 const HELPER = 'every-cache-state';
 
 /**
@@ -141,140 +140,267 @@ export interface Source {
 
 const TAG = /^\s*\/\/ @proves [a-z0-9-]+\s*$/m;
 /**
- * The shape of a test that writes into a tail or its checkpoints: a write, append, truncate, removal
- * or copy whose argument, within a couple of hundred characters, names a segment, the checkpoints
- * file, a note beside a tail or the tails directory. It is a tripwire and not a judge: it also
- * matches the tests that BUILD a fixture that way, which is why a file that has it is let through
- * when it is in FROZEN, marked, listed or running through the helper.
+ * The shape of a text that writes into tails or checkpoints, by file and not by call: a call that
+ * writes, appends, truncates, removes, renames or copies (by path or by descriptor) AND, anywhere
+ * in the same text, the name of a tail, a segment, the checkpoints file or a note beside a tail.
+ * A path built far from the call that writes to it is therefore caught; so is a text that merely
+ * builds a fixture that way, which is why the rule lets through a file that is in FROZEN, marked,
+ * listed or running through the helper. It reads names and calls, not what the bytes become: a
+ * write whose target is named by something else (a path from another module, a variable that
+ * holds the whole path from a function that is not in the text) escapes it.
  */
-const WRITES =
-  /\b(?:writeFileSync|appendFileSync|rmSync|truncateSync|unlinkSync|renameSync|writeFile|appendFile|rm|cpSync)\(/g;
-const A_TAIL = /checkpoints|\d{6}\.jsonl|segment|\.head|'tails'|"tails"|`tails`/;
+const A_WRITE =
+  /\b(?:writeFileSync|appendFileSync|rmSync|truncateSync|ftruncateSync|writeSync|unlinkSync|renameSync|copyFileSync|cpSync|writeFile|appendFile|rm|truncate|copyFile|cp)\(/;
+const A_TAIL = /checkpoints|\d{6}\.jsonl|segment|\.head|tails/;
 
 /** Whether a text has the shape of one that writes into tails or checkpoints. */
 export function writesIntoTails(text: string): boolean {
-  for (const call of text.matchAll(WRITES))
-    if (A_TAIL.test(text.slice(call.index, call.index + 200))) return true;
-  return false;
+  return A_WRITE.test(text) && A_TAIL.test(text);
 }
 
 /**
- * The test files that had that shape when the tripwire was set, and no others: a file that has it
- * and is not here, not marked and not listed is a NEW test that writes into a tail and was not
- * asked what the cache does to it. The list only shrinks; a file leaves it by being marked,
- * converted or listed, or by losing the shape.
+ * The test files that had that shape when the tripwire was set, whether in their own text or in a
+ * `support/` module they import, and no others: a file that has it and is not here, not marked and
+ * not listed is a NEW test that writes into a tail and was not asked what the cache does to it. The
+ * list only shrinks; a file leaves it by being marked, converted or listed, or by losing the shape.
  */
 export const FROZEN: ReadonlySet<string> = new Set([
+  'packages/action/src/record.test.ts',
   'packages/action/src/run.test.ts',
   'packages/action/src/world.test.ts',
   'packages/chain/src/chain/a-history-rewritten-without-the-key-is-never-signed.test.ts',
   'packages/chain/src/chain/a-kind-this-reader-does-not-know-is-read-past.test.ts',
   'packages/chain/src/chain/a-reformat-is-named-only-where-the-signatures-prove-it.test.ts',
   'packages/chain/src/chain/a-refused-line-hides-nothing-else-in-its-tail.test.ts',
+  'packages/chain/src/chain/a-tail-is-not-forked.test.ts',
   'packages/chain/src/chain/a-tail-is-written-by-the-key-its-id-names.test.ts',
+  'packages/chain/src/chain/a-tail-of-another-record-is-refused.test.ts',
   'packages/chain/src/chain/a-writer-rotates-at-the-size-it-may-hold-and-comes-back-to-it.test.ts',
   'packages/chain/src/chain/both-readers-read-the-same-bytes.test.ts',
   'packages/chain/src/chain/chain.test.ts',
   'packages/chain/src/chain/cited-heads.test.ts',
+  'packages/chain/src/chain/durable.test.ts',
   'packages/chain/src/chain/enrollment.test.ts',
   'packages/chain/src/chain/every-reader-refuses-bytes-that-are-not-utf8.test.ts',
   'packages/chain/src/chain/freshness.test.ts',
+  'packages/chain/src/chain/installation-id.test.ts',
   'packages/chain/src/chain/invariants.test.ts',
+  'packages/chain/src/chain/keyroot.test.ts',
   'packages/chain/src/chain/relink-plan.test.ts',
   'packages/chain/src/chain/second-reader-agrees-on-a-relink.test.ts',
   'packages/chain/src/chain/second-reader-agrees-on-enrolment.test.ts',
+  'packages/chain/src/chain/second-reader-agrees-on-the-order-of-tails.test.ts',
   'packages/chain/src/chain/second-reader-agrees-on-the-record.test.ts',
+  'packages/chain/src/chain/second-reader-agrees-on-what-is-not-applied.test.ts',
   'packages/chain/src/chain/second-reader-agrees-over-generated-input.test.ts',
   'packages/chain/src/chain/second-reader-names-a-refused-founding-once.test.ts',
+  'packages/chain/src/chain/second-reader-says-what-it-does-not-check.test.ts',
   'packages/chain/src/chain/second-reader-session.test.ts',
+  'packages/chain/src/chain/subject-events-return-the-moves-a-replay-folds.test.ts',
   'packages/chain/src/chain/subject-events.test.ts',
+  'packages/chain/src/chain/tail-lock.test.ts',
   'packages/chain/src/chain/the-census-says-what-a-backup-is.test.ts',
   'packages/chain/src/chain/the-promise-between-versions.test.ts',
   'packages/chain/src/chain/the-records-of-a-project-are-verified-together.test.ts',
   'packages/chain/src/chain/the-verdict-over-a-broken-tail.test.ts',
   'packages/chain/src/chain/the-writer-names-the-record.test.ts',
   'packages/chain/src/chain/tree.test.ts',
+  'packages/chain/src/chain/upcast-vs-proof.test.ts',
+  'packages/chain/src/chain/verify-costs-what-the-record-holds.test.ts',
   'packages/chain/src/chain/waiver.test.ts',
+  'packages/chain/src/chain/witness.test.ts',
   'packages/chain/src/chain/witnessed-record.test.ts',
+  'packages/chain/src/chain/witnessed-then-written.test.ts',
   'packages/chain/src/chain/writer.test.ts',
+  'packages/code/src/cli.golden.test.ts',
   'packages/code/src/commands/antipatterns.test.ts',
   'packages/code/src/commands/brief.test.ts',
   'packages/code/src/commands/inherit.test.ts',
+  'packages/code/src/commands/record-merge-tail.test.ts',
   'packages/code/src/commands/show-says-a-move-made-apart.test.ts',
   'packages/code/src/commands/site.test.ts',
+  'packages/code/src/commands/stack-source.test.ts',
   'packages/code/src/commands/tail-list.test.ts',
   'packages/code/src/commands/tail-prune.test.ts',
   'packages/code/src/commands/tail-relink.test.ts',
+  'packages/code/src/commands/verify-github.test.ts',
   'packages/code/src/commands/verify-since.test.ts',
   'packages/code/src/commands/verify.test.ts',
+  'packages/code/src/commands/witness-stamp-judges-each-tree-once.test.ts',
   'packages/code/src/commands/witness.test.ts',
   'packages/code/src/not-a-project.test.ts',
+  'packages/code/src/presentation/one-line-per-item.test.ts',
   'packages/code/src/sigstore/sigstore.test.ts',
   'packages/code/src/site/the-lists-are-checked-in-the-browser.test.ts',
   'packages/code/src/site/the-raw-lines-are-drawn-from-the-files.test.ts',
   'packages/code/src/site/the-verdict-in-the-browser.test.ts',
+  'packages/code/src/what-the-session-touches.test.ts',
   'packages/code/tests/a-directory-of-two-records-governs-nothing.test.ts',
+  'packages/code/tests/a-flag-declared-twice.test.ts',
   'packages/code/tests/a-gate-says-the-rule-it-stands-on-was-moved-apart.test.ts',
   'packages/code/tests/a-home-of-its-own.test.ts',
   'packages/code/tests/a-key-whose-tail-was-cut-is-told-what-happened.test.ts',
+  'packages/code/tests/a-line-of-success-is-one-line.test.ts',
+  'packages/code/tests/a-marker-is-not-a-title.test.ts',
   'packages/code/tests/a-move-reads-the-record-once.test.ts',
+  'packages/code/tests/a-palette-for-the-words.test.ts',
   'packages/code/tests/a-plain-git-pull-carries-the-record.test.ts',
+  'packages/code/tests/a-private-rule-keeps-its-facts-private.test.ts',
+  'packages/code/tests/a-private-write-asks-git.test.ts',
   'packages/code/tests/a-project-inherits-a-record.test.ts',
+  'packages/code/tests/a-record-holding-a-kind-this-mnema-does-not-know.test.ts',
   'packages/code/tests/a-record-no-tail-holds-is-refused.test.ts',
+  'packages/code/tests/a-record-says-where-a-newer-mnema-wrote.test.ts',
+  'packages/code/tests/a-refusal-leaves-nothing.test.ts',
   'packages/code/tests/a-relinked-tail-passes-since.test.ts',
+  'packages/code/tests/a-report-is-built-from-an-allowlist.test.ts',
   'packages/code/tests/a-rule-that-refuses-a-write.test.ts',
   'packages/code/tests/a-tail-merges-and-pulls.test.ts',
   'packages/code/tests/a-tail-that-arrives-is-held-to-the-base.test.ts',
   'packages/code/tests/a-tail-that-holds-keys-is-not-cut-without-naming-them.test.ts',
+  'packages/code/tests/a-write-killed-at-any-point-is-signed-by-the-next.test.ts',
   'packages/code/tests/a-write-no-rule-can-meet-starts-no-mnema.test.ts',
+  'packages/code/tests/a-write-says-what-it-founded.test.ts',
   'packages/code/tests/an-accept-and-a-retirement-that-crossed-are-in-force-nowhere.test.ts',
+  'packages/code/tests/an-inherited-rule-reaches-the-edit.test.ts',
+  'packages/code/tests/an-mcp-agent-is-told-of-a-new-tail.test.ts',
+  'packages/code/tests/both-readers-refuse-swapped-checkpoints-and-a-linked-tail.test.ts',
   'packages/code/tests/cli-e2e.test.ts',
+  'packages/code/tests/events-not-in-git-are-said.test.ts',
+  'packages/code/tests/every-integrity-case-runs-in-every-cache-state.test.ts',
+  'packages/code/tests/every-sandbox-is-removed-where-it-was-made.test.ts',
+  'packages/code/tests/every-tool-says-if-it-writes.test.ts',
+  'packages/code/tests/every-verb-says-if-it-writes.test.ts',
   'packages/code/tests/every-write-signs-what-it-wrote.test.ts',
+  'packages/code/tests/mcp-audit-across-workspace.test.ts',
+  'packages/code/tests/mcp-context.test.ts',
+  'packages/code/tests/mcp-locate-cache.test.ts',
+  'packages/code/tests/mcp-session-cache.test.ts',
   'packages/code/tests/neutralizes-control-bytes-everywhere.test.ts',
+  'packages/code/tests/one-width-per-frame.test.ts',
+  'packages/code/tests/outside-a-project-the-surface-says-so.test.ts',
+  'packages/code/tests/the-address-a-proof-names-is-checked.test.ts',
+  'packages/code/tests/the-address-says-what-it-covers.test.ts',
+  'packages/code/tests/the-agent-ci-step-installs-the-key-the-agent-signs-with.test.ts',
   'packages/code/tests/the-agent-is-told-a-move-was-made-apart.test.ts',
+  'packages/code/tests/the-agent-is-told-the-record-does-not-chain.test.ts',
   'packages/code/tests/the-bare-name-says-what-is-off.test.ts',
+  'packages/code/tests/the-brief-is-the-same-bytes-in-any-order.properties.test.ts',
+  'packages/code/tests/the-busy-tail-is-a-refusal.test.ts',
+  'packages/code/tests/the-checkout-a-key-left.test.ts',
   'packages/code/tests/the-ci-recipe-catches-what-verify-cannot.test.ts',
   'packages/code/tests/the-clean-verify-is-short.test.ts',
   'packages/code/tests/the-console-says-what-recurs-and-not-where.test.ts',
+  'packages/code/tests/the-convergence-page-is-what-the-binary-prints.test.ts',
+  'packages/code/tests/the-corner-says-what-its-level-covers.test.ts',
   'packages/code/tests/the-first-use-says-what-it-did.test.ts',
   'packages/code/tests/the-first-write-completes-the-record-page.test.ts',
+  'packages/code/tests/the-format-lists-what-a-writer-leaves-at-the-root.test.ts',
+  'packages/code/tests/the-home-is-not-a-project.test.ts',
+  'packages/code/tests/the-hook-never-founds-an-identity.test.ts',
+  'packages/code/tests/the-input-has-its-own-place.test.ts',
+  'packages/code/tests/the-line-a-reading-words-is-one-line.test.ts',
+  'packages/code/tests/the-name-and-the-hints.test.ts',
+  'packages/code/tests/the-other-projects-are-read-from-their-index.test.ts',
   'packages/code/tests/the-owner-relinks-a-tail.test.ts',
   'packages/code/tests/the-page-holds-against-someone-without-the-key.test.ts',
+  'packages/code/tests/the-page-shows-its-seams.test.ts',
   'packages/code/tests/the-phrase-the-domain-words-is-one-line.test.ts',
   'packages/code/tests/the-private-tree-moves-out-of-the-worktree.test.ts',
   'packages/code/tests/the-private-tree-outlives-its-worktree.test.ts',
   'packages/code/tests/the-proof-answers-a-machine.test.ts',
+  'packages/code/tests/the-pull-request-is-told-what-failed.test.ts',
+  'packages/code/tests/the-quick-start-works-after-an-init-at-a-terminal.test.ts',
+  'packages/code/tests/the-read-says-the-record-does-not-chain.test.ts',
   'packages/code/tests/the-record-arrives-unasked.test.ts',
+  'packages/code/tests/the-record-is-kept-between-reads.test.ts',
   'packages/code/tests/the-record-keeps-an-editorconfig.test.ts',
   'packages/code/tests/the-record-may-have-moved.test.ts',
   'packages/code/tests/the-record-name-survives-a-cut-of-its-genesis.test.ts',
+  'packages/code/tests/the-record-page-stays-out-of-git.test.ts',
   'packages/code/tests/the-record-reaches-git-through-a-pull-request.test.ts',
+  'packages/code/tests/the-record-you-can-see.test.ts',
+  'packages/code/tests/the-recordings-are-what-the-binary-draws.test.ts',
+  'packages/code/tests/the-refused-run-is-refused-everywhere.test.ts',
+  'packages/code/tests/the-rule-has-an-address.test.ts',
+  'packages/code/tests/the-rule-reaches-the-writing.test.ts',
   'packages/code/tests/the-server-keeps-its-own-projects-cache.test.ts',
+  'packages/code/tests/the-session-the-manual-shows-is-the-one-printed.test.ts',
   'packages/code/tests/the-strict-gate-catches-the-forgery.test.ts',
+  'packages/code/tests/the-switch-is-a-fact.test.ts',
   'packages/code/tests/the-three-cache-states-answer-alike.test.ts',
+  'packages/code/tests/the-three-doors-are-one.test.ts',
+  'packages/code/tests/the-tools-that-rewrite-files.test.ts',
   'packages/code/tests/the-verb-says-which-tails.test.ts',
   'packages/code/tests/the-verb-that-does-not-cut.test.ts',
   'packages/code/tests/the-verdict-covers-what-you-name.test.ts',
   'packages/code/tests/the-verdict-is-parts.test.ts',
   'packages/code/tests/the-verdict-says-what-it-covered.test.ts',
   'packages/code/tests/the-verdict-tells-the-truth.test.ts',
+  'packages/code/tests/the-verify-json-says-each-tree-in-a-line.test.ts',
+  'packages/code/tests/the-witness-counts-the-tails-verify-counts.test.ts',
+  'packages/code/tests/the-write-says-what-it-landed-on.test.ts',
+  'packages/code/tests/verify-against-github.test.ts',
   'packages/code/tests/verify-json-says-whether-the-record-is-ok.test.ts',
+  'packages/code/tests/what-a-session-records-on-its-own-it-reports.test.ts',
+  'packages/code/tests/what-a-write-meets.test.ts',
+  'packages/code/tests/what-the-agent-just-did.test.ts',
+  'packages/context/src/context/bootstrap.test.ts',
+  'packages/context/src/context/brief.test.ts',
+  'packages/context/src/context/decisions.test.ts',
+  'packages/context/src/context/focus.test.ts',
+  'packages/context/src/context/next-action.test.ts',
+  'packages/context/src/context/presence.test.ts',
+  'packages/context/src/context/search.test.ts',
+  'packages/context/src/context/skills.test.ts',
+  'packages/context/src/context/switches.test.ts',
+  'packages/context/src/context/task-story.test.ts',
+  'packages/context/src/context/tasks.test.ts',
+  'packages/context/src/context/unread.test.ts',
+  'packages/context/src/guard/guard.test.ts',
+  'packages/context/src/intelligence/accountability.test.ts',
+  'packages/context/src/intelligence/antipatterns.test.ts',
+  'packages/context/src/intelligence/consultation.test.ts',
+  'packages/context/src/intelligence/governance.test.ts',
+  'packages/context/src/intelligence/identities.test.ts',
+  'packages/context/src/intelligence/pattern-moves.test.ts',
+  'packages/context/src/intelligence/promotion.test.ts',
+  'packages/context/src/intelligence/provenance.test.ts',
+  'packages/context/src/intelligence/references.test.ts',
+  'packages/context/src/intelligence/timeline.test.ts',
+  'packages/context/src/sources.test.ts',
+  'packages/context/tests/readme-example.test.ts',
+  'packages/context/tests/the-bench-leaves-nothing-behind.test.ts',
   'packages/core/src/a-reason-states-something.test.ts',
   'packages/core/src/content/every-field.test.ts',
+  'packages/core/src/identity/agents.test.ts',
+  'packages/core/src/identity/restore.test.ts',
+  'packages/core/src/identity/roster.test.ts',
+  'packages/core/src/knowledge/only-the-identity-that-wrote-a-note-retracts-it.test.ts',
+  'packages/core/src/knowledge/operations.test.ts',
+  'packages/core/src/projections/a-decision-is-the-text-its-first-judgment-saw.test.ts',
   'packages/core/src/projections/advance.test.ts',
   'packages/core/src/projections/cache-meta.test.ts',
   'packages/core/src/projections/cache.test.ts',
   'packages/core/src/projections/divergent-moves.test.ts',
+  'packages/core/src/projections/many-tails.properties.test.ts',
   'packages/core/src/projections/order.test.ts',
   'packages/core/src/projections/persisted-cache.test.ts',
   'packages/core/src/projections/tree-index.test.ts',
+  'packages/core/src/topology/compose.test.ts',
+  'packages/core/src/topology/private-tree-move.test.ts',
+  'packages/core/src/topology/resolve.test.ts',
+  'packages/core/src/topology/routing.test.ts',
   'packages/core/src/workflow/a-stale-anchor-writes-nothing.test.ts',
   'packages/core/src/workflow/decision-operations.test.ts',
   'packages/core/src/workflow/every-append.test.ts',
+  'packages/core/src/workflow/identity-operations.test.ts',
   'packages/core/src/workflow/prune-operations.test.ts',
   'packages/core/src/workflow/relink-operations.test.ts',
+  'packages/core/src/workflow/session-operations.test.ts',
   'packages/core/tests/integration/cross-entity.test.ts',
   'packages/core/tests/integration/enrollment-e2e.test.ts',
+  'packages/vscode/src/extension.test.ts',
 ]);
 
 const PLANTS = /^\/\/ @plants-damage\s*$/m;
@@ -301,6 +427,7 @@ export function accusations(
   planters: ReadonlySet<string>,
   exempt: Readonly<Record<string, string>>,
   frozen: ReadonlySet<string> = FROZEN,
+  writers: ReadonlySet<string> = new Set(),
 ): string[] {
   const out: string[] = [];
   for (const [file, source] of sources) {
@@ -311,7 +438,7 @@ export function accusations(
       !uses &&
       exempt[file] === undefined &&
       !frozen.has(file) &&
-      writesIntoTails(source.text)
+      (writesIntoTails(source.text) || source.imports.some((name) => writers.has(name)))
     )
       out.push(
         `${file} writes into a tail or its checkpoints and was not asked what the cache does to it: mark it with a line // @plants-damage if it damages a record and judges it, and run it through ${HELPER} or list it in EXEMPT with the reason`,
@@ -333,7 +460,11 @@ export function accusations(
   return out;
 }
 
-function read(): { sources: Map<string, Source>; planters: Set<string> } {
+function read(): {
+  sources: Map<string, Source>;
+  planters: Set<string>;
+  writers: Set<string>;
+} {
   const listed = execFileSync(
     'git',
     ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', 'packages'],
@@ -342,16 +473,21 @@ function read(): { sources: Map<string, Source>; planters: Set<string> } {
     .split('\0')
     .filter(Boolean);
   const planters = new Set<string>();
-  for (const file of listed)
-    if (file.startsWith(SUPPORT) && PLANTS.test(readFileSync(join(ROOT, file), 'utf-8')))
-      planters.add(file.slice(SUPPORT.length).replace(/\.ts$/, ''));
+  const writers = new Set<string>();
+  for (const file of listed) {
+    if (!file.includes('/tests/support/') || !file.endsWith('.ts')) continue;
+    const text = readFileSync(join(ROOT, file), 'utf-8');
+    const name = (file.split('/tests/support/')[1] as string).replace(/\.ts$/, '');
+    if (PLANTS.test(text)) planters.add(name);
+    if (writesIntoTails(text)) writers.add(name);
+  }
   const sources = new Map<string, Source>();
   for (const file of listed) {
     if (!file.endsWith('.test.ts')) continue;
     const text = readFileSync(join(ROOT, file), 'utf-8');
     sources.set(file, { text, imports: supportImports(text) });
   }
-  return { sources, planters };
+  return { sources, planters, writers };
 }
 
 /** The tag, written so that this file does not carry the tag it tests for. */
@@ -359,9 +495,9 @@ const PROVES = '@proves';
 
 describe('the integrity tests and the states of the projection cache', () => {
   it('has every file that proves integrity or plants damage run through the helper, or say why not', () => {
-    const { sources, planters } = read();
+    const { sources, planters, writers } = read();
     expect(sources.size).toBeGreaterThan(100);
-    expect(accusations(sources, planters, EXEMPT)).toEqual([]);
+    expect(accusations(sources, planters, EXEMPT, FROZEN, writers)).toEqual([]);
     const gone = [...FROZEN].filter((file) => !sources.has(file));
     expect(gone, 'FROZEN names a file that is not a test file: drop the entry').toEqual([]);
   });
@@ -441,25 +577,44 @@ describe('the integrity tests and the states of the projection cache', () => {
     expect(marked.length).toBeGreaterThanOrEqual(4);
   });
 
-  it('accuses by name a new file that writes into a tail and is neither frozen, marked, listed nor running through the helper (the tripwire seen to fire)', () => {
-    const writer: Source = {
-      text: "import { appendFileSync } from 'node:fs';\nappendFileSync(join(tail, '000001.jsonl'), 'x');",
-      imports: [],
+  it('accuses by name a new file that writes into a tail, however the path or the write is made (the tripwire seen to fire)', () => {
+    const shapes: Record<string, string> = {
+      'a-direct-append': "appendFileSync(join(tail, '000001.jsonl'), 'x');",
+      'a-path-built-far-from-the-write':
+        "const file = join(repo, '.mnema', 'tails', tail, 'x');\n// ...\n\nwriteFileSync(file, 'x');",
+      'a-write-by-descriptor':
+        "const fd = openSync(join(dir, 'tails', 't'), 'r+');\nftruncateSync(fd, 0);\nwriteSync(fd, 'x');",
+      'a-copy': "copyFileSync(from, join(dir, 'checkpoints.jsonl'));",
     };
-    const harmless: Source = { text: "writeFileSync(join(dir, 'notes.txt'), 'x');", imports: [] };
-    const sources = new Map([
-      ['packages/code/tests/a-new-writer.test.ts', writer],
-      ['packages/code/tests/an-old-writer.test.ts', writer],
-      ['packages/code/tests/a-harmless.test.ts', harmless],
-    ]);
+    const sources = new Map<string, Source>();
+    for (const [name, text] of Object.entries(shapes))
+      sources.set(`packages/code/tests/${name}.test.ts`, { text, imports: [] });
+    sources.set('packages/code/tests/via-a-support-module.test.ts', {
+      text: "import { plant } from './support/a-writer.js';\nit(1)",
+      imports: ['a-writer'],
+    });
+    sources.set('packages/code/tests/an-old-writer.test.ts', {
+      text: shapes['a-direct-append'] as string,
+      imports: [],
+    });
+    sources.set('packages/code/tests/a-harmless.test.ts', {
+      text: "writeFileSync(join(dir, 'notes.txt'), 'x');",
+      imports: [],
+    });
     const said = accusations(
       sources,
       new Set(),
       {},
       new Set(['packages/code/tests/an-old-writer.test.ts']),
+      new Set(['a-writer']),
     );
-    expect(said).toHaveLength(1);
-    expect(said[0]).toContain('a-new-writer.test.ts');
+    expect(said.map((line) => line.split(' ')[0]).sort()).toEqual([
+      'packages/code/tests/a-copy.test.ts',
+      'packages/code/tests/a-direct-append.test.ts',
+      'packages/code/tests/a-path-built-far-from-the-write.test.ts',
+      'packages/code/tests/a-write-by-descriptor.test.ts',
+      'packages/code/tests/via-a-support-module.test.ts',
+    ]);
     expect(
       writesIntoTails("rmSync(join(repo, '.mnema', 'tails', tail), { recursive: true });"),
     ).toBe(true);

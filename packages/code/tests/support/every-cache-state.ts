@@ -21,8 +21,8 @@
  * roots, and holds that they answer alike, hit by hit and field by field: a server whose memory of
  * the record is older than the bytes on disk, with the same ids and the old words, must not say
  * what a fresh reader would not. What is compared is what that search lists (the ids, the titles
- * and texts it carries); a field of a record the search does not show is not read by this. The case reaches the same connection through `ctx.session` for a question of
- * its own. A session that read nothing before the damage is accused, so the state cannot be
+ * and texts it carries); a field of a record the search does not show is not read by this.
+ * The case reaches the same connection through `ctx.session` for a question of its own. A session that read nothing before the damage is accused, so the state cannot be
  * satisfied by opening a connection and leaving it idle.
  *
  * `workspace` gives the session a second project before the damage, for the caches that hold
