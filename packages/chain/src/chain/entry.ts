@@ -189,8 +189,9 @@ export function serializeEntry(entry: ChainEntry): string {
  * Whether the hash an entry carries is the one its content and position give: the
  * entry hash recomputed over the WRITTEN event (never the lifted one the reader
  * holds), the tail, the seq and the `prev` the link names, compared with the
- * `hash` the link stores. The one place the question is asked, so the verdict
- * and any read that wants it cannot answer it differently.
+ * `hash` the link stores. The one place the verdict asks it, so the verdict and any
+ * read that wants it cannot answer it differently; the writer still computes its own
+ * when it ends a tail.
  */
 export function entryHashHolds(entry: ChainEntry): boolean {
   return (
