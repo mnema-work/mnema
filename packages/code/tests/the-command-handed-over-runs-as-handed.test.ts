@@ -829,6 +829,7 @@ export const HANDED_OVER: Readonly<
 > = {
   '.claude/rules/mnema-instructions.md': { line: 2 },
   '.github/instructions/mnema-instructions.instructions.md': { line: 2 },
+  '.github/the-hot-path-budget/README.md': { name: 2 },
   'AGENTS.md': { line: 2, name: 1 },
   'CHANGELOG.md': { line: 98, name: 211, flag: 4 },
   'README.md': { line: 4, name: 8 },

@@ -129,7 +129,7 @@ Each line is a rule in force in this repository's record; the decision it cites,
 
 - Every sentence of [what it proves](docs/what-it-proves.md) points at a threat test written from the attacker's side (no key, write access, a cold cache) that fails when the sentence stops being true (ADR-287). A row's id is its bold claim in lower case, the words joined by hyphens (`An edit is caught` is `an-edit-is-caught`); a test holds a row with a comment `// @proves <id>` above the case, and [`every-claim-of-what-it-proves-has-a-threat-test.test.ts`](packages/code/tests/every-claim-of-what-it-proves-has-a-threat-test.test.ts) fails for a row no test names and for a name no row has.
 - No raw error reaches a person and no `catch` is silent (ADR-288).
-- The hot path keeps its budget, one file holds the counts, and a published package declares only what its bundle imports (ADR-289).
+- The hot path keeps its budget (measured every week, see [its page](.github/the-hot-path-budget/README.md)), one file holds the counts, and a published package declares only what its bundle imports (ADR-289).
 - CI runs the newcomer's path from the packed tarball (ADR-290).
 - An integrity test runs with the projection cache cold and warm (ADR-291).
 - A new guard is proved by putting the original defect back, and the pull request names that mutation (ADR-292).

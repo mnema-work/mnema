@@ -23,7 +23,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
-import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
+import { type DiscoveryEnv, ProjectionCache, resolveTrees } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { isTheDerivedCache } from '../../tests/support/the-cache-is-not-the-record.js';
 import { briefDocument, briefWithin } from '../presentation/brief.js';
@@ -32,6 +32,7 @@ import { runBrief } from './brief.js';
 import { runDecision } from './decision.js';
 import { runDecisionTransition } from './decision-transition.js';
 import { runInit } from './init.js';
+import { runLink } from './link.js';
 import { runMemory } from './memory.js';
 import { runSkill } from './skill.js';
 import { runSkillTransition } from './skill-transition.js';
@@ -398,6 +399,68 @@ describe('mnema brief (what governs the work here)', () => {
     // And the same record twice is the same answer twice, through the adapter that
     // rebuilds a cache from the chain each time.
     expect(second).toEqual(first);
+  });
+
+  it('lists each whole table a constant number of times however many rules the session opens on', () => {
+    // The opening has the same shape of risk the read before an edit had: describing a rule is
+    // cheap, and describing it by listing the whole table once per rule is what made that read
+    // cost the rules times the decisions. A session opens on every rule in force, so it is the
+    // larger of the two. A whole-table reading is counted wherever it is made (on the cache class,
+    // not on one the test holds), for the rules the document names and for the record it opened.
+    const wholeTables = [
+      'listDecisions',
+      'listDecisionsByState',
+      'listSkills',
+      'listSkillsByState',
+    ] as const;
+    const readsWhenOpeningOn = (rules: number): number => {
+      const { repo, env } = setup(`open-on-${rules}`);
+      mkdirSync(join(repo, 'src', 'ledger'), { recursive: true });
+      runInit({ cwd: repo, env });
+      const here = { cwd: repo, env };
+      let previous: string | undefined;
+      for (let i = 0; i < rules; i += 1) {
+        const rule = accepted(here, `Rule ${i} of the ledger`, 'public');
+        const linked = runLink(here, { subject: rule.id, target: 'src/ledger', rel: 'governs' });
+        if (!linked.ok) throw new Error(`setup: link refused (${linked.reason})`);
+        if (previous !== undefined && i % 3 === 0) {
+          const moved = runDecisionTransition(here, {
+            id: previous,
+            action: 'supersede',
+            by: rule.id,
+            proof: { reason: 'replaced' },
+          });
+          if (!moved.ok) throw new Error(`setup: supersede refused (${moved.reason})`);
+        }
+        previous = rule.id;
+      }
+      let listed = 0;
+      const originals = wholeTables.map((name) => {
+        const original = ProjectionCache.prototype[name];
+        ProjectionCache.prototype[name] = function (this: ProjectionCache, ...args: [string]) {
+          listed += 1;
+          return (original as (...a: [string]) => never).apply(this, args);
+        } as never;
+        return [name, original] as const;
+      });
+      try {
+        const opened = runBrief(here, {
+          outside: true,
+          stacks: () => ({ adopted: [], departures: [] }),
+        });
+        expect(opened.ok).toBe(true);
+        if (opened.ok) expect(opened.brief.decisions.length).toBeGreaterThan(rules / 2);
+      } finally {
+        for (const [name, original] of originals) {
+          ProjectionCache.prototype[name] = original as never;
+        }
+      }
+      return listed;
+    };
+
+    const few = readsWhenOpeningOn(3);
+    expect(few).toBeGreaterThan(0);
+    expect(readsWhenOpeningOn(24)).toBe(few);
   });
 
   describe('the private rules a session is not handed', () => {

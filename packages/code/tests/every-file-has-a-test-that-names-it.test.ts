@@ -268,6 +268,10 @@ const LED_NOWHERE: Readonly<Record<string, string>> = {
     'The summariser the flake sampler folds N runs with. It lives under .github/ beside the workflow that calls it rather than in a package, because nothing the product ships imports it, which is exactly why the scanner cannot reach it.',
   'packages/code/tests/a-broken-link-after-the-merge-opens-one-issue.test.ts -> ../../../.github/the-links-after-the-merge/check.mjs':
     'The scan that asks the network for every image and absolute link of the READMEs once a change is on main, and the issue it opens or adds to. It runs on a runner after the merge, with the network and the issue book handed in here, and it sits under .github/ where no walk of packages/ can reach it.',
+  'packages/code/tests/the-hot-path-keeps-its-budget.test.ts -> ../../../.github/the-hot-path-budget/measure.mjs':
+    'The measurer the weekly run starts and the issue it opens or adds to, handed here a hand-made reading and an issue book that records what was asked of it. A script a workflow step runs, plain ESM under .github/, so the specifier is right and the scanner cannot follow it.',
+  'packages/code/tests/the-hot-path-keeps-its-budget.test.ts -> ../../../.github/the-hot-path-budget/verdict.mjs':
+    'The verdict on a measurement, pure, fed medians the case makes up so each sentence of the budget can be broken alone. It lives under .github/ beside the measurer that calls it, where no walk of packages/ reaches.',
   'packages/code/tests/the-pull-request-is-told-what-failed.test.ts -> ../../../.github/what-failed/collect.mjs':
     "The collector CI's last job runs on a pull request to write the report of what failed, handed the jobs, the test reports and the lint diff here. A script a workflow step runs, plain ESM under .github/, so the specifier is right and the scanner cannot follow it.",
   'packages/code/tests/the-pull-request-is-told-what-failed.test.ts -> ../../../.github/what-failed/comment.mjs':
@@ -897,7 +901,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/src/cli.test.ts': 3,
   'packages/code/src/commands/accountability.test.ts': 10,
   'packages/code/src/commands/antipatterns.test.ts': 13,
-  'packages/code/src/commands/brief.test.ts': 18,
+  'packages/code/src/commands/brief.test.ts': 19,
   'packages/code/src/commands/decision-import-bridges.test.ts': 8,
   'packages/code/src/commands/decision-import-twice-at-once.test.ts': 8,
   'packages/code/src/commands/decision-import.test.ts': 8,
@@ -1344,6 +1348,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-host-contract-checks-have-stable-names.test.ts': 3,
   'packages/code/tests/the-host-files-are-generated.test.ts': 5,
   'packages/code/tests/the-hosts-table-shows-the-vendors-own-logos.test.ts': 4,
+  'packages/code/tests/the-hot-path-keeps-its-budget.test.ts': 6,
   'packages/code/tests/the-init-asks-which-host-files-to-write.test.ts': 15,
   'packages/code/tests/the-init-completes-what-a-founded-project-lacks.test.ts': 8,
   'packages/code/tests/the-init-draws-its-frames.test.ts': 17,
@@ -2323,8 +2328,8 @@ describe('every file has a test that names it', () => {
     });
     // Non-vacuity in both parts: the walk really did follow specifiers, and the list
     // really does hold rows; a scanner returning nothing would satisfy the line above.
-    expect(unresolved.length).toBe(27);
-    expect(Object.keys(LED_NOWHERE)).toHaveLength(27);
+    expect(unresolved.length).toBe(29);
+    expect(Object.keys(LED_NOWHERE)).toHaveLength(29);
     // And each row says what THAT module is, by the ledger's rule, at the ledger's floor.
     const why = Object.values(LED_NOWHERE);
     expect(new Set(why).size).toBe(why.length);
