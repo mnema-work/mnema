@@ -43,8 +43,9 @@ clock:
 - one in ten replaces the decision recorded just before it, so describing a rule has a replaced
   decision to name.
 
-The record of 1,000 decisions is the first part of the one of 3,000. About fifty milliseconds a
-write is the cost, so the fixture is the slow part of a run.
+The record of 1,000 decisions is the first part of the one of 3,000. Writing them is the slow part
+of a run: 6,899 writes took 167 s on the runner the first measurement was taken on, and the whole
+job 4 minutes.
 
 ## The budget
 
@@ -75,7 +76,8 @@ the first measurement. A green run is within the budget **as measured on one sha
 runner that is slower than the one the first measurement was taken on reads as a regression. Read
 the ranges before reading the verdict, and run it again before believing a single over.
 
-The first measurement is the median of the first run on a runner, and the number is written once.
+The first measurement is the median of the first run on a runner (a GitHub-hosted `ubuntu-24.04`, on a pull request, with the
+record of 1,000 and of 3,000 decisions written in 167 s), and the number is written once.
 It is not moved to make a run pass: when the hot path is made faster on purpose the numbers are
 lowered, and when it is made slower on purpose the change says so and why.
 

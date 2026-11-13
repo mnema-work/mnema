@@ -4,5 +4,18 @@
   "small": 1000,
   "large": 3000,
   "runs": 5,
-  "first": {}
+  "first": {
+    "before an edit | cold | 1000": 581,
+    "before an edit | warm | 1000": 342,
+    "session start, the document | cold | 1000": 733,
+    "session start, the document | warm | 1000": 503,
+    "session start, the notes | cold | 1000": 586,
+    "session start, the notes | warm | 1000": 339,
+    "before an edit | cold | 3000": 1222,
+    "before an edit | warm | 3000": 592,
+    "session start, the document | cold | 3000": 1456,
+    "session start, the document | warm | 3000": 819,
+    "session start, the notes | cold | 3000": 1044,
+    "session start, the notes | warm | 3000": 341
+  }
 }

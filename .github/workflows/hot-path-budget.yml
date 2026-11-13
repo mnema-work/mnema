@@ -35,10 +35,9 @@ jobs:
   measure:
     name: measure the hot path
     runs-on: ubuntu-24.04
-    # THE FIXTURE IS THE SLOW PART: the product writes every decision (about fifty milliseconds a
-    # write, seven thousand writes for the large record). Twenty minutes is about three times what
-    # the fixture took when this was sized; a run that needs more says so by being cancelled, and the
-    # README records the time it took.
+    # THE FIXTURE IS THE SLOW PART: the product writes every decision (6,899 writes for the two
+    # records, 167 seconds on the run the first measurement was taken on, 4 minutes for the whole
+    # job). Forty minutes is ten times that; a run that needs more says so by being cancelled.
     timeout-minutes: 40
     permissions:
       contents: read
