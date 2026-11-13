@@ -1,3 +1,4 @@
+// @plants-damage
 /**
  * A HOOK THAT HANDS A MODEL A DOCUMENT SAYS EVERY REFUSAL OF THE RECORD, AND KEEPS SILENT ONLY WHERE
  * THERE IS NOTHING WRONG TO SAY.
@@ -25,6 +26,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { IDENTITY } from '../src/version.js';
 import { MNEMA_CLI } from './support/the-cli.js';
 
 const PLUGIN = fileURLToPath(new URL('../../../plugin/', import.meta.url));
@@ -80,7 +82,7 @@ beforeAll(() => {
   home = join(sandbox, 'home');
   mkdirSync(home, { recursive: true });
   bins.real = shim('real', [`exec "${process.execPath}" "${MNEMA_CLI}" "$@"`]);
-  const identified = '[ "$1" = "--identify" ] && { echo "@mnema/code 0.1.8"; exit 0; }';
+  const identified = `[ "$1" = "--identify" ] && { echo "${IDENTITY}"; exit 0; }`;
   bins.busy = shim('busy', [
     identified,
     "printf 'TAIL_BUSY\\nA tail is held by another process.\\n' >&2",

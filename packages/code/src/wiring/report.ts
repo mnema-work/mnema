@@ -149,8 +149,8 @@ export function reportOfferSentence(): Line {
  * refusal is 1), so the code is printed. Without the flag nothing is added: a person who typed the
  * verb reads the same lines as before.
  */
-export function saysTheCode(io: CliIo, code: string): void {
-  io.err(code);
+export function saysTheCode(to: Reporter, code: string): void {
+  to.io.err(to.render(fact(code, 0)));
 }
 
 /**
@@ -168,7 +168,7 @@ export function reportRefusal(
   said: Readonly<Record<string, string>> = {},
   hook = false,
 ): void {
-  if (hook) saysTheCode(to.io, refusal.code ?? refusal.reason);
+  if (hook) saysTheCode(to, refusal.code ?? refusal.reason);
   const wording =
     said[refusal.reason] ?? (refusal.reason === 'NO_PROJECT' ? NO_PROJECT : undefined);
   // A worded reason is ONE sentence and takes no detail: "No task <id> here." has no

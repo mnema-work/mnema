@@ -79,7 +79,8 @@ export function registerRecall(program: Command, wiring: Wiring): Declared {
     .option(
       '--hook',
       'print it for a Claude Code hook: whole notes up to what a hook carries, each section ' +
-        'saying how many it left out',
+        'saying how many it left out' +
+        ', and a refusal opens with its code alone on the first line of the error stream',
     )
     .addOption(hookHostOption('the notes'))
     .option(

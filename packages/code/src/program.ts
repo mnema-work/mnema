@@ -439,7 +439,7 @@ export async function parseWith(built: BuiltProgram, argv: readonly string[]): P
   // code on a line of its own (`saysTheCode`), whatever door it came through: a throw below the
   // verb is reported only here.
   const code = (what: string): void => {
-    if (argv.includes('--hook')) saysTheCode(io, what);
+    if (argv.includes('--hook')) saysTheCode({ io, render }, what);
   };
   try {
     await program.parseAsync(argv, { from: 'user' });
