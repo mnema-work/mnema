@@ -106,6 +106,7 @@ function theCase(edit: (bytes: string) => string): TheCase<Planted & { id: strin
 }
 
 describe('a rewrite below the frontier, in every state of the cache', () => {
+  // @proves the-projection-cache-serves-what-the-record-says
   it('an accept turned into a reject, to the same size, is said alike by all three', () => {
     const seen = inEveryCacheState(
       theCase((bytes) =>
@@ -120,6 +121,7 @@ describe('a rewrite below the frontier, in every state of the cache', () => {
     expect(seen.session.said).toBe(seen.cold.said);
   }, 120_000);
 
+  // @proves the-projection-cache-serves-what-the-record-says
   it('a line that became unreadable, to the same size, is refused by all three, not by the cold alone', () => {
     const seen = inEveryCacheState(
       theCase((bytes) => {

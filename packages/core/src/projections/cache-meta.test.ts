@@ -10,6 +10,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ensureSchema } from '../db/schema.js';
 import { IN_MEMORY, openDatabase } from '../db/sqlite.js';
 import {
+  activeMarks,
+  activeSegmentsHold,
   type CacheMeta,
   productStamp,
   readGeneration,
@@ -18,7 +20,7 @@ import {
   sealedSegmentsHold,
   writeMeta,
 } from './cache-meta.js';
-import type { ChainFrontier } from './order.js';
+import type { ChainFrontier, TailReach } from './order.js';
 
 let dir: string;
 
@@ -30,7 +32,7 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-function frontierOver(segments: readonly string[]): ChainFrontier {
+function frontierOver(segments: readonly string[], bytes = 400): ChainFrontier {
   return {
     events: 12,
     unresolved: [],
@@ -40,7 +42,7 @@ function frontierOver(segments: readonly string[]): ChainFrontier {
         {
           lastSeq: 11,
           lastHash: 'h'.repeat(64),
-          boundary: { segment: segments.at(-1) as string, bytes: 400 },
+          boundary: { segment: segments.at(-1) as string, bytes },
           segments,
           latestAt: '2026-01-01T00:00:00.000Z',
         },
@@ -115,5 +117,65 @@ describe('the fingerprints of sealed segments', () => {
     // And a file that is gone is not the file that was recorded.
     rmSync(sealed);
     expect(sealedSegmentsHold(recorded)).toBe(false);
+  });
+});
+
+describe('the marks of active segments', () => {
+  const bytes = 'one line\nanother line\n';
+
+  function later(file: string): void {
+    const before = statSync(file);
+    utimesSync(file, before.atime, new Date(before.mtimeMs + 5_000));
+  }
+
+  it('cover the segment a tail is appending to, and not one that a later segment sealed', () => {
+    const sealed = join(dir, '000001.jsonl');
+    const live = join(dir, '000002.jsonl');
+    writeFileSync(sealed, bytes);
+    writeFileSync(live, bytes);
+    expect(Object.keys(activeMarks(frontierOver([sealed, live], bytes.length)))).toEqual([live]);
+    // The reading ended in a segment that has a later one beside it: that is sealed, not active.
+    const over = frontierOver([live, join(dir, '000003.jsonl')], bytes.length);
+    const reach = over.tails.get('a-tail') as TailReach;
+    const endedInLive = {
+      ...over,
+      tails: new Map([['a-tail', { ...reach, boundary: { segment: live, bytes: bytes.length } }]]),
+    };
+    expect(activeMarks(endedInLive)).toEqual({});
+  });
+
+  it('hold while the segment has the size and the time it had, without reading it', () => {
+    const live = join(dir, '000001.jsonl');
+    writeFileSync(live, bytes);
+    const recorded = activeMarks(frontierOver([live], bytes.length));
+    expect(activeSegmentsHold(recorded)).toBe(true);
+  });
+
+  it('hold when only the time moved or the segment grew past the frontier, and stop when what is below it changed', () => {
+    const live = join(dir, '000001.jsonl');
+    writeFileSync(live, bytes);
+    const recorded = activeMarks(frontierOver([live], bytes.length));
+
+    later(live);
+    expect(activeSegmentsHold(recorded), 'a touch: the same bytes').toBe(true);
+
+    writeFileSync(live, `${bytes}a line that arrived\n`);
+    expect(activeSegmentsHold(recorded), 'an append: the same bytes below the frontier').toBe(true);
+
+    writeFileSync(live, bytes.replace('one', 'ONE'));
+    later(live);
+    expect(activeSegmentsHold(recorded), 'the same size, other bytes').toBe(false);
+
+    writeFileSync(live, bytes.slice(0, 10));
+    expect(activeSegmentsHold(recorded), 'shorter than the frontier').toBe(false);
+
+    rmSync(live);
+    expect(activeSegmentsHold(recorded), 'gone').toBe(false);
+  });
+
+  it('are not held by a mark that says the segment could not be read, or that is not a mark', () => {
+    expect(activeSegmentsHold({ [join(dir, 'x.jsonl')]: 'unreadable' })).toBe(false);
+    expect(activeSegmentsHold({ [join(dir, 'x.jsonl')]: '1:2' })).toBe(false);
+    expect(activeSegmentsHold({})).toBe(true);
   });
 });
