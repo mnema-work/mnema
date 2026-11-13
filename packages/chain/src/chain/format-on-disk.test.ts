@@ -29,7 +29,7 @@ import {
   serializeCheckpoint,
   signCheckpoint,
 } from './checkpoint.js';
-import { parseEntry, sealEntry, serializeEntry } from './entry.js';
+import { entryHashHolds, parseEntry, sealEntry, serializeEntry } from './entry.js';
 import { writtenAsBuilt } from './hash.js';
 import { generateKeyPair } from './keys.js';
 
@@ -169,5 +169,28 @@ describe('the stored checkpoint', () => {
       'tail',
       'toSeq',
     ]);
+  });
+});
+
+describe('the entry hash', () => {
+  it('holds over the written event of an entry sealed and read back', () => {
+    const line = serializeEntry(sealEntry({ event: anEvent(), tail: TAIL, seq: 0, prev: null }));
+    expect(entryHashHolds(parseEntry(line, upcasters))).toBe(true);
+  });
+
+  it('does not hold once the content of the line is edited, the link left as it was', () => {
+    const line = serializeEntry(sealEntry({ event: anEvent(), tail: TAIL, seq: 0, prev: null }));
+    expect(line).toContain('Ship the parser');
+    const edited = line.replace('Ship the parser', 'Ship the lexer!');
+    expect(entryHashHolds(parseEntry(edited, upcasters))).toBe(false);
+  });
+
+  it('does not hold once the position in the link is edited, the content left as it was', () => {
+    const entry = parseEntry(
+      serializeEntry(sealEntry({ event: anEvent(), tail: TAIL, seq: 0, prev: null })),
+      upcasters,
+    );
+    if (!('written' in entry)) throw new Error('expected a read entry');
+    expect(entryHashHolds({ ...entry, link: { ...entry.link, seq: 1 } })).toBe(false);
   });
 });

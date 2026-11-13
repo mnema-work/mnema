@@ -516,8 +516,8 @@ export interface TailRead {
  * merely tidy: reading the same bytes is not the same as reaching the same conclusion
  * about them. The link check here is the verifier's own ({@link linkBreakAt}), so a
  * reader cannot be more lenient than the verdict; it costs three comparisons per
- * entry and no hash, which is why a read can afford it and a signature check is still
- * `verify`'s alone.
+ * entry and no hash. The entry hash is a different question ({@link entryHashHolds}),
+ * which this read does not ask yet, and a signature check is `verify`'s alone.
  */
 export function readTail(
   layout: ChainLayout,
