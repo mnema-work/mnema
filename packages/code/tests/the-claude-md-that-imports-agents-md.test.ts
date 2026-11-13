@@ -307,7 +307,7 @@ describe('a .claude/CLAUDE.md with @AGENTS.md, which names .claude/AGENTS.md and
 describe('a CLAUDE.md that imports AGENTS.md and holds an earlier version’s block', () => {
   const MINE = '# Mine\n\n@AGENTS.md\n';
   const OLD = `${MINE}\n${beginMarker('v3')}\n${KNOWN_BODIES.v3}${INSTRUCTIONS_END}\n`;
-  const SAID_BOTH = (path: string): string =>
+  const saidBoth = (path: string): string =>
     `${path} imports AGENTS.md and holds an earlier version’s mnema block of its own, so Claude Code reads the instructions twice and this block is out of date: at a terminal \`mnema instructions\` asks whether to take it out, and brings it up to date if you say no.`;
 
   async function atATerminal(keys: string | undefined): Promise<void> {
@@ -337,12 +337,12 @@ describe('a CLAUDE.md that imports AGENTS.md and holds an earlier version’s bl
   it('is exit 1 for --check as any earlier block is, and the line says both things', async () => {
     const check = await alone(['instructions', '--check']);
     expect(check.failed).toBe(true);
-    expect(check.out).toContain(SAID_BOTH('CLAUDE.md'));
+    expect(check.out).toContain(saidBoth('CLAUDE.md'));
   });
 
   it('is only said, and left as it was, where there is no terminal', async () => {
     const again = await alone(['instructions']);
-    expect(again.out).toContain(SAID_BOTH('CLAUDE.md'));
+    expect(again.out).toContain(saidBoth('CLAUDE.md'));
     expect(get('CLAUDE.md')).toBe(OLD);
   });
 
