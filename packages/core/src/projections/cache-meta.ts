@@ -53,7 +53,7 @@ import {
   type UnreadLine,
   WORKFLOWS,
 } from '@mnema/chain';
-import type { SqliteDatabase } from '../db/sqlite.js';
+import { inTransaction, type SqliteDatabase } from '../db/sqlite.js';
 import type { ChainFrontier, TailReach } from './order.js';
 
 /** What is stored under the cache's own keys. */
@@ -359,10 +359,26 @@ function prefixDigest(path: string, bytes: number): string | undefined {
   }
 }
 
-/** Replaces the active marks alone, leaving the generation where it is: nothing the rows say changed. */
-export function writeActiveMarks(
+/**
+ * Replaces the active marks alone, leaving the generation where it is (nothing the rows say
+ * changed), and only while the generation in the file is still `generation`, the one the marks
+ * were checked against: a file another process advanced since holds a frontier these marks do not
+ * describe, and is left as that process wrote it. Says whether it wrote.
+ */
+export function keepActiveMarks(
   db: SqliteDatabase,
   active: Readonly<Record<string, string>>,
-): void {
-  db.prepare("UPDATE cache_meta SET value = ? WHERE key = 'active'").run(JSON.stringify(active));
+  generation: number,
+): boolean {
+  return inTransaction(
+    db,
+    () => {
+      if (readGeneration(db) !== generation) return false;
+      db.prepare("UPDATE cache_meta SET value = ? WHERE key = 'active'").run(
+        JSON.stringify(active),
+      );
+      return true;
+    },
+    { immediate: true },
+  );
 }

@@ -13,6 +13,7 @@ import {
   activeMarks,
   activeSegmentsHold,
   type CacheMeta,
+  keepActiveMarks,
   productStamp,
   readGeneration,
   readMeta,
@@ -217,5 +218,38 @@ describe('the marks of active segments', () => {
     expect(activeSegmentsHold(marks)).toBeUndefined();
     // And a segment nobody stamped is no segment this reading can vouch for.
     expect(activeMarks(frontierOver([live], bytes.length), {})[live]).toBe('unreadable');
+  });
+});
+
+describe('keeping the active marks', () => {
+  function aFileAt(generation: number): ReturnType<typeof openDatabase> {
+    const db = openDatabase(IN_MEMORY);
+    ensureSchema(db);
+    writeMeta(db, {
+      stamp: productStamp(),
+      generation,
+      frontier: frontierOver([]),
+      breaks: [],
+      unread: [],
+      sealed: {},
+      active: { '/x/000001.jsonl': 'old' },
+    });
+    return db;
+  }
+  const activeOf = (db: ReturnType<typeof openDatabase>): unknown => readMeta(db)?.active;
+
+  it('writes while the file is at the generation the marks were checked against, and leaves it there', () => {
+    const db = aFileAt(4);
+    expect(keepActiveMarks(db, { '/x/000001.jsonl': 'new' }, 4)).toBe(true);
+    expect(activeOf(db)).toEqual({ '/x/000001.jsonl': 'new' });
+    expect(readGeneration(db)).toBe(4);
+    db.close();
+  });
+
+  it('writes nothing to a file another process has advanced since', () => {
+    const db = aFileAt(5);
+    expect(keepActiveMarks(db, { '/x/000001.jsonl': 'new' }, 4)).toBe(false);
+    expect(activeOf(db)).toEqual({ '/x/000001.jsonl': 'old' });
+    db.close();
   });
 });

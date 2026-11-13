@@ -979,7 +979,9 @@ def blank_segment_same_size(root: str) -> tuple[bool, str]:
     `chainExtent` pairs each tail with its last segment, that segment's SIZE and its
     modification time, and its docstring declares what it therefore cannot see: a rewrite that
     preserves the size and puts the modification time back on purpose (or lands inside the
-    clock's resolution). This is that rewrite, in the
+    clock's resolution). This mutation keeps the size and does NOT restore the time, so the
+    probe in the product now sees it; what it stands for is the rewrite that does restore it,
+    which a reader never sees from the files' stat. It is that rewrite's bytes, in the
     form that takes the most away - every event of every segment gone, every file the byte
     count it had, so a reader holding a projection is handed a record it has no reason to
     re-read.

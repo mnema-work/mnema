@@ -1360,7 +1360,7 @@ describe('the second reader refuses, and the mutation that earns each refusal sh
    *
    * THE SECOND MEMBER ARRIVED WITH THIS DELIVERY and its admission is the argued part.
    * `blank-segment-same-size` is the freshness probe's declared blind spot as an input (a
-   * record whose segments were emptied without a byte count moving, the modification time put back) and it leaves signed
+   * record whose segments were emptied without a byte count moving; the mutation does not restore the modification time, it stands for the rewrite that does) and it leaves signed
    * checkpoints naming events the tail no longer holds. That reads like the record
    * contradicting itself, which is how the product reads it (`broken`). It is admitted here
    * anyway because the cut leaves the checkpoints that covered the events in place

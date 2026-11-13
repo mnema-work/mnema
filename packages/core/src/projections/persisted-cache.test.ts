@@ -567,6 +567,58 @@ describe('a cache that cannot be vouched for is replaced, never trusted', () => 
     expect(second.listTasks().map((task) => task.title)).toEqual(['A task that was already here']);
   });
 
+  it('a segment rewritten to the same size while the arrivals are read is not served as the bytes that were read', () => {
+    const ctx = aWarmFile();
+    landed(createTask(ctx, { title: 'a task that arrived after the cache' }));
+    ctx.writer.checkpoint();
+    const { file } = theLiveSegment(ctx);
+    const before = statSync(file);
+    // The rewrite lands once the reading of the arrivals has started: the rows then advance
+    // over bytes that are no longer the ones below the frontier.
+    let rewritten = false;
+    const racing = new (class extends UpcasterRegistry {
+      override upcast(event: VersionedEvent): CatalogEvent {
+        if (!rewritten) {
+          rewritten = true;
+          const bytes = readFileSync(file);
+          bytes.write('A', bytes.indexOf('a task'));
+          writeFileSync(file, bytes);
+          utimesSync(file, before.atime, new Date(before.mtimeMs + 5_000));
+        }
+        return super.upcast(event);
+      }
+    })();
+    const first = ProjectionCache.open(root, { upcasters: racing, persist: true });
+    open.push(first);
+    first.refresh();
+    expect(rewritten, 'the rewrite happened while the arrivals were read').toBe(true);
+    expect(theMarkerSurvived(first), 'the arrivals were brought forward, not replayed').toBe(true);
+    first.close();
+    const second = persisted();
+    second.refresh();
+    expect(second.listTasks().map((task) => task.title)).toContain('A task that was already here');
+  });
+
+  it('a touch is not a reason to give the file up when the mark cannot be kept: the rows are still the file’s', () => {
+    const ctx = aWarmFile();
+    const { file } = theLiveSegment(ctx);
+    const stamped = statSync(file);
+    utimesSync(file, stamped.atime, new Date(stamped.mtimeMs + 5_000));
+    const cache = persisted();
+    // A writer holds the file past a short wait, so the mark cannot be written.
+    (cache as unknown as { db: SqliteDatabase }).db.exec('PRAGMA busy_timeout = 20');
+    const holder = openDatabase(projectionCachePath({ root }));
+    holder.exec('BEGIN IMMEDIATE');
+    try {
+      cache.refresh();
+    } finally {
+      holder.exec('ROLLBACK');
+      holder.close();
+    }
+    expect(theMarkerSurvived(cache), 'the failed write sent the cache to memory').toBe(true);
+    expect(answersOf(cache).tasks).toEqual(answersOf(replayed()).tasks);
+  });
+
   it('THE LIMIT: a live segment rewritten to the same size with its modification time put back is not seen', () => {
     const ctx = aWarmFile({ wholeSeconds: true });
     const { file, held, at } = theLiveSegment(ctx);
