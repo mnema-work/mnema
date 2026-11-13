@@ -17,9 +17,11 @@
  *
  * THE SESSION IS ASKED, NOT ONLY OPENED. After the case's own question, the helper asks the record
  * of the connection that was open before the damage (a search through the MCP tool the server
- * runs, `runSearchTool`) and of a connection opened after it, and holds that they answer alike: a
- * server whose memory of the record is older than the bytes on disk must not say what a fresh
- * reader would not. The case reaches the same connection through `ctx.session` for a question of
+ * runs, `runSearchTool`, listing every record) and of a connection opened after it over the same
+ * roots, and holds that they answer alike, hit by hit and field by field: a server whose memory of
+ * the record is older than the bytes on disk, with the same ids and the old words, must not say
+ * what a fresh reader would not. What is compared is what that search lists (the ids, the titles
+ * and texts it carries); a field of a record the search does not show is not read by this. The case reaches the same connection through `ctx.session` for a question of
  * its own. A session that read nothing before the damage is accused, so the state cannot be
  * satisfied by opening a connection and leaving it idle.
  *
@@ -106,7 +108,7 @@ function askTheRecord(session: Session): string {
   try {
     const said = runSearchTool(session, {});
     return said.ok
-      ? `ok ${said.value.total} ${JSON.stringify(said.value.hits.map((hit) => hit.id))}`
+      ? `ok ${said.value.total} ${JSON.stringify(said.value.hits)}`
       : `${said.code}: ${said.message}`;
   } catch (error) {
     return `threw: ${firstLineOf(error instanceof Error ? error.message : String(error))}`;
@@ -134,6 +136,7 @@ function runInState<P extends Planted>(state: CacheState, one: TheCase<P>): Seen
   let session: Session | undefined;
   let fresh: Session | undefined;
   let before: string | undefined;
+  let roots: string[] | undefined;
   try {
     const planted = one.found(dir);
     const leftByTheLastWrite = cacheFilesOf(planted.repo).length > 0;
@@ -143,13 +146,10 @@ function runInState<P extends Planted>(state: CacheState, one: TheCase<P>): Seen
     ).toBe(true);
 
     if (state === 'session') {
-      session = openSession({
-        clientName: 'claude-code',
-        roots: [planted.repo, ...(one.workspace ? [one.workspace(dir)] : [])].map(
-          (root) => pathToFileURL(root).href,
-        ),
-        env: { home: planted.home },
-      });
+      roots = [planted.repo, ...(one.workspace ? [one.workspace(dir)] : [])].map(
+        (root) => pathToFileURL(root).href,
+      );
+      session = openSession({ clientName: 'claude-code', roots, env: { home: planted.home } });
       // The connection reads the record before the damage: this is what makes its memory old.
       before = askTheRecord(session);
     }
@@ -169,7 +169,7 @@ function runInState<P extends Planted>(state: CacheState, one: TheCase<P>): Seen
     if (session !== undefined) {
       fresh = openSession({
         clientName: 'claude-code',
-        roots: [pathToFileURL(planted.repo).href],
+        roots: roots as string[],
         env: { home: planted.home },
       });
       asked = {

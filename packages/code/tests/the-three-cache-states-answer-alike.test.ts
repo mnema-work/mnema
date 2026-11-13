@@ -132,6 +132,23 @@ describe('the three states of the projection cache', () => {
     expect(seen.warm.session).toBeUndefined();
   }, 90_000);
 
+  it('holds a second project that has a record of its own: the fresh connection opens the same roots', () => {
+    const seen = inEveryCacheState<Founded>({
+      ...aRealCase(),
+      workspace(dir) {
+        const second = { repo: join(dir, 'second-project'), home: join(dir, 'home') };
+        mkdirSync(second.repo, { recursive: true });
+        expect(mnemaRun(second, ['init', '--yes', '--hosts', 'none']).status).toBe(0);
+        expect(
+          mnemaRun(second, ['decision', 'record', 'A choice of the second', 'Why']).status,
+        ).toBe(0);
+        return second.repo;
+      },
+    });
+    expect(seen.session.session?.before).toContain('A choice of the second');
+    expect(seen.session.session?.after).toBe(seen.session.session?.fresh);
+  }, 90_000);
+
   it('forgets the cache before each answer in the cold state and in no other', () => {
     const present: string[] = [];
     inEveryCacheState<Founded>({
