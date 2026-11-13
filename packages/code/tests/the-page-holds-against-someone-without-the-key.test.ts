@@ -24,11 +24,16 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { entryHash } from '@mnema/chain';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { inEveryCacheState, type RunContext } from './support/every-cache-state.js';
 import { MNEMA_CLI } from './support/the-cli.js';
 
 const VERIFIER = fileURLToPath(new URL('../../chain/verifier/mnema_verify.py', import.meta.url));
 
 let sandbox: string;
+/** What a case carries from building a record to damaging or judging it, by the project it is about. */
+const removed = new WeakMap<Project, string>();
+const lengths = new WeakMap<Project, number>();
+const honest = new WeakMap<Project, Project>();
 
 beforeEach(() => {
   sandbox = mkdtempSync(join(tmpdir(), 'mnema-attacker-'));
@@ -43,9 +48,9 @@ class Project {
   readonly repo: string;
   readonly home: string;
 
-  constructor(name: string) {
-    this.repo = join(sandbox, name, 'repo');
-    this.home = join(sandbox, name, 'home');
+  constructor(dir: string) {
+    this.repo = join(dir, 'repo');
+    this.home = join(dir, 'home');
     for (const dir of [this.repo, this.home]) mkdirSync(dir, { recursive: true });
   }
 
@@ -102,9 +107,9 @@ class Project {
     );
   }
 
-  /** The product's verdict and the second reader's, the projection warm or removed first. */
-  verdicts(cache: 'warm' | 'cold', ...flags: string[]) {
-    if (cache === 'cold') rmSync(join(this.record, 'locks', 'projection.db'), { force: true });
+  /** The product's verdict and the second reader's, over whatever the projection is now. */
+  verdicts(ctx: RunContext | undefined, ...flags: string[]) {
+    ctx?.forget(this.repo);
     const product = this.mnema(['verify', ...flags]);
     const second = spawnSync(
       'python3',
@@ -160,168 +165,228 @@ class Project {
   }
 }
 
-const CACHES = ['warm', 'cold'] as const;
+/** A project of its own in the directory a state is given. */
+const projectIn = (dir: string) => new Project(dir);
 
 describe('an edit made without the key', () => {
-  for (const cache of CACHES) {
-    // @proves an-edit-is-caught
-    it(`is caught by both readers whether the hashes are kept or recomputed, the projection ${cache}`, () => {
-      const kept = new Project('kept').found(['a fact as it was written', 'another fact']);
-      expect(kept.verdicts(cache, '--require=signed').product.status).toBe(0);
-      expect(kept.rewrite('as it was written', 'as somebody rewrote it', { rehash: false })).toBe(
-        1,
-      );
-      const first = kept.verdicts(cache);
-      expect(first.product.status, first.said).toBe(1);
-      expect(first.said).toContain('entry hash mismatch');
-      expect(first.second.status, first.secondSaid).toBe(1);
-      expect(first.secondSaid).toMatch(/\[\s+FAIL\]/);
+  // @proves an-edit-is-caught
+  it('is caught by both readers whether the hashes are kept or recomputed, in every state of the projection', () => {
+    const edit = { rehash: false };
+    inEveryCacheState({
+      found(dir) {
+        const kept = projectIn(dir).found(['a fact as it was written', 'another fact']);
+        expect(kept.verdicts(undefined, '--require=signed').product.status).toBe(0);
+        return kept;
+      },
+      damage(kept) {
+        expect(kept.rewrite('as it was written', 'as somebody rewrote it', edit)).toBe(1);
+      },
+      run(kept, ctx) {
+        const first = kept.verdicts(ctx);
+        expect(first.product.status, first.said).toBe(1);
+        expect(first.said).toContain('entry hash mismatch');
+        expect(first.second.status, first.secondSaid).toBe(1);
+        expect(first.secondSaid).toMatch(/\[\s+FAIL\]/);
+        return first.product;
+      },
+    });
 
-      // The checkpoints stay: recomputing the keyless hashes does not get past a signature over a
-      // root recomputed from the event content.
-      const rebuilt = new Project('rebuilt').found(['a fact as it was written', 'another fact']);
-      expect(rebuilt.rewrite('as it was written', 'as somebody rewrote it', { rehash: true })).toBe(
-        1,
-      );
-      const second = rebuilt.verdicts(cache);
-      expect(second.product.status, second.said).toBe(1);
-      expect(second.said).toContain('content-root-mismatch');
-      expect(second.second.status, second.secondSaid).toBe(1);
-      expect(second.secondSaid).toContain('the content root does not match');
-    }, 90_000);
+    // The checkpoints stay: recomputing the keyless hashes does not get past a signature over a
+    // root recomputed from the event content.
+    inEveryCacheState({
+      found: (dir) => projectIn(dir).found(['a fact as it was written', 'another fact']),
+      damage(rebuilt) {
+        expect(
+          rebuilt.rewrite('as it was written', 'as somebody rewrote it', { rehash: true }),
+        ).toBe(1);
+      },
+      run(rebuilt, ctx) {
+        const second = rebuilt.verdicts(ctx);
+        expect(second.product.status, second.said).toBe(1);
+        expect(second.said).toContain('content-root-mismatch');
+        expect(second.second.status, second.secondSaid).toBe(1);
+        expect(second.secondSaid).toContain('the content root does not match');
+        return second.product;
+      },
+    });
+  }, 180_000);
 
-    // @proves an-edit-is-caught
-    // @proves a-green-verify-means-the-record-is-honest
-    it(`stripped of its checkpoints, passes the default and fails --require=signed, and the key holder's next write does not sign it in, the projection ${cache}`, () => {
-      const forged = new Project('forged').found(['a fact as it was written', 'another fact']);
-      forged.rewrite('as it was written', 'as somebody rewrote it', { rehash: true });
-      writeFileSync(forged.checkpoints(), '', 'utf-8');
+  // @proves an-edit-is-caught
+  // @proves a-green-verify-means-the-record-is-honest
+  it("stripped of its checkpoints, passes the default and fails --require=signed, and the key holder's next write does not sign it in, in every state of the projection", () => {
+    inEveryCacheState({
+      found: (dir) => projectIn(dir).found(['a fact as it was written', 'another fact']),
+      damage(forged) {
+        forged.rewrite('as it was written', 'as somebody rewrote it', { rehash: true });
+        writeFileSync(forged.checkpoints(), '', 'utf-8');
+      },
+      run(forged, ctx) {
+        const lenient = forged.verdicts(ctx);
+        expect(lenient.product.status, lenient.said).toBe(0);
+        expect(lenient.said).toContain('T1 only');
+        expect(lenient.second.status, lenient.secondSaid).toBe(0);
 
-      const lenient = forged.verdicts(cache);
-      expect(lenient.product.status, lenient.said).toBe(0);
-      expect(lenient.said).toContain('T1 only');
-      expect(lenient.second.status, lenient.secondSaid).toBe(0);
+        const strict = forged.verdicts(ctx, '--require=signed');
+        expect(strict.product.status, strict.said).toBe(1);
+        expect(strict.said).toContain('requirement not met');
+        expect(strict.second.status, strict.secondSaid).toBe(1);
 
-      const strict = forged.verdicts(cache, '--require=signed');
-      expect(strict.product.status, strict.said).toBe(1);
-      expect(strict.said).toContain('requirement not met');
-      expect(strict.second.status, strict.secondSaid).toBe(1);
-
-      // The files were rewritten and the clear note put to the new end, so the installation's own
-      // note looks right. The holder writes again: what it signs is what it wrote, not the
-      // rewritten tail it finds, because the signed note still names the end it really wrote.
-      forged.setClearNoteToTheEnd();
-      forged.write('a fact the holder writes after the rewrite');
-      expect(forged.tails()).toHaveLength(2);
-      const after = forged.verdicts(cache, '--require=signed');
-      expect(after.product.status, after.said).toBe(1);
-      expect(after.second.status, after.secondSaid).toBe(1);
-    }, 90_000);
-  }
+        // The files were rewritten and the clear note put to the new end, so the installation's own
+        // note looks right. The holder writes again: what it signs is what it wrote, not the
+        // rewritten tail it finds, because the signed note still names the end it really wrote.
+        forged.setClearNoteToTheEnd();
+        forged.write('a fact the holder writes after the rewrite');
+        expect(forged.tails()).toHaveLength(2);
+        const after = forged.verdicts(ctx, '--require=signed');
+        expect(after.product.status, after.said).toBe(1);
+        expect(after.second.status, after.secondSaid).toBe(1);
+        return strict.product;
+      },
+    });
+  }, 180_000);
 });
 
+/** Cuts the newest event and its checkpoint off the first tail. */
+function cutTheNewest(project: Project): number {
+  const before = readFileSync(project.segment(), 'utf-8').split('\n').filter(Boolean);
+  const checkpoints = readFileSync(project.checkpoints(), 'utf-8').split('\n').filter(Boolean);
+  writeFileSync(project.segment(), `${before.slice(0, -1).join('\n')}\n`, 'utf-8');
+  writeFileSync(project.checkpoints(), `${checkpoints.slice(0, -1).join('\n')}\n`, 'utf-8');
+  return before.length;
+}
+
 describe('what a hash chain cannot show: a removal', () => {
-  for (const cache of CACHES) {
-    // @proves nothing-was-removed
-    // @proves nothing-was-deleted
-    it(`a second identity's tail deleted together with its key files, while another tail remains, verifies clean in both readers, the projection ${cache}`, () => {
-      const project = new Project('removed').found(['a fact in the first identity tail']);
-      const otherHome = join(sandbox, 'removed', 'other-home');
-      mkdirSync(otherHome, { recursive: true });
-      const firstTails = project.tails();
-      // Another machine, another key: it founds an identity of its own and writes in its own tail.
-      const wrote = project.mnema(['memory', 'a fact only the second identity wrote'], otherHome);
-      expect(wrote.status, wrote.stderr).toBe(0);
-      expect(project.tails()).toHaveLength(2);
-      expect(project.verdicts(cache, '--require=signed').product.status).toBe(0);
+  // @proves nothing-was-removed
+  // @proves nothing-was-deleted
+  it("a second identity's tail deleted together with its key files, while another tail remains, verifies clean in both readers, in every state of the projection", () => {
+    inEveryCacheState({
+      found(dir) {
+        const project = projectIn(dir).found(['a fact in the first identity tail']);
+        const otherHome = join(dir, 'other-home');
+        mkdirSync(otherHome, { recursive: true });
+        const firstTails = project.tails();
+        // Another machine, another key: it founds an identity of its own and writes in its own tail.
+        const wrote = project.mnema(['memory', 'a fact only the second identity wrote'], otherHome);
+        expect(wrote.status, wrote.stderr).toBe(0);
+        expect(project.tails()).toHaveLength(2);
+        expect(project.verdicts(undefined, '--require=signed').product.status).toBe(0);
+        const second = project.tails().find((tail) => !firstTails.includes(tail));
+        expect(second).toBeDefined();
+        removed.set(project, second as string);
+        return project;
+      },
+      damage(project) {
+        const second = removed.get(project) as string;
+        const fingerprint = second.split('-')[0] as string;
+        rmSync(join(project.record, 'tails', second), { recursive: true });
+        for (const name of readdirSync(join(project.record, 'keys')))
+          if (name.startsWith(fingerprint)) rmSync(join(project.record, 'keys', name));
+        expect(project.tails()).toHaveLength(1);
+      },
+      run(project, ctx) {
+        const verdicts = project.verdicts(ctx, '--require=signed');
+        expect(verdicts.product.status, verdicts.said).toBe(0);
+        expect(verdicts.second.status, verdicts.secondSaid).toBe(0);
+        return verdicts.product;
+      },
+    });
+  }, 180_000);
 
-      const second = project.tails().find((tail) => !firstTails.includes(tail));
-      expect(second).toBeDefined();
-      const fingerprint = (second as string).split('-')[0] as string;
-      rmSync(join(project.record, 'tails', second as string), { recursive: true });
-      for (const name of readdirSync(join(project.record, 'keys')))
-        if (name.startsWith(fingerprint)) rmSync(join(project.record, 'keys', name));
-      expect(project.tails()).toHaveLength(1);
+  // @proves nothing-was-removed
+  // @proves a-green-verify-means-the-record-is-honest
+  it('the newest event cut together with its checkpoint reads as a shorter honest record, in every state of the projection', () => {
+    inEveryCacheState({
+      found: (dir) => projectIn(dir).found(['one', 'two', 'three']),
+      damage(project) {
+        lengths.set(project, cutTheNewest(project));
+      },
+      run(project, ctx) {
+        const verdicts = project.verdicts(ctx, '--require=signed');
+        expect(verdicts.product.status, verdicts.said).toBe(0);
+        expect(verdicts.second.status, verdicts.secondSaid).toBe(0);
+        expect(readFileSync(project.segment(), 'utf-8').split('\n').filter(Boolean)).toHaveLength(
+          (lengths.get(project) as number) - 1,
+        );
+        return verdicts.product;
+      },
+    });
+  }, 180_000);
 
-      const verdicts = project.verdicts(cache, '--require=signed');
-      expect(verdicts.product.status, verdicts.said).toBe(0);
-      expect(verdicts.second.status, verdicts.secondSaid).toBe(0);
-    }, 90_000);
-
-    // @proves nothing-was-removed
-    // @proves a-green-verify-means-the-record-is-honest
-    it(`the newest event cut together with its checkpoint reads as a shorter honest record, the projection ${cache}`, () => {
-      const project = new Project('cut').found(['one', 'two', 'three']);
-      const before = readFileSync(project.segment(), 'utf-8').split('\n').filter(Boolean);
-      const checkpoints = readFileSync(project.checkpoints(), 'utf-8').split('\n').filter(Boolean);
-      writeFileSync(project.segment(), `${before.slice(0, -1).join('\n')}\n`, 'utf-8');
-      writeFileSync(project.checkpoints(), `${checkpoints.slice(0, -1).join('\n')}\n`, 'utf-8');
-
-      const verdicts = project.verdicts(cache, '--require=signed');
-      expect(verdicts.product.status, verdicts.said).toBe(0);
-      expect(verdicts.second.status, verdicts.secondSaid).toBe(0);
-      expect(readFileSync(project.segment(), 'utf-8').split('\n').filter(Boolean)).toHaveLength(
-        before.length - 1,
-      );
-    }, 90_000);
-
-    // @proves nothing-was-removed
-    it(`the cut where the note is kept is not written over: the next write founds a new tail and says what is missing, the projection ${cache}`, () => {
-      const project = new Project('noted').found(['one', 'two', 'three']);
-      const before = readFileSync(project.segment(), 'utf-8').split('\n').filter(Boolean);
-      const checkpoints = readFileSync(project.checkpoints(), 'utf-8').split('\n').filter(Boolean);
-      writeFileSync(project.segment(), `${before.slice(0, -1).join('\n')}\n`, 'utf-8');
-      writeFileSync(project.checkpoints(), `${checkpoints.slice(0, -1).join('\n')}\n`, 'utf-8');
-      // The clear note set back to the cut end: only the signed note still names the entry cut.
-      project.setClearNoteToTheEnd();
-      if (cache === 'cold') rmSync(join(project.record, 'locks', 'projection.db'), { force: true });
-
-      const wrote = project.mnema(['memory', 'written after the cut']);
-      expect(wrote.status, wrote.stderr).toBe(0);
-      expect(project.tails()).toHaveLength(2);
-      expect(`${wrote.stdout}${wrote.stderr}`).toContain('are not in it');
-    }, 90_000);
-  }
+  // @proves nothing-was-removed
+  it('the cut where the note is kept is not written over: the next write founds a new tail and says what is missing, in every state of the projection', () => {
+    inEveryCacheState({
+      found: (dir) => projectIn(dir).found(['one', 'two', 'three']),
+      damage(project) {
+        cutTheNewest(project);
+        // The clear note set back to the cut end: only the signed note still names the entry cut.
+        project.setClearNoteToTheEnd();
+      },
+      run(project) {
+        const wrote = project.mnema(['memory', 'written after the cut']);
+        expect(wrote.status, wrote.stderr).toBe(0);
+        expect(project.tails()).toHaveLength(2);
+        expect(`${wrote.stdout}${wrote.stderr}`).toContain('are not in it');
+        return wrote;
+      },
+      normalize: (said) =>
+        said
+          .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4,12}/g, '<id>')
+          .replace(/[0-9a-f]{12,64}/g, '<id>'),
+    });
+  }, 180_000);
 });
 
 describe('a record forged whole', () => {
-  for (const cache of CACHES) {
-    // @proves the-record-is-who-it-says-it-is
-    it(`under a fresh key, with the opposite fact, verifies word for word like the honest one in both readers, the projection ${cache}`, () => {
-      const honest = new Project('honest').found(['the decision is to keep the chain']);
-      const forged = new Project('forger').found(['the decision is to drop the chain']);
-
-      const a = honest.verdicts(cache, '--require=signed');
-      const b = forged.verdicts(cache, '--require=signed');
-      expect(a.product.status, a.said).toBe(0);
-      expect(b.product.status, b.said).toBe(0);
-      // Different keys, so the fingerprints differ; the verdict sentence does not.
-      const sentence = (said: string) =>
-        said.replace(/[0-9a-f]{64}/g, '<fp>').replace(/[0-9a-f]{12}\.\.\./g, '<fp>');
-      expect(sentence(b.product.stdout)).toBe(sentence(a.product.stdout));
-      expect(a.second.status, a.secondSaid).toBe(0);
-      expect(b.second.status, b.secondSaid).toBe(0);
-      expect(b.secondSaid).toContain('VERDICT: VERIFIED');
-      expect(a.secondSaid).toContain('VERDICT: VERIFIED');
-      // The second reader's whole report, once the fingerprints and the places are taken out, is
-      // the same sentence for both records: nothing in it tells them apart either.
-      const report = (text: string, project: Project) =>
-        text
-          .split(project.record)
-          .join('<record>')
-          .replace(/[0-9a-f]{64}(-[0-9a-f]{32})?/g, '<id>')
-          .replace(/[0-9a-f]{12}\.\.\./g, '<fp>')
-          .replace(/mnid:[0-9a-f]{64}/g, 'mnid:<id>');
-      expect(report(b.secondSaid, forged)).toBe(report(a.secondSaid, honest));
-    }, 90_000);
-  }
+  // @proves the-record-is-who-it-says-it-is
+  it('under a fresh key, with the opposite fact, verifies word for word like the honest one in both readers, in every state of the projection', () => {
+    inEveryCacheState({
+      found(dir) {
+        const forged = projectIn(join(dir, 'forger')).found(['the decision is to drop the chain']);
+        honest.set(
+          forged,
+          projectIn(join(dir, 'honest')).found(['the decision is to keep the chain']),
+        );
+        return forged;
+      },
+      // Nothing is damaged: a record forged whole has no damage in it, which is the claim.
+      damage: () => undefined,
+      run(forged, ctx) {
+        const honestOne = honest.get(forged) as Project;
+        const a = honestOne.verdicts(ctx, '--require=signed');
+        const b = forged.verdicts(ctx, '--require=signed');
+        expect(a.product.status, a.said).toBe(0);
+        expect(b.product.status, b.said).toBe(0);
+        // Different keys, so the fingerprints differ; the verdict sentence does not.
+        const sentence = (said: string) =>
+          said.replace(/[0-9a-f]{64}/g, '<fp>').replace(/[0-9a-f]{12}\.\.\./g, '<fp>');
+        expect(sentence(b.product.stdout)).toBe(sentence(a.product.stdout));
+        expect(a.second.status, a.secondSaid).toBe(0);
+        expect(b.second.status, b.secondSaid).toBe(0);
+        expect(b.secondSaid).toContain('VERDICT: VERIFIED');
+        expect(a.secondSaid).toContain('VERDICT: VERIFIED');
+        // The second reader's whole report, once the fingerprints and the places are taken out, is
+        // the same sentence for both records: nothing in it tells them apart either.
+        const report = (text: string, project: Project) =>
+          text
+            .split(project.record)
+            .join('<record>')
+            .replace(/[0-9a-f]{64}(-[0-9a-f]{32})?/g, '<id>')
+            .replace(/[0-9a-f]{12}\.\.\./g, '<fp>')
+            .replace(/mnid:[0-9a-f]{64}/g, 'mnid:<id>');
+        expect(report(b.secondSaid, forged)).toBe(report(a.secondSaid, honestOne));
+        return b.product;
+      },
+      normalize: (said) =>
+        said.replace(/[0-9a-f]{64}/g, '<fp>').replace(/[0-9a-f]{12}\.\.\./g, '<fp>'),
+    });
+  }, 180_000);
 });
 
 describe('the gate', () => {
   // @proves the-gate-protects-what-is-recorded
   // @proves gates-protect-the-record
   it('refuses an illegal move and judges no content: anybody who can run the command line writes as the machine identity', () => {
-    const project = new Project('gate').found([]);
+    const project = new Project(join(sandbox, 'gate')).found([]);
     const recorded = project.mnema(['decision', 'record', 'A choice', 'A reason that is not true']);
     expect(recorded.status, recorded.stderr).toBe(0);
     const id = /ADR-\d+/.exec(recorded.stdout)?.[0] as string;
@@ -342,14 +407,14 @@ describe('the gate', () => {
     ]);
     expect(another.status, another.stderr).toBe(0);
     expect(project.tails()).toHaveLength(1);
-    expect(project.verdicts('warm', '--require=signed').product.status).toBe(0);
+    expect(project.verdicts(undefined, '--require=signed').product.status).toBe(0);
   }, 90_000);
 });
 
 describe('a secret in no known shape', () => {
   // @proves secrets-stay-out
   it('reaches the record when written out in prose, and one in a known shape does not', () => {
-    const project = new Project('secrets').found([]);
+    const project = new Project(join(sandbox, 'secrets')).found([]);
     const prose = 'the staging password is correct-horse-battery-staple-9';
     const shaped = 'AKIAIOSFODNN7EXAMPLE and nothing else';
     project.write(prose);

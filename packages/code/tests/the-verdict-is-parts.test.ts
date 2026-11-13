@@ -1,3 +1,4 @@
+// @plants-damage
 /**
  * `mnema verify` PAINTS its verdict now, and it still says exactly what the chain said.
  *
