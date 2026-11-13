@@ -10,7 +10,7 @@ In the help under **Hand over**.
 
 | Option | What it does |
 | --- | --- |
-| `--hook` | print it for a Claude Code hook: whole notes up to what a hook carries, each section saying how many it left out, and a refusal opens with its code alone on the first line of the error stream |
+| `--hook` | print it for a Claude Code hook: whole notes up to what a hook carries, each section saying how many it left out, and a refusal opens with its code alone on the first line of the error stream (a refusal of usage, such as an invalid --host, carries none: the hook is silent for it) |
 | `--host <host>` | with --hook, the host whose own ceiling to cut the notes to: codex; without it, Claude Code’s |
 | `--session <id>` | the host’s id for the session these notes are for: the journal that session keeps is not "the last session", which a hook passes from the payload |
 | `--after-a-compaction` | print, instead of the notes, what entered the record since the session named by --session opened, before its conversation was compacted, read from its journal: a sentence, or nothing |
@@ -110,7 +110,9 @@ Options:
   --hook                print it for a Claude Code hook: whole notes up to what
                         a hook carries, each section saying how many it left
                         out, and a refusal opens with its code alone on the
-                        first line of the error stream
+                        first line of the error stream (a refusal of usage, such
+                        as an invalid --host, carries none: the hook is silent
+                        for it)
   --host <host>         with --hook, the host whose own ceiling to cut the notes
                         to: codex; without it, Claude Code’s
   --session <id>        the host’s id for the session these notes are for: the

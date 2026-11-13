@@ -334,6 +334,33 @@ function notConsulted(why) {
 }
 
 /**
+ * A text as one line a model reads, and nothing of it that a terminal would obey: a whole ANSI
+ * sequence (CSI and OSC) goes and not only its escape, then every other control character (C0 and
+ * C1, and the line and paragraph separators) becomes a space, and the characters that reorder
+ * what is read (the bidirectional controls) go. Cut at REFUSAL_CEILING without splitting a surrogate
+ * pair.
+ *
+ * @param {string} text
+ * @returns {string}
+ */
+function oneLine(text) {
+  const said = text
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what is removed
+    .replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, '')
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what is removed
+    .replace(/\u001b\][^\u0007\u001b]*(?:\u0007|\u001b\\)/g, '')
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what is removed
+    .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, ' ')
+    .replace(/[\u202a-\u202e\u2066-\u2069]/g, '')
+    .replace(/ +/g, ' ')
+    .trim();
+  if (said.length <= REFUSAL_CEILING) return said;
+  const last = said.charCodeAt(REFUSAL_CEILING - 1);
+  const cut = last >= 0xd800 && last <= 0xdbff ? REFUSAL_CEILING - 1 : REFUSAL_CEILING;
+  return `${said.slice(0, cut)}...`;
+}
+
+/**
  * What a refusal on the error stream says, as ONE line, or `null` where it is silence.
  *
  * THE CODE DECIDES, AND THE SENTENCE IS ONLY QUOTED. A verb run with `--hook` opens a refusal with
@@ -366,12 +393,7 @@ function whatARefusalSays(stderr) {
     .trim()
     .split(/\n\s*\n/);
   const where = /^unreadable stored line at (.+?): /.exec(after.trim())?.[1];
-  const said = (where === undefined ? opening : `${opening} (${where})`)
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what is removed
-    .replace(/[\u0000-\u001f\u007f]+/g, ' ')
-    .replace(/ +/g, ' ')
-    .trim();
-  const line = said.length > REFUSAL_CEILING ? `${said.slice(0, REFUSAL_CEILING)}...` : said;
+  const line = oneLine(where === undefined ? opening : `${opening} (${where})`);
   return `The project's mnema record was not handed to this session (${code}): ${line}`;
 }
 
@@ -831,7 +853,15 @@ const OPENING_WAIT = 9000;
  */
 function openingOf(cwd) {
   const until = Date.now() + OPENING_WAIT;
-  return ['brief', 'recall'].flatMap((verb) => whatItSays(verb, cwd, until));
+  const said = [];
+  for (const verb of ['brief', 'recall']) {
+    // THE BUDGET IS ONE: a verb that used it up says so, and the next does not run on what is left.
+    if (until - Date.now() <= 0) break;
+    const { lines, cut } = whatItSays(verb, cwd, until);
+    said.push(...lines);
+    if (cut) break;
+  }
+  return said;
 }
 
 /**
@@ -863,7 +893,7 @@ function whoIsThere(cwd) {
 /**
  * What a verb printed for a hook, or nothing: the second stream rides under the first. A record that
  * would not answer is said in one line (`whatARefusalSays`), a run cut by `until` is said, and no
- * project and a channel switched off are silence.
+ * project and a channel switched off are silence. `cut` says the run used up the budget.
  * @param {string} verb
  * @param {string} cwd
  * @param {number} until the time, in milliseconds since the epoch, by which both verbs of the opening are done
@@ -872,16 +902,19 @@ function whatItSays(verb, cwd, until) {
   const ran = run([verb, '--hook'], cwd, undefined, Math.max(1, until - Date.now()));
   if (ran.error !== undefined) {
     return /** @type {NodeJS.ErrnoException} */ (ran.error).code === 'ETIMEDOUT'
-      ? [notConsulted(didNotAnswerIn(OPENING_WAIT))]
-      : [];
+      ? { lines: [notConsulted(didNotAnswerIn(OPENING_WAIT))], cut: true }
+      : { lines: [], cut: false };
   }
   if (ran.status !== 0) {
     const said = whatARefusalSays(ran.stderr);
-    return said === null ? [] : [said];
+    return { lines: said === null ? [] : [said], cut: false };
   }
-  if (ran.stdout.trim() === '') return [];
+  if (ran.stdout.trim() === '') return { lines: [], cut: false };
   const alsoSaid = ran.stderr.trim();
-  return [alsoSaid === '' ? ran.stdout : [ran.stdout, alsoSaid].join('\n\n')];
+  return {
+    lines: [alsoSaid === '' ? ran.stdout : [ran.stdout, alsoSaid].join('\n\n')],
+    cut: false,
+  };
 }
 
 /**

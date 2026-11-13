@@ -19,13 +19,19 @@ import {
   mkdirSync,
   mkdtempSync,
   readdirSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { KeyRootBusyError, TailBusyError } from '@mnema/chain';
+import { IdentityUnavailableError } from '@mnema/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { InternalError } from '../src/internal-error.js';
+import { renderPlain } from '../src/presentation/plain.js';
+import { buildProgram, parseWith } from '../src/program.js';
 import { IDENTITY } from '../src/version.js';
 import { MNEMA_CLI } from './support/the-cli.js';
 
@@ -34,8 +40,10 @@ const PLUGIN = fileURLToPath(new URL('../../../plugin/', import.meta.url));
 let sandbox: string;
 let home: string;
 /** The `mnema` of the PATH for each case, by what it does. */
-const bins: Record<'real' | 'busy' | 'slow' | 'stranger', string> = {
+const bins: Record<'real' | 'busy' | 'slow' | 'hung' | 'dirty' | 'stranger', string> = {
   real: '',
+  hung: '',
+  dirty: '',
   busy: '',
   slow: '',
   stranger: '',
@@ -88,7 +96,18 @@ beforeAll(() => {
     "printf 'TAIL_BUSY\\nA tail is held by another process.\\n' >&2",
     'exit 1',
   ]);
-  bins.slow = shim('slow', [identified, 'exec sleep 60']);
+  bins.slow = shim('slow', [
+    identified,
+    `printf '%s\\n' "$*" >> "${join(sandbox, 'calls-slow.txt')}"`,
+    'exec sleep 60',
+  ]);
+  bins.hung = shim('hung', ['exec sleep 60']);
+  // A refusal whose text carries what a terminal would obey and what reorders a line.
+  bins.dirty = shim('dirty', [
+    identified,
+    "printf 'ODD_REFUSAL\\n\\033[31mred\\033[0m \\033]0;title\\007ok \\302\\205c1 \\342\\200\\256rtl \\342\\200\\250ls\\n' >&2",
+    'exit 1',
+  ]);
   bins.stranger = shim('stranger', ['echo "some-other-tool 1.0"', 'exit 0']);
   for (const name of ['none', 'live', 'off', 'unreadable']) {
     mkdirSync(join(sandbox, name), { recursive: true });
@@ -265,6 +284,17 @@ describe('a mnema that does not finish in its own time', () => {
       expect(said[at], door.name).toContain('was not consulted');
       expect(said[at], door.name).toContain('seconds');
     });
+    // THE BUDGET OF THE GENERATED PROGRAMS IS ONE: the brief that used it up says so, and the notes
+    // verb does not run on what is left, nor say it a second time.
+    for (const at of [3, 4]) {
+      expect(
+        (said[at] ?? '').split('\n').filter((line) => line !== '').length,
+        DOORS[at]?.name,
+      ).toBe(1);
+    }
+    // (the one `recall` there is belongs to the notes hook of Claude Code, which is its own process)
+    const asked = readFileSync(join(sandbox, 'calls-slow.txt'), 'utf-8').split('\n');
+    expect(asked.filter((line) => line.startsWith('recall'))).toHaveLength(1);
     // Every door is under the host's own 15 seconds (the doors ran at the same time, and
     // the slowest of them is what this measures).
     expect(took).toBeLessThan(14_000);
@@ -303,4 +333,130 @@ describe('the verb, asked for a hook', () => {
       );
     },
   );
+});
+
+/**
+ * THE SITES BELOW THE VERB. `brief` and `recall` only read, so a refusal that a write raises (a
+ * busy tail, a busy key root, a checker key) and a fault of the product are not reachable through
+ * them: each is thrown by a verb of its own here, into the real last-resort catch (`parseWith`),
+ * which is where the code is printed. TAIL_BUSY and KEY_ROOT_BUSY are therefore proved at this
+ * catch and, on the hook side, by a `mnema` that prints them; no read raises them.
+ */
+describe('the last-resort catch, asked for a hook', () => {
+  async function stderrOf(thrown: unknown, argv: string[]): Promise<string[]> {
+    const err: string[] = [];
+    const built = buildProgram(
+      { out: () => undefined, err: (line) => err.push(line), fail: () => undefined },
+      [],
+      renderPlain,
+    );
+    built.program
+      .command('boom')
+      .option('--hook')
+      .action(() => {
+        throw thrown;
+      });
+    await parseWith(built, argv);
+    return err;
+  }
+
+  it.each([
+    [
+      'an identity that cannot sign',
+      () => new IdentityUnavailableError('A_CHECKER_KEY', 'a checker key'),
+      'A_CHECKER_KEY',
+    ],
+    ['a busy tail', () => new TailBusyError('/x/tail.lock', 4242, 5000), 'TAIL_BUSY'],
+    ['a busy key root', () => new KeyRootBusyError('/x/keys', 4242), 'KEY_ROOT_BUSY'],
+    ['a fault of the product', () => new InternalError('the tail has two heads'), 'INTERNAL_ERROR'],
+    ['a plain refusal', () => new Error('a refusal nobody gave a code'), 'REFUSED'],
+  ] as const)('opens %s with its code, and only with --hook', async (_what, thrown, code) => {
+    const hooked = await stderrOf(thrown(), ['boom', '--hook']);
+    expect(hooked[0]).toBe(code);
+    const typed = await stderrOf(thrown(), ['boom']);
+    expect(typed[0]).not.toBe(code);
+    expect(typed.join('\n')).toBe(hooked.slice(1).join('\n'));
+  });
+});
+
+describe('a mnema that does not say which program it is', () => {
+  it('is cut after its own time, and the hook says the record was not consulted', {
+    timeout: 60_000,
+  }, async () => {
+    const started = Date.now();
+    const said = await Promise.all(DOORS.slice(0, 3).map((door) => door.says(live, bins.hung)));
+    for (const line of said) {
+      expect(line).toContain('was not consulted');
+      expect(line).toContain('2 seconds');
+    }
+    expect(Date.now() - started).toBeLessThan(14_000);
+  });
+
+  it('is cut in the generated programs too, which stay under the host cap', {
+    timeout: 60_000,
+  }, async () => {
+    const started = Date.now();
+    await Promise.all(DOORS.slice(3).map((door) => door.says(live, bins.hung)));
+    expect(Date.now() - started).toBeLessThan(14_000);
+  });
+});
+
+describe('what is handed to the model of a refusal', () => {
+  const ESC = String.fromCharCode(27);
+  it('carries no terminal sequence, C1 control, bidi control or line separator', {
+    timeout: 60_000,
+  }, async () => {
+    for (const door of [DOORS[0], DOORS[3]] as Door[]) {
+      const said = await door.says(live, bins.dirty);
+      expect(said, door.name).toContain('ODD_REFUSAL');
+      expect(said, door.name).toContain('red ok');
+      expect(said, door.name).not.toContain('title');
+      expect(said, door.name).not.toContain('[31m');
+      expect(said, door.name).not.toContain(ESC);
+      expect(said, door.name).not.toMatch(/[\u0080-\u009f\u202a-\u202e\u2066-\u2069\u2028\u2029]/);
+    }
+  });
+});
+
+describe('the line cut for a model', () => {
+  const kit = import(join(PLUGIN, 'hooks', 'the-gate-kit.mjs')) as Promise<{
+    oneLine: (text: string) => string;
+  }>;
+
+  it('strips a whole CSI sequence and a whole OSC sequence, not the escape alone', async () => {
+    const { oneLine } = await kit;
+    expect(oneLine('a\u001b[1;31mb\u001b[0m c\u001b]8;;http://x\u0007d\u001b]0;t\u001b\\e')).toBe(
+      'ab cde',
+    );
+  });
+
+  it('turns C1 controls and the line and paragraph separators into a space', async () => {
+    const { oneLine } = await kit;
+    expect(oneLine('a\u0085b\u009fc\u2028d\u2029e')).toBe('a b c d e');
+  });
+
+  it('drops the bidirectional controls', async () => {
+    const { oneLine } = await kit;
+    expect(oneLine('a\u202eb\u202ac\u2066d\u2069e')).toBe('abcde');
+  });
+
+  it('does not split a surrogate pair at the cut', async () => {
+    const { oneLine } = await kit;
+    const cut = oneLine(`${'a'.repeat(399)}\u{1F600}tail`);
+    expect(cut).toBe(`${'a'.repeat(399)}...`);
+    expect(cut).not.toMatch(/[\ud800-\udbff](?![\udc00-\udfff])/);
+    expect(oneLine(`${'a'.repeat(398)}\u{1F600}tail`)).toBe(`${'a'.repeat(398)}\u{1F600}...`);
+  });
+});
+
+describe('a refusal of usage', () => {
+  it('carries no code, which is the hook silence for it', () => {
+    const ran = spawnSync(process.execPath, [MNEMA_CLI, 'brief', '--hook', '--host', 'nowhere'], {
+      cwd: live,
+      env: envOver(bins.real, live),
+      encoding: 'utf-8',
+    });
+    expect(ran.status).toBe(1);
+    expect((ran.stderr ?? '').split('\n')[0]).not.toMatch(/^[A-Z][A-Z0-9_]*$/);
+  });
 });

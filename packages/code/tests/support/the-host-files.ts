@@ -557,7 +557,15 @@ const OPENING_WAIT = 9000;
  */
 function openingOf(cwd) {
   const until = Date.now() + OPENING_WAIT;
-  return ['brief', 'recall'].flatMap((verb) => whatItSays(verb, cwd, until));
+  const said = [];
+  for (const verb of ['brief', 'recall']) {
+    // THE BUDGET IS ONE: a verb that used it up says so, and the next does not run on what is left.
+    if (until - Date.now() <= 0) break;
+    const { lines, cut } = whatItSays(verb, cwd, until);
+    said.push(...lines);
+    if (cut) break;
+  }
+  return said;
 }
 
 /**
@@ -587,22 +595,25 @@ function whoIsThere(cwd) {
 /**
  * What a verb printed for a hook, or nothing: the second stream rides under the first. A record that
  * would not answer is said in one line (\`whatARefusalSays\`), a run cut by \`until\` is said, and no
- * project and a channel switched off are silence.
+ * project and a channel switched off are silence. \`cut\` says the run used up the budget.
  */
 function whatItSays(verb, cwd, until) {
   const ran = run([verb, '--hook'], cwd, undefined, Math.max(1, until - Date.now()));
   if (ran.error !== undefined) {
     return /** @type {NodeJS.ErrnoException} */ (ran.error).code === 'ETIMEDOUT'
-      ? [notConsulted(didNotAnswerIn(OPENING_WAIT))]
-      : [];
+      ? { lines: [notConsulted(didNotAnswerIn(OPENING_WAIT))], cut: true }
+      : { lines: [], cut: false };
   }
   if (ran.status !== 0) {
     const said = whatARefusalSays(ran.stderr);
-    return said === null ? [] : [said];
+    return { lines: said === null ? [] : [said], cut: false };
   }
-  if (ran.stdout.trim() === '') return [];
+  if (ran.stdout.trim() === '') return { lines: [], cut: false };
   const alsoSaid = ran.stderr.trim();
-  return [alsoSaid === '' ? ran.stdout : [ran.stdout, alsoSaid].join('\n\n')];
+  return {
+    lines: [alsoSaid === '' ? ran.stdout : [ran.stdout, alsoSaid].join('\n\n')],
+    cut: false,
+  };
 }
 
 /**
@@ -901,7 +912,15 @@ const OPENING_WAIT = 9000;
  */
 function openingOf(cwd) {
   const until = Date.now() + OPENING_WAIT;
-  return ['brief', 'recall'].flatMap((verb) => whatItSays(verb, cwd, until));
+  const said = [];
+  for (const verb of ['brief', 'recall']) {
+    // THE BUDGET IS ONE: a verb that used it up says so, and the next does not run on what is left.
+    if (until - Date.now() <= 0) break;
+    const { lines, cut } = whatItSays(verb, cwd, until);
+    said.push(...lines);
+    if (cut) break;
+  }
+  return said;
 }
 
 /**
@@ -933,7 +952,7 @@ function whoIsThere(cwd) {
 /**
  * What a verb printed for a hook, or nothing: the second stream rides under the first. A record that
  * would not answer is said in one line (\`whatARefusalSays\`), a run cut by \`until\` is said, and no
- * project and a channel switched off are silence.
+ * project and a channel switched off are silence. \`cut\` says the run used up the budget.
  * @param {string} verb
  * @param {string} cwd
  * @param {number} until the time, in milliseconds since the epoch, by which both verbs of the opening are done
@@ -942,16 +961,19 @@ function whatItSays(verb, cwd, until) {
   const ran = run([verb, '--hook'], cwd, undefined, Math.max(1, until - Date.now()));
   if (ran.error !== undefined) {
     return /** @type {NodeJS.ErrnoException} */ (ran.error).code === 'ETIMEDOUT'
-      ? [notConsulted(didNotAnswerIn(OPENING_WAIT))]
-      : [];
+      ? { lines: [notConsulted(didNotAnswerIn(OPENING_WAIT))], cut: true }
+      : { lines: [], cut: false };
   }
   if (ran.status !== 0) {
     const said = whatARefusalSays(ran.stderr);
-    return said === null ? [] : [said];
+    return { lines: said === null ? [] : [said], cut: false };
   }
-  if (ran.stdout.trim() === '') return [];
+  if (ran.stdout.trim() === '') return { lines: [], cut: false };
   const alsoSaid = ran.stderr.trim();
-  return [alsoSaid === '' ? ran.stdout : [ran.stdout, alsoSaid].join('\n\n')];
+  return {
+    lines: [alsoSaid === '' ? ran.stdout : [ran.stdout, alsoSaid].join('\n\n')],
+    cut: false,
+  };
 }
 
 /**

@@ -253,15 +253,22 @@ const QUOTED = 120;
  * existed, and the question changes nothing about a PATH with no `mnema` on it.
  *
  * @param {string} cwd
- * @returns {{ readonly kind: 'this', readonly version: string } | { readonly kind: 'older' | 'absent' } | { readonly kind: 'stranger', readonly said: string, readonly status: number | null }}
+ * @returns {{ readonly kind: 'this', readonly version: string } | { readonly kind: 'older' | 'absent' | 'slow' } | { readonly kind: 'stranger', readonly said: string, readonly status: number | null }}
  */
 export function whoAnswers(cwd) {
   const ran = startMnema([WHICH_PROGRAM], {
     cwd,
     env: theRuntime().env,
+    timeout: IDENTIFY_TIMEOUT,
+    killSignal: 'SIGKILL',
     encoding: 'utf-8',
     stdio: ['ignore', 'pipe', 'pipe'],
   });
+  // A `mnema` that does not say which program it is in time is a record not consulted, said once
+  // (a program that is not there at all is `absent`, which is silence).
+  if (/** @type {NodeJS.ErrnoException | undefined} */ (ran.error)?.code === 'ETIMEDOUT') {
+    return { kind: 'slow' };
+  }
   if (ran.error !== undefined) return { kind: 'absent' };
   const out = (ran.stdout ?? '').trim();
   if (ran.status === 0 && out.startsWith(`${THIS_PRODUCT} `)) {
@@ -363,6 +370,7 @@ export function whatTheVerbSays(verb, cwd, { namesAStranger = false } = {}, hand
   if (refusal !== null) return namesAStranger ? `mnema could not run: ${refusal}` : null;
   const who = whoAnswers(cwd);
   if (who.kind === 'absent') return null;
+  if (who.kind === 'slow') return notConsulted(didNotAnswerIn(IDENTIFY_TIMEOUT));
   if (who.kind === 'stranger') return namesAStranger ? aStranger(who) : null;
   const text = textOf(verb, cwd, handed);
   const mismatch = namesAStranger ? theMismatch(who) : null;
@@ -397,12 +405,18 @@ function textOf(verb, cwd, handed) {
 }
 
 /**
- * How long the verb is given, in milliseconds: the gate's own time ({@link GATE_TIMEOUT}), for the
- * gate's reason. With the search for a node it stays under the hooks file's 15 seconds, so the line
+ * How long the verb is given, in milliseconds. With the search for a node and the question of which
+ * program answers it stays under the hooks file's 15 seconds, so the line
  * that says the record was not consulted is what the session gets, and not the host's kill, which a
  * host reads as nothing to say.
  */
-const VERB_TIMEOUT = 10_000;
+const VERB_TIMEOUT = 9_000;
+
+/**
+ * How long `mnema --identify` is given. The search for a node (3 s at most), this and the verb stay
+ * under the hooks file's 15 seconds together: 3 + 2 + 9 = 14.
+ */
+const IDENTIFY_TIMEOUT = 2_000;
 
 /**
  * What a verb ANSWERS to the payload a host handed this hook, or `null` when it answers nothing.
