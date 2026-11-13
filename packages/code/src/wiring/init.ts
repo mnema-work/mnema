@@ -249,7 +249,9 @@ export async function reportInstructions(
   if (said.length === 0) return false;
   const { changeLine } = await import('../commands/instructions.js');
   for (const file of said) io.out(render(fact(changeLine(file))));
-  const wrote = said.some((file) => file.did !== 'refused' && file.did !== 'failed');
+  const wrote = said.some(
+    (file) => file.did !== 'refused' && file.did !== 'failed' && file.did !== 'left',
+  );
   if (wrote) for (const line of THE_INSTRUCTIONS_WERE_WRITTEN) io.out(render(fact(line)));
   return wrote;
 }

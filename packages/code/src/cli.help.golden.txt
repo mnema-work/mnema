@@ -731,6 +731,12 @@ $ mnema instructions --help
 | four are written. --all-hosts writes all four, whichever are there. --hosts writes only the hosts
 | it names (claude, cursor, vscode, codex; a person’s CLAUDE.md or GEMINI.md under the host that
 | is named), which is how to add the block to one file without writing the others.
+|
+| A CLAUDE.md that imports AGENTS.md (a line of its own, @AGENTS.md or @./AGENTS.md) or a
+| .claude/CLAUDE.md that does (@../AGENTS.md: a relative import is read from the folder of the
+| file that holds it) gets no block while AGENTS.md is written: Claude Code reads that file
+| from there. One that holds a block already is said to be read twice, and at a terminal the
+| block comes out only if you say yes; on a no, an earlier version of it is brought up to date.
 
 ### mnema switch --help
 $ mnema switch --help

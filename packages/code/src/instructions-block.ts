@@ -23,6 +23,8 @@
  * says so. A new wording is a new version here, with the old one kept.
  */
 
+import { posix } from 'node:path';
+
 /** The version of the text {@link INSTRUCTIONS_BODY} is. */
 export const INSTRUCTIONS_VERSION = 'v4';
 
@@ -372,6 +374,92 @@ export function withoutTheBlock(text: string): string {
   return kept + text.slice(from);
 }
 
+const IMPORT_LINE = /^ {0,3}@(\S+)[ \t]*$/;
+
+/**
+ * Whether `text`, the content of `file` (a `CLAUDE.md` or a `.claude/CLAUDE.md`, by its path from the project's
+ * root), imports the project's `AGENTS.md`: a line of its own that is `@<path>`, where the path, resolved from the
+ * folder of `file` (Claude Code resolves a relative import from the file that holds it), is the `AGENTS.md` at the
+ * root. In `CLAUDE.md` that is `@AGENTS.md` or `@./AGENTS.md`; in `.claude/CLAUDE.md`, `@../AGENTS.md`, while
+ * `@AGENTS.md` there names `.claude/AGENTS.md` and covers nothing. A line inside a fenced code block or an HTML
+ * comment (the host takes comments out before it reads) imports nothing, nor does an indented code line (four
+ * spaces or more); a leading byte order mark is set aside. A fence that is never closed hides nothing, as in
+ * {@link markerLines}. Only this one file is looked at: an import inside `AGENTS.md` itself, or a chain of imports,
+ * is not followed, and one in the middle of a sentence is not read (ADR-375).
+ */
+export function importsAgents(text: string, file = 'CLAUDE.md'): boolean {
+  const covers = (line: string): boolean => {
+    const named = IMPORT_LINE.exec(line)?.[1];
+    // A path the host reads as absolute (`@/AGENTS.md`) is not the file at the root of the project.
+    if (named === undefined || posix.isAbsolute(named)) return false;
+    return posix.normalize(posix.join(posix.dirname(file), named)) === 'AGENTS.md';
+  };
+  const source = text.startsWith('\uFEFF') ? text.slice(1) : text;
+  let fence: { readonly char: string; readonly length: number } | undefined;
+  let hidden = false;
+  let found = false;
+  // ONE PASS, IN THE ORDER OF THE TEXT: inside a fence a line is only looked at as the fence's end, and outside one a
+  // comment is taken out as the line is read, so a `<!--` shown in a code block hides nothing that follows it.
+  for (let at = 0; at <= source.length; ) {
+    let end = source.indexOf('\n', at);
+    if (end === -1) end = source.length;
+    let raw: string;
+    let next: number;
+    if (fence !== undefined) {
+      raw = source.slice(at, end);
+      next = end + 1;
+    } else {
+      // The line with each comment that closes taken out (a comment may run over lines); one that never closes hides nothing.
+      let visible = '';
+      let from = at;
+      for (;;) {
+        const open = source.indexOf('<!--', from);
+        const close = open === -1 || open > end ? -1 : source.indexOf('-->', open + 4);
+        if (close === -1) {
+          visible += source.slice(from, end);
+          break;
+        }
+        visible += source.slice(from, open);
+        from = close + 3;
+        end = source.indexOf('\n', from);
+        if (end === -1) end = source.length;
+      }
+      raw = visible;
+      next = end + 1;
+    }
+    const line = raw.endsWith('\r') ? raw.slice(0, -1) : raw;
+    const opens = FENCE.exec(line);
+    if (fence !== undefined) {
+      const closes = opens?.[1];
+      if (
+        opens !== null &&
+        closes !== undefined &&
+        closes[0] === fence.char &&
+        closes.length >= fence.length &&
+        (opens[2] ?? '').trim() === ''
+      ) {
+        fence = undefined;
+        hidden = false;
+      } else if (covers(line)) {
+        hidden = true;
+      }
+    } else if (opens !== null) {
+      const ticks = opens[1] as string;
+      if (ticks[0] === '~' || !(opens[2] as string).includes('`')) {
+        fence = { char: ticks[0] as string, length: ticks.length };
+      }
+    } else if (covers(line)) {
+      found = true;
+    }
+    at = next;
+  }
+  // An import inside a fence that never closed is not hidden: the fence is no fence.
+  return found || hidden;
+}
+
+/** The files of the person's whose import of the root `AGENTS.md` Claude Code follows (ADR-375). */
+export const IMPORTING_FILES: readonly string[] = ['CLAUDE.md', '.claude/CLAUDE.md'];
+
 /**
  * `text` as its blocks, with the line breaks and the spaces a formatter may move taken out: the lines
  * of a paragraph or of one list item are one line, every run of white space is one space, and
@@ -425,4 +513,67 @@ function blocksOf(text: string): string {
  */
 export function sameInstructionsText(held: string, written: string): boolean {
   return held.replace(/\r\n/g, '\n') === written || blocksOf(held) === blocksOf(written);
+}
+
+/** A front matter value: its text, and whether it was quoted (a quoted `"true"` is a string, a bare `true` a boolean). */
+interface Scalar {
+  readonly text: string;
+  readonly quoted: boolean;
+}
+
+/**
+ * The keys and values of a front matter, with the quotes set aside but kept in the type of the value; `undefined`
+ * where a line is not `key: value`, or a key is given twice. A bare value and a quoted one are different values (a bare `**` is a YAML alias,
+ * not the string it looks like), so the type decides it.
+ */
+function frontMatterValues(lines: readonly string[]): ReadonlyMap<string, Scalar> | undefined {
+  const values = new Map<string, Scalar>();
+  for (const line of lines) {
+    if (line.trim() === '') continue;
+    const pair = /^([A-Za-z][\w-]*):[ \t]*(.*?)[ \t]*$/.exec(line);
+    if (pair === null || values.has(pair[1] as string)) return undefined;
+    const value = pair[2] as string;
+    const quoted = /^(["'])(.*)\1$/.exec(value);
+    values.set(
+      pair[1] as string,
+      quoted === null
+        ? { text: value, quoted: false }
+        : { text: quoted[2] as string, quoted: true },
+    );
+  }
+  return values;
+}
+
+/** A text split at its front matter: the lines between the two `---` lines, and what follows the second. */
+function splitFrontMatter(
+  text: string,
+): { readonly lines: readonly string[]; readonly rest: string } | undefined {
+  const all = text.replace(/\r\n/g, '\n').split('\n');
+  if (all[0] !== '---') return undefined;
+  const close = all.indexOf('---', 1);
+  if (close === -1) return undefined;
+  return { lines: all.slice(1, close), rest: all.slice(close + 1).join('\n') };
+}
+
+/**
+ * Whether `held`, a file wholly mnema's, is `written` once a formatter has had it: the front matter has the same
+ * keys with the same values (their quotes and their order do not matter: prettier with `singleQuote` turns
+ * `applyTo: "**"` into `applyTo: '**'`), and the text after it is the same by {@link sameInstructionsText}.
+ * Another key, or another value, is a person's edit and is not the same (ADR-376). A file with no front matter
+ * (`.claude/rules`) is compared whole.
+ */
+export function sameOwnFile(held: string, written: string): boolean {
+  const mine = splitFrontMatter(written);
+  if (mine === undefined) return sameInstructionsText(held, written);
+  const theirs = splitFrontMatter(held);
+  if (theirs === undefined) return false;
+  const wanted = frontMatterValues(mine.lines);
+  const present = frontMatterValues(theirs.lines);
+  if (wanted === undefined || present === undefined || wanted.size !== present.size) return false;
+  for (const [key, value] of wanted) {
+    const held = present.get(key);
+    if (held === undefined || held.text !== value.text || held.quoted !== value.quoted)
+      return false;
+  }
+  return sameInstructionsText(theirs.rest, mine.rest);
 }

@@ -121,3 +121,81 @@ describe('what is still an edit after a reflow', () => {
     expect(stateOf('AGENTS.md')).toBe('edited');
   });
 });
+
+/**
+ * THE FRONT MATTER OF A FILE WHOLLY MNEMA'S IS READ AS KEYS AND VALUES (ADR-376). Prettier with `singleQuote` turns
+ * `applyTo: "**"` into `applyTo: '**'`; that is the same file, and the person's own change of a value is not.
+ */
+describe('the front matter of the files wholly mnema’s', () => {
+  const OWN_WITH_FRONT_MATTER: readonly [string, string, string][] = [
+    ['.github/instructions/mnema-instructions.instructions.md', 'applyTo: "**"', "applyTo: '**'"],
+    ['.cursor/rules/mnema-instructions.mdc', 'alwaysApply: true', 'alwaysApply: true'],
+  ];
+
+  it.each(OWN_WITH_FRONT_MATTER)(
+    '%s stays current after prettier with singleQuote, and a write leaves it as formatted',
+    async (path, before, after) => {
+      writeInstructions(project);
+      expect(get(path)).toContain(before);
+      const formatted = await prettier.format(get(path), {
+        parser: 'markdown',
+        singleQuote: true,
+        proseWrap: 'preserve',
+      });
+      expect(formatted).toContain(after);
+      put(path, formatted);
+
+      expect(stateOf(path)).toBe('current');
+      const again = writeInstructions(project).find((file) => file.path === path);
+      expect(again?.did).toBe('unchanged');
+      expect(get(path)).toBe(formatted);
+    },
+  );
+
+  it('holds a requoted applyTo and the keys in another order as the same file', () => {
+    const path = '.github/instructions/mnema-instructions.instructions.md';
+    writeInstructions(project);
+    put(path, get(path).replace('applyTo: "**"', "applyTo:   '**'"));
+    expect(stateOf(path)).toBe('current');
+  });
+
+  it.each([
+    ['another value for applyTo', (text: string) => text.replace('"**"', '"src/**"')],
+    [
+      'another key beside applyTo',
+      (text: string) => text.replace('---\n\n', 'name: mine\n---\n\n'),
+    ],
+    [
+      'an applyTo with no quotes, which YAML reads as an alias',
+      (text: string) => text.replace('"**"', '**'),
+    ],
+    ['a key given twice', (text: string) => text.replace('---\n\n', 'applyTo: "**"\n---\n\n')],
+    [
+      'a changed word in the block',
+      (text: string) => text.replace('call `bootstrap`', 'never call `bootstrap`'),
+    ],
+  ])('%s is the person’s edit: refused and kept', (_name, change) => {
+    const path = '.github/instructions/mnema-instructions.instructions.md';
+    writeInstructions(project);
+    const edited = change(get(path));
+    expect(edited).not.toBe(get(path));
+    put(path, edited);
+
+    expect(stateOf(path)).toBe('edited');
+    const written = writeInstructions(project).find((file) => file.path === path);
+    expect(written?.did).toBe('refused');
+    expect(get(path)).toBe(edited);
+  });
+});
+
+describe('the type of a front matter value', () => {
+  it('counts a quoted "true" for alwaysApply as the person’s edit, where the original is the boolean', () => {
+    const path = '.cursor/rules/mnema-instructions.mdc';
+    writeInstructions(project);
+    const edited = get(path).replace('alwaysApply: true', 'alwaysApply: "true"');
+    expect(edited).not.toBe(get(path));
+    put(path, edited);
+    expect(stateOf(path)).toBe('edited');
+    expect(get(path)).toBe(edited);
+  });
+});

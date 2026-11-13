@@ -42,7 +42,8 @@ its own: the workflow rules and the proof live in `@mnema/core` and `@mnema/chai
   says so; where a Biome configuration does not leave `.mnema/` alone, it ends by saying the entries to add. It
   writes the mnema instructions (when to call the mnema tools, and what never goes in the
   record) into `AGENTS.md`, into a `CLAUDE.md` or `GEMINI.md` that exists, and into a rule file of its
-  own for Claude Code, Copilot and Cursor, and names each file. At a terminal it first shows what it
+  own for Claude Code, Copilot and Cursor, and names each file (a `CLAUDE.md` that imports `AGENTS.md` gets none, since Claude Code
+  reads that file from there). At a terminal it first shows what it
   found around the folder, asks which agent hosts to write them for (arrows and space; the hosts found are
   checked; Esc founds nothing) and whether an agent may accept what you choose, and shows everything it will
   write, once, before it writes any of it; with no terminal, or with `--all-hosts` or `--yes`, it asks nothing

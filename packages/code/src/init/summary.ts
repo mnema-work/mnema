@@ -78,6 +78,7 @@ const DID_ORDER: readonly (InstructionsFile['did'] | undefined)[] = [
   'replaced',
   'added',
   'unchanged',
+  'left',
   'refused',
   'failed',
 ];

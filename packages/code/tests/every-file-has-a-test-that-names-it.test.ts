@@ -1298,6 +1298,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-checkout-a-key-left.test.ts': 15,
   'packages/code/tests/the-ci-recipe-catches-what-verify-cannot.test.ts': 9,
   'packages/code/tests/the-citation-that-arrives-opens.test.ts': 13,
+  'packages/code/tests/the-claude-md-that-imports-agents-md.test.ts': 9,
   'packages/code/tests/the-clean-verify-is-short.test.ts': 8,
   'packages/code/tests/the-command-handed-over-runs-as-handed.test.ts': 13,
   'packages/code/tests/the-command-line-signs-as-its-agent.test.ts': 10,
