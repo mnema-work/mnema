@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Installs the publishable packages TOGETHER into an empty prefix the way the release notes tell a
-# person to, and drives the installed binary through `init`, `decision record` and `verify` in a
+# Installs `@mnema/code` ALONE into an empty prefix the way the release notes tell a person to (the
+# command is one bundle, and the other four packages are not what it runs), counts what npm put
+# there and fails above five, and drives the installed binary through `init`, `decision record` and `verify` in a
 # project and a HOME that are empty. It touches nothing outside the temporary directory it makes.
 # Without a directory it packs the packages itself and needs the workspace built (`pnpm build`); with
 # a directory it packs nothing, needs no build, and installs the tarballs found there.
@@ -57,6 +58,16 @@ done
 echo "packed: $(basename -a "${tarballs[@]}" | tr '\n' ' ')"
 [ "${#tarballs[@]}" -eq "${#dirs[@]}" ] || fail "packed ${#tarballs[@]} tarballs for ${#dirs[@]} packages"
 
+# A person installs `@mnema/code` and nothing else: the siblings are carried by its bundle.
+code_tarball=""
+for tarball in "${tarballs[@]}"; do
+  case "$(basename "$tarball")" in mnema-code-*.tgz) code_tarball="$tarball" ;; esac
+done
+[ -n "$code_tarball" ] || {
+  fail "no mnema-code tarball among the packed ones"
+  exit 1
+}
+
 # An empty HOME, an empty global prefix and a cache of their own: nothing of the workspace or of the
 # runner is visible to the install or to the binary after it.
 home="$work/home"
@@ -64,13 +75,20 @@ prefix="$work/prefix"
 mkdir "$home" "$prefix"
 base_env=(env -i HOME="$home" PATH="$prefix/bin:$PATH" npm_config_cache="$work/npm-cache")
 
-"${base_env[@]}" npm i -g --prefix "$prefix" --no-audit --no-fund "${tarballs[@]}" >"$work/install.log" 2>&1 ||
+"${base_env[@]}" npm i -g --prefix "$prefix" --no-audit --no-fund "$code_tarball" >"$work/install.log" 2>&1 ||
   {
     cat "$work/install.log"
-    fail "npm i -g of the tarballs together failed"
+    fail "npm i -g of the @mnema/code tarball alone failed"
     # Past this point a `mnema` found on the PATH would be some other install, not the one tested.
     exit 1
   }
+
+# What the install put on the machine: the first line of `--parseable` is the prefix itself. The
+# bundle imports one package (string-width, with its three), so more than five is a dependency the
+# command never loads.
+installed_count="$("${base_env[@]}" npm ls -g --all --parseable --prefix "$prefix" | tail -n +2 | wc -l)"
+echo "installed packages: $installed_count ($(du -sh "$prefix" | cut -f1))"
+[ "$installed_count" -le 5 ] || fail "npm installed $installed_count packages for @mnema/code, more than five"
 
 want="$(node -p 'require("./packages/code/package.json").version')"
 got="$("${base_env[@]}" mnema --version 2>&1)" || true

@@ -1,6 +1,6 @@
 // What a person on Windows or macOS does with mnema, run end to end on that system.
 //
-// It packs the five publishable packages, installs them together with `npm i -g` into an empty
+// It packs `@mnema/code`, installs that tarball alone with `npm i -g` into an empty
 // prefix and an empty HOME (so the launcher is the one npm writes on that system: a symlink on
 // macOS, `mnema.cmd` on Windows), and then drives the INSTALLED binary:
 //
@@ -19,15 +19,7 @@
 // arguments the file gives them. The vitest suite does not run here; it runs on Linux.
 
 import { spawnSync } from 'node:child_process';
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  realpathSync,
-  rmSync,
-} from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
 
@@ -140,27 +132,29 @@ try {
   console.log(`${process.platform} ${process.arch}, node ${process.version}`);
   console.log(`tmpdir as named: ${named}; as it really is: ${real}`);
 
-  section('pack and install the five packages together');
-  const packages = readdirSync(join(root, 'packages'))
-    .sort()
-    .filter((name) => {
-      const manifest = join(root, 'packages', name, 'package.json');
-      return existsSync(manifest) && !JSON.parse(readFileSync(manifest, 'utf-8')).private;
-    });
-  check(packages.length === 5, `five publishable packages (${packages.join(', ')})`);
-  for (const name of packages) {
-    mustRun(
-      `pnpm pack ${name}`,
-      pnpm(['pack', '--pack-destination', tarballs], join(root, 'packages', name)),
-    );
-  }
+  section('pack and install @mnema/code alone');
+  // A person installs `@mnema/code` and nothing else: the command is one bundle, and the other
+  // packages are carried inside it.
+  mustRun(
+    'pnpm pack code',
+    pnpm(['pack', '--pack-destination', tarballs], join(root, 'packages', 'code')),
+  );
   const files = readdirSync(tarballs).map((name) => join(tarballs, name));
+  check(files.length === 1, `one tarball packed (${files.length})`);
   mustRun(
     'npm i -g',
     run('npm', ['i', '-g', '--prefix', prefix, '--no-audit', '--no-fund', ...files], {
       shell: WINDOWS,
     }),
   );
+  // The first line of `--parseable` is the prefix itself. The bundle imports string-width (with
+  // its three), so more than five is a dependency the command never loads.
+  const listed = mustRun(
+    'npm ls -g --all --parseable',
+    run('npm', ['ls', '-g', '--all', '--parseable', '--prefix', prefix], { shell: WINDOWS }),
+  );
+  const installed = listed.out.split(/\r?\n/).filter((line) => line.trim() !== '').length - 1;
+  check(installed <= 5, `npm installed ${installed} packages for @mnema/code, at most five`);
   const wantVersion = JSON.parse(
     readFileSync(join(root, 'packages', 'code', 'package.json'), 'utf-8'),
   ).version;

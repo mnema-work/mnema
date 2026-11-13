@@ -39,14 +39,12 @@
       "default": "./dist/library.js"
     }
   },
-  "types": "./dist/index.d.ts",
-  "main": "./dist/index.js",
   "files": [
-    "dist/",
-    "!dist/.tsbuildinfo",
+    "dist/bundle/",
     "!dist/**/*.map",
     "NOTICE",
-    "THIRD-PARTY-NOTICES.md"
+    "THIRD-PARTY-NOTICES.md",
+    "package.json"
   ],
   "homepage": "https://mnema.work/",
   "repository": {
@@ -62,28 +60,31 @@
   },
   "publishConfig": {
     "access": "public",
-    "registry": "https://registry.npmjs.org/"
+    "registry": "https://registry.npmjs.org/",
+    "exports": {
+      "./package.json": "./package.json"
+    }
   },
   "dependencies": {
+    "string-width": "^8.3.0"
+  },
+  "devDependencies": {
     "@mnema/chain": "workspace:*",
     "@mnema/context": "workspace:*",
     "@mnema/core": "workspace:*",
     "@mnema/stacks": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@sigstore/bundle": "5.0.1",
+    "@sigstore/mock": "0.13.1",
     "@sigstore/protobuf-specs": "0.5.2",
     "@sigstore/verify": "4.1.3",
-    "commander": "^15.1.0",
-    "ink": "^7.1.1",
-    "react": "^19.3.1",
-    "string-width": "^8.3.0",
-    "zod": "^4.6.7"
-  },
-  "devDependencies": {
-    "@sigstore/mock": "0.13.1",
     "@types/react": "^19.3.0",
     "@vscode/test-electron": "^3.1.0",
+    "commander": "^15.1.0",
     "esbuild": "0.28.2",
-    "prettier": "3.9.10"
+    "ink": "^7.1.1",
+    "prettier": "3.9.10",
+    "react": "^19.3.1",
+    "zod": "^4.6.7"
   }
 }

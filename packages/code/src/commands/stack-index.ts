@@ -131,11 +131,11 @@ export function readStackIndex(
 }
 
 /**
- * The index that comes with the installed package: `dist/stack-index/`, which the build writes from
+ * The index that comes with the installed package: `dist/bundle/stack-index/`, which the build writes from
  * the repository's `stack-index/` and the example stacks it lists. It is named from the package's
  * root (`package-root.ts`), so the source, the compiled copy and the bundle find what the build wrote.
  */
-export const BUILT_IN_INDEX = packageFile('dist/stack-index');
+export const BUILT_IN_INDEX = packageFile('dist/bundle/stack-index');
 
 /**
  * The index to read: the one in `folder` when a folder is given, else the built-in one, each entry

@@ -44,10 +44,13 @@ const LISTED: Readonly<Record<string, string>> = {
 };
 
 function theBundledPackages(): string[] {
+  // The siblings are devDependencies of the published manifest (the bundle carries them), so
+  // both fields are read: one that moved out of `dependencies` is still carried.
   const manifest = JSON.parse(readFileSync(join(PACKAGE, 'package.json'), 'utf-8')) as {
-    dependencies: Record<string, string>;
+    dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
   };
-  const workspace = Object.entries(manifest.dependencies)
+  const workspace = Object.entries({ ...manifest.dependencies, ...manifest.devDependencies })
     .filter(([, range]) => range.startsWith('workspace:'))
     .map(([name]) => name.replace('@mnema/', ''));
   return ['code', ...workspace].sort();

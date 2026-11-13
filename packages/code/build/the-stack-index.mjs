@@ -2,7 +2,7 @@
  * Puts the stack index inside the package, so an installed `mnema` can list it in any folder.
  *
  * `stack-index/index.json` at the root of the repository stays the one file people edit. This
- * writes, under `packages/code/dist/stack-index/`, a byte-for-byte copy of it and, for each entry
+ * writes, under `packages/code/dist/bundle/stack-index/`, a byte-for-byte copy of it and, for each entry
  * that names a `path`, the folder of that stack at the same relative path inside it, so the
  * reader resolves an entry's folder the way it does in a checkout. `dist/` is what the package
  * publishes, and `npm pack` takes this with it.
@@ -22,7 +22,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
-const out = join(root, 'packages', 'code', 'dist', 'stack-index');
+const out = join(root, 'packages', 'code', 'dist', 'bundle', 'stack-index');
 
 const index = join(root, 'stack-index', 'index.json');
 const { stacks } = JSON.parse(readFileSync(index, 'utf8'));
