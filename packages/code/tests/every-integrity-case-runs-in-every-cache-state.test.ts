@@ -147,6 +147,9 @@ function read(): { sources: Map<string, Source>; planters: Set<string> } {
   return { sources, planters };
 }
 
+/** The tag, written so that this file does not carry the tag it tests for. */
+const PROVES = '@proves';
+
 describe('the integrity tests and the states of the projection cache', () => {
   it('has every file that proves integrity or plants damage run through the helper, or say why not', () => {
     const { sources, planters } = read();
@@ -166,7 +169,7 @@ describe('the integrity tests and the states of the projection cache', () => {
   it('accuses by name a file that proves and does not use the helper (the guard seen to fire)', () => {
     const none = new Set<string>();
     const proves: Source = {
-      text: "// @proves an-edit-is-caught\nit('x', () => {});",
+      text: `// ${PROVES} the-claim\nit('x', () => {});`,
       imports: ['the-cli'],
     };
     const uses: Source = { text: proves.text, imports: ['the-cli', HELPER] };
@@ -188,7 +191,7 @@ describe('the integrity tests and the states of the projection cache', () => {
   });
 
   it('accuses a reason that excuses nothing: a file that now uses the helper, one that is not integrity, one that is gone, and one with no sentence', () => {
-    const uses: Source = { text: '// @proves a-claim\nit(1)', imports: [HELPER] };
+    const uses: Source = { text: `// ${PROVES} the-claim\nit(1)`, imports: [HELPER] };
     const plain: Source = { text: "it('x', () => {});", imports: [] };
     const sources = new Map([
       ['a.test.ts', uses],
@@ -202,7 +205,7 @@ describe('the integrity tests and the states of the projection cache', () => {
     expect(said.map((line) => line.split(' ')[0])).toEqual(['a.test.ts', 'b.test.ts', 'c.test.ts']);
     expect(
       accusations(
-        new Map([['d.test.ts', { text: '// @proves a-claim\n', imports: [] }]]),
+        new Map([['d.test.ts', { text: `// ${PROVES} the-claim\n`, imports: [] }]]),
         new Set(),
         { 'd.test.ts': 'todo' },
       ),
