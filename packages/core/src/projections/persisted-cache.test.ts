@@ -33,6 +33,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  type CatalogEvent,
   catalogUpcasters,
   decisionTransitioned,
   openChainForWriting,
@@ -40,6 +41,8 @@ import {
   readEntries,
   readTail,
   tailDir,
+  UpcasterRegistry,
+  type VersionedEvent,
 } from '@mnema/chain';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ensureSchema, PROJECTION_TABLES } from '../db/schema.js';
@@ -504,6 +507,64 @@ describe('a cache that cannot be vouched for is replaced, never trusted', () => 
     expect(cache.listTasks().map((task) => task.title)).toContain(
       'a task that arrived after the cache',
     );
+  });
+
+  it('a touch over the same bytes is hashed once: the mark is kept with the new time, so the next open reads two numbers', () => {
+    const ctx = aWarmFile();
+    const { file } = theLiveSegment(ctx);
+    const before = statSync(file);
+    utimesSync(file, before.atime, new Date(before.mtimeMs + 5_000));
+    const markOnDisk = (): string => {
+      const db = openDatabase(projectionCachePath({ root }));
+      try {
+        const row = db.prepare("SELECT value FROM cache_meta WHERE key = 'active'").get() as {
+          value: string;
+        };
+        return (JSON.parse(row.value) as Record<string, string>)[file] as string;
+      } finally {
+        db.close();
+      }
+    };
+    expect(markOnDisk().split(':')[1], 'before the open the mark holds the old time').not.toBe(
+      String(statSync(file, { bigint: true }).mtimeNs),
+    );
+    const cache = persisted();
+    cache.refresh();
+    expect(theMarkerSurvived(cache), 'a touch sent the cache back to a replay').toBe(true);
+    // The read had nothing to store, and still left the mark of the file as it now is.
+    expect(markOnDisk().split(':')[1]).toBe(String(statSync(file, { bigint: true }).mtimeNs));
+  });
+
+  it('a segment rewritten to the same size while a replay reads it is not served as the bytes that were read', () => {
+    const ctx = writing();
+    aRecord(ctx);
+    for (const suffix of ['', '-wal', '-shm']) {
+      rmSync(`${projectionCachePath({ root })}${suffix}`, { force: true });
+    }
+    const { file, held, at } = theLiveSegment(ctx);
+    const before = statSync(file);
+    // The rewrite lands once the replay has started to read: the rows hold the old bytes.
+    let rewritten = false;
+    const racing = new (class extends UpcasterRegistry {
+      override upcast(event: VersionedEvent): CatalogEvent {
+        if (!rewritten) {
+          rewritten = true;
+          const bytes = Buffer.from(held);
+          bytes.write('A', at);
+          writeFileSync(file, bytes);
+          utimesSync(file, before.atime, new Date(before.mtimeMs + 5_000));
+        }
+        return super.upcast(event);
+      }
+    })();
+    const first = ProjectionCache.open(root, { upcasters: racing, persist: true });
+    open.push(first);
+    first.refresh();
+    expect(rewritten, 'the rewrite happened during the replay').toBe(true);
+    first.close();
+    const second = persisted();
+    second.refresh();
+    expect(second.listTasks().map((task) => task.title)).toEqual(['A task that was already here']);
   });
 
   it('THE LIMIT: a live segment rewritten to the same size with its modification time put back is not seen', () => {

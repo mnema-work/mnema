@@ -1360,7 +1360,7 @@ describe('the second reader refuses, and the mutation that earns each refusal sh
    *
    * THE SECOND MEMBER ARRIVED WITH THIS DELIVERY and its admission is the argued part.
    * `blank-segment-same-size` is the freshness probe's declared blind spot as an input (a
-   * record whose segments were emptied without a byte count moving) and it leaves signed
+   * record whose segments were emptied without a byte count moving, the modification time put back) and it leaves signed
    * checkpoints naming events the tail no longer holds. That reads like the record
    * contradicting itself, which is how the product reads it (`broken`). It is admitted here
    * anyway because the cut leaves the checkpoints that covered the events in place
@@ -1683,9 +1683,9 @@ describe('a check that could not run is reported as neither pass nor refusal', (
 
   it("answers INCOMPLETE over the freshness probe's blind spot, and cites the gap it rests on", () => {
     // WHAT THE PROBE HANDS OVER, asked of both readers for the first time. `chainExtent`
-    // pairs each tail with its last segment's SIZE and declares what it therefore cannot
-    // see; `mcp-locate-cache.test.ts` performs exactly this edit to prove the warm
-    // projections answer without a replay behind them. Nothing asked what the readers then
+    // pairs each tail with its last segment's SIZE and modification time and declares what it
+    // therefore cannot see (a rewrite that puts the time back); `mcp-locate-cache.test.ts` performs
+    // exactly this edit to prove the warm projections answer without a replay behind them. Nothing asked what the readers then
     // SAY about those bytes, and the answer is the second member of the INCOMPLETE class.
     const record = copyOf('witnessed-record');
     const applied = JSON.parse(python([MUTATE, 'blank-segment-same-size', record]).stdout) as {

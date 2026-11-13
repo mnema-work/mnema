@@ -123,6 +123,15 @@ describe('the fingerprints of sealed segments', () => {
 describe('the marks of active segments', () => {
   const bytes = 'one line\nanother line\n';
 
+  /** What stat says of each file now, as an independent source of the stamp a reading is given first. */
+  const stampsOf = (...files: string[]): Record<string, string> =>
+    Object.fromEntries(
+      files.map((file) => {
+        const stat = statSync(file, { bigint: true });
+        return [file, `${stat.size}:${stat.mtimeNs}`];
+      }),
+    );
+
   function later(file: string): void {
     const before = statSync(file);
     utimesSync(file, before.atime, new Date(before.mtimeMs + 5_000));
@@ -133,7 +142,9 @@ describe('the marks of active segments', () => {
     const live = join(dir, '000002.jsonl');
     writeFileSync(sealed, bytes);
     writeFileSync(live, bytes);
-    expect(Object.keys(activeMarks(frontierOver([sealed, live], bytes.length)))).toEqual([live]);
+    expect(
+      Object.keys(activeMarks(frontierOver([sealed, live], bytes.length), stampsOf(sealed, live))),
+    ).toEqual([live]);
     // The reading ended in a segment that has a later one beside it: that is sealed, not active.
     const over = frontierOver([live, join(dir, '000003.jsonl')], bytes.length);
     const reach = over.tails.get('a-tail') as TailReach;
@@ -141,41 +152,70 @@ describe('the marks of active segments', () => {
       ...over,
       tails: new Map([['a-tail', { ...reach, boundary: { segment: live, bytes: bytes.length } }]]),
     };
-    expect(activeMarks(endedInLive)).toEqual({});
+    expect(activeMarks(endedInLive, stampsOf(live))).toEqual({});
   });
 
   it('hold while the segment has the size and the time it had, without reading it', () => {
     const live = join(dir, '000001.jsonl');
     writeFileSync(live, bytes);
-    const recorded = activeMarks(frontierOver([live], bytes.length));
-    expect(activeSegmentsHold(recorded)).toBe(true);
+    const recorded = activeMarks(frontierOver([live], bytes.length), stampsOf(live));
+    expect(activeSegmentsHold(recorded)).toEqual(recorded);
   });
 
   it('hold when only the time moved or the segment grew past the frontier, and stop when what is below it changed', () => {
     const live = join(dir, '000001.jsonl');
     writeFileSync(live, bytes);
-    const recorded = activeMarks(frontierOver([live], bytes.length));
+    const recorded = activeMarks(frontierOver([live], bytes.length), stampsOf(live));
 
     later(live);
-    expect(activeSegmentsHold(recorded), 'a touch: the same bytes').toBe(true);
+    expect(activeSegmentsHold(recorded), 'a touch: the same bytes').toBeDefined();
 
     writeFileSync(live, `${bytes}a line that arrived\n`);
-    expect(activeSegmentsHold(recorded), 'an append: the same bytes below the frontier').toBe(true);
+    expect(
+      activeSegmentsHold(recorded),
+      'an append: the same bytes below the frontier',
+    ).toBeDefined();
 
     writeFileSync(live, bytes.replace('one', 'ONE'));
     later(live);
-    expect(activeSegmentsHold(recorded), 'the same size, other bytes').toBe(false);
+    expect(activeSegmentsHold(recorded), 'the same size, other bytes').toBeUndefined();
 
     writeFileSync(live, bytes.slice(0, 10));
-    expect(activeSegmentsHold(recorded), 'shorter than the frontier').toBe(false);
+    expect(activeSegmentsHold(recorded), 'shorter than the frontier').toBeUndefined();
 
     rmSync(live);
-    expect(activeSegmentsHold(recorded), 'gone').toBe(false);
+    expect(activeSegmentsHold(recorded), 'gone').toBeUndefined();
   });
 
   it('are not held by a mark that says the segment could not be read, or that is not a mark', () => {
-    expect(activeSegmentsHold({ [join(dir, 'x.jsonl')]: 'unreadable' })).toBe(false);
-    expect(activeSegmentsHold({ [join(dir, 'x.jsonl')]: '1:2' })).toBe(false);
-    expect(activeSegmentsHold({})).toBe(true);
+    expect(activeSegmentsHold({ [join(dir, 'x.jsonl')]: 'unreadable' })).toBeUndefined();
+    expect(activeSegmentsHold({ [join(dir, 'x.jsonl')]: '1:2' })).toBeUndefined();
+    expect(activeSegmentsHold({})).toEqual({});
+  });
+
+  it('give back the mark of the new time when a touch left the bytes alone, so it is hashed once', () => {
+    const live = join(dir, '000001.jsonl');
+    writeFileSync(live, bytes);
+    const recorded = activeMarks(frontierOver([live], bytes.length), stampsOf(live));
+    later(live);
+    const kept = activeSegmentsHold(recorded) as Record<string, string>;
+    expect(kept[live]).not.toBe(recorded[live]);
+    expect(kept[live]?.startsWith(`${stampsOf(live)[live]}:`)).toBe(true);
+    // Held from the numbers alone now: the same answer, and the mark is its own.
+    expect(activeSegmentsHold(kept)).toEqual(kept);
+  });
+
+  it('are `unreadable` when the file is not the one that was stamped before the reading', () => {
+    const live = join(dir, '000001.jsonl');
+    writeFileSync(live, bytes);
+    const stamped = stampsOf(live);
+    // A rewrite that lands after the stamp and before the marks: same size, later time.
+    writeFileSync(live, bytes.replace('one', 'ONE'));
+    later(live);
+    const marks = activeMarks(frontierOver([live], bytes.length), stamped);
+    expect(marks[live]).toBe('unreadable');
+    expect(activeSegmentsHold(marks)).toBeUndefined();
+    // And a segment nobody stamped is no segment this reading can vouch for.
+    expect(activeMarks(frontierOver([live], bytes.length), {})[live]).toBe('unreadable');
   });
 });

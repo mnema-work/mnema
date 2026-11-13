@@ -44,7 +44,15 @@ import { createHash } from 'node:crypto';
 import { closeSync, openSync, readdirSync, readFileSync, readSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LATEST_VERSION, type LinkBreak, type UnreadLine, WORKFLOWS } from '@mnema/chain';
+import {
+  type ChainLayout,
+  LATEST_VERSION,
+  type LinkBreak,
+  listTails,
+  orderedSegments,
+  type UnreadLine,
+  WORKFLOWS,
+} from '@mnema/chain';
 import type { SqliteDatabase } from '../db/sqlite.js';
 import type { ChainFrontier, TailReach } from './order.js';
 
@@ -227,50 +235,97 @@ export function fingerprintOf(path: string): string {
   }
 }
 
+/** `<size>:<mtimeNs>` of a file, or undefined when it cannot be stat'ed. */
+function stampOf(path: string): string | undefined {
+  const stat = statOf(path);
+  return stat === undefined ? undefined : `${stat.size}:${stat.mtimeNs}`;
+}
+
+/**
+ * The size and modification time, by path, of the segment each tail is appending to, taken BEFORE
+ * a reading of the chain begins. {@link activeMarks} records these and not what the file says
+ * after the reading, so a rewrite that lands during a long replay leaves a mark older than the
+ * bytes (the next open hashes and finds them moved) and never the mark of bytes the rows do not
+ * describe.
+ */
+export function activeStampsBefore(layout: ChainLayout): Readonly<Record<string, string>> {
+  const stamps: Record<string, string> = {};
+  try {
+    for (const tail of listTails(layout)) {
+      const last = orderedSegments(layout, tail).at(-1);
+      const stamp = last === undefined ? undefined : stampOf(last);
+      if (last !== undefined && stamp !== undefined) stamps[last] = stamp;
+    }
+  } catch {
+    // Nothing stamped: every mark below is then `unreadable`, and the next open replays.
+  }
+  return stamps;
+}
+
 /**
  * What each tail's ACTIVE segment was when the frontier was taken, by path, as
- * `<size>:<mtimeNs>:<bytes>:<sha256>`: the size and the modification time the file had, and the
- * sha256 of its first `bytes` bytes, which is where the reading stopped.
+ * `<size>:<mtimeNs>:<bytes>:<sha256>`: the size and the modification time the file had BEFORE the
+ * reading (`before`, from {@link activeStampsBefore}), and the sha256 of its first `bytes` bytes,
+ * which is where the reading stopped.
  *
- * The file is stat'ed BEFORE the prefix is read, so a write that lands in between leaves a mark
- * whose time is older than the bytes: the next open finds it moved and hashes again, which is the
- * direction a cache errs in safely. A segment that is not the last the reading reached (a later
- * one stands beside it, so it is sealed) is left to {@link sealedFingerprints} and not hashed.
+ * The prefix is hashed after the reading, and the mark is kept only if the file still has the
+ * stamp it was given before it: a file that moved while it was read, or while it was hashed, is
+ * recorded as `unreadable`, which no later open believes. A segment that is not the last the
+ * reading reached (a later one stands beside it, so it is sealed) is left to
+ * {@link sealedFingerprints} and not hashed.
  */
-export function activeMarks(frontier: ChainFrontier): Readonly<Record<string, string>> {
+export function activeMarks(
+  frontier: ChainFrontier,
+  before: Readonly<Record<string, string>>,
+): Readonly<Record<string, string>> {
   const marks: Record<string, string> = {};
   for (const reach of frontier.tails.values()) {
     const boundary = reach.boundary;
     if (boundary === undefined || reach.segments.at(-1) !== boundary.segment) continue;
-    marks[boundary.segment] = markOfActive(boundary.segment, boundary.bytes);
+    marks[boundary.segment] = markOfActive(boundary.segment, boundary.bytes, before);
   }
   return marks;
 }
 
 /**
- * Whether every active segment a cache recorded is still what it recorded: the same size and the
- * same modification time, or else the same bytes below the frontier (the sha256 computed once,
- * because something moved).
+ * The marks to keep when every active segment a cache recorded is still what it recorded, or
+ * undefined when one is not: the same size and the same modification time, or else the same bytes
+ * below the frontier (the sha256 computed once, because something moved).
+ *
+ * A segment whose time moved over the same bytes (a `touch`, a checkout that wrote the file back)
+ * comes back with the mark of its new size and time, so the caller can keep it and the next open
+ * finds the two numbers equal instead of hashing again.
  */
-export function activeSegmentsHold(recorded: Readonly<Record<string, string>>): boolean {
+export function activeSegmentsHold(
+  recorded: Readonly<Record<string, string>>,
+): Readonly<Record<string, string>> | undefined {
+  const kept: Record<string, string> = {};
   for (const [segment, mark] of Object.entries(recorded)) {
     const parts = mark.split(':');
     const [size, mtime, bytes, digest] = parts;
-    if (parts.length !== 4 || bytes === undefined || digest === undefined) return false;
-    const now = statOf(segment);
-    if (now === undefined) return false;
-    if (`${now.size}` === size && `${now.mtimeNs}` === mtime) continue;
-    if (prefixDigest(segment, Number(bytes)) !== digest) return false;
+    if (parts.length !== 4 || bytes === undefined || digest === undefined) return undefined;
+    const before = stampOf(segment);
+    if (before === undefined) return undefined;
+    if (before === `${size}:${mtime}`) {
+      kept[segment] = mark;
+      continue;
+    }
+    if (prefixDigest(segment, Number(bytes)) !== digest) return undefined;
+    // Re-stamped only if the file did not move while it was hashed.
+    kept[segment] = stampOf(segment) === before ? `${before}:${bytes}:${digest}` : mark;
   }
-  return true;
+  return kept;
 }
 
-function markOfActive(path: string, bytes: number): string {
-  const stat = statOf(path);
+function markOfActive(
+  path: string,
+  bytes: number,
+  before: Readonly<Record<string, string>>,
+): string {
+  const stamp = before[path];
   const digest = prefixDigest(path, bytes);
-  return stat === undefined || digest === undefined
-    ? 'unreadable'
-    : `${stat.size}:${stat.mtimeNs}:${bytes}:${digest}`;
+  if (stamp === undefined || digest === undefined || stampOf(path) !== stamp) return 'unreadable';
+  return `${stamp}:${bytes}:${digest}`;
 }
 
 function statOf(path: string): { size: bigint; mtimeNs: bigint } | undefined {
@@ -302,4 +357,12 @@ function prefixDigest(path: string, bytes: number): string | undefined {
   } finally {
     if (fd !== undefined) closeSync(fd);
   }
+}
+
+/** Replaces the active marks alone, leaving the generation where it is: nothing the rows say changed. */
+export function writeActiveMarks(
+  db: SqliteDatabase,
+  active: Readonly<Record<string, string>>,
+): void {
+  db.prepare("UPDATE cache_meta SET value = ? WHERE key = 'active'").run(JSON.stringify(active));
 }
