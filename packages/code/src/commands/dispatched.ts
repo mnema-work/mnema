@@ -6,10 +6,18 @@
  * ONE TASK PER SESSION. The first dispatch of a session opens a PRIVATE task, "Work handed over in this
  * session" and the instant, moved to in progress; every dispatch records a private handoff on it,
  * from `orchestrator` to the subagent type the call named, with a brief that is the call's short
- * description and, when the prompt cites a file that exists, that file's path. The end of the session
+ * description and, when the prompt POINTS at a file that exists and is not in another repository (a word such as "read"
+ * before the path), that file's path, or else the id of a record of this project it cites. The end of the session
  * moves the task to done, with the number of handoffs as its note. The task's id and the count live in
  * the session journal (`session-journal.ts`), the one file this machine keeps per session: no second
  * mechanism, and a session whose journal switch is off is a session this does nothing for.
+ *
+ * ONLY THIS PROJECT'S WORK. A call whose prompt cites places that exist (of any kind: absolute, `~/`, `../`
+ * or `./`), one in another repository and none in this project, is work for that project: it is not
+ * mirrored here, the second stream says so, and the session's closing note counts it with its own
+ * counter. A place is taken to its repository by climbing to the folder that holds a `.git`, with
+ * no `git` spawned; one in no repository (a scratch folder) says nothing either way. Only the first
+ * twelve places the prompt cites are looked at.
  *
  * THE PROMPT IS NEVER RECORDED. A prompt is the longest text a session writes and it can hold anything
  * the person pasted; the record gets the description the host's own call carries (a few words the
@@ -28,12 +36,14 @@
  * mirror never holds a dispatch.
  */
 
-import { existsSync, statSync } from 'node:fs';
-import { dirname, isAbsolute, relative, resolve } from 'node:path';
+import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { channelIsOn } from '@mnema/context';
 import { type DiscoveryEnv, type ResolvedTrees, resolveTrees, sweptReason } from '@mnema/core';
 import { AGENT_MIRROR_CHANNEL, SESSION_JOURNAL_CHANNEL } from '../record-framing.js';
 import {
+  anotherProjectsOf,
+  countAnotherProjectsDispatch,
   countASkip,
   exclusivelyOn,
   type HandedOver,
@@ -113,14 +123,180 @@ const A_PATH =
 const CANDIDATES = 12;
 
 /**
- * The first path in `prompt` that is a file on disk, as the project knows it: relative to the
- * project when inside it, absolute otherwise. Never the prompt, and never a path that is not a file.
+ * The words that, shortly before a path or an id, say the prompt POINTS at it as the brief: a path
+ * that is only mentioned ("add a line to CHANGELOG.md") is not one. Lower case, English and
+ * Portuguese.
+ */
+export const BRIEF_TRIGGERS: readonly string[] = [
+  'read',
+  'see',
+  'follow',
+  'consult',
+  'brief',
+  'handoff',
+  'hand-off',
+  'spec',
+  'specification',
+  'instructions',
+  'leia',
+  'ler',
+  'veja',
+  'siga',
+  'seguir',
+  'abra',
+  'consulte',
+  'pedido',
+  'especificacao',
+  'especificação',
+  'instrucoes',
+  'instruções',
+  'conforme',
+];
+
+/** A word right before a trigger that turns it round: "do not read X" does not point at X. */
+const NEGATIONS: readonly string[] = ['not', "don't", 'dont', 'never', 'não', 'nao', 'nunca'];
+
+/** How many words before a path or an id are looked at for a trigger. */
+const TRIGGER_REACH = 3;
+
+/** Whether one of the words just before `at` in `prompt` is a trigger. */
+function pointedAt(prompt: string, at: number): boolean {
+  const raw = prompt
+    .slice(Math.max(0, at - 240), at)
+    .toLowerCase()
+    .replaceAll('’', "'")
+    .split(/\s+/)
+    .filter((word) => word !== '');
+  const bare = (word: string): string => word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+  for (let i = Math.max(0, raw.length - TRIGGER_REACH); i < raw.length; i++) {
+    if (!BRIEF_TRIGGERS.includes(bare(raw[i] ?? ''))) continue;
+    // A negation right before it, with no stop between ("if not, read" is not one), turns it round.
+    const before = raw[i - 1] ?? '';
+    const negated = NEGATIONS.includes(bare(before)) && !/[,;.:!?]$/.test(before);
+    if (!negated) return true;
+  }
+  return false;
+}
+
+/** An id of this registry's shape. */
+const AN_ID = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
+
+/**
+ * A word of a prompt that has the shape of a place on disk, of any extension and a folder too:
+ * absolute, `~/`, `./` or `../`. It is for telling whose work a prompt is, not for the brief.
+ */
+const A_PLACE = /(?:^|[\s"'`(<[=,;])((?:~\/|\.{1,2}\/|\/)[^\s"'`)>\]<,;:]*[^\s"'`)>\]<,;:.])/g;
+
+/** The path with every link resolved, or the path itself when it cannot be. */
+function resolved(path: string): string {
+  try {
+    return realpathSync(path);
+  } catch {
+    return path;
+  }
+}
+
+/**
+ * The repository a place belongs to, found by climbing the folders to the first that holds a `.git`
+ * (a folder, or the file a worktree has): the repository's own `.git` folder for a clone, and for a
+ * worktree the same, so two worktrees of one repository are one. A folder is looked at from itself.
+ * Undefined for a place in no repository. Only `statSync` and one small read: no `git` runs per path.
+ */
+function repositoryOf(place: string): string | undefined {
+  let at = place;
+  try {
+    if (!statSync(place).isDirectory()) at = dirname(place);
+  } catch {
+    return undefined;
+  }
+  for (;;) {
+    const dot = join(at, '.git');
+    try {
+      const stat = statSync(dot);
+      if (stat.isDirectory()) return dot;
+      const named = /^gitdir:\s*(.+)$/m.exec(readFileSync(dot, 'utf-8'))?.[1]?.trim();
+      if (named === undefined) return at;
+      const gitdir = resolve(at, named);
+      // `<common>/worktrees/<name>`: the repository is `<common>`.
+      return basename(dirname(gitdir)) === 'worktrees' ? dirname(dirname(gitdir)) : gitdir;
+    } catch {
+      // Not here: the next folder up.
+    }
+    const up = dirname(at);
+    if (up === at) return undefined;
+    at = up;
+  }
+}
+
+/** Whose a place is: the project's, another repository's, or no repository's (a scratch folder, neutral). */
+type Whose = 'here' | 'elsewhere' | 'neutral';
+
+/** What the classification needs of the project: its real root and its repository. */
+interface TheProject {
+  readonly root: string;
+  readonly repository: string | undefined;
+}
+
+function theProject(root: string): TheProject {
+  const real = resolved(root);
+  return { root: real, repository: repositoryOf(real) };
+}
+
+/** Whose `real` (a place with its links resolved) is. */
+function whose(real: string, project: TheProject): Whose {
+  const inside = relative(project.root, real);
+  if (inside === '' || !(inside.startsWith('..') || isAbsolute(inside))) return 'here';
+  const theirs = repositoryOf(real);
+  if (theirs === undefined) return 'neutral';
+  return theirs === project.repository ? 'here' : 'elsewhere';
+}
+
+/** A word of a prompt as a place on disk, `~/` expanded, or undefined. */
+function placeOf(word: string, cwd: string, home: string | undefined): string | undefined {
+  if (word.startsWith('~/')) return home === undefined ? undefined : resolve(home, word.slice(2));
+  return isAbsolute(word) ? resolve(word) : resolve(cwd, word);
+}
+
+/**
+ * Whether the work is another project's: the places the prompt cites that exist, of any kind (a
+ * file, a folder, of any extension, the first {@link CANDIDATES} in the prompt), include one in
+ * another repository and none in this project. A place in no repository (a scratch folder) says
+ * nothing either way, so a prompt that cites only those, or none, is this project's.
+ */
+export function isAnotherProjectsWork(
+  prompt: string,
+  cwd: string,
+  root: string,
+  home?: string,
+): boolean {
+  const project = theProject(root);
+  let elsewhere = false;
+  let seen = 0;
+  for (const match of prompt.matchAll(A_PLACE)) {
+    if (seen++ >= CANDIDATES) break;
+    const word = match[1];
+    const place = word === undefined ? undefined : placeOf(word, cwd, home);
+    if (place === undefined || !existsSync(place)) continue;
+    const kind = whose(resolved(place), project);
+    if (kind === 'here') return false;
+    if (kind === 'elsewhere') elsewhere = true;
+  }
+  return elsewhere;
+}
+
+/**
+ * The first file in `prompt` that the prompt points at, that exists, and that is not in another
+ * repository, as the project knows it: relative to the project when inside it, absolute otherwise
+ * (a scratch folder). Never the prompt, never a path that is not a file, never a file that is only
+ * mentioned. Like the classification, it looks at the first {@link CANDIDATES} words that have the
+ * shape of a text file's path.
  */
 export function briefFileOf(prompt: string, cwd: string, root: string): string | undefined {
+  const project = theProject(root);
   let seen = 0;
-  for (const found of prompt.matchAll(A_PATH)) {
+  for (const match of prompt.matchAll(A_PATH)) {
     if (seen++ >= CANDIDATES) break;
-    const word = found[1];
+    const word = match[1];
     if (word === undefined || word.startsWith('~')) continue;
     const absolute = isAbsolute(word) ? resolve(word) : resolve(cwd, word);
     try {
@@ -128,17 +304,50 @@ export function briefFileOf(prompt: string, cwd: string, root: string): string |
     } catch {
       continue;
     }
-    const inside = relative(root, absolute);
+    const real = resolved(absolute);
+    if (whose(real, project) === 'elsewhere') continue;
+    const startsAt = (match.index ?? 0) + match[0].length - word.length;
+    if (!pointedAt(prompt, startsAt)) continue;
+    const inside = relative(project.root, real);
     return inside === '' || inside.startsWith('..') || isAbsolute(inside) ? absolute : inside;
   }
   return undefined;
 }
 
-/** The brief of one handoff: the short description, and the file the prompt cites when one is there. */
-export function briefOf(description: string | undefined, file: string | undefined): string {
+/**
+ * The first id in `prompt` that names a record of this project (a task, a decision or a pattern),
+ * or undefined. No word has to point at it: an id of this registry's shape that exists here is the
+ * brief it names, at most {@link CANDIDATES} of them looked up.
+ */
+export function briefRecordOf(prompt: string, trees: ResolvedTrees): string | undefined {
+  const ids = [...prompt.matchAll(AN_ID)].slice(0, CANDIDATES);
+  if (ids.length === 0) return undefined;
+  return withScopedCaches(trees, (sources) => {
+    for (const one of ids) {
+      const id = one[0].toLowerCase();
+      for (const { cache } of sources) {
+        if (
+          cache.getTask(id) !== null ||
+          cache.getDecision(id) !== null ||
+          cache.getSkill(id) !== null
+        )
+          return id;
+      }
+    }
+    return undefined;
+  });
+}
+
+/** The brief of one handoff: the short description, and the file or the record the prompt points at. */
+export function briefOf(
+  description: string | undefined,
+  file: string | undefined,
+  record?: string,
+): string {
   const said = (description ?? '').replace(/\s+/g, ' ').trim().slice(0, MAX_DESCRIPTION);
   const parts = [said === '' ? 'Work handed to a subagent.' : said];
   if (file !== undefined) parts.push(`Brief in the file: ${file}`);
+  else if (record !== undefined) parts.push(`Brief in the record: ${record}`);
   return parts.join('\n\n');
 }
 
@@ -221,12 +430,15 @@ function move(
 }
 
 /** The note a session's task is closed with: counts and nothing else. */
-function closingNote(handoffs: number, skipped: number): string {
+function closingNote(handoffs: number, skipped: number, elsewhere: number): string {
   return (
     `${handoffs} ${handoffs === 1 ? 'handoff' : 'handoffs'} recorded in this session.` +
     (skipped === 0
       ? ''
-      : ` ${skipped} ${skipped === 1 ? 'dispatch was' : 'dispatches were'} not mirrored.`)
+      : ` ${skipped} ${skipped === 1 ? 'dispatch was' : 'dispatches were'} not mirrored.`) +
+    (elsewhere === 0
+      ? ''
+      : ` ${elsewhere} ${elsewhere === 1 ? 'dispatch was' : 'dispatches were'} left out as work for another repository.`)
   );
 }
 
@@ -261,11 +473,23 @@ function dispatched(
   if (file === undefined) return silent();
   const now = ctx.now ?? new Date();
   const input = payload['tool_input'];
+  const prompt = text(input, 'prompt') ?? '';
+  const root = dirname(trees.projectPublic);
+  const to = (text(input, 'subagent_type') ?? '').trim() || ANY_SUBAGENT;
+  if (isAnotherProjectsWork(prompt, ctx.cwd, root, ctx.env.home)) {
+    // Work for another repository: nothing is recorded here, and nothing there. Counted, so the end
+    // of the session says it.
+    countAnotherProjectsDispatch(file);
+    return silent([
+      `A dispatch to ${to} was not mirrored: the places its prompt cites are in another repository and none is in this project.`,
+    ]);
+  }
+  const fileCited = briefFileOf(prompt, ctx.cwd, root);
   const brief = briefOf(
     text(input, 'description'),
-    briefFileOf(text(input, 'prompt') ?? '', ctx.cwd, dirname(trees.projectPublic)),
+    fileCited,
+    fileCited === undefined ? briefRecordOf(prompt, trees) : undefined,
   );
-  const to = (text(input, 'subagent_type') ?? '').trim() || ANY_SUBAGENT;
 
   const done = exclusivelyOn(
     file,
@@ -338,7 +562,9 @@ function ended(ctx: DispatchedContext, trees: ResolvedTrees, session: string): D
       const unblocked = held.swept === true ? move(ctx, held.task, 'unblock', {}) : undefined;
       const refused =
         unblocked ??
-        move(ctx, held.task, 'complete', { note: closingNote(held.handoffs, skippedOf(file)) });
+        move(ctx, held.task, 'complete', {
+          note: closingNote(held.handoffs, skippedOf(file), anotherProjectsOf(file)),
+        });
       const { swept: _swept, ...rest } = held;
       writeJournal(
         file,

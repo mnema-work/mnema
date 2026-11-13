@@ -312,23 +312,46 @@ export function exclusivelyOn<T>(
 /** The file beside a journal that counts what the mirror could not do: one byte for each skip. */
 const SKIPPED_SUFFIX = '.skipped';
 
-/** Counts one dispatch the mirror did not record. An append, so two processes never lose each other's. */
-export function countASkip(file: string): void {
+/** Appends one byte to the counter `suffix` names beside a journal. An append, so two processes never lose each other's. */
+function countIn(file: string, suffix: string): void {
   try {
     mkdirSync(dirname(file), { recursive: true, mode: DIRECTORY_MODE });
-    appendFileSync(`${file}${SKIPPED_SUFFIX}`, '.', { mode: FILE_MODE });
+    appendFileSync(`${file}${suffix}`, '.', { mode: FILE_MODE });
   } catch {
     // A count that cannot be kept is the one thing left unsaid.
   }
 }
 
-/** How many dispatches of the session the mirror skipped. */
-export function skippedOf(file: string): number {
+/** The size of a counter beside a journal. */
+function countOf(file: string, suffix: string): number {
   try {
-    return statSync(`${file}${SKIPPED_SUFFIX}`).size;
+    return statSync(`${file}${suffix}`).size;
   } catch {
     return 0;
   }
+}
+
+/** Counts one dispatch the mirror did not record. */
+export function countASkip(file: string): void {
+  countIn(file, SKIPPED_SUFFIX);
+}
+
+/** How many dispatches of the session the mirror skipped. */
+export function skippedOf(file: string): number {
+  return countOf(file, SKIPPED_SUFFIX);
+}
+
+/** The counter of the dispatches that were another repository's work: not a failure, so not the skips'. */
+const ELSEWHERE_SUFFIX = '.elsewhere';
+
+/** Counts one dispatch left out because the files its prompt cites are in another repository. */
+export function countAnotherProjectsDispatch(file: string): void {
+  countIn(file, ELSEWHERE_SUFFIX);
+}
+
+/** How many dispatches of the session were left out for being another repository's work. */
+export function anotherProjectsOf(file: string): number {
+  return countOf(file, ELSEWHERE_SUFFIX);
 }
 
 /** The suffix of the marker that says a channel's service was recorded for a session. */
@@ -426,6 +449,7 @@ function prune(dir: string, now: Date): void {
       !name.endsWith('.json') &&
       !name.endsWith('.tmp') &&
       !name.endsWith(SKIPPED_SUFFIX) &&
+      !name.endsWith(ELSEWHERE_SUFFIX) &&
       !name.endsWith(SERVED_SUFFIX)
     )
       continue;

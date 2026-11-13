@@ -85,8 +85,8 @@ its own: the workflow rules and the proof live in `@mnema/core` and `@mnema/chai
   opens with say where this one stopped; a conversation that was compacted is handed back what entered the record while its session
   ran. `mnema switch off session-journal`, `last-session` and `after-a-compaction` stop them.
 - **A task for the work a session hands to other agents**, in the Claude Code plugin: the first dispatch of a session records
-  one private task, each dispatch a private handoff on it (its short description and the path of a brief file, never the
-  prompt), and the end of the session closes it; `mnema switch off agent-mirror` stops it.
+  one private task, each dispatch a private handoff on it (its short description and the path of a brief file the prompt points at, never the
+  prompt; work for another repository is left out), and the end of the session closes it; `mnema switch off agent-mirror` stops it.
   [Every switch](https://github.com/mnema-work/mnema/blob/main/docs/switches.md) says where it begins and what it carries.
 
 [The reference](https://github.com/mnema-work/mnema/blob/main/docs/cli-reference.md) has every verb and tool, and what each one leaves

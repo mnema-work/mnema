@@ -9,7 +9,7 @@
  * `session_id`, `cwd`, `tool_use_id`) and the `SessionEnd` the host hands at the end.
  */
 
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import {
   existsSync,
   mkdirSync,
@@ -18,6 +18,7 @@ import {
   readFileSync,
   rmSync,
   statSync,
+  symlinkSync,
   utimesSync,
   writeFileSync,
 } from 'node:fs';
@@ -29,9 +30,11 @@ import { resolveTrees } from '@mnema/core';
 import { Command } from 'commander';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  BRIEF_TRIGGERS,
   briefFileOf,
   briefOf,
   type DispatchedDone,
+  isAnotherProjectsWork,
   runDispatched,
 } from '../src/commands/dispatched.js';
 import { runSessionTally } from '../src/commands/tally.js';
@@ -42,6 +45,7 @@ import {
   journalFile,
   journalsDir,
   markEnded,
+  PRUNE_AFTER_MS,
   readJournal,
   STALE_AFTER_MS,
   writeJournal,
@@ -314,9 +318,19 @@ describe('three dispatches of one session', () => {
   );
 });
 
+/** A repository of its own beside the project, with a file in it. */
+function anotherRepository(name: string, file: string): string {
+  const top = join(sandbox, name);
+  mkdirSync(top, { recursive: true });
+  execFileSync('git', ['init', '-q'], { cwd: top, stdio: 'ignore' });
+  const path = join(top, file);
+  writeFileSync(path, 'not this project');
+  return path;
+}
+
 describe('a prompt that cites a file', () => {
   it(
-    'puts that file’s path in the brief, and nothing of what the prompt says',
+    'puts that file’s path in the brief when the prompt points at it, and nothing of what the prompt says',
     () => {
       mkdirSync(join(repo, 'notes'), { recursive: true });
       writeFileSync(join(repo, 'notes', 'brief.md'), 'the long brief');
@@ -330,18 +344,286 @@ describe('a prompt that cites a file', () => {
   );
 
   it(
+    'names no file a prompt only mentions: CHANGELOG.md and README.md with no word that points at them',
+    () => {
+      writeFileSync(join(repo, 'CHANGELOG.md'), 'x');
+      writeFileSync(join(repo, 'README.md'), 'x');
+      mirror(dispatch({ prompt: 'Add an entry to CHANGELOG.md and fix the table in README.md.' }));
+      const [one] = whatTheRecordHolds().handoffs;
+      expect(one?.brief).toBe('Fix the ledger date');
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'names the file a prompt points at in a scratch folder with no repository: "Read <file> and do it"',
+    () => {
+      const scratch = join(sandbox, 'scratch');
+      mkdirSync(scratch);
+      writeFileSync(join(scratch, 'handoff.md'), 'x');
+      mirror(dispatch({ prompt: `Read \`${join(scratch, 'handoff.md')}\` and do it.` }));
+      const [one] = whatTheRecordHolds().handoffs;
+      expect(one?.brief).toContain(`Brief in the file: ${join(scratch, 'handoff.md')}`);
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'names the id of a record of this project that exists with no word pointing at it, and no id that does not',
+    () => {
+      const missing = '00000000-0000-4000-8000-000000000000';
+      mirror(dispatch({ prompt: `mnema show ${missing}` }));
+      const task = whatTheRecordHolds().tasks[0]?.id ?? '';
+      expect(task).not.toBe('');
+      mirror(dispatch({ prompt: `mnema show ${task}` }));
+      const [none, named] = whatTheRecordHolds().handoffs;
+      expect(none?.brief).toBe('Fix the ledger date');
+      expect(named?.brief).toBe(`Fix the ledger date\n\nBrief in the record: ${task}`);
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'does not mirror a call whose cited files are all in another repository, and counts it',
+    () => {
+      const other = anotherRepository('other', 'handoff.md');
+      mirror(dispatch({ prompt: `Read ${other} and do it.` }));
+      const held = whatTheRecordHolds();
+      expect(held.tasks).toEqual([]);
+      expect(held.handoffs).toEqual([]);
+      expect(readdirSync(join(sandbox, 'other')).sort()).toEqual(['.git', 'handoff.md']);
+      expect(snapshot(join(sandbox, 'home'))).not.toContain('handoff.md');
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'says on the second stream that it skipped, and the end of the session says how many',
+    () => {
+      const other = anotherRepository('other', 'handoff.md');
+      mirror(dispatch());
+      const skipped = mirror(dispatch({ prompt: `Read ${other} and do it.` }));
+      expect(skipped.notes.join(' ')).toMatch(/another repository/);
+      mirror(theEnd());
+      const [task] = whatTheRecordHolds().tasks;
+      expect(task?.proof).toContain('1 handoff recorded in this session.');
+      expect(task?.proof).toContain('1 dispatch was left out as work for another repository.');
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'mirrors a call that cites files in this project and in another repository, naming only the former',
+    () => {
+      const other = anotherRepository('other', 'plan.md');
+      mkdirSync(join(repo, 'notes'), { recursive: true });
+      writeFileSync(join(repo, 'notes', 'brief.md'), 'x');
+      mirror(
+        dispatch({
+          prompt: `Compare ${other} with ./notes/brief.md. Read ${other} then ./notes/brief.md.`,
+        }),
+      );
+      const [one] = whatTheRecordHolds().handoffs;
+      expect(one?.brief).toContain('Brief in the file: notes/brief.md');
+      expect(one?.brief).not.toContain(other);
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'takes a worktree of the project’s own repository for the project',
+    () => {
+      mkdirSync(join(repo, '.git', 'worktrees', 'w'), { recursive: true });
+      const tree = join(sandbox, 'tree');
+      mkdirSync(tree);
+      writeFileSync(join(tree, '.git'), `gitdir: ${join(repo, '.git', 'worktrees', 'w')}\n`);
+      writeFileSync(join(tree, 'handoff.md'), 'x');
+      const other = anotherRepository('other', 'handoff.md');
+      expect(isAnotherProjectsWork(`Read ${join(tree, 'handoff.md')}`, repo, repo)).toBe(false);
+      expect(isAnotherProjectsWork(`Read ${other}`, repo, repo)).toBe(true);
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'is another repository’s work when the prompt cites a folder, or a source file of any extension',
+    () => {
+      const other = anotherRepository('other', 'handoff.md');
+      mkdirSync(join(sandbox, 'other', 'src'));
+      writeFileSync(join(sandbox, 'other', 'src', 'app.php'), 'x');
+      writeFileSync(join(sandbox, 'other', 'src', 'app.ts'), 'x');
+      const top = join(sandbox, 'other');
+      expect(isAnotherProjectsWork(`edit ${top}/src/app.php`, repo, repo)).toBe(true);
+      expect(isAnotherProjectsWork(`fix ${top}/src/app.ts.`, repo, repo)).toBe(true);
+      expect(isAnotherProjectsWork(`work in ${top}/src/ and nowhere else`, repo, repo)).toBe(true);
+      expect(isAnotherProjectsWork(`work in (${top})`, repo, repo)).toBe(true);
+      expect(isAnotherProjectsWork(`edit ${other}`, repo, repo)).toBe(true);
+      expect(isAnotherProjectsWork('edit ../other/handoff.md', repo, repo)).toBe(true);
+      mirror(dispatch({ prompt: `edit ${top}/src/app.php` }));
+      expect(whatTheRecordHolds().handoffs).toEqual([]);
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'expands ~/ with the home it is given',
+    () => {
+      mkdirSync(join(sandbox, 'home', 'other'), { recursive: true });
+      execFileSync('git', ['init', '-q'], { cwd: join(sandbox, 'home', 'other'), stdio: 'ignore' });
+      const home = join(sandbox, 'home');
+      expect(isAnotherProjectsWork('go to ~/other and fix it', repo, repo, home)).toBe(true);
+      expect(isAnotherProjectsWork('go to ~/other and fix it', repo, repo)).toBe(false);
+      mirror(dispatch({ prompt: 'go to ~/other and fix it' }));
+      expect(whatTheRecordHolds().handoffs).toEqual([]);
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'takes a relative ./ path from the call’s own folder',
+    () => {
+      anotherRepository('other', 'handoff.md');
+      const cwd = join(sandbox, 'other');
+      expect(isAnotherProjectsWork('fix ./handoff.md', cwd, repo)).toBe(true);
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'treats a scratch folder as neutral: it is mirrored alone, and not when it comes with another repository’s place',
+    () => {
+      const scratch = join(sandbox, 'scratch');
+      mkdirSync(scratch);
+      writeFileSync(join(scratch, 'handoff.md'), 'x');
+      const other = anotherRepository('other', 'x');
+      expect(isAnotherProjectsWork(`Leia ${scratch}/handoff.md`, repo, repo)).toBe(false);
+      expect(isAnotherProjectsWork('no place at all', repo, repo)).toBe(false);
+      expect(
+        isAnotherProjectsWork(`Leia ${scratch}/handoff.md e trabalhe em ${other}`, repo, repo),
+      ).toBe(true);
+      expect(
+        isAnotherProjectsWork(
+          `Leia ${scratch}/handoff.md e trabalhe em ${other} e ${repo}`,
+          repo,
+          repo,
+        ),
+      ).toBe(false);
+      mirror(dispatch({ prompt: `Leia ${scratch}/handoff.md e trabalhe em ${other}` }));
+      expect(whatTheRecordHolds().handoffs).toEqual([]);
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'does not take the project, cited through a symbolic link, for another repository',
+    () => {
+      mkdirSync(join(repo, '.git'));
+      writeFileSync(join(repo, 'brief.md'), 'x');
+      const link = join(sandbox, 'link');
+      symlinkSync(repo, link);
+      expect(isAnotherProjectsWork(`Read ${link}/brief.md`, repo, repo)).toBe(false);
+      expect(isAnotherProjectsWork(`Read ${repo}/brief.md`, repo, link)).toBe(false);
+      mirror(dispatch({ prompt: `Read ${link}/brief.md` }));
+      const [one] = whatTheRecordHolds().handoffs;
+      expect(one?.brief).toContain('Brief in the file: brief.md');
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'does not name a file that a phrase only mentions, whatever words come before it',
+    () => {
+      writeFileSync(join(repo, 'CHANGELOG.md'), 'x');
+      writeFileSync(join(repo, 'README.md'), 'x');
+      for (const prompt of [
+        'The task: update CHANGELOG.md',
+        'O segundo README.md está errado',
+        'Do not open README.md',
+        'Fix it per CHANGELOG.md',
+        'According to CHANGELOG.md it is fine',
+        'Tarefa: ajustar README.md',
+        'Do not read ./README.md',
+        "Don't read ./README.md",
+        'Não leia ./README.md',
+        'Nunca siga ./README.md',
+        'Do not read the file ./README.md',
+        'Não leia o arquivo ./README.md',
+        'Don’t read ./README.md',
+      ]) {
+        expect(briefFileOf(prompt, repo, repo), prompt).toBeUndefined();
+      }
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'takes a comma or a semicolon as the separator before a place',
+    () => {
+      const other = anotherRepository('other', 'handoff.md');
+      writeFileSync(join(repo, 'a.ts'), 'x');
+      expect(isAnotherProjectsWork(`Edit ${other},${repo}/a.ts`, repo, repo)).toBe(false);
+      expect(isAnotherProjectsWork(`Edit ${other};${repo}/a.ts`, repo, repo)).toBe(false);
+      expect(isAnotherProjectsWork(`Edit ${repo}/a.ts,${other}`, repo, repo)).toBe(false);
+      expect(isAnotherProjectsWork(`Edit ${other},${other}`, repo, repo)).toBe(true);
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'names a file when a word that points follows no negation, and not when it follows one',
+    () => {
+      writeFileSync(join(repo, 'brief.md'), 'x');
+      expect(briefFileOf(`Read ${repo}/brief.md`, repo, repo)).toBe('brief.md');
+      expect(briefFileOf(`Do not read ${repo}/brief.md`, repo, repo)).toBeUndefined();
+      expect(briefFileOf(`Não leia ${repo}/brief.md`, repo, repo)).toBeUndefined();
+      expect(briefFileOf(`Do not read the file ${repo}/brief.md`, repo, repo)).toBeUndefined();
+      expect(briefFileOf(`Não leia o arquivo ${repo}/brief.md`, repo, repo)).toBeUndefined();
+      expect(briefFileOf(`If not, read ${repo}/brief.md`, repo, repo)).toBe('brief.md');
+      expect(briefFileOf(`Se não, leia ${repo}/brief.md`, repo, repo)).toBe('brief.md');
+      expect(briefFileOf(`If not; read ${repo}/brief.md`, repo, repo)).toBe('brief.md');
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'lets go of the counter of dispatches left out when the journals are pruned',
+    () => {
+      const other = anotherRepository('other', 'handoff.md');
+      mirror(dispatch({ prompt: `Read ${other}` }));
+      const dir = journalsDir(resolveTrees(repo, env)) ?? '';
+      const counter = readdirSync(dir).find((name) => name.endsWith('.elsewhere')) ?? '';
+      expect(counter).not.toBe('');
+      const longAgo = new Date(Date.now() - PRUNE_AFTER_MS - 60_000);
+      utimesSync(join(dir, counter), longAgo, longAgo);
+      mirror(dispatch({ session: '6e2f0a52-0000-4000-8000-0123456789ab' }));
+      expect(readdirSync(dir)).not.toContain(counter);
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'has a set of words that point, in English and in Portuguese, and the words are not paths',
+    () => {
+      expect(BRIEF_TRIGGERS).toContain('read');
+      expect(BRIEF_TRIGGERS).toContain('leia');
+      expect(BRIEF_TRIGGERS).not.toContain('changelog.md');
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
     'names no path that is not a file there',
     () => {
       expect(briefFileOf('see docs/missing.md and ./nothing.txt', repo, repo)).toBeUndefined();
       mkdirSync(join(repo, 'docs'));
       writeFileSync(join(repo, 'docs', 'real.md'), 'x');
-      expect(briefFileOf('see docs/missing.md then (docs/real.md).', repo, repo)).toBe(
+      expect(briefFileOf('see docs/missing.md then see (docs/real.md).', repo, repo)).toBe(
         'docs/real.md',
       );
-      expect(briefFileOf(`at ${join(repo, 'docs', 'real.md')}`, '/', repo)).toBe('docs/real.md');
+      expect(briefFileOf(`read ${join(repo, 'docs', 'real.md')}`, '/', repo)).toBe('docs/real.md');
       const outside = join(sandbox, 'outside.md');
       writeFileSync(outside, 'x');
-      expect(briefFileOf(`at ${outside}`, repo, repo)).toBe(outside);
+      expect(briefFileOf(`read ${outside}`, repo, repo)).toBe(outside);
     },
     WAITS_ON_WRITES,
   );
