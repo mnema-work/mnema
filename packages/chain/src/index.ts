@@ -201,6 +201,7 @@ export {
   type RecordOfASet,
   type Reformatted,
   type RelinkToWrite,
+  type StrayEntryNote,
   type TailIssue,
   type TailResult,
   type VerdictClause,

@@ -1234,6 +1234,96 @@ const MUTATIONS = [
     agreedAccepted: true,
   },
   {
+    // What a tail directory holds that is not of the format (FORMAT.md section 4): the readers
+    // name it in the census and read nothing of it, so the record is still VERIFIED, and the
+    // agreement is asserted in `both-readers-read-the-same-bytes.test.ts`.
+    name: 'stray-file-in-a-tail',
+    refusals: 0,
+    section: '4',
+    says: '',
+    productLayer: 'T2/T4',
+    productBreaks: 'ok',
+    agreedAccepted: true,
+  },
+  {
+    // What a tail directory holds that is not of the format (FORMAT.md section 4): the readers
+    // name it in the census and read nothing of it, so the record is still VERIFIED, and the
+    // agreement is asserted in `both-readers-read-the-same-bytes.test.ts`.
+    name: 'stray-folder-in-a-tail',
+    refusals: 0,
+    section: '4',
+    says: '',
+    productLayer: 'T2/T4',
+    productBreaks: 'ok',
+    agreedAccepted: true,
+  },
+  {
+    // What a tail directory holds that is not of the format (FORMAT.md section 4): the readers
+    // name it in the census and read nothing of it, so the record is still VERIFIED, and the
+    // agreement is asserted in `both-readers-read-the-same-bytes.test.ts`.
+    name: 'os-file-in-a-tail',
+    refusals: 0,
+    section: '4',
+    says: '',
+    productLayer: 'T2/T4',
+    productBreaks: 'ok',
+    agreedAccepted: true,
+  },
+  {
+    name: 'segment-name-with-a-newline',
+    refusals: 0,
+    section: '4',
+    says: '',
+    productLayer: 'T2/T4',
+    productBreaks: 'ok',
+    agreedAccepted: true,
+  },
+  {
+    name: 'odd-named-file-in-a-tail',
+    refusals: 0,
+    section: '4',
+    says: '',
+    productLayer: 'T2/T4',
+    productBreaks: 'ok',
+    agreedAccepted: true,
+  },
+  {
+    name: 'non-utf8-named-file-in-a-tail',
+    refusals: 0,
+    section: '4',
+    says: '',
+    productLayer: 'T2/T4',
+    productBreaks: 'ok',
+    agreedAccepted: true,
+  },
+  {
+    name: 'file-named-witness-in-a-tail',
+    refusals: 0,
+    section: '4',
+    says: '',
+    productLayer: 'T2/T4',
+    productBreaks: 'ok',
+    agreedAccepted: true,
+  },
+  {
+    name: 'folder-named-like-a-segment-in-a-tail',
+    refusals: 0,
+    section: '4',
+    says: '',
+    productLayer: 'T2/T4',
+    productBreaks: 'ok',
+    agreedAccepted: true,
+  },
+  {
+    name: 'strays-in-the-order-of-their-names',
+    refusals: 0,
+    section: '4',
+    says: '',
+    productLayer: 'T2/T4',
+    productBreaks: 'ok',
+    agreedAccepted: true,
+  },
+  {
     name: 'blank-segment-same-size',
     // The SECOND row that is not a refusal, and the reason the count below is 2. See the
     // INCOMPLETE describe: a checkpoint whose range outruns the entries present is a shape
@@ -1258,14 +1348,15 @@ describe('the second reader refuses, and the mutation that earns each refusal sh
   });
 
   /**
-   * Every row but the EIGHT that are not refusals: the six `agreedAccepted` rows (a cut that
+   * Every row but the ones that are not refusals: the `agreedAccepted` rows (a cut that
    * takes events and their checkpoint together, a record erased and refounded, a move the
    * workflow does not allow, a macOS metadata file beside the keys, a record that names itself and
-   * a tail beside it that names none), which BOTH readers accept and which `both-readers-read-the-same-bytes.test.ts` asserts, and the TWO
-   * below. Both of those are in the table so the enumeration
-   * from `mutate.py list` above stays total, and both belong to the INCOMPLETE describe
+   * a tail beside it that names none, and the three entries a tail directory can hold that are not of the format),
+   * which BOTH readers accept and which `both-readers-read-the-same-bytes.test.ts` asserts, and the one
+   * `incomplete` row below. That one is in the table so the enumeration
+   * from `mutate.py list` above stays total, and it belongs to the INCOMPLETE describe
    * below instead: a check that could not run is not a check that refused, and a loop that
-   * asserted REFUSED over either would be asserting the wrong thing.
+   * asserted REFUSED over it would be asserting the wrong thing.
    *
    * THE SECOND MEMBER ARRIVED WITH THIS DELIVERY and its admission is the argued part.
    * `blank-segment-same-size` is the freshness probe's declared blind spot as an input (a
@@ -1291,8 +1382,8 @@ describe('the second reader refuses, and the mutation that earns each refusal sh
     (mutation) => !('incomplete' in mutation) && !('agreedAccepted' in mutation),
   );
 
-  it('leaves exactly TEN rows out of the refusal loop, and no row is an acceptance by one reader alone', () => {
-    expect(MUTATIONS.length - REFUSING.length).toBe(10);
+  it('leaves exactly NINETEEN rows out of the refusal loop, and no row is an acceptance by one reader alone', () => {
+    expect(MUTATIONS.length - REFUSING.length).toBe(19);
     expect(
       MUTATIONS.filter((m) => 'incomplete' in m || 'agreedAccepted' in m)
         .map((m) => m.name)
@@ -1301,12 +1392,21 @@ describe('the second reader refuses, and the mutation that earns each refusal sh
       'aligned-cut',
       'appended-move-the-workflow-does-not-allow',
       'blank-segment-same-size',
+      'file-named-witness-in-a-tail',
+      'folder-named-like-a-segment-in-a-tail',
       'key-metadata-file-beside-the-keys',
       'keys-removed',
       'named-record',
+      'non-utf8-named-file-in-a-tail',
+      'odd-named-file-in-a-tail',
+      'os-file-in-a-tail',
       'refounded-record',
       'relinked-by-the-genesis-founder',
       'relinked-tail',
+      'segment-name-with-a-newline',
+      'stray-file-in-a-tail',
+      'stray-folder-in-a-tail',
+      'strays-in-the-order-of-their-names',
       'unnamed-tail-beside-named-ones',
     ]);
     // NO ROW MAY BE AN ACCEPTANCE. This is the assertion the delivery is measured by: every
