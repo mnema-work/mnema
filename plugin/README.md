@@ -207,8 +207,8 @@ document, delivered by the host instead of waited for.
 - **A `PostToolUse` hook after the `Agent` tool, and a `SessionEnd` hook, in Claude Code**, that run `mnema dispatched`: the work
   a session hands to other agents is kept in your machine's **private** tree as one task for the session (opened at its first
   dispatch, in progress) with a handoff on it for each dispatch, from `orchestrator` to the subagent type, whose brief is the
-  call's short description and the path of a file of this project (or the id of a record of it) that the prompt points at when one
-  exists, and a call whose prompt cites only files of another repository is not recorded; at the end of the session the task is moved to
+  call's short description and the path of a file the prompt points at (or the id of a record of this project it cites) when one
+  exists, and a call whose prompt cites places in another repository and none in this project is not recorded; at the end of the session the task is moved to
   done with the count. **The prompt is never recorded**, nothing goes to the public tree, and it prints nothing to the model. It
   is on to begin with (`mnema switch off agent-mirror` stops every one of these records), keeps the task in the session journal (so it needs
   `session-journal` on; `mnema switch` says it does nothing while that is off), reopens the task of a resumed session, and

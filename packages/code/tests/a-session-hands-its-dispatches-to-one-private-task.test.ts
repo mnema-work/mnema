@@ -18,6 +18,7 @@ import {
   readFileSync,
   rmSync,
   statSync,
+  symlinkSync,
   utimesSync,
   writeFileSync,
 } from 'node:fs';
@@ -44,6 +45,7 @@ import {
   journalFile,
   journalsDir,
   markEnded,
+  PRUNE_AFTER_MS,
   readJournal,
   STALE_AFTER_MS,
   writeJournal,
@@ -367,13 +369,13 @@ describe('a prompt that cites a file', () => {
   );
 
   it(
-    'names the id of a record of this project that exists, and no id that does not',
+    'names the id of a record of this project that exists with no word pointing at it, and no id that does not',
     () => {
-      const missing = '01a1d33d-0000-7000-8000-000000000000';
-      mirror(dispatch({ prompt: `Do the work of task ${missing}.` }));
+      const missing = '00000000-0000-4000-8000-000000000000';
+      mirror(dispatch({ prompt: `mnema show ${missing}` }));
       const task = whatTheRecordHolds().tasks[0]?.id ?? '';
       expect(task).not.toBe('');
-      mirror(dispatch({ prompt: `Do the work of task ${task}.` }));
+      mirror(dispatch({ prompt: `mnema show ${task}` }));
       const [none, named] = whatTheRecordHolds().handoffs;
       expect(none?.brief).toBe('Fix the ledger date');
       expect(named?.brief).toBe(`Fix the ledger date\n\nBrief in the record: ${task}`);
@@ -418,7 +420,7 @@ describe('a prompt that cites a file', () => {
       writeFileSync(join(repo, 'notes', 'brief.md'), 'x');
       mirror(
         dispatch({
-          prompt: `Compare ${other} with notes/brief.md. Read ${other} then notes/brief.md.`,
+          prompt: `Compare ${other} with ./notes/brief.md. Read ${other} then ./notes/brief.md.`,
         }),
       );
       const [one] = whatTheRecordHolds().handoffs;
@@ -439,6 +441,125 @@ describe('a prompt that cites a file', () => {
       const other = anotherRepository('other', 'handoff.md');
       expect(isAnotherProjectsWork(`Read ${join(tree, 'handoff.md')}`, repo, repo)).toBe(false);
       expect(isAnotherProjectsWork(`Read ${other}`, repo, repo)).toBe(true);
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'is another repository’s work when the prompt cites a folder, or a source file of any extension',
+    () => {
+      const other = anotherRepository('other', 'handoff.md');
+      mkdirSync(join(sandbox, 'other', 'src'));
+      writeFileSync(join(sandbox, 'other', 'src', 'app.php'), 'x');
+      writeFileSync(join(sandbox, 'other', 'src', 'app.ts'), 'x');
+      const top = join(sandbox, 'other');
+      expect(isAnotherProjectsWork(`edit ${top}/src/app.php`, repo, repo)).toBe(true);
+      expect(isAnotherProjectsWork(`fix ${top}/src/app.ts.`, repo, repo)).toBe(true);
+      expect(isAnotherProjectsWork(`work in ${top}/src/ and nowhere else`, repo, repo)).toBe(true);
+      expect(isAnotherProjectsWork(`work in (${top})`, repo, repo)).toBe(true);
+      expect(isAnotherProjectsWork(`edit ${other}`, repo, repo)).toBe(true);
+      mirror(dispatch({ prompt: `edit ${top}/src/app.php` }));
+      expect(whatTheRecordHolds().handoffs).toEqual([]);
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'expands ~/ with the home it is given',
+    () => {
+      mkdirSync(join(sandbox, 'home', 'other'), { recursive: true });
+      execFileSync('git', ['init', '-q'], { cwd: join(sandbox, 'home', 'other'), stdio: 'ignore' });
+      const home = join(sandbox, 'home');
+      expect(isAnotherProjectsWork('go to ~/other and fix it', repo, repo, home)).toBe(true);
+      expect(isAnotherProjectsWork('go to ~/other and fix it', repo, repo)).toBe(false);
+      mirror(dispatch({ prompt: 'go to ~/other and fix it' }));
+      expect(whatTheRecordHolds().handoffs).toEqual([]);
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'takes a relative ./ path from the call’s own folder',
+    () => {
+      anotherRepository('other', 'handoff.md');
+      const cwd = join(sandbox, 'other');
+      expect(isAnotherProjectsWork('fix ./handoff.md', cwd, repo)).toBe(true);
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'treats a scratch folder as neutral: it is mirrored alone, and not when it comes with another repository’s place',
+    () => {
+      const scratch = join(sandbox, 'scratch');
+      mkdirSync(scratch);
+      writeFileSync(join(scratch, 'handoff.md'), 'x');
+      const other = anotherRepository('other', 'x');
+      expect(isAnotherProjectsWork(`Leia ${scratch}/handoff.md`, repo, repo)).toBe(false);
+      expect(isAnotherProjectsWork('no place at all', repo, repo)).toBe(false);
+      expect(
+        isAnotherProjectsWork(`Leia ${scratch}/handoff.md e trabalhe em ${other}`, repo, repo),
+      ).toBe(true);
+      expect(
+        isAnotherProjectsWork(
+          `Leia ${scratch}/handoff.md e trabalhe em ${other} e ${repo}`,
+          repo,
+          repo,
+        ),
+      ).toBe(false);
+      mirror(dispatch({ prompt: `Leia ${scratch}/handoff.md e trabalhe em ${other}` }));
+      expect(whatTheRecordHolds().handoffs).toEqual([]);
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'does not take the project, cited through a symbolic link, for another repository',
+    () => {
+      mkdirSync(join(repo, '.git'));
+      writeFileSync(join(repo, 'brief.md'), 'x');
+      const link = join(sandbox, 'link');
+      symlinkSync(repo, link);
+      expect(isAnotherProjectsWork(`Read ${link}/brief.md`, repo, repo)).toBe(false);
+      expect(isAnotherProjectsWork(`Read ${repo}/brief.md`, repo, link)).toBe(false);
+      mirror(dispatch({ prompt: `Read ${link}/brief.md` }));
+      const [one] = whatTheRecordHolds().handoffs;
+      expect(one?.brief).toContain('Brief in the file: brief.md');
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'does not name a file that a phrase only mentions, whatever words come before it',
+    () => {
+      writeFileSync(join(repo, 'CHANGELOG.md'), 'x');
+      writeFileSync(join(repo, 'README.md'), 'x');
+      for (const prompt of [
+        'The task: update CHANGELOG.md',
+        'O segundo README.md está errado',
+        'Do not open README.md',
+        'Fix it per CHANGELOG.md',
+        'According to CHANGELOG.md it is fine',
+        'Tarefa: ajustar README.md',
+      ]) {
+        expect(briefFileOf(prompt, repo, repo), prompt).toBeUndefined();
+      }
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'lets go of the counter of dispatches left out when the journals are pruned',
+    () => {
+      const other = anotherRepository('other', 'handoff.md');
+      mirror(dispatch({ prompt: `Read ${other}` }));
+      const dir = journalsDir(resolveTrees(repo, env)) ?? '';
+      const counter = readdirSync(dir).find((name) => name.endsWith('.elsewhere')) ?? '';
+      expect(counter).not.toBe('');
+      const longAgo = new Date(Date.now() - PRUNE_AFTER_MS - 60_000);
+      utimesSync(join(dir, counter), longAgo, longAgo);
+      mirror(dispatch({ session: '6e2f0a52-0000-4000-8000-0123456789ab' }));
+      expect(readdirSync(dir)).not.toContain(counter);
     },
     WAITS_ON_WRITES,
   );

@@ -6,16 +6,18 @@
  * ONE TASK PER SESSION. The first dispatch of a session opens a PRIVATE task, "Work handed over in this
  * session" and the instant, moved to in progress; every dispatch records a private handoff on it,
  * from `orchestrator` to the subagent type the call named, with a brief that is the call's short
- * description and, when the prompt POINTS at a file of this project that exists (a word such as "read"
- * before the path), that file's path, or the id of a record of this project it points at. The end of the session
+ * description and, when the prompt POINTS at a file that exists and is not in another repository (a word such as "read"
+ * before the path), that file's path, or else the id of a record of this project it cites. The end of the session
  * moves the task to done, with the number of handoffs as its note. The task's id and the count live in
  * the session journal (`session-journal.ts`), the one file this machine keeps per session: no second
  * mechanism, and a session whose journal switch is off is a session this does nothing for.
  *
- * ONLY THIS PROJECT'S WORK. A call whose prompt cites files that exist, all of them in another
- * repository (found by climbing from each path to the folder that holds a `.git`, with no `git`
- * spawned), is work for that project: it is not mirrored here, the second stream says so, and the
- * session's closing note counts it with its own counter.
+ * ONLY THIS PROJECT'S WORK. A call whose prompt cites places that exist (of any kind: absolute, `~/`
+ * or `./`), one in another repository and none in this project, is work for that project: it is not
+ * mirrored here, the second stream says so, and the session's closing note counts it with its own
+ * counter. A place is taken to its repository by climbing to the folder that holds a `.git`, with
+ * no `git` spawned; one in no repository (a scratch folder) says nothing either way. Only the first
+ * twelve places the prompt cites are looked at.
  *
  * THE PROMPT IS NEVER RECORDED. A prompt is the longest text a session writes and it can hold anything
  * the person pasted; the record gets the description the host's own call carries (a few words the
@@ -34,7 +36,7 @@
  * mirror never holds a dispatch.
  */
 
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { channelIsOn } from '@mnema/context';
 import { type DiscoveryEnv, type ResolvedTrees, resolveTrees, sweptReason } from '@mnema/core';
@@ -129,7 +131,6 @@ export const BRIEF_TRIGGERS: readonly string[] = [
   'read',
   'see',
   'follow',
-  'open',
   'consult',
   'brief',
   'handoff',
@@ -137,26 +138,19 @@ export const BRIEF_TRIGGERS: readonly string[] = [
   'spec',
   'specification',
   'instructions',
-  'task',
-  'per',
-  'according',
   'leia',
   'ler',
   'veja',
-  'ver',
   'siga',
   'seguir',
   'abra',
-  'abrir',
   'consulte',
   'pedido',
   'especificacao',
   'especificação',
   'instrucoes',
   'instruções',
-  'tarefa',
   'conforme',
-  'segundo',
 ];
 
 /** How many words before a path or an id are looked at for a trigger. */
@@ -178,13 +172,33 @@ function pointedAt(prompt: string, at: number): boolean {
 const AN_ID = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
 
 /**
- * The repository a path belongs to, found by climbing the folders to the first that holds a `.git`
- * (a folder, or the file a worktree has): the folder of the repository's own `.git` for a clone, and
- * for a worktree the same, so two worktrees of one repository are one. Undefined for a path in no
- * repository. Only `statSync` and one small read: no `git` runs per path.
+ * A word of a prompt that has the shape of a place on disk, of any extension and a folder too:
+ * absolute, `~/`, `./` or `../`. It is for telling whose work a prompt is, not for the brief.
  */
-function repositoryOf(absolute: string): string | undefined {
-  let at = dirname(absolute);
+const A_PLACE = /(?:^|[\s"'`(<[=])((?:~\/|\.{1,2}\/|\/)[^\s"'`)>\]<,;:]*[^\s"'`)>\]<,;:.])/g;
+
+/** The path with every link resolved, or the path itself when it cannot be. */
+function resolved(path: string): string {
+  try {
+    return realpathSync(path);
+  } catch {
+    return path;
+  }
+}
+
+/**
+ * The repository a place belongs to, found by climbing the folders to the first that holds a `.git`
+ * (a folder, or the file a worktree has): the repository's own `.git` folder for a clone, and for a
+ * worktree the same, so two worktrees of one repository are one. A folder is looked at from itself.
+ * Undefined for a place in no repository. Only `statSync` and one small read: no `git` runs per path.
+ */
+function repositoryOf(place: string): string | undefined {
+  let at = place;
+  try {
+    if (!statSync(place).isDirectory()) at = dirname(place);
+  } catch {
+    return undefined;
+  }
   for (;;) {
     const dot = join(at, '.git');
     try {
@@ -204,19 +218,71 @@ function repositoryOf(absolute: string): string | undefined {
   }
 }
 
-/** A file the prompt cites that exists, and whose it is. */
-interface Cited {
-  readonly absolute: string;
-  /** Where the prompt names it, for the words before it. */
-  readonly at: number;
-  /** In another repository than the project's. */
-  readonly elsewhere: boolean;
+/** Whose a place is: the project's, another repository's, or no repository's (a scratch folder, neutral). */
+type Whose = 'here' | 'elsewhere' | 'neutral';
+
+/** What the classification needs of the project: its real root and its repository. */
+interface TheProject {
+  readonly root: string;
+  readonly repository: string | undefined;
 }
 
-/** The files of the head of a prompt that exist, in the order cited, with whose each is. */
-function citedFiles(prompt: string, cwd: string, root: string): Cited[] {
-  const mine = repositoryOf(join(root, '.mnema'));
-  const found: Cited[] = [];
+function theProject(root: string): TheProject {
+  const real = resolved(root);
+  return { root: real, repository: repositoryOf(real) };
+}
+
+/** Whose `real` (a place with its links resolved) is. */
+function whose(real: string, project: TheProject): Whose {
+  const inside = relative(project.root, real);
+  if (inside === '' || !(inside.startsWith('..') || isAbsolute(inside))) return 'here';
+  const theirs = repositoryOf(real);
+  if (theirs === undefined) return 'neutral';
+  return theirs === project.repository ? 'here' : 'elsewhere';
+}
+
+/** A word of a prompt as a place on disk, `~/` expanded, or undefined. */
+function placeOf(word: string, cwd: string, home: string | undefined): string | undefined {
+  if (word.startsWith('~/')) return home === undefined ? undefined : resolve(home, word.slice(2));
+  return isAbsolute(word) ? resolve(word) : resolve(cwd, word);
+}
+
+/**
+ * Whether the work is another project's: the places the prompt cites that exist, of any kind (a
+ * file, a folder, of any extension, the first {@link CANDIDATES} in the prompt), include one in
+ * another repository and none in this project. A place in no repository (a scratch folder) says
+ * nothing either way, so a prompt that cites only those, or none, is this project's.
+ */
+export function isAnotherProjectsWork(
+  prompt: string,
+  cwd: string,
+  root: string,
+  home?: string,
+): boolean {
+  const project = theProject(root);
+  let elsewhere = false;
+  let seen = 0;
+  for (const match of prompt.matchAll(A_PLACE)) {
+    if (seen++ >= CANDIDATES) break;
+    const word = match[1];
+    const place = word === undefined ? undefined : placeOf(word, cwd, home);
+    if (place === undefined || !existsSync(place)) continue;
+    const kind = whose(resolved(place), project);
+    if (kind === 'here') return false;
+    if (kind === 'elsewhere') elsewhere = true;
+  }
+  return elsewhere;
+}
+
+/**
+ * The first file in `prompt` that the prompt points at, that exists, and that is not in another
+ * repository, as the project knows it: relative to the project when inside it, absolute otherwise
+ * (a scratch folder). Never the prompt, never a path that is not a file, never a file that is only
+ * mentioned. Like the classification, it looks at the first {@link CANDIDATES} words that have the
+ * shape of a text file's path.
+ */
+export function briefFileOf(prompt: string, cwd: string, root: string): string | undefined {
+  const project = theProject(root);
   let seen = 0;
   for (const match of prompt.matchAll(A_PATH)) {
     if (seen++ >= CANDIDATES) break;
@@ -228,50 +294,26 @@ function citedFiles(prompt: string, cwd: string, root: string): Cited[] {
     } catch {
       continue;
     }
-    const inside = relative(root, absolute);
-    const here = inside === '' || !(inside.startsWith('..') || isAbsolute(inside));
-    const theirs = here ? undefined : repositoryOf(absolute);
-    found.push({
-      absolute,
-      at: (match.index ?? 0) + match[0].length - word.length,
-      elsewhere: theirs !== undefined && theirs !== mine,
-    });
-  }
-  return found;
-}
-
-/**
- * Whether the work is another project's: the prompt cites files that exist and every one of them is
- * in another repository. A call that cites none, or one of this project's, or one in no repository
- * (a scratch folder), is this project's.
- */
-export function isAnotherProjectsWork(prompt: string, cwd: string, root: string): boolean {
-  const cited = citedFiles(prompt, cwd, root);
-  return cited.length > 0 && cited.every((one) => one.elsewhere);
-}
-
-/**
- * The first file in `prompt` that the prompt points at, that exists, and that is not in another
- * repository, as the project knows it: relative to the project when inside it, absolute otherwise
- * (a scratch folder). Never the prompt, never a path that is not a file, never a file that is only
- * mentioned.
- */
-export function briefFileOf(prompt: string, cwd: string, root: string): string | undefined {
-  for (const one of citedFiles(prompt, cwd, root)) {
-    if (one.elsewhere || !pointedAt(prompt, one.at)) continue;
-    const inside = relative(root, one.absolute);
-    return inside === '' || inside.startsWith('..') || isAbsolute(inside) ? one.absolute : inside;
+    const real = resolved(absolute);
+    if (whose(real, project) === 'elsewhere') continue;
+    const startsAt = (match.index ?? 0) + match[0].length - word.length;
+    if (!pointedAt(prompt, startsAt)) continue;
+    const inside = relative(project.root, real);
+    return inside === '' || inside.startsWith('..') || isAbsolute(inside) ? absolute : inside;
   }
   return undefined;
 }
 
-/** The first id the prompt points at that names a record of this project, or undefined. */
+/**
+ * The first id in `prompt` that names a record of this project (a task, a decision or a pattern),
+ * or undefined. No word has to point at it: an id of this registry's shape that exists here is the
+ * brief it names, at most {@link CANDIDATES} of them looked up.
+ */
 export function briefRecordOf(prompt: string, trees: ResolvedTrees): string | undefined {
   const ids = [...prompt.matchAll(AN_ID)].slice(0, CANDIDATES);
-  if (!ids.some((one) => pointedAt(prompt, one.index ?? 0))) return undefined;
+  if (ids.length === 0) return undefined;
   return withScopedCaches(trees, (sources) => {
     for (const one of ids) {
-      if (!pointedAt(prompt, one.index ?? 0)) continue;
       const id = one[0].toLowerCase();
       for (const { cache } of sources) {
         if (
@@ -424,7 +466,7 @@ function dispatched(
   const prompt = text(input, 'prompt') ?? '';
   const root = dirname(trees.projectPublic);
   const to = (text(input, 'subagent_type') ?? '').trim() || ANY_SUBAGENT;
-  if (isAnotherProjectsWork(prompt, ctx.cwd, root)) {
+  if (isAnotherProjectsWork(prompt, ctx.cwd, root, ctx.env.home)) {
     // Work for another repository: nothing is recorded here, and nothing there. Counted, so the end
     // of the session says it.
     countAnotherProjectsDispatch(file);

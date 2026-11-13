@@ -840,7 +840,8 @@ export const WHAT_STOPS: { readonly [K in SwitchableChannel]: string } = {
   'agent-mirror':
     'the mirror of what a session hands to other agents: with it on, a `PostToolUse` hook on the ' +
     'host’s `Agent` tool records a private task for the session and a private handoff for each ' +
-    'dispatch (its short description and the path of a brief file, never the prompt), and the ' +
+    'dispatch (its short description and the path of a brief file, never the prompt), leaves out a ' +
+    'dispatch whose prompt cites only another repository’s files, and the ' +
     'session’s end closes the task with the count. It needs `session-journal` on, and records ' +
     'nothing to the tree a clone gets',
   'session-tally':

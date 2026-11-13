@@ -69,12 +69,15 @@ minute), moved to in progress; every dispatch records a **private** handoff on i
 the call named (`subagent` when it named none), with a brief that is the call's short `description` (cut at 200 characters)
 and, when the prompt **points at** a file that exists on disk (a path ending in `.md`, `.txt`, `.json`, `.yml` or `.yaml`, with a
 word such as `read`, `see`, `follow`, `brief` or `leia` in the three words before it) and that is not in another repository, the
-line `Brief in the file: <path>`; a path that is only mentioned (`add a line to CHANGELOG.md`) is not named, and neither is a
-file of another repository. When the prompt points at the id of a task, decision or pattern of this project that exists, the line
-is `Brief in the record: <id>`. **Only work of this project is mirrored**: a call whose prompt cites files that exist, every one
-of them in another repository (found by climbing from each path to the folder that holds a `.git`, with no `git` run), is not
-recorded here and nothing is recorded there; the second stream says so and the task's closing note counts it. A call that
-cites none, or one of this project's files, or a file in no repository (a scratch folder), is mirrored. **The prompt is never recorded**, and neither is the subagent's reply. When the session ends
+line `Brief in the file: <path>` (a file in a scratch folder, which belongs to no repository, is named too); a path that is only
+mentioned (`add a line to CHANGELOG.md`) is not named, and neither is a file of another repository. Otherwise, when the prompt
+cites the id of a task, decision or pattern of this project that exists, no pointing word needed, the line is
+`Brief in the record: <id>`. **Only work of this project is mirrored**: a call whose prompt cites places that exist (files or
+folders, of any extension: an absolute path, `~/` or `./`), one of them in another repository and none in this project, is not
+recorded here and nothing is recorded there; the second stream says so and the task's closing note counts it. A place is taken
+to its repository by climbing to the folder that holds a `.git`, with no `git` run, and links are resolved first. A place in no
+repository (a scratch folder) says nothing either way: a call that cites only those, or no place at all, is mirrored. Only the
+first twelve places a prompt cites are looked at. **The prompt is never recorded**, and neither is the subagent's reply. When the session ends
 (`SessionEnd`), the task is moved to done with the count of handoffs as its note.
 
 Nothing goes to the tree a clone gets: the task and its handoffs are in this machine's private tree. The task's id and the count

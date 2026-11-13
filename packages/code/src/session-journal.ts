@@ -449,6 +449,7 @@ function prune(dir: string, now: Date): void {
       !name.endsWith('.json') &&
       !name.endsWith('.tmp') &&
       !name.endsWith(SKIPPED_SUFFIX) &&
+      !name.endsWith(ELSEWHERE_SUFFIX) &&
       !name.endsWith(SERVED_SUFFIX)
     )
       continue;
