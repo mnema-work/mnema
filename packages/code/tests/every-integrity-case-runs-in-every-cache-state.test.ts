@@ -56,6 +56,8 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'holds whose key signs a write through the agent variable; no damage',
   'packages/code/tests/the-cost-comes-from-the-host.test.ts':
     'holds what `mnema usage` prints, tokens and never dollars; no record is damaged',
+  'packages/code/tests/the-hooks-that-answer-in-json-say-every-refusal.test.ts':
+    'holds what each hook that answers the host in JSON says when the verb refuses; the one stored line it plants is a fixture of that refusal, and the verdict on the damage is not what it reads',
   'packages/code/tests/the-hooks-say-what-the-record-refused.test.ts':
     'holds what each hook tells a session when the verb refuses; the one stored line it plants is a fixture of that refusal, and the verdict on the damage is not what it reads',
   'packages/code/tests/the-feed-leaves-the-bodies-behind.test.ts':

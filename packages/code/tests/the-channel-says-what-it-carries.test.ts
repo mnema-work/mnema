@@ -465,6 +465,7 @@ describe('every handler that pushes declares the channel it carries', () => {
     // AND A FOURTH, Cursor's: the same verb with that host's name, which can only refuse.
     expect(named).toEqual([
       'after-a-write.mjs:host-memory-mirror+decision-file-written',
+      'agent-dispatched.mjs:agent-mirror',
       'choice-settled.mjs:choice-settled',
       'edit-asks-a-person.mjs:edit-asks-a-person+edit-refuses-a-write',
       'edit-refuses-a-write.mjs:edit-refuses-a-write+edit-rules-push',
@@ -475,6 +476,7 @@ describe('every handler that pushes declares the channel it carries', () => {
       'session-start.mjs:brief-document',
       'session-tally.mjs:session-tally',
       'subagent-start.mjs:brief-document',
+      'subagent-stop.mjs:subagent-handback',
     ]);
     expect(handlers()).toContain('hand-over.mjs');
   });

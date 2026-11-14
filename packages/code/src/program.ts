@@ -422,6 +422,15 @@ function topLevelVerbOf(command: Command): string {
 }
 
 /**
+ * The variable a hook sets for a verb whose answer it hands a host. A refusal then opens with its code
+ * alone on the first line of the error stream, as under `--hook` (the hook reads the code to tell a
+ * record that would not answer from a project with nothing to hand over). The hooks set it
+ * (`plugin/hooks/hand-over.mjs`, and the generated programs of Gemini CLI and OpenCode); a person typing
+ * a verb sets nothing, and reads the same lines as before.
+ */
+const FOR_A_HOOK_ENV = 'MNEMA_FOR_A_HOOK';
+
+/**
  * Parses one command line with a program that is already built, turning a throw into
  * an honest failure.
  *
@@ -435,11 +444,12 @@ function topLevelVerbOf(command: Command): string {
  */
 export async function parseWith(built: BuiltProgram, argv: readonly string[]): Promise<void> {
   const { program, render, io } = built;
-  // A hook that hands a model a document asks with `--hook`, and a refusal then opens with its
-  // code on a line of its own (`saysTheCode`), whatever door it came through: a throw below the
-  // verb is reported only here.
+  // A hook that hands a model a document asks with `--hook` (or sets `MNEMA_FOR_A_HOOK`), and a refusal then opens with its code on a line of its own (`saysTheCode`), whatever door
+  // it came through: a throw below the verb is reported only here.
   const code = (what: string): void => {
-    if (argv.includes('--hook')) saysTheCode({ io, render }, what);
+    if (argv.includes('--hook') || process.env[FOR_A_HOOK_ENV] === '1') {
+      saysTheCode({ io, render }, what);
+    }
   };
   try {
     await program.parseAsync(argv, { from: 'user' });

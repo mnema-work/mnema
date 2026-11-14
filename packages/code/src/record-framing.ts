@@ -184,7 +184,8 @@ export type ModelChannel =
   | 'user-corrections'
   | 'host-memory-mirror'
   | 'decision-file-written'
-  | 'choice-settled';
+  | 'choice-settled'
+  | 'agent-mirror';
 
 /** The channels that carry a declaration: the ones {@link SUBJECT_OF} answers for. */
 export type FramedChannel =
@@ -327,6 +328,9 @@ export const UNFRAMED_CHANNELS: {
     'what it carries is the product’s own sentence about a file just written, its path and the ' +
     'command that reads it, and none of the file’s words, so there is nobody’s words to say whose ' +
     'they are',
+  'agent-mirror':
+    'what it carries is the product’s own sentence that the record was not consulted for the dispatch ' +
+    'just made, and no record text, so there is nobody’s words to say whose they are',
   'choice-settled':
     'what it carries is the product’s own sentence that a question to the person was answered and ' +
     'which tool records a choice, and no record text and nothing of the answer, so there is ' +

@@ -14,8 +14,9 @@
  * and exit 0, which a host reads as nothing to say.
  *
  * IT NEVER BLOCKS BY FAILING. No `mnema` on the PATH, a stranger of that name, an answer that is
- * not the verb's, an error of any kind: exit 0 and nothing written, so a subagent is never held by
- * a hook that could not do its work.
+ * not the verb's, an error of any kind: exit 0, so a subagent is never held by a hook that could not
+ * do its work. A record that would not answer, one held by another process and a run cut by its time
+ * are one line in the `systemMessage`, and nothing else is written.
  */
 
 /**
@@ -29,14 +30,17 @@ export const MODEL_CHANNEL = 'subagent-handback';
 const VERB = ['handback'];
 
 try {
-  const { whatTheVerbAnswers, whereTheSessionIs } = await import('./hand-over.mjs');
+  const { whatTheVerbReports, whereTheSessionIs } = await import('./hand-over.mjs');
   const chunks = [];
   for await (const chunk of process.stdin) chunks.push(chunk);
-  const answer = whatTheVerbAnswers(
+  const { answer, said } = whatTheVerbReports(
     VERB,
     whereTheSessionIs(),
     Buffer.concat(chunks).toString('utf-8'),
   );
+  // A record that did not answer is said in the `systemMessage`: the field a model reads at the end
+  // of a subagent would send it back to work, which a refusal is no reason for.
+  if (said !== null) process.stdout.write(`${JSON.stringify({ systemMessage: said })}\n`);
   if (answer !== null) {
     const said = JSON.parse(answer);
     if (said?.decision === 'block' && typeof said.reason === 'string' && said.reason !== '') {

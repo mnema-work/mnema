@@ -91,9 +91,11 @@ import {
   didNotAnswerIn,
   notConsulted,
   notStarted,
+  oneLine,
   settleTheRuntime,
   spawnTarget,
   whatARefusalSays,
+  whatARunSays,
   whyItDidNotAnswer,
 } from './the-gate-kit.mjs';
 import { aRuleReaches } from './where-the-record-is.mjs';
@@ -174,6 +176,14 @@ const BETWEEN_THE_STREAMS = '\n\n';
  * both verbs, because the ceiling is the channel's and both texts ride the same channel.
  */
 const FOR_A_HOOK = '--hook';
+
+/**
+ * The variable the hooks set for a verb whose answer they hand a host: a refusal then opens with its
+ * code alone on the first line of the error stream (`parseWith`, `packages/code/src/program.ts`), as
+ * `--hook` asks of `brief` and `recall`. A person who types the verb sets nothing and reads what they
+ * always read.
+ */
+const FOR_A_HOOK_ENV = 'MNEMA_FOR_A_HOOK';
 
 /** The question this module asks a `mnema` before it runs a verb: which program it is. */
 const WHICH_PROGRAM = '--identify';
@@ -419,36 +429,45 @@ const VERB_TIMEOUT = 9_000;
 const IDENTIFY_TIMEOUT = 2_000;
 
 /**
- * What a verb ANSWERS to the payload a host handed this hook, or `null` when it answers nothing.
+ * What a verb ANSWERS to the payload a host handed this hook, and what it SAYS where it did not
+ * answer: `{ answer, said }`, at most one of the two a string.
  *
  * THE THIRD HANDLER READS ITS STDIN, AND THE TWO ABOVE STILL DO NOT. `whereTheSessionIs` says a
- * handler needs no input, and for the two that hand over a document that is still so. The gate a
- * host runs before a write is different in kind: what it answers depends on WHICH file the host
- * is about to write, and the host says that on stdin. So the payload goes to the verb byte for
- * byte, and what the verb prints comes back byte for byte: it is already the host's reply.
+ * handler needs no input, and for the two that hand over a document that is still so. The hooks
+ * after a write, a question or a response are different in kind: what they answer depends on the
+ * payload the host hands them, so it goes to the verb byte for byte, and what the verb prints
+ * comes back byte for byte: it is already the host's reply. The second stream is never kept in the
+ * answer: what goes back is JSON the host parses, and a line under it would make the whole reply
+ * unreadable, which a host reads as nothing to say.
  *
- * THE SAME GATE AS {@link whatTheVerbSays}: every non-zero outcome is silence, and so is an empty
- * answer, and so is `{}`, the verb's own spelling of having nothing to say, so that a handler that
- * says nothing writes no byte, the way the other two do. Unlike them, the second stream is never
- * kept: what goes back is JSON the host parses, and a line under it would make the whole reply
- * unreadable, which a host reads as nothing to say, in the one place where saying nothing lets a
- * write through.
+ * A VERB THAT DID NOT ANSWER IS SAID, AS A LINE FOR THE HANDLER TO PUT IN THE FIELD ITS HOST READS.
+ * A refusal of a verb only a host runs opens with its code (`whatARefusalSays` reads it; a `mnema`
+ * older than that prints none and is silent as it always was), and `recall`, which a person types
+ * too, is asked `--hook` by the handler that runs it. A run cut by `timeout`, a record held by another process and a record that would not read are each
+ * one line; no project, a channel switched off, a refusal with no code and a program that could not
+ * be started are silence, as before. Where the line goes is the handler's: it is never printed
+ * outside the reply, and never as a decision that sends the agent back to work.
+ *
+ * AN EMPTY ANSWER, AND `{}`, THE VERB'S OWN SPELLING OF HAVING NOTHING TO SAY, ARE NO ANSWER, so a
+ * handler that says nothing writes no byte.
  *
  * @param {readonly string[]} argv The verb and its flags.
  * @param {string} cwd Where to run it.
  * @param {string} input What the host handed this hook.
- * @param {number | undefined} [timeout] Milliseconds after which the verb is killed and the answer is
- *   none, for a hook that runs after the work and is not worth stalling it past that (the host's own
- *   kill comes later and reads the same).
- * @returns {string | null}
+ * @param {number} [timeout] Milliseconds after which the verb is killed and the line says the record
+ *   was not consulted. The default keeps the search for a node and the verb under the hooks file's
+ *   15 seconds, so the line is what the session gets and not the host's kill.
+ * @returns {{ readonly answer: string | null, readonly said: string | null }}
  */
-export function whatTheVerbAnswers(argv, cwd, input, timeout = undefined) {
-  return answerOf(ranTheVerb(argv, cwd, input, timeout));
+export function whatTheVerbReports(argv, cwd, input, timeout = VERB_TIMEOUT) {
+  const ran = ranTheVerb(argv, cwd, input, timeout);
+  const said = whatARunSays(ran, timeout);
+  return { answer: said === null ? answerOf(ran) : null, said };
 }
 
 /**
  * One run of the verb with the payload on stdin, the second stream kept for {@link refusesTheFlag}
- * and read by nothing else.
+ * and for the code a refusal opens with ({@link whatARefusalSays}); it is never part of an answer.
  *
  * @param {readonly string[]} argv
  * @param {string} cwd
@@ -459,7 +478,7 @@ export function whatTheVerbAnswers(argv, cwd, input, timeout = undefined) {
 function ranTheVerb(argv, cwd, input, timeout = undefined) {
   return startMnema([...argv], {
     cwd,
-    env: theRuntime().env,
+    env: { ...theRuntime().env, [FOR_A_HOOK_ENV]: '1' },
     input,
     ...(timeout === undefined ? {} : { timeout, killSignal: 'SIGKILL' }),
     encoding: 'utf-8',
@@ -515,7 +534,7 @@ function answerOf(ran) {
  * AND NO `mnema` STARTS WHERE NO RULE CAN BE MET: where no tree it could read holds a link with an
  * address, read from the stored lines and with every doubt starting it (`an-address-can-be-met.mjs`),
  * the verb would answer `{}`, which is the silence this answers without it. Everything else is
- * {@link whatTheVerbAnswers}: the payload to the verb and its answer back, byte for byte.
+ * {@link whatTheVerbReports}: the payload to the verb and its answer back, byte for byte.
  *
  * @param {readonly string[]} argv The handler's own arguments, from the hooks file.
  * @param {Readonly<Record<string, string | undefined>>} env The host's environment.
@@ -539,9 +558,16 @@ export async function whatTheGateAnswers(argv, env, cwd, payload, { timeout = GA
   if (!anAddressCanBeMet(cwd, env)) return null;
   // WHERE `mnema` CANNOT ANSWER, THE WRITE IS REFUSED ONLY WHERE A RULE THAT REFUSES IT OR ASKS FOR
   // A PERSON ADDRESSES THIS PATH (`where-the-record-is.mjs`): no node takes it, or what it answered
-  // is no answer. Any other write passes, as it did.
-  const closed = (/** @type {string} */ because) =>
-    aRuleReaches(cwd, env, input) ? denial(couldNotAnswer(because)) : null;
+  // is no answer. Any other write passes, as it did, and says the record was not consulted where
+  // the host's reply that lets a write through has a field for text ({@link saysBesideThePass}).
+  const closed = (
+    /** @type {string} */ because,
+    /** @type {import('node:child_process').SpawnSyncReturns<string> | undefined} */ ran = undefined,
+    /** @type {number} */ within = timeout,
+  ) =>
+    aRuleReaches(cwd, env, input)
+      ? denial(couldNotAnswer(because))
+      : saysBesideThePass(host, because, ran, within);
   const { refusal } = theRuntime();
   if (refusal !== null) return closed(refusal);
   const asked = ['before-a-write', '--host', host];
@@ -558,6 +584,35 @@ export async function whatTheGateAnswers(argv, env, cwd, payload, { timeout = GA
     closed,
     timeout,
   );
+}
+
+/**
+ * The hosts whose reply that lets a write through can carry text for the model: the hosts of the host
+ * table whose gate hands the rules over in its own reply (`pushes`, not after the write). A test
+ * holds this list to the table.
+ */
+export const SAYS_ON_THE_PASS = ['codex', 'qwen'];
+
+/**
+ * What the gate says when it lets a write through because the record did not answer and no rule
+ * that refuses or asks addresses the path: the line that the record was not consulted for this
+ * write, as the `additionalContext` of the reply that lets it through (never a decision), where the
+ * host reads one there; `null` where it does not. The other hosts say it in the hook that runs after
+ * the same write, and where none runs the write passes in silence.
+ *
+ * @param {string} host
+ * @param {string} because Why the record did not answer, in words.
+ * @param {import('node:child_process').SpawnSyncReturns<string>} [ran] The run that did not answer.
+ * @param {number} [timeout] The milliseconds it was given.
+ * @returns {string | null}
+ */
+function saysBesideThePass(host, because, ran = undefined, timeout = GATE_TIMEOUT) {
+  if (!SAYS_ON_THE_PASS.includes(host)) return null;
+  // The run's own sentence where it has one (a record held by another process, a stored line it cannot
+  // read, a run cut by its time), and the reason of the refusal otherwise.
+  const said = ran === undefined ? null : whatARunSays(ran, timeout);
+  const why = oneLine(because);
+  return reply('PreToolUse', said ?? notConsulted(why.endsWith('.') ? why : `${why}.`));
 }
 
 /**
@@ -593,14 +648,14 @@ export const GATE_TIMEOUT = 10_000;
  * an answer (`whyItDidNotAnswer`).
  *
  * @param {import('node:child_process').SpawnSyncReturns<string>} ran
- * @param {(because: string) => string | null} closed
+ * @param {(because: string, ran?: import('node:child_process').SpawnSyncReturns<string>, within?: number) => string | null} closed
  * @param {number} timeout
  * @returns {string | null}
  */
 function theGateSays(ran, closed, timeout) {
   const failed = whyItDidNotAnswer(ran, timeout);
   if (failed === null) return null;
-  return failed === undefined ? answerOf(ran) : closed(failed);
+  return failed === undefined ? answerOf(ran) : closed(failed, ran, timeout);
 }
 
 /**

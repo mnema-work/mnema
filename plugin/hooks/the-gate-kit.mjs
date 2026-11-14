@@ -301,7 +301,10 @@ export function whyItDidNotAnswer(ran, timeout) {
   // reads the payload, and what it said is read as it would be had the write gone through.
   if (code !== undefined && code !== 'EPIPE') return `it could not be started (${code})`;
   if (ran.status !== 0) {
-    const said = (ran.stderr ?? '').trim().split('\n')[0] ?? '';
+    // The code a hook asks the verb to open a refusal with is not part of what it said: the reason
+    // quotes the first line of the words, as it did before the code existed.
+    const lines = (ran.stderr ?? '').trim().split('\n');
+    const said = (/^[A-Z][A-Z0-9_]*$/.test(lines[0] ?? '') ? lines[1] : lines[0]) ?? '';
     return `it exited ${ran.status ?? ran.signal}${said === '' ? '' : `: ${said.slice(0, QUOTED)}`}`;
   }
   return isAReply(ran.stdout ?? '') ? undefined : 'what it printed is not a reply a host reads';
@@ -398,4 +401,22 @@ export function whatARefusalSays(stderr) {
   const where = /^unreadable stored line at (.+?): /.exec(after.trim())?.[1];
   const line = oneLine(where === undefined ? opening : `${opening} (${where})`);
   return `The project's mnema record was not handed to this session (${code}): ${line}`;
+}
+
+/**
+ * The one line a run of a verb says where it was not an answer, or `null` where it says nothing: a
+ * run cut by its time says the record was not consulted, a refusal says what its code says
+ * ({@link whatARefusalSays}), and a program that could not be started, an exit that carries no code,
+ * and a run that succeeded are silence.
+ *
+ * @param {import('node:child_process').SpawnSyncReturns<string>} ran
+ * @param {number} timeout The milliseconds the run was given.
+ * @returns {string | null}
+ */
+export function whatARunSays(ran, timeout) {
+  const code = /** @type {NodeJS.ErrnoException | undefined} */ (ran.error)?.code;
+  if (code === 'ETIMEDOUT') return notConsulted(didNotAnswerIn(timeout));
+  // A closed input is not a failure to run (a `mnema` that refuses an option exits before it reads).
+  if ((code !== undefined && code !== 'EPIPE') || ran.status === 0) return null;
+  return whatARefusalSays(ran.stderr ?? '');
 }

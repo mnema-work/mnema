@@ -12,7 +12,10 @@
  * `mnema` that is missing, one too old to know the verb (it refuses it and exits non-zero), no
  * project, no rule at the path, the channel off or a payload with no session id all write no byte, and
  * where no rule of any tree has an address (`an-address-can-be-met.mjs`) no `mnema` is started at all.
- * Unlike the gate before a write there is nothing to close: this never refuses.
+ * Unlike the gate before a write there is nothing to close: this never refuses. A record that would
+ * not answer, one held by another process and a run cut by its time are one line instead, in the
+ * same field: the gate before this write has no field for text, so this is where the session is
+ * told the record was not consulted for it.
  */
 
 /**
@@ -31,7 +34,7 @@ export const MODEL_CHANNEL = 'edit-rules-push';
 const WAIT = 6000;
 
 try {
-  const { whatTheVerbAnswers, whereTheSessionIs } = await import('./hand-over.mjs');
+  const { reply, whatTheVerbReports, whereTheSessionIs } = await import('./hand-over.mjs');
   const { anAddressCanBeMet } = await import('./an-address-can-be-met.mjs');
   const chunks = [];
   for await (const chunk of process.stdin) chunks.push(chunk);
@@ -39,15 +42,18 @@ try {
   // NO RULE HAS AN ADDRESS, SO NO `mnema` STARTS, as in the gate before a write: the verb would answer
   // `{}`, and loading it is most of what a write costs here (about 250 ms, measured). Read from the
   // stored lines of every tree, and any doubt starts it.
-  const answer = anAddressCanBeMet(where, process.env)
-    ? whatTheVerbAnswers(
+  const { answer, said } = anAddressCanBeMet(where, process.env)
+    ? whatTheVerbReports(
         ['beside-a-write', ...process.argv.slice(2)],
         where,
         Buffer.concat(chunks).toString('utf-8'),
         WAIT,
       )
-    : null;
+    : { answer: null, said: null };
+  // The gate before this write cannot carry text in Copilot CLI, so a record that did not answer
+  // is said here, in the flat `additionalContext` this host reads.
   if (answer !== null) process.stdout.write(answer);
+  else if (said !== null) process.stdout.write(reply('PostToolUse', said, ['--reply', 'flat']));
 } catch {
   // Silence: the one thing this handler must never do is make somebody else's session worse
   // than it would have been without the plugin installed.

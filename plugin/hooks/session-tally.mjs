@@ -13,10 +13,12 @@
  * NO MODEL IS CALLED, and nothing is written to the record: the line is a count, in the words the
  * other handlers use for a fact (what was counted, and from where) and not an instruction.
  *
- * IT NEVER BLOCKS BY FAILING. Every outcome that is not an answer is silence and exit 0: no
- * `mnema` on the PATH, no project, a transcript it could not read, the channel switched off
- * (`mnema switch off session-tally`). Silence is no output at all, which a host reads as
- * nothing to say.
+ * IT NEVER BLOCKS BY FAILING. Every outcome that is not an answer is exit 0, and nearly all are silence:
+ * no `mnema` on the PATH, no project, a transcript it could not read, the channel switched off
+ * (`mnema switch off session-tally`). Silence is no output at all, which a host reads as nothing to
+ * say. The exception is a record that would not answer, one held by another process or a run cut by
+ * its time: one line in the `systemMessage`, since a `Stop` has no field the model reads without
+ * being sent back to work.
  */
 
 /**
@@ -30,15 +32,19 @@ export const MODEL_CHANNEL = 'session-tally';
 const VERB = ['tally'];
 
 try {
-  const { whatTheVerbAnswers, whereTheSessionIs } = await import('./hand-over.mjs');
+  const { whatTheVerbReports, whereTheSessionIs } = await import('./hand-over.mjs');
   const chunks = [];
   for await (const chunk of process.stdin) chunks.push(chunk);
-  const answer = whatTheVerbAnswers(
+  const { answer, said } = whatTheVerbReports(
     VERB,
     whereTheSessionIs(),
     Buffer.concat(chunks).toString('utf-8'),
   );
+  // A hook at the end of a response has no field the model reads without being sent back to work,
+  // so a record that did not answer is said in the `systemMessage`, the channel the line above
+  // already uses, and never outside the reply.
   if (answer !== null) process.stdout.write(answer);
+  else if (said !== null) process.stdout.write(`${JSON.stringify({ systemMessage: said })}\n`);
 } catch {
   // Silence: the one thing this handler must never do is make somebody else's session worse
   // than it would have been without the plugin installed.

@@ -8,7 +8,9 @@
  * and its answer comes back byte for byte; which tools are questions and what the sentence says are
  * the verb's. Its own arguments (`--reply flat`, from the hooks file of a host that reads the flat
  * reply) are handed to the verb. The rule for running a verb is `hand-over.mjs`'s, and so is the
- * silence: no `mnema` on the PATH, no project, a tool that is not a question, the channel off.
+ * silence: no `mnema` on the PATH, no project, a tool that is not a question, the channel off. A
+ * record that would not answer, one held by another process and a run cut by its time are one line
+ * in the reply's field for context (the record was not consulted).
  *
  * THE HOOKS FILE HANDS IT `--tools AskUserQuestion` and no shell in front: a hook command is one
  * program and its arguments. VS Code runs a plugin's command on every tool call whatever its matcher
@@ -25,8 +27,9 @@ export const MODEL_CHANNEL = 'choice-settled';
 
 try {
   const {
+    reply,
     theToolIsNotNamed,
-    whatTheVerbAnswers,
+    whatTheVerbReports,
     whereTheSessionIs,
     withoutTheFiltersOfTheHooksFile,
   } = await import('./hand-over.mjs');
@@ -36,14 +39,17 @@ try {
   const argv = process.argv.slice(2);
   // `--tools AskUserQuestion` is the hooks file's: a host that runs this command on every tool call
   // starts it, and it ends here for any tool but the question.
-  const answer = theToolIsNotNamed(argv, payload)
-    ? null
-    : whatTheVerbAnswers(
+  const { answer, said } = theToolIsNotNamed(argv, payload)
+    ? { answer: null, said: null }
+    : whatTheVerbReports(
         ['settled', ...withoutTheFiltersOfTheHooksFile(argv)],
         whereTheSessionIs(),
         payload,
       );
+  // A record that did not answer is a line beside the answer to the question, in the reply this
+  // host reads (`--reply flat` where it reads the flat one), and never outside the reply.
   if (answer !== null) process.stdout.write(answer);
+  else if (said !== null) process.stdout.write(reply('PostToolUse', said, argv));
 } catch {
   // Silence: the one thing this handler must never do is make somebody else's session worse
   // than it would have been without the plugin installed.
