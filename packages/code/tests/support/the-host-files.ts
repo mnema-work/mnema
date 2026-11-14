@@ -537,7 +537,7 @@ function run(args, cwd, input, timeout = WAIT) {
   return spawnSync(target.command, target.args, {
     shell: target.shell,
     cwd,
-    env: theRuntime().env,
+    env: { ...theRuntime().env, MNEMA_FOR_A_HOOK: '1' },
     input,
     encoding: 'utf-8',
     timeout,
@@ -636,10 +636,10 @@ function askTheGate(cwd, input) {
  * \`keep\` is given is the line that the record was not consulted for it: this event has no field for
  * text, so the call hands it over after the write, where the result is.
  */
-function closedWhere(because, directory, input, keep) {
+function closedWhere(because, directory, input, keep, ran) {
   if (!aRuleReaches(directory, process.env, input)) {
     const why = oneLine(because);
-    keep(notConsulted(why.replace(/\.?$/, '.')));
+    keep((ran && whatARunSays(ran, GATE_WAIT)) || notConsulted(why.replace(/\.?$/, '.')));
     return undefined;
   }
   throw new Error(couldNotAnswer(because));
@@ -688,7 +688,7 @@ export const Mnema = async ({ directory }) => {
       const ran = askTheGate(directory, payload);
       const failed = whyItDidNotAnswer(ran, GATE_WAIT);
       if (failed === null) return;
-      if (failed !== undefined) closedWhere(failed, directory, payload, keep);
+      if (failed !== undefined) closedWhere(failed, directory, payload, keep, ran);
       let said;
       try {
         said = JSON.parse(ran.stdout).hookSpecificOutput;
@@ -920,7 +920,7 @@ function run(args, cwd, input, timeout = WAIT) {
   return spawnSync(target.command, target.args, {
     shell: target.shell,
     cwd,
-    env: theRuntime().env,
+    env: { ...theRuntime().env, MNEMA_FOR_A_HOOK: '1' },
     input,
     encoding: 'utf-8',
     timeout,

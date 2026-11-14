@@ -177,6 +177,14 @@ const BETWEEN_THE_STREAMS = '\n\n';
  */
 const FOR_A_HOOK = '--hook';
 
+/**
+ * The variable the hooks set for a verb whose answer they hand a host: a refusal then opens with its
+ * code alone on the first line of the error stream (`parseWith`, `packages/code/src/program.ts`), as
+ * `--hook` asks of `brief` and `recall`. A person who types the verb sets nothing and reads what they
+ * always read.
+ */
+const FOR_A_HOOK_ENV = 'MNEMA_FOR_A_HOOK';
+
 /** The question this module asks a `mnema` before it runs a verb: which program it is. */
 const WHICH_PROGRAM = '--identify';
 
@@ -470,7 +478,7 @@ export function whatTheVerbReports(argv, cwd, input, timeout = VERB_TIMEOUT) {
 function ranTheVerb(argv, cwd, input, timeout = undefined) {
   return startMnema([...argv], {
     cwd,
-    env: theRuntime().env,
+    env: { ...theRuntime().env, [FOR_A_HOOK_ENV]: '1' },
     input,
     ...(timeout === undefined ? {} : { timeout, killSignal: 'SIGKILL' }),
     encoding: 'utf-8',
@@ -552,10 +560,14 @@ export async function whatTheGateAnswers(argv, env, cwd, payload, { timeout = GA
   // A PERSON ADDRESSES THIS PATH (`where-the-record-is.mjs`): no node takes it, or what it answered
   // is no answer. Any other write passes, as it did, and says the record was not consulted where
   // the host's reply that lets a write through has a field for text ({@link saysBesideThePass}).
-  const closed = (/** @type {string} */ because) =>
+  const closed = (
+    /** @type {string} */ because,
+    /** @type {import('node:child_process').SpawnSyncReturns<string> | undefined} */ ran = undefined,
+    /** @type {number} */ within = timeout,
+  ) =>
     aRuleReaches(cwd, env, input)
       ? denial(couldNotAnswer(because))
-      : saysBesideThePass(host, because);
+      : saysBesideThePass(host, because, ran, within);
   const { refusal } = theRuntime();
   if (refusal !== null) return closed(refusal);
   const asked = ['before-a-write', '--host', host];
@@ -590,12 +602,17 @@ export const SAYS_ON_THE_PASS = ['codex', 'qwen'];
  *
  * @param {string} host
  * @param {string} because Why the record did not answer, in words.
+ * @param {import('node:child_process').SpawnSyncReturns<string>} [ran] The run that did not answer.
+ * @param {number} [timeout] The milliseconds it was given.
  * @returns {string | null}
  */
-function saysBesideThePass(host, because) {
+function saysBesideThePass(host, because, ran = undefined, timeout = GATE_TIMEOUT) {
   if (!SAYS_ON_THE_PASS.includes(host)) return null;
+  // The run's own sentence where it has one (a record held by another process, a stored line it cannot
+  // read, a run cut by its time), and the reason of the refusal otherwise.
+  const said = ran === undefined ? null : whatARunSays(ran, timeout);
   const why = oneLine(because);
-  return reply('PreToolUse', notConsulted(why.endsWith('.') ? why : `${why}.`));
+  return reply('PreToolUse', said ?? notConsulted(why.endsWith('.') ? why : `${why}.`));
 }
 
 /**
@@ -631,14 +648,14 @@ export const GATE_TIMEOUT = 10_000;
  * an answer (`whyItDidNotAnswer`).
  *
  * @param {import('node:child_process').SpawnSyncReturns<string>} ran
- * @param {(because: string) => string | null} closed
+ * @param {(because: string, ran?: import('node:child_process').SpawnSyncReturns<string>, within?: number) => string | null} closed
  * @param {number} timeout
  * @returns {string | null}
  */
 function theGateSays(ran, closed, timeout) {
   const failed = whyItDidNotAnswer(ran, timeout);
   if (failed === null) return null;
-  return failed === undefined ? answerOf(ran) : closed(failed);
+  return failed === undefined ? answerOf(ran) : closed(failed, ran, timeout);
 }
 
 /**

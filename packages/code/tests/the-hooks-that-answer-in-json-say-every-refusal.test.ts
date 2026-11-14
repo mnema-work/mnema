@@ -48,7 +48,7 @@ let live: string;
 let unreadable: string;
 let theTail: string;
 
-type Bin = 'real' | 'busy' | 'unreadable' | 'slow' | 'none' | 'off' | 'nocode';
+type Bin = 'real' | 'busy' | 'unreadable' | 'slow' | 'none' | 'off' | 'nocode' | 'needsTheSignal';
 const bins = {} as Record<Bin, string>;
 
 function shim(name: string, body: string[]): string {
@@ -106,6 +106,12 @@ beforeAll(() => {
     'exit 1',
   ]);
   bins.nocode = shim('nocode', [identified, "echo 'something broke, in prose' >&2", 'exit 1']);
+  // A refusal that opens with its code only where the hook set the signal, as the product does.
+  bins.needsTheSignal = shim('needs-the-signal', [
+    identified,
+    'if [ "$MNEMA_FOR_A_HOOK" = "1" ]; then printf \'TAIL_BUSY\\nbusy\\n\' >&2; else echo busy >&2; fi',
+    'exit 1',
+  ]);
   for (const name of ['live', 'unreadable']) mkdirSync(join(sandbox, name), { recursive: true });
   live = join(sandbox, 'live');
   unreadable = join(sandbox, 'unreadable');
@@ -459,24 +465,60 @@ describe('a hook of Claude Code, and of the hosts that run its command, says a r
     'handback',
     'settled',
     'tally',
-  ])('opens a refusal of mnema %s with its code, with no flag asked', async (verb) => {
-    const err: string[] = [];
-    const built = buildProgram(
-      { out: () => undefined, err: (line) => err.push(line), fail: () => undefined },
-      [],
-      renderPlain,
-    );
-    const command = built.program.commands.find((one) => one.name() === verb);
-    expect(command, `no verb ${verb}`).toBeDefined();
-    command?.action(() => {
-      throw new TailBusyError('/x/tail.lock', 4242, 5000);
-    });
-    await parseWith(built, verb === 'beside-a-write' ? [verb, '--host', 'copilot'] : [verb]);
-    // The hook reads the first line of the error stream.
-    expect(err[0]).toBe('TAIL_BUSY');
-  });
+  ])(
+    'opens a refusal of mnema %s with its code only where the hook set the signal',
+    async (verb) => {
+      const refuse = async (signal: boolean): Promise<string[]> => {
+        const err: string[] = [];
+        const built = buildProgram(
+          { out: () => undefined, err: (line) => err.push(line), fail: () => undefined },
+          [],
+          renderPlain,
+        );
+        const command = built.program.commands.find((one) => one.name() === verb);
+        expect(command, `no verb ${verb}`).toBeDefined();
+        command?.action(() => {
+          throw new TailBusyError('/x/tail.lock', 4242, 5000);
+        });
+        const before = process.env.MNEMA_FOR_A_HOOK;
+        if (signal) process.env.MNEMA_FOR_A_HOOK = '1';
+        else delete process.env.MNEMA_FOR_A_HOOK;
+        try {
+          await parseWith(built, verb === 'beside-a-write' ? [verb, '--host', 'copilot'] : [verb]);
+        } finally {
+          if (before === undefined) delete process.env.MNEMA_FOR_A_HOOK;
+          else process.env.MNEMA_FOR_A_HOOK = before;
+        }
+        return err;
+      };
+      const signalled = await refuse(true);
+      const typed = await refuse(false);
+      expect(signalled[0]).toBe('TAIL_BUSY');
+      // What a person reads is what it was, byte for byte: the same lines without the code.
+      expect(typed[0]).not.toBe('TAIL_BUSY');
+      expect(typed.join('\n')).toBe(signalled.slice(1).join('\n'));
+    },
+  );
 
-  it('opens no code for a verb a person types, unless it is asked for a hook', async () => {
+  it.each([
+    ['after-a-write.mjs', [], 'write', nested('PostToolUse')],
+    ['session-tally.mjs', [], 'stop', systemMessage],
+  ] as const)(
+    '%s sets the signal for the verb it runs',
+    async (file, args, payload, reads) => {
+      const printed = await run(
+        join(PLUGIN, 'hooks', file),
+        args,
+        live,
+        bins.needsTheSignal,
+        payloads[payload],
+      );
+      expect(reads(replyOf(printed))).toContain('(TAIL_BUSY)');
+    },
+    60_000,
+  );
+
+  it('opens no code for a verb a person types, with or without the signal on another verb', async () => {
     const err: string[] = [];
     const built = buildProgram(
       { out: () => undefined, err: (line) => err.push(line), fail: () => undefined },
@@ -519,11 +561,24 @@ describe('the gate that lets a write through for want of an answer', () => {
     );
     const reply = replyOf(printed);
     expect(nested('PreToolUse')(reply)).toBe(
-      "The project's mnema record was not consulted for this: it exited 1: TAIL_BUSY.",
+      "The project's mnema record was not consulted for this: another process holds the record (TAIL_BUSY); try again in a moment.",
     );
     // It lets the write through: no decision of any kind rides with the line.
     expect(JSON.stringify(reply)).not.toContain('permissionDecision');
     expect(printed.stdout.trim().split('\n')).toHaveLength(1);
+  }, 60_000);
+
+  it('sets the signal for before-a-write, so a busy record says the standard sentence', async () => {
+    const asked = qwen('src/other/a.ts');
+    const printed = await run(
+      join(PLUGIN, 'hooks', 'edit-refuses-a-write.mjs'),
+      asked.args,
+      live,
+      bins.needsTheSignal,
+      asked.payload,
+      { QWEN_PROJECT_DIR: live },
+    );
+    expect(nested('PreToolUse')(replyOf(printed))).toContain('(TAIL_BUSY); try again in a moment.');
   }, 60_000);
 
   it('says it when the run was cut by its time', async () => {
@@ -537,7 +592,7 @@ describe('the gate that lets a write through for want of an answer', () => {
       { QWEN_PROJECT_DIR: live },
     );
     expect(nested('PreToolUse')(replyOf(printed))).toBe(
-      "The project's mnema record was not consulted for this: it did not answer in 10 seconds.",
+      "The project's mnema record was not consulted for this: mnema did not answer within 10 seconds and was stopped.",
     );
   }, 60_000);
 
@@ -698,7 +753,7 @@ describe('the generated programs of Gemini CLI and OpenCode say a record that di
   it('lets a write through for want of an answer and says so beside its result, in the second hook', async () => {
     const [result] = await opencode(bins.busy, aWrite('src/other/a.ts'));
     expect(result).toBe(
-      "wrote it\n\nThe project's mnema record was not consulted for this: it exited 1: TAIL_BUSY.",
+      "wrote it\n\nThe project's mnema record was not consulted for this: another process holds the record (TAIL_BUSY); try again in a moment.",
     );
   }, 60_000);
 

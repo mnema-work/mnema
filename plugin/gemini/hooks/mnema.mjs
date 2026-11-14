@@ -852,7 +852,7 @@ function run(args, cwd, input, timeout = WAIT) {
   return spawnSync(target.command, target.args, {
     shell: target.shell,
     cwd,
-    env: theRuntime().env,
+    env: { ...theRuntime().env, MNEMA_FOR_A_HOOK: '1' },
     input,
     encoding: 'utf-8',
     timeout,

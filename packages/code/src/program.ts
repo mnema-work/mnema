@@ -422,21 +422,13 @@ function topLevelVerbOf(command: Command): string {
 }
 
 /**
- * The verbs only a host's hook runs, never a person (each reads a payload the host hands it on stdin and
- * answers in the shape the host reads): a refusal from any of them opens with its code, as one asked
- * `--hook` does, because the hook that runs them says a record that would not answer in one line and
- * reads the code to tell it from a project with nothing to hand over. `brief` and `recall` are also
- * typed, so they open a refusal with its code only when asked for a hook (`--hook`).
+ * The variable a hook sets for a verb whose answer it hands a host. A refusal then opens with its code
+ * alone on the first line of the error stream, as under `--hook` (the hook reads the code to tell a
+ * record that would not answer from a project with nothing to hand over). The hooks set it
+ * (`plugin/hooks/hand-over.mjs`, and the generated programs of Gemini CLI and OpenCode); a person typing
+ * a verb sets nothing, and reads the same lines as before.
  */
-const VERBS_A_HOST_RUNS: ReadonlySet<string> = new Set([
-  'after-a-write',
-  'beside-a-write',
-  'corrections',
-  'dispatched',
-  'handback',
-  'settled',
-  'tally',
-]);
+const FOR_A_HOOK_ENV = 'MNEMA_FOR_A_HOOK';
 
 /**
  * Parses one command line with a program that is already built, turning a throw into
@@ -452,11 +444,10 @@ const VERBS_A_HOST_RUNS: ReadonlySet<string> = new Set([
  */
 export async function parseWith(built: BuiltProgram, argv: readonly string[]): Promise<void> {
   const { program, render, io } = built;
-  // A hook that hands a model a document asks with `--hook` (and the verbs only a host runs need not
-  // ask), and a refusal then opens with its code on a line of its own (`saysTheCode`), whatever door
+  // A hook that hands a model a document asks with `--hook` (or sets `MNEMA_FOR_A_HOOK`), and a refusal then opens with its code on a line of its own (`saysTheCode`), whatever door
   // it came through: a throw below the verb is reported only here.
   const code = (what: string): void => {
-    if (argv.includes('--hook') || VERBS_A_HOST_RUNS.has(program.args[0] ?? '')) {
+    if (argv.includes('--hook') || process.env[FOR_A_HOOK_ENV] === '1') {
       saysTheCode({ io, render }, what);
     }
   };
