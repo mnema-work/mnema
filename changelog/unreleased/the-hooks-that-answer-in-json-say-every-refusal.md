@@ -2,7 +2,7 @@ Changed
 
 - **The hooks that answer the host in JSON say a record that did not answer.** After a write, after a question to the
   person, after the agent tool, after a compaction, at the end of a response and at the end of a subagent, a refusal of
-  the record (a line it cannot read), a record held by another process and a run cut by its time (nine seconds in Claude Code's hooks, six in Copilot CLI, Gemini CLI and OpenCode) were silence;
+  the record (a line it cannot read), a record held by another process and a run cut by its time (nine seconds for the verbs of Claude Code's hooks and of Copilot CLI's `choice-settled`, ten for the gate of Codex and Qwen Code, six for Copilot CLI's hook after a write, Gemini CLI and OpenCode) were silence;
   they are now one line inside the reply: that the record was not handed over, or was not consulted. It goes in the
   field the host reads as context (`additionalContext`; the flat one in Copilot CLI; `AfterTool` in Gemini CLI; the
   result of the call in OpenCode), never outside the JSON and never as a decision that sends the agent back to work.

@@ -602,14 +602,14 @@ describe('the gate that lets a write through for want of an answer', () => {
       join(PLUGIN, 'hooks', 'edit-refuses-a-write.mjs'),
       asked.args,
       live,
-      bins.busy,
+      bins.needsTheSignal,
       asked.payload,
       { QWEN_PROJECT_DIR: live },
     );
     const said = (replyOf(printed).hookSpecificOutput as Record<string, string>) ?? {};
     expect(said.permissionDecision).toBe('deny');
     expect(said.permissionDecisionReason).toBe(
-      "mnema could not answer for this write: it exited 1: TAIL_BUSY. A rule of this project's record addresses this path, and a gate that cannot read the record does not let a write through. Run `mnema doctor` in a terminal to see what stops it; once mnema answers again, the record decides this write.",
+      "mnema could not answer for this write: it exited 1: busy. A rule of this project's record addresses this path, and a gate that cannot read the record does not let a write through. Run `mnema doctor` in a terminal to see what stops it; once mnema answers again, the record decides this write.",
     );
   }, 60_000);
 
@@ -683,6 +683,15 @@ describe('the generated programs of Gemini CLI and OpenCode say a record that di
       expect(printed.stdout.trim().split('\n')).toHaveLength(1);
       expect(reply).not.toHaveProperty('decision');
     }
+  }, 60_000);
+
+  it('sets the signal for the verbs it runs, so a refusal opens with its code', async () => {
+    const printed = await gemini(
+      'settled',
+      { hook_event_name: 'AfterTool', tool_name: 'ask_user' },
+      bins.needsTheSignal,
+    );
+    expect(geminiHeard(printed)).toContain('(TAIL_BUSY)');
   }, 60_000);
 
   it('says it in the beside mode, after a write that a rule is addressed at', async () => {
@@ -763,8 +772,18 @@ describe('the generated programs of Gemini CLI and OpenCode say a record that di
       "try { await hooks['tool.execute.before']({ tool: 'write', callID: 'c1', sessionID: 's-1' }, before); seen.push('went on'); }",
       'catch (error) { seen.push(error.message); }',
     ].join('\n');
-    const [said] = await opencode(bins.busy, driver);
-    expect(said).toContain('mnema could not answer for this write: it exited 1: TAIL_BUSY');
+    const [said] = await opencode(bins.needsTheSignal, driver);
+    expect(said).toContain('mnema could not answer for this write: it exited 1: busy. A rule');
+  }, 60_000);
+
+  it('sets the signal for the verbs it runs, so a refusal opens with its code', async () => {
+    const asked = [
+      "const after = { output: 'the answer' };",
+      "await hooks['tool.execute.after']({ tool: 'question', callID: 'c2' }, after);",
+      'seen.push(after.output);',
+    ].join('\n');
+    const [said] = await opencode(bins.needsTheSignal, asked);
+    expect(said).toContain('(TAIL_BUSY)');
   }, 60_000);
 
   it('says it beside the answer to a question, and is silent for no project', async () => {

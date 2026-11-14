@@ -300,7 +300,10 @@ function whyItDidNotAnswer(ran, timeout) {
   // reads the payload, and what it said is read as it would be had the write gone through.
   if (code !== undefined && code !== 'EPIPE') return `it could not be started (${code})`;
   if (ran.status !== 0) {
-    const said = (ran.stderr ?? '').trim().split('\n')[0] ?? '';
+    // The code a hook asks the verb to open a refusal with is not part of what it said: the reason
+    // quotes the first line of the words, as it did before the code existed.
+    const lines = (ran.stderr ?? '').trim().split('\n');
+    const said = (/^[A-Z][A-Z0-9_]*$/.test(lines[0] ?? '') ? lines[1] : lines[0]) ?? '';
     return `it exited ${ran.status ?? ran.signal}${said === '' ? '' : `: ${said.slice(0, QUOTED)}`}`;
   }
   return isAReply(ran.stdout ?? '') ? undefined : 'what it printed is not a reply a host reads';
