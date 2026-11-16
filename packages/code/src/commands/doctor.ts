@@ -92,12 +92,12 @@ import { readForkKeptAside, saysForkKeptAside } from '../fork-kept-aside.js';
 import { HOOK_HOSTS, HOSTS } from '../host-names.js';
 import { declaredRange, floorRefusal } from '../node-floor.js';
 import { oneLine } from '../one-line.js';
+import { pluginTreeHash } from '../plugin-tree-hash.js';
 import { newerLinesSentence } from '../record-integrity.js';
 import {
   personsKeyInTheClear,
   THE_AGENT_KEY_SEPARATES_NOTHING,
 } from '../the-persons-key-in-the-clear.js';
-import { pluginTreeHash } from '../plugin-tree-hash.js';
 import { isOlderThan } from '../version.js';
 import { mergeDriverLines } from './doctor-merge-driver.js';
 import { type Plan, planFix, readLocations, SETTING, settingsCandidates } from './doctor-vscode.js';
