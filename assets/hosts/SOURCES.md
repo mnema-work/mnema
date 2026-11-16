@@ -3,7 +3,9 @@
 The files in this folder are the vendors' own, as published, untouched: not recoloured, not resized in the file, not
 redrawn, and never a third party's redraw of a logo. Each is fetched from the vendor's brand page, its own repository or
 its own site, and the table of hosts in the README shows a host by its logo only for a file listed here. A host whose
-vendor publishes no logo file stays by its name. The table of the README gives every file the same height and no width, so no file is shown stretched or squashed; where a vendor
+vendor publishes no logo file stays by its name. The table of the README gives every file a height and no width, so no file is shown stretched or squashed: 20 for all, and 40
+for the Blossom of OpenAI, because its file draws the mark in about half of its box and at 20 it reads as a dot (the file is not
+changed); where a vendor
 publishes a file for a dark page, the table uses it there. The logos identify the hosts mnema works with and imply no endorsement; a vendor's
 request to remove its logo is followed. The site follows these files in its own change: until then its home page may still show the files it had.
 

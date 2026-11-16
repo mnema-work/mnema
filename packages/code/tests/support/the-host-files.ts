@@ -1517,7 +1517,13 @@ function withTheTable(page: string, base: string, path: string): string {
 /** Where the vendors' own logo files are kept, from the root of the repository, with the row that sources each. */
 export const HOST_LOGOS_DIR = 'assets/hosts';
 
-/** The one height every logo of the summary is shown at, in pixels. No width is written: the file's own proportion sets it, so no logo is stretched or squashed. */
+/**
+ * The height a logo of the summary is shown at when it names none, in pixels. No width is written:
+ * the file's own proportion sets it, so no logo is stretched or squashed. It was once the one
+ * height of every logo, on the premise that each file draws its mark across its box; the Blossom
+ * of OpenAI draws it in about half of its box, so at this height it reads as a dot, and its entry
+ * names its own height.
+ */
 const LOGO_HEIGHT = 20;
 
 /** A host's logo: the vendor's file in {@link HOST_LOGOS_DIR}, and a second one for a dark page where the vendor gives two. */
@@ -1525,6 +1531,8 @@ interface Logo {
   readonly file: string;
   readonly dark?: string;
   readonly alt: string;
+  /** The height this logo is shown at, where it is not {@link LOGO_HEIGHT}. */
+  readonly height?: number;
 }
 
 /**
@@ -1562,6 +1570,9 @@ const SHOWN: {
       file: 'OAI_OpenAI-Blossom_Black.svg',
       dark: 'OAI_OpenAI-Blossom_White.svg',
       alt: 'Codex',
+      // The file draws the mark across about half of its box (the points of its path run from 175
+      // to 541 of 716, on both axes), and the file cannot be cropped, so the height is doubled.
+      height: 40,
     },
   },
   copilot: {
@@ -1659,7 +1670,7 @@ function logoOf(name: HostName, base: string): string {
   const logo = SHOWN[name].logo;
   if (logo === undefined) return '';
   const at = (file: string) => `${base}${HOST_LOGOS_DIR}/${file}`;
-  const img = `<img src="${at(logo.file)}" height="${LOGO_HEIGHT}" align="middle" alt="${logo.alt}">`;
+  const img = `<img src="${at(logo.file)}" height="${logo.height ?? LOGO_HEIGHT}" align="middle" alt="${logo.alt}">`;
   if (logo.dark === undefined) return img;
   return `<picture><source media="(prefers-color-scheme: dark)" srcset="${at(logo.dark)}">${img}</picture>`;
 }
