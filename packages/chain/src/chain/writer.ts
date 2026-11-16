@@ -643,6 +643,21 @@ export class ChainWriter {
   }
 
   /**
+   * Refuses with {@link TailDamagedError} when the tail's end falls short of what its last
+   * checkpoint signed, and does nothing otherwise. It takes the hold and brings the writer up to
+   * what the disk holds first, so what it says is the files' state now. It is for a caller that
+   * has another refusal in hand and owes the person the real problem before it: the tail's
+   * damage comes first, because a refusal about the anchor sends someone to a file that is not
+   * the damage.
+   *
+   * @throws {TailDamagedError} the damage, exactly as an append would throw it.
+   * @throws {TailBusyError} if another process holds the tail past the wait budget.
+   */
+  refuseIfDamaged(): void {
+    this.underTailLock(() => this.refuseDamagedTail());
+  }
+
+  /**
    * Re-reads the tail's end if, and only if, its files are not where this writer left
    * them. The cheap question that keeps the expensive one rare: see {@link TailMark}.
    */

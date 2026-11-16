@@ -324,10 +324,28 @@ export function ensureFounded(ctx: WriteContext): string {
   return anchor;
 }
 
+/**
+ * What a write says when the recorded identity no longer counts its key: the damage of its own
+ * tail, when the tail has any, and the anchor's refusal otherwise. A tail that lost its founding
+ * line leaves the record without the identity the checkout recorded, so the anchor is the first
+ * thing that looks wrong, and its way out (delete the anchor) is not the damage and only moves
+ * the refusal to the next write. Asked only here, on the path that refuses: a write that passes
+ * pays nothing for it. A tail with no damage to find (one that is not there at all) falls
+ * through to the anchor's own sentence.
+ */
+function damageBefore(ctx: WriteContext, refusal: Error): Error {
+  try {
+    ctx.writer.refuseIfDamaged();
+  } catch (damage) {
+    return damage as Error;
+  }
+  return refusal;
+}
+
 function foundedAnchor(ctx: WriteContext): string {
   const recorded = recordedAnchorOf(ctx);
   if (recorded !== undefined) {
-    if (!recorded.counted) throw recorded.refusal;
+    if (!recorded.counted) throw damageBefore(ctx, recorded.refusal);
     return recorded.anchor;
   }
   // Only the path that may FOUND takes the lock: the recorded anchor above answers every
@@ -343,7 +361,7 @@ function foundedAnchor(ctx: WriteContext): string {
 function foundUnderTheLock(ctx: WriteContext): string {
   const recorded = recordedAnchorOf(ctx);
   if (recorded !== undefined) {
-    if (!recorded.counted) throw recorded.refusal;
+    if (!recorded.counted) throw damageBefore(ctx, recorded.refusal);
     return recorded.anchor;
   }
 
