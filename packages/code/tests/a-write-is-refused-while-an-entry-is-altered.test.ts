@@ -35,8 +35,15 @@ import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolveTrees } from '@mnema/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { canWrite, RUNS_OVER_AN_ALTERED_ENTRY } from '../src/a-write-over-an-altered-entry.js';
 import { closeSession, openSession, type Session } from '../src/mcp/session.js';
-import { runCaptureMemory, runCreateTask, runRecordDecision } from '../src/mcp/tools.js';
+import {
+  runCaptureMemory,
+  runCreateTask,
+  runRecordDecision,
+  runSearchTool,
+} from '../src/mcp/tools.js';
+import { buildProgram, type CliIo } from '../src/program.js';
 import { MNEMA_CLI } from './support/the-cli.js';
 
 const PLUGIN = join(fileURLToPath(new URL('../../../', import.meta.url)), 'plugin');
@@ -210,6 +217,99 @@ describe('the MCP tools over an altered entry of the public tree', () => {
       expect(attempt).toThrow(/altered after it was written/);
     }
     expect(theRecord()).toBe(before);
+  });
+});
+
+describe('a session that read the record before it was altered', () => {
+  it('is refused its next write: the write asks the chain as it stands now', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'mnema-refuse-altered-warm-'));
+    try {
+      const warmHome = join(dir, 'home');
+      const warmRepo = join(dir, 'repo');
+      for (const path of [warmHome, warmRepo]) mkdirSync(path, { recursive: true });
+      const there = (...args: string[]) =>
+        spawnSync(process.execPath, [MNEMA_CLI, ...args], {
+          cwd: warmRepo,
+          encoding: 'utf-8',
+          env: { PATH: process.env.PATH ?? '', HOME: warmHome, GIT_CONFIG_NOSYSTEM: '1' },
+        });
+      expect(there('init', '--yes', '--hosts', 'none').status).toBe(0);
+      expect(there('decision', 'record', 'Use pnpm', 'Because the lockfile').status).toBe(0);
+      const warm = openSession({
+        clientName: 'claude-code',
+        roots: [pathToFileURL(warmRepo).href],
+        env: { home: warmHome },
+      });
+      try {
+        // The connection reads first, so it holds a cache that agrees with the honest record.
+        expect(runSearchTool(warm)).toBeDefined();
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 40);
+        const file = segmentOf(resolveTrees(warmRepo, { home: warmHome }).projectPublic as string);
+        const held = readFileSync(file, 'utf-8');
+        writeFileSync(file, held.replace('Use pnpm', EVIL));
+        const before = readFileSync(file, 'utf-8');
+        expect(() => runCaptureMemory(warm, { content: 'after the alteration' })).toThrow(
+          /altered after it was written/,
+        );
+        expect(readFileSync(file, 'utf-8')).toBe(before);
+      } finally {
+        closeSession(warm);
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('the verbs the command line lets through', () => {
+  const io: CliIo = { out: () => undefined, err: () => undefined, fail: () => undefined };
+  const { program, verbs } = buildProgram(io, []);
+  const at = (path: string) => {
+    let node = program;
+    for (const word of path.split(' ')) {
+      const next = node.commands.find((one) => one.name() === word);
+      if (next === undefined) throw new Error(`no verb ${path}`);
+      node = next;
+    }
+    return node;
+  };
+
+  it('stands in front of what writes and behind what reads or only touches the key files', () => {
+    for (const path of [
+      'memory',
+      'decision record',
+      'decision move',
+      'switch off',
+      'tail prune',
+      'witness upgrade',
+      'task move',
+      'init',
+      'after-a-write',
+    ]) {
+      expect(canWrite(verbs, at(path)), path).toBe(true);
+    }
+    for (const path of [
+      'status',
+      'search',
+      'verify',
+      'task next',
+      'record pull',
+      'before-a-write',
+      'mcp',
+      'tail list',
+      'key restore',
+      'key request',
+    ]) {
+      expect(canWrite(verbs, at(path)), path).toBe(false);
+    }
+  });
+
+  it('names, for each verb it lets through, one that declares it can write', () => {
+    for (const path of Object.keys(RUNS_OVER_AN_ALTERED_ENTRY)) {
+      const top = verbs.find((one) => one.act.name() === path.split(' ')[0]);
+      expect(top?.effect, path).toBe('mutates');
+      expect(at(path).name()).toBe(path.split(' ').at(-1));
+    }
   });
 });
 

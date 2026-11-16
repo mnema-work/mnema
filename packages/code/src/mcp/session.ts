@@ -85,10 +85,11 @@ import {
 } from '@mnema/core/write';
 import { FoundingWatch } from '../a-new-identity.js';
 import { RecordPageWatch } from '../commands/the-record-page.js';
+import type { ScopedTree } from '../intelligence-source.js';
 import { oneLine } from '../one-line.js';
 import { replacementNotice } from '../recorded-content.js';
 import { type Journal, journalFile, markEnded, readJournal } from '../session-journal.js';
-import { linkBreaksOf, THE_CHAIN_AS_IT_STANDS_NOW } from '../tree-sources.js';
+import { linkBreaksOf, THE_READING_THAT_OPENED_THESE, withTreesRead } from '../tree-sources.js';
 import { refuseWhileAltered } from '../what-a-write-meets.js';
 import { type CacheRegistry, createCacheRegistry } from './cache-registry.js';
 import {
@@ -1045,19 +1046,29 @@ export function openWrite(session: Session, scope: Scope, target?: WriteTarget):
 /**
  * Refuses, before anything is opened, a write over a record with an entry whose hash does not hold
  * in any tree the destination reaches: its public and private trees and the machine's global one.
- * The chain is asked as it stands now, over the caches this connection already holds (a cache it
- * has not opened is opened here, as a read would), so an entry altered after the last read is seen
- * by the next write and not by the one after it. A tree with no files is not asked: asking would
- * make one.
+ *
+ * A cache this connection already holds is brought into agreement with its chain first, as a read
+ * does (`get` costs one stat while nothing moved, and replays what did): the cheap reading a write
+ * makes of its caches cannot see a line rewritten below what the cache already took, and an entry
+ * altered after the connection last read is the case that matters. A tree the connection holds no
+ * cache over is read once and let go, IN MEMORY AND OUTSIDE THE REGISTRY, so that asking leaves the
+ * session as it was: a connection that only writes still has no cache to be told a gap or a fork
+ * from, which is what the reply of a write says of it (`linkBreakBlockOnWrite`). A tree with no
+ * files is not asked: asking would make one.
  */
 function refuseWhileAnEntryIsAltered(session: Session, trees: ResolvedTrees): void {
-  const held = new Map(session.caches.opened().map((open) => [open.chainRoot, open.cache]));
-  const asked: ScopedCache[] = [];
+  const held = new Set(session.caches.opened().map((open) => open.chainRoot));
+  const warm: ScopedCache[] = [];
+  const cold: ScopedTree[] = [];
   for (const { scope, chainRoot } of reachableTrees(trees)) {
     if (!existsSync(chainRoot)) continue;
-    asked.push({ scope, chainRoot, cache: held.get(chainRoot) ?? session.caches.get(chainRoot) });
+    if (held.has(chainRoot)) warm.push({ scope, chainRoot, cache: session.caches.get(chainRoot) });
+    else cold.push({ scope, chainRoot });
   }
-  refuseWhileAltered(linkBreaksOf(asked, THE_CHAIN_AS_IT_STANDS_NOW));
+  refuseWhileAltered([
+    ...linkBreaksOf(warm, THE_READING_THAT_OPENED_THESE),
+    ...withTreesRead(cold, (read) => linkBreaksOf(read, THE_READING_THAT_OPENED_THESE)),
+  ]);
 }
 
 /**

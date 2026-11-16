@@ -27,6 +27,13 @@ export const RUNS_OVER_AN_ALTERED_ENTRY: Readonly<Record<string, string>> = {
   'tail list': 'It lists the tails and appends nothing.',
   'key restore':
     'It puts a key file back and appends nothing; it is the way out of a refused write.',
+  'record pull':
+    'It is `git pull` over the record and appends nothing: it is how a restored line arrives.',
+  'record merge-tail':
+    'It is the merge driver git runs for a tail’s files and appends nothing; refusing it would stop a merge.',
+  'commit-hook install': 'It writes a git hook and touches no record.',
+  'commit-hook remove': 'It removes a git hook and touches no record.',
+  'commit-hook suggest': 'It appends a suggestion to a commit message file and touches no record.',
   'key request': 'It prints the line a member enrolls and appends nothing.',
   'key protect': 'It encrypts the private key files and appends nothing.',
   'key unprotect': 'It writes the private key files back in the clear and appends nothing.',
@@ -51,25 +58,23 @@ export function canWrite(verbs: readonly Declared[], action: Command): boolean {
 }
 
 /**
- * Throws the refusal when any tree this process reaches holds an altered entry. A tree with no files
- * is not opened (asking would make one), and the caches are the ones every read of the project keeps.
+ * Throws the refusal when any tree this process reaches holds an altered entry.
+ *
+ * THE TREES ARE READ IN MEMORY AND NOTHING IS LEFT BEHIND: a verb that can write is also one that
+ * reports a plan and writes nothing (`init --dry-run`) or is refused, and asking must not leave a
+ * projection file in a project that was only looked at. The price is a replay of each chain, which
+ * is what a workspace read pays. A tree with no files is not opened: asking would make one.
  */
 export async function refuseTheWriteOverAnAlteredEntry(trees: ResolvedTrees): Promise<void> {
-  const reached = new Set(
-    reachableTrees(trees)
-      .filter((one) => existsSync(one.chainRoot))
-      .map((one) => one.scope),
-  );
-  if (reached.size === 0) return;
+  const reached = reachableTrees(trees).filter((one) => existsSync(one.chainRoot));
+  if (reached.length === 0) return;
   // Loaded here, not at the top: only a verb that writes asks, and a read does not pay for the
   // record's modules to be read twice (`the-floor-is-the-declaration.test.ts`).
-  const { linkBreaksOf, SCOPES, THE_READING_THAT_OPENED_THESE, withOpenedCaches } = await import(
+  const { linkBreaksOf, THE_READING_THAT_OPENED_THESE, withTreesRead } = await import(
     './tree-sources.js'
   );
   const { refuseWhileAltered } = await import('./what-a-write-meets.js');
-  const facts = withOpenedCaches(trees, (open, opened) => {
-    for (const scope of SCOPES) if (reached.has(scope)) open(scope);
-    return linkBreaksOf(opened, THE_READING_THAT_OPENED_THESE);
-  });
-  refuseWhileAltered(facts);
+  refuseWhileAltered(
+    withTreesRead(reached, (read) => linkBreaksOf(read, THE_READING_THAT_OPENED_THESE)),
+  );
 }

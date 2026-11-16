@@ -79,6 +79,8 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'holds the console follower, which opens no cache and reads the tail past where the session stood: there is no warm or cold state to vary',
   'packages/core/src/projections/an-entry-whose-hash-fails-is-left-out.test.ts':
     'is the cache’s own test: it opens the cache cold, with a connection that read before the alteration, and kept on disk, over one altered tail',
+  'packages/code/tests/a-write-is-refused-while-an-entry-is-altered.test.ts':
+    'judges the write door, which asks the chain as it stands now in memory and over no cache the command line keeps; the one state a cache can vary for a write, a session that read before the alteration, is its own case',
   // Declared debt: damage a record and judge it, and run only in the state the last write left.
   'packages/code/tests/the-ci-recipe-catches-what-verify-cannot.test.ts':
     'DEBT: damaged records judged by the published CI recipe in a sandbox, a base clone and a bin directory built once in a beforeAll; each case needs its own found/damage/run split',
