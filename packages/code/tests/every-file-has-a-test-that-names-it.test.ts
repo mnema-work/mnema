@@ -1092,6 +1092,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-tail-merges-and-pulls.test.ts': 10,
   'packages/code/tests/a-tail-that-arrives-is-held-to-the-base.test.ts': 8,
   'packages/code/tests/a-tail-that-holds-keys-is-not-cut-without-naming-them.test.ts': 7,
+  'packages/code/tests/a-tail-with-no-founding-line-says-what-is-missing.test.ts': 6,
   'packages/code/tests/a-task-carries-its-prose.test.ts': 10,
   'packages/code/tests/a-terminal-of-its-own.test.ts': 20,
   'packages/code/tests/a-tool-answers-without-indentation.test.ts': 11,
