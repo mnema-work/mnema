@@ -62,6 +62,7 @@ import {
   existsSync,
   mkdirSync,
   openSync,
+  readFileSync,
   readSync,
   statSync,
   truncateSync,
@@ -104,6 +105,7 @@ import { materializePublicKey, signerOf, writeAnchor } from './keystore.js';
 import {
   type ChainLayout,
   checkpointsPath,
+  installationIdPath,
   segmentPath,
   tailDir,
   tailLockPath,
@@ -667,7 +669,7 @@ export class ChainWriter {
   refuseIfDamaged(): void {
     this.underTailLock(() => {
       this.refuseDamagedTail();
-      const startsAt = this.firstSeqOfTheTail();
+      const startsAt = firstSeqOfTheTail(this.layout, this.tailId, this.upcasters);
       if (startsAt !== undefined && startsAt !== 0) {
         throw new TailDamagedError(
           this.tailId,
@@ -678,28 +680,6 @@ export class ChainWriter {
         );
       }
     });
-  }
-
-  /**
-   * The seq of the first line of the tail's first segment, or undefined where there is none to
-   * read (no segment, an empty one, or a first line that does not parse: other refusals say
-   * those). Read from the file, bounded to its first line.
-   */
-  private firstSeqOfTheTail(): number | undefined {
-    const first = orderedSegments(this.layout, this.tailId)[0];
-    if (first === undefined) return undefined;
-    const fd = openSync(first, 'r');
-    try {
-      const buffer = Buffer.alloc(1 << 20);
-      const read = readSync(fd, buffer, 0, buffer.length, 0);
-      const end = buffer.subarray(0, read).indexOf(0x0a);
-      if (end < 0) return undefined;
-      return parseEntry(buffer.subarray(0, end).toString('utf-8'), this.upcasters).link.seq;
-    } catch {
-      return undefined;
-    } finally {
-      closeSync(fd);
-    }
   }
 
   /**
@@ -1362,9 +1342,9 @@ function tailDamage(
     return (
       `this machine's tail ${tail} begins at seq ${startsAt} and not at seq 0: the start of the ` +
       'tail is missing (its first segment file), which no crash leaves. This write was not ' +
-      'appended, and the tail was left as it was. A read of the record fails on it: compare its ' +
-      'files with the last copy you trust (the repository, a backup) and put them back before ' +
-      'writing again.'
+      'appended, and the tail was left as it was. A read of the record shows it as a seq gap: ' +
+      'compare its files with the last copy you trust (the repository, a backup) and put them ' +
+      'back before writing again.'
     );
   }
   if (checkpointsEndAt !== undefined) {
@@ -1393,6 +1373,73 @@ function tailDamage(
     'newline, so a pass does not clear this tail: compare its files with the last copy you ' +
     'trust (the repository, a backup) and put them back before writing again.'
   );
+}
+
+/**
+ * The seq of the first line of a tail's first segment, or undefined where there is none to read
+ * (no segment, an empty one, a first line that does not parse or that is longer than the read,
+ * or a segment that vanished between the listing and the open: other refusals say those). Read
+ * from the file, bounded to its first line.
+ */
+function firstSeqOfTheTail(
+  layout: ChainLayout,
+  tailId: string,
+  upcasters: UpcasterRegistry,
+): number | undefined {
+  const first = orderedSegments(layout, tailId)[0];
+  if (first === undefined) return undefined;
+  let fd: number | undefined;
+  try {
+    fd = openSync(first, 'r');
+    const buffer = Buffer.alloc(1 << 20);
+    const read = readSync(fd, buffer, 0, buffer.length, 0);
+    const end = buffer.subarray(0, read).indexOf(0x0a);
+    if (end < 0) return undefined;
+    return parseEntry(buffer.subarray(0, end).toString('utf-8'), upcasters).link.seq;
+  } catch {
+    return undefined;
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+  }
+}
+
+/**
+ * The damage the tail of this installation shows, asked of the disk and of nothing else: no
+ * writer is opened, no lock is taken and no file is written, so a command that only says what a
+ * write would say (`mnema init`) can ask it and leave the machine as it found it. Undefined where
+ * there is no damage to name: no installation id kept, a tail that is not there at all, or one
+ * whose files end where its checkpoints say and begin at seq 0.
+ *
+ * It names what a writer's own reading names first (the end of the tail short of what its last
+ * checkpoint signed, and a start above seq 0), and not what that reading names from a signed
+ * note of this key's last write (checkpoints taken out or replaced under a whole end): that one
+ * needs the key's note and the writer's resync.
+ */
+export function readTailDamage(
+  layout: ChainLayout,
+  fingerprint: string,
+  upcasters: UpcasterRegistry,
+): TailDamagedError | undefined {
+  let installationId: string;
+  try {
+    installationId = readFileSync(installationIdPath(layout, fingerprint), 'utf-8').trim();
+  } catch {
+    return undefined;
+  }
+  if (installationId === '') return undefined;
+  const tailId = `${fingerprint}-${installationId}`;
+  if (!existsSync(tailDir(layout, tailId))) return undefined;
+  const lastCp = lastTailCheckpoint(layout, tailId);
+  const lastComplete =
+    readTailTip(layout, tailId, upcasters, lastCp?.toSeq ?? -1).at(-1)?.link.seq ?? -1;
+  if (lastCp !== undefined && lastComplete < lastCp.toSeq) {
+    return new TailDamagedError(tailId, lastCp.toSeq, lastComplete);
+  }
+  const startsAt = firstSeqOfTheTail(layout, tailId, upcasters);
+  if (startsAt !== undefined && startsAt !== 0) {
+    return new TailDamagedError(tailId, lastCp?.toSeq ?? -1, lastComplete, undefined, startsAt);
+  }
+  return undefined;
 }
 
 /**

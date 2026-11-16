@@ -52,7 +52,7 @@ import {
   establishIdentity,
   openTreeForWriting,
   recordedAnchorOf,
-  refusalBeforeTheAnchor,
+  refusalBeforeTheAnchorRead,
   signerFor,
 } from '@mnema/core/write';
 import { basesNeverImported, type UnimportedBase } from '../outside-the-record.js';
@@ -260,13 +260,11 @@ export function runInit(ctx: InitContext): InitResult | InitRefused {
       return { created: false, root, anchor: authorizingAnchor(asked), ...completed };
     }
     if (recorded.counted) return { created: false, root, anchor: recorded.anchor, ...completed };
-    // The refusal a write would say FIRST: the damage of the tail, when it has any (a writer is
-    // opened for that, and only here: this key already wrote in this tree, so its installation
-    // id is kept and opening it leaves nothing new behind), the anchor's own otherwise.
-    const refusal = refusalBeforeTheAnchor(
-      { writer: openTreeForWriting(trees, 'public') },
-      recorded.refusal,
-    );
+    // The refusal a write would say FIRST: the damage of the tail, when it has any, and the
+    // anchor's own otherwise. Read from the disk with no writer opened, no lock taken and nothing
+    // written (`refusalBeforeTheAnchorRead`), so this still leaves every file as it found it, and
+    // a tail another session holds does not make `init` fail.
+    const refusal = refusalBeforeTheAnchorRead(asked, recorded.refusal);
     return {
       created: false,
       root,

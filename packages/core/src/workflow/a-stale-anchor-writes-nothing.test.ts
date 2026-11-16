@@ -518,6 +518,8 @@ describe('a checkout the key left writes nothing, through every write of the sur
     openTreeForWriting: 'opens a writer; the write is the caller’s',
     recordedAnchorOf:
       'asks the question every append asks: whether the recorded identity counts the key',
+    refusalBeforeTheAnchorRead:
+      'reads the tail’s damage from the disk to say what a write would say; opens no writer and appends nothing',
     refusalBeforeTheAnchor:
       'says which refusal a write earns first, the damaged tail’s or the anchor’s; appends nothing',
     runRuleChecks:

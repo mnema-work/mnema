@@ -179,6 +179,7 @@ export {
   type RecordedAnchor,
   recordedAnchorOf,
   refusalBeforeTheAnchor,
+  refusalBeforeTheAnchorRead,
   retireAgent,
   revokeKey,
 } from './workflow/identity-operations.js';

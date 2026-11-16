@@ -40,6 +40,7 @@ import {
   listRegistrations,
   materializePublicKey,
   type RegistrationFault,
+  readTailDamage,
   TailDamagedError,
   type UpcasterRegistry,
 } from '@mnema/chain';
@@ -348,6 +349,24 @@ export function refusalBeforeTheAnchor(
     throw error;
   }
   return refusal;
+}
+
+/**
+ * {@link refusalBeforeTheAnchor} for a caller that only SAYS what a write would say and must
+ * leave the machine as it found it (`mnema init`): the tail's damage is read from the disk
+ * ({@link readTailDamage}), with no writer opened, no lock taken and nothing written, and a
+ * question that cannot be answered (a file that cannot be read, a tail held by another session)
+ * is not a failure of the caller: the anchor's own refusal stands, as it did before the question.
+ */
+export function refusalBeforeTheAnchorRead(
+  ctx: AnchorContext,
+  refusal: IdentityUnavailableError,
+): IdentityUnavailableError | TailDamagedError {
+  try {
+    return readTailDamage(ctx.layout, ctx.writer.signerFingerprint, ctx.upcasters) ?? refusal;
+  } catch {
+    return refusal;
+  }
 }
 
 function foundedAnchor(ctx: WriteContext): string {

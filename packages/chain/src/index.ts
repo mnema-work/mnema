@@ -256,6 +256,7 @@ export {
   DEFAULT_MAX_UNSIGNED_EVENTS,
   describeNewTail,
   type NewTail,
+  readTailDamage,
   TailDamagedError,
   type WriterOptions,
 } from './chain/writer.js';
