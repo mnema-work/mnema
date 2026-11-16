@@ -1719,7 +1719,7 @@ export function installTable(): string {
 
 /** The line that opens the generated table on the install page. */
 const INSTALL_BEGIN =
-  '<!-- The host table below is generated from packages/code/src/host-names.ts: edit the table there. -->';
+  '<!-- The host table below is generated: the rows, their order, the rungs and the install lines come from packages/code/src/host-names.ts, the names shown from SHOWN in packages/code/tests/support/the-host-files.ts. -->';
 
 /** The line that closes it. */
 const INSTALL_END = '<!-- End of the generated host table. -->';
@@ -1734,7 +1734,7 @@ function withTheInstallTable(page: string, path: string): string {
 
 /** The line that opens the generated summary on a page. */
 const SUMMARY_BEGIN =
-  '<!-- The host summary below is generated: the host names are edited in packages/code/src/host-names.ts, the logo files and their heights in SHOWN in packages/code/tests/support/the-host-files.ts. -->';
+  '<!-- The host summary below is generated: the rows, their order, the rungs, what each gets and the install links come from packages/code/src/host-names.ts, the names, the vendor lines, the logo files and their heights from SHOWN in packages/code/tests/support/the-host-files.ts. -->';
 
 /** The line that closes it. */
 const SUMMARY_END = '<!-- End of the generated host summary. -->';

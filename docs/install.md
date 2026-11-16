@@ -97,7 +97,7 @@ One line for each host. The rung is how far the host takes the record, one rung 
 server and rules in a file, (b) the opening of a session, (c) a refusal before a write, (d) a pause for a
 person ([how each cell is known](evidence.md#each-hosts-rung)).
 
-<!-- The host table below is generated from packages/code/src/host-names.ts: edit the table there. -->
+<!-- The host table below is generated: the rows, their order, the rungs and the install lines come from packages/code/src/host-names.ts, the names shown from SHOWN in packages/code/tests/support/the-host-files.ts. -->
 
 | Host | Rung | Install |
 | :--- | :---: | :--- |
