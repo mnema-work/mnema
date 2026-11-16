@@ -32,7 +32,7 @@ export const RUNS_OVER_AN_ALTERED_ENTRY: Readonly<Record<string, string>> = {
   'record merge-tail':
     'It is the merge driver git runs for a tail’s files and appends nothing; refusing it would stop a merge.',
   'commit-hook install': 'It writes a git hook and touches no record.',
-  'commit-hook remove': 'It removes a git hook and touches no record.',
+  'commit-hook uninstall': 'It removes a git hook and touches no record.',
   'commit-hook suggest': 'It appends a suggestion to a commit message file and touches no record.',
   'key request': 'It prints the line a member enrolls and appends nothing.',
   'key protect': 'It encrypts the private key files and appends nothing.',
@@ -74,7 +74,17 @@ export async function refuseTheWriteOverAnAlteredEntry(trees: ResolvedTrees): Pr
     './tree-sources.js'
   );
   const { refuseWhileAltered } = await import('./what-a-write-meets.js');
-  refuseWhileAltered(
-    withTreesRead(reached, (read) => linkBreaksOf(read, THE_READING_THAT_OPENED_THESE)),
-  );
+  // ONE TREE AT A TIME, so a line that cannot be read in one is not a reason to leave another unasked:
+  // that line is not answered here (the verb meets it and refuses as it always did, `program.ts`),
+  // and an altered entry in any other tree still is.
+  const { UnreadableLineError } = await import('@mnema/chain');
+  const facts = reached.flatMap((tree) => {
+    try {
+      return withTreesRead([tree], (read) => linkBreaksOf(read, THE_READING_THAT_OPENED_THESE));
+    } catch (error) {
+      if (error instanceof UnreadableLineError) return [];
+      throw error;
+    }
+  });
+  refuseWhileAltered(facts);
 }
