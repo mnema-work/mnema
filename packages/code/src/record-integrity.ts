@@ -65,15 +65,22 @@
  * measurement), and `verify` is not reachable from the MCP at all, so "call `verify`"
  * would be a pointer at a door the agent does not have.
  *
- * ## Why a write is told and not REFUSED
+ * ## Why a write is told for a gap or a fork, and refused for an altered or an unreadable entry
  *
- * The same ruling the read made, for a reason of its own. The record is append-only and
- * the break is BEHIND: the new event chains from the last hash the tail held, so it is
- * sound from there forward and nothing about it is made worse by landing. Refusing would
- * turn a broken chain into a stopped product, and a record whose purpose is to survive
- * the accident cannot decline to work after one. The exit code and the `isError` flag
- * stay what they were, for the reason they do on a read: the act DID happen, and ruling
- * on the record is a verb of its own.
+ * The record is append-only and a gap or a fork is BEHIND: the new event chains from the last hash
+ * the tail held, so it is sound from there forward and nothing about it is made worse by landing.
+ * Refusing would turn a broken chain into a stopped product, and a record whose purpose is to
+ * survive the accident cannot decline to work after one. So for those two a write is told, and the
+ * exit code and the `isError` flag stay what they were, for the reason they do on a read: the act
+ * DID happen, and ruling on the record is a verb of its own.
+ *
+ * An entry whose hash does not hold, and a line no parser can open, are not behind. The first is a
+ * line somebody changed and the second one this mnema cannot read, so the record's own proof of
+ * what it says is gone at that line, and a new entry signed over it would be taken by the next
+ * reader for the record's word on a record that no longer answers for itself. Those two are
+ * REFUSED, by every write and by `switch off`, which is a write to the same record (ADR-396); the
+ * words are `what-a-write-meets.ts`, and the reading around them degrades (they are left out of
+ * the answer and said first).
  */
 
 import type { RecordGroup } from '@mnema/chain';

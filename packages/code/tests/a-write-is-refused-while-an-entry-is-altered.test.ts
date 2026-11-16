@@ -9,7 +9,8 @@
  *   - every verb of the command line that writes (`memory`, `decision record`, `decision move`, `switch off`,
  *     `tail prune`, `witness`) exits non-zero with the sentence that names the tail and the line and says the
  *     entry is to be put back from the repository's history, and no tail of any tree has a byte more or less;
- *   - the MCP tools that write answer `Refused (ALTERED_ENTRY)`, say the fact was not recorded, and write nothing;
+ *   - the tools of the MCP server that write throw the same refusal at the one door they open through (the server
+ *     answers it `Refused (ALTERED_ENTRY)` with the fact not recorded, as it does every refusal), and write nothing;
  *   - a hook that writes (`after-a-write` copying a note of the host's memory) refuses the same way and the
  *     plugin's handler hands the line to the model;
  *   - in the private tree the sentence is the one an unversioned record gets: it never names `tail repair`,

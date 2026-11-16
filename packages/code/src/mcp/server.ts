@@ -2507,11 +2507,12 @@ function served(
  * ({@link withRunState}'s sentence about the connection), because they are about this
  * connection rather than about the record.
  *
- * It does not REFUSE, and that is the same ruling the read made. Nothing is lost when a
- * tail stops chaining, the break is behind, and the new event chains from the last hash
- * it found, so it is sound from there forward. Refusing would turn a broken chain into
- * a stopped product, and an append-only record exists to survive the accident rather
- * than to decline to work after it. `record-integrity.ts` holds the argument in full.
+ * It does not REFUSE a gap or a fork, and that is the same ruling the read made: nothing is lost
+ * when a tail stops chaining, the break is behind, and the new event chains from the last hash it
+ * found, so it is sound from there forward. An altered or an unreadable entry is not behind and
+ * is not told here: the write was refused before it began, at the door every write opens through
+ * (`openWrite`), so what this composes over such a record is only the reply to a call that read.
+ * `record-integrity.ts` holds the argument in full.
  */
 function replied(
   session: Session,
