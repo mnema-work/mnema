@@ -818,6 +818,7 @@ describe('every write refuses what no read could accept', () => {
     onTheRecordAsItStands: 'holds the lock around a judgement; the write is the caller’s',
     openTreeForWriting: 'opens a writer; the write is the caller’s',
     recordedAnchorOf: 'asks whether the recorded identity still counts the key; appends nothing',
+    refusalBeforeTheAnchor: 'says which refusal a write earns first; appends nothing',
     requestAgentEnrollment:
       'produces an agent request and may mint the agent’s key, but appends no event',
     requestEnrollment: 'produces a request and may mint a key, but appends no event',

@@ -518,6 +518,8 @@ describe('a checkout the key left writes nothing, through every write of the sur
     openTreeForWriting: 'opens a writer; the write is the caller’s',
     recordedAnchorOf:
       'asks the question every append asks: whether the recorded identity counts the key',
+    refusalBeforeTheAnchor:
+      'says which refusal a write earns first, the damaged tail’s or the anchor’s; appends nothing',
     runRuleChecks:
       'signs under the checker’s own anchor, which no identity retires; a key that is not a checker is refused before it appends',
     requestAgentEnrollment:

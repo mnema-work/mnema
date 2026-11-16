@@ -1361,10 +1361,10 @@ function tailDamage(
   if (startsAt !== undefined) {
     return (
       `this machine's tail ${tail} begins at seq ${startsAt} and not at seq 0: the start of the ` +
-      'tail is missing (its first segment file, which no crash and no `mnema tail prune` ' +
-      'leaves). This write was not appended, and the tail was left as it was. `mnema verify` ' +
-      'fails on it: compare its files with the last copy you trust (the repository, a backup) ' +
-      'and put them back before writing again.'
+      'tail is missing (its first segment file), which no crash leaves. This write was not ' +
+      'appended, and the tail was left as it was. A read of the record fails on it: compare its ' +
+      'files with the last copy you trust (the repository, a backup) and put them back before ' +
+      'writing again.'
     );
   }
   if (checkpointsEndAt !== undefined) {
