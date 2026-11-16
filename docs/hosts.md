@@ -127,8 +127,8 @@ installed from a checkout of this repository, where it is the folder `plugin/gem
 the release you run (`main` can be ahead of it):
 
 ```bash
-git clone --branch v0.1.8 https://github.com/mnema-work/mnema.git
-gemini extensions install mnema/plugin/gemini
+git clone --branch v0.1.8 https://github.com/mnema-work/mnema.git /path/to/mnema
+gemini extensions install /path/to/mnema/plugin/gemini
 ```
 
 The host asks you to consent to the install, and reads the extension from the next session on. The
@@ -150,8 +150,8 @@ extension of its own and copies it into your home. From a checkout of this repos
 release you run (`main` can be ahead of it):
 
 ```bash
-git clone --branch v0.1.8 https://github.com/mnema-work/mnema.git
-qwen extensions install mnema/plugin
+git clone --branch v0.1.8 https://github.com/mnema-work/mnema.git /path/to/mnema
+qwen extensions install /path/to/mnema/plugin
 ```
 
 The host asks you to consent to the install, and reads the extension from the next session on. The
