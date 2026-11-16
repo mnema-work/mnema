@@ -44,8 +44,6 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'holds what the server answers to a client that skips the handshake; no record is damaged',
   'packages/code/tests/a-rule-carries-its-check.test.ts':
     'holds the check runner and the key that signs only results; the record is built by the product and never damaged',
-  'packages/code/tests/a-tail-with-no-founding-line-says-what-is-missing.test.ts':
-    'holds which refusal a write that meets a damaged tail says first; the writer reads the tail on disk under its lock and no projection cache is what answers',
   'packages/code/tests/a-write-says-what-it-founded.test.ts':
     'holds the sentence a founding write prints; the records are built by the product and never damaged',
   'packages/code/tests/every-write-signs-what-it-wrote.test.ts':

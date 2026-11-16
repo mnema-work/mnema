@@ -57,7 +57,16 @@
  * is born or sealed ({@link AnotherRecordError}).
  */
 
-import { existsSync, mkdirSync, statSync, truncateSync, writeFileSync } from 'node:fs';
+import {
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  readSync,
+  statSync,
+  truncateSync,
+  writeFileSync,
+} from 'node:fs';
 import { dirname } from 'node:path';
 
 import type { CatalogEvent } from '../events/catalog.js';
@@ -644,7 +653,9 @@ export class ChainWriter {
 
   /**
    * Refuses with {@link TailDamagedError} when the tail's end falls short of what its last
-   * checkpoint signed, and does nothing otherwise. It takes the hold and brings the writer up to
+   * checkpoint signed, or when its first segment does not begin at seq 0 (a start that is
+   * missing: `tail prune` removes a tail whole and never a segment, so a tail that begins
+   * higher lost its first file), and does nothing otherwise. It takes the hold and brings the writer up to
    * what the disk holds first, so what it says is the files' state now. It is for a caller that
    * has another refusal in hand and owes the person the real problem before it: the tail's
    * damage comes first, because a refusal about the anchor sends someone to a file that is not
@@ -654,7 +665,41 @@ export class ChainWriter {
    * @throws {TailBusyError} if another process holds the tail past the wait budget.
    */
   refuseIfDamaged(): void {
-    this.underTailLock(() => this.refuseDamagedTail());
+    this.underTailLock(() => {
+      this.refuseDamagedTail();
+      const startsAt = this.firstSeqOfTheTail();
+      if (startsAt !== undefined && startsAt !== 0) {
+        throw new TailDamagedError(
+          this.tailId,
+          this.lastCheckpointedSeq,
+          this.nextSeq - 1,
+          undefined,
+          startsAt,
+        );
+      }
+    });
+  }
+
+  /**
+   * The seq of the first line of the tail's first segment, or undefined where there is none to
+   * read (no segment, an empty one, or a first line that does not parse: other refusals say
+   * those). Read from the file, bounded to its first line.
+   */
+  private firstSeqOfTheTail(): number | undefined {
+    const first = orderedSegments(this.layout, this.tailId)[0];
+    if (first === undefined) return undefined;
+    const fd = openSync(first, 'r');
+    try {
+      const buffer = Buffer.alloc(1 << 20);
+      const read = readSync(fd, buffer, 0, buffer.length, 0);
+      const end = buffer.subarray(0, read).indexOf(0x0a);
+      if (end < 0) return undefined;
+      return parseEntry(buffer.subarray(0, end).toString('utf-8'), this.upcasters).link.seq;
+    } catch {
+      return undefined;
+    } finally {
+      closeSync(fd);
+    }
   }
 
   /**
@@ -1297,8 +1342,10 @@ export class TailDamagedError extends CodedError {
      * installation signed says this key signed ({@link readWrittenHead}).
      */
     readonly checkpointsEndAt?: number,
+    /** Set when the tail's first line is not seq 0: the seq it begins at. */
+    readonly startsAt?: number,
   ) {
-    super(tailDamage(tail, signedThrough, lastComplete, checkpointsEndAt));
+    super(tailDamage(tail, signedThrough, lastComplete, checkpointsEndAt, startsAt));
     this.name = 'TailDamagedError';
   }
 }
@@ -1309,7 +1356,17 @@ function tailDamage(
   signedThrough: number,
   lastComplete: number,
   checkpointsEndAt: number | undefined,
+  startsAt?: number,
 ): string {
+  if (startsAt !== undefined) {
+    return (
+      `this machine's tail ${tail} begins at seq ${startsAt} and not at seq 0: the start of the ` +
+      'tail is missing (its first segment file, which no crash and no `mnema tail prune` ' +
+      'leaves). This write was not appended, and the tail was left as it was. `mnema verify` ' +
+      'fails on it: compare its files with the last copy you trust (the repository, a backup) ' +
+      'and put them back before writing again.'
+    );
+  }
   if (checkpointsEndAt !== undefined) {
     const now =
       checkpointsEndAt < 0

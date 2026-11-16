@@ -52,6 +52,7 @@ import {
   establishIdentity,
   openTreeForWriting,
   recordedAnchorOf,
+  refusalBeforeTheAnchor,
   signerFor,
 } from '@mnema/core/write';
 import { basesNeverImported, type UnimportedBase } from '../outside-the-record.js';
@@ -149,7 +150,7 @@ export interface InitResult {
     readonly gitignore?: true;
   };
   readonly writeRefused?: {
-    readonly code: IdentityUnavailableError['code'];
+    readonly code: IdentityUnavailableError['code'] | 'TAIL_DAMAGED';
     readonly message: string;
     /** Where this machine keeps the key file `mnema key restore "<the key file>"` means. */
     readonly keyFile?: string;
@@ -259,7 +260,13 @@ export function runInit(ctx: InitContext): InitResult | InitRefused {
       return { created: false, root, anchor: authorizingAnchor(asked), ...completed };
     }
     if (recorded.counted) return { created: false, root, anchor: recorded.anchor, ...completed };
-    const { refusal } = recorded;
+    // The refusal a write would say FIRST: the damage of the tail, when it has any (a writer is
+    // opened for that, and only here: this key already wrote in this tree, so its installation
+    // id is kept and opening it leaves nothing new behind), the anchor's own otherwise.
+    const refusal = refusalBeforeTheAnchor(
+      { writer: openTreeForWriting(trees, 'public') },
+      recorded.refusal,
+    );
     return {
       created: false,
       root,
@@ -270,7 +277,7 @@ export function runInit(ctx: InitContext): InitResult | InitRefused {
         message: refusal.message,
         // The file is said where the words name the restore that takes it: the same path the
         // command line's catch builds for a refused write, from the same key root.
-        ...(refusal.restores !== undefined
+        ...('restores' in refusal && refusal.restores !== undefined
           ? { keyFile: privateKeyPath({ root: trees.keyRoot }, refusal.restores) }
           : {}),
       },

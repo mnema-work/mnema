@@ -178,6 +178,7 @@ export {
   linkAccount,
   type RecordedAnchor,
   recordedAnchorOf,
+  refusalBeforeTheAnchor,
   retireAgent,
   revokeKey,
 } from './workflow/identity-operations.js';

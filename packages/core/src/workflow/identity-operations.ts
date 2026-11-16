@@ -40,6 +40,7 @@ import {
   listRegistrations,
   materializePublicKey,
   type RegistrationFault,
+  TailDamagedError,
   type UpcasterRegistry,
 } from '@mnema/chain';
 import { checkersIn } from '../checks/checkers.js';
@@ -329,15 +330,22 @@ export function ensureFounded(ctx: WriteContext): string {
  * tail, when the tail has any, and the anchor's refusal otherwise. A tail that lost its founding
  * line leaves the record without the identity the checkout recorded, so the anchor is the first
  * thing that looks wrong, and its way out (delete the anchor) is not the damage and only moves
- * the refusal to the next write. Asked only here, on the path that refuses: a write that passes
- * pays nothing for it. A tail with no damage to find (one that is not there at all) falls
- * through to the anchor's own sentence.
+ * the refusal to the next write. Asked only on the path that refuses: a write that passes pays
+ * nothing for it. A tail with no damage to find (one that is not there at all) falls through to
+ * the anchor's own sentence. `mnema init` asks it too, to say what the write would say.
+ *
+ * Only the tail's damage replaces the refusal: any other failure of the question (a tail held
+ * past the wait budget, say) is thrown as it is.
  */
-function damageBefore(ctx: WriteContext, refusal: Error): Error {
+export function refusalBeforeTheAnchor(
+  ctx: Pick<WriteContext, 'writer'>,
+  refusal: IdentityUnavailableError,
+): IdentityUnavailableError | TailDamagedError {
   try {
     ctx.writer.refuseIfDamaged();
-  } catch (damage) {
-    return damage as Error;
+  } catch (error) {
+    if (error instanceof TailDamagedError) return error;
+    throw error;
   }
   return refusal;
 }
@@ -345,7 +353,7 @@ function damageBefore(ctx: WriteContext, refusal: Error): Error {
 function foundedAnchor(ctx: WriteContext): string {
   const recorded = recordedAnchorOf(ctx);
   if (recorded !== undefined) {
-    if (!recorded.counted) throw damageBefore(ctx, recorded.refusal);
+    if (!recorded.counted) throw refusalBeforeTheAnchor(ctx, recorded.refusal);
     return recorded.anchor;
   }
   // Only the path that may FOUND takes the lock: the recorded anchor above answers every
@@ -361,7 +369,7 @@ function foundedAnchor(ctx: WriteContext): string {
 function foundUnderTheLock(ctx: WriteContext): string {
   const recorded = recordedAnchorOf(ctx);
   if (recorded !== undefined) {
-    if (!recorded.counted) throw damageBefore(ctx, recorded.refusal);
+    if (!recorded.counted) throw refusalBeforeTheAnchor(ctx, recorded.refusal);
     return recorded.anchor;
   }
 
