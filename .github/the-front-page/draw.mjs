@@ -1133,7 +1133,7 @@ const CHAIN_LINES = {
     said('Ed25519', 'packages/chain/README.md'),
   ],
   altered: [
-    said('entry hash mismatch: content or link was altered', 'packages/chain/src/chain/verify.ts'),
+    said('entry hash mismatch: content or link was altered', 'packages/chain/src/chain/entry.ts'),
   ],
   verify: [said('verify', 'packages/chain/README.md')],
   verified: [said('local integrity verified (T1/T2/T4)', 'packages/chain/src/chain/level.ts')],

@@ -502,7 +502,8 @@ export function chainArrivals(
     // against the hash each stores, so an altered line is one fact and not one and a break.
     const entries = since.arrivals;
     retained.push(...since.retained);
-    // What the order is made of is what holds.
+    // A retained arrival is returned below as its own refusal before any merge, so what reaches the
+    // order is already what holds; `served` is that, said once.
     const served = since.served;
     // The arrivals have to run on from where the frontier stopped, by the verifier's own
     // rule and in the verifier's own function ({@link firstLinkBreakFrom}): the same one

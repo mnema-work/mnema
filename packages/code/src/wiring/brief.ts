@@ -262,8 +262,9 @@ export function registerBrief(program: Command, wiring: Wiring): Declared {
       } else {
         for (const line of notice) io.err(render(line));
       }
-      // WITH THE FLAG, THE NOTICE ABOVE IS PART OF WHAT HAS TO FIT: the handler appends it to
-      // the document and the host measures the two as one string.
+      // WITH THE FLAG, THE NOTICE ABOVE IS PART OF WHAT HAS TO FIT: the facts of integrity lead the
+      // document on stdout, the line about a newer mnema is appended under it by the handler, and
+      // the host measures the three as one string.
       writeLines(
         io,
         opts.hook === true

@@ -123,6 +123,7 @@ import { type IdentityResolution, type RetiredElsewhere, resolveIdentity } from 
 import {
   type ChainEntry,
   describeLinkBreak,
+  ENTRY_HASH_MISMATCH,
   type Entry,
   entryHashHolds,
   groupUnreadLines,
@@ -2392,7 +2393,7 @@ function verifyHashChain(tail: string, entries: readonly ChainEntry[], issues: T
         tail,
         layer: 'T1',
         seq: entry.link.seq,
-        detail: 'entry hash mismatch: content or link was altered',
+        detail: ENTRY_HASH_MISMATCH,
       });
       return;
     }

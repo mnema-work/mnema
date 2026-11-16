@@ -351,7 +351,9 @@ export function theMismatch(who, plugin = thePluginVersion()) {
  * What a verb has to say here, or `null` when it has nothing.
  *
  * BOTH STREAMS ARE KEPT AND THE EXIT CODE IS WHAT PICKS. On a success stderr is empty unless the
- * record itself has something to say, and it goes under the document. A text that is empty is
+ * record itself has something to say. The verbs that hand over a document (`brief`, `recall`) print
+ * the facts of integrity at the top of stdout themselves; what is left on stderr (the line about a
+ * newer mnema) goes under the document. A text that is empty is
  * silence: `mnema recall` over a project with no notes prints nothing and exits 0.
  *
  * A REFUSAL IS NO LONGER SILENCE, AND THE OLD REASON IS NARROWED, NOT DROPPED. It was addressed to a
