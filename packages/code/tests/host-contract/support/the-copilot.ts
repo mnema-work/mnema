@@ -30,7 +30,6 @@ import { decodedWhole } from '../../support/arriving.js';
 import { sizedTo, theDeviceWasTheSizeAskedFor } from '../../support/pty.js';
 import {
   aSandbox,
-  REPO,
   type TheFilesToPut,
   type TheProjectToWrite,
   type TheSandbox,
