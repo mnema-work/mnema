@@ -68,6 +68,15 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'holds what the local count of tool calls keeps; no record is damaged',
   'packages/code/tests/the-verifier-a-page-publishes-runs.test.ts':
     'runs the second reader as the page publishes it over a record the product built; nothing is damaged',
+  // Alterations judged where the cache is the very thing under test, or where no cache is read.
+  'packages/code/tests/an-altered-entry-leads-the-hooks-and-stops-the-edit-gate.test.ts':
+    'runs the plugin handlers and the two gates as fresh processes over one altered record, each reading what the last run left; the three states of the reads they run are held by an-altered-entry-is-said-first-and-never-served',
+  'packages/code/tests/the-agent-is-handed-an-altered-entry-first-and-never-its-text.test.ts':
+    'opens its own connections: one after the alteration (cold) and one that read the record before it (session), over the protocol; the warm state of the command line is held by an-altered-entry-is-said-first-and-never-served',
+  'packages/code/tests/the-console-does-not-show-an-altered-entry-that-arrives.test.ts':
+    'holds the console follower, which opens no cache and reads the tail past where the session stood: there is no warm or cold state to vary',
+  'packages/core/src/projections/an-entry-whose-hash-fails-is-left-out.test.ts':
+    'is the cache’s own test: it opens the cache cold, with a connection that read before the alteration, and kept on disk, over one altered tail',
   // Declared debt: damage a record and judge it, and run only in the state the last write left.
   'packages/code/tests/the-ci-recipe-catches-what-verify-cannot.test.ts':
     'DEBT: damaged records judged by the published CI recipe in a sandbox, a base clone and a bin directory built once in a beforeAll; each case needs its own found/damage/run split',

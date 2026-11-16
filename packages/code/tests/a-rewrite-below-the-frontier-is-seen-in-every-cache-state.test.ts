@@ -100,7 +100,7 @@ function theCase(edit: (bytes: string) => string): TheCase<Planted & { id: strin
         .split(planted.id)
         .join('<id>')
         .replace(/mnid:[0-9a-f]{8}/g, 'mnid:<identity>')
-        .replace(/tails\/[0-9a-f]{64}-[0-9a-f]{32}/g, 'tails/<tail>')
+        .replace(/[0-9a-f]{64}-[0-9a-f]{32}/g, '<tail>')
         .replace(/\d{4}-\d\d-\d\dT[\d:.]+Z/g, '<time>'),
   };
 }
@@ -139,13 +139,15 @@ describe('a rewrite below the frontier, in every state of the cache', () => {
     expect(seen.session.said).toBe(seen.cold.said);
   }, 120_000);
 
-  it('an edit of another size below the last line is said alike by all three', () => {
+  it('an edit of another size below the last line is left out and said alike by all three', () => {
     const seen = inEveryCacheState(
       theCase((bytes) =>
         bytes.replace('A choice that is judged', 'A choice that was judged, and said at length'),
       ),
     );
-    expect(seen.cold.said).toContain('A choice that was judged, and said at length');
+    // An edit with no new hash leaves the line out in every state, and says so: neither title is served.
+    expect(seen.cold.said).not.toContain('A choice that was judged, and said at length');
+    expect(seen.cold.said).toContain('this entry was not served');
     expect(seen.warm.said).toBe(seen.cold.said);
     expect(seen.session.said).toBe(seen.cold.said);
   }, 120_000);

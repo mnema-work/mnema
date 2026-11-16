@@ -556,8 +556,8 @@ export const NAMES_THAT_NEED_MORE: Readonly<
     why: 'a verb named beside `mnema memory`, in the entry that says where either goes when an agent asked for by the environment writes without `--scope`',
   },
   'CHANGELOG.md: mnema before-a-write': {
-    times: 2,
-    why: 'the hook named in the entry that says it reads the agent from the environment, the flag winning, and in the one on the rules a project inherits; the package page hands the whole line over, with its host',
+    times: 3,
+    why: 'the hook named in the entry that says it reads the agent from the environment, the flag winning, in the one on the rules a project inherits, and in the one that says every read checks the hash of each line and the gate denies an edit while one stands; the package page hands the whole line over, with its host',
   },
   'CHANGELOG.md: mnema rules': {
     times: 4,
@@ -831,7 +831,7 @@ export const HANDED_OVER: Readonly<
   '.github/instructions/mnema-instructions.instructions.md': { line: 2 },
   '.github/the-hot-path-budget/README.md': { name: 2 },
   'AGENTS.md': { line: 2, name: 1 },
-  'CHANGELOG.md': { line: 101, name: 216, flag: 4 },
+  'CHANGELOG.md': { line: 101, name: 218, flag: 4 },
   'README.md': { line: 4, name: 8 },
   'SECURITY.md': { name: 2 },
   'docs/a-record-inheriting-another.md': { line: 9, name: 8 },
@@ -934,7 +934,7 @@ export const HANDED_OVER: Readonly<
   'packages/code/src/presentation/summary.ts': { line: 2, name: 8 },
   'packages/code/src/presentation/usage.ts': { line: 1, name: 2 },
   'packages/code/src/record-framing.ts': { line: 3, name: 12 },
-  'packages/code/src/record-integrity.ts': { name: 11 },
+  'packages/code/src/record-integrity.ts': { name: 9 },
   'packages/code/src/repl/gate.ts': { unwritten: 2 },
   'packages/code/src/repl/promotable.ts': { line: 1 },
   'packages/code/src/repl/session.ts': { unwritten: 2 },

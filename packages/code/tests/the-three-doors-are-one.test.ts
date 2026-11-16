@@ -799,13 +799,15 @@ describe('the hook at the start of a session', () => {
     appendFileSync(file, `${lines[lines.length - 1] as string}\n`, 'utf-8');
 
     const printed = door.mnema('brief', '--hook');
-    expect(printed.err).toContain('issue [T1]');
-    // The plugin hands over the verb's two streams, a blank line between: the document as
-    // printed, then the notice. The host's callback has no terminator to keep.
-    const asThePluginHandsIt = `${printed.out.replace(/\n$/, '')}\n\n${printed.err.trim()}`;
+    // The notice LEADS the text the verb prints with the flag (ADR-394, ADR-410), on stdout, and
+    // nothing of it is left on the second stream. The host's callback has no terminator to keep.
+    expect(printed.out).toMatch(/^issue \[T1\]/);
+    expect(printed.err).not.toContain('issue [T1]');
+    const asThePluginHandsIt = printed.out.replace(/\n$/, '');
     // The notice really did change what fits: without room for it the whole of what was
     // printed above would not be the document.
-    expect(printed.out.length).toBeLessThan(unbroken);
+    const printedDocument = printed.out.slice(printed.out.indexOf('\n\n') + 2);
+    expect(printedDocument.length).toBeLessThan(unbroken);
     expect(asThePluginHandsIt.length).toBeLessThanOrEqual(HOOK_TEXT_CEILING);
     const hooks = mnemaHooks({ cwd: door.repo, env: { home: door.home } });
     const reply = await hooks.SessionStart[0]?.hooks[0]?.({ cwd: door.repo }, undefined, signal);

@@ -295,6 +295,7 @@ describe('mnema show (one whole record)', () => {
     expect(runShow({ cwd: repo, env }, { id: 'no-such-id' })).toEqual({
       ok: false,
       reason: 'UNKNOWN_RECORD',
+      linkBreaks: [],
     });
   });
 

@@ -265,7 +265,7 @@ describe('outside a project', () => {
     const at = nowhere(setup());
     const id = '00000000-0000-7000-8000-000000000000';
     expect(runSkillExport(at, { id, out })).toEqual({ ok: false, reason: 'NO_PROJECT' });
-    expect(runShow(at, { id })).toEqual({ ok: false, reason: 'NO_PROJECT' });
+    expect(runShow(at, { id })).toEqual({ ok: false, reason: 'NO_PROJECT', linkBreaks: [] });
     expect(filesUnder(out)).toEqual([]);
   });
 

@@ -390,7 +390,9 @@ describe('mnema site', () => {
     const broken = runSite({ cwd: repo, env }, { out: join(sandbox, 'broken') });
     expect(broken.ok && broken.verdict.ok).toBe(false);
     expect(broken.ok && broken.verdict.summary).toContain('local integrity FAILED');
-    expect(pageOf(join(sandbox, 'broken'))).toContain('Keep money in floats');
+    // The page is built from what the record serves: the line that no longer holds its hash is in it
+    // in neither form, and the verdict above says the local integrity failed.
+    expect(pageOf(join(sandbox, 'broken'))).not.toContain('Keep money in floats');
   });
 
   it('is the same bytes when asked twice of the same record', () => {

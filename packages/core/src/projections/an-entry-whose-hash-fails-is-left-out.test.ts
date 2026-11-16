@@ -12,11 +12,19 @@
  *     now, and a refresh brings it into agreement without serving the line;
  *   - a cache kept on disk carries the fact, so the next open says it without reading again.
  */
+// @plants-damage
 
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
-import { catalogUpcasters, listTails, openChainForWriting, orderedSegments } from '@mnema/chain';
+import {
+  catalogUpcasters,
+  ENTRY_HASH_MISMATCH,
+  listTails,
+  openChainForWriting,
+  orderedSegments,
+  verify,
+} from '@mnema/chain';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTask, type WriteContext } from '../workflow/operations.js';
 import { ProjectionCache } from './cache.js';
@@ -132,5 +140,16 @@ describe('a cache kept on disk', () => {
     second.refresh();
     expect(second.retained).toEqual(first.retained);
     expect(titles(second)).toEqual(['a task that is left alone']);
+  });
+});
+
+describe('the words', () => {
+  it('are the verdict’s: a read and `verify` say one sentence about one altered line', () => {
+    const ctx = writing();
+    task(ctx, 'Use pnpm for the workspace');
+    ctx.writer.checkpoint();
+    alter('Use pnpm for', 'Use npm  for');
+    const said = verify(root, upcasters).issues.map((issue) => issue.detail);
+    expect(said).toContain(ENTRY_HASH_MISMATCH);
   });
 });

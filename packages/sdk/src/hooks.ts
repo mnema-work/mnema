@@ -104,11 +104,12 @@ export function mnemaHooks(options: HookOptions): MnemaHooks {
     const here = whereFor(input);
     const result = runBrief(here, { outside: true, stacks: await stacksReaderFor(here) });
     if (!result.ok) return {};
-    // WHAT THE PLUGIN'S HANDLER DOES: the notice about a record that does not chain goes under
-    // the document after a blank line, and counts against the room the host leaves.
+    // WHAT THE PLUGIN'S HANDLER DOES: the facts of integrity (a tail that does not chain, an entry
+    // whose hash does not hold) lead the text, above the document and a blank line, and count
+    // against the room the host leaves (ADR-394, ADR-410).
     const notice = linkBreakNotice(result.linkBreaks).map((line) => renderPlain(line));
     const document = briefWithin(result.brief, roomBeside(notice), result.outside).join('\n');
-    const said = notice.length === 0 ? document : `${document}\n\n${notice.join('\n')}`;
+    const said = notice.length === 0 ? document : `${notice.join('\n')}\n\n${document}`;
     return hookReply('SessionStart', { context: said });
   };
 

@@ -264,7 +264,9 @@ describe('a record that moved behind the file is seen by the next read', () => {
     writeFileSync(sealed, text.replace('Original title', 'Original TITLE'));
 
     const second = openOn(own);
-    expect(decisionsOf(second)).toEqual(['Original TITLE']);
+    // Read again, and not served: the edited line no longer holds its hash, so it is in neither form
+    // (a connection that believed its cache would still say 'Original title').
+    expect(decisionsOf(second)).toEqual([]);
     closeSession(second);
   });
 
