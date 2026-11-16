@@ -118,3 +118,23 @@ person ([how each cell is known](evidence.md#each-hosts-rung)).
 
 What each host does with the plugin, and what was and was not run, is in [Hosts](hosts.md). What is run on
 Windows and macOS is in [Windows and macOS](platforms.md).
+
+## If you already had the marketplace
+
+The marketplace lists both plugins from the `release` branch of this repository, a branch that is moved to
+each release's tag when the release is made and by nothing else. A marketplace added from an earlier
+version listed them from the folder of `main`: ask the host to read the marketplace again and to update
+the plugin, on the host you use:
+
+| Host | Commands | What moves |
+| :--- | :--- | :--- |
+| Claude Code | `claude plugin marketplace update mnema`, then `claude plugin update mnema@mnema` | The files, only when the plugin's version differs from the installed one. At the same version the host answers that it is already at the latest, and keeps the files it had. |
+| Codex | `codex plugin marketplace upgrade`, then `codex plugin add mnema@mnema` again | `marketplace upgrade` updates only the marketplace's own clone; adding the plugin again installs the files of the branch. There is no `plugin update`. |
+| Copilot CLI | `copilot plugin marketplace update`, then `copilot plugin update mnema@mnema` | The files, also at the same version. |
+
+This was run with Claude Code 2.1.311, Codex 0.161.0 and Copilot CLI 1.0.104 against a local repository, not
+against github.com, and whether a host updates the plugin by itself was not measured. To know where a Claude
+Code install stands, run `mnema doctor`: it reads the files of the installed plugin and says whether they are
+the ones released with the binary that runs, or that they have the same version label and other content. A
+Claude Code plugin whose files differ at the same version is put right by `claude plugin uninstall mnema@mnema`
+and then `claude plugin install mnema@mnema`.

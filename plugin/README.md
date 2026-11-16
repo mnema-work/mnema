@@ -299,6 +299,11 @@ claude plugin marketplace add mnema-work/mnema
 claude plugin install mnema@mnema
 ```
 
+The marketplace installs the plugin from the `release` branch, which holds the files of the latest release and
+is moved only when a release is made: not from `main`, which can be ahead. If you added the marketplace before
+that, [Install](../docs/install.md#if-you-already-had-the-marketplace) has the commands for each host, and
+`mnema doctor` says whether the files installed are the released ones.
+
 The plugin connects the MCP server itself. If you had registered it yourself before, that
 entry is now redundant: with both, a session is offered every tool twice, under two
 prefixes.

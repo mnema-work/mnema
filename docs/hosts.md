@@ -82,7 +82,7 @@ JavaScript module, copied into the project, and the server is declared in the pr
 
 ```bash
 mkdir -p .opencode/plugins
-curl -fsSL https://raw.githubusercontent.com/mnema-work/mnema/main/plugin/opencode/mnema.js \
+curl -fsSL https://raw.githubusercontent.com/mnema-work/mnema/v0.1.8/plugin/opencode/mnema.js \
   -o .opencode/plugins/mnema.js
 ```
 
@@ -123,10 +123,12 @@ connects the server and runs no hook.
 ## Gemini CLI
 
 In Gemini CLI, the hook is an extension, a folder the host copies into your home, and it is
-installed from a checkout of this repository, where it is the folder `plugin/gemini`:
+installed from a checkout of this repository, where it is the folder `plugin/gemini`. Check out
+the release you run (`main` can be ahead of it):
 
 ```bash
-gemini extensions install /path/to/mnema/plugin/gemini
+git clone --branch v0.1.8 https://github.com/mnema-work/mnema.git
+gemini extensions install mnema/plugin/gemini
 ```
 
 The host asks you to consent to the install, and reads the extension from the next session on. The
@@ -144,10 +146,12 @@ unless it is told to trust it (`--skip-trust`).
 ## Qwen Code
 
 Qwen Code installs the plugin of this repository itself: it converts the Claude Code plugin into an
-extension of its own and copies it into your home. From a checkout of this repository:
+extension of its own and copies it into your home. From a checkout of this repository, at the
+release you run (`main` can be ahead of it):
 
 ```bash
-qwen extensions install /path/to/mnema/plugin
+git clone --branch v0.1.8 https://github.com/mnema-work/mnema.git
+qwen extensions install mnema/plugin
 ```
 
 The host asks you to consent to the install, and reads the extension from the next session on. The

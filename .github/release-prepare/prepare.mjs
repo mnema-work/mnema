@@ -12,7 +12,8 @@
 // `packages/code/tests/the-version-is-one-number.test.ts` finds them, plus the three places that
 // spell it in source: `packages/code/src/version.ts`, `packages/chain/src/version.ts` and the
 // `--version` line of `packages/code/src/cli.help.golden.txt`, and the two pinned install lines of
-// `docs/install.md` (`npm i -g @mnema/code@x.y.z`, `npm i --ignore-scripts @mnema/code@x.y.z`), and the root
+// `docs/install.md` (`npm i -g @mnema/code@x.y.z`, `npm i --ignore-scripts @mnema/code@x.y.z`), the OpenCode URL and the two
+// `git clone --branch vx.y.z` lines of `docs/hosts.md`, and the root
 // `server.json` the MCP Registry is sent, which `server-json.mjs` makes whole from the number. When the number moves it also
 // makes `recordings/console.cast` and its GIF again, because the console draws it.
 // `packages/code/tests/the-release-prepare-writes-every-number.test.ts` holds all of this.
@@ -30,6 +31,11 @@ const GOLDEN = 'packages/code/src/cli.help.golden.txt';
 const PYPROJECT = 'packages/chain/verifier/pyproject.toml';
 const INSTALL_PAGE = 'docs/install.md';
 const PINNED = /^(npm i (?:-g|--ignore-scripts) @mnema\/code@)\d+\.\d+\.\d+( *)$/gm;
+const HOSTS_PAGE = 'docs/hosts.md';
+const OPENCODE_URL =
+  /(raw\.githubusercontent\.com\/mnema-work\/mnema\/v)\d+\.\d+\.\d+(\/plugin\/opencode\/mnema\.js)/g;
+const CLONE_AT_TAG =
+  /(git clone --branch v)\d+\.\d+\.\d+( https:\/\/github\.com\/mnema-work\/mnema\.git)/g;
 const SERVER_JSON = 'server.json';
 const CHANGELOG = 'CHANGELOG.md';
 const UNRELEASED = 'changelog/unreleased';
@@ -167,6 +173,18 @@ export function plan(root, version, date) {
     throw new Error(`${INSTALL_PAGE}: expected two pinned install lines`);
   }
   put(INSTALL_PAGE, install.replace(PINNED, `$1${version}$2`));
+  // The hosts that read a file or a folder of this repository, not a marketplace, are told the tag.
+  const hosts = read(HOSTS_PAGE);
+  if (
+    [...hosts.matchAll(OPENCODE_URL)].length !== 1 ||
+    [...hosts.matchAll(CLONE_AT_TAG)].length !== 2
+  ) {
+    throw new Error(`${HOSTS_PAGE}: expected one OpenCode URL and two clones at a tag`);
+  }
+  put(
+    HOSTS_PAGE,
+    hosts.replace(OPENCODE_URL, `$1${version}$2`).replace(CLONE_AT_TAG, `$1${version}$2`),
+  );
   // The entry the MCP Registry is sent is made, not edited: it may not exist yet.
   const entry = serverJson(version);
   if (!existsSync(join(root, SERVER_JSON)) || read(SERVER_JSON) !== entry)

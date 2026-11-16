@@ -14,7 +14,8 @@
  * binary, a pseudo-terminal and `agg`, so the fixture has no cast and the script skips it.
  *
  * The install page's two pinned lines (`npm i -g @mnema/code@x.y.z` and `npm i --ignore-scripts
- * @mnema/code@x.y.z`) are one of the places the number lives, so the copy of the page is in the fixture.
+ * @mnema/code@x.y.z`) are one of the places the number lives, so the copy of the page is in the fixture, and so is
+ * the Hosts page, whose OpenCode URL and two `git clone --branch` lines name the tag of the release.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -40,7 +41,8 @@ const READER_TS = 'packages/chain/src/version.ts';
 const GOLDEN = 'packages/code/src/cli.help.golden.txt';
 const PYPROJECT = 'packages/chain/verifier/pyproject.toml';
 const INSTALL_PAGE = 'docs/install.md';
-const SOURCES = [VERSION_TS, READER_TS, GOLDEN, PYPROJECT, INSTALL_PAGE];
+const HOSTS_PAGE = 'docs/hosts.md';
+const SOURCES = [VERSION_TS, READER_TS, GOLDEN, PYPROJECT, INSTALL_PAGE, HOSTS_PAGE];
 /**
  * THE NUMBERS ARE DERIVED FROM THE ONE THE PRODUCT IS AT, never typed: a test file that spelled
  * the current number would be accused by `the-version-is-one-number.test.ts` on the day it is
@@ -148,6 +150,13 @@ describe('release:prepare with a number', () => {
     const install = readFileSync(join(dir, INSTALL_PAGE), 'utf-8');
     expect(install).toContain(`\nnpm i -g @mnema/code@${TARGET}\n`);
     expect(install).toContain(`\nnpm i --ignore-scripts @mnema/code@${TARGET}\n`);
+    const hosts = readFileSync(join(dir, HOSTS_PAGE), 'utf-8');
+    expect(hosts).toContain(
+      `raw.githubusercontent.com/mnema-work/mnema/v${TARGET}/plugin/opencode/mnema.js`,
+    );
+    expect(
+      hosts.split(`git clone --branch v${TARGET} https://github.com/mnema-work/mnema.git`),
+    ).toHaveLength(3);
     const entry = JSON.parse(readFileSync(join(dir, 'server.json'), 'utf-8')) as {
       version: string;
       packages: { version: string }[];
