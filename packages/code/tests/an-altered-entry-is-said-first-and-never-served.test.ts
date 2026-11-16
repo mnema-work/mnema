@@ -107,7 +107,7 @@ function alteringCase(edit: (bytes: string) => string): TheCase<Judged> {
 }
 
 describe('an altered entry, in every state of the cache', () => {
-  // @proves the-projection-cache-serves-what-the-record-says
+  // @proves everything-a-read-serves-was-checked
   it('is the first line of every read, and its text is in none of them', () => {
     const seen = inEveryCacheState(alteringCase((bytes) => bytes.replace('Use pnpm', EVIL)));
     for (const state of [seen.warm, seen.cold, seen.session]) {
@@ -134,7 +134,7 @@ describe('an altered entry, in every state of the cache', () => {
     expect(seen.session.said).toBe(seen.cold.said);
   }, 240_000);
 
-  // @proves the-projection-cache-serves-what-the-record-says
+  // @proves everything-a-read-serves-was-checked
   it('names both when two lines are altered', () => {
     const seen = inEveryCacheState(
       alteringCase((bytes) => bytes.replace('Use pnpm', EVIL).replace('Use biome', 'Use bun  ')),

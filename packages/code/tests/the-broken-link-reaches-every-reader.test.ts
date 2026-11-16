@@ -575,3 +575,56 @@ describe('the words have one home', () => {
     expect(linkBreakBlock([])).toStrictEqual([]);
   });
 });
+
+describe('an entry whose hash does not hold travels the same road, and is said first', () => {
+  const left = {
+    scope: 'public' as const,
+    tail: 'aa-01',
+    seq: 4,
+    detail: 'entry hash mismatch: content or link was altered',
+    retained: { segment: '000001.jsonl', line: 5 },
+  };
+
+  it('every reading that carries the breaks carries the entries left out, from the same cache', () => {
+    // `linkBreaksOf` is the one reading every door asks: it answers the entries a cache left out
+    // beside the tails that stop chaining, for the replay's answer and for the chain as it stands now.
+    const reading = text('tree-sources.ts');
+    expect(reading).toContain('source.cache.retained');
+    expect(reading).toContain('source.cache.integrityAsOfNow()');
+  });
+
+  it('the sentence names the entry, where it is, and says it was not served', () => {
+    const [issue, closing] = linkBreakSentences([left]) as [string, string];
+    expect(issue).toBe(
+      'issue [T1] public aa-01#4: entry hash mismatch: content or link was altered (000001.jsonl line 5); this entry was not served',
+    );
+    // The closing sentence is about the entry that is not in the answer, not about records "still on the tail".
+    expect(closing).toContain('leaves it out');
+    expect(closing).not.toContain('still on the tail');
+  });
+
+  it('the block holds the entry and a gap together, in one block, with both closing sentences', () => {
+    const gap = {
+      scope: 'public' as const,
+      tail: 'bb-02',
+      seq: 2,
+      detail: 'seq gap: expected 3, found 2',
+    };
+    const blocks = linkBreakBlock([left, gap]);
+    expect(blocks).toHaveLength(1);
+    const lines = (blocks[0] as string).split(LF);
+    expect(lines.filter((line) => line.startsWith('issue [T1]'))).toHaveLength(2);
+    expect(blocks[0]).toContain('leaves it out');
+    expect(blocks[0]).toContain('still on the tail');
+  });
+
+  it('the MCP door puts the block BEFORE the payload and the acknowledgement', () => {
+    const server = text('mcp/server.ts');
+    const reply = bodyOf(server, 'replied');
+    const content = reply.slice(reply.indexOf('content: ['));
+    expect(content.indexOf('...fact(sessionLinkBreaks(')).toBeGreaterThan(-1);
+    expect(content.indexOf('...fact(sessionLinkBreaks(')).toBeLessThan(
+      content.indexOf('...before,'),
+    );
+  });
+});
