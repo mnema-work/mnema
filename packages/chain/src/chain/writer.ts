@@ -73,8 +73,15 @@ import {
 import { type Cited, HeadsToCite } from './cited-heads.js';
 import { CodedError } from './coded-error.js';
 import { appendDurably } from './durable.js';
-import { type ChainEntry, type Entry, parseEntry, sealEntry, serializeEntry } from './entry.js';
-import { entryHash, type WrittenEvent } from './hash.js';
+import {
+  type ChainEntry,
+  type Entry,
+  entryHashHolds,
+  parseEntry,
+  sealEntry,
+  serializeEntry,
+} from './entry.js';
+import type { WrittenEvent } from './hash.js';
 import {
   type KeptHead,
   keepHead,
@@ -1496,10 +1503,10 @@ function endAsComputed(tip: readonly ChainEntry[], coveredThrough: number, tail:
   }
   let seq = coveredThrough + 1;
   for (const entry of tip.slice(at + 1)) {
-    if (entry.link.seq !== seq || entry.link.prev !== prev) return false;
-    const hash = entryHash({ event: entry.written, tail, seq, prev });
-    if (hash !== entry.link.hash) return false;
-    prev = hash;
+    if (entry.link.seq !== seq || entry.link.prev !== prev || entry.link.tail !== tail)
+      return false;
+    if (!entryHashHolds(entry)) return false;
+    prev = entry.link.hash;
     seq += 1;
   }
   return true;

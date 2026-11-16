@@ -186,12 +186,18 @@ export function serializeEntry(entry: ChainEntry): string {
 }
 
 /**
+ * The verdict's sentence for an entry whose hash does not hold. It is a constant so that the
+ * verdict and a read that leaves such an entry out say the same words about the same line.
+ */
+export const ENTRY_HASH_MISMATCH = 'entry hash mismatch: content or link was altered';
+
+/**
  * Whether the hash an entry carries is the one its content and position give: the
  * entry hash recomputed over the WRITTEN event (never the lifted one the reader
  * holds), the tail, the seq and the `prev` the link names, compared with the
- * `hash` the link stores. The one place the verdict asks it, so the verdict and any
- * read that wants it cannot answer it differently; the writer still computes its own
- * when it ends a tail.
+ * `hash` the link stores. The one place the verdict, every read that serves a line and
+ * the writer's recovery of a tail's end ask it, so none of them can answer it
+ * differently.
  */
 export function entryHashHolds(entry: ChainEntry): boolean {
   return (

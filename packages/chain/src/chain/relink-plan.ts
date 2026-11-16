@@ -28,7 +28,7 @@ import { oneLine } from '../one-line.js';
 import { type ChainEntry, readEntries } from './entry.js';
 import { type ChainLayout, tailFingerprint } from './layout.js';
 import { RELINK_NOT_A_MEMBER, recordName, recordOf } from './record-name.js';
-import { lastTailCheckpoint, listTails, readTail } from './store.js';
+import { lastTailCheckpoint, listTails, readTailEntries } from './store.js';
 import { namesOfTails } from './tail-names.js';
 import {
   identityRefusedOnlyTogether,
@@ -103,7 +103,7 @@ function readAll(
       if (where.has(tail)) continue;
       where.set(tail, layout);
       named.set(tail, names.get(tail));
-      entries.set(tail, readTail(layout, tail, upcasters).entries);
+      entries.set(tail, readTailEntries(layout, tail, upcasters));
     }
   }
   return { entries, named, where };
@@ -410,7 +410,7 @@ export function tailsACutWouldUnrelink(
 ): readonly string[] {
   const covered = lastTailCheckpoint(layout, host)?.toSeq ?? -1;
   const tails = new Map(
-    listTails(layout).map((tail) => [tail, readTail(layout, tail, upcasters).entries] as const),
+    listTails(layout).map((tail) => [tail, readTailEntries(layout, tail, upcasters)] as const),
   );
   // A waiver counts as the same cut only where its own tail's last checkpoint covers it, as a
   // relink counts only covered: one above it rests on the hash chain alone.

@@ -37,7 +37,7 @@ import type { CatalogEvent } from '../events/catalog.js';
 import type { UpcasterRegistry } from '../events/upcaster.js';
 import { type ChainEntry, readEntries } from './entry.js';
 import { type ChainLayout, tailFingerprint } from './layout.js';
-import { readTail } from './store.js';
+import { readTailEntries } from './store.js';
 
 /** What the disk says about one tail right now: how it ends, how much it holds, whose it is. */
 export interface TailStanding {
@@ -77,7 +77,7 @@ export function tailStanding(
   tailId: string,
   upcasters: UpcasterRegistry,
 ): TailStanding | undefined {
-  return standingOf(readTail(layout, tailId, upcasters).entries);
+  return standingOf(readTailEntries(layout, tailId, upcasters));
 }
 
 /**

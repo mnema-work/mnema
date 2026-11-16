@@ -99,6 +99,12 @@ export interface ScopedLinkBreak {
   readonly tail: string;
   readonly seq: number;
   readonly detail: string;
+  /**
+   * Present when the fact is an entry LEFT OUT of what was served because its hash does not
+   * hold, and then where the line is: the segment's file name and the line in it. Absent for a
+   * tail that stops chaining (a gap, a fork, a `prev` that names something else).
+   */
+  readonly retained?: { readonly segment: string; readonly line: number };
 }
 
 /**
@@ -128,15 +134,39 @@ const ASK_VERIFY = '`mnema verify` says how far it reaches.';
 const TELL_SOMEBODY =
   'The person you are working with can run `mnema verify` to see how far it reaches.';
 
+/**
+ * What is said once, however many entries were left out, when an entry's hash did not hold: that
+ * it is NOT in the answer. The sentence about the records "still on the tail" would be false
+ * for it, so a block that names one says this instead, and keeps the other sentence only for
+ * the tails that stop chaining.
+ */
+const LEFT_OUT =
+  'an entry named above was altered after it was written: this answer leaves it out, and ' +
+  'what it said is not shown.';
+
 /** One issue line per broken tail, in the shape `verify` gives an issue. */
 function issueLines(breaks: readonly ScopedLinkBreak[]): readonly string[] {
   // Every value here came out of the record, so every value goes through the collapse:
   // a tail name or a detail carrying a newline would turn one issue into two lines, and
   // the second would read as an issue about a tail nobody named.
-  return breaks.map(
-    (broken) =>
-      `issue [T1] ${oneLine(broken.scope)} ${oneLine(broken.tail)}#${oneLine(String(broken.seq))}: ${oneLine(broken.detail)}`,
-  );
+  return breaks.map((broken) => {
+    const at = `issue [T1] ${oneLine(broken.scope)} ${oneLine(broken.tail)}#${oneLine(String(broken.seq))}: ${oneLine(broken.detail)}`;
+    if (broken.retained === undefined) return at;
+    // WHERE THE LINE IS and that it was not served: the entry's own text never rides here.
+    return `${at} (${oneLine(broken.retained.segment)} line ${oneLine(String(broken.retained.line))}); this entry was not served`;
+  });
+}
+
+/**
+ * What closes the fact: what is true of the tails that stopped chaining (their records are all
+ * on the tail) and of the entries left out (they are not in the answer), whichever are named.
+ */
+function closing(breaks: readonly ScopedLinkBreak[], next: string): string {
+  const parts = [
+    ...(breaks.some((broken) => broken.retained !== undefined) ? [LEFT_OUT] : []),
+    ...(breaks.some((broken) => broken.retained === undefined) ? [STILL_ON_THE_TAIL] : []),
+  ];
+  return `${parts.join(' ')} ${next}`;
 }
 
 /**
@@ -150,7 +180,7 @@ function issueLines(breaks: readonly ScopedLinkBreak[]): readonly string[] {
  */
 export function linkBreakSentences(breaks: readonly ScopedLinkBreak[]): readonly string[] {
   if (breaks.length === 0) return [];
-  return [...issueLines(breaks), `${STILL_ON_THE_TAIL} ${ASK_VERIFY}`];
+  return [...issueLines(breaks), closing(breaks, ASK_VERIFY)];
 }
 
 /**
@@ -188,7 +218,7 @@ const LANDED_ON = 'The record this landed on does not chain, so its proof is bro
 /** The block itself, once the caller's door has said how it opens. */
 function block(opening: string, breaks: readonly ScopedLinkBreak[]): readonly string[] {
   if (breaks.length === 0) return [];
-  return [[opening, ...issueLines(breaks), `${STILL_ON_THE_TAIL} ${TELL_SOMEBODY}`].join('\n')];
+  return [[opening, ...issueLines(breaks), closing(breaks, TELL_SOMEBODY)].join('\n')];
 }
 
 /**

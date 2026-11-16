@@ -26,7 +26,7 @@
  */
 
 import type { UpcasterRegistry } from '@mnema/chain';
-import { catalogUpcasters } from '@mnema/chain';
+import { catalogUpcasters, ENTRY_HASH_MISMATCH } from '@mnema/chain';
 import type { ScopedCache } from '@mnema/context';
 import {
   type BirthProbe,
@@ -318,17 +318,28 @@ export function linkBreaksOf(
   sources: readonly ScopedCache[],
   asOf: BreaksAsOf,
 ): readonly ScopedLinkBreak[] {
-  return sources.flatMap((source) =>
-    (asOf === THE_CHAIN_AS_IT_STANDS_NOW
-      ? source.cache.linkBreaksAsOfNow()
-      : source.cache.linkBreaks
-    ).map((broken) => ({
-      scope: source.scope,
-      tail: broken.tail,
-      seq: broken.seq,
-      detail: broken.detail,
-    })),
-  );
+  return sources.flatMap((source) => {
+    const { breaks, retained } =
+      asOf === THE_CHAIN_AS_IT_STANDS_NOW
+        ? source.cache.integrityAsOfNow()
+        : { breaks: source.cache.linkBreaks, retained: source.cache.retained };
+    return [
+      // The entries left out of what was served come first: they are the line that was altered.
+      ...retained.map((left) => ({
+        scope: source.scope,
+        tail: left.tail,
+        seq: left.seq,
+        detail: ENTRY_HASH_MISMATCH,
+        retained: { segment: left.segment, line: left.line },
+      })),
+      ...breaks.map((broken) => ({
+        scope: source.scope,
+        tail: broken.tail,
+        seq: broken.seq,
+        detail: broken.detail,
+      })),
+    ];
+  });
 }
 
 /**

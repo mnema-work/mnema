@@ -564,7 +564,9 @@ describe('a cache that cannot be vouched for is replaced, never trusted', () => 
     first.close();
     const second = persisted();
     second.refresh();
-    expect(second.listTasks().map((task) => task.title)).toEqual(['A task that was already here']);
+    // The rewritten line no longer holds its hash: it is served in neither form, and named.
+    expect(second.listTasks().map((task) => task.title)).toEqual([]);
+    expect(second.retained.map((one) => one.seq)).toHaveLength(1);
   });
 
   it('a segment rewritten to the same size while the arrivals are read is not served as the bytes that were read', () => {
@@ -596,7 +598,11 @@ describe('a cache that cannot be vouched for is replaced, never trusted', () => 
     first.close();
     const second = persisted();
     second.refresh();
-    expect(second.listTasks().map((task) => task.title)).toContain('A task that was already here');
+    // The rewritten line is left out and named, not served as the bytes the rows were built over.
+    expect(second.listTasks().map((task) => task.title)).not.toContain(
+      'A task that was already here',
+    );
+    expect(second.retained).toHaveLength(1);
   });
 
   it('a touch is not a reason to give the file up when the mark cannot be kept: the rows are still the file’s', () => {
@@ -633,12 +639,11 @@ describe('a cache that cannot be vouched for is replaced, never trusted', () => 
     const cache = persisted();
     cache.refresh();
     expect(theMarkerSurvived(cache), 'the limit moved: update what-it-proves.md').toBe(true);
-    // And the replay, which the cache does not take the place of, does see it.
-    expect(
-      replayed()
-        .listTasks()
-        .map((task) => task.title),
-    ).toContain('A task that was already here');
+    // And the replay, which the cache does not take the place of, does see it: it leaves the
+    // rewritten line out and names it, as the hash it stores no longer holds.
+    const replay = replayed();
+    expect(replay.listTasks().map((task) => task.title)).toEqual([]);
+    expect(replay.retained).toHaveLength(1);
   });
 
   it('THE LIMIT: a sealed segment rewritten with its size and modification time put back is not seen', () => {

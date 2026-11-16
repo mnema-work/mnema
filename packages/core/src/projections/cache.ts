@@ -18,6 +18,7 @@ import {
   listTails,
   projectionCachePath,
   type RecordGroup,
+  type RetainedEntry,
   tailsReadAt,
   type UnreadLine,
   type UpcasterRegistry,
@@ -261,6 +262,7 @@ export class ProjectionCache {
    */
   private breaks: readonly LinkBreak[] = [];
   /** What the last replay or catch-up read past: the lines of a kind this binary does not know. */
+  private retainedLines: readonly RetainedEntry[] = [];
   private unreadLines: readonly UnreadLine[] = [];
   /** What the last replay or catch-up found of the records the tree holds: {@link severalRecords}. */
   private several: readonly RecordGroup[] | undefined;
@@ -354,6 +356,17 @@ export class ProjectionCache {
   }
 
   /**
+   * The lines whose hash does not hold, ALL of them in every tail the replay read: left out of
+   * every projection here and said by every surface, with where each is and not what it says.
+   * They ride with the replay, as {@link linkBreaks} does, and are kept in the file beside the
+   * frontier; empty for every record the product wrote on its own. It is not a verdict either:
+   * a line the cache never read (below its frontier) is `verify`'s.
+   */
+  get retained(): readonly RetainedEntry[] {
+    return this.retainedLines;
+  }
+
+  /**
    * The lines of the chain of a kind this binary does not know (ADR-113): what a newer mnema
    * wrote, which every projection here was built without. They ride with the replay and with each
    * catch-up that reads arrivals, as {@link linkBreaks} does, and are kept in the file beside the
@@ -411,15 +424,41 @@ export class ProjectionCache {
    * untouched, so the next {@link refresh} does the same work it would have done.
    */
   linkBreaksAsOfNow(): readonly LinkBreak[] {
+    return this.integrityAsOfNow().breaks;
+  }
+
+  /**
+   * {@link linkBreaksAsOfNow} and the lines whose hash does not hold, from ONE reading of the
+   * arrivals: both are what a reading of the chain as it is now carries, so a door that wants
+   * the integrity facts pays for the arrivals once. The retained lines are every one the
+   * replay named and every one among the arrivals, each once.
+   */
+  integrityAsOfNow(): {
+    readonly breaks: readonly LinkBreak[];
+    readonly retained: readonly RetainedEntry[];
+  } {
     this.agree();
-    if (this.frontier === undefined) return this.breaks;
+    const standing = { breaks: this.breaks, retained: this.retainedLines };
+    if (this.frontier === undefined) return standing;
     const arrived = chainArrivals(this.layout, this.upcasters, this.frontier);
-    if (arrived.suffix || arrived.why !== 'AN_ARRIVAL_DOES_NOT_CHAIN') return this.breaks;
+    if (arrived.suffix) return standing;
+    if (arrived.why !== 'AN_ARRIVAL_DOES_NOT_CHAIN' && arrived.why !== 'AN_ARRIVAL_IS_RETAINED') {
+      return standing;
+    }
     // One break per tail, which is what a full reading reports: a tail this cache already
     // knows is broken does not gain a second line for a later break on the same tail.
     const knownTails = new Set(this.breaks.map((known) => known.tail));
-    const fresh = arrived.broken.filter((broke) => !knownTails.has(broke.tail));
-    return fresh.length === 0 ? this.breaks : [...this.breaks, ...fresh];
+    const fresh =
+      arrived.why === 'AN_ARRIVAL_DOES_NOT_CHAIN'
+        ? arrived.broken.filter((broke) => !knownTails.has(broke.tail))
+        : [];
+    const where = (one: RetainedEntry): string => `${one.tail}/${one.segment}:${one.line}`;
+    const knownLines = new Set(this.retainedLines.map(where));
+    const found = arrived.retained.filter((one) => !knownLines.has(where(one)));
+    return {
+      breaks: fresh.length === 0 ? this.breaks : [...this.breaks, ...fresh],
+      retained: found.length === 0 ? this.retainedLines : [...this.retainedLines, ...found],
+    };
   }
 
   /**
@@ -511,6 +550,7 @@ export class ProjectionCache {
             this.store(
               arrived.frontier,
               this.breaks,
+              this.retainedLines,
               [...this.unreadLines, ...arrived.unread],
               expected + 1,
               before,
@@ -560,7 +600,14 @@ export class ProjectionCache {
       () => {
         const generation = readGeneration(this.db) + 1;
         rebuild(this.db, replay.events, { schemaPresent: this.untouched });
-        this.store(replay.frontier, replay.linkBreaks, replay.unread, generation, before);
+        this.store(
+          replay.frontier,
+          replay.linkBreaks,
+          replay.retained,
+          replay.unread,
+          generation,
+          before,
+        );
         return generation;
       },
       { immediate: true },
@@ -568,6 +615,7 @@ export class ProjectionCache {
     this.untouched = false;
     this.frontier = replay.frontier;
     this.breaks = replay.linkBreaks;
+    this.retainedLines = replay.retained;
     this.unreadLines = replay.unread;
     this.several = replay.several;
   }
@@ -576,6 +624,7 @@ export class ProjectionCache {
   private store(
     frontier: ChainFrontier,
     breaks: readonly LinkBreak[],
+    retained: readonly RetainedEntry[],
     unread: readonly UnreadLine[],
     generation: number,
     before: Readonly<Record<string, string>>,
@@ -585,6 +634,7 @@ export class ProjectionCache {
       generation,
       frontier,
       breaks,
+      retained,
       unread,
       sealed: this.persisted ? sealedFingerprints(frontier) : {},
       active: this.persisted ? activeMarks(frontier, before) : {},
@@ -609,6 +659,7 @@ export class ProjectionCache {
     if (meta === undefined) {
       this.frontier = undefined;
       this.breaks = [];
+      this.retainedLines = [];
       this.unreadLines = [];
       this.generation = -1;
       return;
@@ -622,11 +673,13 @@ export class ProjectionCache {
     ) {
       this.frontier = undefined;
       this.breaks = [];
+      this.retainedLines = [];
       this.unreadLines = [];
       return;
     }
     this.frontier = meta.frontier;
     this.breaks = meta.breaks;
+    this.retainedLines = meta.retained;
     this.unreadLines = meta.unread;
     // A segment whose time moved over the same bytes was hashed to be believed: its new stamp is
     // kept, so the next open does not hash it again (and a read that finds nothing new, which
@@ -675,6 +728,7 @@ export class ProjectionCache {
     this.persisted = false;
     this.frontier = undefined;
     this.breaks = [];
+    this.retainedLines = [];
     this.unreadLines = [];
     this.generation = -1;
   }

@@ -200,7 +200,8 @@ describe('the facts of a tree that moved', () => {
     const again = reader();
     const served = treeFactsFrom({ root }, indexFile, again.read);
     expect(again.opened(), 'a rewrite of the live segment was served from the file').toBe(1);
-    expect(served.facts.channelSwitches).toMatchObject([{ channel: 'b-channel' }]);
+    // The rewritten line no longer holds its hash, so its switch is served as neither channel.
+    expect(served.facts.channelSwitches).toEqual([]);
     expect(served.facts).toEqual(replayedFacts());
   });
 

@@ -8,6 +8,7 @@
  */
 
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { basename } from 'node:path';
 
 import { decodeStoredBytes, StoredJsonError } from '../events/stored-json.js';
 import type { UpcasterRegistry } from '../events/upcaster.js';
@@ -15,6 +16,7 @@ import { type Checkpoint, parseCheckpoint } from './checkpoint.js';
 import {
   type ChainEntry,
   describeLinkBreak,
+  entryHashHolds,
   type HeldLinkAt,
   linkBreakAt,
   parseEntry,
@@ -315,6 +317,13 @@ interface SegmentRead {
    * prefix ended rather than inside the fragment.
    */
   readonly bytes: number;
+  /**
+   * The entries of {@link entries} whose hash does not hold, with the line each is on (counted
+   * from 1, blank lines included), when the read was asked to check. They stay in `entries`:
+   * the chain is measured over every line the segment holds, and what is SERVED is decided one
+   * level up ({@link readTail}).
+   */
+  readonly retained: readonly { readonly entry: ChainEntry; readonly line: number }[];
 }
 
 /**
@@ -397,7 +406,8 @@ function entriesOfSegment(
   upcasters: UpcasterRegistry,
   isLast: boolean,
   refused: RefusedLine | undefined,
-  relaid?: RelaidLine,
+  relaid: RelaidLine | undefined,
+  checked: boolean,
 ): SegmentRead {
   const entryOf = (stored: string): ChainEntry => parseEntry(stored, upcasters);
   const relaidEntryOf = relaying(entryOf, relaid, file);
@@ -407,6 +417,7 @@ function entriesOfSegment(
   const endsWithNewline = raw.at(-1) === NEWLINE;
   const lines = splitLines(raw);
   const entries: ChainEntry[] = [];
+  const retained: { entry: ChainEntry; line: number }[] = [];
   let partialFinalLine = false;
   // Hoisted over the loop: the locus costs nothing per line and is read only when
   // a line refuses to parse. See {@link parseStoredLine}.
@@ -434,10 +445,13 @@ function entriesOfSegment(
     if (entry === REFUSED) continue;
     if (entry !== null) {
       entries.push(entry);
+      // A line of a kind this binary does not know has its hash asked as every other does: the
+      // check is over the line as written, and reads no payload (ADR-113).
+      if (checked && !entryHashHolds(entry)) retained.push({ entry, line: at });
       bytes = start + size + 1;
     } else partialFinalLine = true;
   }
-  return { entries, partialFinalLine, bytes };
+  return { entries, partialFinalLine, bytes, retained };
 }
 
 /**
@@ -470,9 +484,56 @@ export interface LinkBreak {
   readonly detail: string;
 }
 
+/**
+ * A line of a tail that was read and not served, because the hash it carries is not the one its
+ * content and position give ({@link entryHashHolds}). It says where the line is and nothing of what
+ * it says: the entry's own text never travels with the fact that it was held back.
+ */
+export interface RetainedEntry {
+  /** The tail directory the line is stored in. */
+  readonly tail: string;
+  /** The seq the line carries. */
+  readonly seq: number;
+  /** The segment file's name (not its path), such as `000001.jsonl`. */
+  readonly segment: string;
+  /** The line's place in that file, counted from 1 (blank lines included). */
+  readonly line: number;
+}
+
+/**
+ * Whether a read serves every line that parses, or only the lines whose hash holds.
+ *
+ * `'what holds'` is what every reader that serves the record asks: the entry whose hash does
+ * not hold is left out of `entries` and named in `retained`. `'every line'` is for the readers
+ * that recompute the hash themselves (the verdict, which names the line) or that decide a write
+ * from the line's links and ask no content of it; it costs no hashing.
+ */
+export type Served = 'what holds' | 'every line';
+
 /** What a whole tail held: its entries, and what the read had to tolerate. */
 export interface TailRead {
+  /**
+   * The entries served: those whose hash holds, in seq order, unless the read was asked for
+   * `'every line'`. The chain is measured over EVERY line (see {@link linkBreak}), so a line
+   * left out here still stands in the links of the one after it.
+   */
   readonly entries: ChainEntry[];
+  /**
+   * EVERY line that parsed, in seq order, the retained ones included: what the links are
+   * measured over, and what a resumed reading's boundary stands on. The same array as
+   * {@link entries} when nothing was left out.
+   */
+  readonly every: ChainEntry[];
+  /**
+   * The lines left out of {@link entries} because their hash does not hold, ALL of them, in
+   * the order they are stored. Empty for a read of `'every line'`.
+   */
+  readonly retained: readonly RetainedEntry[];
+  /**
+   * The seq and the hash of the last line the read accepted, a retained one included: what the
+   * next line has to name as its `prev`. Undefined for a tail that holds no entry.
+   */
+  readonly last?: { readonly seq: number; readonly hash: string };
   /**
    * The tail's last line was a partial write, dropped by the torn-fragment rule.
    * Ambiguous by nature (an interrupted append leaves exactly this, and so does
@@ -516,8 +577,10 @@ export interface TailRead {
  * merely tidy: reading the same bytes is not the same as reaching the same conclusion
  * about them. The link check here is the verifier's own ({@link linkBreakAt}), so a
  * reader cannot be more lenient than the verdict about the links; it costs three comparisons per
- * entry and no hash. The entry hash is a different question ({@link entryHashHolds}),
- * which this read does not ask yet, and a signature check is `verify`'s alone.
+ * entry and no hash. The entry hash is a different question ({@link entryHashHolds}), asked
+ * of each line a read SERVES: the line that fails it is left out of `entries` and named in
+ * `retained`, and the links of the line after it are measured against the hash it stores. A
+ * signature check is `verify`'s alone.
  */
 export function readTail(
   layout: ChainLayout,
@@ -525,24 +588,46 @@ export function readTail(
   upcasters: UpcasterRegistry,
   refused?: RefusedLine,
   relaid?: RelaidLine,
+  served: Served = 'what holds',
 ): TailRead {
   const segments = orderedSegments(layout, tailId);
-  const entries: ChainEntry[] = [];
+  const every: ChainEntry[] = [];
+  const held: { entry: ChainEntry; file: string; line: number }[] = [];
   let partialFinalLine = false;
   let boundary: TailBoundary | undefined;
   for (let s = 0; s < segments.length; s += 1) {
     const file = segments[s] as string;
-    const read = entriesOfSegment(file, upcasters, s === segments.length - 1, refused, relaid);
-    for (const entry of read.entries) entries.push(entry);
+    const read = entriesOfSegment(
+      file,
+      upcasters,
+      s === segments.length - 1,
+      refused,
+      relaid,
+      served === 'what holds',
+    );
+    for (const entry of read.entries) every.push(entry);
+    for (const one of read.retained) held.push({ ...one, file });
     if (read.partialFinalLine) partialFinalLine = true;
     // The end of the last segment that YIELDED an entry, not of the last segment read.
     // A tail whose current segment is empty (a writer truncated a torn fragment out of
     // it), ends, as far as a resumed reading goes, at the end of the sealed one before.
     if (read.entries.length > 0) boundary = { segment: file, bytes: read.bytes };
   }
-  const linkBreak = firstLinkBreakFrom(tailId, entries, 0, null);
+  // The chain is measured over EVERY line, the retained included, against the hash each
+  // STORES: a line whose content was altered is one fact, not one and a break after it.
+  const linkBreak = firstLinkBreakFrom(tailId, every, 0, null);
+  const left = new Set(held.map((one) => one.entry));
+  const last = every[every.length - 1];
   return {
-    entries,
+    entries: left.size === 0 ? every : every.filter((entry) => !left.has(entry)),
+    every,
+    retained: held.map((one) => ({
+      tail: tailId,
+      seq: one.entry.link.seq,
+      segment: basename(one.file),
+      line: one.line,
+    })),
+    ...(last !== undefined ? { last: { seq: last.link.seq, hash: last.link.hash } } : {}),
     partialFinalLine,
     ...(linkBreak !== undefined ? { linkBreak } : {}),
     ...(boundary !== undefined ? { boundary } : {}),
@@ -598,18 +683,21 @@ export function firstLinkBreakFrom(
 }
 
 /**
- * Reads all entries of a tail in seq order across its segments.
+ * Reads every line of a tail that parses, in seq order across its segments, WITHOUT asking
+ * each entry's hash ({@link Served} `'every line'`).
  *
- * This is the whole history of one machine, which the verifier and the replay
- * both genuinely need. A writer resuming the tail does not: see
- * {@link readTailTip}.
+ * It is for the readers that decide or prepare a write from the lines' links and witnesses
+ * (a cut, a witness file, a certificate's identity) and serve no text of an event: they see
+ * the line as it is stored, and a line whose hash does not hold is `verify`'s to name. A
+ * reader that serves the record reads {@link readTail}, which leaves such a line out. A
+ * writer resuming the tail does not need the history: see {@link readTailTip}.
  */
 export function readTailEntries(
   layout: ChainLayout,
   tailId: string,
   upcasters: UpcasterRegistry,
 ): ChainEntry[] {
-  return readTail(layout, tailId, upcasters).entries;
+  return readTail(layout, tailId, upcasters, undefined, undefined, 'every line').entries;
 }
 
 /**
@@ -673,10 +761,26 @@ function sizeOf(file: string): number {
   }
 }
 
+/** The line (counted from 1) that starts at byte `start` of `file`. */
+function lineAtOffset(file: string, start: number): number {
+  const before = readFileSync(file).subarray(0, start);
+  let line = 1;
+  for (const byte of before) if (byte === NEWLINE) line += 1;
+  return line;
+}
+
 /** What a resumed reading of a tail found: the arrivals, and where it now stands. */
 export interface TailSince {
-  /** The entries past the boundary, in seq order: empty for a tail that did not move. */
+  /**
+   * EVERY entry past the boundary, in seq order: empty for a tail that did not move. The chain
+   * is measured over all of them, a line whose hash does not hold included, against the hash
+   * that line stores.
+   */
   readonly arrivals: ChainEntry[];
+  /** The arrivals whose hash holds: the ones to serve. */
+  readonly served: ChainEntry[];
+  /** The arrivals left out of {@link served}, as {@link TailRead.retained} names them. */
+  readonly retained: readonly RetainedEntry[];
   /** Where this reading stopped, for the reading after it. */
   readonly boundary: TailBoundary;
 }
@@ -730,7 +834,25 @@ export function readTailSince(
   // boundary counted it, and the file never held it.
   if (sizeOf(boundary.segment) < boundary.bytes - 1) return undefined;
   const arrivals: ChainEntry[] = [];
+  const held: { entry: ChainEntry; file: string; start: number }[] = [];
   let reached: TailBoundary | undefined;
+  const answer = (boundary: TailBoundary): TailSince => {
+    const every = arrivals.reverse();
+    const left = new Set(held.map((one) => one.entry));
+    return {
+      arrivals: every,
+      served: left.size === 0 ? every : every.filter((entry) => !left.has(entry)),
+      retained: held
+        .map((one) => ({
+          tail: tailId,
+          seq: one.entry.link.seq,
+          segment: basename(one.file),
+          line: lineAtOffset(one.file, one.start),
+        }))
+        .reverse(),
+      boundary,
+    };
+  };
   for (let s = segments.length - 1; s >= at; s -= 1) {
     const file = segments[s] as string;
     const parse = (line: string): ChainEntry => parseEntry(line, upcasters);
@@ -746,12 +868,13 @@ export function readTailSince(
         // the lines after it would read as arrivals of the tail that was served.
         if (found.end + 1 !== boundary.bytes) return undefined;
         if (lastHash !== null && found.value.link.hash !== lastHash) return undefined;
-        return { arrivals: arrivals.reverse(), boundary: reached ?? boundary };
+        return answer(reached ?? boundary);
       }
       // The walk's first line is the tail's last, so this is set once and names the end
       // of the newest entry: `+ 1` for the newline that ends it.
       reached ??= { segment: file, bytes: found.end + 1 };
       arrivals.push(found.value);
+      if (!entryHashHolds(found.value)) held.push({ entry: found.value, file, start: found.start });
     }
   }
   // The walk ran off the front of the boundary's segment without reaching the offset:

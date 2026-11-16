@@ -123,6 +123,7 @@ import { type IdentityResolution, type RetiredElsewhere, resolveIdentity } from 
 import {
   type ChainEntry,
   describeLinkBreak,
+  ENTRY_HASH_MISMATCH,
   type Entry,
   entryHashHolds,
   groupUnreadLines,
@@ -1018,7 +1019,14 @@ export function relinksReadAt(
     for (const tail of listTails(layout)) {
       if (entriesByTail.has(tail)) continue;
       const refused: TailIssue[] = [];
-      const read = readTail(layout, tail, upcasters, refusedLine(layout, tail, refused));
+      const read = readTail(
+        layout,
+        tail,
+        upcasters,
+        refusedLine(layout, tail, refused),
+        undefined,
+        'every line',
+      );
       const checkpoints = readTailCheckpoints(layout, tail, refusedLine(layout, tail, refused));
       entriesByTail.set(tail, refused.length > 0 ? [] : read.entries);
       checkpointsByTail.set(tail, checkpoints);
@@ -1172,7 +1180,14 @@ function readForTheFold(
   const covered = new Map<string, number>();
   for (const tail of listTails(layout)) {
     const refused: TailIssue[] = [];
-    const read = readTail(layout, tail, upcasters, refusedLine(layout, tail, refused));
+    const read = readTail(
+      layout,
+      tail,
+      upcasters,
+      refusedLine(layout, tail, refused),
+      undefined,
+      'every line',
+    );
     const checkpoints = readTailCheckpoints(layout, tail, refusedLine(layout, tail, refused));
     if (refused.length > 0) {
       entries.set(tail, []);
@@ -1350,7 +1365,14 @@ function verifyReading(
     // (a second line, a checkpoint whose signature fails, a missing ownership proof) while the
     // second reader named them all. Each refused line is left out of what is read, so what
     // follows is asked only what a hole leaves checkable: see `lineRefused` below.
-    const read = readTail(layout, tail, upcasters, refusedLine(layout, tail, issues), relaid);
+    const read = readTail(
+      layout,
+      tail,
+      upcasters,
+      refusedLine(layout, tail, issues),
+      relaid,
+      'every line',
+    );
     // A refused EVENT line leaves a hole in the entries; a refused checkpoint line does not.
     const holed = issues.length > 0;
     let checkpointsPartial = false;
@@ -2371,7 +2393,7 @@ function verifyHashChain(tail: string, entries: readonly ChainEntry[], issues: T
         tail,
         layer: 'T1',
         seq: entry.link.seq,
-        detail: 'entry hash mismatch: content or link was altered',
+        detail: ENTRY_HASH_MISMATCH,
       });
       return;
     }

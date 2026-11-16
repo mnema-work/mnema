@@ -69,6 +69,7 @@ import {
   orderedSegments,
   precedesItsText,
   type RecordGroup,
+  type RetainedEntry,
   readTail,
   readTailSince,
   type TailBoundary,
@@ -84,7 +85,12 @@ import {
  * resumed reading and the whole one answer in, so {@link chainArrivals} has one case.
  */
 interface ReadSoFar {
+  /** Every line past where the reading started, the retained included: the chain is measured over them. */
   readonly arrivals: readonly ChainEntry[];
+  /** The arrivals whose hash holds: the ones the order is made of. */
+  readonly served: readonly ChainEntry[];
+  /** The arrivals left out of {@link served}. */
+  readonly retained: readonly RetainedEntry[];
   readonly boundary: TailBoundary | undefined;
 }
 
@@ -128,6 +134,8 @@ interface TailStream {
   readonly linkBreak?: LinkBreak;
   /** The lines of this tail of a kind this binary does not know: what the reading read past. */
   readonly unread: readonly UnreadLine[];
+  /** The lines of this tail whose hash does not hold, which `events` leaves out. */
+  readonly retained: readonly RetainedEntry[];
 }
 
 /**
@@ -252,6 +260,12 @@ export interface ChainReplay {
    */
   readonly unread: readonly UnreadLine[];
   /**
+   * The lines whose hash does not hold, ALL of them in every tail: read, left out of `events`,
+   * and said by every surface (the entry's own text never rides with the fact). It rides on the
+   * replay as the breaks do, and is empty for every record the product wrote on its own.
+   */
+  readonly retained: readonly RetainedEntry[];
+  /**
    * The records the directory holds tails of, where it holds two or more (`tailsReadAt`): then
    * nothing was read. Empty for a directory of one record. It rides on the replay so a surface
    * that says why nothing governs asks no second reading of the tails.
@@ -292,6 +306,7 @@ export function chainReplay(layout: ChainLayout, upcasters: UpcasterRegistry): C
     frontier: { tails, events: events.length, unresolved },
     linkBreaks,
     unread: streams.flatMap((stream) => stream.unread),
+    retained: streams.flatMap((stream) => stream.retained),
     several: reading.several,
   };
 }
@@ -348,6 +363,20 @@ export type ChainArrivals =
        * broken, so a chain that chains pays nothing for it.
        */
       readonly broken: readonly LinkBreak[];
+      /** The arrivals whose hash does not hold, in every tail: see {@link ChainArrivals}'s next arm. */
+      readonly retained: readonly RetainedEntry[];
+    }
+  | {
+      /**
+       * An arrival is an entry whose hash does not hold, and the arrivals chain: the line is
+       * left out of what is served and named, so no suffix describes the difference. THE FACT
+       * HAS ITS OWN ARM for the reason the break has: the reading that found it is the one
+       * holding the line, and a caller asked what the chain says NOW (`linkBreaksAsOfNow`) is
+       * answered from it, not from a replay. A whole reading says the same of the same bytes.
+       */
+      readonly suffix: false;
+      readonly why: 'AN_ARRIVAL_IS_RETAINED';
+      readonly retained: readonly RetainedEntry[];
     };
 
 /**
@@ -449,6 +478,7 @@ export function chainArrivals(
   // what every tail is read to find, so reading goes on past it, and a refusal of another kind
   // is reported only when no tail broke.
   const broken: LinkBreak[] = [];
+  const retained: RetainedEntry[] = [];
   let refusal: ChainArrivals | undefined;
   for (const tail of tails) {
     const covered = frontier.tails.get(tail);
@@ -468,7 +498,12 @@ export function chainArrivals(
       refusal ??= { suffix: false, why: 'A_TAIL_WAS_CUT' };
       continue;
     }
+    // EVERY arrival, the retained included: the chain is measured over the lines as stored,
+    // against the hash each stores, so an altered line is one fact and not one and a break.
     const entries = since.arrivals;
+    retained.push(...since.retained);
+    // What the order is made of is what holds.
+    const served = since.served;
     // The arrivals have to run on from where the frontier stopped, by the verifier's own
     // rule and in the verifier's own function ({@link firstLinkBreakFrom}): the same one
     // a whole-tail read asks, given a starting seq and a starting hash instead of a
@@ -488,7 +523,7 @@ export function chainArrivals(
       (covered?.lastSeq ?? -1) + 1,
       covered?.lastHash ?? null,
       (seq) => {
-        whole ??= readTail(layout, tail, upcasters).entries;
+        whole ??= readTail(layout, tail, upcasters, undefined, undefined, 'every line').entries;
         const held = whole[seq];
         return held?.link.seq === seq ? held.link : undefined;
       },
@@ -500,7 +535,7 @@ export function chainArrivals(
     const last = entries[entries.length - 1];
     const lastSeq = last === undefined ? (covered?.lastSeq ?? -1) : last.link.seq;
     const lastHash = last === undefined ? (covered?.lastHash ?? null) : last.link.hash;
-    const fresh = entries.map((entry) => entry.event);
+    const fresh = served.map((entry) => entry.event);
     reached.set(tail, {
       lastSeq,
       lastHash,
@@ -511,7 +546,7 @@ export function chainArrivals(
     if (fresh.length === 0) continue;
     // A citation the covered order ignored, now satisfied: the event citing it would have
     // waited for this one, so what was covered is not a prefix of the order any more.
-    if (entries.some((entry) => unresolved.has(entry.link.hash))) {
+    if (served.some((entry) => unresolved.has(entry.link.hash))) {
       refusal ??= { suffix: false, why: 'AN_ARRIVAL_IS_NOT_LATER' };
     }
     // The arrivals of this tail must follow the covered events of every OTHER tail,
@@ -533,11 +568,12 @@ export function chainArrivals(
     streams.push({
       tree: 0,
       events: fresh,
-      hashes: entries.map((entry) => entry.link.hash),
+      hashes: served.map((entry) => entry.link.hash),
       tail,
       lastSeq,
       lastHash,
-      unread: unreadLinesOf(tail, entries),
+      unread: unreadLinesOf(tail, served),
+      retained: [],
     });
   }
 
@@ -552,8 +588,15 @@ export function chainArrivals(
 
   const [firstBreak] = broken;
   if (firstBreak !== undefined) {
-    return { suffix: false, why: 'AN_ARRIVAL_DOES_NOT_CHAIN', broke: firstBreak, broken };
+    return {
+      suffix: false,
+      why: 'AN_ARRIVAL_DOES_NOT_CHAIN',
+      broke: firstBreak,
+      broken,
+      retained,
+    };
   }
+  if (retained.length > 0) return { suffix: false, why: 'AN_ARRIVAL_IS_RETAINED', retained };
   if (refusal !== undefined) return refusal;
 
   // The SAME merge the whole order goes through, over the arrivals alone. It is the
@@ -618,7 +661,12 @@ function wholeTail(layout: ChainLayout, tail: string, upcasters: UpcasterRegistr
   // A tail that holds no entry has no position, so the frontier records `undefined`
   // for it and the reading after this one reads it whole again, which costs nothing,
   // because there is nothing there.
-  return { arrivals: read.entries, boundary: read.boundary };
+  return {
+    arrivals: read.every,
+    served: read.entries,
+    retained: read.retained,
+    boundary: read.boundary,
+  };
 }
 
 /** The greatest `at` in an order, or the empty string when it holds nothing. */
@@ -722,11 +770,14 @@ function streamsOf(
       events: entries.map((entry) => entry.event),
       hashes: entries.map((entry) => entry.link.hash),
       tail,
-      lastSeq: entries.length === 0 ? -1 : (entries[entries.length - 1] as ChainEntry).link.seq,
-      lastHash: entries.length === 0 ? null : (entries[entries.length - 1] as ChainEntry).link.hash,
+      // Where the tail ENDS is the last line it holds, a retained one included: what the next
+      // line has to name, and where a resumed reading picks up.
+      lastSeq: read.last?.seq ?? -1,
+      lastHash: read.last?.hash ?? null,
       ...(read.boundary !== undefined ? { boundary: read.boundary } : {}),
       ...(read.linkBreak !== undefined ? { linkBreak: read.linkBreak } : {}),
       unread: unreadLinesOf(tail, entries),
+      retained: read.retained,
     };
   });
 }
