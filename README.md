@@ -129,7 +129,7 @@ mnema works with any agent host that has an MCP client, and how much more a host
 what its hooks allow, one rung at a time: (a) the MCP server and rules in a file, (b) the opening
 of a session, (c) a refusal before a write, (d) a pause for a person.
 
-<!-- The host summary below is generated from packages/code/src/host-names.ts: edit the table there. -->
+<!-- The host summary below is generated: the host names are edited in packages/code/src/host-names.ts, the logo files and their heights in SHOWN in packages/code/tests/support/the-host-files.ts. -->
 
 | | Host | Rung | What it gets | Install |
 | :---: | :--- | :---: | :--- | :--- |

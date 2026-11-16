@@ -1734,7 +1734,7 @@ function withTheInstallTable(page: string, path: string): string {
 
 /** The line that opens the generated summary on a page. */
 const SUMMARY_BEGIN =
-  '<!-- The host summary below is generated from packages/code/src/host-names.ts: edit the table there. -->';
+  '<!-- The host summary below is generated: the host names are edited in packages/code/src/host-names.ts, the logo files and their heights in SHOWN in packages/code/tests/support/the-host-files.ts. -->';
 
 /** The line that closes it. */
 const SUMMARY_END = '<!-- End of the generated host summary. -->';
