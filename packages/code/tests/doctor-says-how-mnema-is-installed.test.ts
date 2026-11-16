@@ -19,6 +19,7 @@ import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type DoctorContext, runDoctor } from '../src/commands/doctor.js';
+import { pluginTreeHash } from '../src/plugin-tree-hash.js';
 import { MNEMA_CLI } from './support/the-cli.js';
 
 const CLI = MNEMA_CLI;
@@ -122,6 +123,95 @@ describe('a namesake', () => {
     expect(lines.find((line) => line.includes('namesake'))).toContain('the registry was not asked');
     expect(lines.filter((line) => line.startsWith('attention namesake'))).toEqual([]);
   });
+});
+
+/** A plugin folder with these files, and the list that says a host put it at `dir`. */
+function installedAt(dir: string, files: Record<string, string>, version = '9.9.9'): void {
+  for (const [name, body] of Object.entries(files)) {
+    mkdirSync(join(dir, name, '..'), { recursive: true });
+    writeFileSync(join(dir, name), body);
+  }
+  const file = join(home, '.claude', 'plugins', 'installed_plugins.json');
+  mkdirSync(join(file, '..'), { recursive: true });
+  writeFileSync(
+    file,
+    JSON.stringify({
+      version: 2,
+      plugins: { 'mnema@mnema': [{ scope: 'user', version, installPath: dir }] },
+    }),
+  );
+}
+
+describe('the content of the plugin', () => {
+  const released = { 'hooks/a.mjs': 'one\ntwo\n', 'README.md': 'text\n' };
+  let digest: string;
+  beforeEach(() => {
+    const folder = join(sandbox, 'released');
+    for (const [name, body] of Object.entries(released)) {
+      mkdirSync(join(folder, name, '..'), { recursive: true });
+      writeFileSync(join(folder, name), body);
+    }
+    digest = pluginTreeHash(folder) as string;
+  });
+  const line = (): string =>
+    said({ pluginTrees: { mnema: digest } }).find((one) =>
+      one.includes('released with this binary'),
+    ) ?? '';
+
+  it('says the files are the ones released when they are', () => {
+    installedAt(join(sandbox, 'cache', 'mnema', '9.9.9'), released);
+    expect(line()).toMatch(
+      /^fine plugin the files of plugin mnema@mnema at .* are the ones released with this binary \(9\.9\.9\)/,
+    );
+  });
+
+  it('says the same label over other content, with the host commands, and that the label alone moves it', () => {
+    installedAt(join(sandbox, 'cache', 'mnema', '9.9.9'), {
+      ...released,
+      'hooks/a.mjs': 'one\nchanged\n',
+    });
+    const said = said_other();
+    expect(said).toContain('attention plugin plugin mnema@mnema has the label 9.9.9');
+    expect(said).toContain('but other content than the one released');
+    expect(said).toContain(
+      '`claude plugin marketplace update mnema`, then `claude plugin update mnema@mnema`',
+    );
+    expect(said).toContain('only when the label changes');
+    expect(said).toContain('`claude plugin uninstall mnema@mnema`');
+  });
+
+  it('does not take a copy whose lines end with CR LF for other content', () => {
+    installedAt(join(sandbox, 'cache', 'mnema', '9.9.9'), {
+      'hooks/a.mjs': 'one\r\ntwo\r\n',
+      'README.md': 'text\r\n',
+    });
+    expect(line()).toContain('are the ones released with this binary');
+  });
+
+  it('says nothing about content when the label differs, and when this binary knows no digest', () => {
+    installedAt(join(sandbox, 'cache', 'mnema', '0.0.1'), released, '0.0.1');
+    expect(line()).toBe('');
+    installedAt(join(sandbox, 'cache', 'mnema', '9.9.9'), released);
+    expect(said({ pluginTrees: {} }).some((one) => one.includes('released with this binary'))).toBe(
+      false,
+    );
+  });
+
+  it('says the files could not be read when the path is not there', () => {
+    installedAt(join(sandbox, 'cache', 'mnema', '9.9.9'), released);
+    rmSync(join(sandbox, 'cache'), { recursive: true });
+    expect(line()).toContain(
+      'could not be read, so whether they are the ones released with this binary is unknown',
+    );
+  });
+
+  function said_other(): string {
+    return (
+      said({ pluginTrees: { mnema: digest } }).find((one) =>
+        one.startsWith('attention plugin plugin mnema@mnema has the label'),
+      ) ?? ''
+    );
+  }
 });
 
 describe('the plugin', () => {

@@ -16,7 +16,9 @@
  * WHAT IS FIXED AT BUILD TIME. `productStamp()` of `@mnema/core` hashes the files of its own
  * directory when it runs; in a bundle those files are not there. The build computes the stamp the
  * compiled package computes, from the same files, and writes it into the bundle as a constant, so
- * a cache built by one is read as current by the other.
+ * a cache built by one is read as current by the other. The same goes for the two plugin folders of
+ * the repository: the package does not carry them, so the build hashes each and writes the digests in
+ * (`MNEMA_PLUGIN_TREES`), and the doctor compares them with the folder a host installed.
  *
  * React and some of the dependencies are CommonJS, which calls `require`; an ES module has none, so
  * each chunk opens by making one. Not minified, so a stack trace names a line a person can read;
@@ -39,6 +41,9 @@ export const LEFT_OUTSIDE = ['string-width', 'react-devtools-core'];
 /** The name the constant has in `packages/core/src/projections/cache-meta.ts`. */
 const STAMP = 'MNEMA_PRODUCT_STAMP';
 
+/** The name of the constant that holds the digest of each plugin folder, as JSON. */
+const PLUGIN_TREES = 'MNEMA_PLUGIN_TREES';
+
 const REQUIRE =
   "import { createRequire as __mnemaCreateRequire } from 'node:module'; const require = __mnemaCreateRequire(import.meta.url);";
 
@@ -47,6 +52,15 @@ export async function bundleTheCli(outdir = BUNDLE_DIR) {
   const { productStamp } = await import(
     new URL('../../core/dist/projections/cache-meta.js', here).href
   );
+  const { PLUGIN_FOLDERS, pluginTreeHash } = await import(
+    new URL('../dist/plugin-tree-hash.js', here).href
+  );
+  const trees = {};
+  for (const [name, folder] of Object.entries(PLUGIN_FOLDERS)) {
+    const digest = pluginTreeHash(fileURLToPath(new URL(`../../../${folder}`, here)));
+    if (digest === undefined) throw new Error(`the plugin folder ${folder} could not be read`);
+    trees[name] = digest;
+  }
   rmSync(outdir, { recursive: true, force: true });
   return build({
     entryPoints: { cli: fileURLToPath(new URL('../dist/cli.js', here)) },
@@ -60,7 +74,10 @@ export async function bundleTheCli(outdir = BUNDLE_DIR) {
     minify: false,
     sourcemap: false,
     external: LEFT_OUTSIDE,
-    define: { [STAMP]: JSON.stringify(productStamp()) },
+    define: {
+      [STAMP]: JSON.stringify(productStamp()),
+      [PLUGIN_TREES]: JSON.stringify(JSON.stringify(trees)),
+    },
     banner: { js: REQUIRE },
     logLevel: 'warning',
     // `import.meta` is ESM's own and the output is ESM: nothing is emptied.

@@ -97,6 +97,7 @@ import {
   personsKeyInTheClear,
   THE_AGENT_KEY_SEPARATES_NOTHING,
 } from '../the-persons-key-in-the-clear.js';
+import { pluginTreeHash } from '../plugin-tree-hash.js';
 import { isOlderThan } from '../version.js';
 import { mergeDriverLines } from './doctor-merge-driver.js';
 import { type Plan, planFix, readLocations, SETTING, settingsCandidates } from './doctor-vscode.js';
@@ -120,6 +121,21 @@ export interface DoctorContext {
    * the executable is asked (`node -p process.versions.node`); a test hands its own.
    */
   readonly nodeVersionOf?: (path: string) => string | undefined;
+  /**
+   * The digest of each plugin folder this binary was built from, by plugin name. By default the
+   * bundle's own (written by the build); outside a bundle there is none, and the content of an
+   * installed plugin is not compared.
+   */
+  readonly pluginTrees?: Readonly<Record<string, string>>;
+}
+
+/** What the build wrote into the bundle: the digest of each plugin folder, as JSON. */
+declare const MNEMA_PLUGIN_TREES: string | undefined;
+
+function builtPluginTrees(ctx: DoctorContext): Readonly<Record<string, string>> {
+  if (ctx.pluginTrees !== undefined) return ctx.pluginTrees;
+  if (typeof MNEMA_PLUGIN_TREES !== 'string') return {};
+  return JSON.parse(MNEMA_PLUGIN_TREES) as Record<string, string>;
 }
 
 /** `attention` is a finding with something to do; `fine` needs nothing. */
@@ -407,6 +423,8 @@ interface InstalledPlugin {
   readonly id: string;
   readonly version: string;
   readonly scope: string;
+  /** Where the host put the plugin's files, when its list says. */
+  readonly installPath: string | undefined;
 }
 
 function installedPlugins(ctx: DoctorContext): InstalledPlugin[] | 'unreadable' {
@@ -422,6 +440,7 @@ function installedPlugins(ctx: DoctorContext): InstalledPlugin[] | 'unreadable' 
         id,
         version: typeof one?.version === 'string' ? one.version : 'unknown',
         scope: typeof one?.scope === 'string' ? one.scope : 'unknown',
+        installPath: typeof one?.installPath === 'string' ? one.installPath : undefined,
       });
     }
   }
@@ -448,38 +467,89 @@ function pluginFindings(ctx: DoctorContext, plugins: InstalledPlugin[] | 'unread
       },
     ];
   }
-  return plugins.map((one): Finding => {
+  return plugins.flatMap((one): Finding[] => {
     const where = `plugin ${oneLine(one.id)} is installed at ${oneLine(one.version)} (${oneLine(one.scope)} scope)`;
     if (one.version === ctx.running.version) {
-      return {
-        topic: 'plugin',
-        state: 'fine',
-        line: `${where}, the version of this binary: nothing to do.`,
-      };
+      return [
+        {
+          topic: 'plugin',
+          state: 'fine',
+          line: `${where}, the version of this binary: nothing to do.`,
+        },
+        ...contentFinding(ctx, one),
+      ];
     }
     // THE BINARY BEHIND THE PLUGIN IS THE PAIR THAT BREAKS: the plugin asks it for what it never
     // learned, and a hook that is refused says nothing. A binary AHEAD of the plugin keeps every
     // flag it took, so that pair works and only the plugin is stale.
     if (isOlderThan(ctx.running.version, one.version)) {
-      return {
-        topic: 'plugin',
-        state: 'attention',
-        line: `${where} and this binary is ${ctx.running.version}, older than the plugin: the plugin's hooks and server run the mnema on the PATH and may ask it for what it lacks, so update the binary with \`npm i -g @mnema/code@${oneLine(one.version)}\`.`,
-      };
+      return [
+        {
+          topic: 'plugin',
+          state: 'attention',
+          line: `${where} and this binary is ${ctx.running.version}, older than the plugin: the plugin's hooks and server run the mnema on the PATH and may ask it for what it lacks, so update the binary with \`npm i -g @mnema/code@${oneLine(one.version)}\`.`,
+        },
+      ];
     }
     if (isOlderThan(one.version, ctx.running.version)) {
-      return {
+      return [
+        {
+          topic: 'plugin',
+          state: 'attention',
+          line: `${where} and this binary is ${ctx.running.version}, newer than the plugin: they still work together, and \`claude plugin update ${oneLine(one.id)}\` brings the plugin up to date.`,
+        },
+      ];
+    }
+    return [
+      {
         topic: 'plugin',
         state: 'attention',
-        line: `${where} and this binary is ${ctx.running.version}, newer than the plugin: they still work together, and \`claude plugin update ${oneLine(one.id)}\` brings the plugin up to date.`,
-      };
-    }
-    return {
+        line: `${where} and this binary is ${ctx.running.version}: the two versions could not be ordered, so update whichever is behind so the two agree.`,
+      },
+    ];
+  });
+}
+
+/**
+ * Whether the files a host installed under a label are the ones released under it. The label is
+ * all a host compares when it updates, so the same label over other content is not seen by it:
+ * the folder is read and hashed (a line ending is not a difference) against the digest the build
+ * wrote into this binary.
+ */
+function contentFinding(ctx: DoctorContext, one: InstalledPlugin): Finding[] {
+  const released = builtPluginTrees(ctx)[one.id.split('@')[0] ?? ''];
+  if (released === undefined || one.installPath === undefined) return [];
+  const what = `the files of plugin ${oneLine(one.id)} at ${oneLine(one.installPath)}`;
+  const installed = pluginTreeHash(one.installPath);
+  if (installed === undefined) {
+    return [
+      {
+        topic: 'plugin',
+        state: 'fine',
+        line: `${what} could not be read, so whether they are the ones released with this binary is unknown.`,
+      },
+    ];
+  }
+  if (installed === released) {
+    return [
+      {
+        topic: 'plugin',
+        state: 'fine',
+        line: `${what} are the ones released with this binary (${ctx.running.version}): nothing to do.`,
+      },
+    ];
+  }
+  const id = oneLine(one.id);
+  return [
+    {
       topic: 'plugin',
       state: 'attention',
-      line: `${where} and this binary is ${ctx.running.version}: the two versions could not be ordered, so update whichever is behind so the two agree.`,
-    };
-  });
+      line:
+        `plugin ${id} has the label ${oneLine(one.version)}, the version of this binary, but other content than the one released: ${what} differ. ` +
+        `Update the marketplace and the plugin (\`claude plugin marketplace update ${oneLine(id.split('@')[1] ?? 'mnema')}\`, then \`claude plugin update ${id}\`); ` +
+        `a host moves the files only when the label changes, so if this stays, \`claude plugin uninstall ${id}\` and \`claude plugin install ${id}\` put the released ones in.`,
+    },
+  ];
 }
 
 /** Whether one entry of an MCP configuration starts this product's server. */
