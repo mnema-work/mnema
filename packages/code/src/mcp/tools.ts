@@ -211,12 +211,14 @@ import {
   THE_READING_THAT_OPENED_THESE,
 } from '../tree-sources.js';
 import {
+  ALTERED_RECORD_NOTE,
   type ChargeRecorded,
   type FactsOfATree,
   factsByTree,
   movedApartLine,
   reasonTold,
   recordTheCharge,
+  refusalOfAnAlteredRecord,
   refusalOfAnUnreadableRecord,
   UNREADABLE_RECORD_NOTE,
   unrecordedCharge,
@@ -2993,6 +2995,8 @@ export function runRulesBeforeAnEditTool(
   // A RECORD THAT CANNOT BE READ REFUSES THE WRITE, as a reply and never as a tool error, which the
   // host would read as leave to write; the command hook answers the same (`runBeforeAPath`).
   try {
+    const altered = alteredRecordRefusal(session);
+    if (altered !== undefined) return altered;
     return rulesBeforeAnEdit(session, input);
   } catch (error) {
     const refusal = refusalOfAnUnreadableRecord(error, workspaceTrees(session));
@@ -3000,6 +3004,20 @@ export function runRulesBeforeAnEditTool(
     session.log(UNREADABLE_RECORD_NOTE);
     return { ok: true, value: hookReply(PRE_TOOL_USE, { refuse: refusal }) };
   }
+}
+
+/**
+ * The refusal of a write while an entry of the record was altered after it was written (ADR-395),
+ * whatever the switches say: which rules apply cannot be known from a record that leaves a line
+ * out. The caches are brought into agreement first and the chain as it stands now is asked, as a
+ * write is; the reply is the hook reply the host parses, and a gap or a fork is not read here.
+ */
+function alteredRecordRefusal(session: Session): IntelligenceResult<HookReply> | undefined {
+  workspaceCaches(session);
+  const altered = refusalOfAnAlteredRecord(sessionLinkBreaks(session, A_WRITE));
+  if (altered === undefined) return undefined;
+  session.log(ALTERED_RECORD_NOTE);
+  return { ok: true, value: hookReply(PRE_TOOL_USE, { refuse: altered }) };
 }
 
 function rulesBeforeAnEdit(

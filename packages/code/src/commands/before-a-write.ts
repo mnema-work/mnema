@@ -86,12 +86,20 @@ import {
   EDIT_PUSH_CHANNEL,
   REFUSES_A_WRITE_CHANNEL,
 } from '../record-framing.js';
+import { linkBreakSentences } from '../record-integrity.js';
 import { sessionIdOf, takeTheFirstServing } from '../session-journal.js';
-import { caches, withScopedCaches } from '../tree-sources.js';
 import {
+  caches,
+  linkBreaksOf,
+  THE_READING_THAT_OPENED_THESE,
+  withScopedCaches,
+} from '../tree-sources.js';
+import {
+  ALTERED_RECORD_NOTE,
   type FactsOfATree,
   factsByTree,
   recordTheCharge,
+  refusalOfAnAlteredRecord,
   refusalOfAnUnreadableRecord,
   UNREADABLE_RECORD_NOTE,
   unrecordedCharge,
@@ -222,7 +230,15 @@ function whatAPathMeets(ctx: BeforeAWriteContext, input: APathAsked): BeforeAWri
   // The project root is the PARENT of its `.mnema/`, the directory every address is written
   // against; a relative path is the host's, written against where it started the hook.
   const root = dirname(trees.projectPublic);
-  const { met, others, pushes } = withScopedCaches(trees, (sources) => {
+  const { met, others, pushes, altered, integrity } = withScopedCaches(trees, (sources) => {
+    // AN ALTERED ENTRY REFUSES THE WRITE (ADR-395), before any rule is derived: which rules apply
+    // cannot be known from a record that leaves a line out. Only the gate refuses; the hook that
+    // runs after the write (`push.only`) cannot, and says the fact in the text it hands over.
+    const facts = linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE);
+    const refusal = input.push?.only === true ? undefined : refusalOfAnAlteredRecord(facts);
+    if (refusal !== undefined) {
+      return { met: undefined, others: [], pushes: [], altered: refusal, integrity: [] };
+    }
     // THE SWITCH OF THE PUSH IS ASKED BEFORE ANY RULE IS DERIVED, as the MCP tool asks it: switched
     // off, the reply is the gate's alone and the derivation behind the text never runs.
     const pushing = input.push !== undefined && channelIsOn(sources, EDIT_PUSH_CHANNEL);
@@ -255,8 +271,15 @@ function whatAPathMeets(ctx: BeforeAWriteContext, input: APathAsked): BeforeAWri
       met: read.gate,
       others: place === undefined ? [] : otherRunsAt(trees, sources, place),
       pushes: spoken,
+      altered: undefined as string | undefined,
+      // ONLY THE HOOK AFTER THE WRITE SAYS GAPS AND FORKS: the gate that lets a write through says
+      // neither (ADR-395), and its push is the rules alone.
+      integrity: input.push?.only === true ? linkBreakSentences(facts) : [],
     };
   });
+  if (altered !== undefined) {
+    return { ok: true, reply: input.reply({ refuse: altered }), notes: [ALTERED_RECORD_NOTE] };
+  }
   if (met === undefined && pushes.length === 0) return silent();
 
   // THE ORDER IS THE MCP TOOL'S: the facts are appended, and only then does the reply carry the
@@ -297,7 +320,7 @@ function whatAPathMeets(ctx: BeforeAWriteContext, input: APathAsked): BeforeAWri
   const pushed =
     met?.grade === 'refuse' || input.push === undefined
       ? { text: undefined, notes: [] }
-      : beside(trees, input, pushes, before);
+      : beside(trees, input, pushes, before, integrity);
   if (met === undefined) {
     return {
       ok: true,
@@ -363,6 +386,7 @@ function beside(
   input: APathAsked,
   pushes: readonly ThePush[],
   before: ReturnType<typeof anchorsBefore>,
+  integrity: readonly string[],
 ): { readonly text: string | undefined; readonly notes: readonly string[] } {
   if (pushes.length === 0) return { text: undefined, notes: [] };
   const session = input.push?.session;
@@ -374,7 +398,12 @@ function beside(
     [...foundingsSince(before), ...apart],
     input.ceiling,
   );
-  return { text, notes: [] };
+  // THE FACTS OF INTEGRITY LEAD THE TEXT (ADR-394, ADR-410): the write has happened and the gate
+  // before it could not refuse for an altered entry here, so the model is told above the rules.
+  return {
+    text: text === undefined || integrity.length === 0 ? text : [...integrity, '', text].join('\n'),
+    notes: [],
+  };
 }
 
 /**

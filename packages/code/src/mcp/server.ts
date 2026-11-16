@@ -2499,11 +2499,13 @@ function served(
  * linkBreakBlockOnWrite}); everything under it (the issue lines, the closing sentence)
  * is the same bytes down both roads, because it is the same fact about the same tails.
  *
- * `before` and `after` are what the tool itself composed, and the fact goes BETWEEN
- * them: the payload or the acknowledgement first, because that is what was asked for;
- * the record's own state next, because it qualifies the whole reply; and a tool's
- * further remarks last ({@link withRunState}'s sentence about the connection), because
- * they are about this connection rather than about the record.
+ * `before` and `after` are what the tool itself composed, and the fact goes BEFORE both:
+ * the record's own state qualifies the whole reply, and a reply that opens with the
+ * payload leaves the warning where a reader who stops early, or a host that keeps the first
+ * part of a long reply, never meets it (ADR-394, ADR-410). Then the payload or the
+ * acknowledgement, because that is what was asked for; and a tool's further remarks last
+ * ({@link withRunState}'s sentence about the connection), because they are about this
+ * connection rather than about the record.
  *
  * It does not REFUSE, and that is the same ruling the read made. Nothing is lost when a
  * tail stops chaining, the break is behind, and the new event chains from the last hash
@@ -2524,8 +2526,14 @@ function replied(
   // is written down (`mcp/tools.ts`, {@link WhichDoor}).
   return {
     content: [
-      ...before,
+      // FIRST, BEFORE THE PAYLOAD AND BEFORE WHAT THE TOOL COMPOSED (ADR-394, ADR-410): every
+      // fact of integrity the record has (an entry left out because its hash does not hold, a
+      // gap, a fork) is one block at the top of the reply, so a model that stops reading, or a
+      // host that keeps the first part of a long reply, still meets it. A reply that is only
+      // an acknowledgement carries it the same. The note a newer mnema's version adds
+      // comes AFTER this block, never before it.
       ...fact(sessionLinkBreaks(session, wrote ? A_WRITE : A_READ)),
+      ...before,
       // WHAT THIS CONNECTION'S WRITES FOUNDED since the last reply: asked here and in
       // {@link refused}, which between them are every answer a tool composes, so a tool added
       // later says it without remembering to. (This said "the one place every reply of this

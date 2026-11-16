@@ -184,14 +184,15 @@ describe('over a record that does not chain, every read says so', () => {
     for (const [name, args] of READS(id)) {
       const answered = await client.callTool({ name, arguments: args });
       const said = blocks(answered);
-      // IN A BLOCK OF ITS OWN, after the payload, never inside it.
+      // IN A BLOCK OF ITS OWN, BEFORE the payload (ADR-394, ADR-410), never inside it.
       const notice = said.find((block) => block.includes(TOLD));
       expect(notice, name).toBeDefined();
       expect(notice as string, name).toMatch(/issue \[T1\] \S+ \S+#\d+: .+/);
       // And the fact is COMPLETE where it lands: no second call is named, because
       // `verify` is not a tool this reader has.
       expect(notice as string, name).toContain('still on the tail');
-      expect(said[0] as string, name).not.toContain(TOLD);
+      expect(said[0] as string, name).toContain(TOLD);
+      expect(said.slice(1).join(LF), name).not.toContain(TOLD);
     }
     await client.close();
   }, 60_000);
@@ -208,8 +209,9 @@ describe('over a record that does not chain, every read says so', () => {
     // `bootstrap` is served as the same object through two doors, this one and the CLI's
     // `--json` (indented, where this one is not), so the notice may not enter the object, and the object has to stay
     // parseable on its own.
-    expect(() => JSON.parse(said[0] as string)).not.toThrow();
-    const context = JSON.parse(said[0] as string) as Record<string, unknown>;
+    expect(said[0]).toContain(TOLD);
+    expect(() => JSON.parse(said[1] as string)).not.toThrow();
+    const context = JSON.parse(said[1] as string) as Record<string, unknown>;
     expect(Object.keys(context)).not.toContain('linkBreaks');
     await client.close();
   }, 60_000);
@@ -225,7 +227,7 @@ describe('over a record that does not chain, every read says so', () => {
     // Ruling on the record is `verify`'s. A read that started failing over a break would
     // fail on a record that still holds every fact it ever held.
     expect((answered as { isError?: boolean }).isError).not.toBe(true);
-    expect(blocks(answered)[0]).toContain('prefer PKCE');
+    expect(blocks(answered)[1]).toContain('prefer PKCE');
     await client.close();
   }, 60_000);
 

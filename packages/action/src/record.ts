@@ -8,7 +8,13 @@
  * names; it believes the bytes it is handed exactly as far as it reads them.
  */
 
-import { type ChainEntry, catalogUpcasters, decisionTextsOf, parseEntry } from '@mnema/chain';
+import {
+  type ChainEntry,
+  catalogUpcasters,
+  decisionTextsOf,
+  entryHashHolds,
+  parseEntry,
+} from '@mnema/chain';
 
 /** One event of the record, reduced to what the report reads. */
 export interface RecordedEvent {
@@ -95,7 +101,7 @@ export interface DecisionLabel {
  * or its first writing in the merged order while nothing has judged it. It asks the function every
  * reader of the product asks, so a second writing of a decision's id, which no honest writer
  * appends, does not relabel it in the comment either. A line is read as the product reads it, and
- * one it would refuse is left out; nothing here checks a signature or a link, which is `verify`'s.
+ * one it would refuse, or whose hash does not hold, is left out; nothing here checks a signature or a link, which is `verify`'s.
  */
 export function decisionLabels(texts: readonly string[]): Map<string, DecisionLabel> {
   const upcasters = catalogUpcasters();
@@ -109,6 +115,9 @@ export function decisionLabels(texts: readonly string[]): Map<string, DecisionLa
       } catch {
         continue;
       }
+      // A line whose hash does not hold is left out as the product's reads leave it out: its
+      // title must not reach the comment of a pull request.
+      if (!entryHashHolds(entry)) continue;
       const tail = byTail.get(entry.link.tail) ?? [];
       tail.push(entry);
       byTail.set(entry.link.tail, tail);

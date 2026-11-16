@@ -51,6 +51,7 @@ import {
 } from './governed-tree.js';
 import { oneLine } from './one-line.js';
 import { ASKS_A_PERSON_CHANNEL, REFUSES_A_WRITE_CHANNEL } from './record-framing.js';
+import { linkBreakSentences, type ScopedLinkBreak } from './record-integrity.js';
 
 /** A rule in force at a path and the relation it holds there: what it does to the path. */
 export interface RuleInForceUnder extends PushedRule {
@@ -306,6 +307,52 @@ export function refusalOfAnUnreadableRecord(
     words.out,
   ].join('\n\n');
 }
+
+/**
+ * The reason a write is refused while an entry of the record was altered after it was written (its
+ * hash does not hold), or `undefined` when no tree has one. It is the gate's answer to ADR-395:
+ * which rules apply to a path is read from the record, and a record with an altered line cannot
+ * say it, so the write waits for the line to be put back rather than going through on a reading
+ * that left the line out.
+ *
+ * It names each entry (tree, tail, seq, the file and the line) and how far the refusal reaches,
+ * and the way out, which differs by tree for the reason {@link UNREADABLE_IN} says: only the public
+ * tree is kept by the repository. It is about the ALTERED line only: a gap, a fork or an unsigned
+ * event is served and said, never refused here (ADR-395), so the breaks are not read.
+ */
+export function refusalOfAnAlteredRecord(facts: readonly ScopedLinkBreak[]): string | undefined {
+  const altered = facts.filter((fact) => fact.retained !== undefined);
+  if (altered.length === 0) return undefined;
+  const trees = [...new Set(altered.map((fact) => fact.scope))];
+  return [
+    `The write is refused: ${trees.map((tree) => ALTERED_IN[tree].tree).join(' and ')} holds an entry that was altered after it was written, so which rules apply to this path cannot be known.`,
+    ...linkBreakSentences(altered),
+    ...trees.map((tree) => ALTERED_IN[tree].out),
+  ].join('\n\n');
+}
+
+const NOT_VERSIONED_ALTERED =
+  'This record is not versioned: restore the file from a copy, or repair or remove the line named above.';
+
+/** What the refusal says of each tree, for an altered entry: which it is, how far it reaches, the way out. */
+const ALTERED_IN: Readonly<Record<Scope, { tree: string; out: string }>> = {
+  public: {
+    tree: 'the project’s public record',
+    out: 'Every write in the project is refused until the line is as it was written: restore the line from the repository’s history.',
+  },
+  private: {
+    tree: 'the project’s private record on this machine',
+    out: `Every write in the project is refused until the line is as it was written. ${NOT_VERSIONED_ALTERED}`,
+  },
+  global: {
+    tree: 'this machine’s global record',
+    out: `This closes every project on this machine: every write in each is refused until the line is as it was written. ${NOT_VERSIONED_ALTERED}`,
+  },
+};
+
+/** The note on the second stream beside that refusal. */
+export const ALTERED_RECORD_NOTE =
+  'The record holds an altered entry, so the write was refused and nothing was recorded.';
 
 /**
  * What a command line says when it met a stored line it cannot read: the line (file and position, so

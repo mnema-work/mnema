@@ -26,6 +26,7 @@
 import { channelIsOn } from '@mnema/context';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { AFTER_A_COMPACTION_CHANNEL, SESSION_JOURNAL_CHANNEL } from '../record-framing.js';
+import { linkBreakSentences } from '../record-integrity.js';
 import {
   decisionsRecordedSince,
   type Journal,
@@ -34,7 +35,7 @@ import {
   readJournal,
   sessionIdOf,
 } from '../session-journal.js';
-import { withScopedCaches } from '../tree-sources.js';
+import { linkBreaksOf, THE_READING_THAT_OPENED_THESE, withScopedCaches } from '../tree-sources.js';
 import { type BriefSwitchedOff, switchedOff } from './brief.js';
 
 /** What the reminder needs: injected so it is testable. */
@@ -144,6 +145,17 @@ export function runAfterACompaction(
     // now: the journal is written at the end of a response, so one recorded after it, or moved
     // since, is not in it. Where the journal knows no instant, what it kept is all there is.
     const decisions = decisionsRecordedSince(sources, journal.openedAt) ?? journal.decisions;
-    return { ok: true as const, text: afterACompactionSentence({ ...journal, decisions }, labels) };
+    const sentence = afterACompactionSentence({ ...journal, decisions }, labels);
+    // THE FACTS OF INTEGRITY LEAD WHAT GOES TO THE MODEL (ADR-394, ADR-410): where there is a
+    // sentence to say, the entries left out and the tails that stop chaining come first, in the
+    // words every surface uses. Where there is none, the verb stays as silent as it was.
+    const integrity = linkBreakSentences(linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE));
+    return {
+      ok: true as const,
+      text:
+        sentence === undefined || integrity.length === 0
+          ? sentence
+          : [...integrity, '', sentence].join('\n'),
+    };
   });
 }

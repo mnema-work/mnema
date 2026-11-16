@@ -66,6 +66,7 @@ import {
   type ChainLayout,
   catalogUpcasters,
   chainExtent,
+  entryHashHolds,
   readEntries,
   readTailTip,
   tailsReadAt,
@@ -161,8 +162,12 @@ export function followingTheRecord(roots: readonly string[]): Following {
           );
           if (grown.length === 0) continue;
           tree.accounted.set(tail, grown[grown.length - 1]?.link.seq ?? accounted);
-          // A line of a kind this binary does not know is accounted for and happens to no one.
-          for (const entry of readEntries(grown)) happened.push(entry.event);
+          // A line of a kind this binary does not know is accounted for and happens to no one. A
+          // line whose hash does not hold is accounted for too, and is not shown: the console
+          // serves what holds (ADR-393), and the corner says what the proof covers.
+          for (const entry of readEntries(grown.filter((one) => entryHashHolds(one)))) {
+            happened.push(entry.event);
+          }
         }
         tree.extent = extent;
       }

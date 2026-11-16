@@ -140,6 +140,12 @@ export interface ShowRefused {
    * (`outside-a-project-the-surface-says-so.test.ts`).
    */
   readonly reason: 'UNKNOWN_RECORD' | 'NO_PROJECT';
+  /**
+   * What the trees this read opened say about their proof, for the refusal too: an entry left out
+   * because its hash does not hold is the reason a record that was written is not found, and a
+   * refusal that did not say so would read as a record that never existed (ADR-394).
+   */
+  readonly linkBreaks: readonly ScopedLinkBreak[];
 }
 
 /**
@@ -165,6 +171,7 @@ export function runShow(ctx: ShowContext, input: { id: string }): ShowDone | Sho
       return {
         ok: false,
         reason: trees.projectPublic === undefined ? 'NO_PROJECT' : 'UNKNOWN_RECORD',
+        linkBreaks: linkBreaksOf(opened, THE_READING_THAT_OPENED_THESE),
       };
     }
     // A TASK'S STORY IS ABOUT EVERY TREE THIS MACHINE HOLDS, as `read_record` serves it: a note is

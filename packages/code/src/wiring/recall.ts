@@ -133,13 +133,14 @@ export function registerRecall(program: Command, wiring: Wiring): Declared {
           );
           return;
         }
-        // On `err`, as `brief` puts it: the state of the record's proof qualifies the notes,
-        // and the plugin's handler hands that stream over under them when the verb succeeded.
+        // On `err` for a person, as `brief` puts it: the state of the record's proof qualifies the
+        // notes. With the flag the facts of integrity LEAD the text handed to the model, on stdout
+        // (ADR-394, ADR-410), and nothing else is said on `err` by this verb; where there are no
+        // notes there is no text to lead, and the verb stays as silent as it was (the opening
+        // document says the fact).
         const notice = linkBreakNotice(result.linkBreaks);
-        for (const line of notice) io.err(render(line));
         // With the flag the notice is part of what has to fit, as it is for `brief`.
-        writeLines(
-          io,
+        const document =
           opts.hook === true
             ? recallWithin(
                 result,
@@ -149,8 +150,14 @@ export function registerRecall(program: Command, wiring: Wiring): Declared {
                 ),
                 ceiling.lengthOf,
               )
-            : recallDocument(result),
-        );
+            : recallDocument(result);
+        if (opts.hook !== true) {
+          for (const line of notice) io.err(render(line));
+        } else if (document.length > 0) {
+          for (const line of notice) io.out(render(line));
+          if (notice.length > 0) io.out('');
+        }
+        writeLines(io, document);
       },
     );
   return readsTheRecord(recall);

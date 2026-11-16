@@ -33,6 +33,9 @@ export function registerShow(program: Command, wiring: Wiring): Declared {
       if (named === undefined) return;
       const result = runShow(here(), { id: named });
       if (!result.ok) {
+        // The refusal says what the trees it read say about their proof, first: a record that
+        // was written and is not found because its entry was left out is not a record that never was.
+        for (const line of linkBreakNotice(result.linkBreaks)) io.err(render(line));
         reportRefusal(wiring, result, { UNKNOWN_RECORD: noSuchRecord('record', id) });
         return;
       }

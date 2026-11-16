@@ -211,14 +211,15 @@ describe('over a record that does not chain, every write says so', () => {
       const answered = await client.callTool({ name, arguments: args });
       expect((answered as { isError?: boolean }).isError, name).not.toBe(true);
       const said = blocks(answered);
-      // IN A BLOCK OF ITS OWN, after the acknowledgement, never folded into it.
+      // IN A BLOCK OF ITS OWN, BEFORE the acknowledgement (ADR-394, ADR-410), never folded into it.
       const notice = said.find((b) => b.includes(LANDED));
       expect(notice, name).toBeDefined();
       expect(notice as string, name).toMatch(/issue \[T1\] \S+ \S+#\d+: .+/);
       // And the fact is COMPLETE where it lands: no second call is named, because
       // `verify` is not a tool this reader has.
       expect(notice as string, name).toContain('still on the tail');
-      expect(said[0] as string, name).not.toContain(LANDED);
+      expect(said[0] as string, name).toContain(LANDED);
+      expect(said.slice(1).join(LF), name).not.toContain(LANDED);
       // The WRITE's opening, not the read's: a reply that said "came off" would be
       // describing something that did not happen.
       expect(said.join(LF), name).not.toContain(CAME_OFF);
@@ -240,8 +241,8 @@ describe('over a record that does not chain, every write says so', () => {
     });
     const said = blocks(created);
     // What the write already said is untouched: the line, and the tree it landed in.
-    expect(said[0] as string).toMatch(/^Created task \S+ \(\S+\)/);
-    expect(said[0] as string).toContain('public');
+    expect(said[1] as string).toMatch(/^Created task \S+ \(\S+\)/);
+    expect(said[1] as string).toContain('public');
     expect(said).toHaveLength(2);
     await client.close();
   }, 60_000);
@@ -263,7 +264,7 @@ describe('over a record that does not chain, every write says so', () => {
     // A move follows the entity to wherever it was born, so nothing was decided here
     // and the reply names no tree. That asymmetry with a birth is deliberate and this
     // delivery does not change it.
-    expect(said[0] as string).not.toContain('landed in');
+    expect(said.slice(1).join(LF)).not.toContain('landed in');
     await client.close();
   }, 60_000);
 
@@ -283,11 +284,11 @@ describe('over a record that does not chain, every write says so', () => {
     // last hash it found and is sound from there forward. Refusing would turn a broken
     // chain into a stopped product.
     expect((answered as { isError?: boolean }).isError).not.toBe(true);
-    const adr = /Recorded decision (\S+)/.exec(blocks(answered)[0] as string)?.[1];
+    const adr = /Recorded decision (\S+)/.exec(blocks(answered).join(LF))?.[1];
     expect(adr).toBeDefined();
     // And it really is on the tail: a read finds it back.
     const read = await client.callTool({ name: 'search', arguments: { text: 'keep appending' } });
-    expect(blocks(read)[0] as string).toContain('keep appending');
+    expect(blocks(read).join(LF)).toContain('keep appending');
     await client.close();
   }, 60_000);
 });

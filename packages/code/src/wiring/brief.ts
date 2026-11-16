@@ -246,11 +246,22 @@ export function registerBrief(program: Command, wiring: Wiring): Declared {
       // NEWER MNEMA WROTE is in the same place for the same reason, and one more: it is a fact
       // about THIS BINARY's reading, and a file committed with it would keep saying it after
       // mnema was updated.
-      const notice = [
-        ...linkBreakNotice(result.linkBreaks),
-        ...newerLinesNotice(result.brief.newerLines, 'the record'),
-      ];
-      for (const line of notice) io.err(render(line));
+      //
+      // WITH THE FLAG, THE FACTS OF INTEGRITY LEAD THE TEXT THE HOOK HANDS TO THE MODEL (ADR-394,
+      // ADR-410): they go to the top of the document, on stdout, and what is not integrity (the
+      // line about a newer mnema) stays on `err`, under it, where the handler appends it. A
+      // handler that put the whole second stream above the document would move that line too, so
+      // the verb says what leads. Without the flag, a person's `brief > file` keeps them on `err`.
+      const integrity = linkBreakNotice(result.linkBreaks);
+      const others = newerLinesNotice(result.brief.newerLines, 'the record');
+      const notice = [...integrity, ...others];
+      if (opts.hook === true) {
+        for (const line of others) io.err(render(line));
+        for (const line of integrity) io.out(render(line));
+        if (integrity.length > 0) io.out('');
+      } else {
+        for (const line of notice) io.err(render(line));
+      }
       // WITH THE FLAG, THE NOTICE ABOVE IS PART OF WHAT HAS TO FIT: the handler appends it to
       // the document and the host measures the two as one string.
       writeLines(

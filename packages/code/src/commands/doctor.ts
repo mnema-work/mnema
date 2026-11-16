@@ -58,7 +58,7 @@ import {
   listAppleDoubleKeyFiles,
   listPrivateKeyFingerprints,
   namesOfTails,
-  readTailEntries,
+  readTail,
   recordNamedIn,
   tailsReadAt,
   unreadLinesOf,
@@ -1368,7 +1368,7 @@ function newerMnemaFindings(ctx: DoctorContext): Finding[] {
     const upcasters = catalogUpcasters();
     const lines = reachableTrees(resolveTrees(ctx.cwd, ctx.env)).flatMap(({ chainRoot }) =>
       tailsReadAt({ root: chainRoot }).read.flatMap((tail) =>
-        unreadLinesOf(tail, readTailEntries({ root: chainRoot }, tail, upcasters)),
+        unreadLinesOf(tail, readTail({ root: chainRoot }, tail, upcasters).entries),
       ),
     );
     const newer = newerLinesFrom(lines);
