@@ -1,6 +1,7 @@
 /**
  * THE REAL COPILOT CLI, against a stand-in for the model, with the plugin of this tree installed
- * the way a person installs it: `copilot plugin marketplace add <this repository>`, then `copilot
+ * the way a person installs it: `copilot plugin marketplace add` of the repository's address (cloned from a
+ * local stand-in for the `release` branch), then `copilot
  * plugin install mnema@mnema`. Copilot reads the plugin's own manifest
  * (`plugin/.github/plugin/plugin.json`), which names its own hooks file.
  *

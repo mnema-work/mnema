@@ -55,6 +55,17 @@ describe('the plugin tree hash', () => {
     ).not.toBe(pluginTreeHash(tree('lf', base)));
   });
 
+  it('does not read what the host marks at the root of the folder, and reads the same name deeper', () => {
+    const clean = pluginTreeHash(tree('clean', base));
+    expect(pluginTreeHash(tree('inuse', { ...base, '.in_use/4242': '{"pid":4242}' }))).toBe(clean);
+    expect(pluginTreeHash(tree('orphan', { ...base, '.orphaned_at': '1' }))).toBe(clean);
+    for (const name of ['.git/HEAD', '.claude-plugin-link', '.links_materialized']) {
+      expect(pluginTreeHash(tree(`mark${name}`, { ...base, [name]: 'x' }))).toBe(clean);
+    }
+    expect(pluginTreeHash(tree('deep', { ...base, 'hooks/.in_use': 'x' }))).not.toBe(clean);
+    expect(pluginTreeHash(tree('deep2', { ...base, 'hooks/.orphaned_at': 'x' }))).not.toBe(clean);
+  });
+
   it('says nothing for a folder that is not there', () => {
     expect(pluginTreeHash(join(root, 'missing'))).toBeUndefined();
   });

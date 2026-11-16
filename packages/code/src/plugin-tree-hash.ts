@@ -19,9 +19,23 @@ function withLineFeeds(bytes: Buffer): Buffer {
   return Buffer.from(kept);
 }
 
+/**
+ * What Claude Code puts at the root of an installed plugin and leaves out of its own digest of it
+ * (`.git`, `.in_use`, `.orphaned_at`, `.claude-plugin-link`, `.links_materialized`): not the
+ * plugin's content. Only at the root; the same name deeper down is a file of the plugin.
+ */
+const HOST_ROOT_NAMES = new Set([
+  '.git',
+  '.in_use',
+  '.orphaned_at',
+  '.claude-plugin-link',
+  '.links_materialized',
+]);
+
 function filesUnder(dir: string, prefix: string): string[] {
   const found: string[] = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (prefix === '' && HOST_ROOT_NAMES.has(entry.name)) continue;
     const relative = prefix === '' ? entry.name : `${prefix}/${entry.name}`;
     if (entry.isDirectory()) found.push(...filesUnder(join(dir, entry.name), relative));
     else if (entry.isFile()) found.push(relative);

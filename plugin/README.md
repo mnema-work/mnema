@@ -454,8 +454,9 @@ machine, with Cursor's import of third-party plugins on, which is how it ships.
 **To have VS Code's agent load it,** in this order:
 
 1. Install the plugin in Claude Code (`claude plugin marketplace add mnema-work/mnema`, then
-   `claude plugin install mnema@mnema`). That leaves a copy of the plugin in the marketplace
-   folder, `~/.claude/plugins/marketplaces/mnema/plugin`.
+   `claude plugin install mnema@mnema`). That leaves the marketplace's clone, which follows
+   `main`, with the plugin in `~/.claude/plugins/marketplaces/mnema/plugin`: not the files Claude Code
+   installs from the `release` branch, and not necessarily the published version.
 2. Run `mnema doctor` and read its `vscode` line: it says whether your `settings.json` has
    `chat.pluginLocations`, and whether it lists a mnema plugin that exists and is this version.
 3. If it says to, run `mnema doctor --fix vscode`. It is one of the three things `doctor` writes
@@ -467,8 +468,9 @@ machine, with Cursor's import of third-party plugins on, which is how it ships.
    hand.
 
 That folder is the one listed because its path does not carry the plugin's version, so it is the
-same after an update; a versioned cache path stops working at the next one. After a plugin
-update, `claude plugin marketplace update mnema` brings that folder to the new version, and
+same after an update; a versioned cache path stops working at the next one. That folder is the
+clone of `main`, so it can be ahead of the release you run: `claude plugin marketplace update mnema`
+brings it to the current `main`, and
 `mnema doctor` says when it is behind. VS Code marks `chat.pluginLocations` as experimental
 (*may be unstable, subject to change or removal*), so the setting itself may change. The path
 was chosen from VS Code 1.137's own code, which resolves each listed folder as a directory and

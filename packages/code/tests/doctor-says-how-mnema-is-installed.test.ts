@@ -180,6 +180,18 @@ describe('the content of the plugin', () => {
     expect(said).toContain('`claude plugin uninstall mnema@mnema`');
   });
 
+  it('does not take the marks the host leaves in the folder for other content', () => {
+    const dir = join(sandbox, 'cache', 'mnema', '9.9.9');
+    installedAt(dir, {
+      ...released,
+      '.in_use/4242': '{"pid":4242,"procStart":"1"}',
+      '.orphaned_at': '1',
+    });
+    expect(line()).toContain('are the ones released with this binary');
+    installedAt(dir, { 'hooks/.in_use': 'x' });
+    expect(said_other()).toContain('but other content');
+  });
+
   it('does not take a copy whose lines end with CR LF for other content', () => {
     installedAt(join(sandbox, 'cache', 'mnema', '9.9.9'), {
       'hooks/a.mjs': 'one\r\ntwo\r\n',
