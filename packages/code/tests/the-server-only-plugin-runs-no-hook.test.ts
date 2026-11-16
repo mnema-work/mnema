@@ -27,9 +27,18 @@ describe('the install without hooks', () => {
   it('is listed by the marketplace beside the full plugin, from a directory of its own', () => {
     const marketplace = JSON.parse(
       readFileSync(join(REPO, '.claude-plugin', 'marketplace.json'), 'utf-8'),
-    ) as { plugins: { name: string; source: string }[] };
-    const listed = marketplace.plugins.map((one) => `${one.name} ${one.source}`);
-    expect(listed).toEqual(['mnema ./plugin', 'mnema-server-only ./plugin-server-only']);
+    ) as { plugins: { name: string; source: Record<string, string> }[] };
+    // The form the hosts were measured to take: the plugin's folder of the `release` branch.
+    const from = (path: string) => ({
+      source: 'git-subdir',
+      url: 'https://github.com/mnema-work/mnema.git',
+      path,
+      ref: 'release',
+    });
+    expect(marketplace.plugins.map((one) => [one.name, one.source])).toEqual([
+      ['mnema', from('plugin')],
+      ['mnema-server-only', from('plugin-server-only')],
+    ]);
     expect(manifestOf('plugin-server-only').name).toBe('mnema-server-only');
   });
 

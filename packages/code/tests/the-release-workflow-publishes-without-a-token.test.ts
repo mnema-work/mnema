@@ -21,7 +21,10 @@
  *   Open VSX job, which runs the code of a third party with a token, cannot ask;
  * - the publish checks the tarballs it downloaded against the SHA-256 the pack job exposes as outputs, not
  *   against a file that travels in the same artifact;
- * - the publish needs the packed install and does not run when it failed (no `always()` in its `if`).
+ * - the publish needs the packed install and does not run when it failed (no `always()` in its `if`);
+ * - the branch the plugins are installed from (`release`) is moved by one step of the job that tags, after
+ *   `gh release create`, by a plain push of the tag's commit over SSH with a deploy key it reads from the
+ *   one secret that holds it, never forced, in no other job.
  *
  * What this reads is the file, not a run: the workflow has never run, the trusted publisher is configured on
  * npmjs.com by a person, and none of that is visible here. The text is read without its comment lines, so a
@@ -47,6 +50,16 @@ function job(name: string): string {
   const rest = CODE.slice(start + 1);
   const next = rest.search(/^ {2}[a-z][\w-]*:\n/m);
   return next === -1 ? rest : rest.slice(0, next);
+}
+
+/** The step of the `release` job that moves the branch: from its `- name:` line to the next step or job. */
+function moveStep(): string {
+  const release = job('release');
+  const start = release.indexOf('- name: Move the release branch to the tag');
+  expect(start, 'the release job has no step that moves the release branch').toBeGreaterThan(-1);
+  const rest = release.slice(start + 1);
+  const next = rest.search(/^ {6}- /m);
+  return next === -1 ? release.slice(start) : release.slice(start, start + 1 + next);
 }
 
 describe('the release workflow publishes without a token', () => {
@@ -136,10 +149,10 @@ describe('the release workflow publishes without a token', () => {
     expect(condition).not.toMatch(/always\(\)|cancelled\(\)|failure\(\)|success\(\)/);
   });
 
-  it('holds no secret for the packages, and the only secret is the Open VSX token of the extension job', () => {
+  it('holds no secret for the packages, and the only secrets are the Open VSX token of the extension job and the deploy key of the branch step', () => {
     const market = job('publish-marketplace');
     const stores = job('publish-open-vsx');
-    expect(CODE.replace(stores, '')).not.toMatch(/\bsecrets\./);
+    expect(CODE.replace(stores, '').replace(moveStep(), '')).not.toMatch(/\bsecrets\./);
     expect([...stores.matchAll(/\bsecrets\.(\w+)/g)].map((m) => m[1])).toEqual(['OVSX_PAT']);
     expect(CODE).not.toMatch(/VSCE_PAT/);
     expect(market).toMatch(/vsce" publish --oidc --skip-duplicate /);
@@ -207,5 +220,50 @@ describe('the release workflow publishes without a token', () => {
     expect(packed).toContain('actions/download-artifact@');
     expect(packed).toMatch(/needs: \[plan, pack\]/);
     expect(packed).not.toMatch(/id-token|environment:|pnpm /);
+  });
+
+  it('moves the release branch after the release is created, in the job with the npm environment and in no other', () => {
+    const release = job('release');
+    expect(release).toMatch(/^ {4}environment: npm$/m);
+    expect(release.indexOf('- name: Move the release branch to the tag')).toBeGreaterThan(
+      release.indexOf('gh release create'),
+    );
+    const elsewhere = CODE.replace(release, '');
+    expect(elsewhere).not.toMatch(/RELEASE_BRANCH_DEPLOY_KEY|refs\/heads\/release|GIT_SSH_COMMAND/);
+    expect(job('attach-vsix')).not.toMatch(/git push/);
+  });
+
+  it("pushes the tag's commit to the release branch plainly, so a move that is not a fast-forward is refused", () => {
+    const step = moveStep();
+    expect(step).toContain(
+      'git push "git@github.com:$GITHUB_REPOSITORY.git" "v$VERSION^{commit}:refs/heads/release"',
+    );
+    expect([...step.matchAll(/git push/g)]).toHaveLength(1);
+    expect(step).not.toMatch(/--force|--mirror|--delete|--no-verify|-f\b/);
+    expect(step).not.toMatch(/(^|[\s"'=])\+\S/m);
+    expect(step).toMatch(/set -euo pipefail/);
+    expect(step).toMatch(/merge-base --is-ancestor FETCH_HEAD/);
+    expect(step).not.toMatch(/\|\| true|continue-on-error/);
+    expect(job('release')).not.toMatch(/continue-on-error/);
+  });
+
+  it('takes the key from its one secret, keeps it in a private file it removes, and pins the host key of github.com', () => {
+    const step = moveStep();
+    expect([...step.matchAll(/\bsecrets\.(\w+)/g)].map((m) => m[1])).toEqual([
+      'RELEASE_BRANCH_DEPLOY_KEY',
+    ]);
+    expect(step).toMatch(
+      /RELEASE_BRANCH_DEPLOY_KEY: \$\{\{ secrets\.RELEASE_BRANCH_DEPLOY_KEY \}\}/,
+    );
+    expect(step).toMatch(/^ *umask 077$/m);
+    expect(step).toMatch(/chmod 600 "\$keys\/key"/);
+    expect(step).toMatch(/\$RUNNER_TEMP/);
+    expect(step).toMatch(/trap 'rm -rf "\$keys"' EXIT/);
+    expect(step).toMatch(/StrictHostKeyChecking=yes/);
+    expect(step).toMatch(/UserKnownHostsFile=\$keys\/known_hosts/);
+    expect(step).toMatch(/github\.com ssh-ed25519 AAAA[\w]+/);
+    expect(step).not.toMatch(
+      /ssh-keyscan|StrictHostKeyChecking=(no|accept-new)|set -x|\becho\b.*RELEASE_BRANCH_DEPLOY_KEY/,
+    );
   });
 });

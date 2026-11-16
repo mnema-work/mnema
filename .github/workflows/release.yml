@@ -291,6 +291,38 @@ jobs:
           printf '\nnpm: https://www.npmjs.com/package/@mnema/code/v/%s\n' "$VERSION" >> "$notes"
           gh release create "v$VERSION" --target "$SHA" --title "v$VERSION" --notes-file "$notes"
 
+      # THE BRANCH THE PLUGINS ARE INSTALLED FROM. The marketplace lists both plugins at `ref: release`, so
+      # the branch must name the commit of the tag that was just published, and only that. A ruleset refuses
+      # every update, deletion and non fast-forward push of it; its one bypass is a write deploy key, whose
+      # private half is the secret below and exists nowhere else, so only this step, behind the approval of
+      # the `npm` environment, can move the branch. The step is a plain push (never forced) so a move that
+      # is not a fast-forward is refused here and by the ruleset, and it fails the run. It is its own step,
+      # after the tag and the release, so a run that finds the release already made still moves the branch.
+      - name: Move the release branch to the tag
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+          RELEASE_BRANCH_DEPLOY_KEY: ${{ secrets.RELEASE_BRANCH_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          umask 077
+          keys="$RUNNER_TEMP/release-branch-key"
+          rm -rf "$keys"
+          mkdir "$keys"
+          trap 'rm -rf "$keys"' EXIT
+          printf '%s\n' "$RELEASE_BRANCH_DEPLOY_KEY" > "$keys/key"
+          chmod 600 "$keys/key"
+          # github.com's ed25519 host key, as GitHub publishes it (api.github.com/meta, ssh_keys): pinned, not scanned.
+          printf 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl\n' > "$keys/known_hosts"
+          export GIT_SSH_COMMAND="ssh -i $keys/key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$keys/known_hosts"
+          if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
+            git fetch --quiet --unshallow origin
+          fi
+          git fetch --quiet origin "refs/tags/v$VERSION:refs/tags/v$VERSION"
+          git fetch --quiet origin release
+          git merge-base --is-ancestor FETCH_HEAD "v$VERSION^{commit}" \
+            || { echo "::error::release is not an ancestor of v$VERSION: it is not moved"; exit 1; }
+          git push "git@github.com:$GITHUB_REPOSITORY.git" "v$VERSION^{commit}:refs/heads/release"
+
   # THE EXTENSION AS A FILE, WITHOUT A SECRET. The same `.vsix` goes to the GitHub release, to the Visual
   # Studio Marketplace and to Open VSX, so it is packed once, here, in a job that holds no token and no
   # write permission: it builds, packs, checks that the file is what a store takes

@@ -121,7 +121,10 @@ interface Manifest {
 interface Marketplace {
   readonly name?: string;
   readonly owner?: { readonly name?: string };
-  readonly plugins?: readonly { readonly name?: string; readonly source?: string }[];
+  readonly plugins?: readonly {
+    readonly name?: string;
+    readonly source?: { readonly path?: string; readonly ref?: string };
+  }[];
 }
 
 /** Reads one of the plugin's JSON files. A file that will not parse throws here. */
@@ -1561,9 +1564,9 @@ describe('the record arrives unasked', () => {
     expect(marketplace.plugins?.length).toBe(2);
     const listed = marketplace.plugins?.[0];
     expect(listed?.name).toBe(manifest.name);
-    expect(listed?.source).toMatch(/^\.\//);
-    expect(existsSync(join(REPO, listed?.source ?? '', '.claude-plugin', 'plugin.json'))).toBe(
-      true,
-    );
+    expect(listed?.source?.ref).toBe('release');
+    expect(
+      existsSync(join(REPO, listed?.source?.path ?? '', '.claude-plugin', 'plugin.json')),
+    ).toBe(true);
   });
 });

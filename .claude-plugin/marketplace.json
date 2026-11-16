@@ -9,13 +9,23 @@
   "plugins": [
     {
       "name": "mnema",
-      "source": "./plugin",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/mnema-work/mnema.git",
+        "path": "plugin",
+        "ref": "release"
+      },
       "description": "Puts the project's committed mnema record into the session's opening context without the agent asking, and connects the mnema MCP server so it can record its own work.",
       "category": "productivity"
     },
     {
       "name": "mnema-server-only",
-      "source": "./plugin-server-only",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/mnema-work/mnema.git",
+        "path": "plugin-server-only",
+        "ref": "release"
+      },
       "description": "Connects the mnema MCP server and runs no hook: the opening context, the notes and the per-edit rules are not handed to the session.",
       "category": "productivity"
     }
