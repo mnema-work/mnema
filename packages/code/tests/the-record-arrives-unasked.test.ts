@@ -831,7 +831,10 @@ describe('the record arrives unasked', () => {
       broken = brief(project);
       // The plant really did break it: without this the case is green over a record
       // that chains and a notice printed unconditionally.
-      expect(broken.err).toContain('issue [T1]');
+      // The facts of integrity lead what the verb prints with the flag (ADR-394, ADR-410): on its
+      // first stream, above the document, and nothing of them is left on the second.
+      expect(broken.out).toMatch(/^issue \[T1\]/);
+      expect(broken.err).not.toContain('issue [T1]');
       ran = runHook(command, project);
     } finally {
       writeFileSync(file, before);
@@ -840,17 +843,17 @@ describe('the record arrives unasked', () => {
     expect(ran.status).toBe(0);
     const context = (JSON.parse(ran.out) as { hookSpecificOutput: { additionalContext: string } })
       .hookSpecificOutput.additionalContext;
-    // THE DOCUMENT IS STILL THERE AND IS STILL FIRST. What the record says about itself
-    // qualifies the document; it does not replace it.
+    // THE DOCUMENT IS STILL THERE, UNDER WHAT THE RECORD SAYS ABOUT ITSELF, which now leads
+    // (ADR-394, ADR-410): it qualifies the document and does not replace it.
     expect(context).toContain(COMMITTED_TITLE);
     expect(context).toMatch(/issue \[T1\] public \S+#\d+: seq gap: expected \d+, found \d+/);
     expect(context).toContain('still on the tail');
-    expect(context.indexOf(COMMITTED_TITLE)).toBeLessThan(context.indexOf('issue [T1]'));
+    expect(context.indexOf('issue [T1]')).toBeLessThan(context.indexOf(COMMITTED_TITLE));
     // AND NOT A WORD OF THE HANDLER'S OWN, asserted as the WHOLE string and not as
-    // what is in it: the context is the verb's two streams, in that order, joined by a
-    // blank line. A preamble, a cut or a re-wording anywhere in the handler reddens
-    // here, which is what the `toContain`s above cannot say.
-    expect(context).toBe(`${broken.out}\n\n${broken.err}`);
+    // what is in it: the context is what the verb printed, the facts of integrity first.
+    // A preamble, a cut or a re-wording anywhere in the handler reddens here, which is what
+    // the `toContain`s above cannot say.
+    expect(context).toBe(broken.out);
 
     // PUT BACK, AND IT GOES QUIET AGAIN: the non-vacuity of the silence, over the same
     // handler and the same project, and the proof that the plant was undone.
@@ -908,7 +911,7 @@ describe('the record arrives unasked', () => {
       const lines = readFileSync(segment, 'utf-8').trimEnd().split('\n');
       appendFileSync(segment, `${lines[lines.length - 1] as string}\n`, 'utf-8');
       broken = brief(crowded);
-      expect(broken.err).toContain('issue [T1]');
+      expect(broken.out).toMatch(/^issue \[T1\]/);
       noticed = runHook(hookRunning(DOCUMENT_HOOK), crowded);
     } finally {
       writeFileSync(segment, before);
@@ -916,7 +919,7 @@ describe('the record arrives unasked', () => {
     const qualified = (
       JSON.parse(noticed.out) as { hookSpecificOutput: { additionalContext: string } }
     ).hookSpecificOutput.additionalContext;
-    expect(qualified).toBe(`${broken.out}\n\n${broken.err}`);
+    expect(qualified).toBe(broken.out);
     expect(qualified).toContain('issue [T1]');
     expect(qualified.length).toBeLessThanOrEqual(HOOK_TEXT_CEILING);
   });

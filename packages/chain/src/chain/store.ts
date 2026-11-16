@@ -842,14 +842,12 @@ export function readTailSince(
     return {
       arrivals: every,
       served: left.size === 0 ? every : every.filter((entry) => !left.has(entry)),
-      retained: held
-        .map((one) => ({
-          tail: tailId,
-          seq: one.entry.link.seq,
-          segment: basename(one.file),
-          line: lineAtOffset(one.file, one.start),
-        }))
-        .reverse(),
+      retained: held.map((one) => ({
+        tail: tailId,
+        seq: one.entry.link.seq,
+        segment: basename(one.file),
+        line: lineAtOffset(one.file, one.start),
+      })),
       boundary,
     };
   };
@@ -874,7 +872,9 @@ export function readTailSince(
       // of the newest entry: `+ 1` for the newline that ends it.
       reached ??= { segment: file, bytes: found.end + 1 };
       arrivals.push(found.value);
-      if (!entryHashHolds(found.value)) held.push({ entry: found.value, file, start: found.start });
+      // Unshifted, because the walk is from the end: `held` is in the order the lines are stored.
+      if (!entryHashHolds(found.value))
+        held.unshift({ entry: found.value, file, start: found.start });
     }
   }
   // The walk ran off the front of the boundary's segment without reaching the offset:
