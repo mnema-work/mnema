@@ -27,7 +27,6 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach } from 'vitest';
 import { decodedWhole } from '../../support/arriving.js';
-import { GIT_WITHOUT_MAINTENANCE } from '../../support/git-without-maintenance.js';
 import {
   aSandbox,
   REPO,
@@ -37,6 +36,7 @@ import {
 } from './a-sandbox.js';
 import { openWithOneRetry, sayInTheJobSummary } from './one-retry.js';
 import { destinationsOrRefuse, refuseUnlessLoopbackOnly } from './the-host.js';
+import { theMarketplaceAsReleased } from './the-marketplace-as-released.js';
 
 /** The command hook that answers the permission decision it is told. */
 export const A_HOOK_THAT_ANSWERS = fileURLToPath(
@@ -338,7 +338,7 @@ async function aCodexSessionOnce(
     TERM: 'dumb',
     STAND_IN_KEY: KEY,
     GIT_CONFIG_NOSYSTEM: '1',
-    GIT_CONFIG_GLOBAL: GIT_WITHOUT_MAINTENANCE,
+    GIT_CONFIG_GLOBAL: theMarketplaceAsReleased(box.root),
   };
   const codexSays = (...args: string[]): string => {
     const ran = spawnSync(codex.binary, args, { cwd: box.project, env, encoding: 'utf-8' });

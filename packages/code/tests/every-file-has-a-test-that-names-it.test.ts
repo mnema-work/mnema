@@ -1173,6 +1173,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/host-contract/support/the-copilot.ts': 10,
   'packages/code/tests/host-contract/support/the-gemini.ts': 10,
   'packages/code/tests/host-contract/support/the-host.ts': 10,
+  'packages/code/tests/host-contract/support/the-marketplace-as-released.ts': 5,
   'packages/code/tests/host-contract/support/the-opencode.ts': 8,
   'packages/code/tests/host-contract/support/the-protocol-a-host-speaks.ts': 2,
   'packages/code/tests/host-contract/support/the-qwen.ts': 10,
