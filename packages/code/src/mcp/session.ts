@@ -56,8 +56,10 @@
  * {@link writeContext}, the single door every MCP write goes through.
  */
 
+import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { catalogUpcasters, describeNewTail, type NewTail } from '@mnema/chain';
+import type { ScopedCache } from '@mnema/context';
 import {
   agentSignsIn,
   chainRootForScope,
@@ -86,6 +88,8 @@ import { RecordPageWatch } from '../commands/the-record-page.js';
 import { oneLine } from '../one-line.js';
 import { replacementNotice } from '../recorded-content.js';
 import { type Journal, journalFile, markEnded, readJournal } from '../session-journal.js';
+import { linkBreaksOf, THE_CHAIN_AS_IT_STANDS_NOW } from '../tree-sources.js';
+import { refuseWhileAltered } from '../what-a-write-meets.js';
 import { type CacheRegistry, createCacheRegistry } from './cache-registry.js';
 import {
   type ClientWorkspace,
@@ -1013,6 +1017,9 @@ export function openWrite(session: Session, scope: Scope, target?: WriteTarget):
   // answer, unchanged, and the whole of the non-regression: a call that says nothing
   // lands exactly where it landed before this parameter existed.
   const trees = target?.trees ?? session.trees;
+  // AN ALTERED ENTRY REFUSES THE WRITE, whatever it is and wherever it lands: this is the one door
+  // every write of the server opens through, so no tool has to remember it (ADR-396).
+  refuseWhileAnEntryIsAltered(session, trees);
   const tellTheAgent = (opened: NewTail): void => {
     session.newTails.add(opened);
     // The host's log keeps hearing it, as it did before a reply carried it.
@@ -1033,6 +1040,24 @@ export function openWrite(session: Session, scope: Scope, target?: WriteTarget):
     ctx: { ...ctx, beforeTheFirstFact: pending.start, askedBeforeFounding: pending.ask },
     which,
   };
+}
+
+/**
+ * Refuses, before anything is opened, a write over a record with an entry whose hash does not hold
+ * in any tree the destination reaches: its public and private trees and the machine's global one.
+ * The chain is asked as it stands now, over the caches this connection already holds (a cache it
+ * has not opened is opened here, as a read would), so an entry altered after the last read is seen
+ * by the next write and not by the one after it. A tree with no files is not asked: asking would
+ * make one.
+ */
+function refuseWhileAnEntryIsAltered(session: Session, trees: ResolvedTrees): void {
+  const held = new Map(session.caches.opened().map((open) => [open.chainRoot, open.cache]));
+  const asked: ScopedCache[] = [];
+  for (const { scope, chainRoot } of reachableTrees(trees)) {
+    if (!existsSync(chainRoot)) continue;
+    asked.push({ scope, chainRoot, cache: held.get(chainRoot) ?? session.caches.get(chainRoot) });
+  }
+  refuseWhileAltered(linkBreaksOf(asked, THE_CHAIN_AS_IT_STANDS_NOW));
 }
 
 /**

@@ -24,7 +24,7 @@
  */
 
 import { sep } from 'node:path';
-import { DEFAULT_WAIT_MS, TailBusyError, UnreadableLineError } from '@mnema/chain';
+import { CodedError, DEFAULT_WAIT_MS, TailBusyError, UnreadableLineError } from '@mnema/chain';
 import {
   channelIsOn,
   type PushedRule,
@@ -353,6 +353,45 @@ const ALTERED_IN: Readonly<Record<Scope, { tree: string; out: string }>> = {
 /** The note on the second stream beside that refusal. */
 export const ALTERED_RECORD_NOTE =
   'The record holds an altered entry, so the write was refused and nothing was recorded.';
+
+/**
+ * The refusal of a WRITE while an entry of the record was altered after it was written (ADR-396):
+ * thrown by the door of the command line and by the one door of the agent's tools before anything
+ * is opened for writing, and answered by each as every refusal the product wrote on purpose is
+ * (`Refused (ALTERED_ENTRY)` for an agent, the code on the first line of the error stream for a
+ * hook). Reading degrades around such an entry; writing does not, because a new entry signed over a
+ * record that no longer proves itself would be taken by the next reader for the record's own word.
+ */
+export class AlteredEntryError extends CodedError {
+  readonly code = 'ALTERED_ENTRY';
+  override readonly name = 'AlteredEntryError';
+}
+
+/**
+ * What a write says when it met an entry whose hash does not hold, or `undefined` when no tree
+ * has one: each entry (tree, tail, seq, the file and the line), how far the refusal reaches and the
+ * way out, which differs by tree for the reason {@link ALTERED_IN} says (only the public tree is
+ * kept by the repository, so only its way out is a restore from history, and none names `tail
+ * repair`). Every write is refused until the line is as it was written, and so is `switch off`: the
+ * switch is a fact of the same record. A gap or a fork is not read here: it is told, never refused.
+ */
+export function alteredEntrySentence(facts: readonly ScopedLinkBreak[]): string | undefined {
+  const altered = facts.filter((fact) => fact.retained !== undefined);
+  if (altered.length === 0) return undefined;
+  const trees = [...new Set(altered.map((fact) => fact.scope))];
+  return [
+    `Nothing was done: ${trees.map((tree) => ALTERED_IN[tree].tree).join(' and ')} holds an entry that was altered after it was written.`,
+    ...linkBreakSentences(altered),
+    ...trees.map((tree) => ALTERED_IN[tree].out),
+    'Switching a channel off is a write to the same record, so it is refused too.',
+  ].join('\n\n');
+}
+
+/** Refuses the write when any of the facts is an altered entry: the one throw of both doors. */
+export function refuseWhileAltered(facts: readonly ScopedLinkBreak[]): void {
+  const sentence = alteredEntrySentence(facts);
+  if (sentence !== undefined) throw new AlteredEntryError(sentence);
+}
 
 /**
  * What a command line says when it met a stored line it cannot read: the line (file and position, so
