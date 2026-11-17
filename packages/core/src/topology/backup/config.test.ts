@@ -53,6 +53,14 @@ describe('which folder keeps which project', () => {
     expect(readFileSync(path, 'utf-8')).toBe('not json');
   });
 
+  it('refuses a file with no projects object, and an entry it cannot read', () => {
+    mkdirSync(join(base, 'data'));
+    writeFileSync(path, '{"format":1}');
+    expect(() => readBackupConfig(path)).toThrow(/no "projects" object/);
+    writeFileSync(path, '{"projects":{"record-a":{"destination":3}}}');
+    expect(() => readBackupConfig(path)).toThrow(/entry for record-a/);
+  });
+
   it('does not read a link', () => {
     mkdirSync(join(base, 'data'));
     writeFileSync(join(base, 'real.json'), '{"projects":{}}');
@@ -74,6 +82,26 @@ describe('where a backup cannot be kept', () => {
     expect(whyNotADestination(join(project, 'backup'), trees)).toMatch(/working tree/);
     expect(whyNotADestination(join(project, '.mnema', 'b'), trees)).toMatch(/working tree/);
     expect(whyNotADestination(join(project, '.git', 'b'), trees)).toMatch(/working tree/);
+    expect(whyNotADestination(join(base, 'elsewhere'), trees)).toBeUndefined();
+  });
+
+  it('refuses a folder inside the git directory every worktree of the repository shares', () => {
+    const main = join(base, 'main');
+    const worktree = join(base, 'worktree');
+    const shared = join(main, '.git');
+    const own = join(shared, 'worktrees', 'worktree');
+    mkdirSync(own, { recursive: true });
+    mkdirSync(join(worktree, '.mnema'), { recursive: true });
+    writeFileSync(join(shared, 'HEAD'), 'ref: refs/heads/main\n');
+    writeFileSync(join(own, 'HEAD'), 'ref: refs/heads/other\n');
+    writeFileSync(join(own, 'commondir'), '../..\n');
+    writeFileSync(join(worktree, '.git'), `gitdir: ${own}\n`);
+    const trees: ResolvedTrees = {
+      projectPublic: join(worktree, '.mnema'),
+      global: join(base, 'data', 'global'),
+      keyRoot: join(base, 'data', 'identity'),
+    };
+    expect(whyNotADestination(join(shared, 'backup'), trees)).toMatch(/git directory/);
     expect(whyNotADestination(join(base, 'elsewhere'), trees)).toBeUndefined();
   });
 });

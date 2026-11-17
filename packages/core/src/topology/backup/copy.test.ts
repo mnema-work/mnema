@@ -137,6 +137,13 @@ describe('copying a tree into a folder', () => {
     expect(readdirSync(real)).toEqual([]);
   });
 
+  it('refuses a destination that is a file, and writes nothing', () => {
+    writeFileSync(destination, 'a file where the folder should be');
+    expect(() => copyTree(tree, destination, 'record-a', 'private', NOW)).toThrow(
+      /is not a folder/,
+    );
+  });
+
   it('only grows: a second run adds what came, and a tree that no longer starts as the copy stops it', () => {
     copyTree(tree, destination, 'record-a', 'private', NOW);
     put(tree, `tails/${TAIL}/000001.jsonl`, '{"seq":0}\n{"seq":1}\n{"seq":2}\n');

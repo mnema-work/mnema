@@ -6,6 +6,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { resolveTrees } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type CliIo, run } from '../program.js';
 import { KEPT_IN_CLEAR } from './backup.js';
@@ -111,6 +112,20 @@ describe('mnema backup run and status', () => {
     const reading = JSON.parse(json.out.join('\n')) as { destination: string; trees: unknown[] };
     expect(reading.destination).toBe(folder);
     expect(reading.trees).toHaveLength(2);
+  });
+
+  it('says what a second setup replaced, and that a project has no private tree yet', async () => {
+    const first = join(sandbox, 'first');
+    const second = join(sandbox, 'second');
+    await mnema(['backup', 'setup', '--yes', first]);
+    const again = await mnema(['backup', 'setup', '--yes', second]);
+    expect(again.out.join('\n')).toContain(`it was ${first}`);
+    const trees = resolveTrees(repo, { home: join(sandbox, 'home') });
+    rmSync(trees.projectPrivate as string, { recursive: true, force: true });
+    const ran = await mnema(['backup', 'run']);
+    expect(ran.out.join('\n')).toContain('private tree: none on this machine yet');
+    const status = await mnema(['backup', 'status']);
+    expect(status.out.join('\n')).toContain('private tree: none on this machine yet');
   });
 
   it('refuses a run for a project with no folder', async () => {

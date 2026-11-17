@@ -123,6 +123,29 @@ describe('the backup of two projects on one machine', () => {
     expect(again.ok && again.trees.some((one) => one.behind > 0)).toBe(true);
   });
 
+  it('refuses a folder that is a file, says what a second setup replaced, and a backup file it cannot read', () => {
+    const a = project('alpha', false);
+    const file = join(sandbox, 'a-file');
+    writeFileSync(file, 'not a folder');
+    expect(runBackupSetup(a, file)).toMatchObject({ ok: false, reason: 'BAD_DESTINATION' });
+    const first = join(sandbox, 'first');
+    const second = join(sandbox, 'second');
+    expect(runBackupSetup(a, first)).toMatchObject({ ok: true, replaced: undefined });
+    expect(runBackupSetup(a, second)).toMatchObject({ ok: true, replaced: first });
+    writeFileSync(join(env.home, '.mnema', 'backup.json'), 'not json');
+    for (const refused of [runBackupRun(a), runBackupStatus(a), runBackupSetup(a, first)]) {
+      expect(refused).toMatchObject({ ok: false, code: 'BACKUP_CONFIG' });
+    }
+  });
+
+  it('refuses outside a project', () => {
+    expect(runBackupRun({ cwd: sandbox, env })).toMatchObject({ ok: false, reason: 'NO_PROJECT' });
+    expect(runBackupStatus({ cwd: sandbox, env })).toMatchObject({
+      ok: false,
+      reason: 'NO_PROJECT',
+    });
+  });
+
   it('refuses a folder inside the working tree, and copies nothing of the key root', () => {
     const a = project('alpha', false);
     expect(runBackupSetup(a, join(a.cwd, 'bk'))).toMatchObject({

@@ -1017,7 +1017,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/src/tree-sources.test.ts': 7,
   'packages/code/src/what-the-session-touches.test.ts': 14,
   'packages/code/src/who-is-here.test.ts': 4,
-  'packages/code/src/wiring/backup.test.ts': 6,
+  'packages/code/src/wiring/backup.test.ts': 7,
   'packages/code/src/wiring/from-the-group.test.ts': 5,
   'packages/code/src/wiring/io.test.ts': 3,
   'packages/code/src/wiring/review.test.ts': 2,
