@@ -20,6 +20,28 @@
  * {@link treesSearched}, for the reading that has to say where it looked.
  */
 
+export {
+  type Assigned,
+  assignDestination,
+  BACKUP_CONFIG,
+  BackupConfigError,
+  backupConfigPath,
+  destinationOf,
+  readBackupConfig,
+  whyNotADestination,
+} from './backup/config.js';
+export {
+  BACKUP_MANIFEST,
+  BackupRefusedError,
+  type BackupTree,
+  type Copied,
+  type CopyStanding,
+  type PreparedCopy,
+  planCopy,
+  prepareCopy,
+  standingOfCopy,
+  writeCopy,
+} from './backup/copy.js';
 export { type Ask, type DefaultBranch, theDefaultBranch } from './default-branch.js';
 export { gitPlaceOf } from './git-place.js';
 export {

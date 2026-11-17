@@ -119,6 +119,10 @@ carries the help the command prints, word for word.
   - [mnema tail list](cli/tail-list.md): list the tails that hold events here, the ones a cut can name, with the id `prune` takes
   - [mnema tail prune](cli/tail-prune.md): record that one whole tail was authorized to be cut (it removes nothing)
   - [mnema tail relink](cli/tail-relink.md): relink whole tails of another record into the one this directory names, each signed by its own key
+- [mnema backup](cli/backup.md): copy this project's trees into a folder, and say how far the copy is (records nothing)
+  - [mnema backup setup](cli/backup-setup.md): say which folder keeps this project's backup, after a person confirms at a terminal that it keeps the text in clear
+  - [mnema backup run](cli/backup-run.md): copy this project's trees into its folder
+  - [mnema backup status](cli/backup-status.md): say where this project's backup is and how far it is from the trees
 - [mnema doctor](cli/doctor.md): say how mnema is installed on this machine, and what to do about each thing found (writes nothing unless you pass --fix)
 - [mnema report](cli/report.md): show, whole, what mnema would say about its own last internal error, and keep your answer to it (sends nothing)
 - [mnema completion](cli/completion.md): print the tab-completion script for a shell

@@ -223,6 +223,7 @@ import type { Command } from 'commander';
 import { registerAfterAWrite } from './after-a-write.js';
 import { registerAging } from './aging.js';
 import { registerAudit } from './audit.js';
+import { registerBackup } from './backup.js';
 import { registerBeforeAWrite } from './before-a-write.js';
 import { registerBesideAWrite } from './beside-a-write.js';
 import { registerBrief } from './brief.js';
@@ -352,7 +353,14 @@ export const GROUPS: readonly Group[] = [
   },
   {
     heading: 'This machine:',
-    verbs: [registerKey, registerTail, registerDoctor, registerProblemReport, registerCompletion],
+    verbs: [
+      registerKey,
+      registerTail,
+      registerBackup,
+      registerDoctor,
+      registerProblemReport,
+      registerCompletion,
+    ],
   },
   {
     heading: 'Called by a host:',

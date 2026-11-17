@@ -21,6 +21,7 @@
 
 import { spawnSync } from 'node:child_process';
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -29,6 +30,7 @@ import {
   renameSync,
   rmSync,
   symlinkSync,
+  writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
@@ -319,6 +321,49 @@ try {
   );
   const inWorktree = mustRun('mnema verify in the worktree', mnema(['verify'], worktree));
   check(/local integrity verified/.test(inWorktree.out), 'the worktree verifies');
+
+  section('a backup of the project into a folder');
+  mustRun(
+    'mnema decision record (private)',
+    mnema(
+      ['decision', 'record', 'Kept on this machine', 'Not for the team.', '--scope', 'private'],
+      project,
+    ),
+  );
+  const folder = join(real, 'backup-folder');
+  const refused = mnema(['backup', 'setup', folder], project);
+  check(
+    refused.status !== 0 && !existsSync(join(home, '.mnema', 'backup.json')),
+    'backup setup is refused where no person is at a terminal, and assigns nothing',
+  );
+  // The folder is assigned by writing the machine's file, which `setup` writes after a person confirms it.
+  const verdict = JSON.parse(
+    mustRun('mnema verify --json', mnema(['verify', '--json'], project)).out,
+  );
+  const record = verdict.trees.find(
+    (/** @type {{ scope: string }} */ one) => one.scope === 'public',
+  )?.result?.record?.name;
+  check(typeof record === 'string', 'verify names the record');
+  mkdirSync(join(home, '.mnema'), { recursive: true });
+  writeFileSync(
+    join(home, '.mnema', 'backup.json'),
+    JSON.stringify({
+      format: 1,
+      projects: { [record]: { destination: folder, setUpAt: new Date().toISOString() } },
+    }),
+  );
+  const backedUp = mustRun('mnema backup run', mnema(['backup', 'run'], project));
+  check(
+    /private tree: \d+ file\(s\) held/.test(backedUp.out),
+    'backup run copies the private tree',
+  );
+  const copies = readdirSync(folder, { recursive: true }).map(String);
+  check(
+    copies.some((name) => name.endsWith('.jsonl')) && !copies.some((name) => name.endsWith('.key')),
+    'the folder holds the tails and no key',
+  );
+  const standing = mustRun('mnema backup status', mnema(['backup', 'status'], project));
+  check(/nothing to add/.test(standing.out), 'backup status says the copy is up to date');
 
   section('doctor');
   const doctor = mustRun('mnema doctor', mnema(['doctor'], project));

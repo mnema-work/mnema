@@ -69,6 +69,8 @@ const BUILT_WITH: Readonly<Record<string, readonly unknown[]>> = {
     'f'.repeat(64),
     { refused: 'foreign', own: 'a'.repeat(64), record: 'b'.repeat(64) },
   ],
+  BackupConfigError: ['/tmp/x/backup.json is not JSON.'],
+  BackupRefusedError: ['LINKED', '/tmp/x is a symbolic link.'],
   RecordLinkedError: [{ root: '/tmp/x' }, 'locks'],
   IntentNotKeptError: ['/tmp/x/the-note', 'ENOSPC'],
   MachineryUnavailableError: ['The place for the notes cannot be written.'],

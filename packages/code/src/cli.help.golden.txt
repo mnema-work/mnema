@@ -105,6 +105,8 @@ $ mnema --help
 |   key             manage this machine's signing keys
 |   tail            act on the record's own tails: list them, authorize a cut,
 |                   relink one
+|   backup          copy this project's trees into a folder, and say how far the
+|                   copy is (records nothing)
 |   doctor          say how mnema is installed on this machine, and what to do
 |                   about each thing found (writes nothing unless you pass --fix)
 |   report          show, whole, what mnema would say about its own last internal
@@ -1291,6 +1293,31 @@ $ mnema tail --help
 |   relink [options] <tails...>  relink whole tails of another record into the one
 |                                this directory names, each signed by its own key
 |   help [command]               display help for command
+
+### mnema backup --help
+$ mnema backup --help
+| Usage: mnema backup [options] [command]
+|
+| copy this project's trees into a folder, and say how far the copy is (records
+| nothing)
+|
+| Options:
+|   -h, --help        display help for command
+|
+| Commands:
+|   setup <folder>    say which folder keeps this project's backup, after a person
+|                     confirms at a terminal that it keeps the text in clear
+|   run               copy this project's trees into its folder
+|   status [options]  say where this project's backup is and how far it is from
+|                     the trees
+|   help [command]    display help for command
+|
+| The copy is a folder per project, kept under the name of its record: the tails up to their
+| last complete line and the public keys, and nothing else. The private tree is always copied;
+| the public tree only where the project is not in git, whose history is its own backup. No
+| private key is copied: a run is refused whole if a file it would copy holds one, and so is a
+| symbolic link in the tree or in the folder. A copy only grows. The folder keeps the text in
+| clear, which `setup` asks a person to confirm at a terminal. A machine can have a folder per project; a project has the one it was set up with.
 
 ### mnema doctor --help
 $ mnema doctor --help
@@ -2888,6 +2915,39 @@ $ mnema tail relink --help
 |   and reported back, but what mnema does not recognize is written verbatim.
 |   Nor personal data: an email address is replaced with <email>; the mnid already says who wrote.
 |   Each text field holds at most 65536 bytes; a longer one is refused.
+
+### mnema backup setup --help
+$ mnema backup setup --help
+| Usage: mnema backup setup [options] <folder>
+|
+| say which folder keeps this project's backup, after a person confirms at a
+| terminal that it keeps the text in clear
+|
+| Arguments:
+|   folder      the folder (outside the working tree, the record and the git
+|               directory)
+|
+| Options:
+|   -h, --help  display help for command
+
+### mnema backup run --help
+$ mnema backup run --help
+| Usage: mnema backup run [options]
+|
+| copy this project's trees into its folder
+|
+| Options:
+|   -h, --help  display help for command
+
+### mnema backup status --help
+$ mnema backup status --help
+| Usage: mnema backup status [options]
+|
+| say where this project's backup is and how far it is from the trees
+|
+| Options:
+|   --json      emit the faithful reading as JSON
+|   -h, --help  display help for command
 
 ### mnema run start --help
 $ mnema run start --help
