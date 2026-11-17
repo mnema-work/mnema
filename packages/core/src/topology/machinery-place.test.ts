@@ -20,9 +20,12 @@ import { MachineryUnavailableError, machineryRootsOf } from './machinery-place.j
 import type { ResolvedTrees } from './resolve.js';
 
 let sandbox: string;
+/** The sandbox as the file system spells it, which is how the places are named (`/tmp` is a link on macOS). */
+let real: string;
 
 beforeEach(() => {
-  sandbox = realpathSync(mkdtempSync(join(tmpdir(), 'mnema-machinery-')));
+  sandbox = mkdtempSync(join(tmpdir(), 'mnema-machinery-'));
+  real = realpathSync(sandbox);
 });
 
 afterEach(() => {
@@ -41,26 +44,26 @@ function treesAt(project: string): ResolvedTrees {
   return {
     projectPublic: join(project, '.mnema'),
     ...(machinery === undefined ? {} : { projectPublicMachinery: machinery }),
-    global: join(sandbox, 'global'),
-    keyRoot: join(sandbox, 'identity'),
+    global: join(real, 'global'),
+    keyRoot: join(real, 'identity'),
   };
 }
 
 describe('the roots a public writer is opened over', () => {
   it('are the shared place and this worktree’s own, in a repository, and nothing outside one', () => {
-    aGitDir(join(sandbox, 'repo', '.git'));
-    const roots = machineryRootsOf(treesAt(join(sandbox, 'repo')));
+    aGitDir(join(real, 'repo', '.git'));
+    const roots = machineryRootsOf(treesAt(join(real, 'repo')));
     expect(roots).toEqual({
-      sharedRoot: join(sandbox, 'repo', '.git', 'mnema', '%2E', 'public'),
-      installationRoot: join(sandbox, 'repo', '.git', 'mnema', '%2E', 'public'),
+      sharedRoot: join(real, 'repo', '.git', 'mnema', '%2E', 'public'),
+      installationRoot: join(real, 'repo', '.git', 'mnema', '%2E', 'public'),
     });
-    mkdirSync(join(sandbox, 'plain'));
-    expect(machineryRootsOf(treesAt(join(sandbox, 'plain')))).toBeUndefined();
+    mkdirSync(join(real, 'plain'));
+    expect(machineryRootsOf(treesAt(join(real, 'plain')))).toBeUndefined();
   });
 
   it('make nothing: where a place is asked and the write is refused for another reason, .git is as it was', () => {
-    const git = aGitDir(join(sandbox, 'repo', '.git'));
-    machineryRootsOf(treesAt(join(sandbox, 'repo')));
+    const git = aGitDir(join(real, 'repo', '.git'));
+    machineryRootsOf(treesAt(join(real, 'repo')));
     expect(() => readdirOf(git)).not.toThrow();
     expect(readdirOf(git)).toEqual(['HEAD']);
   });
@@ -68,7 +71,7 @@ describe('the roots a public writer is opened over', () => {
 
 describe('a place that cannot be used', () => {
   it('refuses a git directory inside the working tree, where git would stage what is noted there', () => {
-    const project = join(sandbox, 'repo');
+    const project = join(real, 'repo');
     mkdirSync(project);
     aGitDir(join(project, 'gd'));
     writeFileSync(join(project, '.git'), 'gitdir: gd\n');
@@ -80,10 +83,10 @@ describe('a place that cannot be used', () => {
 
   it('refuses where the nearest directory above the place cannot be written, naming it', () => {
     if (process.getuid?.() === 0) return;
-    const git = aGitDir(join(sandbox, 'repo', '.git'));
+    const git = aGitDir(join(real, 'repo', '.git'));
     chmodSync(git, 0o555);
     try {
-      const refused = catching(() => machineryRootsOf(treesAt(join(sandbox, 'repo'))));
+      const refused = catching(() => machineryRootsOf(treesAt(join(real, 'repo'))));
       expect(refused).toBeInstanceOf(MachineryUnavailableError);
       expect((refused as Error).message).toContain(git);
       expect((refused as Error).message).toContain('cannot be written');
@@ -93,12 +96,12 @@ describe('a place that cannot be used', () => {
   });
 
   it('refuses a worktree whose git directory went away between the walk and the write', () => {
-    const common = aGitDir(join(sandbox, 'repo', '.git'));
+    const common = aGitDir(join(real, 'repo', '.git'));
     const own = aGitDir(join(common, 'worktrees', 'wt'));
     writeFileSync(join(own, 'commondir'), '../..\n');
-    mkdirSync(join(sandbox, 'wt'));
-    writeFileSync(join(sandbox, 'wt', '.git'), 'gitdir: ../repo/.git/worktrees/wt\n');
-    const trees = treesAt(join(sandbox, 'wt'));
+    mkdirSync(join(real, 'wt'));
+    writeFileSync(join(real, 'wt', '.git'), 'gitdir: ../repo/.git/worktrees/wt\n');
+    const trees = treesAt(join(real, 'wt'));
     rmSync(own, { recursive: true });
 
     const refused = catching(() => machineryRootsOf(trees));

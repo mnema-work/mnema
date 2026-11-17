@@ -7,9 +7,12 @@
  */
 
 import { existsSync, statSync } from 'node:fs';
-import { dirname, join, relative, sep } from 'node:path';
+import { basename, dirname, join, relative, sep } from 'node:path';
 
 export function notesOf(record: string): string {
+  // Only a project's own record (`<project>/.mnema`) has its notes in the repository's git directory:
+  // the private tree is already there, with its notes in its own `locks/`.
+  if (basename(record) !== '.mnema') return join(record, 'locks');
   const project = dirname(record);
   for (let at = project; ; at = dirname(at)) {
     const git = join(at, '.git');
