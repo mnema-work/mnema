@@ -1,4 +1,3 @@
-
 Fixed
 
 - **A write is refused over a tail that begins above seq 0.** With the tail's first segment file gone and the anchor still counting,
