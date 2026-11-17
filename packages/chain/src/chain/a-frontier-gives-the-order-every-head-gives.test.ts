@@ -5,7 +5,7 @@
  * only sound if, in a record that holds every tail, the one order every reader folds and what a
  * move is said to have seen are the ones a writer that cited every head would have produced.
  * This writes scripts with the real writer (several keys, clocks that disagree, moves and
- * retractions on subjects shared between tails, notes lost at random), keeps its own MODEL of
+ * retractions on subjects shared between machines, notes lost at random), keeps its own MODEL of
  * the citation of every head (the heads on disk at each write, noted by the test, not asked of
  * the code), and compares, entry by entry, `causalOrder` over what was written with `causalOrder`
  * over what the model says, and `sightOf` for every pair of a move and an earlier event of the
@@ -70,7 +70,7 @@ function play(script: readonly Step[]): Run {
       citeHeads: true,
     }),
   ];
-  const heads = new Map<string, string>();
+  const latest = new Map<string, string>();
   const everyHead = new Map<string, readonly string[]>();
   for (const step of script) {
     if (step.act === 'spawn') {
@@ -103,10 +103,10 @@ function play(script: readonly Step[]): Run {
       event = taskTransitioned(envelope, { from: null, to: 'todo', action: 'create' });
     } else if (step.act === 'retract') event = noteRetracted(envelope, { reason: 'wrong' });
     else event = taskCreated({ ...envelope, subject: `${writer.tail}-m` }, { title: 'a memory' });
-    const others = [...heads].filter(([tail]) => tail !== writer.tail).map(([, head]) => head);
+    const others = [...latest].filter(([tail]) => tail !== writer.tail).map(([, head]) => head);
     const entry = writer.append(event);
     // The tail may have moved on to another one (the pool): the head is kept by the tail written.
-    heads.set(entry.link.tail, entry.link.hash);
+    latest.set(entry.link.tail, entry.link.hash);
     everyHead.set(entry.link.hash, others.sort());
   }
   return { everyHead };
@@ -115,10 +115,10 @@ function play(script: readonly Step[]): Run {
 function order(
   keysOf: (hash: string, after: readonly string[] | undefined) => readonly string[] | undefined,
 ) {
-  const tails = listTails({ root });
-  const read = tails.map((tail) => readTail({ root }, tail, upcasters).entries);
+  const ids = listTails({ root });
+  const read = ids.map((tail) => readTail({ root }, tail, upcasters).entries);
   const merged = causalOrder(
-    tails.map((tail, index) => ({ tree: 0, tail, length: (read[index] ?? []).length })),
+    ids.map((tail, index) => ({ tree: 0, tail, length: (read[index] ?? []).length })),
     {
       at: (t, p) => read[t]?.[p]?.event.at as string,
       hash: (t, p) => read[t]?.[p]?.link.hash as string,
@@ -130,9 +130,9 @@ function order(
   );
   const where = merged.steps.map((tail, step) => {
     const cursor = merged.steps.slice(0, step).filter((one) => one === tail).length;
-    return `${tails[tail]}#${cursor}`;
+    return `${ids[tail]}#${cursor}`;
   });
-  return { where, held: merged.held, read, tails };
+  return { where, held: merged.held, read, ids };
 }
 
 function sights(held: readonly CitationHeld[], read: ReturnType<typeof order>['read']): string[] {
