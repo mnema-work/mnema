@@ -419,6 +419,23 @@ describe('what an earlier mnema left in the record itself', () => {
   }, 120_000);
 });
 
+describe('what a killed writer leaves in the shared place', () => {
+  it('is removed by the next write of the tail, and only what is a dead writer’s', () => {
+    expect(mnema(repo, 'memory', 'the first note').status).toBe(0);
+    const { tail } = theTail();
+    const gone = spawnSync(process.execPath, ['-e', '']).pid as number;
+    const orphan = join(shared(), 'locks', `${tail}.head.sig.${gone}`);
+    const alive = join(shared(), 'locks', `${tail}.cited.${process.pid}`);
+    const another = join(shared(), 'locks', `${'c'.repeat(64)}-${'d'.repeat(32)}.head.${gone}`);
+    for (const path of [orphan, alive, another]) writeFileSync(path, 'half a note');
+
+    expect(mnema(repo, 'memory', 'the next note').status).toBe(0);
+    expect(existsSync(orphan)).toBe(false);
+    expect(existsSync(alive)).toBe(true);
+    expect(existsSync(another)).toBe(true);
+  }, 120_000);
+});
+
 describe('a write that cannot be sure of the note naming its line', () => {
   it('is refused with nothing written, and the tail is as it was', () => {
     expect(mnema(repo, 'memory', 'the first note').status).toBe(0);
