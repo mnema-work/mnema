@@ -13,7 +13,7 @@
 
 import { existsSync, lstatSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { CodedError } from '@mnema/chain';
+import { CodedError, withTailLock } from '@mnema/chain';
 import { gitPlaceOf, isWithin } from '../git-place.js';
 import { realOfMaybeMissing } from '../private-tree.js';
 import type { ResolvedTrees } from '../resolve.js';
@@ -118,6 +118,15 @@ function writeWhole(path: string, whole: Whole): void {
   renameSync(staging, path);
 }
 
+/**
+ * Reads, changes and writes the file under a lock beside it, so two setups at once (a project's and
+ * the global tree's, or two projects') both keep their assignment: the second reads what the first wrote.
+ */
+function changed<T>(path: string, act: () => T): T {
+  mkdirSync(dirname(path), { recursive: true });
+  return withTailLock(`${path}.lock`, act);
+}
+
 /** Assigns `destination` to `record`, keeping every other assignment, and says what it replaced. */
 export function assignDestination(
   path: string,
@@ -125,12 +134,14 @@ export function assignDestination(
   destination: string,
   now: Date,
 ): { readonly replaced: string | undefined } {
-  const whole = readWhole(path);
-  const projects = new Map(whole.projects);
-  const replaced = projects.get(record)?.destination;
-  projects.set(record, { destination, setUpAt: now.toISOString() });
-  writeWhole(path, { projects, global: whole.global });
-  return { replaced };
+  return changed(path, () => {
+    const whole = readWhole(path);
+    const projects = new Map(whole.projects);
+    const replaced = projects.get(record)?.destination;
+    projects.set(record, { destination, setUpAt: now.toISOString() });
+    writeWhole(path, { projects, global: whole.global });
+    return { replaced };
+  });
 }
 
 /** Assigns `destination` to the global tree, keeping every project's, and says what it replaced. */
@@ -139,12 +150,14 @@ export function assignGlobalDestination(
   destination: string,
   now: Date,
 ): { readonly replaced: string | undefined } {
-  const whole = readWhole(path);
-  writeWhole(path, {
-    projects: whole.projects,
-    global: { destination, setUpAt: now.toISOString() },
+  return changed(path, () => {
+    const whole = readWhole(path);
+    writeWhole(path, {
+      projects: whole.projects,
+      global: { destination, setUpAt: now.toISOString() },
+    });
+    return { replaced: whole.global?.destination };
   });
-  return { replaced: whole.global?.destination };
 }
 
 /**
@@ -174,6 +187,11 @@ export function whyNotADestination(folder: string, trees: ResolvedTrees): string
     if (isWithin(target, real)) {
       return `${folder} is inside ${what} (${dir}): a backup there would be part of what it copies. Name a folder outside it.`;
     }
+  }
+  // Whatever repository it is in, wherever this runs from: the answer never depends on the cwd.
+  const repository = gitPlaceOf(target);
+  if (repository !== undefined) {
+    return `${folder} is inside the working tree of a git repository (${repository.top}): a backup there would sit among files git can publish. Name a folder outside every repository.`;
   }
   return undefined;
 }

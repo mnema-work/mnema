@@ -8,3 +8,6 @@ Added
   hold for it as for a project's trees. Its `diagnostics.jsonl` and `report-state.json` are not copied. See
   [What a backup keeps, and what it loses](docs/what-a-backup-keeps-and-what-it-loses.md): what the copy holds and never holds,
   that it is not encrypted, and that the machine's signing key is not in it.
+  `backup setup` now refuses a folder inside the working tree of any git repository, wherever it is run from (it only
+  knew the current project's), a record name that is not 64 lowercase hexadecimal characters is refused before it becomes a
+  folder, and `backup.json` is read and written under a lock, so two setups at once keep both assignments.

@@ -46,7 +46,9 @@ the installation ids or anchors beside its keys, not `site/`, and nothing of you
 a private key, wherever in the file it sits and whatever the file is called. It stops the same
 way at a symbolic link (or a junction) in a tree it copies from, or in the folder it copies to:
 no link is followed, because it can point outside. A folder inside the working tree, the record
-or the git directory is refused at `setup`: it would be part of what it copies. A copy only
+or the git directory is refused at `setup`: it would be part of what it copies. So is a folder inside
+the working tree of any git repository, whichever directory you run `setup` from, because git can publish
+what is there. A copy only
 grows: a file already in the folder must be the start of what the tree holds now, and a tree
 that no longer starts as its copy stops the run and leaves the copy as it is. Every tree is
 checked, and every refusal above is made, before the first byte of any tree is written, so a

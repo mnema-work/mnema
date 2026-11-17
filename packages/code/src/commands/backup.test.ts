@@ -311,6 +311,24 @@ describe("the backup of the machine's global tree", () => {
     expect(held.some((file) => file.endsWith('.jsonl'))).toBe(true);
   });
 
+  it('refuses a folder inside a repository from outside it as from inside it, for the global tree and a project', () => {
+    const inGit = project('beta', true);
+    const outside = { cwd: sandbox, env };
+    const leak = join(inGit.cwd, 'leak');
+    for (const ctx of [inGit, outside]) {
+      expect(runGlobalBackupSetup(ctx, leak)).toMatchObject({
+        ok: false,
+        reason: 'BAD_DESTINATION',
+      });
+    }
+    const free = project('alpha', false);
+    expect(runBackupSetup(free, join(inGit.cwd, 'elsewhere'))).toMatchObject({
+      ok: false,
+      reason: 'BAD_DESTINATION',
+    });
+    expect(existsSync(join(env.home, '.mnema', 'backup.json'))).toBe(false);
+  });
+
   it('works outside a project, and says there is no global tree yet where there is none', () => {
     const outside = { cwd: sandbox, env };
     const folder = join(sandbox, 'folder-g');

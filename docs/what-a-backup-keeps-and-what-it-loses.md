@@ -42,8 +42,8 @@ finds otherwise stops and leaves the copy as it was.
 - **It is not encrypted.** The folder keeps the text in clear: whoever can read the folder can read
   the record and the public keys in it. `setup` says so and asks you to confirm it, at a terminal
   and nowhere else; no flag answers for you. If that matters, put the folder on an encrypted volume
-  (an encrypted disk or image you mount) and name a folder on it. A copy encrypted by `mnema` itself
-  is not part of this version, and neither is a cold key to enrol or a git destination chosen for you.
+  (an encrypted disk or image you mount) and name a folder on it. A copy encrypted by `mnema` itself, and
+  a cold key set aside to restore your identity, are for a later version; this page promises no date for them.
 - **It is not a second record.** Nothing reads from the folder, and nothing in it is verified by the
   copy itself: it is files, kept so that the disk that held the record is not the only thing that
   did.
@@ -63,6 +63,6 @@ on the tree: the committed one only, from the backup key `mnema init` makes.
 - The folder itself: where it is, who can read it, and that it is on a disk that is not the one it
   copies. `mnema backup status` says how far the copy is from the trees; a copy that was never run
   again after the record grew is behind by exactly what `status` counts.
-- Running it. Nothing runs a backup for you.
+- Running it. `backup run` copies when you ask it to: this page says nothing of a backup that runs by itself.
 - The key. Keep a copy of it the way [a second machine and your key](a-second-machine-and-your-key.md)
   describes, apart from the folder.

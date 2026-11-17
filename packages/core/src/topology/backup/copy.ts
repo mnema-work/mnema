@@ -46,6 +46,14 @@ function folderOf(destination: string, record: string | undefined, tree: BackupT
   if (tree === 'global') return join(destination, 'global');
   if (record === undefined)
     throw new Error(`the ${tree} tree is copied under the name of a record`);
+  // A name becomes a folder: only what a record is called (64 lowercase hex) may, so it cannot be `global`
+  // or climb out of the folder of the backup.
+  if (!/^[0-9a-f]{64}$/.test(record)) {
+    throw new BackupRefusedError(
+      'BAD_RECORD_NAME',
+      `The record is named ${JSON.stringify(record)}, which is not a name a record has (64 lowercase hexadecimal characters), and a backup is kept in a folder of that name.`,
+    );
+  }
   return join(destination, record, tree);
 }
 
@@ -62,7 +70,7 @@ export const BACKUP_MANIFEST = 'mnema-backup.json';
 /** A run turned away before anything was written. */
 export class BackupRefusedError extends CodedError {
   override readonly name = 'BackupRefusedError';
-  readonly code: 'LINKED' | 'PRIVATE_KEY' | 'DIVERGED' | 'NOT_A_FOLDER';
+  readonly code: 'LINKED' | 'PRIVATE_KEY' | 'DIVERGED' | 'NOT_A_FOLDER' | 'BAD_RECORD_NAME';
 
   constructor(code: BackupRefusedError['code'], message: string) {
     super(`${message} Nothing was written.`);
