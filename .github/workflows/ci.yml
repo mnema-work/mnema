@@ -362,6 +362,7 @@ jobs:
           packages/chain/src/chain/a-key-file-that-holds-no-key-is-refused.test.ts
           packages/chain/src/chain/a-kind-this-reader-does-not-know-is-read-past.test.ts
           packages/chain/src/chain/a-reformat-is-named-only-where-the-signatures-prove-it.test.ts
+          packages/chain/src/chain/a-record-the-frontier-wrote-is-read-by-both-readers.test.ts
           packages/chain/src/chain/a-refused-line-hides-nothing-else-in-its-tail.test.ts
           packages/chain/src/chain/a-tail-is-not-forked.test.ts
           packages/chain/src/chain/a-tail-of-another-record-is-refused.test.ts
