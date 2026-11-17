@@ -68,7 +68,7 @@
  * answer depended on somebody else being up.
  */
 
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 
 import { canonicalStringify } from '../events/canonical.js';
 import { holdsExactly, parseCanonicalLine } from '../events/stored-json.js';
@@ -584,9 +584,10 @@ function stampedCheckpoints(layout: ChainLayout, tailId: string): ReadonlySet<st
   refuseLinksOfTail(layout, tailId, kept);
   // A file named `witness` is no witness directory (it is named as a stray entry, FORMAT.md section 4).
   if (!existsSync(dir) || !statSync(dir).isDirectory()) return new Set();
+  // The entries are asked for links first, and the directory is read once below.
+  listedWithoutLinks(layout, kept, []);
   return new Set(
-    listedWithoutLinks(layout, kept, [])
-      .map((entry) => entry.name)
+    readdirSync(dir)
       .filter((name) => name.endsWith(PROOF_SUFFIX))
       .map((name) => name.slice(0, -PROOF_SUFFIX.length)),
   );
