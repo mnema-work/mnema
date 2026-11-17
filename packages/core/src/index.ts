@@ -268,6 +268,7 @@ export {
   type DiscoveryEnv,
   discover,
   gitPlaceOf,
+  guardWrites,
   type HeldTail,
   type KeyChoice,
   keyChoiceIn,

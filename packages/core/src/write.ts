@@ -141,12 +141,10 @@ export {
 export {
   type DeferredWrite,
   deferredWrite,
-  guardWrites,
   type OpenTreeOptions,
   openTreeForWriting,
   signerFor,
   signerHeldFor,
-  type WriteGuard,
 } from './topology/index.js';
 // The refusal an event the READER would not accept earns. Like the screen, only
 // the refusal type crosses the line: the check lives inside every write, and a

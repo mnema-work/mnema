@@ -89,7 +89,12 @@ import { oneLine } from '../one-line.js';
 import type { ScopedLinkBreak } from '../record-integrity.js';
 import { replacementNotice } from '../recorded-content.js';
 import { type Journal, journalFile, markEnded, readJournal } from '../session-journal.js';
-import { linkBreaksOf, THE_READING_THAT_OPENED_THESE, withOpenedCaches } from '../tree-sources.js';
+import {
+  linkBreaksOf,
+  THE_READING_THAT_OPENED_THESE,
+  withOpenedCaches,
+  withTreesRead,
+} from '../tree-sources.js';
 import { alteredEntrySentence, refuseWhileAltered } from '../what-a-write-meets.js';
 import { type CacheRegistry, createCacheRegistry } from './cache-registry.js';
 import {
@@ -1070,9 +1075,14 @@ function alteredEntriesOf(session: Session, trees: ResolvedTrees): readonly Scop
     // Over the cache the tree keeps, opened and closed here and never registered, as the command
     // line asks it: a cold replay of a long record on a connection's first write is the cost of a read.
     ...withOpenedCaches(trees, (open, opened) => {
-      for (const scope of cold) open(scope);
+      for (const scope of cold) if (scope !== 'global') open(scope);
       return linkBreaksOf(opened, THE_READING_THAT_OPENED_THESE);
     }),
+    // The machine's global tree is replayed in memory, the small one, so a refusal leaves it as found.
+    ...withTreesRead(
+      reachableTrees(trees).filter((one) => cold.includes(one.scope) && one.scope === 'global'),
+      (read) => linkBreaksOf(read, THE_READING_THAT_OPENED_THESE),
+    ),
   ];
 }
 

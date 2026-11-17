@@ -14,8 +14,7 @@
  * declared `mutates` (`record-effect.ts`), and the verbs of {@link OPEN_A_WRITER_AS_READS}.
  */
 
-import type { ResolvedTrees } from '@mnema/core';
-import { guardWrites } from '@mnema/core/write';
+import { guardWrites, type ResolvedTrees } from '@mnema/core';
 import type { Command } from 'commander';
 import type { Declared } from './wiring/verb.js';
 

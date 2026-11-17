@@ -21,7 +21,12 @@
 import { existsSync } from 'node:fs';
 import { UnreadableLineError } from '@mnema/chain';
 import { type DiscoveryEnv, type ResolvedTrees, reachableTrees, resolveTrees } from '@mnema/core';
-import { linkBreaksOf, THE_READING_THAT_OPENED_THESE, withOpenedCaches } from './tree-sources.js';
+import {
+  linkBreaksOf,
+  THE_READING_THAT_OPENED_THESE,
+  withOpenedCaches,
+  withTreesRead,
+} from './tree-sources.js';
 import { AlteredEntryError, refuseWhileAltered } from './what-a-write-meets.js';
 
 /** Throws {@link AlteredEntryError} when any tree of `trees` holds an altered entry. */
@@ -29,6 +34,11 @@ export function checkForAnAlteredEntry(trees: ResolvedTrees): void {
   const reached = reachableTrees(trees).filter((one) => existsSync(one.chainRoot));
   const facts = reached.flatMap((tree) => {
     try {
+      // The machine's global tree keeps no cache for a project's verb: a refusal there leaves it as it
+      // found it, so that tree is replayed in memory (it is the small one).
+      if (tree.scope === 'global') {
+        return withTreesRead([tree], (read) => linkBreaksOf(read, THE_READING_THAT_OPENED_THESE));
+      }
       return withOpenedCaches(trees, (open, opened) => {
         open(tree.scope);
         return linkBreaksOf(opened, THE_READING_THAT_OPENED_THESE);

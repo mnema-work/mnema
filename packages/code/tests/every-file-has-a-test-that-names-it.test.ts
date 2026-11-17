@@ -1099,7 +1099,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-tool-answers-without-indentation.test.ts': 11,
   'packages/code/tests/a-tool-description-moves-the-four-weights.test.ts': 8,
   'packages/code/tests/a-verb-that-went-under-a-noun-is-not-a-verb-any-more.test.ts': 3,
-  'packages/code/tests/a-write-is-refused-while-an-entry-is-altered.test.ts': 15,
+  'packages/code/tests/a-write-is-refused-while-an-entry-is-altered.test.ts': 16,
   'packages/code/tests/a-write-killed-at-any-point-is-signed-by-the-next.test.ts': 7,
   'packages/code/tests/a-write-no-rule-can-meet-starts-no-mnema.test.ts': 11,
   'packages/code/tests/a-write-routed-to-another-project-signs-as-the-agent.test.ts': 15,
