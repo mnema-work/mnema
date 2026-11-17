@@ -518,6 +518,26 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'the name of a tree the product has two of, and counts the run made',
   },
+  'backup.ts «{} record {}... from {}» #1': {
+    verdict: 'collapsed',
+    why: 'the folder is read back out of the machine’s backup file, which a person can edit',
+  },
+  'backup.ts «{} tree: {} {} {} file(s){}» #1': {
+    verdict: 'collapsed',
+    why: 'the date of the copy is read out of a manifest in the folder, which a person can edit',
+  },
+  "backup.ts «{} tree: {} holds more in the tree than in the copy: the tree's is kept» #1": {
+    verdict: 'collapsed',
+    why: 'a path read out of the folder of the copy, where a file can be named with a control character',
+  },
+  'backup.ts «{} tree: {} holds other bytes in the tree: left as it is» #1': {
+    verdict: 'collapsed',
+    why: 'a path read out of the folder of the copy, where a file can be named with a control character',
+  },
+  'backup.ts «{} tree: no copy, nothing to restore» #1': {
+    verdict: 'minted',
+    why: 'the name of a tree the product has two of',
+  },
   'check.ts «passed {}» #1': { verdict: 'minted', why: 'the id of a rule the record holds' },
   'check.ts «failed {}: {}» #1': {
     verdict: 'collapsed',
@@ -1183,7 +1203,8 @@ describe('every line this wiring words is classified', () => {
     // 186 with the two lines `init` prints of the answer it recorded about agents accepting, without a screen.
     // 185 without the line a handoff printed of a task no tree held, which it now refuses.
     // 189 with the four lines `backup setup` and `backup run` print.
-    expect(FOUND.sites.length).toBe(193);
+    // 198 with the five lines `backup restore` prints.
+    expect(FOUND.sites.length).toBe(198);
   });
 
   it('reads the verdict off the source rather than believing the table', () => {
@@ -1203,9 +1224,9 @@ describe('every line this wiring words is classified', () => {
   it('found sites of both kinds, and the scanner sees a tag when there is one', () => {
     // Neither arm of the case above may be empty, or half of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
-    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(108);
-    expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(85);
-    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(108);
+    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(112);
+    expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(86);
+    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(112);
   });
 
   it('every reason says where the value comes from', () => {
@@ -1355,6 +1376,13 @@ const UNREACHABLE: Readonly<Record<string, string>> = {
   'backup.ts «it was {}; what is there is left as it is» #2':
     'the same folder as the line of setup',
   'backup.ts «Backed up the global tree to {}» #1': 'the same folder as the line of setup',
+  'backup.ts «{} record {}... from {}» #1': 'the same folder as the line of setup',
+  'backup.ts «{} tree: {} {} {} file(s){}» #1':
+    'the manifest is written by a run, and no case edits its date by hand yet, so the tag is what holds this line',
+  "backup.ts «{} tree: {} holds more in the tree than in the copy: the tree's is kept» #1":
+    'a name with a break in it in the copy, which no case plants yet, so the tag is what holds this line',
+  'backup.ts «{} tree: {} holds other bytes in the tree: left as it is» #1':
+    'a name with a break in it in the copy, which no case plants yet, so the tag is what holds this line',
   'observe.ts «Recorded observation {} about {}» #1':
     'the `about` has to be a record some tree holds, and a record has an id that was minted, so no ' +
     'value that forges a line gets as far as this line: the refusal that names it goes through ' +

@@ -325,7 +325,6 @@ export {
   resolveTrees,
   restoreCopy,
   type Scope,
-  type SecondReading,
   type Standing,
   standingOfCopy,
   TreeUnavailableError,

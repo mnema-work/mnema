@@ -123,6 +123,8 @@ carries the help the command prints, word for word.
   - [mnema backup setup](cli/backup-setup.md): say which folder keeps this project's backup, after a person confirms at a terminal that it keeps the text in clear
   - [mnema backup run](cli/backup-run.md): copy this project's trees into its folder, or with --global only the global tree
   - [mnema backup status](cli/backup-status.md): say where this project's backup is and how far it is from the trees
+  - [mnema backup verify](cli/backup-verify.md): read each copy as a record and say how it stands against this project's trees, which it does not change
+  - [mnema backup restore](cli/backup-restore.md): put a copy back into the trees that lost files, never over a file the tree holds
 - [mnema doctor](cli/doctor.md): say how mnema is installed on this machine, and what to do about each thing found (writes nothing unless you pass --fix)
 - [mnema report](cli/report.md): show, whole, what mnema would say about its own last internal error, and keep your answer to it (sends nothing)
 - [mnema completion](cli/completion.md): print the tab-completion script for a shell

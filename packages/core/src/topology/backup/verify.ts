@@ -3,12 +3,12 @@
  *
  * TWO THINGS ARE ASKED OF A COPY, and they are different questions.
  *
- * IS IT A RECORD? The copy is read by this mnema's reader (`verifyChain`) and, where `python3`
- * and the second reader (`@mnema/chain`'s `verifier/mnema_verify.py`, written from `FORMAT.md`) are
- * on this machine, by that one too. Both are asked whether they refuse it, and a copy one of them
- * refuses and the other accepts is named as a disagreement, not averaged. Where the second reader
- * cannot run, ONE reader read the copy and the answer says so, and why: a verdict never says
- * "two readers" for what one read.
+ * IS IT A RECORD? The copy is read by this mnema's reader (`verifyChain`): ONE reader, and the
+ * answer says so. The second reader (`@mnema/chain`'s `verifier/mnema_verify.py`, written from
+ * `FORMAT.md`) is a Python program of the source repository: an installed mnema does not carry
+ * it, and no module of the product starts Python (the floor is held over test files, in CI).
+ * The answer names the command that runs it by hand over the copy. A verdict never says "two
+ * readers" for what one read.
  *
  * IS IT THE TREE'S? Each file of the copy is set against the file the tree holds now, tail by
  * tail, and ONLY THE TIP ACCUSES: a hash chain cannot be cut in the middle without the next entry
@@ -23,11 +23,8 @@
  * No side is taken between a fork and a cut: both are named.
  */
 
-import { spawnSync } from 'node:child_process';
-import { existsSync, lstatSync, readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { lstatSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   catalogUpcasters,
   LinkedRecordError,
@@ -45,45 +42,6 @@ import {
   placesOf,
   planCopy,
 } from './copy.js';
-
-/** What the second reader said, or why it did not run. */
-export type SecondReading =
-  | { readonly ran: true; readonly refused: boolean; readonly exit: number; readonly says: string }
-  | { readonly ran: false; readonly why: string };
-
-/** Where `@mnema/chain` keeps the second reader, when this install has `@mnema/chain` at all. */
-function secondReaderPath(): string | undefined {
-  try {
-    // The package's own entry is `<package>/dist/index.js`; its `package.json` is not exported.
-    const entry = createRequire(import.meta.url).resolve('@mnema/chain');
-    const script = join(dirname(entry), '..', 'verifier', 'mnema_verify.py');
-    return existsSync(script) ? script : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-/** Runs the second reader over `folder`, in a clean environment, or says why it could not. */
-export function readWithTheSecondReader(folder: string): SecondReading {
-  const script = secondReaderPath();
-  if (script === undefined) {
-    return {
-      ran: false,
-      why: "the second reader (`verifier/mnema_verify.py` of `@mnema/chain`) is not in this install; clone the repository's source to run it",
-    };
-  }
-  const ran = spawnSync('python3', [script, 'record', folder], {
-    encoding: 'utf-8',
-    timeout: 120_000,
-    // The reader needs nothing of the machine's own data, and is given none: a home that is only a temporary folder.
-    env: { PATH: process.env.PATH ?? '', HOME: tmpdir(), PYTHONDONTWRITEBYTECODE: '1' },
-  });
-  if (ran.error !== undefined || ran.status === null) {
-    return { ran: false, why: 'python3 did not run on this machine' };
-  }
-  const says = (ran.stdout.split('\n').find((line) => line.trim() !== '') ?? '').trim();
-  return { ran: true, refused: ran.status === 1, exit: ran.status, says };
-}
 
 /** What a tail file of the copy is against the same file of the tree. */
 export interface Standing {
@@ -113,9 +71,6 @@ export interface CopyReading {
   /** Files its manifest lists that are not in it, or are shorter. */
   readonly missing: readonly string[];
   readonly reader: { readonly ok: boolean; readonly level: ProvenLevel; readonly summary: string };
-  readonly second: SecondReading;
-  /** True where the two readers do not answer alike (one refuses, the other does not). */
-  readonly readersDisagree: boolean;
   readonly standing: Standing;
   /** Whether the copy is sound and the tree is not shown cut, lost or forked from it. */
   readonly ok: boolean;
@@ -174,8 +129,6 @@ export function readCopy(
   }
 
   const result = verifyChain({ root: folder }, catalogUpcasters());
-  const second = readWithTheSecondReader(folder);
-  const readersDisagree = second.ran && second.refused === result.ok;
 
   let same = 0;
   const behind: string[] = [];
@@ -205,8 +158,6 @@ export function readCopy(
   const standing: Standing = { same, behind, cut, lost, forked };
   const ok =
     result.ok &&
-    !readersDisagree &&
-    !(second.ran && second.refused) &&
     missing.length === 0 &&
     cut.length === 0 &&
     lost.length === 0 &&
@@ -218,8 +169,6 @@ export function readCopy(
     files: copied.length,
     missing,
     reader: { ok: result.ok, level: result.level, summary: result.summary },
-    second,
-    readersDisagree,
     standing,
     ok,
   };

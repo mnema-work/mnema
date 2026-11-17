@@ -230,7 +230,7 @@ export const PAGES: Readonly<Record<string, number>> = {
   'docs/install.md': 2,
   'docs/mnema-next-to-a-folder-of-adrs.md': 3,
   'docs/recording-decisions.md': 5,
-  'docs/reference/cli/backup.md': 3,
+  'docs/reference/cli/backup.md': 5,
   'docs/reference/cli/brief.md': 3,
   'docs/reference/cli/completion.md': 4,
   'docs/reference/cli/doctor.md': 1,

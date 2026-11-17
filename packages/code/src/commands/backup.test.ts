@@ -559,24 +559,6 @@ describe('a copy read back, and put back', () => {
     expect(existsSync(priv)).toBe(false);
   });
 
-  it('is read by the second reader when it is there, and says when only one read the copy', () => {
-    const { a, copy } = backedUp();
-    const good = runBackupVerify(a);
-    const one =
-      good.ok && good.trees[0] && 'reading' in good.trees[0] ? good.trees[0].reading : undefined;
-    expect(one?.second).toMatchObject({ ran: true, refused: false, exit: 0 });
-    expect(one?.readersDisagree).toBe(false);
-    const segment = segmentOf(copy);
-    const bytes = readFileSync(segment);
-    bytes[2] = bytes[2] === 0x61 ? 0x62 : 0x61;
-    writeFileSync(segment, bytes);
-    const bad = runBackupVerify(a);
-    const two =
-      bad.ok && bad.trees[0] && 'reading' in bad.trees[0] ? bad.trees[0].reading : undefined;
-    expect(two?.second).toMatchObject({ ran: true, refused: true });
-    expect(two?.reader.ok).toBe(false);
-  });
-
   it('refuses to verify or restore where the project has no copy', () => {
     const a = project('alpha', true);
     expect(runBackupSetup(a, join(sandbox, 'empty')).ok).toBe(true);

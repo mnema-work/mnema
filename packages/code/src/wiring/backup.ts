@@ -60,6 +60,8 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
         'private key is copied: a run is refused whole if a file it would copy holds one, and so is a',
         'symbolic link in the tree or in the folder. A copy only grows. The folder keeps the text in',
         'clear, which `setup` asks a person to confirm at a terminal. A machine can have a folder per project; a project has the one it was set up with.',
+        "`verify` reads the copy as a record (with this mnema's reader) and says how it stands against the trees; `restore` puts it",
+        'back into a tree that lost files, and never over a file the tree holds.',
         "The machine's global tree, which mixes the memory of every project, is never part of a project's",
         'backup: `--global` copies it, and only it, into the folder `setup --global` gave it, as',
         '<folder>/global/.',
@@ -282,31 +284,24 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
           continue;
         }
         const reading = one.reading;
+        const t = one.tree;
         const when = reading.copiedAt === undefined ? 'no manifest' : `copied ${reading.copiedAt}`;
-        lines.push(fact(`${one.tree} tree: ${reading.files} file(s) in the copy, ${when}`));
+        // Everything below that came out of a file (a name, a date, what a reader printed) goes through
+        // `onOneLine`: a file of the copy can hold a line break, and a line is one line.
+        lines.push(fact(onOneLine`${t} tree: ${reading.files} file(s) in the copy, ${when}`));
+        const refused = reading.reader.ok ? '' : 'REFUSED, ';
         lines.push(
-          fact(
-            `${one.tree} tree: read by this mnema: ${reading.reader.ok ? '' : 'REFUSED, '}${reading.reader.summary}`,
-          ),
+          fact(onOneLine`${t} tree: read by this mnema: ${refused}${reading.reader.summary}`),
         );
         lines.push(
           fact(
-            reading.second.ran
-              ? `${one.tree} tree: read by the second reader: ${reading.second.says}`
-              : `${one.tree} tree: ONE reader read this copy: the second reader did not run, ${reading.second.why}`,
+            onOneLine`${t} tree: ONE reader read this copy. The second reader is a Python program of the source repository: \`python3 packages/chain/verifier/mnema_verify.py record ${reading.folder}\` runs it by hand`,
           ),
         );
-        if (reading.readersDisagree) {
-          lines.push(
-            fact(
-              `${one.tree} tree: the two readers do not answer alike, and neither is taken over the other`,
-            ),
-          );
-        }
         for (const path of reading.missing) {
           lines.push(
             fact(
-              `${one.tree} tree: ${path} is listed by the copy's manifest and is not whole in it`,
+              onOneLine`${t} tree: ${path} is listed by the copy's manifest and is not whole in it`,
             ),
           );
         }
@@ -314,25 +309,25 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
         for (const cut of standing.cut) {
           lines.push(
             fact(
-              `${one.tree} tree: ${cut.path} holds ${cut.tree} entries in the tree and ${cut.copy} in the copy: the tree is cut, or the copy is of a longer one; \`mnema backup restore\` does not overwrite it`,
+              onOneLine`${t} tree: ${cut.path} holds ${cut.tree} entries in the tree and ${cut.copy} in the copy: the tree is cut, or the copy is of a longer one; \`mnema backup restore\` does not overwrite it`,
             ),
           );
         }
         for (const lost of standing.lost) {
-          lines.push(fact(`${one.tree} tree: ${lost} is in the copy and not in the tree`));
+          lines.push(fact(onOneLine`${t} tree: ${lost} is in the copy and not in the tree`));
         }
         for (const forked of standing.forked) {
           lines.push(
             fact(
-              `${one.tree} tree: ${forked.path} is not the start of the other (tree ${forked.tree} entries, copy ${forked.copy}): a fork, or a cut, and no side is taken`,
+              onOneLine`${t} tree: ${forked.path} is not the start of the other (tree ${forked.tree} entries, copy ${forked.copy}): a fork, or a cut, and no side is taken`,
             ),
           );
         }
         lines.push(
           fact(
             standing.behind.length === 0
-              ? `${one.tree} tree: the copy is as far as the tree`
-              : `${one.tree} tree: the copy is BEHIND: ${standing.behind.length} file(s) of the tree hold more than it; \`mnema backup run\` brings it up`,
+              ? `${t} tree: the copy is as far as the tree`
+              : `${t} tree: the copy is BEHIND: ${standing.behind.length} file(s) of the tree hold more than it; \`mnema backup run\` brings it up`,
           ),
         );
       }
@@ -362,36 +357,43 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
         return;
       }
       const verb = result.dryRun ? 'would put back' : 'put back';
+      const heading = result.dryRun ? 'Dry run: nothing was written. Restoring' : 'Restored';
       io.out(
-        onOneLine`${result.dryRun ? 'Dry run: nothing was written. Restoring' : 'Restored'} record ${result.record.slice(0, 12)}... from ${result.destination}`,
+        onOneLine`${heading} record ${result.record.slice(0, 12)}... from ${result.destination}`,
       );
       for (const one of result.trees) {
+        const t = one.tree;
         const copied =
           one.copiedAt === undefined ? 'a copy with no manifest' : `the copy of ${one.copiedAt}`;
+        const tails =
+          one.newTails.length === 0
+            ? ''
+            : ` (${one.newTails.length} tail(s) the tree did not have)`;
         io.out(
           render(
-            fact(
-              `${one.tree} tree: ${copied} ${verb} ${one.placing.length} file(s)${one.newTails.length === 0 ? '' : ` (${one.newTails.length} tail(s) the tree did not have)`}`,
-            ),
+            fact(onOneLine`${t} tree: ${copied} ${verb} ${one.placing.length} file(s)${tails}`),
           ),
         );
         for (const path of one.liveWins) {
           io.out(
             render(
               fact(
-                `${one.tree} tree: ${path} holds more in the tree than in the copy: the tree's is kept`,
+                onOneLine`${t} tree: ${path} holds more in the tree than in the copy: the tree's is kept`,
               ),
             ),
           );
         }
         for (const path of one.kept) {
           io.out(
-            render(fact(`${one.tree} tree: ${path} holds other bytes in the tree: left as it is`)),
+            render(
+              fact(onOneLine`${t} tree: ${path} holds other bytes in the tree: left as it is`),
+            ),
           );
         }
       }
-      for (const tree of result.noCopy)
+      for (const tree of result.noCopy) {
         io.out(render(fact(`${tree} tree: no copy, nothing to restore`)));
+      }
       for (const words of WHAT_RESTORE_DOES_NOT_BRING) io.out(render(fact(words)));
       if (!result.dryRun) io.out(render(fact('`mnema backup verify` reads the result')));
     });
