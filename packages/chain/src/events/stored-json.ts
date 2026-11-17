@@ -158,6 +158,20 @@ export function firstDuplicateKey(text: string): string | undefined {
 }
 
 /**
+ * Whether `text` is JSON in any spelling, and nothing more: no duplicate-key rule, no canonical
+ * form. It is for a writer that must tell a file a cut left (not JSON at all) from one a reader is
+ * to judge, and it returns nothing of what it read.
+ */
+export function isJsonText(text: string): boolean {
+  try {
+    JSON.parse(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Parses one stored line of JSON, refusing a duplicate key at any depth.
  * Throws {@link StoredJsonError}, whose message is already the whole sentence.
  */

@@ -71,6 +71,7 @@ import { dirname } from 'node:path';
 
 import type { CatalogEvent } from '../events/catalog.js';
 import { EventParseError, unreadableReason } from '../events/parse.js';
+import { isJsonText } from '../events/stored-json.js';
 import type { UpcasterRegistry } from '../events/upcaster.js';
 import {
   type Checkpoint,
@@ -1603,13 +1604,7 @@ function unreadableProof(path: string): boolean {
   } catch {
     return false;
   }
-  if (text.trim() === '') return true;
-  try {
-    JSON.parse(text);
-    return false;
-  } catch {
-    return true;
-  }
+  return text.trim() === '' || !isJsonText(text);
 }
 
 /**

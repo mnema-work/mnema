@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { firstDuplicateKey, keyList, parseStoredJson, StoredJsonError } from './stored-json.js';
+import {
+  firstDuplicateKey,
+  isJsonText,
+  keyList,
+  parseStoredJson,
+  StoredJsonError,
+} from './stored-json.js';
 
 describe('firstDuplicateKey', () => {
   it.each([
@@ -76,5 +82,15 @@ describe('keyList', () => {
     // A non-BMP format character (a language tag) takes the eight-digit escape.
     expect(keyList(['x\u{E0001}'])).toBe("['x\\U000e0001']");
     expect(keyList(['link', 'event'])).toBe("['event', 'link']");
+  });
+});
+
+describe('isJsonText', () => {
+  it('is true of JSON in any spelling, duplicate keys and CRLF included, and false of a cut', () => {
+    expect(isJsonText('{"a":1}')).toBe(true);
+    expect(isJsonText('{\r\n  "a": 1\r\n}\r\n')).toBe(true);
+    expect(isJsonText('{"a":1,"a":2}')).toBe(true);
+    expect(isJsonText('{"a":1,"b":"cu')).toBe(false);
+    expect(isJsonText('')).toBe(false);
   });
 });
