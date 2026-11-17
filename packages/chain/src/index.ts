@@ -148,6 +148,7 @@ export {
   weakerLevel,
 } from './chain/level.js';
 export { UnreadableLineError } from './chain/lines.js';
+export { RecordLinkedError } from './chain/linked-write.js';
 export { illegalMoves, type PlacedEvent } from './chain/moves.js';
 export type {
   Arrivals,

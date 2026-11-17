@@ -115,6 +115,7 @@ import {
   tailProofPath,
 } from './layout.js';
 import { linesFromEnd, parseStoredLine } from './lines.js';
+import { refuseToLockThroughALink, refuseToWriteThroughALink } from './linked-write.js';
 import { recordToWriteUnder, type WriteUnder } from './record-name.js';
 import { clearOrphanedStaging } from './staging.js';
 import { lastTailCheckpoint, orderedSegments, readTailTip } from './store.js';
@@ -534,9 +535,16 @@ export class ChainWriter {
     // then runs under the new tail's lock. Two rounds at most: a new id names a tail nobody
     // has written, and one another process chose ends where that process left it.
     for (;;) {
+      // Before the lock, which is itself a write: taking it makes `locks/` and the lock file.
+      refuseToLockThroughALink(this.layout, this.tailId);
       const held = withTailLock(tailLockPath(this.layout, this.tailId), () => {
         this.holding = true;
+        // Nothing is kept on the way out of a refusal to write through a link: the notes are paths it names.
+        let mayWrite = false;
         try {
+          // Under the lock and before the resync, which can cut the segment, and before anything is sealed.
+          refuseToWriteThroughALink(this.layout, this.tailId, this.keyPair.fingerprint);
+          mayWrite = true;
           this.resyncIfMoved();
           const movedOn = this.movedOn;
           if (movedOn !== undefined) {
@@ -546,7 +554,7 @@ export class ChainWriter {
           this.mark = this.readMark();
           return { result };
         } finally {
-          this.keepHeadIfWritten();
+          if (mayWrite) this.keepHeadIfWritten();
           this.holding = false;
         }
       });

@@ -23,6 +23,7 @@ import {
   signerOf,
 } from './keystore.js';
 import type { ChainLayout } from './layout.js';
+import { refuseToWriteThrough } from './linked-write.js';
 import { type VerifyOptions, type VerifyResult, verifyChain } from './verify.js';
 import { ChainWriter, type WriterOptions } from './writer.js';
 
@@ -77,6 +78,9 @@ export function openChainForWriting(chainRoot: string, options: OpenOptions): Ch
   const key = keyToSignWith({ root: options.keyRoot });
   const installationLayout: ChainLayout = { root: options.installationRoot ?? chainRoot };
   const upcasters = options.upcasters ?? catalogUpcasters();
+  // The installation id is written in `keys/` of the installation's tree, here or at the first append
+  // (a link at the id's own file is refused by name where the id is read: `DanglingInstallationIdError`).
+  refuseToWriteThrough(installationLayout, ['keys']);
   const keepKey = key.keep;
   if (keepKey === undefined) {
     const fingerprint = key.keyPair.fingerprint;

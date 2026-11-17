@@ -28,6 +28,7 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 import { type ChainLayout, gitattributesPath, gitignorePath } from './layout.js';
+import { refuseToWriteThrough } from './linked-write.js';
 
 /**
  * The chain's own `.gitignore`, self-contained at the tree root. It ignores the
@@ -111,6 +112,8 @@ const MERGE_LINE = `tails/*/*.jsonl merge=${TAIL_MERGE_DRIVER}`;
  * was absent), false if one already existed (even if a line was appended to it).
  */
 export function ensureTree(layout: ChainLayout): boolean {
+  // A file it would write or append to is not one it writes through a link ({@link RecordLinkedError}).
+  refuseToWriteThrough(layout, ['.gitignore', '.gitattributes']);
   mkdirSync(layout.root, { recursive: true });
   ensureLine(
     gitattributesPath(layout),
