@@ -24,9 +24,9 @@ beforeEach(() => {
   mkdirSync(join(dir, 'listed'));
   writeFileSync(join(dir, 'outside'), 'held\n');
   mkdirSync(join(dir, 'a-folder-outside'));
-  symlinkSync(join(dir, 'outside'), join(dir, 'listed', '000001.jsonl'));
-  symlinkSync(join(dir, 'a-folder-outside'), join(dir, 'listed', 'a-tail'));
-  writeFileSync(join(dir, 'listed', 'checkpoints.jsonl'), '');
+  symlinkSync(join(dir, 'outside'), join(dir, 'listed', 'a-file-behind'));
+  symlinkSync(join(dir, 'a-folder-outside'), join(dir, 'listed', 'a-folder-behind'));
+  writeFileSync(join(dir, 'listed', 'a-file'), '');
 });
 
 afterEach(() => {
@@ -36,8 +36,8 @@ afterEach(() => {
 /** What Windows' `lstat` says of a cloud placeholder: no link, the file or the folder it holds. */
 const placeholder: LinkCheck = (path) => ({
   isSymbolicLink: () => false,
-  isDirectory: () => path.endsWith('a-tail'),
-  isFile: () => !path.endsWith('a-tail'),
+  isDirectory: () => path.endsWith('a-folder-behind'),
+  isFile: () => !path.endsWith('a-folder-behind'),
 });
 
 /** What Windows' `lstat` says of a symbolic link or a junction: a link. */
@@ -50,25 +50,25 @@ const aLink: LinkCheck = () => ({
 describe('an entry a listing calls a link', () => {
   it('is a link when nothing is asked of it, as off Windows', () => {
     expect(listedEntries(join(dir, 'listed'), undefined)).toEqual([
-      { name: '000001.jsonl', link: true, directory: false, file: false },
-      { name: 'a-tail', link: true, directory: false, file: false },
-      { name: 'checkpoints.jsonl', link: false, directory: false, file: true },
+      { name: 'a-file', link: false, directory: false, file: true },
+      { name: 'a-file-behind', link: true, directory: false, file: false },
+      { name: 'a-folder-behind', link: true, directory: false, file: false },
     ]);
   });
 
   it('is a link when lstat says it is one', () => {
     expect(listedEntries(join(dir, 'listed'), aLink).map((one) => one.link)).toEqual([
-      true,
-      true,
       false,
+      true,
+      true,
     ]);
   });
 
   it('is the file or the folder it holds when lstat says it is no link, as a placeholder is', () => {
     expect(listedEntries(join(dir, 'listed'), placeholder)).toEqual([
-      { name: '000001.jsonl', link: false, directory: false, file: true },
-      { name: 'a-tail', link: false, directory: true, file: false },
-      { name: 'checkpoints.jsonl', link: false, directory: false, file: true },
+      { name: 'a-file', link: false, directory: false, file: true },
+      { name: 'a-file-behind', link: false, directory: false, file: true },
+      { name: 'a-folder-behind', link: false, directory: true, file: false },
     ]);
   });
 
@@ -79,8 +79,8 @@ describe('an entry a listing calls a link', () => {
       return aLink(path);
     });
     expect(asked.sort()).toEqual([
-      join(dir, 'listed', '000001.jsonl'),
-      join(dir, 'listed', 'a-tail'),
+      join(dir, 'listed', 'a-file-behind'),
+      join(dir, 'listed', 'a-folder-behind'),
     ]);
   });
 });
