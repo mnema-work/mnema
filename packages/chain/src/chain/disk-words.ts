@@ -55,7 +55,7 @@ export class WriteNotLandedError extends CodedError {
     super(
       cut
         ? `the disk refused the write (${whatTheDiskSaid(disk)}); nothing was written, so it is safe to try again once the disk allows it.`
-        : `the disk refused the write (${whatTheDiskSaid(disk)}), and the part of it that reached the tail could not be cut back: the next write cuts an unfinished line, and \`mnema verify\` says whether anything else of it is there.`,
+        : `the disk refused the write (${whatTheDiskSaid(disk)}), and the part of it that reached the tail could not be cut back: the next write cuts an unfinished line, and a verify of the record says whether anything else of it is there.`,
     );
     this.name = 'WriteNotLandedError';
   }
