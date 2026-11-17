@@ -44,6 +44,18 @@ export {
   standingOfCopy,
   writeCopy,
 } from './backup/copy.js';
+export {
+  type PreparedRestore,
+  prepareRestore,
+  type Restored,
+  restoreCopy,
+} from './backup/restore.js';
+export {
+  type CopyReading,
+  readCopy,
+  type SecondReading,
+  type Standing,
+} from './backup/verify.js';
 export { type Ask, type DefaultBranch, theDefaultBranch } from './default-branch.js';
 export { gitPlaceOf } from './git-place.js';
 export {

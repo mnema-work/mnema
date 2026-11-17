@@ -1,9 +1,11 @@
 /**
  * The `mnema backup` wiring: what it declares, and what it prints.
  *
- * Three acts on a project's backup in a folder: `setup` says which folder keeps it, `run` copies
- * the trees into it, `status` says how far the copy is from them. None of them records anything:
- * the verb reads the record and writes a folder, so it is declared as a read.
+ * Five acts on a project's backup in a folder: `setup` says which folder keeps it, `run` copies
+ * the trees into it, `status` says how far the copy is from them, `verify` reads the copy as a record
+ * and sets it against the trees, and `restore` puts a copy back without overwriting anything. None of
+ * them records anything: the verb reads the record and writes a folder (or a tree that lost files),
+ * so it is declared as a read.
  *
  * THE FOLDER KEEPS THE TEXT IN CLEAR, and `setup` says so before it assigns anything (ADR-387): the
  * person confirms it by typing `yes` at the question, at a terminal and nowhere else. There is no
@@ -29,6 +31,16 @@ const REFUSALS: Readonly<Record<string, string>> = {
   NO_GLOBAL_DESTINATION:
     'The global tree has no folder for its backup, and it takes none from a project: run `mnema backup setup --global <folder>`.',
 };
+
+/**
+ * WHAT A RESTORE DOES NOT BRING BACK, said at the end of every restore and of its dry run: the text
+ * of the record, never the key that signed it, and never what the tree wrote after the copy.
+ */
+export const WHAT_RESTORE_DOES_NOT_BRING = [
+  'a restore puts back the text the copy holds, and not the key that signed it: if the key was lost with the machine, the next write signs with a new key, and the tree then counts you twice',
+  'what the tree wrote after the copy was made is not in the copy, and a restore cannot bring it back',
+  'the first write after a restore opens a tail of its own, beside the restored ones: a restored tail is not continued',
+];
 
 /** Registers `mnema backup` on the program. */
 export function registerBackup(program: Command, wiring: Wiring): Declared {
@@ -237,6 +249,151 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
         io,
         lines.map((line) => render(line)),
       );
+    });
+
+  backup
+    .command('verify')
+    .description(
+      "read each copy as a record and say how it stands against this project's trees, which it does not change",
+    )
+    .option('--json', 'emit the faithful reading as JSON')
+    .action(async (opts: { json?: boolean }) => {
+      const { runBackupVerify } = await import('../commands/backup.js');
+      const result = runBackupVerify(here());
+      if (!result.ok) {
+        reportRefusal(wiring, result, REFUSALS);
+        return;
+      }
+      if (opts.json === true) {
+        const { ok: _ok, ...reading } = result;
+        io.out(JSON.stringify(reading, null, 2));
+        if (!result.sound) io.fail();
+        return;
+      }
+      const lines = [
+        fact(
+          onOneLine`Backup of record ${result.record.slice(0, 12)}... in ${result.destination}`,
+          0,
+        ),
+      ];
+      for (const one of result.trees) {
+        if ('noCopy' in one) {
+          lines.push(fact(`${one.tree} tree: no copy, so nothing to verify`));
+          continue;
+        }
+        const reading = one.reading;
+        const when = reading.copiedAt === undefined ? 'no manifest' : `copied ${reading.copiedAt}`;
+        lines.push(fact(`${one.tree} tree: ${reading.files} file(s) in the copy, ${when}`));
+        lines.push(
+          fact(
+            `${one.tree} tree: read by this mnema: ${reading.reader.ok ? '' : 'REFUSED, '}${reading.reader.summary}`,
+          ),
+        );
+        lines.push(
+          fact(
+            reading.second.ran
+              ? `${one.tree} tree: read by the second reader: ${reading.second.says}`
+              : `${one.tree} tree: ONE reader read this copy: the second reader did not run, ${reading.second.why}`,
+          ),
+        );
+        if (reading.readersDisagree) {
+          lines.push(
+            fact(
+              `${one.tree} tree: the two readers do not answer alike, and neither is taken over the other`,
+            ),
+          );
+        }
+        for (const path of reading.missing) {
+          lines.push(
+            fact(
+              `${one.tree} tree: ${path} is listed by the copy's manifest and is not whole in it`,
+            ),
+          );
+        }
+        const standing = reading.standing;
+        for (const cut of standing.cut) {
+          lines.push(
+            fact(
+              `${one.tree} tree: ${cut.path} holds ${cut.tree} entries in the tree and ${cut.copy} in the copy: the tree is cut, or the copy is of a longer one; \`mnema backup restore\` does not overwrite it`,
+            ),
+          );
+        }
+        for (const lost of standing.lost) {
+          lines.push(fact(`${one.tree} tree: ${lost} is in the copy and not in the tree`));
+        }
+        for (const forked of standing.forked) {
+          lines.push(
+            fact(
+              `${one.tree} tree: ${forked.path} is not the start of the other (tree ${forked.tree} entries, copy ${forked.copy}): a fork, or a cut, and no side is taken`,
+            ),
+          );
+        }
+        lines.push(
+          fact(
+            standing.behind.length === 0
+              ? `${one.tree} tree: the copy is as far as the tree`
+              : `${one.tree} tree: the copy is BEHIND: ${standing.behind.length} file(s) of the tree hold more than it; \`mnema backup run\` brings it up`,
+          ),
+        );
+      }
+      lines.push(
+        fact(
+          result.sound
+            ? 'the copy is a record the readers accept, and the tree is not shown cut'
+            : 'the copy is not sound, or the tree is shown cut, lost or forked from it: see above',
+        ),
+      );
+      writeLines(
+        io,
+        lines.map((line) => render(line)),
+      );
+      if (!result.sound) io.fail();
+    });
+
+  backup
+    .command('restore')
+    .description('put a copy back into the trees that lost files, never over a file the tree holds')
+    .option('--dry-run', 'say what would be put back, and put nothing')
+    .action(async (opts: { dryRun?: boolean }) => {
+      const { runBackupRestore } = await import('../commands/backup.js');
+      const result = runBackupRestore(here(), opts.dryRun === true);
+      if (!result.ok) {
+        reportRefusal(wiring, result, REFUSALS);
+        return;
+      }
+      const verb = result.dryRun ? 'would put back' : 'put back';
+      io.out(
+        onOneLine`${result.dryRun ? 'Dry run: nothing was written. Restoring' : 'Restored'} record ${result.record.slice(0, 12)}... from ${result.destination}`,
+      );
+      for (const one of result.trees) {
+        const copied =
+          one.copiedAt === undefined ? 'a copy with no manifest' : `the copy of ${one.copiedAt}`;
+        io.out(
+          render(
+            fact(
+              `${one.tree} tree: ${copied} ${verb} ${one.placing.length} file(s)${one.newTails.length === 0 ? '' : ` (${one.newTails.length} tail(s) the tree did not have)`}`,
+            ),
+          ),
+        );
+        for (const path of one.liveWins) {
+          io.out(
+            render(
+              fact(
+                `${one.tree} tree: ${path} holds more in the tree than in the copy: the tree's is kept`,
+              ),
+            ),
+          );
+        }
+        for (const path of one.kept) {
+          io.out(
+            render(fact(`${one.tree} tree: ${path} holds other bytes in the tree: left as it is`)),
+          );
+        }
+      }
+      for (const tree of result.noCopy)
+        io.out(render(fact(`${tree} tree: no copy, nothing to restore`)));
+      for (const words of WHAT_RESTORE_DOES_NOT_BRING) io.out(render(fact(words)));
+      if (!result.dryRun) io.out(render(fact('`mnema backup verify` reads the result')));
     });
 
   return readsTheRecord(backup);

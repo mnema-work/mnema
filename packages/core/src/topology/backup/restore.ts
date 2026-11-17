@@ -1,0 +1,308 @@
+/**
+ * Putting a copy back into a tree, and never over anything (ADR-389).
+ *
+ * THE RULE IS THE ONE `movePrivateTree` HAS: a name already taken is compared, never replaced. What
+ * a restore does, file by file of the copy (the same classes a copy holds: `tails/**` and
+ * `keys/*.pub`):
+ *
+ *   - the tree has no such file: the copy's is put there;
+ *   - the tree has it, with the same bytes: nothing;
+ *   - a segment or a checkpoints file the tree holds and the copy is the start of: the tree's wins,
+ *     and it is said (the tree has written since);
+ *   - a segment or a checkpoints file the tree holds that the copy is NOT the start of, or one the
+ *     tree's tail lacks: the whole restore is refused and the file is named, with both lengths, as
+ *     a fork or a cut and taking no side: which of the two is the true history is for the person to
+ *     say, and nothing here can;
+ *   - any other file (`tailproof.json`, a key) the tree holds with other bytes: it stays, and is
+ *     named (ADR-354: a proof that reads is left as evidence).
+ *
+ * NEVER COPIED BACK: `locks/` and the installation ids and anchors (`keys/*.inst`, `*.anchor`).
+ * They are machinery of THIS checkout, and the copy never held them. The consequence is said
+ * plainly where a person reads it: a restored tail is never continued by a writer (the notes that
+ * say where a tail ends live in `locks/`), so the first write after a restore opens a tail of its
+ * own, beside the restored ones.
+ *
+ * NOTHING WHILE A WRITER HOLDS A TAIL. Each live tail the copy also names is locked with the
+ * tail lock's own API, without waiting, before the first byte is written and for as long as the
+ * restore writes; a holder that does not let go refuses the restore, naming its process.
+ *
+ * THE COPY IS READ AS A RECORD FIRST: it must name the record this project is (another record's
+ * copy is not restored here), hold no link and no private key, and be one the reader accepts.
+ */
+
+import {
+  linkSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { dirname, join } from 'node:path';
+import {
+  catalogUpcasters,
+  LinkedRecordError,
+  listLinksInRecord,
+  recordNamedIn,
+  TailBusyError,
+  tailLockPath,
+  verifyChain,
+  withTailLock,
+} from '@mnema/chain';
+import {
+  BACKUP_MANIFEST,
+  BackupRefusedError,
+  type BackupTree,
+  copiedOf,
+  folderOf,
+  linked,
+  type PlannedFile,
+  placesOf,
+  planCopy,
+} from './copy.js';
+
+/** What a restore of one tree found, and, unless it is a dry run, did. */
+export interface PreparedRestore {
+  readonly tree: BackupTree;
+  /** The folder of the copy. */
+  readonly folder: string;
+  /** The tree restored into. */
+  readonly root: string;
+  /** When the copy was made, as its manifest says, or undefined where it has no manifest. */
+  readonly copiedAt: string | undefined;
+  /** What goes into the tree, in the order it is written. */
+  readonly placing: readonly PlannedFile[];
+  /** The tails the restore puts that the tree does not have at all. */
+  readonly newTails: readonly string[];
+  /** Files the tree holds with the same bytes. */
+  readonly same: readonly string[];
+  /** Files the tree holds that go further than the copy: the tree's are kept. */
+  readonly liveWins: readonly string[];
+  /** Files the tree holds with other bytes, left as they are. */
+  readonly kept: readonly string[];
+  /** The live tails the copy names too, locked while the restore writes. */
+  readonly lockedTails: readonly string[];
+}
+
+const isRun = (path: string): boolean => path.endsWith('.jsonl');
+
+/** `tails/<id>/...` to `<id>`, or undefined for a file that is not in a tail. */
+function tailOf(path: string): string | undefined {
+  const parts = path.split('/');
+  return parts[0] === 'tails' && parts.length > 2 ? parts[1] : undefined;
+}
+
+/** Where a file goes in the order of writing: keys, segments, checkpoints, then the rest of a tail. */
+function rank(path: string): number {
+  if (path.startsWith('keys/')) return 0;
+  if (path.endsWith('/checkpoints.jsonl')) return 2;
+  return isRun(path) ? 1 : 3;
+}
+
+function refuseOtherRecord(record: string, folder: string): never {
+  throw new BackupRefusedError(
+    'OTHER_RECORD',
+    `The copy at ${folder} is not a copy of this project's record (${record.slice(0, 12)}...): restoring a copy of another record is not done here, and a way to do it, with a question first, comes next.`,
+  );
+}
+
+/** The copy's manifest, when it has one that reads. */
+function manifestOf(folder: string): { record?: unknown; copiedAt?: unknown } | undefined {
+  try {
+    return JSON.parse(readFileSync(join(folder, BACKUP_MANIFEST), 'utf-8')) as {
+      record?: unknown;
+      copiedAt?: unknown;
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Reads the copy of `tree` in `<destination>/<record>/<tree>/` and the tree at `root`, and writes
+ * NOTHING (a tail lock is taken and let go at once, to find a holder). Every refusal is here,
+ * before the first byte of {@link restoreCopy}.
+ */
+export function prepareRestore(
+  root: string,
+  destination: string,
+  record: string,
+  tree: BackupTree,
+): PreparedRestore {
+  const folder = folderOf(destination, record, tree);
+  for (const place of placesOf(destination, folder)) {
+    const held = lstatSync(place, { throwIfNoEntry: false });
+    if (held?.isSymbolicLink()) throw linked(place);
+  }
+  if (lstatSync(folder, { throwIfNoEntry: false }) === undefined) {
+    throw new BackupRefusedError(
+      'NO_COPY',
+      `There is no copy of the ${tree} tree at ${folder}: run \`mnema backup run\` where the tree is, or look in the folder the project was set up with.`,
+    );
+  }
+  const copied = planCopy(folder, tree);
+  if (copied.length === 0) {
+    throw new BackupRefusedError('NO_COPY', `The copy at ${folder} holds no tail and no key.`);
+  }
+
+  // ANOTHER RECORD'S COPY is turned away by the name its manifest files it under and by the record
+  // its own tails name. The public tree names the project's record itself; the private tree names a
+  // record of its own, so it is held to the name of the tree it would join, when the tree has one.
+  const manifest = manifestOf(folder);
+  if (typeof manifest?.record === 'string' && manifest.record !== record) {
+    refuseOtherRecord(record, folder);
+  }
+  const naming = recordNamedIn([folder]);
+  if (naming.state !== 'named' && naming.state !== 'unnamed') {
+    throw new BackupRefusedError(
+      'OTHER_RECORD',
+      `The copy at ${folder} names more than one record, and is not restored.`,
+    );
+  }
+  if (naming.state === 'named') {
+    const held =
+      lstatSync(root, { throwIfNoEntry: false }) === undefined ? undefined : recordNamedIn([root]);
+    const expected = tree === 'public' ? record : held?.state === 'named' ? held.name : undefined;
+    if (expected !== undefined && naming.name !== expected) refuseOtherRecord(record, folder);
+  }
+
+  // A COPY THE READER REFUSES is not put into a tree that reads today: one broken line there
+  // would turn every read of the tree away.
+  const reading = verifyChain({ root: folder }, catalogUpcasters());
+  if (!reading.ok) {
+    throw new BackupRefusedError(
+      'BROKEN_COPY',
+      `The copy at ${folder} does not verify (${reading.summary}): \`mnema backup verify\` says where. A copy that is broken is not put into the tree.`,
+    );
+  }
+
+  const live = lstatSync(root, { throwIfNoEntry: false });
+  if (live?.isSymbolicLink()) throw linked(root);
+  if (live !== undefined && !live.isDirectory()) {
+    throw new BackupRefusedError('NOT_A_FOLDER', `${root} is not a folder.`);
+  }
+  if (live !== undefined) {
+    const links = listLinksInRecord({ root });
+    if (links[0] !== undefined) {
+      throw new BackupRefusedError('LINKED', new LinkedRecordError({ root }, links[0]).message);
+    }
+  }
+
+  const placing: PlannedFile[] = [];
+  const same: string[] = [];
+  const liveWins: string[] = [];
+  const kept: string[] = [];
+  const liveTails = new Set<string>();
+  const tailsHeld = new Set<string>();
+  for (const file of copied) {
+    const tail = tailOf(file.path);
+    if (tail !== undefined) tailsHeld.add(tail);
+  }
+  for (const tail of tailsHeld) {
+    if (lstatSync(join(root, 'tails', tail), { throwIfNoEntry: false }) !== undefined) {
+      liveTails.add(tail);
+    }
+  }
+  for (const file of copied) {
+    const held = copiedOf(root, file);
+    const tail = tailOf(file.path);
+    if (held === undefined) {
+      if (tail !== undefined && liveTails.has(tail) && isRun(file.path)) {
+        throw new BackupRefusedError(
+          'DIVERGED',
+          `The tail ${tail} in this tree has no ${file.path.split('/').pop()}, which the copy holds (${file.bytes.length} bytes): the tree's tail is cut, or it is not this tail's history. Nothing is taken from the copy and nothing is overwritten: say which history is the true one, and move the other aside.`,
+        );
+      }
+      placing.push(file);
+    } else if (held.equals(file.bytes)) {
+      same.push(file.path);
+    } else if (isRun(file.path)) {
+      if (held.subarray(0, file.bytes.length).equals(file.bytes)) {
+        liveWins.push(file.path);
+      } else {
+        const cut = file.bytes.subarray(0, held.length).equals(held);
+        throw new BackupRefusedError(
+          'DIVERGED',
+          `${file.path} in this tree (${held.length} bytes) and in the copy (${file.bytes.length} bytes) do not agree: the copy is not the start of the tree's, so ${cut ? "the tree's is the start of the copy's (a cut tree, or a copy of a longer one)" : 'they went different ways (a fork)'}. Taking no side, nothing is overwritten: the copy is not restored over it. Move one aside, or look at both, before going on.`,
+        );
+      }
+    } else {
+      kept.push(file.path);
+    }
+  }
+  placing.sort((a, b) => rank(a.path) - rank(b.path));
+
+  const lockedTails = [...liveTails].sort();
+  holding(root, lockedTails, () => undefined);
+  return {
+    tree,
+    folder,
+    root,
+    copiedAt: typeof manifest?.copiedAt === 'string' ? manifest.copiedAt : undefined,
+    placing,
+    newTails: [...tailsHeld].filter((tail) => !liveTails.has(tail)).sort(),
+    same,
+    liveWins,
+    kept,
+    lockedTails,
+  };
+}
+
+/** Runs `act` with the lock of each of `tails` held, none waited for; a holder refuses, by name. */
+function holding<T>(root: string, tails: readonly string[], act: () => T): T {
+  const [first, ...rest] = tails;
+  if (first === undefined) return act();
+  try {
+    return withTailLock(tailLockPath({ root }, first), () => holding(root, rest, act), {
+      waitMs: 0,
+    });
+  } catch (error) {
+    if (!(error instanceof TailBusyError)) throw error;
+    const who = error.heldBy === undefined ? 'another process' : `process ${error.heldBy}`;
+    throw new BackupRefusedError(
+      'WRITER_HOLDS_TAIL',
+      `A writer holds the tail ${first}: ${who} is writing to this tree, and a restore touches nothing while one does. Let it finish (or stop it) and run the restore again.`,
+    );
+  }
+}
+
+/** What a restore wrote. */
+export interface Restored {
+  readonly files: number;
+  readonly tails: readonly string[];
+}
+
+/** Writes what {@link prepareRestore} found: each file once, never over a name that is taken. */
+export function restoreCopy(prepared: PreparedRestore): Restored {
+  const { root, placing, lockedTails } = prepared;
+  return holding(root, lockedTails, () => {
+    let files = 0;
+    for (const file of placing) {
+      const at = join(root, ...file.path.split('/'));
+      mkdirSync(dirname(at), { recursive: true });
+      if (put(at, file.bytes)) files += 1;
+    }
+    return { files, tails: prepared.newTails };
+  });
+}
+
+/** Puts `bytes` at `path` only if the name is free (a name taken in the meantime is left), and says if it did. */
+function put(path: string, bytes: Buffer): boolean {
+  const staging = `${path}.${process.pid}.partial`;
+  try {
+    writeFileSync(staging, bytes, { flag: 'wx' });
+    try {
+      linkSync(staging, path);
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === 'EEXIST') return false;
+      // A file system with no hard links: the name was free a moment ago, and is asked again.
+      if (lstatSync(path, { throwIfNoEntry: false }) !== undefined) return false;
+      renameSync(staging, path);
+    }
+    return true;
+  } finally {
+    rmSync(staging, { force: true });
+  }
+}

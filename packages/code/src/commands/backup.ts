@@ -14,8 +14,16 @@
  * --global`, to the folder `setup --global` assigned to it and to no other, as `<folder>/global/`.
  * It has no record name, and works outside a project.
  *
+ * `verify` READS THE COPY AS A RECORD and sets it against the trees; `restore` PUTS A COPY BACK, and
+ * never over a file the tree holds (ADR-389; `topology/backup/restore.ts`). The trees they are about
+ * are the ones a copy holds, whether or not the tree is on this machine any more: a private tree
+ * that was deleted is the case `restore` exists for. A restore needs the project: it is found by
+ * the public tree, which a git repository keeps, so a project whose public tree went with its
+ * folder and was not in git is not found and has nothing to restore into.
+ *
  * IT RECORDS NOTHING. It reads the trees, and writes the folder and `backup.json` in the data
- * directory. The private key is never copied: it stays on this machine.
+ * directory (and `restore` the trees it puts back). The private key is never copied: it stays
+ * on this machine.
  */
 
 import { existsSync, lstatSync, statSync } from 'node:fs';
@@ -28,13 +36,19 @@ import {
   BackupRefusedError,
   type BackupTree,
   backupConfigPath,
+  type CopyReading,
   type CopyStanding,
   type DiscoveryEnv,
   destinationOf,
   globalDestinationOf,
+  type PreparedRestore,
   prepareCopy,
+  prepareRestore,
+  type Restored,
   readBackupConfig,
+  readCopy,
   resolveTrees,
+  restoreCopy,
   standingOfCopy,
   whyNotADestination,
   writeCopy,
@@ -65,6 +79,8 @@ interface Project {
   readonly record: string;
   /** `[tree, its root]` for each tree a copy holds. */
   readonly trees: readonly (readonly [BackupTree, string])[];
+  /** The same, whether or not the tree is on this machine now: what `verify` and `restore` are about. */
+  readonly wanted: readonly (readonly [BackupTree, string])[];
   readonly configPath: string;
   readonly resolved: ReturnType<typeof resolveTrees>;
 }
@@ -89,9 +105,14 @@ function projectOf(ctx: BackupContext): Project | BackupRefused {
   if (resolved.projectPublicMachinery === undefined) {
     trees.push(['public', resolved.projectPublic]);
   }
+  const wanted: (readonly [BackupTree, string])[] = [];
+  if (resolved.projectPrivate !== undefined) wanted.push(['private', resolved.projectPrivate]);
+  if (resolved.projectPublicMachinery === undefined)
+    wanted.push(['public', resolved.projectPublic]);
   return {
     record: naming.name,
     trees,
+    wanted,
     configPath: backupConfigPath(resolved),
     resolved,
   };
@@ -399,6 +420,113 @@ export function runGlobalBackupStatus(ctx: BackupContext): GlobalBackupStatus | 
       destination,
       standing: standingOfCopy(machine.root, destination, undefined, 'global'),
     };
+  } catch (error) {
+    return refusedBy(error);
+  }
+}
+
+/** How the copy of one tree reads, or that there is none. */
+export type TreeReading =
+  | { readonly tree: BackupTree; readonly reading: CopyReading }
+  | { readonly tree: BackupTree; readonly noCopy: string };
+
+/** What `verify` found. */
+export interface BackupVerified {
+  readonly ok: true;
+  readonly record: string;
+  readonly destination: string;
+  readonly trees: readonly TreeReading[];
+  /** Whether every copy is a record the readers accept and no tree is shown cut, lost or forked. */
+  readonly sound: boolean;
+}
+
+/** Reads each copy as a record and sets it against its tree. Writes nothing. */
+export function runBackupVerify(ctx: BackupContext): BackupVerified | BackupRefused {
+  const project = projectOf(ctx);
+  if ('ok' in project) return project;
+  const destination = assigned(project);
+  if (typeof destination !== 'string') return destination;
+  const trees: TreeReading[] = [];
+  try {
+    for (const [tree, root] of project.wanted) {
+      try {
+        trees.push({ tree, reading: readCopy(root, destination, project.record, tree) });
+      } catch (error) {
+        if (error instanceof BackupRefusedError && error.code === 'NO_COPY') {
+          trees.push({ tree, noCopy: error.message });
+        } else throw error;
+      }
+    }
+  } catch (error) {
+    return refusedBy(error);
+  }
+  if (!trees.some((one) => 'reading' in one)) {
+    return {
+      ok: false,
+      reason: 'REFUSED',
+      code: 'NO_COPY',
+      message: (trees[0] as { noCopy: string }).noCopy,
+    };
+  }
+  return {
+    ok: true,
+    record: project.record,
+    destination,
+    trees,
+    sound: trees.every((one) => 'reading' in one && one.reading.ok),
+  };
+}
+
+/** What `restore` found, and, unless it was a dry run, did. */
+export interface BackupRestored {
+  readonly ok: true;
+  readonly record: string;
+  readonly destination: string;
+  readonly dryRun: boolean;
+  readonly trees: readonly (PreparedRestore & { readonly restored: Restored | undefined })[];
+  /** Trees with no copy, so nothing to restore. */
+  readonly noCopy: readonly BackupTree[];
+}
+
+/**
+ * Puts the copies back into the trees, or with `dryRun` only says what that would do. EVERY CHECK OF
+ * EVERY TREE COMES BEFORE THE FIRST BYTE, and a tree refused leaves the others as they were.
+ */
+export function runBackupRestore(
+  ctx: BackupContext,
+  dryRun: boolean,
+): BackupRestored | BackupRefused {
+  const project = projectOf(ctx);
+  if ('ok' in project) return project;
+  const destination = assigned(project);
+  if (typeof destination !== 'string') return destination;
+  const noCopy: BackupTree[] = [];
+  const prepared: PreparedRestore[] = [];
+  let first: string | undefined;
+  try {
+    for (const [tree, root] of project.wanted) {
+      try {
+        prepared.push(prepareRestore(root, destination, project.record, tree));
+      } catch (error) {
+        if (error instanceof BackupRefusedError && error.code === 'NO_COPY') {
+          noCopy.push(tree);
+          first ??= error.message;
+        } else throw error;
+      }
+    }
+    if (prepared.length === 0) {
+      return {
+        ok: false,
+        reason: 'REFUSED',
+        code: 'NO_COPY',
+        message: first ?? 'There is no copy.',
+      };
+    }
+    const trees = prepared.map((one) => ({
+      ...one,
+      restored: dryRun ? undefined : restoreCopy(one),
+    }));
+    return { ok: true, record: project.record, destination, dryRun, trees, noCopy };
   } catch (error) {
     return refusedBy(error);
   }
