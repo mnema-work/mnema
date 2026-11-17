@@ -85,12 +85,12 @@ import {
 } from '@mnema/core/write';
 import { FoundingWatch } from '../a-new-identity.js';
 import { RecordPageWatch } from '../commands/the-record-page.js';
-import type { ScopedTree } from '../intelligence-source.js';
 import { oneLine } from '../one-line.js';
+import type { ScopedLinkBreak } from '../record-integrity.js';
 import { replacementNotice } from '../recorded-content.js';
 import { type Journal, journalFile, markEnded, readJournal } from '../session-journal.js';
-import { linkBreaksOf, THE_READING_THAT_OPENED_THESE, withTreesRead } from '../tree-sources.js';
-import { refuseWhileAltered } from '../what-a-write-meets.js';
+import { linkBreaksOf, THE_READING_THAT_OPENED_THESE, withOpenedCaches } from '../tree-sources.js';
+import { alteredEntrySentence, refuseWhileAltered } from '../what-a-write-meets.js';
 import { type CacheRegistry, createCacheRegistry } from './cache-registry.js';
 import {
   type ClientWorkspace,
@@ -1020,7 +1020,7 @@ export function openWrite(session: Session, scope: Scope, target?: WriteTarget):
   const trees = target?.trees ?? session.trees;
   // AN ALTERED ENTRY REFUSES THE WRITE, whatever it is and wherever it lands: this is the one door
   // every write of the server opens through, so no tool has to remember it (ADR-396).
-  refuseWhileAnEntryIsAltered(session, trees);
+  refuseWhileAltered(alteredEntriesOf(session, trees));
   const tellTheAgent = (opened: NewTail): void => {
     session.newTails.add(opened);
     // The host's log keeps hearing it, as it did before a reply carried it.
@@ -1051,24 +1051,29 @@ export function openWrite(session: Session, scope: Scope, target?: WriteTarget):
  * does (`get` costs one stat while nothing moved, and replays what did): the cheap reading a write
  * makes of its caches cannot see a line rewritten below what the cache already took, and an entry
  * altered after the connection last read is the case that matters. A tree the connection holds no
- * cache over is read once and let go, IN MEMORY AND OUTSIDE THE REGISTRY, so that asking leaves the
+ * cache over is opened over the file the tree keeps and let go, OUTSIDE THE REGISTRY, so that asking leaves the
  * session as it was: a connection that only writes still has no cache to be told a gap or a fork
  * from, which is what the reply of a write says of it (`linkBreakBlockOnWrite`). A tree with no
  * files is not asked: asking would make one.
  */
-function refuseWhileAnEntryIsAltered(session: Session, trees: ResolvedTrees): void {
+function alteredEntriesOf(session: Session, trees: ResolvedTrees): readonly ScopedLinkBreak[] {
   const held = new Set(session.caches.opened().map((open) => open.chainRoot));
   const warm: ScopedCache[] = [];
-  const cold: ScopedTree[] = [];
+  const cold: Scope[] = [];
   for (const { scope, chainRoot } of reachableTrees(trees)) {
     if (!existsSync(chainRoot)) continue;
     if (held.has(chainRoot)) warm.push({ scope, chainRoot, cache: session.caches.get(chainRoot) });
-    else cold.push({ scope, chainRoot });
+    else cold.push(scope);
   }
-  refuseWhileAltered([
+  return [
     ...linkBreaksOf(warm, THE_READING_THAT_OPENED_THESE),
-    ...withTreesRead(cold, (read) => linkBreaksOf(read, THE_READING_THAT_OPENED_THESE)),
-  ]);
+    // Over the cache the tree keeps, opened and closed here and never registered, as the command
+    // line asks it: a cold replay of a long record on a connection's first write is the cost of a read.
+    ...withOpenedCaches(trees, (open, opened) => {
+      for (const scope of cold) open(scope);
+      return linkBreaksOf(opened, THE_READING_THAT_OPENED_THESE);
+    }),
+  ];
 }
 
 /**
@@ -1328,6 +1333,13 @@ export function closeSession(session: Session): SessionClose {
     // record that never started it, and that project's own run still open.
     for (const run of session.runs.values()) {
       try {
+        // A RUN IS NOT ENDED OVER AN ALTERED ENTRY: `run.ended` and its checkpoint are signed
+        // appends like any other write, and this is the one door that does not open through
+        // `openWrite`. The run stays open, and the close says so (ADR-396).
+        if (alteredEntrySentence(alteredEntriesOf(session, run.trees)) !== undefined) {
+          leftOpen.push(run.id);
+          continue;
+        }
         const ctx = writeContext(run.trees, run.scope, session.caches);
         // Closed BY the agent that connected, named as the record names it NOW: the key that
         // signs this close is chosen here, not when the run opened, and a person who enrolled

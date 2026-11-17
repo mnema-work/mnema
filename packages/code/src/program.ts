@@ -260,7 +260,10 @@ function refuseAWriteOverAnAlteredEntry(program: Command, verbs: readonly Declar
       './a-write-over-an-altered-entry.js'
     );
     if (!canWrite(verbs, action)) return;
-    await refuseTheWriteOverAnAlteredEntry(resolveTrees(here().cwd, here().env));
+    await refuseTheWriteOverAnAlteredEntry(
+      resolveTrees(here().cwd, here().env),
+      action.name() === 'init' && action.opts().dryRun === true,
+    );
   });
 }
 

@@ -12,6 +12,7 @@ import {
   briefDocument,
   DEFAULT_REQUIREMENT,
   discoveryEnv,
+  refusedOverAnAlteredEntry,
   runBrief,
   runDecision,
   runDecisionTransition,
@@ -86,8 +87,12 @@ export function openRecord(options: RecordOptions): MnemaRecord {
   const here = { cwd: options.cwd, env: options.env ?? discoveryEnv() };
   const which = options.agent;
   return {
-    recordDecision: (input) => runDecision(here, { ...input, which }),
+    // EVERY WRITE ASKS FIRST whether an entry of the record was altered, and is refused while one is,
+    // as the command line and the agent's tools are (ADR-396).
+    recordDecision: (input) =>
+      refusedOverAnAlteredEntry(here) ?? runDecision(here, { ...input, which }),
     acceptDecision: ({ id, note }) =>
+      refusedOverAnAlteredEntry(here) ??
       runDecisionTransition(here, {
         id,
         action: 'accept',
@@ -96,8 +101,9 @@ export function openRecord(options: RecordOptions): MnemaRecord {
         atATerminal: aPersonIsHere(),
       }),
     rejectDecision: ({ id, note }) =>
+      refusedOverAnAlteredEntry(here) ??
       runDecisionTransition(here, { id, action: 'reject', proof: { note }, which }),
-    addNote: (input) => runMemory(here, { ...input, which }),
+    addNote: (input) => refusedOverAnAlteredEntry(here) ?? runMemory(here, { ...input, which }),
     brief: () => {
       const result = runBrief(here);
       return result.ok ? { ok: true, document: briefDocument(result.brief).join('\n') } : result;

@@ -14,8 +14,7 @@
  * trees throws it, and the entry makes the refusal it always made (`program.ts`).
  */
 
-import { existsSync } from 'node:fs';
-import { type ResolvedTrees, reachableTrees } from '@mnema/core';
+import type { ResolvedTrees } from '@mnema/core';
 import type { Command } from 'commander';
 import type { Declared } from './wiring/verb.js';
 
@@ -34,9 +33,23 @@ export const RUNS_OVER_AN_ALTERED_ENTRY: Readonly<Record<string, string>> = {
   'commit-hook install': 'It writes a git hook and touches no record.',
   'commit-hook uninstall': 'It removes a git hook and touches no record.',
   'commit-hook suggest': 'It appends a suggestion to a commit message file and touches no record.',
-  'key request': 'It prints the line a member enrolls and appends nothing.',
+  switch:
+    'The bare verb is the listing of the channels: a read, which degrades around the entry (ADR-396).',
+  witness:
+    'The bare verb says where the proof stands: a read, which degrades around the entry (ADR-396).',
   'key protect': 'It encrypts the private key files and appends nothing.',
   'key unprotect': 'It writes the private key files back in the clear and appends nothing.',
+};
+
+/**
+ * Invocations that write only with an option, and the option: `inherit set` and `inherit update` print
+ * a plan and touch no record unless `--write` is given, and `doctor --fix private-tree` moves tails with
+ * signed appends (the verb itself is declared a read, so the declaration alone would not see it).
+ */
+const WRITES_WHEN: Readonly<Record<string, (opts: Record<string, unknown>) => boolean>> = {
+  'inherit set': (opts) => opts.write === true,
+  'inherit update': (opts) => opts.write === true,
+  doctor: (opts) => opts.fix === 'private-tree' && opts.dryRun !== true,
 };
 
 /** The words from the verb the person typed to the one that runs: `task move` for `move` under `task`. */
@@ -51,6 +64,8 @@ function pathOf(command: Command): string {
 export function canWrite(verbs: readonly Declared[], action: Command): boolean {
   const path = pathOf(action);
   if (path in RUNS_OVER_AN_ALTERED_ENTRY) return false;
+  const when = WRITES_WHEN[path];
+  if (when !== undefined) return when(action.opts());
   const verb = verbs.find((one) => one.act.name() === path.split(' ')[0]);
   if (verb === undefined) return false;
   if (verb.members === undefined) return verb.effect === 'mutates';
@@ -58,33 +73,14 @@ export function canWrite(verbs: readonly Declared[], action: Command): boolean {
 }
 
 /**
- * Throws the refusal when any tree this process reaches holds an altered entry.
- *
- * THE TREES ARE READ IN MEMORY AND NOTHING IS LEFT BEHIND: a verb that can write is also one that
- * reports a plan and writes nothing (`init --dry-run`) or is refused, and asking must not leave a
- * projection file in a project that was only looked at. The price is a replay of each chain, which
- * is what a workspace read pays. A tree with no files is not opened: asking would make one.
+ * Throws the refusal when any tree this process reaches holds an altered entry; the question is
+ * `an-altered-entry-stops-a-write.ts`, loaded here and not at the top because only a verb that writes
+ * asks, and a read must not pay for the record's modules (`the-floor-is-the-declaration.test.ts`).
  */
-export async function refuseTheWriteOverAnAlteredEntry(trees: ResolvedTrees): Promise<void> {
-  const reached = reachableTrees(trees).filter((one) => existsSync(one.chainRoot));
-  if (reached.length === 0) return;
-  // Loaded here, not at the top: only a verb that writes asks, and a read does not pay for the
-  // record's modules to be read twice (`the-floor-is-the-declaration.test.ts`).
-  const { linkBreaksOf, THE_READING_THAT_OPENED_THESE, withTreesRead } = await import(
-    './tree-sources.js'
-  );
-  const { refuseWhileAltered } = await import('./what-a-write-meets.js');
-  // ONE TREE AT A TIME, so a line that cannot be read in one is not a reason to leave another unasked:
-  // that line is not answered here (the verb meets it and refuses as it always did, `program.ts`),
-  // and an altered entry in any other tree still is.
-  const { UnreadableLineError } = await import('@mnema/chain');
-  const facts = reached.flatMap((tree) => {
-    try {
-      return withTreesRead([tree], (read) => linkBreaksOf(read, THE_READING_THAT_OPENED_THESE));
-    } catch (error) {
-      if (error instanceof UnreadableLineError) return [];
-      throw error;
-    }
-  });
-  refuseWhileAltered(facts);
+export async function refuseTheWriteOverAnAlteredEntry(
+  trees: ResolvedTrees,
+  inMemory: boolean,
+): Promise<void> {
+  const { checkForAnAlteredEntry } = await import('./an-altered-entry-stops-a-write.js');
+  checkForAnAlteredEntry(trees, inMemory);
 }

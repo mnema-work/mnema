@@ -7,6 +7,7 @@
  * documents what a program may rely on is `@mnema/sdk`.
  */
 
+export { refusedOverAnAlteredEntry } from './an-altered-entry-stops-a-write.js';
 export { runBeforeAPath } from './commands/before-a-write.js';
 export { runBrief, stacksReaderFor } from './commands/brief.js';
 export { runDecision } from './commands/decision.js';
