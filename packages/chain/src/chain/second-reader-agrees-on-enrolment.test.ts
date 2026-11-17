@@ -68,6 +68,7 @@ import type { CatalogEvent } from '../events/catalog.js';
 import { catalogUpcasters } from '../events/registry.js';
 import { verify } from './chain.js';
 import { serializeCheckpoint, signCheckpoint } from './checkpoint.js';
+import { HeadsToCite } from './cited-heads.js';
 import { entryHash, writtenAsBuilt } from './hash.js';
 import { deriveAnchor, generateKeyPair, type KeyPair, publicKeyToPem, sign } from './keys.js';
 import { checkpointsPath, publicKeyPath, segmentPath, tailDir, tailProofPath } from './layout.js';
@@ -2241,5 +2242,59 @@ describe('the two readers agree on the order a citation gives: a machine whose c
     expect(productOk).toBe(false);
     expect(verdict).toBe('REFUSED');
     expect(refused.join('\n')).toContain('4.1');
+  });
+});
+
+describe('the two readers agree on a record the frontier wrote: a key enrolled behind fifty tails', () => {
+  /**
+   * A enrols B at second 5. Fifty more tails of A's key follow, each citing the one before, so that
+   * A's tail is covered by the last of them. B's tail is founded after all of them with a clock at
+   * second 1, behind the enrolment, and its citations are whatever the writer chooses.
+   */
+  function foundedBehindFifty() {
+    const a = generateKeyPair();
+    const b = generateKeyPair();
+    commitPublicKey(a);
+    commitPublicKey(b);
+    const anchor = deriveAnchor(a.fingerprint);
+    const tailA = `${a.fingerprint}-i0`;
+    const onA = [founding(a), enrolled(anchor, a, b, 5)];
+    writeTail(tailA, onA, a);
+    let before = entryHashesOf(tailA, onA)[1] as string;
+    let last = tailA;
+    for (let n = 1; n <= 50; n += 1) {
+      last = `${a.fingerprint}-m${String(n).padStart(2, '0')}`;
+      const events = [{ ...task(anchor, a, `m-${n}`, 6), after: [before] } as CatalogEvent];
+      writeTail(last, events, a);
+      before = entryHashesOf(last, events)[0] as string;
+    }
+    const tailB = `${b.fingerprint}-i2`;
+    const bare = task(anchor, b, 't-behind', 1);
+    const cited = new HeadsToCite({ root }, tailB, catalogUpcasters()).cite([bare]).event;
+    writeTail(tailB, [cited], b);
+    return {
+      cited: cited.after ?? [],
+      enrolment: entryHashesOf(tailA, onA)[1] as string,
+      last,
+      before,
+    };
+  }
+
+  it('cites the tail that holds the enrolment and the last tail, and nothing else: verified by both', () => {
+    const { cited, enrolment, before } = foundedBehindFifty();
+    expect(cited).toEqual([enrolment, before].sort());
+    const { productOk, verdict, refused } = bothReaders();
+    expect(refused).toEqual([]);
+    expect(productOk).toBe(true);
+    expect(verdict).toBe('VERIFIED');
+  });
+
+  it('with the covering tail gone and the clock behind, the enrolment it cites keeps the order: verified by both', () => {
+    const { last } = foundedBehindFifty();
+    rmSync(tailDir({ root }, last), { recursive: true, force: true });
+    const { productOk, verdict, refused } = bothReaders();
+    expect(refused).toEqual([]);
+    expect(productOk).toBe(true);
+    expect(verdict).toBe('VERIFIED');
   });
 });
