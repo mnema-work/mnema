@@ -165,13 +165,16 @@ describe('the frontier gives the order and the sight every head gives', () => {
         root = fresh('run');
         const { everyHead } = play(script);
         const written = order((_hash, after) => after);
-        const model = order((hash, after) =>
-          after === undefined ? undefined : everyHead.get(hash),
-        );
+        // The model cites every head on every entry, whatever the writer did: it is not asked what
+        // was cited, so a citation the writer owed and left out is a difference.
+        const model = order((hash) => {
+          const every = everyHead.get(hash);
+          return every === undefined || every.length === 0 ? undefined : every;
+        });
         expect(written.where).toEqual(model.where);
         expect(sights(written.held, written.read)).toEqual(sights(model.held, model.read));
       }),
-      { seed: Number(process.env.FC_SEED), numRuns: 12 },
+      { seed: Number(process.env.FC_SEED), numRuns: 20 },
     );
     root = outer;
   }, 180_000);

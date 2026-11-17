@@ -7,12 +7,19 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { identityFounded, noteRetracted, taskCreated, taskTransitioned } from '../events/build.js';
+import {
+  identityFounded,
+  noteRetracted,
+  tailPruned,
+  taskCreated,
+  taskTransitioned,
+} from '../events/build.js';
 import type { CatalogEvent } from '../events/catalog.js';
 import { catalogUpcasters } from '../events/registry.js';
 import { openChainForWriting } from './chain.js';
 import { citationIndexPath, holdsAny, indexAt, snapshotOf } from './citation-index.js';
 import { citedHeadsPath, coveredHeadsPath } from './cited-heads.js';
+import { publicKeyPath, tailDir } from './layout.js';
 import { orderedSegments, readTail } from './store.js';
 
 const upcasters = catalogUpcasters();
@@ -154,7 +161,7 @@ describe('a writer cites the frontier, not every head', () => {
     expect(b.write().after).toBeUndefined();
   });
 
-  it('a head no other head cites is cited, and so is a head that moved past its cover', () => {
+  it('a head no other head cites is cited, and one that moved is cited again', () => {
     const a = machine(false);
     const c = machine(false);
     const b = machine();
@@ -294,5 +301,79 @@ describe('a writer cites the frontier, not every head', () => {
     const index = indexAt({ root }, 'own', c.writer.tail, snap as never, () => true);
     expect(index?.through).toBe((snap as { head: string }).head);
     expect(index?.cites).toEqual([a.head()]);
+  });
+});
+
+describe('a tail that cannot be relied on covers nothing', () => {
+  /** `waiver` writes the waiver naming `of`'s tail, as the tail of `by`. */
+  function waive(by: ReturnType<typeof machine>, of: ReturnType<typeof machine>): void {
+    by.put(
+      (envelope) =>
+        tailPruned(envelope, {
+          tail: of.writer.tail,
+          throughHash: of.head(),
+          eventCount: 1,
+          reason: 'cut',
+        }),
+      of.writer.anchor,
+    );
+  }
+
+  it('a tail a waiver of another tail names covers nothing: what it covered is cited', () => {
+    const a = machine();
+    const y = machine();
+    const w = machine();
+    const b = machine();
+    a.write();
+    y.write();
+    w.write();
+    waive(w, y);
+    // w cited y, so it covers y but not a; a waiver names y, so y no longer covers a: a is cited.
+    expect(b.write().after).toEqual([a.head(), w.head()].sort());
+  });
+
+  it('a waiver that arrives after a head was left out puts it back among the cited', () => {
+    const a = machine();
+    const y = machine();
+    const b = machine();
+    const w = machine();
+    a.write();
+    y.write();
+    expect(b.write().after).toEqual([y.head()]);
+    w.write();
+    waive(w, y);
+    expect(b.write().after).toEqual([a.head(), w.head()].sort());
+  });
+
+  it('a waiver the writer wrote itself, before, is taken into account as well', () => {
+    const a = machine();
+    const y = machine();
+    const b = machine();
+    a.write();
+    y.write();
+    expect(b.write().after).toEqual([y.head()]);
+    waive(b, y);
+    expect(b.write().after).toEqual([a.head()]);
+  });
+
+  it('a tail whose key the record does not commit covers nothing', () => {
+    const a = machine();
+    const c = machine();
+    const b = machine();
+    a.write();
+    c.write();
+    rmSync(publicKeyPath({ root }, c.writer.signerFingerprint));
+    expect(b.write().after).toEqual([a.head(), c.head()].sort());
+  });
+
+  it('a head left out because of a tail that is no longer on the disk is cited again', () => {
+    const a = machine();
+    const c = machine();
+    const b = machine();
+    a.write();
+    c.write();
+    expect(b.write().after).toEqual([c.head()]);
+    rmSync(tailDir({ root }, c.writer.tail), { recursive: true, force: true });
+    expect(b.write().after).toEqual([a.head()]);
   });
 });

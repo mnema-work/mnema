@@ -111,6 +111,29 @@ export class HeadsToCite {
    * cites, and every one of them is looked at for the moves and retractions the act holds.
    */
   cite(events: readonly CatalogEvent[]): Cited {
+    const named = this.waivedBy(events);
+    const decided = this.decide(events, named);
+    if (named.size === 0) return decided;
+    // A waiver this very act writes ends what the tails it names cover, for the acts after it.
+    return {
+      event: decided.event,
+      remember: () => {
+        decided.remember();
+        const covered = this.read<Covered>(coveredHeadsPath(this.notes, this.ownTail), 'covered');
+        const kept = Object.entries(covered).filter(([, one]) => !named.has(one.via));
+        this.keep(coveredHeadsPath(this.notes, this.ownTail), Object.fromEntries(kept));
+      },
+    };
+  }
+
+  /** The tails a `tail.pruned` among `events` names: the writer's own waiver, which no other tail's index holds. */
+  private waivedBy(events: readonly CatalogEvent[]): ReadonlySet<string> {
+    const named = new Set<string>();
+    for (const one of events) if (one.kind === 'tail.pruned') named.add(one.payload.tail);
+    return named;
+  }
+
+  private decide(events: readonly CatalogEvent[], named: ReadonlySet<string>): Cited {
     const event = events[0] as CatalogEvent;
     const unchanged: Cited = { event, remember: () => undefined };
     if (event.after !== undefined) return unchanged;
@@ -142,6 +165,14 @@ export class HeadsToCite {
       if (index !== undefined) indexes.set(tail, index);
     }
     const waived = new Set([...indexes.values()].flatMap((index) => index.prunes));
+    for (const tail of named) waived.add(tail);
+    // The waiver this installation wrote earlier is in its own tail, which the loop above leaves out.
+    const mine = this.snapshot(this.ownTail);
+    const own =
+      mine === undefined
+        ? undefined
+        : indexAt(this.notes, this.ownTail, this.ownTail, mine, (h) => isHead.has(h));
+    for (const tail of own?.prunes ?? []) waived.add(tail);
     const fresh = pending.filter(
       (tail) => behind(tail) || waived.has((covered[tail] as Covered).via),
     );
