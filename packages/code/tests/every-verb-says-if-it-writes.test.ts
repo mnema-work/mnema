@@ -95,7 +95,8 @@ import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PROJECT_DIR } from '@mnema/core';
+import { recordNamedIn } from '@mnema/chain';
+import { assignDestination, backupConfigPath, PROJECT_DIR, resolveTrees } from '@mnema/core';
 import { Command } from 'commander';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { renderPlain } from '../src/presentation/plain.js';
@@ -295,8 +296,8 @@ const INVOCATION: Readonly<Record<string, Invocation>> = {
   mcp: CANNOT_BE_EXERCISED,
   // The reads.
   // A group whose acts write a folder and never the record. `setup` asks a person at a terminal, which this harness
-  // has not, and `run` and `status` need the folder it assigns: they are driven in `commands/backup.test.ts`.
-  backup: CANNOT_BE_EXERCISED,
+  // has not, so the fixture assigns the folder and the row runs the copy.
+  backup: { argv: () => ['backup', 'run'] },
   status: { argv: (f) => ['status', '--actor', f.anchor] },
   resume: { argv: (f) => ['resume', '--actor', f.anchor] },
   search: { argv: () => ['search', 'task'] },
@@ -490,6 +491,7 @@ afterEach(() => {
   process.env.HOME = before.home;
   process.env.XDG_DATA_HOME = before.xdg;
   rmSync(sandbox, { recursive: true, force: true });
+  rmSync(`${sandbox}-backup`, { recursive: true, force: true });
 });
 
 /** Runs `mnema <argv>` against the fixture, and says whether it exited non-zero. */
@@ -557,6 +559,18 @@ async function fixture(name: string): Promise<Fixture> {
   // The edge `unlink` takes back.
   const linked = await mnema(['link', rule[1], id[1], '--rel', 'relates-to']);
   if (linked.failed) throw new Error(`fixture: link refused: ${linked.out}`);
+  // A folder for the backup, assigned the way `setup` does it (which asks a person at a terminal, as this
+  // harness is not): the file is the machine's own, and `backup run` is what the row exercises. The folder is
+  // beside the sandbox and not in it, because what the measure counts is the events under the sandbox.
+  const trees = resolveTrees(project, { home: process.env.HOME as string });
+  const named = recordNamedIn([trees.projectPublic as string]);
+  if (named.state !== 'named') throw new Error('fixture: the record has no name');
+  assignDestination(
+    backupConfigPath(trees),
+    named.name,
+    join(`${sandbox}-backup`, name),
+    new Date(),
+  );
   return {
     note: note[1],
     rule: rule[1],

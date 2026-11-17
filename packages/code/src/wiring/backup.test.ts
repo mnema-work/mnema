@@ -73,6 +73,13 @@ const answering = (answer: string): Partial<CliIo> => ({
 });
 
 describe('mnema backup setup', () => {
+  it('assigns nothing where an answer can be read but no person is at a terminal (a pipe)', async () => {
+    const folder = join(sandbox, 'folder');
+    const said = await mnema(['backup', 'setup', folder], { ask: async () => 'yes' });
+    expect(said.failed).toBe(true);
+    expect(existsSync(join(sandbox, 'home', '.mnema', 'backup.json'))).toBe(false);
+  });
+
   it('assigns nothing without a terminal, with a flag that would answer or without, and says the command for a person', async () => {
     const folder = join(sandbox, 'folder');
     for (const argv of [

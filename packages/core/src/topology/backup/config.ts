@@ -113,7 +113,7 @@ export function whyNotADestination(folder: string, trees: ResolvedTrees): string
       );
     }
   }
-  inside.push([trees.keyRoot, 'the key root']);
+  inside.push([dirname(trees.keyRoot), "this machine's data directory (the key root is in it)"]);
   if (trees.projectPrivate !== undefined)
     inside.push([trees.projectPrivate, "the project's private tree"]);
   for (const [dir, what] of inside) {

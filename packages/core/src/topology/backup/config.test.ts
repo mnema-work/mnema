@@ -83,7 +83,10 @@ describe('where a backup cannot be kept', () => {
     expect(whyNotADestination(join(project, '.mnema', 'b'), trees)).toMatch(/working tree/);
     expect(whyNotADestination(join(project, '.git', 'b'), trees)).toMatch(/working tree/);
     expect(whyNotADestination(join(base, 'elsewhere'), trees)).toBeUndefined();
-    expect(whyNotADestination(join(base, 'data', 'identity', 'b'), trees)).toMatch(/key root/);
+    expect(whyNotADestination(join(base, 'data', 'identity', 'b'), trees)).toMatch(
+      /data directory/,
+    );
+    expect(whyNotADestination(join(base, 'data'), trees)).toMatch(/data directory/);
   });
 
   it('refuses a folder inside the git directory every worktree of the repository shares', () => {

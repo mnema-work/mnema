@@ -175,6 +175,7 @@ describe('the backup of two projects on one machine', () => {
       reason: 'BAD_DESTINATION',
     });
     const trees = resolveTrees(a.cwd, env);
+    expect(runBackupSetup(a, join(env.home, '.mnema'))).toMatchObject({ ok: false });
     expect(runBackupSetup(a, join(trees.keyRoot, 'copy'))).toMatchObject({
       ok: false,
       reason: 'BAD_DESTINATION',
