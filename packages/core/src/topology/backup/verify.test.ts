@@ -48,7 +48,7 @@ describe('a copy set against its tree', () => {
   it('says a copy is behind when the tree wrote after it, and when the tree has a file the copy lacks', () => {
     put(tree, `tails/${TAIL}/000001.jsonl`, '{"seq":0}\n{"seq":1}\n{"seq":2}\n');
     put(tree, `tails/${TAIL}/000002.jsonl`, '{"seq":3}\n');
-    const behind = standing().behind;
+    const behind = [...standing().behind];
     expect(behind.sort()).toEqual([`tails/${TAIL}/000001.jsonl`, `tails/${TAIL}/000002.jsonl`]);
   });
 
@@ -61,7 +61,7 @@ describe('a copy set against its tree', () => {
     put(tree, `tails/${TAIL}/000001.jsonl`, '{"seq":9}\n{"seq":1}\n');
     expect(standing().forked).toEqual([{ path: `tails/${TAIL}/000001.jsonl`, tree: 2, copy: 2 }]);
     rmSync(tree, { recursive: true, force: true });
-    expect(standing().lost.sort()).toEqual(['keys/aa11.pub', `tails/${TAIL}/000001.jsonl`]);
+    expect([...standing().lost].sort()).toEqual(['keys/aa11.pub', `tails/${TAIL}/000001.jsonl`]);
   });
 
   it('refuses where there is no copy, and where the copy is not under a name a record has', () => {
