@@ -1370,9 +1370,17 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'the words a tail that is a symbolic link is refused by, a constant of the module',
   },
-  '@mnema/chain chain/verify.ts «LINKED TAIL: tails/{} {}» oneLine(name) #1': {
+  '@mnema/chain chain/verify.ts «LINKED TAIL: tails/{} {}» oneLine(tail) #1': {
     verdict: 'collapsed',
     why: 'the name of a link under `tails/`: whoever wrote the directory chose it',
+  },
+  '@mnema/chain chain/verify.ts «LINKED ENTRY: {} {}» LINKED_ENTRY #1': {
+    verdict: 'minted',
+    why: 'the words a link anywhere else a reader reads is refused by, a constant of the module',
+  },
+  '@mnema/chain chain/verify.ts «LINKED ENTRY: {} {}» oneLine(path) #1': {
+    verdict: 'collapsed',
+    why: 'the path in the record of a link a reader met: whoever wrote the directory chose its names',
   },
   '@mnema/chain chain/verify.ts «MISNAMED KEY: the key file keys/{}.pub {} (it hashes to » MISNAMED_KEY #1':
     {
@@ -2780,6 +2788,10 @@ const NOT_A_SENTENCE: Readonly<Record<string, string>> = {
     'the other half of the same `Map` key, a tail id the disk named',
   "@mnema/chain chain/verify.ts «\\\\u{}» unit.charCodeAt(0).toString(16).padStart(4, '0')":
     'four hex digits of one UTF-16 code unit, the escape `jsonAscii` writes for a character outside ASCII',
+  '@mnema/chain chain/verify.ts «keys/{}.pub» fingerprint':
+    'the path in the record of the key file a fingerprint names, a key of a `Set` of links that is never printed',
+  '@mnema/chain chain/verify.ts «tails/{}/» tail':
+    'the start of every path in the record under one tail, matched against the links found and never printed',
   '@mnema/chain chain/verify.ts «{}#{}» issue.seq':
     'half of where an event the identity fold refused sits, `<tail>#<seq>`, a key of a `Set` that is never printed',
   '@mnema/chain chain/verify.ts «{}#{}» issue.tail':
@@ -2896,8 +2908,8 @@ describe('every value the domain puts in a sentence is classified', () => {
     // are equal. The scale is stated, and so is what the HANDOFF said (twenty-three
     // sites, twelve in `core` and eleven in `chain`), because it counted sentences
     // written at a `message:` or a `detail:` directly, and a value is not a sentence.
-    expect(SITES.length).toBe(451);
-    expect(FOUND[0]?.sites.length).toBe(232);
+    expect(SITES.length).toBe(453);
+    expect(FOUND[0]?.sites.length).toBe(234);
     expect(FOUND[1]?.sites.length).toBe(219);
     expect(FOUND.flatMap((layer) => layer.wording).length).toBeGreaterThan(15);
   });
@@ -2948,11 +2960,11 @@ describe('every value the domain puts in a sentence is classified', () => {
     // No arm of the case above may be empty, or that much of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
     const count = (verdict: Verdict): number => verdicts.filter((said) => said === verdict).length;
-    expect(count('collapsed')).toBe(309);
-    expect(count('minted')).toBe(109);
+    expect(count('collapsed')).toBe(310);
+    expect(count('minted')).toBe(110);
     expect(count('composed')).toBe(33);
     expect(SITES.filter((site) => new RegExp(`\\b${DOOR}\\b`).test(site.expression))).toHaveLength(
-      309,
+      310,
     );
   });
 

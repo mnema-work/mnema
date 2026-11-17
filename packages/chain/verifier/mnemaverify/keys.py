@@ -25,7 +25,7 @@ import base64
 import hashlib
 import os
 import re
-from typing import NamedTuple
+from typing import Collection, NamedTuple
 
 from .verdict import Refusal
 
@@ -87,6 +87,7 @@ def parse_pem(text: str, filename: str = "") -> PublicKey:
 
 def load_keyring(
     record_root: str,
+    unread: Collection[str] = (),
 ) -> tuple[dict[str, PublicKey], list[str], list[tuple[str, str]]]:
     """Every `keys/*.pub` under the record root, indexed by recomputed fingerprint.
 
@@ -101,6 +102,9 @@ def load_keyring(
     here while the product read on (the bytes that are not UTF-8). Section 6 has a reader
     recompute each name from the material, and a file with no material has a name that stands
     for no key, which is what the misnamed file is refused for. Neither is put in the ring.
+
+    A name in `unread` is a link the caller refused (section 4): it is not opened, and stands for
+    no key here.
     """
     from .canonical import utf8_text
 
@@ -111,7 +115,7 @@ def load_keyring(
     if not os.path.isdir(directory):
         return ring, misnamed, no_key
     for name in sorted(os.listdir(directory)):
-        if not name.endswith(".pub") or name.startswith(APPLE_DOUBLE_PREFIX):
+        if name in unread or not name.endswith(".pub") or name.startswith(APPLE_DOUBLE_PREFIX):
             continue
         path = os.path.join(directory, name)
         if not os.path.isfile(path):

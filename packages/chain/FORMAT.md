@@ -276,14 +276,32 @@ is the private tree of a project outside a git repository and, inside one, where
 version kept it before it moved into the repository's git directory; the product names one
 still there as left behind and, when asked, moves it.
 
-**A tail is a directory, and a symbolic link under `tails/` is refused by name**, whatever it
-points at (a directory, a file, nothing). A reader does not follow it, does not count it as a
-tail and reads nothing through it, and refuses the record naming `tails/<name>`, with or
-without other tails beside it: a link can point outside the repository, and a reader that
-followed it would verify events another reader of the same bytes never sees
-(`packages/chain/src/chain/both-readers-read-the-same-bytes.test.ts`, `tail-linked` and
-`tail-linked-beside-a-real-one`). Any other entry under `tails/` that is not a directory is
-not read.
+**A reader follows no link in a record, and refuses each one by name.** A symbolic link or a
+junction at a place a reader reads (`keys/` and `tails/` themselves, any entry of either, any
+entry of a tail directory and any entry of a tail's `witness/`) is refused, whatever it points
+at: a directory, a file, nothing, or a place inside the record itself. A reader finds them by
+the directory listing (`lstat`, which names a junction a link too) before it reads anything,
+and opens nothing through one: a tail that is a link, or that holds one, is not read and not
+counted as a tail (its directory still names its key's tail, §6.5); a key file that is a link is
+not read and holds no key; and nothing under `keys/` or `tails/` is read when that directory is
+a link. A link can point outside the repository, and a reader that followed it would verify
+bytes another reader of the same record never sees. These refusals come before any other, in
+the order of the places above and of the names in each, and both readers word them alike: a tail
+that is a link as `LINKED TAIL: tails/<name> is a symbolic link, and a tail is a directory of the
+record: …`, any other as `LINKED ENTRY: <path> is a symbolic link, and a reader reads a record
+from its own files and directories: …`, `<path>` being its place in the record with `/` between
+the names (the second reader says the path and the same words). The record's root and the
+directories above it are not judged, since the path is the caller's and may cross a link of its
+own, and neither is a place no reader reads: `locks/`, the root's other entries, a folder of a
+tail named as a stray entry below. Any other entry under `tails/` that is not a directory is not
+read. This rule was tightened after the first publication (§7.1): no writer of 0.1.0 to 0.1.8
+put a link in a record, and a version from before it follows such a link and refuses nothing,
+except a link in place of a tail, which 0.1.8 refuses already
+(`packages/chain/src/chain/both-readers-read-the-same-bytes.test.ts`, `tail-linked`,
+`tail-linked-beside-a-real-one`, `segment-linked`, `segment-linked-inside-the-record`,
+`checkpoints-linked`, `tailproof-linked`, `witness-file-linked`, `key-file-linked`,
+`keys-dir-linked` and `tails-dir-linked`, and "a link to a file outside the record, to both
+readers").
 
 The tail is the concatenation of its segments in name order, and sequence numbers
 are contiguous across that concatenation: **which segment a given sequence number
@@ -300,8 +318,8 @@ and nothing in it is vouched for`, the name quoted as JSON with every character
 outside printable ASCII escaped (a byte that is not UTF-8 reads as U+FFFD). What an operating system writes on its own, `.DS_Store` and any
 name starting `._`, is skipped and not named, by the rule `keys/` uses. A segment is a regular file whose whole name is
 `NNNNNN.jsonl`: a folder of that name, and a file named `witness`, are named like any
-other entry and read by nobody. A symbolic
-link is classified and not said. `witness/` and the record's root are not covered by
+other entry and read by nobody. A link
+is refused by the rule above, not named here. `witness/` and the record's root are not covered by
 this note (`packages/chain/src/chain/both-readers-read-the-same-bytes.test.ts`,
 `stray-file-in-a-tail`, `stray-folder-in-a-tail` and `os-file-in-a-tail`).
 

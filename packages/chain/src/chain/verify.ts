@@ -159,10 +159,11 @@ import {
   relinkedNaming,
 } from './record-name.js';
 import {
+  type CommittedKey,
   type CommittedKeys,
   classifyTailDirectory,
   committedKeys,
-  listLinkedTails,
+  listLinksInRecord,
   listPublicKeyFingerprints,
   listTails,
   type RefusedLine,
@@ -1314,7 +1315,16 @@ function verifyReading(
   relaid: RelaidLine | undefined,
   seen?: (identity: IdentityResolution) => void,
 ): VerifyResult {
-  const tails = listTails(layout);
+  // Every link at a place a reader reads, listed BEFORE anything is read (FORMAT.md section 4,
+  // ADR-348): each is refused by name, and nothing a link stands for is read. A tail with a link in
+  // it is not read at all, so no byte of what the link points at reaches the verdict; its
+  // directory is still there, so its key is not one whose tail is gone.
+  const links = listLinksInRecord(layout);
+  const linked = new Set(links);
+  const present = linked.has('tails') ? [] : listTails(layout);
+  const tails = present.filter((tail) => !links.some((at) => at.startsWith(`tails/${tail}/`)));
+  const keyLinked = (fingerprint: string): boolean =>
+    linked.has('keys') || linked.has(`keys/${fingerprint}.pub`);
   let uncheckpointed = 0;
   // A tail directory is named `<fingerprint>-<installationId>`: the owning key's
   // fingerprint, then a local per-installation suffix. Bind the directory to a
@@ -1328,12 +1338,16 @@ function verifyReading(
   // roster and closes that duplication: a fabricated name has no committed
   // fingerprint to match, so it is still rejected. (A pre-suffix tail named by a
   // bare fingerprint matches the whole name, so it is accepted unchanged.)
-  const committedFingerprints = new Set(listPublicKeyFingerprints(layout));
+  const committedFingerprints = new Set(
+    linked.has('keys')
+      ? []
+      : listPublicKeyFingerprints(layout).filter((name) => !keyLinked(name)),
+  );
   // One reader of the committed keys for the whole verification: every checkpoint, every
   // ownership proof and every enrolment that names a key asks it, and the disk is read
   // once per key (store.ts). It is made HERE, per call, so no verdict reads a key an
   // earlier verdict read.
-  const keys = committedKeys(layout);
+  const keys = notThroughALink(committedKeys(layout), keyLinked);
   const entriesByTail = new Map<string, readonly ChainEntry[]>();
   const issuesByTail = new Map<string, TailIssue[]>();
   const checkpointedByTail = new Map<string, number>();
@@ -1503,9 +1517,11 @@ function verifyReading(
   );
   const record = recordOf(relinks.named);
   const allIssues: TailIssue[] = [
+    // First, in both readers: what a link stands for was not read, so what follows from that (a
+    // tail with no committed key, a record with no tail read) is a consequence of it.
+    ...links.map(linkedEntry),
     ...keyFilesWithoutAKey(committedFingerprints, keys),
     ...misnamedKeys(committedFingerprints, keys),
-    ...listLinkedTails(layout).map(linkedTail),
     ...(counted.length === 0 ? [noTailHeld(layout, tails)] : []),
     // A refused relink before the record's agreement, which it explains: the tail it did not move
     // is what leaves the directory two records, and both readers say the cause first.
@@ -1533,7 +1549,7 @@ function verifyReading(
     // A file that holds no key is refused above, and is no key whose tail may have gone.
     ...keysWithoutTail(
       new Set([...committedFingerprints].filter((name) => keys.holdsNoKey(name) === undefined)),
-      tails,
+      present,
       waivers,
       backups,
       identity.backups,
@@ -1722,16 +1738,47 @@ export const LINKED_TAIL =
   'is a symbolic link, and a tail is a directory of the record: no reader follows a link there, which can point outside it';
 
 /**
- * A TAIL THAT IS A SYMBOLIC LINK, refused by name (FORMAT.md section 4), whatever it points at.
- * The product skipped it in silence while the second reader followed it, so over a record with
- * one tail beside it the two verified different events.
+ * How a link anywhere else a reader reads is named (FORMAT.md section 4, ADR-348): in a tail
+ * directory, under its `witness/`, under `keys/`, or `keys` and `tails` themselves. The second
+ * reader says the same sentence after the same path.
  */
-function linkedTail(name: string): TailIssue {
+export const LINKED_ENTRY =
+  'is a symbolic link, and a reader reads a record from its own files and directories: no reader follows a link there, which can point outside it';
+
+/**
+ * A SYMBOLIC LINK AT A PLACE A READER READS, refused by name (FORMAT.md section 4), whatever it
+ * points at, inside the record or out of it. A tail that is one keeps the words it was refused by
+ * first, `LINKED TAIL: tails/<name>`, which the second reader says too; every other place says
+ * `LINKED ENTRY: <path>`. The product used to skip a linked tail in silence while the second
+ * reader followed it, and both followed a link to a segment, a checkpoint file, a tail proof, an
+ * attestation or a key.
+ */
+function linkedEntry(path: string): TailIssue {
+  const parts = path.split('/');
+  const tail = parts[0] === 'tails' ? parts[1] : undefined;
+  if (tail !== undefined && parts.length === 2) {
+    return { tail, layer: 'T1', detail: `LINKED TAIL: tails/${oneLine(tail)} ${LINKED_TAIL}` };
+  }
   return {
-    tail: name,
+    ...(tail === undefined ? {} : { tail }),
     layer: 'T1',
-    detail: `LINKED TAIL: tails/${oneLine(name)} ${LINKED_TAIL}`,
+    detail: `LINKED ENTRY: ${oneLine(path)} ${LINKED_ENTRY}`,
   };
+}
+
+/**
+ * The committed keys a verdict reads: a key whose file, or whose `keys/`, is a link is answered as
+ * no key, and its file is never opened ({@link listLinksInRecord}).
+ */
+function notThroughALink(
+  keys: CommittedKeys,
+  linked: (fingerprint: string) => boolean,
+): CommittedKeys {
+  const read = (fingerprint: string): CommittedKey | null =>
+    linked(fingerprint) ? null : keys(fingerprint);
+  read.holdsNoKey = (fingerprint: string): string | undefined =>
+    linked(fingerprint) ? undefined : keys.holdsNoKey(fingerprint);
+  return read;
 }
 
 /**

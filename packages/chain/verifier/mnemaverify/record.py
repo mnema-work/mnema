@@ -43,6 +43,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import stat
 from typing import Any, NamedTuple, cast
 
 from . import bitcoin, enrolment, gaps, ots, retraction, schema, workflow
@@ -1087,7 +1088,20 @@ def verify_record(root: str, report: Report, require: str = "chained") -> None:
         report.break_out(f"there is no record at {root}")
         return
 
-    ring, misnamed, no_key = load_keyring(root)
+    # Section 4: every link at a place this reader reads, listed before anything is read, each
+    # refused by name, and nothing a link stands for read: a tail holding one is not read at all,
+    # a key file that is one is not opened, and nothing under keys/ or tails/ is when it is one.
+    links = record_links(root)
+    for path in links:
+        _refuse_a_link(report, path)
+    if "keys" in links:
+        ring: dict[str, PublicKey] = {}
+        misnamed: list[str] = []
+        no_key: list[tuple[str, str]] = []
+    else:
+        ring, misnamed, no_key = load_keyring(
+            root, {path[len("keys/"):] for path in links if path.startswith("keys/")}
+        )
     for name, why in no_key:
         report.fail("6", f"the key file keys/{name} {HOLDS_NO_KEY}: {why}", f"keys/{name}")
     for name in misnamed:
@@ -1108,20 +1122,22 @@ def verify_record(root: str, report: Report, require: str = "chained") -> None:
         report.unchecked("6", "no keys/ directory, so no signature can be checked", gap="G03")
 
     tails_dir = os.path.join(root, "tails")
-    # Section 4: a symbolic link under tails/ is no tail, whatever it points at. It is not
-    # followed (os.path.isdir would follow it) and is refused by name, as the product does.
-    names = os.listdir(tails_dir) if os.path.isdir(tails_dir) else []
-    tail_ids = sorted(
+    # Section 4: a link under tails/ is no tail, whatever it points at, and is not followed
+    # (os.path.isdir would follow it). A tail holding a link is present, so its key is not one
+    # whose tail is gone, and is not read.
+    names = os.listdir(tails_dir) if os.path.isdir(tails_dir) and "tails" not in links else []
+    present = sorted(
         (
             name for name in names
-            if not os.path.islink(os.path.join(tails_dir, name))
+            if not is_link(os.path.join(tails_dir, name))
             and os.path.isdir(os.path.join(tails_dir, name))
         ),
         key=utf16_order,
     )
-    for name in sorted(names, key=utf16_order):
-        if os.path.islink(os.path.join(tails_dir, name)):
-            report.fail("4", f"tails/{name} {LINKED_TAIL}", f"tails/{name}")
+    tail_ids = [
+        tail_id for tail_id in present
+        if not any(path.startswith(f"tails/{tail_id}/") for path in links)
+    ]
 
     declarations = _load_declarations(report)
 
@@ -1175,7 +1191,7 @@ def verify_record(root: str, report: Report, require: str = "chained") -> None:
         {tail: entries for tail, entries in entries_by_tail.items() if tail not in holed},
         declarations,
     )
-    _say_keys_without_tail(report, ring, tail_ids, resolution)
+    _say_keys_without_tail(report, ring, present, resolution)
     _refuse_a_record_no_tail_holds(report, tails_dir, tail_ids, entries_by_tail)
     _check_requirement(report, require, entries_by_tail, covered_by_tail)
 
@@ -1187,6 +1203,83 @@ LINKED_TAIL = (
     "is a symbolic link, and a tail is a directory of the record: no reader follows a link "
     "there, which can point outside it"
 )
+
+# How a link anywhere else this reader reads is named, in the product's words (section 4).
+LINKED_ENTRY = (
+    "is a symbolic link, and a reader reads a record from its own files and directories: no "
+    "reader follows a link there, which can point outside it"
+)
+
+# The reparse tags Windows marks a symbolic link and a junction with, both of which Node's `lstat`
+# reports as a link; `os.path.islink` answers no for a junction (3.12 added `os.path.isjunction`,
+# past this reader's floor). The `stat` module names the tags only on Windows, so they are here.
+IO_REPARSE_TAG_SYMLINK = 0xA000000C
+IO_REPARSE_TAG_MOUNT_POINT = 0xA0000003
+
+
+def is_link(path: str) -> bool:
+    """A symbolic link, or on Windows a junction, by `lstat`: what is at `path` is never followed."""
+    try:
+        held = os.lstat(path)
+    except OSError:
+        return False
+    if stat.S_ISLNK(held.st_mode):
+        return True
+    tag = getattr(held, "st_reparse_tag", 0)
+    return tag in (IO_REPARSE_TAG_SYMLINK, IO_REPARSE_TAG_MOUNT_POINT)
+
+
+def _in_order(directory: str) -> list[str]:
+    """The names in a directory in the order the product sorts them (UTF-16, U+FFFD for a bad byte)."""
+    return sorted(os.listdir(directory), key=lambda n: utf16_order(_as_the_product_reads(n)))
+
+
+def _is_directory(path: str) -> bool:
+    return os.path.isdir(path) and not is_link(path)
+
+
+def record_links(root: str) -> list[str]:
+    """Section 4: every link at a place a reader reads, by its path in the record, in the product's order.
+
+    `keys` and `tails` themselves, each entry of either, each entry of each tail directory and each
+    entry of a tail's `witness/`; nothing below a link is listed. The root and what no reader reads
+    (a stray folder of a tail, `locks/`) are not judged. The product walks the same places in the
+    same order (`listLinksInRecord`).
+    """
+    links: list[str] = []
+    for top in ("keys", "tails"):
+        at = os.path.join(root, top)
+        if is_link(at):
+            links.append(top)
+            continue
+        if not _is_directory(at):
+            continue
+        for name in _in_order(at):
+            if is_link(os.path.join(at, name)):
+                links.append(f"{top}/{name}")
+                continue
+            tail_dir = os.path.join(at, name)
+            if top != "tails" or not _is_directory(tail_dir):
+                continue
+            for held in _in_order(tail_dir):
+                if is_link(os.path.join(tail_dir, held)):
+                    links.append(f"tails/{name}/{held}")
+                elif held == WITNESS_DIR and _is_directory(os.path.join(tail_dir, held)):
+                    witness = os.path.join(tail_dir, held)
+                    links.extend(
+                        f"tails/{name}/{WITNESS_DIR}/{attested}"
+                        for attested in _in_order(witness)
+                        if is_link(os.path.join(witness, attested))
+                    )
+    return links
+
+
+def _refuse_a_link(report: Report, path: str) -> None:
+    """Section 4: a link refused by name, a tail in the words it was first refused by."""
+    said = _as_the_product_reads(path)
+    parts = path.split("/")
+    sentence = LINKED_TAIL if parts[0] == "tails" and len(parts) == 2 else LINKED_ENTRY
+    report.fail("4", f"{said} {sentence}", said)
 
 
 def _refuse_a_record_no_tail_holds(
@@ -1353,7 +1446,7 @@ def _holds_nothing(tail_dir: str) -> bool:
 
 def _is_a_folder(path: str) -> bool:
     """A directory by what the directory listing says: a link to one is a link."""
-    return os.path.isdir(path) and not os.path.islink(path)
+    return _is_directory(path)
 
 
 def _is_segment(tail_dir: str, name: str) -> bool:
@@ -1374,7 +1467,7 @@ def _stray_entries(tail_dir: str) -> list[str]:
         if name == ".DS_Store" or name.startswith(APPLE_DOUBLE_PREFIX):
             continue
         path = os.path.join(tail_dir, name)
-        if os.path.islink(path):
+        if is_link(path):
             continue
         if os.path.isfile(path) and (
             SEGMENT_NAME.match(name) or name in (CHECKPOINTS_FILE, TAILPROOF_FILE)

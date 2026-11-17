@@ -8,6 +8,8 @@
  * - A tail directory replaced by a symbolic link to it. A link under `tails/` is refused by name
  *   (FORMAT.md section 4): the product skipped it (alone, it read no tail; beside another, it
  *   verified the record over the other in silence) while the second reader followed it.
+ * - A segment, then a key file, replaced by a link to it: a link anywhere a reader reads is refused
+ *   by its path (ADR-348), where both readers used to follow it and verify.
  *
  * Held by the vectors `checkpoints-out-of-order`, `tail-linked` and
  * `tail-linked-beside-a-real-one` of `packages/chain/verifier/mutate.py` as well.
@@ -83,6 +85,14 @@ function linkInPlace(tail: string): void {
   symlinkSync(outside, place);
 }
 
+/** What is at `path` in the record moved out of the project, and a link to it left in its place. */
+function linkOut(path: string): void {
+  const place = join(repo, '.mnema', path);
+  const outside = join(sandbox, `outside-${path.replaceAll('/', '-')}`);
+  renameSync(place, outside);
+  symlinkSync(outside, place);
+}
+
 describe('both readers refuse what they used to split on, the projection warm and cold', () => {
   for (const cache of ['warm', 'cold'] as const) {
     it(`two checkpoint lines swapped, the projection ${cache}`, () => {
@@ -117,6 +127,28 @@ describe('both readers refuse what they used to split on, the projection warm an
       expect(`${product.stdout}${product.stderr}`).toContain(`LINKED TAIL: tails/${tail}`);
       expect(second.status, second.stdout).toBe(1);
       expect(second.stdout).toContain(`tails/${tail} is a symbolic link`);
+    }, 60_000);
+
+    it(`a segment, and then a key file, replaced by a link to it, the projection ${cache}`, () => {
+      expect(mnema(['init', '--yes', '--hosts', 'none']).status).toBe(0);
+      write('a fact in the segment that is linked');
+      expect(mnema(['verify']).status).toBe(0);
+      const [tail] = tails();
+
+      // ADR-348: a link anywhere a reader reads, not only in place of a tail.
+      const segment = `tails/${tail}/000001.jsonl`;
+      linkOut(segment);
+      let { product, second } = verdicts(cache);
+      expect(product.status, product.stdout).toBe(1);
+      expect(`${product.stdout}${product.stderr}`).toContain(`LINKED ENTRY: ${segment}`);
+      expect(second.status, second.stdout).toBe(1);
+      expect(second.stdout).toContain(`${segment} is a symbolic link`);
+
+      const key = `keys/${(tail as string).split('-')[0]}.pub`;
+      linkOut(key);
+      ({ product, second } = verdicts(cache));
+      expect(`${product.stdout}${product.stderr}`).toContain(`LINKED ENTRY: ${key}`);
+      expect(second.stdout).toContain(`${key} is a symbolic link`);
     }, 60_000);
 
     it(`a second tail replaced by a link, beside the first, the projection ${cache}`, () => {

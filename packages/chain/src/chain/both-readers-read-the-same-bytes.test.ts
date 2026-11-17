@@ -36,6 +36,7 @@ import {
   readFileSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -371,6 +372,26 @@ type Agreement =
  */
 const TAIL_OF_A_REFOUNDED_RECORD = `06e3fd8fda29bb60ab59557de61edb0aecdb231134be30e75b455f8e1b792fa9-${'ab'.repeat(16)}`;
 
+/** The one tail of the witnessed record, under the fixture's key: where a link in it is named. */
+const WITNESSED_TAIL =
+  'tails/7e5a72fd0ea237237651690087e4a87133dab8b78847efadde778f633214cca4-05e27e636158e547a09e594545603717';
+
+/**
+ * A link at each place a reader reads (FORMAT.md section 4, ADR-348), what it points at being what
+ * was there: a reader that followed it would verify the record it always held. Both refuse it by
+ * its path, first, and read nothing of what it stands for. A tail with a link in it is not read, so
+ * a record whose one tail it is holds no tail read (the second refusal); a key that is one is no key,
+ * so its tail has none.
+ */
+function linkedAt(name: string, path: string, refusals: number): Agreement {
+  return {
+    name,
+    verdict: 'refused',
+    product: { layer: 'T1', says: `LINKED ENTRY: ${path} is a symbolic link` },
+    second: { section: '4', says: `${path} is a symbolic link`, where: path, refusals },
+  };
+}
+
 const AGREEMENTS: readonly Agreement[] = [
   {
     name: 'duplicate-key-in-a-signed-line',
@@ -435,6 +456,22 @@ const AGREEMENTS: readonly Agreement[] = [
       refusals: 1,
     },
   },
+  linkedAt('segment-linked', `${WITNESSED_TAIL}/000001.jsonl`, 2),
+  linkedAt('segment-linked-inside-the-record', `${WITNESSED_TAIL}/000001.jsonl`, 2),
+  linkedAt('checkpoints-linked', `${WITNESSED_TAIL}/checkpoints.jsonl`, 2),
+  linkedAt('tailproof-linked', `${WITNESSED_TAIL}/tailproof.json`, 2),
+  linkedAt(
+    'witness-file-linked',
+    `${WITNESSED_TAIL}/witness/f84396462713a5fd1fefd3a043cddb2eed81c00f5fead86f0474bfaa551c42e2.ots`,
+    2,
+  ),
+  linkedAt(
+    'key-file-linked',
+    'keys/7e5a72fd0ea237237651690087e4a87133dab8b78847efadde778f633214cca4.pub',
+    2,
+  ),
+  linkedAt('keys-dir-linked', 'keys', 1),
+  linkedAt('tails-dir-linked', 'tails', 2),
   {
     // ADR-123: one tail written from one head in two places and joined. Both readers used to
     // call it a gap in the sequence, which says nothing of what happened; both name it a fork,
@@ -746,6 +783,47 @@ const AGREEMENTS: readonly Agreement[] = [
     },
   },
 ];
+
+/**
+ * NO BYTE BEHIND A LINK REACHES A VERDICT (FORMAT.md section 4, ADR-348). A segment linked to a
+ * file outside the record, the file marked: neither reader's verdict holds the mark, while the same
+ * bytes put in place of the segment, no link, are read and named by both, so the mark is one a
+ * reader that read the file would have said.
+ */
+describe('a link to a file outside the record, to both readers', () => {
+  const MARK = 'outside-the-record-5c1e9a';
+  const MARKED = `{"${MARK}":"${MARK}"}\n`;
+
+  function bothSaid(record: string): { here: string; there: string } {
+    const here = verify(record, catalogUpcasters());
+    const run = python([VERIFIER, '--json', 'record', record]);
+    return { here: JSON.stringify(here), there: `${run.stdout}${run.stderr}` };
+  }
+
+  it('reads nothing of it, in either reader', () => {
+    const record = copyOf('witnessed-record');
+    const segment = join(tailOf(record), '000001.jsonl');
+    const outside = join(root, 'outside.jsonl');
+    writeFileSync(outside, MARKED);
+    rmSync(segment);
+    symlinkSync(outside, segment);
+
+    const { here, there } = bothSaid(record);
+    expect(here).toContain('LINKED ENTRY: tails/');
+    expect(there).toContain('000001.jsonl is a symbolic link');
+    expect(here).not.toContain(MARK);
+    expect(there).not.toContain(MARK);
+  });
+
+  it('names the same bytes when they are the segment itself, so the mark is one a reader says', () => {
+    const record = copyOf('witnessed-record');
+    writeFileSync(join(tailOf(record), '000001.jsonl'), MARKED);
+
+    const { here, there } = bothSaid(record);
+    expect(here).toContain(MARK);
+    expect(there).toContain(MARK);
+  });
+});
 
 /**
  * WHAT A TAIL DIRECTORY HOLDS THAT IS NOT OF THE FORMAT IS NAMED, NOT REFUSED AND NOT READ

@@ -7,8 +7,8 @@
  * layers the T1/T2/T4 checks on top of what this returns.
  */
 
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { basename } from 'node:path';
+import { type Dirent, existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { basename, join } from 'node:path';
 
 import { decodeStoredBytes, StoredJsonError } from '../events/stored-json.js';
 import type { UpcasterRegistry } from '../events/upcaster.js';
@@ -52,7 +52,7 @@ const NEWLINE = 0x0a;
  *
  * A symbolic link under `tails/` is not one, whatever it points at: `readdirSync` reports the
  * entry itself, never its target, so a link is no directory here. No reading and no writer
- * follows it, and the verifier refuses it by name ({@link listLinkedTails}, FORMAT.md section 4).
+ * follows it, and the verifier refuses it by name ({@link listLinksInRecord}, FORMAT.md section 4).
  */
 export function listTails(layout: ChainLayout): string[] {
   const dir = tailsDir(layout);
@@ -64,18 +64,52 @@ export function listTails(layout: ChainLayout): string[] {
 }
 
 /**
- * The names under `tails/` that are symbolic links (FORMAT.md section 4): what {@link listTails}
- * leaves out and the verifier refuses by name, so a link is never read by one reader and
- * skipped in silence by the other (`tail-linked-beside-a-real-one`,
- * `both-readers-read-the-same-bytes.test.ts`).
+ * EVERY SYMBOLIC LINK AT A PLACE A READER READS IN A RECORD (FORMAT.md section 4, ADR-348), by its
+ * path in the record: `keys` and `tails` themselves, each entry of either, each entry of each tail
+ * directory, and each entry of a tail's `witness/`. Nothing below a link is listed, and no link is
+ * followed: each entry is judged by the directory listing (`lstat`, never `stat`), which on Windows
+ * reports a junction as a link too.
+ *
+ * The verdict asks this BEFORE it reads anything, and reads nothing a link stands for: a tail with a
+ * link in it is not read, a key file that is one is not read, and neither is anything under `keys/`
+ * or `tails/` when that directory is one. The root and the directories above it are not judged
+ * (the path is the caller's), and neither is anything a reader does not read (a stray folder of a
+ * tail, `locks/`). The second reader walks the same places in the same order (`record_links`).
  */
-export function listLinkedTails(layout: ChainLayout): string[] {
-  const dir = tailsDir(layout);
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir, { withFileTypes: true })
-    .filter((e) => e.isSymbolicLink())
-    .map((e) => e.name)
-    .sort();
+export function listLinksInRecord(layout: ChainLayout): string[] {
+  const links: string[] = [];
+  if (!existsSync(layout.root)) return links;
+  const top = entriesInOrder(layout.root);
+  for (const dir of ['keys', 'tails']) {
+    const entry = top.find((one) => one.name === dir);
+    if (entry === undefined) continue;
+    if (entry.isSymbolicLink()) {
+      links.push(dir);
+      continue;
+    }
+    if (!entry.isDirectory()) continue;
+    for (const held of entriesInOrder(join(layout.root, dir))) {
+      const path = `${dir}/${held.name}`;
+      if (held.isSymbolicLink()) links.push(path);
+      else if (dir === 'tails' && held.isDirectory()) linksInTail(layout, held.name, links);
+    }
+  }
+  return links;
+}
+
+function linksInTail(layout: ChainLayout, tail: string, links: string[]): void {
+  for (const held of entriesInOrder(tailDir(layout, tail))) {
+    if (held.isSymbolicLink()) links.push(`tails/${tail}/${held.name}`);
+    else if (held.name === 'witness' && held.isDirectory()) {
+      for (const attested of entriesInOrder(join(tailDir(layout, tail), 'witness'))) {
+        if (attested.isSymbolicLink()) links.push(`tails/${tail}/witness/${attested.name}`);
+      }
+    }
+  }
+}
+
+function entriesInOrder(dir: string): Dirent[] {
+  return readdirSync(dir, { withFileTypes: true }).sort((a, b) => compareUtf16(a.name, b.name));
 }
 
 /**
