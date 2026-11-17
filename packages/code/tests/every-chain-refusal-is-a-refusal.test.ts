@@ -69,6 +69,7 @@ const BUILT_WITH: Readonly<Record<string, readonly unknown[]>> = {
     'f'.repeat(64),
     { refused: 'foreign', own: 'a'.repeat(64), record: 'b'.repeat(64) },
   ],
+  RecordLinkedError: [{ root: '/tmp/x' }, 'locks'],
   TailBusyError: ['/tmp/x.lock', 4242, 2000],
   TailDamagedError: ['f'.repeat(64), 6, 5],
   UnwrittenInstallationIdError: ['/tmp/x.inst', 2000],
