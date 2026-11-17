@@ -25,6 +25,12 @@ describe('what the writer says when the disk fails it', () => {
     expect(refusal.message).toContain('nothing was written');
   });
 
+  it('does not say nothing was written when the segment could not be cut back', () => {
+    const refusal = new WriteNotLandedError(ENOSPC, false);
+    expect(refusal.message).toContain('could not be cut back');
+    expect(refusal.message).not.toContain('nothing was written');
+  });
+
   it('words a thrown value that is not an error as the text it is', () => {
     expect(recordedNotSigned('disk gone')).toContain('The disk reported: disk gone.');
   });

@@ -15,12 +15,12 @@
  *     {@link signatureNotConfirmed}.
  */
 
-import { neutralized } from '../one-line.js';
+import { oneLine } from '../one-line.js';
 import { CodedError } from './coded-error.js';
 
 /** What the disk reported, as the error that carried it says it (a Node error names its errno). */
 export function whatTheDiskSaid(error: unknown): string {
-  return neutralized(error instanceof Error ? error.message : String(error));
+  return oneLine(error instanceof Error ? error.message : String(error));
 }
 
 /** The fact is on the tail and its checkpoint is not: it is signed by the next write. */
@@ -43,9 +43,19 @@ export function signatureNotConfirmed(error: unknown): string {
 export class WriteNotLandedError extends CodedError {
   readonly code = 'WRITE_NOT_LANDED';
 
-  constructor(readonly disk: unknown) {
+  /**
+   * @param disk what the disk threw.
+   * @param cut whether the segment was cut back to what it held before the write. Where it was
+   * not, part of the write may be on the tail, and the sentence says that instead.
+   */
+  constructor(
+    readonly disk: unknown,
+    cut = true,
+  ) {
     super(
-      `the disk refused the write (${whatTheDiskSaid(disk)}); nothing was written, so it is safe to try again once the disk allows it.`,
+      cut
+        ? `the disk refused the write (${whatTheDiskSaid(disk)}); nothing was written, so it is safe to try again once the disk allows it.`
+        : `the disk refused the write (${whatTheDiskSaid(disk)}), and the part of it that reached the tail could not be cut back: the next write cuts an unfinished line, and \`mnema verify\` says whether anything else of it is there.`,
     );
     this.name = 'WriteNotLandedError';
   }

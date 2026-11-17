@@ -61,6 +61,7 @@ import {
   closeSync,
   existsSync,
   fstatSync,
+  fsyncSync,
   mkdirSync,
   openSync,
   readFileSync,
@@ -1144,14 +1145,16 @@ export class ChainWriter {
    * file (the sync), so the end of the file decides: where it ends in `text`, the line is on the
    * tail, the write goes on as the success it is, and signing waits for the next append, with the
    * disk's error told as a sentence ({@link recordedNotSigned}); where it does not, nothing landed
-   * and the refusal names the errno ({@link WriteNotLandedError}). Whatever partial bytes a failed
-   * append left are cut by the next act's recovery, as a crash's are.
+   * and the refusal names the errno ({@link WriteNotLandedError}). A batch the disk tore may have left
+   * whole entries of it on the tail, so the segment is cut back to its size before the write
+   * ({@link cutBack}) for the refusal to be true; where the cut itself fails, the refusal says so.
    */
   private landOnTail(path: string, text: string, before: number): void {
     try {
       appendDurably(path, text);
     } catch (error) {
-      if (!endsWith(path, text, before)) throw new WriteNotLandedError(error);
+      if (!endsWith(path, text, before))
+        throw new WriteNotLandedError(error, cutBack(path, before));
       this.holdSigning = true;
       this.onUnsigned?.(recordedNotSigned(error));
     }
@@ -1672,6 +1675,25 @@ function sizeOf(filePath: string): number {
     return statSync(filePath).size;
   } catch {
     return -1;
+  }
+}
+
+/**
+ * Cuts the segment at `path` back to the `before` bytes it held, durably, and says whether it did.
+ * What a failed append left (an unfinished line, or the whole entries of a batch it tore) is not
+ * the fact, and a refusal that promises nothing was written has to be true of the file.
+ */
+function cutBack(path: string, before: number): boolean {
+  let fd: number | undefined;
+  try {
+    truncateSync(path, before);
+    fd = openSync(path, 'r+');
+    fsyncSync(fd);
+    return true;
+  } catch {
+    return false;
+  } finally {
+    if (fd !== undefined) closeSync(fd);
   }
 }
 

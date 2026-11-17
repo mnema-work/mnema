@@ -13,7 +13,8 @@ import { join } from 'node:path';
 /**
  * Makes the first call `FAIL_AT` names, as `fn:pattern:ERRNO`, throw that errno: the pattern is a
  * regular expression on the path the call is about (a descriptor is mapped to the path it opened).
- * Throws before the call, so no byte of it is written; a sync that is told to fail follows a write
+ * Throws before the call, so no byte of it is written, unless `PARTIAL=1`, which writes the data up to
+ * its first line end and then throws, as a disk that fills halfway through a write does; a sync that is told to fail follows a write
  * that did land. The `node:fs` exports are replaced and the ES module bindings synced.
  */
 const PRELOAD = `
@@ -30,6 +31,10 @@ if (orig) fs[fn] = function (first, ...rest) {
   const path = typeof first === 'number' ? (paths.get(first) ?? '') : String(first);
   if (!failed && process.env.ARMED === '1' && pattern.test(path)) {
     failed = true;
+    if (process.env.PARTIAL === '1') {
+      const data = String(rest[0]);
+      orig.call(this, first, data.slice(0, data.indexOf('\\n') + 1), ...rest.slice(1));
+    }
     const error = new Error(errno + ': injected, ' + fn);
     error.code = errno;
     throw error;

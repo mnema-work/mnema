@@ -8,6 +8,8 @@ Fixed
   line is on the tail and its checkpoint is not, the write succeeds (exit 0, no `isError`) with one line, `recorded, not yet
   signed: the next write signs it`, and the disk's error, which the next write then signs; where the checkpoint is in the file
   and only its sync failed, the line says the disk did not confirm the signature. The command line prints the line on standard
-  error and the server puts it in the reply. A sync that fails after the line was written is decided by reading the end of the
+  error and the server puts it in the reply (a program that calls the library, and a hook, get it on the standard error of their own
+  process, as they do the sentence for a new tail). A write of several entries that the disk tears halfway is cut back to what the
+  segment held before it, so "nothing was written" is true of the file. A sync that fails after the line was written is decided by reading the end of the
   file, not by the error. It does not retry a failing disk, and a power cut or a disk that fails after reporting success is
   still for `verify` to find.

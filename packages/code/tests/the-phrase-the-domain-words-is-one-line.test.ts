@@ -3079,12 +3079,17 @@ describe('the rule has one door and it is below both packages', () => {
     // `replace` of its own for the reason this case exists (two collapses would be two
     // rules) and it is named so the day it stops importing the door this goes red.
     //
+    // `disk-words.ts` is a third: it words what the disk reported in a sentence the writer hands
+    // to whoever asked to be told, which is a function the surfaces CALL and no `detail:` or sink
+    // this walk follows.
+    //
     // `divergent-moves.ts` is the other: `divergenceSentence` words a sentence out of a record's
     // `who`, `at` and `to`, and it is a function the readings CALL, not a `detail:` or a sink this
     // walk follows, so each value goes through the door there and no site here holds it.
     expect(importing).toEqual(
       [
         ...collapsing,
+        '@mnema/chain chain/disk-words.ts',
         '@mnema/core projections/search-store.ts',
         '@mnema/core projections/divergent-moves.ts',
       ].sort(),
@@ -3118,6 +3123,7 @@ describe('the rule has one door and it is below both packages', () => {
     }
     // The same one, from the other direction: one collapse in the source, none at a site.
     expect(unaccounted).toEqual([
+      '@mnema/chain chain/disk-words.ts: 1 in source, 0 classified',
       '@mnema/core projections/divergent-moves.ts: 3 in source, 0 classified',
       '@mnema/core projections/search-store.ts: 1 in source, 0 classified',
     ]);

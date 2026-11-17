@@ -39,6 +39,8 @@ interface Case {
   /** Whether the fact is on the tail afterwards, and so whether the write reports success. */
   readonly landed: boolean;
   readonly says: string;
+  /** Whether the record is signature-covered before any write follows the failed one. */
+  readonly signedAtOnce: boolean;
 }
 
 const CASES: readonly Case[] = [
@@ -47,43 +49,52 @@ const CASES: readonly Case[] = [
     fails: `appendFileSync:${SEGMENT}:ENOSPC`,
     landed: false,
     says: 'nothing was written',
+    signedAtOnce: true,
   },
   {
     name: 'E2, the append of the checkpoint',
     fails: `appendFileSync:${CHECKPOINTS}:ENOSPC`,
     landed: true,
     says: NOT_SIGNED,
+    signedAtOnce: false,
   },
   {
     name: 'E3, the sync of the segment after its line was written',
     fails: `fsyncSync:${SEGMENT}:EIO`,
     landed: true,
     says: NOT_SIGNED,
+    signedAtOnce: false,
   },
   {
     name: 'E4, the sync of the checkpoint file',
     fails: `fsyncSync:${CHECKPOINTS}:EIO`,
     landed: true,
     says: 'the disk did not confirm',
+    signedAtOnce: true,
   },
 ];
 
-function envFor(disk: FailingDisk, fails?: string): Record<string, string> {
+function envFor(disk: FailingDisk, fails?: string, partial = false): Record<string, string> {
   return {
     PATH: process.env.PATH ?? '',
     HOME: disk.home,
     GIT_CONFIG_NOSYSTEM: '1',
     ...(fails === undefined
       ? {}
-      : { NODE_OPTIONS: `--require ${disk.preload}`, FAIL_AT: fails, ARMED: '1' }),
+      : {
+          NODE_OPTIONS: `--require ${disk.preload}`,
+          FAIL_AT: fails,
+          ARMED: '1',
+          ...(partial ? { PARTIAL: '1' } : {}),
+        }),
   };
 }
 
-function mnema(disk: FailingDisk, args: string[], fails?: string) {
+function mnema(disk: FailingDisk, args: string[], fails?: string, partial = false) {
   return spawnSync(process.execPath, [MNEMA_CLI, ...args], {
     cwd: disk.repo,
     encoding: 'utf-8',
-    env: envFor(disk, fails),
+    env: envFor(disk, fails, partial),
   });
 }
 
@@ -134,6 +145,9 @@ describe('a write the disk fails, on the command line', () => {
             expect(again.status, again.stderr).toBe(0);
           }
           expect(countOf(disk, 'the fact the disk fails')).toBe(1);
+          // Before any write follows: what the sentence says of the signature is what verify finds.
+          const before = mnema(disk, ['verify', '--require', 'signed']);
+          expect(before.status === 0, `${before.stdout}${before.stderr}`).toBe(one.signedAtOnce);
           const next = mnema(disk, ['memory', 'the fact after']);
           expect(next.status, next.stderr).toBe(0);
           expect(`${next.stdout}${next.stderr}`).not.toMatch(/new tail/);
@@ -143,6 +157,34 @@ describe('a write the disk fails, on the command line', () => {
       120_000,
     );
   }
+});
+
+describe('a batch the disk tears halfway', () => {
+  it(
+    'is refused as nothing written, and the retry from another process writes into the same tail',
+    () =>
+      inAFailingDisk((disk) => {
+        planted(disk);
+        // A task is born with two entries in one write: the disk takes the first and fails the rest.
+        const torn = mnema(
+          disk,
+          ['task', 'create', 'a task the disk tears'],
+          `appendFileSync:${SEGMENT}:ENOSPC`,
+          true,
+        );
+        const text = `${torn.stdout}${torn.stderr}`;
+        expect(torn.status, text).not.toBe(0);
+        expect(text).toContain('WRITE_NOT_LANDED');
+        expect(text).toContain('nothing was written');
+
+        const again = mnema(disk, ['task', 'create', 'a task the disk tears']);
+        expect(again.status, again.stderr).toBe(0);
+        expect(`${again.stdout}${again.stderr}`).not.toMatch(/new tail/);
+        expect(readdirSync(join(disk.repo, '.mnema', 'tails'))).toHaveLength(1);
+        signed(disk);
+      }),
+    120_000,
+  );
 });
 
 interface Reply {
