@@ -72,6 +72,9 @@ const BUILT_WITH: Readonly<Record<string, readonly unknown[]>> = {
   TailBusyError: ['/tmp/x.lock', 4242, 2000],
   TailDamagedError: ['f'.repeat(64), 6, 5],
   UnwrittenInstallationIdError: ['/tmp/x.inst', 2000],
+  WriteNotLandedError: [
+    Object.assign(new Error('ENOSPC: no space left on device'), { code: 'ENOSPC' }),
+  ],
   DanglingInstallationIdError: ['/tmp/x.inst', '/nowhere'],
   UnsettledInstallationIdError: ['/tmp/x.inst', 2000],
   IdentityUnavailableError: ['UNKNOWN_ANCHOR', 'the record names no identity for this key'],

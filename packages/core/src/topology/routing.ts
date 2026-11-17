@@ -289,6 +289,11 @@ export interface OpenTreeOptions {
    */
   readonly onNewTail?: (opened: NewTail) => void;
   /**
+   * Told, in a sentence, when a fact is on the tail and the disk failed its signature or the sync of
+   * its line (`WriterOptions.onUnsigned`). Unset, it goes to standard error like a new tail.
+   */
+  readonly onUnsigned?: (sentence: string) => void;
+  /**
    * The key root to sign with instead of the one the trees choose: a relink is signed by the key
    * the relinked tail's id names, the person's or an agent's kept on this machine.
    */
@@ -300,6 +305,11 @@ export interface OpenTreeOptions {
 /** Where a write that opened a new tail says so when its caller did not ask to be told. */
 function sayNewTail(opened: NewTail): void {
   process.stderr.write(`${describeNewTail(opened)}\n`);
+}
+
+/** Where a write that succeeded with the disk failing part of it says so when nobody asked to be told. */
+function sayUnsigned(sentence: string): void {
+  process.stderr.write(`${sentence}\n`);
 }
 
 /** What is asked of the trees before any writer opens over them: it throws to refuse. */
@@ -372,6 +382,7 @@ export function openTreeForWriting(
     keyRoot,
     citeHeads: true,
     onNewTail: sayNewTail,
+    onUnsigned: sayUnsigned,
     ...(installationRoot === undefined || projectPublic === undefined
       ? {}
       : { installationRoot, continues: () => recordLeftBehind(dirname(projectPublic)) }),

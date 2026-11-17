@@ -60,6 +60,7 @@
 import {
   closeSync,
   existsSync,
+  fstatSync,
   mkdirSync,
   openSync,
   readFileSync,
@@ -82,6 +83,7 @@ import {
 } from './checkpoint.js';
 import { type Cited, HeadsToCite } from './cited-heads.js';
 import { CodedError } from './coded-error.js';
+import { recordedNotSigned, signatureNotConfirmed, WriteNotLandedError } from './disk-words.js';
 import { appendDurably, writeFileDurably } from './durable.js';
 import {
   type ChainEntry,
@@ -164,6 +166,13 @@ export interface WriterOptions {
    * this.
    */
   readonly onNewTail?: (opened: NewTail) => void;
+  /**
+   * Told, in a sentence, when a fact is on the tail and the disk failed what came after it (its
+   * signature, or the sync of its line): the write succeeded and says so instead of failing
+   * ({@link recordedNotSigned}). A write the disk refused before any of it landed is not told here:
+   * it throws {@link WriteNotLandedError}. Unset, the sentence is lost.
+   */
+  readonly onUnsigned?: (sentence: string) => void;
   /**
    * The record this directory continues, asked only where none of its tails names one yet
    * (`recordToWriteUnder`, step 3): a project's private tree founded in the repository's git
@@ -358,6 +367,12 @@ export class ChainWriter {
   private tailId: string;
   private readonly citeHeads: boolean;
   private readonly onNewTail: ((opened: NewTail) => void) | undefined;
+  private readonly onUnsigned: ((sentence: string) => void) | undefined;
+  /**
+   * Set when a line landed and the disk failed its sync: that fact is told as not yet signed, so
+   * nothing signs it until the next append of this writer, whose checkpoint covers it.
+   */
+  private holdSigning = false;
   /** {@link WriterOptions.continues}. */
   private readonly continues: (() => string | undefined) | undefined;
   /** {@link WriterOptions.joins}. */
@@ -409,6 +424,7 @@ export class ChainWriter {
     this.tailId = `${keyPair.fingerprint}-${installationId}`;
     this.citeHeads = options.citeHeads === true;
     this.onNewTail = options.onNewTail;
+    this.onUnsigned = options.onUnsigned;
     this.continues = options.continues;
     this.joins = options.joins;
     this.heads = this.citeHeads ? new HeadsToCite(layout, this.tailId, upcasters) : undefined;
@@ -1034,7 +1050,8 @@ export class ChainWriter {
     const line = `${serializeEntry(entry)}\n`;
     const path = segmentPath(this.layout, this.tailId, this.segment);
     this.keepIntent(entry);
-    appendDurably(path, line);
+    this.holdSigning = false;
+    this.landOnTail(path, line, this.segmentBytes);
 
     this.headPrev = entry.link.prev;
     this.head = entry.link.hash;
@@ -1106,7 +1123,8 @@ export class ChainWriter {
     }
     const path = segmentPath(this.layout, this.tailId, this.segment);
     this.keepIntent(entries.at(-1) as Entry);
-    appendDurably(path, lines);
+    this.holdSigning = false;
+    this.landOnTail(path, lines, this.segmentBytes);
 
     this.headPrev = (entries.at(-1) as Entry).link.prev;
     this.head = prev;
@@ -1118,6 +1136,25 @@ export class ChainWriter {
 
     this.capUnsignedWindow();
     return entries;
+  }
+
+  /**
+   * Appends `text` to the segment at `path`, which held `before` bytes, and tells a disk that
+   * failed it apart from a line that did not land. The call can throw after its bytes are in the
+   * file (the sync), so the end of the file decides: where it ends in `text`, the line is on the
+   * tail, the write goes on as the success it is, and signing waits for the next append, with the
+   * disk's error told as a sentence ({@link recordedNotSigned}); where it does not, nothing landed
+   * and the refusal names the errno ({@link WriteNotLandedError}). Whatever partial bytes a failed
+   * append left are cut by the next act's recovery, as a crash's are.
+   */
+  private landOnTail(path: string, text: string, before: number): void {
+    try {
+      appendDurably(path, text);
+    } catch (error) {
+      if (!endsWith(path, text, before)) throw new WriteNotLandedError(error);
+      this.holdSigning = true;
+      this.onUnsigned?.(recordedNotSigned(error));
+    }
   }
 
   /**
@@ -1234,6 +1271,8 @@ export class ChainWriter {
     // A tail with no beginning is signed over by nobody: what is above its coverage is not a range
     // a checkpoint may claim. (A cut end signs nothing already, as nextSeq stops at the coverage.)
     if (this.damage?.startsAt !== undefined) throw this.damage;
+    // A line whose sync failed was told as not yet signed: it is signed by the next append.
+    if (this.holdSigning) return null;
     const fromSeq = this.lastCheckpointedSeq + 1;
     const toSeq = this.nextSeq - 1;
     if (toSeq < fromSeq) return null;
@@ -1248,7 +1287,21 @@ export class ChainWriter {
     });
     const path = checkpointsPath(this.layout, this.tailId);
     ensureDir(path);
-    appendDurably(path, `${serializeCheckpoint(checkpoint)}\n`);
+    const line = `${serializeCheckpoint(checkpoint)}\n`;
+    const before = Math.max(0, sizeOf(path));
+    try {
+      appendDurably(path, line);
+    } catch (error) {
+      // The events are on the tail already, so this is not a write that failed. Where the line
+      // is not at the file's end the checkpoint did not land: the buffer stays intact, the state
+      // stays as it was, and the next write signs the same range. Where it is, it landed and
+      // only its sync failed, which is told as that.
+      if (!endsWith(path, line, before)) {
+        this.onUnsigned?.(recordedNotSigned(error));
+        return null;
+      }
+      this.onUnsigned?.(signatureNotConfirmed(error));
+    }
     // Advanced only after the checkpoint reached the file, so a failed append
     // leaves the buffer intact and a retry signs the same range again.
     this.lastCheckpointedSeq = toSeq;
@@ -1619,6 +1672,22 @@ function sizeOf(filePath: string): number {
     return statSync(filePath).size;
   } catch {
     return -1;
+  }
+}
+
+/** Whether the file at `path`, which held `before` bytes, now ends in exactly `text`. */
+function endsWith(path: string, text: string, before: number): boolean {
+  const bytes = Buffer.from(text, 'utf-8');
+  let fd: number | undefined;
+  try {
+    fd = openSync(path, 'r');
+    if (fstatSync(fd).size !== before + bytes.length) return false;
+    const found = Buffer.alloc(bytes.length);
+    return readSync(fd, found, 0, bytes.length, before) === bytes.length && found.equals(bytes);
+  } catch {
+    return false;
+  } finally {
+    if (fd !== undefined) closeSync(fd);
   }
 }
 

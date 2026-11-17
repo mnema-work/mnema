@@ -1026,10 +1026,17 @@ export function openWrite(session: Session, scope: Scope, target?: WriteTarget):
   // AN ALTERED ENTRY REFUSES THE WRITE, whatever it is and wherever it lands: this is the one door
   // every write of the server opens through, so no tool has to remember it (ADR-396).
   refuseWhileAltered(alteredEntriesOf(session, trees));
-  const tellTheAgent = (opened: NewTail): void => {
-    session.newTails.add(opened);
-    // The host's log keeps hearing it, as it did before a reply carried it.
-    session.log(describeNewTail(opened));
+  const tellTheAgent = {
+    onNewTail: (opened: NewTail): void => {
+      session.newTails.add(opened);
+      // The host's log keeps hearing it, as it did before a reply carried it.
+      session.log(describeNewTail(opened));
+    },
+    // A fact on the tail whose signature the disk failed: the reply says it, in the writer's words.
+    onUnsigned: (sentence: string): void => {
+      session.newTails.addSentence(sentence);
+      session.log(sentence);
+    },
   };
   session.recordPage.opened(trees.projectPublic, keyRootsOf(trees));
   const which = whichIn(trees, scope, session);
@@ -1129,7 +1136,15 @@ export class NewTailsOwed {
     this.held.push(describeNewTail(opened));
   }
 
-  /** The sentences owed since the last take (none when no tail was opened) and forgets them. */
+  /**
+   * Holds a sentence the writer worded for the reply (a fact on the tail whose signature the disk
+   * failed), beside the tails: one place the reply asks, and the same order the writes were made.
+   */
+  addSentence(sentence: string): void {
+    this.held.push(sentence);
+  }
+
+  /** The sentences owed since the last take (none when nothing was told) and forgets them. */
   take(): string[] {
     const was = this.held;
     this.held = [];
@@ -1486,15 +1501,18 @@ export function writeContext(
   trees: ResolvedTrees,
   scope: Scope,
   caches: CacheRegistry,
-  onNewTail?: (opened: NewTail) => void,
+  told?: {
+    readonly onNewTail: (opened: NewTail) => void;
+    readonly onUnsigned: (sentence: string) => void;
+  },
 ): WriteContext {
   const root = chainRootForScope(trees, scope);
   // An absent tree has no cache to invalidate; `openTreeForWriting` below is
   // what refuses it, so the honest error still comes from one place.
   if (root !== undefined) caches.invalidate(root);
   return {
-    // Unasked, the writer says a new tail on standard error: a close, and a caller with no reply.
-    writer: openTreeForWriting(trees, scope, onNewTail === undefined ? {} : { onNewTail }),
+    // Unasked, the writer says a new tail, or a fact left unsigned, on standard error: a close, and a caller with no reply.
+    writer: openTreeForWriting(trees, scope, told === undefined ? {} : told),
     layout: { root: root as string },
     upcasters: catalogUpcasters(),
     roster: (anchor) => caches.rosterAsOfNow(root as string, anchor),

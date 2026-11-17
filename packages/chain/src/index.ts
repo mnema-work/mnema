@@ -43,6 +43,12 @@ export {
 export { CodedError } from './chain/coded-error.js';
 export { decisionTexts, precedesItsText } from './chain/decision-text.js';
 export {
+  recordedNotSigned,
+  signatureNotConfirmed,
+  WriteNotLandedError,
+  whatTheDiskSaid,
+} from './chain/disk-words.js';
+export {
   type IdentityIssue,
   type IdentityResolution,
   type RetiredElsewhere,
