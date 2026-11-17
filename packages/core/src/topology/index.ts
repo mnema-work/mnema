@@ -23,10 +23,12 @@
 export {
   type Assigned,
   assignDestination,
+  assignGlobalDestination,
   BACKUP_CONFIG,
   BackupConfigError,
   backupConfigPath,
   destinationOf,
+  globalDestinationOf,
   readBackupConfig,
   whyNotADestination,
 } from './backup/config.js';

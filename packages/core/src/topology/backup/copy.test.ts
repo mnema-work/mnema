@@ -216,3 +216,33 @@ describe('copying a tree into a folder', () => {
     });
   });
 });
+
+describe('the global tree', () => {
+  it('is copied to <destination>/global/, under no record name, with a manifest that names none', () => {
+    put(tree, 'diagnostics.jsonl', '{"problem":"x"}\n');
+    put(tree, 'report-state.json', '{}');
+    const done = writeCopy(prepareCopy(tree, destination, undefined, 'global'), NOW);
+    expect(done.folder).toBe(join(destination, 'global'));
+    const held = filesUnder(destination);
+    expect(held).toContain('global/mnema-backup.json');
+    expect(held).toContain(`global/tails/${TAIL}/000001.jsonl`);
+    expect(held.filter((file) => /diagnostics|report-state/.test(file))).toEqual([]);
+    const manifest = JSON.parse(
+      readFileSync(join(destination, 'global', BACKUP_MANIFEST), 'utf-8'),
+    );
+    expect(manifest.tree).toBe('global');
+    expect('record' in manifest).toBe(false);
+  });
+
+  it('only grows, says how far it is, and refuses a link where it is kept', () => {
+    writeCopy(prepareCopy(tree, destination, undefined, 'global'), NOW);
+    expect(standingOfCopy(tree, destination, undefined, 'global')).toMatchObject({ behind: 0 });
+    put(tree, `tails/${TAIL}/000001.jsonl`, 'rewritten\n');
+    expect(() => prepareCopy(tree, destination, undefined, 'global')).toThrow(BackupRefusedError);
+    const elsewhere = join(base, 'elsewhere');
+    mkdirSync(elsewhere);
+    const linked = join(base, 'linked');
+    symlinkSync(elsewhere, join(linked), 'dir');
+    expect(() => prepareCopy(tree, linked, undefined, 'global')).toThrow(/symbolic link/);
+  });
+});

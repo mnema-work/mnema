@@ -9,6 +9,11 @@
  * tree always, and the public one only where there is no git to keep it (a repository's history
  * is the public tree's own backup).
  *
+ * THE GLOBAL TREE IS ANOTHER THING (ADR-388): it mixes the memory of every project of the machine, so
+ * a project's `run` never copies it, whatever folder the project has. It is copied only by `run
+ * --global`, to the folder `setup --global` assigned to it and to no other, as `<folder>/global/`.
+ * It has no record name, and works outside a project.
+ *
  * IT RECORDS NOTHING. It reads the trees, and writes the folder and `backup.json` in the data
  * directory. The private key is never copied: it stays on this machine.
  */
@@ -18,6 +23,7 @@ import { resolve } from 'node:path';
 import { recordNamedIn } from '@mnema/chain';
 import {
   assignDestination,
+  assignGlobalDestination,
   BackupConfigError,
   BackupRefusedError,
   type BackupTree,
@@ -25,6 +31,7 @@ import {
   type CopyStanding,
   type DiscoveryEnv,
   destinationOf,
+  globalDestinationOf,
   prepareCopy,
   readBackupConfig,
   resolveTrees,
@@ -44,6 +51,7 @@ export type BackupRefused =
   | { readonly ok: false; readonly reason: 'NO_PROJECT' }
   | { readonly ok: false; readonly reason: 'NO_RECORD_NAME'; readonly message: string }
   | { readonly ok: false; readonly reason: 'NO_DESTINATION'; readonly message: string }
+  | { readonly ok: false; readonly reason: 'NO_GLOBAL_DESTINATION'; readonly message: string }
   | { readonly ok: false; readonly reason: 'BAD_DESTINATION'; readonly message: string }
   | {
       readonly ok: false;
@@ -99,6 +107,30 @@ function refusedBy(error: unknown): BackupRefused {
   throw error;
 }
 
+/** Why `destination` cannot keep a backup, as a refusal, or undefined where it can. */
+function badFolder(
+  destination: string,
+  resolved: ReturnType<typeof resolveTrees>,
+): BackupRefused | undefined {
+  const why = whyNotADestination(destination, resolved);
+  if (why !== undefined) return { ok: false, reason: 'BAD_DESTINATION', message: why };
+  if (lstatSync(destination, { throwIfNoEntry: false })?.isSymbolicLink()) {
+    return {
+      ok: false,
+      reason: 'BAD_DESTINATION',
+      message: `${destination} is a symbolic link, and a backup is written to its own folder: a run follows no link there, which can point outside it. Name the folder it points to.`,
+    };
+  }
+  if (existsSync(destination) && !statSync(destination).isDirectory()) {
+    return {
+      ok: false,
+      reason: 'BAD_DESTINATION',
+      message: `${destination} exists and is not a folder.`,
+    };
+  }
+  return undefined;
+}
+
 /** What `setup` assigned. */
 export interface BackupSetUp {
   readonly ok: true;
@@ -119,22 +151,8 @@ export function checkBackupSetup(
   const project = projectOf(ctx);
   if ('ok' in project) return project;
   const destination = resolve(ctx.cwd, folder);
-  const why = whyNotADestination(destination, project.resolved);
-  if (why !== undefined) return { ok: false, reason: 'BAD_DESTINATION', message: why };
-  if (lstatSync(destination, { throwIfNoEntry: false })?.isSymbolicLink()) {
-    return {
-      ok: false,
-      reason: 'BAD_DESTINATION',
-      message: `${destination} is a symbolic link, and a backup is written to its own folder: a run follows no link there, which can point outside it. Name the folder it points to.`,
-    };
-  }
-  if (existsSync(destination) && !statSync(destination).isDirectory()) {
-    return {
-      ok: false,
-      reason: 'BAD_DESTINATION',
-      message: `${destination} exists and is not a folder.`,
-    };
-  }
+  const bad = badFolder(destination, project.resolved);
+  if (bad !== undefined) return bad;
   return { ok: true, record: project.record, destination };
 }
 
@@ -255,6 +273,131 @@ export function runBackupStatus(ctx: BackupContext): BackupStatus | BackupRefuse
       })),
       noPrivateTree: !project.trees.some(([tree]) => tree === 'private'),
       publicIsInGit: project.resolved.projectPublicMachinery !== undefined,
+    };
+  } catch (error) {
+    return refusedBy(error);
+  }
+}
+
+/** The global tree, which belongs to the machine: no project and no record name are needed to find it. */
+interface Machine {
+  /** The global tree's root, or undefined where this machine has none yet (nothing was ever written to it). */
+  readonly root: string | undefined;
+  readonly configPath: string;
+  readonly resolved: ReturnType<typeof resolveTrees>;
+}
+
+function machineOf(ctx: BackupContext): Machine {
+  const resolved = resolveTrees(ctx.cwd, ctx.env);
+  return {
+    root: existsSync(resolved.global) ? resolved.global : undefined,
+    configPath: backupConfigPath(resolved),
+    resolved,
+  };
+}
+
+/** Whether `folder` may keep the global tree's backup. Asked BEFORE the person is asked to confirm anything. */
+export function checkGlobalBackupSetup(
+  ctx: BackupContext,
+  folder: string,
+): { readonly ok: true; readonly destination: string } | BackupRefused {
+  const machine = machineOf(ctx);
+  const destination = resolve(ctx.cwd, folder);
+  const bad = badFolder(destination, machine.resolved);
+  if (bad !== undefined) return bad;
+  return { ok: true, destination };
+}
+
+/** What `setup --global` assigned. */
+export interface GlobalBackupSetUp {
+  readonly ok: true;
+  readonly destination: string;
+  readonly replaced: string | undefined;
+}
+
+/** Assigns the folder to the global tree. The person's confirmation comes before this, in the wiring. */
+export function runGlobalBackupSetup(
+  ctx: BackupContext,
+  folder: string,
+  now: Date = new Date(),
+): GlobalBackupSetUp | BackupRefused {
+  const checked = checkGlobalBackupSetup(ctx, folder);
+  if (!checked.ok) return checked;
+  try {
+    const { replaced } = assignGlobalDestination(
+      machineOf(ctx).configPath,
+      checked.destination,
+      now,
+    );
+    return { ok: true, destination: checked.destination, replaced };
+  } catch (error) {
+    return refusedBy(error);
+  }
+}
+
+/** The folder the global tree was assigned, or the refusal that says it has none. */
+function globalAssigned(machine: Machine): string | BackupRefused {
+  let destination: string | undefined;
+  try {
+    destination = globalDestinationOf(machine.configPath);
+  } catch (error) {
+    return refusedBy(error);
+  }
+  if (destination === undefined) {
+    return {
+      ok: false,
+      reason: 'NO_GLOBAL_DESTINATION',
+      message:
+        'The global tree has no folder for its backup, and it takes none from a project: run `mnema backup setup --global <folder>`.',
+    };
+  }
+  return destination;
+}
+
+/** What `run --global` copied. */
+export interface GlobalBackupRun {
+  readonly ok: true;
+  readonly destination: string;
+  /** Undefined where this machine has no global tree yet, so there was nothing to copy. */
+  readonly copied: { readonly files: number; readonly written: number } | undefined;
+}
+
+/** Copies the global tree, and only it, into the folder it was assigned. */
+export function runGlobalBackupRun(
+  ctx: BackupContext,
+  now: Date = new Date(),
+): GlobalBackupRun | BackupRefused {
+  const machine = machineOf(ctx);
+  const destination = globalAssigned(machine);
+  if (typeof destination !== 'string') return destination;
+  if (machine.root === undefined) return { ok: true, destination, copied: undefined };
+  try {
+    const done = writeCopy(prepareCopy(machine.root, destination, undefined, 'global'), now);
+    return { ok: true, destination, copied: { files: done.files, written: done.written } };
+  } catch (error) {
+    return refusedBy(error);
+  }
+}
+
+/** How the copy of the global tree stands. */
+export interface GlobalBackupStatus {
+  readonly ok: true;
+  readonly destination: string;
+  /** Undefined where this machine has no global tree yet. */
+  readonly standing: CopyStanding | undefined;
+}
+
+/** Says where the global tree's copy is and how far it is from the tree. Writes nothing. */
+export function runGlobalBackupStatus(ctx: BackupContext): GlobalBackupStatus | BackupRefused {
+  const machine = machineOf(ctx);
+  const destination = globalAssigned(machine);
+  if (typeof destination !== 'string') return destination;
+  if (machine.root === undefined) return { ok: true, destination, standing: undefined };
+  try {
+    return {
+      ok: true,
+      destination,
+      standing: standingOfCopy(machine.root, destination, undefined, 'global'),
     };
   } catch (error) {
     return refusedBy(error);

@@ -5,9 +5,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { ResolvedTrees } from '../resolve.js';
 import {
   assignDestination,
+  assignGlobalDestination,
   BackupConfigError,
   backupConfigPath,
   destinationOf,
+  globalDestinationOf,
   readBackupConfig,
   whyNotADestination,
 } from './config.js';
@@ -44,6 +46,25 @@ describe('which folder keeps which project', () => {
     assignDestination(path, 'record-b', '/two', NOW);
     expect(assignDestination(path, 'record-a', '/three', NOW).replaced).toBe('/one');
     expect(destinationOf(readBackupConfig(path), 'record-b')).toBe('/two');
+  });
+
+  it("keeps the global tree's folder apart from every project's, whichever is assigned last", () => {
+    expect(globalDestinationOf(path)).toBeUndefined();
+    assignDestination(path, 'record-a', '/one', NOW);
+    expect(globalDestinationOf(path)).toBeUndefined();
+    expect(assignGlobalDestination(path, '/global', NOW).replaced).toBeUndefined();
+    assignDestination(path, 'record-b', '/two', NOW);
+    expect(assignGlobalDestination(path, '/other', NOW).replaced).toBe('/global');
+    const held = readBackupConfig(path);
+    expect(globalDestinationOf(path)).toBe('/other');
+    expect([...held.keys()]).toEqual(['record-a', 'record-b']);
+    expect(destinationOf(held, 'record-a')).toBe('/one');
+  });
+
+  it('refuses a global entry it cannot read', () => {
+    mkdirSync(join(base, 'data'));
+    writeFileSync(path, '{"projects":{},"global":{"destination":3}}');
+    expect(() => globalDestinationOf(path)).toThrow(/the global tree/);
   });
 
   it('refuses a file it cannot read, and does not overwrite it', () => {

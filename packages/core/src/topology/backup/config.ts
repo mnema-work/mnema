@@ -5,7 +5,9 @@
  * that keeps its copy (ADR-386). A machine has as many folders as it has projects that asked for
  * one, and a project has the folder it was assigned and no other: nothing is inherited, so a
  * project that was never set up has no destination, however many the machine knows
- * ({@link destinationOf}). The data directory is the one the key root sits in; it is the
+ * ({@link destinationOf}). The machine's global tree has its own assignment, apart from every
+ * project's (ADR-388): a project's folder is never the global tree's, and the global tree's is
+ * never a project's by default. The data directory is the one the key root sits in; it is the
  * machine's, never a project's, and it holds no key of its own here.
  */
 
@@ -40,11 +42,23 @@ export function backupConfigPath(trees: Pick<ResolvedTrees, 'keyRoot'>): string 
   return join(dirname(trees.keyRoot), BACKUP_CONFIG);
 }
 
-/** The assignments the machine holds, by the name of the record. Absent file: none. */
-export function readBackupConfig(path: string): ReadonlyMap<string, Assigned> {
+interface Whole {
+  readonly projects: ReadonlyMap<string, Assigned>;
+  readonly global: Assigned | undefined;
+}
+
+function oneAssignment(path: string, what: string, one: unknown): Assigned {
+  const { destination, setUpAt } = (one ?? {}) as Partial<Assigned>;
+  if (typeof destination !== 'string' || typeof setUpAt !== 'string') {
+    throw new BackupConfigError(`${path} holds an entry for ${what} it cannot read.`);
+  }
+  return { destination, setUpAt };
+}
+
+function readWhole(path: string): Whole {
   const held = lstatSync(path, { throwIfNoEntry: false });
-  const assigned = new Map<string, Assigned>();
-  if (held === undefined) return assigned;
+  const projects = new Map<string, Assigned>();
+  if (held === undefined) return { projects, global: undefined };
   if (held.isSymbolicLink() || !held.isFile()) {
     throw new BackupConfigError(`${path} is not a plain file, and it is not read.`);
   }
@@ -54,18 +68,30 @@ export function readBackupConfig(path: string): ReadonlyMap<string, Assigned> {
   } catch {
     throw new BackupConfigError(`${path} is not JSON, so what it says of the backups is unknown.`);
   }
-  const projects = (parsed as { projects?: unknown } | null)?.projects;
-  if (typeof projects !== 'object' || projects === null || Array.isArray(projects)) {
+  const named = (parsed ?? {}) as { projects?: unknown; global?: unknown };
+  if (
+    typeof named.projects !== 'object' ||
+    named.projects === null ||
+    Array.isArray(named.projects)
+  ) {
     throw new BackupConfigError(`${path} has no "projects" object, so what it says is unknown.`);
   }
-  for (const [record, one] of Object.entries(projects)) {
-    const { destination, setUpAt } = (one ?? {}) as Partial<Assigned>;
-    if (typeof destination !== 'string' || typeof setUpAt !== 'string') {
-      throw new BackupConfigError(`${path} holds an entry for ${record} it cannot read.`);
-    }
-    assigned.set(record, { destination, setUpAt });
+  for (const [record, one] of Object.entries(named.projects)) {
+    projects.set(record, oneAssignment(path, record, one));
   }
-  return assigned;
+  const global =
+    named.global === undefined ? undefined : oneAssignment(path, 'the global tree', named.global);
+  return { projects, global };
+}
+
+/** The assignments the machine holds, by the name of the record. Absent file: none. */
+export function readBackupConfig(path: string): ReadonlyMap<string, Assigned> {
+  return readWhole(path).projects;
+}
+
+/** The folder assigned to the machine's global tree, and nothing else: no project's, no default. */
+export function globalDestinationOf(path: string): string | undefined {
+  return readWhole(path).global?.destination;
 }
 
 /** The folder assigned to the record named `record`, and nothing else: no default, no other project's. */
@@ -76,6 +102,22 @@ export function destinationOf(
   return assigned.get(record)?.destination;
 }
 
+function writeWhole(path: string, whole: Whole): void {
+  const text = `${JSON.stringify(
+    {
+      format: 1,
+      projects: Object.fromEntries(whole.projects),
+      ...(whole.global === undefined ? {} : { global: whole.global }),
+    },
+    null,
+    2,
+  )}\n`;
+  mkdirSync(dirname(path), { recursive: true });
+  const staging = `${path}.${process.pid}.partial`;
+  writeFileSync(staging, text, { flag: 'wx' });
+  renameSync(staging, path);
+}
+
 /** Assigns `destination` to `record`, keeping every other assignment, and says what it replaced. */
 export function assignDestination(
   path: string,
@@ -83,15 +125,26 @@ export function assignDestination(
   destination: string,
   now: Date,
 ): { readonly replaced: string | undefined } {
-  const assigned = new Map(readBackupConfig(path));
-  const replaced = assigned.get(record)?.destination;
-  assigned.set(record, { destination, setUpAt: now.toISOString() });
-  const text = `${JSON.stringify({ format: 1, projects: Object.fromEntries(assigned) }, null, 2)}\n`;
-  mkdirSync(dirname(path), { recursive: true });
-  const staging = `${path}.${process.pid}.partial`;
-  writeFileSync(staging, text, { flag: 'wx' });
-  renameSync(staging, path);
+  const whole = readWhole(path);
+  const projects = new Map(whole.projects);
+  const replaced = projects.get(record)?.destination;
+  projects.set(record, { destination, setUpAt: now.toISOString() });
+  writeWhole(path, { projects, global: whole.global });
   return { replaced };
+}
+
+/** Assigns `destination` to the global tree, keeping every project's, and says what it replaced. */
+export function assignGlobalDestination(
+  path: string,
+  destination: string,
+  now: Date,
+): { readonly replaced: string | undefined } {
+  const whole = readWhole(path);
+  writeWhole(path, {
+    projects: whole.projects,
+    global: { destination, setUpAt: now.toISOString() },
+  });
+  return { replaced: whole.global?.destination };
 }
 
 /**

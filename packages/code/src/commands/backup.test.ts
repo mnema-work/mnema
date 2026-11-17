@@ -21,7 +21,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { runBackupRun, runBackupSetup, runBackupStatus } from './backup.js';
+import {
+  runBackupRun,
+  runBackupSetup,
+  runBackupStatus,
+  runGlobalBackupRun,
+  runGlobalBackupSetup,
+  runGlobalBackupStatus,
+} from './backup.js';
 import { runInit } from './init.js';
 import { runTask } from './task.js';
 
@@ -227,5 +234,119 @@ describe('the backup of two projects on one machine', () => {
     expect(runBackupRun(a)).toMatchObject({ ok: false, code: 'LINKED' });
     expect(filesUnder(folder)).toEqual([]);
     expect(readFileSync(join(env.home, '.mnema', 'backup.json'), 'utf-8')).toContain(folder);
+  });
+});
+
+describe("the backup of the machine's global tree", () => {
+  /** A project with a task in the global tree too, so there is something of it to copy. */
+  function withGlobal(label: string) {
+    const ctx = project(label, false);
+    expect(runTask(ctx, { title: `memory of ${label}`, scope: 'global' }).ok).toBe(true);
+    return ctx;
+  }
+
+  it("has no folder until it is given one, and a project's folder is not its folder", () => {
+    const a = withGlobal('alpha');
+    expect(runBackupSetup(a, join(sandbox, 'folder-a')).ok).toBe(true);
+    for (const result of [runGlobalBackupRun(a), runGlobalBackupStatus(a)]) {
+      expect(result).toMatchObject({ ok: false, reason: 'NO_GLOBAL_DESTINATION' });
+    }
+    expect(filesUnder(join(sandbox, 'folder-a')).some((file) => file.includes('global'))).toBe(
+      false,
+    );
+  });
+
+  it("is copied only by a global run, only to its own folder, and never by a project's run", () => {
+    const a = withGlobal('alpha');
+    const folderA = join(sandbox, 'folder-a');
+    const folderG = join(sandbox, 'folder-g');
+    expect(runBackupSetup(a, folderA).ok).toBe(true);
+    expect(runGlobalBackupSetup(a, folderG).ok).toBe(true);
+
+    expect(runBackupRun(a).ok).toBe(true);
+    expect(filesUnder(folderG)).toEqual([]);
+    expect(filesUnder(folderA).some((file) => file.startsWith('global/'))).toBe(false);
+
+    const done = runGlobalBackupRun(a);
+    expect(done.ok && done.copied !== undefined && done.copied.files > 0).toBe(true);
+    const held = filesUnder(folderG);
+    expect(held.length).toBeGreaterThan(0);
+    expect(held.every((file) => file.startsWith('global/'))).toBe(true);
+    expect(held).toContain('global/mnema-backup.json');
+    // The project's folder holds what it held before the global run, and the global folder none of a project's.
+    expect(filesUnder(folderA).every((file) => !file.startsWith('global/'))).toBe(true);
+    const manifest = JSON.parse(
+      readFileSync(join(folderG, 'global', 'mnema-backup.json'), 'utf-8'),
+    );
+    expect(manifest).toMatchObject({ tree: 'global' });
+    expect(manifest.record).toBeUndefined();
+  });
+
+  it('copies the same folder for a project and for the global tree without mixing them', () => {
+    const a = withGlobal('alpha');
+    const folder = join(sandbox, 'shared');
+    const set = runBackupSetup(a, folder);
+    expect(set.ok && runGlobalBackupSetup(a, folder).ok).toBe(true);
+    if (!set.ok) return;
+    expect(runBackupRun(a).ok && runGlobalBackupRun(a).ok).toBe(true);
+    const roots = new Set(filesUnder(folder).map((file) => file.split('/')[0]));
+    expect(roots).toEqual(new Set([set.record, 'global']));
+  });
+
+  it('copies neither the diagnostics log nor the report state, and nothing of the key root', () => {
+    const a = withGlobal('alpha');
+    const folderG = join(sandbox, 'folder-g');
+    expect(runGlobalBackupSetup(a, folderG).ok).toBe(true);
+    const trees = resolveTrees(a.cwd, env);
+    writeFileSync(join(trees.global, 'diagnostics.jsonl'), '{"problem":"x"}\n');
+    writeFileSync(join(trees.global, 'report-state.json'), '{"switch":true}');
+    mkdirSync(trees.keyRoot, { recursive: true });
+    writeFileSync(join(trees.keyRoot, 'machine.key'), 'machine key material');
+    expect(runGlobalBackupRun(a).ok).toBe(true);
+    const held = filesUnder(folderG);
+    expect(held.filter((file) => /diagnostics|report-state|\.key$|identity/.test(file))).toEqual(
+      [],
+    );
+    expect(held.some((file) => file.endsWith('.jsonl'))).toBe(true);
+  });
+
+  it('works outside a project, and says there is no global tree yet where there is none', () => {
+    const outside = { cwd: sandbox, env };
+    const folder = join(sandbox, 'folder-g');
+    expect(runGlobalBackupSetup(outside, folder).ok).toBe(true);
+    expect(runGlobalBackupRun(outside)).toMatchObject({ ok: true, copied: undefined });
+    expect(runGlobalBackupStatus(outside)).toMatchObject({ ok: true, standing: undefined });
+    expect(filesUnder(folder)).toEqual([]);
+  });
+
+  it('keeps each assignment when the other is made, and says what a second one replaced', () => {
+    const a = withGlobal('alpha');
+    const folderA = join(sandbox, 'folder-a');
+    const first = join(sandbox, 'g1');
+    const second = join(sandbox, 'g2');
+    expect(runGlobalBackupSetup(a, first)).toMatchObject({ ok: true, replaced: undefined });
+    expect(runBackupSetup(a, folderA).ok).toBe(true);
+    expect(runGlobalBackupSetup(a, second)).toMatchObject({ ok: true, replaced: first });
+    expect(runBackupStatus(a)).toMatchObject({ ok: true, destination: folderA });
+    expect(runGlobalBackupStatus(a)).toMatchObject({ ok: true, destination: second });
+  });
+
+  it('says how far the copy is, and refuses a folder inside the data directory', () => {
+    const a = withGlobal('alpha');
+    const folder = join(sandbox, 'folder-g');
+    expect(runGlobalBackupSetup(a, folder).ok).toBe(true);
+    const before = runGlobalBackupStatus(a);
+    expect(
+      before.ok &&
+        before.standing !== undefined &&
+        before.standing.behind === before.standing.files,
+    ).toBe(true);
+    runGlobalBackupRun(a);
+    const after = runGlobalBackupStatus(a);
+    expect(after.ok && after.standing?.behind).toBe(0);
+    expect(runGlobalBackupSetup(a, join(env.home, '.mnema', 'copy'))).toMatchObject({
+      ok: false,
+      reason: 'BAD_DESTINATION',
+    });
   });
 });
