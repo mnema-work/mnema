@@ -264,7 +264,7 @@ if they were events. The layout, which only ever appeared here incidentally in �
 <record>/.editorconfig                          `unset` for every property an outer EditorConfig could impose on these bytes; written by `init`; not part of the proof
 <record>/README.md                              written by `init`, for a person or an agent who opens the folder; not part of the proof
 <record>/site/                                  the page `mnema site` writes by default; ignored by the tree's .gitignore; not part of the proof
-<record>/locks/                                 outside a git repository, and in one `<common git dir>/mnema/<project>/public/locks/`, shared by every worktree, inside one: the lock of each tail while a write holds it (`<tailId>.lock`), the note of which heads a tail last cited (`<tailId>.cited`), the note of the last entry this installation wrote to its tail (`<tailId>.head`) and the same note with the entry before it and the coverage it was written under, signed with the tail's own key under the scheme `mnema-written-head/1` (`<tailId>.head.sig`), without which a writer signs none of the events it finds above its tail's last checkpoint; it is signed before each append as well, naming in `next` (`{"hash","seq"}`, null once the act ended) the last entry the append is about to write, so the events of an act killed before its end are signed by the next write of that key in the same tail, and an end it names that the tail no longer holds is never appended to, whatever the clear note says (the write goes to a new tail), unless an earlier signed note of that tail is put back with the cut: a signed note carries no counter, so an earlier one still verifies and the write chains on; and the projection a reader keeps (`projection.db`, and the files SQLite keeps beside it); ignored by the tree's .gitignore; never read by a reader; deleting it costs a rebuild, one repeated citation or one new tail, and leaves unsigned the events above a tail's last checkpoint that no signed note vouches for, which `--require signed` refuses as it refuses any unsigned event; inside a repository, the record's own `locks/` then holds the projection, and the notes an earlier mnema left there, which the next write of their key moves; not part of the proof
+<record>/locks/                                 outside a git repository, and in one `<common git dir>/mnema/<project>/public/locks/`, shared by every worktree, inside one: the lock of each tail while a write holds it (`<tailId>.lock`), the note of which heads a tail last cited directly (`<tailId>.cited`), the note of the heads its citations cover and which tail covers each (`<tailId>.covered`), the index of what a tail cites, which any writer of the record keeps for the tails it reads (`<tailId>.citations`), the note of the last entry this installation wrote to its tail (`<tailId>.head`) and the same note with the entry before it and the coverage it was written under, signed with the tail's own key under the scheme `mnema-written-head/1` (`<tailId>.head.sig`), without which a writer signs none of the events it finds above its tail's last checkpoint; it is signed before each append as well, naming in `next` (`{"hash","seq"}`, null once the act ended) the last entry the append is about to write, so the events of an act killed before its end are signed by the next write of that key in the same tail, and an end it names that the tail no longer holds is never appended to, whatever the clear note says (the write goes to a new tail), unless an earlier signed note of that tail is put back with the cut: a signed note carries no counter, so an earlier one still verifies and the write chains on; and the projection a reader keeps (`projection.db`, and the files SQLite keeps beside it); ignored by the tree's .gitignore; never read by a reader; deleting it costs a rebuild, a re-read of the tails, one repeated citation or one new tail, and leaves unsigned the events above a tail's last checkpoint that no signed note vouches for, which `--require signed` refuses as it refuses any unsigned event; inside a repository, the record's own `locks/` then holds the projection, and the notes an earlier mnema left there, which the next write of their key moves; not part of the proof
 <record>/inherit.json                           the record this one inherits, by its location and one commit (`mnema inherit`); committed; not part of the proof
 <record>/keys/<fingerprint>.pub                 the public keys (§6)
 <record>/tails/<tailId>/NNNNNN.jsonl            the segments, six digits, in name order
@@ -320,7 +320,7 @@ readers").
 the tail's lock held and before anything is sealed, it asks for every directory it writes in (`tails/`,
 its own tail, `keys/`, `locks/`, wherever §4 says that one is kept) and every file it writes (the tail's segments, `checkpoints.jsonl`,
 `tailproof.json`, the key's public file in `keys/`, and in `locks/` the tail's lock, its notes
-`<tail>.head`, `<tail>.head.sig` and `<tail>.cited`, and the staging file each is written through),
+`<tail>.head`, `<tail>.head.sig`, `<tail>.cited` and `<tail>.covered`, and the staging file each is written through; and the index `<tail>.citations` of each tail it reads, with its staging file, asked as that tail is read),
 and where one is a symbolic link it refuses with `RECORD_LINKED`, naming the path: nothing is written,
 nothing the link points at is opened, and it does not found a new tail in the link's place. The
 lock is asked before it is taken, since taking it is a write. A link elsewhere is for the readers
@@ -804,7 +804,9 @@ where the whole tie-break is written out).
 
 So a key's first event follows its enrolment whatever the two machines' clocks said, as
 long as it cites the head of the enroller's tail it had read, which is at or after the
-enrolment, since it was read after it. This product's writer always cites. An event that
+enrolment, since it was read after it. This product's writer cites the head of every tail
+that holds an enrolment directly, whatever other head covers it ("What this product's writer
+cites"). An event that
 cites nothing is placed by its `at` alone, as every event was before citations existed:
 then a second machine whose clock is behind the enroller's stamps its first event before
 the enrolment, and the fold refuses an honest record. Both halves are held over drawn
@@ -1291,7 +1293,8 @@ already written
 
 **Why the judgment binds the text.** An accept is a person's word on what they read, and what
 they had read is in the bytes: its own tail, and the heads its tail cites, which this product's
-writer cites at every append ("Reading many tails"). A writing dated back on a tail the judgment
+writer cites directly on every move, the head of every tail that holds the subject
+("Reading many tails"). A writing dated back on a tail the judgment
 never cited, appended after it or on a clone its writer had not pulled, is first in the merged
 order whatever it says, because `at` is the signer's to write; it is not what was accepted, and
 it is named, never served ("serves the text accepted, and names the writing dated back from an
@@ -2016,11 +2019,53 @@ existed before the entry citing it was written), the head with the smallest `at`
 so the order is total whatever the bytes say; that case is not held by a test, because an honest
 writer cannot produce it.
 
-**What this product's writer cites.** At every append, the head of each other tail of the same
+**What this product's writer cites.** The frontier of the heads of the other tails of the same
 record that its own tail has not cited yet, read off the disk as it writes: what existed when it
-wrote, and so nothing it cannot back. Nothing new to cite, no field
+wrote, and so nothing it cannot back. A citation orders the entry after the head it names and after
+everything that head's tail had cited, so a head that another tail's head already cites needs none of
+its own: the writer cites, in `after`, (a) the heads no other tail's head covers, (b) on a move
+(§6.7) and on a retraction (§6.4), the head of every tail that holds a line of the subject, (c) the
+head of every tail that holds the enrolment of a key (`identity.founded`, `key.enrolled`,
+`agent.enrolled`, `checker.enrolled`), and, for a fact of §6.2 itself (the ones that add, remove or
+vouch for a key: `identity.founded`, `key.enrolled`, `key.revoked`, `backup.declared`,
+`checker.enrolled`, `checker.retired`, `agent.enrolled`, `agent.retired`, `account.linked`), every
+head it has not cited directly. A tail that a `tail.pruned` names, one whose bytes this writer
+cannot read as canonical lines, and one whose key the record does not commit, cover nothing. An
+entry that cited every head grew with the number of tails and a record with their square: a
+first line among 300 tails took 20 KB, and now takes about 660 bytes, whatever the number
+(`packages/chain/src/chain/cited-heads.test.ts`, "a new tail among a hundred and fifty cites what no
+other head covers"). Nothing new to cite, no field
 (`packages/chain/src/chain/cited-heads.test.ts`, "cites the head of another tail the first time,
 and not again until that tail moves"). A writer cites the tails of its own record only.
+
+No reader changes, and a record written either way reads the same: the field, its form (a list,
+strictly ascending, never empty) and the rules of the merge are the ones above, and a writer that
+cites more is read exactly as before. In a record that holds every tail, the order and what a move
+had read are the ones citing every head gives, entry by entry
+(`packages/chain/src/chain/a-frontier-gives-the-order-every-head-gives.test.ts`), and both readers
+verify a record the frontier wrote (`a-record-the-frontier-wrote-is-read-by-both-readers.test.ts`, over
+`__fixtures__/written-by-the-frontier`).
+
+**What a partial record loses.** A record that does not hold every tail (a clone missing the tail
+that covered another, a tail cut by a waiver) has entries whose cover is not there: the citation of
+the cover is ignored and named in the census (above), and the entry is placed by its `at` where the
+cover would have held it back. What stays protected is what an entry's meaning rests on: the
+enrolments of §6.2 and what a move had read (§6.7), since both are cited directly. What can change
+position is informative: the order between subjects, and the writes that are not a move or a
+retraction (a rewrite of §6.8, a link made again after it was taken back, a stack adopted or
+removed, a channel switched). It needs clocks that disagree: with the clocks of one machine the
+order is the same. Measured on a record of 120 tails written with the clocks of its entries
+scattered a minute either side, with one tail removed at a time (117 removals), an entry changed
+position on average for 31.8 of 128, and for 90 at most, against the order citing every head would
+have given on the same removal; both readers verify every one of them, with one note, "citation not
+held", and no refusal.
+
+The writer keeps what it needs to tell what is covered in `locks/`, beside the notes of §4: for its
+own tail, `<tailId>.covered` (the heads in its past through another it cited, and the tail that
+covers each), and for every tail, `<tailId>.citations` (the hashes that tail cites, up to the line
+whose hash the note names). A note is believed only while the bytes of the tail agree with it, and
+is rebuilt from them otherwise: a reader never reads either, and deleting them costs a re-read
+of the tails.
 
 **What a citation fixes.** Three honest records the selection by `at` alone read wrong, each
 written by a machine whose clock is an hour behind, on top of what it had pulled
