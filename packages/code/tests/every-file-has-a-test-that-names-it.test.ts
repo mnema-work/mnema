@@ -1643,7 +1643,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/core/src/projections/the-projections-keep-what-the-record-said-and-invent-nothing.test.ts': 6,
   'packages/core/src/projections/tree-index.test.ts': 10,
   'packages/core/src/projections/upsert.test.ts': 2,
-  'packages/core/src/topology/backup/config.test.ts': 6,
+  'packages/core/src/topology/backup/config.test.ts': 7,
   'packages/core/src/topology/backup/copy.test.ts': 5,
   'packages/core/src/topology/base-branch.test.ts': 6,
   'packages/core/src/topology/compose.test.ts': 6,
