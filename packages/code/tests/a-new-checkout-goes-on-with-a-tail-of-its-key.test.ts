@@ -68,7 +68,12 @@ const sentences = (out: string): string[] =>
 function reftableGit(): boolean {
   const ran = spawnSync('git', ['--version'], {
     encoding: 'utf-8',
-    env: { ...ENV(), GIT_CONFIG_GLOBAL: GIT_WITHOUT_MAINTENANCE },
+    env: {
+      PATH: process.env.PATH ?? '',
+      HOME: tmpdir(),
+      GIT_CONFIG_NOSYSTEM: '1',
+      GIT_CONFIG_GLOBAL: GIT_WITHOUT_MAINTENANCE,
+    },
   });
   const [major, minor] = (/(\d+)\.(\d+)/.exec(ran.stdout) ?? []).slice(1).map(Number);
   return (major ?? 0) > 2 || ((major ?? 0) === 2 && (minor ?? 0) >= 45);

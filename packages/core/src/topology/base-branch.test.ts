@@ -117,7 +117,10 @@ describe('the time the questions of one write may take', () => {
 
 /** Whether this git can keep a repository in the reftable format (2.45 and later). */
 const REFTABLE = (() => {
-  const ran = spawnSync('git', ['--version'], { encoding: 'utf-8' });
+  const ran = spawnSync('git', ['--version'], {
+    encoding: 'utf-8',
+    env: { PATH: process.env.PATH ?? '', HOME: tmpdir(), GIT_CONFIG_NOSYSTEM: '1' },
+  });
   const [major, minor] = (/(\d+)\.(\d+)/.exec(ran.stdout) ?? []).slice(1).map(Number);
   return (major ?? 0) > 2 || ((major ?? 0) === 2 && (minor ?? 0) >= 45);
 })();
