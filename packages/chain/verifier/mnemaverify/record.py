@@ -43,7 +43,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import stat
 from typing import Any, NamedTuple, cast
 
 from . import bitcoin, enrolment, gaps, ots, retraction, schema, workflow
@@ -1219,12 +1218,12 @@ IO_REPARSE_TAG_MOUNT_POINT = 0xA0000003
 
 def is_link(path: str) -> bool:
     """A symbolic link, or on Windows a junction, by `lstat`: what is at `path` is never followed."""
+    if os.path.islink(path):
+        return True
     try:
         held = os.lstat(path)
     except OSError:
         return False
-    if stat.S_ISLNK(held.st_mode):
-        return True
     tag = getattr(held, "st_reparse_tag", 0)
     return tag in (IO_REPARSE_TAG_SYMLINK, IO_REPARSE_TAG_MOUNT_POINT)
 
