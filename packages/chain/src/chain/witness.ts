@@ -84,7 +84,7 @@ import {
   type ReachedAttestation,
   reachedAttestations,
 } from './ots.js';
-import { lastTailCheckpoint, listedWithoutLinks, refuseLinks } from './store.js';
+import { lastTailCheckpoint, listedWithoutLinks, refuseLinksOfTail } from './store.js';
 
 /**
  * The strength order of the three states: the fold over several tails reads it,
@@ -213,13 +213,13 @@ export function readStoredWitness(
 ): StoredWitness | null {
   const proofPath = witnessProofPath(layout, tailId, checkpointHash);
   const blocksPath = witnessBlocksPath(layout, tailId, checkpointHash);
-  refuseLinks(layout, [
-    'tails',
-    `tails/${tailId}`,
-    `tails/${tailId}/witness`,
+  refuseLinksOfTail(
+    layout,
+    tailId,
+    inRecord(layout, witnessDir(layout, tailId)),
     inRecord(layout, proofPath),
     inRecord(layout, blocksPath),
-  ]);
+  );
   if (!existsSync(proofPath)) return null;
   if (statSync(proofPath).size > MAX_PROOF_BYTES) return { proof: OVERSIZED, headers: new Map() };
   const headers = new Map<number, Buffer>();
@@ -580,11 +580,12 @@ const PROOF_SUFFIX = '.ots';
  */
 function stampedCheckpoints(layout: ChainLayout, tailId: string): ReadonlySet<string> {
   const dir = witnessDir(layout, tailId);
-  refuseLinks(layout, ['tails', `tails/${tailId}`, `tails/${tailId}/witness`]);
+  const kept = inRecord(layout, dir);
+  refuseLinksOfTail(layout, tailId, kept);
   // A file named `witness` is no witness directory (it is named as a stray entry, FORMAT.md section 4).
   if (!existsSync(dir) || !statSync(dir).isDirectory()) return new Set();
   return new Set(
-    listedWithoutLinks(layout, `tails/${tailId}/witness`, [])
+    listedWithoutLinks(layout, kept, [])
       .map((entry) => entry.name)
       .filter((name) => name.endsWith(PROOF_SUFFIX))
       .map((name) => name.slice(0, -PROOF_SUFFIX.length)),

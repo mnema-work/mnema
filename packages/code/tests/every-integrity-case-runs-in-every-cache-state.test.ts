@@ -46,6 +46,8 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'holds the check runner and the key that signs only results; the record is built by the product and never damaged',
   'packages/chain/src/chain/a-damaged-tail-is-read-without-opening-a-writer.test.ts':
     'holds what a function of the chain says of a tail from its files alone; the chain has no projection cache and the question is not asked of one',
+  'packages/chain/src/chain/the-products-reads-open-no-link.test.ts':
+    'holds what the functions of the chain that the product reads through say of a record whose files became links; the chain has no projection cache and the question is not asked of one (the cache states are held by the-products-reads-refuse-a-linked-record, through the binary)',
   'packages/chain/src/chain/the-two-damage-checks-answer-the-same.test.ts':
     'holds what the chain writer and a read of its files say of a damaged tail; the chain has no projection cache and the question is not asked of one',
   'packages/code/tests/a-write-says-what-it-founded.test.ts':

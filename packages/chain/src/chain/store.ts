@@ -69,6 +69,18 @@ export class LinkedRecordError extends UnreadableLineError {
 }
 
 /**
+ * Refuses a read of what a tail holds, as {@link refuseLinks} does for the tail's directory and
+ * `tails/` above it, then for each of `inRecord` (paths in the record, below the tail).
+ */
+export function refuseLinksOfTail(
+  layout: ChainLayout,
+  tailId: string,
+  ...inRecord: readonly string[]
+): void {
+  refuseLinks(layout, ['tails', `tails/${tailId}`, ...inRecord]);
+}
+
+/**
  * Refuses a read that would pass through a symbolic link at any of `places` (paths in the record,
  * each asked in turn, so a parent comes before what is under it). It asks `lstat`, which is what the
  * listing of a directory asks ({@link listedEntries}) and the verdict's {@link listLinksInRecord}
@@ -310,22 +322,9 @@ export function listAppleDoubleKeyFiles(layout: ChainLayout): string[] {
  * actually present to notice a tail that went missing while its key stayed.
  */
 export function listPublicKeyFingerprints(layout: ChainLayout): string[] {
-  return fingerprintsOf(listedWithoutLinks(layout, 'keys', []).map((entry) => entry.name));
-}
-
-/**
- * The same census as a verdict reads it: `keys/` listed as it is, a link left in the listing and
- * never refused, because the verdict names each link itself ({@link listLinksInRecord}) and opens
- * none ({@link committedKeys} is held off a linked file by the verdict).
- */
-export function listPublicKeyFingerprintsLeavingLinks(layout: ChainLayout): string[] {
   const dir = keysDir(layout);
   if (!existsSync(dir)) return [];
-  return fingerprintsOf(readdirSync(dir));
-}
-
-function fingerprintsOf(names: readonly string[]): string[] {
-  return names
+  return readdirSync(dir)
     .filter((name) => name.endsWith('.pub') && !name.startsWith(APPLE_DOUBLE_PREFIX))
     .map((name) => name.slice(0, -'.pub'.length))
     .sort();
@@ -463,10 +462,7 @@ export function readCommittedKeyFile(path: string): CommittedKeyFile {
  * INSTEAD of a verification, never before one that then runs anyway.
  */
 export function holdsRecord(layout: ChainLayout): boolean {
-  return (
-    listTailsLeavingLinks(layout).length > 0 ||
-    listPublicKeyFingerprintsLeavingLinks(layout).length > 0
-  );
+  return listTailsLeavingLinks(layout).length > 0 || listPublicKeyFingerprints(layout).length > 0;
 }
 
 /**

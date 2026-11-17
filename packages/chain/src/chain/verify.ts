@@ -164,7 +164,7 @@ import {
   classifyTailDirectory,
   committedKeys,
   listLinksInRecord,
-  listPublicKeyFingerprintsLeavingLinks,
+  listPublicKeyFingerprints,
   listTails,
   listTailsLeavingLinks,
   type RefusedLine,
@@ -1340,9 +1340,7 @@ function verifyReading(
   // fingerprint to match, so it is still rejected. (A pre-suffix tail named by a
   // bare fingerprint matches the whole name, so it is accepted unchanged.)
   const committedFingerprints = new Set(
-    linked.has('keys')
-      ? []
-      : listPublicKeyFingerprintsLeavingLinks(layout).filter((name) => !keyLinked(name)),
+    linked.has('keys') ? [] : listPublicKeyFingerprints(layout).filter((name) => !keyLinked(name)),
   );
   // One reader of the committed keys for the whole verification: every checkpoint, every
   // ownership proof and every enrolment that names a key asks it, and the disk is read

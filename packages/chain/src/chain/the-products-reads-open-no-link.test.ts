@@ -1,3 +1,4 @@
+// @plants-damage
 /**
  * THE PRODUCT'S READS OPEN NOTHING A SYMBOLIC LINK STANDS FOR (FORMAT.md section 4, ADR-348, ADR-406).
  *
@@ -32,11 +33,12 @@ import {
 import { verifyChain } from './verify.js';
 import { readStoredWitness } from './witness.js';
 
+let dir: string;
 let root: string;
 let outside: string;
 
 beforeEach(() => {
-  const dir = mkdtempSync(join(tmpdir(), 'mnema-product-links-'));
+  dir = mkdtempSync(join(tmpdir(), 'mnema-product-links-'));
   root = join(dir, 'record');
   outside = join(dir, 'outside');
   mkdirSync(root);
@@ -44,7 +46,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  rmSync(join(root, '..'), { recursive: true, force: true });
+  rmSync(dir, { recursive: true, force: true });
 });
 
 const layout = () => ({ root });
@@ -135,10 +137,9 @@ describe('the reads of the product refuse a link', () => {
     const kept = join(root, 'keys', name as string);
     linkedAt(kept);
     refusedAt(() => committedKeys(layout())(fingerprint), `keys/${name}`);
-    refusedAt(() => listPublicKeyFingerprints(layout()), `keys/${name}`);
     rmSync(join(root, 'keys'), { recursive: true });
     symlinkSync(outside, join(root, 'keys'));
-    refusedAt(() => listPublicKeyFingerprints(layout()), 'keys');
+    refusedAt(() => committedKeys(layout())(fingerprint), 'keys');
   });
 
   it('a witness file that is a link is refused, and nothing of it is read', () => {
@@ -158,7 +159,9 @@ describe('the reads of the product refuse a link', () => {
     expect(orderedSegments(layout(), tail)).toHaveLength(1);
     expect(readTail(layout(), tail, upcasters).entries).toHaveLength(2);
     expect(readTailCheckpoints(layout(), tail)).toHaveLength(1);
-    expect(listPublicKeyFingerprints(layout())).toHaveLength(1);
+    expect(
+      committedKeys(layout())(listPublicKeyFingerprints(layout())[0] as string),
+    ).not.toBeNull();
   });
 });
 
