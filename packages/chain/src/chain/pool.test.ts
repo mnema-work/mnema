@@ -1,3 +1,4 @@
+// @plants-damage
 /**
  * Which tail a write goes on with when the one its hint names does not go on here, on the files
  * alone: one of the tails of the key whose end is where this machine left it, when it is one this

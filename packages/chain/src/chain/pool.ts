@@ -127,7 +127,7 @@ export function scanThePool(args: {
   const reservedIds = pool.reservedBy(fingerprint);
   let noted = 0;
   let reserved = false;
-  const found: { tail: string; at: number; end: KeptHead; segment: string }[] = [];
+  const found: { tail: string; modified: number; end: KeptHead; segment: string }[] = [];
   for (const tail of others) {
     const note = readKeptHead(shared, tail);
     if (note === undefined) continue;
@@ -138,15 +138,15 @@ export function scanThePool(args: {
       reserved = true;
       continue;
     }
-    let at = 0;
+    let modified = 0;
     try {
-      at = statSync(keptHeadPath(shared, tail)).mtimeMs;
+      modified = statSync(keptHeadPath(shared, tail)).mtimeMs;
     } catch {
       // Read a moment ago: a note that vanished since sorts first and is judged for what it is.
     }
-    found.push({ tail, at, end: read.end, segment: read.segment });
+    found.push({ tail, modified, end: read.end, segment: read.segment });
   }
-  found.sort((a, b) => a.at - b.at || (a.tail < b.tail ? -1 : 1));
+  found.sort((a, b) => a.modified - b.modified || (a.tail < b.tail ? -1 : 1));
   const queue: string[] = [];
   let asked = 0;
   for (const candidate of found) {

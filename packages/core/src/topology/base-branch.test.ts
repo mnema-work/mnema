@@ -1,3 +1,4 @@
+// @plants-damage
 /**
  * Whether an entry of a tail is already on the base branch: the question the write asks of a tail it
  * could go on with (ADR-446). A repository is built with git's plumbing, so no commit starts
