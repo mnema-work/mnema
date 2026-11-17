@@ -1,3 +1,4 @@
+// @plants-damage
 /**
  * THE WRITER REFUSES TO WRITE THROUGH A LINK (ADR-349, ADR-407), through the built binary: the
  * command line and the server a host spawns say the refusal by name, the command line exits

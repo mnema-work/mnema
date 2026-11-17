@@ -48,6 +48,10 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'holds what a function of the chain says of a tail from its files alone; the chain has no projection cache and the question is not asked of one',
   'packages/chain/src/chain/the-products-reads-open-no-link.test.ts':
     'holds what the functions of the chain that the product reads through say of a record whose files became links; the chain has no projection cache and the question is not asked of one (the cache states are held by the-products-reads-refuse-a-linked-record, through the binary)',
+  'packages/chain/src/chain/the-writer-does-not-write-through-a-link.test.ts':
+    'holds what the chain writer does at a path that became a link: it asks the files, before it reads or writes; the chain has no projection cache and the question is not asked of one',
+  'packages/code/tests/the-writer-refuses-a-linked-record.test.ts':
+    'holds that the writer refuses a link at a place it writes, through the binary: the refusal is asked of the files under the tail lock and not of the projection the reads built, which the case leaves as the first write made it',
   'packages/chain/src/chain/the-two-damage-checks-answer-the-same.test.ts':
     'holds what the chain writer and a read of its files say of a damaged tail; the chain has no projection cache and the question is not asked of one',
   'packages/code/tests/a-write-says-what-it-founded.test.ts':
