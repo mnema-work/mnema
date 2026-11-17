@@ -881,7 +881,7 @@ complete -c mnema -f -n '__mnema_at "tail relink"' -l color -x -a 'auto always n
 
 # mnema backup
 complete -c mnema -f -n '__mnema_at "backup"' -a 'setup' -d 'say which folder keeps this project\'s backup, after a person confirms at a terminal that it keeps the text in clear'
-complete -c mnema -f -n '__mnema_at "backup"' -a 'run' -d 'copy this project\'s trees into its folder'
+complete -c mnema -f -n '__mnema_at "backup"' -a 'run' -d 'copy this project\'s trees into its folder, or with --global only the global tree'
 complete -c mnema -f -n '__mnema_at "backup"' -a 'status' -d 'say where this project\'s backup is and how far it is from the trees'
 complete -c mnema -f -n '__mnema_at "backup"' -a 'help' -d 'display help for command'
 complete -c mnema -f -n '__mnema_at "backup"' -s h -l help
@@ -889,16 +889,19 @@ complete -c mnema -f -n '__mnema_at "backup"' -s V -l version
 complete -c mnema -f -n '__mnema_at "backup"' -l color -x -a 'auto always never'
 
 # mnema backup setup
+complete -c mnema -f -n '__mnema_at "backup setup"' -l global
 complete -c mnema -f -n '__mnema_at "backup setup"' -s h -l help
 complete -c mnema -f -n '__mnema_at "backup setup"' -s V -l version
 complete -c mnema -f -n '__mnema_at "backup setup"' -l color -x -a 'auto always never'
 
 # mnema backup run
+complete -c mnema -f -n '__mnema_at "backup run"' -l global
 complete -c mnema -f -n '__mnema_at "backup run"' -s h -l help
 complete -c mnema -f -n '__mnema_at "backup run"' -s V -l version
 complete -c mnema -f -n '__mnema_at "backup run"' -l color -x -a 'auto always never'
 
 # mnema backup status
+complete -c mnema -f -n '__mnema_at "backup status"' -l global
 complete -c mnema -f -n '__mnema_at "backup status"' -l json
 complete -c mnema -f -n '__mnema_at "backup status"' -s h -l help
 complete -c mnema -f -n '__mnema_at "backup status"' -s V -l version

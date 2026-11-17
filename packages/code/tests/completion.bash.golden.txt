@@ -128,9 +128,9 @@ _mnema_flags() {
     'tail prune') echo '--reason --which --lose-keys -h --help -V --version --color' ;;
     'tail relink') echo '--into --reason --which -h --help -V --version --color' ;;
     'backup') echo '-h --help -V --version --color' ;;
-    'backup setup') echo '-h --help -V --version --color' ;;
-    'backup run') echo '-h --help -V --version --color' ;;
-    'backup status') echo '--json -h --help -V --version --color' ;;
+    'backup setup') echo '--global -h --help -V --version --color' ;;
+    'backup run') echo '--global -h --help -V --version --color' ;;
+    'backup status') echo '--global --json -h --help -V --version --color' ;;
     'doctor') echo '--fix --dry-run -h --help -V --version --color' ;;
     'report') echo '--decline --off --on -h --help -V --version --color' ;;
     'completion') echo '-h --help -V --version --color' ;;
