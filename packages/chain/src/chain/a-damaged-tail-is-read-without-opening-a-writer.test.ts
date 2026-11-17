@@ -6,7 +6,8 @@
  *
  * It names a tail whose end falls short of what its last checkpoint signed, and one whose first
  * segment begins above seq 0, and nothing else: a healthy tail, a tail that is not there, an
- * installation with no id kept, and a first line it cannot read are no damage to name.
+ * installation with no id kept, and a first line never finished are no damage to name (a first line
+ * that does not parse is the readers' to refuse, and throws).
  */
 
 import { createHash } from 'node:crypto';
