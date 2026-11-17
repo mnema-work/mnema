@@ -116,7 +116,7 @@ import { clearOrphanedStaging } from './staging.js';
 import { lastTailCheckpoint, orderedSegments, readTailTip } from './store.js';
 import { withTailLock } from './tail-lock.js';
 import { firstEntries, type NamesRelinked, namesRelinkedAt } from './tail-names.js';
-import { parseTailProof, serializeTailProof, signTailProof } from './tailproof.js';
+import { serializeTailProof, signTailProof } from './tailproof.js';
 import { unprovenWaiverReason } from './waiver.js';
 
 /** Seal a segment once it grows past this many bytes (segments rotate by size). */
@@ -1592,15 +1592,9 @@ function refuseUnreadable(event: CatalogEvent): void {
 }
 
 /**
- * A file's size in bytes, or -1 if it is not there.
- *
- * Absent and empty have to be TOLD APART here (a segment that does not exist yet and
- * one a recovery truncated to nothing are different states of the tail), so the
- * answer is a number a size can never be, not a zero that both would produce.
- */
-/**
- * Whether the proof file at `path` is empty or does not parse: a file that cannot be read at all
- * is left to whoever reads it, and one that parses is left whole, whoever's it is.
+ * Whether the proof file at `path` is empty or is not JSON at all, which is what a cut leaves. A
+ * file that cannot be read is left to whoever reads it, and one that is JSON is left whole, whoever's
+ * it is and however it is spelled: a reformatted proof is for the readers to name (ADR-354).
  */
 function unreadableProof(path: string): boolean {
   let text: string;
@@ -1609,14 +1603,22 @@ function unreadableProof(path: string): boolean {
   } catch {
     return false;
   }
+  if (text.trim() === '') return true;
   try {
-    parseTailProof(text.replace(/\n+$/, ''));
+    JSON.parse(text);
     return false;
   } catch {
     return true;
   }
 }
 
+/**
+ * A file's size in bytes, or -1 if it is not there.
+ *
+ * Absent and empty have to be TOLD APART here (a segment that does not exist yet and
+ * one a recovery truncated to nothing are different states of the tail), so the
+ * answer is a number a size can never be, not a zero that both would produce.
+ */
 function sizeOf(filePath: string): number {
   try {
     return statSync(filePath).size;

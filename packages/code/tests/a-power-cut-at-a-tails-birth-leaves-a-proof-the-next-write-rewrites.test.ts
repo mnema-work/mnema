@@ -85,10 +85,19 @@ describe('a tail whose proof a power cut left unreadable', () => {
     }, 120_000);
   }
 
+  const another = (text: string) =>
+    text.replace(/"record":"[0-9a-f]{64}"/, `"record":"${'ab'.repeat(32)}"`);
+  const indented = (text: string) => `${JSON.stringify(JSON.parse(another(text)), null, 2)}\n`;
+
   it('that parses and names another record is left as it is', () => {
-    afterTheCut(
-      (text) => text.replace(/"record":"[0-9a-f]{64}"/, `"record":"${'ab'.repeat(32)}"`),
-      false,
-    );
+    afterTheCut(another, false);
+  }, 120_000);
+
+  it('of another record, only reformatted (indented), is left byte for byte', () => {
+    afterTheCut(indented, false);
+  }, 120_000);
+
+  it('of another record, reformatted with CRLF line ends, is left byte for byte', () => {
+    afterTheCut((text) => indented(text).replace(/\n/g, '\r\n'), false);
   }, 120_000);
 });
