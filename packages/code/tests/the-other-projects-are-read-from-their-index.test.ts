@@ -20,7 +20,8 @@
  *   - nothing is written into a project the session does not serve, and a `locks/tree-index.json`
  *     a project carries (a clone can bring one) is never read, even one with a valid mark;
  *   - a file with rows that are not rows (`runs: [null]`) never breaks a tool: the tree is read;
- *   - a checkout that swaps the live segment for another of the same size is heard.
+ *   - a checkout that swaps the live segment for another of the same size is heard, on a repository
+ *     whose base branch holds the seed, so that both branches go on with the same tail.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -331,6 +332,24 @@ describe('the index of the other projects', () => {
     await seed.close();
     vcs('add', '-A');
     vcs('commit', '-qm', 'base');
+    // THE BASE BRANCH EXISTS FOR THIS CASE, AND HOLDS THE SEED. A worktree goes on with a tail it did not
+    // write on the branch it is on only where the tail's end is already on the base branch (ADR-446),
+    // and a repository with no remote has no base: `x` and `y` would then each found a tail of their own,
+    // named by a random id, and what the checkouts hold would differ in the PATH of the live segment, not
+    // only in its bytes. With the remote's default branch at the seed, both branches go on with the seed's
+    // tail, so the live segment is one file whose bytes are swapped for others of the same size.
+    const remote = join(sandbox, 'remote.git');
+    execFileSync('git', ['init', '--bare', '-q', '-b', 'main', remote], {
+      stdio: 'pipe',
+      env: {
+        PATH: process.env.PATH ?? '',
+        HOME: env.home as string,
+        GIT_CONFIG_GLOBAL: GIT_WITHOUT_MAINTENANCE,
+      },
+    });
+    vcs('remote', 'add', 'origin', remote);
+    vcs('push', '-q', 'origin', 'main');
+    vcs('remote', 'set-head', 'origin', 'main');
     // The writer's notes of the last entry it wrote (`locks/<tailId>.head` and its signed twin
     // `.head.sig`, which git does not see) are put back as it was at the base before each branch writes, as a checkout copied
     // whole would carry it: without it the second branch goes to a tail of its own (ADR-123),
@@ -361,13 +380,15 @@ describe('the index of the other projects', () => {
     const live = (): string[] =>
       filesUnder(join(second, PROJECT_DIR, 'tails')).filter((file) => file.includes('.jsonl'));
 
+    // Every file with its path AND its size: the same tail on both branches, and the same size in it.
+    // A listing of the sizes alone passed when the two branches wrote two tails whose ids sorted alike.
     vcs('checkout', '-q', 'x');
-    const onXFiles = live().map((file) => file.slice(file.lastIndexOf(':')));
+    const onXFiles = live();
     const onX = await connect();
     const heardOnX = await answers(onX);
     await onX.close();
     vcs('checkout', '-q', 'y');
-    expect(live().map((file) => file.slice(file.lastIndexOf(':')))).toEqual(onXFiles);
+    expect(live()).toEqual(onXFiles);
 
     const onY = await connect();
     const heardOnY = await answers(onY);

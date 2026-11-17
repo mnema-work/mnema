@@ -202,10 +202,14 @@ describe('the brief with an inherited record', () => {
     const { at: source } = origin();
     const project = place('project');
     runInheritSet(project, { where: source.cwd, write: true });
-    // The origin's next commit alters a signed segment in place.
+    // The origin's next commit alters a signed segment in place: the one that holds the decision.
+    // The record is not one tail: what `init` wrote before the repository existed is in a tail of
+    // its own (no mark names it, and with no remote there is no base to ask), and the tails are
+    // named by random ids, so the segment is found by what it holds and not by its place in the listing.
     const tails = join(source.cwd, '.mnema', 'tails');
-    const segment = readdirSync(tails, { recursive: true, encoding: 'utf8' }).find((f) =>
-      f.endsWith('000001.jsonl'),
+    const segment = readdirSync(tails, { recursive: true, encoding: 'utf8' }).find(
+      (f) =>
+        f.endsWith('000001.jsonl') && readFileSync(join(tails, f), 'utf8').includes('Postgres'),
     ) as string;
     const file = join(tails, segment);
     writeFileSync(file, readFileSync(file, 'utf8').replace('Postgres', 'Mysql'));
