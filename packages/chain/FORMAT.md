@@ -2054,11 +2054,13 @@ enrolments of §6.2 and what a move had read (§6.7), since both are cited direc
 position is informative: the order between subjects, and the writes that are not a move or a
 retraction (a rewrite of §6.8, a link made again after it was taken back, a stack adopted or
 removed, a channel switched). It needs clocks that disagree: with the clocks of one machine the
-order is the same. Measured on a record of 120 tails written with the clocks of its entries
-scattered a minute either side, with one tail removed at a time (117 removals), an entry changed
-position on average for 31.8 of 128, and for 90 at most, against the order citing every head would
-have given on the same removal; both readers verify every one of them, with one note, "citation not
-held", and no refusal.
+order is the same. Measured with this writer on a record of 120 tails (one write each, founded one
+after another, 128 entries with eight more from existing tails), each tail's clock offset by a
+constant drawn between a minute behind and a minute ahead, with one tail removed at a time (120
+removals) and the order compared position by position with the one citing every head would give on
+the same removal: over three seeds an entry changed position, on average over the removals, for
+32.2, 32.5 and 37.1 of 128, and for 119, 99 and 101 at most. A citation of a hash the record does
+not hold is ignored and named in the census (above), never refused.
 
 The writer keeps what it needs to tell what is covered in `locks/`, beside the notes of §4: for its
 own tail, `<tailId>.covered` (the heads in its past through another it cited, and the tail that
