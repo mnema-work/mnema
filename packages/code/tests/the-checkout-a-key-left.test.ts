@@ -41,6 +41,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildMcpServer } from '../src/mcp/server.js';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
 import { argvOf } from './support/reading-a-shell-line.js';
+import { notesOf } from './support/the-notes-of-a-record.js';
 import { MNEMA_CLI } from './support/the-cli.js';
 
 /** The built binary: what a person runs. */
@@ -315,7 +316,7 @@ describe('the agent in the checkout the key left, whose write would also open a 
     share(atB);
     const printed = refusedWrite(atB, b, 'from the command line').words;
     // What a branch switch leaves: the writer holds no note of the last entry it wrote.
-    const locks = join(atB, '.mnema', 'locks');
+    const locks = notesOf(join(atB, '.mnema'));
     const notes = readdirSync(locks).filter((name) => name.endsWith('.head'));
     expect(notes.length).toBeGreaterThan(0);
     for (const note of notes) rmSync(join(locks, note));

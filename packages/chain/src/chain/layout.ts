@@ -15,6 +15,14 @@
  * keeps a key's several installations (one per chain, or two of the same copied
  * key) on separate tails, so they merge without overwriting each other.
  *
+ * Inside a git repository the machinery of the PUBLIC tree is not in the checkout: the locks, the
+ * notes of what this machine wrote last to each tail and the heads a tail cited live under the
+ * repository's common git directory (`<common git dir>/mnema/<project>/public/locks/`), which every
+ * worktree shares and a clean never touches, and each worktree keeps its installation id as a hint under
+ * its own git directory (`<git dir>/mnema/<project>/public/keys/`). The paths below take the layout
+ * whose root holds them: the chain's for the record, the shared place's for the locks and the notes,
+ * the checkout's for the hint. Outside a repository all three are the chain's root.
+ *
  *   <chainRoot>/
  *     tails/
  *       <fingerprint>-<installationId>/
@@ -269,6 +277,16 @@ export function registrationPath(layout: ChainLayout, fingerprint: string): stri
  */
 export function installationIdPath(layout: ChainLayout, fingerprint: string): string {
   return join(keysDir(layout), `${fingerprint}.inst`);
+}
+
+/**
+ * The mark that this checkout moved the machinery an earlier mnema kept inside the record's own
+ * `keys/` and `locks/` to the shared place, for one key. Kept at the checkout's place, never the
+ * record's: once it is there, what an earlier mnema writes in the record again is that mnema's own
+ * and is left where it is, never moved and never taken for a tail to go on with.
+ */
+export function migratedMarkPath(layout: ChainLayout, fingerprint: string): string {
+  return join(layout.root, 'migrated', fingerprint);
 }
 
 /**

@@ -33,6 +33,7 @@ export {
   tailsHeld,
   treesSearched,
 } from './locate.js';
+export { MachineryUnavailableError } from './machinery-place.js';
 export {
   type PrivateTreeVisibility,
   PrivateTreeVisibleError,

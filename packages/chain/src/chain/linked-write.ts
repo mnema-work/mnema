@@ -62,9 +62,11 @@ export function refuseToWriteThrough(layout: ChainLayout, places: readonly strin
 /**
  * What a write takes the lock through: `locks/` and the lock file, which acquiring the lock creates
  * where they are not. Asked BEFORE the lock, because a lock taken through a link is the first write.
+ * `shared` is the layout whose `locks/` holds the lock: the record's own, or the place every worktree
+ * of a repository shares, where the lock and the notes moved and the question follows them.
  */
-export function refuseToLockThroughALink(layout: ChainLayout, tailId: string): void {
-  refuseToWriteThrough(layout, ['locks', `locks/${tailId}.lock`]);
+export function refuseToLockThroughALink(shared: ChainLayout, tailId: string): void {
+  refuseToWriteThrough(shared, ['locks', `locks/${tailId}.lock`]);
 }
 
 /**
@@ -73,9 +75,11 @@ export function refuseToLockThroughALink(layout: ChainLayout, tailId: string): v
  * `locks/` with the staging file each is written through (named for `pid`, this process), and
  * the files of the tail directory, taken from its listing so that a segment the write has yet to
  * rotate to is asked as well. Asked under the lock and before the writer recovers or seals.
+ * `locks/` and what is in it are asked at `shared`, the rest at `layout`.
  */
 export function refuseToWriteThroughALink(
   layout: ChainLayout,
+  shared: ChainLayout,
   tailId: string,
   fingerprint: string,
   pid: number = process.pid,
@@ -84,15 +88,10 @@ export function refuseToWriteThroughALink(
     `locks/${tailId}.${note}`,
     `locks/${tailId}.${note}.${pid}`,
   ]);
-  refuseToWriteThrough(layout, [
-    'tails',
-    `tails/${tailId}`,
-    'keys',
-    'locks',
-    `keys/${basename(publicKeyPath(layout, fingerprint))}`,
-    `locks/${tailId}.lock`,
-    ...notes,
-  ]);
+  refuseToWriteThrough(layout, ['tails', `tails/${tailId}`, 'keys']);
+  refuseToWriteThrough(shared, ['locks']);
+  refuseToWriteThrough(layout, [`keys/${basename(publicKeyPath(layout, fingerprint))}`]);
+  refuseToWriteThrough(shared, [`locks/${tailId}.lock`, ...notes]);
   let entries: ReturnType<typeof listedEntries>;
   try {
     entries = listedEntries(tailDir(layout, tailId));

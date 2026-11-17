@@ -55,6 +55,7 @@ import { createCacheRegistry } from '../src/mcp/cache-registry.js';
 import { buildMcpServer } from '../src/mcp/server.js';
 import { writeContext } from '../src/mcp/session.js';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
+import { notesOf } from './support/the-notes-of-a-record.js';
 
 let sandbox: string;
 let env: DiscoveryEnv;
@@ -334,7 +335,7 @@ describe('the index of the other projects', () => {
     // `.head.sig`, which git does not see) are put back as it was at the base before each branch writes, as a checkout copied
     // whole would carry it: without it the second branch goes to a tail of its own (ADR-123),
     // and the same-size live segment this case is about is never made.
-    const locks = join(second, PROJECT_DIR, 'locks');
+    const locks = notesOf(join(second, PROJECT_DIR));
     const notes = new Map(
       readdirSync(locks)
         .filter((name) => /\.head(?:\.sig)?$/.test(name))

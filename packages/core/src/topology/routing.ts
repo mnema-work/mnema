@@ -58,6 +58,7 @@ import {
 import { IdentityUnavailableError, membershipIn, rosterByRole } from '../identity/membership.js';
 import { canonicalIdentity } from '../identity/who.js';
 import type { DeferredWriteContext } from '../workflow/operations.js';
+import { machineryRootsOf } from './machinery-place.js';
 import { PrivateTreeVisibleError, privateTreeVisibility } from './private-tree.js';
 import { recordLeftBehind } from './private-tree-move.js';
 import type { AgentSigning, ResolvedTrees } from './resolve.js';
@@ -356,6 +357,10 @@ export function openTreeForWriting(
   guardOfWrites?.(trees);
   // Decided first: a write the key refuses leaves the tree as it found it, `.gitignore` included.
   const keyRoot = options.keyRoot ?? keyRootFor(trees, chainRoot);
+  // The PUBLIC tree's locks and notes are one set for every worktree of a repository, and each worktree
+  // keeps a hint of its id (`machinery-place.ts`); the private tree keeps one tail per worktree. Asked
+  // here too, before anything is written: a place that cannot be used refuses the write by name.
+  const machinery = scope === 'public' ? machineryRootsOf(trees) : undefined;
   // A project write, public or private, first makes the public tree own the
   // `.gitignore` that hides `private/`. `projectPublic` is defined whenever
   // `projectPrivate` is (both come from the same discovered project), so this is
@@ -383,6 +388,7 @@ export function openTreeForWriting(
     citeHeads: true,
     onNewTail: sayNewTail,
     onUnsigned: sayUnsigned,
+    ...(machinery ?? {}),
     ...(installationRoot === undefined || projectPublic === undefined
       ? {}
       : { installationRoot, continues: () => recordLeftBehind(dirname(projectPublic)) }),

@@ -80,6 +80,8 @@ export interface AnchorContext {
   /** The key that would sign here: an open writer, or the signer read without opening one. */
   readonly writer: ChainSigner;
   readonly layout: ChainLayout;
+  /** Where this checkout keeps its hint of the installation id, when that is not the record's own `keys/`. */
+  readonly installation?: ChainLayout;
   readonly upcasters: UpcasterRegistry;
 }
 
@@ -363,7 +365,10 @@ export function refusalBeforeTheAnchorRead(
   refusal: IdentityUnavailableError,
 ): IdentityUnavailableError | TailDamagedError {
   try {
-    return readTailDamage(ctx.layout, ctx.writer.signerFingerprint, ctx.upcasters) ?? refusal;
+    return (
+      readTailDamage(ctx.layout, ctx.writer.signerFingerprint, ctx.upcasters, ctx.installation) ??
+      refusal
+    );
   } catch {
     return refusal;
   }

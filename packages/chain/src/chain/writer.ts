@@ -99,6 +99,7 @@ import {
   type KeptHead,
   keepHead,
   keepWrittenHead,
+  keepWrittenHeadDurably,
   readKeptHead,
   readWrittenHead,
   type WrittenHead,
@@ -183,6 +184,14 @@ export interface WriterOptions {
    * names it.
    */
   readonly continues?: () => string | undefined;
+  /**
+   * Where the locks and the notes of what this machine wrote last (`locks/<tail>.lock`, `.head`,
+   * `.head.sig`, `.cited`) are kept, when they are not in the record's own `locks/`: the place
+   * every worktree of a repository shares (FORMAT.md section 4). Present, the notes are read by
+   * more than the checkout that wrote them, so the note of an append's intent is kept to the disk
+   * and checked before the line ({@link keepWrittenHeadDurably}). Absent, the chain root holds them.
+   */
+  readonly sharedRoot?: string;
   /**
    * The record this writer's tail is to name, decided by its caller: the record a relink joins
    * (FORMAT.md section 6.11), which is written from a tail of the relinked tail's key that names
@@ -367,6 +376,10 @@ export class ChainWriter {
   private heads: HeadsToCite | undefined;
 
   private tailId: string;
+  /** Where this writer's locks and notes are: {@link WriterOptions.sharedRoot}, or the chain's own root. */
+  private readonly shared: ChainLayout;
+  /** Whether the notes are shared by other checkouts, which is what makes the intent note durable. */
+  private readonly sharedNotes: boolean;
   private readonly citeHeads: boolean;
   private readonly onNewTail: ((opened: NewTail) => void) | undefined;
   private readonly onUnsigned: ((sentence: string) => void) | undefined;
@@ -424,12 +437,16 @@ export class ChainWriter {
     this.maxSegmentBytes = options.maxSegmentBytes ?? DEFAULT_MAX_SEGMENT_BYTES;
     this.maxUnsignedEvents = options.maxUnsignedEvents ?? DEFAULT_MAX_UNSIGNED_EVENTS;
     this.tailId = `${keyPair.fingerprint}-${installationId}`;
+    this.sharedNotes = options.sharedRoot !== undefined;
+    this.shared = options.sharedRoot === undefined ? layout : { root: options.sharedRoot };
     this.citeHeads = options.citeHeads === true;
     this.onNewTail = options.onNewTail;
     this.onUnsigned = options.onUnsigned;
     this.continues = options.continues;
     this.joins = options.joins;
-    this.heads = this.citeHeads ? new HeadsToCite(layout, this.tailId, upcasters) : undefined;
+    this.heads = this.citeHeads
+      ? new HeadsToCite(layout, this.tailId, upcasters, this.shared)
+      : undefined;
     // NOTHING IS WRITTEN HERE. Both the recovery and the birth happen in the first act,
     // under the tail's lock.
     //
@@ -479,7 +496,7 @@ export class ChainWriter {
     this.keepBeforeBirth?.();
     materializePublicKey(this.layout, this.keyPair);
     mkdirSync(tailDir(this.layout, this.tailId), { recursive: true });
-    clearOrphanedStaging(this.layout, this.tailId);
+    clearOrphanedStaging(this.shared, this.tailId);
     this.ensureTailProof();
     this.born = true;
   }
@@ -538,14 +555,14 @@ export class ChainWriter {
       // Before the lock, which is itself a write: taking it makes `locks/` and the lock file. A window
       // stays between this question and the lock's creation: where `locks/` becomes a link in it, the
       // lock file is created at the link's target, and the question under the lock refuses right after.
-      refuseToLockThroughALink(this.layout, this.tailId);
-      const held = withTailLock(tailLockPath(this.layout, this.tailId), () => {
+      refuseToLockThroughALink(this.shared, this.tailId);
+      const held = withTailLock(tailLockPath(this.shared, this.tailId), () => {
         this.holding = true;
         // Nothing is kept on the way out of a refusal to write through a link: the notes are paths it names.
         let mayWrite = false;
         try {
           // Under the lock and before the resync, which can cut the segment, and before anything is sealed.
-          refuseToWriteThroughALink(this.layout, this.tailId, this.keyPair.fingerprint);
+          refuseToWriteThroughALink(this.layout, this.shared, this.tailId, this.keyPair.fingerprint);
           mayWrite = true;
           this.resyncIfMoved();
           const movedOn = this.movedOn;
@@ -581,7 +598,7 @@ export class ChainWriter {
   private moveTo(movedOn: NewTail, installationId: string): void {
     this.tailId = `${this.keyPair.fingerprint}-${installationId}`;
     this.heads = this.citeHeads
-      ? new HeadsToCite(this.layout, this.tailId, this.upcasters)
+      ? new HeadsToCite(this.layout, this.tailId, this.upcasters, this.shared)
       : undefined;
     this.resetForTail();
     this.unsaid = { ...movedOn, to: this.tailId };
@@ -635,7 +652,13 @@ export class ChainWriter {
       checkpoint: this.lastCheckpointHash,
       next: { seq: last.link.seq, hash: last.link.hash },
     };
-    keepWrittenHead(this.layout, this.tailId, note, this.keyPair);
+    // Where other checkouts read the note, it is certain before the line it names or the act is refused.
+    (this.sharedNotes ? keepWrittenHeadDurably : keepWrittenHead)(
+      this.shared,
+      this.tailId,
+      note,
+      this.keyPair,
+    );
     this.keptNote = noteSaying(note);
   }
 
@@ -658,11 +681,11 @@ export class ChainWriter {
     };
     const saying = noteSaying(note);
     if (saying !== this.keptNote) {
-      keepWrittenHead(this.layout, this.tailId, note, this.keyPair);
+      keepWrittenHead(this.shared, this.tailId, note, this.keyPair);
       this.keptNote = saying;
     }
     if (this.head === this.keptHash) return;
-    keepHead(this.layout, this.tailId, { seq: note.seq, hash: this.head });
+    keepHead(this.shared, this.tailId, { seq: note.seq, hash: this.head });
     this.keptHash = this.head;
   }
 
@@ -870,13 +893,13 @@ export class ChainWriter {
     // is left exactly as it is, fragment included, and the act goes to a new tail
     // ({@link NewTail}). A tail that holds nothing has nothing to fork.
     const last = tip.at(-1);
-    const kept = readKeptHead(this.layout, this.tailId);
+    const kept = readKeptHead(this.shared, this.tailId);
     const found = last === undefined ? undefined : { seq: last.link.seq, hash: last.link.hash };
     // THE SIGNED NOTE SAYS IT FIRST (ADR-314). It is kept before every append as well as after the
     // hold ({@link keepIntent}), so an end it names, or the entry its pending append was about to
     // write, is this installation's whatever the clear note says: a kill between the line and the
     // clear note left the clear note behind, and that end used to go to a new tail, unsigned.
-    const note = readWrittenHead(this.layout, this.tailId, this.keyPair.publicKey);
+    const note = readWrittenHead(this.shared, this.tailId, this.keyPair.publicKey);
     const endSeq = found?.seq ?? -1;
     const isEnd = (end: { seq: number; hash: string | null }): boolean =>
       end.seq === endSeq && end.hash === (found?.hash ?? null);
@@ -1516,15 +1539,29 @@ export function readTailDamage(
   layout: ChainLayout,
   fingerprint: string,
   upcasters: UpcasterRegistry,
+  installation: ChainLayout = layout,
 ): TailDamagedError | undefined {
-  let installationId: string;
-  try {
-    installationId = readFileSync(installationIdPath(layout, fingerprint), 'utf-8').trim();
-  } catch {
-    return undefined;
+  // The hint a worktree keeps first; the id an earlier mnema kept in the record, until the first
+  // write of this one moves it.
+  for (const place of [installation, layout]) {
+    let installationId: string;
+    try {
+      installationId = readFileSync(installationIdPath(place, fingerprint), 'utf-8').trim();
+    } catch {
+      continue;
+    }
+    if (installationId === '') return undefined;
+    return readTailDamageOf(layout, `${fingerprint}-${installationId}`, upcasters);
   }
-  if (installationId === '') return undefined;
-  const tailId = `${fingerprint}-${installationId}`;
+  return undefined;
+}
+
+/** {@link readTailDamage} for a tail already named: the one a writer opened over is `writer.tail`. */
+export function readTailDamageOf(
+  layout: ChainLayout,
+  tailId: string,
+  upcasters: UpcasterRegistry,
+): TailDamagedError | undefined {
   if (!existsSync(tailDir(layout, tailId))) return undefined;
   const lastCp = lastTailCheckpoint(layout, tailId);
   const end = readEndOfTheTail(layout, tailId, upcasters, lastCp);

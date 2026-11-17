@@ -24,6 +24,7 @@ import {
 } from './keystore.js';
 import type { ChainLayout } from './layout.js';
 import { refuseToWriteThrough } from './linked-write.js';
+import { migrateMachinery } from './migration.js';
 import { type VerifyOptions, type VerifyResult, verifyChain } from './verify.js';
 import { ChainWriter, type WriterOptions } from './writer.js';
 
@@ -41,6 +42,10 @@ export interface OpenOptions extends WriterOptions {
    * not the chain root: a chain several working trees of one repository share gives each its own
    * id, and so its own tail. The id is chosen locally (FORMAT.md §6.1), so where it is kept is
    * nothing a reader sees. Defaults to the chain root.
+   *
+   * Given together with {@link WriterOptions.sharedRoot}, it is a checkout's hint: the id (and
+   * the notes, in the shared place) an earlier mnema kept in the chain root are moved there
+   * once, at the first open ({@link migrateMachinery}).
    */
   readonly installationRoot?: string;
 }
@@ -84,6 +89,14 @@ export function openChainForWriting(chainRoot: string, options: OpenOptions): Ch
   const keepKey = key.keep;
   if (keepKey === undefined) {
     const fingerprint = key.keyPair.fingerprint;
+    if (options.sharedRoot !== undefined && options.installationRoot !== undefined) {
+      migrateMachinery({
+        chain: chainLayout,
+        shared: { root: options.sharedRoot },
+        checkout: installationLayout,
+        fingerprint,
+      });
+    }
     const installationId = loadOrCreateInstallationId(installationLayout, fingerprint);
     return new ChainWriter(
       chainLayout,

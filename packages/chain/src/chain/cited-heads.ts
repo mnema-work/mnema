@@ -51,6 +51,8 @@ export class HeadsToCite {
     private readonly layout: ChainLayout,
     private readonly ownTail: string,
     private readonly upcasters: UpcasterRegistry,
+    /** The layout whose `locks/` holds this tail's note of what it cited: the record's own, unless shared. */
+    private readonly notes: ChainLayout = layout,
   ) {}
 
   /**
@@ -80,7 +82,7 @@ export class HeadsToCite {
   private cited(): Record<string, string> {
     try {
       const parsed: unknown = parseStoredJson(
-        readFileSync(citedHeadsPath(this.layout, this.ownTail), 'utf-8'),
+        readFileSync(citedHeadsPath(this.notes, this.ownTail), 'utf-8'),
       );
       if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
       return Object.fromEntries(
@@ -95,7 +97,7 @@ export class HeadsToCite {
 
   /** Replaces the note whole, so a reader never meets half of it. */
   private remember(heads: Record<string, string>): void {
-    const path = citedHeadsPath(this.layout, this.ownTail);
+    const path = citedHeadsPath(this.notes, this.ownTail);
     const staging = `${path}.${process.pid}`;
     try {
       writeFileSync(staging, `${JSON.stringify(heads)}\n`);

@@ -191,6 +191,8 @@ export {
 } from './chain/store.js';
 export { subjectEvents } from './chain/subject-events.js';
 export { type KeyATailHolds, type KeyIntroduction, keysATailHolds } from './chain/tail-keys.js';
+export { IntentNotKeptError } from './chain/kept-head.js';
+export { MigrationUnsettledError } from './chain/migration.js';
 export { DEFAULT_WAIT_MS, TailBusyError } from './chain/tail-lock.js';
 export {
   arrivalsSince,
@@ -268,6 +270,7 @@ export {
   describeNewTail,
   type NewTail,
   readTailDamage,
+  readTailDamageOf,
   TailDamagedError,
   type WriterOptions,
 } from './chain/writer.js';

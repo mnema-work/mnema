@@ -278,6 +278,7 @@ export {
   locateEntityScopeWith,
   locateLinkScope,
   locateTailScope,
+  MachineryUnavailableError,
   type MovedTree,
   movePrivateTree,
   type NoProjectRoot,

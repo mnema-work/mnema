@@ -234,6 +234,9 @@ export function runInit(ctx: InitContext): InitResult | InitRefused {
     const asked = {
       writer: signerFor(trees, 'public'),
       layout: { root: chainRootForScope(trees, 'public') as string },
+      ...(trees.projectPublicMachinery === undefined
+        ? {}
+        : { installation: { root: trees.projectPublicMachinery.checkout } }),
       upcasters: catalogUpcasters(),
     };
     // What the founding leaves beside the record, and a project founded before it did lacks:

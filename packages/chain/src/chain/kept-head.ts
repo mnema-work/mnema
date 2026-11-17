@@ -41,9 +41,11 @@
  */
 
 import { readFileSync, renameSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { canonicalBytes, canonicalStringify } from '../events/canonical.js';
 import { holdsExactly, parseStoredJson } from '../events/stored-json.js';
+import { CodedError } from './coded-error.js';
+import { syncDirectory, writeFileDurably } from './durable.js';
 import { type KeyObject, type KeyPair, sign, verify } from './keys.js';
 import type { ChainLayout } from './layout.js';
 
@@ -174,6 +176,57 @@ export function keepWrittenHead(
     renameSync(staging, path);
   } catch {
     // See above: the next write finds no note to vouch for what it did not append.
+  }
+}
+
+/**
+ * THE NOTE A WRITE CANNOT GO ON WITHOUT: {@link keepWrittenHead} where the notes are shared by
+ * every worktree of a repository, kept to the disk and read back before the line it vouches for.
+ *
+ * Where a note is read only by the checkout that wrote it, a note that did not reach the disk is
+ * harmless: that checkout's tail already ends past it, and the next write opens a tail of its own.
+ * Where a worktree can go on with the tail another one wrote, a stale note is not: a checkout whose
+ * tail ends where the old note says would append to the end another worktree has already passed,
+ * and the tail forks. So the note naming the line about to be written is synced (file and directory)
+ * and read back, and a write that cannot be sure of it is refused, with nothing written.
+ *
+ * @throws {IntentNotKeptError} when the note could not be written, synced or read back as written.
+ */
+export function keepWrittenHeadDurably(
+  layout: ChainLayout,
+  tailId: string,
+  head: WrittenHead,
+  keyPair: KeyPair,
+): void {
+  const fields = signedFields(tailId, head);
+  const sig = Buffer.from(sign(canonicalBytes(fields), keyPair.privateKey)).toString('hex');
+  const path = writtenHeadPath(layout, tailId);
+  const staging = `${path}.${process.pid}`;
+  try {
+    writeFileDurably(staging, `${canonicalStringify({ ...fields, sig })}\n`);
+    renameSync(staging, path);
+    syncDirectory(dirname(path));
+  } catch (error) {
+    throw new IntentNotKeptError(path, (error as NodeJS.ErrnoException).code ?? String(error));
+  }
+  const back = readWrittenHead(layout, tailId, keyPair.publicKey);
+  if (back === undefined || canonicalStringify(signedFields(tailId, back)) !== canonicalStringify(fields)) {
+    throw new IntentNotKeptError(path, 'it did not read back as written');
+  }
+}
+
+/** A write refused because the note naming its line could not be made certain: see {@link keepWrittenHeadDurably}. */
+export class IntentNotKeptError extends CodedError {
+  readonly code = 'INTENT_NOT_KEPT';
+
+  constructor(path: string, why: string) {
+    super(
+      `the note of what this machine writes next to this tail could not be kept (${why}): ${path}. ` +
+        'Another worktree of this repository may go on with this tail, and a write made without ' +
+        'the note could fork it, so nothing was written. Free the disk or the permission that ' +
+        'stopped it, then write again.',
+    );
+    this.name = 'IntentNotKeptError';
   }
 }
 

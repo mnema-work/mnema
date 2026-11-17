@@ -92,8 +92,56 @@ export function privateTreePlace(
  * path is empty, is `%2E`: an encoded `.`, which no relative path spells.
  */
 export function privateTreeUnder(gitDir: string, within: string): string {
+  return placeUnder(gitDir, within, 'private');
+}
+
+/**
+ * `<gitDir>/mnema/<one component>/<leaf>` for the project at `within`: the private tree is the
+ * `private` leaf, and the machinery of the public tree is the `public` one ({@link
+ * publicMachineryPlace}). One encoding, so no two leaves of a project, nor two projects, meet.
+ */
+function placeUnder(gitDir: string, within: string, leaf: 'private' | 'public'): string {
   const component = encodeURIComponent(within.split(sep).join('/'));
-  return join(gitDir, IN_GIT_DIR, component === '' ? '%2E' : component, 'private');
+  return join(gitDir, IN_GIT_DIR, component === '' ? '%2E' : component, leaf);
+}
+
+/** Where the machinery of a project's public tree lives inside a repository. */
+export interface MachineryPlace {
+  /**
+   * `<common git dir>/mnema/<project>/public`: the locks, and the notes of what this machine wrote
+   * last to each tail, shared by every worktree of the repository (its `locks/`).
+   */
+  readonly shared: string;
+  /**
+   * `<this worktree's git dir>/mnema/<project>/public`: the hint of the installation id this
+   * checkout starts from (its `keys/`), and the mark that it moved what an earlier mnema kept in
+   * the record (its `migrated/`). It goes with the worktree when git removes it.
+   */
+  readonly checkout: string;
+  /** The repository the project is in, as the file system spells it. */
+  readonly place: GitPlace;
+}
+
+/**
+ * Where the machinery of the PUBLIC tree of the project at `projectDir` lives, or undefined when the
+ * project is in no repository, and the machinery stays in the record's own `locks/` and `keys/`.
+ *
+ * The directory is taken AS THE FILE SYSTEM SPELLS IT (`realpath`), and the repository is looked
+ * for from there: two spellings of one checkout (a link to a nested project, a macOS `/tmp`) must
+ * reach one place and so one lock, and a spelling that passes through a link would otherwise find
+ * no repository and keep the machinery where it used to be, beside the same tail files the other
+ * spelling writes under another lock.
+ */
+export function publicMachineryPlace(projectDir: string): MachineryPlace | undefined {
+  const dir = realOrUndefined(projectDir) ?? resolve(projectDir);
+  const place = gitPlaceOf(dir);
+  if (place === undefined) return undefined;
+  const within = relative(place.top, dir);
+  return {
+    shared: placeUnder(place.commonDir, within, 'public'),
+    checkout: placeUnder(place.gitDir, within, 'public'),
+    place,
+  };
 }
 
 /**
