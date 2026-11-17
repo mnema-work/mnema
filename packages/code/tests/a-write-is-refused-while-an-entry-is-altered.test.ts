@@ -324,7 +324,7 @@ describe('the SDK over an altered entry', () => {
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 40);
       writeFileSync(file, readFileSync(file, 'utf-8').replace('Use pnpm', EVIL));
       const before = theRecord(found);
-      const record = openRecord({ cwd: there.repo, env: { home: there.home } });
+      const record = openRecord({ cwd: there.repo, env: { home: there.home }, agent: 'a-script' });
       for (const refused of [
         record.recordDecision({ title: 'A title', rationale: 'Why' }),
         record.addNote({ content: 'a note' }),
