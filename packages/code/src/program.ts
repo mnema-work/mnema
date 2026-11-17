@@ -248,21 +248,20 @@ export function buildProgram(
 }
 
 /**
- * Before a verb that can write opens anything: the write is refused while an entry of the record is
- * altered (ADR-396), by the refusal `AlteredEntryError` names, which the catch of {@link parseWith}
- * says as it says every refusal the product wrote on purpose. Registered first, so nothing the other
- * hooks do (the anchors they compare, the page they mark) happens for a write that is not going to be made.
- * Which verbs, and which of them are let through, is `a-write-over-an-altered-entry.ts`.
+ * Before a verb runs: the door that refuses a write while an entry of the record is altered (ADR-396)
+ * is armed for it, or cleared. It refuses at the writer, with the refusal `AlteredEntryError` names,
+ * which the catch of {@link parseWith} says as it says every refusal the product wrote on purpose.
+ * Registered first, so it is armed before anything the other hooks do. Which invocations, and why the
+ * door stands at the writer, is `a-write-over-an-altered-entry.ts`.
  */
 function refuseAWriteOverAnAlteredEntry(program: Command, verbs: readonly Declared[]): void {
   program.hook('preAction', async (_program, action) => {
-    const { canWrite, refuseTheWriteOverAnAlteredEntry } = await import(
+    const { armsTheDoor, armTheDoor, asksAtOnce } = await import(
       './a-write-over-an-altered-entry.js'
     );
-    if (!canWrite(verbs, action)) return;
-    await refuseTheWriteOverAnAlteredEntry(
-      resolveTrees(here().cwd, here().env),
-      action.name() === 'init' && action.opts().dryRun === true,
+    await armTheDoor(
+      armsTheDoor(verbs, action),
+      asksAtOnce(action) ? resolveTrees(here().cwd, here().env) : undefined,
     );
   });
 }

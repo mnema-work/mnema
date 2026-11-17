@@ -36,7 +36,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolveTrees } from '@mnema/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { openRecord } from '../../sdk/src/record.js';
-import { canWrite, RUNS_OVER_AN_ALTERED_ENTRY } from '../src/a-write-over-an-altered-entry.js';
+import {
+  armsTheDoor,
+  asksAtOnce,
+  RUNS_OVER_AN_ALTERED_ENTRY,
+} from '../src/a-write-over-an-altered-entry.js';
 import { checkForAnAlteredEntry } from '../src/an-altered-entry-stops-a-write.js';
 import { closeSession, openSession, type Session } from '../src/mcp/session.js';
 import {
@@ -46,6 +50,7 @@ import {
   runSearchTool,
 } from '../src/mcp/tools.js';
 import { buildProgram, type CliIo } from '../src/program.js';
+import { mergeAForeignTail } from './support/a-tail-from-another-machine.js';
 import { MNEMA_CLI } from './support/the-cli.js';
 
 const PLUGIN = join(fileURLToPath(new URL('../../../', import.meta.url)), 'plugin');
@@ -56,6 +61,7 @@ let home: string;
 let bin: string;
 let repo: string;
 let decision: string;
+let foreign: string;
 let honest: { file: string; bytes: string } | undefined;
 
 const env = (): NodeJS.ProcessEnv => ({
@@ -101,7 +107,10 @@ function theRecord(found = trees()): string {
 
 function alterTheDecision(): void {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 40);
-  const file = segmentOf(trees().projectPublic as string);
+  const tails = join(trees().projectPublic as string, 'tails');
+  const file = readdirSync(tails)
+    .map((tail) => join(tails, tail, '000001.jsonl'))
+    .find((one) => readFileSync(one, 'utf-8').includes('Use pnpm')) as string;
   const held = readFileSync(file, 'utf-8');
   expect(held).toContain('Use pnpm');
   honest = { file, bytes: held };
@@ -125,6 +134,8 @@ beforeAll(() => {
   )?.[1] as string;
   expect(mnema('decision', 'record', 'Use pnpm', 'Because the lockfile').status).toBe(0);
   expect(mnema('memory', 'a private note', '--scope', 'private').status).toBe(0);
+  // A tail this machine did not write: the only kind `tail prune` can name.
+  foreign = mergeAForeignTail(join(repo, '.mnema'), join(sandbox, 'other-machine'));
 });
 
 afterAll(() => rmSync(sandbox, { recursive: true, force: true }));
@@ -135,7 +146,7 @@ describe('the command line over an altered entry of the public tree', () => {
     ['decision', 'record', 'A title', 'A rationale'],
     ['decision', 'move', 'accept', '$DECISION'],
     ['switch', 'off', 'edit-rules-push', '--reason', 'too much noise'],
-    ['tail', 'prune', 'no-such-tail', '--reason', 'it was asked'],
+    ['tail', 'prune', '$FOREIGN', '--reason', 'it was asked', '--lose-keys', '$FOREIGN_KEY'],
     ['witness', 'upgrade'],
   ];
 
@@ -144,7 +155,15 @@ describe('the command line over an altered entry of the public tree', () => {
     alterTheDecision();
     const before = theRecord();
     for (const line of WRITES) {
-      const args = line.map((word) => (word === '$DECISION' ? decision : word));
+      const args = line.map((word) =>
+        word === '$DECISION'
+          ? decision
+          : word === '$FOREIGN'
+            ? foreign
+            : word === '$FOREIGN_KEY'
+              ? foreign.slice(0, foreign.lastIndexOf('-'))
+              : word,
+      );
       const ran = mnema(...args);
       const said = `${ran.stdout}${ran.stderr}`;
       const label = line.slice(0, 2).join(' ');
@@ -169,16 +188,23 @@ describe('the command line over an altered entry of the public tree', () => {
     }
   });
 
-  it('still answers a read and a verb that only touches the key files', () => {
+  it('still answers what reads, and refuses `key request` before it runs', () => {
     expect(mnema('status').status).toBe(0);
     expect(mnema('search', 'lockfile').status).toBe(0);
     expect(mnema('tail', 'list').status).toBe(0);
-    const key = `${mnema('key', 'protect').stdout}${mnema('key', 'protect').stderr}`;
-    expect(key).not.toContain('altered after it was written');
+    for (const line of [['switch'], ['witness'], ['inherit', 'set', '.'], ['key', 'protect']]) {
+      const ran = mnema(...line);
+      expect(`${ran.stdout}${ran.stderr}`, line.join(' ')).not.toContain('ALTERED_ENTRY');
+    }
+    expect(mnema('switch').status).toBe(0);
+    expect(mnema('witness').status).toBe(0);
+    const request = mnema('key', 'request', '--anchor', 'mnid:00000000');
+    expect(request.status).not.toBe(0);
+    expect(`${request.stdout}${request.stderr}`).toContain('ALTERED_ENTRY');
   });
 
   it('is told through the plugin handler that hands a note of the host over', () => {
-    const memory = join(sandbox, 'memory');
+    const memory = join(home, '.claude', 'projects', repo.replace(/[^a-zA-Z0-9]/g, '-'), 'memory');
     mkdirSync(memory, { recursive: true });
     const note = join(memory, 'feedback_a_note.md');
     writeFileSync(
@@ -338,7 +364,7 @@ describe('the SDK over an altered entry', () => {
   });
 });
 
-describe('the verbs the command line lets through', () => {
+describe('the door of the command line', () => {
   const io: CliIo = { out: () => undefined, err: () => undefined, fail: () => undefined };
   const { program, verbs } = buildProgram(io, []);
   const at = (path: string) => {
@@ -351,7 +377,7 @@ describe('the verbs the command line lets through', () => {
     return node;
   };
 
-  it('stands in front of what writes and behind what reads or only touches the key files', () => {
+  it('is armed for what can write, and not for what reads or serves', () => {
     for (const path of [
       'memory',
       'decision record',
@@ -362,54 +388,24 @@ describe('the verbs the command line lets through', () => {
       'task move',
       'init',
       'after-a-write',
-      'key request',
+      'beside-a-write',
       'key revoke',
-    ]) {
-      expect(canWrite(verbs, at(path)), path).toBe(true);
-    }
-    for (const path of [
-      'status',
-      'search',
-      'verify',
-      'task next',
-      'record pull',
-      'before-a-write',
-      'mcp',
-      'tail list',
-      'key restore',
-      'key protect',
-      'switch',
-      'witness',
-      'inherit set',
-      'inherit update',
+      'key request',
       'doctor',
     ]) {
-      expect(canWrite(verbs, at(path)), path).toBe(false);
+      expect(armsTheDoor(verbs, at(path)), path).toBe(true);
     }
+    for (const path of ['status', 'search', 'verify', 'before-a-write', 'mcp']) {
+      expect(armsTheDoor(verbs, at(path)), path).toBe(false);
+    }
+    for (const path of ['key request', 'witness stamp', 'witness upgrade', 'witness sigstore']) {
+      expect(asksAtOnce(at(path)), path).toBe(true);
+    }
+    expect(asksAtOnce(at('key revoke'))).toBe(false);
   });
 
-  it('asks by option where the same verb reads or writes', () => {
-    for (const [path, option, value] of [
-      ['inherit set', 'write', true],
-      ['inherit update', 'write', true],
-      ['doctor', 'fix', 'private-tree'],
-    ] as const) {
-      const verb = at(path);
-      expect(canWrite(verbs, verb), `${path} bare`).toBe(false);
-      verb.setOptionValue(option, value);
-      expect(canWrite(verbs, verb), `${path} --${option}`).toBe(true);
-      verb.setOptionValue(option, undefined);
-    }
-    const doctor = at('doctor');
-    doctor.setOptionValue('fix', 'vscode');
-    expect(canWrite(verbs, doctor), 'doctor --fix vscode').toBe(false);
-    doctor.setOptionValue('fix', undefined);
-  });
-
-  it('names, for each verb it lets through, one that declares it can write', () => {
+  it('names, for each invocation it is not armed for, one that exists', () => {
     for (const path of Object.keys(RUNS_OVER_AN_ALTERED_ENTRY)) {
-      const top = verbs.find((one) => one.act.name() === path.split(' ')[0]);
-      expect(top?.effect, path).toBe('mutates');
       expect(at(path).name()).toBe(path.split(' ').at(-1));
     }
   });

@@ -1,56 +1,49 @@
 /**
  * THE DOOR OF THE COMMAND LINE for the refusal of a write while an entry of the record is altered
- * (ADR-396): which verbs it stands in front of, and the question it asks.
+ * (ADR-396): which invocations it stands behind, and how it is armed.
  *
- * A verb stands behind it when it declared `mutates` (`record-effect.ts`), the one classification of
- * what can change the record, so a verb added tomorrow is covered by declaring itself. The verbs that
- * declare it and append nothing are named in {@link RUNS_OVER_AN_ALTERED_ENTRY}, each with the reason,
- * and they are the whole of the exceptions.
+ * IT STANDS AT THE WRITER, NOT AT THE VERB. The question is asked where a tree is opened for writing
+ * (`guardWrites`, in the core: the one door every write to a tree opens through), so an invocation
+ * that never opens a writer is never asked and an invocation added tomorrow is asked without knowing.
+ * That is what keeps a read, the listing a group answers when typed bare, a plan printed without
+ * `--write`, the verbs that only touch key files and `record pull` (the way a restored line arrives)
+ * answering over an altered entry: reading degrades (ADR-396). It also keeps a write that is refused
+ * for its own reasons, or reports a plan, from leaving anything behind: asking waits for the writer.
  *
- * THE QUESTION IS ASKED OF THE FILES, over every tree the verb reaches (the project's public and
- * private trees and the machine's global one), before the verb opens anything for writing: the same
- * reach as a line that cannot be read, which stops every write of the project and, in the global
- * tree, of every project on the machine. A line that cannot be read is not answered here: reading the
- * trees throws it, and the entry makes the refusal it always made (`program.ts`).
+ * Armed before a verb runs, with the question loaded only for a verb that can write: the ones that
+ * declared `mutates` (`record-effect.ts`), and the verbs of {@link OPEN_A_WRITER_AS_READS}.
  */
 
 import type { ResolvedTrees } from '@mnema/core';
+import { guardWrites } from '@mnema/core/write';
 import type { Command } from 'commander';
 import type { Declared } from './wiring/verb.js';
 
-/** Verbs that declare they can write and are let through, and why: by their whole path. */
+/** Invocations that are not stood behind, and why: by their whole path. */
 export const RUNS_OVER_AN_ALTERED_ENTRY: Readonly<Record<string, string>> = {
-  mcp: 'It serves a connection and appends nothing itself: every tool that writes is stopped at the one door the server opens writes through.',
+  mcp: 'It serves a connection and opens no writer itself: every tool that writes is stopped at the one door the server opens writes through, and the end of a run with it.',
   'before-a-write':
     'It is the edit gate and answers in the gate’s own voice, a denial the host reads, which names the entry (ADR-395).',
-  'tail list': 'It lists the tails and appends nothing.',
-  'key restore':
-    'It puts a key file back and appends nothing; it is the way out of a refused write.',
-  'record pull':
-    'It is `git pull` over the record and appends nothing: it is how a restored line arrives.',
-  'record merge-tail':
-    'It is the merge driver git runs for a tail’s files and appends nothing; refusing it would stop a merge.',
-  'commit-hook install': 'It writes a git hook and touches no record.',
-  'commit-hook uninstall': 'It removes a git hook and touches no record.',
-  'commit-hook suggest': 'It appends a suggestion to a commit message file and touches no record.',
-  switch:
-    'The bare verb is the listing of the channels: a read, which degrades around the entry (ADR-396).',
-  witness:
-    'The bare verb says where the proof stands: a read, which degrades around the entry (ADR-396).',
-  'key protect': 'It encrypts the private key files and appends nothing.',
-  'key unprotect': 'It writes the private key files back in the clear and appends nothing.',
 };
 
 /**
- * Invocations that write only with an option, and the option: `inherit set` and `inherit update` print
- * a plan and touch no record unless `--write` is given, and `doctor --fix private-tree` moves tails with
- * signed appends (the verb itself is declared a read, so the declaration alone would not see it).
+ * Verbs declared reads that open a writer for one of their options: `doctor --fix private-tree` moves
+ * tails with signed appends. They are armed as the verbs that write are.
  */
-const WRITES_WHEN: Readonly<Record<string, (opts: Record<string, unknown>) => boolean>> = {
-  'inherit set': (opts) => opts.write === true,
-  'inherit update': (opts) => opts.write === true,
-  doctor: (opts) => opts.fix === 'private-tree' && opts.dryRun !== true,
-};
+export const OPEN_A_WRITER_AS_READS: readonly string[] = ['doctor'];
+
+/**
+ * Invocations that act on the record without opening a writer, and are asked before they run:
+ * `key request --agent` makes key files and moves a retired key aside, on what an enrollment or a
+ * revocation line says, which an altered line leaves out of the order; the three of `witness` file an
+ * outside witness's attestation beside the checkpoints of the tails they read.
+ */
+export const ASK_BEFORE_THEY_RUN: readonly string[] = [
+  'key request',
+  'witness stamp',
+  'witness upgrade',
+  'witness sigstore',
+];
 
 /** The words from the verb the person typed to the one that runs: `task move` for `move` under `task`. */
 function pathOf(command: Command): string {
@@ -60,27 +53,35 @@ function pathOf(command: Command): string {
   return words.join(' ');
 }
 
-/** Whether this invocation can change the record, by what its verb, or its member of a group, declared. */
-export function canWrite(verbs: readonly Declared[], action: Command): boolean {
+/** Whether the question is to be loaded and asked at the writers this invocation opens. */
+export function armsTheDoor(verbs: readonly Declared[], action: Command): boolean {
   const path = pathOf(action);
   if (path in RUNS_OVER_AN_ALTERED_ENTRY) return false;
-  const when = WRITES_WHEN[path];
-  if (when !== undefined) return when(action.opts());
-  const verb = verbs.find((one) => one.act.name() === path.split(' ')[0]);
-  if (verb === undefined) return false;
-  if (verb.members === undefined) return verb.effect === 'mutates';
-  return verb.members.some((one) => one.act.name() === action.name() && one.effect === 'mutates');
+  const top = path.split(' ')[0] as string;
+  const verb = verbs.find((one) => one.act.name() === top);
+  return verb?.effect === 'mutates' || OPEN_A_WRITER_AS_READS.includes(top);
+}
+
+/** Whether this invocation asks at once, before it runs, and not at a writer. */
+export function asksAtOnce(action: Command): boolean {
+  return ASK_BEFORE_THEY_RUN.includes(pathOf(action));
 }
 
 /**
- * Throws the refusal when any tree this process reaches holds an altered entry; the question is
- * `an-altered-entry-stops-a-write.ts`, loaded here and not at the top because only a verb that writes
- * asks, and a read must not pay for the record's modules (`the-floor-is-the-declaration.test.ts`).
+ * Arms the door for this invocation, or clears it: the question is `an-altered-entry-stops-a-write.ts`.
+ * `now` are the trees of an invocation that asks at once.
  */
-export async function refuseTheWriteOverAnAlteredEntry(
-  trees: ResolvedTrees,
-  inMemory: boolean,
-): Promise<void> {
+export async function armTheDoor(armed: boolean, now?: ResolvedTrees): Promise<void> {
+  if (!armed && now === undefined) return guardWrites(undefined);
   const { checkForAnAlteredEntry } = await import('./an-altered-entry-stops-a-write.js');
-  checkForAnAlteredEntry(trees, inMemory);
+  if (now !== undefined) checkForAnAlteredEntry(now);
+  if (!armed) return guardWrites(undefined);
+  // Asked once per process: what the process writes itself is not an alteration, and the writers a
+  // verb opens one after the other would otherwise ask over the same files each time.
+  let asked = false;
+  guardWrites((trees) => {
+    if (asked) return;
+    checkForAnAlteredEntry(trees);
+    asked = true;
+  });
 }

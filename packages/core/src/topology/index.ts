@@ -69,6 +69,7 @@ export {
   chainRootForScope,
   type DeferredWrite,
   deferredWrite,
+  guardWrites,
   type KeyChoice,
   keyChoiceIn,
   keyRefusalIn,
@@ -83,4 +84,5 @@ export {
   signerHeldFor,
   TreeUnavailableError,
   treeWords,
+  type WriteGuard,
 } from './routing.js';

@@ -302,6 +302,21 @@ function sayNewTail(opened: NewTail): void {
   process.stderr.write(`${describeNewTail(opened)}\n`);
 }
 
+/** What is asked of the trees before any writer opens over them: it throws to refuse. */
+export type WriteGuard = (trees: ResolvedTrees) => void;
+
+let guardOfWrites: WriteGuard | undefined;
+
+/**
+ * Sets the question every writer is opened behind, or clears it with `undefined`. It is the caller's
+ * (the command line's, which refuses a write over an altered entry): this process asks it at the one
+ * door every write to a tree opens through, so a verb that never opens a writer is never asked, and
+ * one added tomorrow is asked without knowing.
+ */
+export function guardWrites(guard: WriteGuard | undefined): void {
+  guardOfWrites = guard;
+}
+
 /**
  * Opens the chain for a scope for writing, signing with the person's single key
  * root (referenced by all three trees, never copied). For EITHER project scope
@@ -328,6 +343,7 @@ export function openTreeForWriting(
   if (chainRoot === undefined) {
     throw new TreeUnavailableError(`no ${scope} tree in this context`);
   }
+  guardOfWrites?.(trees);
   // Decided first: a write the key refuses leaves the tree as it found it, `.gitignore` included.
   const keyRoot = options.keyRoot ?? keyRootFor(trees, chainRoot);
   // A project write, public or private, first makes the public tree own the
