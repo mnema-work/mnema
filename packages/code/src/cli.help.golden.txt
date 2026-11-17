@@ -1302,15 +1302,17 @@ $ mnema backup --help
 | nothing)
 |
 | Options:
-|   -h, --help        display help for command
+|   -h, --help                display help for command
 |
 | Commands:
-|   setup <folder>    say which folder keeps this project's backup, after a person
-|                     confirms at a terminal that it keeps the text in clear
-|   run               copy this project's trees into its folder
-|   status [options]  say where this project's backup is and how far it is from
-|                     the trees
-|   help [command]    display help for command
+|   setup [options] <folder>  say which folder keeps this project's backup, after
+|                             a person confirms at a terminal that it keeps the
+|                             text in clear
+|   run [options]             copy this project's trees into its folder, or with
+|                             --global only the global tree
+|   status [options]          say where this project's backup is and how far it is
+|                             from the trees
+|   help [command]            display help for command
 |
 | The copy is a folder per project, kept under the name of its record: the tails up to their
 | last complete line and the public keys, and nothing else. The private tree is always copied;
@@ -1318,6 +1320,9 @@ $ mnema backup --help
 | private key is copied: a run is refused whole if a file it would copy holds one, and so is a
 | symbolic link in the tree or in the folder. A copy only grows. The folder keeps the text in
 | clear, which `setup` asks a person to confirm at a terminal. A machine can have a folder per project; a project has the one it was set up with.
+| The machine's global tree, which mixes the memory of every project, is never part of a project's
+| backup: `--global` copies it, and only it, into the folder `setup --global` gave it, as
+| <folder>/global/.
 
 ### mnema doctor --help
 $ mnema doctor --help
@@ -2928,15 +2933,19 @@ $ mnema backup setup --help
 |               directory)
 |
 | Options:
+|   --global    assign the folder to the machine's global tree instead of this
+|               project
 |   -h, --help  display help for command
 
 ### mnema backup run --help
 $ mnema backup run --help
 | Usage: mnema backup run [options]
 |
-| copy this project's trees into its folder
+| copy this project's trees into its folder, or with --global only the global tree
 |
 | Options:
+|   --global    copy the machine's global tree, and only it, into the folder it
+|               was assigned
 |   -h, --help  display help for command
 
 ### mnema backup status --help
@@ -2946,6 +2955,7 @@ $ mnema backup status --help
 | say where this project's backup is and how far it is from the trees
 |
 | Options:
+|   --global    say it of the machine's global tree instead of this project
 |   --json      emit the faithful reading as JSON
 |   -h, --help  display help for command
 

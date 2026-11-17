@@ -35,8 +35,34 @@ import { dirname, join } from 'node:path';
 import { CodedError, LinkedRecordError, listedWithoutLinks, listLinksInRecord } from '@mnema/chain';
 import { detectSecrets } from '../../content/secrets.js';
 
-/** Which tree of a project a copy holds: the committed one, or the one kept on this machine. */
-export type BackupTree = 'public' | 'private';
+/**
+ * Which tree a copy holds: a project's committed one, the one it keeps on this machine, or the
+ * machine's global tree, which belongs to no project and is kept in `<destination>/global/`.
+ */
+export type BackupTree = 'public' | 'private' | 'global';
+
+/** The folder under the destination that holds a tree's copy: the global tree's is the same for every record. */
+function folderOf(destination: string, record: string | undefined, tree: BackupTree): string {
+  if (tree === 'global') return join(destination, 'global');
+  if (record === undefined)
+    throw new Error(`the ${tree} tree is copied under the name of a record`);
+  // A name becomes a folder: only what a record is called (64 lowercase hex) may, so it cannot be `global`
+  // or climb out of the folder of the backup.
+  if (!/^[0-9a-f]{64}$/.test(record)) {
+    throw new BackupRefusedError(
+      'BAD_RECORD_NAME',
+      `The record is named ${JSON.stringify(record)}, which is not a name a record has (64 lowercase hexadecimal characters), and a backup is kept in a folder of that name.`,
+    );
+  }
+  return join(destination, record, tree);
+}
+
+/** The places a copy is under, outermost first: each is asked with `lstat` before a byte is written. */
+function placesOf(destination: string, folder: string): string[] {
+  return folder === join(destination, 'global')
+    ? [destination, folder]
+    : [destination, dirname(folder), folder];
+}
 
 /** The manifest at the root of a copied tree. */
 export const BACKUP_MANIFEST = 'mnema-backup.json';
@@ -44,7 +70,7 @@ export const BACKUP_MANIFEST = 'mnema-backup.json';
 /** A run turned away before anything was written. */
 export class BackupRefusedError extends CodedError {
   override readonly name = 'BackupRefusedError';
-  readonly code: 'LINKED' | 'PRIVATE_KEY' | 'DIVERGED' | 'NOT_A_FOLDER';
+  readonly code: 'LINKED' | 'PRIVATE_KEY' | 'DIVERGED' | 'NOT_A_FOLDER' | 'BAD_RECORD_NAME';
 
   constructor(code: BackupRefusedError['code'], message: string) {
     super(`${message} Nothing was written.`);
@@ -171,14 +197,15 @@ export interface Copied {
 export interface PreparedCopy {
   readonly folder: string;
   readonly tree: BackupTree;
-  readonly record: string;
+  /** The name of the record the copy is kept under; undefined for the global tree, which has none. */
+  readonly record: string | undefined;
   readonly destination: string;
   readonly planned: readonly PlannedFile[];
   readonly changing: readonly PlannedFile[];
 }
 
 /**
- * Reads the tree at `root` and checks it against `<destination>/<record>/<tree>/`, and writes NOTHING,
+ * Reads the tree at `root` and checks it against `<destination>/<record>/<tree>/` (`<destination>/global/` for the global tree), and writes NOTHING,
  * not even a folder: a link in the source or in the folder, a private key, a copy that is a file, and
  * a copy the tree no longer starts as are all refused here. A run over several trees prepares every one
  * before it writes the first ({@link writeCopy}), so a refusal leaves the folder as it was.
@@ -186,12 +213,12 @@ export interface PreparedCopy {
 export function prepareCopy(
   root: string,
   destination: string,
-  record: string,
+  record: string | undefined,
   tree: BackupTree,
 ): PreparedCopy {
   const planned = planCopy(root, tree);
-  const folder = join(destination, record, tree);
-  for (const place of [destination, join(destination, record), folder]) {
+  const folder = folderOf(destination, record, tree);
+  for (const place of placesOf(destination, folder)) {
     const held = lstatSync(place, { throwIfNoEntry: false });
     if (held?.isSymbolicLink()) throw linked(place);
     if (held !== undefined && !held.isDirectory()) {
@@ -232,7 +259,7 @@ export function writeCopy(prepared: PreparedCopy, now: Date): Copied {
   }
   const manifest = {
     format: 1,
-    record: prepared.record,
+    ...(prepared.record === undefined ? {} : { record: prepared.record }),
     tree: prepared.tree,
     copiedAt: now.toISOString(),
     files: planned.map((file) => ({ path: file.path, bytes: file.bytes.length })),
@@ -269,12 +296,12 @@ export interface CopyStanding {
 export function standingOfCopy(
   root: string,
   destination: string,
-  record: string,
+  record: string | undefined,
   tree: BackupTree,
 ): CopyStanding {
   const planned = planCopy(root, tree);
-  const folder = join(destination, record, tree);
-  for (const place of [destination, join(destination, record), folder]) {
+  const folder = folderOf(destination, record, tree);
+  for (const place of placesOf(destination, folder)) {
     if (lstatSync(place, { throwIfNoEntry: false })?.isSymbolicLink()) throw linked(place);
   }
   let behind = 0;

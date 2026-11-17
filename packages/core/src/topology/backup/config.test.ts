@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -5,9 +6,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { ResolvedTrees } from '../resolve.js';
 import {
   assignDestination,
+  assignGlobalDestination,
   BackupConfigError,
   backupConfigPath,
   destinationOf,
+  globalDestinationOf,
   readBackupConfig,
   whyNotADestination,
 } from './config.js';
@@ -44,6 +47,53 @@ describe('which folder keeps which project', () => {
     assignDestination(path, 'record-b', '/two', NOW);
     expect(assignDestination(path, 'record-a', '/three', NOW).replaced).toBe('/one');
     expect(destinationOf(readBackupConfig(path), 'record-b')).toBe('/two');
+  });
+
+  it("keeps the global tree's folder apart from every project's, whichever is assigned last", () => {
+    expect(globalDestinationOf(path)).toBeUndefined();
+    assignDestination(path, 'record-a', '/one', NOW);
+    expect(globalDestinationOf(path)).toBeUndefined();
+    expect(assignGlobalDestination(path, '/global', NOW).replaced).toBeUndefined();
+    assignDestination(path, 'record-b', '/two', NOW);
+    expect(assignGlobalDestination(path, '/other', NOW).replaced).toBe('/global');
+    const held = readBackupConfig(path);
+    expect(globalDestinationOf(path)).toBe('/other');
+    expect([...held.keys()]).toEqual(['record-a', 'record-b']);
+    expect(destinationOf(held, 'record-a')).toBe('/one');
+  });
+
+  it('keeps both assignments when a project and the global tree are set up at the same time', async () => {
+    const worker = `
+      const { assignDestination, assignGlobalDestination } = await import(${JSON.stringify(new URL('../../../dist/topology/backup/config.js', import.meta.url).href)});
+      const [, path, kind, name] = process.argv;
+      const at = new Date('2026-11-17T10:00:00.000Z');
+      for (let i = 0; i < 25; i += 1) {
+        if (kind === 'global') assignGlobalDestination(path, '/g' + i, at);
+        else assignDestination(path, name, '/p' + i, at);
+      }
+    `;
+    const run = (kind: string, name: string) =>
+      new Promise<number | null>((done) => {
+        spawn(process.execPath, ['--input-type=module', '-e', worker, path, kind, name], {
+          stdio: 'ignore',
+        }).on('exit', done);
+      });
+    const codes = await Promise.all([
+      run('global', ''),
+      run('project', 'record-a'),
+      run('project', 'record-b'),
+    ]);
+    expect(codes).toEqual([0, 0, 0]);
+    expect(globalDestinationOf(path)).toBe('/g24');
+    const held = readBackupConfig(path);
+    expect(destinationOf(held, 'record-a')).toBe('/p24');
+    expect(destinationOf(held, 'record-b')).toBe('/p24');
+  });
+
+  it('refuses a global entry it cannot read', () => {
+    mkdirSync(join(base, 'data'));
+    writeFileSync(path, '{"projects":{},"global":{"destination":3}}');
+    expect(() => globalDestinationOf(path)).toThrow(/the global tree/);
   });
 
   it('refuses a file it cannot read, and does not overwrite it', () => {
@@ -87,6 +137,24 @@ describe('where a backup cannot be kept', () => {
       /data directory/,
     );
     expect(whyNotADestination(join(base, 'data'), trees)).toMatch(/data directory/);
+  });
+
+  it('refuses a folder inside the working tree of ANY repository, wherever the command runs from', () => {
+    const other = join(base, 'other');
+    mkdirSync(join(other, '.git'), { recursive: true });
+    writeFileSync(join(other, '.git', 'HEAD'), 'ref: refs/heads/main\n');
+    const outside: ResolvedTrees = {
+      global: join(base, 'data', 'global'),
+      keyRoot: join(base, 'data', 'identity'),
+    };
+    expect(whyNotADestination(join(other, 'leak'), outside)).toMatch(/git repository/);
+    expect(whyNotADestination(join(other, 'a', 'b', 'leak'), outside)).toMatch(/git repository/);
+    expect(whyNotADestination(join(base, 'free'), outside)).toBeUndefined();
+    // The same answer from inside a project of another repository.
+    const project = join(base, 'project');
+    mkdirSync(join(project, '.mnema'), { recursive: true });
+    const inside: ResolvedTrees = { ...outside, projectPublic: join(project, '.mnema') };
+    expect(whyNotADestination(join(other, 'leak'), inside)).toMatch(/git repository/);
   });
 
   it('refuses a folder inside the git directory every worktree of the repository shares', () => {

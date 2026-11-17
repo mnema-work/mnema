@@ -12,6 +12,12 @@ In the help under **This machine** · a command of [`mnema backup`](backup.md).
 | --- | --- |
 | `folder` | the folder (outside the working tree, the record and the git directory) |
 
+## Options
+
+| Option | What it does |
+| --- | --- |
+| `--global` | assign the folder to the machine's global tree instead of this project |
+
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
 <!-- End of the part written by hand. -->
 
@@ -28,5 +34,7 @@ Arguments:
               directory)
 
 Options:
+  --global    assign the folder to the machine's global tree instead of this
+              project
   -h, --help  display help for command
 ```

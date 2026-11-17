@@ -155,3 +155,44 @@ describe('mnema backup run and status', () => {
     expect(said.err.join(' ')).toContain('mnema backup setup <folder>');
   });
 });
+
+describe('mnema backup --global', () => {
+  const home = () => join(sandbox, 'home', '.mnema', 'backup.json');
+
+  it('assigns nothing without a terminal, and names the global command for the person', async () => {
+    const said = await mnema(['backup', 'setup', '--global', join(sandbox, 'g')]);
+    expect(said.failed).toBe(true);
+    expect(said.err.join(' ')).toContain('mnema backup setup --global <folder>');
+    expect(existsSync(home())).toBe(false);
+  });
+
+  it('copies only the global tree to its folder, and says the project run did not', async () => {
+    await mnema(['task', 'create', 'memory', '--scope', 'global']);
+    const folder = join(sandbox, 'g');
+    expect((await mnema(['backup', 'setup', '--global', folder], answering('yes'))).failed).toBe(
+      false,
+    );
+    const refused = await mnema(['backup', 'run']);
+    expect(refused.err.join(' ')).toContain('mnema backup setup <folder>');
+    expect(existsSync(folder)).toBe(false);
+
+    const ran = await mnema(['backup', 'run', '--global']);
+    expect(ran.failed, ran.err.join(' / ')).toBe(false);
+    expect(ran.out.join('\n')).toMatch(/global tree: \d+ file\(s\) held/);
+    expect(readdirSync(folder)).toEqual(['global']);
+
+    const status = await mnema(['backup', 'status', '--global']);
+    expect(status.out.join('\n')).toContain('global tree: last copied');
+    expect(status.out.join('\n')).toContain('nothing to add');
+    const json = JSON.parse(
+      (await mnema(['backup', 'status', '--global', '--json'])).out.join('\n'),
+    );
+    expect(json.destination).toBe(folder);
+  });
+
+  it('refuses a global run for a machine whose global tree has no folder', async () => {
+    const said = await mnema(['backup', 'run', '--global']);
+    expect(said.failed).toBe(true);
+    expect(said.err.join(' ')).toContain('mnema backup setup --global <folder>');
+  });
+});
