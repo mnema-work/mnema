@@ -815,7 +815,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/chain/src/chain/causal-order-counts-a-forced-step-and-keeps-every-place-a-hash-sits.test.ts': 2,
   'packages/chain/src/chain/causal-order.properties.test.ts': 3,
   'packages/chain/src/chain/chain.test.ts': 20,
-  'packages/chain/src/chain/cited-heads.test.ts': 11,
+  'packages/chain/src/chain/cited-heads.test.ts': 12,
   'packages/chain/src/chain/coded-error.test.ts': 4,
   'packages/chain/src/chain/decision-text.test.ts': 6,
   'packages/chain/src/chain/disk-words.test.ts': 2,
