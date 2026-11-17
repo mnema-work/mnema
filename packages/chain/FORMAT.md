@@ -304,6 +304,18 @@ except a link in place of a tail, which 0.1.8 refuses already
 `keys-dir-linked` and `tails-dir-linked`, and "a link to a file outside the record, to both
 readers").
 
+**The writer of this product refuses to write through a link.** Before the first byte of a write, with
+the tail's lock held and before anything is sealed, it asks for every directory it writes in (`tails/`,
+its own tail, `keys/`, `locks/`) and every file it writes (the tail's segments, `checkpoints.jsonl`,
+`tailproof.json`, the key's public file in `keys/`, and in `locks/` the tail's lock, its notes
+`<tail>.head`, `<tail>.head.sig` and `<tail>.cited`, and the staging file each is written through),
+and where one is a symbolic link it refuses with `RECORD_LINKED`, naming the path: nothing is written,
+nothing the link points at is opened, and it does not found a new tail in the link's place. The
+lock is asked before it is taken, since taking it is a write. A link elsewhere is for the readers
+above. This binds this product's writer and nothing else: another writer that puts a link in a record is
+still refused by both readers
+(`packages/chain/src/chain/the-writer-does-not-write-through-a-link.test.ts`).
+
 The tail is the concatenation of its segments in name order, and sequence numbers
 are contiguous across that concatenation: **which segment a given sequence number
 falls in is not specified**, and a verifier should not depend on it. Nothing else

@@ -206,6 +206,10 @@ describe('the writer refuses to write through a link, and writes nothing', () =>
           caught = error;
         }
 
+        const targetAfter = planted.directory ? held(planted.target) : readFileSync(planted.target);
+        expect(targetAfter).toEqual(targetBefore);
+        if (planted.directory) expect(readdirSync(planted.target)).toEqual([]);
+        else expect(held(root)).toEqual(insideBefore);
         expect(caught).toBeInstanceOf(RecordLinkedError);
         expect((caught as RecordLinkedError).code).toBe('RECORD_LINKED');
         expect((caught as RecordLinkedError).path).toBe(planted.path);
@@ -214,10 +218,6 @@ describe('the writer refuses to write through a link, and writes nothing', () =>
           'replace the link with the folder or file it points to',
         );
         expect((caught as Error).message).not.toContain('BYTES-NO-ONE-SIGNED');
-        const targetAfter = planted.directory ? held(planted.target) : readFileSync(planted.target);
-        expect(targetAfter).toEqual(targetBefore);
-        if (planted.directory) expect(readdirSync(planted.target)).toEqual([]);
-        else expect(held(root)).toEqual(insideBefore);
       });
     }
   }
