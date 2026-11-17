@@ -10,15 +10,18 @@
  * of it that can be discarded and rebuilt at any time.
  */
 
+import { basename } from 'node:path';
 import {
   type ChainLayout,
   catalogUpcasters,
   type EventKind,
   type LinkBreak,
+  LinkedRecordError,
   listTails,
   projectionCachePath,
   type RecordGroup,
   type RetainedEntry,
+  refuseLinks,
   tailsReadAt,
   type UnreadLine,
   type UpcasterRegistry,
@@ -305,7 +308,11 @@ export class ProjectionCache {
     const chosenFile = options.persist === true ? readCacheFileFor(layout) : undefined;
     const path =
       options.dbPath ?? (keeps ? (chosenFile ?? projectionCachePath(layout)) : IN_MEMORY);
-    if (path === IN_MEMORY) {
+    // The tree's own place is `locks/projection.db`: where `locks/` or the file (or one beside it that
+    // SQLite makes) is a link, opening it would create a file where the link points, outside the
+    // record, so the cache stays in memory as it does where it cannot write.
+    const ownPlace = options.dbPath === undefined && chosenFile === undefined;
+    if (path === IN_MEMORY || (ownPlace && cacheStandsAtALink(layout))) {
       return new ProjectionCache(openMemory(), layout, upcasters, false);
     }
     // A named path is the caller's and fails loudly; the one this class chose is a cache and
@@ -1080,5 +1087,20 @@ export class ProjectionCache {
   /** Closes the underlying database. Closing a cache already closed is nothing to do. */
   close(): void {
     if (this.db.isOpen) this.db.close();
+  }
+}
+
+/** Whether the tree's own cache file, or `locks/` or a file SQLite keeps beside it, is a symbolic link. */
+function cacheStandsAtALink(layout: ChainLayout): boolean {
+  const file = basename(projectionCachePath(layout));
+  try {
+    refuseLinks(layout, [
+      'locks',
+      ...['', '-wal', '-shm', '-journal'].map((suffix) => `locks/${file}${suffix}`),
+    ]);
+    return false;
+  } catch (error) {
+    if (error instanceof LinkedRecordError) return true;
+    throw error;
   }
 }

@@ -15,7 +15,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { dirname, join, parse } from 'node:path';
-import { listPrivateKeyFingerprints } from '@mnema/chain';
+import { listPrivateKeyFingerprints, refuseToWriteThrough } from '@mnema/chain';
 import { PROJECT_DIR } from '@mnema/core';
 
 /**
@@ -235,6 +235,8 @@ function writeEditorconfig(record: string): boolean {
 
 /** Writes what is missing and returns what it wrote. Touches nothing else. */
 export function complete(project: string): Missing {
+  // The page is a file this writes, or rewrites over an older one: never through a link.
+  refuseToWriteThrough({ root: join(project, PROJECT_DIR) }, [README_NAME]);
   const missing = whatIsMissing(project);
   const page = join(project, PROJECT_DIR, README_NAME);
   let replaced = false;

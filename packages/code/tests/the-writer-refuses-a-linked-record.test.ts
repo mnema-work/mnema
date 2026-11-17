@@ -90,15 +90,9 @@ function plant(box: Sandbox, one: Case): { path: string; target: string } {
   return { path, target };
 }
 
-/**
- * What the link points at, as far as the writer is concerned: a file's bytes, or the names in a folder
- * that belong to the writer (the tail's lock and notes). The folder may hold `projection.db`, which
- * the READS build in `locks/` and which is not the writer's.
- */
+/** What the link points at: a file's bytes, or every name in a folder. No name is excepted. */
 const heldAt = (target: string, directory: boolean): string =>
-  directory
-    ? JSON.stringify(readdirSync(target).filter((name) => name !== 'projection.db'))
-    : readFileSync(target, 'utf-8');
+  directory ? JSON.stringify(readdirSync(target)) : readFileSync(target, 'utf-8');
 
 describe('a write over a linked record, on the command line', () => {
   for (const one of CASES) {
@@ -115,6 +109,34 @@ describe('a write over a linked record, on the command line', () => {
       expect(heldAt(target, one.directory)).toBe(before);
     }, 60_000);
   }
+});
+
+describe('a read over a linked record', () => {
+  it('locks/ is a link to a folder: status serves and the folder gains no file, not even the cache', () => {
+    const box = aRecord();
+    const { target } = plant(box, CASES[0] as Case);
+    for (const args of [['status'], ['search', 'memory']]) {
+      const said = mnema(box, args);
+      expect(said.status, `${said.stdout}${said.stderr}`).toBe(0);
+    }
+    expect(readdirSync(target)).toEqual([]);
+  }, 60_000);
+});
+
+describe('init over a page that is a link', () => {
+  it('refuses to write through a dangling .mnema/README.md and creates nothing outside the record', () => {
+    const box = aRecord();
+    const target = join(box.outside, 'created-by-init');
+    const page = join(record(box), 'README.md');
+    rmSync(page, { force: true });
+    symlinkSync(target, page);
+    const said = mnema(box, ['init', '--yes', '--hosts', 'none']);
+    const text = `${said.stdout}${said.stderr}`;
+    expect(said.status, text).not.toBe(0);
+    expect(text).toContain('RECORD_LINKED');
+    expect(text).toContain('README.md is a symbolic link');
+    expect(readdirSync(box.outside)).toEqual([]);
+  }, 60_000);
 });
 
 describe('a write over a linked record, over the server', () => {

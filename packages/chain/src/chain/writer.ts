@@ -535,7 +535,9 @@ export class ChainWriter {
     // then runs under the new tail's lock. Two rounds at most: a new id names a tail nobody
     // has written, and one another process chose ends where that process left it.
     for (;;) {
-      // Before the lock, which is itself a write: taking it makes `locks/` and the lock file.
+      // Before the lock, which is itself a write: taking it makes `locks/` and the lock file. A window
+      // stays between this question and the lock's creation: where `locks/` becomes a link in it, the
+      // lock file is created at the link's target, and the question under the lock refuses right after.
       refuseToLockThroughALink(this.layout, this.tailId);
       const held = withTailLock(tailLockPath(this.layout, this.tailId), () => {
         this.holding = true;
