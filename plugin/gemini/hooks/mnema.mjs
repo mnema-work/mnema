@@ -15,7 +15,15 @@
 // by a code on the first line of its error stream. `settled` and `beside`, which run after the
 // work, say the same line, in the field that carries context, where the record did not answer.
 import { spawnSync } from 'node:child_process';
-import { accessSync, constants, lstatSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import {
+  accessSync,
+  constants,
+  lstatSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  statSync,
+} from 'node:fs';
 import { homedir, userInfo } from 'node:os';
 import { delimiter, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 

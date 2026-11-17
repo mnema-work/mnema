@@ -483,10 +483,16 @@ function theGateKit(): { readonly imports: string[]; readonly code: string[] } {
   return {
     imports: [...merged.entries()]
       .sort(([one], [other]) => (one < other ? -1 : 1))
-      .map(
-        ([from, names]) =>
-          `import { ${[...names].sort((one, other) => (one.toLowerCase() < other.toLowerCase() ? -1 : 1)).join(', ')} } from '${from}';`,
-      ),
+      .map(([from, names]) => {
+        const sorted = [...names].sort((one, other) =>
+          one.toLowerCase() < other.toLowerCase() ? -1 : 1,
+        );
+        const line = `import { ${sorted.join(', ')} } from '${from}';`;
+        // The formatter's own wrapping, so a generated file is what it leaves.
+        return line.length <= 100
+          ? line
+          : `import {\n${sorted.map((name) => `  ${name},`).join('\n')}\n} from '${from}';`;
+      }),
     code: bodies.join('\n\n').split('\n'),
   };
 }
