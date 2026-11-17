@@ -334,7 +334,7 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
       lines.push(
         fact(
           result.sound
-            ? 'the copy is a record the readers accept, and the tree is not shown cut'
+            ? 'the copy is a record this mnema accepts, and the tree is not shown cut'
             : 'the copy is not sound, or the tree is shown cut, lost or forked from it: see above',
         ),
       );

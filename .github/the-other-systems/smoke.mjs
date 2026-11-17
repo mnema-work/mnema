@@ -365,6 +365,29 @@ try {
   const standing = mustRun('mnema backup status', mnema(['backup', 'status'], project));
   check(/nothing to add/.test(standing.out), 'backup status says the copy is up to date');
 
+  // The private tree is lost and put back from the copy, and the copy verifies.
+  const privateTree = join(project, '.git', 'mnema', '%2E', 'private');
+  const tailsInTheTree = readdirSync(join(privateTree, 'tails')).length;
+  rmSync(privateTree, { recursive: true, force: true });
+  const dry = mustRun(
+    'mnema backup restore --dry-run',
+    mnema(['backup', 'restore', '--dry-run'], project),
+  );
+  check(
+    /nothing was written/.test(dry.out) && !existsSync(privateTree),
+    'backup restore --dry-run writes nothing',
+  );
+  mustRun('mnema backup restore', mnema(['backup', 'restore'], project));
+  check(
+    readdirSync(join(privateTree, 'tails')).length === tailsInTheTree,
+    'backup restore puts the private tails back',
+  );
+  const verifiedCopy = mustRun('mnema backup verify', mnema(['backup', 'verify'], project));
+  check(
+    /the copy is a record this mnema accepts/.test(verifiedCopy.out),
+    'backup verify reads the copy and finds the tree as it is',
+  );
+
   section('doctor');
   const doctor = mustRun('mnema doctor', mnema(['doctor'], project));
   check(doctor.out.trim() !== '', 'doctor says something');
