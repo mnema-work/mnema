@@ -18,11 +18,11 @@ In the help under **This machine**.
 
 ## Backing up a project's trees to a folder
 
-`mnema backup` copies what a project's record is made of into a folder you name, so that a lost
+Backing up copies what a project's record is made of into a folder you name, so that a lost
 disk does not take the record with it. It is a copy and nothing else: it records nothing, and
 the folder is not a second record that anyone reads from.
 
-```text
+```sh
 mnema backup setup ~/backups/mnema      # say which folder keeps THIS project's backup
 mnema backup run                        # copy
 mnema backup status                     # where it is, when it was copied, what is still to copy
