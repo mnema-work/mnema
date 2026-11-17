@@ -831,7 +831,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/chain/src/chain/keystore.test.ts': 11,
   'packages/chain/src/chain/level.test.ts': 2,
   'packages/chain/src/chain/lines.test.ts': 5,
-  'packages/chain/src/chain/migration.test.ts': 8,
+  'packages/chain/src/chain/migration.test.ts': 12,
   'packages/chain/src/chain/moves.test.ts': 5,
   'packages/chain/src/chain/ots.test.ts': 3,
   'packages/chain/src/chain/outside-vectors.test.ts': 11,
