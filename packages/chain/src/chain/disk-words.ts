@@ -15,12 +15,12 @@
  *     {@link signatureNotConfirmed}.
  */
 
+import { neutralized } from '../one-line.js';
 import { CodedError } from './coded-error.js';
 
 /** What the disk reported, as the error that carried it says it (a Node error names its errno). */
 export function whatTheDiskSaid(error: unknown): string {
-  const said = error instanceof Error ? error.message : String(error);
-  return said.replace(/\s+/g, ' ').trim();
+  return neutralized(error instanceof Error ? error.message : String(error));
 }
 
 /** The fact is on the tail and its checkpoint is not: it is signed by the next write. */

@@ -20,7 +20,13 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  rmSync as clear,
+  writeFileSync as keep,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -108,11 +114,11 @@ beforeEach(() => {
   home = join(sandbox, 'home');
   preload = join(sandbox, 'fail-at.cjs');
   for (const dir of [repo, home]) mkdirSync(dir, { recursive: true });
-  writeFileSync(preload, PRELOAD);
+  keep(preload, PRELOAD);
 });
 
 afterEach(() => {
-  rmSync(sandbox, { recursive: true, force: true });
+  clear(sandbox, { recursive: true, force: true });
 });
 
 function envFor(fails?: string): Record<string, string> {

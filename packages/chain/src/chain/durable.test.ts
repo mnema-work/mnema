@@ -112,7 +112,9 @@ describe('a write the writer returns from is on the disk', () => {
       join(dirname(fileURLToPath(import.meta.url)), 'writer.ts'),
       'utf-8',
     );
-    expect(source.match(/appendDurably\(/g)?.length ?? 0).toBe(4);
+    // The segment's line, through the one place that tells a failed call from a line that landed,
+    // and the checkpoint's.
+    expect(source.match(/appendDurably\(/g)?.length ?? 0).toBe(3);
     expect(source).not.toMatch(/appendFileSync|writeSync\(|createWriteStream/);
   });
 });
