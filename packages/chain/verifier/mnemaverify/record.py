@@ -1202,14 +1202,28 @@ LINKED_ENTRY = (
     "reader follows a link there, which can point outside it"
 )
 
-# What a Windows directory listing marks every reparse point with. Node lists a record with
-# `readdir` and its `Dirent`, and libuv (src/win/fs.c, `fs__scandir`, 1.52.1, the libuv of Node 24
-# and 26) types an entry carrying this attribute as a link whatever its reparse tag: a symbolic
-# link, a junction, an app execution alias, and a cloud placeholder (OneDrive) alike; its `lstat`
-# (`fs__stat_handle`) says the same. So this reader reads the same attribute off the same listing
-# (`os.scandir`), and a placeholder is refused by both readers, never by one. `os.path.islink`
-# would answer no for all but the first, and `os.path.isjunction` is past this reader's floor.
+# THE REPARSE POINTS THAT ARE LINKS, as Node reads them on Windows. Its listing (libuv
+# `src/win/fs.c`, `fs__scandir`) types every reparse point as a link, and the product asks `lstat`
+# of each one (`listedEntries`): libuv's `lstat` (`fs__stat_handle`, `fs__readlink_handle`, in 1.51
+# and 1.52, the libuv of Node 24 and 26) calls a link only these three tags and reads any other
+# reparse point, a OneDrive placeholder or a deduplicated file, as the file or folder it is. This
+# reader reads the tag off the same listing. What still differs, rare inside a record: a WSL link
+# (IO_REPARSE_TAG_LX_SYMLINK) is a link to libuv 1.52 (Node 26) and to neither 1.51 nor this reader,
+# and libuv takes a junction to a volume (`\??\Volume{...}`) or an app execution alias it cannot
+# parse for no link, where this reader goes by the tag alone. `os.path.islink` answers no for all
+# but the first, and `os.path.isjunction` is past this reader's floor.
 FILE_ATTRIBUTE_REPARSE_POINT = 0x400
+IO_REPARSE_TAG_SYMLINK = 0xA000000C
+IO_REPARSE_TAG_MOUNT_POINT = 0xA0000003
+IO_REPARSE_TAG_APPEXECLINK = 0x8000001B
+LINK_TAGS = (IO_REPARSE_TAG_SYMLINK, IO_REPARSE_TAG_MOUNT_POINT, IO_REPARSE_TAG_APPEXECLINK)
+
+
+def _a_link_by_its_stat(held: os.stat_result) -> bool:
+    """On Windows, a reparse point whose tag libuv calls a link."""
+    attributes = getattr(held, "st_file_attributes", 0)
+    tag = getattr(held, "st_reparse_tag", 0)
+    return bool(attributes & FILE_ATTRIBUTE_REPARSE_POINT) and tag in LINK_TAGS
 
 
 class _Listed(NamedTuple):
@@ -1225,9 +1239,8 @@ def _entry_is_link(entry: os.DirEntry[str]) -> bool:
         return True
     if os.name != "nt":
         return False
-    # On Windows the attributes come from the directory listing itself, as libuv's do.
-    attributes = getattr(entry.stat(follow_symlinks=False), "st_file_attributes", 0)
-    return bool(attributes & FILE_ATTRIBUTE_REPARSE_POINT)
+    # On Windows the attributes and the tag come from the directory listing itself.
+    return _a_link_by_its_stat(entry.stat(follow_symlinks=False))
 
 
 def _listing(directory: str) -> list[_Listed]:
@@ -1241,18 +1254,19 @@ def _listing(directory: str) -> list[_Listed]:
 
 
 def is_link(path: str) -> bool:
-    """A link at `path` by `lstat` (any reparse point on Windows), for a place `record_links` already listed.
+    """A link at `path` by `lstat` (on Windows, by its tag), for a place `record_links` already listed.
 
     The walk that decides what is refused reads the listings (`_listing`); this answers the same
     question of one path, where a tail with no link in it is read.
     """
     if os.path.islink(path):
         return True
+    if os.name != "nt":
+        return False
     try:
-        held = os.lstat(path)
+        return _a_link_by_its_stat(os.lstat(path))
     except OSError:
         return False
-    return bool(getattr(held, "st_file_attributes", 0) & FILE_ATTRIBUTE_REPARSE_POINT)
 
 
 def _is_directory(path: str) -> bool:

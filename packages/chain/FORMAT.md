@@ -277,11 +277,11 @@ version kept it before it moved into the repository's git directory; the product
 still there as left behind and, when asked, moves it.
 
 **A reader follows no link in a record, and refuses each one by name.** A symbolic link, or on
-Windows any reparse point (a junction, an app execution alias, a cloud placeholder), at a place a
-reader reads (`keys/` and `tails/` themselves, any entry of either, any
+Windows a junction or an app execution alias, at a place a reader reads (`keys/` and `tails/` themselves, any entry of either, any
 entry of a tail directory and any entry of a tail's `witness/`) is refused, whatever it points
 at: a directory, a file, nothing, or a place inside the record itself. A reader finds them by
-the directory listing (`lstat`, never following what it lists) before it reads anything,
+the directory listing and `lstat`, never following what they list, before it reads anything (any
+other Windows reparse point, a cloud placeholder among them, is the file or folder it holds),
 and opens nothing through one: a tail that is a link, or that holds one, is not read and not
 counted as a tail (its directory still names its key's tail, §6.5); a key file that is a link is
 not read and holds no key; and nothing under `keys/` or `tails/` is read when that directory is

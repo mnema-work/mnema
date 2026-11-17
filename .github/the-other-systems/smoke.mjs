@@ -268,7 +268,7 @@ try {
 
   // A junction is what a person on Windows makes without being an administrator, and Node reads it
   // as a link; Python's `os.path.islink` does not, so the second reader asks the listing's reparse
-  // point attribute, as Node's libuv does. On the other systems the type is ignored and this is a symbolic link. The clone is not used after this.
+  // tag, the three libuv's `lstat` calls a link. On the other systems the type is ignored and this is a symbolic link. The clone is not used after this.
   section('a tail that is a junction, or a symbolic link, is refused by both readers');
   const tailsInClone = join(clone, '.mnema', 'tails');
   const [linkedTail] = readdirSync(tailsInClone);

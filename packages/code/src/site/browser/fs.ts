@@ -144,5 +144,7 @@ export const truncateSync = READ_ONLY('truncateSync');
 export const fsyncSync = READ_ONLY('fsyncSync');
 export const writeSync = READ_ONLY('writeSync');
 export const readlinkSync = READ_ONLY('readlinkSync');
+/** Asked only on Windows, of an entry a listing calls a link; no entry here is one. */
+export const lstatSync = READ_ONLY('lstatSync');
 export const rmSync = READ_ONLY('rmSync');
 export const unlinkSync = READ_ONLY('unlinkSync');
