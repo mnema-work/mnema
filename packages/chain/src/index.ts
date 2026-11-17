@@ -81,6 +81,7 @@ export {
   writtenAsBuilt,
   writtenAsStored,
 } from './chain/hash.js';
+export { IntentNotKeptError } from './chain/kept-head.js';
 export {
   isProtected,
   KEY_PASSPHRASE_VARIABLE,
@@ -149,6 +150,7 @@ export {
 } from './chain/level.js';
 export { UnreadableLineError } from './chain/lines.js';
 export { RecordLinkedError, refuseToWriteThrough } from './chain/linked-write.js';
+export { MigrationUnsettledError } from './chain/migration.js';
 export { illegalMoves, type PlacedEvent } from './chain/moves.js';
 export type {
   Arrivals,
@@ -191,8 +193,6 @@ export {
 } from './chain/store.js';
 export { subjectEvents } from './chain/subject-events.js';
 export { type KeyATailHolds, type KeyIntroduction, keysATailHolds } from './chain/tail-keys.js';
-export { IntentNotKeptError } from './chain/kept-head.js';
-export { MigrationUnsettledError } from './chain/migration.js';
 export { DEFAULT_WAIT_MS, TailBusyError } from './chain/tail-lock.js';
 export {
   arrivalsSince,

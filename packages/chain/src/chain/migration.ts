@@ -40,9 +40,9 @@ import {
 import { dirname, join } from 'node:path';
 import { CodedError } from './coded-error.js';
 import { writeFileDurably } from './durable.js';
+import { mintInstallationId } from './keystore.js';
 import { type ChainLayout, installationIdPath, migratedMarkPath, tailLockPath } from './layout.js';
 import { refuseToWriteThrough } from './linked-write.js';
-import { mintInstallationId } from './keystore.js';
 import { clearOrphanedStaging } from './staging.js';
 import { TailBusyError, withTailLock } from './tail-lock.js';
 
@@ -104,7 +104,8 @@ export function migrateMachinery(places: MigrationPlaces): void {
     });
     if (settled) break;
     id = readId(legacyIdPath);
-    if (tries + 1 >= SETTLE_TRIES && id !== undefined) throw new MigrationUnsettledError(legacyIdPath);
+    if (tries + 1 >= SETTLE_TRIES && id !== undefined)
+      throw new MigrationUnsettledError(legacyIdPath);
   }
   for (const tail of legacyTails(chain, fingerprint)) {
     try {
@@ -158,9 +159,12 @@ function moveNotesOf(places: MigrationPlaces, tail: string): void {
   clearOrphanedStaging(chain, tail);
   const old = (note: string) => join(chain.root, 'locks', `${tail}.${note}`);
   const now = (note: string) => join(shared.root, 'locks', `${tail}.${note}`);
-  const noted = (at: (note: string) => string) => existsSync(at('head')) || existsSync(at('head.sig'));
+  const noted = (at: (note: string) => string) =>
+    existsSync(at('head')) || existsSync(at('head.sig'));
   if (noted(old) && noted(now)) {
-    const same = (['head', 'head.sig'] as const).every((note) => text(old(note)) === text(now(note)));
+    const same = (['head', 'head.sig'] as const).every(
+      (note) => text(old(note)) === text(now(note)),
+    );
     if (!same) for (const note of ['head', 'head.sig'] as const) rmSync(now(note), { force: true });
     for (const note of NOTES) rmSync(old(note), { force: true });
     return;

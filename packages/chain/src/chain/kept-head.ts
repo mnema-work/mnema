@@ -211,7 +211,10 @@ export function keepWrittenHeadDurably(
     throw new IntentNotKeptError(path, (error as NodeJS.ErrnoException).code ?? String(error));
   }
   const back = readWrittenHead(layout, tailId, keyPair.publicKey);
-  if (back === undefined || canonicalStringify(signedFields(tailId, back)) !== canonicalStringify(fields)) {
+  if (
+    back === undefined ||
+    canonicalStringify(signedFields(tailId, back)) !== canonicalStringify(fields)
+  ) {
     throw new IntentNotKeptError(path, 'it did not read back as written');
   }
 }

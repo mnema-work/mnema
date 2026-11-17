@@ -1,3 +1,4 @@
+// @plants-damage
 /**
  * What a tail's notes and lock outlive: the checkout they were written in.
  *

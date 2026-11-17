@@ -41,8 +41,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildMcpServer } from '../src/mcp/server.js';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
 import { argvOf } from './support/reading-a-shell-line.js';
-import { notesOf } from './support/the-notes-of-a-record.js';
 import { MNEMA_CLI } from './support/the-cli.js';
+import { notesOf } from './support/the-notes-of-a-record.js';
 
 /** The built binary: what a person runs. */
 const CLI = MNEMA_CLI;

@@ -1,8 +1,8 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { gitPlaceOf, isWithin, privateTreePlace } from './git-place.js';
+import { gitPlaceOf, isWithin, privateTreePlace, publicMachineryPlace } from './git-place.js';
 
 let sandbox: string;
 
@@ -73,6 +73,50 @@ describe('privateTreePlace', () => {
       tree: join(common, 'mnema', 'sub', 'private'),
       installation: join(own, 'mnema', 'sub', 'private'),
     });
+  });
+});
+
+describe('publicMachineryPlace', () => {
+  it('shares the locks and notes in the common directory and keeps the hint in the worktree’s own, for the top and for a nested project', () => {
+    const common = aGitDir(join(sandbox, 'repo', '.git'));
+    const own = aGitDir(join(common, 'worktrees', 'wt'));
+    writeFileSync(join(own, 'commondir'), '../..\n');
+    mkdirSync(join(sandbox, 'wt', 'packages', 'a b'), { recursive: true });
+    writeFileSync(join(sandbox, 'wt', '.git'), 'gitdir: ../repo/.git/worktrees/wt\n');
+    const real = realpathSync.native(sandbox);
+
+    const top = publicMachineryPlace(join(sandbox, 'wt'));
+    expect(top?.shared).toBe(join(real, 'repo', '.git', 'mnema', '%2E', 'public'));
+    expect(top?.checkout).toBe(
+      join(real, 'repo', '.git', 'worktrees', 'wt', 'mnema', '%2E', 'public'),
+    );
+
+    const nested = publicMachineryPlace(join(sandbox, 'wt', 'packages', 'a b'));
+    expect(nested?.shared).toBe(join(real, 'repo', '.git', 'mnema', 'packages%2Fa%20b', 'public'));
+  });
+
+  it('is the place of the private tree’s project, beside it, so one encoding names both', () => {
+    aGitDir(join(sandbox, 'repo', '.git'));
+    const machinery = publicMachineryPlace(join(sandbox, 'repo'));
+    const real = realpathSync.native(sandbox);
+    const privateTree = privateTreePlace(join(real, 'repo'))?.tree ?? '';
+    expect(machinery?.shared).toBe(join(dirname(privateTree), 'public'));
+  });
+
+  it('reaches one place by the folder and by a link to it, which a spelling through the link would miss', () => {
+    aGitDir(join(sandbox, 'repo', '.git'));
+    mkdirSync(join(sandbox, 'repo', 'sub'));
+    symlinkSync(join(sandbox, 'repo', 'sub'), join(sandbox, 'link'), 'dir');
+    expect(publicMachineryPlace(join(sandbox, 'link'))?.shared).toBe(
+      publicMachineryPlace(join(sandbox, 'repo', 'sub'))?.shared,
+    );
+    expect(publicMachineryPlace(join(sandbox, 'link'))?.shared).toContain(
+      join('.git', 'mnema', 'sub', 'public'),
+    );
+  });
+
+  it('answers nothing outside a repository', () => {
+    expect(publicMachineryPlace(sandbox)).toBeUndefined();
   });
 });
 

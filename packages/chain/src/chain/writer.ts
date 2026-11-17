@@ -562,7 +562,12 @@ export class ChainWriter {
         let mayWrite = false;
         try {
           // Under the lock and before the resync, which can cut the segment, and before anything is sealed.
-          refuseToWriteThroughALink(this.layout, this.shared, this.tailId, this.keyPair.fingerprint);
+          refuseToWriteThroughALink(
+            this.layout,
+            this.shared,
+            this.tailId,
+            this.keyPair.fingerprint,
+          );
           mayWrite = true;
           this.resyncIfMoved();
           const movedOn = this.movedOn;
