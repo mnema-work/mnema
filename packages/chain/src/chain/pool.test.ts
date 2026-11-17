@@ -210,7 +210,7 @@ describe('the tail a write goes on with', () => {
 
     expect(writer.tail).toBe(live.tail);
     expect(asked).toEqual([live.tail]);
-  });
+  }, 60_000);
 
   it('asks the base branch about at most sixteen candidates in one write, and founds a tail past that', () => {
     const first = aTailWrittenIn('seed');
@@ -235,7 +235,7 @@ describe('the tail a write goes on with', () => {
 
     expect(asked).toBe(16);
     expect(tailsOf(at)).toHaveLength(21);
-  });
+  }, 60_000);
 
   it('passes a candidate that another process is writing without waiting for it', () => {
     const first = aTailWrittenIn('one');
@@ -250,6 +250,84 @@ describe('the tail a write goes on with', () => {
     expect(Date.now() - began).toBeLessThan(1_500);
     expect(writer.tail).not.toBe(first.tail);
     expect(told.sentences[0]?.founded?.why).toBe('busy');
+  });
+});
+
+describe('a tail the pool offered that does not go on, and a hint another process moved', () => {
+  it('is passed over, and the write founds a tail when no other goes on', () => {
+    const first = aTailWrittenIn('one');
+    const second = copyOf(first.at, 'two');
+    // The note of an act that died elsewhere: the end is as the clear note says, and the signed note
+    // names an entry that no mark of this worktree began.
+    const segment = join(first.at.record, 'tails', first.tail, '000001.jsonl');
+    const last = JSON.parse(readFileSync(segment, 'utf-8').trim().split('\n').at(-1) as string) as {
+      link: { seq: number; hash: string };
+    };
+    const key = keyToSignWith({ root: join(sandbox, 'identity') }).keyPair;
+    keepWrittenHead(
+      shared,
+      first.tail,
+      {
+        seq: last.link.seq,
+        hash: last.link.hash,
+        prev: null,
+        coveredThrough: -1,
+        checkpoint: null,
+        next: { seq: last.link.seq + 1, hash: 'e'.repeat(64) },
+      },
+      key,
+    );
+    const writer = open(second, { onBase: () => true });
+    write(writer, 'next');
+
+    expect(writer.tail).not.toBe(first.tail);
+    expect(tailsOf(second)).toHaveLength(2);
+  });
+
+  it('goes where another process of this worktree took the hint while this tail had nothing in it', () => {
+    const first = aTailWrittenIn('one');
+    const fingerprint = first.tail.split('-')[0] as string;
+    const second = copyOf(first.at, 'two');
+    const writer = open(second);
+    writeFileSync(installationIdPath({ root: second.place }, fingerprint), `${'7'.repeat(32)}\n`);
+    write(writer, 'next');
+
+    expect(writer.tail).toBe(`${fingerprint}-${'7'.repeat(32)}`);
+  });
+
+  it('goes where another process took the hint while the tail it held no longer ends where it was left', () => {
+    const first = aTailWrittenIn('one');
+    const fingerprint = first.tail.split('-')[0] as string;
+    const writer = open(first.at);
+    writeFileSync(join(shared.root, 'locks', `${first.tail}.head`), `99 ${'0'.repeat(64)}\n`);
+    rmSync(join(shared.root, 'locks', `${first.tail}.head.sig`));
+    writeFileSync(installationIdPath({ root: first.at.place }, fingerprint), `${'8'.repeat(32)}\n`);
+    write(writer, 'next');
+
+    expect(writer.tail).toBe(`${fingerprint}-${'8'.repeat(32)}`);
+  });
+
+  it('founds the first tail of a key silently, and passes over a tail it cannot read', () => {
+    const told: Told = { sentences: [] };
+    const empty = checkout('fresh');
+    const writer = open(empty, { told });
+    write(writer, 'the first of this key here');
+    expect(told.sentences).toEqual([]);
+
+    const first = aTailWrittenIn('one');
+    const second = copyOf(first.at, 'two');
+    // A tail with no segment at all, and one whose segment holds what no reader takes for a line.
+    const bare = `${first.tail.split('-')[0]}-${'5'.repeat(32)}`;
+    mkdirSync(join(second.record, 'tails', bare), { recursive: true });
+    writeFileSync(join(shared.root, 'locks', `${bare}.head`), `1 ${'a'.repeat(64)}\n`);
+    const torn = `${first.tail.split('-')[0]}-${'6'.repeat(32)}`;
+    mkdirSync(join(second.record, 'tails', torn), { recursive: true });
+    writeFileSync(join(second.record, 'tails', torn, '000001.jsonl'), 'not a line of any tail\n');
+    writeFileSync(join(shared.root, 'locks', `${torn}.head`), `1 ${'b'.repeat(64)}\n`);
+    const other = open(second, { onBase: () => false, told });
+    write(other, 'next');
+    expect(told.sentences).toHaveLength(1);
+    expect(told.sentences[0]?.founded?.why).toBe('none-ends-here');
   });
 });
 

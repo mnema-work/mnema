@@ -2,7 +2,13 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { gitPlaceOf, isWithin, privateTreePlace, publicMachineryPlace } from './git-place.js';
+import {
+  gitPlaceOf,
+  isWithin,
+  otherGitDirsOf,
+  privateTreePlace,
+  publicMachineryPlace,
+} from './git-place.js';
 
 let sandbox: string;
 
@@ -126,5 +132,43 @@ describe('isWithin', () => {
     expect(isWithin('/r/.git/mnema/private', '/r/.git')).toBe(true);
     expect(isWithin('/r/.github/mnema', '/r/.git')).toBe(false);
     expect(isWithin('/r/.mnema/private', '/r/.git')).toBe(false);
+  });
+});
+
+describe('otherGitDirsOf: the other worktrees of a repository that still exist', () => {
+  /** A linked worktree as git lays it out: its admin directory under the common one, and its `.git` file. */
+  function aLinkedWorktree(common: string, name: string, kept: boolean): string {
+    const own = aGitDir(join(common, 'worktrees', name));
+    writeFileSync(join(own, 'commondir'), '../..\n');
+    const top = join(sandbox, name);
+    mkdirSync(top);
+    writeFileSync(join(top, '.git'), `gitdir: ${own}\n`);
+    writeFileSync(join(own, 'gitdir'), `${join(top, '.git')}\n`);
+    if (!kept) rmSync(top, { recursive: true });
+    return own;
+  }
+
+  it('names the main one and every linked one whose folder is there, from a linked worktree, and not itself', () => {
+    const common = aGitDir(join(sandbox, 'repo', '.git'));
+    const one = aLinkedWorktree(common, 'one', true);
+    const two = aLinkedWorktree(common, 'two', true);
+    aLinkedWorktree(common, 'gone', false);
+    const place = gitPlaceOf(join(sandbox, 'one'));
+    expect(place?.gitDir).toBe(one);
+    expect([...otherGitDirsOf(place as NonNullable<typeof place>)].sort()).toEqual(
+      [common, two].sort(),
+    );
+  });
+
+  it('names the linked ones, and not the main one itself, from the main worktree, and none where there are none', () => {
+    const common = aGitDir(join(sandbox, 'repo', '.git'));
+    expect(
+      otherGitDirsOf({ top: join(sandbox, 'repo'), gitDir: common, commonDir: common }),
+    ).toEqual([]);
+    const one = aLinkedWorktree(common, 'one', true);
+    writeFileSync(join(common, 'worktrees', 'no-gitdir-file'), 'not a directory');
+    expect(
+      otherGitDirsOf({ top: join(sandbox, 'repo'), gitDir: common, commonDir: common }),
+    ).toEqual([one]);
   });
 });

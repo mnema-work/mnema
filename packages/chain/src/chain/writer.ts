@@ -729,10 +729,11 @@ export class ChainWriter {
       round.tried.add(this.tailId);
       return { back: true };
     }
-    const hint = this.pool?.hint;
+    const pool = this.pool;
+    const hint = pool?.hint;
     const unwritten = !this.fromPool && this.head === null && this.damage === undefined;
     if (movedOn === undefined && !(hint !== undefined && unwritten)) return undefined;
-    if (hint !== undefined) {
+    if (pool !== undefined && hint !== undefined) {
       const there = hint.read();
       if (there !== this.hintId) {
         // Another process of this worktree moved the hint first: this write goes where it did.
@@ -740,7 +741,7 @@ export class ChainWriter {
           ? { hinted: `${this.keyPair.fingerprint}-${there}` }
           : { movedOn, next: there };
       }
-      const picked = this.fromThePool(round);
+      const picked = this.fromThePool(pool, round);
       if (picked !== undefined) return { pooled: picked };
     }
     if (movedOn === undefined) {
@@ -751,9 +752,7 @@ export class ChainWriter {
   }
 
   /** The first tail of the pool this write may go on with, or undefined where none can. */
-  private fromThePool(round: PoolRound): string | undefined {
-    const pool = this.pool;
-    if (pool === undefined) return undefined;
+  private fromThePool(pool: PoolOptions, round: PoolRound): string | undefined {
     const except = new Set([...round.tried, this.tailId]);
     if (round.queue === undefined) {
       const scan = scanThePool({
