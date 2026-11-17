@@ -6,7 +6,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -14,6 +14,7 @@ import { entryIsOnTheBase } from './base-branch.js';
 
 const ON_BASE = 'a'.repeat(64);
 const ELSEWHERE = 'b'.repeat(64);
+const AS_PREV = 'e'.repeat(64);
 const TAIL = `${'c'.repeat(64)}-${'1'.repeat(32)}`;
 
 let sandbox: string;
@@ -69,12 +70,17 @@ afterEach(() => {
 describe('an entry on the base branch', () => {
   it('is one the segment of that tail holds on the remote’s default branch, and no other', () => {
     git('remote', 'add', 'origin', join(sandbox, 'nowhere.git'));
-    theBaseHolds(`{"link":{"seq":4,"hash":"${ON_BASE}"}}`, 'refs/remotes/origin/main');
+    theBaseHolds(
+      `{"link":{"seq":4,"hash":"${ON_BASE}"}}\n{"link":{"seq":5,"prev":"${AS_PREV}","hash":"${'d'.repeat(64)}"}}`,
+      'refs/remotes/origin/main',
+    );
     git('symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/main');
 
     const onBase = entryIsOnTheBase(repo, join(repo, '.mnema'));
     expect(onBase(TAIL, '000001.jsonl', ON_BASE)).toBe(true);
     expect(onBase(TAIL, '000001.jsonl', ELSEWHERE)).toBe(false);
+    // A hash a later line only names as its `prev` is an entry the base branch does not hold.
+    expect(onBase(TAIL, '000001.jsonl', AS_PREV)).toBe(false);
     expect(onBase(TAIL, '000002.jsonl', ON_BASE)).toBe(false);
   });
 
@@ -83,5 +89,28 @@ describe('an entry on the base branch', () => {
     expect(entryIsOnTheBase(repo, join(repo, '.mnema'))(TAIL, '000001.jsonl', ON_BASE)).toBe(false);
     git('remote', 'add', 'origin', join(sandbox, 'nowhere.git'));
     expect(entryIsOnTheBase(repo, join(repo, '.mnema'))(TAIL, '000001.jsonl', ON_BASE)).toBe(false);
+  });
+});
+
+describe('the time the questions of one write may take', () => {
+  it('is spent once: a git that hangs is stopped, and every question after it is answered no at once', () => {
+    git('remote', 'add', 'origin', join(sandbox, 'nowhere.git'));
+    theBaseHolds(`{"link":{"seq":4,"hash":"${ON_BASE}"}}`, 'refs/remotes/origin/main');
+    git('symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/main');
+    const bin = join(sandbox, 'bin');
+    mkdirSync(bin);
+    writeFileSync(join(bin, 'git'), '#!/bin/sh\nsleep 5\n');
+    chmodSync(join(bin, 'git'), 0o755);
+    const path = process.env.PATH;
+    process.env.PATH = `${bin}:${path}`;
+    try {
+      const onBase = entryIsOnTheBase(repo, join(repo, '.mnema'), 300);
+      expect(onBase(TAIL, '000001.jsonl', ON_BASE)).toBe(false);
+      const began = Date.now();
+      expect(onBase(TAIL, '000001.jsonl', ON_BASE)).toBe(false);
+      expect(Date.now() - began).toBeLessThan(200);
+    } finally {
+      process.env.PATH = path;
+    }
   });
 });

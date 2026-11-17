@@ -60,6 +60,7 @@ function open(
     reserved?: ReadonlySet<string>;
     onBase?: (tail: string, segment: string, hash: string) => boolean;
     told?: Told;
+    branch?: string | undefined;
   } = {},
 ): ChainWriter {
   return openChainForWriting(at.record, {
@@ -70,6 +71,7 @@ function open(
       checkoutRoot: at.place,
       reservedBy: () => how.reserved ?? new Set(),
       onBase: how.onBase ?? (() => false),
+      branch: () => ('branch' in how ? how.branch : 'main'),
     },
     onNewTail: (opened) => how.told?.sentences.push(opened),
   });
@@ -253,6 +255,43 @@ describe('the tail a write goes on with', () => {
   });
 });
 
+describe('a tail written on one branch (ADR-446)', () => {
+  it('is gone on with, on the branch that wrote it, without asking the base branch', () => {
+    const first = aTailWrittenIn('one');
+    const again = open(first.at, { onBase: () => false, branch: 'main' });
+    write(again, 'next');
+    expect(again.tail).toBe(first.tail);
+  });
+
+  it('is not gone on with by another branch of the worktree through its hint, nor through the pool, nor on a detached HEAD, unless its end is on the base branch', () => {
+    for (const branch of ['cut-from-main', undefined]) {
+      const first = aTailWrittenIn(`one-${branch ?? 'detached'}`);
+      const told: Told = { sentences: [] };
+      const copy = copyOf(first.at, `copy-${branch ?? 'detached'}`);
+      const marks = join(first.at.place, 'inflight');
+      cpSync(marks, join(copy.place, 'inflight'), { recursive: true });
+      cpSync(first.at.place, copy.place, { recursive: true });
+      const viaHint = open(copy, { onBase: () => false, branch, told });
+      write(viaHint, 'next');
+      expect(viaHint.tail, `hint on ${branch}`).not.toBe(first.tail);
+      expect(told.sentences[0]?.left).toEqual({ offBase: true });
+      expect(describeNewTail(told.sentences[0] as NewTail)).toContain('another branch');
+
+      const lost = copyOf(first.at, `lost-${branch ?? 'detached'}`);
+      cpSync(marks, join(lost.place, 'inflight'), { recursive: true });
+      const viaPool = open(lost, { onBase: () => false, branch });
+      write(viaPool, 'next');
+      expect(viaPool.tail, `pool on ${branch}`).not.toBe(first.tail);
+
+      const onBase = copyOf(first.at, `onbase-${branch ?? 'detached'}`);
+      cpSync(first.at.place, onBase.place, { recursive: true });
+      const goes = open(onBase, { onBase: () => true, branch });
+      write(goes, 'next');
+      expect(goes.tail, `base on ${branch}`).toBe(first.tail);
+    }
+  });
+});
+
 describe('a tail the pool offered that does not go on, and a hint another process moved', () => {
   it('is passed over, and the write founds a tail when no other goes on', () => {
     const first = aTailWrittenIn('one');
@@ -380,7 +419,7 @@ describe('a tail that two worktrees may both write', () => {
       },
       key,
     );
-    markInflight({ root: first.at.place }, first.tail, next);
+    markInflight({ root: first.at.place }, first.tail, next, 'main');
     expect(inflightNames({ root: first.at.place }, first.tail, next)).toBe(true);
     expect(inflightNames({ root: second.place }, first.tail, next)).toBe(false);
 

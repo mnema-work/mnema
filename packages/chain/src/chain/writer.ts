@@ -69,7 +69,7 @@ import {
   statSync,
   truncateSync,
 } from 'node:fs';
-import { dirname } from 'node:path';
+import { basename, dirname } from 'node:path';
 
 import type { CatalogEvent } from '../events/catalog.js';
 import { EventParseError, unreadableReason } from '../events/parse.js';
@@ -128,6 +128,8 @@ import {
   markInflight,
   type PoolOptions,
   scanThePool,
+  wroteHere,
+  wroteOnThisBranch,
 } from './pool.js';
 import { recordToWriteUnder, type WriteUnder } from './record-name.js';
 import { clearOrphanedStaging } from './staging.js';
@@ -251,7 +253,8 @@ export interface NewTail {
   readonly left?:
     | { readonly relinked: string }
     | { readonly names: string; readonly joins: string }
-    | { readonly unvouched: number };
+    | { readonly unvouched: number }
+    | { readonly offBase: true };
   /**
    * Why this write founded a tail where the record already holds others of this key, in a
    * repository whose worktrees share the notes: no tail of the key has a note of this machine
@@ -270,7 +273,8 @@ export type Founded = 'no-note' | 'none-ends-here' | 'reserved' | 'busy';
 const FOUNDED_AFTER_THE_MOVE: Record<Founded, string> = {
   'no-note':
     ', and this repository holds no note of this machine writing any other tail of this key',
-  'none-ends-here': ', and no other tail of this key ends here where this machine left it',
+  'none-ends-here':
+    ', and no other tail of this key can go on from here (each ends elsewhere than where this machine left it, or is not on the base branch and was not written by this worktree on this branch)',
   reserved:
     ', and the tails of this key that end here where this machine left them are the ones other worktrees write',
   busy: ', and the tails of this key that could go on here were being written by another process',
@@ -280,7 +284,7 @@ const FOUNDED_HERE: Record<Founded, (known: number) => string> = {
   'no-note': (known) =>
     `this key already writes ${known} tail(s) in this record, and this repository holds no note of this machine writing any of them (a new clone, or this key on another machine), so appending to one could fork it`,
   'none-ends-here': (known) =>
-    `none of the ${known} tail(s) this key already writes in this record can go on from here (each ends elsewhere than where this machine left it, or is not on the base branch and was not written by this worktree), so appending to one could fork it or make a merge conflict`,
+    `none of the ${known} tail(s) this key already writes in this record can go on from here (each ends elsewhere than where this machine left it, or is not on the base branch and was not written by this worktree on this branch), so appending to one could fork it or make a merge conflict`,
   reserved: () =>
     'the tails of this key that end here where this machine left them are the ones other worktrees write, so this one writes its own',
   busy: () =>
@@ -296,11 +300,13 @@ export function describeNewTail(opened: NewTail): string {
   const left = opened.left;
   if (left !== undefined) {
     const why =
-      'unvouched' in left
-        ? `${left.unvouched} event(s) above its last checkpoint are not ones this installation's signed note says it wrote, so this key does not sign them; they stay unsigned, and \`mnema verify --require=signed\` fails on them`
-        : 'relinked' in left
-          ? `its owner relinked it into record ${left.relinked.slice(0, 12)}..., which freezes it at the entry the relink names, and appending there would undo the relink`
-          : `it names record ${left.names.slice(0, 12)}..., and this write joins record ${left.joins.slice(0, 12)}...: a tail names one record, so the write is made from a tail of this key born in the record it joins`;
+      'offBase' in left
+        ? 'this worktree wrote it on another branch and its end is not on the base branch, so appending there could make a merge conflict where the two branches meet'
+        : 'unvouched' in left
+          ? `${left.unvouched} event(s) above its last checkpoint are not ones this installation's signed note says it wrote, so this key does not sign them; they stay unsigned, and \`mnema verify --require=signed\` fails on them`
+          : 'relinked' in left
+            ? `its owner relinked it into record ${left.relinked.slice(0, 12)}..., which freezes it at the entry the relink names, and appending there would undo the relink`
+            : `it names record ${left.names.slice(0, 12)}..., and this write joins record ${left.joins.slice(0, 12)}...: a tail names one record, so the write is made from a tail of this key born in the record it joins`;
     return `mnema: wrote to a new tail, ${opened.to}, and left tail ${opened.from} as it is: ${why}.`;
   }
   const beside = founded === undefined ? '' : FOUNDED_AFTER_THE_MOVE[founded.why];
@@ -890,7 +896,7 @@ export class ChainWriter {
     // The mark that this worktree began the act, before the note that names it: where other worktrees
     // read the note, only the one whose mark names the entry may finish an act that died ({@link recover}).
     if (this.pool !== undefined && note.next !== null) {
-      markInflight({ root: this.pool.checkoutRoot }, this.tailId, note.next);
+      markInflight({ root: this.pool.checkoutRoot }, this.tailId, note.next, this.pool.branch());
     }
     // Where other checkouts read the note, it is certain before the line it names or the act is refused.
     (this.sharedNotes ? keepWrittenHeadDurably : keepWrittenHead)(
@@ -1182,6 +1188,27 @@ export class ChainWriter {
     if (!endsWhereLeft) {
       this.movedOn = { from: this.tailId, to: this.tailId, kept, found };
       return;
+    }
+    // A TAIL THIS WORKTREE WROTE ON ANOTHER BRANCH goes on only where its end is on the base branch
+    // (ADR-446): a branch cut from the one that wrote it would otherwise write the same tail file past the
+    // point they share, which a squash merge of the first and a merge of the second cannot settle. On the
+    // branch that wrote it, or where this worktree never wrote it, the end the note names is enough. A tail
+    // the pool offered was asked of the base branch when it was offered.
+    if (
+      found !== undefined &&
+      this.pool !== undefined &&
+      !this.fromPool &&
+      lastSegment !== undefined
+    ) {
+      const here = { root: this.pool.checkoutRoot };
+      if (
+        wroteHere(here, this.tailId) &&
+        !wroteOnThisBranch(here, this.tailId, this.pool.branch()) &&
+        !this.pool.onBase(this.tailId, basename(lastSegment), found.hash)
+      ) {
+        this.movedOn = { from: this.tailId, to: this.tailId, kept, found, left: { offBase: true } };
+        return;
+      }
     }
     // A TAIL THAT HOLDS ENTRIES MAY HAVE BEEN RELINKED, here or by its owner elsewhere, and a
     // relinked tail is frozen at the head the relink names (FORMAT.md section 6.11): an entry more

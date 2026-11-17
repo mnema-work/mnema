@@ -215,9 +215,11 @@ common git directory, which every worktree of it shares and a clean of what git 
 leaves alone, and the installation id a worktree starts from is kept as a hint under its
 own git directory (§4), with a mark of the act it last began on each tail it wrote. Before
 it opens a new tail, a write goes on with another tail of the same key that does end
-where this machine left it, when this worktree wrote that tail or its end is already on
-the repository's base branch (the default branch of the remote, as the clone last read
-it), and no other worktree that still exists names it as its hint; an act that died is
+where this machine left it, when this worktree wrote that tail on the branch it has checked
+out now or its end is already on the repository's base branch (the default branch of the
+remote, as the clone last read it), and no other worktree that still exists names it as
+its hint (so a branch cut from the one that wrote a tail, and a detached HEAD, ask the
+base branch like any other, the hint's tail included); an act that died is
 finished only by the worktree whose mark names the entry the act was about to write. A
 copy that carries that note with it cannot be seen by its writer, which is why the
 readers name what it leaves.

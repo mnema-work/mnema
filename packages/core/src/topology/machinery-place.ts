@@ -89,6 +89,7 @@ export function machineryRootsOf(trees: ResolvedTrees): MachineryRoots | undefin
       checkoutRoot: machinery.checkout,
       reservedBy: (fingerprint) => hintsOfTheOtherWorktrees(place, checkoutWithin, fingerprint),
       onBase: entryIsOnTheBase(place.top, trees.projectPublic ?? place.top),
+      branch: () => branchOf(place.gitDir),
     },
   };
 }
@@ -113,6 +114,16 @@ function hintsOfTheOtherWorktrees(
     }
   }
   return ids;
+}
+
+/** The branch a worktree has checked out, read from its `HEAD`; undefined for a detached HEAD or one that cannot be read. */
+function branchOf(gitDir: string): string | undefined {
+  try {
+    const head = readFileSync(join(gitDir, 'HEAD'), 'utf-8').trim();
+    return head.startsWith('ref: refs/heads/') ? head.slice('ref: refs/heads/'.length) : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function isDirectory(path: string): boolean {

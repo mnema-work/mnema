@@ -216,6 +216,48 @@ describe('a tail only some branch holds (ADR-446)', () => {
   });
 });
 
+describe('a branch cut from another that the host has not merged (ADR-446)', () => {
+  /** Writes `note` on `branch` (made from `from` if it is new) and commits it. */
+  function visit(branch: string, from: string | undefined, note: string): void {
+    const switched =
+      from === undefined
+        ? git(repo, 'switch', '-q', branch)
+        : git(repo, 'switch', '-q', '-c', branch, from);
+    expect(switched.status, switched.out).toBe(0);
+    const wrote = mnema(repo, 'memory', note);
+    expect(wrote.status, wrote.out).toBe(0);
+    commit(repo, note);
+  }
+
+  /** The host squash-merges `a`, then `c` is merged: no tail file may conflict, and the record verifies. */
+  function squashAThenMergeC(): void {
+    expect(git(repo, 'switch', '-q', 'main').status).toBe(0);
+    expect(git(repo, 'merge', '--squash', 'a').status).toBe(0);
+    commit(repo, 'squash of a');
+    const merged = git(repo, 'merge', 'c', '-m', 'c');
+    expect(merged.out).not.toContain('CONFLICT');
+    expect(merged.status, merged.out).toBe(0);
+    const verified = mnema(repo, 'verify');
+    expect(verified.status, verified.out).toBe(0);
+  }
+
+  it('founds a tail on the branch cut from it, and the squash of the first and the merge of the second conflict on no tail file', () => {
+    publishMain();
+    visit('a', 'main', 'on a');
+    visit('c', 'a', 'on c, cut from a');
+    expect(tails(repo)).toHaveLength(2);
+    squashAThenMergeC();
+  });
+
+  it('does the same when the worktree went through another branch first', () => {
+    publishMain();
+    visit('a', 'main', 'on a');
+    visit('b', 'main', 'on b');
+    visit('c', 'a', 'on c, cut from a');
+    squashAThenMergeC();
+  });
+});
+
 describe('worktrees writing at the same time', () => {
   it('leave no line between lines and no tail two branches wrote, and their branches merge with no driver', async () => {
     publishMain();

@@ -16,9 +16,11 @@
  *     those, and they are dropped by two reads each);
  *   - no other worktree that still exists names it as its own hint (a preference, not a safety: it
  *     keeps a new worktree from taking the tail a session in another is writing);
- *   - and it is either a tail this worktree wrote to itself (it has a mark here), or its end is
- *     already on the base branch (ADR-446). Two branches then never write one tail file past the
- *     point they share, which is what a squash merge on a host with no merge driver cannot resolve.
+ *   - and it is either a tail this worktree wrote ON THE BRANCH IT IS ON NOW (its mark names the branch),
+ *     or its end is already on the base branch (ADR-446). A branch cut from the one that wrote a tail
+ *     asks the base branch like any other, and so does a detached HEAD. Two branches then never write
+ *     one tail file past the point they share, which a squash merge on a host with no merge driver
+ *     cannot settle.
  * The oldest note comes first, so the tail that has been idle longest is taken before one a session
  * may have just left, and at most {@link JUDGED_AT_MOST} candidates are looked at in full.
  */
@@ -41,6 +43,8 @@ export interface PoolOptions {
   readonly reservedBy: (fingerprint: string) => ReadonlySet<string>;
   /** Whether the entry with `hash` is in the segment `segment` of `tailId` on the base branch; false where that cannot be said. */
   readonly onBase: (tailId: string, segment: string, hash: string) => boolean;
+  /** The branch this worktree has checked out, or undefined for a detached HEAD. */
+  readonly branch: () => string | undefined;
 }
 
 /** The hint of the installation id as the writer reads and moves it: the keystore's, behind two calls. */
@@ -61,34 +65,62 @@ export interface PoolScan {
   readonly reserved: boolean;
 }
 
-/** Marks that this worktree began an act that ends at `next` on `tailId`. Best effort: it only narrows. */
-export function markInflight(checkout: ChainLayout, tailId: string, next: KeptHead): void {
+/**
+ * Marks that this worktree began an act that ends at `next` on `tailId`, on `branch` (empty for a
+ * detached HEAD): `<seq> <hash>` and the branch on a line of its own. Best effort: it only narrows.
+ */
+export function markInflight(
+  checkout: ChainLayout,
+  tailId: string,
+  next: KeptHead,
+  branch: string | undefined,
+): void {
   const path = inflightPath(checkout, tailId);
   const staging = `${path}.${process.pid}`;
   try {
     mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(staging, `${next.seq} ${next.hash}\n`);
+    writeFileSync(staging, `${next.seq} ${next.hash}\n${branch ?? ''}\n`);
     renameSync(staging, path);
   } catch {
     // A mark that was not kept sends this worktree to another tail the next time it meets that end.
   }
 }
 
-/** Whether this worktree's mark for `tailId` names `next`: an act it began, which is its to finish. */
-export function inflightNames(checkout: ChainLayout, tailId: string, next: KeptHead): boolean {
+/** What this worktree's mark for a tail says: the entry the last act began on it was to write, and the branch. */
+function readMark(
+  checkout: ChainLayout,
+  tailId: string,
+): { readonly next: string; readonly branch: string } | undefined {
   try {
-    return readFileSync(inflightPath(checkout, tailId), 'utf-8') === `${next.seq} ${next.hash}\n`;
+    const [next, branch] = readFileSync(inflightPath(checkout, tailId), 'utf-8').split('\n');
+    return { next: next as string, branch: branch ?? '' };
   } catch {
-    return false;
+    return undefined;
   }
 }
 
-function wroteHere(checkout: ChainLayout, tailId: string): boolean {
-  try {
-    return statSync(inflightPath(checkout, tailId)).isFile();
-  } catch {
-    return false;
-  }
+/** Whether this worktree's mark for `tailId` names `next`: an act it began, which is its to finish. */
+export function inflightNames(checkout: ChainLayout, tailId: string, next: KeptHead): boolean {
+  return readMark(checkout, tailId)?.next === `${next.seq} ${next.hash}`;
+}
+
+/**
+ * Whether this worktree wrote to `tailId` on `branch`, the branch it is on now: a tail only a branch
+ * holds is gone on with, without asking the base branch, only by the branch that wrote it. On any other
+ * branch (a branch cut from it, a detached HEAD) it is asked like any other tail (ADR-446).
+ */
+export function wroteOnThisBranch(
+  checkout: ChainLayout,
+  tailId: string,
+  branch: string | undefined,
+): boolean {
+  const mark = readMark(checkout, tailId);
+  return mark !== undefined && branch !== undefined && mark.branch === branch;
+}
+
+/** Whether this worktree wrote to `tailId` at all, on whatever branch. */
+export function wroteHere(checkout: ChainLayout, tailId: string): boolean {
+  return readMark(checkout, tailId) !== undefined;
 }
 
 /** The entry a tail ends with in this checkout, and the segment holding it; undefined for a tail that cannot be read. */
@@ -125,6 +157,7 @@ export function scanThePool(args: {
   const known = listTails(layout).filter((tail) => tail.startsWith(prefix));
   const others = known.filter((tail) => !except.has(tail));
   const reservedIds = pool.reservedBy(fingerprint);
+  const branch = pool.branch();
   let noted = 0;
   let reserved = false;
   const found: { tail: string; modified: number; end: KeptHead; segment: string }[] = [];
@@ -151,7 +184,7 @@ export function scanThePool(args: {
   let asked = 0;
   for (const candidate of found) {
     if (queue.length >= JUDGED_AT_MOST) break;
-    if (wroteHere(checkout, candidate.tail)) {
+    if (wroteOnThisBranch(checkout, candidate.tail, branch)) {
       queue.push(candidate.tail);
       continue;
     }

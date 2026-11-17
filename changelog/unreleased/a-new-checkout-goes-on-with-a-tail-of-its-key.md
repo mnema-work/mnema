@@ -2,11 +2,14 @@ Fixed
 
 - **A checkout that goes back and forth between two branches no longer opens a tail at every visit, and a worktree no longer opens one
   for nothing.** When the tail a worktree's hint names does not end where this machine left it, the write now goes on with another tail
-  of the same key that does, before it opens one: a tail this worktree wrote itself, or whose end is already on the base branch (the
-  remote's default branch as the clone last read it), and that no other worktree names as its hint. Six visits alternating between two
+  of the same key that does, before it opens one: a tail this worktree wrote itself on the branch it is on now, or whose end is already
+  on the base branch (the remote's default branch as the clone last read it), and that no other worktree names as its hint. Six visits alternating between two
   branches leave two tails, not six; a worktree made after the others were merged and removed goes on with a tail they left. A tail
-  whose end only some branch holds is never taken by another worktree, so two branches never write one tail file past the point they
-  share and a squash merge on a host with no merge driver conflicts on none. Where a repository has no remote, or no default branch
+  whose end only some branch holds is never gone on with by another branch (another worktree's, a branch cut from the one that wrote
+  it, or a detached HEAD, the tail the hint names included): a branch cut from another that the host has not merged founds a tail, so
+  two branches never write one tail file past the point they share and a squash merge of one and a merge of the other on a host with
+  no merge driver conflict on none. The question asked of the base branch is bounded to ten seconds in all, and a git that does not
+  answer in that time counts as no. Where a repository has no remote, or no default branch
   known to it, a worktree goes on only with the tails it wrote itself. No event, field, check or vector differs, and the second reader
   needs nothing.
 - **A write that opens a tail where the key already writes others says why.** `mnema: wrote to a new tail, ...` now says whether this
