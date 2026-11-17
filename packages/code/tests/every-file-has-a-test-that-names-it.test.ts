@@ -825,6 +825,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/chain/src/chain/hash.test.ts': 4,
   'packages/chain/src/chain/installation-id.test.ts': 10,
   'packages/chain/src/chain/invariants.test.ts': 8,
+  'packages/chain/src/chain/kept-head.test.ts': 7,
   'packages/chain/src/chain/key-protection.test.ts': 9,
   'packages/chain/src/chain/keyroot.test.ts': 11,
   'packages/chain/src/chain/keys.test.ts': 3,

@@ -270,7 +270,6 @@ export {
   describeNewTail,
   type NewTail,
   readTailDamage,
-  readTailDamageOf,
   TailDamagedError,
   type WriterOptions,
 } from './chain/writer.js';
