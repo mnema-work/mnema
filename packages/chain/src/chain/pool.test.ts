@@ -135,7 +135,7 @@ describe('the tail a write goes on with', () => {
     expect(told.sentences).toHaveLength(1);
     expect(told.sentences[0]?.founded).toEqual({ why: 'none-ends-here', known: 1 });
     expect(describeNewTail(told.sentences[0] as NewTail)).toContain(
-      'none of the 1 tail(s) this key already writes in this record ends here',
+      'none of the 1 tail(s) this key already writes in this record can go on from here',
     );
   });
 

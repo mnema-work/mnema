@@ -280,7 +280,7 @@ const FOUNDED_HERE: Record<Founded, (known: number) => string> = {
   'no-note': (known) =>
     `this key already writes ${known} tail(s) in this record, and this repository holds no note of this machine writing any of them (a new clone, or this key on another machine), so appending to one could fork it`,
   'none-ends-here': (known) =>
-    `none of the ${known} tail(s) this key already writes in this record ends here where this machine left it, or is already on the base branch, so appending to one could fork it or make a merge conflict`,
+    `none of the ${known} tail(s) this key already writes in this record can go on from here (each ends elsewhere than where this machine left it, or is not on the base branch and was not written by this worktree), so appending to one could fork it or make a merge conflict`,
   reserved: () =>
     'the tails of this key that end here where this machine left them are the ones other worktrees write, so this one writes its own',
   busy: () =>
