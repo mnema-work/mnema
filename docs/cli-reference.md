@@ -767,7 +767,7 @@ Moved to [Switching off what mnema hands to a model](switching-off-what-is-hande
                             writers' locks and notes)
 <git common dir>/mnema/<encoded path>/public/
                             inside a repository: writers' locks and notes (locks/), shared by
-                            its worktrees, and this worktree's hint of its id (keys/)
+                            its worktrees, and this worktree's hint of its id (keys/) and its marks (inflight/)
 <git common dir>/mnema/<encoded path>/private/
                             this machine, this project only: beside the repository's
                             objects, shared by its worktrees, kept when one is removed;
