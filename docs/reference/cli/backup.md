@@ -23,10 +23,12 @@ disk does not take the record with it. It is a copy and nothing else: it records
 the folder is not a second record that anyone reads from.
 
 ```sh
-mnema backup setup ~/backups/mnema      # say which folder keeps THIS project's backup
-mnema backup run                        # copy
-mnema backup status                     # where it is, when it was copied, what is still to copy
+mnema backup setup ~/backups/mnema
+mnema backup run
+mnema backup status
 ```
+
+`setup` says which folder keeps THIS project's backup, `run` copies, and `status` says where the copy is, when it was made and what is still to copy.
 
 **One folder per project, by the name of its record.** `setup` assigns the folder to this
 project, and the machine keeps the assignment in `backup.json` in its data directory. A machine
