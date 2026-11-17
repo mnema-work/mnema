@@ -294,9 +294,9 @@ const INVOCATION: Readonly<Record<string, Invocation>> = {
   inherit: CANNOT_BE_EXERCISED,
   mcp: CANNOT_BE_EXERCISED,
   // The reads.
-  // A group whose acts write a folder and never the record. The row assigns a folder beside the project, which
-  // writes the machine's backup file and not a tail; `run` and `status` are driven in `commands/backup.test.ts`.
-  backup: { argv: () => ['backup', 'setup', '--yes', '../a-folder-for-the-backup'] },
+  // A group whose acts write a folder and never the record. `setup` asks a person at a terminal, which this harness
+  // has not, and `run` and `status` need the folder it assigns: they are driven in `commands/backup.test.ts`.
+  backup: CANNOT_BE_EXERCISED,
   status: { argv: (f) => ['status', '--actor', f.anchor] },
   resume: { argv: (f) => ['resume', '--actor', f.anchor] },
   search: { argv: () => ['search', 'task'] },

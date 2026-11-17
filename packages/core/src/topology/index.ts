@@ -36,9 +36,11 @@ export {
   type BackupTree,
   type Copied,
   type CopyStanding,
-  copyTree,
+  type PreparedCopy,
   planCopy,
+  prepareCopy,
   standingOfCopy,
+  writeCopy,
 } from './backup/copy.js';
 export { gitPlaceOf } from './git-place.js';
 export {

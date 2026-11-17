@@ -1302,22 +1302,22 @@ $ mnema backup --help
 | nothing)
 |
 | Options:
-|   -h, --help                display help for command
+|   -h, --help        display help for command
 |
 | Commands:
-|   setup [options] <folder>  say which folder keeps this project's backup, after
-|                             confirming it keeps the text in clear
-|   run                       copy this project's trees into its folder
-|   status [options]          say where this project's backup is and how far it is
-|                             from the trees
-|   help [command]            display help for command
+|   setup <folder>    say which folder keeps this project's backup, after a person
+|                     confirms at a terminal that it keeps the text in clear
+|   run               copy this project's trees into its folder
+|   status [options]  say where this project's backup is and how far it is from
+|                     the trees
+|   help [command]    display help for command
 |
 | The copy is a folder per project, kept under the name of its record: the tails up to their
 | last complete line and the public keys, and nothing else. The private tree is always copied;
 | the public tree only where the project is not in git, whose history is its own backup. No
 | private key is copied: a run is refused whole if a file it would copy holds one, and so is a
 | symbolic link in the tree or in the folder. A copy only grows. The folder keeps the text in
-| clear. A machine can have a folder per project; a project has the one it was set up with.
+| clear, which `setup` asks a person to confirm at a terminal. A machine can have a folder per project; a project has the one it was set up with.
 
 ### mnema doctor --help
 $ mnema doctor --help
@@ -2920,15 +2920,14 @@ $ mnema tail relink --help
 $ mnema backup setup --help
 | Usage: mnema backup setup [options] <folder>
 |
-| say which folder keeps this project's backup, after confirming it keeps the text
-| in clear
+| say which folder keeps this project's backup, after a person confirms at a
+| terminal that it keeps the text in clear
 |
 | Arguments:
 |   folder      the folder (outside the working tree, the record and the git
 |               directory)
 |
 | Options:
-|   -y, --yes   confirm that the folder keeps the text in clear, and ask nothing
 |   -h, --help  display help for command
 
 ### mnema backup run --help

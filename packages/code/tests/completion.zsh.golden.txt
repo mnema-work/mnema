@@ -168,7 +168,7 @@ _mnema_described() {
       'relink:relink whole tails of another record into the one this directory names, each signed by its own key' \
       'help:display help for command' ;;
     'backup') printf '%s\n' \
-      'setup:say which folder keeps this project'\''s backup, after confirming it keeps the text in clear' \
+      'setup:say which folder keeps this project'\''s backup, after a person confirms at a terminal that it keeps the text in clear' \
       'run:copy this project'\''s trees into its folder' \
       'status:say where this project'\''s backup is and how far it is from the trees' \
       'help:display help for command' ;;
@@ -277,7 +277,7 @@ _mnema_flags() {
     'tail prune') echo '--reason --which --lose-keys -h --help -V --version --color' ;;
     'tail relink') echo '--into --reason --which -h --help -V --version --color' ;;
     'backup') echo '-h --help -V --version --color' ;;
-    'backup setup') echo '-y --yes -h --help -V --version --color' ;;
+    'backup setup') echo '-h --help -V --version --color' ;;
     'backup run') echo '-h --help -V --version --color' ;;
     'backup status') echo '--json -h --help -V --version --color' ;;
     'doctor') echo '--fix --dry-run -h --help -V --version --color' ;;

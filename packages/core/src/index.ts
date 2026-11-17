@@ -274,7 +274,6 @@ export {
   type Copied,
   type CopyStanding,
   chainRootForScope,
-  copyTree,
   type Discovery,
   type DiscoveryEnv,
   destinationOf,
@@ -298,10 +297,12 @@ export {
   type PassedOverTree,
   PRIVATE_DIR,
   PROJECT_DIR,
+  type PreparedCopy,
   type PrivateTreesLeftBehind,
   type PrivateTreeVisibility,
   PrivateTreeVisibleError,
   planCopy,
+  prepareCopy,
   privateTreesLeftBehind,
   privateTreeVisibility,
   type ResolvedTrees,
@@ -322,6 +323,7 @@ export {
   whyNoProjectRootAt,
   whyNotADestination,
   withAgentKey,
+  writeCopy,
 } from './topology/index.js';
 export {
   type Clock,

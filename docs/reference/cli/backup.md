@@ -10,7 +10,7 @@ In the help under **This machine**.
 
 | Command | What it does |
 | --- | --- |
-| [`mnema backup setup`](backup-setup.md) | say which folder keeps this project's backup, after confirming it keeps the text in clear |
+| [`mnema backup setup`](backup-setup.md) | say which folder keeps this project's backup, after a person confirms at a terminal that it keeps the text in clear |
 | [`mnema backup run`](backup-run.md) | copy this project's trees into its folder |
 | [`mnema backup status`](backup-status.md) | say where this project's backup is and how far it is from the trees |
 
@@ -48,11 +48,14 @@ way at a symbolic link (or a junction) in a tree it copies from, or in the folde
 no link is followed, because it can point outside. A folder inside the working tree, the record
 or the git directory is refused at `setup`: it would be part of what it copies. A copy only
 grows: a file already in the folder must be the start of what the tree holds now, and a tree
-that no longer starts as its copy stops the run and leaves the copy as it is.
+that no longer starts as its copy stops the run and leaves the copy as it is. Every tree is
+checked, and every refusal above is made, before the first byte of any tree is written, so a
+refused run leaves the folder as it was.
 
 **The folder keeps the text in clear.** Nothing is encrypted: whoever can read the folder can
-read the record and the public keys it holds. `setup` says so and asks you to confirm it (or
-takes `--yes`); if that matters, put the folder on an encrypted volume. **Your private key is
+read the record and the public keys it holds. `setup` says so and asks you to confirm it, at a
+terminal: without one it assigns nothing and tells you to run it in a terminal, because a person
+confirms it; if that matters, put the folder on an encrypted volume. **Your private key is
 not copied**: it stays on this machine, and `backup` offers no way to carry it.
 
 <!-- End of the part written by hand. -->
@@ -66,20 +69,20 @@ copy this project's trees into a folder, and say how far the copy is (records
 nothing)
 
 Options:
-  -h, --help                display help for command
+  -h, --help        display help for command
 
 Commands:
-  setup [options] <folder>  say which folder keeps this project's backup, after
-                            confirming it keeps the text in clear
-  run                       copy this project's trees into its folder
-  status [options]          say where this project's backup is and how far it is
-                            from the trees
-  help [command]            display help for command
+  setup <folder>    say which folder keeps this project's backup, after a person
+                    confirms at a terminal that it keeps the text in clear
+  run               copy this project's trees into its folder
+  status [options]  say where this project's backup is and how far it is from
+                    the trees
+  help [command]    display help for command
 
 The copy is a folder per project, kept under the name of its record: the tails up to their
 last complete line and the public keys, and nothing else. The private tree is always copied;
 the public tree only where the project is not in git, whose history is its own backup. No
 private key is copied: a run is refused whole if a file it would copy holds one, and so is a
 symbolic link in the tree or in the folder. A copy only grows. The folder keeps the text in
-clear. A machine can have a folder per project; a project has the one it was set up with.
+clear, which `setup` asks a person to confirm at a terminal. A machine can have a folder per project; a project has the one it was set up with.
 ```

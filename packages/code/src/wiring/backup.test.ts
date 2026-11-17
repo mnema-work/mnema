@@ -66,29 +66,43 @@ afterEach(() => {
   rmSync(sandbox, { recursive: true, force: true });
 });
 
+/** What a person at a terminal answers. */
+const answering = (answer: string): Partial<CliIo> => ({
+  aPersonIsHere: true,
+  ask: async () => answer,
+});
+
 describe('mnema backup setup', () => {
-  it('assigns nothing where nobody confirmed that the folder keeps the text in clear', async () => {
+  it('assigns nothing without a terminal, with a flag that would answer or without, and says the command for a person', async () => {
     const folder = join(sandbox, 'folder');
+    for (const argv of [
+      ['backup', 'setup', folder],
+      ['backup', 'setup', '--yes', folder],
+    ]) {
+      const said = await mnema(argv);
+      expect(said.failed, argv.join(' ')).toBe(true);
+      expect(existsSync(join(sandbox, 'home', '.mnema', 'backup.json'))).toBe(false);
+    }
     const said = await mnema(['backup', 'setup', folder]);
-    expect(said.failed).toBe(true);
     expect(said.err.join(' ')).toContain('keeps the text in clear');
-    expect(existsSync(join(sandbox, 'home', '.mnema', 'backup.json'))).toBe(false);
+    expect(said.err.join(' ')).toContain('in a terminal');
+    expect(said.err.join(' ')).not.toContain('--yes');
   });
 
   it('asks the person, says the sentence, and assigns only on yes', async () => {
     const folder = join(sandbox, 'folder');
     const asked: string[] = [];
-    const answering = (answer: string): Partial<CliIo> => ({
+    const asking = (answer: string): Partial<CliIo> => ({
       aPersonIsHere: true,
       ask: async (question) => {
         asked.push(question);
         return answer;
       },
     });
-    const no = await mnema(['backup', 'setup', folder], answering('no'));
+    const no = await mnema(['backup', 'setup', folder], asking('no'));
     expect(no.out.join('\n')).toContain(KEPT_IN_CLEAR);
     expect(existsSync(join(sandbox, 'home', '.mnema', 'backup.json'))).toBe(false);
-    const yes = await mnema(['backup', 'setup', folder], answering('Yes'));
+    const yes = await mnema(['backup', 'setup', folder], asking('Yes'));
     expect(yes.failed, yes.err.join(' / ')).toBe(false);
     expect(asked).toHaveLength(2);
     expect(existsSync(join(sandbox, 'home', '.mnema', 'backup.json'))).toBe(true);
@@ -98,7 +112,7 @@ describe('mnema backup setup', () => {
 describe('mnema backup run and status', () => {
   it('copies the trees of a project with no git, and says the copy is up to date', async () => {
     const folder = join(sandbox, 'folder');
-    expect((await mnema(['backup', 'setup', '--yes', folder])).failed).toBe(false);
+    expect((await mnema(['backup', 'setup', folder], answering('yes'))).failed).toBe(false);
     const ran = await mnema(['backup', 'run']);
     expect(ran.failed, ran.err.join(' / ')).toBe(false);
     expect(ran.out.join('\n')).toMatch(/private tree: \d+ file\(s\) held/);
@@ -117,8 +131,8 @@ describe('mnema backup run and status', () => {
   it('says what a second setup replaced, and that a project has no private tree yet', async () => {
     const first = join(sandbox, 'first');
     const second = join(sandbox, 'second');
-    await mnema(['backup', 'setup', '--yes', first]);
-    const again = await mnema(['backup', 'setup', '--yes', second]);
+    await mnema(['backup', 'setup', first], answering('yes'));
+    const again = await mnema(['backup', 'setup', second], answering('yes'));
     expect(again.out.join('\n')).toContain(`it was ${first}`);
     const trees = resolveTrees(repo, { home: join(sandbox, 'home') });
     rmSync(trees.projectPrivate as string, { recursive: true, force: true });

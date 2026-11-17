@@ -321,27 +321,17 @@ try {
   check(/local integrity verified/.test(inWorktree.out), 'the worktree verifies');
 
   section('a backup of the project into a folder');
-  mustRun(
-    'mnema decision record (private)',
-    mnema(
-      ['decision', 'record', 'Kept on this machine', 'Not for the team.', '--scope', 'private'],
-      project,
-    ),
-  );
   const folder = join(real, 'backup-folder');
-  mustRun('mnema backup setup', mnema(['backup', 'setup', '--yes', folder], project));
-  const backedUp = mustRun('mnema backup run', mnema(['backup', 'run'], project));
+  const refused = mnema(['backup', 'setup', folder], project);
   check(
-    /private tree: \d+ file\(s\) held/.test(backedUp.out),
-    'backup run copies the private tree',
+    refused.status !== 0 && !readdirSync(real).includes('backup-folder'),
+    'backup setup is refused where no person is at a terminal',
   );
-  const copies = readdirSync(folder, { recursive: true }).map(String);
+  const standing = mnema(['backup', 'status'], project);
   check(
-    copies.some((name) => name.endsWith('.jsonl')) && !copies.some((name) => name.endsWith('.key')),
-    'the folder holds the tails and no key',
+    standing.status !== 0 && /no folder for its backup/.test(`${standing.out}${standing.err}`),
+    'backup status says this project has no folder',
   );
-  const standing = mustRun('mnema backup status', mnema(['backup', 'status'], project));
-  check(/nothing to add/.test(standing.out), 'backup status says the copy is up to date');
 
   section('doctor');
   const doctor = mustRun('mnema doctor', mnema(['doctor'], project));

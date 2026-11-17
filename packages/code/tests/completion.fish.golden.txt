@@ -880,7 +880,7 @@ complete -c mnema -f -n '__mnema_at "tail relink"' -s V -l version
 complete -c mnema -f -n '__mnema_at "tail relink"' -l color -x -a 'auto always never'
 
 # mnema backup
-complete -c mnema -f -n '__mnema_at "backup"' -a 'setup' -d 'say which folder keeps this project\'s backup, after confirming it keeps the text in clear'
+complete -c mnema -f -n '__mnema_at "backup"' -a 'setup' -d 'say which folder keeps this project\'s backup, after a person confirms at a terminal that it keeps the text in clear'
 complete -c mnema -f -n '__mnema_at "backup"' -a 'run' -d 'copy this project\'s trees into its folder'
 complete -c mnema -f -n '__mnema_at "backup"' -a 'status' -d 'say where this project\'s backup is and how far it is from the trees'
 complete -c mnema -f -n '__mnema_at "backup"' -a 'help' -d 'display help for command'
@@ -889,7 +889,6 @@ complete -c mnema -f -n '__mnema_at "backup"' -s V -l version
 complete -c mnema -f -n '__mnema_at "backup"' -l color -x -a 'auto always never'
 
 # mnema backup setup
-complete -c mnema -f -n '__mnema_at "backup setup"' -s y -l yes
 complete -c mnema -f -n '__mnema_at "backup setup"' -s h -l help
 complete -c mnema -f -n '__mnema_at "backup setup"' -s V -l version
 complete -c mnema -f -n '__mnema_at "backup setup"' -l color -x -a 'auto always never'

@@ -113,6 +113,7 @@ export function whyNotADestination(folder: string, trees: ResolvedTrees): string
       );
     }
   }
+  inside.push([trees.keyRoot, 'the key root']);
   if (trees.projectPrivate !== undefined)
     inside.push([trees.projectPrivate, "the project's private tree"]);
   for (const [dir, what] of inside) {

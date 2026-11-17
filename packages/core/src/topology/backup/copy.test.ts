@@ -17,9 +17,27 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { BACKUP_MANIFEST, BackupRefusedError, copyTree, planCopy, standingOfCopy } from './copy.js';
+import {
+  BACKUP_MANIFEST,
+  BackupRefusedError,
+  planCopy,
+  prepareCopy,
+  standingOfCopy,
+  writeCopy,
+} from './copy.js';
 
 const NOW = new Date('2026-11-17T10:00:00.000Z');
+
+/** One tree, prepared and written, as a run of one tree does. */
+function copyTree(
+  root: string,
+  destination: string,
+  record: string,
+  tree: 'public' | 'private',
+  now: Date,
+) {
+  return writeCopy(prepareCopy(root, destination, record, tree), now);
+}
 const TAIL = 'aa11-bb22';
 let base: string;
 let tree: string;
@@ -103,7 +121,7 @@ describe('copying a tree into a folder', () => {
       'keys/bb22.pub',
       '-----BEGIN MNEMA PROTECTED KEY-----\nxx\n-----END MNEMA PROTECTED KEY-----\n',
     );
-    expect(() => planCopy(tree)).toThrow(/private key/);
+    expect(() => planCopy(tree, 'private')).toThrow(/private key/);
   });
 
   it('refuses a link in tails/ and opens nothing it points at', () => {
@@ -118,7 +136,7 @@ describe('copying a tree into a folder', () => {
 
   it('refuses a link at a file of a tail, and at a public key', () => {
     symlinkSync(join(base, 'elsewhere'), join(tree, 'tails', TAIL, '000009.jsonl'));
-    expect(() => planCopy(tree)).toThrow(/000009\.jsonl is a symbolic link/);
+    expect(() => planCopy(tree, 'private')).toThrow(/000009\.jsonl is a symbolic link/);
   });
 
   it('refuses a destination that is a link, and a folder of the copy that is one', () => {
@@ -162,10 +180,30 @@ describe('copying a tree into a folder', () => {
     );
   });
 
+  it('reads the checkpoints of a tail before its segments, so a write between the reads cannot make them outrun the copy', () => {
+    const order = planCopy(tree, 'private')
+      .map((file) => file.path)
+      .filter((path) => path.startsWith(`tails/${TAIL}/`) && path.endsWith('.jsonl'));
+    expect(order).toEqual([`tails/${TAIL}/checkpoints.jsonl`, `tails/${TAIL}/000001.jsonl`]);
+  });
+
+  it('names the tree and the way out when a copy is not the start of the tree, and sees it at the same length', () => {
+    copyTree(tree, destination, 'record-a', 'private', NOW);
+    put(tree, `tails/${TAIL}/000001.jsonl`, '{"seq":9}\n{"seq":1}\n{"seq":2');
+    expect(() => prepareCopy(tree, destination, 'record-a', 'private')).toThrow(
+      /private\/tails\/aa11-bb22\/000001\.jsonl.*set the backup up again/,
+    );
+    expect(standingOfCopy(tree, destination, 'record-a', 'private')).toMatchObject({
+      diverged: 1,
+      behind: 0,
+    });
+  });
+
   it('says how far the copy is from the tree, writing nothing', () => {
     expect(standingOfCopy(tree, destination, 'record-a', 'private')).toEqual({
       copiedAt: undefined,
       behind: 5,
+      diverged: 0,
       files: 5,
     });
     copyTree(tree, destination, 'record-a', 'private', NOW);
@@ -173,6 +211,7 @@ describe('copying a tree into a folder', () => {
     expect(standingOfCopy(tree, destination, 'record-a', 'private')).toEqual({
       copiedAt: NOW.toISOString(),
       behind: 1,
+      diverged: 0,
       files: 5,
     });
   });

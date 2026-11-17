@@ -60,6 +60,13 @@ function project(label: string, inGit: boolean) {
   return ctx;
 }
 
+/** The bytes of every file under `dir`, with its path: equal digests mean an identical folder. */
+function digest(dir: string): string {
+  return filesUnder(dir)
+    .map((file) => `${file}:${readFileSync(join(dir, file)).toString('base64')}`)
+    .join('\n');
+}
+
 /** Every file under `dir`, `/`-separated. */
 function filesUnder(dir: string, prefix = ''): string[] {
   if (!existsSync(dir)) return [];
@@ -136,6 +143,42 @@ describe('the backup of two projects on one machine', () => {
     for (const refused of [runBackupRun(a), runBackupStatus(a), runBackupSetup(a, first)]) {
       expect(refused).toMatchObject({ ok: false, code: 'BACKUP_CONFIG' });
     }
+  });
+
+  it('writes nothing of either tree when one of them is refused', () => {
+    const a = project('alpha', false);
+    const folder = join(sandbox, 'folder-a');
+    const set = runBackupSetup(a, folder);
+    expect(set.ok).toBe(true);
+    if (!set.ok) return;
+    expect(runBackupRun(a).ok).toBe(true);
+    const copy = join(folder, set.record);
+    const publicTails = join(copy, 'public', 'tails');
+    const [tail] = readdirSync(publicTails);
+    const segment = join(publicTails, tail as string, '000001.jsonl');
+    const held = readFileSync(segment);
+    held[0] = held[0] === 0x7b ? 0x20 : 0x7b;
+    writeFileSync(segment, held);
+    expect(runTask(a, { title: 'one more in the private tree', scope: 'private' }).ok).toBe(true);
+    const before = digest(copy);
+    expect(runBackupRun(a)).toMatchObject({ ok: false, code: 'DIVERGED' });
+    expect(digest(copy)).toBe(before);
+  });
+
+  it('refuses a folder that is a link, and one inside the key root', () => {
+    const a = project('alpha', false);
+    const real = join(sandbox, 'real');
+    mkdirSync(real);
+    symlinkSync(real, join(sandbox, 'linked'), 'dir');
+    expect(runBackupSetup(a, join(sandbox, 'linked'))).toMatchObject({
+      ok: false,
+      reason: 'BAD_DESTINATION',
+    });
+    const trees = resolveTrees(a.cwd, env);
+    expect(runBackupSetup(a, join(trees.keyRoot, 'copy'))).toMatchObject({
+      ok: false,
+      reason: 'BAD_DESTINATION',
+    });
   });
 
   it('refuses outside a project', () => {

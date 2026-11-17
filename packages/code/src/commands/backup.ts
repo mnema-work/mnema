@@ -13,7 +13,7 @@
  * directory. The private key is never copied: it stays on this machine.
  */
 
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, lstatSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { recordNamedIn } from '@mnema/chain';
 import {
@@ -23,14 +23,14 @@ import {
   type BackupTree,
   backupConfigPath,
   type CopyStanding,
-  copyTree,
   type DiscoveryEnv,
   destinationOf,
-  planCopy,
+  prepareCopy,
   readBackupConfig,
   resolveTrees,
   standingOfCopy,
   whyNotADestination,
+  writeCopy,
 } from '@mnema/core';
 
 /** What the verbs need: injected so they are testable. */
@@ -121,6 +121,13 @@ export function checkBackupSetup(
   const destination = resolve(ctx.cwd, folder);
   const why = whyNotADestination(destination, project.resolved);
   if (why !== undefined) return { ok: false, reason: 'BAD_DESTINATION', message: why };
+  if (lstatSync(destination, { throwIfNoEntry: false })?.isSymbolicLink()) {
+    return {
+      ok: false,
+      reason: 'BAD_DESTINATION',
+      message: `${destination} is a symbolic link, and a backup is written to its own folder: a run follows no link there, which can point outside it. Name the folder it points to.`,
+    };
+  }
   if (existsSync(destination) && !statSync(destination).isDirectory()) {
     return {
       ok: false,
@@ -131,7 +138,7 @@ export function checkBackupSetup(
   return { ok: true, record: project.record, destination };
 }
 
-/** Assigns the folder to this project. The confirmation is the caller's, and comes before this. */
+/** Assigns the folder to this project. The person's confirmation comes before this, in the wiring. */
 export function runBackupSetup(
   ctx: BackupContext,
   folder: string,
@@ -199,11 +206,14 @@ export function runBackupRun(
   if (typeof destination !== 'string') return destination;
   const copied: { tree: BackupTree; files: number; written: number }[] = [];
   try {
-    // Every tree is read and refused before the first is written: a run is one thing.
-    for (const [, root] of project.trees) planCopy(root);
-    for (const [tree, root] of project.trees) {
-      const done = copyTree(root, destination, project.record, tree, now);
-      copied.push({ tree, files: done.files, written: done.written });
+    // EVERY CHECK OF EVERY TREE COMES BEFORE THE FIRST BYTE: a run is one thing, and a tree refused
+    // leaves the folder as it was, the trees that were fine included.
+    const prepared = project.trees.map(([tree, root]) =>
+      prepareCopy(root, destination, project.record, tree),
+    );
+    for (const one of prepared) {
+      const done = writeCopy(one, now);
+      copied.push({ tree: one.tree, files: done.files, written: done.written });
     }
   } catch (error) {
     return refusedBy(error);

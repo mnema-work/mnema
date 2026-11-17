@@ -60,9 +60,9 @@ export interface PlannedFile {
 }
 
 /** What a tree would copy now, read and refused as a run would. */
-export function planCopy(root: string): PlannedFile[] {
+export function planCopy(root: string, tree: BackupTree): PlannedFile[] {
   try {
-    return listed(root);
+    return listed(root, tree);
   } catch (error) {
     // A link met deeper than the listing of the record looks is refused in the same words.
     if (error instanceof LinkedRecordError) throw new BackupRefusedError('LINKED', error.message);
@@ -70,7 +70,7 @@ export function planCopy(root: string): PlannedFile[] {
   }
 }
 
-function listed(root: string): PlannedFile[] {
+function listed(root: string, tree: BackupTree): PlannedFile[] {
   const layout = { root };
   const links = listLinksInRecord(layout);
   if (links[0] !== undefined) {
@@ -89,15 +89,27 @@ function listed(root: string): PlannedFile[] {
     if (detectSecrets(file.bytes.toString('utf-8')).includes('private-key-block')) {
       throw new BackupRefusedError(
         'PRIVATE_KEY',
-        `${file.path} holds a private key, and a backup copies the record and the public keys, never a private key.`,
+        `${tree}/${file.path} holds a private key, and a backup copies the record and the public keys, never a private key.`,
       );
     }
   }
   return files;
 }
 
+/**
+ * A tail's `checkpoints.jsonl` is read BEFORE its segments, with no tail lock taken: a writer that lands
+ * between the two reads leaves a segment longer than the checkpoints cover, which a reader takes for lines
+ * above the last checkpoint. Read the other way round, a checkpoint could cover a line the copied segment
+ * lacks, and the copy would fail `verify` (a range mismatch) until the next run.
+ */
+function checkpointsFirst<T extends { name: string }>(entries: readonly T[]): T[] {
+  return [...entries].sort(
+    (a, b) => Number(b.name === 'checkpoints.jsonl') - Number(a.name === 'checkpoints.jsonl'),
+  );
+}
+
 function collect(layout: { root: string }, place: string, into: PlannedFile[]): void {
-  for (const entry of listedWithoutLinks(layout, place, [])) {
+  for (const entry of checkpointsFirst(listedWithoutLinks(layout, place, []))) {
     const path = `${place}/${entry.name}`;
     if (entry.directory) collect(layout, path, into);
     else if (entry.file) into.push(taken(layout.root, path));
@@ -155,42 +167,73 @@ export interface Copied {
   readonly written: number;
 }
 
+/** A tree's copy, read and checked and not yet written: see {@link prepareCopy}. */
+export interface PreparedCopy {
+  readonly folder: string;
+  readonly tree: BackupTree;
+  readonly record: string;
+  readonly destination: string;
+  readonly planned: readonly PlannedFile[];
+  readonly changing: readonly PlannedFile[];
+}
+
 /**
- * Copies the tree at `root` into `<destination>/<record>/<tree>/`, and writes the manifest.
- * Refuses the whole run, before anything is written, when a file would be refused.
+ * Reads the tree at `root` and checks it against `<destination>/<record>/<tree>/`, and writes NOTHING,
+ * not even a folder: a link in the source or in the folder, a private key, a copy that is a file, and
+ * a copy the tree no longer starts as are all refused here. A run over several trees prepares every one
+ * before it writes the first ({@link writeCopy}), so a refusal leaves the folder as it was.
  */
-export function copyTree(
+export function prepareCopy(
   root: string,
   destination: string,
   record: string,
   tree: BackupTree,
-  now: Date,
-): Copied {
-  const planned = planCopy(root);
+): PreparedCopy {
+  const planned = planCopy(root, tree);
   const folder = join(destination, record, tree);
-  ensureFolder(destination, destination);
-  ensureFolder(destination, dirname(folder));
-  ensureFolder(destination, folder);
+  for (const place of [destination, join(destination, record), folder]) {
+    const held = lstatSync(place, { throwIfNoEntry: false });
+    if (held?.isSymbolicLink()) throw linked(place);
+    if (held !== undefined && !held.isDirectory()) {
+      throw new BackupRefusedError('NOT_A_FOLDER', `${place} is not a folder.`);
+    }
+  }
   const changing: PlannedFile[] = [];
   for (const file of planned) {
     const held = copiedOf(folder, file);
     if (held !== undefined && !file.bytes.subarray(0, held.length).equals(held)) {
       throw new BackupRefusedError(
         'DIVERGED',
-        `${file.path} in the copy holds bytes the tree no longer starts with (a tail rewritten, or a copy of another record): the copy is the older history, and it is not overwritten.`,
+        `${tree}/${file.path} in the copy at ${folder} holds bytes the ${tree} tree no longer starts with (a tail rewritten, or a copy of another record): the copy is the older history, and it is not overwritten. Move that copy aside, or set the backup up again with another folder, and run again.`,
       );
     }
     if (held === undefined || held.length !== file.bytes.length) changing.push(file);
   }
-  for (const file of changing) {
+  return { folder, tree, record, destination, planned, changing };
+}
+
+/**
+ * Writes what {@link prepareCopy} found, and the manifest. Segments go before checkpoints, so a run
+ * that stops half way leaves a copy whose checkpoints never cover more than its segments hold.
+ */
+export function writeCopy(prepared: PreparedCopy, now: Date): Copied {
+  const { folder, destination, planned, changing } = prepared;
+  ensureFolder(destination, destination);
+  ensureFolder(destination, dirname(folder));
+  ensureFolder(destination, folder);
+  const inOrder = [...changing].sort(
+    (a, b) =>
+      Number(a.path.endsWith('/checkpoints.jsonl')) - Number(b.path.endsWith('/checkpoints.jsonl')),
+  );
+  for (const file of inOrder) {
     const at = join(folder, ...file.path.split('/'));
     ensureFolder(destination, dirname(at));
     replace(at, file.bytes);
   }
   const manifest = {
     format: 1,
-    record,
-    tree,
+    record: prepared.record,
+    tree: prepared.tree,
     copiedAt: now.toISOString(),
     files: planned.map((file) => ({ path: file.path, bytes: file.bytes.length })),
   };
@@ -216,6 +259,8 @@ export interface CopyStanding {
   readonly copiedAt: string | undefined;
   /** The files the tree holds that the copy lacks or holds a shorter start of. */
   readonly behind: number;
+  /** The files whose copy is not the start of what the tree holds: the next run refuses them. */
+  readonly diverged: number;
   /** The files the tree holds now. */
   readonly files: number;
 }
@@ -227,15 +272,17 @@ export function standingOfCopy(
   record: string,
   tree: BackupTree,
 ): CopyStanding {
-  const planned = planCopy(root);
+  const planned = planCopy(root, tree);
   const folder = join(destination, record, tree);
   for (const place of [destination, join(destination, record), folder]) {
     if (lstatSync(place, { throwIfNoEntry: false })?.isSymbolicLink()) throw linked(place);
   }
   let behind = 0;
+  let diverged = 0;
   for (const file of planned) {
     const held = copiedOf(folder, file);
-    if (held === undefined || held.length !== file.bytes.length) behind += 1;
+    if (held !== undefined && !file.bytes.subarray(0, held.length).equals(held)) diverged += 1;
+    else if (held === undefined || held.length !== file.bytes.length) behind += 1;
   }
   let copiedAt: string | undefined;
   try {
@@ -246,5 +293,5 @@ export function standingOfCopy(
   } catch {
     // No manifest, or one this cannot read: there is no last run to name.
   }
-  return { copiedAt, behind, files: planned.length };
+  return { copiedAt, behind, diverged, files: planned.length };
 }

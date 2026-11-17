@@ -6,8 +6,9 @@
  * the verb reads the record and writes a folder, so it is declared as a read.
  *
  * THE FOLDER KEEPS THE TEXT IN CLEAR, and `setup` says so before it assigns anything (ADR-387): the
- * person confirms it by typing `yes` at the question, or says it ahead with `--yes`. Without a
- * terminal and without `--yes` nobody answered, and nothing is assigned.
+ * person confirms it by typing `yes` at the question, at a terminal and nowhere else. There is no
+ * flag that answers it: without a terminal nobody answered, nothing is assigned, and the refusal
+ * says the command for the person to run (as `stack hook` does).
  */
 
 import type { Command } from 'commander';
@@ -44,38 +45,35 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
         'the public tree only where the project is not in git, whose history is its own backup. No',
         'private key is copied: a run is refused whole if a file it would copy holds one, and so is a',
         'symbolic link in the tree or in the folder. A copy only grows. The folder keeps the text in',
-        'clear. A machine can have a folder per project; a project has the one it was set up with.',
+        'clear, which `setup` asks a person to confirm at a terminal. A machine can have a folder per project; a project has the one it was set up with.',
       ].join('\n'),
     );
 
   backup
     .command('setup')
     .description(
-      "say which folder keeps this project's backup, after confirming it keeps the text in clear",
+      "say which folder keeps this project's backup, after a person confirms at a terminal that it keeps the text in clear",
     )
     .argument('<folder>', 'the folder (outside the working tree, the record and the git directory)')
-    .option('-y, --yes', 'confirm that the folder keeps the text in clear, and ask nothing')
-    .action(async (folder: string, opts: { yes?: boolean }) => {
+    .action(async (folder: string) => {
       const { checkBackupSetup, runBackupSetup } = await import('../commands/backup.js');
       const checked = checkBackupSetup(here(), folder);
       if (!checked.ok) {
         reportRefusal(wiring, checked, REFUSALS);
         return;
       }
-      if (opts.yes !== true) {
-        if (io.aPersonIsHere !== true || io.ask === undefined) {
-          reportRefusal(wiring, {
-            reason: 'NOT_CONFIRMED',
-            message: `${KEPT_IN_CLEAR} Nobody was asked: run it again with --yes to confirm it. Nothing was assigned.`,
-          });
-          return;
-        }
-        io.out(render(fact(KEPT_IN_CLEAR, 0)));
-        const answer = (await io.ask('Type yes to use this folder: ')).trim().toLowerCase();
-        if (answer !== 'yes') {
-          io.out('Nothing was assigned.');
-          return;
-        }
+      if (io.aPersonIsHere !== true || io.ask === undefined) {
+        reportRefusal(wiring, {
+          reason: 'NOT_AT_A_TERMINAL',
+          message: `${KEPT_IN_CLEAR} A person confirms that at a terminal, and nothing here can answer for them: run \`mnema backup setup <folder>\` in a terminal. Nothing was assigned.`,
+        });
+        return;
+      }
+      io.out(render(fact(KEPT_IN_CLEAR, 0)));
+      const answer = (await io.ask('Type yes to use this folder: ')).trim().toLowerCase();
+      if (answer !== 'yes') {
+        io.out('Nothing was assigned.');
+        return;
       }
       const result = runBackupSetup(here(), folder);
       if (!result.ok) {
@@ -139,6 +137,13 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
         const when = one.copiedAt === undefined ? 'never copied' : `last copied ${one.copiedAt}`;
         const behind = one.behind === 0 ? 'nothing to add' : `${one.behind} file(s) to copy`;
         lines.push(fact(`${one.tree} tree: ${when}; ${behind}`));
+        if (one.diverged > 0) {
+          lines.push(
+            fact(
+              `${one.tree} tree: ${one.diverged} file(s) of the copy are not the start of the tree's, and the next run refuses them`,
+            ),
+          );
+        }
       }
       if (result.noPrivateTree) lines.push(fact('private tree: none on this machine yet'));
       if (result.publicIsInGit) lines.push(fact('public tree: kept by git, not copied'));
