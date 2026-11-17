@@ -128,7 +128,6 @@ import {
   markInflight,
   type PoolOptions,
   scanThePool,
-  wroteHere,
   wroteOnThisBranch,
 } from './pool.js';
 import { recordToWriteUnder, type WriteUnder } from './record-name.js';
@@ -254,7 +253,7 @@ export interface NewTail {
     | { readonly relinked: string }
     | { readonly names: string; readonly joins: string }
     | { readonly unvouched: number }
-    | { readonly offBase: true };
+    | { readonly offBase: true; readonly unanswered?: true };
   /**
    * Why this write founded a tail where the record already holds others of this key, in a
    * repository whose worktrees share the notes: no tail of the key has a note of this machine
@@ -268,7 +267,7 @@ export interface NewTail {
 }
 
 /** Why no other tail of the key went on: see {@link NewTail.founded}. */
-export type Founded = 'no-note' | 'none-ends-here' | 'reserved' | 'busy';
+export type Founded = 'no-note' | 'none-ends-here' | 'reserved' | 'busy' | 'base-unanswered';
 
 const FOUNDED_AFTER_THE_MOVE: Record<Founded, string> = {
   'no-note':
@@ -278,6 +277,8 @@ const FOUNDED_AFTER_THE_MOVE: Record<Founded, string> = {
   reserved:
     ', and the tails of this key that end here where this machine left them are the ones other worktrees write',
   busy: ', and the tails of this key that could go on here were being written by another process',
+  'base-unanswered':
+    ', and the base branch did not answer in time about the tails of this key that could go on here',
 };
 
 const FOUNDED_HERE: Record<Founded, (known: number) => string> = {
@@ -289,6 +290,8 @@ const FOUNDED_HERE: Record<Founded, (known: number) => string> = {
     'the tails of this key that end here where this machine left them are the ones other worktrees write, so this one writes its own',
   busy: () =>
     'the tails of this key that could go on here were being written by another process, so this one writes its own',
+  'base-unanswered': () =>
+    'the base branch did not answer in time about the tails of this key that could go on here, so this one writes its own',
 };
 
 /** The sentence a {@link NewTail} is told in: one wording for every surface that tells it. */
@@ -301,7 +304,9 @@ export function describeNewTail(opened: NewTail): string {
   if (left !== undefined) {
     const why =
       'offBase' in left
-        ? 'this worktree wrote it on another branch and its end is not on the base branch, so appending there could make a merge conflict where the two branches meet'
+        ? left.unanswered === true
+          ? 'the base branch did not answer in time about whether its end is on it, and it was not written by this worktree on this branch, so appending there could make a merge conflict where branches meet'
+          : 'its end is not on the base branch and it was not written by this worktree on this branch, so appending there could make a merge conflict where branches meet'
         : 'unvouched' in left
           ? `${left.unvouched} event(s) above its last checkpoint are not ones this installation's signed note says it wrote, so this key does not sign them; they stay unsigned, and \`mnema verify --require=signed\` fails on them`
           : 'relinked' in left
@@ -393,6 +398,7 @@ interface PoolRound {
   known?: number;
   noted?: number;
   reserved: boolean;
+  unanswered?: boolean;
   busy: boolean;
 }
 
@@ -774,6 +780,7 @@ export class ChainWriter {
       round.known = scan.known;
       round.noted = scan.noted;
       round.reserved = scan.reserved;
+      round.unanswered = scan.unanswered;
     }
     for (;;) {
       const next = round.queue.shift();
@@ -787,11 +794,13 @@ export class ChainWriter {
     if (this.pool === undefined || round.known === undefined || known < 1) return undefined;
     const why: Founded = round.busy
       ? 'busy'
-      : round.reserved
-        ? 'reserved'
-        : round.noted === 0
-          ? 'no-note'
-          : 'none-ends-here';
+      : round.unanswered === true
+        ? 'base-unanswered'
+        : round.reserved
+          ? 'reserved'
+          : round.noted === 0
+            ? 'no-note'
+            : 'none-ends-here';
     return { why, known };
   }
 
@@ -1189,11 +1198,11 @@ export class ChainWriter {
       this.movedOn = { from: this.tailId, to: this.tailId, kept, found };
       return;
     }
-    // A TAIL THIS WORKTREE WROTE ON ANOTHER BRANCH goes on only where its end is on the base branch
-    // (ADR-446): a branch cut from the one that wrote it would otherwise write the same tail file past the
-    // point they share, which a squash merge of the first and a merge of the second cannot settle. On the
-    // branch that wrote it, or where this worktree never wrote it, the end the note names is enough. A tail
-    // the pool offered was asked of the base branch when it was offered.
+    // A TAIL THIS WORKTREE DID NOT WRITE ON THE BRANCH IT IS ON goes on only where its end is on the base
+    // branch (ADR-446): a branch cut from the one that wrote it would otherwise write the same tail file
+    // past the point they share, which a squash merge of the first and a merge of the second cannot
+    // settle. That includes a tail no mark speaks of (written before marks were kept): it is asked once,
+    // and the first write after it is marked. A tail the pool offered was asked when it was offered.
     if (
       found !== undefined &&
       this.pool !== undefined &&
@@ -1201,13 +1210,14 @@ export class ChainWriter {
       lastSegment !== undefined
     ) {
       const here = { root: this.pool.checkoutRoot };
-      if (
-        wroteHere(here, this.tailId) &&
-        !wroteOnThisBranch(here, this.tailId, this.pool.branch()) &&
-        !this.pool.onBase(this.tailId, basename(lastSegment), found.hash)
-      ) {
-        this.movedOn = { from: this.tailId, to: this.tailId, kept, found, left: { offBase: true } };
-        return;
+      if (!wroteOnThisBranch(here, this.tailId, this.pool.branch())) {
+        const onBase = this.pool.onBase(this.tailId, basename(lastSegment), found.hash);
+        if (onBase !== true) {
+          const left: NewTail['left'] =
+            onBase === undefined ? { offBase: true, unanswered: true } : { offBase: true };
+          this.movedOn = { from: this.tailId, to: this.tailId, kept, found, left };
+          return;
+        }
       }
     }
     // A TAIL THAT HOLDS ENTRIES MAY HAVE BEEN RELINKED, here or by its owner elsewhere, and a

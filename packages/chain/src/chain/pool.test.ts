@@ -275,7 +275,9 @@ describe('a tail written on one branch (ADR-446)', () => {
       write(viaHint, 'next');
       expect(viaHint.tail, `hint on ${branch}`).not.toBe(first.tail);
       expect(told.sentences[0]?.left).toEqual({ offBase: true });
-      expect(describeNewTail(told.sentences[0] as NewTail)).toContain('another branch');
+      expect(describeNewTail(told.sentences[0] as NewTail)).toContain(
+        'not written by this worktree on this branch',
+      );
 
       const lost = copyOf(first.at, `lost-${branch ?? 'detached'}`);
       cpSync(marks, join(lost.place, 'inflight'), { recursive: true });
@@ -289,6 +291,55 @@ describe('a tail written on one branch (ADR-446)', () => {
       write(goes, 'next');
       expect(goes.tail, `base on ${branch}`).toBe(first.tail);
     }
+  });
+});
+
+describe('a tail the hint names that no mark speaks of, and a base branch that does not answer', () => {
+  /** A second worktree whose hint names the first one's tail, with no mark of its own. */
+  function hintedAtTheFirstTail() {
+    const first = aTailWrittenIn('one');
+    const second = copyOf(first.at, 'two');
+    const fingerprint = first.tail.split('-')[0] as string;
+    mkdirSync(join(second.place, 'keys'), { recursive: true });
+    writeFileSync(installationIdPath({ root: second.place }, fingerprint), `${idOf(first.tail)}\n`);
+    return { first, second };
+  }
+
+  it('is asked of the base branch once, and founds a tail where its end is not there', () => {
+    const { first, second } = hintedAtTheFirstTail();
+    const told: Told = { sentences: [] };
+    const writer = open(second, { onBase: () => false, told });
+    write(writer, 'next');
+    expect(writer.tail).not.toBe(first.tail);
+    expect(told.sentences[0]?.left).toEqual({ offBase: true });
+  });
+
+  it('is gone on with where its end is on the base branch, and then carries a mark of its own', () => {
+    const { first, second } = hintedAtTheFirstTail();
+    const writer = open(second, { onBase: () => true });
+    write(writer, 'next');
+    expect(writer.tail).toBe(first.tail);
+    const again = open(second, { onBase: () => false });
+    write(again, 'and again');
+    expect(again.tail).toBe(first.tail);
+  });
+
+  it('founds a tail and says the base branch did not answer, through the hint and through the pool', () => {
+    const { first, second } = hintedAtTheFirstTail();
+    const told: Told = { sentences: [] };
+    const viaHint = open(second, { onBase: () => undefined, told });
+    write(viaHint, 'next');
+    expect(viaHint.tail).not.toBe(first.tail);
+    expect(told.sentences[0]?.left).toEqual({ offBase: true, unanswered: true });
+    expect(describeNewTail(told.sentences[0] as NewTail)).toContain('did not answer in time');
+
+    const third = copyOf(first.at, 'three');
+    const viaPool = { sentences: [] } as Told;
+    const writer = open(third, { onBase: () => undefined, told: viaPool });
+    write(writer, 'next');
+    expect(writer.tail).not.toBe(first.tail);
+    expect(viaPool.sentences[0]?.founded?.why).toBe('base-unanswered');
+    expect(describeNewTail(viaPool.sentences[0] as NewTail)).toContain('did not answer in time');
   });
 });
 
@@ -380,7 +431,7 @@ describe('a tail that two worktrees may both write', () => {
     const fingerprint = first.tail.split('-')[0] as string;
     mkdirSync(join(second.place, 'keys'), { recursive: true });
     writeFileSync(installationIdPath({ root: second.place }, fingerprint), `${idOf(first.tail)}\n`);
-    const there = open(second);
+    const there = open(second, { onBase: () => true });
     write(there, 'the other worktree goes on');
     expect(there.tail).toBe(first.tail);
 

@@ -6,11 +6,11 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { entryIsOnTheBase } from './base-branch.js';
+import { branchOfWorktree, entryIsOnTheBase } from './base-branch.js';
 
 const ON_BASE = 'a'.repeat(64);
 const ELSEWHERE = 'b'.repeat(64);
@@ -93,7 +93,7 @@ describe('an entry on the base branch', () => {
 });
 
 describe('the time the questions of one write may take', () => {
-  it('is spent once: a git that hangs is stopped, and every question after it is answered no at once', () => {
+  it('is spent once: a git that hangs is stopped, and every question after it is answered at once with no answer', () => {
     git('remote', 'add', 'origin', join(sandbox, 'nowhere.git'));
     theBaseHolds(`{"link":{"seq":4,"hash":"${ON_BASE}"}}`, 'refs/remotes/origin/main');
     git('symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/main');
@@ -105,12 +105,53 @@ describe('the time the questions of one write may take', () => {
     process.env.PATH = `${bin}:${path}`;
     try {
       const onBase = entryIsOnTheBase(repo, join(repo, '.mnema'), 300);
-      expect(onBase(TAIL, '000001.jsonl', ON_BASE)).toBe(false);
+      expect(onBase(TAIL, '000001.jsonl', ON_BASE)).toBeUndefined();
       const began = Date.now();
-      expect(onBase(TAIL, '000001.jsonl', ON_BASE)).toBe(false);
+      expect(onBase(TAIL, '000001.jsonl', ON_BASE)).toBeUndefined();
       expect(Date.now() - began).toBeLessThan(200);
     } finally {
       process.env.PATH = path;
     }
   });
+});
+
+/** Whether this git can keep a repository in the reftable format (2.45 and later). */
+const REFTABLE = (() => {
+  const ran = spawnSync('git', ['--version'], { encoding: 'utf-8' });
+  const [major, minor] = (/(\d+)\.(\d+)/.exec(ran.stdout) ?? []).slice(1).map(Number);
+  return (major ?? 0) > 2 || ((major ?? 0) === 2 && (minor ?? 0) >= 45);
+})();
+
+describe('the branch a worktree has checked out', () => {
+  it('is read from HEAD, and is none for a detached HEAD', () => {
+    expect(branchOfWorktree(join(repo, '.git'), repo)).toBe('main');
+    git('symbolic-ref', 'HEAD', 'refs/heads/feature/x');
+    expect(branchOfWorktree(join(repo, '.git'), repo)).toBe('feature/x');
+    writeFileSync(join(repo, '.git', 'HEAD'), `${'a'.repeat(40)}\n`);
+    expect(branchOfWorktree(join(repo, '.git'), repo)).toBeUndefined();
+  });
+
+  // Runs wherever the runner's git is 2.45 or later (the node jobs on Linux); skipped, by name, below that.
+  it.skipIf(!REFTABLE)(
+    'is asked of git where the repository is kept in the reftable format, whose HEAD file names no branch',
+    () => {
+      const table = join(sandbox, 'reftable');
+      mkdirSync(table);
+      const ran = spawnSync('git', ['init', '-q', '--ref-format=reftable', '-b', 'main'], {
+        cwd: table,
+        encoding: 'utf-8',
+        env: {
+          PATH: process.env.PATH ?? '',
+          HOME: sandbox,
+          GIT_CONFIG_NOSYSTEM: '1',
+          GIT_CONFIG_GLOBAL: '/dev/null',
+        },
+      });
+      expect(ran.status, ran.stderr).toBe(0);
+      expect(readFileSync(join(table, '.git', 'HEAD'), 'utf-8')).toContain('refs/heads/.invalid');
+      expect(branchOfWorktree(join(table, '.git'), table)).toBe('main');
+      spawnSync('git', ['symbolic-ref', 'HEAD', 'refs/heads/feature/x'], { cwd: table });
+      expect(branchOfWorktree(join(table, '.git'), table)).toBe('feature/x');
+    },
+  );
 });

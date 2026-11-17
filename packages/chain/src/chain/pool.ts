@@ -41,8 +41,8 @@ export interface PoolOptions {
   readonly checkoutRoot: string;
   /** The installation ids that the other worktrees of the repository which still exist name as their hint. */
   readonly reservedBy: (fingerprint: string) => ReadonlySet<string>;
-  /** Whether the entry with `hash` is in the segment `segment` of `tailId` on the base branch; false where that cannot be said. */
-  readonly onBase: (tailId: string, segment: string, hash: string) => boolean;
+  /** Whether the entry with `hash` is in the segment `segment` of `tailId` on the base branch; false where it is not, and undefined where it did not answer in time. */
+  readonly onBase: (tailId: string, segment: string, hash: string) => boolean | undefined;
   /** The branch this worktree has checked out, or undefined for a detached HEAD. */
   readonly branch: () => string | undefined;
 }
@@ -63,6 +63,8 @@ export interface PoolScan {
   readonly noted: number;
   /** Whether one that would have been offered was left because another worktree names it as its hint. */
   readonly reserved: boolean;
+  /** Whether the base branch did not answer in time about one of them. */
+  readonly unanswered: boolean;
 }
 
 /**
@@ -116,11 +118,6 @@ export function wroteOnThisBranch(
 ): boolean {
   const mark = readMark(checkout, tailId);
   return mark !== undefined && branch !== undefined && mark.branch === branch;
-}
-
-/** Whether this worktree wrote to `tailId` at all, on whatever branch. */
-export function wroteHere(checkout: ChainLayout, tailId: string): boolean {
-  return readMark(checkout, tailId) !== undefined;
 }
 
 /** The entry a tail ends with in this checkout, and the segment holding it; undefined for a tail that cannot be read. */
@@ -182,6 +179,7 @@ export function scanThePool(args: {
   found.sort((a, b) => a.modified - b.modified || (a.tail < b.tail ? -1 : 1));
   const queue: string[] = [];
   let asked = 0;
+  let unanswered = false;
   for (const candidate of found) {
     if (queue.length >= JUDGED_AT_MOST) break;
     if (wroteOnThisBranch(checkout, candidate.tail, branch)) {
@@ -190,8 +188,9 @@ export function scanThePool(args: {
     }
     if (asked >= JUDGED_AT_MOST) continue;
     asked += 1;
-    if (pool.onBase(candidate.tail, candidate.segment, candidate.end.hash))
-      queue.push(candidate.tail);
+    const onBase = pool.onBase(candidate.tail, candidate.segment, candidate.end.hash);
+    if (onBase === undefined) unanswered = true;
+    else if (onBase) queue.push(candidate.tail);
   }
-  return { queue, known: known.length, noted, reserved };
+  return { queue, known: known.length, noted, reserved, unanswered };
 }

@@ -11,8 +11,8 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { realpathSync } from 'node:fs';
-import { relative, sep } from 'node:path';
+import { readFileSync, realpathSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
 import { theDefaultBranch } from './default-branch.js';
 
 /** Names that point git at another repository than the one a directory names. */
@@ -43,7 +43,7 @@ export function entryIsOnTheBase(
   top: string,
   record: string,
   budgetMs: number = BASE_BUDGET_MS,
-): (tailId: string, segment: string, hash: string) => boolean {
+): (tailId: string, segment: string, hash: string) => boolean | undefined {
   let cwd: string;
   let prefix: string;
   try {
@@ -60,9 +60,13 @@ export function entryIsOnTheBase(
   };
   for (const name of REPOSITORY_VARIABLES) Reflect.deleteProperty(env, name);
   let spent = 0;
+  let unanswered = false;
   const run = (args: readonly string[]): { status: number | null; out: Buffer } => {
     const left = budgetMs - spent;
-    if (left <= 0) return { status: null, out: Buffer.alloc(0) };
+    if (left <= 0) {
+      unanswered = true;
+      return { status: null, out: Buffer.alloc(0) };
+    }
     const began = Date.now();
     const ran = spawnSync('git', ['-c', 'gc.auto=0', '-c', 'maintenance.auto=false', ...args], {
       cwd,
@@ -71,6 +75,7 @@ export function entryIsOnTheBase(
       timeout: Math.min(GIT_BUDGET_MS, left),
     });
     spent += Date.now() - began;
+    if (ran.status === null) unanswered = true;
     return { status: ran.status, out: ran.stdout ?? Buffer.alloc(0) };
   };
   let commit: string | false | undefined;
@@ -86,11 +91,46 @@ export function entryIsOnTheBase(
   };
   return (tailId, segment, hash) => {
     const base = baseCommit();
+    if (unanswered) return undefined;
     if (base === false) return false;
     const path = [prefix, 'tails', tailId, segment].filter((part) => part !== '').join('/');
     const ran = run(['cat-file', 'blob', `${base}:${path}`]);
+    if (unanswered) return undefined;
     return ran.status === 0 && holdsAsItsOwnHash(ran.out.toString('utf-8'), hash);
   };
+}
+
+/**
+ * The branch a worktree has checked out, or undefined for a detached HEAD or where it cannot be said.
+ * Read from the worktree's `HEAD` file; a repository kept in the `reftable` format writes the stub
+ * `refs/heads/.invalid` there in every worktree, whatever the branch, so there git is asked
+ * (`symbolic-ref`, within the same bounded time), and where it does not answer the HEAD counts as
+ * detached, which asks the base branch (the side that cannot conflict).
+ */
+export function branchOfWorktree(gitDir: string, top: string): string | undefined {
+  let head: string;
+  try {
+    head = readFileSync(join(gitDir, 'HEAD'), 'utf-8').trim();
+  } catch {
+    return undefined;
+  }
+  if (!head.startsWith('ref: refs/heads/')) return undefined;
+  const named = head.slice('ref: refs/heads/'.length);
+  if (named !== '.invalid') return named;
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    GIT_OPTIONAL_LOCKS: '0',
+    GIT_TERMINAL_PROMPT: '0',
+  };
+  for (const name of REPOSITORY_VARIABLES) Reflect.deleteProperty(env, name);
+  const ran = spawnSync('git', ['symbolic-ref', '--quiet', 'HEAD'], {
+    cwd: top,
+    env,
+    encoding: 'utf-8',
+    timeout: GIT_BUDGET_MS,
+  });
+  const ref = ran.status === 0 ? ran.stdout.trim() : '';
+  return ref.startsWith('refs/heads/') ? ref.slice('refs/heads/'.length) : undefined;
 }
 
 /** Whether a line of the segment is the entry whose own hash is `hash`: a later line that names it as its `prev` is not. */

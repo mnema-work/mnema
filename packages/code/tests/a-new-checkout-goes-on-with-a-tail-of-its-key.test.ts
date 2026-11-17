@@ -65,6 +65,15 @@ const tails = (of: string): string[] => readdirSync(join(of, '.mnema', 'tails'))
 const sentences = (out: string): string[] =>
   out.split('\n').filter((line) => line.startsWith('mnema: wrote to a new tail'));
 
+function reftableGit(): boolean {
+  const ran = spawnSync('git', ['--version'], {
+    encoding: 'utf-8',
+    env: { ...ENV(), GIT_CONFIG_GLOBAL: GIT_WITHOUT_MAINTENANCE },
+  });
+  const [major, minor] = (/(\d+)\.(\d+)/.exec(ran.stdout) ?? []).slice(1).map(Number);
+  return (major ?? 0) > 2 || ((major ?? 0) === 2 && (minor ?? 0) >= 45);
+}
+
 function commit(at: string, message: string): void {
   expect(git(at, 'add', '.mnema').status).toBe(0);
   expect(git(at, 'commit', '-qm', message, '--allow-empty').status).toBe(0);
@@ -242,6 +251,23 @@ describe('a branch cut from another that the host has not merged (ADR-446)', () 
   }
 
   it('founds a tail on the branch cut from it, and the squash of the first and the merge of the second conflict on no tail file', () => {
+    publishMain();
+    visit('a', 'main', 'on a');
+    visit('c', 'a', 'on c, cut from a');
+    expect(tails(repo)).toHaveLength(2);
+    squashAThenMergeC();
+  });
+
+  // The HEAD file of a repository kept in the reftable format names no branch (`refs/heads/.invalid`
+  // everywhere), so the branch is asked of git. Skipped, by name, where the runner's git is older than
+  // 2.45; it runs in the node jobs on Linux.
+  it.skipIf(!reftableGit())('does the same in a repository kept in the reftable format', () => {
+    rmSync(repo, { recursive: true, force: true });
+    mkdirSync(repo);
+    expect(git(repo, 'init', '-q', '--ref-format=reftable', '-b', 'main').status).toBe(0);
+    expect(mnema(repo, 'init').status).toBe(0);
+    expect(mnema(repo, 'memory', 'the base').status).toBe(0);
+    commit(repo, 'the base');
     publishMain();
     visit('a', 'main', 'on a');
     visit('c', 'a', 'on c, cut from a');

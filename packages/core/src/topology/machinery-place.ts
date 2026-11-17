@@ -20,7 +20,7 @@
 import { accessSync, constants, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { CodedError, type PoolOptions } from '@mnema/chain';
-import { entryIsOnTheBase } from './base-branch.js';
+import { branchOfWorktree, entryIsOnTheBase } from './base-branch.js';
 import { commonDirIsOutsideTheWorktree, otherGitDirsOf } from './git-place.js';
 import type { ResolvedTrees } from './resolve.js';
 
@@ -89,7 +89,7 @@ export function machineryRootsOf(trees: ResolvedTrees): MachineryRoots | undefin
       checkoutRoot: machinery.checkout,
       reservedBy: (fingerprint) => hintsOfTheOtherWorktrees(place, checkoutWithin, fingerprint),
       onBase: entryIsOnTheBase(place.top, trees.projectPublic ?? place.top),
-      branch: () => branchOf(place.gitDir),
+      branch: () => branchOfWorktree(place.gitDir, place.top),
     },
   };
 }
@@ -114,16 +114,6 @@ function hintsOfTheOtherWorktrees(
     }
   }
   return ids;
-}
-
-/** The branch a worktree has checked out, read from its `HEAD`; undefined for a detached HEAD or one that cannot be read. */
-function branchOf(gitDir: string): string | undefined {
-  try {
-    const head = readFileSync(join(gitDir, 'HEAD'), 'utf-8').trim();
-    return head.startsWith('ref: refs/heads/') ? head.slice('ref: refs/heads/'.length) : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 function isDirectory(path: string): boolean {
