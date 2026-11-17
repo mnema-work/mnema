@@ -13,4 +13,4 @@ Changed
   readers, and any other reparse point, a OneDrive placeholder among them, is read as the file or folder it holds; a
   WSL link counts as a link to the product from Node 24.16 (libuv 1.52), not on the floor, 24.15, nor to the second reader. The record's root and the folders above it are not judged, nor `locks/` or anything else no reader
   reads. No version of mnema writes a link into a record; a version from before this one follows such a link and refuses
-  nothing, but a tail that is a link, which 0.1.8 already refused (FORMAT.md section 4). What the other commands read (`status`, the brief, the hooks) is unchanged.
+  nothing, but a tail that is a link, which 0.1.8 already refused (FORMAT.md section 4). The reads under `status`, the brief and the hooks are the next entry's.
