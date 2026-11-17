@@ -13,7 +13,7 @@ import { join } from 'node:path';
 import type { ChainLayout } from './layout.js';
 import { alive } from './tail-lock.js';
 
-const STAGING = /^(?:head|head\.sig|cited)\.(\d+)$/;
+const STAGING = /^(?:head|head\.sig|cited|covered|citations\.[^.]+)\.(\d+)$/;
 
 /**
  * Removes the staging files of `tailId` whose writer is gone, and names the ones it removed. Call it

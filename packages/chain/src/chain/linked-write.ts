@@ -84,7 +84,7 @@ export function refuseToWriteThroughALink(
   fingerprint: string,
   pid: number = process.pid,
 ): void {
-  const notes = ['head', 'head.sig', 'cited'].flatMap((note) => [
+  const notes = ['head', 'head.sig', 'cited', 'covered'].flatMap((note) => [
     `locks/${tailId}.${note}`,
     `locks/${tailId}.${note}.${pid}`,
   ]);

@@ -75,8 +75,9 @@ describe('a writer cites what it read, once', () => {
   });
 
   it('cites every tail that moved, in ascending order of hash', () => {
-    const a = machine();
-    const c = machine();
+    // Two heads that cover each other's tails not at all: neither cites the other.
+    const a = machine(false);
+    const c = machine(false);
     const b = machine();
     a.write();
     c.write();

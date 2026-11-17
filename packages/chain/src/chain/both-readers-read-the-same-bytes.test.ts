@@ -1347,7 +1347,7 @@ describe('the rule has one place', () => {
   });
 
   /**
-   * The FIVE documents read through the tolerant `parseStoredJson` rather than through
+   * The SIX documents read through the tolerant `parseStoredJson` rather than through
    * `parseCanonicalLine`, each with why it is not a line of the record. Reconciled in both
    * directions: a file that starts calling the tolerant reader is accused until somebody
    * says here why its document may be re-spelled, and an entry whose file stopped is accused
@@ -1356,6 +1356,8 @@ describe('the rule has one place', () => {
   const TOLERANT_READERS: Readonly<Record<string, string>> = {
     [join('chain', 'cited-heads.ts')]:
       "the note of which heads a tail last cited, under the tree's `locks/`: never committed, never read by the second reader, and a lost or unreadable note costs one redundant citation, never an order",
+    [join('chain', 'citation-index.ts')]:
+      "the note of which hashes a tail cites, under the tree's `locks/`: never committed, never read by the second reader, believed only after the bytes of the tail agree with it, and rebuilt from them when they do not",
     [join('chain', 'kept-head.ts')]:
       "the signed note of the last entry this installation wrote to a tail, under the tree's `locks/`: never committed, never read by a reader, and its signature is over the canonical bytes of the values read, so a re-spelled note verifies as the same note and a changed value does not",
     [join('chain', 'backup.ts')]:
@@ -1379,11 +1381,12 @@ describe('the rule has one place', () => {
       .sort();
   }
 
-  it('reads every line of the record through parseCanonicalLine, and only five other documents through the tolerant reader', () => {
+  it('reads every line of the record through parseCanonicalLine, and only six other documents through the tolerant reader', () => {
     expect(callersOf('parseStoredJson')).toEqual(Object.keys(TOLERANT_READERS).sort());
     expect(callersOf('parseCanonicalLine')).toEqual(
       [
         join('chain', 'checkpoint.ts'),
+        join('chain', 'citation-index.ts'),
         join('chain', 'entry.ts'),
         join('chain', 'tailproof.ts'),
         join('chain', 'witness.ts'),

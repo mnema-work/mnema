@@ -1354,7 +1354,7 @@ export class ChainWriter {
   private appendLocked(handed: CatalogEvent): Entry {
     this.refuseDamagedTail();
     // The citations are read under the lock, so the heads are the ones on disk as this lands.
-    const cited = this.cite(handed);
+    const cited = this.cite([handed]);
     const event = cited.event;
     refuseUnreadable(event);
     this.refuseUnprovenWaiver(event);
@@ -1420,7 +1420,7 @@ export class ChainWriter {
   private appendAllLocked(handed: readonly CatalogEvent[]): Entry[] {
     this.refuseDamagedTail();
     // The batch is one act: its first event cites, and the rest follow it by `seq`.
-    const cited = this.cite(handed[0] as CatalogEvent);
+    const cited = this.cite(handed);
     const events = [cited.event, ...handed.slice(1)];
     for (const event of events) {
       refuseUnreadable(event);
@@ -1492,8 +1492,10 @@ export class ChainWriter {
   }
 
   /** `event` as this writer writes it: citing what it read, when it cites ({@link HeadsToCite}). */
-  private cite(event: CatalogEvent): Cited {
-    return this.heads?.cite(event) ?? { event, remember: () => undefined };
+  private cite(events: readonly CatalogEvent[]): Cited {
+    return (
+      this.heads?.cite(events) ?? { event: events[0] as CatalogEvent, remember: () => undefined }
+    );
   }
 
   /**
