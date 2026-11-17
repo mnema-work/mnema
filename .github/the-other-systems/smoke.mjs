@@ -5,7 +5,8 @@
 // macOS, `mnema.cmd` on Windows), and then drives the INSTALLED binary:
 //
 //   init, decision record, accept, a rule that refuses a write, verify, the record in a clone that
-//   git checked out with the system's own line endings, the Python reader over that record,
+//   git checked out with the system's own line endings, the Python reader over that record, a
+//   tail of it turned into a junction (a symbolic link elsewhere) and refused by both readers,
 //   doctor, and the plugin's hook handlers on payloads whose paths are written the way that
 //   system writes them.
 //
@@ -19,7 +20,16 @@
 // arguments the file gives them. The vitest suite does not run here; it runs on Linux.
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  renameSync,
+  rmSync,
+  symlinkSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
 
@@ -245,8 +255,8 @@ try {
   const candidates = WINDOWS ? ['python', 'py', 'python3'] : ['python3', 'python'];
   const python = candidates.find((name) => run(name, ['--version']).status === 0);
   check(python !== undefined, `a Python is on the PATH (${python})`);
+  const reader = join(root, 'packages', 'chain', 'verifier', 'mnema_verify.py');
   if (python !== undefined) {
-    const reader = join(root, 'packages', 'chain', 'verifier', 'mnema_verify.py');
     mustRun('python self-test', run(python, ['-I', reader, 'self-test']), { tail: 300 });
     const readRecord = mustRun(
       'python reads the clone record',
@@ -254,6 +264,31 @@ try {
       { tail: 300 },
     );
     check(readRecord.status === 0, 'the Python reader accepts the checked-out record');
+  }
+
+  // A junction is what a person on Windows makes without being an administrator, and Node reads it
+  // as a link; Python's `os.path.islink` does not, so the second reader asks the reparse tag. On the
+  // other systems the type is ignored and this is a symbolic link. The clone is not used after this.
+  section('a tail that is a junction, or a symbolic link, is refused by both readers');
+  const tailsInClone = join(clone, '.mnema', 'tails');
+  const [linkedTail] = readdirSync(tailsInClone);
+  if (linkedTail === undefined) throw new Error('the clone holds no tail');
+  const movedOut = join(real, 'a-tail-moved-out');
+  renameSync(join(tailsInClone, linkedTail), movedOut);
+  symlinkSync(movedOut, join(tailsInClone, linkedTail), 'junction');
+  const refusedHere = mnema(['verify', '--require', 'signed'], clone);
+  check(
+    refusedHere.status === 1 &&
+      `${refusedHere.out}${refusedHere.err}`.includes(`LINKED TAIL: tails/${linkedTail}`),
+    `mnema verify refuses the linked tail by name (exit ${refusedHere.status})`,
+  );
+  if (python !== undefined) {
+    const refusedThere = run(python, ['-I', reader, 'record', join(clone, '.mnema')]);
+    check(
+      refusedThere.status === 1 &&
+        refusedThere.out.includes(`tails/${linkedTail} is a symbolic link`),
+      `the Python reader refuses the linked tail by name (exit ${refusedThere.status})`,
+    );
   }
 
   section('doctor');
