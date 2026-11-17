@@ -19,6 +19,7 @@
  * tail says it. That path is the `STALE_ANCHOR` one, held by its own case below.
  */
 
+import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -225,6 +226,42 @@ describe('an agent through the MCP server is told of a new tail by the tool that
       );
       expect(told(later)).toEqual([]);
       expect(told(textOf(await client.callTool({ name: 'search', arguments: {} })))).toEqual([]);
+    } finally {
+      await client.close();
+    }
+  });
+});
+
+describe('an agent through the MCP server is told why a write founded a tail where the key already writes others', () => {
+  it('says this repository holds no note of writing any, in the reply and in the log, once', async () => {
+    expect(spawnSync('git', ['init', '-q'], { cwd: project }).status).toBe(0);
+    const { client } = await connect();
+    try {
+      const first = textOf(
+        await client.callTool({
+          name: 'create_task',
+          arguments: { title: 'first', scope: 'public' },
+        }),
+      );
+      expect(first).not.toContain('wrote to a new tail');
+      // A clone: the record holds the tail, and the repository holds no note of writing it, nor a hint.
+      rmSync(join(project, '.git', 'mnema', '%2E', 'public'), { recursive: true });
+      const second = textOf(
+        await client.callTool({
+          name: 'create_task',
+          arguments: { title: 'second', scope: 'public' },
+        }),
+      );
+      expect(second).toContain('wrote to a new tail');
+      expect(second).toContain('this repository holds no note of this machine writing any of them');
+      expect(logged.join('\n')).toContain('this repository holds no note of this machine writing');
+      const third = textOf(
+        await client.callTool({
+          name: 'create_task',
+          arguments: { title: 'third', scope: 'public' },
+        }),
+      );
+      expect(third).not.toContain('wrote to a new tail');
     } finally {
       await client.close();
     }
