@@ -68,7 +68,7 @@
  * answer depended on somebody else being up.
  */
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 
 import { canonicalStringify } from '../events/canonical.js';
 import { holdsExactly, parseCanonicalLine } from '../events/stored-json.js';
@@ -84,7 +84,7 @@ import {
   type ReachedAttestation,
   reachedAttestations,
 } from './ots.js';
-import { lastTailCheckpoint } from './store.js';
+import { lastTailCheckpoint, listedWithoutLinks, refuseLinks } from './store.js';
 
 /**
  * The strength order of the three states: the fold over several tails reads it,
@@ -212,10 +212,17 @@ export function readStoredWitness(
   checkpointHash: string,
 ): StoredWitness | null {
   const proofPath = witnessProofPath(layout, tailId, checkpointHash);
+  const blocksPath = witnessBlocksPath(layout, tailId, checkpointHash);
+  refuseLinks(layout, [
+    'tails',
+    `tails/${tailId}`,
+    `tails/${tailId}/witness`,
+    inRecord(layout, proofPath),
+    inRecord(layout, blocksPath),
+  ]);
   if (!existsSync(proofPath)) return null;
   if (statSync(proofPath).size > MAX_PROOF_BYTES) return { proof: OVERSIZED, headers: new Map() };
   const headers = new Map<number, Buffer>();
-  const blocksPath = witnessBlocksPath(layout, tailId, checkpointHash);
   // The sidecar is one line per block a proof reaches, and a proof is capped, so a file
   // past this holds lines no attestation will ever ask for.
   if (existsSync(blocksPath) && statSync(blocksPath).size <= MAX_BLOCKS_BYTES) {
@@ -226,6 +233,14 @@ export function readStoredWitness(
     }
   }
   return { proof: readFileSync(proofPath), headers };
+}
+
+/** A path under the record's root as the record names it, `/`-separated. */
+function inRecord(layout: ChainLayout, path: string): string {
+  return path
+    .slice(layout.root.length + 1)
+    .split(/[\\/]/)
+    .join('/');
 }
 
 /**
@@ -565,10 +580,12 @@ const PROOF_SUFFIX = '.ots';
  */
 function stampedCheckpoints(layout: ChainLayout, tailId: string): ReadonlySet<string> {
   const dir = witnessDir(layout, tailId);
+  refuseLinks(layout, ['tails', `tails/${tailId}`, `tails/${tailId}/witness`]);
   // A file named `witness` is no witness directory (it is named as a stray entry, FORMAT.md section 4).
   if (!existsSync(dir) || !statSync(dir).isDirectory()) return new Set();
   return new Set(
-    readdirSync(dir)
+    listedWithoutLinks(layout, `tails/${tailId}/witness`, [])
+      .map((entry) => entry.name)
       .filter((name) => name.endsWith(PROOF_SUFFIX))
       .map((name) => name.slice(0, -PROOF_SUFFIX.length)),
   );

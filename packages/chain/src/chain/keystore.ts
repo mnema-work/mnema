@@ -69,7 +69,7 @@ import {
   publicKeyPath,
 } from './layout.js';
 import { sleepSync } from './sleep.js';
-import { readCommittedKeyFile } from './store.js';
+import { readCommittedKeyFile, refuseLinks } from './store.js';
 import { TailBusyError, withTailLock } from './tail-lock.js';
 
 /**
@@ -426,6 +426,7 @@ export function committedPublicKey(
   chainLayout: ChainLayout,
   fingerprint: string,
 ): PublicHalf | null {
+  refuseLinks(chainLayout, ['keys', `keys/${fingerprint}.pub`]);
   // As the verifier reads it, through the one reading of a committed key file.
   const read = readCommittedKeyFile(publicKeyPath(chainLayout, fingerprint));
   if ('holdsNoKey' in read) return null;

@@ -164,8 +164,9 @@ import {
   classifyTailDirectory,
   committedKeys,
   listLinksInRecord,
-  listPublicKeyFingerprints,
+  listPublicKeyFingerprintsLeavingLinks,
   listTails,
+  listTailsLeavingLinks,
   type RefusedLine,
   type RelaidLine,
   readTail,
@@ -1321,7 +1322,7 @@ function verifyReading(
   // directory is still there, so its key is not one whose tail is gone.
   const links = listLinksInRecord(layout);
   const linked = new Set(links);
-  const present = linked.has('tails') ? [] : listTails(layout);
+  const present = linked.has('tails') ? [] : listTailsLeavingLinks(layout);
   const tails = present.filter((tail) => !links.some((at) => at.startsWith(`tails/${tail}/`)));
   const keyLinked = (fingerprint: string): boolean =>
     linked.has('keys') || linked.has(`keys/${fingerprint}.pub`);
@@ -1339,7 +1340,9 @@ function verifyReading(
   // fingerprint to match, so it is still rejected. (A pre-suffix tail named by a
   // bare fingerprint matches the whole name, so it is accepted unchanged.)
   const committedFingerprints = new Set(
-    linked.has('keys') ? [] : listPublicKeyFingerprints(layout).filter((name) => !keyLinked(name)),
+    linked.has('keys')
+      ? []
+      : listPublicKeyFingerprintsLeavingLinks(layout).filter((name) => !keyLinked(name)),
   );
   // One reader of the committed keys for the whole verification: every checkpoint, every
   // ownership proof and every enrolment that names a key asks it, and the disk is read

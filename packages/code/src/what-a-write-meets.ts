@@ -24,7 +24,13 @@
  */
 
 import { sep } from 'node:path';
-import { CodedError, DEFAULT_WAIT_MS, TailBusyError, UnreadableLineError } from '@mnema/chain';
+import {
+  CodedError,
+  DEFAULT_WAIT_MS,
+  LinkedRecordError,
+  TailBusyError,
+  UnreadableLineError,
+} from '@mnema/chain';
 import {
   channelIsOn,
   type PushedRule,
@@ -300,7 +306,15 @@ export function refusalOfAnUnreadableRecord(
   trees: readonly Pick<ScopedCache, 'scope' | 'chainRoot'>[],
 ): string | undefined {
   if (!(error instanceof UnreadableLineError)) return undefined;
-  const words = UNREADABLE_IN[treeOfTheLine(error.locus, trees) ?? 'unknown'];
+  const tree = treeOfTheLine(error.locus, trees) ?? 'unknown';
+  if (error instanceof LinkedRecordError) {
+    return [
+      `The write is refused: ${UNREADABLE_IN[tree].tree} holds a symbolic link, so which rules apply to this path cannot be known.`,
+      error.message,
+      LINKED_WAY_OUT[tree],
+    ].join('\n\n');
+  }
+  const words = UNREADABLE_IN[tree];
   return [
     `The write is refused: a line of ${words.tree} cannot be read by this mnema, so which rules apply to this path cannot be known.`,
     error.message,
@@ -348,6 +362,21 @@ const ALTERED_IN: Readonly<Record<Scope, { tree: string; out: string }>> = {
     tree: 'this machine’s global record',
     out: `This closes every project on this machine: every write in each is refused until the line is as it was written. ${NOT_VERSIONED_ALTERED}`,
   },
+};
+
+/**
+ * The way out of a refusal for a symbolic link in a record, by tree and by how far it reaches: the link
+ * is replaced with the folder or file it points to, because a record is read from its own files.
+ */
+const LINKED_WAY_OUT: Readonly<Record<Scope | 'unknown', string>> = {
+  public:
+    'Every write in the project is refused until the link is gone: replace the link with the folder or file it points to.',
+  private:
+    'Every write in the project is refused until the link is gone: replace the link with the folder or file it points to. This record is not versioned.',
+  global:
+    'This closes every project on this machine: every write in each is refused until the link is gone. Replace the link with the folder or file it points to. This record is not versioned.',
+  unknown:
+    'Every write that reads this record is refused until the link is gone: replace the link with the folder or file it points to.',
 };
 
 /** The note on the second stream beside that refusal. */
@@ -403,7 +432,16 @@ export function unreadableLineSentence(
   error: UnreadableLineError,
   trees: readonly Pick<ScopedCache, 'scope' | 'chainRoot'>[],
 ): string {
-  const words = UNREADABLE_IN[treeOfTheLine(error.locus, trees) ?? 'unknown'];
+  const tree = treeOfTheLine(error.locus, trees) ?? 'unknown';
+  if (error instanceof LinkedRecordError) {
+    return [
+      `Nothing was done: ${UNREADABLE_IN[tree].tree} holds a symbolic link, which this mnema does not follow.`,
+      error.message,
+      LINKED_WAY_OUT[tree],
+      'Switching a channel off is a write to the same record, so it is refused too. `mnema verify` names every link it refuses.',
+    ].join('\n\n');
+  }
+  const words = UNREADABLE_IN[tree];
   return [
     `Nothing was done: ${words.tree} holds a line this mnema cannot read.`,
     error.message,

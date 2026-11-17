@@ -41,7 +41,13 @@ import {
   type TheRecordRead,
   tailsReadAsOneRecord,
 } from './record-name.js';
-import { committedKeys, lastTailCheckpoint, listTails, orderedSegments } from './store.js';
+import {
+  committedKeys,
+  lastTailCheckpoint,
+  listTails,
+  orderedSegments,
+  refuseLinks,
+} from './store.js';
 import { NAMED_TAILPROOF_SCHEME, parseTailProof, verifyTailProof } from './tailproof.js';
 import { relinksReadAt } from './verify.js';
 
@@ -320,6 +326,7 @@ function readProof(
   layout: ChainLayout,
   tail: string,
 ): ReturnType<typeof parseTailProof> | undefined {
+  refuseLinks(layout, ['tails', `tails/${tail}`, `tails/${tail}/tailproof.json`]);
   const path = tailProofPath(layout, tail);
   if (!existsSync(path)) return undefined;
   try {

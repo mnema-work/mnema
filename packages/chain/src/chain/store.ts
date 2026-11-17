@@ -48,13 +48,85 @@ import {
 const NEWLINE = 0x0a;
 
 /**
+ * A READ THAT MET A SYMBOLIC LINK where it reads a record (FORMAT.md section 4, ADR-348, ADR-406).
+ *
+ * The product's reads open nothing a link stands for: it can point outside the record, at bytes
+ * no one signed, and a read that followed it would serve them. It is an {@link UnreadableLineError}
+ * so that every door that already refuses a record it cannot read refuses this one the same way:
+ * the read stops, a write is refused, the gate denies. `path` is the link's place in the record
+ * (`tails/<tail>`, `tails/<tail>/000001.jsonl`, `keys/<name>`), `locus` its place on the disk.
+ */
+export class LinkedRecordError extends UnreadableLineError {
+  override readonly name: string = 'LinkedRecordError';
+  /** The link's place in the record, `/`-separated. */
+  readonly path: string;
+
+  constructor(layout: ChainLayout, path: string) {
+    super(join(layout.root, ...path.split('/')), 'it is a symbolic link');
+    this.path = path;
+    this.message = `${path} is a symbolic link, and a record is read from its own files and directories: this mnema follows no link there, which can point outside it`;
+  }
+}
+
+/**
+ * Refuses a read that would pass through a symbolic link at any of `places` (paths in the record,
+ * each asked in turn, so a parent comes before what is under it). It asks `lstat`, which is what the
+ * listing of a directory asks ({@link listedEntries}) and the verdict's {@link listLinksInRecord}
+ * builds on, so a path is a link here exactly when it is one there; a path that is not there is not.
+ */
+export function refuseLinks(layout: ChainLayout, places: readonly string[]): void {
+  for (const place of places) {
+    let held: ReturnType<typeof lstatSync> | undefined;
+    try {
+      held = lstatSync(join(layout.root, ...place.split('/')), { throwIfNoEntry: false });
+    } catch {
+      continue;
+    }
+    if (held?.isSymbolicLink()) throw new LinkedRecordError(layout, place);
+  }
+}
+
+/**
+ * The directory listing of `place` (empty where there is none), refused when the directory or one
+ * of `above` is a link or an entry of it is.
+ */
+export function listedWithoutLinks(
+  layout: ChainLayout,
+  place: string,
+  above: readonly string[],
+): ListedEntry[] {
+  refuseLinks(layout, [...above, place]);
+  let entries: ListedEntry[];
+  try {
+    entries = listedEntries(join(layout.root, ...place.split('/')));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+    throw error;
+  }
+  const link = entries.find((entry) => entry.link);
+  if (link !== undefined) throw new LinkedRecordError(layout, `${place}/${link.name}`);
+  return entries;
+}
+
+/**
  * Lists the tail ids present in a chain (each is one machine's directory).
  *
- * A symbolic link under `tails/` is not one, whatever it points at: `readdirSync` reports the
- * entry itself, never its target, so a link is no directory here. No reading and no writer
- * follows it, and the verifier refuses it by name ({@link listLinksInRecord}, FORMAT.md section 4).
+ * A symbolic link at `tails/` or under it is refused ({@link LinkedRecordError}), whatever it
+ * points at: it used to be skipped in silence, so a linked tail vanished from every surface that
+ * reads the record. Nothing it points at is opened.
  */
 export function listTails(layout: ChainLayout): string[] {
+  return listedWithoutLinks(layout, 'tails', [])
+    .filter((e) => e.directory)
+    .map((e) => e.name);
+}
+
+/**
+ * The tails as a verdict lists them, a link left out and never refused: the verifier names each
+ * link itself ({@link listLinksInRecord}) before it reads, and a question of whether a record holds
+ * anything at all does not read a link either.
+ */
+export function listTailsLeavingLinks(layout: ChainLayout): string[] {
   const dir = tailsDir(layout);
   if (!existsSync(dir)) return [];
   return listedEntries(dir)
@@ -238,9 +310,22 @@ export function listAppleDoubleKeyFiles(layout: ChainLayout): string[] {
  * actually present to notice a tail that went missing while its key stayed.
  */
 export function listPublicKeyFingerprints(layout: ChainLayout): string[] {
+  return fingerprintsOf(listedWithoutLinks(layout, 'keys', []).map((entry) => entry.name));
+}
+
+/**
+ * The same census as a verdict reads it: `keys/` listed as it is, a link left in the listing and
+ * never refused, because the verdict names each link itself ({@link listLinksInRecord}) and opens
+ * none ({@link committedKeys} is held off a linked file by the verdict).
+ */
+export function listPublicKeyFingerprintsLeavingLinks(layout: ChainLayout): string[] {
   const dir = keysDir(layout);
   if (!existsSync(dir)) return [];
-  return readdirSync(dir)
+  return fingerprintsOf(readdirSync(dir));
+}
+
+function fingerprintsOf(names: readonly string[]): string[] {
+  return names
     .filter((name) => name.endsWith('.pub') && !name.startsWith(APPLE_DOUBLE_PREFIX))
     .map((name) => name.slice(0, -'.pub'.length))
     .sort();
@@ -319,6 +404,7 @@ export function committedKeys(layout: ChainLayout): CommittedKeys {
 
 /** One read of one committed key off the disk, or why it holds none: see {@link committedKeys}. */
 function committedKey(layout: ChainLayout, fingerprint: string): CommittedKey | string {
+  refuseLinks(layout, ['keys', `keys/${fingerprint}.pub`]);
   const read = readCommittedKeyFile(publicKeyPath(layout, fingerprint));
   if ('holdsNoKey' in read) return read.holdsNoKey;
   const { key } = read;
@@ -377,16 +463,22 @@ export function readCommittedKeyFile(path: string): CommittedKeyFile {
  * INSTEAD of a verification, never before one that then runs anyway.
  */
 export function holdsRecord(layout: ChainLayout): boolean {
-  return listTails(layout).length > 0 || listPublicKeyFingerprints(layout).length > 0;
+  return (
+    listTailsLeavingLinks(layout).length > 0 ||
+    listPublicKeyFingerprintsLeavingLinks(layout).length > 0
+  );
 }
 
-/** The sealed + current segment files of a tail, in segment order. */
+/**
+ * The sealed + current segment files of a tail, in segment order. A link at the tail's directory,
+ * at `tails/`, or anywhere in the tail's directory is refused ({@link LinkedRecordError}): a tail
+ * with a link in it is not read, and nothing the link points at is opened.
+ */
 export function orderedSegments(layout: ChainLayout, tailId: string): string[] {
   const dir = tailDir(layout, tailId);
-  if (!existsSync(dir)) return [];
   // A folder named like a segment is no segment: nothing reads it, and it is named as a stray entry.
-  return readdirSync(dir, { withFileTypes: true })
-    .filter((entry) => isSegmentFile(entry.name) && !entry.isDirectory())
+  return listedWithoutLinks(layout, `tails/${tailId}`, ['tails'])
+    .filter((entry) => isSegmentFile(entry.name) && !entry.directory)
     .map((entry) => entry.name)
     .sort((a, b) => segmentNumberOf(a) - segmentNumberOf(b))
     .map((name) => `${dir}/${name}`);
@@ -989,6 +1081,7 @@ export function readTailCheckpoints(
   relaid?: RelaidLine,
   onPartialFinalLine?: () => void,
 ): Checkpoint[] {
+  refuseLinks(layout, ['tails', `tails/${tailId}`, `tails/${tailId}/checkpoints.jsonl`]);
   const file = checkpointsPath(layout, tailId);
   if (!existsSync(file)) return [];
   const relaidCheckpointOf = relaying(parseCheckpoint, relaid, file);
@@ -1038,6 +1131,7 @@ export function readTailCheckpoints(
  * file and the line.
  */
 export function lastTailCheckpoint(layout: ChainLayout, tailId: string): Checkpoint | undefined {
+  refuseLinks(layout, ['tails', `tails/${tailId}`, `tails/${tailId}/checkpoints.jsonl`]);
   const file = checkpointsPath(layout, tailId);
   if (!existsSync(file)) return undefined;
   for (const checkpoint of parsedFromEnd(file, true, parseCheckpoint)) return checkpoint;

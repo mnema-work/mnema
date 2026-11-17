@@ -41,7 +41,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { closeSync, openSync, readdirSync, readFileSync, readSync, statSync } from 'node:fs';
+import { closeSync, lstatSync, openSync, readdirSync, readFileSync, readSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -236,10 +236,15 @@ export function sealedSegmentsHold(recorded: Readonly<Record<string, string>>): 
   return true;
 }
 
-/** `<size>:<mtimeMs>` of a file, or `unreadable`: what a sealed segment cannot keep if it is rewritten. */
+/**
+ * `<size>:<mtimeMs>` of a file, or `unreadable`: what a sealed segment cannot keep if it is rewritten.
+ * A link is `unreadable` too, and is never followed: a cache is not believed over a segment that
+ * became a link (ADR-406), and the read that replaces it refuses the link by name.
+ */
 export function fingerprintOf(path: string): string {
   try {
-    const stat = statSync(path);
+    const stat = lstatSync(path);
+    if (stat.isSymbolicLink()) return 'unreadable';
     return `${stat.size}:${stat.mtimeMs}`;
   } catch {
     return 'unreadable';
@@ -339,10 +344,12 @@ function markOfActive(
   return `${stamp}:${bytes}:${digest}`;
 }
 
+/** The size and time of a file, never of what a link points at: a link is a segment that cannot be stamped. */
 function statOf(path: string): { size: bigint; mtimeNs: bigint } | undefined {
   try {
-    const { size, mtimeNs } = statSync(path, { bigint: true });
-    return { size, mtimeNs };
+    const held = lstatSync(path, { bigint: true });
+    if (held.isSymbolicLink()) return undefined;
+    return { size: held.size, mtimeNs: held.mtimeNs };
   } catch {
     return undefined;
   }

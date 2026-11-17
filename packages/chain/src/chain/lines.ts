@@ -132,7 +132,7 @@ export function* linesFromEnd(file: string, chunkBytes = CHUNK_BYTES): Generator
  * exception (see verify.ts).
  */
 export class UnreadableLineError extends Error {
-  override readonly name = 'UnreadableLineError';
+  override readonly name: string = 'UnreadableLineError';
   /** Where the line is: the file, and the line or byte offset within it. */
   readonly locus: string;
   /** Why it would not parse: the reader's own message, kept verbatim. */
