@@ -291,6 +291,35 @@ try {
     );
   }
 
+  // Where a tail's notes and lock live inside a repository: under the common git directory, shared by
+  // every worktree and out of reach of a clean of what git ignores. A linked worktree names its git
+  // directory with a path relative to its own (`commondir`), on Windows with a folder of its own whose
+  // name holds a space and a letter that is not ASCII.
+  section('a worktree shares the notes of its repository, and a clean does not take them');
+  const worktree = join(real, 'a w\u00e7');
+  mustRun('git worktree add', git(['worktree', 'add', '-q', '-b', 'a-worktree', worktree]));
+  mustRun('mnema memory in the worktree', mnema(['memory', 'from the worktree'], worktree));
+  const sharedLocks = join(project, '.git', 'mnema', '%2E', 'public', 'locks');
+  const notes = readdirSync(sharedLocks).filter((name) => name.endsWith('.head'));
+  check(
+    notes.length >= 2,
+    `the notes of the tails are under the common git directory (${notes.length})`,
+  );
+  check(
+    !readdirSync(join(worktree, '.mnema', 'keys')).some((name) => name.endsWith('.inst')),
+    'the worktree keeps no installation id inside the record',
+  );
+  const tailsBefore = readdirSync(join(project, '.mnema', 'tails')).length;
+  mustRun('git clean -fdX', git(['clean', '-fdXq']));
+  mustRun('mnema memory after the clean', mnema(['memory', 'after the clean'], project));
+  const tailsAfter = readdirSync(join(project, '.mnema', 'tails')).length;
+  check(
+    tailsAfter === tailsBefore,
+    `a clean of what git ignores opens no tail (${tailsBefore} before, ${tailsAfter} after)`,
+  );
+  const inWorktree = mustRun('mnema verify in the worktree', mnema(['verify'], worktree));
+  check(/local integrity verified/.test(inWorktree.out), 'the worktree verifies');
+
   section('doctor');
   const doctor = mustRun('mnema doctor', mnema(['doctor'], project));
   check(doctor.out.trim() !== '', 'doctor says something');

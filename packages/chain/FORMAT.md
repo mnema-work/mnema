@@ -210,7 +210,10 @@ gap. It is refused like every other break, and it changes no byte of this format
 avoids the common way to make one: it keeps, outside the record, the last entry it
 wrote to its tail, and when the tail no longer ends there (one checkout switched to
 another branch, an installation id copied into another checkout) it writes to a new
-tail instead of appending. A copy that carries that note with it cannot be seen by
+tail instead of appending. In a git repository that note is kept in the repository's
+common git directory, which every worktree of it shares and a clean of what git ignores
+leaves alone, and the installation id a worktree starts from is kept as a hint under its
+own git directory (§4). A copy that carries that note with it cannot be seen by
 its writer, which is why the readers name what it leaves.
 
 **A cut has one account in the format, and it is for a WHOLE tail: the waiver.** A
@@ -252,7 +255,7 @@ if they were events. The layout, which only ever appeared here incidentally in �
 <record>/.editorconfig                          `unset` for every property an outer EditorConfig could impose on these bytes; written by `init`; not part of the proof
 <record>/README.md                              written by `init`, for a person or an agent who opens the folder; not part of the proof
 <record>/site/                                  the page `mnema site` writes by default; ignored by the tree's .gitignore; not part of the proof
-<record>/locks/                                 the lock of each tail while a write holds it (`<tailId>.lock`), the note of which heads a tail last cited (`<tailId>.cited`), the note of the last entry this installation wrote to its tail (`<tailId>.head`) and the same note with the entry before it and the coverage it was written under, signed with the tail's own key under the scheme `mnema-written-head/1` (`<tailId>.head.sig`), without which a writer signs none of the events it finds above its tail's last checkpoint; it is signed before each append as well, naming in `next` (`{"hash","seq"}`, null once the act ended) the last entry the append is about to write, so the events of an act killed before its end are signed by the next write of that key in the same tail, and an end it names that the tail no longer holds is never appended to, whatever the clear note says (the write goes to a new tail), unless an earlier signed note of that tail is put back with the cut: a signed note carries no counter, so an earlier one still verifies and the write chains on; and the projection a reader keeps (`projection.db`, and the files SQLite keeps beside it); ignored by the tree's .gitignore; never read by a reader; deleting it costs a rebuild, one repeated citation or one new tail, and leaves unsigned the events above a tail's last checkpoint that no signed note vouches for, which `--require signed` refuses as it refuses any unsigned event; not part of the proof
+<record>/locks/                                 outside a git repository, and in one `<common git dir>/mnema/<project>/public/locks/`, shared by every worktree, inside one: the lock of each tail while a write holds it (`<tailId>.lock`), the note of which heads a tail last cited (`<tailId>.cited`), the note of the last entry this installation wrote to its tail (`<tailId>.head`) and the same note with the entry before it and the coverage it was written under, signed with the tail's own key under the scheme `mnema-written-head/1` (`<tailId>.head.sig`), without which a writer signs none of the events it finds above its tail's last checkpoint; it is signed before each append as well, naming in `next` (`{"hash","seq"}`, null once the act ended) the last entry the append is about to write, so the events of an act killed before its end are signed by the next write of that key in the same tail, and an end it names that the tail no longer holds is never appended to, whatever the clear note says (the write goes to a new tail), unless an earlier signed note of that tail is put back with the cut: a signed note carries no counter, so an earlier one still verifies and the write chains on; and the projection a reader keeps (`projection.db`, and the files SQLite keeps beside it); ignored by the tree's .gitignore; never read by a reader; deleting it costs a rebuild, one repeated citation or one new tail, and leaves unsigned the events above a tail's last checkpoint that no signed note vouches for, which `--require signed` refuses as it refuses any unsigned event; inside a repository, the record's own `locks/` then holds the projection, and the notes an earlier mnema left there, which the next write of their key moves; not part of the proof
 <record>/inherit.json                           the record this one inherits, by its location and one commit (`mnema inherit`); committed; not part of the proof
 <record>/keys/<fingerprint>.pub                 the public keys (§6)
 <record>/tails/<tailId>/NNNNNN.jsonl            the segments, six digits, in name order
@@ -306,7 +309,7 @@ readers").
 
 **The writer of this product refuses to write through a link.** Before the first byte of a write, with
 the tail's lock held and before anything is sealed, it asks for every directory it writes in (`tails/`,
-its own tail, `keys/`, `locks/`) and every file it writes (the tail's segments, `checkpoints.jsonl`,
+its own tail, `keys/`, `locks/`, wherever §4 says that one is kept) and every file it writes (the tail's segments, `checkpoints.jsonl`,
 `tailproof.json`, the key's public file in `keys/`, and in `locks/` the tail's lock, its notes
 `<tail>.head`, `<tail>.head.sig` and `<tail>.cited`, and the staging file each is written through),
 and where one is a symbolic link it refuses with `RECORD_LINKED`, naming the path: nothing is written,
@@ -1455,7 +1458,7 @@ second-scheme proof, else by its last checkpoint when that one is of the second 
 signature checked under the committed key its id names. The writer writes nothing where the other
 tails name two records, or where its own tail names one and every other named tail another
 (`ANOTHER_RECORD`). It never appends to a tail whose end it holds no note of having written
-(the `<tailId>.head` of §4): it opens a new tail, named, instead. So a tail written before 0.1.5
+(the `<tailId>.head` of §4, wherever §4 says it is kept): it opens a new tail, named, instead. So a tail written before 0.1.5
 is never bound by its owner's first second-scheme checkpoint in practice, and stays unnamed: the
 protection holds from 0.1.5 on (`packages/chain/src/chain/the-writer-names-the-record.test.ts`).
 

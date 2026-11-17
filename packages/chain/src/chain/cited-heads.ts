@@ -11,7 +11,8 @@
  * WHY A NOTE OF WHAT WAS CITED, AND WHERE. "Not cited yet" is a fact about the writer's own
  * tail, and reading the whole tail back before every write to learn it is the cost this must
  * not have. So the heads a tail last cited are kept beside the tail's lock, in `locks/`, which
- * the tree's `.gitignore` already keeps out of the record: it is machinery, never proof. Lost,
+ * the tree's `.gitignore` already keeps out of the record (inside a git repository, the `locks/` its
+ * worktrees share under the common git directory): it is machinery, never proof. Lost,
  * the next write cites every head again: one redundant citation per tail, which changes no
  * order, since its event already followed them. Two processes of one installation share the
  * tail and its lock, so they read and write the note in turn.

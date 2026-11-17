@@ -10,7 +10,10 @@
  * branch left is a sound end. What it can see is that the end is not the entry it wrote last.
  *
  * WHAT IT IS. Beside the tail's lock in `locks/`, which the tree's `.gitignore` keeps out of
- * the record: machinery, never proof, never read by a reader. It changes no byte of the format.
+ * the record: machinery, never proof, never read by a reader. Inside a git repository that `locks/` is
+ * not the record's own but the one under the repository's common git directory, shared by every
+ * worktree and out of reach of a clean of what git ignores ({@link WriterOptions.sharedRoot}); the
+ * paths below take the layout whose root holds it. It changes no byte of the format.
  * Lost or unreadable, it reads as absent, and the writer then opens a new tail rather than
  * append to one it has no note of writing: a tail more, never a fork.
  *

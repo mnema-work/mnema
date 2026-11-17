@@ -763,7 +763,11 @@ Moved to [Switching off what mnema hands to a model](switching-off-what-is-hande
   .gitattributes            `* -text`: a checkout never rewrites the signed lines' ends;
                             `merge=mnema-tail` for a tail's files (`mnema record pull`)
   tails/<id>/witness/       external attestations over this tail's checkpoints (T3)
-  locks/                    gitignored: writers' locks, and the projection a read keeps
+  locks/                    gitignored: the projection a read keeps (and, outside a repository,
+                            writers' locks and notes)
+<git common dir>/mnema/<encoded path>/public/
+                            inside a repository: writers' locks and notes (locks/), shared by
+                            its worktrees, and this worktree's hint of its id (keys/)
 <git common dir>/mnema/<encoded path>/private/
                             this machine, this project only: beside the repository's
                             objects, shared by its worktrees, kept when one is removed;

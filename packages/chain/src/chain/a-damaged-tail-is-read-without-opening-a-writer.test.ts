@@ -112,6 +112,30 @@ describe('readTailDamage', () => {
     expect(damageOf(w)).toBeUndefined();
   });
 
+  it('asks the hint a worktree keeps beside the record, and the id an earlier mnema kept in it until it is moved', () => {
+    const w = written();
+    truncateSync(orderedSegments(layout(), tailIn())[0] as string, 0);
+    const hint = { root: mkdtempSync(join(tmpdir(), 'mnema-tail-damage-hint-')) };
+    try {
+      const idFile = installationIdPath(layout(), w.signerFingerprint);
+      // The id an earlier mnema kept in the record, and no hint yet: the record's own is asked.
+      expect(
+        readTailDamage(layout(), w.signerFingerprint, upcasters, hint)?.code,
+        'the record’s own id',
+      ).toBe('TAIL_DAMAGED');
+      // Moved to the hint: the hint is asked, and the record holds no id.
+      mkdirSync(join(hint.root, 'keys'), { recursive: true });
+      writeFileSync(installationIdPath(hint, w.signerFingerprint), readFileSync(idFile));
+      rmSync(idFile);
+      expect(readTailDamage(layout(), w.signerFingerprint, upcasters, hint)?.code, 'the hint').toBe(
+        'TAIL_DAMAGED',
+      );
+      expect(damageOf(w), 'a read that does not know the hint').toBeUndefined();
+    } finally {
+      rmSync(hint.root, { recursive: true, force: true });
+    }
+  });
+
   it('names nothing where no installation id is kept, or the file is empty', () => {
     const w = written();
     const idFile = installationIdPath(layout(), w.signerFingerprint);

@@ -33,8 +33,9 @@ import { refuseToWriteThrough } from './linked-write.js';
 /**
  * The chain's own `.gitignore`, self-contained at the tree root. It ignores the
  * private subtree, every local key-material file, the writers' lock directory
- * (`locks/`, which holds machinery rather than record: the locks, `tailLockPath`,
- * and two files that persist, `projectionCachePath` and `citedHeadsPath`), and the page
+ * (`locks/`, which holds machinery rather than record: the projection, `projectionCachePath`, and,
+ * outside a git repository, the locks, `tailLockPath`, and the notes that persist, `citedHeadsPath`
+ * and the written-head ones; inside one those move to the repository's common git directory), and the page
  * `mnema site` writes by default (`site/`, derived from the record, rebuilt at will, never
  * committed), and,
  * by NOT ignoring them,
