@@ -15,15 +15,19 @@ import { alive } from './tail-lock.js';
 
 const STAGING = /^(?:head|head\.sig|cited)\.(\d+)$/;
 
-/** Removes the staging files of `tailId` whose writer is gone. Call it holding the tail's lock. */
-export function clearOrphanedStaging(layout: ChainLayout, tailId: string): void {
+/**
+ * Removes the staging files of `tailId` whose writer is gone, and names the ones it removed. Call it
+ * holding the tail's lock.
+ */
+export function clearOrphanedStaging(layout: ChainLayout, tailId: string): string[] {
   const dir = join(layout.root, 'locks');
   let names: string[];
   try {
     names = readdirSync(dir);
   } catch {
-    return;
+    return [];
   }
+  const removed: string[] = [];
   const own = `${tailId}.`;
   for (const name of names) {
     if (!name.startsWith(own)) continue;
@@ -33,8 +37,10 @@ export function clearOrphanedStaging(layout: ChainLayout, tailId: string): void 
     if (pid === process.pid || alive(pid)) continue;
     try {
       rmSync(join(dir, name), { force: true });
+      removed.push(name);
     } catch {
       // Machinery, never proof: a file that stays costs nothing but the sweep of the next write.
     }
   }
+  return removed;
 }

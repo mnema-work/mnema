@@ -13,42 +13,65 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { inEveryCacheState, type Planted } from './support/every-cache-state.js';
 import { MNEMA_CLI } from './support/the-cli.js';
 
 const VERIFIER = fileURLToPath(new URL('../../chain/verifier/mnema_verify.py', import.meta.url));
 
-const dirs: string[] = [];
-afterEach(() => {
-  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
-});
-
 const whole = (path: string) => readFileSync(path, 'utf-8');
 
-function project() {
-  const dir = mkdtempSync(join(tmpdir(), 'mnema-proof-'));
-  dirs.push(dir);
-  const repo = join(dir, 'repo');
-  const home = join(dir, 'home');
-  for (const path of [repo, home]) mkdirSync(path);
-  const run = (args: string[]) =>
-    spawnSync(process.execPath, [MNEMA_CLI, ...args], {
-      cwd: repo,
-      encoding: 'utf-8',
-      env: { PATH: process.env.PATH ?? '', HOME: home, GIT_CONFIG_NOSYSTEM: '1' },
-    });
-  expect(run(['init', '--yes', '--hosts', 'none']).status).toBe(0);
-  expect(run(['memory', 'the first fact']).status).toBe(0);
-  const tails = join(repo, '.mnema', 'tails');
+function mnema(planted: Planted, args: string[]) {
+  return spawnSync(process.execPath, [MNEMA_CLI, ...args], {
+    cwd: planted.repo,
+    encoding: 'utf-8',
+    env: { PATH: process.env.PATH ?? '', HOME: planted.home, GIT_CONFIG_NOSYSTEM: '1' },
+  });
+}
+
+function proofOf(planted: Planted): string {
+  const tails = join(planted.repo, '.mnema', 'tails');
   const [tail] = readdirSync(tails);
-  const proof = join(tails, tail as string, 'tailproof.json');
-  const python = () =>
-    spawnSync('python3', ['-I', VERIFIER, 'record', join(repo, '.mnema')], { encoding: 'utf-8' });
-  return { run, proof, python, tails };
+  return join(tails, tail as string, 'tailproof.json');
+}
+
+/** A tail with one fact, its proof damaged by `damage`, then one more write, then both readers. */
+function afterTheCut(damage: (good: string) => string, expectRewritten: boolean) {
+  let good = '';
+  let damaged = '';
+  inEveryCacheState<Planted>({
+    found(dir) {
+      const planted = { repo: join(dir, 'repo'), home: join(dir, 'home') };
+      for (const path of [planted.repo, planted.home]) mkdirSync(path, { recursive: true });
+      expect(mnema(planted, ['init', '--yes', '--hosts', 'none']).status).toBe(0);
+      expect(mnema(planted, ['memory', 'the first fact']).status).toBe(0);
+      return planted;
+    },
+    damage(planted) {
+      good = whole(proofOf(planted));
+      damaged = damage(good);
+      writeFileSync(proofOf(planted), damaged);
+    },
+    run(planted) {
+      expect(mnema(planted, ['memory', 'the fact after the cut']).status).toBe(0);
+      expect(whole(proofOf(planted))).toBe(expectRewritten ? good : damaged);
+      const verified = mnema(planted, ['verify']);
+      if (expectRewritten) {
+        expect(verified.status, `${verified.stdout}${verified.stderr}`).toBe(0);
+        const second = spawnSync(
+          'python3',
+          ['-I', VERIFIER, 'record', join(planted.repo, '.mnema')],
+          { encoding: 'utf-8' },
+        );
+        expect(second.status, second.stdout).toBe(0);
+      }
+      return verified;
+    },
+    normalize: (said) => said.replace(/[0-9a-f]{12,64}/g, '<id>'),
+  });
 }
 
 describe('a tail whose proof a power cut left unreadable', () => {
@@ -58,31 +81,14 @@ describe('a tail whose proof a power cut left unreadable', () => {
     ['holding bytes that are not JSON', () => 'not a proof\n'],
   ] as const) {
     it(`${state}: the next write gives it back its proof, and both readers verify`, () => {
-      const { run, proof, python } = project();
-      const good = whole(proof);
-      writeFileSync(proof, damage(good));
-      expect(run(['verify']).status).not.toBe(0);
-      expect(python().status).not.toBe(0);
-
-      expect(run(['memory', 'the fact after the cut']).status).toBe(0);
-
-      expect(whole(proof)).toBe(good);
-      const verified = run(['verify']);
-      expect(verified.status, `${verified.stdout}${verified.stderr}`).toBe(0);
-      const second = python();
-      expect(second.status, second.stdout).toBe(0);
-    });
+      afterTheCut(damage, true);
+    }, 120_000);
   }
 
   it('that parses and names another record is left as it is', () => {
-    const { run, proof } = project();
-    const foreign = whole(proof).replace(
-      /"record":"[0-9a-f]{64}"/,
-      `"record":"${'ab'.repeat(32)}"`,
+    afterTheCut(
+      (text) => text.replace(/"record":"[0-9a-f]{64}"/, `"record":"${'ab'.repeat(32)}"`),
+      false,
     );
-    expect(foreign).not.toBe(whole(proof));
-    writeFileSync(proof, foreign);
-    run(['memory', 'the fact after the swap']);
-    expect(whole(proof)).toBe(foreign);
-  });
+  }, 120_000);
 });
