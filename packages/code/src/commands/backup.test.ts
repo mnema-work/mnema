@@ -5,6 +5,7 @@
  * and that no folder is inherited.
  */
 
+// @plants-damage
 import { spawnSync } from 'node:child_process';
 import {
   existsSync,

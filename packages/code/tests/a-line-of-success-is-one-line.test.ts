@@ -486,6 +486,22 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'the id of a decision the write found in the record, or it refused',
   },
+  'backup.ts «The backup of record {}... is kept in {}» #1': {
+    verdict: 'collapsed',
+    why: 'the folder is the caller’s spelling of a path, which can hold a control character',
+  },
+  'backup.ts «it was {}; what is there is left as it is» #1': {
+    verdict: 'collapsed',
+    why: 'the folder a project had, read back out of the machine’s backup file',
+  },
+  'backup.ts «Backed up record {}... to {}» #1': {
+    verdict: 'collapsed',
+    why: 'the folder is read back out of the machine’s backup file, which a person can edit',
+  },
+  'backup.ts «{} tree: {} file(s) held, {} written or grown» #1': {
+    verdict: 'minted',
+    why: 'the name of a tree the product has two of, and counts the run made',
+  },
   'check.ts «passed {}» #1': { verdict: 'minted', why: 'the id of a rule the record holds' },
   'check.ts «failed {}: {}» #1': {
     verdict: 'collapsed',
@@ -1150,7 +1166,8 @@ describe('every line this wiring words is classified', () => {
     // question is asked with arrows now, and an answer cannot be off the list.
     // 186 with the two lines `init` prints of the answer it recorded about agents accepting, without a screen.
     // 185 without the line a handoff printed of a task no tree held, which it now refuses.
-    expect(FOUND.sites.length).toBe(185);
+    // 189 with the four lines `backup setup` and `backup run` print.
+    expect(FOUND.sites.length).toBe(189);
   });
 
   it('reads the verdict off the source rather than believing the table', () => {
@@ -1170,9 +1187,9 @@ describe('every line this wiring words is classified', () => {
   it('found sites of both kinds, and the scanner sees a tag when there is one', () => {
     // Neither arm of the case above may be empty, or half of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
-    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(102);
-    expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(83);
-    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(102);
+    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(105);
+    expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(84);
+    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(105);
   });
 
   it('every reason says where the value comes from', () => {
@@ -1310,6 +1327,13 @@ describe('a value from outside cannot forge a second line', () => {
  * somebody closed and nobody drove, and the reconciliation below is what says so.
  */
 const UNREACHABLE: Readonly<Record<string, string>> = {
+  'backup.ts «The backup of record {}... is kept in {}» #1':
+    'the folder is the caller’s and is made by a run, so a break in it names a folder with a break; ' +
+    'no case types one yet, so the tag is what holds this line',
+  'backup.ts «it was {}; what is there is left as it is» #1':
+    'the folder is read back out of the machine’s own backup file, which setup wrote; ' +
+    'no case edits one by hand yet, so the tag is what holds this line',
+  'backup.ts «Backed up record {}... to {}» #1': 'the same folder as the line of setup',
   'observe.ts «Recorded observation {} about {}» #1':
     'the `about` has to be a record some tree holds, and a record has an id that was minted, so no ' +
     'value that forges a line gets as far as this line: the refusal that names it goes through ' +

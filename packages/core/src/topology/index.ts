@@ -24,20 +24,22 @@ export {
   type Assigned,
   assignDestination,
   BACKUP_CONFIG,
-  BACKUP_MANIFEST,
   BackupConfigError,
+  backupConfigPath,
+  destinationOf,
+  readBackupConfig,
+  whyNotADestination,
+} from './backup/config.js';
+export {
+  BACKUP_MANIFEST,
   BackupRefusedError,
   type BackupTree,
-  backupConfigPath,
   type Copied,
   type CopyStanding,
   copyTree,
-  destinationOf,
   planCopy,
-  readBackupConfig,
   standingOfCopy,
-  whyNotADestination,
-} from './backup/index.js';
+} from './backup/copy.js';
 export { gitPlaceOf } from './git-place.js';
 export {
   type BirthProbe,

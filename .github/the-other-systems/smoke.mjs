@@ -320,6 +320,29 @@ try {
   const inWorktree = mustRun('mnema verify in the worktree', mnema(['verify'], worktree));
   check(/local integrity verified/.test(inWorktree.out), 'the worktree verifies');
 
+  section('a backup of the project into a folder');
+  mustRun(
+    'mnema decision record (private)',
+    mnema(
+      ['decision', 'record', 'Kept on this machine', 'Not for the team.', '--scope', 'private'],
+      project,
+    ),
+  );
+  const folder = join(real, 'backup-folder');
+  mustRun('mnema backup setup', mnema(['backup', 'setup', '--yes', folder], project));
+  const backedUp = mustRun('mnema backup run', mnema(['backup', 'run'], project));
+  check(
+    /private tree: \d+ file\(s\) held/.test(backedUp.out),
+    'backup run copies the private tree',
+  );
+  const copies = readdirSync(folder, { recursive: true }).map(String);
+  check(
+    copies.some((name) => name.endsWith('.jsonl')) && !copies.some((name) => name.endsWith('.key')),
+    'the folder holds the tails and no key',
+  );
+  const standing = mustRun('mnema backup status', mnema(['backup', 'status'], project));
+  check(/nothing to add/.test(standing.out), 'backup status says the copy is up to date');
+
   section('doctor');
   const doctor = mustRun('mnema doctor', mnema(['doctor'], project));
   check(doctor.out.trim() !== '', 'doctor says something');

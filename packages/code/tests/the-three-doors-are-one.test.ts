@@ -284,6 +284,16 @@ const VERBS_NOT_IN_THE_LIBRARY: Readonly<Record<string, string>> = {
 };
 
 /**
+ * Every verb that writes nothing to the record and is on the command line alone (ADR-432): none is
+ * an MCP tool, and the library door has no method for it. `has, for every verb that writes` above
+ * is about the verbs that write the record; these are the ones it cannot ask.
+ */
+const VERBS_THAT_WRITE_NOTHING_AND_ARE_NOT_TOOLS: Readonly<Record<string, string>> = {
+  backup:
+    'it copies the trees into a folder the person named and writes nothing to the record; a person at a shell asks for it, and an agent may suggest the command',
+};
+
+/**
  * Every subcommand of a verb the library door covers that it has no method for, and why not,
  * as `<verb> <subcommand>`. The verb's own declaration is one word for all of its subcommands,
  * so a writing subcommand added to a covered verb would pass the census above by its name
@@ -864,6 +874,27 @@ describe('an operation on one door has the others', () => {
     expect(lacking).toEqual([]);
     const stale = Object.keys(VERBS_NOT_IN_THE_LIBRARY).filter((verb) => !writing.includes(verb));
     expect(stale).toEqual([]);
+  });
+
+  it('lists every verb that is on the command line alone, writes nothing to the record, and is no tool', () => {
+    const io: CliIo = { out: () => undefined, err: () => undefined, fail: () => undefined };
+    const declared = registerVerbs(new Command(), {
+      io,
+      render: renderPlain,
+      renderingAt: () => renderPlain,
+      pinnedRun: () => undefined,
+    });
+    const reading = declared
+      .filter((verb) => verb.effect === 'reads')
+      .map((verb) => verb.act.name());
+    const { tools } = buildMcpServer({ cwd: sandbox, env: { home: sandbox }, log: () => {} });
+    const asTools = new Set(tools.map((tool) => tool.act));
+    const methods = new Set(OPERATIONS.map((row) => row.verb));
+    for (const verb of Object.keys(VERBS_THAT_WRITE_NOTHING_AND_ARE_NOT_TOOLS)) {
+      expect(reading, `${verb} is a verb that reads the record`).toContain(verb);
+      expect(asTools.has(verb), `${verb} is no MCP tool`).toBe(false);
+      expect(methods.has(verb), `${verb} has no method in the library`).toBe(false);
+    }
   });
 
   it('has, for every subcommand of a verb the library covers, a method or a reason', () => {

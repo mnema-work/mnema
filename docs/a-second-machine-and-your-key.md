@@ -96,6 +96,11 @@ terminal, so a server, a hook or a pipe is never made to wait for a line nobody 
 system keychain is not a source. A lost passphrase is a lost key, the cold backup included if it was
 protected too: keep the passphrase where you keep that copy.
 
+**A copy of the record does not carry the key.** `mnema backup` copies a project's tails and public keys
+into a folder, and refuses a run whose files hold a private key. The key in your key root is not copied by
+anything the command does: a machine lost with its only key is still a lost key, and the cold backup
+above is what protects against that. [What the backup copies, and what it refuses](reference/cli/backup.md#backing-up-a-projects-trees-to-a-folder).
+
 ## A key that signs for its person, under a name
 
 The record can also say that a key is an identity's agent: a key a person lets a program sign with,

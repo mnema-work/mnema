@@ -1,3 +1,9 @@
+/**
+ * Copying a tree into a folder: what is taken, what is refused, and that the copy only grows. The
+ * trees here are laid out by hand, with a key or a link planted where a run must stop.
+ */
+
+// @plants-damage
 import {
   existsSync,
   mkdirSync,

@@ -1,0 +1,121 @@
+/**
+ * `mnema backup` at the surface: the confirmation `setup` asks before it assigns a folder, what
+ * `run` says it copied, and what `status` says and gives as JSON.
+ */
+
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { type CliIo, run } from '../program.js';
+import { KEPT_IN_CLEAR } from './backup.js';
+
+let sandbox: string;
+let repo: string;
+let originalCwd: string;
+let originalHome: string | undefined;
+
+interface Said {
+  readonly out: string[];
+  readonly err: string[];
+  readonly failed: boolean;
+}
+
+async function mnema(argv: string[], io: Partial<CliIo> = {}): Promise<Said> {
+  const out: string[] = [];
+  const err: string[] = [];
+  let failed = false;
+  await run(argv, {
+    out: (line) => out.push(line),
+    err: (line) => err.push(line),
+    fail: () => {
+      failed = true;
+    },
+    ...io,
+  });
+  return { out, err, failed };
+}
+
+beforeEach(async () => {
+  sandbox = mkdtempSync(join(tmpdir(), 'mnema-backup-verb-'));
+  repo = join(sandbox, 'repo');
+  mkdirSync(repo, { recursive: true });
+  originalCwd = process.cwd();
+  originalHome = process.env.HOME;
+  process.env.HOME = join(sandbox, 'home');
+  delete process.env.MNEMA_HOME;
+  process.chdir(repo);
+  const founded = await mnema(['init']);
+  expect(founded.failed, founded.err.join(' / ')).toBe(false);
+  const recorded = await mnema([
+    'decision',
+    'record',
+    'A choice',
+    'a reason',
+    '--scope',
+    'private',
+  ]);
+  expect(recorded.failed, recorded.err.join(' / ')).toBe(false);
+});
+
+afterEach(() => {
+  process.chdir(originalCwd);
+  if (originalHome === undefined) delete process.env.HOME;
+  else process.env.HOME = originalHome;
+  rmSync(sandbox, { recursive: true, force: true });
+});
+
+describe('mnema backup setup', () => {
+  it('assigns nothing where nobody confirmed that the folder keeps the text in clear', async () => {
+    const folder = join(sandbox, 'folder');
+    const said = await mnema(['backup', 'setup', folder]);
+    expect(said.failed).toBe(true);
+    expect(said.err.join(' ')).toContain('keeps the text in clear');
+    expect(existsSync(join(sandbox, 'home', '.mnema', 'backup.json'))).toBe(false);
+  });
+
+  it('asks the person, says the sentence, and assigns only on yes', async () => {
+    const folder = join(sandbox, 'folder');
+    const asked: string[] = [];
+    const answering = (answer: string): Partial<CliIo> => ({
+      aPersonIsHere: true,
+      ask: async (question) => {
+        asked.push(question);
+        return answer;
+      },
+    });
+    const no = await mnema(['backup', 'setup', folder], answering('no'));
+    expect(no.out.join('\n')).toContain(KEPT_IN_CLEAR);
+    expect(existsSync(join(sandbox, 'home', '.mnema', 'backup.json'))).toBe(false);
+    const yes = await mnema(['backup', 'setup', folder], answering('Yes'));
+    expect(yes.failed, yes.err.join(' / ')).toBe(false);
+    expect(asked).toHaveLength(2);
+    expect(existsSync(join(sandbox, 'home', '.mnema', 'backup.json'))).toBe(true);
+  });
+});
+
+describe('mnema backup run and status', () => {
+  it('copies the trees of a project with no git, and says the copy is up to date', async () => {
+    const folder = join(sandbox, 'folder');
+    expect((await mnema(['backup', 'setup', '--yes', folder])).failed).toBe(false);
+    const ran = await mnema(['backup', 'run']);
+    expect(ran.failed, ran.err.join(' / ')).toBe(false);
+    expect(ran.out.join('\n')).toMatch(/private tree: \d+ file\(s\) held/);
+    expect(readdirSync(folder)).toHaveLength(1);
+
+    const status = await mnema(['backup', 'status']);
+    expect(status.out.join('\n')).toContain('nothing to add');
+    expect(status.out.join('\n')).toContain('the private key is not copied');
+
+    const json = await mnema(['backup', 'status', '--json']);
+    const reading = JSON.parse(json.out.join('\n')) as { destination: string; trees: unknown[] };
+    expect(reading.destination).toBe(folder);
+    expect(reading.trees).toHaveLength(2);
+  });
+
+  it('refuses a run for a project with no folder', async () => {
+    const said = await mnema(['backup', 'run']);
+    expect(said.failed).toBe(true);
+    expect(said.err.join(' ')).toContain('mnema backup setup <folder>');
+  });
+});

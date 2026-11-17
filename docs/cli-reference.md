@@ -27,6 +27,7 @@ The long sections of this page are pages of their own, and nothing in them was s
 
 What belongs to one command is on that command's page, in [the commands](reference/commands.md):
 
+- `mnema backup`: [Backing up a project's trees to a folder](reference/cli/backup.md#backing-up-a-projects-trees-to-a-folder)
 - `mnema brief`: [Handing the record to an agent that never asked for it](reference/cli/brief.md#handing-the-record-to-an-agent-that-never-asked-for-it)
 - `mnema completion`: [Finishing a verb with Tab](reference/cli/completion.md#finishing-a-verb-with-tab)
 - `mnema doctor`: [Is mnema set up on this machine](reference/cli/doctor.md#is-mnema-set-up-on-this-machine)
