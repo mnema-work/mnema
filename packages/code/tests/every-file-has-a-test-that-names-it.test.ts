@@ -805,7 +805,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/chain/src/chain/a-tail-is-not-forked.test.ts': 13,
   'packages/chain/src/chain/a-tail-is-written-by-the-key-its-id-names.test.ts': 13,
   'packages/chain/src/chain/a-tail-of-another-record-is-refused.test.ts': 10,
-  'packages/chain/src/chain/a-windows-reparse-point-is-a-link-only-when-lstat-says-so.test.ts': 5,
+  'packages/chain/src/chain/a-windows-reparse-point-is-a-link-only-when-lstat-says-so.test.ts': 7,
   'packages/chain/src/chain/a-writer-rotates-at-the-size-it-may-hold-and-comes-back-to-it.test.ts': 10,
   'packages/chain/src/chain/backup.test.ts': 8,
   'packages/chain/src/chain/bitcoin.test.ts': 3,

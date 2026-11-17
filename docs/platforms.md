@@ -14,7 +14,7 @@ drives the installed binary:
 - a tail of that clone moved out and replaced by a junction to it (a symbolic link on macOS), which both readers,
   the binary's and the Python one, must refuse by its name. A junction needs no administrator; a symbolic link on Windows
   does, and none is made there, nor a link at any other place a reader reads, nor a OneDrive placeholder (which both
-  readers read as the file it holds) or a WSL link (a link to the binary only under Node 26);
+  readers read as the file it holds) or a WSL link (a link to the binary from Node 24.16, whose libuv is 1.52, and not on the floor, 24.15);
 - `mnema doctor`;
 - two of the plugin's hook scripts, started as Node starts them: `session-start.mjs` must hand over a decision in
   force, and `edit-refuses-a-write.mjs`, with Cursor's arguments (`--host cursor`) and a Cursor payload, must refuse

@@ -14,8 +14,12 @@
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { pythonRun } from '../../tests/support/second-reader-session.js';
 import { type LinkCheck, listedEntries } from './store.js';
+
+const VERIFIER_DIR = fileURLToPath(new URL('../../verifier/', import.meta.url));
 
 let dir: string;
 
@@ -82,5 +86,36 @@ describe('an entry a listing calls a link', () => {
       join(dir, 'listed', 'a-file-behind'),
       join(dir, 'listed', 'a-folder-behind'),
     ]);
+  });
+});
+
+/**
+ * THE SECOND READER GOES BY THE SAME THREE TAGS. Its listing on Windows carries each entry's
+ * attributes and reparse tag, and an entry is a link when it is a reparse point whose tag libuv's
+ * `lstat` calls one. Off Windows no listing carries a tag, so the rule is asked here of stat results
+ * made up for it, by the function the reader asks (`_a_link_by_its_stat`).
+ */
+describe('a reparse tag, to the second reader', () => {
+  const REPARSE_POINT = 0x400;
+  const CASES: readonly (readonly [string, number, number, boolean])[] = [
+    ['a symbolic link', REPARSE_POINT, 0xa000000c, true],
+    ['a junction', REPARSE_POINT, 0xa0000003, true],
+    ['an app execution alias', REPARSE_POINT, 0x8000001b, true],
+    ['a OneDrive placeholder', REPARSE_POINT, 0x9000601a, false],
+    ['a deduplicated file', REPARSE_POINT, 0x80000013, false],
+    ['a WSL link, which libuv 1.51 takes for a file', REPARSE_POINT, 0xa000001d, false],
+    ['a link tag with no reparse point attribute', 0, 0xa000000c, false],
+  ];
+
+  it.each(CASES)('%s', (_, attributes, tag, link) => {
+    const run = pythonRun('python3', [
+      '-c',
+      `import sys, types; sys.path.insert(0, ${JSON.stringify(VERIFIER_DIR)}); ` +
+        'from mnemaverify.record import _a_link_by_its_stat; ' +
+        `held = types.SimpleNamespace(st_file_attributes=${attributes}, st_reparse_tag=${tag}); ` +
+        'print(_a_link_by_its_stat(held))',
+    ]);
+    expect(run.error).toBeUndefined();
+    expect(run.stdout.trim(), run.stderr).toBe(link ? 'True' : 'False');
   });
 });

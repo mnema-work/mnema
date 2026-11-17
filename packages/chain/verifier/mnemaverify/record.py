@@ -1204,14 +1204,14 @@ LINKED_ENTRY = (
 
 # THE REPARSE POINTS THAT ARE LINKS, as Node reads them on Windows. Its listing (libuv
 # `src/win/fs.c`, `fs__scandir`) types every reparse point as a link, and the product asks `lstat`
-# of each one (`listedEntries`): libuv's `lstat` (`fs__stat_handle`, `fs__readlink_handle`, in 1.51
-# and 1.52, the libuv of Node 24 and 26) calls a link only these three tags and reads any other
-# reparse point, a OneDrive placeholder or a deduplicated file, as the file or folder it is. This
-# reader reads the tag off the same listing. What still differs, rare inside a record: a WSL link
-# (IO_REPARSE_TAG_LX_SYMLINK) is a link to libuv 1.52 (Node 26) and to neither 1.51 nor this reader,
-# and libuv takes a junction to a volume (`\??\Volume{...}`) or an app execution alias it cannot
-# parse for no link, where this reader goes by the tag alone. `os.path.islink` answers no for all
-# but the first, and `os.path.isjunction` is past this reader's floor.
+# of each one (`listedEntries`): libuv's `lstat` (`fs__stat_handle`, `fs__readlink_handle`, in 1.51,
+# the libuv of the floor, Node 24.15, and in 1.52, of Node 24.16 and later) calls a link only these
+# three tags and reads any other reparse point, a OneDrive placeholder or a deduplicated file, as
+# the file or folder it is. This reader reads the tag off the same listing. What still differs, rare
+# inside a record: a WSL link (IO_REPARSE_TAG_LX_SYMLINK) is a link to libuv 1.52 and to neither 1.51
+# nor this reader, and libuv takes a junction to a volume (`\??\Volume{...}`) or an app execution
+# alias it cannot parse for no link, where this reader goes by the tag alone. `os.path.islink`
+# answers no for all but the first, and `os.path.isjunction` is past this reader's floor.
 FILE_ATTRIBUTE_REPARSE_POINT = 0x400
 IO_REPARSE_TAG_SYMLINK = 0xA000000C
 IO_REPARSE_TAG_MOUNT_POINT = 0xA0000003
