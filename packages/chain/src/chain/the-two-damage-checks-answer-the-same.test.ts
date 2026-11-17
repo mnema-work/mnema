@@ -71,33 +71,70 @@ const taskAfter = (w: ChainWriter, n: number) =>
     { title: `more ${n}` },
   );
 
-const damages: Record<string, (w: ChainWriter) => void> = {
-  'a healthy tail of two segments': () => undefined,
-  'an emptied last segment': () => truncateSync(segment(2), 0),
-  'a removed last segment': () => rmSync(segment(2)),
-  'a removed first segment (a tail with no beginning)': () => rmSync(segment(1)),
-  'an emptied first segment': () => truncateSync(segment(1), 0),
-  'a signed last line that lost its newline': () => {
-    const text = readFileSync(segment(2), 'utf-8');
-    writeFileSync(segment(2), text.slice(0, -1));
+/** What a case must be named as, by both checks: nothing, or the code and the numbers. */
+type Named = undefined | { startsAt?: number; signedThrough: number };
+
+const damages: Record<string, { plant: (w: ChainWriter) => void; named: Named }> = {
+  'a healthy tail of two segments': { plant: () => undefined, named: undefined },
+  'an emptied last segment': {
+    plant: () => truncateSync(segment(2), 0),
+    named: { signedThrough: 3 },
   },
-  'a signed last line cut short': () => {
-    const text = readFileSync(segment(2), 'utf-8');
-    writeFileSync(segment(2), text.slice(0, -40));
+  'a removed last segment': { plant: () => rmSync(segment(2)), named: { signedThrough: 3 } },
+  'a removed first segment (a tail with no beginning)': {
+    plant: () => rmSync(segment(1)),
+    named: { startsAt: 2, signedThrough: 3 },
   },
-  'a fragment above the coverage that does not parse': () => {
-    writeFileSync(segment(2), `${readFileSync(segment(2), 'utf-8')}{"event":`);
+  'an emptied first segment with a segment after it': {
+    plant: () => truncateSync(segment(1), 0),
+    named: { startsAt: 2, signedThrough: 3 },
   },
-  'a line above the coverage that lost its newline': (w) => {
-    w.append(taskAfter(w, 1));
-    const text = readFileSync(segment(2), 'utf-8');
-    writeFileSync(segment(2), text.slice(0, -1));
+  'a first line of the first segment cut in half, with a segment after it': {
+    plant: () => {
+      const text = readFileSync(segment(1), 'utf-8');
+      writeFileSync(segment(1), text.slice(0, 60));
+    },
+    named: { startsAt: 2, signedThrough: 3 },
+  },
+  'an emptied only segment of a tail that signed nothing': {
+    plant: () => {
+      rmSync(segment(2));
+      truncateSync(segment(1), 0);
+      writeFileSync(join(tailDir(), 'checkpoints.jsonl'), '');
+    },
+    named: undefined,
+  },
+  'a signed last line that lost its newline': {
+    plant: () => {
+      const text = readFileSync(segment(2), 'utf-8');
+      writeFileSync(segment(2), text.slice(0, -1));
+    },
+    named: { signedThrough: 3 },
+  },
+  'a signed last line cut short': {
+    plant: () => {
+      const text = readFileSync(segment(2), 'utf-8');
+      writeFileSync(segment(2), text.slice(0, -40));
+    },
+    named: { signedThrough: 3 },
+  },
+  'a fragment above the coverage that does not parse': {
+    plant: () => writeFileSync(segment(2), `${readFileSync(segment(2), 'utf-8')}{"event":`),
+    named: undefined,
+  },
+  'a line above the coverage that lost its newline': {
+    plant: (w) => {
+      w.append(taskAfter(w, 1));
+      const text = readFileSync(segment(2), 'utf-8');
+      writeFileSync(segment(2), text.slice(0, -1));
+    },
+    named: undefined,
   },
 };
 
 describe('the locked check and the read-only ask', () => {
-  for (const [name, plant] of Object.entries(damages)) {
-    it(`say the same for ${name}`, () => {
+  for (const [name, { plant, named }] of Object.entries(damages)) {
+    it(`say ${named === undefined ? 'nothing' : 'the same damage'} for ${name}`, () => {
       const w = twoSegments();
       plant(w);
       const asked = readTailDamage(layout(), w.signerFingerprint, upcasters);
@@ -107,18 +144,18 @@ describe('the locked check and the read-only ask', () => {
       } catch (error) {
         locked = error;
       }
-      expect((locked as TailDamagedError | undefined)?.code).toBe(asked?.code);
-      expect((locked as TailDamagedError | undefined)?.startsAt).toBe(asked?.startsAt);
-      expect((locked as TailDamagedError | undefined)?.signedThrough).toBe(asked?.signedThrough);
+      const said = (e: unknown) => {
+        const damage = e as TailDamagedError | undefined;
+        return damage === undefined
+          ? undefined
+          : { code: damage.code, startsAt: damage.startsAt, signedThrough: damage.signedThrough };
+      };
+      expect(said(asked)).toEqual(said(locked));
+      expect(said(asked)).toEqual(
+        named === undefined ? undefined : { code: 'TAIL_DAMAGED', ...named },
+      );
     });
   }
-
-  it('names a case in the table as damage, and a healthy tail as none', () => {
-    const w = twoSegments();
-    expect(readTailDamage(layout(), w.signerFingerprint, upcasters)).toBeUndefined();
-    rmSync(segment(1));
-    expect(readTailDamage(layout(), w.signerFingerprint, upcasters)?.startsAt).toBe(2);
-  });
 
   it('differs only where the signed note is needed: checkpoints taken out under a whole end', () => {
     const w = twoSegments();
@@ -159,5 +196,32 @@ describe('the append of a tail that begins above seq 0', () => {
     expect(() => writer.append(taskAfter(writer, 3))).not.toThrow();
     expect(w.signerFingerprint).toBe(writer.signerFingerprint);
     expect(readFileSync(segment(2), 'utf-8').split('\n').filter(Boolean)).toHaveLength(3);
+  });
+
+  it('is refused by a writer that already held the lock when the first segment is lost after', () => {
+    const writer = twoSegments();
+    writer.append(taskAfter(writer, 4));
+    const before = readFileSync(segment(2));
+    rmSync(segment(1));
+    let thrown: unknown;
+    try {
+      writer.append(taskAfter(writer, 5));
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(TailDamagedError);
+    expect((thrown as TailDamagedError).startsAt).toBe(2);
+    expect(() => writer.refuseIfDamaged()).toThrow(TailDamagedError);
+    expect(readFileSync(segment(2)).equals(before)).toBe(true);
+  });
+
+  it('refuses a checkpoint over a tail with no beginning as damage, and writes nothing', () => {
+    const writer = twoSegments();
+    writer.append(taskAfter(writer, 6));
+    rmSync(segment(1));
+    const checkpoints = readFileSync(join(tailDir(), 'checkpoints.jsonl'));
+    const fresh = open();
+    expect(() => fresh.checkpoint()).toThrow(TailDamagedError);
+    expect(readFileSync(join(tailDir(), 'checkpoints.jsonl')).equals(checkpoints)).toBe(true);
   });
 });

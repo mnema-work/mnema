@@ -282,6 +282,8 @@ interface TailMark {
   readonly nextSegment: boolean;
   /** Size of `checkpoints.jsonl`, or -1 if absent. */
   readonly checkpointBytes: number;
+  /** Size of the tail's first segment, or -1 if absent: losing the start is a move. */
+  readonly firstBytes: number;
 }
 
 export class ChainWriter {
@@ -327,7 +329,12 @@ export class ChainWriter {
    * It starts as a value no real tail can produce, so the first act always recovers
    * rather than trusting a default that happens to match an empty tail.
    */
-  private mark: TailMark = { segmentBytes: -2, nextSegment: false, checkpointBytes: -2 };
+  private mark: TailMark = {
+    segmentBytes: -2,
+    nextSegment: false,
+    checkpointBytes: -2,
+    firstBytes: -2,
+  };
 
   /**
    * Whether this writer has already made sure its tail is born: see {@link ensureBorn}.
@@ -580,7 +587,7 @@ export class ChainWriter {
     this.record = undefined;
     this.namesRead = undefined;
     this.born = false;
-    this.mark = { segmentBytes: -2, nextSegment: false, checkpointBytes: -2 };
+    this.mark = { segmentBytes: -2, nextSegment: false, checkpointBytes: -2, firstBytes: -2 };
   }
 
   /**
@@ -686,6 +693,7 @@ export class ChainWriter {
       segmentBytes: sizeOf(segmentPath(this.layout, this.tailId, this.segment)),
       nextSegment: sizeOf(segmentPath(this.layout, this.tailId, this.segment + 1)) >= 0,
       checkpointBytes: sizeOf(checkpointsPath(this.layout, this.tailId)),
+      firstBytes: sizeOf(segmentPath(this.layout, this.tailId, 1)),
     };
   }
 
@@ -816,7 +824,7 @@ export class ChainWriter {
     if (damaged !== undefined) {
       // Nothing is cut, nothing is owed a signature, and both append doors refuse.
       this.damage = damaged;
-      this.nextSeq = (damaged.startsAt === undefined ? damaged.signedThrough : lastComplete) + 1;
+      this.nextSeq = damaged.signedThrough + 1;
       this.pending = [];
       return;
     }
@@ -1213,11 +1221,15 @@ export class ChainWriter {
     return (
       now.segmentBytes === this.mark.segmentBytes &&
       now.nextSegment === this.mark.nextSegment &&
-      now.checkpointBytes === this.mark.checkpointBytes
+      now.checkpointBytes === this.mark.checkpointBytes &&
+      now.firstBytes === this.mark.firstBytes
     );
   }
 
   private signLocked(): Checkpoint | null {
+    // A tail with no beginning is signed over by nobody: what is above its coverage is not a range
+    // a checkpoint may claim. (A cut end signs nothing already, as nextSeq stops at the coverage.)
+    if (this.damage?.startsAt !== undefined) throw this.damage;
     const fromSeq = this.lastCheckpointedSeq + 1;
     const toSeq = this.nextSeq - 1;
     if (toSeq < fromSeq) return null;
@@ -1357,26 +1369,58 @@ function tailDamage(
 }
 
 /**
- * The seq of the first line of a tail's first segment, or undefined where there is none to read
- * (no segment, an empty one, a first line that does not parse or that is longer than the read,
- * or a segment that vanished between the listing and the open: other refusals say those). Read
- * from the file, bounded to its first line.
+ * The seq of the first line the tail holds, or undefined where there is none to read (no segment,
+ * every segment empty or unfinished, a first line that does not parse or that is longer than
+ * {@link FIRST_LINE_LIMIT}, or a segment that vanished between the listing and the open: other
+ * refusals say those). A first segment that is empty or whose first line was never finished,
+ * with segments after it, is a start that is gone, so the walk goes on to the first line of the
+ * next one and the seq it begins at says so. Each file is read in small pieces up to its first
+ * newline, never past the limit.
  */
 function firstSeqOfTheTail(
   layout: ChainLayout,
   tailId: string,
   upcasters: UpcasterRegistry,
 ): number | undefined {
-  const first = orderedSegments(layout, tailId)[0];
-  if (first === undefined) return undefined;
+  for (const segment of orderedSegments(layout, tailId)) {
+    const line = firstLineOf(segment);
+    if (line === 'unfinished') continue;
+    if (line === undefined) return undefined;
+    try {
+      return parseEntry(line, upcasters).link.seq;
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
+/** The most of a first line that is read: a longer one is no entry. */
+const FIRST_LINE_LIMIT = 1 << 20;
+
+/**
+ * The first line of a file, `'unfinished'` for a file that is empty or ends before a newline, and
+ * undefined for one that cannot be read or whose first line passes {@link FIRST_LINE_LIMIT}.
+ */
+function firstLineOf(file: string): string | undefined | 'unfinished' {
   let fd: number | undefined;
   try {
-    fd = openSync(first, 'r');
-    const buffer = Buffer.alloc(1 << 20);
-    const read = readSync(fd, buffer, 0, buffer.length, 0);
-    const end = buffer.subarray(0, read).indexOf(0x0a);
-    if (end < 0) return undefined;
-    return parseEntry(buffer.subarray(0, end).toString('utf-8'), upcasters).link.seq;
+    fd = openSync(file, 'r');
+    const chunk = Buffer.alloc(8192);
+    const parts: Buffer[] = [];
+    let at = 0;
+    while (at < FIRST_LINE_LIMIT) {
+      const read = readSync(fd, chunk, 0, chunk.length, at);
+      if (read === 0) return 'unfinished';
+      const newline = chunk.subarray(0, read).indexOf(0x0a);
+      if (newline >= 0) {
+        parts.push(Buffer.from(chunk.subarray(0, newline)));
+        return Buffer.concat(parts).toString('utf-8');
+      }
+      parts.push(Buffer.from(chunk.subarray(0, read)));
+      at += read;
+    }
+    return undefined;
   } catch {
     return undefined;
   } finally {
