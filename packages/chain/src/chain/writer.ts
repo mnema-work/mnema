@@ -66,7 +66,6 @@ import {
   readSync,
   statSync,
   truncateSync,
-  writeFileSync,
 } from 'node:fs';
 import { dirname } from 'node:path';
 
@@ -82,7 +81,7 @@ import {
 } from './checkpoint.js';
 import { type Cited, HeadsToCite } from './cited-heads.js';
 import { CodedError } from './coded-error.js';
-import { appendDurably } from './durable.js';
+import { appendDurably, writeFileDurably } from './durable.js';
 import {
   type ChainEntry,
   type Entry,
@@ -113,10 +112,11 @@ import {
 } from './layout.js';
 import { linesFromEnd, parseStoredLine } from './lines.js';
 import { recordToWriteUnder, type WriteUnder } from './record-name.js';
+import { clearOrphanedStaging } from './staging.js';
 import { lastTailCheckpoint, orderedSegments, readTailTip } from './store.js';
 import { withTailLock } from './tail-lock.js';
 import { firstEntries, type NamesRelinked, namesRelinkedAt } from './tail-names.js';
-import { serializeTailProof, signTailProof } from './tailproof.js';
+import { parseTailProof, serializeTailProof, signTailProof } from './tailproof.js';
 import { unprovenWaiverReason } from './waiver.js';
 
 /** Seal a segment once it grows past this many bytes (segments rotate by size). */
@@ -460,6 +460,7 @@ export class ChainWriter {
     this.keepBeforeBirth?.();
     materializePublicKey(this.layout, this.keyPair);
     mkdirSync(tailDir(this.layout, this.tailId), { recursive: true });
+    clearOrphanedStaging(this.layout, this.tailId);
     this.ensureTailProof();
     this.born = true;
   }
@@ -701,13 +702,15 @@ export class ChainWriter {
    * Writes this tail's proof of ownership once, at birth: the key signs a
    * statement naming its own tail id, so the verifier can tie the locally-chosen
    * installation-id suffix to the key that owns it. Idempotent (a reopened tail
-   * already has one) and never overwrites, so it costs nothing after birth.
+   * already has one) and never overwrites a proof that reads, whoever's it is (ADR-354). A proof
+   * that is empty or does not parse is what a power cut at birth leaves: no reader can use it and
+   * nothing else would ever replace it, so it is written again, to the disk, like the birth.
    */
   private ensureTailProof(): void {
     const path = tailProofPath(this.layout, this.tailId);
-    if (existsSync(path)) return;
+    if (existsSync(path) && !unreadableProof(path)) return;
     const proof = signTailProof(this.tailId, this.keyPair, this.recordName());
-    writeFileSync(path, `${serializeTailProof(proof)}\n`, 'utf-8');
+    writeFileDurably(path, `${serializeTailProof(proof)}\n`);
   }
 
   /**
@@ -1595,6 +1598,25 @@ function refuseUnreadable(event: CatalogEvent): void {
  * one a recovery truncated to nothing are different states of the tail), so the
  * answer is a number a size can never be, not a zero that both would produce.
  */
+/**
+ * Whether the proof file at `path` is empty or does not parse: a file that cannot be read at all
+ * is left to whoever reads it, and one that parses is left whole, whoever's it is.
+ */
+function unreadableProof(path: string): boolean {
+  let text: string;
+  try {
+    text = readFileSync(path, 'utf-8');
+  } catch {
+    return false;
+  }
+  try {
+    parseTailProof(text.replace(/\n+$/, ''));
+    return false;
+  } catch {
+    return true;
+  }
+}
+
 function sizeOf(filePath: string): number {
   try {
     return statSync(filePath).size;

@@ -309,7 +309,7 @@ function breakIfAbandoned(path: string, held: Holder): boolean {
 }
 
 /** Whether a pid exists. `EPERM` means it does and belongs to somebody else. */
-function alive(pid: number): boolean {
+export function alive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;

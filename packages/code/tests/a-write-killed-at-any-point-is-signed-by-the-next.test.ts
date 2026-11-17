@@ -14,7 +14,8 @@
  * recovery that finds that entry at the end signs it. Each point below is asserted the same way:
  * the child died of the signal at that point, the next write says nothing of a new tail, the
  * record keeps one tail, and both readers pass `--require signed`; with the projection the reader
- * keeps (`locks/projection.db`) left as the killed write left it, and removed.
+ * keeps (`locks/projection.db`) left as the killed write left it, and removed. The next write also
+ * removes the notes the killed one staged under its own pid and never renamed into place.
  */
 
 import { spawnSync } from 'node:child_process';
@@ -127,6 +128,12 @@ describe('a write killed at a point of its hold, then a write by the same key', 
           expect(`${next.stdout}${next.stderr}`).not.toMatch(/new tail|branch switch/);
 
           expect(readdirSync(join(planted.repo, '.mnema', 'tails'))).toHaveLength(1);
+          // What the killed write staged and never renamed is gone: no note carries a pid.
+          expect(
+            readdirSync(join(planted.repo, '.mnema', 'locks')).filter((name) =>
+              /\.(head|head\.sig|cited)\.\d+$/.test(name),
+            ),
+          ).toEqual([]);
           const verified = mnema(planted, ['verify', '--require', 'signed']);
           expect(verified.status, `${verified.stdout}${verified.stderr}`).toBe(0);
           const second = spawnSync(
