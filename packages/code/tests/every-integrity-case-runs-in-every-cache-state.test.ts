@@ -62,6 +62,8 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'holds whose key signs a write through the agent variable; no damage',
   'packages/code/tests/the-cost-comes-from-the-host.test.ts':
     'holds what `mnema usage` prints, tokens and never dollars; no record is damaged',
+  'packages/code/tests/the-hooks-own-readers-doubt-a-link.test.ts':
+    'holds what the readers a command hook runs before mnema answer over a record whose segment became a link, and that the edit hook then denies; each case reads the files in a new process and no projection cache is read',
   'packages/code/tests/the-hooks-that-answer-in-json-say-every-refusal.test.ts':
     'holds what each hook that answers the host in JSON says when the verb refuses; the one stored line it plants is a fixture of that refusal, and the verdict on the damage is not what it reads',
   'packages/code/tests/the-hooks-say-what-the-record-refused.test.ts':
