@@ -165,7 +165,9 @@ describe('the anchor follows the founding: a first write that fails leaves no an
     // The plant fired, once, at the founding: a plant that never fires would leave every
     // assertion below true of a write that simply succeeded.
     expect(fired).toBe(1);
-    expect((thrown as { code?: string }).code).toBe('ENOSPC');
+    // The writer names the refusal and carries the disk's own error in it.
+    expect((thrown as { code?: string }).code).toBe('WRITE_NOT_LANDED');
+    expect((thrown as { disk?: { code?: string } }).disk?.code).toBe('ENOSPC');
     // AFTER the birth: the tail was born…
     expect(existsSync(join(tree, 'keys', `${b.fingerprint}.pub`))).toBe(true);
     expect(existsSync(join(tailDir({ root: tree }, b.writer.tail), 'tailproof.json'))).toBe(true);
