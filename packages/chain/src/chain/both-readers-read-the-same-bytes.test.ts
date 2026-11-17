@@ -357,7 +357,11 @@ type Agreement =
   | {
       readonly name: string;
       readonly verdict: 'refused';
-      readonly product: { readonly layer: string; readonly says: string };
+      /**
+       * `issues`, where given, is how many the product names: the first cause alone is the same
+       * whether or not a reader went on to read behind it, and the count is what tells.
+       */
+      readonly product: { readonly layer: string; readonly says: string; readonly issues?: number };
       readonly second: {
         readonly section: string;
         readonly says: string;
@@ -381,13 +385,14 @@ const WITNESSED_TAIL =
  * was there: a reader that followed it would verify the record it always held. Both refuse it by
  * its path, first, and read nothing of what it stands for. A tail with a link in it is not read, so
  * a record whose one tail it is holds no tail read (the second refusal); a key that is one is no key,
- * so its tail has none.
+ * so its tail has none, and nothing it signed verifies. Both counts are asserted, so a reader that
+ * read behind the link (and found the record whole) names fewer causes and goes red.
  */
-function linkedAt(name: string, path: string, refusals: number): Agreement {
+function linkedAt(name: string, path: string, refusals: number, issues: number): Agreement {
   return {
     name,
     verdict: 'refused',
-    product: { layer: 'T1', says: `LINKED ENTRY: ${path} is a symbolic link` },
+    product: { layer: 'T1', says: `LINKED ENTRY: ${path} is a symbolic link`, issues },
     second: { section: '4', says: `${path} is a symbolic link`, where: path, refusals },
   };
 }
@@ -456,22 +461,24 @@ const AGREEMENTS: readonly Agreement[] = [
       refusals: 1,
     },
   },
-  linkedAt('segment-linked', `${WITNESSED_TAIL}/000001.jsonl`, 2),
-  linkedAt('segment-linked-inside-the-record', `${WITNESSED_TAIL}/000001.jsonl`, 2),
-  linkedAt('checkpoints-linked', `${WITNESSED_TAIL}/checkpoints.jsonl`, 2),
-  linkedAt('tailproof-linked', `${WITNESSED_TAIL}/tailproof.json`, 2),
+  linkedAt('segment-linked', `${WITNESSED_TAIL}/000001.jsonl`, 2, 2),
+  linkedAt('segment-linked-inside-the-record', `${WITNESSED_TAIL}/000001.jsonl`, 2, 2),
+  linkedAt('checkpoints-linked', `${WITNESSED_TAIL}/checkpoints.jsonl`, 2, 2),
+  linkedAt('tailproof-linked', `${WITNESSED_TAIL}/tailproof.json`, 2, 2),
   linkedAt(
     'witness-file-linked',
     `${WITNESSED_TAIL}/witness/f84396462713a5fd1fefd3a043cddb2eed81c00f5fead86f0474bfaa551c42e2.ots`,
+    2,
     2,
   ),
   linkedAt(
     'key-file-linked',
     'keys/7e5a72fd0ea237237651690087e4a87133dab8b78847efadde778f633214cca4.pub',
     2,
+    5,
   ),
-  linkedAt('keys-dir-linked', 'keys', 1),
-  linkedAt('tails-dir-linked', 'tails', 2),
+  linkedAt('keys-dir-linked', 'keys', 1, 6),
+  linkedAt('tails-dir-linked', 'tails', 2, 2),
   {
     // ADR-123: one tail written from one head in two places and joined. Both readers used to
     // call it a gap in the sequence, which says nothing of what happened; both name it a fork,
@@ -977,6 +984,7 @@ describe('the two readers reach the same verdict on the same bytes, and name the
     const first = here.issues[0];
     expect(first?.layer).toBe(row.product.layer);
     expect(first?.detail).toContain(row.product.says);
+    if (row.product.issues !== undefined) expect(here.issues).toHaveLength(row.product.issues);
     const named = there.refusals[0];
     expect(named?.section).toBe(row.second.section);
     expect(named?.what).toContain(row.second.says);

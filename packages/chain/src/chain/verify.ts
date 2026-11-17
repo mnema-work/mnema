@@ -1520,7 +1520,7 @@ function verifyReading(
     ...links.map(linkedEntry),
     ...keyFilesWithoutAKey(committedFingerprints, keys),
     ...misnamedKeys(committedFingerprints, keys),
-    ...(counted.length === 0 ? [noTailHeld(layout, tails)] : []),
+    ...(counted.length === 0 ? [noTailHeld(layout, linked, present, tails)] : []),
     // A refused relink before the record's agreement, which it explains: the tail it did not move
     // is what leaves the directory two records, and both readers say the cause first.
     ...relinks.refused.map(
@@ -1697,6 +1697,13 @@ function reformatSentence(files: readonly string[]): string {
  */
 export const NO_TAIL_HELD = 'no tail in this record holds an event or a checkpoint';
 
+/** Why no tail is counted when `tails/` is a link: the second reader says the same words. */
+export const NO_TAIL_THROUGH_A_LINKED_DIRECTORY = 'tails/ is a link, which no reader follows';
+
+/** Why no tail is counted when a tail is there and was not read for a link it holds. */
+export const NO_TAIL_READ_FOR_A_LINK =
+  'every tail in it holds a link, which no reader follows, or holds no event and no checkpoint';
+
 /**
  * THE RECORD IN WHICH NO TAIL HOLDS ANYTHING, refused by name (FORMAT.md section 4).
  *
@@ -1713,15 +1720,26 @@ export const NO_TAIL_HELD = 'no tail in this record holds an event or a checkpoi
  * record with ANOTHER tail still standing is not this case: a tail removed whole beside it stays
  * a census note.
  *
- * The reason is said as the code found it, in the words the second reader uses for the same three
- * shapes, so the two verdicts can be compared by their text.
+ * The reason is said as the code found it, in the words the second reader uses for the same
+ * shapes, so the two verdicts can be compared by their text. A link is said as one: `tails/` that
+ * is a link, and tails that are there but not read because each holds one (FORMAT.md section 4),
+ * are not "no tails".
  */
-function noTailHeld(layout: ChainLayout, tails: readonly string[]): TailIssue {
-  const why = !existsSync(tailsDir(layout))
-    ? 'there is no tails/ directory'
-    : tails.length === 0
-      ? 'there are no tails'
-      : 'every tail in it holds no event and no checkpoint';
+function noTailHeld(
+  layout: ChainLayout,
+  linked: ReadonlySet<string>,
+  present: readonly string[],
+  read: readonly string[],
+): TailIssue {
+  const why = linked.has('tails')
+    ? NO_TAIL_THROUGH_A_LINKED_DIRECTORY
+    : !existsSync(tailsDir(layout))
+      ? 'there is no tails/ directory'
+      : present.length === 0
+        ? 'there are no tails'
+        : read.length < present.length
+          ? NO_TAIL_READ_FOR_A_LINK
+          : 'every tail in it holds no event and no checkpoint';
   return {
     layer: 'T1',
     detail: `NO TAIL: ${NO_TAIL_HELD}: ${why}, so the record asserts no fact, and nothing verifies over nothing`,

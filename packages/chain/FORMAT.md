@@ -276,11 +276,12 @@ is the private tree of a project outside a git repository and, inside one, where
 version kept it before it moved into the repository's git directory; the product names one
 still there as left behind and, when asked, moves it.
 
-**A reader follows no link in a record, and refuses each one by name.** A symbolic link or a
-junction at a place a reader reads (`keys/` and `tails/` themselves, any entry of either, any
+**A reader follows no link in a record, and refuses each one by name.** A symbolic link, or on
+Windows any reparse point (a junction, an app execution alias, a cloud placeholder), at a place a
+reader reads (`keys/` and `tails/` themselves, any entry of either, any
 entry of a tail directory and any entry of a tail's `witness/`) is refused, whatever it points
 at: a directory, a file, nothing, or a place inside the record itself. A reader finds them by
-the directory listing (`lstat`, which names a junction a link too) before it reads anything,
+the directory listing (`lstat`, never following what it lists) before it reads anything,
 and opens nothing through one: a tail that is a link, or that holds one, is not read and not
 counted as a tail (its directory still names its key's tail, §6.5); a key file that is a link is
 not read and holds no key; and nothing under `keys/` or `tails/` is read when that directory is
@@ -350,7 +351,8 @@ holding anything, the record is refused, by the rule below.
 
 **A record in which no tail holds anything asserts no fact, and is refused.** When no
 tail is counted (there is no `tails/` directory, there is no tail directory in it, or
-every tail directory in it holds no event and no checkpoint), a reader refuses the record
+every tail directory in it holds no event and no checkpoint or was not read for a link it
+holds, or `tails/` is a link), a reader refuses the record
 by name, whatever level the caller requires of it, and with the same refusal as any other,
 not a verdict of its own. It still says what §6.5 says of each committed key with no tail,
 so a record whose one tail was deleted says whose key it was. A record is never in this

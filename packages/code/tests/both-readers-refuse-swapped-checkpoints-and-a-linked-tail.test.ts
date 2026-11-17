@@ -151,6 +151,38 @@ describe('both readers refuse what they used to split on, the projection warm an
       expect(second.stdout).toContain(`${key} is a symbolic link`);
     }, 60_000);
 
+    it(`a segment linked to a pipe, read by neither reader, the projection ${cache}`, () => {
+      // A pipe nobody writes to blocks whoever opens it: a command that read through the link
+      // anywhere, the verdict or what the command adds to it, would never return.
+      expect(mnema(['init', '--yes', '--hosts', 'none']).status).toBe(0);
+      write('a fact in the segment that becomes a pipe');
+      const [tail] = tails();
+      const segment = `tails/${tail}/000001.jsonl`;
+      const pipe = join(sandbox, 'a-pipe');
+      expect(spawnSync('mkfifo', [pipe]).status).toBe(0);
+      rmSync(join(repo, '.mnema', segment));
+      symlinkSync(pipe, join(repo, '.mnema', segment));
+      if (cache === 'cold') rmSync(join(repo, '.mnema', 'locks', 'projection.db'), { force: true });
+
+      const product = spawnSync(process.execPath, [MNEMA_CLI, 'verify', '--require', 'signed'], {
+        cwd: repo,
+        encoding: 'utf-8',
+        env: { PATH: process.env.PATH ?? '', HOME: home, GIT_CONFIG_NOSYSTEM: '1' },
+        timeout: 20_000,
+      });
+      expect(product.error, 'mnema verify did not return').toBeUndefined();
+      expect(product.status, product.stdout).toBe(1);
+      expect(`${product.stdout}${product.stderr}`).toContain(`LINKED ENTRY: ${segment}`);
+      const second = spawnSync(
+        'python3',
+        ['-I', VERIFIER, 'record', join(repo, '.mnema'), '--require', 'signed'],
+        { encoding: 'utf-8', timeout: 20_000 },
+      );
+      expect(second.error, 'the second reader did not return').toBeUndefined();
+      expect(second.status, second.stdout).toBe(1);
+      expect(second.stdout).toContain(`${segment} is a symbolic link`);
+    }, 60_000);
+
     it(`a second tail replaced by a link, beside the first, the projection ${cache}`, () => {
       expect(mnema(['init', '--yes', '--hosts', 'none']).status).toBe(0);
       write('a fact in the first tail');

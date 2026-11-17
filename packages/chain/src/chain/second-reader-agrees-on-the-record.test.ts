@@ -76,12 +76,13 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  renameSync,
   rmSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { pythonRun } from '../../tests/support/second-reader-session.js';
@@ -2492,6 +2493,27 @@ describe('a record in which no tail holds anything, to both readers', () => {
       name: 'c1b: the tails/ directory deleted',
       why: 'there is no tails/ directory',
       cut: (record) => rmSync(join(record, 'tails'), { recursive: true, force: true }),
+    },
+    {
+      // FORMAT.md section 4: a tail holding a link is there and not read, which is not "no tails".
+      name: 'its one tail holding a link in place of its segment',
+      why: 'every tail in it holds a link, which no reader follows, or holds no event and no checkpoint',
+      cut: (record) => {
+        const segment = join(theTail(record), '000001.jsonl');
+        const outside = join(dirname(record), 'a-segment-moved-out');
+        renameSync(segment, outside);
+        symlinkSync(outside, segment);
+      },
+    },
+    {
+      name: 'tails/ a link to a file',
+      why: 'tails/ is a link, which no reader follows',
+      cut: (record) => {
+        const outside = join(dirname(record), 'a-file');
+        writeFileSync(outside, 'not a directory\n');
+        rmSync(join(record, 'tails'), { recursive: true, force: true });
+        symlinkSync(outside, join(record, 'tails'));
+      },
     },
     {
       name: 'c2: its segments, checkpoints and witness deleted, its tail proof kept',

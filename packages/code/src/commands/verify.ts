@@ -61,6 +61,7 @@ import {
   catalogUpcasters,
   holdsRecord,
   type LevelRequirement,
+  listLinksInRecord,
   meetsRequirement,
   type ProvenLevel,
   type UpcasterRegistry,
@@ -600,6 +601,11 @@ function withAgentsNamed(
   upcasters: UpcasterRegistry,
 ): VerifyResult {
   if (!result.census.some((note) => note.kind === 'key-without-tail')) return result;
+  // A record holding a link is refused for it, and the replay below would read through the link
+  // what the verdict did not (FORMAT.md section 4): a link to a pipe hung the command here. A tail
+  // left unread for a link is also what makes a key read as having none, so there is no agent to
+  // name that the reading would be right about.
+  if (listLinksInRecord({ root }).length > 0) return result;
   // A record the chain called unreadable cannot be replayed, and holds no agent to name.
   let agents: ReturnType<typeof agentKeysIn>;
   try {

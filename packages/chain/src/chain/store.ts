@@ -68,7 +68,8 @@ export function listTails(layout: ChainLayout): string[] {
  * path in the record: `keys` and `tails` themselves, each entry of either, each entry of each tail
  * directory, and each entry of a tail's `witness/`. Nothing below a link is listed, and no link is
  * followed: each entry is judged by the directory listing (`lstat`, never `stat`), which on Windows
- * reports a junction as a link too.
+ * reports every reparse point as a link (libuv's `fs__scandir`): a junction, an app execution alias
+ * and a cloud placeholder too. The second reader reads the same attribute off the same listing.
  *
  * The verdict asks this BEFORE it reads anything, and reads nothing a link stands for: a tail with a
  * link in it is not read, a key file that is one is not read, and neither is anything under `keys/`

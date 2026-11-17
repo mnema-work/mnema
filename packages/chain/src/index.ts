@@ -164,6 +164,7 @@ export {
   holdsRecord,
   type LinkBreak,
   listAppleDoubleKeyFiles,
+  listLinksInRecord,
   listPublicKeyFingerprints,
   listTails,
   orderedSegments,
