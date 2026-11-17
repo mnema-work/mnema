@@ -180,9 +180,9 @@ describe('the command line over an altered entry of the public tree', () => {
     }
   }, 240_000);
 
-  it('is asked the same of the cache the tree keeps and of a replay in memory', () => {
-    for (const inMemory of [false, true]) {
-      expect(() => checkForAnAlteredEntry(trees(), inMemory), String(inMemory)).toThrow(
+  it('is asked of the cache the tree keeps, and says the same twice', () => {
+    for (const again of [1, 2]) {
+      expect(() => checkForAnAlteredEntry(trees()), String(again)).toThrow(
         /altered after it was written/,
       );
     }
