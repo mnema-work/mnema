@@ -30,8 +30,9 @@ import {
   readTail,
   readTailCheckpoints,
 } from './store.js';
+import { namesOfTails } from './tail-names.js';
 import { verifyChain } from './verify.js';
-import { readStoredWitness } from './witness.js';
+import { readStoredWitness, witnessWalk } from './witness.js';
 
 let dir: string;
 let root: string;
@@ -150,6 +151,25 @@ describe('the reads of the product refuse a link', () => {
     const hash = 'a'.repeat(64);
     linkedAt(join(witness, `${hash}.ots`));
     refusedAt(() => readStoredWitness(layout(), tail, hash), `tails/${tail}/witness/${hash}.ots`);
+  });
+
+  it('a tail proof that is a link is refused where the tail is named, and nothing of it is read', () => {
+    written();
+    const tail = tailIn();
+    linkedAt(join(root, 'tails', tail, 'tailproof.json'));
+    refusedAt(() => namesOfTails(layout()), `tails/${tail}/tailproof.json`);
+  });
+
+  it('a link in witness/ is refused when the directory is listed, whatever checkpoint is asked for', () => {
+    written();
+    const tail = tailIn();
+    const witness = join(root, 'tails', tail, 'witness');
+    mkdirSync(witness);
+    linkedAt(join(witness, `${'b'.repeat(64)}.ots`));
+    refusedAt(
+      () => [...witnessWalk(layout(), tail, [])],
+      `tails/${tail}/witness/${'b'.repeat(64)}.ots`,
+    );
   });
 
   it('a record with no link is read as it was', () => {
