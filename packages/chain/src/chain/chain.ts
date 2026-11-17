@@ -14,6 +14,7 @@
 import { catalogUpcasters } from '../events/registry.js';
 import type { UpcasterRegistry } from '../events/upcaster.js';
 import {
+  adoptInstallationId,
   type ChainSigner,
   installationIdToKeep,
   keyToSignWith,
@@ -98,12 +99,24 @@ export function openChainForWriting(chainRoot: string, options: OpenOptions): Ch
       });
     }
     const installationId = loadOrCreateInstallationId(installationLayout, fingerprint);
+    const pool = options.pool;
     return new ChainWriter(
       chainLayout,
       key.keyPair,
       installationId,
       upcasters,
-      options,
+      pool === undefined
+        ? options
+        : {
+            ...options,
+            pool: {
+              ...pool,
+              hint: {
+                read: () => loadOrCreateInstallationId(installationLayout, fingerprint),
+                adopt: (id) => adoptInstallationId(installationLayout, fingerprint, id),
+              },
+            },
+          },
       undefined,
       (current) => nextInstallationId(installationLayout, fingerprint, current),
     );

@@ -17,10 +17,11 @@
  *     then refused for another reason leaves the repository's `.git` as it found it.
  */
 
-import { accessSync, constants, statSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { CodedError } from '@mnema/chain';
-import { commonDirIsOutsideTheWorktree } from './git-place.js';
+import { accessSync, constants, readFileSync, statSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
+import { CodedError, type PoolOptions } from '@mnema/chain';
+import { entryIsOnTheBase } from './base-branch.js';
+import { commonDirIsOutsideTheWorktree, otherGitDirsOf } from './git-place.js';
 import type { ResolvedTrees } from './resolve.js';
 
 /** What a writer of the public tree is given where the project is in a repository. */
@@ -29,6 +30,8 @@ export interface MachineryRoots {
   readonly sharedRoot: string;
   /** The place whose `keys/` holds this worktree's hint of its installation id: `installationRoot`. */
   readonly installationRoot: string;
+  /** What the writer needs to go on with a tail another visit or another worktree left: `WriterOptions.pool`. */
+  readonly pool: PoolOptions;
 }
 
 /** A write to the public tree turned away because the place for its machinery cannot be used. */
@@ -78,7 +81,38 @@ export function machineryRootsOf(trees: ResolvedTrees): MachineryRoots | undefin
       );
     }
   }
-  return { sharedRoot: machinery.shared, installationRoot: machinery.checkout };
+  const checkoutWithin = relative(place.gitDir, machinery.checkout);
+  return {
+    sharedRoot: machinery.shared,
+    installationRoot: machinery.checkout,
+    pool: {
+      checkoutRoot: machinery.checkout,
+      reservedBy: (fingerprint) => hintsOfTheOtherWorktrees(place, checkoutWithin, fingerprint),
+      onBase: entryIsOnTheBase(place.top, trees.projectPublic ?? place.top),
+    },
+  };
+}
+
+/**
+ * The installation ids the other worktrees of the repository that still exist keep as their hint for
+ * a key: the tails they write, which a worktree that has none of its own does not take from them.
+ * `within` is the checkout's place under a git directory, the same in every worktree of the project.
+ */
+function hintsOfTheOtherWorktrees(
+  place: Parameters<typeof otherGitDirsOf>[0],
+  within: string,
+  fingerprint: string,
+): ReadonlySet<string> {
+  const ids = new Set<string>();
+  for (const gitDir of otherGitDirsOf(place)) {
+    try {
+      const id = readFileSync(join(gitDir, within, 'keys', `${fingerprint}.inst`), 'utf-8').trim();
+      if (id !== '') ids.add(id);
+    } catch {
+      // No hint there: that worktree has written nothing of this key.
+    }
+  }
+  return ids;
 }
 
 function isDirectory(path: string): boolean {

@@ -280,6 +280,17 @@ export function installationIdPath(layout: ChainLayout, fingerprint: string): st
 }
 
 /**
+ * The mark a worktree keeps, per tail, of the last act it began there: the last entry that act was
+ * about to write, as `<seq> <hash>`. It lives at the checkout's place, never the record's, because
+ * it says what THIS worktree did: a note of an act that died (FORMAT.md section 4) vouches for the
+ * end it names only in the worktree whose mark names the entry the act was about to write, and a
+ * tail has a mark here only where this worktree wrote to it.
+ */
+export function inflightPath(layout: ChainLayout, tailId: string): string {
+  return join(layout.root, 'inflight', tailId);
+}
+
+/**
  * The mark that this checkout moved the machinery an earlier mnema kept inside the record's own
  * `keys/` and `locks/` to the shared place, for one key. Kept at the checkout's place, never the
  * record's: once it is there, what an earlier mnema writes in the record again is that mnema's own

@@ -18,7 +18,7 @@
  * that points git elsewhere with them is answered from the `.git` on disk.
  */
 
-import { readFileSync, realpathSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 /** The directory name, under a git directory, that holds this product's private trees. */
@@ -142,6 +142,37 @@ export function publicMachineryPlace(projectDir: string): MachineryPlace | undef
     checkout: placeUnder(place.gitDir, within, 'public'),
     place,
   };
+}
+
+/**
+ * The git directories of the OTHER worktrees of the repository that still exist: the main one (when
+ * this is a linked worktree) and every linked one whose working tree is there. A linked worktree
+ * whose folder was deleted without `git worktree remove` is not counted: git has not pruned it yet,
+ * and nothing is being written in it.
+ */
+export function otherGitDirsOf(place: GitPlace): string[] {
+  const own = realOrUndefined(place.gitDir);
+  const found: string[] = [];
+  if (realOrUndefined(place.commonDir) !== own && statOrUndefined(join(place.commonDir, 'HEAD'))) {
+    found.push(place.commonDir);
+  }
+  let names: string[];
+  try {
+    names = readdirSync(join(place.commonDir, 'worktrees'));
+  } catch {
+    return found;
+  }
+  for (const name of names) {
+    const gitDir = join(place.commonDir, 'worktrees', name);
+    if (realOrUndefined(gitDir) === own) continue;
+    try {
+      const dotGit = readFileSync(join(gitDir, 'gitdir'), 'utf-8').split('\n')[0] as string;
+      if (statOrUndefined(resolve(gitDir, dotGit)) !== undefined) found.push(gitDir);
+    } catch {
+      // No `gitdir` to read: git cannot say where that worktree is, and nothing is writing in it.
+    }
+  }
+  return found;
 }
 
 /**

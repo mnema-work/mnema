@@ -53,9 +53,10 @@ describe('the roots a public writer is opened over', () => {
   it('are the shared place and this worktree’s own, in a repository, and nothing outside one', () => {
     aGitDir(join(real, 'repo', '.git'));
     const roots = machineryRootsOf(treesAt(join(real, 'repo')));
-    expect(roots).toEqual({
+    expect(roots).toMatchObject({
       sharedRoot: join(real, 'repo', '.git', 'mnema', '%2E', 'public'),
       installationRoot: join(real, 'repo', '.git', 'mnema', '%2E', 'public'),
+      pool: { checkoutRoot: join(real, 'repo', '.git', 'mnema', '%2E', 'public') },
     });
     mkdirSync(join(real, 'plain'));
     expect(machineryRootsOf(treesAt(join(real, 'plain')))).toBeUndefined();

@@ -20,6 +20,7 @@
  * {@link treesSearched}, for the reading that has to say where it looked.
  */
 
+export { type Ask, type DefaultBranch, theDefaultBranch } from './default-branch.js';
 export { gitPlaceOf } from './git-place.js';
 export {
   type BirthProbe,

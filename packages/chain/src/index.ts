@@ -152,6 +152,7 @@ export { UnreadableLineError } from './chain/lines.js';
 export { RecordLinkedError, refuseToWriteThrough } from './chain/linked-write.js';
 export { MigrationUnsettledError } from './chain/migration.js';
 export { illegalMoves, type PlacedEvent } from './chain/moves.js';
+export type { PoolOptions } from './chain/pool.js';
 export type {
   Arrivals,
   RecordGroup,

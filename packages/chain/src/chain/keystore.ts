@@ -533,6 +533,30 @@ export function nextInstallationId(
   return loadOrCreateInstallationId(layout, fingerprint);
 }
 
+/**
+ * Makes `installationId` the hint of this checkout, replacing whole the one there: a worktree that
+ * goes on with a tail another visit left (`pool.ts`) names it as the one it starts from next time.
+ * Written to a staging file and renamed, so a reader meets the old id or the new one and never a
+ * half; the id is what a reader of the file trusts for the tail it names, and the tail is judged
+ * again under its own lock whatever the file says.
+ */
+export function adoptInstallationId(
+  layout: ChainLayout,
+  fingerprint: string,
+  installationId: string,
+): void {
+  const path = installationIdPath(layout, fingerprint);
+  const staging = `${path}.${process.pid}`;
+  mkdirSync(keysDir(layout), { recursive: true });
+  try {
+    writeFileDurably(staging, `${installationId}\n`, { mode: 0o600 });
+    renameSync(staging, path);
+  } catch (error) {
+    rmSync(staging, { force: true });
+    throw error;
+  }
+}
+
 /** The installation ids chosen in this process for a key not kept yet: by the id's path. */
 const unkeptIds = new Map<string, string>();
 
