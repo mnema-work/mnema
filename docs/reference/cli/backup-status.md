@@ -10,6 +10,7 @@ In the help under **This machine** · a command of [`mnema backup`](backup.md).
 
 | Option | What it does |
 | --- | --- |
+| `--global` | say it of the machine's global tree instead of this project |
 | `--json` | emit the faithful reading as JSON |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
@@ -23,6 +24,7 @@ Usage: mnema backup status [options]
 say where this project's backup is and how far it is from the trees
 
 Options:
+  --global    say it of the machine's global tree instead of this project
   --json      emit the faithful reading as JSON
   -h, --help  display help for command
 ```

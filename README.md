@@ -226,6 +226,7 @@ claim about the agent hosts is held, and which are not held yet, is in [`docs/ev
   [Where a rule arrives](docs/rule-arrival.md) · [What it proves](docs/what-it-proves.md) ·
   [Recording decisions](docs/recording-decisions.md) · [Rules and the commits that cite them](docs/rules-and-the-commits-that-cite-them.md) ·
   [Committing the record](docs/committing-the-record.md) · [A second machine and your key](docs/a-second-machine-and-your-key.md) ·
+  [What a backup keeps, and what it loses](docs/what-a-backup-keeps-and-what-it-loses.md) ·
   [A record that inherits another](docs/a-record-inheriting-another.md) ·
   [Importing the decisions you already wrote](docs/importing-the-decisions-you-already-wrote.md) ·
   [Switching off what is handed to a model](docs/switching-off-what-is-handed-to-a-model.md) ·

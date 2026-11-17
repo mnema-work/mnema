@@ -17,6 +17,7 @@ The long sections of this page are pages of their own, and nothing in them was s
 - [Rules that govern a path, and the commits that cite them](rules-and-the-commits-that-cite-them.md)
 - [Committing the record through a pull request](committing-the-record.md)
 - [A second machine, and your key](a-second-machine-and-your-key.md)
+- [What a backup keeps, and what it loses](what-a-backup-keeps-and-what-it-loses.md)
 - [A record that inherits another repository's decisions](a-record-inheriting-another.md)
 - [The decisions you already wrote](importing-the-decisions-you-already-wrote.md)
 - [Switching off what mnema hands to a model](switching-off-what-is-handed-to-a-model.md)

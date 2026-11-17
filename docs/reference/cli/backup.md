@@ -11,7 +11,7 @@ In the help under **This machine**.
 | Command | What it does |
 | --- | --- |
 | [`mnema backup setup`](backup-setup.md) | say which folder keeps this project's backup, after a person confirms at a terminal that it keeps the text in clear |
-| [`mnema backup run`](backup-run.md) | copy this project's trees into its folder |
+| [`mnema backup run`](backup-run.md) | copy this project's trees into its folder, or with --global only the global tree |
 | [`mnema backup status`](backup-status.md) | say where this project's backup is and how far it is from the trees |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
@@ -52,11 +52,22 @@ that no longer starts as its copy stops the run and leaves the copy as it is. Ev
 checked, and every refusal above is made, before the first byte of any tree is written, so a
 refused run leaves the folder as it was.
 
+**The machine's global tree is a copy of its own.** It mixes the memory and the decisions of every
+project on the machine, so a project's `run` never copies it. `mnema backup setup --global <folder>`
+gives it a folder (it asks the same confirmation, and works outside a project), `mnema backup run
+--global` copies it and only it, into `<folder>/global/`, and `mnema backup status --global` says how
+far that copy is. Without `--global` the project's verbs say nothing of it, and `--global` without a
+folder for the global tree is refused: nothing is taken from a project's folder. The same rules hold
+for it: tails and public keys only, no private key, no link, a copy that only grows. Its
+`diagnostics.jsonl` and `report-state.json` are not copied until a study decides whether they should
+be.
+
 **The folder keeps the text in clear.** Nothing is encrypted: whoever can read the folder can
 read the record and the public keys it holds. `setup` says so and asks you to confirm it, at a
 terminal: without one it assigns nothing and tells you to run it in a terminal, because a person
 confirms it; if that matters, put the folder on an encrypted volume. **Your private key is
-not copied**: it stays on this machine, and `backup` offers no way to carry it.
+not copied**: it stays on this machine, and `backup` offers no way to carry it. [What a backup keeps,
+and what it loses](../../what-a-backup-keeps-and-what-it-loses.md) says the rest.
 
 <!-- End of the part written by hand. -->
 
@@ -69,15 +80,17 @@ copy this project's trees into a folder, and say how far the copy is (records
 nothing)
 
 Options:
-  -h, --help        display help for command
+  -h, --help                display help for command
 
 Commands:
-  setup <folder>    say which folder keeps this project's backup, after a person
-                    confirms at a terminal that it keeps the text in clear
-  run               copy this project's trees into its folder
-  status [options]  say where this project's backup is and how far it is from
-                    the trees
-  help [command]    display help for command
+  setup [options] <folder>  say which folder keeps this project's backup, after
+                            a person confirms at a terminal that it keeps the
+                            text in clear
+  run [options]             copy this project's trees into its folder, or with
+                            --global only the global tree
+  status [options]          say where this project's backup is and how far it is
+                            from the trees
+  help [command]            display help for command
 
 The copy is a folder per project, kept under the name of its record: the tails up to their
 last complete line and the public keys, and nothing else. The private tree is always copied;
@@ -85,4 +98,7 @@ the public tree only where the project is not in git, whose history is its own b
 private key is copied: a run is refused whole if a file it would copy holds one, and so is a
 symbolic link in the tree or in the folder. A copy only grows. The folder keeps the text in
 clear, which `setup` asks a person to confirm at a terminal. A machine can have a folder per project; a project has the one it was set up with.
+The machine's global tree, which mixes the memory of every project, is never part of a project's
+backup: `--global` copies it, and only it, into the folder `setup --global` gave it, as
+<folder>/global/.
 ```

@@ -73,9 +73,12 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
         return;
       }
       if (io.aPersonIsHere !== true || io.ask === undefined) {
+        const command = toGlobal
+          ? 'mnema backup setup --global <folder>'
+          : 'mnema backup setup <folder>';
         reportRefusal(wiring, {
           reason: 'NOT_AT_A_TERMINAL',
-          message: `${KEPT_IN_CLEAR} A person confirms that at a terminal, and nothing here can answer for them: run \`mnema backup setup${toGlobal ? ' --global' : ''} <folder>\` in a terminal. Nothing was assigned.`,
+          message: `${KEPT_IN_CLEAR} A person confirms that at a terminal, and nothing here can answer for them: run \`${command}\` in a terminal. Nothing was assigned.`,
         });
         return;
       }

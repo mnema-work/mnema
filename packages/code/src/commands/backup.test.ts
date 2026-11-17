@@ -31,6 +31,7 @@ import {
 } from './backup.js';
 import { runInit } from './init.js';
 import { runTask } from './task.js';
+import { runVerify } from './verify.js';
 
 let sandbox: string;
 let env: DiscoveryEnv;
@@ -348,5 +349,26 @@ describe("the backup of the machine's global tree", () => {
       ok: false,
       reason: 'BAD_DESTINATION',
     });
+  });
+
+  it('is no way to carry the signing key: a machine that lost it goes on under a new key, and what the old one signed still verifies', () => {
+    const a = withGlobal('alpha');
+    const folder = join(sandbox, 'folder-a');
+    expect(runBackupSetup(a, folder).ok && runGlobalBackupSetup(a, folder).ok).toBe(true);
+    expect(runBackupRun(a).ok && runGlobalBackupRun(a).ok).toBe(true);
+    const trees = resolveTrees(a.cwd, env);
+    // Nothing a copy holds is the key: the private files of the key root are in no copied file, whole.
+    const secret = filesUnder(trees.keyRoot).filter((file) => !file.endsWith('.pub'));
+    expect(secret.length).toBeGreaterThan(0);
+    const copies = filesUnder(folder).map((file) => readFileSync(join(folder, file), 'utf-8'));
+    for (const file of secret) {
+      const bytes = readFileSync(join(trees.keyRoot, file), 'utf-8');
+      expect(copies.some((text) => text.includes(bytes.trim()))).toBe(false);
+    }
+
+    rmSync(trees.keyRoot, { recursive: true, force: true });
+    expect(runTask(a, { title: 'written under a new key' }).ok).toBe(true);
+    const verdict = runVerify({ ...a, requirement: 'signed', global: false });
+    expect(verdict).toMatchObject({ ok: true, requirementMet: true });
   });
 });
