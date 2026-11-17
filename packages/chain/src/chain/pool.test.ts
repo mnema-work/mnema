@@ -58,7 +58,7 @@ function open(
   at: Checkout,
   how: {
     reserved?: ReadonlySet<string>;
-    onBase?: (tail: string, segment: string, hash: string) => boolean;
+    onBase?: (tail: string, segment: string, hash: string) => boolean | undefined;
     told?: Told;
     branch?: string | undefined;
   } = {},
