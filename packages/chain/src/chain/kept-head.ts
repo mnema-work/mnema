@@ -40,7 +40,7 @@
  * the note names that the disk no longer holds is not chained over, whatever the clear note says.
  */
 
-import { readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { canonicalBytes, canonicalStringify } from '../events/canonical.js';
 import { holdsExactly, parseStoredJson } from '../events/stored-json.js';
@@ -203,6 +203,7 @@ export function keepWrittenHeadDurably(
   const path = writtenHeadPath(layout, tailId);
   const staging = `${path}.${process.pid}`;
   try {
+    mkdirSync(dirname(path), { recursive: true });
     writeFileDurably(staging, `${canonicalStringify({ ...fields, sig })}\n`);
     renameSync(staging, path);
     syncDirectory(dirname(path));
