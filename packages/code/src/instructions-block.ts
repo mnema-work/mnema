@@ -409,26 +409,71 @@ export function withoutTheBlock(text: string): string {
   return kept + text.slice(from);
 }
 
-const IMPORT_LINE = /^ {0,3}@(\S+)[ \t]*$/;
+const IMPORT_TOKEN = /(?:^|[ \t])@(\S+)/g;
+
+/**
+ * The `@<path>` imports on `line`: an `@` that starts the line or follows a space or a tab, and the path up to the next
+ * space (a path with a space in it is not read, nor one followed by punctuation such as `@AGENTS.md.`, which names
+ * `AGENTS.md.`). With `prose`, a code span is taken out first, so `` `@AGENTS.md` `` names nothing. A line indented
+ * by four spaces or a tab is code and names nothing.
+ */
+function importsIn(line: string, prose: boolean): string[] {
+  if (/^(?: {4}|\t)/.test(line)) return [];
+  const text = prose ? withoutCodeSpans(line) : line;
+  return [...text.matchAll(IMPORT_TOKEN)].map((one) => one[1] as string);
+}
+
+/** `line` with each code span replaced by a letter, so a span is never a space before an `@`. */
+function withoutCodeSpans(line: string): string {
+  let out = '';
+  let at = 0;
+  // A closer is a whole run of backticks of the opener's length: a longer run is never a fragment of a shorter one.
+  const runEnd = (from: number): number => {
+    let end = from;
+    while (line[end] === '`') end++;
+    return end;
+  };
+  let open = line.indexOf('`', at);
+  while (open !== -1) {
+    const after = runEnd(open);
+    const length = after - open;
+    let close = -1;
+    for (let run = line.indexOf('`', after); run !== -1; run = line.indexOf('`', runEnd(run))) {
+      if (runEnd(run) - run === length) {
+        close = run;
+        break;
+      }
+    }
+    if (close === -1) {
+      out += line.slice(at, after);
+      at = after;
+    } else {
+      out += `${line.slice(at, open)}x`;
+      at = close + length;
+    }
+    open = line.indexOf('`', at);
+  }
+  return out + line.slice(at);
+}
 
 /**
  * Whether `text`, the content of `file` (a `CLAUDE.md` or a `.claude/CLAUDE.md`, by its path from the project's
- * root), imports the project's `AGENTS.md`: a line of its own that is `@<path>`, where the path, resolved from the
- * folder of `file` (Claude Code resolves a relative import from the file that holds it), is the `AGENTS.md` at the
- * root. In `CLAUDE.md` that is `@AGENTS.md` or `@./AGENTS.md`; in `.claude/CLAUDE.md`, `@../AGENTS.md`, while
- * `@AGENTS.md` there names `.claude/AGENTS.md` and covers nothing. A line inside a fenced code block or an HTML
- * comment (the host takes comments out before it reads) imports nothing, nor does an indented code line (four
- * spaces or more); a leading byte order mark is set aside. A fence that is never closed hides nothing, as in
+ * root), imports the project's `AGENTS.md`: an `@<path>` in its prose, where the path, resolved from the folder of
+ * `file` (Claude Code resolves a relative import from the file that holds it), is the `AGENTS.md` at the root. In
+ * `CLAUDE.md` that is `@AGENTS.md` or `@./AGENTS.md`, alone on a line or in a sentence; in `.claude/CLAUDE.md`,
+ * `@../AGENTS.md`, while `@AGENTS.md` there names `.claude/AGENTS.md` and covers nothing. An import inside a code span,
+ * a fenced code block, an indented code line or an HTML comment (the host takes comments out before it reads) imports
+ * nothing; a leading byte order mark is set aside. A fence that is never closed hides nothing, as in
  * {@link markerLines}. Only this one file is looked at: an import inside `AGENTS.md` itself, or a chain of imports,
- * is not followed, and one in the middle of a sentence is not read (ADR-375).
+ * is not followed (ADR-375).
  */
 export function importsAgents(text: string, file = 'CLAUDE.md'): boolean {
-  const covers = (line: string): boolean => {
-    const named = IMPORT_LINE.exec(line)?.[1];
-    // A path the host reads as absolute (`@/AGENTS.md`) is not the file at the root of the project.
-    if (named === undefined || posix.isAbsolute(named)) return false;
-    return posix.normalize(posix.join(posix.dirname(file), named)) === 'AGENTS.md';
-  };
+  const covers = (line: string, prose: boolean): boolean =>
+    importsIn(line, prose).some((named) => {
+      // A path the host reads as absolute (`@/AGENTS.md`) is not the file at the root of the project.
+      if (posix.isAbsolute(named)) return false;
+      return posix.normalize(posix.join(posix.dirname(file), named)) === 'AGENTS.md';
+    });
   const source = text.startsWith('\uFEFF') ? text.slice(1) : text;
   let fence: { readonly char: string; readonly length: number } | undefined;
   let hidden = false;
@@ -475,7 +520,7 @@ export function importsAgents(text: string, file = 'CLAUDE.md'): boolean {
       ) {
         fence = undefined;
         hidden = false;
-      } else if (covers(line)) {
+      } else if (covers(line, false)) {
         hidden = true;
       }
     } else if (opens !== null) {
@@ -483,7 +528,7 @@ export function importsAgents(text: string, file = 'CLAUDE.md'): boolean {
       if (ticks[0] === '~' || !(opens[2] as string).includes('`')) {
         fence = { char: ticks[0] as string, length: ticks.length };
       }
-    } else if (covers(line)) {
+    } else if (covers(line, true)) {
       found = true;
     }
     at = next;

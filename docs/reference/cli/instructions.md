@@ -56,12 +56,12 @@ another instructions file holds it, counts as left out, so `mnema instructions -
 without a terminal leave it alone and say in one line that it was left out, with the form that adds the block to it alone, `mnema instructions --hosts claude` (or the host it belongs to). `--hosts` takes what `init --hosts` takes and writes only the hosts it names, a file of yours under them where it exists; it cannot be given with `--check`, `--remove` or `--all-hosts`.
 Where no file holds a block, nothing was left out.
 
-A `CLAUDE.md` that imports the `AGENTS.md` at the root (a line of its own, `@AGENTS.md` or `@./AGENTS.md`), or a
-`.claude/CLAUDE.md` that does (`@../AGENTS.md`), gets no block while `AGENTS.md` is one of the files written: Claude Code
-reads an imported file as if its text stood where the line is, so the block there would be read twice. A relative import is
+A `CLAUDE.md` that imports the `AGENTS.md` at the root (`@AGENTS.md` or `@./AGENTS.md`, alone on a line or in a sentence),
+or a `.claude/CLAUDE.md` that does (`@../AGENTS.md`), gets no block while `AGENTS.md` is one of the files written: Claude Code
+reads an imported file as if its text stood where the import is, so the block there would be read twice. A relative import is
 resolved from the folder of the file that holds it, so `@AGENTS.md` in `.claude/CLAUDE.md` names `.claude/AGENTS.md` and
-covers nothing: that file gets the block. A line inside a code fence or an HTML comment, or indented as code, is not an
-import; a line in the middle of a sentence is not read. The file is not counted as left out, and `init`,
+covers nothing: that file gets the block. An import inside a code span, a code fence or an HTML comment, or in a line indented
+as code, is not read; a path followed by punctuation (`@AGENTS.md.`) names another file, and one in parentheses is not read. The file is not counted as left out, and `init`,
 `mnema instructions`, `--check` and `mnema doctor` say in one line why nothing is written in it. A block that is in it
 already is said by `--check` and `mnema doctor` to be read twice, and is never taken out without being asked:
 `mnema instructions` asks at a terminal whether to take it out and does so only on a yes; on a no, a block of an
@@ -211,7 +211,7 @@ four are written. --all-hosts writes all four, whichever are there. --hosts writ
 it names (claude, cursor, vscode, codex; a person’s CLAUDE.md or GEMINI.md under the host that
 is named), which is how to add the block to one file without writing the others.
 
-A CLAUDE.md that imports AGENTS.md (a line of its own, @AGENTS.md or @./AGENTS.md) or a
+A CLAUDE.md that imports AGENTS.md (@AGENTS.md or @./AGENTS.md, in a line or a sentence) or a
 .claude/CLAUDE.md that does (@../AGENTS.md: a relative import is read from the folder of the
 file that holds it) gets no block while AGENTS.md is written: Claude Code reads that file
 from there. One that holds a block already is said to be read twice, and at a terminal the
