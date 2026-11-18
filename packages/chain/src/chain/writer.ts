@@ -123,6 +123,7 @@ import {
   refuseToWriteThroughALink,
 } from './linked-write.js';
 import {
+  firstTailOfTheRepository,
   type HintOfTheId,
   inflightNames,
   markInflight,
@@ -1210,7 +1211,19 @@ export class ChainWriter {
       lastSegment !== undefined
     ) {
       const here = { root: this.pool.checkoutRoot };
-      if (!wroteOnThisBranch(here, this.tailId, this.pool.branch())) {
+      // The one tail `mnema init` wrote before the repository existed is the exception: see
+      // {@link firstTailOfTheRepository}.
+      if (
+        !wroteOnThisBranch(here, this.tailId, this.pool.branch()) &&
+        !firstTailOfTheRepository({
+          layout: this.layout,
+          shared: this.shared,
+          checkout: here,
+          tailId: this.tailId,
+          fingerprint: this.keyPair.fingerprint,
+          pool: this.pool,
+        })
+      ) {
         const onBase = this.pool.onBase(this.tailId, basename(lastSegment), found.hash);
         if (onBase !== true) {
           const left: NewTail['left'] =

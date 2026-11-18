@@ -10,7 +10,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { branchOfWorktree, entryIsOnTheBase } from './base-branch.js';
+import { branchOfWorktree, entryIsOnTheBase, tailHasBeenCommitted } from './base-branch.js';
 
 const ON_BASE = 'a'.repeat(64);
 const ELSEWHERE = 'b'.repeat(64);
@@ -157,4 +157,20 @@ describe('the branch a worktree has checked out', () => {
       expect(branchOfWorktree(join(table, '.git'), table)).toBe('feature/x');
     },
   );
+});
+
+describe('a tail some commit holds', () => {
+  it('is false in a repository with no commit, true once a commit of any ref holds a file of it, and false for another tail', () => {
+    const asked = tailHasBeenCommitted(repo, join(repo, '.mnema'));
+    expect(asked(TAIL)).toBe(false);
+    theBaseHolds('{"link":{"seq":1}}', 'refs/heads/elsewhere');
+    expect(asked(TAIL)).toBe(true);
+    expect(asked(`${'c'.repeat(64)}-${'2'.repeat(32)}`)).toBe(false);
+  });
+
+  it('is not answered where the folder is no repository', () => {
+    const outside = join(sandbox, 'plain');
+    mkdirSync(join(outside, '.mnema'), { recursive: true });
+    expect(tailHasBeenCommitted(outside, join(outside, '.mnema'))(TAIL)).toBeUndefined();
+  });
 });

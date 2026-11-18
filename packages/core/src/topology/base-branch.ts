@@ -101,6 +101,54 @@ export function entryIsOnTheBase(
 }
 
 /**
+ * Answers whether any commit of any ref holds a file of a tail of the record under `record` (in the
+ * working tree `top`): false for a repository with no commit yet, undefined where git did not answer.
+ * Asked once for the one tail that has no mark and is the only one of its key (`firstTailOfTheRepository`
+ * in the chain), so a tail written before the repository existed is told from one that was committed.
+ */
+export function tailHasBeenCommitted(
+  top: string,
+  record: string,
+): (tailId: string) => boolean | undefined {
+  let cwd: string;
+  let prefix: string;
+  try {
+    cwd = realpathSync.native(top);
+    prefix = relative(cwd, realpathSync.native(record)).split(sep).join('/');
+  } catch {
+    return () => undefined;
+  }
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    GIT_OPTIONAL_LOCKS: '0',
+    GIT_NO_LAZY_FETCH: '1',
+    GIT_TERMINAL_PROMPT: '0',
+  };
+  for (const name of REPOSITORY_VARIABLES) Reflect.deleteProperty(env, name);
+  return (tailId) => {
+    const path = [prefix, 'tails', tailId].filter((part) => part !== '').join('/');
+    const ran = spawnSync(
+      'git',
+      [
+        '-c',
+        'gc.auto=0',
+        '-c',
+        'maintenance.auto=false',
+        'log',
+        '--all',
+        '-1',
+        '--format=%H',
+        '--',
+        path,
+      ],
+      { cwd, env, encoding: 'utf-8', timeout: GIT_BUDGET_MS },
+    );
+    if (ran.status !== 0) return undefined;
+    return ran.stdout.trim() !== '';
+  };
+}
+
+/**
  * The branch a worktree has checked out, or undefined for a detached HEAD or where it cannot be said.
  * Read from the worktree's `HEAD` file; a repository kept in the `reftable` format writes the stub
  * `refs/heads/.invalid` there in every worktree, whatever the branch, so there git is asked
