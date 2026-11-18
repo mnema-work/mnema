@@ -150,7 +150,11 @@ export {
   requiredLevel,
   weakerLevel,
 } from './chain/level.js';
-export { UnreadableLineError } from './chain/lines.js';
+export {
+  readingWhatTheDiskLets,
+  UnreadableDiskError,
+  UnreadableLineError,
+} from './chain/lines.js';
 export { RecordLinkedError, refuseToWriteThrough } from './chain/linked-write.js';
 export { MigrationUnsettledError } from './chain/migration.js';
 export { illegalMoves, type PlacedEvent } from './chain/moves.js';
@@ -182,6 +186,7 @@ export {
   listPublicKeyFingerprints,
   listTails,
   listTailsLeavingLinks,
+  listTailsToChooseACacheBy,
   orderedSegments,
   type RefusedLine,
   type RefusedPart,
@@ -215,7 +220,7 @@ export {
   type TailRepairInput,
   type TailRepairRefusal,
 } from './chain/tail-repair.js';
-export { ensureTree, TAIL_MERGE_DRIVER } from './chain/tree.js';
+export { ensureTree, mergeLineIsMissing, TAIL_MERGE_DRIVER } from './chain/tree.js';
 export {
   type BackupKeyNote,
   type CensusNote,

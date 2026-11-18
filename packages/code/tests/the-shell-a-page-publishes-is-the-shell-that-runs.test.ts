@@ -243,6 +243,7 @@ export const PAGES: Readonly<Record<string, number>> = {
   'docs/reference/cli/tail-prune.md': 3,
   'docs/reference/cli/tail-relink.md': 1,
   'docs/reference/cli/tail-repair.md': 1,
+  'docs/reference/cli/upgrade.md': 2,
   'docs/reference/cli/usage.md': 2,
   'docs/reference/cli/witness.md': 3,
   'docs/rules-and-the-commits-that-cite-them.md': 10,

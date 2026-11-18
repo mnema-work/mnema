@@ -486,6 +486,10 @@ const UNWITNESSED: Readonly<Record<string, Debt>> = {
     reached: 'nobody imports it',
     why: "The diagram verb's declaration and its two usage refusals; a-picture-of-the-record.test.ts drives the verb through the program and asserts the diagrams it prints, never a value this file returns.",
   },
+  'packages/code/src/wiring/upgrade.ts': {
+    reached: 'nobody imports it',
+    why: "The upgrade verb's declaration and the one function both its doors call to print a plan; after-update.test.ts drives the verb through the program on both doors and asserts the lines, and the plan itself is asserted as a value on commands/after-update.ts.",
+  },
   'packages/code/src/wiring/doctor.ts': {
     reached: 'nobody imports it',
     why: 'The doctor verb\u2019s declaration and the one line it prints per finding; doctor-says-how-mnema-is-installed.test.ts runs the verb on the binary and asserts the lines, and the findings themselves are asserted on commands/doctor.ts.',
@@ -686,7 +690,7 @@ const UNWITNESSED: Readonly<Record<string, Debt>> = {
  * reading, so nothing can fall in two.
  */
 const THE_SHAPE_OF_WHAT_IS_LEFT: Readonly<Record<string, number>> = {
-  wiring: 51,
+  wiring: 52,
   presentation: 7,
   projections: 3,
   completion: 4,
@@ -801,6 +805,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/chain/src/chain/a-key-file-that-holds-no-key-is-refused.test.ts': 13,
   'packages/chain/src/chain/a-kind-this-reader-does-not-know-is-read-past.test.ts': 16,
   'packages/chain/src/chain/a-link-is-taken-back-only-by-the-identity-that-recorded-it.test.ts': 7,
+  'packages/chain/src/chain/a-part-the-disk-will-not-open-is-handed-to-a-collector.test.ts': 6,
   'packages/chain/src/chain/a-reader-hands-what-it-cannot-read-to-a-collector.test.ts': 10,
   'packages/chain/src/chain/a-record-the-frontier-wrote-is-read-by-both-readers.test.ts': 7,
   'packages/chain/src/chain/a-reformat-is-named-only-where-the-signatures-prove-it.test.ts': 10,
@@ -918,6 +923,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/src/cli.golden.test.ts': 9,
   'packages/code/src/cli.test.ts': 3,
   'packages/code/src/commands/accountability.test.ts': 10,
+  'packages/code/src/commands/after-update.test.ts': 13,
   'packages/code/src/commands/antipatterns.test.ts': 13,
   'packages/code/src/commands/backup.test.ts': 11,
   'packages/code/src/commands/brief.test.ts': 19,
@@ -976,7 +982,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/src/file-behind-a-path.test.ts': 6,
   'packages/code/src/git-log.test.ts': 7,
   'packages/code/src/key-file.test.ts': 2,
-  'packages/code/src/machine-state.test.ts': 5,
+  'packages/code/src/machine-state.test.ts': 6,
   'packages/code/src/mcp/hook-reply.test.ts': 2,
   'packages/code/src/mcp/lifecycle.test.ts': 2,
   'packages/code/src/not-a-project.test.ts': 8,
@@ -1073,6 +1079,8 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-note-can-be-retracted.test.ts': 11,
   'packages/code/tests/a-note-recorded-twice-is-the-one-on-the-record.test.ts': 12,
   'packages/code/tests/a-palette-for-the-words.test.ts': 26,
+  'packages/code/tests/a-part-the-disk-will-not-open-has-its-words.test.ts': 4,
+  'packages/code/tests/a-part-the-disk-will-not-open-is-named-and-never-an-errno.test.ts': 9,
   'packages/code/tests/a-part-this-mnema-does-not-read-has-its-words.test.ts': 4,
   'packages/code/tests/a-passphrase-in-the-environment-opens-the-persons-key.test.ts': 12,
   'packages/code/tests/a-picture-of-the-record.test.ts': 8,
@@ -1183,6 +1191,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/every-verifier-gives-one-ed25519-verdict.test.ts': 6,
   'packages/code/tests/every-write-of-the-command-line-says-whose-it-is.test.ts': 4,
   'packages/code/tests/every-write-signs-what-it-wrote.test.ts': 41,
+  'packages/code/tests/every-writer-passes-the-check-that-refuses-a-damaged-record.test.ts': 21,
   'packages/code/tests/host-contract/a-hook-hands-over-ten-thousand-units.test.ts': 5,
   'packages/code/tests/host-contract/a-note-of-the-hosts-memory-is-copied.test.ts': 4,
   'packages/code/tests/host-contract/a-refusal-and-a-pause-hold-the-write.test.ts': 6,
@@ -1833,6 +1842,7 @@ const PRODUCTION_FILES: readonly string[] = [
   'packages/code/src/cli.ts',
   'packages/code/src/commands/accountability.ts',
   'packages/code/src/commands/after-a-write.ts',
+  'packages/code/src/commands/after-update.ts',
   'packages/code/src/commands/aging.ts',
   'packages/code/src/commands/antipatterns.ts',
   'packages/code/src/commands/backup-hook.ts',
@@ -2161,6 +2171,7 @@ const PRODUCTION_FILES: readonly string[] = [
   'packages/code/src/wiring/timeline.ts',
   'packages/code/src/wiring/trailer.ts',
   'packages/code/src/wiring/unlink.ts',
+  'packages/code/src/wiring/upgrade.ts',
   'packages/code/src/wiring/usage.ts',
   'packages/code/src/wiring/verb.ts',
   'packages/code/src/wiring/verify.ts',
@@ -2384,8 +2395,9 @@ describe('every file has a test that names it', () => {
     // 80 with the beside-a-write verb's wiring, which a-rule-is-handed-after-a-write drives through the built binary.
     // 79 once the status printer's test imports it.
     // 80 with the record group's wiring, which a-tail-merges-and-pulls.test.ts drives through the binary.
-    expect(found.size).toBe(80);
-    expect(byReach('nobody imports it')).toBe(80);
+    // 81 with the upgrade verb's wiring, which after-update.test.ts drives through the program.
+    expect(found.size).toBe(81);
+    expect(byReach('nobody imports it')).toBe(81);
     expect(byReach('imported, and no assertion observes it')).toBe(0);
   });
 
@@ -2407,7 +2419,7 @@ describe('every file has a test that names it', () => {
     // Announced in the header and, until now, kept by hand. A shared excuse is how a table
     // like this turns into a rubber stamp, and a row drained to a stub is how it starts.
     const reasons = Object.values(UNWITNESSED).map((one) => one.why);
-    expect(reasons).toHaveLength(80);
+    expect(reasons).toHaveLength(81);
     expect(new Set(reasons).size).toBe(reasons.length);
     // The shortest reason standing is 156 characters; the floor is under it and well over
     // anything that could be written without saying what reaches that file.

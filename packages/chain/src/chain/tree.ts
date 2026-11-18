@@ -148,6 +148,18 @@ export function ensureTree(layout: ChainLayout): boolean {
 }
 
 /**
+ * Whether the tree's `.gitattributes` lacks the line that names the merge driver for a tail's files:
+ * what `ensureTree` appends at the next write of a tree made before the line existed. Reads only.
+ */
+export function mergeLineIsMissing(layout: ChainLayout): boolean {
+  const path = gitattributesPath(layout);
+  if (!existsSync(path)) return true;
+  return !readFileSync(path, 'utf-8')
+    .split(/\r?\n/)
+    .some((line) => line.trim() === MERGE_LINE);
+}
+
+/**
  * Writes `content` at `path` when nothing is there (returning true); otherwise appends `line`
  * at the end when no trimmed line of the file satisfies `has`, and touches nothing else.
  */

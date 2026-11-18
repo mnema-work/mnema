@@ -16,6 +16,7 @@ import { discoveryEnv } from '../env.js';
 import { fact } from '../presentation/detail.js';
 import { VERSION } from '../version.js';
 import { here } from './context.js';
+import { runTheUpgrade } from './upgrade.js';
 import { type Declared, readsTheRecord, type Wiring } from './verb.js';
 
 /** Registers `mnema doctor` on the program. */
@@ -24,13 +25,17 @@ export function registerDoctor(program: Command, wiring: Wiring): Declared {
   const verb = program
     .command('doctor')
     .description(
-      'say how mnema is installed on this machine, and what to do about each thing found (writes nothing unless you pass --fix)',
+      'say how mnema is installed on this machine, and what to do about each thing found (writes nothing unless you pass --fix or --after-update)',
     )
     .option(
       '--fix <what>',
       'make the one change a finding asks for, and only that one: `vscode` lists the plugin in the chat.pluginLocations setting of VS Code’s settings.json, after keeping a copy of the file; `private-tree` moves the private notes a worktree still holds in .mnema/private/ into the repository’s git directory; `merge-driver` writes, into this repository’s git configuration, the merge driver the record’s tails name and then merge.autoStash and rebase.autoStash, so a plain `git pull` carries the record; it replaces a driver of mnema’s that cannot run here',
     )
-    .option('--dry-run', 'with --fix: say what would change and write nothing')
+    .option(
+      '--after-update',
+      'what `mnema upgrade` does: bring this project and machine up to the installed version, asking before anything that changes how the repository behaves',
+    )
+    .option('--dry-run', 'with --fix or --after-update: say what would change and write nothing')
     .addHelpText(
       'after',
       [
@@ -59,9 +64,20 @@ export function registerDoctor(program: Command, wiring: Wiring): Declared {
         'written while the driver cannot run here), so that a plain `git pull` carries events of the',
         'record not yet committed. It replaces a driver of mnema’s that cannot run, and leaves a',
         'setting of the same name it did not write, and then writes none.',
+        '`--after-update` is `mnema upgrade`: it applies what an update left of mnema’s own, asks before the',
+        'merge driver and its autoStash settings, and says what a host keeps; `--dry-run` shows the plan.',
       ].join('\n'),
     )
-    .action(async (options: { fix?: string; dryRun?: boolean }) => {
+    .action(async (options: { fix?: string; dryRun?: boolean; afterUpdate?: boolean }) => {
+      if (options.afterUpdate === true) {
+        if (options.fix !== undefined) {
+          io.err(render(fact('`--after-update` and `--fix` cannot be given together.')));
+          io.fail();
+          return;
+        }
+        await runTheUpgrade(wiring, { dryRun: options.dryRun === true });
+        return;
+      }
       const { fixPrivateTree, fixVscode, runDoctor } = await import('../commands/doctor.js');
       const { fixMergeDriver } = await import('../commands/doctor-merge-driver.js');
       const { driverCommand } = await import('../commands/record-pull.js');
@@ -104,7 +120,9 @@ export function registerDoctor(program: Command, wiring: Wiring): Declared {
       if (options.dryRun === true) {
         io.err(
           render(
-            fact('`--dry-run` goes with `--fix`; asked alone, `mnema doctor` writes nothing.'),
+            fact(
+              '`--dry-run` goes with `--fix` or `--after-update`; asked alone, `mnema doctor` writes nothing.',
+            ),
           ),
         );
         io.fail();

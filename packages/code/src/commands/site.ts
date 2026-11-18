@@ -29,7 +29,7 @@
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join, relative, resolve } from 'node:path';
-import { catalogUpcasters, ensureTree, verify } from '@mnema/chain';
+import { catalogUpcasters, ensureTree, readingWhatTheDiskLets, verify } from '@mnema/chain';
 import { type DiscoveryEnv, orderedEvents, realOfMaybeMissing, resolveTrees } from '@mnema/core';
 import { inAWorkTree } from '../git-log.js';
 import { tailsOfFiles } from '../site/browser/tails.js';
@@ -127,7 +127,10 @@ export function readSiteHead(text: string): SiteHead | string {
 function filesUnder(base: string, dir: string): string[] {
   if (!existsSync(dir)) return [];
   const found: string[] = [];
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+  const place = dir.slice(base.length + 1).replaceAll('\\', '/');
+  for (const entry of readingWhatTheDiskLets(dir, place, () =>
+    readdirSync(dir, { withFileTypes: true }),
+  )) {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) found.push(...filesUnder(base, path));
     else if (entry.isFile())
@@ -153,7 +156,9 @@ function recordFiles(publicRoot: string): Record<string, string> {
   ];
   const files: Record<string, string> = {};
   for (const file of wanted) {
-    files[file] = readFileSync(join(publicRoot, file)).toString('base64');
+    files[file] = readingWhatTheDiskLets(join(publicRoot, file), file, () =>
+      readFileSync(join(publicRoot, file)),
+    ).toString('base64');
   }
   return files;
 }

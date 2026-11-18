@@ -120,7 +120,7 @@ export interface ScopedLinkBreak {
    * `root` the directory of the tree's record, so the refusal of a write can say what it always said.
    */
   readonly unread?: {
-    readonly kind: 'line' | 'link';
+    readonly kind: 'line' | 'link' | 'disk';
     readonly place: string;
     readonly line?: number;
     readonly reason: string;
@@ -182,6 +182,17 @@ const LEFT_UNREAD =
 export const NOT_VERSIONED =
   'This record is not versioned: update mnema if a newer one wrote the line, restore the file from a copy, or repair or remove the line named above.';
 
+/** What a part this mnema does not read is, by its kind, as an issue line says it. */
+const THE_PART = {
+  line: 'a line that does not read',
+  link: 'a symbolic link',
+  disk: 'a part the disk does not let this mnema open',
+} as const;
+
+/** The way out of a part the disk does not let this mnema open: the part itself is to be put right, in any tree. */
+export const DISK_WAY_OUT =
+  'Give this user access to it, or put back the folder or file that belongs there.';
+
 /** The way out of a part this mnema does not read, by its kind and the tree it is in (ADR-408). */
 function wayOut(
   broken: ScopedLinkBreak & { readonly unread: NonNullable<ScopedLinkBreak['unread']> },
@@ -189,6 +200,8 @@ function wayOut(
   if (broken.unread.kind === 'link') {
     return 'Replace the link with the folder or file it points to.';
   }
+  // Nothing in the repository’s history puts a permission or a folder back, in any tree.
+  if (broken.unread.kind === 'disk') return DISK_WAY_OUT;
   // Only the public tree is kept by the repository, so only its way out is a restore from history.
   return broken.scope === 'public'
     ? `Update mnema if a newer one wrote the line, or \`mnema tail repair ${oneLine(broken.tail)}\` puts it back from the repository’s history.`
@@ -203,7 +216,7 @@ function issueLines(breaks: readonly ScopedLinkBreak[]): readonly string[] {
   return breaks.map((broken) => {
     if (broken.unread !== undefined) {
       const where = `${oneLine(broken.unread.place)}${broken.unread.line === undefined ? '' : ` line ${oneLine(String(broken.unread.line))}`}`;
-      const what = broken.unread.kind === 'link' ? 'a symbolic link' : 'a line that does not read';
+      const what = THE_PART[broken.unread.kind];
       return `issue [T1] ${oneLine(broken.scope)} ${oneLine(broken.tail === '' ? broken.unread.place : broken.tail)}: ${what} (${where}): ${oneLine(broken.unread.reason)}; this part was not read. ${wayOut({ ...broken, unread: broken.unread })}`;
     }
     const at = `issue [T1] ${oneLine(broken.scope)} ${oneLine(broken.tail)}#${oneLine(String(broken.seq))}: ${oneLine(broken.detail)}`;
