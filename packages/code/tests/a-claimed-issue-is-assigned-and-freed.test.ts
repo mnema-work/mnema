@@ -204,7 +204,7 @@ describe('an assignment is freed after 14 days with no pull request', () => {
 
   it('names an issue by number in the title, the body or the address', () => {
     expect(namesIssue({ title: 'Fix #7' }, 7)).toBe(true);
-    expect(namesIssue({ title: 'x', body: 'Fixes felipesauer/mnema#7.' }, 7)).toBe(false);
+    expect(namesIssue({ title: 'x', body: 'Fixes another/repo#7.' }, 7)).toBe(false);
     expect(namesIssue({ title: 'x', body: 'see https://github.com/a/b/issues/7' }, 7)).toBe(true);
     expect(namesIssue({ title: 'x', body: 'Closes #17' }, 7)).toBe(false);
   });
