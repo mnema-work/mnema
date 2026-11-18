@@ -1322,6 +1322,8 @@ $ mnema backup --help
 |                             never over a file the tree holds; a copy of another
 |                             record is asked first, and --undo puts back what it
 |                             replaced
+|   hook                      install or remove an optional git hook that runs the
+|                             backup after a commit
 |   help [command]            display help for command
 |
 | The copy is a folder per project, kept under the name of its record: the tails up to their
@@ -1333,6 +1335,9 @@ $ mnema backup --help
 | `verify` reads the copy as a record (with this mnema's reader) and says how it stands against the trees; `restore` puts it
 | back into a tree that lost files, and never over a file the tree holds; a copy of another record is asked first,
 | what the tree held is kept aside in the git directory, and `restore --undo` puts it back.
+| A destination may be a git remote (or the folder of a bare repository): `run` commits the copy to a clone of it
+| in the data directory and pushes it, one more commit each run, and never squashes, amends or forces: the
+| destination keeps the whole history. `hook install` adds an optional post-commit hook that runs the backup.
 | The machine's global tree, which mixes the memory of every project, is never part of a project's
 | backup: `--global` copies it, and only it, into the folder `setup --global` gave it, as
 | <folder>/global/.
@@ -2969,7 +2974,7 @@ $ mnema backup setup --help
 |
 | Arguments:
 |   folder      the folder (outside the working tree, the record and the git
-|               directory)
+|               directory), or a git remote that keeps the copy
 |
 | Options:
 |   --global    assign the folder to the machine's global tree instead of this
@@ -3024,6 +3029,30 @@ $ mnema backup restore --help
 |   --undo           put back what the last restore of another record kept aside
 |   -h, --help       display help for command
 
+### mnema backup hook --help
+$ mnema backup hook --help
+| Usage: mnema backup hook [options] [command]
+|
+| install or remove an optional git hook that runs the backup after a commit
+|
+| Options:
+|   -h, --help      display help for command
+|
+| Commands:
+|   install         add the post-commit hook that runs the backup (refuses a hook
+|                   that is not a shell script, and a hooksPath inside the working
+|                   tree)
+|   uninstall       take out the post-commit block mnema added, and the file only
+|                   if mnema wrote it whole
+|   help [command]  display help for command
+|
+| The hook is a post-commit script that runs `mnema backup run` in the background, so a commit
+| never waits for a network and never fails because of one. It runs only where `install` put
+| it. It is written where git reads hooks, and refused where core.hooksPath is inside the
+| working tree (a directory the repository shares). A shell hook that is already there keeps
+| its text and gets a marked block at the end; any other hook is left as it is. `uninstall`
+| takes out only what `install` put.
+
 ### mnema run start --help
 $ mnema run start --help
 | Usage: mnema run start [options]
@@ -3050,3 +3079,23 @@ $ mnema run end --help
 |                     agent is credited to you
 |   --outcome <text>  a short note on how the session went
 |   -h, --help        display help for command
+
+### mnema backup hook install --help
+$ mnema backup hook install --help
+| Usage: mnema backup hook install [options]
+|
+| add the post-commit hook that runs the backup (refuses a hook that is not a
+| shell script, and a hooksPath inside the working tree)
+|
+| Options:
+|   -h, --help  display help for command
+
+### mnema backup hook uninstall --help
+$ mnema backup hook uninstall --help
+| Usage: mnema backup hook uninstall [options]
+|
+| take out the post-commit block mnema added, and the file only if mnema wrote it
+| whole
+|
+| Options:
+|   -h, --help  display help for command

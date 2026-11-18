@@ -28,7 +28,7 @@
  */
 
 import { existsSync, lstatSync, statSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname } from 'node:path';
 import { recordNamedIn } from '@mnema/chain';
 import {
   AsideError,
@@ -42,13 +42,19 @@ import {
   backupConfigPath,
   type CopyReading,
   type CopyStanding,
+  cacheOf,
+  commitAndPush,
   copyNamed,
   type DiscoveryEnv,
   destinationOf,
+  GitDestinationError,
   globalDestinationOf,
+  isGitDestination,
   type KeptAside,
+  keptAs,
   noWriterHolds,
   type PreparedRestore,
+  type Pushed,
   prepareCopy,
   prepareRestore,
   type Restored,
@@ -58,10 +64,13 @@ import {
   restoreCopies,
   setAside,
   standingOfCopy,
+  syncCache,
   treesToKeep,
   type Undone,
   undoAside,
   whyNotADestination,
+  whyNotARemote,
+  withoutUserinfo,
   withRestoreLock,
   writeCopy,
 } from '@mnema/core';
@@ -154,7 +163,11 @@ function refusedBy(error: unknown): BackupRefused {
   if (error instanceof BackupRefusedError) {
     return { ok: false, reason: 'REFUSED', code: error.code, message: error.message };
   }
-  if (error instanceof AsideError || error instanceof BackupConfigError) {
+  if (
+    error instanceof AsideError ||
+    error instanceof BackupConfigError ||
+    error instanceof GitDestinationError
+  ) {
     return { ok: false, reason: 'REFUSED', code: error.code, message: error.message };
   }
   throw error;
@@ -184,11 +197,54 @@ function badFolder(
   return undefined;
 }
 
+/** A destination as it is printed: a git remote without its userinfo, a folder as it is. */
+function shown(destination: string): string {
+  return isGitDestination(destination) ? withoutUserinfo(destination) : destination;
+}
+
+/**
+ * Whether what `setup` was given may keep a backup, and what is kept of it: a git remote (or the
+ * folder of a bare repository) as it is written, a folder as the absolute path it resolves to.
+ */
+function checkedDestination(
+  cwd: string,
+  given: string,
+  resolved: ReturnType<typeof resolveTrees>,
+): { readonly ok: true; readonly destination: string; readonly git: boolean } | BackupRefused {
+  const kept = keptAs(cwd, given);
+  if (isGitDestination(kept)) {
+    const why = whyNotARemote(kept);
+    if (why !== undefined) return { ok: false, reason: 'BAD_DESTINATION', message: why };
+    return { ok: true, destination: kept, git: true };
+  }
+  const bad = badFolder(kept, resolved);
+  if (bad !== undefined) return bad;
+  return { ok: true, destination: kept, git: false };
+}
+
+/**
+ * The folder a destination is read and written as: itself, or the clone cache of a git one, which
+ * `sync` first brings up to what the remote holds. The cache is the data directory's, never a project's.
+ */
+function folderFor(destination: string, configPath: string, sync: boolean): string | BackupRefused {
+  if (!isGitDestination(destination)) return destination;
+  const cache = cacheOf(dirname(configPath), destination);
+  if (!sync) return cache;
+  try {
+    syncCache(destination, cache);
+  } catch (error) {
+    return refusedBy(error);
+  }
+  return cache;
+}
+
 /** What `setup` assigned. */
 export interface BackupSetUp {
   readonly ok: true;
   readonly record: string;
   readonly destination: string;
+  /** Whether the destination is a git repository, which keeps the whole history. */
+  readonly git: boolean;
   /** The folder the project had before, when it had one. */
   readonly replaced: string | undefined;
 }
@@ -200,13 +256,19 @@ export interface BackupSetUp {
 export function checkBackupSetup(
   ctx: BackupContext,
   folder: string,
-): { readonly ok: true; readonly record: string; readonly destination: string } | BackupRefused {
+):
+  | {
+      readonly ok: true;
+      readonly record: string;
+      readonly destination: string;
+      readonly git: boolean;
+    }
+  | BackupRefused {
   const project = projectOf(ctx);
   if ('ok' in project) return project;
-  const destination = resolve(ctx.cwd, folder);
-  const bad = badFolder(destination, project.resolved);
-  if (bad !== undefined) return bad;
-  return { ok: true, record: project.record, destination };
+  const checked = checkedDestination(ctx.cwd, folder, project.resolved);
+  if (!checked.ok) return checked;
+  return { ok: true, record: project.record, destination: checked.destination, git: checked.git };
 }
 
 /** Assigns the folder to this project. The person's confirmation comes before this, in the wiring. */
@@ -225,7 +287,13 @@ export function runBackupSetup(
       checked.destination,
       now,
     );
-    return { ok: true, record: checked.record, destination: checked.destination, replaced };
+    return {
+      ok: true,
+      record: checked.record,
+      destination: shown(checked.destination),
+      git: checked.git,
+      replaced: replaced === undefined ? undefined : shown(replaced),
+    };
   } catch (error) {
     return refusedBy(error);
   }
@@ -264,6 +332,8 @@ export interface BackupRun {
   readonly noPrivateTree: boolean;
   /** True where the public tree is not copied because the project is in git. */
   readonly publicIsInGit: boolean;
+  /** What committing and pushing did, where the destination is a git repository. */
+  readonly pushed: Pushed | undefined;
 }
 
 /** Copies the trees this project has into its folder. */
@@ -273,9 +343,12 @@ export function runBackupRun(
 ): BackupRun | BackupRefused {
   const project = projectOf(ctx);
   if ('ok' in project) return project;
-  const destination = assigned(project);
+  const stored = assigned(project);
+  if (typeof stored !== 'string') return stored;
+  const destination = folderFor(stored, project.configPath, true);
   if (typeof destination !== 'string') return destination;
   const copied: { tree: BackupTree; files: number; written: number }[] = [];
+  let pushed: Pushed | undefined;
   try {
     // EVERY CHECK OF EVERY TREE COMES BEFORE THE FIRST BYTE: a run is one thing, and a tree refused
     // leaves the folder as it was, the trees that were fine included.
@@ -286,16 +359,18 @@ export function runBackupRun(
       const done = writeCopy(one, now);
       copied.push({ tree: one.tree, files: done.files, written: done.written });
     }
+    if (isGitDestination(stored)) pushed = commitAndPush(stored, destination, now);
   } catch (error) {
     return refusedBy(error);
   }
   return {
     ok: true,
     record: project.record,
-    destination,
+    destination: shown(stored),
     copied,
     noPrivateTree: !project.trees.some(([tree]) => tree === 'private'),
     publicIsInGit: project.resolved.projectPublicMachinery !== undefined,
+    pushed,
   };
 }
 
@@ -315,13 +390,16 @@ export interface BackupStatus {
 export function runBackupStatus(ctx: BackupContext): BackupStatus | BackupRefused {
   const project = projectOf(ctx);
   if ('ok' in project) return project;
-  const destination = assigned(project);
+  const stored = assigned(project);
+  if (typeof stored !== 'string') return stored;
+  // A status writes nothing and asks no network: a git destination is read as the cache last left it.
+  const destination = folderFor(stored, project.configPath, false);
   if (typeof destination !== 'string') return destination;
   try {
     return {
       ok: true,
       record: project.record,
-      destination,
+      destination: shown(stored),
       trees: project.trees.map(([tree, root]) => ({
         tree,
         ...standingOfCopy(root, destination, project.record, tree),
@@ -362,18 +440,15 @@ function machineOf(ctx: BackupContext): Machine {
 export function checkGlobalBackupSetup(
   ctx: BackupContext,
   folder: string,
-): { readonly ok: true; readonly destination: string } | BackupRefused {
-  const machine = machineOf(ctx);
-  const destination = resolve(ctx.cwd, folder);
-  const bad = badFolder(destination, machine.resolved);
-  if (bad !== undefined) return bad;
-  return { ok: true, destination };
+): { readonly ok: true; readonly destination: string; readonly git: boolean } | BackupRefused {
+  return checkedDestination(ctx.cwd, folder, machineOf(ctx).resolved);
 }
 
 /** What `setup --global` assigned. */
 export interface GlobalBackupSetUp {
   readonly ok: true;
   readonly destination: string;
+  readonly git: boolean;
   readonly replaced: string | undefined;
 }
 
@@ -391,7 +466,12 @@ export function runGlobalBackupSetup(
       checked.destination,
       now,
     );
-    return { ok: true, destination: checked.destination, replaced };
+    return {
+      ok: true,
+      destination: shown(checked.destination),
+      git: checked.git,
+      replaced: replaced === undefined ? undefined : shown(replaced),
+    };
   } catch (error) {
     return refusedBy(error);
   }
@@ -422,6 +502,8 @@ export interface GlobalBackupRun {
   readonly destination: string;
   /** Undefined where this machine has no global tree yet, so there was nothing to copy. */
   readonly copied: { readonly files: number; readonly written: number } | undefined;
+  /** What committing and pushing did, where the destination is a git repository. */
+  readonly pushed: Pushed | undefined;
 }
 
 /** Copies the global tree, and only it, into the folder it was assigned. */
@@ -430,12 +512,22 @@ export function runGlobalBackupRun(
   now: Date = new Date(),
 ): GlobalBackupRun | BackupRefused {
   const machine = machineOf(ctx);
-  const destination = globalAssigned(machine);
+  const stored = globalAssigned(machine);
+  if (typeof stored !== 'string') return stored;
+  if (machine.root === undefined) {
+    return { ok: true, destination: shown(stored), copied: undefined, pushed: undefined };
+  }
+  const destination = folderFor(stored, machine.configPath, true);
   if (typeof destination !== 'string') return destination;
-  if (machine.root === undefined) return { ok: true, destination, copied: undefined };
   try {
     const done = writeCopy(prepareCopy(machine.root, destination, undefined, 'global'), now);
-    return { ok: true, destination, copied: { files: done.files, written: done.written } };
+    const pushed = isGitDestination(stored) ? commitAndPush(stored, destination, now) : undefined;
+    return {
+      ok: true,
+      destination: shown(stored),
+      copied: { files: done.files, written: done.written },
+      pushed,
+    };
   } catch (error) {
     return refusedBy(error);
   }
@@ -452,13 +544,16 @@ export interface GlobalBackupStatus {
 /** Says where the global tree's copy is and how far it is from the tree. Writes nothing. */
 export function runGlobalBackupStatus(ctx: BackupContext): GlobalBackupStatus | BackupRefused {
   const machine = machineOf(ctx);
-  const destination = globalAssigned(machine);
+  const stored = globalAssigned(machine);
+  if (typeof stored !== 'string') return stored;
+  if (machine.root === undefined)
+    return { ok: true, destination: shown(stored), standing: undefined };
+  const destination = folderFor(stored, machine.configPath, false);
   if (typeof destination !== 'string') return destination;
-  if (machine.root === undefined) return { ok: true, destination, standing: undefined };
   try {
     return {
       ok: true,
-      destination,
+      destination: shown(stored),
       standing: standingOfCopy(machine.root, destination, undefined, 'global'),
     };
   } catch (error) {
@@ -485,7 +580,9 @@ export interface BackupVerified {
 export function runBackupVerify(ctx: BackupContext): BackupVerified | BackupRefused {
   const project = projectOf(ctx);
   if ('ok' in project) return project;
-  const destination = assigned(project);
+  const stored = assigned(project);
+  if (typeof stored !== 'string') return stored;
+  const destination = folderFor(stored, project.configPath, true);
   if (typeof destination !== 'string') return destination;
   const trees: TreeReading[] = [];
   try {
@@ -512,7 +609,7 @@ export function runBackupVerify(ctx: BackupContext): BackupVerified | BackupRefu
   return {
     ok: true,
     record: project.record,
-    destination,
+    destination: shown(stored),
     trees,
     sound: trees.every((one) => 'reading' in one && one.reading.ok),
   };
@@ -525,7 +622,10 @@ export interface RestorePlan {
   readonly record: string | undefined;
   /** The record the copy is of. */
   readonly copyRecord: string;
+  /** The folder the copy is read from: the destination itself, or the clone cache of a git one. */
   readonly destination: string;
+  /** The destination as it is printed. */
+  readonly shown: string;
   readonly prepared: readonly PreparedRestore[];
   /** Trees with no copy, so nothing to restore. */
   readonly noCopy: readonly BackupTree[];
@@ -548,7 +648,7 @@ export interface RestorePlan {
 function whereIsTheCopy(
   located: Located,
   from: string | undefined,
-): { destination: string; copyRecord: string } | BackupRefused {
+): { destination: string; shown: string; copyRecord: string } | BackupRefused {
   const noFolder = (): BackupRefused => ({
     ok: false,
     reason: 'NO_DESTINATION',
@@ -560,17 +660,28 @@ function whereIsTheCopy(
     if (located.record !== undefined || from !== undefined) {
       const destination = destinationOf(config, (located.record ?? from) as string);
       if (destination === undefined) return noFolder();
-      return { destination, copyRecord: (from ?? located.record) as string };
+      const folder = folderFor(destination, located.configPath, true);
+      if (typeof folder !== 'string') return folder;
+      return {
+        destination: folder,
+        shown: shown(destination),
+        copyRecord: (from ?? located.record) as string,
+      };
     }
-    const found = new Map<string, string>();
+    const found = new Map<string, { folder: string; shown: string }>();
     for (const [record, { destination }] of config) {
+      // A git destination is brought up to its remote to be asked; one that cannot be is not a candidate.
+      const folder = folderFor(destination, located.configPath, true);
+      if (typeof folder !== 'string') continue;
       for (const tree of ['public', 'private'] as const) {
-        if (copyNamed(destination, record, tree) === record) found.set(record, destination);
+        if (copyNamed(folder, record, tree) === record) {
+          found.set(record, { folder, shown: shown(destination) });
+        }
       }
     }
     const [one, ...more] = [...found];
     if (one !== undefined && more.length === 0) {
-      return { destination: one[1], copyRecord: one[0] };
+      return { destination: one[1].folder, shown: one[1].shown, copyRecord: one[0] };
     }
     return {
       ok: false,
@@ -600,7 +711,7 @@ export function planBackupRestore(ctx: BackupContext, from?: string): RestorePla
   if ('ok' in located) return located;
   const where = whereIsTheCopy(located, from);
   if ('ok' in where) return where;
-  const { destination, copyRecord } = where;
+  const { destination, copyRecord, shown: printed } = where;
   const noCopy: BackupTree[] = [];
   const prepared: PreparedRestore[] = [];
   let first: string | undefined;
@@ -638,6 +749,7 @@ export function planBackupRestore(ctx: BackupContext, from?: string): RestorePla
     record: located.record,
     copyRecord,
     destination,
+    shown: printed,
     prepared,
     noCopy,
     asks: asking.length > 0,
@@ -733,7 +845,7 @@ export function runBackupRestore(
         ok: true as const,
         record: plan.record,
         copyRecord: plan.copyRecord,
-        destination: plan.destination,
+        destination: plan.shown,
         dryRun,
         trees: prepared.map((one, at) => ({ ...one, restored: done[at] })),
         noCopy: plan.noCopy,

@@ -1,6 +1,6 @@
 # What a backup keeps, and what it loses
 
-A backup copies the text of a record into a folder you name. This page says what is in that
+A backup copies the text of a record into a folder you name, or into a git repository. This page says what is in that
 copy, what is never in it, and what you still have to look after yourself. The commands are on
 [the backup page](reference/cli/backup.md).
 
@@ -100,12 +100,42 @@ when that tree lost its tails nothing names the record. `restore` then takes the
 asks (when this machine has the copy of more than one record, it asks for `--from`). A copy that disagrees with itself (the folder, its
 manifest and its tails name different records) is refused, never asked.
 
+## A git repository as the destination
+
+`mnema backup setup <remote>` takes a git remote (`https://`, `ssh://`, `file://` or `user@host:path`)
+or the folder of a bare repository in place of a folder. `setup` still asks you to confirm, at a
+terminal, that the text is kept in clear; for a remote it adds that every run is a commit that stays
+in the remote until its owner deletes it. What changes after that:
+
+- `run` keeps a clone of the remote in the data directory, writes the copy there as it would write
+  a folder, commits it and pushes. Each run adds a commit; the destination keeps the whole history.
+  Nothing is squashed, amended, rebased or force-pushed: a remote that holds history the clone lacks
+  is brought in by a fast-forward and by nothing else, and one that has gone another way is refused,
+  whole, with nothing rewritten. A run that cannot push leaves its commit in the clone, and the next
+  run sends it.
+- `verify` and `restore` bring the clone up to the remote first, and read it as they read a folder:
+  on a machine that has none, `setup` with the same remote and `restore` clone it.
+- Every git it starts runs with a clean environment: no variable named `GIT_*` is inherited (a
+  hook runs with `GIT_DIR` and `GIT_INDEX_FILE` set, and they never reach the destination's git),
+  and `GIT_TERMINAL_PROMPT=0` keeps a missing credential from waiting for you. A credential comes
+  from your credential helper or your ssh key, never from mnema.
+- A remote written with a password, or an `http(s)` one written with a user (a token is one), is
+  refused, so no credential is kept in `backup.json`; the remote is printed without its user.
+
+`mnema backup hook install` adds a `post-commit` hook that runs `mnema backup run` in the
+background after a commit, so a commit never waits for the network and never fails because of it.
+It is only ever added when you ask. It is refused where `core.hooksPath` is inside the working
+tree (a directory the repository shares). A shell hook that is already there keeps its text and
+gets a marked block at its end; a hook that is not a shell script is left as it is. `hook uninstall`
+takes out exactly what `install` put. The hook says nothing when a run fails: `mnema backup status`
+and `verify` are where you look.
+
 ## What you still look after
 
 - The folder itself: where it is, who can read it, and that it is on a disk that is not the one it
   copies. `mnema backup status` says how far the copy is from the trees; a copy that was never run
   again after the record grew is behind by exactly what `status` counts.
-- Running it. `backup run` copies when you ask it to: this page says nothing of a backup that runs by itself.
+- Running it. `backup run` copies when you ask it to, and after each commit if you installed the hook; nothing else runs it.
 - Reading it. A copy nobody read back is a copy nobody knows is good: run `mnema backup verify` now and then.
 - The key. Keep a copy of it the way [a second machine and your key](a-second-machine-and-your-key.md)
   describes, apart from the folder.
