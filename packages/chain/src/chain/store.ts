@@ -130,7 +130,8 @@ export function listedWithoutLinks(
   const links = entries.filter((entry) => entry.link);
   if (links.length === 0) return entries;
   const [first] = links;
-  if (refused === undefined) throw new LinkedRecordError(layout, `${place}/${(first as ListedEntry).name}`);
+  if (refused === undefined)
+    throw new LinkedRecordError(layout, `${place}/${(first as ListedEntry).name}`);
   for (const link of links) refused(new LinkedRecordError(layout, `${place}/${link.name}`));
   return entries.filter((entry) => !entry.link);
 }
@@ -733,7 +734,9 @@ export function refusedPartOf(error: UnreadableLineError, line?: number): Refuse
       reason: error.reason,
     };
   }
-  const named = /[\\/]tails[\\/]([^\\/]+)[\\/]([^\\/]+) (?:line|byte offset) (\d+)$/.exec(error.locus);
+  const named = /[\\/]tails[\\/]([^\\/]+)[\\/]([^\\/]+) (?:line|byte offset) (\d+)$/.exec(
+    error.locus,
+  );
   if (named === null) return { kind: 'line', tail: '', place: error.locus, reason: error.reason };
   return {
     kind: 'line',

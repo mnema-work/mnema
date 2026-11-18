@@ -199,5 +199,7 @@ function lastAccounted(
   upcasters: UpcasterRegistry,
   none: number,
 ): number {
-  return readTailTip(layout, tail, upcasters, THE_LAST_ENTRY, aPartLeftOut).at(-1)?.link.seq ?? none;
+  return (
+    readTailTip(layout, tail, upcasters, THE_LAST_ENTRY, aPartLeftOut).at(-1)?.link.seq ?? none
+  );
 }

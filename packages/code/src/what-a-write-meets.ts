@@ -463,7 +463,8 @@ export function alteredEntrySentence(facts: readonly ScopedLinkBreak[]): string 
  */
 export function unreadableErrorOf(fact: ScopedLinkBreak): UnreadableLineError {
   const { unread } = fact;
-  if (unread === undefined) throw new Error('a fact that names no part of the record was asked for its refusal');
+  if (unread === undefined)
+    throw new Error('a fact that names no part of the record was asked for its refusal');
   if (unread.kind === 'link') return new LinkedRecordError({ root: unread.root }, unread.place);
   const file = join(unread.root, ...unread.place.split('/'));
   return new UnreadableLineError(`${file} line ${unread.line ?? 0}`, unread.reason);

@@ -74,11 +74,11 @@ import {
   type RetainedEntry,
   readTail,
   readTailSince,
+  refusedPartOf,
   type TailBoundary,
   tailsReadAt,
   type UnreadEvent,
   type UnreadLine,
-  refusedPartOf,
   type UpcasterRegistry,
   unreadLinesOf,
 } from '@mnema/chain';

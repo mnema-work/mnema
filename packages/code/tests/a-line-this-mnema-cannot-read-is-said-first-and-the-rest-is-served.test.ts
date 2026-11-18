@@ -85,8 +85,14 @@ function theLine(bytes: Buffer): { lines: Buffer[]; at: number } {
 
 /** A damage: the bytes of the segment after it. Each is a line this reader refuses. */
 const DAMAGES: readonly (readonly [string, (line: Buffer) => Buffer])[] = [
-  ['a merge marker over twelve bytes', (line) => Buffer.concat([Buffer.from('<<<<<<< HEAD'), line.subarray(12)])],
-  ['twelve NUL bytes in their place', (line) => Buffer.concat([Buffer.alloc(12), line.subarray(12)])],
+  [
+    'a merge marker over twelve bytes',
+    (line) => Buffer.concat([Buffer.from('<<<<<<< HEAD'), line.subarray(12)]),
+  ],
+  [
+    'twelve NUL bytes in their place',
+    (line) => Buffer.concat([Buffer.alloc(12), line.subarray(12)]),
+  ],
   [
     'the keys in another order',
     (line) => {
@@ -244,7 +250,9 @@ describe('a line this mnema cannot read, and a write', () => {
       const planted = aRecord(dir);
       const file = segmentIn(publicRoot(planted.repo));
       const { lines, at } = theLine(readFileSync(file));
-      lines[at] = Buffer.from(lines[at]?.toString('utf-8').replace(/^\{/, '{"future":1,') as string);
+      lines[at] = Buffer.from(
+        lines[at]?.toString('utf-8').replace(/^\{/, '{"future":1,') as string,
+      );
       writeFileSync(file, Buffer.concat(lines.flatMap((line) => [line, Buffer.from('\n')])));
       const read = mnema(planted, ['status']);
       expect(read.status).toBe(0);
@@ -255,40 +263,43 @@ describe('a line this mnema cannot read, and a write', () => {
   }, 120_000);
 });
 
-describe.each(['private', 'global'] as const)('a line this mnema cannot read in the %s tree', (scope) => {
-  it('is served around and said without the repair, and a write is refused in the words it always used (ADR-429, ADR-408)', () => {
-    const dir = mkdtempSync(join(tmpdir(), `mnema-unread-${scope}-`));
-    try {
-      const planted = aRecord(dir);
-      expect(mnema(planted, ['memory', 'a keepable memory', '--scope', scope]).status).toBe(0);
-      const trees = resolveTrees(planted.repo, { home: planted.home });
-      const root = (scope === 'private' ? trees.projectPrivate : trees.global) as string;
-      const file = segmentIn(root);
-      const held = readFileSync(file);
-      expect(held.toString('utf-8')).toContain('a keepable memory');
-      const lines = held.toString('latin1').split('\n');
-      const at = lines.findIndex((line) => line.includes('a keepable memory'));
-      lines[at] = `<<<<<<< HEAD${(lines[at] as string).slice(12)}`;
-      writeFileSync(file, lines.join('\n'), 'latin1');
+describe.each(['private', 'global'] as const)(
+  'a line this mnema cannot read in the %s tree',
+  (scope) => {
+    it('is served around and said without the repair, and a write is refused in the words it always used (ADR-429, ADR-408)', () => {
+      const dir = mkdtempSync(join(tmpdir(), `mnema-unread-${scope}-`));
+      try {
+        const planted = aRecord(dir);
+        expect(mnema(planted, ['memory', 'a keepable memory', '--scope', scope]).status).toBe(0);
+        const trees = resolveTrees(planted.repo, { home: planted.home });
+        const root = (scope === 'private' ? trees.projectPrivate : trees.global) as string;
+        const file = segmentIn(root);
+        const held = readFileSync(file);
+        expect(held.toString('utf-8')).toContain('a keepable memory');
+        const lines = held.toString('latin1').split('\n');
+        const at = lines.findIndex((line) => line.includes('a keepable memory'));
+        lines[at] = `<<<<<<< HEAD${(lines[at] as string).slice(12)}`;
+        writeFileSync(file, lines.join('\n'), 'latin1');
 
-      for (const args of [['status'], ['brief'], ['search', 'lockfile']]) {
-        const read = mnema(planted, args);
-        const first = read.stdout.split('\n')[0] as string;
-        expect(first, args.join(' ')).toContain(`issue [T1] ${scope} `);
-        expect(first, args.join(' ')).toContain('This record is not versioned');
-        expect(first, args.join(' ')).not.toContain('tail repair');
-        expect(read.status, args.join(' ')).toBe(0);
+        for (const args of [['status'], ['brief'], ['search', 'lockfile']]) {
+          const read = mnema(planted, args);
+          const first = read.stdout.split('\n')[0] as string;
+          expect(first, args.join(' ')).toContain(`issue [T1] ${scope} `);
+          expect(first, args.join(' ')).toContain('This record is not versioned');
+          expect(first, args.join(' ')).not.toContain('tail repair');
+          expect(read.status, args.join(' ')).toBe(0);
+        }
+        // The public decision is still found.
+        expect(mnema(planted, ['search', 'lockfile']).stdout).toContain('Use pnpm');
+
+        const refused = mnema(planted, ['memory', 'one more']);
+        expect(refused.status).not.toBe(0);
+        expect(refused.stdout).toContain('holds a line this mnema cannot read');
+        expect(refused.stdout).toContain('This record is not versioned');
+        expect(refused.stdout).not.toContain('tail repair');
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
       }
-      // The public decision is still found.
-      expect(mnema(planted, ['search', 'lockfile']).stdout).toContain('Use pnpm');
-
-      const refused = mnema(planted, ['memory', 'one more']);
-      expect(refused.status).not.toBe(0);
-      expect(refused.stdout).toContain('holds a line this mnema cannot read');
-      expect(refused.stdout).toContain('This record is not versioned');
-      expect(refused.stdout).not.toContain('tail repair');
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  }, 180_000);
-});
+    }, 180_000);
+  },
+);
