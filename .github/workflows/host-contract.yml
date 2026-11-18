@@ -81,9 +81,39 @@ concurrency:
 # required check; the version is in the "Host measured" summary of the run. The weekly and the
 # manual run append the version they were given, and nobody requires those.
 jobs:
+  # WHAT THE PULL REQUEST TOUCHES. `.github/what-a-pr-touches/decide.mjs` reads the files the pull
+  # request changes (the merge commit against its first parent) and says whether the host contract has anything to run.
+  # Every job below still starts and publishes its name, and skips its STEPS: the branch requires each
+  # job by name, and a matrix job skipped whole publishes the name unexpanded, which is never the one
+  # required. Anything that is not a pull request runs everything.
+  changes:
+    name: what the pull request touches
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.decide.outputs.code }}
+      host: ${{ steps.decide.outputs.host }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Decide
+        id: decide
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = 'pull_request' ]; then
+            git diff --name-only HEAD^1 HEAD > "$RUNNER_TEMP/changed.txt" || : > "$RUNNER_TEMP/changed.txt"
+          else
+            : > "$RUNNER_TEMP/changed.txt"
+          fi
+          node .github/what-a-pr-touches/decide.mjs < "$RUNNER_TEMP/changed.txt" | tee -a "$GITHUB_STEP_SUMMARY"
+
   claude-code:
     name: host contract (claude code${{ contains(fromJSON('["schedule","workflow_dispatch"]'), github.event_name) && format(' {0}', matrix.version) || '' }})
     runs-on: ubuntu-24.04
+    needs: changes
     strategy:
       fail-fast: false
       matrix:
@@ -92,22 +122,28 @@ jobs:
         version: ${{ fromJSON(contains(fromJSON('["schedule","workflow_dispatch"]'), github.event_name) && '["stable","latest"]' || '["2.1.311"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ needs.changes.outputs.host == 'true' }}
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        if: ${{ needs.changes.outputs.host == 'true' }}
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: ${{ needs.changes.outputs.host == 'true' }}
         with:
           node-version: '24'
           cache: 'pnpm'
 
       - name: Install dependencies
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: pnpm install --frozen-lockfile
 
       - name: Build
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: pnpm build
 
       # The only step that talks to a host of the vendor, and it runs before the binary starts.
       - name: Install the host and check its SHA-256 against the signed release manifest
+        if: ${{ needs.changes.outputs.host == 'true' }}
         env:
           WANTED: ${{ matrix.version }}
           # The vendor's release signing key, by the fingerprint of its primary key.
@@ -155,15 +191,18 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Install strace
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: sudo apt-get install -y strace
 
       # A runner of this image refuses a user namespace to an unprivileged process; the namespace
       # is the isolation, so the restriction is lifted for the job and for nothing else.
       - name: Allow a network namespace of our own
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       # The cases, inside a namespace that holds only loopback.
       - name: Hold the contract, with only loopback
+        if: ${{ needs.changes.outputs.host == 'true' }}
         env:
           MNEMA_HOST_CONTRACT_HOST: claude-code
         run: unshare -rnm bash -c 'f=$(mktemp) && echo "nameserver 127.0.0.1" > "$f" && mount --bind "$f" /etc/resolv.conf && ip link set lo up && exec ./node_modules/.bin/vitest run --config vitest.host-contract.config.ts'
@@ -181,28 +220,35 @@ jobs:
   vscode:
     name: host contract (vs code${{ contains(fromJSON('["schedule","workflow_dispatch"]'), github.event_name) && format(' {0}', matrix.version) || '' }})
     runs-on: ubuntu-24.04
+    needs: changes
     strategy:
       fail-fast: false
       matrix:
         version: ${{ fromJSON(contains(fromJSON('["schedule","workflow_dispatch"]'), github.event_name) && '["stable"]' || '["1.139.0"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ needs.changes.outputs.host == 'true' }}
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        if: ${{ needs.changes.outputs.host == 'true' }}
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: ${{ needs.changes.outputs.host == 'true' }}
         with:
           node-version: '24'
           cache: 'pnpm'
 
       - name: Install dependencies
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: pnpm install --frozen-lockfile
 
       - name: Build
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: pnpm build
 
       # Before the editor starts, outside the namespace: the download of the editor itself.
       - name: Download VS Code
+        if: ${{ needs.changes.outputs.host == 'true' }}
         env:
           WANTED: ${{ matrix.version }}
         run: |
@@ -219,12 +265,15 @@ jobs:
           echo "- VS Code $VERSION (asked for \`$WANTED\`)" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Install a virtual screen
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: sudo apt-get install -y xvfb
 
       - name: Allow a network namespace of our own
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - name: Hold the contract, with only loopback
+        if: ${{ needs.changes.outputs.host == 'true' }}
         env:
           MNEMA_HOST_CONTRACT_HOST: vscode
         run: unshare -rnm bash -c 'f=$(mktemp) && echo "nameserver 127.0.0.1" > "$f" && mount --bind "$f" /etc/resolv.conf && ip link set lo up && exec xvfb-run -a ./node_modules/.bin/vitest run --config vitest.host-contract.config.ts'
@@ -240,28 +289,35 @@ jobs:
   codex:
     name: host contract (codex${{ contains(fromJSON('["schedule","workflow_dispatch"]'), github.event_name) && format(' {0}', matrix.version) || '' }})
     runs-on: ubuntu-24.04
+    needs: changes
     strategy:
       fail-fast: false
       matrix:
         version: ${{ fromJSON(contains(fromJSON('["schedule","workflow_dispatch"]'), github.event_name) && '["latest"]' || '["0.167.0"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ needs.changes.outputs.host == 'true' }}
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        if: ${{ needs.changes.outputs.host == 'true' }}
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: ${{ needs.changes.outputs.host == 'true' }}
         with:
           node-version: '24'
           cache: 'pnpm'
 
       - name: Install dependencies
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: pnpm install --frozen-lockfile
 
       - name: Build
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: pnpm build
 
       # The only step that talks to the registry, and it runs before the binary starts.
       - name: Install the host and check its signatures and its provenance
+        if: ${{ needs.changes.outputs.host == 'true' }}
         env:
           WANTED: ${{ matrix.version }}
         run: |
@@ -301,15 +357,18 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Install strace
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: sudo apt-get install -y strace
 
       - name: Allow a network namespace of our own
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       # WHAT THE RUNNER IS, printed before the cases: which resolver its `resolv.conf` names, and
       # where it runs. Nothing here is a secret: the file, the resolver's status, and three names
       # the image sets; no environment is dumped.
       - name: Say what the runner is
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: |
           echo "RUNNER_ENVIRONMENT=${RUNNER_ENVIRONMENT:-}  ImageOS=${ImageOS:-}  ImageVersion=${ImageVersion:-}"
           echo "--- /etc/resolv.conf"
@@ -321,13 +380,14 @@ jobs:
 
       # A case that finds the host beyond loopback copies its strace here before its sandbox goes.
       - name: Hold the contract, with only loopback
+        if: ${{ needs.changes.outputs.host == 'true' }}
         env:
           MNEMA_HOST_CONTRACT_HOST: codex
           MNEMA_HOST_CONTRACT_EVIDENCE: ${{ runner.temp }}/host-contract-evidence
         run: unshare -rnm bash -c 'f=$(mktemp) && echo "nameserver 127.0.0.1" > "$f" && mount --bind "$f" /etc/resolv.conf && ip link set lo up && exec ./node_modules/.bin/vitest run --config vitest.host-contract.config.ts'
 
       - name: Keep the strace of a host that reached beyond loopback
-        if: failure()
+        if: ${{ needs.changes.outputs.host == 'true' && (failure()) }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: host-contract-codex-strace-${{ matrix.version }}
@@ -350,28 +410,35 @@ jobs:
   copilot:
     name: host contract (copilot${{ contains(fromJSON('["schedule","workflow_dispatch"]'), github.event_name) && format(' {0}', matrix.version) || '' }})
     runs-on: ubuntu-24.04
+    needs: changes
     strategy:
       fail-fast: false
       matrix:
         version: ${{ fromJSON(contains(fromJSON('["schedule","workflow_dispatch"]'), github.event_name) && '["latest"]' || '["1.0.108"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ needs.changes.outputs.host == 'true' }}
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        if: ${{ needs.changes.outputs.host == 'true' }}
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: ${{ needs.changes.outputs.host == 'true' }}
         with:
           node-version: '24'
           cache: 'pnpm'
 
       - name: Install dependencies
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: pnpm install --frozen-lockfile
 
       - name: Build
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: pnpm build
 
       # The only step that talks to the registry, and it runs before the binary starts.
       - name: Install the host and check its signatures
+        if: ${{ needs.changes.outputs.host == 'true' }}
         env:
           WANTED: ${{ matrix.version }}
         run: |
@@ -400,12 +467,15 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Install strace
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: sudo apt-get install -y strace
 
       - name: Allow a network namespace of our own
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - name: Hold the contract, with only loopback
+        if: ${{ needs.changes.outputs.host == 'true' }}
         env:
           MNEMA_HOST_CONTRACT_HOST: copilot
         run: unshare -rnm bash -c 'f=$(mktemp) && echo "nameserver 127.0.0.1" > "$f" && mount --bind "$f" /etc/resolv.conf && ip link set lo up && exec ./node_modules/.bin/vitest run --config vitest.host-contract.config.ts'
@@ -424,28 +494,35 @@ jobs:
   opencode:
     name: host contract (opencode${{ contains(fromJSON('["schedule","workflow_dispatch"]'), github.event_name) && format(' {0}', matrix.version) || '' }})
     runs-on: ubuntu-24.04
+    needs: changes
     strategy:
       fail-fast: false
       matrix:
         version: ${{ fromJSON(contains(fromJSON('["schedule","workflow_dispatch"]'), github.event_name) && '["latest"]' || '["1.18.35"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ needs.changes.outputs.host == 'true' }}
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        if: ${{ needs.changes.outputs.host == 'true' }}
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: ${{ needs.changes.outputs.host == 'true' }}
         with:
           node-version: '24'
           cache: 'pnpm'
 
       - name: Install dependencies
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: pnpm install --frozen-lockfile
 
       - name: Build
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: pnpm build
 
       # The only step that talks to the registry, and it runs before the binary starts.
       - name: Install the host and check its signatures
+        if: ${{ needs.changes.outputs.host == 'true' }}
         env:
           WANTED: ${{ matrix.version }}
         run: |
@@ -474,12 +551,15 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Install strace
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: sudo apt-get install -y strace
 
       - name: Allow a network namespace of our own
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - name: Hold the contract, with only loopback
+        if: ${{ needs.changes.outputs.host == 'true' }}
         env:
           MNEMA_HOST_CONTRACT_HOST: opencode
         run: unshare -rnm bash -c 'f=$(mktemp) && echo "nameserver 127.0.0.1" > "$f" && mount --bind "$f" /etc/resolv.conf && ip link set lo up && exec ./node_modules/.bin/vitest run --config vitest.host-contract.config.ts'
@@ -498,28 +578,35 @@ jobs:
   gemini:
     name: host contract (gemini${{ contains(fromJSON('["schedule","workflow_dispatch"]'), github.event_name) && format(' {0}', matrix.version) || '' }})
     runs-on: ubuntu-24.04
+    needs: changes
     strategy:
       fail-fast: false
       matrix:
         version: ${{ fromJSON(contains(fromJSON('["schedule","workflow_dispatch"]'), github.event_name) && '["latest"]' || '["0.63.0"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ needs.changes.outputs.host == 'true' }}
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        if: ${{ needs.changes.outputs.host == 'true' }}
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: ${{ needs.changes.outputs.host == 'true' }}
         with:
           node-version: '24'
           cache: 'pnpm'
 
       - name: Install dependencies
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: pnpm install --frozen-lockfile
 
       - name: Build
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: pnpm build
 
       # The only step that talks to the registry, and it runs before the binary starts.
       - name: Install the host and check its signatures
+        if: ${{ needs.changes.outputs.host == 'true' }}
         env:
           WANTED: ${{ matrix.version }}
         run: |
@@ -548,12 +635,15 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Install strace
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: sudo apt-get install -y strace
 
       - name: Allow a network namespace of our own
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - name: Hold the contract, with only loopback
+        if: ${{ needs.changes.outputs.host == 'true' }}
         env:
           MNEMA_HOST_CONTRACT_HOST: gemini
         run: unshare -rnm bash -c 'f=$(mktemp) && echo "nameserver 127.0.0.1" > "$f" && mount --bind "$f" /etc/resolv.conf && ip link set lo up && exec ./node_modules/.bin/vitest run --config vitest.host-contract.config.ts'
@@ -571,28 +661,35 @@ jobs:
   qwen:
     name: host contract (qwen${{ contains(fromJSON('["schedule","workflow_dispatch"]'), github.event_name) && format(' {0}', matrix.version) || '' }})
     runs-on: ubuntu-24.04
+    needs: changes
     strategy:
       fail-fast: false
       matrix:
         version: ${{ fromJSON(contains(fromJSON('["schedule","workflow_dispatch"]'), github.event_name) && '["latest"]' || '["0.26.1"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ needs.changes.outputs.host == 'true' }}
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        if: ${{ needs.changes.outputs.host == 'true' }}
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: ${{ needs.changes.outputs.host == 'true' }}
         with:
           node-version: '24'
           cache: 'pnpm'
 
       - name: Install dependencies
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: pnpm install --frozen-lockfile
 
       - name: Build
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: pnpm build
 
       # The only step that talks to the registry, and it runs before the binary starts.
       - name: Install the host and check its signatures
+        if: ${{ needs.changes.outputs.host == 'true' }}
         env:
           WANTED: ${{ matrix.version }}
         run: |
@@ -621,12 +718,15 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Install strace
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: sudo apt-get install -y strace
 
       - name: Allow a network namespace of our own
+        if: ${{ needs.changes.outputs.host == 'true' }}
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - name: Hold the contract, with only loopback
+        if: ${{ needs.changes.outputs.host == 'true' }}
         env:
           MNEMA_HOST_CONTRACT_HOST: qwen
         run: unshare -rnm bash -c 'f=$(mktemp) && echo "nameserver 127.0.0.1" > "$f" && mount --bind "$f" /etc/resolv.conf && ip link set lo up && exec ./node_modules/.bin/vitest run --config vitest.host-contract.config.ts'

@@ -1,0 +1,57 @@
+name: Rerun a cancelled runner
+
+# WHAT THIS IS. When CI ends, a job of `windows and macos` that the runner pool cancelled before any
+# step of ours ran is rerun once, by itself (the rerun-one-job endpoint), so a lost machine does not
+# turn a pull request red for a reason that is not the code. `.github/rerun-a-cancelled-runner/select.mjs`
+# owns the rules and its header says what it never reruns: a second attempt, a failure, a job that ran
+# a step, a run a newer push cancelled.
+#
+# THE LINE IT HOLDS. It runs nothing of the pull request: the checkout is this repository's default
+# branch, for the script alone (no `ref`, no `repository`), nothing is installed and no package
+# script runs; the jobs are read as JSON data. The one write it can do is the rerun, so `actions:
+# write` is on that job and on no other; the workflow itself holds none.
+#
+# GitHub starts it only from the workflow file on the default branch.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  rerun:
+    name: rerun a job the runner cancelled
+    if: github.event.workflow_run.conclusion == 'cancelled' || github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/rerun-a-cancelled-runner
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+
+      - name: Rerun the jobs the runner took away, once
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          EVENT: ${{ github.event.workflow_run.event }}
+        run: |
+          set -euo pipefail
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/attempts/$ATTEMPT/jobs?per_page=100" > "$RUNNER_TEMP/jobs.json"
+          newest="$(gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs" -f branch="$BRANCH" -f event="$EVENT" -f per_page=1 --jq '.workflow_runs[0].id')"
+          ids="$(node .github/rerun-a-cancelled-runner/select.mjs "$RUNNER_TEMP/jobs.json" "$ATTEMPT" "$RUN_ID" "$newest")"
+          for id in $ids; do
+            echo "rerunning job $id"
+            gh api -X POST "repos/$GITHUB_REPOSITORY/actions/jobs/$id/rerun"
+          done

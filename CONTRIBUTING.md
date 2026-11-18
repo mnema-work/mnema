@@ -89,6 +89,11 @@ a change to text, a page, the changelog or a list of files; it does not replace 
 `pnpm check:contribution` runs it for you.
 A case joins it by carrying `// @reads-the-tree` as its first line.
 
+While you iterate, run `pnpm vitest run --changed`: it runs only the test files that import what you have
+changed since the last commit (`--changed origin/main` for everything since you branched). Run the whole
+suite, `pnpm test`, once at the end, before you push; the guards above are the part of it that a change
+breaks without touching, so `pnpm test:guards` is the cheap check in between.
+
 **When a case goes red, keep the output before you run it again**, then run
 `pnpm why-it-went-red`. It runs each red case again on its own and says which of two things
 the red was: `THE GUARD CAUGHT` (it fails alone too, so it is a defect at this commit) or
