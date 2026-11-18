@@ -21,7 +21,13 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { recordNamedIn, tailLockPath, withTailLock } from '@mnema/chain';
-import { asidesIn, type DiscoveryEnv, privateTreesLeftBehind, resolveTrees } from '@mnema/core';
+import {
+  asidePlaceInGit,
+  asidesIn,
+  type DiscoveryEnv,
+  privateTreesLeftBehind,
+  resolveTrees,
+} from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   planBackupRestore,
@@ -604,7 +610,7 @@ describe("a copy of another record's, with a question and a way back", () => {
     const dry = runBackupRestore(a, true, { from: beta });
     expect(dry).toMatchObject({ ok: true, dryRun: true, keptAside: undefined });
     expect(digest(priv)).toBe(live);
-    expect(asidesIn(join(a.cwd, '.git'))).toEqual([]);
+    expect(asidesIn(asidePlaceInGit(join(a.cwd, '.git')))).toEqual([]);
 
     const done = runBackupRestore(a, false, { from: beta, confirmed: true, now: T1 });
     if (!done.ok) throw new Error(JSON.stringify(done));
@@ -674,6 +680,108 @@ describe("a copy of another record's, with a question and a way back", () => {
     expect(existsSync(kept.keptAside?.folder as string)).toBe(true);
   });
 
+  it('keeps the place of a project in git where it was: the git directory, and nothing in the mnema home', () => {
+    const { a, beta } = alphaWithBetasCopy(true);
+    expect(runBackupRestore(a, false, { from: beta, confirmed: true, now: T1 }).ok).toBe(true);
+    expect(existsSync(join(a.cwd, '.git', 'mnema', 'before-restore-2026-11-12T23-36-30Z'))).toBe(
+      true,
+    );
+    expect(existsSync(join(sandbox, 'home', '.mnema', 'before-restore'))).toBe(false);
+  });
+
+  describe('where the project is outside git: the folder is in the mnema home', () => {
+    const home = () => join(sandbox, 'home', '.mnema');
+
+    it('asks first, keeps both trees in <home>/before-restore/<date>/, and --undo puts them back byte for byte', () => {
+      const { a, beta, trees } = alphaWithBetasCopy(false);
+      const root = trees.projectPublic as string;
+      const live = digest(root);
+      const plan = planBackupRestore(a, beta);
+      expect(plan.ok && plan.keptIn).toContain(join(home(), 'before-restore'));
+      expect(plan.ok && plan.keeping.map((one) => one.tree)).toEqual(['private', 'public']);
+
+      expect(runBackupRestore(a, false, { from: beta })).toMatchObject({
+        ok: false,
+        code: 'NOT_CONFIRMED',
+      });
+      expect(digest(root)).toBe(live);
+      expect(existsSync(join(home(), 'before-restore'))).toBe(false);
+
+      const done = runBackupRestore(a, false, { from: beta, confirmed: true, now: T1 });
+      if (!done.ok) throw new Error(JSON.stringify(done));
+      const folder = join(home(), 'before-restore', '2026-11-12T23-36-30Z');
+      expect(done.keptAside).toMatchObject({ folder, trees: ['private', 'public'] });
+      // The live record, whole: the public tree as it stood without the private one inside it, and the private one.
+      expect(digest(join(folder, 'public')) + digest(join(folder, 'private'))).not.toBe('');
+      expect(digest(root)).not.toBe(live);
+      expect(resolveTrees(a.cwd, env).projectPublic).toBe(root);
+
+      expect(runBackupUndo(a)).toMatchObject({ ok: true, trees: ['private', 'public'] });
+      expect(digest(root)).toBe(live);
+      expect(existsSync(join(folder, 'restored-public', 'tails'))).toBe(true);
+      expect(existsSync(join(folder, 'restored-private', 'tails'))).toBe(true);
+      expect(runBackupUndo(a)).toMatchObject({ ok: false, code: 'NOTHING_TO_UNDO' });
+    });
+
+    it('keeps every folder: a second restore keeps both, --undo puts back the newest, and status lists them', () => {
+      const { a, beta, trees } = alphaWithBetasCopy(false);
+      const live = digest(trees.projectPublic as string);
+      expect(runBackupRestore(a, false, { from: beta, confirmed: true, now: T1 }).ok).toBe(true);
+      expect(runBackupUndo(a).ok).toBe(true);
+      const second = runBackupRestore(a, false, { from: beta, confirmed: true, now: T2 });
+      const one = join(home(), 'before-restore', '2026-11-12T23-36-30Z');
+      const two = join(home(), 'before-restore', '2026-11-12T23-40-00Z');
+      expect(second.ok && second.asides.map((kept) => kept.folder)).toEqual([one, two]);
+      expect(existsSync(one) && existsSync(two)).toBe(true);
+      const listed = runBackupStatus(a);
+      expect(listed.ok && listed.asides.map((kept) => kept.folder)).toEqual([one, two]);
+      expect(listed.ok && listed.asides.every((kept) => kept.bytes > 0)).toBe(true);
+      expect(runBackupUndo(a)).toMatchObject({ ok: true, folder: two, others: 1 });
+      expect(digest(trees.projectPublic as string)).toBe(live);
+      // Nothing deleted: both folders are still there for the person to delete.
+      expect(existsSync(one) && existsSync(two)).toBe(true);
+    });
+
+    it('makes no before-restore folder for a restore that moves nothing aside', () => {
+      const a = project('alpha', false);
+      expect(runBackupSetup(a, join(sandbox, 'folder-own')).ok).toBe(true);
+      expect(runBackupRun(a).ok).toBe(true);
+      expect(runBackupRestore(a, false)).toMatchObject({ ok: true });
+      expect(existsSync(join(home(), 'before-restore'))).toBe(false);
+    });
+
+    it('takes one lock for the place, and asking to undo where nothing was kept does not make the place', () => {
+      const { a, beta } = alphaWithBetasCopy(false);
+      expect(runBackupUndo(a)).toMatchObject({ ok: false, code: 'NOTHING_TO_UNDO' });
+      expect(existsSync(join(home(), 'before-restore'))).toBe(false);
+      const lock = join(home(), 'restoring.lock');
+      expect(
+        withTailLock(lock, () =>
+          runBackupRestore(a, false, { from: beta, confirmed: true, now: T1 }),
+        ),
+      ).toMatchObject({ ok: false, code: 'RESTORE_RUNNING' });
+      expect(withTailLock(lock, () => runBackupUndo(a))).toMatchObject({
+        code: 'RESTORE_RUNNING',
+      });
+    });
+
+    it('is not a project, a tree or a key to anything that reads the home', () => {
+      const { a, beta, trees } = alphaWithBetasCopy(false);
+      runBackupRestore(a, false, { from: beta, confirmed: true, now: T1 });
+      const folder = join(home(), 'before-restore', '2026-11-12T23-36-30Z');
+      // Standing inside the kept folder finds no project, and the trees of the real one are where they were.
+      expect(resolveTrees(join(folder, 'public'), env).projectPublic).toBeUndefined();
+      expect(resolveTrees(a.cwd, env)).toMatchObject({
+        projectPublic: trees.projectPublic,
+        global: join(home(), 'global'),
+        keyRoot: join(home(), 'identity'),
+      });
+      // The agents' folder lists names that are agents; the kept folder is not one.
+      expect(readdirSync(home())).toContain('before-restore');
+      expect(readdirSync(join(home(), 'identity'))).not.toContain('before-restore');
+    });
+  });
+
   it('names, for each tree, the record the tree to be replaced holds, and says the truth of a public tree with several', () => {
     const { a, beta } = alphaWithBetasCopy(true);
     const before = planBackupRestore(a, beta);
@@ -729,7 +837,7 @@ describe("a copy of another record's, with a question and a way back", () => {
         runBackupRestore(a, false, { from: beta, confirmed: true, now: T1 }),
       ),
     ).toMatchObject({ ok: false, code: 'RESTORE_RUNNING' });
-    expect(asidesIn(join(a.cwd, '.git'))).toEqual([]);
+    expect(asidesIn(asidePlaceInGit(join(a.cwd, '.git')))).toEqual([]);
     expect(digest(priv)).toBe(live);
     // A restore of the project's own copy, which asks nothing, holds the same lock: so does one that is held against it.
     expect(runBackupRun(a).ok).toBe(true);

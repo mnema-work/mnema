@@ -33,6 +33,9 @@ import { recordNamedIn } from '@mnema/chain';
 import {
   AsideError,
   type AsideListed,
+  type AsidePlace,
+  asidePlaceInGit,
+  asidePlaceInHome,
   asidesFor,
   assignDestination,
   assignGlobalDestination,
@@ -47,6 +50,7 @@ import {
   commitAndPush,
   copyNamed,
   type DiscoveryEnv,
+  describeAside,
   destinationOf,
   GitDestinationError,
   globalDestinationOf,
@@ -174,6 +178,17 @@ function refusedBy(error: unknown): BackupRefused {
     return { ok: false, reason: 'REFUSED', code: error.code, message: error.message };
   }
   throw error;
+}
+
+/**
+ * Where what a restore keeps aside for this project goes: inside the git directory of its repository,
+ * or, for a project outside git, in the mnema home (the data directory the global tree and the key root
+ * live in, found from the global tree's own path and never resolved a second time).
+ */
+function asidePlaceOf(resolved: ReturnType<typeof resolveTrees>): AsidePlace {
+  return resolved.projectPublicMachinery === undefined
+    ? asidePlaceInHome(dirname(resolved.global))
+    : asidePlaceInGit(resolved.projectPublicMachinery.place.commonDir);
 }
 
 /** Why `destination` cannot keep a backup, as a refusal, or undefined where it can. */
@@ -423,13 +438,10 @@ export function runBackupStatus(ctx: BackupContext): BackupStatus | BackupRefuse
       git: isGitDestination(stored)
         ? { ...standingOfCache(stored, destination), cache: destination }
         : undefined,
-      asides:
-        project.resolved.projectPublicMachinery === undefined
-          ? []
-          : asidesFor(
-              project.resolved.projectPublicMachinery.place.commonDir,
-              project.wanted.map(([tree, root]) => ({ tree, root })),
-            ),
+      asides: asidesFor(
+        asidePlaceOf(project.resolved),
+        project.wanted.map(([tree, root]) => ({ tree, root })),
+      ),
     };
   } catch (error) {
     return refusedBy(error);
@@ -668,8 +680,10 @@ export interface RestorePlan {
   readonly asks: boolean;
   /** The trees that would be moved aside before the copy goes in. */
   readonly keeping: readonly { readonly tree: BackupTree; readonly root: string }[];
-  /** The git directory the folder kept aside would be in, when the project is in a repository. */
-  readonly commonDir: string | undefined;
+  /** Where the folder kept aside would be: the git directory of the repository, or the mnema home outside one. */
+  readonly place: AsidePlace;
+  /** The place as a person is told it, with the date to fill in and where it is (the git directory, or the mnema home). */
+  readonly keptIn: string;
   /** For each tree a person is asked about, what the tree to be replaced holds now, said as it is. */
   readonly holds: readonly { readonly tree: BackupTree; readonly says: string }[];
 }
@@ -769,15 +783,7 @@ export function planBackupRestore(ctx: BackupContext, from?: string): RestorePla
   }
   const asking = prepared.filter((one) => one.otherRecord);
   const keeping = treesToKeep(asking.map((one) => ({ tree: one.tree, root: one.root })));
-  const commonDir = located.resolved.projectPublicMachinery?.place.commonDir;
-  if (keeping.length > 0 && commonDir === undefined) {
-    return {
-      ok: false,
-      reason: 'REFUSED',
-      code: 'NO_GIT_PLACE',
-      message: `The copy is of another record than the one this project holds, and the live ${keeping.map((one) => one.tree).join(' and ')} tree would have to be kept aside first, which is done only inside the git directory of a repository (nothing in the working tree: \`git add -A\` would publish it). This project is in no repository, so nothing was changed.`,
-    };
-  }
+  const place = asidePlaceOf(located.resolved);
   const holds = asking.map((one) => ({ tree: one.tree, says: holdsOf(one.root) }));
   return {
     ok: true,
@@ -789,7 +795,8 @@ export function planBackupRestore(ctx: BackupContext, from?: string): RestorePla
     noCopy,
     asks: asking.length > 0,
     keeping,
-    commonDir,
+    place,
+    keptIn: `${describeAside(place)} (${place.prefix === '' ? 'in the mnema home, outside any repository and never in your working tree' : 'inside the git directory: never committed, never in git status'})`,
     holds,
   };
 }
@@ -842,9 +849,8 @@ export function runBackupRestore(
   let keptAside: KeptAside | undefined;
   const roots = plan.prepared.map((one) => ({ tree: one.tree, root: one.root }));
   try {
-    // EVERY restore of a repository takes the repository's lock first, then the tree's own (restore.ts): one order, so none deadlocks.
-    const locked = <T>(act: () => T): T =>
-      !dryRun && plan.commonDir !== undefined ? withRestoreLock(plan.commonDir, act) : act();
+    // EVERY restore takes the lock of its place first (the repository's, or the home's outside git), then the tree's own (restore.ts): one order, so none deadlocks.
+    const locked = <T>(act: () => T): T => (dryRun ? act() : withRestoreLock(plan.place, act));
     return locked(() => {
       let prepared = plan.prepared;
       if (dryRun && plan.asks) {
@@ -867,9 +873,7 @@ export function runBackupRestore(
       }
       if (!dryRun && plan.asks) {
         for (const one of plan.keeping) noWriterHolds(one.root);
-        if (plan.commonDir !== undefined) {
-          keptAside = setAside(plan.commonDir, plan.keeping, options.now ?? new Date());
-        }
+        keptAside = setAside(plan.place, plan.keeping, options.now ?? new Date());
         // The trees were emptied: what the copy puts back is read again against what is there now.
         prepared = prepared.map((one) =>
           prepareRestore(one.root, plan.destination, plan.record, one.tree, plan.copyRecord),
@@ -885,7 +889,7 @@ export function runBackupRestore(
         trees: prepared.map((one, at) => ({ ...one, restored: done[at] })),
         noCopy: plan.noCopy,
         keptAside,
-        asides: plan.commonDir === undefined ? [] : asidesFor(plan.commonDir, roots),
+        asides: asidesFor(plan.place, roots),
       };
     });
   } catch (error) {
@@ -907,24 +911,16 @@ export interface BackupUndone extends Undone {
 export function runBackupUndo(ctx: BackupContext): BackupUndone | BackupRefused {
   const located = locate(ctx);
   if ('ok' in located) return located;
-  const commonDir = located.resolved.projectPublicMachinery?.place.commonDir;
-  if (commonDir === undefined) {
-    return {
-      ok: false,
-      reason: 'REFUSED',
-      code: 'NO_GIT_PLACE',
-      message:
-        'This project is in no repository, and a restore of another record keeps what it replaces only inside the git directory of one, so there is nothing to put back.',
-    };
-  }
+  const place = asidePlaceOf(located.resolved);
   const roots = located.wanted.map(([tree, root]) => ({ tree, root }));
   try {
-    return withRestoreLock(commonDir, () => {
+    const undo = () => {
       for (const one of roots) {
         if (existsSync(one.root)) noWriterHolds(one.root);
       }
-      return { ok: true as const, ...undoAside(commonDir, roots) };
-    });
+      return { ok: true as const, ...undoAside(place, roots) };
+    };
+    return withRestoreLock(place, undo);
   } catch (error) {
     return refusedBy(error);
   }

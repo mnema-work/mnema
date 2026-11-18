@@ -6,7 +6,10 @@
  * one subfolder per tree (`public/`, `private/`). A folder beside the record would be in the
  * working tree, where `git add -A` publishes it, and the date has no ":" because a colon is not a
  * character a file name may have on Windows. Nothing here is committed, and `git status` never
- * shows it.
+ * shows it. WHERE THERE IS NO GIT DIRECTORY (a project outside a repository) the place is
+ * `<mnema home>/before-restore/<UTC date>/`, the same folder inside, the same mark, the same rules
+ * (ADR-519). Nothing that lists the home takes `before-restore/` for a project, a tree or a key: it
+ * holds only dated folders, each carrying the mark.
  *
  * A tree is MOVED, not copied: a rename keeps every byte and every inode, so what goes aside is the
  * tree and not an account of it. Across file systems it is copied whole, compared byte by byte, and
@@ -24,6 +27,7 @@ import {
   readdirSync,
   readFileSync,
   renameSync,
+  rmdirSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -57,16 +61,44 @@ export class AsideError extends CodedError {
 }
 
 /** `before-restore-2026-11-12T23-36-30Z`: UTC, to the second, and no character Windows refuses in a name. */
-export function asideName(now: Date): string {
-  return `${ASIDE_PREFIX}${now
+export function asideName(now: Date, prefix: string = ASIDE_PREFIX): string {
+  return `${prefix}${now
     .toISOString()
     .replace(/\.\d+Z$/, 'Z')
     .replaceAll(':', '-')}`;
 }
 
-/** The folder of mnema's own in a git directory, which also holds one folder per project. */
-function inGitDir(commonDir: string): string {
-  return join(commonDir, IN_GIT_DIR);
+/** Where the folders kept aside are: the directory that holds them, and what each one's name starts with. */
+export interface AsidePlace {
+  readonly dir: string;
+  /** The restore lock of this place: it does not live in `dir` outside git, so taking it makes no folder. */
+  readonly lock: string;
+  readonly prefix: string;
+}
+
+/** The place in a repository: mnema's own folder in the git directory, which also holds one folder per project. */
+export function asidePlaceInGit(commonDir: string): AsidePlace {
+  const dir = join(commonDir, IN_GIT_DIR);
+  return { dir, lock: join(dir, 'restoring.lock'), prefix: ASIDE_PREFIX };
+}
+
+/** The folder of the mnema home that holds what a restore keeps aside for a project outside git. */
+export const HOME_ASIDE_DIR = 'before-restore';
+
+/** The place outside a repository: `<mnema home>/before-restore/<date>/`. */
+export function asidePlaceInHome(home: string): AsidePlace {
+  return { dir: join(home, HOME_ASIDE_DIR), lock: join(home, 'restoring.lock'), prefix: '' };
+}
+
+/** Where a restore ran, said for a refusal. */
+const whereIs = (place: AsidePlace): string =>
+  place.prefix === ASIDE_PREFIX
+    ? 'in this repository'
+    : 'for a project outside git on this machine';
+
+/** The place as a person reads it, with the date left to fill in. */
+export function describeAside(place: AsidePlace): string {
+  return `${place.dir}/${place.prefix}<date>/`;
 }
 
 interface Mark {
@@ -85,9 +117,9 @@ function markOf(folder: string): Mark | undefined {
   }
 }
 
-/** The folders kept aside in this repository, oldest first. */
-export function asidesIn(commonDir: string): string[] {
-  const dir = inGitDir(commonDir);
+/** The folders kept aside in this place, oldest first. */
+export function asidesIn(place: AsidePlace): string[] {
+  const dir = place.dir;
   let names: string[];
   try {
     names = readdirSync(dir);
@@ -95,7 +127,7 @@ export function asidesIn(commonDir: string): string[] {
     return [];
   }
   return names
-    .filter((name) => name.startsWith(ASIDE_PREFIX) && markOf(join(dir, name)) !== undefined)
+    .filter((name) => name.startsWith(place.prefix) && markOf(join(dir, name)) !== undefined)
     .sort()
     .map((name) => join(dir, name));
 }
@@ -152,13 +184,13 @@ export interface KeptAside {
  * that read before reads after, or the restore does not go on.
  */
 export function setAside(
-  commonDir: string,
+  place: AsidePlace,
   items: readonly { readonly tree: BackupTree; readonly root: string }[],
   now: Date,
 ): KeptAside | undefined {
   const kept = treesToKeep(items);
   if (kept.length === 0) return undefined;
-  const folder = join(inGitDir(commonDir), asideName(now));
+  const folder = join(place.dir, asideName(now, place.prefix));
   if (lstatSync(folder, { throwIfNoEntry: false }) !== undefined) {
     throw new AsideError(
       'ASIDE_EXISTS',
@@ -172,16 +204,43 @@ export function setAside(
     `${JSON.stringify({ trees: Object.fromEntries(kept.map((one) => [one.tree, one.root])) }, null, 2)}\n`,
     { flag: 'wx' },
   );
-  kept.forEach((one, at) => {
-    const to = join(folder, one.tree);
-    moveFolder(one.root, to);
-    if (verifyChain({ root: to }, catalogUpcasters()).ok !== readsBefore[at]) {
+  const moved: { readonly root: string; readonly to: string; readonly tree: BackupTree }[] = [];
+  try {
+    kept.forEach((one, at) => {
+      const to = join(folder, one.tree);
+      moveFolder(one.root, to);
+      moved.push({ root: one.root, to, tree: one.tree });
+      // A project outside git is found by its `.mnema/` folder, which is the public tree: leave it standing, empty, so `--undo` still finds the project.
+      if (one.tree === 'public') mkdirSync(one.root, { recursive: true });
+      if (verifyChain({ root: to }, catalogUpcasters()).ok !== readsBefore[at]) {
+        throw new AsideError(
+          'ASIDE_NOT_VERIFIED',
+          `The ${one.tree} tree kept at ${to} does not read as it did before it was moved: nothing more was done, and \`mnema backup restore --undo\` puts it back.`,
+        );
+      }
+    });
+  } catch (error) {
+    if (error instanceof AsideError) throw error;
+    // A move failed after others were made: put them back, last first, so the record is whole where it was.
+    try {
+      for (let at = moved.length - 1; at >= 0; at -= 1) {
+        const one = moved[at] as (typeof moved)[number];
+        if (one.tree === 'public') rmdirSync(one.root);
+        moveFolder(one.to, one.root);
+      }
+      rmSync(join(folder, MARK));
+      rmdirSync(folder);
+    } catch {
       throw new AsideError(
         'ASIDE_NOT_VERIFIED',
-        `The ${one.tree} tree kept at ${to} does not read as it did before it was moved: nothing more was done, and \`mnema backup restore --undo\` puts it back.`,
+        `A tree could not be moved (${(error as Error).message}), and putting back what was already moved failed too: what the trees held is kept at ${folder}, and \`mnema backup restore --undo\` puts it back.`,
       );
     }
-  });
+    throw new AsideError(
+      'ASIDE_NOT_VERIFIED',
+      `A tree could not be moved (${(error as Error).message}): nothing was moved, and the trees are as they were.`,
+    );
+  }
   return { folder, trees: kept.map((one) => one.tree) };
 }
 
@@ -207,11 +266,11 @@ function sizeOf(path: string): number {
 
 /** The folders kept aside that still hold one of `roots` (the trees of THIS project), oldest first. */
 export function asidesFor(
-  commonDir: string,
+  place: AsidePlace,
   roots: readonly { readonly tree: BackupTree; readonly root: string }[],
 ): AsideListed[] {
   const found: AsideListed[] = [];
-  for (const folder of asidesIn(commonDir)) {
+  for (const folder of asidesIn(place)) {
     const mark = markOf(folder) as Mark;
     const has = (list: Mark['trees'] | undefined, one: (typeof roots)[number], leaf: string) =>
       samePlace(list?.[one.tree], one.root) &&
@@ -224,7 +283,7 @@ export function asidesFor(
         displaced.reduce((sum, one) => sum + sizeOf(join(folder, `restored-${one.tree}`)), 0);
       found.push({
         folder,
-        date: basename(folder).slice(ASIDE_PREFIX.length),
+        date: basename(folder).slice(place.prefix.length),
         trees: mine.map((one) => one.tree),
         restored: displaced.map((one) => one.tree),
         bytes,
@@ -235,18 +294,19 @@ export function asidesFor(
 }
 
 /**
- * Runs `act` holding the one lock every restore and every undo of this repository takes, kept in the
- * git directory's own folder so that it does not move with a tree. A second one refuses, naming the process.
+ * Runs `act` holding the one lock every restore and every undo that keeps its folders in this place
+ * takes (a repository's, or the home's for the projects outside git), kept in the place's own folder
+ * so that it does not move with a tree. A second one refuses, naming the process.
  */
-export function withRestoreLock<T>(commonDir: string, act: () => T): T {
+export function withRestoreLock<T>(place: AsidePlace, act: () => T): T {
   try {
-    return withTailLock(join(inGitDir(commonDir), 'restoring.lock'), act, { waitMs: 0 });
+    return withTailLock(place.lock, act, { waitMs: 0 });
   } catch (error) {
     if (!(error instanceof TailBusyError)) throw error;
     const who = error.heldBy === undefined ? 'another process' : `process ${error.heldBy}`;
     throw new AsideError(
       'RESTORE_RUNNING',
-      `${who} is restoring in this repository, and two restores do not run together. Let it finish and run it again.`,
+      `${who} is restoring ${whereIs(place).replace('for a project', 'a project')}, and two restores do not run together. Let it finish and run it again.`,
     );
   }
 }
@@ -267,10 +327,10 @@ export interface Undone {
  * same folder as `restored-<tree>/`, and nothing is deleted. Every check comes before the first move.
  */
 export function undoAside(
-  commonDir: string,
+  place: AsidePlace,
   roots: readonly { readonly tree: BackupTree; readonly root: string }[],
 ): Undone {
-  const kept = asidesIn(commonDir);
+  const kept = asidesIn(place);
   for (let at = kept.length - 1; at >= 0; at -= 1) {
     const folder = kept[at] as string;
     const mark = markOf(folder) as Mark;
@@ -292,6 +352,7 @@ export function undoAside(
     }
     const displaced: string[] = [];
     const movedHere: Record<string, string> = {};
+    // What stands in the places comes out first, the inner tree before the one around it (a project outside git keeps its private tree inside its public one), and what was kept goes back outer first.
     for (const one of mine) {
       if (lstatSync(one.root, { throwIfNoEntry: false }) !== undefined) {
         const to = join(folder, `restored-${one.tree}`);
@@ -299,6 +360,9 @@ export function undoAside(
         displaced.push(to);
         movedHere[one.tree] = one.root;
       }
+    }
+    for (let at = mine.length - 1; at >= 0; at -= 1) {
+      const one = mine[at] as (typeof mine)[number];
       mkdirSync(join(one.root, '..'), { recursive: true });
       moveFolder(join(folder, one.tree), one.root);
     }
@@ -311,11 +375,11 @@ export function undoAside(
       folder,
       trees: mine.map((one) => one.tree),
       displaced,
-      others: asidesFor(commonDir, roots).filter((listed) => listed.folder !== folder).length,
+      others: asidesFor(place, roots).filter((listed) => listed.folder !== folder).length,
     };
   }
   throw new AsideError(
     'NOTHING_TO_UNDO',
-    'There is no tree kept aside by a restore of another record in this repository, so there is nothing to put back.',
+    `There is no tree kept aside by a restore of another record ${whereIs(place)}, so there is nothing to put back.`,
   );
 }

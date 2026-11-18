@@ -349,6 +349,52 @@ describe('mnema backup verify and restore', () => {
     expect((await mnema(['backup', 'verify'])).failed).toBe(false);
   });
 
+  it("asks about another record's copy in a project outside git, says where the live record goes and that it stays until deleted, and puts it back", async () => {
+    // Another project, outside git too, whose copy is in the folder this one is then set up with.
+    const other = join(sandbox, 'other');
+    mkdirSync(other);
+    process.chdir(other);
+    expect((await mnema(['init'])).failed).toBe(false);
+    expect((await mnema(['task', 'create', 'work of other'])).failed).toBe(false);
+    const folder = join(sandbox, 'folder');
+    expect((await mnema(['backup', 'setup', folder], answering('yes'))).failed).toBe(false);
+    expect((await mnema(['backup', 'run'])).failed).toBe(false);
+    const beta = readdirSync(folder)[0] as string;
+    process.chdir(repo);
+    expect((await mnema(['backup', 'setup', folder], answering('yes'))).failed).toBe(false);
+    const trees = resolveTrees(repo, { home: join(sandbox, 'home') });
+    const tails = join(trees.projectPublic as string, 'tails');
+    const live = readdirSync(tails);
+
+    const asked: string[] = [];
+    const piped = await mnema(['backup', 'restore', '--from', beta]);
+    expect(piped.failed).toBe(true);
+    const where = join(sandbox, 'home', '.mnema', 'before-restore');
+    expect(piped.err.join(' ')).toContain(`${where}/<date>/`);
+    expect(piped.err.join(' ')).toContain(
+      `run \`mnema backup restore --from ${beta}\` in a terminal`,
+    );
+    expect(readdirSync(tails)).toEqual(live);
+
+    const yes = await mnema(['backup', 'restore', '--from', beta], {
+      aPersonIsHere: true,
+      ask: async (question) => {
+        asked.push(question);
+        return 'yes';
+      },
+    });
+    expect(yes.failed, yes.err.join(' / ')).toBe(false);
+    expect(asked).toHaveLength(1);
+    expect(yes.out.join('\n')).toContain(`is kept at ${where}/`);
+    expect(yes.out.join('\n')).toContain('you delete them by hand');
+    expect(readdirSync(tails)).not.toEqual(live);
+
+    const undone = await mnema(['backup', 'restore', '--undo']);
+    expect(undone.failed, undone.err.join(' / ')).toBe(false);
+    expect(undone.out.join('\n')).toContain('you delete it by hand');
+    expect(readdirSync(tails)).toEqual(live);
+  });
+
   it('takes --undo alone, and says there is nothing to put back where nothing was kept', async () => {
     const folder = join(sandbox, 'folder');
     await mnema(['backup', 'setup', folder], answering('yes'));

@@ -120,7 +120,7 @@ symbolic link in the tree or in the folder. A copy only grows. The folder keeps 
 clear, which `setup` asks a person to confirm at a terminal. A machine can have a folder per project; a project has the one it was set up with.
 `verify` reads the copy as a record (with this mnema's reader) and says how it stands against the trees; `restore` puts it
 back into a tree that lost files, and never over a file the tree holds; a copy of another record is asked first,
-what the tree held is kept aside in the git directory, and `restore --undo` puts it back.
+what the tree held is kept aside (in the git directory, or in the mnema home for a project outside git), and `restore --undo` puts it back.
 A destination may be a git remote (or the folder of a bare repository): `run` commits the copy to a clone of it
 in the data directory and pushes it, one more commit each run, and never squashes, amends or forces: the
 destination keeps the whole history. `hook install` adds an optional post-commit hook that runs the backup.

@@ -94,7 +94,7 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
         'clear, which `setup` asks a person to confirm at a terminal. A machine can have a folder per project; a project has the one it was set up with.',
         "`verify` reads the copy as a record (with this mnema's reader) and says how it stands against the trees; `restore` puts it",
         'back into a tree that lost files, and never over a file the tree holds; a copy of another record is asked first,',
-        'what the tree held is kept aside in the git directory, and `restore --undo` puts it back.',
+        'what the tree held is kept aside (in the git directory, or in the mnema home for a project outside git), and `restore --undo` puts it back.',
         'A destination may be a git remote (or the folder of a bare repository): `run` commits the copy to a clone of it',
         'in the data directory and pushes it, one more commit each run, and never squashes, amends or forces: the',
         'destination keeps the whole history. `hook install` adds an optional post-commit hook that runs the backup.',
@@ -432,6 +432,16 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
       "take the copy of this record (64 hex) from the project's folder, instead of the project's own",
     )
     .option('--undo', 'put back what the last restore of another record kept aside')
+    .addHelpText(
+      'after',
+      [
+        '',
+        'What a restore of another record replaces is moved, never copied, and is kept until you delete it by hand:',
+        'in a repository, to <git directory>/mnema/before-restore-<UTC date>/; in a project outside git, to',
+        '<mnema home>/before-restore/<UTC date>/ (the mnema home is ~/.mnema, or $MNEMA_HOME when it is set).',
+        'No restore deletes a folder kept there, and `mnema backup status` lists them.',
+      ].join('\n'),
+    )
     .action(async (opts: { dryRun?: boolean; from?: string; undo?: boolean }) => {
       const { planBackupRestore, runBackupRestore, runBackupUndo } = await import(
         '../commands/backup.js'
@@ -486,7 +496,7 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
           ),
           plan.keeping.length === 0
             ? 'No tree to be replaced holds a tail, so nothing is kept aside, and the copy is put in.'
-            : `What the ${plan.keeping.map((one) => one.tree).join(' and ')} tree holds is moved to ${plan.commonDir}/mnema/before-restore-<date>/ (inside the git directory: never committed, never in git status), and the copy is put in its place; \`mnema backup restore --undo\` puts it back, and no restore deletes that folder.`,
+            : `What the ${plan.keeping.map((one) => one.tree).join(' and ')} tree holds is moved to ${plan.keptIn}, and the copy is put in its place; \`mnema backup restore --undo\` puts it back, and no restore deletes that folder.`,
         ];
         if (dryRun) {
           for (const line of question) io.out(render(fact(line)));

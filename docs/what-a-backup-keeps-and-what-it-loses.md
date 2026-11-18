@@ -89,10 +89,14 @@ question shows both names. On a yes, what the tree holds is **moved**, not copie
 `2026-11-12T23-36-30Z` with no colon), inside the git directory, so it is never committed and `git status`
 never shows it; the move is checked before the copy goes in. `mnema backup restore --undo` puts the newest one back (and says how many others stay), and
 moves what stood there meanwhile into the same folder, so nothing is deleted. **No restore deletes a
-folder kept aside**: they stay in `<git directory>/mnema/` until you delete them by hand, and
+folder kept aside**: they stay in `<git directory>/mnema/` (or in `<mnema home>/before-restore/`, below) until you delete them by hand, and
 `mnema backup status` lists the ones of this project with their date and size, including a folder an undo emptied, which now holds only what stood there before it (`restored-<tree>/`). Only a project in a git
-repository has that place: outside one, a restore of another record is refused, and says why. The
-machine's global tree is not part of this. The tree is checked by this mnema's reader before and after it
+A project outside a git repository has no git directory to hold it, so its folder is
+`<mnema home>/before-restore/<UTC date>/` (the mnema home is `~/.mnema`, or `$MNEMA_HOME` when that is set; the date has no colon
+either), with the same marks and the same rules: the question at a terminal, `--undo`, the `restored-<tree>/` folders, the listing in `backup status`,
+and one lock for the place. A project outside git keeps its private tree inside its public one, so the private tree is moved first and put back last, and
+the `.mnema/` folder is left standing, empty, so `--undo` still finds the project. No restore deletes a folder there either: you remove
+it by hand. The machine's global tree is not part of this. The tree is checked by this mnema's reader before and after it
 moves; the second reader (the Python program) is not run on it.
 
 The same question is asked when a project has no record name at all: a project without git backs up its public tree, and
