@@ -12,7 +12,8 @@ import { SWITCH_ON_COMMAND } from '../record-framing.js';
 
 /** The summary, one string per line. */
 export function summaryLines(summary: Summary): string[] {
-  const lines = [PRODUCT_PROMISE];
+  // What was left out of what is counted comes first, as it does on every other surface.
+  const lines = [...(summary.left ?? []), PRODUCT_PROMISE];
   const unread = summary.unread ?? [];
   if (unread.length > 0) {
     const record = unread.includes('record');

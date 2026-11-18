@@ -1648,10 +1648,13 @@ this product's, and the tests named below hold both readers beside this document
   version wrote a line, and no field is added to say it, so the refusal names the version that
   does not read the line rather than the one that does. This product's `verify` fails on it, and the two readers
   refuse it alike. What the product's other reads do with a line that does not read, for this reason or any other
-  (damage, a merge's markers), is its own and does not change the verdict: they serve what they read, leave the
-  line out, and name the part on the first line of every surface, with the tail, the line and the way out (a
+  (damage, a merge's markers), is its own and does not change the verdict: the surfaces that serve the record from the projection
+  cache (`status`, `show`, `search`, `brief`, `rules`, `why`, the hooks, the console and the agent's tools)
+  serve what they read, leave the line out, and name the part on the first line of every surface, with the tail, the line and the way out (a
   newer mnema's line: update mnema); the line after it breaks its tail's chain as it would in the verdict. A
-  symbolic link where a record is read (§4) is named the same way, with the rest served. Every write of the
+  symbolic link at a segment or a tail (§4) is named the same way, with the rest served. The tools that audit the
+  record (`export`, `exposure`, `antipatterns` and the agent's audit tools) read the tails themselves and still
+  refuse such a line. Every write of the
   product is refused while such a part stands, and the repair of a tail from git is the one write that passes. A
   checkpoint or a tail proof under
   a scheme of its family a reader does not read is refused the same way, before its other keys:

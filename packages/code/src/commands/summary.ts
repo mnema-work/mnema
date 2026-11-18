@@ -9,6 +9,7 @@
 
 import type { DiscoveryEnv } from '@mnema/core';
 import type { SwitchableChannel } from '../record-framing.js';
+import { linkBreakSentences } from '../record-integrity.js';
 import { proposalsToReview } from './decision-review.js';
 import { channelsOff } from './switch.js';
 
@@ -20,6 +21,8 @@ export interface Summary {
   readonly waiting?: number;
   /** The channels that are off on this machine, in the product's order. Empty when they could not be read. */
   readonly off: readonly SwitchableChannel[];
+  /** The facts of the parts of the record left out of what was counted, said first: absent when none was. */
+  readonly left?: readonly string[];
   /** What could not be read, when something could not: the summary says so and claims nothing about it. */
   readonly unread?: readonly ('record' | 'switches')[];
 }
@@ -28,17 +31,15 @@ export interface Summary {
 export function summaryHere(ctx: { readonly cwd: string; readonly env: DiscoveryEnv }): Summary {
   let founded = false;
   let waiting: number | undefined;
+  let left: readonly string[] = [];
   const unread: ('record' | 'switches')[] = [];
   try {
     const read = proposalsToReview(ctx);
-    // A part of the record this mnema does not read (a line, a link) is left out of what the
-    // read serves, so a count over the rest would claim what it cannot: the summary says the
-    // record could not be read, as it does for a read that throws.
-    if (read.ok && read.linkBreaks.some((fact) => fact.unread !== undefined)) {
-      unread.push('record');
-    } else {
-      founded = read.ok;
-      if (read.ok) waiting = read.proposals.length;
+    founded = read.ok;
+    if (read.ok) {
+      waiting = read.proposals.length;
+      // What was read is counted, and what was left out is said first, as `status` says it.
+      left = linkBreakSentences(read.linkBreaks);
     }
   } catch {
     // The record could not be read: the summary says that, once, and names `mnema verify`; it does
@@ -47,8 +48,7 @@ export function summaryHere(ctx: { readonly cwd: string; readonly env: Discovery
   }
   let off: readonly SwitchableChannel[] = [];
   try {
-    // The switches are facts of the same record: where a part of it was left out, none is listed.
-    if (!unread.includes('record')) off = channelsOff(ctx);
+    off = channelsOff(ctx);
   } catch {
     // The switches could not be read: nothing is listed, and the summary says that.
     unread.push('switches');
@@ -57,6 +57,7 @@ export function summaryHere(ctx: { readonly cwd: string; readonly env: Discovery
     founded,
     ...(waiting === undefined ? {} : { waiting }),
     off,
+    ...(left.length === 0 ? {} : { left }),
     ...(unread.length === 0 ? {} : { unread }),
   };
 }
