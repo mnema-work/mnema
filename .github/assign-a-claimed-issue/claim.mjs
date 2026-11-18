@@ -379,7 +379,7 @@ export function fixtureApi(fixture, say = console.log) {
 /** @param {Json} issue */
 const labelsOf = (issue) =>
   (issue.labels ?? []).map((/** @type {Json} */ label) => label.name ?? label);
-/** @param {Json} issue */
+/** @param {Json} issue @returns {string[]} */
 const loginsOf = (issue) => (issue.assignees ?? []).map((/** @type {Json} */ who) => who.login);
 
 /**
