@@ -430,7 +430,7 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
         reportRefusal(wiring, {
           reason: 'USAGE',
           message:
-            '--global takes no --from: the copy of the global tree is the one in the folder `mnema backup setup --global` gave it.',
+            '--global takes no --from: the copy of the global tree is the one in the folder `mnema backup setup --global <folder>` set up.',
         });
         return;
       }
@@ -462,7 +462,9 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
           io.out(
             render(
               fact(
-                `${undone.others} other folder(s) kept aside for ${toGlobal ? 'the global tree' : 'this project'} are still there: \`${toGlobal ? 'mnema backup restore --global --undo' : 'mnema backup restore --undo'}\` puts back the next newest that has a tree to put back, and \`${toGlobal ? 'mnema backup status --global' : 'mnema backup status'}\` lists them all`,
+                toGlobal
+                  ? `${undone.others} other folder(s) kept aside for the global tree are still there: \`mnema backup restore --global --undo\` puts back the next newest that has a tree to put back, and \`mnema backup status --global\` lists them all`
+                  : `${undone.others} other folder(s) kept aside for this project are still there: \`mnema backup restore --undo\` puts back the next newest that has a tree to put back, and \`mnema backup status\` lists them all`,
               ),
             ),
           );
@@ -588,7 +590,9 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
         io.out(
           render(
             fact(
-              `${result.asides.length} folder(s) kept aside for ${result.global ? 'the global tree' : 'this project'}, which no restore deletes: you delete them by hand; \`${result.global ? 'mnema backup status --global' : 'mnema backup status'}\` lists them`,
+              result.global
+                ? `${result.asides.length} folder(s) kept aside for the global tree, which no restore deletes: you delete them by hand; \`mnema backup status --global\` lists them`
+                : `${result.asides.length} folder(s) kept aside for this project, which no restore deletes: you delete them by hand; \`mnema backup status\` lists them`,
             ),
           ),
         );

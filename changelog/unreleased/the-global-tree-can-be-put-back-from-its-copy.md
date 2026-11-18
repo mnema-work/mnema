@@ -1,7 +1,7 @@
 Added
 
 - **`mnema backup restore --global` puts back the machine's global tree from its copy, and `mnema backup verify --global` reads that copy.**
-  The copy is the one `mnema backup setup --global` named (`<folder>/global/`), read by this mnema's reader, and restored under the rules
+  The copy is the one set up with `mnema backup setup --global <folder>` (`<folder>/global/`), read by this mnema's reader, and restored under the rules
   of a project's restore: it never overwrites a file, a live tail that went further wins, a copy tail that is not the start of the live one
   refuses the whole restore, `locks/` and the installation's id and anchor never come back, and a link or a private key refuses before the
   first byte. A copy of another machine's global tree is asked at a terminal first (the question says that every project on the machine

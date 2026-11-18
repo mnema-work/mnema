@@ -96,8 +96,8 @@ A project outside a git repository has no git directory to hold it, so its folde
 either), with the same marks and the same rules: the question at a terminal, `--undo`, the `restored-<tree>/` folders, the listing in `backup status`,
 and one lock for the place. A project outside git keeps its private tree inside its public one, so the private tree is moved first and put back last, and
 the `.mnema/` folder is left standing, empty, so `--undo` still finds the project. No restore deletes a folder there either: you remove
-it by hand. The machine's global tree has its own restore, `mnema backup restore --global` (its copy is `<folder>/global/`, the folder
-`mnema backup setup --global` gave it): the same question, the same lock, the same `--undo --global`, and its live tree kept in
+it by hand. The machine's global tree has its own restore, `mnema backup restore --global` (its copy is `<folder>/global/`, in the folder set up with
+`mnema backup setup --global <folder>`): the same question, the same lock, the same `--undo --global`, and its live tree kept in
 `<mnema home>/before-restore/<UTC date>/global/`, which `mnema backup status --global` lists. The question says that every project on the
 machine reads the global tree, and a global restore never touches a project's trees, nor a project's restore the global tree. The tree is checked by this mnema's reader before and after it
 moves; the second reader (the Python program) is not run on it.
