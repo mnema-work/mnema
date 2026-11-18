@@ -49,7 +49,6 @@ export {
   prepareRestore,
   type Restored,
   restoreCopies,
-  restoreCopy,
 } from './backup/restore.js';
 export {
   type CopyReading,
