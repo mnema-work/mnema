@@ -91,7 +91,8 @@ export function faults(all: string): string[] {
   if (gate === '') {
     say('ci.yml has no job the-coverage-gate');
   } else {
-    if (!/^ {4}needs: test$/m.test(gate)) say('the coverage gate does not wait for the test job');
+    if (!/^ {4}needs: \[changes, test\]$/m.test(gate))
+      say('the coverage gate does not wait for the test job');
     if (size !== undefined && !gate.includes(`!= '${n}'`)) {
       say(`the coverage gate does not check that it was handed ${n} blobs`);
     }
@@ -163,7 +164,7 @@ describe('the suite is split whole', () => {
     expect(faults(uncounted)).toEqual([
       'the coverage gate does not check that it was handed 3 blobs',
     ]);
-    const unwaiting = CI.replace('    needs: test\n    runs-on', '    runs-on');
+    const unwaiting = CI.replace('    needs: [changes, test]\n    runs-on', '    runs-on');
     expect(unwaiting).not.toBe(CI);
     expect(faults(unwaiting)).toEqual(['the coverage gate does not wait for the test job']);
 

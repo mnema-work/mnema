@@ -893,6 +893,8 @@ jobs:
     name: what failed, for the comment
     if: ${{ !cancelled() && github.event_name == 'pull_request' }}
     needs:
+      - changes
+      - build
       - test
       - the-coverage-gate
       - lint-and-typecheck

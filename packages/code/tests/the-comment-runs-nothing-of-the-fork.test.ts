@@ -120,6 +120,18 @@ const ALLOWED = new Map([
   ['pull-requests', 'write'],
 ]);
 const THE_ONE_RUN = 'node .github/what-failed/comment.mjs "$GITHUB_EVENT_PATH" "$REPORT"';
+
+/**
+ * The one other workflow started by a run: it reruns a job the runner pool cancelled before any
+ * step ran, once. It writes nothing on a pull request; its single write is the rerun, so `actions:
+ * write` is the only scope it may add, and no job of any other workflow may hold it.
+ */
+const THE_RERUN = '.github/workflows/rerun-a-cancelled-runner.yml';
+const RERUN_ALLOWED = new Map([
+  ['actions', 'write'],
+  ['contents', 'read'],
+]);
+const THE_ONE_RERUN = 'node .github/rerun-a-cancelled-runner/rerun.mjs "$GITHUB_EVENT_PATH"';
 const PINNED = /^\s*(?:-\s+)?uses:\s*[\w.-]+\/[\w./-]+@[0-9a-f]{40}\s+# v\d+\.\d+\.\d+\s*$/;
 
 /** Every line of a workflow started by `workflow_run` that breaks the rules above, as `file: why`. */
@@ -142,7 +154,8 @@ function offences(where: string, all: string): string[] {
     const granted = permissionsOf(job, 4);
     if (granted === null) say(`job ${id} does not say its permissions`);
     for (const [scope, level] of granted ?? []) {
-      if (ALLOWED.get(scope) !== level) say(`job ${id} holds ${scope}: ${level}`);
+      const allowed = where === THE_RERUN ? RERUN_ALLOWED : ALLOWED;
+      if (allowed.get(scope) !== level) say(`job ${id} holds ${scope}: ${level}`);
     }
     for (const step of stepsOf(job)) {
       const uses = step.split('\n').find((line) => /^\s*(?:-\s+)?uses:/.test(line));
@@ -158,7 +171,9 @@ function offences(where: string, all: string): string[] {
         if (!path.startsWith(`\${{ runner.temp }}/`)) say(`job ${id} downloads into the workspace`);
       }
       for (const line of runOf(step)) {
-        if (line !== THE_ONE_RUN) say(`job ${id} runs ${line}`);
+        if (line !== (where === THE_RERUN ? THE_ONE_RERUN : THE_ONE_RUN)) {
+          say(`job ${id} runs ${line}`);
+        }
       }
     }
   }
@@ -171,7 +186,7 @@ const STARTED_BY_A_RUN = WORKFLOWS.filter((where) =>
 
 describe('the workflow that comments runs nothing of the fork', () => {
   it('is the one workflow started by another run, and it breaks none of the lines', () => {
-    expect(STARTED_BY_A_RUN).toEqual(['.github/workflows/what-failed.yml']);
+    expect(STARTED_BY_A_RUN).toEqual([THE_RERUN, '.github/workflows/what-failed.yml']);
     expect(STARTED_BY_A_RUN.flatMap((where) => offences(where, text(where)))).toEqual([]);
   });
 

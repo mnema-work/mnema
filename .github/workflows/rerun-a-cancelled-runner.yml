@@ -42,16 +42,4 @@ jobs:
       - name: Rerun the jobs the runner took away, once
         env:
           GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ github.event.workflow_run.id }}
-          ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
-          BRANCH: ${{ github.event.workflow_run.head_branch }}
-          EVENT: ${{ github.event.workflow_run.event }}
-        run: |
-          set -euo pipefail
-          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/attempts/$ATTEMPT/jobs?per_page=100" > "$RUNNER_TEMP/jobs.json"
-          newest="$(gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs" -f branch="$BRANCH" -f event="$EVENT" -f per_page=1 --jq '.workflow_runs[0].id')"
-          ids="$(node .github/rerun-a-cancelled-runner/select.mjs "$RUNNER_TEMP/jobs.json" "$ATTEMPT" "$RUN_ID" "$newest")"
-          for id in $ids; do
-            echo "rerunning job $id"
-            gh api -X POST "repos/$GITHUB_REPOSITORY/actions/jobs/$id/rerun"
-          done
+        run: node .github/rerun-a-cancelled-runner/rerun.mjs "$GITHUB_EVENT_PATH"

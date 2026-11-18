@@ -606,7 +606,7 @@ describe('the instrument is wired to the thing that starts the suite', () => {
     // It runs after the suite, red or green (a retry can keep a run green), and `continue-on-error`
     // means it can never turn either result into the other.
     expect(ci).toMatch(
-      /if: success\(\) \|\| failure\(\)\n\s+continue-on-error: true\n\s+run: pnpm why-it-went-red/,
+      /if: \$\{\{ needs\.changes\.outputs\.code == 'true' && \(success\(\) \|\| failure\(\)\) \}\}\n\s+continue-on-error: true\n\s+run: pnpm why-it-went-red/,
     );
   });
 

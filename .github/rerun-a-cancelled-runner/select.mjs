@@ -1,7 +1,7 @@
 // A RUNNER THAT WAS TAKEN AWAY, RERUN ONCE. A job of `windows and macos` that ends `cancelled` with
 // no step of the workflow having run to a result is the runner's loss (the macOS and Windows pools
 // shut a machine down under a queued job), not a verdict about the code. `rerun-a-cancelled-runner.yml`
-// hands this script the jobs of a run that just ended and reruns what it returns, each through the
+// hands `rerun.mjs` the run that just ended; it asks this module which jobs to rerun and reruns them, each through the
 // rerun-one-job endpoint of the API.
 //
 // WHAT IT NEVER RERUNS:
@@ -14,8 +14,6 @@
 //
 // The steps GitHub adds itself (`Set up job`, `Complete job`, `Post ...`) are not the workflow's
 // and do not count as a step that ran.
-
-import { appendFileSync, readFileSync } from 'node:fs';
 
 const THE_JOBS = /^windows and macos \(/;
 const NOT_THE_WORKFLOWS = /^(?:Set up job|Complete job|Post )/;
@@ -44,21 +42,4 @@ export function jobsToRerun({ jobs, attempt, runId, newestRunId }) {
   const cancelled = jobs.filter((job) => job.conclusion === 'cancelled');
   if (cancelled.length === 0 || !cancelled.every((job) => THE_JOBS.test(job.name))) return [];
   return cancelled.filter((job) => !aStepRan(job)).map((job) => job.id);
-}
-
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const [jobsFile = '', attempt, runId, newestRunId] = process.argv.slice(2);
-  const pages = JSON.parse(readFileSync(jobsFile, 'utf-8'));
-  /** @type {Job[]} */
-  const jobs = (Array.isArray(pages) ? pages : [pages]).flatMap(
-    (/** @type {{ jobs?: Job[] }} */ page) => page.jobs ?? [],
-  );
-  const ids = jobsToRerun({
-    jobs,
-    attempt: Number(attempt),
-    runId: Number(runId),
-    newestRunId: Number(newestRunId),
-  });
-  console.log(ids.join('\n'));
-  if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `count=${ids.length}\n`);
 }
