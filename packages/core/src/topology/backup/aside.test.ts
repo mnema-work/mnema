@@ -7,7 +7,25 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+/** What a move across file systems meets: `across` makes every rename say so, and `spoil` makes the copy differ. */
+const fs = vi.hoisted(() => ({ across: false, spoil: false }));
+vi.mock('node:fs', async (original) => {
+  const real = await original<typeof import('node:fs')>();
+  return {
+    ...real,
+    renameSync: (from: string, to: string) => {
+      if (fs.across) throw Object.assign(new Error('cross-device link'), { code: 'EXDEV' });
+      real.renameSync(from, to);
+    },
+    cpSync: (from: string, to: string, options: import('node:fs').CopySyncOptions) => {
+      real.cpSync(from, to, options);
+      if (fs.spoil) real.writeFileSync(`${to}/extra`, 'not in the original');
+    },
+  };
+});
+
 import { AsideError, asideName, asidesIn, clearAsides, setAside, undoAside } from './aside.js';
 
 let base: string;
@@ -28,6 +46,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  fs.across = false;
+  fs.spoil = false;
   rmSync(base, { recursive: true, force: true });
 });
 
@@ -74,7 +94,38 @@ describe('the folder a tree is kept in', () => {
   });
 });
 
+describe('a move across file systems', () => {
+  it('copies the tree whole, compares it, and only then takes the original away', () => {
+    fs.across = true;
+    const kept = setAside(commonDir, items(), later);
+    expect(existsSync(root)).toBe(false);
+    expect(
+      readFileSync(
+        join(kept?.folder as string, 'private', 'tails', 'aa11-bb22', '000001.jsonl'),
+        'utf-8',
+      ),
+    ).toBe('{"seq":0}\n');
+  });
+
+  it('leaves the original where it is when the copy is not the same, and removes the copy', () => {
+    fs.across = true;
+    fs.spoil = true;
+    expect(() => setAside(commonDir, items(), later)).toThrow(/not the same as the original/);
+    expect(existsSync(join(root, 'tails', 'aa11-bb22', '000001.jsonl'))).toBe(true);
+    expect(existsSync(join(commonDir, 'mnema', asideName(later), 'private'))).toBe(false);
+  });
+});
+
 describe('putting it back', () => {
+  it('refuses when what stands in the place has nowhere to go, and moves nothing', () => {
+    const kept = setAside(commonDir, items(), later);
+    mkdirSync(join(kept?.folder as string, 'restored-private'));
+    put(root, 'tails/ee55-ff66/000001.jsonl', '{"x":1}\n');
+    expect(() => undoAside(commonDir, items())).toThrow(/already there/);
+    expect(existsSync(join(root, 'tails', 'ee55-ff66'))).toBe(true);
+    expect(existsSync(join(kept?.folder as string, 'private'))).toBe(true);
+  });
+
   it('puts the tree back where it was, moves what stands there aside and deletes nothing, and a second undo has nothing to do', () => {
     const kept = setAside(commonDir, items(), later);
     put(root, 'tails/ee55-ff66/000001.jsonl', '{"restored":true}\n');

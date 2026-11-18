@@ -697,6 +697,14 @@ describe("a copy of another record's, with a question and a way back", () => {
       expect(runBackupVerify(g)).toMatchObject({ ok: true, sound: true });
     });
 
+    it('says so when this machine has no copy to take the name from', () => {
+      const { g, folder } = nameless();
+      rmSync(folder, { recursive: true, force: true });
+      const refused = runBackupRestore(g, false, { confirmed: true });
+      expect(refused).toMatchObject({ ok: false, reason: 'NO_RECORD_NAME' });
+      expect(refused.ok === false && 'message' in refused && refused.message).toContain('no copy');
+    });
+
     it('does not guess among several copies, and says the command that names one', () => {
       const { g, record } = nameless();
       const other = project('delta', false);
