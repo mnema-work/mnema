@@ -142,7 +142,8 @@ const V4_BODY = [
 ].join('\n');
 
 /**
- * What the block says now: the fifth version, the third one's text with a sentence about stars on top. The third version had the one sentence about when an agent accepts in
+ * What the block says now: the fifth version, the fourth one's text with one sentence about starring the
+ * repository, worded so an agent never stars it. The third version had the one sentence about when an agent accepts in
  * place of the parenthesis about the switch (a decision the person dictated or chose among options
  * the agent offered is accepted at once, with a note quoting the answer; one the agent concluded
  * alone waits). The block is a file and cannot obey the switch, so it still names it. Its form is the second version's:
