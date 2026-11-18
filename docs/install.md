@@ -140,3 +140,5 @@ Code install stands, run `mnema doctor`: it reads the files of the installed plu
 the ones released with the binary that runs, or that they have the same version label and other content. A
 Claude Code plugin whose files differ at the same version is put right by `claude plugin uninstall mnema@mnema`
 and then `claude plugin install mnema@mnema`.
+
+A line added to prove a pages-only pull request skips the test matrix.
