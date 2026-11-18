@@ -114,7 +114,7 @@ describe('the sentence after a line that names projects', () => {
 });
 
 describe('a named project whose chain is damaged', () => {
-  it('ends the turn without rejecting, and the sentence is simply not said', async () => {
+  it('ends the turn without rejecting, and what still reads of it is counted', async () => {
     const d = join(sandbox, 'delta');
     mkdirSync(d, { recursive: true });
     process.chdir(d);
@@ -125,6 +125,8 @@ describe('a named project whose chain is damaged', () => {
     appendFileSync(join(tails, tail, '000001.jsonl'), 'this is not a stored line\n', 'utf-8');
     process.chdir(a);
     const lines = (await prompt(`verify --workspace ${a} ${d}`)).join('\n');
-    expect(lines).not.toContain('mnema promote');
+    // The line that does not read is left out and what reads is served, so the adoption that
+    // recurs is still counted.
+    expect(lines).toContain('mnema promote');
   }, 60_000);
 });

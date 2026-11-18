@@ -453,7 +453,7 @@ describe('a switch met by a line the record cannot read', () => {
     const bytes = readFileSync(segment, 'utf-8');
     const said = await mnema('switch', 'off', 'edit-rules-push');
     expect(said.failed).toBe(true);
-    expect(said.err).toContain(`unreadable stored line at ${segment} byte offset`);
+    expect(said.err).toContain(`unreadable stored line at ${segment} line`);
     expect(said.err).toContain(tail);
     expect(said.err).toContain('the project’s public record holds a line this mnema cannot read');
     expect(said.err).toContain(

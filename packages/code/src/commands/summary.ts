@@ -31,8 +31,15 @@ export function summaryHere(ctx: { readonly cwd: string; readonly env: Discovery
   const unread: ('record' | 'switches')[] = [];
   try {
     const read = proposalsToReview(ctx);
-    founded = read.ok;
-    if (read.ok) waiting = read.proposals.length;
+    // A part of the record this mnema does not read (a line, a link) is left out of what the
+    // read serves, so a count over the rest would claim what it cannot: the summary says the
+    // record could not be read, as it does for a read that throws.
+    if (read.ok && read.linkBreaks.some((fact) => fact.unread !== undefined)) {
+      unread.push('record');
+    } else {
+      founded = read.ok;
+      if (read.ok) waiting = read.proposals.length;
+    }
   } catch {
     // The record could not be read: the summary says that, once, and names `mnema verify`; it does
     // not say the project is not founded.
@@ -40,7 +47,8 @@ export function summaryHere(ctx: { readonly cwd: string; readonly env: Discovery
   }
   let off: readonly SwitchableChannel[] = [];
   try {
-    off = channelsOff(ctx);
+    // The switches are facts of the same record: where a part of it was left out, none is listed.
+    if (!unread.includes('record')) off = channelsOff(ctx);
   } catch {
     // The switches could not be read: nothing is listed, and the summary says that.
     unread.push('switches');

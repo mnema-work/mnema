@@ -562,6 +562,13 @@ export class ProjectionCache {
           this.replay();
           return;
         }
+        // A PART THIS MNEMA DOES NOT READ that lies where a catch-up reads (a link, or a line past
+        // what the frontier covers) is not one the marks below it can say was mended or taken away,
+        // so the record is replayed whole rather than believed over it.
+        if (this.refusedPartPastTheFrontier(this.frontier)) {
+          this.replay();
+          return;
+        }
         // The stamps of the segments each tail appends to, BEFORE the reading, are what the marks
         // record: see {@link activeStampsBefore}.
         const before = this.persisted ? activeStampsBefore(this.layout) : {};
@@ -612,6 +619,25 @@ export class ProjectionCache {
       }
       // Another process kept winning the file: say so by replaying, which is correct whoever wins.
       this.replay();
+    });
+  }
+
+  /**
+   * Whether a part of the record this cache left out ({@link refused}) may lie past what its
+   * frontier covers: a link, which no mark of a segment says, or a line that starts at or after the
+   * byte a tail's reading ended on. A line below that byte is under the marks that say a segment was
+   * rewritten; one past it is read again by every catch-up, and the one that reads it fine is the
+   * one that has to drop it.
+   */
+  private refusedPartPastTheFrontier(frontier: ChainFrontier): boolean {
+    return this.refusedParts.some((part) => {
+      if (part.kind === 'link') return true;
+      const reached = frontier.tails.get(part.tail)?.boundary;
+      if (reached === undefined) return true;
+      const segment = basename(reached.segment);
+      const mine = basename(part.place);
+      if (mine !== segment) return mine > segment;
+      return part.start === undefined || part.start >= reached.bytes;
     });
   }
 

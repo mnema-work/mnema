@@ -141,7 +141,8 @@ export function listedWithoutLinks(
  *
  * A symbolic link at `tails/` or under it is refused ({@link LinkedRecordError}), whatever it
  * points at: it used to be skipped in silence, so a linked tail vanished from every surface that
- * reads the record. Nothing it points at is opened.
+ * reads the record. Nothing it points at is opened. Given `refused`, a reader that serves the record
+ * is handed each link instead and goes on without it (see {@link listedWithoutLinks}).
  */
 export function listTails(layout: ChainLayout, refused?: RefusedLine): string[] {
   return listedWithoutLinks(layout, 'tails', [], refused)
@@ -484,7 +485,8 @@ export function holdsRecord(layout: ChainLayout): boolean {
 /**
  * The sealed + current segment files of a tail, in segment order. A link at the tail's directory,
  * at `tails/`, or anywhere in the tail's directory is refused ({@link LinkedRecordError}): a tail
- * with a link in it is not read, and nothing the link points at is opened.
+ * with a link in it is not read, and nothing the link points at is opened. Given `refused`, the link
+ * is handed to it and the segments that are not links are listed ({@link listedWithoutLinks}).
  */
 export function orderedSegments(
   layout: ChainLayout,
@@ -532,7 +534,11 @@ interface SegmentRead {
  * chain as it always did. Every other reader of a tail still stops at the first line it cannot
  * read, because what it returns is the tail and a tail with a hole in it is not one.
  */
-export type RefusedLine = (line: UnreadableLineError, lineNumber?: number) => void;
+export type RefusedLine = (
+  line: UnreadableLineError,
+  lineNumber?: number,
+  start?: number,
+) => void;
 
 /**
  * What a reading that PUTS BACK A REFORMAT is handed for a line that would not parse: the line's
@@ -572,7 +578,10 @@ export function relaying<T>(
 const REFUSED = Symbol('refused');
 
 /** One line's read: a refused line goes to `refused` when there is one, and throws when not. */
-function readOn<T>(refused: RefusedLine | undefined, read: () => T): T | typeof REFUSED {
+function readOn<T>(
+  refused: ((error: UnreadableLineError) => void) | undefined,
+  read: () => T,
+): T | typeof REFUSED {
   if (refused === undefined) return read();
   try {
     return read();
@@ -635,8 +644,9 @@ function entriesOfSegment(
     if (line.length === 0) continue;
     const couldBeTorn = isLast && !endsWithNewline && i === lines.length - 1;
     at = i + 1;
-    const entry = readOn(refused, () =>
-      parseStoredLine(line, couldBeTorn, couldBeTorn ? entryOf : relaidEntryOf, where),
+    const entry = readOn(
+      refused === undefined ? undefined : (error) => refused(error, at, start),
+      () => parseStoredLine(line, couldBeTorn, couldBeTorn ? entryOf : relaidEntryOf, where),
     );
     if (entry === REFUSED) continue;
     if (entry !== null) {
@@ -715,6 +725,8 @@ export interface RefusedPart {
   readonly place: string;
   /** For a line, its place in the segment, counted from 1 (blank lines included). */
   readonly line?: number;
+  /** For a line, the byte it starts at in that segment: where it stands against what a reading covered. */
+  readonly start?: number;
   /** Why the part is not read: the reader's own words. */
   readonly reason: string;
 }
@@ -722,9 +734,13 @@ export interface RefusedPart {
 /**
  * The {@link RefusedPart} a refused read stands for. `line` is the line's number when the walk that
  * refused it knows it better than the locus does (a backward walk names a byte offset): the
- * second argument of a {@link RefusedLine}.
+ * second and third arguments of a {@link RefusedLine}.
  */
-export function refusedPartOf(error: UnreadableLineError, line?: number): RefusedPart {
+export function refusedPartOf(
+  error: UnreadableLineError,
+  line?: number,
+  start?: number,
+): RefusedPart {
   if (error instanceof LinkedRecordError) {
     const [top, tail] = error.path.split('/');
     return {
@@ -743,6 +759,7 @@ export function refusedPartOf(error: UnreadableLineError, line?: number): Refuse
     tail: named[1] as string,
     place: `tails/${named[1]}/${named[2]}`,
     line: line ?? Number(named[3]),
+    ...(start !== undefined ? { start } : {}),
     reason: error.reason,
   };
 }
@@ -1109,7 +1126,7 @@ export function readTailSince(
       refused === undefined
         ? undefined
         : (error: UnreadableLineError, start: number): void =>
-            refused(error, lineAtOffset(file, start));
+            refused(error, lineAtOffset(file, start), start);
     for (const found of locatedFromEnd(file, s === segments.length - 1, parse, onRefused)) {
       // A line STARTING before the boundary is at or below it: the walk has reached what
       // the previous reading covered, and everything pushed so far is new. Only the

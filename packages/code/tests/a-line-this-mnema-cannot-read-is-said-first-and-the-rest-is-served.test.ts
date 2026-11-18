@@ -22,7 +22,15 @@
 // @plants-damage
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { resolveTrees } from '@mnema/core';
@@ -96,7 +104,7 @@ const DAMAGES: readonly (readonly [string, (line: Buffer) => Buffer])[] = [
   [
     'the keys in another order',
     (line) => {
-      const parsed = JSON.parse(line.toString('utf-8')) as Record<string, unknown>;
+      const parsed = JSON.parse(new TextDecoder().decode(line)) as Record<string, unknown>;
       const reversed = Object.fromEntries(Object.entries(parsed).reverse());
       return Buffer.from(JSON.stringify(reversed));
     },
@@ -251,12 +259,44 @@ describe('a line this mnema cannot read, and a write', () => {
       const file = segmentIn(publicRoot(planted.repo));
       const { lines, at } = theLine(readFileSync(file));
       lines[at] = Buffer.from(
-        lines[at]?.toString('utf-8').replace(/^\{/, '{"future":1,') as string,
+        new TextDecoder().decode(lines[at]).replace(/^\{/, '{"future":1,') as string,
       );
       writeFileSync(file, Buffer.concat(lines.flatMap((line) => [line, Buffer.from('\n')])));
       const read = mnema(planted, ['status']);
       expect(read.status).toBe(0);
       expect(read.stdout.split('\n')[0]).toContain('Update mnema if a newer one wrote the line');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 120_000);
+});
+
+describe('a part this mnema does not read, once it is mended', () => {
+  it('is no longer said by a cache that said it, whether the line was the last one or a link', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'mnema-unread-mended-'));
+    try {
+      const planted = aRecord(dir);
+      const file = segmentIn(publicRoot(planted.repo));
+      const sound = readFileSync(file);
+      const firstLineOfStatus = (): string =>
+        mnema(planted, ['status']).stdout.split('\n')[0] as string;
+      expect(firstLineOfStatus()).not.toContain('issue [T1]');
+
+      // A line nobody can read after the last one, which the cache has not read past.
+      writeFileSync(file, Buffer.concat([sound, Buffer.from('a line nobody can read\n')]));
+      expect(firstLineOfStatus()).toContain('a line that does not read');
+      writeFileSync(file, sound);
+      expect(firstLineOfStatus()).not.toContain('issue [T1]');
+
+      // The segment as a link to a file outside the record, and then as itself again.
+      const outside = join(dir, 'outside.jsonl');
+      writeFileSync(outside, sound);
+      rmSync(file);
+      symlinkSync(outside, file);
+      expect(firstLineOfStatus()).toContain('a symbolic link');
+      rmSync(file);
+      writeFileSync(file, sound);
+      expect(firstLineOfStatus()).not.toContain('issue [T1]');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -275,7 +315,7 @@ describe.each(['private', 'global'] as const)(
         const root = (scope === 'private' ? trees.projectPrivate : trees.global) as string;
         const file = segmentIn(root);
         const held = readFileSync(file);
-        expect(held.toString('utf-8')).toContain('a keepable memory');
+        expect(readFileSync(file, 'utf-8')).toContain('a keepable memory');
         const lines = held.toString('latin1').split('\n');
         const at = lines.findIndex((line) => line.includes('a keepable memory'));
         lines[at] = `<<<<<<< HEAD${(lines[at] as string).slice(12)}`;

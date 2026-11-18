@@ -1652,7 +1652,7 @@ this product's, and the tests named below hold both readers beside this document
   line out, and name the part on the first line of every surface, with the tail, the line and the way out (a
   newer mnema's line: update mnema); the line after it breaks its tail's chain as it would in the verdict. A
   symbolic link where a record is read (§4) is named the same way, with the rest served. Every write of the
-  product is refused while such a part stands, and `mnema tail repair` is the one write that passes. A
+  product is refused while such a part stands, and the repair of a tail from git is the one write that passes. A
   checkpoint or a tail proof under
   a scheme of its family a reader does not read is refused the same way, before its other keys:
   *a checkpoint scheme this reader does not know: '\<a later scheme\>': mnema \<version\> reads

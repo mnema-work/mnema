@@ -122,7 +122,7 @@ describe('a rewrite below the frontier, in every state of the cache', () => {
   }, 120_000);
 
   // @proves the-projection-cache-serves-what-the-record-says
-  it('a line that became unreadable, to the same size, is refused by all three, not by the cold alone', () => {
+  it('a line that became unreadable, to the same size, is left out and said by all three, not by the cold alone', () => {
     const seen = inEveryCacheState(
       theCase((bytes) => {
         const lines = bytes.split('\n');
@@ -131,10 +131,10 @@ describe('a rewrite below the frontier, in every state of the cache', () => {
         return lines.join('\n');
       }),
     );
-    expect(seen.cold.status).toBe(1);
-    expect(seen.cold.said).toContain('holds a line this mnema cannot read');
-    expect(seen.warm.status).toBe(1);
-    expect(seen.session.status).toBe(1);
+    // The read serves what reads and names the part first: in every state, the same words (the
+    // helper holds the same exit; `show` of the id the line carried is no record, as it says).
+    expect(seen.cold.said).toContain('a line that does not read');
+    expect(seen.cold.said).not.toContain('holds a line this mnema cannot read');
     expect(seen.warm.said).toBe(seen.cold.said);
     expect(seen.session.said).toBe(seen.cold.said);
   }, 120_000);

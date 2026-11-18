@@ -94,8 +94,8 @@ function refusedParts(): { readonly collect: RefusedLine; readonly parts: Refuse
   const parts: RefusedPart[] = [];
   return {
     parts,
-    collect: (error, line) => {
-      const part = refusedPartOf(error, line);
+    collect: (error, line, start) => {
+      const part = refusedPartOf(error, line, start);
       if (!parts.some((held) => sameRefusedPart(held, part))) parts.push(part);
     },
   };
