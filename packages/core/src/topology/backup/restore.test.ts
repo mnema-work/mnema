@@ -6,12 +6,26 @@
  */
 
 // @plants-damage
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { catalogUpcasters, tailLockPath, withTailLock } from '@mnema/chain';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { createTask } from '../../workflow/operations.js';
+import { resolveTrees } from '../resolve.js';
+import { openTreeForWriting } from '../routing.js';
 import { BackupRefusedError, prepareCopy, writeCopy } from './copy.js';
-import { prepareRestore } from './restore.js';
+import { prepareRestore, restoreCopy } from './restore.js';
 
 const RECORD = 'ab'.repeat(32);
 const TAIL = 'aa11-bb22';
@@ -83,5 +97,117 @@ describe('a restore turns away what it must, before it reads the tree', () => {
     expect(() => prepareRestore(join(base, 'live'), destination, RECORD, 'public')).toThrow(
       /no copy of the public tree/,
     );
+  });
+});
+
+/** A project whose private tree holds a real record, as a writer made it. */
+function aRealProject(sandbox: string, label: string) {
+  const repo = join(sandbox, label);
+  mkdirSync(join(repo, '.mnema'), { recursive: true });
+  const trees = resolveTrees(repo, { home: join(sandbox, 'home') });
+  const priv = trees.projectPrivate as string;
+  const write = (title: string) => {
+    const writer = openTreeForWriting(trees, 'private');
+    const made = createTask(
+      { writer, layout: { root: priv }, upcasters: catalogUpcasters() },
+      { title },
+    );
+    if (!made.ok) throw new Error('write refused');
+  };
+  write('first');
+  return { priv, write };
+}
+
+const segmentIn = (root: string) => {
+  const [tail] = readdirSync(join(root, 'tails'));
+  return join(root, 'tails', tail as string, '000001.jsonl');
+};
+
+describe('a restore over records a writer made', () => {
+  let sandbox: string;
+  beforeEach(() => {
+    sandbox = mkdtempSync(join(tmpdir(), 'mnema-restore-real-'));
+  });
+  afterEach(() => {
+    rmSync(sandbox, { recursive: true, force: true });
+  });
+
+  /** The project, copied, and a restore ready to be asked. */
+  function copied() {
+    const one = aRealProject(sandbox, 'one');
+    const destination = join(sandbox, 'dest');
+    writeCopy(prepareCopy(one.priv, destination, RECORD, 'private'), new Date());
+    return { ...one, destination, copy: join(destination, RECORD, 'private') };
+  }
+
+  it('puts the tree back where it was lost, never writing locks/, and leaves a tail of its own to the next write', () => {
+    const { priv, destination, write } = copied();
+    const tails = readdirSync(join(priv, 'tails'));
+    rmSync(priv, { recursive: true, force: true });
+    const prepared = prepareRestore(priv, destination, RECORD, 'private');
+    expect(prepared.newTails).toEqual(tails);
+    expect(existsSync(priv)).toBe(false);
+    expect(restoreCopy(prepared).tails).toEqual(tails);
+    expect(existsSync(join(priv, 'locks'))).toBe(false);
+    write('after');
+    expect(readdirSync(join(priv, 'tails'))).toHaveLength(tails.length + 1);
+  });
+
+  it('leaves what is the same, keeps a tree that went further and a file with other bytes, and says each', () => {
+    const { priv, destination, write } = copied();
+    const proof = join(
+      priv,
+      'tails',
+      readdirSync(join(priv, 'tails'))[0] as string,
+      'tailproof.json',
+    );
+    writeFileSync(proof, '{"another":"proof"}');
+    write('more');
+    const prepared = prepareRestore(priv, destination, RECORD, 'private');
+    expect(prepared.kept).toEqual([expect.stringMatching(/tailproof\.json$/)]);
+    expect(prepared.same.length).toBeGreaterThan(0);
+    expect(prepared.placing).toEqual([]);
+    restoreCopy(prepared);
+    expect(readFileSync(proof, 'utf-8')).toBe('{"another":"proof"}');
+  });
+
+  it('refuses a fork, a cut, and a tail the tree lacks a segment of, and changes nothing', () => {
+    const { priv, destination } = copied();
+    const segment = segmentIn(priv);
+    const whole = readFileSync(segment);
+    const forked = Buffer.from(whole);
+    forked[2] = forked[2] === 0x61 ? 0x62 : 0x61;
+    writeFileSync(segment, forked);
+    expect(() => prepareRestore(priv, destination, RECORD, 'private')).toThrow(/a fork/);
+    // The tree holds only the start of the copy's file: a cut tree, or a copy of a longer one.
+    writeFileSync(segment, whole.subarray(0, whole.length - 2));
+    expect(() => prepareRestore(priv, destination, RECORD, 'private')).toThrow(/a cut tree/);
+    rmSync(segment);
+    expect(() => prepareRestore(priv, destination, RECORD, 'private')).toThrow(/is cut/);
+    expect(existsSync(segment)).toBe(false);
+  });
+
+  it('turns away a copy of another record by the record the tree it would join names', () => {
+    const { priv, destination, copy } = copied();
+    const other = aRealProject(sandbox, 'two');
+    rmSync(copy, { recursive: true });
+    cpSync(other.priv, copy, { recursive: true });
+    const manifest = join(copy, 'mnema-backup.json');
+    writeFileSync(manifest, JSON.stringify({ record: RECORD }));
+    expect(() => prepareRestore(priv, destination, RECORD, 'private')).toThrow(
+      /another record|not a copy of this project/,
+    );
+  });
+
+  it('names the process of a writer that holds a tail, and writes nothing', () => {
+    const { priv, destination } = copied();
+    const [tail] = readdirSync(join(priv, 'tails'));
+    const before = readFileSync(segmentIn(priv));
+    const refused = () =>
+      withTailLock(tailLockPath({ root: priv }, tail as string), () =>
+        prepareRestore(priv, destination, RECORD, 'private'),
+      );
+    expect(refused).toThrow(new RegExp(`process ${process.pid}`));
+    expect(readFileSync(segmentIn(priv)).equals(before)).toBe(true);
   });
 });
