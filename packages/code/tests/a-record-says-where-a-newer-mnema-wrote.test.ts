@@ -484,3 +484,50 @@ describe('the console over a record a newer mnema wrote into', { timeout: 120_00
     expect(await opened()).toContain(OF_THE_RECORD);
   });
 });
+
+describe('the gate through the agent tool over a record a newer mnema wrote into', {
+  timeout: 120_000,
+}, () => {
+  async function asked(path: string): Promise<string> {
+    const { server } = buildMcpServer({ cwd: repo, env: { home }, log: () => {} });
+    const client = new Client(
+      { name: 'claude-code', version: '1.0.0' },
+      { capabilities: { roots: {} } },
+    );
+    client.setRequestHandler(ListRootsRequestSchema, () => ({
+      roots: [{ uri: pathToFileURL(repo).href, name: repo }],
+    }));
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    await Promise.all([client.connect(clientSide), server.connect(serverSide)]);
+    const reply = await client.callTool({ name: 'rules_before_an_edit', arguments: { path } });
+    await client.close();
+    const text = (reply.content as { text: string }[]).map((one) => one.text).join('\n');
+    const said = JSON.parse(text.slice(text.indexOf('{'))) as {
+      hookSpecificOutput?: { permissionDecision?: string; permissionDecisionReason?: string };
+    };
+    return `${said.hookSpecificOutput?.permissionDecision ?? 'none'}\n${
+      said.hookSpecificOutput?.permissionDecisionReason ?? ''
+    }`;
+  }
+
+  function aRule(path: string, rel: string): void {
+    const decided = mnema('decision', 'record', `Rule at ${path}`, 'Because.');
+    const id = AN_ID.exec(`${decided.out}${decided.err}`)?.[1] as string;
+    expect(mnema('decision', 'move', 'accept', id, '--note', 'agreed').status).toBe(0);
+    expect(mnema('link', id, path, '--rel', rel).status).toBe(0);
+  }
+
+  it('says the lines in the reason of a deny and of an ask, and nothing when it lets a path through', async () => {
+    aRule('src/ledger', 'refuses-a-write');
+    aRule('src/billing', 'asks-for-a-person');
+    newerWrites();
+    const denied = await asked('src/ledger/a.ts');
+    expect(denied).toMatch(/^deny/);
+    expect(denied).toContain(OF_THE_RECORD);
+    const held = await asked('src/billing/a.ts');
+    expect(held).toMatch(/^(ask|deny)/);
+    expect(held).toContain(OF_THE_RECORD);
+    const passed = await asked('src/free/a.ts');
+    expect(passed).not.toMatch(/newer mnema/);
+  });
+});

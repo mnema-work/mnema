@@ -7,4 +7,4 @@ Changed
   lines, and every read of the agent (`search`, `resume`, `focus`, `governing_rules` and the audit tools) carries it as a
   block before its payload. The reason a gate gives for refusing a write, or for holding it for a person, carries it
   too; a write that goes through is told nothing. Nothing is said, and no output changes, over a record no newer mnema
-  wrote into.
+  wrote into. The command-line audit verbs (`audit accountability`, `exposure`, `antipatterns`, `export`) do not say it yet; their agent tools do.
