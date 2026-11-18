@@ -29,6 +29,7 @@ import {
   DEFAULT_WAIT_MS,
   LinkedRecordError,
   TailBusyError,
+  UnreadableDiskError,
   UnreadableLineError,
 } from '@mnema/chain';
 import {
@@ -59,6 +60,7 @@ import {
 import { oneLine } from './one-line.js';
 import { ASKS_A_PERSON_CHANNEL, REFUSES_A_WRITE_CHANNEL } from './record-framing.js';
 import {
+  DISK_WAY_OUT,
   linkBreakSentences,
   NOT_VERSIONED,
   newerLinesSentence,
@@ -325,6 +327,13 @@ export function refusalOfAnUnreadableRecord(
       LINKED_WAY_OUT[tree],
     ].join('\n\n');
   }
+  if (error instanceof UnreadableDiskError) {
+    return [
+      `The write is refused: ${UNREADABLE_IN[tree].tree} holds a part the disk does not let this mnema open, so which rules apply to this path cannot be known.`,
+      error.message,
+      DISK_WAY_OUT_OF[tree],
+    ].join('\n\n');
+  }
   const words = UNREADABLE_IN[tree];
   return [
     `The write is refused: a line of ${words.tree} cannot be read by this mnema, so which rules apply to this path cannot be known.`,
@@ -477,6 +486,14 @@ export function unreadableErrorOf(fact: ScopedLinkBreak): UnreadableLineError {
   if (unread === undefined)
     throw new Error('a fact that names no part of the record was asked for its refusal');
   if (unread.kind === 'link') return new LinkedRecordError({ root: unread.root }, unread.place);
+  if (unread.kind === 'disk') {
+    return new UnreadableDiskError(
+      join(unread.root, ...unread.place.split('/')),
+      unread.reason,
+      unread.place,
+      'UNREADABLE',
+    );
+  }
   const file = join(unread.root, ...unread.place.split('/'));
   return new UnreadableLineError(`${file} line ${unread.line ?? 0}`, unread.reason);
 }
@@ -509,6 +526,14 @@ export function unreadableLineSentence(
       error.message,
       LINKED_WAY_OUT[tree],
       'Switching a channel off is a write to the same record, so it is refused too. `mnema verify` names every link it refuses.',
+    ].join('\n\n');
+  }
+  if (error instanceof UnreadableDiskError) {
+    return [
+      `Nothing was done: ${UNREADABLE_IN[tree].tree} holds a part the disk does not let this mnema open.`,
+      error.message,
+      DISK_WAY_OUT_OF[tree],
+      'Switching a channel off is a write to the same record, so it is refused too.',
     ].join('\n\n');
   }
   const words = UNREADABLE_IN[tree];
@@ -562,6 +587,19 @@ const UNREADABLE_IN: Readonly<
     out: () =>
       'Every write that reads this record is refused until the line reads: update mnema if a newer one wrote the line, restore the line from the repository’s history or the file from a copy, or repair or remove the line named above.',
   },
+};
+
+/**
+ * The way out of a refusal for a part the disk does not let this mnema open, by tree and by how far it
+ * reaches. It names no verb that puts a line back: the part to be put right is a permission or a
+ * folder, which no history holds (ADR-408 keeps `mnema tail repair` out of the private and the
+ * global tree, and a line is all it puts back).
+ */
+const DISK_WAY_OUT_OF: Readonly<Record<Scope | 'unknown', string>> = {
+  public: `Every write in the project is refused until the part opens: ${DISK_WAY_OUT}`,
+  private: `Every write in the project is refused until the part opens: ${DISK_WAY_OUT} This record is not versioned.`,
+  global: `This closes every project on this machine: every write in each is refused until the part opens. ${DISK_WAY_OUT} This record is not versioned.`,
+  unknown: `Every write that reads this record is refused until the part opens: ${DISK_WAY_OUT}`,
 };
 
 /** The note on the second stream beside that refusal. */
