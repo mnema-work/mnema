@@ -455,7 +455,6 @@ const UNWITNESSED: Readonly<Record<string, Debt>> = {
   'packages/code/src/wiring/instructions.ts': {
     reached: 'nobody imports it',
     why: "The instructions verb's wiring: the line it says for each file and the exit it sets on a refusal or a check that finds a file without the block; the-instructions-verb-says-each-file.test.ts drives it through the program in a throwaway project.",
-  'packages/code/tests/the-issues-a-workflow-opens-carry-labels.test.ts': 4,
   },
   'packages/code/src/wiring/inherit.ts': {
     reached: 'nobody imports it',
