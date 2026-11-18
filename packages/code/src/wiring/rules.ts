@@ -33,7 +33,7 @@ export function registerRules(program: Command, wiring: Wiring): Declared {
     .argument('<path>', 'the path to ask about, relative to here or absolute')
     .option('--json', 'emit the faithful reading as JSON')
     .action(async (path: string, opts: { json?: boolean }) => {
-      const { linkBreakNotice } = await import('./integrity.js');
+      const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
       const { runRules } = await import('../commands/rules.js');
       const { rulesReport } = await import('../presentation/rules.js');
       const result = runRules(here(), { path });
@@ -44,6 +44,7 @@ export function registerRules(program: Command, wiring: Wiring): Declared {
       // BEFORE the answer, and on the other stream, so it survives a pipe, and so
       // `--json` stays the machine-readable thing it promises to be.
       for (const line of linkBreakNotice(result.linkBreaks)) io.err(render(line));
+      for (const line of newerLinesNotice(result.newerLines, 'the record')) io.err(render(line));
       const { inheritedNotReadLine } = await import('../inherited-record.js');
       const { fact } = await import('../presentation/detail.js');
       const notRead = inheritedNotReadLine(result.inherited);

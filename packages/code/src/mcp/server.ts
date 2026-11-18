@@ -1564,7 +1564,6 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
       return withRunState(active, context, [
         ...movedApartBlock(active),
         ...bootstrapOfSeveralRecords(active),
-        ...newerLinesNotes(active),
         whereThisSessionIs(active),
         ...switchedOffBlock(active),
       ]);
@@ -2534,6 +2533,10 @@ function replied(
       // an acknowledgement carries it the same. The note a newer mnema's version adds
       // comes AFTER this block, never before it.
       ...fact(sessionLinkBreaks(session, wrote ? A_WRITE : A_READ)),
+      // AND, RIGHT AFTER IT, WHAT A NEWER MNEMA WROTE that this one reads past (ADR-140): on every
+      // read and on none of the writes, asked of the caches the read has just loaded, so a tool
+      // added later says it without remembering to. Absent for every record this version wrote.
+      ...(wrote ? [] : newerLinesNotes(session)),
       ...before,
       // WHAT THIS CONNECTION'S WRITES FOUNDED since the last reply: asked here and in
       // {@link refused}, which between them are every answer a tool composes, so a tool added

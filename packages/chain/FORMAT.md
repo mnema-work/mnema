@@ -1762,8 +1762,10 @@ above; and the same record with a kind no version declares, which both read past
   it reads, without what the line says. A newer kind that changes who may sign (a revocation it
   writes), what state a decision is in, or which note stands, is not applied by it: it accepts what
   the newer one would refuse there, and serves a state the newer one would not. The census line is
-  what says so, and naming those lines on the surfaces that serve the record is not yet this
-  product's; a person who sees it reads the record with the newer mnema.
+  what says so, and this product's surfaces that serve the record say it too: each names how many
+  lines a newer mnema wrote into the record and of which kinds, that this reader applies none of
+  them, and that the record is read with the newer mnema. A write the gate lets through is told
+  nothing of them; a write it refuses or holds for a person is told in the reason.
 - **The order between tails.** It rests on the writers' clocks and on what each cites ("Reading
   many tails"), a limit stated there and outside this promise.
 

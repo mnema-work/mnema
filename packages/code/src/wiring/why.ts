@@ -21,7 +21,7 @@ export function registerWhy(program: Command, wiring: Wiring): Declared {
     .argument('<file|commit>', 'a path (it wins when it exists) or a commit name')
     .option('--json', 'emit the faithful reading as JSON')
     .action(async (target: string, opts: { json?: boolean }) => {
-      const { linkBreakNotice } = await import('./integrity.js');
+      const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
       const { runWhy } = await import('../commands/why.js');
       const { whyReport } = await import('../presentation/git-bridge.js');
       const result = runWhy(here(), { target });
@@ -30,6 +30,7 @@ export function registerWhy(program: Command, wiring: Wiring): Declared {
         return;
       }
       for (const line of linkBreakNotice(result.linkBreaks)) io.err(render(line));
+      for (const line of newerLinesNotice(result.newerLines, 'the record')) io.err(render(line));
       const { inheritedNotReadLine } = await import('../inherited-record.js');
       const { fact } = await import('../presentation/detail.js');
       const notRead = inheritedNotReadLine(result.inherited);
@@ -40,6 +41,7 @@ export function registerWhy(program: Command, wiring: Wiring): Declared {
       if (opts.json === true) {
         const {
           linkBreaks: _breaks,
+          newerLines: _newer,
           ok: _ok,
           inherited: _inherited,
           notPushed: _notPushed,
