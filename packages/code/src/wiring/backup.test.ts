@@ -458,6 +458,14 @@ describe('mnema backup verify and restore', () => {
     );
     expect(listed.out.join('\n')).toContain('you delete them by hand');
 
+    rmSync(join(mine, '.mnema', 'backup.json'));
+    const noFolder = await mnema(['backup', 'status', '--global']);
+    expect(noFolder.out.join('\n')).toContain(
+      'kept aside by a restore of another record: the global tree',
+    );
+    expect(noFolder.failed).toBe(true);
+    await mnema(['backup', 'setup', '--global', folder], answering('yes'));
+
     const undone = await mnema(['backup', 'restore', '--global', '--undo']);
     expect(undone.failed, undone.err.join(' / ')).toBe(false);
     expect(undone.out.join('\n')).toContain('Put back the global tree');

@@ -91,10 +91,12 @@ export function asidePlaceInHome(home: string): AsidePlace {
 }
 
 /** Where a restore ran, said for a refusal. */
-const whereIs = (place: AsidePlace): string =>
-  place.prefix === ASIDE_PREFIX
-    ? 'in this repository'
-    : 'for a project outside git on this machine';
+const whereIs = (place: AsidePlace, global: boolean): string =>
+  global
+    ? 'for the global tree on this machine'
+    : place.prefix === ASIDE_PREFIX
+      ? 'in this repository'
+      : 'for a project outside git on this machine';
 
 /** The place as a person reads it, with the date left to fill in. */
 export function describeAside(place: AsidePlace): string {
@@ -302,7 +304,7 @@ export function asidesFor(
  * takes (a repository's, or the home's for the projects outside git), kept in the place's own folder
  * so that it does not move with a tree. A second one refuses, naming the process.
  */
-export function withRestoreLock<T>(place: AsidePlace, act: () => T): T {
+export function withRestoreLock<T>(place: AsidePlace, act: () => T, global = false): T {
   try {
     return withTailLock(place.lock, act, { waitMs: 0 });
   } catch (error) {
@@ -310,7 +312,7 @@ export function withRestoreLock<T>(place: AsidePlace, act: () => T): T {
     const who = error.heldBy === undefined ? 'another process' : `process ${error.heldBy}`;
     throw new AsideError(
       'RESTORE_RUNNING',
-      `${who} is restoring ${whereIs(place).replace('for a project', 'a project')}, and two restores do not run together. Let it finish and run it again.`,
+      `${who} is restoring ${global ? 'the global tree' : whereIs(place, false).replace('for a project', 'a project')}, and two restores do not run together. Let it finish and run it again.`,
     );
   }
 }
@@ -384,6 +386,9 @@ export function undoAside(
   }
   throw new AsideError(
     'NOTHING_TO_UNDO',
-    `There is no tree kept aside by a restore of another record ${whereIs(place)}, so there is nothing to put back.`,
+    `There is no tree kept aside by a restore of another record ${whereIs(
+      place,
+      roots.some((one) => one.tree === 'global'),
+    )}, so there is nothing to put back.`,
   );
 }

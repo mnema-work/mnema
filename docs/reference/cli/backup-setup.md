@@ -10,7 +10,7 @@ In the help under **This machine** · a command of [`mnema backup`](backup.md).
 
 | Argument | What it does |
 | --- | --- |
-| `folder` | the folder (outside the working tree, the record and the git directory) |
+| `folder` | the folder (outside the working tree, the record and the git directory), or a git remote that keeps the copy |
 
 ## Options
 
@@ -31,7 +31,7 @@ terminal that it keeps the text in clear
 
 Arguments:
   folder      the folder (outside the working tree, the record and the git
-              directory)
+              directory), or a git remote that keeps the copy
 
 Options:
   --global    assign the folder to the machine's global tree instead of this

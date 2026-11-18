@@ -15,6 +15,7 @@ In the help under **This machine**.
 | [`mnema backup status`](backup-status.md) | say where this project's backup is and how far it is from the trees |
 | [`mnema backup verify`](backup-verify.md) | read each copy as a record and say how it stands against this project's trees, which it does not change |
 | [`mnema backup restore`](backup-restore.md) | put a copy back into the trees that lost files, never over a file the tree holds; a copy of another record is asked first, and --undo puts back what it replaced |
+| [`mnema backup hook`](backup-hook.md) | install or remove an optional git hook that runs the backup after a commit |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
 
@@ -112,6 +113,8 @@ Commands:
                             never over a file the tree holds; a copy of another
                             record is asked first, and --undo puts back what it
                             replaced
+  hook                      install or remove an optional git hook that runs the
+                            backup after a commit
   help [command]            display help for command
 
 The copy is a folder per project, kept under the name of its record: the tails up to their
@@ -123,6 +126,9 @@ clear, which `setup` asks a person to confirm at a terminal. A machine can have 
 `verify` reads the copy as a record (with this mnema's reader) and says how it stands against the trees; `restore` puts it
 back into a tree that lost files, and never over a file the tree holds; a copy of another record is asked first,
 what the tree held is kept aside (in the git directory, or in the mnema home for a project outside git), and `restore --undo` puts it back.
+A destination may be a git remote (or the folder of a bare repository): `run` commits the copy to a clone of it
+in the data directory and pushes it, one more commit each run, and never squashes, amends or forces: the
+destination keeps the whole history. `hook install` adds an optional post-commit hook that runs the backup.
 The machine's global tree, which mixes the memory of every project, is never part of a project's
 backup: `--global` copies it, and only it, into the folder `setup --global` gave it, as
 <folder>/global/.

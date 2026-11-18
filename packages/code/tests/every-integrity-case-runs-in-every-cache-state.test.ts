@@ -82,6 +82,8 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'holds that the second reader reads a copy as this one does, over a copy the product made and one byte flipped; the second reader reads the files and has no projection cache',
   'packages/code/src/commands/backup.test.ts':
     'holds whose folder keeps which project and that a key or a link planted in a tail stops a run; the copy reads the files and never the projection cache, and no verdict about the record is asked of what is planted',
+  'packages/code/tests/a-backup-can-be-kept-in-a-git-repository.test.ts':
+    'holds that a backup kept in a git repository is committed and read back, over trees the product wrote and a private tree deleted before a restore; the copy reads the files and never the projection cache, and no verdict about the record is asked of what is planted',
   'packages/code/tests/a-write-says-what-it-founded.test.ts':
     'holds the sentence a founding write prints; the records are built by the product and never damaged',
   'packages/code/tests/every-write-signs-what-it-wrote.test.ts':

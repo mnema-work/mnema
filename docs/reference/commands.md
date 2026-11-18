@@ -126,6 +126,9 @@ carries the help the command prints, word for word.
   - [mnema backup status](cli/backup-status.md): say where this project's backup is and how far it is from the trees
   - [mnema backup verify](cli/backup-verify.md): read each copy as a record and say how it stands against this project's trees, which it does not change
   - [mnema backup restore](cli/backup-restore.md): put a copy back into the trees that lost files, never over a file the tree holds; a copy of another record is asked first, and --undo puts back what it replaced
+  - [mnema backup hook](cli/backup-hook.md): install or remove an optional git hook that runs the backup after a commit
+  - [mnema backup hook install](cli/backup-hook-install.md): add the post-commit hook that runs the backup (refuses a hook that is not a shell script, and a hooksPath inside the working tree)
+  - [mnema backup hook uninstall](cli/backup-hook-uninstall.md): take out the post-commit block mnema added, and the file only if mnema wrote it whole
 - [mnema doctor](cli/doctor.md): say how mnema is installed on this machine, and what to do about each thing found (writes nothing unless you pass --fix)
 - [mnema report](cli/report.md): show, whole, what mnema would say about its own last internal error, and keep your answer to it (sends nothing)
 - [mnema completion](cli/completion.md): print the tab-completion script for a shell

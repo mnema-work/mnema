@@ -30,6 +30,7 @@ import {
 } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  globalAsides,
   planBackupRestore,
   runBackupRestore,
   runBackupRun,
@@ -1047,6 +1048,29 @@ describe("the machine's global tree, put back from its copy", () => {
     // A project of this machine does not list it as its own.
     const status = runBackupStatus(a.ctx);
     expect(status.ok ? status.asides : []).toEqual([]);
+  });
+
+  it('says the global tree, not a project, where nothing was kept aside or a restore is running', () => {
+    const { a } = alphaWithBetasGlobalCopy();
+    const none = runGlobalUndo(a.ctx);
+    expect(none).toMatchObject({ ok: false, code: 'NOTHING_TO_UNDO' });
+    expect(none.ok === false && 'message' in none && none.message).toContain('for the global tree');
+    expect(none.ok === false && 'message' in none && none.message).not.toContain('project');
+    const busy = withTailLock(join(a.home, 'restoring.lock'), () => runGlobalUndo(a.ctx));
+    expect(busy).toMatchObject({ code: 'RESTORE_RUNNING' });
+    expect(busy.ok === false && 'message' in busy && busy.message).toContain('the global tree');
+    expect(busy.ok === false && 'message' in busy && busy.message).not.toContain('project');
+  });
+
+  it('lists what was kept aside even where the global tree has no destination', () => {
+    const { a } = alphaWithBetasGlobalCopy();
+    expect(runGlobalRestore(a.ctx, false, { confirmed: true, now: T1 }).ok).toBe(true);
+    rmSync(join(a.home, 'backup.json'));
+    expect(runGlobalBackupStatus(a.ctx)).toMatchObject({
+      ok: false,
+      reason: 'NO_GLOBAL_DESTINATION',
+    });
+    expect(globalAsides(a.ctx).map((kept) => kept.date)).toEqual(['2026-11-12T23-36-30Z']);
   });
 
   it('reads the copy of the global tree as a record, and says where there is none', () => {

@@ -72,6 +72,7 @@ const BUILT_WITH: Readonly<Record<string, readonly unknown[]>> = {
   AsideError: ['NOTHING_TO_UNDO', 'Nothing was kept aside.'],
   BackupConfigError: ['/tmp/x/backup.json is not JSON.'],
   BackupRefusedError: ['LINKED', '/tmp/x is a symbolic link.'],
+  GitDestinationError: ['GIT_FAILED', 'git fetch on the backup failed.'],
   RecordLinkedError: [{ root: '/tmp/x' }, 'locks'],
   IntentNotKeptError: ['/tmp/x/the-note', 'ENOSPC'],
   MachineryUnavailableError: ['The place for the notes cannot be written.'],

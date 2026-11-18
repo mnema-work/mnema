@@ -62,6 +62,21 @@ export {
   writeCopy,
 } from './backup/copy.js';
 export {
+  type CacheStanding,
+  cacheOf,
+  cleanGitEnv,
+  commitAndPush,
+  GitDestinationError,
+  isGitDestination,
+  keptAs,
+  type Pushed,
+  standingOfCache,
+  syncCache,
+  whyNotARemote,
+  withCacheLock,
+  withoutUserinfo,
+} from './backup/git-destination.js';
+export {
   copyNamed,
   noWriterHolds,
   type PreparedRestore,
@@ -75,7 +90,7 @@ export {
   type Standing,
 } from './backup/verify.js';
 export { type Ask, type DefaultBranch, theDefaultBranch } from './default-branch.js';
-export { gitPlaceOf } from './git-place.js';
+export { gitPlaceOf, isWithin } from './git-place.js';
 export {
   type BirthProbe,
   type HeldTail,

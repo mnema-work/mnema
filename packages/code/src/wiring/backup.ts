@@ -13,6 +13,7 @@
  * says the command for the person to run (as `stack hook` does).
  */
 
+import type { AsideListed } from '@mnema/core';
 import type { Command } from 'commander';
 import { fact } from '../presentation/detail.js';
 import { here } from './context.js';
@@ -24,6 +25,10 @@ import { type Declared, readsTheRecord, type Wiring } from './verb.js';
 /** The sentence a person confirms, and the page that says what to do about it. */
 export const KEPT_IN_CLEAR =
   'This destination keeps the text in clear: the record and its public keys are copied as they are, with no encryption, and whoever can read the folder can read them. Keep it on an encrypted volume if that matters.';
+
+/** What a person is told, besides that, when the destination is a git repository. */
+export const KEPT_IN_GIT =
+  'This destination is a git repository: every run adds a commit and pushes it, the whole history is kept (nothing is squashed, amended or force-pushed), and what is pushed stays in the remote until its owner deletes it. A copy is kept in a clone of it in the data directory. A remote written with a password, or an http(s) one written with a user, is not kept: let a credential helper or an ssh key answer.';
 
 const REFUSALS: Readonly<Record<string, string>> = {
   NO_DESTINATION:
@@ -41,6 +46,34 @@ export const WHAT_RESTORE_DOES_NOT_BRING = [
   'what the tree wrote after the copy was made is not in the copy, and a restore cannot bring it back',
   'the first write after a restore opens a tail of its own, beside the restored ones: a restored tail is not continued',
 ];
+
+/** What committing and pushing a git destination did, said as it is. */
+function pushedLine(done: { readonly committed: boolean; readonly pushed: number }): string {
+  if (done.committed) return `git: committed, ${done.pushed} commit(s) pushed`;
+  return done.pushed > 0
+    ? `git: nothing new to commit; ${done.pushed} earlier commit(s) pushed`
+    : 'git: nothing new to commit, nothing to push';
+}
+
+/** What a git destination's cache says of itself, as lines: commits that did not go up, and a divergence with its way out. */
+function standingLines(git: {
+  readonly unpushed: number;
+  readonly diverged: boolean;
+  readonly cache: string;
+}): string[] {
+  const lines: string[] = [];
+  if (git.unpushed > 0) {
+    lines.push(
+      `git: ${git.unpushed} commit(s) of the last runs did not go up to the destination, so the copy there is behind: \`mnema backup run\` sends them`,
+    );
+  }
+  if (git.diverged) {
+    lines.push(
+      `git: the cache and the destination have gone different ways, and a run refuses until you look at the cache (${git.cache}) and, if you do not need it, remove that folder yourself: the next run clones the destination again. mnema never removes it for you`,
+    );
+  }
+  return lines;
+}
 
 /** Registers `mnema backup` on the program. */
 export function registerBackup(program: Command, wiring: Wiring): Declared {
@@ -63,6 +96,9 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
         "`verify` reads the copy as a record (with this mnema's reader) and says how it stands against the trees; `restore` puts it",
         'back into a tree that lost files, and never over a file the tree holds; a copy of another record is asked first,',
         'what the tree held is kept aside (in the git directory, or in the mnema home for a project outside git), and `restore --undo` puts it back.',
+        'A destination may be a git remote (or the folder of a bare repository): `run` commits the copy to a clone of it',
+        'in the data directory and pushes it, one more commit each run, and never squashes, amends or forces: the',
+        'destination keeps the whole history. `hook install` adds an optional post-commit hook that runs the backup.',
         "The machine's global tree, which mixes the memory of every project, is never part of a project's",
         'backup: `--global` copies it, and only it, into the folder `setup --global` gave it, as',
         '<folder>/global/.',
@@ -74,7 +110,10 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
     .description(
       "say which folder keeps this project's backup, after a person confirms at a terminal that it keeps the text in clear",
     )
-    .argument('<folder>', 'the folder (outside the working tree, the record and the git directory)')
+    .argument(
+      '<folder>',
+      'the folder (outside the working tree, the record and the git directory), or a git remote that keeps the copy',
+    )
     .option('--global', "assign the folder to the machine's global tree instead of this project")
     .action(async (folder: string, opts: { global?: boolean }) => {
       const { checkBackupSetup, checkGlobalBackupSetup, runBackupSetup, runGlobalBackupSetup } =
@@ -98,6 +137,7 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
         return;
       }
       io.out(render(fact(KEPT_IN_CLEAR, 0)));
+      if (checked.git) io.out(render(fact(KEPT_IN_GIT, 0)));
       const answer = (await io.ask('Type yes to use this folder: ')).trim().toLowerCase();
       if (answer !== 'yes') {
         io.out('Nothing was assigned.');
@@ -157,6 +197,7 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
             ),
           ),
         );
+        if (result.pushed !== undefined) io.out(render(fact(pushedLine(result.pushed))));
         return;
       }
       const result = runBackupRun(here());
@@ -174,6 +215,7 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
       }
       if (result.noPrivateTree) io.out(render(fact('private tree: none on this machine yet')));
       if (result.publicIsInGit) io.out(render(fact('public tree: kept by git, not copied')));
+      if (result.pushed !== undefined) io.out(render(fact(pushedLine(result.pushed))));
     });
 
   backup
@@ -182,10 +224,22 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
     .option('--global', "say it of the machine's global tree instead of this project")
     .option('--json', 'emit the faithful reading as JSON')
     .action(async (opts: { global?: boolean; json?: boolean }) => {
-      const { runBackupStatus, runGlobalBackupStatus } = await import('../commands/backup.js');
+      const { globalAsides, runBackupStatus, runGlobalBackupStatus } = await import(
+        '../commands/backup.js'
+      );
+      const keptLines = (asides: readonly AsideListed[]) =>
+        asides.map((kept) =>
+          fact(
+            onOneLine`kept aside by a restore of another record: the global tree${kept.trees.length === 0 ? ' as it stood before an undo' : ''}, ${kept.date}, ${kept.bytes} bytes, at ${kept.folder}`,
+          ),
+        );
       if (opts.global === true) {
         const result = runGlobalBackupStatus(here());
         if (!result.ok) {
+          // What a restore kept aside is listed with no destination too: it stays until you delete it.
+          if (result.reason === 'NO_GLOBAL_DESTINATION' && opts.json !== true) {
+            for (const line of keptLines(globalAsides(here()))) io.out(render(line));
+          }
           reportRefusal(wiring, result, REFUSALS);
           return;
         }
@@ -210,13 +264,7 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
             );
           }
         }
-        for (const kept of result.asides) {
-          lines.push(
-            fact(
-              onOneLine`kept aside by a restore of another record: the global tree${kept.trees.length === 0 ? ' as it stood before an undo' : ''}, ${kept.date}, ${kept.bytes} bytes, at ${kept.folder}`,
-            ),
-          );
-        }
+        lines.push(...keptLines(result.asides));
         if (result.asides.length > 0) {
           lines.push(fact('no restore deletes them: you delete them by hand'));
         }
@@ -254,6 +302,9 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
             ),
           );
         }
+      }
+      if (result.git !== undefined) {
+        for (const line of standingLines(result.git)) lines.push(fact(onOneLine`${line}`));
       }
       for (const kept of result.asides) {
         const what = [
@@ -372,6 +423,9 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
               : `${t} tree: the copy is BEHIND: ${standing.behind.length} file(s) of the tree hold more than it; \`mnema backup run\` brings it up`,
           ),
         );
+      }
+      if (result.git !== undefined) {
+        for (const line of standingLines(result.git)) lines.push(fact(onOneLine`${line}`));
       }
       lines.push(
         fact(
@@ -610,6 +664,69 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
         );
       }
     });
+
+  const hook = backup
+    .command('hook')
+    .description('install or remove an optional git hook that runs the backup after a commit')
+    .addHelpText(
+      'after',
+      [
+        '',
+        'The hook is a post-commit script that runs `mnema backup run` in the background, so a commit',
+        'never waits for a network and never fails because of one. It runs only where `install` put',
+        'it. It is written where git reads hooks, and refused where core.hooksPath is inside the',
+        'working tree (a directory the repository shares). A shell hook that is already there keeps',
+        'its text and gets a marked block at the end; any other hook is left as it is. `uninstall`',
+        'takes out only what `install` put.',
+      ].join('\n'),
+    );
+
+  for (const act of ['install', 'uninstall'] as const) {
+    hook
+      .command(act)
+      .description(
+        act === 'install'
+          ? 'add the post-commit hook that runs the backup (refuses a hook that is not a shell script, and a hooksPath inside the working tree)'
+          : 'take out the post-commit block mnema added, and the file only if mnema wrote it whole',
+      )
+      .action(async () => {
+        const { installBackupHook, uninstallBackupHook } = await import(
+          '../commands/backup-hook.js'
+        );
+        const result = (act === 'install' ? installBackupHook : uninstallBackupHook)(here());
+        if (!result.ok) {
+          const words: Record<string, string> = {
+            NOT_A_REPOSITORY: 'This is not a git repository.',
+          };
+          if (result.reason === 'HOOKS_PATH_IN_TREE') {
+            words.HOOKS_PATH_IN_TREE = `core.hooksPath is ${result.dir}, inside the working tree: a hooks directory the repository shares, where a hook would run on other people's machines. Nothing was written.`;
+          }
+          if (result.reason === 'FOREIGN_HOOK') {
+            words.FOREIGN_HOOK = result.altered
+              ? `${result.path} holds a block of mnema that was changed by hand, so it is left as it is.`
+              : `${result.path} is a hook mnema cannot add to (it is not a shell script), so it is left as it is.`;
+          }
+          reportRefusal(wiring, result, words);
+          return;
+        }
+        const said = {
+          installed: 'Installed the post-commit hook that runs the backup',
+          already: 'The post-commit hook that runs the backup is already installed',
+          removed: 'Removed the post-commit hook that runs the backup',
+          absent: 'There is no post-commit hook of the backup to remove',
+        };
+        io.out(render(fact(onOneLine`${said[result.state]}: ${result.path}`)));
+        if (result.state === 'installed') {
+          io.out(
+            render(
+              fact(
+                'it runs `mnema backup run`, which refuses until `mnema backup setup` has given this project a destination',
+              ),
+            ),
+          );
+        }
+      });
+  }
 
   return readsTheRecord(backup);
 }
