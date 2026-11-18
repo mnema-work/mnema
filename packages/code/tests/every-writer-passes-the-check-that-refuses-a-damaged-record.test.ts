@@ -30,6 +30,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
   chmodSync,
+  cpSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -809,6 +810,30 @@ describe('tail relink over each kind of damage in a directory of two records', (
       says: 'a checkpoint that does not verify',
     },
   };
+
+  it('relinks, and writes its event, where nothing is damaged', () => {
+    const root = join(repo, '.mnema');
+    const other = aTailOfThisKeyInAnotherRecord(
+      root,
+      join(sandbox, 'elsewhere-healthy'),
+      resolveTrees(repo, { home }).keyRoot,
+    );
+    const before = theRecord();
+    const tails = join(root, 'tails');
+    const kept = join(sandbox, 'tails-before-the-healthy-relink');
+    cpSync(tails, kept, { recursive: true });
+    try {
+      const ran = mnema(['tail', 'relink', other, '--reason', 'it is the same work']);
+      expect(ran.status, ran.said).toBe(0);
+      expect(ran.said).toContain('Relinked tail');
+      expect(theRecord(), 'the relink wrote nothing').not.toBe(before);
+    } finally {
+      // The relink is a write: the tails are put back as they stood, ballast segment included.
+      rmSync(tails, { recursive: true, force: true });
+      cpSync(kept, tails, { recursive: true });
+      rmSync(join(tails, other), { recursive: true, force: true });
+    }
+  }, 60_000);
 
   for (const [kind, one] of Object.entries(KINDS)) {
     it(`refuses over ${kind}, and changes no byte`, () => {
