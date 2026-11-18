@@ -54,6 +54,26 @@ function pushedLine(done: { readonly committed: boolean; readonly pushed: number
     : 'git: nothing new to commit, nothing to push';
 }
 
+/** What a git destination's cache says of itself, as lines: commits that did not go up, and a divergence with its way out. */
+function standingLines(git: {
+  readonly unpushed: number;
+  readonly diverged: boolean;
+  readonly cache: string;
+}): string[] {
+  const lines: string[] = [];
+  if (git.unpushed > 0) {
+    lines.push(
+      `git: ${git.unpushed} commit(s) of the last runs did not go up to the destination, so the copy there is behind: \`mnema backup run\` sends them`,
+    );
+  }
+  if (git.diverged) {
+    lines.push(
+      `git: the cache and the destination have gone different ways, and a run refuses until you look at the cache (${git.cache}) and, if you do not need it, remove that folder yourself: the next run clones the destination again. mnema never removes it for you`,
+    );
+  }
+  return lines;
+}
+
 /** Registers `mnema backup` on the program. */
 export function registerBackup(program: Command, wiring: Wiring): Declared {
   const { io, render } = wiring;
@@ -266,6 +286,9 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
           );
         }
       }
+      if (result.git !== undefined) {
+        for (const line of standingLines(result.git)) lines.push(fact(onOneLine`${line}`));
+      }
       for (const kept of result.asides) {
         const what = [
           ...kept.trees.map((tree) => `${tree} tree`),
@@ -380,6 +403,9 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
               : `${t} tree: the copy is BEHIND: ${standing.behind.length} file(s) of the tree hold more than it; \`mnema backup run\` brings it up`,
           ),
         );
+      }
+      if (result.git !== undefined) {
+        for (const line of standingLines(result.git)) lines.push(fact(onOneLine`${line}`));
       }
       lines.push(
         fact(
@@ -588,7 +614,9 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
             words.HOOKS_PATH_IN_TREE = `core.hooksPath is ${result.dir}, inside the working tree: a hooks directory the repository shares, where a hook would run on other people's machines. Nothing was written.`;
           }
           if (result.reason === 'FOREIGN_HOOK') {
-            words.FOREIGN_HOOK = `${result.path} is a hook mnema cannot add to (it is not a shell script), so it is left as it is.`;
+            words.FOREIGN_HOOK = result.altered
+              ? `${result.path} holds a block of mnema that was changed by hand, so it is left as it is.`
+              : `${result.path} is a hook mnema cannot add to (it is not a shell script), so it is left as it is.`;
           }
           reportRefusal(wiring, result, words);
           return;
@@ -604,7 +632,7 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
           io.out(
             render(
               fact(
-                'it does nothing until `mnema backup setup` has given this project a destination',
+                'it runs `mnema backup run`, which refuses until `mnema backup setup` has given this project a destination',
               ),
             ),
           );

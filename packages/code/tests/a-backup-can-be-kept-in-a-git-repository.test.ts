@@ -8,7 +8,15 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
@@ -107,6 +115,42 @@ describe('a backup kept in a git repository', () => {
     expect(done.ok && done.trees[0]?.restored?.tails).toEqual(before);
     expect(existsSync(join(priv, 'tails'))).toBe(true);
     expect(runBackupVerify(a)).toMatchObject({ ok: true, sound: true });
+  });
+
+  it('says, in status and verify, that a push did not go up, and the next run sends it', () => {
+    const a = project('alpha');
+    runBackupSetup(a, remote);
+    expect(runBackupRun(a).ok).toBe(true);
+    const hook = join(remote, 'hooks', 'pre-receive');
+    writeFileSync(hook, '#!/bin/sh\nexit 1\n');
+    chmodSync(hook, 0o755);
+    expect(runTask(a, { title: 'a note the push loses', scope: 'private' }).ok).toBe(true);
+    expect(runBackupRun(a)).toMatchObject({ ok: false, code: 'GIT_FAILED' });
+    // The cache holds the commit, and reads as up to date; the remote lacks it.
+    expect(git(remote, 'rev-list', '--count', 'main')).toBe('1');
+    const status = runBackupStatus(a);
+    expect(status).toMatchObject({ ok: true, git: { unpushed: 1, diverged: false } });
+    const verified = runBackupVerify(a);
+    expect(verified).toMatchObject({ ok: true, sound: false, git: { unpushed: 1 } });
+    rmSync(hook);
+    expect(runBackupRun(a)).toMatchObject({ ok: true, pushed: { pushed: 2 } });
+    expect(runBackupStatus(a)).toMatchObject({ ok: true, git: { unpushed: 0 } });
+    expect(runBackupVerify(a)).toMatchObject({ ok: true, sound: true });
+    expect(git(remote, 'rev-list', '--count', 'main')).toBe('3');
+  });
+
+  it('runs, and says nothing was copied, where there is nothing to copy', () => {
+    const cwd = join(sandbox, 'bare-project');
+    mkdirSync(cwd, { recursive: true });
+    git(cwd, 'init', '-q');
+    runInit({ cwd, env });
+    const ctx = { cwd, env };
+    expect(runBackupSetup(ctx, remote).ok).toBe(true);
+    expect(runBackupRun(ctx)).toMatchObject({
+      ok: true,
+      copied: [],
+      pushed: { committed: false, pushed: 0 },
+    });
   });
 
   it('copies the global tree to a git destination too, under global/', () => {

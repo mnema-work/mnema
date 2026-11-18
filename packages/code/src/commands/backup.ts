@@ -40,6 +40,7 @@ import {
   BackupRefusedError,
   type BackupTree,
   backupConfigPath,
+  type CacheStanding,
   type CopyReading,
   type CopyStanding,
   cacheOf,
@@ -63,6 +64,7 @@ import {
   resolveTrees,
   restoreCopies,
   setAside,
+  standingOfCache,
   standingOfCopy,
   syncCache,
   treesToKeep,
@@ -70,6 +72,7 @@ import {
   undoAside,
   whyNotADestination,
   whyNotARemote,
+  withCacheLock,
   withoutUserinfo,
   withRestoreLock,
   writeCopy,
@@ -231,7 +234,7 @@ function folderFor(destination: string, configPath: string, sync: boolean): stri
   const cache = cacheOf(dirname(configPath), destination);
   if (!sync) return cache;
   try {
-    syncCache(destination, cache);
+    withCacheLock(cache, () => syncCache(destination, cache));
   } catch (error) {
     return refusedBy(error);
   }
@@ -345,21 +348,30 @@ export function runBackupRun(
   if ('ok' in project) return project;
   const stored = assigned(project);
   if (typeof stored !== 'string') return stored;
-  const destination = folderFor(stored, project.configPath, true);
+  const destination = folderFor(stored, project.configPath, false);
   if (typeof destination !== 'string') return destination;
   const copied: { tree: BackupTree; files: number; written: number }[] = [];
   let pushed: Pushed | undefined;
   try {
-    // EVERY CHECK OF EVERY TREE COMES BEFORE THE FIRST BYTE: a run is one thing, and a tree refused
-    // leaves the folder as it was, the trees that were fine included.
-    const prepared = project.trees.map(([tree, root]) =>
-      prepareCopy(root, destination, project.record, tree),
-    );
-    for (const one of prepared) {
-      const done = writeCopy(one, now);
-      copied.push({ tree: one.tree, files: done.files, written: done.written });
-    }
-    if (isGitDestination(stored)) pushed = commitAndPush(stored, destination, now);
+    const body = (): void => {
+      // EVERY CHECK OF EVERY TREE COMES BEFORE THE FIRST BYTE: a run is one thing, and a tree refused
+      // leaves the folder as it was, the trees that were fine included.
+      const prepared = project.trees.map(([tree, root]) =>
+        prepareCopy(root, destination, project.record, tree),
+      );
+      for (const one of prepared) {
+        const done = writeCopy(one, now);
+        copied.push({ tree: one.tree, files: done.files, written: done.written });
+      }
+      if (isGitDestination(stored)) pushed = commitAndPush(stored, destination, now);
+    };
+    // A git destination's cache is one thing for one run at a time: two runs never interleave in it.
+    if (isGitDestination(stored)) {
+      withCacheLock(destination, () => {
+        syncCache(stored, destination);
+        body();
+      });
+    } else body();
   } catch (error) {
     return refusedBy(error);
   }
@@ -382,6 +394,8 @@ export interface BackupStatus {
   readonly trees: readonly ({ readonly tree: BackupTree } & CopyStanding)[];
   readonly noPrivateTree: boolean;
   readonly publicIsInGit: boolean;
+  /** Where the destination is a git repository: how the cache stands against the remote, as the cache last saw it. */
+  readonly git: (CacheStanding & { readonly cache: string }) | undefined;
   /** The folders a restore of another record kept aside for this project: they stay until you delete them. */
   readonly asides: readonly AsideListed[];
 }
@@ -406,6 +420,9 @@ export function runBackupStatus(ctx: BackupContext): BackupStatus | BackupRefuse
       })),
       noPrivateTree: !project.trees.some(([tree]) => tree === 'private'),
       publicIsInGit: project.resolved.projectPublicMachinery !== undefined,
+      git: isGitDestination(stored)
+        ? { ...standingOfCache(stored, destination), cache: destination }
+        : undefined,
       asides:
         project.resolved.projectPublicMachinery === undefined
           ? []
@@ -517,11 +534,21 @@ export function runGlobalBackupRun(
   if (machine.root === undefined) {
     return { ok: true, destination: shown(stored), copied: undefined, pushed: undefined };
   }
-  const destination = folderFor(stored, machine.configPath, true);
+  const destination = folderFor(stored, machine.configPath, false);
   if (typeof destination !== 'string') return destination;
+  const root = machine.root;
   try {
-    const done = writeCopy(prepareCopy(machine.root, destination, undefined, 'global'), now);
-    const pushed = isGitDestination(stored) ? commitAndPush(stored, destination, now) : undefined;
+    const body = () => {
+      const done = writeCopy(prepareCopy(root, destination, undefined, 'global'), now);
+      const pushed = isGitDestination(stored) ? commitAndPush(stored, destination, now) : undefined;
+      return { done, pushed };
+    };
+    const { done, pushed } = isGitDestination(stored)
+      ? withCacheLock(destination, () => {
+          syncCache(stored, destination);
+          return body();
+        })
+      : body();
     return {
       ok: true,
       destination: shown(stored),
@@ -572,8 +599,10 @@ export interface BackupVerified {
   readonly record: string;
   readonly destination: string;
   readonly trees: readonly TreeReading[];
-  /** Whether every copy is a record the readers accept and no tree is shown cut, lost or forked. */
+  /** Whether every copy is a record the readers accept, no tree is shown cut, lost or forked, and no commit of a git destination's cache is left unpushed. */
   readonly sound: boolean;
+  /** Where the destination is a git repository: how the cache stands against the remote just fetched. */
+  readonly git: (CacheStanding & { readonly cache: string }) | undefined;
 }
 
 /** Reads each copy as a record and sets it against its tree. Writes nothing. */
@@ -598,6 +627,9 @@ export function runBackupVerify(ctx: BackupContext): BackupVerified | BackupRefu
   } catch (error) {
     return refusedBy(error);
   }
+  const git = isGitDestination(stored)
+    ? { ...standingOfCache(stored, destination), cache: destination }
+    : undefined;
   if (!trees.some((one) => 'reading' in one)) {
     return {
       ok: false,
@@ -611,7 +643,10 @@ export function runBackupVerify(ctx: BackupContext): BackupVerified | BackupRefu
     record: project.record,
     destination: shown(stored),
     trees,
-    sound: trees.every((one) => 'reading' in one && one.reading.ok),
+    git,
+    sound:
+      trees.every((one) => 'reading' in one && one.reading.ok) &&
+      (git === undefined || (git.unpushed === 0 && !git.diverged)),
   };
 }
 

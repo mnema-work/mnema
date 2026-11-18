@@ -25,7 +25,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { CodedError } from '@mnema/chain';
+import { CodedError, TailBusyError, withTailLock } from '@mnema/chain';
 
 /** A git destination could not be used, and nothing was rewritten. */
 export class GitDestinationError extends CodedError {
@@ -39,7 +39,7 @@ export class GitDestinationError extends CodedError {
 }
 
 const SCHEME = /^[a-z][a-z0-9+.-]*:\/\//i;
-const SCP_LIKE = /^[^\s/\\:@]+@[^\s/\\:]+:/;
+const SCP_LIKE = /^[^\s/\\@]+@[^\s/\\:]+:/;
 
 /** Whether `folder` is a bare git repository: the three things git itself looks for. */
 function isBareRepository(folder: string): boolean {
@@ -63,13 +63,17 @@ export function isGitDestination(destination: string): boolean {
 /** The remote without its userinfo: what is printed, and never the user or a password. */
 export function withoutUserinfo(remote: string): string {
   if (SCHEME.test(remote)) return remote.replace(/^([a-z][a-z0-9+.-]*:\/\/)[^/@]*@/i, '$1');
-  return remote.replace(/^[^\s/\\:@]+@/, '');
+  return remote.replace(/^[^\s/\\@]+@/, '');
 }
 
 /** Why a remote cannot be kept in the configuration, or undefined. */
 export function whyNotARemote(remote: string): string | undefined {
   if (remote.startsWith('-')) {
     return 'A destination that starts with a dash is read by git as an option, and is not taken.';
+  }
+  const scp = /^([^\s/\\@]+)@[^\s/\\:]+:/.exec(remote);
+  if (scp !== null && (scp[1] as string).includes(':')) {
+    return `${withoutUserinfo(remote)} was written with a password in it, and a credential is never kept in the backup's configuration. Name the remote without it and let a credential helper or an ssh key answer.`;
   }
   const scheme = /^([a-z][a-z0-9+.-]*):\/\/([^/@]*)@/i.exec(remote);
   if (scheme !== undefined && scheme !== null) {
@@ -125,6 +129,8 @@ function run(
       `core.hooksPath=${join(cwd, '.git', 'no-hooks')}`,
       '-c',
       'core.autocrlf=false',
+      '-c',
+      'core.fsmonitor=false',
       '-c',
       'commit.gpgsign=false',
       '-c',
@@ -215,7 +221,7 @@ export function syncCache(
   if (run(remote, cache, ['merge-base', '--is-ancestor', theirs, 'HEAD'], env, true).status !== 0) {
     throw new GitDestinationError(
       'GIT_DIVERGED',
-      `The backup at ${withoutUserinfo(remote)} holds history this machine's cache does not have, and the cache holds history the remote does not: they have gone different ways, and neither is overwritten (no merge, no reset, no forced push). Nothing was changed.`,
+      `The backup at ${withoutUserinfo(remote)} holds history this machine's cache does not have, and the cache holds history the remote does not: they have gone different ways, and neither is overwritten (no merge, no reset, no forced push). Nothing was changed. To go on, look at what the cache holds (git -C ${cache} log origin/${branch}..HEAD) and, if you do not need it, remove the folder ${cache} yourself: the next run clones the remote again. mnema never removes it for you.`,
     );
   }
 }
@@ -244,6 +250,10 @@ export function commitAndPush(
   if (changed) {
     run(remote, cache, ['commit', '-q', '--no-verify', '-m', `Back up ${now.toISOString()}`], env);
   }
+  if (run(remote, cache, ['rev-parse', '--verify', '-q', 'HEAD'], env, true).status !== 0) {
+    // Nothing was ever copied, so there is no commit to send.
+    return { committed: false, pushed: 0 };
+  }
   const branch = branchOf(remote, cache, env);
   const theirs = `refs/remotes/origin/${branch}`;
   const known = run(remote, cache, ['rev-parse', '--verify', '-q', theirs], env, true).status === 0;
@@ -256,6 +266,57 @@ export function commitAndPush(
   const ahead = Number(counted);
   if (ahead > 0) run(remote, cache, ['push', '-q', 'origin', `HEAD:refs/heads/${branch}`], env);
   return { committed: changed, pushed: ahead };
+}
+
+/** How the cache stands against the remote, from what the cache knows of it (no network). */
+export interface CacheStanding {
+  /** Commits the cache holds that the remote branch, as the cache last saw it, does not. */
+  readonly unpushed: number;
+  /** Whether the cache and the remote branch have gone different ways. */
+  readonly diverged: boolean;
+}
+
+/**
+ * Says how many commits of the cache did not go up, by comparing the cache's HEAD with the remote
+ * branch as the cache knows it: a run that committed and could not push leaves them here, and a
+ * comparison of the cache alone would call that copy up to date. Writes nothing and asks no network.
+ */
+export function standingOfCache(
+  remote: string,
+  cache: string,
+  env: NodeJS.ProcessEnv = cleanGitEnv(),
+): CacheStanding {
+  if (!existsSync(join(cache, '.git'))) return { unpushed: 0, diverged: false };
+  if (run(remote, cache, ['rev-parse', '--verify', '-q', 'HEAD'], env, true).status !== 0) {
+    return { unpushed: 0, diverged: false };
+  }
+  const branch = branchOf(remote, cache, env);
+  const theirs = `refs/remotes/origin/${branch}`;
+  if (run(remote, cache, ['rev-parse', '--verify', '-q', theirs], env, true).status !== 0) {
+    return {
+      unpushed: Number(run(remote, cache, ['rev-list', '--count', 'HEAD'], env).out),
+      diverged: false,
+    };
+  }
+  const unpushed = Number(run(remote, cache, ['rev-list', '--count', `${theirs}..HEAD`], env).out);
+  const behind = Number(run(remote, cache, ['rev-list', '--count', `HEAD..${theirs}`], env).out);
+  return { unpushed, diverged: unpushed > 0 && behind > 0 };
+}
+
+/** Runs `act` holding the lock of the cache, so two runs never interleave; a run that cannot get it says another is going. */
+export function withCacheLock<T>(cache: string, act: () => T): T {
+  mkdirSync(dirname(cache), { recursive: true });
+  try {
+    return withTailLock(`${cache}.lock`, act, { waitMs: 30_000 });
+  } catch (error) {
+    if (error instanceof TailBusyError) {
+      throw new GitDestinationError(
+        'GIT_FAILED',
+        'Another backup run is in progress on this destination, and it did not finish in 30 seconds. Nothing was changed: run again when it has.',
+      );
+    }
+    throw error;
+  }
 }
 
 /** Where a local folder given as a destination is, as the configuration keeps it. */

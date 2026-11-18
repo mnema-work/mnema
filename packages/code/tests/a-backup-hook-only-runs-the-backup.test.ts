@@ -160,6 +160,7 @@ describe('installing and removing the hook', () => {
       ok: false,
       reason: 'FOREIGN_HOOK',
       path: HOOK(),
+      altered: false,
     });
     expect(uninstallBackupHook({ cwd: repo })).toEqual({ ok: true, path: HOOK(), state: 'absent' });
     expect(readFileSync(HOOK(), 'utf-8')).toBe(theirs);
@@ -274,7 +275,7 @@ describe('the verbs say what they did', () => {
     const put = await mnema('backup', 'hook', 'install');
     expect(put.failed, put.text).toBe(false);
     expect(put.text).toContain(`Installed the post-commit hook that runs the backup: ${HOOK()}`);
-    expect(put.text).toContain('does nothing until');
+    expect(put.text).toContain('refuses until');
     const again = await mnema('backup', 'hook', 'install');
     expect(again.text).toContain('is already installed');
     const took = await mnema('backup', 'hook', 'uninstall');

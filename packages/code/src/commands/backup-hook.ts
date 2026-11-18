@@ -62,7 +62,13 @@ export type BackupHookActed =
   | { readonly ok: true; readonly path: string; readonly state: 'removed' | 'absent' }
   | { readonly ok: false; readonly reason: 'NOT_A_REPOSITORY' }
   | { readonly ok: false; readonly reason: 'HOOKS_PATH_IN_TREE'; readonly dir: string }
-  | { readonly ok: false; readonly reason: 'FOREIGN_HOOK'; readonly path: string };
+  | {
+      readonly ok: false;
+      readonly reason: 'FOREIGN_HOOK';
+      readonly path: string;
+      /** True where the hook holds a block of ours that was changed by hand. */
+      readonly altered: boolean;
+    };
 
 /** Whether `text` begins with a shebang of a shell that reads the block. */
 function isShellScript(text: string): boolean {
@@ -99,7 +105,7 @@ export function installBackupHook(ctx: BackupHookContext): BackupHookActed {
   const held = readFileSync(place.path, 'utf-8');
   if (held.includes(BACKUP_HOOK_BLOCK)) return { ok: true, path: place.path, state: 'already' };
   if (held.includes(OPEN) || !isShellScript(held)) {
-    return { ok: false, reason: 'FOREIGN_HOOK', path: place.path };
+    return { ok: false, reason: 'FOREIGN_HOOK', path: place.path, altered: held.includes(OPEN) };
   }
   writeFileSync(place.path, `${held}\n${BACKUP_HOOK_BLOCK}`);
   return { ok: true, path: place.path, state: 'installed' };
@@ -117,7 +123,7 @@ export function uninstallBackupHook(ctx: BackupHookContext): BackupHookActed {
   }
   if (!held.includes(BACKUP_HOOK_BLOCK)) {
     return held.includes(OPEN)
-      ? { ok: false, reason: 'FOREIGN_HOOK', path: place.path }
+      ? { ok: false, reason: 'FOREIGN_HOOK', path: place.path, altered: true }
       : { ok: true, path: place.path, state: 'absent' };
   }
   // `install` added a line break in front of the block, and it goes with it: the hook is as it was, to the byte.

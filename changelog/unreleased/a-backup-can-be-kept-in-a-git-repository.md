@@ -11,3 +11,5 @@ Added
   background (refused where `core.hooksPath` is inside the working tree; a shell hook already there gets a marked
   block, and `uninstall` takes out only what `install` put). See
   [What a backup keeps, and what it loses](docs/what-a-backup-keeps-and-what-it-loses.md).
+  `status` and `verify` say how many commits of a git destination did not go up (`verify` fails while any is left), a
+  divergence is refused with the way out named, and two runs never interleave in the clone.

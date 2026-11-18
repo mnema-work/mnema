@@ -57,6 +57,7 @@ export {
   writeCopy,
 } from './backup/copy.js';
 export {
+  type CacheStanding,
   cacheOf,
   cleanGitEnv,
   commitAndPush,
@@ -64,8 +65,10 @@ export {
   isGitDestination,
   keptAs,
   type Pushed,
+  standingOfCache,
   syncCache,
   whyNotARemote,
+  withCacheLock,
   withoutUserinfo,
 } from './backup/git-destination.js';
 export {

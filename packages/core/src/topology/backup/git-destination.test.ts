@@ -6,7 +6,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -16,8 +16,10 @@ import {
   commitAndPush,
   GitDestinationError,
   isGitDestination,
+  standingOfCache,
   syncCache,
   whyNotARemote,
+  withCacheLock,
   withoutUserinfo,
 } from './git-destination.js';
 
@@ -230,5 +232,72 @@ describe('the history of a git destination', () => {
       expect(said).toContain('ssh://127.0.0.1:9/never.git');
       expect(said).not.toContain('someone');
     }
+  });
+});
+
+describe('a push that did not go up', () => {
+  const reject = (): string => join(remote, 'hooks', 'pre-receive');
+
+  it('leaves its commit in the cache, which counts it as unpushed until a run sends it', () => {
+    writeFileSync(reject(), '#!/bin/sh\nexit 1\n');
+    chmodSync(reject(), 0o755);
+    expect(() => aRun('a.txt', new Date('2026-01-01T00:00:00Z'))).toThrow(GitDestinationError);
+    // The cache holds the commit; a comparison of the cache alone would call the copy up to date.
+    expect(git(cache, 'rev-list', '--count', 'HEAD')).toBe('1');
+    expect(standingOfCache(remote, cache)).toEqual({ unpushed: 1, diverged: false });
+    rmSync(reject());
+    expect(aRun('b.txt', new Date('2026-01-02T00:00:00Z'))).toEqual({ committed: true, pushed: 2 });
+    expect(standingOfCache(remote, cache)).toEqual({ unpushed: 0, diverged: false });
+    expect(git(remote, 'rev-list', '--count', 'main')).toBe('2');
+  });
+
+  it('says a divergence, and names the folder to look at and to remove by hand', () => {
+    aRun('a.txt', new Date('2026-01-01T00:00:00Z'));
+    const other = cacheOf(join(sandbox, 'other-data'), remote);
+    syncCache(remote, other);
+    writeFileSync(join(other, 'theirs.txt'), 'theirs\n');
+    commitAndPush(remote, other, new Date('2026-01-03T00:00:00Z'));
+    writeFileSync(join(cache, 'mine.txt'), 'mine\n');
+    git(cache, 'add', '-A');
+    git(cache, 'commit', '-q', '-m', 'unpushed here');
+    git(cache, 'fetch', '-q', 'origin');
+    expect(standingOfCache(remote, cache)).toEqual({ unpushed: 1, diverged: true });
+    let said = '';
+    try {
+      syncCache(remote, cache);
+    } catch (error) {
+      said = (error as Error).message;
+    }
+    expect(said).toContain(cache);
+    expect(said).toContain('remove the folder');
+    expect(said).toContain('never removes it for you');
+    expect(existsSync(cache)).toBe(true);
+  });
+
+  it('commits and pushes nothing, and fails nothing, where nothing was ever copied', () => {
+    syncCache(remote, cache);
+    expect(commitAndPush(remote, cache, new Date('2026-01-01T00:00:00Z'))).toEqual({
+      committed: false,
+      pushed: 0,
+    });
+    expect(standingOfCache(remote, cache)).toEqual({ unpushed: 0, diverged: false });
+  });
+
+  it('holds the cache against another run while one is in it', () => {
+    withCacheLock(cache, () => {
+      expect(existsSync(`${cache}.lock`)).toBe(true);
+    });
+    expect(existsSync(`${cache}.lock`)).toBe(false);
+  });
+});
+
+describe('a destination written with a password', () => {
+  it('is taken as a remote, refused for it, and never echoed', () => {
+    expect(isGitDestination('u:pw@host:repo.git')).toBe(true);
+    const why = whyNotARemote('u:pw@host:repo.git') ?? '';
+    expect(why).toMatch(/a password/);
+    expect(why).not.toContain('pw');
+    expect(why).not.toContain('u:');
+    expect(withoutUserinfo('u:pw@host:repo.git')).toBe('host:repo.git');
   });
 });

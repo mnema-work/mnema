@@ -115,6 +115,12 @@ in the remote until its owner deletes it. What changes after that:
   run sends it.
 - `verify` and `restore` bring the clone up to the remote first, and read it as they read a folder:
   on a machine that has none, `setup` with the same remote and `restore` clone it.
+- A run that commits and cannot push (a remote that refuses, no network) leaves the commit in the clone,
+  and `status` and `verify` say how many commits did not go up: `status` from what the clone last saw
+  of the remote, `verify` after fetching, and `verify` fails while any is left. The next `run` sends them.
+  A clone and a remote that went different ways are refused, nothing rewritten; the refusal names the
+  clone's folder, which you may look at and remove by hand (the next run clones the remote again), and
+  mnema never removes it for you. Two runs at once never interleave in the clone: one waits for the other.
 - Every git it starts runs with a clean environment: no variable named `GIT_*` is inherited (a
   hook runs with `GIT_DIR` and `GIT_INDEX_FILE` set, and they never reach the destination's git),
   and `GIT_TERMINAL_PROMPT=0` keeps a missing credential from waiting for you. A credential comes
