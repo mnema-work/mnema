@@ -48,8 +48,12 @@ describe('a copy set against its tree', () => {
   it('says a copy is behind when the tree wrote after it, and when the tree has a file the copy lacks', () => {
     put(tree, `tails/${TAIL}/000001.jsonl`, '{"seq":0}\n{"seq":1}\n{"seq":2}\n');
     put(tree, `tails/${TAIL}/000002.jsonl`, '{"seq":3}\n');
-    const behind = [...standing().behind];
-    expect(behind.sort()).toEqual([`tails/${TAIL}/000001.jsonl`, `tails/${TAIL}/000002.jsonl`]);
+    const behind = [...standing().behind].sort((a, b) => (a.path < b.path ? -1 : 1));
+    // One entry more in the segment the copy has, and the one entry of a segment it lacks.
+    expect(behind).toEqual([
+      { path: `tails/${TAIL}/000001.jsonl`, entries: 1 },
+      { path: `tails/${TAIL}/000002.jsonl`, entries: 1 },
+    ]);
   });
 
   it('says a tree is cut when its file is the start of the copy, counting the entries on both sides', () => {

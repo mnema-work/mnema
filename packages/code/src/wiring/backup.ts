@@ -323,6 +323,16 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
             ),
           );
         }
+        // The entries a copy lacks, tail by tail: a count of files says little about what a loss would be.
+        for (const lacking of standing.behind) {
+          if (lacking.entries <= 0) continue;
+          const tail = lacking.path.split('/')[1] ?? lacking.path;
+          lines.push(
+            fact(
+              onOneLine`${t} tree: the copy lacks ${lacking.entries} entries of the tail ${tail}, which the tree holds`,
+            ),
+          );
+        }
         lines.push(
           fact(
             standing.behind.length === 0
@@ -371,7 +381,7 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
             : ` (${one.newTails.length} tail(s) the tree did not have)`;
         io.out(
           render(
-            fact(onOneLine`${t} tree: ${copied} ${verb} ${one.placing.length} file(s)${tails}`),
+            fact(onOneLine`${t} tree: ${copied} ${verb} ${one.placing.length} file(s)` + tails),
           ),
         );
         for (const path of one.liveWins) {

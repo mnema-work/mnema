@@ -323,6 +323,7 @@ export {
   replayingRecordProbe,
   resolveScope,
   resolveTrees,
+  restoreCopies,
   restoreCopy,
   type Scope,
   type Standing,

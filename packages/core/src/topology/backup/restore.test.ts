@@ -19,13 +19,13 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { catalogUpcasters, tailLockPath, withTailLock } from '@mnema/chain';
+import { catalogUpcasters, tailLockPath, verifyChain, withTailLock } from '@mnema/chain';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTask } from '../../workflow/operations.js';
 import { resolveTrees } from '../resolve.js';
 import { openTreeForWriting } from '../routing.js';
 import { BackupRefusedError, prepareCopy, writeCopy } from './copy.js';
-import { prepareRestore, restoreCopy } from './restore.js';
+import { prepareRestore, restoreCopies, restoreCopy } from './restore.js';
 
 const RECORD = 'ab'.repeat(32);
 const TAIL = 'aa11-bb22';
@@ -209,5 +209,74 @@ describe('a restore over records a writer made', () => {
       );
     expect(refused).toThrow(new RegExp(`process ${process.pid}`));
     expect(readFileSync(segmentIn(priv)).equals(before)).toBe(true);
+  });
+
+  it('builds a tail the tree lacks apart and takes its name whole, so a restore that died is finished by the next', () => {
+    const { priv, destination, copy } = copied();
+    const [tail] = readdirSync(join(priv, 'tails'));
+    rmSync(priv, { recursive: true, force: true });
+    // What a restore killed after the first file of a tail leaves: a staging folder with a segment.
+    const left = join(priv, 'restoring', '999', tail as string);
+    mkdirSync(left, { recursive: true });
+    cpSync(join(copy, 'tails', tail as string, '000001.jsonl'), join(left, '000001.jsonl'));
+    // It is not a tail: nothing in tails/ and nothing for a reader to fail on.
+    expect(existsSync(join(priv, 'tails'))).toBe(false);
+    expect(verifyChain({ root: priv }, catalogUpcasters()).tails).toHaveLength(0);
+
+    const done = restoreCopy(prepareRestore(priv, destination, RECORD, 'private'));
+    expect(done.tails).toEqual([tail]);
+    expect(existsSync(join(priv, 'restoring'))).toBe(false);
+    expect(readdirSync(join(priv, 'tails', tail as string)).sort()).toEqual(
+      readdirSync(join(copy, 'tails', tail as string)).sort(),
+    );
+    expect(verifyChain({ root: priv }, catalogUpcasters()).ok).toBe(true);
+  });
+
+  it('takes the name of a new tail whole or not at all: a tail that appeared after the checks gets none of the copy', () => {
+    const { priv, destination } = copied();
+    const [tail] = readdirSync(join(priv, 'tails'));
+    rmSync(priv, { recursive: true, force: true });
+    const prepared = prepareRestore(priv, destination, RECORD, 'private');
+    mkdirSync(join(priv, 'tails', tail as string), { recursive: true });
+    writeFileSync(join(priv, 'tails', tail as string, 'a-writer-was-here'), 'x');
+    restoreCopy(prepared);
+    expect(readdirSync(join(priv, 'tails', tail as string))).toEqual(['a-writer-was-here']);
+  });
+
+  it('puts nothing over a name taken after the checks', () => {
+    const { priv, destination, copy } = copied();
+    rmSync(priv, { recursive: true, force: true });
+    const prepared = prepareRestore(priv, destination, RECORD, 'private');
+    const [key] = readdirSync(join(copy, 'keys'));
+    mkdirSync(join(priv, 'keys'), { recursive: true });
+    writeFileSync(join(priv, 'keys', key as string), 'taken in the meantime');
+    restoreCopy(prepared);
+    expect(readFileSync(join(priv, 'keys', key as string), 'utf-8')).toBe('taken in the meantime');
+  });
+
+  it('holds the lock of a tail while it writes: a writer that takes it after the checks refuses it, by name', () => {
+    const { priv, destination } = copied();
+    const prepared = prepareRestore(priv, destination, RECORD, 'private');
+    const [tail] = readdirSync(join(priv, 'tails'));
+    expect(() =>
+      withTailLock(tailLockPath({ root: priv }, tail as string), () => restoreCopy(prepared)),
+    ).toThrow(new RegExp(`process ${process.pid}`));
+  });
+
+  it('takes the locks of every tree before it writes the first, so a refusal leaves them all as they were', () => {
+    const a = copied();
+    const b = aRealProject(sandbox, 'three');
+    const destinationB = join(sandbox, 'dest-b');
+    writeCopy(prepareCopy(b.priv, destinationB, RECORD, 'private'), new Date());
+    rmSync(a.priv, { recursive: true, force: true });
+    const both = [
+      prepareRestore(a.priv, a.destination, RECORD, 'private'),
+      prepareRestore(b.priv, destinationB, RECORD, 'private'),
+    ];
+    const [tail] = readdirSync(join(b.priv, 'tails'));
+    expect(() =>
+      withTailLock(tailLockPath({ root: b.priv }, tail as string), () => restoreCopies(both)),
+    ).toThrow(/Nothing was written/);
+    expect(existsSync(a.priv)).toBe(false);
   });
 });

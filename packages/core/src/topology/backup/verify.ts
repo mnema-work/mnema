@@ -48,7 +48,7 @@ export interface Standing {
   /** Files the copy holds that the tree holds the same of. */
   readonly same: number;
   /** Files the tree has written to since the copy: the copy is the start of them. */
-  readonly behind: readonly string[];
+  readonly behind: readonly { readonly path: string; readonly entries: number }[];
   /** Files whose tree's is the start of the copy's: the tree is cut. */
   readonly cut: readonly { readonly path: string; readonly tree: number; readonly copy: number }[];
   /** Files the copy holds that the tree does not hold at all. */
@@ -131,7 +131,7 @@ export function readCopy(
   const result = verifyChain({ root: folder }, catalogUpcasters());
 
   let same = 0;
-  const behind: string[] = [];
+  const behind: { path: string; entries: number }[] = [];
   const cut: { path: string; tree: number; copy: number }[] = [];
   const lost: string[] = [];
   const forked: { path: string; tree: number; copy: number }[] = [];
@@ -144,7 +144,7 @@ export function readCopy(
     } else if (held.equals(file.bytes)) {
       same += 1;
     } else if (held.subarray(0, file.bytes.length).equals(file.bytes)) {
-      behind.push(file.path);
+      behind.push({ path: file.path, entries: lines(held) - lines(file.bytes) });
     } else if (file.bytes.subarray(0, held.length).equals(held)) {
       cut.push({ path: file.path, tree: lines(held), copy: lines(file.bytes) });
     } else {
@@ -153,7 +153,9 @@ export function readCopy(
   }
   if (lstatSync(root, { throwIfNoEntry: false }) !== undefined) {
     // What the tree holds that the copy does not is a copy that is behind.
-    for (const file of planCopy(root, tree)) if (!names.has(file.path)) behind.push(file.path);
+    for (const file of planCopy(root, tree)) {
+      if (!names.has(file.path)) behind.push({ path: file.path, entries: lines(file.bytes) });
+    }
   }
   const standing: Standing = { same, behind, cut, lost, forked };
   const ok =

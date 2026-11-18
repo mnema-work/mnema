@@ -79,7 +79,7 @@ text and nothing else, so:
   the first write after a restore opens a tail of its own, beside the restored ones.
 - **It cannot bring back what the tree wrote after the copy was made.**
 
-A copy of another record is refused by `restore`; a way to put one back, asking you first, comes next.
+A copy of another record is refused by `restore` when its manifest or the live tree names it; one with no manifest, put where the tree was deleted, has nothing to be told apart by. A way to put another record's copy back, asking you first, comes next.
 
 ## What you still look after
 

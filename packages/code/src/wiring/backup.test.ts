@@ -229,6 +229,7 @@ describe('mnema backup verify and restore', () => {
     // The key is not in the copy, and the restore says so in words that promise nothing about it.
     for (const words of WHAT_RESTORE_DOES_NOT_BRING) expect(said).toContain(words);
     expect(said).toContain('counts you twice');
+    expect(said).toMatch(/put back \d+ file\(s\) \(1 tail\(s\) the tree did not have\)/);
     expect(said).not.toMatch(/restores? (your|the) key/);
 
     const verified = await mnema(['backup', 'verify']);
@@ -256,6 +257,9 @@ describe('mnema backup verify and restore', () => {
     const behind = await mnema(['backup', 'verify']);
     expect(behind.failed).toBe(false);
     expect(behind.out.join('\n')).toContain('the copy is BEHIND');
+    expect(behind.out.join('\n')).toMatch(
+      /the copy lacks \d+ entries of the tail \S+, which the tree holds/,
+    );
 
     writeFileSync(join(priv, 'tails', tail as string, 'tailproof.json'), '{"other":true}');
     const goingOn = await mnema(['backup', 'restore']);

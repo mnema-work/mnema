@@ -48,7 +48,7 @@ import {
   readBackupConfig,
   readCopy,
   resolveTrees,
-  restoreCopy,
+  restoreCopies,
   standingOfCopy,
   whyNotADestination,
   writeCopy,
@@ -522,10 +522,8 @@ export function runBackupRestore(
         message: first ?? 'There is no copy.',
       };
     }
-    const trees = prepared.map((one) => ({
-      ...one,
-      restored: dryRun ? undefined : restoreCopy(one),
-    }));
+    const done = dryRun ? [] : restoreCopies(prepared);
+    const trees = prepared.map((one, at) => ({ ...one, restored: done[at] }));
     return { ok: true, record: project.record, destination, dryRun, trees, noCopy };
   } catch (error) {
     return refusedBy(error);

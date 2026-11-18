@@ -273,18 +273,71 @@ export interface Restored {
   readonly tails: readonly string[];
 }
 
-/** Writes what {@link prepareRestore} found: each file once, never over a name that is taken. */
+/** Where a restore builds a tail the tree does not have, before it takes the tail's name in one step. */
+const STAGING = 'restoring';
+
+/**
+ * Writes what {@link prepareRestore} found: each file once, never over a name that is taken. A
+ * tail the tree does not have is built whole in a folder of its own beside `tails/` (on the same
+ * file system) and renamed to its name in ONE step, so a restore that dies half way leaves no
+ * tail with a segment and no proof; what it leaves is a staging folder, which the next restore
+ * removes before it writes, and which no reader takes for a tail.
+ */
 export function restoreCopy(prepared: PreparedRestore): Restored {
-  const { root, placing, lockedTails } = prepared;
-  return holding(root, lockedTails, () => {
-    let files = 0;
-    for (const file of placing) {
-      const at = join(root, ...file.path.split('/'));
-      mkdirSync(dirname(at), { recursive: true });
-      if (put(at, file.bytes)) files += 1;
-    }
-    return { files, tails: prepared.newTails };
+  return restoreCopies([prepared])[0] as Restored;
+}
+
+/**
+ * {@link restoreCopy} for several trees, with the lock of every tail of every tree taken BEFORE the
+ * first byte of the first tree is written: a writer that takes one after the checks refuses the
+ * whole restore, and nothing was written.
+ */
+export function restoreCopies(prepared: readonly PreparedRestore[]): Restored[] {
+  const [first, ...rest] = prepared;
+  if (first === undefined) return [];
+  return holding(first.root, first.lockedTails, () => {
+    const others = restoreCopies(rest);
+    return [writeOne(first), ...others];
   });
+}
+
+function writeOne(prepared: PreparedRestore): Restored {
+  const { root, placing, newTails } = prepared;
+  const staging = join(root, STAGING);
+  rmSync(staging, { recursive: true, force: true });
+  let files = 0;
+  const fresh = new Set(newTails);
+  const inFreshTail = (path: string): string | undefined => {
+    const tail = tailOf(path);
+    return tail !== undefined && fresh.has(tail) ? tail : undefined;
+  };
+  for (const file of placing) {
+    if (inFreshTail(file.path) !== undefined) continue;
+    const at = join(root, ...file.path.split('/'));
+    mkdirSync(dirname(at), { recursive: true });
+    if (put(at, file.bytes)) files += 1;
+  }
+  for (const tail of newTails) {
+    const built = join(staging, `${process.pid}`, tail);
+    mkdirSync(built, { recursive: true });
+    const mine = placing.filter((file) => inFreshTail(file.path) === tail);
+    for (const file of mine) {
+      const at = join(built, ...file.path.split('/').slice(2));
+      mkdirSync(dirname(at), { recursive: true });
+      writeFileSync(at, file.bytes, { flag: 'wx' });
+    }
+    mkdirSync(join(root, 'tails'), { recursive: true });
+    try {
+      renameSync(built, join(root, 'tails', tail));
+      files += mine.length;
+    } catch (error) {
+      // A tail that took the name in the meantime stays as it is.
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code !== 'EEXIST' && code !== 'ENOTEMPTY' && code !== 'EPERM') throw error;
+    }
+  }
+  rmSync(staging, { recursive: true, force: true });
+  return { files, tails: newTails };
 }
 
 /** Puts `bytes` at `path` only if the name is free (a name taken in the meantime is left), and says if it did. */

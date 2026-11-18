@@ -522,7 +522,7 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'collapsed',
     why: 'the folder is read back out of the machine’s backup file, which a person can edit',
   },
-  'backup.ts «{} tree: {} {} {} file(s){}» #1': {
+  'backup.ts «{} tree: {} {} {} file(s)» #1': {
     verdict: 'collapsed',
     why: 'the date of the copy is read out of a manifest in the folder, which a person can edit',
   },
@@ -1377,7 +1377,7 @@ const UNREACHABLE: Readonly<Record<string, string>> = {
     'the same folder as the line of setup',
   'backup.ts «Backed up the global tree to {}» #1': 'the same folder as the line of setup',
   'backup.ts «{} record {}... from {}» #1': 'the same folder as the line of setup',
-  'backup.ts «{} tree: {} {} {} file(s){}» #1':
+  'backup.ts «{} tree: {} {} {} file(s)» #1':
     'the manifest is written by a run, and no case edits its date by hand yet, so the tag is what holds this line',
   "backup.ts «{} tree: {} holds more in the tree than in the copy: the tree's is kept» #1":
     'a name with a break in it in the copy, which no case plants yet, so the tag is what holds this line',
