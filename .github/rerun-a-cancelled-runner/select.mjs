@@ -20,7 +20,13 @@ import { appendFileSync, readFileSync } from 'node:fs';
 const THE_JOBS = /^windows and macos \(/;
 const NOT_THE_WORKFLOWS = /^(?:Set up job|Complete job|Post )/;
 
-/** Whether any step of the workflow's own ended with a result of its own. */
+/** @typedef {{ name: string, conclusion: string | null }} Step */
+/** @typedef {{ id: number, name: string, conclusion: string | null, steps?: readonly Step[] }} Job */
+
+/**
+ * Whether any step of the workflow's own ended with a result of its own.
+ * @param {Job} job
+ */
 function aStepRan(job) {
   return (job.steps ?? []).some(
     (step) =>
@@ -30,7 +36,7 @@ function aStepRan(job) {
 }
 
 /**
- * @param {{ jobs: readonly { id: number, name: string, conclusion: string | null, steps?: readonly { name: string, conclusion: string | null }[] }[], attempt: number, runId: number, newestRunId: number }} run
+ * @param {{ jobs: readonly Job[], attempt: number, runId: number, newestRunId: number }} run
  * @returns {number[]} the ids of the jobs to rerun
  */
 export function jobsToRerun({ jobs, attempt, runId, newestRunId }) {
@@ -41,9 +47,12 @@ export function jobsToRerun({ jobs, attempt, runId, newestRunId }) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const [jobsFile, attempt, runId, newestRunId] = process.argv.slice(2);
+  const [jobsFile = '', attempt, runId, newestRunId] = process.argv.slice(2);
   const pages = JSON.parse(readFileSync(jobsFile, 'utf-8'));
-  const jobs = (Array.isArray(pages) ? pages : [pages]).flatMap((page) => page.jobs ?? []);
+  /** @type {Job[]} */
+  const jobs = (Array.isArray(pages) ? pages : [pages]).flatMap(
+    (/** @type {{ jobs?: Job[] }} */ page) => page.jobs ?? [],
+  );
   const ids = jobsToRerun({
     jobs,
     attempt: Number(attempt),

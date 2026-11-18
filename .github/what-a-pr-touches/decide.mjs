@@ -57,6 +57,7 @@ export function decide(files, event) {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const { readFileSync } = await import('node:fs');
+  /** @type {string[]} */
   let files = [];
   try {
     files = readFileSync(0, 'utf-8').split('\n').filter(Boolean);
