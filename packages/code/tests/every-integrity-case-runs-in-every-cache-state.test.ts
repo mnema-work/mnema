@@ -113,6 +113,10 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'runs the plugin handlers and the two gates as fresh processes over one altered record, each reading what the last run left; the three states of the reads they run are held by an-altered-entry-is-said-first-and-never-served',
   'packages/code/tests/the-agent-is-handed-an-altered-entry-first-and-never-its-text.test.ts':
     'opens its own connections: one after the alteration (cold) and one that read the record before it (session), over the protocol; the warm state of the command line is held by an-altered-entry-is-said-first-and-never-served',
+  'packages/chain/src/chain/a-reader-hands-what-it-cannot-read-to-a-collector.test.ts':
+    'holds what the readers of the chain hand a collector over a tail it damages, in the functions alone; the chain has no projection cache (the cache states are held through the binary in a-line-this-mnema-cannot-read-is-said-first-and-the-rest-is-served)',
+  'packages/core/src/projections/a-part-this-mnema-does-not-read-is-left-out-and-named.test.ts':
+    'holds the projection cache itself over a tree it damages: a replay, a connection open before the damage and a cache kept on disk are its cases; the states of the binary are held by a-line-this-mnema-cannot-read-is-said-first-and-the-rest-is-served',
   'packages/code/tests/the-agent-is-told-of-a-line-it-cannot-read-and-served-the-rest.test.ts':
     'opens its own connections: one after the damage (cold) and one that read the record before it (session), over the protocol; the warm state of the command line is held by a-line-this-mnema-cannot-read-is-said-first-and-the-rest-is-served',
   'packages/code/tests/the-console-does-not-show-an-altered-entry-that-arrives.test.ts':
