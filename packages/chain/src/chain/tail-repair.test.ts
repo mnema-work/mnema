@@ -20,9 +20,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { memoryCaptured } from '../events/build.js';
+import { canonicalStringify } from '../events/canonical.js';
 import { catalogUpcasters } from '../events/registry.js';
 import { openChainForWriting } from './chain.js';
 import { citationIndexPath } from './citation-index.js';
+import { entryHash, writtenAsStored } from './hash.js';
 import { tailLockPath } from './layout.js';
 import { TailBusyError } from './tail-lock.js';
 import { repairTail, type TailRepairInput } from './tail-repair.js';
@@ -201,5 +203,74 @@ describe('repairTail', () => {
     symlinkSync(real, segment);
     expect(() => repair()).toThrow(/symbolic link/);
     expect(readFileSync(real).equals(damaged)).toBe(true);
+  });
+
+  /** The line `index` of the revision as another valid entry: the link changed and the hash taken over it again. */
+  const forged = (
+    index: number,
+    change: { prev?: string | null; seq?: number; tail?: string; content?: string },
+  ): string => {
+    const line = JSON.parse(committed.toString('latin1').split('\n')[index] as string);
+    if (change.content !== undefined) line.event.payload.content = change.content;
+    const link = {
+      tail: change.tail ?? line.link.tail,
+      seq: change.seq ?? line.link.seq,
+      prev: change.prev === undefined ? line.link.prev : change.prev,
+    };
+    const hash = entryHash({ event: writtenAsStored(line.event), ...link });
+    return canonicalStringify({ event: line.event, link: { ...link, hash } });
+  };
+  const revisionWith = (index: number, line: string): Map<string, Buffer> => {
+    const all = committed.toString('latin1').split('\n');
+    all[index] = line;
+    return new Map([['000001.jsonl', Buffer.from(all.join('\n'), 'latin1')]]);
+  };
+  const damage = (index: number): void => {
+    const all = lines();
+    all[index] = `\0${(all[index] as string).slice(1)}`;
+    put(all);
+  };
+
+  it('refuses a sibling of a fork, the same tail, seq and prev with other content, by the line after it', () => {
+    damage(2);
+    const done = repair({ committed: revisionWith(2, forged(2, { content: 'a sibling' })) });
+    expect(done).toEqual({
+      ok: false,
+      refusal: { reason: 'NOT_CHAINED', segment: '000001.jsonl', line: 3, side: 'after' },
+    });
+  });
+
+  // The last line has nothing after it, so only the side before can refuse these.
+  it.each([
+    ['prev', { prev: 'f'.repeat(64) }],
+    ['seq', { seq: 9 }],
+    ['tail', { tail: `${'0'.repeat(64)}-${'1'.repeat(32)}` }],
+  ])(
+    'refuses a last line from the revision with the wrong %s, by the line before it',
+    (_, change) => {
+      const last = lines().length - 2;
+      damage(last);
+      const before = readFileSync(segment);
+      const done = repair({ committed: revisionWith(last, forged(last, change)) });
+      expect(done).toEqual({
+        ok: false,
+        refusal: { reason: 'NOT_CHAINED', segment: '000001.jsonl', line: last + 1, side: 'before' },
+      });
+      expect(readFileSync(segment).equals(before)).toBe(true);
+    },
+  );
+
+  it('puts the staging in the place of the notes, sweeps what a dead process left, and drops the index first', () => {
+    damage(1);
+    const dead = join(root, 'locks', `${tail}.000001.jsonl.repair.2147483646`);
+    const besideDead = join(root, 'tails', tail, '.000001.jsonl.repair.2147483646');
+    writeFileSync(dead, 'x');
+    writeFileSync(besideDead, 'x');
+    const done = repair();
+    expect(done.ok).toBe(true);
+    expect(readdirSync(join(root, 'locks')).some((name) => name.includes('.repair.'))).toBe(false);
+    expect(readdirSync(join(root, 'tails', tail)).some((name) => name.includes('.repair.'))).toBe(
+      false,
+    );
   });
 });

@@ -43,7 +43,7 @@ import { type ChainEntry, entryHashHolds, parseEntry } from './entry.js';
 import { type ChainLayout, isSegmentFile, tailDir, tailLockPath } from './layout.js';
 import { parseStoredLine, splitLines, UnreadableLineError } from './lines.js';
 import { refuseToLockThroughALink, refuseToWriteThrough } from './linked-write.js';
-import { withTailLock } from './tail-lock.js';
+import { alive, withTailLock } from './tail-lock.js';
 
 /** What the repair of one tail is asked: where it is, where its notes are, and what git holds. */
 export interface TailRepairInput {
@@ -152,6 +152,7 @@ export function repairTail(input: TailRepairInput): TailRepaired {
       segments.map((name) => `tails/${tailId}/${name}`),
     );
     refuseToWriteThrough(shared, ['locks', `locks/${tailId}.citations`]);
+    sweepStaging(shared, directory, tailId);
 
     const files = new Map<string, { pieces: Uint8Array[]; torn: boolean }>();
     const walk: Placed[] = [];
@@ -248,6 +249,9 @@ export function repairTail(input: TailRepairInput): TailRepaired {
       }
     }
     syncDirectory(join(shared.root, 'locks'));
+    // Before any file changes: an index is believed only when the line at its offset carries the hash it
+    // names, and a reader between a rename and the drop would meet one that no longer does.
+    rmSync(citationIndexPath(shared, tailId), { force: true });
     for (const segment of changed) {
       const target = join(directory, segment);
       const file = files.get(segment) as { pieces: Uint8Array[] };
@@ -256,22 +260,62 @@ export function repairTail(input: TailRepairInput): TailRepaired {
           index === 0 ? [Buffer.from(piece)] : [Buffer.from([0x0a]), Buffer.from(piece)],
         ),
       );
-      const staged = join(directory, `.${segment}.repair.${process.pid}`);
-      const fd = openSync(staged, 'wx', statSync(target).mode & 0o777);
+      // Staged in the place of the notes, never in the record: a process killed here leaves nothing in the
+      // tree git versions. A place on another file system cannot be renamed from, so there the temporary
+      // goes beside the file, under a name the readers pass over (`.<segment>.repair.<pid>`).
+      const staged = join(shared.root, 'locks', `${tailId}.${segment}.repair.${process.pid}`);
+      const beside = join(directory, `.${segment}.repair.${process.pid}`);
+      const mode = statSync(target).mode & 0o777;
+      let at = staged;
       try {
+        stage(at, body, mode);
         try {
-          writeSync(fd, body);
-          fsyncSync(fd);
-        } finally {
-          closeSync(fd);
+          renameSync(at, target);
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== 'EXDEV') throw error;
+          at = beside;
+          stage(at, body, mode);
+          renameSync(at, target);
         }
-        renameSync(staged, target);
       } finally {
         rmSync(staged, { force: true });
+        rmSync(beside, { force: true });
       }
       syncDirectory(directory);
     }
-    rmSync(citationIndexPath(shared, tailId), { force: true });
     return { ok: true, repaired, kept: copies };
   });
+}
+
+/** Writes `body` to a new file at `path`, synced. */
+function stage(path: string, body: Buffer, mode: number): void {
+  rmSync(path, { force: true });
+  const fd = openSync(path, 'wx', mode);
+  try {
+    writeSync(fd, body);
+    fsyncSync(fd);
+  } finally {
+    closeSync(fd);
+  }
+}
+
+/** Removes the staging files an earlier repair left when its process was killed: the ones of a dead pid. */
+function sweepStaging(shared: ChainLayout, directory: string, tailId: string): void {
+  const found = (dir: string, pattern: RegExp): string[] =>
+    readdirSync(dir)
+      .filter((name) => pattern.test(name))
+      .map((name) => join(dir, name));
+  const dead = (path: string): boolean => {
+    const pid = Number(path.slice(path.lastIndexOf('.') + 1));
+    return Number.isInteger(pid) && !alive(pid);
+  };
+  const escaped = tailId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const staged = [
+    ...found(
+      join(shared.root, 'locks'),
+      new RegExp(`^${escaped}\\.\\d{6}\\.jsonl\\.repair\\.\\d+$`),
+    ),
+    ...found(directory, /^\.\d{6}\.jsonl\.repair\.\d+$/),
+  ];
+  for (const path of staged) if (dead(path)) rmSync(path, { force: true });
 }
