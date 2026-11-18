@@ -260,6 +260,8 @@ describe('mnema backup verify and restore', () => {
     expect(behind.out.join('\n')).toMatch(
       /the copy lacks \d+ entries of the tail \S+, which the tree holds/,
     );
+    // One line for the tail, counted over its segments and not its checkpoints.
+    expect(behind.out.join('\n').match(/the copy lacks/g)).toHaveLength(1);
 
     writeFileSync(join(priv, 'tails', tail as string, 'tailproof.json'), '{"other":true}');
     const goingOn = await mnema(['backup', 'restore']);

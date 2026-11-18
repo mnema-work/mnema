@@ -34,13 +34,16 @@ import {
   linkSync,
   lstatSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   renameSync,
+  rmdirSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
 import { dirname, join } from 'node:path';
 import {
+  alive,
   catalogUpcasters,
   LinkedRecordError,
   listLinksInRecord,
@@ -269,7 +272,9 @@ function holding<T>(root: string, tails: readonly string[], act: () => T): T {
 
 /** What a restore wrote. */
 export interface Restored {
+  /** The files this restore put in the tree (not the plan's count: a name taken meanwhile is not one). */
   readonly files: number;
+  /** The new tails whose name this restore took. */
   readonly tails: readonly string[];
 }
 
@@ -295,17 +300,46 @@ export function restoreCopy(prepared: PreparedRestore): Restored {
 export function restoreCopies(prepared: readonly PreparedRestore[]): Restored[] {
   const [first, ...rest] = prepared;
   if (first === undefined) return [];
-  return holding(first.root, first.lockedTails, () => {
-    const others = restoreCopies(rest);
-    return [writeOne(first), ...others];
-  });
+  return alone(first.root, () =>
+    holding(first.root, first.lockedTails, () => {
+      const others = restoreCopies(rest);
+      return [writeOne(first), ...others];
+    }),
+  );
+}
+
+/** The lock a restore holds on a tree for as long as it writes: two restores of one tree never run together. */
+export function restoreLockPath(root: string): string {
+  return join(root, 'restoring.lock');
+}
+
+function alone<T>(root: string, act: () => T): T {
+  try {
+    return withTailLock(restoreLockPath(root), act, { waitMs: 0 });
+  } catch (error) {
+    if (!(error instanceof TailBusyError)) throw error;
+    const who = error.heldBy === undefined ? 'another process' : `process ${error.heldBy}`;
+    throw new BackupRefusedError(
+      'RESTORE_RUNNING',
+      `${who} is restoring this tree, and two restores of one tree do not run together. Let it finish and run the restore again.`,
+    );
+  }
 }
 
 function writeOne(prepared: PreparedRestore): Restored {
   const { root, placing, newTails } = prepared;
   const staging = join(root, STAGING);
-  rmSync(staging, { recursive: true, force: true });
+  const mine = join(staging, `${process.pid}`);
+  // What a restore that died left: this process's own folder (a pid can come back), and any other
+  // whose process no longer answers. A folder whose process is alive is never touched.
+  for (const name of listed(staging)) {
+    const pid = Number(name);
+    if (pid === process.pid || !Number.isInteger(pid) || !alive(pid)) {
+      rmSync(join(staging, name), { recursive: true, force: true });
+    }
+  }
   let files = 0;
+  const taken: string[] = [];
   const fresh = new Set(newTails);
   const inFreshTail = (path: string): string | undefined => {
     const tail = tailOf(path);
@@ -318,10 +352,10 @@ function writeOne(prepared: PreparedRestore): Restored {
     if (put(at, file.bytes)) files += 1;
   }
   for (const tail of newTails) {
-    const built = join(staging, `${process.pid}`, tail);
+    const built = join(mine, tail);
     mkdirSync(built, { recursive: true });
-    const mine = placing.filter((file) => inFreshTail(file.path) === tail);
-    for (const file of mine) {
+    const wanted = placing.filter((file) => inFreshTail(file.path) === tail);
+    for (const file of wanted) {
       const at = join(built, ...file.path.split('/').slice(2));
       mkdirSync(dirname(at), { recursive: true });
       writeFileSync(at, file.bytes, { flag: 'wx' });
@@ -329,15 +363,24 @@ function writeOne(prepared: PreparedRestore): Restored {
     mkdirSync(join(root, 'tails'), { recursive: true });
     try {
       renameSync(built, join(root, 'tails', tail));
-      files += mine.length;
+      files += wanted.length;
+      taken.push(tail);
     } catch (error) {
-      // A tail that took the name in the meantime stays as it is.
+      // A tail that took the name in the meantime stays as it is; any other failure is said.
       const code = (error as NodeJS.ErrnoException).code;
-      if (code !== 'EEXIST' && code !== 'ENOTEMPTY' && code !== 'EPERM') throw error;
+      const nameTaken =
+        lstatSync(join(root, 'tails', tail), { throwIfNoEntry: false }) !== undefined;
+      if (!nameTaken || (code !== 'EEXIST' && code !== 'ENOTEMPTY' && code !== 'EPERM'))
+        throw error;
     }
   }
-  rmSync(staging, { recursive: true, force: true });
-  return { files, tails: newTails };
+  rmSync(mine, { recursive: true, force: true });
+  try {
+    rmdirSync(staging);
+  } catch {
+    // Another process's folder is still in it.
+  }
+  return { files, tails: taken };
 }
 
 /** Puts `bytes` at `path` only if the name is free (a name taken in the meantime is left), and says if it did. */
@@ -357,5 +400,13 @@ function put(path: string, bytes: Buffer): boolean {
     return true;
   } finally {
     rmSync(staging, { force: true });
+  }
+}
+
+function listed(dir: string): string[] {
+  try {
+    return readdirSync(dir);
+  } catch {
+    return [];
   }
 }

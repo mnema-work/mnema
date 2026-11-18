@@ -83,6 +83,7 @@ export class BackupRefusedError extends CodedError {
     | 'NO_COPY'
     | 'OTHER_RECORD'
     | 'WRITER_HOLDS_TAIL'
+    | 'RESTORE_RUNNING'
     | 'BROKEN_COPY';
 
   constructor(code: BackupRefusedError['code'], message: string) {

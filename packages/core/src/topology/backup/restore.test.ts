@@ -6,6 +6,7 @@
  */
 
 // @plants-damage
+import { spawnSync } from 'node:child_process';
 import {
   cpSync,
   existsSync,
@@ -25,7 +26,7 @@ import { createTask } from '../../workflow/operations.js';
 import { resolveTrees } from '../resolve.js';
 import { openTreeForWriting } from '../routing.js';
 import { BackupRefusedError, prepareCopy, writeCopy } from './copy.js';
-import { prepareRestore, restoreCopies, restoreCopy } from './restore.js';
+import { prepareRestore, restoreCopies, restoreCopy, restoreLockPath } from './restore.js';
 
 const RECORD = 'ab'.repeat(32);
 const TAIL = 'aa11-bb22';
@@ -116,6 +117,12 @@ function aRealProject(sandbox: string, label: string) {
   };
   write('first');
   return { priv, write };
+}
+
+/** The pid of a process that has come and gone. */
+function aDeadPid(): number {
+  const ran = spawnSync(process.execPath, ['-e', '0']);
+  return ran.pid;
 }
 
 const segmentIn = (root: string) => {
@@ -216,7 +223,7 @@ describe('a restore over records a writer made', () => {
     const [tail] = readdirSync(join(priv, 'tails'));
     rmSync(priv, { recursive: true, force: true });
     // What a restore killed after the first file of a tail leaves: a staging folder with a segment.
-    const left = join(priv, 'restoring', '999', tail as string);
+    const left = join(priv, 'restoring', `${aDeadPid()}`, tail as string);
     mkdirSync(left, { recursive: true });
     cpSync(join(copy, 'tails', tail as string, '000001.jsonl'), join(left, '000001.jsonl'));
     // It is not a tail: nothing in tails/ and nothing for a reader to fail on.
@@ -241,6 +248,32 @@ describe('a restore over records a writer made', () => {
     writeFileSync(join(priv, 'tails', tail as string, 'a-writer-was-here'), 'x');
     restoreCopy(prepared);
     expect(readdirSync(join(priv, 'tails', tail as string))).toEqual(['a-writer-was-here']);
+  });
+
+  it('does not run beside another restore of the tree: the second is refused, by name, and the tree is as it was', () => {
+    const { priv, destination } = copied();
+    rmSync(priv, { recursive: true, force: true });
+    const prepared = prepareRestore(priv, destination, RECORD, 'private');
+    // Another restore holds the tree: this one is turned away and writes nothing.
+    expect(() => withTailLock(restoreLockPath(priv), () => restoreCopy(prepared))).toThrow(
+      new RegExp(`process ${process.pid}`),
+    );
+    expect(existsSync(join(priv, 'tails'))).toBe(false);
+    expect(restoreCopy(prepared).files).toBeGreaterThan(0);
+  });
+
+  it('cleans the staging of a process that is gone and never the staging of one that is alive', () => {
+    const { priv, destination } = copied();
+    rmSync(priv, { recursive: true, force: true });
+    const dead = join(priv, 'restoring', `${aDeadPid()}`, 'a-tail');
+    const living = join(priv, 'restoring', `${process.ppid}`, 'a-tail');
+    for (const dir of [dead, living]) {
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, '000001.jsonl'), '{}\n');
+    }
+    restoreCopy(prepareRestore(priv, destination, RECORD, 'private'));
+    expect(existsSync(dead)).toBe(false);
+    expect(readFileSync(join(living, '000001.jsonl'), 'utf-8')).toBe('{}\n');
   });
 
   it('puts nothing over a name taken after the checks', () => {
@@ -277,6 +310,6 @@ describe('a restore over records a writer made', () => {
     expect(() =>
       withTailLock(tailLockPath({ root: b.priv }, tail as string), () => restoreCopies(both)),
     ).toThrow(/Nothing was written/);
-    expect(existsSync(a.priv)).toBe(false);
+    expect(existsSync(join(a.priv, 'tails'))).toBe(false);
   });
 });

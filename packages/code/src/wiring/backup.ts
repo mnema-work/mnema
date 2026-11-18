@@ -324,12 +324,16 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
           );
         }
         // The entries a copy lacks, tail by tail: a count of files says little about what a loss would be.
-        for (const lacking of standing.behind) {
-          if (lacking.entries <= 0) continue;
-          const tail = lacking.path.split('/')[1] ?? lacking.path;
+        const lacking = new Map<string, number>();
+        for (const one of standing.behind) {
+          if (one.entries <= 0) continue;
+          const tail = one.path.split('/')[1] ?? one.path;
+          lacking.set(tail, (lacking.get(tail) ?? 0) + one.entries);
+        }
+        for (const [tail, entries] of lacking) {
           lines.push(
             fact(
-              onOneLine`${t} tree: the copy lacks ${lacking.entries} entries of the tail ${tail}, which the tree holds`,
+              onOneLine`${t} tree: the copy lacks ${entries} entries of the tail ${tail}, which the tree holds`,
             ),
           );
         }
@@ -375,15 +379,12 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
         const t = one.tree;
         const copied =
           one.copiedAt === undefined ? 'a copy with no manifest' : `the copy of ${one.copiedAt}`;
+        // What was written, when something was; the plan only on a dry run.
+        const wrote = one.restored?.files ?? one.placing.length;
+        const newTails = one.restored?.tails ?? one.newTails;
         const tails =
-          one.newTails.length === 0
-            ? ''
-            : ` (${one.newTails.length} tail(s) the tree did not have)`;
-        io.out(
-          render(
-            fact(onOneLine`${t} tree: ${copied} ${verb} ${one.placing.length} file(s)` + tails),
-          ),
-        );
+          newTails.length === 0 ? '' : ` (${newTails.length} tail(s) the tree did not have)`;
+        io.out(render(fact(onOneLine`${t} tree: ${copied} ${verb} ${wrote} file(s)` + tails)));
         for (const path of one.liveWins) {
           io.out(
             render(

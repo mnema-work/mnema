@@ -76,6 +76,11 @@ export interface CopyReading {
   readonly ok: boolean;
 }
 
+/** Lines count as entries in a segment only: a checkpoints file is lines of another kind. */
+function entriesOf(path: string, count: number): number {
+  return path.endsWith('.jsonl') && !path.endsWith('/checkpoints.jsonl') ? count : 0;
+}
+
 function lines(bytes: Buffer): number {
   let count = 0;
   for (const byte of bytes) if (byte === 0x0a) count += 1;
@@ -144,7 +149,10 @@ export function readCopy(
     } else if (held.equals(file.bytes)) {
       same += 1;
     } else if (held.subarray(0, file.bytes.length).equals(file.bytes)) {
-      behind.push({ path: file.path, entries: lines(held) - lines(file.bytes) });
+      behind.push({
+        path: file.path,
+        entries: entriesOf(file.path, lines(held) - lines(file.bytes)),
+      });
     } else if (file.bytes.subarray(0, held.length).equals(held)) {
       cut.push({ path: file.path, tree: lines(held), copy: lines(file.bytes) });
     } else {
@@ -154,7 +162,8 @@ export function readCopy(
   if (lstatSync(root, { throwIfNoEntry: false }) !== undefined) {
     // What the tree holds that the copy does not is a copy that is behind.
     for (const file of planCopy(root, tree)) {
-      if (!names.has(file.path)) behind.push({ path: file.path, entries: lines(file.bytes) });
+      if (!names.has(file.path))
+        behind.push({ path: file.path, entries: entriesOf(file.path, lines(file.bytes)) });
     }
   }
   const standing: Standing = { same, behind, cut, lost, forked };
