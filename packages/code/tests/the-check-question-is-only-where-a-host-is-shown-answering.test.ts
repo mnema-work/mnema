@@ -21,14 +21,14 @@ const contractTestOf = (id: string): string =>
   ).pathname;
 
 /** The summary for a founding that chose only these hosts. */
-function summaryFor(hosts: readonly string[]): string {
+function summaryFor(hosts: readonly string[], width = 100): string {
   const founded = {
     cwd: '/work/shop',
     result: { created: true, anchor: `mnid:${'a'.repeat(64)}`, identity: undefined },
     answers: { marks: new Set(hosts.map((id) => hostMark(id as never))) },
     shown: (path: string) => path,
   } as unknown as Founded;
-  return summaryPage(founded, 100)
+  return summaryPage(founded, width)
     .map((line) => renderPlain(line))
     .join('\n');
 }
@@ -50,5 +50,16 @@ describe('the question to ask the agent', () => {
     for (const id of inside) expect(summaryFor([id])).toContain(CHECK_QUESTION);
     for (const id of outside) expect(summaryFor([id]), id).not.toContain(CHECK_QUESTION);
     expect(summaryFor([])).not.toContain(CHECK_QUESTION);
+  });
+
+  it('names, with every host chosen, only the hosts of the table', () => {
+    const said = summaryFor(
+      HOST_ROWS.map((row) => row.id),
+      300,
+    )
+      .split('\n')
+      .find((row) => row.includes(CHECK_QUESTION));
+    expect(said).toContain('In Claude Code or Codex,');
+    expect(said).not.toMatch(/Cursor|VS Code/);
   });
 });

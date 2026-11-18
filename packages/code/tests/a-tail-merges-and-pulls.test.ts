@@ -480,6 +480,17 @@ describe('mnema init', SLOW, () => {
 });
 
 describe('the doctor', SLOW, () => {
+  it('does not tell a repository with no remote to write the driver', () => {
+    const { local } = world();
+    expect(git(local, 'remote', 'remove', 'origin').status).toBe(0);
+    const ctx = { cwd: local, env: { home: join(sandbox, 'home') }, processEnv: env() };
+    expect(mergeDriverLines(ctx)).toEqual([]);
+    expect(mnema(local, 'doctor').out).not.toMatch(/merge-driver/);
+    // With a remote again, the same repository is told.
+    expect(git(local, 'remote', 'add', 'origin', join(sandbox, 'remote.git')).status).toBe(0);
+    expect(mergeDriverLines(ctx)).toHaveLength(1);
+  });
+
   it('names a driver git does not know, and only --fix merge-driver writes it, --dry-run first', () => {
     const { local } = world();
     const asked = mnema(local, 'doctor');

@@ -173,7 +173,6 @@ mnema init  ·  0.0.0
 --- the summary (80 columns)
 ◇  Founded shop/.mnema
 │
-│  identity  mnid:xxxxxxxx  this machine’s, new; shown short
 │    mnid:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 │  backup key  xxxxxxxx  enrolled in this project
 │
@@ -186,11 +185,11 @@ mnema init  ·  0.0.0
 │    1  Commit `.mnema/` with the repository; every clone reads the record.
 │    2  Claude Code: claude plugin marketplace add mnema-work/mnema
 │                    claude plugin install mnema@mnema
-│    3  Cursor: its command-line agent reads the Claude Code plugin (server:
-│       `mnema mcp`).
+│    3  Cursor: its command-line agent reads the Claude Code plugin.
 │    4  Codex: codex plugin marketplace add mnema-work/mnema
 │              codex plugin add mnema@mnema
-│    5  With the plugin in, ask the agent: "Which mnema tools do you have?"
+│    5  In Claude Code or Codex, with the plugin in, ask the agent: "Which
+│       mnema tools do you have?"
 │    6  1 decision file in docs/decisions is not in the record yet:
 │       mnema decision import docs/decisions
 │    7  `mnema status` shows where things stand.
@@ -413,7 +412,6 @@ mnema init  ·  0.0.0
 --- the summary (60 columns)
 ◇  Founded shop/.mnema
 │
-│  identity  mnid:xxxxxxxx  this machine’s, new; shown short
 │    
   mnid:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
   xxxxxxxxxxx
@@ -434,11 +432,11 @@ mnema init  ·  0.0.0
 │       claude plugin marketplace add mnema-work/mnema
 │       claude plugin install mnema@mnema
 │    3  Cursor: its command-line agent reads the Claude
-│       Code plugin (server: `mnema mcp`).
+│       Code plugin.
 │    4  Codex: codex plugin marketplace add mnema-work/mnema
 │              codex plugin add mnema@mnema
-│    5  With the plugin in, ask the agent: "Which mnema
-│       tools do you have?"
+│    5  In Claude Code or Codex, with the plugin in, ask
+│       the agent: "Which mnema tools do you have?"
 │    6  1 decision file in docs/decisions is not in the
 │       record yet:
 │       mnema decision import docs/decisions

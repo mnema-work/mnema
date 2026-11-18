@@ -307,10 +307,7 @@ describe('the next steps', () => {
       .join('\n')
       .replace(/\n\u2502\s+/g, ' ');
     const hosts = readFileSync(new URL('../../../docs/hosts.md', import.meta.url), 'utf-8');
-    expect(text).toContain(
-      'Cursor: its command-line agent reads the Claude Code plugin (server: `mnema mcp`)',
-    );
-    expect(text).toContain('`mnema mcp`');
+    expect(text).toContain('Cursor: its command-line agent reads the Claude Code plugin');
     expect(text).not.toContain('installed on the same machine');
     expect(hosts).toContain('picks up a plugin installed in Claude Code on the same machine');
     expect(hosts).toContain('mnema mcp');

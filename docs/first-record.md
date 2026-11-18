@@ -43,7 +43,7 @@ the work, or in a pull request of their own that `mnema record commit` prepares.
 At a terminal `mnema init` does not print those lines. It shows what it found around the folder, asks which agent
 hosts should read the mnema instructions (the arrows move, Space marks, Enter confirms, Esc founds nothing) and whether
 an agent may accept what you choose (in a repository with a remote it also asks whether to make a plain `git pull`
-carry the record), and shows everything it is about to write, once, before it writes any of it. When it is done it says what it chose, one line for each choice with the command that changes it later, and what to do next. On the first `init` at a terminal on a machine it ends with one line that suggests a star on the repository; it does not say it again.
+carry the record), and shows everything it is about to write, once, before it writes any of it. When it is done it says what it chose, one line for each choice with the command that changes it later, and what to do next, with a question to ask the agent once the plugin is in only for Claude Code and Codex, the hosts where the plugin's tools are shown reaching the model. On the first `init` at a terminal on a machine it ends with one line that suggests a star on the repository; it does not say it again.
 `mnema init --dry-run` prints that plan and writes nothing; `--hosts`, `--yes`, `--accepts` and `--git-pull` answer the questions
 without asking them ([the reference](reference/cli/instructions.md#the-mnema-instructions-in-the-files-a-host-reads)).
 

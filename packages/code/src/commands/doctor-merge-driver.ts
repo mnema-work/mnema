@@ -190,6 +190,12 @@ function setting(ctx: MergeDriverContext, top: string, key: string): string | un
   return got?.status === 0 ? got.out : undefined;
 }
 
+/** Whether the repository's configuration names a remote. */
+function namesARemote(ctx: MergeDriverContext, top: string): boolean {
+  const got = gitIn(ctx, top, ['config', '--get-regexp', '^remote\\..*\\.url$']);
+  return got?.status === 0 && got.out !== '';
+}
+
 /**
  * Why the driver git holds for the tails cannot run here, while an autoStash is on: the state in which
  * a plain pull exits 0 and leaves the local events only in the stash. Undefined in every other state.
@@ -214,6 +220,9 @@ export function mergeDriverLines(ctx: MergeDriverContext): string[] {
   const stash = AUTOSTASH_KEYS.map((key) => [key, setting(ctx, here.top, key)] as const);
   const on = stash.filter(([, now]) => now === 'true').map(([key]) => key);
   if (driver === undefined) {
+    // A repository that names no remote has nothing to pull from, and `init` asked nothing for that reason: a
+    // record founded there is not told to do what no pull needs. A setting already on (an autoStash) still is.
+    if (on.length === 0 && !namesARemote(ctx, here.top)) return [];
     const without =
       on.length === 0
         ? ''

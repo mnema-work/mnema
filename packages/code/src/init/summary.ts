@@ -134,7 +134,7 @@ export function foundingPage(founded: Founded, width: number): readonly Line[] {
             width,
             '  ',
           )
-        : chose('a plain `git pull` carries the record', '`mnema doctor`', width)),
+        : paragraph(trail, 'a plain `git pull` carries the record', width, '  done   ')),
     );
   }
   rows.push(theGuide);
@@ -168,12 +168,12 @@ function hostStep(id: (typeof HOST_ROWS)[number]['id'], claudeIsChosen: boolean)
   const plugin = 'commands' in claude && !claudeIsChosen ? claude.commands : [];
   if (id === 'vscode') {
     return {
-      says: `VS Code: its agent reads the Claude Code plugin (server: \`mnema mcp\`)${plugin.length > 0 ? '; install it, then:' : '; then:'}`,
+      says: `VS Code: reads the Claude Code plugin${plugin.length > 0 ? '; install it, then:' : '; then:'}`,
       commands: [...plugin, 'mnema doctor --fix vscode'],
     };
   }
   return {
-    says: `Cursor: its command-line agent reads the Claude Code plugin (server: \`mnema mcp\`)${plugin.length > 0 ? '; install it:' : '.'}`,
+    says: `Cursor: its command-line agent reads the Claude Code plugin${plugin.length > 0 ? '; install it:' : '.'}`,
     commands: plugin,
   };
 }
@@ -202,11 +202,12 @@ function nextSteps(founded: Founded): readonly NextStep[] {
   }
   // The question to ask the agent comes after the steps that install the plugin, and only for a host that
   // has been shown answering (`CHECK_QUESTION_HOSTS`): a host that was not is left without one.
-  if (
-    HOST_ROWS.some((row) => CHECK_QUESTION_HOSTS.has(row.id) && answers.marks.has(hostMark(row.id)))
-  ) {
+  const asked = HOST_ROWS.filter(
+    (row) => CHECK_QUESTION_HOSTS.has(row.id) && answers.marks.has(hostMark(row.id)),
+  ).map((row) => NAMED[row.id]);
+  if (asked.length > 0) {
     steps.push({
-      says: `With the plugin in, ask the agent: "${CHECK_QUESTION}"`,
+      says: `In ${asked.join(' or ')}, with the plugin in, ask the agent: "${CHECK_QUESTION}"`,
       commands: [],
     });
   }
@@ -255,17 +256,6 @@ export function summaryPage(founded: Founded, width: number): readonly Line[] {
   const lines: Line[] = [
     heading(DONE, `Founded ${basename(founded.cwd)}/.mnema`),
     theGuide,
-    ...noted(
-      trail,
-      [plain(`identity  ${short(result.anchor, 'mnid:'.length + 8)}`)],
-      dim(
-        identity?.backup?.created === true
-          ? 'this machine’s, new; shown short'
-          : 'this machine’s; shown short',
-      ),
-      width,
-      2,
-    ),
     // The whole of it, on a row of its own and never wrapped: it is what a person pastes into a command.
     trail(plain(`  ${result.anchor}`)),
   ];
