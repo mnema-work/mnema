@@ -464,6 +464,7 @@ describe('the refused run is refused everywhere', () => {
     ).toEqual([
       'audit',
       'backup',
+      'backup hook',
       'check',
       'commit-hook',
       'decision',

@@ -224,6 +224,7 @@ const REFUSES_SOMETHING_ELSE_FIRST: Readonly<Record<string, string>> = {
   'stack show': NO_SUCH_STACK_HERE,
   audit: THE_PARSER_ANSWERED_FIRST,
   backup: THE_PARSER_ANSWERED_FIRST,
+  'backup hook': THE_PARSER_ANSWERED_FIRST,
   run: THE_PARSER_ANSWERED_FIRST,
   check: THE_PARSER_ANSWERED_FIRST,
   key: THE_PARSER_ANSWERED_FIRST,
@@ -233,6 +234,9 @@ const REFUSES_SOMETHING_ELSE_FIRST: Readonly<Record<string, string>> = {
   'commit-hook install':
     'a hook belongs to a git repository, not to a project: outside a repository it refuses with its own sentence',
   'commit-hook uninstall': 'the same: it asks for a git repository, never for a project',
+  'backup hook install':
+    'a hook belongs to a git repository, not to a project: outside a repository it refuses with its own sentence',
+  'backup hook uninstall': 'the same: it asks for a git repository, never for a project',
   record: THE_PARSER_ANSWERED_FIRST,
   'record merge-tail':
     'the merge driver git runs on the files it hands: it needs no project, and with none of them the parser asks for its arguments first',

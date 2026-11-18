@@ -26,7 +26,8 @@ _mnema_commands() {
     'record') echo 'pull commit merge-tail help' ;;
     'key') echo 'restore request enroll github sigstore revoke protect unprotect help' ;;
     'tail') echo 'list prune relink repair help' ;;
-    'backup') echo 'setup run status verify restore help' ;;
+    'backup') echo 'setup run status verify restore hook help' ;;
+    'backup hook') echo 'install uninstall help' ;;
     'run') echo 'start end help' ;;
   esac
 }
@@ -174,6 +175,11 @@ _mnema_described() {
       'status:say where this project'\''s backup is and how far it is from the trees' \
       'verify:read each copy as a record and say how it stands against this project'\''s trees, which it does not change' \
       'restore:put a copy back into the trees that lost files, never over a file the tree holds; a copy of another record is asked first, and --undo puts back what it replaced' \
+      'hook:install or remove an optional git hook that runs the backup after a commit' \
+      'help:display help for command' ;;
+    'backup hook') printf '%s\n' \
+      'install:add the post-commit hook that runs the backup (refuses a hook that is not a shell script, and a hooksPath inside the working tree)' \
+      'uninstall:take out the post-commit block mnema added, and the file only if mnema wrote it whole' \
       'help:display help for command' ;;
     'run') printf '%s\n' \
       'start:open a session for an agent (facts written in it are pinned to it)' \
@@ -286,6 +292,9 @@ _mnema_flags() {
     'backup status') echo '--global --json -h --help -V --version --color' ;;
     'backup verify') echo '--json -h --help -V --version --color' ;;
     'backup restore') echo '--dry-run --from --undo -h --help -V --version --color' ;;
+    'backup hook') echo '-h --help -V --version --color' ;;
+    'backup hook install') echo '-h --help -V --version --color' ;;
+    'backup hook uninstall') echo '-h --help -V --version --color' ;;
     'doctor') echo '--fix --dry-run -h --help -V --version --color' ;;
     'report') echo '--decline --off --on -h --help -V --version --color' ;;
     'completion') echo '-h --help -V --version --color' ;;
@@ -447,6 +456,9 @@ _mnema_values() {
     'backup status:--color') echo 'auto always never' ;;
     'backup verify:--color') echo 'auto always never' ;;
     'backup restore:--color') echo 'auto always never' ;;
+    'backup hook:--color') echo 'auto always never' ;;
+    'backup hook install:--color') echo 'auto always never' ;;
+    'backup hook uninstall:--color') echo 'auto always never' ;;
     'doctor:--color') echo 'auto always never' ;;
     'report:--color') echo 'auto always never' ;;
     'completion:--color') echo 'auto always never' ;;

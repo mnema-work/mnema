@@ -571,6 +571,10 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'collapsed',
     why: 'the project root, discovered from the cwd: the same value `init` prints',
   },
+  'backup.ts «{}: {}» #1': {
+    verdict: 'collapsed',
+    why: 'the hook’s path, which comes from the repository’s configuration (`core.hooksPath`) and may hold anything a directory name can',
+  },
   'commit-hook.ts «{}: {}» #1': {
     verdict: 'collapsed',
     why: 'the hook’s path, which comes from the repository’s configuration (`core.hooksPath`) and may hold anything a directory name can',
@@ -1222,7 +1226,8 @@ describe('every line this wiring words is classified', () => {
     // 198 with the five lines `backup restore` prints.
     // 202 with the four lines `backup restore` prints of what it kept aside, put back and deleted.
     // 203 with the lines `backup restore` and `backup status` print of the folders kept aside, and none of a deletion.
-    expect(FOUND.sites.length).toBe(203);
+    // 204 with the line `backup hook` prints of where it put the hook and where it took it from.
+    expect(FOUND.sites.length).toBe(204);
   });
 
   it('reads the verdict off the source rather than believing the table', () => {
@@ -1242,9 +1247,9 @@ describe('every line this wiring words is classified', () => {
   it('found sites of both kinds, and the scanner sees a tag when there is one', () => {
     // Neither arm of the case above may be empty, or half of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
-    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(115);
+    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(116);
     expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(88);
-    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(115);
+    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(116);
   });
 
   it('every reason says where the value comes from', () => {
@@ -1407,6 +1412,8 @@ const UNREACHABLE: Readonly<Record<string, string>> = {
     'a name with a break in it in the copy, which no case plants yet, so the tag is what holds this line',
   'backup.ts «{} tree: {} holds other bytes in the tree: left as it is» #1':
     'a name with a break in it in the copy, which no case plants yet, so the tag is what holds this line',
+  'backup.ts «{}: {}» #1':
+    'a hooks directory whose name holds a break, which no case plants yet, so the tag is what holds this line',
   'observe.ts «Recorded observation {} about {}» #1':
     'the `about` has to be a record some tree holds, and a record has an id that was minted, so no ' +
     'value that forges a line gets as far as this line: the refusal that names it goes through ' +

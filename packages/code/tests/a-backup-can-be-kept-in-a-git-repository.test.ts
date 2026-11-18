@@ -1,3 +1,4 @@
+// @plants-damage
 /**
  * A backup kept in a git repository: what `setup`, `run`, `status`, `verify` and `restore` do when
  * the destination is a remote, and what they never do to its history.

@@ -411,6 +411,18 @@ export const NOT_CHECKED: Readonly<Record<string, string>> = {
 export const NAMES_THAT_NEED_MORE: Readonly<
   Record<string, { readonly times: number; readonly why: string }>
 > = {
+  'CHANGELOG.md: mnema backup hook': {
+    times: 1,
+    why: 'the new group named in prose, with its two acts after it; the reference page of the group hands the whole line over',
+  },
+  'CHANGELOG.md: mnema backup setup': {
+    times: 1,
+    why: 'the verb named in prose, as the one that now accepts a git remote; the reference page hands the whole line over',
+  },
+  'packages/code/src/wiring/backup.ts: mnema backup setup': {
+    times: 1,
+    why: 'the verb named in the note the hook prints, as what gives the project a destination; the page of the verb hands the whole line over',
+  },
   'CHANGELOG.md: mnema tail prune': {
     times: 1,
     why: 'the verb named in prose, as the cut the new refusal of a host tail is about; the reference hands the whole line over',
@@ -835,7 +847,7 @@ export const HANDED_OVER: Readonly<
   '.github/instructions/mnema-instructions.instructions.md': { line: 2 },
   '.github/the-hot-path-budget/README.md': { name: 2 },
   'AGENTS.md': { line: 2, name: 1 },
-  'CHANGELOG.md': { line: 105, name: 233, flag: 4 },
+  'CHANGELOG.md': { line: 105, name: 236, flag: 4 },
   'README.md': { line: 4, name: 8 },
   'SECURITY.md': { name: 2 },
   'docs/a-record-inheriting-another.md': { line: 9, name: 8 },
@@ -882,7 +894,7 @@ export const HANDED_OVER: Readonly<
   'docs/switching-off-what-is-handed-to-a-model.md': { line: 1, name: 2 },
   'docs/the-session-journal-and-compaction.md': { line: 5, name: 5 },
   'docs/verify-without-installing.md': { name: 1 },
-  'docs/what-a-backup-keeps-and-what-it-loses.md': { line: 4, name: 8 },
+  'docs/what-a-backup-keeps-and-what-it-loses.md': { line: 5, name: 11 },
   'docs/what-it-proves.md': { line: 15, name: 29 },
   'docs/what-comes-next.md': { name: 1 },
   'docs/where-it-fits.md': { line: 1, name: 2 },
@@ -899,6 +911,7 @@ export const HANDED_OVER: Readonly<
   'packages/code/src/a-new-identity.ts': { line: 2, name: 2 },
   'packages/code/src/agent-accepts.ts': { line: 4, name: 2 },
   'packages/code/src/commands/after-a-write.ts': { line: 2 },
+  'packages/code/src/commands/backup-hook.ts': { name: 3 },
   'packages/code/src/commands/backup.ts': { line: 7, name: 1 },
   'packages/code/src/commands/before-a-write.ts': { name: 1 },
   'packages/code/src/commands/brief.ts': { name: 1 },
@@ -953,7 +966,7 @@ export const HANDED_OVER: Readonly<
   'packages/code/src/rules-not-pushed.ts': { line: 1 },
   'packages/code/src/what-a-write-meets.ts': { line: 2, name: 2 },
   'packages/code/src/wiring/after-a-write.ts': { line: 1 },
-  'packages/code/src/wiring/backup.ts': { line: 9, name: 7 },
+  'packages/code/src/wiring/backup.ts': { line: 9, name: 9 },
   'packages/code/src/wiring/before-a-write.ts': { line: 4 },
   'packages/code/src/wiring/beside-a-write.ts': { line: 2 },
   'packages/code/src/wiring/brief.ts': { line: 4, name: 6 },
