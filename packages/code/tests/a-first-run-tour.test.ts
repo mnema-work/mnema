@@ -20,7 +20,9 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
+import { resolveTrees } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { discoveryEnv } from '../src/env.js';
 import {
   ACCEPTS_LATER,
   AGENTS_MAY_ACCEPT,
@@ -29,13 +31,15 @@ import {
   instructionFilesDone,
   PULL_DONE,
 } from '../src/init/summary.js';
-import { MACHINE_STATE_FILE } from '../src/machine-state.js';
+import { MACHINE_STATE_FILE, readMachineState } from '../src/machine-state.js';
 import { renderPlain } from '../src/presentation/plain.js';
+import { type CliIo, run, start } from '../src/program.js';
 import { DRAW_THEIR_OWN_SCREEN } from '../src/repl/gate.js';
 import { pageLines, TOUR, TOUR_END, tourRowsOfInit } from '../src/tour/pages.js';
-import { onTheTour } from '../src/tour/run.js';
+import { onTheTour, theTourIsNew } from '../src/tour/run.js';
 import { TOUR_VERB } from '../src/wiring/tour.js';
 import { aMachineThatSawTheTour } from './support/a-machine-that-saw-the-tour.js';
+import { ESC, fakeTerminal, until, withoutLayout } from './support/console.js';
 import { arrivedSince, inPty } from './support/pty.js';
 import { MNEMA_CLI } from './support/the-cli.js';
 
@@ -208,6 +212,55 @@ describe('`mnema tour`', () => {
     expect(ran.stdout).not.toContain(FIRST_PAGE);
     expect(filesUnder(home)).toEqual([]);
   }, 60_000);
+});
+
+describe('in process, over a sandbox home', () => {
+  const kept = { home: process.env.HOME, cwd: process.cwd() };
+  beforeEach(() => {
+    process.env.HOME = join(sandbox, 'in-process-home');
+    mkdirSync(process.env.HOME, { recursive: true });
+    process.chdir(folder);
+  });
+  afterEach(() => {
+    process.chdir(kept.cwd);
+    if (kept.home === undefined) delete process.env.HOME;
+    else process.env.HOME = kept.home;
+  });
+
+  it('opens the tour from the bare name once, then leaves the menu to the next', async () => {
+    const lines: string[] = [];
+    const io: CliIo = {
+      out: (l) => lines.push(l),
+      err: (l) => lines.push(l),
+      fail: () => undefined,
+    };
+    const terminal = fakeTerminal({ columns: 100, rows: 40 });
+    const asked = start([], {
+      io,
+      input: terminal.stdin,
+      output: terminal.stdout,
+      interactive: true,
+    });
+    await until(() => withoutLayout(terminal.bytes()).includes(FIRST_PAGE), 'opened the tour');
+    terminal.type(ESC);
+    await asked;
+    expect(withoutLayout(terminal.bytes())).not.toContain(THE_MENU);
+    expect(readMachineState(resolveTrees(folder, discoveryEnv()).global).tourSeen).toBe(true);
+    expect(theTourIsNew({ cwd: folder, env: discoveryEnv() })).toBe(false);
+  }, 30_000);
+
+  it('prints the pages through the verb where there is no terminal', async () => {
+    const lines: string[] = [];
+    const io: CliIo = {
+      out: (l) => lines.push(l),
+      err: (l) => lines.push(l),
+      fail: () => undefined,
+    };
+    await run(['tour'], io);
+    const said = lines.join('\n');
+    for (const page of TOUR) expect(said).toContain(page.title);
+    expect(theTourIsNew({ cwd: folder, env: discoveryEnv() })).toBe(true);
+  });
 });
 
 describe('the second page', () => {
