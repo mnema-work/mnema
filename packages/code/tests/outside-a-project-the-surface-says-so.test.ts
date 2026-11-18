@@ -112,6 +112,7 @@ const ANSWERS_ANYWAY: Readonly<Record<string, string>> = {
     'the three state machines are read from the gate’s tables and need no record; `timeline` and `refs` refuse as the reads they draw do',
   'key unprotect':
     'it writes this machine’s key files back in the clear, and a machine with none is told so; the key root is the machine’s, not a project’s',
+  tour: 'it only explains what mnema is, in pages that need no record, and writes nothing to one',
   completion: 'the script it writes is generated from the declarations, and no record is consulted',
   witness: 'it reports on the tails it can see, and says so when there are none',
   'witness upgrade': 'the same: with no tail waiting on an attestation there is nothing to refuse',
