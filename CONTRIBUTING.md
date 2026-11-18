@@ -71,7 +71,7 @@ pnpm test
 Beside the suite, CI runs two scanners on every pull request and on `main`, outside the checks a
 pull request must carry: `gitleaks` reads the whole history for a committed credential, and
 `osv-scanner` reads `pnpm-lock.yaml` for a dependency with a published advisory (and again every
-Monday, against the lockfile as it is). `.gitleaks.toml` lists what is public or made up and why;
+Monday, against the lockfile as it is). `osv-scanner.toml` ignores one advisory that has no patched release, with its reason, until 2026-12-17; after that date the check accuses it again. `.gitleaks.toml` lists what is public or made up and why;
 a finding that is not on that list is a credential to rotate, not a line to add to it.
 CodeQL reads the JavaScript and TypeScript, the Python of the repository and the workflows with its default
 query suite, on every pull request, on `main` and every Tuesday, also outside the required checks;
