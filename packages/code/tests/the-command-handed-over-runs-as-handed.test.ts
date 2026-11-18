@@ -912,7 +912,7 @@ export const HANDED_OVER: Readonly<
   'packages/code/src/agent-accepts.ts': { line: 4, name: 2 },
   'packages/code/src/commands/after-a-write.ts': { line: 2 },
   'packages/code/src/commands/backup-hook.ts': { name: 3 },
-  'packages/code/src/commands/backup.ts': { line: 18, name: 3 },
+  'packages/code/src/commands/backup.ts': { line: 6, name: 1 },
   'packages/code/src/commands/before-a-write.ts': { name: 1 },
   'packages/code/src/commands/brief.ts': { name: 1 },
   'packages/code/src/commands/check.ts': { line: 1 },
