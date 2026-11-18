@@ -83,7 +83,7 @@ export interface StoredLine {
  * file descriptor closes on the way out.
  */
 export function* linesFromEnd(file: string, chunkBytes = CHUNK_BYTES): Generator<StoredLine> {
-  const fd = openSync(file, 'r');
+  const fd = readingWhatTheDiskLets(file, undefined, () => openSync(file, 'r'));
   try {
     let pos = fstatSync(fd).size;
     // The bytes already read that belong to a line whose start has not been
@@ -142,6 +142,67 @@ export class UnreadableLineError extends Error {
     super(`unreadable stored line at ${locus}: ${reason}`);
     this.locus = locus;
     this.reason = reason;
+  }
+}
+
+/**
+ * What the disk says when it will not let a record's file or folder be opened, in words a person can
+ * act on, by the code the system answers with. These four answers (and `EPERM`, which says what
+ * `EACCES` does) are a part of the record this mnema cannot open: a refusal of the part, never a
+ * fault of the product. Any other code is not here, and stays what it was.
+ */
+const DISK_WORDS: Readonly<Record<string, string>> = {
+  EACCES: 'the disk does not let this user read it (permission denied)',
+  EPERM: 'the disk does not let this user read it (permission denied)',
+  ENOTDIR: 'a file stands where a folder is expected',
+  EISDIR: 'a folder stands where a file is expected',
+  ELOOP: 'it loops through symbolic links',
+};
+
+/**
+ * A PART OF THE RECORD THE DISK WOULD NOT OPEN (a folder with no permission, a file where a folder is
+ * expected, a folder where a file is expected, a loop of links), refused as the line this mnema cannot
+ * read is: it is an {@link UnreadableLineError}, so every door that already serves around such a
+ * part, refuses a write over it and rules on it in a verdict does the same for this one, and none
+ * of them prints the system's own message. `path` is the part's place in the record when the reader
+ * knows it (`tails`, `tails/<tail>`), and `locus` its place on the disk.
+ */
+export class UnreadableDiskError extends UnreadableLineError {
+  override readonly name: string = 'UnreadableDiskError';
+  /** The part's place in the record, `/`-separated, when the reader that met it knows it. */
+  readonly path: string | undefined;
+  /** The code the system answered with, kept for the readers that only mark a fault (`freshness.ts`). */
+  readonly code: string;
+
+  constructor(locus: string, reason: string, path: string | undefined, code: string) {
+    super(locus, reason);
+    this.path = path;
+    this.code = code;
+    this.message = `${path ?? locus} cannot be opened: ${reason}`;
+  }
+}
+
+/** The refusal an error the disk answered with stands for, or `undefined` for any other error. */
+export function refusedByTheDisk(
+  error: unknown,
+  locus: string,
+  path?: string,
+): UnreadableDiskError | undefined {
+  const code = (error as NodeJS.ErrnoException | undefined)?.code ?? '';
+  const reason = DISK_WORDS[code];
+  return reason === undefined ? undefined : new UnreadableDiskError(locus, reason, path, code);
+}
+
+/** Runs `read`, which opens one part of the record, and turns what the disk refuses into {@link UnreadableDiskError}. */
+export function readingWhatTheDiskLets<T>(
+  locus: string,
+  path: string | undefined,
+  read: () => T,
+): T {
+  try {
+    return read();
+  } catch (error) {
+    throw refusedByTheDisk(error, locus, path) ?? error;
   }
 }
 

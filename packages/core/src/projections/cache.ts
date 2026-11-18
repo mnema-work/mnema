@@ -17,7 +17,7 @@ import {
   type EventKind,
   type LinkBreak,
   LinkedRecordError,
-  listTailsLeavingLinks,
+  listTailsToChooseACacheBy,
   projectionCachePath,
   type RecordGroup,
   type RefusedPart,
@@ -307,7 +307,7 @@ export class ProjectionCache {
     // A tree nobody has written to has nothing to keep, and a read must not be what creates its
     // directories: persisting waits for the first tail.
     // A link among the tails is left out here and named by the replay: choosing where to keep the cache refuses nothing.
-    const keeps = options.persist === true && listTailsLeavingLinks(layout).length > 0;
+    const keeps = options.persist === true && listTailsToChooseACacheBy(layout).length > 0;
     const chosenFile = options.persist === true ? readCacheFileFor(layout) : undefined;
     const path =
       options.dbPath ?? (keeps ? (chosenFile ?? projectionCachePath(layout)) : IN_MEMORY);
@@ -631,7 +631,7 @@ export class ProjectionCache {
    */
   private refusedPartPastTheFrontier(frontier: ChainFrontier): boolean {
     return this.refusedParts.some((part) => {
-      if (part.kind === 'link') return true;
+      if (part.kind === 'link' || part.kind === 'disk') return true;
       const reached = frontier.tails.get(part.tail)?.boundary;
       if (reached === undefined) return true;
       const segment = basename(reached.segment);

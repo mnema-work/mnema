@@ -46,6 +46,12 @@ describe('githubLoginRefusal', () => {
 });
 
 describe('sigstoreIdentityRefusal', () => {
+  it('answers in no time to an address that is a long run of dots after the at sign', () => {
+    const started = Date.now();
+    expect(sigstoreIdentityRefusal(`a@${'!.'.repeat(60_000)}\n`)).toMatch(/not an identity/);
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
+
   it('accepts the two shapes a Sigstore certificate names: an e-mail and a workflow', () => {
     for (const identity of [
       'felipe@example.com',
@@ -66,6 +72,9 @@ describe('sigstoreIdentityRefusal', () => {
       'https://github.com/mnema-work/mnema',
       'http://github.com/o/r/.github/workflows/w.yml@refs/heads/main',
       'https://github.com/o/r/.github/workflows/w.yml',
+      'felipe@.',
+      'felipe@a.',
+      'felipe@.a',
     ]) {
       expect(sigstoreIdentityRefusal(identity), JSON.stringify(identity)).toMatch(
         /not an identity a Sigstore certificate names/,

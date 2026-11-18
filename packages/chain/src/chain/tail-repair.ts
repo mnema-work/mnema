@@ -41,7 +41,12 @@ import { citationIndexPath } from './citation-index.js';
 import { syncDirectory } from './durable.js';
 import { type ChainEntry, entryHashHolds, parseEntry } from './entry.js';
 import { type ChainLayout, isSegmentFile, tailDir, tailLockPath } from './layout.js';
-import { parseStoredLine, splitLines, UnreadableLineError } from './lines.js';
+import {
+  parseStoredLine,
+  readingWhatTheDiskLets,
+  splitLines,
+  UnreadableLineError,
+} from './lines.js';
 import { refuseToLockThroughALink, refuseToWriteThrough } from './linked-write.js';
 import { alive, withTailLock } from './tail-lock.js';
 
@@ -145,7 +150,11 @@ export function repairTail(input: TailRepairInput): TailRepaired {
   refuseToLockThroughALink(shared, tailId);
   return withTailLock(tailLockPath(shared, tailId), () => {
     const directory = tailDir(layout, tailId);
-    const segments = readdirSync(directory).filter(isSegmentFile).sort();
+    const segments = readingWhatTheDiskLets(directory, `tails/${tailId}`, () =>
+      readdirSync(directory),
+    )
+      .filter(isSegmentFile)
+      .sort();
     refuseToWriteThrough(layout, ['tails', `tails/${tailId}`]);
     refuseToWriteThrough(
       layout,
@@ -157,7 +166,11 @@ export function repairTail(input: TailRepairInput): TailRepaired {
     const files = new Map<string, { pieces: Uint8Array[]; torn: boolean }>();
     const walk: Placed[] = [];
     for (const [at, segment] of segments.entries()) {
-      const raw = readFileSync(join(directory, segment));
+      const raw = readingWhatTheDiskLets(
+        join(directory, segment),
+        `tails/${tailId}/${segment}`,
+        () => readFileSync(join(directory, segment)),
+      );
       const pieces = splitLines(raw);
       const torn = at === segments.length - 1 && raw.length > 0 && raw.at(-1) !== 0x0a;
       files.set(segment, { pieces, torn });

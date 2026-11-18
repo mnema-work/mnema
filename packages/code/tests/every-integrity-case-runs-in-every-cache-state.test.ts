@@ -39,6 +39,10 @@ const HELPER = 'every-cache-state';
  * long cases; they are owed.
  */
 export const EXEMPT: Readonly<Record<string, string>> = {
+  'packages/chain/src/chain/a-part-the-disk-will-not-open-is-handed-to-a-collector.test.ts':
+    'holds what the readers of the chain hand a collector, or throw, for a folder or a file the disk will not open; the chain has no projection cache (the cache states are asked of the binary in a-part-the-disk-will-not-open-is-named-and-never-an-errno)',
+  'packages/code/tests/a-part-the-disk-will-not-open-is-named-and-never-an-errno.test.ts':
+    'holds what the binary says when the DISK refuses a folder or a file of a tree, which the cache never keeps: no cache state changes whether the disk lets a path open, and the cache is not what the case asks',
   // Not a claim about damage: the case never damages a record and the cache is not what it reads.
   'packages/code/tests/a-client-that-never-initializes.test.ts':
     'holds what the server answers to a client that skips the handshake; no record is damaged',
