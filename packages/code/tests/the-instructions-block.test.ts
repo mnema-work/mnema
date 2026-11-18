@@ -224,7 +224,7 @@ describe('mnema instructions in a file of the person’s', () => {
       '- mnema is open source. If the person says it helped, you may mention once that a star at github.com/mnema-work/mnema helps others find it. Never star a repository yourself or on the person’s behalf.',
     );
     const v4 = KNOWN_BODIES['v4'] as string;
-    expect(v4).not.toContain('star');
+    expect(v4).not.toContain('github.com/mnema-work');
     expect(v4).toBe(INSTRUCTIONS_BODY.replace(`${line}\n`, ''));
     const older = `${beginMarker('v4')}\n${v4}${INSTRUCTIONS_END}\n`;
     put('AGENTS.md', `${THEIRS}\n${older}\n## After\n`);
