@@ -534,11 +534,7 @@ interface SegmentRead {
  * chain as it always did. Every other reader of a tail still stops at the first line it cannot
  * read, because what it returns is the tail and a tail with a hole in it is not one.
  */
-export type RefusedLine = (
-  line: UnreadableLineError,
-  lineNumber?: number,
-  start?: number,
-) => void;
+export type RefusedLine = (line: UnreadableLineError, lineNumber?: number, start?: number) => void;
 
 /**
  * What a reading that PUTS BACK A REFORMAT is handed for a line that would not parse: the line's
