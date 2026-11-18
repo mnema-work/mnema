@@ -38,6 +38,7 @@ import { runDoctor } from '../src/commands/doctor.js';
 import { CHOOSABLE_INSTRUCTIONS, INSTRUCTIONS_TARGETS } from '../src/instructions-block.js';
 import { widthOfText, withoutSequences } from '../src/presentation/width.js';
 import { type CliIo, run } from '../src/program.js';
+import { aMachineThatSawTheTour } from './support/a-machine-that-saw-the-tour.js';
 import { fakeTerminal, hooksNothing, until } from './support/console.js';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
 import { arrivedSince, inPty } from './support/pty.js';
@@ -587,6 +588,12 @@ describe('afterwards, the files on disk are the choice', { timeout: 60_000 }, ()
 });
 
 describe('on the built binary, under a pseudo-terminal', () => {
+  /** The machine the environment describes, having been through the tour: the bare name then opens the menu. */
+  const seenTheTour = (environment: NodeJS.ProcessEnv): NodeJS.ProcessEnv => {
+    aMachineThatSawTheTour(environment, repo);
+    return environment;
+  };
+
   const env = () => ({
     PATH: process.env.PATH ?? '',
     HOME: home,
@@ -730,7 +737,7 @@ describe('on the built binary, under a pseudo-terminal', () => {
     // The menu gives the terminal back with standard input unreferenced, and a question that came after it
     // was left waiting on nothing: the process ended with exit 0 in the middle of it.
     const ran = await inPty(
-      { cli: CLI, verb: '', project: repo, scratch: sandbox, environment: env() },
+      { cli: CLI, verb: '', project: repo, scratch: sandbox, environment: seenTheTour(env()) },
       {
         columns: 100,
         rows: 50,

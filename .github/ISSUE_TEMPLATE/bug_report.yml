@@ -1,7 +1,11 @@
 name: Bug report
 description: Something broke or behaved unexpectedly
-labels: [bug]
+labels: [bug, needs triage]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Please search the open and closed issues first: your problem may already be reported or fixed.
   - type: input
     id: version
     attributes:
@@ -9,11 +13,57 @@ body:
       description: Output of `mnema --version`.
     validations:
       required: true
+  - type: dropdown
+    id: host
+    attributes:
+      label: Host
+      description: The tool the agent runs in when it happens.
+      options:
+        - Claude Code
+        - Codex
+        - Cursor
+        - VS Code
+        - Gemini CLI
+        - OpenCode
+        - Qwen Code
+        - none / command line
+        - other
+    validations:
+      required: true
+  - type: dropdown
+    id: system
+    attributes:
+      label: System
+      options:
+        - Linux
+        - macOS
+        - Windows
+        - WSL
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node version
+      description: Output of `node --version`.
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How mnema was installed
+      options:
+        - npm -g
+        - npx
+        - the plugin of a host
+        - from source
+    validations:
+      required: true
   - type: textarea
     id: steps
     attributes:
       label: Steps to reproduce
-      description: Ideally from a clean temporary directory (`pnpm smoke:bootstrap` sets one up).
+      description: Ideally from a new empty folder.
       placeholder: |
         1.
         2.

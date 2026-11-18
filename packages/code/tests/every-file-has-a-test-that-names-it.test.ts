@@ -284,6 +284,8 @@ const LED_NOWHERE: Readonly<Record<string, string>> = {
     'The decision of which jobs a pull request needs, pure, handed lists of changed files the case makes up. A script the changes job of CI runs, plain ESM under .github/, outside the packages/ walk, so the scanner cannot follow the specifier, which is right.',
   'packages/code/tests/a-pr-pays-only-for-what-it-touches.test.ts -> ../../../.github/rerun-a-cancelled-runner/select.mjs':
     "The choice of which cancelled jobs of a finished run were the runner's loss, pure, handed jobs the case makes up. A script a workflow step runs, plain ESM under .github/, outside the packages/ walk, so the scanner cannot follow the specifier, which is right.",
+  'packages/code/tests/an-issue-from-a-form-is-labelled.test.ts -> ../../../.github/label-an-issue/label.mjs':
+    'The reader of the answers a form writes into an issue body and the labels they name, pure functions handed bodies the case makes up and a stand-in for GitHub that records what would be written. A script a workflow step runs, plain ESM under .github/, so the specifier is right and the scanner cannot follow it.',
   'packages/code/tests/the-fast-guards-say-what-they-check.test.ts -> ../../../.github/the-fast-guards/marked.mjs':
     'The finder of the marked guards, which the case walks to hold every one of them to a paragraph that says what it checks. Plain ESM under .github/, outside the packages/ walk, so the scanner cannot follow the specifier, which is right.',
   'packages/code/tests/the-fast-guards-say-what-they-check.test.ts -> ../../../.github/what-a-guard-checks/header.mjs':
@@ -1053,6 +1055,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-correction-becomes-a-proposal.test.ts': 15,
   'packages/code/tests/a-decision-recorded-twice-is-the-one-on-the-record.test.ts': 12,
   'packages/code/tests/a-directory-of-two-records-governs-nothing.test.ts': 15,
+  'packages/code/tests/a-first-run-tour.test.ts': 19,
   'packages/code/tests/a-flag-declared-twice.test.ts': 9,
   'packages/code/tests/a-floor-under-the-window.test.ts': 17,
   'packages/code/tests/a-full-disk-says-whether-the-fact-landed.test.ts': 8,
@@ -1161,6 +1164,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/an-altered-entry-leads-the-hooks-and-stops-the-edit-gate.test.ts': 9,
   'packages/code/tests/an-answer-says-the-path-of-a-project.test.ts': 11,
   'packages/code/tests/an-inherited-rule-reaches-the-edit.test.ts': 19,
+  'packages/code/tests/an-issue-from-a-form-is-labelled.test.ts': 5,
   'packages/code/tests/an-mcp-agent-is-told-of-a-new-tail.test.ts': 12,
   'packages/code/tests/an-older-record-page-is-rewritten.test.ts': 7,
   'packages/code/tests/another-run-consulted-this-path.test.ts': 13,
@@ -1290,6 +1294,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/promote-over-the-projects-it-is-named.test.ts': 12,
   'packages/code/tests/promoting-what-recurs.test.ts': 6,
   'packages/code/tests/support/a-disk-that-fails.ts': 3,
+  'packages/code/tests/support/a-machine-that-saw-the-tour.ts': 3,
   'packages/code/tests/support/a-newer-mnema-writes.ts': 4,
   'packages/code/tests/support/a-page-held-to-a-run.ts': 3,
   'packages/code/tests/support/a-page-in-a-vm.ts': 1,
@@ -1332,7 +1337,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-antigravity-cli-rises-only-with-a-capture.test.ts': 4,
   'packages/code/tests/the-architecture-page-is-what-the-code-draws.test.ts': 5,
   'packages/code/tests/the-arrival-page-is-the-table.test.ts': 5,
-  'packages/code/tests/the-bare-name-asks.test.ts': 16,
+  'packages/code/tests/the-bare-name-asks.test.ts': 17,
   'packages/code/tests/the-bare-name-says-what-is-off.test.ts': 8,
   'packages/code/tests/the-bin-runs-the-bundle.test.ts': 8,
   'packages/code/tests/the-binary-a-page-promises-is-the-one-that-speaks.test.ts': 8,
@@ -1416,7 +1421,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-host-files-are-generated.test.ts': 5,
   'packages/code/tests/the-hosts-table-shows-the-vendors-own-logos.test.ts': 4,
   'packages/code/tests/the-hot-path-keeps-its-budget.test.ts': 6,
-  'packages/code/tests/the-init-asks-which-host-files-to-write.test.ts': 15,
+  'packages/code/tests/the-init-asks-which-host-files-to-write.test.ts': 16,
   'packages/code/tests/the-init-completes-what-a-founded-project-lacks.test.ts': 8,
   'packages/code/tests/the-init-draws-its-frames.test.ts': 17,
   'packages/code/tests/the-init-leaves-what-it-cannot-write.test.ts': 6,
@@ -1497,7 +1502,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-record-reaches-git-through-a-pull-request.test.ts': 10,
   'packages/code/tests/the-record-travels.test.ts': 14,
   'packages/code/tests/the-record-you-can-see.test.ts': 18,
-  'packages/code/tests/the-recordings-are-what-the-binary-draws.test.ts': 13,
+  'packages/code/tests/the-recordings-are-what-the-binary-draws.test.ts': 14,
   'packages/code/tests/the-red-says-why-it-went-red.test.ts': 7,
   'packages/code/tests/the-reference-pages-are-generated.test.ts': 8,
   'packages/code/tests/the-refusal-names-only-what-it-checked.test.ts': 12,
@@ -2094,6 +2099,8 @@ const PRODUCTION_FILES: readonly string[] = [
   'packages/code/src/site/view.ts',
   'packages/code/src/the-persons-key-in-the-clear.ts',
   'packages/code/src/tool-calls.ts',
+  'packages/code/src/tour/pages.ts',
+  'packages/code/src/tour/run.ts',
   'packages/code/src/transcripts.ts',
   'packages/code/src/tree-sources.ts',
   'packages/code/src/user-corrections.ts',
@@ -2174,6 +2181,7 @@ const PRODUCTION_FILES: readonly string[] = [
   'packages/code/src/wiring/tally.ts',
   'packages/code/src/wiring/task.ts',
   'packages/code/src/wiring/timeline.ts',
+  'packages/code/src/wiring/tour.ts',
   'packages/code/src/wiring/trailer.ts',
   'packages/code/src/wiring/unlink.ts',
   'packages/code/src/wiring/upgrade.ts',
@@ -2443,8 +2451,8 @@ describe('every file has a test that names it', () => {
     });
     // Non-vacuity in both parts: the walk really did follow specifiers, and the list
     // really does hold rows; a scanner returning nothing would satisfy the line above.
-    expect(unresolved.length).toBe(33);
-    expect(Object.keys(LED_NOWHERE)).toHaveLength(33);
+    expect(unresolved.length).toBe(34);
+    expect(Object.keys(LED_NOWHERE)).toHaveLength(34);
     // And each row says what THAT module is, by the ledger's rule, at the ledger's floor.
     const why = Object.values(LED_NOWHERE);
     expect(new Set(why).size).toBe(why.length);

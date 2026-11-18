@@ -631,10 +631,25 @@ export async function start(argv: readonly string[], entry: Entry): Promise<void
   // Reached by a dynamic import, and the whole of `choice/` behind it: the layout library
   // is the most expensive import on this surface, and `mnema --version` must not know it
   // exists (`tests/the-floor-is-the-declaration.test.ts`).
-  const [{ theChoice }, { leavingProcess }] = await Promise.all([
+  const [{ theChoice }, { leavingProcess }, tour] = await Promise.all([
     import('./choice/asked.js'),
     import('./repl/leaving.js'),
+    import('./tour/run.js'),
   ]);
+  // THE FIRST RUN ON A MACHINE OPENS THE TOUR IN PLACE OF THE MENU, and ends there with nothing chosen: it
+  // only explains, so there is no line to run. The next bare name asks as it always did (`tour/run.ts`).
+  const there = here();
+  if (tour.theTourIsNew(there)) {
+    await tour.tourAtATerminal(
+      {
+        io: entry.io,
+        render: buildProgram(entry.io).render,
+        terminal: { input: entry.input, output: entry.output, leaving: leavingProcess },
+      },
+      there,
+    );
+    return;
+  }
   const chosen = await theChoice({
     io: entry.io,
     input: entry.input,

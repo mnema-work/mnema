@@ -6,6 +6,10 @@ Five steps. Steps 1 to 3 need no agent and no plugin; step 4 hands the record to
 `mnema` command is every line it prints; a … marks the one thing this page shortens: a path on your disk,
 or an id that runs to 64 hex characters.
 
+On a machine that has never run mnema, the first bare `mnema` at a terminal opens a short tour of four pages in place of the
+menu (what the record is, what `init` chooses, how an agent reads it, the commands to start with); it writes nothing to the
+record, and `mnema tour` opens it again ([the reference](reference/cli/tour.md#the-tour-of-the-first-run)).
+
 ## 1. Found the record
 
 ```sh

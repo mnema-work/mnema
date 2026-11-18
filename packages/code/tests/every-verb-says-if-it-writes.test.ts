@@ -101,7 +101,7 @@ import { Command } from 'commander';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { renderPlain } from '../src/presentation/plain.js';
 import { buildProgram, type CliIo, run } from '../src/program.js';
-import { dispositionOf, pathsOffered } from '../src/repl/gate.js';
+import { DRAW_THEIR_OWN_SCREEN, dispositionOf, pathsOffered } from '../src/repl/gate.js';
 import { optionsTakenFromTheGroup } from '../src/wiring/from-the-group.js';
 import { registerVerbs } from '../src/wiring/index.js';
 import type { PinnedRun } from '../src/wiring/run-pin.js';
@@ -328,6 +328,8 @@ const INVOCATION: Readonly<Record<string, Invocation>> = {
   brief: { argv: () => ['brief'] },
   recall: { argv: () => ['recall'] },
   doctor: { argv: () => ['doctor'] },
+  // Without a terminal it prints its pages and writes nothing, to the record or to the machine.
+  tour: { argv: () => ['tour'] },
   // It applies what is mnema's own to a project's files and the machine's state file, never an event.
   upgrade: { argv: () => ['upgrade'] },
   // It shows the report of the last internal error from a file of the machine's, outside the chain.
@@ -759,6 +761,7 @@ describe('every verb says if it writes', () => {
       'upgrade',
       'report',
       'completion',
+      'tour',
       'tally',
       'handback',
       'settled',
@@ -837,6 +840,11 @@ describe('every verb says if it writes', () => {
     for (const verb of DECLARED) {
       const name = verb.act.name();
       if (name === 'repl') continue;
+      // A verb that draws a screen of its own is a read the session leaves to the shell, by the gate's own list.
+      if (DRAW_THEIR_OWN_SCREEN.has(name)) {
+        expect(dispositionOf(name, DECLARED, 'repl').does, name).toBe('refuse');
+        continue;
+      }
       const acts = verb.members ?? [verb];
       for (const act of acts) {
         const line = verb.members === undefined ? name : `${name} ${act.act.name()}`;

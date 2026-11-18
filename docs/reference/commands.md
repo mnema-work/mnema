@@ -133,6 +133,7 @@ carries the help the command prints, word for word.
 - [mnema upgrade](cli/upgrade.md): after installing a newer mnema: bring this project and machine up to it, asking before anything that changes how the repository behaves
 - [mnema report](cli/report.md): show, whole, what mnema would say about its own last internal error, and keep your answer to it (sends nothing)
 - [mnema completion](cli/completion.md): print the tab-completion script for a shell
+- [mnema tour](cli/tour.md): show what mnema is and how it is used, page by page
 
 ## Called by a host
 

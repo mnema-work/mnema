@@ -73,9 +73,24 @@ const SAID_ON_ITS_OWN: readonly (InstructionsFile['did'] | undefined)[] = [
 ];
 
 /** A row for one choice: what was done, and the command that changes it later, beside it where they fit. */
-function chose(done: string, later: string, width: number): readonly Line[] {
+export function chose(done: string, later: string, width: number): readonly Line[] {
   return noted(trail, [plain(`  done   ${done}`)], dim(`later: ${later}`), width, 9);
 }
+
+/** What a founding says it did about the instruction files: how many it wrote, and how many of them were yours. */
+export function instructionFilesDone(count: number, yours: number): string {
+  return `${String(count)} instruction file${count === 1 ? '' : 's'}${yours === 0 ? '' : ` (${String(yours)} of yours)`}`;
+}
+
+/** The command that takes the instruction files out again, said beside the row above. */
+export const INSTRUCTIONS_LATER = '`mnema instructions --remove`';
+
+/** What a founding says about agents accepting, and the command that changes it later. */
+export const AGENTS_MAY_ACCEPT = 'agents may accept what you choose';
+export const ACCEPTS_LATER = '`mnema switch`';
+
+/** What a founding says it did about a plain `git pull`. */
+export const PULL_DONE = 'a plain `git pull` carries the record';
 
 /** The list of what the founding did, once it has done it: one row for each choice, with how to change it. */
 export function foundingPage(founded: Founded, width: number): readonly Line[] {
@@ -99,13 +114,7 @@ export function foundingPage(founded: Founded, width: number): readonly Line[] {
   );
   if (written.length > 0) {
     const yours = written.filter((file) => file.did === 'added').length;
-    rows.push(
-      ...chose(
-        `${String(written.length)} instruction file${written.length === 1 ? '' : 's'}${yours === 0 ? '' : ` (${String(yours)} of yours)`}`,
-        '`mnema instructions --remove`',
-        width,
-      ),
-    );
+    rows.push(...chose(instructionFilesDone(written.length, yours), INSTRUCTIONS_LATER, width));
   }
   for (const file of files
     .filter((each) => SAID_ON_ITS_OWN.includes(each.did))
@@ -119,8 +128,8 @@ export function foundingPage(founded: Founded, width: number): readonly Line[] {
           ? `${recorded.adr}, the agent’s proposal: it waits for you`
           : recorded.switchedOff
             ? `${recorded.adr}, yours: every decision waits for you (agent-accepts, off)`
-            : `${recorded.adr}, yours: agents may accept what you choose`,
-        '`mnema switch`',
+            : `${recorded.adr}, yours: ${AGENTS_MAY_ACCEPT}`,
+        ACCEPTS_LATER,
         width,
       ),
     );
@@ -134,7 +143,7 @@ export function foundingPage(founded: Founded, width: number): readonly Line[] {
             width,
             '  ',
           )
-        : paragraph(trail, 'a plain `git pull` carries the record', width, '  done   ')),
+        : paragraph(trail, PULL_DONE, width, '  done   ')),
     );
   }
   rows.push(theGuide);

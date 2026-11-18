@@ -1,0 +1,3 @@
+Added
+
+- **`mnema` with no arguments, the first time on a machine and at a terminal, opens a tour of four pages in place of the menu, and `mnema tour` opens it again.** The pages say what the record is, what `mnema init` chooses and why, how an agent reads it, and the commands to start with. The tour only explains: it writes nothing to the record and founds no project. Its one trace is a field in `machine-state.json`, beside the file that remembers the star line, set when the tour opens; a file that cannot be read counts as seen and is never written over. Without a terminal `mnema tour` prints the same pages as text and writes nothing, and the bare name there is the summary it was. `mnema repl` does not offer `tour`.

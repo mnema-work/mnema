@@ -32,6 +32,7 @@ What belongs to one command is on that command's page, in [the commands](referen
 - `mnema brief`: [Handing the record to an agent that never asked for it](reference/cli/brief.md#handing-the-record-to-an-agent-that-never-asked-for-it)
 - `mnema completion`: [Finishing a verb with Tab](reference/cli/completion.md#finishing-a-verb-with-tab)
 - `mnema doctor`: [Is mnema set up on this machine](reference/cli/doctor.md#is-mnema-set-up-on-this-machine)
+- `mnema tour`: [The tour of the first run](reference/cli/tour.md#the-tour-of-the-first-run)
 - `mnema instructions`: [The mnema instructions in the files a host reads](reference/cli/instructions.md#the-mnema-instructions-in-the-files-a-host-reads)
 - `mnema recall`: [The notes a session opens with](reference/cli/recall.md#the-notes-a-session-opens-with)
 - `mnema report`: [When mnema itself fails](reference/cli/report.md#when-mnema-itself-fails)
