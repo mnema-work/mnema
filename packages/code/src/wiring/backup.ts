@@ -462,7 +462,7 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
           io.out(
             render(
               fact(
-                `${undone.others} other folder(s) kept aside for ${toGlobal ? 'the global tree' : 'this project'} are still there: \`mnema backup restore --undo\` puts back the next newest that has a tree to put back, and \`mnema backup status\` lists them all`,
+                `${undone.others} other folder(s) kept aside for ${toGlobal ? 'the global tree' : 'this project'} are still there: \`${toGlobal ? 'mnema backup restore --global --undo' : 'mnema backup restore --undo'}\` puts back the next newest that has a tree to put back, and \`${toGlobal ? 'mnema backup status --global' : 'mnema backup status'}\` lists them all`,
               ),
             ),
           );
@@ -493,7 +493,7 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
             : []),
           plan.keeping.length === 0
             ? 'No tree to be replaced holds a tail, so nothing is kept aside, and the copy is put in.'
-            : `What the ${plan.keeping.map((one) => one.tree).join(' and ')} tree holds is moved to ${plan.keptIn}, and the copy is put in its place; \`mnema backup restore --undo\` puts it back, and no restore deletes that folder.`,
+            : `What the ${plan.keeping.map((one) => one.tree).join(' and ')} tree holds is moved to ${plan.keptIn}, and the copy is put in its place; \`${plan.global ? 'mnema backup restore --global --undo' : 'mnema backup restore --undo'}\` puts it back, and no restore deletes that folder.`,
         ];
         if (dryRun) {
           for (const line of question) io.out(render(fact(line)));
@@ -574,13 +574,21 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
             ),
           ),
         );
-        io.out(render(fact('`mnema backup restore --undo` puts it back')));
+        io.out(
+          render(
+            fact(
+              result.global
+                ? '`mnema backup restore --global --undo` puts it back'
+                : '`mnema backup restore --undo` puts it back',
+            ),
+          ),
+        );
       }
       if (result.asides.length > 0) {
         io.out(
           render(
             fact(
-              `${result.asides.length} folder(s) kept aside for ${result.global ? 'the global tree' : 'this project'}, which no restore deletes: you delete them by hand; \`mnema backup status\` lists them`,
+              `${result.asides.length} folder(s) kept aside for ${result.global ? 'the global tree' : 'this project'}, which no restore deletes: you delete them by hand; \`${result.global ? 'mnema backup status --global' : 'mnema backup status'}\` lists them`,
             ),
           ),
         );

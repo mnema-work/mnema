@@ -347,6 +347,7 @@ export {
   treeWords,
   type Undone,
   undoAside,
+  undoCommandFor,
   whyNoProjectRootAt,
   whyNotADestination,
   withAgentKey,

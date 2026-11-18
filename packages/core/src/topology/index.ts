@@ -34,6 +34,7 @@ export {
   treesToKeep,
   type Undone,
   undoAside,
+  undoCommandFor,
   withRestoreLock,
 } from './backup/aside.js';
 export {

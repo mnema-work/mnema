@@ -450,6 +450,7 @@ describe('mnema backup verify and restore', () => {
     expect(yes.out.join('\n')).toContain('Restored the global tree from');
     expect(yes.out.join('\n')).toContain(`what the global tree held is kept at ${where}/`);
     expect(yes.out.join('\n')).toContain('`mnema backup verify --global` reads the result');
+    expect(yes.out.join('\n')).toContain('`mnema backup restore --global --undo` puts it back');
     expect(readdirSync(tails)).not.toEqual(live);
     const listed = await mnema(['backup', 'status', '--global']);
     expect(listed.out.join('\n')).toContain(

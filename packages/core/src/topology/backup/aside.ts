@@ -172,6 +172,10 @@ export function treesToKeep<T extends { readonly root: string }>(items: readonly
   return items.filter((one) => holdsTails(one.root));
 }
 
+/** The command that puts back what was kept aside: the global tree has its own flag. */
+export const undoCommandFor = (trees: readonly BackupTree[]): string =>
+  trees.includes('global') ? 'mnema backup restore --global --undo' : 'mnema backup restore --undo';
+
 /** What was kept aside. */
 export interface KeptAside {
   readonly folder: string;
@@ -215,7 +219,7 @@ export function setAside(
       if (verifyChain({ root: to }, catalogUpcasters()).ok !== readsBefore[at]) {
         throw new AsideError(
           'ASIDE_NOT_VERIFIED',
-          `The ${one.tree} tree kept at ${to} does not read as it did before it was moved: nothing more was done, and \`mnema backup restore --undo\` puts it back.`,
+          `The ${one.tree} tree kept at ${to} does not read as it did before it was moved: nothing more was done, and \`${undoCommandFor([one.tree])}\` puts it back.`,
         );
       }
     });
@@ -233,7 +237,7 @@ export function setAside(
     } catch {
       throw new AsideError(
         'ASIDE_NOT_VERIFIED',
-        `A tree could not be moved (${(error as Error).message}), and putting back what was already moved failed too: what the trees held is kept at ${folder}, and \`mnema backup restore --undo\` puts it back.`,
+        `A tree could not be moved (${(error as Error).message}), and putting back what was already moved failed too: what the trees held is kept at ${folder}, and \`${undoCommandFor(kept.map((one) => one.tree))}\` puts it back.`,
       );
     }
     throw new AsideError(
@@ -346,7 +350,7 @@ export function undoAside(
       ) {
         throw new AsideError(
           'ASIDE_EXISTS',
-          `${join(folder, `restored-${one.tree}`)} is already there, so what stands in the place of the ${one.tree} tree has nowhere to go. Move it away and run \`mnema backup restore --undo\` again.`,
+          `${join(folder, `restored-${one.tree}`)} is already there, so what stands in the place of the ${one.tree} tree has nowhere to go. Move it away and run \`${undoCommandFor([one.tree])}\` again.`,
         );
       }
     }

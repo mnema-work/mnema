@@ -65,6 +65,7 @@ import {
   treesToKeep,
   type Undone,
   undoAside,
+  undoCommandFor,
   whyNotADestination,
   withRestoreLock,
   writeCopy,
@@ -856,7 +857,7 @@ function restoreFrom(
     if (keptAside === undefined || refused.reason !== 'REFUSED') return refused;
     return {
       ...refused,
-      message: `${refused.message} What the trees held is kept at ${(keptAside as KeptAside).folder}: \`mnema backup restore --undo\` puts it back.`,
+      message: `${refused.message} What the trees held is kept at ${(keptAside as KeptAside).folder}: \`${undoCommandFor(keptAside.trees)}\` puts it back.`,
     };
   }
 }
