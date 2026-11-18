@@ -34,6 +34,7 @@ const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const NOW = new Date('2026-12-01T12:00:00Z');
 const daysAgo = (days: number) => new Date(NOW.getTime() - days * 24 * 60 * 60 * 1000);
 const BOT = 'github-actions[bot]';
+const REPO = 'mnema-work/mnema';
 
 const open = {
   state: 'open',
@@ -182,7 +183,7 @@ describe('the three answers, written', () => {
 
 describe('an assignment is freed after 14 days with no pull request', () => {
   const at = (days: number) => ({ at: daysAgo(days), login: 'newcomer' });
-  const base = { now: NOW, number: 7, assignees: ['newcomer'], pulls: [] };
+  const base = { now: NOW, number: 7, assignees: ['newcomer'], pulls: [], repo: REPO };
 
   it('keeps it at 13 days and frees it at 15', () => {
     expect(expiry({ ...base, assignment: at(13) }).free).toBe(false);
@@ -202,11 +203,24 @@ describe('an assignment is freed after 14 days with no pull request', () => {
     expect(expiry({ ...base, assignment: at(15), pulls: another }).free).toBe(true);
   });
 
-  it('names an issue by number in the title, the body or the address', () => {
-    expect(namesIssue({ title: 'Fix #7' }, 7)).toBe(true);
-    expect(namesIssue({ title: 'x', body: 'Fixes another/repo#7.' }, 7)).toBe(false);
-    expect(namesIssue({ title: 'x', body: 'see https://github.com/a/b/issues/7' }, 7)).toBe(true);
-    expect(namesIssue({ title: 'x', body: 'Closes #17' }, 7)).toBe(false);
+  it('names an issue of this repository by #N, owner/name#N or its address, and of no other', () => {
+    const names = (text: string) => namesIssue({ title: 'x', body: text }, 7, REPO);
+    expect(namesIssue({ title: 'Fix #7' }, 7, REPO)).toBe(true);
+    expect(names(`Fixes ${REPO}#7.`)).toBe(true);
+    expect(names('fixes MNEMA-WORK/mnema#7')).toBe(true);
+    expect(names(`see https://github.com/${REPO}/issues/7`)).toBe(true);
+    expect(names('Fixes another/repo#7.')).toBe(false);
+    expect(names('see https://github.com/a/b/issues/7')).toBe(false);
+    expect(names(`see https://github.com/${REPO}/issues/70`)).toBe(false);
+    expect(names('Closes #17')).toBe(false);
+    expect(names('Closes other-mnema-work/mnema#7')).toBe(false);
+  });
+
+  it('keeps an issue at 15 days when the open pull request names it as owner/name#N', () => {
+    const pulls = [{ user: { login: 'newcomer' }, title: 'x', body: `Fixes ${REPO}#7` }];
+    expect(expiry({ ...base, assignment: at(15), pulls }).free).toBe(false);
+    const elsewhere = [{ user: { login: 'newcomer' }, title: 'x', body: 'Fixes another/repo#7' }];
+    expect(expiry({ ...base, assignment: at(15), pulls: elsewhere }).free).toBe(true);
   });
 
   it('leaves alone an issue assigned by hand, or reassigned since', () => {
@@ -249,6 +263,156 @@ describe('an assignment is freed after 14 days with no pull request', () => {
       { write: 'unassign', number: 1, login: 'newcomer' },
       { write: 'comment', number: 1, body: expect.stringContaining(freedMarker(NOW)) },
     ]);
+  });
+});
+
+describe('a claim is not read out of code or after a no', () => {
+  it.each([
+    'Here is how: ```\nassign me\n``` that is the command',
+    'Type `/take` on the issue to take it',
+    '~~~\nI will take this\n~~~',
+    'Please do not assign me',
+    "Don't assign me yet",
+    'There is no need to assign me, I will not take this',
+    'I would never work on this... no need to /take it',
+  ])('%j is not a claim', (text) => {
+    expect(isClaim(text)).toBe(false);
+  });
+
+  it('still reads a claim around code, and a claim after a sentence that said no', () => {
+    expect(isClaim('Using `pnpm test` I found it. Assign me please')).toBe(true);
+    expect(isClaim('I did not try yet. I will take this')).toBe(true);
+    expect(isClaim('Please assign me')).toBe(true);
+  });
+});
+
+describe('two claims at once, and a quiet answer', () => {
+  const claimAt = (id: number, login: string, at: string, body = 'assign me') => ({
+    id,
+    created_at: at,
+    user: { login },
+    body,
+  });
+  const eventOf = (c: ReturnType<typeof claimAt>) => ({
+    action: 'created',
+    issue: { number: 7 },
+    comment: { ...c, author_association: 'NONE', user: { login: c.user.login, type: 'User' } },
+  });
+  const older = claimAt(10, 'first', '2026-12-01T11:00:00Z');
+  const newer = claimAt(11, 'second', '2026-12-01T11:00:05Z');
+
+  /** A free issue where, while this run assigns, the other claimant's run assigns too. */
+  const racing = (other: string, comments: object[]) => {
+    const api = fixtureApi(
+      { issues: { '7': issueOf(7, []) }, comments: { '7': comments } },
+      () => {},
+    );
+    const assign = api.assign;
+    api.assign = (number: number, login: string) => {
+      assign(number, other);
+      return assign(number, login);
+    };
+    return api;
+  };
+
+  it('keeps the older claim and gives the issue back from the newer one', () => {
+    const api = racing('first', [older, newer]);
+    expect(claim(eventOf(newer), api, NOW).action).toBe('taken');
+    expect(api.writes.map((w: { write: string }) => w.write)).toEqual([
+      'assign',
+      'assign',
+      'unassign',
+      'comment',
+    ]);
+    expect(api.writes[2]).toEqual({ write: 'unassign', number: 7, login: 'second' });
+    expect((api.writes[3] as { body: string }).body).toContain('already holds this issue');
+  });
+
+  it('keeps the issue for the older claim, which says it is theirs', () => {
+    const api = racing('second', [older, newer]);
+    expect(claim(eventOf(older), api, NOW).action).toBe('assign');
+    const writes = api.writes as { write: string; body?: string }[];
+    expect(writes.map((w) => w.write)).toEqual(['assign', 'assign', 'comment']);
+    expect(writes[2]?.body).toContain('This issue is yours');
+  });
+
+  it('breaks a tie of the clock by the comment id', () => {
+    const a = claimAt(20, 'first', '2026-12-01T11:00:00Z');
+    const b = claimAt(21, 'second', '2026-12-01T11:00:00Z');
+    expect(claim(eventOf(b), racing('first', [a, b]), NOW).action).toBe('taken');
+    expect(claim(eventOf(a), racing('second', [a, b]), NOW).action).toBe('assign');
+  });
+
+  it('does not count an assignee who never claimed it: a hand assignment made meanwhile stays', () => {
+    const api = racing('maintainer', [older]);
+    expect(claim(eventOf(older), api, NOW).action).toBe('assign');
+    expect((api.writes as { write: string }[]).some((w) => w.write === 'unassign')).toBe(false);
+  });
+
+  it('gives the issue back when the login came to hold more than 3', () => {
+    const held = (n: number) => issueOf(n, ['first']);
+    const mine = claimAt(30, 'first', '2026-12-01T11:00:00Z');
+    const api = fixtureApi(
+      {
+        issues: { '7': issueOf(7, []), '1': held(1), '2': held(2), '3': held(3) },
+        // two assigned by this workflow, a third whose marker is not written yet but whose claim is there
+        comments: {
+          '1': [assignedBy(2, 'first')],
+          '2': [assignedBy(2, 'first')],
+          '3': [claimAt(31, 'first', '2026-12-01T11:59:59Z')],
+        },
+      },
+      () => {},
+    );
+    // before the assignment the login holds 3 by the count, so the claim is refused at once
+    expect(claim(eventOf(mine), api, NOW).action).toBe('cap');
+    const writes = api.writes as { write: string }[];
+    expect(writes.some((w) => w.write === 'assign')).toBe(false);
+  });
+
+  it('unassigns and says so when another claim made the login hold 3 between the check and the call', () => {
+    const held = (n: number) => issueOf(n, ['first']);
+    const mine = claimAt(30, 'first', '2026-12-01T11:00:00Z');
+    const fixture = {
+      issues: { '7': issueOf(7, []), '1': held(1), '2': held(2) },
+      comments: { '1': [assignedBy(2, 'first')], '2': [assignedBy(2, 'first')] },
+    };
+    const api = fixtureApi(fixture, () => {});
+    const assign = api.assign;
+    // the third issue lands on the login while this run assigns
+    api.assign = (number: number, login: string) => {
+      fixture.issues['3' as '1'] = held(3);
+      fixture.comments['3' as '1'] = [assignedBy(1, 'first')];
+      return assign(number, login);
+    };
+    expect(claim(eventOf(mine), api, NOW).action).toBe('cap');
+    const writes = (api.writes as { write: string; body?: string }[]).map((w) => w.write);
+    expect(writes).toEqual(['assign', 'unassign', 'comment']);
+    expect(fixture.issues['7'].assignees).toEqual([]);
+  });
+
+  it('fails, and says nothing that sounds like success, when the assignment did not take', () => {
+    const api = fixtureApi({ issues: { '7': issueOf(7, []) } }, () => {});
+    api.assign = () => undefined;
+    expect(() => claim(eventOf(older), api, NOW)).toThrow(/did not take/);
+    expect(api.writes).toEqual([]);
+  });
+
+  it('answers "taken" to a login once, and stays silent the second time', () => {
+    const api = fixtureApi(
+      { issues: { '7': issueOf(7, ['other']) }, comments: { '7': [] } },
+      () => {},
+    );
+    expect(claim(eventOf(older), api, NOW).action).toBe('taken');
+    expect(claim(eventOf(older), api, NOW).action).toBe('taken');
+    expect(api.writes).toHaveLength(1);
+    const third = fixtureApi(
+      { issues: { '7': issueOf(7, ['other']) }, comments: { '7': [] } },
+      () => {},
+    );
+    claim(eventOf(older), third, NOW);
+    claim(eventOf(newer), third, NOW);
+    expect(third.writes).toHaveLength(2);
   });
 });
 

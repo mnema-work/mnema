@@ -87,14 +87,26 @@ export const CLAIM_PHRASES = [
 /** @param {string} text */
 const escapeForRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 
-const CLAIM_RE = new RegExp(
-  CLAIM_PHRASES.map((phrase) => `(?<![\\w/])${escapeForRegExp(phrase)}(?![\\w/])`).join('|'),
-);
+/** The phrases as one pattern, whole words, found anywhere (a new one for each reading: it is global). */
+const claimPattern = () =>
+  new RegExp(
+    CLAIM_PHRASES.map((phrase) => `(?<![\\w/])${escapeForRegExp(phrase)}(?![\\w/])`).join('|'),
+    'g',
+  );
 
-/** The text a claim is looked for in: no quoted lines, the curly apostrophe made straight, one case. */
-/** @param {unknown} text */
+/** What stands right before a phrase and turns it round: "do not", "don't", "never", "no need to". */
+const NEGATION = /(?:\bnot|n't|\bnever|\bno need to|\bno need for you to)\s+$/;
+
+/**
+ * The text a claim is looked for in: no quoted lines, no fenced code and no inline code (a phrase
+ * shown as code is shown, not said), the curly apostrophe made straight, one case.
+ *
+ * @param {unknown} text
+ */
 const normalise = (text) =>
   String(text ?? '')
+    .replace(/(```|~~~)[\s\S]*?(\1|$)/g, ' ')
+    .replace(/`[^`\n]*`/g, ' ')
     .split('\n')
     .filter((line) => !line.trimStart().startsWith('>'))
     .join(' ')
@@ -103,8 +115,14 @@ const normalise = (text) =>
     .replace(/this issue/g, 'this')
     .replace(/\s+/g, ' ');
 
-/** Whether the comment claims the issue it is on. @param {string} text */
-export const isClaim = (text) => CLAIM_RE.test(normalise(text));
+/** Whether the comment claims the issue it is on, a negated phrase not counting. @param {string} text */
+export const isClaim = (text) => {
+  const said = normalise(text);
+  for (const found of said.matchAll(claimPattern())) {
+    if (!NEGATION.test(said.slice(0, found.index))) return true;
+  }
+  return false;
+};
 
 /**
  * What to do about one comment. `held` is how many open issues this workflow assigned to the
@@ -146,6 +164,8 @@ const FREED_MARKER = /<!-- claim-an-issue:freed (\S+) -->/;
 /** @param {Date} now @param {string} login */
 export const assignedMarker = (now, login) =>
   `<!-- claim-an-issue:assigned ${now.toISOString()} login=${login} -->`;
+/** @param {string} login */
+export const takenMarker = (login) => `<!-- claim-an-issue:taken login=${login} -->`;
 /** @param {Date} now */
 export const freedMarker = (now) => `<!-- claim-an-issue:freed ${now.toISOString()} -->`;
 
@@ -164,6 +184,7 @@ export const replies = {
   /** @param {string} login */
   taken: (login) =>
     [
+      takenMarker(login),
       `Thanks, @${login}: someone already holds this issue.`,
       '',
       `If they open no pull request that names it within ${DAYS_TO_FREE} days of taking it, it frees itself and you can ask again then.`,
@@ -208,11 +229,23 @@ export function assignmentOf(comments) {
   return state;
 }
 
-/** Whether a pull request names the issue: `#N` in the title or the body, or the issue's address. */
-/** @param {Json} pull @param {number} number */
-export function namesIssue(pull, number) {
+/**
+ * Whether a pull request names the issue: `#N`, `owner/repo#N` or the issue's address, in the title
+ * or the body, and only of THIS repository (`repo` is `owner/name`). Another repository's `#N` is not.
+ *
+ * @param {Json} pull
+ * @param {number} number
+ * @param {string} repo
+ */
+export function namesIssue(pull, number, repo) {
   const text = `${pull.title ?? ''}\n${pull.body ?? ''}`;
-  return new RegExp(`(?<![\\w/])#${number}(?!\\d)|/issues/${number}(?!\\d)`).test(text);
+  const bare = new RegExp(`(?<![\\w/.#-])#${number}(?!\\d)`);
+  if (bare.test(text)) return true;
+  if (!repo) return false;
+  const here = escapeForRegExp(repo);
+  const qualified = new RegExp(`(?<![\\w.-])${here}#${number}(?!\\d)`, 'i');
+  const address = new RegExp(`https?://github\\.com/${here}/issues/${number}(?!\\d)`, 'i');
+  return qualified.test(text) || address.test(text);
 }
 
 /**
@@ -224,10 +257,11 @@ export function namesIssue(pull, number) {
  *   assignment: { at: Date, login: string } | null,
  *   assignees: string[],
  *   pulls: { user: { login: string }, title?: string, body?: string }[],
+ *   repo: string,
  * }} input
  * @returns {{ free: boolean, login?: string, why: string }}
  */
-export function expiry({ now, number, assignment, assignees, pulls }) {
+export function expiry({ now, number, assignment, assignees, pulls, repo }) {
   if (!assignment) return { free: false, why: 'not assigned by the workflow' };
   const mine = assignment.login.toLowerCase();
   if (assignees.length !== 1 || assignees[0]?.toLowerCase() !== mine) {
@@ -237,7 +271,7 @@ export function expiry({ now, number, assignment, assignees, pulls }) {
     return { free: false, why: 'not yet' };
   }
   const open = pulls.some(
-    (pull) => pull.user?.login?.toLowerCase() === mine && namesIssue(pull, number),
+    (pull) => pull.user?.login?.toLowerCase() === mine && namesIssue(pull, number, repo),
   );
   if (open) return { free: false, why: 'a pull request names it' };
   return { free: true, login: assignment.login, why: 'no pull request' };
@@ -318,9 +352,27 @@ export function fixtureApi(fixture, say = console.log) {
     assignedIssues: () =>
       Object.values(fixture.issues).filter((one) => (one.assignees ?? []).length > 0),
     openPulls: () => fixture.pulls ?? [],
-    assign: (number, login) => note({ write: 'assign', number, login }),
-    unassign: (number, login) => note({ write: 'unassign', number, login }),
-    comment: (number, body) => note({ write: 'comment', number, body }),
+    assign: (number, login) => {
+      const one = fixture.issues[String(number)];
+      one.assignees = [...(one.assignees ?? []), { login }];
+      note({ write: 'assign', number, login });
+    },
+    unassign: (number, login) => {
+      const one = fixture.issues[String(number)];
+      one.assignees = (one.assignees ?? []).filter(
+        (/** @type {Json} */ who) => who.login.toLowerCase() !== login.toLowerCase(),
+      );
+      note({ write: 'unassign', number, login });
+    },
+    comment: (number, body) => {
+      fixture.comments ??= {};
+      const there = fixture.comments;
+      there[String(number)] = [
+        ...(there[String(number)] ?? []),
+        { user: { login: OUR_ACCOUNT }, body },
+      ];
+      note({ write: 'comment', number, body });
+    },
   };
 }
 
@@ -330,17 +382,63 @@ const labelsOf = (issue) =>
 /** @param {Json} issue */
 const loginsOf = (issue) => (issue.assignees ?? []).map((/** @type {Json} */ who) => who.login);
 
-/** How many open issues this workflow assigned to `login` that they still hold. */
-/** @param {Api} api @param {string} login */
-export function heldBy(api, login) {
+/**
+ * How many other open issues `login` holds through a claim: this workflow's marker for them, or a
+ * claim of their own on an issue they are assigned to (an assignment whose marker is not yet written).
+ *
+ * @param {Api} api
+ * @param {string} login
+ * @param {number} [except] the issue being claimed
+ */
+export function heldBy(api, login, except) {
+  const who = login.toLowerCase();
   return api.assignedTo(login).filter((one) => {
-    const mine = assignmentOf(api.comments(one.number));
-    return mine !== null && mine.login.toLowerCase() === login.toLowerCase();
+    if (one.number === except) return false;
+    const comments = api.comments(one.number);
+    const mine = assignmentOf(comments);
+    if (mine !== null && mine.login.toLowerCase() === who) return true;
+    return comments.some((c) => c.user?.login?.toLowerCase() === who && isClaim(c.body ?? ''));
   }).length;
 }
 
+/** Whether this workflow already told `login` on this issue that it is taken. @param {Json[]} comments @param {string} login */
+const toldTaken = (comments, login) =>
+  comments.some(
+    (c) => c.user?.login === OUR_ACCOUNT && String(c.body ?? '').includes(takenMarker(login)),
+  );
+
+/** Which of two claim comments is older: the time, then the id. @param {Json} a @param {Json} b */
+const olderThan = (a, b) => {
+  const at = String(a.created_at ?? '').localeCompare(String(b.created_at ?? ''));
+  return at !== 0 ? at < 0 : Number(a.id) < Number(b.id);
+};
+
+/**
+ * The claim of another assignee that came before this one: another login now on the issue that
+ * wrote a claim on it, older than ours. A maintainer's hand assignment has no such claim.
+ *
+ * @param {Json[]} comments
+ * @param {Json} ours the comment this run is answering
+ * @param {string[]} assignees
+ * @param {string} login
+ */
+const claimedBefore = (comments, ours, assignees, login) => {
+  const others = assignees.filter((who) => who.toLowerCase() !== login.toLowerCase());
+  return comments.some(
+    (c) =>
+      others.some((who) => who.toLowerCase() === c.user?.login?.toLowerCase()) &&
+      isClaim(c.body ?? '') &&
+      olderThan(c, ours),
+  );
+};
+
 /**
  * One created comment.
+ *
+ * Two comments can arrive together and GitHub keeps one waiting run per group, so there is no
+ * queue: each run assigns, reads the issue back, and puts right what it finds. The older claim keeps
+ * the issue, and a login that came to hold more than 3 gives this one back. A run whose assignment
+ * did not take says nothing that sounds like success and fails.
  *
  * @param {Json} event
  * @param {Api} api
@@ -374,11 +472,30 @@ export function claim(event, api, now = new Date()) {
     });
   let verdict = ask(0);
   // What the commenter already holds is asked of GitHub only for a claim that would be granted.
-  if (verdict.action === 'assign') verdict = ask(heldBy(api, login));
-  if (verdict.action === 'taken') api.comment(number, replies.taken(login));
+  if (verdict.action === 'assign') verdict = ask(heldBy(api, login, number));
+  if (verdict.action === 'taken' && !toldTaken(api.comments(number), login)) {
+    api.comment(number, replies.taken(login));
+  }
   if (verdict.action === 'cap') api.comment(number, replies.cap(login));
   if (verdict.action !== 'assign') return verdict;
+
   api.assign(number, login);
+  const after = api.issue(number);
+  const assigned = loginsOf(after);
+  if (!assigned.some((who) => who.toLowerCase() === login.toLowerCase())) {
+    throw new Error(`the assignment of #${number} to ${login} did not take`);
+  }
+  const comments = api.comments(number);
+  if (claimedBefore(comments, comment, assigned, login)) {
+    api.unassign(number, login);
+    if (!toldTaken(comments, login)) api.comment(number, replies.taken(login));
+    return { action: 'taken', why: 'an older claim holds it' };
+  }
+  if (heldBy(api, login, number) >= MOST_HELD) {
+    api.unassign(number, login);
+    api.comment(number, replies.cap(login));
+    return { action: 'cap', why: `holds ${MOST_HELD} already` };
+  }
   api.comment(number, replies.assigned(login, now));
   return verdict;
 }
@@ -388,9 +505,10 @@ export function claim(event, api, now = new Date()) {
  *
  * @param {Api} api
  * @param {Date} [now]
+ * @param {string} [repo] `owner/name`, for the pull requests that name an issue
  * @returns {number[]} the issues it freed
  */
-export function expire(api, now = new Date()) {
+export function expire(api, now = new Date(), repo = '') {
   const freed = [];
   let pulls = null;
   for (const issue of api.assignedIssues()) {
@@ -403,6 +521,7 @@ export function expire(api, now = new Date()) {
       assignment,
       assignees: loginsOf(issue),
       pulls,
+      repo,
     });
     if (!verdict.free) continue;
     const who = String(verdict.login);
@@ -418,18 +537,26 @@ function main(argv) {
   const [mode, eventPath] = argv;
   const at = argv.indexOf('--fixture');
   const fixture = at === -1 ? null : JSON.parse(readFileSync(String(argv[at + 1]), 'utf-8'));
-  const api = fixture ? fixtureApi(fixture) : ghApi(process.env.GITHUB_REPOSITORY ?? '');
+  const repo = fixture?.repo ?? process.env.GITHUB_REPOSITORY ?? '';
+  const api = fixture ? fixtureApi(fixture) : ghApi(repo);
   const now = fixture?.now ? new Date(fixture.now) : new Date();
   if (mode === 'claim') {
     const event = JSON.parse(readFileSync(String(eventPath), 'utf-8'));
     const verdict = claim(event, api, now);
     console.log(`${verdict.action}: ${verdict.why}`);
   } else if (mode === 'expire') {
-    console.log(`freed: ${expire(api, now).join(', ') || 'none'}`);
+    console.log(`freed: ${expire(api, now, repo).join(', ') || 'none'}`);
   } else {
     console.error('usage: claim.mjs claim <event.json> | expire [--fixture <file>]');
     process.exit(2);
   }
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) main(process.argv.slice(2));
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+  try {
+    main(process.argv.slice(2));
+  } catch (error) {
+    console.error(`claim.mjs failed: ${error instanceof Error ? error.message : String(error)}`);
+    process.exit(1);
+  }
+}

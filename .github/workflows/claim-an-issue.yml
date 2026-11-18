@@ -31,10 +31,9 @@ jobs:
       contents: read
       issues: write
       pull-requests: read
-    # Two comments on one issue are answered one after the other, so the second sees who holds it.
-    concurrency:
-      group: claim-an-issue-${{ github.event.issue.number }}
-      cancel-in-progress: false
+    # No concurrency group: GitHub keeps one waiting run per group, so a third comment would cancel
+    # the second and a claim would be lost in silence. The script reads the issue back after it
+    # assigns and puts right what it finds.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
