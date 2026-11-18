@@ -2115,7 +2115,7 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
   },
 
   // --- tail-repair.ts: what `tail repair` says -----------------------------------
-  'tail-repair.ts «No tail {} in the project’s public record here: \\`mnema tail list\\` spells the tails there are.» oneLine(tail) #1':
+  'tail-repair.ts «There is no tail {} in the project’s public record here: \\`mnema tail list\\` spells the tails there are.» oneLine(tail) #1':
     {
       verdict: 'collapsed',
       why: 'the value passes through `oneLine` where it enters the line: it came from the command line, or from a name on disk',

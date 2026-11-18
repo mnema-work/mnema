@@ -25,7 +25,7 @@ _mnema_commands() {
     'commit-hook') echo 'install uninstall suggest help' ;;
     'record') echo 'pull commit merge-tail help' ;;
     'key') echo 'restore request enroll github sigstore revoke protect unprotect help' ;;
-    'tail') echo 'list prune relink help' ;;
+    'tail') echo 'list prune relink repair help' ;;
     'backup') echo 'setup run status help' ;;
     'run') echo 'start end help' ;;
   esac
@@ -74,7 +74,7 @@ _mnema_described() {
       'commit-hook:install or remove an optional git hook that suggests the Mnema-Decision trailer' \
       'record:pull the record over events not yet committed, commit them for a pull request, and merge its tails for git' \
       'key:manage this machine'\''s signing keys' \
-      'tail:act on the record'\''s own tails: list them, authorize a cut, relink one' \
+      'tail:act on the record'\''s own tails: list them, authorize a cut, relink one, repair a line from git' \
       'backup:copy this project'\''s trees into a folder, and say how far the copy is (records nothing)' \
       'doctor:say how mnema is installed on this machine, and what to do about each thing found (writes nothing unless you pass --fix)' \
       'report:show, whole, what mnema would say about its own last internal error, and keep your answer to it (sends nothing)' \
@@ -166,6 +166,7 @@ _mnema_described() {
       'list:list the tails that hold events here, the ones a cut can name, with the id `prune` takes' \
       'prune:record that one whole tail was authorized to be cut (it removes nothing)' \
       'relink:relink whole tails of another record into the one this directory names, each signed by its own key' \
+      'repair:put back from git the lines of a public tail that do not read or whose hash does not hold' \
       'help:display help for command' ;;
     'backup') printf '%s\n' \
       'setup:say which folder keeps this project'\''s backup, after a person confirms at a terminal that it keeps the text in clear' \
@@ -276,6 +277,7 @@ _mnema_flags() {
     'tail list') echo '-h --help -V --version --color' ;;
     'tail prune') echo '--reason --which --lose-keys -h --help -V --version --color' ;;
     'tail relink') echo '--into --reason --which -h --help -V --version --color' ;;
+    'tail repair') echo '--from -h --help -V --version --color' ;;
     'backup') echo '-h --help -V --version --color' ;;
     'backup setup') echo '--global -h --help -V --version --color' ;;
     'backup run') echo '--global -h --help -V --version --color' ;;
@@ -434,6 +436,7 @@ _mnema_values() {
     'tail list:--color') echo 'auto always never' ;;
     'tail prune:--color') echo 'auto always never' ;;
     'tail relink:--color') echo 'auto always never' ;;
+    'tail repair:--color') echo 'auto always never' ;;
     'backup:--color') echo 'auto always never' ;;
     'backup setup:--color') echo 'auto always never' ;;
     'backup run:--color') echo 'auto always never' ;;

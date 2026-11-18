@@ -38,7 +38,7 @@ function __mnema_commands --description 'the subcommands one level of the tree o
         case 'key'
             echo 'restore request enroll github sigstore revoke protect unprotect help'
         case 'tail'
-            echo 'list prune relink help'
+            echo 'list prune relink repair help'
         case 'backup'
             echo 'setup run status help'
         case 'run'
@@ -116,7 +116,7 @@ complete -c mnema -f -n '__mnema_at ""' -a 'trailer' -d 'print the commit traile
 complete -c mnema -f -n '__mnema_at ""' -a 'commit-hook' -d 'install or remove an optional git hook that suggests the Mnema-Decision trailer'
 complete -c mnema -f -n '__mnema_at ""' -a 'record' -d 'pull the record over events not yet committed, commit them for a pull request, and merge its tails for git'
 complete -c mnema -f -n '__mnema_at ""' -a 'key' -d 'manage this machine\'s signing keys'
-complete -c mnema -f -n '__mnema_at ""' -a 'tail' -d 'act on the record\'s own tails: list them, authorize a cut, relink one'
+complete -c mnema -f -n '__mnema_at ""' -a 'tail' -d 'act on the record\'s own tails: list them, authorize a cut, relink one, repair a line from git'
 complete -c mnema -f -n '__mnema_at ""' -a 'backup' -d 'copy this project\'s trees into a folder, and say how far the copy is (records nothing)'
 complete -c mnema -f -n '__mnema_at ""' -a 'doctor' -d 'say how mnema is installed on this machine, and what to do about each thing found (writes nothing unless you pass --fix)'
 complete -c mnema -f -n '__mnema_at ""' -a 'report' -d 'show, whole, what mnema would say about its own last internal error, and keep your answer to it (sends nothing)'
@@ -853,6 +853,7 @@ complete -c mnema -f -n '__mnema_at "key unprotect"' -l color -x -a 'auto always
 complete -c mnema -f -n '__mnema_at "tail"' -a 'list' -d 'list the tails that hold events here, the ones a cut can name, with the id `prune` takes'
 complete -c mnema -f -n '__mnema_at "tail"' -a 'prune' -d 'record that one whole tail was authorized to be cut (it removes nothing)'
 complete -c mnema -f -n '__mnema_at "tail"' -a 'relink' -d 'relink whole tails of another record into the one this directory names, each signed by its own key'
+complete -c mnema -f -n '__mnema_at "tail"' -a 'repair' -d 'put back from git the lines of a public tail that do not read or whose hash does not hold'
 complete -c mnema -f -n '__mnema_at "tail"' -a 'help' -d 'display help for command'
 complete -c mnema -f -n '__mnema_at "tail"' -s h -l help
 complete -c mnema -f -n '__mnema_at "tail"' -s V -l version
@@ -878,6 +879,12 @@ complete -c mnema -f -n '__mnema_at "tail relink"' -l which -r
 complete -c mnema -f -n '__mnema_at "tail relink"' -s h -l help
 complete -c mnema -f -n '__mnema_at "tail relink"' -s V -l version
 complete -c mnema -f -n '__mnema_at "tail relink"' -l color -x -a 'auto always never'
+
+# mnema tail repair
+complete -c mnema -f -n '__mnema_at "tail repair"' -l from -r
+complete -c mnema -f -n '__mnema_at "tail repair"' -s h -l help
+complete -c mnema -f -n '__mnema_at "tail repair"' -s V -l version
+complete -c mnema -f -n '__mnema_at "tail repair"' -l color -x -a 'auto always never'
 
 # mnema backup
 complete -c mnema -f -n '__mnema_at "backup"' -a 'setup' -d 'say which folder keeps this project\'s backup, after a person confirms at a terminal that it keeps the text in clear'

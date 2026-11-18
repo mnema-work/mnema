@@ -437,6 +437,6 @@ describe('a line that is not put back', () => {
     const here = aCopy();
     const ran = mnema(here, 'tail', 'repair', 'nothing-here');
     expect(ran.status).toBe(1);
-    expect(said(ran)).toContain('No tail nothing-here');
+    expect(said(ran)).toContain('There is no tail nothing-here');
   }, 60_000);
 });

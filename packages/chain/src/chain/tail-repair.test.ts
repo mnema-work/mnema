@@ -1,3 +1,4 @@
+// @plants-damage
 /**
  * `repairTail`: a line of a segment that does not read, or whose hash does not hold, is put back from
  * what a revision held, only when it proves itself and chains on both sides, and nothing else is

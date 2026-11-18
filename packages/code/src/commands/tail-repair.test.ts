@@ -1,3 +1,4 @@
+// @plants-damage
 /**
  * The adapter behind `mnema tail repair`: which tree it serves, what it asks git, and what it hands
  * back. What a line must prove to be put back is `repairTail`'s (`@mnema/chain`) and the binary's

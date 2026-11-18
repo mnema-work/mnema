@@ -72,7 +72,7 @@ describe('tailRepairRefusal', () => {
       'a b is not a revision',
     );
     expect(said({ ok: false, reason: 'UNKNOWN_TAIL' })).toContain(
-      'No tail t-1 in the project’s public record',
+      'There is no tail t-1 in the project’s public record',
     );
   });
 });

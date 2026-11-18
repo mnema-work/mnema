@@ -27,7 +27,7 @@ longer holds its hash (somebody edited its text) makes every write refuse, and t
 line as it was committed, and this is the one verb that puts it back:
 
 ```sh
-mnema tail repair <tail> [--from <rev>]
+mnema tail repair <tail>
 #> Repaired tail 8f21ab…-3c9d0e…: 1 line(s) put back from HEAD.
 #>   put back line 7 of 000001.jsonl (seq 6), which did not read, as HEAD holds it
 ```
