@@ -20,12 +20,7 @@
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import {
-  catalogUpcasters,
-  ENTRY_HASH_MISMATCH,
-  UnreadableLineError,
-  verifyChain,
-} from '@mnema/chain';
+import { catalogUpcasters, UnreadableLineError, verifyChain } from '@mnema/chain';
 import { type DiscoveryEnv, type ResolvedTrees, reachableTrees, resolveTrees } from '@mnema/core';
 import type { ScopedLinkBreak } from './record-integrity.js';
 import {
@@ -40,33 +35,55 @@ import { AlteredEntryError, refuseWhileAltered } from './what-a-write-meets.js';
  * THE ENTRIES A DIRECTORY OF TAILS OF SEVERAL RECORDS HOLDS ALTERED. Every reading of such a directory
  * reads no tail (`tailsReadAt`), so the cache sees no entry at all and leaves none out: the question
  * above would find nothing in the very directory `tail relink` writes into. The chain's own check is
- * asked instead, over every tail, and the line is found by the seq the issue names.
+ * asked instead, over every tail, and a write is refused over what it says is not what was written:
+ * an entry whose hash does not hold or that does not link to the one before it (named by its line,
+ * found by the seq the issue names), and a checkpoint that does not verify (a bad signature, a broken
+ * link between checkpoints). What is only a fact about the directory (two records, a key without a
+ * tail) is not a reason here.
  */
 function alteredBesideSeveralRecords(
   scope: ScopedLinkBreak['scope'],
   chainRoot: string,
 ): ScopedLinkBreak[] {
   const verdict = verifyChain({ root: chainRoot }, catalogUpcasters());
-  return verdict.issues.flatMap((issue) => {
-    if (issue.detail !== ENTRY_HASH_MISMATCH || issue.tail === undefined) return [];
-    const where = lineOf(chainRoot, issue.tail, issue.seq);
-    return [
-      {
+  const facts: ScopedLinkBreak[] = [];
+  let checkpoint: AlteredEntryError | undefined;
+  for (const issue of verdict.issues) {
+    if (issue.tail === undefined) continue;
+    if (issue.layer === 'T1' && issue.seq !== undefined) {
+      facts.push({
         scope,
         tail: issue.tail,
-        ...(issue.seq === undefined ? {} : { seq: issue.seq }),
-        detail: ENTRY_HASH_MISMATCH,
-        retained: where,
-      },
-    ];
-  });
+        seq: issue.seq,
+        detail: issue.detail,
+        retained: lineOf(chainRoot, issue.tail, issue.seq, issue.detail),
+      });
+    } else if (CHECKPOINT_THAT_DOES_NOT_HOLD.some((start) => issue.detail.startsWith(start))) {
+      // An entry that was altered fails its checkpoint too: the entry is the sentence, the checkpoint what is left.
+      checkpoint ??= new AlteredEntryError(
+        `Nothing was done: the ${scope} record holds a checkpoint that does not verify, and a write would sign over a record that no longer proves itself.\n\n` +
+          `issue [${issue.layer}] ${scope} ${issue.tail}: ${issue.detail}\n\n` +
+          'Every write in the project is refused until the record is as it was written.',
+      );
+    }
+  }
+  if (facts.length === 0 && checkpoint !== undefined) throw checkpoint;
+  return facts;
 }
+
+/** How the issues of a checkpoint that does not hold begin (`verify.ts`). */
+const CHECKPOINT_THAT_DOES_NOT_HOLD = [
+  'checkpoint failed',
+  'checkpoint chain break',
+  'public key for',
+];
 
 /** The segment and the line of the entry of `tail` that holds `seq`, as the sentence names them. */
 function lineOf(
   chainRoot: string,
   tail: string,
-  seq: number | undefined,
+  seq: number,
+  detail: string,
 ): { segment: string; line: number } {
   const dir = join(chainRoot, 'tails', tail);
   for (const segment of readdirSync(dir)
@@ -82,7 +99,9 @@ function lineOf(
       }
     }
   }
-  return { segment: '000001.jsonl', line: 0 };
+  throw new AlteredEntryError(
+    `Nothing was done: tail ${tail} holds an entry at seq ${seq} that is not what was written (${detail}), and the line that holds it could not be found.`,
+  );
 }
 
 /** What the sources say, and what a directory of several records hides from them. */

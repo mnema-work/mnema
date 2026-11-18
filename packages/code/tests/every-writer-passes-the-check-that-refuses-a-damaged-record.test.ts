@@ -40,15 +40,21 @@ import {
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { resolveTrees } from '@mnema/core';
+import { recordNamedIn } from '@mnema/chain';
+import { assignDestination, backupConfigPath, resolveTrees } from '@mnema/core';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { ListRootsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { Command } from 'commander';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { RUNS_OVER_AN_ALTERED_ENTRY } from '../src/a-write-over-an-altered-entry.js';
+import {
+  armsTheDoor,
+  OPEN_A_WRITER_AS_READS,
+  RUNS_OVER_AN_ALTERED_ENTRY,
+} from '../src/a-write-over-an-altered-entry.js';
 import { buildMcpServer } from '../src/mcp/server.js';
 import { renderPlain } from '../src/presentation/plain.js';
+import { buildProgram } from '../src/program.js';
 import type { Declared } from '../src/record-effect.js';
 import { registerVerbs } from '../src/wiring/index.js';
 import {
@@ -660,5 +666,170 @@ describe('the writers of the agent', () => {
         mendIt();
       }
     }, 120_000);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// The verbs declared as reads that touch something
+// ---------------------------------------------------------------------------
+
+/**
+ * Verbs declared `reads` that are not armed and are held to the same measure: over a damaged record they
+ * leave every tail byte for byte as it was. A verb of this table that started opening a writer of the
+ * record would append here, unasked, and the guard would name it.
+ */
+const WRITES_ELSEWHERE: Readonly<
+  Record<string, { readonly argv: () => readonly string[]; readonly because: string }>
+> = {
+  'backup setup': {
+    argv: () => ['backup', 'setup', join(sandbox, 'another-backup')],
+    because:
+      'it names a folder in a file of the machine after a person confirms at a terminal, and writes no entry',
+  },
+  'backup run': {
+    argv: () => ['backup', 'run'],
+    because:
+      'it copies the trees into a folder outside the record; a copy of a damaged record is still a copy',
+  },
+  'backup restore': {
+    argv: () => ['backup', 'restore'],
+    because:
+      'it is the way back: it puts files back where a tree lost them, never over one it holds, and must run over damage',
+  },
+  'backup hook install': {
+    argv: () => ['backup', 'hook', 'install'],
+    because: 'it writes a git hook, never the record',
+  },
+  site: {
+    argv: () => ['site', '--out', join(sandbox, 'site-out')],
+    because: 'it writes one page under the folder it is given',
+  },
+  instructions: {
+    argv: () => ['instructions'],
+    because: 'it writes the person’s instruction files beside the record and never into it',
+  },
+  doctor: {
+    argv: () => ['doctor', '--fix', 'private-tree'],
+    because:
+      'it is armed (OPEN_A_WRITER_AS_READS) for the signed moves it makes of private notes a worktree holds in .mnema/private, which this project holds none of',
+  },
+};
+
+describe('the verbs declared as reads that write outside the record, or open a writer for an option', () => {
+  const io = { out: () => undefined, err: () => undefined, fail: () => undefined };
+  const { program, verbs } = buildProgram(io, []);
+
+  it('are declared reads, and the ones the product arms are exactly the table of them', () => {
+    for (const path of Object.keys(WRITES_ELSEWHERE)) {
+      const top = path.split(' ')[0] as string;
+      const verb = verbs.find((one) => one.act.name() === top);
+      expect(verb?.effect, path).toBe('reads');
+      const armed = OPEN_A_WRITER_AS_READS.includes(top);
+      let node = program;
+      for (const word of path.split(' ')) {
+        const next = node.commands.find((one) => one.name() === word);
+        if (next === undefined) throw new Error(`no verb ${path}`);
+        node = next;
+      }
+      expect(armsTheDoor(verbs, node), path).toBe(armed);
+    }
+    expect([...OPEN_A_WRITER_AS_READS].sort()).toEqual(
+      Object.keys(WRITES_ELSEWHERE)
+        .map((path) => path.split(' ')[0] as string)
+        .filter((top) => OPEN_A_WRITER_AS_READS.includes(top)),
+    );
+  });
+
+  for (const name of Object.keys(DAMAGES)) {
+    describe(`over ${name}`, () => {
+      beforeAll(() => {
+        const trees = resolveTrees(repo, { home });
+        const named = recordNamedIn([trees.projectPublic as string]);
+        if (named.state !== 'named') throw new Error('fixture: the record has no name');
+        assignDestination(
+          backupConfigPath(trees),
+          named.name,
+          join(`${sandbox}-backup`),
+          new Date(),
+        );
+        plant(name as Damage);
+      });
+      afterAll(mendIt);
+
+      it('leave every tail as it was', () => {
+        const moved: string[] = [];
+        for (const [path, how] of Object.entries(WRITES_ELSEWHERE)) {
+          const before = theRecord();
+          const ran = mnema(how.argv());
+          if (theRecord() !== before) moved.push(`${path}: ${ran.said.split('\n')[0]}`);
+        }
+        expect(moved, 'the reads that changed the record').toEqual([]);
+      }, 120_000);
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// A directory of tails of two records: what the relink is refused over
+// ---------------------------------------------------------------------------
+
+describe('tail relink over each kind of damage in a directory of two records', () => {
+  const tailDir = (): string => join(honest.file, '..');
+  const KINDS: Readonly<
+    Record<string, { readonly damage: () => () => void; readonly says: string }>
+  > = {
+    'an entry whose hash does not hold': {
+      damage: () => {
+        plant('a decision altered after it was written');
+        return mendIt;
+      },
+      says: 'altered after it was written',
+    },
+    'entries that do not link to each other': {
+      damage: () => {
+        const lines = honest.bytes.split('\n');
+        const [first, second] = [lines[2], lines[3]] as [string, string];
+        lines[2] = second;
+        lines[3] = first;
+        writeFileSync(honest.file, lines.join('\n'));
+        return mendIt;
+      },
+      says: 'altered after it was written',
+    },
+    'a checkpoint whose signature does not hold': {
+      damage: () => {
+        const file = join(tailDir(), 'checkpoints.jsonl');
+        const held = readFileSync(file, 'utf-8');
+        writeFileSync(
+          file,
+          held.replace(/"sig":"([0-9a-f])/, (_, c: string) => `"sig":"${c === '0' ? '1' : '0'}`),
+        );
+        return () => writeFileSync(file, held);
+      },
+      says: 'a checkpoint that does not verify',
+    },
+  };
+
+  for (const [kind, one] of Object.entries(KINDS)) {
+    it(`refuses over ${kind}, and changes no byte`, () => {
+      const root = join(repo, '.mnema');
+      const other = aTailOfThisKeyInAnotherRecord(
+        root,
+        join(sandbox, 'elsewhere-again'),
+        resolveTrees(repo, { home }).keyRoot,
+      );
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 40);
+      const mend = one.damage();
+      try {
+        const before = theRecord();
+        const ran = mnema(['tail', 'relink', other, '--reason', 'it is the same work']);
+        expect(ran.status, ran.said).not.toBe(0);
+        expect(ran.said).toContain(one.says);
+        expect(theRecord()).toBe(before);
+      } finally {
+        mend();
+        rmSync(join(root, 'tails', other), { recursive: true, force: true });
+      }
+    }, 60_000);
   }
 });
