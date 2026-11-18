@@ -270,8 +270,8 @@ describe('the founding list', () => {
     const text = foundingPage({ ...done, result }, 80)
       .map((line) => renderPlain(line))
       .join('\n');
-    expect(text).toContain('done   replaced.md');
-    expect(text).toContain('block replaced');
+    expect(text).toContain('done   1 instruction file');
+    expect(text).toContain('later: `mnema instructions --remove`');
     expect(text).toContain('kept   unchanged.md');
     expect(text).toContain('left   ');
     expect(text).toContain('permission denied');
@@ -307,10 +307,7 @@ describe('the next steps', () => {
       .join('\n')
       .replace(/\n\u2502\s+/g, ' ');
     const hosts = readFileSync(new URL('../../../docs/hosts.md', import.meta.url), 'utf-8');
-    expect(text).toContain(
-      'Cursor: its command-line agent picks up the Claude Code plugin installed on this machine',
-    );
-    expect(text).toContain('`mnema mcp`');
+    expect(text).toContain('Cursor: its command-line agent reads the Claude Code plugin');
     expect(text).not.toContain('installed on the same machine');
     expect(hosts).toContain('picks up a plugin installed in Claude Code on the same machine');
     expect(hosts).toContain('mnema mcp');
