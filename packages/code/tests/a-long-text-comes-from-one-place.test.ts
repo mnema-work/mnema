@@ -177,6 +177,8 @@ describe('the same three doors on the other writes with a long text', () => {
     const none = await mnema(['skill', 'create', 'S5']);
     expect(none.failed).toBe(true);
     expect(none.err).toContain('the reusable pattern is missing');
+    expect(two.err).not.toContain('.: ');
+    expect(none.err).not.toContain('.: ');
     expect((await mnema(['timeline'])).out).not.toMatch(/S4|S5/);
   });
 
