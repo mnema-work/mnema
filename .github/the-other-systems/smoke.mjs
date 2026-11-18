@@ -388,6 +388,33 @@ try {
     'backup verify reads the copy and finds the tree as it is',
   );
 
+  // A restore of another record asks a person, and a smoke has no terminal: without one it refuses,
+  // says the command, and writes nothing. What the person's yes leaves (the live tree moved into
+  // the git directory, under a name with no colon) is planted by hand, and `--undo` puts it back.
+  const askedFirst = mnema(['backup', 'restore', '--from', 'cd'.repeat(32)], project);
+  check(askedFirst.status !== 0, 'backup restore of a record with no copy is refused');
+  const aside = join(project, '.git', 'mnema', 'before-restore-2026-11-12T23-36-30Z');
+  mkdirSync(aside, { recursive: true });
+  writeFileSync(
+    join(aside, 'before-restore.json'),
+    JSON.stringify({ trees: { private: privateTree } }),
+  );
+  renameSync(privateTree, join(aside, 'private'));
+  const undone = mustRun(
+    'mnema backup restore --undo',
+    mnema(['backup', 'restore', '--undo'], project),
+  );
+  check(
+    /Put back the private tree/.test(undone.out) &&
+      readdirSync(join(privateTree, 'tails')).length === tailsInTheTree,
+    'backup restore --undo puts the tree kept aside back',
+  );
+  const undoneTwice = mnema(['backup', 'restore', '--undo'], project);
+  check(
+    undoneTwice.status !== 0 && /nothing to put back/.test(undoneTwice.err + undoneTwice.out),
+    'a second --undo has nothing to put back',
+  );
+
   section('doctor');
   const doctor = mustRun('mnema doctor', mnema(['doctor'], project));
   check(doctor.out.trim() !== '', 'doctor says something');

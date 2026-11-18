@@ -436,7 +436,20 @@ export function issuesOf(repository) {
       return same === undefined ? null : same.number;
     },
     async create(title, body) {
-      const made = gh(['issue', 'create', '--repo', repository, '--title', title, '--body', body]);
+      const made = gh([
+        'issue',
+        'create',
+        '--repo',
+        repository,
+        '--title',
+        title,
+        '--body',
+        body,
+        '--label',
+        'documentation',
+        '--label',
+        'ci',
+      ]);
       return Number(made.trim().split('/').at(-1));
     },
     async comment(number, body) {

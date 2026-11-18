@@ -298,7 +298,7 @@ jobs:
             if [ -n "$open" ]; then
               gh issue comment "$open" --repo "$GITHUB_REPOSITORY" --body "$body"
             else
-              gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
+              gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body" --label "flaky test" --label tests
             fi
           }
           told=0

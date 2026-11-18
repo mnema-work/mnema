@@ -69,6 +69,7 @@ const BUILT_WITH: Readonly<Record<string, readonly unknown[]>> = {
     'f'.repeat(64),
     { refused: 'foreign', own: 'a'.repeat(64), record: 'b'.repeat(64) },
   ],
+  AsideError: ['NOTHING_TO_UNDO', 'Nothing was kept aside.'],
   BackupConfigError: ['/tmp/x/backup.json is not JSON.'],
   BackupRefusedError: ['LINKED', '/tmp/x is a symbolic link.'],
   RecordLinkedError: [{ root: '/tmp/x' }, 'locks'],

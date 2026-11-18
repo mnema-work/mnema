@@ -20,14 +20,16 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { tailLockPath, withTailLock } from '@mnema/chain';
-import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
+import { recordNamedIn, tailLockPath, withTailLock } from '@mnema/chain';
+import { asidesIn, type DiscoveryEnv, privateTreesLeftBehind, resolveTrees } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  planBackupRestore,
   runBackupRestore,
   runBackupRun,
   runBackupSetup,
   runBackupStatus,
+  runBackupUndo,
   runBackupVerify,
   runGlobalBackupRun,
   runGlobalBackupSetup,
@@ -513,18 +515,19 @@ describe('a copy read back, and put back', () => {
     expect(digest(priv)).toBe(before);
   });
 
-  it("does not restore another record's copy: by its manifest, nor by the record the tree it would join names", () => {
+  it("turns away a copy that disagrees with itself, and asks about another record's: by the record the tree it would join names", () => {
     const { a, priv, copy, record } = backedUp('alpha');
     const other = backedUp('beta');
-    // Beta's private copy where alpha's is, with its own manifest...
+    // Beta's private copy where alpha's is, with a manifest that says beta in a folder that says alpha...
     rmSync(copy, { recursive: true, force: true });
     cpSync(other.copy, copy, { recursive: true });
     expect(runBackupRestore(a, false)).toMatchObject({ ok: false, code: 'OTHER_RECORD' });
-    // ...and with a manifest that says alpha: the tails name another record than alpha's private tree.
+    // ...and with a manifest that says alpha: the tails name another record than alpha's private tree, which is asked.
     const manifest = join(copy, 'mnema-backup.json');
     const said = JSON.parse(readFileSync(manifest, 'utf-8')) as { record: string };
     writeFileSync(manifest, JSON.stringify({ ...said, record }));
-    expect(runBackupRestore(a, false)).toMatchObject({ ok: false, code: 'OTHER_RECORD' });
+    expect(runBackupRestore(a, false)).toMatchObject({ ok: false, code: 'NOT_CONFIRMED' });
+    expect(runBackupRestore(a, true)).toMatchObject({ ok: true, dryRun: true });
     expect(existsSync(priv)).toBe(true);
   });
 
@@ -564,5 +567,233 @@ describe('a copy read back, and put back', () => {
     expect(runBackupSetup(a, join(sandbox, 'empty')).ok).toBe(true);
     expect(runBackupVerify(a)).toMatchObject({ ok: false, code: 'NO_COPY' });
     expect(runBackupRestore(a, false)).toMatchObject({ ok: false, code: 'NO_COPY' });
+  });
+});
+
+describe("a copy of another record's, with a question and a way back", () => {
+  /** Alpha, set up with the folder beta's copy is in, and beta's record. */
+  function alphaWithBetasCopy(inGit: boolean) {
+    const a = project('alpha', inGit);
+    const b = project('beta', inGit);
+    const folder = join(sandbox, 'folder-beta');
+    const set = runBackupSetup(b, folder);
+    if (!set.ok) throw new Error('setup refused');
+    expect(runBackupRun(b).ok).toBe(true);
+    expect(runBackupSetup(a, folder).ok).toBe(true);
+    const trees = resolveTrees(a.cwd, env);
+    return { a, b, folder, beta: set.record, trees, priv: trees.projectPrivate as string };
+  }
+  const porcelain = (cwd: string) =>
+    spawnSync('git', ['status', '--porcelain'], {
+      cwd,
+      env: { PATH: process.env.PATH ?? '', HOME: sandbox, GIT_CONFIG_GLOBAL: '/dev/null' },
+    }).stdout.toString();
+  const T1 = new Date('2026-11-12T23:36:30Z');
+  const T2 = new Date('2026-11-12T23:40:00Z');
+
+  it('asks first, keeps the live tree in the git directory, puts the copy in, and --undo puts the live tree back as it was', () => {
+    const { a, trees, priv, beta } = alphaWithBetasCopy(true);
+    const live = digest(priv);
+    const status = porcelain(a.cwd);
+
+    // Without a yes nothing is done, and a dry run only says it.
+    expect(runBackupRestore(a, false, { from: beta })).toMatchObject({
+      ok: false,
+      code: 'NOT_CONFIRMED',
+    });
+    const dry = runBackupRestore(a, true, { from: beta });
+    expect(dry).toMatchObject({ ok: true, dryRun: true, keptAside: undefined });
+    expect(digest(priv)).toBe(live);
+    expect(asidesIn(join(a.cwd, '.git'))).toEqual([]);
+
+    const done = runBackupRestore(a, false, { from: beta, confirmed: true, now: T1 });
+    if (!done.ok) throw new Error(JSON.stringify(done));
+    const folder = join(a.cwd, '.git', 'mnema', 'before-restore-2026-11-12T23-36-30Z');
+    expect(done.keptAside?.folder).toBe(folder);
+    // The live tree, whole, and never in the working tree: git sees no new file.
+    expect(digest(join(folder, 'private'))).toBe(live);
+    expect(porcelain(a.cwd)).toBe(status);
+    expect(digest(priv)).not.toBe(live);
+    expect(readdirSync(join(priv, 'tails'))).toHaveLength(1);
+    // The folder is not a project: the private tree of this one is where it was.
+    expect(resolveTrees(a.cwd, env).projectPrivate).toBe(trees.projectPrivate);
+    expect(privateTreesLeftBehind(a.cwd)?.left).toEqual([]);
+
+    const undone = runBackupUndo(a);
+    expect(undone).toMatchObject({ ok: true, trees: ['private'] });
+    expect(digest(priv)).toBe(live);
+    expect(porcelain(a.cwd)).toBe(status);
+    // What stood in the place was kept, not deleted, and a second undo has nothing to put back.
+    expect(existsSync(join(folder, 'restored-private', 'tails'))).toBe(true);
+    expect(runBackupUndo(a)).toMatchObject({ ok: false, code: 'NOTHING_TO_UNDO' });
+  });
+
+  it('keeps every folder it set aside: no restore deletes one, --undo goes newest first and says how many remain, and status lists them', () => {
+    const { a, beta, priv } = alphaWithBetasCopy(true);
+    const live = digest(priv);
+    const first = runBackupRestore(a, false, { from: beta, confirmed: true, now: T1 });
+    expect(first).toMatchObject({ ok: true, asides: [expect.anything()] });
+    const second = runBackupRestore(a, false, { from: beta, confirmed: true, now: T2 });
+    const one = join(a.cwd, '.git', 'mnema', 'before-restore-2026-11-12T23-36-30Z');
+    const two = join(a.cwd, '.git', 'mnema', 'before-restore-2026-11-12T23-40-00Z');
+    expect(second.ok && second.asides.map((kept) => kept.folder)).toEqual([one, two]);
+    expect(existsSync(one) && existsSync(two)).toBe(true);
+    const status = runBackupStatus(a);
+    expect(status.ok && status.asides.map((kept) => kept.folder)).toEqual([one, two]);
+    expect(status.ok && status.asides[0]?.bytes).toBeGreaterThan(0);
+
+    const back = runBackupUndo(a);
+    expect(back).toMatchObject({ ok: true, folder: two, others: 1 });
+    expect(runBackupUndo(a)).toMatchObject({ ok: true, folder: one, others: 1 });
+    expect(digest(priv)).toBe(live);
+    // What an undo moved aside is a folder the person has to delete too: status lists it, and no more asks it to be put back.
+    const after = runBackupStatus(a);
+    expect(
+      after.ok && after.asides.map((kept) => [kept.folder, kept.trees, kept.restored]),
+    ).toEqual([
+      [one, [], ['private']],
+      [two, [], ['private']],
+    ]);
+    expect(after.ok && after.asides.every((kept) => kept.bytes > 0)).toBe(true);
+    expect(runBackupUndo(a)).toMatchObject({ ok: false, code: 'NOTHING_TO_UNDO' });
+  });
+
+  it("does not delete this project's folder when another project of the repository restores", () => {
+    const { a, beta } = alphaWithBetasCopy(true);
+    const kept = runBackupRestore(a, false, { from: beta, confirmed: true, now: T1 });
+    if (!kept.ok) throw new Error('refused');
+    const nested = join(a.cwd, 'nested');
+    mkdirSync(nested);
+    runInit({ cwd: nested, env });
+    const n = { cwd: nested, env };
+    expect(runTask(n, { title: 'work', scope: 'private' }).ok).toBe(true);
+    const folder = join(sandbox, 'folder-nested');
+    expect(runBackupSetup(n, folder).ok).toBe(true);
+    expect(runBackupRun(n).ok).toBe(true);
+    expect(runBackupRestore(n, false)).toMatchObject({ ok: true });
+    expect(existsSync(kept.keptAside?.folder as string)).toBe(true);
+  });
+
+  it('names, for each tree, the record the tree to be replaced holds, and says the truth of a public tree with several', () => {
+    const { a, beta } = alphaWithBetasCopy(true);
+    const before = planBackupRestore(a, beta);
+    expect(before.ok && before.holds).toEqual([
+      { tree: 'private', says: expect.stringMatching(/^the record [0-9a-f]{64}$/) },
+    ]);
+    const held = before.ok ? before.holds[0]?.says : '';
+    runBackupRestore(a, false, { from: beta, confirmed: true, now: T1 });
+    const after = planBackupRestore(a, beta);
+    // The private tree now holds the copy's own record, and the question says so, not the project's.
+    expect(after.ok && after.holds[0]?.says).not.toBe(held);
+    expect(after.ok && after.holds[0]?.says).toContain(beta === '' ? '' : 'the record');
+  });
+
+  it('says what the public tails are when the project has no name: none, or several records', () => {
+    const g = project('gamma', false);
+    const folder = join(sandbox, 'folder-gamma');
+    expect(runBackupSetup(g, folder).ok).toBe(true);
+    const tails = join(g.cwd, '.mnema', 'tails');
+    const [tail] = readdirSync(tails);
+    rmSync(tails, { recursive: true, force: true });
+    const none = runBackupRestore(g, false);
+    expect(none.ok === false && 'message' in none && none.message).toContain(
+      'holds no tail that names a record',
+    );
+    const other = project('delta', false);
+    cpSync(join(other.cwd, '.mnema', 'tails'), tails, { recursive: true });
+    cpSync(join(g.cwd, '.mnema', 'private', 'tails'), join(tails, 'x'), { recursive: true });
+    expect(tail).toBeDefined();
+    const said = runBackupRestore(g, false);
+    expect(said).toMatchObject({ ok: false });
+    expect(said.ok === false && 'message' in said && said.message).not.toContain(
+      'its tails are gone',
+    );
+  });
+
+  it('counts a dry run as the restore will count, with the kept tree already gone', () => {
+    const { a, beta } = alphaWithBetasCopy(true);
+    const dry = runBackupRestore(a, true, { from: beta });
+    const real = runBackupRestore(a, false, { from: beta, confirmed: true, now: T1 });
+    expect(dry.ok && real.ok && dry.trees.map((t) => t.placing.length)).toEqual(
+      real.ok ? real.trees.map((t) => t.restored?.files) : [],
+    );
+  });
+
+  it('takes one lock for every restore and every undo of the repository, whichever kind is held against which', () => {
+    const { a, beta, priv } = alphaWithBetasCopy(true);
+    const lock = join(a.cwd, '.git', 'mnema', 'restoring.lock');
+    const live = digest(priv);
+    // A restore that asks, while another holds the repository.
+    expect(
+      withTailLock(lock, () =>
+        runBackupRestore(a, false, { from: beta, confirmed: true, now: T1 }),
+      ),
+    ).toMatchObject({ ok: false, code: 'RESTORE_RUNNING' });
+    expect(asidesIn(join(a.cwd, '.git'))).toEqual([]);
+    expect(digest(priv)).toBe(live);
+    // A restore of the project's own copy, which asks nothing, holds the same lock: so does one that is held against it.
+    expect(runBackupRun(a).ok).toBe(true);
+    expect(withTailLock(lock, () => runBackupRestore(a, false))).toMatchObject({
+      ok: false,
+      code: 'RESTORE_RUNNING',
+    });
+    expect(withTailLock(lock, () => runBackupUndo(a))).toMatchObject({ code: 'RESTORE_RUNNING' });
+    // And the one that asks is held off by a restore that is writing: the writer holds the repository lock too.
+    expect(runBackupRestore(a, false)).toMatchObject({ ok: true });
+  });
+
+  describe('where the public tree lost its tails and the project has no name', () => {
+    /** A project without git, backed up, whose public tails are then gone. */
+    function nameless(label = 'gamma') {
+      const g = project(label, false);
+      const folder = join(sandbox, `folder-${label}`);
+      const set = runBackupSetup(g, folder);
+      if (!set.ok) throw new Error('setup refused');
+      expect(runBackupRun(g).ok).toBe(true);
+      const publicTails = join(g.cwd, '.mnema', 'tails');
+      rmSync(publicTails, { recursive: true, force: true });
+      expect(recordNamedIn([join(g.cwd, '.mnema')]).state).not.toBe('named');
+      return { g, folder, record: set.record, publicTails };
+    }
+
+    it('takes the name from the copy, asks, and restores only with a yes', () => {
+      const { g, record, publicTails } = nameless();
+      expect(runBackupVerify(g)).toMatchObject({ ok: false, reason: 'NO_RECORD_NAME' });
+      const asked = runBackupRestore(g, false);
+
+      expect(asked).toMatchObject({ ok: false, code: 'NOT_CONFIRMED' });
+      expect(existsSync(publicTails)).toBe(false);
+      const dry = runBackupRestore(g, true);
+      expect(dry).toMatchObject({ ok: true, dryRun: true, copyRecord: record });
+      expect(existsSync(publicTails)).toBe(false);
+
+      const done = runBackupRestore(g, false, { confirmed: true });
+      expect(done).toMatchObject({ ok: true, copyRecord: record, keptAside: undefined });
+      expect(existsSync(publicTails)).toBe(true);
+      expect(recordNamedIn([join(g.cwd, '.mnema')])).toMatchObject({
+        state: 'named',
+        name: record,
+      });
+      expect(runBackupVerify(g)).toMatchObject({ ok: true, sound: true });
+    });
+
+    it('says so when this machine has no copy to take the name from', () => {
+      const { g, folder } = nameless();
+      rmSync(folder, { recursive: true, force: true });
+      const refused = runBackupRestore(g, false, { confirmed: true });
+      expect(refused).toMatchObject({ ok: false, reason: 'NO_RECORD_NAME' });
+      expect(refused.ok === false && 'message' in refused && refused.message).toContain('no copy');
+    });
+
+    it('does not guess among several copies, and says the command that names one', () => {
+      const { g, record } = nameless();
+      const other = project('delta', false);
+      expect(runBackupSetup(other, join(sandbox, 'folder-delta')).ok).toBe(true);
+      expect(runBackupRun(other).ok).toBe(true);
+      const refused = runBackupRestore(g, false, { confirmed: true });
+      expect(refused).toMatchObject({ ok: false, reason: 'NO_RECORD_NAME' });
+      expect(refused.ok === false && 'message' in refused && refused.message).toContain('--from');
+      expect(runBackupRestore(g, true, { from: record })).toMatchObject({ ok: true });
+    });
   });
 });

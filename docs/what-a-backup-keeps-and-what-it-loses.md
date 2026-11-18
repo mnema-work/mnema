@@ -79,7 +79,26 @@ text and nothing else, so:
   the first write after a restore opens a tail of its own, beside the restored ones.
 - **It cannot bring back what the tree wrote after the copy was made.**
 
-A copy of another record is refused by `restore` when its manifest or the live tree names it; one with no manifest, put where the tree was deleted, has nothing to be told apart by. A way to put another record's copy back, asking you first, comes next.
+### A copy of another record is asked, not refused
+
+A copy that is of another record than the tree holds (`mnema backup restore --from <record>`, the copy
+of that record in the folder the project was set up with) is put in only after you say yes, and only
+at a terminal: without one, `restore` refuses, says the command for you to run, and writes nothing. The
+question shows both names. On a yes, what the tree holds is **moved**, not copied, to
+`<git directory>/mnema/before-restore-<UTC date>/` (one folder per tree, a date such as
+`2026-11-12T23-36-30Z` with no colon), inside the git directory, so it is never committed and `git status`
+never shows it; the move is checked before the copy goes in. `mnema backup restore --undo` puts the newest one back (and says how many others stay), and
+moves what stood there meanwhile into the same folder, so nothing is deleted. **No restore deletes a
+folder kept aside**: they stay in `<git directory>/mnema/` until you delete them by hand, and
+`mnema backup status` lists the ones of this project with their date and size, including a folder an undo emptied, which now holds only what stood there before it (`restored-<tree>/`). Only a project in a git
+repository has that place: outside one, a restore of another record is refused, and says why. The
+machine's global tree is not part of this. The tree is checked by this mnema's reader before and after it
+moves; the second reader (the Python program) is not run on it.
+
+The same question is asked when a project has no record name at all: a project without git backs up its public tree, and
+when that tree lost its tails nothing names the record. `restore` then takes the name from the copy's manifest, shows it, and
+asks (when this machine has the copy of more than one record, it asks for `--from`). A copy that disagrees with itself (the folder, its
+manifest and its tails name different records) is refused, never asked.
 
 ## What you still look after
 

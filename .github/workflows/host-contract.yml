@@ -669,6 +669,6 @@ jobs:
             if [ -n "$OPEN" ]; then
               gh issue comment "$OPEN" --repo "$GITHUB_REPOSITORY" --body "$BODY"
             else
-              gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --body "$BODY"
+              gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --body "$BODY" --label ci --label "area: hosts"
             fi
           done

@@ -301,6 +301,64 @@ describe('mnema backup verify and restore', () => {
     expect(gone.out.join('\n')).toContain('is in the copy and not in the tree');
   });
 
+  it('asks at a terminal before it takes the name of a copy for a record that lost its tails, and writes nothing without a yes', async () => {
+    const folder = join(sandbox, 'folder');
+    await mnema(['backup', 'setup', folder], answering('yes'));
+    expect((await mnema(['backup', 'run'])).failed).toBe(false);
+    const trees = resolveTrees(repo, { home: join(sandbox, 'home') });
+    const tails = join(trees.projectPublic as string, 'tails');
+    const record = readdirSync(folder)[0] as string;
+    rmSync(tails, { recursive: true, force: true });
+
+    // A pipe can be read but is nobody: refused, with the command a person runs, and nothing written.
+    const asked: string[] = [];
+    for (const io of [
+      { ask: async () => 'yes' },
+      {},
+      { aPersonIsHere: true },
+    ] satisfies Partial<CliIo>[]) {
+      const piped = await mnema(['backup', 'restore'], io);
+      expect(piped.failed).toBe(true);
+      expect(piped.err.join(' ')).toContain('run `mnema backup restore` in a terminal');
+      expect(piped.err.join(' ')).toContain(record);
+      expect(existsSync(tails)).toBe(false);
+    }
+
+    // A dry run says the names and asks nobody.
+    const dry = await mnema(['backup', 'restore', '--dry-run'], {
+      aPersonIsHere: true,
+      ask: async (question) => {
+        asked.push(question);
+        return 'yes';
+      },
+    });
+    expect(dry.failed, dry.err.join(' / ')).toBe(false);
+    expect(dry.out.join('\n')).toContain(record);
+    expect(asked).toEqual([]);
+    expect(existsSync(tails)).toBe(false);
+
+    // Anything but yes is no.
+    const no = await mnema(['backup', 'restore'], answering('y'));
+    expect(no.out.join('\n')).toContain('Nothing was restored.');
+    expect(existsSync(tails)).toBe(false);
+
+    const yes = await mnema(['backup', 'restore'], answering('yes'));
+    expect(yes.failed, yes.err.join(' / ')).toBe(false);
+    expect(yes.out.join('\n')).toContain(`Restored record ${record.slice(0, 12)}`);
+    expect(existsSync(tails)).toBe(true);
+    expect((await mnema(['backup', 'verify'])).failed).toBe(false);
+  });
+
+  it('takes --undo alone, and says there is nothing to put back where nothing was kept', async () => {
+    const folder = join(sandbox, 'folder');
+    await mnema(['backup', 'setup', folder], answering('yes'));
+    const mixed = await mnema(['backup', 'restore', '--undo', '--dry-run']);
+    expect(mixed.failed).toBe(true);
+    expect(mixed.err.join(' ')).toContain('--undo takes no other option');
+    const none = await mnema(['backup', 'restore', '--undo']);
+    expect(none.failed).toBe(true);
+  });
+
   it('refuses where the project has no folder for its backup', async () => {
     for (const argv of [
       ['backup', 'verify'],
