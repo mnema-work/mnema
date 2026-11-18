@@ -63,7 +63,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { checkpointHash, ensureTree, parseCheckpoint } from '@mnema/chain';
+import { checkpointHash, ensureTree, parseCheckpoint, readingWhatTheDiskLets } from '@mnema/chain';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { type DecisionFacts, nameOf, readDecisionFacts } from '../decisions-in-git.js';
 import { theDefaultBranch } from '../events-not-in-git.js';
@@ -296,12 +296,14 @@ interface LocalTail {
 }
 
 function readTail(dir: string, id: string): LocalTail {
-  const names = readdirSync(dir).sort();
+  const names = readingWhatTheDiskLets(dir, `tails/${id}`, () => readdirSync(dir)).sort();
   const bytes = new Map<string, Buffer>();
   const segments = names.filter((name) => SEGMENT.test(name));
   const events: EventLine[] = [];
   for (const segment of segments) {
-    const held = readFileSync(join(dir, segment));
+    const held = readingWhatTheDiskLets(join(dir, segment), `tails/${id}/${segment}`, () =>
+      readFileSync(join(dir, segment)),
+    );
     bytes.set(segment, held);
     let start = 0;
     for (const end of lineEnds(held)) {
@@ -311,7 +313,9 @@ function readTail(dir: string, id: string): LocalTail {
   }
   const checkpoints: { end: number; toSeq: number; hash: string }[] = [];
   if (names.includes(CHECKPOINTS)) {
-    const held = readFileSync(join(dir, CHECKPOINTS));
+    const held = readingWhatTheDiskLets(join(dir, CHECKPOINTS), `tails/${id}/${CHECKPOINTS}`, () =>
+      readFileSync(join(dir, CHECKPOINTS)),
+    );
     bytes.set(CHECKPOINTS, held);
     let start = 0;
     for (const end of lineEnds(held)) {
@@ -356,7 +360,9 @@ function linksIn(record: string, recordDir: string): string[] {
   const links: string[] = [];
   const look = (dir: string, under: string) => {
     if (!existsSync(dir)) return [];
-    const names = readdirSync(dir).sort();
+    const names = readingWhatTheDiskLets(dir, under.replace(/\/$/, ''), () =>
+      readdirSync(dir),
+    ).sort();
     for (const name of names) {
       if (lstatSync(join(dir, name)).isSymbolicLink()) links.push(`${recordDir}${under}${name}`);
     }
@@ -608,7 +614,7 @@ function cut(
   // The tails of the committed tree here.
   const tailsDir = join(record, 'tails');
   const tails = existsSync(tailsDir)
-    ? readdirSync(tailsDir)
+    ? readingWhatTheDiskLets(tailsDir, 'tails', () => readdirSync(tailsDir))
         .filter((id) => lstatSync(join(tailsDir, id)).isDirectory())
         .sort()
         .map((id) => readTail(join(tailsDir, id), id))
@@ -629,7 +635,7 @@ function cut(
       found.push({ tail: id, path, said: `${path}: on ${base.ref}, and not here.` });
       continue;
     }
-    const ours = readFileSync(here);
+    const ours = readingWhatTheDiskLets(here, `tails/${id}/${name}`, () => readFileSync(here));
     const joined = joinGrownTail(ours, theirs);
     if (joined.kind === 'same') continue;
     if (name !== TAILPROOF && joined.kind === 'longer' && joined.side === 'ours') continue;
@@ -723,7 +729,9 @@ function cut(
     const covered = new Set(tail.checkpoints.slice(0, chosen + 1).map((one) => one.hash));
     const witness = join(tailsDir, tail.id, 'witness');
     if (existsSync(witness)) {
-      for (const name of readdirSync(witness).sort()) {
+      for (const name of readingWhatTheDiskLets(witness, undefined, () =>
+        readdirSync(witness),
+      ).sort()) {
         if (!covered.has(name.slice(0, name.indexOf('.')))) continue;
         if (!lstatSync(join(witness, name)).isFile()) continue;
         const bytes = readFileSync(join(witness, name));
@@ -748,7 +756,7 @@ function cut(
   const carriedBytes = [...writes.values()];
   const keysDir = join(record, 'keys');
   if (existsSync(keysDir)) {
-    for (const name of readdirSync(keysDir).sort()) {
+    for (const name of readingWhatTheDiskLets(keysDir, 'keys', () => readdirSync(keysDir)).sort()) {
       const fp = KEY_FILE.exec(name)?.[1];
       const path = `${recordDir}keys/${name}`;
       if (fp === undefined || held.has(path)) continue;

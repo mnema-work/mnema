@@ -21,6 +21,7 @@ import {
   catalogUpcasters,
   isSegmentFile,
   type LinePutBack,
+  readingWhatTheDiskLets,
   repairTail,
   type TailRepairRefusal,
   tailDir,
@@ -71,7 +72,9 @@ export function runTailRepair(
 
   const has = (root: string | undefined): boolean => {
     if (root === undefined || !existsSync(join(root, 'tails'))) return false;
-    return readdirSync(join(root, 'tails')).includes(input.tail);
+    return readingWhatTheDiskLets(join(root, 'tails'), 'tails', () =>
+      readdirSync(join(root, 'tails')),
+    ).includes(input.tail);
   };
   if (!has(record)) {
     if (has(trees.projectPrivate)) {
@@ -109,7 +112,10 @@ export function runTailRepair(
 
   const layout = { root: record };
   const committed = new Map<string, Uint8Array>();
-  for (const name of readdirSync(tailDir(layout, input.tail)).filter(isSegmentFile)) {
+  const named = readingWhatTheDiskLets(tailDir(layout, input.tail), `tails/${input.tail}`, () =>
+    readdirSync(tailDir(layout, input.tail)),
+  );
+  for (const name of named.filter(isSegmentFile)) {
     const blob = git(['cat-file', 'blob', `${sha}:${there}tails/${input.tail}/${name}`]);
     if (blob.status === 0) committed.set(name, blob.out);
   }
