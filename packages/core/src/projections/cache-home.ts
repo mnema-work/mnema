@@ -30,7 +30,7 @@ import { accessSync, closeSync, constants, openSync, readSync, statSync } from '
 import { isAbsolute, join } from 'node:path';
 import {
   type ChainLayout,
-  listTailsLeavingLinks,
+  listTailsToChooseACacheBy,
   orderedSegments,
   projectionCachePath,
 } from '@mnema/chain';
@@ -95,7 +95,7 @@ export function readCacheIsChosen(): boolean {
 function identityOf(layout: ChainLayout): string {
   const hash = createHash('sha256');
   // A link is left out of the name and named by the replay: choosing the cache file refuses nothing.
-  for (const tail of listTailsLeavingLinks(layout)) {
+  for (const tail of listTailsToChooseACacheBy(layout)) {
     const [first] = orderedSegments(layout, tail, () => {});
     hash.update(tail);
     hash.update('\0');

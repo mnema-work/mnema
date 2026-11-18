@@ -352,13 +352,14 @@ describe('a tree that goes away, or stops being readable, between two reads', ()
     closeSession(session);
   });
 
-  it('a chain that cannot be read fails the read, and recovers when it can be read again', () => {
+  it('a chain that cannot be read serves nothing of it, and recovers when it can be read again', () => {
     // The other end of the same rule. Serving a projection of a chain nobody can
     // read is the same false answer as serving one of a chain that is gone; it
-    // just looks better. So the replay is attempted, the replay is what reports
-    // the fault, and it reports it by failing: the same answer a fresh process
-    // gives. The entry keeps its older extent through the failure, so the read
-    // after the fault clears replays rather than trusting what it held.
+    // just looks better. So the replay is attempted, the replay is what finds the
+    // part the disk will not open, and the read serves around it as a fresh process
+    // does (ADR-396): what it holds is not shown, so the answer is empty, not the
+    // projection it had. The entry keeps its older extent through the fault, so the
+    // read after it clears replays rather than trusting what it held.
     const session = openHere();
     cli('decision', 'record', 'Readable for now', 'until the tails go away');
     expect(seen(session)).toBe(1);
@@ -368,7 +369,7 @@ describe('a tree that goes away, or stops being readable, between two reads', ()
     renameSync(tails, stashed);
     writeFileSync(tails, 'not a directory\n', 'utf-8');
 
-    expect(() => seen(session)).toThrow();
+    expect(seen(session)).toBe(0);
 
     rmSync(tails);
     renameSync(stashed, tails);

@@ -164,8 +164,11 @@ function fromDirectory(
 ): AdrScan {
   const read: ScannedDecision[] = [];
   const refused: ScanRefusal[] = [];
+  let end = directory.length;
+  while (end > 0 && directory[end - 1] === '/') end -= 1;
+  const shown = directory.slice(0, end);
   for (const name of names(directory, extension).filter((n) => !skip(n))) {
-    const path = `${directory.replace(/\/+$/, '')}/${name}`;
+    const path = `${shown}/${name}`;
     let text: string;
     try {
       text = readFileSync(join(directory, name), 'utf8');

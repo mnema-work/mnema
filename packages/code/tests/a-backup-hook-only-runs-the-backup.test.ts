@@ -180,18 +180,23 @@ describe('installing and removing the hook', () => {
 });
 
 describe('a commit with the hook installed', () => {
-  /** A directory of programs: `mnema` as the script that records what it was given and runs the CLI. */
-  function bin(): { dir: string; seen: string } {
+  /**
+   * A directory of programs: `mnema` as the script that records what it was given, runs the CLI and
+   * writes `ended` when the CLI has exited. The hook starts the backup in the background and gives
+   * no pid, so that marker is how a test knows the run is over before it removes the sandbox.
+   */
+  function bin(): { dir: string; seen: string; ended: string } {
     // mnema first on the PATH, then the machine's own: the hook's shell needs `env` and `sed`.
     const dir = join(sandbox, 'bin');
     mkdirSync(dir, { recursive: true });
     const seen = join(sandbox, 'seen-env.txt');
+    const ended = join(sandbox, 'mnema-ended.txt');
     writeFileSync(
       join(dir, 'mnema'),
-      `#!/bin/sh\nenv > "${seen}"\nexec "${process.execPath}" "${MNEMA_CLI}" "$@"\n`,
+      `#!/bin/sh\nenv > "${seen}"\n"${process.execPath}" "${MNEMA_CLI}" "$@"\nstatus=$?\necho "$status" > "${ended}"\nexit "$status"\n`,
     );
     chmodSync(join(dir, 'mnema'), 0o755);
-    return { dir: `${dir}${delimiter}${process.env.PATH ?? ''}`, seen };
+    return { dir: `${dir}${delimiter}${process.env.PATH ?? ''}`, seen, ended };
   }
 
   /** Waits, for at most `ms`, until `done` holds. */
@@ -211,7 +216,7 @@ describe('a commit with the hook installed', () => {
     expect(runBackupSetup(ctx, remote)).toMatchObject({ ok: true, git: true });
     expect(installBackupHook({ cwd: repo }).ok).toBe(true);
 
-    const { dir, seen } = bin();
+    const { dir, seen, ended } = bin();
     writeFileSync(join(repo, 'file.txt'), 'x\n');
     expect(git(['add', 'file.txt'], dir).status).toBe(0);
     const committed = git(['commit', '-q', '-m', 'a change'], dir);
@@ -222,6 +227,10 @@ describe('a commit with the hook installed', () => {
       50_000,
     );
     expect(held, 'the backup of the hook reached the destination').toBe(true);
+    expect(
+      until(() => existsSync(ended), 50_000),
+      'the backup of the hook ended',
+    ).toBe(true);
     expect(git(['ls-tree', '-r', '--name-only', 'main'], dir, remote).stdout).toContain(
       '/private/',
     );
@@ -236,10 +245,14 @@ describe('a commit with the hook installed', () => {
     const ctx = { cwd: repo, env: { home: join(sandbox, 'home') } };
     runInit(ctx);
     expect(installBackupHook({ cwd: repo }).ok).toBe(true);
-    const { dir } = bin();
+    const { dir, ended } = bin();
     writeFileSync(join(repo, 'file.txt'), 'x\n');
     git(['add', 'file.txt'], dir);
     expect(git(['commit', '-q', '-m', 'a change'], dir).status).toBe(0);
+    expect(
+      until(() => existsSync(ended), 50_000),
+      'the backup of the hook ended',
+    ).toBe(true);
     expect(git(['for-each-ref'], dir, remote).stdout.trim()).toBe('');
   });
 });

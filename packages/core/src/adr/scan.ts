@@ -127,7 +127,9 @@ const NOT_A_DECISION: readonly string[] = [
 
 /** The path, POSIX-style, of a file inside the scanned directory. */
 function relative(directory: string, file: string): string {
-  return `${directory.replace(/\/+$/, '')}/${file}`;
+  let end = directory.length;
+  while (end > 0 && directory[end - 1] === '/') end -= 1;
+  return `${directory.slice(0, end)}/${file}`;
 }
 
 /** The bytes a field would weigh in the record: UTF-8, the form the chain stores. */

@@ -39,6 +39,10 @@ const HELPER = 'every-cache-state';
  * long cases; they are owed.
  */
 export const EXEMPT: Readonly<Record<string, string>> = {
+  'packages/chain/src/chain/a-part-the-disk-will-not-open-is-handed-to-a-collector.test.ts':
+    'holds what the readers of the chain hand a collector, or throw, for a folder or a file the disk will not open; the chain has no projection cache (the cache states are asked of the binary in a-part-the-disk-will-not-open-is-named-and-never-an-errno)',
+  'packages/code/tests/a-part-the-disk-will-not-open-is-named-and-never-an-errno.test.ts':
+    'holds what the binary says when the DISK refuses a folder or a file of a tree, which the cache never keeps: no cache state changes whether the disk lets a path open, and the cache is not what the case asks',
   // Not a claim about damage: the case never damages a record and the cache is not what it reads.
   'packages/code/tests/a-client-that-never-initializes.test.ts':
     'holds what the server answers to a client that skips the handshake; no record is damaged',
@@ -127,6 +131,8 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'is the cache’s own test: it opens the cache cold, with a connection that read before the alteration, and kept on disk, over one altered tail',
   'packages/code/tests/a-write-is-refused-while-an-entry-is-altered.test.ts':
     'judges the write door, which asks the chain as it stands now in memory and over no cache the command line keeps; the one state a cache can vary for a write, a session that read before the alteration, is its own case',
+  'packages/code/tests/every-writer-passes-the-check-that-refuses-a-damaged-record.test.ts':
+    'judges the write door of every writer, which asks the chain as it stands now in memory and over no cache the command line keeps; the cache states of the door are held by a-write-is-refused-while-an-entry-is-altered',
   // Declared debt: damage a record and judge it, and run only in the state the last write left.
   'packages/code/tests/the-ci-recipe-catches-what-verify-cannot.test.ts':
     'DEBT: damaged records judged by the published CI recipe in a sandbox, a base clone and a bin directory built once in a beforeAll; each case needs its own found/damage/run split',

@@ -104,6 +104,8 @@ const ANSWERS_ANYWAY: Readonly<Record<string, string>> = {
   switch: 'where a channel stands is a question about the trees there are, not about a project',
   doctor:
     'it asks the machine how mnema is installed, which is true wherever it is run, and it reads no record',
+  upgrade:
+    'it brings up to date what an update left of the machine’s (a plugin path in VS Code’s settings, a plugin a host keeps), which is true wherever it is run, and has nothing to do for a project where there is none',
   report:
     'it shows what this machine logged about mnema’s own faults, from a file of the machine’s beside the record and not in it',
   'tail list': 'the tails it lists are the ones held here, in whichever trees exist',

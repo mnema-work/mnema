@@ -291,6 +291,8 @@ const VERBS_NOT_IN_THE_LIBRARY: Readonly<Record<string, string>> = {
 const VERBS_THAT_WRITE_NOTHING_AND_ARE_NOT_TOOLS: Readonly<Record<string, string>> = {
   backup:
     'it copies the trees into a folder the person named and writes nothing to the record; a person at a shell asks for it, and an agent may suggest the command',
+  upgrade:
+    'it puts mnema’s own text of an earlier version at this one and asks before the merge driver goes into a clone’s git configuration; it writes nothing to the record, a person at a shell asks for it, and an agent may suggest the command',
 };
 
 /**

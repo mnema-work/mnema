@@ -129,7 +129,8 @@ carries the help the command prints, word for word.
   - [mnema backup hook](cli/backup-hook.md): install or remove an optional git hook that runs the backup after a commit
   - [mnema backup hook install](cli/backup-hook-install.md): add the post-commit hook that runs the backup (refuses a hook that is not a shell script, and a hooksPath inside the working tree)
   - [mnema backup hook uninstall](cli/backup-hook-uninstall.md): take out the post-commit block mnema added, and the file only if mnema wrote it whole
-- [mnema doctor](cli/doctor.md): say how mnema is installed on this machine, and what to do about each thing found (writes nothing unless you pass --fix)
+- [mnema doctor](cli/doctor.md): say how mnema is installed on this machine, and what to do about each thing found (writes nothing unless you pass --fix or --after-update)
+- [mnema upgrade](cli/upgrade.md): after installing a newer mnema: bring this project and machine up to it, asking before anything that changes how the repository behaves
 - [mnema report](cli/report.md): show, whole, what mnema would say about its own last internal error, and keep your answer to it (sends nothing)
 - [mnema completion](cli/completion.md): print the tab-completion script for a shell
 

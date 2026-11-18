@@ -29,7 +29,9 @@ export PATH="$HOME/.local/bin:$PATH"
 
 Add the `export` line to your shell's startup file so it lasts.
 
-To update, run the same install again. To run the `main` branch instead of the published version,
+To update, run the same install again, then `mnema upgrade` in each project: it brings that project and this
+machine up to the new version and asks before anything that changes how the repository behaves
+([what it does](reference/cli/upgrade.md#after-installing-a-newer-mnema)). To run the `main` branch instead of the published version,
 see [Building it from source](build-from-source.md).
 
 ## Check it
@@ -49,7 +51,7 @@ your `PATH` is the one you meant and whether the `node` it uses takes it. It wri
 npm i -g @mnema/code@0.1.8
 ```
 
-To update, run the unpinned install again.
+To update, run the unpinned install again, then `mnema upgrade` in each project.
 
 ## Where the package came from
 
