@@ -1,3 +1,4 @@
+// @reads-the-tree
 /**
  * Every workflow, and every script a workflow runs, that opens an issue gives it labels. An issue with
  * none lands in the list unsorted and nobody filters for it. The files are read as text: the opener
