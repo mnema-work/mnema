@@ -266,7 +266,7 @@ const VERBS_NOT_IN_THE_LIBRARY: Readonly<Record<string, string>> = {
   unlink: 'see `retract_link`',
   key: 'keys are a person’s',
   switch: 'a switch is a person’s',
-  tail: 'a tail is pruned by a person',
+  tail: 'a tail is pruned, relinked or repaired by a person; `tail repair` is command-line only, for the person, and an agent may suggest the command (ADR-432)',
   'before-a-write': 'covered: the `PreToolUse` hook',
   'beside-a-write': 'covered by nothing: a hook the plugin runs after a write, not an operation',
   run: 'a run is pinned by the host',

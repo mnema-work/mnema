@@ -48,6 +48,10 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'holds what a function of the chain says of a tail from its files alone; the chain has no projection cache and the question is not asked of one',
   'packages/chain/src/chain/the-products-reads-open-no-link.test.ts':
     'holds what the functions of the chain that the product reads through say of a record whose files became links; the chain has no projection cache and the question is not asked of one (the cache states are held by the-products-reads-refuse-a-linked-record, through the binary)',
+  'packages/chain/src/chain/tail-repair.test.ts':
+    'holds what the function that puts a line back says over a tail the writer made and bytes it damaged, in the function alone; the chain has no projection cache (the cache states of the repair are held through the binary in a-line-is-repaired-from-git)',
+  'packages/code/src/commands/tail-repair.test.ts':
+    'holds which tree the adapter serves and what it asks git, over a record it damages by one byte; the cache states of the repair are held through the binary in a-line-is-repaired-from-git',
   'packages/chain/src/chain/migration.test.ts':
     'holds what the move of an earlier layout does with the notes and the id of a key, on files laid out by hand; no record is damaged and the chain has no projection cache',
   'packages/code/tests/a-new-checkout-continues-its-tail.test.ts':

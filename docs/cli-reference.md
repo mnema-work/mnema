@@ -40,6 +40,7 @@ What belongs to one command is on that command's page, in [the commands](referen
 - `mnema stack`: [Skills and agents a project adopts: stacks](reference/cli/stack.md#skills-and-agents-a-project-adopts-stacks)
 - `mnema tail prune`: [Authorizing a cut, which is not the same as making one](reference/cli/tail-prune.md#authorizing-a-cut-which-is-not-the-same-as-making-one)
 - `mnema tail relink`: [Joining a tail of another record: `tail relink`](reference/cli/tail-relink.md#joining-a-tail-of-another-record-tail-relink)
+- `mnema tail repair`: [Putting back a line from git: `tail repair`](reference/cli/tail-repair.md#putting-back-a-line-from-git-tail-repair)
 - `mnema usage`: [What those sessions cost, which the record does not hold](reference/cli/usage.md#what-those-sessions-cost-which-the-record-does-not-hold)
 - `mnema usage`: [How often each tool was called, which the record does not hold either](reference/cli/usage.md#how-often-each-tool-was-called-which-the-record-does-not-hold-either)
 - `mnema witness`: [Asking somebody outside to date the record](reference/cli/witness.md#asking-somebody-outside-to-date-the-record)

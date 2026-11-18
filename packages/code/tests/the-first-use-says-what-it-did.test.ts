@@ -456,7 +456,9 @@ describe('a switch met by a line the record cannot read', () => {
     expect(said.err).toContain(`unreadable stored line at ${segment} byte offset`);
     expect(said.err).toContain(tail);
     expect(said.err).toContain('the project’s public record holds a line this mnema cannot read');
-    expect(said.err).toContain('restore the line from the repository’s history');
+    expect(said.err).toContain(
+      `\`mnema tail repair ${tail}\` puts it back from the repository’s history`,
+    );
     expect(said.err).toContain('Switching a channel off is a write to the same record');
     expect(said.err).toContain('`mnema verify` lists every unreadable line');
     expect(readFileSync(segment, 'utf-8')).toBe(bytes);

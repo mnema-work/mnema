@@ -33,7 +33,8 @@ Each line says what it does and what it leaves unproven; the page it points to h
   reader's own words. The reach is the tree's: a line of the project's public or private tree refuses
   every write in that project, and a line of the machine's global tree, which every project reads,
   refuses every write in every project of the machine. The ways out are said with it: update mnema,
-  or restore the line: from the repository's history for the public tree, and for the private and
+  or put the line back: `mnema tail repair <tail>` takes it from the repository's history for the public tree
+  ([the verb](reference/cli/tail-repair.md)), and for the private and
   the global tree, which are not versioned, from a copy, or by repairing or removing that line
   ([held by a test](../packages/code/tests/a-rule-that-refuses-a-write.test.ts), and in Claude
   Code, Gemini CLI, Qwen Code and Codex by the host contract). Nothing is recorded, because a refusal fact

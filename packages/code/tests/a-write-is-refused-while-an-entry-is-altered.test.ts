@@ -8,7 +8,7 @@
  *
  *   - every verb of the command line that writes (`memory`, `decision record`, `decision move`, `switch off`,
  *     `tail prune`, `witness`) exits non-zero with the sentence that names the tail and the line and says the
- *     entry is to be put back from the repository's history, and no tail of any tree has a byte more or less;
+ *     entry is to be put back by `mnema tail repair <tail>`, and no tail of any tree has a byte more or less;
  *   - the tools of the MCP server that write throw the same refusal at the one door they open through (the server
  *     answers it `Refused (ALTERED_ENTRY)` with the fact not recorded, as it does every refusal), and write nothing;
  *   - a hook that writes (`after-a-write` copying a note of the host's memory) refuses the same way and the
@@ -172,9 +172,10 @@ describe('the command line over an altered entry of the public tree', () => {
       expect(said, label).toMatch(/issue \[T1\] public \S+#\d+: entry hash mismatch/);
       expect(said, label).toMatch(/000001\.jsonl line \d+/);
       expect(said, label).toContain('Every write in the project is refused');
-      expect(said, label).toContain('restore the line from the repository’s history');
+      expect(said, label).toMatch(
+        /`mnema tail repair \S+` puts it back from the repository’s history/,
+      );
       expect(said, label).toContain('Switching a channel off is a write to the same record');
-      expect(said, label).not.toContain('tail repair');
       expect(said, label).not.toContain('evil.example');
       expect(theRecord(), label).toBe(before);
     }

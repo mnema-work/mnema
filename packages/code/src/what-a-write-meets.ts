@@ -318,7 +318,7 @@ export function refusalOfAnUnreadableRecord(
   return [
     `The write is refused: a line of ${words.tree} cannot be read by this mnema, so which rules apply to this path cannot be known.`,
     error.message,
-    words.out,
+    words.out(tailsOfTheLocus(error.locus)),
   ].join('\n\n');
 }
 
@@ -341,7 +341,7 @@ export function refusalOfAnAlteredRecord(facts: readonly ScopedLinkBreak[]): str
   return [
     `The write is refused: ${trees.map((tree) => ALTERED_IN[tree].tree).join(' and ')} holds an entry that was altered after it was written, so which rules apply to this path cannot be known.`,
     ...linkBreakSentences(altered),
-    ...trees.map((tree) => ALTERED_IN[tree].out),
+    ...trees.map((tree) => ALTERED_IN[tree].out(tailsOf(altered, tree))),
   ].join('\n\n');
 }
 
@@ -349,20 +349,47 @@ const NOT_VERSIONED_ALTERED =
   'This record is not versioned: restore the file from a copy, or repair or remove the line named above.';
 
 /** What the refusal says of each tree, for an altered entry: which it is, how far it reaches, the way out. */
-const ALTERED_IN: Readonly<Record<Scope, { tree: string; out: string }>> = {
+const ALTERED_IN: Readonly<
+  Record<Scope, { tree: string; out: (tails: readonly string[]) => string }>
+> = {
   public: {
     tree: 'the project’s public record',
-    out: 'Every write in the project is refused until the line is as it was written: restore the line from the repository’s history.',
+    out: (tails) =>
+      `Every write in the project is refused until the line is as it was written: ${repairWords(tails)} puts it back from the repository’s history.`,
   },
   private: {
     tree: 'the project’s private record on this machine',
-    out: `Every write in the project is refused until the line is as it was written. ${NOT_VERSIONED_ALTERED}`,
+    out: () =>
+      `Every write in the project is refused until the line is as it was written. ${NOT_VERSIONED_ALTERED}`,
   },
   global: {
     tree: 'this machine’s global record',
-    out: `This closes every project on this machine: every write in each is refused until the line is as it was written. ${NOT_VERSIONED_ALTERED}`,
+    out: () =>
+      `This closes every project on this machine: every write in each is refused until the line is as it was written. ${NOT_VERSIONED_ALTERED}`,
   },
 };
+
+/**
+ * `mnema tail repair <tail>` for each of `tails`: the verb that puts a line of the committed public tree
+ * back from git (ADR-398), named only where the tree is the public one (ADR-408).
+ */
+function repairWords(tails: readonly string[]): string {
+  return [...new Set(tails)].map((tail) => `\`mnema tail repair ${tail}\``).join(' and ');
+}
+
+/** The tails of the facts that name `tree`. */
+function tailsOf(facts: readonly ScopedLinkBreak[], tree: Scope): string[] {
+  return facts.filter((fact) => fact.scope === tree).map((fact) => fact.tail);
+}
+
+/**
+ * The tail whose segment a locus names (`<...>/tails/<tail>/000001.jsonl line 3`), when it is a segment
+ * of a tail: the only file `mnema tail repair` puts a line back in. The checkpoints are not one.
+ */
+function tailsOfTheLocus(locus: string): string[] {
+  const named = /[\\/]tails[\\/]([^\\/]+)[\\/]\d+\.jsonl (?:line|byte offset) \d+$/.exec(locus);
+  return named === null ? [] : [named[1] as string];
+}
 
 /**
  * The way out of a refusal for a symbolic link in a record, by tree and by how far it reaches: the link
@@ -400,8 +427,7 @@ export class AlteredEntryError extends CodedError {
  * What a write says when it met an entry whose hash does not hold, or `undefined` when no tree
  * has one: each entry (tree, tail, seq, the file and the line), how far the refusal reaches and the
  * way out, which differs by tree for the reason {@link ALTERED_IN} says (only the public tree is
- * kept by the repository, so only its way out is a restore from history, and none names `tail
- * repair`). Every write is refused until the line is as it was written, and so is `switch off`: the
+ * kept by the repository, so only its way out is a restore from history, by `tail repair`). Every write is refused until the line is as it was written, and so is `switch off`: the
  * switch is a fact of the same record. A gap or a fork is not read here: it is told, never refused.
  */
 export function alteredEntrySentence(facts: readonly ScopedLinkBreak[]): string | undefined {
@@ -411,7 +437,7 @@ export function alteredEntrySentence(facts: readonly ScopedLinkBreak[]): string 
   return [
     `Nothing was done: ${trees.map((tree) => ALTERED_IN[tree].tree).join(' and ')} holds an entry that was altered after it was written.`,
     ...linkBreakSentences(altered),
-    ...trees.map((tree) => ALTERED_IN[tree].out),
+    ...trees.map((tree) => ALTERED_IN[tree].out(tailsOf(altered, tree))),
     'Switching a channel off is a write to the same record, so it is refused too.',
   ].join('\n\n');
 }
@@ -445,7 +471,7 @@ export function unreadableLineSentence(
   return [
     `Nothing was done: ${words.tree} holds a line this mnema cannot read.`,
     error.message,
-    words.out,
+    words.out(tailsOfTheLocus(error.locus)),
     'Switching a channel off is a write to the same record, so it is refused too. `mnema verify` lists every unreadable line with its tail and position.',
   ].join('\n\n');
 }
@@ -469,23 +495,31 @@ const NOT_VERSIONED =
   'This record is not versioned: update mnema if a newer one wrote the line, restore the file from a copy, or repair or remove the line named above.';
 
 /** What the refusal says of each tree: which it is, how far the refusal reaches, and the way out. */
-const UNREADABLE_IN: Readonly<Record<Scope | 'unknown', { tree: string; out: string }>> = {
+const UNREADABLE_IN: Readonly<
+  Record<Scope | 'unknown', { tree: string; out: (tails: readonly string[]) => string }>
+> = {
   public: {
     tree: 'the project’s public record',
-    out: 'Every write in the project is refused until the line reads: update mnema if a newer one wrote the line, or restore the line from the repository’s history.',
+    // A line that is not in a segment (a checkpoint's) is not one the verb puts back.
+    out: (tails) =>
+      tails.length === 0
+        ? 'Every write in the project is refused until the line reads: update mnema if a newer one wrote the line, or restore the line from the repository’s history.'
+        : `Every write in the project is refused until the line reads: update mnema if a newer one wrote the line, or ${repairWords(tails)} puts it back from the repository’s history.`,
   },
   private: {
     tree: 'the project’s private record on this machine',
-    out: `Every write in the project is refused until the line reads. ${NOT_VERSIONED}`,
+    out: () => `Every write in the project is refused until the line reads. ${NOT_VERSIONED}`,
   },
   global: {
     tree: 'this machine’s global record',
-    out: `This closes every project on this machine: every write in each is refused until the line reads. ${NOT_VERSIONED}`,
+    out: () =>
+      `This closes every project on this machine: every write in each is refused until the line reads. ${NOT_VERSIONED}`,
   },
   // Not reached by a door, which hands the trees it read; said rather than guessed if it is.
   unknown: {
     tree: 'the record',
-    out: 'Every write that reads this record is refused until the line reads: update mnema if a newer one wrote the line, restore the line from the repository’s history or the file from a copy, or repair or remove the line named above.',
+    out: () =>
+      'Every write that reads this record is refused until the line reads: update mnema if a newer one wrote the line, restore the line from the repository’s history or the file from a copy, or repair or remove the line named above.',
   },
 };
 

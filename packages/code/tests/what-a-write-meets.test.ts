@@ -338,7 +338,7 @@ describe('a record that cannot be read refuses the write, and nothing else does'
       [
         'The write is refused: a line of the project’s public record cannot be read by this mnema, so which rules apply to this path cannot be known.',
         `unreadable stored line at /w/.mnema/tails/t/000001.jsonl byte offset 2104: ${reader}`,
-        'Every write in the project is refused until the line reads: update mnema if a newer one wrote the line, or restore the line from the repository’s history.',
+        'Every write in the project is refused until the line reads: update mnema if a newer one wrote the line, or `mnema tail repair t` puts it back from the repository’s history.',
       ].join('\n\n'),
     );
   });

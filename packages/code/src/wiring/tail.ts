@@ -1,10 +1,11 @@
 /**
  * The `mnema tail` wiring: what it declares, and what it prints.
  *
- * A group of three, and the shape is `key`'s rather than `task`'s: its subject is not
+ * A group of four, and the shape is `key`'s rather than `task`'s: its subject is not
  * a workflow entity but the record's own storage, so there is no birth, no state and
- * no `move`; there are two acts, authorizing the cut of a whole tail and relinking a
- * whole tail of another record into this one (`relink`, FORMAT.md section 6.11), and the
+ * no `move`; there are three acts, authorizing the cut of a whole tail, relinking a
+ * whole tail of another record into this one (`relink`, FORMAT.md section 6.11) and
+ * putting back from git a line of a public tail that does not read (`repair`), and the
  * reading that says which tails there are to act on. This said "a group of two" and
  * "one act" until the relink arrived.
  *
@@ -73,7 +74,9 @@ export function registerTail(program: Command, wiring: Wiring): Declared {
   const { io, render, pinnedRun } = wiring;
   const tail = program
     .command('tail')
-    .description("act on the record's own tails: list them, authorize a cut, relink one");
+    .description(
+      "act on the record's own tails: list them, authorize a cut, relink one, repair a line from git",
+    );
 
   tail
     .command('list')
@@ -257,6 +260,52 @@ export function registerTail(program: Command, wiring: Wiring): Declared {
         );
       }
       reportRecorded(result, io);
+    });
+
+  tail
+    .command('repair')
+    .description(
+      'put back from git the lines of a public tail that do not read or whose hash does not hold',
+    )
+    .argument(
+      '<tail>',
+      'the tail to repair, as `tail list` spells it: <fingerprint>-<installation>',
+    )
+    .option(
+      '--from <rev>',
+      'the revision the lines are taken from (default HEAD): an older one, when the damage was committed',
+    )
+    .addHelpText(
+      'after',
+      [
+        '',
+        'A line is put back only when the revision holds it at the same place in the same file, it reads,',
+        'its hash is the one its content gives, and it chains to the line before and the line after it.',
+        'Nothing else is written: no line is added, signed or deleted, a last line that a crash cut short',
+        'is left, and `checkpoints.jsonl`, `keys/` and every tree but the committed public one are not touched. The',
+        'segment as it was is kept in the repository’s git directory, beside the tail’s lock, and the',
+        'repaired file is a change in the working tree for you to commit. Only the public tree is',
+        'repaired: it is the one git keeps.',
+      ].join('\n'),
+    )
+    .action(async (named: string, opts: { from?: string }) => {
+      const { runTailRepair } = await import('../commands/tail-repair.js');
+      const { tailRepairReport, tailRepairRefusal } = await import(
+        '../presentation/tail-repair.js'
+      );
+      const result = runTailRepair(
+        { ...here(), processEnv: process.env },
+        { tail: named, ...(opts.from !== undefined ? { from: opts.from } : {}) },
+      );
+      if (!result.ok) {
+        reportRefusal(wiring, {
+          reason: result.reason,
+          code: result.reason,
+          message: tailRepairRefusal(result, named),
+        });
+        return;
+      }
+      writeLines(io, tailRepairReport(render, result));
     });
 
   return mutatesTheRecord(tail);

@@ -115,10 +115,11 @@ carries the help the command prints, word for word.
   - [mnema key revoke](cli/key-revoke.md): retire a key from this identity, from this point forward
   - [mnema key protect](cli/key-protect.md): encrypt this machine's private keys at rest with the passphrase in MNEMA_KEY_PASSPHRASE
   - [mnema key unprotect](cli/key-unprotect.md): write this machine's private keys back in the clear (needs MNEMA_KEY_PASSPHRASE)
-- [mnema tail](cli/tail.md): act on the record's own tails: list them, authorize a cut, relink one
+- [mnema tail](cli/tail.md): act on the record's own tails: list them, authorize a cut, relink one, repair a line from git
   - [mnema tail list](cli/tail-list.md): list the tails that hold events here, the ones a cut can name, with the id `prune` takes
   - [mnema tail prune](cli/tail-prune.md): record that one whole tail was authorized to be cut (it removes nothing)
   - [mnema tail relink](cli/tail-relink.md): relink whole tails of another record into the one this directory names, each signed by its own key
+  - [mnema tail repair](cli/tail-repair.md): put back from git the lines of a public tail that do not read or whose hash does not hold
 - [mnema backup](cli/backup.md): copy this project's trees into a folder, and say how far the copy is (records nothing)
   - [mnema backup setup](cli/backup-setup.md): say which folder keeps this project's backup, after a person confirms at a terminal that it keeps the text in clear
   - [mnema backup run](cli/backup-run.md): copy this project's trees into its folder, or with --global only the global tree

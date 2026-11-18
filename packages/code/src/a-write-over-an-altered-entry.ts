@@ -23,6 +23,8 @@ export const RUNS_OVER_AN_ALTERED_ENTRY: Readonly<Record<string, string>> = {
   mcp: 'It serves a connection and opens no writer itself: every tool that writes is stopped at the one door the server opens writes through, and the end of a run with it.',
   'before-a-write':
     'It is the edit gate and answers in the gate’s own voice, a denial the host reads, which names the entry (ADR-395).',
+  'tail repair':
+    'It is the write that mends an altered or unreadable line (ADR-398): it opens no writer and signs nothing, and everything else stays stopped at the writer.',
 };
 
 /**
