@@ -14,7 +14,14 @@
 
 import { paragraph, roomOf, wrap } from '../init/layout.js';
 import { DONE, dim, END, heading, plain, theGuide, trail } from '../init/screens.js';
-import { chose } from '../init/summary.js';
+import {
+  ACCEPTS_LATER,
+  AGENTS_MAY_ACCEPT,
+  chose,
+  INSTRUCTIONS_LATER,
+  instructionFilesDone,
+  PULL_DONE,
+} from '../init/summary.js';
 import type { Line } from '../presentation/line.js';
 import { widthOfText } from '../presentation/width.js';
 
@@ -22,10 +29,22 @@ import { widthOfText } from '../presentation/width.js';
 interface Page {
   readonly title: string;
   readonly says: readonly string[];
-  /** Rows of what `init` does, each with the command that changes it later. */
-  readonly chosen?: readonly { readonly done: string; readonly later: string }[];
+  /** Rows of what `init` does, drawn by the same functions and from the same texts as init's own list. */
+  readonly rows?: (width: number) => readonly Line[];
   /** Commands, each with what it does. */
   readonly commands?: readonly { readonly command: string; readonly does: string }[];
+}
+
+/**
+ * The rows of what init does, as init says them: the default founding writes the four instruction files, asks
+ * who may accept, and sets up the pull where there is a remote. The texts are init's own (`init/summary.ts`).
+ */
+export function tourRowsOfInit(width: number): readonly Line[] {
+  return [
+    ...chose(instructionFilesDone(4, 0), INSTRUCTIONS_LATER, width),
+    ...chose(AGENTS_MAY_ACCEPT, ACCEPTS_LATER, width),
+    ...paragraph(trail, PULL_DONE, width, '  done   '),
+  ];
 }
 
 /** The tour, in the order it is read. */
@@ -42,21 +61,7 @@ export const TOUR: readonly Page[] = [
     says: [
       'In a project, `mnema init` founds `.mnema/` and says one line for each choice it made, with the command that changes it later. For example:',
     ],
-    chosen: [
-      {
-        done: 'the instruction files an agent host reads (AGENTS.md and its kin)',
-        later: '`mnema instructions --remove`',
-      },
-      {
-        done: 'asked whether an agent may accept what you choose',
-        later: '`mnema switch`',
-      },
-      {
-        done: 'set up a plain `git pull` to carry the record, where there is a remote',
-        later: '`mnema doctor`',
-      },
-    ],
-    commands: [],
+    rows: tourRowsOfInit,
   },
   {
     title: 'How an agent reads it',
@@ -101,10 +106,7 @@ export function pageLines(page: Page, width: number): readonly Line[] {
     if (at > 0) lines.push(theGuide);
     lines.push(...paragraph(trail, words, width, '  '));
   }
-  if (page.chosen !== undefined) {
-    lines.push(theGuide);
-    for (const row of page.chosen) lines.push(...chose(row.done, row.later, width));
-  }
+  if (page.rows !== undefined) lines.push(theGuide, ...page.rows(width));
   const pad = widest(page);
   if (page.commands !== undefined && page.commands.length > 0) {
     lines.push(theGuide);

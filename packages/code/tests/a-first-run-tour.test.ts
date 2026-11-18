@@ -21,9 +21,18 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  ACCEPTS_LATER,
+  AGENTS_MAY_ACCEPT,
+  chose,
+  INSTRUCTIONS_LATER,
+  instructionFilesDone,
+  PULL_DONE,
+} from '../src/init/summary.js';
 import { MACHINE_STATE_FILE } from '../src/machine-state.js';
+import { renderPlain } from '../src/presentation/plain.js';
 import { DRAW_THEIR_OWN_SCREEN } from '../src/repl/gate.js';
-import { TOUR, TOUR_END } from '../src/tour/pages.js';
+import { pageLines, TOUR, TOUR_END, tourRowsOfInit } from '../src/tour/pages.js';
 import { onTheTour } from '../src/tour/run.js';
 import { TOUR_VERB } from '../src/wiring/tour.js';
 import { aMachineThatSawTheTour } from './support/a-machine-that-saw-the-tour.js';
@@ -199,6 +208,33 @@ describe('`mnema tour`', () => {
     expect(ran.stdout).not.toContain(FIRST_PAGE);
     expect(filesUnder(home)).toEqual([]);
   }, 60_000);
+});
+
+describe('the second page', () => {
+  const WIDTHS = [60, 80, 100];
+
+  it('says what init says, from the same texts, drawn the same way', () => {
+    for (const width of WIDTHS) {
+      const said = tourRowsOfInit(width).map((line) => renderPlain(line));
+      const init = [
+        ...chose(instructionFilesDone(4, 0), INSTRUCTIONS_LATER, width),
+        ...chose(AGENTS_MAY_ACCEPT, ACCEPTS_LATER, width),
+      ].map((line) => renderPlain(line));
+      expect(said.slice(0, init.length), String(width)).toEqual(init);
+      expect(said.join('\n'), String(width)).toContain(PULL_DONE.split(' ')[0] ?? '');
+    }
+  });
+
+  it('keeps the indent on every row it wraps, at 60, 80 and 100 columns', () => {
+    for (const width of WIDTHS) {
+      const rows = (TOUR[1] ? pageLines(TOUR[1], width) : []).map((line) => renderPlain(line));
+      expect(rows.length).toBeGreaterThan(6);
+      for (const row of rows.slice(1)) {
+        // The guide, then at least two spaces before any word: no row falls back to the margin.
+        expect(row, `${String(width)}: ${row}`).toMatch(/^\u2502( {2,}\S.*)?$/);
+      }
+    }
+  });
 });
 
 describe('the word of the tour', () => {

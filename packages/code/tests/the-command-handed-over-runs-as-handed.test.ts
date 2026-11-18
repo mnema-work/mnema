@@ -965,7 +965,7 @@ export const HANDED_OVER: Readonly<
   'packages/code/src/repl/session.ts': { unwritten: 2 },
   'packages/code/src/the-persons-key-in-the-clear.ts': { name: 1 },
   'packages/code/src/rules-not-pushed.ts': { line: 1 },
-  'packages/code/src/tour/pages.ts': { line: 2, name: 13 },
+  'packages/code/src/tour/pages.ts': { line: 1, name: 11 },
   'packages/code/src/tour/run.ts': { name: 1 },
   'packages/code/src/what-a-write-meets.ts': { line: 2, name: 2 },
   'packages/code/src/wiring/after-a-write.ts': { line: 1 },
