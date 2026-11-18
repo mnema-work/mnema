@@ -163,14 +163,11 @@ mnema init  ·  0.0.0
 
 --- the founding (80 columns)
 ◇  Founding
-│    done   .mnema/ and the identity
 │    done   .prettierignore  created
-│    done   .claude/rules/mnema-instructions.md
-│    done   .cursor/rules/mnema-instructions.mdc
-│    done   AGENTS.md  block added
-│    done   CLAUDE.md  block added
-│    done   ADR-1, recorded and accepted as yours
-│    `mnema instructions --remove` takes the block out of each file again.
+│    done   4 instruction files (2 of yours)
+│           later: `mnema instructions --remove`
+│    done   ADR-1, yours: agents may accept what you choose
+│           later: `mnema switch`
 │
 
 --- the summary (80 columns)
@@ -189,16 +186,17 @@ mnema init  ·  0.0.0
 │    1  Commit `.mnema/` with the repository; every clone reads the record.
 │    2  Claude Code: claude plugin marketplace add mnema-work/mnema
 │                    claude plugin install mnema@mnema
-│    3  Cursor: its command-line agent picks up the Claude Code plugin
-│       installed on this machine, whose server is `mnema mcp`.
+│    3  Cursor: its command-line agent reads the Claude Code plugin (server:
+│       `mnema mcp`).
 │    4  Codex: codex plugin marketplace add mnema-work/mnema
 │              codex plugin add mnema@mnema
-│    5  1 decision file in docs/decisions is not in the record yet:
+│    5  With the plugin in, ask the agent: "Which mnema tools do you have?"
+│    6  1 decision file in docs/decisions is not in the record yet:
 │       mnema decision import docs/decisions
-│    6  `mnema status` shows where things stand.
+│    7  `mnema status` shows where things stand.
 │
-└  Off until switched on: edit-first-write-gate, user-corrections.
-   `mnema switch` lists every channel and turns one on.
+└  Off until switched on: edit-first-write-gate, user-corrections;
+   `mnema switch` turns one on.
 
 --- the first screen (60 columns)
 mnema init  ·  0.0.0
@@ -405,15 +403,11 @@ mnema init  ·  0.0.0
 
 --- the founding (60 columns)
 ◇  Founding
-│    done   .mnema/ and the identity
 │    done   .prettierignore  created
-│    done   .claude/rules/mnema-instructions.md
-│    done   .cursor/rules/mnema-instructions.mdc
-│    done   AGENTS.md  block added
-│    done   CLAUDE.md  block added
-│    done   ADR-1, recorded and accepted as yours
-│    `mnema instructions --remove` takes the block out of
-│    each file again.
+│    done   4 instruction files (2 of yours)
+│           later: `mnema instructions --remove`
+│    done   ADR-1, yours: agents may accept what you choose
+│           later: `mnema switch`
 │
 
 --- the summary (60 columns)
@@ -439,16 +433,16 @@ mnema init  ·  0.0.0
 │    2  Claude Code:
 │       claude plugin marketplace add mnema-work/mnema
 │       claude plugin install mnema@mnema
-│    3  Cursor: its command-line agent picks up the Claude
-│       Code plugin installed on this machine, whose server
-│       is `mnema mcp`.
+│    3  Cursor: its command-line agent reads the Claude
+│       Code plugin (server: `mnema mcp`).
 │    4  Codex: codex plugin marketplace add mnema-work/mnema
 │              codex plugin add mnema@mnema
-│    5  1 decision file in docs/decisions is not in the
+│    5  With the plugin in, ask the agent: "Which mnema
+│       tools do you have?"
+│    6  1 decision file in docs/decisions is not in the
 │       record yet:
 │       mnema decision import docs/decisions
-│    6  `mnema status` shows where things stand.
+│    7  `mnema status` shows where things stand.
 │
-└  Off until switched on: edit-first-write-gate, 
-  user-corrections.
-   `mnema switch` lists every channel and turns one on.
+└  Off until switched on: edit-first-write-gate,
+   user-corrections; `mnema switch` turns one on.

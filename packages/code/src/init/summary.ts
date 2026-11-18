@@ -29,8 +29,8 @@ import { STARTS_OFF } from '../record-framing.js';
 import { onOneLine } from '../wiring/on-one-line.js';
 import type { WhoMayAcceptRecorded } from './accepts.js';
 import { fromTheFolder } from './detect.js';
-import { HOST_ROWS, hostMark } from './hosts.js';
-import { noted, paragraph } from './layout.js';
+import { CHECK_QUESTION, CHECK_QUESTION_HOSTS, HOST_ROWS, hostMark } from './hosts.js';
+import { noted, paragraph, roomOf, wrap } from './layout.js';
 import type { Answers } from './plan.js';
 import { bold, DONE, dim, END, heading, plain, theGuide, trail } from './screens.js';
 
@@ -48,49 +48,40 @@ export interface Founded {
   readonly shown: (path: string) => string;
 }
 
-/** What the founding did to one file, as a row: the word, the path, and a few words more. */
+/** What the founding did to one file the person should hear about on its own: what was left, refused or failed. */
 function didToAFile(file: InstructionsFile, width: number): readonly Line[] {
-  const said = (word: string, note?: string): readonly Line[] =>
-    noted(
-      trail,
-      [plain(`  ${word}   ${file.path}`)],
-      note === undefined ? undefined : dim(note),
-      width,
-      9,
-    );
   switch (file.did) {
-    case 'created':
-      return said('done');
-    case 'added':
-      return said('done', 'block added');
-    case 'replaced':
-      return said('done', 'block replaced');
     case 'unchanged':
-      return said('kept', 'already holds the block');
+      return noted(
+        trail,
+        [plain(`  kept   ${file.path}`)],
+        dim('already holds the block'),
+        width,
+        9,
+      );
     default:
       return paragraph(trail, changeLine(file), width, '  left   ');
   }
 }
 
-/** The order the rows of the files are said in: what was made, then what was added to, then the rest. */
-const DID_ORDER: readonly (InstructionsFile['did'] | undefined)[] = [
-  'created',
-  'replaced',
-  'added',
+/** The order the rows of the files are said in: what was left, refused or failed, in the order the files came. */
+const SAID_ON_ITS_OWN: readonly (InstructionsFile['did'] | undefined)[] = [
   'unchanged',
   'left',
   'refused',
   'failed',
 ];
 
-/** The list of what the founding did, once it has done it. */
+/** A row for one choice: what was done, and the command that changes it later, beside it where they fit. */
+function chose(done: string, later: string, width: number): readonly Line[] {
+  return noted(trail, [plain(`  done   ${done}`)], dim(`later: ${later}`), width, 9);
+}
+
+/** The list of what the founding did, once it has done it: one row for each choice, with how to change it. */
 export function foundingPage(founded: Founded, width: number): readonly Line[] {
   const { result, recorded, pulled } = founded;
   const around = result.around;
-  const rows: Line[] = [
-    heading(DONE, 'Founding'),
-    trail(plain('  done   .mnema/ and the identity')),
-  ];
+  const rows: Line[] = [heading(DONE, 'Founding')];
   if (around?.prettierIgnore !== undefined) {
     rows.push(
       ...noted(
@@ -102,44 +93,48 @@ export function foundingPage(founded: Founded, width: number): readonly Line[] {
       ),
     );
   }
-  const files = [...(around?.instructions ?? [])]
-    .filter((file) => file.did !== undefined)
-    .sort((a, b) => DID_ORDER.indexOf(a.did) - DID_ORDER.indexOf(b.did));
-  for (const file of files) rows.push(...didToAFile(file, width));
-  if (recorded !== undefined) {
+  const files = [...(around?.instructions ?? [])].filter((file) => file.did !== undefined);
+  const written = files.filter((file) =>
+    ['created', 'added', 'replaced'].includes(file.did as string),
+  );
+  if (written.length > 0) {
+    const yours = written.filter((file) => file.did === 'added').length;
     rows.push(
-      ...paragraph(
-        trail,
-        recorded.as === 'accepted'
-          ? `${recorded.adr}, recorded and accepted as yours`
-          : `${recorded.adr}, recorded as the agent’s proposal: it waits for you`,
+      ...chose(
+        `${String(written.length)} instruction file${written.length === 1 ? '' : 's'}${yours === 0 ? '' : ` (${String(yours)} of yours)`}`,
+        '`mnema instructions --remove`',
         width,
-        '  done   ',
       ),
     );
-    if (recorded.switchedOff) rows.push(trail(plain('  done   the switch agent-accepts, off')));
+  }
+  for (const file of files
+    .filter((each) => SAID_ON_ITS_OWN.includes(each.did))
+    .sort((a, b) => SAID_ON_ITS_OWN.indexOf(a.did) - SAID_ON_ITS_OWN.indexOf(b.did))) {
+    rows.push(...didToAFile(file, width));
+  }
+  if (recorded !== undefined) {
+    rows.push(
+      ...chose(
+        recorded.as === 'proposed'
+          ? `${recorded.adr}, the agent’s proposal: it waits for you`
+          : recorded.switchedOff
+            ? `${recorded.adr}, yours: every decision waits for you (agent-accepts, off)`
+            : `${recorded.adr}, yours: agents may accept what you choose`,
+        '`mnema switch`',
+        width,
+      ),
+    );
   }
   if (pulled !== undefined) {
     rows.push(
-      ...paragraph(
-        trail,
-        pulled.refused
-          ? `git’s configuration was left as it is: ${pulled.lines.join(' ')}`
-          : 'the merge driver, merge.autoStash and rebase.autoStash are in .git/config: a plain `git pull` carries the record',
-        width,
-        pulled.refused ? '  ' : '  done   ',
-      ),
-    );
-  }
-  if (files.some((file) => ['created', 'added', 'replaced'].includes(file.did as string))) {
-    rows.push(
-      ...paragraph(
-        trail,
-        '`mnema instructions --remove` takes the block out of each file again.',
-        width,
-        '  ',
-        'id',
-      ),
+      ...(pulled.refused
+        ? paragraph(
+            trail,
+            `git’s configuration was left as it is: ${pulled.lines.join(' ')}`,
+            width,
+            '  ',
+          )
+        : chose('a plain `git pull` carries the record', '`mnema doctor`', width)),
     );
   }
   rows.push(theGuide);
@@ -173,12 +168,12 @@ function hostStep(id: (typeof HOST_ROWS)[number]['id'], claudeIsChosen: boolean)
   const plugin = 'commands' in claude && !claudeIsChosen ? claude.commands : [];
   if (id === 'vscode') {
     return {
-      says: 'VS Code: its agent reads the Claude Code plugin, whose server is `mnema mcp`; install it, then:',
+      says: `VS Code: its agent reads the Claude Code plugin (server: \`mnema mcp\`)${plugin.length > 0 ? '; install it, then:' : '; then:'}`,
       commands: [...plugin, 'mnema doctor --fix vscode'],
     };
   }
   return {
-    says: 'Cursor: its command-line agent picks up the Claude Code plugin installed on this machine, whose server is `mnema mcp`.',
+    says: `Cursor: its command-line agent reads the Claude Code plugin (server: \`mnema mcp\`)${plugin.length > 0 ? '; install it:' : '.'}`,
     commands: plugin,
   };
 }
@@ -204,6 +199,16 @@ function nextSteps(founded: Founded): readonly NextStep[] {
   for (const row of HOST_ROWS) {
     if (!answers.marks.has(hostMark(row.id))) continue;
     steps.push(hostStep(row.id, answers.marks.has(hostMark('claude'))));
+  }
+  // The question to ask the agent comes after the steps that install the plugin, and only for a host that
+  // has been shown answering (`CHECK_QUESTION_HOSTS`): a host that was not is left without one.
+  if (
+    HOST_ROWS.some((row) => CHECK_QUESTION_HOSTS.has(row.id) && answers.marks.has(hostMark(row.id)))
+  ) {
+    steps.push({
+      says: `With the plugin in, ask the agent: "${CHECK_QUESTION}"`,
+      commands: [],
+    });
   }
   for (const base of around?.neverImported ?? []) {
     steps.push({
@@ -238,6 +243,9 @@ function stepRows(step: NextStep, at: number, width: number): readonly Line[] {
     ...step.commands.map((each) => trail(plain(`${' '.repeat(lead.length)}${each}`))),
   ];
 }
+
+/** A space a command is not wrapped at: it is put back as a space once the words are wrapped. */
+const NO_BREAK = '\u00a0';
 
 /** The summary: who this is, the backup key, and what to do next. */
 export function summaryPage(founded: Founded, width: number): readonly Line[] {
@@ -303,10 +311,25 @@ export function summaryPage(founded: Founded, width: number): readonly Line[] {
     // A command is never wrapped: what is typed back is the whole of it, on a row of its own.
     lines.push(...stepRows(step, at, width));
   }
-  lines.push(
-    theGuide,
-    { indent: 0, parts: [plain(END), plain(`Off until switched on: ${STARTS_OFF.join(', ')}.`)] },
-    { indent: 0, parts: [plain('   `mnema switch` lists every channel and turns one on.')] },
-  );
+  // One line, the guide's end: what is off, and the verb that turns it on.
+  const off = wrap(
+    `Off until switched on: ${STARTS_OFF.join(', ')}; \`mnema${NO_BREAK}switch\` turns one on.`,
+    roomOf(width),
+  ).map((row) => row.replace(NO_BREAK, ' '));
+  lines.push(theGuide);
+  for (const [at, row] of off.entries()) {
+    lines.push({ indent: 0, parts: [plain(at === 0 ? `${END}  ${row}` : `   ${row}`)] });
+  }
   return lines;
+}
+
+/** The line that suggests a star, shown once to a person at the end of `mnema init` at a terminal. */
+export const STAR_LINE =
+  'If mnema helps, a star at github.com/mnema-work/mnema helps others find it.';
+
+/** The suggestion as a page: the line, wrapped to the width and hung under the end of the trail. */
+export function starPage(width: number): readonly Line[] {
+  return wrap(STAR_LINE, width - 4).map(
+    (row): Line => ({ indent: 0, parts: [plain(`   ${row}`)] }),
+  );
 }
