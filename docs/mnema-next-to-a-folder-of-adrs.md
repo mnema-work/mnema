@@ -29,8 +29,10 @@ and the team is the one that rejects it.
 
 ```sh
 mnema decision import docs/decisions --write
-mnema decision move accept ADR-<n> --note "Agreed in review."   # the label import printed for the one you accept
+mnema decision move accept ADR-<n> --note "Agreed in review."
 ```
+
+In the second command, `ADR-<n>` is the label that `import` printed for the one you accept.
 
 ## What a decision becomes
 

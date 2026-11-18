@@ -1,11 +1,11 @@
 # A page of the record that verifies itself
 
 ```sh
-mnema site                  # writes .mnema/site/index.html
-mnema site --out _site      # writes _site/index.html
+mnema site
+mnema site --out _site
 ```
 
-One HTML file from the committed tree. Each decision is a card: its reasons, what was turned down, who recorded
+The first writes `.mnema/site/index.html`, the second `_site/index.html`. One HTML file from the committed tree. Each decision is a card: its reasons, what was turned down, who recorded
 it and who accepted it, its history and the paths it is addressed at. Under a decision are the public notes
 (observations and memories) that belong to it, and a note that was taken back stays, whole, with when, by whom and
 why. A note that belongs to no decision is listed apart, and a timeline lists each act the record holds, in the
