@@ -1191,6 +1191,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/every-verifier-gives-one-ed25519-verdict.test.ts': 6,
   'packages/code/tests/every-write-of-the-command-line-says-whose-it-is.test.ts': 4,
   'packages/code/tests/every-write-signs-what-it-wrote.test.ts': 41,
+  'packages/code/tests/every-writer-passes-the-check-that-refuses-a-damaged-record.test.ts': 21,
   'packages/code/tests/host-contract/a-hook-hands-over-ten-thousand-units.test.ts': 5,
   'packages/code/tests/host-contract/a-note-of-the-hosts-memory-is-copied.test.ts': 4,
   'packages/code/tests/host-contract/a-refusal-and-a-pause-hold-the-write.test.ts': 6,
