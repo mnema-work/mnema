@@ -23,7 +23,7 @@
  * before it answers the host, and answers the same whether or not they land ({@link recordTheCharge}).
  */
 
-import { sep } from 'node:path';
+import { join, sep } from 'node:path';
 import {
   CodedError,
   DEFAULT_WAIT_MS,
@@ -57,7 +57,7 @@ import {
 } from './governed-tree.js';
 import { oneLine } from './one-line.js';
 import { ASKS_A_PERSON_CHANNEL, REFUSES_A_WRITE_CHANNEL } from './record-framing.js';
-import { linkBreakSentences, type ScopedLinkBreak } from './record-integrity.js';
+import { linkBreakSentences, NOT_VERSIONED, type ScopedLinkBreak } from './record-integrity.js';
 
 /** A rule in force at a path and the relation it holds there: what it does to the path. */
 export interface RuleInForceUnder extends PushedRule {
@@ -335,6 +335,14 @@ export function refusalOfAnUnreadableRecord(
  * event is served and said, never refused here (ADR-395), so the breaks are not read.
  */
 export function refusalOfAnAlteredRecord(facts: readonly ScopedLinkBreak[]): string | undefined {
+  // A part of the record this mnema does not read is refused in the words an unreadable line always
+  // was, now that the read serves around it (ADR-396): the gate says no, and the way out.
+  const unread = facts.find((fact) => fact.unread !== undefined);
+  if (unread !== undefined) {
+    return refusalOfAnUnreadableRecord(unreadableErrorOf(unread), [
+      { scope: unread.scope, chainRoot: (unread.unread as { root: string }).root },
+    ]);
+  }
   const altered = facts.filter((fact) => fact.retained !== undefined);
   if (altered.length === 0) return undefined;
   const trees = [...new Set(altered.map((fact) => fact.scope))];
@@ -431,6 +439,12 @@ export class AlteredEntryError extends CodedError {
  * switch is a fact of the same record. A gap or a fork is not read here: it is told, never refused.
  */
 export function alteredEntrySentence(facts: readonly ScopedLinkBreak[]): string | undefined {
+  const unread = facts.find((fact) => fact.unread !== undefined);
+  if (unread !== undefined) {
+    return unreadableLineSentence(unreadableErrorOf(unread), [
+      { scope: unread.scope, chainRoot: (unread.unread as { root: string }).root },
+    ]);
+  }
   const altered = facts.filter((fact) => fact.retained !== undefined);
   if (altered.length === 0) return undefined;
   const trees = [...new Set(altered.map((fact) => fact.scope))];
@@ -442,8 +456,26 @@ export function alteredEntrySentence(facts: readonly ScopedLinkBreak[]): string 
   ].join('\n\n');
 }
 
-/** Refuses the write when any of the facts is an altered entry: the one throw of both doors. */
+/**
+ * The refusal a part of the record that was not read stands for, as the reader that met it would
+ * have thrown it: a read serves around such a part, and a write is refused over it as it always was
+ * (ADR-396), by the same error, so every door says it in the same words. `fact.unread` is set.
+ */
+export function unreadableErrorOf(fact: ScopedLinkBreak): UnreadableLineError {
+  const { unread } = fact;
+  if (unread === undefined) throw new Error('a fact that names no part of the record was asked for its refusal');
+  if (unread.kind === 'link') return new LinkedRecordError({ root: unread.root }, unread.place);
+  const file = join(unread.root, ...unread.place.split('/'));
+  return new UnreadableLineError(`${file} line ${unread.line ?? 0}`, unread.reason);
+}
+
+/**
+ * Refuses the write when any of the facts is a part of the record this mnema does not read (the
+ * error the reader would have thrown) or an altered entry: the one throw of both doors.
+ */
 export function refuseWhileAltered(facts: readonly ScopedLinkBreak[]): void {
+  const unread = facts.find((fact) => fact.unread !== undefined);
+  if (unread !== undefined) throw unreadableErrorOf(unread);
   const sentence = alteredEntrySentence(facts);
   if (sentence !== undefined) throw new AlteredEntryError(sentence);
 }
@@ -490,9 +522,6 @@ function treeOfTheLine(
     .sort((a, b) => b.chainRoot.length - a.chainRoot.length);
   return holding[0]?.scope;
 }
-
-const NOT_VERSIONED =
-  'This record is not versioned: update mnema if a newer one wrote the line, restore the file from a copy, or repair or remove the line named above.';
 
 /** What the refusal says of each tree: which it is, how far the refusal reaches, and the way out. */
 const UNREADABLE_IN: Readonly<

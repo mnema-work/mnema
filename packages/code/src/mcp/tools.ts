@@ -3014,9 +3014,12 @@ export function runRulesBeforeAnEditTool(
  */
 function alteredRecordRefusal(session: Session): IntelligenceResult<HookReply> | undefined {
   workspaceCaches(session);
-  const altered = refusalOfAnAlteredRecord(sessionLinkBreaks(session, A_WRITE));
+  const facts = sessionLinkBreaks(session, A_WRITE);
+  const altered = refusalOfAnAlteredRecord(facts);
   if (altered === undefined) return undefined;
-  session.log(ALTERED_RECORD_NOTE);
+  session.log(
+    facts.some((fact) => fact.unread !== undefined) ? UNREADABLE_RECORD_NOTE : ALTERED_RECORD_NOTE,
+  );
   return { ok: true, value: hookReply(PRE_TOOL_USE, { refuse: altered }) };
 }
 

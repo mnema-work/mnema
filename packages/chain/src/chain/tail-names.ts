@@ -46,16 +46,20 @@ import {
   lastTailCheckpoint,
   listTails,
   orderedSegments,
+  type RefusedLine,
   refuseLinks,
 } from './store.js';
 import { NAMED_TAILPROOF_SCHEME, parseTailProof, verifyTailProof } from './tailproof.js';
 import { relinksReadAt } from './verify.js';
 
 /** What every tail of the directory names, by its id: `undefined` for a tail that names none. */
-export function namesOfTails(layout: ChainLayout): Map<string, string | undefined> {
+export function namesOfTails(
+  layout: ChainLayout,
+  linked?: RefusedLine,
+): Map<string, string | undefined> {
   const keys = committedKeys(layout);
   const named = new Map<string, string | undefined>();
-  for (const tail of listTails(layout)) {
+  for (const tail of listTails(layout, linked)) {
     named.set(tail, nameOfTail(layout, keys, tail));
   }
   return named;
@@ -67,10 +71,13 @@ export function namesOfTails(layout: ChainLayout): Map<string, string | undefine
  * {@link tailsReadAt} and {@link arrivalsSince} name by, so that `verify` and `verify --since`
  * agree on a tail that holds only its proof.
  */
-function namesOfTailsThatHold(layout: ChainLayout): Map<string, string | undefined> {
-  const named = namesOfTails(layout);
+function namesOfTailsThatHold(
+  layout: ChainLayout,
+  linked?: RefusedLine,
+): Map<string, string | undefined> {
+  const named = namesOfTails(layout, linked);
   for (const [tail, name] of named) {
-    if (name !== undefined && orderedSegments(layout, tail).length === 0) {
+    if (name !== undefined && orderedSegments(layout, tail, linked).length === 0) {
       named.set(tail, undefined);
     }
   }
@@ -171,10 +178,10 @@ function relinksNamedAt(
  * after a write pays the reading once.
  * The reading grows with the events of the record joined, about 0.04 ms each.
  */
-export function tailsReadAt(layout: ChainLayout): TheRecordRead {
-  const tails = listTails(layout);
+export function tailsReadAt(layout: ChainLayout, linked?: RefusedLine): TheRecordRead {
+  const tails = listTails(layout, linked);
   if (tails.length < 2) return { read: tails, several: [] };
-  const named = namesOfTailsThatHold(layout);
+  const named = namesOfTailsThatHold(layout, linked);
   const reading = tailsReadAsOneRecord(named);
   if (reading.several.length === 0) return reading;
   const record = recordOf(relinkedIfHeld(layout, tails, named).named);

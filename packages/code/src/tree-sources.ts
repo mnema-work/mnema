@@ -319,10 +319,14 @@ export function linkBreaksOf(
   asOf: BreaksAsOf,
 ): readonly ScopedLinkBreak[] {
   return sources.flatMap((source) => {
-    const { breaks, retained } =
+    const { breaks, retained, refused } =
       asOf === THE_CHAIN_AS_IT_STANDS_NOW
         ? source.cache.integrityAsOfNow()
-        : { breaks: source.cache.linkBreaks, retained: source.cache.retained };
+        : {
+            breaks: source.cache.linkBreaks,
+            retained: source.cache.retained,
+            refused: source.cache.refused,
+          };
     return [
       // The entries left out of what was served come first: they are the line that was altered.
       ...retained.map((left) => ({
@@ -331,6 +335,20 @@ export function linkBreaksOf(
         seq: left.seq,
         detail: ENTRY_HASH_MISMATCH,
         retained: { segment: left.segment, line: left.line },
+      })),
+      // The parts of the record this mnema does not read follow them, named as `verify` names an
+      // unreadable line, and carry the tree's record directory for the refusal of a write.
+      ...refused.map((part) => ({
+        scope: source.scope,
+        tail: part.tail,
+        detail: `UNREADABLE: ${part.place}${part.line === undefined ? '' : ` line ${part.line}`}: ${part.reason}`,
+        unread: {
+          kind: part.kind,
+          place: part.place,
+          ...(part.line !== undefined ? { line: part.line } : {}),
+          reason: part.reason,
+          root: source.chainRoot,
+        },
       })),
       ...breaks.map((broken) => ({
         scope: source.scope,

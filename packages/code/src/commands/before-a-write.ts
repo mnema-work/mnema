@@ -230,14 +230,21 @@ function whatAPathMeets(ctx: BeforeAWriteContext, input: APathAsked): BeforeAWri
   // The project root is the PARENT of its `.mnema/`, the directory every address is written
   // against; a relative path is the host's, written against where it started the hook.
   const root = dirname(trees.projectPublic);
-  const { met, others, pushes, altered, integrity } = withScopedCaches(trees, (sources) => {
+  const { met, others, pushes, altered, integrity, couldNotRead } = withScopedCaches(trees, (sources) => {
     // AN ALTERED ENTRY REFUSES THE WRITE (ADR-395), before any rule is derived: which rules apply
     // cannot be known from a record that leaves a line out. Only the gate refuses; the hook that
     // runs after the write (`push.only`) cannot, and says the fact in the text it hands over.
     const facts = linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE);
     const refusal = input.push?.only === true ? undefined : refusalOfAnAlteredRecord(facts);
     if (refusal !== undefined) {
-      return { met: undefined, others: [], pushes: [], altered: refusal, integrity: [] };
+      return {
+        met: undefined,
+        others: [],
+        pushes: [],
+        altered: refusal,
+        integrity: [],
+        couldNotRead: facts.some((fact) => fact.unread !== undefined),
+      };
     }
     // THE SWITCH OF THE PUSH IS ASKED BEFORE ANY RULE IS DERIVED, as the MCP tool asks it: switched
     // off, the reply is the gate's alone and the derivation behind the text never runs.
@@ -272,13 +279,18 @@ function whatAPathMeets(ctx: BeforeAWriteContext, input: APathAsked): BeforeAWri
       others: place === undefined ? [] : otherRunsAt(trees, sources, place),
       pushes: spoken,
       altered: undefined as string | undefined,
+      couldNotRead: false,
       // ONLY THE HOOK AFTER THE WRITE SAYS GAPS AND FORKS: the gate that lets a write through says
       // neither (ADR-395), and its push is the rules alone.
       integrity: input.push?.only === true ? linkBreakSentences(facts) : [],
     };
   });
   if (altered !== undefined) {
-    return { ok: true, reply: input.reply({ refuse: altered }), notes: [ALTERED_RECORD_NOTE] };
+    return {
+      ok: true,
+      reply: input.reply({ refuse: altered }),
+      notes: [couldNotRead ? UNREADABLE_RECORD_NOTE : ALTERED_RECORD_NOTE],
+    };
   }
   if (met === undefined && pushes.length === 0) return silent();
 

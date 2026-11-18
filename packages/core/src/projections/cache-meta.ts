@@ -50,6 +50,7 @@ import {
   type LinkBreak,
   listTails,
   orderedSegments,
+  type RefusedPart,
   type RetainedEntry,
   type UnreadLine,
   WORKFLOWS,
@@ -73,6 +74,12 @@ export interface CacheMeta {
    * the read asked, and is read as no cache (the rows may hold such a line).
    */
   readonly retained: readonly RetainedEntry[];
+  /**
+   * The parts of the record the reading did not read (a line that does not parse, a symbolic link),
+   * as of the same reading: left out of the rows and said by every surface that opens the cache. A
+   * file that does not carry the key is read as no cache, as for {@link retained}.
+   */
+  readonly refused: readonly RefusedPart[];
   /** The lines of a kind this binary does not know that the rows reach: read past, never applied. */
   readonly unread: readonly UnreadLine[];
   /** Size and modification time of every sealed segment the frontier covers, by path. */
@@ -143,6 +150,7 @@ export function readMeta(db: SqliteDatabase): CacheMeta | undefined {
   const frontier = byKey.get('frontier');
   const breaks = byKey.get('breaks');
   const retained = byKey.get('retained');
+  const refused = byKey.get('refused');
   const unread = byKey.get('unread');
   const sealed = byKey.get('sealed');
   const active = byKey.get('active');
@@ -152,6 +160,7 @@ export function readMeta(db: SqliteDatabase): CacheMeta | undefined {
     frontier === undefined ||
     breaks === undefined ||
     retained === undefined ||
+    refused === undefined ||
     unread === undefined ||
     sealed === undefined ||
     active === undefined
@@ -164,6 +173,7 @@ export function readMeta(db: SqliteDatabase): CacheMeta | undefined {
     frontier: decodeFrontier(frontier),
     breaks: JSON.parse(breaks) as LinkBreak[],
     retained: JSON.parse(retained) as RetainedEntry[],
+    refused: JSON.parse(refused) as RefusedPart[],
     unread: JSON.parse(unread) as UnreadLine[],
     sealed: JSON.parse(sealed) as Record<string, string>,
     active: JSON.parse(active) as Record<string, string>,
@@ -186,6 +196,7 @@ export function writeMeta(db: SqliteDatabase, meta: CacheMeta): void {
   put.run('frontier', encodeFrontier(meta.frontier));
   put.run('breaks', JSON.stringify(meta.breaks));
   put.run('retained', JSON.stringify(meta.retained));
+  put.run('refused', JSON.stringify(meta.refused));
   put.run('unread', JSON.stringify(meta.unread));
   put.run('sealed', JSON.stringify(meta.sealed));
   put.run('active', JSON.stringify(meta.active));

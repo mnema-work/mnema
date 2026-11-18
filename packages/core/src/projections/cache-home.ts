@@ -28,7 +28,12 @@
 import { createHash } from 'node:crypto';
 import { accessSync, closeSync, constants, openSync, readSync, statSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
-import { type ChainLayout, listTails, orderedSegments, projectionCachePath } from '@mnema/chain';
+import {
+  type ChainLayout,
+  listTailsLeavingLinks,
+  orderedSegments,
+  projectionCachePath,
+} from '@mnema/chain';
 
 /** The variable a person sets; named here so a message can name it. */
 export const CACHE_DIR_VARIABLE = 'MNEMA_CACHE_DIR';
@@ -89,8 +94,9 @@ export function readCacheIsChosen(): boolean {
  */
 function identityOf(layout: ChainLayout): string {
   const hash = createHash('sha256');
-  for (const tail of listTails(layout)) {
-    const [first] = orderedSegments(layout, tail);
+  // A link is left out of the name and named by the replay: choosing the cache file refuses nothing.
+  for (const tail of listTailsLeavingLinks(layout)) {
+    const [first] = orderedSegments(layout, tail, () => {});
     hash.update(tail);
     hash.update('\0');
     if (first !== undefined) hash.update(firstLineOf(first));

@@ -17,9 +17,10 @@ import {
   type EventKind,
   type LinkBreak,
   LinkedRecordError,
-  listTails,
+  listTailsLeavingLinks,
   projectionCachePath,
   type RecordGroup,
+  type RefusedPart,
   type RetainedEntry,
   refuseLinks,
   tailsReadAt,
@@ -266,6 +267,7 @@ export class ProjectionCache {
   private breaks: readonly LinkBreak[] = [];
   /** What the last replay or catch-up read past: the lines of a kind this binary does not know. */
   private retainedLines: readonly RetainedEntry[] = [];
+  private refusedParts: readonly RefusedPart[] = [];
   private unreadLines: readonly UnreadLine[] = [];
   /** What the last replay or catch-up found of the records the tree holds: {@link severalRecords}. */
   private several: readonly RecordGroup[] | undefined;
@@ -304,7 +306,8 @@ export class ProjectionCache {
     const upcasters = options.upcasters ?? catalogUpcasters();
     // A tree nobody has written to has nothing to keep, and a read must not be what creates its
     // directories: persisting waits for the first tail.
-    const keeps = options.persist === true && listTails(layout).length > 0;
+    // A link among the tails is left out here and named by the replay: choosing where to keep the cache refuses nothing.
+    const keeps = options.persist === true && listTailsLeavingLinks(layout).length > 0;
     const chosenFile = options.persist === true ? readCacheFileFor(layout) : undefined;
     const path =
       options.dbPath ?? (keeps ? (chosenFile ?? projectionCachePath(layout)) : IN_MEMORY);
@@ -371,6 +374,17 @@ export class ProjectionCache {
    */
   get retained(): readonly RetainedEntry[] {
     return this.retainedLines;
+  }
+
+  /**
+   * The parts of the record the reading did not read, ALL of them in every tree the replay read: a
+   * line of a segment that does not parse and a symbolic link, left out of every projection here and
+   * said by every surface, with where each is and why, never what it holds. They ride with the replay
+   * as {@link retained} does, and are kept in the file beside the frontier; empty for every record
+   * nothing damaged. Like {@link retained}, this is no verdict: a line below the frontier is `verify`'s.
+   */
+  get refused(): readonly RefusedPart[] {
+    return this.refusedParts;
   }
 
   /**
@@ -443,9 +457,14 @@ export class ProjectionCache {
   integrityAsOfNow(): {
     readonly breaks: readonly LinkBreak[];
     readonly retained: readonly RetainedEntry[];
+    readonly refused: readonly RefusedPart[];
   } {
     this.agree();
-    const standing = { breaks: this.breaks, retained: this.retainedLines };
+    const standing = {
+      breaks: this.breaks,
+      retained: this.retainedLines,
+      refused: this.refusedParts,
+    };
     if (this.frontier === undefined) return standing;
     const arrived = chainArrivals(this.layout, this.upcasters, this.frontier);
     if (arrived.suffix) return standing;
@@ -462,9 +481,18 @@ export class ProjectionCache {
     const where = (one: RetainedEntry): string => `${one.tail}/${one.segment}:${one.line}`;
     const knownLines = new Set(this.retainedLines.map(where));
     const found = arrived.retained.filter((one) => !knownLines.has(where(one)));
+    const knownParts = this.refusedParts;
+    const newParts = arrived.refused.filter(
+      (part) =>
+        !knownParts.some(
+          (known) =>
+            known.kind === part.kind && known.place === part.place && known.line === part.line,
+        ),
+    );
     return {
       breaks: fresh.length === 0 ? this.breaks : [...this.breaks, ...fresh],
       retained: found.length === 0 ? this.retainedLines : [...this.retainedLines, ...found],
+      refused: newParts.length === 0 ? knownParts : [...knownParts, ...newParts],
     };
   }
 
@@ -558,6 +586,7 @@ export class ProjectionCache {
               arrived.frontier,
               this.breaks,
               this.retainedLines,
+              this.refusedParts,
               [...this.unreadLines, ...arrived.unread],
               expected + 1,
               before,
@@ -611,6 +640,7 @@ export class ProjectionCache {
           replay.frontier,
           replay.linkBreaks,
           replay.retained,
+          replay.refused,
           replay.unread,
           generation,
           before,
@@ -623,6 +653,7 @@ export class ProjectionCache {
     this.frontier = replay.frontier;
     this.breaks = replay.linkBreaks;
     this.retainedLines = replay.retained;
+    this.refusedParts = replay.refused;
     this.unreadLines = replay.unread;
     this.several = replay.several;
   }
@@ -632,6 +663,7 @@ export class ProjectionCache {
     frontier: ChainFrontier,
     breaks: readonly LinkBreak[],
     retained: readonly RetainedEntry[],
+    refused: readonly RefusedPart[],
     unread: readonly UnreadLine[],
     generation: number,
     before: Readonly<Record<string, string>>,
@@ -642,6 +674,7 @@ export class ProjectionCache {
       frontier,
       breaks,
       retained,
+      refused,
       unread,
       sealed: this.persisted ? sealedFingerprints(frontier) : {},
       active: this.persisted ? activeMarks(frontier, before) : {},
@@ -667,6 +700,7 @@ export class ProjectionCache {
       this.frontier = undefined;
       this.breaks = [];
       this.retainedLines = [];
+      this.refusedParts = [];
       this.unreadLines = [];
       this.generation = -1;
       return;
@@ -681,12 +715,14 @@ export class ProjectionCache {
       this.frontier = undefined;
       this.breaks = [];
       this.retainedLines = [];
+      this.refusedParts = [];
       this.unreadLines = [];
       return;
     }
     this.frontier = meta.frontier;
     this.breaks = meta.breaks;
     this.retainedLines = meta.retained;
+    this.refusedParts = meta.refused;
     this.unreadLines = meta.unread;
     // A segment whose time moved over the same bytes was hashed to be believed: its new stamp is
     // kept, so the next open does not hash it again (and a read that finds nothing new, which
@@ -736,6 +772,7 @@ export class ProjectionCache {
     this.frontier = undefined;
     this.breaks = [];
     this.retainedLines = [];
+    this.refusedParts = [];
     this.unreadLines = [];
     this.generation = -1;
   }

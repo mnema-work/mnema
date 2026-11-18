@@ -441,7 +441,8 @@ export function staleAnchorRefusal(
   // a record nobody read: measured on the binary after a merge of two inits, this said that nothing
   // ever founded an identity with the key and to delete the anchor, and the write after the
   // deletion was refused `ANOTHER_RECORD`, a file lost on the way. The anchor is not what is wrong.
-  const several = tailsReadAt(layout).several;
+  // A link among the tails is named by the answer the reads give and refused by every write: here only the tails that read count.
+  const several = tailsReadAt(layout, () => {}).several;
   if (several.length > 1) {
     const records = several
       .map((group) => `${group.name.slice(0, 12)}... (${group.tails.join(', ')})`)

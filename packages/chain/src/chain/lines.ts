@@ -204,8 +204,9 @@ export function* parsedFromEnd<T>(
   file: string,
   endsTheStream: boolean,
   parse: (line: string) => T,
+  refused?: (error: UnreadableLineError) => void,
 ): Generator<T> {
-  for (const found of locatedFromEnd(file, endsTheStream, parse)) yield found.value;
+  for (const found of locatedFromEnd(file, endsTheStream, parse, refused)) yield found.value;
 }
 
 /** A parsed line of a backward walk, and where in the file it begins. */
@@ -230,6 +231,7 @@ export function* locatedFromEnd<T>(
   file: string,
   endsTheStream: boolean,
   parse: (line: string) => T,
+  refused?: (error: UnreadableLineError, start: number) => void,
 ): Generator<LocatedLine<T>> {
   let atPhysicalEnd = true;
   // Hoisted over the walk so naming a position allocates nothing per line: it
@@ -244,7 +246,15 @@ export function* locatedFromEnd<T>(
     atPhysicalEnd = false;
     if (line.bytes.length === 0) continue;
     at = line.start;
-    const parsed = parseStoredLine(line.bytes, couldBeTorn, parse, where);
+    let parsed: T | null;
+    try {
+      parsed = parseStoredLine(line.bytes, couldBeTorn, parse, where);
+    } catch (error) {
+      // A reader that reads ON past a line it cannot read is handed it, with where it starts.
+      if (refused === undefined || !(error instanceof UnreadableLineError)) throw error;
+      refused(error, line.start);
+      continue;
+    }
     if (parsed !== null) yield { value: parsed, start: line.start, end: line.end };
   }
 }

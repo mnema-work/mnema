@@ -69,6 +69,8 @@ import {
   orderedSegments,
   precedesItsText,
   type RecordGroup,
+  type RefusedLine,
+  type RefusedPart,
   type RetainedEntry,
   readTail,
   readTailSince,
@@ -76,9 +78,32 @@ import {
   tailsReadAt,
   type UnreadEvent,
   type UnreadLine,
+  refusedPartOf,
   type UpcasterRegistry,
   unreadLinesOf,
 } from '@mnema/chain';
+
+/**
+ * What a reading collects of the parts of the record it SERVES AROUND: a collector to hand to the
+ * readers (`readTail`, `readTailSince`, `tailsReadAt`) and the parts it was handed, each once (a
+ * link is met by more than one listing of the same directory). The reading serves what it reads and
+ * the parts say what it did not (FORMAT.md section 7.1); the line after a refused one breaks the
+ * chain as it always did.
+ */
+function refusedParts(): { readonly collect: RefusedLine; readonly parts: RefusedPart[] } {
+  const parts: RefusedPart[] = [];
+  return {
+    parts,
+    collect: (error, line) => {
+      const part = refusedPartOf(error, line);
+      if (!parts.some((held) => sameRefusedPart(held, part))) parts.push(part);
+    },
+  };
+}
+
+function sameRefusedPart(a: RefusedPart, b: RefusedPart): boolean {
+  return a.kind === b.kind && a.place === b.place && a.line === b.line;
+}
 
 /**
  * What a reading of one tail contributed, and where it left off: the shape both the
@@ -266,6 +291,12 @@ export interface ChainReplay {
    */
   readonly retained: readonly RetainedEntry[];
   /**
+   * The parts of the record the reading did not read: a line of a segment that does not parse and a
+   * symbolic link, which the reading left out and went on past. They ride on the replay as the
+   * retained lines do, and are empty for every record this version wrote and nothing damaged.
+   */
+  readonly refused: readonly RefusedPart[];
+  /**
    * The records the directory holds tails of, where it holds two or more (`tailsReadAt`): then
    * nothing was read. Empty for a directory of one record. It rides on the replay so a surface
    * that says why nothing governs asks no second reading of the tails.
@@ -282,8 +313,9 @@ export interface ChainReplay {
  * one reading, one order, so a caller that wants both cannot get two.
  */
 export function chainReplay(layout: ChainLayout, upcasters: UpcasterRegistry): ChainReplay {
-  const reading = tailsReadAt(layout);
-  const streams = streamsOf(layout, upcasters, 0, reading.read);
+  const linked = refusedParts();
+  const reading = tailsReadAt(layout, linked.collect);
+  const streams = streamsOf(layout, upcasters, 0, reading.read, linked);
   const tails = new Map<string, TailReach>();
   for (const stream of streams) {
     // One `readdir` per tail beside the reading of it. A replay parses every line of
@@ -293,7 +325,7 @@ export function chainReplay(layout: ChainLayout, upcasters: UpcasterRegistry): C
       lastSeq: stream.lastSeq,
       lastHash: stream.lastHash,
       boundary: stream.boundary,
-      segments: orderedSegments(layout, stream.tail),
+      segments: orderedSegments(layout, stream.tail, linked.collect),
       latestAt: latestAt(stream.events),
     });
   }
@@ -307,6 +339,7 @@ export function chainReplay(layout: ChainLayout, upcasters: UpcasterRegistry): C
     linkBreaks,
     unread: streams.flatMap((stream) => stream.unread),
     retained: streams.flatMap((stream) => stream.retained),
+    refused: linked.parts,
     several: reading.several,
   };
 }
@@ -365,6 +398,8 @@ export type ChainArrivals =
       readonly broken: readonly LinkBreak[];
       /** The arrivals whose hash does not hold, in every tail: see {@link ChainArrivals}'s next arm. */
       readonly retained: readonly RetainedEntry[];
+      /** The parts the arrivals hold that were not read: see {@link ChainArrivals}'s next arm. */
+      readonly refused: readonly RefusedPart[];
     }
   | {
       /**
@@ -373,10 +408,14 @@ export type ChainArrivals =
        * HAS ITS OWN ARM for the reason the break has: the reading that found it is the one
        * holding the line, and a caller asked what the chain says NOW (`linkBreaksAsOfNow`) is
        * answered from it, not from a replay. A whole reading says the same of the same bytes.
+       *
+       * THE SAME ARM SAYS A PART THE ARRIVALS HOLD AND THE READING DID NOT READ: a line that does not
+       * parse, a symbolic link. It is left out and named as an altered entry is, for the same reason.
        */
       readonly suffix: false;
       readonly why: 'AN_ARRIVAL_IS_RETAINED';
       readonly retained: readonly RetainedEntry[];
+      readonly refused: readonly RefusedPart[];
     };
 
 /**
@@ -464,7 +503,8 @@ export function chainArrivals(
 ): ChainArrivals {
   // The tails of the record, not every tail of the directory: none of a directory of two records
   // (`tailsReadAt`), so a frontier that held tails reads them as gone and the replay is whole.
-  const reading = tailsReadAt(layout);
+  const linked = refusedParts();
+  const reading = tailsReadAt(layout, linked.collect);
   const tails = reading.read;
   const present = new Set(tails);
   const unresolved = new Set(frontier.unresolved);
@@ -479,10 +519,11 @@ export function chainArrivals(
   // is reported only when no tail broke.
   const broken: LinkBreak[] = [];
   const retained: RetainedEntry[] = [];
+  const refused: RefusedPart[] = [];
   let refusal: ChainArrivals | undefined;
   for (const tail of tails) {
     const covered = frontier.tails.get(tail);
-    const segments = orderedSegments(layout, tail);
+    const segments = orderedSegments(layout, tail, linked.collect);
     if (covered !== undefined && !startsWith(segments, covered.segments)) {
       refusal ??= { suffix: false, why: 'A_TAIL_WAS_CUT' };
       continue;
@@ -490,10 +531,11 @@ export function chainArrivals(
     // A tail nothing was read from (one that appeared, or one that was empty when the
     // frontier was taken) contributes all of itself: there is no position to resume
     // from, so this asks for the whole tail plainly.
+    const own = refusedParts();
     const since =
       covered === undefined || covered.boundary === undefined
-        ? wholeTail(layout, tail, upcasters)
-        : readTailSince(layout, tail, upcasters, covered.boundary, covered.lastHash);
+        ? wholeTail(layout, tail, upcasters, own)
+        : readTailSince(layout, tail, upcasters, covered.boundary, covered.lastHash, own.collect);
     if (since === undefined) {
       refusal ??= { suffix: false, why: 'A_TAIL_WAS_CUT' };
       continue;
@@ -502,6 +544,7 @@ export function chainArrivals(
     // against the hash each stores, so an altered line is one fact and not one and a break.
     const entries = since.arrivals;
     retained.push(...since.retained);
+    refused.push(...own.parts);
     // A retained arrival is returned below as its own refusal before any merge, so what reaches the
     // order is already what holds; `served` is that, said once.
     const served = since.served;
@@ -595,9 +638,12 @@ export function chainArrivals(
       broke: firstBreak,
       broken,
       retained,
+      refused,
     };
   }
-  if (retained.length > 0) return { suffix: false, why: 'AN_ARRIVAL_IS_RETAINED', retained };
+  if (retained.length > 0 || refused.length > 0) {
+    return { suffix: false, why: 'AN_ARRIVAL_IS_RETAINED', retained, refused };
+  }
   if (refusal !== undefined) return refusal;
 
   // The SAME merge the whole order goes through, over the arrivals alone. It is the
@@ -657,8 +703,13 @@ function startsWith(list: readonly string[], prefix: readonly string[]): boolean
  * was gone from the result. Anchored on a byte there is nothing to slice, so nothing to
  * trust: see {@link TailReach.boundary}.
  */
-function wholeTail(layout: ChainLayout, tail: string, upcasters: UpcasterRegistry): ReadSoFar {
-  const read = readTail(layout, tail, upcasters);
+function wholeTail(
+  layout: ChainLayout,
+  tail: string,
+  upcasters: UpcasterRegistry,
+  own: { readonly collect: RefusedLine; readonly parts: readonly RefusedPart[] },
+): ReadSoFar {
+  const read = readTail(layout, tail, upcasters, own.collect, undefined, 'what holds', own.collect);
   // A tail that holds no entry has no position, so the frontier records `undefined`
   // for it and the reading after this one reads it whole again, which costs nothing,
   // because there is nothing there.
@@ -759,12 +810,21 @@ function streamsOf(
   upcasters: UpcasterRegistry,
   tree: number,
   read: readonly string[],
+  linked?: { readonly collect: RefusedLine },
 ): TailStream[] {
   return read.map((tail) => {
     // `readTail` rather than `readTailEntries`: the same bytes, plus what the read
     // had to notice about them. A reading that took only the entries is how a chain
     // the verifier refuses was served by every read with no word about it.
-    const read = readTail(layout, tail, upcasters);
+    const read = readTail(
+      layout,
+      tail,
+      upcasters,
+      linked?.collect,
+      undefined,
+      'what holds',
+      linked?.collect,
+    );
     const entries = read.entries;
     return {
       tree,

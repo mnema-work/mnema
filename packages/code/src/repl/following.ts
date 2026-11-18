@@ -119,6 +119,14 @@ export interface Following {
 }
 
 /**
+ * What the follower does with a part of the record this mnema does not read (a line that does not
+ * parse, a link): it follows what reads and says nothing of the rest, because the facts of integrity
+ * are the corner's and the panels' to say (they come off the caches), and a feed that stopped on the
+ * first such part would stop the console.
+ */
+const aPartLeftOut = (): void => {};
+
+/**
  * Follows the trees at `roots` from where they stand now.
  *
  * With no roots, a session opened outside any project, nothing is read, nothing is
@@ -138,7 +146,7 @@ export function followingTheRecord(roots: readonly string[]): Following {
     const accounted = new Map<string, number>();
     // The tails of the record, as every reading of it takes them (`tailsReadAt`): none of a
     // directory that holds tails of more than one record, of which nothing happened here.
-    for (const tail of tailsReadAt(layout).read) {
+    for (const tail of tailsReadAt(layout, aPartLeftOut).read) {
       accounted.set(tail, lastAccounted(layout, tail, upcasters, NOTHING_ACCOUNTED));
     }
     return { layout, extent, accounted };
@@ -152,12 +160,12 @@ export function followingTheRecord(roots: readonly string[]): Following {
         // NOTHING MOVED, AND THAT IS THE ANSWER MOST OF THE TIME. No tail is opened, no
         // line is parsed, and what it cost is the question.
         if (extent === tree.extent) continue;
-        for (const tail of tailsReadAt(tree.layout).read) {
+        for (const tail of tailsReadAt(tree.layout, aPartLeftOut).read) {
           const accounted = tree.accounted.get(tail) ?? NOTHING_ACCOUNTED;
           // The boundary entry the walk stops on is at or below what is accounted for,
           // and it is the one entry the tip may hold that is not new: the walk's own
           // doc says a caller that wants strictly-above filters, so this one does.
-          const grown = readTailTip(tree.layout, tail, upcasters, accounted).filter(
+          const grown = readTailTip(tree.layout, tail, upcasters, accounted, aPartLeftOut).filter(
             (entry) => entry.link.seq > accounted,
           );
           if (grown.length === 0) continue;
@@ -191,5 +199,5 @@ function lastAccounted(
   upcasters: UpcasterRegistry,
   none: number,
 ): number {
-  return readTailTip(layout, tail, upcasters, THE_LAST_ENTRY).at(-1)?.link.seq ?? none;
+  return readTailTip(layout, tail, upcasters, THE_LAST_ENTRY, aPartLeftOut).at(-1)?.link.seq ?? none;
 }

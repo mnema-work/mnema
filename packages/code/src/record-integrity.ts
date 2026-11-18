@@ -104,7 +104,8 @@ import { oneLine } from './one-line.js';
 export interface ScopedLinkBreak {
   readonly scope: Scope;
   readonly tail: string;
-  readonly seq: number;
+  /** The seq the fact is about: absent for a part of the record that was not read (`unread`), which has none. */
+  readonly seq?: number;
   readonly detail: string;
   /**
    * Present when the fact is an entry LEFT OUT of what was served because its hash does not
@@ -112,6 +113,19 @@ export interface ScopedLinkBreak {
    * tail that stops chaining (a gap, a fork, a `prev` that names something else).
    */
   readonly retained?: { readonly segment: string; readonly line: number };
+  /**
+   * Present when the fact is a PART OF THE RECORD THIS MNEMA DOES NOT READ, which the answer was
+   * served around: a line of a segment that does not parse, or a symbolic link (ADR-396, ADR-406).
+   * `place` is where it is in the record, `line` the line of a line, `reason` why it is not read, and
+   * `root` the directory of the tree's record, so the refusal of a write can say what it always said.
+   */
+  readonly unread?: {
+    readonly kind: 'line' | 'link';
+    readonly place: string;
+    readonly line?: number;
+    readonly reason: string;
+    readonly root: string;
+  };
 }
 
 /**
@@ -151,12 +165,47 @@ const LEFT_OUT =
   'an entry named above was altered after it was written: this answer leaves it out, and ' +
   'what it said is not shown.';
 
+/**
+ * What is said once, however many parts were left out, when a part of the record is one this mnema
+ * does not read: that it is NOT in the answer, whatever it holds. The same standing as
+ * {@link LEFT_OUT}, for the other way a part of the record is left out.
+ */
+const LEFT_UNREAD =
+  'a part of the record named above is one this mnema does not read: this answer leaves it out, ' +
+  'and what it holds is not shown.';
+
+/**
+ * What is said of a line of a tree the repository does not keep: it is not versioned, so there is no
+ * history to put the line back from. The words a refusal of a write has always said of such a line
+ * (`what-a-write-meets.ts`), which the reads say now too.
+ */
+export const NOT_VERSIONED =
+  'This record is not versioned: update mnema if a newer one wrote the line, restore the file from a copy, or repair or remove the line named above.';
+
+/** The way out of a part this mnema does not read, by its kind and the tree it is in (ADR-408). */
+function wayOut(
+  broken: ScopedLinkBreak & { readonly unread: NonNullable<ScopedLinkBreak['unread']> },
+): string {
+  if (broken.unread.kind === 'link') {
+    return 'Replace the link with the folder or file it points to.';
+  }
+  // Only the public tree is kept by the repository, so only its way out is a restore from history.
+  return broken.scope === 'public'
+    ? `Update mnema if a newer one wrote the line, or \`mnema tail repair ${oneLine(broken.tail)}\` puts it back from the repository’s history.`
+    : NOT_VERSIONED;
+}
+
 /** One issue line per broken tail, in the shape `verify` gives an issue. */
 function issueLines(breaks: readonly ScopedLinkBreak[]): readonly string[] {
   // Every value here came out of the record, so every value goes through the collapse:
   // a tail name or a detail carrying a newline would turn one issue into two lines, and
   // the second would read as an issue about a tail nobody named.
   return breaks.map((broken) => {
+    if (broken.unread !== undefined) {
+      const where = `${oneLine(broken.unread.place)}${broken.unread.line === undefined ? '' : ` line ${oneLine(String(broken.unread.line))}`}`;
+      const what = broken.unread.kind === 'link' ? 'a symbolic link' : 'a line that does not read';
+      return `issue [T1] ${oneLine(broken.scope)} ${oneLine(broken.tail === '' ? broken.unread.place : broken.tail)}: ${what} (${where}): ${oneLine(broken.unread.reason)}; this part was not read. ${wayOut({ ...broken, unread: broken.unread })}`;
+    }
     const at = `issue [T1] ${oneLine(broken.scope)} ${oneLine(broken.tail)}#${oneLine(String(broken.seq))}: ${oneLine(broken.detail)}`;
     if (broken.retained === undefined) return at;
     // WHERE THE LINE IS and that it was not served: the entry's own text never rides here.
@@ -171,7 +220,10 @@ function issueLines(breaks: readonly ScopedLinkBreak[]): readonly string[] {
 function closing(breaks: readonly ScopedLinkBreak[], next: string): string {
   const parts = [
     ...(breaks.some((broken) => broken.retained !== undefined) ? [LEFT_OUT] : []),
-    ...(breaks.some((broken) => broken.retained === undefined) ? [STILL_ON_THE_TAIL] : []),
+    ...(breaks.some((broken) => broken.unread !== undefined) ? [LEFT_UNREAD] : []),
+    ...(breaks.some((broken) => broken.retained === undefined && broken.unread === undefined)
+      ? [STILL_ON_THE_TAIL]
+      : []),
   ];
   return `${parts.join(' ')} ${next}`;
 }
