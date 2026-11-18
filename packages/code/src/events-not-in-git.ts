@@ -38,6 +38,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { readingWhatTheDiskLets, UnreadableDiskError } from '@mnema/chain';
 import {
   type Ask,
   type DefaultBranch,
@@ -188,11 +189,25 @@ export function readEventsNotInGit(ctx: EventsNotInGitContext): EventsNotInGit |
   let oldest: string | undefined;
   let untrackedFile: string | undefined;
   let unreadable = false;
-  for (const id of readdirSync(tailsDir).sort()) {
+  // What the disk will not open is said by the reads of the record, on their first line: the count
+  // of what waits is not made over a part it cannot see.
+  const readable = (dir: string): string[] | undefined => {
+    try {
+      return readingWhatTheDiskLets(dir, undefined, () => readdirSync(dir)).sort();
+    } catch (error) {
+      if (error instanceof UnreadableDiskError) return undefined;
+      throw error;
+    }
+  };
+  const ids = readable(tailsDir);
+  if (ids === undefined) return undefined;
+  for (const id of ids) {
     const dir = join(tailsDir, id);
     if (!lstatSync(dir).isDirectory()) continue;
     let waiting = 0;
-    for (const name of readdirSync(dir).sort()) {
+    const names = readable(dir);
+    if (names === undefined) return undefined;
+    for (const name of names) {
       if (!SEGMENT.test(name)) continue;
       const file = join(dir, name);
       const stat = lstatSync(file);
@@ -200,7 +215,13 @@ export function readEventsNotInGit(ctx: EventsNotInGitContext): EventsNotInGit |
       const path = `tails/${id}/${name}`;
       const inHead = held.get(path);
       if (inHead?.size === stat.size) continue;
-      const here = readFileSync(file);
+      let here: Buffer;
+      try {
+        here = readingWhatTheDiskLets(file, undefined, () => readFileSync(file));
+      } catch (error) {
+        if (error instanceof UnreadableDiskError) return undefined;
+        throw error;
+      }
       let before = 0;
       if (inHead !== undefined) {
         const blob = gitRun(['cat-file', 'blob', inHead.oid]);

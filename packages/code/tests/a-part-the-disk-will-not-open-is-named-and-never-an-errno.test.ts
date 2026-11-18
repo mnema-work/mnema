@@ -24,10 +24,13 @@
 import { spawnSync } from 'node:child_process';
 import {
   chmodSync,
+  closeSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
+  openSync,
   readdirSync,
+  readFileSync,
   renameSync,
   rmSync,
   symlinkSync,
@@ -36,6 +39,8 @@ import {
 import { constants, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { resolveTrees } from '@mnema/core';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { afterEach, describe, expect, it } from 'vitest';
 import { MNEMA_CLI } from './support/the-cli.js';
 
@@ -46,7 +51,7 @@ const AN_ERRNO = new RegExp(
   `(^|[^A-Za-z0-9_])(${Object.keys(constants.errno).join('|')})([^A-Za-z0-9_]|$)`,
 );
 
-type Sandbox = { repo: string; home: string };
+type Sandbox = { repo: string; home: string; made: string; ran: number };
 type Tree = 'public' | 'private' | 'global';
 
 const madeHere: string[] = [];
@@ -82,20 +87,40 @@ function restoreModes(dir: string): void {
   }
 }
 
-/** The built binary, its two streams in the order they were written, in a bare HOME. */
-const mnema = (box: Sandbox, args: string[]) =>
-  spawnSync('bash', ['-c', 'exec "$0" "$@" 2>&1', process.execPath, MNEMA_CLI, ...args], {
-    cwd: box.repo,
-    encoding: 'utf-8',
-    timeout: 60_000,
-    env: { PATH: process.env.PATH ?? '', HOME: box.home, GIT_CONFIG_NOSYSTEM: '1' },
-  });
+/**
+ * The built binary, in a bare HOME, with its two streams on ONE file descriptor, so they come back in the
+ * order they were written and no shell stands between the test and the program.
+ */
+function mnema(box: Sandbox, args: string[]): { status: number | null; stdout: string } {
+  box.ran += 1;
+  const file = join(box.made, `said-${box.ran}.txt`);
+  const fd = openSync(file, 'w');
+  let status: number | null;
+  try {
+    status = spawnSync(process.execPath, [MNEMA_CLI, ...args], {
+      cwd: box.repo,
+      timeout: 60_000,
+      stdio: ['ignore', fd, fd],
+      env: { PATH: process.env.PATH ?? '', HOME: box.home, GIT_CONFIG_NOSYSTEM: '1' },
+    }).status;
+  } finally {
+    closeSync(fd);
+  }
+  return { status, stdout: readFileSync(file, 'utf-8') };
+}
 
-function aRecord(): Sandbox {
+function aRecord(inGit = false): Sandbox {
   const made = mkdtempSync(join(tmpdir(), 'mnema-disk-refuses-'));
-  const box = { repo: join(made, 'repo'), home: join(made, 'home') };
+  const box = { repo: join(made, 'repo'), home: join(made, 'home'), made, ran: 0 };
   madeHere.push(made);
   for (const path of [box.repo, box.home]) mkdirSync(path, { recursive: true });
+  if (inGit) {
+    const git = spawnSync('git', ['init', '-q'], {
+      cwd: box.repo,
+      env: { PATH: process.env.PATH ?? '', HOME: box.home, GIT_CONFIG_NOSYSTEM: '1' },
+    });
+    expect(git.status).toBe(0);
+  }
   expect(mnema(box, ['init', '--yes', '--hosts', 'none']).status).toBe(0);
   for (const tree of ['public', 'private', 'global']) {
     expect(
@@ -128,6 +153,14 @@ const DAMAGES: readonly (readonly [string, (root: string) => void])[] = [
   [
     'a tail folder with no permission',
     (root) => chmodSync(join(root, 'tails', readdirSync(join(root, 'tails'))[0] as string), 0),
+  ],
+  [
+    'a file where a tail folder should be',
+    (root) => {
+      const tail = join(root, 'tails', readdirSync(join(root, 'tails'))[0] as string);
+      renameSync(tail, `${tail}.kept`);
+      writeFileSync(tail, 'not a folder');
+    },
   ],
   [
     'a file where the tails folder should be',
@@ -181,19 +214,52 @@ const SWEPT = [
   ['site'],
   ['tail', 'repair', 'nothing'],
   ['backup', 'status'],
+  ['record', 'commit'],
 ];
 
+/** The damages that leave a read nothing to serve from the part, or a part to serve around. */
+const NAMED_ON_READS = new Set([
+  'a tails folder with no permission',
+  'a segment with no permission',
+  'a tail folder with no permission',
+  'a file where a tail folder should be',
+  'a file where the tails folder should be',
+]);
+
 describe.skipIf(CANNOT_CHMOD)('a part the disk will not open, in every tree', () => {
-  describe.each(['public', 'private', 'global'] as const)('in the %s tree', (tree) => {
-    // The private and the global tree are asked for the two damages that reach a read of `tails/` itself.
-    it.each(tree === 'public' ? DAMAGES : DAMAGES.filter((_, at) => at === 0 || at === 3))(
-      '%s: no command prints the system’s own error',
+  // Outside a repository and inside one, because the status asks git what waits to be committed.
+  describe.each([false, true])('with a repository around the project: %s', (inGit) => {
+    describe.each(['public', 'private', 'global'] as const)('in the %s tree', (tree) => {
+      // The private and the global tree are asked for the two damages that reach a read of `tails/` itself.
+      it.each(
+        tree === 'public'
+          ? DAMAGES
+          : DAMAGES.filter(([name]) => name === DAMAGES[0]?.[0] || name === DAMAGES[4]?.[0]),
+      )(
+        '%s: no command prints the system’s own error',
+        (_name, damage) => {
+          const box = aRecord(inGit);
+          damage(rootOf(box, tree));
+          for (const args of SWEPT) {
+            const said = mnema(box, args).stdout;
+            expect(said, `mnema ${args.join(' ')}`).not.toMatch(AN_ERRNO);
+          }
+        },
+        240_000,
+      );
+    });
+
+    it.each(DAMAGES.filter(([name]) => NAMED_ON_READS.has(name)))(
+      '%s: every read of the public tree says the part first and serves on',
       (_name, damage) => {
-        const box = aRecord();
-        damage(rootOf(box, tree));
-        for (const args of SWEPT) {
-          const said = mnema(box, args).stdout;
-          expect(said, `mnema ${args.join(' ')}`).not.toMatch(AN_ERRNO);
+        const box = aRecord(inGit);
+        damage(rootOf(box, 'public'));
+        for (const args of [...READS.filter((one) => one[0] !== 'show'), []]) {
+          const read = mnema(box, args);
+          expect(read.stdout.split('\n')[0], `mnema ${args.join(' ')}`).toMatch(
+            /^issue \[T1\] public \S*: a part the disk does not let this mnema open \(tails[^)]*\): .+; this part was not read\. /,
+          );
+          expect(read.status, `mnema ${args.join(' ')}`).toBe(0);
         }
       },
       240_000,
@@ -221,7 +287,6 @@ describe.skipIf(CANNOT_CHMOD)('a part the disk will not open, in every tree', ()
           expect(refused.status, `mnema ${args.join(' ')}`).not.toBe(0);
           expect(refused.stdout).toContain('the disk does not let this mnema open');
           expect(refused.stdout).toContain('tails cannot be opened');
-          // Nothing was recorded: the part still does not open, and the one the write was asked for is not there.
         }
       }, 240_000);
 
@@ -245,6 +310,35 @@ describe.skipIf(CANNOT_CHMOD)('a part the disk will not open, in every tree', ()
       }, 240_000);
     },
   );
+
+  it('refuses a write of the agent’s server with the place and the way out', async () => {
+    const box = aRecord();
+    damage(box, 'public');
+    const client = new Client({ name: 'claude-code', version: '1.0.0' }, { capabilities: {} });
+    const transport = new StdioClientTransport({
+      command: process.execPath,
+      args: [MNEMA_CLI, 'mcp'],
+      cwd: box.repo,
+      env: { PATH: process.env.PATH ?? '', HOME: box.home, GIT_CONFIG_NOSYSTEM: '1' },
+      stderr: 'ignore',
+    });
+    await client.connect(transport);
+    try {
+      const reply = (await client.callTool({
+        name: 'record_decision',
+        arguments: { title: 'Use a thing', rationale: 'Because it is so' },
+      })) as { isError?: boolean; content: { text: string }[] };
+      const said = reply.content.map((block) => block.text).join('\n');
+      expect(reply.isError).toBe(true);
+      expect(said).not.toMatch(AN_ERRNO);
+      expect(said).toContain('holds a part the disk does not let this mnema open');
+      expect(said).toContain('tails cannot be opened');
+      expect(said).toContain('Give this user access to it');
+      expect(said).not.toContain('tail repair');
+    } finally {
+      await client.close();
+    }
+  }, 120_000);
 });
 
 /** The first damage of the table: a folder of `tails/` with no permission, in `tree`. */

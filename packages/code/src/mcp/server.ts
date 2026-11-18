@@ -78,7 +78,7 @@
  */
 
 import { existsSync } from 'node:fs';
-import { CodedError } from '@mnema/chain';
+import { CodedError, UnreadableLineError } from '@mnema/chain';
 import { REFERENCE_DEFAULT_DEPTH, REFERENCE_MAX_DEPTH } from '@mnema/context';
 import {
   canonicalIdentity,
@@ -149,6 +149,7 @@ import {
   windowDeclaration,
   windowGloss,
 } from '../vocabulary.js';
+import { refusalOfAnUnreadableRecord } from '../what-a-write-meets.js';
 import type { ClientWorkspace } from './context.js';
 import { SERVER_INSTRUCTIONS } from './instructions.js';
 import { armSessionClose, type Lifecycle } from './lifecycle.js';
@@ -193,6 +194,7 @@ import {
   runTaskTransition,
   runTimelineTool,
   sessionLinkBreaks,
+  workspaceTrees,
 } from './tools.js';
 
 /** The name the server announces itself as (its own identity, not the client's). */
@@ -937,6 +939,16 @@ export function answeringThrownRefusals<Input extends ZodRawShapeCompat | undefi
     try {
       return await called(...args);
     } catch (error) {
+      if (error instanceof UnreadableLineError && effect === 'mutates') {
+        // A part of the record this mnema cannot read stops a write: said with its place and the way out,
+        // as the command line says it, and not as the reader's one-line message.
+        const session = await ensureSession();
+        const said = refusalOfAnUnreadableRecord(error, workspaceTrees(session));
+        return refused(session, {
+          code: 'UNREADABLE_LINE',
+          message: `${said ?? error.message} ${NOT_RECORDED}`,
+        });
+      }
       if (!(error instanceof CodedError)) throw error;
       const session = await ensureSession();
       const keyFile =

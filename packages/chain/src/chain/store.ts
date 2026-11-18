@@ -100,6 +100,9 @@ export function refuseLinks(layout: ChainLayout, places: readonly string[]): voi
   }
 }
 
+/** The name of a tail's folder: a key's fingerprint and the installation, both in hex. */
+const A_TAIL_FOLDER = /^[0-9a-f]{64}-[0-9a-f]{32}$/;
+
 /**
  * The directory listing of `place` (empty where there is none), refused when the directory or one
  * of `above` is a link or an entry of it is.
@@ -133,6 +136,21 @@ export function listedWithoutLinks(
     if (refused === undefined) throw named;
     refused(named);
     return [];
+  }
+  // A file named as a tail stands where its folder belongs: the reads that serve the record name it
+  // and go on without it, as they do a folder the disk will not open.
+  if (place === 'tails' && refused !== undefined) {
+    for (const entry of entries) {
+      if (!entry.file || !A_TAIL_FOLDER.test(entry.name)) continue;
+      refused(
+        new UnreadableDiskError(
+          join(layout.root, 'tails', entry.name),
+          'a file stands where a folder is expected',
+          `tails/${entry.name}`,
+          'ENOTDIR',
+        ),
+      );
+    }
   }
   const links = entries.filter((entry) => entry.link);
   if (links.length === 0) return entries;
@@ -611,6 +629,21 @@ function readOn<T>(
 }
 
 /**
+ * The bytes of one file of a tail, or `undefined` for a file the disk will not open when the reader
+ * serves the record: the part is handed to `refused` and the read goes on without it. A reader with no
+ * `refused` stops with the {@link UnreadableDiskError}.
+ */
+function readOrHandOver(file: string, refused: RefusedLine | undefined): Buffer | undefined {
+  try {
+    return readingWhatTheDiskLets(file, undefined, () => readFileSync(file));
+  } catch (error) {
+    if (refused === undefined || !(error instanceof UnreadableDiskError)) throw error;
+    refused(error);
+    return undefined;
+  }
+}
+
+/**
  * Parses one segment file into its entries, whole and in seq order.
  *
  * `isLast` says whether this is the tail's last segment, because that is the
@@ -636,7 +669,8 @@ function entriesOfSegment(
   const relaidEntryOf = relaying(entryOf, relaid, file);
   // Read as BYTES: each line is decoded by {@link parseStoredLine}, which refuses one
   // that is not UTF-8 instead of reading U+FFFD in its place.
-  const raw = readingWhatTheDiskLets(file, undefined, () => readFileSync(file));
+  const raw = readOrHandOver(file, refused);
+  if (raw === undefined) return { entries: [], partialFinalLine: false, bytes: 0, retained: [] };
   const endsWithNewline = raw.at(-1) === NEWLINE;
   const lines = splitLines(raw);
   const entries: ChainEntry[] = [];
@@ -1149,37 +1183,44 @@ export function readTailSince(
       boundary,
     };
   };
-  for (let s = segments.length - 1; s >= at; s -= 1) {
-    const file = segments[s] as string;
-    const parse = (line: string): ChainEntry => parseEntry(line, upcasters);
-    // Said as the forward walk says it: the line's number, and not the byte it starts at.
-    const onRefused =
-      refused === undefined
-        ? undefined
-        : (error: UnreadableLineError, start: number): void =>
-            refused(error, lineAtOffset(file, start), start);
-    for (const found of locatedFromEnd(file, s === segments.length - 1, parse, onRefused)) {
-      // A line STARTING before the boundary is at or below it: the walk has reached what
-      // the previous reading covered, and everything pushed so far is new. Only the
-      // boundary's OWN segment is walked into: every segment after it arrived whole.
-      if (s === at && found.start < boundary.bytes) {
-        // That line is the one the previous reading ended on, or the file is not the one it
-        // read: it must END where the boundary is and be the entry the reading took last. A
-        // checkout to a branch whose live segment shares the head of this one and then
-        // diverges leaves a longer file whose line at the boundary is another entry, and
-        // the lines after it would read as arrivals of the tail that was served.
-        if (found.end + 1 !== boundary.bytes) return undefined;
-        if (lastHash !== null && found.value.link.hash !== lastHash) return undefined;
-        return answer(reached ?? boundary);
+  // A file the disk will not open is not a boundary this reading can resume from: the whole reading
+  // is asked for instead, and it names the part and serves around it.
+  try {
+    for (let s = segments.length - 1; s >= at; s -= 1) {
+      const file = segments[s] as string;
+      const parse = (line: string): ChainEntry => parseEntry(line, upcasters);
+      // Said as the forward walk says it: the line's number, and not the byte it starts at.
+      const onRefused =
+        refused === undefined
+          ? undefined
+          : (error: UnreadableLineError, start: number): void =>
+              refused(error, lineAtOffset(file, start), start);
+      for (const found of locatedFromEnd(file, s === segments.length - 1, parse, onRefused)) {
+        // A line STARTING before the boundary is at or below it: the walk has reached what
+        // the previous reading covered, and everything pushed so far is new. Only the
+        // boundary's OWN segment is walked into: every segment after it arrived whole.
+        if (s === at && found.start < boundary.bytes) {
+          // That line is the one the previous reading ended on, or the file is not the one it
+          // read: it must END where the boundary is and be the entry the reading took last. A
+          // checkout to a branch whose live segment shares the head of this one and then
+          // diverges leaves a longer file whose line at the boundary is another entry, and
+          // the lines after it would read as arrivals of the tail that was served.
+          if (found.end + 1 !== boundary.bytes) return undefined;
+          if (lastHash !== null && found.value.link.hash !== lastHash) return undefined;
+          return answer(reached ?? boundary);
+        }
+        // The walk's first line is the tail's last, so this is set once and names the end
+        // of the newest entry: `+ 1` for the newline that ends it.
+        reached ??= { segment: file, bytes: found.end + 1 };
+        arrivals.push(found.value);
+        // Unshifted, because the walk is from the end: `held` is in the order the lines are stored.
+        if (!entryHashHolds(found.value))
+          held.unshift({ entry: found.value, file, start: found.start });
       }
-      // The walk's first line is the tail's last, so this is set once and names the end
-      // of the newest entry: `+ 1` for the newline that ends it.
-      reached ??= { segment: file, bytes: found.end + 1 };
-      arrivals.push(found.value);
-      // Unshifted, because the walk is from the end: `held` is in the order the lines are stored.
-      if (!entryHashHolds(found.value))
-        held.unshift({ entry: found.value, file, start: found.start });
     }
+  } catch (error) {
+    if (error instanceof UnreadableDiskError) return undefined;
+    throw error;
   }
   // The walk ran off the front of the boundary's segment without reaching the offset:
   // the file holds fewer bytes than the reading that set the boundary read from it.
@@ -1212,7 +1253,8 @@ export function readTailCheckpoints(
   if (!existsSync(file)) return [];
   const relaidCheckpointOf = relaying(parseCheckpoint, relaid, file);
   // As bytes, for the reason {@link entriesOfSegment} reads a segment so.
-  const raw = readingWhatTheDiskLets(file, undefined, () => readFileSync(file));
+  const raw = readOrHandOver(file, refused);
+  if (raw === undefined) return [];
   const endsWithNewline = raw.at(-1) === NEWLINE;
   const lines = splitLines(raw);
   const checkpoints: Checkpoint[] = [];
