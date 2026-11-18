@@ -997,7 +997,7 @@ export const HANDED_OVER: Readonly<
   'packages/core/src/identity/membership.ts': { line: 8, name: 2 },
   'packages/core/src/identity/restore.ts': { line: 3 },
   'packages/core/src/identity/roster.ts': { line: 6 },
-  'packages/core/src/topology/backup/aside.ts': { line: 2 },
+  'packages/core/src/topology/backup/aside.ts': { line: 3 },
   'packages/core/src/topology/backup/restore.ts': { name: 2 },
   'packages/core/src/topology/backup/verify.ts': { name: 1 },
   'packages/core/src/topology/routing.ts': { line: 5 },
