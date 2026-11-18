@@ -22,11 +22,10 @@ import {
   readFileSync,
   rmSync,
   statSync,
-  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runBackupSetup } from '../src/commands/backup.js';
 import {
@@ -174,19 +173,18 @@ describe('installing and removing the hook', () => {
 });
 
 describe('a commit with the hook installed', () => {
-  /** A directory of programs: `git` itself, and `mnema` as the script that records what it was given and runs the CLI. */
+  /** A directory of programs: `mnema` as the script that records what it was given and runs the CLI. */
   function bin(): { dir: string; seen: string } {
+    // mnema first on the PATH, then the machine's own: the hook's shell needs `env` and `sed`.
     const dir = join(sandbox, 'bin');
     mkdirSync(dir, { recursive: true });
-    const gitPath = spawnSync('sh', ['-c', 'command -v git'], { encoding: 'utf-8' }).stdout.trim();
-    symlinkSync(gitPath, join(dir, 'git'));
     const seen = join(sandbox, 'seen-env.txt');
     writeFileSync(
       join(dir, 'mnema'),
       `#!/bin/sh\nenv > "${seen}"\nexec "${process.execPath}" "${MNEMA_CLI}" "$@"\n`,
     );
     chmodSync(join(dir, 'mnema'), 0o755);
-    return { dir, seen };
+    return { dir: `${dir}${delimiter}${process.env.PATH ?? ''}`, seen };
   }
 
   /** Waits, for at most `ms`, until `done` holds. */
