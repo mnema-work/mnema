@@ -158,8 +158,20 @@ describe('listing what was kept', () => {
     put(root, 'tails/aa11-bb22/000001.jsonl', '{"seq":0}\n');
     const newer = setAside(commonDir, items(), new Date('2026-11-12T11:00:00Z'));
     expect(asidesFor(commonDir, items())).toEqual([
-      { folder: older?.folder, date: '2026-11-12T10-00-00Z', trees: ['private'], bytes: 10 },
-      { folder: newer?.folder, date: '2026-11-12T11-00-00Z', trees: ['private'], bytes: 10 },
+      {
+        folder: older?.folder,
+        date: '2026-11-12T10-00-00Z',
+        trees: ['private'],
+        restored: [],
+        bytes: 10,
+      },
+      {
+        folder: newer?.folder,
+        date: '2026-11-12T11-00-00Z',
+        trees: ['private'],
+        restored: [],
+        bytes: 10,
+      },
     ]);
     expect(asidesFor(commonDir, [{ tree: 'private', root: join(base, 'x') }])).toEqual([]);
   });

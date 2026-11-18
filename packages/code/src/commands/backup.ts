@@ -20,7 +20,7 @@
  * that was deleted is the case `restore` exists for. A restore needs the project: it is found by
  * the public tree, which a git repository keeps. A project whose public tree lost its tails has no
  * name, and `restore` then takes it from the copy's manifest, and asks (as it does for the copy of
- * another record, kept aside first and undone by `restore --undo`: ADR-389, ADR-427).
+ * another record, kept aside first and undone by `restore --undo`: ADR-389, ADR-518).
  *
  * IT RECORDS NOTHING. It reads the trees, and writes the folder and `backup.json` in the data
  * directory (and `restore` the trees it puts back). The private key is never copied: it stays
@@ -695,10 +695,9 @@ export function runBackupRestore(
   let keptAside: KeptAside | undefined;
   const roots = plan.prepared.map((one) => ({ tree: one.tree, root: one.root }));
   try {
+    // EVERY restore of a repository takes the repository's lock first, then the tree's own (restore.ts): one order, so none deadlocks.
     const locked = <T>(act: () => T): T =>
-      !dryRun && plan.asks && plan.commonDir !== undefined
-        ? withRestoreLock(plan.commonDir, act)
-        : act();
+      !dryRun && plan.commonDir !== undefined ? withRestoreLock(plan.commonDir, act) : act();
     return locked(() => {
       let prepared = plan.prepared;
       if (dryRun && plan.asks) {

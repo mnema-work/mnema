@@ -1,6 +1,6 @@
 /**
  * Keeping the live tree aside before another record's copy takes its place, and putting it back
- * (ADR-427).
+ * (ADR-518).
  *
  * THE PLACE IS INSIDE THE GIT DIRECTORY: `<git common dir>/mnema/before-restore-<UTC date>/`, with
  * one subfolder per tree (`public/`, `private/`). A folder beside the record would be in the
@@ -72,6 +72,8 @@ function inGitDir(commonDir: string): string {
 interface Mark {
   /** The tree, and the path it was moved from. */
   readonly trees: Readonly<Record<string, string>>;
+  /** After an undo: the tree that stood in its place and was moved here as `restored-<tree>/`, and where it stood. */
+  readonly restored?: Readonly<Record<string, string>>;
 }
 
 function markOf(folder: string): Mark | undefined {
@@ -186,9 +188,13 @@ export function setAside(
 /** One folder kept aside for a project, as `backup status` lists it. */
 export interface AsideListed {
   readonly folder: string;
+  /** The trees an undo has not put back yet. */
+
   /** The UTC date in the folder's name, as it is written there. */
   readonly date: string;
   readonly trees: readonly BackupTree[];
+  /** The trees an undo moved here, the ones that stood in the place of the tree it put back. */
+  readonly restored: readonly BackupTree[];
   readonly bytes: number;
 }
 
@@ -207,17 +213,20 @@ export function asidesFor(
   const found: AsideListed[] = [];
   for (const folder of asidesIn(commonDir)) {
     const mark = markOf(folder) as Mark;
-    const mine = roots.filter(
-      (one) =>
-        samePlace(mark.trees[one.tree], one.root) &&
-        lstatSync(join(folder, one.tree), { throwIfNoEntry: false }) !== undefined,
-    );
-    if (mine.length > 0) {
-      const bytes = mine.reduce((sum, one) => sum + sizeOf(join(folder, one.tree)), 0);
+    const has = (list: Mark['trees'] | undefined, one: (typeof roots)[number], leaf: string) =>
+      samePlace(list?.[one.tree], one.root) &&
+      lstatSync(join(folder, leaf), { throwIfNoEntry: false }) !== undefined;
+    const mine = roots.filter((one) => has(mark.trees, one, one.tree));
+    const displaced = roots.filter((one) => has(mark.restored, one, `restored-${one.tree}`));
+    if (mine.length + displaced.length > 0) {
+      const bytes =
+        mine.reduce((sum, one) => sum + sizeOf(join(folder, one.tree)), 0) +
+        displaced.reduce((sum, one) => sum + sizeOf(join(folder, `restored-${one.tree}`)), 0);
       found.push({
         folder,
         date: basename(folder).slice(ASIDE_PREFIX.length),
         trees: mine.map((one) => one.tree),
+        restored: displaced.map((one) => one.tree),
         bytes,
       });
     }
@@ -282,11 +291,13 @@ export function undoAside(
       }
     }
     const displaced: string[] = [];
+    const movedHere: Record<string, string> = {};
     for (const one of mine) {
       if (lstatSync(one.root, { throwIfNoEntry: false }) !== undefined) {
         const to = join(folder, `restored-${one.tree}`);
         moveFolder(one.root, to);
         displaced.push(to);
+        movedHere[one.tree] = one.root;
       }
       mkdirSync(join(one.root, '..'), { recursive: true });
       moveFolder(join(folder, one.tree), one.root);
@@ -294,12 +305,13 @@ export function undoAside(
     const left = Object.fromEntries(
       Object.entries(mark.trees).filter(([tree]) => !mine.some((one) => one.tree === tree)),
     );
-    writeFileSync(join(folder, MARK), `${JSON.stringify({ trees: left }, null, 2)}\n`);
+    const restored = { ...mark.restored, ...movedHere };
+    writeFileSync(join(folder, MARK), `${JSON.stringify({ trees: left, restored }, null, 2)}\n`);
     return {
       folder,
       trees: mine.map((one) => one.tree),
       displaced,
-      others: asidesFor(commonDir, roots).length,
+      others: asidesFor(commonDir, roots).filter((listed) => listed.folder !== folder).length,
     };
   }
   throw new AsideError(

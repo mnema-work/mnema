@@ -90,7 +90,7 @@ export interface PreparedRestore {
   /**
    * True where the copy is of another record than the tree holds (or the tree holds none, and the
    * copy's name is taken from its manifest): a person is asked before it goes in, and what the
-   * tree holds is kept aside first (ADR-389, ADR-427).
+   * tree holds is kept aside first (ADR-389, ADR-518).
    */
   readonly otherRecord: boolean;
 }

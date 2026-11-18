@@ -246,9 +246,13 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
         }
       }
       for (const kept of result.asides) {
+        const what = [
+          ...kept.trees.map((tree) => `${tree} tree`),
+          ...kept.restored.map((tree) => `${tree} tree as it stood before an undo`),
+        ].join(' and ');
         lines.push(
           fact(
-            onOneLine`kept aside by a restore of another record: ${kept.trees.join(' and ')} tree, ${kept.date}, ${kept.bytes} bytes, at ${kept.folder}`,
+            onOneLine`kept aside by a restore of another record: ${what}, ${kept.date}, ${kept.bytes} bytes, at ${kept.folder}`,
           ),
         );
       }
@@ -413,7 +417,7 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
           io.out(
             render(
               fact(
-                `${undone.others} other folder(s) kept aside for this project are still there: \`mnema backup restore --undo\` puts back the next newest, and \`mnema backup status\` lists them`,
+                `${undone.others} other folder(s) kept aside for this project are still there: \`mnema backup restore --undo\` puts back the next newest that has a tree to put back, and \`mnema backup status\` lists them all`,
               ),
             ),
           );

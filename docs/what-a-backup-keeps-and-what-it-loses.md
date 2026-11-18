@@ -90,7 +90,7 @@ question shows both names. On a yes, what the tree holds is **moved**, not copie
 never shows it; the move is checked before the copy goes in. `mnema backup restore --undo` puts the newest one back (and says how many others stay), and
 moves what stood there meanwhile into the same folder, so nothing is deleted. **No restore deletes a
 folder kept aside**: they stay in `<git directory>/mnema/` until you delete them by hand, and
-`mnema backup status` lists the ones of this project with their date and size. Only a project in a git
+`mnema backup status` lists the ones of this project with their date and size, including a folder an undo emptied, which now holds only what stood there before it (`restored-<tree>/`). Only a project in a git
 repository has that place: outside one, a restore of another record is refused, and says why. The
 machine's global tree is not part of this. The tree is checked by this mnema's reader before and after it
 moves; the second reader (the Python program) is not run on it.

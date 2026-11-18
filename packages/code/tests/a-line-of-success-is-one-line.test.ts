@@ -548,7 +548,7 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
   },
   'backup.ts «{} folder(s) kept aside for this project, which no restore deletes: you delete them by hand; \\`mnema backup status\\` lists them» #1':
     { verdict: 'minted', why: 'a count of folders the product listed' },
-  'backup.ts «{} other folder(s) kept aside for this project are still there: \\`mnema backup restore --undo\\` puts back the next newest, and \\`mnema backup status\\` lists them» #1':
+  'backup.ts «{} other folder(s) kept aside for this project are still there: \\`mnema backup restore --undo\\` puts back the next newest that has a tree to put back, and \\`mnema backup status\\` lists them all» #1':
     { verdict: 'minted', why: 'a count of folders the product listed' },
   'backup.ts «{} tree: no copy, nothing to restore» #1': {
     verdict: 'minted',

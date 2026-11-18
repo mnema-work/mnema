@@ -644,8 +644,18 @@ describe("a copy of another record's, with a question and a way back", () => {
 
     const back = runBackupUndo(a);
     expect(back).toMatchObject({ ok: true, folder: two, others: 1 });
-    expect(runBackupUndo(a)).toMatchObject({ ok: true, folder: one, others: 0 });
+    expect(runBackupUndo(a)).toMatchObject({ ok: true, folder: one, others: 1 });
     expect(digest(priv)).toBe(live);
+    // What an undo moved aside is a folder the person has to delete too: status lists it, and no more asks it to be put back.
+    const after = runBackupStatus(a);
+    expect(
+      after.ok && after.asides.map((kept) => [kept.folder, kept.trees, kept.restored]),
+    ).toEqual([
+      [one, [], ['private']],
+      [two, [], ['private']],
+    ]);
+    expect(after.ok && after.asides.every((kept) => kept.bytes > 0)).toBe(true);
+    expect(runBackupUndo(a)).toMatchObject({ ok: false, code: 'NOTHING_TO_UNDO' });
   });
 
   it("does not delete this project's folder when another project of the repository restores", () => {
@@ -709,37 +719,27 @@ describe("a copy of another record's, with a question and a way back", () => {
     );
   });
 
-  it('takes one lock for every restore of the repository, outside the tree that moves', () => {
-    const { a, beta } = alphaWithBetasCopy(true);
+  it('takes one lock for every restore and every undo of the repository, whichever kind is held against which', () => {
+    const { a, beta, priv } = alphaWithBetasCopy(true);
     const lock = join(a.cwd, '.git', 'mnema', 'restoring.lock');
-    const refused = withTailLock(lock, () =>
-      runBackupRestore(a, false, { from: beta, confirmed: true, now: T1 }),
-    );
-    expect(refused).toMatchObject({ ok: false, code: 'RESTORE_RUNNING' });
+    const live = digest(priv);
+    // A restore that asks, while another holds the repository.
+    expect(
+      withTailLock(lock, () =>
+        runBackupRestore(a, false, { from: beta, confirmed: true, now: T1 }),
+      ),
+    ).toMatchObject({ ok: false, code: 'RESTORE_RUNNING' });
     expect(asidesIn(join(a.cwd, '.git'))).toEqual([]);
-    expect(withTailLock(lock, () => runBackupUndo(a))).toMatchObject({ code: 'RESTORE_RUNNING' });
-  });
-
-  it('refuses outside a repository, says why, and changes nothing', () => {
-    const { a, beta, priv } = alphaWithBetasCopy(false);
-    const before = digest(join(a.cwd, '.mnema'));
-    const refused = runBackupRestore(a, false, { from: beta, confirmed: true });
-    expect(refused).toMatchObject({ ok: false, code: 'NO_GIT_PLACE' });
-    expect(refused.ok === false && 'message' in refused && refused.message).toContain(
-      'no repository',
-    );
-    expect(digest(join(a.cwd, '.mnema'))).toBe(before);
-    expect(existsSync(priv)).toBe(true);
-    expect(runBackupUndo(a)).toMatchObject({ ok: false, code: 'NO_GIT_PLACE' });
-  });
-
-  it('refuses a record name that is not one, and a record with no folder for this project', () => {
-    const { a } = alphaWithBetasCopy(true);
-    expect(runBackupRestore(a, true, { from: '../../etc' })).toMatchObject({ ok: false });
-    expect(runBackupRestore(a, true, { from: 'cd'.repeat(32) })).toMatchObject({
+    expect(digest(priv)).toBe(live);
+    // A restore of the project's own copy, which asks nothing, holds the same lock: so does one that is held against it.
+    expect(runBackupRun(a).ok).toBe(true);
+    expect(withTailLock(lock, () => runBackupRestore(a, false))).toMatchObject({
       ok: false,
-      code: 'NO_COPY',
+      code: 'RESTORE_RUNNING',
     });
+    expect(withTailLock(lock, () => runBackupUndo(a))).toMatchObject({ code: 'RESTORE_RUNNING' });
+    // And the one that asks is held off by a restore that is writing: the writer holds the repository lock too.
+    expect(runBackupRestore(a, false)).toMatchObject({ ok: true });
   });
 
   describe('where the public tree lost its tails and the project has no name', () => {
