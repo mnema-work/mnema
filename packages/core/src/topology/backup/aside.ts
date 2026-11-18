@@ -332,7 +332,8 @@ export function undoAside(
         movedHere[one.tree] = one.root;
       }
     }
-    for (const one of [...mine].reverse()) {
+    for (let at = mine.length - 1; at >= 0; at -= 1) {
+      const one = mine[at] as (typeof mine)[number];
       mkdirSync(join(one.root, '..'), { recursive: true });
       moveFolder(join(folder, one.tree), one.root);
     }
