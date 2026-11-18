@@ -13,8 +13,8 @@
  * only then removed. The folder says, in its own `before-restore.json`, which path each subfolder
  * came from, so `--undo` needs nothing else to put it back.
  *
- * THE FOLDER IS DELETED ONLY BY THE PERSON, OR AFTER THE NEXT SUCCESSFUL RESTORE, and the restore
- * says so on screen. Only a folder with that file is ever taken for one of ours.
+ * NO RESTORE DELETES A FOLDER KEPT ASIDE: it stays until the person deletes it by hand, and every
+ * restore says so. Only a folder with that file is ever taken for one of ours.
  */
 
 import {
@@ -27,8 +27,14 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { join } from 'node:path';
-import { CodedError, catalogUpcasters, verifyChain } from '@mnema/chain';
+import { basename, join } from 'node:path';
+import {
+  CodedError,
+  catalogUpcasters,
+  TailBusyError,
+  verifyChain,
+  withTailLock,
+} from '@mnema/chain';
 import { IN_GIT_DIR } from '../git-place.js';
 import { realOfMaybeMissing } from '../private-tree.js';
 import { sameBytes } from '../private-tree-move.js';
@@ -43,7 +49,7 @@ export class AsideError extends CodedError {
   override readonly name = 'AsideError';
 
   constructor(
-    readonly code: 'ASIDE_EXISTS' | 'ASIDE_NOT_VERIFIED' | 'NOTHING_TO_UNDO',
+    readonly code: 'ASIDE_EXISTS' | 'ASIDE_NOT_VERIFIED' | 'NOTHING_TO_UNDO' | 'RESTORE_RUNNING',
     message: string,
   ) {
     super(message);
@@ -177,12 +183,73 @@ export function setAside(
   return { folder, trees: kept.map((one) => one.tree) };
 }
 
+/** One folder kept aside for a project, as `backup status` lists it. */
+export interface AsideListed {
+  readonly folder: string;
+  /** The UTC date in the folder's name, as it is written there. */
+  readonly date: string;
+  readonly trees: readonly BackupTree[];
+  readonly bytes: number;
+}
+
+function sizeOf(path: string): number {
+  const stat = lstatSync(path, { throwIfNoEntry: false });
+  if (stat === undefined) return 0;
+  if (!stat.isDirectory()) return stat.size;
+  return readdirSync(path).reduce((sum, name) => sum + sizeOf(join(path, name)), 0);
+}
+
+/** The folders kept aside that still hold one of `roots` (the trees of THIS project), oldest first. */
+export function asidesFor(
+  commonDir: string,
+  roots: readonly { readonly tree: BackupTree; readonly root: string }[],
+): AsideListed[] {
+  const found: AsideListed[] = [];
+  for (const folder of asidesIn(commonDir)) {
+    const mark = markOf(folder) as Mark;
+    const mine = roots.filter(
+      (one) =>
+        samePlace(mark.trees[one.tree], one.root) &&
+        lstatSync(join(folder, one.tree), { throwIfNoEntry: false }) !== undefined,
+    );
+    if (mine.length > 0) {
+      const bytes = mine.reduce((sum, one) => sum + sizeOf(join(folder, one.tree)), 0);
+      found.push({
+        folder,
+        date: basename(folder).slice(ASIDE_PREFIX.length),
+        trees: mine.map((one) => one.tree),
+        bytes,
+      });
+    }
+  }
+  return found;
+}
+
+/**
+ * Runs `act` holding the one lock every restore and every undo of this repository takes, kept in the
+ * git directory's own folder so that it does not move with a tree. A second one refuses, naming the process.
+ */
+export function withRestoreLock<T>(commonDir: string, act: () => T): T {
+  try {
+    return withTailLock(join(inGitDir(commonDir), 'restoring.lock'), act, { waitMs: 0 });
+  } catch (error) {
+    if (!(error instanceof TailBusyError)) throw error;
+    const who = error.heldBy === undefined ? 'another process' : `process ${error.heldBy}`;
+    throw new AsideError(
+      'RESTORE_RUNNING',
+      `${who} is restoring in this repository, and two restores do not run together. Let it finish and run it again.`,
+    );
+  }
+}
+
 /** What `--undo` did. */
 export interface Undone {
   readonly folder: string;
   readonly trees: readonly BackupTree[];
   /** Where the trees that were in the way went: nothing is deleted. */
   readonly displaced: readonly string[];
+  /** How many other folders kept aside for this project are still there. */
+  readonly others: number;
 }
 
 /**
@@ -228,17 +295,15 @@ export function undoAside(
       Object.entries(mark.trees).filter(([tree]) => !mine.some((one) => one.tree === tree)),
     );
     writeFileSync(join(folder, MARK), `${JSON.stringify({ trees: left }, null, 2)}\n`);
-    return { folder, trees: mine.map((one) => one.tree), displaced };
+    return {
+      folder,
+      trees: mine.map((one) => one.tree),
+      displaced,
+      others: asidesFor(commonDir, roots).length,
+    };
   }
   throw new AsideError(
     'NOTHING_TO_UNDO',
     'There is no tree kept aside by a restore of another record in this repository, so there is nothing to put back.',
   );
-}
-
-/** Deletes every folder kept aside, but `keep`, and says which: after a restore that went through. */
-export function clearAsides(commonDir: string, keep?: string): string[] {
-  const gone = asidesIn(commonDir).filter((folder) => folder !== keep);
-  for (const folder of gone) rmSync(folder, { recursive: true, force: true });
-  return gone;
 }

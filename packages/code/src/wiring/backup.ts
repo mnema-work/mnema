@@ -245,6 +245,16 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
           );
         }
       }
+      for (const kept of result.asides) {
+        lines.push(
+          fact(
+            onOneLine`kept aside by a restore of another record: ${kept.trees.join(' and ')} tree, ${kept.date}, ${kept.bytes} bytes, at ${kept.folder}`,
+          ),
+        );
+      }
+      if (result.asides.length > 0) {
+        lines.push(fact('no restore deletes them: you delete them by hand'));
+      }
       if (result.noPrivateTree) lines.push(fact('private tree: none on this machine yet'));
       if (result.publicIsInGit) lines.push(fact('public tree: kept by git, not copied'));
       lines.push(fact('the private key is not copied: it stays on this machine'));
@@ -397,8 +407,17 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
           );
         }
         io.out(
-          render(fact('that folder is deleted only by you, or after the next successful restore')),
+          render(fact('no restore deletes it: you delete it by hand when you no longer want it')),
         );
+        if (undone.others > 0) {
+          io.out(
+            render(
+              fact(
+                `${undone.others} other folder(s) kept aside for this project are still there: \`mnema backup restore --undo\` puts back the next newest, and \`mnema backup status\` lists them`,
+              ),
+            ),
+          );
+        }
         return;
       }
       const dryRun = opts.dryRun === true;
@@ -409,12 +428,14 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
       }
       let confirmed = false;
       if (plan.asks) {
-        const named = plan.record === undefined ? 'none: its tails are gone' : plan.record;
         const question = [
-          onOneLine`The copy is of the record ${plan.copyRecord}, and the record this project holds is ${named}.`,
+          onOneLine`The copy is of the record ${plan.copyRecord}.`,
+          ...plan.holds.map(
+            (one) => onOneLine`The ${one.tree} tree it would replace holds ${one.says}.`,
+          ),
           plan.keeping.length === 0
-            ? 'The tree holds no tail, so nothing is kept aside, and the copy is put in.'
-            : `What the ${plan.keeping.map((one) => one.tree).join(' and ')} tree holds is moved to ${plan.commonDir}/mnema/before-restore-<date>/ (inside the git directory: never committed, never in git status), and the copy is put in its place; \`mnema backup restore --undo\` puts it back.`,
+            ? 'No tree to be replaced holds a tail, so nothing is kept aside, and the copy is put in.'
+            : `What the ${plan.keeping.map((one) => one.tree).join(' and ')} tree holds is moved to ${plan.commonDir}/mnema/before-restore-<date>/ (inside the git directory: never committed, never in git status), and the copy is put in its place; \`mnema backup restore --undo\` puts it back, and no restore deletes that folder.`,
         ];
         if (dryRun) {
           for (const line of question) io.out(render(fact(line)));
@@ -491,18 +512,13 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
           ),
         );
         io.out(render(fact('`mnema backup restore --undo` puts it back')));
+      }
+      if (result.asides.length > 0) {
         io.out(
           render(
             fact(
-              'that folder is deleted only by you, or after the next successful restore, which says so',
+              `${result.asides.length} folder(s) kept aside for this project, which no restore deletes: you delete them by hand; \`mnema backup status\` lists them`,
             ),
-          ),
-        );
-      }
-      for (const folder of result.cleared) {
-        io.out(
-          render(
-            fact(onOneLine`deleted ${folder}, kept aside by an earlier restore, as it was said`),
           ),
         );
       }

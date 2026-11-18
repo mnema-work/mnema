@@ -22,13 +22,15 @@
 
 export {
   AsideError,
+  type AsideListed,
+  asidesFor,
   asidesIn,
-  clearAsides,
   type KeptAside,
   setAside,
   treesToKeep,
   type Undone,
   undoAside,
+  withRestoreLock,
 } from './backup/aside.js';
 export {
   type Assigned,

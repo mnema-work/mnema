@@ -546,10 +546,10 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'collapsed',
     why: 'a folder of the git directory, whose path can hold a control character',
   },
-  'backup.ts «deleted {}, kept aside by an earlier restore, as it was said» #1': {
-    verdict: 'collapsed',
-    why: 'a folder of the git directory read back from the disk, whose path can hold a control character',
-  },
+  'backup.ts «{} folder(s) kept aside for this project, which no restore deletes: you delete them by hand; \\`mnema backup status\\` lists them» #1':
+    { verdict: 'minted', why: 'a count of folders the product listed' },
+  'backup.ts «{} other folder(s) kept aside for this project are still there: \\`mnema backup restore --undo\\` puts back the next newest, and \\`mnema backup status\\` lists them» #1':
+    { verdict: 'minted', why: 'a count of folders the product listed' },
   'backup.ts «{} tree: no copy, nothing to restore» #1': {
     verdict: 'minted',
     why: 'the name of a tree the product has two of',
@@ -1221,7 +1221,8 @@ describe('every line this wiring words is classified', () => {
     // 189 with the four lines `backup setup` and `backup run` print.
     // 198 with the five lines `backup restore` prints.
     // 202 with the four lines `backup restore` prints of what it kept aside, put back and deleted.
-    expect(FOUND.sites.length).toBe(202);
+    // 203 with the lines `backup restore` and `backup status` print of the folders kept aside, and none of a deletion.
+    expect(FOUND.sites.length).toBe(203);
   });
 
   it('reads the verdict off the source rather than believing the table', () => {
@@ -1241,9 +1242,9 @@ describe('every line this wiring words is classified', () => {
   it('found sites of both kinds, and the scanner sees a tag when there is one', () => {
     // Neither arm of the case above may be empty, or half of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
-    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(116);
-    expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(86);
-    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(116);
+    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(115);
+    expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(88);
+    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(115);
   });
 
   it('every reason says where the value comes from', () => {
@@ -1399,8 +1400,6 @@ const UNREACHABLE: Readonly<Record<string, string>> = {
   'backup.ts «what stood in its place is kept at {}, and nothing was deleted» #1':
     'a path with a break in it in the git directory, which no case plants yet, so the tag is what holds this line',
   'backup.ts «what the {} tree held is kept at {}» #1':
-    'a path with a break in it in the git directory, which no case plants yet, so the tag is what holds this line',
-  'backup.ts «deleted {}, kept aside by an earlier restore, as it was said» #1':
     'a path with a break in it in the git directory, which no case plants yet, so the tag is what holds this line',
   'backup.ts «{} tree: {} {} {} file(s)» #1':
     'the manifest is written by a run, and no case edits its date by hand yet, so the tag is what holds this line',

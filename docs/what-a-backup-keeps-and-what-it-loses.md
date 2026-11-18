@@ -87,11 +87,13 @@ at a terminal: without one, `restore` refuses, says the command for you to run, 
 question shows both names. On a yes, what the tree holds is **moved**, not copied, to
 `<git directory>/mnema/before-restore-<UTC date>/` (one folder per tree, a date such as
 `2026-11-12T23-36-30Z` with no colon), inside the git directory, so it is never committed and `git status`
-never shows it; the move is checked before the copy goes in. `mnema backup restore --undo` puts it back, and
-moves what stood there meanwhile into the same folder, so nothing is deleted. That folder is deleted only by you, or after the
-next successful restore, which says so on screen. Only a project in a git repository has that place:
-outside one, a restore of another record is refused, and says why. The machine's global tree is not part
-of this.
+never shows it; the move is checked before the copy goes in. `mnema backup restore --undo` puts the newest one back (and says how many others stay), and
+moves what stood there meanwhile into the same folder, so nothing is deleted. **No restore deletes a
+folder kept aside**: they stay in `<git directory>/mnema/` until you delete them by hand, and
+`mnema backup status` lists the ones of this project with their date and size. Only a project in a git
+repository has that place: outside one, a restore of another record is refused, and says why. The
+machine's global tree is not part of this. The tree is checked by this mnema's reader before and after it
+moves; the second reader (the Python program) is not run on it.
 
 The same question is asked when a project has no record name at all: a project without git backs up its public tree, and
 when that tree lost its tails nothing names the record. `restore` then takes the name from the copy's manifest, shows it, and

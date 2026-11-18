@@ -32,6 +32,8 @@ import { resolve } from 'node:path';
 import { recordNamedIn } from '@mnema/chain';
 import {
   AsideError,
+  type AsideListed,
+  asidesFor,
   assignDestination,
   assignGlobalDestination,
   BackupConfigError,
@@ -40,7 +42,6 @@ import {
   backupConfigPath,
   type CopyReading,
   type CopyStanding,
-  clearAsides,
   copyNamed,
   type DiscoveryEnv,
   destinationOf,
@@ -61,6 +62,7 @@ import {
   type Undone,
   undoAside,
   whyNotADestination,
+  withRestoreLock,
   writeCopy,
 } from '@mnema/core';
 
@@ -96,7 +98,17 @@ interface Project {
 }
 
 /** A project whose record may have no name: what `restore` needs when the public tree lost its tails. */
-type Located = Omit<Project, 'record'> & { readonly record: string | undefined };
+type Located = Omit<Project, 'record'> & {
+  readonly record: string | undefined;
+  /** Why there is no name: what the public tree's tails say, when none names one record. */
+  readonly why: string;
+};
+
+/** What the public tree's tails say, said as it is. */
+const saysOfNaming = (state: string): string =>
+  state === 'several'
+    ? 'its public tree holds tails of more than one record'
+    : 'its public tree holds no tail that names a record';
 
 function locate(ctx: BackupContext): Located | BackupRefused {
   const resolved = resolveTrees(ctx.cwd, ctx.env);
@@ -116,6 +128,7 @@ function locate(ctx: BackupContext): Located | BackupRefused {
     wanted.push(['public', resolved.projectPublic]);
   return {
     record: naming.state === 'named' ? naming.name : undefined,
+    why: saysOfNaming(naming.state),
     trees,
     wanted,
     configPath: backupConfigPath(resolved),
@@ -294,6 +307,8 @@ export interface BackupStatus {
   readonly trees: readonly ({ readonly tree: BackupTree } & CopyStanding)[];
   readonly noPrivateTree: boolean;
   readonly publicIsInGit: boolean;
+  /** The folders a restore of another record kept aside for this project: they stay until you delete them. */
+  readonly asides: readonly AsideListed[];
 }
 
 /** Says where the copy is and how far it is from the trees. Writes nothing. */
@@ -313,6 +328,13 @@ export function runBackupStatus(ctx: BackupContext): BackupStatus | BackupRefuse
       })),
       noPrivateTree: !project.trees.some(([tree]) => tree === 'private'),
       publicIsInGit: project.resolved.projectPublicMachinery !== undefined,
+      asides:
+        project.resolved.projectPublicMachinery === undefined
+          ? []
+          : asidesFor(
+              project.resolved.projectPublicMachinery.place.commonDir,
+              project.wanted.map(([tree, root]) => ({ tree, root })),
+            ),
     };
   } catch (error) {
     return refusedBy(error);
@@ -499,7 +521,7 @@ export function runBackupVerify(ctx: BackupContext): BackupVerified | BackupRefu
 /** What `restore` is about to do, found without writing a byte. */
 export interface RestorePlan {
   readonly ok: true;
-  /** The record the project's public tree names, or undefined where its tails are gone. */
+  /** The record the project's public tree names, or undefined where it names none. */
   readonly record: string | undefined;
   /** The record the copy is of. */
   readonly copyRecord: string;
@@ -513,6 +535,8 @@ export interface RestorePlan {
   readonly keeping: readonly { readonly tree: BackupTree; readonly root: string }[];
   /** The git directory the folder kept aside would be in, when the project is in a repository. */
   readonly commonDir: string | undefined;
+  /** For each tree a person is asked about, what the tree to be replaced holds now, said as it is. */
+  readonly holds: readonly { readonly tree: BackupTree; readonly says: string }[];
 }
 
 /**
@@ -553,12 +577,21 @@ function whereIsTheCopy(
       reason: 'NO_RECORD_NAME',
       message:
         one === undefined
-          ? 'The record of this project has no name (its tails are gone) and this machine knows of no copy to take the name from: run `mnema backup restore --from <record>` with the name of the record, or `mnema backup setup <folder>` with the folder that keeps its copy.'
-          : `The record of this project has no name (its tails are gone) and this machine has the copies of ${found.size} records: say which with \`mnema backup restore --from <record>\`, one of ${[...found.keys()].join(', ')}.`,
+          ? `The record of this project has no name (${located.why}) and this machine knows of no copy to take the name from: run \`mnema backup restore --from <record>\` with the name of the record, or \`mnema backup setup <folder>\` with the folder that keeps its copy.`
+          : `The record of this project has no name (${located.why}) and this machine has the copies of ${found.size} records: say which with \`mnema backup restore --from <record>\`, one of ${[...found.keys()].join(', ')}.`,
     };
   } catch (error) {
     return refusedBy(error);
   }
+}
+
+/** What the tree at `root` holds, as the record its tails name, or that it names none or several. */
+function holdsOf(root: string): string {
+  if (!existsSync(root)) return 'nothing (there is no such tree)';
+  const naming = recordNamedIn([root]);
+  if (naming.state === 'named') return `the record ${naming.name}`;
+  if (!treesToKeep([{ root }]).length) return 'no tail';
+  return naming.state === 'several' ? 'tails of more than one record' : 'tails that name no record';
 }
 
 /** Reads what a restore would do, and asks nobody and writes nothing. */
@@ -599,6 +632,7 @@ export function planBackupRestore(ctx: BackupContext, from?: string): RestorePla
       message: `The copy is of another record than the one this project holds, and the live ${keeping.map((one) => one.tree).join(' and ')} tree would have to be kept aside first, which is done only inside the git directory of a repository (nothing in the working tree: \`git add -A\` would publish it). This project is in no repository, so nothing was changed.`,
     };
   }
+  const holds = asking.map((one) => ({ tree: one.tree, says: holdsOf(one.root) }));
   return {
     ok: true,
     record: located.record,
@@ -609,6 +643,7 @@ export function planBackupRestore(ctx: BackupContext, from?: string): RestorePla
     asks: asking.length > 0,
     keeping,
     commonDir,
+    holds,
   };
 }
 
@@ -624,8 +659,8 @@ export interface BackupRestored {
   readonly noCopy: readonly BackupTree[];
   /** Where what the trees held was kept aside, when another record's copy replaced it. */
   readonly keptAside: KeptAside | undefined;
-  /** The folders an earlier restore kept aside, deleted now that this one went through. */
-  readonly cleared: readonly string[];
+  /** The folders kept aside for this project, this one included: no restore deletes one. */
+  readonly asides: readonly AsideListed[];
 }
 
 /** What a restore may be given beyond the verb: the record to take the copy of, and a person's yes. */
@@ -658,38 +693,61 @@ export function runBackupRestore(
     };
   }
   let keptAside: KeptAside | undefined;
+  const roots = plan.prepared.map((one) => ({ tree: one.tree, root: one.root }));
   try {
-    let prepared = plan.prepared;
-    if (!dryRun && plan.asks) {
-      for (const one of plan.keeping) noWriterHolds(one.root);
-      if (plan.commonDir !== undefined) {
-        keptAside = setAside(plan.commonDir, plan.keeping, options.now ?? new Date());
+    const locked = <T>(act: () => T): T =>
+      !dryRun && plan.asks && plan.commonDir !== undefined
+        ? withRestoreLock(plan.commonDir, act)
+        : act();
+    return locked(() => {
+      let prepared = plan.prepared;
+      if (dryRun && plan.asks) {
+        // What the restore will count: the trees it keeps aside are empty by then, and a dry run counts them so.
+        prepared = prepared.map((one) =>
+          plan.keeping.some((kept) => kept.tree === one.tree)
+            ? {
+                ...prepareRestore(
+                  `${one.root}.after-it-is-kept-aside`,
+                  plan.destination,
+                  plan.record,
+                  one.tree,
+                  plan.copyRecord,
+                ),
+                root: one.root,
+                otherRecord: true,
+              }
+            : one,
+        );
       }
-      // The trees were emptied: what the copy puts back is read again against what is there now.
-      prepared = prepared.map((one) =>
-        prepareRestore(one.root, plan.destination, plan.record, one.tree, plan.copyRecord),
-      );
-    }
-    const done = dryRun ? [] : restoreCopies([...prepared]);
-    const cleared =
-      dryRun || plan.commonDir === undefined ? [] : clearAsides(plan.commonDir, keptAside?.folder);
-    return {
-      ok: true,
-      record: plan.record,
-      copyRecord: plan.copyRecord,
-      destination: plan.destination,
-      dryRun,
-      trees: prepared.map((one, at) => ({ ...one, restored: done[at] })),
-      noCopy: plan.noCopy,
-      keptAside,
-      cleared,
-    };
+      if (!dryRun && plan.asks) {
+        for (const one of plan.keeping) noWriterHolds(one.root);
+        if (plan.commonDir !== undefined) {
+          keptAside = setAside(plan.commonDir, plan.keeping, options.now ?? new Date());
+        }
+        // The trees were emptied: what the copy puts back is read again against what is there now.
+        prepared = prepared.map((one) =>
+          prepareRestore(one.root, plan.destination, plan.record, one.tree, plan.copyRecord),
+        );
+      }
+      const done = dryRun ? [] : restoreCopies([...prepared]);
+      return {
+        ok: true as const,
+        record: plan.record,
+        copyRecord: plan.copyRecord,
+        destination: plan.destination,
+        dryRun,
+        trees: prepared.map((one, at) => ({ ...one, restored: done[at] })),
+        noCopy: plan.noCopy,
+        keptAside,
+        asides: plan.commonDir === undefined ? [] : asidesFor(plan.commonDir, roots),
+      };
+    });
   } catch (error) {
     const refused = refusedBy(error);
     if (keptAside === undefined || refused.reason !== 'REFUSED') return refused;
     return {
       ...refused,
-      message: `${refused.message} What the trees held is kept at ${keptAside.folder}: \`mnema backup restore --undo\` puts it back.`,
+      message: `${refused.message} What the trees held is kept at ${(keptAside as KeptAside).folder}: \`mnema backup restore --undo\` puts it back.`,
     };
   }
 }
@@ -715,10 +773,12 @@ export function runBackupUndo(ctx: BackupContext): BackupUndone | BackupRefused 
   }
   const roots = located.wanted.map(([tree, root]) => ({ tree, root }));
   try {
-    for (const one of roots) {
-      if (existsSync(one.root)) noWriterHolds(one.root);
-    }
-    return { ok: true, ...undoAside(commonDir, roots) };
+    return withRestoreLock(commonDir, () => {
+      for (const one of roots) {
+        if (existsSync(one.root)) noWriterHolds(one.root);
+      }
+      return { ok: true as const, ...undoAside(commonDir, roots) };
+    });
   } catch (error) {
     return refusedBy(error);
   }

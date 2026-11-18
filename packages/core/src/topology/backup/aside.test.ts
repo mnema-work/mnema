@@ -26,7 +26,7 @@ vi.mock('node:fs', async (original) => {
   };
 });
 
-import { AsideError, asideName, asidesIn, clearAsides, setAside, undoAside } from './aside.js';
+import { AsideError, asideName, asidesFor, asidesIn, setAside, undoAside } from './aside.js';
 
 let base: string;
 let commonDir: string;
@@ -82,7 +82,6 @@ describe('the folder a tree is kept in', () => {
     expect(setAside(commonDir, items(), later)).toBeUndefined();
     mkdirSync(join(commonDir, 'mnema', 'before-restore-by-someone-else'), { recursive: true });
     expect(asidesIn(commonDir)).toEqual([]);
-    expect(clearAsides(commonDir)).toEqual([]);
     expect(existsSync(join(commonDir, 'mnema', 'before-restore-by-someone-else'))).toBe(true);
   });
 
@@ -153,12 +152,15 @@ describe('putting it back', () => {
   });
 });
 
-describe('deleting what was kept', () => {
-  it('deletes the older folders but the one just made', () => {
+describe('listing what was kept', () => {
+  it('lists the folders that hold this project, with their size, and never deletes one', () => {
     const older = setAside(commonDir, items(), new Date('2026-11-12T10:00:00Z'));
     put(root, 'tails/aa11-bb22/000001.jsonl', '{"seq":0}\n');
     const newer = setAside(commonDir, items(), new Date('2026-11-12T11:00:00Z'));
-    expect(clearAsides(commonDir, newer?.folder)).toEqual([older?.folder]);
-    expect(asidesIn(commonDir)).toEqual([newer?.folder]);
+    expect(asidesFor(commonDir, items())).toEqual([
+      { folder: older?.folder, date: '2026-11-12T10-00-00Z', trees: ['private'], bytes: 10 },
+      { folder: newer?.folder, date: '2026-11-12T11-00-00Z', trees: ['private'], bytes: 10 },
+    ]);
+    expect(asidesFor(commonDir, [{ tree: 'private', root: join(base, 'x') }])).toEqual([]);
   });
 });
