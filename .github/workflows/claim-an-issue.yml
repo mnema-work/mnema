@@ -1,0 +1,77 @@
+name: Claim an issue
+
+# WHAT THIS IS. A contributor who comments that they will take an open `good first issue` or
+# `help wanted` issue is assigned to it, once, with a reply; and a daily run frees an assignment this
+# workflow made after 14 days without an open pull request of theirs that names the issue.
+# `.github/assign-a-claimed-issue/claim.mjs` owns the rules and its comment says what it does and does
+# not do (ADR-532).
+#
+# THE LINE IT HOLDS. A comment is text a stranger wrote. It is read from the event file by the
+# script, matched against phrases and written nowhere: no expression of the event is put in a shell
+# line, nothing of a pull request is checked out (the checkout is this repository's default branch,
+# for the script alone), nothing is installed and no package script runs. The token reads and writes
+# issues, reads pull requests, and reads the contents the checkout needs; nothing else.
+
+on:
+  issue_comment:
+    types: [created]
+  schedule:
+    - cron: '41 5 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  claim:
+    name: assign a claimed issue
+    if: github.event_name == 'issue_comment' && !github.event.issue.pull_request
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    # No concurrency group: GitHub keeps one waiting run per group, so a third comment would cancel
+    # the second and a claim would be lost in silence. The script reads the issue back after it
+    # assigns and puts right what it finds.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/assign-a-claimed-issue
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+
+      - name: Assign the commenter, or say why not
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/assign-a-claimed-issue/claim.mjs claim "$GITHUB_EVENT_PATH"
+
+  free:
+    name: free the assignments that went quiet
+    if: github.event_name != 'issue_comment'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    concurrency:
+      group: claim-an-issue-daily
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/assign-a-claimed-issue
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+
+      - name: Free what has no pull request after 14 days
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/assign-a-claimed-issue/claim.mjs expire
