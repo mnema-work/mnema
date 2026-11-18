@@ -1066,11 +1066,15 @@ describe('the verb the badge tells a caller to run is spelled in one module', ()
     // to a verb, so the word it prints has to be the word commander routes: typed twice,
     // the day this verb is renamed is the day the corner of the console starts naming
     // something that does not exist.
-    const naming = sourcesOf(SRC).filter((file) =>
-      literalsOf(withoutComments(readFileSync(file, 'utf-8'))).some(
-        (literal) => literal.slice(1, -1) === VERIFY_VERB,
-      ),
-    );
+    // `backup` registers a subcommand of its own with the same word (`mnema backup verify`): a
+    // different command that no badge names, so its wiring is the one place besides the verb's.
+    const naming = sourcesOf(SRC)
+      .filter((file) => !file.endsWith(join('wiring', 'backup.ts')))
+      .filter((file) =>
+        literalsOf(withoutComments(readFileSync(file, 'utf-8'))).some(
+          (literal) => literal.slice(1, -1) === VERIFY_VERB,
+        ),
+      );
     expect(naming.map((file) => file.slice(SRC.length + 1))).toEqual([join('wiring', 'verify.ts')]);
     // The scan read something, and it would accuse a second module.
     expect(sourcesOf(SRC).length).toBeGreaterThan(50);
