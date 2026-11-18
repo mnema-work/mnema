@@ -24,6 +24,7 @@ import {
 } from '../src/commands/backup.js';
 import { runInit } from '../src/commands/init.js';
 import { runTask } from '../src/commands/task.js';
+import { type CliIo, run } from '../src/program.js';
 
 let sandbox: string;
 let env: DiscoveryEnv;
@@ -142,5 +143,48 @@ describe('a backup kept in a git repository', () => {
     expect(ran).toMatchObject({ ok: false, reason: 'REFUSED', code: 'GIT_FAILED' });
     expect(ran.ok ? '' : JSON.stringify(ran)).toContain('does-not-exist.git');
     expect(existsSync(join(sandbox, 'does-not-exist.git'))).toBe(false);
+  });
+});
+
+describe('what the verbs print of a git destination', () => {
+  /** `mnema <argv>` in the project, in process, with a person at a terminal who says yes. */
+  async function mnema(cwd: string, ...argv: string[]): Promise<{ text: string; failed: boolean }> {
+    const out: string[] = [];
+    let failed = false;
+    const io: CliIo = {
+      out: (line) => out.push(line),
+      err: (line) => out.push(line),
+      fail: () => {
+        failed = true;
+      },
+      aPersonIsHere: true,
+      ask: async () => 'yes',
+    };
+    const before = process.cwd();
+    const home = process.env.HOME;
+    process.chdir(cwd);
+    process.env.HOME = join(sandbox, 'home');
+    try {
+      await run(argv, io);
+    } finally {
+      process.chdir(before);
+      if (home === undefined) delete process.env.HOME;
+      else process.env.HOME = home;
+    }
+    return { text: out.join('\n'), failed };
+  }
+
+  it('says, at setup, that the history is kept, and, at each run, what was committed and pushed', async () => {
+    const a = project('alpha');
+    const set = await mnema(a.cwd, 'backup', 'setup', remote);
+    expect(set.failed, set.text).toBe(false);
+    expect(set.text).toContain('This destination is a git repository');
+    expect(set.text).toContain('The backup of record');
+    const first = await mnema(a.cwd, 'backup', 'run');
+    expect(first.failed, first.text).toBe(false);
+    expect(first.text).toContain('git: committed, 1 commit(s) pushed');
+    const status = await mnema(a.cwd, 'backup', 'status');
+    expect(status.text).toContain(remote);
+    expect(git(remote, 'rev-list', '--count', 'main')).toBe('1');
   });
 });

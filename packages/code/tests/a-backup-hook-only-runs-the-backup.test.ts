@@ -36,6 +36,7 @@ import {
 } from '../src/commands/backup-hook.js';
 import { runInit } from '../src/commands/init.js';
 import { runTask } from '../src/commands/task.js';
+import { type CliIo, run } from '../src/program.js';
 import { MNEMA_CLI } from './support/the-cli.js';
 
 let sandbox: string;
@@ -239,5 +240,59 @@ describe('a commit with the hook installed', () => {
     git(['add', 'file.txt'], dir);
     expect(git(['commit', '-q', '-m', 'a change'], dir).status).toBe(0);
     expect(git(['for-each-ref'], dir, remote).stdout.trim()).toBe('');
+  });
+});
+
+describe('the verbs say what they did', () => {
+  /** `mnema <argv>` in process, in the repository: what it printed, and whether it failed. */
+  async function mnema(...argv: string[]): Promise<{ text: string; failed: boolean }> {
+    const out: string[] = [];
+    const err: string[] = [];
+    let failed = false;
+    const io: CliIo = {
+      out: (line) => out.push(line),
+      err: (line) => err.push(line),
+      fail: () => {
+        failed = true;
+      },
+    };
+    const before = process.cwd();
+    const home = process.env.HOME;
+    process.chdir(repo);
+    process.env.HOME = join(sandbox, 'home');
+    try {
+      await run(argv, io);
+    } finally {
+      process.chdir(before);
+      if (home === undefined) delete process.env.HOME;
+      else process.env.HOME = home;
+    }
+    return { text: [...out, ...err].join('\n'), failed };
+  }
+
+  it('says where it put the hook, that it is already there, and where it took it from', async () => {
+    const put = await mnema('backup', 'hook', 'install');
+    expect(put.failed, put.text).toBe(false);
+    expect(put.text).toContain(`Installed the post-commit hook that runs the backup: ${HOOK()}`);
+    expect(put.text).toContain('does nothing until');
+    const again = await mnema('backup', 'hook', 'install');
+    expect(again.text).toContain('is already installed');
+    const took = await mnema('backup', 'hook', 'uninstall');
+    expect(took.text).toContain(`Removed the post-commit hook that runs the backup: ${HOOK()}`);
+    const none = await mnema('backup', 'hook', 'uninstall');
+    expect(none.text).toContain('There is no post-commit hook of the backup to remove');
+  });
+
+  it('refuses a hooksPath inside the tree and a hook it cannot add to, in words that name them', async () => {
+    git(['config', 'core.hooksPath', '.githooks']);
+    const inside = await mnema('backup', 'hook', 'install');
+    expect(inside.failed).toBe(true);
+    expect(inside.text).toContain('inside the working tree');
+    git(['config', '--unset', 'core.hooksPath']);
+    mkdirSync(join(repo, '.git', 'hooks'), { recursive: true });
+    writeFileSync(HOOK(), '#!/usr/bin/env python3\nprint(1)\n');
+    const foreign = await mnema('backup', 'hook', 'install');
+    expect(foreign.failed).toBe(true);
+    expect(foreign.text).toContain('is a hook mnema cannot add to');
   });
 });
