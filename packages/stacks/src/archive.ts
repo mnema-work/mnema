@@ -93,7 +93,9 @@ export function readStackArchive(bytes: Uint8Array): StackFiles {
       });
       continue;
     }
-    const path = name.replace(/^(\.\/)+/, '').replace(/\/+$/, '');
+    let end = name.length;
+    while (end > 0 && name[end - 1] === '/') end -= 1;
+    const path = name.slice(0, end).replace(/^(\.\/)+/, '');
     if (type === '5' || path === '') continue;
     if (path === '.git' || path.startsWith('.git/')) continue;
     const refusal = refusePath(path);
