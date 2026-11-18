@@ -742,11 +742,19 @@ describe("a copy of another record's, with a question and a way back", () => {
       expect(existsSync(one) && existsSync(two)).toBe(true);
     });
 
+    it('makes no before-restore folder for a restore that moves nothing aside', () => {
+      const a = project('alpha', false);
+      expect(runBackupSetup(a, join(sandbox, 'folder-own')).ok).toBe(true);
+      expect(runBackupRun(a).ok).toBe(true);
+      expect(runBackupRestore(a, false)).toMatchObject({ ok: true });
+      expect(existsSync(join(home(), 'before-restore'))).toBe(false);
+    });
+
     it('takes one lock for the place, and asking to undo where nothing was kept does not make the place', () => {
       const { a, beta } = alphaWithBetasCopy(false);
       expect(runBackupUndo(a)).toMatchObject({ ok: false, code: 'NOTHING_TO_UNDO' });
       expect(existsSync(join(home(), 'before-restore'))).toBe(false);
-      const lock = join(home(), 'before-restore', 'restoring.lock');
+      const lock = join(home(), 'restoring.lock');
       expect(
         withTailLock(lock, () =>
           runBackupRestore(a, false, { from: beta, confirmed: true, now: T1 }),

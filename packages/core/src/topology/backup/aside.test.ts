@@ -18,13 +18,18 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /** What a move across file systems meets: `across` makes every rename say so, and `spoil` makes the copy differ. */
-const fs = vi.hoisted(() => ({ across: false, spoil: false }));
+const fs = vi.hoisted(() => ({
+  across: false,
+  spoil: false,
+  failTo: undefined as ((to: string) => boolean) | undefined,
+}));
 vi.mock('node:fs', async (original) => {
   const real = await original<typeof import('node:fs')>();
   return {
     ...real,
     renameSync: (from: string, to: string) => {
       if (fs.across) throw Object.assign(new Error('cross-device link'), { code: 'EXDEV' });
+      if (fs.failTo?.(to)) throw Object.assign(new Error('permission denied'), { code: 'EACCES' });
       real.renameSync(from, to);
     },
     cpSync: (from: string, to: string, options: import('node:fs').CopySyncOptions) => {
@@ -68,6 +73,7 @@ beforeEach(() => {
 afterEach(() => {
   fs.across = false;
   fs.spoil = false;
+  fs.failTo = undefined;
   rmSync(base, { recursive: true, force: true });
 });
 
@@ -292,5 +298,30 @@ describe('the folder kept for a project outside git, in the mnema home', () => {
     );
     // The lock of the home's place is not the lock of a repository's.
     expect(withRestoreLock(at, () => withRestoreLock(place, () => 'both'))).toBe('both');
+  });
+
+  it('puts back what an earlier move made when a later one fails, so the record is whole and the message says nothing moved', () => {
+    const { project, trees, at } = outside();
+    const before = bytes(project);
+    fs.failTo = (to) => to.endsWith(`${'/'}public`);
+    expect(() => setAside(at, trees, later)).toThrow(
+      /nothing was moved, and the trees are as they were/,
+    );
+    expect(bytes(project)).toBe(before);
+    expect(existsSync(join(project, 'private', 'tails', 'qq22-bb22', '000001.jsonl'))).toBe(true);
+    expect(asidesIn(at)).toEqual([]);
+  });
+
+  it('names the folder and --undo when putting back fails too', () => {
+    const { project, trees, at } = outside();
+    fs.failTo = (to) => to.endsWith(`${'/'}public`) || to === join(project, 'private');
+    expect(() => setAside(at, trees, later)).toThrow(/kept at .*--undo/s);
+    expect(asidesIn(at)).toHaveLength(1);
+  });
+
+  it('makes no folder in the home for the lock', () => {
+    const { home, at } = outside();
+    expect(withRestoreLock(at, () => 'went')).toBe('went');
+    expect(existsSync(join(home, 'before-restore'))).toBe(false);
   });
 });

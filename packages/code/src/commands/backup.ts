@@ -773,8 +773,7 @@ export function runBackupUndo(ctx: BackupContext): BackupUndone | BackupRefused 
       }
       return { ok: true as const, ...undoAside(place, roots) };
     };
-    // Where nothing was ever kept aside the place is not there, and asking to undo does not make it.
-    return existsSync(place.dir) ? withRestoreLock(place, undo) : undo();
+    return withRestoreLock(place, undo);
   } catch (error) {
     return refusedBy(error);
   }

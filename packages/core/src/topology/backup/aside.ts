@@ -27,6 +27,7 @@ import {
   readdirSync,
   readFileSync,
   renameSync,
+  rmdirSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -70,12 +71,15 @@ export function asideName(now: Date, prefix: string = ASIDE_PREFIX): string {
 /** Where the folders kept aside are: the directory that holds them, and what each one's name starts with. */
 export interface AsidePlace {
   readonly dir: string;
+  /** The restore lock of this place: it does not live in `dir` outside git, so taking it makes no folder. */
+  readonly lock: string;
   readonly prefix: string;
 }
 
 /** The place in a repository: mnema's own folder in the git directory, which also holds one folder per project. */
 export function asidePlaceInGit(commonDir: string): AsidePlace {
-  return { dir: join(commonDir, IN_GIT_DIR), prefix: ASIDE_PREFIX };
+  const dir = join(commonDir, IN_GIT_DIR);
+  return { dir, lock: join(dir, 'restoring.lock'), prefix: ASIDE_PREFIX };
 }
 
 /** The folder of the mnema home that holds what a restore keeps aside for a project outside git. */
@@ -83,7 +87,7 @@ export const HOME_ASIDE_DIR = 'before-restore';
 
 /** The place outside a repository: `<mnema home>/before-restore/<date>/`. */
 export function asidePlaceInHome(home: string): AsidePlace {
-  return { dir: join(home, HOME_ASIDE_DIR), prefix: '' };
+  return { dir: join(home, HOME_ASIDE_DIR), lock: join(home, 'restoring.lock'), prefix: '' };
 }
 
 /** Where a restore ran, said for a refusal. */
@@ -200,18 +204,43 @@ export function setAside(
     `${JSON.stringify({ trees: Object.fromEntries(kept.map((one) => [one.tree, one.root])) }, null, 2)}\n`,
     { flag: 'wx' },
   );
-  kept.forEach((one, at) => {
-    const to = join(folder, one.tree);
-    moveFolder(one.root, to);
-    // A project outside git is found by its `.mnema/` folder, which is the public tree: leave it standing, empty, so `--undo` still finds the project.
-    if (one.tree === 'public') mkdirSync(one.root, { recursive: true });
-    if (verifyChain({ root: to }, catalogUpcasters()).ok !== readsBefore[at]) {
+  const moved: { readonly root: string; readonly to: string; readonly tree: BackupTree }[] = [];
+  try {
+    kept.forEach((one, at) => {
+      const to = join(folder, one.tree);
+      moveFolder(one.root, to);
+      moved.push({ root: one.root, to, tree: one.tree });
+      // A project outside git is found by its `.mnema/` folder, which is the public tree: leave it standing, empty, so `--undo` still finds the project.
+      if (one.tree === 'public') mkdirSync(one.root, { recursive: true });
+      if (verifyChain({ root: to }, catalogUpcasters()).ok !== readsBefore[at]) {
+        throw new AsideError(
+          'ASIDE_NOT_VERIFIED',
+          `The ${one.tree} tree kept at ${to} does not read as it did before it was moved: nothing more was done, and \`mnema backup restore --undo\` puts it back.`,
+        );
+      }
+    });
+  } catch (error) {
+    if (error instanceof AsideError) throw error;
+    // A move failed after others were made: put them back, last first, so the record is whole where it was.
+    try {
+      for (let at = moved.length - 1; at >= 0; at -= 1) {
+        const one = moved[at] as (typeof moved)[number];
+        if (one.tree === 'public') rmdirSync(one.root);
+        moveFolder(one.to, one.root);
+      }
+      rmSync(join(folder, MARK));
+      rmdirSync(folder);
+    } catch {
       throw new AsideError(
         'ASIDE_NOT_VERIFIED',
-        `The ${one.tree} tree kept at ${to} does not read as it did before it was moved: nothing more was done, and \`mnema backup restore --undo\` puts it back.`,
+        `A tree could not be moved (${(error as Error).message}), and putting back what was already moved failed too: what the trees held is kept at ${folder}, and \`mnema backup restore --undo\` puts it back.`,
       );
     }
-  });
+    throw new AsideError(
+      'ASIDE_NOT_VERIFIED',
+      `A tree could not be moved (${(error as Error).message}): nothing was moved, and the trees are as they were.`,
+    );
+  }
   return { folder, trees: kept.map((one) => one.tree) };
 }
 
@@ -271,7 +300,7 @@ export function asidesFor(
  */
 export function withRestoreLock<T>(place: AsidePlace, act: () => T): T {
   try {
-    return withTailLock(join(place.dir, 'restoring.lock'), act, { waitMs: 0 });
+    return withTailLock(place.lock, act, { waitMs: 0 });
   } catch (error) {
     if (!(error instanceof TailBusyError)) throw error;
     const who = error.heldBy === undefined ? 'another process' : `process ${error.heldBy}`;
