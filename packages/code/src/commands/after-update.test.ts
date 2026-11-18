@@ -32,6 +32,7 @@ import {
 import { MACHINE_STATE_FILE } from '../machine-state.js';
 import { type CliIo, run } from '../program.js';
 import { VERSION } from '../version.js';
+import { whatAnUpdateAsks } from './after-update.js';
 import { settingsCandidates } from './doctor-vscode.js';
 
 let sandbox: string;
@@ -183,6 +184,29 @@ describe('the plan on a project as 0.1.5 left it', () => {
   });
 });
 
+describe('the plan as a value', () => {
+  it('sorts the five steps of the fossil by what each costs, in the order they run, and reads nothing it would write', () => {
+    const plan = whatAnUpdateAsks({
+      cwd: repo,
+      env: discoveryEnv(),
+      processEnv: process.env,
+      running: { file: process.argv[1] ?? '', version: VERSION },
+      driver: `'${process.execPath}' '${process.argv[1]}' record merge-tail %O %A %B %P`,
+    });
+    expect(plan.map((step) => `${step.class} ${step.topic}`)).toEqual([
+      'applied instructions',
+      'applied record',
+      'applied vscode',
+      'asked merge-driver',
+      'said plugin',
+    ]);
+    expect(plan.find((step) => step.topic === 'merge-driver')?.command).toBe(
+      'mnema doctor --fix merge-driver',
+    );
+    expect(readFileSync(join(repo, 'CLAUDE.md'), 'utf8')).toContain(beginMarker('v1'));
+  });
+});
+
 describe('mnema upgrade without a terminal', () => {
   it('applies the three, leaves the autoStash to a person and lists it as a command', async () => {
     const said = await mnema(['upgrade']);
@@ -190,7 +214,7 @@ describe('mnema upgrade without a terminal', () => {
     const out = said.out.join('\n');
     expect(readFileSync(join(repo, 'CLAUDE.md'), 'utf8')).toBe(`# Mine\n\n${INSTRUCTIONS_BLOCK}`);
     expect(readFileSync(join(repo, '.mnema', '.gitattributes'), 'utf8')).toContain(
-      'tails/*/*.jsonl merge=mnema-tail',
+      'merge=mnema-tail',
     );
     expect(readFileSync(SETTINGS(), 'utf8')).toContain(STABLE());
     expect(readFileSync(SETTINGS(), 'utf8')).not.toContain(GONE());

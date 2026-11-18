@@ -8,6 +8,7 @@ import {
   readMachineState,
   writeMachineState,
 } from './machine-state.js';
+import { VERSION } from './version.js';
 
 let dir: string;
 beforeEach(() => {
@@ -30,8 +31,8 @@ describe('what this machine has been told', () => {
   });
 
   it('keeps the version an upgrade brought things to beside what was shown, and reads a wrong type as unreadable', () => {
-    writeMachineState(dir, { starShown: true, appliedVersion: '0.1.8' });
-    expect(readMachineState(dir)).toEqual({ starShown: true, appliedVersion: '0.1.8' });
+    writeMachineState(dir, { starShown: true, appliedVersion: VERSION });
+    expect(readMachineState(dir)).toEqual({ starShown: true, appliedVersion: VERSION });
     writeFileSync(join(dir, MACHINE_STATE_FILE), '{"starShown":false,"appliedVersion":8}');
     expect(readMachineState(dir).unreadable).toBe(true);
   });
