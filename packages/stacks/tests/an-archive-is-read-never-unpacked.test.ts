@@ -91,4 +91,14 @@ describe('an archive is read in memory, and never unpacked onto the disk', () =>
     expect(read.files).toEqual([]);
     expect(read.problems.map((p) => p.code)).toEqual(['not-an-archive']);
   });
+
+  it('reads an entry named by a very long run of slashes in no time', () => {
+    const name = `a${'/'.repeat(120_000)}b`;
+    const record = ` path=${name}\n`;
+    const pax = `${String(record.length + String(record.length).length)}${record}`;
+    const started = Date.now();
+    const read = readStackArchive(tar([{ name: 'pax', type: 'x', body: pax }, { name: 'x' }]));
+    expect(read.problems.map((p) => p.code)).not.toContain('not-an-archive');
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
 });

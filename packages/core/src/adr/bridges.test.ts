@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { scanBridge } from './bridges.js';
+import { readHostMemory, scanBridge } from './bridges.js';
 
 let sandbox: string;
 
@@ -152,5 +152,14 @@ describe('the memory files of the host', () => {
     const scan = scanBridge('claude-memory', join(sandbox, 'memory'));
     expect(scan.read).toEqual([]);
     expect(scan.refused.map((r) => r.code)).toEqual(['MALFORMED', 'MALFORMED']);
+  });
+
+  it('reads a name and a type padded with blanks, and reads a long run of tabs in no time', () => {
+    const padded = readHostMemory('---\nname:  \tPadded name \t\ntype:\tfeedback\t \n---\nbody\n');
+    expect(padded).toEqual({ name: 'Padded name', type: 'feedback', body: 'body' });
+    const tabs = '\t'.repeat(60_000);
+    const started = Date.now();
+    expect(readHostMemory(`---\nname:x${tabs}y\ntype:x${tabs}y\n---\nbody\n`)?.body).toBe('body');
+    expect(Date.now() - started).toBeLessThan(1000);
   });
 });

@@ -20,6 +20,10 @@ If mnema helps your work, a star on the repository helps others find it; it is o
 - **git**, and the `script` and `stty` of util-linux: the cases that drive the console through
   a pseudo-terminal call both. CI runs on Ubuntu.
 
+## Taking an issue
+
+Comment on an open `good first issue` or `help wanted` issue that you will take it ("I'll take this", "I'd like to work on this", `/take`). If nobody holds it and you hold fewer than 3 issues assigned this way, a workflow assigns it to you and replies once. The assignment frees itself after 14 days without an open pull request of yours that names the issue (write `#<number>` in its description), and says so on the issue; a daily run does that. A pull request that meets the issue's "Done when" and shows its "How to check" is what the review looks at.
+
 ## Before a pull request
 
 Run `pnpm check:contribution`. It is the check to run before you open a pull request: lint,

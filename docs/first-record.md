@@ -138,7 +138,7 @@ break its signatures. Where a Biome configuration does not leave `.mnema/` alone
 ends by saying the entries to add, the same ones `mnema doctor` says. It also writes the mnema instructions into the files agent hosts read at the start of a
 session (an `AGENTS.md`, created where there is none, a `CLAUDE.md` or a `GEMINI.md` where one exists, and a
 rule file of its own for Claude Code, Copilot and Cursor), after what each of yours holds, and names each file (a
-`CLAUDE.md` that imports `AGENTS.md` with the line `@AGENTS.md` gets no block while `AGENTS.md` is written, since Claude
+`CLAUDE.md` that imports `AGENTS.md` with `@AGENTS.md`, alone on a line or in a sentence, gets no block while `AGENTS.md` is written, since Claude
 Code reads that file from there, and the line says so). At a
 terminal it first shows what it found around the folder and asks which agent hosts to write them for (the arrows
 and Space mark a host, a `CLAUDE.md` or `GEMINI.md` of yours is a mark of its own, Esc founds nothing) and whether an

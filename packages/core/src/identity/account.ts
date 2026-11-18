@@ -41,7 +41,13 @@ export function githubLoginRefusal(login: string): string | undefined {
 export const SIGSTORE_SERVICE = 'sigstore';
 
 /** An e-mail address as a certificate names it: one `@`, no space, a dot in the domain. */
-const AN_EMAIL = /^[^\s@/]+@[^\s@/]+\.[^\s@/]+$/;
+const AN_EMAIL_SHAPE = /^[^\s@/]+@([^\s@/]+)$/;
+
+/** An address with a name, an at sign and a domain with a dot that neither opens nor closes it. */
+function isAnEmail(text: string): boolean {
+  const domain = AN_EMAIL_SHAPE.exec(text)?.[1];
+  return domain?.slice(1, -1).includes('.') === true;
+}
 
 /** A GitHub Actions workflow as Fulcio names it: the workflow file of a repository, at a ref. */
 const A_WORKFLOW =
@@ -49,7 +55,7 @@ const A_WORKFLOW =
 
 /** Why `identity` is not one a Sigstore certificate names, or undefined when it is. */
 export function sigstoreIdentityRefusal(identity: string): string | undefined {
-  if (AN_EMAIL.test(identity) || A_WORKFLOW.test(identity)) return undefined;
+  if (isAnEmail(identity) || A_WORKFLOW.test(identity)) return undefined;
   return (
     `${JSON.stringify(identity)} is not an identity a Sigstore certificate names: an e-mail ` +
     'address, or a workflow as https://github.com/<owner>/<repo>/.github/workflows/<file>@<ref>'
@@ -63,6 +69,6 @@ export function sigstoreIdentityRefusal(identity: string): string | undefined {
  */
 export function sigstoreAccountOf(identity: string): string {
   const said = identity.trim();
-  if (!AN_EMAIL.test(said)) return said;
+  if (!isAnEmail(said)) return said;
   return `sha256:${createHash('sha256').update(said.toLowerCase(), 'utf8').digest('hex')}`;
 }
