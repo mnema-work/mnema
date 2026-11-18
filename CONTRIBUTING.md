@@ -22,7 +22,7 @@ If mnema helps your work, a star on the repository helps others find it; it is o
 
 ## Before you open an issue
 
-Search the open and closed issues first: yours may be reported, decided or fixed. Then pick the form that fits: a **bug report** (the version from `mnema --version`, the host, your system and Node version, how you installed mnema, the steps from a new empty folder, what you expected and what happened) or a **feature request** (the problem, what you would want instead, what it has to keep true, the alternatives). A question or an idea that is not a concrete bug or request belongs in [Discussions](https://github.com/mnema-work/mnema/discussions); blank issues are closed. Paste the output of the failing command, and never the contents of your record, paths, e-mail addresses, keys or tokens. A security problem goes to the private report on the Security tab, not to an issue: see [`SECURITY.md`](SECURITY.md).
+Search the open and closed issues first: yours may be reported, decided or fixed. Then pick the form that fits: a **bug report** (the version of mnema, the host, your system and Node version, how you installed mnema, the steps from a new empty folder, what you expected and what happened) or a **feature request** (the problem, what you would want instead, what it has to keep true, the alternatives). A question or an idea that is not a concrete bug or request belongs in [Discussions](https://github.com/mnema-work/mnema/discussions); blank issues are closed. Paste the output of the failing command, and never the contents of your record, paths, e-mail addresses, keys or tokens. A security problem goes to the private report on the Security tab, not to an issue: see [`SECURITY.md`](SECURITY.md).
 
 ## Taking an issue
 
