@@ -4,7 +4,7 @@ on:
   push:
     # The trunk was named `main-v1` until 2026-10-05, and twelve merges landed on it before
     # it was named here; none of them had ever run on a runner.
-    branches: [main]
+    branches: [main, probe-docs-only-base]
   pull_request:
     branches: [main]
 
