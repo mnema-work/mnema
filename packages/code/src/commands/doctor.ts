@@ -160,6 +160,8 @@ export interface Finding {
   readonly state: 'fine' | 'attention';
   /** One line: what was found, then what to do. */
   readonly line: string;
+  /** An installed plugin that an update left behind: older than this binary, or the same label over other files. */
+  readonly behind?: true;
 }
 
 /** The plugin names of this product's marketplace. */
@@ -496,6 +498,7 @@ function pluginFindings(ctx: DoctorContext, plugins: InstalledPlugin[] | 'unread
         {
           topic: 'plugin',
           state: 'attention',
+          behind: true,
           line: `${where} and this binary is ${ctx.running.version}, newer than the plugin: they still work together, and \`claude plugin update ${oneLine(one.id)}\` brings the plugin up to date.`,
         },
       ];
@@ -544,12 +547,18 @@ function contentFinding(ctx: DoctorContext, one: InstalledPlugin): Finding[] {
     {
       topic: 'plugin',
       state: 'attention',
+      behind: true,
       line:
         `plugin ${id} has the label ${oneLine(one.version)}, the version of this binary, but other content than the one released: ${what} differ. ` +
         `Update the marketplace and the plugin (\`claude plugin marketplace update ${oneLine(id.split('@')[1] ?? 'mnema')}\`, then \`claude plugin update ${id}\`); ` +
         `a host moves the files only when the label changes, so if this stays, \`claude plugin uninstall ${id}\` and \`claude plugin install ${id}\` put the released ones in.`,
     },
   ];
+}
+
+/** The installed plugins an update left behind, each as the doctor says it: reads only. */
+export function pluginsLeftBehind(ctx: DoctorContext): readonly Finding[] {
+  return pluginFindings(ctx, installedPlugins(ctx)).filter((finding) => finding.behind === true);
 }
 
 /** Whether one entry of an MCP configuration starts this product's server. */
@@ -796,6 +805,23 @@ function vscodeFindings(ctx: DoctorContext): Finding[] {
     }
   }
   return found;
+}
+
+/**
+ * Whether `--fix vscode` has something to do that no choice of the person's stands in the way of: a settings file
+ * lists a plugin folder of Claude Code's cache that is not there, and the marketplace's copy that would replace it is.
+ * Reads only.
+ */
+export function vscodeListsAFolderThatIsGone(ctx: DoctorContext): boolean {
+  const stable = stablePlugin(ctx);
+  if (stable.version === undefined) return false;
+  return vscodeFiles(ctx).some((file) => {
+    const read = readLocations(readFileSync(file, 'utf-8'));
+    if (read.kind !== 'setting') return false;
+    const known = mnemaEntries(ctx, read.entries, stable.dir);
+    if (known.some((one) => one.kind !== 'other' && one.on === false)) return false;
+    return known.some((one) => one.kind === 'cache' && one.version === undefined);
+  });
 }
 
 export interface FixResult {

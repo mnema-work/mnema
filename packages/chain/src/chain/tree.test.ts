@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { gitignorePath } from './layout.js';
-import { ensureTree, TAIL_MERGE_DRIVER } from './tree.js';
+import { ensureTree, mergeLineIsMissing, TAIL_MERGE_DRIVER } from './tree.js';
 
 /**
  * The file that turns git's automatic maintenance off, handed to every git a test starts to
@@ -289,5 +289,19 @@ describe('ensureTree: a .gitattributes that keeps git from rewriting line ends',
     } finally {
       rmSync(work, { recursive: true, force: true });
     }
+  });
+});
+
+describe('mergeLineIsMissing', () => {
+  it('says so for a tree with no .gitattributes and for one made before the line, and not for one that has it', () => {
+    mkdirSync(root, { recursive: true });
+    expect(mergeLineIsMissing({ root })).toBe(true);
+    writeFileSync(join(root, '.gitattributes'), '* -text\n');
+    expect(mergeLineIsMissing({ root })).toBe(true);
+    ensureTree({ root });
+    expect(mergeLineIsMissing({ root })).toBe(false);
+    expect(readFileSync(join(root, '.gitattributes'), 'utf-8').split('\n')).toContain(
+      `tails/*/*.jsonl merge=${TAIL_MERGE_DRIVER}`,
+    );
   });
 });

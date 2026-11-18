@@ -108,7 +108,11 @@ $ mnema --help
 |   backup          copy this project's trees into a folder, and say how far the
 |                   copy is (records nothing)
 |   doctor          say how mnema is installed on this machine, and what to do
-|                   about each thing found (writes nothing unless you pass --fix)
+|                   about each thing found (writes nothing unless you pass --fix
+|                   or --after-update)
+|   upgrade         after installing a newer mnema: bring this project and machine
+|                   up to it, asking before anything that changes how the
+|                   repository behaves
 |   report          show, whole, what mnema would say about its own last internal
 |                   error, and keep your answer to it (sends nothing)
 |   completion      print the tab-completion script for a shell
@@ -1348,21 +1352,25 @@ $ mnema doctor --help
 | Usage: mnema doctor [options]
 |
 | say how mnema is installed on this machine, and what to do about each thing
-| found (writes nothing unless you pass --fix)
+| found (writes nothing unless you pass --fix or --after-update)
 |
 | Options:
-|   --fix <what>  make the one change a finding asks for, and only that one:
-|                 `vscode` lists the plugin in the chat.pluginLocations setting of
-|                 VS Code’s settings.json, after keeping a copy of the file;
-|                 `private-tree` moves the private notes a worktree still holds in
-|                 .mnema/private/ into the repository’s git directory;
-|                 `merge-driver` writes, into this repository’s git configuration,
-|                 the merge driver the record’s tails name and then
-|                 merge.autoStash and rebase.autoStash, so a plain `git pull`
-|                 carries the record; it replaces a driver of mnema’s that cannot
-|                 run here
-|   --dry-run     with --fix: say what would change and write nothing
-|   -h, --help    display help for command
+|   --fix <what>    make the one change a finding asks for, and only that one:
+|                   `vscode` lists the plugin in the chat.pluginLocations setting
+|                   of VS Code’s settings.json, after keeping a copy of the file;
+|                   `private-tree` moves the private notes a worktree still holds
+|                   in .mnema/private/ into the repository’s git directory;
+|                   `merge-driver` writes, into this repository’s git
+|                   configuration, the merge driver the record’s tails name and
+|                   then merge.autoStash and rebase.autoStash, so a plain `git
+|                   pull` carries the record; it replaces a driver of mnema’s that
+|                   cannot run here
+|   --after-update  what `mnema upgrade` does: bring this project and machine up
+|                   to the installed version, asking before anything that changes
+|                   how the repository behaves
+|   --dry-run       with --fix or --after-update: say what would change and write
+|                   nothing
+|   -h, --help      display help for command
 |
 | What it looks at, and nothing else:
 |   the `mnema` executables on the PATH and which one is running; Claude Code’s list of
@@ -1388,6 +1396,29 @@ $ mnema doctor --help
 | written while the driver cannot run here), so that a plain `git pull` carries events of the
 | record not yet committed. It replaces a driver of mnema’s that cannot run, and leaves a
 | setting of the same name it did not write, and then writes none.
+| `--after-update` is `mnema upgrade`: it applies what an update left of mnema’s own, asks before the
+| merge driver and its autoStash settings, and says what a host keeps; `--dry-run` shows the plan.
+
+### mnema upgrade --help
+$ mnema upgrade --help
+| Usage: mnema upgrade [options]
+|
+| after installing a newer mnema: bring this project and machine up to it, asking
+| before anything that changes how the repository behaves
+|
+| Options:
+|   --dry-run   show the plan and write nothing
+|   -h, --help  display help for command
+|
+| The same as `mnema doctor --after-update`. It does not install anything: `npm i -g @mnema/code` stays
+| yours, and it asks no network. Run it in the project, after the install.
+| It applies, without asking: this version’s instructions block in the files that already hold an earlier
+| one, the line of the record’s .gitattributes that names the merge driver, and the setting of VS Code’s
+| settings.json that points at a plugin folder that is gone (a copy of the file is kept).
+| It asks, at a terminal, before the merge driver and merge.autoStash and rebase.autoStash go into this
+| repository’s .git/config (they apply to every file of the clone); without a terminal it lists that as the
+| command to run. It says, and does not do, what a plugin a host keeps needs: the host updates it.
+| A run that finished writes the version it brought things to into this machine’s state file.
 
 ### mnema report --help
 $ mnema report --help

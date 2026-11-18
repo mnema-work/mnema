@@ -220,7 +220,7 @@ export {
   type TailRepairInput,
   type TailRepairRefusal,
 } from './chain/tail-repair.js';
-export { ensureTree, TAIL_MERGE_DRIVER } from './chain/tree.js';
+export { ensureTree, mergeLineIsMissing, TAIL_MERGE_DRIVER } from './chain/tree.js';
 export {
   type BackupKeyNote,
   type CensusNote,

@@ -51,6 +51,12 @@ export interface MergeDriverContext {
   readonly cwd: string;
   readonly env: DiscoveryEnv;
   readonly processEnv: NodeJS.ProcessEnv;
+  /**
+   * Taken as true where the record's `.gitattributes` does not name the driver YET but a step about to run
+   * writes that line (`mnema upgrade` planning before it writes): the check of the attribute is skipped, and
+   * nothing else is.
+   */
+  readonly attributeWillBeWritten?: boolean;
 }
 
 /** The key of the driver's command. */
@@ -178,6 +184,7 @@ function governed(ctx: MergeDriverContext): { readonly top: string } | undefined
   if (record === undefined) return undefined;
   const top = gitIn(ctx, record, ['rev-parse', '--show-toplevel']);
   if (top === undefined || top.status !== 0) return undefined;
+  if (ctx.attributeWillBeWritten === true) return { top: top.out };
   const named = gitIn(ctx, record, ['check-attr', 'merge', '--', 'tails/any/000001.jsonl']);
   if (named === undefined || !named.out.endsWith(`: merge: ${MERGE_DRIVER}`)) return undefined;
   return { top: top.out };
@@ -254,6 +261,8 @@ export function mergeDriverLines(ctx: MergeDriverContext): string[] {
 export interface MergeDriverFixed {
   readonly refused: boolean;
   readonly lines: readonly string[];
+  /** The settings written, or with `dryRun` the ones that would be: empty where nothing needed to change. */
+  readonly keys?: readonly string[];
 }
 
 /**
@@ -337,5 +346,5 @@ export function fixMergeDriver(
   }
   if (options.dryRun) lines.push('nothing was written.');
   lines.push(AUTOSTASH_APPLIES_TO_EVERY_FILE);
-  return { refused: false, lines };
+  return { refused: false, lines, keys: toWrite.map(([key]) => key) };
 }

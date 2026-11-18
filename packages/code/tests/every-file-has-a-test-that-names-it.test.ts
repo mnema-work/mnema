@@ -486,6 +486,10 @@ const UNWITNESSED: Readonly<Record<string, Debt>> = {
     reached: 'nobody imports it',
     why: "The diagram verb's declaration and its two usage refusals; a-picture-of-the-record.test.ts drives the verb through the program and asserts the diagrams it prints, never a value this file returns.",
   },
+  'packages/code/src/wiring/upgrade.ts': {
+    reached: 'nobody imports it',
+    why: "The upgrade verb's declaration and the one function both its doors call to print a plan; after-update.test.ts drives the verb through the program on both doors and asserts the lines, and the plan itself is asserted as a value on commands/after-update.ts.",
+  },
   'packages/code/src/wiring/doctor.ts': {
     reached: 'nobody imports it',
     why: 'The doctor verb\u2019s declaration and the one line it prints per finding; doctor-says-how-mnema-is-installed.test.ts runs the verb on the binary and asserts the lines, and the findings themselves are asserted on commands/doctor.ts.',
@@ -686,7 +690,7 @@ const UNWITNESSED: Readonly<Record<string, Debt>> = {
  * reading, so nothing can fall in two.
  */
 const THE_SHAPE_OF_WHAT_IS_LEFT: Readonly<Record<string, number>> = {
-  wiring: 51,
+  wiring: 52,
   presentation: 7,
   projections: 3,
   completion: 4,
@@ -919,6 +923,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/src/cli.golden.test.ts': 9,
   'packages/code/src/cli.test.ts': 3,
   'packages/code/src/commands/accountability.test.ts': 10,
+  'packages/code/src/commands/after-update.test.ts': 13,
   'packages/code/src/commands/antipatterns.test.ts': 13,
   'packages/code/src/commands/backup.test.ts': 11,
   'packages/code/src/commands/brief.test.ts': 19,
@@ -977,7 +982,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/src/file-behind-a-path.test.ts': 6,
   'packages/code/src/git-log.test.ts': 7,
   'packages/code/src/key-file.test.ts': 2,
-  'packages/code/src/machine-state.test.ts': 5,
+  'packages/code/src/machine-state.test.ts': 6,
   'packages/code/src/mcp/hook-reply.test.ts': 2,
   'packages/code/src/mcp/lifecycle.test.ts': 2,
   'packages/code/src/not-a-project.test.ts': 8,
@@ -1062,7 +1067,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-label-names-one-decision-or-none.test.ts': 16,
   'packages/code/tests/a-line-is-repaired-from-git.test.ts': 10,
   'packages/code/tests/a-line-of-success-is-one-line.test.ts': 7,
-  'packages/code/tests/a-line-this-mnema-cannot-read-is-said-first-and-the-rest-is-served.test.ts': 8,
+  'packages/code/tests/a-line-this-mnema-cannot-read-is-said-first-and-the-rest-is-served.test.ts': 7,
   'packages/code/tests/a-link-can-be-retracted.test.ts': 12,
   'packages/code/tests/a-link-stays-inside-the-project.test.ts': 18,
   'packages/code/tests/a-long-text-comes-from-one-place.test.ts': 8,
@@ -1148,7 +1153,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/an-agent-key-signs-for-its-host.test.ts': 19,
   'packages/code/tests/an-agent-name-nobody-announced-says-so.test.ts': 14,
   'packages/code/tests/an-agent-request-says-the-kind-of-key-it-refuses-and-where-a-file-key-goes.test.ts': 7,
-  'packages/code/tests/an-altered-entry-is-said-first-and-never-served.test.ts': 8,
+  'packages/code/tests/an-altered-entry-is-said-first-and-never-served.test.ts': 7,
   'packages/code/tests/an-altered-entry-leads-the-hooks-and-stops-the-edit-gate.test.ts': 9,
   'packages/code/tests/an-answer-says-the-path-of-a-project.test.ts': 11,
   'packages/code/tests/an-inherited-rule-reaches-the-edit.test.ts': 19,
@@ -1293,6 +1298,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/support/git-without-maintenance.ts': 1,
   'packages/code/tests/support/hook-keys-the-host-reads.ts': 0,
   'packages/code/tests/support/last-index-where.ts': 0,
+  'packages/code/tests/support/merged-streams.ts': 5,
   'packages/code/tests/support/pty.ts': 8,
   'packages/code/tests/support/published-examples.ts': 3,
   'packages/code/tests/support/reading-a-shell-line.ts': 3,
@@ -1462,7 +1468,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-private-tree-of-another-project-is-not-recalled.test.ts': 6,
   'packages/code/tests/the-private-tree-outlives-its-worktree.test.ts': 7,
   'packages/code/tests/the-product-calls-no-model.test.ts': 5,
-  'packages/code/tests/the-products-reads-serve-around-a-linked-record.test.ts': 7,
+  'packages/code/tests/the-products-reads-serve-around-a-linked-record.test.ts': 8,
   'packages/code/tests/the-prompt-is-painted-where-you-type.test.ts': 16,
   'packages/code/tests/the-proof-answers-a-machine.test.ts': 7,
   'packages/code/tests/the-prose-carries-its-own-emphasis.test.ts': 5,
@@ -1838,6 +1844,7 @@ const PRODUCTION_FILES: readonly string[] = [
   'packages/code/src/cli.ts',
   'packages/code/src/commands/accountability.ts',
   'packages/code/src/commands/after-a-write.ts',
+  'packages/code/src/commands/after-update.ts',
   'packages/code/src/commands/aging.ts',
   'packages/code/src/commands/antipatterns.ts',
   'packages/code/src/commands/backup-hook.ts',
@@ -2169,6 +2176,7 @@ const PRODUCTION_FILES: readonly string[] = [
   'packages/code/src/wiring/tour.ts',
   'packages/code/src/wiring/trailer.ts',
   'packages/code/src/wiring/unlink.ts',
+  'packages/code/src/wiring/upgrade.ts',
   'packages/code/src/wiring/usage.ts',
   'packages/code/src/wiring/verb.ts',
   'packages/code/src/wiring/verify.ts',
@@ -2392,8 +2400,9 @@ describe('every file has a test that names it', () => {
     // 80 with the beside-a-write verb's wiring, which a-rule-is-handed-after-a-write drives through the built binary.
     // 79 once the status printer's test imports it.
     // 80 with the record group's wiring, which a-tail-merges-and-pulls.test.ts drives through the binary.
-    expect(found.size).toBe(80);
-    expect(byReach('nobody imports it')).toBe(80);
+    // 81 with the upgrade verb's wiring, which after-update.test.ts drives through the program.
+    expect(found.size).toBe(81);
+    expect(byReach('nobody imports it')).toBe(81);
     expect(byReach('imported, and no assertion observes it')).toBe(0);
   });
 
@@ -2415,7 +2424,7 @@ describe('every file has a test that names it', () => {
     // Announced in the header and, until now, kept by hand. A shared excuse is how a table
     // like this turns into a rubber stamp, and a row drained to a stub is how it starts.
     const reasons = Object.values(UNWITNESSED).map((one) => one.why);
-    expect(reasons).toHaveLength(80);
+    expect(reasons).toHaveLength(81);
     expect(new Set(reasons).size).toBe(reasons.length);
     // The shortest reason standing is 156 characters; the floor is under it and well over
     // anything that could be written without saying what reaches that file.

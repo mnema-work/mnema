@@ -39,6 +39,7 @@ What belongs to one command is on that command's page, in [the commands](referen
 - `mnema run`: [Framing that work in a session](reference/cli/run.md#framing-that-work-in-a-session)
 - `mnema skill export`: [Sending a pattern where a host will read it](reference/cli/skill-export.md#sending-a-pattern-where-a-host-will-read-it)
 - `mnema stack`: [Skills and agents a project adopts: stacks](reference/cli/stack.md#skills-and-agents-a-project-adopts-stacks)
+- `mnema upgrade`: [After installing a newer mnema](reference/cli/upgrade.md#after-installing-a-newer-mnema)
 - `mnema tail prune`: [Authorizing a cut, which is not the same as making one](reference/cli/tail-prune.md#authorizing-a-cut-which-is-not-the-same-as-making-one)
 - `mnema tail relink`: [Joining a tail of another record: `tail relink`](reference/cli/tail-relink.md#joining-a-tail-of-another-record-tail-relink)
 - `mnema tail repair`: [Putting back a line from git: `tail repair`](reference/cli/tail-repair.md#putting-back-a-line-from-git-tail-repair)

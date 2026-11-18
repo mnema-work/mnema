@@ -66,7 +66,7 @@ export function setAsideInterrupted(sessionsDir, ledger, now) {
   const done = new Set(ledger.map((l) => l.id.replace('/', '__')));
   for (const name of readdirSync(sessionsDir)) {
     if (name.startsWith('.interrupted-') || name === 'shared') continue;
-    if (!done.has(name.replace('#redo1', '#redo1'))) {
+    if (!done.has(name)) {
       const to = `.interrupted-${now().toISOString().replace(/[:.]/g, '')}-${name}`;
       renameSync(join(sessionsDir, name), join(sessionsDir, to));
       moved.push(name);

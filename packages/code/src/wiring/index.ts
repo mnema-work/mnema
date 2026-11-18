@@ -272,6 +272,7 @@ import { registerTimeline } from './timeline.js';
 import { registerTour } from './tour.js';
 import { registerTrailer } from './trailer.js';
 import { registerUnlink } from './unlink.js';
+import { registerUpgrade } from './upgrade.js';
 import { registerUsage } from './usage.js';
 import type { Declared, Verb, Wiring } from './verb.js';
 import { registerVerify } from './verify.js';
@@ -359,6 +360,7 @@ export const GROUPS: readonly Group[] = [
       registerTail,
       registerBackup,
       registerDoctor,
+      registerUpgrade,
       registerProblemReport,
       registerCompletion,
       registerTour,

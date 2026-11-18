@@ -19,6 +19,8 @@ export interface MachineState {
   readonly starShown: boolean;
   /** The first-run tour was opened, once, in place of the menu at a terminal (or by `mnema tour` at one). */
   readonly tourSeen: boolean;
+  /** The version of mnema the last `mnema upgrade` that finished brought this machine's projects up to. */
+  readonly appliedVersion?: string;
   /** The file is there and cannot be read: it reads as shown, and nothing is written over it. */
   readonly unreadable?: true;
 }
@@ -35,7 +37,14 @@ export function readMachineState(dir: string): MachineState {
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return UNREADABLE;
     if (parsed.starShown !== undefined && typeof parsed.starShown !== 'boolean') return UNREADABLE;
     if (parsed.tourSeen !== undefined && typeof parsed.tourSeen !== 'boolean') return UNREADABLE;
-    return { starShown: parsed.starShown === true, tourSeen: parsed.tourSeen === true };
+    if (parsed.appliedVersion !== undefined && typeof parsed.appliedVersion !== 'string') {
+      return UNREADABLE;
+    }
+    return {
+      starShown: parsed.starShown === true,
+      tourSeen: parsed.tourSeen === true,
+      ...(parsed.appliedVersion === undefined ? {} : { appliedVersion: parsed.appliedVersion }),
+    };
   } catch {
     return UNREADABLE;
   }
@@ -48,7 +57,15 @@ export function writeMachineState(dir: string, state: MachineState): void {
   const staging = join(dir, `${MACHINE_STATE_FILE}.${process.pid}.tmp`);
   writeFileSync(
     staging,
-    `${JSON.stringify({ starShown: state.starShown, tourSeen: state.tourSeen }, null, 2)}\n`,
+    `${JSON.stringify(
+      {
+        starShown: state.starShown,
+        tourSeen: state.tourSeen,
+        ...(state.appliedVersion === undefined ? {} : { appliedVersion: state.appliedVersion }),
+      },
+      null,
+      2,
+    )}\n`,
   );
   renameSync(staging, join(dir, MACHINE_STATE_FILE));
 }
