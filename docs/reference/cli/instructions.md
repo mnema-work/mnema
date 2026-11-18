@@ -152,7 +152,7 @@ else, and the block it leaves still counts as mnema's (checked against prettier 
 `never` and `preserve`); a word changed, a line taken out or two lines run into one is your edit: it
 is left as it is, and said.
 
-The block sits between `<!-- mnema:begin v4 … -->` and `<!-- mnema:end -->`, after what your file
+The block sits between `<!-- mnema:begin v5 … -->` and `<!-- mnema:end -->`, after what your file
 holds, and nothing outside the markers changes; a file the block was all of is deleted by
 `--remove`, which takes out with the block the one line break that went in with it only where the
 block is the last thing in the file (a line you wrote after it is never glued to the one above), and
