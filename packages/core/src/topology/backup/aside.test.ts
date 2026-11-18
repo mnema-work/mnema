@@ -26,7 +26,15 @@ vi.mock('node:fs', async (original) => {
   };
 });
 
-import { AsideError, asideName, asidesFor, asidesIn, setAside, undoAside } from './aside.js';
+import {
+  AsideError,
+  asideName,
+  asidesFor,
+  asidesIn,
+  setAside,
+  undoAside,
+  withRestoreLock,
+} from './aside.js';
 
 let base: string;
 let commonDir: string;
@@ -174,5 +182,35 @@ describe('listing what was kept', () => {
       },
     ]);
     expect(asidesFor(commonDir, [{ tree: 'private', root: join(base, 'x') }])).toEqual([]);
+  });
+});
+
+describe('what an undo leaves, and the lock a restore takes', () => {
+  it('lists a folder an undo emptied, as what stood there before it, and counts the others', () => {
+    const older = setAside(commonDir, items(), new Date('2026-11-12T10:00:00Z'));
+    put(root, 'tails/ee55-ff66/000001.jsonl', '{"x":1}\n');
+    const done = undoAside(commonDir, items());
+    expect(done.others).toBe(0);
+    expect(asidesFor(commonDir, items())).toEqual([
+      {
+        folder: older?.folder,
+        date: '2026-11-12T10-00-00Z',
+        trees: [],
+        restored: ['private'],
+        bytes: 8,
+      },
+    ]);
+    put(root, 'tails/aa11-bb22/000001.jsonl', '{"seq":0}\n');
+    setAside(commonDir, items(), new Date('2026-11-12T11:00:00Z'));
+    put(root, 'tails/aa11-bb22/000001.jsonl', '{"seq":0}\n');
+    expect(undoAside(commonDir, items()).others).toBe(1);
+  });
+
+  it('lists nothing where the git directory has no folder of ours, and refuses a second restore, naming the process', () => {
+    expect(asidesIn(join(base, 'nowhere'))).toEqual([]);
+    expect(withRestoreLock(commonDir, () => 'went')).toBe('went');
+    expect(() =>
+      withRestoreLock(commonDir, () => withRestoreLock(commonDir, () => 'twice')),
+    ).toThrow(/two restores do not run together/);
   });
 });
