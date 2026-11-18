@@ -26,7 +26,7 @@ _mnema_commands() {
     'record') echo 'pull commit merge-tail help' ;;
     'key') echo 'restore request enroll github sigstore revoke protect unprotect help' ;;
     'tail') echo 'list prune relink repair help' ;;
-    'backup') echo 'setup run status help' ;;
+    'backup') echo 'setup run status verify restore help' ;;
     'run') echo 'start end help' ;;
   esac
 }
@@ -172,6 +172,8 @@ _mnema_described() {
       'setup:say which folder keeps this project'\''s backup, after a person confirms at a terminal that it keeps the text in clear' \
       'run:copy this project'\''s trees into its folder, or with --global only the global tree' \
       'status:say where this project'\''s backup is and how far it is from the trees' \
+      'verify:read each copy as a record and say how it stands against this project'\''s trees, which it does not change' \
+      'restore:put a copy back into the trees that lost files, never over a file the tree holds' \
       'help:display help for command' ;;
     'run') printf '%s\n' \
       'start:open a session for an agent (facts written in it are pinned to it)' \
@@ -282,6 +284,8 @@ _mnema_flags() {
     'backup setup') echo '--global -h --help -V --version --color' ;;
     'backup run') echo '--global -h --help -V --version --color' ;;
     'backup status') echo '--global --json -h --help -V --version --color' ;;
+    'backup verify') echo '--json -h --help -V --version --color' ;;
+    'backup restore') echo '--dry-run -h --help -V --version --color' ;;
     'doctor') echo '--fix --dry-run -h --help -V --version --color' ;;
     'report') echo '--decline --off --on -h --help -V --version --color' ;;
     'completion') echo '-h --help -V --version --color' ;;
@@ -441,6 +445,8 @@ _mnema_values() {
     'backup setup:--color') echo 'auto always never' ;;
     'backup run:--color') echo 'auto always never' ;;
     'backup status:--color') echo 'auto always never' ;;
+    'backup verify:--color') echo 'auto always never' ;;
+    'backup restore:--color') echo 'auto always never' ;;
     'doctor:--color') echo 'auto always never' ;;
     'report:--color') echo 'auto always never' ;;
     'completion:--color') echo 'auto always never' ;;

@@ -3,13 +3,22 @@
  * `run` says it copied, and what `status` says and gives as JSON.
  */
 
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+// @plants-damage
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { resolveTrees } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type CliIo, run } from '../program.js';
-import { KEPT_IN_CLEAR } from './backup.js';
+import { KEPT_IN_CLEAR, WHAT_RESTORE_DOES_NOT_BRING } from './backup.js';
 
 let sandbox: string;
 let repo: string;
@@ -194,5 +203,112 @@ describe('mnema backup --global', () => {
     const said = await mnema(['backup', 'run', '--global']);
     expect(said.failed).toBe(true);
     expect(said.err.join(' ')).toContain('mnema backup setup --global <folder>');
+  });
+});
+
+describe('mnema backup verify and restore', () => {
+  it('puts a deleted private tree back, says what a restore does not bring, and verifies the result', async () => {
+    const folder = join(sandbox, 'folder');
+    await mnema(['backup', 'setup', folder], answering('yes'));
+    expect((await mnema(['backup', 'run'])).failed).toBe(false);
+    const trees = resolveTrees(repo, { home: join(sandbox, 'home') });
+    rmSync(trees.projectPrivate as string, { recursive: true, force: true });
+
+    const lost = await mnema(['backup', 'verify']);
+    expect(lost.failed).toBe(true);
+    expect(lost.out.join('\n')).toMatch(/is in the copy and not in the tree/);
+
+    const dry = await mnema(['backup', 'restore', '--dry-run']);
+    expect(dry.failed, dry.err.join(' / ')).toBe(false);
+    expect(dry.out.join('\n')).toContain('Dry run: nothing was written');
+    expect(existsSync(trees.projectPrivate as string)).toBe(false);
+
+    const restored = await mnema(['backup', 'restore']);
+    expect(restored.failed, restored.err.join(' / ')).toBe(false);
+    const said = restored.out.join('\n');
+    // The key is not in the copy, and the restore says so in words that promise nothing about it.
+    for (const words of WHAT_RESTORE_DOES_NOT_BRING) expect(said).toContain(words);
+    expect(said).toContain('counts you twice');
+    expect(said).toMatch(/put back \d+ file\(s\) \(1 tail\(s\) the tree did not have\)/);
+    expect(said).not.toMatch(/restores? (your|the) key/);
+
+    const verified = await mnema(['backup', 'verify']);
+    expect(verified.failed, verified.out.join(' / ')).toBe(false);
+    expect(verified.out.join('\n')).toContain('the copy is as far as the tree');
+    expect(verified.out.join('\n')).toContain('ONE reader read this copy');
+    const json = JSON.parse((await mnema(['backup', 'verify', '--json'])).out.join('\n')) as {
+      sound: boolean;
+    };
+    expect(json.sound).toBe(true);
+  });
+
+  it('names what it finds: a copy behind, a tree that went further, a file kept, a tree cut or forked, a manifest that lists more', async () => {
+    const folder = join(sandbox, 'folder');
+    await mnema(['backup', 'setup', folder], answering('yes'));
+    await mnema(['backup', 'run']);
+    const trees = resolveTrees(repo, { home: join(sandbox, 'home') });
+    const priv = trees.projectPrivate as string;
+    const [tail] = readdirSync(join(priv, 'tails'));
+    const segment = join(priv, 'tails', tail as string, '000001.jsonl');
+    const whole = readFileSync(segment);
+    const copyDir = join(folder, readdirSync(folder)[0] as string, 'private');
+
+    await mnema(['task', 'create', 'written after the copy', '--scope', 'private']);
+    const behind = await mnema(['backup', 'verify']);
+    expect(behind.failed).toBe(false);
+    expect(behind.out.join('\n')).toContain('the copy is BEHIND');
+    expect(behind.out.join('\n')).toMatch(
+      /the copy lacks \d+ entries of the tail \S+, which the tree holds/,
+    );
+    // One line for the tail, counted over its segments and not its checkpoints.
+    expect(behind.out.join('\n').match(/the copy lacks/g)).toHaveLength(1);
+
+    writeFileSync(join(priv, 'tails', tail as string, 'tailproof.json'), '{"other":true}');
+    const goingOn = await mnema(['backup', 'restore']);
+    expect(goingOn.failed, goingOn.err.join(' / ')).toBe(false);
+    expect(goingOn.out.join('\n')).toContain('holds more in the tree than in the copy');
+    expect(goingOn.out.join('\n')).toContain('holds other bytes in the tree');
+
+    const manifest = join(copyDir, 'mnema-backup.json');
+    const listed = JSON.parse(readFileSync(manifest, 'utf-8')) as { files: { bytes: number }[] };
+    writeFileSync(
+      manifest,
+      JSON.stringify({
+        ...listed,
+        files: listed.files.map((f) => ({ ...f, bytes: f.bytes + 99 })),
+      }),
+    );
+    const missing = await mnema(['backup', 'verify']);
+    expect(missing.out.join('\n')).toContain('is listed by the copy');
+    writeFileSync(manifest, JSON.stringify(listed));
+
+    writeFileSync(segment, whole.subarray(0, whole.indexOf(0x0a) + 1));
+    const cut = await mnema(['backup', 'verify']);
+    expect(cut.failed).toBe(true);
+    expect(cut.out.join('\n')).toContain('the tree is cut');
+
+    const forked = Buffer.from(whole);
+    forked[2] = forked[2] === 0x61 ? 0x62 : 0x61;
+    writeFileSync(segment, forked);
+    const fork = await mnema(['backup', 'verify']);
+    expect(fork.failed).toBe(true);
+    expect(fork.out.join('\n')).toContain('a fork, or a cut, and no side is taken');
+    const refused = await mnema(['backup', 'restore']);
+    expect(refused.failed).toBe(true);
+    expect(refused.err.join(' ')).toContain('do not agree');
+    rmSync(priv, { recursive: true, force: true });
+    const gone = await mnema(['backup', 'verify']);
+    expect(gone.out.join('\n')).toContain('is in the copy and not in the tree');
+  });
+
+  it('refuses where the project has no folder for its backup', async () => {
+    for (const argv of [
+      ['backup', 'verify'],
+      ['backup', 'restore'],
+    ]) {
+      const said = await mnema(argv);
+      expect(said.failed).toBe(true);
+      expect(said.err.join(' ')).toContain('mnema backup setup <folder>');
+    }
   });
 });

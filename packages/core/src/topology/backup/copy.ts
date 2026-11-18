@@ -42,7 +42,11 @@ import { detectSecrets } from '../../content/secrets.js';
 export type BackupTree = 'public' | 'private' | 'global';
 
 /** The folder under the destination that holds a tree's copy: the global tree's is the same for every record. */
-function folderOf(destination: string, record: string | undefined, tree: BackupTree): string {
+export function folderOf(
+  destination: string,
+  record: string | undefined,
+  tree: BackupTree,
+): string {
   if (tree === 'global') return join(destination, 'global');
   if (record === undefined)
     throw new Error(`the ${tree} tree is copied under the name of a record`);
@@ -58,7 +62,7 @@ function folderOf(destination: string, record: string | undefined, tree: BackupT
 }
 
 /** The places a copy is under, outermost first: each is asked with `lstat` before a byte is written. */
-function placesOf(destination: string, folder: string): string[] {
+export function placesOf(destination: string, folder: string): string[] {
   return folder === join(destination, 'global')
     ? [destination, folder]
     : [destination, dirname(folder), folder];
@@ -70,7 +74,17 @@ export const BACKUP_MANIFEST = 'mnema-backup.json';
 /** A run turned away before anything was written. */
 export class BackupRefusedError extends CodedError {
   override readonly name = 'BackupRefusedError';
-  readonly code: 'LINKED' | 'PRIVATE_KEY' | 'DIVERGED' | 'NOT_A_FOLDER' | 'BAD_RECORD_NAME';
+  readonly code:
+    | 'LINKED'
+    | 'PRIVATE_KEY'
+    | 'DIVERGED'
+    | 'NOT_A_FOLDER'
+    | 'BAD_RECORD_NAME'
+    | 'NO_COPY'
+    | 'OTHER_RECORD'
+    | 'WRITER_HOLDS_TAIL'
+    | 'RESTORE_RUNNING'
+    | 'BROKEN_COPY';
 
   constructor(code: BackupRefusedError['code'], message: string) {
     super(`${message} Nothing was written.`);
@@ -149,8 +163,8 @@ function taken(root: string, path: string): PlannedFile {
   return { path, bytes: bytes.subarray(0, bytes.lastIndexOf(0x0a) + 1) };
 }
 
-/** What the copy holds of `file`, with no link followed on the way to it, or undefined when it holds none. */
-function copiedOf(folder: string, file: PlannedFile): Buffer | undefined {
+/** What the tree at `folder` holds of `file`, with no link followed on the way to it, or undefined when it holds none. */
+export function copiedOf(folder: string, file: PlannedFile): Buffer | undefined {
   let at = folder;
   for (const part of file.path.split('/')) {
     at = join(at, part);
@@ -161,7 +175,7 @@ function copiedOf(folder: string, file: PlannedFile): Buffer | undefined {
   return readFileSync(at);
 }
 
-function linked(path: string): BackupRefusedError {
+export function linked(path: string): BackupRefusedError {
   return new BackupRefusedError(
     'LINKED',
     `${path} is a symbolic link, and a backup is written to its own files and folders: this mnema follows no link there, which can point outside it.`,

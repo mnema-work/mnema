@@ -137,6 +137,7 @@ export {
   projectionCachePath,
   publicKeyPath,
   tailDir,
+  tailLockPath,
   witnessDir,
   witnessSigstorePath,
 } from './chain/layout.js';
@@ -195,7 +196,7 @@ export {
 } from './chain/store.js';
 export { subjectEvents } from './chain/subject-events.js';
 export { type KeyATailHolds, type KeyIntroduction, keysATailHolds } from './chain/tail-keys.js';
-export { DEFAULT_WAIT_MS, TailBusyError, withTailLock } from './chain/tail-lock.js';
+export { alive, DEFAULT_WAIT_MS, TailBusyError, withTailLock } from './chain/tail-lock.js';
 export {
   arrivalsSince,
   namesOfTails,

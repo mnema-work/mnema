@@ -13,6 +13,8 @@ In the help under **This machine**.
 | [`mnema backup setup`](backup-setup.md) | say which folder keeps this project's backup, after a person confirms at a terminal that it keeps the text in clear |
 | [`mnema backup run`](backup-run.md) | copy this project's trees into its folder, or with --global only the global tree |
 | [`mnema backup status`](backup-status.md) | say where this project's backup is and how far it is from the trees |
+| [`mnema backup verify`](backup-verify.md) | read each copy as a record and say how it stands against this project's trees, which it does not change |
+| [`mnema backup restore`](backup-restore.md) | put a copy back into the trees that lost files, never over a file the tree holds |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
 
@@ -26,9 +28,11 @@ the folder is not a second record that anyone reads from.
 mnema backup setup ~/backups/mnema
 mnema backup run
 mnema backup status
+mnema backup verify
+mnema backup restore --dry-run
 ```
 
-`setup` says which folder keeps THIS project's backup, `run` copies, and `status` says where the copy is, when it was made and what is still to copy.
+`setup` says which folder keeps THIS project's backup, `run` copies, and `status` says where the copy is, when it was made and what is still to copy. `verify` reads the copy as a record and sets it against the trees; `restore` puts it back into a tree that lost files.
 
 **One folder per project, by the name of its record.** `setup` assigns the folder to this
 project, and the machine keeps the assignment in `backup.json` in its data directory. A machine
@@ -64,6 +68,10 @@ for it: tails and public keys only, no private key, no link, a copy that only gr
 `diagnostics.jsonl` and `report-state.json` are not copied until a study decides whether they should
 be.
 
+**`verify` reads the copy, and says how it stands against the tree.** It reads each copy as a record with this mnema's reader, ONE reader, and says so: the second reader, written from `FORMAT.md`, is a Python program of the source repository, and the answer names the command that runs it by hand over the copy (`python3 packages/chain/verifier/mnema_verify.py record <the copy>`). It then sets each file of the copy against the tree's, and only the end of a tail can say a tail was cut: a copy that is the start of the tree's file is BEHIND (run it again); a tree whose file is the start of the copy's is CUT; a file the copy holds that the tree does not is LOST; and two files neither of which starts the other are a fork or a cut, and no side is taken. It exits non-zero for a copy the reader refuses and a tree shown cut, lost or forked; a copy that is only behind is said, and is not a failure. It writes nothing.
+
+**`restore` puts a copy back, and never over anything.** It is for a tree that lost files, a private tree that was deleted among them. A file the tree does not have is put there; one it has with the same bytes is left; a segment or checkpoints file the tree holds and the copy is the start of is the tree's (it has written since), and is named; a tail the copy is not the start of, or one the tree's tail lacks, refuses the whole restore, naming the file and both lengths, and takes no side between a fork and a cut; any other file the tree holds with other bytes (a `tailproof.json`, a key) stays, and is named. Nothing is written until every check of every tree is made, and `--dry-run` says what would be put back and puts nothing. A copy that does not verify is not put back, a copy of another record is refused (a way to do that, with a question first, comes next), and nothing is touched while a writer holds the lock of a tail the copy also names: the refusal names the process. `locks/`, the installation ids and the anchors are never restored, so the first write after a restore opens a tail of its own beside the restored ones. **A restore brings back the text, not your key**: if the key was lost with the machine, the next write signs with a new key, and the tree then counts you twice. What the tree wrote after the copy was made is not in the copy.
+
 **The folder keeps the text in clear.** Nothing is encrypted: whoever can read the folder can
 read the record and the public keys it holds. `setup` says so and asks you to confirm it, at a
 terminal: without one it assigns nothing and tells you to run it in a terminal, because a person
@@ -92,6 +100,11 @@ Commands:
                             --global only the global tree
   status [options]          say where this project's backup is and how far it is
                             from the trees
+  verify [options]          read each copy as a record and say how it stands
+                            against this project's trees, which it does not
+                            change
+  restore [options]         put a copy back into the trees that lost files,
+                            never over a file the tree holds
   help [command]            display help for command
 
 The copy is a folder per project, kept under the name of its record: the tails up to their
@@ -100,6 +113,8 @@ the public tree only where the project is not in git, whose history is its own b
 private key is copied: a run is refused whole if a file it would copy holds one, and so is a
 symbolic link in the tree or in the folder. A copy only grows. The folder keeps the text in
 clear, which `setup` asks a person to confirm at a terminal. A machine can have a folder per project; a project has the one it was set up with.
+`verify` reads the copy as a record (with this mnema's reader) and says how it stands against the trees; `restore` puts it
+back into a tree that lost files, and never over a file the tree holds.
 The machine's global tree, which mixes the memory of every project, is never part of a project's
 backup: `--global` copies it, and only it, into the folder `setup --global` gave it, as
 <folder>/global/.

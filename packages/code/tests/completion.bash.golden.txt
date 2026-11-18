@@ -24,7 +24,7 @@ _mnema_commands() {
     'record') echo 'pull commit merge-tail help' ;;
     'key') echo 'restore request enroll github sigstore revoke protect unprotect help' ;;
     'tail') echo 'list prune relink repair help' ;;
-    'backup') echo 'setup run status help' ;;
+    'backup') echo 'setup run status verify restore help' ;;
     'run') echo 'start end help' ;;
     *) echo ;;
   esac
@@ -132,6 +132,8 @@ _mnema_flags() {
     'backup setup') echo '--global -h --help -V --version --color' ;;
     'backup run') echo '--global -h --help -V --version --color' ;;
     'backup status') echo '--global --json -h --help -V --version --color' ;;
+    'backup verify') echo '--json -h --help -V --version --color' ;;
+    'backup restore') echo '--dry-run -h --help -V --version --color' ;;
     'doctor') echo '--fix --dry-run -h --help -V --version --color' ;;
     'report') echo '--decline --off --on -h --help -V --version --color' ;;
     'completion') echo '-h --help -V --version --color' ;;
@@ -292,6 +294,8 @@ _mnema_values() {
     'backup setup:--color') echo 'auto always never' ;;
     'backup run:--color') echo 'auto always never' ;;
     'backup status:--color') echo 'auto always never' ;;
+    'backup verify:--color') echo 'auto always never' ;;
+    'backup restore:--color') echo 'auto always never' ;;
     'doctor:--color') echo 'auto always never' ;;
     'report:--color') echo 'auto always never' ;;
     'completion:--color') echo 'auto always never' ;;

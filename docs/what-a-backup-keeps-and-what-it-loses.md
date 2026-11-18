@@ -44,9 +44,10 @@ finds otherwise stops and leaves the copy as it was.
   and nowhere else; no flag answers for you. If that matters, put the folder on an encrypted volume
   (an encrypted disk or image you mount) and name a folder on it. A copy encrypted by `mnema` itself, and
   a cold key set aside to restore your identity, are for a later version; this page promises no date for them.
-- **It is not a second record.** Nothing reads from the folder, and nothing in it is verified by the
-  copy itself: it is files, kept so that the disk that held the record is not the only thing that
-  did.
+- **It is not a second record.** Nothing reads from the folder while you work, and nothing in it is
+  checked by the copy itself: it is files, kept so that the disk that held the record is not the only
+  thing that did. `mnema backup verify` reads it as a record when you ask, and `mnema backup restore`
+  puts it back.
 
 ## Losing the machine
 
@@ -58,11 +59,34 @@ key: the history is kept and checkable, and the identity that wrote it is not co
 key can be restored at all is [a different matter](a-second-machine-and-your-key.md), and it depends
 on the tree: the committed one only, from the backup key `mnema init` makes.
 
+## Reading it back, and putting it back
+
+`mnema backup verify` reads each copy as a record with this mnema's reader, and says that ONE reader
+read it: the second reader, written from `FORMAT.md`, is a Python program of the source repository,
+and the answer names the command that runs it by hand over the copy. It then sets each file of the
+copy against the tree's. What it can name: a copy that is **behind** (the tree wrote after it; run it again), a tree
+that is **cut** or has **lost** a file the copy holds, and a fork. It cannot name entries that exist
+nowhere: if a stale copy is put back over a tree and the newer copy is gone, the entries written
+between them are gone, and both readers still say the record verifies.
+
+`mnema backup restore` puts a copy back into a tree that lost files, and never over a file the tree
+holds: it stops, and says what it found, rather than choose between two histories. It puts back the
+text and nothing else, so:
+
+- **It does not bring back your key.** If the key was lost with the machine, the next write signs with
+  a new key and the tree then counts you twice; restoring the text does not change that.
+- **It does not continue a restored tail.** The notes that say where a tail ends are not copied, so
+  the first write after a restore opens a tail of its own, beside the restored ones.
+- **It cannot bring back what the tree wrote after the copy was made.**
+
+A copy of another record is refused by `restore` when its manifest or the live tree names it; one with no manifest, put where the tree was deleted, has nothing to be told apart by. A way to put another record's copy back, asking you first, comes next.
+
 ## What you still look after
 
 - The folder itself: where it is, who can read it, and that it is on a disk that is not the one it
   copies. `mnema backup status` says how far the copy is from the trees; a copy that was never run
   again after the record grew is behind by exactly what `status` counts.
 - Running it. `backup run` copies when you ask it to: this page says nothing of a backup that runs by itself.
+- Reading it. A copy nobody read back is a copy nobody knows is good: run `mnema backup verify` now and then.
 - The key. Keep a copy of it the way [a second machine and your key](a-second-machine-and-your-key.md)
   describes, apart from the folder.

@@ -8,6 +8,7 @@
 // @plants-damage
 import { spawnSync } from 'node:child_process';
 import {
+  cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -19,12 +20,15 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { tailLockPath, withTailLock } from '@mnema/chain';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  runBackupRestore,
   runBackupRun,
   runBackupSetup,
   runBackupStatus,
+  runBackupVerify,
   runGlobalBackupRun,
   runGlobalBackupSetup,
   runGlobalBackupStatus,
@@ -388,5 +392,177 @@ describe("the backup of the machine's global tree", () => {
     expect(runTask(a, { title: 'written under a new key' }).ok).toBe(true);
     const verdict = runVerify({ ...a, requirement: 'signed', global: false });
     expect(verdict).toMatchObject({ ok: true, requirementMet: true });
+  });
+});
+
+describe('a copy read back, and put back', () => {
+  /** A project in git with its backup set up and run, and the places a restore is about. */
+  function backedUp(label = 'alpha') {
+    const a = project(label, true);
+    const folder = join(sandbox, `folder-${label}`);
+    const set = runBackupSetup(a, folder);
+    if (!set.ok) throw new Error('setup refused');
+    expect(runBackupRun(a).ok).toBe(true);
+    const priv = resolveTrees(a.cwd, env).projectPrivate as string;
+    const copy = join(folder, set.record, 'private');
+    return { a, folder, record: set.record, priv, copy };
+  }
+  const tailsOf = (priv: string) => readdirSync(join(priv, 'tails'));
+  const segmentOf = (root: string) => {
+    const [tail] = readdirSync(join(root, 'tails'));
+    return join(root, 'tails', tail as string, '000001.jsonl');
+  };
+
+  it('puts a deleted private tree back, writes nothing on a dry run, and goes on beside the restored tail', () => {
+    const { a, priv } = backedUp();
+    const before = tailsOf(priv);
+    rmSync(priv, { recursive: true, force: true });
+
+    const dry = runBackupRestore(a, true);
+    expect(dry).toMatchObject({ ok: true, dryRun: true });
+    expect(dry.ok && dry.trees[0]?.placing.length).toBeGreaterThan(0);
+    expect(existsSync(priv)).toBe(false);
+
+    const done = runBackupRestore(a, false);
+    expect(done.ok && done.trees[0]?.restored?.tails).toEqual(before);
+    expect(tailsOf(priv)).toEqual(before);
+    // What a copy never holds is never there: the notes that say where a tail ends live in locks/.
+    expect(existsSync(join(priv, 'locks'))).toBe(false);
+    expect(runBackupVerify(a)).toMatchObject({ ok: true, sound: true });
+    expect(runVerify({ ...a, requirement: 'signed', global: false })).toMatchObject({
+      ok: true,
+      requirementMet: true,
+    });
+    // The restored tail is not continued: the first write opens one of its own.
+    expect(runTask(a, { title: 'after the restore', scope: 'private' }).ok).toBe(true);
+    expect(tailsOf(priv)).toHaveLength(before.length + 1);
+  });
+
+  it('never brings locks/, an installation id or an anchor back, even from a folder that holds them', () => {
+    const { a, priv, copy } = backedUp();
+    const before = tailsOf(priv);
+    const [fingerprint] = readdirSync(join(copy, 'keys')).map((name) => name.replace('.pub', ''));
+    mkdirSync(join(copy, 'locks'), { recursive: true });
+    writeFileSync(join(copy, 'locks', `${before[0]}.head`), 'a note of a tail end');
+    writeFileSync(join(copy, 'keys', `${fingerprint}.inst`), 'an installation id');
+    writeFileSync(join(copy, 'keys', `${fingerprint}.anchor`), 'an anchor');
+    rmSync(priv, { recursive: true, force: true });
+
+    expect(runBackupRestore(a, false).ok).toBe(true);
+    expect(existsSync(join(priv, 'locks'))).toBe(false);
+    expect(filesUnder(join(priv, 'keys')).some((file) => /\.(inst|anchor)$/.test(file))).toBe(
+      false,
+    );
+    expect(runTask(a, { title: 'after the restore', scope: 'private' }).ok).toBe(true);
+    expect(tailsOf(priv)).toHaveLength(before.length + 1);
+  });
+
+  it('keeps a live file that holds other bytes and a live tail that went further, and names them', () => {
+    const { a, priv } = backedUp();
+    const proof = join(priv, 'tails', tailsOf(priv)[0] as string, 'tailproof.json');
+    writeFileSync(proof, '{"another":"proof"}');
+    expect(runTask(a, { title: 'written after the copy', scope: 'private' }).ok).toBe(true);
+    const digestBefore = digest(priv);
+
+    const done = runBackupRestore(a, false);
+    expect(done.ok).toBe(true);
+    if (!done.ok) return;
+    expect(done.trees[0]?.kept).toEqual([expect.stringMatching(/tailproof\.json$/)]);
+    expect(done.trees[0]?.same.length).toBeGreaterThan(0);
+    expect(readFileSync(proof, 'utf-8')).toBe('{"another":"proof"}');
+    expect(digest(priv)).toBe(digestBefore);
+  });
+
+  it('refuses a tree whose tail the copy is not the start of, whether it was cut or went another way, and changes nothing', () => {
+    const { a, priv } = backedUp();
+    const segment = segmentOf(priv);
+    const whole = readFileSync(segment);
+    const before = digest(priv);
+
+    // A fork: the tree's first line is not the copy's.
+    const forked = Buffer.from(whole);
+    forked[2] = forked[2] === 0x61 ? 0x62 : 0x61;
+    writeFileSync(segment, forked);
+    const afterFork = digest(priv);
+    const fork = runBackupRestore(a, false);
+    expect(fork).toMatchObject({ ok: false, code: 'DIVERGED' });
+    expect(fork.ok === false && 'message' in fork && fork.message).toMatch(/a fork/);
+    expect(digest(priv)).toBe(afterFork);
+
+    // A cut: the tree holds the first line only, which is the start of the copy's.
+    const first = whole.subarray(0, whole.indexOf(0x0a) + 1);
+    writeFileSync(segment, first);
+    const cut = runBackupRestore(a, false);
+    expect(cut).toMatchObject({ ok: false, code: 'DIVERGED' });
+    expect(cut.ok === false && 'message' in cut && cut.message).toMatch(/a cut tree/);
+    expect(readFileSync(segment).equals(first)).toBe(true);
+    expect(before).not.toBe('');
+  });
+
+  it('names the process of a writer that holds a tail, and writes nothing', () => {
+    const { a, priv } = backedUp();
+    const tail = tailsOf(priv)[0] as string;
+    const before = digest(priv);
+    const refused = withTailLock(tailLockPath({ root: priv }, tail), () =>
+      runBackupRestore(a, false),
+    );
+    expect(refused).toMatchObject({ ok: false, code: 'WRITER_HOLDS_TAIL' });
+    expect(refused.ok === false && 'message' in refused && refused.message).toContain(
+      `process ${process.pid}`,
+    );
+    expect(digest(priv)).toBe(before);
+  });
+
+  it("does not restore another record's copy: by its manifest, nor by the record the tree it would join names", () => {
+    const { a, priv, copy, record } = backedUp('alpha');
+    const other = backedUp('beta');
+    // Beta's private copy where alpha's is, with its own manifest...
+    rmSync(copy, { recursive: true, force: true });
+    cpSync(other.copy, copy, { recursive: true });
+    expect(runBackupRestore(a, false)).toMatchObject({ ok: false, code: 'OTHER_RECORD' });
+    // ...and with a manifest that says alpha: the tails name another record than alpha's private tree.
+    const manifest = join(copy, 'mnema-backup.json');
+    const said = JSON.parse(readFileSync(manifest, 'utf-8')) as { record: string };
+    writeFileSync(manifest, JSON.stringify({ ...said, record }));
+    expect(runBackupRestore(a, false)).toMatchObject({ ok: false, code: 'OTHER_RECORD' });
+    expect(existsSync(priv)).toBe(true);
+  });
+
+  it('says a copy that is behind, names a tree that is cut or lost, and a copy a reader refuses', () => {
+    const { a, priv, copy } = backedUp();
+    expect(runTask(a, { title: 'more', scope: 'private' }).ok).toBe(true);
+    const stale = runBackupVerify(a);
+    expect(stale).toMatchObject({ ok: true, sound: true });
+    const reading =
+      stale.ok && stale.trees[0] && 'reading' in stale.trees[0]
+        ? stale.trees[0].reading
+        : undefined;
+    expect(reading?.standing.behind.length).toBeGreaterThan(0);
+
+    const segment = segmentOf(priv);
+    const whole = readFileSync(segment);
+    writeFileSync(segment, whole.subarray(0, whole.indexOf(0x0a) + 1));
+    const cut = runBackupVerify(a);
+    expect(cut).toMatchObject({ ok: true, sound: false });
+
+    rmSync(priv, { recursive: true, force: true });
+    const lost = runBackupVerify(a);
+    expect(lost.ok && lost.sound).toBe(false);
+
+    const copied = segmentOf(copy);
+    const bytes = readFileSync(copied);
+    bytes[2] = bytes[2] === 0x61 ? 0x62 : 0x61;
+    writeFileSync(copied, bytes);
+    const broken = runBackupVerify(a);
+    expect(broken.ok && broken.sound).toBe(false);
+    expect(runBackupRestore(a, false)).toMatchObject({ ok: false, code: 'BROKEN_COPY' });
+    expect(existsSync(priv)).toBe(false);
+  });
+
+  it('refuses to verify or restore where the project has no copy', () => {
+    const a = project('alpha', true);
+    expect(runBackupSetup(a, join(sandbox, 'empty')).ok).toBe(true);
+    expect(runBackupVerify(a)).toMatchObject({ ok: false, code: 'NO_COPY' });
+    expect(runBackupRestore(a, false)).toMatchObject({ ok: false, code: 'NO_COPY' });
   });
 });
