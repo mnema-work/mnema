@@ -58,8 +58,8 @@ function topBlock(source) {
   for (let at = start; at < lines.length; at += 1) {
     const line = lines[at] ?? '';
     const closes = line.includes('*/');
-    const text = (at === start ? line.slice(3) : line)
-      .replace(closes ? /\*\/.*$/ : /$^/, '')
+    const opened = at === start ? line.slice(3) : line;
+    const text = (closes ? opened.replace(/\*\/.*$/, '') : opened)
       .replace(/^\s*\* ?/, '')
       .trimEnd();
     body.push(text);
