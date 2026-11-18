@@ -192,6 +192,7 @@ describe('a line this mnema cannot read, and a write', () => {
     return held;
   };
 
+  // @proves the-refusal-of-a-write-holds-everywhere
   it('is refused, the switch included, with the line named, the way out, and the record as it was', () => {
     const dir = mkdtempSync(join(tmpdir(), 'mnema-unread-write-'));
     try {
@@ -214,6 +215,7 @@ describe('a line this mnema cannot read, and a write', () => {
     }
   }, 120_000);
 
+  // @proves the-refusal-of-a-write-holds-everywhere
   it('is denied at the gate, which says the way out, and the hook that opens a session is not silent', () => {
     const dir = mkdtempSync(join(tmpdir(), 'mnema-unread-gate-'));
     try {
