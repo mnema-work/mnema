@@ -43,7 +43,7 @@ export async function bodyFrom(
   if (named.length > 1) {
     reportUsage(
       wiring,
-      `the ${what} came from ${named.join(' and ')}, and only one place can be the text.`,
+      `the ${what} came from ${named.join(' and ')}, and only one place can be the text`,
       `Give it one way: ${how}, --stdin, or --body-file <path>.`,
     );
     return REFUSED;
@@ -65,7 +65,7 @@ export async function bodyFrom(
   } else {
     reportUsage(
       wiring,
-      `the ${what} is missing.`,
+      `the ${what} is missing`,
       `Give it ${how}, with --stdin, or with --body-file <path>.`,
     );
     return REFUSED;

@@ -69,7 +69,8 @@ mnema decision move accept "$ADR" --note "Agreed in review."
 A decision enters awaiting a judgement, and it is the accepted ones that govern the work. The number
 is the one mnema printed for the decision you recorded, so it is read from that line, never assumed.
 A long rationale can come from a file (`--body-file why.md`) or a pipe (`--stdin`) instead of the line, which keeps
-it out of the shell history; from two places at once, it is refused.
+it out of the shell history; from two places at once, it is refused. The refusal names the places the text came from
+(the argument, `--stdin`, or `--body-file`) and the one way to give it, so the line can be corrected without guessing.
 
 The line about the public tree is the one a project in a repository earns. In a folder with no git it says
 instead that the tree is a folder of the project, not committed, which travels only as the project's files are

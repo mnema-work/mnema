@@ -205,7 +205,7 @@ $ mnema skill move adopt no-such-id --note 'nothing to adopt'
 ! No skill no-such-id here.
 [exit 1]
 $ mnema skill create 'A skill with no body'
-! the reusable pattern is missing.: Give it with --body, with --stdin, or with --body-file <path>.
+! the reusable pattern is missing: Give it with --body, with --stdin, or with --body-file <path>.
 [exit 1]
 $ mnema run end --which agent-beta
 ! `mnema run end` needs a run: pass its id, or set MNEMA_RUN to the one `mnema run start` printed.
@@ -311,7 +311,7 @@ $ mnema switch off no-such-channel
 
 ### refusals: what the parser turns down
 $ mnema decision record 'A decision with no rationale'
-! the rationale is missing.: Give it as an argument, with --stdin, or with --body-file <path>.
+! the rationale is missing: Give it as an argument, with --stdin, or with --body-file <path>.
 [exit 1]
 $ mnema task create 'A task' 'and one word too many'
 ! mnema task create does not take "and one word too many".
