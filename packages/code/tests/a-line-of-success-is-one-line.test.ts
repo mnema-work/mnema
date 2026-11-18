@@ -550,6 +550,14 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     { verdict: 'minted', why: 'a count of folders the product listed' },
   'backup.ts «{} other folder(s) kept aside for this project are still there: \\`mnema backup restore --undo\\` puts back the next newest that has a tree to put back, and \\`mnema backup status\\` lists them all» #1':
     { verdict: 'minted', why: 'a count of folders the product listed' },
+  'backup.ts «{} folder(s) kept aside for the global tree, which no restore deletes: you delete them by hand; \\`mnema backup status --global\\` lists them» #1':
+    { verdict: 'minted', why: 'a count of folders the product listed' },
+  'backup.ts «{} other folder(s) kept aside for the global tree are still there: \\`mnema backup restore --global --undo\\` puts back the next newest that has a tree to put back, and \\`mnema backup status --global\\` lists them all» #1':
+    { verdict: 'minted', why: 'a count of folders the product listed' },
+  'backup.ts «{} the global tree from {}» #1': {
+    verdict: 'collapsed',
+    why: 'the folder is read back out of the machine’s backup file, which a person can edit',
+  },
   'backup.ts «{} tree: no copy, nothing to restore» #1': {
     verdict: 'minted',
     why: 'the name of a tree the product has two of',
@@ -1194,6 +1202,7 @@ describe('every line this wiring words is classified', () => {
     // 111 once `key sigstore` said the hash the record keeps for an e-mail.
     // 112 with the line `unlink` prints for the edge it took back.
     // 115 with the five lines `stack add` and `stack remove` print.
+    // 116 with the heading `backup restore --global` prints.
     // 122 with the seven lines `stack export`, `check`, `enable` and `disable` print.
     // 134 with the twelve lines the three agent verbs print.
     // 135 with the agent an agent key attested, on the line of the author in `audit accountability`.
@@ -1227,7 +1236,8 @@ describe('every line this wiring words is classified', () => {
     // 202 with the four lines `backup restore` prints of what it kept aside, put back and deleted.
     // 203 with the lines `backup restore` and `backup status` print of the folders kept aside, and none of a deletion.
     // 204 with the line `backup hook` prints of where it put the hook and where it took it from.
-    expect(FOUND.sites.length).toBe(204);
+    // 207 with the three lines `backup restore --global` prints, the two folder counts and the heading.
+    expect(FOUND.sites.length).toBe(207);
   });
 
   it('reads the verdict off the source rather than believing the table', () => {
@@ -1247,9 +1257,9 @@ describe('every line this wiring words is classified', () => {
   it('found sites of both kinds, and the scanner sees a tag when there is one', () => {
     // Neither arm of the case above may be empty, or half of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
-    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(116);
-    expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(88);
-    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(116);
+    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(117);
+    expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(90);
+    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(117);
   });
 
   it('every reason says where the value comes from', () => {
@@ -1400,6 +1410,7 @@ const UNREACHABLE: Readonly<Record<string, string>> = {
     'the same folder as the line of setup',
   'backup.ts «Backed up the global tree to {}» #1': 'the same folder as the line of setup',
   'backup.ts «{} record {}... from {}» #1': 'the same folder as the line of setup',
+  'backup.ts «{} the global tree from {}» #1': 'the same folder as the line of setup',
   'backup.ts «Put back the {} tree kept in {}» #1':
     'a path with a break in it in the git directory, which no case plants yet, so the tag is what holds this line',
   'backup.ts «what stood in its place is kept at {}, and nothing was deleted» #1':

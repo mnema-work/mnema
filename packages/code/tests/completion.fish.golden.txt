@@ -920,6 +920,7 @@ complete -c mnema -f -n '__mnema_at "backup status"' -s V -l version
 complete -c mnema -f -n '__mnema_at "backup status"' -l color -x -a 'auto always never'
 
 # mnema backup verify
+complete -c mnema -f -n '__mnema_at "backup verify"' -l global
 complete -c mnema -f -n '__mnema_at "backup verify"' -l json
 complete -c mnema -f -n '__mnema_at "backup verify"' -s h -l help
 complete -c mnema -f -n '__mnema_at "backup verify"' -s V -l version
@@ -929,6 +930,7 @@ complete -c mnema -f -n '__mnema_at "backup verify"' -l color -x -a 'auto always
 complete -c mnema -f -n '__mnema_at "backup restore"' -l dry-run
 complete -c mnema -f -n '__mnema_at "backup restore"' -l from -r
 complete -c mnema -f -n '__mnema_at "backup restore"' -l undo
+complete -c mnema -f -n '__mnema_at "backup restore"' -l global
 complete -c mnema -f -n '__mnema_at "backup restore"' -s h -l help
 complete -c mnema -f -n '__mnema_at "backup restore"' -s V -l version
 complete -c mnema -f -n '__mnema_at "backup restore"' -l color -x -a 'auto always never'

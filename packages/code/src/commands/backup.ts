@@ -74,6 +74,7 @@ import {
   treesToKeep,
   type Undone,
   undoAside,
+  undoCommandFor,
   whyNotADestination,
   whyNotARemote,
   withCacheLock,
@@ -187,8 +188,13 @@ function refusedBy(error: unknown): BackupRefused {
  */
 function asidePlaceOf(resolved: ReturnType<typeof resolveTrees>): AsidePlace {
   return resolved.projectPublicMachinery === undefined
-    ? asidePlaceInHome(dirname(resolved.global))
+    ? asideHomePlace(resolved)
     : asidePlaceInGit(resolved.projectPublicMachinery.place.commonDir);
+}
+
+/** The place in the mnema home: the global tree's, and a project outside git's. */
+function asideHomePlace(resolved: ReturnType<typeof resolveTrees>): AsidePlace {
+  return asidePlaceInHome(dirname(resolved.global));
 }
 
 /** Why `destination` cannot keep a backup, as a refusal, or undefined where it can. */
@@ -572,12 +578,26 @@ export function runGlobalBackupRun(
   }
 }
 
+/** The folders a restore kept aside of the global tree: they are listed whether or not a destination is set. */
+function asidesOfGlobal(machine: Machine): AsideListed[] {
+  return asidesFor(asideHomePlace(machine.resolved), [
+    { tree: 'global', root: machine.resolved.global },
+  ]);
+}
+
+/** What the folders kept aside of the global tree are, for a machine with no destination for it. */
+export function globalAsides(ctx: BackupContext): readonly AsideListed[] {
+  return asidesOfGlobal(machineOf(ctx));
+}
+
 /** How the copy of the global tree stands. */
 export interface GlobalBackupStatus {
   readonly ok: true;
   readonly destination: string;
   /** Undefined where this machine has no global tree yet. */
   readonly standing: CopyStanding | undefined;
+  /** The folders a restore of another record's copy kept aside of the global tree: they stay until you delete them. */
+  readonly asides: readonly AsideListed[];
 }
 
 /** Says where the global tree's copy is and how far it is from the tree. Writes nothing. */
@@ -585,15 +605,25 @@ export function runGlobalBackupStatus(ctx: BackupContext): GlobalBackupStatus | 
   const machine = machineOf(ctx);
   const stored = globalAssigned(machine);
   if (typeof stored !== 'string') return stored;
-  if (machine.root === undefined)
-    return { ok: true, destination: shown(stored), standing: undefined };
+  if (machine.root === undefined) {
+    return {
+      ok: true,
+      destination: shown(stored),
+      standing: undefined,
+      asides: asidesOfGlobal(machine),
+    };
+  }
   const destination = folderFor(stored, machine.configPath, false);
   if (typeof destination !== 'string') return destination;
   try {
     return {
       ok: true,
       destination: shown(stored),
-      standing: standingOfCopy(machine.root, destination, undefined, 'global'),
+      standing:
+        machine.root === undefined
+          ? undefined
+          : standingOfCopy(machine.root, destination, undefined, 'global'),
+      asides: asidesOfGlobal(machine),
     };
   } catch (error) {
     return refusedBy(error);
@@ -608,7 +638,8 @@ export type TreeReading =
 /** What `verify` found. */
 export interface BackupVerified {
   readonly ok: true;
-  readonly record: string;
+  /** The record the copy is kept under; undefined for the global tree, which has none. */
+  readonly record: string | undefined;
   readonly destination: string;
   readonly trees: readonly TreeReading[];
   /** Whether every copy is a record the readers accept, no tree is shown cut, lost or forked, and no commit of a git destination's cache is left unpushed. */
@@ -662,13 +693,45 @@ export function runBackupVerify(ctx: BackupContext): BackupVerified | BackupRefu
   };
 }
 
+/** Reads the copy of the global tree as a record and sets it against the tree. Writes nothing. */
+export function runGlobalBackupVerify(ctx: BackupContext): BackupVerified | BackupRefused {
+  const machine = machineOf(ctx);
+  const stored = globalAssigned(machine);
+  if (typeof stored !== 'string') return stored;
+  const destination = folderFor(stored, machine.configPath, true);
+  if (typeof destination !== 'string') return destination;
+  try {
+    const reading = readCopy(machine.resolved.global, destination, undefined, 'global');
+    const git = isGitDestination(stored)
+      ? { ...standingOfCache(stored, destination), cache: destination }
+      : undefined;
+    return {
+      ok: true,
+      record: undefined,
+      destination: shown(stored),
+      trees: [{ tree: 'global', reading }],
+      git,
+      sound: reading.ok && (git === undefined || (git.unpushed === 0 && !git.diverged)),
+    };
+  } catch (error) {
+    if (error instanceof BackupRefusedError && error.code === 'NO_COPY') {
+      return { ok: false, reason: 'REFUSED', code: 'NO_COPY', message: error.message };
+    }
+    return refusedBy(error);
+  }
+}
+
 /** What `restore` is about to do, found without writing a byte. */
 export interface RestorePlan {
   readonly ok: true;
-  /** The record the project's public tree names, or undefined where it names none. */
+  /** True where the plan is the global tree's: the machine's, which no project's restore ever touches. */
+  readonly global: boolean;
+  /** The record the project's public tree names, or undefined where it names none (and for the global tree). */
   readonly record: string | undefined;
-  /** The record the copy is of. */
-  readonly copyRecord: string;
+  /** The record the copy is kept under, as `prepareRestore` is told it: undefined for the global tree. */
+  readonly copyRecord: string | undefined;
+  /** The record the copy is of, as it is said to a person: the global tree's is what its tails name, or undefined where they name none. */
+  readonly copyName: string | undefined;
   /** The folder the copy is read from: the destination itself, or the clone cache of a git one. */
   readonly destination: string;
   /** The destination as it is printed. */
@@ -754,20 +817,66 @@ function holdsOf(root: string): string {
   return naming.state === 'several' ? 'tails of more than one record' : 'tails that name no record';
 }
 
+/** What a plan is made from: the trees to put back into, where the copy is, and where what is replaced is kept. */
+interface RestoreSubject {
+  readonly global: boolean;
+  readonly record: string | undefined;
+  readonly copyRecord: string | undefined;
+  readonly destination: string;
+  /** The destination as it is printed. */
+  readonly shown: string;
+  readonly wanted: readonly (readonly [BackupTree, string])[];
+  readonly place: AsidePlace;
+}
+
 /** Reads what a restore would do, and asks nobody and writes nothing. */
 export function planBackupRestore(ctx: BackupContext, from?: string): RestorePlan | BackupRefused {
   const located = locate(ctx);
   if ('ok' in located) return located;
   const where = whereIsTheCopy(located, from);
   if ('ok' in where) return where;
-  const { destination, copyRecord, shown: printed } = where;
+  return planOf({
+    global: false,
+    record: located.record,
+    copyRecord: where.copyRecord,
+    destination: where.destination,
+    shown: where.shown,
+    wanted: located.wanted,
+    place: asidePlaceOf(located.resolved),
+  });
+}
+
+/**
+ * The same, for the machine's global tree: its copy is the destination `setup --global` gave it (a
+ * folder, or the cache of a git one), and what a restore replaces is kept in the mnema home, as for a
+ * project outside git. No project is needed, and none of a project's trees is in the plan.
+ */
+export function planGlobalRestore(ctx: BackupContext): RestorePlan | BackupRefused {
+  const machine = machineOf(ctx);
+  const stored = globalAssigned(machine);
+  if (typeof stored !== 'string') return stored;
+  const destination = folderFor(stored, machine.configPath, true);
+  if (typeof destination !== 'string') return destination;
+  return planOf({
+    global: true,
+    record: undefined,
+    copyRecord: undefined,
+    destination,
+    shown: shown(stored),
+    wanted: [['global', machine.resolved.global]],
+    place: asideHomePlace(machine.resolved),
+  });
+}
+
+function planOf(subject: RestoreSubject): RestorePlan | BackupRefused {
+  const { destination, copyRecord, record, place } = subject;
   const noCopy: BackupTree[] = [];
   const prepared: PreparedRestore[] = [];
   let first: string | undefined;
   try {
-    for (const [tree, root] of located.wanted) {
+    for (const [tree, root] of subject.wanted) {
       try {
-        prepared.push(prepareRestore(root, destination, located.record, tree, copyRecord));
+        prepared.push(prepareRestore(root, destination, record, tree, copyRecord));
       } catch (error) {
         if (error instanceof BackupRefusedError && error.code === 'NO_COPY') {
           noCopy.push(tree);
@@ -783,14 +892,20 @@ export function planBackupRestore(ctx: BackupContext, from?: string): RestorePla
   }
   const asking = prepared.filter((one) => one.otherRecord);
   const keeping = treesToKeep(asking.map((one) => ({ tree: one.tree, root: one.root })));
-  const place = asidePlaceOf(located.resolved);
   const holds = asking.map((one) => ({ tree: one.tree, says: holdsOf(one.root) }));
+  let copyName = copyRecord;
+  if (subject.global) {
+    const named = recordNamedIn([(prepared[0] as PreparedRestore).folder]);
+    copyName = named.state === 'named' ? named.name : undefined;
+  }
   return {
     ok: true,
-    record: located.record,
+    global: subject.global,
+    record,
     copyRecord,
+    copyName,
     destination,
-    shown: printed,
+    shown: subject.shown,
     prepared,
     noCopy,
     asks: asking.length > 0,
@@ -804,8 +919,11 @@ export function planBackupRestore(ctx: BackupContext, from?: string): RestorePla
 /** What `restore` found, and, unless it was a dry run, did. */
 export interface BackupRestored {
   readonly ok: true;
+  readonly global: boolean;
   readonly record: string | undefined;
-  readonly copyRecord: string;
+  /** The record the copy is of, as it is said to a person (the global tree's is what its tails name). */
+  readonly copyName: string | undefined;
+  readonly copyRecord: string | undefined;
   readonly destination: string;
   readonly dryRun: boolean;
   readonly trees: readonly (PreparedRestore & { readonly restored: Restored | undefined })[];
@@ -835,7 +953,23 @@ export function runBackupRestore(
   dryRun: boolean,
   options: RestoreOptions = {},
 ): BackupRestored | BackupRefused {
-  const plan = planBackupRestore(ctx, options.from);
+  return restoreFrom(planBackupRestore(ctx, options.from), dryRun, options);
+}
+
+/** {@link runBackupRestore} for the machine's global tree: the copy is the one `setup --global` named, and no project's tree is touched. */
+export function runGlobalRestore(
+  ctx: BackupContext,
+  dryRun: boolean,
+  options: RestoreOptions = {},
+): BackupRestored | BackupRefused {
+  return restoreFrom(planGlobalRestore(ctx), dryRun, options);
+}
+
+function restoreFrom(
+  plan: RestorePlan | BackupRefused,
+  dryRun: boolean,
+  options: RestoreOptions,
+): BackupRestored | BackupRefused {
   if (!plan.ok) return plan;
   if (plan.asks && !dryRun && options.confirmed !== true) {
     return {
@@ -850,7 +984,8 @@ export function runBackupRestore(
   const roots = plan.prepared.map((one) => ({ tree: one.tree, root: one.root }));
   try {
     // EVERY restore takes the lock of its place first (the repository's, or the home's outside git), then the tree's own (restore.ts): one order, so none deadlocks.
-    const locked = <T>(act: () => T): T => (dryRun ? act() : withRestoreLock(plan.place, act));
+    const locked = <T>(act: () => T): T =>
+      dryRun ? act() : withRestoreLock(plan.place, act, plan.global);
     return locked(() => {
       let prepared = plan.prepared;
       if (dryRun && plan.asks) {
@@ -882,7 +1017,9 @@ export function runBackupRestore(
       const done = dryRun ? [] : restoreCopies([...prepared]);
       return {
         ok: true as const,
+        global: plan.global,
         record: plan.record,
+        copyName: plan.copyName,
         copyRecord: plan.copyRecord,
         destination: plan.shown,
         dryRun,
@@ -897,7 +1034,7 @@ export function runBackupRestore(
     if (keptAside === undefined || refused.reason !== 'REFUSED') return refused;
     return {
       ...refused,
-      message: `${refused.message} What the trees held is kept at ${(keptAside as KeptAside).folder}: \`mnema backup restore --undo\` puts it back.`,
+      message: `${refused.message} What the trees held is kept at ${(keptAside as KeptAside).folder}: \`${undoCommandFor(keptAside.trees)}\` puts it back.`,
     };
   }
 }
@@ -921,6 +1058,25 @@ export function runBackupUndo(ctx: BackupContext): BackupUndone | BackupRefused 
       return { ok: true as const, ...undoAside(place, roots) };
     };
     return withRestoreLock(place, undo);
+  } catch (error) {
+    return refusedBy(error);
+  }
+}
+
+/** Puts back what the newest restore of another record's copy kept aside of the global tree. Nothing is deleted. */
+export function runGlobalUndo(ctx: BackupContext): BackupUndone | BackupRefused {
+  const machine = machineOf(ctx);
+  const place = asideHomePlace(machine.resolved);
+  const root = machine.resolved.global;
+  try {
+    return withRestoreLock(
+      place,
+      () => {
+        if (existsSync(root)) noWriterHolds(root);
+        return { ok: true as const, ...undoAside(place, [{ tree: 'global', root }]) };
+      },
+      true,
+    );
   } catch (error) {
     return refusedBy(error);
   }

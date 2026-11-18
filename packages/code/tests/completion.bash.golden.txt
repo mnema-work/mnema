@@ -133,8 +133,8 @@ _mnema_flags() {
     'backup setup') echo '--global -h --help -V --version --color' ;;
     'backup run') echo '--global -h --help -V --version --color' ;;
     'backup status') echo '--global --json -h --help -V --version --color' ;;
-    'backup verify') echo '--json -h --help -V --version --color' ;;
-    'backup restore') echo '--dry-run --from --undo -h --help -V --version --color' ;;
+    'backup verify') echo '--global --json -h --help -V --version --color' ;;
+    'backup restore') echo '--dry-run --from --undo --global -h --help -V --version --color' ;;
     'backup hook') echo '-h --help -V --version --color' ;;
     'backup hook install') echo '-h --help -V --version --color' ;;
     'backup hook uninstall') echo '-h --help -V --version --color' ;;

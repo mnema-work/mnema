@@ -67,7 +67,12 @@ far that copy is. Without `--global` the project's verbs say nothing of it, and 
 folder for the global tree is refused: nothing is taken from a project's folder. The same rules hold
 for it: tails and public keys only, no private key, no link, a copy that only grows. Its
 `diagnostics.jsonl` and `report-state.json` are not copied until a study decides whether they should
-be.
+be. `mnema backup verify --global` reads that copy as a record, and `mnema backup restore --global`
+puts it back under the rules of a project's restore: never over a file, asked first at a terminal
+where the copy is of another record's global tree (every project on the machine reads the global
+tree, and the question says so), and the live tree kept in `<mnema home>/before-restore/<UTC
+date>/global/` until you delete it by hand, with `--undo` to put it back. A global restore never
+touches a project's trees, and a project's restore never touches the global tree.
 
 **`verify` reads the copy, and says how it stands against the tree.** It reads each copy as a record with this mnema's reader, ONE reader, and says so: the second reader, written from `FORMAT.md`, is a Python program of the source repository, and the answer names the command that runs it by hand over the copy (`python3 packages/chain/verifier/mnema_verify.py record <the copy>`). It then sets each file of the copy against the tree's, and only the end of a tail can say a tail was cut: a copy that is the start of the tree's file is BEHIND (run it again); a tree whose file is the start of the copy's is CUT; a file the copy holds that the tree does not is LOST; and two files neither of which starts the other are a fork or a cut, and no side is taken. It exits non-zero for a copy the reader refuses and a tree shown cut, lost or forked; a copy that is only behind is said, and is not a failure. It writes nothing.
 
