@@ -1,0 +1,10 @@
+# Read by the `dependencies` job of .github/workflows/scanners.yml: osv-scanner finds this file beside the lockfile it scans.
+# One advisory is ignored, with an expiry; after `ignoreUntil` the check accuses it again. Add nothing else here without a reason
+# written beside it and a date.
+#
+# GHSA-fc5q-39xc-vjpf: a ReDoS in picomatch, every version up to 4.0.7, no patched release yet. picomatch is reached only by
+# development tooling (vite and fdir); the published @mnema/code ships string-width alone, so no user of the package runs it.
+[[IgnoredVulns]]
+id = "GHSA-fc5q-39xc-vjpf"
+ignoreUntil = 2026-12-17
+reason = "picomatch ReDoS with no patched release; reached only by development tooling (vite, fdir), not by the published @mnema/code"
