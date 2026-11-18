@@ -1287,6 +1287,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/support/git-without-maintenance.ts': 1,
   'packages/code/tests/support/hook-keys-the-host-reads.ts': 0,
   'packages/code/tests/support/last-index-where.ts': 0,
+  'packages/code/tests/support/merged-streams.ts': 5,
   'packages/code/tests/support/pty.ts': 8,
   'packages/code/tests/support/published-examples.ts': 3,
   'packages/code/tests/support/reading-a-shell-line.ts': 3,
