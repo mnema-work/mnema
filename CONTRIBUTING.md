@@ -3,6 +3,8 @@
 This page is for someone who has just cloned the repository and wants to change it. What
 the product is, and what it does and does not prove, is on the [front page](README.md).
 
+If mnema helps your work, a star on the repository helps others find it; it is only ever yours to give.
+
 ## What you need
 
 - **Node.** Requires Node 24.15.0 or a later 24, or 26.0.0 or later: that is the range `engines.node` declares in the root
