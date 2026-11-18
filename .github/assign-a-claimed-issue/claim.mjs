@@ -35,6 +35,20 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
+/** @typedef {any} Json what GitHub's API gave, or what a fixture stands in for it */
+/**
+ * @typedef {{
+ *   issue: (number: number) => Json,
+ *   comments: (number: number) => Json[],
+ *   assignedTo: (login: string) => Json[],
+ *   assignedIssues: () => Json[],
+ *   openPulls: () => Json[],
+ *   assign: (number: number, login: string) => unknown,
+ *   unassign: (number: number, login: string) => unknown,
+ *   comment: (number: number, body: string) => unknown,
+ * }} Api
+ */
+
 export const DAYS_TO_FREE = 14;
 export const MOST_HELD = 3;
 const DAY = 24 * 60 * 60 * 1000;
@@ -70,6 +84,7 @@ export const CLAIM_PHRASES = [
   '/claim',
 ];
 
+/** @param {string} text */
 const escapeForRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 
 const CLAIM_RE = new RegExp(
@@ -77,6 +92,7 @@ const CLAIM_RE = new RegExp(
 );
 
 /** The text a claim is looked for in: no quoted lines, the curly apostrophe made straight, one case. */
+/** @param {unknown} text */
 const normalise = (text) =>
   String(text ?? '')
     .split('\n')
@@ -127,12 +143,15 @@ export function decide({ issue, comment, held }) {
 const ASSIGNED_MARKER = /<!-- claim-an-issue:assigned (\S+) login=(\S+) -->/;
 const FREED_MARKER = /<!-- claim-an-issue:freed (\S+) -->/;
 
+/** @param {Date} now @param {string} login */
 export const assignedMarker = (now, login) =>
   `<!-- claim-an-issue:assigned ${now.toISOString()} login=${login} -->`;
+/** @param {Date} now */
 export const freedMarker = (now) => `<!-- claim-an-issue:freed ${now.toISOString()} -->`;
 
 /** The replies. Each is one comment, and the one that assigns or frees carries its marker. */
 export const replies = {
+  /** @param {string} login @param {Date} now */
   assigned: (login, now) =>
     [
       assignedMarker(now, login),
@@ -142,18 +161,21 @@ export const replies = {
       '',
       `The assignment frees itself after ${DAYS_TO_FREE} days without an open pull request that names this issue (write \`#<number>\` in its description). Open one early, even as a draft, and it stays yours.`,
     ].join('\n'),
+  /** @param {string} login */
   taken: (login) =>
     [
       `Thanks, @${login}: someone already holds this issue.`,
       '',
       `If they open no pull request that names it within ${DAYS_TO_FREE} days of taking it, it frees itself and you can ask again then.`,
     ].join('\n'),
+  /** @param {string} login */
   cap: (login) =>
     [
       `Thanks, @${login}: you already hold ${MOST_HELD} issues here that were assigned this way.`,
       '',
       'Please finish one, or let one go by saying so on it, before taking another.',
     ].join('\n'),
+  /** @param {string} login @param {Date} now */
   freed: (login, now) =>
     [
       freedMarker(now),
@@ -171,13 +193,14 @@ export const replies = {
  * @returns {{ at: Date, login: string } | null}
  */
 export function assignmentOf(comments) {
+  /** @type {{ at: Date, login: string } | null} */
   let state = null;
   for (const comment of comments) {
     if (comment.user?.login !== OUR_ACCOUNT) continue;
     const assigned = ASSIGNED_MARKER.exec(comment.body ?? '');
     if (assigned) {
-      const at = new Date(assigned[1]);
-      state = Number.isNaN(at.getTime()) ? null : { at, login: assigned[2] };
+      const at = new Date(String(assigned[1]));
+      state = Number.isNaN(at.getTime()) ? null : { at, login: String(assigned[2]) };
     } else if (FREED_MARKER.test(comment.body ?? '')) {
       state = null;
     }
@@ -186,6 +209,7 @@ export function assignmentOf(comments) {
 }
 
 /** Whether a pull request names the issue: `#N` in the title or the body, or the issue's address. */
+/** @param {Json} pull @param {number} number */
 export function namesIssue(pull, number) {
   const text = `${pull.title ?? ''}\n${pull.body ?? ''}`;
   return new RegExp(`(?<![\\w/])#${number}(?!\\d)|/issues/${number}(?!\\d)`).test(text);
@@ -206,7 +230,7 @@ export function namesIssue(pull, number) {
 export function expiry({ now, number, assignment, assignees, pulls }) {
   if (!assignment) return { free: false, why: 'not assigned by the workflow' };
   const mine = assignment.login.toLowerCase();
-  if (assignees.length !== 1 || assignees[0].toLowerCase() !== mine) {
+  if (assignees.length !== 1 || assignees[0]?.toLowerCase() !== mine) {
     return { free: false, why: 'assigned to someone else since' };
   }
   if (now.getTime() - assignment.at.getTime() < DAYS_TO_FREE * DAY) {
@@ -220,7 +244,13 @@ export function expiry({ now, number, assignment, assignees, pulls }) {
 }
 
 /** The GitHub calls, through `gh` with an argument list. */
+/**
+ * @param {string} repo
+ * @param {(args: string[]) => string} [run]
+ * @returns {Api}
+ */
 export function ghApi(repo, run = (args) => execFileSync('gh', args, { encoding: 'utf-8' })) {
+  /** @param {string} path @returns {Json[]} */
   const list = (path) =>
     run(['api', '--paginate', '--jq', '.[]', path])
       .split('\n')
@@ -262,8 +292,15 @@ export function ghApi(repo, run = (args) => execFileSync('gh', args, { encoding:
 }
 
 /** A stand-in for GitHub: reads come from the fixture, writes are printed and kept. */
+/**
+ * @param {Json} fixture
+ * @param {(line: string) => void} [say]
+ * @returns {Api & { writes: Json[] }}
+ */
 export function fixtureApi(fixture, say = console.log) {
+  /** @type {Json[]} */
   const writes = [];
+  /** @param {Json} what */
   const note = (what) => {
     writes.push(what);
     say(JSON.stringify(what));
@@ -274,7 +311,9 @@ export function fixtureApi(fixture, say = console.log) {
     comments: (number) => fixture.comments?.[String(number)] ?? [],
     assignedTo: (login) =>
       Object.values(fixture.issues).filter((one) =>
-        (one.assignees ?? []).some((who) => who.login.toLowerCase() === login.toLowerCase()),
+        (one.assignees ?? []).some(
+          (/** @type {Json} */ who) => who.login.toLowerCase() === login.toLowerCase(),
+        ),
       ),
     assignedIssues: () =>
       Object.values(fixture.issues).filter((one) => (one.assignees ?? []).length > 0),
@@ -285,10 +324,14 @@ export function fixtureApi(fixture, say = console.log) {
   };
 }
 
-const labelsOf = (issue) => (issue.labels ?? []).map((label) => label.name ?? label);
-const loginsOf = (issue) => (issue.assignees ?? []).map((who) => who.login);
+/** @param {Json} issue */
+const labelsOf = (issue) =>
+  (issue.labels ?? []).map((/** @type {Json} */ label) => label.name ?? label);
+/** @param {Json} issue */
+const loginsOf = (issue) => (issue.assignees ?? []).map((/** @type {Json} */ who) => who.login);
 
 /** How many open issues this workflow assigned to `login` that they still hold. */
+/** @param {Api} api @param {string} login */
 export function heldBy(api, login) {
   return api.assignedTo(login).filter((one) => {
     const mine = assignmentOf(api.comments(one.number));
@@ -296,7 +339,14 @@ export function heldBy(api, login) {
   }).length;
 }
 
-/** One created comment. @returns {{ action: string, why: string }} */
+/**
+ * One created comment.
+ *
+ * @param {Json} event
+ * @param {Api} api
+ * @param {Date} [now]
+ * @returns {{ action: string, why: string }}
+ */
 export function claim(event, api, now = new Date()) {
   const number = event.issue?.number;
   const comment = event.comment;
@@ -305,6 +355,7 @@ export function claim(event, api, now = new Date()) {
   // The issue is read again: the event is a moment ago, and who holds it may have changed since.
   const issue = api.issue(number);
   const login = comment.user?.login ?? '';
+  /** @param {number} held */
   const ask = (held) =>
     decide({
       issue: {
@@ -332,7 +383,13 @@ export function claim(event, api, now = new Date()) {
   return verdict;
 }
 
-/** The daily run. @returns {number[]} the issues it freed */
+/**
+ * The daily run.
+ *
+ * @param {Api} api
+ * @param {Date} [now]
+ * @returns {number[]} the issues it freed
+ */
 export function expire(api, now = new Date()) {
   const freed = [];
   let pulls = null;
@@ -348,21 +405,23 @@ export function expire(api, now = new Date()) {
       pulls,
     });
     if (!verdict.free) continue;
-    api.unassign(issue.number, verdict.login);
-    api.comment(issue.number, replies.freed(verdict.login, now));
+    const who = String(verdict.login);
+    api.unassign(issue.number, who);
+    api.comment(issue.number, replies.freed(who, now));
     freed.push(issue.number);
   }
   return freed;
 }
 
+/** @param {string[]} argv */
 function main(argv) {
   const [mode, eventPath] = argv;
   const at = argv.indexOf('--fixture');
-  const fixture = at === -1 ? null : JSON.parse(readFileSync(argv[at + 1], 'utf-8'));
+  const fixture = at === -1 ? null : JSON.parse(readFileSync(String(argv[at + 1]), 'utf-8'));
   const api = fixture ? fixtureApi(fixture) : ghApi(process.env.GITHUB_REPOSITORY ?? '');
   const now = fixture?.now ? new Date(fixture.now) : new Date();
   if (mode === 'claim') {
-    const event = JSON.parse(readFileSync(eventPath, 'utf-8'));
+    const event = JSON.parse(readFileSync(String(eventPath), 'utf-8'));
     const verdict = claim(event, api, now);
     console.log(`${verdict.action}: ${verdict.why}`);
   } else if (mode === 'expire') {
