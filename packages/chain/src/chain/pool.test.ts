@@ -61,7 +61,7 @@ function open(
     onBase?: (tail: string, segment: string, hash: string) => boolean | undefined;
     told?: Told;
     branch?: string | undefined;
-    committed?: (tail: string) => boolean | undefined;
+    heldOnlyBy?: (tail: string, branch: string) => boolean | undefined;
   } = {},
 ): ChainWriter {
   return openChainForWriting(at.record, {
@@ -73,7 +73,7 @@ function open(
       reservedBy: () => how.reserved ?? new Set(),
       onBase: how.onBase ?? (() => false),
       branch: () => ('branch' in how ? how.branch : 'main'),
-      ...(how.committed === undefined ? {} : { committed: how.committed }),
+      ...(how.heldOnlyBy === undefined ? {} : { heldOnlyBy: how.heldOnlyBy }),
     },
     onNewTail: (opened) => how.told?.sentences.push(opened),
   });
@@ -495,7 +495,7 @@ describe('the tail that init wrote before the repository existed', () => {
     writeFileSync(installationIdPath({ root: second.place }, fingerprint), `${idOf(first.tail)}\n`);
     return { first, second };
   }
-  const neverCommitted = () => false;
+  const heldHere = () => true;
 
   it('is gone on with, without asking the base branch, and from then on holds the same-branch rule', () => {
     const { first, second } = hintedAtTheOnlyTail();
@@ -503,20 +503,20 @@ describe('the tail that init wrote before the repository existed', () => {
       onBase: () => {
         throw new Error('the base branch is not asked');
       },
-      committed: neverCommitted,
+      heldOnlyBy: heldHere,
     });
     write(writer, 'next');
     expect(writer.tail).toBe(first.tail);
     expect(tailsOf(second)).toEqual([first.tail]);
 
     // Its mark names the branch: the same branch goes on without the base, another one asks it.
-    const same = open(second, { onBase: () => false, committed: neverCommitted });
+    const same = open(second, { onBase: () => false, heldOnlyBy: heldHere });
     write(same, 'again');
     expect(same.tail).toBe(first.tail);
     const told: Told = { sentences: [] };
     const other = open(second, {
       onBase: () => false,
-      committed: neverCommitted,
+      heldOnlyBy: heldHere,
       branch: 'other',
       told,
     });
@@ -543,7 +543,7 @@ describe('the tail that init wrote before the repository existed', () => {
         asked.push(tail);
         return false;
       },
-      committed: neverCommitted,
+      heldOnlyBy: heldHere,
     });
     write(writer, 'next');
     expect(writer.tail).not.toBe(first.tail);
@@ -554,7 +554,7 @@ describe('the tail that init wrote before the repository existed', () => {
     const { first, second } = hintedAtTheOnlyTail();
     aTailWrittenIn('elsewhere');
     const told: Told = { sentences: [] };
-    const writer = open(second, { onBase: () => false, committed: neverCommitted, told });
+    const writer = open(second, { onBase: () => false, heldOnlyBy: heldHere, told });
     write(writer, 'next');
     expect(writer.tail).not.toBe(first.tail);
     expect(told.sentences[0]?.left).toEqual({ offBase: true });
@@ -564,19 +564,53 @@ describe('the tail that init wrote before the repository existed', () => {
     const { first, second } = hintedAtTheOnlyTail();
     markInflight({ root: second.place }, first.tail, { seq: 0, hash: 'a'.repeat(64) }, 'feature');
     const told: Told = { sentences: [] };
-    const writer = open(second, { onBase: () => false, committed: neverCommitted, told });
+    const writer = open(second, { onBase: () => false, heldOnlyBy: heldHere, told });
     write(writer, 'next');
     expect(writer.tail).not.toBe(first.tail);
     expect(told.sentences[0]?.left).toEqual({ offBase: true });
   });
 
-  it('is not gone on with when a commit holds it or git did not say, nor where nothing asks git', () => {
-    for (const committed of [() => true, () => undefined, undefined]) {
-      const { first, second } = hintedAtTheOnlyTail();
-      const writer = open(second, { onBase: () => false, ...(committed ? { committed } : {}) });
-      write(writer, 'next');
-      expect(writer.tail).not.toBe(first.tail);
-      rmSync(join(sandbox, 'two'), { recursive: true, force: true });
-    }
+  const refuses = (
+    heldOnlyBy: ((tail: string, branch: string) => boolean | undefined) | undefined,
+  ) => {
+    const { first, second } = hintedAtTheOnlyTail();
+    const writer = open(second, { onBase: () => false, ...(heldOnlyBy ? { heldOnlyBy } : {}) });
+    write(writer, 'next');
+    expect(writer.tail).not.toBe(first.tail);
+  };
+
+  it('is not gone on with when another ref holds it too', () => {
+    refuses(() => false);
+  });
+
+  it('is not gone on with when git did not say', () => {
+    refuses(() => undefined);
+  });
+
+  it('is not gone on with where nothing asks git', () => {
+    refuses(undefined);
+  });
+
+  it('is not gone on with on a detached HEAD, even when git says it is held here alone', () => {
+    const { first, second } = hintedAtTheOnlyTail();
+    const writer = open(second, { onBase: () => false, heldOnlyBy: heldHere, branch: undefined });
+    write(writer, 'next');
+    expect(writer.tail).not.toBe(first.tail);
+  });
+
+  it('asks git about the branch the worktree is on', () => {
+    const { first, second } = hintedAtTheOnlyTail();
+    const branches: string[] = [];
+    const writer = open(second, {
+      onBase: () => false,
+      branch: 'topic',
+      heldOnlyBy: (_tail, branch) => {
+        branches.push(branch);
+        return true;
+      },
+    });
+    write(writer, 'next');
+    expect(writer.tail).toBe(first.tail);
+    expect(branches).toEqual(['topic']);
   });
 });

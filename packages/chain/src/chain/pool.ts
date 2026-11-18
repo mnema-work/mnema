@@ -46,10 +46,11 @@ export interface PoolOptions {
   /** The branch this worktree has checked out, or undefined for a detached HEAD. */
   readonly branch: () => string | undefined;
   /**
-   * Whether any commit of any ref holds a file of the tail `tailId`; undefined where git did not answer.
-   * Absent, no tail is taken for one written before the repository existed ({@link firstTailOfTheRepository}).
+   * Whether no commit holds a file of the tail `tailId`, or every ref that contains one is `branch` alone;
+   * undefined where git did not answer. Absent, no tail is taken for the first of the repository
+   * ({@link firstTailOfTheRepository}).
    */
-  readonly committed?: (tailId: string) => boolean | undefined;
+  readonly heldOnlyBy?: (tailId: string, branch: string) => boolean | undefined;
 }
 
 /** The hint of the installation id as the writer reads and moves it: the keystore's, behind two calls. */
@@ -129,10 +130,12 @@ export function wroteOnThisBranch(
  * Whether `tailId` is the tail `mnema init` wrote in a folder that was not yet a repository, which the
  * first write after `git init` goes on with instead of founding a second one. All of these hold: this
  * worktree has no mark for it, it is the only tail of the key in this checkout, no other tail of the key
- * has a note in the shared place (a tail another worktree holds), and no commit of any ref holds a file
- * of it. The last is what keeps a tail an earlier mnema wrote in a repository (the migration moves its
- * notes the same way, and it has no mark either) on the question of the base branch (ADR-446): a tail
- * that was committed may be on another branch too, and one that never was cannot be. Its mark is
+ * has a note in the shared place (a tail another worktree holds), and either no commit holds a file
+ * of it or every ref containing one is the branch this worktree is on, alone. The last is what keeps a
+ * tail an earlier mnema wrote in a repository (the migration moves its notes the same way, and it has no
+ * mark either) on the question of the base branch (ADR-446) once another branch, a remote or a tag holds
+ * it: a branch cut from it before this write would show up among the refs, and one cut after has no mark
+ * and asks the base like any other. Its mark is
  * written, with the branch, by the first act on it.
  */
 export function firstTailOfTheRepository(args: {
@@ -155,7 +158,8 @@ export function firstTailOfTheRepository(args: {
   } catch {
     return false;
   }
-  return pool.committed?.(tailId) === false;
+  const branch = pool.branch();
+  return branch !== undefined && pool.heldOnlyBy?.(tailId, branch) === true;
 }
 
 /** The entry a tail ends with in this checkout, and the segment holding it; undefined for a tail that cannot be read. */

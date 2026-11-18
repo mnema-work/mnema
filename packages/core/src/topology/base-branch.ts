@@ -100,16 +100,22 @@ export function entryIsOnTheBase(
   };
 }
 
+/** The most commits that hold a tail that {@link tailIsHeldOnlyBy} looks through before it says it cannot tell. */
+const COMMITS_LOOKED_AT_MOST = 64;
+
 /**
- * Answers whether any commit of any ref holds a file of a tail of the record under `record` (in the
- * working tree `top`): false for a repository with no commit yet, undefined where git did not answer.
- * Asked once for the one tail that has no mark and is the only one of its key (`firstTailOfTheRepository`
- * in the chain), so a tail written before the repository existed is told from one that was committed.
+ * Answers, for a tail of the record under `record` (in the working tree `top`) and a branch, whether
+ * no commit holds a file of the tail, or every ref (local branches, remote-tracking branches and tags)
+ * that contains a commit holding one is that branch alone: false where another ref has it, undefined
+ * where git did not answer in time or more commits touch it than are looked through. Asked once for the
+ * one tail that has no mark and is the only one of its key (`firstTailOfTheRepository` in the chain), so
+ * a tail written before the repository existed, or committed on this branch alone, is told from one
+ * another branch may hold too.
  */
-export function tailHasBeenCommitted(
+export function tailIsHeldOnlyBy(
   top: string,
   record: string,
-): (tailId: string) => boolean | undefined {
+): (tailId: string, branch: string) => boolean | undefined {
   let cwd: string;
   let prefix: string;
   try {
@@ -125,26 +131,35 @@ export function tailHasBeenCommitted(
     GIT_TERMINAL_PROMPT: '0',
   };
   for (const name of REPOSITORY_VARIABLES) Reflect.deleteProperty(env, name);
-  return (tailId) => {
+  const deadline = Date.now() + GIT_BUDGET_MS;
+  const run = (args: readonly string[]): string | undefined => {
+    const left = deadline - Date.now();
+    if (left <= 0) return undefined;
+    const ran = spawnSync('git', ['-c', 'gc.auto=0', '-c', 'maintenance.auto=false', ...args], {
+      cwd,
+      env,
+      encoding: 'utf-8',
+      maxBuffer: 1 << 26,
+      timeout: left,
+    });
+    return ran.status === 0 ? ran.stdout : undefined;
+  };
+  return (tailId, branch) => {
     const path = [prefix, 'tails', tailId].filter((part) => part !== '').join('/');
-    const ran = spawnSync(
-      'git',
-      [
-        '-c',
-        'gc.auto=0',
-        '-c',
-        'maintenance.auto=false',
-        'log',
-        '--all',
-        '-1',
-        '--format=%H',
-        '--',
-        path,
-      ],
-      { cwd, env, encoding: 'utf-8', timeout: GIT_BUDGET_MS },
-    );
-    if (ran.status !== 0) return undefined;
-    return ran.stdout.trim() !== '';
+    const log = run(['log', '--all', '--format=%H', '--', path]);
+    if (log === undefined) return undefined;
+    const commits = log.split('\n').filter((line) => line !== '');
+    if (commits.length === 0) return true;
+    if (commits.length > COMMITS_LOOKED_AT_MOST) return undefined;
+    const refs = run([
+      'for-each-ref',
+      '--format=%(refname)',
+      ...commits.map((commit) => `--contains=${commit}`),
+      'refs/',
+    ]);
+    if (refs === undefined) return undefined;
+    const held = refs.split('\n').filter((line) => line !== '');
+    return held.length === 1 && held[0] === `refs/heads/${branch}`;
   };
 }
 
