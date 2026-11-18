@@ -358,6 +358,7 @@ export {
   treeWords,
   type Undone,
   undoAside,
+  undoCommandFor,
   whyNoProjectRootAt,
   whyNotADestination,
   whyNotARemote,

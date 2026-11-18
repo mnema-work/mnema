@@ -3011,6 +3011,8 @@ $ mnema backup verify --help
 | which it does not change
 |
 | Options:
+|   --global    read the copy of the machine's global tree instead of this
+|               project's
 |   --json      emit the faithful reading as JSON
 |   -h, --help  display help for command
 
@@ -3027,12 +3029,18 @@ $ mnema backup restore --help
 |   --from <record>  take the copy of this record (64 hex) from the project's
 |                    folder, instead of the project's own
 |   --undo           put back what the last restore of another record kept aside
+|   --global         restore the machine's global tree from the folder `setup
+|                    --global` gave it, and no project's tree
 |   -h, --help       display help for command
 |
 | What a restore of another record replaces is moved, never copied, and is kept until you delete it by hand:
 | in a repository, to <git directory>/mnema/before-restore-<UTC date>/; in a project outside git, to
 | <mnema home>/before-restore/<UTC date>/ (the mnema home is ~/.mnema, or $MNEMA_HOME when it is set).
 | No restore deletes a folder kept there, and `mnema backup status` lists them.
+|
+| The global tree is the machine's, read by every project on it: `--global` restores it from
+| <folder>/global/, and only it, kept aside in <mnema home>/before-restore/<UTC date>/global/.
+| A project's restore never touches it.
 
 ### mnema backup hook --help
 $ mnema backup hook --help

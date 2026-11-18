@@ -30,6 +30,7 @@ import {
 } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  globalAsides,
   planBackupRestore,
   runBackupRestore,
   runBackupRun,
@@ -40,6 +41,9 @@ import {
   runGlobalBackupRun,
   runGlobalBackupSetup,
   runGlobalBackupStatus,
+  runGlobalBackupVerify,
+  runGlobalRestore,
+  runGlobalUndo,
 } from './backup.js';
 import { runInit } from './init.js';
 import { runTask } from './task.js';
@@ -902,6 +906,191 @@ describe("a copy of another record's, with a question and a way back", () => {
       expect(refused).toMatchObject({ ok: false, reason: 'NO_RECORD_NAME' });
       expect(refused.ok === false && 'message' in refused && refused.message).toContain('--from');
       expect(runBackupRestore(g, true, { from: record })).toMatchObject({ ok: true });
+    });
+  });
+});
+
+describe("the machine's global tree, put back from its copy", () => {
+  const T1 = new Date('2026-11-12T23:36:30Z');
+  const T2 = new Date('2026-11-12T23:40:00Z');
+
+  /** A machine of its own (its own mnema home) with a project in it and a task in the global tree. */
+  function machine(label: string) {
+    const home = join(sandbox, `${label}-home`);
+    const cwd = join(sandbox, label);
+    mkdirSync(cwd, { recursive: true });
+    const ctx = { cwd, env: { home } };
+    runInit(ctx);
+    expect(runTask(ctx, { title: `work of ${label}` }).ok).toBe(true);
+    expect(runTask(ctx, { title: `private work of ${label}`, scope: 'private' }).ok).toBe(true);
+    expect(runTask(ctx, { title: `memory of ${label}`, scope: 'global' }).ok).toBe(true);
+    const trees = resolveTrees(cwd, ctx.env);
+    return { ctx, home: join(home, '.mnema'), trees, global: trees.global };
+  }
+
+  /** Alpha's machine, set up with the folder beta's global copy is in. */
+  function alphaWithBetasGlobalCopy() {
+    const a = machine('alpha');
+    const b = machine('beta');
+    const folder = join(sandbox, 'folder-beta');
+    expect(runGlobalBackupSetup(b.ctx, folder).ok).toBe(true);
+    expect(runGlobalBackupRun(b.ctx).ok).toBe(true);
+    expect(runGlobalBackupSetup(a.ctx, folder).ok).toBe(true);
+    return { a, b, folder };
+  }
+
+  /** What each tree of a project holds, as a person's tree hash: the same bytes, the same names. */
+  const projectTrees = (m: ReturnType<typeof machine>) =>
+    digest(m.trees.projectPublic as string) + digest(m.trees.projectPrivate as string);
+
+  it('restores its own copy without overwriting what the tree has written since, and says so', () => {
+    const a = machine('alpha');
+    const folder = join(sandbox, 'folder-alpha');
+    expect(runGlobalBackupSetup(a.ctx, folder).ok).toBe(true);
+    expect(runGlobalBackupRun(a.ctx).ok).toBe(true);
+    expect(runTask(a.ctx, { title: 'written after the copy', scope: 'global' }).ok).toBe(true);
+    const live = digest(a.global);
+    const done = runGlobalRestore(a.ctx, false);
+    if (!done.ok) throw new Error(JSON.stringify(done));
+    expect(done).toMatchObject({ global: true, keptAside: undefined });
+    expect(done.trees.map((one) => one.tree)).toEqual(['global']);
+    // The live tree went further than the copy: it is kept, and the outcome says which file.
+    expect(done.trees[0]?.liveWins.some((path) => path.startsWith('tails/'))).toBe(true);
+    expect(digest(a.global)).toBe(live);
+    expect(existsSync(join(a.home, 'before-restore'))).toBe(false);
+  });
+
+  it('puts back a global tree that lost its tails, never over a file, and a dry run writes nothing', () => {
+    const a = machine('alpha');
+    expect(runGlobalBackupSetup(a.ctx, join(sandbox, 'folder-alpha')).ok).toBe(true);
+    expect(runGlobalBackupRun(a.ctx).ok).toBe(true);
+    const tails = join(a.global, 'tails');
+    const names = readdirSync(tails);
+    const tailsBefore = digest(tails);
+    rmSync(tails, { recursive: true });
+    const lost = digest(a.global);
+    const dry = runGlobalRestore(a.ctx, true);
+    expect(dry).toMatchObject({ ok: true, dryRun: true });
+    expect(digest(a.global)).toBe(lost);
+    expect(existsSync(join(a.home, 'before-restore'))).toBe(false);
+    expect(runGlobalRestore(a.ctx, false)).toMatchObject({ ok: true, dryRun: false });
+    expect(readdirSync(tails)).toEqual(names);
+    expect(digest(a.global)).not.toBe(lost);
+    expect(digest(tails)).toBe(tailsBefore);
+  });
+
+  it("asks about another machine's copy, keeps the live tree in the home, puts the copy in, and --undo brings every byte back", () => {
+    const { a, b } = alphaWithBetasGlobalCopy();
+    const liveGlobal = digest(a.global);
+    const liveProjects = projectTrees(a);
+    const betas = readdirSync(join(b.global, 'tails'));
+
+    expect(runGlobalRestore(a.ctx, false)).toMatchObject({ ok: false, code: 'NOT_CONFIRMED' });
+    expect(digest(a.global)).toBe(liveGlobal);
+    expect(existsSync(join(a.home, 'before-restore'))).toBe(false);
+    const dry = runGlobalRestore(a.ctx, true);
+    expect(dry).toMatchObject({ ok: true, dryRun: true, global: true, keptAside: undefined });
+    expect(digest(a.global)).toBe(liveGlobal);
+    expect(existsSync(join(a.home, 'before-restore'))).toBe(false);
+
+    const done = runGlobalRestore(a.ctx, false, { confirmed: true, now: T1 });
+    if (!done.ok) throw new Error(JSON.stringify(done));
+    const folder = join(a.home, 'before-restore', '2026-11-12T23-36-30Z');
+    expect(done.keptAside).toMatchObject({ folder, trees: ['global'] });
+    // The live global tree, whole and byte for byte, in the folder; the copy's tails in the tree.
+    expect(digest(join(folder, 'global'))).toBe(liveGlobal);
+    expect(readdirSync(join(a.global, 'tails')).sort()).toEqual(betas.sort());
+    // No tree of a project was touched, and the key root stayed.
+    expect(projectTrees(a)).toBe(liveProjects);
+    expect(existsSync(join(a.home, 'identity'))).toBe(true);
+
+    const undone = runGlobalUndo(a.ctx);
+    expect(undone).toMatchObject({ ok: true, trees: ['global'], folder });
+    expect(digest(a.global)).toBe(liveGlobal);
+    expect(projectTrees(a)).toBe(liveProjects);
+    // What stood in the place was kept, and nothing was deleted.
+    expect(existsSync(join(folder, 'restored-global', 'tails'))).toBe(true);
+    expect(runGlobalUndo(a.ctx)).toMatchObject({ ok: false, code: 'NOTHING_TO_UNDO' });
+  });
+
+  it("is never touched by a project's restore of another record's copy", () => {
+    const gamma = project('gamma', false);
+    expect(runBackupSetup(gamma, join(sandbox, 'folder-gamma')).ok).toBe(true);
+    expect(runBackupRun(gamma).ok).toBe(true);
+    const record = (runBackupSetup(gamma, join(sandbox, 'folder-gamma')) as { record: string })
+      .record;
+    const d = machine('delta');
+    expect(runBackupSetup(d.ctx, join(sandbox, 'folder-gamma')).ok).toBe(true);
+    const liveGlobal = digest(d.global);
+    const done = runBackupRestore(d.ctx, false, { from: record, confirmed: true, now: T1 });
+    expect(done).toMatchObject({ ok: true, global: false });
+    // The project's trees were replaced and kept aside; the machine's global tree was not touched.
+    expect(digest(join(d.home, 'before-restore', '2026-11-12T23-36-30Z', 'public'))).not.toBe('');
+    expect(digest(d.global)).toBe(liveGlobal);
+    expect(runBackupUndo(d.ctx).ok).toBe(true);
+    expect(digest(d.global)).toBe(liveGlobal);
+  });
+
+  it('lists what it kept aside in status, and says each one stays until it is deleted', () => {
+    const { a } = alphaWithBetasGlobalCopy();
+    expect(runGlobalRestore(a.ctx, false, { confirmed: true, now: T1 }).ok).toBe(true);
+    expect(runGlobalBackupStatus(a.ctx)).toMatchObject({
+      ok: true,
+      asides: [{ date: '2026-11-12T23-36-30Z', trees: ['global'] }],
+    });
+    expect(runGlobalUndo(a.ctx).ok).toBe(true);
+    expect(runGlobalRestore(a.ctx, false, { confirmed: true, now: T2 }).ok).toBe(true);
+    const listed = runGlobalBackupStatus(a.ctx);
+    expect(listed.ok && listed.asides.map((kept) => kept.date)).toEqual([
+      '2026-11-12T23-36-30Z',
+      '2026-11-12T23-40-00Z',
+    ]);
+    // A project of this machine does not list it as its own.
+    const status = runBackupStatus(a.ctx);
+    expect(status.ok ? status.asides : []).toEqual([]);
+  });
+
+  it('says the global tree, not a project, where nothing was kept aside or a restore is running', () => {
+    const { a } = alphaWithBetasGlobalCopy();
+    const none = runGlobalUndo(a.ctx);
+    expect(none).toMatchObject({ ok: false, code: 'NOTHING_TO_UNDO' });
+    expect(none.ok === false && 'message' in none && none.message).toContain('for the global tree');
+    expect(none.ok === false && 'message' in none && none.message).not.toContain('project');
+    const busy = withTailLock(join(a.home, 'restoring.lock'), () => runGlobalUndo(a.ctx));
+    expect(busy).toMatchObject({ code: 'RESTORE_RUNNING' });
+    expect(busy.ok === false && 'message' in busy && busy.message).toContain('the global tree');
+    expect(busy.ok === false && 'message' in busy && busy.message).not.toContain('project');
+  });
+
+  it('lists what was kept aside even where the global tree has no destination', () => {
+    const { a } = alphaWithBetasGlobalCopy();
+    expect(runGlobalRestore(a.ctx, false, { confirmed: true, now: T1 }).ok).toBe(true);
+    rmSync(join(a.home, 'backup.json'));
+    expect(runGlobalBackupStatus(a.ctx)).toMatchObject({
+      ok: false,
+      reason: 'NO_GLOBAL_DESTINATION',
+    });
+    expect(globalAsides(a.ctx).map((kept) => kept.date)).toEqual(['2026-11-12T23-36-30Z']);
+  });
+
+  it('reads the copy of the global tree as a record, and says where there is none', () => {
+    const a = machine('alpha');
+    expect(runGlobalBackupVerify(a.ctx)).toMatchObject({
+      ok: false,
+      reason: 'NO_GLOBAL_DESTINATION',
+    });
+    expect(runGlobalRestore(a.ctx, false)).toMatchObject({
+      ok: false,
+      reason: 'NO_GLOBAL_DESTINATION',
+    });
+    expect(runGlobalBackupSetup(a.ctx, join(sandbox, 'folder-alpha')).ok).toBe(true);
+    expect(runGlobalBackupVerify(a.ctx)).toMatchObject({ ok: false, code: 'NO_COPY' });
+    expect(runGlobalRestore(a.ctx, false)).toMatchObject({ ok: false, code: 'NO_COPY' });
+    expect(runGlobalBackupRun(a.ctx).ok).toBe(true);
+    expect(runGlobalBackupVerify(a.ctx)).toMatchObject({
+      ok: true,
+      sound: true,
+      record: undefined,
     });
   });
 });
