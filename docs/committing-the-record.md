@@ -59,9 +59,12 @@ tail file in `HEAD` and for the content only of a file whose size differs. What 
 counted as held: the question is what a commit already carries.
 
 ```sh
-mnema status        # a "Not in git yet:" section; `--json` adds an `eventsNotInGit` key
-mnema doctor        # "to do · record-in-git: ..."
+mnema status
+mnema doctor
 ```
+
+The first prints a "Not in git yet:" section, and `--json` adds an `eventsNotInGit` key; the second prints
+"to do · record-in-git: ...".
 
 The sentence reads:
 

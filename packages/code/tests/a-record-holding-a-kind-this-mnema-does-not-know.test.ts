@@ -195,16 +195,18 @@ describe('a record a newer mnema added a kind to', { timeout: 120_000 }, () => {
     expect(JSON.stringify(before.search)).toContain('Use Postgres');
     aNewerMnemaWrites({ title: 'Use MongoDB', supersedes: id });
     const after = await theTools(id);
-    expect(after.search).toEqual(before.search);
-    expect(after.governing_rules).toEqual(before.governing_rules);
-    // The payload of bootstrap and read_record is the one it was; what a newer mnema wrote is
-    // named beside it, in blocks of their own (`a-record-says-where-a-newer-mnema-wrote.test.ts`).
+    // What a newer mnema wrote is named in a block of its own on every read, ahead of the payload
+    // (`a-record-says-where-a-newer-mnema-wrote.test.ts`); what is left is what was served before.
+    const served = (blocks: string[] | undefined) =>
+      (blocks ?? []).filter((one) => !one.startsWith('A newer mnema wrote'));
+    expect(served(after.search)).toEqual(served(before.search));
+    expect(served(after.governing_rules)).toEqual(served(before.governing_rules));
     const without = (blocks: string[] | undefined) => {
-      const { newerLines: _named, ...payload } = JSON.parse((blocks as string[])[0] as string);
+      const { newerLines: _named, ...payload } = JSON.parse(served(blocks)[0] as string);
       return payload;
     };
     expect(without(after.bootstrap)).toEqual(without(before.bootstrap));
-    expect(after.read_record?.[0]).toBe(before.read_record?.[0]);
+    expect(served(after.read_record)[0]).toBe(served(before.read_record)[0]);
   });
 
   it('arrives in a commit that verify --since holds to the base, and passes', () => {

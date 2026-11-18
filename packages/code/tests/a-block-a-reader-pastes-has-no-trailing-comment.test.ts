@@ -34,6 +34,10 @@ const PAGES = [
   'docs/install.md',
   'docs/build-from-source.md',
   'docs/first-record.md',
+  'docs/site.md',
+  'docs/rules-and-the-commits-that-cite-them.md',
+  'docs/committing-the-record.md',
+  'docs/mnema-next-to-a-folder-of-adrs.md',
   'docs/cli-reference.md',
   ...readdirSync(join(ROOT, 'docs/reference/cli'))
     .filter((file) => file.endsWith('.md'))

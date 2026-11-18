@@ -91,12 +91,19 @@ import { widthOf } from '../presentation/plain.js';
 import type { Render } from '../presentation/render.js';
 import { statement } from '../presentation/verdict.js';
 import { buildProgram, type CliIo, parseWith } from '../program.js';
+import { newerLinesSentence } from '../record-integrity.js';
 import { PREFIX, THE_KEY_THAT_LEAVES, WHAT_EACH_WORD_DOES } from '../session-words.js';
 import { VERSION } from '../version.js';
 import { paintsAtAll, type RenderingAt } from '../wiring/color.js';
 import { here } from '../wiring/context.js';
 import { reportUsage } from '../wiring/report.js';
-import { DEFAULT_REQUIREMENT, levelSeverity, treeHeadline, VERIFY_VERB } from '../wiring/verify.js';
+import {
+  DEFAULT_REQUIREMENT,
+  levelSeverity,
+  newerMnemaOfTree,
+  treeHeadline,
+  VERIFY_VERB,
+} from '../wiring/verify.js';
 import { areaFor } from './area.js';
 import { asTheSession } from './asking.js';
 import { completerFor } from './complete.js';
@@ -894,7 +901,19 @@ interface TheRecord {
  */
 function recordSection(trees: readonly TreeReport[] | undefined): readonly Line[] {
   if (trees === undefined) return [];
-  return [subjectLine(THE_RECORD), ...trees.map((tree) => treeHeadline(tree, UNDER_A_HEADING))];
+  // UNDER THE TREE THAT HOLDS THEM, the sentence every surface says about lines a newer mnema wrote
+  // (ADR-140): the panel drops the clauses that qualify a verdict, and this is one the reader of a
+  // screen has to meet, since what the console serves leaves those lines out.
+  return [
+    subjectLine(THE_RECORD),
+    ...trees.flatMap((tree) => {
+      const newer = newerMnemaOfTree(tree, newerLinesSentence);
+      return [
+        treeHeadline(tree, UNDER_A_HEADING),
+        ...(newer === undefined ? [] : [fact(newer, UNDER_A_HEADING)]),
+      ];
+    }),
+  ];
 }
 
 /**
