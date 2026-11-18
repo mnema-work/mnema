@@ -46,7 +46,7 @@ const AN_EMAIL_SHAPE = /^[^\s@/]+@([^\s@/]+)$/;
 /** An address with a name, an at sign and a domain with a dot that neither opens nor closes it. */
 function isAnEmail(text: string): boolean {
   const domain = AN_EMAIL_SHAPE.exec(text)?.[1];
-  return domain !== undefined && domain.slice(1, -1).includes('.');
+  return domain?.slice(1, -1).includes('.') === true;
 }
 
 /** A GitHub Actions workflow as Fulcio names it: the workflow file of a repository, at a ref. */
