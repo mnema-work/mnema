@@ -269,6 +269,7 @@ import { registerTail } from './tail.js';
 import { registerTally } from './tally.js';
 import { registerTask } from './task.js';
 import { registerTimeline } from './timeline.js';
+import { registerTour } from './tour.js';
 import { registerTrailer } from './trailer.js';
 import { registerUnlink } from './unlink.js';
 import { registerUsage } from './usage.js';
@@ -360,6 +361,7 @@ export const GROUPS: readonly Group[] = [
       registerDoctor,
       registerProblemReport,
       registerCompletion,
+      registerTour,
     ],
   },
   {

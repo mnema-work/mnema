@@ -73,7 +73,7 @@ const SAID_ON_ITS_OWN: readonly (InstructionsFile['did'] | undefined)[] = [
 ];
 
 /** A row for one choice: what was done, and the command that changes it later, beside it where they fit. */
-function chose(done: string, later: string, width: number): readonly Line[] {
+export function chose(done: string, later: string, width: number): readonly Line[] {
   return noted(trail, [plain(`  done   ${done}`)], dim(`later: ${later}`), width, 9);
 }
 

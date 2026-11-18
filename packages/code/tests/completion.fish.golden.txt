@@ -12,7 +12,7 @@
 function __mnema_commands --description 'the subcommands one level of the tree offers'
     switch "$argv[1]"
         case ''
-            echo 'init decision link unlink memory observe retract skill stack task promote status brief recall rules rules-file instructions switch inherit verify witness check site search show timeline refs audit diagram export usage resume repl why commits aging trailer commit-hook record key tail backup doctor report completion mcp run before-a-write beside-a-write tally corrections after-a-write handback settled dispatched help'
+            echo 'init decision link unlink memory observe retract skill stack task promote status brief recall rules rules-file instructions switch inherit verify witness check site search show timeline refs audit diagram export usage resume repl why commits aging trailer commit-hook record key tail backup doctor report completion tour mcp run before-a-write beside-a-write tally corrections after-a-write handback settled dispatched help'
         case 'decision'
             echo 'record move review supersede import help'
         case 'skill'
@@ -123,6 +123,7 @@ complete -c mnema -f -n '__mnema_at ""' -a 'backup' -d 'copy this project\'s tre
 complete -c mnema -f -n '__mnema_at ""' -a 'doctor' -d 'say how mnema is installed on this machine, and what to do about each thing found (writes nothing unless you pass --fix)'
 complete -c mnema -f -n '__mnema_at ""' -a 'report' -d 'show, whole, what mnema would say about its own last internal error, and keep your answer to it (sends nothing)'
 complete -c mnema -f -n '__mnema_at ""' -a 'completion' -d 'print the tab-completion script for a shell'
+complete -c mnema -f -n '__mnema_at ""' -a 'tour' -d 'show what mnema is and how it is used, page by page'
 complete -c mnema -f -n '__mnema_at ""' -a 'mcp' -d 'run the mnema MCP server over stdio (for an agent host)'
 complete -c mnema -f -n '__mnema_at ""' -a 'run' -d 'open and close the session an agent works inside'
 complete -c mnema -f -n '__mnema_at ""' -a 'before-a-write' -d 'answer a host’s hook before a file is written: refuse or ask where a rule says'
@@ -973,6 +974,11 @@ complete -c mnema -f -n '__mnema_at "completion"' -s h -l help
 complete -c mnema -f -n '__mnema_at "completion"' -s V -l version
 complete -c mnema -f -n '__mnema_at "completion"' -l color -x -a 'auto always never'
 complete -c mnema -f -n '__mnema_at "completion"' -a 'bash zsh fish'
+
+# mnema tour
+complete -c mnema -f -n '__mnema_at "tour"' -s h -l help
+complete -c mnema -f -n '__mnema_at "tour"' -s V -l version
+complete -c mnema -f -n '__mnema_at "tour"' -l color -x -a 'auto always never'
 
 # mnema mcp
 complete -c mnema -f -n '__mnema_at "mcp"' -l project -r

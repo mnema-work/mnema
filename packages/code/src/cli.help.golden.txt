@@ -112,6 +112,7 @@ $ mnema --help
 |   report          show, whole, what mnema would say about its own last internal
 |                   error, and keep your answer to it (sends nothing)
 |   completion      print the tab-completion script for a shell
+|   tour            show what mnema is and how it is used, page by page
 |
 | Called by a host:
 |   mcp             run the mnema MCP server over stdio (for an agent host)
@@ -1434,6 +1435,22 @@ $ mnema completion --help
 | would mean running mnema on every Tab: more than the command itself costs.
 | The script is generated from this program, so a verb added to it is completed
 | the same day. Print it again after an upgrade.
+
+### mnema tour --help
+$ mnema tour --help
+| Usage: mnema tour [options]
+|
+| show what mnema is and how it is used, page by page
+|
+| Options:
+|   -h, --help  display help for command
+|
+| Four pages: what the record is, what `mnema init` chooses and why, how an agent reads it, and the
+| commands to start with. At a terminal one page is drawn at a time (Enter or → for the next, ← for
+| the one before, Esc to leave); without one the pages are printed in order. It writes nothing to
+| the record and founds no project; at a terminal it notes in a file of this machine, outside the
+| record, that the tour was shown. The first time `mnema` is run on a machine at a terminal, with no
+| arguments, this is what it opens, in place of the menu; after that the menu is back.
 
 ### mnema mcp --help
 $ mnema mcp --help

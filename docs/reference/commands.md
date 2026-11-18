@@ -132,6 +132,7 @@ carries the help the command prints, word for word.
 - [mnema doctor](cli/doctor.md): say how mnema is installed on this machine, and what to do about each thing found (writes nothing unless you pass --fix)
 - [mnema report](cli/report.md): show, whole, what mnema would say about its own last internal error, and keep your answer to it (sends nothing)
 - [mnema completion](cli/completion.md): print the tab-completion script for a shell
+- [mnema tour](cli/tour.md): show what mnema is and how it is used, page by page
 
 ## Called by a host
 
