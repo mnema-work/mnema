@@ -280,6 +280,8 @@ const LED_NOWHERE: Readonly<Record<string, string>> = {
     'The reader of that report and the builder of the one comment on the pull request, run by the workflow_run job that can write. The case hands it a hostile report and a stand-in for the API; it lives under .github/ beside that workflow, where no walk of packages/ reaches.',
   'packages/code/tests/a-claimed-issue-is-assigned-and-freed.test.ts -> ../../../.github/assign-a-claimed-issue/claim.mjs':
     'The decisions of the workflow that assigns a claimed issue and frees it after 14 days, pure functions handed comments, issues and pull requests the case makes up, and a stand-in for GitHub that records what would be written. A script a workflow step runs, plain ESM under .github/, so the specifier is right and the scanner cannot follow it.',
+  'packages/code/tests/an-issue-from-a-form-is-labelled.test.ts -> ../../../.github/label-an-issue/label.mjs':
+    'The reader of the answers a form writes into an issue body and the labels they name, pure functions handed bodies the case makes up and a stand-in for GitHub that records what would be written. A script a workflow step runs, plain ESM under .github/, so the specifier is right and the scanner cannot follow it.',
   'packages/code/tests/the-fast-guards-say-what-they-check.test.ts -> ../../../.github/the-fast-guards/marked.mjs':
     'The finder of the marked guards, which the case walks to hold every one of them to a paragraph that says what it checks. Plain ESM under .github/, outside the packages/ walk, so the scanner cannot follow the specifier, which is right.',
   'packages/code/tests/the-fast-guards-say-what-they-check.test.ts -> ../../../.github/what-a-guard-checks/header.mjs':
@@ -1148,6 +1150,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/an-altered-entry-leads-the-hooks-and-stops-the-edit-gate.test.ts': 9,
   'packages/code/tests/an-answer-says-the-path-of-a-project.test.ts': 11,
   'packages/code/tests/an-inherited-rule-reaches-the-edit.test.ts': 19,
+  'packages/code/tests/an-issue-from-a-form-is-labelled.test.ts': 5,
   'packages/code/tests/an-mcp-agent-is-told-of-a-new-tail.test.ts': 12,
   'packages/code/tests/an-older-record-page-is-rewritten.test.ts': 7,
   'packages/code/tests/another-run-consulted-this-path.test.ts': 13,
@@ -2425,8 +2428,8 @@ describe('every file has a test that names it', () => {
     });
     // Non-vacuity in both parts: the walk really did follow specifiers, and the list
     // really does hold rows; a scanner returning nothing would satisfy the line above.
-    expect(unresolved.length).toBe(31);
-    expect(Object.keys(LED_NOWHERE)).toHaveLength(31);
+    expect(unresolved.length).toBe(32);
+    expect(Object.keys(LED_NOWHERE)).toHaveLength(32);
     // And each row says what THAT module is, by the ledger's rule, at the ledger's floor.
     const why = Object.values(LED_NOWHERE);
     expect(new Set(why).size).toBe(why.length);

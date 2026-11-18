@@ -49,4 +49,27 @@ describe('the issues a workflow opens carry labels', () => {
       expect(call, `${file}: a step or script opens an issue without --label`).toContain('--label');
     },
   );
+
+  it('holds every workflow an issue opens or is labelled by: no default permissions, issues written by the job alone', () => {
+    const workflows = execFileSync('git', ['ls-files', '.github/workflows'], {
+      cwd: ROOT,
+      encoding: 'utf-8',
+    })
+      .split('\n')
+      .filter((one) => one.endsWith('.yml'));
+    const listening = workflows.filter((file) =>
+      /^on:[\s\S]*?^ {2}issues:/m.test(readFileSync(join(ROOT, file), 'utf-8')),
+    );
+    expect(listening).toEqual(['.github/workflows/label-an-issue.yml']);
+    for (const file of listening) {
+      const text = readFileSync(join(ROOT, file), 'utf-8');
+      expect(text, `${file}: the workflow's own permissions are not empty`).toMatch(
+        /^permissions: \{\}$/m,
+      );
+      expect(text, `${file}: writes more than issues`).not.toMatch(
+        /(contents|pull-requests|actions|checks|statuses|packages): write/,
+      );
+      expect(text, `${file}: a shell line holds an expression`).not.toMatch(/run:.*\$\{\{/);
+    }
+  });
 });
