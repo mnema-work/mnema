@@ -15,7 +15,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -24,8 +24,20 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { ListRootsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildMcpServer } from '../src/mcp/server.js';
+import { renderPlain } from '../src/presentation/plain.js';
+import type { CliIo } from '../src/program.js';
+import { openSession } from '../src/repl/session.js';
+import { REPL_VERB } from '../src/wiring/repl.js';
 import { aNewerMnemaWrites, FUTURE } from './support/a-newer-mnema-writes.js';
+import {
+  ENDS_THE_INPUT,
+  fakeTerminal,
+  hooksNothing,
+  until,
+  withoutLayout,
+} from './support/console.js';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
+import { codeOnly } from './support/reading-source.js';
 import { MNEMA_CLI } from './support/the-cli.js';
 
 const CLI = MNEMA_CLI;
@@ -106,6 +118,15 @@ async function theTools(id: string, other: string): Promise<Record<string, strin
     bootstrap: await called('bootstrap'),
     read_record: await called('read_record', { id }),
     read_another: await called('read_record', { id: other }),
+    search: await called('search', { query: 'Postgres' }),
+    resume: await called('resume'),
+    focus: await called('focus'),
+    governing_rules: await called('governing_rules', { path: 'src/a.ts' }),
+    audit_timeline: await called('audit_timeline', { id }),
+    audit_refs: await called('audit_refs', { id }),
+    audit_accountability: await called('audit_accountability'),
+    audit_exposure: await called('audit_exposure'),
+    audit_antipatterns: await called('audit_antipatterns'),
   };
   await client.close();
   return answers;
@@ -283,12 +304,54 @@ describe('a record a newer mnema wrote a line into', { timeout: 120_000 }, () =>
     newerWrites({ subject: id });
     const tools = await theTools(id, otherId);
     expect(tools.bootstrap).toContain(OF_THE_RECORD);
-    expect(JSON.parse(tools.bootstrap?.[0] as string).newerLines).toEqual({
+    expect(
+      JSON.parse(tools.bootstrap?.find((one) => one.startsWith('{')) as string).newerLines,
+    ).toEqual({
       lines: 1,
       kinds: [{ kind: FUTURE, lines: 1 }],
     });
     expect(tools.read_record).toContain(ABOUT_THIS_ONE);
-    expect(tools.read_another?.join('\n')).not.toContain('newer mnema');
+    // The sentence about the whole record rides on every read, a record the line does not name
+    // included; the one about a single record only where that record is served.
+    expect(tools.read_another).toContain(OF_THE_RECORD);
+    expect(tools.read_another).not.toContain(ABOUT_THIS_ONE);
+  });
+
+  it.each([
+    'search',
+    'resume',
+    'focus',
+    'governing_rules',
+    'audit_timeline',
+    'audit_refs',
+    'audit_accountability',
+    'audit_exposure',
+    'audit_antipatterns',
+  ])("is said by the agent's %s, as one block before the payload", async (tool) => {
+    const id = aDecision();
+    newerWrites({ subject: id });
+    const tools = await theTools(id, id);
+    const blocks = tools[tool] ?? [];
+    expect(blocks.filter((one) => one === OF_THE_RECORD)).toHaveLength(1);
+    expect(blocks.indexOf(OF_THE_RECORD)).toBeLessThan(blocks.length - 1);
+  });
+
+  it.each([
+    [['search', 'Postgres']],
+    [['search', 'Postgres', '--json']],
+    [['resume', '--actor', 'THE-ACTOR']],
+    [['rules', 'src/a.ts']],
+    [['rules', 'src/a.ts', '--json']],
+    [['why', 'src/a.ts']],
+    [['why', 'src/a.ts', '--json']],
+  ])('is said by mnema %j on the error stream, and never in its output', (argv) => {
+    aDecision();
+    const actor = /mnid:[0-9a-f]+/.exec(mnema('audit', 'accountability').out)?.[0] ?? '';
+    expect(actor).not.toBe('');
+    newerWrites();
+    const ran = mnema(...argv.map((one) => (one === 'THE-ACTOR' ? actor : one)));
+    expect(ran.err).toContain(OF_THE_RECORD);
+    expect(ran.out).not.toMatch(/newer.mnema|newerLines/);
   });
 });
 
@@ -303,6 +366,9 @@ describe('a record no newer mnema wrote into', { timeout: 120_000 }, () => {
       ['show', id],
       ['show', id, '--json'],
       ['doctor'],
+      ['search', 'Postgres'],
+      ['rules', 'src/a.ts'],
+      ['why', 'src/a.ts'],
     ]) {
       const ran = mnema(...argv);
       expect(`${ran.out}${ran.err}`, argv.join(' ')).not.toMatch(/newer.mnema/);
@@ -310,5 +376,158 @@ describe('a record no newer mnema wrote into', { timeout: 120_000 }, () => {
     expect(JSON.parse(mnema('status', '--json').out)).not.toHaveProperty('newerLines');
     const tools = await theTools(id, id);
     expect(JSON.stringify(tools)).not.toMatch(/newer.mnema|newerLines/);
+  });
+});
+
+describe('the gate over a record a newer mnema wrote into', { timeout: 120_000 }, () => {
+  const gate = (path: string) =>
+    spawnSync(process.execPath, [CLI, 'before-a-write', '--host', 'cursor'], {
+      cwd: repo,
+      input: JSON.stringify({
+        tool_name: 'Write',
+        tool_input: { file_path: join(repo, path), content: 'a' },
+        session_id: 's1',
+        cwd: repo,
+      }),
+      encoding: 'utf-8',
+      env: ENV(),
+    });
+  const asJson = (text: string) => JSON.stringify(text).slice(1, -1);
+
+  function aRuleRefusingWritesAt(path: string): void {
+    const id = aDecision();
+    expect(mnema('decision', 'move', 'accept', id, '--note', 'agreed').status).toBe(0);
+    expect(mnema('link', id, path, '--rel', 'refuses-a-write').status).toBe(0);
+  }
+
+  it('says the lines in the reason of a refusal, where the person is told what to do', () => {
+    aRuleRefusingWritesAt('src/ledger');
+    newerWrites();
+    const refused = gate('src/ledger/a.ts');
+    expect(refused.stdout).toContain('deny');
+    expect(refused.stdout).toContain(asJson(OF_THE_RECORD));
+  });
+
+  it('says nothing of them when it lets a write through', () => {
+    aRuleRefusingWritesAt('src/ledger');
+    newerWrites();
+    const passed = gate('src/free/a.ts');
+    expect(passed.stdout).not.toContain('deny');
+    expect(`${passed.stdout}${passed.stderr}`).not.toMatch(/newer.mnema|Update mnema/);
+  });
+});
+
+/**
+ * THE SHAPE, AND IT IS KEYED ON THE FILES THAT SAY THE FACT, so a verb that stops saying it lights
+ * the file it stopped in. The behaviour above is what the binary prints; this is what a refactor
+ * that moves the call away leaves green until a person reads the page.
+ */
+describe('the surfaces that say where a newer mnema wrote carry the fact where they read', () => {
+  const SRC = join(import.meta.dirname, '..', 'src');
+  const code = (relative: string) => codeOnly(readFileSync(join(SRC, relative), 'utf-8'));
+
+  it.each(['search', 'resume', 'rules', 'why'])(
+    '%s reads it with the sources it opened and prints it',
+    (verb) => {
+      expect(code(`commands/${verb}.ts`), `commands/${verb}.ts`).toContain('newerLinesIn(');
+      expect(code(`wiring/${verb}.ts`), `wiring/${verb}.ts`).toContain('newerLinesNotice(');
+    },
+  );
+
+  it('the agent hears it from the one door every read leaves by, and never from a write', () => {
+    const server = code('mcp/server.ts');
+    const door = server.slice(server.indexOf('function replied('));
+    expect(door.slice(0, door.indexOf('\n}\n'))).toMatch(
+      /wrote\s*\?\s*\[\]\s*:\s*newerLinesNotes\(session\)/,
+    );
+  });
+
+  it('the gate carries it in the reason of a refusal or an asking, and nowhere else', () => {
+    const meets = code('what-a-write-meets.ts');
+    expect(meets).toContain('newerLinesOf(');
+    expect(code('commands/before-a-write.ts')).not.toContain('newerLines');
+  });
+});
+
+describe('the console over a record a newer mnema wrote into', { timeout: 120_000 }, () => {
+  const opened = async (): Promise<string> => {
+    const before = { cwd: process.cwd(), home: process.env.HOME };
+    process.chdir(repo);
+    process.env.HOME = home;
+    try {
+      const terminal = fakeTerminal({ columns: 200 });
+      const io: CliIo = { out: () => undefined, err: () => undefined, fail: () => undefined };
+      const closed = openSession({
+        io,
+        renderingAt: () => renderPlain,
+        self: REPL_VERB,
+        input: terminal.stdin,
+        output: terminal.stdout,
+        interactive: true,
+        leaving: hooksNothing,
+      });
+      await until(() => terminal.bytes().includes('mnema>'), 'opened');
+      terminal.type(ENDS_THE_INPUT);
+      await closed;
+      return withoutLayout(terminal.bytes());
+    } finally {
+      process.chdir(before.cwd);
+      if (before.home === undefined) delete process.env.HOME;
+      else process.env.HOME = before.home;
+    }
+  };
+
+  it('says it under the tree that holds the lines, and says nothing over a record with none', async () => {
+    aDecision();
+    expect(await opened()).not.toMatch(/newer mnema/);
+    newerWrites();
+    expect(await opened()).toContain(OF_THE_RECORD);
+  });
+});
+
+describe('the gate through the agent tool over a record a newer mnema wrote into', {
+  timeout: 120_000,
+}, () => {
+  async function asked(path: string): Promise<string> {
+    const { server } = buildMcpServer({ cwd: repo, env: { home }, log: () => {} });
+    const client = new Client(
+      { name: 'claude-code', version: '1.0.0' },
+      { capabilities: { roots: {} } },
+    );
+    client.setRequestHandler(ListRootsRequestSchema, () => ({
+      roots: [{ uri: pathToFileURL(repo).href, name: repo }],
+    }));
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    await Promise.all([client.connect(clientSide), server.connect(serverSide)]);
+    const reply = await client.callTool({ name: 'rules_before_an_edit', arguments: { path } });
+    await client.close();
+    const text = (reply.content as { text: string }[]).map((one) => one.text).join('\n');
+    const said = JSON.parse(text.slice(text.indexOf('{'))) as {
+      hookSpecificOutput?: { permissionDecision?: string; permissionDecisionReason?: string };
+    };
+    return `${said.hookSpecificOutput?.permissionDecision ?? 'none'}\n${
+      said.hookSpecificOutput?.permissionDecisionReason ?? ''
+    }`;
+  }
+
+  function aRule(path: string, rel: string): void {
+    const decided = mnema('decision', 'record', `Rule at ${path}`, 'Because.');
+    const id = AN_ID.exec(`${decided.out}${decided.err}`)?.[1] as string;
+    expect(mnema('decision', 'move', 'accept', id, '--note', 'agreed').status).toBe(0);
+    expect(mnema('link', id, path, '--rel', rel).status).toBe(0);
+  }
+
+  it('says the lines in the reason of a deny and of an ask, and nothing when it lets a path through', async () => {
+    aRule('src/ledger', 'refuses-a-write');
+    aRule('src/billing', 'asks-for-a-person');
+    newerWrites();
+    const denied = await asked('src/ledger/a.ts');
+    expect(denied).toMatch(/^deny/);
+    expect(denied).toContain(OF_THE_RECORD);
+    const held = await asked('src/billing/a.ts');
+    expect(held).toMatch(/^(ask|deny)/);
+    expect(held).toContain(OF_THE_RECORD);
+    const passed = await asked('src/free/a.ts');
+    expect(passed).not.toMatch(/newer mnema/);
   });
 });

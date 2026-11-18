@@ -74,6 +74,7 @@ import {
   type GuardWithFocus,
   guardWithFocus,
   lookupServedSkill,
+  type NewerLines,
   type NextAction,
   newerLinesAbout,
   newerLinesOf,
@@ -1770,6 +1771,21 @@ export function sessionLinkBreaks(session: Session, door: WhichDoor): readonly S
 }
 
 /**
+ * What a newer mnema wrote into the trees this session has open, which a read has just brought up
+ * to date: asked of the same loaded caches as {@link sessionLinkBreaks}, and so by every read that
+ * leaves through the server's one door for them, never by a second opening.
+ */
+export function sessionNewerLines(session: Session): NewerLines | undefined {
+  const inWorkspace = new Set(workspaceTrees(session).map((tree) => tree.chainRoot));
+  return newerLinesOf(
+    session.caches
+      .opened()
+      .filter((open) => inWorkspace.has(open.chainRoot))
+      .map((open) => open.cache),
+  );
+}
+
+/**
  * WHICH DOOR IS ASKING, and it decides one thing: whether the fact is read off the replay
  * these caches hold or off the chain as it stands now.
  *
@@ -2876,7 +2892,7 @@ export function severalRecordsNotes(caches: readonly ProjectionCache[]): readonl
  */
 export function newerLinesNotes(session: Session, id?: string): readonly string[] {
   if (id === undefined) {
-    const newer = newerLinesOf(sessionCaches(session));
+    const newer = sessionNewerLines(session);
     return newer === undefined ? [] : [newerLinesSentence(newer)];
   }
   const newer = newerLinesAbout(

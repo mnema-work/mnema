@@ -34,13 +34,14 @@
 
 import { dirname } from 'node:path';
 import type { RecordGroup } from '@mnema/chain';
-import type { GoverningRules } from '@mnema/context';
+import type { GoverningRules, NewerLines } from '@mnema/context';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { readGoverningRulesWhereItLands } from '../governed-tree.js';
 import { type InheritedReading, withInheritedSource } from '../inherited-record.js';
 import { rulesNotPushedLine } from '../rules-not-pushed.js';
 import {
   linkBreaksOf,
+  newerLinesIn,
   type ScopedLinkBreak,
   THE_READING_THAT_OPENED_THESE,
   withScopedCaches,
@@ -65,6 +66,8 @@ export interface RulesDone {
    * says so.
    */
   readonly linkBreaks: readonly ScopedLinkBreak[];
+  /** What a newer mnema wrote that this one reads past, when it wrote any (ADR-140). */
+  readonly newerLines?: NewerLines;
   /**
    * What reading the record this project inherits came to, when it points at one: a record that
    * did not verify, or that this machine has not fetched, governs nothing here, and this is what
@@ -116,6 +119,7 @@ export function runRules(ctx: RulesContext, input: { path: string }): RulesDone 
       return {
         ok: true,
         linkBreaks: linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE),
+        ...newerLinesIn(sources),
         governed,
         severalRecords: all.flatMap((source) => source.cache.severalRecords()),
         ...(inherited !== undefined ? { inherited } : {}),

@@ -24,7 +24,12 @@
  * a person's own notes, which are a legitimate thing to search from anywhere.
  */
 
-import { type RecordQuery, type RecordSearch, searchRecords } from '@mnema/context';
+import {
+  type NewerLines,
+  type RecordQuery,
+  type RecordSearch,
+  searchRecords,
+} from '@mnema/context';
 import {
   chainRootForScope,
   type DiscoveryEnv,
@@ -34,6 +39,7 @@ import {
 } from '@mnema/core';
 import {
   linkBreaksOf,
+  newerLinesIn,
   type ScopedLinkBreak,
   THE_READING_THAT_OPENED_THESE,
   withScopedCaches,
@@ -62,6 +68,8 @@ export interface SearchDone {
    * one thing that is wrong with it.
    */
   readonly linkBreaks: readonly ScopedLinkBreak[];
+  /** What a newer mnema wrote that this one reads past, when it wrote any (ADR-140). */
+  readonly newerLines?: NewerLines;
 }
 
 /** The search was refused before it ran. */
@@ -90,5 +98,6 @@ export function runSearch(ctx: SearchContext, input: RecordQuery = {}): SearchDo
     ok: true,
     result: searchRecords(sources, input),
     linkBreaks: linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE),
+    ...newerLinesIn(sources),
   }));
 }

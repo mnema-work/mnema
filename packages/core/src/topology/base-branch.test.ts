@@ -9,8 +9,34 @@ import { spawnSync } from 'node:child_process';
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { branchOfWorktree, entryIsOnTheBase, tailIsHeldOnlyBy } from './base-branch.js';
+
+/** `refsFail` makes the git call that lists the refs holding a commit (`for-each-ref`) answer status 1; every other call reaches the real git. */
+const broken = vi.hoisted(() => ({ refsFail: false }));
+vi.mock('node:child_process', async (original) => {
+  const real = await original<typeof import('node:child_process')>();
+  return {
+    ...real,
+    spawnSync: ((...args: Parameters<typeof real.spawnSync>) => {
+      const [command, argv] = args;
+      if (
+        broken.refsFail &&
+        command === 'git' &&
+        Array.isArray(argv) &&
+        argv.includes('for-each-ref')
+      ) {
+        return {
+          status: 1,
+          stdout: '',
+          stderr: 'for-each-ref failed for the test',
+          error: undefined,
+        };
+      }
+      return real.spawnSync(...args);
+    }) as typeof real.spawnSync,
+  };
+});
 
 const ON_BASE = 'a'.repeat(64);
 const ELSEWHERE = 'b'.repeat(64);
@@ -64,6 +90,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  broken.refsFail = false;
   rmSync(sandbox, { recursive: true, force: true });
 });
 
@@ -181,6 +208,26 @@ describe('a tail held by one branch alone', () => {
     git('update-ref', '-d', 'refs/remotes/origin/main');
     git('update-ref', 'refs/tags/v', 'refs/heads/main');
     expect(asked(TAIL, 'main')).toBe(false);
+  });
+
+  it('is not answered where more commits than are looked through hold the tail, and is where one fewer does', () => {
+    const askedNow = (): boolean | undefined =>
+      // Made for each question: the budget of git runs from the call that makes the answer.
+      tailIsHeldOnlyBy(repo, join(repo, '.mnema'))(TAIL, 'main');
+    for (let at = 0; at < 64; at++) theBaseHolds(`{"link":{"seq":${at}}}`, `refs/heads/b${at}`);
+    // 64 commits hold the tail, the most that are looked through: other refs hold them, so false.
+    expect(askedNow()).toBe(false);
+    theBaseHolds('{"link":{"seq":64}}', 'refs/heads/b64');
+    // The 65th is one more than the cost limit: git is not asked which refs hold them.
+    expect(askedNow()).toBeUndefined();
+  }, 60_000);
+
+  it('is not answered where the call that lists the refs holding the commits fails', () => {
+    theBaseHolds('{"link":{"seq":1}}', 'refs/heads/main');
+    const asked = tailIsHeldOnlyBy(repo, join(repo, '.mnema'));
+    expect(asked(TAIL, 'main')).toBe(true);
+    broken.refsFail = true;
+    expect(asked(TAIL, 'main')).toBeUndefined();
   });
 
   it('is not answered where the folder is no repository', () => {

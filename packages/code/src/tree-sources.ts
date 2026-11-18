@@ -27,7 +27,7 @@
 
 import type { UpcasterRegistry } from '@mnema/chain';
 import { catalogUpcasters, ENTRY_HASH_MISMATCH } from '@mnema/chain';
-import type { ScopedCache } from '@mnema/context';
+import { type NewerLines, newerLinesOf, type ScopedCache } from '@mnema/context';
 import {
   type BirthProbe,
   chainRootForScope,
@@ -358,6 +358,18 @@ export function linkBreaksOf(
       })),
     ];
   });
+}
+
+/**
+ * What a newer mnema wrote into the trees a read opened, as the field a read's answer carries, or
+ * nothing when it wrote none (ADR-140): the same loaded sources as {@link linkBreaksOf}, so a read
+ * that asks one asks the other, and a surface says the fact off the cache it already holds.
+ */
+export function newerLinesIn(sources: readonly ScopedCache[]): {
+  readonly newerLines?: NewerLines;
+} {
+  const newer = newerLinesOf(sources.map((source) => source.cache));
+  return newer === undefined ? {} : { newerLines: newer };
 }
 
 /**

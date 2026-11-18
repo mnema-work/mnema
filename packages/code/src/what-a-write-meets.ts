@@ -33,6 +33,7 @@ import {
 } from '@mnema/chain';
 import {
   channelIsOn,
+  newerLinesOf,
   type PushedRule,
   type RulesAtPath,
   ruleTree,
@@ -57,7 +58,12 @@ import {
 } from './governed-tree.js';
 import { oneLine } from './one-line.js';
 import { ASKS_A_PERSON_CHANNEL, REFUSES_A_WRITE_CHANNEL } from './record-framing.js';
-import { linkBreakSentences, NOT_VERSIONED, type ScopedLinkBreak } from './record-integrity.js';
+import {
+  linkBreakSentences,
+  NOT_VERSIONED,
+  newerLinesSentence,
+  type ScopedLinkBreak,
+} from './record-integrity.js';
 
 /** A rule in force at a path and the relation it holds there: what it does to the path. */
 export interface RuleInForceUnder extends PushedRule {
@@ -181,6 +187,12 @@ export interface WriteVerdict {
   readonly reason: string;
   /** The notices that make up {@link reason}, one per entry of {@link at}, in the same order. */
   readonly notices: readonly string[];
+  /**
+   * What a newer mnema wrote that this one reads past, in the words every surface says it in, when
+   * it wrote any (ADR-140): a refusal or a request for a person is told what the rule it cites may
+   * have lost to a line this binary cannot read, and a write that goes through is told nothing.
+   */
+  readonly newer?: string;
 }
 
 /** The facts of one tree: the paths and rules whose facts are written there. */
@@ -223,21 +235,20 @@ export const NOTICES_SAID_WHOLE = 3;
  * more than the allowed times, so a rule met for the first time is always said whole.
  */
 export function reasonTold(met: WriteVerdict, seen: Map<string, number>): string {
-  return met.at
-    .map((at, index) => {
-      const orders = at.rules.map((rule) => {
-        const key = `${met.grade}:${rule.id}`;
-        const order = (seen.get(key) ?? 0) + 1;
-        seen.set(key, order);
-        return order;
-      });
-      const order = Math.min(...orders);
-      if (orders.length === 0 || order <= NOTICES_SAID_WHOLE) return met.notices[index] as string;
-      const verb = met.grade === 'refuse' ? 'refuses' : 'asks for a person';
-      const ids = at.rules.map((rule) => oneLine(rule.id)).join(', ');
-      return `#${order}: ${ids} ${verb} at ${oneLine(at.relative ?? at.path)} again; the notice is the one above.`;
-    })
-    .join('\n\n');
+  const told = met.at.map((at, index) => {
+    const orders = at.rules.map((rule) => {
+      const key = `${met.grade}:${rule.id}`;
+      const order = (seen.get(key) ?? 0) + 1;
+      seen.set(key, order);
+      return order;
+    });
+    const order = Math.min(...orders);
+    if (orders.length === 0 || order <= NOTICES_SAID_WHOLE) return met.notices[index] as string;
+    const verb = met.grade === 'refuse' ? 'refuses' : 'asks for a person';
+    const ids = at.rules.map((rule) => oneLine(rule.id)).join(', ');
+    return `#${order}: ${ids} ${verb} at ${oneLine(at.relative ?? at.path)} again; the notice is the one above.`;
+  });
+  return (met.newer === undefined ? told : [...told, met.newer]).join('\n\n');
 }
 
 /**
@@ -566,11 +577,14 @@ function verdict(
     const apart = movedApartLine(sources, one.at.rules);
     return apart === undefined ? one.notice : `${one.notice}\n${apart}`;
   });
+  const newer = newerLinesOf(sources.map((source) => source.cache));
+  const said = newer === undefined ? undefined : newerLinesSentence(newer);
   return {
     grade,
     at: met.map((one) => one.at),
-    reason: notices.join('\n\n'),
+    reason: (said === undefined ? notices : [...notices, said]).join('\n\n'),
     notices,
+    ...(said === undefined ? {} : { newer: said }),
   };
 }
 

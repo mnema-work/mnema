@@ -1224,21 +1224,31 @@ function treeWithLines(
   if (tree.kind === 'no-record') {
     return { ...tree, headline: NO_RECORD_HEADLINE, short: NO_RECORD_HEADLINE };
   }
-  const unread = tree.result.census.filter((note) => note.kind === 'unread-kind');
-  const lines = unread.reduce((sum, note) => sum + note.lines, 0);
+  const newerMnema = newerMnemaOfTree(tree, newerLinesSentence);
   return {
     ...tree,
     short: shortLine(tree.result),
     headline: headlineText(tree.result),
-    ...(unread.length === 0
-      ? {}
-      : {
-          newerMnema: newerLinesSentence({
-            lines,
-            kinds: unread.map((note) => ({ kind: note.eventKind, lines: note.lines })),
-          }),
-        }),
+    ...(newerMnema === undefined ? {} : { newerMnema }),
   };
+}
+
+/**
+ * The sentence every surface says about lines a newer mnema wrote, for the tree that holds them,
+ * read off the census of its verdict: the `--json` reading carries it as `newerMnema` and the
+ * console's panel says it under the tree's line. None for a tree that holds none.
+ */
+export function newerMnemaOfTree(
+  tree: TreeReport,
+  newerLinesSentence: SaysNewerLines,
+): string | undefined {
+  if (tree.kind === 'no-record') return undefined;
+  const unread = tree.result.census.filter((note) => note.kind === 'unread-kind');
+  if (unread.length === 0) return undefined;
+  return newerLinesSentence({
+    lines: unread.reduce((sum, note) => sum + note.lines, 0),
+    kinds: unread.map((note) => ({ kind: note.eventKind, lines: note.lines })),
+  });
 }
 
 /** What each level says in plain words, for a surface that has no room for the layer names. */
