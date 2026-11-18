@@ -328,6 +328,8 @@ const INVOCATION: Readonly<Record<string, Invocation>> = {
   brief: { argv: () => ['brief'] },
   recall: { argv: () => ['recall'] },
   doctor: { argv: () => ['doctor'] },
+  // It applies what is mnema's own to a project's files and the machine's state file, never an event.
+  upgrade: { argv: () => ['upgrade'] },
   // It shows the report of the last internal error from a file of the machine's, outside the chain.
   report: { argv: () => ['report'] },
   // A HOST FEEDS IT, like `before-a-write`, and in process there is no standard input to hand it:
@@ -754,6 +756,7 @@ describe('every verb says if it writes', () => {
       'trailer',
       'backup',
       'doctor',
+      'upgrade',
       'report',
       'completion',
       'tally',

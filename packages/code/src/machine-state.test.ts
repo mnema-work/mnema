@@ -29,6 +29,13 @@ describe('what this machine has been told', () => {
     expect(readdirSync(inside)).toEqual([MACHINE_STATE_FILE]);
   });
 
+  it('keeps the version an upgrade brought things to beside what was shown, and reads a wrong type as unreadable', () => {
+    writeMachineState(dir, { starShown: true, appliedVersion: '0.1.8' });
+    expect(readMachineState(dir)).toEqual({ starShown: true, appliedVersion: '0.1.8' });
+    writeFileSync(join(dir, MACHINE_STATE_FILE), '{"starShown":false,"appliedVersion":8}');
+    expect(readMachineState(dir).unreadable).toBe(true);
+  });
+
   it('reads a file that cannot be read as everything shown, and writes nothing over it', () => {
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, MACHINE_STATE_FILE), '{ not json');

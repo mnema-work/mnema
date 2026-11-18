@@ -975,7 +975,7 @@ export const HANDED_OVER: Readonly<
   'packages/code/src/wiring/decision.ts': { line: 1, name: 1 },
   'packages/code/src/wiring/diagram.ts': { line: 4 },
   'packages/code/src/wiring/dispatched.ts': { line: 2 },
-  'packages/code/src/wiring/doctor.ts': { name: 2 },
+  'packages/code/src/wiring/doctor.ts': { name: 4 },
   'packages/code/src/wiring/handback.ts': { line: 1 },
   'packages/code/src/wiring/inherit.ts': { line: 1, name: 3 },
   'packages/code/src/wiring/init.ts': { line: 4, name: 6 },
