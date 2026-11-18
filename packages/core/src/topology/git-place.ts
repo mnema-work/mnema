@@ -21,8 +21,8 @@
 import { readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
-/** The directory name, under a git directory, that holds this product's private trees. */
-const IN_GIT_DIR = 'mnema';
+/** The folder of mnema's own in a repository's git directory. */
+export const IN_GIT_DIR = 'mnema';
 
 /** Where git keeps the repository a directory belongs to. */
 export interface GitPlace {

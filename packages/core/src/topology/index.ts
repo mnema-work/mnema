@@ -21,6 +21,18 @@
  */
 
 export {
+  AsideError,
+  type AsideListed,
+  asidesFor,
+  asidesIn,
+  type KeptAside,
+  setAside,
+  treesToKeep,
+  type Undone,
+  undoAside,
+  withRestoreLock,
+} from './backup/aside.js';
+export {
   type Assigned,
   assignDestination,
   assignGlobalDestination,
@@ -45,6 +57,8 @@ export {
   writeCopy,
 } from './backup/copy.js';
 export {
+  copyNamed,
+  noWriterHolds,
   type PreparedRestore,
   prepareRestore,
   type Restored,

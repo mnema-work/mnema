@@ -534,6 +534,22 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'collapsed',
     why: 'a path read out of the folder of the copy, where a file can be named with a control character',
   },
+  'backup.ts «Put back the {} tree kept in {}» #1': {
+    verdict: 'collapsed',
+    why: 'a folder of the git directory read back from the disk, whose path can hold a control character',
+  },
+  'backup.ts «what stood in its place is kept at {}, and nothing was deleted» #1': {
+    verdict: 'collapsed',
+    why: 'a folder of the git directory read back from the disk, whose path can hold a control character',
+  },
+  'backup.ts «what the {} tree held is kept at {}» #1': {
+    verdict: 'collapsed',
+    why: 'a folder of the git directory, whose path can hold a control character',
+  },
+  'backup.ts «{} folder(s) kept aside for this project, which no restore deletes: you delete them by hand; \\`mnema backup status\\` lists them» #1':
+    { verdict: 'minted', why: 'a count of folders the product listed' },
+  'backup.ts «{} other folder(s) kept aside for this project are still there: \\`mnema backup restore --undo\\` puts back the next newest that has a tree to put back, and \\`mnema backup status\\` lists them all» #1':
+    { verdict: 'minted', why: 'a count of folders the product listed' },
   'backup.ts «{} tree: no copy, nothing to restore» #1': {
     verdict: 'minted',
     why: 'the name of a tree the product has two of',
@@ -1204,7 +1220,9 @@ describe('every line this wiring words is classified', () => {
     // 185 without the line a handoff printed of a task no tree held, which it now refuses.
     // 189 with the four lines `backup setup` and `backup run` print.
     // 198 with the five lines `backup restore` prints.
-    expect(FOUND.sites.length).toBe(198);
+    // 202 with the four lines `backup restore` prints of what it kept aside, put back and deleted.
+    // 203 with the lines `backup restore` and `backup status` print of the folders kept aside, and none of a deletion.
+    expect(FOUND.sites.length).toBe(203);
   });
 
   it('reads the verdict off the source rather than believing the table', () => {
@@ -1224,9 +1242,9 @@ describe('every line this wiring words is classified', () => {
   it('found sites of both kinds, and the scanner sees a tag when there is one', () => {
     // Neither arm of the case above may be empty, or half of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
-    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(112);
-    expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(86);
-    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(112);
+    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(115);
+    expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(88);
+    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(115);
   });
 
   it('every reason says where the value comes from', () => {
@@ -1377,6 +1395,12 @@ const UNREACHABLE: Readonly<Record<string, string>> = {
     'the same folder as the line of setup',
   'backup.ts «Backed up the global tree to {}» #1': 'the same folder as the line of setup',
   'backup.ts «{} record {}... from {}» #1': 'the same folder as the line of setup',
+  'backup.ts «Put back the {} tree kept in {}» #1':
+    'a path with a break in it in the git directory, which no case plants yet, so the tag is what holds this line',
+  'backup.ts «what stood in its place is kept at {}, and nothing was deleted» #1':
+    'a path with a break in it in the git directory, which no case plants yet, so the tag is what holds this line',
+  'backup.ts «what the {} tree held is kept at {}» #1':
+    'a path with a break in it in the git directory, which no case plants yet, so the tag is what holds this line',
   'backup.ts «{} tree: {} {} {} file(s)» #1':
     'the manifest is written by a run, and no case edits its date by hand yet, so the tag is what holds this line',
   "backup.ts «{} tree: {} holds more in the tree than in the copy: the tree's is kept» #1":

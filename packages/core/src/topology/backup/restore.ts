@@ -26,8 +26,9 @@
  * tail lock's own API, without waiting, before the first byte is written and for as long as the
  * restore writes; a holder that does not let go refuses the restore, naming its process.
  *
- * THE COPY IS READ AS A RECORD FIRST: it must name the record this project is (another record's
- * copy is not restored here), hold no link and no private key, and be one the reader accepts.
+ * THE COPY IS READ AS A RECORD FIRST: it must be one name (the folder, the manifest and the tails
+ * agree), hold no link and no private key, and be one the reader accepts. A copy of another record
+ * than the tree holds goes in only after a person is asked (`PreparedRestore.otherRecord`).
  */
 
 import {
@@ -86,6 +87,12 @@ export interface PreparedRestore {
   readonly kept: readonly string[];
   /** The live tails the copy names too, locked while the restore writes. */
   readonly lockedTails: readonly string[];
+  /**
+   * True where the copy is of another record than the tree holds (or the tree holds none, and the
+   * copy's name is taken from its manifest): a person is asked before it goes in, and what the
+   * tree holds is kept aside first (ADR-389, ADR-518).
+   */
+  readonly otherRecord: boolean;
 }
 
 const isRun = (path: string): boolean => path.endsWith('.jsonl');
@@ -103,10 +110,10 @@ function rank(path: string): number {
   return isRun(path) ? 1 : 3;
 }
 
-function refuseOtherRecord(record: string, folder: string): never {
+function refuseMismatch(copyRecord: string, folder: string, names: string): never {
   throw new BackupRefusedError(
     'OTHER_RECORD',
-    `The copy at ${folder} is not a copy of this project's record (${record.slice(0, 12)}...): restoring a copy of another record is not done here, and a way to do it, with a question first, comes next.`,
+    `The copy at ${folder} is kept under the name of the record ${copyRecord.slice(0, 12)}..., and ${names}: it is not one copy, and is not restored.`,
   );
 }
 
@@ -122,6 +129,16 @@ function manifestOf(folder: string): { record?: unknown; copiedAt?: unknown } | 
   }
 }
 
+/** The record a copy's manifest says it is a copy of, or undefined where there is no manifest to read. */
+export function copyNamed(
+  destination: string,
+  record: string,
+  tree: BackupTree,
+): string | undefined {
+  const named = manifestOf(folderOf(destination, record, tree))?.record;
+  return typeof named === 'string' ? named : undefined;
+}
+
 /**
  * Reads the copy of `tree` in `<destination>/<record>/<tree>/` and the tree at `root`, and writes
  * NOTHING (a tail lock is taken and let go at once, to find a holder). Every refusal is here,
@@ -130,10 +147,11 @@ function manifestOf(folder: string): { record?: unknown; copiedAt?: unknown } | 
 export function prepareRestore(
   root: string,
   destination: string,
-  record: string,
+  record: string | undefined,
   tree: BackupTree,
+  copyRecord: string | undefined = record,
 ): PreparedRestore {
-  const folder = folderOf(destination, record, tree);
+  const folder = folderOf(destination, copyRecord, tree);
   for (const place of placesOf(destination, folder)) {
     const held = lstatSync(place, { throwIfNoEntry: false });
     if (held?.isSymbolicLink()) throw linked(place);
@@ -149,12 +167,13 @@ export function prepareRestore(
     throw new BackupRefusedError('NO_COPY', `The copy at ${folder} holds no tail and no key.`);
   }
 
-  // ANOTHER RECORD'S COPY is turned away by the name its manifest files it under and by the record
-  // its own tails name. The public tree names the project's record itself; the private tree names a
-  // record of its own, so it is held to the name of the tree it would join, when the tree has one.
+  // ANOTHER RECORD'S COPY is a question, not a refusal (ADR-428). A copy that disagrees with ITSELF
+  // is still turned away: the folder it is kept in, its manifest and the record its tails name
+  // must be one name. The private tree names a record of its own, so it is held to the name of the
+  // tree it would join, when the tree has one.
   const manifest = manifestOf(folder);
-  if (typeof manifest?.record === 'string' && manifest.record !== record) {
-    refuseOtherRecord(record, folder);
+  if (typeof manifest?.record === 'string' && manifest.record !== copyRecord) {
+    refuseMismatch(copyRecord as string, folder, 'its manifest says another');
   }
   const naming = recordNamedIn([folder]);
   if (naming.state !== 'named' && naming.state !== 'unnamed') {
@@ -163,11 +182,16 @@ export function prepareRestore(
       `The copy at ${folder} names more than one record, and is not restored.`,
     );
   }
-  if (naming.state === 'named') {
+  if (tree === 'public' && naming.state === 'named' && naming.name !== copyRecord) {
+    refuseMismatch(copyRecord as string, folder, 'its tails name another');
+  }
+  // The private tree has a name of its own: where the project has none (its public tree lost its
+  // tails), only what the private tree itself names can set the copy apart from it.
+  let otherRecord = tree === 'public' || record !== undefined ? copyRecord !== record : false;
+  if (tree === 'private' && naming.state === 'named') {
     const held =
       lstatSync(root, { throwIfNoEntry: false }) === undefined ? undefined : recordNamedIn([root]);
-    const expected = tree === 'public' ? record : held?.state === 'named' ? held.name : undefined;
-    if (expected !== undefined && naming.name !== expected) refuseOtherRecord(record, folder);
+    if (held?.state === 'named' && held.name !== naming.name) otherRecord = true;
   }
 
   // A COPY THE READER REFUSES is not put into a tree that reads today: one broken line there
@@ -249,6 +273,7 @@ export function prepareRestore(
     liveWins,
     kept,
     lockedTails,
+    otherRecord,
   };
 }
 
@@ -268,6 +293,11 @@ function holding<T>(root: string, tails: readonly string[], act: () => T): T {
       `A writer holds the tail ${first}: ${who} is writing to this tree, and a restore touches nothing while one does. Let it finish (or stop it) and run the restore again.`,
     );
   }
+}
+
+/** Refuses, naming its process, when a writer holds any tail `root` has (none is waited for). */
+export function noWriterHolds(root: string): void {
+  holding(root, listed(join(root, 'tails')).sort(), () => undefined);
 }
 
 /** What a restore wrote. */

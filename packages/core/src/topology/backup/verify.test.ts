@@ -56,6 +56,20 @@ describe('a copy set against its tree', () => {
     ]);
   });
 
+  it('counts only the lines of a segment as entries: the lines of a checkpoints file are of another kind', () => {
+    put(tree, `tails/${TAIL}/checkpoints.jsonl`, '{"at":0}\n');
+    writeCopy(prepareCopy(tree, destination, RECORD, 'private'), new Date('2026-11-17T11:00:00Z'));
+    put(tree, `tails/${TAIL}/checkpoints.jsonl`, '{"at":0}\n{"at":1}\n{"at":2}\n');
+    put(tree, `tails/${TAIL}/000001.jsonl`, '{"seq":0}\n{"seq":1}\n{"seq":2}\n');
+    const behind = [...standing().behind].sort((a, b) => (a.path < b.path ? -1 : 1));
+    expect(behind).toEqual([
+      { path: `tails/${TAIL}/000001.jsonl`, entries: 1 },
+      { path: `tails/${TAIL}/checkpoints.jsonl`, entries: 0 },
+    ]);
+    rmSync(join(tree, 'tails', TAIL, 'checkpoints.jsonl'));
+    expect(standing().lost).toContain(`tails/${TAIL}/checkpoints.jsonl`);
+  });
+
   it('says a tree is cut when its file is the start of the copy, counting the entries on both sides', () => {
     put(tree, `tails/${TAIL}/000001.jsonl`, '{"seq":0}\n');
     expect(standing().cut).toEqual([{ path: `tails/${TAIL}/000001.jsonl`, tree: 1, copy: 2 }]);
