@@ -6,7 +6,7 @@
  *
  * The cases are the places the reads do not ask about: `locks/`, which holds the lock, the notes
  * and their staging files, and a note in it. (A linked segment is refused by the reads first, in
- * `the-products-reads-refuse-a-linked-record.test.ts`.) The chain's own test holds every point.
+ * `the-products-reads-serve-around-a-linked-record.test.ts`.) The chain's own test holds every point.
  */
 
 import { spawnSync } from 'node:child_process';

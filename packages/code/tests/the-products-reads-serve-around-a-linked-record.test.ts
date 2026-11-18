@@ -1,18 +1,18 @@
 /**
- * THE PRODUCT'S READS REFUSE A LINKED RECORD AND OPEN NOTHING THE LINK STANDS FOR (ADR-348, ADR-406),
+ * THE PRODUCT'S READS SERVE AROUND A LINKED RECORD AND OPEN NOTHING THE LINK STANDS FOR (ADR-348, ADR-406),
  * warm, cold and with a session open before the link was made.
  *
- * `verify` already refuses a symbolic link anywhere a reader reads and opens none. The reads every
- * other surface stands on followed a link to a segment, and skipped a linked tail in silence, so
- * `status`, `brief`, the hooks and the gate served bytes nobody signed or said nothing of a tail that
- * was there. Until a read degrades past a refused link, a link is refused as a line that cannot be
- * read is: the read stops on the first line with the way out ("replace the link with the folder or
- * file it points to"), a write is refused, and the gate denies. What is held, through the built
+ * `verify` refuses a symbolic link anywhere a reader reads and opens none. The reads every other surface
+ * stands on followed a link to a segment, and skipped a linked tail in silence, so `status`, `brief`, the
+ * hooks and the gate served bytes nobody signed or said nothing of a tail that was there. A link is a part
+ * of the record this mnema does not read, and a read says it as it says a line it cannot read: it serves
+ * the rest, exits as the read did, and names the part first with the way out ("replace the link with the
+ * folder or file it points to"). A write is refused and the gate denies. What is held, through the built
  * binary:
  *
- *   - a segment linked to a file outside the record that holds a marked decision: the mark is in no
- *     line of `status`, `show`, `search`, `brief`, the session hook, the gate's reason or the reply
- *     of the server's tools, in any state;
+ *   - a segment linked to a file outside the record that holds a marked decision: the mark is in no line
+ *     of `status`, `show`, `search`, `brief`, the session hook, the gate's reason or the reply of the
+ *     server's tools, in any state, and each of them names the link first;
  *   - a tail that is a link is said by every read, and none of them answers as if there were no tail;
  *   - a write is refused and the file the link points at is byte for byte what it was;
  *   - a segment linked to a pipe nobody writes to does not hang a read or a write.
@@ -118,7 +118,7 @@ function linkingCase(link: (planted: Judged) => string): TheCase<Judged> {
         .split(planted.id)
         .join('<id>')
         .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, '<id>')
-        .replace(/mnid:[0-9a-f]{8}/g, 'mnid:<identity>')
+        .replace(/mnid:[0-9a-f]{8,64}/g, 'mnid:<identity>')
         .replace(/[0-9a-f]{64}-[0-9a-f]{32}/g, '<tail>')
         .replace(/\d{4}-\d\d-\d\dT[\d:.]+Z/g, '<time>'),
   };
@@ -152,7 +152,7 @@ describe.each([
   ['a segment linked to a marked file', markedSegmentLinked],
   ['a tail that is a link to a marked folder', markedTailLinked],
 ])('%s', (_name, link) => {
-  it('is refused on every read, in every state, with the way out and none of the marked bytes', () => {
+  it('is said on every read, in every state, with the way out and none of the marked bytes', () => {
     const seen = inEveryCacheState(linkingCase(link));
     for (const state of [seen.warm, seen.cold, seen.session]) {
       const sections = state.said.split(/^@@@ /m).filter((one) => one !== '');
@@ -169,20 +169,27 @@ describe.each([
         'before-a-write --host cursor',
       ]);
       for (const section of sections) {
-        const [name] = section.split('\n');
+        const [name, first] = section.split('\n');
+        // The part is named first, and the way out is in the same line.
+        expect(first, `${state.state} ${name}`).toMatch(
+          /^(?:issue \[T1\] public .*: a symbolic link \(|The record could not be read)/,
+        );
         expect(section, `${state.state} ${name}`).toContain('symbolic link');
-        expect(section, `${state.state} ${name}`).toContain(WAY_OUT);
+        expect(section.toLowerCase(), `${state.state} ${name}`).toContain(WAY_OUT);
+      }
+      const read = (name: string): string => sections.find((one) => one.startsWith(name)) as string;
+      // What the linked segment held is not read, and what is asked of it answers as such: no record.
+      for (const name of ['status', 'search', 'brief', 'rules']) {
+        expect(read(name).split('\n')[1], `${state.state} ${name}`).toContain('a symbolic link');
       }
       expect(state.said, state.state).not.toContain('evil.example');
       expect(state.said, state.state).not.toContain('Use npm');
-      expect(state.status, state.state).not.toBe(0);
     }
     expect(seen.warm.said).toBe(seen.cold.said);
     expect(seen.session.said).toBe(seen.cold.said);
     // What the server's tools said, before and after the link: the marked bytes in neither.
     for (const said of [seen.session.session?.after, seen.session.session?.fresh]) {
       expect(said).not.toContain('evil.example');
-      expect(said).toContain('symbolic link');
     }
   }, 240_000);
 
@@ -229,7 +236,7 @@ function snapshot(path: string): Record<string, string> {
 }
 
 describe('a segment linked to a pipe', () => {
-  it('hangs no read and no write, and is refused', () => {
+  it('hangs no read and no write, and the write is refused', () => {
     const dir = mkdtempSync(join(tmpdir(), 'mnema-linked-pipe-'));
     try {
       const planted = aRecord(dir);
@@ -251,7 +258,9 @@ describe('a segment linked to a pipe', () => {
           env: { PATH: process.env.PATH ?? '', HOME: planted.home, GIT_CONFIG_NOSYSTEM: '1' },
         });
         expect(ran.error, `${args.join(' ')} did not return`).toBeUndefined();
-        expect(ran.status, args.join(' ')).not.toBe(0);
+        // A read serves around the link and exits as it did; a write is refused.
+        if (args[0] === 'decision') expect(ran.status, args.join(' ')).not.toBe(0);
+        else expect(ran.status, args.join(' ')).toBe(0);
         expect(`${ran.stdout}${ran.stderr}`, args.join(' ')).toContain('symbolic link');
       }
     } finally {

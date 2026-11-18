@@ -518,9 +518,13 @@ export class ProjectionCache {
   rosterAsOfNow(anchor: string): Set<string> {
     const tree = this.layout.root;
     this.agree();
-    if (this.frontier === undefined) return rosterOf({ tree, upcasters: this.upcasters }, anchor);
+    if (this.frontier === undefined) {
+      return rosterOf({ tree, upcasters: this.upcasters }, anchor);
+    }
     const arrived = chainArrivals(this.layout, this.upcasters, this.frontier);
-    if (!arrived.suffix) return rosterOf({ tree, upcasters: this.upcasters }, anchor);
+    if (!arrived.suffix) {
+      return rosterOf({ tree, upcasters: this.upcasters }, anchor);
+    }
     return rosterIn([...readMembership(this.db), ...arrived.events], tree, anchor);
   }
 
@@ -630,7 +634,7 @@ export class ProjectionCache {
   /** Replays the chain whole into the tables: the one place a rebuild is written. */
   private replay(): void {
     const before = this.persisted ? activeStampsBefore(this.layout) : {};
-    const replay = chainReplay(this.layout, this.upcasters);
+    const replay = chainReplay(this.layout, this.upcasters, true);
     this.generation = inTransaction(
       this.db,
       () => {

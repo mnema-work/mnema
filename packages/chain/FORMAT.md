@@ -1646,7 +1646,14 @@ this product's, and the tests named below hold both readers beside this document
   that kind up to v1. If a newer mnema wrote the line, read the record with it.* The second reader
   names the pair and what the table it read declares of the kind. Nothing in a record says which
   version wrote a line, and no field is added to say it, so the refusal names the version that
-  does not read the line rather than the one that does. This product's `verify` fails on it. A checkpoint or a tail proof under
+  does not read the line rather than the one that does. This product's `verify` fails on it, and the two readers
+  refuse it alike. What the product's other reads do with a line that does not read, for this reason or any other
+  (damage, a merge's markers), is its own and does not change the verdict: they serve what they read, leave the
+  line out, and name the part on the first line of every surface, with the tail, the line and the way out (a
+  newer mnema's line: update mnema); the line after it breaks its tail's chain as it would in the verdict. A
+  symbolic link where a record is read (§4) is named the same way, with the rest served. Every write of the
+  product is refused while such a part stands, and `mnema tail repair` is the one write that passes. A
+  checkpoint or a tail proof under
   a scheme of its family a reader does not read is refused the same way, before its other keys:
   *a checkpoint scheme this reader does not know: '\<a later scheme\>': mnema \<version\> reads
   mnema-checkpoint/1 and mnema-checkpoint/2. If a newer mnema wrote the line, read the record

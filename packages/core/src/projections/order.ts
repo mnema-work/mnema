@@ -168,8 +168,12 @@ interface TailStream {
  * the single bridge from the chain to a projection: a projection consumes this
  * ordered stream and never reads tails itself.
  */
-export function orderedEvents(layout: ChainLayout, upcasters: UpcasterRegistry): CatalogEvent[] {
-  return chainReplay(layout, upcasters).events;
+export function orderedEvents(
+  layout: ChainLayout,
+  upcasters: UpcasterRegistry,
+  serveAround = false,
+): CatalogEvent[] {
+  return chainReplay(layout, upcasters, serveAround).events;
 }
 
 /**
@@ -312,10 +316,14 @@ export interface ChainReplay {
  * {@link orderedEvents} is this function with the frontier dropped: one merge,
  * one reading, one order, so a caller that wants both cannot get two.
  */
-export function chainReplay(layout: ChainLayout, upcasters: UpcasterRegistry): ChainReplay {
+export function chainReplay(
+  layout: ChainLayout,
+  upcasters: UpcasterRegistry,
+  serveAround = false,
+): ChainReplay {
   const linked = refusedParts();
-  const reading = tailsReadAt(layout, linked.collect);
-  const streams = streamsOf(layout, upcasters, 0, reading.read, linked);
+  const reading = tailsReadAt(layout, serveAround ? linked.collect : undefined);
+  const streams = streamsOf(layout, upcasters, 0, reading.read, serveAround ? linked : undefined);
   const tails = new Map<string, TailReach>();
   for (const stream of streams) {
     // One `readdir` per tail beside the reading of it. A replay parses every line of
@@ -325,7 +333,7 @@ export function chainReplay(layout: ChainLayout, upcasters: UpcasterRegistry): C
       lastSeq: stream.lastSeq,
       lastHash: stream.lastHash,
       boundary: stream.boundary,
-      segments: orderedSegments(layout, stream.tail, linked.collect),
+      segments: orderedSegments(layout, stream.tail, serveAround ? linked.collect : undefined),
       latestAt: latestAt(stream.events),
     });
   }

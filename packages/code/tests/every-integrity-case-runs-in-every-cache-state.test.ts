@@ -47,7 +47,7 @@ export const EXEMPT: Readonly<Record<string, string>> = {
   'packages/chain/src/chain/a-damaged-tail-is-read-without-opening-a-writer.test.ts':
     'holds what a function of the chain says of a tail from its files alone; the chain has no projection cache and the question is not asked of one',
   'packages/chain/src/chain/the-products-reads-open-no-link.test.ts':
-    'holds what the functions of the chain that the product reads through say of a record whose files became links; the chain has no projection cache and the question is not asked of one (the cache states are held by the-products-reads-refuse-a-linked-record, through the binary)',
+    'holds what the functions of the chain that the product reads through say of a record whose files became links; the chain has no projection cache and the question is not asked of one (the cache states are held by the-products-reads-serve-around-a-linked-record, through the binary)',
   'packages/chain/src/chain/tail-repair.test.ts':
     'holds what the function that puts a line back says over a tail the writer made and bytes it damaged, in the function alone; the chain has no projection cache (the cache states of the repair are held through the binary in a-line-is-repaired-from-git)',
   'packages/code/src/commands/tail-repair.test.ts':
@@ -111,6 +111,8 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'runs the plugin handlers and the two gates as fresh processes over one altered record, each reading what the last run left; the three states of the reads they run are held by an-altered-entry-is-said-first-and-never-served',
   'packages/code/tests/the-agent-is-handed-an-altered-entry-first-and-never-its-text.test.ts':
     'opens its own connections: one after the alteration (cold) and one that read the record before it (session), over the protocol; the warm state of the command line is held by an-altered-entry-is-said-first-and-never-served',
+  'packages/code/tests/the-agent-is-told-of-a-line-it-cannot-read-and-served-the-rest.test.ts':
+    'opens its own connections: one after the damage (cold) and one that read the record before it (session), over the protocol; the warm state of the command line is held by a-line-this-mnema-cannot-read-is-said-first-and-the-rest-is-served',
   'packages/code/tests/the-console-does-not-show-an-altered-entry-that-arrives.test.ts':
     'holds the console follower, which opens no cache and reads the tail past where the session stood: there is no warm or cold state to vary',
   'packages/core/src/projections/an-entry-whose-hash-fails-is-left-out.test.ts':
