@@ -35,4 +35,9 @@ Options:
                    folder, instead of the project's own
   --undo           put back what the last restore of another record kept aside
   -h, --help       display help for command
+
+What a restore of another record replaces is moved, never copied, and is kept until you delete it by hand:
+in a repository, to <git directory>/mnema/before-restore-<UTC date>/; in a project outside git, to
+<mnema home>/before-restore/<UTC date>/ (the mnema home is ~/.mnema, or $MNEMA_HOME when it is set).
+No restore deletes a folder kept there, and `mnema backup status` lists them.
 ```

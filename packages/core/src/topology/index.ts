@@ -23,8 +23,12 @@
 export {
   AsideError,
   type AsideListed,
+  type AsidePlace,
+  asidePlaceInGit,
+  asidePlaceInHome,
   asidesFor,
   asidesIn,
+  describeAside,
   type KeptAside,
   setAside,
   treesToKeep,

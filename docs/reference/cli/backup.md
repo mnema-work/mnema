@@ -117,7 +117,7 @@ symbolic link in the tree or in the folder. A copy only grows. The folder keeps 
 clear, which `setup` asks a person to confirm at a terminal. A machine can have a folder per project; a project has the one it was set up with.
 `verify` reads the copy as a record (with this mnema's reader) and says how it stands against the trees; `restore` puts it
 back into a tree that lost files, and never over a file the tree holds; a copy of another record is asked first,
-what the tree held is kept aside in the git directory, and `restore --undo` puts it back.
+what the tree held is kept aside (in the git directory, or in the mnema home for a project outside git), and `restore --undo` puts it back.
 The machine's global tree, which mixes the memory of every project, is never part of a project's
 backup: `--global` copies it, and only it, into the folder `setup --global` gave it, as
 <folder>/global/.
