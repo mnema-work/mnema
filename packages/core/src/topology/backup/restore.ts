@@ -54,6 +54,7 @@ import {
   verifyChain,
   withTailLock,
 } from '@mnema/chain';
+import { treesToKeep } from './aside.js';
 import {
   BACKUP_MANIFEST,
   BackupRefusedError,
@@ -188,6 +189,15 @@ export function prepareRestore(
   // The private tree has a name of its own: where the project has none (its public tree lost its
   // tails), only what the private tree itself names can set the copy apart from it.
   let otherRecord = tree === 'public' || record !== undefined ? copyRecord !== record : false;
+  // The global tree is the machine's and has no name in the manifest: its tails name a record, as any
+  // tree's do. The copy is the tree's own when both name the same one; where the tree holds tails and
+  // either names none, nothing says it is the same, and it is asked (a tree with no tail loses nothing).
+  if (tree === 'global') {
+    const held = treesToKeep([{ root }]).length === 0 ? undefined : recordNamedIn([root]);
+    otherRecord =
+      held !== undefined &&
+      !(held.state === 'named' && naming.state === 'named' && held.name === naming.name);
+  }
   if (tree === 'private' && naming.state === 'named') {
     const held =
       lstatSync(root, { throwIfNoEntry: false }) === undefined ? undefined : recordNamedIn([root]);

@@ -210,6 +210,16 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
             );
           }
         }
+        for (const kept of result.asides) {
+          lines.push(
+            fact(
+              onOneLine`kept aside by a restore of another record: the global tree${kept.trees.length === 0 ? ' as it stood before an undo' : ''}, ${kept.date}, ${kept.bytes} bytes, at ${kept.folder}`,
+            ),
+          );
+        }
+        if (result.asides.length > 0) {
+          lines.push(fact('no restore deletes them: you delete them by hand'));
+        }
         lines.push(fact('the private key is not copied: it stays on this machine'));
         writeLines(
           io,
@@ -273,10 +283,11 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
     .description(
       "read each copy as a record and say how it stands against this project's trees, which it does not change",
     )
+    .option('--global', "read the copy of the machine's global tree instead of this project's")
     .option('--json', 'emit the faithful reading as JSON')
-    .action(async (opts: { json?: boolean }) => {
-      const { runBackupVerify } = await import('../commands/backup.js');
-      const result = runBackupVerify(here());
+    .action(async (opts: { global?: boolean; json?: boolean }) => {
+      const { runBackupVerify, runGlobalBackupVerify } = await import('../commands/backup.js');
+      const result = opts.global === true ? runGlobalBackupVerify(here()) : runBackupVerify(here());
       if (!result.ok) {
         reportRefusal(wiring, result, REFUSALS);
         return;
@@ -289,7 +300,9 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
       }
       const lines = [
         fact(
-          onOneLine`Backup of record ${result.record.slice(0, 12)}... in ${result.destination}`,
+          result.record === undefined
+            ? onOneLine`Backup of the global tree in ${result.destination}`
+            : onOneLine`Backup of record ${result.record.slice(0, 12)}... in ${result.destination}`,
           0,
         ),
       ];
@@ -385,6 +398,10 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
       "take the copy of this record (64 hex) from the project's folder, instead of the project's own",
     )
     .option('--undo', 'put back what the last restore of another record kept aside')
+    .option(
+      '--global',
+      "restore the machine's global tree from the folder `setup --global` gave it, and no project's tree",
+    )
     .addHelpText(
       'after',
       [
@@ -393,12 +410,30 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
         'in a repository, to <git directory>/mnema/before-restore-<UTC date>/; in a project outside git, to',
         '<mnema home>/before-restore/<UTC date>/ (the mnema home is ~/.mnema, or $MNEMA_HOME when it is set).',
         'No restore deletes a folder kept there, and `mnema backup status` lists them.',
+        '',
+        "The global tree is the machine's, read by every project on it: `--global` restores it from",
+        '<folder>/global/, and only it, kept aside in <mnema home>/before-restore/<UTC date>/global/.',
+        "A project's restore never touches it.",
       ].join('\n'),
     )
-    .action(async (opts: { dryRun?: boolean; from?: string; undo?: boolean }) => {
-      const { planBackupRestore, runBackupRestore, runBackupUndo } = await import(
-        '../commands/backup.js'
-      );
+    .action(async (opts: { dryRun?: boolean; from?: string; undo?: boolean; global?: boolean }) => {
+      const {
+        planBackupRestore,
+        planGlobalRestore,
+        runBackupRestore,
+        runBackupUndo,
+        runGlobalRestore,
+        runGlobalUndo,
+      } = await import('../commands/backup.js');
+      const toGlobal = opts.global === true;
+      if (toGlobal && opts.from !== undefined) {
+        reportRefusal(wiring, {
+          reason: 'USAGE',
+          message:
+            '--global takes no --from: the copy of the global tree is the one in the folder `mnema backup setup --global` gave it.',
+        });
+        return;
+      }
       if (opts.undo === true) {
         if (opts.dryRun === true || opts.from !== undefined) {
           reportRefusal(wiring, {
@@ -407,7 +442,7 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
           });
           return;
         }
-        const undone = runBackupUndo(here());
+        const undone = toGlobal ? runGlobalUndo(here()) : runBackupUndo(here());
         if (!undone.ok) {
           reportRefusal(wiring, undone, REFUSALS);
           return;
@@ -427,7 +462,7 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
           io.out(
             render(
               fact(
-                `${undone.others} other folder(s) kept aside for this project are still there: \`mnema backup restore --undo\` puts back the next newest that has a tree to put back, and \`mnema backup status\` lists them all`,
+                `${undone.others} other folder(s) kept aside for ${toGlobal ? 'the global tree' : 'this project'} are still there: \`mnema backup restore --undo\` puts back the next newest that has a tree to put back, and \`mnema backup status\` lists them all`,
               ),
             ),
           );
@@ -435,7 +470,7 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
         return;
       }
       const dryRun = opts.dryRun === true;
-      const plan = planBackupRestore(here(), opts.from);
+      const plan = toGlobal ? planGlobalRestore(here()) : planBackupRestore(here(), opts.from);
       if (!plan.ok) {
         reportRefusal(wiring, plan, REFUSALS);
         return;
@@ -443,10 +478,19 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
       let confirmed = false;
       if (plan.asks) {
         const question = [
-          onOneLine`The copy is of the record ${plan.copyRecord}.`,
+          plan.global
+            ? plan.copyName === undefined
+              ? 'The copy is of a global tree whose tails name no record.'
+              : onOneLine`The copy is of the global tree of the record ${plan.copyName}.`
+            : onOneLine`The copy is of the record ${plan.copyRecord}.`,
           ...plan.holds.map(
             (one) => onOneLine`The ${one.tree} tree it would replace holds ${one.says}.`,
           ),
+          ...(plan.global
+            ? [
+                "The global tree is the machine's: every project on it reads it, so replacing it changes what each of them reads.",
+              ]
+            : []),
           plan.keeping.length === 0
             ? 'No tree to be replaced holds a tail, so nothing is kept aside, and the copy is put in.'
             : `What the ${plan.keeping.map((one) => one.tree).join(' and ')} tree holds is moved to ${plan.keptIn}, and the copy is put in its place; \`mnema backup restore --undo\` puts it back, and no restore deletes that folder.`,
@@ -454,8 +498,9 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
         if (dryRun) {
           for (const line of question) io.out(render(fact(line)));
         } else {
-          const command =
-            opts.from === undefined
+          const command = toGlobal
+            ? 'mnema backup restore --global'
+            : opts.from === undefined
               ? 'mnema backup restore'
               : `mnema backup restore --from ${opts.from}`;
           if (io.aPersonIsHere !== true || io.ask === undefined) {
@@ -474,10 +519,12 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
           confirmed = true;
         }
       }
-      const result = runBackupRestore(here(), dryRun, {
-        ...(opts.from === undefined ? {} : { from: opts.from }),
-        confirmed,
-      });
+      const result = toGlobal
+        ? runGlobalRestore(here(), dryRun, { confirmed })
+        : runBackupRestore(here(), dryRun, {
+            ...(opts.from === undefined ? {} : { from: opts.from }),
+            confirmed,
+          });
       if (!result.ok) {
         reportRefusal(wiring, result, REFUSALS);
         return;
@@ -485,7 +532,9 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
       const verb = result.dryRun ? 'would put back' : 'put back';
       const heading = result.dryRun ? 'Dry run: nothing was written. Restoring' : 'Restored';
       io.out(
-        onOneLine`${heading} record ${result.copyRecord.slice(0, 12)}... from ${result.destination}`,
+        result.global
+          ? onOneLine`${heading} the global tree from ${result.destination}`
+          : onOneLine`${heading} record ${(result.copyRecord as string).slice(0, 12)}... from ${result.destination}`,
       );
       for (const one of result.trees) {
         const t = one.tree;
@@ -531,13 +580,23 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
         io.out(
           render(
             fact(
-              `${result.asides.length} folder(s) kept aside for this project, which no restore deletes: you delete them by hand; \`mnema backup status\` lists them`,
+              `${result.asides.length} folder(s) kept aside for ${result.global ? 'the global tree' : 'this project'}, which no restore deletes: you delete them by hand; \`mnema backup status\` lists them`,
             ),
           ),
         );
       }
       for (const words of WHAT_RESTORE_DOES_NOT_BRING) io.out(render(fact(words)));
-      if (!result.dryRun) io.out(render(fact('`mnema backup verify` reads the result')));
+      if (!result.dryRun) {
+        io.out(
+          render(
+            fact(
+              result.global
+                ? '`mnema backup verify --global` reads the result'
+                : '`mnema backup verify` reads the result',
+            ),
+          ),
+        );
+      }
     });
 
   return readsTheRecord(backup);
