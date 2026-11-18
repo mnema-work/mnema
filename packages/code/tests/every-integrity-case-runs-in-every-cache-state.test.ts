@@ -68,6 +68,8 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'holds that the writer refuses a link at a place it writes, through the binary: the refusal is asked of the files under the tail lock and not of the projection the reads built, which the case leaves as the first write made it',
   'packages/chain/src/chain/the-two-damage-checks-answer-the-same.test.ts':
     'holds what the chain writer and a read of its files say of a damaged tail; the chain has no projection cache and the question is not asked of one',
+  'packages/core/src/topology/backup/aside.test.ts':
+    'holds where a tree is kept and put back, over files laid out by hand; it moves folders and reads the files, never the projection cache, and no verdict about the record is asked of what is planted',
   'packages/core/src/topology/backup/copy.test.ts':
     'holds what a copy of a tree takes and refuses, over files laid out by hand; the copy reads the files and never the projection cache, and no verdict about the record is asked of what is planted',
   'packages/code/src/wiring/backup.test.ts':

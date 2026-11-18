@@ -222,7 +222,7 @@ function moveEntry(source: string, dest: string): 'moved' | 'same' | 'kept' {
 }
 
 /** Whether two paths hold the same bytes: a file's contents, or a directory's whole tree. */
-function sameBytes(a: string, b: string): boolean {
+export function sameBytes(a: string, b: string): boolean {
   const aDir = isDirectory(a);
   if (aDir !== isDirectory(b)) return false;
   if (!aDir) return readFileSync(a).equals(readFileSync(b));

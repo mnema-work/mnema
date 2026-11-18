@@ -14,7 +14,7 @@ In the help under **This machine**.
 | [`mnema backup run`](backup-run.md) | copy this project's trees into its folder, or with --global only the global tree |
 | [`mnema backup status`](backup-status.md) | say where this project's backup is and how far it is from the trees |
 | [`mnema backup verify`](backup-verify.md) | read each copy as a record and say how it stands against this project's trees, which it does not change |
-| [`mnema backup restore`](backup-restore.md) | put a copy back into the trees that lost files, never over a file the tree holds |
+| [`mnema backup restore`](backup-restore.md) | put a copy back into the trees that lost files, never over a file the tree holds; a copy of another record is asked first, and --undo puts back what it replaced |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
 
@@ -104,7 +104,9 @@ Commands:
                             against this project's trees, which it does not
                             change
   restore [options]         put a copy back into the trees that lost files,
-                            never over a file the tree holds
+                            never over a file the tree holds; a copy of another
+                            record is asked first, and --undo puts back what it
+                            replaced
   help [command]            display help for command
 
 The copy is a folder per project, kept under the name of its record: the tails up to their
@@ -114,7 +116,8 @@ private key is copied: a run is refused whole if a file it would copy holds one,
 symbolic link in the tree or in the folder. A copy only grows. The folder keeps the text in
 clear, which `setup` asks a person to confirm at a terminal. A machine can have a folder per project; a project has the one it was set up with.
 `verify` reads the copy as a record (with this mnema's reader) and says how it stands against the trees; `restore` puts it
-back into a tree that lost files, and never over a file the tree holds.
+back into a tree that lost files, and never over a file the tree holds; a copy of another record is asked first,
+what the tree held is kept aside in the git directory, and `restore --undo` puts it back.
 The machine's global tree, which mixes the memory of every project, is never part of a project's
 backup: `--global` copies it, and only it, into the folder `setup --global` gave it, as
 <folder>/global/.

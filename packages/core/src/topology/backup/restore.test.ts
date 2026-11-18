@@ -8,6 +8,7 @@
 // @plants-damage
 import { spawnSync } from 'node:child_process';
 import {
+  chmodSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -160,6 +161,39 @@ describe('a restore over records a writer made', () => {
     expect(readdirSync(join(priv, 'tails'))).toHaveLength(tails.length + 1);
   });
 
+  it('counts every file it wrote, those of a tail built apart and those put one by one, and none it left', () => {
+    const { priv, destination, write } = copied();
+    rmSync(priv, { recursive: true, force: true });
+    const whole = prepareRestore(priv, destination, RECORD, 'private');
+    expect(whole.placing.length).toBeGreaterThan(1);
+    expect(restoreCopy(whole).files).toBe(whole.placing.length);
+    // Run again over what is there: the same bytes are left, and nothing is counted.
+    expect(restoreCopy(prepareRestore(priv, destination, RECORD, 'private')).files).toBe(0);
+    write('more');
+    const key = readdirSync(join(priv, 'keys')).find((name) => name.endsWith('.pub')) as string;
+    rmSync(join(priv, 'keys', key));
+    const one = prepareRestore(priv, destination, RECORD, 'private');
+    expect(one.placing.map((file) => file.path)).toEqual([`keys/${key}`]);
+    expect(restoreCopy(one).files).toBe(1);
+  });
+
+  it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
+    'says a tail it could not take the name of, and does not count it as put back',
+    () => {
+      const { priv, destination } = copied();
+      rmSync(priv, { recursive: true, force: true });
+      const prepared = prepareRestore(priv, destination, RECORD, 'private');
+      mkdirSync(join(priv, 'tails'), { recursive: true });
+      chmodSync(join(priv, 'tails'), 0o555);
+      try {
+        expect(() => restoreCopy(prepared)).toThrow(/EACCES|EPERM/);
+        expect(readdirSync(join(priv, 'tails'))).toEqual([]);
+      } finally {
+        chmodSync(join(priv, 'tails'), 0o755);
+      }
+    },
+  );
+
   it('leaves what is the same, keeps a tree that went further and a file with other bytes, and says each', () => {
     const { priv, destination, write } = copied();
     const proof = join(
@@ -194,16 +228,15 @@ describe('a restore over records a writer made', () => {
     expect(existsSync(segment)).toBe(false);
   });
 
-  it('turns away a copy of another record by the record the tree it would join names', () => {
+  it('asks about a copy of another record, by the record the tree it would join names, and does not take it for the tree own', () => {
     const { priv, destination, copy } = copied();
+    expect(prepareRestore(priv, destination, RECORD, 'private').otherRecord).toBe(false);
     const other = aRealProject(sandbox, 'two');
     rmSync(copy, { recursive: true });
     cpSync(other.priv, copy, { recursive: true });
     const manifest = join(copy, 'mnema-backup.json');
     writeFileSync(manifest, JSON.stringify({ record: RECORD }));
-    expect(() => prepareRestore(priv, destination, RECORD, 'private')).toThrow(
-      /another record|not a copy of this project/,
-    );
+    expect(prepareRestore(priv, destination, RECORD, 'private').otherRecord).toBe(true);
   });
 
   it('names the process of a writer that holds a tail, and writes nothing', () => {

@@ -173,7 +173,7 @@ _mnema_described() {
       'run:copy this project'\''s trees into its folder, or with --global only the global tree' \
       'status:say where this project'\''s backup is and how far it is from the trees' \
       'verify:read each copy as a record and say how it stands against this project'\''s trees, which it does not change' \
-      'restore:put a copy back into the trees that lost files, never over a file the tree holds' \
+      'restore:put a copy back into the trees that lost files, never over a file the tree holds; a copy of another record is asked first, and --undo puts back what it replaced' \
       'help:display help for command' ;;
     'run') printf '%s\n' \
       'start:open a session for an agent (facts written in it are pinned to it)' \
@@ -285,7 +285,7 @@ _mnema_flags() {
     'backup run') echo '--global -h --help -V --version --color' ;;
     'backup status') echo '--global --json -h --help -V --version --color' ;;
     'backup verify') echo '--json -h --help -V --version --color' ;;
-    'backup restore') echo '--dry-run -h --help -V --version --color' ;;
+    'backup restore') echo '--dry-run --from --undo -h --help -V --version --color' ;;
     'doctor') echo '--fix --dry-run -h --help -V --version --color' ;;
     'report') echo '--decline --off --on -h --help -V --version --color' ;;
     'completion') echo '-h --help -V --version --color' ;;

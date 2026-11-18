@@ -891,7 +891,7 @@ complete -c mnema -f -n '__mnema_at "backup"' -a 'setup' -d 'say which folder ke
 complete -c mnema -f -n '__mnema_at "backup"' -a 'run' -d 'copy this project\'s trees into its folder, or with --global only the global tree'
 complete -c mnema -f -n '__mnema_at "backup"' -a 'status' -d 'say where this project\'s backup is and how far it is from the trees'
 complete -c mnema -f -n '__mnema_at "backup"' -a 'verify' -d 'read each copy as a record and say how it stands against this project\'s trees, which it does not change'
-complete -c mnema -f -n '__mnema_at "backup"' -a 'restore' -d 'put a copy back into the trees that lost files, never over a file the tree holds'
+complete -c mnema -f -n '__mnema_at "backup"' -a 'restore' -d 'put a copy back into the trees that lost files, never over a file the tree holds; a copy of another record is asked first, and --undo puts back what it replaced'
 complete -c mnema -f -n '__mnema_at "backup"' -a 'help' -d 'display help for command'
 complete -c mnema -f -n '__mnema_at "backup"' -s h -l help
 complete -c mnema -f -n '__mnema_at "backup"' -s V -l version
@@ -924,6 +924,8 @@ complete -c mnema -f -n '__mnema_at "backup verify"' -l color -x -a 'auto always
 
 # mnema backup restore
 complete -c mnema -f -n '__mnema_at "backup restore"' -l dry-run
+complete -c mnema -f -n '__mnema_at "backup restore"' -l from -r
+complete -c mnema -f -n '__mnema_at "backup restore"' -l undo
 complete -c mnema -f -n '__mnema_at "backup restore"' -s h -l help
 complete -c mnema -f -n '__mnema_at "backup restore"' -s V -l version
 complete -c mnema -f -n '__mnema_at "backup restore"' -l color -x -a 'auto always never'
