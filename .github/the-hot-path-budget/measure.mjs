@@ -303,7 +303,6 @@ function theIssuesOfThisRepository() {
   const repo = process.env.GITHUB_REPOSITORY ?? '';
   /** @type {(...args: string[]) => string} */
   const gh = (...args) => execFileSync('gh', args, { encoding: 'utf-8' }).trim();
-  /** @type {{ findOpen: (title: string) => string | undefined, comment: (number: string, body: string) => void, open: (title: string, body: string) => void }} */
   // `performance` may not exist in the repository yet: make it, and let an existing one stand.
   const ensureLabels = () => {
     try {
@@ -322,6 +321,7 @@ function theIssuesOfThisRepository() {
       // already there
     }
   };
+  /** @type {{ findOpen: (title: string) => string | undefined, comment: (number: string, body: string) => void, open: (title: string, body: string) => void }} */
   const book = {
     findOpen: (title) =>
       gh(
