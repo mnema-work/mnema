@@ -25,8 +25,8 @@
  * may have just left, and at most {@link JUDGED_AT_MOST} candidates are looked at in full.
  */
 
-import { mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
-import { basename, dirname } from 'node:path';
+import { mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import { basename, dirname, join } from 'node:path';
 import type { UpcasterRegistry } from '../events/upcaster.js';
 import { type KeptHead, keptHeadPath, readKeptHead } from './kept-head.js';
 import { type ChainLayout, inflightPath } from './layout.js';
@@ -45,6 +45,12 @@ export interface PoolOptions {
   readonly onBase: (tailId: string, segment: string, hash: string) => boolean | undefined;
   /** The branch this worktree has checked out, or undefined for a detached HEAD. */
   readonly branch: () => string | undefined;
+  /**
+   * Whether no commit holds a file of the tail `tailId`, or every ref that contains one is `branch` alone;
+   * undefined where git did not answer. Absent, no tail is taken for the first of the repository
+   * ({@link firstTailOfTheRepository}).
+   */
+  readonly heldOnlyBy?: (tailId: string, branch: string) => boolean | undefined;
 }
 
 /** The hint of the installation id as the writer reads and moves it: the keystore's, behind two calls. */
@@ -118,6 +124,42 @@ export function wroteOnThisBranch(
 ): boolean {
   const mark = readMark(checkout, tailId);
   return mark !== undefined && branch !== undefined && mark.branch === branch;
+}
+
+/**
+ * Whether `tailId` is the tail `mnema init` wrote in a folder that was not yet a repository, which the
+ * first write after `git init` goes on with instead of founding a second one. All of these hold: this
+ * worktree has no mark for it, it is the only tail of the key in this checkout, no other tail of the key
+ * has a note in the shared place (a tail another worktree holds), and either no commit holds a file
+ * of it or every ref containing one is the branch this worktree is on, alone. The last is what keeps a
+ * tail an earlier mnema wrote in a repository (the migration moves its notes the same way, and it has no
+ * mark either) on the question of the base branch (ADR-446) once another branch, a remote or a tag holds
+ * it: a branch cut from it before this write would show up among the refs, and one cut after has no mark
+ * and asks the base like any other. Its mark is
+ * written, with the branch, by the first act on it.
+ */
+export function firstTailOfTheRepository(args: {
+  readonly layout: ChainLayout;
+  readonly shared: ChainLayout;
+  readonly checkout: ChainLayout;
+  readonly tailId: string;
+  readonly fingerprint: string;
+  readonly pool: PoolOptions;
+}): boolean {
+  const { layout, shared, checkout, tailId, fingerprint, pool } = args;
+  if (readMark(checkout, tailId) !== undefined) return false;
+  const prefix = `${fingerprint}-`;
+  if (listTails(layout).some((tail) => tail.startsWith(prefix) && tail !== tailId)) return false;
+  try {
+    const noted = readdirSync(join(shared.root, 'locks')).some(
+      (name) => name.startsWith(prefix) && name.endsWith('.head') && name !== `${tailId}.head`,
+    );
+    if (noted) return false;
+  } catch {
+    return false;
+  }
+  const branch = pool.branch();
+  return branch !== undefined && pool.heldOnlyBy?.(tailId, branch) === true;
 }
 
 /** The entry a tail ends with in this checkout, and the segment holding it; undefined for a tail that cannot be read. */

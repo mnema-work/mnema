@@ -123,6 +123,7 @@ import {
   refuseToWriteThroughALink,
 } from './linked-write.js';
 import {
+  firstTailOfTheRepository,
   type HintOfTheId,
   inflightNames,
   markInflight,
@@ -1202,7 +1203,8 @@ export class ChainWriter {
     // branch (ADR-446): a branch cut from the one that wrote it would otherwise write the same tail file
     // past the point they share, which a squash merge of the first and a merge of the second cannot
     // settle. That includes a tail no mark speaks of (written before marks were kept): it is asked once,
-    // and the first write after it is marked. A tail the pool offered was asked when it was offered.
+    // and the first write after it is marked, unless it is the first tail of the repository.
+    // A tail the pool offered was asked when it was offered.
     if (
       found !== undefined &&
       this.pool !== undefined &&
@@ -1210,7 +1212,19 @@ export class ChainWriter {
       lastSegment !== undefined
     ) {
       const here = { root: this.pool.checkoutRoot };
-      if (!wroteOnThisBranch(here, this.tailId, this.pool.branch())) {
+      // The one tail `mnema init` wrote before the repository existed is the exception: see
+      // {@link firstTailOfTheRepository}.
+      if (
+        !wroteOnThisBranch(here, this.tailId, this.pool.branch()) &&
+        !firstTailOfTheRepository({
+          layout: this.layout,
+          shared: this.shared,
+          checkout: here,
+          tailId: this.tailId,
+          fingerprint: this.keyPair.fingerprint,
+          pool: this.pool,
+        })
+      ) {
         const onBase = this.pool.onBase(this.tailId, basename(lastSegment), found.hash);
         if (onBase !== true) {
           const left: NewTail['left'] =

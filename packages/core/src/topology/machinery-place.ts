@@ -20,7 +20,7 @@
 import { accessSync, constants, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { CodedError, type PoolOptions } from '@mnema/chain';
-import { branchOfWorktree, entryIsOnTheBase } from './base-branch.js';
+import { branchOfWorktree, entryIsOnTheBase, tailIsHeldOnlyBy } from './base-branch.js';
 import { commonDirIsOutsideTheWorktree, otherGitDirsOf } from './git-place.js';
 import type { ResolvedTrees } from './resolve.js';
 
@@ -90,6 +90,7 @@ export function machineryRootsOf(trees: ResolvedTrees): MachineryRoots | undefin
       reservedBy: (fingerprint) => hintsOfTheOtherWorktrees(place, checkoutWithin, fingerprint),
       onBase: entryIsOnTheBase(place.top, trees.projectPublic ?? place.top),
       branch: () => branchOfWorktree(place.gitDir, place.top),
+      heldOnlyBy: tailIsHeldOnlyBy(place.top, trees.projectPublic ?? place.top),
     },
   };
 }

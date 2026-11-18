@@ -10,7 +10,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { branchOfWorktree, entryIsOnTheBase } from './base-branch.js';
+import { branchOfWorktree, entryIsOnTheBase, tailIsHeldOnlyBy } from './base-branch.js';
 
 const ON_BASE = 'a'.repeat(64);
 const ELSEWHERE = 'b'.repeat(64);
@@ -157,4 +157,35 @@ describe('the branch a worktree has checked out', () => {
       expect(branchOfWorktree(join(table, '.git'), table)).toBe('feature/x');
     },
   );
+});
+
+describe('a tail held by one branch alone', () => {
+  it('is held by every branch while no commit holds it, and by the one ref that contains the commit that does', () => {
+    const asked = tailIsHeldOnlyBy(repo, join(repo, '.mnema'));
+    expect(asked(TAIL, 'main')).toBe(true);
+    theBaseHolds('{"link":{"seq":1}}', 'refs/heads/main');
+    expect(asked(TAIL, 'main')).toBe(true);
+    expect(asked(TAIL, 'other')).toBe(false);
+    expect(asked(`${'c'.repeat(64)}-${'2'.repeat(32)}`, 'main')).toBe(true);
+  });
+
+  it('is not held by one branch alone once a second ref, a remote-tracking one or a tag, contains it', () => {
+    theBaseHolds('{"link":{"seq":1}}', 'refs/heads/main');
+    const asked = tailIsHeldOnlyBy(repo, join(repo, '.mnema'));
+    git('update-ref', 'refs/heads/cut-from-it', 'refs/heads/main');
+    expect(asked(TAIL, 'main')).toBe(false);
+    git('update-ref', '-d', 'refs/heads/cut-from-it');
+    expect(asked(TAIL, 'main')).toBe(true);
+    git('update-ref', 'refs/remotes/origin/main', 'refs/heads/main');
+    expect(asked(TAIL, 'main')).toBe(false);
+    git('update-ref', '-d', 'refs/remotes/origin/main');
+    git('update-ref', 'refs/tags/v', 'refs/heads/main');
+    expect(asked(TAIL, 'main')).toBe(false);
+  });
+
+  it('is not answered where the folder is no repository', () => {
+    const outside = join(sandbox, 'plain');
+    mkdirSync(join(outside, '.mnema'), { recursive: true });
+    expect(tailIsHeldOnlyBy(outside, join(outside, '.mnema'))(TAIL, 'main')).toBeUndefined();
+  });
 });
