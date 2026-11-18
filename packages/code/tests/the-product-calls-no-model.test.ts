@@ -106,6 +106,9 @@ const MAY_REACH_THE_NETWORK: readonly string[] = [
   // What leaves of the record is a checkpoint digest; the identity leaves by design. Only when
   // the act is run; `verify --against-sigstore` reads offline. Never a model.
   'packages/code/src/sigstore/sign.ts',
+  // `mnema backup run` to a git destination: `git clone`, `git fetch` and `git push` of the remote the person
+  // set the backup up with, the copy of their own record going out; never a model.
+  'packages/core/src/topology/backup/git-destination.ts',
 ];
 
 /** Ways to reach the network from JavaScript. */

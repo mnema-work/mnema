@@ -58,7 +58,12 @@ function envWith(path: string): Record<string, string> {
 
 /** `git <args>` in `cwd` (the repository by default). */
 function git(args: string[], path = process.env.PATH ?? '', cwd = repo) {
-  return spawnSync('git', args, { cwd, encoding: 'utf-8', env: envWith(path) });
+  // No repack behind a push to the local remote: both settings on the command line, and in the remote's own file.
+  return spawnSync('git', ['-c', 'maintenance.auto=false', '-c', 'gc.auto=0', ...args], {
+    cwd,
+    encoding: 'utf-8',
+    env: envWith(path),
+  });
 }
 
 beforeEach(() => {

@@ -31,6 +31,10 @@ function git(cwd: string, ...args: string[]): string {
     'git',
     [
       '-c',
+      'maintenance.auto=false',
+      '-c',
+      'gc.auto=0',
+      '-c',
       'user.name=t',
       '-c',
       'user.email=t@example.invalid',
