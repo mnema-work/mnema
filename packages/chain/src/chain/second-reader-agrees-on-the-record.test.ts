@@ -2253,6 +2253,9 @@ describe('both readers over an event written after the last checkpoint, with and
     writer.append(accountLinked(envelope, { service: 'github', account: 'octocat' }));
     if (options.checkpoint) writer.checkpoint();
     const segment = segmentOf(record);
+    // The writer signs the founding at once (ADR-569); a record no checkpoint ever signed is one
+    // written without that line, as an earlier writer killed in its first act left it.
+    if (!options.checkpoint) rmSync(join(dirname(segment), 'checkpoints.jsonl'));
     const lines = readFileSync(segment, 'utf-8')
       .split('\n')
       .filter((line) => line !== '');

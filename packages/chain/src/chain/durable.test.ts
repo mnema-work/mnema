@@ -88,6 +88,15 @@ describe('a write the writer returns from is on the disk', () => {
     const tail = readdirSync(join(root, 'tails'))[0] as string;
     const segment = segmentPath({ root }, tail, 1);
     expect(synced.paths).toContain(segment);
+    // The founding write signs at once (ADR-569): checkpoints.jsonl is created by it, so its
+    // directory is synced after it, and both after the segment and the directory it was born in.
+    const checkpoints = checkpointsPath({ root }, tail);
+    expect(synced.paths.slice(synced.paths.indexOf(segment))).toEqual([
+      segment,
+      dirname(segment),
+      checkpoints,
+      dirname(checkpoints),
+    ]);
 
     synced.paths.length = 0;
     w.appendAll([memoryCaptured(env(w, 'm-1'), { content: 'a batch of one' })]);
@@ -95,9 +104,7 @@ describe('a write the writer returns from is on the disk', () => {
 
     synced.paths.length = 0;
     expect(w.checkpoint()).not.toBeNull();
-    const checkpoints = checkpointsPath({ root }, tail);
-    // Created by this checkpoint, so its directory is synced after it.
-    expect(synced.paths).toEqual([checkpoints, dirname(checkpoints)]);
+    expect(synced.paths).toEqual([checkpoints]);
 
     synced.paths.length = 0;
     w.append(memoryCaptured(env(w, 'm-2'), { content: 'one more' }));

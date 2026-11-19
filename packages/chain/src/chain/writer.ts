@@ -1400,7 +1400,7 @@ export class ChainWriter {
     this.pending.push(entry.written);
     cited.remember();
 
-    this.capUnsignedWindow();
+    this.signAFoundingOrCap(entry.link.seq);
     return entry;
   }
 
@@ -1471,7 +1471,7 @@ export class ChainWriter {
     for (const entry of entries) this.pending.push(entry.written);
     cited.remember();
 
-    this.capUnsignedWindow();
+    this.signAFoundingOrCap((entries[0] as Entry).link.seq);
     return entries;
   }
 
@@ -1542,6 +1542,24 @@ export class ChainWriter {
     throw new EventParseError(
       `refusing to seal a waiver the record does not bear out: ${reason}. This write was not appended.`,
     );
+  }
+
+  /**
+   * THE WRITE THAT FOUNDS A TAIL SIGNS WHAT IT FOUNDED AT ONCE (ADR-569), before the act goes on;
+   * every later write keeps to the ceiling ({@link capUnsignedWindow}) and the act's own end.
+   *
+   * A clone withholds a tail that holds events and no checkpoint (ADR-561), so a new tail's first
+   * act killed after its appends and before the checkpoint that ends it left a tail no clone could
+   * read. Signed here, the same kill leaves at most the act's later writes above a checkpoint that
+   * holds, which a clone reads as the one write's window. The founding is the write that lands seq
+   * 0: a tail is born by it ({@link ensureBorn}), and no later write of the tail lands it again. An
+   * act that founds and writes nothing more signs nothing at its end (the buffer is empty); one
+   * that goes on pays one signature more. The checkpoint is the one {@link signLocked} always
+   * signs: its format, its range rule and its signature are unchanged.
+   */
+  private signAFoundingOrCap(firstSeq: number): void {
+    if (firstSeq === 0) this.signLocked();
+    else this.capUnsignedWindow();
   }
 
   /**

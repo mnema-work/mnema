@@ -166,7 +166,8 @@ describe('a new record', () => {
     const name = recordName(tail);
     const signed = signedBy(root, tail);
     expect(signed.proof).toEqual({ scheme: NAMED_TAILPROOF_SCHEME, record: name });
-    expect(signed.checkpoints).toHaveLength(2);
+    // The founding's own (ADR-569), then one per write.
+    expect(signed.checkpoints).toHaveLength(3);
     for (const checkpoint of signed.checkpoints) {
       expect(checkpoint).toMatchObject({ scheme: NAMED_SCHEME, record: name });
     }

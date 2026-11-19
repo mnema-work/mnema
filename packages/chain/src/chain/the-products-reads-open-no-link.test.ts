@@ -178,7 +178,8 @@ describe('the reads of the product refuse a link', () => {
     expect(listTails(layout())).toEqual([tail]);
     expect(orderedSegments(layout(), tail)).toHaveLength(1);
     expect(readTail(layout(), tail, upcasters).entries).toHaveLength(2);
-    expect(readTailCheckpoints(layout(), tail)).toHaveLength(1);
+    // The founding's own (ADR-569) and the one that ends the act.
+    expect(readTailCheckpoints(layout(), tail)).toHaveLength(2);
     expect(
       committedKeys(layout())(listPublicKeyFingerprints(layout())[0] as string),
     ).not.toBeNull();

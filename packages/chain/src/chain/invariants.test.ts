@@ -74,12 +74,15 @@ function writeChain(count: number, maxUnsignedEvents: number) {
 
 /**
  * The residual of one tail: the events left above its last checkpoint, over a
- * total of `events` (the founding plus every task). A checkpoint fires each time
- * `every` more events accumulate, so `floor(events/every)*every` are covered (0
- * when `every > events`, all of them when `every` divides `events`).
+ * total of `events` (the founding plus every task). The founding write signs
+ * itself at once (ADR-569); after it, a checkpoint fires each time `every` more
+ * events accumulate, so of the `events - 1` after the founding
+ * `floor((events-1)/every)*every` are covered (0 when `every` is larger, all of
+ * them when `every` divides it).
  */
 function residualOf(events: number, every: number): number {
-  return events - Math.floor(events / every) * every;
+  const afterTheFounding = events - 1;
+  return afterTheFounding - Math.floor(afterTheFounding / every) * every;
 }
 
 /** Total events a tail of `count` tasks holds: the tasks plus the founding. */
@@ -187,7 +190,7 @@ describe('invariant: fullySigned iff no residual, and residual accounting is exa
     writeChain(5, 1000); // no cadence checkpoint fires
     let r = verify(root);
     expect(r.fullySigned).toBe(false);
-    expect(r.uncheckpointedEvents).toBe(6); // founding + 5 tasks, none covered
+    expect(r.uncheckpointedEvents).toBe(5); // 5 tasks above the founding, which signed itself
     openChainForWriting(root, { keyRoot: root, maxUnsignedEvents: 1000 }).checkpoint();
     r = verify(root);
     expect(r.fullySigned).toBe(true);
@@ -253,14 +256,14 @@ describe('invariant: residual accounting sums across tails; fullySigned iff the 
     // residual: the aggregate must reflect the residual, never round up to
     // fullySigned because one of its tails happens to be complete.
     const expectedResidual = writeManyTails([
-      { count: 4, every: 2 }, // 5 events (founding + 4), residual 1
-      { count: 3, every: 1000 }, // 4 events, all residual
+      { count: 4, every: 2 }, // 5 events (founding + 4), every one signed
+      { count: 3, every: 1000 }, // 4 events, the 3 after the founding residual
     ]);
-    expect(expectedResidual).toBe(5);
+    expect(expectedResidual).toBe(3);
     const r = verify(root);
     expect(r.ok).toBe(true);
     expect(r.fullySigned).toBe(false);
-    expect(r.uncheckpointedEvents).toBe(5);
+    expect(r.uncheckpointedEvents).toBe(3);
   });
 });
 
