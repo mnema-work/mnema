@@ -172,8 +172,9 @@ export function roomBeside(
  * one to fill a gap. The walk climbs from none, so it stops as soon as the next item would not
  * fit: the work is bounded by the ceiling, never by how large the record is.
  *
- * A text whose fixed part alone does not fit is returned with no item and its declaration,
- * which is the most this can do; it is not a state the texts this binds reach.
+ * A text whose fixed part alone does not fit is returned as NO lines, never as a text above
+ * `room`: the host would replace such a text with a file path, in silence, and a hook that
+ * hands nothing says the same thing without pretending to have said more.
  */
 export function fitWhole(
   total: number,
@@ -184,6 +185,7 @@ export function fitWhole(
   const whole = compose(total);
   if (printedLength(whole, lengthOf) <= room) return whole;
   let fitting = compose(0);
+  if (printedLength(fitting, lengthOf) > room) return [];
   for (let shown = 1; shown < total; shown += 1) {
     const next = compose(shown);
     if (printedLength(next, lengthOf) > room) break;

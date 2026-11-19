@@ -137,6 +137,9 @@ const HOW_A_NOTE_ENTERS = [
 ];
 
 /** What a kind with nothing recorded says, when the other kind has something. */
+/** How many of the last session's decisions are named; the rest are counted. */
+const DECISIONS_NAMED = 5;
+
 /**
  * WHERE THE LAST SESSION STOPPED: a few lines read off the journal that session left on this machine,
  * said only when it was another session and a recent one. The goal is a task title the record holds,
@@ -166,15 +169,24 @@ function lastSessionSection(last: LastSession): string[] {
     ...(last.goal === null || holdsACredential(last.goal)
       ? []
       : [`- Its goal: ${oneLine(excerptOf(last.goal))}`]),
-    ...(last.decisions.length === 0
-      ? []
-      : [
-          `- Decisions it recorded: ${last.decisions
-            .map((one) => `${oneLine(one.label)}: ${oneLine(one.state)}`)
-            .join('; ')}`,
-        ]),
+    ...(last.decisions.length === 0 ? [] : [decisionsLine(last.decisions)]),
     ...(left.length === 0 ? [] : [`- It left: ${left.join('; ')}`]),
   ];
+}
+
+/**
+ * The decisions the last session recorded, by label and state. A session that recorded hundreds
+ * (a record imported, a batch accepted) would print them all on one line and push the text past
+ * what a hook carries, so past {@link DECISIONS_NAMED} the first few are named and the rest counted.
+ */
+function decisionsLine(decisions: LastSession['decisions']): string {
+  const said = (one: LastSession['decisions'][number]): string =>
+    `${oneLine(one.label)}: ${oneLine(one.state)}`;
+  if (decisions.length <= DECISIONS_NAMED) {
+    return `- Decisions it recorded: ${decisions.map(said).join('; ')}`;
+  }
+  const named = decisions.slice(0, DECISIONS_NAMED).map(said).join('; ');
+  return `- Decisions it recorded: ${decisions.length}, among them ${named}; and ${decisions.length - DECISIONS_NAMED} more`;
 }
 
 const NO_MEMORY = 'No memory is recorded here.';

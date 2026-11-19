@@ -62,8 +62,11 @@ describe('the cut', () => {
     expect(asked).toEqual([100_000, 0, 1, 2, 3, 4, 5, 6]);
   });
 
-  it('hands back the fixed part and its declaration when not even one item fits', () => {
+  it('hands back nothing, never a text above the room, when not even the fixed part fits', () => {
     const { compose } = composing(4);
-    expect(fitWhole(4, 1, compose)).toEqual(['head', '4 left out']);
+    expect(printedLength(compose(0))).toBeGreaterThan(1);
+    const cut = fitWhole(4, 1, compose);
+    expect(cut).toEqual([]);
+    expect(printedLength(cut)).toBeLessThanOrEqual(1);
   });
 });
