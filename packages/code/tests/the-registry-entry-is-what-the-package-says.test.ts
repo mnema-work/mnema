@@ -166,6 +166,12 @@ describe('the release lists the server in the registry, after npm and behind an 
       ...WORKFLOW.slice(WORKFLOW.indexOf('\njobs:')).matchAll(/^ {2}([a-z][\w-]*):\n/gm),
     ].map((m) => m[1] as string);
     const asking = names.filter((name) => /^ {6}id-token: write$/m.test(job(name)));
-    expect(asking).toEqual(['publish', 'publish-marketplace', 'publish-registry']);
+    expect(asking).toEqual([
+      'publish',
+      'attest',
+      'attest-vsix',
+      'publish-marketplace',
+      'publish-registry',
+    ]);
   });
 });

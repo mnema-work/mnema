@@ -197,7 +197,13 @@ describe('two jobs publish the extension, behind an approval', () => {
     const asking = [...jobsOf(RELEASE).jobs]
       .filter(([, block]) => /^ {6}id-token:/m.test(block))
       .map(([name]) => name);
-    expect(asking).toEqual(['publish', PLACE.marketplace, 'publish-registry']);
+    expect(asking).toEqual([
+      'publish',
+      'attest',
+      'attest-vsix',
+      PLACE.marketplace,
+      'publish-registry',
+    ]);
     const oidc = TRACKED.filter(
       (where) =>
         /^\.github\/(?:workflows|release-tools)\//.test(where) &&

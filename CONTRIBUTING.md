@@ -197,7 +197,10 @@ with the site's own build (`node build/build.mjs --from <this checkout> --check`
 **Publishing to npm is the maintainer's own act**: the first version was published by hand, and from then on
 a workflow publishes, but only when a person approves it. A release needs no token and no secret in this
 repository: npm trusts `.github/workflows/release.yml` (see below) and signs a provenance statement with
-each package.
+each package. From the release after 0.1.8, the GitHub release also carries the five tarballs, their SHA-256 and a
+Sigstore provenance bundle for them (`mnema-npm-packages-<version>.sigstore.json`), and the extension's `.vsix` carries
+one of its own (`mnema-<version>.vsix.sigstore.json`); `gh attestation verify <file> --repo mnema-work/mnema` checks
+a downloaded file against it.
 
 The check that runs before any of this packs the five publishable packages, installs the `@mnema/code` tarball
 alone (as a person does) into an empty prefix and an empty `HOME`, and runs `init`, `decision record` and `verify`
