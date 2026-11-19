@@ -521,17 +521,17 @@ function withTheRest(
     .sort((a, b) => a.link.seq - b.link.seq);
 
   // The signed note: the events this machine wrote and signed, or is writing now, past the
-  // signed prefix, are proven by it when the tail still holds them as the note names them. And a
-  // note that names a checkpoint the file no longer holds, above what the file proves, is the
-  // proof of a cut (ADR-560), whether the events went with it or were rewritten in its place.
+  // signed prefix, are proven by it when the tail still holds them as the note names them. And
+  // events the tail holds at or below the coverage the note names, which no line that holds
+  // covers and the note does not vouch for, were rewritten under checkpoints taken out (ADR-560).
   if (note !== undefined) {
     const vouched = rest.length === 0 ? [] : vouchedByTheNote(rest, folded.signedTo, note);
+    // Only over events the tail still holds: a tail cut with its checkpoints, events and all, is
+    // what a checkout of an earlier commit leaves too, and the writer answers it (a new tail).
     const cut =
       note.coveredThrough > folded.signedTo &&
       folded.failedLines === 0 &&
-      (rest.some((entry) => entry.link.seq <= note.coveredThrough) ||
-        (note.checkpoint !== null &&
-          !question.checkpoints.some((line) => checkpointHash(line) === note.checkpoint)));
+      rest.some((entry) => entry.link.seq <= note.coveredThrough);
     if (vouched.length > 0) {
       for (const entry of vouched) provenHashes.add(entry.link.hash);
       proven.push({

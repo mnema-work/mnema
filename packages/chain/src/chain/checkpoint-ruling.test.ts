@@ -378,8 +378,8 @@ describe('this machine’s signed note proves what it wrote', () => {
   });
 });
 
-describe('a cut the note proves', () => {
-  it('withholds nothing elsewhere, and here says the checkpoints it signed are gone with their events', () => {
+describe('a tail cut with its checkpoints, events and all', () => {
+  it('withholds nothing, here or elsewhere: a checkout of an earlier commit leaves the same bytes', () => {
     const tail = new Tail(generateKeyPair());
     tail.append(titles(3));
     tail.sign(0);
@@ -393,13 +393,9 @@ describe('a cut the note proves', () => {
       checkpoint: checkpointHash(tail.checkpoints[1] as Checkpoint),
       next: null,
     };
-    // The newest events cut together with the line that signed them: a shorter record, honest in
-    // every byte, which only this machine's note can tell from one that never grew.
     tail.write(tail.lines.slice(0, 3), tail.checkpoints.slice(0, 1));
     expect(fold(tail).withheld).toEqual([]);
-    expect(fold(tail, { note }).withheld).toEqual([
-      expect.objectContaining({ fromSeq: 3, toSeq: 4, why: 'checkpoints-removed' }),
-    ]);
+    expect(fold(tail, { note }).withheld).toEqual([]);
   });
 });
 
