@@ -107,7 +107,10 @@ export interface DecisionLabel {
  * (`foldCheckpoints`, ADR-561): an event past the last checkpoint, one a checkpoint that fails
  * withholds, and a tail that holds no checkpoint are not in it. There is no signed note of this
  * machine in a pull request's checkout, so what proves an event is the committed bytes alone. A
- * tail that cannot be read at all proves nothing.
+ * tail that cannot be read at all proves nothing. The keys are read from the same commit as the
+ * tails, so a pull request that commits a key of its own and a tail it signed reads as proven: this
+ * holds back text edited by hand or never signed, not a hostile signer, and trusts the committed
+ * keys as every read of the product does.
  */
 export function provenHashes(root: string): Set<string> {
   const layout = { root };
