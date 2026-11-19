@@ -11,9 +11,15 @@
 import {
   type ChainEntry,
   catalogUpcasters,
+  committedKeys,
+  DEFAULT_MAX_UNSIGNED_EVENTS,
   decisionTextsOf,
   entryHashHolds,
+  foldCheckpoints,
+  listTails,
   parseEntry,
+  readTail,
+  readTailCheckpoints,
 } from '@mnema/chain';
 
 /** One event of the record, reduced to what the report reads. */
@@ -96,14 +102,59 @@ export interface DecisionLabel {
 }
 
 /**
+ * The hash of every event of the record at `root` (a directory holding `tails/` and `keys/`, as
+ * `.mnema/` does) that a signed checkpoint proves, folded as every read of the product folds it
+ * (`foldCheckpoints`, ADR-561): an event past the last checkpoint, one a checkpoint that fails
+ * withholds, and a tail that holds no checkpoint are not in it. There is no signed note of this
+ * machine in a pull request's checkout, so what proves an event is the committed bytes alone. A
+ * tail that cannot be read at all proves nothing.
+ */
+export function provenHashes(root: string): Set<string> {
+  const layout = { root };
+  const keys = committedKeys(layout);
+  const upcasters = catalogUpcasters();
+  const proven = new Set<string>();
+  const ignore = (): void => {};
+  for (const tail of listTails(layout)) {
+    try {
+      // The checkpoints BEFORE the tail, as a read of the product takes them (ADR-571).
+      const checkpoints = readTailCheckpoints(layout, tail, ignore);
+      const read = readTail(layout, tail, upcasters, ignore);
+      const standing = new Set<number>(read.retained.map((one) => one.seq));
+      if (read.linkBreak !== undefined) standing.add(read.linkBreak.seq);
+      const signed = foldCheckpoints({
+        tail,
+        entries: read.every,
+        checkpoints,
+        keys,
+        standing,
+        window: DEFAULT_MAX_UNSIGNED_EVENTS,
+      });
+      for (const entry of read.entries) {
+        if (signed.provenHashes.has(entry.link.hash)) proven.add(entry.link.hash);
+      }
+    } catch {
+      // A tail the reader refuses outright is left out whole: nothing in it is proven.
+    }
+  }
+  return proven;
+}
+
+/**
  * The label of every decision of the record the files `texts` hold, read off the writing that is
  * its text (FORMAT.md section 6.8): the first writing the writer of its first judgment had read,
  * or its first writing in the merged order while nothing has judged it. It asks the function every
  * reader of the product asks, so a second writing of a decision's id, which no honest writer
  * appends, does not relabel it in the comment either. A line is read as the product reads it, and
- * one it would refuse, or whose hash does not hold, is left out; nothing here checks a signature or a link, which is `verify`'s.
+ * one it would refuse, whose hash does not hold or that no signed checkpoint proves (`proven`,
+ * {@link provenHashes}) is left out, as the projection leaves it out: a title nobody signed must
+ * not reach the comment of a pull request. Nothing here checks a signature or a link, which is
+ * `verify`'s.
  */
-export function decisionLabels(texts: readonly string[]): Map<string, DecisionLabel> {
+export function decisionLabels(
+  texts: readonly string[],
+  proven: ReadonlySet<string>,
+): Map<string, DecisionLabel> {
   const upcasters = catalogUpcasters();
   const byTail = new Map<string, ChainEntry[]>();
   for (const text of texts) {
@@ -118,6 +169,7 @@ export function decisionLabels(texts: readonly string[]): Map<string, DecisionLa
       // A line whose hash does not hold is left out as the product's reads leave it out: its
       // title must not reach the comment of a pull request.
       if (!entryHashHolds(entry)) continue;
+      if (!proven.has(entry.link.hash)) continue;
       const tail = byTail.get(entry.link.tail) ?? [];
       tail.push(entry);
       byTail.set(entry.link.tail, tail);

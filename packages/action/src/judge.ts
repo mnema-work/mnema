@@ -30,6 +30,11 @@ export interface World {
     hasCommit(sha: string): boolean;
     /** The text of every record file (`.mnema/tails/**.jsonl`) the commit holds. */
     recordAt(ref: string): string[];
+    /**
+     * The hash of every event of the record the commit holds that a signed checkpoint proves
+     * (`provenHashes`): the only events whose text the comment may quote.
+     */
+    provenAt(ref: string): ReadonlySet<string>;
   };
   readonly mnema: {
     /**
@@ -104,7 +109,7 @@ export async function judge(world: World, pr: PullRequest): Promise<Verdict> {
   }
 
   const head = textsOf(headTexts);
-  const record = whatItDoes(eventsAdded(textsOf(baseTexts), head), decisionLabels(headTexts));
+  const record = whatItDoes(eventsAdded(textsOf(baseTexts), head), decisionLabels(headTexts, world.git.provenAt('HEAD')));
 
   // A file renamed leaves one path and takes another; the rules of both judge it, so a rename
   // cannot carry a protected file out from under its rule.
