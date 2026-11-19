@@ -139,12 +139,26 @@ const STARTS_A_SENTENCE = new Set(['claiming this']);
 /** What may follow a doing phrase: the end, a mark, or the few words that finish the thought. */
 const ENDS_THE_THOUGHT = String.raw`(?=\s*(?:[.!?,;:]|$)|\s+(?:to|and|now|today|soon|please|thanks)\b)`;
 
+/**
+ * What may follow any other phrase but a command: the end, a mark, or a word that finishes the
+ * request. "to" alone is not one ("I can take this to mean ..."), "to this" or "to it" is ("assign
+ * me to this"); "into account", "as a no" and "up with the team" are not requests.
+ */
+const ENDS_THE_REQUEST = String.raw`(?=\s*(?:[.!?,;:]|$)|\s+(?:on|and|now|today|soon|please|thanks|if|first|tomorrow|this week|to (?:this|it))\b)`;
+
+/** The commands, which stand alone and need nothing after them. */
+const COMMANDS = new Set(['/take', '/claim']);
+
 /** The phrases as one pattern, whole words, found anywhere (a new one for each reading: it is global). */
 const claimPattern = () =>
   new RegExp(
     CLAIM_PHRASES.map((phrase) => {
       const before = STARTS_A_SENTENCE.has(phrase) ? String.raw`(?<=^\s*)` : '';
-      const after = DOING.has(phrase) ? ENDS_THE_THOUGHT : '';
+      const after = DOING.has(phrase)
+        ? ENDS_THE_THOUGHT
+        : COMMANDS.has(phrase)
+          ? ''
+          : ENDS_THE_REQUEST;
       return `${before}(?<![\\w/])${escapeForRegExp(phrase)}(?![\\w/])${after}`;
     }).join('|'),
     'g',

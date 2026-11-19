@@ -498,6 +498,11 @@ describe('more ways to claim, and the comment that went unanswered', () => {
     "I'm working on this file",
     'Thanks for claiming this',
     'claim this please',
+    'I can take this into account later.',
+    "I'll take it as a no then.",
+    'Can I take this to mean the API is stable?',
+    'I will take this up with the team.',
+    'assign me a reviewer please',
   ])('%j is not a claim', (text) => {
     expect(isClaim(text)).toBe(false);
   });
@@ -833,13 +838,13 @@ describe('no reply repeats what a stranger wrote', () => {
       claim(eventOn(7, text), api, NOW);
       said.push(...bodies(api));
     };
-    run({ '7': issueOf(7, []) }, `I'll take this ${CANARY}`);
-    run({ '7': issueOf(7, ['other']) }, `I'll take this ${CANARY}`);
+    run({ '7': issueOf(7, []) }, `I'll take this. ${CANARY}`);
+    run({ '7': issueOf(7, ['other']) }, `I'll take this. ${CANARY}`);
     run({ '7': issueOf(7, []) }, `Let me pick this up. ${CANARY}`);
     const held = (n: number) => issueOf(n, ['newcomer']);
     run(
       { '7': issueOf(7, []), '8': held(8), '9': held(9), '10': held(10) },
-      `I'll take this ${CANARY}`,
+      `I'll take this. ${CANARY}`,
       {
         comments: {
           '8': [{ user: { login: BOT }, body: assignedMarker(daysAgo(1), 'newcomer') }],
