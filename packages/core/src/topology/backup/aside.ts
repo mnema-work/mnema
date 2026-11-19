@@ -35,7 +35,9 @@ import { basename, join } from 'node:path';
 import {
   CodedError,
   catalogUpcasters,
+  readingWhatTheDiskLets,
   TailBusyError,
+  UnreadableDiskError,
   verifyChain,
   withTailLock,
 } from '@mnema/chain';
@@ -160,11 +162,17 @@ function moveFolder(from: string, to: string): void {
   }
 }
 
-/** Whether `root` holds a tail: a tree that holds none has no history to keep. */
+/**
+ * Whether `root` holds a tail: a tree that holds none has no history to keep. A `tails/` folder the
+ * disk will not open is NOT a tree that holds none: it may hold the history, so the part is named and
+ * the restore stops, rather than the tree being left where the copy is put over it.
+ */
 const holdsTails = (root: string): boolean => {
+  const tails = join(root, 'tails');
   try {
-    return readdirSync(join(root, 'tails')).length > 0;
-  } catch {
+    return readingWhatTheDiskLets(tails, 'tails', () => readdirSync(tails)).length > 0;
+  } catch (error) {
+    if (error instanceof UnreadableDiskError) throw error;
     return false;
   }
 };

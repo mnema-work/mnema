@@ -191,6 +191,35 @@ const DAMAGES: readonly (readonly [string, (root: string) => void])[] = [
   ],
 ];
 
+/**
+ * The damages to the folders of the locks and the keys, and the files in them: what a WRITE opens
+ * on its way (a lock, an installation id) and what `doctor` lists (`keys/`). Each says which part
+ * the refusal must name.
+ */
+const LOCK_AND_KEY_DAMAGES: readonly (readonly [string, string, (root: string) => void])[] = [
+  ['a locks folder with no permission', 'locks', (root) => chmodSync(join(root, 'locks'), 0)],
+  [
+    'a file where the locks folder should be',
+    'locks',
+    (root) => {
+      renameSync(join(root, 'locks'), join(root, 'locks.kept'));
+      writeFileSync(join(root, 'locks'), 'not a folder');
+    },
+  ],
+  ['a keys folder with no permission', 'keys', (root) => chmodSync(join(root, 'keys'), 0)],
+  [
+    'an installation id with no permission',
+    '.inst',
+    (root) => {
+      const id = readdirSync(join(root, 'keys')).find((name) => name.endsWith('.inst'));
+      chmodSync(join(root, 'keys', id as string), 0);
+    },
+  ],
+];
+
+/** The trees the damages above are done in: the three records, and the folder the machine's keys live in. */
+const LOCK_AND_KEY_PLACES = ['public', 'private', 'global', 'key root'] as const;
+
 const READS = [
   ['status'],
   ['show', 'ADR-1'],
@@ -266,6 +295,54 @@ describe.skipIf(CANNOT_CHMOD)('a part the disk will not open, in every tree', ()
     );
   });
 
+  // A write opens a lock and an installation id, and `doctor` lists the keys: none prints the system's error.
+  describe.each([false, true])(
+    'the locks and the keys, with a repository around the project: %s',
+    (inGit) => {
+      describe.each(LOCK_AND_KEY_PLACES)('in the %s tree', (place) => {
+        it.each(
+          // The key root holds no locks and no installation id: only its keys folder is one of its parts.
+          LOCK_AND_KEY_DAMAGES.filter(
+            ([name]) => place !== 'key root' || name.startsWith('a keys'),
+          ),
+        )(
+          '%s: no command prints the system’s own error, and a write names the part',
+          (_name, part, damage) => {
+            const box = aRecord(inGit);
+            const trees = resolveTrees(box.repo, { home: box.home });
+            // In a repository the public tree's locks and keys are in the git directory, not in the record.
+            const machinery = trees.projectPublicMachinery;
+            const root =
+              place === 'key root'
+                ? (trees.keyRoot as string)
+                : place === 'public' && machinery !== undefined
+                  ? part === 'locks'
+                    ? machinery.shared
+                    : machinery.checkout
+                  : rootOf(box, place);
+            damage(root);
+            const scope = place === 'key root' ? 'public' : place;
+            const write = mnema(box, ['decision', 'record', 'Next', 'Because', '--scope', scope]);
+            expect(write.stdout, 'a write').not.toMatch(AN_ERRNO);
+            expect(write.status, 'a write').not.toBe(0);
+            expect(write.stdout).toContain('cannot be opened');
+            expect(write.stdout).toContain(part);
+            for (const args of [
+              ['doctor'],
+              ['status'],
+              ['verify'],
+              ['memory', 'a memory', '--scope', 'private'],
+              ['switch', 'off', 'agent-accepts'],
+            ]) {
+              expect(mnema(box, args).stdout, `mnema ${args.join(' ')}`).not.toMatch(AN_ERRNO);
+            }
+          },
+          240_000,
+        );
+      });
+    },
+  );
+
   describe.each(['public', 'private', 'global'] as const)(
     'a folder with no permission in the %s tree',
     (tree) => {
@@ -311,34 +388,52 @@ describe.skipIf(CANNOT_CHMOD)('a part the disk will not open, in every tree', ()
     },
   );
 
-  it('refuses a write of the agent’s server with the place and the way out', async () => {
-    const box = aRecord();
-    damage(box, 'public');
-    const client = new Client({ name: 'claude-code', version: '1.0.0' }, { capabilities: {} });
-    const transport = new StdioClientTransport({
-      command: process.execPath,
-      args: [MNEMA_CLI, 'mcp'],
-      cwd: box.repo,
-      env: { PATH: process.env.PATH ?? '', HOME: box.home, GIT_CONFIG_NOSYSTEM: '1' },
-      stderr: 'ignore',
-    });
-    await client.connect(transport);
-    try {
-      const reply = (await client.callTool({
-        name: 'record_decision',
-        arguments: { title: 'Use a thing', rationale: 'Because it is so' },
-      })) as { isError?: boolean; content: { text: string }[] };
-      const said = reply.content.map((block) => block.text).join('\n');
-      expect(reply.isError).toBe(true);
-      expect(said).not.toMatch(AN_ERRNO);
-      expect(said).toContain('holds a part the disk does not let this mnema open');
-      expect(said).toContain('tails cannot be opened');
-      expect(said).toContain('Give this user access to it');
-      expect(said).not.toContain('tail repair');
-    } finally {
-      await client.close();
-    }
-  }, 120_000);
+  it.each([
+    [false, 'tails'],
+    [true, 'tails'],
+    [false, 'locks'],
+    [true, 'locks'],
+  ] as const)(
+    'refuses a write of the agent’s server with the place and the way out (repository around: %s, part: %s)',
+    async (inGit, part) => {
+      const box = aRecord(inGit);
+      // The public tree's locks are in the git directory inside a repository, and not in the record.
+      const trees = resolveTrees(box.repo, { home: box.home });
+      if (part === 'tails') damage(box, 'public');
+      else
+        chmodSync(join(trees.projectPublicMachinery?.shared ?? rootOf(box, 'public'), 'locks'), 0);
+      const client = new Client({ name: 'claude-code', version: '1.0.0' }, { capabilities: {} });
+      const transport = new StdioClientTransport({
+        command: process.execPath,
+        args: [MNEMA_CLI, 'mcp'],
+        cwd: box.repo,
+        env: { PATH: process.env.PATH ?? '', HOME: box.home, GIT_CONFIG_NOSYSTEM: '1' },
+        stderr: 'ignore',
+      });
+      await client.connect(transport);
+      try {
+        const reply = (await client.callTool({
+          name: 'record_decision',
+          arguments: { title: 'Use a thing', rationale: 'Because it is so' },
+        })) as { isError?: boolean; content: { text: string }[] };
+        const said = reply.content.map((block) => block.text).join('\n');
+        expect(reply.isError).toBe(true);
+        expect(said).not.toMatch(AN_ERRNO);
+        // Its own code, and words for an act that names no path: the refusal of a line says "this path".
+        expect(said).toContain('Refused (UNREADABLE_PART)');
+        expect(said).not.toContain('UNREADABLE_LINE');
+        expect(said).not.toMatch(/this path|which rules apply/);
+        expect(said).toContain('The fact was NOT recorded.');
+        expect(said).toContain('holds a part the disk does not let this mnema open');
+        expect(said).toContain(`${part} cannot be opened`);
+        expect(said).toContain('Give this user access to it');
+        expect(said).not.toContain('tail repair');
+      } finally {
+        await client.close();
+      }
+    },
+    120_000,
+  );
 });
 
 /** The first damage of the table: a folder of `tails/` with no permission, in `tree`. */

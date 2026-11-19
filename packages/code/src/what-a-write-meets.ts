@@ -343,6 +343,24 @@ export function refusalOfAnUnreadableRecord(
 }
 
 /**
+ * The refusal of an act that records something (a decision, a note, a task) over a part of the record
+ * the disk does not let this mnema open. It is not about a path, as the refusal of a write before an
+ * edit is: the act names none, so the sentence says the record cannot be written, where it is, and the
+ * way out. `trees` are the trees the caller read, as for {@link refusalOfAnUnreadableRecord}.
+ */
+export function refusalOfAPartForARecordingAct(
+  error: UnreadableDiskError,
+  trees: readonly Pick<ScopedCache, 'scope' | 'chainRoot'>[],
+): string {
+  const tree = treeOfTheLine(error.locus, trees) ?? 'unknown';
+  return [
+    `${UNREADABLE_IN[tree].tree} holds a part the disk does not let this mnema open, so the record cannot be written.`,
+    error.message,
+    DISK_WAY_OUT_OF[tree],
+  ].join('\n\n');
+}
+
+/**
  * The reason a write is refused while an entry of the record was altered after it was written (its
  * hash does not hold), or `undefined` when no tree has one. It is the gate's answer to ADR-395:
  * which rules apply to a path is read from the record, and a record with an altered line cannot
