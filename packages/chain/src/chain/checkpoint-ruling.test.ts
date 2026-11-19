@@ -378,6 +378,31 @@ describe('this machine’s signed note proves what it wrote', () => {
   });
 });
 
+describe('a cut the note proves', () => {
+  it('withholds nothing elsewhere, and here says the checkpoints it signed are gone with their events', () => {
+    const tail = new Tail(generateKeyPair());
+    tail.append(titles(3));
+    tail.sign(0);
+    const [, end] = tail.append(['t3', 't4']);
+    tail.sign(3);
+    const note: WrittenHead = {
+      seq: (end as Line).seq,
+      hash: (end as Line).hash,
+      prev: (end as Line).prev,
+      coveredThrough: 4,
+      checkpoint: checkpointHash(tail.checkpoints[1] as Checkpoint),
+      next: null,
+    };
+    // The newest events cut together with the line that signed them: a shorter record, honest in
+    // every byte, which only this machine's note can tell from one that never grew.
+    tail.write(tail.lines.slice(0, 3), tail.checkpoints.slice(0, 1));
+    expect(fold(tail).withheld).toEqual([]);
+    expect(fold(tail, { note }).withheld).toEqual([
+      expect.objectContaining({ fromSeq: 3, toSeq: 4, why: 'checkpoints-removed' }),
+    ]);
+  });
+});
+
 describe('ruleOnCheckpoint', () => {
   it('says the line holds and gives its hash', () => {
     const tail = new Tail(generateKeyPair());

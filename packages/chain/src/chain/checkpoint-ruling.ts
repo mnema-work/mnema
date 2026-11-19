@@ -486,17 +486,26 @@ function withTheRest(
   const inWithheld = (seq: number): boolean =>
     withheld.some((run) => seq >= run.fromSeq && seq <= run.toSeq);
   const seen = new Set<string>();
-  let rest = entries.filter((entry) => {
-    if (seen.has(entry.link.hash)) return false;
-    seen.add(entry.link.hash);
-    return !provenHashes.has(entry.link.hash) && !inWithheld(entry.link.seq);
-  });
-  if (rest.length === 0) return { ...folded, withheld, proven };
+  let rest = entries
+    .filter((entry) => {
+      if (seen.has(entry.link.hash)) return false;
+      seen.add(entry.link.hash);
+      return !provenHashes.has(entry.link.hash) && !inWithheld(entry.link.seq);
+    })
+    .sort((a, b) => a.link.seq - b.link.seq);
 
   // The signed note: the events this machine wrote and signed, or is writing now, past the
-  // signed prefix, are proven by it when the tail still holds them as the note names them.
+  // signed prefix, are proven by it when the tail still holds them as the note names them. And a
+  // note that names a checkpoint the file no longer holds, above what the file proves, is the
+  // proof of a cut (ADR-560), whether the events went with it or were rewritten in its place.
   if (note !== undefined) {
-    const vouched = vouchedByTheNote(rest, folded.signedTo, note);
+    const vouched = rest.length === 0 ? [] : vouchedByTheNote(rest, folded.signedTo, note);
+    const cut =
+      note.coveredThrough > folded.signedTo &&
+      folded.failedLines === 0 &&
+      (rest.some((entry) => entry.link.seq <= note.coveredThrough) ||
+        (note.checkpoint !== null &&
+          !question.checkpoints.some((line) => checkpointHash(line) === note.checkpoint)));
     if (vouched.length > 0) {
       for (const entry of vouched) provenHashes.add(entry.link.hash);
       proven.push({
@@ -505,32 +514,32 @@ function withTheRest(
         by: 'note',
       });
       rest = rest.filter((entry) => !provenHashes.has(entry.link.hash));
-    } else if (note.coveredThrough > folded.signedTo && folded.failedLines === 0) {
+    } else if (cut) {
       // The note says checkpoints up to `coveredThrough` were signed here, and the tail no longer
       // holds what they covered as the note names it: they were removed with what they signed.
-      const removed = rest.filter((entry) => entry.link.seq <= note.coveredThrough);
-      if (removed.length > 0) {
-        withheld.push({
-          fromSeq: folded.signedTo + 1,
-          toSeq: note.coveredThrough,
-          why: 'checkpoints-removed',
-          ...(note.checkpoint !== null ? { noteCheckpoint: note.checkpoint } : {}),
-        });
-        rest = rest.filter((entry) => entry.link.seq > note.coveredThrough);
-      }
+      withheld.push({
+        fromSeq: folded.signedTo + 1,
+        toSeq: note.coveredThrough,
+        why: 'checkpoints-removed',
+        ...(note.checkpoint !== null ? { noteCheckpoint: note.checkpoint } : {}),
+      });
+      rest = rest.filter((entry) => entry.link.seq > note.coveredThrough);
     }
   }
   if (rest.length === 0) return { ...folded, withheld, proven, provenHashes };
 
-  const seqs = rest.map((entry) => entry.link.seq);
-  const fromSeq = Math.min(...seqs);
-  const toSeq = Math.max(...seqs);
+  const fromSeq = (rest[0] as ChainEntry).link.seq;
+  const toSeq = (rest[rest.length - 1] as ChainEntry).link.seq;
   const holding = folded.proven.some((run) => run.by === 'checkpoint');
-  const oneRun = new Set(seqs).size === rest.length && toSeq - fromSeq + 1 === rest.length;
+  // The run goes on from the last proven entry: a branch that forks below it is not one write.
+  const tip = entries.find(
+    (entry) => entry.link.seq === folded.signedTo && provenHashes.has(entry.link.hash),
+  );
   const atTheEnd =
     fromSeq === folded.signedTo + 1 &&
     folded.namedTo === folded.signedTo &&
-    oneRun &&
+    toSeq - fromSeq + 1 === rest.length &&
+    (rest[0] as ChainEntry).link.prev === (tip?.link.hash ?? null) &&
     rest.every((entry, i) => i === 0 || entry.link.prev === (rest[i - 1] as ChainEntry).link.hash);
   if (holding && atTheEnd && rest.length <= window) {
     return {
