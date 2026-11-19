@@ -31,7 +31,10 @@ Add the `export` line to your shell's startup file so it lasts.
 
 To update, run the same install again, then `mnema upgrade` in each project: it brings that project and this
 machine up to the new version and asks before anything that changes how the repository behaves
-([what it does](reference/cli/upgrade.md#after-installing-a-newer-mnema)). To run the `main` branch instead of the published version,
+([what it does](reference/cli/upgrade.md#after-installing-a-newer-mnema)). Until `mnema upgrade` has run on a machine
+after a newer version was installed, the first command you run there at a terminal says so in one line, once, and the
+first reply an agent's connection gets carries a note for you to run it; a machine where mnema was just installed says
+nothing. To run the `main` branch instead of the published version,
 see [Building it from source](build-from-source.md).
 
 ## Check it

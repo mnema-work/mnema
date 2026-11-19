@@ -864,7 +864,7 @@ export const HANDED_OVER: Readonly<
   'docs/how-it-works.md': { line: 3, name: 3 },
   'docs/hosts.md': { line: 2, name: 4 },
   'docs/importing-the-decisions-you-already-wrote.md': { line: 2, name: 2 },
-  'docs/install.md': { line: 3, name: 5 },
+  'docs/install.md': { line: 3, name: 6 },
   'docs/mnema-next-to-a-folder-of-adrs.md': { line: 5, name: 2 },
   'docs/north-star.md': { name: 1 },
   'docs/packages.md': { line: 2, name: 3 },

@@ -377,6 +377,7 @@ export async function run(
 ): Promise<void> {
   const built = buildProgram(io, argv, render);
   sayWhatTheWalkPassesOver(built);
+  sayAnUpdateNotApplied(built, argv);
   if (argv.length === 0) return await saySummary(built);
   await parseWith(built, argv);
 }
@@ -430,6 +431,41 @@ function sayWhatTheWalkPassesOver({ program, io, render }: BuiltProgram): void {
       for (const sentence of passedOverFrom(cwd, env)) io.err(render(fact(sentence, 0)));
     } catch {
       // See above: a notice that cannot be composed is a notice not given.
+    }
+  });
+}
+
+/**
+ * Before a verb's answer, on stderr: one line, once per machine and version, when the mnema that runs is
+ * newer than the last one `mnema upgrade` brought this machine to (`update-notice.ts`).
+ *
+ * ONLY FOR A PERSON: at a terminal, without `--json`, outside a hook, and never for the server (`mnema
+ * mcp` says it in its own replies) nor for the verbs that bring a machine up to date. Without a terminal
+ * it says nothing and marks nothing. It reads one small file and no project, and a throw here is
+ * swallowed: a notice that cannot be composed is a notice not given.
+ */
+function sayAnUpdateNotApplied(
+  { program, io, render }: BuiltProgram,
+  argv: readonly string[],
+): void {
+  if (
+    io.aPersonIsHere !== true ||
+    argv.includes('--json') ||
+    argv.includes('--hook') ||
+    argv.includes('--after-update') ||
+    process.env[FOR_A_HOOK_ENV] === '1'
+  ) {
+    return;
+  }
+  program.hook('preAction', async (_program, action) => {
+    if (topLevelVerbOf(action) === MCP_VERB || topLevelVerbOf(action) === 'upgrade') return;
+    try {
+      const { updateLineOnce } = await import('./update-notice.js');
+      const { cwd, env } = here();
+      const line = updateLineOnce(resolveTrees(cwd, env).global, VERSION, true);
+      if (line !== undefined) io.err(render(fact(line, 0)));
+    } catch {
+      // See above.
     }
   });
 }

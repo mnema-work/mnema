@@ -26,8 +26,17 @@ describe('what this machine has been told', () => {
   it('reads back what was written, and leaves no staging file beside it', () => {
     const inside = join(dir, 'global');
     writeMachineState(inside, { starShown: true, tourSeen: true });
-    expect(readMachineState(inside)).toEqual({ starShown: true, tourSeen: true });
+    // A file this call creates says the running version was applied: nothing older kept one here.
+    expect(readMachineState(inside)).toEqual({
+      starShown: true,
+      tourSeen: true,
+      appliedVersion: VERSION,
+    });
     expect(readdirSync(inside)).toEqual([MACHINE_STATE_FILE]);
+    // A file that was there keeps what it said, a missing version included.
+    writeFileSync(join(inside, MACHINE_STATE_FILE), '{"starShown":true}');
+    writeMachineState(inside, { ...readMachineState(inside), tourSeen: true });
+    expect(readMachineState(inside).appliedVersion).toBeUndefined();
   });
 
   it('keeps the version an upgrade brought things to beside what was shown, and reads a wrong type as unreadable', () => {

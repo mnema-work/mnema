@@ -2545,6 +2545,10 @@ function replied(
       // an acknowledgement carries it the same. The note a newer mnema's version adds
       // comes AFTER this block, never before it.
       ...fact(sessionLinkBreaks(session, wrote ? A_WRITE : A_READ)),
+      // THEN, ONCE PER CONNECTION AND NEVER BEFORE THE FACTS ABOVE, that a newer mnema is installed and
+      // `mnema upgrade` has not run on this machine: for the person to be told, never for the agent to
+      // act on (`update-notice.ts`). Not in the handshake's instructions, nor in the opening text.
+      ...session.updateNote.take(),
       // AND, RIGHT AFTER IT, WHAT A NEWER MNEMA WROTE that this one reads past (ADR-140): on every
       // read and on none of the writes, asked of the caches the read has just loaded, so a tool
       // added later says it without remembering to. Absent for every record this version wrote.
@@ -2633,6 +2637,8 @@ function refused(
   return {
     isError: true,
     content: [
+      // A refusal carries no fact of integrity, so the note, if this is the first reply, leads it.
+      ...session.updateNote.take(),
       `Refused (${refusal.code}): ${refusal.message}`,
       ...session.founding.take(),
       ...session.replacementsOwed.take(),
