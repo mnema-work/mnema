@@ -16,6 +16,80 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # WHAT THE PULL REQUEST TOUCHES. `.github/what-a-pr-touches/decide.mjs` reads the files the pull
+  # request changes (the merge commit against its first parent) and says whether the test matrix and the coverage gate have anything to run (a pull request that changes only pages under `docs/` and `changelog/` has not; `the-guards` still reads every page).
+  # Every job below still starts and publishes its name, and skips its STEPS: the branch requires each
+  # job by name, and a matrix job skipped whole publishes the name unexpanded, which is never the one
+  # required. Anything that is not a pull request runs everything.
+  changes:
+    name: what the pull request touches
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.decide.outputs.code }}
+      host: ${{ steps.decide.outputs.host }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Decide
+        id: decide
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = 'pull_request' ]; then
+            git diff --name-only --no-renames HEAD^1 HEAD > "$RUNNER_TEMP/changed.txt" || : > "$RUNNER_TEMP/changed.txt"
+          else
+            : > "$RUNNER_TEMP/changed.txt"
+          fi
+          node .github/what-a-pr-touches/decide.mjs < "$RUNNER_TEMP/changed.txt" | tee -a "$GITHUB_STEP_SUMMARY"
+
+  # THE BUILD, ONCE. Every cell of the test matrix used to run `pnpm build` itself: nine builds of
+  # the same output. This builds it one time and hands the cells a tarball of it (a tar, because an
+  # artifact upload drops the file modes the build sets). `tsc` and the bundle do not depend on the
+  # Node they run under; lint and the type-check, the jobs that would, build for themselves.
+  build:
+    name: build, once for the test cells
+    needs: changes
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        if: ${{ needs.changes.outputs.code == 'true' }}
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        run: pnpm build
+
+      - name: Pack what the build wrote
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        run: tar -cf "$RUNNER_TEMP/the-build.tar" packages/*/dist packages/code/LICENSE
+
+      - name: Hand it to the test cells
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: the-build
+          path: ${{ runner.temp }}/the-build.tar
+          retention-days: 5
+          overwrite: true
+          if-no-files-found: error
+
   # THE SUITE IN THREE SHARDS PER NODE. One job of the whole suite took 11 to 14 minutes and sat
   # on the critical path of every pull request; three shards run at the same time, and each takes
   # a third of the files. `--shard=k/3` splits the FILES, so what is run is the same set: the
@@ -30,6 +104,7 @@ jobs:
     # util-linux 2.39.3 and 2.41.3 and behave identically on both. It is pinned because a
     # repository that stamps the build behind every measurement cell should not let the image
     # under the runner change without anybody deciding it. Moving to 26.04 is a one-line diff.
+    needs: [changes, build]
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -45,21 +120,33 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ needs.changes.outputs.code == 'true' }}
         with:
           persist-credentials: false
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        if: ${{ needs.changes.outputs.code == 'true' }}
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: ${{ needs.changes.outputs.code == 'true' }}
         with:
           node-version: ${{ matrix.node }}
           cache: 'pnpm'
 
       - name: Install dependencies
+        if: ${{ needs.changes.outputs.code == 'true' }}
         run: pnpm install --frozen-lockfile
 
-      - name: Build
-        run: pnpm build
+      - name: Download the build
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: the-build
+          path: ${{ runner.temp }}/the-build
+
+      - name: Unpack the build
+        if: ${{ needs.changes.outputs.code == 'true' }}
+        run: tar -xf "$RUNNER_TEMP/the-build/the-build.tar"
 
       # WHAT THE SUITE LEAVES IN /tmp, half one. 187 prefixes are built under `tmpdir()` by this
       # workspace and exactly one of them is watched by a test, because the obvious watch, list
@@ -67,6 +154,7 @@ jobs:
       # It is not a race here: nothing of ours is running at this point in the job, so what appears
       # between this listing and the one after the last vitest step is what the run left.
       - name: What the suite left behind (before)
+        if: ${{ needs.changes.outputs.code == 'true' }}
         run: pnpm what-the-suite-left-behind --record
 
       # The JSON report is kept because it carries a duration per case, and durations off the
@@ -84,13 +172,13 @@ jobs:
       # instants to the job summary and to an artifact, beside the ledger's own clock. It is
       # a measurement and gates nothing.
       - name: Start the fsync probe
-        if: matrix.node == '24.15.0'
+        if: ${{ needs.changes.outputs.code == 'true' && (matrix.node == '24.15.0') }}
         run: |
           node .github/the-disk-answers/fsync-probe.mjs --out "$RUNNER_TEMP/fsync-probe.json" &
           echo $! > "$RUNNER_TEMP/fsync-probe.pid"
 
       - name: Test
-        if: matrix.node != '24'
+        if: ${{ needs.changes.outputs.code == 'true' && (matrix.node != '24') }}
         run: pnpm test --shard=${{ matrix.shard }}/3 --reporter=json --outputFile.json=vitest-report.json
 
       # ONE PASS ON NODE 24: this step is the suite for that cell, instrumented. The gate, the
@@ -106,7 +194,7 @@ jobs:
       # 0.77 of that ceiling. The suite is still run plain on 24.15.0 and 26, so the matrix still
       # has both kinds of run.
       - name: Coverage of the shard
-        if: matrix.node == '24'
+        if: ${{ needs.changes.outputs.code == 'true' && (matrix.node == '24') }}
         run: pnpm test:coverage
           --shard=${{ matrix.shard }}/3
           --coverage.thresholds.statements=0
@@ -119,7 +207,7 @@ jobs:
           --outputFile.json=vitest-report.json
 
       - name: Upload the coverage of the shard
-        if: matrix.node == '24' && (success() || failure())
+        if: ${{ needs.changes.outputs.code == 'true' && (matrix.node == '24' && (success() || failure())) }}
         continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -128,7 +216,7 @@ jobs:
           if-no-files-found: error
 
       - name: Stop the fsync probe
-        if: always() && matrix.node == '24.15.0'
+        if: ${{ needs.changes.outputs.code == 'true' && (always() && matrix.node == '24.15.0') }}
         continue-on-error: true
         run: |
           kill -TERM "$(cat "$RUNNER_TEMP/fsync-probe.pid")"
@@ -138,7 +226,7 @@ jobs:
           node .github/the-disk-answers/fsync-probe.mjs --render "$RUNNER_TEMP/fsync-probe.json" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload the fsync probe
-        if: always() && matrix.node == '24.15.0'
+        if: ${{ needs.changes.outputs.code == 'true' && (always() && matrix.node == '24.15.0') }}
         continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -163,12 +251,12 @@ jobs:
       # titled for what it is and the step exits 0 (`--run-passed`): a failure annotation on a
       # green job would say the opposite of the job.
       - name: Why it went red
-        if: success() || failure()
+        if: ${{ needs.changes.outputs.code == 'true' && (success() || failure()) }}
         continue-on-error: true
         run: pnpm why-it-went-red ${{ job.status == 'success' && '--run-passed' || '' }} --summary "$GITHUB_STEP_SUMMARY" --json why-it-went-red-verdict.json
 
       - name: Upload the verdict
-        if: success() || failure()
+        if: ${{ needs.changes.outputs.code == 'true' && (success() || failure()) }}
         continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -179,7 +267,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload test report
-        if: always()
+        if: ${{ needs.changes.outputs.code == 'true' && (always()) }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: vitest-report-node${{ matrix.node }}-shard${{ matrix.shard }}
@@ -193,12 +281,12 @@ jobs:
       # leaked directory is worth a red build no more than a broken ruler is worth masking the
       # reds above it.
       - name: What the suite left behind (after)
-        if: always()
+        if: ${{ needs.changes.outputs.code == 'true' && (always()) }}
         continue-on-error: true
         run: pnpm what-the-suite-left-behind --summary "$GITHUB_STEP_SUMMARY" --json what-the-suite-left-behind-verdict.json
 
       - name: Upload what the suite left behind
-        if: always()
+        if: ${{ needs.changes.outputs.code == 'true' && (always()) }}
         continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -215,24 +303,29 @@ jobs:
   # counts the blobs first: a merge of two would report a lower figure and blame the code.
   the-coverage-gate:
     name: the coverage gate
-    needs: test
+    needs: [changes, test]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ needs.changes.outputs.code == 'true' }}
         with:
           persist-credentials: false
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        if: ${{ needs.changes.outputs.code == 'true' }}
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: ${{ needs.changes.outputs.code == 'true' }}
         with:
           node-version: '24'
           cache: 'pnpm'
 
       - name: Install dependencies
+        if: ${{ needs.changes.outputs.code == 'true' }}
         run: pnpm install --frozen-lockfile
 
       - name: Download the coverage of the shards
+        if: ${{ needs.changes.outputs.code == 'true' }}
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: vitest-blob-*
@@ -240,6 +333,7 @@ jobs:
           path: vitest-blob
 
       - name: Count the blobs
+        if: ${{ needs.changes.outputs.code == 'true' }}
         run: |
           found="$(find vitest-blob -name 'blob-*-3.json' | wc -l)"
           if [ "$found" != '3' ]; then
@@ -248,6 +342,7 @@ jobs:
           fi
 
       - name: Merge the shards and check the thresholds
+        if: ${{ needs.changes.outputs.code == 'true' }}
         run: pnpm exec vitest --merge-reports=vitest-blob --coverage
 
   # LINT AND THE TYPE-CHECK, ONCE. They used to run in every cell of the test matrix, three times
@@ -823,6 +918,8 @@ jobs:
     name: what failed, for the comment
     if: ${{ !cancelled() && github.event_name == 'pull_request' }}
     needs:
+      - changes
+      - build
       - test
       - the-coverage-gate
       - lint-and-typecheck
