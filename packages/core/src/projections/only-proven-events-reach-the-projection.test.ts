@@ -1,3 +1,4 @@
+// @plants-damage
 /**
  * ONLY WHAT A SIGNATURE PROVES REACHES THE PROJECTION (ADR-561): an event no checkpoint covers and
  * no signed note of this machine vouches for is said (Fact B) and never folded; it is folded the
