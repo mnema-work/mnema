@@ -364,21 +364,33 @@ function keepAsTheyWere(
   tailId: string,
   files: readonly string[],
   stamp: number,
+  fromRevision: ReadonlyMap<string, Uint8Array> = new Map(),
 ): string[] {
-  const copies = files.map((file) =>
-    join(shared.root, 'locks', `${tailId}.${file}.${stamp}.before-repair`),
-  );
+  // A file of the tail as the working tree holds it, then one as the revision holds it, where the
+  // result leaves out events of the revision that the working tree does not hold.
+  const kept = [
+    ...files.map((file) => ({
+      file,
+      copy: join(shared.root, 'locks', `${tailId}.${file}.${stamp}.before-repair`),
+      bytes: (): Uint8Array =>
+        existsSync(join(directory, file)) ? readFileSync(join(directory, file)) : new Uint8Array(),
+    })),
+    ...[...fromRevision].map(([file, bytes]) => ({
+      file,
+      copy: join(shared.root, 'locks', `${tailId}.${file}.${stamp}.revision.before-repair`),
+      bytes: (): Uint8Array => bytes,
+    })),
+  ];
+  const copies = kept.map((one) => one.copy);
   refuseToWriteThrough(
     shared,
     copies.map((copy) => `locks/${copy.slice(copy.lastIndexOf('/') + 1)}`),
   );
-  for (const [at, file] of files.entries()) {
-    const copy = copies[at] as string;
-    const path = join(directory, file);
+  for (const one of kept) {
     // 'wx': a copy already there is never overwritten.
-    const fd = openSync(copy, 'wx');
+    const fd = openSync(one.copy, 'wx');
     try {
-      writeSync(fd, existsSync(path) ? readFileSync(path) : new Uint8Array());
+      writeSync(fd, one.bytes());
       fsyncSync(fd);
     } finally {
       closeSync(fd);
@@ -630,7 +642,19 @@ function putTheWholeTailBack(input: TailRepairInput, reading: WholeTailReading):
 
   refuseToWriteThrough(layout, [`tails/${tailId}/checkpoints.jsonl`]);
   const changed = [...written, ...removed, ...(checkpointsChange ? ['checkpoints.jsonl'] : [])];
-  const copies = keepAsTheyWere(shared, directory, tailId, changed, input.now ?? Date.now());
+  const copies = keepAsTheyWere(
+    shared,
+    directory,
+    tailId,
+    changed,
+    input.now ?? Date.now(),
+    new Map(
+      plan.revisionAside.map((segment) => [
+        segment,
+        input.committed.get(segment) ?? new Uint8Array(),
+      ]),
+    ),
+  );
   const mode = statSync(join(directory, segments[0] ?? 'checkpoints.jsonl')).mode & 0o777;
   // The segments first, `checkpoints.jsonl` last: a kill between leaves checkpoints that do not
   // hold over the segments put back, and the next run finishes.

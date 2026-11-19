@@ -67,11 +67,15 @@ The revision has to prove itself first: its events chain from seq 0 with every h
 named by; the tail's `tailproof.json` has to verify too. A revision that does not is refused, naming the file, the line and the
 question it failed: name an older one with `--from`.
 
-The revision's tail is kept whole, the events git committed past its last checkpoint included: those are still the one write's
-window they were, and the next read says so as it would in a clone. Above the revision, only what is proven is kept: an event the
-revision does not hold stays when a line of the working `checkpoints.jsonl` that holds, folded on from the revision's last one,
-covers it, or when this machine's signed note (the one its writer keeps beside the lock) vouches for it. Everything else is
-removed, and said by seq. A checkpoint signs the content and the
+What the revision's checkpoints sign is kept whole. Above it, only what is proven is kept: an event the revision does not hold
+stays when a line of the working `checkpoints.jsonl` that holds, folded on from the revision's last one, covers it, or when this
+machine's signed note (the one its writer keeps beside the lock) vouches for it. The events git committed past the revision's last
+checkpoint are kept too, where the result still runs on them: those are still the one write's window they were, and the next read
+says so as it would in a clone. Where a signed branch forks from them instead (the same seqs, other events, covered by a working
+checkpoint that holds), signed work wins over an unsigned window: the revision's events there are removed, said by seq with the
+rest, and the revision's segment that held them is kept aside beside the lock as well
+(`<tail>.<segment>.<ms>.revision.before-repair`), since the working tree does not hold them. Everything else is removed, and said
+by seq. A checkpoint signs the content and the
 order of its events, not their links, so an honest event whose link somebody computed again is kept and its link computed again
 onto the tail put back, which gives back the bytes it was written with; those seqs are said too. Where this machine signed the
 tail further than what the revision and the working checkpoints prove, the repair is refused rather than drop signed work: name a

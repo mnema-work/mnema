@@ -647,6 +647,58 @@ describe('repairTail, when the signed checkpoints do not hold: the whole tail', 
     expect(readFileSync(segment).equals(whole)).toBe(true);
   });
 
+  it('keeps the signed branch over the revision’s unsigned one at a fork, re-chained by a forger, and keeps the revision’s aside', () => {
+    // The writer signs fifth and sixth at seq 4 and 5; the revision git holds carries, at the same
+    // seqs, two other events chained to seq 3 and never signed. A forger rewrites seq 1 and computes
+    // every later link again, so the signed branch no longer chains to the revision's seq 3.
+    writeMore('fifth', 'sixth');
+    const whole = readFileSync(segment);
+    const wholeCheckpoints = readFileSync(checkpointsFile());
+    const base = held().slice(0, 4);
+    for (const content of ['unsigned', 'unsigned too']) {
+      const before = base[base.length - 1] as Stored;
+      const next: Stored = JSON.parse(JSON.stringify(before));
+      next.event.payload.content = content;
+      next.link = {
+        ...before.link,
+        seq: before.link.seq + 1,
+        prev: before.link.hash,
+        hash: entryHash({
+          event: writtenAsStored(next.event as never),
+          tail: before.link.tail,
+          seq: before.link.seq + 1,
+          prev: before.link.hash,
+        }),
+      };
+      base.push(next);
+    }
+    const revision = Buffer.from(
+      `${base.map((one) => canonicalStringify(one as never)).join('\n')}\n`,
+    );
+    rewrite(1, 'FORGED');
+    rmSync(writtenHeadPath({ root }, tail));
+
+    const done = repair({ committed: new Map([['000001.jsonl', revision]]) });
+    expect(done).toMatchObject({
+      ok: true,
+      whole: {
+        keptAbove: [{ from: 4, to: 5 }],
+        relinked: [{ from: 4, to: 5 }],
+        removed: [
+          { from: 1, to: 1 },
+          { from: 4, to: 5 },
+        ],
+      },
+    });
+    expect(readFileSync(segment).equals(whole)).toBe(true);
+    expect(readFileSync(checkpointsFile()).equals(wholeCheckpoints)).toBe(true);
+    expect(verified()).toBe(true);
+    // The revision's unsigned events are not in the working tree: its segment is kept aside too.
+    const aside = join(root, 'locks', `${tail}.000001.jsonl.1.revision.before-repair`);
+    expect(done.ok && done.kept).toContain(aside);
+    expect(readFileSync(aside).equals(revision)).toBe(true);
+  });
+
   it('removes a segment the revision does not hold and nothing proves, keeping it aside', () => {
     rewrite(1, 'FORGED');
     const extra = join(root, 'tails', tail, '000002.jsonl');

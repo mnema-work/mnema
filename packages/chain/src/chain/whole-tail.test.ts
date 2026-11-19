@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { memoryCaptured } from '../events/build.js';
 import { type ChainEntry, sealEntry, serializeEntry } from './entry.js';
 import type { CommittedKeys } from './store.js';
-import { planWholeTail, type StoredEvent } from './whole-tail.js';
+import { planWholeTail, type StoredEvent, whatTheResultLeaves } from './whole-tail.js';
 
 const TAIL = `${'a'.repeat(64)}-${'b'.repeat(32)}`;
 
@@ -87,5 +87,50 @@ describe('planWholeTail, the revision', () => {
         fault: 'no-checkpoint',
       },
     });
+  });
+});
+
+describe('whatTheResultLeaves, the last question before a byte is written', () => {
+  // No record reaches these: the plan keeps above the revision only what a checkpoint or the note
+  // proves, so the fold leaves at most the revision's own window. The question is asked here, at
+  // its own seam, over what a fold could say, so a gate that stopped asking would be seen.
+  const window = { from: 4, to: 6 };
+  const refusal = { reason: 'DOES_NOT_HOLD_AFTER', fault: 'unproven' };
+
+  it('lets the revision’s own window through, and a result with nothing unproven', () => {
+    expect(
+      whatTheResultLeaves({ withheld: [], unproven: { fromSeq: 4, toSeq: 6, count: 3 } }, window),
+    ).toBeUndefined();
+    expect(whatTheResultLeaves({ withheld: [] }, window)).toBeUndefined();
+  });
+
+  it('refuses an unproven stretch that starts below the revision’s window', () => {
+    expect(
+      whatTheResultLeaves({ withheld: [], unproven: { fromSeq: 2, toSeq: 6, count: 5 } }, window),
+    ).toEqual(refusal);
+  });
+
+  it('refuses an unproven stretch that ends short of the revision’s window', () => {
+    expect(
+      whatTheResultLeaves({ withheld: [], unproven: { fromSeq: 4, toSeq: 5, count: 2 } }, window),
+    ).toEqual(refusal);
+  });
+
+  it('refuses an unproven stretch where the revision left no window', () => {
+    expect(
+      whatTheResultLeaves(
+        { withheld: [], unproven: { fromSeq: 4, toSeq: 4, count: 1 } },
+        { from: 4, to: 3 },
+      ),
+    ).toEqual(refusal);
+  });
+
+  it('refuses a withheld run, naming its fault', () => {
+    expect(
+      whatTheResultLeaves(
+        { withheld: [{ fromSeq: 4, toSeq: 4, why: 'checkpoint', fault: 'no-key' }] },
+        window,
+      ),
+    ).toEqual({ reason: 'DOES_NOT_HOLD_AFTER', fault: 'no-key' });
   });
 });

@@ -4,8 +4,9 @@ Added
   A tail rewritten with every later link computed again, its `checkpoints.jsonl` emptied or forged, or a signed event removed,
   refused every write with no verb to mend it: the refusal said to put the tail back from the history by hand. The verb now
   takes the tail from `HEAD` (or `--from <rev>`) when that revision proves itself (its events chain from seq 0 and every
-  checkpoint signature holds under the committed key, the tail's proof verifying too), whole, the events committed past its last
-  checkpoint staying as the one write's window they were, and keeps above it only the events a working checkpoint that holds, or
+  checkpoint signature holds under the committed key, the tail's proof verifying too), what its checkpoints sign whole, the events
+  committed past its last checkpoint staying as the one write's window they were unless a signed branch forks from them (signed
+  work wins: they are removed, and the revision's segment is kept aside too), and keeps above it only the events a working checkpoint that holds, or
   this machine's signed note, proves; the rest is removed and said by seq, and an honest event whose link somebody computed
   again gets its link computed again as it was signed. It refuses a revision that does not hold, a revision behind what this
   machine signed, and a conflict marker in `checkpoints.jsonl`, each with nothing written. Every file it changes,

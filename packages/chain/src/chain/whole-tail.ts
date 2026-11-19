@@ -23,6 +23,7 @@ import {
   checkpointBelongsToItsTail,
   foldCheckpoints,
   ruleOnCheckpoint,
+  type TailSigned,
 } from './checkpoint-ruling.js';
 import { type ChainEntry, entryHashHolds, serializeEntry } from './entry.js';
 import { contentRoot, entryHash, eventBytes } from './hash.js';
@@ -75,10 +76,12 @@ export interface WholeTailPlan {
   readonly checkpoints: readonly StoredCheckpoint[];
   /** The events past what the revision's signatures cover that a signature or the note proves. */
   readonly keptAbove: readonly SeqRun[];
-  /** The events of the working tail that nothing proves, by seq: not in the result. */
+  /** The events of the working tail or the revision that nothing proves, by seq: not in the result. */
   readonly removed: readonly SeqRun[];
   /** The events whose link was computed again: their content as signed, re-chained by someone. */
   readonly relinked: readonly SeqRun[];
+  /** The revision's segments that hold a removed event the working tail does not: kept aside. */
+  readonly revisionAside: readonly string[];
 }
 
 /** What the plan is asked over. */
@@ -300,21 +303,29 @@ export function planWholeTail(
     signatures: 'every',
     ...(note !== undefined ? { note } : {}),
   });
-  const still = after.withheld[0];
-  const left = after.unproven;
-  const onlyTheRevisionsWindow =
-    left === undefined || (left.fromSeq === provenTo + 1 && left.toSeq === end);
-  if (still !== undefined || !onlyTheRevisionsWindow) {
-    return refused({
-      reason: 'DOES_NOT_HOLD_AFTER',
-      fault: still?.fault ?? still?.why ?? 'unproven',
-    });
-  }
+  const fault = whatTheResultLeaves(after, { from: provenTo + 1, to: end });
+  if (fault !== undefined) return refused(fault);
 
+  // What the result leaves out, of the working tail and of the revision: an unsigned event the
+  // revision committed where a signed branch forks from it is removed too, and its segment kept
+  // aside by the caller, since the working tree does not hold it.
   const kept = new Set(result.map((one) => `${one.entry.link.seq}:${contentOf(one.entry)}`));
-  const removed = question.working
-    .filter((one) => !kept.has(`${one.entry.link.seq}:${contentOf(one.entry)}`))
-    .map((one) => one.entry.link.seq);
+  const left = (events: readonly StoredEvent[]) =>
+    events.filter((one) => !kept.has(`${one.entry.link.seq}:${contentOf(one.entry)}`));
+  const inWorking = new Set(
+    question.working.map((one) => `${one.entry.link.seq}:${contentOf(one.entry)}`),
+  );
+  const leftOfTheRevision = left(question.revision);
+  const removed = [...left(question.working), ...leftOfTheRevision].map(
+    (one) => one.entry.link.seq,
+  );
+  const revisionAside = [
+    ...new Set(
+      leftOfTheRevision
+        .filter((one) => !inWorking.has(`${one.entry.link.seq}:${contentOf(one.entry)}`))
+        .map((one) => one.segment),
+    ),
+  ].sort();
   return {
     ok: true,
     plan: {
@@ -327,8 +338,26 @@ export function planWholeTail(
       ),
       removed: runsOf(removed),
       relinked: runsOf(relinked),
+      revisionAside,
     },
   };
+}
+
+/**
+ * The last question before anything is written, over the result folded again: no run withheld, and
+ * nothing unproven but the revision's own window, the events git committed past what any signature
+ * or the note proves (`window`, empty when `from` is past `to`). Anything else refuses.
+ */
+export function whatTheResultLeaves(
+  after: Pick<TailSigned, 'withheld' | 'unproven'>,
+  window: SeqRun,
+): WholeTailRefusal | undefined {
+  const still = after.withheld[0];
+  const left = after.unproven;
+  const onlyTheRevisionsWindow =
+    left === undefined || (left.fromSeq === window.from && left.toSeq === window.to);
+  if (still === undefined && onlyTheRevisionsWindow) return undefined;
+  return { reason: 'DOES_NOT_HOLD_AFTER', fault: still?.fault ?? still?.why ?? 'unproven' };
 }
 
 /** The bytes of an event's content, as text: what a root folds and a link does not. */
@@ -378,13 +407,24 @@ function pathSignedBy(
     children.set(one.entry.link.prev, below);
   }
   const length = checkpoint.toSeq - checkpoint.fromSeq + 1;
-  const starts = events.filter(
-    (one) =>
-      one.entry.link.seq === checkpoint.fromSeq && (tip === null || one.entry.link.prev === tip),
+  const atFrom = events.filter((one) => one.entry.link.seq === checkpoint.fromSeq);
+  const chained = atFrom.filter((one) => tip === null || one.entry.link.prev === tip);
+  // The starts chained to the tip first; when no path from them closes the root, any start: a
+  // signed branch a forger re-chained wins over an unsigned one that still chains (ADR-563).
+  return (
+    closingPath(chained, children, length, checkpoint) ??
+    closingPath(atFrom, children, length, checkpoint)
   );
-  const fromAny =
-    starts.length > 0 ? starts : events.filter((one) => one.entry.link.seq === checkpoint.fromSeq);
-  const stack: StoredEvent[][] = fromAny.map((one) => [one]);
+}
+
+/** The first stored path of `length` events from one of `starts` whose contents fold to the root. */
+function closingPath(
+  starts: readonly StoredEvent[],
+  children: ReadonlyMap<string | null, readonly StoredEvent[]>,
+  length: number,
+  checkpoint: Checkpoint,
+): readonly StoredEvent[] | undefined {
+  const stack: StoredEvent[][] = starts.map((one) => [one]);
   while (stack.length > 0) {
     const path = stack.pop() as StoredEvent[];
     if (path.length === length) {
