@@ -368,4 +368,9 @@ describe('the last session of a record with hundreds of decisions', () => {
     expect(printedLength(text)).toBeLessThanOrEqual(HOOK_TEXT_CEILING);
     expect(text).toEqual(recallDocument(withNotes));
   });
+
+  it('hands nothing, not a text above the room, when not even the fixed part fits', () => {
+    const text = recallWithin(withNotes, 500);
+    expect(text).toEqual([]);
+  });
 });

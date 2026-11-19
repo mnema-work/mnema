@@ -69,7 +69,7 @@ import { oneLine } from '../one-line.js';
 import { recordFraming } from '../record-framing.js';
 import type { SessionTouch } from '../what-the-session-touches.js';
 import { humanDuration } from './runs.js';
-import { fitWhole } from './within-a-hook.js';
+import { fitWhole, withinTheRoom } from './within-a-hook.js';
 
 /** The heading: what the text IS. */
 const TITLE = '# What was noted here';
@@ -347,7 +347,11 @@ export function recallWithin(
   room: number,
   lengthOf?: (text: string) => number,
 ): string[] {
-  return fitWhole(notesIn(notes), room, (shown) => composed(notes, shown), lengthOf);
+  return withinTheRoom(
+    fitWhole(notesIn(notes), room, (shown) => composed(notes, shown), lengthOf),
+    room,
+    lengthOf,
+  );
 }
 
 /** How many notes the index handed over, both kinds together. */

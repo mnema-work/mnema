@@ -5,7 +5,13 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { fitWhole, HOOK_TEXT_CEILING, printedLength, roomBeside } from './within-a-hook.js';
+import {
+  fitWhole,
+  HOOK_TEXT_CEILING,
+  printedLength,
+  roomBeside,
+  withinTheRoom,
+} from './within-a-hook.js';
 
 /** A text of `shown` items of ten characters each, and a declaration when it was cut. */
 function composing(total: number) {
@@ -62,11 +68,18 @@ describe('the cut', () => {
     expect(asked).toEqual([100_000, 0, 1, 2, 3, 4, 5, 6]);
   });
 
-  it('hands back nothing, never a text above the room, when not even the fixed part fits', () => {
+  it('hands back the fixed part and its declaration when not even one item fits', () => {
     const { compose } = composing(4);
-    expect(printedLength(compose(0))).toBeGreaterThan(1);
-    const cut = fitWhole(4, 1, compose);
-    expect(cut).toEqual([]);
-    expect(printedLength(cut)).toBeLessThanOrEqual(1);
+    expect(fitWhole(4, 1, compose)).toEqual(['head', '4 left out']);
+  });
+});
+
+describe('a text for a room that is the whole ceiling', () => {
+  it('is returned as it is when it fits, inclusive of the room', () => {
+    expect(withinTheRoom(['abcd', 'efg'], 9)).toEqual(['abcd', 'efg']);
+  });
+
+  it('is replaced by no lines, never kept above the room', () => {
+    expect(withinTheRoom(['abcd', 'efg'], 8)).toEqual([]);
   });
 });
