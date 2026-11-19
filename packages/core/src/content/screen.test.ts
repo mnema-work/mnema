@@ -262,11 +262,23 @@ describe('a name is read by shape and by context, not by a first word that looks
 
   for (const [title, inABody] of TITLES) {
     it(`takes "${title}" unchanged as a title, an about, a topic, a skill's name and an argument`, () => {
-      const result = screenContent({ title, about: title, topic: title, name: title, args: [title] });
+      const result = screenContent({
+        title,
+        about: title,
+        topic: title,
+        name: title,
+        args: [title],
+      });
 
       expect(result.ok, `${title} was refused in a name`).toBe(true);
       if (!result.ok) return;
-      expect(result.fields).toEqual({ title, about: title, topic: title, name: title, args: [title] });
+      expect(result.fields).toEqual({
+        title,
+        about: title,
+        topic: title,
+        name: title,
+        args: [title],
+      });
       expect(result.replaced).toEqual([]);
     });
 
