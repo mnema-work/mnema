@@ -10,6 +10,11 @@ name: Scorecard
 # serves the badge in the README. Publishing makes the score and the checks public; they describe
 # a public repository.
 #
+# THE ACTION MUST BE ALLOWED. `ossf/scorecard-action` is not GitHub's own, and the repository's list of
+# allowed actions has to name it (`ossf/scorecard-action@*`) before this workflow can start: until then
+# GitHub refuses the run at startup. It is the one action here that cannot be replaced by a pinned
+# binary, because the service that serves the badge accepts a result only from the action.
+#
 # IT RUNS ONCE A WEEK, on `main` when it changes, and by hand. It is never a gate: a score is read,
 # not waived. The job holds nothing the action does not ask for (`id-token` is how the service
 # knows the result comes from this workflow, and the service refuses a workflow with any other

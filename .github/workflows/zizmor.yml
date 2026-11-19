@@ -9,10 +9,12 @@ name: Workflow audit
 # no blanket configuration: a finding is fixed in the workflow, or it carries `# zizmor: ignore[rule]`
 # on its own line with the reason after it, so the ignore is read next to the thing it excuses.
 #
-# THE TOOL IS PINNED: the action by the SHA of its commit, and `zizmor` itself by the exact version
-# below, so a new release of either is a diff someone reads before it changes what is flagged. Its
-# online audits ask the GitHub API about the actions a workflow uses (a SHA that is not on the tag it
-# claims); they use this job's read-only token.
+# THE TOOL IS THE RELEASE BINARY, pinned by version and by SHA-256 below, not an action: the
+# repository allows GitHub's own actions and the few it lists, and the scanner of the workflows
+# should not need one more. Moving to a newer release is a diff of three lines (the version, the
+# file, the hash) taken from the release's own digests. Its online audits ask the GitHub API about
+# the actions a workflow uses (a SHA that is not on the tag it claims); they use this job's
+# read-only token.
 #
 # IT RUNS on a pull request that touches a workflow or this file, on `main` when one changes, and by
 # hand. It is not one of the checks a pull request must carry until the maintainer makes it one.
@@ -34,6 +36,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  ZIZMOR_VERSION: 1.32.0
+  ZIZMOR_SHA256: bb110cc765eca9cd7efb2e284a956be5974c60027b0970f16397d86208a9957b
+
 jobs:
   zizmor:
     name: workflows (zizmor)
@@ -41,14 +47,22 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
-      actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
-        with:
-          version: 1.32.0
-          inputs: .github/workflows
-          advanced-security: false
+      - name: Install zizmor at the pinned release
+        run: |
+          set -euo pipefail
+          file="zizmor-x86_64-unknown-linux-gnu.tar.gz"
+          curl --fail --silent --show-error --location --retry 3 \
+            "https://github.com/zizmorcore/zizmor/releases/download/v${ZIZMOR_VERSION}/${file}" -o "$file"
+          echo "${ZIZMOR_SHA256}  ${file}" | sha256sum --check --strict
+          tar -xzf "$file" zizmor
+          ./zizmor --version
+
+      - name: Audit the workflows
+        env:
+          ZIZMOR_GITHUB_TOKEN: ${{ github.token }}
+        run: ./zizmor --no-progress --format github .github/workflows

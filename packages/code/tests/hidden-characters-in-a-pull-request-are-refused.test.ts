@@ -319,11 +319,13 @@ describe('the four workflows of the security checks', () => {
     expect(text).toMatch(/^ {6}pull-requests: write$/m);
   });
 
-  it('zizmor is pinned to a version, fails the job, and has no blanket configuration', () => {
+  it('zizmor is the release binary, pinned by version and hash, fails the job, and has no blanket configuration', () => {
     const text = code('.github/workflows/zizmor.yml');
-    expect(text).toMatch(/version: \d+\.\d+\.\d+$/m);
-    expect(text).toContain('advanced-security: false');
-    expect(text).toContain('inputs: .github/workflows');
+    expect(text).toMatch(/ZIZMOR_VERSION: \d+\.\d+\.\d+$/m);
+    expect(text).toMatch(/ZIZMOR_SHA256: [0-9a-f]{64}$/m);
+    expect(text).toContain('sha256sum --check --strict');
+    expect(text).toContain('./zizmor --no-progress --format github .github/workflows');
+    expect(text).not.toContain('zizmor-action');
     expect(text).toMatch(
       /pull_request:\n\s+branches: \[main\]\n\s+paths:\n\s+- '\.github\/workflows\/\*\*'/,
     );
