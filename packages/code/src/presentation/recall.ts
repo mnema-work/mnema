@@ -136,7 +136,6 @@ const HOW_A_NOTE_ENTERS = [
   'handed it.',
 ];
 
-/** What a kind with nothing recorded says, when the other kind has something. */
 /** How many of the last session's decisions are named; the rest are counted. */
 const DECISIONS_NAMED = 5;
 
@@ -177,7 +176,7 @@ function lastSessionSection(last: LastSession): string[] {
 /**
  * The decisions the last session recorded, by label and state. A session that recorded hundreds
  * (a record imported, a batch accepted) would print them all on one line and push the text past
- * what a hook carries, so past {@link DECISIONS_NAMED} the first few are named and the rest counted.
+ * what a hook carries, so past {@link DECISIONS_NAMED} the newest few (the journal is in creation order, so the last ones) are named and the rest counted.
  */
 function decisionsLine(decisions: LastSession['decisions']): string {
   const said = (one: LastSession['decisions'][number]): string =>
@@ -185,10 +184,11 @@ function decisionsLine(decisions: LastSession['decisions']): string {
   if (decisions.length <= DECISIONS_NAMED) {
     return `- Decisions it recorded: ${decisions.map(said).join('; ')}`;
   }
-  const named = decisions.slice(0, DECISIONS_NAMED).map(said).join('; ');
-  return `- Decisions it recorded: ${decisions.length}, among them ${named}; and ${decisions.length - DECISIONS_NAMED} more`;
+  const named = decisions.slice(-DECISIONS_NAMED).map(said).join('; ');
+  return `- Decisions it recorded: ${decisions.length}; the newest: ${named}; and ${decisions.length - DECISIONS_NAMED} more`;
 }
 
+/** What a kind with nothing recorded says, when the other kind has something. */
 const NO_MEMORY = 'No memory is recorded here.';
 const NO_OBSERVATION = 'No observation is recorded here.';
 

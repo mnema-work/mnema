@@ -359,7 +359,7 @@ describe('the last session of a record with hundreds of decisions', () => {
   it('names a few of its decisions and counts the rest, on one line', () => {
     const line = recallDocument(withNotes).find((one) => one.startsWith('- Decisions it recorded'));
     expect(line).toBe(
-      '- Decisions it recorded: 700, among them ADR-1: accepted; ADR-2: accepted; ADR-3: accepted; ADR-4: accepted; ADR-5: accepted; and 695 more',
+      '- Decisions it recorded: 700; the newest: ADR-696: accepted; ADR-697: accepted; ADR-698: accepted; ADR-699: accepted; ADR-700: accepted; and 695 more',
     );
   });
 

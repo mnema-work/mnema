@@ -38,6 +38,13 @@ import { hookTextOf } from '../host-names.js';
 import { hookHostOf, hookHostOption, switchedOff } from './brief.js';
 import { here } from './context.js';
 import { writeLines } from './io.js';
+
+/**
+ * What a person running the hook form by hand reads on the error stream when the notes exist but
+ * are longer than the room a hook has: the hook hands nothing then, and this says why.
+ */
+const NOTHING_HANDED_BECAUSE_IT_DOES_NOT_FIT =
+  'recall: the notes are longer than the room a hook has, so none were handed over';
 import { reportRefusal } from './report.js';
 import { type Declared, readsTheRecord, type Wiring } from './verb.js';
 
@@ -155,6 +162,9 @@ export function registerRecall(program: Command, wiring: Wiring): Declared {
                 ceiling.lengthOf,
               )
             : recallDocument(result);
+        if (opts.hook === true && document.length === 0 && recallDocument(result).length > 0) {
+          io.err(NOTHING_HANDED_BECAUSE_IT_DOES_NOT_FIT);
+        }
         if (opts.hook !== true) {
           for (const line of notice) io.err(render(line));
         } else if (document.length > 0) {
