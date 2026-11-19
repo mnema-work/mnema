@@ -339,6 +339,10 @@ function rangeOf(
   const length = checkpoint.toSeq - checkpoint.fromSeq + 1;
   let fallback: readonly ChainEntry[] = [];
   if (length <= 0) return fallback;
+  // The common case, a tail that does not fork: one candidate and one child at each step, so the
+  // range is the one path and the ruling folds its root, once.
+  const linear = linearPath(index, candidates, length);
+  if (linear !== undefined) return linear;
   for (const candidate of candidates) {
     const path: ChainEntry[] = [];
     const roots: Buffer[] = [];
@@ -371,6 +375,28 @@ function rangeOf(
     }
   }
   return fallback;
+}
+
+/**
+ * The one path of `length` entries from the one candidate when nothing on it forks, or undefined
+ * when there is more than one way to go (then every path is searched, its root folded as it goes).
+ */
+function linearPath(
+  index: Index,
+  candidates: readonly ChainEntry[],
+  length: number,
+): readonly ChainEntry[] | undefined {
+  if (candidates.length !== 1) return undefined;
+  const path: ChainEntry[] = [candidates[0] as ChainEntry];
+  while (path.length < length) {
+    const at = path[path.length - 1] as ChainEntry;
+    const next = index.children.get(at.link.hash) ?? [];
+    if (next.length > 1) return undefined;
+    const [child] = next;
+    if (child === undefined || child.link.seq !== at.link.seq + 1) return path;
+    path.push(child);
+  }
+  return path;
 }
 
 function foldOnce(question: FoldQuestion, signatures: 'the-last' | 'every'): TailSigned {

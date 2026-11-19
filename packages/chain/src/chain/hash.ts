@@ -106,9 +106,22 @@ export function writtenAsStored(value: CanonicalValue): WrittenEvent {
   return { value } as WrittenEvent;
 }
 
+/**
+ * The canonical bytes of each written event, computed once: a read asks them of every line twice,
+ * for its entry hash and for the content root of the checkpoint that covers it. A written event is
+ * never changed once made (it is the line as it reached the disk, or as it is about to), so the
+ * bytes of one object are the bytes for as long as it lives, and they go with it.
+ */
+const BYTES = new WeakMap<WrittenEvent, Uint8Array>();
+
 /** The canonical bytes of the written event: the content every proof is over. */
 export function eventBytes(written: WrittenEvent): Uint8Array {
-  return canonicalBytes(written.value);
+  let bytes = BYTES.get(written);
+  if (bytes === undefined) {
+    bytes = canonicalBytes(written.value);
+    BYTES.set(written, bytes);
+  }
+  return bytes;
 }
 
 /**
