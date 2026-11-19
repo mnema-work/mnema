@@ -203,6 +203,19 @@ describe('the same globs reach every instrument this repository ships or runs', 
       'plugin/server/launch.mjs',
     ]);
   });
+
+  it('runs the one Biome the manifest pins, and the schema in biome.json names that same version', () => {
+    const pinned = readConfig<{ devDependencies: Record<string, string> }>(
+      join(REPO, 'package.json'),
+    ).devDependencies['@biomejs/biome'];
+    const installed = readConfig<{ version: string }>(
+      join(REPO, 'node_modules', '@biomejs', 'biome', 'package.json'),
+    ).version;
+    const schema = readConfig<{ $schema: string }>(join(REPO, 'biome.json')).$schema;
+    expect(pinned).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(installed).toBe(pinned);
+    expect(schema).toBe(`https://biomejs.dev/schemas/${pinned}/schema.json`);
+  });
 });
 
 describe('the lint reaches a ruler, and it is the includes that carry it there', () => {

@@ -159,6 +159,11 @@ class Cursor {
     return this.bytes[this.at++] as number;
   }
 
+  /** How many bytes lie past the cursor: a proof is over when this is zero. */
+  left(): number {
+    return this.bytes.length - this.at;
+  }
+
   /** Puts back the byte just read: the format's tags are read then dispatched on. */
   back(): void {
     this.at -= 1;
@@ -290,7 +295,11 @@ export function parseOtsProof(bytes: Buffer): OtsProof {
     throw new UnreadableProofError('the proof is not over a SHA-256 digest');
   }
   const digest = cursor.take(32);
-  return { version, digest, timestamp: readTimestamp(cursor) };
+  const timestamp = readTimestamp(cursor);
+  if (cursor.left() > 0) {
+    throw new UnreadableProofError(`${cursor.left()} trailing bytes after the proof`);
+  }
+  return { version, digest, timestamp };
 }
 
 // ---------------------------------------------------------------------------

@@ -46,7 +46,7 @@
     }
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.6.8",
+    "@biomejs/biome": "2.6.8",
     "@types/node": "^26.6.6",
     "@vitest/coverage-v8": "^4.1.12",
     "dependency-cruiser": "18.7.2",

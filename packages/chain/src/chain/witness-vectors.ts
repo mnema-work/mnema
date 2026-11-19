@@ -67,3 +67,14 @@ export const BLOCK_800000_TIME = 1690168629;
 
 /** Its height, so no test spells the number twice. */
 export const BLOCK_800000_HEIGHT = 800000;
+
+/**
+ * A detached proof the grammar reads to its end and then keeps one byte after: the magic,
+ * version 1, a SHA-256 digest of zeroes, one attestation of an unknown type with an empty
+ * payload, and a stray `ff`.
+ *
+ * Both readers are held to it (`ots.test.ts` runs the second one over the same bytes): a
+ * proof is the bytes the grammar accounts for and no others, so each refuses the stray one.
+ */
+export const PROOF_WITH_A_TRAILING_BYTE_HEX =
+  '004f70656e54696d657374616d7073000050726f6f6600bf89e2e884e892940108000000000000000000000000000000000000000000000000000000000000000000000000000000000000ff';

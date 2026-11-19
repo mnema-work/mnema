@@ -105,6 +105,13 @@ describe('importsAgents', () => {
   ])('is false for %s', (_name, text, file) => {
     expect(importsAgents(text, file)).toBe(false);
   });
+
+  it('reads a long run of unclosed comments in under a second', () => {
+    const text = '<!-- x\n'.repeat(20_000);
+    const start = performance.now();
+    expect(importsAgents(text)).toBe(false);
+    expect(performance.now() - start).toBeLessThan(1_000);
+  });
 });
 
 let sandbox: string;

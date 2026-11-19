@@ -699,6 +699,72 @@ describe('repairTail, when the signed checkpoints do not hold: the whole tail', 
     expect(readFileSync(aside).equals(revision)).toBe(true);
   });
 
+  it.each([
+    { signed: ['fifth'], unsigned: ['unsigned', 'unsigned too', 'and a third'], name: 'shorter' },
+    {
+      signed: ['fifth', 'sixth', 'seventh'],
+      unsigned: ['unsigned'],
+      name: 'longer',
+    },
+  ])(
+    'keeps the signed branch at a fork when it is $name than the revision’s unsigned window, and keeps the revision’s aside',
+    ({ signed, unsigned }) => {
+      // The same fork as above, with the two branches of different lengths: the signed events fill
+      // seq 4 to 3 + signed.length, the revision's unsigned ones seq 4 to 3 + unsigned.length.
+      writeMore(...signed);
+      const whole = readFileSync(segment);
+      const wholeCheckpoints = readFileSync(checkpointsFile());
+      const base = held().slice(0, 4);
+      for (const content of unsigned) {
+        const before = base[base.length - 1] as Stored;
+        const next: Stored = JSON.parse(JSON.stringify(before));
+        next.event.payload.content = content;
+        next.link = {
+          ...before.link,
+          seq: before.link.seq + 1,
+          prev: before.link.hash,
+          hash: entryHash({
+            event: writtenAsStored(next.event as never),
+            tail: before.link.tail,
+            seq: before.link.seq + 1,
+            prev: before.link.hash,
+          }),
+        };
+        base.push(next);
+      }
+      const revision = Buffer.from(
+        `${base.map((one) => canonicalStringify(one as never)).join('\n')}\n`,
+      );
+      rewrite(1, 'FORGED');
+      rmSync(writtenHeadPath({ root }, tail));
+
+      const last = 3 + signed.length;
+      const done = repair({ committed: new Map([['000001.jsonl', revision]]) });
+      expect(done).toMatchObject({
+        ok: true,
+        whole: {
+          keptAbove: [{ from: 4, to: last }],
+          relinked: [{ from: 4, to: last }],
+          removed: [
+            { from: 1, to: 1 },
+            // The range taken out is the revision's unsigned branch, whatever its length: seq 4
+            // to 3 + unsigned.length, not the signed branch's.
+            { from: 4, to: 3 + unsigned.length },
+          ],
+        },
+      });
+      expect(readFileSync(segment).equals(whole)).toBe(true);
+      expect(readFileSync(checkpointsFile()).equals(wholeCheckpoints)).toBe(true);
+      expect(held().map((one) => one.link.seq)).toEqual(
+        Array.from({ length: last + 1 }, (_, seq) => seq),
+      );
+      expect(verified()).toBe(true);
+      const aside = join(root, 'locks', `${tail}.000001.jsonl.1.revision.before-repair`);
+      expect(done.ok && done.kept).toContain(aside);
+      expect(readFileSync(aside).equals(revision)).toBe(true);
+    },
+  );
+
   it('removes a segment the revision does not hold and nothing proves, keeping it aside', () => {
     rewrite(1, 'FORGED');
     const extra = join(root, 'tails', tail, '000002.jsonl');

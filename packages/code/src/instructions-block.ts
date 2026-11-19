@@ -478,6 +478,13 @@ export function importsAgents(text: string, file = 'CLAUDE.md'): boolean {
   let fence: { readonly char: string; readonly length: number } | undefined;
   let hidden = false;
   let found = false;
+  // Markers are looked up once for the whole text, not once per line. The read position only moves forward:
+  // `nextOpen` is the first `<!--` at or after it (or -1 when none is left), and `noCloseFrom` is the first
+  // open after which no `-->` exists, so no later open can close either. A -1 stays -1 as the position moves
+  // on, so a text without markers is scanned in one pass and a run of unclosed comments never rescans to the
+  // end on every line.
+  let nextOpen = source.indexOf('<!--', 0);
+  let noCloseFrom = Infinity;
   // ONE PASS, IN THE ORDER OF THE TEXT: inside a fence a line is only looked at as the fence's end, and outside one a
   // comment is taken out as the line is read, so a `<!--` shown in a code block hides nothing that follows it.
   for (let at = 0; at <= source.length; ) {
@@ -493,8 +500,13 @@ export function importsAgents(text: string, file = 'CLAUDE.md'): boolean {
       let visible = '';
       let from = at;
       for (;;) {
-        const open = source.indexOf('<!--', from);
-        const close = open === -1 || open > end ? -1 : source.indexOf('-->', open + 4);
+        if (nextOpen !== -1 && nextOpen < from) nextOpen = source.indexOf('<!--', from);
+        const open = nextOpen;
+        let close = -1;
+        if (open !== -1 && open <= end && open < noCloseFrom) {
+          close = source.indexOf('-->', open + 4);
+          if (close === -1) noCloseFrom = open;
+        }
         if (close === -1) {
           visible += source.slice(from, end);
           break;

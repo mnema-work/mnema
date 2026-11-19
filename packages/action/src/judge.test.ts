@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { judge, MOST_ASKED, type PullRequest, type World } from './judge.js';
+import { readEvents } from './record.js';
 
 const tail = (...events: [string, string, Record<string, unknown>?][]): string =>
   events
@@ -54,6 +55,8 @@ function worldWith(
     git: {
       hasCommit: () => over.hasCommit ?? true,
       recordAt: (ref) => (over.noRecord ? [] : [ref === 'HEAD' ? grown : (over.base ?? born)]),
+      provenAt: (ref) =>
+        new Set(readEvents(ref === 'HEAD' ? grown : (over.base ?? born)).map((e) => e.hash)),
     },
     mnema: {
       verify: (base) => {

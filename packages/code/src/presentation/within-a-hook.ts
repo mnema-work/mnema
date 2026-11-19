@@ -191,3 +191,20 @@ export function fitWhole(
   }
   return fitting;
 }
+
+/**
+ * The text a verb hands a hook, or NO lines when it is above `room`.
+ *
+ * {@link fitWhole} falls back on the fixed part of a text when not one item fits, and that part
+ * can itself be above the room: for a room that is a share of the ceiling (one path's notice
+ * among several) that is the caller's to sum, but for a room that IS the ceiling, a text over it
+ * is replaced by the host with a file path, in silence. A verb whose room is the whole ceiling
+ * hands nothing instead, which says the same thing without pretending to have said more.
+ */
+export function withinTheRoom(
+  lines: string[],
+  room: number,
+  lengthOf: (text: string) => number = unitsOf,
+): string[] {
+  return printedLength(lines, lengthOf) <= room ? lines : [];
+}

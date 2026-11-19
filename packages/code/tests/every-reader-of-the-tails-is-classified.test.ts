@@ -207,8 +207,12 @@ const READERS: Readonly<Record<string, Classified>> = {
   },
   // The action: what a pull request's comment says of the record it changes.
   'packages/action/src/record.ts': {
-    reads: 'as written',
-    why: 'it labels the decisions a pull request moves, from the lines it brings, each hash checked; it decides no rule',
+    reads: 'proven',
+    why: 'it labels the decisions a pull request moves from the lines it brings, each hash checked and each proven by a signed checkpoint; it decides no rule',
+    besides: {
+      readTail: 'it reads a tail to fold its checkpoints and hands on the hashes they prove, alone',
+      parseEntry: 'it parses each line it was handed, and keeps only the ones the fold proved',
+    },
   },
   // The context: what an agent is handed of the record.
   'packages/context/src/intelligence/antipatterns.ts': {
@@ -353,6 +357,38 @@ function readersInTheSource(): string[] {
     .sort();
 }
 
+/**
+ * What each reader of the bytes is called in a file: the local name of every `{ name as alias }`
+ * an import or a re-export brings in, so `import { subjectEvents as raw }` is still the reader of
+ * the bytes it is. The name itself needs no entry: it is matched as written.
+ */
+function aliasesOfReaders(source: string, readers: readonly string[]): Map<string, string> {
+  const aliases = new Map<string, string>();
+  const specifiers = /\b(?:import|export)\s+(?:type\s+)?\{([^}]*)\}\s*from\b/g;
+  for (const [, list] of codeOnly(source).matchAll(specifiers)) {
+    for (const part of (list as string).split(',')) {
+      const named = /^\s*(?:type\s+)?([A-Za-z_$][\w$]*)\s+as\s+([A-Za-z_$][\w$]*)\s*$/.exec(part);
+      if (named !== null && readers.includes(named[1] as string)) {
+        aliases.set(named[2] as string, named[1] as string);
+      }
+    }
+  }
+  return aliases;
+}
+
+/** The reader of the bytes `source` calls, by its name or by an alias, outside what `allowed` names. */
+function callsToReaders(source: string, allowed: readonly string[]): string[] {
+  const forbidden = RAW.filter((name) => !allowed.includes(name));
+  const code = codeOnly(source);
+  // The name is a call wherever it stands (`chain.subjectEvents(` too); an alias only where it
+  // is a bare name, so a method of the same spelling is not taken for the import.
+  const aliases = [...aliasesOfReaders(source, forbidden)].map(([alias]) => alias);
+  const alternatives = [`\\b(?:${forbidden.join('|')})`];
+  if (aliases.length > 0) alternatives.push(`(?<![\\w$.])(?:${aliases.join('|')})`);
+  const found = new RegExp(`(${alternatives.join('|')})\\(`, 'g');
+  return [...code.matchAll(found)].map((one) => one[1] as string);
+}
+
 describe('every reader of the tails is classified', () => {
   it('classifies every file that names a reader, and no file that does not', () => {
     expect(Object.keys(READERS).sort()).toEqual(readersInTheSource());
@@ -362,12 +398,30 @@ describe('every reader of the tails is classified', () => {
     for (const [path, { reads, besides }] of Object.entries(READERS)) {
       if (reads !== 'proven') continue;
       // A policy reader reaches the tails only through the bridge, but for the calls it names.
-      const allowed = Object.keys(besides ?? {});
-      const calls = new RegExp(
-        `\\b(${RAW.filter((name) => !allowed.includes(name)).join('|')})\\(`,
-      );
-      const text = codeOnly(readFileSync(join(REPO_ROOT, path), 'utf-8'));
-      expect(calls.test(text), `${path} calls a reader of the bytes as written`).toBe(false);
+      const text = readFileSync(join(REPO_ROOT, path), 'utf-8');
+      expect(
+        callsToReaders(text, Object.keys(besides ?? {})),
+        `${path} calls a reader of the bytes as written`,
+      ).toEqual([]);
     }
+  });
+
+  it('sees a reader of the bytes called under another name', () => {
+    const aliased = [
+      "import { type ChainEntry, subjectEvents as raw } from '@mnema/chain';",
+      'import {',
+      '  readTail as read,',
+      "} from '@mnema/chain';",
+      'export const a = raw(layout, id);',
+      'export const b = read(layout, tail, upcasters);',
+    ].join('\n');
+    expect(callsToReaders(aliased, [])).toEqual(['raw', 'read']);
+    // A name the file's reason allows is allowed under its alias too.
+    expect(callsToReaders(aliased, ['subjectEvents'])).toEqual(['read']);
+    // A method that happens to be called like an alias is not the import.
+    expect(callsToReaders("import { readTail as read } from 'x'; this.read(1);", [])).toEqual([]);
+    // And the plain name is still seen.
+    expect(callsToReaders('subjectEvents(layout, id);', [])).toEqual(['subjectEvents']);
+    expect(callsToReaders('chain.subjectEvents(layout, id);', [])).toEqual(['subjectEvents']);
   });
 });

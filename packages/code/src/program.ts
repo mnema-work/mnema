@@ -460,10 +460,12 @@ function sayAnUpdateNotApplied(
   program.hook('preAction', async (_program, action) => {
     if (topLevelVerbOf(action) === MCP_VERB || topLevelVerbOf(action) === 'upgrade') return;
     try {
-      const { updateLineOnce } = await import('./update-notice.js');
+      const { noteTheVersionOnTheFirstVerb, updateLineOnce } = await import('./update-notice.js');
       const { cwd, env } = here();
-      const line = updateLineOnce(resolveTrees(cwd, env).global, VERSION, true);
+      const dir = resolveTrees(cwd, env).global;
+      const line = updateLineOnce(dir, VERSION, true);
       if (line !== undefined) io.err(render(fact(line, 0)));
+      if (topLevelVerbOf(action) !== 'init') noteTheVersionOnTheFirstVerb(dir);
     } catch {
       // See above.
     }

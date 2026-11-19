@@ -217,9 +217,9 @@ function spawnTarget(program, args, platform = process.platform) {
   if ([program, ...args].some((text) => NOT_QUOTABLE.test(text)))
     return { command: program, args, shell: false, refused: true };
   const word = (/** @type {string} */ text) =>
-    [...text].every((char) => SAFE_IN_A_SHELL.includes(char)) ? text : '"' + text + '"';
+    [...text].every((char) => SAFE_IN_A_SHELL.includes(char)) ? text : `"${text}"`;
   return {
-    command: ['"' + program + '"', ...args.map(word)].join(' '),
+    command: [`"${program}"`, ...args.map(word)].join(' '),
     args: [],
     shell: true,
     refused: false,
