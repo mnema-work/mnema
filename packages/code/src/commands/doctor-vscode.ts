@@ -43,7 +43,7 @@ export function settingsCandidates(
 }
 
 /** Raised when the text cannot be scanned safely; the message is the reason. */
-class Unsafe extends Error {}
+export class Unsafe extends Error {}
 
 function skipTrivia(text: string, from: number): number {
   let i = from;
@@ -92,7 +92,7 @@ function skipValue(text: string, from: number): number {
   return i;
 }
 
-interface Member {
+export interface Member {
   readonly key: string;
   /** Index of the key's opening quote. */
   readonly start: number;
@@ -102,13 +102,13 @@ interface Member {
   readonly commaAt: number;
 }
 
-interface ObjectScan {
+export interface ObjectScan {
   readonly open: number;
   readonly close: number;
   readonly members: Member[];
 }
 
-function objectAt(text: string, open: number): ObjectScan {
+export function objectAt(text: string, open: number): ObjectScan {
   const members: Member[] = [];
   let i = skipTrivia(text, open + 1);
   while (text[i] !== '}') {
@@ -136,7 +136,7 @@ function objectAt(text: string, open: number): ObjectScan {
 }
 
 /** The top-level object, or `undefined` when the file holds only whitespace and comments. */
-function rootObject(text: string): ObjectScan | undefined {
+export function rootObject(text: string): ObjectScan | undefined {
   const open = skipTrivia(text, 0);
   if (open >= text.length) return undefined;
   if (text[open] !== '{') throw new Unsafe('the file does not hold one object');
@@ -147,7 +147,7 @@ function rootObject(text: string): ObjectScan | undefined {
   return scan;
 }
 
-function only<T>(found: T[], what: string): T | undefined {
+export function only<T>(found: T[], what: string): T | undefined {
   if (found.length > 1) throw new Unsafe(`${what} appears more than once`);
   return found[0];
 }

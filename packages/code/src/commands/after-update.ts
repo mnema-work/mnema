@@ -15,11 +15,21 @@
  *   said     not this verb's to do: the plugin a host keeps, which only the host updates. The words are the
  *            doctor's, from the same function.
  *
- * Nothing here runs npm, a host's `plugin` command, or writes into `~/.claude.json`, and no step writes a file the
- * team shares without the person's yes but the record's own attribute line, which `ensureTree` writes at every
- * write of the record anyway. `dryRun` writes nothing at all.
+ * Nothing here runs npm or a host's `plugin` command, and no step writes a file the team shares without the
+ * person's yes but the record's own attribute line, which `ensureTree` writes at every write of the record anyway.
+ * The one write into the host's own `~/.claude.json` is the mnema server declared there a second time, cut by its
+ * bytes after a copy of the file is kept beside it. `dryRun` writes nothing at all.
  */
 
+import { createHash, randomBytes } from 'node:crypto';
+import {
+  constants,
+  copyFileSync,
+  readFileSync,
+  renameSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { ensureTree, mergeLineIsMissing } from '@mnema/chain';
 import { resolveTrees } from '@mnema/core';
@@ -28,9 +38,12 @@ import { oneLine } from '../one-line.js';
 import {
   type DoctorContext,
   fixVscode,
+  type McpDeclarations,
+  mcpDeclarations,
   pluginsLeftBehind,
   vscodeListsAFolderThatIsGone,
 } from './doctor.js';
+import { planRemoval, type TablePath } from './doctor-mcp.js';
 import {
   AUTOSTASH_APPLIES_TO_EVERY_FILE,
   fixMergeDriver,
@@ -45,16 +58,72 @@ export interface AfterUpdateContext extends DoctorContext {
 
 /** One thing an update leaves, and what it costs the person. */
 export interface UpdateStep {
-  readonly topic: 'instructions' | 'record' | 'vscode' | 'merge-driver' | 'plugin';
+  readonly topic: 'instructions' | 'record' | 'vscode' | 'mcp' | 'merge-driver' | 'plugin';
   readonly class: 'applied' | 'asked' | 'said';
   /** What it is and what it changes, in a sentence. */
   readonly line: string;
   /** The command that does it by hand, where there is one. */
   readonly command?: string;
+  /** The `mcp` step: the file it edits, and the entries of which table it drops. */
+  readonly edit?: {
+    readonly file: string;
+    readonly drops: readonly Drop[];
+    /** The hash of the file as the plan read it: a file that changed since is not written. */
+    readonly seen: string;
+  };
+}
+
+interface Drop {
+  readonly table: TablePath;
+  readonly names: readonly string[];
 }
 
 const DOCTOR_MERGE = 'mnema doctor --fix merge-driver';
 const DOCTOR_VSCODE = 'mnema doctor --fix vscode';
+
+/**
+ * What an update leaves of the mnema MCP server declared twice. In the person's own `~/.claude.json` an entry goes when
+ * the server is declared anywhere else the host reads and that works here (an enabled plugin, the entries of the project's `.mcp.json` it approved), and of two declarations
+ * there alone the user one stays. The project's committed `.mcp.json` goes only beside an enabled plugin that serves the
+ * same tools, and only asked: a teammate without the plugin may rely on it.
+ */
+function mcpSteps(found: McpDeclarations): UpdateStep[] {
+  const steps: UpdateStep[] = [];
+  const key = found.projectRoot;
+  const here: Drop[] = [
+    { table: ['mcpServers'], names: found.user },
+    { table: ['projects', key, 'mcpServers'], names: found.project },
+  ];
+  const kept = found.working > 0;
+  let leave = kept ? 0 : 1;
+  const drops = here
+    .map((one) => ({ ...one, names: one.names.filter(() => leave-- <= 0) }))
+    .filter((one) => one.names.length > 0);
+  if (drops.length > 0) {
+    const names = drops.flatMap((one) => one.names).map(oneLine);
+    steps.push({
+      topic: 'mcp',
+      class: 'applied',
+      line: `${oneLine(found.claudeJson)} declares the mnema MCP server again (${names.join(', ')}) where it is declared once already, so a session is offered every tool twice: the entr${names.length === 1 ? 'y goes' : 'ies go'}, no other byte of the file changes, and a copy of it is kept beside it.`,
+      command: 'claude mcp remove mnema --scope user',
+      edit: { file: found.claudeJson, drops, seen: hashOf(found.claudeJson) },
+    });
+  }
+  if (found.pluginWorks && found.committed.names.length > 0) {
+    steps.push({
+      topic: 'mcp',
+      class: 'asked',
+      line: `${oneLine(found.committed.file)} declares the mnema MCP server and so does the installed plugin, so a session is offered every tool twice: this removes the entry from that file, which the team shares and commits; whoever works here without the plugin loses the server.`,
+      command: 'claude mcp remove mnema --scope project',
+      edit: {
+        file: found.committed.file,
+        drops: [{ table: ['mcpServers'], names: found.committed.names }],
+        seen: hashOf(found.committed.file),
+      },
+    });
+  }
+  return steps;
+}
 
 /** The files of the project that hold an earlier version's instructions block, as the project's paths. */
 function outdatedInstructions(root: string): string[] {
@@ -99,6 +168,7 @@ export function whatAnUpdateAsks(ctx: AfterUpdateContext): readonly UpdateStep[]
       command: DOCTOR_VSCODE,
     });
   }
+  steps.push(...mcpSteps(mcpDeclarations(ctx)));
   const forDriver = { ...ctx, ...(attributeWillBeWritten ? { attributeWillBeWritten } : {}) };
   if (mergeDriverLines(forDriver).length > 0) {
     const would = fixMergeDriver(forDriver, { dryRun: true, driver: ctx.driver });
@@ -131,6 +201,69 @@ const WHEN: Readonly<Record<'dry' | 'plan', Readonly<Record<UpdateStep['class'],
 
 function said(label: string, step: UpdateStep): string {
   return `${label} · ${step.topic}: ${step.line}${step.command === undefined ? '' : ` (${step.command})`}`;
+}
+
+const sha = (text: string): string => createHash('sha256').update(text).digest('hex');
+
+/** The hash of a file as it is now, or of nothing where it cannot be read. */
+function hashOf(file: string): string {
+  try {
+    return sha(readFileSync(file, 'utf-8'));
+  } catch {
+    return '';
+  }
+}
+
+/** Cuts the entries from the file, after a copy beside it where the file is the person's own; a refusal writes nothing. */
+function dropDeclarations(
+  edit: NonNullable<UpdateStep['edit']>,
+  keepACopy: boolean,
+): { readonly lines: readonly string[]; readonly failed: boolean } {
+  const { file, drops } = edit;
+  const where = oneLine(file);
+  const original = readFileSync(file, 'utf-8');
+  if (sha(original) !== edit.seen) {
+    return {
+      lines: [
+        `failed · mcp: ${where} changed since the plan read it (the host may be writing it): it was not written; run \`mnema upgrade\` again.`,
+      ],
+      failed: true,
+    };
+  }
+  let text = original;
+  const removed: string[] = [];
+  for (const drop of drops) {
+    const plan = planRemoval(text, drop.table, drop.names);
+    if (plan.kind === 'refused') {
+      return {
+        lines: [
+          `failed · mcp: ${where} was not written, nothing changed: ${oneLine(plan.why)}; remove the entry by hand or with \`claude mcp remove\`.`,
+        ],
+        failed: true,
+      };
+    }
+    if (plan.kind === 'change') {
+      text = plan.text;
+      removed.push(...plan.removed);
+    }
+  }
+  if (text === original)
+    return { lines: [`applied · mcp: nothing to remove in ${where}.`], failed: false };
+  let kept = '';
+  if (keepACopy) {
+    const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
+    const copy = `${file}.mnema-backup-${stamp}-${randomBytes(3).toString('hex')}`;
+    copyFileSync(file, copy, constants.COPYFILE_EXCL);
+    kept = `; the file as it was is kept at ${oneLine(copy)}`;
+  }
+  // Beside the file and renamed over it, so a reader never sees half of it; and the mode the host gave it stays.
+  const beside = `${file}.mnema-tmp-${randomBytes(3).toString('hex')}`;
+  writeFileSync(beside, text, { mode: statSync(file).mode & 0o777, flag: 'wx' });
+  renameSync(beside, file);
+  return {
+    lines: [`applied · mcp: ${where}: removed ${removed.map(oneLine).join(', ')}${kept}.`],
+    failed: false,
+  };
 }
 
 /** Does one `applied` or confirmed `asked` step, and says what it did. */
@@ -175,6 +308,9 @@ function doStep(
         ),
         failed: fixed.refused,
       };
+    }
+    if (step.topic === 'mcp' && step.edit !== undefined) {
+      return dropDeclarations(step.edit, step.class === 'applied');
     }
     if (step.topic === 'merge-driver') {
       const fixed = fixMergeDriver(ctx, { dryRun: false, driver: ctx.driver });

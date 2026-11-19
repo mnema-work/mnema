@@ -30,7 +30,8 @@ export PATH="$HOME/.local/bin:$PATH"
 Add the `export` line to your shell's startup file so it lasts.
 
 To update, run the same install again, then `mnema upgrade` in each project: it brings that project and this
-machine up to the new version and asks before anything that changes how the repository behaves
+machine up to the new version and asks before anything that changes how the repository behaves (it may also remove
+the mnema server entry that your `~/.claude.json` declares a second time, after keeping a copy of the file)
 ([what it does](reference/cli/upgrade.md#after-installing-a-newer-mnema)). Until `mnema upgrade` has run on a machine
 after a newer version was installed, the first command you run there at a terminal says so in one line, once, and the
 first reply an agent's connection gets carries a note for you to run it; a machine where mnema was just installed says
