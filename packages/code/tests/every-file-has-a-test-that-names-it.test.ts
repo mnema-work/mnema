@@ -1530,7 +1530,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-repository-says-where-it-lives.test.ts': 5,
   'packages/code/tests/the-rule-has-an-address.test.ts': 11,
   'packages/code/tests/the-rule-reaches-the-writing.test.ts': 15,
-  'packages/code/tests/the-rulers-are-read-by-the-rules.test.ts': 7,
+  'packages/code/tests/the-rulers-are-read-by-the-rules.test.ts': 6,
   'packages/code/tests/the-rules-land-beside-the-write.test.ts': 15,
   'packages/code/tests/the-runtime-floor-is-declared-once.test.ts': 6,
   'packages/code/tests/the-sampler-counts-or-refuses.test.ts': 6,
