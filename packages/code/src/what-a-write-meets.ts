@@ -402,26 +402,60 @@ function unsignedRefusal(facts: readonly ScopedLinkBreak[], opening: string): st
   const trees = [...new Set(withheld.map((fact) => fact.scope))];
   const why = withheld.some((fact) => fact.checkpoint?.why === 'missing-signed')
     ? 'a signed fact that is missing'
-    : withheld.every(
-          (fact) =>
-            fact.checkpoint?.why === 'unproven-beyond-one-write' ||
-            fact.checkpoint?.why === 'no-checkpoint',
-        )
-      ? 'events no signature covers, more than one write leaves'
-      : 'a signed checkpoint that does not verify';
+    : withheld.every(founding)
+      ? 'a tail no checkpoint signs yet'
+      : withheld.every(
+            (fact) =>
+              fact.checkpoint?.why === 'unproven-beyond-one-write' ||
+              fact.checkpoint?.why === 'no-checkpoint',
+          )
+        ? 'events no signature covers, more than one write leaves'
+        : 'a signed checkpoint that does not verify';
   const cannotBeKnown =
     opening === 'The write is refused' ? ', so which rules apply to this path cannot be known' : '';
   return [
     `${opening}: ${trees.map((tree) => ALTERED_IN[tree].tree).join(' and ')} holds ${why}${cannotBeKnown}.`,
     ...linkBreakSentences(withheld),
-    ...trees.map((tree) => UNSIGNED_IN[tree](tailsOf(withheld, tree))),
+    ...trees.map((tree) => UNSIGNED_IN[tree](withheld.filter((fact) => fact.scope === tree))),
   ].join('\n\n');
 }
 
-/** The way out of a run no signature proves, by tree (ADR-408): only the public tree is in git. */
-const UNSIGNED_IN: Readonly<Record<Scope, (tails: readonly string[]) => string>> = {
-  public: (tails) =>
-    `Every write in the project is refused until the tail is as it was signed: put ${[...new Set(tails)].map((tail) => `tails/${tail}/`).join(' and ')} back as the repository last committed it, then run \`mnema verify\`.`,
+/** Whether a withheld run is a tail that holds events and no checkpoint that verifies. */
+function founding(fact: ScopedLinkBreak): boolean {
+  return fact.checkpoint?.why === 'no-checkpoint';
+}
+
+/** The tails named as a path of the public tree: `tails/<id>/`, joined by "and". */
+function tailPaths(facts: readonly ScopedLinkBreak[]): string {
+  return [...new Set(facts.map((fact) => fact.tail))].map((tail) => `tails/${tail}/`).join(' and ');
+}
+
+/**
+ * The way out of a run no signature proves, by tree (ADR-408): only the public tree is in git.
+ *
+ * A public tail that holds events and no checkpoint is what a tail committed right after its first
+ * write, before the checkpoint that write signs, looks like in a clone: putting it back as committed
+ * changes nothing there, and what signs it is one more write of the machine that wrote it, which
+ * its own signed note lets write. So that tail is told that way first, and the put back stays for
+ * a checkpoint that was committed and is gone, and for every other run, as it was.
+ */
+const UNSIGNED_IN: Readonly<Record<Scope, (withheld: readonly ScopedLinkBreak[]) => string>> = {
+  public: (withheld) => {
+    const founded = withheld.filter(founding);
+    const altered = withheld.filter((fact) => !founding(fact));
+    return [
+      ...(altered.length === 0
+        ? []
+        : [
+            `Every write in the project is refused until the tail is as it was signed: put ${tailPaths(altered)} back as the repository last committed it, then run \`mnema verify\`.`,
+          ]),
+      ...(founded.length === 0
+        ? []
+        : [
+            `Every write in the project is refused until a checkpoint signed by the tail’s key covers ${tailPaths(founded)}: on the machine that wrote it, write once more in this project, which signs one, and commit ${tailPaths(founded)}; then run \`mnema verify\`. If the repository committed a checkpoint of ${tailPaths(founded)} that is no longer there, put ${tailPaths(founded)} back as the repository last committed it instead.`,
+          ]),
+    ].join('\n\n');
+  },
   private: () =>
     `Every write in the project is refused until the tail is as it was signed. ${NOT_VERSIONED_ALTERED}`,
   global: () =>

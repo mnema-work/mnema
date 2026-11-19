@@ -126,11 +126,30 @@ describe('a write over a run no signature proves', () => {
     );
     expect(alteredEntrySentence([missing])).toContain('This record is not versioned');
     const beyond = withheld({ fromSeq: 0, toSeq: 2, why: 'no-checkpoint' }, 'global');
-    expect(alteredEntrySentence([beyond])).toContain(
-      'holds events no signature covers, more than one write leaves',
-    );
+    expect(alteredEntrySentence([beyond])).toContain('holds a tail no checkpoint signs yet');
     expect(alteredEntrySentence([beyond])).toContain('This closes every project on this machine');
     expect(() => refuseWhileAltered([failed])).toThrow(AlteredEntryError);
+  });
+
+  it('over a public tail no checkpoint signs, names the write that signs it before the put back', () => {
+    // A tail committed right after its first write, before the checkpoint that write signs, reads
+    // so in a clone: putting it back as committed changes nothing, a write of its owner signs it.
+    const founded = withheld({ fromSeq: 0, toSeq: 2, why: 'no-checkpoint' });
+    const refusal = refusalOfAnAlteredRecord([founded]) as string;
+    expect(refusal).toContain(
+      'The write is refused: the project’s public record holds a tail no checkpoint signs yet, so which rules apply to this path cannot be known.',
+    );
+    expect(refusal).toContain(
+      'Every write in the project is refused until a checkpoint signed by the tail’s key covers tails/tail-1/: on the machine that wrote it, write once more in this project, which signs one, and commit tails/tail-1/; then run `mnema verify`. If the repository committed a checkpoint of tails/tail-1/ that is no longer there, put tails/tail-1/ back as the repository last committed it instead.',
+    );
+    // Beside a checkpoint that does not verify, each tail gets its own way out.
+    const both = refusalOfAnAlteredRecord([failed, { ...founded, tail: 'tail-2' }]) as string;
+    expect(both).toContain('holds a signed checkpoint that does not verify');
+    expect(both).toContain(
+      'put tails/tail-1/ back as the repository last committed it, then run `mnema verify`.',
+    );
+    expect(both).toContain('on the machine that wrote it, write once more in this project');
+    expect(both).toContain('and commit tails/tail-2/');
   });
 
   it('is not refused over a run served and not yet signed', () => {

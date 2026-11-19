@@ -5,17 +5,17 @@
  * The record is written by the real binary in a sandbox (`init`, a rule that refuses writes under
  * `src/billing`, a note), and then edited on the disk the way the audit edited it, without the key:
  *
- *   - F2: the rule's title rewritten and every later line re-chained, the checkpoints kept: every
+ *   - The rule's title rewritten and every later line re-chained, the checkpoints kept: every
  *     hash and link holds, the root does not. The forged text is in no answer, the read says the
  *     checkpoint first, the gate denies and a write is refused.
- *   - F1: the same, with `checkpoints.jsonl` emptied. Here the signed note in `locks/` says
+ *   - The same, with `checkpoints.jsonl` emptied. Here the signed note in `locks/` says
  *     checkpoints were removed; elsewhere (no note) the tail holds events and no checkpoint.
- *   - F12: a line forged at seq 1 beside the honest one: the honest branch is proven and served,
+ *   - A line forged at seq 1 beside the honest one: the honest branch is proven and served,
  *     the forged one is withheld, the gate denies.
- *   - F8 and F10: a forged supersede of the rule, and a forged accepted rule over `src`,
+ *   - A forged supersede of the rule, and a forged accepted rule over `src`,
  *     appended unsigned at the end: one write's window, served and said as not yet signed, and
  *     governing nothing: the rule still refuses, nothing new refuses, and a write lands.
- *   - C1 and C6: the last checkpoint line not on the disk: nothing the read says denies, here (the
+ *   - The last checkpoint line not on the disk: nothing the read says denies, here (the
  *     note proves the events) or elsewhere (one write's window, served and not governing).
  */
 // @plants-damage
@@ -192,7 +192,7 @@ const CEILING = 60_000;
 const normalize = (said: string): string => said.replace(/[0-9a-f]{64}-[0-9a-f]{32}/g, '<tail>');
 
 // @proves only-what-is-signed-governs
-describe('F2: a range rewritten and re-chained under its checkpoint', () => {
+describe('a range rewritten and re-chained under its checkpoint', () => {
   it(
     'serves none of the forged text, says the checkpoint first, denies and refuses',
     () => {
@@ -215,7 +215,7 @@ describe('F2: a range rewritten and re-chained under its checkpoint', () => {
   );
 });
 
-describe('F1: rewritten, re-chained and the checkpoints emptied', () => {
+describe('rewritten, re-chained and the checkpoints emptied', () => {
   const damage = (at: Planted) => {
     rewriteTheRule(at);
     writeFileSync(checkpoints(at), '');
@@ -257,7 +257,7 @@ describe('F1: rewritten, re-chained and the checkpoints emptied', () => {
   );
 });
 
-describe('F12: a line forged at seq 1 beside the honest one', () => {
+describe('a line forged at seq 1 beside the honest one', () => {
   it(
     'serves the honest branch, withholds the forged one, and denies',
     () => {
@@ -296,9 +296,9 @@ describe('F12: a line forged at seq 1 beside the honest one', () => {
   );
 });
 
-describe('F8 and F10: forged facts appended unsigned at the end', () => {
+describe('forged facts appended unsigned at the end', () => {
   it(
-    'F8: a forged supersede of the rule is said and does not govern: the rule still refuses',
+    'a forged supersede of the rule is said and does not govern: the rule still refuses',
     () => {
       const seen = inEveryCacheState<Built>({
         found: (dir) => {
@@ -337,7 +337,7 @@ describe('F8 and F10: forged facts appended unsigned at the end', () => {
   );
 
   it(
-    'F10: a forged accepted rule over src is said and closes nothing',
+    'a forged accepted rule over src is said and closes nothing',
     () => {
       const seen = inEveryCacheState<Built>({
         found,
@@ -382,7 +382,7 @@ describe('F8 and F10: forged facts appended unsigned at the end', () => {
   );
 });
 
-describe('C1 and C6: the last checkpoint line not on the disk', () => {
+describe('the last checkpoint line not on the disk', () => {
   const damage = (at: Planted) => {
     const held = readFileSync(checkpoints(at), 'utf-8').trimEnd().split('\n');
     writeFileSync(checkpoints(at), `${held.slice(0, -1).join('\n')}\n`);
