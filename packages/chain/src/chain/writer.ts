@@ -2061,9 +2061,11 @@ function sizeOf(filePath: string): number {
 /**
  * Cuts the segment at `path` back to the `before` bytes it held, durably, and says whether it did.
  * What a failed append left (an unfinished line, or the whole entries of a batch it tore) is not
- * the fact, and a refusal that promises nothing was written has to be true of the file.
+ * the fact, and a refusal that promises nothing was written has to be true of the file. A segment
+ * that was never created (the open itself failed) holds nothing to cut, so it counts as cut.
  */
 function cutBack(path: string, before: number): boolean {
+  if (!existsSync(path)) return true;
   let fd: number | undefined;
   try {
     truncateSync(path, before);

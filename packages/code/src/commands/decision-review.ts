@@ -11,7 +11,7 @@
 
 import { proposedDecisionsNewestFirst } from '@mnema/context';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
-import { acceptStateHere } from '../agent-accepts.js';
+import { type AcceptState, acceptStateHere } from '../agent-accepts.js';
 import {
   caches,
   linkBreaksOf,
@@ -36,8 +36,8 @@ export type ProposalsToReview =
       readonly proposals: readonly ProposalToReview[];
       /** The tails read that do not chain: what is shown came off a record whose proof is broken. */
       readonly linkBreaks: readonly ScopedLinkBreak[];
-      /** Whether `agent-accepts` is off: a refusal to review then must not offer an accept without a terminal. */
-      readonly acceptIsOff: boolean;
+      /** Whether an agent may accept: a refusal to review must offer an accept without a terminal only where it is `on`. */
+      readonly accepts: AcceptState;
     }
   | { readonly ok: false; readonly reason: 'NO_PROJECT' };
 
@@ -70,7 +70,7 @@ export function proposalsToReview(ctx: {
       ok: true,
       proposals,
       linkBreaks: linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE),
-      acceptIsOff: acceptStateHere(sources) === 'off',
+      accepts: acceptStateHere(sources),
     };
   });
 }
