@@ -128,7 +128,12 @@ const escapeForRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
  * said about someone else or about a file. "claiming this" has no "I", so it claims only where a
  * sentence starts.
  */
-const DOING = new Set(["i'm working on this", 'i am working on this', "i'm claiming this", 'claiming this']);
+const DOING = new Set([
+  "i'm working on this",
+  'i am working on this',
+  "i'm claiming this",
+  'claiming this',
+]);
 const STARTS_A_SENTENCE = new Set(['claiming this']);
 
 /** What may follow a doing phrase: the end, a mark, or the few words that finish the thought. */

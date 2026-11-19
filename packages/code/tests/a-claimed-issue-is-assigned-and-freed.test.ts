@@ -837,13 +837,17 @@ describe('no reply repeats what a stranger wrote', () => {
     run({ '7': issueOf(7, ['other']) }, `I'll take this ${CANARY}`);
     run({ '7': issueOf(7, []) }, `Let me pick this up. ${CANARY}`);
     const held = (n: number) => issueOf(n, ['newcomer']);
-    run({ '7': issueOf(7, []), '8': held(8), '9': held(9), '10': held(10) }, `I'll take this ${CANARY}`, {
-      comments: {
-        '8': [{ user: { login: BOT }, body: assignedMarker(daysAgo(1), 'newcomer') }],
-        '9': [{ user: { login: BOT }, body: assignedMarker(daysAgo(1), 'newcomer') }],
-        '10': [{ user: { login: BOT }, body: assignedMarker(daysAgo(1), 'newcomer') }],
+    run(
+      { '7': issueOf(7, []), '8': held(8), '9': held(9), '10': held(10) },
+      `I'll take this ${CANARY}`,
+      {
+        comments: {
+          '8': [{ user: { login: BOT }, body: assignedMarker(daysAgo(1), 'newcomer') }],
+          '9': [{ user: { login: BOT }, body: assignedMarker(daysAgo(1), 'newcomer') }],
+          '10': [{ user: { login: BOT }, body: assignedMarker(daysAgo(1), 'newcomer') }],
+        },
       },
-    });
+    );
     expect(said.length).toBeGreaterThanOrEqual(4);
     for (const body of said) expect(body).not.toContain(CANARY);
   });
