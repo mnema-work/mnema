@@ -1190,6 +1190,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/every-option-feeds-something.test.ts': 8,
   'packages/code/tests/every-page-of-the-cli-is-pinned.test.ts': 7,
   'packages/code/tests/every-public-value-has-a-caller.test.ts': 6,
+  'packages/code/tests/every-read-verb-says-where-a-newer-mnema-wrote.test.ts': 11,
   'packages/code/tests/every-readme-says-what-it-does-not.test.ts': 5,
   'packages/code/tests/every-sandbox-is-removed-where-it-was-made.test.ts': 6,
   'packages/code/tests/every-skill-the-plugin-ships-is-what-it-says.test.ts': 11,

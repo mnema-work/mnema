@@ -33,7 +33,7 @@
  * does: a denominator beside an empty list otherwise reads as ground covered.
  *
  * Read-only: it reads the present trees' tails and folds them with the context package's
- * pure `exposure`. No writer, no key, no actor, and no cache kept: the trees are opened once more
+ * pure `exposure`. No writer, no key, no actor, and no cache kept: the trees are replayed in memory once more
  * only to ask whether a newer mnema wrote lines this one cannot read. With no project it
  * refuses `NO_PROJECT`, like the other intelligence reads.
  */
