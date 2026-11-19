@@ -185,7 +185,7 @@ describe('a tail whose first write stopped before its checkpoint (a crash while 
     const elsewhere = join(there, 'clone');
     cloneTo(here, elsewhere);
     // As a writer before ADR-569 left a founding act killed before its end: no checkpoint line.
-    rmSync(join(elsewhere, 'tails', w.tail, 'checkpoints.jsonl'));
+    rmSync(join(elsewhere, 'tails', w.tail, 'checkpoints.jsonl'), { force: true });
     const replay = chainReplay({ root: elsewhere }, upcasters);
     expect(replay.events).toEqual([]);
     expect(replay.signed).toEqual([
