@@ -11,7 +11,7 @@
  * Each verb the first table names is run through the real binary over a record a newer mnema wrote a line into, in
  * a git repository and outside one, and must say the sentence on `err` (or, for the few that carry it in their own
  * report, in it), never on `out` where a pipe or `--json` reads. The same verb over the record without the line says
- * nothing. The second table holds the verbs that need not, each with its reason.
+ * nothing, and its `--json` is byte for byte what it prints once the line is there. The second table holds the verbs that need not, each with its reason.
  *
  * The mutation that lights it: take `newerLinesNotice` out of one audit verb's wiring (`wiring/exposure.ts`), or the
  * field out of its command, and the verb is named.
@@ -99,7 +99,7 @@ const SAYS: Readonly<Record<string, Case>> = {
 
 const NOT_A_RECORD = 'It reads no line of any record.';
 const A_HOOK =
-  'It is a host hook that reads one channel switch of the record and answers the host in the host’s own reply, where a sentence on err reaches nobody and would repeat after every response.';
+  'It is a host hook: it replies to the host in the host’s own reply and serves no record content (it looks up at most a switch or one record by id to judge the hook’s input), where a sentence on err reaches nobody and would repeat after every response; `brief --hook` carries the sentence to the session.';
 const ONE_OF_THE = (what: string): string =>
   `It works over ${what} on disk and not over the record, so a line a newer mnema wrote is nothing it reads past.`;
 
@@ -244,11 +244,13 @@ describe.each([
   });
 
   const cases = Object.entries(SAYS);
+  const theJsonBefore: Record<string, string> = {};
 
   describe('over the record without the line', () => {
     it.each(cases)('%s says nothing of a newer mnema', (path, one) => {
       const ran = mnema(...one.argv(ids));
       expect(`${ran.out}${ran.err}`, `${path}\n${ran.err}`).not.toMatch(/newer mnema/i);
+      if (one.json === true) theJsonBefore[path] = mnema(...one.argv(ids), '--json').out;
     });
   });
 
@@ -275,6 +277,12 @@ describe.each([
         const ran = mnema(...one.argv(ids), '--json');
         expect(ran.status, `${path}\n${ran.err}`).toBe(0);
         expect(() => JSON.parse(ran.out), `${path} out`).not.toThrow();
+        // Byte for byte what it printed before the line was planted.
+        // `status` is the one that carries it in its JSON, by design: it says it in its own report.
+        if (one.says === 'err')
+          expect(ran.out, `${path} out differs from the record without the line`).toBe(
+            theJsonBefore[path],
+          );
         if (one.says === 'err') expect(ran.err, path).toMatch(SAID);
       },
     );

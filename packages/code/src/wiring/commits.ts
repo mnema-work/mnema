@@ -34,7 +34,7 @@ export function registerCommits(program: Command, wiring: Wiring): Declared {
       for (const line of linkBreakNotice(result.linkBreaks)) io.err(render(line));
       for (const line of newerLinesNotice(result.newerLines, 'the record')) io.err(render(line));
       if (opts.json === true) {
-        const { linkBreaks: _breaks, ok: _ok, ...reading } = result;
+        const { linkBreaks: _breaks, newerLines: _newer, ok: _ok, ...reading } = result;
         io.out(JSON.stringify(reading, null, 2));
         return;
       }

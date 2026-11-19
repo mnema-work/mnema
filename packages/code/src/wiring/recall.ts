@@ -140,16 +140,16 @@ export function registerRecall(program: Command, wiring: Wiring): Declared {
         // document says the fact).
         const integrity = linkBreakNotice(result.linkBreaks);
         // What is not integrity (a newer mnema wrote lines) stays on `err` even with the flag, under
-        // the document, where the handler appends it; the room beside the document counts it.
+        // the document, where the handler appends it; the room beside the document counts only what goes to `out`.
         const others = newerLinesNotice(result.newerLines, 'the record');
         const notice = [...integrity, ...others];
-        // With the flag the notice is part of what has to fit, as it is for `brief`.
+        // With the flag the facts of integrity are part of what has to fit: they lead the document on `out`.
         const document =
           opts.hook === true
             ? recallWithin(
                 result,
                 roomBeside(
-                  notice.map((line) => render(line)),
+                  integrity.map((line) => render(line)),
                   ceiling,
                 ),
                 ceiling.lengthOf,
