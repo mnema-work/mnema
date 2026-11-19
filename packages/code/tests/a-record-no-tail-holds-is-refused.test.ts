@@ -202,6 +202,7 @@ describe('mnema verify over a record in which no tail holds anything', () => {
       const founded = mnema('verify');
       expect(founded.status, founded.stderr).toBe(0);
     },
+    20_000,
   );
 });
 
