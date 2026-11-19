@@ -412,8 +412,10 @@ export function unprotectPrivateKeys(layout: ChainLayout, passphrase: string): K
 export function materializePublicKey(chainLayout: ChainLayout, key: PublicHalf): void {
   const path = publicKeyPath(chainLayout, key.fingerprint);
   if (existsSync(path)) return;
-  mkdirSync(keysDir(chainLayout), { recursive: true });
-  writeFileDurably(path, publicKeyToPem(key.publicKey));
+  readingWhatTheDiskLets(path, inKeys(path), () => {
+    mkdirSync(keysDir(chainLayout), { recursive: true });
+    writeFileDurably(path, publicKeyToPem(key.publicKey));
+  });
 }
 
 /**

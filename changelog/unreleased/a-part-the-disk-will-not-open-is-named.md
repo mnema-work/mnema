@@ -15,5 +15,8 @@ Fixed
   of another record over a tree whose `tails/` folder the disk will not open is refused naming the part, instead of
   reading the tree as holding no tail and putting the copy over it. The agent's server refuses a write over such a part
   with its own code, `UNREADABLE_PART`, and in words for an act that names no path.
+  A part outside the record's own folder is named with where it is (the git directory's `mnema` folder inside a repository,
+  the identity's keys folder in the mnema home), and `doctor` lists each such folder it cannot open as something to do,
+  as a read, instead of saying all is well.
   Not covered: the audit commands (`verify`, `export`, `backup status`) refuse in one block and do not serve around the
   part.

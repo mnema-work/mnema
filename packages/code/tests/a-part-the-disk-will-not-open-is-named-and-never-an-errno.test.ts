@@ -218,7 +218,7 @@ const LOCK_AND_KEY_DAMAGES: readonly (readonly [string, string, (root: string) =
 ];
 
 /** The trees the damages above are done in: the three records, and the folder the machine's keys live in. */
-const LOCK_AND_KEY_PLACES = ['public', 'private', 'global', 'key root'] as const;
+const LOCK_AND_KEY_PLACES = ['public', 'private', 'global', 'key root', 'record folder'] as const;
 
 const READS = [
   ['status'],
@@ -302,8 +302,10 @@ describe.skipIf(CANNOT_CHMOD)('a part the disk will not open, in every tree', ()
       describe.each(LOCK_AND_KEY_PLACES)('in the %s tree', (place) => {
         it.each(
           // The key root holds no locks and no installation id: only its keys folder is one of its parts.
+          // The record's own folder is asked for its keys: inside a repository the public tree's other parts are in the git directory.
           LOCK_AND_KEY_DAMAGES.filter(
-            ([name]) => place !== 'key root' || name.startsWith('a keys'),
+            ([name]) =>
+              (place !== 'key root' && place !== 'record folder') || name.startsWith('a keys'),
           ),
         )(
           '%s: no command prints the system’s own error, and a write names the part',
@@ -315,18 +317,36 @@ describe.skipIf(CANNOT_CHMOD)('a part the disk will not open, in every tree', ()
             const root =
               place === 'key root'
                 ? (trees.keyRoot as string)
-                : place === 'public' && machinery !== undefined
-                  ? part === 'locks'
-                    ? machinery.shared
-                    : machinery.checkout
-                  : rootOf(box, place);
+                : place === 'record folder'
+                  ? rootOf(box, 'public')
+                  : place === 'public' && machinery !== undefined
+                    ? part === 'locks'
+                      ? machinery.shared
+                      : machinery.checkout
+                    : rootOf(box, place);
             damage(root);
-            const scope = place === 'key root' ? 'public' : place;
+            const scope = place === 'key root' || place === 'record folder' ? 'public' : place;
             const write = mnema(box, ['decision', 'record', 'Next', 'Because', '--scope', scope]);
             expect(write.stdout, 'a write').not.toMatch(AN_ERRNO);
             expect(write.status, 'a write').not.toBe(0);
             expect(write.stdout).toContain('cannot be opened');
             expect(write.stdout).toContain(part);
+            // Where the part is, when it is outside every record folder: the git directory, or the mnema home.
+            if (place === 'public' && machinery !== undefined) {
+              expect(write.stdout).toContain(`${join('.git', 'mnema')}`);
+              expect(write.stdout).toContain('kept in the git directory');
+            }
+            if (place === 'key root') expect(write.stdout).toContain('identity');
+            // `doctor` reads: it says the part as something to do, and does not refuse as a write does.
+            const doctorNamesIt =
+              (part === 'keys' &&
+                (place === 'public' || place === 'key root' || place === 'record folder')) ||
+              (part === 'locks' && place === 'public' && inGit);
+            if (doctorNamesIt) {
+              const said = mnema(box, ['doctor']).stdout;
+              expect(said, 'doctor').toMatch(/^to do · disk-part: .*does not let this mnema open/m);
+              expect(said, 'doctor').not.toContain('Nothing was done');
+            }
             for (const args of [
               ['doctor'],
               ['status'],
