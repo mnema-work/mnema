@@ -40,6 +40,18 @@ export {
   signCheckpoint,
   verifyCheckpoint,
 } from './chain/checkpoint.js';
+export {
+  type CheckpointFault,
+  type CheckpointQuestion,
+  type CheckpointRuling,
+  checkpointBelongsToItsTail,
+  type FoldQuestion,
+  foldCheckpoints,
+  ruleOnCheckpoint,
+  type TailSigned,
+  type Withheld,
+  type WithheldRun,
+} from './chain/checkpoint-ruling.js';
 export { CodedError } from './chain/coded-error.js';
 export { decisionTexts, precedesItsText } from './chain/decision-text.js';
 export {
@@ -81,7 +93,7 @@ export {
   writtenAsBuilt,
   writtenAsStored,
 } from './chain/hash.js';
-export { IntentNotKeptError } from './chain/kept-head.js';
+export { IntentNotKeptError, readWrittenHead, type WrittenHead } from './chain/kept-head.js';
 export {
   isProtected,
   KEY_PASSPHRASE_VARIABLE,
@@ -122,6 +134,7 @@ export {
   materializePublicKey,
   persistKeyPair,
   protectPrivateKeys,
+  publicKeyOf,
   readAnchor,
   UnsettledInstallationIdError,
   UnwrittenInstallationIdError,
