@@ -989,6 +989,21 @@ describe('scrubSecrets: the whole value, wherever a credential is written', () =
   }
 });
 
+describe('scrubSecrets: the readings of a value cost a scan, not a search', () => {
+  // A reading runs on every value a context class found, so a pattern in it that can split one
+  // string in many ways is a door a crafted value walks through: a path of thirty `a/` pieces
+  // took seconds under the first reading of a path, where an optional capital and the letters
+  // after it could each take the same small letter.
+  for (const value of [`/${'a/'.repeat(30)}!`, `https://-/${'a/'.repeat(30)}!`]) {
+    it(`reads ${JSON.stringify(value.slice(0, 16))}... in well under a second`, () => {
+      const started = performance.now();
+      const scrubbed = scrubSecrets(`pwd=${value}`);
+      expect(performance.now() - started).toBeLessThan(250);
+      expect(scrubbed.text).toBe('pwd=<SECRET:named-credential>');
+    });
+  }
+});
+
 describe('scrubSecrets: the limits, stated as tests', () => {
   // These are the cases the shape cannot reach, and the reason each write surface
   // declares in its own description that what it does not recognize goes in

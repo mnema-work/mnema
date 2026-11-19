@@ -704,14 +704,16 @@ const A_NAMED_REFERENCE = /^[\w.-]{1,64}[=:][<$%{]/;
  * A path on a disk (`/home/me`, `~/.config/app`, `./build`), the value `pwd` names more often
  * than a password. Each piece is a name, in small letters after an optional capital: a base64
  * secret that happens to open on `/` carries capitals inside its pieces, and is not read as one.
+ * The capital is `[A-Z]`, never `[A-Za-z]`: a small letter that either part could take splits a
+ * piece two ways, and thirty pieces that do not match end in a search of two to the thirtieth.
  */
-const A_PATH = /^(?:~|\.{1,2})?(?:\/[A-Za-z]?[a-z0-9._@-]*)+[.,;]?$/;
+const A_PATH = /^(?:~|\.{1,2})?(?:\/[A-Z]?[a-z0-9._@-]*)+[.,;]?$/;
 
 /**
  * An address with no credential in it: no user and password, no query, and a path read the way
  * {@link A_PATH} reads one, so a webhook whose secret is its path is not mistaken for one.
  */
-const A_PLAIN_URL = /^[a-z][a-z0-9+.-]*:\/\/[A-Za-z0-9.-]+(?::\d+)?(?:\/[A-Za-z]?[a-z0-9._~%-]*)*$/;
+const A_PLAIN_URL = /^[a-z][a-z0-9+.-]*:\/\/[A-Za-z0-9.-]+(?::\d+)?(?:\/[A-Z]?[a-z0-9._~%-]*)*$/;
 
 /** A token's, a key's, a secret's or an auth's name just before the value, with its separator. */
 const AFTER_A_TOKEN_NAME = /(?:secret|key|token|auth)["'\x60]?[ \t]{0,8}[:=]?[ \t]{0,8}["'\x60]?$/i;
