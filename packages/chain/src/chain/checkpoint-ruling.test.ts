@@ -6,7 +6,16 @@
  * read names a line's first failure in `verify`'s own words, because both ask `ruleOnCheckpoint`.
  */
 
-import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -27,7 +36,14 @@ import { entryHash, writtenAsBuilt } from './hash.js';
 import type { WrittenHead } from './kept-head.js';
 import { deriveAnchor, generateKeyPair, type KeyPair, publicKeyToPem } from './keys.js';
 import { checkpointsPath, publicKeyPath, segmentPath, tailDir, tailProofPath } from './layout.js';
-import { committedKeys, readTail, readTailCheckpoints } from './store.js';
+import {
+  committedKeys,
+  keysTheDiskRefuses,
+  readTail,
+  readTailCheckpoints,
+  readTailCheckpointsMarked,
+  readTailCheckpointsSince,
+} from './store.js';
 import { serializeTailProof, signTailProof } from './tailproof.js';
 
 let root: string;
@@ -140,13 +156,15 @@ class Tail {
 }
 
 function fold(tail: Tail, options: { note?: WrittenHead; onFold?: () => void } = {}): TailSigned {
-  const read = readTail({ root }, tail.id, catalogUpcasters(), undefined, undefined, 'every line');
+  const read = readTail({ root }, tail.id, catalogUpcasters());
+  const standing = new Set(read.retained.map((one) => one.seq));
+  if (read.linkBreak !== undefined) standing.add(read.linkBreak.seq);
   return foldCheckpoints({
     tail: tail.id,
     entries: read.every,
     checkpoints: readTailCheckpoints({ root }, tail.id),
     keys: committedKeys({ root }),
-    standing: new Set(read.linkBreak === undefined ? [] : [read.linkBreak.seq]),
+    standing,
     window: WINDOW,
     ...options,
   });
@@ -375,6 +393,111 @@ describe('this machine’s signed note proves what it wrote', () => {
     ]);
     // Elsewhere, with no note, the same bytes are one write's window, served and not governing.
     expect(fold(forged).unproven).toEqual({ fromSeq: 3, toSeq: 4, count: 2 });
+  });
+});
+
+describe('a range that does not hold where the tail already holds a fact', () => {
+  it('is said with the break: an entry altered under its own hash', () => {
+    const tail = new Tail(generateKeyPair());
+    tail.append(titles(3));
+    tail.sign(0);
+    tail.write();
+    const file = segmentPath({ root }, tail.id, 1);
+    writeFileSync(file, readFileSync(file, 'utf-8').replace('"t1"', '"tX"'));
+    expect(fold(tail).withheld).toEqual([
+      expect.objectContaining({ fromSeq: 0, toSeq: 2, why: 'with-a-break' }),
+    ]);
+  });
+
+  it('finds the branch its root names when the forged one is stored first', () => {
+    const tail = new Tail(generateKeyPair());
+    const [founding, one, two] = tail.append(titles(3));
+    tail.sign(0);
+    const [f1, f2] = tail.append(['forged1', 'forged2'], founding as Line);
+    tail.write([founding, f1, f2, one, two] as Line[]);
+    const signed = fold(tail);
+    expect(signed.proven).toEqual([{ fromSeq: 0, toSeq: 2, by: 'checkpoint' }]);
+    expect(signed.provenHashes.has((two as Line).hash)).toBe(true);
+    expect(signed.provenHashes.has((f2 as Line).hash)).toBe(false);
+  });
+});
+
+describe('the lines of checkpoints.jsonl a catch-up reads', () => {
+  it('reads only what was appended after the mark, and the line at the mark again', () => {
+    const tail = new Tail(generateKeyPair());
+    tail.append(titles(2));
+    tail.sign(0);
+    tail.write();
+    const first = readTailCheckpointsMarked({ root }, tail.id);
+    expect(first.checkpoints).toHaveLength(1);
+    const prev = checkpointHash(first.checkpoints[0] as Checkpoint);
+    expect(readTailCheckpointsSince({ root }, tail.id, first.mark, prev, checkpointHash)).toEqual({
+      checkpoints: [],
+      mark: first.mark,
+    });
+    tail.append(['t2']);
+    const added = tail.sign(2);
+    tail.write();
+    const since = readTailCheckpointsSince({ root }, tail.id, first.mark, prev, checkpointHash);
+    expect(since?.checkpoints).toEqual([added]);
+    // A file that holds the same lines read whole gives the same mark.
+    expect(since?.mark.bytes).toBe(readTailCheckpointsMarked({ root }, tail.id).mark.bytes);
+  });
+
+  it('answers undefined for a file that is not the one the mark was taken of', () => {
+    const tail = new Tail(generateKeyPair());
+    tail.append(titles(2));
+    tail.sign(0);
+    tail.append(['t2']);
+    tail.sign(2);
+    tail.write();
+    const { checkpoints, mark } = readTailCheckpointsMarked({ root }, tail.id);
+    const prev = checkpointHash(checkpoints[1] as Checkpoint);
+    const file = checkpointsPath({ root }, tail.id);
+    // The same size, another time: rewritten in place.
+    utimesSync(file, new Date(2000, 0, 1), new Date(2000, 0, 1));
+    expect(readTailCheckpointsSince({ root }, tail.id, mark, prev, checkpointHash)).toBeUndefined();
+    // Shorter: a line taken out.
+    tail.write(tail.lines, tail.checkpoints.slice(0, 1));
+    expect(readTailCheckpointsSince({ root }, tail.id, mark, prev, checkpointHash)).toBeUndefined();
+    // Longer, with the line at the mark not the one it was: old lines rewritten under an append.
+    const other = new Tail(tail.key);
+    other.append(titles(2));
+    other.sign(0);
+    other.sign(0, 1);
+    other.sign(0, 1);
+    other.write(tail.lines, other.checkpoints);
+    expect(readTailCheckpointsSince({ root }, tail.id, mark, prev, checkpointHash)).toBeUndefined();
+  });
+
+  it('takes every line of a file that a mark of nothing meets', () => {
+    const tail = new Tail(generateKeyPair());
+    tail.append(titles(2));
+    tail.sign(0);
+    tail.write();
+    const since = readTailCheckpointsSince(
+      { root },
+      tail.id,
+      { bytes: 0, lastLineAt: 0, mtimeNs: '' },
+      null,
+      checkpointHash,
+    );
+    expect(since?.checkpoints).toHaveLength(1);
+  });
+
+  it('names a key folder the disk will not open, and lets one it opens be', () => {
+    const tail = new Tail(generateKeyPair());
+    tail.write();
+    const refused: string[] = [];
+    expect(keysTheDiskRefuses({ root }, (error) => refused.push(error.message))).toBe(false);
+    if (process.getuid?.() === 0) return;
+    chmodSync(join(root, 'keys'), 0o000);
+    try {
+      expect(keysTheDiskRefuses({ root }, (error) => refused.push(error.message))).toBe(true);
+      expect(refused).toEqual([expect.stringContaining('cannot be opened')]);
+    } finally {
+      chmodSync(join(root, 'keys'), 0o755);
+    }
   });
 });
 

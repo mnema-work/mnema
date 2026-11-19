@@ -18,9 +18,10 @@ import {
   readdirSync,
   readFileSync,
   readSync,
+  realpathSync,
   statSync,
 } from './fs.js';
-import { basename, dirname, join } from './path.js';
+import { basename, dirname, isAbsolute, join, resolve, sep } from './path.js';
 
 function mounted(files: Record<string, string>): void {
   mount(new Map(Object.entries(files).map(([path, text]) => [path, Buffer.from(text)])));
@@ -87,5 +88,22 @@ describe('the paths the chain composes', () => {
     expect(dirname('/r/tails/a')).toBe('/r/tails');
     expect(dirname('/a')).toBe('/');
     expect(basename('/r/keys/k.pub')).toBe('k.pub');
+  });
+});
+
+describe('what the search for a repository asks of a page', () => {
+  it('resolves a path from its last absolute part, with `/` the only working directory', () => {
+    expect(sep).toBe('/');
+    expect(isAbsolute('/record')).toBe(true);
+    expect(isAbsolute('record')).toBe(false);
+    expect(resolve('/record', '..', 'tails')).toBe('/tails');
+    expect(resolve('/a', '/record', 'keys')).toBe('/record/keys');
+    expect(resolve('record')).toBe('/record');
+  });
+
+  it('answers a path the page carries as itself, and refuses one it does not, as the disk would', () => {
+    mounted({ '/record/tails/a-1/000001.jsonl': 'x\n' });
+    expect(realpathSync('/record/tails')).toBe('/record/tails');
+    expect(() => realpathSync('/record/.git')).toThrow(/ENOENT/);
   });
 });

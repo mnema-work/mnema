@@ -279,7 +279,7 @@ function withheldLine(broken: ScopedLinkBreak, run: WithheldRun): string {
     case 'checkpoints-removed':
       return `${head(run.fromSeq)} the checkpoints this machine signed up to seq ${run.toSeq} are no longer in checkpoints.jsonl (the signed note in locks/ names checkpoint ${oneLine((run.noteCheckpoint ?? '').slice(0, 12))}...); ${range} were not served`;
     case 'unproven-beyond-one-write':
-      return `${head(run.fromSeq)} ${eventsWord(run.toSeq - run.fromSeq + 1)} (${range}) are covered by no signature, more than one write leaves or not at the tail’s end; these entries were not served`;
+      return `${head(run.fromSeq)} ${eventsWord(run.toSeq - run.fromSeq + 1)} (${range}) ${run.toSeq === run.fromSeq ? 'is' : 'are'} covered by no signature, more than one write leaves or not at the tail’s end; these entries were not served`;
     case 'no-checkpoint':
       return `${head(0)} this tail holds ${eventsWord(run.toSeq - run.fromSeq + 1)} and no checkpoint that verifies; these entries were not served`;
   }

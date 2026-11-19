@@ -286,7 +286,7 @@ describe('F12: a line forged at seq 1 beside the honest one', () => {
       });
       for (const each of Object.values(seen)) {
         expect(each.said).toContain(
-          'are covered by no signature, more than one write leaves or not at the tail’s end',
+          'covered by no signature, more than one write leaves or not at the tail’s end',
         );
         expect(each.said).toContain('gate src/other.ts: deny');
         expect(each.said).toContain('Billing is frozen');
