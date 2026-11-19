@@ -111,13 +111,17 @@ import type { MoveEvent, MoveRule } from '../events/workflow.js';
 import { oneLine } from '../one-line.js';
 import { isBackupRegistration, listRegistrations } from './backup.js';
 import { causalOrder } from './causal-order.js';
+import { type Checkpoint, checkpointSignatureHolds, NAMED_SCHEME } from './checkpoint.js';
+
+// Re-exported where they were always read from: the ruling module holds them now.
+export { canonicalIdentityForm, TAIL_SIGNER_MISMATCH } from './checkpoint-ruling.js';
+
 import {
-  type Checkpoint,
-  checkpointHash,
-  checkpointSignatureHolds,
-  NAMED_SCHEME,
-  verifyCheckpoint,
-} from './checkpoint.js';
+  checkpointBelongsToItsTail,
+  checkpointOfAnotherKeySentence,
+  ruleOnCheckpoint,
+  TAIL_SIGNER_MISMATCH,
+} from './checkpoint-ruling.js';
 import { decisionTexts } from './decision-text.js';
 import { type IdentityResolution, type RetiredElsewhere, resolveIdentity } from './enrollment.js';
 import {
@@ -133,7 +137,6 @@ import {
   sealEntry,
   unreadLinesOf,
 } from './entry.js';
-import { contentRoot } from './hash.js';
 import {
   type ChainLayout,
   isSegmentFile,
@@ -2563,141 +2566,34 @@ function verifyCheckpointsOnce(
   const between = entries === undefined ? undefined : entriesBetween(entries);
 
   for (const checkpoint of checkpoints) {
-    if (checkpoint.tail !== tail) {
+    // The questions of one line are `ruleOnCheckpoint`'s, the read's too (checkpoint-ruling.ts);
+    // the policy is this loop's: a line that fails advances nothing.
+    const range = between === undefined ? undefined : between(checkpoint.fromSeq, checkpoint.toSeq);
+    const ruling = ruleOnCheckpoint({
+      tail,
+      checkpoint,
+      prev: expectedPrev,
+      from: between === undefined ? undefined : covered + 1,
+      range,
+      keys,
+      signature: signatures === 'every' ? 'checked' : 'bound-by-a-later-one',
+    });
+    if (!ruling.holds) {
       issues.push({
         tail,
         layer: 'T2/T4',
-        detail: `checkpoint names tail ${oneLine(checkpoint.tail)}, stored under ${oneLine(tail)}`,
+        ...(ruling.seq !== undefined ? { seq: ruling.seq } : {}),
+        detail: ruling.detail,
       });
       continue;
     }
-    // Checkpoint chain: each checkpoint links to the previous one's hash, so an
-    // EARLIER checkpoint dropped under a later one breaks here. This said the
-    // LAST one could not be dropped to hide what it covered either; that is false
-    // when its events go with it: the survivors close and nothing remembers the
-    // longer head (`aligned-cut`, `both-readers-read-the-same-bytes.test.ts`). The
-    // last checkpoint dropped ALONE leaves its events above every checkpoint, which
-    // the level reports and `--require=signed` refuses.
-    if (checkpoint.prev !== expectedPrev) {
-      issues.push({
-        tail,
-        layer: 'T2/T4',
-        seq: checkpoint.fromSeq,
-        detail: 'checkpoint chain break: prev does not link to the previous checkpoint',
-      });
-      continue;
-    }
-    if (between !== undefined && checkpoint.fromSeq !== covered + 1) {
-      issues.push({
-        tail,
-        layer: 'T2/T4',
-        seq: checkpoint.fromSeq,
-        detail: `checkpoint coverage gap: expected to start at ${covered + 1}, starts at ${checkpoint.fromSeq}`,
-      });
-      // keep going: report each gap, but do not advance coverage over the hole
-      continue;
-    }
-    const committed = keys(checkpoint.signerFp);
-    if (committed === null) {
-      issues.push({
-        tail,
-        layer: 'T2/T4',
-        seq: checkpoint.fromSeq,
-        detail: `no committed public key for signer ${oneLine(checkpoint.signerFp)}`,
-      });
-      continue;
-    }
-    // Fingerprint binding: the file is NAMED by a fingerprint, but a forger can
-    // overwrite that file with their own key. Re-derive the loaded key's real
-    // fingerprint and require it to equal the one the checkpoint names. Without
-    // this, swapping the committed .pub for the forger's key would let a forged
-    // signature verify: the exact gap the signed-message binding alone leaves
-    // open, since verification uses whatever key the file now holds.
-    if (committed.fingerprint() !== checkpoint.signerFp) {
-      issues.push({
-        tail,
-        layer: 'T2/T4',
-        seq: checkpoint.fromSeq,
-        detail: `public key for ${oneLine(checkpoint.signerFp)} does not match its fingerprint (key was swapped)`,
-      });
-      continue;
-    }
-    if (between === undefined) {
-      if (signatures === 'the-chain') {
-        // No range can be known: the chain is not whole, and `every` answers it.
-        issues.push({ tail, layer: 'T2/T4', detail: 'no range to check the chain over' });
-        continue;
-      }
-      if (!checkpointSignatureHolds(checkpoint, committed.key)) {
-        issues.push({
-          tail,
-          layer: 'T2/T4',
-          seq: checkpoint.fromSeq,
-          detail: 'checkpoint failed: bad-signature',
-        });
-        continue;
-      }
-      expectedPrev = checkpointHash(checkpoint);
-      continue;
-    }
-    const range = between(checkpoint.fromSeq, checkpoint.toSeq);
-    const verdict =
-      signatures === 'every'
-        ? verifyCheckpoint({
-            checkpoint,
-            // The signed root is folded over the events AS WRITTEN. Folding it over
-            // the lifted reading would turn the first version bump into a signature
-            // failure on every chain written before it.
-            events: range.map((e) => e.written),
-            publicKey: committed.key,
-          })
-        : range.length === checkpoint.toSeq - checkpoint.fromSeq + 1 &&
-            contentRoot(range.map((e) => e.written)) === checkpoint.contentRoot
-          ? ({ ok: true } as const)
-          : ({ ok: false, reason: 'root' } as const);
-    if (!verdict.ok) {
-      issues.push({
-        tail,
-        layer: 'T2/T4',
-        seq: checkpoint.fromSeq,
-        detail: `checkpoint failed: ${verdict.reason}`,
-      });
-      continue;
-    }
-    // Signer binding: the checkpoint proves this key signed this range, but that
-    // alone does not bind each EVENT to that signer. Require every event in the
-    // range to name the signer that actually attested it (`signerFp` = the
-    // checkpoint's). Without this a party holding their own committed key could
-    // rewrite the events' `signerFp` to a fabricated identity, re-sign the range
-    // with their real key, and still verify green here: the signature
-    // integrity-protects the bytes; this makes those bytes name the signer.
-    // Whether that signer is authorized to speak for the event's `who` is the
-    // enrollment fold's concern (resolveIdentity), applied to every event
-    // checkpointed or not; here we only pin that `signerFp` is the real signer.
-    // The `which` clause stays: the gate refuses a move where the authorizing
-    // human equals the executing agent (self-authorization), and that invariant
-    // must survive to the signed record; otherwise an editor could smuggle
-    // `who === which` below the crypto. So when `which` is present it must differ
-    // from `who`, compared in the SAME canonical form the gate uses (NFC,
-    // trimmed): a raw byte compare would let `which = who + " "` slip through.
-    const bindingBreak = range.find(
-      (e) =>
-        e.event.signerFp !== checkpoint.signerFp ||
-        (e.event.which !== undefined &&
-          canonicalIdentityForm(e.event.which) === canonicalIdentityForm(e.event.who)),
-    );
-    if (bindingBreak !== undefined) {
-      issues.push({
-        tail,
-        layer: 'T2/T4',
-        seq: bindingBreak.link.seq,
-        detail:
-          'event identity does not bind to its signer: signerFp disagrees with the checkpoint',
-      });
+    if (range === undefined) {
+      // No range can be known: the line's own bytes held, and it covers nothing.
+      expectedPrev = ruling.hash;
       continue;
     }
     covered = checkpoint.toSeq;
-    expectedPrev = checkpointHash(checkpoint);
+    expectedPrev = ruling.hash;
     lastAccepted = checkpoint;
     proven.push({ hash: expectedPrev, toSeq: checkpoint.toSeq });
     if (checkpoint.record !== undefined) {
@@ -2711,13 +2607,6 @@ function verifyCheckpointsOnce(
     ? { covered, proven, named }
     : { covered, proven, named, lastAccepted };
 }
-
-/**
- * The name both readers refuse a write into another key's tail by (FORMAT.md section 6). It is
- * not `signer-mismatch`, which is the tail proof's (section 6.1): that one is about who signed
- * the id, this one about who wrote inside it.
- */
-export const TAIL_SIGNER_MISMATCH = 'tail-signer-mismatch';
 
 /**
  * A TAIL BELONGS TO ONE KEY (FORMAT.md section 6): every checkpoint of the tail, and every
@@ -2741,13 +2630,13 @@ function verifyTailSigner(
   issues: TailIssue[],
 ): void {
   const owner = tailFingerprint(tail);
-  const checkpoint = checkpoints.find((cp) => cp.signerFp !== owner);
+  const checkpoint = checkpoints.find((cp) => !checkpointBelongsToItsTail(tail, cp));
   if (checkpoint !== undefined) {
     issues.push({
       tail,
       layer: 'T2/T4',
       seq: checkpoint.fromSeq,
-      detail: `checkpoint cp[${checkpoint.fromSeq}..${checkpoint.toSeq}] is signed by ${oneLine(checkpoint.signerFp.slice(0, 12))}..., and a tail is written only by the key its id begins with, ${oneLine(owner.slice(0, 12))}... (${TAIL_SIGNER_MISMATCH})`,
+      detail: checkpointOfAnotherKeySentence(tail, checkpoint),
     });
   }
   const event = entries.find((entry) => entry.event.signerFp !== owner);
@@ -2759,19 +2648,6 @@ function verifyTailSigner(
       detail: `seq ${event.link.seq} names ${oneLine(event.event.signerFp.slice(0, 12))}... as its signer, and a tail is written only by the key its id begins with, ${oneLine(owner.slice(0, 12))}... (${TAIL_SIGNER_MISMATCH})`,
     });
   }
-}
-
-/**
- * The canonical form of an identity for the who-vs-which comparison: NFC then
- * trim, the SAME normalization the core's gate applies before it refuses a
- * self-authorizing move (`canonicalIdentity`). The verifier lives in the
- * zero-dependency chain and cannot import the core, so the rule is mirrored
- * here; a property test pins the two forms in agreement. It is only ever used to
- * decide whether `which` and `who` are the same identity, never to rewrite the
- * signed bytes: the event records the identity exactly as it was written.
- */
-export function canonicalIdentityForm(value: string): string {
-  return value.normalize('NFC').trim();
 }
 
 /**
