@@ -230,4 +230,26 @@ describe('release:prepare without a number', () => {
     expect(empty.code).not.toBe(0);
     expect(empty.out).toContain('y.md: the entry is empty');
   });
+
+  it('thanks the contributor named on the line after the section, and prints no other trace of it', () => {
+    const { dir } = fixture(CHANGELOG, {
+      'a-thing.md': 'Added\nContributor: some-login\n\n- **A thing.** It has a second line\n  that is indented.\n',
+      'b-plain.md': 'Fixed\n\n- Plain.\n',
+    });
+    expect(run(dir, TARGET, '--date', '2030-01-02').code).toBe(0);
+    const log = readFileSync(join(dir, 'CHANGELOG.md'), 'utf-8');
+    expect(log).toContain(
+      '### Added\n\n- **A thing.** It has a second line\n  that is indented. Thanks @some-login.\n\n### Fixed\n\n- Plain.\n',
+    );
+    expect(log).not.toContain('Contributor:');
+  });
+
+  it('refuses a contributor line that is not a login', () => {
+    const { code, out } = run(
+      fixture(CHANGELOG, { 'z.md': 'Added\nContributor: not a login\n\n- Z.\n' }).dir,
+      '--check',
+    );
+    expect(code).not.toBe(0);
+    expect(out).toContain('z.md: "not a login" is not a GitHub login');
+  });
 });

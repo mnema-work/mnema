@@ -5,6 +5,9 @@ the product is, and what it does and does not prove, is on the [front page](READ
 
 If mnema helps your work, a star on the repository helps others find it; it is only ever yours to give.
 
+To work on it without installing anything, [open the repository in a GitHub Codespace](https://codespaces.new/mnema-work/mnema?devcontainer_path=.devcontainer%2Fdevcontainer.json):
+it uses the dev container in [`.devcontainer/`](.devcontainer/devcontainer.json), which brings Node and Python and runs `pnpm install`.
+
 ## What you need
 
 - **Node.** Requires Node 24.15.0 or a later 24, or 26.0.0 or later: that is the range `engines.node` declares in the root
@@ -301,6 +304,13 @@ be able to explain any line.
 - **Check it first.** Run `pnpm check:contribution` before you open the pull request (see
   [Before a pull request](#before-a-pull-request)), and keep one change per pull request.
 
+### Issues written for an agent
+
+The issues labelled `ready for an agent` are written so that a coding agent can do them: where the change goes, what
+"done" means, and how to check it. You may hand one to Claude Code, Codex, Cursor or any other agent. What we still
+ask of you is the above: read the diff yourself, run `pnpm check:contribution`, and fill in the "Written with an
+agent" field of the pull request template.
+
 ## Review and merge
 
 - **A first response from a person within 3 working days**, on a pull request or an issue. If you have
@@ -333,7 +343,9 @@ be able to explain any line.
   `CHANGELOG.md`, where every pull request wrote at the same place and collided. Add
   `changelog/unreleased/<short-slug>.md`: the section on its first line (`Added`, `Changed`,
   `Deprecated`, `Removed`, `Fixed` or `Security`), then the entry as a bullet, the way `CHANGELOG.md`
-  prints them (`- **What changed.** Why it matters, in a sentence or two.`). `pnpm release:prepare`
+  prints them (`- **What changed.** Why it matters, in a sentence or two.`). If an outside contributor wrote the change, put
+  `Contributor: <their GitHub login>` on the line after the section; the release notes then end the entry with
+  "Thanks @login.". `pnpm release:prepare`
   gathers the files into the new section of `CHANGELOG.md`, grouped by section, and removes them, so
   `Unreleased` in `CHANGELOG.md` stays empty between releases.
 - **When CI is over, one comment on the pull request says what failed** and the command that fixes

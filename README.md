@@ -245,6 +245,13 @@ claim about the agent hosts is held, and which are not held yet, is in [`docs/ev
   [North star](docs/north-star.md) · [Architecture](docs/architecture.md) · [Contributing](CONTRIBUTING.md) · [Build from source](docs/build-from-source.md) ·
   [Security policy](SECURITY.md) · [Changelog](CHANGELOG.md)
 
+## Contributors
+
+Thanks to everyone whose pull request has been merged: [@bfs2021](https://github.com/bfs2021),
+[@jay23606](https://github.com/jay23606), [@mentallyunstable-lab](https://github.com/mentallyunstable-lab),
+[@prascli](https://github.com/prascli) and [@tylrcc](https://github.com/tylrcc). To add your name,
+start from [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
 ## License
 
 Apache-2.0. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
