@@ -271,20 +271,24 @@ describe('a branch cut from another that the host has not merged (ADR-446)', () 
   // The HEAD file of a repository kept in the reftable format names no branch (`refs/heads/.invalid`
   // everywhere), so the branch is asked of git. Skipped, by name, where the runner's git is older than
   // 2.45; it runs in the node jobs on Linux.
-  it.skipIf(!reftableGit())('does the same in a repository kept in the reftable format', () => {
-    rmSync(repo, { recursive: true, force: true });
-    mkdirSync(repo);
-    expect(git(repo, 'init', '-q', '--ref-format=reftable', '-b', 'main').status).toBe(0);
-    expect(mnema(repo, 'init').status).toBe(0);
-    expect(mnema(repo, 'memory', 'the base').status).toBe(0);
-    commit(repo, 'the base');
-    publishMain();
-    visit('a', 'main', 'on a');
-    visit('c', 'a', 'on c, cut from a');
-    expect(tails(repo)).toHaveLength(2);
-    squashAThenMergeC();
-    // The case starts the built binary and git: about 2 s on a runner at rest, so it carries its own ceiling.
-  }, 20_000);
+  it.skipIf(!reftableGit())(
+    'does the same in a repository kept in the reftable format',
+    () => {
+      rmSync(repo, { recursive: true, force: true });
+      mkdirSync(repo);
+      expect(git(repo, 'init', '-q', '--ref-format=reftable', '-b', 'main').status).toBe(0);
+      expect(mnema(repo, 'init').status).toBe(0);
+      expect(mnema(repo, 'memory', 'the base').status).toBe(0);
+      commit(repo, 'the base');
+      publishMain();
+      visit('a', 'main', 'on a');
+      visit('c', 'a', 'on c, cut from a');
+      expect(tails(repo)).toHaveLength(2);
+      squashAThenMergeC();
+      // The case starts the built binary and git: about 2 s on a runner at rest, so it carries its own ceiling.
+    },
+    20_000,
+  );
 
   it('does the same when the worktree went through another branch first', () => {
     publishMain();

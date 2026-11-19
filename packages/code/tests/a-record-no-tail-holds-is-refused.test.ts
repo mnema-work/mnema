@@ -249,6 +249,6 @@ describe('the two readers exit alike over a record with no tail that holds anyth
       });
     },
     // The cases start the built binary and git: about 2 s on a runner at rest, so they carry their own ceiling.
-  20_000,
+    20_000,
   );
 });
