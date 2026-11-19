@@ -17,7 +17,7 @@ importers:
   .:
     devDependencies:
       '@biomejs/biome':
-        specifier: ^2.6.8
+        specifier: 2.6.8
         version: 2.6.8
       '@types/node':
         specifier: ^26.6.6
