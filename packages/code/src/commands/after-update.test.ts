@@ -32,7 +32,7 @@ import {
 import { MACHINE_STATE_FILE } from '../machine-state.js';
 import { type CliIo, run } from '../program.js';
 import { VERSION } from '../version.js';
-import { whatAnUpdateAsks } from './after-update.js';
+import { bringUpToDate, whatAnUpdateAsks } from './after-update.js';
 import { settingsCandidates } from './doctor-vscode.js';
 
 let sandbox: string;
@@ -464,7 +464,7 @@ describe('the mnema MCP server declared a second time', () => {
     );
   });
 
-  it('does not write a file that changed after the plan read it, and two upgrades in a second do not collide', async () => {
+  it('keeps a backup of each of two upgrades, under names that do not collide, and leaves no temporary file', async () => {
     put(claudeJson(), hostFile());
     const first = await mnema(['upgrade']);
     expect(first.failed, first.err.join(' / ')).toBe(false);
@@ -475,5 +475,35 @@ describe('the mnema MCP server declared a second time', () => {
       readdirSync(home).filter((name) => name.startsWith('.claude.json.mnema-backup-')),
     ).toHaveLength(2);
     expect(readdirSync(home).some((name) => name.includes('.mnema-tmp-'))).toBe(false);
+  });
+
+  it('does not write a file the host changed between the plan and the write', async () => {
+    put(claudeJson(), hostFile());
+    const base = {
+      env: discoveryEnv(),
+      processEnv: process.env,
+      running: { file: process.argv[1] ?? '', version: VERSION },
+      driver: `'${process.execPath}' '${process.argv[1]}' record merge-tail %O %A %B %P`,
+    };
+    let reads = 0;
+    let mutateAt = -1;
+    const hostsNew = `${JSON.stringify({ ...JSON.parse(hostFile()), hostNew: 'written by the host meanwhile' }, null, 2)}\n`;
+    const ctx = {
+      ...base,
+      get cwd(): string {
+        reads += 1;
+        if (reads === mutateAt) put(claudeJson(), hostsNew);
+        return repo;
+      },
+    };
+    expect(whatAnUpdateAsks(ctx).some((step) => step.topic === 'mcp')).toBe(true);
+    // The plan reads the project this many times; the first read after it belongs to the first step.
+    mutateAt = reads + 1;
+    reads = 0;
+    const said = await bringUpToDate(ctx, { dryRun: false });
+    expect(said.failed).toBe(true);
+    expect(said.lines.join('\n')).toMatch(/failed · mcp: .*changed since the plan read it/);
+    expect(readFileSync(claudeJson(), 'utf8')).toBe(hostsNew);
+    expect(readdirSync(home).filter((name) => /mnema-(backup|tmp)-/.test(name))).toEqual([]);
   });
 });
