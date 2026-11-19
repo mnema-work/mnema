@@ -247,10 +247,19 @@ claim about the agent hosts is held, and which are not held yet, is in [`docs/ev
 
 ## Contributors
 
-Thanks to everyone whose pull request has been merged: [@bfs2021](https://github.com/bfs2021),
-[@jay23606](https://github.com/jay23606), [@mentallyunstable-lab](https://github.com/mentallyunstable-lab),
-[@prascli](https://github.com/prascli) and [@tylrcc](https://github.com/tylrcc). To add your name,
-start from [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Thanks to everyone whose pull request has been merged here:
+
+<table>
+<tr>
+<td align="center" width="20%"><a href="https://github.com/bfs2021"><img src="https://github.com/bfs2021.png?size=128" width="64" height="64" alt="@bfs2021"><br><sub><b>bfs2021</b></sub></a></td>
+<td align="center" width="20%"><a href="https://github.com/jay23606"><img src="https://github.com/jay23606.png?size=128" width="64" height="64" alt="@jay23606"><br><sub><b>jay23606</b></sub></a></td>
+<td align="center" width="20%"><a href="https://github.com/mentallyunstable-lab"><img src="https://github.com/mentallyunstable-lab.png?size=128" width="64" height="64" alt="@mentallyunstable-lab"><br><sub><b>mentallyunstable-lab</b></sub></a></td>
+<td align="center" width="20%"><a href="https://github.com/prascli"><img src="https://github.com/prascli.png?size=128" width="64" height="64" alt="@prascli"><br><sub><b>prascli</b></sub></a></td>
+<td align="center" width="20%"><a href="https://github.com/tylrcc"><img src="https://github.com/tylrcc.png?size=128" width="64" height="64" alt="@tylrcc"><br><sub><b>tylrcc</b></sub></a></td>
+</tr>
+</table>
+
+To add your name, start from [`CONTRIBUTING.md`](CONTRIBUTING.md): your first merged pull request puts you in this list.
 
 ## License
 
