@@ -169,7 +169,7 @@ _mnema_described() {
       'list:list the tails that hold events here, the ones a cut can name, with the id `prune` takes' \
       'prune:record that one whole tail was authorized to be cut (it removes nothing)' \
       'relink:relink whole tails of another record into the one this directory names, each signed by its own key' \
-      'repair:put back from git the lines of a public tail that do not read or whose hash does not hold' \
+      'repair:put back from git the lines of a public tail that do not read or whose hash does not hold, or the whole tail when its signed checkpoints do not hold' \
       'help:display help for command' ;;
     'backup') printf '%s\n' \
       'setup:say which folder keeps this project'\''s backup, after a person confirms at a terminal that it keeps the text in clear' \
