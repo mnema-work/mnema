@@ -44,6 +44,7 @@
  */
 
 import { dirname } from 'node:path';
+import type { NewerLines } from '@mnema/context';
 import {
   channelIsOn,
   type PertinentSearch,
@@ -59,6 +60,7 @@ import {
 import { labelsOf, lastJournalOf } from '../session-journal.js';
 import {
   linkBreaksOf,
+  newerLinesIn,
   type ScopedLinkBreak,
   THE_READING_THAT_OPENED_THESE,
   withScopedCaches,
@@ -92,6 +94,8 @@ export interface RecallDone {
   readonly observations: PertinentSearch;
   /** The tails among those read that do not chain: empty for a sound record. */
   readonly linkBreaks: readonly ScopedLinkBreak[];
+  /** What a newer mnema wrote that this one reads past, when it wrote any (ADR-140). */
+  readonly newerLines?: NewerLines;
   /** Where the last session on this machine stopped, when there is one worth saying: see {@link LastSession}. */
   readonly lastSession?: LastSession;
 }
@@ -143,6 +147,7 @@ export function runRecall(ctx: RecallContext): RecallDone | RecallRefused | Brie
       // On `err` at the surface, as the document's: what the record says about its own proof
       // qualifies the answer and is not part of it.
       linkBreaks: linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE),
+      ...newerLinesIn(sources),
       touched,
       memories: pertinentFirst(sources, { kind: 'memory', words: touched.words }),
       observations: pertinentFirst(sources, { kind: 'observation', words: touched.words }),

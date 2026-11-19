@@ -83,7 +83,7 @@ export function registerGuard(task: Command, wiring: Wiring): Declared {
     ) => {
       const given = await fromTheGroup<{ which?: string }>(guard, wiring);
       if (given === REFUSED) return;
-      const { linkBreakNotice } = await import('./integrity.js');
+      const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
       const { runGuard } = await import('../commands/guard.js');
       const result = runGuard(here(), {
         id,
@@ -103,6 +103,7 @@ export function registerGuard(task: Command, wiring: Wiring): Declared {
       // BEFORE the answer, and on the other stream, so it survives a pipe, and so
       // `--json` stays the machine-readable thing it promises to be.
       for (const line of linkBreakNotice(result.linkBreaks)) io.err(render(line));
+      for (const line of newerLinesNotice(result.newerLines, 'the record')) io.err(render(line));
       if (opts.json === true) {
         io.out(JSON.stringify(result.verdict, null, 2));
         return;

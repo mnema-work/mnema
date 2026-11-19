@@ -53,6 +53,8 @@ export function registerAntipatterns(program: Command, wiring: Wiring): Declared
         reportRefusal(wiring, result);
         return;
       }
+      const { newerLinesNotice } = await import('./integrity.js');
+      for (const line of newerLinesNotice(result.newerLines, 'the record')) io.err(render(line));
       if (opts.json === true) {
         // The shapes, and the reading that rides beside them under a name of its own.
         // The note travels INSIDE the JSON for the reason it is on the page: whoever

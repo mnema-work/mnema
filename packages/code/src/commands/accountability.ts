@@ -19,11 +19,13 @@
  * intelligence reads give.
  */
 
+import type { NewerLines } from '@mnema/context';
 import { type Accountability, type AccountabilityFilter, accountability } from '@mnema/context';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { type AnchorForms, anchorForms, resolveTypedAnchor } from '../anchors.js';
 import {
   linkBreaksOf,
+  newerLinesIn,
   type ScopedLinkBreak,
   THE_READING_THAT_OPENED_THESE,
   withScopedCaches,
@@ -60,6 +62,8 @@ export interface AccountabilityDone {
    * says so.
    */
   readonly linkBreaks: readonly ScopedLinkBreak[];
+  /** What a newer mnema wrote that this one reads past, when it wrote any (ADR-140). */
+  readonly newerLines?: NewerLines;
 }
 
 /** The read was refused: no project to account for, or a `--who` that names none. */
@@ -92,6 +96,7 @@ export function runAccountability(
   return withScopedCaches(trees, (sources) => {
     const anchors = anchorForms(sources);
     const linkBreaks = linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE);
+    const newer = newerLinesIn(sources);
     // `--who` takes the same value this read PRINTS, so it accepts the same short
     // form. Left unresolved, a prefix would filter on a `who` that matches nothing
     // and come back as an account of zero facts: the one answer that looks like an
@@ -105,6 +110,7 @@ export function runAccountability(
         ok: true,
         anchors,
         linkBreaks,
+        ...newer,
         account: accountability(sources, { ...input, who: who.anchor }),
       };
     }
@@ -112,6 +118,7 @@ export function runAccountability(
       ok: true,
       anchors,
       linkBreaks,
+      ...newer,
       account: accountability(sources, input),
     };
   });

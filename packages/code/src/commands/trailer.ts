@@ -11,11 +11,13 @@
  */
 
 import { dirname } from 'node:path';
+import type { NewerLines } from '@mnema/context';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { type DecisionFacts, nameOf, readDecisionFacts } from '../decisions-in-git.js';
 import { TRAILER } from '../git-log.js';
 import {
   linkBreaksOf,
+  newerLinesIn,
   type ScopedLinkBreak,
   THE_READING_THAT_OPENED_THESE,
   withScopedCaches,
@@ -33,6 +35,8 @@ export interface TrailerDone {
   readonly line: string;
   readonly title: string;
   readonly linkBreaks: readonly ScopedLinkBreak[];
+  /** What a newer mnema wrote that this one reads past, when it wrote any (ADR-140). */
+  readonly newerLines?: NewerLines;
 }
 
 /** The read was refused before it ran. */
@@ -82,6 +86,7 @@ export function runTrailer(
       line: trailerLine(all, decision, input.byId),
       title: decision.title,
       linkBreaks: linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE),
+      ...newerLinesIn(sources),
     };
   });
 }

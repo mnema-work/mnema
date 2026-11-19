@@ -44,11 +44,13 @@
  */
 
 import { catalogUpcasters, type TransitionFields } from '@mnema/chain';
+import type { NewerLines } from '@mnema/context';
 import { type GateResult, guard } from '@mnema/context';
 import { chainRootForScope, type DiscoveryEnv, locateEntityScope, resolveTrees } from '@mnema/core';
 import { resolveAnchorInRecord } from '../anchors.js';
 import {
   linkBreaksOf,
+  newerLinesIn,
   type ScopedLinkBreak,
   THE_READING_THAT_OPENED_THESE,
   withCache,
@@ -84,6 +86,8 @@ export interface GuardVerdict {
    * says so.
    */
   readonly linkBreaks: readonly ScopedLinkBreak[];
+  /** What a newer mnema wrote that this one reads past, when it wrote any (ADR-140). */
+  readonly newerLines?: NewerLines;
 }
 
 /** The dry-run could not be attempted: the task, project or actor was not found. */
@@ -158,6 +162,7 @@ export function runGuard(
       ok: true,
       verdict,
       linkBreaks: linkBreaksOf([{ scope, chainRoot: root, cache }], THE_READING_THAT_OPENED_THESE),
+      ...newerLinesIn([{ scope, chainRoot: root, cache }]),
     };
   });
 }

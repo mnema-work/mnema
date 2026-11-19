@@ -23,7 +23,7 @@ export function registerTrailer(program: Command, wiring: Wiring): Declared {
     .option('--id', 'carry the id instead of the label')
     .option('--json', 'emit the line as JSON')
     .action(async (decision: string, opts: { id?: boolean; json?: boolean }) => {
-      const { linkBreakNotice } = await import('./integrity.js');
+      const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
       const { runTrailer } = await import('../commands/trailer.js');
       const result = runTrailer(here(), { decision, byId: opts.id === true });
       if (!result.ok) {
@@ -31,6 +31,7 @@ export function registerTrailer(program: Command, wiring: Wiring): Declared {
         return;
       }
       for (const line of linkBreakNotice(result.linkBreaks)) io.err(render(line));
+      for (const line of newerLinesNotice(result.newerLines, 'the record')) io.err(render(line));
       if (opts.json === true) {
         io.out(JSON.stringify({ line: result.line }, null, 2));
         return;

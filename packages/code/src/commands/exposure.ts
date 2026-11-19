@@ -33,14 +33,16 @@
  * does: a denominator beside an empty list otherwise reads as ground covered.
  *
  * Read-only: it reads the present trees' tails and folds them with the context package's
- * pure `exposure`. No cache, no writer, no key, no actor. With no project it
+ * pure `exposure`. No writer, no key, no actor, and no cache kept: the trees are opened once more
+ * only to ask whether a newer mnema wrote lines this one cannot read. With no project it
  * refuses `NO_PROJECT`, like the other intelligence reads.
  */
 
 import { catalogUpcasters } from '@mnema/chain';
-import { type Exposure, exposure } from '@mnema/context';
+import { type Exposure, exposure, type NewerLines } from '@mnema/context';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { scopedEvents } from '../intelligence-source.js';
+import { newerLinesOfTrees } from '../tree-sources.js';
 
 /** What the exposure command needs: injected so it is testable. */
 export interface ExposureContext {
@@ -54,6 +56,8 @@ export interface ExposureContext {
 export interface ExposureDone {
   readonly ok: true;
   readonly report: Exposure;
+  /** What a newer mnema wrote that this one reads past, when it wrote any (ADR-140). */
+  readonly newerLines?: NewerLines;
 }
 
 /** The read was refused: there is no project to inspect. */
@@ -72,5 +76,9 @@ export function runExposure(ctx: ExposureContext): ExposureDone | ExposureRefuse
   if (trees.projectPublic === undefined) {
     return { ok: false, reason: 'NO_PROJECT' };
   }
-  return { ok: true, report: exposure(scopedEvents(trees, catalogUpcasters())) };
+  return {
+    ok: true,
+    report: exposure(scopedEvents(trees, catalogUpcasters())),
+    ...newerLinesOfTrees(trees),
+  };
 }

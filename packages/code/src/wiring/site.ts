@@ -96,6 +96,8 @@ export function registerSite(program: Command, wiring: Wiring): Declared {
       }
       writeLines(io, siteReport(render, result));
       for (const line of siteNotice(result)) io.err(render(line));
+      const { newerLinesNotice } = await import('./integrity.js');
+      for (const line of newerLinesNotice(result.newerLines, 'the record')) io.err(render(line));
     });
   return readsTheRecord(site);
 }

@@ -118,7 +118,7 @@ export function registerRecall(program: Command, wiring: Wiring): Declared {
           if (reminder.text !== undefined) io.out(reminder.text);
           return;
         }
-        const { linkBreakNotice } = await import('./integrity.js');
+        const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
         const { runRecall } = await import('../commands/recall.js');
         const { recallDocument, recallWithin } = await import('../presentation/recall.js');
         const { hookCeilingOf, roomBeside } = await import('../presentation/within-a-hook.js');
@@ -138,7 +138,11 @@ export function registerRecall(program: Command, wiring: Wiring): Declared {
         // (ADR-394, ADR-410), and nothing else is said on `err` by this verb; where there are no
         // notes there is no text to lead, and the verb stays as silent as it was (the opening
         // document says the fact).
-        const notice = linkBreakNotice(result.linkBreaks);
+        const integrity = linkBreakNotice(result.linkBreaks);
+        // What is not integrity (a newer mnema wrote lines) stays on `err` even with the flag, under
+        // the document, where the handler appends it; the room beside the document counts it.
+        const others = newerLinesNotice(result.newerLines, 'the record');
+        const notice = [...integrity, ...others];
         // With the flag the notice is part of what has to fit, as it is for `brief`.
         const document =
           opts.hook === true
@@ -154,8 +158,9 @@ export function registerRecall(program: Command, wiring: Wiring): Declared {
         if (opts.hook !== true) {
           for (const line of notice) io.err(render(line));
         } else if (document.length > 0) {
-          for (const line of notice) io.out(render(line));
-          if (notice.length > 0) io.out('');
+          for (const line of others) io.err(render(line));
+          for (const line of integrity) io.out(render(line));
+          if (integrity.length > 0) io.out('');
         }
         writeLines(io, document);
       },

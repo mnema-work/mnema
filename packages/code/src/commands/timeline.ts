@@ -22,12 +22,14 @@
  * context and guard reads do.
  */
 
+import type { NewerLines } from '@mnema/context';
 import { type TimelineEntry, timeline } from '@mnema/context';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { type AnchorForms, anchorForms } from '../anchors.js';
 import { targetRecordedAs } from '../link-target.js';
 import {
   linkBreaksOf,
+  newerLinesIn,
   type ScopedLinkBreak,
   THE_READING_THAT_OPENED_THESE,
   withScopedCaches,
@@ -57,6 +59,8 @@ export interface TimelineDone {
    * says so.
    */
   readonly linkBreaks: readonly ScopedLinkBreak[];
+  /** What a newer mnema wrote that this one reads past, when it wrote any (ADR-140). */
+  readonly newerLines?: NewerLines;
 }
 
 /** The read was refused: there is no project to read a history from. */
@@ -87,6 +91,7 @@ export function runTimeline(
   return withScopedCaches(trees, (sources) => ({
     ok: true,
     linkBreaks: linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE),
+    ...newerLinesIn(sources),
     id: input.id,
     entries: timeline(sources, input.id, recordedAs),
     anchors: anchorForms(sources),

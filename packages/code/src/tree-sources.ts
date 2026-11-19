@@ -373,6 +373,22 @@ export function newerLinesIn(sources: readonly ScopedCache[]): {
 }
 
 /**
+ * {@link newerLinesIn} for a read that folds the tails itself and holds no cache: the trees (or the
+ * `scopes` of them) are opened for this one question and closed, so the sentence is the one every
+ * other read says, off the same fold of the same lines.
+ */
+export function newerLinesOfTrees(
+  trees: ResolvedTrees,
+  scopes?: readonly Scope[],
+): { readonly newerLines?: NewerLines } {
+  return withScopedCaches(trees, (sources) =>
+    newerLinesIn(
+      scopes === undefined ? sources : sources.filter((one) => scopes.includes(one.scope)),
+    ),
+  );
+}
+
+/**
  * WHEN the answer is about: the one thing the callers of {@link linkBreaksOf} differ by,
  * and a closed union rather than a flag so that a door added later does not compile until
  * somebody has said which of the two it is.

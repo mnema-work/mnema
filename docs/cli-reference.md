@@ -495,9 +495,9 @@ prints it on the error stream, never in the document, and the copy a hook hands 
 what has to fit; `mnema show <id>` and the agent's `read_record` say it for the record a line names as its
 subject, since a reading of that record may be out of date by it; the agent's `bootstrap` carries it beside
 its payload; every other read of the agent (`search`, `resume`, `focus`, `governing_rules`, the audit tools) carries it
-as a block before its payload; `mnema search`, `resume`, `rules` and `why` say it on the error stream, and the console
+as a block before its payload; every other command-line verb that reads the record (`recall`, `rules-file`, `timeline`, `refs`, `commits`, `aging`, `trailer`, `diagram`, `usage`, `site`, `export`, `audit accountability`, `audit exposure`, `audit antipatterns`, `task next`, `task guard`, `skill provenance`) says it on the error stream, and `search`, `resume`, `rules` and `why` too, and the console
 says it under the tree that holds the lines; the gate that refuses a write, or holds it for a person, says it in its
-reason and says nothing when it lets the write through; and `mnema doctor` lists it as a finding. The command-line audit verbs (`audit accountability`, `exposure`, `antipatterns`, `export`) do not say it yet. The line counts the lines and names at most three
+reason and says nothing when it lets the write through; and `mnema doctor` lists it as a finding. The line counts the lines and names at most three
 kinds, says that this binary reads and applies none of them, and says what to do: update mnema, and not
 guess what they say. It cannot say which mnema wrote them, because nothing in the record says. It is absent
 for a record no newer mnema wrote into.

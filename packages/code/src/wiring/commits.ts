@@ -23,7 +23,7 @@ export function registerCommits(program: Command, wiring: Wiring): Declared {
     .argument('<decision>', 'the decision, by id or by ADR label')
     .option('--json', 'emit the faithful reading as JSON')
     .action(async (decision: string, opts: { json?: boolean }) => {
-      const { linkBreakNotice } = await import('./integrity.js');
+      const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
       const { runCommits } = await import('../commands/commits.js');
       const { commitsReport } = await import('../presentation/git-bridge.js');
       const result = runCommits(here(), { decision });
@@ -32,6 +32,7 @@ export function registerCommits(program: Command, wiring: Wiring): Declared {
         return;
       }
       for (const line of linkBreakNotice(result.linkBreaks)) io.err(render(line));
+      for (const line of newerLinesNotice(result.newerLines, 'the record')) io.err(render(line));
       if (opts.json === true) {
         const { linkBreaks: _breaks, ok: _ok, ...reading } = result;
         io.out(JSON.stringify(reading, null, 2));

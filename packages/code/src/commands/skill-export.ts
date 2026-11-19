@@ -65,6 +65,7 @@
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { NewerLines } from '@mnema/context';
 import {
   type Disposition,
   readRecord,
@@ -83,6 +84,7 @@ import {
 import { oneLine } from '../one-line.js';
 import {
   linkBreaksOf,
+  newerLinesIn,
   type ScopedLinkBreak,
   THE_READING_THAT_OPENED_THESE,
   withScopedCaches,
@@ -166,6 +168,8 @@ export interface SkillExportDone {
    * says so.
    */
   readonly linkBreaks: readonly ScopedLinkBreak[];
+  /** What a newer mnema wrote that this one reads past, when it wrote any (ADR-140). */
+  readonly newerLines?: NewerLines;
 }
 
 /** Nothing was written: the pattern, the name or the description did not qualify. */
@@ -267,6 +271,7 @@ export function runSkillExport(
     return {
       ok: true,
       linkBreaks: linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE),
+      ...newerLinesIn(sources),
       name: skill.name,
       description,
       descriptionFrom: given === undefined ? ('the body' as const) : ('the caller' as const),

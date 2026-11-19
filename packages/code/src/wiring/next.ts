@@ -35,7 +35,7 @@ export function registerNextActions(task: Command, wiring: Wiring): Declared {
   });
   next.action(async (id: string, opts: { json?: boolean }) => {
     if ((await fromTheGroup(next, wiring)) === REFUSED) return;
-    const { linkBreakNotice } = await import('./integrity.js');
+    const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
     const { runNextActions } = await import('../commands/next-actions.js');
     const result = runNextActions(here(), { id });
     if (!result.ok) {
@@ -45,6 +45,7 @@ export function registerNextActions(task: Command, wiring: Wiring): Declared {
     // BEFORE the answer, and on the other stream, so it survives a pipe, and so
     // `--json` stays the machine-readable thing it promises to be.
     for (const line of linkBreakNotice(result.linkBreaks)) io.err(render(line));
+    for (const line of newerLinesNotice(result.newerLines, 'the record')) io.err(render(line));
     if (opts.json === true) {
       io.out(JSON.stringify(result.actions, null, 2));
       return;
