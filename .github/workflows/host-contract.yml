@@ -123,6 +123,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: ${{ needs.changes.outputs.host == 'true' }}
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         if: ${{ needs.changes.outputs.host == 'true' }}
@@ -148,7 +150,7 @@ jobs:
           WANTED: ${{ matrix.version }}
           # The vendor's release signing key, by the fingerprint of its primary key.
           SIGNING_KEY: 31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE
-        run: |
+        run: | # zizmor: ignore[adhoc-packages] the host CLI is what this contract exercises; its SHA-256 is checked against the vendor manifest next
           set -euo pipefail
           case "$WANTED" in
             stable|latest) VERSION=$(npm view @anthropic-ai/claude-code "dist-tags.$WANTED") ;;
@@ -228,6 +230,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: ${{ needs.changes.outputs.host == 'true' }}
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         if: ${{ needs.changes.outputs.host == 'true' }}
@@ -297,6 +301,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: ${{ needs.changes.outputs.host == 'true' }}
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         if: ${{ needs.changes.outputs.host == 'true' }}
@@ -320,7 +326,7 @@ jobs:
         if: ${{ needs.changes.outputs.host == 'true' }}
         env:
           WANTED: ${{ matrix.version }}
-        run: |
+        run: | # zizmor: ignore[adhoc-packages] the host CLI is what this contract exercises; its SHA-256 is checked against the vendor manifest next
           set -euo pipefail
           case "$WANTED" in
             latest) VERSION=$(npm view @openai/codex dist-tags.latest) ;;
@@ -418,6 +424,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: ${{ needs.changes.outputs.host == 'true' }}
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         if: ${{ needs.changes.outputs.host == 'true' }}
@@ -441,7 +449,7 @@ jobs:
         if: ${{ needs.changes.outputs.host == 'true' }}
         env:
           WANTED: ${{ matrix.version }}
-        run: |
+        run: | # zizmor: ignore[adhoc-packages] the host CLI is what this contract exercises; its SHA-256 is checked against the vendor manifest next
           set -euo pipefail
           case "$WANTED" in
             latest) VERSION=$(npm view @github/copilot dist-tags.latest) ;;
@@ -502,6 +510,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: ${{ needs.changes.outputs.host == 'true' }}
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         if: ${{ needs.changes.outputs.host == 'true' }}
@@ -525,7 +535,7 @@ jobs:
         if: ${{ needs.changes.outputs.host == 'true' }}
         env:
           WANTED: ${{ matrix.version }}
-        run: |
+        run: | # zizmor: ignore[adhoc-packages] the host CLI is what this contract exercises; its SHA-256 is checked against the vendor manifest next
           set -euo pipefail
           case "$WANTED" in
             latest) VERSION=$(npm view opencode-ai dist-tags.latest) ;;
@@ -586,6 +596,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: ${{ needs.changes.outputs.host == 'true' }}
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         if: ${{ needs.changes.outputs.host == 'true' }}
@@ -609,7 +621,7 @@ jobs:
         if: ${{ needs.changes.outputs.host == 'true' }}
         env:
           WANTED: ${{ matrix.version }}
-        run: |
+        run: | # zizmor: ignore[adhoc-packages] the host CLI is what this contract exercises; its SHA-256 is checked against the vendor manifest next
           set -euo pipefail
           case "$WANTED" in
             latest) VERSION=$(npm view @google/gemini-cli dist-tags.latest) ;;
@@ -669,6 +681,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: ${{ needs.changes.outputs.host == 'true' }}
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         if: ${{ needs.changes.outputs.host == 'true' }}
@@ -692,7 +706,7 @@ jobs:
         if: ${{ needs.changes.outputs.host == 'true' }}
         env:
           WANTED: ${{ matrix.version }}
-        run: |
+        run: | # zizmor: ignore[adhoc-packages] the host CLI is what this contract exercises; its SHA-256 is checked against the vendor manifest next
           set -euo pipefail
           case "$WANTED" in
             latest) VERSION=$(npm view @qwen-code/qwen-code dist-tags.latest) ;;

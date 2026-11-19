@@ -1,0 +1,53 @@
+name: Hidden characters
+
+# WHAT THIS IS. A reading of what a pull request ADDS, for a character that cannot be seen (U+200B to
+# U+200F, U+202A to U+202E, U+2066 to U+2069, U+FEFF): a right-to-left override reorders the line a
+# reviewer reads, a zero-width space makes two names look alike. An added line that holds one fails
+# this job, and the job names `file:line`. `.github/the-hidden-characters/check.mjs` owns the rule
+# and its comment says what it does not do.
+#
+# THE LABEL `needs security review` IS NOT HERE. A pull request from a fork that changes a workflow, a
+# dependency, the lockfile, the npm settings or a build or install script gets it from
+# `what-failed.yml`, the one workflow that holds a token that writes for a fork's pull request.
+#
+# THE LINE IT HOLDS. It runs on `pull_request`, so a fork's run has a read-only token and no secret.
+# The checkout keeps no credential, nothing is installed and no package script runs. The expressions
+# of the event that reach a step are two SHAs, set as environment variables and never pasted into a
+# shell line. The job reads the pull request through `git diff` of its own commits, with external
+# diff and text conversion off.
+#
+# IT IS NOT ONE OF THE CHECKS A PULL REQUEST MUST CARRY until the maintainer makes it one.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  read:
+    name: hidden characters
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Read the lines the pull request adds
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node .github/the-hidden-characters/check.mjs "$BASE_SHA" "$HEAD_SHA"

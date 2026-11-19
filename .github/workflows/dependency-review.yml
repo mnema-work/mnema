@@ -1,0 +1,48 @@
+name: Dependency review
+
+# WHAT THIS IS. GitHub's dependency review over what a pull request changes in the dependencies:
+# the packages `pnpm-lock.yaml` and the other lockfiles add or bump, and the actions a workflow
+# uses. It refuses a change that brings a package with a published advisory of moderate severity
+# or worse, or a package whose license is not one the repository already carries. It reads the
+# dependency graph GitHub keeps for the pull request's head against the base; it installs and
+# runs nothing.
+#
+# THE LICENSES ALLOWED are the ones the installed tree already holds, read with
+# `pnpm licenses list`: MIT, Apache-2.0, the BSD pair, ISC, 0BSD, BlueOak-1.0.0, MPL-2.0 and
+# Artistic-2.0 (build and test tooling, none of it in the published packages), Zlib and CC0-1.0.
+# A package under an expression such as `MIT OR GPL-3.0-or-later` passes when one side is allowed.
+# Adding a license is a diff to this list and a decision about it, not a way to make a red go.
+#
+# THE TOKEN reads the contents and writes the one comment that sums up a refusal. On a pull request
+# from a fork the token cannot write, so the summary is in the job's summary page and no comment is
+# made; the refusal is the same.
+#
+# IT IS NOT ONE OF THE CHECKS A PULL REQUEST MUST CARRY until the maintainer makes it one.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: dependency review
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/dependency-review-action@bbc44d14a204704ccc493733616cd1e93a0321ec # v5.0.1
+        with:
+          fail-on-severity: moderate
+          fail-on-scopes: runtime, development
+          comment-summary-in-pr: on-failure
+          allow-licenses: >-
+            MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, BlueOak-1.0.0,
+            MPL-2.0, Artistic-2.0, Zlib, CC0-1.0

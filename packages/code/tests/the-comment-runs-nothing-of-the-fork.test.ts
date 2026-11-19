@@ -193,7 +193,7 @@ describe('the workflow that comments runs nothing of the fork', () => {
   it('is started by CI completing, only for a run that ended green or red and not one Dependabot started', () => {
     const all = text('.github/workflows/what-failed.yml');
     expect(code(all)).toMatch(
-      /^ {2}workflow_run:\n {4}workflows: \[CI\]\n {4}types: \[completed\]$/m,
+      /^ {2}workflow_run:(?: # zizmor: ignore\[dangerous-triggers\] .+)?\n {4}workflows: \[CI\]\n {4}types: \[completed\]$/m,
     );
     // The name it waits for is the name CI has.
     expect(text('.github/workflows/ci.yml')).toMatch(/^name: CI$/m);
