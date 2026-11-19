@@ -135,6 +135,8 @@ describe('screened: absence means nothing was taken out', () => {
 const CLASS_SAMPLE: Readonly<Record<string, string>> = {
   'aws-access-key': 'AKIAIOSFODNN7EXAMPLE',
   'github-token': `ghp_${'A1b2C3d4E5'.repeat(4)}`,
+  'gitlab-token': `glpat-${'xK3_m9Pq-2'.repeat(2)}`,
+  'huggingface-token': `hf_${'aBcD3fGh1J'.repeat(3)}xyzA`,
   'anthropic-key': `sk-ant-api03-${'Xy9'.repeat(12)}`,
   'openai-key': `sk-proj-${'Xy9'.repeat(12)}`,
   'stripe-key': `sk_live_${'4a7B'.repeat(8)}`,
@@ -147,11 +149,20 @@ const CLASS_SAMPLE: Readonly<Record<string, string>> = {
   // The one class whose secret is a SLOT rather than the whole value: the URL around
   // it has to survive a redaction, and the whole write is refused in a name anyway.
   'url-password': 'postgres://svc:Tr0ub4dor3@db.internal/app',
+  // The two classes read by context are slots too: the value after a header or a name.
+  'authorization-header': 'Authorization: Bearer Zq8Rt5Wx2Ly',
+  'named-credential': 'DB_PASSWORD=S3nh4F0rte',
 };
 
 /** The part of a sample that must never reach the record. */
+const SLOT: Readonly<Record<string, string>> = {
+  'url-password': 'Tr0ub4dor3',
+  'authorization-header': 'Zq8Rt5Wx2Ly',
+  'named-credential': 'S3nh4F0rte',
+};
+
 function mustNotSurvive(secret: string): string {
-  return secret === 'url-password' ? 'Tr0ub4dor3' : (CLASS_SAMPLE[secret] as string);
+  return SLOT[secret] ?? (CLASS_SAMPLE[secret] as string);
 }
 
 describe('every class the sieve knows is refused in a name and redacted in a body', () => {

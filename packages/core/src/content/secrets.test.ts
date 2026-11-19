@@ -41,6 +41,8 @@ interface Sample {
 const SAMPLES: Readonly<Record<SecretClass, Sample>> = {
   'aws-access-key': itself('AKIAIOSFODNN7EXAMPLE'),
   'github-token': itself(`ghp_${'A1b2C3d4E5'.repeat(4)}`),
+  'gitlab-token': itself(`glpat-${'xK3_m9Pq-2'.repeat(2)}`),
+  'huggingface-token': itself(`hf_${'aBcD3fGh1J'.repeat(3)}xyzA`),
   'anthropic-key': itself(`sk-ant-api03-${'Xy9'.repeat(12)}`),
   'openai-key': itself(`sk-proj-${'Xy9'.repeat(12)}`),
   'stripe-key': itself(`sk_live_${'4a7B'.repeat(8)}`),
@@ -56,6 +58,13 @@ const SAMPLES: Readonly<Record<SecretClass, Sample>> = {
   // The one class whose secret is not the whole of what is written: the password
   // sits in a slot, and the URL around it is what has to survive.
   'url-password': { value: 'Tr0ub4dor3', holder: 'postgres://svc:Tr0ub4dor3@db.internal/app' },
+  // The two classes read by context: the value is what follows a header or a name, and
+  // the header and the name are what has to survive around it.
+  'authorization-header': {
+    value: 'dXNlcjpodW50ZXIy',
+    holder: 'Authorization: Basic dXNlcjpodW50ZXIy',
+  },
+  'named-credential': { value: 'hunter2', holder: 'DB_PASSWORD=hunter2' },
 };
 
 /** A sample whose value IS what gets written into the text. */
@@ -401,6 +410,16 @@ const NAME_UNDER_EACH_PREFIX: Readonly<Record<string, NameProbe>> = {
     verdict: [],
     why: 'the body admits no separator, so a slug never reaches the length',
   },
+  'gitlab-token': {
+    text: 'glpat-check-the-tenant-scope-first',
+    verdict: ['gitlab-token'],
+    why: 'A DECLARED LIMIT, on the argument `slack-token` makes below: `glpat` and its kin are GitLab’s own coinage, nobody’s word',
+  },
+  'huggingface-token': {
+    text: 'hf_check_the_tenant_scope_first_thing',
+    verdict: [],
+    why: 'the body admits no separator',
+  },
   'anthropic-key': {
     text: 'sk-ant-eater-does-not-eat-any-ants',
     verdict: [],
@@ -445,6 +464,16 @@ const NAME_UNDER_EACH_PREFIX: Readonly<Record<string, NameProbe>> = {
     text: 'postgres://svc:check-the-tenant-scope@db.internal/app',
     verdict: ['url-password'],
     why: 'RIGHT, not a limit: this class’s shape is "whatever sits in this position", and a name typed into a password slot is a password',
+  },
+  'authorization-header': {
+    text: 'authorization-check-the-tenant-scope',
+    verdict: [],
+    why: 'a name with the word in it is not a header: there is no `:` or `=` after it',
+  },
+  'named-credential': {
+    text: 'password-check-the-tenant-scope',
+    verdict: [],
+    why: 'a name with the word in it is not an assignment: there is no `:` or `=` after it',
   },
 };
 
@@ -590,6 +619,202 @@ describe('scrubSecrets: what it does NOT flag', () => {
   });
 });
 
+describe('scrubSecrets: the shapes each issuer documents', () => {
+  // Each from the issuer's own table of token formats: GitHub's (`github_pat_`), GitLab's
+  // "Token prefixes", Hugging Face's user access tokens page, Stripe's webhook guide.
+  const FINE_GRAINED = `github_pat_${'11ABCDEFG0'.repeat(2)}ab_${'Zq8Rt5Wx2Ly'.repeat(6)}`;
+  const CAUGHT: readonly { readonly value: string; readonly secret: SecretClass }[] = [
+    { value: FINE_GRAINED, secret: 'github-token' },
+    { value: `glpat-${'Ab3_dE6-hJ'.repeat(2)}`, secret: 'gitlab-token' },
+    { value: `gldt-${'Ab3dE6hJ9k'.repeat(2)}`, secret: 'gitlab-token' },
+    { value: `glrt-${'Ab3dE6hJ9k'.repeat(3)}`, secret: 'gitlab-token' },
+    { value: `glcbt-${'Ab3dE6hJ9k'.repeat(2)}`, secret: 'gitlab-token' },
+    { value: `hf_${'QwErTy7UiO'.repeat(3)}pAsD`, secret: 'huggingface-token' },
+    { value: `whsec_${'Mn4Bv8Cx2Z'.repeat(3)}`, secret: 'stripe-key' },
+  ];
+
+  for (const { value, secret } of CAUGHT) {
+    it(`replaces ${value.slice(0, 12)}... as ${secret}, and leaves the sentence`, () => {
+      const scrubbed = scrubSecrets(`rotate ${value} today`);
+      expect(scrubbed.text).toBe(`rotate ${secretPlaceholder(secret)} today`);
+      expect(scrubbed.replaced).toEqual([secret]);
+    });
+  }
+
+  const LEFT: readonly { readonly why: string; readonly text: string }[] = [
+    {
+      why: 'a name under github_pat_',
+      text: 'the github_pat_rotation_policy_for_the_team_and_the_bots doc',
+    },
+    { why: 'the word glpat with too short a body', text: 'a glpat-short one' },
+    { why: 'a name under hf_', text: 'the hf_check_the_tenant_scope_first_thing skill' },
+    { why: 'whsec_ with too short a body', text: 'a whsec_short value' },
+  ];
+  for (const { why, text } of LEFT) {
+    it(`leaves ${why} alone`, () => {
+      expect(scrubSecrets(text).text).toBe(text);
+    });
+  }
+});
+
+describe('scrubSecrets: a value after a credential’s name or header', () => {
+  // The value is gone and the name or the header stays: rotating it needs to know which.
+  const CAUGHT: readonly {
+    readonly text: string;
+    readonly value: string;
+    readonly secret: SecretClass;
+  }[] = [
+    {
+      text: 'curl -H "Authorization: Bearer abc.DEF-123_xyz"',
+      value: 'abc.DEF-123_xyz',
+      secret: 'authorization-header',
+    },
+    {
+      text: 'Authorization: Basic dXNlcjpwYXNz',
+      value: 'dXNlcjpwYXNz',
+      secret: 'authorization-header',
+    },
+    {
+      text: 'authorization: bearer s3cr3t-T0ken',
+      value: 's3cr3t-T0ken',
+      secret: 'authorization-header',
+    },
+    {
+      text: '{"Authorization": "Bearer abc123def"}',
+      value: 'abc123def',
+      secret: 'authorization-header',
+    },
+    {
+      text: 'Proxy-Authorization: Basic Zm9vOmJhcg==',
+      value: 'Zm9vOmJhcg==',
+      secret: 'authorization-header',
+    },
+    { text: 'Authorization: rawtoken42', value: 'rawtoken42', secret: 'authorization-header' },
+    { text: 'PASSWORD=hunter2', value: 'hunter2', secret: 'named-credential' },
+    {
+      text: 'export DATABASE_PASSWORD=S3nh4F0rte',
+      value: 'S3nh4F0rte',
+      secret: 'named-credential',
+    },
+    { text: 'API_KEY=abc123', value: 'abc123', secret: 'named-credential' },
+    { text: 'secret: Xq9-dk3', value: 'Xq9-dk3', secret: 'named-credential' },
+    { text: '{"password": "hunter2"}', value: 'hunter2', secret: 'named-credential' },
+    {
+      text: "{ password: 'correct horse battery staple' }",
+      value: 'correct horse battery staple',
+      secret: 'named-credential',
+    },
+    { text: 'GET /v1/items?token=abc123&page=2', value: 'abc123', secret: 'named-credential' },
+    {
+      text: 'https://app.example/cb#access_token=Zm9vYmFy&state=1',
+      value: 'Zm9vYmFy',
+      secret: 'named-credential',
+    },
+    {
+      text: 'aws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+      value: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+      secret: 'named-credential',
+    },
+    {
+      text: 'ACME-INTERNAL-TOKEN=7f3a9c2b8e1d4a6f',
+      value: '7f3a9c2b8e1d4a6f',
+      secret: 'named-credential',
+    },
+    { text: 'X-Api-Key: 9f8e7d6c5b4a', value: '9f8e7d6c5b4a', secret: 'named-credential' },
+    { text: 'docker run -e "MNEMA_TOKEN=Zx81yQ" app', value: 'Zx81yQ', secret: 'named-credential' },
+    { text: 'client_secret: "abc-DEF_123"', value: 'abc-DEF_123', secret: 'named-credential' },
+    { text: 'apiKey: "k3y-v4lue"', value: 'k3y-v4lue', secret: 'named-credential' },
+    { text: 'PIN as a password: password=123456', value: '123456', secret: 'named-credential' },
+    { text: '  passwd = pa55word', value: 'pa55word', secret: 'named-credential' },
+  ];
+
+  for (const { text, value, secret } of CAUGHT) {
+    it(`takes the value out of ${JSON.stringify(text.slice(0, 40))} as ${secret}`, () => {
+      const scrubbed = scrubSecrets(text);
+      expect(scrubbed.text).not.toContain(value);
+      expect(scrubbed.text).toBe(text.replace(value, secretPlaceholder(secret)));
+      expect(scrubbed.replaced).toEqual([secret]);
+    });
+  }
+
+  it('names the issuer when the value has a shape of its own: the context classes come last', () => {
+    const github = `ghp_${'A1b2C3d4E5'.repeat(4)}`;
+    const openai = `sk-proj-${'Xy9'.repeat(12)}`;
+    expect(scrubSecrets(`Authorization: Bearer ${github}`).replaced).toEqual(['github-token']);
+    expect(scrubSecrets(`OPENAI_API_KEY=${openai}`).replaced).toEqual(['openai-key']);
+    expect(scrubSecrets(`{"password": "${github}"}`).replaced).toEqual(['github-token']);
+  });
+
+  // Each of these holds a credential's name, a header or the word, and none holds one.
+  const LEFT: readonly { readonly why: string; readonly text: string }[] = [
+    { why: 'a title about a token', text: 'Rotate the token every week' },
+    { why: 'a title about a password', text: 'Passwords are kept in the vault, never in the repo' },
+    { why: 'a count of tokens', text: 'max_tokens=1024 and token_count: 5' },
+    { why: 'a pagination cursor', text: 'next_token=eyJvZmZzZXQiOjEwMH0 and NextToken: AbC123' },
+    {
+      why: 'a permission of a workflow',
+      text: 'permissions:\n  id-token: write\n  contents: read',
+    },
+    {
+      why: 'a type in a declaration',
+      text: 'interface Login {\n  password: string;\n  token: string;\n}',
+    },
+    {
+      why: 'a variable standing for the value',
+      text: `Authorization: Bearer $TOKEN and PASSWORD=\${DB_PASSWORD}`,
+    },
+    { why: 'a placeholder for the value', text: 'API_KEY=<your-key> and "token": "<token>"' },
+    { why: 'a value already masked', text: 'password: *** and token=xxxxxxxx' },
+    { why: 'a flag with no value', text: 'auth: true\nsecret: none' },
+    {
+      why: 'code reading the value from elsewhere',
+      text: '  token: request.token,\n  secret: process.env[NAME];',
+    },
+    {
+      why: 'a package named after the word',
+      text: '"@inquirer/password": "^4.0.0",\n"jsonwebtoken": "9.0.2"',
+    },
+    { why: 'a package path ending in the word', text: '"@octokit/auth-token": "latest"' },
+    {
+      why: 'a sentence about authorization',
+      text: 'accepted under his standing authorization: "Faça os aceites"',
+    },
+    {
+      why: 'a sentence quoting a word after authorization',
+      text: 'granted under the maintainer’s authorization: "Approved"',
+    },
+    {
+      why: 'header names listed in a sentence',
+      text: 'none for github_pat_, glpat-, Authorization: Bearer, PASSWORD= or a JSON field',
+    },
+    {
+      why: 'a message kept under a name',
+      text: "HOLDS_A_SECRET: 'the field reads as a credential and was refused'",
+    },
+    { why: 'a name used in a sentence', text: "x ? 'a password' : 'a token'" },
+    // The nine notes that destroyed the first class read by name, measured then and
+    // asserted now: each is where a secret lives, not the secret.
+    {
+      why: 'note 1',
+      text: `the api_key: environment \u2014 it comes from the deploy, never the repo`,
+    },
+    { why: 'note 2', text: 'token: 15000000 tokens spent this month on the audit' },
+    { why: 'note 3', text: 'the secret: rotation is quarterly and nobody remembers to do it' },
+    { why: 'note 4', text: 'apiKey= process.env.OPENAI_API_KEY in the new client' },
+    { why: 'note 5', text: 'credential: short-lived, issued by the OIDC provider at deploy time' },
+    { why: 'note 6', text: 'token = identifier | keyword | punctuation in the lexer' },
+    { why: 'note 7', text: 'design token: color-surface-raised, defined once in the theme' },
+    { why: 'note 8', text: 'password: unchanged since the migration, tracked in the ticket' },
+    { why: 'note 9', text: 'api_key: deprecated, use the bearer token instead' },
+  ];
+
+  for (const { why, text } of LEFT) {
+    it(`leaves ${why} as written`, () => {
+      expect(scrubSecrets(text).text).toBe(text);
+    });
+  }
+});
+
 describe('scrubSecrets: the limits, stated as tests', () => {
   // These are the cases the shape cannot reach, and the reason each write surface
   // declares in its own description that what it does not recognize goes in
@@ -597,28 +822,24 @@ describe('scrubSecrets: the limits, stated as tests', () => {
   // one of them would fail here and be noticed, not discovered later.
   const ESCAPES: readonly { readonly why: string; readonly text: string }[] = [
     { why: 'a password written out in prose', text: 'the staging password is hunter2' },
-    { why: 'a proprietary token format', text: 'ACME-INTERNAL-TOKEN=7f3a9c2b8e1d4a6f' },
+    {
+      why: 'a proprietary token format, with no name around it',
+      text: 'the build uses 7f3a9c2b8e1d4a6f',
+    },
     { why: 'a secret encoded in base64', text: 'creds: aHVudGVyMmh1bnRlcjJodW50ZXIy' },
     { why: 'a secret split across two records', text: 'the first half is AKIAIOSF' },
     { why: 'a key with a space injected', text: 'AKIA IOSFODNN7EXAMPLE' },
     { why: 'a password described rather than written', text: 'the password is the usual one' },
-    // The two below are a MEASURED refusal, not an oversight. A class anchored on
-    // the variable NAME (`password=`, `api_key:`, `token=`) was written and run: it
-    // flagged nothing on a real archive of 4,277 events, which reads as safe until
-    // you measure the other side, against twelve notes a knowledge base plausibly
-    // records ("api_key: environment", "token: 15000000 tokens spent", "password:
-    // unchanged since the migration") it obfuscated NINE. And it missed both values
-    // that motivated it: `DATABASE_PASSWORD=…` because `\b` does not fire after an
-    // underscore, and `aws_secret_access_key = …` because the name that precedes the
-    // separator is `key`, not `secret`. Dropping the boundary to reach the first
-    // still missed the second and destroyed the same nine. So it fails the test that
-    // killed entropy, for the same reason: it wrecks the record without protecting
-    // anything. What covers these is the declared contract, not a pattern.
-    { why: 'a password in an assignment', text: 'DATABASE_PASSWORD=S3nh4F0rte' },
-    {
-      why: 'an AWS secret access key (no prefix of its own)',
-      text: 'aws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
-    },
+    // The class read by a NAME (`named-credential`) was refused once, by measure: over
+    // twelve notes a knowledge base plausibly records it destroyed nine ("api_key:
+    // environment", "password: unchanged since the migration"). What answers for those
+    // nine now is that a name is read as a KEY only where text writes a key down, and a
+    // colon followed by a sentence is not one; the nine are asserted below, untouched.
+    // What that costs is these: a single word after a colon reads as prose, and a flag
+    // takes its value after a blank, where a sentence goes on just the same.
+    { why: 'a single word after a colon, which prose writes too', text: 'password: hunter' },
+    { why: 'a flag whose value follows a blank', text: 'mysql --password S3nh4F0rte' },
+    { why: 'a camelCase name ending in Auth', text: 'basicAuth=dXNlcjpwYXNz' },
   ];
 
   for (const uncaught of ESCAPES) {

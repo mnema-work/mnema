@@ -74,23 +74,35 @@ place of each:
 | Replaced by | What it matches |
 | --- | --- |
 | `<SECRET:aws-access-key>` | An AWS access key id: `AKIA`, `ASIA`, `ABIA` or `ACCA`, then 16 or more capitals and digits. |
-| `<SECRET:github-token>` | A GitHub token: `ghp_`, `gho_`, `ghu_`, `ghs_` or `ghr_`, then 36 or more letters and digits. |
+| `<SECRET:github-token>` | A GitHub token: `ghp_`, `gho_`, `ghu_`, `ghs_` or `ghr_`, then 36 or more letters and digits; or a fine-grained one, `github_pat_`, then two runs of letters and digits joined by `_`. |
+| `<SECRET:gitlab-token>` | A GitLab token: `glpat-`, `gloas-`, `gldt-`, `glrt-`, `glrtr-`, `glcbt-`, `glptt-`, `glft-`, `glimt-`, `glagent-`, `glwt-`, `glsoat-` or `glffct-`, then 20 or more letters, digits, `_` or `-`. |
+| `<SECRET:huggingface-token>` | A Hugging Face token: `hf_`, then 30 or more letters and digits. |
 | `<SECRET:anthropic-key>` | An Anthropic key: `sk-ant-`, then 20 or more letters, digits, `_` or `-`. |
 | `<SECRET:openai-key>` | An OpenAI-style key: `sk-` or `sk-proj-`, then 20 or more letters, digits, `_` or `-`; a value whose every piece is a lowercase word is read as a name and left alone. |
-| `<SECRET:stripe-key>` | A Stripe key: `sk_live_`, `sk_test_`, `rk_live_` or `rk_test_`, then 20 or more letters and digits. |
+| `<SECRET:stripe-key>` | A Stripe key: `sk_live_`, `sk_test_`, `rk_live_` or `rk_test_`, then 20 or more letters and digits; or a webhook signing secret, `whsec_`, then 24 or more. |
 | `<SECRET:slack-token>` | A Slack token: `xoxb-`, `xoxa-`, `xoxp-`, `xoxr-` or `xoxs-`, then 10 or more letters, digits or `-`. |
 | `<SECRET:google-api-key>` | A Google API key: `AIza`, then 30 or more letters, digits, `_` or `-`. |
 | `<SECRET:npm-token>` | An npm token: `npm_`, then 36 or more letters and digits. |
 | `<SECRET:jwt>` | A JSON Web Token: three dot-separated base64url parts, the first beginning `eyJ`. |
 | `<SECRET:private-key-block>` | A private key in PEM form (`-----BEGIN ... PRIVATE KEY-----`) or mnema’s own protected key file, the whole block when it is closed, only its header when it is not. |
 | `<SECRET:url-password>` | The password of `scheme://user:password@host`; the scheme, the user and the host stay. |
+| `<SECRET:authorization-header>` | The value of an `Authorization` or `Proxy-Authorization` header, after its scheme (`Bearer`, `Basic`, ...) or alone on its line or in its quotes; the header and the scheme stay. |
+| `<SECRET:named-credential>` | The value written after a name that ends as a credential’s (`password`, `passwd`, `passphrase`, `pwd`, `secret`, `token`, `api_key`, `access_key`, `private_key`, `secret_key`, `auth`, in any case and spelling): quoted after `:` or `=`, right after `=`, or alone on its line. The name stays. A variable, a placeholder, a mask, a type, a flag and a line of code are left as written, and so is a count or a cursor (`max_tokens`, `next_token`). |
 | `<email>` | An e-mail address, except `noreply@`, `no-reply@` and GitHub’s `noreply.github.com` form, which name no one. |
 
 <!-- End of the generated table. -->
 
-Three limits, all stated rather than hidden. **It catches only formats it
-recognizes**: a proprietary token or a password in prose goes in verbatim, so
-the placeholder is damage reduction and not a licence to paste secrets. **A value
+Besides the formats, two places are read for what they hold whatever its shape:
+the value of an `Authorization` header and the value written after a credential's
+name (`PASSWORD=hunter2`, `"api_key": "..."`, `X-Api-Key: ...` on its own line).
+The name is read only where text writes a key down, so a sentence that merely says
+the word keeps it: `Rotate the token every week`, `password: unchanged since the
+migration`, `max_tokens=1024` and `id-token: write` are recorded as written.
+
+Three limits, all stated rather than hidden. **It catches only what it
+recognizes**: a proprietary token with no name around it, a password in prose or
+a single word after a colon (`password: hunter`) goes in verbatim, so the
+placeholder is damage reduction and not a licence to paste secrets. **A value
 that reads as a name is left alone**: `sk-` is a prefix several key issuers
 reuse and also the two letters you reach for when you name a skill, so a value
 whose every piece is a lowercase word is recorded the way you typed it; measured
