@@ -39,7 +39,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$GITHUB_EVENT_NAME" = 'pull_request' ]; then
-            git diff --name-only HEAD^1 HEAD > "$RUNNER_TEMP/changed.txt" || : > "$RUNNER_TEMP/changed.txt"
+            git diff --name-only --no-renames HEAD^1 HEAD > "$RUNNER_TEMP/changed.txt" || : > "$RUNNER_TEMP/changed.txt"
           else
             : > "$RUNNER_TEMP/changed.txt"
           fi
@@ -84,7 +84,8 @@ jobs:
         with:
           name: the-build
           path: ${{ runner.temp }}/the-build.tar
-          retention-days: 1
+          retention-days: 5
+          overwrite: true
           if-no-files-found: error
 
   # THE SUITE IN THREE SHARDS PER NODE. One job of the whole suite took 11 to 14 minutes and sat

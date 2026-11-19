@@ -8,20 +8,23 @@
  * publishes and a matrix job skipped whole publishes the name unexpanded.
  */
 
-import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { jobsToRerun } from '../../../.github/rerun-a-cancelled-runner/select.mjs';
-import { decide } from '../../../.github/what-a-pr-touches/decide.mjs';
+import { corpusOf, decide, namedIn } from '../../../.github/what-a-pr-touches/decide.mjs';
 
 const read = (path: string): string =>
   readFileSync(fileURLToPath(new URL(`../../../${path}`, import.meta.url)), 'utf-8');
 
 describe('decide', () => {
   it('skips the test matrix for a pull request of pages under docs/ and changelog/ alone', () => {
-    expect(decide(['docs/install.md', 'changelog/unreleased/a.md'], 'pull_request').code).toBe(
-      false,
-    );
+    expect(
+      decide(['docs/install.md', 'changelog/unreleased/a.md'], 'pull_request', () => false).code,
+    ).toBe(false);
   });
 
   it('runs the test matrix as soon as one file is not such a page', () => {
@@ -140,5 +143,86 @@ describe('the workflows skip by step, never by job', () => {
         expect(block.split(/^ {4}steps:/m)[0]).not.toMatch(/^ {4}if:/m);
       }
     }
+  });
+});
+
+describe('a page a test reads is something the pull request touches', () => {
+  const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
+  const readByATest = namedIn(corpusOf(ROOT));
+  /** Built in parts, so that this file does not name it. */
+  const UNNAMED = ['docs/zz', 'q.md'].join('-');
+
+  it('runs the matrix for the pages tests read, found from the tests at run time', () => {
+    for (const page of ['docs/rule-arrival.md', 'docs/evidence.md', 'docs/cli-reference.md']) {
+      expect(decide([page], 'pull_request', readByATest).code, page).toBe(true);
+    }
+  });
+
+  it('still skips it for a page no test names', () => {
+    expect(decide([UNNAMED], 'pull_request', readByATest).code).toBe(false);
+  });
+
+  it('counts a changed page as read when it cannot tell', () => {
+    expect(decide([UNNAMED], 'pull_request').code).toBe(true);
+  });
+
+  it('treats a changelog entry as read while a test names that folder', () => {
+    expect(decide(['changelog/unreleased/a.md'], 'pull_request', readByATest).code).toBe(true);
+    expect(namedIn('nothing here')('changelog/unreleased/a.md')).toBe(false);
+  });
+});
+
+describe('a rename is read from both sides', () => {
+  /** The command both workflows run, as written in them. */
+  const command = /git diff (--name-only --no-renames) HEAD\^1 HEAD/;
+  it('is the command of both workflows', () => {
+    expect(read('.github/workflows/ci.yml')).toMatch(command);
+    expect(read('.github/workflows/host-contract.yml')).toMatch(command);
+  });
+
+  /** A merge commit whose second parent renamed `from` to `to`; the files the workflows' diff lists. */
+  function changedBy(from: string, to: string): string[] {
+    const dir = mkdtempSync(join(tmpdir(), 'rename-'));
+    const git = (...args: string[]) =>
+      execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.com', ...args], {
+        cwd: dir,
+        encoding: 'utf-8',
+        env: { PATH: process.env.PATH ?? '', HOME: dir, GIT_CONFIG_NOSYSTEM: '1' },
+      });
+    try {
+      git('init', '-q', '-b', 'main');
+      for (const path of [from]) {
+        execFileSync('mkdir', ['-p', join(dir, path, '..')]);
+        writeFileSync(join(dir, path), 'the same lines\n'.repeat(20));
+      }
+      git('add', '.');
+      git('commit', '-qm', 'base');
+      git('switch', '-qc', 'pr');
+      execFileSync('mkdir', ['-p', join(dir, to, '..')]);
+      git('mv', from, to);
+      git('commit', '-qm', 'rename');
+      git('switch', '-q', 'main');
+      writeFileSync(join(dir, 'other.txt'), 'x');
+      git('add', '.');
+      git('commit', '-qm', 'moved on');
+      git('merge', '-q', '--no-ff', '-m', 'merge', 'pr');
+      return git('diff', '--name-only', '--no-renames', 'HEAD^1', 'HEAD')
+        .split('\n')
+        .filter(Boolean);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  it('runs the matrix for a file moved from code to a page', () => {
+    const files = changedBy('packages/code/src/a.ts', 'docs/a-page-no-test-names.md');
+    expect(files).toEqual(['docs/a-page-no-test-names.md', 'packages/code/src/a.ts']);
+    expect(decide(files, 'pull_request', () => false).code).toBe(true);
+  });
+
+  it('runs the matrix for a page moved into code', () => {
+    const files = changedBy('docs/a-page-no-test-names.md', 'packages/code/src/b.ts');
+    expect(files).toEqual(['docs/a-page-no-test-names.md', 'packages/code/src/b.ts']);
+    expect(decide(files, 'pull_request', () => false).code).toBe(true);
   });
 });
