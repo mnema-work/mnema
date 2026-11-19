@@ -233,7 +233,8 @@ describe('release:prepare without a number', () => {
 
   it('thanks the contributor named on the line after the section, and prints no other trace of it', () => {
     const { dir } = fixture(CHANGELOG, {
-      'a-thing.md': 'Added\nContributor: some-login\n\n- **A thing.** It has a second line\n  that is indented.\n',
+      'a-thing.md':
+        'Added\nContributor: some-login\n\n- **A thing.** It has a second line\n  that is indented.\n',
       'b-plain.md': 'Fixed\n\n- Plain.\n',
     });
     expect(run(dir, TARGET, '--date', '2030-01-02').code).toBe(0);
