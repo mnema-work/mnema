@@ -607,6 +607,7 @@ export function chainArrivals(
   const streams: TailStream[] = [];
   const reached = new Map(frontier.tails);
   const keys = committedKeys(layout);
+  let notSigned = false;
   // The breaks the arrivals carry, and the first reason no suffix describes them: a break is
   // what every tail is read to find, so reading goes on past it, and a refusal of another kind
   // is reported only when no tail broke.
@@ -679,7 +680,9 @@ export function chainArrivals(
     // that reading says what it found.
     const signed = arrivalsSigned(layout, tail, covered, served, entries, keys);
     if (signed === undefined) {
-      refusal ??= { suffix: false, why: 'AN_ARRIVAL_IS_NOT_SIGNED' };
+      // Said only when no tail gives a reason about the order: the reason does not depend on
+      // which tail the listing happened to name first.
+      notSigned = true;
       continue;
     }
     const fresh = served.map((entry) => entry.event);
@@ -730,7 +733,7 @@ export function chainArrivals(
   // else is an entry the frontier cannot place (covered further down, or not held at all)
   // and telling those apart would take the reading this exists to avoid, so the order is
   // read again instead.
-  if (refusal === undefined && broken.length === 0 && citesBeyond(streams, reached)) {
+  if (refusal === undefined && !notSigned && broken.length === 0 && citesBeyond(streams, reached)) {
     refusal = { suffix: false, why: 'AN_ARRIVAL_IS_NOT_LATER' };
   }
 
@@ -749,6 +752,7 @@ export function chainArrivals(
     return { suffix: false, why: 'AN_ARRIVAL_IS_RETAINED', retained, refused };
   }
   if (refusal !== undefined) return refusal;
+  if (notSigned) return { suffix: false, why: 'AN_ARRIVAL_IS_NOT_SIGNED' };
 
   // The SAME merge the whole order goes through, over the arrivals alone. It is the
   // same function and the same keys, which is what makes the result the tail of the
