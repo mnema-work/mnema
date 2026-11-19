@@ -65,6 +65,7 @@ import {
   causalOrder,
   checkpointBelongsToItsTail,
   checkpointHash,
+  checkpointSignatureHolds,
   committedKeys,
   DEFAULT_MAX_UNSIGNED_EVENTS,
   decisionTexts,
@@ -74,7 +75,9 @@ import {
   isCatalogEvent,
   keysTheDiskRefuses,
   type LinkBreak,
+  lastTailCheckpoint,
   orderedSegments,
+  type ProvenOnTail,
   precedesItsText,
   type RecordGroup,
   type RefusedLine,
@@ -87,6 +90,7 @@ import {
   readWrittenHead,
   refusedPartOf,
   ruleOnCheckpoint,
+  subjectEvents,
   type TailBoundary,
   tailFingerprint,
   tailsReadAt,
@@ -1099,6 +1103,64 @@ function noteOf(
       : readWrittenHead({ root: proof.notesRoot }, tail, key.key)) ??
     readWrittenHead(layout, tail, key.key)
   );
+}
+
+/**
+ * The events about a few subjects, off the chain itself (`subjectEvents`), keeping only the ones a
+ * signature proves (ADR-561): what a gate judges a move on, so that an event the projection never
+ * folds never decides whether a move is legal either. The bytes as written would let one write's
+ * window (an event no checkpoint covers yet, a forged one included) refuse an accept or let a
+ * supersede through.
+ *
+ * WHAT IS ASKED, AND WHAT IT COSTS. Only the tails that hold a line about a subject are asked, and
+ * each is asked first the cheap question: does its last checkpoint line carry a signature that
+ * holds under the tail's own committed key, and does it cover every line found there? Then every
+ * line found is proven or the tail stands as Fact A (a range that does not fold to its root, a line
+ * that does not belong to the run the checkpoints cover): a fact every write is refused over
+ * before it reaches a gate, so what a gate would make of such a line is never appended. Any other
+ * tail (a line found above the last checkpoint, no checkpoint, a last line that does not verify)
+ * is folded in full as the projection folds it ({@link signedOf}, this machine's signed note
+ * included), once per tail, and only the events it proves are kept. That is a reading of the
+ * tail, paid only while a write's window holds a line about the subject.
+ */
+export function provenSubjectEvents(
+  layout: ChainLayout,
+  upcasters: UpcasterRegistry,
+  ids: readonly string[],
+  proof?: ReadProof,
+): Map<string, CatalogEvent[]> {
+  return subjectEvents(layout, upcasters, ids, provenOnTails(layout, upcasters, proof));
+}
+
+/** Which lines of a tail a signature proves, as {@link provenSubjectEvents} asks it. */
+function provenOnTails(
+  layout: ChainLayout,
+  upcasters: UpcasterRegistry,
+  proof: ReadProof | undefined,
+): ProvenOnTail {
+  const keys = committedKeys(layout);
+  const folded = new Map<string, ReadonlySet<string>>();
+  return (tail, found) => {
+    const last = lastTailCheckpoint(layout, tail);
+    const key = last === undefined ? null : keys(last.signerFp);
+    if (
+      last !== undefined &&
+      key !== null &&
+      key.fingerprint() === last.signerFp &&
+      checkpointBelongsToItsTail(tail, last) &&
+      found.every((line) => line.seq <= last.toSeq) &&
+      checkpointSignatureHolds(last, key.key)
+    ) {
+      return new Set(found.map((line) => line.hash));
+    }
+    let proven = folded.get(tail);
+    if (proven === undefined) {
+      const read = readTail(layout, tail, upcasters, undefined, undefined, 'what holds');
+      proven = signedOf(layout, tail, read, keys, undefined, proof ?? proofOf(layout)).proven;
+      folded.set(tail, proven);
+    }
+    return proven;
+  };
 }
 
 /**

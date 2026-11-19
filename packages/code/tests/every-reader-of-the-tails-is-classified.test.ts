@@ -5,10 +5,18 @@
  * folds the proven events alone, so the gate, the switches, the roster, the brief and every read
  * that opens a cache read them by construction. That is true of a reader only if it reaches the
  * tails through the bridge that folds them (`chainReplay`, `chainArrivals`, `orderedEvents`,
- * `orderedEventsOfRecord`, `@mnema/core`). A reader that calls `readTail`, `readTailEntries`,
- * `readTailTip` or `readTailSince` itself reads the bytes as written, unproven events included, and
+ * `orderedEventsOfRecord`, `provenSubjectEvents`, `@mnema/core`). A reader that calls one of the
+ * readers of the bytes ({@link RAW}) itself reads them as written, unproven events included, and
  * that is right only for a reader that rules on them the way `verify` does, or that prepares a write
  * and serves nothing.
+ *
+ * THE LIST OF READERS OF THE BYTES WAS SHORT TWICE. It named the four `readTail*` functions, and the
+ * gate's own reading of a subject (`subjectEvents`, under `standing`) reached the tails beside them:
+ * one forged line in a write's window refused an accept the record allows. It now names every
+ * function of `@mnema/chain` that hands on what a segment's lines say: the tail readers, the search
+ * by subject, the segment listing, the parse of one line and the readers from the end that go
+ * through it, the tail's standing, the damage a writer reads before it resumes, what arrived since
+ * a commit, and the first lines a record's name is derived from.
  *
  * So the discriminant is the name of each of those functions in the source of every package, and
  * every file that names one is in {@link READERS} with what it is and why. A reader added next year
@@ -32,7 +40,18 @@ type Reads =
   /** Is the bridge or the reader itself, or only hands the bridge on. */
   | 'the reading';
 
-const READERS: Readonly<Record<string, { readonly reads: Reads; readonly why: string }>> = {
+/**
+ * A file's class, and why. `besides` names the readers of the bytes a `proven` file calls for
+ * something that reads no event (a listing of segment files, the damage a writer would meet), each
+ * with its reason: the call is allowed there and nowhere else.
+ */
+interface Classified {
+  readonly reads: Reads;
+  readonly why: string;
+  readonly besides?: Readonly<Partial<Record<(typeof RAW)[number], string>>>;
+}
+
+const READERS: Readonly<Record<string, Classified>> = {
   // The chain: the readers themselves, the verdict, and the writer's own machinery.
   'packages/chain/src/chain/store.ts': { reads: 'the reading', why: 'it defines the readers' },
   'packages/chain/src/chain/verify.ts': {
@@ -60,6 +79,34 @@ const READERS: Readonly<Record<string, { readonly reads: Reads; readonly why: st
     why: 'it reads the tails a cut would leave, to write a waiver; it serves nothing',
   },
   'packages/chain/src/index.ts': { reads: 'the reading', why: 'it exports the readers' },
+  'packages/chain/src/chain/entry.ts': {
+    reads: 'the reading',
+    why: 'it defines the parse of one line',
+  },
+  'packages/chain/src/chain/lines.ts': {
+    reads: 'the reading',
+    why: 'it defines how a stored line is split, read from the end and handed to a parse',
+  },
+  'packages/chain/src/events/parse.ts': {
+    reads: 'the reading',
+    why: 'it parses an event and names the line parse only in its documentation',
+  },
+  'packages/chain/src/chain/subject-events.ts': {
+    reads: 'the reading',
+    why: 'it is the search by subject; which lines a signature proves is its caller’s question, the bridge’s',
+  },
+  'packages/chain/src/chain/freshness.ts': {
+    reads: 'as written',
+    why: 'it takes the extent of each tail (its last segment, size and time) and reads no event',
+  },
+  'packages/chain/src/chain/tail-names.ts': {
+    reads: 'as written',
+    why: 'it names the record from the first lines of its tails, as `verify` does, and serves no event',
+  },
+  'packages/chain/src/chain/tail-repair.ts': {
+    reads: 'as written',
+    why: 'it is `tail repair`: it rules on each line as `verify` does and puts back what git committed',
+  },
   // The core: the bridge, and the policy readers that go through it.
   'packages/core/src/projections/order.ts': {
     reads: 'the reading',
@@ -72,6 +119,18 @@ const READERS: Readonly<Record<string, { readonly reads: Reads; readonly why: st
   'packages/core/src/projections/cache-meta.ts': {
     reads: 'proven',
     why: 'it keeps the frontier and the facts the bridge produced',
+    besides: {
+      orderedSegments:
+        'it lists the segment files the frontier covers, to mark their size and time',
+    },
+  },
+  'packages/core/src/projections/cache-home.ts': {
+    reads: 'as written',
+    why: 'it chooses which cache file a tree uses, by the digest of each tail’s first segment; it serves no event',
+  },
+  'packages/core/src/projections/tree-index.ts': {
+    reads: 'as written',
+    why: 'it marks how a tree stands (its segments’ size, time and last line) to know when to read again',
   },
   'packages/core/src/projections/advance.ts': {
     reads: 'proven',
@@ -121,6 +180,22 @@ const READERS: Readonly<Record<string, { readonly reads: Reads; readonly why: st
   'packages/core/src/workflow/identity-operations.ts': {
     reads: 'proven',
     why: 'the enrolments a write checks: read through `orderedEvents`',
+    besides: {
+      readTailDamage:
+        'what `mnema init` would meet resuming this machine’s own tail: said, and nothing written',
+    },
+  },
+  'packages/core/src/workflow/read-the-record.ts': {
+    reads: 'proven',
+    why: 'the subject a gate judges: read through `provenSubjectEvents`',
+  },
+  'packages/core/src/workflow/as-the-record-stands.ts': {
+    reads: 'proven',
+    why: 'it names the search by subject only in its documentation; the reading is `standing`’s',
+  },
+  'packages/core/src/identity/id.ts': {
+    reads: 'the reading',
+    why: 'it names the search by subject only in its documentation',
   },
   'packages/core/src/workflow/prune-operations.ts': {
     reads: 'as written',
@@ -129,6 +204,11 @@ const READERS: Readonly<Record<string, { readonly reads: Reads; readonly why: st
   'packages/core/src/workflow/stack-operations.ts': {
     reads: 'proven',
     why: 'whether a stack is adopted: read through `orderedEvents`',
+  },
+  // The action: what a pull request's comment says of the record it changes.
+  'packages/action/src/record.ts': {
+    reads: 'as written',
+    why: 'it labels the decisions a pull request moves, from the lines it brings, each hash checked; it decides no rule',
   },
   // The context: what an agent is handed of the record.
   'packages/context/src/intelligence/antipatterns.ts': {
@@ -140,6 +220,22 @@ const READERS: Readonly<Record<string, { readonly reads: Reads; readonly why: st
     why: 'it reads the order `orderedEventsOfRecord` hands on, which folds each chain',
   },
   // The code: the surfaces.
+  'packages/code/src/pinned-run.ts': {
+    reads: 'proven',
+    why: 'whether a pinned run is open: read through `provenSubjectEvents`',
+  },
+  'packages/code/src/not-a-project.ts': {
+    reads: 'as written',
+    why: 'it counts the events a folder that is not a project holds, to say what is there, and serves no content',
+  },
+  'packages/code/src/inherited-record.ts': {
+    reads: 'as written',
+    why: 'it derives the name of the record a project inherits from its first lines, to find it',
+  },
+  'packages/code/src/commands/verify-since.ts': {
+    reads: 'as written',
+    why: 'it rules on what arrived since a commit, as `verify` does',
+  },
   'packages/code/src/tree-sources.ts': {
     reads: 'proven',
     why: 'every cache a read opens, and the birth probe, through the bridge',
@@ -206,9 +302,38 @@ const READERS: Readonly<Record<string, { readonly reads: Reads; readonly why: st
   },
 };
 
-/** The names a file reaches the tails by: the four readers and the bridge. */
-const NAMES =
-  /\b(readTail|readTailSince|readTailEntries|readTailTip|orderedEvents|orderedEventsOfRecord|chainReplay|chainArrivals)\b/;
+/** The functions of `@mnema/chain` that hand on what the lines of a segment say, as written. */
+const RAW = [
+  'readTail',
+  'readTailSince',
+  'readTailEntries',
+  'readTailTip',
+  'subjectEvents',
+  'orderedSegments',
+  'parseEntry',
+  'parseStoredLine',
+  'parsedFromEnd',
+  'locatedFromEnd',
+  'linesFromEnd',
+  'tailStanding',
+  'readTailDamage',
+  'readTailDamageOf',
+  'arrivalsSince',
+  'firstEntries',
+  'nameTheGenesisDerives',
+] as const;
+
+/** The bridge: what folds each tail's checkpoints and hands on proven events only. */
+const BRIDGE = [
+  'orderedEvents',
+  'orderedEventsOfRecord',
+  'chainReplay',
+  'chainArrivals',
+  'provenSubjectEvents',
+] as const;
+
+/** The names a file reaches the tails by: the readers of the bytes and the bridge. */
+const NAMES = new RegExp(`\\b(${[...RAW, ...BRIDGE].join('|')})\\b`);
 
 /** The source files of every package that name a reader of the tails, tests and fixtures aside. */
 function readersInTheSource(): string[] {
@@ -234,14 +359,15 @@ describe('every reader of the tails is classified', () => {
   });
 
   it('reads the bytes as written only where the reason says it rules or serves nothing', () => {
-    for (const [path, { reads }] of Object.entries(READERS)) {
+    for (const [path, { reads, besides }] of Object.entries(READERS)) {
       if (reads !== 'proven') continue;
-      // A policy reader reaches the tails only through the bridge.
+      // A policy reader reaches the tails only through the bridge, but for the calls it names.
+      const allowed = Object.keys(besides ?? {});
+      const calls = new RegExp(
+        `\\b(${RAW.filter((name) => !allowed.includes(name)).join('|')})\\(`,
+      );
       const text = codeOnly(readFileSync(join(REPO_ROOT, path), 'utf-8'));
-      expect(
-        /\b(readTail|readTailSince|readTailEntries|readTailTip)\(/.test(text),
-        `${path} calls a reader of the bytes as written`,
-      ).toBe(false);
+      expect(calls.test(text), `${path} calls a reader of the bytes as written`).toBe(false);
     }
   });
 });

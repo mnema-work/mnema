@@ -5,7 +5,7 @@
  *
  * THE SUBJECT A GATE JUDGES (the state a decision, a task or a skill is in, whether a run is still
  * open, whether the subject (or a supersede's successor) exists at all) comes from the CHAIN
- * ({@link standing}, by `subjectEvents`). It used to come from the projection the tree keeps,
+ * ({@link standing}, by `provenSubjectEvents`). It used to come from the projection the tree keeps,
  * brought forward to the chain before it was asked, and that is not the chain: the projection is a
  * file beside the record that nothing signs, and it is brought forward from what it already says.
  * Measured on the built binary, a row of it edited by hand let every one of the four machines
@@ -23,15 +23,11 @@
  */
 
 import { existsSync } from 'node:fs';
-import {
-  type CatalogEvent,
-  type ChainLayout,
-  subjectEvents,
-  type UpcasterRegistry,
-} from '@mnema/chain';
+import type { CatalogEvent, ChainLayout, UpcasterRegistry } from '@mnema/chain';
 import { rosterOf } from '../identity/membership.js';
 import { ProjectionCache } from '../projections/cache.js';
 import { keptCachePath } from '../projections/cache-home.js';
+import { provenSubjectEvents } from '../projections/order.js';
 
 /** Where a write reads from. */
 export interface ReadsTheRecord {
@@ -83,6 +79,11 @@ export function rosterAsTheChainIs(ctx: ReadsTheRecord, anchor: string): Readonl
  * whose subject is the id. What a gate reads of what it returns (the state, whether a run is open,
  * whether the subject exists) is folded from those events alone; a field another subject's event
  * sets (the `supersedes` a successor is given) is not in it, and no gate reads one.
+ *
+ * ONLY WHAT A SIGNATURE PROVES IS FOLDED (ADR-561, {@link provenSubjectEvents}): an event no
+ * checkpoint covers and no signed note of this machine vouches for is served and said, and never
+ * decides whether a move is legal. Read as written, one forged `rejected` in a write's window
+ * refused an accept the record allows, and one forged `accepted` let a supersede through.
  */
 export function standing<T>(
   ctx: ReadsTheRecord,
@@ -90,7 +91,7 @@ export function standing<T>(
   fold: (events: readonly CatalogEvent[]) => ReadonlyMap<string, T>,
 ): Map<string, T> {
   const named = ids.filter((id): id is string => id !== undefined);
-  const events = subjectEvents(ctx.layout, ctx.upcasters, named);
+  const events = provenSubjectEvents(ctx.layout, ctx.upcasters, named);
   const found = new Map<string, T>();
   for (const id of named) {
     const one = fold(events.get(id) ?? []).get(id);

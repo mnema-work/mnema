@@ -35,6 +35,7 @@ export {
   type CheckpointVerdict,
   checkpointHash,
   checkpointMessage,
+  checkpointSignatureHolds,
   parseCheckpoint,
   serializeCheckpoint,
   signCheckpoint,
@@ -197,6 +198,7 @@ export {
   keysTheDiskRefuses,
   type LinkBreak,
   LinkedRecordError,
+  lastTailCheckpoint,
   listAppleDoubleKeyFiles,
   listedWithoutLinks,
   listLinksInRecord,
@@ -222,7 +224,7 @@ export {
   type TailRead,
   type TailSince,
 } from './chain/store.js';
-export { subjectEvents } from './chain/subject-events.js';
+export { type ProvenOnTail, subjectEvents } from './chain/subject-events.js';
 export { type KeyATailHolds, type KeyIntroduction, keysATailHolds } from './chain/tail-keys.js';
 export { alive, DEFAULT_WAIT_MS, TailBusyError, withTailLock } from './chain/tail-lock.js';
 export {

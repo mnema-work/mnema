@@ -472,3 +472,64 @@ describe('supersede: the multi-entity move, with existence enforced', () => {
     expect(again).toMatchObject({ ok: false, code: 'ILLEGAL_TRANSITION' });
   });
 });
+
+describe('a move is judged by what a signature proves (ADR-561)', () => {
+  // The record as two machines hold it: A wrote a line above its last checkpoint (one write's
+  // window, which is also where a forged line lands), and B is a clone of A with no signed note of
+  // A's. Only A's note proves that line, so it governs A's moves and none of B's.
+  function windowAndClone(write: (ctxA: DecisionWriteContext) => void): {
+    readonly ctxA: DecisionWriteContext;
+    readonly ctxB: DecisionWriteContext;
+  } {
+    const rootB = mkdtempSync(join(tmpdir(), 'mnema-decision-b-'));
+    roots.push(rootB);
+    const a = openChainForWriting(root, { keyRoot: root });
+    const ca = fixedClock();
+    const ctxA = contextFor(a, root, ca.clock);
+    ca.tick();
+    write(ctxA);
+    cloneRecord(root, rootB);
+    const b = openChainForWriting(rootB, { keyRoot: rootB });
+    const cb = fixedClock();
+    for (let i = 0; i < 30; i += 1) cb.tick();
+    return { ctxA, ctxB: contextFor(b, rootB, cb.clock) };
+  }
+
+  it('a rejection no checkpoint covers refuses no accept where no signed note vouches for it', () => {
+    let id = '';
+    const { ctxA, ctxB } = windowAndClone((ctx) => {
+      id = mustRecord(ctx, { title: 'Use tabs', rationale: 'r' }).id;
+      ctx.writer.checkpoint();
+      expect(rejectDecision(ctx, { id, fields: { note: 'not signed' } })).toMatchObject({
+        ok: true,
+      });
+    });
+
+    expect(acceptDecision(ctxB, { id, fields: { note: 'agreed' } })).toMatchObject({
+      ok: true,
+      to: 'accepted',
+    });
+    // Where this machine's signed note vouches for the rejection, it governs as before.
+    expect(acceptDecision(ctxA, { id, fields: { note: 'agreed' } })).toMatchObject({
+      ok: false,
+      code: 'ILLEGAL_TRANSITION',
+    });
+  });
+
+  it('a successor no checkpoint covers lets no supersede through where no signed note vouches for it', () => {
+    let oldId = '';
+    let newId = '';
+    const { ctxA, ctxB } = windowAndClone((ctx) => {
+      oldId = mustRecord(ctx, { title: 'Use tabs', rationale: 'r' }).id;
+      ctx.writer.checkpoint();
+      newId = mustRecord(ctx, { title: 'Use spaces', rationale: 'r' }).id;
+    });
+
+    expect(
+      supersedeDecision(ctxB, { id: oldId, by: newId, fields: { reason: 'replaced' } }),
+    ).toMatchObject({ ok: false, code: 'UNKNOWN_BY' });
+    expect(
+      supersedeDecision(ctxA, { id: oldId, by: newId, fields: { reason: 'replaced' } }),
+    ).toMatchObject({ ok: true, to: 'superseded' });
+  });
+});
