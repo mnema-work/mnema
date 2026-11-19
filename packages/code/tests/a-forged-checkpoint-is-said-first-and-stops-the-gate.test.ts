@@ -49,35 +49,25 @@ const envOf = (home: string): NodeJS.ProcessEnv => ({
 });
 
 const mnema = (at: Planted, ...args: string[]): Answered =>
-  spawnSync(
-    process.execPath,
-    [MNEMA_CLI, ...args],
-    {
-      cwd: at.repo,
-      encoding: 'utf-8',
-      env: envOf(at.home),
-    },
-    CEILING,
-  );
+  spawnSync(process.execPath, [MNEMA_CLI, ...args], {
+    cwd: at.repo,
+    encoding: 'utf-8',
+    env: envOf(at.home),
+  });
 
 /** What the gate answers for a write of `path` (the Cursor shape, one JSON reply). */
 const gate = (at: Planted, path: string): Answered =>
-  spawnSync(
-    process.execPath,
-    [MNEMA_CLI, 'before-a-write', '--host', 'cursor'],
-    {
+  spawnSync(process.execPath, [MNEMA_CLI, 'before-a-write', '--host', 'cursor'], {
+    cwd: at.repo,
+    input: JSON.stringify({
+      tool_name: 'Write',
+      tool_input: { file_path: join(at.repo, path), content: 'a' },
+      session_id: 's1',
       cwd: at.repo,
-      input: JSON.stringify({
-        tool_name: 'Write',
-        tool_input: { file_path: join(at.repo, path), content: 'a' },
-        session_id: 's1',
-        cwd: at.repo,
-      }),
-      encoding: 'utf-8',
-      env: envOf(at.home),
-    },
-    CEILING,
-  );
+    }),
+    encoding: 'utf-8',
+    env: envOf(at.home),
+  });
 
 const idIn = (said: string): string => said.match(/\(([0-9a-f-]{20,})\)/)?.[1] as string;
 
