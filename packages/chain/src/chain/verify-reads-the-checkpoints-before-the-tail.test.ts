@@ -1,3 +1,4 @@
+// @plants-damage
 /**
  * A VERIFY BESIDE A WRITE READS WHAT SIGNS A TAIL BEFORE THE TAIL (ADR-571). The writer appends
  * the events, then the checkpoint that covers them, so the reading that cannot say a signed
