@@ -100,10 +100,10 @@ describe('the command line', () => {
     expect((await atATerminal('status')).bytes).not.toContain(LINE);
   }, 90_000);
 
-  it('says nothing on a machine that has no state, and writes nothing', async () => {
+  it('says nothing on a machine that has no state, and notes the version that ran', async () => {
     const ran = await atATerminal('status');
     expect(ran.bytes).not.toContain(LINE);
-    expect(existsSync(stateFile())).toBe(false);
+    expect(stateNow().appliedVersion).toBe(VERSION);
   }, 90_000);
 
   it('says nothing, and marks nothing, with --json, in a hook or in a pipe', async () => {
@@ -152,6 +152,26 @@ describe('in process', () => {
     expect(await said(true, 'status')).toContain(LINE);
     expect(await said(true, 'status')).not.toContain(LINE);
     expect(stateNow().noticedFor).toBe(VERSION);
+  }, 60_000);
+
+  it('notes the running version on the first verb of a person on a machine with no state, and says nothing', async () => {
+    expect(await said(true, 'status')).not.toContain(LINE);
+    expect(stateNow()).toEqual({ starShown: false, tourSeen: false, appliedVersion: VERSION });
+  }, 60_000);
+
+  it('notes nothing for a hook, --json, a pipe, init, the server or an upgrade, which keep the home as it was', async () => {
+    expect(await said(false, 'status')).not.toContain(LINE);
+    expect(await said(true, 'status', '--json')).not.toContain(LINE);
+    expect(await said(true, 'brief', '--hook')).not.toContain(LINE);
+    expect(await said(true, 'upgrade', '--dry-run')).not.toContain(LINE);
+    expect(await said(true, 'init', '--dry-run')).not.toContain(LINE);
+    expect(existsSync(stateFile())).toBe(false);
+  }, 60_000);
+
+  it('leaves a state file that is there as it is, and one that cannot be read untouched', async () => {
+    anOlderMnemaWasHere();
+    await said(true, 'status');
+    expect(stateNow().appliedVersion).toBeUndefined();
   }, 60_000);
 
   it('keeps a file it cannot read as it was, and says nothing', async () => {

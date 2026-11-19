@@ -5,8 +5,9 @@
  * `doctor --after-update`) wrote into the machine's state file (`machine-state.ts`). The only thing read
  * is that one small file: no project, no network.
  *
- * A machine with no state file at all is a NEW installation, not an update: nothing is said and nothing
- * is written. A file that is there without a version belongs to a
+ * A machine with no state file at all is a NEW installation, not an update: nothing is said, and the
+ * first verb a person runs there notes the running version as applied (`noteTheVersionOnTheFirstVerb`),
+ * so a later update is told; `init`, the server and `upgrade` write nothing. A file that is there without a version belongs to a
  * machine an earlier mnema ran on, which no upgrade has brought up since, so it is behind.
  *
  * The command line says one line, once per machine and version, and only to a person at a terminal
@@ -16,7 +17,12 @@
 
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { MACHINE_STATE_FILE, readMachineState, writeMachineState } from './machine-state.js';
+import {
+  MACHINE_STATE_FILE,
+  NOTHING_SHOWN,
+  readMachineState,
+  writeMachineState,
+} from './machine-state.js';
 import { isOlderThan } from './version.js';
 
 /** The line the command line prints on standard error. */
@@ -34,8 +40,9 @@ export function updateNote(version: string): string {
  * say (a state file that cannot be read, a directory that cannot be written) it is not: a doubt is silence.
  *
  * It only reads: a machine's directory is left as it was found (`init` and the server promise as much).
- * The file a machine does get is made by the first thing that keeps one (the tour, the star, an upgrade),
- * and `writeMachineState` puts the running version into a file it creates.
+ * The file a machine does get is made by the first thing that keeps one (the tour, the star, an upgrade,
+ * or the first verb a person runs at a terminal), and `writeMachineState` puts the running version into
+ * a file it creates.
  */
 export function updateIsNotApplied(dir: string, version: string): boolean {
   try {
@@ -45,6 +52,21 @@ export function updateIsNotApplied(dir: string, version: string): boolean {
     return state.appliedVersion === undefined || isOlderThan(state.appliedVersion, version);
   } catch {
     return false;
+  }
+}
+
+/**
+ * The first verb a person runs at a terminal on a machine that has no state file notes the running
+ * version as the one applied, so that a machine which only ever used a host's plugin is told after a
+ * later update. A machine is nothing to note while a file is there (read it as it is, an unreadable
+ * one included). `init`, the server and `upgrade` never call this: they keep the home as it was found.
+ */
+export function noteTheVersionOnTheFirstVerb(dir: string): void {
+  try {
+    if (existsSync(join(dir, MACHINE_STATE_FILE))) return;
+    writeMachineState(dir, NOTHING_SHOWN);
+  } catch {
+    // A directory that cannot be written is a notice not given later.
   }
 }
 
