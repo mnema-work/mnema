@@ -247,19 +247,21 @@ claim about the agent hosts is held, and which are not held yet, is in [`docs/ev
 
 ## Contributors
 
-Thanks to everyone whose pull request has been merged here:
+<p align="center">Thank you to everyone whose pull request made mnema better.</p>
 
-<table>
+<!-- contributors:start -->
+<table align="center">
 <tr>
-<td align="center" width="20%"><a href="https://github.com/bfs2021"><img src="https://github.com/bfs2021.png?size=128" width="64" height="64" alt="@bfs2021"><br><sub><b>bfs2021</b></sub></a></td>
-<td align="center" width="20%"><a href="https://github.com/jay23606"><img src="https://github.com/jay23606.png?size=128" width="64" height="64" alt="@jay23606"><br><sub><b>jay23606</b></sub></a></td>
-<td align="center" width="20%"><a href="https://github.com/mentallyunstable-lab"><img src="https://github.com/mentallyunstable-lab.png?size=128" width="64" height="64" alt="@mentallyunstable-lab"><br><sub><b>mentallyunstable-lab</b></sub></a></td>
-<td align="center" width="20%"><a href="https://github.com/prascli"><img src="https://github.com/prascli.png?size=128" width="64" height="64" alt="@prascli"><br><sub><b>prascli</b></sub></a></td>
-<td align="center" width="20%"><a href="https://github.com/tylrcc"><img src="https://github.com/tylrcc.png?size=128" width="64" height="64" alt="@tylrcc"><br><sub><b>tylrcc</b></sub></a></td>
+<td align="center"><a href="https://github.com/mentallyunstable-lab"><img src="docs/assets/contributors/mentallyunstable-lab.svg" width="72" height="72" alt="@mentallyunstable-lab"><br><sub>mentallyunstable-lab</sub></a></td>
+<td align="center"><a href="https://github.com/tylrcc"><img src="docs/assets/contributors/tylrcc.svg" width="72" height="72" alt="@tylrcc"><br><sub>tylrcc</sub></a></td>
+<td align="center"><a href="https://github.com/bfs2021"><img src="docs/assets/contributors/bfs2021.svg" width="72" height="72" alt="@bfs2021"><br><sub>bfs2021</sub></a></td>
+<td align="center"><a href="https://github.com/jay23606"><img src="docs/assets/contributors/jay23606.svg" width="72" height="72" alt="@jay23606"><br><sub>jay23606</sub></a></td>
+<td align="center"><a href="https://github.com/prascli"><img src="docs/assets/contributors/prascli.svg" width="72" height="72" alt="@prascli"><br><sub>prascli</sub></a></td>
 </tr>
 </table>
+<!-- contributors:end -->
 
-To add your name, start from [`CONTRIBUTING.md`](CONTRIBUTING.md): your first merged pull request puts you in this list.
+<p align="center">To join them, start from <a href="CONTRIBUTING.md"><code>CONTRIBUTING.md</code></a>, the pinned <a href="https://github.com/mnema-work/mnema/issues/1345">Start here</a> issue, or an issue labelled <code>ready for an agent</code>.</p>
 
 ## License
 

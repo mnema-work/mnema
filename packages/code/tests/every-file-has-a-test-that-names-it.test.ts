@@ -280,6 +280,8 @@ const LED_NOWHERE: Readonly<Record<string, string>> = {
     'The reader of that report and the builder of the one comment on the pull request, run by the workflow_run job that can write. The case hands it a hostile report and a stand-in for the API; it lives under .github/ beside that workflow, where no walk of packages/ reaches.',
   'packages/code/tests/a-claimed-issue-is-assigned-and-freed.test.ts -> ../../../.github/assign-a-claimed-issue/claim.mjs':
     'The decisions of the workflow that assigns a claimed issue and frees it after 14 days, pure functions handed comments, issues and pull requests the case makes up, and a stand-in for GitHub that records what would be written. A script a workflow step runs, plain ESM under .github/, so the specifier is right and the scanner cannot follow it.',
+  'packages/code/tests/the-contributors-grid-is-drawn-from-the-list.test.ts -> ../../../.github/contributors/draw.mjs':
+    'The drawing and the check of the README contributors grid, pure functions handed a login list and a README the case makes up. A script run by hand, plain ESM under .github/, so the specifier is right and the scanner cannot follow it.',
   'packages/code/tests/a-pr-pays-only-for-what-it-touches.test.ts -> ../../../.github/what-a-pr-touches/decide.mjs':
     'The decision of which jobs a pull request needs, pure, handed lists of changed files the case makes up. A script the changes job of CI runs, plain ESM under .github/, outside the packages/ walk, so the scanner cannot follow the specifier, which is right.',
   'packages/code/tests/a-pr-pays-only-for-what-it-touches.test.ts -> ../../../.github/rerun-a-cancelled-runner/select.mjs':
@@ -1382,6 +1384,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-console-reads-stacks-and-turns-no-hook-on.test.ts': 10,
   'packages/code/tests/the-console-says-what-recurs-and-not-where.test.ts': 9,
   'packages/code/tests/the-contribution-check-is-the-light-one.test.ts': 7,
+  'packages/code/tests/the-contributors-grid-is-drawn-from-the-list.test.ts': 5,
   'packages/code/tests/the-convergence-page-is-what-the-binary-prints.test.ts': 9,
   'packages/code/tests/the-converter-a-page-publishes-runs.test.ts': 9,
   'packages/code/tests/the-corner-says-what-its-level-covers.test.ts': 15,
@@ -2468,8 +2471,8 @@ describe('every file has a test that names it', () => {
     });
     // Non-vacuity in both parts: the walk really did follow specifiers, and the list
     // really does hold rows; a scanner returning nothing would satisfy the line above.
-    expect(unresolved.length).toBe(35);
-    expect(Object.keys(LED_NOWHERE)).toHaveLength(35);
+    expect(unresolved.length).toBe(36);
+    expect(Object.keys(LED_NOWHERE)).toHaveLength(36);
     // And each row says what THAT module is, by the ledger's rule, at the ledger's floor.
     const why = Object.values(LED_NOWHERE);
     expect(new Set(why).size).toBe(why.length);
