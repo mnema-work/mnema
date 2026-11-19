@@ -155,21 +155,21 @@ describe('orderedEvents: within-tail proven order beats a non-monotonic clock', 
     // the wall-clock says the opposite. `seq` must win: anything else lets the
     // cache contradict the chain it is derived from.
     const w = openChainForWriting(rootA, { keyRoot: rootA });
-    const [c, b] = taskBirth(env('t-1', '2026-07-21T00:00:05.000Z'), {
+    const [c, b] = taskBirth(env('t-1', '2026-07-21T00:00:05.000Z', w.signerFingerprint), {
       title: 't',
       initial: 'DRAFT',
     });
     w.append(c);
     w.append(b);
     w.append(
-      taskTransitioned(env('t-1', '2026-07-21T00:00:10.000Z'), {
+      taskTransitioned(env('t-1', '2026-07-21T00:00:10.000Z', w.signerFingerprint), {
         from: 'DRAFT',
         to: 'READY',
         action: 'submit',
       }),
     );
     w.append(
-      taskTransitioned(env('t-1', '2026-07-21T00:00:08.000Z'), {
+      taskTransitioned(env('t-1', '2026-07-21T00:00:08.000Z', w.signerFingerprint), {
         from: 'READY',
         to: 'IN_PROGRESS',
         action: 'start',

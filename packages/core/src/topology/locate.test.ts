@@ -44,7 +44,7 @@ function birthTask(root: string): string {
   const w = openChainForWriting(root, { keyRoot });
   w.append(
     taskCreated(
-      { at: '2026-07-23T00:00:00.000Z', who: 'a', signerFp: 'fp', subject: id },
+      { at: '2026-07-23T00:00:00.000Z', who: 'a', signerFp: w.signerFingerprint, subject: id },
       { title: 't' },
     ),
   );
@@ -57,7 +57,7 @@ function birthDecision(root: string): string {
   const w = openChainForWriting(root, { keyRoot });
   w.append(
     decisionRecorded(
-      { at: '2026-07-23T00:00:00.000Z', who: 'a', signerFp: 'fp', subject: id },
+      { at: '2026-07-23T00:00:00.000Z', who: 'a', signerFp: w.signerFingerprint, subject: id },
       { title: 'd', rationale: 'why', adr: 'ADR-1' },
     ),
   );
@@ -70,7 +70,7 @@ function birthSkill(root: string): string {
   const w = openChainForWriting(root, { keyRoot });
   w.append(
     skillCreated(
-      { at: '2026-07-23T00:00:00.000Z', who: 'a', signerFp: 'fp', subject: id },
+      { at: '2026-07-23T00:00:00.000Z', who: 'a', signerFp: w.signerFingerprint, subject: id },
       { name: 's', body: 'b' },
     ),
   );

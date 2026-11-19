@@ -29,7 +29,10 @@ const upcasters = catalogUpcasters();
 function writeTask(root: string, at: string, title: string): string {
   const w = openChainForWriting(root, { keyRoot });
   const entry = w.append(
-    taskCreated({ at, who: 'felipe', signerFp: 'fp-1', subject: `sub-${title}` }, { title }),
+    taskCreated(
+      { at, who: 'felipe', signerFp: w.signerFingerprint, subject: `sub-${title}` },
+      { title },
+    ),
   );
   return (entry.event as { subject: string }).subject;
 }

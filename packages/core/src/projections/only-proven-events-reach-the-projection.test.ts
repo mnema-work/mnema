@@ -166,10 +166,26 @@ describe('a tail whose first write stopped before its checkpoint (a crash while 
     expect(replay.signed.filter((fact) => fact.withheld !== undefined)).toEqual([]);
   });
 
-  it('elsewhere, committed before the next write signs it: a tail with no checkpoint, withheld (ADR-561)', () => {
+  it('elsewhere, committed before the next write signs it: the founding proven, the rest of the act the one window (ADR-569)', () => {
     foundedAndCut();
     const elsewhere = join(there, 'clone');
     cloneTo(here, elsewhere);
+    const replay = chainReplay({ root: elsewhere }, upcasters);
+    // The founding write signed what it founded at once; the act's later writes are served and
+    // govern nothing, and nothing is withheld.
+    expect(replay.events.map((event) => event.kind)).toEqual(['identity.founded']);
+    expect(replay.signed).toEqual([
+      expect.objectContaining({ unsigned: { fromSeq: 1, toSeq: 2, count: 2, byNote: false } }),
+    ]);
+    expect(replay.signed.filter((fact) => fact.withheld !== undefined)).toEqual([]);
+  });
+
+  it('elsewhere, a tail that holds events and no checkpoint at all is still withheld (ADR-561)', () => {
+    const w = foundedAndCut();
+    const elsewhere = join(there, 'clone');
+    cloneTo(here, elsewhere);
+    // As a writer before ADR-569 left a founding act killed before its end: no checkpoint line.
+    rmSync(join(elsewhere, 'tails', w.tail, 'checkpoints.jsonl'), { force: true });
     const replay = chainReplay({ root: elsewhere }, upcasters);
     expect(replay.events).toEqual([]);
     expect(replay.signed).toEqual([

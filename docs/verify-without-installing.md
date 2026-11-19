@@ -12,7 +12,7 @@ it checks:
 ```sh
 git clone https://github.com/mnema-work/mnema
 python3 mnema/packages/chain/verifier/mnema_verify.py record /path/to/a/repo/.mnema
-#> checks: 13 ok, 0 FAIL, 0 UNCHECKED, 5 note
+#> checks: 15 ok, 0 FAIL, 0 UNCHECKED, 5 note
 #> VERDICT: VERIFIED
 ```
 
