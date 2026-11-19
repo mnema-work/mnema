@@ -8,6 +8,7 @@
 // @plants-damage
 import { spawnSync } from 'node:child_process';
 import {
+  chmodSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -20,7 +21,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { recordNamedIn, tailLockPath, withTailLock } from '@mnema/chain';
+import { recordNamedIn, tailLockPath, UnreadableDiskError, withTailLock } from '@mnema/chain';
 import {
   asidePlaceInGit,
   asidesIn,
@@ -600,6 +601,31 @@ describe("a copy of another record's, with a question and a way back", () => {
     }).stdout.toString();
   const T1 = new Date('2026-11-12T23:36:30Z');
   const T2 = new Date('2026-11-12T23:40:00Z');
+
+  describe.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
+    'a tails folder of the live tree the disk will not open',
+    () => {
+      it.each([true, false])(
+        'names the part and refuses the restore of another record, with the project in git: %s',
+        (inGit) => {
+          const { a, trees, beta } = alphaWithBetasCopy(inGit);
+          const tails = join(trees.projectPublic as string, 'tails');
+          const live = digest(trees.projectPublic as string);
+          chmodSync(tails, 0);
+          try {
+            expect(() => runBackupRestore(a, false, { from: beta, confirmed: true })).toThrow(
+              UnreadableDiskError,
+            );
+            expect(() => planBackupRestore(a, beta)).toThrow(/tails cannot be opened/);
+          } finally {
+            chmodSync(tails, 0o700);
+          }
+          expect(digest(trees.projectPublic as string)).toBe(live);
+          expect(existsSync(join(sandbox, 'home', '.mnema', 'before-restore'))).toBe(false);
+        },
+      );
+    },
+  );
 
   it('asks first, keeps the live tree in the git directory, puts the copy in, and --undo puts the live tree back as it was', () => {
     const { a, trees, priv, beta } = alphaWithBetasCopy(true);

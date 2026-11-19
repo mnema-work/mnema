@@ -329,8 +329,8 @@ export function refusalOfAnUnreadableRecord(
   }
   if (error instanceof UnreadableDiskError) {
     return [
-      `The write is refused: ${UNREADABLE_IN[tree].tree} holds a part the disk does not let this mnema open, so which rules apply to this path cannot be known.`,
-      error.message,
+      `The write is refused: ${treeOfThePart(error, tree)} holds a part the disk does not let this mnema open, so which rules apply to this path cannot be known.`,
+      saidWhere(error, tree),
       DISK_WAY_OUT_OF[tree],
     ].join('\n\n');
   }
@@ -339,6 +339,24 @@ export function refusalOfAnUnreadableRecord(
     `The write is refused: a line of ${words.tree} cannot be read by this mnema, so which rules apply to this path cannot be known.`,
     error.message,
     words.out(tailsOfTheLocus(error.locus)),
+  ].join('\n\n');
+}
+
+/**
+ * The refusal of an act that records something (a decision, a note, a task) over a part of the record
+ * the disk does not let this mnema open. It is not about a path, as the refusal of a write before an
+ * edit is: the act names none, so the sentence says the record cannot be written, where it is, and the
+ * way out. `trees` are the trees the caller read, as for {@link refusalOfAnUnreadableRecord}.
+ */
+export function refusalOfAPartForARecordingAct(
+  error: UnreadableDiskError,
+  trees: readonly Pick<ScopedCache, 'scope' | 'chainRoot'>[],
+): string {
+  const tree = treeOfTheLine(error.locus, trees) ?? 'unknown';
+  return [
+    `${treeOfThePart(error, tree)} holds a part the disk does not let this mnema open, so the record cannot be written.`,
+    saidWhere(error, tree),
+    DISK_WAY_OUT_OF[tree],
   ].join('\n\n');
 }
 
@@ -530,8 +548,8 @@ export function unreadableLineSentence(
   }
   if (error instanceof UnreadableDiskError) {
     return [
-      `Nothing was done: ${UNREADABLE_IN[tree].tree} holds a part the disk does not let this mnema open.`,
-      error.message,
+      `Nothing was done: ${treeOfThePart(error, tree)} holds a part the disk does not let this mnema open.`,
+      saidWhere(error, tree),
       DISK_WAY_OUT_OF[tree],
       'Switching a channel off is a write to the same record, so it is refused too.',
     ].join('\n\n');
@@ -558,6 +576,30 @@ function treeOfTheLine(
     .filter(({ chainRoot }) => locus.startsWith(`${chainRoot}${sep}`))
     .sort((a, b) => b.chainRoot.length - a.chainRoot.length);
   return holding[0]?.scope;
+}
+
+/**
+ * Which record a part the disk will not open belongs to, when it is not under a tree's own folder: inside
+ * a repository the public tree's locks and installation ids are in the git directory, and the
+ * identity's keys are in the mnema home. A part under a tree is that tree's.
+ */
+function treeOfThePart(error: UnreadableDiskError, tree: Scope | 'unknown'): string {
+  if (tree !== 'unknown') return UNREADABLE_IN[tree].tree;
+  if (
+    /[\\/]identity[\\/]keys(?:[\\/]|$)/.test(error.locus) ||
+    error.locus.endsWith(`${sep}identity`)
+  ) {
+    return 'the identity’s keys folder in the mnema home';
+  }
+  if (/[\\/]mnema[\\/][^\\/]+[\\/]public[\\/]/.test(error.locus)) {
+    return 'the project’s public record (its locks and installation ids are kept in the git directory)';
+  }
+  return UNREADABLE_IN.unknown.tree;
+}
+
+/** The part's place in the record, and, where it is outside every tree, where it is on the disk. */
+function saidWhere(error: UnreadableDiskError, tree: Scope | 'unknown'): string {
+  return tree === 'unknown' ? `${error.message}. It is at ${error.locus}.` : error.message;
 }
 
 /** What the refusal says of each tree: which it is, how far the refusal reaches, and the way out. */
