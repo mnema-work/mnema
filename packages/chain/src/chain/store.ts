@@ -1275,6 +1275,131 @@ export function readTailCheckpoints(
 }
 
 /**
+ * Where a reading of a tail's `checkpoints.jsonl` ended: the bytes the file held, and where its
+ * last complete line starts, so a later reading reads that line again (it must still be the line
+ * the first reading folded) and then only the lines after it.
+ */
+export interface CheckpointsMark {
+  readonly bytes: number;
+  readonly lastLineAt: number;
+  /** The file's modification time in nanoseconds, as text: a file of the same size and another time was rewritten. */
+  readonly mtimeNs: string;
+}
+
+/** A file's modification time in nanoseconds, as text, or `''` for one that is not there. */
+function mtimeNsOf(file: string): string {
+  try {
+    return String(statSync(file, { bigint: true }).mtimeNs);
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * {@link readTailCheckpoints}, with where the reading ended ({@link CheckpointsMark}): for a read that
+ * folds the checkpoints and takes only the new lines on its next catch-up.
+ */
+export function readTailCheckpointsMarked(
+  layout: ChainLayout,
+  tailId: string,
+  refused?: RefusedLine,
+): { readonly checkpoints: Checkpoint[]; readonly mark: CheckpointsMark } {
+  refuseLinks(layout, ['tails', `tails/${tailId}`, `tails/${tailId}/checkpoints.jsonl`]);
+  const file = checkpointsPath(layout, tailId);
+  const none = { checkpoints: [], mark: { bytes: 0, lastLineAt: 0, mtimeNs: '' } };
+  if (!existsSync(file)) return none;
+  // The time first: a line appended after it was taken moves it again, and the next reading
+  // reads the file again rather than believe it.
+  const mtimeNs = mtimeNsOf(file);
+  const raw = readOrHandOver(file, refused);
+  if (raw === undefined) return none;
+  const read = checkpointLinesOf(raw, 0, file, refused);
+  return {
+    checkpoints: read.checkpoints,
+    mark: { bytes: raw.length, lastLineAt: read.lastLineAt, mtimeNs },
+  };
+}
+
+/**
+ * The checkpoint lines stored after `mark`, or undefined when the file is not the one that mark
+ * was taken of: shorter, or its line at `lastLineAt` is not the checkpoint whose hash is `prev`
+ * (old lines rewritten under an append). Undefined then asks the caller to read the tail whole.
+ */
+export function readTailCheckpointsSince(
+  layout: ChainLayout,
+  tailId: string,
+  mark: CheckpointsMark,
+  prev: string | null,
+  hashOf: (checkpoint: Checkpoint) => string,
+): { readonly checkpoints: Checkpoint[]; readonly mark: CheckpointsMark } | undefined {
+  refuseLinks(layout, ['tails', `tails/${tailId}`, `tails/${tailId}/checkpoints.jsonl`]);
+  const file = checkpointsPath(layout, tailId);
+  const size = sizeOf(file);
+  if (size < 0) return mark.bytes === 0 ? { checkpoints: [], mark } : undefined;
+  if (size < mark.bytes) return undefined;
+  const mtimeNs = mtimeNsOf(file);
+  if (size === mark.bytes) return mtimeNs === mark.mtimeNs ? { checkpoints: [], mark } : undefined;
+  let raw: Buffer;
+  try {
+    raw = readFileSync(file).subarray(mark.lastLineAt);
+  } catch {
+    return undefined;
+  }
+  let read: { checkpoints: Checkpoint[]; lastLineAt: number };
+  try {
+    read = checkpointLinesOf(raw, mark.lastLineAt, file, undefined);
+  } catch {
+    return undefined;
+  }
+  const [first, ...rest] = read.checkpoints;
+  if (prev === null) {
+    // Nothing was read before: every line is new.
+    if (mark.bytes !== 0) return undefined;
+    return {
+      checkpoints: read.checkpoints,
+      mark: { bytes: raw.length, lastLineAt: read.lastLineAt, mtimeNs },
+    };
+  }
+  if (first === undefined || hashOf(first) !== prev) return undefined;
+  return {
+    checkpoints: rest,
+    mark: { bytes: mark.lastLineAt + raw.length, lastLineAt: read.lastLineAt, mtimeNs },
+  };
+}
+
+/** The checkpoints of `raw` (bytes of the file from `offset`) and where the last complete one starts. */
+function checkpointLinesOf(
+  raw: Buffer,
+  offset: number,
+  file: string,
+  refused: RefusedLine | undefined,
+): { checkpoints: Checkpoint[]; lastLineAt: number } {
+  const endsWithNewline = raw.at(-1) === NEWLINE;
+  const lines = splitLines(raw);
+  const checkpoints: Checkpoint[] = [];
+  let at = 0;
+  let start = 0;
+  let lastLineAt = offset;
+  const where = (): string => `${file} line ${at}`;
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i] as Uint8Array;
+    const begins = start;
+    start += line.length + 1;
+    if (line.length === 0) continue;
+    const couldBeTorn = !endsWithNewline && i === lines.length - 1;
+    at = i + 1;
+    const checkpoint = readOn(refused, () =>
+      parseStoredLine(line, couldBeTorn, parseCheckpoint, where),
+    );
+    if (checkpoint !== null && checkpoint !== REFUSED) {
+      checkpoints.push(checkpoint);
+      lastLineAt = offset + begins;
+    }
+  }
+  return { checkpoints, lastLineAt };
+}
+
+/**
  * Reads the LAST checkpoint stored for a tail, or `undefined` if it has none.
  *
  * This is what a resuming writer asks for: how far the coverage reaches and

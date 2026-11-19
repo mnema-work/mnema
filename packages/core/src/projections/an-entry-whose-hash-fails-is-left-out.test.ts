@@ -48,9 +48,11 @@ function writing(): WriteContext {
   return { writer: openChainForWriting(root, { keyRoot: keys }), layout: { root }, upcasters };
 }
 
+/** One act, signed as the product signs each: a damaged line withholds only its own act's range. */
 function task(ctx: WriteContext, title: string): void {
   const made = createTask(ctx, { title });
   if (!made.ok) throw new Error('setup refused');
+  ctx.writer.checkpoint();
 }
 
 function cacheOver(persist: boolean): ProjectionCache {

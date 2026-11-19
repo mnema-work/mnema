@@ -56,7 +56,7 @@ import {
   WORKFLOWS,
 } from '@mnema/chain';
 import { BUSY_TIMEOUT_MS, inTransaction, type SqliteDatabase } from '../db/sqlite.js';
-import type { ChainFrontier, TailReach } from './order.js';
+import type { ChainFrontier, SignedFact, TailReach } from './order.js';
 
 /** What is stored under the cache's own keys. */
 export interface CacheMeta {
@@ -82,6 +82,12 @@ export interface CacheMeta {
   readonly refused: readonly RefusedPart[];
   /** The lines of a kind this binary does not know that the rows reach: read past, never applied. */
   readonly unread: readonly UnreadLine[];
+  /**
+   * What the tails' checkpoints proved, as of the same reading (ADR-557 to ADR-562): the runs left
+   * out of the rows (Fact A) and the runs served and not signed (Fact B). A file that does not
+   * carry the key was built before the read folded the checkpoints, and is read as no cache.
+   */
+  readonly signed: readonly SignedFact[];
   /** Size and modification time of every sealed segment the frontier covers, by path. */
   readonly sealed: Readonly<Record<string, string>>;
   /**
@@ -152,6 +158,7 @@ export function readMeta(db: SqliteDatabase): CacheMeta | undefined {
   const retained = byKey.get('retained');
   const refused = byKey.get('refused');
   const unread = byKey.get('unread');
+  const signed = byKey.get('signed');
   const sealed = byKey.get('sealed');
   const active = byKey.get('active');
   if (
@@ -162,6 +169,7 @@ export function readMeta(db: SqliteDatabase): CacheMeta | undefined {
     retained === undefined ||
     refused === undefined ||
     unread === undefined ||
+    signed === undefined ||
     sealed === undefined ||
     active === undefined
   ) {
@@ -175,6 +183,7 @@ export function readMeta(db: SqliteDatabase): CacheMeta | undefined {
     retained: JSON.parse(retained) as RetainedEntry[],
     refused: JSON.parse(refused) as RefusedPart[],
     unread: JSON.parse(unread) as UnreadLine[],
+    signed: JSON.parse(signed) as SignedFact[],
     sealed: JSON.parse(sealed) as Record<string, string>,
     active: JSON.parse(active) as Record<string, string>,
   };
@@ -198,6 +207,7 @@ export function writeMeta(db: SqliteDatabase, meta: CacheMeta): void {
   put.run('retained', JSON.stringify(meta.retained));
   put.run('refused', JSON.stringify(meta.refused));
   put.run('unread', JSON.stringify(meta.unread));
+  put.run('signed', JSON.stringify(meta.signed));
   put.run('sealed', JSON.stringify(meta.sealed));
   put.run('active', JSON.stringify(meta.active));
 }

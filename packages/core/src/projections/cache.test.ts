@@ -53,10 +53,10 @@ function openCache(dbPath?: string): ProjectionCache {
 }
 
 const at = (n: number) => `2026-07-21T00:00:0${n}.000Z`;
-const env = (subject: string, n: number) => ({
+const env = (subject: string, n: number, signerFp = 'fp-1') => ({
   at: at(n),
   who: 'felipe',
-  signerFp: 'fp-1',
+  signerFp,
   subject,
 });
 
@@ -65,12 +65,15 @@ const env = (subject: string, n: number) => ({
  * move the workflow does not hold is one no reader applies.
  */
 function writeTaskMovedTo(w: ChainWriter, id: string, to: 'READY' | 'CANCELED'): void {
-  const [created, transitioned] = taskBirth(env(id, 0), { title: `title ${id}`, initial: 'DRAFT' });
+  const [created, transitioned] = taskBirth(env(id, 0, w.signerFingerprint), {
+    title: `title ${id}`,
+    initial: 'DRAFT',
+  });
   w.append(created);
   w.append(transitioned);
   w.append(
     taskTransitioned(
-      env(id, 1),
+      env(id, 1, w.signerFingerprint),
       to === 'READY'
         ? { from: 'DRAFT', to, action: 'submit' }
         : { from: 'DRAFT', to, action: 'cancel', fields: { reason: 'not needed' } },
@@ -200,6 +203,8 @@ describe('ProjectionCache: multi-tail materialization', () => {
       }
       const b = openChainForWriting(rootB, { keyRoot: rootB });
       writeTaskMovedTo(b, 't-b', 'READY');
+      // Signed, as the product signs every act: the copy carries no note of B's machine.
+      b.checkpoint();
       // Offline merge: copy B's own tail and its key into A's chain.
       cpSync(join(rootB, 'tails', b.tail), join(chainRoot, 'tails', b.tail), { recursive: true });
       cpSync(join(rootB, 'keys'), join(chainRoot, 'keys'), { recursive: true });

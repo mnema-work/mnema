@@ -22,7 +22,7 @@
  * on a merge, while all still authorize as the one anchor the key derives.
  */
 
-import { type KeyObject, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import {
   closeSync,
   existsSync,
@@ -234,23 +234,6 @@ export function listPrivateKeyFingerprints(layout: ChainLayout): string[] {
   return listedInKeys(dir)
     .filter((name) => name.endsWith(PRIVATE_KEY_SUFFIX))
     .map((name) => name.slice(0, -PRIVATE_KEY_SUFFIX.length));
-}
-
-/**
- * The public half of a key this machine holds under `keyRoot`, or undefined when it holds none
- * by that fingerprint, or the file holds a key whose fingerprint is another. Read from the key
- * root, never from `keys/` of a tree, which is as writable as the record it sits beside: it is
- * what a read verifies this machine's signed note of a tail with (`checkpoint-ruling.ts`). No
- * private key is opened, so a passphrase is never asked for.
- */
-export function publicKeyOf(keyRoot: ChainLayout, fingerprint: string): KeyObject | undefined {
-  if (!listPrivateKeyFingerprints(keyRoot).includes(fingerprint)) return undefined;
-  try {
-    const key = publicKeyFromPem(readFileSync(publicKeyPath(keyRoot, fingerprint), 'utf-8'));
-    return fingerprintOf(key) === fingerprint ? key : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 /** Finds a local key pair (a public key whose matching private key is present). */

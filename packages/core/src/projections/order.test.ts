@@ -41,7 +41,12 @@ afterEach(() => {
 });
 
 const upcasters = catalogUpcasters();
-const env = (subject: string, at: string) => ({ at, who: 'felipe', signerFp: 'fp-1', subject });
+const env = (subject: string, at: string, signerFp = 'fp-1') => ({
+  at,
+  who: 'felipe',
+  signerFp,
+  subject,
+});
 
 /**
  * Copies the tails B holds that A does not, and B's public key, into A's chain (an offline
@@ -72,9 +77,15 @@ function cloneRecord(from: string, into: string): void {
 describe('orderedEvents: single tail preserves seq order', () => {
   it('returns events in the order they were appended', () => {
     const w = openChainForWriting(rootA, { keyRoot: rootA });
-    w.append(taskCreated(env('t-1', '2026-07-21T00:00:00.000Z'), { title: 'first' }));
-    w.append(taskCreated(env('t-2', '2026-07-21T00:00:01.000Z'), { title: 'second' }));
-    w.append(taskCreated(env('t-3', '2026-07-21T00:00:02.000Z'), { title: 'third' }));
+    w.append(
+      taskCreated(env('t-1', '2026-07-21T00:00:00.000Z', w.signerFingerprint), { title: 'first' }),
+    );
+    w.append(
+      taskCreated(env('t-2', '2026-07-21T00:00:01.000Z', w.signerFingerprint), { title: 'second' }),
+    );
+    w.append(
+      taskCreated(env('t-3', '2026-07-21T00:00:02.000Z', w.signerFingerprint), { title: 'third' }),
+    );
     const events = orderedEvents({ root: rootA }, upcasters);
     expect(events.map((e) => e.subject)).toEqual(['t-1', 't-2', 't-3']);
   });
@@ -83,11 +94,19 @@ describe('orderedEvents: single tail preserves seq order', () => {
 describe('orderedEvents: multi-tail is total and deterministic', () => {
   it('interleaves two tails by timestamp', () => {
     const a = openChainForWriting(rootA, { keyRoot: rootA });
-    a.append(taskCreated(env('a-1', '2026-07-21T00:00:00.000Z'), { title: 'a1' }));
-    a.append(taskCreated(env('a-2', '2026-07-21T00:00:02.000Z'), { title: 'a2' }));
+    a.append(
+      taskCreated(env('a-1', '2026-07-21T00:00:00.000Z', a.signerFingerprint), { title: 'a1' }),
+    );
+    a.append(
+      taskCreated(env('a-2', '2026-07-21T00:00:02.000Z', a.signerFingerprint), { title: 'a2' }),
+    );
+    a.checkpoint();
     cloneRecord(rootA, rootB);
     const b = openChainForWriting(rootB, { keyRoot: rootB });
-    b.append(taskCreated(env('b-1', '2026-07-21T00:00:01.000Z'), { title: 'b1' }));
+    b.append(
+      taskCreated(env('b-1', '2026-07-21T00:00:01.000Z', b.signerFingerprint), { title: 'b1' }),
+    );
+    b.checkpoint();
     mergeTails(rootB, rootA);
 
     const events = orderedEvents({ root: rootA }, upcasters);
@@ -100,10 +119,12 @@ describe('orderedEvents: multi-tail is total and deterministic', () => {
     // must not depend on which tail happened to be read first.
     const sameAt = '2026-07-21T00:00:00.000Z';
     const a = openChainForWriting(rootA, { keyRoot: rootA });
-    a.append(taskCreated(env('a-1', sameAt), { title: 'a1' }));
+    a.append(taskCreated(env('a-1', sameAt, a.signerFingerprint), { title: 'a1' }));
+    a.checkpoint();
     cloneRecord(rootA, rootB);
     const b = openChainForWriting(rootB, { keyRoot: rootB });
-    b.append(taskCreated(env('b-1', sameAt), { title: 'b1' }));
+    b.append(taskCreated(env('b-1', sameAt, b.signerFingerprint), { title: 'b1' }));
+    b.checkpoint();
     mergeTails(rootB, rootA);
 
     const first = orderedEvents({ root: rootA }, upcasters);
@@ -119,9 +140,9 @@ describe('orderedEvents: multi-tail is total and deterministic', () => {
     // append order is preserved (the hash chain proves that order).
     const sameAt = '2026-07-21T00:00:00.000Z';
     const a = openChainForWriting(rootA, { keyRoot: rootA });
-    a.append(taskCreated(env('a-1', sameAt), { title: 'a1' }));
-    a.append(taskCreated(env('a-2', sameAt), { title: 'a2' }));
-    a.append(taskCreated(env('a-3', sameAt), { title: 'a3' }));
+    a.append(taskCreated(env('a-1', sameAt, a.signerFingerprint), { title: 'a1' }));
+    a.append(taskCreated(env('a-2', sameAt, a.signerFingerprint), { title: 'a2' }));
+    a.append(taskCreated(env('a-3', sameAt, a.signerFingerprint), { title: 'a3' }));
     const events = orderedEvents({ root: rootA }, upcasters);
     expect(events.map((e) => e.subject)).toEqual(['a-1', 'a-2', 'a-3']);
   });
@@ -177,14 +198,22 @@ describe('orderedEventsOfRecord: the same tails, ordered two ways, read once', (
       [rootB, 'b'],
     ] as const) {
       const first = openChainForWriting(root, { keyRoot: root });
-      first.append(taskCreated(env(`${prefix}-1`, sameAt), { title: '1' }));
-      first.append(taskCreated(env(`${prefix}-2`, sameAt), { title: '2' }));
+      first.append(
+        taskCreated(env(`${prefix}-1`, sameAt, first.signerFingerprint), { title: '1' }),
+      );
+      first.append(
+        taskCreated(env(`${prefix}-2`, sameAt, first.signerFingerprint), { title: '2' }),
+      );
+      first.checkpoint();
       // A second tail of the SAME chain: another installation's key, its own file.
       const otherRoot = mkdtempSync(join(tmpdir(), `mnema-order-${prefix}-2nd-`));
       try {
         cloneRecord(root, otherRoot);
         const second = openChainForWriting(otherRoot, { keyRoot: otherRoot });
-        second.append(taskCreated(env(`${prefix}-3`, sameAt), { title: '3' }));
+        second.append(
+          taskCreated(env(`${prefix}-3`, sameAt, second.signerFingerprint), { title: '3' }),
+        );
+        second.checkpoint();
         mergeTails(otherRoot, root);
       } finally {
         rmSync(otherRoot, { recursive: true, force: true });
@@ -221,7 +250,9 @@ describe('orderedEventsOfRecord: the same tails, ordered two ways, read once', (
     // A named tree with no directory contributes nothing, and it must not shift the
     // entries: a caller pairs `chains[i]` with `layouts[i]`.
     const w = openChainForWriting(rootB, { keyRoot: rootB });
-    w.append(taskCreated(env('only', '2026-07-21T00:00:00.000Z'), { title: 'only' }));
+    w.append(
+      taskCreated(env('only', '2026-07-21T00:00:00.000Z', w.signerFingerprint), { title: 'only' }),
+    );
     const { chains, across } = orderedEventsOfRecord([{ root: rootA }, { root: rootB }], upcasters);
     expect(chains.map((chain) => chain.map((e) => e.subject))).toEqual([[], ['only']]);
     expect(across.map((e) => e.subject)).toEqual(['only']);
@@ -271,11 +302,19 @@ describe('chainArrivals: a break planted at the boundary', () => {
   }
 
   /** A chain of three facts on one tail, and the frontier a full reading of it leaves. */
-  function seeded(): ChainReplay {
+  /** Three events; `signed` false leaves them above the coverage, so a test may cut the last one. */
+  function seeded(signed = true): ChainReplay {
     const w = openChainForWriting(rootA, { keyRoot: rootA });
-    w.append(taskCreated(env('t-1', '2026-07-21T00:00:00.000Z'), { title: 'first' }));
-    w.append(taskCreated(env('t-2', '2026-07-21T00:00:01.000Z'), { title: 'second' }));
-    w.append(taskCreated(env('t-3', '2026-07-21T00:00:02.000Z'), { title: 'third' }));
+    w.append(
+      taskCreated(env('t-1', '2026-07-21T00:00:00.000Z', w.signerFingerprint), { title: 'first' }),
+    );
+    w.append(
+      taskCreated(env('t-2', '2026-07-21T00:00:01.000Z', w.signerFingerprint), { title: 'second' }),
+    );
+    w.append(
+      taskCreated(env('t-3', '2026-07-21T00:00:02.000Z', w.signerFingerprint), { title: 'third' }),
+    );
+    if (signed) w.checkpoint();
     return chainReplay({ root: rootA }, upcasters);
   }
 
@@ -310,7 +349,10 @@ describe('chainArrivals: a break planted at the boundary', () => {
     expect(still.suffix === true && still.events).toHaveLength(0);
 
     const w = openChainForWriting(rootA, { keyRoot: rootA });
-    w.append(taskCreated(env('t-4', '2026-07-21T00:00:03.000Z'), { title: 'fourth' }));
+    w.append(
+      taskCreated(env('t-4', '2026-07-21T00:00:03.000Z', w.signerFingerprint), { title: 'fourth' }),
+    );
+    w.checkpoint();
     const grown = chainArrivals({ root: rootA }, upcasters, before.frontier);
     expect(grown.suffix).toBe(true);
     expect(grown.suffix === true && grown.events.map((e) => e.subject)).toEqual(['t-4']);
@@ -327,14 +369,15 @@ describe('chainArrivals: a break planted at the boundary', () => {
     ['the same length', 't-4', 'fourth'],
     ['a longer entry', 't-44444', 'fourth and some more'],
   ])('refuses a suffix when the entry at the boundary is replaced by %s', (_, subject, title) => {
-    const before = seeded();
+    // Unsigned, so the writer may append over the cut: a signed last line is not cut by a writer.
+    const before = seeded(false);
     const tails = join(rootA, 'tails');
     const tail = readdirSync(tails)[0] as string;
     const file = join(tails, tail, '000001.jsonl');
     const kept = readFileSync(file, 'utf-8').trimEnd().split('\n').slice(0, 2);
     writeFileSync(file, `${kept.join('\n')}\n`, 'utf-8');
     const w = openChainForWriting(rootA, { keyRoot: rootA });
-    w.append(taskCreated(env(subject, '2026-07-21T00:00:03.000Z'), { title }));
+    w.append(taskCreated(env(subject, '2026-07-21T00:00:03.000Z', w.signerFingerprint), { title }));
     expect(chainReplay({ root: rootA }, upcasters).linkBreaks).toHaveLength(0);
 
     const arrived = chainArrivals({ root: rootA }, upcasters, before.frontier);
@@ -381,7 +424,10 @@ describe('chainArrivals: a break planted at the boundary', () => {
   it('advances the boundary past what it read, so a second reading finds nothing', () => {
     const before = seeded();
     const w = openChainForWriting(rootA, { keyRoot: rootA });
-    w.append(taskCreated(env('t-4', '2026-07-21T00:00:03.000Z'), { title: 'fourth' }));
+    w.append(
+      taskCreated(env('t-4', '2026-07-21T00:00:03.000Z', w.signerFingerprint), { title: 'fourth' }),
+    );
+    w.checkpoint();
     const first = chainArrivals({ root: rootA }, upcasters, before.frontier);
     expect(first.suffix === true && first.events).toHaveLength(1);
 
@@ -440,7 +486,11 @@ describe('chainArrivals: a break planted at the boundary', () => {
 
     // Branch one: a fourth fact, kept for its LINE alone.
     const w1 = openChainForWriting(rootA, { keyRoot: rootA });
-    w1.append(taskCreated(env('t-4a', '2026-07-21T00:00:03.000Z'), { title: 'one branch' }));
+    w1.append(
+      taskCreated(env('t-4a', '2026-07-21T00:00:03.000Z', w1.signerFingerprint), {
+        title: 'one branch',
+      }),
+    );
     const branchOne = linesOf()[3] as string;
 
     // Branch two, from the same three facts: a different fourth, then a fifth on top of it.
@@ -448,8 +498,14 @@ describe('chainArrivals: a break planted at the boundary', () => {
     writeFileSync(note, baseNote);
     writeFileSync(signedNote, baseSignedNote);
     const w2 = openChainForWriting(rootA, { keyRoot: rootA });
-    w2.append(taskCreated(env('t-4b', '2026-07-21T00:00:03.000Z'), { title: 'other branch' }));
-    w2.append(taskCreated(env('t-5', '2026-07-21T00:00:04.000Z'), { title: 'fifth' }));
+    w2.append(
+      taskCreated(env('t-4b', '2026-07-21T00:00:03.000Z', w2.signerFingerprint), {
+        title: 'other branch',
+      }),
+    );
+    w2.append(
+      taskCreated(env('t-5', '2026-07-21T00:00:04.000Z', w2.signerFingerprint), { title: 'fifth' }),
+    );
     const branchTwo = linesOf();
 
     // The swap: seq 3 is branch one's entry, and seq 4 still names branch two's hash.
@@ -483,8 +539,12 @@ describe('chainArrivals: a break planted at the boundary', () => {
   it('names a fork among the arrivals in the words of the full reading', () => {
     const tails = join(rootA, 'tails');
     const w = openChainForWriting(rootA, { keyRoot: rootA });
-    w.append(taskCreated(env('t-1', '2026-07-21T00:00:00.000Z'), { title: 'first' }));
-    w.append(taskCreated(env('t-2', '2026-07-21T00:00:01.000Z'), { title: 'second' }));
+    w.append(
+      taskCreated(env('t-1', '2026-07-21T00:00:00.000Z', w.signerFingerprint), { title: 'first' }),
+    );
+    w.append(
+      taskCreated(env('t-2', '2026-07-21T00:00:01.000Z', w.signerFingerprint), { title: 'second' }),
+    );
     const tail = readdirSync(tails)[0] as string;
     const file = join(tails, tail, '000001.jsonl');
     const note = join(rootA, 'locks', `${tail}.head`);
@@ -492,7 +552,11 @@ describe('chainArrivals: a break planted at the boundary', () => {
     const base = readFileSync(file, 'utf-8');
     const baseNote = readFileSync(note);
     const baseSignedNote = readFileSync(signedNote);
-    w.append(taskCreated(env('t-3a', '2026-07-21T00:00:02.000Z'), { title: 'one side' }));
+    w.append(
+      taskCreated(env('t-3a', '2026-07-21T00:00:02.000Z', w.signerFingerprint), {
+        title: 'one side',
+      }),
+    );
     const before = chainReplay({ root: rootA }, upcasters);
     const oneSide = readFileSync(file, 'utf-8');
 
@@ -592,10 +656,24 @@ describe('chainArrivals: a break planted at the boundary', () => {
    */
   it('resumes by BYTES over a tail whose entries carry multi-byte text', () => {
     const w = openChainForWriting(rootA, { keyRoot: rootA });
-    w.append(taskCreated(env('t-1', '2026-07-21T00:00:00.000Z'), { title: '日本語'.repeat(200) }));
-    w.append(taskCreated(env('t-2', '2026-07-21T00:00:01.000Z'), { title: '漢字'.repeat(200) }));
+    w.append(
+      taskCreated(env('t-1', '2026-07-21T00:00:00.000Z', w.signerFingerprint), {
+        title: '日本語'.repeat(200),
+      }),
+    );
+    w.append(
+      taskCreated(env('t-2', '2026-07-21T00:00:01.000Z', w.signerFingerprint), {
+        title: '漢字'.repeat(200),
+      }),
+    );
+    w.checkpoint();
     const before = chainReplay({ root: rootA }, upcasters);
-    w.append(taskCreated(env('t-3', '2026-07-21T00:00:02.000Z'), { title: 'ação – ünïcodé' }));
+    w.append(
+      taskCreated(env('t-3', '2026-07-21T00:00:02.000Z', w.signerFingerprint), {
+        title: 'ação – ünïcodé',
+      }),
+    );
+    w.checkpoint();
 
     const arrived = chainArrivals({ root: rootA }, upcasters, before.frontier);
     expect(arrived.suffix).toBe(true);

@@ -219,6 +219,7 @@ describe('the frozen number does not slip when a concurrent decision merges in',
     const concurrent = mustRecord(contextFor(b, rootB, cb.clock), { title: 'b', rationale: 'r' });
 
     // Offline merge: B's tail and key land in A's chain.
+    b.checkpoint();
     cpSync(join(rootB, 'tails', b.tail), join(root, 'tails', b.tail), { recursive: true });
     cpSync(join(rootB, 'keys'), join(root, 'keys'), { recursive: true });
 
@@ -242,6 +243,7 @@ describe('the frozen number does not slip when a concurrent decision merges in',
       title: 'b',
       rationale: 'r',
     });
+    b.checkpoint();
     cpSync(join(rootB, 'tails', b.tail), join(root, 'tails', b.tail), { recursive: true });
     cpSync(join(rootB, 'keys'), join(root, 'keys'), { recursive: true });
 

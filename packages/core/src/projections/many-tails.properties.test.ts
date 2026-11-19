@@ -744,8 +744,14 @@ describe('MR5: cutting the suffix of a tail leaves its prefix', () => {
             cutTailTo(root, tail, keep);
             expect(verify(root).ok).toBe(true);
             expect(chainReplay({ root }, upcasters).linkBreaks).toEqual([]);
+            // What the read serves of the cut tail is what a signature still proves (ADR-561):
+            // the whole of it when nothing was cut (this machine's note vouches for its end),
+            // and the checkpointed prefix when the cut took the end the note names.
             const prefixed: Appended = new Map(appended);
-            prefixed.set(tail, events.slice(0, keep));
+            prefixed.set(
+              tail,
+              events.slice(0, keep === events.length ? keep : Math.min(covered + 1, keep)),
+            );
             expect(read(root)).toEqual(modelled(streamsOf(prefixed)));
           } finally {
             cleanUp(root);
@@ -1271,8 +1277,10 @@ describe('with citations: every machine cites the heads it read, as the product 
             keyRoot: keyRoots[slot] as string,
             maxUnsignedEvents: 10_000,
           });
-          const task = (second: number, id: string, after?: readonly string[]) =>
-            writer.append(
+          // Each task one act, signed as the product signs it: a tail copied to another record
+          // carries no note of the machine that wrote it.
+          const task = (second: number, id: string, after?: readonly string[]) => {
+            const entry = writer.append(
               taskCreated(
                 {
                   at: iso(second),
@@ -1284,12 +1292,18 @@ describe('with citations: every machine cites the heads it read, as the product 
                 { title: id },
               ),
             );
+            writer.checkpoint();
+            return entry;
+          };
           return { writer, task };
         };
-        // C writes on a clone this record has not pulled yet; B has, and cites C's head.
+        // C writes on a clone this record has not pulled yet; B has, and cites C's head. The
+        // clone is of this record (its signed tails name it): a tail of another record is not read.
+        writerOf(root, 0).task(1, 'on-a');
+        cpSync(join(root, 'tails'), join(elsewhere, 'tails'), { recursive: true });
+        cpSync(join(root, 'keys'), join(elsewhere, 'keys'), { recursive: true });
         const c = writerOf(elsewhere, 2);
         const cited = c.task(5, 'on-c').link.hash;
-        writerOf(root, 0).task(1, 'on-a');
         writerOf(root, 1).task(2, 'on-b', [cited]);
 
         const covered = chainReplay({ root }, upcasters).frontier;
@@ -1306,6 +1320,8 @@ describe('with citations: every machine cites the heads it read, as the product 
         cpSync(tailDir({ root: elsewhere }, c.writer.tail), tailDir({ root }, c.writer.tail), {
           recursive: true,
         });
+        // With its public key, as a pull carries it: a tail whose key is not committed proves nothing.
+        cpSync(join(elsewhere, 'keys'), join(root, 'keys'), { recursive: true });
         expect(chainArrivals({ root }, upcasters, covered)).toMatchObject({
           suffix: false,
           why: 'AN_ARRIVAL_IS_NOT_LATER',
@@ -1360,7 +1376,10 @@ describe('with citations: every machine cites the heads it read, as the product 
         })) {
           a.append(event);
         }
-        // C accepts X on a clone this record has not pulled.
+        a.checkpoint();
+        // C accepts X on a clone this record has not pulled: a clone of THIS record.
+        cpSync(join(root, 'tails'), join(elsewhere, 'tails'), { recursive: true });
+        cpSync(join(root, 'keys'), join(elsewhere, 'keys'), { recursive: true });
         const c = open(elsewhere, 2);
         const accepted = c.append(
           decisionTransitioned(env(c, 5), {
@@ -1370,6 +1389,7 @@ describe('with citations: every machine cites the heads it read, as the product 
             fields: { note: 'yes' },
           }),
         ).link.hash;
+        c.checkpoint();
         const refreshed = () => {
           const cache = ProjectionCache.open(root, { upcasters, persist: true });
           try {
@@ -1393,6 +1413,7 @@ describe('with citations: every machine cites the heads it read, as the product 
         )) {
           a.append(event);
         }
+        a.checkpoint();
         const b = open(root, 1);
         b.append(
           decisionTransitioned(env(b, 2, [accepted]), {
@@ -1403,10 +1424,12 @@ describe('with citations: every machine cites the heads it read, as the product 
             fields: { reason: 'y replaces it' },
           }),
         );
+        b.checkpoint();
         refreshed();
         cpSync(tailDir({ root: elsewhere }, c.tail), tailDir({ root }, c.tail), {
           recursive: true,
         });
+        cpSync(join(elsewhere, 'keys'), join(root, 'keys'), { recursive: true });
         const live = ProjectionCache.open(root, { upcasters, persist: true });
         const replay = ProjectionCache.open(root, { upcasters });
         try {

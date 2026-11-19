@@ -60,9 +60,16 @@ import {
   type CatalogEvent,
   type ChainEntry,
   type ChainLayout,
+  type CheckpointsMark,
+  type CommittedKeys,
   causalOrder,
+  checkpointBelongsToItsTail,
+  checkpointHash,
+  committedKeys,
+  DEFAULT_MAX_UNSIGNED_EVENTS,
   decisionTexts,
   firstLinkBreakFrom,
+  foldCheckpoints,
   illegalMoves,
   isCatalogEvent,
   type LinkBreak,
@@ -73,14 +80,20 @@ import {
   type RefusedPart,
   type RetainedEntry,
   readTail,
+  readTailCheckpointsMarked,
+  readTailCheckpointsSince,
   readTailSince,
+  readWrittenHead,
   refusedPartOf,
+  ruleOnCheckpoint,
   type TailBoundary,
+  tailFingerprint,
   tailsReadAt,
   type UnreadEvent,
   type UnreadLine,
   type UpcasterRegistry,
   unreadLinesOf,
+  type WithheldRun,
 } from '@mnema/chain';
 
 /**
@@ -161,6 +174,54 @@ interface TailStream {
   readonly unread: readonly UnreadLine[];
   /** The lines of this tail whose hash does not hold, which `events` leaves out. */
   readonly retained: readonly RetainedEntry[];
+  /**
+   * What the tail's checkpoints proved, when the reading folded them ({@link chainReplay}): the
+   * facts said of it, and where the folding of `checkpoints.jsonl` stopped.
+   */
+  readonly signed?: { readonly facts: readonly SignedFact[]; readonly reach: TailSignedReach };
+}
+
+/**
+ * Where a reading finds the signed notes of what this machine wrote (ADR-560): the root whose
+ * `locks/` holds them, which inside a repository is the place every worktree shares for the public
+ * tree (`WriterOptions.sharedRoot`). Absent, the tree's own `locks/` is read, which is where a
+ * writer outside a repository keeps them. A note is verified with the tail's own committed key,
+ * bound to its fingerprint as a checkpoint's is: it is no weaker than the checkpoints it stands in
+ * for, and a note that is absent or does not verify proves nothing.
+ */
+export interface ReadProof {
+  readonly notesRoot?: string;
+}
+
+/**
+ * What a reading says of one tail's signatures (ADR-557 to ADR-562). `withheld` is Fact A: the
+ * run was not served, and the gate and every write refuse while it stands. `unsigned` is Fact B:
+ * the run is served and listed as such and governs nothing (or, `byNote`, governs because this
+ * machine's signed note vouches for it).
+ */
+export interface SignedFact {
+  readonly tail: string;
+  readonly withheld?: WithheldRun;
+  readonly unsigned?: {
+    readonly fromSeq: number;
+    readonly toSeq: number;
+    readonly count: number;
+    readonly byNote: boolean;
+  };
+}
+
+/**
+ * How far a tail's `checkpoints.jsonl` was folded, for a catch-up to take only the new lines.
+ * `clean` is true when every event read was proven by a holding checkpoint: only then is a
+ * catch-up a suffix, and otherwise the record is read whole again.
+ */
+export interface TailSignedReach {
+  readonly clean: boolean;
+  readonly mark: CheckpointsMark;
+  /** The hash of the last checkpoint line folded, or null for none. */
+  readonly prev: string | null;
+  /** The last seq a checkpoint line covered, or -1. */
+  readonly covered: number;
 }
 
 /**
@@ -244,6 +305,8 @@ export interface TailReach {
    * suffix test in {@link chainArrivals}.
    */
   readonly latestAt: string;
+  /** How far the tail's checkpoints were folded: absent for a reading that folded none. */
+  readonly signed?: TailSignedReach;
 }
 
 /**
@@ -306,6 +369,12 @@ export interface ChainReplay {
    * that says why nothing governs asks no second reading of the tails.
    */
   readonly several: readonly RecordGroup[];
+  /**
+   * What the tails' checkpoints proved (ADR-557 to ADR-562): the runs withheld (Fact A) and the
+   * runs served and not signed (Fact B). `events` holds the PROVEN events only (ADR-561): an event
+   * no holding checkpoint and no note of this machine covers is never folded into a projection.
+   */
+  readonly signed: readonly SignedFact[];
 }
 
 /**
@@ -320,10 +389,14 @@ export function chainReplay(
   layout: ChainLayout,
   upcasters: UpcasterRegistry,
   serveAround = false,
+  proof?: ReadProof,
 ): ChainReplay {
   const linked = refusedParts();
   const reading = tailsReadAt(layout, serveAround ? linked.collect : undefined);
-  const streams = streamsOf(layout, upcasters, 0, reading.read, serveAround ? linked : undefined);
+  const streams = streamsOf(layout, upcasters, 0, reading.read, serveAround ? linked : undefined, {
+    keys: committedKeys(layout),
+    ...(proof !== undefined ? { proof } : {}),
+  });
   const tails = new Map<string, TailReach>();
   for (const stream of streams) {
     // One `readdir` per tail beside the reading of it. A replay parses every line of
@@ -335,6 +408,7 @@ export function chainReplay(
       boundary: stream.boundary,
       segments: orderedSegments(layout, stream.tail, serveAround ? linked.collect : undefined),
       latestAt: latestAt(stream.events),
+      ...(stream.signed !== undefined ? { signed: stream.signed.reach } : {}),
     });
   }
   const { events, unresolved } = mergeStreams(streams);
@@ -349,6 +423,7 @@ export function chainReplay(
     retained: streams.flatMap((stream) => stream.retained),
     refused: linked.parts,
     several: reading.several,
+    signed: streams.flatMap((stream) => stream.signed?.facts ?? []),
   };
 }
 
@@ -374,7 +449,11 @@ export type ChainArrivals =
        * itself is intact in all three: a tail was removed, cut, or carries facts older
        * than what is already covered.
        */
-      readonly why: 'A_TAIL_IS_GONE' | 'A_TAIL_WAS_CUT' | 'AN_ARRIVAL_IS_NOT_LATER';
+      readonly why:
+        | 'A_TAIL_IS_GONE'
+        | 'A_TAIL_WAS_CUT'
+        | 'AN_ARRIVAL_IS_NOT_LATER'
+        | 'AN_ARRIVAL_IS_NOT_SIGNED';
     }
   | {
       /**
@@ -522,6 +601,7 @@ export function chainArrivals(
 
   const streams: TailStream[] = [];
   const reached = new Map(frontier.tails);
+  const keys = committedKeys(layout);
   // The breaks the arrivals carry, and the first reason no suffix describes them: a break is
   // what every tail is read to find, so reading goes on past it, and a refusal of another kind
   // is reported only when no tail broke.
@@ -587,6 +667,16 @@ export function chainArrivals(
     const last = entries[entries.length - 1];
     const lastSeq = last === undefined ? (covered?.lastSeq ?? -1) : last.link.seq;
     const lastHash = last === undefined ? (covered?.lastHash ?? null) : last.link.hash;
+    // ONLY WHAT A CHECKPOINT PROVES ARRIVES (ADR-561): the new lines of `checkpoints.jsonl`, each
+    // with its own signature, must hold, chained on from where the last reading stopped, and cover
+    // every arrival. Anything else (a line that fails, an arrival no line covers yet, a tail whose
+    // last reading left something unproven) is not a suffix: the record is read whole again, and
+    // that reading says what it found.
+    const signed = arrivalsSigned(layout, tail, covered, served, entries, keys);
+    if (signed === undefined) {
+      refusal ??= { suffix: false, why: 'AN_ARRIVAL_IS_NOT_SIGNED' };
+      continue;
+    }
     const fresh = served.map((entry) => entry.event);
     reached.set(tail, {
       lastSeq,
@@ -594,6 +684,7 @@ export function chainArrivals(
       boundary: since.boundary,
       segments,
       latestAt: greater(covered?.latestAt ?? '', latestAt(fresh)),
+      signed,
     });
     if (fresh.length === 0) continue;
     // A citation the covered order ignored, now satisfied: the event citing it would have
@@ -671,6 +762,52 @@ export function chainArrivals(
     unread: streams.flatMap((stream) => stream.unread),
     several: reading.several,
   };
+}
+
+/**
+ * How far a tail's checkpoints reach once the new lines are folded over the arrivals, or undefined
+ * when the arrivals are not a proven suffix: the tail's last reading left something unproven, a
+ * new line does not hold (each signature checked), or an arrival is covered by no new line.
+ */
+function arrivalsSigned(
+  layout: ChainLayout,
+  tail: string,
+  covered: TailReach | undefined,
+  served: readonly ChainEntry[],
+  arrivals: readonly ChainEntry[],
+  keys: CommittedKeys,
+): TailSignedReach | undefined {
+  // A tail the frontier did not hold starts from nothing: no line folded, nothing covered.
+  const before: TailSignedReach | undefined =
+    covered === undefined
+      ? { clean: true, mark: { bytes: 0, lastLineAt: 0, mtimeNs: '' }, prev: null, covered: -1 }
+      : covered.signed;
+  if (before === undefined || !before.clean) return undefined;
+  if (served.length !== arrivals.length) return undefined;
+  const since = readTailCheckpointsSince(layout, tail, before.mark, before.prev, checkpointHash);
+  if (since === undefined) return undefined;
+  let prev = before.prev;
+  let at = before.covered;
+  for (const checkpoint of since.checkpoints) {
+    const range = arrivals.filter(
+      (entry) => entry.link.seq >= checkpoint.fromSeq && entry.link.seq <= checkpoint.toSeq,
+    );
+    const ruling = ruleOnCheckpoint({
+      tail,
+      checkpoint,
+      prev,
+      from: at + 1,
+      range,
+      keys,
+      signature: 'checked',
+    });
+    if (!ruling.holds || !checkpointBelongsToItsTail(tail, checkpoint)) return undefined;
+    prev = ruling.hash;
+    at = checkpoint.toSeq;
+  }
+  const lastSeq = arrivals[arrivals.length - 1]?.link.seq ?? covered?.lastSeq ?? -1;
+  if (at !== lastSeq) return undefined;
+  return { clean: true, mark: since.mark, prev, covered: at };
 }
 
 /**
@@ -794,8 +931,11 @@ export function orderedEventsOfRecord(
   layouts: readonly ChainLayout[],
   upcasters: UpcasterRegistry,
 ): RecordOrder {
+  // Each chain folded as {@link chainReplay} folds it: only what its checkpoints prove is ordered.
   const perChain = layouts.map((layout, index) =>
-    streamsOf(layout, upcasters, index, tailsReadAt(layout).read),
+    streamsOf(layout, upcasters, index, tailsReadAt(layout).read, undefined, {
+      keys: committedKeys(layout),
+    }),
   );
   // A move is judged inside its own chain, as a citation resolves there: what each chain leaves
   // out is left out of the union too, so the two views never disagree about one move.
@@ -819,6 +959,7 @@ function streamsOf(
   tree: number,
   read: readonly string[],
   linked?: { readonly collect: RefusedLine },
+  signatures?: { readonly keys: CommittedKeys; readonly proof?: ReadProof },
 ): TailStream[] {
   return read.map((tail) => {
     // `readTail` rather than `readTailEntries`: the same bytes, plus what the read
@@ -833,7 +974,15 @@ function streamsOf(
       'what holds',
       linked?.collect,
     );
-    const entries = read.entries;
+    const signed =
+      signatures === undefined
+        ? undefined
+        : signedOf(layout, tail, read, signatures.keys, linked?.collect, signatures.proof);
+    // Only what is proven reaches a projection (ADR-561): the rest is said, never folded.
+    const entries =
+      signed === undefined
+        ? read.entries
+        : read.entries.filter((entry) => signed.proven.has(entry.link.hash));
     return {
       tree,
       events: entries.map((entry) => entry.event),
@@ -847,8 +996,83 @@ function streamsOf(
       ...(read.linkBreak !== undefined ? { linkBreak: read.linkBreak } : {}),
       unread: unreadLinesOf(tail, entries),
       retained: read.retained,
+      ...(signed !== undefined ? { signed: { facts: signed.facts, reach: signed.reach } } : {}),
     };
   });
+}
+
+/**
+ * Folds one tail's checkpoints over everything the reading of it held (`foldCheckpoints`,
+ * `@mnema/chain`): which entries are proven, the facts said of the rest, and where the folding of
+ * `checkpoints.jsonl` stopped.
+ */
+function signedOf(
+  layout: ChainLayout,
+  tail: string,
+  read: ReturnType<typeof readTail>,
+  keys: CommittedKeys,
+  refused: RefusedLine | undefined,
+  proof: ReadProof | undefined,
+): {
+  readonly proven: ReadonlySet<string>;
+  readonly facts: readonly SignedFact[];
+  readonly reach: TailSignedReach;
+} {
+  const { checkpoints, mark } = readTailCheckpointsMarked(layout, tail, refused);
+  const standing = new Set<number>(read.retained.map((one) => one.seq));
+  if (read.linkBreak !== undefined) standing.add(read.linkBreak.seq);
+  const note = noteOf(layout, tail, keys, proof);
+  const signed = foldCheckpoints({
+    tail,
+    entries: read.every,
+    checkpoints,
+    keys,
+    standing,
+    window: DEFAULT_MAX_UNSIGNED_EVENTS,
+    ...(note !== undefined ? { note } : {}),
+  });
+  const facts: SignedFact[] = signed.withheld.map((withheld) => ({ tail, withheld }));
+  for (const run of signed.proven) {
+    if (run.by === 'note') {
+      facts.push({
+        tail,
+        unsigned: {
+          fromSeq: run.fromSeq,
+          toSeq: run.toSeq,
+          count: run.toSeq - run.fromSeq + 1,
+          byNote: true,
+        },
+      });
+    }
+  }
+  if (signed.unproven !== undefined) {
+    facts.push({ tail, unsigned: { ...signed.unproven, byNote: false } });
+  }
+  const last = checkpoints[checkpoints.length - 1];
+  const lastSeq = read.last?.seq ?? -1;
+  return {
+    proven: signed.provenHashes,
+    facts,
+    reach: {
+      clean: facts.length === 0 && signed.failedLines === 0 && signed.signedTo === lastSeq,
+      mark,
+      prev: last === undefined ? null : checkpointHash(last),
+      covered: last === undefined ? -1 : last.toSeq,
+    },
+  };
+}
+
+/** This machine's signed note of `tail`, verified with the key this machine holds, or undefined. */
+function noteOf(
+  layout: ChainLayout,
+  tail: string,
+  keys: CommittedKeys,
+  proof: ReadProof | undefined,
+) {
+  const owner = tailFingerprint(tail);
+  const key = keys(owner);
+  if (key === null || key.fingerprint() !== owner) return undefined;
+  return readWrittenHead({ root: proof?.notesRoot ?? layout.root }, tail, key.key);
 }
 
 /**

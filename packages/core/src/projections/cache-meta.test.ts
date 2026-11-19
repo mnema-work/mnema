@@ -95,6 +95,10 @@ describe('what is stored', () => {
         { kind: 'link', tail: 'a-tail', place: 'tails/a-tail', reason: 'it is a symbolic link' },
       ],
       unread: [{ kind: 'x.from-the-future', tail: 'a-tail', subject: 'a-subject' }],
+      signed: [
+        { tail: 'a-tail', withheld: { fromSeq: 0, toSeq: 1, why: 'checkpoint', line: 1 } },
+        { tail: 'a-tail', unsigned: { fromSeq: 5, toSeq: 6, count: 2, byNote: false } },
+      ],
       sealed: { '/x/000001.jsonl': '10:1' },
       active: { '/x/000002.jsonl': '10:1:10:abc' },
     };
@@ -244,6 +248,7 @@ describe('keeping the active marks', () => {
       retained: [],
       refused: [],
       unread: [],
+      signed: [],
       sealed: {},
       active: { '/x/000001.jsonl': 'old' },
     });
@@ -280,6 +285,7 @@ describe('keeping the active marks', () => {
         retained: [],
         refused: [],
         unread: [],
+        signed: [],
         sealed: {},
         active: {},
       });

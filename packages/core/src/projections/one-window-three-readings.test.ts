@@ -51,7 +51,7 @@ beforeEach(() => {
   const env = (n: number) => ({
     at: at(n),
     who: 'mnid:one',
-    signerFp: 'fp-1',
+    signerFp: w.signerFingerprint,
     subject: 't-1',
   });
   // A task BORN at instant 1 and MOVED at instants 2 and 4. One record, three facts,
