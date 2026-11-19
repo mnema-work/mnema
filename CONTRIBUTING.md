@@ -309,7 +309,8 @@ be able to explain any line.
 The issues labelled `ready for an agent` are written so that a coding agent can do them: where the change goes, what
 "done" means, and how to check it. You may hand one to Claude Code, Codex, Cursor or any other agent. What we still
 ask of you is the above: read the diff yourself, run `pnpm check:contribution`, and fill in the "Written with an
-agent" field of the pull request template.
+agent" field of the pull request template. The pinned issue
+[Start here](https://github.com/mnema-work/mnema/issues/1345) walks through picking one.
 
 ## Review and merge
 
