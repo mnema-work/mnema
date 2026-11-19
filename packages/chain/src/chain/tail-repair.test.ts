@@ -464,7 +464,7 @@ describe('repairTail, when the signed checkpoints do not hold: the whole tail', 
 
   it('refuses a revision that holds no event of the tail', () => {
     rewrite(1, 'FORGED');
-    const done = repair({ committed: new Map(), committedCheckpoints: undefined });
+    const done = repair({ committed: new Map(), committedCheckpoints: new Uint8Array() });
     expect(done).toEqual({ ok: false, whole: { reason: 'NOT_IN_REVISION' } });
   });
 
