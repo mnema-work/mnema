@@ -252,11 +252,11 @@ claim about the agent hosts is held, and which are not held yet, is in [`docs/ev
 <!-- contributors:start -->
 <table align="center">
 <tr>
-<td align="center"><a href="https://github.com/mentallyunstable-lab"><img src="docs/assets/contributors/mentallyunstable-lab.svg" width="72" height="72" alt="@mentallyunstable-lab"><br><sub>mentallyunstable-lab</sub></a></td>
-<td align="center"><a href="https://github.com/tylrcc"><img src="docs/assets/contributors/tylrcc.svg" width="72" height="72" alt="@tylrcc"><br><sub>tylrcc</sub></a></td>
-<td align="center"><a href="https://github.com/bfs2021"><img src="docs/assets/contributors/bfs2021.svg" width="72" height="72" alt="@bfs2021"><br><sub>bfs2021</sub></a></td>
-<td align="center"><a href="https://github.com/jay23606"><img src="docs/assets/contributors/jay23606.svg" width="72" height="72" alt="@jay23606"><br><sub>jay23606</sub></a></td>
-<td align="center"><a href="https://github.com/prascli"><img src="docs/assets/contributors/prascli.svg" width="72" height="72" alt="@prascli"><br><sub>prascli</sub></a></td>
+<td align="center"><a href="https://github.com/mentallyunstable-lab"><img src="docs/assets/contributor-mentallyunstable-lab.svg" width="72" height="72" alt="@mentallyunstable-lab"><br><sub>mentallyunstable-lab</sub></a></td>
+<td align="center"><a href="https://github.com/tylrcc"><img src="docs/assets/contributor-tylrcc.svg" width="72" height="72" alt="@tylrcc"><br><sub>tylrcc</sub></a></td>
+<td align="center"><a href="https://github.com/bfs2021"><img src="docs/assets/contributor-bfs2021.svg" width="72" height="72" alt="@bfs2021"><br><sub>bfs2021</sub></a></td>
+<td align="center"><a href="https://github.com/jay23606"><img src="docs/assets/contributor-jay23606.svg" width="72" height="72" alt="@jay23606"><br><sub>jay23606</sub></a></td>
+<td align="center"><a href="https://github.com/prascli"><img src="docs/assets/contributor-prascli.svg" width="72" height="72" alt="@prascli"><br><sub>prascli</sub></a></td>
 </tr>
 </table>
 <!-- contributors:end -->

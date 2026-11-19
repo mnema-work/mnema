@@ -6,13 +6,14 @@
  * request was merged, in the order they first contributed. Two things come from it:
  *
  *   node .github/contributors/draw.mjs
- *     Fetches each login's avatar from github.com/<login>.png, writes `docs/assets/contributors/<login>.svg`
+ *     Fetches each login's avatar from github.com/<login>.png, writes `docs/assets/contributor-<login>.svg`
  *     (the avatar cut to a circle, with a thin neutral ring, embedded as a data URI because an image
  *     shown from a README may not load anything else) and rewrites the table between the two marker
  *     comments in README.md.
  *   node .github/contributors/draw.mjs --check
  *     Exits 1 when the README table is not the one the list gives, or a listed login has no SVG. No network.
  *
+ * The files sit flat in `docs/assets/`: the site build copies that folder file by file and refuses a subfolder.
  * GitHub strips `style` from a README, so the roundness has to live in the image.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -23,12 +24,12 @@ export const START = '<!-- contributors:start -->';
 export const END = '<!-- contributors:end -->';
 export const PER_ROW = 6;
 export const SIZE = 72;
-export const SVG_DIR = 'docs/assets/contributors';
+export const SVG_DIR = 'docs/assets';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
 /** @param {string} login */
-export const svgPath = (login) => `${SVG_DIR}/${login}.svg`;
+export const svgPath = (login) => `${SVG_DIR}/contributor-${login}.svg`;
 
 /**
  * A square SVG: the PNG inside a circular clip, then a thin ring that reads on light and dark.

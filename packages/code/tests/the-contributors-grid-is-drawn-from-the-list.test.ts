@@ -41,7 +41,7 @@ describe('the README table is the one the list gives', () => {
     expect(block.match(/<tr>/g)).toHaveLength(2);
     expect(block.match(/<td align="center">/g)).toHaveLength(7);
     expect(block).toContain(
-      '<a href="https://github.com/g"><img src="docs/assets/contributors/g.svg" width="72"',
+      '<a href="https://github.com/g"><img src="docs/assets/contributor-g.svg" width="72"',
     );
     expect(block).toContain('<sub>g</sub>');
     expect(block.split('<tr>')[1]?.match(/<td/g)).toHaveLength(6);
@@ -72,7 +72,7 @@ describe('the check fails when the grid is out of date', () => {
 
   it('fails when a login has no SVG', () => {
     expect(problems(upToDate, ['x', 'y'], (l: string) => l !== 'y')).toEqual([
-      'docs/assets/contributors/y.svg is missing',
+      'docs/assets/contributor-y.svg is missing',
     ]);
   });
 
