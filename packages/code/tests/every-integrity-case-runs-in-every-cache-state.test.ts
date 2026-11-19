@@ -46,6 +46,8 @@ export const EXEMPT: Readonly<Record<string, string>> = {
   'packages/code/tests/an-update-not-yet-applied-is-said-once.test.ts':
     'holds where a note about an installed version stands in a reply, once, after the fact of integrity: one entry is altered to give the fact a place to be ahead of it, and what the case asks is the order and the count of blocks, never the verdict, so the cache state changes nothing it reads',
   // Not a claim about damage: the case never damages a record and the cache is not what it reads.
+  'packages/chain/src/chain/a-segment-the-disk-never-created-is-not-reported-uncut.test.ts':
+    'holds the sentence a refusal says when the disk would not create the first segment of a tail; no record is damaged, and the chain has no projection cache',
   'packages/code/tests/a-client-that-never-initializes.test.ts':
     'holds what the server answers to a client that skips the handshake; no record is damaged',
   'packages/code/tests/a-rule-carries-its-check.test.ts':

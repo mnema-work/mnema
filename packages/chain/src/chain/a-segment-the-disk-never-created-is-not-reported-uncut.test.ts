@@ -44,6 +44,7 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
+// @proves a-write-that-returned-is-on-the-disk
 describe('a write the disk could not even open a segment for', () => {
   it('says nothing was written, because no file was there to cut', () => {
     const w = openChainForWriting(root, { keyRoot: root, maxUnsignedEvents: 10_000 });
