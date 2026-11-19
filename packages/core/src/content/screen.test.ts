@@ -242,6 +242,55 @@ describe('every class the sieve knows is refused in a name and redacted in a bod
   });
 });
 
+describe('a name is read by shape and by context, not by a first word that looks drawn at random', () => {
+  // A credential's name, a colon and a word with letters and digits is how a title says what
+  // it is about (`Password: Argon2id over bcrypt`) as often as how a sentence leaks a value.
+  // In a body the word is replaced and the fact survives; in a name the word cannot be
+  // replaced, only refused, and a refusal there turned away titles nobody would call secret.
+  const S = '<SECRET:named-credential>';
+  const TITLES: readonly (readonly [string, string])[] = [
+    ['Password: Argon2id over bcrypt', `Password: ${S} over bcrypt`],
+    ['Password: bcrypt12 hashing', `Password: ${S} hashing`],
+    ['Token: Base64Url encoding', `Token: ${S} encoding`],
+    ['Secret: SHA3-256 checksum', `Secret: ${S} checksum`],
+    ['Token: 01a1f59d-2c5c-7000-bd90-b08f51a5d168 superseded', `Token: ${S} superseded`],
+  ];
+
+  it('writes the placeholder the body samples below expect', () => {
+    expect(secretPlaceholder('named-credential')).toBe(S);
+  });
+
+  for (const [title, inABody] of TITLES) {
+    it(`takes "${title}" unchanged as a title, an about, a topic, a skill's name and an argument`, () => {
+      const result = screenContent({ title, about: title, topic: title, name: title, args: [title] });
+
+      expect(result.ok, `${title} was refused in a name`).toBe(true);
+      if (!result.ok) return;
+      expect(result.fields).toEqual({ title, about: title, topic: title, name: title, args: [title] });
+      expect(result.replaced).toEqual([]);
+    });
+
+    it(`still replaces the word after the colon of "${title}" in a body`, () => {
+      const result = screenContent({ rationale: title, text: title });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.fields).toEqual({ rationale: inABody, text: inABody });
+      expect(result.replaced).toEqual(['named-credential', 'named-credential']);
+    });
+  }
+
+  it('still refuses a name where the value stands alone after the name, or after an equals sign', () => {
+    for (const title of ['api_key: Zq8Rt5Wx2LyAbCd', 'rotate DB_PASSWORD=S3nh4F0rte now']) {
+      const result = screenContent({ title });
+      expect(result.ok, `${title} was taken as a name`).toBe(false);
+      if (result.ok) return;
+      expect(result.code).toBe('NAME_HOLDS_A_SECRET');
+      expect(result.message).toContain('named-credential');
+    }
+  });
+});
+
 describe('screenContent: an email address in a body', () => {
   it('is replaced by the marker and reported, beside what was kept', () => {
     const result = screenContent({

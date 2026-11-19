@@ -103,7 +103,9 @@ unchanged since the migration`, `max_tokens=1024`, `id-token: write`, `pwd: /hom
 and `auth=oidc` are recorded as written. In a title or another name the same reading
 refuses the write: a title that reads as holding a credential (`Rotate API_KEY=abc123`)
 is refused, and the refusal says the way out, another name, or rotating the value if
-it was real.
+it was real. A name is not refused for the first word after a colon that only looks
+drawn at random: `Password: Argon2id over bcrypt` and `Token: Base64Url encoding` are
+taken as titles, and the same word is replaced in a body.
 
 Three limits, all stated rather than hidden. **It catches only what it
 recognizes**: a proprietary token with no name around it, a password in prose, a
@@ -123,7 +125,9 @@ credential's name these go in verbatim too, each read as something else:
   below it), whose lines are not on the name's line;
 - a short word with a digit or two after a colon and followed by more words
   (`password: Hunter2 was the old one`), read as a version's or an algorithm's name
-  (`OAuth2`, `Ed25519`).
+  (`OAuth2`, `Ed25519`);
+- 7 to 10 hex digits under a token's, a key's or a secret's name (`token: 01a1f59d`),
+  read as an id.
 
 **A value
 that reads as a name is left alone**: `sk-` is a prefix several key issuers

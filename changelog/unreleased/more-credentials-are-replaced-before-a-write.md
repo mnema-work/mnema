@@ -13,6 +13,9 @@ Changed
   the refusal names the way out: another name, or rotating the value if it was real. Over this repository's own record
   the new classes replace nothing. What a value under a credential's name is still read as, and so recorded as
   written, is stated there too: a passphrase of several words with no quotes, a slug of small letters without digits,
-  a plain path or address (a webhook URL among them), a value of three digits or fewer, and a key of several lines
-  without its `BEGIN` line. The list is in
+  a plain path or address (a webhook URL among them), a value of three digits or fewer, a key of several lines
+  without its `BEGIN` line, a short word with a digit or two after a colon and followed by more words (`Hunter2`), and
+  7 to 10 hex digits under a token's, a key's or a secret's name, read as an id. A name is not refused for the first
+  word after a colon that only looks drawn at random (`Token: Base64Url encoding`); a body still has it replaced. The
+  list is in
   [Recording decisions](docs/recording-decisions.md#what-goes-into-the-record).

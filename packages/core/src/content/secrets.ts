@@ -324,6 +324,11 @@ interface GatedShape {
    * {@link SECOND_READING}, which it stands in for.
    */
   readonly keeps?: SecondReading;
+  /**
+   * Whether the shape reads a body only. A name is read by every other shape and not by this
+   * one: see {@link detectSecretsInAName}.
+   */
+  readonly inABodyOnly?: true;
 }
 
 /**
@@ -516,6 +521,7 @@ const SHAPES: { readonly [K in SecretClass]: RegExp | readonly GatedShape[] } = 
         'gi',
       ),
       keeps: readsAsNoSecretInASentence,
+      inABodyOnly: true,
     },
   ],
 };
@@ -947,13 +953,35 @@ export interface ScrubbedText {
  * about two microseconds on a typical record.
  */
 export function scrubSecrets(text: string): ScrubbedText {
+  return scrub(text, false);
+}
+
+/**
+ * The classes of credential a NAME holds, read as {@link detectSecrets} reads a body, less the
+ * one shape that guesses: the first word after a credential's name and a colon, taken when it
+ * looks drawn at random (`token: abc123XYZ987 for the staging box`).
+ *
+ * In a body that guess costs a word, replaced, and the sentence survives it. In a name it costs
+ * the whole write, because a name is refused rather than replaced, and a title says what it is
+ * about in exactly that shape: `Password: Argon2id over bcrypt`, `Token: Base64Url encoding`,
+ * `Secret: SHA3-256 checksum`. So a name is read by the prefixes and the classes of their own
+ * shape, and by a value after `=` or alone after the colon on its line, and not by the guess:
+ * `Token: abc123XYZ987 for staging` is taken as a name and replaced in a body.
+ */
+export function detectSecretsInAName(text: string): readonly SecretClass[] {
+  return scrub(text, true).replaced;
+}
+
+/** One scrub of `text`, by every shape, or by every shape that also reads a name. */
+function scrub(text: string, inAName: boolean): ScrubbedText {
   let out = text;
   let replaced: SecretClass[] | undefined;
   for (const secret of SECRET_CLASSES) {
     const shapes = SHAPES[secret];
-    const read: readonly { where?: RegExp; shape: RegExp; keeps?: SecondReading }[] =
+    const read: readonly (Omit<GatedShape, 'where'> & { where?: RegExp })[] =
       shapes instanceof RegExp ? [{ shape: shapes }] : shapes;
-    for (const { where, shape, keeps } of read) {
+    for (const { where, shape, keeps, inABodyOnly } of read) {
+      if (inAName && inABodyOnly) continue;
       if (where !== undefined && !where.test(out)) continue;
       const pass = scrubWith(out, secret, shape, keeps ?? SECOND_READING[secret]);
       if (pass.replaced.length === 0) continue;
