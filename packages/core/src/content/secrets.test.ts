@@ -840,13 +840,38 @@ describe('scrubSecrets: the whole value, wherever a credential is written', () =
     { text: 'TOKEN=abc123\\\nxyz', recorded: `TOKEN=${PLACEHOLDER}` },
     {
       text: 'Server=db;User Id=sa;Password=Pa55w0rd!;',
-      recorded: `Server=db;User Id=sa;Password=${PLACEHOLDER}`,
+      recorded: `Server=db;User Id=sa;Password=${PLACEHOLDER};`,
     },
     {
       text: 'GET /v1/items?token=abc;123&page=2',
       recorded: `GET /v1/items?token=${PLACEHOLDER}&page=2`,
     },
     { text: `password = "${'a'.repeat(1100)}"`, recorded: `password = "${PLACEHOLDER}"` },
+    // A comma or a semicolon after the value ends it, and does not make it a line of code: a
+    // review found each of these kept whole, the value read as a name that code closes.
+    { text: 'password=hunter2, user=me', recorded: `password=${PLACEHOLDER}, user=me` },
+    {
+      text: 'token=Xk9qLm2Pz7, expires=3600',
+      recorded: `token=${PLACEHOLDER}, expires=3600`,
+    },
+    { text: '{password: S3cretPass, user: me}', recorded: `{password: ${PLACEHOLDER}, user: me}` },
+    { text: 'password=Xk9qLm2Pz7;', recorded: `password=${PLACEHOLDER};` },
+    { text: 'DB_PASSWORD=Xk9qLm2Pz7,', recorded: `DB_PASSWORD=${PLACEHOLDER},` },
+    { text: 'api_key: Xk9qLm2Pz7,', recorded: `api_key: ${PLACEHOLDER},` },
+    // After a colon, the first word when it reads as a secret, and the words after it stay.
+    {
+      text: 'token: abc123XYZ987 for the staging box',
+      recorded: `token: ${PLACEHOLDER} for the staging box`,
+    },
+    { text: 'secret: Xk9qLm2Pz7 rotated', recorded: `secret: ${PLACEHOLDER} rotated` },
+    { text: 'password: S3cret! (prod)', recorded: `password: ${PLACEHOLDER} (prod)` },
+    { text: 'the old pwd: Tr0ub4dor&3 is gone', recorded: `the old pwd: ${PLACEHOLDER} is gone` },
+    // A single word alone after a colon: under a password's name any word that is not a
+    // placeholder, and under another name a word that is not a short one in small letters.
+    { text: 'api_key: AbCdEfGhIjKlMnOpQrSt', recorded: `api_key: ${PLACEHOLDER}` },
+    { text: 'password: letmein', recorded: `password: ${PLACEHOLDER}` },
+    { text: 'PASSWORD: letmein', recorded: `PASSWORD: ${PLACEHOLDER}` },
+    { text: '  db_password: hunter', recorded: `  db_password: ${PLACEHOLDER}` },
   ];
 
   for (const { text, recorded } of WHOLE) {
@@ -980,6 +1005,27 @@ describe('scrubSecrets: the whole value, wherever a credential is written', () =
     // named in a sentence, and a provider's name standing before a placeholder.
     'A GitHub token: `ghp_`, `gho_` or `ghr_`, then 36 or more letters',
     'run `aider --model sonnet --api-key anthropic=<key>` in the clone',
+    // Found by the second review: a limit's name, an id under a token's name, and a title that
+    // names a scheme in a sentence.
+    'max_token=8192',
+    'maxToken: 4096',
+    'token: 01a1f59d',
+    'the token: 01a1f59d was minted for the run',
+    'Authorization: Bearer tokens only, no Basic',
+    'Use Authorization: Bearer tokens',
+    // And what a colon is followed by in a sentence: a word, a name in code, a number, an
+    // algorithm's name, each followed by more words.
+    'Password: twelve characters minimum',
+    'A password: at least 12 characters',
+    'The password: Hunter2 rule is gone',
+    'Set the secret: GH_TOKEN in the repository',
+    'Rename secret_key: secretKey',
+    'token: accessToken,',
+    'api_key: apiKey;',
+    'auth: OAuth2 with PKCE',
+    'private_key: Ed25519 only',
+    'secret: sha256 of the body',
+    'token: Mnema',
   ];
 
   for (const text of ORDINARY) {
@@ -1024,9 +1070,13 @@ describe('scrubSecrets: the limits, stated as tests', () => {
     // environment", "password: unchanged since the migration"). What answers for those
     // nine now is that a name is read as a KEY only where text writes a key down, and a
     // colon followed by a sentence is not one; the nine are asserted below, untouched.
-    // What that costs is these: a single word after a colon reads as prose, and a flag
-    // takes its value after a blank, where a sentence goes on just the same.
-    { why: 'a single word after a colon, which prose writes too', text: 'password: hunter' },
+    // What that costs is these: a short word in small letters after a colon reads as prose
+    // under a name that is not a password's, and a flag takes its value after a blank, where a
+    // sentence goes on just the same.
+    {
+      why: 'a single short word in small letters after a colon under a name that is not a password’s, which prose writes too',
+      text: 'token: abcd',
+    },
     { why: 'a single word after a flag, for the same reason', text: 'mysql --password hunter' },
     {
       why: 'a single word followed by more words after `=`, which a sentence writes too',
@@ -1037,6 +1087,29 @@ describe('scrubSecrets: the limits, stated as tests', () => {
       text: 'token: deploy-bot-key',
     },
     { why: 'a camelCase name ending in Pass', text: 'smtpPass=hunter2' },
+    // The limits the documentation states, one each.
+    {
+      why: 'an unquoted passphrase of several words',
+      text: 'secret: correct horse battery staple',
+    },
+    {
+      why: 'a token that is a slug in small letters without digits',
+      text: 'token=abcd-efgh-ijkl-mnop',
+    },
+    { why: 'a path standing as the value', text: 'webhook_secret=/T000/B000/abcdefgh' },
+    {
+      why: 'a webhook address, whose secret is its path',
+      text: 'SLACK_WEBHOOK_URL=https://hooks.slack.com/services/T000/B000/XXXXabcd',
+    },
+    { why: 'a value of three digits or fewer', text: 'password=123' },
+    {
+      why: 'a key of several lines with no BEGIN line',
+      text: 'private_key: |\n  MIIEvQIBADANBgkqhkiG9w0BAQEFAASC\n  abcdef0123456789abcdef',
+    },
+    {
+      why: 'a word with letters and digits after a colon that is short and followed by more words',
+      text: 'password: Hunter2 was the old one',
+    },
   ];
 
   for (const uncaught of ESCAPES) {

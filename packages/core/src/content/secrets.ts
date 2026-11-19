@@ -197,14 +197,14 @@ const NAME_HEAD = '[A-Za-z0-9_.-]{0,64}';
  * `NextToken`, `page_token`, `continuationToken`), an opaque value that is not a credential and
  * that an agent pastes when it debugs an API, so a cursor's prefix turns the name away, and so
  * does a form's anti-forgery token (`csrf_token`), which is bound to one session and opens
- * nothing after it. `auth` ends `oauth`, a protocol's name, and `pass` ends `bypass` and
+ * nothing after it, and a limit's (`max_token=8192`, `minToken`), which counts tokens. `auth` ends `oauth`, a protocol's name, and `pass` ends `bypass` and
  * `compass`, so each counts only as a word of its own (`DB_PASS`, `pass:`), which leaves out the
  * camelCase spelling (`smtpPass`): the shapes are read in any case, so `bypass` and `dbPass` look
  * the same to them. `basicAuth` is the one camelCase name spelled out.
  */
 const CREDENTIAL_NAME =
   '(?:pass(?:word|wd|phrase)|pwd|secret|api[_-]?key|access[_-]?key|private[_-]?key|' +
-  'secret[_-]?key|(?<!(?:next|page|continuation|pagination|sync|cursor|resume|csrf|xsrf)[_-]?)token|' +
+  'secret[_-]?key|(?<!(?:next|page|continuation|pagination|sync|cursor|resume|csrf|xsrf|max|min)[_-]?)token|' +
   'basic[_-]?auth|(?<![a-z])(?:auth|pass))';
 
 /**
@@ -269,23 +269,29 @@ function quotedAfter(context: string): string {
 
 /**
  * A value not in quotes, to the first blank or the end of the line, punctuation and all
- * (`abc;def123`, `p@ss,word99`), with two exceptions read from what follows. It stops before the
+ * (`abc;def123`, `p@ss,word99`), with three exceptions read from what follows. It stops before the
  * next pair of a query or a connection string (`&page=2`, `;Server=db`), where the separator
- * ends the value by the syntax that wrote it, and it leaves the closing quotes and brackets it
- * ends on (`(PASSWORD=hunter2)`), so the text around it still reads. A backslash before the end
- * of a line continues the value on the next one, as a shell reads it.
+ * ends the value by the syntax that wrote it; it leaves the closing quotes and brackets it
+ * ends on (`(PASSWORD=hunter2)`), so the text around it still reads; and it leaves a comma or a
+ * semicolon it ends on (`password=hunter2, user=me`), which closes the value the way a list or a
+ * statement does and is no part of it. A backslash before the end of a line continues the value
+ * on the next one, as a shell reads it.
  */
-const UNQUOTED_VALUE = String.raw`(?:[^\s\\]|\\[^\n]|\\\r?\n)+?(?=[)\]}>"'\x60]*(?:\s|$)|[;&,][\w.-]{1,64}=)`;
+const UNQUOTED_VALUE = String.raw`(?:[^\s\\]|\\[^\n]|\\\r?\n)+?(?=[;,]?[)\]}>"'\x60]*(?:\s|$)|[;&,][\w.-]{1,64}=)`;
+
+/** A credential's name opening its line as a key, up to its separator. */
+const LINE_KEY = String.raw`^[ \t]{0,64}(?:- |export )?["'\x60]?${NAME_HEAD}${CREDENTIAL_NAME}["'\x60]?${GAP}`;
 
 /**
  * A value alone on its line after a credential's name opening that line (`.env`, INI, YAML,
- * a header), with a comment allowed after it. `refuse` is a lookahead the value must also pass,
- * which is how the colon form turns away a single word.
+ * a header), with a comment allowed after it, and a comma or a semicolon that closes it left
+ * out of it. A single word after the colon is taken here and read by
+ * {@link readsAsNoCredential}, which knows the name it stands under.
  */
-function onItsLine(separator: ':' | '=', refuse = ''): string {
+function onItsLine(separator: ':' | '='): string {
   return (
-    String.raw`(?<=^[ \t]{0,64}(?:- |export )?["'\x60]?${NAME_HEAD}${CREDENTIAL_NAME}["'\x60]?${GAP}${separator}${GAP}(?:${SCHEME})?)` +
-    String.raw`(?!${SCHEME_WORD}|["'\x60])${refuse}[^\s]+(?=${LINE_END})`
+    String.raw`(?<=${LINE_KEY}${separator}${GAP}(?:${SCHEME})?)` +
+    String.raw`(?!${SCHEME_WORD}|["'\x60])[^\s]+?(?=[;,]?${LINE_END})`
   );
 }
 
@@ -313,6 +319,11 @@ const MYSQL_P = String.raw`\bmysql(?:dump|admin|import|show|check|slap)?\b[^\n]{
 interface GatedShape {
   readonly where: RegExp;
   readonly shape: RegExp;
+  /**
+   * The second reading of this shape's matches, where it is not its class's: see
+   * {@link SECOND_READING}, which it stands in for.
+   */
+  readonly keeps?: SecondReading;
 }
 
 /**
@@ -443,12 +454,14 @@ const SHAPES: { readonly [K in SecretClass]: RegExp | readonly GatedShape[] } = 
   // A value written after a credential's NAME, in the ways text writes one down: quoted after
   // `:` or `=` (JSON, YAML, TOML, code), unquoted right after `=` (`.env`, a query string, a
   // flag), alone on its line after `:` or `=` (YAML, INI, a header line), after a flag named as a
-  // credential, and after the single-letter flags of three commands. The line forms are bound to
-  // the line on purpose: in prose a colon is followed by a sentence, and `Secret: the key lives in
-  // the vault` has to come out as written; for the same reason a single word after a colon or a
-  // flag, or a word followed by more words after `=`, reads as prose.
+  // credential, after the single-letter flags of three commands, and after a colon in a sentence
+  // when the first word reads as a secret. The line forms are bound to the line on purpose: in
+  // prose a colon is followed by a sentence, and `Secret: the key lives in the vault` has to come
+  // out as written; for the same reason a single word after a flag, a short word in small letters
+  // after a colon, or a word followed by more words after `=`, reads as prose.
   //
-  // TWO SHAPES, ONE CLASS, because one form turns on the case and the rest are read in any.
+  // FOUR SHAPES, ONE CLASS, because one form turns on the case, one has a reading of its own, and
+  // the rest are read in any case with the class's reading.
   // On a line of its own, a name in capitals (`DB_PASSWORD=pa ss word`) is an environment file's,
   // whose value runs to the end of the line, blanks and all; the same line under a name in small
   // letters is as often a sentence (`secret=sauce in the recipe`). And the three commands are
@@ -458,7 +471,7 @@ const SHAPES: { readonly [K in SecretClass]: RegExp | readonly GatedShape[] } = 
       where: /(?:PASS|PWD|SECRET|KEY|TOKEN|AUTH)[A-Z_]{0,16}[ \t]{0,8}=/,
       shape: new RegExp(
         String.raw`(?<=^[ \t]{0,64}(?:export[ \t]+)?[A-Z0-9_]{0,64}${ENVIRONMENT_NAME}${GAP}=${GAP})` +
-          String.raw`(?!["'\x60#])[^\s]+(?:(?:[ \t]+(?!#)|(?<=\\)\r?\n)[^\s]+)*`,
+          String.raw`(?!["'\x60#])[^\s]+(?:(?:[ \t]+(?!#)|(?<=\\)\r?\n)[^\s]+)*(?<![;,])`,
         'gm',
       ),
     },
@@ -485,12 +498,24 @@ const SHAPES: { readonly [K in SecretClass]: RegExp | readonly GatedShape[] } = 
           quotedAfter(`${keyed(CREDENTIAL_NAME)}${GAP}[:=]${GAP}`),
           String.raw`(?<=${keyed(CREDENTIAL_NAME)}=)(?!["'\x60]|[A-Za-z]+[ \t]+[A-Za-z])${UNQUOTED_VALUE}`,
           onItsLine('='),
-          onItsLine(':', String.raw`(?!${A_WORD}${LINE_END})`),
+          onItsLine(':'),
           quotedAfter(FLAG),
           String.raw`(?<=${FLAG})(?!["'\x60-]|${A_WORD}(?:\s|$))${UNQUOTED_VALUE}`,
         ].join('|'),
         'gim',
       ),
+    },
+    // After a colon anywhere in a line, the first word only, and only when it reads as a secret:
+    // `token: abc123XYZ987 for the staging box`, `{password: S3cretPass, user: me}`. Here a
+    // sentence goes on after the colon as readily as a value does, so the shape takes what any
+    // value would and the reading keeps what does not look drawn at random.
+    {
+      where: /(?:pass(?:word|wd|phrase)?|pwd|secret|key|token|auth)["'\x60]?[ \t]{0,8}:/i,
+      shape: new RegExp(
+        String.raw`(?<=${keyed(CREDENTIAL_NAME)}${GAP}:${GAP})(?<!<SECRET:)(?![\s"'\x60])${UNQUOTED_VALUE}`,
+        'gi',
+      ),
+      keeps: readsAsNoSecretInASentence,
     },
   ],
 };
@@ -508,6 +533,9 @@ const SHAPES: { readonly [K in SecretClass]: RegExp | readonly GatedShape[] } = 
 const ONLY_WHERE: { readonly [K in SecretClass]?: RegExp } = {
   'authorization-header': /authorization/i,
 };
+
+/** A second reading: true when the match at `at` in `text` is carried through untouched. */
+type SecondReading = (match: string, text: string, at: number) => boolean;
 
 /**
  * The second reading a match under each class gets before it is destroyed, or `undefined`
@@ -546,9 +574,7 @@ const ONLY_WHERE: { readonly [K in SecretClass]?: RegExp } = {
  * impossible rather than merely discouraged: there is no declaration here for a
  * surface sweep to check, because there is nothing exported for it to find.
  */
-const SECOND_READING: {
-  readonly [K in SecretClass]: ((match: string, text: string, at: number) => boolean) | undefined;
-} = {
+const SECOND_READING: { readonly [K in SecretClass]: SecondReading | undefined } = {
   'aws-access-key': undefined,
   'github-token': undefined,
   'gitlab-token': undefined,
@@ -562,7 +588,7 @@ const SECOND_READING: {
   jwt: undefined,
   'private-key-block': undefined,
   'url-password': undefined,
-  'authorization-header': readsAsNoHeaderValue,
+  'authorization-header': readsAsNoHeader,
   'named-credential': readsAsNoCredential,
 };
 
@@ -663,20 +689,61 @@ const IDENTIFIER_PATH = String.raw`[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\[[A-Za
 const ALREADY_MASKED = /^(?:[^A-Za-z0-9]|[xX])+$/;
 
 /**
- * A line of code where the name's value is another name or a number: `token: request.token,`,
- * `secret: VECTOR_SECRET,`, `bytesPerToken: 4,`, `token = config[NAME]`. Measured over this
+ * A line of code where the name's value is read from somewhere else: `token: request.token,`,
+ * `secret: VECTOR_SECRET,`, `token: accessToken,`, `token = config[NAME]`. Measured over this
  * repository's own source, where the line form took these before this reading kept them.
  *
  * A PATH OF NAMES IS ALSO A TOKEN, which is why a bare one is not enough: Google's access
  * tokens are written `ya29.` and a long run of letters, a path to the letter. So a path is
- * code only where code closes it (`;` or `,`) or where it starts from a root code reads a
- * setting from (the process's environment, `config.`, `request.`, ...).
+ * code only where code closes it (a `;` or `,` right after it) or where it starts from a root
+ * code reads a setting from (the process's environment, `config.`, `request.`, ...).
+ *
+ * AND A COMMA DOES NOT MAKE A WORD CODE. `password=hunter2, user=me` and `{password: S3cretPass,
+ * user: me}` close their value with a comma as a line of code does, and the value is the
+ * password. So a single name closed by code is kept only when it reads as the name of a
+ * credential ({@link readsAsANameInCode}), and a number never is: a PIN is a password.
  */
-const A_CODE_EXPRESSION = new RegExp(
-  String.raw`^(?:(?:${IDENTIFIER_PATH}|\d+(?:[._]\d+)*)[;,]|` +
-    String.raw`(?:process\.env|os\.environ|env|this|self|config|settings|request|req|options|opts|args|params|props)` +
-    String.raw`(?:\.[A-Za-z_$][\w$]*|\[[A-Za-z_$][\w$]*\])+)$`,
+const A_ROOTED_PATH = new RegExp(
+  String.raw`^(?:process\.env|os\.environ|env|this|self|config|settings|request|req|options|opts|args|params|props)` +
+    String.raw`(?:\.[A-Za-z_$][\w$]*|\[[A-Za-z_$][\w$]*\])+$`,
 );
+
+/** A name followed by members (`.token`) or keys (`[NAME]`), or a name alone. */
+const A_PATH_OF_NAMES = new RegExp(`^${IDENTIFIER_PATH}$`);
+
+/** Whether `value`, at `at` in `text`, is a line of code naming where the value is. */
+function readsAsCode(value: string, text: string, at: number): boolean {
+  if (A_ROOTED_PATH.test(value)) return true;
+  const after = text.charAt(at + value.length);
+  if (after !== ';' && after !== ',') return false;
+  if (/[.[]/.test(value)) return A_PATH_OF_NAMES.test(value);
+  return readsAsANameInCode(value);
+}
+
+/** A constant's name in capitals, and a credential's word as one of its pieces. */
+const A_CONSTANT = /^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$/;
+const A_CONSTANT_WORD = /(?:^|_)(?:TOKEN|KEY|SECRET|PASS(?:WORD|WD)?|PWD|AUTH|CREDENTIALS?)(?:_|$)/;
+
+/**
+ * A variable's name, and a credential's word as one of its pieces: opening it or after a `_`
+ * (`password`, `db_password`), or after a small letter with its capital (`accessToken`).
+ */
+const A_VARIABLE = /^[a-z][A-Za-z_]*$/;
+const A_VARIABLE_WORD =
+  /(?:^|_)(?:token|key|secret|pass(?:word|wd)?|pwd|auth|credentials?)(?![a-z])|[a-z](?:Token|Key|Secret|Pass(?:word|wd)?|Pwd|Auth|Credentials?)(?![a-z])/;
+
+/**
+ * Whether `value` is the name code gives a credential, not the credential: a constant in
+ * capitals (`VECTOR_SECRET`) or a variable (`accessToken`, `hashedPassword`) whose pieces
+ * include a credential's word where a piece begins. `supersecret` holds the word inside a
+ * piece, and `S3cretPass` opens on a capital and carries a digit: neither is one.
+ */
+function readsAsANameInCode(value: string): boolean {
+  return (
+    (A_CONSTANT.test(value) && A_CONSTANT_WORD.test(value)) ||
+    (A_VARIABLE.test(value) && A_VARIABLE_WORD.test(value))
+  );
+}
 
 /** A version, which is what a package whose name ends in `token` or `auth` is given. */
 const A_VERSION = /^[~^]?v?\d+\.\d+(?:\.\d+)?(?:[-+][0-9A-Za-z.-]+)?$/;
@@ -744,13 +811,16 @@ const A_SENTENCE = /^[A-Za-z’'-]+[.,;:!?]?(?:[ \t]+[A-Za-z’'()-]+[.,;:!?)]?)
  * WHAT STANDS BEFORE THE VALUE DECIDES TWO OF THE READINGS. Under a token's, a key's or a
  * secret's name, a slug of words (`token: Mnema-agent-key`) is the name of the thing and a
  * sentence of four words or more (a message kept under `HOLDS_A_SECRET`) is its description; a
- * real token has neither shape. Under a password's name both are kept as the secret, because a
- * passphrase is exactly words (`correct horse battery staple`).
+ * real token has neither shape, and neither has a short run of hex digits, an id's head. Under a
+ * password's name all three are kept as the secret, because a passphrase is exactly words
+ * (`correct horse battery staple`). And a single word alone after a colon on a key's line is
+ * prose under any other name when it is short and in small letters (`token: none`), and a
+ * password under a password's (`password: letmein`).
  */
 function readsAsNoCredential(value: string, text: string, at: number): boolean {
   if (
     readsAsNoHeaderValue(value) ||
-    A_CODE_EXPRESSION.test(value) ||
+    readsAsCode(value, text, at) ||
     A_VERSION.test(value) ||
     A_COUNT.test(value) ||
     A_PATH.test(value) ||
@@ -760,10 +830,81 @@ function readsAsNoCredential(value: string, text: string, at: number): boolean {
   ) {
     return true;
   }
+  const before = text.slice(Math.max(0, at - LINE_KEY_SPAN), at);
+  if (A_SINGLE_WORD.test(value)) {
+    const line = before.slice(before.lastIndexOf('\n') + 1);
+    if ((line.length < before.length || at <= LINE_KEY_SPAN) && A_KEY_AND_COLON.test(line)) {
+      return !UNDER_A_PASSWORD.test(line) && A_WORD_OF_PROSE.test(value);
+    }
+  }
   return (
-    AFTER_A_TOKEN_NAME.test(text.slice(Math.max(0, at - 40), at)) &&
-    (A_SLUG.test(value) || A_SENTENCE.test(value))
+    AFTER_A_TOKEN_NAME.test(before.slice(-40)) &&
+    (A_SLUG.test(value) || A_SENTENCE.test(value) || AN_ID.test(value))
   );
+}
+
+/**
+ * The longest a key opening its line can be before its value ({@link LINE_KEY} counted, with
+ * room to spare), which bounds how far back a reading looks for the start of the line.
+ */
+const LINE_KEY_SPAN = 256;
+
+/** A line that is a credential's name and a colon, so far: the value is alone after them. */
+const A_KEY_AND_COLON = new RegExp(`${LINE_KEY}:${GAP}$`, 'i');
+
+/** A password's name and its colon, just before the value. */
+const UNDER_A_PASSWORD =
+  /(?:pass(?:word|wd|phrase)|(?<![a-z])pass|pwd)["'\x60]?[ \t]{0,8}:[ \t]{0,8}$/i;
+
+/** A single word of letters, with the mark a sentence may close it with. */
+const A_SINGLE_WORD = /^[A-Za-z]+[.,;:!?]?$/;
+
+/**
+ * A single word that prose writes after a colon as readily as a value: short, in small letters
+ * after an optional capital (`token: none`, `auth: oauth`, `api_key: environment`). A word in
+ * mixed case or a long one (`api_key: AbCdEfGhIjKlMnOpQrSt`) is a key's shape, and under a
+ * password's name every word is a password's (`password: letmein`), so neither is kept.
+ */
+const A_WORD_OF_PROSE = /^[A-Z]?[a-z]{1,15}[.,;:!?]?$/;
+
+/**
+ * A short run of hex digits, from 7 to 10: an abbreviated commit or the head of an id
+ * (`token: 01a1f59d`), which no issuer mints as a token. A longer run is replaced as the secret
+ * it can be: 32 hex digits is a Datadog or a Mailgun key, 40 an old GitHub OAuth token, and a
+ * UUID is a Heroku API key, so neither a long run nor a UUID is read as an id.
+ */
+const AN_ID = /^[0-9a-f]{7,10}$/;
+
+/**
+ * Whether a value after a colon in a sentence is no secret: what {@link readsAsNoCredential}
+ * keeps, and every word that does not read as one ({@link readsAsASecret}).
+ */
+function readsAsNoSecretInASentence(value: string, text: string, at: number): boolean {
+  return readsAsNoCredential(value, text, at) || !readsAsASecret(value);
+}
+
+/** The marks a password carries and prose does not put inside a word. */
+const A_SYMBOL = /[!#$%&*+=?@^|~]/;
+
+/**
+ * Whether a word reads as drawn at random rather than written: letters and digits together at
+ * eight characters or more, or with a capital inside or a symbol at six (`Xk9qLm2Pz7`,
+ * `abc123XYZ987`, `S3cret!`); letters alone in mixed case with three humps or more
+ * (`AbCdEfGhIjKl`) or with a symbol (`pa$$word`); and any word of 24 characters or more. What it
+ * lets through, by measure of the sentences it has to keep: a word in small letters
+ * (`twelve`), a name in code (`secretKey`, `GH_TOKEN`), and a short word with a digit or two
+ * (`Hunter2`, `OAuth2`, `Ed25519`, `sha256`), which an algorithm's or a version's name is.
+ */
+function readsAsASecret(value: string): boolean {
+  const word = value.replace(/[.,;:)\]}]+$/, '');
+  if (word.length < 6 || readsAsANameInCode(word)) return false;
+  if (word.length >= 24) return true;
+  const letter = /[A-Za-z]/.test(word);
+  if (/\d/.test(word)) {
+    return letter && (word.length >= 8 || /[a-z0-9][A-Z]/.test(word) || A_SYMBOL.test(word));
+  }
+  const bare = word.replace(/[!?]+$/, '');
+  return (bare.match(/[a-z][A-Z]/g)?.length ?? 0) >= 3 || (letter && A_SYMBOL.test(bare));
 }
 
 /**
@@ -773,6 +914,16 @@ function readsAsNoCredential(value: string, text: string, at: number): boolean {
  */
 function readsAsNoHeaderValue(value: string): boolean {
   return A_REFERENCE.test(value) || NOT_A_VALUE.test(value) || ALREADY_MASKED.test(value);
+}
+
+/**
+ * The reading of a header's value: what {@link readsAsNoHeaderValue} keeps, and a short word in
+ * small letters, which is a sentence about the header (`Authorization: Bearer tokens only, no
+ * Basic`) and no issuer's token. Read here and not in the shape, which runs in any case: a
+ * capital, a digit or a token character in it, or a longer run, and it is taken.
+ */
+function readsAsNoHeader(value: string): boolean {
+  return readsAsNoHeaderValue(value) || /^[a-z]{1,16}$/.test(value);
 }
 
 /** Text with every recognized credential replaced, and what was taken out of it. */
@@ -800,9 +951,11 @@ export function scrubSecrets(text: string): ScrubbedText {
   let replaced: SecretClass[] | undefined;
   for (const secret of SECRET_CLASSES) {
     const shapes = SHAPES[secret];
-    for (const { where, shape } of shapes instanceof RegExp ? [{ shape: shapes }] : shapes) {
+    const read: readonly { where?: RegExp; shape: RegExp; keeps?: SecondReading }[] =
+      shapes instanceof RegExp ? [{ shape: shapes }] : shapes;
+    for (const { where, shape, keeps } of read) {
       if (where !== undefined && !where.test(out)) continue;
-      const pass = scrubWith(out, secret, shape);
+      const pass = scrubWith(out, secret, shape, keeps ?? SECOND_READING[secret]);
       if (pass.replaced.length === 0) continue;
       out = pass.text;
       replaced = replaced === undefined ? [...pass.replaced] : [...replaced, ...pass.replaced];
@@ -834,9 +987,10 @@ export function detectSecrets(text: string): readonly SecretClass[] {
  * Returns the input untouched when nothing matched, so a clean field costs a scan
  * and no allocation.
  *
- * A match under a prefix {@link SECOND_READING} gives a reading is
- * asked once more, and carried through untouched when the reading keeps it. That question is asked HERE and nowhere else: it is one rule,
- * so a class that becomes ambiguous tomorrow inherits it by answering the table.
+ * A match under a prefix {@link SECOND_READING} gives a reading (or its shape's own, where the
+ * shape names one) is asked once more, and carried through untouched when the reading keeps it.
+ * That question is asked HERE and nowhere else: it is one rule, so a class that becomes
+ * ambiguous tomorrow inherits it by answering the table.
  *
  * The shape's `lastIndex` is reset before the scan: these are module-level
  * regexes with the global flag, and a previous partial scan would otherwise make
@@ -844,14 +998,18 @@ export function detectSecrets(text: string): readonly SecretClass[] {
  * trigger for any pattern here (each requires literal characters) and is there so
  * a future one cannot turn into an endless loop.
  */
-function scrubWith(text: string, secret: SecretClass, re: RegExp): ScrubbedText {
+function scrubWith(
+  text: string,
+  secret: SecretClass,
+  re: RegExp,
+  kept: SecondReading | undefined,
+): ScrubbedText {
   const gate = ONLY_WHERE[secret];
   if (gate !== undefined && !gate.test(text)) return { text, replaced: [] };
   re.lastIndex = 0;
   let match = re.exec(text);
   if (match === null) return { text, replaced: [] };
 
-  const kept = SECOND_READING[secret];
   const parts: string[] = [];
   const replaced: SecretClass[] = [];
   let copied = 0;

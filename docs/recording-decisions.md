@@ -87,7 +87,7 @@ place of each:
 | `<SECRET:private-key-block>` | A private key in PEM form (`-----BEGIN ... PRIVATE KEY-----`) or mnema’s own protected key file, the whole block when it is closed, only its header when it is not. |
 | `<SECRET:url-password>` | The password of `scheme://user:password@host`; the scheme, the user and the host stay. |
 | `<SECRET:authorization-header>` | The value of an `Authorization` or `Proxy-Authorization` header, after its scheme (`Bearer`, `Basic`, ...) or alone on its line or in its quotes; the header and the scheme stay. |
-| `<SECRET:named-credential>` | The value written after a name that ends as a credential’s (`password`, `passwd`, `passphrase`, `pass`, `pwd`, `secret`, `token`, `api_key`, `access_key`, `private_key`, `secret_key`, `auth`, in any case and spelling): quoted after `:` or `=`, right after `=`, alone on its line, after a flag (`--password ...`), or as `curl -u user:...`, `docker login -p ...` and `mysql -p...` take it. The whole value goes, to its closing quote or to the blank after it, and on a line of its own after a name in capitals to the end of the line. The name stays. A variable, a placeholder, a mask, a type, a path, an address with no credential in it, a line of code and a count are left as written, and so is a cursor (`next_token`) or a form token (`csrf_token`). |
+| `<SECRET:named-credential>` | The value written after a name that ends as a credential’s (`password`, `passwd`, `passphrase`, `pass`, `pwd`, `secret`, `token`, `api_key`, `access_key`, `private_key`, `secret_key`, `auth`, in any case and spelling): quoted after `:` or `=`, right after `=`, alone on its line, after a flag (`--password ...`), or as `curl -u user:...`, `docker login -p ...` and `mysql -p...` take it; and after a colon in a sentence, the first word when it reads as drawn at random (`token: abc123XYZ987 for staging`). The whole value goes, to its closing quote or to the blank after it, and on a line of its own after a name in capitals to the end of the line; a comma or a semicolon after it ends it. The name stays. A variable, a placeholder, a mask, a type, a path, an address with no credential in it, a line of code and a count are left as written, and so is a cursor (`next_token`) or a form token (`csrf_token`). |
 | `<email>` | An e-mail address, except `noreply@`, `no-reply@` and GitHub’s `noreply.github.com` form, which name no one. |
 
 <!-- End of the generated table. -->
@@ -106,9 +106,26 @@ is refused, and the refusal says the way out, another name, or rotating the valu
 it was real.
 
 Three limits, all stated rather than hidden. **It catches only what it
-recognizes**: a proprietary token with no name around it, a password in prose, or
-a single word after a colon or a flag (`password: hunter`) goes in verbatim, so the
-placeholder is damage reduction and not a licence to paste secrets. **A value
+recognizes**: a proprietary token with no name around it, a password in prose, a
+single word after a flag (`--password hunter`), and a short word in small letters
+after a colon under a name that is not a password's (`token: abcd`) go in verbatim,
+so the placeholder is damage reduction and not a licence to paste secrets. Under a
+credential's name these go in verbatim too, each read as something else:
+
+- a passphrase of several words with no quotes around it (`secret: correct horse
+  battery staple`), read as a sentence;
+- a token that is a slug of small letters without digits (`token=abcd-efgh-ijkl`),
+  read as the name of a thing;
+- a value that is a plain path or an address (`webhook_secret=/T000/B000/abcdefgh`,
+  a webhook URL whose secret is its path), read as where something lives;
+- a value of three digits or fewer (`password=123`), read as a count;
+- a key of several lines without its `BEGIN` line (`private_key: |` and the body
+  below it), whose lines are not on the name's line;
+- a short word with a digit or two after a colon and followed by more words
+  (`password: Hunter2 was the old one`), read as a version's or an algorithm's name
+  (`OAuth2`, `Ed25519`).
+
+**A value
 that reads as a name is left alone**: `sk-` is a prefix several key issuers
 reuse and also the two letters you reach for when you name a skill, so a value
 whose every piece is a lowercase word is recorded the way you typed it; measured

@@ -11,5 +11,8 @@ Changed
   The reply that says what was replaced names the new classes, and `mnema audit exposure` finds them in what was
   recorded before. A title that reads as holding a credential is refused, as a name that holds a key already was, and
   the refusal names the way out: another name, or rotating the value if it was real. Over this repository's own record
-  the new classes replace nothing. The list is in
+  the new classes replace nothing. What a value under a credential's name is still read as, and so recorded as
+  written, is stated there too: a passphrase of several words with no quotes, a slug of small letters without digits,
+  a plain path or address (a webhook URL among them), a value of three digits or fewer, and a key of several lines
+  without its `BEGIN` line. The list is in
   [Recording decisions](docs/recording-decisions.md#what-goes-into-the-record).
