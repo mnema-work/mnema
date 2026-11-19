@@ -1,3 +1,4 @@
+// @plants-damage
 /**
  * THE WRITE THAT FOUNDS A TAIL SIGNS IT AT ONCE (ADR-569). A tail with events and no checkpoint
  * is withheld in a clone (ADR-561), so a process killed in a new tail's first act, after its

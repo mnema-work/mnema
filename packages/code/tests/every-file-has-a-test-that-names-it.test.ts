@@ -821,6 +821,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/chain/src/chain/a-registration-for-an-identity-the-record-never-founded-is-no-backup.test.ts': 9,
   'packages/chain/src/chain/a-swapped-public-key-is-named-at-the-signature-layer.test.ts': 8,
   'packages/chain/src/chain/a-tail-is-not-forked.test.ts': 13,
+  'packages/chain/src/chain/a-tail-is-signed-as-soon-as-it-is-founded.test.ts': 10,
   'packages/chain/src/chain/a-tail-is-written-by-the-key-its-id-names.test.ts': 13,
   'packages/chain/src/chain/a-tail-of-another-record-is-refused.test.ts': 10,
   'packages/chain/src/chain/a-windows-reparse-point-is-a-link-only-when-lstat-says-so.test.ts': 7,

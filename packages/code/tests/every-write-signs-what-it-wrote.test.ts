@@ -1241,7 +1241,9 @@ describe('every write path leaves the record fully signed', () => {
     // checkpoints, 1.03 events per checkpoint), and it must not have moved. Counted
     // off the files rather than through `verify`, because what is being pinned is the
     // ratio and not the level. `init` writes one event more since it declares the backup
-    // it enrolls, under the same signature: 33 events, and still 31 checkpoints.
+    // it enrolls, under the same signature: 33 events, and still 31 checkpoints. And the
+    // write that founds the tail signs what it founded at once (ADR-569), one signature more
+    // in the act that founds it and in no other: 32 checkpoints.
     const project = join(sandbox, 'cadence');
     mkdirSync(project, { recursive: true });
     const ctx = { cwd: project, env };
@@ -1262,7 +1264,7 @@ describe('every write path leaves the record fully signed', () => {
       }
     }
     expect(events).toBe(33);
-    expect(checkpoints).toBe(31);
+    expect(checkpoints).toBe(32);
     expect(verify(root).level).toBe('fully-signed');
   });
 });
