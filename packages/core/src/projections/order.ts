@@ -976,6 +976,11 @@ function streamsOf(
   signatures?: { readonly keys: CommittedKeys; readonly proof?: ReadProof },
 ): TailStream[] {
   return read.map((tail) => {
+    // What signs the tail is read BEFORE the tail ({@link signingOf}).
+    const signing =
+      signatures === undefined
+        ? undefined
+        : signingOf(layout, tail, signatures.keys, linked?.collect, signatures.proof);
     // `readTail` rather than `readTailEntries`: the same bytes, plus what the read
     // had to notice about them. A reading that took only the entries is how a chain
     // the verifier refuses was served by every read with no word about it.
@@ -989,9 +994,9 @@ function streamsOf(
       linked?.collect,
     );
     const signed =
-      signatures === undefined
+      signatures === undefined || signing === undefined
         ? undefined
-        : signedOf(layout, tail, read, signatures.keys, linked?.collect, signatures.proof);
+        : signedOf(tail, read, signatures.keys, signing);
     // Only what is proven reaches a projection (ADR-561): the rest is said, never folded.
     const entries =
       signed === undefined
@@ -1016,26 +1021,49 @@ function streamsOf(
 }
 
 /**
+ * What signs one tail, read BEFORE the tail itself, in the order the writer writes it backwards:
+ * the signed note (kept last, on the way out of an act), then `checkpoints.jsonl` (appended after
+ * the events it covers). So every event a checkpoint or the note names is already on the disk
+ * when the tail is read, and a write landing between the two readings only adds events the
+ * checkpoints read do not cover yet: one write's window. Read the other way round, a checkpoint
+ * appended between the reading of the tail and the reading of its checkpoints covered a seq the
+ * reading did not hold, which is a signed event that is gone, and a write was refused over it.
+ */
+interface Signing {
+  readonly note: ReturnType<typeof noteOf>;
+  readonly checkpoints: ReturnType<typeof readTailCheckpointsMarked>['checkpoints'];
+  readonly mark: CheckpointsMark;
+}
+
+function signingOf(
+  layout: ChainLayout,
+  tail: string,
+  keys: CommittedKeys,
+  refused: RefusedLine | undefined,
+  proof: ReadProof | undefined,
+): Signing {
+  const note = noteOf(layout, tail, keys, proof);
+  const { checkpoints, mark } = readTailCheckpointsMarked(layout, tail, refused);
+  return { note, checkpoints, mark };
+}
+
+/**
  * Folds one tail's checkpoints over everything the reading of it held (`foldCheckpoints`,
  * `@mnema/chain`): which entries are proven, the facts said of the rest, and where the folding of
  * `checkpoints.jsonl` stopped.
  */
 function signedOf(
-  layout: ChainLayout,
   tail: string,
   read: ReturnType<typeof readTail>,
   keys: CommittedKeys,
-  refused: RefusedLine | undefined,
-  proof: ReadProof | undefined,
+  { note, checkpoints, mark }: Signing,
 ): {
   readonly proven: ReadonlySet<string>;
   readonly facts: readonly SignedFact[];
   readonly reach: TailSignedReach;
 } {
-  const { checkpoints, mark } = readTailCheckpointsMarked(layout, tail, refused);
   const standing = new Set<number>(read.retained.map((one) => one.seq));
   if (read.linkBreak !== undefined) standing.add(read.linkBreak.seq);
-  const note = noteOf(layout, tail, keys, proof);
   const signed = foldCheckpoints({
     tail,
     entries: read.every,
@@ -1155,8 +1183,9 @@ function provenOnTails(
     }
     let proven = folded.get(tail);
     if (proven === undefined) {
+      const signing = signingOf(layout, tail, keys, undefined, proof ?? proofOf(layout));
       const read = readTail(layout, tail, upcasters, undefined, undefined, 'what holds');
-      proven = signedOf(layout, tail, read, keys, undefined, proof ?? proofOf(layout)).proven;
+      proven = signedOf(tail, read, keys, signing).proven;
       folded.set(tail, proven);
     }
     return proven;
