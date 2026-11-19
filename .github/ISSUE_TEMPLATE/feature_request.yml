@@ -6,6 +6,8 @@ body:
     attributes:
       value: |
         Please search the open and closed issues first: your idea may already be asked for or decided.
+
+        Want to work on an issue that is already open? Comment `/take` on it (or `/claim`): if it is labelled `good first issue` or `help wanted` and nobody holds it, you are assigned.
   - type: dropdown
     id: area
     attributes:

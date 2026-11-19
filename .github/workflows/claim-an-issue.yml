@@ -1,16 +1,19 @@
 name: Claim an issue
 
 # WHAT THIS IS. A contributor who comments that they will take an open `good first issue` or
-# `help wanted` issue is assigned to it, once, with a reply; and a daily run frees an assignment this
-# workflow made after 14 days without an open pull request of theirs that names the issue.
-# `.github/assign-a-claimed-issue/claim.mjs` owns the rules and its comment says what it does and does
-# not do (ADR-532).
+# `help wanted` issue is assigned to it, once, with a reply; a daily run assigns the author of an open
+# pull request that closes such an issue, frees an assignment of an outside contributor after 14 days
+# without an open pull request of theirs that names the issue, and reminds the author of an outside
+# pull request that waits on them (7 and 14 days). It comments on pull requests and never pushes,
+# merges or closes. `.github/assign-a-claimed-issue/claim.mjs` owns the rules and its comment says
+# what it does and does not do (ADR-582, ADR-555).
 #
 # THE LINE IT HOLDS. A comment is text a stranger wrote. It is read from the event file by the
 # script, matched against phrases and written nowhere: no expression of the event is put in a shell
 # line, nothing of a pull request is checked out (the checkout is this repository's default branch,
 # for the script alone), nothing is installed and no package script runs. The token reads and writes
-# issues, reads pull requests, and reads the contents the checkout needs; nothing else.
+# issues (a comment on a pull request is an issue comment), reads pull requests, and reads the
+# contents the checkout needs; nothing else.
 
 on:
   issue_comment: # zizmor: ignore[dangerous-triggers] reads a stranger comment as data only; the guards in the-comment-runs-nothing keep it so
@@ -50,7 +53,7 @@ jobs:
         run: node .github/assign-a-claimed-issue/claim.mjs claim "$GITHUB_EVENT_PATH"
 
   free:
-    name: free the assignments that went quiet
+    name: the daily rounds
     if: github.event_name != 'issue_comment'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -71,7 +74,17 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Assign the author of a pull request that closes a free issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/assign-a-claimed-issue/claim.mjs adopt
+
       - name: Free what has no pull request after 14 days
         env:
           GH_TOKEN: ${{ github.token }}
         run: node .github/assign-a-claimed-issue/claim.mjs expire
+
+      - name: Remind the author of a pull request that waits on them
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/assign-a-claimed-issue/claim.mjs remind

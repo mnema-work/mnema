@@ -1,18 +1,30 @@
 #!/usr/bin/env node
 /**
- * A CLAIMED ISSUE IS ASSIGNED, AND FREED AFTER 14 DAYS WITHOUT A PULL REQUEST (ADR-532).
+ * A CLAIMED ISSUE IS ASSIGNED, AND FREED AFTER 14 DAYS WITHOUT A PULL REQUEST (ADR-582, which
+ * replaces ADR-532; the reminders on a stale outside pull request are ADR-555).
  *
- * Two things run from `.github/workflows/claim-an-issue.yml`, and every decision in them is a pure
+ * Four things run from `.github/workflows/claim-an-issue.yml`, and every decision in them is a pure
  * function here that a test imports:
  *
  *   node .github/assign-a-claimed-issue/claim.mjs claim "$GITHUB_EVENT_PATH"
  *     A comment was created. If it is a claim on an open `good first issue` or `help wanted` issue
  *     (not a pull request) by someone who is not a bot and not OWNER, MEMBER or COLLABORATOR, the
  *     commenter is assigned when nobody holds the issue and holds fewer than 3 issues this workflow
- *     assigned to them; otherwise one reply says why not.
+ *     assigned to them; otherwise one reply says why not. A comment that reads as an intent to take
+ *     the issue but matches no phrase gets one reply on how to claim (`/take`), without its text.
  *   node .github/assign-a-claimed-issue/claim.mjs expire
- *     Daily. An open issue this workflow assigned, 14 days after the assignment, whose assignee has
- *     no open pull request that names the issue, is unassigned and says so.
+ *     Daily. An open issue assigned to an outside contributor, 14 days after the assignment (this
+ *     workflow's or a maintainer's by hand), whose assignee has no open pull request that names the
+ *     issue, is unassigned and says so. A maintainer's own assignment is never freed, and an issue
+ *     without a contributor label is ours and is left alone.
+ *   node .github/assign-a-claimed-issue/claim.mjs adopt
+ *     Daily. The author of an open pull request that closes (fixes, closes, resolves) an open,
+ *     unassigned contributor issue is assigned to it, once, with a note on the issue.
+ *   node .github/assign-a-claimed-issue/claim.mjs remind
+ *     Daily. An open outside pull request whose last event is a maintainer's request gets, at 7 days
+ *     without an answer from its author, one reminder that starts with the author's login, and at 14
+ *     days one note that the maintainers will finish it on the branch or close it with thanks. It
+ *     only comments: it never pushes, merges or closes.
  *
  * THE TEXT OF THE COMMENT IS DATA. It is read from the event file GitHub wrote, matched against
  * phrases and put nowhere else: not in a shell line, not in a reply. The calls to GitHub go
@@ -20,12 +32,14 @@
  *
  * HOW IT KNOWS ITS OWN ASSIGNMENTS. The reply that assigns carries a hidden marker with the date
  * and the login, and the reply that frees carries another. Only comments written by the workflow's
- * own account count, and the assignee must still be the one the marker names, so an issue a
- * maintainer assigned by hand, or reassigned afterwards, is never touched.
+ * own account count. An assignment with no marker for the assignee (a maintainer's by hand) is dated
+ * by the issue's own `assigned` event, and its assignee is freed only when not a collaborator of
+ * the repository: when that cannot be told, the assignee is taken for a maintainer.
  *
  * WHAT IT DOES NOT DO. It does not judge a claim (whether the person can do the work), it does not
- * read a pull request beyond who wrote it and whether it names the issue, and a merged pull request
- * needs nothing from it: the merge closes the issue.
+ * read a pull request beyond who wrote it, what it closes and who last spoke on it, and a merged
+ * pull request needs nothing from it: the merge closes the issue. Pull requests are read, never
+ * written to except by a comment.
  *
  * `--fixture <file>` stands a JSON file in for GitHub and prints what would be written, which is
  * how it is tried without the real repository.
@@ -43,6 +57,11 @@ import { pathToFileURL } from 'node:url';
  *   assignedTo: (login: string) => Json[],
  *   assignedIssues: () => Json[],
  *   openPulls: () => Json[],
+ *   pull: (number: number) => Json,
+ *   reviews: (number: number) => Json[],
+ *   pullCommits: (number: number) => Json[],
+ *   assignedAt: (number: number, login: string) => Date | null,
+ *   isMaintainer: (login: string) => boolean,
  *   assign: (number: number, login: string) => unknown,
  *   unassign: (number: number, login: string) => unknown,
  *   comment: (number: number, body: string) => unknown,
@@ -77,9 +96,26 @@ export const CLAIM_PHRASES = [
   'i will work on this',
   'i want to work on this',
   'can i work on this',
+  'can i work on it',
+  'can i take it',
   'could i work on this',
+  'could i work on it',
+  'could i take it',
+  "i'd like to work on it",
+  'i would like to work on it',
+  "i'll work on it",
+  'i will work on it',
+  "i'll take it",
+  'i will take it',
+  "i'm working on this",
+  'working on this',
+  "i'm claiming this",
+  'claiming this',
+  'claim this',
   'assign me',
+  'please assign me',
   'assign this to me',
+  'assign it to me',
   '/take',
   '/claim',
 ];
@@ -95,7 +131,8 @@ const claimPattern = () =>
   );
 
 /** What stands right before a phrase and turns it round: "do not", "don't", "never", "no need to". */
-const NEGATION = /(?:\bnot|n't|\bnever|\bno need to|\bno need for you to)\s+$/;
+const NEGATION =
+  /(?:\bnot|n't|\bnever|\bno need to|\bno need for you to)(?:\s+(?:be|going to|gonna|planning to|able to))*\s+$/;
 
 /**
  * The text a claim is looked for in: no quoted lines, no fenced code and no inline code (a phrase
@@ -115,11 +152,44 @@ const normalise = (text) =>
     .replace(/this issue/g, 'this')
     .replace(/\s+/g, ' ');
 
+/** The sentences of a normalised text, each with its closing mark. @param {string} said */
+const sentencesOf = (said) => said.match(/[^.!?]+[.!?]*/g) ?? [];
+
+/** A question asks for nothing to take, unless it is the request itself ("can i ..."). */
+const ASKS_LEAVE = /^(?:can|could|may) i\b/;
+
 /** Whether the comment claims the issue it is on, a negated phrase not counting. @param {string} text */
 export const isClaim = (text) => {
-  const said = normalise(text);
-  for (const found of said.matchAll(claimPattern())) {
-    if (!NEGATION.test(said.slice(0, found.index))) return true;
+  for (const sentence of sentencesOf(normalise(text))) {
+    const question = sentence.trimEnd().endsWith('?');
+    for (const found of sentence.matchAll(claimPattern())) {
+      if (NEGATION.test(sentence.slice(0, found.index))) continue;
+      if (question && !ASKS_LEAVE.test(found[0])) continue;
+      return true;
+    }
+  }
+  return false;
+};
+
+/**
+ * What reads as an intent to take the issue without being one of the phrases: "claim", "take",
+ * "work on" or "tackle" with "this" or "it", or "assign" with "me". Said as a plain sentence, not
+ * as a question (but "can I ..." is the request), and not after a no.
+ */
+const NEAR_MISS =
+  /\b(?:claim(?:ing)?|tak(?:e|ing)|work(?:ing)? on|tackl(?:e|ing)|pick(?:ing)? up)\s+(?:this|it)\b|\bpick(?:ing)?\s+(?:this|it)\s+up\b|\bassign\b[^.!?]{0,20}\bme\b|\bassign\s+(?:this|it)\s+to\s+me\b/;
+
+/**
+ * Whether the comment reads as an intent to take the issue that no phrase matches, for the one
+ * reply that says how to claim. @param {string} text
+ */
+export const readsAsAClaim = (text) => {
+  if (isClaim(text)) return false;
+  for (const sentence of sentencesOf(normalise(text))) {
+    const found = NEAR_MISS.exec(sentence);
+    if (!found || NEGATION.test(sentence.slice(0, found.index))) continue;
+    const question = sentence.trimEnd().endsWith('?');
+    if (!question || /\b(?:can|could|may|might|shall) i\b/.test(sentence)) return true;
   }
   return false;
 };
@@ -133,7 +203,7 @@ export const isClaim = (text) => {
  *   comment: { login: string, type?: string, association: string, body: string },
  *   held: number,
  * }} input
- * @returns {{ action: 'assign' | 'taken' | 'cap' | 'ignore', why: string }}
+ * @returns {{ action: 'assign' | 'taken' | 'cap' | 'hint' | 'ignore', why: string }}
  */
 export function decide({ issue, comment, held }) {
   if (issue.isPullRequest) return { action: 'ignore', why: 'a pull request' };
@@ -148,10 +218,16 @@ export function decide({ issue, comment, held }) {
   if (MAINTAINER_ASSOCIATIONS.includes(comment.association)) {
     return { action: 'ignore', why: 'a maintainer' };
   }
-  if (!isClaim(comment.body)) return { action: 'ignore', why: 'not a claim' };
+  const said = isClaim(comment.body);
+  if (!said && !readsAsAClaim(comment.body)) return { action: 'ignore', why: 'not a claim' };
   const holders = issue.assignees.map((login) => login.toLowerCase());
   if (holders.includes(comment.login.toLowerCase())) {
     return { action: 'ignore', why: 'already theirs' };
+  }
+  if (!said) {
+    return holders.length > 0
+      ? { action: 'ignore', why: 'someone holds it' }
+      : { action: 'hint', why: 'reads as a claim, matches no phrase' };
   }
   if (holders.length > 0) return { action: 'taken', why: 'someone holds it' };
   if (held >= MOST_HELD) return { action: 'cap', why: `holds ${held} already` };
@@ -166,6 +242,14 @@ export const assignedMarker = (now, login) =>
   `<!-- claim-an-issue:assigned ${now.toISOString()} login=${login} -->`;
 /** @param {string} login */
 export const takenMarker = (login) => `<!-- claim-an-issue:taken login=${login} -->`;
+/** @param {string} login */
+export const hintMarker = (login) => `<!-- claim-an-issue:hint login=${login} -->`;
+/** @param {number} pull @param {string} since */
+export const remindedMarker = (pull, since) =>
+  `<!-- claim-an-issue:reminded pull=${pull} since=${since} -->`;
+/** @param {number} pull @param {string} since */
+export const finishMarker = (pull, since) =>
+  `<!-- claim-an-issue:finish pull=${pull} since=${since} -->`;
 /** @param {Date} now */
 export const freedMarker = (now) => `<!-- claim-an-issue:freed ${now.toISOString()} -->`;
 
@@ -195,6 +279,40 @@ export const replies = {
       `Thanks, @${login}: you already hold ${MOST_HELD} issues here that were assigned this way.`,
       '',
       'Please finish one, or let one go by saying so on it, before taking another.',
+    ].join('\n'),
+  /** @param {string} login */
+  hint: (login) =>
+    [
+      hintMarker(login),
+      `Thanks, @${login}. To take this issue, comment \`/take\` on it, on a line of its own.`,
+      '',
+      `If nobody holds it and you hold fewer than ${MOST_HELD} issues assigned this way, it is assigned to you.`,
+    ].join('\n'),
+  /** @param {string} login @param {number} pull @param {Date} now */
+  adopted: (login, pull, now) =>
+    [
+      assignedMarker(now, login),
+      `This issue is yours, @${login}: your pull request #${pull} closes it.`,
+      '',
+      `The assignment frees itself after ${DAYS_TO_FREE} days without an open pull request that names this issue.`,
+    ].join('\n'),
+  /** @param {string} login @param {number} pull @param {string} since */
+  reminder: (login, pull, since) =>
+    [
+      remindedMarker(pull, since),
+      `@${login}, this pull request has been waiting for your answer for 7 days.`,
+      '',
+      'A maintainer asked for a change. Push it, or reply here if you need more time or help with it. If you cannot finish, say so: that is fine, and nothing is lost.',
+    ].join('\n'),
+  /** @param {string} login @param {number} pull @param {string} since @param {boolean} canModify */
+  finish: (login, pull, since, canModify) =>
+    [
+      finishMarker(pull, since),
+      `@${login}, it has been 14 days without an answer on this pull request.`,
+      '',
+      canModify
+        ? 'The maintainers will finish it on your branch, merge it and thank you here; the credit stays yours.'
+        : 'The maintainers cannot push to your branch, so they will close this pull request with thanks and free its issue. Reopening it, or opening a new one, is always welcome.',
     ].join('\n'),
   /** @param {string} login @param {Date} now */
   freed: (login, now) =>
@@ -302,6 +420,29 @@ export function ghApi(repo, run = (args) => execFileSync('gh', args, { encoding:
         (one) => !one.pull_request,
       ),
     openPulls: () => list(`repos/${repo}/pulls?state=open&per_page=100`),
+    pull: (number) => JSON.parse(run(['api', `repos/${repo}/pulls/${number}`])),
+    reviews: (number) => list(`repos/${repo}/pulls/${number}/reviews?per_page=100`),
+    pullCommits: (number) => list(`repos/${repo}/pulls/${number}/commits?per_page=100`),
+    assignedAt: (number, login) => {
+      const events = list(`repos/${repo}/issues/${number}/events?per_page=100`).filter(
+        (one) =>
+          one.event === 'assigned' &&
+          String(one.assignee?.login ?? '').toLowerCase() === login.toLowerCase(),
+      );
+      const last = events.at(-1);
+      return last ? new Date(last.created_at) : null;
+    },
+    // A collaborator answers 204 and a stranger 404. Any other answer (a token that may not ask)
+    // is taken for a maintainer, so that what cannot be told is never freed.
+    isMaintainer: (login) => {
+      try {
+        run(['api', `repos/${repo}/collaborators/${encodeURIComponent(login)}`]);
+        return true;
+      } catch (error) {
+        const said = `${(/** @type {Json} */ (error)).stderr ?? ''}${(/** @type {Json} */ (error)).message ?? ''}`;
+        return !/\b404\b/.test(said);
+      }
+    },
     assign: (number, login) =>
       run([
         'api',
@@ -352,6 +493,18 @@ export function fixtureApi(fixture, say = console.log) {
     assignedIssues: () =>
       Object.values(fixture.issues).filter((one) => (one.assignees ?? []).length > 0),
     openPulls: () => fixture.pulls ?? [],
+    pull: (number) =>
+      (fixture.pulls ?? []).find((/** @type {Json} */ one) => one.number === number),
+    reviews: (number) => fixture.reviews?.[String(number)] ?? [],
+    pullCommits: (number) => fixture.commits?.[String(number)] ?? [],
+    assignedAt: (number, login) => {
+      const at = fixture.assignedAt?.[`${number}:${login.toLowerCase()}`];
+      return at ? new Date(at) : null;
+    },
+    isMaintainer: (login) =>
+      (fixture.maintainers ?? []).some(
+        (/** @type {string} */ one) => one.toLowerCase() === login.toLowerCase(),
+      ),
     assign: (number, login) => {
       const one = fixture.issues[String(number)];
       one.assignees = [...(one.assignees ?? []), { login }];
@@ -405,6 +558,12 @@ export function heldBy(api, login, except) {
 const toldTaken = (comments, login) =>
   comments.some(
     (c) => c.user?.login === OUR_ACCOUNT && String(c.body ?? '').includes(takenMarker(login)),
+  );
+
+/** Whether this workflow already told `login` on this issue how to claim. @param {Json[]} comments @param {string} login */
+const toldHint = (comments, login) =>
+  comments.some(
+    (c) => c.user?.login === OUR_ACCOUNT && String(c.body ?? '').includes(hintMarker(login)),
   );
 
 /** Which of two claim comments is older: the time, then the id. @param {Json} a @param {Json} b */
@@ -477,6 +636,9 @@ export function claim(event, api, now = new Date()) {
     api.comment(number, replies.taken(login));
   }
   if (verdict.action === 'cap') api.comment(number, replies.cap(login));
+  if (verdict.action === 'hint' && !toldHint(api.comments(number), login)) {
+    api.comment(number, replies.hint(login));
+  }
   if (verdict.action !== 'assign') return verdict;
 
   api.assign(number, login);
@@ -501,7 +663,9 @@ export function claim(event, api, now = new Date()) {
 }
 
 /**
- * The daily run.
+ * The daily run: what has no pull request after 14 days is freed. An assignment this workflow made
+ * is dated by its marker; one a maintainer made by hand, to a person who is not a collaborator, by
+ * the issue's `assigned` event. An issue with no contributor label is ours and is left alone.
  *
  * @param {Api} api
  * @param {Date} [now]
@@ -512,14 +676,25 @@ export function expire(api, now = new Date(), repo = '') {
   const freed = [];
   let pulls = null;
   for (const issue of api.assignedIssues()) {
-    const assignment = assignmentOf(api.comments(issue.number));
-    if (!assignment) continue;
+    const assignees = loginsOf(issue);
+    if (assignees.length !== 1) continue;
+    const only = String(assignees[0]);
+    let assignment = assignmentOf(api.comments(issue.number));
+    if (assignment?.login.toLowerCase() !== only.toLowerCase()) {
+      // Not this workflow's: a hand assignment, to a contributor, on an issue open to contributors.
+      const labels = labelsOf(issue).map((/** @type {string} */ one) => one.toLowerCase());
+      if (!CLAIMABLE_LABELS.some((one) => labels.includes(one))) continue;
+      if (api.isMaintainer(only)) continue;
+      const at = api.assignedAt(issue.number, only);
+      if (!at) continue;
+      assignment = { at, login: only };
+    }
     pulls ??= api.openPulls();
     const verdict = expiry({
       now,
       number: issue.number,
       assignment,
-      assignees: loginsOf(issue),
+      assignees,
       pulls,
       repo,
     });
@@ -530,6 +705,155 @@ export function expire(api, now = new Date(), repo = '') {
     freed.push(issue.number);
   }
   return freed;
+}
+
+const CLOSING =
+  /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s+(?:([\w.-]+\/[\w.-]+)?#(\d+)|https?:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/issues\/(\d+))(?!\d)/gi;
+
+/**
+ * The issues of this repository a pull request closes with a closing keyword in its title or body.
+ *
+ * @param {Json} pull
+ * @param {string} repo
+ * @returns {number[]}
+ */
+export function closedBy(pull, repo) {
+  const text = `${pull.title ?? ''}\n${pull.body ?? ''}`;
+  const numbers = new Set();
+  for (const found of text.matchAll(CLOSING)) {
+    const where = found[1] ?? found[3];
+    if (where && where.toLowerCase() !== repo.toLowerCase()) continue;
+    numbers.add(Number(found[2] ?? found[4]));
+  }
+  return [...numbers];
+}
+
+/** Whether a pull request is from someone outside: not a bot, not OWNER, MEMBER or COLLABORATOR. @param {Json} pull */
+const fromOutside = (pull) =>
+  pull.user?.type !== 'Bot' &&
+  !String(pull.user?.login ?? '').endsWith('[bot]') &&
+  !MAINTAINER_ASSOCIATIONS.includes(pull.author_association);
+
+/**
+ * The daily run that assigns the author of an open pull request that closes an open, unassigned
+ * contributor issue, once, with a note on the issue. The per-person limit holds: an author at it is
+ * left as they are, and nothing is said.
+ *
+ * @param {Api} api
+ * @param {Date} [now]
+ * @param {string} [repo]
+ * @returns {number[]} the issues it assigned
+ */
+export function adopt(api, now = new Date(), repo = '') {
+  const assigned = [];
+  for (const pull of api.openPulls()) {
+    if (!fromOutside(pull)) continue;
+    const login = String(pull.user?.login ?? '');
+    for (const number of closedBy(pull, repo)) {
+      /** @type {Json} */
+      let issue = null;
+      try {
+        issue = api.issue(number);
+      } catch {
+        continue; // a number that is not an issue here
+      }
+      if (!issue || issue.pull_request || issue.state !== 'open') continue;
+      if (loginsOf(issue).length > 0) continue;
+      const labels = labelsOf(issue).map((/** @type {string} */ one) => one.toLowerCase());
+      if (!CLAIMABLE_LABELS.some((one) => labels.includes(one))) continue;
+      if (heldBy(api, login, number) >= MOST_HELD) continue;
+      api.assign(number, login);
+      api.comment(number, replies.adopted(login, pull.number, now));
+      assigned.push(number);
+    }
+  }
+  return assigned;
+}
+
+export const REMIND_AFTER_DAYS = 7;
+export const FINISH_AFTER_DAYS = 14;
+
+/**
+ * When an outside pull request began waiting on its author: the time of the maintainer's last
+ * request if nothing came after it, else null. A maintainer's request is a review that asks for
+ * changes or comments, or a comment; the author answers with a commit of theirs, a comment or a
+ * review; a maintainer's approval ends the wait.
+ *
+ * @param {Json} pull
+ * @param {Json[]} comments
+ * @param {Json[]} reviews
+ * @param {Json[]} commits
+ * @returns {Date | null}
+ */
+export function waitingSince(pull, comments, reviews, commits) {
+  const author = String(pull.user?.login ?? '').toLowerCase();
+  /** @type {{ at: Date, kind: 'ask' | 'author' | 'approved' }[]} */
+  const events = [];
+  /** @param {string|undefined} when @param {'ask' | 'author' | 'approved'} kind */
+  const add = (when, kind) => {
+    const at = new Date(String(when));
+    if (!Number.isNaN(at.getTime())) events.push({ at, kind });
+  };
+  for (const c of comments) {
+    const who = String(c.user?.login ?? '').toLowerCase();
+    if (who === author) add(c.created_at, 'author');
+    else if (MAINTAINER_ASSOCIATIONS.includes(c.author_association) && c.user?.type !== 'Bot') {
+      add(c.created_at, 'ask');
+    }
+  }
+  for (const r of reviews) {
+    const who = String(r.user?.login ?? '').toLowerCase();
+    if (who === author) add(r.submitted_at, 'author');
+    else if (MAINTAINER_ASSOCIATIONS.includes(r.author_association)) {
+      if (r.state === 'CHANGES_REQUESTED' || r.state === 'COMMENTED') add(r.submitted_at, 'ask');
+      else if (r.state === 'APPROVED') add(r.submitted_at, 'approved');
+    }
+  }
+  for (const c of commits) {
+    if (String(c.author?.login ?? '').toLowerCase() === author) {
+      add(c.commit?.committer?.date ?? c.commit?.author?.date, 'author');
+    }
+  }
+  events.sort((a, b) => a.at.getTime() - b.at.getTime());
+  const last = events.at(-1);
+  return last?.kind === 'ask' ? last.at : null;
+}
+
+/**
+ * The daily run over the open outside pull requests that wait on their author: one reminder that
+ * starts with their login at 7 days, one note at 14. Each is said once for each request it follows.
+ * It only comments.
+ *
+ * @param {Api} api
+ * @param {Date} [now]
+ * @returns {{ pull: number, said: string }[]}
+ */
+export function remind(api, now = new Date()) {
+  const said = [];
+  for (const listed of api.openPulls()) {
+    if (!fromOutside(listed) || listed.draft) continue;
+    const number = listed.number;
+    const comments = api.comments(number);
+    const since = waitingSince(listed, comments, api.reviews(number), api.pullCommits(number));
+    if (!since) continue;
+    const days = (now.getTime() - since.getTime()) / DAY;
+    if (days < REMIND_AFTER_DAYS) continue;
+    const login = String(listed.user?.login ?? '');
+    const stamp = since.toISOString();
+    const ours = comments.filter((c) => c.user?.login === OUR_ACCOUNT);
+    const has = (/** @type {string} */ marker) =>
+      ours.some((c) => String(c.body ?? '').includes(marker));
+    if (days >= FINISH_AFTER_DAYS) {
+      if (has(finishMarker(number, stamp))) continue;
+      const canModify = Boolean(api.pull(number)?.maintainer_can_modify);
+      api.comment(number, replies.finish(login, number, stamp, canModify));
+      said.push({ pull: number, said: 'finish' });
+    } else if (!has(remindedMarker(number, stamp))) {
+      api.comment(number, replies.reminder(login, number, stamp));
+      said.push({ pull: number, said: 'reminder' });
+    }
+  }
+  return said;
 }
 
 /** @param {string[]} argv */
@@ -546,8 +870,15 @@ function main(argv) {
     console.log(`${verdict.action}: ${verdict.why}`);
   } else if (mode === 'expire') {
     console.log(`freed: ${expire(api, now, repo).join(', ') || 'none'}`);
+  } else if (mode === 'adopt') {
+    console.log(`assigned: ${adopt(api, now, repo).join(', ') || 'none'}`);
+  } else if (mode === 'remind') {
+    const said = remind(api, now);
+    console.log(`said: ${said.map((one) => `${one.said} on #${one.pull}`).join(', ') || 'none'}`);
   } else {
-    console.error('usage: claim.mjs claim <event.json> | expire [--fixture <file>]');
+    console.error(
+      'usage: claim.mjs claim <event.json> | expire | adopt | remind [--fixture <file>]',
+    );
     process.exit(2);
   }
 }
