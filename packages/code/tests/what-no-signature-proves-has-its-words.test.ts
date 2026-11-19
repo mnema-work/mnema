@@ -115,7 +115,7 @@ describe('a write over a run no signature proves', () => {
       'The write is refused: the project’s public record holds a signed checkpoint that does not verify, so which rules apply to this path cannot be known.',
     );
     expect(refusalOfAnAlteredRecord([failed])).toContain(
-      'put tails/tail-1/ back as the repository last committed it, then run `mnema verify`.',
+      '`mnema tail repair tail-1` puts it back from the repository’s history, then run `mnema verify`.',
     );
     const missing = withheld(
       { fromSeq: 0, toSeq: 3, why: 'missing-signed', missing: 2 },
@@ -140,13 +140,13 @@ describe('a write over a run no signature proves', () => {
       'The write is refused: the project’s public record holds a tail no checkpoint signs yet, so which rules apply to this path cannot be known.',
     );
     expect(refusal).toContain(
-      'Every write in the project is refused until a checkpoint signed by the tail’s key covers tails/tail-1/: on the machine that wrote it, write once more in this project, which signs one, and commit tails/tail-1/; then run `mnema verify`. If the repository committed a checkpoint of tails/tail-1/ that is no longer there, put tails/tail-1/ back as the repository last committed it instead.',
+      'Every write in the project is refused until a checkpoint signed by the tail’s key covers tails/tail-1/: on the machine that wrote it, write once more in this project, which signs one, and commit tails/tail-1/; then run `mnema verify`. If the repository committed a checkpoint of tails/tail-1/ that is no longer there, `mnema tail repair tail-1` puts it back instead.',
     );
     // Beside a checkpoint that does not verify, each tail gets its own way out.
     const both = refusalOfAnAlteredRecord([failed, { ...founded, tail: 'tail-2' }]) as string;
     expect(both).toContain('holds a signed checkpoint that does not verify');
     expect(both).toContain(
-      'put tails/tail-1/ back as the repository last committed it, then run `mnema verify`.',
+      '`mnema tail repair tail-1` puts it back from the repository’s history, then run `mnema verify`.',
     );
     expect(both).toContain('on the machine that wrote it, write once more in this project');
     expect(both).toContain('and commit tails/tail-2/');

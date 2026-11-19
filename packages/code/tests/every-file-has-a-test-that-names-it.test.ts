@@ -1076,7 +1076,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-key-whose-tail-was-cut-is-told-what-happened.test.ts': 6,
   'packages/code/tests/a-label-a-stranger-can-look-up.test.ts': 5,
   'packages/code/tests/a-label-names-one-decision-or-none.test.ts': 16,
-  'packages/code/tests/a-line-is-repaired-from-git.test.ts': 10,
+  'packages/code/tests/a-line-is-repaired-from-git.test.ts': 11,
   'packages/code/tests/a-line-of-success-is-one-line.test.ts': 7,
   'packages/code/tests/a-line-this-mnema-cannot-read-is-said-first-and-the-rest-is-served.test.ts': 7,
   'packages/code/tests/a-link-can-be-retracted.test.ts': 12,

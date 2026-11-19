@@ -436,8 +436,9 @@ function tailPaths(facts: readonly ScopedLinkBreak[]): string {
  * A public tail that holds events and no checkpoint is what a tail committed right after its first
  * write, before the checkpoint that write signs, looks like in a clone: putting it back as committed
  * changes nothing there, and what signs it is one more write of the machine that wrote it, which
- * its own signed note lets write. So that tail is told that way first, and the put back stays for
- * a checkpoint that was committed and is gone, and for every other run, as it was.
+ * its own signed note lets write. So that tail is told that way first, and `mnema tail repair`, which
+ * puts a whole tail back from history (ADR-559), stays for a checkpoint that was committed and is
+ * gone, and for every other run.
  */
 const UNSIGNED_IN: Readonly<Record<Scope, (withheld: readonly ScopedLinkBreak[]) => string>> = {
   public: (withheld) => {
@@ -447,12 +448,12 @@ const UNSIGNED_IN: Readonly<Record<Scope, (withheld: readonly ScopedLinkBreak[])
       ...(altered.length === 0
         ? []
         : [
-            `Every write in the project is refused until the tail is as it was signed: put ${tailPaths(altered)} back as the repository last committed it, then run \`mnema verify\`.`,
+            `Every write in the project is refused until the tail is as it was signed: ${repairWords(altered.map((fact) => fact.tail))} puts it back from the repository’s history, then run \`mnema verify\`.`,
           ]),
       ...(founded.length === 0
         ? []
         : [
-            `Every write in the project is refused until a checkpoint signed by the tail’s key covers ${tailPaths(founded)}: on the machine that wrote it, write once more in this project, which signs one, and commit ${tailPaths(founded)}; then run \`mnema verify\`. If the repository committed a checkpoint of ${tailPaths(founded)} that is no longer there, put ${tailPaths(founded)} back as the repository last committed it instead.`,
+            `Every write in the project is refused until a checkpoint signed by the tail’s key covers ${tailPaths(founded)}: on the machine that wrote it, write once more in this project, which signs one, and commit ${tailPaths(founded)}; then run \`mnema verify\`. If the repository committed a checkpoint of ${tailPaths(founded)} that is no longer there, ${repairWords(founded.map((fact) => fact.tail))} puts it back instead.`,
           ]),
     ].join('\n\n');
   },

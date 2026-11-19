@@ -10,7 +10,11 @@
  *   - a line that is the same bytes in the revision and does not read is a newer mnema's: "update mnema", never repaired;
  *   - the private tree, a conflict marker, a revision without the file, a revision that is not one, a link, and a tail
  *     another process is writing are each refused with nothing written;
- *   - with nothing damaged it says so and exits 0; and what the refusals of a write say names the verb.
+ *   - with nothing damaged it says so and exits 0; and what the refusals of a write say names the verb;
+ *   - a committed decision rewritten and every later link computed again, the checkpoints kept: the write's refusal
+ *     names the verb, which puts the whole tail back from git (ADR-559, ADR-563), keeps the decision written after the
+ *     commit, which its checkpoint signed, and leaves the forged tail beside the lock; `verify --require signed` and the
+ *     second reader pass after it.
  */
 // @plants-damage
 
@@ -30,6 +34,7 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { canonicalStringify, entryHash, writtenAsStored } from '@mnema/chain';
 import { resolveTrees } from '@mnema/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { inEveryCacheState, type Planted, type TheCase } from './support/every-cache-state.js';
@@ -439,4 +444,64 @@ describe('a line that is not put back', () => {
     expect(ran.status).toBe(1);
     expect(said(ran)).toContain('There is no tail nothing-here');
   }, 60_000);
+});
+
+describe('a whole tail put back from git', () => {
+  it('puts back a tail rewritten and re-chained under its checkpoints, keeping the signed work after the commit', () => {
+    const here = aCopy();
+    const honest = readFileSync(segmentOf(here), 'latin1');
+    const signed = readFileSync(join(tailsDir(here), here.tail, 'checkpoints.jsonl'), 'latin1');
+    // A forger without the key: the committed decision's text changed, every link from there computed again.
+    const events = honest
+      .trimEnd()
+      .split('\n')
+      .map(
+        (line) =>
+          JSON.parse(line) as {
+            event: Record<string, unknown>;
+            link: { tail: string; seq: number; prev: string | null; hash: string };
+          },
+      );
+    const at = events.findIndex((one) =>
+      JSON.stringify(one.event).includes('Because the lockfile'),
+    );
+    expect(at).toBeGreaterThan(0);
+    events[at] = JSON.parse(
+      JSON.stringify(events[at]).replace('Because the lockfile', 'Because the Lockfile'),
+    );
+    for (let i = at; i < events.length; i += 1) {
+      const one = events[i] as (typeof events)[number];
+      const prev = (events[i - 1] as (typeof events)[number]).link.hash;
+      const hash = entryHash({
+        event: writtenAsStored(one.event as never),
+        tail: one.link.tail,
+        seq: one.link.seq,
+        prev,
+      });
+      one.link = { ...one.link, prev, hash };
+    }
+    writeFileSync(
+      segmentOf(here),
+      `${events.map((one) => canonicalStringify(one as never)).join('\n')}\n`,
+    );
+    const forged = readFileSync(segmentOf(here), 'latin1');
+
+    const refused = mnema(here, 'decision', 'record', 'A title', 'A rationale');
+    expect(refused.status).not.toBe(0);
+    expect(said(refused)).toContain(`\`mnema tail repair ${here.tail}\` puts it back`);
+
+    const ran = mnema(here, 'tail', 'repair', here.tail);
+    expect(ran.status, said(ran)).toBe(0);
+    expect(ran.stdout).toContain(`Put back tail ${here.tail} from HEAD:`);
+    expect(ran.stdout).toContain('kept above the revision');
+    expect(readFileSync(segmentOf(here), 'latin1')).toBe(honest);
+    expect(readFileSync(join(tailsDir(here), here.tail, 'checkpoints.jsonl'), 'latin1')).toBe(
+      signed,
+    );
+    const kept = readdirSync(notesOf(here)).filter((name) => name.endsWith('.before-repair'));
+    expect(kept.map((name) => readFileSync(join(notesOf(here), name), 'latin1'))).toEqual([forged]);
+    expect(mnema(here, 'verify', '--require', 'signed').status).toBe(0);
+    expect(secondReading(here).verdict).toBe('VERIFIED');
+    expect(mnema(here, 'decision', 'record', 'A title', 'A rationale').status).toBe(0);
+  }, 120_000);
 });
