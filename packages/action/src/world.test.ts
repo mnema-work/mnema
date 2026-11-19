@@ -477,3 +477,26 @@ describe('a pull request that brings a tail and its owner’s relink of it', () 
     expect(comment).not.toContain('(another-record)');
   }, 120_000);
 });
+
+describe('the events a commit proves, read off git', () => {
+  it('proves the events of a record whose checkpoints are committed, and none once they are cut', () => {
+    const repo = join(sandbox, 'repo-proven');
+    const home = join(sandbox, 'home-proven');
+    mkdirSync(repo, { recursive: true });
+    mkdirSync(home);
+    git(repo, 'init', '-q');
+    mnemaAs(home, repo, 'init');
+    mnemaAs(home, repo, 'decision', 'record', 'Use the standard library', 'Because it is there');
+    git(repo, 'add', '.mnema');
+    git(repo, 'commit', '-q', '-m', 'the record');
+    for (const tail of readdirSync(join(repo, '.mnema', 'tails'))) {
+      rmSync(join(repo, '.mnema', 'tails', tail, 'checkpoints.jsonl'), { force: true });
+    }
+    git(repo, 'add', '-u', '.mnema');
+    git(repo, 'commit', '-q', '-m', 'cut the checkpoints');
+
+    const world = worldAt(repo, {} as never, { info() {}, warning() {} });
+    expect(world.git.provenAt('HEAD~1').size).toBeGreaterThan(0);
+    expect(world.git.provenAt('HEAD').size).toBe(0);
+  });
+});

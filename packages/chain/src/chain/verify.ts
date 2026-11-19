@@ -1024,6 +1024,8 @@ export function relinksReadAt(
     for (const tail of listTails(layout)) {
       if (entriesByTail.has(tail)) continue;
       const refused: TailIssue[] = [];
+      // The checkpoints BEFORE the tail (ADR-571), as `verifyReading` reads them.
+      const checkpoints = readTailCheckpoints(layout, tail, refusedLine(layout, tail, refused));
       const read = readTail(
         layout,
         tail,
@@ -1032,7 +1034,6 @@ export function relinksReadAt(
         undefined,
         'every line',
       );
-      const checkpoints = readTailCheckpoints(layout, tail, refusedLine(layout, tail, refused));
       entriesByTail.set(tail, refused.length > 0 ? [] : read.entries);
       checkpointsByTail.set(tail, checkpoints);
       keysByTail.set(tail, keysOf[at] as CommittedKeys);
@@ -1185,6 +1186,8 @@ function readForTheFold(
   const covered = new Map<string, number>();
   for (const tail of listTails(layout)) {
     const refused: TailIssue[] = [];
+    // The checkpoints BEFORE the tail (ADR-571), as `verifyReading` reads them.
+    const checkpoints = readTailCheckpoints(layout, tail, refusedLine(layout, tail, refused));
     const read = readTail(
       layout,
       tail,
@@ -1193,7 +1196,6 @@ function readForTheFold(
       undefined,
       'every line',
     );
-    const checkpoints = readTailCheckpoints(layout, tail, refusedLine(layout, tail, refused));
     if (refused.length > 0) {
       entries.set(tail, []);
       continue;
@@ -1381,6 +1383,24 @@ function verifyReading(
     // (a second line, a checkpoint whose signature fails, a missing ownership proof) while the
     // second reader named them all. Each refused line is left out of what is read, so what
     // follows is asked only what a hole leaves checkable: see `lineRefused` below.
+    //
+    // THE CHECKPOINTS ARE READ BEFORE THE TAIL (ADR-571), the reverse of the order the writer
+    // writes them (events, then the checkpoint that covers them). Read the other way round, a
+    // write landing between the two readings left a checkpoint covering a seq the reading of the
+    // tail did not hold, which this verdict named as a signed fact that is gone. The lines the
+    // checkpoints refuse are put after the tail's, so the issues keep the order they were named
+    // in when the tail was read first.
+    const checkpointIssues: TailIssue[] = [];
+    let checkpointsPartial = false;
+    const checkpoints = readTailCheckpoints(
+      layout,
+      tail,
+      refusedLine(layout, tail, checkpointIssues),
+      relaid,
+      () => {
+        checkpointsPartial = true;
+      },
+    );
     const read = readTail(
       layout,
       tail,
@@ -1391,16 +1411,7 @@ function verifyReading(
     );
     // A refused EVENT line leaves a hole in the entries; a refused checkpoint line does not.
     const holed = issues.length > 0;
-    let checkpointsPartial = false;
-    const checkpoints = readTailCheckpoints(
-      layout,
-      tail,
-      refusedLine(layout, tail, issues),
-      relaid,
-      () => {
-        checkpointsPartial = true;
-      },
-    );
+    issues.push(...checkpointIssues);
     const lineRefused = issues.length > 0;
     const entries = read.entries;
     if (read.partialFinalLine) {

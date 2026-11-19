@@ -58,6 +58,8 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'holds what the functions of the chain that the product reads through say of a record whose files became links; the chain has no projection cache and the question is not asked of one (the cache states are held by the-products-reads-serve-around-a-linked-record, through the binary)',
   'packages/chain/src/chain/a-tail-is-signed-as-soon-as-it-is-founded.test.ts':
     'holds which checkpoints the write that founds a tail signs, and what the fold of its checkpoints says of the tail with no note of this machine, in the functions of the chain alone; nothing is damaged and the chain has no projection cache (a clone of such a record is read by the binary in only-proven-events-reach-the-projection)',
+  'packages/chain/src/chain/verify-reads-the-checkpoints-before-the-tail.test.ts':
+    'holds the order in which the verdict of the chain reads a tail and its checkpoints, with a signed write landing between the two readings; nothing is damaged and the chain has no projection cache',
   'packages/chain/src/chain/checkpoint-ruling.test.ts':
     'holds what the fold of a tail’s checkpoints says of tails and checkpoints laid out by hand, in the function alone; the chain has no projection cache (the cache states are held through the binary in a-forged-checkpoint-is-said-first-and-stops-the-gate)',
   'packages/core/src/projections/only-proven-events-reach-the-projection.test.ts':
