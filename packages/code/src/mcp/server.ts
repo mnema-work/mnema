@@ -78,7 +78,7 @@
  */
 
 import { existsSync } from 'node:fs';
-import { CodedError, UnreadableLineError } from '@mnema/chain';
+import { CodedError, UnreadableDiskError, UnreadableLineError } from '@mnema/chain';
 import { REFERENCE_DEFAULT_DEPTH, REFERENCE_MAX_DEPTH } from '@mnema/context';
 import {
   canonicalIdentity,
@@ -149,7 +149,10 @@ import {
   windowDeclaration,
   windowGloss,
 } from '../vocabulary.js';
-import { refusalOfAnUnreadableRecord } from '../what-a-write-meets.js';
+import {
+  refusalOfAnUnreadableRecord,
+  refusalOfAPartForARecordingAct,
+} from '../what-a-write-meets.js';
 import type { ClientWorkspace } from './context.js';
 import { SERVER_INSTRUCTIONS } from './instructions.js';
 import { armSessionClose, type Lifecycle } from './lifecycle.js';
@@ -939,6 +942,15 @@ export function answeringThrownRefusals<Input extends ZodRawShapeCompat | undefi
     try {
       return await called(...args);
     } catch (error) {
+      if (error instanceof UnreadableDiskError && effect === 'mutates') {
+        // A part of the record the disk will not open, met by an act that records: its own code, and
+        // words for an act that names no path (the refusal of a line speaks of the path of an edit).
+        const session = await ensureSession();
+        return refused(session, {
+          code: 'UNREADABLE_PART',
+          message: `${refusalOfAPartForARecordingAct(error, workspaceTrees(session))} ${NOT_RECORDED}`,
+        });
+      }
       if (error instanceof UnreadableLineError && effect === 'mutates') {
         // A part of the record this mnema cannot read stops a write: said with its place and the way out,
         // as the command line says it, and not as the reader's one-line message.
@@ -2545,6 +2557,10 @@ function replied(
       // an acknowledgement carries it the same. The note a newer mnema's version adds
       // comes AFTER this block, never before it.
       ...fact(sessionLinkBreaks(session, wrote ? A_WRITE : A_READ)),
+      // THEN, ONCE PER CONNECTION AND NEVER BEFORE THE FACTS ABOVE, that a newer mnema is installed and
+      // `mnema upgrade` has not run on this machine: for the person to be told, never for the agent to
+      // act on (`update-notice.ts`). Not in the handshake's instructions, nor in the opening text.
+      ...session.updateNote.take(),
       // AND, RIGHT AFTER IT, WHAT A NEWER MNEMA WROTE that this one reads past (ADR-140): on every
       // read and on none of the writes, asked of the caches the read has just loaded, so a tool
       // added later says it without remembering to. Absent for every record this version wrote.
@@ -2633,6 +2649,8 @@ function refused(
   return {
     isError: true,
     content: [
+      // A refusal carries no fact of integrity, so the note, if this is the first reply, leads it.
+      ...session.updateNote.take(),
       `Refused (${refusal.code}): ${refusal.message}`,
       ...session.founding.take(),
       ...session.replacementsOwed.take(),

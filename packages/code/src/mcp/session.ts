@@ -95,6 +95,8 @@ import {
   withOpenedCaches,
   withTreesRead,
 } from '../tree-sources.js';
+import { UpdateNoteOwed } from '../update-notice.js';
+import { VERSION } from '../version.js';
 import { alteredEntrySentence, refuseWhileAltered } from '../what-a-write-meets.js';
 import { type CacheRegistry, createCacheRegistry } from './cache-registry.js';
 import {
@@ -466,6 +468,11 @@ export interface Session {
    */
   readonly newTails: NewTailsOwed;
   /**
+   * The note that a newer mnema is installed and `mnema upgrade` has not run on this machine, owed
+   * once to the connection, on its first reply (`update-notice.ts`).
+   */
+  readonly updateNote: UpdateNoteOwed;
+  /**
    * The chain roots this connection BEGAN writing to: {@link ensureRun} adds one before the
    * run's own append, whether or not the run then opens. A run's opening is two writes when
    * the key has no anchor there (the founding, then `run.started`), so a connection whose run
@@ -676,6 +683,7 @@ export function openSession(input: OpenSessionInput): Session {
     recordPage: new RecordPageWatch(),
     replacementsOwed: new ReplacementsOwed(),
     newTails: new NewTailsOwed(),
+    updateNote: new UpdateNoteOwed(trees.global, VERSION),
     writesBegun: new Set<string>(),
     consulted: new Map<string, Set<string>>(),
     served: new Map<string, Set<string>>(),

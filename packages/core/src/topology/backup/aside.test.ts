@@ -5,6 +5,7 @@
 
 // @plants-damage
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -15,6 +16,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { UnreadableDiskError } from '@mnema/chain';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /** What a move across file systems meets: `across` makes every rename say so, and `spoil` makes the copy differ. */
@@ -47,6 +49,7 @@ import {
   asidesFor,
   asidesIn,
   setAside,
+  treesToKeep,
   undoAside,
   withRestoreLock,
 } from './aside.js';
@@ -325,3 +328,26 @@ describe('the folder kept for a project outside git, in the mnema home', () => {
     expect(existsSync(join(home, 'before-restore'))).toBe(false);
   });
 });
+
+describe.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
+  'a tree whose tails folder the disk will not open',
+  () => {
+    it('is named and the restore stops, instead of the tree being read as holding no tail', () => {
+      chmodSync(join(root, 'tails'), 0);
+      try {
+        expect(() => treesToKeep([{ root }])).toThrow(UnreadableDiskError);
+        expect(() => setAside(place, [{ tree: 'private', root }], new Date())).toThrow(
+          /tails cannot be opened/,
+        );
+        expect(asidesIn(place)).toHaveLength(0);
+      } finally {
+        chmodSync(join(root, 'tails'), 0o700);
+      }
+    });
+
+    it('still reads a tree with no tails folder as holding none', () => {
+      rmSync(join(root, 'tails'), { recursive: true });
+      expect(treesToKeep([{ root }])).toEqual([]);
+    });
+  },
+);

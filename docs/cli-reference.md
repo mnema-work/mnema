@@ -376,7 +376,7 @@ handoff that names no `--scope` follows its task to the tree that holds it, brie
 `read_record` count the notes about a task over every tree this machine holds. `mnema refs <path>` and `audit_refs`,
 for an id no tree authored that reads as a path under the project, add whether the file exists now and the SHA-256
 of its bytes: a reading of the working tree, written nowhere. A path that leads out of the project, even through a
-directory link inside it, is not read; a link that stays inside is followed. `mnema search "ADR-48"` finds the decision by its label, as `mnema show ADR-48` does. A decision that replaced another, or was replaced, says so on its line in `mnema search` and in the `search` tool: `superseded by ADR-n: <title> (<state>) · <id>`, or `supersedes ...`, named from the tree the decision is in (and `(not in the trees read)` when that tree does not hold the other end).
+directory link inside it, is not read; a link that stays inside is followed. `mnema search "ADR-48"` finds the decision by its label, as `mnema show ADR-48` does. For `mnema search`, leaving `--scope` out, or passing `--scope all`, searches the public, private and global trees together. A decision that replaced another, or was replaced, says so on its line in `mnema search` and in the `search` tool: `superseded by ADR-n: <title> (<state>) · <id>`, or `supersedes ...`, named from the tree the decision is in (and `(not in the trees read)` when that tree does not hold the other end).
 
 `mnema verify` exits non-zero when the record is **broken** (in **either** tree, in
 **any** project it was told to cover, and the line says which), so it drops into

@@ -1417,6 +1417,18 @@ describe('mnema CLI: search and show (the record made readable), end to end', ()
     expect(onlyPrivate).toContain('on this machine');
   });
 
+  it('treats --scope all like leaving --scope out, across the trees', async () => {
+    await run(['init'], capture().io);
+    await output(['memory', 'a shared word, in public']);
+    await output(['memory', 'a shared word, on this machine', '--scope', 'private']);
+
+    const without = await output(['search', 'shared']);
+    const withAll = await output(['search', 'shared', '--scope', 'all']);
+    expect(withAll).toBe(without);
+    expect(without).toContain('public');
+    expect(without).toContain('private');
+  });
+
   it('answers a term nothing matches plainly, and an empty record too', async () => {
     await run(['init'], capture().io);
 

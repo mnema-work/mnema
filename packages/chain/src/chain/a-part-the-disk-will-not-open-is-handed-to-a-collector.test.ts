@@ -16,6 +16,8 @@ import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:f
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { listPrivateKeyFingerprints, loadOrCreateInstallationId } from './keystore.js';
+import { installationIdPath, keysDir, tailLockPath } from './layout.js';
 import {
   readingWhatTheDiskLets,
   refusedByTheDisk,
@@ -29,6 +31,7 @@ import {
   orderedSegments,
   refusedPartOf,
 } from './store.js';
+import { withTailLock } from './tail-lock.js';
 
 const CANNOT_CHMOD = process.platform === 'win32' || process.getuid?.() === 0;
 
@@ -150,3 +153,73 @@ describe('a tree with no folder where tails belong', () => {
     mkdirSync(join(root, 'tails'));
   });
 });
+
+describe.skipIf(CANNOT_CHMOD)(
+  'the folders of the locks and the keys, and the files in them',
+  () => {
+    const layout = () => ({ root });
+    const refusedWith = (act: () => unknown): UnreadableDiskError => {
+      try {
+        act();
+      } catch (error) {
+        expect(error).toBeInstanceOf(UnreadableDiskError);
+        return error as UnreadableDiskError;
+      }
+      throw new Error('nothing was refused');
+    };
+
+    it('refuses a write that cannot open a lock in a folder with no permission, naming the folder', () => {
+      mkdirSync(join(root, 'locks'));
+      try {
+        chmodSync(join(root, 'locks'), 0);
+        const refused = refusedWith(() =>
+          withTailLock(tailLockPath(layout(), 'tail-a'), () => 'wrote'),
+        );
+        expect(refused.path).toBe('locks');
+        expect(refused.code).toBe('EACCES');
+        expect(refused.locus).toBe(tailLockPath(layout(), 'tail-a'));
+        expect(refused.message).not.toContain('EACCES:');
+      } finally {
+        chmodSync(join(root, 'locks'), 0o700);
+      }
+    });
+
+    it('refuses a write where a file stands in the place of the locks folder', () => {
+      writeFileSync(join(root, 'locks'), 'not a folder');
+      const refused = refusedWith(() => withTailLock(tailLockPath(layout(), 'tail-a'), () => 'x'));
+      expect(refused.path).toBe('locks');
+      expect(refused.code).toBe('ENOTDIR');
+    });
+
+    it('refuses the listing of a keys folder with no permission, naming the folder', () => {
+      mkdirSync(keysDir(layout()));
+      try {
+        chmodSync(keysDir(layout()), 0);
+        const refused = refusedWith(() => listPrivateKeyFingerprints(layout()));
+        expect(refused.path).toBe('keys');
+        expect(refused.code).toBe('EACCES');
+      } finally {
+        chmodSync(keysDir(layout()), 0o700);
+      }
+    });
+
+    it('refuses an installation id the disk will not open, and one it will not create', () => {
+      mkdirSync(keysDir(layout()));
+      const place = installationIdPath(layout(), 'a'.repeat(64));
+      writeFileSync(place, 'abc\n');
+      try {
+        chmodSync(place, 0);
+        const read = refusedWith(() => loadOrCreateInstallationId(layout(), 'a'.repeat(64)));
+        expect(read.path).toBe(`keys/${'a'.repeat(64)}.inst`);
+        expect(read.code).toBe('EACCES');
+        chmodSync(place, 0o600);
+        rmSync(place);
+        chmodSync(keysDir(layout()), 0o500);
+        const made = refusedWith(() => loadOrCreateInstallationId(layout(), 'a'.repeat(64)));
+        expect(made.path).toBe(`keys/${'a'.repeat(64)}.inst`);
+      } finally {
+        chmodSync(keysDir(layout()), 0o700);
+      }
+    });
+  },
+);

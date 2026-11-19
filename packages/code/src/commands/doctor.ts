@@ -58,9 +58,11 @@ import {
   listAppleDoubleKeyFiles,
   listPrivateKeyFingerprints,
   namesOfTails,
+  readingWhatTheDiskLets,
   readTail,
   recordNamedIn,
   tailsReadAt,
+  UnreadableDiskError,
   unreadLinesOf,
 } from '@mnema/chain';
 import { newerLinesFrom } from '@mnema/context';
@@ -151,6 +153,7 @@ export interface Finding {
     | 'stack'
     | 'record-page'
     | 'key-metadata'
+    | 'disk-part'
     | 'instructions'
     | 'agent-key'
     | 'merge-driver'
@@ -1144,11 +1147,64 @@ function keyMetadataFindings(ctx: DoctorContext): Finding[] {
   const trees = resolveTrees(ctx.cwd, ctx.env);
   const root = trees.projectPublic;
   if (root === undefined) return [];
+  try {
+    return listedAppleDoubleFiles(root);
+  } catch (error) {
+    // The folder is one of the parts `diskPartFindings` names: this check has nothing to say of it.
+    if (error instanceof UnreadableDiskError) return [];
+    throw error;
+  }
+}
+
+function listedAppleDoubleFiles(root: string): Finding[] {
   return listAppleDoubleKeyFiles({ root }).map((name) => ({
     topic: 'key-metadata' as const,
     state: 'attention' as const,
     line: `${oneLine(join(root, 'keys', name))} is macOS metadata, not a key: the readers skip it, and you can delete it.`,
   }));
+}
+
+/**
+ * The folders of keys and of locks this machine writes through, each opened for a listing: one the
+ * disk will not open is a finding that names where it is and what to do, never a line that says all
+ * is well, and never a write's refusal (doctor reads). The places are the record's own `keys/`, the
+ * identity's, and, inside a repository, the git directory's `locks/` and `keys/`.
+ */
+function diskPartFindings(ctx: DoctorContext): Finding[] {
+  const trees = resolveTrees(ctx.cwd, ctx.env);
+  const places: { readonly dir: string; readonly what: string }[] = [];
+  if (trees.projectPublic !== undefined) {
+    places.push({
+      dir: join(trees.projectPublic, 'keys'),
+      what: 'the keys folder of the project’s public record',
+    });
+  }
+  const machinery = trees.projectPublicMachinery;
+  if (machinery !== undefined) {
+    places.push(
+      { dir: join(machinery.shared, 'locks'), what: 'the locks folder kept in the git directory' },
+      { dir: join(machinery.checkout, 'keys'), what: 'the keys folder kept in the git directory' },
+    );
+  }
+  places.push({
+    dir: join(trees.keyRoot, 'keys'),
+    what: 'the identity’s keys folder in the mnema home',
+  });
+  const found: Finding[] = [];
+  for (const { dir, what } of places) {
+    if (!existsSync(dir)) continue;
+    try {
+      readingWhatTheDiskLets(dir, undefined, () => readdirSync(dir));
+    } catch (error) {
+      if (!(error instanceof UnreadableDiskError)) throw error;
+      found.push({
+        topic: 'disk-part',
+        state: 'attention',
+        line: `${what} (${oneLine(dir)}) is a part the disk does not let this mnema open: ${error.reason}. Every write is refused until it opens: give this user access to it, or put back the folder that belongs there.`,
+      });
+    }
+  }
+  return found;
 }
 
 /**
@@ -1602,6 +1658,7 @@ export function runDoctor(ctx: DoctorContext): { readonly findings: readonly Fin
       ...forkKeptAsideFindings(ctx),
       ...recordInGitFindings(ctx),
       ...keyMetadataFindings(ctx),
+      ...diskPartFindings(ctx),
       ...instructionsFindings(ctx),
       ...stackFindings(ctx),
       ...agentKeyFindings(ctx),

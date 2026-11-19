@@ -618,7 +618,7 @@ complete -c mnema -f -n '__mnema_at "site"' -l color -x -a 'auto always never'
 
 # mnema search
 complete -c mnema -f -n '__mnema_at "search"' -l kind -x -a 'memory observation decision task skill'
-complete -c mnema -f -n '__mnema_at "search"' -l scope -x -a 'public private global'
+complete -c mnema -f -n '__mnema_at "search"' -l scope -x -a 'public private global all'
 complete -c mnema -f -n '__mnema_at "search"' -l state -r
 complete -c mnema -f -n '__mnema_at "search"' -l from -r
 complete -c mnema -f -n '__mnema_at "search"' -l to -r

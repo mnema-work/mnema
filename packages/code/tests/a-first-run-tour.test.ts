@@ -37,6 +37,7 @@ import { type CliIo, run, start } from '../src/program.js';
 import { DRAW_THEIR_OWN_SCREEN } from '../src/repl/gate.js';
 import { pageLines, TOUR, TOUR_END, tourRowsOfInit } from '../src/tour/pages.js';
 import { onTheTour, theTourIsNew } from '../src/tour/run.js';
+import { VERSION } from '../src/version.js';
 import { TOUR_VERB } from '../src/wiring/tour.js';
 import { aMachineThatSawTheTour } from './support/a-machine-that-saw-the-tour.js';
 import { ESC, fakeTerminal, until, withoutLayout } from './support/console.js';
@@ -120,6 +121,7 @@ describe('the first bare name on a machine, at a terminal', () => {
     expect(JSON.parse(readFileSync(join(home, path), 'utf8'))).toEqual({
       starShown: false,
       tourSeen: true,
+      appliedVersion: VERSION,
     });
     expect(existsSync(join(folder, '.mnema'))).toBe(false);
 

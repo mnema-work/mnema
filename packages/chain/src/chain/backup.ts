@@ -61,6 +61,7 @@ import {
   publicKeyPath,
   registrationPath,
 } from './layout.js';
+import { readingWhatTheDiskLets } from './lines.js';
 
 /** The role a registration records for the cold key created at founding. */
 export const BACKUP_ROLE = 'backup';
@@ -120,7 +121,7 @@ export interface BackupKey {
 export function listRegistrations(keyRoot: ChainLayout): KeyRegistration[] {
   const dir = keysDir(keyRoot);
   if (!existsSync(dir)) return [];
-  return readdirSync(dir)
+  return readingWhatTheDiskLets(dir, 'keys', () => readdirSync(dir))
     .filter((name) => name.endsWith(REGISTRATION_SUFFIX))
     .map((name) => name.slice(0, -REGISTRATION_SUFFIX.length))
     .sort()

@@ -412,7 +412,7 @@ _mnema_values() {
     'check run:--color') echo 'auto always never' ;;
     'site:--color') echo 'auto always never' ;;
     'search:--kind') echo 'memory observation decision task skill' ;;
-    'search:--scope') echo 'public private global' ;;
+    'search:--scope') echo 'public private global all' ;;
     'search:--color') echo 'auto always never' ;;
     'show:--color') echo 'auto always never' ;;
     'timeline:--color') echo 'auto always never' ;;

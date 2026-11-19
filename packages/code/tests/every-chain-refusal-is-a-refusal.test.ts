@@ -109,6 +109,7 @@ const SESSION = {
   recordPage: { settled: () => [] },
   replacementsOwed: { take: () => [] },
   newTails: { take: () => [] },
+  updateNote: { take: () => [] },
   trees: { keyRoot: '/nowhere' },
   env: {},
 } as unknown as Session;

@@ -10,6 +10,7 @@
 
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { VERSION } from './version.js';
 
 export const MACHINE_STATE_FILE = 'machine-state.json';
 
@@ -21,6 +22,8 @@ export interface MachineState {
   readonly tourSeen: boolean;
   /** The version of mnema the last `mnema upgrade` that finished brought this machine's projects up to. */
   readonly appliedVersion?: string;
+  /** The version the line about an update not yet applied was said for, once, at a terminal. */
+  readonly noticedFor?: string;
   /** The file is there and cannot be read: it reads as shown, and nothing is written over it. */
   readonly unreadable?: true;
 }
@@ -40,19 +43,31 @@ export function readMachineState(dir: string): MachineState {
     if (parsed.appliedVersion !== undefined && typeof parsed.appliedVersion !== 'string') {
       return UNREADABLE;
     }
+    if (parsed.noticedFor !== undefined && typeof parsed.noticedFor !== 'string') return UNREADABLE;
     return {
       starShown: parsed.starShown === true,
       tourSeen: parsed.tourSeen === true,
       ...(parsed.appliedVersion === undefined ? {} : { appliedVersion: parsed.appliedVersion }),
+      ...(parsed.noticedFor === undefined ? {} : { noticedFor: parsed.noticedFor }),
     };
   } catch {
     return UNREADABLE;
   }
 }
 
-/** Writes the state whole, beside its final name first so a reader never sees half of it. */
-export function writeMachineState(dir: string, state: MachineState): void {
-  if (state.unreadable === true) return;
+/**
+ * Writes the state whole, beside its final name first so a reader never sees half of it.
+ *
+ * A file this call CREATES is made by the version that runs, on a machine where nothing older was run
+ * that kept a file, so it says that version was applied: a first run's tour or star must not make the
+ * next command read the machine as one an update left behind (`update-notice.ts`).
+ */
+export function writeMachineState(dir: string, given: MachineState): void {
+  if (given.unreadable === true) return;
+  const state =
+    given.appliedVersion === undefined && !existsSync(join(dir, MACHINE_STATE_FILE))
+      ? { ...given, appliedVersion: VERSION }
+      : given;
   mkdirSync(dir, { recursive: true });
   const staging = join(dir, `${MACHINE_STATE_FILE}.${process.pid}.tmp`);
   writeFileSync(
@@ -62,6 +77,7 @@ export function writeMachineState(dir: string, state: MachineState): void {
         starShown: state.starShown,
         tourSeen: state.tourSeen,
         ...(state.appliedVersion === undefined ? {} : { appliedVersion: state.appliedVersion }),
+        ...(state.noticedFor === undefined ? {} : { noticedFor: state.noticedFor }),
       },
       null,
       2,
