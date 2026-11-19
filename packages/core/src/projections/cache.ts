@@ -77,13 +77,7 @@ import {
   listObservationsAbout,
   memoriesSaying,
 } from './knowledge-store.js';
-import {
-  type ChainFrontier,
-  chainArrivals,
-  chainReplay,
-  type ReadProof,
-  type SignedFact,
-} from './order.js';
+import { type ChainFrontier, chainArrivals, chainReplay, type SignedFact } from './order.js';
 import { rebuild } from './rebuild.js';
 import {
   type AuthorshipFilter,
@@ -188,13 +182,6 @@ export interface CacheOptions {
   readonly persist?: boolean;
   /** Upcaster registry for reading the chain; defaults to the catalog's. */
   readonly upcasters?: UpcasterRegistry;
-  /**
-   * Where this machine's signed notes of what it wrote are (`ReadProof`). Without it the reading
-   * finds them itself: the shared place of a public tree inside a repository, then the tree's own
-   * `locks/`. A note that verifies proves the events of a write whose checkpoint did not land and
-   * of the act in progress; with none, they are served as not yet signed and govern nothing.
-   */
-  readonly proof?: ReadProof;
 }
 
 /**
@@ -306,7 +293,6 @@ export class ProjectionCache {
     private readonly upcasters: UpcasterRegistry,
     /** Whether the database is a file other processes share: false for memory, and after a fallback to it. */
     private persisted: boolean,
-    private readonly proof: ReadProof | undefined,
   ) {
     this.untouched = !persisted;
   }
@@ -332,14 +318,14 @@ export class ProjectionCache {
     // record, so the cache stays in memory as it does where it cannot write.
     const ownPlace = options.dbPath === undefined && chosenFile === undefined;
     if (path === IN_MEMORY || (ownPlace && cacheStandsAtALink(layout))) {
-      return new ProjectionCache(openMemory(), layout, upcasters, false, options.proof);
+      return new ProjectionCache(openMemory(), layout, upcasters, false);
     }
     // A named path is the caller's and fails loudly; the one this class chose is a cache and
     // gives way to memory: see {@link CacheOptions.persist}.
     if (options.dbPath !== undefined) {
       const db = openDatabase(path);
       ensureSchema(db);
-      return new ProjectionCache(db, layout, upcasters, true, options.proof);
+      return new ProjectionCache(db, layout, upcasters, true);
     }
     try {
       const db = openDatabase(path);
@@ -352,9 +338,9 @@ export class ProjectionCache {
         dropProjections(db);
         ensureSchema(db);
       }
-      return new ProjectionCache(db, layout, upcasters, true, options.proof);
+      return new ProjectionCache(db, layout, upcasters, true);
     } catch {
-      return new ProjectionCache(openMemory(), layout, upcasters, false, options.proof);
+      return new ProjectionCache(openMemory(), layout, upcasters, false);
     }
   }
 
@@ -501,7 +487,7 @@ export class ProjectionCache {
     if (arrived.why === 'AN_ARRIVAL_IS_NOT_SIGNED') {
       return {
         ...standing,
-        signed: chainReplay(this.layout, this.upcasters, true, this.proof).signed,
+        signed: chainReplay(this.layout, this.upcasters, true).signed,
       };
     }
     if (arrived.why !== 'AN_ARRIVAL_DOES_NOT_CHAIN' && arrived.why !== 'AN_ARRIVAL_IS_RETAINED') {
@@ -698,7 +684,7 @@ export class ProjectionCache {
   /** Replays the chain whole into the tables: the one place a rebuild is written. */
   private replay(): void {
     const before = this.persisted ? activeStampsBefore(this.layout) : {};
-    const replay = chainReplay(this.layout, this.upcasters, true, this.proof);
+    const replay = chainReplay(this.layout, this.upcasters, true);
     this.generation = inTransaction(
       this.db,
       () => {
