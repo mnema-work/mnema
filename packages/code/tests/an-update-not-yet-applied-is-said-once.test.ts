@@ -11,7 +11,15 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -21,7 +29,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { ListRootsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { MACHINE_STATE_FILE, readMachineState } from '../src/machine-state.js';
+import { MACHINE_STATE_FILE } from '../src/machine-state.js';
 import { SERVER_INSTRUCTIONS } from '../src/mcp/instructions.js';
 import { buildMcpServer } from '../src/mcp/server.js';
 import { updateIsNotApplied, updateLine, updateNote } from '../src/update-notice.js';
@@ -86,11 +94,10 @@ describe('the command line', () => {
     expect((await atATerminal('status')).bytes).not.toContain(LINE);
   }, 90_000);
 
-  it('says nothing on a machine that has no state, and writes the version down', async () => {
+  it('says nothing on a machine that has no state, and writes nothing', async () => {
     const ran = await atATerminal('status');
     expect(ran.bytes).not.toContain(LINE);
-    expect(readMachineState(machineDir()).appliedVersion).toBe(VERSION);
-    expect((await atATerminal('status')).bytes).not.toContain(LINE);
+    expect(existsSync(stateFile())).toBe(false);
   }, 90_000);
 
   it('says nothing, and marks nothing, with --json, in a hook or in a pipe', async () => {
@@ -168,6 +175,8 @@ describe('the MCP server', () => {
       blocks(await fresh.callTool({ name: 'search', arguments: {} })).join('\n'),
     ).not.toContain(NOTE);
     await fresh.close();
+    // The server only reads: it leaves the machine's directory as it found it.
+    expect(existsSync(stateFile())).toBe(false);
     anOlderMnemaWasHere({ appliedVersion: VERSION });
     const applied = await connect();
     expect(

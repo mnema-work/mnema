@@ -5,8 +5,8 @@
  * `doctor --after-update`) wrote into the machine's state file (`machine-state.ts`). The only thing read
  * is that one small file: no project, no network.
  *
- * A machine with no state file at all is a NEW installation, not an update: the running version is
- * written down in silence and nothing is said. A file that is there without a version belongs to a
+ * A machine with no state file at all is a NEW installation, not an update: nothing is said and nothing
+ * is written. A file that is there without a version belongs to a
  * machine an earlier mnema ran on, which no upgrade has brought up since, so it is behind.
  *
  * The command line says one line, once per machine and version, and only to a person at a terminal
@@ -16,12 +16,7 @@
 
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import {
-  MACHINE_STATE_FILE,
-  NOTHING_SHOWN,
-  readMachineState,
-  writeMachineState,
-} from './machine-state.js';
+import { MACHINE_STATE_FILE, readMachineState, writeMachineState } from './machine-state.js';
 import { isOlderThan } from './version.js';
 
 /** The line the command line prints on standard error. */
@@ -37,13 +32,14 @@ export function updateNote(version: string): string {
 /**
  * Whether the running version is ahead of what an upgrade last brought this machine to. Where it cannot
  * say (a state file that cannot be read, a directory that cannot be written) it is not: a doubt is silence.
+ *
+ * It only reads: a machine's directory is left as it was found (`init` and the server promise as much).
+ * The file a machine does get is made by the first thing that keeps one (the tour, the star, an upgrade),
+ * and `writeMachineState` puts the running version into a file it creates.
  */
 export function updateIsNotApplied(dir: string, version: string): boolean {
   try {
-    if (!existsSync(join(dir, MACHINE_STATE_FILE))) {
-      writeMachineState(dir, { ...NOTHING_SHOWN, appliedVersion: version });
-      return false;
-    }
+    if (!existsSync(join(dir, MACHINE_STATE_FILE))) return false;
     const state = readMachineState(dir);
     if (state.unreadable === true) return false;
     return state.appliedVersion === undefined || isOlderThan(state.appliedVersion, version);

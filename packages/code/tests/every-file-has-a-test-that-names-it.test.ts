@@ -1057,7 +1057,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-correction-becomes-a-proposal.test.ts': 15,
   'packages/code/tests/a-decision-recorded-twice-is-the-one-on-the-record.test.ts': 12,
   'packages/code/tests/a-directory-of-two-records-governs-nothing.test.ts': 15,
-  'packages/code/tests/a-first-run-tour.test.ts': 19,
+  'packages/code/tests/a-first-run-tour.test.ts': 20,
   'packages/code/tests/a-flag-declared-twice.test.ts': 9,
   'packages/code/tests/a-floor-under-the-window.test.ts': 17,
   'packages/code/tests/a-full-disk-says-whether-the-fact-landed.test.ts': 8,

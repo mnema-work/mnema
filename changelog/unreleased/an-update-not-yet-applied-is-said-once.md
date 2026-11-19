@@ -7,4 +7,5 @@ Added
   nothing. The MCP server adds one note to the first reply of a connection, right after any fact about the record's
   integrity, telling the person they can run `mnema upgrade` (the agent is told never to update on its own); it is not
   in the server's instructions nor in the text a session opens with. A machine with no state file is a new
-  installation: the version is written down and nothing is said. Nothing here touches the network.
+  installation: nothing is said and nothing is written (the file is made by the first thing that keeps one, with the
+  running version in it). Nothing here touches the network.
