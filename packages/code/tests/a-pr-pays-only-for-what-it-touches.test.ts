@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { jobsToRerun } from '../../../.github/rerun-a-cancelled-runner/select.mjs';
 import { corpusOf, decide, namedIn } from '../../../.github/what-a-pr-touches/decide.mjs';
+import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
 
 const read = (path: string): string =>
   readFileSync(fileURLToPath(new URL(`../../../${path}`, import.meta.url)), 'utf-8');
@@ -187,7 +188,12 @@ describe('a rename is read from both sides', () => {
       execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.com', ...args], {
         cwd: dir,
         encoding: 'utf-8',
-        env: { PATH: process.env.PATH ?? '', HOME: dir, GIT_CONFIG_NOSYSTEM: '1' },
+        env: {
+          PATH: process.env.PATH ?? '',
+          HOME: dir,
+          GIT_CONFIG_NOSYSTEM: '1',
+          GIT_CONFIG_GLOBAL: GIT_WITHOUT_MAINTENANCE,
+        },
       });
     try {
       git('init', '-q', '-b', 'main');

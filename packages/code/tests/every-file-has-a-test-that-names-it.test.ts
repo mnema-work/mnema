@@ -1093,7 +1093,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-picture-of-the-record.test.ts': 8,
   'packages/code/tests/a-plain-git-pull-carries-the-record.test.ts': 13,
   'packages/code/tests/a-power-cut-at-a-tails-birth-leaves-a-proof-the-next-write-rewrites.test.ts': 7,
-  'packages/code/tests/a-pr-pays-only-for-what-it-touches.test.ts': 5,
+  'packages/code/tests/a-pr-pays-only-for-what-it-touches.test.ts': 9,
   'packages/code/tests/a-private-rule-keeps-its-facts-private.test.ts': 12,
   'packages/code/tests/a-private-write-asks-git.test.ts': 14,
   'packages/code/tests/a-project-inherits-a-record.test.ts': 10,
