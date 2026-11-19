@@ -32,7 +32,13 @@ export function registerSearch(program: Command, wiring: Wiring): Declared {
         SEARCH_KINDS,
       ),
     )
-    .addOption(enumeratedOption('--scope <scope>', `only this tree: ${listed(SCOPES)}`, SCOPES))
+    .addOption(
+      enumeratedOption(
+        '--scope <scope>',
+        `only this tree: ${listed(SCOPES)}; leave it out, or say all, to search the three together`,
+        SCOPES,
+      ),
+    )
     .option('--state <state>', 'only records in this state NOW (excludes kinds that have none)')
     .option('--from <iso>', windowGloss('from', 'record'))
     .option('--to <iso>', windowGloss('to', 'record'))
@@ -58,7 +64,7 @@ export function registerSearch(program: Command, wiring: Wiring): Declared {
         const { runSearch } = await import('../commands/search.js');
         const { searchReport } = await import('../presentation/search.js');
         const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
-        const scope = parseScope(opts.scope, wiring);
+        const scope = parseScope(opts.scope === 'all' ? undefined : opts.scope, wiring);
         if (scope === INVALID) return;
         const limit = parseLimit(opts.limit, wiring);
         if (limit === INVALID_LIMIT) return;

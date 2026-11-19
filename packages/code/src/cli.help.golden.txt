@@ -976,7 +976,8 @@ $ mnema search --help
 | Options:
 |   --kind <kind>    only this kind of record: memory, observation, decision,
 |                    task, skill
-|   --scope <scope>  only this tree: public, private, global
+|   --scope <scope>  only this tree: public, private, global; leave it out, or say
+|                    all, to search the three together
 |   --state <state>  only records in this state NOW (excludes kinds that have
 |                    none)
 |   --from <iso>     only records at or after this ISO-8601 instant (inclusive)
