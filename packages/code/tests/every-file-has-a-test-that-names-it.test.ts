@@ -282,6 +282,8 @@ const LED_NOWHERE: Readonly<Record<string, string>> = {
     'The decisions of the workflow that assigns a claimed issue and frees it after 14 days, pure functions handed comments, issues and pull requests the case makes up, and a stand-in for GitHub that records what would be written. A script a workflow step runs, plain ESM under .github/, so the specifier is right and the scanner cannot follow it.',
   'packages/code/tests/an-issue-from-a-form-is-labelled.test.ts -> ../../../.github/label-an-issue/label.mjs':
     'The reader of the answers a form writes into an issue body and the labels they name, pure functions handed bodies the case makes up and a stand-in for GitHub that records what would be written. A script a workflow step runs, plain ESM under .github/, so the specifier is right and the scanner cannot follow it.',
+  'packages/code/tests/hidden-characters-in-a-pull-request-are-refused.test.ts -> ../../../.github/the-hidden-characters/check.mjs':
+    'The reader of what a pull request adds, which refuses a character that cannot be seen and marks a fork that touches what runs. Pure functions handed diffs and file lists here, and the command run on a repository the case makes. A script a workflow step runs, plain ESM under .github/, so the specifier is right and the scanner cannot follow it.',
   'packages/code/tests/the-fast-guards-say-what-they-check.test.ts -> ../../../.github/the-fast-guards/marked.mjs':
     'The finder of the marked guards, which the case walks to hold every one of them to a paragraph that says what it checks. Plain ESM under .github/, outside the packages/ walk, so the scanner cannot follow the specifier, which is right.',
   'packages/code/tests/the-fast-guards-say-what-they-check.test.ts -> ../../../.github/what-a-guard-checks/header.mjs':
@@ -1196,6 +1198,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/every-write-of-the-command-line-says-whose-it-is.test.ts': 4,
   'packages/code/tests/every-write-signs-what-it-wrote.test.ts': 41,
   'packages/code/tests/every-writer-passes-the-check-that-refuses-a-damaged-record.test.ts': 21,
+  'packages/code/tests/hidden-characters-in-a-pull-request-are-refused.test.ts': 8,
   'packages/code/tests/host-contract/a-hook-hands-over-ten-thousand-units.test.ts': 5,
   'packages/code/tests/host-contract/a-note-of-the-hosts-memory-is-copied.test.ts': 4,
   'packages/code/tests/host-contract/a-refusal-and-a-pause-hold-the-write.test.ts': 6,
@@ -2446,8 +2449,8 @@ describe('every file has a test that names it', () => {
     });
     // Non-vacuity in both parts: the walk really did follow specifiers, and the list
     // really does hold rows; a scanner returning nothing would satisfy the line above.
-    expect(unresolved.length).toBe(32);
-    expect(Object.keys(LED_NOWHERE)).toHaveLength(32);
+    expect(unresolved.length).toBe(33);
+    expect(Object.keys(LED_NOWHERE)).toHaveLength(33);
     // And each row says what THAT module is, by the ledger's rule, at the ledger's floor.
     const why = Object.values(LED_NOWHERE);
     expect(new Set(why).size).toBe(why.length);

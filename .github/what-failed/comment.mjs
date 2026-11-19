@@ -18,7 +18,13 @@
  *   - the one mention the comment makes is the welcome of a first pull request, built from the
  *     login the API gave for the pull request's author;
  *   - one comment per pull request, found by the hidden marker it opens with AND by being written
- *     by the workflow's own account, and rewritten in place on every run.
+ *     by the workflow's own account, and rewritten in place on every run;
+ *   - a pull request from a fork that changes what runs (a workflow, a dependency, the lockfile, the npm
+ *     settings, a build or install script) gets the label `needs security review`. The files are the
+ *     ones the API lists for the pull request, matched by `securityReview` in
+ *     `.github/the-hidden-characters/check.mjs`; nothing of the pull request is read or run, and the
+ *     label is a constant. The job's summary names each file, with the control and format characters
+ *     of its name shown by their code.
  *
  * WHAT IT DOES NOT DO. It does not judge whether the report is TRUE: the pull request's run can say
  * anything about itself, and the checks on the pull request are the authority. It says only what
@@ -26,12 +32,41 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync, statSync } from 'node:fs';
+import { appendFileSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 /** The first line of every comment this writes, and how its own comment is found again. */
 export const MARKER =
   '<!-- what-failed: one comment per pull request, rewritten after each run -->';
+
+/** The label a pull request from a fork gets when it changes what runs. */
+export const NEEDS_REVIEW_LABEL = 'needs security review';
+
+/**
+ * Why a file asks a person to look when a fork changes it, or null. A workflow or script under
+ * `.github/`, a `package.json`, the lockfile and workspace settings, an `.npmrc`, a `build/` or
+ * `scripts/` directory, a shell script: what runs on a machine, or decides what is installed on one.
+ * It names paths, not what the change does: it asks for a look and does not say the change is unsafe.
+ *
+ * @param {string} file
+ * @returns {string | null}
+ */
+export function whyReview(file) {
+  const parts = file.split('/');
+  const base = parts[parts.length - 1] ?? '';
+  if (file.startsWith('.github/')) return 'a workflow, an action or a script under .github/';
+  if (base === 'package.json')
+    return 'a package.json, which names dependencies and install scripts';
+  if (base === 'pnpm-lock.yaml' || base === 'pnpm-workspace.yaml') {
+    return 'the lockfile or the workspace settings, which decide what is installed';
+  }
+  if (base === '.npmrc') return 'an .npmrc, which changes where and how packages are installed';
+  if (parts.slice(0, -1).some((part) => part === 'build' || part === 'scripts')) {
+    return 'a build or install script';
+  }
+  if (base.endsWith('.sh')) return 'a shell script';
+  return null;
+}
 
 /** The account a workflow's `GITHUB_TOKEN` writes as. */
 const OUR_ACCOUNT = 'github-actions[bot]';
@@ -237,6 +272,9 @@ function inert(text) {
   return out;
 }
 
+/** A file name as one line of the log: made inert, with the tab, the line end and the backtick shown as `?`. @param {string} name */
+const nameOf = (name) => inert(name).replace(/[\t\n`]/g, '?');
+
 /** What a reader cannot see, or what reorders or breaks the text around it. */
 const HIDDEN = /[\p{Cc}\p{Cf}\u2028\u2029\u{E0000}-\u{E01EF}]/u;
 
@@ -433,6 +471,7 @@ function compose(input, room) {
  *   list: (path: string) => Promise<unknown[]>,
  *   post: (path: string, body: string) => Promise<void>,
  *   patch: (path: string, body: string) => Promise<void>,
+ *   label: (number: number, name: string) => Promise<void>,
  * }} Api
  */
 
@@ -475,6 +514,21 @@ export async function tell({ event, report, why, api, repository }) {
 
   const done = [];
   for (const pull of /** @type {Record<string, any>[]} */ (pulls)) {
+    // A fork's pull request that changes what runs is marked for a person, whatever the run said.
+    if (pull.head.repo.full_name !== repository) {
+      const files = (await api.list(`repos/${repository}/pulls/${pull.number}/files?per_page=100`))
+        .flatMap((one) => (isObject(one) ? [one.filename, one.previous_filename] : []))
+        .filter((name) => typeof name === 'string');
+      const asked = /** @type {string[]} */ (files).flatMap((file) => {
+        const why = whyReview(file);
+        return why === null ? [] : [{ file, why }];
+      });
+      if (asked.length > 0) {
+        await api.label(pull.number, NEEDS_REVIEW_LABEL);
+        done.push(`#${pull.number}: marked "${NEEDS_REVIEW_LABEL}", from a fork that changes:`);
+        for (const one of asked) done.push(`  - ${nameOf(one.file)}: ${one.why}`);
+      }
+    }
     const firstTime = FIRST_TIME.has(pull.author_association);
     const login = isObject(pull.user) && typeof pull.user.login === 'string' ? pull.user.login : '';
     const comments = await api.list(
@@ -521,7 +575,7 @@ export async function tell({ event, report, why, api, repository }) {
  *
  * @returns {Api}
  */
-export function githubThroughGh() {
+export function githubThroughGh(repository = process.env.GITHUB_REPOSITORY ?? '') {
   /**
    * @param {string[]} args
    * @param {string} [input]
@@ -537,6 +591,37 @@ export function githubThroughGh() {
     },
     async patch(path, body) {
       gh(['api', '--method', 'PATCH', path, '--input', '-'], JSON.stringify({ body }));
+    },
+    async label(number, name) {
+      try {
+        gh(
+          [
+            'api',
+            '--method',
+            'POST',
+            `repos/${repository}/labels`,
+            '-f',
+            `name=${name}`,
+            '-f',
+            'color=d93f0b',
+            '-f',
+            'description=A pull request from a fork that changes what runs: read it before it is merged',
+          ],
+          undefined,
+        );
+      } catch (error) {
+        // The label is there already: 422, `already_exists`. Anything else is the run's to fail on.
+        if (
+          !String(/** @type {{ stderr?: unknown }} */ (error).stderr ?? error).includes(
+            'already_exists',
+          )
+        )
+          throw error;
+      }
+      gh(
+        ['api', '--method', 'POST', `repos/${repository}/issues/${number}/labels`, '--input', '-'],
+        JSON.stringify({ labels: [name] }),
+      );
     },
   };
 }
@@ -573,7 +658,15 @@ async function main() {
     api: githubThroughGh(),
     repository: process.env.GITHUB_REPOSITORY ?? '',
   });
-  process.stdout.write(`${done.join('\n') || 'no open pull request has this head'}\n`);
+  const said = `${done.join('\n') || 'no open pull request has this head'}\n`;
+  process.stdout.write(said);
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    const fence = '`'.repeat(3);
+    appendFileSync(
+      process.env.GITHUB_STEP_SUMMARY,
+      `## What the comment did\n\n${fence}text\n${said}${fence}\n`,
+    );
+  }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) await main();

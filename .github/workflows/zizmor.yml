@@ -1,0 +1,54 @@
+name: Workflow audit
+
+# WHAT THIS IS. `zizmor`, a static reader of GitHub Actions workflows, over `.github/workflows`: a
+# checkout that leaves its credential on disk, a trigger that runs a stranger's text with a token, an
+# expression of the event pasted into a shell line, a permission wider than the job needs, a package
+# installed outside the lockfile. It runs nothing of the repository.
+#
+# A FINDING FAILS THE JOB, and the annotations name the file and line. There is no SARIF upload and
+# no blanket configuration: a finding is fixed in the workflow, or it carries `# zizmor: ignore[rule]`
+# on its own line with the reason after it, so the ignore is read next to the thing it excuses.
+#
+# THE TOOL IS PINNED: the action by the SHA of its commit, and `zizmor` itself by the exact version
+# below, so a new release of either is a diff someone reads before it changes what is flagged. Its
+# online audits ask the GitHub API about the actions a workflow uses (a SHA that is not on the tag it
+# claims); they use this job's read-only token.
+#
+# IT RUNS on a pull request that touches a workflow or this file, on `main` when one changes, and by
+# hand. It is not one of the checks a pull request must carry until the maintainer makes it one.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/**'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zizmor:
+    name: workflows (zizmor)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
+        with:
+          version: 1.32.0
+          inputs: .github/workflows
+          advanced-security: false

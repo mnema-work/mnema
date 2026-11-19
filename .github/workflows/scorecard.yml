@@ -1,0 +1,56 @@
+name: Scorecard
+
+# WHAT THIS IS. The OpenSSF Scorecard: a score of how the repository holds the practices that make
+# a supply-chain attack harder (pinned dependencies, narrow workflow tokens, a branch that needs
+# review, a security policy, signed releases, a fuzzer or a scanner). It reads the repository's
+# settings and history through the API and runs nothing of it.
+#
+# THE RESULT goes two places: to code scanning as a SARIF file, where each check that scores low
+# is an alert the maintainer judges, and, with `publish_results`, to the Scorecard service, which
+# serves the badge in the README. Publishing makes the score and the checks public; they describe
+# a public repository.
+#
+# IT RUNS ONCE A WEEK, on `main` when it changes, and by hand. It is never a gate: a score is read,
+# not waived. The job holds nothing the action does not ask for (`id-token` is how the service
+# knows the result comes from this workflow, and the service refuses a workflow with any other
+# step in this job).
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Wednesdays, 05:30 UTC.
+    - cron: '30 5 * * 3'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analysis:
+    name: scorecard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e # v2.5.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+      - uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          sarif_file: results.sarif
+          category: scorecard

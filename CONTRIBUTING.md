@@ -301,6 +301,10 @@ be able to explain any line.
 - **A first response from a person within 3 working days**, on a pull request or an issue. If you have
   heard nothing after that, add one comment that mentions the maintainer listed in
   [`.github/CODEOWNERS`](.github/CODEOWNERS). That is the expected way to ask, not a nuisance.
+- **Two checks read what a pull request adds.** One refuses an invisible or bidirectional character (such as U+202E or a
+  zero-width space) in an added line and names the file and line; write the escape instead. The other puts the label
+  `needs security review` on a pull request from a fork that changes a workflow, a dependency, the lockfile, the npm
+  settings or a build or install script, so a maintainer reads those files first. The label is not a verdict.
 - **Once CI has run on your first pull request, an automatic comment welcomes you** and says what failed and
   the command that fixes it, or that every check passed (see the comment CI writes, described under
   [A pull request](#a-pull-request)). A first pull request from a fork waits for a maintainer to approve

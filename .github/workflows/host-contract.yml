@@ -92,6 +92,8 @@ jobs:
         version: ${{ fromJSON(contains(fromJSON('["schedule","workflow_dispatch"]'), github.event_name) && '["stable","latest"]' || '["2.1.311"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
@@ -112,7 +114,7 @@ jobs:
           WANTED: ${{ matrix.version }}
           # The vendor's release signing key, by the fingerprint of its primary key.
           SIGNING_KEY: 31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE
-        run: |
+        run: | # zizmor: ignore[adhoc-packages] the host CLI is what this contract exercises; its SHA-256 is checked against the vendor manifest next
           set -euo pipefail
           case "$WANTED" in
             stable|latest) VERSION=$(npm view @anthropic-ai/claude-code "dist-tags.$WANTED") ;;
@@ -187,6 +189,8 @@ jobs:
         version: ${{ fromJSON(contains(fromJSON('["schedule","workflow_dispatch"]'), github.event_name) && '["stable"]' || '["1.139.0"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
@@ -246,6 +250,8 @@ jobs:
         version: ${{ fromJSON(contains(fromJSON('["schedule","workflow_dispatch"]'), github.event_name) && '["latest"]' || '["0.167.0"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
@@ -264,7 +270,7 @@ jobs:
       - name: Install the host and check its signatures and its provenance
         env:
           WANTED: ${{ matrix.version }}
-        run: |
+        run: | # zizmor: ignore[adhoc-packages] the host CLI is what this contract exercises; its SHA-256 is checked against the vendor manifest next
           set -euo pipefail
           case "$WANTED" in
             latest) VERSION=$(npm view @openai/codex dist-tags.latest) ;;
@@ -356,6 +362,8 @@ jobs:
         version: ${{ fromJSON(contains(fromJSON('["schedule","workflow_dispatch"]'), github.event_name) && '["latest"]' || '["1.0.108"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
@@ -374,7 +382,7 @@ jobs:
       - name: Install the host and check its signatures
         env:
           WANTED: ${{ matrix.version }}
-        run: |
+        run: | # zizmor: ignore[adhoc-packages] the host CLI is what this contract exercises; its SHA-256 is checked against the vendor manifest next
           set -euo pipefail
           case "$WANTED" in
             latest) VERSION=$(npm view @github/copilot dist-tags.latest) ;;
@@ -430,6 +438,8 @@ jobs:
         version: ${{ fromJSON(contains(fromJSON('["schedule","workflow_dispatch"]'), github.event_name) && '["latest"]' || '["1.18.35"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
@@ -448,7 +458,7 @@ jobs:
       - name: Install the host and check its signatures
         env:
           WANTED: ${{ matrix.version }}
-        run: |
+        run: | # zizmor: ignore[adhoc-packages] the host CLI is what this contract exercises; its SHA-256 is checked against the vendor manifest next
           set -euo pipefail
           case "$WANTED" in
             latest) VERSION=$(npm view opencode-ai dist-tags.latest) ;;
@@ -504,6 +514,8 @@ jobs:
         version: ${{ fromJSON(contains(fromJSON('["schedule","workflow_dispatch"]'), github.event_name) && '["latest"]' || '["0.63.0"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
@@ -522,7 +534,7 @@ jobs:
       - name: Install the host and check its signatures
         env:
           WANTED: ${{ matrix.version }}
-        run: |
+        run: | # zizmor: ignore[adhoc-packages] the host CLI is what this contract exercises; its SHA-256 is checked against the vendor manifest next
           set -euo pipefail
           case "$WANTED" in
             latest) VERSION=$(npm view @google/gemini-cli dist-tags.latest) ;;
@@ -577,6 +589,8 @@ jobs:
         version: ${{ fromJSON(contains(fromJSON('["schedule","workflow_dispatch"]'), github.event_name) && '["latest"]' || '["0.26.1"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
@@ -595,7 +609,7 @@ jobs:
       - name: Install the host and check its signatures
         env:
           WANTED: ${{ matrix.version }}
-        run: |
+        run: | # zizmor: ignore[adhoc-packages] the host CLI is what this contract exercises; its SHA-256 is checked against the vendor manifest next
           set -euo pipefail
           case "$WANTED" in
             latest) VERSION=$(npm view @qwen-code/qwen-code dist-tags.latest) ;;
