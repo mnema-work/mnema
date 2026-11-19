@@ -14,7 +14,7 @@ name: Rerun a cancelled runner
 # GitHub starts it only from the workflow file on the default branch.
 
 on:
-  workflow_run:
+  workflow_run: # zizmor: ignore[dangerous-triggers] checks out no pull request code and reads the jobs as JSON data; the only write is a rerun
     workflows: [CI]
     types: [completed]
 

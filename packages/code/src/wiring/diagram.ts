@@ -66,7 +66,7 @@ export function registerDiagram(program: Command, wiring: Wiring): Declared {
         reportUsage(wiring, `\`diagram ${subject}\` needs the id of the entity to draw.`);
         return;
       }
-      const { linkBreakNotice } = await import('./integrity.js');
+      const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
       if (subject === 'timeline') {
         const { anchorText } = await import('../anchors.js');
         const { runTimeline } = await import('../commands/timeline.js');
@@ -77,6 +77,7 @@ export function registerDiagram(program: Command, wiring: Wiring): Declared {
           return;
         }
         for (const line of linkBreakNotice(result.linkBreaks)) io.err(render(line));
+        for (const line of newerLinesNotice(result.newerLines, 'the record')) io.err(render(line));
         writeLines(
           io,
           timelineDiagram(id, result.entries, (entry) => {
@@ -95,6 +96,7 @@ export function registerDiagram(program: Command, wiring: Wiring): Declared {
         return;
       }
       for (const line of linkBreakNotice(result.linkBreaks)) io.err(render(line));
+      for (const line of newerLinesNotice(result.newerLines, 'the record')) io.err(render(line));
       writeLines(io, referencesDiagram(result.graph));
     });
   return readsTheRecord(diagram);

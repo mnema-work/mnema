@@ -36,6 +36,7 @@ import {
   writeFileSync,
   writeSync,
 } from 'node:fs';
+import { basename } from 'node:path';
 import { CodedError } from './coded-error.js';
 import { syncDirectory, syncFile, writeFileDurably } from './durable.js';
 import {
@@ -68,6 +69,7 @@ import {
   privateKeyPath,
   publicKeyPath,
 } from './layout.js';
+import { readingWhatTheDiskLets, refusedByTheDisk } from './lines.js';
 import { sleepSync } from './sleep.js';
 import { readCommittedKeyFile, refuseLinks } from './store.js';
 import { TailBusyError, withTailLock } from './tail-lock.js';
@@ -229,7 +231,7 @@ const PRIVATE_KEY_SUFFIX = '.key';
 export function listPrivateKeyFingerprints(layout: ChainLayout): string[] {
   const dir = keysDir(layout);
   if (!existsSync(dir)) return [];
-  return readdirSync(dir)
+  return listedInKeys(dir)
     .filter((name) => name.endsWith(PRIVATE_KEY_SUFFIX))
     .map((name) => name.slice(0, -PRIVATE_KEY_SUFFIX.length));
 }
@@ -303,6 +305,14 @@ export function persistKeyPair(
   return privatePath;
 }
 
+/** Where a file of a key folder is in the record: `keys/<name>`, as a refusal of the part says it. */
+const inKeys = (path: string): string => `keys/${basename(path)}`;
+
+/** The names in the key folder (`keys`) or the cold backup's (`backup`), or the folder named as a part the disk will not open. */
+function listedInKeys(dir: string): string[] {
+  return readingWhatTheDiskLets(dir, basename(dir), () => readdirSync(dir));
+}
+
 /**
  * Every private key file under a key root: this machine's keys, and the cold backup `init`
  * made. Both are key material at rest, and both are what a passphrase is for.
@@ -311,7 +321,7 @@ export function listPrivateKeyFiles(layout: ChainLayout): string[] {
   const files: string[] = [];
   for (const dir of [keysDir(layout), backupDir(layout)]) {
     if (!existsSync(dir)) continue;
-    for (const name of readdirSync(dir).sort()) {
+    for (const name of listedInKeys(dir).sort()) {
       if (name.endsWith(PRIVATE_KEY_SUFFIX)) files.push(`${dir}/${name}`);
     }
   }
@@ -402,8 +412,10 @@ export function unprotectPrivateKeys(layout: ChainLayout, passphrase: string): K
 export function materializePublicKey(chainLayout: ChainLayout, key: PublicHalf): void {
   const path = publicKeyPath(chainLayout, key.fingerprint);
   if (existsSync(path)) return;
-  mkdirSync(keysDir(chainLayout), { recursive: true });
-  writeFileDurably(path, publicKeyToPem(key.publicKey));
+  readingWhatTheDiskLets(path, inKeys(path), () => {
+    mkdirSync(keysDir(chainLayout), { recursive: true });
+    writeFileDurably(path, publicKeyToPem(key.publicKey));
+  });
 }
 
 /**
@@ -710,7 +722,7 @@ function readInstallationId(path: string, deadline: number): string | undefined 
       text = readFileSync(path, 'utf-8');
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
-      throw error;
+      throw refusedByTheDisk(error, path, inKeys(path)) ?? error;
     }
     const id = text.trim();
     if (id.length > 0) return id;
@@ -741,7 +753,7 @@ export function mintInstallationId(
     fd = openSync(path, 'wx', 0o600);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'EEXIST') return undefined;
-    throw error;
+    throw refusedByTheDisk(error, path, inKeys(path)) ?? error;
   }
   try {
     writeSync(fd, `${installationId}\n`);
@@ -765,7 +777,9 @@ export function mintInstallationId(
 export function readAnchor(layout: ChainLayout, fingerprint: string): string | null {
   const path = anchorPath(layout, fingerprint);
   if (!existsSync(path)) return null;
-  const value = readFileSync(path, 'utf-8').trim();
+  const value = readingWhatTheDiskLets(path, inKeys(path), () =>
+    readFileSync(path, 'utf-8'),
+  ).trim();
   return value.length > 0 ? value : null;
 }
 
@@ -855,7 +869,7 @@ export function ensureKeyRootIgnored(keyRoot: ChainLayout): void {
 export function listAnchoredFingerprints(layout: ChainLayout): string[] {
   const dir = keysDir(layout);
   if (!existsSync(dir)) return [];
-  return readdirSync(dir)
+  return listedInKeys(dir)
     .filter((name) => name.endsWith(ANCHOR_SUFFIX))
     .map((name) => name.slice(0, -ANCHOR_SUFFIX.length))
     .sort();

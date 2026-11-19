@@ -30,12 +30,14 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join, relative, resolve } from 'node:path';
 import { catalogUpcasters, ensureTree, readingWhatTheDiskLets, verify } from '@mnema/chain';
+import type { NewerLines } from '@mnema/context';
 import { type DiscoveryEnv, orderedEvents, realOfMaybeMissing, resolveTrees } from '@mnema/core';
 import { inAWorkTree } from '../git-log.js';
 import { tailsOfFiles } from '../site/browser/tails.js';
 import { pageModel } from '../site/model.js';
 import { renderPage, type SiteHead } from '../site/page.js';
 import { theSiteVerifier } from '../site/verifier-bundle.js';
+import { newerLinesOfTrees } from '../tree-sources.js';
 
 /** What the site command needs: injected so it is testable. */
 export interface SiteContext {
@@ -55,6 +57,8 @@ export interface SiteDone {
   readonly events: number;
   /** How many of the record's files the page carries for its own verification. */
   readonly files: number;
+  /** What a newer mnema wrote into the public tree that this one reads past (ADR-140). */
+  readonly newerLines?: NewerLines;
   /**
    * What the chain says of the public tree, so a person about to publish a record that does not
    * verify is told here and not only by the page: the page says it to its readers, and the
@@ -270,5 +274,6 @@ export function runSite(
     files: Object.keys(files).length,
     verdict: { ok: ruled.ok, summary: ruled.summary },
     git: inAWorkTree(publicRoot),
+    ...newerLinesOfTrees(trees, ['public']),
   };
 }

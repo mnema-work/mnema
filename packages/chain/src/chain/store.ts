@@ -366,7 +366,7 @@ export const APPLE_DOUBLE_PREFIX = '._';
 export function listAppleDoubleKeyFiles(layout: ChainLayout): string[] {
   const dir = keysDir(layout);
   if (!existsSync(dir)) return [];
-  return readdirSync(dir)
+  return readingWhatTheDiskLets(dir, 'keys', () => readdirSync(dir))
     .filter((name) => name.endsWith('.pub') && name.startsWith(APPLE_DOUBLE_PREFIX))
     .sort();
 }
@@ -381,7 +381,7 @@ export function listAppleDoubleKeyFiles(layout: ChainLayout): string[] {
 export function listPublicKeyFingerprints(layout: ChainLayout): string[] {
   const dir = keysDir(layout);
   if (!existsSync(dir)) return [];
-  return readdirSync(dir)
+  return readingWhatTheDiskLets(dir, 'keys', () => readdirSync(dir))
     .filter((name) => name.endsWith('.pub') && !name.startsWith(APPLE_DOUBLE_PREFIX))
     .map((name) => name.slice(0, -'.pub'.length))
     .sort();

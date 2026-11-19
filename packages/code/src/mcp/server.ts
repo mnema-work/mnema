@@ -78,7 +78,7 @@
  */
 
 import { existsSync } from 'node:fs';
-import { CodedError, UnreadableLineError } from '@mnema/chain';
+import { CodedError, UnreadableDiskError, UnreadableLineError } from '@mnema/chain';
 import { REFERENCE_DEFAULT_DEPTH, REFERENCE_MAX_DEPTH } from '@mnema/context';
 import {
   canonicalIdentity,
@@ -149,7 +149,10 @@ import {
   windowDeclaration,
   windowGloss,
 } from '../vocabulary.js';
-import { refusalOfAnUnreadableRecord } from '../what-a-write-meets.js';
+import {
+  refusalOfAnUnreadableRecord,
+  refusalOfAPartForARecordingAct,
+} from '../what-a-write-meets.js';
 import type { ClientWorkspace } from './context.js';
 import { SERVER_INSTRUCTIONS } from './instructions.js';
 import { armSessionClose, type Lifecycle } from './lifecycle.js';
@@ -939,6 +942,15 @@ export function answeringThrownRefusals<Input extends ZodRawShapeCompat | undefi
     try {
       return await called(...args);
     } catch (error) {
+      if (error instanceof UnreadableDiskError && effect === 'mutates') {
+        // A part of the record the disk will not open, met by an act that records: its own code, and
+        // words for an act that names no path (the refusal of a line speaks of the path of an edit).
+        const session = await ensureSession();
+        return refused(session, {
+          code: 'UNREADABLE_PART',
+          message: `${refusalOfAPartForARecordingAct(error, workspaceTrees(session))} ${NOT_RECORDED}`,
+        });
+      }
       if (error instanceof UnreadableLineError && effect === 'mutates') {
         // A part of the record this mnema cannot read stops a write: said with its place and the way out,
         // as the command line says it, and not as the reader's one-line message.

@@ -33,6 +33,8 @@ export function registerExposure(program: Command, wiring: Wiring): Declared {
         reportRefusal(wiring, result);
         return;
       }
+      const { newerLinesNotice } = await import('./integrity.js');
+      for (const line of newerLinesNotice(result.newerLines, 'the record')) io.err(render(line));
       if (opts.json === true) {
         io.out(JSON.stringify(result.report, null, 2));
         return;

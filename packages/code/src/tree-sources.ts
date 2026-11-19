@@ -39,7 +39,7 @@ import {
   replayingRecordProbe,
   type Scope,
 } from '@mnema/core';
-import type { ScopedTree } from './intelligence-source.js';
+import { recordTrees, type ScopedTree } from './intelligence-source.js';
 import type { ScopedLinkBreak } from './record-integrity.js';
 
 /** The trees a composed read opens, in a fixed order. */
@@ -370,6 +370,23 @@ export function newerLinesIn(sources: readonly ScopedCache[]): {
 } {
   const newer = newerLinesOf(sources.map((source) => source.cache));
   return newer === undefined ? {} : { newerLines: newer };
+}
+
+/**
+ * {@link newerLinesIn} for a read that folds the tails itself and holds no cache: the trees (or the
+ * `scopes` of them) are replayed in memory for this one question and closed, so nothing is written
+ * into any tree and the sentence is the one every other read says, off the same fold of the same lines.
+ */
+export function newerLinesOfTrees(
+  trees: ResolvedTrees,
+  scopes?: readonly Scope[],
+): { readonly newerLines?: NewerLines } {
+  return withTreesRead(
+    recordTrees(trees, undefined).filter(
+      (one) => scopes === undefined || scopes.includes(one.scope),
+    ),
+    newerLinesIn,
+  );
 }
 
 /**

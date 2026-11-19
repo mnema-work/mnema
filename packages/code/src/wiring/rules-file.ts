@@ -34,7 +34,7 @@ export function registerRulesFile(program: Command, wiring: Wiring): Declared {
     )
     .action(async (opts: { host: string }) => {
       const { runRulesFile } = await import('../commands/rules-file.js');
-      const { linkBreakNotice } = await import('./integrity.js');
+      const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
       const { WHERE_A_HOST_READS, WHO_MATCHES } = await import('../host-rules-file.js');
       const { fact } = await import('../presentation/detail.js');
       const host = RULES_FILE_HOSTS.find((one) => one === opts.host);
@@ -49,6 +49,7 @@ export function registerRulesFile(program: Command, wiring: Wiring): Declared {
       }
       // BEFORE the file, and on the other stream, so it survives a redirect.
       for (const line of linkBreakNotice(done.linkBreaks)) io.err(render(line));
+      for (const line of newerLinesNotice(done.newerLines, 'the record')) io.err(render(line));
       const say = (line: string, depth = 0) => io.err(render(fact(line, depth)));
       if (done.text === undefined) {
         say(

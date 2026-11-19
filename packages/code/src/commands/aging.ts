@@ -19,11 +19,13 @@
  */
 
 import { dirname } from 'node:path';
+import type { NewerLines } from '@mnema/context';
 import { type DecisionState, type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { readDecisionFacts } from '../decisions-in-git.js';
 import { commitsSince, inAWorkTree, isShallow } from '../git-log.js';
 import {
   linkBreaksOf,
+  newerLinesIn,
   type ScopedLinkBreak,
   THE_READING_THAT_OPENED_THESE,
   withScopedCaches,
@@ -66,6 +68,8 @@ export interface AgingDone {
   readonly looked: number;
   readonly aged: readonly Aged[];
   readonly linkBreaks: readonly ScopedLinkBreak[];
+  /** What a newer mnema wrote that this one reads past, when it wrote any (ADR-140). */
+  readonly newerLines?: NewerLines;
 }
 
 /** The read was refused before it ran. */
@@ -109,6 +113,7 @@ export function runAging(
       looked: asked.length,
       aged,
       linkBreaks: linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE),
+      ...newerLinesIn(sources),
     };
   });
 }

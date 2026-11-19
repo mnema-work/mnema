@@ -337,6 +337,7 @@ export const FROZEN: ReadonlySet<string> = new Set([
   'packages/code/tests/cli-e2e.test.ts',
   'packages/code/tests/events-not-in-git-are-said.test.ts',
   'packages/code/tests/every-integrity-case-runs-in-every-cache-state.test.ts',
+  'packages/code/tests/every-read-verb-says-where-a-newer-mnema-wrote.test.ts',
   'packages/code/tests/every-sandbox-is-removed-where-it-was-made.test.ts',
   'packages/code/tests/every-tool-says-if-it-writes.test.ts',
   'packages/code/tests/every-verb-says-if-it-writes.test.ts',

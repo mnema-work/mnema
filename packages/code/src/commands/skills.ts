@@ -32,10 +32,12 @@
  * provenance is not serving it, and this read never touches a body at all).
  */
 
+import type { NewerLines } from '@mnema/context';
 import { consultationsByRun, type PatternProvenance, patternProvenance } from '@mnema/context';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import {
   linkBreaksOf,
+  newerLinesIn,
   type ScopedLinkBreak,
   THE_READING_THAT_OPENED_THESE,
   withScopedCaches,
@@ -68,6 +70,8 @@ export interface SkillsDone {
    * says so.
    */
   readonly linkBreaks: readonly ScopedLinkBreak[];
+  /** What a newer mnema wrote that this one reads past, when it wrote any (ADR-140). */
+  readonly newerLines?: NewerLines;
 }
 
 /**
@@ -80,6 +84,7 @@ export function runSkills(ctx: SkillsContext): SkillsDone {
   return withScopedCaches(trees, (sources) => ({
     ok: true,
     linkBreaks: linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE),
+    ...newerLinesIn(sources),
     patterns: patternProvenance(sources),
     consultations: consultationsByRun(sources),
   }));

@@ -69,6 +69,8 @@ export function registerExport(program: Command, wiring: Wiring): Declared {
         // consumer piping this into a SIEM must receive records and nothing else, and
         // whoever is watching the terminal is the party who needs to know what they are
         // about to forward.
+        const { newerLinesNotice } = await import('./integrity.js');
+        for (const line of newerLinesNotice(result.newerLines, 'the record')) io.err(render(line));
         io.err(render(fact(`covering: ${result.trees.join(', ')}`)));
         // One line per event, each a complete JSON object. `JSON.stringify` with no spacing
         // is what keeps that true: a pretty-printed object spans lines, and the format's one

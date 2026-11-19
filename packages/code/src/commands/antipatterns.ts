@@ -45,11 +45,13 @@ import { catalogUpcasters } from '@mnema/chain';
 import {
   type Antipatterns,
   antipatterns,
+  type NewerLines,
   type PatternMoveWitness,
   patternMoveWitness,
 } from '@mnema/context';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { recordEvents } from '../intelligence-source.js';
+import { newerLinesOfTrees } from '../tree-sources.js';
 
 /** What the antipatterns command needs: injected so it is testable. */
 export interface AntipatternsContext {
@@ -78,6 +80,8 @@ export interface AntipatternsDone {
    * side effect of living in the same file.
    */
   readonly moves: PatternMoveWitness;
+  /** What a newer mnema wrote that this one reads past, when it wrote any (ADR-140). */
+  readonly newerLines?: NewerLines;
 }
 
 /** The read was refused: there is no project to inspect. */
@@ -98,5 +102,10 @@ export function runAntipatterns(ctx: AntipatternsContext): AntipatternsDone | An
     return { ok: false, reason: 'NO_PROJECT' };
   }
   const record = recordEvents(trees, catalogUpcasters());
-  return { ok: true, patterns: antipatterns(record), moves: patternMoveWitness(record.events) };
+  return {
+    ok: true,
+    patterns: antipatterns(record),
+    moves: patternMoveWitness(record.events),
+    ...newerLinesOfTrees(trees),
+  };
 }

@@ -38,6 +38,7 @@
  */
 
 import { dirname } from 'node:path';
+import type { NewerLines } from '@mnema/context';
 import { channelIsOn } from '@mnema/context';
 import {
   type Clock,
@@ -62,6 +63,7 @@ import {
 import {
   caches,
   linkBreaksOf,
+  newerLinesIn,
   type ScopedLinkBreak,
   THE_READING_THAT_OPENED_THESE,
   withScopedCaches,
@@ -124,6 +126,8 @@ export interface UsageDone {
    * says so.
    */
   readonly linkBreaks: readonly ScopedLinkBreak[];
+  /** What a newer mnema wrote that this one reads past, when it wrote any (ADR-140). */
+  readonly newerLines?: NewerLines;
 }
 
 /** There is no project here, so there are no runs to account for. */
@@ -153,6 +157,7 @@ export function runUsage(ctx: UsageContext): UsageDone | UsageRefused {
       .flatMap((cache) => cache.listRuns())
       .sort(byStartedDesc),
     linkBreaks: linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE),
+    newer: newerLinesIn(sources),
   }));
   const runs = read.runs;
   // The project root is the directory the work is IN; the store is walked against the
@@ -164,6 +169,7 @@ export function runUsage(ctx: UsageContext): UsageDone | UsageRefused {
   return {
     ok: true,
     linkBreaks: read.linkBreaks,
+    ...read.newer,
     trees: treesSearched(trees),
     store,
     sessionsInStore: sessions.length,
@@ -268,6 +274,8 @@ export interface ToolUsageDone {
    * carried: the switch above was read from the record.
    */
   readonly linkBreaks: readonly ScopedLinkBreak[];
+  /** What a newer mnema wrote that this one reads past, when it wrote any (ADR-140). */
+  readonly newerLines?: NewerLines;
 }
 
 /**
@@ -285,6 +293,7 @@ export function runToolUsage(ctx: UsageContext): ToolUsageDone | UsageRefused {
   const switched = withScopedCaches(trees, (sources) => ({
     counting: channelIsOn(sources, TOOL_CALL_COUNT_CHANNEL),
     linkBreaks: linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE),
+    newer: newerLinesIn(sources),
   }));
   return {
     ok: true,
@@ -293,5 +302,6 @@ export function runToolUsage(ctx: UsageContext): ToolUsageDone | UsageRefused {
     passedOver: read.passedOver,
     counting: switched.counting,
     linkBreaks: switched.linkBreaks,
+    ...switched.newer,
   };
 }

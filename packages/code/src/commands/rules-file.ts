@@ -15,12 +15,14 @@
 
 import { statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import type { NewerLines } from '@mnema/context';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { readGovernsInForceEverywhere } from '../governed-tree.js';
 import type { RulesFileHost } from '../host-names.js';
 import { type AddressedForAFile, globFor, type OnDisk, rulesFileText } from '../host-rules-file.js';
 import {
   linkBreaksOf,
+  newerLinesIn,
   type ScopedLinkBreak,
   THE_READING_THAT_OPENED_THESE,
   withScopedCaches,
@@ -52,6 +54,8 @@ export interface RulesFileDone {
    * second stream, where a redirect leaves the file clean.
    */
   readonly linkBreaks: readonly ScopedLinkBreak[];
+  /** What a newer mnema wrote that this one reads past, when it wrote any (ADR-140). */
+  readonly newerLines?: NewerLines;
 }
 
 /** The command was refused before it read anything. */
@@ -74,8 +78,9 @@ export function runRulesFile(
   const trees = resolveTrees(ctx.cwd, ctx.env);
   if (trees.projectPublic === undefined) return { ok: false, reason: 'NO_PROJECT' };
   const root = dirname(trees.projectPublic);
-  const { addressed, linkBreaks } = withScopedCaches(trees, (sources) => ({
+  const { addressed, linkBreaks, newer } = withScopedCaches(trees, (sources) => ({
     linkBreaks: linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE),
+    newer: newerLinesIn(sources),
     addressed: readGovernsInForceEverywhere(sources, root).map(
       (one): AddressedForAFile => ({
         ...one,
@@ -105,5 +110,6 @@ export function runRulesFile(
     carried: translated.length,
     leftOut,
     linkBreaks,
+    ...newer,
   };
 }

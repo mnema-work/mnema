@@ -286,6 +286,8 @@ const LED_NOWHERE: Readonly<Record<string, string>> = {
     "The choice of which cancelled jobs of a finished run were the runner's loss, pure, handed jobs the case makes up. A script a workflow step runs, plain ESM under .github/, outside the packages/ walk, so the scanner cannot follow the specifier, which is right.",
   'packages/code/tests/an-issue-from-a-form-is-labelled.test.ts -> ../../../.github/label-an-issue/label.mjs':
     'The reader of the answers a form writes into an issue body and the labels they name, pure functions handed bodies the case makes up and a stand-in for GitHub that records what would be written. A script a workflow step runs, plain ESM under .github/, so the specifier is right and the scanner cannot follow it.',
+  'packages/code/tests/hidden-characters-in-a-pull-request-are-refused.test.ts -> ../../../.github/the-hidden-characters/check.mjs':
+    'The reader of what a pull request adds, which refuses a character that cannot be seen and marks a fork that touches what runs. Pure functions handed diffs and file lists here, and the command run on a repository the case makes. A script a workflow step runs, plain ESM under .github/, so the specifier is right and the scanner cannot follow it.',
   'packages/code/tests/the-fast-guards-say-what-they-check.test.ts -> ../../../.github/the-fast-guards/marked.mjs':
     'The finder of the marked guards, which the case walks to hold every one of them to a paragraph that says what it checks. Plain ESM under .github/, outside the packages/ walk, so the scanner cannot follow the specifier, which is right.',
   'packages/code/tests/the-fast-guards-say-what-they-check.test.ts -> ../../../.github/what-a-guard-checks/header.mjs':
@@ -811,7 +813,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/chain/src/chain/a-key-file-that-holds-no-key-is-refused.test.ts': 13,
   'packages/chain/src/chain/a-kind-this-reader-does-not-know-is-read-past.test.ts': 16,
   'packages/chain/src/chain/a-link-is-taken-back-only-by-the-identity-that-recorded-it.test.ts': 7,
-  'packages/chain/src/chain/a-part-the-disk-will-not-open-is-handed-to-a-collector.test.ts': 6,
+  'packages/chain/src/chain/a-part-the-disk-will-not-open-is-handed-to-a-collector.test.ts': 9,
   'packages/chain/src/chain/a-reader-hands-what-it-cannot-read-to-a-collector.test.ts': 10,
   'packages/chain/src/chain/a-record-the-frontier-wrote-is-read-by-both-readers.test.ts': 7,
   'packages/chain/src/chain/a-reformat-is-named-only-where-the-signatures-prove-it.test.ts': 10,
@@ -1190,6 +1192,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/every-option-feeds-something.test.ts': 8,
   'packages/code/tests/every-page-of-the-cli-is-pinned.test.ts': 7,
   'packages/code/tests/every-public-value-has-a-caller.test.ts': 6,
+  'packages/code/tests/every-read-verb-says-where-a-newer-mnema-wrote.test.ts': 11,
   'packages/code/tests/every-readme-says-what-it-does-not.test.ts': 5,
   'packages/code/tests/every-sandbox-is-removed-where-it-was-made.test.ts': 6,
   'packages/code/tests/every-skill-the-plugin-ships-is-what-it-says.test.ts': 11,
@@ -1201,6 +1204,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/every-write-of-the-command-line-says-whose-it-is.test.ts': 4,
   'packages/code/tests/every-write-signs-what-it-wrote.test.ts': 41,
   'packages/code/tests/every-writer-passes-the-check-that-refuses-a-damaged-record.test.ts': 21,
+  'packages/code/tests/hidden-characters-in-a-pull-request-are-refused.test.ts': 8,
   'packages/code/tests/host-contract/a-hook-hands-over-ten-thousand-units.test.ts': 5,
   'packages/code/tests/host-contract/a-note-of-the-hosts-memory-is-copied.test.ts': 4,
   'packages/code/tests/host-contract/a-refusal-and-a-pause-hold-the-write.test.ts': 6,
@@ -1684,7 +1688,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/core/src/projections/the-projections-keep-what-the-record-said-and-invent-nothing.test.ts': 6,
   'packages/core/src/projections/tree-index.test.ts': 10,
   'packages/core/src/projections/upsert.test.ts': 2,
-  'packages/core/src/topology/backup/aside.test.ts': 5,
+  'packages/core/src/topology/backup/aside.test.ts': 6,
   'packages/core/src/topology/backup/config.test.ts': 7,
   'packages/core/src/topology/backup/copy.test.ts': 5,
   'packages/core/src/topology/backup/git-destination.test.ts': 6,
@@ -2451,8 +2455,8 @@ describe('every file has a test that names it', () => {
     });
     // Non-vacuity in both parts: the walk really did follow specifiers, and the list
     // really does hold rows; a scanner returning nothing would satisfy the line above.
-    expect(unresolved.length).toBe(34);
-    expect(Object.keys(LED_NOWHERE)).toHaveLength(34);
+    expect(unresolved.length).toBe(35);
+    expect(Object.keys(LED_NOWHERE)).toHaveLength(35);
     // And each row says what THAT module is, by the ledger's rule, at the ledger's floor.
     const why = Object.values(LED_NOWHERE);
     expect(new Set(why).size).toBe(why.length);

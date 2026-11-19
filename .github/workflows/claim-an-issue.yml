@@ -13,7 +13,7 @@ name: Claim an issue
 # issues, reads pull requests, and reads the contents the checkout needs; nothing else.
 
 on:
-  issue_comment:
+  issue_comment: # zizmor: ignore[dangerous-triggers] reads a stranger comment as data only; the guards in the-comment-runs-nothing keep it so
     types: [created]
   schedule:
     - cron: '41 5 * * *'

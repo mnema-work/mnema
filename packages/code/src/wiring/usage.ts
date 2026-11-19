@@ -62,7 +62,7 @@ export function registerUsage(program: Command, wiring: Wiring): Declared {
       ].join('\n'),
     )
     .action(async (options: { tools?: boolean }) => {
-      const { linkBreakNotice } = await import('./integrity.js');
+      const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
       const { runToolUsage, runUsage } = await import('../commands/usage.js');
       const { toolUsageReport, usageReport } = await import('../presentation/usage.js');
       if (options.tools === true) {
@@ -72,6 +72,7 @@ export function registerUsage(program: Command, wiring: Wiring): Declared {
           return;
         }
         for (const line of linkBreakNotice(counted.linkBreaks)) io.err(render(line));
+        for (const line of newerLinesNotice(counted.newerLines, 'the record')) io.err(render(line));
         writeLines(io, toolUsageReport(render, counted));
         return;
       }
@@ -86,6 +87,7 @@ export function registerUsage(program: Command, wiring: Wiring): Declared {
       // BEFORE the answer, and on the other stream: the runs below were derived from
       // the record this is the proof-state of.
       for (const line of linkBreakNotice(result.linkBreaks)) io.err(render(line));
+      for (const line of newerLinesNotice(result.newerLines, 'the record')) io.err(render(line));
       writeLines(io, usageReport(render, result));
     });
 

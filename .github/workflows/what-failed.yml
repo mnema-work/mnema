@@ -16,6 +16,13 @@ name: What failed
 # script reads the event file GitHub wrote. `.github/what-failed/README.md` says the rest, and
 # `the-comment-runs-nothing-of-the-fork.test.ts` holds these lines.
 #
+# IT ALSO MARKS A FORK THAT TOUCHES WHAT RUNS. A pull request from a fork that changes a workflow, a
+# dependency, the lockfile, the npm settings or a build or install script gets the label
+# `needs security review`, from the files the API lists for it; the job's summary names them. The
+# label needs this token, and a `pull_request` run of a fork has none that writes. ITS LIMITS: the
+# label comes only after CI completes, so a fork that renames its CI workflow, or cancels its run,
+# gets none; and for a first-time contributor it comes only after a maintainer approves the run.
+#
 # A run Dependabot started is skipped: GitHub hands this workflow a read-only token for it, and the
 # comment could not be written.
 #
@@ -23,7 +30,7 @@ name: What failed
 # changes this file does not change what runs for that pull request.
 
 on:
-  workflow_run:
+  workflow_run: # zizmor: ignore[dangerous-triggers] checks out no pull request code; the-comment-runs-nothing-of-the-fork holds the shape
     workflows: [CI]
     types: [completed]
 
