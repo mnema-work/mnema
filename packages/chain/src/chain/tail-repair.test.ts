@@ -552,4 +552,162 @@ describe('repairTail, when the signed checkpoints do not hold: the whole tail', 
     expect(second).toMatchObject({ ok: true, whole: { checkpointLines: 4 } });
     expect(verified()).toBe(true);
   });
+
+  /** Events written and not yet signed: what a crash between a line and its checkpoint leaves. */
+  const writeUnsigned = (...contents: string[]): void => {
+    const w = openChainForWriting(root, { keyRoot });
+    for (const content of contents) {
+      w.append(
+        memoryCaptured(
+          {
+            at: new Date().toISOString(),
+            who: w.anchor,
+            signerFp: w.signerFingerprint,
+            subject: content,
+          },
+          { content },
+        ),
+      );
+    }
+  };
+
+  it('keeps the events this machine’s note vouches for, after checkpoints a forger took out', () => {
+    writeUnsigned('fifth');
+    const whole = readFileSync(segment);
+    writeFileSync(checkpointsFile(), '');
+    const done = repair();
+    expect(done).toMatchObject({
+      ok: true,
+      whole: { keptAbove: [{ from: 4, to: 4 }], relinked: [] },
+    });
+    expect(readFileSync(segment).equals(whole)).toBe(true);
+    expect(readFileSync(checkpointsFile()).equals(committedCheckpoints)).toBe(true);
+  });
+
+  it('computes the links of events the note vouches for again, when a forger re-chained them', () => {
+    writeUnsigned('fifth');
+    const whole = readFileSync(segment);
+    rewrite(0, 'FORGED');
+    const done = repair();
+    expect(done).toMatchObject({
+      ok: true,
+      whole: { keptAbove: [{ from: 4, to: 4 }], relinked: [{ from: 4, to: 4 }] },
+    });
+    expect(readFileSync(segment).equals(whole)).toBe(true);
+  });
+
+  it('keeps the branch of a fork that the signed root names, and removes the forged one', () => {
+    writeMore('fifth');
+    const whole = readFileSync(segment);
+    const events = held();
+    const honest = events[4] as Stored;
+    const sibling: Stored = JSON.parse(JSON.stringify(honest));
+    sibling.event.payload.content = 'FORGED';
+    sibling.link.hash = entryHash({
+      event: writtenAsStored(sibling.event as never),
+      tail: sibling.link.tail,
+      seq: 4,
+      prev: sibling.link.prev,
+    });
+    writeFileSync(segment, `${canonicalStringify(sibling as never)}\n`, { flag: 'a' });
+    const done = repair();
+    expect(done).toMatchObject({ ok: true, whole: { removed: [{ from: 4, to: 4 }] } });
+    expect(readFileSync(segment).equals(whole)).toBe(true);
+  });
+
+  it('removes a segment the revision does not hold and nothing proves, keeping it aside', () => {
+    rewrite(1, 'FORGED');
+    const extra = join(root, 'tails', tail, '000002.jsonl');
+    const events = held();
+    const last = events[events.length - 1] as Stored;
+    const next: Stored = {
+      event: { ...last.event, payload: { content: 'MORE' } },
+      link: { ...last.link, seq: 4, prev: last.link.hash },
+    };
+    next.link.hash = entryHash({
+      event: writtenAsStored(next.event as never),
+      tail: next.link.tail,
+      seq: 4,
+      prev: next.link.prev,
+    });
+    writeFileSync(extra, `${canonicalStringify(next as never)}\n`);
+    const done = repair();
+    expect(done).toMatchObject({
+      ok: true,
+      whole: {
+        segments: ['000001.jsonl', '000002.jsonl'],
+        removed: [
+          { from: 1, to: 1 },
+          { from: 4, to: 4 },
+        ],
+      },
+    });
+    expect(existsSync(extra)).toBe(false);
+    expect(copies()).toContain(`${tail}.000002.jsonl.1.before-repair`);
+    expect(readFileSync(segment).equals(committed)).toBe(true);
+  });
+
+  it('refuses a conflict marker in checkpoints.jsonl, and writes nothing', () => {
+    writeFileSync(checkpointsFile(), '<<<<<<< ours\n', { flag: 'a' });
+    expect(repair()).toEqual({
+      ok: false,
+      whole: { reason: 'CONFLICT_MARKS', file: 'checkpoints.jsonl', line: 5 },
+    });
+    expect(copies()).toEqual([]);
+  });
+
+  it('refuses a revision whose lines do not read, in a segment or in checkpoints.jsonl', () => {
+    rewrite(1, 'FORGED');
+    const nul = Buffer.from(committed);
+    nul[10] = 0;
+    expect(repair({ committed: new Map([['000001.jsonl', nul]]) })).toEqual({
+      ok: false,
+      whole: {
+        reason: 'REVISION_DOES_NOT_HOLD',
+        file: '000001.jsonl',
+        line: 1,
+        fault: 'does not read',
+      },
+    });
+    expect(
+      repair({
+        committedCheckpoints: Buffer.concat([
+          Buffer.from('not a checkpoint\n'),
+          committedCheckpoints,
+        ]),
+      }),
+    ).toEqual({
+      ok: false,
+      whole: {
+        reason: 'REVISION_DOES_NOT_HOLD',
+        file: 'checkpoints.jsonl',
+        line: 1,
+        fault: 'does not read',
+      },
+    });
+  });
+
+  it('refuses a tail whose ownership proof does not verify, which it does not touch', () => {
+    rewrite(1, 'FORGED');
+    const proof = join(root, 'tails', tail, 'tailproof.json');
+    writeFileSync(proof, '{}\n');
+    expect(repair()).toMatchObject({ ok: false, whole: { reason: 'TAILPROOF_DOES_NOT_HOLD' } });
+    rmSync(proof);
+    expect(repair()).toEqual({
+      ok: false,
+      whole: { reason: 'TAILPROOF_DOES_NOT_HOLD', fault: 'no tailproof.json' },
+    });
+  });
+
+  it('refuses to drop a signed event gone after the revision while this machine signed it, and without the note puts the revision back', () => {
+    writeMore('fifth');
+    const events = held();
+    events.pop();
+    writeFileSync(segment, `${events.map((one) => canonicalStringify(one as never)).join('\n')}\n`);
+    expect(repair()).toEqual({ ok: false, whole: { reason: 'REVISION_BEHIND_THE_NOTE', seq: 4 } });
+    rmSync(writtenHeadPath({ root }, tail));
+    expect(repair()).toMatchObject({ ok: true, whole: { keptAbove: [], removed: [] } });
+    expect(readFileSync(segment).equals(committed)).toBe(true);
+    expect(readFileSync(checkpointsFile()).equals(committedCheckpoints)).toBe(true);
+  });
 });
