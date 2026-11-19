@@ -67,9 +67,11 @@ The revision has to prove itself first: its events chain from seq 0 with every h
 named by; the tail's `tailproof.json` has to verify too. A revision that does not is refused, naming the file, the line and the
 question it failed: name an older one with `--from`.
 
-Above the revision, only what is proven is kept: an event the revision does not hold stays when a line of the working
-`checkpoints.jsonl` that holds, folded on from the revision's last one, covers it, or when this machine's signed note (the one its
-writer keeps beside the lock) vouches for it. Everything else is removed, and said by seq. A checkpoint signs the content and the
+The revision's tail is kept whole, the events git committed past its last checkpoint included: those are still the one write's
+window they were, and the next read says so as it would in a clone. Above the revision, only what is proven is kept: an event the
+revision does not hold stays when a line of the working `checkpoints.jsonl` that holds, folded on from the revision's last one,
+covers it, or when this machine's signed note (the one its writer keeps beside the lock) vouches for it. Everything else is
+removed, and said by seq. A checkpoint signs the content and the
 order of its events, not their links, so an honest event whose link somebody computed again is kept and its link computed again
 onto the tail put back, which gives back the bytes it was written with; those seqs are said too. Where this machine signed the
 tail further than what the revision and the working checkpoints prove, the repair is refused rather than drop signed work: name a
@@ -111,7 +113,7 @@ When every line holds and the tail’s signed checkpoints do not (events rewritt
 `checkpoints.jsonl` emptied or forged, a signed event gone), the whole tail is put back: the
 revision’s tail, which has to prove itself (its events chain from seq 0 and every checkpoint
 signature holds under the committed key), and above it only the events a checkpoint that holds
-or this machine’s signed note proves. Events nothing proves are removed; honest events whose
+or this machine’s signed note proves. Any other event is removed; honest events whose
 links were computed again by someone else get their links computed again as they were signed.
 
 Nothing is signed, and `keys/`, `tailproof.json`, the notes beside the lock and every tree but the

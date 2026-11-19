@@ -3016,7 +3016,7 @@ $ mnema tail repair --help
 | `checkpoints.jsonl` emptied or forged, a signed event gone), the whole tail is put back: the
 | revision’s tail, which has to prove itself (its events chain from seq 0 and every checkpoint
 | signature holds under the committed key), and above it only the events a checkpoint that holds
-| or this machine’s signed note proves. Events nothing proves are removed; honest events whose
+| or this machine’s signed note proves. Any other event is removed; honest events whose
 | links were computed again by someone else get their links computed again as they were signed.
 |
 | Nothing is signed, and `keys/`, `tailproof.json`, the notes beside the lock and every tree but the

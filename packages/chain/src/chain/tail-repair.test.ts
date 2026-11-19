@@ -424,6 +424,38 @@ describe('repairTail, when the signed checkpoints do not hold: the whole tail', 
     expect(readFileSync(segment).equals(committed)).toBe(true);
   });
 
+  it('keeps an unsigned event git committed above the revision’s last checkpoint, in a clone with no note', () => {
+    const w = openChainForWriting(root, { keyRoot });
+    w.append(
+      memoryCaptured(
+        {
+          at: new Date().toISOString(),
+          who: w.anchor,
+          signerFp: w.signerFingerprint,
+          subject: 'fifth',
+        },
+        { content: 'fifth' },
+      ),
+    );
+    rmSync(writtenHeadPath({ root }, tail));
+    const window = readFileSync(segment);
+    expect(held().map((one) => one.link.seq)).toEqual([0, 1, 2, 3, 4]);
+    expect(readFileSync(checkpointsFile()).equals(committedCheckpoints)).toBe(true);
+    const saidOfTheWindow = verifyChain({ root }, catalogUpcasters()).issues;
+    rewrite(1, 'FORGED');
+    expect(verified()).toBe(false);
+
+    const done = repair({ committed: new Map([['000001.jsonl', window]]) });
+    expect(done).toMatchObject({
+      ok: true,
+      whole: { removed: [{ from: 1, to: 1 }], keptAbove: [], relinked: [] },
+    });
+    expect(held().map((one) => one.link.seq)).toEqual([0, 1, 2, 3, 4]);
+    expect(readFileSync(segment).equals(window)).toBe(true);
+    expect(readFileSync(checkpointsFile()).equals(committedCheckpoints)).toBe(true);
+    expect(verifyChain({ root }, catalogUpcasters()).issues).toEqual(saidOfTheWindow);
+  });
+
   it.each([
     ['an early line deleted and the rest re-chained, the seqs kept', 'kept'],
     ['an early line deleted and the rest re-chained and renumbered', 'renumbered'],

@@ -194,7 +194,8 @@ export function planWholeTail(
     });
   }
 
-  // What the revision's signatures prove is the base; above it, only what is proven again.
+  // What the revision's signatures prove is the base; above it, what is proven again, then the
+  // rest of the revision.
   const signedTo = revisionFolded.signedTo;
   const result: StoredEvent[] = question.revision.filter((one) => one.entry.link.seq <= signedTo);
   const checkpoints: StoredCheckpoint[] = [...question.revisionCheckpoints];
@@ -261,6 +262,18 @@ export function planWholeTail(
         break;
       }
     }
+  }
+
+  // The revision's own events past what its signatures and the working ones cover: what git
+  // committed, kept unproven as the one write's window the next read says, when the result still
+  // runs on the revision there (a signed branch that forks from it leaves them out).
+  const provenTo = end;
+  const atTheEnd = question.revision.find((one) => one.entry.link.seq === end);
+  if (atTheEnd !== undefined && atTheEnd.entry.link.hash === tip) {
+    take(question.revision.filter((one) => one.entry.link.seq > end));
+  }
+
+  if (note !== undefined) {
     const reaches =
       note.seq < 0 ||
       [note.next, { seq: note.seq, hash: note.hash }].some(
@@ -288,7 +301,10 @@ export function planWholeTail(
     ...(note !== undefined ? { note } : {}),
   });
   const still = after.withheld[0];
-  if (still !== undefined || after.unproven !== undefined) {
+  const left = after.unproven;
+  const onlyTheRevisionsWindow =
+    left === undefined || (left.fromSeq === provenTo + 1 && left.toSeq === end);
+  if (still !== undefined || !onlyTheRevisionsWindow) {
     return refused({
       reason: 'DOES_NOT_HOLD_AFTER',
       fault: still?.fault ?? still?.why ?? 'unproven',
@@ -305,7 +321,9 @@ export function planWholeTail(
       entries: result,
       checkpoints,
       keptAbove: runsOf(
-        result.filter((one) => one.entry.link.seq > signedTo).map((one) => one.entry.link.seq),
+        result
+          .filter((one) => one.entry.link.seq > signedTo && one.entry.link.seq <= provenTo)
+          .map((one) => one.entry.link.seq),
       ),
       removed: runsOf(removed),
       relinked: runsOf(relinked),
