@@ -189,9 +189,10 @@ export interface CacheOptions {
   /** Upcaster registry for reading the chain; defaults to the catalog's. */
   readonly upcasters?: UpcasterRegistry;
   /**
-   * Where this machine's proof of what it wrote is (`ReadProof`): with it, the events of a write
-   * whose checkpoint did not land, and the events of the act in progress, are proven by the
-   * signed note and govern; without it, they are served as not yet signed and govern nothing.
+   * Where this machine's signed notes of what it wrote are (`ReadProof`). Without it the reading
+   * finds them itself: the shared place of a public tree inside a repository, then the tree's own
+   * `locks/`. A note that verifies proves the events of a write whose checkpoint did not land and
+   * of the act in progress; with none, they are served as not yet signed and govern nothing.
    */
   readonly proof?: ReadProof;
 }
