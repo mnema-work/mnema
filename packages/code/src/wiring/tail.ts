@@ -265,7 +265,7 @@ export function registerTail(program: Command, wiring: Wiring): Declared {
   tail
     .command('repair')
     .description(
-      'put back from git the lines of a public tail that do not read or whose hash does not hold',
+      'put back from git the lines of a public tail that do not read or whose hash does not hold, or the whole tail when its signed checkpoints do not hold',
     )
     .argument(
       '<tail>',
@@ -273,7 +273,7 @@ export function registerTail(program: Command, wiring: Wiring): Declared {
     )
     .option(
       '--from <rev>',
-      'the revision the lines are taken from (default HEAD): an older one, when the damage was committed',
+      'the revision the lines or the tail are taken from (default HEAD): an older one, when the damage was committed',
     )
     .addHelpText(
       'after',
@@ -281,13 +281,19 @@ export function registerTail(program: Command, wiring: Wiring): Declared {
         '',
         'A line is put back only when the revision holds it at the same place in the same file, it reads,',
         'its hash is the one its content gives, and it chains to the line before it and, where one follows,',
-        'to the line after it (the last line of a tail has none).',
-        'Nothing else is written: no line is added, signed or deleted, a last line that a crash cut short',
-        'is left, and `checkpoints.jsonl`, `keys/` and every tree but the committed public one are not touched. The',
-        'segment as it was is kept in the repository’s git directory, beside the tail’s lock, until you',
-        'delete it, and the',
-        'repaired file is a change in the working tree for you to commit. Only the public tree is',
-        'repaired: it is the one git keeps.',
+        'to the line after it (the last line of a tail has none). A last line that a crash cut short is left.',
+        '',
+        'When every line holds and the tail’s signed checkpoints do not (events rewritten and re-chained,',
+        '`checkpoints.jsonl` emptied or forged, a signed event gone), the whole tail is put back: the',
+        'revision’s tail, which has to prove itself (its events chain from seq 0 and every checkpoint',
+        'signature holds under the committed key), and above it only the events a checkpoint that holds',
+        'or this machine’s signed note proves. Events nothing proves are removed; honest events whose',
+        'links were computed again by someone else get their links computed again as they were signed.',
+        '',
+        'Nothing is signed, and `keys/`, `tailproof.json`, the notes beside the lock and every tree but the',
+        'committed public one are not touched. Each file as it was is kept in the repository’s git',
+        'directory, beside the tail’s lock, until you delete it, and the files put back are a change in',
+        'the working tree for you to commit. Only the public tree is repaired: it is the one git keeps.',
       ].join('\n'),
     )
     .action(async (named: string, opts: { from?: string }) => {
@@ -302,7 +308,7 @@ export function registerTail(program: Command, wiring: Wiring): Declared {
       if (!result.ok) {
         reportRefusal(wiring, {
           reason: result.reason,
-          code: result.reason,
+          code: result.reason === 'TAIL' ? result.refusal.reason : result.reason,
           message: tailRepairRefusal(result, named),
         });
         return;

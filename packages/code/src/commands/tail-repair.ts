@@ -1,10 +1,12 @@
 /**
  * `mnema tail repair <tail> [--from <rev>]`: put back from git a line of a public tail that does not
- * read or whose hash does not hold (ADR-398, ADR-399).
+ * read or whose hash does not hold (ADR-398, ADR-399), or, when every line holds and the tail's
+ * signed checkpoints do not, the whole tail (ADR-559, ADR-563).
  *
- * THE CHAIN DECIDES, THIS ASKS GIT. What a line must prove to be put back, and every way the write
- * is kept from doing more than that, is `repairTail` in the chain; this finds the tail, reads the
- * segments of the revision out of the repository and hands both over.
+ * THE CHAIN DECIDES, THIS ASKS GIT. What a line or a tail must prove to be put back, and every way
+ * the write is kept from doing more than that, is `repairTail` in the chain; this finds the tail,
+ * reads the segments and `checkpoints.jsonl` of the revision out of the repository and hands them
+ * over.
  *
  * PUBLIC TREE ONLY. The private tree and the machine's global one are not kept by git, so there is
  * no line to put back from it (ADR-408): a tail of either is refused with the way out those trees
@@ -25,6 +27,8 @@ import {
   repairTail,
   type TailRepairRefusal,
   tailDir,
+  type WholeTailPutBack,
+  type WholeTailRefusal,
 } from '@mnema/chain';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { repositoryVariables } from './record-commit.js';
@@ -44,6 +48,10 @@ export type TailRepairDone = {
   readonly from: string;
   readonly repaired: readonly LinePutBack[];
   readonly kept: readonly string[];
+  /** Lines were put back and the checkpoints still do not hold: the next run puts the whole tail back. */
+  readonly stillFails?: true;
+  /** Present when the whole tail was put back. */
+  readonly whole?: WholeTailPutBack;
 };
 
 export type TailRepairRefused =
@@ -57,6 +65,12 @@ export type TailRepairRefused =
       readonly reason: 'LINE';
       readonly from: string;
       readonly refusal: TailRepairRefusal;
+    }
+  | {
+      readonly ok: false;
+      readonly reason: 'TAIL';
+      readonly from: string;
+      readonly refusal: WholeTailRefusal;
     };
 
 const DEFAULT_REVISION = 'HEAD';
@@ -115,10 +129,25 @@ export function runTailRepair(
   const named = readingWhatTheDiskLets(tailDir(layout, input.tail), `tails/${input.tail}`, () =>
     readdirSync(tailDir(layout, input.tail)),
   );
-  for (const name of named.filter(isSegmentFile)) {
+  // The segments the revision holds, the ones here included: a whole tail is put back as committed.
+  // `--full-tree`: run from a folder below the top, ls-tree lists only what is under that folder.
+  const listed = git([
+    'ls-tree',
+    '--full-tree',
+    '--name-only',
+    `${sha}:${there}tails/${input.tail}`,
+  ]);
+  const inRevision =
+    listed.status === 0 ? listed.out.toString('utf-8').split('\n').filter(isSegmentFile) : [];
+  for (const name of new Set([...named.filter(isSegmentFile), ...inRevision])) {
     const blob = git(['cat-file', 'blob', `${sha}:${there}tails/${input.tail}/${name}`]);
     if (blob.status === 0) committed.set(name, blob.out);
   }
+  const checkpoints = git([
+    'cat-file',
+    'blob',
+    `${sha}:${there}tails/${input.tail}/checkpoints.jsonl`,
+  ]);
   const shared = trees.projectPublicMachinery?.shared;
   const done = repairTail({
     layout,
@@ -126,7 +155,20 @@ export function runTailRepair(
     tailId: input.tail,
     upcasters: catalogUpcasters(),
     committed,
+    ...(checkpoints.status === 0 ? { committedCheckpoints: checkpoints.out } : {}),
   });
-  if (!done.ok) return { ok: false, reason: 'LINE', from, refusal: done.refusal };
-  return { ok: true, tail: input.tail, from, repaired: done.repaired, kept: done.kept };
+  if (!done.ok) {
+    return 'whole' in done
+      ? { ok: false, reason: 'TAIL', from, refusal: done.whole }
+      : { ok: false, reason: 'LINE', from, refusal: done.refusal };
+  }
+  return {
+    ok: true,
+    tail: input.tail,
+    from,
+    repaired: done.repaired,
+    kept: done.kept,
+    ...(done.stillFails ? { stillFails: true as const } : {}),
+    ...(done.whole !== undefined ? { whole: done.whole } : {}),
+  };
 }

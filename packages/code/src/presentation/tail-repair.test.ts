@@ -28,6 +28,40 @@ describe('tailRepairReport', () => {
     expect(said[3]).toContain('yours to commit');
   });
 
+  it('says a whole tail put back: the files, what was kept, removed and re-chained, and then verify', () => {
+    const said = tailRepairReport(renderPlain, {
+      ...done,
+      from: 'HEAD',
+      repaired: [],
+      kept: ['/k/a', '/k/b'],
+      whole: {
+        segments: ['000001.jsonl'],
+        lines: 3,
+        checkpointLines: 4,
+        keptAbove: [{ from: 4, to: 5 }],
+        removed: [
+          { from: 1, to: 1 },
+          { from: 7, to: 9 },
+        ],
+        relinked: [{ from: 4, to: 5 }],
+      },
+    });
+    expect(said[0]).toBe(
+      'Put back tail t-1 from HEAD: 3 lines of 000001.jsonl and 4 lines of checkpoints.jsonl; kept as they were in /k/a and /k/b.',
+    );
+    expect(said[1]).toContain('kept above the revision: seq 4 to 5');
+    expect(said[2]).toContain('removed (nothing proves them): seq 1, seq 7 to 9');
+    expect(said[3]).toContain('links computed again (the events are as signed): seq 4 to 5');
+    expect(said[4]).toContain('`mnema verify` says whether the record holds now');
+    expect(said).toHaveLength(5);
+  });
+
+  it('says when the lines are back and the checkpoints still do not hold, and that the verb goes on', () => {
+    expect(tailRepairReport(renderPlain, { ...done, stillFails: true }).join('\n')).toContain(
+      'run `mnema tail repair t-1` again, which puts the whole tail back',
+    );
+  });
+
   it('says there was nothing to repair', () => {
     expect(tailRepairReport(renderPlain, { ...done, repaired: [], kept: [] })).toEqual([
       'Nothing to repair in tail t-1: every line of its segments reads and holds its hash.',
@@ -74,5 +108,31 @@ describe('tailRepairRefusal', () => {
     expect(said({ ok: false, reason: 'UNKNOWN_TAIL' })).toContain(
       'There is no tail t-1 in the project’s public record',
     );
+  });
+
+  it('names, for a whole tail, the file and the question a revision failed, and what this machine signed', () => {
+    const of = (refusal: object) =>
+      said({ ok: false, reason: 'TAIL', from: 'HEAD', refusal } as never);
+    expect(
+      of({
+        reason: 'REVISION_DOES_NOT_HOLD',
+        file: 'checkpoints.jsonl',
+        line: 2,
+        fault: 'content-root-mismatch',
+      }),
+    ).toBe(
+      'Nothing was written: tail t-1 as HEAD holds it does not prove itself (checkpoints.jsonl line 2: content-root-mismatch), so it is not put back. Try `--from` with an older revision, from before the damage was committed.',
+    );
+    expect(of({ reason: 'REVISION_BEHIND_THE_NOTE', seq: 5 })).toContain(
+      'this machine signed tail t-1 up to seq 5',
+    );
+    expect(of({ reason: 'NOT_IN_REVISION' })).toContain('HEAD holds no event of tail t-1');
+    expect(of({ reason: 'CONFLICT_MARKS', file: 'checkpoints.jsonl', line: 3 })).toContain(
+      'mnema doctor --fix merge-driver',
+    );
+    expect(of({ reason: 'TAILPROOF_DOES_NOT_HOLD', fault: 'bad-signature' })).toContain(
+      'does not touch it',
+    );
+    expect(of({ reason: 'DOES_NOT_HOLD_AFTER', fault: 'x' })).toContain('a fault of mnema');
   });
 });

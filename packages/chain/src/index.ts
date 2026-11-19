@@ -240,6 +240,7 @@ export {
   type TailRepaired,
   type TailRepairInput,
   type TailRepairRefusal,
+  type WholeTailPutBack,
 } from './chain/tail-repair.js';
 export { ensureTree, mergeLineIsMissing, TAIL_MERGE_DRIVER } from './chain/tree.js';
 export {
@@ -276,6 +277,7 @@ export {
   tailStanding,
   tailWaiversIn,
 } from './chain/waiver.js';
+export type { SeqRun, WholeTailRefusal } from './chain/whole-tail.js';
 // T3, the external witness. What crosses this line is what the SURFACE uses: the two
 // acts, where a witness is filed, and how one reads, per checkpoint, per tail, and as
 // the walk down the tail that the reading and the act that completes an attestation

@@ -13,7 +13,7 @@ In the help under **This machine**.
 | [`mnema tail list`](tail-list.md) | list the tails that hold events here, the ones a cut can name, with the id `prune` takes |
 | [`mnema tail prune`](tail-prune.md) | record that one whole tail was authorized to be cut (it removes nothing) |
 | [`mnema tail relink`](tail-relink.md) | relink whole tails of another record into the one this directory names, each signed by its own key |
-| [`mnema tail repair`](tail-repair.md) | put back from git the lines of a public tail that do not read or whose hash does not hold |
+| [`mnema tail repair`](tail-repair.md) | put back from git the lines of a public tail that do not read or whose hash does not hold, or the whole tail when its signed checkpoints do not hold |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
 <!-- End of the part written by hand. -->
@@ -37,6 +37,8 @@ Commands:
   relink [options] <tails...>  relink whole tails of another record into the one
                                this directory names, each signed by its own key
   repair [options] <tail>      put back from git the lines of a public tail that
-                               do not read or whose hash does not hold
+                               do not read or whose hash does not hold, or the
+                               whole tail when its signed checkpoints do not
+                               hold
   help [command]               display help for command
 ```
