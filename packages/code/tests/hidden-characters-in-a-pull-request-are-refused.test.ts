@@ -1,6 +1,6 @@
 // @reads-the-tree
 /**
- * HIDDEN CHARACTERS IN A PULL REQUEST ARE REFUSED: an added line that holds one of the fifteen
+ * HIDDEN CHARACTERS IN A PULL REQUEST ARE REFUSED: an added line that holds one of the
  * characters a reader cannot see fails the check with `file:line`, in a real repository with a branch
  * and a base, and in a clone that has a remote; a line that only loses one, a byte-order mark that
  * opens a file and the free text of the record do not.
@@ -29,11 +29,13 @@ import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const CHECK = join(ROOT, '.github/the-hidden-characters/check.mjs');
 
-/** The fifteen characters, each as the code point the rule names. */
+/** The characters of the rule: the listed ranges, a soft hyphen and the tag characters, each as the code point the rule names. */
 const REFUSED = [
   ...[0x200b, 0x200c, 0x200d, 0x200e, 0x200f],
   ...[0x202a, 0x202b, 0x202c, 0x202d, 0x202e],
+  ...[0x2060, 0x2061, 0x2062, 0x2063, 0x2064],
   ...[0x2066, 0x2067, 0x2068, 0x2069, 0xfeff],
+  ...[0x00ad, 0xe0000, 0xe0001, 0xe0041, 0xe007f],
 ];
 const ch = (point: number) => String.fromCodePoint(point);
 
@@ -82,9 +84,11 @@ describe('a hidden character in an added line', () => {
 
   it('is matched by the pattern the workflow text describes, and by no neighbour of its ranges', () => {
     for (const point of REFUSED) expect(HIDDEN.test(ch(point))).toBe(true);
-    // U+200A and U+2010 border the first range, U+2029 and U+202F the second, U+2065 and U+206A the
-    // third, U+2060 is a word joiner and U+00A0 a no-break space: none is in the list.
-    for (const point of [0x200a, 0x2010, 0x2029, 0x202f, 0x2065, 0x206a, 0x2060, 0x00a0, 0xfffe]) {
+    // Neighbours of the ranges, and a no-break space: none is in the list.
+    for (const point of [
+      0x200a, 0x2010, 0x2029, 0x202f, 0x205f, 0x2065, 0x206a, 0x00ac, 0x00ae, 0xdffff, 0xe0080,
+      0x00a0, 0xfffe,
+    ]) {
       expect(HIDDEN.test(ch(point))).toBe(false);
     }
   });

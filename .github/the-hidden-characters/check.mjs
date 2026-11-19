@@ -2,8 +2,8 @@
 //
 // A character a reader cannot see can change what code or a page says: a right-to-left override
 // reorders the line a reviewer reads, a zero-width space makes two names look alike. This reads what
-// a pull request ADDS and refuses it when an added line holds one of U+200B to U+200F, U+202A to
-// U+202E, U+2066 to U+2069 or U+FEFF, naming `file:line`. A U+FEFF that is the first character of a
+// a pull request ADDS and refuses it when an added line holds one of U+00AD, U+200B to U+200F, U+202A to
+// U+202E, U+2060 to U+2064, U+2066 to U+2069, U+FEFF or the tag characters U+E0000 to U+E007F, naming `file:line`. A U+FEFF that is the first character of a
 // file is a byte-order mark and passes. A file name that holds one is refused too.
 //
 //   node .github/the-hidden-characters/check.mjs <base> <head>
@@ -24,10 +24,17 @@ import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 /** The characters refused in an added line. */
-export const HIDDEN = /[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/u;
+export const HIDDEN =
+  /[\u00AD\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF\u{E0000}-\u{E007F}]/u;
 const HIDDEN_EACH = new RegExp(HIDDEN.source, 'gu');
 
 const NAMES = new Map([
+  [0x00ad, 'SOFT HYPHEN'],
+  [0x2060, 'WORD JOINER'],
+  [0x2061, 'FUNCTION APPLICATION'],
+  [0x2062, 'INVISIBLE TIMES'],
+  [0x2063, 'INVISIBLE SEPARATOR'],
+  [0x2064, 'INVISIBLE PLUS'],
   [0x200b, 'ZERO WIDTH SPACE'],
   [0x200c, 'ZERO WIDTH NON-JOINER'],
   [0x200d, 'ZERO WIDTH JOINER'],
@@ -52,7 +59,11 @@ const codeOf = (ch) => {
 };
 
 /** @param {string} ch */
-const describe = (ch) => `${codeOf(ch)} ${NAMES.get(ch.codePointAt(0) ?? 0) ?? ''}`.trim();
+const describe = (ch) => {
+  const point = ch.codePointAt(0) ?? 0;
+  const name = point >= 0xe0000 && point <= 0xe007f ? 'TAG CHARACTER' : NAMES.get(point);
+  return `${codeOf(ch)} ${name ?? ''}`.trim();
+};
 
 /**
  * A text safe to print in a log or in markdown: no control character, no backtick, and the hidden

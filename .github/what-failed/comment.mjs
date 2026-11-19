@@ -21,8 +21,8 @@
  *     by the workflow's own account, and rewritten in place on every run;
  *   - a pull request from a fork that changes what runs (a workflow, a dependency, the lockfile, the npm
  *     settings, a build or install script) gets the label `needs security review`. The files are the
- *     ones the API lists for the pull request, matched by `securityReview` in
- *     `.github/the-hidden-characters/check.mjs`; nothing of the pull request is read or run, and the
+ *     ones the API lists for the pull request, matched by `whyReview` below;
+ *     nothing of the pull request is read or run, and the
  *     label is a constant. The job's summary names each file, with the control and format characters
  *     of its name shown by their code.
  *
@@ -65,6 +65,13 @@ export function whyReview(file) {
     return 'a build or install script';
   }
   if (base.endsWith('.sh')) return 'a shell script';
+  if (file.startsWith('plugin/') && /\.(mjs|cjs|js|sh)$|(^|\/)hooks\/[^/]*\.json$/.test(file)) {
+    return "a hook or script of the plugin, which a host runs on an installer's machine";
+  }
+  if (parts.includes('.husky')) return 'a git hook';
+  if (/\.config\.[cm]?[jt]s$/.test(base) || /^vitest\.[a-z-]*config\.[cm]?[jt]s$/.test(base)) {
+    return 'a tool configuration, which a tool runs as code';
+  }
   return null;
 }
 

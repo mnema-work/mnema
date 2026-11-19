@@ -598,6 +598,15 @@ describe('a fork that changes what runs is marked for a security review', () => 
     ['packages/code/build/the-cli-bundle.mjs', 'build or install script'],
     ['packages/x/scripts/prepare.mjs', 'build or install script'],
     ['recordings/first-record.sh', 'shell script'],
+    ['plugin/hooks/hooks.json', 'plugin'],
+    ['plugin/hooks/codex.json', 'plugin'],
+    ['plugin/gemini/hooks/hooks.json', 'plugin'],
+    ['plugin/hooks/after-a-write.mjs', 'plugin'],
+    ['plugin/bin/mnema.mjs', 'plugin'],
+    ['.husky/pre-commit', 'git hook'],
+    ['vitest.config.ts', 'tool configuration'],
+    ['vitest.guards.config.ts', 'tool configuration'],
+    ['packages/code/tsup.config.mjs', 'tool configuration'],
   ])('asks a person to look when a fork changes %s', (file, why) => {
     expect(whyReview(file)).toContain(why);
   });
@@ -608,6 +617,11 @@ describe('a fork that changes what runs is marked for a security review', () => 
     'README.md',
     'packages/code/src/buildings.ts',
     'packages/code/src/package.json.ts',
+    'plugin/README.md',
+    'plugin/.claude-plugin/plugin.json',
+    'plugin/captures/cursor-2026-10-22.json',
+    'packages/code/src/the-config.ts',
+    'docs/guides/vitest.config.md',
   ])('asks nothing when a fork changes %s', (file) => {
     expect(whyReview(file)).toBeNull();
   });
