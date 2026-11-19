@@ -131,8 +131,10 @@ const READS_THE_CHAIN = [
   'readTailEntries(',
   'readTailTip(',
   'readTailSince(',
-  // The lines that name a subject, read off the segments: what proves a pinned run.
+  // The lines that name a subject, read off the segments: what proves a pinned run, the proven
+  // ones through the projection's bridge (`provenSubjectEvents`).
   'subjectEvents(',
+  'provenSubjectEvents(',
 ];
 
 /**
