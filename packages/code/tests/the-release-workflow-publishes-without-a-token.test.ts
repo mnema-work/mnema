@@ -208,7 +208,15 @@ describe('the release workflow publishes without a token', () => {
       expect(text).toMatch(/^ {6}contents: read\n {6}id-token: write\n {6}attestations: write\n/m);
       expect(text).toMatch(/uses: actions\/attest@[0-9a-f]{40} # v\d+\.\d+\.\d+/);
       expect(text).not.toMatch(/pnpm|npm (install|ci|publish)|checkout|secrets\.|environment:/);
-      expect(text.indexOf('sha256sum')).toBeLessThan(text.indexOf('actions/attest@'));
+      // The SHA-256 of each file is compared with the pack job's before anything is signed: both the hash and the
+      // comparison must be there, and before the action (an index of -1 would pass a bare toBeLessThan).
+      const hashed = text.indexOf('sha256sum');
+      const compared = text.search(
+        /\[ -n "\$(want|SHA256)" \] && \[ "\$have" = "\$(want|SHA256)" \] \|\| \{[^}]*exit 1; \}/,
+      );
+      expect(hashed).toBeGreaterThan(-1);
+      expect(compared).toBeGreaterThan(hashed);
+      expect(compared).toBeLessThan(text.indexOf('actions/attest@'));
     }
     expect(job('attest')).toMatch(/needs: \[plan, pack, publish\]/);
     expect(job('attest-vsix')).toMatch(/needs: \[plan, vsix\]/);
