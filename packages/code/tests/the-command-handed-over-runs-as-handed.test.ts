@@ -847,7 +847,7 @@ export const HANDED_OVER: Readonly<
   '.github/instructions/mnema-instructions.instructions.md': { line: 2 },
   '.github/the-hot-path-budget/README.md': { name: 2 },
   'AGENTS.md': { line: 2, name: 1 },
-  'CHANGELOG.md': { line: 110, name: 246, flag: 4 },
+  'CHANGELOG.md': { line: 98, name: 211, flag: 4 },
   'README.md': { line: 4, name: 8 },
   'SECURITY.md': { name: 2 },
   'docs/a-record-inheriting-another.md': { line: 9, name: 8 },
@@ -1066,13 +1066,38 @@ const unreadable = [...onPages, ...inSources].flatMap((one) => one.unreadable);
 /** Every handed-over command with its readings, computed once. */
 const read = handed.map((one) => ({ ...one, readings: readingsOf(program, one.text) }));
 
+/** A changelog entry file: written to be gathered into `CHANGELOG.md` at a release. */
+const isAnEntry = (file: string): boolean => file.startsWith('changelog/unreleased/');
+
 /**
- * The file a count is kept under. A changelog entry file is written to be gathered into
- * `CHANGELOG.md`, so what it hands over is counted there: the rows do not move when a release
- * gathers the entries, and a new entry file is not a row somebody has to write.
+ * The file a roster key is kept under: what an entry hands over is named under `CHANGELOG.md`,
+ * the page it is gathered into. The COUNTS of `HANDED_OVER` do not use it: an entry is not
+ * counted at all (see the case that holds the counts), so two branches that each add an entry
+ * never touch the same line of the ledger.
  */
 const homeOf = (file: string): string =>
   file.startsWith('changelog/unreleased/') ? 'CHANGELOG.md' : file;
+
+/** What each file hands over, by kind of reading. An entry file is held by no count. */
+const countsOf = (
+  items: readonly { where: string; readings: readonly Reading[] }[],
+): Record<string, Partial<Record<Reading['kind'], number>>> => {
+  const counted: Record<string, Partial<Record<Reading['kind'], number>>> = {};
+  for (const one of items) {
+    const file = one.where.split(':')[0] as string;
+    // An entry is held by the other cases (each of its commands is read whole, parsed and
+    // named on the rosters) and by no count: its count would be one line every branch moves.
+    if (isAnEntry(file)) continue;
+    const row = counted[file] ?? {};
+    counted[file] = row;
+    for (const reading of one.readings) row[reading.kind] = (row[reading.kind] ?? 0) + 1;
+  }
+  // A file that hands over commands and reads none of them (a bare listing) is not a row.
+  for (const [file, row] of Object.entries(counted)) {
+    if (Object.keys(row).length === 0) delete counted[file];
+  }
+  return counted;
+};
 
 /** How a failure names one command: the address and the words. */
 const where = (one: Handed): string => `${one.where}  ${shown(one.text)}`;
@@ -1157,17 +1182,7 @@ describe('a name whose verb needs more is one somebody looked at', () => {
 
 describe('the readings know what they read', () => {
   it('each file hands over what the count says, and no other file hands over any', () => {
-    const counted: Record<string, Partial<Record<Reading['kind'], number>>> = {};
-    for (const one of read) {
-      const file = homeOf(one.where.split(':')[0] as string);
-      const row = counted[file] ?? {};
-      counted[file] = row;
-      for (const reading of one.readings) row[reading.kind] = (row[reading.kind] ?? 0) + 1;
-    }
-    // A file that hands over commands and reads none of them (a bare listing) is not a row.
-    for (const [file, row] of Object.entries(counted)) {
-      if (Object.keys(row).length === 0) delete counted[file];
-    }
+    const counted = countsOf(read);
     const handed = holdTheCounts({
       testFile: import.meta.url,
       name: 'HANDED_OVER',
@@ -1178,6 +1193,17 @@ describe('the readings know what they read', () => {
       counted,
       'HANDED_OVER: add a row for each file that now hands commands over, and remove the row of each that no longer does',
     ).toEqual(handed);
+  });
+
+  it('a new changelog entry moves no count: two branches that each add one do not meet on the ledger', () => {
+    const before = countsOf(read);
+    const entry = (name: string) => ({
+      where: `changelog/unreleased/${name}.md:3`,
+      readings: [{ kind: 'name', path: ['show'] }] as readonly Reading[],
+    });
+    const withTwo = countsOf([...read, entry('one-more'), entry('another-one')]);
+    expect(withTwo).toEqual(before);
+    expect(Object.keys(HANDED_OVER).some(isAnEntry)).toBe(false);
   });
 
   it('the pages it reads are the documentation', () => {
