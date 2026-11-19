@@ -1785,6 +1785,7 @@ const PRODUCTION_FILES: readonly string[] = [
   'packages/chain/src/chain/bitcoin.ts',
   'packages/chain/src/chain/causal-order.ts',
   'packages/chain/src/chain/chain.ts',
+  'packages/chain/src/chain/checkpoint-ruling.ts',
   'packages/chain/src/chain/checkpoint.ts',
   'packages/chain/src/chain/citation-index.ts',
   'packages/chain/src/chain/cited-heads.ts',

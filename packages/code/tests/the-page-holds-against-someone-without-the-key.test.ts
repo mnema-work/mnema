@@ -213,7 +213,7 @@ describe('an edit made without the key', () => {
 
   // @proves an-edit-is-caught
   // @proves a-green-verify-means-the-record-is-honest
-  it("stripped of its checkpoints, passes the default and fails --require=signed, and the key holder's next write does not sign it in, in every state of the projection", () => {
+  it("stripped of its checkpoints, passes the default and fails --require=signed, and the key holder's next write is refused, in every state of the projection", () => {
     inEveryCacheState({
       found: (dir) => projectIn(dir).found(['a fact as it was written', 'another fact']),
       damage(forged) {
@@ -232,11 +232,16 @@ describe('an edit made without the key', () => {
         expect(strict.second.status, strict.secondSaid).toBe(1);
 
         // The files were rewritten and the clear note put to the new end, so the installation's own
-        // note looks right. The holder writes again: what it signs is what it wrote, not the
-        // rewritten tail it finds, because the signed note still names the end it really wrote.
+        // note looks right. The holder writes again, and the write is refused: the signed note
+        // still names the checkpoints this key signed, and they are gone, so every read withholds
+        // the tail and no write signs anything over it (ADR-560, ADR-561).
         forged.setClearNoteToTheEnd();
-        forged.write('a fact the holder writes after the rewrite');
-        expect(forged.tails()).toHaveLength(2);
+        ctx.forget();
+        const refused = forged.mnema(['memory', 'a fact the holder writes after the rewrite']);
+        expect(refused.status, refused.stderr).toBe(1);
+        expect(refused.stderr).toContain('are no longer in checkpoints.jsonl');
+        expect(refused.stderr).not.toContain('as somebody rewrote it');
+        expect(forged.tails()).toHaveLength(1);
         const after = forged.verdicts(ctx, '--require=signed');
         expect(after.product.status, after.said).toBe(1);
         expect(after.second.status, after.secondSaid).toBe(1);

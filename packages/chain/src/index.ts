@@ -194,6 +194,7 @@ export {
   committedKeys,
   firstLinkBreakFrom,
   holdsRecord,
+  keysTheDiskRefuses,
   type LinkBreak,
   LinkedRecordError,
   listAppleDoubleKeyFiles,

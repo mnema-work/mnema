@@ -60,7 +60,9 @@ function wholeReads(act: () => void): { readonly searched: number; readonly walk
   let walked = 0;
   (fs as { readFileSync: unknown }).readFileSync = (...args: unknown[]) => {
     const path = String(args[0]);
-    if (path.startsWith(root) && path.endsWith('.jsonl')) {
+    // A SEGMENT, never `checkpoints.jsonl`: a replay reads the checkpoints beside the segments
+    // to fold them (ADR-557), and that is no second walk of the record.
+    if (path.startsWith(root) && /[\\/]\d+\.jsonl$/.test(path)) {
       // By the frame that asked: the stack names the module, as built or as mapped to its source.
       if (/subject-events\.[jt]s/.test(new Error().stack ?? '')) searched += 1;
       else walked += 1;

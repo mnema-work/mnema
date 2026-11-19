@@ -130,7 +130,6 @@ import {
   type TreeFacts,
   treeFactsFrom,
 } from '@mnema/core';
-import { proofOf } from '../tree-sources.js';
 
 /** A cache retained for one chain root, and whether it still matches the chain. */
 interface Entry {
@@ -307,11 +306,7 @@ export function createCacheRegistry(
       // rules every other reader uses; any other tree lives in memory for this connection, as it
       // always did, unless a directory was chosen for every cache.
       const persist = readCacheIsChosen() || keepsOnDisk(chainRoot);
-      const cache = ProjectionCache.open(chainRoot, {
-        upcasters,
-        persist,
-        proof: proofOf(chainRoot),
-      });
+      const cache = ProjectionCache.open(chainRoot, { upcasters, persist });
       // A file is brought to the chain (taking what it already holds when it is this code's and
       // covers these segments); a database in memory has nothing to take and is replayed.
       if (persist) cache.refresh();

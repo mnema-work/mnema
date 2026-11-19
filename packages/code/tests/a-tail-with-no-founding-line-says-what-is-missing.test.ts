@@ -9,11 +9,12 @@
  *   - the only segment is emptied;
  *   - the only segment is deleted;
  *   - a tail of two segments loses its first one, so what is left begins above seq 0.
- * The first refusal is `TAIL_DAMAGED`: it says what the files are missing and does not advise
+ * The first refusal is the one for the signed facts that are gone (`ALTERED_ENTRY`, ADR-562): it
+ * names the checkpoint that proves an event stood where the tail holds none, and does not advise
  * deleting `keys/<fp>.anchor`, which is not the damage (a write after deleting it passes over a
  * tail with no start and leaves `verify` failing). The refused write leaves the tails as it
- * found them, byte for byte. `mnema init` in the emptied checkout says the same refusal, not the
- * anchor's.
+ * found them, byte for byte. `mnema init` in the emptied checkout says the tail's damage
+ * (`TAIL_DAMAGED`), not the anchor's.
  *
  * WHAT STAYS. A tail whose directory is removed whole is still refused `STALE_ANCHOR` first:
  * the record no longer holds what the checkout recorded, and the files that survive in `locks/`
@@ -100,7 +101,10 @@ function firstLine(ran: Ran): string {
 
 function expectDamageFirst(ran: Ran): void {
   expect(ran.status).toBe(1);
-  expect(firstLine(ran)).toContain('Refused (TAIL_DAMAGED)');
+  // The events the tail's checkpoints signed are gone: the read withholds what they covered and
+  // every write is refused for it (ADR-562), before the writer opens and meets the tail.
+  expect(firstLine(ran)).toContain('Refused (ALTERED_ENTRY)');
+  expect(ran.err).toContain('holds a signed fact that is missing');
   expect(ran.err).not.toContain('STALE_ANCHOR');
   expect(ran.err).not.toMatch(/delete .*\.anchor/);
 }
@@ -174,16 +178,16 @@ afterAll(() => {
 });
 
 describe('a tail that lost its start', () => {
-  it('with its only segment emptied, refuses TAIL_DAMAGED first', () => {
+  it('with its only segment emptied, refuses for the signed facts that are gone first', () => {
     refusedFor(emptied);
   }, 300_000);
 
-  it('with its only segment deleted, refuses TAIL_DAMAGED first', () => {
+  it('with its only segment deleted, refuses for the signed facts that are gone first', () => {
     refusedFor(deleted);
   }, 300_000);
 
-  it('with two segments and the first removed, refuses TAIL_DAMAGED first and says the start is missing', () => {
-    refusedFor(startRemoved, 'begins at seq 3 and not at seq 0');
+  it('with two segments and the first removed, refuses for the signed facts that are gone first and names the seq', () => {
+    refusedFor(startRemoved, 'proves an event stood at seq 0, and it is not in the tail');
   }, 300_000);
 });
 

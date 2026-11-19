@@ -96,6 +96,12 @@ export function readFileSync(path: string, encoding?: 'utf-8' | 'utf8'): Buffer 
   return encoding === undefined ? copyOf(bytes) : bytes.toString('utf-8');
 }
 
+/** The path itself, for a file or a directory the page carries: the page holds no link. */
+export function realpathSync(path: string): string {
+  if (!existsSync(path)) throw new Error(`ENOENT: no such file or directory, realpath '${path}'`);
+  return path;
+}
+
 export function statSync(path: string): { size: number; isDirectory(): boolean } {
   const bytes = files.get(path);
   if (bytes !== undefined) return { size: bytes.length, isDirectory: () => false };

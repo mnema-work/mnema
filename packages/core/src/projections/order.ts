@@ -72,6 +72,7 @@ import {
   foldCheckpoints,
   illegalMoves,
   isCatalogEvent,
+  keysTheDiskRefuses,
   type LinkBreak,
   orderedSegments,
   precedesItsText,
@@ -95,6 +96,7 @@ import {
   unreadLinesOf,
   type WithheldRun,
 } from '@mnema/chain';
+import { notesRootOf } from '../topology/git-place.js';
 
 /**
  * What a reading collects of the parts of the record it SERVES AROUND: a collector to hand to the
@@ -393,9 +395,12 @@ export function chainReplay(
 ): ChainReplay {
   const linked = refusedParts();
   const reading = tailsReadAt(layout, serveAround ? linked.collect : undefined);
+  // The key folder the checkpoints are verified under: one the disk will not open is a part of the
+  // record not read, named as a segment the disk refuses is, before what it leaves unproven.
+  if (serveAround) keysTheDiskRefuses(layout, linked.collect);
   const streams = streamsOf(layout, upcasters, 0, reading.read, serveAround ? linked : undefined, {
     keys: committedKeys(layout),
-    ...(proof !== undefined ? { proof } : {}),
+    proof: proof ?? proofOf(layout),
   });
   const tails = new Map<string, TailReach>();
   for (const stream of streams) {
@@ -935,6 +940,7 @@ export function orderedEventsOfRecord(
   const perChain = layouts.map((layout, index) =>
     streamsOf(layout, upcasters, index, tailsReadAt(layout).read, undefined, {
       keys: committedKeys(layout),
+      proof: proofOf(layout),
     }),
   );
   // A move is judged inside its own chain, as a citation resolves there: what each chain leaves
@@ -1062,7 +1068,17 @@ function signedOf(
   };
 }
 
-/** This machine's signed note of `tail`, verified with the key this machine holds, or undefined. */
+/**
+ * Where a reading of `layout` finds this machine's signed notes when its caller named no place: the
+ * place a public tree inside a repository shares with every worktree (`notesRootOf`), and the
+ * tree's own `locks/` after it ({@link noteOf}).
+ */
+function proofOf(layout: ChainLayout): ReadProof {
+  const notesRoot = notesRootOf(layout.root);
+  return notesRoot === undefined ? {} : { notesRoot };
+}
+
+/** This machine's signed note of `tail`, verified with the tail's committed key, or undefined. */
 function noteOf(
   layout: ChainLayout,
   tail: string,

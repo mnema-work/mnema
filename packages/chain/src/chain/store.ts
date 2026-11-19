@@ -7,7 +7,16 @@
  * layers the T1/T2/T4 checks on top of what this returns.
  */
 
-import { existsSync, lstatSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import {
+  closeSync,
+  existsSync,
+  lstatSync,
+  openSync,
+  readdirSync,
+  readFileSync,
+  readSync,
+  statSync,
+} from 'node:fs';
 import { basename, join } from 'node:path';
 
 import { decodeStoredBytes, StoredJsonError } from '../events/stored-json.js';
@@ -385,6 +394,22 @@ export function listPublicKeyFingerprints(layout: ChainLayout): string[] {
     .filter((name) => name.endsWith('.pub') && !name.startsWith(APPLE_DOUBLE_PREFIX))
     .map((name) => name.slice(0, -'.pub'.length))
     .sort();
+}
+
+/**
+ * Whether the disk refuses the key folder of `layout`, handing the refusal to `refused`: a reading
+ * that serves around the parts it cannot open names the folder, as it names a segment, and a write
+ * is then refused by the part (`cannot be opened`) before anything the missing keys leave unproven.
+ */
+export function keysTheDiskRefuses(layout: ChainLayout, refused: RefusedLine): boolean {
+  try {
+    listPublicKeyFingerprints(layout);
+    return false;
+  } catch (error) {
+    if (!(error instanceof UnreadableDiskError)) throw error;
+    refused(error);
+    return true;
+  }
 }
 
 /**
@@ -1339,9 +1364,10 @@ export function readTailCheckpointsSince(
   if (size < mark.bytes) return undefined;
   const mtimeNs = mtimeNsOf(file);
   if (size === mark.bytes) return mtimeNs === mark.mtimeNs ? { checkpoints: [], mark } : undefined;
+  // Only the bytes from the last line folded on: the line read again, and what came after it.
   let raw: Buffer;
   try {
-    raw = readFileSync(file).subarray(mark.lastLineAt);
+    raw = bytesFrom(file, mark.lastLineAt, size);
   } catch {
     return undefined;
   }
@@ -1365,6 +1391,23 @@ export function readTailCheckpointsSince(
     checkpoints: rest,
     mark: { bytes: mark.lastLineAt + raw.length, lastLineAt: read.lastLineAt, mtimeNs },
   };
+}
+
+/** The bytes of `file` from `start` to `end`, read through a descriptor: never the whole file. */
+function bytesFrom(file: string, start: number, end: number): Buffer {
+  const buffer = Buffer.alloc(Math.max(0, end - start));
+  const fd = openSync(file, 'r');
+  try {
+    let read = 0;
+    while (read < buffer.length) {
+      const got = readSync(fd, buffer, read, buffer.length - read, start + read);
+      if (got === 0) break;
+      read += got;
+    }
+    return buffer.subarray(0, read);
+  } finally {
+    closeSync(fd);
+  }
 }
 
 /** The checkpoints of `raw` (bytes of the file from `offset`) and where the last complete one starts. */

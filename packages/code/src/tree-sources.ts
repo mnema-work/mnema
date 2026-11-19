@@ -33,10 +33,8 @@ import {
   chainRootForScope,
   locateEntityScope,
   locateEntityScopeWith,
-  notesRootOf,
   orderedEvents,
   ProjectionCache,
-  type ReadProof,
   type ResolvedTrees,
   replayingRecordProbe,
   type Scope,
@@ -68,15 +66,6 @@ export const SCOPES: readonly Scope[] = ['public', 'private', 'global'];
  */
 
 /**
- * Where a reading of the tree at `chainRoot` finds this machine's signed notes of what it wrote
- * (`ReadProof`): a public tree inside a repository keeps them in the place every worktree shares.
- */
-export function proofOf(chainRoot: string): ReadProof {
-  const notesRoot = notesRootOf(chainRoot);
-  return notesRoot === undefined ? {} : { notesRoot };
-}
-
-/**
  * Opens a rebuilt cache over ONE tree, hands it to `read`, and closes it before
  * returning, including when the read throws.
  *
@@ -91,7 +80,6 @@ export function withCache<T>(
   const cache = ProjectionCache.open(chainRoot, {
     upcasters,
     persist: true,
-    proof: proofOf(chainRoot),
   });
   try {
     cache.refresh();
@@ -193,7 +181,7 @@ export function withOpenedCaches<T>(
     return read((scope) => {
       const root = chainRootForScope(trees, scope);
       if (root === undefined) return undefined;
-      const cache = ProjectionCache.open(root, { upcasters, persist: true, proof: proofOf(root) });
+      const cache = ProjectionCache.open(root, { upcasters, persist: true });
       // Recorded BEFORE the catch-up, so a reading that throws still leaves a handle the
       // `finally` below can close. The version this replaced pushed it after.
       const source: ScopedCache = { scope, chainRoot: root, cache };
@@ -227,7 +215,6 @@ export function withTreesRead<T>(
     for (const tree of trees) {
       const cache = ProjectionCache.open(tree.chainRoot, {
         upcasters,
-        proof: proofOf(tree.chainRoot),
       });
       opened.push({
         scope: tree.scope,

@@ -970,7 +970,7 @@ export const HANDED_OVER: Readonly<
   'packages/code/src/tour/pages.ts': { line: 1, name: 11 },
   'packages/code/src/tour/run.ts': { name: 1 },
   'packages/code/src/update-notice.ts': { name: 3 },
-  'packages/code/src/what-a-write-meets.ts': { line: 2, name: 2 },
+  'packages/code/src/what-a-write-meets.ts': { line: 2, name: 3 },
   'packages/code/src/wiring/after-a-write.ts': { line: 1 },
   'packages/code/src/wiring/backup.ts': { line: 17, name: 12 },
   'packages/code/src/wiring/before-a-write.ts': { line: 4 },

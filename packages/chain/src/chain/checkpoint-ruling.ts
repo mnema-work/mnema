@@ -389,15 +389,13 @@ function foldOnce(question: FoldQuestion, signatures: 'the-last' | 'every'): Tai
   checkpoints.forEach((checkpoint, at) => {
     const line = at + 1;
     namedTo = Math.max(namedTo, checkpoint.toSeq);
-    const candidates = (index.bySeq.get(checkpoint.fromSeq) ?? []).filter((entry) =>
-      anchor === undefined
-        ? entry.link.prev === null
-          ? entry.link.seq === 0
-          : (index.bySeq.get(entry.link.seq - 1) ?? []).some(
-              (below) => below.link.hash === entry.link.prev,
-            )
-        : entry.link.prev === (anchor === null ? null : anchor.link.hash),
-    );
+    // After a holding line, the range chains on from the entry that line's range ended on. After
+    // a failed one there is no such entry to chain from (it may be the very line that is gone), so
+    // every entry at the line's first seq is a candidate, and the root says which one it signed.
+    const atFrom = index.bySeq.get(checkpoint.fromSeq) ?? [];
+    const after = anchor === undefined ? undefined : anchor === null ? null : anchor.link.hash;
+    const candidates =
+      after === undefined ? atFrom : atFrom.filter((entry) => entry.link.prev === after);
     const range = rangeOf(index, checkpoint, candidates, question.onFold);
     const last = at === checkpoints.length - 1;
     const ruled = ruleOnCheckpoint({
