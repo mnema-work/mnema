@@ -36,10 +36,18 @@ name, and prints the same.
   and is committed with it; the next write of the record adds the same line.
 - The one setting of VS Code's `settings.json`, `chat.pluginLocations`, where it lists a plugin folder of Claude
   Code's cache that is no longer there (`mnema doctor --fix vscode`, with a copy of the file kept beside it).
+- The mnema MCP server declared a second time in your `~/.claude.json` (or the one under `CLAUDE_CONFIG_DIR`), in its
+  user table or in the table of this project, when it is declared anywhere else the host reads (an installed plugin, the
+  project's `.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json`); of two declarations in that file alone, the user one
+  stays. A session is offered every tool once per declaration. The entry is cut by its bytes: every other byte of the
+  file stays where it was, a copy is kept beside it (`.claude.json.mnema-backup-<time>`), and a file whose shape the
+  edit does not know is refused with the reason, nothing written. The entries of other projects are not touched.
 
 **Asked**: the merge driver and `merge.autoStash` and `rebase.autoStash` in this repository's `.git/config`. They apply
 to every file of the clone, so at a terminal you answer yes or no, and without one the run lists the command
-(`mnema doctor --fix merge-driver`) and writes nothing.
+(`mnema doctor --fix merge-driver`) and writes nothing. The same for the entry of the project's `.mcp.json`, a file your
+team commits, when an installed plugin declares the server too (without a terminal it lists
+`claude mcp remove mnema --scope project`): whoever works there without the plugin loses the server.
 
 **Said**: a Claude Code plugin whose label or files are behind this version. The host updates it, with the commands the
 line names; this verb runs none of them.

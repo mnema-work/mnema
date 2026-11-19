@@ -585,6 +585,42 @@ function mcpFindings(ctx: DoctorContext, plugins: InstalledPlugin[] | 'unreadabl
   return [...declaredFindings(ctx, plugins, root), ...otherProjectFindings(ctx, root)];
 }
 
+/** Where the mnema MCP server is declared, and which of the declarations an update can leave behind. */
+export interface McpDeclarations {
+  /** `~/.claude.json` (or the one under `CLAUDE_CONFIG_DIR`), where it is the host's own file of a person. */
+  readonly claudeJson: string;
+  /** The mnema entries of its user table, and of the table of the project the command runs in. */
+  readonly user: readonly string[];
+  readonly project: readonly string[];
+  readonly projectRoot: string;
+  /** The project's `.mcp.json`, which a team commits. */
+  readonly committed: { readonly file: string; readonly names: readonly string[] };
+  /** Declarations the host has by itself: a plugin, and the other hosts' files of the project. */
+  readonly plugins: number;
+  readonly elsewhere: number;
+}
+
+/** Reads only: the same places `declaredFindings` counts, kept apart by who owns the file. */
+export function mcpDeclarations(ctx: DoctorContext): McpDeclarations {
+  const trees = resolveTrees(ctx.cwd, ctx.env);
+  const root = trees.projectPublic === undefined ? ctx.cwd : dirname(trees.projectPublic);
+  const claudeJson = claudeJsonPath(ctx);
+  const json = asRecord(readJson(claudeJson));
+  const committed = join(root, '.mcp.json');
+  const plugins = installedPlugins(ctx);
+  return {
+    claudeJson,
+    user: mnemaIn(json?.mcpServers),
+    project: mnemaIn(asRecord(asRecord(json?.projects)?.[root])?.mcpServers),
+    projectRoot: root,
+    committed: { file: committed, names: mnemaIn(asRecord(readJson(committed))?.mcpServers) },
+    plugins: plugins === 'unreadable' ? 0 : plugins.length,
+    elsewhere:
+      mnemaIn(asRecord(readJson(join(root, '.cursor', 'mcp.json')))?.mcpServers).length +
+      mnemaIn(asRecord(readJson(join(root, '.vscode', 'mcp.json')))?.servers).length,
+  };
+}
+
 function declaredFindings(
   ctx: DoctorContext,
   plugins: InstalledPlugin[] | 'unreadable',

@@ -289,3 +289,108 @@ describe('the two doors of the one function', () => {
     expect(alone.err.join(' ')).toContain('--after-update');
   });
 });
+
+describe('the mnema MCP server declared a second time', () => {
+  const claudeJson = (): string => join(home, '.claude.json');
+  /** What a host writes: its own state, another project's server, the person's other servers, and two of ours. */
+  const hostFile = (): string =>
+    `${JSON.stringify(
+      {
+        numStartups: 41,
+        mcpServers: {
+          other: { command: 'other-server', args: ['--x'] },
+          mnema: { command: 'mnema', args: ['mcp'] },
+        },
+        projects: {
+          [repo]: { allowedTools: [], mcpServers: { mnema: { command: 'mnema', args: ['mcp'] } } },
+          '/elsewhere': { mcpServers: { mnema: { command: 'mnema', args: ['mcp'] } } },
+        },
+        tips: { seen: 3 },
+      },
+      null,
+      2,
+    )}\n`;
+
+  it('removes the entries of the host file beside a plugin, keeps every other byte and a copy, and asks for .mcp.json', async () => {
+    put(claudeJson(), hostFile());
+    put(
+      join(repo, '.mcp.json'),
+      '{\n  "mcpServers": {\n    "mnema": { "command": "mnema", "args": ["mcp"] }\n  }\n}\n',
+    );
+    const before = readFileSync(claudeJson(), 'utf8');
+    const dry = await mnema(['upgrade', '--dry-run']);
+    expect(dry.out.join('\n')).toMatch(
+      /would apply · mcp: .*\.claude\.json declares the mnema MCP server again/,
+    );
+    expect(dry.out.join('\n')).toMatch(/would ask · mcp: .*\.mcp\.json declares/);
+    expect(readFileSync(claudeJson(), 'utf8')).toBe(before);
+
+    const said = await mnema(['upgrade']);
+    expect(said.failed, said.err.join(' / ')).toBe(false);
+    const after = readFileSync(claudeJson(), 'utf8');
+    const expected = JSON.parse(before);
+    delete expected.mcpServers.mnema;
+    delete expected.projects[repo].mcpServers.mnema;
+    // Exactly the two entries went, and the lines around them are the bytes they were.
+    expect(JSON.parse(after)).toEqual(expected);
+    expect(after).toContain('  "numStartups": 41,\n');
+    expect(after).toContain(
+      '    "other": {\n      "command": "other-server",\n      "args": [\n        "--x"\n      ]\n    }\n  },\n',
+    );
+    expect(after).toContain('"/elsewhere"');
+    const copies = readdirSync(home).filter((name) =>
+      name.startsWith('.claude.json.mnema-backup-'),
+    );
+    expect(copies).toHaveLength(1);
+    expect(readFileSync(join(home, copies[0] as string), 'utf8')).toBe(before);
+    // The file a team commits is asked about, and without a terminal it is listed as a command, untouched.
+    expect(said.out.join('\n')).toMatch(
+      /to run · mcp: .*\(claude mcp remove mnema --scope project\)/,
+    );
+    expect(readFileSync(join(repo, '.mcp.json'), 'utf8')).toContain('"mnema"');
+  });
+
+  it('writes .mcp.json only on a yes', async () => {
+    put(
+      join(repo, '.mcp.json'),
+      '{\n  "mcpServers": {\n    "mnema": { "command": "mnema", "args": ["mcp"] }\n  }\n}\n',
+    );
+    await mnema(['upgrade'], {
+      aPersonIsHere: true,
+      ask: async (question) => (question.startsWith('mcp:') ? 'no' : 'no'),
+    });
+    expect(readFileSync(join(repo, '.mcp.json'), 'utf8')).toContain('"mnema"');
+    const yes = await mnema(['upgrade'], {
+      aPersonIsHere: true,
+      ask: async (question) => (question.startsWith('mcp:') ? 'yes' : 'no'),
+    });
+    expect(yes.failed, yes.err.join(' / ')).toBe(false);
+    expect(JSON.parse(readFileSync(join(repo, '.mcp.json'), 'utf8'))).toEqual({ mcpServers: {} });
+  });
+
+  it('keeps the one declaration there is, and the user one of two in the host file alone', async () => {
+    rmSync(join(home, '.claude', 'plugins', 'installed_plugins.json'));
+    put(claudeJson(), hostFile());
+    const said = await mnema(['upgrade']);
+    expect(said.failed, said.err.join(' / ')).toBe(false);
+    const after = JSON.parse(readFileSync(claudeJson(), 'utf8'));
+    expect(after.mcpServers.mnema).toEqual({ command: 'mnema', args: ['mcp'] });
+    expect(after.projects[repo].mcpServers).toEqual({});
+    expect(after.projects['/elsewhere'].mcpServers.mnema).toBeDefined();
+    const lone = JSON.stringify({ mcpServers: { mnema: { command: 'mnema', args: ['mcp'] } } });
+    put(claudeJson(), lone);
+    const again = await mnema(['upgrade']);
+    expect(again.out.join('\n')).not.toMatch(/· mcp:/);
+    expect(readFileSync(claudeJson(), 'utf8')).toBe(lone);
+  });
+
+  it('refuses a host file it cannot edit, writes nothing and fails the run', async () => {
+    const broken = '{\n  "mcpServers": {\n    "mnema": {},\n    "mnema": {}\n  }\n}\n';
+    put(claudeJson(), broken);
+    const said = await mnema(['upgrade']);
+    expect(said.failed).toBe(true);
+    expect(said.out.join('\n')).toMatch(/failed · mcp: .*appears more than once/);
+    expect(readFileSync(claudeJson(), 'utf8')).toBe(broken);
+    expect(readdirSync(home).some((name) => name.includes('mnema-backup-'))).toBe(false);
+  });
+});
