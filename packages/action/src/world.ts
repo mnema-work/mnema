@@ -14,9 +14,9 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { provenHashes } from './record.js';
 import { discoveryEnv, runRules } from '@mnema/code/library';
 import type { World } from './judge.js';
+import { provenHashes } from './record.js';
 
 /** Largest output read from one child process. */
 const MOST_OUTPUT = 256 * 1024 * 1024;

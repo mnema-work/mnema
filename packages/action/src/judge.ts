@@ -109,7 +109,10 @@ export async function judge(world: World, pr: PullRequest): Promise<Verdict> {
   }
 
   const head = textsOf(headTexts);
-  const record = whatItDoes(eventsAdded(textsOf(baseTexts), head), decisionLabels(headTexts, world.git.provenAt('HEAD')));
+  const record = whatItDoes(
+    eventsAdded(textsOf(baseTexts), head),
+    decisionLabels(headTexts, world.git.provenAt('HEAD')),
+  );
 
   // A file renamed leaves one path and takes another; the rules of both judge it, so a rename
   // cannot carry a protected file out from under its rule.

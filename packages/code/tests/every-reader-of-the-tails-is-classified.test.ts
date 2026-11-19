@@ -409,8 +409,8 @@ describe('every reader of the tails is classified', () => {
   it('sees a reader of the bytes called under another name', () => {
     const aliased = [
       "import { type ChainEntry, subjectEvents as raw } from '@mnema/chain';",
-      "import {",
-      "  readTail as read,",
+      'import {',
+      '  readTail as read,',
       "} from '@mnema/chain';",
       'export const a = raw(layout, id);',
       'export const b = read(layout, tail, upcasters);',

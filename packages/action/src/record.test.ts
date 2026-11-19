@@ -12,13 +12,7 @@ import {
   writtenAsStored,
 } from '@mnema/chain';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  decisionLabels,
-  eventsAdded,
-  provenHashes,
-  readEvents,
-  whatItDoes,
-} from './record.js';
+import { decisionLabels, eventsAdded, provenHashes, readEvents, whatItDoes } from './record.js';
 
 /** One line of a tail, the shape the chain writes: the event and the link that chains it. */
 const line = (
@@ -177,13 +171,12 @@ describe('decisionLabels', () => {
     );
   }
 
-  function record(forgedAt: number): string[] {
-    return textsOf(recordTree(forgedAt));
-  }
-
   it('labels an accepted decision by the text its accept saw, not by a writing dated before it on a tail it never read', () => {
     const tree = recordTree(5);
-    expect(decisionLabels(textsOf(tree), provenHashes(tree)).get('d1')).toEqual({ adr: 'ADR-1', title: 'Use SQLite' });
+    expect(decisionLabels(textsOf(tree), provenHashes(tree)).get('d1')).toEqual({
+      adr: 'ADR-1',
+      title: 'Use SQLite',
+    });
   });
 
   it('labels a decision by its first writing, not its last, when one id is written again later', () => {
@@ -255,7 +248,8 @@ describe('decisionLabels', () => {
 
     // The checkpoints of the tails are gone: every event is there, none of them proven.
     const tails = join(tree, 'tails');
-    for (const tail of readdirSync(tails)) writeFileSync(join(tails, tail, 'checkpoints.jsonl'), '');
+    for (const tail of readdirSync(tails))
+      writeFileSync(join(tails, tail, 'checkpoints.jsonl'), '');
     const unsigned = provenHashes(tree);
     expect(unsigned.size).toBeLessThan(proven.size);
     expect(decisionLabels(texts, unsigned).get('d1')).toBeUndefined();
