@@ -36,7 +36,7 @@ export function registerSearch(program: Command, wiring: Wiring): Declared {
       enumeratedOption(
         '--scope <scope>',
         `only this tree: ${listed(SCOPES)}; leave it out, or say all, to search the three together`,
-        SCOPES,
+        [...SCOPES, 'all'],
       ),
     )
     .option('--state <state>', 'only records in this state NOW (excludes kinds that have none)')

@@ -251,7 +251,7 @@ describe('a declaration lists the set it takes', () => {
     expect(setAt('decision import --scope').values).toEqual(
       SCOPES.filter((scope) => scope !== 'global'),
     );
-    expect(setAt('search --scope').values).toBe(SCOPES);
+    expect(setAt('search --scope').values).toEqual([...SCOPES, 'all']);
     expect([...SCOPES]).toEqual(['public', 'private', 'global']);
   });
 
