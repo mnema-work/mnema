@@ -35,6 +35,7 @@
 
 import type { Command } from 'commander';
 import { hookTextOf } from '../host-names.js';
+import { fact } from '../presentation/detail.js';
 import { hookHostOf, hookHostOption, switchedOff } from './brief.js';
 import { here } from './context.js';
 import { writeLines } from './io.js';
@@ -163,7 +164,7 @@ export function registerRecall(program: Command, wiring: Wiring): Declared {
               )
             : recallDocument(result);
         if (opts.hook === true && document.length === 0 && recallDocument(result).length > 0) {
-          io.err(NOTHING_HANDED_BECAUSE_IT_DOES_NOT_FIT);
+          io.err(render(fact(NOTHING_HANDED_BECAUSE_IT_DOES_NOT_FIT, 0)));
         }
         if (opts.hook !== true) {
           for (const line of notice) io.err(render(line));
