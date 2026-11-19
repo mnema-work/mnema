@@ -21,7 +21,15 @@
  * bytes after a copy of the file is kept beside it. `dryRun` writes nothing at all.
  */
 
-import { constants, copyFileSync, readFileSync, writeFileSync } from 'node:fs';
+import { createHash, randomBytes } from 'node:crypto';
+import {
+  constants,
+  copyFileSync,
+  readFileSync,
+  renameSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { ensureTree, mergeLineIsMissing } from '@mnema/chain';
 import { resolveTrees } from '@mnema/core';
@@ -57,7 +65,12 @@ export interface UpdateStep {
   /** The command that does it by hand, where there is one. */
   readonly command?: string;
   /** The `mcp` step: the file it edits, and the entries of which table it drops. */
-  readonly edit?: { readonly file: string; readonly drops: readonly Drop[] };
+  readonly edit?: {
+    readonly file: string;
+    readonly drops: readonly Drop[];
+    /** The hash of the file as the plan read it: a file that changed since is not written. */
+    readonly seen: string;
+  };
 }
 
 interface Drop {
@@ -70,8 +83,8 @@ const DOCTOR_VSCODE = 'mnema doctor --fix vscode';
 
 /**
  * What an update leaves of the mnema MCP server declared twice. In the person's own `~/.claude.json` an entry goes when
- * the server is declared anywhere else the host reads (a plugin, the project's files), and of two declarations
- * there alone the user one stays. The project's committed `.mcp.json` goes only beside a plugin that serves the
+ * the server is declared anywhere else the host reads and that works here (an enabled plugin, the entries of the project's `.mcp.json` it approved), and of two declarations
+ * there alone the user one stays. The project's committed `.mcp.json` goes only beside an enabled plugin that serves the
  * same tools, and only asked: a teammate without the plugin may rely on it.
  */
 function mcpSteps(found: McpDeclarations): UpdateStep[] {
@@ -81,7 +94,7 @@ function mcpSteps(found: McpDeclarations): UpdateStep[] {
     { table: ['mcpServers'], names: found.user },
     { table: ['projects', key, 'mcpServers'], names: found.project },
   ];
-  const kept = found.plugins + found.committed.names.length + found.elsewhere > 0;
+  const kept = found.working > 0;
   let leave = kept ? 0 : 1;
   const drops = here
     .map((one) => ({ ...one, names: one.names.filter(() => leave-- <= 0) }))
@@ -93,10 +106,10 @@ function mcpSteps(found: McpDeclarations): UpdateStep[] {
       class: 'applied',
       line: `${oneLine(found.claudeJson)} declares the mnema MCP server again (${names.join(', ')}) where it is declared once already, so a session is offered every tool twice: the entr${names.length === 1 ? 'y goes' : 'ies go'}, no other byte of the file changes, and a copy of it is kept beside it.`,
       command: 'claude mcp remove mnema --scope user',
-      edit: { file: found.claudeJson, drops },
+      edit: { file: found.claudeJson, drops, seen: hashOf(found.claudeJson) },
     });
   }
-  if (found.plugins > 0 && found.committed.names.length > 0) {
+  if (found.pluginWorks && found.committed.names.length > 0) {
     steps.push({
       topic: 'mcp',
       class: 'asked',
@@ -105,6 +118,7 @@ function mcpSteps(found: McpDeclarations): UpdateStep[] {
       edit: {
         file: found.committed.file,
         drops: [{ table: ['mcpServers'], names: found.committed.names }],
+        seen: hashOf(found.committed.file),
       },
     });
   }
@@ -189,14 +203,33 @@ function said(label: string, step: UpdateStep): string {
   return `${label} · ${step.topic}: ${step.line}${step.command === undefined ? '' : ` (${step.command})`}`;
 }
 
+const sha = (text: string): string => createHash('sha256').update(text).digest('hex');
+
+/** The hash of a file as it is now, or of nothing where it cannot be read. */
+function hashOf(file: string): string {
+  try {
+    return sha(readFileSync(file, 'utf-8'));
+  } catch {
+    return '';
+  }
+}
+
 /** Cuts the entries from the file, after a copy beside it where the file is the person's own; a refusal writes nothing. */
 function dropDeclarations(
-  file: string,
-  drops: readonly Drop[],
+  edit: NonNullable<UpdateStep['edit']>,
   keepACopy: boolean,
 ): { readonly lines: readonly string[]; readonly failed: boolean } {
+  const { file, drops } = edit;
   const where = oneLine(file);
   const original = readFileSync(file, 'utf-8');
+  if (sha(original) !== edit.seen) {
+    return {
+      lines: [
+        `failed · mcp: ${where} changed since the plan read it (the host may be writing it): it was not written; run \`mnema upgrade\` again.`,
+      ],
+      failed: true,
+    };
+  }
   let text = original;
   const removed: string[] = [];
   for (const drop of drops) {
@@ -219,11 +252,14 @@ function dropDeclarations(
   let kept = '';
   if (keepACopy) {
     const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
-    const copy = `${file}.mnema-backup-${stamp}`;
+    const copy = `${file}.mnema-backup-${stamp}-${randomBytes(3).toString('hex')}`;
     copyFileSync(file, copy, constants.COPYFILE_EXCL);
     kept = `; the file as it was is kept at ${oneLine(copy)}`;
   }
-  writeFileSync(file, text);
+  // Beside the file and renamed over it, so a reader never sees half of it; and the mode the host gave it stays.
+  const beside = `${file}.mnema-tmp-${randomBytes(3).toString('hex')}`;
+  writeFileSync(beside, text, { mode: statSync(file).mode & 0o777, flag: 'wx' });
+  renameSync(beside, file);
   return {
     lines: [`applied · mcp: ${where}: removed ${removed.map(oneLine).join(', ')}${kept}.`],
     failed: false,
@@ -274,7 +310,7 @@ function doStep(
       };
     }
     if (step.topic === 'mcp' && step.edit !== undefined) {
-      return dropDeclarations(step.edit.file, step.edit.drops, step.class === 'applied');
+      return dropDeclarations(step.edit, step.class === 'applied');
     }
     if (step.topic === 'merge-driver') {
       const fixed = fixMergeDriver(ctx, { dryRun: false, driver: ctx.driver });

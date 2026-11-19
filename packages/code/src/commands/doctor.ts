@@ -427,6 +427,8 @@ interface InstalledPlugin {
   readonly scope: string;
   /** Where the host put the plugin's files, when its list says. */
   readonly installPath: string | undefined;
+  /** The project a `project` or `local` scope install belongs to. */
+  readonly projectPath: string | undefined;
 }
 
 function installedPlugins(ctx: DoctorContext): InstalledPlugin[] | 'unreadable' {
@@ -443,6 +445,7 @@ function installedPlugins(ctx: DoctorContext): InstalledPlugin[] | 'unreadable' 
         version: typeof one?.version === 'string' ? one.version : 'unknown',
         scope: typeof one?.scope === 'string' ? one.scope : 'unknown',
         installPath: typeof one?.installPath === 'string' ? one.installPath : undefined,
+        projectPath: typeof one?.projectPath === 'string' ? one.projectPath : undefined,
       });
     }
   }
@@ -563,11 +566,13 @@ export function pluginsLeftBehind(ctx: DoctorContext): readonly Finding[] {
 
 /** Whether one entry of an MCP configuration starts this product's server. */
 function startsMnema(name: string, entry: unknown): boolean {
-  if (name === 'mnema') return true;
   const one = asRecord(entry);
   const command = typeof one?.command === 'string' ? basename(one.command) : '';
   const args = Array.isArray(one?.args) ? one.args.map(String) : [];
-  return (command === 'mnema' && args.includes('mcp')) || args.includes('@mnema/code');
+  if (args.includes('@mnema/code')) return true;
+  if (command === 'mnema' && args.includes('mcp')) return true;
+  // The name alone is ours only where nothing says the entry starts another program.
+  return name === 'mnema' && (command === '' || command === 'mnema' || args.includes('mcp'));
 }
 
 /** The mnema entries of a `{ <name>: <entry> }` table. */
@@ -595,29 +600,72 @@ export interface McpDeclarations {
   readonly projectRoot: string;
   /** The project's `.mcp.json`, which a team commits. */
   readonly committed: { readonly file: string; readonly names: readonly string[] };
-  /** Declarations the host has by itself: a plugin, and the other hosts' files of the project. */
-  readonly plugins: number;
-  readonly elsewhere: number;
+  /**
+   * Declarations Claude Code reads AND that work here: a plugin installed for the user or for this project and
+   * not turned off, and the entries of `.mcp.json` the host has approved for this project. What cannot be shown
+   * to work (a file of another host, a plugin of another project, an approval nobody wrote) is not counted.
+   */
+  readonly working: number;
+  readonly committedWorks: boolean;
+  readonly pluginWorks: boolean;
 }
 
-/** Reads only: the same places `declaredFindings` counts, kept apart by who owns the file. */
+/** `enabledPlugins` of the settings files Claude Code reads, as `id -> value`; a `false` anywhere wins. */
+function pluginSwitches(ctx: DoctorContext, root: string): Map<string, boolean> {
+  const switches = new Map<string, boolean>();
+  for (const file of [
+    join(claudeConfigDir(ctx), 'settings.json'),
+    join(root, '.claude', 'settings.json'),
+    join(root, '.claude', 'settings.local.json'),
+  ]) {
+    const table = asRecord(asRecord(readJson(file))?.enabledPlugins);
+    for (const [id, on] of Object.entries(table ?? {})) {
+      if (on === false) switches.set(id, false);
+      else if (on === true && switches.get(id) !== false) switches.set(id, true);
+    }
+  }
+  return switches;
+}
+
+/** Reads only: the places `declaredFindings` counts, kept apart by who owns the file and whether it works here. */
 export function mcpDeclarations(ctx: DoctorContext): McpDeclarations {
   const trees = resolveTrees(ctx.cwd, ctx.env);
   const root = trees.projectPublic === undefined ? ctx.cwd : dirname(trees.projectPublic);
   const claudeJson = claudeJsonPath(ctx);
   const json = asRecord(readJson(claudeJson));
   const committed = join(root, '.mcp.json');
+  const names = mnemaIn(asRecord(readJson(committed))?.mcpServers);
+  const here = asRecord(asRecord(json?.projects)?.[root]);
+  const approved = (list: unknown): string[] => (Array.isArray(list) ? list.map(String) : []);
+  const allApproved = [
+    join(claudeConfigDir(ctx), 'settings.json'),
+    join(root, '.claude', 'settings.json'),
+    join(root, '.claude', 'settings.local.json'),
+  ].some((file) => asRecord(readJson(file))?.enableAllProjectMcpServers === true);
+  const enabled = approved(here?.enabledMcpjsonServers);
+  const disabled = approved(here?.disabledMcpjsonServers);
+  const committedWorks =
+    names.length > 0 &&
+    names.every((name) => !disabled.includes(name) && (allApproved || enabled.includes(name)));
   const plugins = installedPlugins(ctx);
+  const switches = pluginSwitches(ctx, root);
+  const pluginWorks =
+    plugins !== 'unreadable' &&
+    plugins.some(
+      (one) =>
+        switches.get(one.id) === true &&
+        (one.scope === 'user' ||
+          ((one.scope === 'project' || one.scope === 'local') && one.projectPath === root)),
+    );
   return {
     claudeJson,
     user: mnemaIn(json?.mcpServers),
-    project: mnemaIn(asRecord(asRecord(json?.projects)?.[root])?.mcpServers),
+    project: mnemaIn(asRecord(here?.mcpServers)),
     projectRoot: root,
-    committed: { file: committed, names: mnemaIn(asRecord(readJson(committed))?.mcpServers) },
-    plugins: plugins === 'unreadable' ? 0 : plugins.length,
-    elsewhere:
-      mnemaIn(asRecord(readJson(join(root, '.cursor', 'mcp.json')))?.mcpServers).length +
-      mnemaIn(asRecord(readJson(join(root, '.vscode', 'mcp.json')))?.servers).length,
+    committed: { file: committed, names },
+    working: (pluginWorks ? 1 : 0) + (committedWorks ? 1 : 0),
+    committedWorks,
+    pluginWorks,
   };
 }
 

@@ -292,6 +292,12 @@ describe('the two doors of the one function', () => {
 
 describe('the mnema MCP server declared a second time', () => {
   const claudeJson = (): string => join(home, '.claude.json');
+  const turnOn = (value: boolean): void =>
+    put(
+      join(home, '.claude', 'settings.json'),
+      JSON.stringify({ enabledPlugins: { 'mnema@mnema': value } }),
+    );
+  beforeEach(() => turnOn(true));
   /** What a host writes: its own state, another project's server, the person's other servers, and two of ours. */
   const hostFile = (): string =>
     `${JSON.stringify(
@@ -392,5 +398,82 @@ describe('the mnema MCP server declared a second time', () => {
     expect(said.out.join('\n')).toMatch(/failed · mcp: .*appears more than once/);
     expect(readFileSync(claudeJson(), 'utf8')).toBe(broken);
     expect(readdirSync(home).some((name) => name.includes('mnema-backup-'))).toBe(false);
+  });
+
+  const stays = async (): Promise<void> => {
+    put(claudeJson(), hostFile());
+    const before = readFileSync(claudeJson(), 'utf8');
+    const said = await mnema(['upgrade']);
+    expect(said.failed, said.err.join(' / ')).toBe(false);
+    const after = JSON.parse(readFileSync(claudeJson(), 'utf8'));
+    // Nothing that works here declares it but this file, so the user entry stays (the project one is the second of the file's own).
+    expect(after.mcpServers.mnema).toEqual({ command: 'mnema', args: ['mcp'] });
+    expect(JSON.parse(before).mcpServers.mnema).toEqual(after.mcpServers.mnema);
+    expect(after.projects[repo].mcpServers).toEqual({});
+  };
+
+  it('keeps the entry when only another host declares it', async () => {
+    rmSync(join(home, '.claude', 'plugins', 'installed_plugins.json'));
+    put(
+      join(repo, '.vscode', 'mcp.json'),
+      '{"servers":{"mnema":{"command":"mnema","args":["mcp"]}}}',
+    );
+    put(
+      join(repo, '.cursor', 'mcp.json'),
+      '{"mcpServers":{"mnema":{"command":"mnema","args":["mcp"]}}}',
+    );
+    await stays();
+    expect(JSON.parse(readFileSync(claudeJson(), 'utf8')).projects[repo].mcpServers).toEqual({});
+  });
+
+  it('keeps the entry when the plugin is installed for another project', async () => {
+    put(
+      join(home, '.claude', 'plugins', 'installed_plugins.json'),
+      JSON.stringify({
+        plugins: {
+          'mnema@mnema': [{ version: '0.1.5', scope: 'project', projectPath: '/somewhere/else' }],
+        },
+      }),
+    );
+    await stays();
+  });
+
+  it('keeps the entry when the plugin is turned off', async () => {
+    turnOn(false);
+    await stays();
+  });
+
+  it('keeps the entry beside a .mcp.json the host has not approved, and cuts it beside one it has', async () => {
+    rmSync(join(home, '.claude', 'plugins', 'installed_plugins.json'));
+    put(join(repo, '.mcp.json'), '{"mcpServers":{"mnema":{"command":"mnema","args":["mcp"]}}}');
+    await stays();
+    const approved = JSON.parse(hostFile());
+    approved.projects[repo].enabledMcpjsonServers = ['mnema'];
+    put(claudeJson(), `${JSON.stringify(approved, null, 2)}\n`);
+    await mnema(['upgrade']);
+    expect(JSON.parse(readFileSync(claudeJson(), 'utf8')).mcpServers.mnema).toBeUndefined();
+  });
+
+  it('does not count a server named mnema that starts another program', async () => {
+    const other = JSON.parse(hostFile());
+    other.mcpServers.mnema = { command: '/usr/bin/something-else', args: ['serve'] };
+    put(claudeJson(), `${JSON.stringify(other, null, 2)}\n`);
+    await mnema(['upgrade']);
+    expect(JSON.parse(readFileSync(claudeJson(), 'utf8')).mcpServers.mnema).toEqual(
+      other.mcpServers.mnema,
+    );
+  });
+
+  it('does not write a file that changed after the plan read it, and two upgrades in a second do not collide', async () => {
+    put(claudeJson(), hostFile());
+    const first = await mnema(['upgrade']);
+    expect(first.failed, first.err.join(' / ')).toBe(false);
+    put(claudeJson(), hostFile());
+    const second = await mnema(['upgrade']);
+    expect(second.failed, second.err.join(' / ')).toBe(false);
+    expect(
+      readdirSync(home).filter((name) => name.startsWith('.claude.json.mnema-backup-')),
+    ).toHaveLength(2);
+    expect(readdirSync(home).some((name) => name.includes('.mnema-tmp-'))).toBe(false);
   });
 });
