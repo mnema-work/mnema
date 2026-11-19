@@ -163,6 +163,24 @@ describe('in process', () => {
   });
 });
 
+describe('the text a session opens with', () => {
+  it('never carries the note: the opening document says nothing of an update', () => {
+    ensureTree({ root: join(folder, PROJECT_DIR) });
+    anOlderMnemaWasHere();
+    for (const argv of [['brief', '--hook'], ['brief']]) {
+      const ran = spawnSync(process.execPath, [MNEMA_CLI, ...argv], {
+        cwd: folder,
+        encoding: 'utf8',
+        env: { ...environment(), MNEMA_FOR_A_HOOK: '1' },
+      });
+      expect(ran.status, ran.stderr).toBe(0);
+      const said = `${ran.stdout}${ran.stderr}`;
+      expect(said, argv.join(' ')).not.toContain('mnema upgrade');
+      expect(said, argv.join(' ')).not.toContain('has not run on this machine');
+    }
+  }, 60_000);
+});
+
 describe('the state', () => {
   it('is behind when the version is older or absent, and a doubt is silence', () => {
     anOlderMnemaWasHere({ appliedVersion: '0.0.1' });
@@ -215,6 +233,30 @@ describe('the MCP server', () => {
     await client.close();
 
     expect(SERVER_INSTRUCTIONS).not.toContain('mnema upgrade');
+  }, 60_000);
+
+  it('carries the note on a first reply that is a write, and opens a first reply that is a refusal', async () => {
+    ensureTree({ root: join(folder, PROJECT_DIR) });
+    anOlderMnemaWasHere();
+    const wrote = await connect();
+    const written = blocks(
+      await wrote.callTool({ name: 'capture_memory', arguments: { content: 'a first write' } }),
+    );
+    expect(written).toContain(NOTE);
+    expect(
+      blocks(await wrote.callTool({ name: 'search', arguments: {} })).join('\n'),
+    ).not.toContain(NOTE);
+    await wrote.close();
+
+    const refusing = await connect();
+    const refusal = (await refusing.callTool({
+      name: 'task_transition',
+      arguments: { id: 'no-such-task', action: 'cancel' },
+    })) as { isError?: boolean; content: { text: string }[] };
+    expect(refusal.isError).toBe(true);
+    expect(refusal.content[0]?.text).toBe(NOTE);
+    expect(refusal.content[1]?.text).toMatch(/^Refused \(/);
+    await refusing.close();
   }, 60_000);
 
   it('says nothing on a machine with no state, and on one an upgrade brought up', async () => {
