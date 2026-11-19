@@ -29,7 +29,7 @@ Search the open and closed issues first: yours may be reported, decided or fixed
 
 ## Taking an issue
 
-Comment `/take` (or `/claim`) on an open `good first issue` or `help wanted` issue to take it. Plain sentences work too ("I'll take this", "I'd like to work on this", "assign me", "I'm working on this"), and a comment that sounds like a claim but is not understood gets one reply that says to write `/take`. If nobody holds the issue and you hold fewer than 3 issues assigned this way, a workflow assigns it to you and replies once. If you open a pull request that closes a free issue ("Fixes #123") without having claimed it, the daily run assigns the issue to you.
+Comment `/take` (or `/claim`) on an open `good first issue` or `help wanted` issue to take it. Plain sentences work too ("I'll take this", "I'd like to work on this", "assign me", "I'm working on this"; a comment that only talks about the issue does not count), and a comment that sounds like a claim but is not understood gets one reply that says to write `/take`. If nobody holds the issue and you hold fewer than 3 issues assigned this way, a workflow assigns it to you and replies once. If you open a pull request that closes a free issue ("Fixes #123") without having claimed it, the daily run assigns the issue to you.
 
 The assignment frees itself after 14 days without an open pull request of yours that names the issue (write `#<number>` in its description), and says so on the issue; a daily run does that, for an issue a maintainer assigned to you by hand as well. A pull request that meets the issue's "Done when" and shows its "How to check" is what the review looks at.
 

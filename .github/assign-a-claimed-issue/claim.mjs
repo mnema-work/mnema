@@ -108,10 +108,9 @@ export const CLAIM_PHRASES = [
   "i'll take it",
   'i will take it',
   "i'm working on this",
-  'working on this',
+  'i am working on this',
   "i'm claiming this",
   'claiming this',
-  'claim this',
   'assign me',
   'please assign me',
   'assign this to me',
@@ -123,10 +122,26 @@ export const CLAIM_PHRASES = [
 /** @param {string} text */
 const escapeForRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 
+/**
+ * The phrases that say what the person is doing ("working on", "claiming"): they claim only as said
+ * in the first person and ended at "this" (or "it"), where a bare "working on this" is as often
+ * said about someone else or about a file. "claiming this" has no "I", so it claims only where a
+ * sentence starts.
+ */
+const DOING = new Set(["i'm working on this", 'i am working on this', "i'm claiming this", 'claiming this']);
+const STARTS_A_SENTENCE = new Set(['claiming this']);
+
+/** What may follow a doing phrase: the end, a mark, or the few words that finish the thought. */
+const ENDS_THE_THOUGHT = String.raw`(?=\s*(?:[.!?,;:]|$)|\s+(?:to|and|now|today|soon|please|thanks)\b)`;
+
 /** The phrases as one pattern, whole words, found anywhere (a new one for each reading: it is global). */
 const claimPattern = () =>
   new RegExp(
-    CLAIM_PHRASES.map((phrase) => `(?<![\\w/])${escapeForRegExp(phrase)}(?![\\w/])`).join('|'),
+    CLAIM_PHRASES.map((phrase) => {
+      const before = STARTS_A_SENTENCE.has(phrase) ? String.raw`(?<=^\s*)` : '';
+      const after = DOING.has(phrase) ? ENDS_THE_THOUGHT : '';
+      return `${before}(?<![\\w/])${escapeForRegExp(phrase)}(?![\\w/])${after}`;
+    }).join('|'),
     'g',
   );
 
@@ -172,12 +187,19 @@ export const isClaim = (text) => {
 };
 
 /**
- * What reads as an intent to take the issue without being one of the phrases: "claim", "take",
- * "work on" or "tackle" with "this" or "it", or "assign" with "me". Said as a plain sentence, not
+ * What reads as an intent to take the issue without being one of the phrases: the person ("I", "I'm",
+ * "I'd", "let me") right before "claim", "take", "work on", "tackle" or "pick up" with "this" or "it",
+ * and the sentence ending there (or after "on", "up", "now", "if ..."): "I'm taking it from here, the
+ * crash also happens" is about something else. Or "assign" with "me". Said as a plain sentence, not
  * as a question (but "can I ..." is the request), and not after a no.
  */
-const NEAR_MISS =
-  /\b(?:claim(?:ing)?|tak(?:e|ing)|work(?:ing)? on|tackl(?:e|ing)|pick(?:ing)? up)\s+(?:this|it)\b|\bpick(?:ing)?\s+(?:this|it)\s+up\b|\bassign\b[^.!?]{0,20}\bme\b|\bassign\s+(?:this|it)\s+to\s+me\b/;
+const NEAR_MISS = new RegExp(
+  String.raw`\b(?:i(?:'m| am|'d|'ll| would| will| can| could| might| may)?|let me)` +
+    String.raw`(?:\s+(?:like to|want to|wanna|going to|plan to|planning to))?\s+` +
+    String.raw`(?:(?:claim(?:ing)?|tak(?:e|ing)|work(?:ing)? on|tackl(?:e|ing))\s+(?:this|it)|pick(?:ing)?\s+(?:this|it)\s+up|pick(?:ing)?\s+up\s+(?:this|it))` +
+    String.raw`(?:\s+(?:on|up))?(?:\s+(?:now|today|soon|tomorrow|this week|first|then|if\b[^.!?]*))?\s*(?:[.!?,;:]|$)` +
+    String.raw`|\bassign\b[^.!?]{0,20}\bme\b|\bassign\s+(?:this|it)\s+to\s+me\b`,
+);
 
 /**
  * Whether the comment reads as an intent to take the issue that no phrase matches, for the one
@@ -775,9 +797,11 @@ export const FINISH_AFTER_DAYS = 14;
 
 /**
  * When an outside pull request began waiting on its author: the time of the maintainer's last
- * request if nothing came after it, else null. A maintainer's request is a review that asks for
- * changes or comments, or a comment; the author answers with a commit of theirs, a comment or a
- * review; a maintainer's approval ends the wait.
+ * request if nothing came after it, else null. A request is a review that asks for changes, or a
+ * maintainer's comment that names the author by @login (a review that only comments, or a plain
+ * comment, is not one). The author answers with a comment or a review of theirs, or with any commit
+ * pushed after it, whatever its author field says (a commit whose e-mail is linked to no account has
+ * none); a maintainer's approval ends the wait.
  *
  * @param {Json} pull
  * @param {Json[]} comments
@@ -787,6 +811,7 @@ export const FINISH_AFTER_DAYS = 14;
  */
 export function waitingSince(pull, comments, reviews, commits) {
   const author = String(pull.user?.login ?? '').toLowerCase();
+  const names = new RegExp(`(?<![\\w-])@${escapeForRegExp(author)}(?![\\w-])`, 'i');
   /** @type {{ at: Date, kind: 'ask' | 'author' | 'approved' }[]} */
   const events = [];
   /** @param {string|undefined} when @param {'ask' | 'author' | 'approved'} kind */
@@ -797,7 +822,11 @@ export function waitingSince(pull, comments, reviews, commits) {
   for (const c of comments) {
     const who = String(c.user?.login ?? '').toLowerCase();
     if (who === author) add(c.created_at, 'author');
-    else if (MAINTAINER_ASSOCIATIONS.includes(c.author_association) && c.user?.type !== 'Bot') {
+    else if (
+      MAINTAINER_ASSOCIATIONS.includes(c.author_association) &&
+      c.user?.type !== 'Bot' &&
+      names.test(String(c.body ?? ''))
+    ) {
       add(c.created_at, 'ask');
     }
   }
@@ -805,15 +834,11 @@ export function waitingSince(pull, comments, reviews, commits) {
     const who = String(r.user?.login ?? '').toLowerCase();
     if (who === author) add(r.submitted_at, 'author');
     else if (MAINTAINER_ASSOCIATIONS.includes(r.author_association)) {
-      if (r.state === 'CHANGES_REQUESTED' || r.state === 'COMMENTED') add(r.submitted_at, 'ask');
+      if (r.state === 'CHANGES_REQUESTED') add(r.submitted_at, 'ask');
       else if (r.state === 'APPROVED') add(r.submitted_at, 'approved');
     }
   }
-  for (const c of commits) {
-    if (String(c.author?.login ?? '').toLowerCase() === author) {
-      add(c.commit?.committer?.date ?? c.commit?.author?.date, 'author');
-    }
-  }
+  for (const c of commits) add(c.commit?.committer?.date ?? c.commit?.author?.date, 'author');
   events.sort((a, b) => a.at.getTime() - b.at.getTime());
   const last = events.at(-1);
   return last?.kind === 'ask' ? last.at : null;

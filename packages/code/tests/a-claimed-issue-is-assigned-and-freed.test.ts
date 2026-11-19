@@ -467,9 +467,10 @@ describe('more ways to claim, and the comment that went unanswered', () => {
   it.each([
     "Claiming this issue to work on it. I'll open a PR soon.",
     "I'm claiming this",
-    'claim this please',
     "I'm working on this",
-    'working on this now',
+    'I am working on this.',
+    "I'm working on this now",
+    'Hello! Claiming this, thanks.',
     "I'll take it",
     'I will take it!',
     "I'll work on it",
@@ -489,6 +490,14 @@ describe('more ways to claim, and the comment that went unanswered', () => {
     "I won't be working on this",
     'Does this take it into account?',
     '> claiming this\n\nquoted',
+    'Thanks for working on this!',
+    'Someone is already working on this.',
+    '@bob is working on this, see his PR.',
+    'I was working on this file when it crashed.',
+    "I'd claim this is a regression.",
+    "I'm working on this file",
+    'Thanks for claiming this',
+    'claim this please',
   ])('%j is not a claim', (text) => {
     expect(isClaim(text)).toBe(false);
   });
@@ -497,7 +506,7 @@ describe('more ways to claim, and the comment that went unanswered', () => {
 describe('a comment that reads as a claim and matches no phrase', () => {
   it.each([
     'I would take this on if nobody minds',
-    'Happy to tackle it this week',
+    "I'll tackle it this week",
     'Let me pick this up',
     'Would you mind if I take this on',
     'May I take it?',
@@ -512,6 +521,10 @@ describe('a comment that reads as a claim and matches no phrase', () => {
     'What would take this long?',
     "I'm not going to tackle it",
     'The build fails on Node 26.',
+    'We should take this into account',
+    'I hit this too while working on it locally',
+    "I'm taking it from here, the crash also happens on Windows",
+    'Happy to tackle it this week',
   ])('%j does not', (text) => {
     expect(readsAsAClaim(text)).toBe(false);
   });
@@ -678,8 +691,8 @@ describe('an outside pull request that waits on its author', () => {
     state,
     submitted_at: daysAgo(days).toISOString(),
   });
-  const commit = (days: number, login = 'newcomer') => ({
-    author: { login },
+  const commit = (days: number, login: string | null = 'newcomer') => ({
+    author: login ? { login } : null,
     commit: { committer: { date: daysAgo(days).toISOString() } },
   });
   const run = (parts: {
@@ -727,6 +740,7 @@ describe('an outside pull request that waits on its author', () => {
     const comment = {
       user: { login: 'maintainer' },
       author_association: 'MEMBER',
+      body: 'Thanks @Newcomer, could you rebase this?',
       created_at: daysAgo(9).toISOString(),
     };
     expect(run({ comments: [comment], commits: [commit(12)] }).said).toEqual([
@@ -771,7 +785,138 @@ describe('an outside pull request that waits on its author', () => {
   it('reads waiting from the last event alone', () => {
     expect(waitingSince(pr, [], [ask(3)], [])).toEqual(daysAgo(3));
     expect(waitingSince(pr, [], [ask(3)], [commit(1)])).toBeNull();
-    // a commit a maintainer pushed is not the author's answer
-    expect(waitingSince(pr, [], [ask(3)], [commit(1, 'maintainer')])).toEqual(daysAgo(3));
+    expect(waitingSince(pr, [], [ask(3)], [commit(1, 'maintainer')])).toBeNull();
+    // a commit whose e-mail is not linked to an account has no author, and is an answer all the same
+    expect(waitingSince(pr, [], [ask(3)], [commit(1, null)])).toBeNull();
+    // a commit from before the request answers nothing
+    expect(waitingSince(pr, [], [ask(3)], [commit(5, null)])).toEqual(daysAgo(3));
+  });
+
+  it('counts only a real request: changes requested, or a maintainer comment that names the author', () => {
+    expect(waitingSince(pr, [], [ask(3, 'COMMENTED')], [])).toBeNull();
+    expect(waitingSince(pr, [], [ask(3, 'APPROVED')], [])).toBeNull();
+    const said = (body: string, association = 'MEMBER') => ({
+      user: { login: 'maintainer' },
+      author_association: association,
+      body,
+      created_at: daysAgo(3).toISOString(),
+    });
+    expect(waitingSince(pr, [said('Looks fine, thanks.')], [], [])).toBeNull();
+    expect(waitingSince(pr, [said('@newcomerish please rebase')], [], [])).toBeNull();
+    expect(waitingSince(pr, [said('@newcomer please rebase', 'NONE')], [], [])).toBeNull();
+    expect(waitingSince(pr, [said('@newcomer please rebase')], [], [])).toEqual(daysAgo(3));
+    expect(run({ reviews: [ask(9, 'COMMENTED')] }).said).toEqual([]);
+  });
+
+  it('counts the author’s comment or review after the request as the answer', () => {
+    const mine = (days: number) => ({
+      user: { login: 'Newcomer' },
+      created_at: daysAgo(days).toISOString(),
+      submitted_at: daysAgo(days).toISOString(),
+    });
+    expect(waitingSince(pr, [mine(1)], [ask(3)], [])).toBeNull();
+    expect(waitingSince(pr, [], [ask(3), mine(1)], [])).toBeNull();
+  });
+});
+
+describe('no reply repeats what a stranger wrote', () => {
+  const CANARY = 'ZQX-STRANGER-WORDS';
+  const bodies = (api: { writes: object[] }) =>
+    (api.writes as { write: string; body?: string }[])
+      .filter((w) => w.write === 'comment')
+      .map((w) => String(w.body));
+
+  it('writes the assigned, taken, cap and hint replies without the comment', () => {
+    const said: string[] = [];
+    const run = (issues: Record<string, object>, text: string, extra: object = {}) => {
+      const api = fixtureApi({ issues, ...extra }, () => {});
+      claim(eventOn(7, text), api, NOW);
+      said.push(...bodies(api));
+    };
+    run({ '7': issueOf(7, []) }, `I'll take this ${CANARY}`);
+    run({ '7': issueOf(7, ['other']) }, `I'll take this ${CANARY}`);
+    run({ '7': issueOf(7, []) }, `Let me pick this up. ${CANARY}`);
+    const held = (n: number) => issueOf(n, ['newcomer']);
+    run({ '7': issueOf(7, []), '8': held(8), '9': held(9), '10': held(10) }, `I'll take this ${CANARY}`, {
+      comments: {
+        '8': [{ user: { login: BOT }, body: assignedMarker(daysAgo(1), 'newcomer') }],
+        '9': [{ user: { login: BOT }, body: assignedMarker(daysAgo(1), 'newcomer') }],
+        '10': [{ user: { login: BOT }, body: assignedMarker(daysAgo(1), 'newcomer') }],
+      },
+    });
+    expect(said.length).toBeGreaterThanOrEqual(4);
+    for (const body of said) expect(body).not.toContain(CANARY);
+  });
+
+  it('writes the adopted, freed, reminder and note replies without a title, a body or a comment', () => {
+    const said: string[] = [];
+    const adopting = fixtureApi(
+      {
+        issues: { '7': issueOf(7, []) },
+        pulls: [
+          {
+            number: 30,
+            title: `Fix ${CANARY}`,
+            body: `Fixes #7 ${CANARY}`,
+            user: { login: 'newcomer', type: 'User' },
+            author_association: 'NONE',
+          },
+        ],
+      },
+      () => {},
+    );
+    adopt(adopting, NOW, REPO);
+    said.push(...bodies(adopting));
+
+    const freeing = fixtureApi(
+      {
+        issues: { '7': issueOf(7, ['newcomer']) },
+        comments: {
+          '7': [
+            { user: { login: BOT }, body: assignedMarker(daysAgo(20), 'newcomer') },
+            { user: { login: 'newcomer' }, body: CANARY },
+          ],
+        },
+        pulls: [{ number: 31, title: CANARY, body: 'Fixes #8', user: { login: 'newcomer' } }],
+      },
+      () => {},
+    );
+    expire(freeing, NOW, REPO);
+    said.push(...bodies(freeing));
+
+    const waiting = (days: number) => {
+      const api = fixtureApi(
+        {
+          pulls: [
+            {
+              number: 40,
+              title: CANARY,
+              body: CANARY,
+              user: { login: 'newcomer', type: 'User' },
+              author_association: 'NONE',
+              maintainer_can_modify: true,
+            },
+          ],
+          reviews: {
+            '40': [
+              {
+                user: { login: 'maintainer' },
+                author_association: 'OWNER',
+                state: 'CHANGES_REQUESTED',
+                body: CANARY,
+                submitted_at: daysAgo(days).toISOString(),
+              },
+            ],
+          },
+          comments: { '40': [] },
+        },
+        () => {},
+      );
+      remind(api, NOW);
+      return bodies(api);
+    };
+    said.push(...waiting(8), ...waiting(15));
+    expect(said).toHaveLength(4);
+    for (const body of said) expect(body).not.toContain(CANARY);
   });
 });
