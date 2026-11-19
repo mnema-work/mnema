@@ -32,7 +32,13 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { MACHINE_STATE_FILE } from '../src/machine-state.js';
 import { SERVER_INSTRUCTIONS } from '../src/mcp/instructions.js';
 import { buildMcpServer } from '../src/mcp/server.js';
-import { updateIsNotApplied, updateLine, updateNote } from '../src/update-notice.js';
+import { type CliIo, run } from '../src/program.js';
+import {
+  updateIsNotApplied,
+  updateLine,
+  updateLineOnce,
+  updateNote,
+} from '../src/update-notice.js';
 import { VERSION } from '../src/version.js';
 import { inPty } from './support/pty.js';
 import { MNEMA_CLI } from './support/the-cli.js';
@@ -112,6 +118,49 @@ describe('the command line', () => {
     expect(`${piped.stdout}${piped.stderr}`).not.toContain('has not run on this machine');
     expect(stateNow()).toEqual({ starShown: false, tourSeen: true });
   }, 90_000);
+});
+
+describe('in process', () => {
+  const kept = { home: process.env.HOME, cwd: process.cwd() };
+  beforeEach(() => {
+    process.env.HOME = home;
+    process.chdir(folder);
+  });
+  afterEach(() => {
+    process.chdir(kept.cwd);
+    if (kept.home === undefined) Reflect.deleteProperty(process.env, 'HOME');
+    else process.env.HOME = kept.home;
+  });
+  const said = async (person: boolean, ...argv: string[]): Promise<string> => {
+    const lines: string[] = [];
+    const io: CliIo = {
+      out: (line) => lines.push(line),
+      err: (line) => lines.push(line),
+      fail: () => undefined,
+      aPersonIsHere: person,
+    };
+    await run(argv, io);
+    return lines.join('\n');
+  };
+
+  it('says the line to a person once, and to nobody else, a hook or a --json run included', async () => {
+    anOlderMnemaWasHere();
+    expect(await said(false, 'status')).not.toContain(LINE);
+    expect(await said(true, 'status', '--json')).not.toContain(LINE);
+    expect(await said(true, 'upgrade', '--dry-run')).not.toContain(LINE);
+    expect(stateNow().noticedFor).toBeUndefined();
+    expect(await said(true, 'status')).toContain(LINE);
+    expect(await said(true, 'status')).not.toContain(LINE);
+    expect(stateNow().noticedFor).toBe(VERSION);
+  }, 60_000);
+
+  it('keeps a file it cannot read as it was, and says nothing', async () => {
+    mkdirSync(machineDir(), { recursive: true });
+    writeFileSync(stateFile(), '{"noticedFor":3}');
+    expect(await said(true, 'status')).not.toContain(LINE);
+    expect(readFileSync(stateFile(), 'utf8')).toBe('{"noticedFor":3}');
+    expect(updateLineOnce(machineDir(), VERSION, true)).toBeUndefined();
+  });
 });
 
 describe('the state', () => {

@@ -1169,7 +1169,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/an-issue-from-a-form-is-labelled.test.ts': 5,
   'packages/code/tests/an-mcp-agent-is-told-of-a-new-tail.test.ts': 12,
   'packages/code/tests/an-older-record-page-is-rewritten.test.ts': 7,
-  'packages/code/tests/an-update-not-yet-applied-is-said-once.test.ts': 18,
+  'packages/code/tests/an-update-not-yet-applied-is-said-once.test.ts': 19,
   'packages/code/tests/another-run-consulted-this-path.test.ts': 13,
   'packages/code/tests/both-readers-refuse-swapped-checkpoints-and-a-linked-tail.test.ts': 7,
   'packages/code/tests/both-surfaces-one-vocabulary.test.ts': 19,
