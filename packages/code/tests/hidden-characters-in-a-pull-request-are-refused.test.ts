@@ -114,6 +114,22 @@ describe('a hidden character in an added line', () => {
     expect(plain('a`b\nc')).toBe('a?b?c');
   });
 
+  it('is left alone in a conformance vector, and refused in the code and pages beside it', () => {
+    const vector = 'packages/chain/conformance/vectors/x/n_word_joiner.json';
+    expect(hiddenIn(diffAdding(vector, [`[${ch(0x2060)}]`]))).toEqual([]);
+    for (const file of [
+      'packages/chain/conformance/run.ts',
+      'packages/chain/conformance/README.md',
+    ]) {
+      expect(hiddenIn(diffAdding(file, [`[${ch(0x2060)}]`])).map((one) => one.file)).toEqual([
+        file,
+      ]);
+    }
+    expect(hiddenIn(diffAdding('packages/code/vectors/a.json', [`[${ch(0x2060)}]`]))).toHaveLength(
+      1,
+    );
+  });
+
   it('is left alone in the record, whose lines are hashed and read by verify', () => {
     expect(hiddenIn(diffAdding('.mnema/a-line.jsonl', [`x${ch(0x200d)}y`]))).toEqual([]);
   });

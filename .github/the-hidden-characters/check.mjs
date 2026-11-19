@@ -13,7 +13,9 @@
 // check that could not read is not a pass. `.github/workflows/hidden-characters.yml` runs it.
 //
 // WHAT IT DOES NOT SAY. It reads added lines of text; a binary file has none to read. The record in
-// `.mnema/` is not read: its lines are free text of the people and agents who wrote them, hashed and
+// The JSON vectors under `packages/chain/conformance/` are not read either: they carry these
+// characters on purpose, to test how the readers treat Unicode, and the code and pages beside them
+// are read like any other file. `.mnema/` is not read: its lines are free text of the people and agents who wrote them, hashed and
 // signed, and `mnema verify` is what reads them. U+200C and U+200D belong to some scripts and to
 // emoji sequences, and are refused all the same: a line that needs one is written with its escape.
 // A pull request that edits the check or its workflow changes what runs for itself, as it does for
@@ -22,6 +24,10 @@
 import { spawnSync } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+
+/** A JSON vector of the conformance suite, which holds hidden characters on purpose. @param {string} file */
+const isConformanceVector = (file) =>
+  file.startsWith('packages/chain/conformance/') && file.endsWith('.json');
 
 /** The characters refused in an added line. */
 export const HIDDEN =
@@ -164,7 +170,7 @@ export function hiddenIn(diff) {
   const found = [];
   const named = new Set();
   for (const { file, line, text } of addedLines(diff)) {
-    if (file.startsWith('.mnema/')) continue;
+    if (file.startsWith('.mnema/') || isConformanceVector(file)) continue;
     if (!named.has(file)) {
       named.add(file);
       const inName = file.match(HIDDEN_EACH);
