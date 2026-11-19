@@ -39,6 +39,8 @@ import { fact } from '../presentation/detail.js';
 import { hookHostOf, hookHostOption, switchedOff } from './brief.js';
 import { here } from './context.js';
 import { writeLines } from './io.js';
+import { reportRefusal } from './report.js';
+import { type Declared, readsTheRecord, type Wiring } from './verb.js';
 
 /**
  * What a person running the hook form by hand reads on the error stream when the notes exist but
@@ -46,8 +48,6 @@ import { writeLines } from './io.js';
  */
 const NOTHING_HANDED_BECAUSE_IT_DOES_NOT_FIT =
   'recall: the notes are longer than the room a hook has, so none were handed over';
-import { reportRefusal } from './report.js';
-import { type Declared, readsTheRecord, type Wiring } from './verb.js';
 
 /** Registers `mnema recall` on the program. */
 export function registerRecall(program: Command, wiring: Wiring): Declared {
