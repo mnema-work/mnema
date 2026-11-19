@@ -281,6 +281,11 @@ export interface FoldQuestion {
   readonly window: number;
   /** Counts each event folded into a root while a range is searched: for the cost test. */
   readonly onFold?: () => void;
+  /**
+   * `every`: each line's own signature is verified, not only the last line's (what `tail repair`
+   * asks of a revision before it puts one back). Absent: the last line's, then every one on a failure.
+   */
+  readonly signatures?: 'every';
 }
 
 /**
@@ -291,6 +296,7 @@ export interface FoldQuestion {
  * any failure every signature is checked, to name the first that fails.
  */
 export function foldCheckpoints(question: FoldQuestion): TailSigned {
+  if (question.signatures === 'every') return foldOnce(question, 'every');
   const chained = foldOnce(question, 'the-last');
   if (chained.failedLines === 0) return chained;
   return foldOnce(question, 'every');

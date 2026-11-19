@@ -1,11 +1,13 @@
 /**
- * What `mnema tail repair` says: line by line what it put back, or the one reason it wrote nothing.
+ * What `mnema tail repair` says: line by line what it put back, or the whole tail and what of it was
+ * kept, removed and re-chained, or the one reason it wrote nothing.
  *
  * THE REFUSALS NAME THE LINE AND THE WAY OUT, and none of them offers to do what the verb never
  * does (ADR-399): a line it cannot trust is not guessed, signed or cut. A line a newer mnema wrote
  * is told to be read by updating mnema, which is the way out the unreadable-line refusals keep.
  */
 
+import type { SeqRun } from '@mnema/chain';
 import type { TailRepairDone, TailRepairRefused } from '../commands/tail-repair.js';
 import { oneLine } from '../one-line.js';
 import { fact } from './detail.js';
@@ -13,6 +15,7 @@ import type { Render } from './render.js';
 
 /** The report of a repair that finished: nothing to do, or each line put back and where the original is. */
 export function tailRepairReport(render: Render, done: TailRepairDone): string[] {
+  if (done.whole !== undefined) return wholeTailReport(render, done, done.whole);
   if (done.repaired.length === 0) {
     return [
       `Nothing to repair in tail ${oneLine(done.tail)}: every line of its segments reads and holds its hash.`,
@@ -31,9 +34,57 @@ export function tailRepairReport(render: Render, done: TailRepairDone): string[]
     `Repaired tail ${oneLine(done.tail)}: ${done.repaired.length} line(s) put back from ${oneLine(done.from)}.`,
     ...lines,
     ...done.kept.map((path) => render(fact(`the segment as it was is kept at ${oneLine(path)}`))),
+    ...(done.stillFails
+      ? [
+          render(
+            fact(
+              `the tail’s signed checkpoints still do not hold: run \`mnema tail repair ${oneLine(done.tail)}\` again, which puts the whole tail back`,
+            ),
+          ),
+        ]
+      : []),
     render(
       fact(
         'the repaired file is a change in your working tree: `mnema verify` says whether the record holds, and the change is yours to commit',
+      ),
+    ),
+  ];
+}
+
+/** The report of a whole tail put back: the files, then what was kept, removed and re-chained. */
+function wholeTailReport(
+  render: Render,
+  done: TailRepairDone,
+  whole: NonNullable<TailRepairDone['whole']>,
+): string[] {
+  const parts = [
+    ...(whole.segments.length === 0
+      ? []
+      : [`${whole.lines} lines of ${whole.segments.map(oneLine).join(' and ')}`]),
+    ...(whole.checkpointLines === 0 ? [] : [`${whole.checkpointLines} lines of checkpoints.jsonl`]),
+  ];
+  const runs = (said: string, seqs: readonly SeqRun[]): string[] =>
+    seqs.length === 0
+      ? []
+      : [
+          render(
+            fact(
+              `${said}: ${seqs
+                .map((run) =>
+                  run.from === run.to ? `seq ${run.from}` : `seq ${run.from} to ${run.to}`,
+                )
+                .join(', ')}`,
+            ),
+          ),
+        ];
+  return [
+    `Put back tail ${oneLine(done.tail)} from ${oneLine(done.from)}: ${parts.join(' and ')}; kept as they were in ${done.kept.map(oneLine).join(' and ')}.`,
+    ...runs('kept above the revision', whole.keptAbove),
+    ...runs('removed (nothing proves them)', whole.removed),
+    ...runs('links computed again (the events are as signed)', whole.relinked),
+    render(
+      fact(
+        '`mnema verify` says whether the record holds now; the files put back are a change in your working tree, yours to commit',
       ),
     ),
   ];
@@ -54,6 +105,32 @@ export function tailRepairRefusal(refused: TailRepairRefused, tail: string): str
       return `Nothing was written: ${oneLine(refused.from)} is not a revision of this repository that holds a commit.`;
     case 'LINE':
       return lineRefusal(refused.refusal, refused.from, tail);
+    case 'TAIL':
+      return wholeTailRefusal(refused.refusal, refused.from, tail);
+  }
+}
+
+function wholeTailRefusal(
+  refusal: Extract<TailRepairRefused, { reason: 'TAIL' }>['refusal'],
+  from: string,
+  tail: string,
+): string {
+  const named = `tail ${oneLine(tail)}`;
+  switch (refusal.reason) {
+    case 'NOT_IN_REVISION':
+      return `Nothing was written: ${oneLine(from)} holds no event of ${named}, so there is no tail to put back. Name another revision with \`--from\`.`;
+    case 'REVISION_DOES_NOT_HOLD':
+      return `Nothing was written: ${named} as ${oneLine(from)} holds it does not prove itself (${oneLine(refusal.file)}${
+        refusal.line === undefined ? '' : ` line ${refusal.line}`
+      }: ${oneLine(refusal.fault)}), so it is not put back. Try \`--from\` with an older revision, from before the damage was committed.`;
+    case 'TAILPROOF_DOES_NOT_HOLD':
+      return `Nothing was written: the ownership proof of ${named} (tailproof.json) does not verify under the tail’s committed key (${oneLine(refusal.fault)}), and this verb does not touch it. Put \`tails/${oneLine(tail)}/tailproof.json\` and \`keys/\` back as the repository committed them, then ask again.`;
+    case 'CONFLICT_MARKS':
+      return `Nothing was written: line ${refusal.line} of ${oneLine(refusal.file)} in ${named} is a conflict marker git left, and sides of a conflict are not joined here. Redo the merge, with the record's merge driver in place (\`mnema doctor --fix merge-driver\`), and ask again.`;
+    case 'REVISION_BEHIND_THE_NOTE':
+      return `Nothing was written: this machine signed ${named} up to seq ${refusal.seq}, and neither ${oneLine(from)} nor a checkpoint that holds here proves the events up to there, so putting the tail back would drop signed work. Name a newer revision with \`--from\`, one that holds seq ${refusal.seq} as it was signed.`;
+    case 'DOES_NOT_HOLD_AFTER':
+      return `Nothing was written: ${named} put back from ${oneLine(from)} would still not hold (${oneLine(refusal.fault)}), which is a fault of mnema: report it with this sentence.`;
   }
 }
 

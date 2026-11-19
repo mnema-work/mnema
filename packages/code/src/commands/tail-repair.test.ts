@@ -3,13 +3,23 @@
  * The adapter behind `mnema tail repair`: which tree it serves, what it asks git, and what it hands
  * back. What a line must prove to be put back is `repairTail`'s (`@mnema/chain`) and the binary's
  * cases are `tests/a-line-is-repaired-from-git.test.ts`; these are the two things only this adapter
- * decides: that only the committed public tree is served, and that the revision is read from git.
+ * decides: that only the committed public tree is served, and that the revision is read from git:
+ * the segments it holds, the ones the working tree lost included, and its `checkpoints.jsonl`.
  */
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { canonicalStringify, entryHash, writtenAsStored } from '@mnema/chain';
 import { resolveTrees } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { GIT_WITHOUT_MAINTENANCE } from '../../tests/support/git-without-maintenance.js';
@@ -117,6 +127,88 @@ describe('runTailRepair', () => {
     expect(runTailRepair(ctx(), { tail: publicTail() })).toEqual({
       ok: false,
       reason: 'NOT_A_REPOSITORY',
+    });
+  });
+
+  describe('when every line holds and the signed checkpoints do not', () => {
+    const checkpointsOf = (): string => join(segmentOf(), '..', 'checkpoints.jsonl');
+    /** Every event's `at` moved by a second and every link computed again: a rewrite without the key. */
+    const forge = (): void => {
+      const events = readFileSync(segmentOf(), 'utf-8')
+        .trimEnd()
+        .split('\n')
+        .map(
+          (line) =>
+            JSON.parse(line) as {
+              event: { at: string };
+              link: { tail: string; seq: number; prev: string | null; hash: string };
+            },
+        );
+      let prev: string | null = null;
+      for (const one of events) {
+        one.event.at = new Date(Date.parse(one.event.at) + 1000).toISOString();
+        const hash = entryHash({
+          event: writtenAsStored(one.event as never),
+          tail: one.link.tail,
+          seq: one.link.seq,
+          prev,
+        });
+        one.link = { ...one.link, prev, hash };
+        prev = hash;
+      }
+      writeFileSync(
+        segmentOf(),
+        `${events.map((one) => canonicalStringify(one as never)).join('\n')}\n`,
+      );
+    };
+
+    it('reads the revision’s checkpoints.jsonl from git and puts the whole tail back', () => {
+      git('add', '.mnema');
+      git('commit', '-q', '-m', 'the record');
+      const honest = readFileSync(segmentOf());
+      const signed = readFileSync(checkpointsOf());
+      forge();
+      writeFileSync(checkpointsOf(), '');
+      const done = runTailRepair(ctx(), { tail: publicTail() });
+      expect(done).toMatchObject({
+        ok: true,
+        from: 'HEAD',
+        repaired: [],
+        whole: { segments: ['000001.jsonl'] },
+      });
+      expect(readFileSync(segmentOf()).equals(honest)).toBe(true);
+      expect(readFileSync(checkpointsOf()).equals(signed)).toBe(true);
+    });
+
+    it('puts back a segment the working tree lost, which only the revision names', () => {
+      git('add', '.mnema');
+      git('commit', '-q', '-m', 'the record');
+      const honest = readFileSync(segmentOf());
+      rmSync(segmentOf());
+      expect(runTailRepair(ctx(), { tail: publicTail() })).toMatchObject({ ok: true });
+      expect(existsSync(segmentOf()) && readFileSync(segmentOf()).equals(honest)).toBe(true);
+    });
+
+    it('refuses a revision that holds the forgery, and takes an older one with --from', () => {
+      git('add', '.mnema');
+      git('commit', '-q', '-m', 'the record');
+      const honest = readFileSync(segmentOf());
+      forge();
+      git('add', '.mnema');
+      git('commit', '-q', '-m', 'the forgery');
+      const forged = readFileSync(segmentOf());
+      expect(runTailRepair(ctx(), { tail: publicTail() })).toMatchObject({
+        ok: false,
+        reason: 'TAIL',
+        from: 'HEAD',
+        refusal: { reason: 'REVISION_DOES_NOT_HOLD', file: 'checkpoints.jsonl' },
+      });
+      expect(readFileSync(segmentOf()).equals(forged)).toBe(true);
+      expect(runTailRepair(ctx(), { tail: publicTail(), from: 'HEAD~1' })).toMatchObject({
+        ok: true,
+        from: 'HEAD~1',
+      });
+      expect(readFileSync(segmentOf()).equals(honest)).toBe(true);
     });
   });
 });

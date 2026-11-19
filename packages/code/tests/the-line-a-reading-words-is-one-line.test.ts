@@ -2115,6 +2115,154 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
   },
 
   // --- tail-repair.ts: what `tail repair` says -----------------------------------
+  "tail-repair.ts «Nothing was written: line {} of {} in {} is a conflict marker git left, and sides of a conflict are not joined here. Redo the merge, with the record's merge driver in place (\\`mnema doctor --fix merge-driver\\`), and ask again.» named #1":
+    {
+      verdict: 'composed',
+      why: 'the `tail ID` clause, its tail passed through `oneLine` where it is joined',
+    },
+  "tail-repair.ts «Nothing was written: line {} of {} in {} is a conflict marker git left, and sides of a conflict are not joined here. Redo the merge, with the record's merge driver in place (\\`mnema doctor --fix merge-driver\\`), and ask again.» oneLine(refusal.file) #1":
+    {
+      verdict: 'collapsed',
+      why: 'the value passes through `oneLine` where it enters the line: it came from the command line, or from a name on disk',
+    },
+  "tail-repair.ts «Nothing was written: line {} of {} in {} is a conflict marker git left, and sides of a conflict are not joined here. Redo the merge, with the record's merge driver in place (\\`mnema doctor --fix merge-driver\\`), and ask again.» refusal.line #1":
+    {
+      verdict: 'minted',
+      why: 'a count or a position in a file: a number this product counted',
+    },
+  'tail-repair.ts «Nothing was written: the ownership proof of {} (tailproof.json) does not verify under the tail’s committed key ({}), and this verb does not touch it. Put \\`tails/{}/tailproof.json\\` and \\`keys/\\` back as the repository committed them, then ask again.» named #1':
+    {
+      verdict: 'composed',
+      why: 'the `tail ID` clause, its tail passed through `oneLine` where it is joined',
+    },
+  'tail-repair.ts «Nothing was written: the ownership proof of {} (tailproof.json) does not verify under the tail’s committed key ({}), and this verb does not touch it. Put \\`tails/{}/tailproof.json\\` and \\`keys/\\` back as the repository committed them, then ask again.» oneLine(refusal.fault) #1':
+    {
+      verdict: 'collapsed',
+      why: 'the value passes through `oneLine` where it enters the line: it came from the command line, or from a name on disk',
+    },
+  'tail-repair.ts «Nothing was written: the ownership proof of {} (tailproof.json) does not verify under the tail’s committed key ({}), and this verb does not touch it. Put \\`tails/{}/tailproof.json\\` and \\`keys/\\` back as the repository committed them, then ask again.» oneLine(tail) #1':
+    {
+      verdict: 'collapsed',
+      why: 'the value passes through `oneLine` where it enters the line: it came from the command line, or from a name on disk',
+    },
+  'tail-repair.ts «Nothing was written: this machine signed {} up to seq {}, and neither {} nor a checkpoint that holds here proves the events up to there, so putting the tail back would drop signed work. Name a newer revision with \\`--from\\`, one that holds seq {} as it was signed.» named #1':
+    {
+      verdict: 'composed',
+      why: 'the `tail ID` clause, its tail passed through `oneLine` where it is joined',
+    },
+  'tail-repair.ts «Nothing was written: this machine signed {} up to seq {}, and neither {} nor a checkpoint that holds here proves the events up to there, so putting the tail back would drop signed work. Name a newer revision with \\`--from\\`, one that holds seq {} as it was signed.» oneLine(from) #1':
+    {
+      verdict: 'collapsed',
+      why: 'the value passes through `oneLine` where it enters the line: it came from the command line, or from a name on disk',
+    },
+  'tail-repair.ts «Nothing was written: this machine signed {} up to seq {}, and neither {} nor a checkpoint that holds here proves the events up to there, so putting the tail back would drop signed work. Name a newer revision with \\`--from\\`, one that holds seq {} as it was signed.» refusal.seq #1':
+    {
+      verdict: 'minted',
+      why: 'a count or a position in a file: a number this product counted',
+    },
+  'tail-repair.ts «Nothing was written: this machine signed {} up to seq {}, and neither {} nor a checkpoint that holds here proves the events up to there, so putting the tail back would drop signed work. Name a newer revision with \\`--from\\`, one that holds seq {} as it was signed.» refusal.seq #2':
+    {
+      verdict: 'minted',
+      why: 'a count or a position in a file: a number this product counted',
+    },
+  'tail-repair.ts «Nothing was written: {} as {} holds it does not prove itself ({}{}: {}), so it is not put back. Try \\`--from\\` with an older revision, from before the damage was committed.» named #1':
+    {
+      verdict: 'composed',
+      why: 'the `tail ID` clause, its tail passed through `oneLine` where it is joined',
+    },
+  'tail-repair.ts «Nothing was written: {} as {} holds it does not prove itself ({}{}: {}), so it is not put back. Try \\`--from\\` with an older revision, from before the damage was committed.» oneLine(from) #1':
+    {
+      verdict: 'collapsed',
+      why: 'the value passes through `oneLine` where it enters the line: it came from the command line, or from a name on disk',
+    },
+  'tail-repair.ts «Nothing was written: {} as {} holds it does not prove itself ({}{}: {}), so it is not put back. Try \\`--from\\` with an older revision, from before the damage was committed.» oneLine(refusal.fault) #1':
+    {
+      verdict: 'collapsed',
+      why: 'the value passes through `oneLine` where it enters the line: it came from the command line, or from a name on disk',
+    },
+  'tail-repair.ts «Nothing was written: {} as {} holds it does not prove itself ({}{}: {}), so it is not put back. Try \\`--from\\` with an older revision, from before the damage was committed.» oneLine(refusal.file) #1':
+    {
+      verdict: 'collapsed',
+      why: 'the value passes through `oneLine` where it enters the line: it came from the command line, or from a name on disk',
+    },
+  "tail-repair.ts «Nothing was written: {} as {} holds it does not prove itself ({}{}: {}), so it is not put back. Try \\`--from\\` with an older revision, from before the damage was committed.» refusal.line === undefined ? '' : ` line ${refusal.line}` #1":
+    {
+      verdict: 'minted',
+      why: 'a position in a file this product counted, or nothing',
+    },
+  'tail-repair.ts «Nothing was written: {} holds no event of {}, so there is no tail to put back. Name another revision with \\`--from\\`.» named #1':
+    {
+      verdict: 'composed',
+      why: 'the `tail ID` clause, its tail passed through `oneLine` where it is joined',
+    },
+  'tail-repair.ts «Nothing was written: {} holds no event of {}, so there is no tail to put back. Name another revision with \\`--from\\`.» oneLine(from) #1':
+    {
+      verdict: 'collapsed',
+      why: 'the value passes through `oneLine` where it enters the line: it came from the command line, or from a name on disk',
+    },
+  'tail-repair.ts «Nothing was written: {} put back from {} would still not hold ({}), which is a fault of mnema: report it with this sentence.» named #1':
+    {
+      verdict: 'composed',
+      why: 'the `tail ID` clause, its tail passed through `oneLine` where it is joined',
+    },
+  'tail-repair.ts «Nothing was written: {} put back from {} would still not hold ({}), which is a fault of mnema: report it with this sentence.» oneLine(from) #1':
+    {
+      verdict: 'collapsed',
+      why: 'the value passes through `oneLine` where it enters the line: it came from the command line, or from a name on disk',
+    },
+  'tail-repair.ts «Nothing was written: {} put back from {} would still not hold ({}), which is a fault of mnema: report it with this sentence.» oneLine(refusal.fault) #1':
+    {
+      verdict: 'collapsed',
+      why: 'the value passes through `oneLine` where it enters the line: it came from the command line, or from a name on disk',
+    },
+  "tail-repair.ts «Put back tail {} from {}: {}; kept as they were in {}.» done.kept.map(oneLine).join(' and ') #1":
+    {
+      verdict: 'collapsed',
+      why: 'the value passes through `oneLine` where it enters the line: it came from the command line, or from a name on disk',
+    },
+  'tail-repair.ts «Put back tail {} from {}: {}; kept as they were in {}.» oneLine(done.from) #1': {
+    verdict: 'collapsed',
+    why: 'the value passes through `oneLine` where it enters the line: it came from the command line, or from a name on disk',
+  },
+  'tail-repair.ts «Put back tail {} from {}: {}; kept as they were in {}.» oneLine(done.tail) #1': {
+    verdict: 'collapsed',
+    why: 'the value passes through `oneLine` where it enters the line: it came from the command line, or from a name on disk',
+  },
+  "tail-repair.ts «Put back tail {} from {}: {}; kept as they were in {}.» parts.join(' and ') #1":
+    {
+      verdict: 'composed',
+      why: 'the lines put back per file: each a count this product counted and a file name passed through `oneLine`',
+    },
+  'tail-repair.ts «tail {}» oneLine(tail) #1': {
+    verdict: 'collapsed',
+    why: 'the value passes through `oneLine` where it enters the line: it came from the command line, or from a name on disk',
+  },
+  'tail-repair.ts «the tail’s signed checkpoints still do not hold: run \\`mnema tail repair {}\\` again, which puts the whole tail back» oneLine(done.tail) #1':
+    {
+      verdict: 'collapsed',
+      why: 'the value passes through `oneLine` where it enters the line: it came from the command line, or from a name on disk',
+    },
+  'tail-repair.ts «{} lines of checkpoints.jsonl» whole.checkpointLines #1': {
+    verdict: 'minted',
+    why: 'a count or a position in a file: a number this product counted',
+  },
+  'tail-repair.ts «{} lines of {}» whole.lines #1': {
+    verdict: 'minted',
+    why: 'a count or a position in a file: a number this product counted',
+  },
+  "tail-repair.ts «{} lines of {}» whole.segments.map(oneLine).join(' and ') #1": {
+    verdict: 'collapsed',
+    why: 'the value passes through `oneLine` where it enters the line: it came from the command line, or from a name on disk',
+  },
+  'tail-repair.ts «{}: {}» said #1': {
+    verdict: 'minted',
+    why: 'one of three phrases this report chose, by what became of the seqs',
+  },
+  "tail-repair.ts «{}: {}» seqs .map((run) => run.from === run.to ? `seq ${run.from}` : `seq ${run.from} to ${run.to}`, ) .join(', ') #1":
+    {
+      verdict: 'minted',
+      why: 'seqs this product counted, said as runs',
+    },
   'tail-repair.ts «There is no tail {} in the project’s public record here: \\`mnema tail list\\` spells the tails there are.» oneLine(tail) #1':
     {
       verdict: 'collapsed',
@@ -2879,8 +3027,8 @@ describe('every value this layer puts on a line is classified', () => {
     // 251 until the renderer began making an actor's control bytes visible and joined the
     // composers with its two template values; then 253 until the rules in force began saying who
     // accepted them (`brief.ts`, `record.ts`); 294 until `mnema rules` printed the four numbers
-    // of the relation that refuses a write; 301 with the three the trunk added meanwhile; 395 with the lines `mnema site` prints; 306 once the document counts the rules that refuse a write; 367 with the pages of the git bridge; 377 with its shallow sentence and the recipe aging prints; 389 with the section for an inherited record; 415 with the mark on a link taken back, in the graph and its diagram; 418 once the closing paragraph words a host's ceiling in its own unit; 425 with the paragraph naming the stacks adopted; 447 with the lines `decision review` shows; 452 with the summary of the bare name and the commands that turn a channel on; 466 with a task's notes, its last handoff, who has it, and the file behind a path; 467 with the outcome a run closed with; 474 with where the last session stopped; 475 with the sentence for a session that wrote nothing to the record; 476 with the channel a switch needs, said on its line; 477 with the word a rule's row says it does; 485 with where an inherited rule came from, and the count of the inherited record's addresses; 497 with those addresses by relation, on the rules report and in the brief; 500 with the run of each tree that `mnema status` names; 497 once the host's ceiling in words lives with the ceiling (`ceilingInWords`), and the push of the rules at an edit words it too; 514 with the line a promotion answers when the global tree already held the decision; 516 with the clause beside an agent name no client announced, in the brief and in show; 517 with the cut a replaced decision's title takes on a fitted line; 518 with the line that counts the swept tasks the opening leaves out; 522 with the paragraph that names a decision an accept and a retirement crossed on; 524 with the group of the rules reading that lists it and the words a line names it by; 525 with the line for a directory that holds tails of more than one record; 527 with the mark on a tail that holds keys; 532 with the sentence of what a pull left aside of the tails; 540 with the section that lists this machine's private rules in the hook's copy; 543 with their `private` label; 545 with the clause that names the other end of a replaced decision on a search hit; 572 with what `tail repair` says.
-    expect(FOUND.sites.length).toBe(572);
+    // of the relation that refuses a write; 301 with the three the trunk added meanwhile; 395 with the lines `mnema site` prints; 306 once the document counts the rules that refuse a write; 367 with the pages of the git bridge; 377 with its shallow sentence and the recipe aging prints; 389 with the section for an inherited record; 415 with the mark on a link taken back, in the graph and its diagram; 418 once the closing paragraph words a host's ceiling in its own unit; 425 with the paragraph naming the stacks adopted; 447 with the lines `decision review` shows; 452 with the summary of the bare name and the commands that turn a channel on; 466 with a task's notes, its last handoff, who has it, and the file behind a path; 467 with the outcome a run closed with; 474 with where the last session stopped; 475 with the sentence for a session that wrote nothing to the record; 476 with the channel a switch needs, said on its line; 477 with the word a rule's row says it does; 485 with where an inherited rule came from, and the count of the inherited record's addresses; 497 with those addresses by relation, on the rules report and in the brief; 500 with the run of each tree that `mnema status` names; 497 once the host's ceiling in words lives with the ceiling (`ceilingInWords`), and the push of the rules at an edit words it too; 514 with the line a promotion answers when the global tree already held the decision; 516 with the clause beside an agent name no client announced, in the brief and in show; 517 with the cut a replaced decision's title takes on a fitted line; 518 with the line that counts the swept tasks the opening leaves out; 522 with the paragraph that names a decision an accept and a retirement crossed on; 524 with the group of the rules reading that lists it and the words a line names it by; 525 with the line for a directory that holds tails of more than one record; 527 with the mark on a tail that holds keys; 532 with the sentence of what a pull left aside of the tails; 540 with the section that lists this machine's private rules in the hook's copy; 543 with their `private` label; 545 with the clause that names the other end of a replaced decision on a search hit; 572 with what `tail repair` says; 603 with what it says of a whole tail put back.
+    expect(FOUND.sites.length).toBe(603);
   });
 
   it('reads the verdict off the source rather than believing the table', () => {
@@ -2901,10 +3049,10 @@ describe('every value this layer puts on a line is classified', () => {
     // No arm of the case above may be empty, or that much of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
     const count = (verdict: Verdict): number => verdicts.filter((said) => said === verdict).length;
-    expect(count('collapsed')).toBe(155);
-    expect(count('minted')).toBe(300);
-    expect(count('composed')).toBe(117);
-    expect(FOUND.sites.filter((site) => /\boneLine\b/.test(site.expression))).toHaveLength(155);
+    expect(count('collapsed')).toBe(171);
+    expect(count('minted')).toBe(308);
+    expect(count('composed')).toBe(124);
+    expect(FOUND.sites.filter((site) => /\boneLine\b/.test(site.expression))).toHaveLength(171);
   });
 
   it('every reason says where the value comes from', () => {

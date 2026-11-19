@@ -105,7 +105,7 @@ const READERS: Readonly<Record<string, Classified>> = {
   },
   'packages/chain/src/chain/tail-repair.ts': {
     reads: 'as written',
-    why: 'it is `tail repair`: it rules on each line as `verify` does and puts back what git committed',
+    why: 'it is `tail repair`: it rules on each line and each checkpoint as `verify` does and puts back what git committed and what a signature proves',
   },
   // The core: the bridge, and the policy readers that go through it.
   'packages/core/src/projections/order.ts': {

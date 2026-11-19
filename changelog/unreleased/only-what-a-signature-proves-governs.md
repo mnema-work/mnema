@@ -12,7 +12,7 @@ Changed
     signed that are no longer in the file, and unsigned events beyond one write's window (more than 64, not at the
     tail's end, or a tail with events and no checkpoint that verifies) are left out of every answer and said first,
     `issue [T2/T4] ...; these entries were not served`; the gate denies and every write is refused while one stands,
-    with the way out (in the public tree, put the tail back as the repository last committed it; for a tail with no
+    with the way out (in the public tree, `mnema tail repair <tail>` puts the tail back from the history; for a tail with no
     checkpoint, one more write on the machine that wrote it signs one, then commit it).
   - One write's window at the end of a tail (at most 64 events above the last checkpoint) is served and said last,
     `recorded and not yet signed`, and governs nothing until a checkpoint covers it; nothing denies over it.

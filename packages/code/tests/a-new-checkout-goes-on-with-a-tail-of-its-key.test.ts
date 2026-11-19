@@ -136,7 +136,8 @@ describe('a checkout that goes back and forth between two branches', () => {
     const verified = mnema(repo, 'verify');
     expect(verified.status, verified.out).toBe(0);
     expect(verified.out).toContain('2 tail(s)');
-  });
+    // The case starts the built binary and git: about 2 s on a runner at rest, so it carries its own ceiling.
+  }, 20_000);
 });
 
 describe('a worktree and a clone', () => {
@@ -179,7 +180,8 @@ describe('a worktree and a clone', () => {
     expect(tails(wt3)).toHaveLength(3);
     const verified = mnema(wt3, 'verify');
     expect(verified.status, verified.out).toBe(0);
-  });
+    // The case starts the built binary and git: about 2 s on a runner at rest, so it carries its own ceiling.
+  }, 20_000);
 
   it('opens a tail in a new clone, says this repository holds no note of writing any tail of the key, and says it once', () => {
     const clone = join(sandbox, 'clone');
@@ -197,7 +199,8 @@ describe('a worktree and a clone', () => {
     expect(second.status, second.out).toBe(0);
     expect(sentences(second.out)).toEqual([]);
     expect(tails(clone)).toHaveLength(2);
-  });
+    // The case starts the built binary and git: about 2 s on a runner at rest, so it carries its own ceiling.
+  }, 20_000);
 });
 
 describe('a tail only some branch holds (ADR-446)', () => {
@@ -227,7 +230,8 @@ describe('a tail only some branch holds (ADR-446)', () => {
     const verified = mnema(repo, 'verify');
     expect(verified.status, verified.out).toBe(0);
     expect(tails(repo)).toHaveLength(3);
-  });
+    // The case starts the built binary and git: about 2 s on a runner at rest, so it carries its own ceiling.
+  }, 20_000);
 });
 
 describe('a branch cut from another that the host has not merged (ADR-446)', () => {
@@ -261,24 +265,30 @@ describe('a branch cut from another that the host has not merged (ADR-446)', () 
     visit('c', 'a', 'on c, cut from a');
     expect(tails(repo)).toHaveLength(2);
     squashAThenMergeC();
-  });
+    // The case starts the built binary and git: about 2 s on a runner at rest, so it carries its own ceiling.
+  }, 20_000);
 
   // The HEAD file of a repository kept in the reftable format names no branch (`refs/heads/.invalid`
   // everywhere), so the branch is asked of git. Skipped, by name, where the runner's git is older than
   // 2.45; it runs in the node jobs on Linux.
-  it.skipIf(!reftableGit())('does the same in a repository kept in the reftable format', () => {
-    rmSync(repo, { recursive: true, force: true });
-    mkdirSync(repo);
-    expect(git(repo, 'init', '-q', '--ref-format=reftable', '-b', 'main').status).toBe(0);
-    expect(mnema(repo, 'init').status).toBe(0);
-    expect(mnema(repo, 'memory', 'the base').status).toBe(0);
-    commit(repo, 'the base');
-    publishMain();
-    visit('a', 'main', 'on a');
-    visit('c', 'a', 'on c, cut from a');
-    expect(tails(repo)).toHaveLength(2);
-    squashAThenMergeC();
-  });
+  it.skipIf(!reftableGit())(
+    'does the same in a repository kept in the reftable format',
+    () => {
+      rmSync(repo, { recursive: true, force: true });
+      mkdirSync(repo);
+      expect(git(repo, 'init', '-q', '--ref-format=reftable', '-b', 'main').status).toBe(0);
+      expect(mnema(repo, 'init').status).toBe(0);
+      expect(mnema(repo, 'memory', 'the base').status).toBe(0);
+      commit(repo, 'the base');
+      publishMain();
+      visit('a', 'main', 'on a');
+      visit('c', 'a', 'on c, cut from a');
+      expect(tails(repo)).toHaveLength(2);
+      squashAThenMergeC();
+      // The case starts the built binary and git: about 2 s on a runner at rest, so it carries its own ceiling.
+    },
+    20_000,
+  );
 
   it('does the same when the worktree went through another branch first', () => {
     publishMain();
@@ -286,7 +296,8 @@ describe('a branch cut from another that the host has not merged (ADR-446)', () 
     visit('b', 'main', 'on b');
     visit('c', 'a', 'on c, cut from a');
     squashAThenMergeC();
-  });
+    // The case starts the built binary and git: about 2 s on a runner at rest, so it carries its own ceiling.
+  }, 20_000);
 });
 
 describe('worktrees writing at the same time', () => {
