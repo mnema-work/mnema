@@ -382,7 +382,7 @@ export function refusalOfAnAlteredRecord(facts: readonly ScopedLinkBreak[]): str
     ]);
   }
   const altered = facts.filter((fact) => fact.retained !== undefined);
-  if (altered.length === 0) return undefined;
+  if (altered.length === 0) return unsignedRefusal(facts, 'The write is refused');
   const trees = [...new Set(altered.map((fact) => fact.scope))];
   return [
     `The write is refused: ${trees.map((tree) => ALTERED_IN[tree].tree).join(' and ')} holds an entry that was altered after it was written, so which rules apply to this path cannot be known.`,
@@ -390,6 +390,43 @@ export function refusalOfAnAlteredRecord(facts: readonly ScopedLinkBreak[]): str
     ...trees.map((tree) => ALTERED_IN[tree].out(tailsOf(altered, tree))),
   ].join('\n\n');
 }
+
+/**
+ * What a write meets where a run of the record is withheld because no signature proves it (Fact A,
+ * ADR-561): which rules apply cannot be known from a record whose signed facts do not hold, so the
+ * gate and every write refuse, as for an altered entry, until the tail is as it was signed.
+ */
+function unsignedRefusal(facts: readonly ScopedLinkBreak[], opening: string): string | undefined {
+  const withheld = facts.filter((fact) => fact.checkpoint !== undefined);
+  if (withheld.length === 0) return undefined;
+  const trees = [...new Set(withheld.map((fact) => fact.scope))];
+  const why = withheld.some((fact) => fact.checkpoint?.why === 'missing-signed')
+    ? 'a signed fact that is missing'
+    : withheld.every(
+          (fact) =>
+            fact.checkpoint?.why === 'unproven-beyond-one-write' ||
+            fact.checkpoint?.why === 'no-checkpoint',
+        )
+      ? 'events no signature covers, more than one write leaves'
+      : 'a signed checkpoint that does not verify';
+  const cannotBeKnown =
+    opening === 'The write is refused' ? ', so which rules apply to this path cannot be known' : '';
+  return [
+    `${opening}: ${trees.map((tree) => ALTERED_IN[tree].tree).join(' and ')} holds ${why}${cannotBeKnown}.`,
+    ...linkBreakSentences(withheld),
+    ...trees.map((tree) => UNSIGNED_IN[tree](tailsOf(withheld, tree))),
+  ].join('\n\n');
+}
+
+/** The way out of a run no signature proves, by tree (ADR-408): only the public tree is in git. */
+const UNSIGNED_IN: Readonly<Record<Scope, (tails: readonly string[]) => string>> = {
+  public: (tails) =>
+    `Every write in the project is refused until the tail is as it was signed: put ${[...new Set(tails)].map((tail) => `tails/${tail}/`).join(' and ')} back as the repository last committed it, then run \`mnema verify\`.`,
+  private: () =>
+    `Every write in the project is refused until the tail is as it was signed. ${NOT_VERSIONED_ALTERED}`,
+  global: () =>
+    `This closes every project on this machine: every write in each is refused until the tail is as it was signed. ${NOT_VERSIONED_ALTERED}`,
+};
 
 const NOT_VERSIONED_ALTERED =
   'This record is not versioned: restore the file from a copy, or repair or remove the line named above.';
@@ -484,7 +521,12 @@ export function alteredEntrySentence(facts: readonly ScopedLinkBreak[]): string 
     ]);
   }
   const altered = facts.filter((fact) => fact.retained !== undefined);
-  if (altered.length === 0) return undefined;
+  if (altered.length === 0) {
+    const refused = unsignedRefusal(facts, 'Nothing was done');
+    return refused === undefined
+      ? undefined
+      : `${refused}\n\nSwitching a channel off is a write to the same record, so it is refused too.`;
+  }
   const trees = [...new Set(altered.map((fact) => fact.scope))];
   return [
     `Nothing was done: ${trees.map((tree) => ALTERED_IN[tree].tree).join(' and ')} holds an entry that was altered after it was written.`,

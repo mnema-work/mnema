@@ -322,6 +322,7 @@ export {
   type MovedTree,
   movePrivateTree,
   type NoProjectRoot,
+  notesRootOf,
   noWriterHolds,
   type Origin,
   type PassedOverTree,

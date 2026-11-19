@@ -83,7 +83,7 @@
  * the answer and said first).
  */
 
-import type { RecordGroup } from '@mnema/chain';
+import type { RecordGroup, WithheldRun } from '@mnema/chain';
 import type { NewerLines } from '@mnema/context';
 import {
   acceptedAgainstRetired,
@@ -126,6 +126,24 @@ export interface ScopedLinkBreak {
     readonly reason: string;
     readonly root: string;
   };
+  /**
+   * Present when the fact is a run of a tail WITHHELD because no signature proves it (ADR-557 to
+   * ADR-562): a checkpoint that does not hold over it, a signed event that is gone, checkpoints
+   * this machine signed that are no longer in the file, or more unsigned events than one write
+   * leaves. Fact A: the run was not served, and the gate and every write refuse while it stands.
+   */
+  readonly checkpoint?: WithheldRun;
+  /**
+   * Present when the fact is a run of a tail served and NOT signed by a checkpoint (Fact B): one
+   * write's window at the tail's end, which governs nothing until a checkpoint covers it, or, with
+   * `byNote`, events this machine's signed note vouches for, which govern.
+   */
+  readonly unsigned?: {
+    readonly fromSeq: number;
+    readonly toSeq: number;
+    readonly count: number;
+    readonly byNote: boolean;
+  };
 }
 
 /**
@@ -164,6 +182,13 @@ const TELL_SOMEBODY =
 const LEFT_OUT =
   'an entry named above was altered after it was written: this answer leaves it out, and ' +
   'what it said is not shown.';
+
+/**
+ * What is said once, however many runs were withheld, when a run is not proven by a signature of its
+ * tail (ADR-557 to ADR-562): it is NOT in the answer, and the same standing as {@link LEFT_OUT}.
+ */
+const NOT_SIGNED_OUT =
+  'an entry named above is not what its checkpoint signed: this answer leaves it out, and what it said is not shown.';
 
 /**
  * What is said once, however many parts were left out, when a part of the record is one this mnema
@@ -214,6 +239,8 @@ function issueLines(breaks: readonly ScopedLinkBreak[]): readonly string[] {
   // a tail name or a detail carrying a newline would turn one issue into two lines, and
   // the second would read as an issue about a tail nobody named.
   return breaks.map((broken) => {
+    if (broken.checkpoint !== undefined) return withheldLine(broken, broken.checkpoint);
+    if (broken.unsigned !== undefined) return unsignedLine(broken, broken.unsigned);
     if (broken.unread !== undefined) {
       const where = `${oneLine(broken.unread.place)}${broken.unread.line === undefined ? '' : ` line ${oneLine(String(broken.unread.line))}`}`;
       const what = THE_PART[broken.unread.kind];
@@ -226,6 +253,55 @@ function issueLines(breaks: readonly ScopedLinkBreak[]): readonly string[] {
   });
 }
 
+/** The words for a scope, as the Fact B line names the tree. */
+const THE_TREE: Readonly<Record<Scope, string>> = {
+  public: 'the project’s public record',
+  private: 'the project’s private record on this machine',
+  global: 'this machine’s global record',
+};
+
+/**
+ * One issue line for a run withheld because no signature proves it (Fact A), in the shape `verify`
+ * gives an issue and with the words of the line that failed where one did.
+ */
+function withheldLine(broken: ScopedLinkBreak, run: WithheldRun): string {
+  const head = (seq: number): string =>
+    `issue [T2/T4] ${oneLine(broken.scope)} ${oneLine(broken.tail)}#${seq}:`;
+  const range = `seq ${run.fromSeq} to ${run.toSeq}`;
+  const line = run.line === undefined ? '' : `checkpoints.jsonl line ${run.line}`;
+  switch (run.why) {
+    case 'checkpoint':
+      return `${head(run.fromSeq)} ${oneLine(run.detail ?? 'checkpoint failed')} (${line}, ${range}); these entries were not served`;
+    case 'with-a-break':
+      return `${head(run.fromSeq)} the checkpoint over ${range} (${line}) does not verify across the break this tail holds (${oneLine(run.detail ?? 'checkpoint failed')}), so ${range} were not served`;
+    case 'missing-signed':
+      return `${head(run.missing ?? run.fromSeq)} the checkpoint over ${range} (${line}) proves an event stood at seq ${run.missing ?? run.fromSeq}, and it is not in the tail; ${range} were not served`;
+    case 'checkpoints-removed':
+      return `${head(run.fromSeq)} the checkpoints this machine signed up to seq ${run.toSeq} are no longer in checkpoints.jsonl (the signed note in locks/ names checkpoint ${oneLine((run.noteCheckpoint ?? '').slice(0, 12))}...); ${range} were not served`;
+    case 'unproven-beyond-one-write':
+      return `${head(run.fromSeq)} ${eventsWord(run.toSeq - run.fromSeq + 1)} (${range}) are covered by no signature, more than one write leaves or not at the tail’s end; these entries were not served`;
+    case 'no-checkpoint':
+      return `${head(0)} this tail holds ${eventsWord(run.toSeq - run.fromSeq + 1)} and no checkpoint that verifies; these entries were not served`;
+  }
+}
+
+function eventsWord(count: number): string {
+  return `${count} ${count === 1 ? 'event' : 'events'}`;
+}
+
+/** The line for a run served and not signed by a checkpoint (Fact B), last in the block. */
+function unsignedLine(
+  broken: ScopedLinkBreak,
+  run: NonNullable<ScopedLinkBreak['unsigned']>,
+): string {
+  const one = run.count === 1;
+  const where = `${eventsWord(run.count)} of ${THE_TREE[broken.scope]} (tail ${oneLine(broken.tail)}, seq ${run.fromSeq} to ${run.toSeq})`;
+  if (run.byNote) {
+    return `${where} ${one ? 'is' : 'are'} signed by this machine’s note of what it wrote and by no checkpoint: ${one ? 'it is' : 'they are'} served and ${one ? 'governs' : 'govern'} here, and this machine’s next write signs ${one ? 'it' : 'them'}.`;
+  }
+  return `${where} ${one ? 'is' : 'are'} recorded and not yet signed: ${one ? 'it is' : 'they are'} served and listed as such, and ${one ? 'it does' : 'they do'} not govern until a checkpoint signed by the tail’s key covers ${one ? 'it' : 'them'}.`;
+}
+
 /**
  * What closes the fact: what is true of the tails that stopped chaining (their records are all
  * on the tail) and of the entries left out (they are not in the answer), whichever are named.
@@ -233,8 +309,15 @@ function issueLines(breaks: readonly ScopedLinkBreak[]): readonly string[] {
 function closing(breaks: readonly ScopedLinkBreak[], next: string): string {
   const parts = [
     ...(breaks.some((broken) => broken.retained !== undefined) ? [LEFT_OUT] : []),
+    ...(breaks.some((broken) => broken.checkpoint !== undefined) ? [NOT_SIGNED_OUT] : []),
     ...(breaks.some((broken) => broken.unread !== undefined) ? [LEFT_UNREAD] : []),
-    ...(breaks.some((broken) => broken.retained === undefined && broken.unread === undefined)
+    ...(breaks.some(
+      (broken) =>
+        broken.retained === undefined &&
+        broken.unread === undefined &&
+        broken.checkpoint === undefined &&
+        broken.unsigned === undefined,
+    )
       ? [STILL_ON_THE_TAIL]
       : []),
   ];
@@ -252,7 +335,14 @@ function closing(breaks: readonly ScopedLinkBreak[], next: string): string {
  */
 export function linkBreakSentences(breaks: readonly ScopedLinkBreak[]): readonly string[] {
   if (breaks.length === 0) return [];
+  // Events served and not yet signed are no broken proof: said alone, with no closing.
+  if (breaks.every(isUnsigned)) return issueLines(breaks);
   return [...issueLines(breaks), closing(breaks, ASK_VERIFY)];
+}
+
+/** Whether a fact is only a run served and not signed by a checkpoint (Fact B). */
+function isUnsigned(broken: ScopedLinkBreak): boolean {
+  return broken.unsigned !== undefined;
 }
 
 /**
@@ -290,6 +380,8 @@ const LANDED_ON = 'The record this landed on does not chain, so its proof is bro
 /** The block itself, once the caller's door has said how it opens. */
 function block(opening: string, breaks: readonly ScopedLinkBreak[]): readonly string[] {
   if (breaks.length === 0) return [];
+  // Events served and not yet signed are no broken proof: they open no block of their own.
+  if (breaks.every(isUnsigned)) return [issueLines(breaks).join('\n')];
   return [[opening, ...issueLines(breaks), closing(breaks, TELL_SOMEBODY)].join('\n')];
 }
 

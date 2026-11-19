@@ -33,8 +33,10 @@ import {
   chainRootForScope,
   locateEntityScope,
   locateEntityScopeWith,
+  notesRootOf,
   orderedEvents,
   ProjectionCache,
+  type ReadProof,
   type ResolvedTrees,
   replayingRecordProbe,
   type Scope,
@@ -66,6 +68,15 @@ export const SCOPES: readonly Scope[] = ['public', 'private', 'global'];
  */
 
 /**
+ * Where a reading of the tree at `chainRoot` finds this machine's signed notes of what it wrote
+ * (`ReadProof`): a public tree inside a repository keeps them in the place every worktree shares.
+ */
+export function proofOf(chainRoot: string): ReadProof {
+  const notesRoot = notesRootOf(chainRoot);
+  return notesRoot === undefined ? {} : { notesRoot };
+}
+
+/**
  * Opens a rebuilt cache over ONE tree, hands it to `read`, and closes it before
  * returning, including when the read throws.
  *
@@ -77,7 +88,11 @@ export function withCache<T>(
   upcasters: UpcasterRegistry,
   read: (cache: ProjectionCache) => T,
 ): T {
-  const cache = ProjectionCache.open(chainRoot, { upcasters, persist: true });
+  const cache = ProjectionCache.open(chainRoot, {
+    upcasters,
+    persist: true,
+    proof: proofOf(chainRoot),
+  });
   try {
     cache.refresh();
     return read(cache);
@@ -178,7 +193,7 @@ export function withOpenedCaches<T>(
     return read((scope) => {
       const root = chainRootForScope(trees, scope);
       if (root === undefined) return undefined;
-      const cache = ProjectionCache.open(root, { upcasters, persist: true });
+      const cache = ProjectionCache.open(root, { upcasters, persist: true, proof: proofOf(root) });
       // Recorded BEFORE the catch-up, so a reading that throws still leaves a handle the
       // `finally` below can close. The version this replaced pushed it after.
       const source: ScopedCache = { scope, chainRoot: root, cache };
@@ -210,7 +225,10 @@ export function withTreesRead<T>(
   const opened: ScopedCache[] = [];
   try {
     for (const tree of trees) {
-      const cache = ProjectionCache.open(tree.chainRoot, { upcasters });
+      const cache = ProjectionCache.open(tree.chainRoot, {
+        upcasters,
+        proof: proofOf(tree.chainRoot),
+      });
       opened.push({
         scope: tree.scope,
         chainRoot: tree.chainRoot,
@@ -319,13 +337,14 @@ export function linkBreaksOf(
   asOf: BreaksAsOf,
 ): readonly ScopedLinkBreak[] {
   return sources.flatMap((source) => {
-    const { breaks, retained, refused } =
+    const { breaks, retained, refused, signed } =
       asOf === THE_CHAIN_AS_IT_STANDS_NOW
         ? source.cache.integrityAsOfNow()
         : {
             breaks: source.cache.linkBreaks,
             retained: source.cache.retained,
             refused: source.cache.refused,
+            signed: source.cache.signed,
           };
     return [
       // The entries left out of what was served come first: they are the line that was altered.
@@ -350,12 +369,40 @@ export function linkBreaksOf(
           root: source.chainRoot,
         },
       })),
+      // The runs no signature proves (Fact A): withheld, and named with the line that failed.
+      ...signed.flatMap((fact) =>
+        fact.withheld === undefined
+          ? []
+          : [
+              {
+                scope: source.scope,
+                tail: fact.tail,
+                seq: fact.withheld.fromSeq,
+                detail: fact.withheld.detail ?? fact.withheld.why,
+                checkpoint: fact.withheld,
+              },
+            ],
+      ),
       ...breaks.map((broken) => ({
         scope: source.scope,
         tail: broken.tail,
         seq: broken.seq,
         detail: broken.detail,
       })),
+      // The runs served and not signed (Fact B) come last: they are no broken proof.
+      ...signed.flatMap((fact) =>
+        fact.unsigned === undefined
+          ? []
+          : [
+              {
+                scope: source.scope,
+                tail: fact.tail,
+                seq: fact.unsigned.fromSeq,
+                detail: 'not yet signed',
+                unsigned: fact.unsigned,
+              },
+            ],
+      ),
     ];
   });
 }

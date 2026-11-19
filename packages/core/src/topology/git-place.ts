@@ -145,6 +145,16 @@ export function publicMachineryPlace(projectDir: string): MachineryPlace | undef
 }
 
 /**
+ * Where a reading of the tree at `chainRoot` finds the signed notes of what this machine wrote
+ * (`ReadProof.notesRoot`): the shared machinery of the project's public tree inside a repository,
+ * or undefined outside one, where the notes are in the tree's own `locks/`. Asked of any tree, it
+ * names a place no note of another tree is in, so a reading of such a tree reads its own `locks/`.
+ */
+export function notesRootOf(chainRoot: string): string | undefined {
+  return publicMachineryPlace(dirname(chainRoot))?.shared;
+}
+
+/**
  * The git directories of the OTHER worktrees of the repository that still exist: the main one (when
  * this is a linked worktree) and every linked one whose working tree is there. A linked worktree
  * whose folder was deleted without `git worktree remove` is not counted: git has not pruned it yet,

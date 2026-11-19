@@ -1072,7 +1072,13 @@ function noteOf(
   const owner = tailFingerprint(tail);
   const key = keys(owner);
   if (key === null || key.fingerprint() !== owner) return undefined;
-  return readWrittenHead({ root: proof?.notesRoot ?? layout.root }, tail, key.key);
+  // The shared place first (a public tree inside a repository), then the tree's own `locks/`.
+  return (
+    (proof?.notesRoot === undefined
+      ? undefined
+      : readWrittenHead({ root: proof.notesRoot }, tail, key.key)) ??
+    readWrittenHead(layout, tail, key.key)
+  );
 }
 
 /**

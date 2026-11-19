@@ -90,7 +90,7 @@ export {
   type Standing,
 } from './backup/verify.js';
 export { type Ask, type DefaultBranch, theDefaultBranch } from './default-branch.js';
-export { gitPlaceOf, isWithin } from './git-place.js';
+export { gitPlaceOf, isWithin, notesRootOf } from './git-place.js';
 export {
   type BirthProbe,
   type HeldTail,
