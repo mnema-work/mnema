@@ -815,6 +815,180 @@ describe('scrubSecrets: a value after a credential’s name or header', () => {
   }
 });
 
+describe('scrubSecrets: the whole value, wherever a credential is written', () => {
+  // A fragment left behind is a leak with a placeholder beside it: the reader is told the value
+  // went while part of it stayed. Each value ends where its form ends: an unquoted one at a blank
+  // or the end of the line, punctuation and all; a quoted one at its own closing quote, a doubled
+  // or escaped quote inside it included; and on a line of its own after an environment name, at
+  // the end of the line. The expected text is written out, never derived from the input.
+  const PLACEHOLDER = '<SECRET:named-credential>';
+  const WHOLE: readonly { readonly text: string; readonly recorded: string }[] = [
+    { text: 'password=abc;def123', recorded: `password=${PLACEHOLDER}` },
+    { text: 'password=p@ss,word99', recorded: `password=${PLACEHOLDER}` },
+    { text: 'token=abc<def123 next', recorded: `token=${PLACEHOLDER} next` },
+    { text: 'password=hunter2)x', recorded: `password=${PLACEHOLDER}` },
+    { text: '(PASSWORD=hunter2)', recorded: `(PASSWORD=${PLACEHOLDER})` },
+    { text: "password='it''s'", recorded: `password='${PLACEHOLDER}'` },
+    { text: 'password="it""s"', recorded: `password="${PLACEHOLDER}"` },
+    { text: 'password="ab\\"cd"', recorded: `password="${PLACEHOLDER}"` },
+    { text: 'password: "hunter2', recorded: `password: "${PLACEHOLDER}` },
+    { text: 'DB_PASSWORD=pa ss word', recorded: `DB_PASSWORD=${PLACEHOLDER}` },
+    {
+      text: 'DB_PASSWORD=pa ss word # the old one',
+      recorded: `DB_PASSWORD=${PLACEHOLDER} # the old one`,
+    },
+    { text: 'TOKEN=abc123\\\nxyz', recorded: `TOKEN=${PLACEHOLDER}` },
+    {
+      text: 'Server=db;User Id=sa;Password=Pa55w0rd!;',
+      recorded: `Server=db;User Id=sa;Password=${PLACEHOLDER}`,
+    },
+    {
+      text: 'GET /v1/items?token=abc;123&page=2',
+      recorded: `GET /v1/items?token=${PLACEHOLDER}&page=2`,
+    },
+    { text: `password = "${'a'.repeat(1100)}"`, recorded: `password = "${PLACEHOLDER}"` },
+  ];
+
+  for (const { text, recorded } of WHOLE) {
+    it(`takes the whole value out of ${JSON.stringify(text.slice(0, 40))}`, () => {
+      const scrubbed = scrubSecrets(text);
+      expect(scrubbed.text).toBe(recorded);
+      expect(scrubbed.replaced).toEqual(['named-credential']);
+    });
+  }
+
+  // The places a credential is passed that a key written down does not cover: a command's flag,
+  // the user and password `curl` takes, a value in backticks, a name ending in `pass`, a comment
+  // after the value, and a quoted value with blanks under any credential's name.
+  const PASSED: readonly { readonly text: string; readonly recorded: string }[] = [
+    {
+      text: 'curl -u admin:S3cretPass https://api.x',
+      recorded: `curl -u admin:${PLACEHOLDER} https://api.x`,
+    },
+    {
+      text: 'curl --user admin:S3cretPass https://api.x',
+      recorded: `curl --user admin:${PLACEHOLDER} https://api.x`,
+    },
+    {
+      text: 'curl -s -u "admin:S3cret Pass" https://api.x',
+      recorded: `curl -s -u "admin:${PLACEHOLDER}" https://api.x`,
+    },
+    {
+      text: 'docker login -u me -p S3cretPass registry.io',
+      recorded: `docker login -u me -p ${PLACEHOLDER} registry.io`,
+    },
+    {
+      text: 'docker login -u me --password S3cretPass registry.io',
+      recorded: `docker login -u me --password ${PLACEHOLDER} registry.io`,
+    },
+    { text: 'mysql -u root -pS3cretPass', recorded: `mysql -u root -p${PLACEHOLDER}` },
+    { text: 'mysql --password S3nh4F0rte', recorded: `mysql --password ${PLACEHOLDER}` },
+    { text: 'gh release --token "abc 123"', recorded: `gh release --token "${PLACEHOLDER}"` },
+    { text: 'token=`abc123`', recorded: `token=\`${PLACEHOLDER}\`` },
+    { text: 'apiKey: `abc123xyz`', recorded: `apiKey: \`${PLACEHOLDER}\`` },
+    { text: 'DB_PASS=hunter2', recorded: `DB_PASS=${PLACEHOLDER}` },
+    { text: 'export SMTP_PASS=hunter2', recorded: `export SMTP_PASS=${PLACEHOLDER}` },
+    {
+      text: 'auth: { user: "a", pass: "hunter2" }',
+      recorded: `auth: { user: "a", pass: "${PLACEHOLDER}" }`,
+    },
+    { text: 'token: abc123 # rotated', recorded: `token: ${PLACEHOLDER} # rotated` },
+    { text: 'api_key: "abc def ghi"', recorded: `api_key: "${PLACEHOLDER}"` },
+    { text: 'apiKey: "abc def"', recorded: `apiKey: "${PLACEHOLDER}"` },
+    { text: 'basicAuth=dXNlcjpwYXNz', recorded: `basicAuth=${PLACEHOLDER}` },
+  ];
+
+  for (const { text, recorded } of PASSED) {
+    it(`takes the value out of ${JSON.stringify(text.slice(0, 44))}`, () => {
+      const scrubbed = scrubSecrets(text);
+      expect(scrubbed.text).toBe(recorded);
+      expect(scrubbed.replaced).toEqual(['named-credential']);
+    });
+  }
+
+  // What text writes in the same places and is no credential. The first fifty-five are the
+  // ordinary texts an adversarial review of the first cut wrote against it, thirteen of which it
+  // replaced; they are kept here as written, so a change that takes one again fails by name.
+  const ORDINARY: readonly string[] = [
+    'Rotate the token every week',
+    'the password policy requires 12 characters',
+    'authorization: the maintainer',
+    'set API_KEY in the CI secret store',
+    'tokenCount is 4096',
+    'passwordHash: string;',
+    'ADR-12: Use OAuth tokens for auth',
+    'max_tokens=1024',
+    'token budget: 200k',
+    'Token budget: about 200000 per window',
+    'id-token: write',
+    'password: unchanged since the migration',
+    'Secret: the key lives in the vault',
+    'api_key: environment',
+    'token: see the vault',
+    'Authorization: Bearer',
+    'the Authorization header carries a Bearer token',
+    'password=<redacted>',
+    `TOKEN=\${{ secrets.GH_TOKEN }}`,
+    'GH_TOKEN=$GITHUB_TOKEN',
+    'secret: VECTOR_SECRET,',
+    'token: request.token,',
+    'auth: required',
+    'token-budget=large',
+    'Key: the ADR number',
+    'secret=sauce in the recipe',
+    'password_min_length=12',
+    'the auth=flow decision',
+    'publish token=OIDC',
+    'tokens=500',
+    'key: value',
+    'Pass: 3',
+    'token: none',
+    'secret: yes',
+    'pwd: /home/me',
+    'cwd=/tmp; pwd=/home/x',
+    'password: see 1Password',
+    'Authorization: maintainer',
+    'apikey=env',
+    'token: Mnema-agent-key',
+    'auth=oidc',
+    'next_token=abc',
+    'pageToken=abcdef',
+    'csrf_token=abcdef',
+    'tokenizer=bpe',
+    'secrets: inherit',
+    'secret: inherit',
+    `token: \${{ github.token }}`,
+    'token: ghost',
+    'access_key: rotated',
+    'with: token: write',
+    'auth: oauth',
+    '"auth": "oidc"',
+    '"token": "pending"',
+    'PASSWORD=changeme',
+    // And the flags those commands share with every other one.
+    'echo "$PW" | docker login -u me --password-stdin registry.io',
+    'docker run -p 8080:80 -u 1000:1000 app',
+    'mkdir -p build && git push -u origin main',
+    'mysql -u root -p mydb',
+    'curl -u admin https://api.x',
+    'pass the --password flag when the prompt is not wanted',
+    'pwd=/srv/app',
+    'AUTH_URL=https://login.example.com/oauth/authorize',
+    'bypass: true',
+    "'google-api-key': 'A Google API key, the shape the issuer documents'",
+    // Found over this repository's own pages and record once the cut above was in: a prefix
+    // named in a sentence, and a provider's name standing before a placeholder.
+    'A GitHub token: `ghp_`, `gho_` or `ghr_`, then 36 or more letters',
+    'run `aider --model sonnet --api-key anthropic=<key>` in the clone',
+  ];
+
+  for (const text of ORDINARY) {
+    it(`records ${JSON.stringify(text.slice(0, 48))} as written`, () => {
+      expect(scrubSecrets(text)).toEqual({ text, replaced: [] });
+    });
+  }
+});
+
 describe('scrubSecrets: the limits, stated as tests', () => {
   // These are the cases the shape cannot reach, and the reason each write surface
   // declares in its own description that what it does not recognize goes in
@@ -838,8 +1012,16 @@ describe('scrubSecrets: the limits, stated as tests', () => {
     // What that costs is these: a single word after a colon reads as prose, and a flag
     // takes its value after a blank, where a sentence goes on just the same.
     { why: 'a single word after a colon, which prose writes too', text: 'password: hunter' },
-    { why: 'a flag whose value follows a blank', text: 'mysql --password S3nh4F0rte' },
-    { why: 'a camelCase name ending in Auth', text: 'basicAuth=dXNlcjpwYXNz' },
+    { why: 'a single word after a flag, for the same reason', text: 'mysql --password hunter' },
+    {
+      why: 'a single word followed by more words after `=`, which a sentence writes too',
+      text: 'run it as PGPASSWORD=hunter psql',
+    },
+    {
+      why: 'a value under a token’s name that reads as a slug of words',
+      text: 'token: deploy-bot-key',
+    },
+    { why: 'a camelCase name ending in Pass', text: 'smtpPass=hunter2' },
   ];
 
   for (const uncaught of ESCAPES) {

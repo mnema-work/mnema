@@ -28,9 +28,18 @@
  * IS from where it lives. What the two classes read by context hold to now is the
  * shape text gives a key: in quotes of its own, or opening a line, an argument, a
  * member or a query parameter, followed by a value that ends where a value ends. Those
- * nine notes are asserted untouched in the tests; over this repository's own record
- * (1,892 events, 6,290 fields) and the machine's private one the two classes replaced
- * nothing at all, and over the documentation one value, an example passphrase.
+ * nine notes are asserted untouched in the tests, and so are fifty-five ordinary texts an
+ * adversarial review wrote against the first cut, thirteen of which that cut replaced. Over
+ * this repository's own record (3,223 events, 32,737 fields) the two classes replace nothing,
+ * over the machine's private one (11,235 events) one value, in a review note that quotes a
+ * password example, and over the documentation two, both example passwords.
+ *
+ * A FALSE REPLACEMENT COSTS LESS THAN A LEAK, BUT NOT NOTHING. A secret that reaches the record
+ * is permanent and, in a public tree, published; so where a value's end is in doubt the whole of
+ * it goes, and a value under a credential's name goes unless it reads as one of the things that
+ * stand there without being one. In a body a false replacement costs a word; in a NAME it refuses
+ * the write (see `screen.ts`), which is why the readings that keep a value are measured against
+ * ordinary text and asserted by name rather than tuned.
  *
  * LENGTHS ARE MINIMUMS, NEVER EXACT. A pattern that pinned a token's length
  * would stop matching the day its issuer added one character: silently, with no
@@ -179,6 +188,43 @@ const HEADER_VALUE = String.raw`[A-Za-z0-9._~+/-]+=*(?![A-Za-z0-9._~+/-]|[^\x00-
 const NAME_HEAD = '[A-Za-z0-9_.-]{0,64}';
 
 /**
+ * The end of a name a credential is kept under, in any case (the shapes that use it are
+ * case-insensitive): `PASSWORD`, `db_password`, `apiKey`, `X-Api-Key`, `client_secret`,
+ * `GITHUB_TOKEN`. Only the END is matched, so any prefix is accepted, and a name that goes
+ * on past the word (`tokenizer`, `secrets`, `max_tokens`, `token_count`) is not one.
+ *
+ * THREE WORDS NEED MORE THAN THEIR SPELLING. `token` also names a pagination cursor (`next_token`,
+ * `NextToken`, `page_token`, `continuationToken`), an opaque value that is not a credential and
+ * that an agent pastes when it debugs an API, so a cursor's prefix turns the name away, and so
+ * does a form's anti-forgery token (`csrf_token`), which is bound to one session and opens
+ * nothing after it. `auth` ends `oauth`, a protocol's name, and `pass` ends `bypass` and
+ * `compass`, so each counts only as a word of its own (`DB_PASS`, `pass:`), which leaves out the
+ * camelCase spelling (`smtpPass`): the shapes are read in any case, so `bypass` and `dbPass` look
+ * the same to them. `basicAuth` is the one camelCase name spelled out.
+ */
+const CREDENTIAL_NAME =
+  '(?:pass(?:word|wd|phrase)|pwd|secret|api[_-]?key|access[_-]?key|private[_-]?key|' +
+  'secret[_-]?key|(?<!(?:next|page|continuation|pagination|sync|cursor|resume|csrf|xsrf)[_-]?)token|' +
+  'basic[_-]?auth|(?<![a-z])(?:auth|pass))';
+
+/**
+ * The same names written the way an environment writes one, in capitals (`DB_PASSWORD`,
+ * `SMTP_PASS`, `GITHUB_TOKEN`), for the one form whose reading turns on the case: see
+ * `named-credential`. The list above has no escape with a letter in it, so its capitals are its
+ * own words in capitals.
+ */
+const ENVIRONMENT_NAME = CREDENTIAL_NAME.toUpperCase();
+
+/**
+ * A run of letters alone, with the mark a sentence closes it with: what prose writes after a
+ * colon or a flag as readily as a key's value, so the forms that read a value there refuse it.
+ */
+const A_WORD = '[A-Za-z]+[.,;:!?]?';
+
+/** What may follow a value alone on its line: blanks, and a comment opened by `#` after a blank. */
+const LINE_END = String.raw`(?:[ \t]+#[^\n]*)?[ \t\r]*$`;
+
+/**
  * Where a credential's name stands as a KEY: bare before its `:` or `=` (`PASSWORD=`,
  * `--token=`, `{ apiKey:`, `#access_token=`), or in quotes of its own, whole
  * (`"db_password":`). A quoted key has to be a name from quote to quote, which is what turns
@@ -187,55 +233,87 @@ const NAME_HEAD = '[A-Za-z0-9_.-]{0,64}';
  * before this was written.
  */
 function keyed(name: string): string {
-  return String.raw`(?:["']${NAME_HEAD}${name}["']|${name})`;
+  return String.raw`(?:["'\x60]${NAME_HEAD}${name}["'\x60]|${name})`;
 }
 
 /**
- * A quoted value after a credential's key and a `:` or `=`, the value made of `unit`. The
- * quote is spelled out per alternative rather than captured and referred back to, because
- * no shape here has a capture group (see the module comment).
+ * What a quoted value is made of, per quote, to its own closing quote: a doubled quote inside
+ * it (`'it''s'`, the way SQL and YAML escape one) and a quote after a backslash (`"ab\"cd"`) are
+ * part of the value, and so are its blanks. A fragment left past the first quote is a leak with a
+ * placeholder beside it, which tells the reader the value went while part of it stayed.
  */
-function quotedAfter(name: string, quote: '"' | "'", unit: string): string {
-  return (
-    String.raw`(?<=${keyed(name)}${GAP}[:=]${GAP}${quote}(?:${SCHEME})?)` +
-    String.raw`(?!${SCHEME_WORD})${unit}{1,1024}(?=${quote})`
-  );
+const QUOTED_VALUE = {
+  '"': String.raw`(?:[^"\\\n]|\\.|"")+`,
+  "'": String.raw`(?:[^'\n]|'')+`,
+  '\x60': String.raw`[^\x60\n]+`,
+} as const;
+
+/**
+ * A value in quotes after `context`, to its closing quote, or to the end of the line when none
+ * closes it (a paste cut short keeps its secret all the same). It does not open on a blank or on
+ * punctuation: a quote followed by one closes something else, as in `PASSWORD=` written in
+ * backticks and followed by ` or a JSON field`. The context is read once, with any of the three
+ * quotes, and the quote that opened is read back by a lookbehind of one character: a capture
+ * group referred back to would do it in fewer characters, and no shape here has one (see the
+ * module comment). Read once rather than once per quote, because a lookbehind is tried at every
+ * position of the text and the three were a third of a scrub's worst case.
+ */
+function quotedAfter(context: string): string {
+  const values = [
+    String.raw`(?<=")${QUOTED_VALUE['"']}(?="|$)`,
+    String.raw`(?<=')${QUOTED_VALUE["'"]}(?='|$)`,
+    String.raw`(?<=\x60)${QUOTED_VALUE['\x60']}(?=\x60|$)`,
+  ];
+  return String.raw`(?<=${context}["'\x60])(?![ \t,;.)])(?:${values.join('|')})`;
 }
+
+/**
+ * A value not in quotes, to the first blank or the end of the line, punctuation and all
+ * (`abc;def123`, `p@ss,word99`), with two exceptions read from what follows. It stops before the
+ * next pair of a query or a connection string (`&page=2`, `;Server=db`), where the separator
+ * ends the value by the syntax that wrote it, and it leaves the closing quotes and brackets it
+ * ends on (`(PASSWORD=hunter2)`), so the text around it still reads. A backslash before the end
+ * of a line continues the value on the next one, as a shell reads it.
+ */
+const UNQUOTED_VALUE = String.raw`(?:[^\s\\]|\\[^\n]|\\\r?\n)+?(?=[)\]}>"'\x60]*(?:\s|$)|[;&,][\w.-]{1,64}=)`;
 
 /**
  * A value alone on its line after a credential's name opening that line (`.env`, INI, YAML,
- * a header), the value made of anything but blanks and quotes. `refuse` is a lookahead the
- * value must also pass, which is how the colon form turns away a single word.
+ * a header), with a comment allowed after it. `refuse` is a lookahead the value must also pass,
+ * which is how the colon form turns away a single word.
  */
 function onItsLine(separator: ':' | '=', refuse = ''): string {
   return (
-    String.raw`(?<=^[ \t]{0,64}(?:- |export )?["']?${NAME_HEAD}${CREDENTIAL_NAME}["']?${GAP}${separator}${GAP}(?:${SCHEME})?)` +
-    String.raw`(?!${SCHEME_WORD})${refuse}[^\s"'\x60]+(?=[ \t\r]*$)`
+    String.raw`(?<=^[ \t]{0,64}(?:- |export )?["'\x60]?${NAME_HEAD}${CREDENTIAL_NAME}["'\x60]?${GAP}${separator}${GAP}(?:${SCHEME})?)` +
+    String.raw`(?!${SCHEME_WORD}|["'\x60])${refuse}[^\s]+(?=${LINE_END})`
   );
 }
 
 /**
- * The names whose value may carry blanks: a passphrase is the one credential written as
- * words. Under every other name a quoted value with a blank in it is a sentence (a message
- * kept under `HOLDS_A_SECRET`, a description under `'google-api-key'`), not a key.
+ * A flag named as a credential, and the blank after it: `--password S3cret`, `--api-key ...`.
+ * The flag opens the text or follows a blank or a quote, so a name inside a word is not one.
  */
-const PASSPHRASE_NAME = '(?:pass(?:word|wd|phrase)|pwd)';
+const FLAG = String.raw`(?:^|[\s"'\x60])--${NAME_HEAD}${CREDENTIAL_NAME}[ \t]{1,8}`;
 
 /**
- * The end of a name a credential is kept under, in any case (the shapes that use it are
- * case-insensitive): `PASSWORD`, `db_password`, `apiKey`, `X-Api-Key`, `client_secret`,
- * `GITHUB_TOKEN`. Only the END is matched, so any prefix is accepted, and a name that goes
- * on past the word (`tokenizer`, `secrets`, `max_tokens`, `token_count`) is not one.
- *
- * TWO WORDS NEED MORE THAN THEIR SPELLING. `token` also names a pagination cursor (`next_token`,
- * `NextToken`, `page_token`, `continuationToken`), an opaque value that is not a credential and
- * that an agent pastes when it debugs an API, so a cursor's prefix turns the name away. And
- * `auth` ends `oauth`, a protocol's name, so it counts only as a word of its own.
+ * The three commands that take a password in a flag of a single letter, in the form each one
+ * reads: `curl -u user:password` (and `--user`), `docker login -p password`, and `mysql -ppassword`
+ * with no blank, since `mysql -p` followed by a blank asks for it at the prompt. The command has
+ * to stand on the same line before the flag, because `-u` and `-p` are a user, a port or a
+ * parent directory everywhere else (`docker run -u 1000:1000 -p 8080:80`, `mkdir -p`).
  */
-const CREDENTIAL_NAME =
-  '(?:pass(?:word|wd|phrase)|pwd|secret|api[_-]?key|access[_-]?key|private[_-]?key|' +
-  'secret[_-]?key|(?<!(?:next|page|continuation|pagination|sync|cursor|resume)[_-]?)token|' +
-  '(?<![a-z])auth)';
+const CURL_USER = String.raw`\bcurl\b[^\n]{0,256}[ \t](?:-u[ \t]*|--user(?:[ \t]+|=))`;
+const DOCKER_LOGIN_P = String.raw`\bdocker[ \t]+login\b[^\n]{0,256}[ \t]-p[ \t]+`;
+const MYSQL_P = String.raw`\bmysql(?:dump|admin|import|show|check|slap)?\b[^\n]{0,256}[ \t]-p`;
+
+/**
+ * A shape looked for only in a text that holds `where`, for the reason {@link ONLY_WHERE} gives,
+ * where one class is read by more than one shape and each has a literal of its own to wait for.
+ */
+interface GatedShape {
+  readonly where: RegExp;
+  readonly shape: RegExp;
+}
 
 /**
  * The shape of each class, as a LOOKUP. The order lives in
@@ -266,7 +344,7 @@ const CREDENTIAL_NAME =
  * (see the module comment), so a replacement is the whole match. Each runs over the
  * text the previous ones already cleaned, so a placeholder is never re-matched.
  */
-const SHAPES: { readonly [K in SecretClass]: RegExp } = {
+const SHAPES: { readonly [K in SecretClass]: RegExp | readonly GatedShape[] } = {
   'aws-access-key': /\b(?:AKIA|ASIA|ABIA|ACCA)[0-9A-Z]{16,}\b/g,
   // The classic prefixes, and the fine-grained token GitHub's own table of token formats
   // lists beside them (`github_pat_`, a 22-character id, `_`, then the 59-character secret).
@@ -351,33 +429,70 @@ const SHAPES: { readonly [K in SecretClass]: RegExp } = {
   // record the first cut of this shape took the first word after "standing authorization:"
   // 31 times. So the header has to look like one. Either it carries a scheme (`Bearer`,
   // `Basic`, ...), or it opens a line, a quoted string or an object and its
-  // value ends there too. And the value ends at a blank, a quote or punctuation, never
-  // in the middle of a word.
+  // value ends there too, and then a single word is not one (`Authorization: maintainer` is a
+  // line of prose about who authorized). And the value ends at a blank, a quote or
+  // punctuation, never in the middle of a word.
   'authorization-header': new RegExp(
     [
       String.raw`(?<=\bauthorization["']?${GAP}[:=]${GAP}["']?${SCHEME})${HEADER_VALUE}`,
       String.raw`(?<=(?:^[ \t]{0,64}|["'{][ \t]{0,8})(?:proxy-)?authorization["']?${GAP}[:=]${GAP}["']?)` +
-        String.raw`(?!${SCHEME_WORD})${HEADER_VALUE}(?=[ \t\r]*(?:$|["',}]))`,
+        String.raw`(?!${SCHEME_WORD}|${A_WORD}[ \t\r]*(?:$|["',}]))${HEADER_VALUE}(?=[ \t\r]*(?:$|["',}]))`,
     ].join('|'),
     'gim',
   ),
-  // A value written after a credential's NAME, in the three ways text writes one down:
-  // quoted after `:` or `=` (JSON, YAML, TOML, code), unquoted right after `=` (`.env`, a
-  // query string, a flag), and alone on its line after `:` or `=` (YAML, INI, a header
-  // line). The third is bound to the line on purpose: in prose a colon is followed by a
-  // sentence, and `Secret: the key lives in the vault` has to come out as written.
-  'named-credential': new RegExp(
-    [
-      quotedAfter(PASSPHRASE_NAME, '"', String.raw`(?:[^"\\\n]|\\.)`),
-      quotedAfter(PASSPHRASE_NAME, "'", String.raw`[^'\n]`),
-      quotedAfter(CREDENTIAL_NAME, '"', String.raw`(?:[^"\\\s]|\\.)`),
-      quotedAfter(CREDENTIAL_NAME, "'", String.raw`[^'\s]`),
-      String.raw`(?<=${keyed(CREDENTIAL_NAME)}=)[^\s"'\x60<>&;,)\]}]+`,
-      onItsLine('='),
-      onItsLine(':', String.raw`(?![A-Za-z][a-z]*[.,;:!?]?[ \t\r]*$)`),
-    ].join('|'),
-    'gim',
-  ),
+  // A value written after a credential's NAME, in the ways text writes one down: quoted after
+  // `:` or `=` (JSON, YAML, TOML, code), unquoted right after `=` (`.env`, a query string, a
+  // flag), alone on its line after `:` or `=` (YAML, INI, a header line), after a flag named as a
+  // credential, and after the single-letter flags of three commands. The line forms are bound to
+  // the line on purpose: in prose a colon is followed by a sentence, and `Secret: the key lives in
+  // the vault` has to come out as written; for the same reason a single word after a colon or a
+  // flag, or a word followed by more words after `=`, reads as prose.
+  //
+  // TWO SHAPES, ONE CLASS, because one form turns on the case and the rest are read in any.
+  // On a line of its own, a name in capitals (`DB_PASSWORD=pa ss word`) is an environment file's,
+  // whose value runs to the end of the line, blanks and all; the same line under a name in small
+  // letters is as often a sentence (`secret=sauce in the recipe`). And the three commands are
+  // written in small letters, with flags whose case is their meaning (`mysql -P` is a port).
+  'named-credential': [
+    {
+      where: /(?:PASS|PWD|SECRET|KEY|TOKEN|AUTH)[A-Z_]{0,16}[ \t]{0,8}=/,
+      shape: new RegExp(
+        String.raw`(?<=^[ \t]{0,64}(?:export[ \t]+)?[A-Z0-9_]{0,64}${ENVIRONMENT_NAME}${GAP}=${GAP})` +
+          String.raw`(?!["'\x60#])[^\s]+(?:(?:[ \t]+(?!#)|(?<=\\)\r?\n)[^\s]+)*`,
+        'gm',
+      ),
+    },
+    {
+      where: /curl|docker|mysql/,
+      shape: new RegExp(
+        [
+          String.raw`(?<=${CURL_USER}[^\s:"'\x60]{0,64}:)(?!["'\x60])${UNQUOTED_VALUE}`,
+          String.raw`(?<=${CURL_USER}"[^\n:"]{0,64}:)[^"\n]+(?=")`,
+          String.raw`(?<=${CURL_USER}'[^\n:']{0,64}:)[^'\n]+(?=')`,
+          quotedAfter(DOCKER_LOGIN_P),
+          String.raw`(?<=${DOCKER_LOGIN_P})(?!["'\x60-]|${A_WORD}(?:\s|$))${UNQUOTED_VALUE}`,
+          quotedAfter(MYSQL_P),
+          String.raw`(?<=${MYSQL_P})(?![\s"'\x60])${UNQUOTED_VALUE}`,
+        ].join('|'),
+        'g',
+      ),
+    },
+    {
+      where:
+        /(?:pass(?:word|wd|phrase)?|pwd|secret|key|token|auth)["'\x60]?[ \t]{0,8}[:=]|--[\w.-]*(?:pass|pwd|secret|key|token|auth)/i,
+      shape: new RegExp(
+        [
+          quotedAfter(`${keyed(CREDENTIAL_NAME)}${GAP}[:=]${GAP}`),
+          String.raw`(?<=${keyed(CREDENTIAL_NAME)}=)(?!["'\x60]|[A-Za-z]+[ \t]+[A-Za-z])${UNQUOTED_VALUE}`,
+          onItsLine('='),
+          onItsLine(':', String.raw`(?!${A_WORD}${LINE_END})`),
+          quotedAfter(FLAG),
+          String.raw`(?<=${FLAG})(?!["'\x60-]|${A_WORD}(?:\s|$))${UNQUOTED_VALUE}`,
+        ].join('|'),
+        'gim',
+      ),
+    },
+  ],
 };
 
 /**
@@ -392,7 +507,6 @@ const SHAPES: { readonly [K in SecretClass]: RegExp } = {
  */
 const ONLY_WHERE: { readonly [K in SecretClass]?: RegExp } = {
   'authorization-header': /authorization/i,
-  'named-credential': /(?:pass(?:word|wd|phrase)|pwd|secret|key|token|auth)["']?[ \t]{0,8}[:=]/i,
 };
 
 /**
@@ -422,13 +536,19 @@ const ONLY_WHERE: { readonly [K in SecretClass]?: RegExp } = {
  * GitLab's own coinage. The limits are pinned BY NAME in `secrets.test.ts`, in the probe
  * table that walks this list, so changing one is a deliberate act and not a drift.
  *
+ * A reading is handed the whole text and where the match starts, for the one that needs what
+ * stands before the value: under a token's name a slug of words is a name, under a password's
+ * it is a passphrase.
+ *
  * IT IS NOT EXPORTED AT ALL, and neither is the rule it gates. Nothing outside asks
  * which prefixes are ambiguous, and a consumer able to import either could keep a
  * second opinion about what counts as a name. The module boundary is what makes that
  * impossible rather than merely discouraged: there is no declaration here for a
  * surface sweep to check, because there is nothing exported for it to find.
  */
-const SECOND_READING: { readonly [K in SecretClass]: ((match: string) => boolean) | undefined } = {
+const SECOND_READING: {
+  readonly [K in SecretClass]: ((match: string, text: string, at: number) => boolean) | undefined;
+} = {
   'aws-access-key': undefined,
   'github-token': undefined,
   'gitlab-token': undefined,
@@ -521,11 +641,17 @@ const A_REFERENCE = /^[<$%{]/;
 /**
  * What a value under a credential's name is when it is a fact about the field and not its
  * content: a flag, an empty marker, a type in a declaration (`password: string;`), with the
- * `;` or `,` a declaration ends on, and a permission (`id-token: write`, in every GitHub
- * workflow that signs).
+ * `;` or `,` a declaration ends on, a permission (`id-token: write`, in every GitHub
+ * workflow that signs), and the word a value is while it is not one yet or lives elsewhere
+ * (`env`, `oidc`, `pending`, `unset`, `redacted`, `inherit`, `example`, `todo`).
+ *
+ * `changeme` is in the list on purpose, and it is the one that is ever a password in use: it is
+ * the default a template ships, so it is the first guess anyone makes, and writing it down
+ * discloses nothing a guess does not. Recording `PASSWORD=changeme` as written keeps the line
+ * readable; replacing it would protect no one.
  */
 const NOT_A_VALUE =
-  /^(?:true|false|null|nil|none|undefined|yes|no|on|off|string|str|number|int|integer|bool|boolean|bytes|any|unknown|object|optional|required|read|write)[;,]?$/i;
+  /^(?:true|false|null|nil|none|undefined|yes|no|on|off|string|str|number|int|integer|bool|boolean|bytes|any|unknown|object|optional|required|read|write|bearer|basic|digest|negotiate|env|oidc|pending|unset|empty|redacted|masked|hidden|inherit|changeme|change-me|placeholder|example|dummy|tbd|todo)[;,]?$/i;
 
 /** A name in code, followed by members (`.token`) or by keys (`[NAME]`). */
 const IDENTIFIER_PATH = String.raw`[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\[[A-Za-z_$][\w$]*\])*`;
@@ -556,6 +682,50 @@ const A_CODE_EXPRESSION = new RegExp(
 const A_VERSION = /^[~^]?v?\d+\.\d+(?:\.\d+)?(?:[-+][0-9A-Za-z.-]+)?$/;
 
 /**
+ * A number of three digits or fewer: a count, an index, a pass of a review (`Pass: 3`). No
+ * credential is that short, and one that were would fall to a thousand guesses.
+ */
+const A_COUNT = /^\d{1,3}[.,;]?$/;
+
+/**
+ * An issuer's prefix named on its own (`ghp_`, `xoxb-`, `glpat-`): a few letters and digits that
+ * end on the `_` or `-` a token goes on after. A page that lists the formats names them after
+ * `token:` in a sentence, and the token itself would carry its body.
+ */
+const A_PREFIX = /^[A-Za-z0-9]{1,10}[_-]$/;
+
+/**
+ * A name standing before a reference to the value (`anthropic=<key>`, `admin:$PASSWORD`), the way
+ * a tool that takes several providers' keys in one flag is shown being called.
+ */
+const A_NAMED_REFERENCE = /^[\w.-]{1,64}[=:][<$%{]/;
+
+/**
+ * A path on a disk (`/home/me`, `~/.config/app`, `./build`), the value `pwd` names more often
+ * than a password. Each piece is a name, in small letters after an optional capital: a base64
+ * secret that happens to open on `/` carries capitals inside its pieces, and is not read as one.
+ */
+const A_PATH = /^(?:~|\.{1,2})?(?:\/[A-Za-z]?[a-z0-9._@-]*)+[.,;]?$/;
+
+/**
+ * An address with no credential in it: no user and password, no query, and a path read the way
+ * {@link A_PATH} reads one, so a webhook whose secret is its path is not mistaken for one.
+ */
+const A_PLAIN_URL = /^[a-z][a-z0-9+.-]*:\/\/[A-Za-z0-9.-]+(?::\d+)?(?:\/[A-Za-z]?[a-z0-9._~%-]*)*$/;
+
+/** A token's, a key's, a secret's or an auth's name just before the value, with its separator. */
+const AFTER_A_TOKEN_NAME = /(?:secret|key|token|auth)["'\x60]?[ \t]{0,8}[:=]?[ \t]{0,8}["'\x60]?$/i;
+
+/**
+ * Words joined by `-` or `_`, the first of them with an optional capital: the name of something
+ * (`Mnema-agent-key`, `deploy-bot-key`), not its secret.
+ */
+const A_SLUG = /^[A-Za-z][a-z]*(?:[-_][a-z]+)+$/;
+
+/** Four words or more, of letters and the marks a sentence carries: a description, not a key. */
+const A_SENTENCE = /^[A-Za-z’'-]+[.,;:!?]?(?:[ \t]+[A-Za-z’'()-]+[.,;:!?)]?){3,}$/;
+
+/**
  * Whether a value found by its CONTEXT reads as no credential at all, so it is carried
  * through as written.
  *
@@ -568,9 +738,30 @@ const A_VERSION = /^[~^]?v?\d+\.\d+(?:\.\d+)?(?:[-+][0-9A-Za-z.-]+)?$/;
  * A LOW-ENTROPY VALUE GETS THE PLACEHOLDER, NEVER A DIGEST, for the reason the module
  * comment gives: these two classes are where the low-entropy secrets are, so a digest here
  * would be a dictionary lookup away from the password it replaced.
+ *
+ * WHAT STANDS BEFORE THE VALUE DECIDES TWO OF THE READINGS. Under a token's, a key's or a
+ * secret's name, a slug of words (`token: Mnema-agent-key`) is the name of the thing and a
+ * sentence of four words or more (a message kept under `HOLDS_A_SECRET`) is its description; a
+ * real token has neither shape. Under a password's name both are kept as the secret, because a
+ * passphrase is exactly words (`correct horse battery staple`).
  */
-function readsAsNoCredential(value: string): boolean {
-  return readsAsNoHeaderValue(value) || A_CODE_EXPRESSION.test(value) || A_VERSION.test(value);
+function readsAsNoCredential(value: string, text: string, at: number): boolean {
+  if (
+    readsAsNoHeaderValue(value) ||
+    A_CODE_EXPRESSION.test(value) ||
+    A_VERSION.test(value) ||
+    A_COUNT.test(value) ||
+    A_PATH.test(value) ||
+    A_PLAIN_URL.test(value) ||
+    A_PREFIX.test(value) ||
+    A_NAMED_REFERENCE.test(value)
+  ) {
+    return true;
+  }
+  return (
+    AFTER_A_TOKEN_NAME.test(text.slice(Math.max(0, at - 40), at)) &&
+    (A_SLUG.test(value) || A_SENTENCE.test(value))
+  );
 }
 
 /**
@@ -606,10 +797,14 @@ export function scrubSecrets(text: string): ScrubbedText {
   let out = text;
   let replaced: SecretClass[] | undefined;
   for (const secret of SECRET_CLASSES) {
-    const pass = scrubWith(out, secret, SHAPES[secret]);
-    if (pass.replaced.length === 0) continue;
-    out = pass.text;
-    replaced = replaced === undefined ? [...pass.replaced] : [...replaced, ...pass.replaced];
+    const shapes = SHAPES[secret];
+    for (const { where, shape } of shapes instanceof RegExp ? [{ shape: shapes }] : shapes) {
+      if (where !== undefined && !where.test(out)) continue;
+      const pass = scrubWith(out, secret, shape);
+      if (pass.replaced.length === 0) continue;
+      out = pass.text;
+      replaced = replaced === undefined ? [...pass.replaced] : [...replaced, ...pass.replaced];
+    }
   }
   return replaced === undefined ? { text, replaced: [] } : { text: out, replaced };
 }
@@ -666,8 +861,11 @@ function scrubWith(text: string, secret: SecretClass, re: RegExp): ScrubbedText 
     }
     // The second reading, and the only place it happens. Skipping the match leaves
     // `copied` where it was, so the value is carried through by the next slice:
-    // byte for byte, which is what "the name the person chose" has to mean.
-    if (kept?.(match[0])) {
+    // byte for byte, which is what "the name the person chose" has to mean. The scan
+    // goes on from the next character rather than past the kept match, so a value kept
+    // as a whole (a sentence, a reference) does not hide a credential written inside it.
+    if (kept?.(match[0], text, match.index)) {
+      re.lastIndex = match.index + 1;
       match = re.exec(text);
       continue;
     }
