@@ -363,7 +363,7 @@ describe('F8 and F10: forged facts appended unsigned at the end', () => {
             'knowledge.linked',
           ]);
           for (const event of own) {
-            event.subject = '01a1f200-0000-7000-8000-000000000001';
+            event.subject = '00000000-0000-7000-8000-00000000f010';
             event.at = '2099-01-01T00:00:00.000Z';
           }
           const [recorded, , , linked] = own as Line['event'][];
