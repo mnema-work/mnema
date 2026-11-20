@@ -8,7 +8,7 @@
  * What this reads is the files: the run itself is the job's. It holds the shape that would silently
  * stop meaning anything: the job gone or no longer calling the script, a path filter that lets a
  * pull request skip it, a copy of the block inside the script (so the page could change and the job
- * stay green), a `mnema` left on the PATH (so npx proves nothing), and the substituted command
+ * stay green), a `mnema` of the machine reachable from the block (so npx proves nothing), and the substituted command
  * drifting away from the lines of the page.
  */
 
@@ -79,11 +79,11 @@ describe('the npx recipe runs the page', () => {
     }
   });
 
-  it('packs the package, runs npx in an empty HOME with no mnema on the PATH, and bounds the run', () => {
+  it('packs the package, runs npx in an empty HOME with a trap for a bare mnema, and bounds the run', () => {
     expect(SCRIPT_CODE).toMatch(/pnpm pack --pack-destination/);
     expect(SCRIPT_CODE).toContain('command npx --yes --package');
     expect(SCRIPT_CODE).toContain('env -i HOME="$home"');
-    expect(SCRIPT_CODE).toContain('command -v mnema');
+    expect(SCRIPT_CODE).toContain('the block called mnema outside npx');
     expect(SCRIPT_CODE).toMatch(/^bound=\d+$/m);
     expect(SCRIPT_CODE).toMatch(/timeout "\$bound"/);
   });

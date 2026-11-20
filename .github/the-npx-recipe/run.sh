@@ -2,7 +2,7 @@
 # THE NPX RECIPE, run from the packed file, the way docs/install.md tells a person to try mnema without
 # installing it. It reads the block under "Try it without installing" out of the page AT RUN TIME
 # (nothing of it is copied here) and runs it line for line, in a folder of the run, with an empty HOME,
-# an empty npm cache and no `mnema` on the PATH. Then it reads the record the block left: the decision
+# an empty npm cache and a trap where a bare `mnema` would be. Then it reads the record the block left: the decision
 # it recorded is accepted, and `verify` said the record is intact.
 #
 # THE ONE THING IT SUBSTITUTES is the package name: `npx` is a shell function for the run that turns
@@ -65,18 +65,12 @@ runner="$work/runner.sh"
   printf 'source %q\n' "$block"
 } >"$runner"
 
-# No `mnema` on the PATH: the block has to get it from npx alone. A machine that has one installed
-# keeps the rest of its PATH; the folders holding a `mnema` are left out of the run's.
-clean_path=""
-IFS=: read -ra path_dirs <<<"$PATH"
-for d in "${path_dirs[@]}"; do
-  [ -e "$d/mnema" ] || clean_path="${clean_path:+$clean_path:}$d"
-done
-envv=(env -i HOME="$home" PATH="$clean_path" npm_config_cache="$work/npm-cache" GIT_CONFIG_NOSYSTEM=1)
-if "${envv[@]}" bash -c 'command -v mnema' >/dev/null 2>&1; then
-  echo "FAIL: a mnema is still on the PATH, so the run would not prove the recipe"
-  exit 1
-fi
+# No `mnema` of the machine is reachable from the block: a bare `mnema` hits a stub that fails the run,
+# while the one `npx` runs comes from the tarball (npx puts the package's own bin first).
+mkdir "$work/trap"
+printf '#!/bin/sh\necho "FAIL: the block called mnema outside npx" >&2\nexit 1\n' >"$work/trap/mnema"
+chmod +x "$work/trap/mnema"
+envv=(env -i HOME="$home" PATH="$work/trap:$PATH" npm_config_cache="$work/npm-cache" GIT_CONFIG_NOSYSTEM=1)
 
 log="$work/session.log"
 status=0
