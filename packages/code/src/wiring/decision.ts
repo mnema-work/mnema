@@ -40,6 +40,7 @@ import { writeLines } from './io.js';
 import { createsBy } from './misuse.js';
 import { noSuchRecord } from './no-such-record.js';
 import {
+  ALLOW_PRIVATE_PATTERN_HELP,
   declaredAgent,
   INVALID,
   parseScope,
@@ -90,6 +91,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
       ),
     )
     .option('--which <agent>', WHICH_HELP, declaredAgent)
+    .option('--allow-private-pattern', ALLOW_PRIVATE_PATTERN_HELP)
     .addHelpText('after', RECORD_CONTRACT_HELP);
   addBodySourceOptions(decision, 'rationale');
 
@@ -112,6 +114,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
       ),
     )
     .option('--which <agent>', WHICH_HELP, declaredAgent)
+    .option('--allow-private-pattern', ALLOW_PRIVATE_PATTERN_HELP)
     .addHelpText('after', RECORD_CONTRACT_HELP);
   addBodySourceOptions(record, 'rationale');
   createsBy(record);
@@ -120,6 +123,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
       alternatives?: string;
       scope?: string;
       which?: string;
+      allowPrivatePattern?: boolean;
       stdin?: boolean;
       bodyFile?: string;
     }>(record, wiring);
@@ -148,6 +152,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
       ...(given.alternatives !== undefined ? { alternatives: given.alternatives } : {}),
       ...(scope !== undefined ? { scope } : {}),
       ...(given.which !== undefined ? { which: given.which } : {}),
+      ...(given.allowPrivatePattern === true ? { allowPrivatePattern: true as const } : {}),
       ...(run !== undefined ? { run } : {}),
     });
     if (result.ok && result.alreadyRecorded) {

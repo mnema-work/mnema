@@ -28,7 +28,7 @@
 
 import { catalogUpcasters } from '@mnema/chain';
 import { chainRootForScope, type DiscoveryEnv, resolveScope, type Scope } from '@mnema/core';
-import { openTreeForWriting, recordObservation } from '@mnema/core/write';
+import { openTreeForWriting, privateListFor, recordObservation } from '@mnema/core/write';
 import { oneLine } from '../one-line.js';
 import { forwardReplacement, type Landed, type Replacement } from '../recorded-content.js';
 import { locateRecordScopeKept } from '../tree-sources.js';
@@ -84,6 +84,8 @@ export function runObserve(
     text: string;
     scope?: Scope;
     which?: string;
+    /** Pass the machine's private list (`--allow-private-pattern`): the text is recorded though it matches. */
+    allowPrivatePattern?: boolean;
     run?: string;
   },
 ): ObservationRecorded | ObserveRefused {
@@ -107,6 +109,7 @@ export function runObserve(
         writer,
         layout: { root: chainRootForScope(trees, scope) as string },
         upcasters: catalogUpcasters(),
+        ...privateListFor(trees, scope, input.allowPrivatePattern),
         // Asked by the door after every refusal of the fact's shape, before anything is founded.
         askedBeforeFounding: () =>
           locateRecordScopeKept(trees, input.about, catalogUpcasters()) === undefined

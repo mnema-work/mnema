@@ -35,7 +35,7 @@ import {
   resolveTrees,
   type Scope,
 } from '@mnema/core';
-import { openTreeForWriting, recordDecision } from '@mnema/core/write';
+import { openTreeForWriting, privateListFor, recordDecision } from '@mnema/core/write';
 import { type AcceptState, acceptStateHere, stateOfANewDecision } from '../agent-accepts.js';
 import {
   addressOfferLines,
@@ -107,6 +107,8 @@ export function runDecision(
     alternatives?: string;
     scope?: Scope;
     which?: string;
+    /** Pass the machine's private list (`--allow-private-pattern`): the text is recorded though it matches. */
+    allowPrivatePattern?: boolean;
     /** The `which` is a name the product declares itself, not one a person typed: no line speaks of it. */
     whichIsOwn?: true;
     run?: string;
@@ -135,6 +137,7 @@ export function runDecision(
         writer,
         layout: { root: chainRootForScope(trees, scope) as string },
         upcasters: catalogUpcasters(),
+        ...privateListFor(trees, scope, input.allowPrivatePattern),
       },
       {
         title: input.title,

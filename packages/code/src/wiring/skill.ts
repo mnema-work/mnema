@@ -48,6 +48,7 @@ import { createsBy } from './misuse.js';
 import { noSuchRecord } from './no-such-record.js';
 import { onOneLine } from './on-one-line.js';
 import {
+  ALLOW_PRIVATE_PATTERN_HELP,
   declaredAgent,
   INVALID,
   parseScope,
@@ -118,6 +119,7 @@ export function registerSkill(program: Command, wiring: Wiring): Declared {
       ),
     )
     .option('--which <agent>', WHICH_HELP, declaredAgent)
+    .option('--allow-private-pattern', ALLOW_PRIVATE_PATTERN_HELP)
     .addHelpText('after', RECORD_CONTRACT_HELP);
   addBodySourceOptions(skill, 'pattern');
 
@@ -140,6 +142,7 @@ export function registerSkill(program: Command, wiring: Wiring): Declared {
       ),
     )
     .option('--which <agent>', WHICH_HELP, declaredAgent)
+    .option('--allow-private-pattern', ALLOW_PRIVATE_PATTERN_HELP)
     .addHelpText('after', RECORD_CONTRACT_HELP);
   addBodySourceOptions(create, 'pattern');
   createsBy(create);
@@ -148,6 +151,7 @@ export function registerSkill(program: Command, wiring: Wiring): Declared {
       body?: string;
       scope?: string;
       which?: string;
+      allowPrivatePattern?: boolean;
       stdin?: boolean;
       bodyFile?: string;
     }>(create, wiring);
@@ -172,6 +176,7 @@ export function registerSkill(program: Command, wiring: Wiring): Declared {
       body,
       ...(scope !== undefined ? { scope } : {}),
       ...(given.which !== undefined ? { which: given.which } : {}),
+      ...(given.allowPrivatePattern === true ? { allowPrivatePattern: true as const } : {}),
       ...(run !== undefined ? { run } : {}),
     });
     if (result.ok) {

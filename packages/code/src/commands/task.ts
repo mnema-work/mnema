@@ -35,7 +35,7 @@ import {
   resolveScope,
   type Scope,
 } from '@mnema/core';
-import { createTask, openTreeForWriting } from '@mnema/core/write';
+import { createTask, openTreeForWriting, privateListFor } from '@mnema/core/write';
 import { forwardReplacement, type Landed, type Replacement } from '../recorded-content.js';
 import {
   type AgentWrites,
@@ -94,7 +94,14 @@ export type TaskRefused =
  */
 export function runTask(
   ctx: TaskContext,
-  input: { title: string; description?: string; scope?: Scope; which?: string; run?: string },
+  input: {
+    title: string;
+    description?: string;
+    scope?: Scope;
+    which?: string;
+    allowPrivatePattern?: boolean;
+    run?: string;
+  },
 ): TaskCreated | TaskRefused {
   const writing = treesToWrite(ctx);
   const { trees } = writing;
@@ -115,6 +122,7 @@ export function runTask(
         writer,
         layout: { root: chainRootForScope(trees, scope) as string },
         upcasters: catalogUpcasters(),
+        ...privateListFor(trees, scope, input.allowPrivatePattern),
       },
       {
         title: input.title,

@@ -39,6 +39,7 @@ import { createsBy } from './misuse.js';
 import { registerNextActions } from './next.js';
 import { noSuchRecord } from './no-such-record.js';
 import {
+  ALLOW_PRIVATE_PATTERN_HELP,
   declaredAgent,
   INVALID,
   parseScope,
@@ -59,6 +60,7 @@ export function registerTask(program: Command, wiring: Wiring): Declared {
       scopeOption('task', 'Omitted, a task lands in the public tree (the team’s work board).'),
     )
     .option('--which <agent>', WHICH_HELP, declaredAgent)
+    .option('--allow-private-pattern', ALLOW_PRIVATE_PATTERN_HELP)
     .addHelpText('after', RECORD_CONTRACT_HELP);
 
   // `task create <title>`: the verb the agent's surface calls `create_task`. The group used
@@ -79,10 +81,15 @@ export function registerTask(program: Command, wiring: Wiring): Declared {
       scopeOption('task', 'Omitted, a task lands in the public tree (the team’s work board).'),
     )
     .option('--which <agent>', WHICH_HELP, declaredAgent)
+    .option('--allow-private-pattern', ALLOW_PRIVATE_PATTERN_HELP)
     .addHelpText('after', RECORD_CONTRACT_HELP);
   createsBy(create);
   create.action(async (title: string, opts: { description?: string }) => {
-    const given = await fromTheGroup<{ scope?: string; which?: string }>(create, wiring);
+    const given = await fromTheGroup<{
+      scope?: string;
+      which?: string;
+      allowPrivatePattern?: boolean;
+    }>(create, wiring);
     if (given === REFUSED) return;
     const { runTask } = await import('../commands/task.js');
     const scope = parseScope(given.scope, wiring);
@@ -97,6 +104,7 @@ export function registerTask(program: Command, wiring: Wiring): Declared {
       ...(opts.description !== undefined ? { description: opts.description } : {}),
       ...(scope !== undefined ? { scope } : {}),
       ...(given.which !== undefined ? { which: given.which } : {}),
+      ...(given.allowPrivatePattern === true ? { allowPrivatePattern: true as const } : {}),
       ...(run !== undefined ? { run } : {}),
     });
     if (result.ok) {

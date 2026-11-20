@@ -15,7 +15,13 @@ import { hereWriting } from './context.js';
 import { scopeOption } from './enumerated.js';
 import { REFUSED } from './from-the-group.js';
 import { onOneLine } from './on-one-line.js';
-import { declaredAgent, INVALID, parseScope, WHICH_HELP } from './options.js';
+import {
+  ALLOW_PRIVATE_PATTERN_HELP,
+  declaredAgent,
+  INVALID,
+  parseScope,
+  WHICH_HELP,
+} from './options.js';
 import { idOrRefuse, reportRecorded, reportRefusal } from './report.js';
 import { PIN_REFUSED } from './run-pin.js';
 import { type Declared, mutatesTheRecord, type Wiring } from './verb.js';
@@ -36,6 +42,7 @@ export function registerObserve(program: Command, wiring: Wiring): Declared {
       ),
     )
     .option('--which <agent>', WHICH_HELP, declaredAgent)
+    .option('--allow-private-pattern', ALLOW_PRIVATE_PATTERN_HELP)
     .addHelpText('after', RECORD_CONTRACT_HELP);
   addBodySourceOptions(observe, 'observation');
   observe.action(
@@ -46,6 +53,7 @@ export function registerObserve(program: Command, wiring: Wiring): Declared {
         text?: string;
         scope?: string;
         which?: string;
+        allowPrivatePattern?: boolean;
         stdin?: boolean;
         bodyFile?: string;
       },
@@ -73,6 +81,7 @@ export function registerObserve(program: Command, wiring: Wiring): Declared {
         text,
         ...(scope !== undefined ? { scope } : {}),
         ...(opts.which !== undefined ? { which: opts.which } : {}),
+        ...(opts.allowPrivatePattern === true ? { allowPrivatePattern: true as const } : {}),
         ...(run !== undefined ? { run } : {}),
       });
       if (result.ok && result.alreadyRecorded) {

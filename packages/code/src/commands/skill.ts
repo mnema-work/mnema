@@ -30,7 +30,7 @@
 
 import { catalogUpcasters } from '@mnema/chain';
 import { chainRootForScope, type DiscoveryEnv, resolveScope, type Scope } from '@mnema/core';
-import { createSkill, openTreeForWriting } from '@mnema/core/write';
+import { createSkill, openTreeForWriting, privateListFor } from '@mnema/core/write';
 import { forwardReplacement, type Landed, type Replacement } from '../recorded-content.js';
 import {
   type AgentWrites,
@@ -82,7 +82,14 @@ export type SkillRefused =
  */
 export function runSkill(
   ctx: SkillContext,
-  input: { name: string; body: string; scope?: Scope; which?: string; run?: string },
+  input: {
+    name: string;
+    body: string;
+    scope?: Scope;
+    which?: string;
+    allowPrivatePattern?: boolean;
+    run?: string;
+  },
 ): SkillCreated | SkillRefused {
   const writing = treesToWrite(ctx);
   const { trees } = writing;
@@ -103,6 +110,7 @@ export function runSkill(
         writer,
         layout: { root: chainRootForScope(trees, scope) as string },
         upcasters: catalogUpcasters(),
+        ...privateListFor(trees, scope, input.allowPrivatePattern),
       },
       {
         name: input.name,
