@@ -59,13 +59,26 @@ const temporary = (target: string) =>
   `  ${target} is under a temporary folder, which a reboot or a cleanup can clear, so the link may name a file nobody can open later. Copy the file under the project and link that.`;
 
 describe('the command line', () => {
-  it.each(['public', 'private', 'global'])('warns for /tmp in the %s tree and writes the edge', (scope) => {
-    const target = '/tmp/mnema-brief-that-is-gone.md';
-    const linked = mnema(repo, 'link', 'note-1', target, '--rel', 'derived-from', '--scope', scope);
-    expect(linked.status, linked.stderr).toBe(0);
-    expect(linked.stdout.split('\n')).toContain(temporary(target));
-    if (scope !== 'global') expect(targetsIn(scope as 'public' | 'private')).toEqual([target]);
-  }, 30_000);
+  it.each(['public', 'private', 'global'])(
+    'warns for /tmp in the %s tree and writes the edge',
+    (scope) => {
+      const target = '/tmp/mnema-brief-that-is-gone.md';
+      const linked = mnema(
+        repo,
+        'link',
+        'note-1',
+        target,
+        '--rel',
+        'derived-from',
+        '--scope',
+        scope,
+      );
+      expect(linked.status, linked.stderr).toBe(0);
+      expect(linked.stdout.split('\n')).toContain(temporary(target));
+      if (scope !== 'global') expect(targetsIn(scope as 'public' | 'private')).toEqual([target]);
+    },
+    30_000,
+  );
 
   it('does not warn for a path of the project, relative or absolute, nor for an id', () => {
     for (const target of ['src/a.ts', join(repo, 'src'), 'an-id']) {
@@ -125,7 +138,14 @@ describe('the one function', () => {
   });
 
   it('leaves alone a project path, a relative path, a sibling folder and an id', () => {
-    for (const target of ['/home/me/p/src', 'src/x', '/tmpfoo/x', '/var/tmpx', 'an-id', '../tmp/x']) {
+    for (const target of [
+      '/home/me/p/src',
+      'src/x',
+      '/tmpfoo/x',
+      '/var/tmpx',
+      'an-id',
+      '../tmp/x',
+    ]) {
       expect(isUnderATemporaryFolder(target, '/home/me/p', env), target).toBe(false);
     }
   });
