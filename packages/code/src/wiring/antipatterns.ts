@@ -60,7 +60,17 @@ export function registerAntipatterns(program: Command, wiring: Wiring): Declared
         // The note travels INSIDE the JSON for the reason it is on the page: whoever
         // pipes this into something else is the reader most likely to never see the
         // prose beside it.
-        io.out(JSON.stringify({ ...result.patterns, patternMoves: result.moves }, null, 2));
+        io.out(
+          JSON.stringify(
+            {
+              ...result.patterns,
+              patternMoves: result.moves,
+              agentAccepts: result.agentAccepts,
+            },
+            null,
+            2,
+          ),
+        );
         return;
       }
       // Human summary, one level: a count per category, then the skill candidates
@@ -151,6 +161,64 @@ export function registerAntipatterns(program: Command, wiring: Wiring): Declared
             statement(
               onOneLine`moved twice out of one state (${divergent.kind} ${divergent.from})`,
               onOneLine`${divergent.entityId}: ${divergent.to.join(', ')}`,
+            ),
+          ),
+        );
+      }
+      const accepts = result.agentAccepts;
+      io.out(
+        render(
+          statement(
+            'rules a person accepted, or addressed, that an agent took out of force',
+            String(accepts.personRulesSupersededByAgent.length),
+          ),
+        ),
+      );
+      io.out(
+        render(
+          statement(
+            'chains of three decisions or more, each replacing the one before',
+            String(accepts.chains.length),
+          ),
+        ),
+      );
+      io.out(render(statement('accepts that declare an agent', String(accepts.agentAccepts))));
+      io.out(
+        render(
+          statement(
+            'of them, quoting no words of the person',
+            String(accepts.acceptsWithoutTheirWords.length),
+          ),
+        ),
+      );
+      if (accepts.personRulesSupersededByAgent.length > 0) {
+        io.out(
+          render(
+            statement(
+              'taken out of force by an agent',
+              accepts.personRulesSupersededByAgent.map((x) => onOneLine`${x.decision}`).join(', '),
+            ),
+          ),
+        );
+      }
+      if (accepts.chains.length > 0) {
+        io.out(
+          render(
+            statement(
+              'replaced in a row',
+              accepts.chains
+                .map((chain) => chain.map((id) => onOneLine`${id}`).join(' > '))
+                .join(', '),
+            ),
+          ),
+        );
+      }
+      if (accepts.acceptsWithoutTheirWords.length > 0) {
+        io.out(
+          render(
+            statement(
+              'accepted with no words of the person',
+              accepts.acceptsWithoutTheirWords.map((x) => onOneLine`${x.decision}`).join(', '),
             ),
           ),
         );

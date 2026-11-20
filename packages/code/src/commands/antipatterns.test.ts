@@ -235,6 +235,47 @@ describe('mnema audit antipatterns (recurring shapes, with evidence)', () => {
     expect(result.ok && result.patterns.labelCollisions).toEqual([]);
   });
 
+  it("reads what agents accepted: a person's rule an agent replaced, a chain, an accept with no quote", () => {
+    const { repo, env } = setup();
+    runInit({ cwd: repo, env });
+    const here = { cwd: repo, env };
+    const decide = (title: string, accept: { note: string; which?: string }): string => {
+      const r = runDecision(here, { title, rationale: 'because the record says so' });
+      if (!r.ok) throw new Error('setup: decision refused');
+      const m = runDecisionTransition(here, {
+        id: r.id,
+        action: 'accept',
+        proof: { note: accept.note },
+        ...(accept.which !== undefined ? { which: accept.which } : {}),
+      });
+      if (!m.ok) throw new Error(`setup: accept refused (${m.reason})`);
+      return r.id;
+    };
+    const replace = (id: string, by: string, which?: string): void => {
+      const m = runDecisionTransition(here, {
+        id,
+        action: 'supersede',
+        by,
+        proof: { reason: 'replaced' },
+        ...(which !== undefined ? { which } : {}),
+      });
+      if (!m.ok) throw new Error(`setup: supersede refused (${m.reason})`);
+    };
+    const a = decide('a', { note: 'agreed' });
+    const b = decide('b', { note: 'Chosen by the maintainer: "yes"', which: 'claude-code' });
+    const c = decide('c', { note: 'looks right', which: 'claude-code' });
+    replace(a, b, 'claude-code');
+    replace(b, c);
+
+    const result = runAntipatterns(here);
+    if (!result.ok) throw new Error('refused');
+    const reading = result.agentAccepts;
+    expect(reading.personRulesSupersededByAgent.map((x) => [x.decision, x.by])).toEqual([[a, b]]);
+    expect(reading.chains).toEqual([[a, b, c]]);
+    expect(reading.agentAccepts).toBe(2);
+    expect(reading.acceptsWithoutTheirWords.map((x) => x.decision)).toEqual([c]);
+  });
+
   it('writes NOTHING: the sandbox is byte-identical before and after', () => {
     const { repo, env } = setup();
     runInit({ cwd: repo, env });
