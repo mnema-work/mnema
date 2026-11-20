@@ -342,7 +342,7 @@ $ mnema task moveZZZ
 !   mnema task create [options] <title>
 [exit 1]
 $ mnema decision 'Use UTC' 'one clock for every machine'
-! mnema decision has no command "Use UTC". To record a decision, put `record` before its title.
+! mnema decision has no command "Use UTC". To record a decision, put `record` before its title. To read decisions, run `mnema search --kind decision`, or `mnema status`.
 !   mnema decision record [options] <title> [rationale]
 [exit 1]
 $ mnema skill 'A pattern' --body 'do it so'
