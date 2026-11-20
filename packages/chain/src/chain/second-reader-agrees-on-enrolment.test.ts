@@ -1042,7 +1042,9 @@ describe('the two readers agree on records the product itself wrote: a checker',
     expect(verdict).toBe('VERIFIED');
     // Authentic, and named: "before" is placed by the `at` the key itself wrote, so the
     // product's census says which key it was and how many results it signed before.
-    const census = verify(root, catalogUpcasters()).census;
+    const census = verify(root, catalogUpcasters()).census.filter(
+      (note) => note.kind !== 'undeclared-which',
+    );
     expect(census).toEqual([
       expect.objectContaining({
         kind: 'retired-checker',
@@ -1238,6 +1240,35 @@ describe('the two readers agree on records the product itself wrote: an agent', 
       .sort();
     return { product, second };
   }
+
+  /** What each reader counts of the accepted facts that name no agent and carry no agent key. */
+  function undeclaredCensus(): { product: readonly string[]; second: readonly string[] } {
+    const product = verify(root, catalogUpcasters())
+      .census.flatMap((note) =>
+        note.kind === 'undeclared-which' ? [`undeclared ${note.events}`] : [],
+      )
+      .sort();
+    const second = secondNotes().flatMap((said) => {
+      const found = /^6\.2: (\d+) event\(s\) name no agent/.exec(said);
+      return found === null ? [] : [`undeclared ${found[1]}`];
+    });
+    return { product, second };
+  }
+
+  it('facts that name no agent and are signed by no agent key: both count them, apart from the declared ones', () => {
+    const { a, g, anchor } = personAndAgent();
+    writeTail(
+      `${a.fingerprint}-i1`,
+      [founding(a), enrolAgent(anchor, a, g), task(anchor, a, 't-0', 3, { which: 'claude' })],
+      a,
+    );
+    writeTail(`${g.fingerprint}-i2`, [byAgent(anchor, g, 't-1', 4)], g);
+    // The founding and the enrolment name nobody and no agent key signed them: two. The task that
+    // names `claude` is declared, and the agent key's is attested: neither is counted here.
+    const { product, second } = undeclaredCensus();
+    expect(product).toEqual(['undeclared 2']);
+    expect(second).toEqual(['undeclared 2']);
+  });
 
   it('an agent key signing for its person, as its name: green on both, and both count it', () => {
     const { a, g, anchor } = personAndAgent();
@@ -1996,7 +2027,9 @@ describe('the two readers agree on records the product itself wrote: a declared 
     expect(verdict).toBe('VERIFIED');
     expect(keysWithoutTail()).toEqual({ product: [], second: [] });
     // NON-VACUITY: both readers SAW the key and said it as a backup, rather than not looking.
-    const census = verify(root, catalogUpcasters()).census;
+    const census = verify(root, catalogUpcasters()).census.filter(
+      (note) => note.kind !== 'undeclared-which',
+    );
     expect(census.map((note) => note.kind)).toEqual(['backup-key']);
     expect(census[0]?.detail).toContain('the record declares it');
     const said = secondReading(root)
@@ -2050,7 +2083,9 @@ describe('the two readers agree on records the product itself wrote: a declared 
     expect(verdict).toBe('VERIFIED');
     const found = keysWithoutTail();
     expect(found.product).toEqual([b.fingerprint]);
-    const census = verify(root, catalogUpcasters()).census;
+    const census = verify(root, catalogUpcasters()).census.filter(
+      (note) => note.kind !== 'undeclared-which',
+    );
     expect(census.map((note) => note.kind)).toEqual(['key-without-tail']);
     expect(census[0]?.detail).toBe(
       `committed public key has no tail on disk: the record declared it a backup of ${anchor}, ` +

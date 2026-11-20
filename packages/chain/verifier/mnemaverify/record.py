@@ -1680,6 +1680,14 @@ def _check_enrolment(
             f'{count} event(s) name the agent "{which}": no name an MCP client announced in a '
             "handshake, put in by the writer in place of one",
         )
+    # Facts that name no agent and no agent key signed: the count says that no agent was declared,
+    # and never that a person acted - the product's census says the same.
+    if resolution.undeclared > 0:
+        report.note(
+            "6.2",
+            f"{resolution.undeclared} event(s) name no agent: no agent was declared, which does "
+            "not say that a person acted",
+        )
     # An agent key the record retired, after the facts it signed while it held the role: the same
     # count the product's census names, and for the same reason - "before" is the place the `at`
     # the key itself wrote gives a fact.
