@@ -115,6 +115,8 @@ export interface LinkRecorded extends Replacement, Landed {
    * is written all the same (it may name a record only another clone holds); this lets the door say so.
    */
   readonly targetIsUnheld?: true;
+  /** The tree that holds the TARGET when it is shaped like an id and one does. */
+  readonly targetScope?: Scope;
 }
 
 /** The record was refused. */
@@ -229,9 +231,11 @@ export function runLink(
     withScopedCaches(trees, (sources) =>
       caches(sources).some((cache) => cache.getTask(ends.subject) !== null),
     );
-  const targetIsUnheld =
-    isIdShaped(ends.target) &&
-    locateRecordScopeKept(trees, ends.target, catalogUpcasters()) === undefined;
+  // The target, when it has the shape of an id, is asked over the trees of this write, notes included.
+  const targetScope = isIdShaped(ends.target)
+    ? locateRecordScopeKept(trees, ends.target, catalogUpcasters())
+    : undefined;
+  const targetIsUnheld = isIdShaped(ends.target) && targetScope === undefined;
   return {
     ok: true,
     subject: ends.subject,
@@ -239,6 +243,7 @@ export function runLink(
     ...(subjectScope !== undefined ? { subjectScope } : {}),
     ...(subjectIsATask ? { subjectIsATask: true as const } : {}),
     ...(targetIsUnheld ? { targetIsUnheld: true as const } : {}),
+    ...(targetScope !== undefined ? { targetScope } : {}),
     // The relation AS RECORDED: screened, so the echo shows what landed.
     rel: recorded.rel,
     scope,

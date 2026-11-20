@@ -1253,7 +1253,9 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
             result.subjectIsATask === true,
             { subject, rel: result.recorded[0] ?? rel },
             result.project ?? active.project,
-          ).concat(targetReachNotice(result.scope, target, result.targetIsUnheld)),
+          ).concat(
+            targetReachNotice(result.scope, target, result.targetIsUnheld, result.targetScope),
+          ),
         },
       );
     },

@@ -680,6 +680,7 @@ export type LinkRecordedResult =
       /** True when the subject is a TASK, so the sentence about where it lives names what it is. */
       readonly subjectIsATask?: true;
       readonly targetIsUnheld?: true;
+      readonly targetScope?: Scope;
     })
   | Extract<FactRecordedResult, { readonly ok: false }>;
 
@@ -770,10 +771,21 @@ export function runLinkKnowledge(
   const subjectIsATask =
     located.outcome === 'found' &&
     session.caches.get(located.home.chainRoot).getTask(subject.id) !== null;
-  // The target, when it has the shape of an id, is asked the same way and over the records of any
-  // kind: a link to a note is as ordinary as a link to a task.
-  const targetIsUnheld =
-    isIdShaped(target.id) && locateEntity(session, target.id, 'records').outcome === 'nowhere';
+  // The target, when it has the shape of an id, is asked over the records of any kind (a link to a
+  // note is as ordinary as a link to a task) and over the trees of THIS WRITE'S project plus the
+  // machine's own, the set the command line asks: the workspace's other projects are other records.
+  const targetHome = isIdShaped(target.id)
+    ? locateEntityAcross(
+        session,
+        workspaceTrees(session).filter(
+          (tree) => tree.target === undefined || tree.target.dir === route.target?.dir,
+        ),
+        target.id,
+        'records',
+      )
+    : undefined;
+  const targetScope = targetHome?.outcome === 'found' ? targetHome.home.scope : undefined;
+  const targetIsUnheld = targetHome?.outcome === 'nowhere';
   // The relation AS RECORDED: screened, so the echo shows what landed.
   return {
     ok: true,
@@ -785,6 +797,7 @@ export function runLinkKnowledge(
     ...(subjectScope !== undefined ? { subjectScope } : {}),
     ...(subjectIsATask ? { subjectIsATask: true as const } : {}),
     ...(targetIsUnheld ? { targetIsUnheld: true as const } : {}),
+    ...(targetScope !== undefined ? { targetScope } : {}),
     ...forwardReplacement(recorded),
   };
 }

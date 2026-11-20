@@ -169,19 +169,29 @@ function unheldIdNotice(id: string): string {
 }
 
 /**
- * THE TARGET'S HALF OF THAT WARNING, in the subject's words. A link is written to an id no tree
- * holds on purpose (the record may live only in another clone), so this SAYS and never refuses.
- * `unheld` is the door's finding that the target has the shape of an id and no tree of the project
- * holds it; a path target never reaches it. Like the subject's, it is said only of a link that
- * landed in the tree that travels, the one a clone reads.
+ * THE TARGET'S HALF OF THAT WARNING. A link is written to an id no tree holds on purpose (the
+ * record may live only in another clone), so this SAYS and never refuses.
+ *
+ * Two cases, both asked only of a link that landed in the tree that travels, the one a clone reads
+ * (a link in a machine-local tree reaches no clone, so it has nothing to over-promise):
+ * - `unheld`: the door found the target shaped like an id and held by no tree of the project: the
+ *   subject's own sentence.
+ * - `targetScope` is a tree that does not travel: the record exists here, and a clone that reads the
+ *   link cannot open it.
+ * A path target never reaches either: only the id shape is asked.
  */
 export function targetReachNotice(
   landedIn: Scope,
   target: string,
   unheld: boolean | undefined,
+  targetScope?: Scope,
 ): string[] {
-  if (landedIn !== TRAVELS || unheld !== true) return [];
-  return [unheldIdNotice(target)];
+  if (landedIn !== TRAVELS) return [];
+  if (unheld === true) return [unheldIdNotice(target)];
+  if (targetScope === undefined || targetScope === TRAVELS) return [];
+  return [
+    `  The record ${oneLine(target)} is in the ${targetScope} tree, which does not travel, so a clone cannot open it. A reader of one gets the link and no record.`,
+  ];
 }
 
 /** The one tree a clone of the repository gets. */

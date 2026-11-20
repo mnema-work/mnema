@@ -109,7 +109,15 @@ export function registerLink(program: Command, wiring: Wiring): Declared {
               process.cwd(),
             ),
           );
-          writeLines(io, targetReachNotice(result.scope, result.target, result.targetIsUnheld));
+          writeLines(
+            io,
+            targetReachNotice(
+              result.scope,
+              result.target,
+              result.targetIsUnheld,
+              result.targetScope,
+            ),
+          );
           return;
         }
         reportRefusal(wiring, result);
