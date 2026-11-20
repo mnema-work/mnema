@@ -17,16 +17,9 @@
  *
  * IT LOOKS AT THE OPENING OF A PROMPT ONLY: its first {@link OPENING} characters, because a
  * correction is said first, and a long prompt that mentions "wrong" in its fifth paragraph is
- * about something else. The one other thing it finds is a RULE DICTATED, by the table of
- * `dictated-rules.ts` (which reads further, as a rule can follow a first sentence), tried when no
- * opening corrects; the shape on the proposal is that table's label (`a-correction-becomes-a-proposal.test.ts`).
- *
- * AN ANSWER TO THE AGENT'S QUESTION IS TAKEN WHATEVER ITS SHAPE ({@link ANSWER_TO_A_QUESTION}):
- * the agent asked because a choice was open, and the person's answer is the one who ruled it
- * ruling. It is quoted with the question it answers, because "yes" alone says nothing, and it is a
- * proposal like the rest. AN ANSWER THAT ONLY ASSENTS IS NOT ONE ({@link ONLY_ASSENTS}): "yes", "ok",
- * "go ahead" or "pode" after a question of confirmation carries no choice of the person's, and a
- * proposal from it would be noise for the person who rules on the list.
+ * about something else. A message that has the shape of a rule dictated (`dictated-rules.ts`) is
+ * skipped where asked (`skipWhatIsDictated`): the hook of `mnema dictated` took it, and a rule dictated
+ * is one record, not that decision and a proposal besides (`a-correction-becomes-a-proposal.test.ts`).
  */
 
 import { dictatedRuleIn } from './dictated-rules.js';
@@ -102,7 +95,10 @@ function answerOf(text: string, question: string): string {
  * The corrections among what a person said, in the order they said them, and the answers they gave
  * to the agent's questions, each under {@link ANSWER_TO_A_QUESTION}.
  */
-export function correctionsIn(said: readonly WhatThePersonSaid[]): readonly Correction[] {
+export function correctionsIn(
+  said: readonly WhatThePersonSaid[],
+  options: { readonly skipWhatIsDictated?: boolean } = {},
+): readonly Correction[] {
   const found: Correction[] = [];
   for (const one of said) {
     if (one.question !== undefined) {
@@ -116,23 +112,13 @@ export function correctionsIn(said: readonly WhatThePersonSaid[]): readonly Corr
       });
       continue;
     }
+    // ONE RECORD FOR A RULE DICTATED (ADR-605): a message the hook of `mnema dictated` already took
+    // (the same table, `dictated-rules.ts`) is the agent's to record and accept, so it is not also a
+    // proposal here. Asked only where that hook speaks (its channel is on).
+    if (options.skipWhatIsDictated === true && dictatedRuleIn(one.text) !== undefined) continue;
     const sentence = openingOf(one.text);
     const shape = CORRECTION_SHAPES.find((candidate) => candidate.pattern.test(sentence));
-    if (shape === undefined) {
-      // NOT AN OPENING THAT CORRECTS: a message that dictates a rule (`dictated-rules.ts`, the table
-      // `mnema dictated` reads too), found in the first sentences of the message and not only the first.
-      const dictated = dictatedRuleIn(one.text);
-      if (dictated !== undefined) {
-        found.push({
-          line: one.line,
-          uuid: one.uuid,
-          session: one.session,
-          shape: dictated.shape,
-          sentence: dictated.sentence.slice(0, OPENING),
-        });
-      }
-      continue;
-    }
+    if (shape === undefined) continue;
     found.push({
       line: one.line,
       uuid: one.uuid,

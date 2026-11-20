@@ -23,14 +23,14 @@ Options:
 What it reads and what it does:
   The JSON a host hands a Stop hook on stdin, with the transcript it names. It finds the
   prompts that open by correcting the agent ("no, …", "stop …", "do not …", "that is
-  wrong", "use … instead", in English and Portuguese), the messages that dictate a rule
-  ("from now on …", "nunca …", "put it as a rule", the shapes `mnema dictated` reads), and
-  the answers the person gave to
+  wrong", "use … instead", in English and Portuguese), and the answers the person gave to
   a question of the agent (the option chosen in the host’s question tool, or the prompt
   after a response that ended in a question mark, quoted with the question), and records
   each as a proposed decision in this machine’s private tree, citing the session and the
   line, at most five
-  at a time and never the same line twice. No model is called; a match is a guess that a
+  at a time and never the same line twice. A message that has the shape of a rule
+  dictated is left to `mnema dictated` while `dictated-rule` is on, so a rule is one
+  record. No model is called; a match is a guess that a
   person accepts or rejects.
   On stdout, the reply the host reads: a `systemMessage` saying how many were recorded and
   under which labels, or {}.

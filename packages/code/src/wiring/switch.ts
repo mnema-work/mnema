@@ -193,7 +193,7 @@ function position(group: Command, wiring: Wiring, word: 'off' | 'on', descriptio
                   : result.channel === HOST_MEMORY_MIRROR_CHANNEL
                     ? `${result.channel} is now ON: it copies each note this host writes to its own memory into this machine's private tree.`
                     : result.channel === USER_CORRECTIONS_CHANNEL
-                      ? `${result.channel} is now ON: it records a person's corrections and the rules they dictated as proposed decisions in this machine's private tree, as it did before.`
+                      ? `${result.channel} is now ON: it records a person's corrections as proposed decisions in this machine's private tree, as it did before.`
                       : (STARTS_OFF as readonly string[]).includes(result.channel)
                         ? `${result.channel} is now ON: it was off until this switch, and it now acts where a rule addresses a file.`
                         : `${result.channel} is now ON: it hands the record over as it did before.`

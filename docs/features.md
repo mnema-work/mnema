@@ -66,8 +66,8 @@ Each line says what it does and what it leaves unproven; the page it points to h
   accepts it, where `agent-accepts` is off). The sentence is the product's own and carries no word
   of the message; it records nothing and reads the message the host hands it, never the transcript.
   `mnema switch off dictated-rule` turns it off. The reader of corrections at the end of a response
-  (`user-corrections`) is on too since 0.1.10 and records the same messages as proposals in the
-  private tree.
+  (`user-corrections`) is on too since 0.1.10 and leaves such a message to this hook, so a rule
+  the person dictates is one record, not that decision and a proposal besides.
 - **A task carries its description, and a handoff its brief.** The `--description` of `task create` and
   the `--brief` of `task handoff` (the `description` of `create_task` and the `brief` of `record_handoff`, for
   an agent) record the text, up to 64 KiB, in the same call as an observation about the task; the format

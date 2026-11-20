@@ -1,6 +1,6 @@
 /**
  * A correction becomes a proposal: with `user-corrections` on (it is on until switched off, since
- * ADR-546), the places where a person corrected the agent, and the rules they dictated, are recorded,
+ * ADR-546), the places where a person corrected the agent are recorded (a rule they dictated is left to the hook of `dictated-rule`, ADR-605),
  * at `Stop`, as `proposed` decisions in the private tree, once each, citing the line they came from.
  *
  * WHAT IS HELD HERE. The product's half: that a project that never touched the switch is read and
@@ -231,37 +231,42 @@ describe('mnema corrections', () => {
     expect(decisionsIn('projectPublic')).toHaveLength(0);
   });
 
-  it('records a rule the person dictated as a proposal, named by the shape that found it', () => {
+  it('leaves a rule the person dictated to the hook: one record, no proposal', () => {
     const file = transcript([
       typed('Fix the build'),
       assistant(),
       typed('Ok. A partir de agora, sempre rode o lint antes do commit.'),
       assistant(),
+      typed('Never use var here.'),
+      assistant(),
     ]);
-    const done = answer(payload('Stop', file));
-    expect(done.reply).toEqual({
-      systemMessage:
-        '1 rule the person dictated in this session was recorded as a proposed decision in this machine’s private tree: ADR-1.',
-    });
-    const [recorded] = decisionsIn('projectPrivate');
-    expect(recorded?.payload.title).toBe(
-      'Rule: A partir de agora, sempre rode o lint antes do commit.',
-    );
-    expect(recorded?.payload.rationale).toContain('The person dictated a rule in a session');
-    expect(recorded?.payload.rationale).toContain('matched by the shape “a partir de agora …”');
-    expect(recorded?.payload.rationale).toContain('[host transcript, session s-1, line 3]');
-    expect(JSON.stringify(done.reply)).not.toContain('lint');
-    expect(decisionsIn('projectPublic')).toHaveLength(0);
-    // Read again, it is the same proposal.
     expect(answer(payload('Stop', file))).toEqual({ reply: {}, notes: [] });
-    expect(decisionsIn('projectPrivate')).toHaveLength(1);
+    expect(decisionsIn('projectPrivate')).toHaveLength(0);
+    expect(decisionsIn('projectPublic')).toHaveLength(0);
   });
 
-  it('takes a correction for a correction, not for a rule, where a message is both', () => {
-    const found = correctionsIn([
-      { line: 1, uuid: undefined, session: undefined, text: 'Never use var here.' },
+  it('records the same message as a correction where the hook of the dictated rule is switched off', async () => {
+    await did('switch', 'off', 'dictated-rule');
+    const file = transcript([
+      typed('Fix it'),
+      assistant(),
+      typed('Never use var here.'),
+      assistant(),
     ]);
-    expect(found.map((one) => one.shape)).toEqual(['do not …']);
+    expect(answer(payload('Stop', file)).reply).toHaveProperty('systemMessage');
+    const [recorded] = decisionsIn('projectPrivate');
+    expect(recorded?.payload.title).toBe('Correction: Never use var here.');
+  });
+
+  it('still records a correction that is not a rule dictated', () => {
+    const file = transcript([
+      typed('Fix it'),
+      assistant(),
+      typed('No, use pnpm instead of npm.'),
+      assistant(),
+    ]);
+    expect(answer(payload('Stop', file)).reply).toHaveProperty('systemMessage');
+    expect(decisionsIn('projectPrivate')).toHaveLength(1);
   });
 
   it('reads the agent the environment names, like any verb that writes: asked for one the private tree does not enrol, with the person’s key protected, it records nothing and says why', async () => {
