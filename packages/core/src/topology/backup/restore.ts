@@ -36,7 +36,6 @@ import {
   lstatSync,
   mkdirSync,
   readdirSync,
-  readFileSync,
   renameSync,
   rmdirSync,
   rmSync,
@@ -65,6 +64,7 @@ import {
   type PlannedFile,
   placesOf,
   planCopy,
+  readManifest,
 } from './copy.js';
 
 /** What a restore of one tree found, and, unless it is a dry run, did. */
@@ -118,25 +118,14 @@ function refuseMismatch(copyRecord: string, folder: string, names: string): neve
   );
 }
 
-/** The copy's manifest, when it has one that reads. */
-function manifestOf(folder: string): { record?: unknown; copiedAt?: unknown } | undefined {
-  try {
-    return JSON.parse(readFileSync(join(folder, BACKUP_MANIFEST), 'utf-8')) as {
-      record?: unknown;
-      copiedAt?: unknown;
-    };
-  } catch {
-    return undefined;
-  }
-}
-
 /** The record a copy's manifest says it is a copy of, or undefined where there is no manifest to read. */
 export function copyNamed(
   destination: string,
   record: string,
   tree: BackupTree,
 ): string | undefined {
-  const named = manifestOf(folderOf(destination, record, tree))?.record;
+  const read = readManifest(folderOf(destination, record, tree));
+  const named = read.state === 'whole' ? read.record : undefined;
   return typeof named === 'string' ? named : undefined;
 }
 
@@ -172,8 +161,18 @@ export function prepareRestore(
   // is still turned away: the folder it is kept in, its manifest and the record its tails name
   // must be one name. The private tree names a record of its own, so it is held to the name of the
   // tree it would join, when the tree has one.
-  const manifest = manifestOf(folder);
-  if (typeof manifest?.record === 'string' && manifest.record !== copyRecord) {
+  const manifest = readManifest(folder);
+  if (manifest.state === 'unreadable') {
+    throw new BackupRefusedError(
+      'BROKEN_COPY',
+      `${join(folder, BACKUP_MANIFEST)} does not read as the manifest of a copy (not JSON, not a list of files, an entry with no path and size, or a file the disk refuses): \`mnema backup verify\` says so. A copy that is broken is not put into the tree.`,
+    );
+  }
+  if (
+    manifest.state === 'whole' &&
+    typeof manifest.record === 'string' &&
+    manifest.record !== copyRecord
+  ) {
     refuseMismatch(copyRecord as string, folder, 'its manifest says another');
   }
   const naming = recordNamedIn([folder]);
@@ -276,7 +275,7 @@ export function prepareRestore(
     tree,
     folder,
     root,
-    copiedAt: typeof manifest?.copiedAt === 'string' ? manifest.copiedAt : undefined,
+    copiedAt: manifest.state === 'whole' ? manifest.copiedAt : undefined,
     placing,
     newTails: [...tailsHeld].filter((tail) => !liveTails.has(tail)).sort(),
     same,
