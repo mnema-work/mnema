@@ -195,38 +195,6 @@ export function writeToolsOf(host: HookHost): readonly string[] {
   return Object.keys(WRITES[host]);
 }
 
-/** What a payload at the end of a turn says, read in the shape of the host it came from. */
-export type EndOfTurn =
-  | { readonly end: false }
-  | {
-      readonly end: true;
-      /** The event, by the host's name for it. */
-      readonly event: string;
-      /** The host's id for the session, where the payload carries one in the field the row names. */
-      readonly session: unknown;
-      /** The path of the transcript, where the payload carries one. */
-      readonly transcript: string | undefined;
-      /** Whether this product reads that host's transcript. */
-      readonly reads: boolean;
-      /** The host's name as a sentence writes it. */
-      readonly title: string;
-    };
-
-/** Reads a payload as `host` hands it at the end of a turn: `{ end: false }` for any other event. */
-export function endOfTurnOf(host: EndHost, payload: Record<string, unknown>): EndOfTurn {
-  const row = ENDS[host];
-  if (payload['hook_event_name'] !== row.event) return { end: false };
-  const named = payload[row.transcript];
-  return {
-    end: true,
-    event: row.event,
-    session: row.session === null ? undefined : payload[row.session],
-    transcript: typeof named === 'string' && named !== '' ? named : undefined,
-    reads: row.reads,
-    title: HOSTS[host].title,
-  };
-}
-
 /**
  * The paths a host's hook payload is about to write, or `undefined` when the tool is not one
  * that writes a file.
@@ -309,4 +277,36 @@ export function replyBeside(host: BesideHost, context: string | undefined): obje
     gemini: (s) => hookReply('AfterTool', s),
   };
   return reply[host](context === undefined ? {} : { context });
+}
+
+/** What a payload at the end of a turn says, read in the shape of the host it came from. */
+export type EndOfTurn =
+  | { readonly end: false }
+  | {
+      readonly end: true;
+      /** The event, by the host's name for it. */
+      readonly event: string;
+      /** The host's id for the session, where the payload carries one in the field the row names. */
+      readonly session: unknown;
+      /** The path of the transcript, where the payload carries one. */
+      readonly transcript: string | undefined;
+      /** Whether this product reads that host's transcript. */
+      readonly reads: boolean;
+      /** The host's name as a sentence writes it. */
+      readonly title: string;
+    };
+
+/** Reads a payload as `host` hands it at the end of a turn: `{ end: false }` for any other event. */
+export function endOfTurnOf(host: EndHost, payload: Record<string, unknown>): EndOfTurn {
+  const row = ENDS[host];
+  if (payload['hook_event_name'] !== row.event) return { end: false };
+  const named = payload[row.transcript];
+  return {
+    end: true,
+    event: row.event,
+    session: row.session === null ? undefined : payload[row.session],
+    transcript: typeof named === 'string' && named !== '' ? named : undefined,
+    reads: row.reads,
+    title: HOSTS[host].title,
+  };
 }
