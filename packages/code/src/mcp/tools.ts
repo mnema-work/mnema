@@ -159,7 +159,6 @@ import {
   scopedEventsOf,
 } from '../intelligence-source.js';
 import { type Addressed, addressed, resolveLabel } from '../label-as-address.js';
-import { notHereInAWorktree } from '../linked-worktree.js';
 import {
   isLabelShaped,
   linkRefusal,
@@ -169,6 +168,7 @@ import {
   targetAsRecorded,
   targetRecordedAs,
 } from '../link-target.js';
+import { notHereInAWorktree } from '../linked-worktree.js';
 import {
   movedDisplay,
   rejectLeavesNothingInForce,

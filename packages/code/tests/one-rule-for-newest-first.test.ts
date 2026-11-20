@@ -168,7 +168,12 @@ const THE_ORDERINGS: readonly Rostered[] = [
   { file: 'code/src/commands/verify-github.ts', by: 'byCodeUnit', means: OTHER },
   { file: 'code/src/repl/complete.ts', by: 'theOrder', means: OTHER },
   { file: 'code/src/transcripts.ts', by: 'oldestSessionFirst', means: OLDEST },
-  { file: 'context/src/context/bootstrap.ts', by: 'inProgressThenNewest', means: NEWEST, via: 'byUpdatedDesc' },
+  {
+    file: 'context/src/context/bootstrap.ts',
+    by: 'inProgressThenNewest',
+    means: NEWEST,
+    via: 'byUpdatedDesc',
+  },
   { file: 'context/src/context/bootstrap.ts', by: 'byUpdatedDesc', means: NEWEST },
   { file: 'context/src/context/bootstrap.ts', by: 'byUpdatedDesc', means: NEWEST },
   { file: 'context/src/context/decisions.ts', by: 'bySettledDesc', means: NEWEST },
