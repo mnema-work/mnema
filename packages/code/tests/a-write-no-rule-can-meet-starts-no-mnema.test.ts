@@ -394,7 +394,7 @@ describe('a kind the handler’s copy does not declare', () => {
     }
   });
 
-  it('starts it where such a line holds an address marker, and where a known kind is a version ahead', async () => {
+  it('reads past a listed kind with no marker, and starts it over a marker, a version ahead or any other kind', async () => {
     await aRule('Bill in UTC');
     const segment = theSegment(resolveTrees(repo, { home }).projectPublic as string);
     const sound = readFileSync(segment, 'utf-8');
@@ -413,9 +413,27 @@ describe('a kind the handler’s copy does not declare', () => {
       appendFileSync(segment, `${line}\n`);
       expect(aWrite('cursor', 'src/billing/invoice.ts').started, what).toBe(1);
     }
+    // A kind off the list, with no marker, is a doubt all the same: a kind added later may
+    // address a path in a shape no marker names.
     writeFileSync(segment, sound);
     appendFileSync(segment, `${unknown}\n`);
-    expect(aWrite('cursor', 'src/billing/invoice.ts').started, 'a kind it does not know').toBe(0);
+    expect(aWrite('cursor', 'src/billing/invoice.ts').started, 'a kind it does not know').toBe(1);
+    // A kind on the list, with no marker, is read past.
+    writeFileSync(segment, sound);
+    appendFileSync(segment, `${last.replace(/"kind":"[^"]+"/, '"kind":"decision.seen"')}\n`);
+    expect(aWrite('cursor', 'src/billing/invoice.ts').started, 'a listed kind').toBe(0);
+  });
+
+  it('reads past exactly the kinds the catalog added after its copy, and nothing else', async () => {
+    // Whoever adds a kind to the catalog decides here whether the handler may read it past: a
+    // kind that can carry an address stays off the list, and runs `mnema`.
+    const { READ_PAST } = await import('../../../plugin/hooks/an-address-can-be-met.mjs');
+    const copy = JSON.parse(
+      readFileSync(join(PLUGIN, 'hooks', 'event-schema.json'), 'utf-8'),
+    ) as SchemaFile;
+    const inTheCopy = new Set(copy.contracts.map((contract) => contract.kind));
+    const added = Object.entries(LATEST_VERSION).filter(([kind]) => !inTheCopy.has(kind));
+    expect([...READ_PAST.entries()].sort()).toEqual(added.sort());
   });
 });
 
