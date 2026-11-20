@@ -134,7 +134,9 @@ describe('mnema why <path>, the verdict', () => {
     const rule = await ruleAt('Nobody writes the ledger by hand', 'src/refused', 'refuses-a-write');
     const page = await did('why', 'src/refused/a.ts');
     expect(page).toContain('a write here would be refused');
-    expect(page).toContain(`Nobody writes the ledger by hand (${rule})`.slice(0, 32));
+    expect(page).toContain('Nobody writes the ledger by hand');
+    expect(page).toContain('decides');
+    expect(page).toContain(rule);
     const json = JSON.parse(await did('why', 'src/refused/a.ts', '--json'));
     expect(json.verdict).toBe('refuse');
     expect(json.rules[0].decided).toBe(true);

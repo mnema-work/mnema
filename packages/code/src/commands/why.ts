@@ -40,7 +40,7 @@ import {
   THE_READING_THAT_OPENED_THESE,
   withScopedCaches,
 } from '../tree-sources.js';
-import { everyRuleInForceAt, type RuleInForceUnder } from '../what-a-write-meets.js';
+import { everyRuleInForceAt, type RuleInForceUnder, whatAWriteMeets } from '../what-a-write-meets.js';
 
 /** What the command needs: injected so it is testable. */
 export interface WhyContext {
@@ -57,6 +57,12 @@ export interface WhyRule {
   readonly relation: RuleInForceUnder['relation'];
   /** How many of the changed files it covers: a commit's; absent for a file. */
   readonly files?: number;
+  /**
+   * For a file: whether this rule is what produced the verdict a write would meet. A rule that is
+   * outranked (an asking under a refusal, a governing under either) or whose channel is switched
+   * off is listed with `false`. Absent for a commit.
+   */
+  readonly decided?: boolean;
   /** Where it was inherited from, when it is not the project's own rule. */
   readonly inherited?: InheritedFrom;
 }
@@ -78,6 +84,12 @@ export interface WhyCommit {
   readonly cites: readonly WhyCitation[];
 }
 
+/**
+ * What a write at a path would meet: `refuse` (it does not happen), `ask` (it waits for a person),
+ * `governs` (it goes through with the rules beside it) or `none`.
+ */
+export type WhyVerdict = 'refuse' | 'ask' | 'governs' | 'none';
+
 /** The answer for a file. */
 export interface WhyFile {
   readonly ok: true;
@@ -85,6 +97,9 @@ export interface WhyFile {
   /** Project-relative, POSIX; absent when the file lies outside the project. */
   readonly relative?: string;
   readonly exists: boolean;
+  /** What a write at this path would meet, as the write gate answers it. */
+  readonly verdict: WhyVerdict;
+  /** The rules in force, in the order the gate applies their relations: refuse, ask, governs. */
   readonly rules: readonly WhyRule[];
   readonly git: boolean;
   /** Whether the clone holds only part of the history. */
@@ -149,13 +164,14 @@ function describe(all: readonly DecisionFacts[], commit: Commit): WhyCommit {
 }
 
 /** A pushed rule as the answer carries it. */
-function ruleOf(rule: RuleInForceUnder, files?: number): WhyRule {
+function ruleOf(rule: RuleInForceUnder, files?: number, decided?: boolean): WhyRule {
   return {
     id: rule.id,
     name: rule.name,
     address: rule.address,
     relation: rule.relation,
     ...(files !== undefined ? { files } : {}),
+    ...(decided !== undefined ? { decided } : {}),
     ...(rule.inherited !== undefined ? { inherited: rule.inherited } : {}),
   };
 }
@@ -219,6 +235,21 @@ export function runWhy(
     const touched =
       at.relative !== undefined && gitHere ? commitsWithTrailer(root, [at.relative]) : [];
     const listed = touched ?? [];
+    // THE VERDICT IS THE GATE'S OWN ANSWER (`whatAWriteMeets`, the function the write hook and
+    // `governing_rules` call), never a second reading of the rules: a refusal or an asking is what
+    // it returns, and only when it returns nothing do the governing rules say `governs` or `none`.
+    const met = whatAWriteMeets(sources, { paths: [input.target], root, from: ctx.cwd });
+    const verdict: WhyVerdict =
+      met?.grade ?? (at.rules.some((rule) => rule.relation === 'governs') ? 'governs' : 'none');
+    const decidingRelation = {
+      refuse: 'refuses-a-write',
+      ask: 'asks-for-a-person',
+      governs: 'governs',
+      none: undefined,
+    }[verdict];
+    const decidingIds = new Set(met?.at.flatMap((one) => one.rules.map((rule) => rule.id)));
+    const decides = (rule: RuleInForceUnder): boolean =>
+      rule.relation === decidingRelation && (met === undefined || decidingIds.has(rule.id));
     const notPushed = rulesNotPushedLine(
       sources,
       at.rules.filter((rule) => rule.relation === 'governs').length,
@@ -228,7 +259,8 @@ export function runWhy(
       about: 'file',
       ...(at.relative !== undefined ? { relative: at.relative } : {}),
       exists,
-      rules: at.rules.map((rule) => ruleOf(rule)),
+      verdict,
+      rules: at.rules.map((rule) => ruleOf(rule, undefined, decides(rule))),
       git: gitHere,
       shallow: gitHere && isShallow(root),
       commits: listed.slice(0, LISTED).map((one) => describe(all, one)),
