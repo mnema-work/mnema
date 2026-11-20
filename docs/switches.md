@@ -2,9 +2,11 @@
 
 mnema puts the record in front of a model in several places without being asked: the document a
 session opens with, the rules at each edit, a line after a write, a hook at the end of a turn.
-Each of those is a **channel**, and each can be switched off with `mnema switch off <name>`. Two
-channels begin the other way round: they are **off until a person switches them on**, because what
-they do reads a conversation or holds a write.
+Each of those is a **channel**, and each can be switched off with `mnema switch off <name>`. One
+channel begins the other way round: it is **off until a person switches it on**, because what it does
+is hold a write. (`user-corrections`, which reads a conversation, began off too until 0.1.10: it is
+on now, because a capture that waits for a switch nobody turns on captures nothing, and what it
+records stays in this machine's private tree.)
 
 Switching is recorded: it is a signed, attributed, dated fact of the chain, committed with the
 repository by default, so a reader can tell *"no rule addressed that file"* from *"somebody turned

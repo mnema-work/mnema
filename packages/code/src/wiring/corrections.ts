@@ -8,8 +8,8 @@
  *
  * A HOST RUNS IT, NOT A PERSON, so it is `before-a-write`'s shape: it exits 0 on every outcome that is
  * not a misuse of the verb itself, and what it could not do goes to the second stream. It is a WRITE,
- * and says so, the one verb a hook runs that appends to the record without anybody typing it, and it
- * does nothing at all until `mnema switch on user-corrections`.
+ * and says so, the one verb a hook runs that appends to the record without anybody typing it. It is on
+ * until `mnema switch off user-corrections` (ADR-546; it did nothing until a switch-on before).
  */
 
 import type { Command } from 'commander';
@@ -31,7 +31,9 @@ export function registerCorrections(program: Command, wiring: Wiring): Declared 
         'What it reads and what it does:',
         '  The JSON a host hands a Stop hook on stdin, with the transcript it names. It finds the',
         '  prompts that open by correcting the agent ("no, …", "stop …", "do not …", "that is',
-        '  wrong", "use … instead", in English and Portuguese), and the answers the person gave to',
+        '  wrong", "use … instead", in English and Portuguese), the messages that dictate a rule',
+        '  ("from now on …", "nunca …", "put it as a rule", the shapes `mnema dictated` reads), and',
+        '  the answers the person gave to',
         '  a question of the agent (the option chosen in the host’s question tool, or the prompt',
         '  after a response that ended in a question mark, quoted with the question), and records',
         '  each as a proposed decision in this machine’s private tree, citing the session and the',
@@ -40,8 +42,8 @@ export function registerCorrections(program: Command, wiring: Wiring): Declared 
         '  person accepts or rejects.',
         '  On stdout, the reply the host reads: a `systemMessage` saying how many were recorded and',
         '  under which labels, or {}.',
-        '  It does nothing until `mnema switch on user-corrections`, because it reads what a person',
-        '  typed. With the channel off, or outside a project, it records nothing.',
+        '  It is on until `mnema switch off user-corrections`; it read nothing before 0.1.10 until a',
+        '  person switched it on. With the channel off, or outside a project, it records nothing.',
       ].join('\n'),
     )
     .action(async () => {
