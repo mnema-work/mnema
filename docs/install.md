@@ -74,6 +74,11 @@ attestations; `npm audit signatures --json --include-attestations` names each, a
 `@mnema/*` package carries an SLSA provenance attestation. The registry serves one tarball per
 version, so this checks the same package a global install of that version fetches.
 
+From the release after 0.1.8, the GitHub release also carries a Sigstore provenance bundle for the five tarballs
+(`mnema-npm-packages-<version>.sigstore.json`) and one for the extension's `.vsix`
+(`mnema-<version>.vsix.sigstore.json`). Download a file and its bundle from the release page, then
+`gh attestation verify <file> --repo mnema-work/mnema` checks the file against its attestation.
+
 From 0.1.7, the `mnema` command is one bundle inside `@mnema/code`
 (`dist/bundle/`): the code of its dependencies is copied into it at build time, so the
 dependencies the command runs are covered by the provenance of `@mnema/code`, not each by its own.
