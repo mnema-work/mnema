@@ -62,6 +62,11 @@ import type { ChainFrontier, SignedFact, TailReach } from './order.js';
 export interface CacheMeta {
   /** What produced the rows ({@link productStamp}). */
   readonly stamp: string;
+  /**
+   * The mnema version that wrote the file ({@link keepProductVersion}), or undefined for a file
+   * written by a build that did not say, which is read as the oldest version there is.
+   */
+  readonly version?: string | undefined;
   /** Moves with every change to the rows, so a writer can tell that another process wrote. */
   readonly generation: number;
   /** How far into the chain the rows reach. */
@@ -161,6 +166,7 @@ export function readMeta(db: SqliteDatabase): CacheMeta | undefined {
   const signed = byKey.get('signed');
   const sealed = byKey.get('sealed');
   const active = byKey.get('active');
+  const version = byKey.get('version');
   if (
     stampHere === undefined ||
     generation === undefined ||
@@ -177,6 +183,7 @@ export function readMeta(db: SqliteDatabase): CacheMeta | undefined {
   }
   return {
     stamp: stampHere,
+    version,
     generation: Number(generation),
     frontier: decodeFrontier(frontier),
     breaks: JSON.parse(breaks) as LinkBreak[],
@@ -189,18 +196,82 @@ export function readMeta(db: SqliteDatabase): CacheMeta | undefined {
   };
 }
 
+/** The mnema version this process says it is, or undefined where nobody said ({@link keepProductVersion}). */
+let ownVersion: string | undefined;
+
 /**
- * The stamp a file says it was built under, or undefined when it says none: no `cache_meta`, no
- * `stamp` row, or not a database at all. A file with no stamp is nobody's, and is made again.
+ * Says which mnema version this process is. The surface says it once, where it builds its
+ * environment; the core never reads a manifest for it. Without it a process never takes over a
+ * file another build's code wrote ({@link mayTakeOver}).
  */
-export function storedStamp(db: SqliteDatabase): string | undefined {
+export function keepProductVersion(version: string | undefined): void {
+  ownVersion = version;
+}
+
+/** The three numbers before any suffix, or undefined when `version` is not three numbers. */
+function numbersOf(version: string): [number, number, number] | undefined {
+  const found = /^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(version);
+  if (found === null) return undefined;
+  return [Number(found[1]), Number(found[2]), Number(found[3])];
+}
+
+/** Whether `version` is newer than `than`, by the three numbers (a suffix does not order). */
+export function isNewerVersion(version: string, than: string): boolean {
+  const mine = numbersOf(version);
+  const theirs = numbersOf(than);
+  if (mine === undefined || theirs === undefined) return false;
+  for (let at = 0; at < 3; at += 1) {
+    if ((mine[at] as number) !== (theirs[at] as number)) {
+      return (mine[at] as number) > (theirs[at] as number);
+    }
+  }
+  return false;
+}
+
+/**
+ * Whether this process may rewrite a file whose stamp is not its own: only when it knows its
+ * version and that version is newer than the one the file carries. A file with no version is the
+ * oldest there is. The same version (two checkouts of one release under development) and an older
+ * one (a build left installed beside a newer one) read in memory and leave the file alone.
+ */
+export function mayTakeOver(storedVersion: string | undefined): boolean {
+  if (ownVersion === undefined) return false;
+  return storedVersion === undefined || isNewerVersion(ownVersion, storedVersion);
+}
+
+/** What a projection file says about who made it, as far as asking could tell. */
+export type FileOwner =
+  | { readonly state: 'none' }
+  | { readonly state: 'unknown' }
+  | { readonly state: 'owned'; readonly stamp: string; readonly version: string | undefined };
+
+/** SQLite's primary result codes (the low byte of `errcode`). */
+const SQLITE_ERROR = 1;
+const SQLITE_CORRUPT = 11;
+const SQLITE_NOTADB = 26;
+
+/**
+ * Whom the file belongs to. `none` is a file that says nothing because it cannot (no `cache_meta`,
+ * no `stamp` row, a file that is not a database or is corrupt): nobody's, made again. `unknown` is
+ * a file that COULD not be asked (busy, locked, an I/O error): it may well have an owner, so the
+ * caller leaves it untouched and reads in memory. A failure that is not the database's goes up.
+ */
+export function ownerOfTheFile(db: SqliteDatabase): FileOwner {
   try {
-    const row = db.prepare("SELECT value FROM cache_meta WHERE key = 'stamp'").get() as
-      | { value: string }
-      | undefined;
-    return row?.value;
-  } catch {
-    return undefined;
+    const rows = db
+      .prepare("SELECT key, value FROM cache_meta WHERE key IN ('stamp', 'version')")
+      .all() as { key: string; value: string }[];
+    const stamp = rows.find((row) => row.key === 'stamp')?.value;
+    if (stamp === undefined) return { state: 'none' };
+    return { state: 'owned', stamp, version: rows.find((row) => row.key === 'version')?.value };
+  } catch (error) {
+    const failure = error as { code?: unknown; errcode?: unknown } | null;
+    if (failure?.code !== 'ERR_SQLITE_ERROR' || typeof failure.errcode !== 'number') throw error;
+    const primary = failure.errcode & 0xff;
+    if (primary === SQLITE_ERROR || primary === SQLITE_CORRUPT || primary === SQLITE_NOTADB) {
+      return { state: 'none' };
+    }
+    return { state: 'unknown' };
   }
 }
 
@@ -216,6 +287,8 @@ export function readGeneration(db: SqliteDatabase): number {
 export function writeMeta(db: SqliteDatabase, meta: CacheMeta): void {
   const put = db.prepare('INSERT OR REPLACE INTO cache_meta (key, value) VALUES (?, ?)');
   put.run('stamp', meta.stamp);
+  if (ownVersion === undefined) db.prepare("DELETE FROM cache_meta WHERE key = 'version'").run();
+  else put.run('version', ownVersion);
   put.run('generation', String(meta.generation));
   put.run('frontier', encodeFrontier(meta.frontier));
   put.run('breaks', JSON.stringify(meta.breaks));

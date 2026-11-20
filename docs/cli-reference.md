@@ -796,13 +796,19 @@ the same.
 
 Two builds of mnema on one machine (an editor extension and a command line of different
 versions, or a checkout you are developing in) share that one file per tree, and the file says
-which build's code wrote it. A process whose code is not the one that wrote the file does not
-rewrite it: it builds its answers in memory for that process, once per run, and leaves the file
-to the build that owns it, so the owner keeps reading only what arrived and a long-lived server
-of that build is not sent to build it back. The price falls on the other build: every process of
-it replays the record instead of reading the file, so it is slower on a large record until the
-owner's version is the one in use (or `MNEMA_CACHE_DIR` gives each build a directory of its own).
-A missing or damaged file is still built and kept as before.
+which build's code wrote it and which mnema version that was. A process whose code is not the
+one that wrote the file rewrites it only when its version is newer than the one stored: an
+update takes the file over once, and from then on the file is incremental for the new version.
+On the same version (two checkouts under development) or an older one (a build left installed
+beside a newer one), and on a file that is busy or locked, the process builds its answers in
+memory and leaves the file as it is. A file written before the version was stored counts as
+the oldest, and the first newer build takes it. The process that does not take the file pays a
+replay each time it starts: on every command and every hook of the command line, and once per
+MCP server, which then keeps what it built. On a large record that is the time of a build
+instead of a read of the file (about a second on a 13 MB private tree, with a few hundred
+megabytes of memory), until that build is updated or `MNEMA_CACHE_DIR` gives it a directory of
+its own. Deleting `locks/projection.db` is always safe: it is only a cache, and the next read
+builds it again. A missing or damaged file is built and kept as before.
 
 The MCP server keeps it for the two trees of the project it is in, and for no other tree: the
 other projects of the workspace and the global tree are built in memory for the connection, as

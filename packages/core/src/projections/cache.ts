@@ -40,12 +40,13 @@ import {
   activeStampsBefore,
   type CacheMeta,
   keepActiveMarks,
+  mayTakeOver,
+  ownerOfTheFile,
   productStamp,
   readGeneration,
   readMeta,
   sealedFingerprints,
   sealedSegmentsHold,
-  storedStamp,
   writeMeta,
 } from './cache-meta.js';
 import type { ChannelSwitchProjection } from './channel.js';
@@ -197,6 +198,12 @@ function isSqliteFailure(error: unknown): boolean {
   return failure?.code === 'ERR_SQLITE_ERROR' && typeof failure.errcode === 'number';
 }
 
+/** SQLITE_BUSY (5) and SQLITE_LOCKED (6), and their extended forms: the file is held, not wrong. */
+function isBusyOrLocked(error: unknown): boolean {
+  const code = (error as { errcode?: unknown } | null)?.errcode;
+  return typeof code === 'number' && ((code & 0xff) === 5 || (code & 0xff) === 6);
+}
+
 export class ProjectionCache {
   /**
    * How far into the chain the tables reach, and with it everything {@link refresh} needs in
@@ -344,11 +351,15 @@ export class ProjectionCache {
     }
     try {
       const db = openDatabase(path);
-      // A file another build's code wrote is that build's: this process builds its own tables in
-      // memory and leaves the file as it is, because rewriting it would send the other build's
-      // next open to replay it back (see {@link ProjectionCache.leftTheFileToAnotherBuild}).
-      const stampOfTheFile = storedStamp(db);
-      if (stampOfTheFile !== undefined && stampOfTheFile !== productStamp()) {
+      // A file another build's code wrote is that build's unless this one is a newer version: the
+      // process builds its own tables in memory and leaves the file as it is, because rewriting it
+      // would send the other build's next open to replay it back. A file that could not be asked
+      // (busy, locked) may have an owner too, and is left alone the same way.
+      const owner = ownerOfTheFile(db);
+      if (
+        owner.state === 'unknown' ||
+        (owner.state === 'owned' && owner.stamp !== productStamp() && !mayTakeOver(owner.version))
+      ) {
         db.close();
         const cache = new ProjectionCache(openMemory(), layout, upcasters, false);
         cache.foreign = true;
@@ -359,7 +370,9 @@ export class ProjectionCache {
       } catch (error) {
         // A file whose tables this code cannot create over is a file of another shape: it is
         // a cache, so it is dropped and made again rather than reported.
-        if (!isSqliteFailure(error)) throw error;
+        // A busy or locked file is somebody's, not a file of another shape: the outer catch
+        // leaves it and reads in memory.
+        if (!isSqliteFailure(error) || isBusyOrLocked(error)) throw error;
         dropProjections(db);
         ensureSchema(db);
       }
@@ -791,8 +804,8 @@ export class ProjectionCache {
     }
     if (meta.generation === this.generation && this.frontier !== undefined) return;
     this.generation = meta.generation;
-    if (this.persisted && meta.stamp !== productStamp()) {
-      // Another build's code wrote the file since this one opened it: leave it to that build.
+    if (this.persisted && meta.stamp !== productStamp() && !mayTakeOver(meta.version)) {
+      // Another build's code (not an older version of this one) wrote the file since this one opened it: leave it to that build.
       this.degrade();
       this.foreign = true;
       return;

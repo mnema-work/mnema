@@ -32,6 +32,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import {
   type CatalogEvent,
@@ -55,6 +56,7 @@ import { createTask, transitionTask, type WriteContext } from '../workflow/opera
 import { endRun, startRun } from '../workflow/session-operations.js';
 import { createSkill } from '../workflow/skill-operations.js';
 import { ProjectionCache } from './cache.js';
+import { keepProductVersion, ownerOfTheFile } from './cache-meta.js';
 
 const upcasters = catalogUpcasters();
 
@@ -873,6 +875,147 @@ describe('two processes on one file', () => {
         .map((memory) => memory.content)
         .sort(),
     ).toEqual(['a memory already here', 'the first arrival', 'the second arrival']);
+  });
+});
+
+describe('who takes over a file another build’s code wrote', () => {
+  /** A warm file, then made to say it was written by `stamp` at `version` (no version row when undefined). */
+  function aFileWrittenBy(stamp: string, version: string | undefined): void {
+    const ctx = writing();
+    aRecord(ctx);
+    const warm = persisted();
+    warm.refresh();
+    warm.close();
+    const db = openDatabase(projectionCachePath({ root }));
+    db.prepare("UPDATE cache_meta SET value = ? WHERE key = 'stamp'").run(stamp);
+    db.prepare("DELETE FROM cache_meta WHERE key = 'version'").run();
+    if (version !== undefined) {
+      db.prepare("INSERT INTO cache_meta (key, value) VALUES ('version', ?)").run(version);
+    }
+    db.close();
+    plantAMarker();
+  }
+
+  function theMetaOfTheFile(): Record<string, string> {
+    const db = openDatabase(projectionCachePath({ root }));
+    try {
+      const rows = db
+        .prepare("SELECT key, value FROM cache_meta WHERE key IN ('stamp', 'version')")
+        .all() as { key: string; value: string }[];
+      return Object.fromEntries(rows.map((row) => [row.key, row.value]));
+    } finally {
+      db.close();
+    }
+  }
+
+  afterEach(() => keepProductVersion(undefined));
+
+  it('an update takes the file over once, and the file is incremental for it afterwards', () => {
+    aFileWrittenBy('the-build-before-the-update', '0.1.7');
+    keepProductVersion('0.1.8');
+    const updated = persisted();
+    updated.refresh();
+    expect(updated.leftTheFileToAnotherBuild).toBe(false);
+    expect(theMarkerSurvived(updated)).toBe(false);
+    expect(answersOf(updated)).toEqual(answersOf(replayed()));
+    updated.close();
+    const meta = theMetaOfTheFile();
+    expect(meta.version).toBe('0.1.8');
+    expect(meta.stamp).toMatch(/^[0-9a-f]{32}$/);
+    // The next process of that version reads what the file holds.
+    plantAMarker();
+    const next = persisted();
+    next.refresh();
+    expect(theMarkerSurvived(next)).toBe(true);
+  });
+
+  it('a file written by a build that stored no version is the oldest there is, and is taken over', () => {
+    aFileWrittenBy('a-build-that-said-nothing', undefined);
+    keepProductVersion('0.1.8');
+    const cache = persisted();
+    cache.refresh();
+    expect(cache.leftTheFileToAnotherBuild).toBe(false);
+    expect(theMarkerSurvived(cache)).toBe(false);
+    cache.close();
+    expect(theMetaOfTheFile().version).toBe('0.1.8');
+  });
+
+  it('two checkouts of one version with different code never rewrite each other’s file', () => {
+    aFileWrittenBy('the-other-checkout', '0.1.8');
+    keepProductVersion('0.1.8');
+    const before = theFileAsItIs();
+    const cache = persisted();
+    cache.refresh();
+    expect(cache.leftTheFileToAnotherBuild).toBe(true);
+    expect(answersOf(cache)).toEqual(answersOf(replayed()));
+    cache.close();
+    expect(theFileAsItIs()).toEqual(before);
+    expect(theMetaOfTheFile()).toEqual({ stamp: 'the-other-checkout', version: '0.1.8' });
+  });
+
+  it('an older version left beside a newer one leaves the newer one’s file alone', () => {
+    aFileWrittenBy('the-newer-build', '0.2.0');
+    keepProductVersion('0.1.8');
+    const before = theFileAsItIs();
+    const cache = persisted();
+    cache.refresh();
+    expect(cache.leftTheFileToAnotherBuild).toBe(true);
+    cache.close();
+    expect(theFileAsItIs()).toEqual(before);
+  });
+
+  it('versions are compared by their three numbers, not as text', () => {
+    aFileWrittenBy('the-build-before', '0.1.9');
+    keepProductVersion('0.1.10');
+    const cache = persisted();
+    cache.refresh();
+    expect(cache.leftTheFileToAnotherBuild).toBe(false);
+    expect(theMetaOfTheFile().version).toBe('0.1.10');
+  });
+
+  it(
+    'a file that is busy is not a file with no owner: it is left as it is and read in memory',
+    { timeout: 20_000 },
+    () => {
+      aFileWrittenBy('the-owner', '0.1.8');
+      keepProductVersion('0.1.9');
+      const path = projectionCachePath({ root });
+      // A file in rollback-journal mode held exclusively cannot even be read by another process.
+      const holder = new DatabaseSync(path);
+      holder.exec('PRAGMA wal_checkpoint(TRUNCATE)');
+      holder.exec('PRAGMA journal_mode = DELETE');
+      holder.exec('BEGIN EXCLUSIVE');
+      let cache: ProjectionCache;
+      try {
+        cache = persisted();
+        cache.refresh();
+      } finally {
+        holder.exec('ROLLBACK');
+        holder.close();
+      }
+      expect(answersOf(cache)).toEqual(answersOf(replayed()));
+      cache.close();
+      expect(theMetaOfTheFile()).toEqual({ stamp: 'the-owner', version: '0.1.8' });
+      expect(rowsOf(path).memories?.some((row) => row.includes('a-marker'))).toBe(true);
+    },
+  );
+
+  it('ownerOfTheFile: an error of the database that is not "no table" says unknown, and one that is says none', () => {
+    const failing = (errcode: number): SqliteDatabase =>
+      ({
+        prepare: () => {
+          throw Object.assign(new Error('failed'), { code: 'ERR_SQLITE_ERROR', errcode });
+        },
+      }) as unknown as SqliteDatabase;
+    for (const busy of [5, 6, 261, 10]) expect(ownerOfTheFile(failing(busy)).state).toBe('unknown');
+    for (const nobodys of [1, 26, 11]) expect(ownerOfTheFile(failing(nobodys)).state).toBe('none');
+    expect(() =>
+      ownerOfTheFile({
+        prepare: () => {
+          throw new TypeError('not the database');
+        },
+      } as unknown as SqliteDatabase),
+    ).toThrow(TypeError);
   });
 });
 
