@@ -32,8 +32,8 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import {
   type CatalogEvent,
   catalogUpcasters,
@@ -973,32 +973,30 @@ describe('who takes over a file another build’s code wrote', () => {
     expect(theMetaOfTheFile().version).toBe('0.1.10');
   });
 
-  it(
-    'a file that is busy is not a file with no owner: it is left as it is and read in memory',
-    { timeout: 20_000 },
-    () => {
-      aFileWrittenBy('the-owner', '0.1.8');
-      keepProductVersion('0.1.9');
-      const path = projectionCachePath({ root });
-      // A file in rollback-journal mode held exclusively cannot even be read by another process.
-      const holder = new DatabaseSync(path);
-      holder.exec('PRAGMA wal_checkpoint(TRUNCATE)');
-      holder.exec('PRAGMA journal_mode = DELETE');
-      holder.exec('BEGIN EXCLUSIVE');
-      let cache: ProjectionCache;
-      try {
-        cache = persisted();
-        cache.refresh();
-      } finally {
-        holder.exec('ROLLBACK');
-        holder.close();
-      }
-      expect(answersOf(cache)).toEqual(answersOf(replayed()));
-      cache.close();
-      expect(theMetaOfTheFile()).toEqual({ stamp: 'the-owner', version: '0.1.8' });
-      expect(rowsOf(path).memories?.some((row) => row.includes('a-marker'))).toBe(true);
-    },
-  );
+  it('a file that is busy is not a file with no owner: it is left as it is and read in memory', {
+    timeout: 20_000,
+  }, () => {
+    aFileWrittenBy('the-owner', '0.1.8');
+    keepProductVersion('0.1.9');
+    const path = projectionCachePath({ root });
+    // A file in rollback-journal mode held exclusively cannot even be read by another process.
+    const holder = new DatabaseSync(path);
+    holder.exec('PRAGMA wal_checkpoint(TRUNCATE)');
+    holder.exec('PRAGMA journal_mode = DELETE');
+    holder.exec('BEGIN EXCLUSIVE');
+    let cache: ProjectionCache;
+    try {
+      cache = persisted();
+      cache.refresh();
+    } finally {
+      holder.exec('ROLLBACK');
+      holder.close();
+    }
+    expect(answersOf(cache)).toEqual(answersOf(replayed()));
+    cache.close();
+    expect(theMetaOfTheFile()).toEqual({ stamp: 'the-owner', version: '0.1.8' });
+    expect(rowsOf(path).memories?.some((row) => row.includes('a-marker'))).toBe(true);
+  });
 
   it('ownerOfTheFile: an error of the database that is not "no table" says unknown, and one that is says none', () => {
     const failing = (errcode: number): SqliteDatabase =>

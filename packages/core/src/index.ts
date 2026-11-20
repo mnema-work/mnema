@@ -133,12 +133,12 @@ export {
 } from './identity/membership.js';
 export { BRIEF_TOPIC, DESCRIPTION_TOPIC } from './knowledge/companion-topics.js';
 export { type CacheOptions, ProjectionCache } from './projections/cache.js';
-export { keepProductVersion } from './projections/cache-meta.js';
 export {
   CACHE_DIR_VARIABLE,
   keepReadCacheIn,
   readCacheIsChosen,
 } from './projections/cache-home.js';
+export { keepProductVersion } from './projections/cache-meta.js';
 export type { ChannelSwitchProjection } from './projections/channel.js';
 export {
   type AdrCollision,
