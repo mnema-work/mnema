@@ -715,6 +715,8 @@ describe('scrubSecrets: a value after a credential’s name or header', () => {
       value: 'agm_Zx81yQkP3nLw9Tr',
       secret: 'named-credential',
     },
+    { text: 'password: hunter2_...', value: 'hunter2_...', secret: 'named-credential' },
+    { text: '{"password": "hunter2_\u2026"}', value: 'hunter2_\u2026', secret: 'named-credential' },
     { text: 'PASSWORD=hunter2', value: 'hunter2', secret: 'named-credential' },
     {
       text: 'export DATABASE_PASSWORD=S3nh4F0rte',

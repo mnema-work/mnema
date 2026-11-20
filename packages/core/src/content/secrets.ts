@@ -840,7 +840,7 @@ function readsAsNoCredential(value: string, text: string, at: number): boolean {
     A_PATH.test(value) ||
     A_PLAIN_URL.test(value) ||
     A_PREFIX.test(value) ||
-    A_PREFIX_ELIDED.test(value) ||
+    (A_PREFIX_ELIDED.test(value) && !underAPassword(text, at)) ||
     A_NAMED_REFERENCE.test(value)
   ) {
     return true;
@@ -870,6 +870,17 @@ const A_KEY_AND_COLON = new RegExp(`${LINE_KEY}:${GAP}$`, 'i');
 /** A password's name and its colon, just before the value. */
 const UNDER_A_PASSWORD =
   /(?:pass(?:word|wd|phrase)|(?<![a-z])pass|pwd)["'\x60]?[ \t]{0,8}:[ \t]{0,8}$/i;
+
+/**
+ * Whether the value at `at` stands under a password's name, with a colon or an `=` and an optional
+ * quote between: a password is any string, so `hunter2_...` there is a password and not a token's
+ * shape.
+ */
+function underAPassword(text: string, at: number): boolean {
+  return /(?:pass(?:word|wd|phrase)|(?<![a-z])pass|pwd)["'\x60]?[ \t]{0,8}[:=][ \t]{0,8}["'\x60]?$/i.test(
+    text.slice(Math.max(0, at - 48), at),
+  );
+}
 
 /** A single word of letters, with the mark a sentence may close it with. */
 const A_SINGLE_WORD = /^[A-Za-z]+[.,;:!?]?$/;
