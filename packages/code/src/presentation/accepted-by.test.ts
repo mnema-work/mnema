@@ -1,5 +1,5 @@
 /**
- * The tail of a rule line in the opening text: the day, then `agent` or `person`, and an identity
+ * The tail of a rule line in the opening text: the day, then `agent` or `no agent declared`, and an identity
  * only when it is not the one the header names.
  */
 
@@ -15,8 +15,10 @@ const by = (who: string, rest: Partial<Acceptance> = {}): Acceptance => ({
 });
 
 describe('acceptedOnLine', () => {
-  it('says the day and person for an act with no agent on it', () => {
-    expect(acceptedOnLine(by('mnid:aaaaaaaa'), 'mnid:aaaaaaaa')).toBe('2026-11-19 · person');
+  it('says the day and no agent declared for an act with no agent on it', () => {
+    expect(acceptedOnLine(by('mnid:aaaaaaaa'), 'mnid:aaaaaaaa')).toBe(
+      '2026-11-19 · no agent declared',
+    );
   });
 
   it('says the day and agent for an act that had one, without the agent’s name', () => {
@@ -33,16 +35,16 @@ describe('acceptedOnLine', () => {
 
   it('names the identity, and its mark, only when it is another than the header’s', () => {
     expect(acceptedOnLine(by('mnid:bbbbbbbb', { unconfirmed: true }), 'mnid:aaaaaaaa')).toBe(
-      '2026-11-19 · person · mnid:bbbbbbbb (unconfirmed)',
+      '2026-11-19 · no agent declared · mnid:bbbbbbbb (unconfirmed)',
     );
     expect(acceptedOnLine(by('mnid:bbbbbbbb'), undefined)).toBe(
-      '2026-11-19 · person · mnid:bbbbbbbb',
+      '2026-11-19 · no agent declared · mnid:bbbbbbbb',
     );
   });
 
   it('leaves the day out when the record has none for the rule', () => {
     expect(acceptedOnLine({ by: 'mnid:aaaaaaaa', unconfirmed: false }, 'mnid:aaaaaaaa')).toBe(
-      'person',
+      'no agent declared',
     );
   });
 });

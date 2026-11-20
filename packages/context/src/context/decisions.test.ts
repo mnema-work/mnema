@@ -572,19 +572,19 @@ describe('acceptances, who ruled, and whether another identity has looked', () =
     try {
       expect(acceptancesInForce([caches[0] as (typeof caches)[number]])).toEqual({
         agent: 0,
-        person: 0,
+        undeclared: 0,
       });
       expect(acceptancesInForce([caches[1] as (typeof caches)[number]])).toEqual({
         agent: 0,
-        person: 2,
+        undeclared: 2,
       });
       expect(acceptancesInForce([caches[2] as (typeof caches)[number]])).toEqual({
         agent: 1,
-        person: 0,
+        undeclared: 0,
       });
       expect(acceptancesInForce([caches[3] as (typeof caches)[number]])).toEqual({
         agent: 2,
-        person: 1,
+        undeclared: 1,
       });
     } finally {
       for (const cache of caches) cache.close();
@@ -601,10 +601,10 @@ describe('acceptances, who ruled, and whether another identity has looked', () =
     proposed(b, 'waiting');
     const cache = b.cache();
     try {
-      expect(acceptancesInForce([cache])).toEqual({ agent: 0, person: 1 });
+      expect(acceptancesInForce([cache])).toEqual({ agent: 0, undeclared: 1 });
       expect(countAcceptances([{}, { acceptance: { by: 'mnid:1', unconfirmed: false } }])).toEqual({
         agent: 0,
-        person: 1,
+        undeclared: 1,
       });
     } finally {
       cache.close();

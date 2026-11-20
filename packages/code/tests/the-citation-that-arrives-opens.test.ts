@@ -283,7 +283,7 @@ describe('a rule that arrives unasked carries a path that opens', () => {
     // WHO ruled, which `a-rule-says-who-ruled-it.test.ts` holds, and this case is about the pairing.
     expect(
       bullets(text)
-        .map((line) => line.replace(/ · \d{4}-\d{2}-\d{2} · (agent|person).*$/, ''))
+        .map((line) => line.replace(/ · \d{4}-\d{2}-\d{2} · (agent|no agent declared).*$/, ''))
         .sort(),
     ).toEqual(
       [

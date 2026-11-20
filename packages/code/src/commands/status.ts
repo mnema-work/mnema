@@ -170,11 +170,11 @@ export interface StatusDone {
    */
   readonly forkKeptAside: ForkKeptAside | undefined;
   /**
-   * How many of the rules in force an agent accepted and how many a person did, of every rule in
+   * How many of the rules in force an agent accepted and how many have no agent declared, of every rule in
    * force and not of the capped list in {@link StatusDone.status}. Beside the derivation and not in
    * it, for the reason the fields above are: `--json` serves the derivation and only that.
    */
-  readonly accepted: { readonly agent: number; readonly person: number };
+  readonly accepted: { readonly agent: number; readonly undeclared: number };
 }
 
 /** There was no project here, or the actor named no identity in it. */

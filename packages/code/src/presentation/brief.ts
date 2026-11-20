@@ -565,7 +565,7 @@ const WHERE_THE_RATIONALE_IS = [
 
 /**
  * WHO RULED EACH DECISION, said in the counts above the list and then, per rule, by its day and
- * whether an agent or a person accepted it. The identity is named once, in the header, and a line
+ * whether an agent accepted it or no agent was declared. The identity is named once, in the header, and a line
  * names one only when it is another identity's.
  *
  * WHY THE DOCUMENT SAYS IT. It hands decisions over as rules, and a rule is as good as whoever
@@ -575,7 +575,7 @@ const WHERE_THE_RATIONALE_IS = [
  * The facts that tell the two apart were already in the chain (the accepting event names the
  * identity and, when one executed it, the agent) and this file did not carry them.
  *
- * IT SAYS WHAT THE ENVELOPE SAYS AND NOTHING MORE. `a person` is an act with no agent on it, not
+ * IT SAYS WHAT THE ENVELOPE SAYS AND NOTHING MORE. `no agent declared` is an act with no agent on it, never a claim about a person, and not
  * a claim that a human typed it; `agent <name>` is an act that had one. `unconfirmed` is the
  * record's shape and not a verdict on the rule (see {@link Acceptance}): an identity that has
  * only ever accepted what it recorded itself, with nobody else ruling on any of it. Every rule
@@ -589,20 +589,20 @@ const WHERE_THE_RATIONALE_IS = [
  */
 function whoRuled(decisions: Brief['decisions']): string[] {
   if (decisions.length === 0) return [];
-  const { agent, person } = countAcceptances(decisions);
+  const { agent, undeclared } = countAcceptances(decisions);
   const unconfirmed = decisions.filter((one) => one.acceptance?.unconfirmed === true).length;
   const usual = usualIdentity(decisions);
   const usualUnconfirmed = decisions.some(
     (one) => one.acceptance?.by === usual && one.acceptance?.unconfirmed === true,
   );
   return [
-    'Each line ends with the day it was accepted and whether an agent or a person accepted it.',
+    'Each line ends with the day it was accepted and whether an agent accepted it or no agent was declared.',
     ...(usual === undefined
       ? []
       : [
           `The identity is ${oneLine(usual)}${usualUnconfirmed ? ' (marked unconfirmed, see below)' : ''}, unless a line names another.`,
         ]),
-    `${agent} of them ${agent === 1 ? 'was' : 'were'} accepted by an agent and ${person} by a person.${agent > 0 ? ' The record keeps which agent, and `mnema switch` says whether an agent may accept.' : ''}`,
+    `${agent} of them ${agent === 1 ? 'was' : 'were'} accepted by an agent and ${undeclared} with no agent declared.${agent > 0 ? ' The record keeps which agent, and `mnema switch` says whether an agent may accept.' : ''}`,
     ...(unconfirmed > 0
       ? [
           `${unconfirmed} of them ${unconfirmed === 1 ? 'was' : 'were'} accepted by an identity marked unconfirmed: it has accepted only decisions it recorded itself, and no other identity has accepted any of them. That is who has looked, not a verdict on the rule.`,
@@ -855,7 +855,7 @@ const PRIVATE_RULES_ARE = [
 
 /** The shape of a private rule line, said where the committed list's header is not there to say it. */
 const PRIVATE_RULE_LINE =
-  'Each decision line ends with the day it was accepted, whether an agent or a person accepted it, and the identity.';
+  'Each decision line ends with the day it was accepted, whether an agent accepted it or no agent was declared, and the identity.';
 
 /**
  * What the copy a hook carries lists of the rules recorded in this machine's private tree, after

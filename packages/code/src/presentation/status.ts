@@ -111,7 +111,7 @@ export function statusReport(
   asThisMachine = false,
   notInGit?: EventsNotInGit,
   forkKeptAside?: ForkKeptAside,
-  accepted?: { readonly agent: number; readonly person: number },
+  accepted?: { readonly agent: number; readonly undeclared: number },
 ): string[] {
   return [
     `${actor}, where things stand.`,
@@ -347,14 +347,16 @@ function standingOf(item: TaskStanding): string[] {
 function decisionLines(
   render: Render,
   status: Bootstrap,
-  accepted?: { readonly agent: number; readonly person: number },
+  accepted?: { readonly agent: number; readonly undeclared: number },
 ): string[] {
   if (status.decisions.length === 0) return ['No decisions in force.'];
   return [
     `${served(status.decisions.length, status.decisionsTotal)} decision(s) in force:`,
     ...(accepted === undefined
       ? []
-      : [`  ${accepted.agent} accepted by an agent, ${accepted.person} by a person.`]),
+      : [
+          `  ${accepted.agent} accepted by an agent, ${accepted.undeclared} with no agent declared.`,
+        ]),
     ...status.decisions.map((item) =>
       render(itemLine([asId(item.id), item.adr, oneLine(item.title)])),
     ),

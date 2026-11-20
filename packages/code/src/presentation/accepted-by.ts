@@ -47,14 +47,14 @@ export function usualIdentity(
 }
 
 /**
- * The tail of a rule line in the opening text: `2026-11-19 · agent`, or `2026-11-19 · person`.
+ * The tail of a rule line in the opening text: `2026-11-19 · agent`, or `2026-11-19 · no agent declared`.
  * The identity is said only when it is not `usual` (the one the header names), and then with its
  * unconfirmed mark; an agent whose name nobody announced says so, as {@link acceptedBy} does.
  */
 export function acceptedOnLine(acceptance: Acceptance, usual: string | undefined): string {
   const role =
     acceptance.agent === undefined
-      ? 'person'
+      ? 'no agent declared'
       : acceptance.unannounced === true
         ? `agent, ${NO_NAME_ANNOUNCED}`
         : 'agent';

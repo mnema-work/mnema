@@ -202,7 +202,9 @@ describe('the document names who accepted each rule', () => {
 
     const brief = mnema(atA, a, 'brief').stdout;
     expect(brief).not.toContain('unconfirmed');
-    expect(BRIEF_RULE('A second call').exec(brief)?.[0]).toMatch(/ · \d{4}-\d{2}-\d{2} · person$/);
+    expect(BRIEF_RULE('A second call').exec(brief)?.[0]).toMatch(
+      / · \d{4}-\d{2}-\d{2} · no agent declared$/,
+    );
   }, 120_000);
 });
 
@@ -234,7 +236,7 @@ describe('an agent may accept, and the trail says it', () => {
     // The brief of a record with one identity does not mark the rule: nobody to confirm with.
     expect(BRIEF_RULE('A call').exec(brief)?.[0]).toMatch(/ · \d{4}-\d{2}-\d{2} · agent$/);
     expect(brief).not.toContain('unconfirmed');
-    expect(brief).toContain('1 of them was accepted by an agent and 0 by a person');
+    expect(brief).toContain('1 of them was accepted by an agent and 0 with no agent declared');
   }, 120_000);
 
   it('through the server: the reply says so, and the next brief marks the rule', async () => {

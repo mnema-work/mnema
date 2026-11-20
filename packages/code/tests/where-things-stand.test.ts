@@ -368,7 +368,7 @@ describe('mnema status: the opening read, over a record that reaches every cell'
     const printed = await mnema('status', '--actor', anchor);
     const text = printed.join('\n');
     expect(text).toContain(`${SEARCH_DEFAULT_LIMIT} of ${total} decision(s) in force:`);
-    expect(text).toContain(`  2 accepted by an agent, ${total - 2} by a person.`);
+    expect(text).toContain(`  2 accepted by an agent, ${total - 2} with no agent declared.`);
   }, 120_000);
 
   it('says every half is empty, in words, over a project that holds nothing', async () => {

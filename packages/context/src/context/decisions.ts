@@ -413,22 +413,23 @@ export function ruleIdsInForce(caches: readonly ProjectionCache[]): ReadonlySet<
 }
 
 /**
- * How many of `rules` an agent accepted and how many a person did, by what the accepting
- * event's envelope says (an act with a `which` is an agent's, see {@link Acceptance}). A rule
+ * How many of `rules` an agent accepted and how many have no agent declared, by what the accepting
+ * event's envelope says (an act with a `which` is an agent's, see {@link Acceptance}; one without
+ * says nothing of who made it, and is never counted as a person's). A rule
  * the record shows no acceptance for is in neither count.
  */
 export function countAcceptances(rules: readonly { readonly acceptance?: Acceptance }[]): {
   readonly agent: number;
-  readonly person: number;
+  readonly undeclared: number;
 } {
   let agent = 0;
-  let person = 0;
+  let undeclared = 0;
   for (const one of rules) {
     if (one.acceptance === undefined) continue;
-    if (one.acceptance.agent === undefined) person += 1;
+    if (one.acceptance.agent === undefined) undeclared += 1;
     else agent += 1;
   }
-  return { agent, person };
+  return { agent, undeclared };
 }
 
 /**
@@ -438,7 +439,7 @@ export function countAcceptances(rules: readonly { readonly acceptance?: Accepta
  */
 export function acceptancesInForce(caches: readonly ProjectionCache[]): {
   readonly agent: number;
-  readonly person: number;
+  readonly undeclared: number;
 } {
   return countAcceptances(decisionsInForce(caches));
 }

@@ -644,20 +644,20 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'minted',
       why: 'this product’s own clause, chosen by whether the accepting event’s run was marked run.unannounced',
     },
-  'brief.ts «{} of them {} accepted by an agent and {} by a person.{}» agent #1': {
+  'brief.ts «{} of them {} accepted by an agent and {} with no agent declared.{}» agent #1': {
     verdict: 'minted',
     why: 'a count of the rules in force, computed here from the list the document is made of',
   },
-  "brief.ts «{} of them {} accepted by an agent and {} by a person.{}» agent === 1 ? 'was' : 'were' #1":
+  "brief.ts «{} of them {} accepted by an agent and {} with no agent declared.{}» agent === 1 ? 'was' : 'were' #1":
     {
       verdict: 'minted',
       why: 'the singular or the plural of a verb written in this module, chosen by the count beside it',
     },
-  'brief.ts «{} of them {} accepted by an agent and {} by a person.{}» person #1': {
+  'brief.ts «{} of them {} accepted by an agent and {} with no agent declared.{}» undeclared #1': {
     verdict: 'minted',
     why: 'a count of the rules in force, computed here from the list the document is made of',
   },
-  "brief.ts «{} of them {} accepted by an agent and {} by a person.{}» agent > 0 ? ' The record keeps which agent, and `mnema switch` says whether an agent may accept.' : '' #1":
+  "brief.ts «{} of them {} accepted by an agent and {} with no agent declared.{}» agent > 0 ? ' The record keeps which agent, and `mnema switch` says whether an agent may accept.' : '' #1":
     {
       verdict: 'minted',
       why: 'a sentence written in this module, said only when an agent accepted a rule',
@@ -683,11 +683,11 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'this module’s own word for an identity that nobody else has ruled with, or nothing',
   },
-  'status.ts «  {} accepted by an agent, {} by a person.» accepted.agent #1': {
+  'status.ts «  {} accepted by an agent, {} with no agent declared.» accepted.agent #1': {
     verdict: 'minted',
     why: 'a count of the rules in force, computed by the context layer from the record',
   },
-  'status.ts «  {} accepted by an agent, {} by a person.» accepted.person #1': {
+  'status.ts «  {} accepted by an agent, {} with no agent declared.» accepted.undeclared #1': {
     verdict: 'minted',
     why: 'a count of the rules in force, computed by the context layer from the record',
   },
