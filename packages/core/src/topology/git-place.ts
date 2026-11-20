@@ -24,6 +24,31 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 /** The folder of mnema's own in a repository's git directory. */
 export const IN_GIT_DIR = 'mnema';
 
+/**
+ * The test switch: when this variable names a directory, resolving a record tree or a repository
+ * outside it throws ({@link refuseOutsideTheTestRoot}). Only the test setup sets it; the product
+ * never reads it for anything else.
+ */
+export const REFUSE_TREES_OUTSIDE = 'MNEMA_REFUSE_TREES_OUTSIDE';
+
+/**
+ * Under {@link REFUSE_TREES_OUTSIDE}, throws when `path` lies outside the directory it names, with
+ * the path and (the error's own) stack, which names the caller that reached a tree no test owns.
+ * A test that resolved the real tree of the checkout it runs in would otherwise read, and
+ * rebuild the cache of, a record somebody is using.
+ */
+export function refuseOutsideTheTestRoot(path: string, what: string): void {
+  const root = process.env[REFUSE_TREES_OUTSIDE];
+  if (root === undefined || root === '') return;
+  const spelled = [path, realOrUndefined(path)].filter((each) => each !== undefined);
+  const roots = [root, realOrUndefined(root)].filter((each) => each !== undefined);
+  if (spelled.some((each) => roots.some((inRoot) => isWithin(each, inRoot)))) return;
+  throw new Error(
+    `A test resolved ${what} ${path}, outside the temporary root ${root} (${REFUSE_TREES_OUTSIDE}). ` +
+      'A test works in a sandbox of its own; reaching the checkout it runs in reads and rebuilds a real record.',
+  );
+}
+
 /** Where git keeps the repository a directory belongs to. */
 export interface GitPlace {
   /** The top of the working tree: the directory holding `.git`. */
@@ -49,7 +74,10 @@ export function gitPlaceOf(dir: string): GitPlace | undefined {
       if (gitDir === undefined || statOrUndefined(join(gitDir, 'HEAD')) === undefined) {
         return undefined;
       }
-      return { top: at, gitDir, commonDir: commonDirOf(gitDir) };
+      const place = { top: at, gitDir, commonDir: commonDirOf(gitDir) };
+      refuseOutsideTheTestRoot(place.top, 'the repository');
+      refuseOutsideTheTestRoot(place.commonDir, 'the git directory');
+      return place;
     }
     const parent = dirname(at);
     if (parent === at) return undefined;

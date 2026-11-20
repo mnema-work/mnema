@@ -189,6 +189,21 @@ export function readMeta(db: SqliteDatabase): CacheMeta | undefined {
   };
 }
 
+/**
+ * The stamp a file says it was built under, or undefined when it says none: no `cache_meta`, no
+ * `stamp` row, or not a database at all. A file with no stamp is nobody's, and is made again.
+ */
+export function storedStamp(db: SqliteDatabase): string | undefined {
+  try {
+    const row = db.prepare("SELECT value FROM cache_meta WHERE key = 'stamp'").get() as
+      | { value: string }
+      | undefined;
+    return row?.value;
+  } catch {
+    return undefined;
+  }
+}
+
 /** The counter alone: what a writer asks, inside its transaction, before it writes. */
 export function readGeneration(db: SqliteDatabase): number {
   const row = db.prepare("SELECT value FROM cache_meta WHERE key = 'generation'").get() as

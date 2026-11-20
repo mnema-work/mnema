@@ -45,6 +45,7 @@ import {
   readMeta,
   sealedFingerprints,
   sealedSegmentsHold,
+  storedStamp,
   writeMeta,
 } from './cache-meta.js';
 import type { ChannelSwitchProjection } from './channel.js';
@@ -297,6 +298,20 @@ export class ProjectionCache {
     this.untouched = !persisted;
   }
 
+  private foreign = false;
+
+  /**
+   * True when the file this cache would keep in the tree carries the stamp of another build's code
+   * and was therefore left alone: this process reads from memory (a replay of the record, once)
+   * and the file stays what the build that wrote it left. ONE FILE PER TREE is keyed by no build,
+   * so a process of another build that rewrote it would send the first build's next open to replay
+   * it back; with this, two builds on one machine cost the one that does not own the file a replay
+   * per process, and the owner nothing.
+   */
+  get leftTheFileToAnotherBuild(): boolean {
+    return this.foreign;
+  }
+
   /**
    * Opens a cache over the chain rooted at `chainRoot`. Ensures the schema
    * exists but does NOT rebuild: call {@link refresh} to bring it to the chain (taking
@@ -329,6 +344,16 @@ export class ProjectionCache {
     }
     try {
       const db = openDatabase(path);
+      // A file another build's code wrote is that build's: this process builds its own tables in
+      // memory and leaves the file as it is, because rewriting it would send the other build's
+      // next open to replay it back (see {@link ProjectionCache.leftTheFileToAnotherBuild}).
+      const stampOfTheFile = storedStamp(db);
+      if (stampOfTheFile !== undefined && stampOfTheFile !== productStamp()) {
+        db.close();
+        const cache = new ProjectionCache(openMemory(), layout, upcasters, false);
+        cache.foreign = true;
+        return cache;
+      }
       try {
         ensureSchema(db);
       } catch (error) {
@@ -766,6 +791,12 @@ export class ProjectionCache {
     }
     if (meta.generation === this.generation && this.frontier !== undefined) return;
     this.generation = meta.generation;
+    if (this.persisted && meta.stamp !== productStamp()) {
+      // Another build's code wrote the file since this one opened it: leave it to that build.
+      this.degrade();
+      this.foreign = true;
+      return;
+    }
     const active = this.persisted ? activeSegmentsHold(meta.active) : meta.active;
     if (
       meta.stamp !== productStamp() ||

@@ -63,7 +63,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { lstatSync, readdirSync, readFileSync, realpathSync, rmSync } from 'node:fs';
+import { lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { createRequire, syncBuiltinESMExports } from 'node:module';
 import { tmpdir, userInfo } from 'node:os';
 import { basename, dirname, isAbsolute, join, resolve, sep } from 'node:path';
@@ -104,6 +104,25 @@ const STARTED_WITH = process.env[THE_VARIABLE];
 export const HOME_OF_ITS_OWN = join(tmpdir(), `mnema-home-${process.pid}-${randomUUID()}`);
 process.env.HOME = HOME_OF_ITS_OWN;
 delete process.env[THE_VARIABLE];
+
+/**
+ * The cache of reads this process keeps, in a directory of its own (`MNEMA_CACHE_DIR`): a test
+ * that reads a tree keeps its projection there, never in a `projection.db` that a process of
+ * another build (an agent's checkout, an installed mnema) shares with the real record. Made now,
+ * because the product refuses a directory that does not exist, and removed with the file.
+ */
+export const CACHE_OF_ITS_OWN = `${HOME_OF_ITS_OWN}-cache`;
+mkdirSync(CACHE_OF_ITS_OWN, { recursive: true });
+process.env.MNEMA_CACHE_DIR = CACHE_OF_ITS_OWN;
+process.on('exit', () => rmSync(CACHE_OF_ITS_OWN, { recursive: true, force: true }));
+
+/**
+ * The root every record tree a test resolves must lie under: the machine's temp. Resolving a tree
+ * or a repository outside it (the checkout the suite runs in, a record somebody is using) throws
+ * in the core, with the path and the stack of the caller (`refuseOutsideTheTestRoot`).
+ */
+export const THE_TEST_ROOT = realpathSync.native(tmpdir());
+process.env.MNEMA_REFUSE_TREES_OUTSIDE = THE_TEST_ROOT;
 // The agent a shell asked the verbs that write to sign as would change every one of them: a case
 // that wants it writes it.
 delete process.env.MNEMA_AGENT_KEY;
@@ -359,6 +378,7 @@ afterEach(() => {
 
 afterAll(() => {
   rmSync(HOME_OF_ITS_OWN, { recursive: true, force: true });
+  rmSync(CACHE_OF_ITS_OWN, { recursive: true, force: true });
   const moved = whatMovedBetween(RECORD_BEFORE, listRecordPlaces(THE_PLACES));
   if (moved.length > 0) {
     expect.fail(
