@@ -43,8 +43,8 @@ copy is `<name of the record>/<tree>/`, with a `mnema-backup.json` saying when i
 
 **What is copied.** The tails, each up to its last complete line (a line a writer has not
 finished is not copied), and the public keys (`keys/*.pub`) of each tree. The private tree is
-always copied; the public tree only where the project is not in git, because a repository's
-history is the public tree's own backup. Nothing else of a tree is copied: not its locks, not
+always copied; the public tree only where git does not hold it (a project outside git, or a local
+record that the repository excludes), because a committed record's history is its own backup. Nothing else of a tree is copied: not its locks, not
 the installation ids or anchors beside its keys, not `site/`, and nothing of your key root.
 
 **What is refused.** A run stops whole, before it writes a byte, when a file it would copy holds
@@ -119,7 +119,7 @@ Commands:
 
 The copy is a folder per project, kept under the name of its record: the tails up to their
 last complete line and the public keys, and nothing else. The private tree is always copied;
-the public tree only where the project is not in git, whose history is its own backup. No
+the public tree only where git does not hold it (a project outside git, or a local record that a repository excludes), since a committed record's history is its own backup. No
 private key is copied: a run is refused whole if a file it would copy holds one, and so is a
 symbolic link in the tree or in the folder. A copy only grows. The folder keeps the text in
 clear, which `setup` asks a person to confirm at a terminal. A machine can have a folder per project; a project has the one it was set up with.
