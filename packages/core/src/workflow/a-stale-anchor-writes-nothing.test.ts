@@ -1,6 +1,7 @@
 import { cpSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import {
   anchorPath,
   catalogUpcasters,
@@ -33,6 +34,7 @@ import {
   retractNote,
 } from '../knowledge/operations.js';
 import { ProjectionCache } from '../projections/cache.js';
+import { keptCachePath } from '../projections/cache-home.js';
 import { chainArrivals, chainReplay, orderedEvents } from '../projections/order.js';
 import * as writeSurface from '../write.js';
 import {
@@ -765,6 +767,51 @@ describe('the roster a write asks is the one the caller hands it, when it hands 
     ).toBe(true);
     expect(captureMemory({ ...ctx, roster: () => undefined }, { content: 'z' }).ok).toBe(true);
     expect(rosterOf({ tree, upcasters }, anchor).has(fingerprint)).toBe(true);
+  });
+});
+
+describe('a refusal is confirmed by the chain where the write holds no roster of its own', () => {
+  /** A kept projection whose frontier covers the founding but whose membership does not count it. */
+  function staleKeptCache(): void {
+    const cache = ProjectionCache.open(tree, { upcasters, persist: true });
+    try {
+      cache.refresh();
+    } finally {
+      cache.close();
+    }
+    const db = new DatabaseSync(keptCachePath({ root: tree }));
+    try {
+      db.exec('DELETE FROM membership_facts');
+    } finally {
+      db.close();
+    }
+  }
+
+  it('writes when the kept projection says "not counted" and the chain says member', () => {
+    const k = keyRoot();
+    const ctx = contextOf(k);
+    const anchor = ensureFounded(ctx);
+    staleKeptCache();
+    expect(recordedAnchorOf(ctx)).toEqual({ anchor, counted: true });
+    expect(captureMemory(ctx, { content: 'after a stale reading' }).ok).toBe(true);
+  });
+
+  it('still refuses when the chain does not count the key either', () => {
+    const k = keyRoot();
+    const left = contextOf(k);
+    const anchor = ensureFounded(left);
+    const memberRoot = keyRoot();
+    join_(left, anchor, memberRoot);
+    expect(
+      revokeMember(contextOf(memberRoot), {
+        fingerprint: left.writer.signerFingerprint,
+        reason: 'r',
+      }).ok,
+    ).toBe(true);
+    staleKeptCache();
+    const asked = recordedAnchorOf(left);
+    if (asked === undefined || asked.counted) throw new Error('not refused');
+    expect(asked.refusal.code).toBe('STALE_ANCHOR');
   });
 });
 
