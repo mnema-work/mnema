@@ -242,15 +242,16 @@ function stampOf(files: readonly string[]): string {
  *
  * LOCAL IS THE RULE OF ADR-630: git excludes `.mnema` at the repository's top AND tracks no file
  * under it (`git ls-files` is empty); when git does not answer, the tree counts as committed (say
- * less, never more). It is written here inline and is to be REPLACED by the core's helper
- * (`packages/core/src/topology/local-record.ts`) once the pull request that brings the local
- * backup (#1388) is on main.
+ * less, never more). It is written here inline: swap it for core's local-record helper once it
+ * exists.
  *
- * ONE `rev-parse` ANSWERS THE WORK TREE, THE TOP AND THE GIT DIRECTORY, and the exclusion and
- * tracking questions are asked once per project and then remembered by the process: the answer
- * is read again only when the git directory's `info/exclude` or `index`, or the top's
- * `.gitignore`, changed (a stat each), so a server that lives for hours does not start a git
- * for every write. A project with no git is not remembered, so a later `git init` is seen.
+ * ONE `rev-parse` ANSWERS THE WORK TREE, THE TOP, THE GIT DIRECTORY AND THE COMMON ONE, and the
+ * exclusion and tracking questions are asked once per project and then remembered by the process:
+ * the answer is read again only when the common directory's `info/exclude`, the git directory's
+ * `index` or the top's `.gitignore` changed (a stat each), so a server that lives for hours does
+ * not start a git for every write. A project with no git is not remembered, so a later `git init`
+ * is seen. NOT WATCHED: `core.excludesFile` and `.git/config`; a stale answer corrects itself at
+ * the next change of the index, and the stale side is "committed", the sentence that says less.
  */
 function publicTreeFact(project: string): PublicTreeFact {
   const known = KNOWN_FACTS.get(project);
@@ -259,18 +260,26 @@ function publicTreeFact(project: string): PublicTreeFact {
     'rev-parse',
     '--is-inside-work-tree',
     '--show-toplevel',
+    '--path-format=absolute',
     '--absolute-git-dir',
+    '--git-common-dir',
   ])
     ?.trim()
     .split('\n');
   const top = lines?.[1];
   const gitDir = lines?.[2];
+  // A linked worktree keeps its index in its own directory and reads `info/exclude` from the common one.
+  const commonDir = lines?.[3] ?? gitDir;
   if (lines?.[0] !== 'true' || top === undefined || top === '' || gitDir === undefined) {
     KNOWN_FACTS.delete(project);
     return 'no-git';
   }
   const { join } = process.getBuiltinModule('node:path');
-  const watched = [join(gitDir, 'info', 'exclude'), join(gitDir, 'index'), join(top, '.gitignore')];
+  const watched = [
+    join(commonDir ?? gitDir, 'info', 'exclude'),
+    join(gitDir, 'index'),
+    join(top, '.gitignore'),
+  ];
   const stamp = stampOf(watched);
   const local =
     git(top, ['check-ignore', '-q', '--', '.mnema']) !== null &&

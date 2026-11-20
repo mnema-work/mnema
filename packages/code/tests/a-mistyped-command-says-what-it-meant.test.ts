@@ -1,9 +1,17 @@
 import { execFileSync } from 'node:child_process';
-import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { run } from '../src/program.js';
+import { landedNotice } from '../src/recorded-content.js';
 
 /**
  * Small answers that used to say a no or a fact without saying what the person most likely
@@ -153,6 +161,43 @@ describe('what a write says about where it landed', () => {
     expect((await mnema('memory', 'first, excluded')).out).toContain(LOCAL);
     writeFileSync(join(repo, '.git', 'info', 'exclude'), '# nothing is excluded now, and longer\n');
     expect((await mnema('memory', 'second, no longer excluded')).out).toContain(COMMITTED);
+  });
+
+  it('notices an edit of the common exclude from a linked worktree', async () => {
+    git('init', '-q');
+    git('-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-q', '--allow-empty', '-m', 'x');
+    const linked = join(sandbox, 'linked');
+    git('worktree', 'add', '-q', linked);
+    appendFileSync(join(repo, '.git', 'info', 'exclude'), '\n.mnema/\n');
+    process.chdir(linked);
+    await mnema('init');
+    expect((await mnema('memory', 'first, in the linked worktree')).out).toContain(LOCAL);
+    writeFileSync(join(repo, '.git', 'info', 'exclude'), '# nothing is excluded now, and longer\n');
+    expect((await mnema('memory', 'second, after the edit')).out).toContain(COMMITTED);
+  });
+
+  it('asks git a handful of times however many notices a process says', async () => {
+    git('init', '-q');
+    appendFileSync(join(repo, '.git', 'info', 'exclude'), '\n.mnema/\n');
+    await mnema('init');
+    const real = execFileSync('which', ['git'], { encoding: 'utf-8' }).trim();
+    const bin = join(sandbox, 'bin');
+    const counted = join(sandbox, 'git-calls');
+    mkdirSync(bin);
+    writeFileSync(counted, '');
+    writeFileSync(join(bin, 'git'), `#!/bin/sh\necho x >> "${counted}"\nexec "${real}" "$@"\n`, {
+      mode: 0o755,
+    });
+    const path = process.env.PATH;
+    process.env.PATH = `${bin}:${path ?? ''}`;
+    try {
+      for (let i = 0; i < 20; i++) expect(landedNotice('public', repo)).toContain(LOCAL);
+    } finally {
+      if (path === undefined) delete process.env.PATH;
+      else process.env.PATH = path;
+    }
+    const calls = readFileSync(counted, 'utf-8').split('\n').filter((l) => l !== '').length;
+    expect(calls).toBeLessThanOrEqual(3);
   });
 
   it('still says it reaches every clone when the record is not excluded', async () => {
