@@ -9,6 +9,7 @@ import {
   appendFileSync,
   mkdirSync,
   readdirSync,
+  readFileSync,
   renameSync,
   symlinkSync,
   writeFileSync,
@@ -73,6 +74,11 @@ function theCase(damaged: Damage): TheCase<Planted> {
 
 const DAMAGES: [string, Damage][] = [
   ['a line that does not read', (segment) => appendFileSync(segment, '{this line does not read\n')],
+  [
+    'an entry altered after it was written',
+    (segment) =>
+      writeFileSync(segment, readFileSync(segment, 'utf8').replace('Never edit billing', 'Never edit billinx')),
+  ],
   [
     'a segment that is a symbolic link',
     (segment) => {
