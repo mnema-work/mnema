@@ -7,7 +7,7 @@
  * themselves, so committing it would publish what it exists to keep out. A blank line and a line
  * that starts with `#` are skipped. A line is plain text, matched without regard to case, or
  * `/regex/flags`, a regular expression. A `/regex/` that does not compile is read as the plain text
- * it spells, so a typo still guards the words it names instead of guarding nothing.
+ * between its slashes, so a typo still guards the words it names instead of guarding nothing.
  *
  * A PUBLIC write whose text matches a pattern is refused with the passage and the pattern, and
  * passes when the caller says so (`--allow-private-pattern`, `allow_private_pattern`). A write to
