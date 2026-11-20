@@ -135,6 +135,8 @@ $ mnema --help
 |                   format it is checked by
 |   settled         say to the agent, after a question to the person was answered,
 |                   which tool records a choice
+|   words           keep, on this machine and outside the record, what the person
+|                   typed or chose, from a host’s hook
 |   dispatched      record a session’s dispatches to other agents as one private
 |                   task and a handoff each, for a PostToolUse or SessionEnd hook
 |
@@ -1725,6 +1727,27 @@ $ mnema settled --help
 |   outside a project, or with the channel off, it prints {}.
 |   It reads which tool ran and never the answer, and writes nothing. It can be switched off
 |   with `mnema switch off choice-settled`.
+
+### mnema words --help
+$ mnema words --help
+| Usage: mnema words [options]
+|
+| keep, on this machine and outside the record, what the person typed or chose,
+| from a host’s hook
+|
+| Options:
+|   --host <host>  the host whose hook runs this, and whose payload arrives on
+|                  stdin: claude, vscode, cursor, codex, copilot, opencode,
+|                  gemini, qwen, cursorIde, antigravity, droid, goose
+|   -h, --help     display help for command
+|
+| What it reads, what it keeps and what it prints:
+|   The JSON a host hands a hook on stdin: the prompt hook (UserPromptSubmit, BeforeAgent,
+|   userPromptSubmitted, beforeSubmitPrompt, an OpenCode plugin’s chat.message) or the hook
+|   after the host’s question tool. It appends the text of the prompt (typed), or the option
+|   labels chosen (chosen), to a file of this session on this machine: readable by you only,
+|   beside the session journal, and let go with it. It writes nothing to the record, prints
+|   {} and never the words. A host with neither hook is told so on the second stream.
 
 ### mnema dispatched --help
 $ mnema dispatched --help
