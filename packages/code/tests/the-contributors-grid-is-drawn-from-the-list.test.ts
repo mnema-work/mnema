@@ -24,14 +24,34 @@ import {
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const read = (path: string) => readFileSync(join(ROOT, path), 'utf8');
-const logins: string[] = JSON.parse(read('.github/contributors/contributors.json'));
+const list: { people: string[]; automated: string[] } = JSON.parse(
+  read('.github/contributors/contributors.json'),
+);
+const logins = list.people;
 const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
 
 describe('the README table is the one the list gives', () => {
   it('holds the committed README to the committed list', () => {
     expect(
-      problems(read('README.md'), logins, (l: string) => existsSync(join(ROOT, svgPath(l)))),
+      problems(
+        read('README.md'),
+        logins,
+        (l: string) => existsSync(join(ROOT, svgPath(l))),
+        list.automated,
+      ),
     ).toEqual([]);
+  });
+
+  it('keeps an automated account out of the grid and thanks it on a line below, with no photo', () => {
+    expect(list.automated).toContain('bfs2021');
+    expect(logins).not.toContain('bfs2021');
+    const readme = read('README.md');
+    const block = readme.slice(readme.indexOf(START), readme.indexOf(END));
+    const [grid = '', below = ''] = block.split('</table>');
+    expect(grid).not.toContain('bfs2021');
+    expect(below).toContain('<a href="https://github.com/bfs2021">@bfs2021</a>');
+    expect(below).not.toContain('<img');
+    expect(existsSync(join(ROOT, svgPath('bfs2021')))).toBe(false);
   });
 
   it('has one linked, centred cell per login and at most six to a row', () => {
@@ -53,6 +73,42 @@ describe('the README table is the one the list gives', () => {
     expect(out.startsWith('before\n')).toBe(true);
     expect(out.endsWith('\nafter\n')).toBe(true);
     expect(out).not.toContain('old');
+  });
+});
+
+describe('an automated account is thanked on a line of its own', () => {
+  const block = renderBlock(['a'], ['bot-one', 'bot-two']);
+  const [grid = '', below = ''] = block.split('</table>');
+
+  it('draws no cell and no image for it, and links each login', () => {
+    expect(grid.match(/<td/g)).toHaveLength(1);
+    expect(grid).not.toContain('bot-one');
+    expect(below).not.toContain('<img');
+    expect(below).toContain('<a href="https://github.com/bot-one">@bot-one</a>');
+    expect(below).toContain('<a href="https://github.com/bot-two">@bot-two</a>');
+    expect(below).toContain('automated');
+    expect(below.trimEnd().endsWith(END)).toBe(true);
+  });
+
+  it('writes no line at all when none is listed', () => {
+    expect(renderBlock(['a'])).toBe(renderBlock(['a'], []));
+    expect(renderBlock(['a'])).not.toContain('automated');
+  });
+
+  it('is part of what the check holds the README to', () => {
+    const readme = rewriteReadme(`${START}\n${END}`, ['a'], ['bot-one']);
+    expect(problems(readme, ['a'], () => true, ['bot-one'])).toEqual([]);
+    expect(problems(readme, ['a'], () => true, [])).toEqual([
+      'the README table is not the one contributors.json gives',
+    ]);
+    expect(problems(readme, ['a'], () => true, ['bot-one', 'bot-two'])).toEqual([
+      'the README table is not the one contributors.json gives',
+    ]);
+  });
+
+  it('is not an avatar to fetch: no SVG is required for it', () => {
+    const readme = rewriteReadme(`${START}\n${END}`, ['a'], ['bot-one']);
+    expect(problems(readme, ['a'], (l: string) => l === 'a', ['bot-one'])).toEqual([]);
   });
 });
 
