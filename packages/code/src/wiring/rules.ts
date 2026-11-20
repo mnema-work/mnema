@@ -90,33 +90,15 @@ export function registerRules(program: Command, wiring: Wiring): Declared {
     )
     .action(async (file: string) => {
       const { runRulesTest } = await import('../commands/rules-test.js');
-      const { oneLine } = await import('../one-line.js');
-      const { statement } = await import('../presentation/verdict.js');
+      const { rulesTestReport } = await import('../presentation/rules-test.js');
       const result = runRulesTest(here(), { file });
       if (!result.ok) {
         if (result.reason === 'BAD_CASES') reportUsage(wiring, result.message);
         else reportRefusal(wiring, result, {});
         return;
       }
-      for (const one of result.cases) {
-        const by = one.by.length === 0 ? '' : ` (${one.by.map(oneLine).join(', ')})`;
-        io.out(
-          render(
-            one.matched
-              ? statement('MATCH', `${oneLine(one.path)}: ${one.got}${by}`, 'good')
-              : statement(
-                  'MISMATCH',
-                  `${oneLine(one.path)}: expected ${one.expect}, got ${one.got}${by}`,
-                  'bad',
-                ),
-          ),
-        );
-      }
-      const missed = result.cases.filter((one) => !one.matched).length;
-      io.out(
-        `${result.cases.length - missed} of ${result.cases.length} case(s) met their verdict.`,
-      );
-      if (missed > 0) io.fail();
+      writeLines(io, rulesTestReport(render, result.cases));
+      if (result.cases.some((one) => !one.matched)) io.fail();
     });
   return readsTheRecord(rules);
 }

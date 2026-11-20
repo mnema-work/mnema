@@ -9,6 +9,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { runRulesTest } from '../src/commands/rules-test.js';
+import { rulesTestReport } from '../src/presentation/rules-test.js';
 import { type CliIo, run } from '../src/program.js';
 
 let sandbox: string;
@@ -140,6 +142,23 @@ describe('mnema rules test', () => {
     const bad = await mnema('rules', 'test', join(sandbox, 'bad.json'));
     expect(bad.failed).toBe(true);
     expect(bad.err).toContain('cannot be read as JSON');
+  });
+
+  it('answers each case with the verdict and the rules behind it, and words them one per line', async () => {
+    const done = runRulesTest(
+      { cwd: repo, env: { home: process.env.HOME as string } },
+      { file: declare(['src/billing/x.ts', 'ask'], ['README.md', 'none']) },
+    );
+    if (!done.ok) throw new Error('the file was refused');
+    expect(done.cases).toEqual([
+      { path: 'src/billing/x.ts', expect: 'ask', got: 'refuse', by: [ids['src/billing']], matched: false },
+      { path: 'README.md', expect: 'none', got: 'none', by: [], matched: true },
+    ]);
+    expect(rulesTestReport((line) => `${line.parts.map((part) => part.text).join(': ')}`, done.cases)).toEqual([
+      `MISMATCH: src/billing/x.ts: expected ask, got refuse (${ids['src/billing']})`,
+      'MATCH: README.md: none',
+      '1 of 2 case(s) met their verdict.',
+    ]);
   });
 
   it('still answers a path named like the verb as the path it is', async () => {
