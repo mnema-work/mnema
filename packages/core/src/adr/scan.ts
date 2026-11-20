@@ -191,9 +191,30 @@ function noteOf(whole: string): string {
   );
 }
 
-/** Whether `text` ends inside a fenced code block: an odd number of lines opening or closing a fence. */
-function endsInsideAFence(text: string): boolean {
-  return (text.match(/^[ \t]*(?:```|~~~)/gm) ?? []).length % 2 === 1;
+/**
+ * The marker of the fenced code block `text` ends inside, or undefined when it ends outside one.
+ * CommonMark's rule: a fence opens on a line with up to three spaces of indent and three or more
+ * backticks or tildes (a backtick fence's info string holds no backtick), and closes only on a
+ * line of the SAME character, at least as long as the opening, with nothing after it. A line
+ * indented four or more spaces is indented code, not a fence. A fence inside a block quote
+ * (`> ```) is NOT recognised: that is this reader's declared limit, and the cut there may fall
+ * inside such a block.
+ */
+function openFence(text: string): string | undefined {
+  let open: string | undefined;
+  for (const line of text.split('\n')) {
+    const found = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+    if (found === null) continue;
+    const marker = found[1] as string;
+    const rest = found[2] as string;
+    if (open === undefined) {
+      if (marker[0] === '`' && rest.includes('`')) continue;
+      open = marker;
+    } else if (marker[0] === open[0] && marker.length >= open.length && rest.trim() === '') {
+      open = undefined;
+    }
+  }
+  return open;
 }
 
 /**
@@ -201,7 +222,8 @@ function endsInsideAFence(text: string): boolean {
  * the closing note weigh at most {@link FIELD_BYTE_LIMIT} bytes of UTF-8, or the text itself
  * when it already fits. The cut falls at the last blank line that fits and is outside an open
  * fenced code block, else the last such line break, else the last whole code point, and a block
- * still open at the cut is closed before the note, counted in the budget. Never inside a
+ * still open at the cut is closed before the note with the marker it opened with, counted in the
+ * budget. Fences follow CommonMark ({@link openFence}). Never inside a
  * multi-byte sequence. Held by `scan.test.ts` ("cuts at a whole character when two and four byte
  * characters cross the limit", "does not cut inside an open code block").
  *
@@ -215,21 +237,26 @@ export function cutToFit(
   const of = weight(text);
   if (weight(prefix) + of <= FIELD_BYTE_LIMIT) return { value: `${prefix}${text}` };
   const note = noteOf(text);
-  const closer = '\n```';
-  const budget = FIELD_BYTE_LIMIT - weight(prefix) - weight(note) - 2 - weight(closer);
+  // The room a closing fence may need: a line break and the longest marker the text opens with.
+  const longest = Math.max(
+    3,
+    ...[...text.matchAll(/^ {0,3}(`{3,}|~{3,})/gm)].map((found) => (found[1] as string).length),
+  );
+  const budget = FIELD_BYTE_LIMIT - weight(prefix) - weight(note) - 2 - (1 + longest);
   const bytes = Buffer.from(text, 'utf8');
   let end = budget;
   // A continuation byte (10xxxxxx) is the middle of a character: step back to its first byte.
   while (end > 0 && ((bytes[end] as number) & 0xc0) === 0x80) end -= 1;
   const fits = bytes.subarray(0, end).toString('utf8');
-  const outside = (index: number): boolean => !endsInsideAFence(fits.slice(0, index));
+  const outside = (index: number): boolean => openFence(fits.slice(0, index)) === undefined;
   let blank = -1;
   for (const match of fits.matchAll(/\n[ \t]*\n/g)) if (outside(match.index)) blank = match.index;
   let lineBreak = -1;
   for (const match of fits.matchAll(/\n/g)) if (outside(match.index)) lineBreak = match.index;
   const at = blank > 0 ? blank : lineBreak > 0 ? lineBreak : fits.length;
   let kept = fits.slice(0, at).trimEnd();
-  if (endsInsideAFence(kept)) kept = `${kept}${closer}`;
+  const marker = openFence(kept);
+  if (marker !== undefined) kept = `${kept}\n${marker}`;
   return { value: `${prefix}${kept}\n\n${note}`, cut: { kept: weight(kept), of } };
 }
 

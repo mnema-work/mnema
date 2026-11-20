@@ -226,6 +226,37 @@ describe('reading a directory of decision documents', () => {
     expect(open.value).toMatch(/\n```\n\n\[Cut on import:/);
   });
 
+  describe('fences, by the CommonMark rule', () => {
+    /** `lines` of filler: no blank line, so a cut can only fall where the test is about. */
+    const filler = (n: number): string =>
+      Array.from({ length: n }, (_, i) => `row ${i} ${'f'.repeat(30)}`).join('\n');
+
+    it('closes a four-backtick fence with four backticks, and a ``` inside it does not close it', () => {
+      const cut = cutToFit(`\`\`\`\`\n\`\`\`\ninner\n${filler(3000)}`);
+      expect(cut.value).toMatch(/\n````\n\n\[Cut on import:/);
+      expect(Buffer.byteLength(cut.value)).toBeLessThanOrEqual(FIELD_BYTE_LIMIT);
+    });
+
+    it('closes a tilde fence with tildes', () => {
+      const cut = cutToFit(`~~~~\n${filler(3000)}`);
+      expect(cut.value).toMatch(/\n~~~~\n\n\[Cut on import:/);
+    });
+
+    it('takes a line indented four spaces for code, not for a fence', () => {
+      const text = `intro\n\n    \`\`\`\nplain\n\nsecond paragraph ${filler(3000)}`;
+      const kept = cutToFit(text).value.replace(NOTE, '');
+      // Not a fence: the blank line after `plain` is a place to cut, and nothing is closed.
+      expect(kept.endsWith('```')).toBe(false);
+      expect(kept.startsWith('intro\n\n    ```\nplain')).toBe(true);
+    });
+
+    it('does not treat a fence in a block quote as a fence (a declared limit)', () => {
+      const text = `intro\n\n> \`\`\`\n> code\n\nafter ${filler(3000)}`;
+      const kept = cutToFit(text).value.replace(NOTE, '');
+      expect(kept).toBe('intro\n\n> ```\n> code');
+    });
+  });
+
   it('keeps the prefix whole and out of the hash', () => {
     const body = Array.from({ length: 3000 }, (_, i) => `p ${i} ${'m'.repeat(30)}`).join('\n\n');
     const cut = cutToFit(body, 'Origin line.\n\n');
