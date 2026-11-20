@@ -392,7 +392,8 @@ export type SwitchableChannel =
   | 'session-journal'
   | 'agent-mirror'
   | 'last-session'
-  | 'private-rules';
+  | 'private-rules'
+  | 'opening-core';
 
 /**
  * The two switchable channels, each named once, so no consumer spells one.
@@ -582,6 +583,7 @@ export const FIRST_WRITE_GATE_CHANNEL: CountedChannel = 'edit-first-write-gate';
 export const STARTS_OFF: readonly SwitchableChannel[] = [
   'edit-first-write-gate',
   'user-corrections',
+  'opening-core',
   // NOT `host-memory-mirror`, which writes without a verb and begins ON all the same: ADR-39 decided
   // it, named here because it is the one exception to "a channel that writes without a verb starts
   // off", and the rule still holds for every other such channel.
@@ -625,6 +627,20 @@ export function flipCommand(channel: SwitchableChannel): string {
  * own sentence, so it goes to the tree that stays on this machine and never to the one a clone gets.
  */
 export const USER_CORRECTIONS_CHANNEL: SwitchableChannel = 'user-corrections';
+
+/**
+ * The channel that changes the SHAPE of the decisions the session's opening text hands over
+ * (`mnema brief --hook`): instead of the newest decisions in force, the decisions whose acceptance
+ * note quotes the person, an index of what else the record holds, and how to pull it
+ * (ADR-609, ADR-610).
+ *
+ * OFF UNTIL SOMEBODY SWITCHES IT ON ({@link STARTS_OFF}), and off is exactly the text the hook
+ * handed before it existed. It starts off because what an opening carries is the one thing every
+ * session reads and none asks for, and the shape is a hypothesis about what agents pull that has
+ * to be measured here before it becomes the default. It changes only the hook's copy: the file
+ * `mnema brief > MNEMA.md` writes is the same bytes either way.
+ */
+export const OPENING_CORE_CHANNEL: SwitchableChannel = 'opening-core';
 
 /**
  * The channel that copies a note the host writes to its own memory (Claude Code's
@@ -724,6 +740,9 @@ export const NOT_COUNTED_AS_SERVED: {
   'private-rules':
     'the section is printed by `mnema brief --hook`, a read that writes nothing, for the reason the ' +
     'document is not counted',
+  'opening-core':
+    'the text is printed by `mnema brief --hook`, a read that writes nothing, for the reason the ' +
+    'document is not counted',
   'after-a-compaction':
     'the sentence is printed by `mnema recall --after-a-compaction`, which reads the journal and the ' +
     'record and writes nothing (no event, no key, no run), so reminding a session of what it did never ' +
@@ -798,6 +817,11 @@ export const WHAT_STOPS: { readonly [K in SwitchableChannel]: string } = {
     'write is refused once, with the rules in the reason, and the same write repeated goes ' +
     'through. Off until switched on; it holds in Claude Code, where the server remembers the ' +
     'session',
+  'opening-core':
+    'the shape of the decisions a session opens with: with it on, the opening text hands over the ' +
+    'decisions whose acceptance note quotes the person, an index of what else the record holds ' +
+    'and how to pull it, instead of the newest decisions in force. Off until switched on; the ' +
+    'file `mnema brief` prints is the same either way',
   'user-corrections':
     'the proposals recorded from what a person typed into a session: with it on, a `Stop` hook ' +
     'reads the transcript, and each time the person corrected the agent a decision is recorded ' +

@@ -586,4 +586,53 @@ describe('mnema brief (what governs the work here)', () => {
       expect(file(here)).not.toContain('How this machine works');
     });
   });
+  describe('the opening that pulls what the work needs (opening-core)', () => {
+    const opening = (here: { cwd: string; env: DiscoveryEnv }) =>
+      runBrief(here, { outside: true, stacks: () => ({ adopted: [], departures: [] }) });
+    const acceptedWith = (
+      here: { cwd: string; env: DiscoveryEnv },
+      title: string,
+      note: string,
+      scope: 'public' | 'private' = 'public',
+    ): string => {
+      const recorded = runDecision(here, { title, rationale: 'because', scope });
+      if (!recorded.ok) throw new Error(`setup: decision refused (${recorded.reason})`);
+      const moved = runDecisionTransition(here, {
+        id: recorded.id,
+        action: 'accept',
+        proof: { note },
+      });
+      if (!moved.ok) throw new Error(`setup: accept refused (${moved.reason})`);
+      return recorded.id;
+    };
+
+    it('is off until switched on: nothing is pulled, and the opening is what it was', () => {
+      const { repo, env } = setup();
+      runInit({ cwd: repo, env });
+      const here = { cwd: repo, env };
+      acceptedWith(here, 'Dictated call', 'Chosen by the maintainer: "yes".');
+      const done = opening(here);
+      expect(done.ok && done.pulled).toBeUndefined();
+    });
+
+    it('with it on, names the decisions whose note quotes the person, in the hook copy only', () => {
+      const { repo, env } = setup();
+      runInit({ cwd: repo, env });
+      const here = { cwd: repo, env };
+      const dictated = acceptedWith(here, 'Dictated call', 'Chosen by the maintainer: "yes".');
+      acceptedWith(here, 'Plain call', 'agreed in review');
+      acceptedWith(here, 'Private dictated', 'Chosen by the maintainer: "yes".', 'private');
+      expect(runSwitch(here, { channel: 'opening-core', on: true }).ok).toBe(true);
+
+      const done = opening(here);
+      expect(done.ok && [...(done.pulled?.core ?? [])]).toEqual([dictated]);
+      // The file is the same bytes with the switch on: only the hook's copy asks.
+      const file = runBrief(here);
+      expect(file.ok && file.pulled).toBeUndefined();
+
+      expect(runSwitch(here, { channel: 'opening-core', on: false }).ok).toBe(true);
+      const off = opening(here);
+      expect(off.ok && off.pulled).toBeUndefined();
+    });
+  });
 });

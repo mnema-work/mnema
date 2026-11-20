@@ -42,3 +42,10 @@ in [the guide on switching off what is handed to a model](switching-off-what-is-
 A channel that begins on stays on until somebody records a switch off, and one that begins off
 stays off until somebody records a switch on. Where two trees disagree (the committed one and this
 machine's private one) and cannot be ordered, off wins.
+
+`opening-core` changes the SHAPE of the decisions in the text a session opens with (`mnema brief --hook`), and nothing
+else: on, that text lists the decisions whose acceptance note quotes the person instead of the newest ones in force,
+says by count what else the record holds, and says how to pull it with `search`, `governing_rules` and `read_record`.
+It reads the note of each decision's last accept; it does not read who typed the accept, and it cannot tell that a note
+that cites the person is true. A text longer than the host's ceiling is cut at a whole rule, from the oldest of the
+core, and says how many it left out. The file `mnema brief` prints does not change.

@@ -47,6 +47,7 @@ export {
   bootstrap,
   proposedDecisionsNewestFirst,
 } from './context/bootstrap.js';
+export { decisionsOnThePersonsWords } from './context/opening-core.js';
 export {
   type Brief,
   type BriefChannels,
