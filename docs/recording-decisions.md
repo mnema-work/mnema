@@ -159,7 +159,7 @@ scrollback and your CI log, so the report has no field that could hold one.
 Right after "Recorded decision ADR-n (id)", the command that records a decision and the `record_decision` tool say that the decision is born
 `proposed`, so not yet in force, and who accepts it. To an agent (the tool, and the command with `--which`), while `agent-accepts` is on:
 if the person dictated it, or chose it among options the agent offered (a recommended one included), it accepts it at once, with
-`decision_transition` (action `accept`) or `mnema decision move accept <id> --which <agent>`, the note quoting the answer; one
+`decision_transition` (action `accept`) or `mnema decision move accept <id> --which <agent>`, the note quoting their exact words between double quotes; one
 it concluded alone waits for the person, who rules on it with `mnema decision review`. With `agent-accepts` off, the line says
 that only a person accepts here. To the command with no `--which`, it says that a person accepts it with `mnema decision review`.
 A decision recorded a second time wrote nothing and says nothing of its state. It is a sentence of words: the product reads

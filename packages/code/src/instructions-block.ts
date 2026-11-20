@@ -179,7 +179,7 @@ const V5_BODY = [
  * words between double quotes (the check at the accept looks for them, `agent-accept-words.ts`). The fifth version was
  * the fourth one's text with one sentence about starring the repository, worded so an agent never stars it. The third version had the one sentence about when an agent accepts in
  * place of the parenthesis about the switch (a decision the person dictated or chose among options
- * the agent offered is accepted at once, with a note quoting the answer; one the agent concluded
+ * the agent offered is accepted at once, with a note quoting the answer, which the sixth version words as their exact words between double quotes; one the agent concluded
  * alone waits). The block is a file and cannot obey the switch, so it still names it. Its form is the second version's:
  * set apart from its begin marker by a blank line
  * (a formatter run over a project's Markdown asks for it, and the block failed the project's
