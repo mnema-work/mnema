@@ -819,7 +819,7 @@ function countedLocally<Input extends ZodRawShapeCompat | undefined>(
     } catch (error) {
       // A count that cannot be kept is not a reason for a tool to answer differently. It is said once,
       // in the ledger of caught failures (`swallowed-ledger.ts`), which `mnema doctor` reads.
-      noteSwallowed('mcp.tool-call-count', error, { dataDir });
+      noteSwallowed('mcp.tool-call-count', error, dataDir === undefined ? {} : { dataDir });
     }
   };
   return (async (...args: unknown[]) => {
