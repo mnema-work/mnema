@@ -5,7 +5,7 @@
  * folds the proven events alone, so the gate, the switches, the roster, the brief and every read
  * that opens a cache read them by construction. That is true of a reader only if it reaches the
  * tails through the bridge that folds them (`chainReplay`, `chainArrivals`, `orderedEvents`,
- * `orderedEventsOfRecord`, `provenSubjectEvents`, `@mnema/core`). A reader that calls one of the
+ * `orderedEventsAndUnread`, `orderedEventsOfRecord`, `provenSubjectEvents`, `@mnema/core`). A reader that calls one of the
  * readers of the bytes ({@link RAW}) itself reads them as written, unproven events included, and
  * that is right only for a reader that rules on them the way `verify` does, or that prepares a write
  * and serves nothing.
@@ -262,7 +262,7 @@ const READERS: Readonly<Record<string, Classified>> = {
   },
   'packages/code/src/commands/site.ts': {
     reads: 'proven',
-    why: 'the record page, through `orderedEvents`',
+    why: 'the record page, through `orderedEventsAndUnread`',
   },
   'packages/code/src/site/browser/check.ts': {
     reads: 'proven',
@@ -330,6 +330,7 @@ const RAW = [
 /** The bridge: what folds each tail's checkpoints and hands on proven events only. */
 const BRIDGE = [
   'orderedEvents',
+  'orderedEventsAndUnread',
   'orderedEventsOfRecord',
   'chainReplay',
   'chainArrivals',

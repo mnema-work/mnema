@@ -189,6 +189,7 @@ export {
 export { type Dated, NEWEST_FIRST_SQL, newestFirst } from './projections/newest-first.js';
 export {
   orderedEvents,
+  orderedEventsAndUnread,
   orderedEventsOfRecord,
   provenSubjectEvents,
   type RecordOrder,

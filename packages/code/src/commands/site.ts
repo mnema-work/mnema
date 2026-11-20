@@ -31,13 +31,19 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSy
 import { isAbsolute, join, relative, resolve } from 'node:path';
 import { catalogUpcasters, ensureTree, readingWhatTheDiskLets, verify } from '@mnema/chain';
 import type { NewerLines } from '@mnema/context';
-import { type DiscoveryEnv, orderedEvents, realOfMaybeMissing, resolveTrees } from '@mnema/core';
+import {
+  type DiscoveryEnv,
+  orderedEventsAndUnread,
+  realOfMaybeMissing,
+  resolveTrees,
+  type UnreadLine,
+} from '@mnema/core';
 import { inAWorkTree } from '../git-log.js';
+import { newerLinesRead } from '../intelligence-source.js';
 import { tailsOfFiles } from '../site/browser/tails.js';
 import { pageModel } from '../site/model.js';
 import { renderPage, type SiteHead } from '../site/page.js';
 import { theSiteVerifier } from '../site/verifier-bundle.js';
-import { newerLinesOfTrees } from '../tree-sources.js';
 
 /** What the site command needs: injected so it is testable. */
 export interface SiteContext {
@@ -239,8 +245,11 @@ export function runSite(
     };
   }
   let page: ReturnType<typeof pageModel>;
+  let unread: readonly UnreadLine[];
   try {
-    page = pageModel(orderedEvents({ root: publicRoot }, catalogUpcasters()));
+    const read = orderedEventsAndUnread({ root: publicRoot }, catalogUpcasters());
+    page = pageModel(read.events);
+    unread = read.unread;
   } catch (error) {
     return {
       ok: false,
@@ -274,6 +283,6 @@ export function runSite(
     files: Object.keys(files).length,
     verdict: { ok: ruled.ok, summary: ruled.summary },
     git: inAWorkTree(publicRoot),
-    ...newerLinesOfTrees(trees, ['public']),
+    ...newerLinesRead(unread),
   };
 }

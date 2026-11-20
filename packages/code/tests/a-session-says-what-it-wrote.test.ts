@@ -221,6 +221,40 @@ describe('what a transcript says the session wrote', () => {
     expect(whatTheSessionDid(transcript(notPeople), repo)?.lastResponseEdited).toBe(true);
   });
 
+  it('ends a response only at a line the host marks as human, never at harness text', () => {
+    const bare = (content: unknown, extra: Record<string, unknown> = {}): string =>
+      JSON.stringify({
+        type: 'user',
+        timestamp: '2020-01-01T00:01:00.000Z',
+        cwd: repo,
+        message: { role: 'user', content },
+        ...extra,
+      });
+    const harness = [
+      bare('This session is being continued from a previous conversation.', {
+        isCompactSummary: true,
+      }),
+      bare('<command-name>/clear</command-name>\n<command-message>clear</command-message>'),
+      bare('<local-command-stdout></local-command-stdout>'),
+      bare([{ type: 'text', text: '[Request interrupted by user]' }]),
+      bare('a line with no sender'),
+    ];
+    const lines = [...aWritingSession(), ...harness];
+    expect(whatTheSessionDid(transcript(lines), repo)?.lastResponseEdited).toBe(true);
+    // The same transcript with one genuine typed prompt at the end does end the response.
+    const typedAfter = [...lines, prompt('2020-01-01T00:02:00.000Z', 'thanks, and why?')];
+    expect(whatTheSessionDid(transcript(typedAfter), repo)?.lastResponseEdited).toBe(false);
+    // A slash command the person typed carries the mark and is a new prompt: it ends the response.
+    const command = [
+      ...lines,
+      prompt(
+        '2020-01-01T00:02:00.000Z',
+        '<command-message>model</command-message>\n<command-name>/model</command-name>',
+      ),
+    ];
+    expect(whatTheSessionDid(transcript(command), repo)?.lastResponseEdited).toBe(false);
+  });
+
   it('names the tools it counts, so a host that renames one reads low and never high', () => {
     expect(Object.keys(WRITING_TOOLS).sort()).toEqual([
       'Edit',
