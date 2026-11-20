@@ -1538,6 +1538,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-rules-land-beside-the-write.test.ts': 15,
   'packages/code/tests/the-runtime-floor-is-declared-once.test.ts': 6,
   'packages/code/tests/the-sampler-counts-or-refuses.test.ts': 6,
+  'packages/code/tests/the-scanner-text-says-which-check-is-required.test.ts': 3,
   'packages/code/tests/the-scope-of-a-write-picks-the-key-of-its-tree.test.ts': 8,
   'packages/code/tests/the-screen-a-choice-is-drawn-on.test.ts': 6,
   'packages/code/tests/the-screen-is-ours.test.ts': 15,
