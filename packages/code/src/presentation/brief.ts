@@ -123,6 +123,7 @@ import type {
   NamedDecision,
   PrivateRules,
 } from '@mnema/context';
+import { countAcceptances } from '@mnema/context';
 import type { DivergentMove } from '@mnema/core';
 import { isStackName, isStackVersion } from '@mnema/core';
 import type { BriefDone } from '../commands/brief.js';
@@ -132,7 +133,7 @@ import { oneLine } from '../one-line.js';
 import { DERIVED_FROM } from '../provenance.js';
 import { recordFraming } from '../record-framing.js';
 import { severalRecordsSentence } from '../record-integrity.js';
-import { acceptedBy } from './accepted-by.js';
+import { acceptedOnLine, usualIdentity } from './accepted-by.js';
 import { NAMED_TITLE_LIMIT, namedDecisionText } from './named-decision.js';
 import { toImport } from './status.js';
 import {
@@ -563,7 +564,9 @@ const WHERE_THE_RATIONALE_IS = [
 ];
 
 /**
- * WHO RULED EACH DECISION, said once above the list and then on every line of it.
+ * WHO RULED EACH DECISION, said in the counts above the list and then, per rule, by its day and
+ * whether an agent or a person accepted it. The identity is named once, in the header, and a line
+ * names one only when it is another identity's.
  *
  * WHY THE DOCUMENT SAYS IT. It hands decisions over as rules, and a rule is as good as whoever
  * made it one. Measured on the shipped binary, a clone with a key of its own recorded a
@@ -586,15 +589,20 @@ const WHERE_THE_RATIONALE_IS = [
  */
 function whoRuled(decisions: Brief['decisions']): string[] {
   if (decisions.length === 0) return [];
-  const byAnAgent = decisions.filter((one) => one.acceptance?.agent !== undefined).length;
+  const { agent, person } = countAcceptances(decisions);
   const unconfirmed = decisions.filter((one) => one.acceptance?.unconfirmed === true).length;
+  const usual = usualIdentity(decisions);
+  const usualUnconfirmed = decisions.some(
+    (one) => one.acceptance?.by === usual && one.acceptance?.unconfirmed === true,
+  );
   return [
-    'Each says who accepted it: the identity, and whether the act had an agent on it or not.',
-    ...(byAnAgent > 0
-      ? [
-          `${byAnAgent} of them ${byAnAgent === 1 ? 'was' : 'were'} accepted by an agent. The record keeps which, and \`mnema switch\` says whether an agent may accept.`,
-        ]
-      : []),
+    'Each line ends with the day it was accepted and whether an agent or a person accepted it.',
+    ...(usual === undefined
+      ? []
+      : [
+          `The identity is ${oneLine(usual)}${usualUnconfirmed ? ' (marked unconfirmed, see below)' : ''}, unless a line names another.`,
+        ]),
+    `${agent} of them ${agent === 1 ? 'was' : 'were'} accepted by an agent and ${person} by a person.${agent > 0 ? ' The record keeps which agent, and `mnema switch` says whether an agent may accept.' : ''}`,
     ...(unconfirmed > 0
       ? [
           `${unconfirmed} of them ${unconfirmed === 1 ? 'was' : 'were'} accepted by an identity marked unconfirmed: it has accepted only decisions it recorded itself, and no other identity has accepted any of them. That is who has looked, not a verdict on the rule.`,
@@ -1146,6 +1154,7 @@ function composed(
 ): string[] {
   const decisions = governance.decisions.slice(0, shown);
   const skills = governance.skills.slice(0, Math.max(0, shown - governance.decisions.length));
+  const usual = usualIdentity(governance.decisions);
   return [
     GENERATED,
     '',
@@ -1190,6 +1199,7 @@ function composed(
           decision.origin,
           decision.acceptance,
           decision.supersedes,
+          usual,
         ),
       ),
     ),
@@ -1292,9 +1302,10 @@ function rule(
   origin?: readonly string[],
   acceptance?: Acceptance,
   supersedes?: NamedDecision,
+  usual?: string,
 ): string {
   const from = (origin ?? []).map((target) => ` · ${DERIVED_FROM} \`${oneLine(target)}\``).join('');
-  const by = acceptance === undefined ? '' : ` · ${acceptedBy(acceptance)}`;
+  const by = acceptance === undefined ? '' : ` · ${acceptedOnLine(acceptance, usual)}`;
   // LAST, because the replaced decision's title is text somebody typed: whatever follows a free
   // title on the line is a field it could try to forge, and nothing follows this one.
   const replaced =

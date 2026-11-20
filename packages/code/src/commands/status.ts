@@ -57,7 +57,13 @@
 
 import { dirname } from 'node:path';
 import { catalogUpcasters, listPrivateKeyFingerprints } from '@mnema/chain';
-import { type Bootstrap, bootstrap, type ReportedRun, resume } from '@mnema/context';
+import {
+  acceptancesInForce,
+  type Bootstrap,
+  bootstrap,
+  type ReportedRun,
+  resume,
+} from '@mnema/context';
 import {
   type Clock,
   chainRootForScope,
@@ -163,6 +169,12 @@ export interface StatusDone {
    * same reason, and not in `--json`: it is a fact of this clone's git, said on the screen.
    */
   readonly forkKeptAside: ForkKeptAside | undefined;
+  /**
+   * How many of the rules in force an agent accepted and how many a person did, of every rule in
+   * force and not of the capped list in {@link StatusDone.status}. Beside the derivation and not in
+   * it, for the reason the fields above are: `--json` serves the derivation and only that.
+   */
+  readonly accepted: { readonly agent: number; readonly person: number };
 }
 
 /** There was no project here, or the actor named no identity in it. */
@@ -258,6 +270,7 @@ export function runStatus(
         env: ctx.env,
         now: Date.parse((ctx.clock ?? systemClock)()),
       }),
+      accepted: acceptancesInForce(caches(sources)),
       forkKeptAside: readForkKeptAside({ cwd: ctx.cwd, env: ctx.env, processEnv: process.env }),
       runsByTree: sources.flatMap((source) => {
         const { lastRun } = resume(caches([source]), {

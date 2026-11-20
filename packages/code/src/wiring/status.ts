@@ -80,6 +80,7 @@ export function registerStatus(program: Command, wiring: Wiring): Declared {
           result.asThisMachine,
           result.notInGit,
           result.forkKeptAside,
+          result.accepted,
         ),
       );
     });

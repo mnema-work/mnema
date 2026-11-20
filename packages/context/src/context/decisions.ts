@@ -186,6 +186,13 @@ export interface Acceptance {
    */
   readonly unannounced?: true;
   readonly unconfirmed: boolean;
+  /**
+   * The day (`YYYY-MM-DD`, UTC) the decision was accepted, present only for a decision that is
+   * in force (see {@link decisionsInForce}): the last move of such a decision is its acceptance, so it is the day it
+   * came into force. A decision moved on since (superseded, rejected) carries none, because its
+   * last move is not its acceptance.
+   */
+  readonly day?: string;
 }
 
 /**
@@ -406,6 +413,37 @@ export function ruleIdsInForce(caches: readonly ProjectionCache[]): ReadonlySet<
 }
 
 /**
+ * How many of `rules` an agent accepted and how many a person did, by what the accepting
+ * event's envelope says (an act with a `which` is an agent's, see {@link Acceptance}). A rule
+ * the record shows no acceptance for is in neither count.
+ */
+export function countAcceptances(rules: readonly { readonly acceptance?: Acceptance }[]): {
+  readonly agent: number;
+  readonly person: number;
+} {
+  let agent = 0;
+  let person = 0;
+  for (const one of rules) {
+    if (one.acceptance === undefined) continue;
+    if (one.acceptance.agent === undefined) person += 1;
+    else agent += 1;
+  }
+  return { agent, person };
+}
+
+/**
+ * Who accepted the rules in force over these caches, counted: it asks {@link decisionsInForce},
+ * so the rule for which decisions govern is still decided in one place, and the count is of
+ * every rule in force and not of the capped list `bootstrap` serves.
+ */
+export function acceptancesInForce(caches: readonly ProjectionCache[]): {
+  readonly agent: number;
+  readonly person: number;
+} {
+  return countAcceptances(decisionsInForce(caches));
+}
+
+/**
  * A decision nobody has ruled on yet: a name, plus the state that says WHICH
  * ruling is missing.
  *
@@ -532,6 +570,9 @@ export function acceptances(caches: readonly ProjectionCache[]): Map<string, Acc
       ...(accepted.which !== undefined ? { agent: accepted.which } : {}),
       ...(unannounced.has(decision.id) ? { unannounced: true as const } : {}),
       unconfirmed: somebodyToAsk && !confirmed.has(accepted.who),
+      ...((IN_FORCE as readonly string[]).includes(decision.state)
+        ? { day: decision.updatedAt.slice(0, 10) }
+        : {}),
     });
   }
   return result;

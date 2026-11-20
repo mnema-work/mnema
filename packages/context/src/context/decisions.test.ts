@@ -11,6 +11,8 @@ import {
 } from '../../tests/support/chain.js';
 import {
   acceptances,
+  acceptancesInForce,
+  countAcceptances,
   decisionsAwaitingJudgement,
   decisionsInForce,
   nameDecision,
@@ -55,7 +57,11 @@ describe('decisionsInForce: the calls that govern', () => {
           id: 'dec-1',
           adr: 'ADR-dec-1',
           title: 'Hand-rolled big-integer arithmetic',
-          acceptance: { by: expect.stringMatching(/^mnid:[0-9a-f]{8}$/), unconfirmed: false },
+          acceptance: {
+            by: expect.stringMatching(/^mnid:[0-9a-f]{8}$/),
+            unconfirmed: false,
+            day: '2026-01-01',
+          },
         },
       ]);
     } finally {
@@ -495,7 +501,11 @@ describe('acceptances, who ruled, and whether another identity has looked', () =
     const cache = b.cache();
     try {
       const got = acceptances([cache]).get('d-1');
-      expect(got).toEqual({ by: expect.stringMatching(/^mnid:/), unconfirmed: false });
+      expect(got).toEqual({
+        by: expect.stringMatching(/^mnid:/),
+        unconfirmed: false,
+        day: '2026-01-01',
+      });
       expect(got).not.toHaveProperty('agent');
     } finally {
       cache.close();
@@ -514,7 +524,11 @@ describe('acceptances, who ruled, and whether another identity has looked', () =
     const caches = [mine.cache(), theirs.cache()];
     try {
       const got = acceptances(caches);
-      expect(got.get('d-1')).toEqual({ by: expect.stringMatching(/^mnid:/), unconfirmed: true });
+      expect(got.get('d-1')).toEqual({
+        by: expect.stringMatching(/^mnid:/),
+        unconfirmed: true,
+        day: '2026-01-01',
+      });
       expect(got.get('d-2')?.unconfirmed).toBe(true);
     } finally {
       for (const cache of caches) cache.close();
@@ -532,6 +546,83 @@ describe('acceptances, who ruled, and whether another identity has looked', () =
       const got = acceptances([cache]);
       expect(got.get('by-person')).not.toHaveProperty('agent');
       expect(got.get('by-agent')).toMatchObject({ agent: 'claude-code' });
+    } finally {
+      cache.close();
+    }
+  });
+
+  it('counts the rules in force by who accepted them: an agent, a person, and both', () => {
+    const none = bench();
+    const people = bench();
+    proposed(people, 'p-1');
+    ruled(people, 'p-1');
+    proposed(people, 'p-2');
+    ruled(people, 'p-2');
+    const agents = bench();
+    proposed(agents, 'a-1');
+    ruled(agents, 'a-1', { which: 'claude-code' });
+    const mixed = bench();
+    proposed(mixed, 'm-1');
+    ruled(mixed, 'm-1');
+    proposed(mixed, 'm-2');
+    ruled(mixed, 'm-2', { which: 'claude-code' });
+    proposed(mixed, 'm-3');
+    ruled(mixed, 'm-3', { which: 'codex' });
+    const caches = [none, people, agents, mixed].map((one) => one.cache());
+    try {
+      expect(acceptancesInForce([caches[0] as (typeof caches)[number]])).toEqual({
+        agent: 0,
+        person: 0,
+      });
+      expect(acceptancesInForce([caches[1] as (typeof caches)[number]])).toEqual({
+        agent: 0,
+        person: 2,
+      });
+      expect(acceptancesInForce([caches[2] as (typeof caches)[number]])).toEqual({
+        agent: 1,
+        person: 0,
+      });
+      expect(acceptancesInForce([caches[3] as (typeof caches)[number]])).toEqual({
+        agent: 2,
+        person: 1,
+      });
+    } finally {
+      for (const cache of caches) cache.close();
+    }
+  });
+
+  it('leaves a superseded decision out of the count, and one with no acceptance', () => {
+    const b = bench();
+    proposed(b, 'old');
+    ruled(b, 'old', { which: 'claude-code' });
+    proposed(b, 'new');
+    ruled(b, 'new');
+    supersedeDecision(b, 'old', 'new');
+    proposed(b, 'waiting');
+    const cache = b.cache();
+    try {
+      expect(acceptancesInForce([cache])).toEqual({ agent: 0, person: 1 });
+      expect(countAcceptances([{}, { acceptance: { by: 'mnid:1', unconfirmed: false } }])).toEqual({
+        agent: 0,
+        person: 1,
+      });
+    } finally {
+      cache.close();
+    }
+  });
+
+  it('carries the day of the acceptance for a rule in force and none for a superseded one', () => {
+    const b = bench();
+    proposed(b, 'old');
+    ruled(b, 'old');
+    proposed(b, 'new');
+    ruled(b, 'new');
+    supersedeDecision(b, 'old', 'new');
+    const cache = b.cache();
+    try {
+      const got = acceptances([cache]);
+      expect(got.get('new')?.day).toBe('2026-01-01');
+      expect(got.get('old')).not.toHaveProperty('day');
     } finally {
       cache.close();
     }

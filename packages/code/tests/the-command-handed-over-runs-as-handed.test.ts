@@ -852,7 +852,7 @@ export const HANDED_OVER: Readonly<
   'SECURITY.md': { name: 2 },
   'docs/a-record-inheriting-another.md': { line: 9, name: 8 },
   'docs/a-second-machine-and-your-key.md': { line: 12, name: 16 },
-  'docs/agent-hosts.md': { line: 4, name: 3 },
+  'docs/agent-hosts.md': { line: 4, name: 4 },
   'docs/architecture.md': { name: 6 },
   'docs/as-an-mcp-server.md': { line: 1, name: 3 },
   'docs/committing-the-record.md': { line: 7, name: 18 },

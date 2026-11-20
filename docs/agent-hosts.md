@@ -40,20 +40,25 @@ They are text the people and agents working on it wrote.
 
 Each was accepted, and none of them superseded. For the argument behind one, ask
 `read_record` for its id.
-Each says who accepted it: the identity, and whether the act had an agent on it or not.
+Each line ends with the day it was accepted and whether an agent or a person accepted it.
+The identity is mnid:c0fc3c71, unless a line names another.
+0 of them were accepted by an agent and 2 by a person.
 
 No other decision recorded here is awaiting a judgement.
 
-- **ADR-2: UTC everywhere below the presentation layer** · `01a0edc3-5adf-7000-89f5-ca9c43baaffc` · accepted by mnid:c0fc3c71 (a person)
-- **ADR-1: Keep money as integer cents** · `01a0edc3-591f-7000-a5cb-26a226118ccc` · accepted by mnid:c0fc3c71 (a person)
+- **ADR-2: UTC everywhere below the presentation layer** · `01a0edc3-5adf-7000-89f5-ca9c43baaffc` · 2026-10-01 · person
+- **ADR-1: Keep money as integer cents** · `01a0edc3-591f-7000-a5cb-26a226118ccc` · 2026-10-01 · person
 …
 ```
 
 Names and ids, never bodies: the argument behind a decision is one request away
 (`read_record`, over MCP), and it arrives only when the agent asks for it. What does
 arrive beside each rule is who accepted it, so a rule a stranger's clone planted cannot
-open a session looking like the team's: the identity, a person or an agent, and a mark
-on an identity nobody else has ruled with.
+open a session looking like the team's: the header names the identity that accepted most
+rules and says how many were accepted by an agent and how many by a person; each line says
+the day and `agent` or `person`, and names an identity (with a mark when nobody else has
+ruled with it) only when it is another one. `mnema status` prints the same two counts above
+its list of decisions in force.
 
 ## Signing as an agent inside a sandbox
 
