@@ -99,7 +99,7 @@ claude plugin marketplace add mnema-work/mnema
 claude plugin install mnema@mnema
 ```
 
-Every other host is in [Hosts](docs/hosts.md). `mnema init` also writes the mnema
+To try the same steps in a scratch folder without installing anything, use `npx` ([the recipe](docs/install.md#try-it-without-installing)). Every other host is in [Hosts](docs/hosts.md). `mnema init` also writes the mnema
 instructions into `AGENTS.md` and the other files agent hosts read, naming each; at a
 terminal it first asks which hosts, and shows everything it will write before it writes it, and
 `mnema instructions --remove` takes them out. The first record, step by step, is
