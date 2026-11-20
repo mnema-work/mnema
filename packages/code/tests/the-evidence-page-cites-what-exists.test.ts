@@ -84,33 +84,110 @@ interface Declared {
 /**
  * The source with the text of comments and of template strings replaced by spaces (newlines and
  * length kept, so offsets still point into the original). Quoted strings are left, because a
- * title is one, and are walked so that a `//` inside one is not read as a comment.
+ * title is one.
+ *
+ * A SMALL LEXER, NOT TYPESCRIPT'S SCANNER: the TypeScript this repository builds with (7) is the
+ * native compiler and ships no JavaScript scanner to import. It classifies what a line-by-line
+ * reading cannot: a quote or a backtick inside a regular expression literal, a `//` inside a
+ * string, a template nested in the `${}` of another, and a `/` that divides and one that opens a
+ * regular expression (told by the token before it). A quoted string ends at its line, so a stray
+ * quote cannot swallow the file.
  */
+const BEFORE_A_REGEX =
+  /^(?:return|typeof|instanceof|in|of|case|delete|void|throw|new|else|do|yield|await)$/;
+
 function blanked(source: string): string {
   const out = source.split('');
   const blank = (from: number, to: number) => {
     for (let k = from; k < to; k++) if (out[k] !== '\n') out[k] = ' ';
   };
+  const stack: ('brace' | 'template')[] = [];
+  /** What the last significant token was: a word, or one punctuation character, or a value. */
+  let last = '';
   let i = 0;
+  /** Reads template text from `from` (just after a backtick or a closing brace); returns where code resumes. */
+  const template = (from: number): number => {
+    let j = from;
+    while (j < source.length) {
+      const c = source[j] as string;
+      if (c === '\\') j += 2;
+      else if (c === '`') {
+        blank(from, j);
+        last = '`';
+        return j + 1;
+      } else if (c === '$' && source[j + 1] === '{') {
+        blank(from, j);
+        stack.push('template');
+        last = '{';
+        return j + 2;
+      } else j++;
+    }
+    blank(from, source.length);
+    return source.length;
+  };
   while (i < source.length) {
     const c = source[i] as string;
-    const two = source.slice(i, i + 2);
-    if (two === '/*') {
+    const next = source[i + 1];
+    if (/\s/.test(c)) i++;
+    else if (c === '/' && next === '*') {
       const end = source.indexOf('*/', i + 2);
       const to = end === -1 ? source.length : end + 2;
       blank(i, to);
       i = to;
-    } else if (two === '//') {
+    } else if (c === '/' && next === '/') {
       const end = source.indexOf('\n', i);
       const to = end === -1 ? source.length : end;
       blank(i, to);
       i = to;
-    } else if (c === "'" || c === '"' || c === '`') {
+    } else if (c === "'" || c === '"') {
       let j = i + 1;
-      while (j < source.length && source[j] !== c) j += source[j] === '\\' ? 2 : 1;
-      if (c === '`') blank(i + 1, j);
+      while (j < source.length && source[j] !== c && source[j] !== '\n')
+        j += source[j] === '\\' ? 2 : 1;
       i = j + 1;
-    } else i++;
+      last = 'value';
+    } else if (c === '`') {
+      i = template(i + 1);
+    } else if (
+      c === '/' &&
+      (last === '' || (/^[^\w$)\]}`]$/.test(last) && last !== 'value') || BEFORE_A_REGEX.test(last))
+    ) {
+      // A regular expression literal: to the closing slash, outside a class, on this line.
+      let j = i + 1;
+      let inClass = false;
+      while (j < source.length && source[j] !== '\n' && (inClass || source[j] !== '/')) {
+        if (source[j] === '\\') j++;
+        else if (source[j] === '[') inClass = true;
+        else if (source[j] === ']') inClass = false;
+        j++;
+      }
+      if (source[j] === '/') {
+        j++;
+        while (/[a-z]/i.test(source[j] ?? '')) j++;
+        i = j;
+        last = 'value';
+      } else {
+        i++;
+        last = '/';
+      }
+    } else if (c === '{') {
+      stack.push('brace');
+      last = '{';
+      i++;
+    } else if (c === '}') {
+      if (stack.pop() === 'template') i = template(i + 1);
+      else {
+        last = '}';
+        i++;
+      }
+    } else if (/[\w$]/.test(c)) {
+      let j = i + 1;
+      while (/[\w$]/.test(source[j] ?? '')) j++;
+      last = source.slice(i, j);
+      i = j;
+    } else {
+      last = c;
+      i++;
+    }
   }
   return out.join('');
 }
@@ -380,5 +457,53 @@ describe('the evidence page cites only what exists', () => {
         'x',
       ),
     ).toMatch(/not a test/);
+  });
+  it('reads as many cases in every test file of the tree as a plain count of its call lines', () => {
+    // NON-VACUITY of the lexer. A reading that blanks real code (a quote inside a regular
+    // expression, a nested template) sees fewer cases than the file has and passes a skipped file
+    // as running, or fails a real citation. The count to beat is the plain one: call lines at the
+    // start of a line, outside a block comment found by a crude `/* */` match that shares nothing
+    // with the lexer.
+    const plainCall = /^[ \t]*x?(?:it|test)(?:\.\w+(?:\([^)\n]*\))?)*\(\s*['"`]/gm;
+    const short: string[] = [];
+    for (const file of tracked()) {
+      if (!file.startsWith('packages/') || !/\.test\.ts$/.test(file)) continue;
+      const source = read(file);
+      const comments = [...source.matchAll(/\/\*[\s\S]*?\*\//g)].map((m) => [
+        m.index as number,
+        (m.index as number) + m[0].length,
+      ]);
+      const plain = [...source.matchAll(plainCall)].filter(
+        (m) =>
+          !comments.some(
+            ([from, to]) =>
+              (m.index as number) >= (from as number) && (m.index as number) < (to as number),
+          ),
+      ).length;
+      const seen = declaredCases(source).filter((c) => c.kind === 'case').length;
+      if (seen < plain) short.push(`${file}: the reading sees ${seen} of ${plain}`);
+    }
+    expect(short).toEqual([]);
+    // Exact counts on files whose cases sit beside a regular expression with a quote or backtick
+    // in it, or beside a nested template: the files the first lexer got wrong.
+    const counts = (file: string) =>
+      declaredCases(read(file)).filter((c) => c.kind === 'case').length;
+    expect(counts('packages/code/tests/every-skill-the-plugin-ships-is-what-it-says.test.ts')).toBe(
+      5,
+    );
+    expect(counts('packages/code/tests/the-hosts-table-shows-the-vendors-own-logos.test.ts')).toBe(
+      7,
+    );
+    expect(counts('packages/code/tests/the-agent-is-told-what-it-has.test.ts')).toBe(7);
+    const sample = [
+      'const r = /`([^`]+)`/g;',
+      "it.skip('a', () => {});",
+      `const t = \`$${'{'}\`x\`}\`;`,
+      "it('b', () => {});",
+    ].join('\n');
+    expect(declaredCases(sample).map((c) => [c.title, c.skipped])).toEqual([
+      ['a', true],
+      ['b', false],
+    ]);
   });
 });
