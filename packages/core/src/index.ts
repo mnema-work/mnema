@@ -51,6 +51,7 @@ export {
   readHostMemory,
   scanBridge,
 } from './adr/bridges.js';
+export { DERIVED_KEY, type MadrDocument, madrOf } from './adr/madr.js';
 // Reading a directory of decision documents somebody else already wrote: the
 // market's ADR form, turned into the four things this product records. It is a pure
 // READ of text and of a directory: no writer, no key, no event, and no model. What it

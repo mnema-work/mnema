@@ -84,7 +84,7 @@ carries the help the command prints, word for word.
   - [mnema audit antipatterns](cli/audit-antipatterns.md): show recurring shapes in the record (reopens, supersessions, deprecations)
   - [mnema audit exposure](cli/audit-exposure.md): show which records hold something shaped like a credential (never the value)
 - [mnema diagram](cli/diagram.md): print a state machine, or an entity’s history or connections, as mermaid
-- [mnema export](cli/export.md): emit the record as an OCSF audit feed (NDJSON, envelope only, never a body)
+- [mnema export](cli/export.md): emit the record as an OCSF audit feed (NDJSON, envelope only, never a body), or with --madr write the decisions as MADR files
 - [mnema usage](cli/usage.md): what each run cost, read from this machine's Claude Code transcripts
 - [mnema resume](cli/resume.md): show where an actor left off, and the runs they still have open
 - [mnema repl](cli/repl.md): open an interactive session that reads this project

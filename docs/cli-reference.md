@@ -94,6 +94,9 @@ Each tool of the MCP server has its page, in [the tools](reference/mcp-tools.md)
   over which entity, in which session, signed by which key) and never a payload, for
   the reason `mnema audit exposure` exists. It writes to standard output and sends nothing
   anywhere; what it does and does not promise is in [what it proves](what-it-proves.md#the-long-form-claim-by-claim).
+- **The decisions as MADR files**: `mnema export --madr <dir>` writes one markdown file per decision of the
+  committed record, each marked as derived from it. Unlike the feed above, these files carry the bodies; see
+  [next to a folder of ADRs](mnema-next-to-a-folder-of-adrs.md#write-the-decisions-back-out-as-adrs).
 - **A page of the record that verifies itself**: `mnema site` writes one
   `index.html` from the committed (public) tree, by default under `.mnema/site/` (the record's own `.gitignore`
   keeps it out of git, and `mnema site` adds that line first to a record that lacks it); `--out <dir>` names another
