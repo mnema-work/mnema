@@ -308,7 +308,8 @@ be able to explain any line.
   change. A pull request that leaves the field out will be asked to fill it in before review.
 - **Credit.** You do not need a commit trailer. When the pull request is squash-merged, the maintainer puts
   one line in the commit message, taken from that field: `Assisted-by: <model> via <host>`.
-- **The README grid.** At the merge of a first outside pull request, add the login to `.github/contributors/contributors.json`
+- **The README grid.** At the merge of a first outside pull request, add the login to `people` in `.github/contributors/contributors.json`
+  (to `automated` for an account that declares itself automated: it is thanked on a line below the grid, with no photo)
   and run `node .github/contributors/draw.mjs`: it draws the round avatar and rewrites the README table (`--check` verifies it).
 - **Check it first.** Run `pnpm check:contribution` before you open the pull request (see
   [Before a pull request](#before-a-pull-request)), and keep one change per pull request.
