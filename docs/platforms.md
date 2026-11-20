@@ -24,7 +24,10 @@ drives the installed binary:
   (`session-start.mjs` for each file, with Codex's and Copilot's arguments, Gemini's `open`, and the subagent's) must hand
   over a decision in force, and every gate (VS Code, Codex, Copilot, Qwen Code, Cursor, Gemini's `gate`) must refuse a
   write under the rule, naming it (a refusal that says `mnema` could not answer fails the check), and let a write
-  elsewhere through. The rest (the recall, the compaction, the tally, the corrections, what follows a write, the dispatch,
+  elsewhere through. The two that hand rules over beside a write (Copilot's `edit-rules-beside.mjs` and Gemini's `beside`)
+  must name a rule linked `governs` at the folder written, and the one after a write in Claude Code (`after-a-write.mjs`),
+  given a write to `.claude/rules/x.txt` with a line that opens as a decision does, must say the record cites it nowhere.
+  The rest (the recall, the compaction, the tally, the corrections, the dispatch,
   the subagent's stop, the settled choice) are shown only to start and exit 0: the job says so on each, and does not claim
   they ran `mnema`. For Cursor the paths are also tried with backslashes and a drive letter, forward slashes, the drive
   letter in lower case, the 8.3 short spelling of the temp directory (`RUNNER~1`), and, for a folder that exists, another

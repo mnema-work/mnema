@@ -223,6 +223,30 @@ try {
     'link the rule',
     mnema(['link', ruleId, 'src/billing', '--rel', 'refuses-a-write'], project),
   );
+  // The hooks that hand rules over beside a write deliver only the rules linked `governs`: the one
+  // above belongs to the gate, so a second rule, linked that way, is what they have to name.
+  const governsSource = mustRun(
+    'mnema decision record (the rule that governs)',
+    mnema(
+      [
+        'decision',
+        'record',
+        'Invoices state cents',
+        'An invoice amount is a whole number of cents.',
+      ],
+      project,
+    ),
+  );
+  const governsId = governsSource.out.match(/\(([0-9a-f-]{20,})\)/)?.[1];
+  if (governsId === undefined) throw new Error('no id for the rule that governs');
+  mustRun(
+    'accept the rule that governs',
+    mnema(['decision', 'move', 'accept', governsId, '--note', 'agreed'], project),
+  );
+  mustRun(
+    'link the rule that governs',
+    mnema(['link', governsId, 'src/billing', '--rel', 'governs'], project),
+  );
   const verified = mustRun(
     'mnema verify --require signed',
     mnema(['verify', '--require', 'signed'], project),
@@ -607,6 +631,18 @@ try {
       check(
         ran.out.includes('Keep money as integer cents'),
         `hands over the decision in force: ${label}`,
+      );
+    } else if (one.handler === 'edit-rules-beside.mjs' || (gemini && one.args[0] === 'beside')) {
+      checkedFor += 1;
+      check(
+        ran.out.includes(governsId),
+        `hands over the rule that governs the path, beside the write, and names it: ${label}`,
+      );
+    } else if (one.handler === 'after-a-write.mjs') {
+      checkedFor += 1;
+      check(
+        ran.out.includes('record_decision'),
+        `says a rules file with a decision in it is cited nowhere: ${label}`,
       );
     } else if (GATES.has(one.handler) || (gemini && one.args[0] === 'gate')) {
       checkedFor += 1;

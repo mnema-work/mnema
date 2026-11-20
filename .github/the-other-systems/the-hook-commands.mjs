@@ -190,15 +190,19 @@ export function payloadOf(command, { project, file }) {
       };
     // `what-the-host-hands-the-hook.test.ts`: Claude Code's payload after a write holds `tool_input`
     // (`content`, `file_path`), `tool_name`, `tool_response`, `transcript_path`.
-    case 'after-a-write.mjs':
+    // The file is a rules file with a line that opens as a decision does, the one kind of write the
+    // verb answers for in every project, under the host's own spelling of the path.
+    case 'after-a-write.mjs': {
+      const rules = join(project, '.claude', 'rules', 'x.txt');
       return {
         ...session,
         hook_event_name: 'PostToolUse',
         tool_name: 'Write',
-        tool_input: { file_path: file, content: 'x\n' },
-        tool_response: { type: 'create', filePath: file },
+        tool_input: { file_path: rules, content: 'Decision: money is kept as integer cents\n' },
+        tool_response: { type: 'create', filePath: rules },
         transcript_path: join(project, 'no-transcript.jsonl'),
       };
+    }
     case 'agent-dispatched.mjs':
       return command.event === 'SessionEnd'
         ? { ...session, hook_event_name: 'SessionEnd', reason: 'other' }
