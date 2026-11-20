@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { run } from '../src/program.js';
 import { landedNotice } from '../src/recorded-content.js';
+import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
 
 /**
  * Small answers that used to say a no or a fact without saying what the person most likely
@@ -103,7 +104,11 @@ describe('a mistyped command says what it meant', () => {
 
 describe('what a write says about where it landed', () => {
   function git(...args: string[]): void {
-    execFileSync('git', args, { cwd: repo, stdio: 'ignore' });
+    execFileSync('git', args, {
+      cwd: repo,
+      stdio: 'ignore',
+      env: { ...process.env, GIT_CONFIG_GLOBAL: GIT_WITHOUT_MAINTENANCE },
+    });
   }
 
   it('says the record stays on this machine when git excludes it and tracks nothing', async () => {
