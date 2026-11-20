@@ -139,8 +139,10 @@ describe('the server', () => {
       await waitForIdleLine(before + 1);
       const held = idleLines().at(-1);
       const refused = held?.wal.filter((entry: { cut: boolean }) => !entry.cut) ?? [];
-      expect(refused.length).toBeGreaterThan(0);
-      expect(refused[0].because).toMatch(/busy/);
+      // A cache kept in memory has no log and says so; the one over the file a reader holds says busy.
+      expect(refused.map((entry: { because: string }) => entry.because)).toContainEqual(
+        expect.stringMatching(/^busy: /),
+      );
     } finally {
       for (const db of readers) {
         db.exec('COMMIT');
