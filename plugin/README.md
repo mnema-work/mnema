@@ -230,7 +230,7 @@ document, delivered by the host instead of waited for.
 - **A switch for each of them.** `mnema switch` says where each stands and what each
   carries ([the table of every switch](../docs/switches.md)); `mnema switch off edit-rules-push` stops the per-edit push, `mnema switch off
   brief-document` stops the opening document, and `mnema switch off recall-document` stops
-  the notes. <!-- generated: the channels that begin off --> All are on to begin with but two: `edit-first-write-gate` and `user-corrections`, below, are off until you switch them on. <!-- end --> The switch is a
+  the notes. <!-- generated: the channels that begin off --> All are on to begin with but three: `edit-first-write-gate`, `user-corrections` and `opening-core`, below, are off until you switch them on. <!-- end --> The switch is a
   **fact of your record** rather than a setting (signed, attributed, dated and scoped)
   because turning something off is legitimate and turning it off in silence is not: a reader
   of the record has to be able to tell *"no rule addressed that file"* from *"somebody had
