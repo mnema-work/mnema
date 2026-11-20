@@ -83,6 +83,12 @@ function aWarmFile(maxSegmentBytes?: number): { ctx: WriteContext; task: string 
   return { ctx, task };
 }
 
+/** A second process opening the file and refreshing it: what the writes before it said is forgotten. */
+function afresh(): void {
+  heard = [];
+  persisted().refresh();
+}
+
 function theLast(): RefreshReport {
   const report = heard.at(-1);
   if (report === undefined) throw new Error('nothing was reported');
@@ -94,13 +100,13 @@ describe('a refresh is reported with the branch that decided it', () => {
     const { ctx } = aWarmFile();
     landed(captureMemory(ctx, { content: 'arrived between two reads' }));
     ctx.writer.checkpoint();
-    persisted().refresh();
+    afresh();
     expect(heard).toEqual([{ root, outcome: 'incremental', arrived: 1 }]);
   });
 
   it('a chain that did not move is reported as unchanged', () => {
     aWarmFile();
-    persisted().refresh();
+    afresh();
     expect(heard).toEqual([{ root, outcome: 'unchanged' }]);
   });
 
@@ -110,6 +116,7 @@ describe('a refresh is reported with the branch that decided it', () => {
     ctx.writer.checkpoint();
     const cache = ProjectionCache.open(root, { upcasters });
     open.push(cache);
+    heard = [];
     cache.refresh();
     expect(heard).toEqual([{ root, outcome: 'replayed', branch: 'first-read' }]);
   });
@@ -118,7 +125,7 @@ describe('a refresh is reported with the branch that decided it', () => {
     const ctx = writing();
     landed(captureMemory(ctx, { content: 'a memory' }));
     ctx.writer.checkpoint();
-    persisted().refresh();
+    afresh();
     expect(heard).toEqual([{ root, outcome: 'replayed', branch: 'no-cache-meta' }]);
   });
 
@@ -127,7 +134,7 @@ describe('a refresh is reported with the branch that decided it', () => {
     const db = openDatabase(projectionCachePath({ root }));
     db.prepare("UPDATE cache_meta SET value = 'another-product' WHERE key = 'stamp'").run();
     db.close();
-    persisted().refresh();
+    afresh();
     expect(heard).toEqual([
       {
         root,
@@ -148,7 +155,7 @@ describe('a refresh is reported with the branch that decided it', () => {
     const file = join(dir, sealed);
     const before = statSync(file);
     utimesSync(file, new Date(before.atimeMs + 5_000), new Date(before.mtimeMs + 5_000));
-    persisted().refresh();
+    afresh();
     const report = theLast();
     expect(report).toMatchObject({ outcome: 'replayed', branch: 'sealed-segment', path: file });
     expect(report).toMatchObject({
@@ -163,7 +170,7 @@ describe('a refresh is reported with the branch that decided it', () => {
     const held = readFileSync(file);
     const at = held.indexOf('a task');
     writeFileSync(file, Buffer.concat([held.subarray(0, at), Buffer.from('X'), held.subarray(at)]));
-    persisted().refresh();
+    afresh();
     const report = theLast();
     expect(report).toMatchObject({ outcome: 'replayed', branch: 'active-segment', path: file });
     if (report.outcome !== 'replayed') throw new Error('not a replay');
@@ -184,7 +191,7 @@ describe('a refresh is reported with the branch that decided it', () => {
       };
       landed(captureMemory(older, { content: 'written long before, on another machine' }));
       older.writer.checkpoint();
-      persisted().refresh();
+      afresh();
       expect(heard).toEqual([{ root, outcome: 'replayed', branch: 'not-a-suffix' }]);
     } finally {
       rmSync(colleague, { recursive: true, force: true });
@@ -211,7 +218,7 @@ describe('a refresh is reported with the branch that decided it', () => {
       ),
     );
     ctx.writer.checkpoint();
-    persisted().refresh();
+    afresh();
     expect(heard).toEqual([{ root, outcome: 'replayed', branch: 'judge-it-whole' }]);
   });
 
@@ -220,7 +227,7 @@ describe('a refresh is reported with the branch that decided it', () => {
     observeRefreshes(undefined);
     landed(captureMemory(ctx, { content: 'arrived' }));
     ctx.writer.checkpoint();
-    persisted().refresh();
+    afresh();
     expect(heard).toEqual([]);
   });
 });
