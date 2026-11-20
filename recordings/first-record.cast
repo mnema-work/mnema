@@ -30,7 +30,7 @@
 [2.235906, "o", "  project in a file of its own (the `>` replaces the whole of the file it names), and\r\n  one line in a `CLAUDE.md` brings that file in (an `AGENTS.md` is read there only\r\n"]
 [2.235974, "o", "  where no `CLAUDE.md` exists):\r\n    @MNEMA.md\r\n"]
 [2.236044, "o", "\r\n  Commit `.mnema/` with the repository: the record travels with it, and every clone reads it.\r\n"]
-[2.236062, "o", "  Off until switched on: edit-first-write-gate, user-corrections.\r\n  Turn one on with `mnema switch on <name>`; `mnema switch` lists every channel.\r\n"]
+[2.236062, "o", "  Off until switched on: edit-first-write-gate, user-corrections, record-publish.\r\n  Turn one on with `mnema switch on <name>`; `mnema switch` lists every channel.\r\n"]
 [2.236134, "o", "  Next: `mnema decision record <title> <rationale>`; `mnema status` shows where things stand.\r\n"]
 [3.845129, "o", "\u001b[2m# write down a call, with the reasoning and what was turned down\u001b[0m\r\n"]
 [4.646682, "o", "\u001b[1m$\u001b[0m "]
