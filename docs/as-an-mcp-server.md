@@ -196,3 +196,38 @@ mnema skill provenance
 Adopting a pattern is not restricted: an agent can propose one and adopt it, the
 same way it can submit a task and approve it. What this shows you is who did,
 which is the part that used to be invisible to everyone downstream.
+
+## When a call is slow: the trace
+
+A long-lived server is meant to keep each call's latency flat over hours. When one is not, start the
+server (or any command) with `MNEMA_TRACE=1` and it prints one line to stderr for each call. Off, nothing is
+printed and no wrapper stands around a call. A host keeps a server's stderr in its own log; for a command it
+is the terminal.
+
+A line is `mnema-trace ` and one JSON object:
+
+```text
+mnema-trace {"door":"mcp","tool":"record_observation","ms":412.3,"rchar":158001234,"wchar":114002345,"projections":[{"root":"/work/repo/.git/mnema/%2E/private","outcome":"replayed","branch":"active-segment","path":"/work/repo/.git/mnema/%2E/private/tails/ab12/000001.jsonl","expected":"88213:1763600000123456789, sha256 3f2a… of the first 88213 bytes","found":"88301:1763600411987654321, sha256 9c0d… of the first 88213 bytes"}]}
+```
+
+- `tool` is the tool's name, or the command's verb; never an argument.
+- `ms` is the call's wall time; `rchar` and `wchar` are the bytes the process asked to read and write during
+  it (`/proc/self/io`, so Linux only: elsewhere the two are left out). They count the whole process, so
+  two calls in flight at once each see the other's bytes.
+- `projections` has one entry for each projection cache refreshed during the call, by `root`. Its `outcome` is
+  `unchanged` (nothing arrived), `incremental` (`arrived` events were folded in: the cheap path) or `replayed`
+  (the whole record was read again), and a replay says which `branch` sent it there:
+  `first-read` (a cache in memory, nothing kept), `no-cache-meta` (the file holds no account of itself),
+  `stamp` (written by other code), `sealed-segment` and `active-segment` (a segment is not what the cache recorded:
+  `path`, what it had recorded as `expected`, what is there as `found`), `refused-part-past-the-frontier`,
+  `not-a-suffix` (the chain changed in a way an appended suffix does not describe), `unread-lines`,
+  `judge-it-whole`, `file-kept-moving`, `database-failed`, `asked` and `rewritten-in-place`.
+
+A server whose calls are `incremental` or `unchanged` and read a few kilobytes is healthy. A `replayed` line on a
+call that wrote, with `rchar` in the megabytes, is the cost to chase, and `branch`, `path`, `expected` and
+`found` say what to look at. A refresh that happens outside any call (the session opening) is a line of its
+own with the tool `(outside a call)`. The lines hold paths of your machine: read them yourself, do not paste them where that matters.
+
+The server also keeps the SQLite log of each cache small: a 4 MiB limit, and a truncating checkpoint three seconds
+after a write once no call is running (never inside a read, and it does not wait for another process that is
+reading the file). SQLite's temporary files go beside the cache file, unless `TMPDIR` or `SQLITE_TMPDIR` is set.
