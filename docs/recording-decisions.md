@@ -191,6 +191,12 @@ line names the call that would do it.
 
 The working tree's changes are never read to find the paths: they could credit the session with what it did not do.
 
+## A mistyped verb says what it most likely meant
+
+There is no `mnema decision list`. The refusal says to put `record` before a title and points at where decisions
+are read: `mnema search --kind decision` and `mnema status`. `mnema decision move` takes the action before the id
+(`mnema decision move accept <id>`), and when an id is typed where the action goes it says so.
+
 ## Recording the same decision twice
 
 The `decision record` command and the `record_decision` tool look, before they write, for a decision of the same tree that is
