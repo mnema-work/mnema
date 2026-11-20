@@ -38,7 +38,7 @@ beforeEach(() => {
   mkdirSync(home, { recursive: true });
   mkdirSync(repo, { recursive: true });
   spawnSync('git', ['init', '-q'], { cwd: repo });
-  const init = mnema('init', '--yes', '--hosts', 'none', '--accepts', 'no');
+  const init = mnema('init', '--yes', '--hosts', 'none', '--accepts', 'yes');
   if (init.status !== 0) throw new Error(`init failed: ${init.out}`);
   writeFileSync(join(home, '.mnema', 'private-patterns.txt'), LIST);
 });
