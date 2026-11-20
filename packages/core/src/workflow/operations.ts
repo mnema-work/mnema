@@ -67,6 +67,7 @@ import {
   screened,
   screenPassedAs,
 } from '../content/screen.js';
+import type { PrivateList } from '../content/private-patterns.js';
 import { resolveExecutingAgent } from '../identity/authority.js';
 import { canonicalId, mintId } from '../identity/id.js';
 import { DESCRIPTION_TOPIC } from '../knowledge/companion-topics.js';
@@ -125,6 +126,12 @@ export interface WriteContext {
    * checkpoint. Absent where there is no run to write.
    */
   readonly askedBeforeFounding?: () => AppendRefusal | undefined;
+  /**
+   * This machine's private list, set only on the context of a PUBLIC write that was not told to
+   * pass: the append door refuses a fact whose text matches it (`PRIVATE_PATTERN`). Absent, nothing
+   * is asked (`privateListFor` says when it is set).
+   */
+  readonly privateList?: PrivateList;
 }
 
 /**

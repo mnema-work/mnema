@@ -147,6 +147,7 @@ export {
   type OpenTreeOptions,
   type Origin,
   openTreeForWriting,
+  privateListFor,
   type RoutedKind,
   reachableTrees,
   resolveScope,

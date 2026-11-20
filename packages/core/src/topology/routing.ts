@@ -55,6 +55,7 @@ import {
   passphraseFromEnvironment,
   signerAt,
 } from '@mnema/chain';
+import { type PrivateList, readPrivateList } from '../content/private-patterns.js';
 import { IdentityUnavailableError, membershipIn, rosterByRole } from '../identity/membership.js';
 import { canonicalIdentity } from '../identity/who.js';
 import type { DeferredWriteContext } from '../workflow/operations.js';
@@ -394,6 +395,22 @@ export function openTreeForWriting(
       : { installationRoot, continues: () => recordLeftBehind(dirname(projectPublic)) }),
     ...options,
   });
+}
+
+/**
+ * The part of a write context that asks this machine's private list (`private-patterns.txt`, in
+ * the data directory), to spread into the context of a write: the list when the write is PUBLIC,
+ * was not told to pass, and the machine has a list; nothing otherwise. A private or global write is
+ * never asked, since those trees are not cloned.
+ */
+export function privateListFor(
+  trees: ResolvedTrees,
+  scope: Scope,
+  allowed = false,
+): { readonly privateList?: PrivateList } {
+  if (scope !== 'public' || allowed) return {};
+  const list = readPrivateList(dirname(trees.keyRoot));
+  return list === undefined ? {} : { privateList: list };
 }
 
 /**
