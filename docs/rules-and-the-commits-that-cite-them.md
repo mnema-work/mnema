@@ -95,9 +95,12 @@ mnema aging --min-commits 10
 **The verdict is the gate's own answer.** `why` asks the same function the hook before a write and
 `governing_rules` ask (`whatAWriteMeets`), over the same rules, so the verdict it says is the one
 a write at that path would meet, including a channel switched off: a refusal whose channel is off
-is listed and `does not decide`. It does not say what an altered or unreadable record would do to
-the write (that refusal comes before any rule is read), and an asking is `ask` for the gate even in
-a host that does not ask a person.
+is listed and `does not decide`. When the record itself refuses the write (an entry altered after it
+was written, or a line this mnema cannot read), the verdict is `refuse` whatever the rules say, with
+the gate's own reason (`refusal` in `--json`, its first paragraph on the page), and no rule decides.
+With `edit-rules-push` off, a governing rule still stands over the path and the write goes through,
+but the rules are not handed to an agent: the page says so, `--json` carries `notDelivered`, and the
+rules do not `decide`. An asking is `ask` for the gate even in a host that does not ask a person.
 
 **What it proves.** That a commit's message carries the trailer, and that a commit touched a path
 a decision addresses: facts git holds and anyone can re-run with `git log`. **What it does not.**
