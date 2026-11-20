@@ -43,6 +43,13 @@ import {
   pluginsLeftBehind,
   vscodeListsAFolderThatIsGone,
 } from './doctor.js';
+import {
+  byHand,
+  type HostMcpScan,
+  keyOf,
+  scanClaudeJson,
+  scanEveryHost,
+} from './doctor-host-mcp.js';
 import { planRemoval, type TablePath } from './doctor-mcp.js';
 import {
   AUTOSTASH_APPLIES_TO_EVERY_FILE,
@@ -54,6 +61,8 @@ import { checkInstructions, refreshIn } from './instructions.js';
 /** What the plan needs: the doctor's context, and the command the merge driver setting would get. */
 export interface AfterUpdateContext extends DoctorContext {
   readonly driver: string;
+  /** `mnema upgrade --fix`: the dead MCP entries of every host's file are removed, after a copy of each file. */
+  readonly fix?: boolean;
 }
 
 /** One thing an update leaves, and what it costs the person. */
@@ -125,6 +134,92 @@ function mcpSteps(found: McpDeclarations): UpdateStep[] {
   return steps;
 }
 
+const UPGRADE_FIX = 'mnema upgrade --fix';
+
+/** Adds the drops to the ones a step of the same file already has: one file is edited once, from one reading. */
+function mergeDrops(into: readonly Drop[], more: readonly Drop[]): Drop[] {
+  const merged = into.map((one) => ({ table: one.table, names: [...one.names] }));
+  for (const drop of more) {
+    const there = merged.find((one) => JSON.stringify(one.table) === JSON.stringify(drop.table));
+    if (there === undefined) merged.push({ table: drop.table, names: [...drop.names] });
+    else there.names.push(...drop.names.filter((name) => !there.names.includes(name)));
+  }
+  return merged;
+}
+
+/**
+ * The entries of a host's config file whose command or folder is gone (ADR-652). Without `--fix` each file with one is
+ * only said, naming the entry; with it, a file this product edits byte for byte has the entry cut after a copy of the file,
+ * and any other file (Codex's TOML, one with comments, one a team commits) is told the exact line to remove. A live
+ * entry is never in a drop.
+ */
+function deadMcpSteps(
+  ctx: AfterUpdateContext,
+  declared: McpDeclarations,
+  existing: readonly UpdateStep[],
+): UpdateStep[] {
+  const steps = [...existing];
+  const root = declared.projectRoot;
+  const scans: HostMcpScan[] = [
+    scanClaudeJson(declared.claudeJson),
+    ...scanEveryHost({
+      home: ctx.env.home,
+      processEnv: ctx.processEnv,
+      platform: ctx.platform ?? process.platform,
+      root,
+      claudeJson: declared.claudeJson,
+    }),
+  ];
+  for (const scan of scans) {
+    const dead = scan.entries.filter((entry) => entry.dead !== undefined);
+    if (dead.length === 0) continue;
+    const where = oneLine(scan.file);
+    const cut = dead.filter((entry) => scan.removable.includes(keyOf(entry)));
+    const byYou = dead.filter((entry) => !cut.includes(entry));
+    const name = (entry: (typeof dead)[number]): string =>
+      `“${oneLine(entry.name)}” (${oneLine(entry.dead ?? '')})`;
+    if (ctx.fix !== true) {
+      steps.push({
+        topic: 'mcp',
+        class: 'said',
+        line: `${scan.title}: ${where} declares the mnema MCP server where it cannot start: ${dead.map(name).join('; ')}. Nothing was changed${cut.length > 0 ? `: \`${UPGRADE_FIX}\` removes ${cut.length === 1 ? 'it' : 'them'}, after a copy of the file is kept` : ''}${byYou.length > 0 ? `${cut.length > 0 ? '; ' : ': '}${byYou.map((entry) => oneLine(byHand(scan, entry))).join('; ')}` : ''}.`,
+      });
+      continue;
+    }
+    if (cut.length > 0) {
+      const drops: Drop[] = [];
+      for (const entry of cut) drops.push({ table: entry.table, names: [entry.name] });
+      const line = `${scan.title}: ${where} declares the mnema MCP server where it cannot start: ${cut.map(name).join('; ')}: the entr${cut.length === 1 ? 'y goes' : 'ies go'}, no other byte of the file changes, and a copy of it is kept beside it.`;
+      const same = steps.findIndex(
+        (one) => one.edit?.file === scan.file && one.class === 'applied',
+      );
+      const before = steps[same];
+      if (before?.edit !== undefined) {
+        steps[same] = {
+          ...before,
+          line: `${before.line} Also: ${line}`,
+          edit: { ...before.edit, drops: mergeDrops(before.edit.drops, drops) },
+        };
+      } else {
+        steps.push({
+          topic: 'mcp',
+          class: 'applied',
+          line,
+          edit: { file: scan.file, drops: mergeDrops([], drops), seen: hashOf(scan.file) },
+        });
+      }
+    }
+    if (byYou.length > 0) {
+      steps.push({
+        topic: 'mcp',
+        class: 'said',
+        line: `${scan.title}: ${where} declares the mnema MCP server where it cannot start: ${byYou.map(name).join('; ')}. This product does not edit that file safely (${scan.format === 'toml' ? 'a TOML file' : scan.shared ? 'a team shares it' : 'it is not strict JSON, or the entry could not be cut byte for byte'}): ${byYou.map((entry) => oneLine(byHand(scan, entry))).join('; ')}.`,
+      });
+    }
+  }
+  return steps;
+}
+
 /** The files of the project that hold an earlier version's instructions block, as the project's paths. */
 function outdatedInstructions(root: string): string[] {
   return checkInstructions(root)
@@ -168,7 +263,8 @@ export function whatAnUpdateAsks(ctx: AfterUpdateContext): readonly UpdateStep[]
       command: DOCTOR_VSCODE,
     });
   }
-  steps.push(...mcpSteps(mcpDeclarations(ctx)));
+  const declared = mcpDeclarations(ctx);
+  steps.push(...deadMcpSteps(ctx, declared, mcpSteps(declared)));
   const forDriver = { ...ctx, ...(attributeWillBeWritten ? { attributeWillBeWritten } : {}) };
   if (mergeDriverLines(forDriver).length > 0) {
     const would = fixMergeDriver(forDriver, { dryRun: true, driver: ctx.driver });

@@ -298,7 +298,7 @@ _mnema_flags() {
     'backup hook install') echo '-h --help -V --version --color' ;;
     'backup hook uninstall') echo '-h --help -V --version --color' ;;
     'doctor') echo '--fix --after-update --dry-run -h --help -V --version --color' ;;
-    'upgrade') echo '--dry-run -h --help -V --version --color' ;;
+    'upgrade') echo '--dry-run --fix -h --help -V --version --color' ;;
     'report') echo '--decline --off --on -h --help -V --version --color' ;;
     'completion') echo '-h --help -V --version --color' ;;
     'tour') echo '-h --help -V --version --color' ;;

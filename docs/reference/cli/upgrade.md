@@ -11,6 +11,7 @@ In the help under **This machine**.
 | Option | What it does |
 | --- | --- |
 | `--dry-run` | show the plan and write nothing |
+| `--fix` | also remove, from the MCP config file of every host, the mnema entries whose command or folder no longer exists, after a copy of each file |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
 
@@ -23,6 +24,7 @@ each thing by what it costs you.
 ```sh
 mnema upgrade --dry-run
 mnema upgrade
+mnema upgrade --fix
 ```
 
 `--dry-run` shows the plan and writes nothing. `mnema doctor --after-update` is the same function behind a second
@@ -52,6 +54,17 @@ to every file of the clone, so at a terminal you answer yes or no, and without o
 team commits, when an enabled plugin declares the server too (without a terminal it lists
 `claude mcp remove mnema --scope project`): whoever works there without the plugin loses the server.
 
+**Only with `--fix`: a dead mnema MCP entry of any host.** An entry is dead when the command it names is an absolute path
+that is no longer there, the script `node` is told to run is, its `cwd` is, or (in `~/.claude.json`) the project folder
+it sits under is gone; a bare command name (`mnema`, `npx`) is not judged, and an entry that works is never touched.
+`mnema upgrade` names each dead entry per host and changes nothing; `mnema upgrade --fix` removes it from a file this
+verb edits byte for byte (strict JSON: `~/.claude.json`, Gemini CLI and Qwen Code `settings.json`, Copilot CLI
+`mcp-config.json`, OpenCode `opencode.json`, Cursor `mcp.json`, VS Code `mcp.json`), after a copy of that file is kept
+beside it (`<file>.mnema-backup-<time>-<suffix>`), and `--dry-run` with it shows the plan. A Codex `config.toml`, a file
+with comments, and `opencode.json` of the project (the team commits it) are not edited: the line says the exact table
+or member to delete. The files looked at are the ones in your home that each host reads; `CODEX_HOME`, `COPILOT_HOME`,
+`XDG_CONFIG_HOME` and `CLAUDE_CONFIG_DIR` move them as they move the host's own.
+
 **Said**: a Claude Code plugin whose label or files are behind this version. The host updates it, with the commands the
 line names; this verb runs none of them.
 
@@ -69,6 +82,9 @@ before anything that changes how the repository behaves
 
 Options:
   --dry-run   show the plan and write nothing
+  --fix       also remove, from the MCP config file of every host, the mnema
+              entries whose command or folder no longer exists, after a copy of
+              each file
   -h, --help  display help for command
 
 The same as `mnema doctor --after-update`. It does not install anything: `npm i -g @mnema/code` stays
@@ -81,5 +97,10 @@ copy is kept; the entries of the project’s committed .mcp.json are asked, like
 It asks, at a terminal, before the merge driver and merge.autoStash and rebase.autoStash go into this
 repository’s .git/config (they apply to every file of the clone); without a terminal it lists that as the
 command to run. It says, and does not do, what a plugin a host keeps needs: the host updates it.
+A mnema MCP server entry of a host whose command or folder is gone (Claude Code’s, Codex’s, Gemini CLI’s,
+Qwen Code’s, Copilot CLI’s, OpenCode’s, Cursor’s, VS Code’s) is only named without `--fix`. With it, a file
+in strict JSON loses that entry, after a copy of the file is kept beside it; a Codex config.toml, a file
+with comments and a file the project commits are not edited: the exact line to remove is said. An entry
+that still works is never touched, and a bare command name (`mnema`, `npx`) is not judged.
 A run that finished writes the version it brought things to into this machine’s state file.
 ```

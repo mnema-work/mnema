@@ -30,7 +30,15 @@ declared more than once (a session is offered every tool once per declaration), 
 script that shadows the other, which). It also says whether VS Code's user `settings.json` lists the
 plugin under `chat.pluginLocations` (the setting VS Code's agent needs, marked experimental there)
 and which projects of `~/.claude.json` (the one inside `$CLAUDE_CONFIG_DIR` when that is set) still declare the server, those whose directory no longer
-exists included (`claude mcp remove` does not reach them; the line says what to delete). It reads
+exists included (`claude mcp remove` does not reach them; `mnema upgrade --fix` removes them). It also reads,
+for each other host, the config file the host keeps in your home (Codex `config.toml`, Gemini CLI and Qwen Code
+`settings.json`, Copilot CLI `mcp-config.json`, OpenCode `opencode.json` and the one in this project, Cursor
+`mcp.json`, VS Code `mcp.json`) and says per host what it found: no mnema server, one, more than one (two live
+declarations in one file are named, never removed for you), or an entry that is dead because its command, the
+script `node` runs for it or its folder no longer exists (a bare command name such as `mnema` or `npx` is not judged,
+since whether it resolves depends on the host's own `PATH`). A file that is not strict JSON is said to be unchecked.
+`mnema upgrade --fix` removes a dead entry; the line says the exact one to delete by hand where that verb does not edit
+the file. It reads
 files on this machine and, asked alone, writes nothing; it does not ask the registry, so a package
 that is published and not installed here is outside what it can say.
 
@@ -138,7 +146,8 @@ What it looks at, and nothing else:
   named `mnema` installed where the PATH points: the registry is not asked; VS Code’s user
   settings.json, for whether its agent is told where the plugin is; and the projects of
   ~/.claude.json (the one in $CLAUDE_CONFIG_DIR, when it is set) that still declare the
-  server; and, in a project inside a git repository, git’s stash and index, for an
+  server; the MCP config file each other host keeps in your home (Codex, Gemini CLI, Qwen
+  Code, Copilot CLI, OpenCode, Cursor, VS Code), for a second or a dead mnema entry; and, in a project inside a git repository, git’s stash and index, for an
   autostash that holds a tail’s files or a tail file left in conflict by a pull (the fork
   git hides, which `mnema status` says too), and
   each worktree’s .mnema/private/, where private notes lived before they moved into the
