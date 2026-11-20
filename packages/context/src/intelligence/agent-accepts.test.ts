@@ -130,7 +130,10 @@ describe('agentAcceptsReading', () => {
 
   describe('restsOnThePerson', () => {
     it.each([
-      ['Chosen by the maintainer among the options offered: "Only the reading of the record".', true],
+      [
+        'Chosen by the maintainer among the options offered: "Only the reading of the record".',
+        true,
+      ],
       ['They said \u201csim, fa\u00e7a assim, sem o cache\u201d.', true],
       ['Typed: \u00abuse pnpm for the workspace\u00bb.', true],
       ['Typed: "  Use   PNPM for the\nworkspace  ".', true],
