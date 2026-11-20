@@ -202,6 +202,8 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'DEBT: a read over a record whose last line was repeated, through the in-process CLI entry (run of program.ts); needs the split and an in-process run',
   'packages/code/tests/verify-json-says-whether-the-record-is-ok.test.ts':
     'DEBT: one fact rewritten, then verify --json through the built binary; a plain found/damage/run conversion that is owed',
+  'packages/code/tests/a-lost-tail-is-not-called-an-idle-agent.test.ts':
+    'DEBT: a whole tail removed, then the census of its key judged through the in-process CLI entry (run of program.ts); needs the split and an in-process run',
   'packages/code/tests/the-verdict-is-parts.test.ts':
     'DEBT: checkpoints emptied or cut, then the verdict painted, through the in-process CLI entry; needs the split and an in-process run',
   'packages/code/tests/a-key-whose-tail-was-cut-is-told-what-happened.test.ts':
@@ -249,7 +251,7 @@ const TAG = /^\s*\/\/ @proves [a-z0-9-]+\s*$/m;
  */
 const A_WRITE =
   /\b(?:writeFileSync|appendFileSync|rmSync|truncateSync|ftruncateSync|writeSync|unlinkSync|renameSync|copyFileSync|cpSync|writeFile|appendFile|rm|truncate|copyFile|cp)\(/;
-const A_TAIL = /checkpoints|\d{6}\.jsonl|\bsegments?\b|\.head\b|\btails\b/;
+const A_TAIL = /checkpoints|\d{6}\.jsonl|\bsegments?\b|\.head\b|\btails\b|\btailDir\b/;
 
 /** Whether a text has the shape of one that writes into tails or checkpoints. */
 export function writesIntoTails(text: string): boolean {
@@ -751,6 +753,8 @@ describe('the integrity tests and the states of the projection cache', () => {
       true,
     );
     expect(writesIntoTails("writeFileSync(join(locks, 't1.head'), 'x');")).toBe(true);
+    expect(writesIntoTails("rmSync(tailDir({ root }, tail), { recursive: true });")).toBe(true);
+    expect(writesIntoTails("rmSync(join(root, 'tailDirectory'), { recursive: true });")).toBe(false);
     expect(writesIntoTails("rmSync(join(repo, 'segments'), { recursive: true });")).toBe(true);
   });
 

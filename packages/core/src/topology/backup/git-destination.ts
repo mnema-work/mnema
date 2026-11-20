@@ -318,7 +318,7 @@ export function withCacheLock<T>(cache: string, act: () => T, waitMs = 30_000): 
       const holder = error.heldBy === undefined ? 'another process' : `process ${error.heldBy}`;
       throw new GitDestinationError(
         'GIT_FAILED',
-        `Another backup run is in progress on this destination (${holder} holds ${error.tailLock}), and it did not finish in ${waitMs / 1000} seconds. Nothing was changed: run again when it has. If that process is not a mnema backup that is still running, delete ${error.tailLock} and run again.`,
+        `Another backup run is in progress on this destination (${holder} holds ${error.tailLock}), and it did not finish in ${waitMs / 1000} ${waitMs === 1000 ? 'second' : 'seconds'}. Nothing was changed: run again when it has. If that process is not a mnema backup that is still running, delete ${error.tailLock} and run again.`,
       );
     }
     throw error;

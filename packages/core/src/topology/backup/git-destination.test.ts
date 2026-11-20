@@ -302,7 +302,7 @@ describe('a push that did not go up', () => {
     }
     expect(said).toContain(`process ${process.ppid} holds ${cache}.lock`);
     expect(said).toContain(`delete ${cache}.lock and run again`);
-    expect(said).toContain('did not finish in 1 seconds');
+    expect(said).toContain('did not finish in 1 second.');
     expect(existsSync(`${cache}.lock`)).toBe(true);
   });
 });
