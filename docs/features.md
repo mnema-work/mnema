@@ -130,7 +130,7 @@ Each line says what it does and what it leaves unproven; the page it points to h
 - **A copy of the record, kept elsewhere.** `mnema backup setup <folder>` names where a project's copy goes (a folder, or a git
   remote), `run` copies the tails and the public keys, `status` says how far the copy is from the trees, `verify` reads it as a
   record and sets it against them, and `restore` puts back what a tree lost, never over a file and, for a copy of another record,
-  only after a question at a terminal, with `--undo` to take it back. It is a copy, in clear, with no key in it, and it
+  only after a question at a terminal, with `--undo` to take it back. It is a copy, in clear, with no private key in it, and it
   is not a second record anyone reads from. [What a backup keeps, and what it loses](what-a-backup-keeps-and-what-it-loses.md).
 - **Your machine, checked.** `mnema doctor` says whether a `mnema` is on the `PATH`, whether the first `node` there takes it (and the Node
   Cursor's command-line agent carries, where it is on this machine), whether the

@@ -39,7 +39,7 @@ export function registerTally(program: Command, wiring: Wiring): Declared {
         '  A response begins at a line Claude Code marks as typed by a person (origin.kind human):',
         '  a compaction summary, a local command and “[Request interrupted by user]” never count, a',
         '  slash command opens a response, and a transcript of an older Claude Code with no origin',
-        '  yields no line of the person’s.',
+        '  yields no typed line of the person’s.',
         '  It writes nothing to the record. When the hook names its session it also keeps a small file on',
         '  this machine, the session journal (ids and counts, never what was said), and reads the',
         '  transcript from where the last reading stopped. `mnema switch off session-tally` stops the',

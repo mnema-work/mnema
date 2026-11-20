@@ -175,7 +175,7 @@ Each tool of the MCP server has its page, in [the tools](reference/mcp-tools.md)
   [After a compaction](the-session-journal-and-compaction.md#after-a-compaction)); nothing runs before a compaction, because the host throws away what a
   hook says then. The seventh runs `mnema corrections`, also at `Stop`, and is **off until you switch it on**
   (`mnema switch on user-corrections`): it reads the transcript's own words, the one reader here
-  that does (a line counts as the person's only where Claude Code marks it as typed by a person, `origin.kind` `human`: a compaction summary, a local command and `[Request interrupted by user]` never count, a slash command opens an answer but is never quoted, and a transcript of an older Claude Code with no `origin` yields no line of the person's), finds the prompts that open by correcting the agent ("no, …", "stop …", "do not …",
+  that does (a typed line counts as the person's only where Claude Code marks it `origin.kind` `human`: a compaction summary, a local command and `[Request interrupted by user]` never count, a slash command opens an answer but is never quoted, and a transcript of an older Claude Code with no `origin` yields no typed line; an option chosen in the question tool is read from the tool's result, which carries no `origin`), finds the prompts that open by correcting the agent ("no, …", "stop …", "do not …",
   "that is wrong", "use … instead", in English and Portuguese), and the answers the person gave to
   a question of the agent (the option chosen in the host's question tool, or the prompt after a
   response that ended in a question mark, quoted with the question), and records each as a `proposed`
@@ -263,7 +263,7 @@ Typed with nothing after it, `mnema` prints a short summary on stdout and exits 
 what you want to do instead): what the product does in a sentence, whether a project is founded here and how
 many decisions await a judgement, which channels are off on this machine and the command that turns one on,
 three verbs to go on with, and a pointer to `mnema --help`, which prints every command. The summary reads the
-record and writes nothing; a line of the record it cannot read does not stop it: what reads is counted, and the unreadable line is said first, with `mnema tail repair` named as the way to put the tail back from the repository's history. Only a record that does not read at all, or switches that do not, is not guessed: one line says it is unread and names `mnema verify`, and neither claims the project is not founded nor lists what could not be read. `mnema init` names the channels that begin off in
+record and writes nothing; a line of the record it cannot read does not stop it: what reads is counted, and the unreadable line is said first, with `mnema tail repair` named as the way to put the tail back from the repository's history for the public tree (for the private and the global tree, which are not versioned, it says to restore the file from a copy, or to repair or remove the line). Only a record that does not read at all, or switches that do not, is not guessed: one line says it is unread and names `mnema verify`, and neither claims the project is not founded nor lists what could not be read. `mnema init` names the channels that begin off in
 two lines before its "Next" line, and `mnema switch` ends each off line with the command that turns it on
 ([every switch](switches.md)).
 
@@ -457,6 +457,7 @@ named once and never read: `verify` says `N stray entry(ies) in a tail directory
 prints each name in the census, and exits as it would without it. The files an operating system writes
 on its own (`.DS_Store`, `._*`) are skipped and not named. The second reader, `mnema_verify.py`, says the
 same sentence.
+
 A symbolic link anywhere `verify` reads in the record is refused, first, and nothing behind it is read: `LINKED TAIL:
 tails/<name>` for a tail that is a link, and `LINKED ENTRY: <path>` for a segment, `checkpoints.jsonl`, `tailproof.json`, a
 key file or a witness file that is one (the second reader says the same words). The other reads (`status`, `brief`, the hooks, the
