@@ -585,7 +585,8 @@ export const FIRST_WRITE_GATE_CHANNEL: CountedChannel = 'edit-first-write-gate';
  * this machine's trees (the private one and the global one) can switch it on: a committed `on` would
  * make every clone of a public repository, a contributor's included, start pushing branches, so the
  * verb does not read one. `mnema switch on record-publish` records it privately without being asked
- * to. The agent is not told it is off (`channelsOff` leaves it out): it is a verb for a person.
+ * to. The agent is not told it is off (`channelsOffHere` leaves it out): it is a verb for a person,
+ * and the summary a person reads lists it.
  */
 export const RECORD_PUBLISH_CHANNEL: SwitchableChannel = 'record-publish';
 

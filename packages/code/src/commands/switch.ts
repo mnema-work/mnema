@@ -150,11 +150,7 @@ export function channelsOff(ctx: Pick<SwitchContext, 'cwd' | 'env'>): readonly S
   const trees = resolveTrees(ctx.cwd, ctx.env);
   return withScopedCaches(trees, (sources) => {
     const states = channelStates(sources, SWITCHABLE_CHANNELS, STARTS_OFF);
-    // `record-publish` is a verb for a person: an agent is not told it is off.
-    return SWITCHABLE_CHANNELS.filter(
-      (channel, at) =>
-        channel !== RECORD_PUBLISH_CHANNEL && (states[at] as ChannelState).on === false,
-    );
+    return SWITCHABLE_CHANNELS.filter((_channel, at) => (states[at] as ChannelState).on === false);
   });
 }
 
