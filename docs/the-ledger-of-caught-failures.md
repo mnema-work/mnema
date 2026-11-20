@@ -26,7 +26,7 @@ the text a hook was handed, a decision's title, an id, the name of a project, a 
 It never leaves the machine: nothing reads it but `mnema doctor`, nothing sends it, and `mnema report` does not offer it. It is not
 in the record and is not an event: nothing is signed, `mnema verify` never reads it and no format changed. It is not in the global
 tree either, so a backup does not copy it. The file is mode `0600` in a directory `0700`. Where the machine has no key of its own
-yet, nothing is written and no directory is made. Delete the file to start the count again. `mnema report --off` stops the reports and does not switch this ledger off: it is kept either way.
+yet, nothing is written and no directory is made. Delete the file to start the count again. Switching reports off stops the reports and does not switch this ledger off: it is kept either way.
 
 ## How big it can get
 
