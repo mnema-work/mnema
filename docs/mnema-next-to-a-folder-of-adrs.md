@@ -52,3 +52,29 @@ Once the team has judged a proposal, it is a decision of the record like any oth
 It does not check that the code follows a decision, and it does not say who a key belongs to: the record shows which
 key signed, and an identity is not a person's name. Importing again is safe: a file whose
 decision the record already holds is listed as already in the record, and nothing is written for it.
+
+## Write the decisions back out as ADRs
+
+`mnema export --madr <dir>` goes the other way: it writes each decision of the committed record as a MADR file in
+`<dir>`, named `adr-<n>-<title>.md`.
+
+```sh
+mnema export --madr docs/decisions-from-mnema
+```
+
+Each file starts with frontmatter (`status`, `date`, the decision's id), the title, and a note that it is **derived**:
+a reading of the signed record, not the source of truth. Change the decision in the record, never in the file.
+The rationale is under `## Decision Outcome` and what was turned down is under `## Alternatives Considered`, written
+as recorded. A decision that was superseded has `status: superseded by ADR-<n>` and names the other one in
+`superseded-by` and `supersedes`. There is no `## Context and Problem Statement`: the record has one field for the
+why, and the file does not invent a second.
+
+It is a separate output from `mnema export` without the flag, whose feed carries the envelope and never a body.
+The files carry the bodies, so the verb reads only the committed tree (the private and the global ones are left
+out), and refuses a folder inside the record, a path that is a file, and a file in the folder that it did not write
+(a hand-written ADR with the same name is never overwritten); a file it wrote itself is rewritten. It writes no
+index page, because one would be read back as a decision.
+
+`mnema decision import` of these files into another project gives the same title, rationale and alternatives. A
+decision whose text holds a line that is itself a `#` heading is cut where the reader cuts it, and the verb names
+it on standard error rather than leaving the import to find out.
