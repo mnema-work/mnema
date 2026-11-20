@@ -65,10 +65,16 @@ runner="$work/runner.sh"
   printf 'source %q\n' "$block"
 } >"$runner"
 
-# No `mnema` on the PATH: the block has to get it from npx alone.
-envv=(env -i HOME="$home" PATH="$PATH" npm_config_cache="$work/npm-cache" GIT_CONFIG_NOSYSTEM=1)
+# No `mnema` on the PATH: the block has to get it from npx alone. A machine that has one installed
+# keeps the rest of its PATH; the folders holding a `mnema` are left out of the run's.
+clean_path=""
+IFS=: read -ra path_dirs <<<"$PATH"
+for d in "${path_dirs[@]}"; do
+  [ -e "$d/mnema" ] || clean_path="${clean_path:+$clean_path:}$d"
+done
+envv=(env -i HOME="$home" PATH="$clean_path" npm_config_cache="$work/npm-cache" GIT_CONFIG_NOSYSTEM=1)
 if "${envv[@]}" bash -c 'command -v mnema' >/dev/null 2>&1; then
-  echo "FAIL: a mnema is already on the PATH, so the run would not prove the recipe"
+  echo "FAIL: a mnema is still on the PATH, so the run would not prove the recipe"
   exit 1
 fi
 

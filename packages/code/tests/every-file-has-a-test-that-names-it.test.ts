@@ -1468,7 +1468,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-newcomer-path-runs-the-page.test.ts': 4,
   'packages/code/tests/the-node-below-the-floor-is-refused.test.ts': 8,
   'packages/code/tests/the-notices-name-every-package-the-bundle-carries.test.ts': 4,
-  'packages/code/tests/the-npx-recipe-runs-the-page.test.ts': 8,
+  'packages/code/tests/the-npx-recipe-runs-the-page.test.ts': 4,
   'packages/code/tests/the-older-swept-tasks-are-one-line.test.ts': 3,
   'packages/code/tests/the-only-assistant-state-committed-is-the-instructions-rule.test.ts': 4,
   'packages/code/tests/the-opening-and-the-doctor-say-no-more-than-they-prove.test.ts': 11,
