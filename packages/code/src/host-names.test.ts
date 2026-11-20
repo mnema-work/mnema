@@ -4,13 +4,13 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { hookCeilingFor } from './host-hook.js';
 import {
   HOOK_TEXT_HOSTS,
   hookTextIsAssumed,
   hostSessionOf,
   SESSION_VARIABLES,
 } from './host-names.js';
-import { hookCeilingFor } from './host-hook.js';
 import { CLAUDE_CODE_CEILING, ceilingInWords } from './presentation/within-a-hook.js';
 
 describe('the session an MCP server reads from its environment', () => {

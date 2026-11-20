@@ -978,7 +978,9 @@ export const SESSION_VARIABLES: readonly { readonly host: HostName; readonly nam
  * The host's id for the session an MCP server was started in, read from the environment by the
  * table of hosts: the first variable of {@link SESSION_VARIABLES} that is set and not empty.
  */
-export function hostSessionOf(env: Readonly<Record<string, string | undefined>>): string | undefined {
+export function hostSessionOf(
+  env: Readonly<Record<string, string | undefined>>,
+): string | undefined {
   for (const { name } of SESSION_VARIABLES) {
     const value = env[name];
     if (value !== undefined && value !== '') return value;
