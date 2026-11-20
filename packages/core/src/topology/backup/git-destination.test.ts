@@ -8,7 +8,7 @@
 import { spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   cacheOf,
@@ -292,6 +292,7 @@ describe('a push that did not go up', () => {
 
   it('names the lock file, the process that holds it and how to clear it when a pid that is still alive holds it', () => {
     // The parent of this process answers to a signal and is not a backup: a pid reused by another process.
+    mkdirSync(dirname(cache), { recursive: true });
     writeFileSync(`${cache}.lock`, `${process.ppid} ${Date.now()}\n`);
     let said = '';
     try {
