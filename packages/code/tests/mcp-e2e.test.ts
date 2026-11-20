@@ -649,12 +649,14 @@ describe('MCP session + tools: unit', () => {
     groups[groups.length - 1] = (last.startsWith('0') ? '1' : '0') + last.slice(1);
     const mistyped = groups.join('-');
     expect(mistyped).not.toBe(task);
-    const held = (): string[] =>
-      (['public', 'private'] as const).flatMap((scope) =>
-        orderedEvents(
-          { root: chainRootForScope(session.trees, scope as Scope) as string },
-          catalogUpcasters(),
-        ).map((e) => e.id),
+    const held = (): string =>
+      JSON.stringify(
+        (['public', 'private'] as const).map((scope) =>
+          orderedEvents(
+            { root: chainRootForScope(session.trees, scope as Scope) as string },
+            catalogUpcasters(),
+          ),
+        ),
       );
     const before = held();
 
