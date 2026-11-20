@@ -219,6 +219,8 @@ export const EXEMPT: Readonly<Record<string, string>> = {
  * checkpoint by hand plants damage, wears the mark and belongs to EXEMPT, not here.
  */
 export const WRITES_BUT_PLANTS_NOTHING: Readonly<Record<string, string>> = {
+  'packages/chain/src/chain/staging.test.ts':
+    'creates and removes empty staging files and notes in a temporary locks/ folder and holds which of them the next writer of a tail clears; it writes into no tail and no checkpoints, so there is no record and no cache to judge',
   'packages/code/tests/the-audit-verbs-fold-the-record-once.test.ts':
     'appends one line of a kind no version declares, signed by a checkpoint as a newer mnema writes it, and damages nothing: it holds that four verbs which open no cache fold the tails once and carry the same field, so no cache state changes what it reads',
   'packages/chain/src/chain/a-tail-is-signed-as-soon-as-it-is-founded.test.ts':
@@ -247,7 +249,7 @@ const TAG = /^\s*\/\/ @proves [a-z0-9-]+\s*$/m;
  */
 const A_WRITE =
   /\b(?:writeFileSync|appendFileSync|rmSync|truncateSync|ftruncateSync|writeSync|unlinkSync|renameSync|copyFileSync|cpSync|writeFile|appendFile|rm|truncate|copyFile|cp)\(/;
-const A_TAIL = /checkpoints|\d{6}\.jsonl|segment|\.head|tails/;
+const A_TAIL = /checkpoints|\d{6}\.jsonl|\bsegments?\b|\.head\b|\btails\b/;
 
 /** Whether a text has the shape of one that writes into tails or checkpoints. */
 export function writesIntoTails(text: string): boolean {
@@ -740,6 +742,12 @@ describe('the integrity tests and the states of the projection cache', () => {
       writesIntoTails("rmSync(join(repo, '.mnema', 'tails', tail), { recursive: true });"),
     ).toBe(true);
     expect(writesIntoTails("writeFileSync(join(dir, 'notes.txt'), 'x');")).toBe(false);
+    expect(writesIntoTails("writeFileSync(join(dir, 'details.txt'), headers.header);")).toBe(false);
+    expect(writesIntoTails("writeFileSync(join(dir, 'x'), 'the headline and the retails');")).toBe(false);
+    expect(writesIntoTails("writeFileSync(join(dir, 'segmentation.txt'), 'x');")).toBe(false);
+    expect(writesIntoTails("writeFileSync(join(repo, '.mnema/tails/t/000001.jsonl'), 'x');")).toBe(true);
+    expect(writesIntoTails("writeFileSync(join(locks, 't1.head'), 'x');")).toBe(true);
+    expect(writesIntoTails("rmSync(join(repo, 'segments'), { recursive: true });")).toBe(true);
   });
 
   it('lets a file that writes and plants nothing say so, and accuses it once it plants or stops writing (the honest way out seen to fire)', () => {
