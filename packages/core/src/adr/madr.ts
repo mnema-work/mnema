@@ -44,7 +44,7 @@ export function madrOf(
   labelOf: (id: string) => string = (id) => id,
 ): MadrDocument {
   const status =
-    decision.state === 'superseded' && decision.supersededBy !== undefined
+    decision.supersededBy !== undefined
       ? `superseded by ${labelOf(decision.supersededBy)}`
       : decision.state;
   const front = [

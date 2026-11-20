@@ -131,7 +131,7 @@ async function exportMadr(
   io.err(
     render(
       fact(
-        `wrote ${result.files.length} decision file(s) from the committed record (the private and global trees are not read): a reading of the record, not the record`,
+        `wrote ${result.files.length} decision file(s) from the committed record only: a reading of the record, not the record`,
       ),
     ),
   );

@@ -999,7 +999,7 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'the trees this feed covered, joined from the closed scope vocabulary: the declaration that lets a filtered feed be told from a complete one',
   },
-  'export.ts «wrote {} decision file(s) from the committed record (the private and global trees are not read): a reading of the record, not the record» #1': {
+  'export.ts «wrote {} decision file(s) from the committed record only: a reading of the record, not the record» #1': {
     verdict: 'minted',
     why: 'the number of files the verb wrote, a count and no text',
   },

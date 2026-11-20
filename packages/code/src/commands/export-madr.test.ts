@@ -96,6 +96,7 @@ describe('mnema export --madr', () => {
     expect(ledger?.alternatives).toBeUndefined();
   });
 
+  // @proves a-madr-file-is-the-record
   it('marks every file as derived, naming the decision, and says it is not the source of truth', () => {
     const source = project('source');
     const id = record(source, ADOPTED);
