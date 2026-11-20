@@ -4,7 +4,10 @@ Every claim the pages make about what the agent hosts do, what the plugin hands 
 the verifiers agree on with vectors other people wrote, is held by one of three things: a file of this repository that fails when the claim stops
 being true, a result that was read once and is kept here as history, or nothing yet. The
 table says which, per claim, and the last column names the file: a test or a specification
-that is in the tree today. Every file named on this page is checked to exist.
+that is in the tree today. Every file named on this page is checked to exist, and every test file it names
+is checked to run: picked up by a configuration of the suite, with a case that is not skipped. A row
+that names a case by its title, written in parentheses after the file as the word case and the title in
+straight double quotes, is checked for that case, and a skipped case does not count. Whether the case passed is the CI's to say, not this page's.
 
 The words mean one thing each:
 
