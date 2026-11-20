@@ -275,6 +275,7 @@ import { registerUnlink } from './unlink.js';
 import { registerUpgrade } from './upgrade.js';
 import { registerUsage } from './usage.js';
 import type { Declared, Verb, Wiring } from './verb.js';
+import { registerProve } from './prove.js';
 import { registerVerify } from './verify.js';
 import { registerWhy } from './why.js';
 import { registerWitness } from './witness.js';
@@ -325,7 +326,7 @@ export const GROUPS: readonly Group[] = [
   },
   {
     heading: 'Verify:',
-    verbs: [registerVerify, registerWitness, registerCheck, registerSite],
+    verbs: [registerVerify, registerProve, registerWitness, registerCheck, registerSite],
   },
   {
     heading: 'Read:',

@@ -57,6 +57,7 @@ import {
   type TailProof,
   verifyTailProof,
 } from './tailproof.js';
+import { oneLine } from '../one-line.js';
 import { decisionReadingOf } from './verify.js';
 
 /** The one scheme of a proof of one decision; a checker refuses any other before reading on. */
@@ -144,9 +145,17 @@ export interface RecordToProve {
 
 /** Why a proof was not built. */
 export type ProveRefusal =
-  | { readonly ok: false; readonly reason: 'NO_SUCH_DECISION'; readonly detail: string }
-  | { readonly ok: false; readonly reason: 'NOT_YET_SIGNED'; readonly detail: string }
-  | { readonly ok: false; readonly reason: 'READS_OTHERWISE'; readonly detail: string };
+  /** No writing of the decision is in the record. */
+  | { readonly ok: false; readonly reason: 'NO_SUCH_DECISION' }
+  /** A line the proof needs is above its tail's last checkpoint: no signature covers it yet. */
+  | { readonly ok: false; readonly reason: 'NOT_YET_SIGNED'; readonly tail: string; readonly seq: number }
+  /** A tail the proof draws from holds no tail proof that reads, so nothing signs whose it is. */
+  | { readonly ok: false; readonly reason: 'NO_TAIL_PROOF'; readonly tail: string }
+  /**
+   * The lines the proof would carry read the decision otherwise than the whole record does: a move
+   * or a writing the record places by a citation of a line the proof does not carry.
+   */
+  | { readonly ok: false; readonly reason: 'READS_OTHERWISE' };
 
 /** A proof built: the file's text (canonical, one line feed at the end) and its manifest. */
 export type ProveResult =
@@ -203,7 +212,6 @@ export function proveDecision(
     return {
       ok: false,
       reason: 'NO_SUCH_DECISION',
-      detail: `no writing of a decision ${decision} is in this record`,
     };
   }
 
@@ -254,7 +262,8 @@ export function proveDecision(
       return {
         ok: false,
         reason: 'NOT_YET_SIGNED',
-        detail: `seq ${seq} of the tail ${tail} is above its last checkpoint, so no signature covers it yet`,
+        tail,
+        seq,
       };
     }
     let atTail = ranges.get(tail);
@@ -282,13 +291,13 @@ export function proveDecision(
   const fingerprints = new Set<string>();
   const tails: CanonicalValue[] = [];
   const packed = new Map<string, ChainEntry[]>();
-  for (const tail of [...ranges.keys()].sort(byCodeUnit)) {
+  for (const tail of [...ranges.keys()].sort()) {
     const held = record.tails.get(tail) as TailToProve;
     if (held.tailProof === undefined) {
       return {
         ok: false,
-        reason: 'NOT_YET_SIGNED',
-        detail: `the tail ${tail} holds no tail proof that reads, so nothing signs whose tail it is`,
+        reason: 'NO_TAIL_PROOF',
+        tail,
       };
     }
     fingerprints.add(tailFingerprint(tail));
@@ -319,7 +328,7 @@ export function proveDecision(
     tails.push({ ranges: tailRanges, tail, tailproof: serializeTailProof(held.tailProof) });
   }
   const keys: string[] = [];
-  for (const fingerprint of [...fingerprints].sort(byCodeUnit)) {
+  for (const fingerprint of [...fingerprints].sort()) {
     const key = record.key(fingerprint);
     if (key !== undefined) keys.push(publicKeyToPem(key));
   }
@@ -334,9 +343,6 @@ export function proveDecision(
     return {
       ok: false,
       reason: 'READS_OTHERWISE',
-      detail:
-        'the lines this proof would carry read the decision otherwise than the whole record does ' +
-        '(a move or a writing the record places by a citation of a line the proof does not carry)',
     };
   }
   const manifest = manifestOf(inFile, decision, recordNamed(record, [...ranges.keys()]));
@@ -355,7 +361,7 @@ export function proveDecision(
 
 /** The record the carried tails name, by their second-scheme artifacts; null where none names one. */
 function recordNamed(record: RecordToProve, tails: readonly string[]): string | null {
-  for (const tail of [...tails].sort(byCodeUnit)) {
+  for (const tail of [...tails].sort()) {
     const held = record.tails.get(tail) as TailToProve;
     if (held.tailProof?.scheme === NAMED_TAILPROOF_SCHEME && held.tailProof.record !== undefined) {
       return held.tailProof.record;
@@ -416,15 +422,13 @@ const RANGE_KEYS = ['checkpoint', 'entries'] as const;
 class ProofRefusal extends Error {}
 
 function refuse(what: string): never {
-  throw new ProofRefusal(what);
+  // What a proof holds came from whoever handed it over: a tail id or a title holding a line feed
+  // must not become a second line of the verdict.
+  throw new ProofRefusal(oneLine(what));
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function byCodeUnit(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
 }
 
 /** The shape of the file, before its bytes: an object, its scheme, then its four keys. */
@@ -625,9 +629,7 @@ function checked(text: string, upcasters: UpcasterRegistry): ProofVerdict {
     named.size === 1 ? ([...named][0] as string) : null,
   );
   const derivedValue = derived as unknown as Record<string, CanonicalValue>;
-  for (const field of [...new Set([...Object.keys(derivedValue), ...Object.keys(claimed)])].sort(
-    byCodeUnit,
-  )) {
+  for (const field of [...new Set([...Object.keys(derivedValue), ...Object.keys(claimed)])].sort()) {
     const said =
       claimed[field] === undefined
         ? undefined

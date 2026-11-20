@@ -111,6 +111,6 @@ export function proofVector(): string {
     },
     VECTOR_DECISION,
   );
-  if (!proved.ok) throw new Error(`the vector record does not prove: ${proved.detail}`);
+  if (!proved.ok) throw new Error(`the vector record does not prove: ${proved.reason}`);
   return proved.text;
 }
