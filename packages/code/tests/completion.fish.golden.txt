@@ -959,6 +959,7 @@ complete -c mnema -f -n '__mnema_at "backup hook uninstall"' -l color -x -a 'aut
 complete -c mnema -f -n '__mnema_at "doctor"' -l fix -r
 complete -c mnema -f -n '__mnema_at "doctor"' -l after-update
 complete -c mnema -f -n '__mnema_at "doctor"' -l dry-run
+complete -c mnema -f -n '__mnema_at "doctor"' -l latest
 complete -c mnema -f -n '__mnema_at "doctor"' -s h -l help
 complete -c mnema -f -n '__mnema_at "doctor"' -s V -l version
 complete -c mnema -f -n '__mnema_at "doctor"' -l color -x -a 'auto always never'
