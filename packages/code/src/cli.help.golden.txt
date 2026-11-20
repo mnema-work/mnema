@@ -1921,7 +1921,11 @@ $ mnema decision import --help
 | The reason is what the file’s own decision section says (MADR’s “Chosen option, because”,
 | Nygard’s `## Decision`). A list of every option (MADR’s `## Considered Options`) is recorded
 | WITHOUT the option the file chose; when the file does not say which it chose, none is
-| recorded as turned down, and the plan says so.
+| recorded as turned down, and the plan says so. A file with no decision, context or lead
+| has its sections read as the reason, each under its own heading, and the plan says so.
+| A reason or a turned-down text over the size a recorded field may hold is cut, on a
+| blank line, and ends in a note with the SHA-256 of the whole text, which stays in the
+| file the decision names; a title over that size is refused.
 |
 | With --format the same road reads other places decisions are written: the ECC Memory
 | Vault (a directory of *.json memories; only `kind: "decision"` is read, and a `rejected`
