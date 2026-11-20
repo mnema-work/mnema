@@ -24,7 +24,6 @@
  */
 
 import { lstatSync } from 'node:fs';
-import { join } from 'node:path';
 import {
   catalogUpcasters,
   LinkedRecordError,

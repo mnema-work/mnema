@@ -36,7 +36,6 @@ import {
   lstatSync,
   mkdirSync,
   readdirSync,
-  readFileSync,
   renameSync,
   rmdirSync,
   rmSync,

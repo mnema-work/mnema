@@ -78,7 +78,7 @@ function standingLines(git: {
 /** When a copy was last made, or why that is not known: a manifest that does not read is said, not passed over. */
 function lastRun(one: { copiedAt: string | undefined; manifest: string }): string {
   if (one.manifest === 'unreadable') {
-    return 'the copy\'s mnema-backup.json does not read, so no last run can be named (`mnema backup verify` fails it)';
+    return "the copy's mnema-backup.json does not read, so no last run can be named (`mnema backup verify` fails it)";
   }
   return one.copiedAt === undefined ? 'never copied' : `last copied ${one.copiedAt}`;
 }
