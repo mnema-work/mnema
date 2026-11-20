@@ -131,27 +131,32 @@ function folded(text: string): string {
   return text.normalize('NFC').toLowerCase().replaceAll('\u2019', "'").replace(/\s+/g, ' ').trim();
 }
 
-/** Whether a folded passage is nothing but assent, accents and punctuation set aside. */
-function pureAssent(passage: string): boolean {
-  const words = passage
+/** The words of a folded passage: letters only, accents set aside; digits, apostrophes and marks split. */
+function wordsOf(passage: string): string[] {
+  return passage
     .normalize('NFD')
     .replace(/\p{M}/gu, '')
-    .split(/[^\p{L}\p{N}']+/u)
+    .split(/[^\p{L}]+/u)
     .filter((w) => w !== '');
-  return words.every((w) => ASSENT.has(w));
 }
+
+/** An option label's own tag, which the person did not type. */
+const OPTION_TAG = /\s*\((?:recommended|recomendado)\)\s*/gi;
 
 /**
  * Whether an acceptance note rests on the person, judged by the note's form only: a passage
  * between double quotes (straight, curly or Portuguese), of at least 20 characters once
- * folded, that is not pure assent. The passage is not checked against the conversation here
+ * folded (an option label's "(Recommended)" tag set aside), with at least one word, that is
+ * not pure assent. The passage is not checked against the conversation here
  * (the reading cannot see the transcript); the accept gate checks it at accept time. Single
  * quotes, "chosen by" and "the maintainer said" do not count.
  */
 export function restsOnThePerson(note: string): boolean {
   for (const match of note.matchAll(QUOTED)) {
-    const passage = folded(match[1] ?? match[2] ?? match[3] ?? '');
-    if (passage.length >= LEAST_QUOTED && !pureAssent(passage)) return true;
+    const passage = folded((match[1] ?? match[2] ?? match[3] ?? '').replace(OPTION_TAG, ' '));
+    if (passage.length < LEAST_QUOTED) continue;
+    const words = wordsOf(passage);
+    if (words.length > 0 && !words.every((w) => ASSENT.has(w))) return true;
   }
   return false;
 }
