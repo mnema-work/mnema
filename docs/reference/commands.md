@@ -91,7 +91,7 @@ carries the help the command prints, word for word.
 
 ## The git log
 
-- [mnema why](cli/why.md): show under which decisions a file or a commit stands
+- [mnema why](cli/why.md): show under which decisions a file or a commit stands; for a file, also the verdict a write there would meet
 - [mnema commits](cli/commits.md): show the commits that cite a decision and those that touched what it addresses
 - [mnema aging](cli/aging.md): show accepted decisions whose addressed paths changed in many commits since
 - [mnema trailer](cli/trailer.md): print the commit trailer that ties a commit to a decision
