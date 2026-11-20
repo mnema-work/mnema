@@ -377,7 +377,7 @@ describe('what the page shows with no script', () => {
 });
 
 describe('the badge of an act', () => {
-  it("says agent <which> when an agent carried it out, and no agent declared when none did", () => {
+  it('says agent <which> when an agent carried it out, and no agent declared when none did', () => {
     const page = renderPage(
       model([
         decision({
