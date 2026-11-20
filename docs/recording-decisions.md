@@ -164,15 +164,23 @@ case, or `/regex/flags`; a blank line and a line that starts with `#` are skippe
 `/regex/` that does not compile is read as the text between its slashes. The file belongs to
 the machine: it is not in the repository, it is not signed and it is not in the record.
 
-With a list there, a decision, a task, a memory, an observation, a skill or a handoff written
-to the **public** tree whose text matches a pattern is **refused** (`PRIVATE_PATTERN`),
-and nothing is recorded. The refusal names the pattern and a short passage around the match,
-which are your own words, and says how to go on: write it without the passage, record it in
-the private scope, or, if the mention is meant to be public, pass `--allow-private-pattern`
-(`allow_private_pattern` on `record_decision`, `create_task`, `capture_memory`,
-`record_observation`, `create_skill` and `record_handoff`). The private and the global trees
-are never asked, and a machine with no list is not asked at all. The check reads the text of
-the fact; it does not read a move's reason, a link or a check.
+With a list there, a text written to the **public** tree that matches a pattern is **refused**
+(`PRIVATE_PATTERN`), and nothing is recorded, not even the first half of a write that has two
+(a task and its description, a handoff and its brief). That covers a decision, a task, a memory,
+an observation, a skill and a handoff; the note or reason of a decision, task or skill move
+(including `decision review`) and of a supersede; a link; and `decision import --write`. The
+refusal names the pattern and a short passage around the match, which are your own words, and
+says how to go on: write it without the passage, record it in the private scope, or, if the
+mention is meant to be public, pass `--allow-private-pattern` (`allow_private_pattern` on
+`record_decision`, `create_task`, `capture_memory`, `record_observation`, `create_skill`,
+`record_handoff`, `decision_transition`, `task_transition`, `skill_transition` and
+`link_knowledge`). The private and the global trees are never asked, and a machine with no list
+is not asked at all. A retraction's reason is not asked.
+
+A `/regex/` that nests a quantifier (a group that holds `*`, `+` or `{n,}` and is itself
+quantified, such as `(a+)+$`) is read as the text between its slashes, not as a regular
+expression: such a pattern can hang a write, and Node cannot stop a regular expression once it
+runs.
 
 `mnema record commit` asks the same list of the events its cut carries, and **warns** on the
 second stream, before it builds the branch, of each one that matches: those events are signed

@@ -30,13 +30,13 @@ tool definition: record_observation          2635 B      567 tok
 tool definition: retract_note                1839 B      416 tok
 tool definition: retract_link                2064 B      470 tok
 tool definition: record_handoff              2982 B      674 tok
-tool definition: link_knowledge              2731 B      610 tok
+tool definition: link_knowledge              2955 B      653 tok
 tool definition: create_task                 2829 B      618 tok
-tool definition: task_transition             2020 B      447 tok
+tool definition: task_transition             2244 B      491 tok
 tool definition: record_decision             3284 B      711 tok
-tool definition: decision_transition         2290 B      509 tok
+tool definition: decision_transition         2514 B      553 tok
 tool definition: create_skill                2690 B      588 tok
-tool definition: skill_transition            1924 B      437 tok
+tool definition: skill_transition            2148 B      481 tok
 tool definition: bootstrap                   2291 B      570 tok
 tool definition: skills                      2508 B      589 tok
 tool definition: focus                       1221 B      286 tok
@@ -52,4 +52,4 @@ tool definition: rules_before_an_edit        2427 B      546 tok
 tool definition: audit_accountability        1986 B      440 tok
 tool definition: audit_exposure              1626 B      364 tok
 tool definition: audit_antipatterns          1447 B      314 tok
-tool definitions: all 27                    56480 B    12772 tok
+tool definitions: all 27                    57376 B    12947 tok

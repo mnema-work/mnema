@@ -20,6 +20,7 @@ In the help under **Record** · a command of [`mnema decision`](decision.md).
 | `--write` | record the plan. Omitted, nothing is written: the plan is printed and the record is untouched. |
 | `--scope <scope>` | where the decision is born: public (team-visible), or private (this machine, this project). Omitted, an imported decision lands in the public tree, like any other. The global tree is not offered: a proposal records a path inside this project, and every project reads the global tree. |
 | `--which <agent>` | the agent that executed this, when an agent (a script, a CI step) is driving mnema: omit it when you are acting directly. Declared (by this flag, or by MNEMA_AGENT_KEY), never assumed; where that agent’s key signs, the fact names the agent as the record does. It names the executor. See --scope for where the fact lands. A value that names no agent (an unset variable) is refused, never credited to you. |
+| `--allow-private-pattern` | record a public write even though its text matches a pattern of this machine’s private list (private-patterns.txt in the data directory); without it such a write is refused. Never asked in the private scope. |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
 <!-- End of the part written by hand. -->
@@ -32,34 +33,39 @@ Usage: mnema decision import [options] <source>
 propose the decisions already written in this repository’s decision files
 
 Arguments:
-  source             what to read: the directory holding the decision files
-                     (e.g. docs/adr), inside the project, or, with --format, the
-                     source of that format
+  source                   what to read: the directory holding the decision
+                           files (e.g. docs/adr), inside the project, or, with
+                           --format, the source of that format
 
 Options:
-  --format <format>  what <source> holds: ecc-vault, rulings, claude-memory.
-                     Omitted, it is a directory of decision files. ecc-vault: a
-                     directory of the ECC Memory Vault’s *.json memories.
-                     rulings: one file whose `Ruling:` lines are read.
-                     claude-memory: a directory of the memory files Claude Code
-                     writes.
-  --write            record the plan. Omitted, nothing is written: the plan is
-                     printed and the record is untouched.
-  --scope <scope>    where the decision is born: public (team-visible), or
-                     private (this machine, this project). Omitted, an imported
-                     decision lands in the public tree, like any other. The
-                     global tree is not offered: a proposal records a path
-                     inside this project, and every project reads the global
-                     tree.
-  --which <agent>    the agent that executed this, when an agent (a script, a CI
-                     step) is driving mnema: omit it when you are acting
-                     directly. Declared (by this flag, or by MNEMA_AGENT_KEY),
-                     never assumed; where that agent’s key signs, the fact names
-                     the agent as the record does. It names the executor. See
-                     --scope for where the fact lands. A value that names no
-                     agent (an unset variable) is refused, never credited to
-                     you.
-  -h, --help         display help for command
+  --format <format>        what <source> holds: ecc-vault, rulings,
+                           claude-memory. Omitted, it is a directory of decision
+                           files. ecc-vault: a directory of the ECC Memory
+                           Vault’s *.json memories. rulings: one file whose
+                           `Ruling:` lines are read. claude-memory: a directory
+                           of the memory files Claude Code writes.
+  --write                  record the plan. Omitted, nothing is written: the
+                           plan is printed and the record is untouched.
+  --scope <scope>          where the decision is born: public (team-visible), or
+                           private (this machine, this project). Omitted, an
+                           imported decision lands in the public tree, like any
+                           other. The global tree is not offered: a proposal
+                           records a path inside this project, and every project
+                           reads the global tree.
+  --which <agent>          the agent that executed this, when an agent (a
+                           script, a CI step) is driving mnema: omit it when you
+                           are acting directly. Declared (by this flag, or by
+                           MNEMA_AGENT_KEY), never assumed; where that agent’s
+                           key signs, the fact names the agent as the record
+                           does. It names the executor. See --scope for where
+                           the fact lands. A value that names no agent (an unset
+                           variable) is refused, never credited to you.
+  --allow-private-pattern  record a public write even though its text matches a
+                           pattern of this machine’s private list
+                           (private-patterns.txt in the data directory); without
+                           it such a write is refused. Never asked in the
+                           private scope.
+  -h, --help               display help for command
 
 Every proposal is born `proposed`, whatever the file says its status is: what
 the file states is reported, never applied. Accepting one is a person’s move,

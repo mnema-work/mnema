@@ -851,6 +851,7 @@ describe('every option the CLI declares feeds something', () => {
         .map((one) => `${one.where} ${one.flags}`)
         .sort(),
     ).toEqual([
+      'mnema decision import --allow-private-pattern',
       'mnema decision import --scope <scope>',
       'mnema decision import --which <agent>',
       'mnema decision record --allow-private-pattern',

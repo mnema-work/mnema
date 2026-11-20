@@ -15,6 +15,7 @@ Link one piece of knowledge to another: a directed edge from a `subject` entity 
 | `rel` | string, at least 1 character | yes | The relation label (an open string). |
 | `scope` | one of `public`, `private`, `global` | no | Where the link lands; overrides the routing rule (public). |
 | `project` | string, at least 1 character | no | Which project of this workspace the fact belongs to: its absolute path, as this server gave it; a bare name is refused. Omitted, it lands in the project this session resolved to (the one `bootstrap` names). Pass it whenever the work being recorded happened in a different project of this workspace. |
+| `allow_private_pattern` | boolean | no | Record a PUBLIC write even though its text matches a pattern of this machine’s private list; without it such a write is refused. Never asked in the private scope. |
 
 ## Annotations
 

@@ -15,6 +15,7 @@ Move an existing task to a new state (submit, start, block, unblock, submit_revi
 | `reason` | string | no | Why (block, cancel, reopen). |
 | `note` | string | no | What was done (approve, complete). |
 | `feedback` | string | no | What must change (request_changes). |
+| `allow_private_pattern` | boolean | no | Record a PUBLIC write even though its text matches a pattern of this machine’s private list; without it such a write is refused. Never asked in the private scope. |
 
 ## Annotations
 

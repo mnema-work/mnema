@@ -184,12 +184,14 @@ complete -c mnema -f -n '__mnema_at "decision record"' -l color -x -a 'auto alwa
 complete -c mnema -f -n '__mnema_at "decision move"' -l note -r
 complete -c mnema -f -n '__mnema_at "decision move"' -s h -l help
 complete -c mnema -f -n '__mnema_at "decision move"' -l which -r
+complete -c mnema -f -n '__mnema_at "decision move"' -l allow-private-pattern
 complete -c mnema -f -n '__mnema_at "decision move"' -s V -l version
 complete -c mnema -f -n '__mnema_at "decision move"' -l color -x -a 'auto always never'
 complete -c mnema -f -n '__mnema_at "decision move"' -a 'accept reject'
 
 # mnema decision review
 complete -c mnema -f -n '__mnema_at "decision review"' -s h -l help
+complete -c mnema -f -n '__mnema_at "decision review"' -l allow-private-pattern
 complete -c mnema -f -n '__mnema_at "decision review"' -s V -l version
 complete -c mnema -f -n '__mnema_at "decision review"' -l color -x -a 'auto always never'
 
@@ -197,6 +199,7 @@ complete -c mnema -f -n '__mnema_at "decision review"' -l color -x -a 'auto alwa
 complete -c mnema -f -n '__mnema_at "decision supersede"' -l reason -r
 complete -c mnema -f -n '__mnema_at "decision supersede"' -s h -l help
 complete -c mnema -f -n '__mnema_at "decision supersede"' -l which -r
+complete -c mnema -f -n '__mnema_at "decision supersede"' -l allow-private-pattern
 complete -c mnema -f -n '__mnema_at "decision supersede"' -s V -l version
 complete -c mnema -f -n '__mnema_at "decision supersede"' -l color -x -a 'auto always never'
 
@@ -205,6 +208,7 @@ complete -c mnema -f -n '__mnema_at "decision import"' -l format -x -a 'ecc-vaul
 complete -c mnema -f -n '__mnema_at "decision import"' -l write
 complete -c mnema -f -n '__mnema_at "decision import"' -l scope -x -a 'public private'
 complete -c mnema -f -n '__mnema_at "decision import"' -l which -r
+complete -c mnema -f -n '__mnema_at "decision import"' -l allow-private-pattern
 complete -c mnema -f -n '__mnema_at "decision import"' -s h -l help
 complete -c mnema -f -n '__mnema_at "decision import"' -s V -l version
 complete -c mnema -f -n '__mnema_at "decision import"' -l color -x -a 'auto always never'
@@ -213,6 +217,7 @@ complete -c mnema -f -n '__mnema_at "decision import"' -l color -x -a 'auto alwa
 complete -c mnema -f -n '__mnema_at "link"' -l rel -r
 complete -c mnema -f -n '__mnema_at "link"' -l scope -x -a 'public private global'
 complete -c mnema -f -n '__mnema_at "link"' -l which -r
+complete -c mnema -f -n '__mnema_at "link"' -l allow-private-pattern
 complete -c mnema -f -n '__mnema_at "link"' -s h -l help
 complete -c mnema -f -n '__mnema_at "link"' -s V -l version
 complete -c mnema -f -n '__mnema_at "link"' -l color -x -a 'auto always never'
@@ -286,6 +291,7 @@ complete -c mnema -f -n '__mnema_at "skill move"' -l note -r
 complete -c mnema -f -n '__mnema_at "skill move"' -l reason -r
 complete -c mnema -f -n '__mnema_at "skill move"' -s h -l help
 complete -c mnema -f -n '__mnema_at "skill move"' -l which -r
+complete -c mnema -f -n '__mnema_at "skill move"' -l allow-private-pattern
 complete -c mnema -f -n '__mnema_at "skill move"' -s V -l version
 complete -c mnema -f -n '__mnema_at "skill move"' -l color -x -a 'auto always never'
 complete -c mnema -f -n '__mnema_at "skill move"' -a 'review adopt reject deprecate'
@@ -423,6 +429,7 @@ complete -c mnema -f -n '__mnema_at "task move"' -l note -r
 complete -c mnema -f -n '__mnema_at "task move"' -l feedback -r
 complete -c mnema -f -n '__mnema_at "task move"' -s h -l help
 complete -c mnema -f -n '__mnema_at "task move"' -l which -r
+complete -c mnema -f -n '__mnema_at "task move"' -l allow-private-pattern
 complete -c mnema -f -n '__mnema_at "task move"' -s V -l version
 complete -c mnema -f -n '__mnema_at "task move"' -l color -x -a 'auto always never'
 complete -c mnema -f -n '__mnema_at "task move"' -a 'submit start block unblock submit_review request_changes approve complete cancel reopen'
