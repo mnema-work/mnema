@@ -11,6 +11,7 @@ In the help under **Record**.
 | Option | What it does |
 | --- | --- |
 | `--alternatives <text>` | what was considered and turned down, and why not (optional). A decision is immutable, so this is recorded at birth: an option rejected later is a new decision, or supersedes this one. |
+| `--governs <path>` | a path of this project the decision governs, recorded as a `governs` link in the same act (repeatable). It is held to the rules of `mnema link --rel governs`: one refused refuses the whole act and nothing is written. |
 | `--scope <scope>` | where the decision is born: public (team-visible), private (this machine, this project), or global (personal, cross-project). Omitted, a decision lands in the public tree (a declaration about the project). |
 | `--which <agent>` | the agent that executed this, when an agent (a script, a CI step) is driving mnema: omit it when you are acting directly. Declared (by this flag, or by MNEMA_AGENT_KEY), never assumed; where that agent’s key signs, the fact names the agent as the record does. It names the executor. See --scope for where the fact lands. A value that names no agent (an unset variable) is refused, never credited to you. |
 | `--stdin` | read the rationale from standard input instead of the line |
@@ -38,6 +39,7 @@ record a decision, or move one, in the current project
 
 Options:
   --alternatives <text>                  what was considered and turned down, and why not (optional). A decision is immutable, so this is recorded at birth: an option rejected later is a new decision, or supersedes this one.
+  --governs <path>                       a path of this project the decision governs, recorded as a `governs` link in the same act (repeatable). It is held to the rules of `mnema link --rel governs`: one refused refuses the whole act and nothing is written.
   --scope <scope>                        where the decision is born: public (team-visible), private (this machine, this project), or global (personal, cross-project). Omitted, a decision lands in the public tree (a declaration about the project).
   --which <agent>                        the agent that executed this, when an agent (a script, a CI step) is driving mnema: omit it when you are acting directly. Declared (by this flag, or by MNEMA_AGENT_KEY), never assumed; where that agent’s key signs, the fact names the agent as the record does. It names the executor. See --scope for where the fact lands. A value that names no agent (an unset variable) is refused, never credited to you.
   --stdin                                read the rationale from standard input instead of the line
