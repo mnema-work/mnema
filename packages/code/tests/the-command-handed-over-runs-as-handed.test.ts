@@ -988,6 +988,7 @@ export const HANDED_OVER: Readonly<
   'packages/code/src/wiring/instructions.ts': { name: 1 },
   'packages/code/src/wiring/key.ts': { line: 17, name: 15 },
   'packages/code/src/wiring/mcp.ts': { line: 2 },
+  'packages/code/src/wiring/misuse.ts': { line: 1, name: 1 },
   'packages/code/src/wiring/options.ts': { name: 1 },
   'packages/code/src/wiring/promote.ts': { line: 8 },
   'packages/code/src/wiring/recall.ts': { line: 4, name: 4 },
