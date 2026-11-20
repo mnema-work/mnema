@@ -40,7 +40,12 @@ import {
   THE_READING_THAT_OPENED_THESE,
   withScopedCaches,
 } from '../tree-sources.js';
-import { everyRuleInForceAt, type RuleInForceUnder, whatAWriteMeets } from '../what-a-write-meets.js';
+import {
+  everyRuleInForceAt,
+  type RuleInForceUnder,
+  type VerdictAtAPath,
+  verdictAtAPath,
+} from '../what-a-write-meets.js';
 
 /** What the command needs: injected so it is testable. */
 export interface WhyContext {
@@ -88,7 +93,7 @@ export interface WhyCommit {
  * What a write at a path would meet: `refuse` (it does not happen), `ask` (it waits for a person),
  * `governs` (it goes through with the rules beside it) or `none`.
  */
-export type WhyVerdict = 'refuse' | 'ask' | 'governs' | 'none';
+export type WhyVerdict = VerdictAtAPath;
 
 /** The answer for a file. */
 export interface WhyFile {
@@ -247,21 +252,12 @@ export function runWhy(
     const touched =
       at.relative !== undefined && gitHere ? commitsWithTrailer(root, [at.relative]) : [];
     const listed = touched ?? [];
-    // THE VERDICT IS THE GATE'S OWN ANSWER (`whatAWriteMeets`, the function the write hook and
-    // `governing_rules` call), never a second reading of the rules: a refusal or an asking is what
-    // it returns, and only when it returns nothing do the governing rules say `governs` or `none`.
-    const met = whatAWriteMeets(sources, { paths: [input.target], root, from: ctx.cwd });
-    const verdict: WhyVerdict =
-      met?.grade ?? (at.rules.some((rule) => rule.relation === 'governs') ? 'governs' : 'none');
-    const decidingRelation = {
-      refuse: 'refuses-a-write',
-      ask: 'asks-for-a-person',
-      governs: 'governs',
-      none: undefined,
-    }[verdict];
-    const decidingIds = new Set(met?.at.flatMap((one) => one.rules.map((rule) => rule.id)));
-    const decides = (rule: RuleInForceUnder): boolean =>
-      rule.relation === decidingRelation && (met === undefined || decidingIds.has(rule.id));
+    // THE VERDICT IS THE GATE'S OWN ANSWER, asked through the gate module, never a second reading.
+    const { verdict, decided } = verdictAtAPath(
+      sources,
+      { path: input.target, root, from: ctx.cwd },
+      at.rules,
+    );
     const notPushed = rulesNotPushedLine(
       sources,
       at.rules.filter((rule) => rule.relation === 'governs').length,
@@ -272,7 +268,7 @@ export function runWhy(
       ...(at.relative !== undefined ? { relative: at.relative } : {}),
       exists,
       verdict,
-      rules: inGateOrder(at.rules).map((rule) => ruleOf(rule, undefined, decides(rule))),
+      rules: inGateOrder(at.rules).map((rule) => ruleOf(rule, undefined, decided(rule))),
       git: gitHere,
       shallow: gitHere && isShallow(root),
       commits: listed.slice(0, LISTED).map((one) => describe(all, one)),

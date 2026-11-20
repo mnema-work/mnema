@@ -90,9 +90,10 @@ mnema link "$ADR" src/billing --rel refuses-a-write
 #>   Landed in the public tree: committed with the repository, so it reaches every clone.
 mnema why src/billing/invoice.ts
 #> src/billing/invoice.ts  ·  not in the working tree
+#>   verdict: a write here would be refused
 #>   rules in force that address this path: 1 · commits touching it with a trailer: 0
 #>
-#>   src/billing  refuses a write  Keep money as integer cents  01a0af84-7eab-7000-8888-79c0dd5690e2
+#>   src/billing  refuses a write  Keep money as integer cents  01a0af84-7eab-7000-8888-79c0dd5690e2  decides
 #>
 #>   Read from git just now; nothing was written to the record.
 ```
