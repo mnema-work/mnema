@@ -23,7 +23,7 @@
  * No side is taken between a fork and a cut: both are named.
  */
 
-import { lstatSync, readFileSync } from 'node:fs';
+import { lstatSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   catalogUpcasters,
@@ -33,7 +33,6 @@ import {
   verifyChain,
 } from '@mnema/chain';
 import {
-  BACKUP_MANIFEST,
   BackupRefusedError,
   type BackupTree,
   copiedOf,
@@ -41,6 +40,7 @@ import {
   linked,
   placesOf,
   planCopy,
+  readManifest,
 } from './copy.js';
 
 /** What a tail file of the copy is against the same file of the tree. */
@@ -122,36 +122,14 @@ export function readCopy(
   }
   const copied = planCopy(folder, tree);
 
-  let copiedAt: string | undefined;
+  const read = readManifest(folder);
+  const manifest = read.state;
+  const copiedAt = read.state === 'whole' ? read.copiedAt : undefined;
   const missing: string[] = [];
-  let manifest: CopyReading['manifest'] = 'whole';
-  const manifestPath = join(folder, BACKUP_MANIFEST);
-  if (lstatSync(manifestPath, { throwIfNoEntry: false }) === undefined) {
-    manifest = 'absent';
-  } else {
-    try {
-      const read: unknown = JSON.parse(readFileSync(manifestPath, 'utf-8'));
-      const listed = (read as { files?: unknown } | null)?.files ?? [];
-      if (
-        typeof read !== 'object' ||
-        read === null ||
-        Array.isArray(read) ||
-        !Array.isArray(listed)
-      )
-        throw new TypeError('the manifest is not an object with a list of files');
-      for (const one of listed as { path?: unknown; bytes?: unknown }[]) {
-        if (typeof one?.path !== 'string' || typeof one.bytes !== 'number')
-          throw new TypeError('an entry of the manifest has no path and size');
-        const held = copied.find((file) => file.path === one.path);
-        if (held === undefined || held.bytes.length < one.bytes) missing.push(one.path);
-      }
-      const stamp = (read as { copiedAt?: unknown }).copiedAt;
-      if (typeof stamp === 'string') copiedAt = stamp;
-    } catch {
-      // A manifest that is there and does not read says nothing of the copy: the reading says so, and fails.
-      manifest = 'unreadable';
-      copiedAt = undefined;
-      missing.length = 0;
+  if (read.state === 'whole') {
+    for (const listed of read.files) {
+      const held = copied.find((file) => file.path === listed.path);
+      if (held === undefined || held.bytes.length < listed.bytes) missing.push(listed.path);
     }
   }
 

@@ -592,6 +592,32 @@ describe('a copy read back, and put back', () => {
     expect(runBackupVerify(a)).toMatchObject({ ok: true, sound: true });
   });
 
+  it('refuses to restore a copy whose manifest does not read, and says it in status; a manifest that is not there only is said', () => {
+    const { a, priv, copy } = backedUp();
+    const manifest = join(copy, 'mnema-backup.json');
+    const whole = readFileSync(manifest);
+    rmSync(priv, { recursive: true, force: true });
+    for (const broken of ['{"files": ', '[]']) {
+      writeFileSync(manifest, broken);
+      const refused = runBackupRestore(a, false);
+      expect(refused).toMatchObject({ ok: false, code: 'BROKEN_COPY' });
+      expect(refused.ok === false && 'message' in refused && refused.message).toContain(manifest);
+      expect(existsSync(priv)).toBe(false);
+    }
+    // A manifest the disk refuses (a folder where the file should be) does not read either.
+    rmSync(manifest);
+    mkdirSync(manifest);
+    expect(runBackupRestore(a, false)).toMatchObject({ ok: false, code: 'BROKEN_COPY' });
+    expect(existsSync(priv)).toBe(false);
+    const status = runBackupStatus(a);
+    expect(status.ok && status.trees.some((one) => one.manifest === 'unreadable')).toBe(true);
+    // Not there at all: restored, and the copy says it has no date.
+    rmSync(manifest, { recursive: true });
+    expect(runBackupRestore(a, false)).toMatchObject({ ok: true });
+    expect(existsSync(priv)).toBe(true);
+    writeFileSync(manifest, whole);
+  });
+
   it('refuses to verify or restore where the project has no copy', () => {
     const a = project('alpha', true);
     expect(runBackupSetup(a, join(sandbox, 'empty')).ok).toBe(true);
