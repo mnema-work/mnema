@@ -336,7 +336,9 @@ describe('an agent accept at the command line', () => {
     expect(state(id)).toContain('(accepted)');
   });
 
-  it('refuses an accept from any name when the session variable points at no conversation', { timeout: 60_000 }, () => {
+  it('refuses an accept from any name when the session variable points at no conversation', {
+    timeout: 60_000,
+  }, () => {
     const id = aProposedDecision();
     const before = held(sandbox);
     for (const session of ['invented-session', 'not a valid id!']) {
