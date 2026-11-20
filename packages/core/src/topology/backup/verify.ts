@@ -132,7 +132,12 @@ export function readCopy(
     try {
       const read: unknown = JSON.parse(readFileSync(manifestPath, 'utf-8'));
       const listed = (read as { files?: unknown } | null)?.files ?? [];
-      if (typeof read !== 'object' || read === null || Array.isArray(read) || !Array.isArray(listed))
+      if (
+        typeof read !== 'object' ||
+        read === null ||
+        Array.isArray(read) ||
+        !Array.isArray(listed)
+      )
         throw new TypeError('the manifest is not an object with a list of files');
       for (const one of listed as { path?: unknown; bytes?: unknown }[]) {
         if (typeof one?.path !== 'string' || typeof one.bytes !== 'number')
