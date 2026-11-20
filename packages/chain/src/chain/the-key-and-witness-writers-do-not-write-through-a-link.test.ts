@@ -135,15 +135,17 @@ describe.each([
     const fingerprint = 'e'.repeat(64);
     const place = migratedMarkPath(checkout, fingerprint);
     const target = plant(place, live);
+    const places = {
+      chain: { root },
+      shared: { root: join(dir, 'shared') },
+      checkout,
+      fingerprint,
+    };
 
-    expect(() =>
-      migrateMachinery({
-        chain: { root },
-        shared: { root: join(dir, 'shared') },
-        checkout,
-        fingerprint,
-      }),
-    ).toThrow(RecordLinkedError);
+    // A link to a file reads as a mark already kept (it is never opened for writing); one to nothing
+    // would be written through, and is refused.
+    if (live) expect(() => migrateMachinery(places)).not.toThrow();
+    else expect(() => migrateMachinery(places)).toThrow(RecordLinkedError);
 
     holdsTarget(place, target, live);
   });
