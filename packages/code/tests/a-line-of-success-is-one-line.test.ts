@@ -1336,6 +1336,11 @@ const PROBES: readonly Probe[] = [
     lines: 2,
   },
   {
+    keys: ['decision.ts «Governs: {}» #1'],
+    argv: ['decision', 'record', 'a title', 'a rationale', '--governs', VALUE],
+    says: `Governs: ${VALUE}`,
+  },
+  {
     keys: ['handoff.ts «Recorded handoff on {}: {} → {}» #1'],
     argv: ['task', 'handoff', TASK, VALUE, 'to-agent'],
     says: `Recorded handoff on ${TASK}: ${VALUE} → to-agent`,

@@ -83,7 +83,7 @@ Each step names the function where it happens; the link goes to its definition. 
 6. The command then calls [`checkpoint`](../packages/chain/src/chain/writer.ts#L1606), which signs what is above the last checkpoint ([`signLocked`](../packages/chain/src/chain/writer.ts#L1630)); leaving the lock keeps the notes ([`keepHeadIfWritten`](../packages/chain/src/chain/writer.ts#L928)).
 7. Nothing updates the projection at write time. The next read's [`refresh`](../packages/core/src/projections/cache.ts#L577) advances it from the new lines, or replays the whole record when it cannot prove they are a suffix.
 
-Through MCP the tool `record_decision` ([`mutatesTheRecord`](../packages/code/src/mcp/server.ts#L1354)) calls [`runRecordDecision`](../packages/code/src/mcp/tools.ts#L938), which routes the write to a project and reaches the same [`recordDecision`](../packages/core/src/workflow/decision-operations.ts#L213) and the same writer.
+Through MCP the tool `record_decision` ([`mutatesTheRecord`](../packages/code/src/mcp/server.ts#L1354)) calls [`runRecordDecision`](../packages/code/src/mcp/tools.ts#L941), which routes the write to a project and reaches the same [`recordDecision`](../packages/core/src/workflow/decision-operations.ts#L213) and the same writer.
 
 ### Verify
 
