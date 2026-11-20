@@ -95,7 +95,7 @@ function bothTrees() {
 }
 
 interface Reply {
-  readonly isError?: boolean;
+  readonly isError: boolean | undefined;
   readonly text: string;
 }
 

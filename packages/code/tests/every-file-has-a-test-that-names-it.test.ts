@@ -1110,6 +1110,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-read-asked-again-draws-what-changed.test.ts': 19,
   'packages/code/tests/a-read-by-path-finds-the-link.test.ts': 16,
   'packages/code/tests/a-read-by-path-in-a-workspace-of-two-roots.test.ts': 10,
+  'packages/code/tests/a-refusal-leaves-both-trees-as-they-were.test.ts': 13,
   'packages/code/tests/a-record-holding-a-kind-this-mnema-does-not-know.test.ts': 14,
   'packages/code/tests/a-record-no-tail-holds-is-refused.test.ts': 8,
   'packages/code/tests/a-record-says-where-a-newer-mnema-wrote.test.ts': 19,
