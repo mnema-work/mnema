@@ -382,7 +382,9 @@ describe("VS Code's agent and Qwen Code, which read Claude Code's hooks file", (
       VSCODE_TRANSCRIPT.toString(),
     );
     expect(VSCODE_TRANSCRIPT.test(VSCODE_PATH)).toBe(true);
-    expect(VSCODE_TRANSCRIPT.test(VSCODE_PATH.replace('GitHub.copilot-chat', 'github.Copilot-Chat'))).toBe(true);
+    expect(
+      VSCODE_TRANSCRIPT.test(VSCODE_PATH.replace('GitHub.copilot-chat', 'github.Copilot-Chat')),
+    ).toBe(true);
     expect(
       VSCODE_TRANSCRIPT.test(
         'C:\\Users\\p\\AppData\\Roaming\\Code\\User\\workspaceStorage\\h\\GitHub.copilot-chat\\transcripts\\s.jsonl',
@@ -565,11 +567,15 @@ describe('the plugin commands a host runs at the end of a turn', () => {
       // The row says VS Code's transcript is not read: the file carries the flag, and nothing starts.
       const skipped = stub();
       expect(run(['--skip', 'vscode'], viaVsCode, skipped.bin).stdout).toBe('');
-      expect(existsSync(skipped.calls), 'a mnema was started for a transcript of VS Code').toBe(false);
+      expect(existsSync(skipped.calls), 'a mnema was started for a transcript of VS Code').toBe(
+        false,
+      );
       // The row says it reads: the flag is not in the file, the handler leaves the path alone and the
       // verb runs (the verb reads it with VS Code's reader, which the row says exists).
       const reading = stub();
-      expect(JSON.parse(run([], viaVsCode, reading.bin).stdout)).toEqual({ systemMessage: 'counted' });
+      expect(JSON.parse(run([], viaVsCode, reading.bin).stdout)).toEqual({
+        systemMessage: 'counted',
+      });
       expect(
         readFileSync(reading.calls, 'utf-8')
           .trim()
