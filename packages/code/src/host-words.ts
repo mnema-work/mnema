@@ -7,7 +7,7 @@
  * {@link HOST_NAMES} (a row missing does not compile) and not a branch for one of them. A row says
  * `reads: true` only where this tree holds the host's conversation format with a fixture; the rest
  * say `not readable yet` and why, and an accept from them passes as "words not checked", which the
- * reply, `docs/recording-decisions.md` and `mnema audit antipatterns` say. A format is never
+ * reply and `docs/recording-decisions.md` say. A format is never
  * guessed: a row becomes readable the day a real session of that host is read and held by a test.
  *
  * The names are folded (case and separators) before they are compared, so `claude-code`,
