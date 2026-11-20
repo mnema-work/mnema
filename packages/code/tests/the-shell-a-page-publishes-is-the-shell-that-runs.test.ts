@@ -246,7 +246,7 @@ export const PAGES: Readonly<Record<string, number>> = {
   'docs/reference/cli/upgrade.md': 2,
   'docs/reference/cli/usage.md': 2,
   'docs/reference/cli/witness.md': 3,
-  'docs/rules-and-the-commits-that-cite-them.md': 10,
+  'docs/rules-and-the-commits-that-cite-them.md': 11,
   'docs/site.md': 2,
   'docs/switching-off-what-is-handed-to-a-model.md': 2,
   // The recipe for an agent in CI: the job whose steps call `mnema`.
