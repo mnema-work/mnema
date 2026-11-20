@@ -68,16 +68,25 @@ describe('decisionsTheyDictated', () => {
   it('names the decisions whose accept note says the person dictated them, whoever executed the accept', () => {
     const source = tree('public', (b) => {
       acceptedWith(b, 'dictated', 'Dictated by the maintainer: "yes, that one".', 'claude-code');
-      acceptedWith(b, 'chosen', 'Chosen by the maintainer among the options: "that one".', 'claude-code');
+      acceptedWith(
+        b,
+        'chosen',
+        'Chosen by the maintainer among the options: "that one".',
+        'claude-code',
+      );
       acceptedWith(b, 'typed-by-hand', 'The maintainer dictated it.');
       acceptedWith(b, 'plain-click', 'accepted');
       acceptedWith(b, 'agent-alone', 'It follows from the record.', 'claude-code');
     });
-    const ids = ['dictated', 'chosen', 'typed-by-hand', 'plain-click', 'agent-alone', 'never-accepted'];
-    expect([...decisionsTheyDictated([source], ids)].sort()).toEqual([
+    const ids = [
       'dictated',
+      'chosen',
       'typed-by-hand',
-    ]);
+      'plain-click',
+      'agent-alone',
+      'never-accepted',
+    ];
+    expect([...decisionsTheyDictated([source], ids)].sort()).toEqual(['dictated', 'typed-by-hand']);
   });
 
   it('reads only the tree that travels', () => {
