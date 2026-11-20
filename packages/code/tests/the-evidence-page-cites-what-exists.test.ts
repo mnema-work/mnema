@@ -16,11 +16,27 @@
  *
  * Every row that says "a test" holds the claim must name at least one file.
  *
- * WHAT IT DOES NOT CHECK: that the file holds the claim beside it. That is a reviewer's reading.
+ * A CITED TEST MUST RUN. A file that exists but is skipped, or that no configuration of the suite
+ * picks up, holds nothing. So each cited test file must (1) be matched by the include and exclude
+ * of `vitest.config.ts`, or by a host-contract configuration (`vitest.host-contract.config.ts`,
+ * where the host-contract cases run, one host at a time), and (2) carry at least one case that is
+ * not `skip`, `todo`, `xit`, `xdescribe` or inside a skipped `describe`. A row may also name a
+ * case: `(case "the title")` right after the link or the span; that title must be a case of the
+ * file that is not skipped.
+ *
+ * HOW IT READS THEM: statically. The configurations are imported (the main one) or read as text
+ * (the host-contract one, which stops without a host in its environment), and the test files are
+ * read lexically for `it`, `test` and `describe` calls with a string title. Nothing here runs a
+ * suite and `vitest list` is not used. A case under `skipIf` or `runIf` is counted as running:
+ * what the condition says on a machine is not known to a reading.
+ *
+ * WHAT IT DOES NOT CHECK: that the file holds the claim beside it, or that the case passed on any
+ * run. That is a reviewer's reading, and the CI's.
  */
 
 import { execFileSync } from 'node:child_process';
-import { dirname, join, normalize } from 'node:path';
+import { dirname, join, matchesGlob, normalize } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { ROOT, read } from './support/published-examples.js';
 
@@ -48,6 +64,114 @@ function filesCitedBy(page: string, text: string): string[] {
     if (/^[\w@.-]+(\/[\w@.-]+)+$/.test(word)) cited.push(word);
   }
   return cited;
+}
+
+/** A case a test file declares, as a lexical reading sees it. */
+interface Declared {
+  readonly kind: 'case' | 'group';
+  readonly title: string;
+  readonly skipped: boolean;
+}
+
+/**
+ * The `it`, `test` and `describe` calls with a string title, in file order. A case is skipped when
+ * its own call, or a `describe` that holds it, is `skip` or `todo` (or `xit`, `xtest`,
+ * `xdescribe`). A `describe` holds what is indented under it: the repository is formatted, so the
+ * block closes at the first line that starts a `}` at or above the call's own indent.
+ */
+export function declaredCases(source: string): Declared[] {
+  const call =
+    /^([ \t]*)(x?)(it|test|describe)((?:\.\w+(?:\([^)\n]*\))?)*)\(\s*(['"`])((?:\\.|(?!\5)[^\\])*)\5/gm;
+  const out: Declared[] = [];
+  const skippedBlocks: number[] = [];
+  let at = 0;
+  for (const m of source.matchAll(call)) {
+    const indent = (m[1] as string).length;
+    const index = m.index as number;
+    // Close the skipped blocks whose closing line lies between the last call and this one.
+    for (const line of source.slice(at, index).split('\n')) {
+      const lead = /^([ \t]*)\}/.exec(line);
+      if (lead)
+        while (
+          skippedBlocks.length > 0 &&
+          (lead[1] as string).length <= (skippedBlocks.at(-1) as number)
+        )
+          skippedBlocks.pop();
+    }
+    at = index;
+    const modifiers = (m[4] as string).replace(/\([^)]*\)/g, '');
+    const skipped =
+      m[2] === 'x' ||
+      /\.(skip|todo)\b/.test(modifiers) ||
+      skippedBlocks.length > 0 ||
+      /\.skipIf\(\s*true\s*\)/.test(m[4] as string);
+    if (m[3] === 'describe') {
+      if (skipped) skippedBlocks.push(indent);
+      out.push({ kind: 'group', title: m[6] as string, skipped });
+      continue;
+    }
+    out.push({ kind: 'case', title: m[6] as string, skipped });
+  }
+  return out;
+}
+
+/** True when the given globs of a configuration pick the file up and its excludes do not. */
+function picked(file: string, include: readonly string[], exclude: readonly string[]): boolean {
+  return include.some((g) => matchesGlob(file, g)) && !exclude.some((g) => matchesGlob(file, g));
+}
+
+/** The files each configuration runs: the main suite, and the host-contract runs. */
+async function runners(): Promise<(file: string) => boolean> {
+  const main = (await import(pathToFileURL(join(ROOT, 'vitest.config.ts')).href)).default.test as {
+    include: string[];
+    exclude: string[];
+  };
+  // The host-contract configuration throws without a host, so it is read as text: every
+  // `packages/...test.ts` glob in it is a pattern one of its runs includes.
+  const globs = [
+    ...read('vitest.host-contract.config.ts').matchAll(/'(packages\/[^']+\.test\.ts)'/g),
+  ].map((g) => g[1] as string);
+  return (file) => picked(file, main.include, main.exclude) || picked(file, globs, []);
+}
+
+/** The cases the page names by title: `[file](path) (case "title")` or a span followed by it. */
+function casesCitedBy(page: string, text: string): { file: string; title: string }[] {
+  const out: { file: string; title: string }[] = [];
+  const named = /(?:\]\(([^)\s]+)\)|`([^`\s]+)`)\s*\(case\s+"([^"]+)"\)/g;
+  for (const m of text.matchAll(named)) {
+    const target =
+      m[1] !== undefined
+        ? normalize(join(dirname(page), (m[1] as string).split('#')[0] as string))
+        : (m[2] as string);
+    out.push({ file: target, title: m[3] as string });
+  }
+  return out;
+}
+
+/** What is wrong with a cited test file or case; empty when it runs. */
+function whyNotRun(
+  files: ReadonlySet<string>,
+  runs: (file: string) => boolean,
+  readSource: (file: string) => string,
+  file: string,
+  title?: string,
+): string | undefined {
+  if (!/\.test\.[cm]?[jt]s$/.test(file)) return undefined;
+  if (!files.has(file)) return undefined; // the existence case says it
+  if (!runs(file)) return `${file}: no vitest configuration of the suite runs this file`;
+  const declared = declaredCases(readSource(file));
+  const cases = declared.filter((c) => c.kind === 'case');
+  if (title === undefined) {
+    // A file whose cases a helper generates (`theRowOf`, `.each`) declares none that a reading
+    // sees: it runs when no case is declared and a `describe` is not skipped.
+    const generated = cases.length === 0 && declared.some((c) => !c.skipped);
+    return generated || cases.some((c) => !c.skipped)
+      ? undefined
+      : `${file}: every case is skipped, or there is none`;
+  }
+  const found = cases.filter((c) => c.title === title);
+  if (found.length === 0) return `${file}: no case is titled "${title}"`;
+  return found.some((c) => !c.skipped) ? undefined : `${file}: the case "${title}" is skipped`;
 }
 
 describe('the evidence page cites only what exists', () => {
@@ -97,5 +221,59 @@ describe('the evidence page cites only what exists', () => {
       notHeld.filter((line) => filesCitedBy(PAGE, line).length > 0),
       `${PAGE}: take the file off each of these rows that say "not held yet"`,
     ).toEqual([]);
+  });
+
+  it('cites only tests that run in the suite, and cases that exist by their title', async () => {
+    const files = tracked();
+    const runs = await runners();
+    const sourceOf = (file: string) => read(file);
+    const problems = [
+      ...new Set(cited.map((file) => whyNotRun(files, runs, sourceOf, file))),
+      ...casesCitedBy(PAGE, text).map((c) => whyNotRun(files, runs, sourceOf, c.file, c.title)),
+    ].filter((p): p is string => p !== undefined);
+    expect(
+      problems,
+      `${PAGE}: cite a test that runs (not skipped, picked up by a vitest configuration), or remove the row`,
+    ).toEqual([]);
+  });
+
+  it('lights on a skipped test, a title nobody wrote and a file the configuration leaves out', async () => {
+    const runs = await runners();
+    const files = new Set([
+      'a.test.ts',
+      'packages/code/tests/host-contract/x.test.ts',
+      'packages/code/tests/out/y.test.ts',
+    ]);
+    const source: Record<string, string> = {
+      'a.test.ts':
+        "describe('d', () => {\n  it.skip('gone', () => {});\n  it('kept', () => {});\n});\n",
+      'packages/code/tests/host-contract/x.test.ts': "it('one', () => {});\n",
+    };
+    const all = () => true;
+    const read1 = (f: string) => source[f] ?? "it.skip('only', () => {});\n";
+    expect(whyNotRun(files, all, read1, 'a.test.ts')).toBeUndefined();
+    expect(whyNotRun(files, all, read1, 'a.test.ts', 'kept')).toBeUndefined();
+    expect(whyNotRun(files, all, read1, 'a.test.ts', 'gone')).toMatch(/is skipped/);
+    expect(whyNotRun(files, all, read1, 'a.test.ts', 'never written')).toMatch(/no case is titled/);
+    expect(whyNotRun(files, all, read1, 'packages/code/tests/out/y.test.ts')).toMatch(
+      /every case is skipped/,
+    );
+    // A file the main configuration excludes runs only where a host-contract run picks it up.
+    expect(runs('packages/code/tests/host-contract/x.test.ts')).toBe(true);
+    expect(runs('packages/code/tests/out/y.test.ts')).toBe(true);
+    expect(runs('packages/code/tests/host-contract/x.txt')).toBe(false);
+    expect(runs('docs/x.test.ts')).toBe(false);
+    expect(whyNotRun(files, () => false, read1, 'a.test.ts')).toMatch(/no vitest configuration/);
+    const skippedBlock = declaredCases(
+      "describe.skip('d', () => {\n  it('in', () => {});\n});\nit('out', () => {});\n",
+    );
+    expect(skippedBlock).toMatchObject([
+      { title: 'd', kind: 'group', skipped: true },
+      { title: 'in', skipped: true },
+      { title: 'out', skipped: false },
+    ]);
+    expect(casesCitedBy(PAGE, '| [`t.test.ts`](../a/t.test.ts) (case "x y") |')).toEqual([
+      { file: 'a/t.test.ts', title: 'x y' },
+    ]);
   });
 });
