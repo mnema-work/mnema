@@ -38,10 +38,18 @@ export function registerRules(program: Command, wiring: Wiring): Declared {
     .option('--json', 'emit the faithful reading as JSON')
     .action(async (path: string | undefined, opts: { json?: boolean; coverage?: boolean }) => {
       if (opts.coverage === true && path !== undefined) {
-        rules.error('--coverage counts the whole project: give it no path');
+        reportRefusal(wiring, {
+          reason: 'USAGE',
+          message: '--coverage counts the whole project: give it no path.',
+        });
+        return;
       }
       if (opts.coverage !== true && path === undefined) {
-        rules.error("missing required argument 'path' (or pass --coverage)");
+        reportRefusal(wiring, {
+          reason: 'USAGE',
+          message: 'a path to ask about, or --coverage to count the whole project.',
+        });
+        return;
       }
       const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
       const { runRules, runRulesCoverage } = await import('../commands/rules.js');
