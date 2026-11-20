@@ -730,6 +730,20 @@ export function aHostYields(argv, env) {
 }
 
 /**
+ * Whether the hooks file's `--where <VARIABLE>` turns the run away: it names a variable the host
+ * sets for every hook, and it is not set. A host that reads a hooks file it shares with others
+ * (Cursor reads Claude Code's) is told by it which of the commands are its own.
+ *
+ * @param {readonly string[]} argv The handler's own arguments, from the hooks file.
+ * @param {Readonly<Record<string, string | undefined>>} env The host's environment.
+ * @returns {boolean}
+ */
+export function theHostIsNotHere(argv, env) {
+  const where = flagValue(argv, '--where');
+  return where !== undefined && (env[where] ?? '') === '';
+}
+
+/**
  * Whether the hooks file's `--tools <a,b,…>` turns a call away: it names tools, and the payload
  * names none of them. Where the hooks file names none, nothing is turned away. This is what the
  * hooks file's shell did for the handlers that carry no gate (`case "$IN" in *'"Agent"'*`), now
@@ -747,8 +761,8 @@ export function theToolIsNotNamed(argv, input) {
 }
 
 /**
- * The handler's own arguments without the two that only say whether to start (`--tools`,
- * `--unless`, each with its value): what is left is what the verb is handed.
+ * The handler's own arguments without the three that only say whether to start (`--tools`,
+ * `--unless` and `--where`, each with its value): what is left is what the verb is handed.
  *
  * @param {readonly string[]} argv
  * @returns {string[]}
@@ -756,7 +770,7 @@ export function theToolIsNotNamed(argv, input) {
 export function withoutTheFiltersOfTheHooksFile(argv) {
   const kept = [];
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--tools' || argv[i] === '--unless') i++;
+    if (argv[i] === '--tools' || argv[i] === '--unless' || argv[i] === '--where') i++;
     else kept.push(/** @type {string} */ (argv[i]));
   }
   return kept;

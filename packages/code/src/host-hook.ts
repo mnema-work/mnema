@@ -56,7 +56,7 @@
  * every other tool, and why the plugin puts a filter in front of the process.
  */
 
-import { type BesideHost, does, type HookHost } from './host-names.js';
+import { type BesideHost, does, HOSTS, type HookHost } from './host-names.js';
 import { type HookSaid, hookReply } from './mcp/hook-reply.js';
 
 /** How to read the paths out of one write tool's input, whatever shape the host handed it. */
@@ -193,6 +193,72 @@ export function asksAPerson(host: HookHost): boolean {
 /** The tool names a host writes through: what the plugin's filter and matcher name. */
 export function writeToolsOf(host: HookHost): readonly string[] {
   return Object.keys(WRITES[host]);
+}
+
+/**
+ * The host hooks that run when the agent finishes a turn, and what each hands one: the event it
+ * names itself by, the fields that carry the session and the transcript, and whether this product
+ * reads that transcript.
+ *
+ * ONE ROW PER HOST, so `mnema tally --host` and `mnema corrections --host` are told which payload
+ * they were handed and never guess it from the event name. The event is the one the host's own
+ * documentation names for the end of a turn: Claude Code, Codex and Copilot CLI (under the
+ * PascalCase name, which hands the payload in snake_case) call it `Stop`; Gemini CLI `AfterAgent`;
+ * Cursor `stop`.
+ *
+ * `reads` IS WHETHER THE TRANSCRIPT NAMED CAN BE READ, and today only Claude Code's can: the
+ * readers (`what-the-session-did.ts`, `user-corrections.ts`) understand its JSONL line by line,
+ * and no other host's transcript was measured. Reading another host's file with them would count
+ * nothing, or the wrong things, so a verb handed such a payload says that on its second stream and
+ * does nothing else: no count, no journal, no proposal.
+ *
+ * `session` IS `null` WHERE THE DOCUMENTED PAYLOAD HAS NO FIELD FOR IT: Cursor's names the
+ * conversation (`conversation_id`), which no case here has held, so none is guessed.
+ */
+export const ENDS = {
+  claude: { event: 'Stop', session: 'session_id', transcript: 'transcript_path', reads: true },
+  codex: { event: 'Stop', session: 'session_id', transcript: 'transcript_path', reads: false },
+  copilot: { event: 'Stop', session: 'session_id', transcript: 'transcript_path', reads: false },
+  gemini: { event: 'AfterAgent', session: 'session_id', transcript: 'transcript_path', reads: false },
+  cursor: { event: 'stop', session: null, transcript: 'transcript_path', reads: false },
+} as const;
+
+/** A host whose end of a turn this product answers, in the order of {@link ENDS}. */
+export type EndHost = keyof typeof ENDS;
+
+/** Every {@link EndHost}, as the list `mnema tally --host` and `mnema corrections --host` enumerate. */
+export const END_HOSTS = Object.keys(ENDS) as readonly EndHost[];
+
+/** What a payload at the end of a turn says, read in the shape of the host it came from. */
+export type EndOfTurn =
+  | { readonly end: false }
+  | {
+      readonly end: true;
+      /** The event, by the host's name for it. */
+      readonly event: string;
+      /** The host's id for the session, where the payload carries one in the field the row names. */
+      readonly session: unknown;
+      /** The path of the transcript, where the payload carries one. */
+      readonly transcript: string | undefined;
+      /** Whether this product reads that host's transcript. */
+      readonly reads: boolean;
+      /** The host's name as a sentence writes it. */
+      readonly title: string;
+    };
+
+/** Reads a payload as `host` hands it at the end of a turn: `{ end: false }` for any other event. */
+export function endOfTurnOf(host: EndHost, payload: Record<string, unknown>): EndOfTurn {
+  const row = ENDS[host];
+  if (payload['hook_event_name'] !== row.event) return { end: false };
+  const named = payload[row.transcript];
+  return {
+    end: true,
+    event: row.event,
+    session: row.session === null ? undefined : payload[row.session],
+    transcript: typeof named === 'string' && named !== '' ? named : undefined,
+    reads: row.reads,
+    title: HOSTS[host].title,
+  };
 }
 
 /**

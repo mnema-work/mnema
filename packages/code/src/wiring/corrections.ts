@@ -13,7 +13,10 @@
  */
 
 import type { Command } from 'commander';
+import { END_HOSTS, type EndHost } from '../host-hook.js';
 import { hereWriting } from './context.js';
+import { enumeratedOption, listed } from './enumerated.js';
+import { reportUsage } from './report.js';
 import { type Declared, mutatesTheRecord, type Wiring } from './verb.js';
 
 /** Registers `mnema corrections` on the program. */
@@ -23,6 +26,13 @@ export function registerCorrections(program: Command, wiring: Wiring): Declared 
     .command('corrections')
     .description(
       'record what a person corrected in a session as proposed decisions, for a Stop hook',
+    )
+    .addOption(
+      enumeratedOption(
+        '--host <host>',
+        `the host whose hook runs this, and whose payload arrives on stdin: ${listed(END_HOSTS)}; Claude Code's when it is not given`,
+        END_HOSTS,
+      ),
     )
     .addHelpText(
       'after',
@@ -41,14 +51,22 @@ export function registerCorrections(program: Command, wiring: Wiring): Declared 
         '  On stdout, the reply the host reads: a `systemMessage` saying how many were recorded and',
         '  under which labels, or {}.',
         '  It does nothing until `mnema switch on user-corrections`, because it reads what a person',
-        '  typed. With the channel off, or outside a project, it records nothing.',
+        '  typed. With the channel off, or outside a project, it records nothing. Only Claude Code’s',
+        '  transcript is read today: for any other --host it says so on the second stream and',
+        '  records nothing.',
       ].join('\n'),
     )
-    .action(async () => {
+    .action(async (opts: { host?: string }) => {
+      const host: EndHost | undefined =
+        opts.host === undefined ? undefined : END_HOSTS.find((one) => one === opts.host);
+      if (opts.host !== undefined && host === undefined) {
+        reportUsage(wiring, `--host takes one of ${listed(END_HOSTS)}, not "${opts.host}".`);
+        return;
+      }
       const { runCorrections } = await import('../commands/corrections.js');
       const { fact } = await import('../presentation/detail.js');
       const payload = io.input === undefined ? '' : await io.input();
-      const done = runCorrections(hereWriting(wiring), { payload });
+      const done = runCorrections(hereWriting(wiring), { payload, ...(host === undefined ? {} : { host }) });
       for (const note of done.notes) io.err(render(fact(note, 0)));
       io.out(JSON.stringify(done.reply));
     });

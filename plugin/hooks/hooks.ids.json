@@ -31,6 +31,18 @@
       "index": 1,
       "runs": "hooks/session-corrections.mjs"
     },
+    "session-tally-stop-cursor": {
+      "event": "Stop",
+      "group": 1,
+      "index": 0,
+      "runs": "hooks/session-tally.mjs"
+    },
+    "session-corrections-cursor": {
+      "event": "Stop",
+      "group": 1,
+      "index": 1,
+      "runs": "hooks/session-corrections.mjs"
+    },
     "rules-before-an-edit": {
       "event": "PreToolUse",
       "group": 0,

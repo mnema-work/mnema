@@ -47,6 +47,7 @@ import { dirname } from 'node:path';
 import { channelIsOn } from '@mnema/context';
 import { type DiscoveryEnv, INITIAL_DECISION_STATE, resolveTrees } from '@mnema/core';
 import { readEventsNotInGit, saysEventsNotInGit } from '../events-not-in-git.js';
+import { type EndHost, endOfTurnOf } from '../host-hook.js';
 import { SESSION_JOURNAL_CHANNEL, SESSION_TALLY_CHANNEL } from '../record-framing.js';
 import {
   exclusivelyOn,
@@ -79,9 +80,6 @@ export interface SessionTallyDone {
   /** Lines for the second stream: why a count that could have been made was not. */
   readonly notes: readonly string[];
 }
-
-/** The one event this answers, by the name the host gives it in the payload. */
-const STOP = 'Stop';
 
 /** The silence, with what to say about it on the second stream. */
 function silent(notes: readonly string[] = []): SessionTallyDone {
@@ -127,7 +125,7 @@ function waitingLine(waiting: number): string {
 /** Answers the hook payload `input.payload`: the line, or `{}` when there is nothing to count. */
 export function runSessionTally(
   ctx: SessionTallyContext,
-  input: { readonly payload: string },
+  input: { readonly payload: string; readonly host?: EndHost },
 ): SessionTallyDone {
   let payload: Record<string, unknown>;
   try {
@@ -137,16 +135,23 @@ export function runSessionTally(
   } catch {
     return silent(['The hook input was not JSON, so nothing was counted.']);
   }
-  const event = payload['hook_event_name'];
-  if (event !== STOP) return silent();
-  const transcript = payload['transcript_path'];
-  if (typeof transcript !== 'string' || transcript === '') {
-    return silent([`The ${event} input named no transcript, so nothing was counted.`]);
+  const end = endOfTurnOf(input.host ?? 'claude', payload);
+  if (!end.end) return silent();
+  if (end.transcript === undefined) {
+    return silent([`The ${end.event} input named no transcript, so nothing was counted.`]);
   }
+  // A transcript this product cannot read is said, for the host it came from, and nothing is
+  // counted or kept: the reader understands Claude Code's lines and no other host's.
+  if (!end.reads) {
+    return silent([
+      `${end.title}'s transcript is in a format this version does not read, so nothing was counted.`,
+    ]);
+  }
+  const transcript = end.transcript;
 
   const trees = resolveTrees(ctx.cwd, ctx.env);
   if (trees.projectPublic === undefined) return silent();
-  const session = sessionIdOf(payload['session_id']);
+  const session = sessionIdOf(end.session);
   const root = dirname(trees.projectPublic);
 
   return withScopedCaches(trees, (sources): SessionTallyDone => {

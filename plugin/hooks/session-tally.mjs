@@ -28,15 +28,29 @@
  */
 export const MODEL_CHANNEL = 'session-tally';
 
-/** The verb and nothing else: the event is in the payload, never guessed from a flag. */
+/**
+ * The verb, and the handler's own arguments from the hooks file (`--host`, which says whose payload
+ * this is): the event itself is in the payload, never guessed from a flag. `--where` and `--unless`
+ * only say whether to start, and are not handed on.
+ */
 const VERB = ['tally'];
 
 try {
-  const { whatTheVerbReports, whereTheSessionIs } = await import('./hand-over.mjs');
+  const {
+    aHostYields,
+    theHostIsNotHere,
+    whatTheVerbReports,
+    whereTheSessionIs,
+    withoutTheFiltersOfTheHooksFile,
+  } = await import('./hand-over.mjs');
+  const argv = process.argv.slice(2);
+  // A host that reads a hooks file it shares (Cursor reads Claude Code's) runs the command that is
+  // another host's too: `--where` and `--unless` end it here, before `mnema` starts.
+  if (theHostIsNotHere(argv, process.env) || aHostYields(argv, process.env)) process.exit(0);
   const chunks = [];
   for await (const chunk of process.stdin) chunks.push(chunk);
   const { answer, said } = whatTheVerbReports(
-    VERB,
+    [...VERB, ...withoutTheFiltersOfTheHooksFile(argv)],
     whereTheSessionIs(),
     Buffer.concat(chunks).toString('utf-8'),
   );
