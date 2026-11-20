@@ -134,7 +134,13 @@ import {
   toolCallsFile,
   UNCODED_FAILURE,
 } from '../tool-calls.js';
-import { startTracing, type Tracer, traceIsOn } from '../trace.js';
+import {
+  formatTraceLine,
+  IDLE_CHECKPOINT_TOOL,
+  startTracing,
+  type Tracer,
+  traceIsOn,
+} from '../trace.js';
 import { VERSION } from '../version.js';
 import {
   actionsRequiring,
@@ -647,7 +653,34 @@ export function buildMcpServer(options: McpServerOptions): {
   const tracer = (options.trace ?? traceIsOn()) ? startTracing(log) : undefined;
   const idle = createIdleCheckpoint({
     afterMs: options.idleCheckpointMs ?? IDLE_CHECKPOINT_MS,
-    checkpoint: () => openedSession?.caches.checkpointAll(),
+    checkpoint: () => {
+      const cuts = openedSession?.caches.checkpointAll() ?? [];
+      // Said only where the trace is on: the idle cut is the server's own, and nobody is told of it otherwise.
+      if (tracer !== undefined) {
+        log(
+          formatTraceLine({
+            door: 'mcp',
+            tool: IDLE_CHECKPOINT_TOOL,
+            ms: 0,
+            projections: [],
+            wal: cuts.map(({ root, cut }) => ({ root, ...cut })),
+          }),
+        );
+      }
+    },
+    failed: (error) => {
+      if (tracer !== undefined) {
+        log(
+          formatTraceLine({
+            door: 'mcp',
+            tool: IDLE_CHECKPOINT_TOOL,
+            ms: 0,
+            projections: [],
+            failed: messageOf(error),
+          }),
+        );
+      }
+    },
   });
   registerTools(
     declaringInto(server, declaredTools, ensureSession, { tracer, idle }),

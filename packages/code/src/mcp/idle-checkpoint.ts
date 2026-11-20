@@ -24,6 +24,8 @@ export interface IdleCheckpoint {
 export function createIdleCheckpoint(options: {
   readonly afterMs: number;
   readonly checkpoint: () => void;
+  /** What a cut that threw was; the cut is left undone and the log stays as it was. */
+  readonly failed: (error: unknown) => void;
 }): IdleCheckpoint {
   let inFlight = 0;
   let dirty = false;
@@ -48,8 +50,9 @@ export function createIdleCheckpoint(options: {
         dirty = false;
         try {
           options.checkpoint();
-        } catch {
-          // A cut that cannot be made leaves the log as it was.
+        } catch (error) {
+          // A cut that cannot be made leaves the log as it was, and the server says why where it is asked to.
+          options.failed(error);
         }
       }, options.afterMs);
       // A timer that only waits to tidy up is not a reason for the process to stay.

@@ -62,27 +62,46 @@ function spillBeside(db: DatabaseSync, path: string): void {
   if (process.env.SQLITE_TMPDIR !== undefined || process.env.TMPDIR !== undefined) return;
   try {
     db.exec(`PRAGMA temp_store_directory = '${dirname(path).replaceAll("'", "''")}'`);
-  } catch {
-    // A build of SQLite without the setting spills where it always did.
+    spillRefused = undefined;
+  } catch (error) {
+    // A build of SQLite without the setting spills where it always did: the trace says so.
+    spillRefused = error instanceof Error ? error.message : String(error);
   }
 }
 
+let spillRefused: string | undefined;
+
+/** Why the last attempt to point SQLite's temporary files beside the cache was refused, or undefined when it was not. */
+export function spillRefusal(): string | undefined {
+  return spillRefused;
+}
+
+/** What a cut of the write-ahead log came to: done, or why not. */
+export type WalCut = { readonly cut: true } | { readonly cut: false; readonly because: string };
+
 /**
- * Cuts the write-ahead log back to nothing, and says whether it did.
+ * Cuts the write-ahead log back to nothing, and says whether it did and, if not, why.
  *
  * It does not wait: a reader (the command line, another server) holding the log blocks it, and
- * the answer is `false` rather than a call that stalls an event loop; the next idle moment tries
- * again. Never run it inside a read: it takes the write lock for as long as it copies.
+ * the answer is `{ cut: false, because }` rather than a call that stalls an event loop; the next idle
+ * moment tries again. Never run it inside a read: it takes the write lock for as long as it copies.
  */
-export function truncateWal(db: SqliteDatabase): boolean {
+export function truncateWal(db: SqliteDatabase): WalCut {
   db.exec('PRAGMA busy_timeout = 0');
   try {
     const row = db.prepare('PRAGMA wal_checkpoint(TRUNCATE)').get() as
       | { busy?: number }
       | undefined;
-    return row !== undefined && Number(row.busy) === 0;
-  } catch {
-    return false;
+    if (row !== undefined && Number(row.busy) === 0) return { cut: true };
+    return {
+      cut: false,
+      because:
+        row === undefined
+          ? 'the checkpoint answered nothing'
+          : 'busy: another connection holds the log (a reader or a writer)',
+    };
+  } catch (error) {
+    return { cut: false, because: error instanceof Error ? error.message : String(error) };
   } finally {
     db.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
   }

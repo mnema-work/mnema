@@ -201,7 +201,7 @@ which is the part that used to be invisible to everyone downstream.
 
 A long-lived server is meant to keep each call's latency flat over hours. When one is not, start the
 server (or any command) with `MNEMA_TRACE=1` and it prints one line to stderr for each call. Off, nothing is
-printed and no wrapper stands around a call. A host keeps a server's stderr in its own log; for a command it
+printed and no trace wrapper stands around a call. A host keeps a server's stderr in its own log; for a command it
 is the terminal.
 
 A line is `mnema-trace ` and one JSON object:
@@ -234,4 +234,4 @@ own with the tool `(outside a call)`. The lines hold paths of your machine: read
 
 The server also keeps the SQLite log of each cache small: a 4 MiB limit, and a truncating checkpoint three seconds
 after a write once no call is running (never inside a read, and it does not wait for another process that is
-reading the file). SQLite's temporary files go beside the cache file, unless `TMPDIR` or `SQLITE_TMPDIR` is set.
+reading the file). SQLite's temporary files go beside the cache file, unless `TMPDIR` or `SQLITE_TMPDIR` is set. That setting belongs to the whole process, not to one cache: with several projects open, the temporary files go to the folder of the cache opened last. With the trace on, the idle cut of the logs has a line of its own (`"tool":"(idle checkpoint)"`) with a `wal` entry for each cache, `cut:true`, or `cut:false` with `because` (a reader holding the log is the usual one); a line also carries `ioUnavailable` when `/proc/self/io` exists and cannot be read, and `spillRefused` when SQLite refused the temporary folder.

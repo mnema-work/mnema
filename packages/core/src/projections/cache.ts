@@ -35,6 +35,7 @@ import {
   openDatabase,
   type SqliteDatabase,
   truncateWal,
+  type WalCut,
 } from '../db/sqlite.js';
 import { type FoundedBeside, identitiesFoundedBeside } from '../identity/founded-beside.js';
 import { agentKeysIn, rosterIn, rosterOf } from '../identity/membership.js';
@@ -1227,12 +1228,13 @@ export class ProjectionCache {
   }
 
   /**
-   * Cuts the write-ahead log of a cache kept on disk back to nothing, and says whether it did: for
+   * Cuts the write-ahead log of a cache kept on disk back to nothing, and says whether it did and why not: for
    * the moment a long-lived process has nothing to answer (`truncateWal` says why it never waits).
    * A cache in memory has no log, and one whose file failed has given it up.
    */
-  checkpoint(): boolean {
-    if (!this.persisted || !this.db.isOpen) return false;
+  checkpoint(): WalCut {
+    if (!this.persisted) return { cut: false, because: 'the cache is in memory: it has no log' };
+    if (!this.db.isOpen) return { cut: false, because: 'the cache is closed' };
     return truncateWal(this.db);
   }
 

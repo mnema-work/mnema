@@ -85,7 +85,12 @@ export {
   type SecretClass,
   secretPlaceholder,
 } from './content/secrets.js';
-export { openDatabase, type SqliteDatabase } from './db/sqlite.js';
+export {
+  openDatabase,
+  type SqliteDatabase,
+  spillRefusal,
+  type WalCut,
+} from './db/sqlite.js';
 // The account an identity names on a code host, and the rule a name has to keep to be one.
 export {
   GITHUB_SERVICE,

@@ -8,7 +8,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { observeRefreshes, ProjectionCache } from '@mnema/core';
 import { afterEach, describe, expect, it } from 'vitest';
-import { formatTraceLine, readIoCounters, startTracing, traceIsOn } from './trace.js';
+import {
+  formatTraceLine,
+  readIoCounters,
+  startTracing,
+  traceIsOn,
+  traceTheCommand,
+} from './trace.js';
 
 afterEach(() => observeRefreshes(undefined));
 
@@ -44,6 +50,8 @@ describe('the byte counts', () => {
       writeFileSync(file, 'rchar: 1234\nwchar: 56\nsyscr: 1\nread_bytes: 0\n');
       expect(readIoCounters(file)).toEqual({ rchar: 1234, wchar: 56 });
       expect(readIoCounters(join(dir, 'missing'))).toBeUndefined();
+      // There, and not a file that can be read: it throws, and the traced call says why.
+      expect(() => readIoCounters(dir)).toThrow(/EISDIR/);
       writeFileSync(file, 'nothing of the sort\n');
       expect(readIoCounters(file)).toBeUndefined();
     } finally {
@@ -126,9 +134,58 @@ describe('a traced call', () => {
     tracer.stop();
   });
 
+  it('says why the byte counts are missing when the kernel file is there and unreadable', async () => {
+    const lines: string[] = [];
+    const tracer = startTracing(
+      (line) => lines.push(line),
+      () => {
+        throw new Error('EACCES: permission denied, open /proc/self/io');
+      },
+    );
+    await tracer.call('a_tool', async () => 'ok');
+    const parsed = JSON.parse((lines[0] as string).slice('mnema-trace '.length));
+    expect(parsed).not.toHaveProperty('rchar');
+    expect(parsed.ioUnavailable).toBe('EACCES: permission denied, open /proc/self/io');
+    tracer.stop();
+  });
+
   it('formats one line', () => {
     expect(formatTraceLine({ door: 'cli', tool: 'status', ms: 1.5, projections: [] })).toBe(
       'mnema-trace {"door":"cli","tool":"status","ms":1.5,"projections":[]}',
     );
+  });
+});
+
+describe('the command line trace', () => {
+  const exits = (): (() => void) => {
+    const before = process.listeners('exit');
+    return () => {
+      for (const listener of process.listeners('exit')) {
+        if (!before.includes(listener)) process.removeListener('exit', listener);
+      }
+    };
+  };
+
+  it('does not end the command differently when the reader of the trace has gone', () => {
+    const restore = exits();
+    const mine = new Set(process.listeners('exit'));
+    traceTheCommand(['status'], () => {
+      throw Object.assign(new Error('write EPIPE'), { code: 'EPIPE' });
+    });
+    const added = process.listeners('exit').filter((listener) => !mine.has(listener));
+    expect(added).toHaveLength(1);
+    expect(() => (added[0] as () => void)()).not.toThrow();
+    restore();
+  });
+
+  it('does not hide any other failure to write it', () => {
+    const restore = exits();
+    const mine = new Set(process.listeners('exit'));
+    traceTheCommand(['status'], () => {
+      throw Object.assign(new Error('no space left'), { code: 'ENOSPC' });
+    });
+    const added = process.listeners('exit').filter((listener) => !mine.has(listener));
+    expect(() => (added[0] as () => void)()).toThrow('no space left');
+    restore();
   });
 });

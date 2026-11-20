@@ -52,11 +52,14 @@ describe('the log of a cache on disk', () => {
     expect(wal()).toBeGreaterThan(0);
     // A reader mid-transaction holds the log: no cut, and no wait.
     const started = Date.now();
-    expect(truncateWal(db)).toBe(false);
+    expect(truncateWal(db)).toEqual({
+      cut: false,
+      because: 'busy: another connection holds the log (a reader or a writer)',
+    });
     expect(Date.now() - started).toBeLessThan(1000);
     reader.exec('COMMIT');
     reader.close();
-    expect(truncateWal(db)).toBe(true);
+    expect(truncateWal(db)).toEqual({ cut: true });
     expect(wal()).toBe(0);
     db.close();
   });

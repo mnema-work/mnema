@@ -7,12 +7,12 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ensureTree } from '@mnema/chain';
-import { type DiscoveryEnv, PROJECT_DIR } from '@mnema/core';
+import { type DiscoveryEnv, openDatabase, PROJECT_DIR } from '@mnema/core';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { ListRootsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
@@ -93,6 +93,59 @@ describe('the server', () => {
     for (const report of reported) {
       expect(['unchanged', 'incremental', 'replayed']).toContain(report.outcome);
       if (report.outcome === 'replayed') expect(typeof report.branch).toBe('string');
+    }
+  });
+
+  it('says what the idle cut of each log came to, and why it did not cut while a reader held it', async () => {
+    const { client, lines } = await serve(true);
+    const write = (text: string) =>
+      client.callTool({
+        name: 'capture_memory',
+        arguments: { content: text },
+      });
+    const idleLines = () => traced(lines).filter((line) => line.tool === '(idle checkpoint)');
+    const waitForIdleLine = async (count: number) => {
+      const until = Date.now() + 5000;
+      while (idleLines().length < count && Date.now() < until) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+    };
+    await write('a memory to cut after');
+    await waitForIdleLine(1);
+    const cut = idleLines().at(-1);
+    expect(cut?.wal.length).toBeGreaterThan(0);
+    expect(cut?.wal.some((entry: { cut: boolean }) => entry.cut)).toBe(true);
+
+    // A reader (the command line) in the middle of a read holds the log: no cut, and the line says why.
+    const databases = (function find(dir: string): string[] {
+      return readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+        entry.isDirectory()
+          ? find(join(dir, entry.name))
+          : entry.name === 'projection.db'
+            ? [join(dir, entry.name)]
+            : [],
+      );
+    })(sandbox);
+    expect(databases.length).toBeGreaterThan(0);
+    const readers = databases.map((file) => {
+      const db = openDatabase(file);
+      db.exec('BEGIN');
+      db.prepare('SELECT count(*) FROM sqlite_master').get();
+      return db;
+    });
+    try {
+      const before = idleLines().length;
+      await write('a memory written while a reader holds the log');
+      await waitForIdleLine(before + 1);
+      const held = idleLines().at(-1);
+      const refused = held?.wal.filter((entry: { cut: boolean }) => !entry.cut) ?? [];
+      expect(refused.length).toBeGreaterThan(0);
+      expect(refused[0].because).toMatch(/busy/);
+    } finally {
+      for (const db of readers) {
+        db.exec('COMMIT');
+        db.close();
+      }
     }
   });
 

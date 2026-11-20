@@ -129,6 +129,7 @@ import {
   readCacheIsChosen,
   type TreeFacts,
   treeFactsFrom,
+  type WalCut,
 } from '@mnema/core';
 
 /** A cache retained for one chain root, and whether it still matches the chain. */
@@ -210,7 +211,7 @@ export interface CacheRegistry {
    * Cuts the write-ahead log of every retained cache kept on disk back to nothing. For the idle
    * moments of a server (`idle-checkpoint.ts`): never called from a read.
    */
-  checkpointAll(): void;
+  checkpointAll(): readonly { readonly root: string; readonly cut: WalCut }[];
   /** Closes every retained database and forgets them. Called when the session ends. */
   closeAll(): void;
 }
@@ -343,8 +344,8 @@ export function createCacheRegistry(
       if (existing !== undefined) existing.stale = true;
     },
 
-    checkpointAll(): void {
-      for (const entry of entries.values()) entry.cache.checkpoint();
+    checkpointAll(): readonly { readonly root: string; readonly cut: WalCut }[] {
+      return [...entries].map(([root, entry]) => ({ root, cut: entry.cache.checkpoint() }));
     },
 
     closeAll(): void {

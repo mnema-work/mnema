@@ -25,8 +25,8 @@
  */
 
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { readFileSync, writeSync } from 'node:fs';
-import { observeRefreshes, type RefreshReport } from '@mnema/core';
+import { existsSync, readFileSync, writeSync } from 'node:fs';
+import { observeRefreshes, type RefreshReport, spillRefusal, type WalCut } from '@mnema/core';
 
 /** The variable that turns the trace on: `1`, and nothing else does. */
 export const TRACE_VARIABLE = 'MNEMA_TRACE';
@@ -42,16 +42,33 @@ export interface IoCounters {
   readonly wchar: number;
 }
 
-/** `/proc/self/io`, or undefined where it cannot be read (not Linux, or a sandbox without it). */
+/**
+ * `/proc/self/io`, or undefined where there is none (not Linux) or it says nothing this reads.
+ * A file that is there and cannot be read THROWS: what the call is traced as says why
+ * (`ioUnavailable`), instead of two numbers going missing with no reason.
+ */
 export function readIoCounters(file = '/proc/self/io'): IoCounters | undefined {
+  if (!existsSync(file)) return undefined;
+  const text = readFileSync(file, 'utf-8');
+  const rchar = /^rchar:\s*(\d+)$/m.exec(text)?.[1];
+  const wchar = /^wchar:\s*(\d+)$/m.exec(text)?.[1];
+  if (rchar === undefined || wchar === undefined) return undefined;
+  return { rchar: Number(rchar), wchar: Number(wchar) };
+}
+
+/** The tool a line about the idle cut of the logs is filed under. */
+export const IDLE_CHECKPOINT_TOOL = '(idle checkpoint)';
+
+/** What one reading of the counters gave: the numbers, or why there are none. */
+function measured(io: () => IoCounters | undefined): {
+  readonly counters?: IoCounters;
+  readonly why?: string;
+} {
   try {
-    const text = readFileSync(file, 'utf-8');
-    const rchar = /^rchar:\s*(\d+)$/m.exec(text)?.[1];
-    const wchar = /^wchar:\s*(\d+)$/m.exec(text)?.[1];
-    if (rchar === undefined || wchar === undefined) return undefined;
-    return { rchar: Number(rchar), wchar: Number(wchar) };
-  } catch {
-    return undefined;
+    const counters = io();
+    return counters === undefined ? {} : { counters };
+  } catch (error) {
+    return { why: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -63,6 +80,14 @@ export interface TraceLine {
   readonly rchar?: number;
   readonly wchar?: number;
   readonly projections: readonly RefreshReport[];
+  /** Why the byte counts are missing, where the kernel file is there and could not be read. */
+  readonly ioUnavailable?: string;
+  /** Why SQLite's temporary files were not pointed beside the cache, when that was refused. */
+  readonly spillRefused?: string;
+  /** What an idle cut of each cache's log came to: the root, whether it was cut and, if not, why. */
+  readonly wal?: readonly ({ readonly root: string } & WalCut)[];
+  /** What an idle cut that threw was. */
+  readonly failed?: string;
 }
 
 /** The text of a line: the prefix a reader greps for, and the object. */
@@ -83,20 +108,27 @@ function openCall(
   io: () => IoCounters | undefined,
 ): OpenCall {
   const started = performance.now();
-  const before = io();
+  const before = measured(io);
   return {
     reports,
     finish(): TraceLine {
       const ms = Math.round((performance.now() - started) * 10) / 10;
-      const after = io();
+      const after = measured(io);
+      const why = before.why ?? after.why;
+      const refused = spillRefusal();
       return {
         door,
         tool,
         ms,
-        ...(before !== undefined && after !== undefined
-          ? { rchar: after.rchar - before.rchar, wchar: after.wchar - before.wchar }
+        ...(before.counters !== undefined && after.counters !== undefined
+          ? {
+              rchar: after.counters.rchar - before.counters.rchar,
+              wchar: after.counters.wchar - before.counters.wchar,
+            }
           : {}),
         projections: reports,
+        ...(why !== undefined ? { ioUnavailable: why } : {}),
+        ...(refused !== undefined ? { spillRefused: refused } : {}),
       };
     },
   };
@@ -154,8 +186,10 @@ export function traceTheCommand(
   process.once('exit', () => {
     try {
       write(formatTraceLine(call.finish()));
-    } catch {
-      // A trace that cannot be written is not a reason for a command to end differently.
+    } catch (error) {
+      // A reader that closed the pipe has stopped asking for the trace, and a command does not end
+      // differently for it; any other failure to write it is not hidden.
+      if ((error as NodeJS.ErrnoException).code !== 'EPIPE') throw error;
     }
   });
 }
