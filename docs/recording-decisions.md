@@ -191,6 +191,10 @@ line names the call that would do it.
 
 The working tree's changes are never read to find the paths: they could credit the session with what it did not do.
 
+## A label read in a tree that is not the public one
+
+Each tree numbers its own decisions, so a private `ADR-78` and the committed `ADR-78` are two decisions that read the same. Where a decision is shown to a person (`mnema status`, `show`, `decision review`, the line a `decision` write or move prints, and the same replies of the MCP), the label of one held in the private or the global tree ends in its tree: `ADR-78 (private)`, `ADR-78 (global)`. The committed label stays `ADR-78`. This is only how the label is read: the label that is stored and signed does not change, a trailer still cites `ADR-78`, and a command that takes a label takes it as before (when two trees hold it, it is refused and names both ids).
+
 ## Recording the same decision twice
 
 The `decision record` command and the `record_decision` tool look, before they write, for a decision of the same tree that is
