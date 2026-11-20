@@ -106,5 +106,5 @@ Through MCP the tool `record_decision` ([`mutatesTheRecord`](../packages/code/sr
 ### The merge driver
 
 1. [`tree.ts`](../packages/chain/src/chain/tree.ts) writes the `.gitattributes` line that names the driver ([`TAIL_MERGE_DRIVER`](../packages/chain/src/chain/tree.ts#L102)) for `tails/*/*.jsonl`. The git configuration that makes git call it is written by `mnema init` when asked, or by [`fixMergeDriver`](../packages/code/src/commands/doctor-merge-driver.ts#L277); without it git merges the files as text.
-2. Git runs `record merge-tail` ([`merge-tail`](../packages/code/src/wiring/record.ts#L276), then [`mergeTailFiles`](../packages/code/src/commands/record-merge-tail.ts#L69)).
+2. Git runs `record merge-tail` ([`merge-tail`](../packages/code/src/wiring/record.ts#L389), then [`mergeTailFiles`](../packages/code/src/commands/record-merge-tail.ts#L69)).
 3. [`joinGrownTail`](../packages/code/src/commands/record-merge-tail.ts#L47) keeps the longer side when one is a byte prefix of the other, which is a tail that only grew. Anything else is a fork: it exits 1 and leaves our side untouched.
