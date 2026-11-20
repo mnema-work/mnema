@@ -775,7 +775,12 @@ describe('every verb says if it writes', () => {
     // both directions (the members it declares are the subcommands the program holds) and each
     // member that says it reads is run for real, in both forms, and counted in the chain.
     const grouped = DECLARED.filter((verb) => verb.members !== undefined);
-    expect(grouped.map((verb) => verb.act.name()).sort()).toEqual(['skill', 'stack', 'task', 'witness']);
+    expect(grouped.map((verb) => verb.act.name()).sort()).toEqual([
+      'skill',
+      'stack',
+      'task',
+      'witness',
+    ]);
     for (const group of grouped) {
       expect(
         (group.members ?? []).map((member) => member.act.name()).sort(),
