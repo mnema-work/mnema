@@ -517,6 +517,9 @@ function dispatched(
         toAgent: to,
         brief,
         scope: 'private',
+        // The orchestrator is an agent that executes this write, so the fact names it (declared, as
+        // any `which` is); an enrolled agent key still names the agent the record gives that key.
+        which: ORCHESTRATOR,
       });
       if (!recorded.ok) {
         notes.push(
