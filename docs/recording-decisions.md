@@ -210,7 +210,10 @@ task, a decision, a pattern or another note). On the command line the sentences 
 tree this project reads` and `record "<id>" was not found in any tree this project reads`. The tools read every project
 the client announced, and their sentence names them; an id held by two records is `AMBIGUOUS_RECORD`. It holds
 whichever tree the write was told to land in with `--scope`. The `link` command still takes an id it cannot find, and says so in its answer, because an edge may point at
-a record of another project.
+a record of another project. It says so of the target as well as of the subject, and a second warning follows when
+the link goes into the public tree and its target lives only in the private or the global tree: a clone that reads
+the link cannot open that record. The `link_knowledge` tool looks for the target only in the project it writes
+to and in the machine's own trees, not in the workspace's other projects.
 
 ## Recording the same memory or observation twice
 
