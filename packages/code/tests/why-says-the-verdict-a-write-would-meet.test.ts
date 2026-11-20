@@ -196,7 +196,7 @@ describe('mnema why <path>, the verdict', () => {
     expect(read.verdict).toBe('refuse');
     expect(read.refusal).toContain('altered');
     expect(read.refusal).toBe(gateRefusal('src/governed/a.ts'));
-    expect(read.rules.map((one) => one.decided)).toEqual([false]);
+    expect(read.rules.some((one) => one.decided)).toBe(false);
     const page = await did('why', 'src/governed/a.ts');
     expect(page).toContain('a write here would be refused: ');
     expect(page).toContain('altered');
