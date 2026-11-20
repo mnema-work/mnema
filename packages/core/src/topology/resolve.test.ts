@@ -455,3 +455,29 @@ describe('whyNoProjectRootAt: the rule `mnema init` asks before founding', () =>
     expect(whyNoProjectRootAt(join(h, 'code'), { home: h })).toBeUndefined();
   });
 });
+
+describe('resolveTrees: the test switch refuses a project tree outside the temporary root', () => {
+  const was = process.env.MNEMA_REFUSE_TREES_OUTSIDE;
+
+  afterEach(() => {
+    if (was === undefined) delete process.env.MNEMA_REFUSE_TREES_OUTSIDE;
+    else process.env.MNEMA_REFUSE_TREES_OUTSIDE = was;
+  });
+
+  it('a project outside any repository throws naming its tree, and one inside the root resolves', () => {
+    const outside = mkdtempSync(join(tmpdir(), 'mnema-resolve-outside-'));
+    try {
+      mkdirSync(join(outside, 'p', '.mnema'), { recursive: true });
+      mkdirSync(join(sandbox, 'p', '.mnema'), { recursive: true });
+      process.env.MNEMA_REFUSE_TREES_OUTSIDE = sandbox;
+      expect(resolveTrees(join(sandbox, 'p'), { home: home() }).projectPublic).toBe(
+        join(sandbox, 'p', '.mnema'),
+      );
+      expect(() => resolveTrees(join(outside, 'p'), { home: home() })).toThrow(
+        new RegExp(`the record tree ${join(outside, 'p', '.mnema')}`),
+      );
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
+});
