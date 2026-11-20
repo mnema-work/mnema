@@ -43,8 +43,7 @@ import { catalogUpcasters } from '@mnema/chain';
 import { type AuditEvent, auditFeed, type NewerLines } from '@mnema/context';
 import { type AuthorshipFilter, type DiscoveryEnv, resolveTrees, type Scope } from '@mnema/core';
 import { resolveAnchorInRecord } from '../anchors.js';
-import { recordTrees, scopedEventsOf } from '../intelligence-source.js';
-import { newerLinesOfTrees } from '../tree-sources.js';
+import { recordTrees, scopedEventsRead } from '../intelligence-source.js';
 import { VERSION } from '../version.js';
 
 /** What the export command needs: injected so it is testable. */
@@ -138,13 +137,11 @@ export function runExport(
   const covered = recordTrees(trees, undefined).filter(
     (tree) => tree.scope !== 'global' || alsoGlobal === true,
   );
+  const { sources, newer } = scopedEventsRead(covered, catalogUpcasters());
   return {
     ok: true,
     trees: covered.map((tree) => tree.scope),
-    events: auditFeed(scopedEventsOf(covered, catalogUpcasters()), PRODUCER, filter),
-    ...newerLinesOfTrees(
-      trees,
-      covered.map((tree) => tree.scope),
-    ),
+    events: auditFeed(sources, PRODUCER, filter),
+    ...newer,
   };
 }

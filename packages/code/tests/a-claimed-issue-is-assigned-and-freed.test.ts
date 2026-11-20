@@ -26,6 +26,7 @@ import {
   adopt,
   assignedMarker,
   assignmentOf,
+  blockersOf,
   CLAIM_PHRASES,
   claim,
   closedBy,
@@ -927,5 +928,147 @@ describe('no reply repeats what a stranger wrote', () => {
     said.push(...waiting(8), ...waiting(15));
     expect(said).toHaveLength(4);
     for (const body of said) expect(body).not.toContain(CANARY);
+  });
+});
+
+describe('an issue that starts after another is not assigned while that one is open', () => {
+  const BLOCKED_BODY =
+    'Part of #1264. Starts after the template exists: do not take this one until `git ls-files x` prints the\n' +
+    'file on main (it comes from the first piece, #1327). If it prints nothing, leave this issue for later.\n\n' +
+    '**Why**\n\nSee also #99.';
+  const blocked = (number: number, assignees: string[] = [], body = BLOCKED_BODY) => ({
+    ...issueOf(number, assignees, ['help wanted']),
+    body,
+  });
+  const blocker = (number: number, state: string) => ({
+    ...issueOf(number, [], ['help wanted']),
+    state,
+  });
+  const bodies = (api: { writes: object[] }) =>
+    (api.writes as { write: string; body?: string }[])
+      .filter((w) => w.write === 'comment')
+      .map((w) => String(w.body));
+
+  it('reads the blockers from the "Starts after" paragraph only', () => {
+    expect(blockersOf(BLOCKED_BODY)).toEqual([1327]);
+    expect(
+      blockersOf(
+        'Part of #1315. Starts after the two other pieces: do not take this one until both (#1328 and #1329) are merged\non main (`git grep`).\n\nLater #5',
+      ),
+    ).toEqual([1328, 1329]);
+    expect(blockersOf('Part of #1264. Add a test for #1327.')).toEqual([]);
+    expect(blockersOf(undefined)).toEqual([]);
+    expect(blockersOf('do not take this one until a maintainer says so')).toEqual([]);
+  });
+
+  it('answers a claim by naming the blocker, suggesting it, and assigns nothing', () => {
+    const api = fixtureApi(
+      { issues: { '1335': blocked(1335), '1327': blocker(1327, 'open') } },
+      () => {},
+    );
+    expect(claim(eventOn(1335, '/take'), api, NOW).action).toBe('blocked');
+    expect(api.writes.map((w: { write: string }) => w.write)).toEqual(['comment']);
+    const reply = bodies(api)[0] ?? '';
+    expect(reply).toContain('@newcomer');
+    expect(reply).toContain('#1327');
+    expect(reply).toContain('/take');
+    expect(reply).not.toContain('#99');
+    expect(reply).not.toContain('#1264');
+  });
+
+  it('answers once to a login', () => {
+    const api = fixtureApi(
+      { issues: { '1335': blocked(1335), '1327': blocker(1327, 'open') } },
+      () => {},
+    );
+    claim(eventOn(1335, '/take'), api, NOW);
+    claim(eventOn(1335, 'assign me'), api, NOW);
+    expect(bodies(api)).toHaveLength(1);
+  });
+
+  it('assigns once the blocker is closed', () => {
+    const api = fixtureApi(
+      { issues: { '1335': blocked(1335), '1327': blocker(1327, 'closed') } },
+      () => {},
+    );
+    expect(claim(eventOn(1335, '/take'), api, NOW).action).toBe('assign');
+  });
+
+  it('keeps blocking while any one of several blockers is open', () => {
+    const body = 'Starts after the pieces: do not take this one until both (#8 and #9) are merged.';
+    const api = fixtureApi(
+      { issues: { '7': blocked(7, [], body), '8': blocker(8, 'closed'), '9': blocker(9, 'open') } },
+      () => {},
+    );
+    expect(claim(eventOn(7, '/take'), api, NOW).action).toBe('blocked');
+    expect(bodies(api)[0]).toContain('#9');
+    expect(bodies(api)[0]).not.toContain('#8');
+  });
+
+  it('takes a blocker it cannot read for open', () => {
+    const api = fixtureApi({ issues: { '1335': blocked(1335) } }, () => {});
+    expect(claim(eventOn(1335, '/take'), api, NOW).action).toBe('blocked');
+  });
+
+  it('reads at most 5 blockers and no #0, long number, code span or fenced block', () => {
+    expect(blockersOf('Starts after #1 #2 #3 #4 #5 #6 #7.')).toEqual([1, 2, 3, 4, 5]);
+    expect(blockersOf('Starts after #0 and #1234567890 and #12.')).toEqual([12]);
+    expect(blockersOf('Starts after `#5` and #6.')).toEqual([6]);
+    expect(blockersOf('Starts after:\n```\n#5\n\n#7\n```\nand #6.')).toEqual([6]);
+    expect(blockersOf('Starts after:\n~~~\n#5\nnever closed #8')).toEqual([]);
+  });
+
+  it('frees an assignment whose blocker is gone, is a cycle, or is the issue itself', () => {
+    const waits = (number: number, on: number) =>
+      blocked(number, ['newcomer'], `Starts after #${on}.`);
+    const run = (issues: Record<string, object>) => {
+      const api = fixtureApi(
+        { issues, comments: { '10': [assignedBy(40)], '11': [assignedBy(40)] } },
+        () => {},
+      );
+      return expire(api, NOW, REPO);
+    };
+    expect(run({ '10': waits(10, 404) })).toEqual([10]);
+    expect(run({ '10': waits(10, 10) })).toEqual([10]);
+    expect(run({ '10': waits(10, 11), '11': { ...waits(11, 10), assignees: [] } })).toEqual([10]);
+    expect(run({ '10': waits(10, 11), '11': blocker(11, 'open') })).toEqual([]);
+  });
+
+  it('still answers a claim naming a blocker that cannot be read', () => {
+    const api = fixtureApi({ issues: { '10': blocked(10, [], 'Starts after #404.') } }, () => {});
+    expect(claim(eventOn(10, '/take'), api, NOW).action).toBe('blocked');
+  });
+
+  it('says taken, not blocked, when someone already holds it, and ignores a maintainer', () => {
+    const open = { '1327': blocker(1327, 'open') };
+    const held = fixtureApi({ issues: { '1335': blocked(1335, ['other']), ...open } }, () => {});
+    expect(claim(eventOn(1335, '/take'), held, NOW).action).toBe('taken');
+    const own = fixtureApi({ issues: { '1335': blocked(1335), ...open } }, () => {});
+    expect(claim(eventOn(1335, '/take', 'MEMBER'), own, NOW).action).toBe('ignore');
+    expect(own.writes).toEqual([]);
+  });
+
+  it('does not repeat what a stranger wrote', () => {
+    const api = fixtureApi(
+      { issues: { '1335': blocked(1335), '1327': blocker(1327, 'open') } },
+      () => {},
+    );
+    claim(eventOn(1335, "I'll take this. ZQX-STRANGER-WORDS"), api, NOW);
+    expect(bodies(api)[0]).not.toContain('ZQX-STRANGER-WORDS');
+  });
+
+  it('does not free a blocked issue while its blocker is open, and frees it after', () => {
+    const run = (state: string) => {
+      const api = fixtureApi(
+        {
+          issues: { '1335': blocked(1335, ['newcomer']), '1327': blocker(1327, state) },
+          comments: { '1335': [assignedBy(40)] },
+        },
+        () => {},
+      );
+      return expire(api, NOW, REPO);
+    };
+    expect(run('open')).toEqual([]);
+    expect(run('closed')).toEqual([1335]);
   });
 });

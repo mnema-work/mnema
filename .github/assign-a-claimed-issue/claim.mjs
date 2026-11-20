@@ -10,13 +10,18 @@
  *     A comment was created. If it is a claim on an open `good first issue` or `help wanted` issue
  *     (not a pull request) by someone who is not a bot and not OWNER, MEMBER or COLLABORATOR, the
  *     commenter is assigned when nobody holds the issue and holds fewer than 3 issues this workflow
- *     assigned to them; otherwise one reply says why not. A comment that reads as an intent to take
+ *     assigned to them; otherwise one reply says why not. An issue that says it starts after another
+ *     ("Starts after ..." or "do not take this one until ...", with the `#N` of the pieces it waits
+ *     on) is not assigned while one of them is open: one reply names them and suggests taking one.
+ *     A comment that reads as an intent to take
  *     the issue but matches no phrase gets one reply on how to claim (`/take`), without its text.
  *   node .github/assign-a-claimed-issue/claim.mjs expire
  *     Daily. An open issue assigned to an outside contributor, 14 days after the assignment (this
  *     workflow's or a maintainer's by hand), whose assignee has no open pull request that names the
- *     issue, is unassigned and says so. A maintainer's own assignment is never freed, and an issue
- *     without a contributor label is ours and is left alone.
+ *     issue, is unassigned and says so. A maintainer's own assignment is never freed, an issue
+ *     without a contributor label is ours and is left alone, and an issue still waiting on an open
+ *     blocker keeps its assignee; a blocker that is gone (404), closed or waiting on this issue in turn
+ *     does not hold it.
  *   node .github/assign-a-claimed-issue/claim.mjs adopt
  *     Daily. The author of an open pull request that closes (fixes, closes, resolves) an open,
  *     unassigned contributor issue is assigned to it, once, with a note on the issue.
@@ -119,6 +124,35 @@ export const CLAIM_PHRASES = [
   '/claim',
 ];
 
+/** The most blockers read from one paragraph: a body someone wrote cannot make the workflow ask for more. */
+const MOST_BLOCKERS = 5;
+
+/**
+ * The issues a body says it waits on: the `#N` in the paragraph that starts at "Starts after" or
+ * "do not take this one until", so the `Part of #N` before it and any `#N` after the blank line are
+ * not read. Only digits are taken from the text, and it is the maintainers' text, never a comment.
+ * A `#N` inside a code span or a fenced block is not read, `#0` and a number of more than 9 digits
+ * are not issues, and at most the first 5 are kept.
+ *
+ * @param {string | null | undefined} body
+ * @returns {number[]}
+ */
+export function blockersOf(body) {
+  const text = String(body ?? '')
+    .replace(/\r?\n?(```|~~~)[\s\S]*?(\1|$)\r?\n?/g, ' ')
+    .replace(/(`+)[\s\S]*?\1/g, ' ');
+  const start = text.search(/starts after|do not take this one until/i);
+  if (start < 0) return [];
+  const paragraph = text.slice(start).split(/\r?\n\s*\r?\n/)[0] ?? '';
+  const numbers = new Set();
+  for (const found of paragraph.matchAll(/(?<![\w/.#-])#(\d{1,9})(?!\d)/g)) {
+    const number = Number(found[1]);
+    if (number > 0) numbers.add(number);
+    if (numbers.size === MOST_BLOCKERS) break;
+  }
+  return [...numbers];
+}
+
 /** @param {string} text */
 const escapeForRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 
@@ -176,7 +210,7 @@ const NEGATION =
  */
 const normalise = (text) =>
   String(text ?? '')
-    .replace(/(```|~~~)[\s\S]*?(\1|$)/g, ' ')
+    .replace(/\r?\n?(```|~~~)[\s\S]*?(\1|$)\r?\n?/g, ' ')
     .replace(/`[^`\n]*`/g, ' ')
     .split('\n')
     .filter((line) => !line.trimStart().startsWith('>'))
@@ -284,6 +318,8 @@ export const assignedMarker = (now, login) =>
 /** @param {string} login */
 export const takenMarker = (login) => `<!-- claim-an-issue:taken login=${login} -->`;
 /** @param {string} login */
+export const blockedMarker = (login) => `<!-- claim-an-issue:blocked login=${login} -->`;
+/** @param {string} login */
 export const hintMarker = (login) => `<!-- claim-an-issue:hint login=${login} -->`;
 /** @param {number} pull @param {string} since */
 export const remindedMarker = (pull, since) =>
@@ -314,6 +350,20 @@ export const replies = {
       '',
       `If they open no pull request that names it within ${DAYS_TO_FREE} days of taking it, it frees itself and you can ask again then.`,
     ].join('\n'),
+  /** @param {string} login @param {number[]} blockers */
+  blocked: (login, blockers) => {
+    const names = blockers.map((one) => `#${one}`);
+    const list =
+      names.length === 1
+        ? String(names[0])
+        : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+    return [
+      blockedMarker(login),
+      `Thanks, @${login}: this issue starts only after ${list} ${blockers.length === 1 ? 'is' : 'are'} done, so it is not assigned yet.`,
+      '',
+      `${blockers.length === 1 ? 'That one is' : 'Those are'} open to take now: comment \`/take\` on ${blockers.length === 1 ? 'it' : 'one of them'}. This issue can be taken once ${blockers.length === 1 ? 'it is' : 'they are'} merged.`,
+    ].join('\n');
+  },
   /** @param {string} login */
   cap: (login) =>
     [
@@ -601,6 +651,52 @@ const toldTaken = (comments, login) =>
     (c) => c.user?.login === OUR_ACCOUNT && String(c.body ?? '').includes(takenMarker(login)),
   );
 
+/** Whether this workflow already told `login` on this issue that it is blocked. @param {Json[]} comments @param {string} login */
+const toldBlocked = (comments, login) =>
+  comments.some(
+    (c) => c.user?.login === OUR_ACCOUNT && String(c.body ?? '').includes(blockedMarker(login)),
+  );
+
+/**
+ * Whether the issue `number` still holds `issue` back. A closed one does not, and neither does one
+ * that waits on `issue` in turn (a cycle that no one could ever break). One that cannot be read
+ * holds it back, except, when `goneIsClosed`, one GitHub says is not there (missing, deleted or
+ * transferred): an assignment must not outlast a body someone wrote.
+ *
+ * @param {Api} api
+ * @param {Json} issue
+ * @param {number} number
+ * @param {boolean} goneIsClosed
+ */
+const holdsBack = (api, issue, number, goneIsClosed) => {
+  let one;
+  try {
+    one = api.issue(number);
+  } catch (error) {
+    const said = `${(/** @type {Json} */ (error))?.stderr ?? ''}${(/** @type {Json} */ (error))?.message ?? ''}`;
+    return !(goneIsClosed && /\b404\b/.test(said));
+  }
+  if (!one) return !goneIsClosed;
+  if (one.state === 'closed') return false;
+  return !blockersOf(one.body).includes(issue.number);
+};
+
+/**
+ * The issues `issue` waits on that still hold it back. When one cannot be read, a claim takes it for
+ * open (the safe answer for an issue that says it must wait); the daily release (`goneIsClosed`)
+ * takes one that is not there for closed.
+ *
+ * @param {Api} api
+ * @param {Json} issue
+ * @param {{ goneIsClosed?: boolean }} [options]
+ * @returns {number[]}
+ */
+export function openBlockers(api, issue, { goneIsClosed = false } = {}) {
+  return blockersOf(issue.body).filter(
+    (number) => number !== issue.number && holdsBack(api, issue, number, goneIsClosed),
+  );
+}
+
 /** Whether this workflow already told `login` on this issue how to claim. @param {Json[]} comments @param {string} login */
 const toldHint = (comments, login) =>
   comments.some(
@@ -671,8 +767,16 @@ export function claim(event, api, now = new Date()) {
       held,
     });
   let verdict = ask(0);
-  // What the commenter already holds is asked of GitHub only for a claim that would be granted.
-  if (verdict.action === 'assign') verdict = ask(heldBy(api, login, number));
+  // The blockers and what the commenter already holds are asked of GitHub only for a claim that would be granted.
+  if (verdict.action === 'assign') {
+    const waiting = openBlockers(api, issue);
+    if (waiting.length > 0) {
+      if (!toldBlocked(api.comments(number), login))
+        api.comment(number, replies.blocked(login, waiting));
+      return { action: 'blocked', why: `waits on ${waiting.join(', ')}` };
+    }
+    verdict = ask(heldBy(api, login, number));
+  }
   if (verdict.action === 'taken' && !toldTaken(api.comments(number), login)) {
     api.comment(number, replies.taken(login));
   }
@@ -740,6 +844,7 @@ export function expire(api, now = new Date(), repo = '') {
       repo,
     });
     if (!verdict.free) continue;
+    if (openBlockers(api, issue, { goneIsClosed: true }).length > 0) continue;
     const who = String(verdict.login);
     api.unassign(issue.number, who);
     api.comment(issue.number, replies.freed(who, now));
