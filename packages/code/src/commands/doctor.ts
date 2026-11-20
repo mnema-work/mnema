@@ -1667,7 +1667,21 @@ function swallowedFindings(ctx: DoctorContext): Finding[] {
       },
     ];
   }
-  if (read.entries.length === 0) return [];
+  const passed =
+    read.passedOver === 0
+      ? ''
+      : ` ${read.passedOver} line(s) did not read as the ledger's own and were not counted.`;
+  if (read.entries.length === 0) {
+    return read.passedOver === 0
+      ? []
+      : [
+          {
+            topic: 'swallowed',
+            state: 'attention',
+            line: `the ledger of caught failures at ${file} holds only lines that do not read as its own (${read.passedOver}); none were counted.`,
+          },
+        ];
+  }
   const sites = sitesByCount(read.entries)
     .slice(0, 3)
     .map(({ where, count }) => `${where} (${count})`)
@@ -1683,7 +1697,8 @@ function swallowedFindings(ctx: DoctorContext): Finding[] {
       line:
         `${read.entries.length} failure(s) were caught and the work went on, in the last ${DAYS_READ} days, newest ${newest}; ` +
         `most often at ${sites}. Each is one line (site, error class and code) in ${file}, kept on this machine and never sent: ` +
-        'if one site repeats, open an issue with its name and code; delete the file to start the count again.',
+        'if one site repeats, open an issue with its name and code; delete the file to start the count again.' +
+        passed,
     },
   ];
 }

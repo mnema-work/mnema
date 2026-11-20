@@ -73,10 +73,10 @@ describe('a tool-call count that cannot be kept', () => {
       where: 'mcp.tool-call-count',
       name: 'Error',
       code: 'EIO',
-      message: "EIO: i/o error, write '<path>'",
     });
     const text = readFileSync(join(dataDir, 'log', 'swallowed.jsonl'), 'utf-8');
     expect(text).not.toContain('ZEBRA-WORDS');
     expect(text).not.toContain('somewhere');
+    expect(text).not.toContain('message');
   });
 });

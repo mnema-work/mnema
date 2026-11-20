@@ -14,6 +14,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   forgetWhatWasNoted,
   LINES_PER_PROCESS,
+  MOST_READ_BYTES,
   noteSwallowed,
   readSwallowed,
   SWALLOWED_CEILING_BYTES,
@@ -47,60 +48,66 @@ const lines = (): Record<string, unknown>[] =>
     .map((line) => JSON.parse(line) as Record<string, unknown>);
 
 describe('the ledger of what was swallowed', () => {
-  it('keeps one bounded line: the instant, the site, the error class and code, the version', () => {
-    noteSwallowed('mcp.tool-call-count', coded('EACCES', 'permission denied\nsecond line'), {
-      processEnv: env,
-      now: NOW,
-    });
+  it('keeps one bounded line: the instant, the site, the error class, code and syscall, the version', () => {
+    noteSwallowed(
+      'mcp.tool-call-count',
+      Object.assign(new Error('permission denied\nsecond line'), {
+        code: 'EACCES',
+        syscall: 'open',
+      }),
+      { processEnv: env, now: NOW },
+    );
     expect(lines()).toEqual([
       {
         at: '2026-11-20T12:00:00Z',
         where: 'mcp.tool-call-count',
         name: 'Error',
         code: 'EACCES',
-        message: 'permission denied',
+        syscall: 'open',
         version: VERSION,
       },
     ]);
   });
 
-  it('keeps no path outside the data directory, no stack, and no words of a person', () => {
-    const secret = 'my-password-hunter2';
+  it.each([
+    ['a relative path', "ENOENT: no such file or directory, open 'relative/secret notes.md'", 'secret notes'],
+    ['a short relative path', "ENOENT: open 'src/secret.md'", 'secret.md'],
+    ['a dot path', "ENOENT: open './x-private'", 'x-private'],
+    ['a UNC path', 'EACCES: open \\\\server\\share\\hr\\salaries.xlsx', 'salaries'],
+    ['a tilde path', "ENOENT: open '~/diary.txt'", 'diary'],
+    ['a folder with a space', 'ENOENT: open /home/x/my project/a.mjs', 'my project'],
+    ['a package name', "Cannot find module 'left-pad-of-the-acme-corp' imported from x", 'acme-corp'],
+    ['a quoted statement', "SQLITE_BUSY: INSERT INTO notes VALUES ('the person said hunter2')", 'hunter2'],
+  ])('keeps no message: %s does not reach the ledger', (_shape, message, fragment) => {
     noteSwallowed(
-      'a.site',
-      coded('ENOENT', `no such file or directory, open '/home/someone/${secret}/notes.md'`),
+      'hook.session-start',
+      Object.assign(new Error(message), { code: 'EACCES', syscall: 'open' }),
       { processEnv: env, now: NOW },
     );
-    noteSwallowed(
-      'b.site',
-      new SyntaxError(`Unexpected token 'h', "${secret}" is not valid JSON`),
-      {
-        processEnv: env,
-        now: NOW,
-      },
-    );
-    noteSwallowed('c.site', coded('EEXIST', `file exists, mkdir '${home}/log'`), {
+    const text = readFileSync(swallowedFiles(home).file, 'utf-8');
+    expect(text).not.toContain(fragment);
+    expect(text).not.toContain('message');
+    expect(Object.keys(lines()[0] ?? {}).sort()).toEqual([
+      'at',
+      'code',
+      'name',
+      'syscall',
+      'version',
+      'where',
+    ]);
+  });
+
+  it('keeps no stack, and for an error with no code only its class', () => {
+    const secret = 'my-password-hunter2';
+    noteSwallowed('hook.session-start', new SyntaxError(`Unexpected token 'h', "${secret}"`), {
       processEnv: env,
       now: NOW,
     });
-    noteSwallowed(
-      'd.site',
-      coded('EACCES', "permission denied, open '/home/some one/private folder/x.md'"),
-      {
-        processEnv: env,
-        now: NOW,
-      },
-    );
     const text = readFileSync(swallowedFiles(home).file, 'utf-8');
-    expect(text).not.toContain('private folder');
     expect(text).not.toContain(secret);
-    expect(text).not.toContain('/home/someone');
     expect(text).not.toContain('stack');
-    const [first, second, third] = lines();
-    expect(first?.message).toBe("no such file or directory, open '<path>'");
-    expect(second).toMatchObject({ name: 'SyntaxError' });
-    expect(second).not.toHaveProperty('message');
-    expect(third?.message).toContain(`${home}/log`);
+    expect(lines()).toMatchObject([{ name: 'SyntaxError' }]);
+    expect(lines()[0]).not.toHaveProperty('code');
   });
 
   it('writes one line for a site, an error and a day in one process, and no more than a handful in all', () => {
@@ -176,23 +183,23 @@ describe('the ledger of what was swallowed', () => {
       `${JSON.stringify({ at, where, name: 'Error', version: '0.0.0' })}\n`;
     writeFileSync(
       rotated,
-      line('2026-11-19T00:00:00Z', 'b.site') + line('2026-11-01T00:00:00Z', 'old.site'),
+      line('2026-11-19T00:00:00Z', 'hook.after-a-write') + line('2026-11-01T00:00:00Z', 'hook.choice-settled'),
     );
     writeFileSync(
       file,
-      `${line('2026-11-20T01:00:00Z', 'a.site')}${line('2026-11-20T02:00:00Z', 'b.site')}{torn\n${line('2026-11-20T03:00:00Z', 'b.site')}`,
+      `${line('2026-11-20T01:00:00Z', 'hook.session-start')}${line('2026-11-20T02:00:00Z', 'hook.after-a-write')}{torn\n${line('2026-11-20T03:00:00Z', 'hook.after-a-write')}${line('2026-11-20T04:00:00Z', 'SECRET-SITE')}`,
     );
     const read = readSwallowed(home, { now: NOW, days: 7 });
     expect(read.entries.map((entry) => entry.where)).toEqual([
-      'b.site',
-      'a.site',
-      'b.site',
-      'b.site',
+      'hook.after-a-write',
+      'hook.session-start',
+      'hook.after-a-write',
+      'hook.after-a-write',
     ]);
-    expect(read.passedOver).toBe(1);
+    expect(read.passedOver).toBe(2);
     expect(sitesByCount(read.entries)).toEqual([
-      { where: 'b.site', count: 3 },
-      { where: 'a.site', count: 1 },
+      { where: 'hook.after-a-write', count: 3 },
+      { where: 'hook.session-start', count: 1 },
     ]);
     expect(readSwallowed(join(home, 'nowhere'), { now: NOW })).toEqual({
       entries: [],
@@ -200,6 +207,18 @@ describe('the ledger of what was swallowed', () => {
       present: false,
       unreadable: false,
     });
+  });
+
+  it('reads a file planted large by its last bytes only', () => {
+    const { file } = swallowedFiles(home);
+    mkdirSync(join(home, 'log'));
+    const line = `${JSON.stringify({ at: '2026-11-20T01:00:00Z', where: 'hook.session-start', name: 'Error', version: '0.0.0' })}\n`;
+    const planted = line.repeat(Math.ceil((8 * 1024 * 1024) / line.length));
+    writeFileSync(file, planted);
+    const read = readSwallowed(home, { now: NOW, days: 7 });
+    expect(Buffer.byteLength(planted)).toBeGreaterThan(MOST_READ_BYTES * 3);
+    expect(read.entries.length).toBeLessThanOrEqual(Math.ceil(MOST_READ_BYTES / line.length));
+    expect(read.entries.length).toBeGreaterThan(0);
   });
 
   it('says once that the tool-call count could not be written, from the data directory the file sits in', () => {

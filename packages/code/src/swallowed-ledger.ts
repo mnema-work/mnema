@@ -14,20 +14,21 @@
  * not inside the global tree: that one is a chain, the product's guards digest its files and a
  * backup walks it. It is never copied by a backup and it never leaves the machine: nothing sends it.
  *
- * WHAT A LINE HOLDS AND NO MORE: the instant (UTC, to the second), the site's stable name (`where`,
- * a name that survives a refactor, never a file and line), the error's class name, its `code` when
- * it has one, and the first line of its message ONLY WHEN THE ERROR CARRIES A CODE of its own
- * (`ENOENT`, `ERR_MODULE_NOT_FOUND`: a failure of the system, whose message is the system's words)
- * with every absolute path in it that is not under the data directory replaced by `<path>`. An
- * error without a code (a `SyntaxError` quotes the text it could not parse, which is somebody's
- * words) keeps its class name and nothing else. And mnema's version. NEVER a stack, an argument, the
- * content of a file, the name of a project, a decision's title, an id or a person's words.
+ * WHAT A LINE HOLDS AND NO MORE (ADR-635): the instant (UTC, to the second), the site's stable name
+ * (`where`, one of {@link SWALLOWED_SITES}, never a file and line), the error's class name, its `code`
+ * when it has one (`ENOENT`, `ERR_MODULE_NOT_FOUND`, `SQLITE_BUSY`), its `syscall` when it has one
+ * (`open`), and mnema's version. NO MESSAGE, because a message is free text: it carries paths in
+ * shapes no list of shapes covers, and a database's quotes the statement and the record's content.
+ * The version is the running product's here and the plugin manifest's in a line a hook wrote, which
+ * is the same number only where the plugin and the binary are of one release. NEVER a stack, an
+ * argument, the content of a file, the name of a project, a decision's title, an id or a person's words.
  *
  * A HARD CEILING, SAID: the file is at most {@link SWALLOWED_CEILING_BYTES}; a line that would take it
- * over renames it over {@link SWALLOWED_ROTATED} (the older half is lost, once, by design), so the
- * two files together hold at most twice the ceiling. Within one process a site, an error and a day
- * write one line, and a process writes at most {@link LINES_PER_PROCESS}: a loop that fails a
- * thousand times is a handful of lines. Two processes can both write the same line (nothing locks).
+ * over renames it over {@link SWALLOWED_ROTATED} (the older half is lost, once, by design), and that
+ * rename is done under a lock file, so two processes cannot both rename and lose the older half: a
+ * process that cannot take the lock drops its line and leaves both files as they were. Within one
+ * process a site, an error and a day write one line, and a process writes at most
+ * {@link LINES_PER_PROCESS}: a loop that fails a thousand times is a handful of lines.
  *
  * IT CREATES NOTHING WHERE THE MACHINE HAS NO KEY OF ITS OWN YET. A catch that fires on a read of a
  * machine with no identity writes nothing and makes no directory: the home stays as that read found
@@ -35,7 +36,17 @@
  * no line behind it.
  */
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync } from 'node:fs';
+import {
+  appendFileSync,
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  readSync,
+  renameSync,
+  statSync,
+  unlinkSync,
+} from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
 import { VERSION } from './version.js';
 
@@ -49,12 +60,26 @@ export const SWALLOWED_ROTATED = 'swallowed.1.jsonl';
 export const SWALLOWED_CEILING_BYTES = 128 * 1024;
 /** The most lines one process writes: a loop that fails over and over is a handful, not a flood. */
 export const LINES_PER_PROCESS = 50;
+/** The most of a file the reading takes: a file planted large is read by its last bytes, not whole. */
+export const MOST_READ_BYTES = 2 * SWALLOWED_CEILING_BYTES;
+/** The places that write to the ledger: a line that names another is not one of the ledger's. */
+export const SWALLOWED_SITES: readonly string[] = [
+  'mcp.tool-call-count',
+  'tool-calls.append',
+  'hook.session-start',
+  'hook.session-recall',
+  'hook.after-a-write',
+  'hook.choice-settled',
+];
+/** A lock file older than this was left by a process that died holding it. */
+const STALE_LOCK_MS = 10_000;
+/** How long a process waits for the lock before it drops its line. */
+const LOCK_WAIT_MS = 300;
 /** How many days back `mnema doctor` counts. */
 export const DAYS_READ = 7;
 
 /** Where the key root is, under the data directory: nothing is written where it is not. */
 const KEY_ROOT_DIR = 'identity';
-const MESSAGE_LIMIT = 120;
 const NAME_LIMIT = 64;
 
 /** One line of the ledger. */
@@ -63,7 +88,7 @@ export interface Swallowed {
   readonly where: string;
   readonly name: string;
   readonly code?: string;
-  readonly message?: string;
+  readonly syscall?: string;
   readonly version: string;
 }
 
@@ -91,24 +116,8 @@ function siteName(where: string): string {
   return /^[a-z0-9][a-z0-9._:-]{0,63}$/.test(where) ? where : 'unnamed';
 }
 
-/**
- * The text with every absolute path outside `dataDir` replaced by `<path>`: a quoted one whole (a
- * folder's name may hold spaces), a bare one up to the next space.
- */
-function withoutPaths(text: string, dataDir: string): string {
-  const mine = (found: string): boolean =>
-    found === dataDir || found.startsWith(`${dataDir}/`) || found.startsWith(`${dataDir}\\`);
-  return text
-    .replace(/(['"`])((?:[A-Za-z]:\\|\/)[^'"`]*)\1/g, (all, quote: string, found: string) =>
-      mine(found) ? all : `${quote}<path>${quote}`,
-    )
-    .replace(/(?<![A-Za-z0-9])(?:[A-Za-z]:\\|\/)[^\s'"`,;)]*/g, (found) =>
-      mine(found) ? found : '<path>',
-    );
-}
-
-/** What the ledger keeps of an error: see the head of this file. */
-function whatIsKept(error: unknown, dataDir: string): Pick<Swallowed, 'name' | 'code' | 'message'> {
+/** What the ledger keeps of an error: see the head of this file. No message, ever. */
+function whatIsKept(error: unknown): Pick<Swallowed, 'name' | 'code' | 'syscall'> {
   const held =
     typeof error === 'object' && error !== null ? (error as Record<string, unknown>) : {};
   const name = (
@@ -117,13 +126,11 @@ function whatIsKept(error: unknown, dataDir: string): Pick<Swallowed, 'name' | '
     .replace(/[^A-Za-z0-9_.$-]/g, '')
     .slice(0, NAME_LIMIT);
   const coded = typeof held.code === 'string' && /^[A-Z][A-Z0-9_]{1,63}$/.test(held.code);
-  const first = coded && typeof held.message === 'string' ? held.message.split(/\r?\n/, 1)[0] : '';
-  const message =
-    first === undefined || first === '' ? '' : withoutPaths(first, dataDir).slice(0, MESSAGE_LIMIT);
+  const called = typeof held.syscall === 'string' && /^[a-z][a-z0-9_]{0,31}$/.test(held.syscall);
   return {
     name: name === '' ? 'unknown' : name,
     ...(coded ? { code: held.code as string } : {}),
-    ...(message === '' ? {} : { message }),
+    ...(called ? { syscall: held.syscall as string } : {}),
   };
 }
 
@@ -157,9 +164,9 @@ export function noteSwallowed(
     if (dataDir === undefined || !existsSync(join(dataDir, KEY_ROOT_DIR))) return;
     const now = options.now ?? new Date();
     const at = `${now.toISOString().slice(0, 19)}Z`;
-    const kept = whatIsKept(error, dataDir);
+    const kept = whatIsKept(error);
     const site = siteName(where);
-    const key = `${at.slice(0, 10)}|${site}|${kept.name}|${kept.code ?? ''}|${dataDir}`;
+    const key = `${at.slice(0, 10)}|${site}|${kept.name}|${kept.code ?? ''}|${kept.syscall ?? ''}|${dataDir}`;
     if (written.has(key) || writtenLines >= LINES_PER_PROCESS) return;
     written.add(key);
     writtenLines += 1;
@@ -168,9 +175,10 @@ export function noteSwallowed(
     mkdirSync(join(dataDir, SWALLOWED_DIR), { recursive: true, mode: 0o700 });
     if (
       existsSync(file) &&
-      statSync(file).size + Buffer.byteLength(line) > SWALLOWED_CEILING_BYTES
+      statSync(file).size + Buffer.byteLength(line) > SWALLOWED_CEILING_BYTES &&
+      !rotateUnderLock(file, rotated, Buffer.byteLength(line))
     ) {
-      renameSync(file, rotated);
+      return;
     }
     appendFileSync(file, line, { mode: 0o600 });
   } catch {
@@ -179,11 +187,52 @@ export function noteSwallowed(
   }
 }
 
+/** Waits `ms` without spinning. */
+function pause(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/**
+ * Renames `file` over `rotated` if it is still over the ceiling, holding a lock file nobody else can
+ * make at once (`wx`). True where the file has room for the line afterwards; false where the lock
+ * could not be had in time, and then nothing was touched. A lock left by a dead process is taken over
+ * once it is older than {@link STALE_LOCK_MS}.
+ */
+function rotateUnderLock(file: string, rotated: string, incoming: number): boolean {
+  const lock = `${file}.lock`;
+  const until = Date.now() + LOCK_WAIT_MS;
+  for (;;) {
+    try {
+      closeSync(openSync(lock, 'wx', 0o600));
+      break;
+    } catch (error) {
+      if ((error as { code?: unknown }).code !== 'EEXIST') return false;
+      try {
+        if (Date.now() - statSync(lock).mtimeMs > STALE_LOCK_MS) unlinkSync(lock);
+      } catch (gone) {
+        // The holder released it between the two calls: the next turn of the loop takes it.
+        if ((gone as { code?: unknown }).code !== 'ENOENT') return false;
+      }
+      if (Date.now() > until) return false;
+      pause(10);
+    }
+  }
+  try {
+    // Another process may have rotated while this one waited: only a file still over the ceiling moves.
+    if (existsSync(file) && statSync(file).size + incoming > SWALLOWED_CEILING_BYTES) {
+      renameSync(file, rotated);
+    }
+    return true;
+  } finally {
+    unlinkSync(lock);
+  }
+}
+
 /** What reading the ledger gave. */
 export interface SwallowedRead {
   /** The lines within the days asked, oldest first. */
   readonly entries: readonly Swallowed[];
-  /** Lines that are not a line of the ledger as written here (a torn write, a hand edit). */
+  /** Lines that are not a line of the ledger as written here (a torn write, a hand edit, a site this ledger has none of). */
   readonly passedOver: number;
   /** Whether a file was there at all. */
   readonly present: boolean;
@@ -191,26 +240,47 @@ export interface SwallowedRead {
   readonly unreadable: boolean;
 }
 
-/** The lines of `file`: none where there is no file, and `'unreadable'` where there is one that does not read. */
+/**
+ * The lines of `file`, from at most its last {@link MOST_READ_BYTES}: none where there is no file, and
+ * `'unreadable'` where there is one that does not read. A larger file is read from its end and its
+ * first, cut, line is left out.
+ */
 function linesOf(file: string): string[] | 'unreadable' | undefined {
+  let fd: number;
   try {
-    return readFileSync(file, 'utf-8')
-      .split('\n')
-      .filter((line) => line !== '');
+    fd = openSync(file, 'r');
   } catch (error) {
     return (error as { code?: unknown }).code === 'ENOENT' ? undefined : 'unreadable';
   }
+  try {
+    const size = statSync(file).size;
+    const take = Math.min(size, MOST_READ_BYTES);
+    const buffer = Buffer.alloc(take);
+    readSync(fd, buffer, 0, take, size - take);
+    const lines = buffer.toString('utf-8').split('\n');
+    if (size > take) lines.shift();
+    return lines.filter((line) => line !== '');
+  } catch (error) {
+    return (error as { code?: unknown }).code === 'ENOENT' ? undefined : 'unreadable';
+  } finally {
+    closeSync(fd);
+  }
 }
 
+const AN_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
+
+/** A line of the ledger as written here, or undefined: its instant has the shape written and its site is one of ours. */
 function asLine(raw: string): Swallowed | undefined {
   try {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     if (
       typeof parsed.at !== 'string' ||
+      !AN_INSTANT.test(parsed.at) ||
+      Number.isNaN(Date.parse(parsed.at)) ||
       typeof parsed.where !== 'string' ||
+      !SWALLOWED_SITES.includes(parsed.where) ||
       typeof parsed.name !== 'string' ||
-      typeof parsed.version !== 'string' ||
-      Number.isNaN(Date.parse(parsed.at))
+      typeof parsed.version !== 'string'
     ) {
       return undefined;
     }
@@ -220,7 +290,7 @@ function asLine(raw: string): Swallowed | undefined {
       name: parsed.name,
       version: parsed.version,
       ...(typeof parsed.code === 'string' ? { code: parsed.code } : {}),
-      ...(typeof parsed.message === 'string' ? { message: parsed.message } : {}),
+      ...(typeof parsed.syscall === 'string' ? { syscall: parsed.syscall } : {}),
     };
   } catch (error) {
     // `JSON.parse` throws a SyntaxError and nothing else: a line that is not JSON is not a line.

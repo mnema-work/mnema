@@ -73,9 +73,27 @@ describe('mnema doctor reads the ledger of caught failures', () => {
     mkdirSync(join(mnemaHome(), SWALLOWED_DIR));
     writeFileSync(
       swallowedFiles(mnemaHome()).file,
-      `${JSON.stringify({ at: '2020-01-01T00:00:00Z', where: 'old.site', name: 'Error', version: '0.0.0' })}\n`,
+      `${JSON.stringify({ at: '2020-01-01T00:00:00Z', where: 'hook.choice-settled', name: 'Error', version: '0.0.0' })}\n`,
     );
     expect(swallowedLines()).toEqual([]);
+  });
+
+  it('prints nothing it did not write: a line that names no known site is counted as unreadable, never shown', () => {
+    mkdirSync(join(mnemaHome(), SWALLOWED_DIR));
+    const odd = (where: string, name: string): string =>
+      `${JSON.stringify({ at: '2026-11-20T01:00:00Z', where, name, version: 'SECRET-VERSION' })}\n`;
+    const now = new Date().toISOString().slice(0, 19);
+    const fresh = JSON.stringify({ at: `${now}Z`, where: 'my secret notes', name: 'SECRET-NAME', version: '1' });
+    writeFileSync(swallowedFiles(mnemaHome()).file, `${fresh}\n${odd('x', 'y')}`);
+    const [line] = swallowedLines();
+    expect(line).toContain('holds only lines that do not read as its own (2)');
+    expect(line).not.toContain('secret');
+    expect(line).not.toContain('SECRET');
+    fail('hook.session-start', 'EACCES');
+    const [mixed] = swallowedLines();
+    expect(mixed).toContain('hook.session-start (1)');
+    expect(mixed).toContain('2 line(s) did not read as the ledger');
+    expect(mixed).not.toContain('SECRET');
   });
 
   it('says that a ledger it cannot read was not counted, and writes nothing over it', () => {

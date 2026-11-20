@@ -9,7 +9,7 @@
  * survive.
  */
 
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import {
   cpSync,
   existsSync,
@@ -23,7 +23,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   forgetWhatWasNoted,
@@ -91,7 +91,7 @@ describe('a hook whose handler fails', () => {
     expect(line).toMatchObject({ where: site, name: 'Error', code: 'ERR_MODULE_NOT_FOUND' });
     // The failing module's path is the plugin folder, which is the person's, not the data directory's.
     expect(lines[0]).not.toContain(sandbox);
-    expect(line.message).toContain('<path>');
+    expect(lines[0]).not.toContain('message');
   });
 
   it.each(HOOKS)('%s makes nothing where the machine has no key of its own', (file) => {
@@ -123,7 +123,7 @@ function throughTheHookCopy(env: Record<string, string>, failures: readonly obje
     const out = { ceiling: ledger.SWALLOWED_CEILING_BYTES, perProcess: ledger.LINES_PER_PROCESS,
       names: [ledger.SWALLOWED_DIR, ledger.SWALLOWED_FILE, ledger.SWALLOWED_ROTATED] };
     for (const f of JSON.parse(process.env.FAILURES)) {
-      const error = Object.assign(new Error(f.message), f.code === undefined ? {} : { code: f.code });
+      const error = Object.assign(new Error(f.message), f.code === undefined ? {} : { code: f.code }, f.syscall === undefined ? {} : { syscall: f.syscall });
       ledger.noteSwallowed(f.where, f.name === 'SyntaxError' ? new SyntaxError(f.message) : error,
         { now: new Date(f.at) });
     }
@@ -143,12 +143,20 @@ function throughTheHookCopy(env: Record<string, string>, failures: readonly obje
 }
 
 describe('the copy a hook carries', () => {
-  const failures = [
+  const failures: {
+    where: string;
+    at: string;
+    name: string;
+    code?: string;
+    syscall?: string;
+    message: string;
+  }[] = [
     {
       where: 'a.site',
       at: '2026-11-20T12:00:00.5Z',
       name: 'Error',
       code: 'EACCES',
+      syscall: 'open',
       message: "denied, open '/home/x/y z/a.md' now\nsecond",
     },
     {
@@ -180,7 +188,11 @@ describe('the copy a hook carries', () => {
       const error =
         f.name === 'SyntaxError'
           ? new SyntaxError(f.message)
-          : Object.assign(new Error(f.message), f.code === undefined ? {} : { code: f.code });
+          : Object.assign(
+              new Error(f.message),
+              f.code === undefined ? {} : { code: f.code },
+              f.syscall === undefined ? {} : { syscall: f.syscall },
+            );
       noteSwallowed(f.where, error, { processEnv: { MNEMA_HOME: mnemaHome }, now: new Date(f.at) });
     }
     const product = readFileSync(swallowedFiles(mnemaHome).file, 'utf-8');
@@ -188,6 +200,10 @@ describe('the copy a hook carries', () => {
     throughTheHookCopy({ MNEMA_HOME: mnemaHome }, failures);
     expect(readFileSync(swallowedFiles(mnemaHome).file, 'utf-8')).toBe(product);
     expect(product.trimEnd().split('\n')).toHaveLength(4);
+    // And no message of any of them is in either: the lines are the same bytes and hold none.
+    for (const fragment of ['y z', 'secret words', '/tmp/q', 'denied', 'plain']) {
+      expect(product).not.toContain(fragment);
+    }
   });
 
   it('keeps the same ceiling: past it the file is renamed over the older half', () => {
@@ -201,5 +217,41 @@ describe('the copy a hook carries', () => {
     expect(readdirSync(join(mnemaHome, SWALLOWED_DIR)).sort()).toEqual(
       [SWALLOWED_FILE, SWALLOWED_ROTATED].sort(),
     );
+  });
+
+  it.each([
+    ['the hook copy', join(PLUGIN, 'hooks', 'swallowed.mjs')],
+    ['the product', fileURLToPath(new URL('../dist/swallowed-ledger.js', import.meta.url))],
+  ])('%s: two processes at the ceiling lose neither the older half nor a line', async (_who, module) => {
+    mkdirSync(join(mnemaHome, 'identity'), { recursive: true });
+    mkdirSync(join(mnemaHome, SWALLOWED_DIR));
+    const { file, rotated } = swallowedFiles(mnemaHome);
+    const old = (n: number): string =>
+      `${JSON.stringify({ at: '2026-11-20T01:00:00Z', where: 'hook.session-start', name: `Old${n}`, version: '0.0.0' })}\n`;
+    let held = '';
+    for (let n = 0; held.length + old(n).length < SWALLOWED_CEILING_BYTES - 150; n += 1) held += old(n);
+    writeFileSync(file, held);
+    const oldCount = held.trimEnd().split('\n').length;
+    const writer = (tag: string): Promise<number | null> =>
+      new Promise((done) => {
+        const script = `
+          const ledger = await import(${JSON.stringify(pathToFileURL(module).href)});
+          for (let n = 0; n < 6; n += 1) {
+            ledger.noteSwallowed('hook.session-start', Object.assign(new Error('x'), { code: 'EIO' }),
+              { now: new Date('2026-11-21T0' + n + ':00:00Z') });
+          }`;
+        spawn(process.execPath, ['--input-type=module', '-e', script.replaceAll('EIO', `E${tag}`)], {
+          env: { HOME: home, MNEMA_HOME: mnemaHome, PATH: '/nonexistent' },
+          stdio: 'ignore',
+        }).on('close', done);
+      });
+    expect(await Promise.all([writer('AAA'), writer('BBB')])).toEqual([0, 0]);
+    const all = [rotated, file].flatMap((path) =>
+      existsSync(path) ? readFileSync(path, 'utf-8').trimEnd().split('\n') : [],
+    );
+    expect(all.filter((line) => line.includes('"Old'))).toHaveLength(oldCount);
+    expect(all.filter((line) => line.includes('"EAAA"'))).toHaveLength(6);
+    expect(all.filter((line) => line.includes('"EBBB"'))).toHaveLength(6);
+    expect(existsSync(`${file}.lock`)).toBe(false);
   });
 });
