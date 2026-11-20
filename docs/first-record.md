@@ -35,7 +35,7 @@ mnema init
 #>     @MNEMA.md
 #>
 #>   Commit `.mnema/` with the repository: the record travels with it, and every clone reads it.
-#>   Off until switched on: edit-first-write-gate, user-corrections.
+#>   Off until switched on: edit-first-write-gate, user-corrections, record-publish.
 #>   Turn one on with `mnema switch on <name>`; `mnema switch` lists every channel.
 #>   Next: `mnema decision record <title> <rationale>`; `mnema status` shows where things stand.
 ```

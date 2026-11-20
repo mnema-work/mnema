@@ -106,6 +106,7 @@
  * now SAY SO in a table, where before their being different was nowhere at all.
  */
 
+import type { ProjectionCache, Scope } from '@mnema/core';
 /** What a channel served, which is what its declaration names. */
 export type ServedSubject =
   /** Pattern bodies: the recipes themselves, served on request. */
@@ -392,7 +393,8 @@ export type SwitchableChannel =
   | 'session-journal'
   | 'agent-mirror'
   | 'last-session'
-  | 'private-rules';
+  | 'private-rules'
+  | 'record-publish';
 
 /**
  * The two switchable channels, each named once, so no consumer spells one.
@@ -576,12 +578,55 @@ export const SUBAGENT_HANDBACK_CHANNEL: SwitchableChannel = 'subagent-handback';
 export const FIRST_WRITE_GATE_CHANNEL: CountedChannel = 'edit-first-write-gate';
 
 /**
+ * The switch of `mnema record publish`, the verb that pushes the record's branch and opens its pull
+ * request on a forge (ADR-617).
+ *
+ * NOT A CHANNEL TO A MODEL, like {@link TOOL_CALL_COUNT_CHANNEL}: nothing is put in front of anybody,
+ * and it is a switch in the form every other one takes. OFF UNTIL A PERSON SWITCHES IT ON, and only
+ * this machine's trees (the private one and the global one) can switch it on: a committed `on` would
+ * make every clone of a public repository, a contributor's included, start pushing branches, so the
+ * verb does not read one. `mnema switch on record-publish` records it privately without being asked
+ * to. The agent is not told it is off (`channelsOffHere` leaves it out): it is a verb for a person,
+ * and the summary a person reads lists it.
+ */
+export const RECORD_PUBLISH_CHANNEL: SwitchableChannel = 'record-publish';
+
+/** What a switch is read from: a tree's scope and its projection's answer about a channel. */
+export interface ASwitchSource {
+  readonly scope: Scope;
+  readonly cache: Pick<ProjectionCache, 'channelSwitch'>;
+}
+
+/**
+ * The sources as the verb reads them: an `on` of `record-publish` in the tree a clone gets is no
+ * switch at all. The listing of `mnema switch` reads through this too, so it says what the verb does.
+ */
+export function asRecordPublishReadsThem<S extends ASwitchSource>(
+  sources: readonly S[],
+): readonly ASwitchSource[] {
+  return sources.map((source) =>
+    source.scope !== 'public'
+      ? source
+      : {
+          scope: source.scope,
+          cache: {
+            channelSwitch: (channel: string) => {
+              const row = source.cache.channelSwitch(channel);
+              return channel === RECORD_PUBLISH_CHANNEL && row?.on === true ? null : row;
+            },
+          },
+        },
+  );
+}
+
+/**
  * The switchable channels that begin OFF: every other begins on. Read by every consumer that asks
  * where a channel stands, so "off until switched on" is one list and not a default repeated.
  */
 export const STARTS_OFF: readonly SwitchableChannel[] = [
   'edit-first-write-gate',
   'user-corrections',
+  'record-publish',
   // NOT `host-memory-mirror`, which writes without a verb and begins ON all the same: ADR-39 decided
   // it, named here because it is the one exception to "a channel that writes without a verb starts
   // off", and the rule still holds for every other such channel.
@@ -713,6 +758,10 @@ export const NOT_COUNTED_AS_SERVED: {
   'choice-settled':
     'the sentence is printed by `mnema settled`, which reads the payload and the record’s switches ' +
     'and writes nothing (no event, no key, no run), so a question answered never moves the record',
+  'record-publish':
+    'it puts nothing in front of a model and writes nothing to the record: the verb is run by a ' +
+    'person, pushes a branch and opens a pull request, and the forge keeps the record of both, so ' +
+    'a fact saying the channel was served would repeat it',
   'tool-call-count':
     'it puts nothing in front of a model and writes nothing to the record: the line it keeps is ' +
     'appended to a file on this machine, outside it, so a fact saying it was served would be a ' +
@@ -855,6 +904,11 @@ export const WHAT_STOPS: { readonly [K in SwitchableChannel]: string } = {
     'wrote and how many decisions were recorded since it opened, and how many events of the ' +
     'record are in no git commit yet, and, on a second line, how many of those decisions still ' +
     'await a person',
+  'record-publish':
+    'the verb `mnema record publish`, which pushes the branch `mnema record commit` makes and ' +
+    'opens its pull request on GitHub, to a destination the person names, one pull request at ' +
+    'a time. Off until switched on, and only this machine’s own trees switch it on: an on ' +
+    'recorded in the tree a clone gets is not read',
 };
 
 /**

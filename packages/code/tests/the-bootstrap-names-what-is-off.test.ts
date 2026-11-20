@@ -105,7 +105,8 @@ describe('the opening read names the channels that are off', () => {
       'Off on this machine: edit-first-write-gate, user-corrections. ' +
         'Only a person turns one on, with `mnema switch on <name>`.',
     );
-    expect(line).toBe(offOnThisMachine([...STARTS_OFF]));
+    // `record-publish` also begins off, and is a verb for a person: the agent is not told of it.
+    expect(line).toBe(offOnThisMachine(STARTS_OFF.filter((name) => name !== 'record-publish')));
     // The line is the cheap half of the trade: well under sixty tokens.
     expect((line ?? '').length).toBeLessThan(4 * 60);
   });
@@ -131,6 +132,8 @@ describe('the opening read names the channels that are off', () => {
       roots: [pathToFileURL(repo).href],
       env,
     });
-    expect(channelsOffHere(session)).toEqual([...STARTS_OFF]);
+    expect(channelsOffHere(session)).toEqual(
+      STARTS_OFF.filter((name) => name !== 'record-publish'),
+    );
   });
 });
