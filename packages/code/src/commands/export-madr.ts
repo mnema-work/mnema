@@ -23,14 +23,7 @@
  * rewritten, so exporting twice is exporting once.
  */
 
-import {
-  existsSync,
-  lstatSync,
-  mkdirSync,
-  readFileSync,
-  statSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { catalogUpcasters } from '@mnema/chain';
 import {
