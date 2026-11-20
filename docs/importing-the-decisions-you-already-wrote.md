@@ -59,12 +59,14 @@ Three services send us times in three zones and the comparisons were wrong.
 ```
 
 **A text over the size a record may hold is cut, not refused.** A why or a turned-down text
-over 65,536 bytes (UTF-8) is cut at the last blank line that fits, and what is kept ends in
-a line that says so and gives the SHA-256 of the whole text; the plan says `its why was cut
-at N of M bytes`. The whole text stays in the file the decision names, and the hash lets you
-prove later that the file still says what was read. The credential check runs over the whole
-text before the cut, so a secret past the cut point still refuses the file. A title over that
-size is refused, because a name cut short would name another decision.
+over 65,536 bytes (UTF-8) is cut at the last blank line that fits (never inside an open code
+block), and what is kept ends in a line that says so and gives the SHA-256 of the whole text
+as the import read it from the file; the plan says `its why was cut at N of M bytes`. The whole
+file stays where the decision's `derived-from` edge names it. The hash lets you check that a
+copy of the text is the one that was read, and not that the file is unchanged since. The
+credential check runs over the whole text before the cut, so a secret past the cut point still
+refuses the file. A title over that size is refused, because a name cut short would name
+another decision.
 
 **What it will not read, and what it cannot tell.** A file with no title, or with nothing
 under it that says a why, is refused BY NAME with the reason beside it: a rule like

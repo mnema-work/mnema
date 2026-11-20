@@ -136,6 +136,11 @@ const MARKDOWN = /\.(?:md|markdown)$/i;
  * `GEMINI.md`), which sit at a repository's root, the one base a project may also keep its
  * decisions in: `mnema init` creates an `AGENTS.md` there, and its heading would otherwise make
  * it a document of that base that the record never read, for as long as the file is there.
+ *
+ * AND THE FILES A PROJECT KEEPS AT ITS ROOT BESIDE THEM (`CHANGELOG.md`, `CONTRIBUTING.md`,
+ * `SECURITY.md`, `CODE_OF_CONDUCT.md`): with no paragraph under the title, they used to be
+ * refused as stating no why, and now that a document's sections are read as its why they would be
+ * proposed as decisions.
  */
 const NOT_A_DECISION: readonly string[] = [
   'readme',
@@ -147,6 +152,11 @@ const NOT_A_DECISION: readonly string[] = [
   'agents',
   'claude',
   'gemini',
+  'changelog',
+  'contributing',
+  'security',
+  'code_of_conduct',
+  'code-of-conduct',
 ];
 
 /** The path, POSIX-style, of a file inside the scanned directory. */
@@ -181,42 +191,61 @@ function noteOf(whole: string): string {
   );
 }
 
+/** Whether `text` ends inside a fenced code block: an odd number of lines opening or closing a fence. */
+function endsInsideAFence(text: string): boolean {
+  return (text.match(/^[ \t]*(?:```|~~~)/gm) ?? []).length % 2 === 1;
+}
+
 /**
- * A text cut so that what is kept PLUS the closing note weigh at most {@link FIELD_BYTE_LIMIT}
- * bytes of UTF-8, or the text itself when it already fits. The cut falls at the last blank line
- * that fits, else the last line break, else the last whole code point: never inside a multi-byte
- * sequence (held by `scan.test.ts`, "cuts at a whole character when two and four byte characters
- * cross the limit").
+ * A text cut so that `prefix` (kept as it is, and not part of the hash) plus what is kept plus
+ * the closing note weigh at most {@link FIELD_BYTE_LIMIT} bytes of UTF-8, or the text itself
+ * when it already fits. The cut falls at the last blank line that fits and is outside an open
+ * fenced code block, else the last such line break, else the last whole code point, and a block
+ * still open at the cut is closed before the note, counted in the budget. Never inside a
+ * multi-byte sequence. Held by `scan.test.ts` ("cuts at a whole character when two and four byte
+ * characters cross the limit", "does not cut inside an open code block").
+ *
+ * The note's byte count and hash are of `text` alone: for a bridge, `prefix` is the origin line
+ * the import wrote, which is not the source's text.
  */
-export function cutToFit(text: string): { readonly value: string; readonly cut?: CutField } {
+export function cutToFit(
+  text: string,
+  prefix = '',
+): { readonly value: string; readonly cut?: CutField } {
   const of = weight(text);
-  if (of <= FIELD_BYTE_LIMIT) return { value: text };
+  if (weight(prefix) + of <= FIELD_BYTE_LIMIT) return { value: `${prefix}${text}` };
   const note = noteOf(text);
-  const budget = FIELD_BYTE_LIMIT - weight(note) - 2;
+  const closer = '\n```';
+  const budget = FIELD_BYTE_LIMIT - weight(prefix) - weight(note) - 2 - weight(closer);
   const bytes = Buffer.from(text, 'utf8');
   let end = budget;
   // A continuation byte (10xxxxxx) is the middle of a character: step back to its first byte.
   while (end > 0 && ((bytes[end] as number) & 0xc0) === 0x80) end -= 1;
   const fits = bytes.subarray(0, end).toString('utf8');
+  const outside = (index: number): boolean => !endsInsideAFence(fits.slice(0, index));
   let blank = -1;
-  for (const match of fits.matchAll(/\n[ \t]*\n/g)) blank = match.index;
-  const lineBreak = fits.lastIndexOf('\n');
+  for (const match of fits.matchAll(/\n[ \t]*\n/g)) if (outside(match.index)) blank = match.index;
+  let lineBreak = -1;
+  for (const match of fits.matchAll(/\n/g)) if (outside(match.index)) lineBreak = match.index;
   const at = blank > 0 ? blank : lineBreak > 0 ? lineBreak : fits.length;
-  const kept = fits.slice(0, at).trimEnd();
-  return { value: `${kept}\n\n${note}`, cut: { kept: weight(kept), of } };
+  let kept = fits.slice(0, at).trimEnd();
+  if (endsInsideAFence(kept)) kept = `${kept}${closer}`;
+  return { value: `${prefix}${kept}\n\n${note}`, cut: { kept: weight(kept), of } };
 }
 
 /**
  * What this product does to a document already read, whatever file shape it came out of, in
  * this order: refuse a file that holds something shaped like a credential (over everything that
  * was read), refuse a title over the limit, and cut the why and the turned-down text to fit.
- * One function, so a bridge from another tool's notes is screened, refused and cut by the same
+ * `origin` is the line a bridge put at the start of the rationale: it is kept whole and is no part
+ * of the text the cut's hash covers. One function, so a bridge from another tool's notes is screened, refused and cut by the same
  * rules and the same idea of a credential as an ADR.
  */
 export function triage(
   path: string,
   document: AdrDocument,
   line?: number,
+  origin = '',
 ): ScannedDecision | ScanRefusal {
   const at = line !== undefined ? { line } : {};
   // Screened over what was READ, not only over what is kept: the whole options section is
@@ -227,7 +256,7 @@ export function triage(
   const classes = [...new Set(screened.flatMap((field) => detectSecrets(field)))].sort();
   if (classes.length > 0) return { path, ...at, code: 'HOLDS_A_SECRET', classes };
   if (weight(document.title) > FIELD_BYTE_LIMIT) return { path, ...at, code: 'TITLE_TOO_LARGE' };
-  const why = cutToFit(document.rationale);
+  const why = cutToFit(document.rationale.slice(origin.length), origin);
   const turnedDown =
     document.alternatives !== undefined ? cutToFit(document.alternatives) : undefined;
   const cut = {

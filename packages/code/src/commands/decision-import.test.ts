@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -11,6 +12,7 @@ import {
   resolveTrees,
 } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { MNEMA_CLI } from '../../tests/support/the-cli.js';
 import { runDecisionImport } from './decision-import.js';
 import { runInit } from './init.js';
 
@@ -326,6 +328,22 @@ describe('a document with no context section, and a document with a field over t
     // A second run finds both by their edges and writes nothing.
     const again = runDecisionImport({ cwd: repo, env }, { from: 'docs/adr', write: true });
     expect(again.ok && [again.proposals.length, again.already.length]).toEqual([0, 2]);
+  });
+
+  it('says in the plan, as the binary prints it, how each document was read', () => {
+    const { repo, env } = setup({ '0017-search.md': NO_CONTEXT, '0058-big.md': bigDecision() });
+    const ran = spawnSync(
+      process.execPath,
+      [MNEMA_CLI, '--color=never', 'decision', 'import', 'docs/adr'],
+      {
+        cwd: repo,
+        encoding: 'utf-8',
+        env: { PATH: process.env.PATH ?? '', HOME: env.home as string },
+      },
+    );
+    expect(ran.status, ran.stderr).toBe(0);
+    expect(ran.stdout).toContain('its why is read from its sections');
+    expect(ran.stdout).toMatch(/its why was cut at \d{2},\d{3} of \d{2},\d{3} bytes/);
   });
 
   it('still refuses a title over the limit, by name', () => {

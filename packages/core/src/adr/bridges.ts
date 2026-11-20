@@ -55,13 +55,20 @@ function digestOf(content: string): string {
  * The line a rationale opens with: where the words come from, and that they are not yet this
  * project's. It names the file and never its directory, so no path of this machine is recorded.
  */
-function imported(format: BridgeFormat, file: string, rationale: string, line?: number): string {
+function originLine(format: BridgeFormat, file: string, line?: number): string {
   const at = line !== undefined ? `${basename(file)}:${line}` : basename(file);
-  return `Imported as written in ${format} ${at}; not yet this project's own words.\n\n${rationale}`;
+  return `Imported as written in ${format} ${at}; not yet this project's own words.\n\n`;
+}
+
+/** The rationale as recorded: the origin line, then the entry's own words. */
+function imported(format: BridgeFormat, file: string, rationale: string, line?: number): string {
+  return `${originLine(format, file, line)}${rationale}`;
 }
 
 /** What a source's entry came to before triage. */
-type Entry = { readonly document: AdrDocument } | { readonly refused: ScanRefusal['code'] };
+type Entry =
+  | { readonly document: AdrDocument; readonly origin: string }
+  | { readonly refused: ScanRefusal['code'] };
 
 /** The refusal an entry's title and reason earn, when either is not words. */
 function shape(title: string, rationale: string): AdrRefusalCode | undefined {
@@ -112,6 +119,7 @@ function eccMemory(text: string, file: string): Entry {
       rationale: imported('ecc-vault', file, rationale),
       ...(typeof memory.state === 'string' ? { status: memory.state } : {}),
     },
+    origin: originLine('ecc-vault', file),
   };
 }
 
@@ -152,7 +160,10 @@ function hostMemory(text: string, file: string): Entry {
   const rationale = note.body;
   const refusal = shape(title, rationale);
   if (refusal !== undefined) return { refused: refusal };
-  return { document: { title, rationale: imported('claude-memory', file, rationale) } };
+  return {
+    document: { title, rationale: imported('claude-memory', file, rationale) },
+    origin: originLine('claude-memory', file),
+  };
 }
 
 /** Reads each file of a directory with `one`, in file-name order. */
@@ -181,7 +192,7 @@ function fromDirectory(
       refused.push({ path, code: entry.refused });
       continue;
     }
-    const triaged = triage(path, entry.document);
+    const triaged = triage(path, entry.document, undefined, entry.origin);
     if ('code' in triaged) refused.push(triaged);
     else read.push({ ...triaged, digest: digestOf(text) });
   }
@@ -214,6 +225,7 @@ function fromLedger(file: string): AdrScan {
       file,
       { title, rationale: imported('rulings', file, ruling, line) },
       line,
+      originLine('rulings', file, line),
     );
     if ('code' in triaged) refused.push(triaged);
     else read.push({ ...triaged, digest: digestOf(ruling) });

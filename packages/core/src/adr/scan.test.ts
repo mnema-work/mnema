@@ -210,6 +210,39 @@ describe('reading a directory of decision documents', () => {
     expect(NOTE.test(solid.value)).toBe(true);
   });
 
+  it('does not cut inside an open code block', () => {
+    const block = `\`\`\`\n${Array.from({ length: 1500 }, (_, i) => `code line ${i}\n\nmore ${'c'.repeat(30)}`).join('\n')}\n\`\`\``;
+    const whole = `intro paragraph\n\n${block}\n\nafter`;
+    expect(Buffer.byteLength(whole)).toBeGreaterThan(FIELD_BYTE_LIMIT);
+    const cut = cutToFit(whole);
+    const kept = cut.value.replace(NOTE, '');
+    // Whatever is kept holds a balanced number of fences, so the note is never inside a block.
+    expect((kept.match(/^```/gm) ?? []).length % 2).toBe(0);
+    expect(Buffer.byteLength(cut.value)).toBeLessThanOrEqual(FIELD_BYTE_LIMIT);
+    // A block open at the cut is closed before the note.
+    const open = cutToFit(`\`\`\`\n${'x '.repeat(FIELD_BYTE_LIMIT)}`);
+    expect(open.value).toMatch(/\n```\n\n\[Cut on import:/);
+  });
+
+  it('keeps the prefix whole and out of the hash', () => {
+    const body = Array.from({ length: 3000 }, (_, i) => `p ${i} ${'m'.repeat(30)}`).join('\n\n');
+    const cut = cutToFit(body, 'Origin line.\n\n');
+    expect(cut.value.startsWith('Origin line.\n\n')).toBe(true);
+    expect(Buffer.byteLength(cut.value)).toBeLessThanOrEqual(FIELD_BYTE_LIMIT);
+    expect(NOTE.exec(cut.value)?.[2]).toBe(createHash('sha256').update(body, 'utf8').digest('hex'));
+  });
+
+  it.each(['CHANGELOG.md', 'contributing.md', 'SECURITY.md', 'CODE_OF_CONDUCT.md'])(
+    'leaves %s out, by name, even with sections that would read as a why',
+    (name) => {
+      file(name, '# Notes\n\n## Added\n\nthings\n');
+      file('0001-a.md', decision('A'));
+      const scan = scanAdrDirectory(base);
+      expect(scan.read.map((d) => d.title)).toEqual(['A']);
+      expect(scan.refused).toEqual([]);
+    },
+  );
+
   it('cuts the turned-down text the same way, beside a why that fits', () => {
     const big = Array.from({ length: 2000 }, (_, i) => `an option ${i} ${'q'.repeat(30)}`).join(
       '\n\n',

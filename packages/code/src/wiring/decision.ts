@@ -22,6 +22,7 @@ import { fact } from '../presentation/detail.js';
 import {
   alreadyRecordedLine,
   RECORD_CONTRACT_HELP,
+  RECORD_CONTRACT_HELP_IMPORT,
   replacementNotice,
 } from '../recorded-content.js';
 import { addBodySourceOptions } from './body-source.js';
@@ -376,8 +377,8 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
         'recorded as turned down, and the plan says so. A file with no decision, context or lead\n' +
         'has its sections read as the reason, each under its own heading, and the plan says so.\n' +
         'A reason or a turned-down text over the size a recorded field may hold is cut, on a\n' +
-        'blank line, and ends in a note with the SHA-256 of the whole text, which stays in the\n' +
-        'file the decision names; a title over that size is refused.\n\n' +
+        'blank line, and ends in a note with the SHA-256 of the whole text as the import read it\n' +
+        'from the file; a title over that size is refused.\n\n' +
         'With --format the same road reads other places decisions are written: the ECC Memory\n' +
         'Vault (a directory of *.json memories; only `kind: "decision"` is read, and a `rejected`\n' +
         'or `superseded` state is skipped), the `Ruling:` lines of one ledger file (each line is\n' +
@@ -387,7 +388,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
         'project is cited as `<format>:<file>`, a name no clone can open. A file that does not\n' +
         'have its source’s shape is named and nothing is read from it.',
     )
-    .addHelpText('after', RECORD_CONTRACT_HELP);
+    .addHelpText('after', RECORD_CONTRACT_HELP_IMPORT);
   takesFromItsGroup(decisionImport, {
     refuses: {
       '--alternatives':
@@ -521,12 +522,12 @@ function importLines(
         : []),
       ...(proposal.cut?.rationale !== undefined
         ? [
-            `its why was cut at ${proposal.cut.rationale.kept} of ${proposal.cut.rationale.of} bytes`,
+            `its why was cut at ${proposal.cut.rationale.kept.toLocaleString('en-US')} of ${proposal.cut.rationale.of.toLocaleString('en-US')} bytes`,
           ]
         : []),
       ...(proposal.cut?.alternatives !== undefined
         ? [
-            `what it turned down was cut at ${proposal.cut.alternatives.kept} of ${proposal.cut.alternatives.of} bytes`,
+            `what it turned down was cut at ${proposal.cut.alternatives.kept.toLocaleString('en-US')} of ${proposal.cut.alternatives.of.toLocaleString('en-US')} bytes`,
           ]
         : []),
     ];
