@@ -414,12 +414,13 @@ export function keysTheDiskRefuses(layout: ChainLayout, refused: RefusedLine): b
 }
 
 /**
- * Hands `refused` each local anchor of `keys/` that is a symbolic link, as the reads that serve the
- * record hand it a linked segment. `verify` refuses it (`LINKED ENTRY`, as it does a link at any entry
- * of the folder), and no read opens an anchor, so a read that served the record without a word about it
- * answered as a record `verify` refuses. The other local files of the folder keep their own treatment
- * (an installation id that is a link is `DanglingInstallationIdError`'s), and a folder the disk will
- * not open is {@link keysTheDiskRefuses}'s to say, so neither is said here.
+ * Hands `refused` each local anchor (`keys/*.anchor`, and only those) that is a symbolic link, as the
+ * reads that serve the record hand it a linked segment. `verify` refuses it (`LINKED ENTRY`, as it does
+ * a link at any entry of the folder), and the reads said nothing of it. It is not read through
+ * either: {@link readAnchor} takes a link for no anchor, so the line's "this part was not read" is
+ * true. The other local files of the folder keep their own treatment (an installation id that is a
+ * link is `DanglingInstallationIdError`'s), and a folder the disk will not open is
+ * {@link keysTheDiskRefuses}'s to say, so neither is said here.
  */
 export function anchorLinksRefused(layout: ChainLayout, refused: RefusedLine): void {
   let entries: ListedEntry[];

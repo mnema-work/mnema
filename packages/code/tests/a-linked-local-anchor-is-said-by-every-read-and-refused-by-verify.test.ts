@@ -12,9 +12,12 @@
  */
 // @plants-damage
 
-import { mkdirSync, readdirSync, renameSync, symlinkSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { resolveTrees } from '@mnema/core';
 import { describe, expect, it } from 'vitest';
+import { anchorIn } from '../src/mcp/session.js';
 import { inEveryCacheState, type Planted, type TheCase } from './support/every-cache-state.js';
 import { runMerged } from './support/merged-streams.js';
 
@@ -27,8 +30,11 @@ const mnema = (planted: Planted, args: string[]) =>
 
 const READS: readonly string[][] = [['status'], ['search', 'lockfile'], ['brief']];
 
+/** The identity the link points at: nobody here recorded it, and no read may serve it. */
+const THEIRS = `mnid:${'ab'.repeat(32)}`;
+
 const keysOf = (planted: Planted): string => join(planted.repo, '.mnema', 'keys');
-const anchorIn = (planted: Planted): string =>
+const anchorFileIn = (planted: Planted): string =>
   readdirSync(keysOf(planted)).find((name) => name.endsWith('.anchor')) as string;
 
 const linkedAnchor: TheCase<Planted> = {
@@ -39,19 +45,22 @@ const linkedAnchor: TheCase<Planted> = {
     expect(mnema(planted, ['decision', 'record', 'Use pnpm', 'Because the lockfile']).status).toBe(
       0,
     );
-    expect(anchorIn(planted), 'the first write settled an anchor').toBeDefined();
+    expect(anchorFileIn(planted), 'the first write settled an anchor').toBeDefined();
     return planted;
   },
   damage(planted) {
-    const anchor = anchorIn(planted);
+    const anchor = anchorFileIn(planted);
     const outside = join(planted.repo, '..', 'outside.anchor');
-    renameSync(join(keysOf(planted), anchor), outside);
+    writeFileSync(outside, `${THEIRS}\n`);
+    rmSync(join(keysOf(planted), anchor));
     symlinkSync(outside, join(keysOf(planted), anchor));
   },
   run(planted, ctx) {
     const said = [...READS, ['verify']].map((args) => {
       ctx.forget();
-      return { args, ran: mnema(planted, args) };
+      const ran = mnema(planted, args);
+      expect(ran.stdout, args.join(' ')).not.toContain(THEIRS);
+      return { args, ran };
     });
     return {
       status: said.find((one) => one.args[0] !== 'verify' && one.ran.status !== 0)?.ran.status ?? 0,
@@ -63,7 +72,7 @@ const linkedAnchor: TheCase<Planted> = {
   },
   normalize: (said, planted) =>
     said
-      .split(anchorIn(planted))
+      .split(anchorFileIn(planted))
       .join('<anchor>')
       .replace(/[0-9a-f]{64}\.anchor/g, '<anchor>')
       .replace(/mnid:[0-9a-f]{8,64}/g, 'mnid:<identity>')
@@ -88,6 +97,7 @@ describe('a local anchor that is a symbolic link, in every state of the cache', 
         const [name, first] = section.split('\n');
         expect(first, `${state.state} ${name}`).toBe(said);
       }
+      expect(sections[0], state.state).toMatch(/The identity this machine writes as/);
       expect(sections[1], state.state).toContain('Use pnpm');
       expect(sections[3], state.state).toContain(
         'LINKED ENTRY: keys/<anchor> is a symbolic link, and a reader reads a record from its own files',
@@ -96,4 +106,21 @@ describe('a local anchor that is a symbolic link, in every state of the cache', 
     expect(seen.warm.said).toBe(seen.cold.said);
     expect(seen.session.said).toBe(seen.cold.said);
   }, 240_000);
+});
+
+describe('the session door, with a local anchor that is a symbolic link', () => {
+  it('asks for the identity the record proves, never the one the link points at', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'mnema-linked-anchor-session-'));
+    try {
+      const planted = linkedAnchor.found(dir);
+      const trees = resolveTrees(planted.repo, { home: planted.home });
+      const honest = anchorIn(trees, 'public');
+      expect(honest, 'the record has someone who writes here').toMatch(/^mnid:[0-9a-f]{64}$/);
+      linkedAnchor.damage(planted);
+      expect(anchorIn(trees, 'public')).not.toBe(THEIRS);
+      expect(anchorIn(trees, 'public')).toBe(honest);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 120_000);
 });
