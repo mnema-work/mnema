@@ -611,6 +611,18 @@ describe('acceptances, who ruled, and whether another identity has looked', () =
     }
   });
 
+  it('carries the day it was accepted, which is not the day it was recorded', () => {
+    const b = bench();
+    proposed(b, 'late');
+    moveDecisionAt(b, 'late', '2026-03-05T10:00:00.000Z', 'proposed', 'accepted', 'accept');
+    const cache = b.cache();
+    try {
+      expect(acceptances([cache]).get('late')?.day).toBe('2026-03-05');
+    } finally {
+      cache.close();
+    }
+  });
+
   it('carries the day of the acceptance for a rule in force and none for a superseded one', () => {
     const b = bench();
     proposed(b, 'old');

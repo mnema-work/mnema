@@ -834,7 +834,12 @@ export function briefWithin(
         mine > 0 ? WHAT_TRAVELS_WITH_PRIVATE : WHAT_TRAVELS,
       ),
       ...(mine > 0 && privateRules !== undefined
-        ? privateSection(privateRules, Math.max(0, shown - committed), ceiling)
+        ? privateSection(
+            privateRules,
+            Math.max(0, shown - committed),
+            ceiling,
+            governance.decisions.length > 0,
+          )
         : keptPrivateSection(keptPrivate)),
       ...late,
     ],
@@ -848,6 +853,10 @@ const PRIVATE_RULES_ARE = [
   'a clone of the repository does not get them, and the headings above do not count them.',
 ];
 
+/** The shape of a private rule line, said where the committed list's header is not there to say it. */
+const PRIVATE_RULE_LINE =
+  'Each decision line ends with the day it was accepted, whether an agent or a person accepted it, and the identity.';
+
 /**
  * What the copy a hook carries lists of the rules recorded in this machine's private tree, after
  * the committed ones: one heading, the line that says whose they are, and each rule in the shape
@@ -858,7 +867,12 @@ const PRIVATE_RULES_ARE = [
  * about one machine's private tree. What did not fit is said the way {@link leftOut} says it,
  * with the doors that list the private tree.
  */
-function privateSection(rules: PrivateRules, shown: number, ceiling: HookCeiling): string[] {
+function privateSection(
+  rules: PrivateRules,
+  shown: number,
+  ceiling: HookCeiling,
+  formatSaid: boolean,
+): string[] {
   const decisions = rules.decisions.slice(0, shown);
   const skills = rules.skills.slice(0, Math.max(0, shown - rules.decisions.length));
   const items = [
@@ -880,6 +894,9 @@ function privateSection(rules: PrivateRules, shown: number, ceiling: HookCeiling
     `## Recorded privately on this machine (${items.length})`,
     '',
     ...PRIVATE_RULES_ARE,
+    // The committed list's header says the shape of a rule line; with no committed rule there is
+    // no header, so the line that would otherwise be unexplained is explained here.
+    ...(formatSaid || rules.decisions.length === 0 ? [] : [PRIVATE_RULE_LINE]),
     ...(items.length > 0 ? ['', ...items] : []),
     ...privateLeftOut(leftDecisions, leftPatterns, ceiling),
   ];

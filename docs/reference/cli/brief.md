@@ -61,12 +61,15 @@ mnema brief
 #>
 #> Each was accepted, and none of them superseded. For the argument behind one, ask
 #> `read_record` for its id.
+#> Each line ends with the day it was accepted and whether an agent or a person accepted it.
+#> The identity is mnid:c0fc3c71, unless a line names another.
+#> 0 of them were accepted by an agent and 2 by a person.
 #>
 #> 241 more decisions are recorded here and awaiting a judgement, and none is below.
 #> Nothing waiting governs anything yet; ask `bootstrap` for what is waiting.
 #>
-#> - **ADR-2: Keep the runbook in the record** · `019faa06-30e1-7a41-9c05-3d8e6f2a1b44`
-#> - **ADR-1: Rotate the credentials every quarter** · `019faa06-335f-7b02-8e11-6c2fa9d41e07`
+#> - **ADR-2: Keep the runbook in the record** · `019faa06-30e1-7a41-9c05-3d8e6f2a1b44` · 2026-10-01 · person
+#> - **ADR-1: Rotate the credentials every quarter** · `019faa06-335f-7b02-8e11-6c2fa9d41e07` · 2026-10-01 · person
 ```
 
 Each heading says how many are **awaiting a judgement**: recorded here, ruled on by
