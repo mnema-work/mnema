@@ -111,7 +111,7 @@ describe('agentAcceptsReading', () => {
       const b = bench();
       accepted(b, 'chosen', 'claude', 'Chosen by the maintainer among the options offered.');
       accepted(b, 'single', 'claude', "The maintainer wrote: 'use pnpm for the workspace'.");
-      accepted(b, 'assent', 'claude', 'The maintainer said "sim, pode fazer, por favor".');
+      accepted(b, 'assent', 'claude', 'The maintainer said "sim, pode ir em frente".');
       accepted(b, 'typed', 'claude', 'The maintainer wrote: "use pnpm for the workspace".');
       accepted(b, 'bare', 'claude', 'Looks right to me.');
       accepted(b, 'nobody', undefined, 'Looks right to me.');
@@ -144,7 +144,8 @@ describe('agentAcceptsReading', () => {
       ['Accepted as dictated.', false],
       ['The maintainer kept the second option.', false],
       ['They said "use pnpm" and nothing more.', false],
-      ['They said "sim, pode fazer, por favor".', false],
+      ['They said "sim, pode ir em frente".', false],
+      ['They said "pode publicar a versao agora".', true],
       ['They said "Yes, go ahead, please do it".', false],
       ["I don't think it's wrong, isn't it fine", false],
       ["The users' note and the agents' choice.", false],

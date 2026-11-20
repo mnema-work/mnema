@@ -29,7 +29,7 @@ the same mark.
 - **Accepts that quote no words of the person.** Two totals, kept apart: the accepts that declare an agent, and the accepts
   that declare none (not read as a person's), each with how many hold no words of the person. A note has them when it holds
   a passage between double quotes (straight, curly or Portuguese) of at least 20 characters, case and spacing folded, that
-  is not pure assent ("yes", "sim, pode", "ok", "go ahead" and the like): the same definition the accept gate applies.
+  is not pure assent ("yes", "sim, pode", "ok", "go ahead" and the like): the definition of ADR-646, which the accept gate also applies.
   Single quotes, "chosen by", "dictated by" and "the maintainer said" do not count. The reading judges by the form of the
   note only: the passage is not checked against the conversation here (the gate checks it at accept time), so a note that
   cites the person falsely passes, and one that paraphrases honestly is counted.
