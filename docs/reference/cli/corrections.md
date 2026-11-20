@@ -10,7 +10,7 @@ In the help under **Called by a host**.
 
 | Option | What it does |
 | --- | --- |
-| `--host <host>` | the host whose hook runs this, and whose payload arrives on stdin: claude, codex, copilot, gemini, cursor; Claude Code's when it is not given |
+| `--host <host>` | the host whose hook runs this, and whose payload arrives on stdin: claude, vscode, codex, copilot, gemini, cursor, qwen; Claude Code's when it is not given |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
 <!-- End of the part written by hand. -->
@@ -25,8 +25,8 @@ hook
 
 Options:
   --host <host>  the host whose hook runs this, and whose payload arrives on
-                 stdin: claude, codex, copilot, gemini, cursor; Claude Code's
-                 when it is not given
+                 stdin: claude, vscode, codex, copilot, gemini, cursor, qwen;
+                 Claude Code's when it is not given
   -h, --help     display help for command
 
 What it reads and what it does:

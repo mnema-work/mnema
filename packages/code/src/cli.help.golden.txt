@@ -1618,8 +1618,8 @@ $ mnema tally --help
 |
 | Options:
 |   --host <host>  the host whose hook runs this, and whose payload arrives on
-|                  stdin: claude, codex, copilot, gemini, cursor; Claude Code's
-|                  when it is not given
+|                  stdin: claude, vscode, codex, copilot, gemini, cursor, qwen;
+|                  Claude Code's when it is not given
 |   -h, --help     display help for command
 |
 | What it reads and what it prints:
@@ -1646,8 +1646,8 @@ $ mnema corrections --help
 |
 | Options:
 |   --host <host>  the host whose hook runs this, and whose payload arrives on
-|                  stdin: claude, codex, copilot, gemini, cursor; Claude Code's
-|                  when it is not given
+|                  stdin: claude, vscode, codex, copilot, gemini, cursor, qwen;
+|                  Claude Code's when it is not given
 |   -h, --help     display help for command
 |
 | What it reads and what it does:
