@@ -10,7 +10,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   ExcludeBlockError,
@@ -57,9 +57,9 @@ describe('the exclude file of a repository, answered as git answers it', () => {
     const viaGit = join(repo, '.git', 'info', 'exclude');
     expect(excludeFileOf(repo)).toBe(viaGit);
     expect(excludeFileOf(linked)).toBe(viaGit);
-    expect(realpathSync(join(linked, git(linked, 'rev-parse', '--git-path', 'info/exclude')))).toBe(
-      realpathSync(viaGit),
-    );
+    expect(
+      realpathSync(resolve(linked, git(linked, 'rev-parse', '--git-path', 'info/exclude'))),
+    ).toBe(realpathSync(viaGit));
   });
 
   it('is undefined outside a repository', () => {
@@ -122,7 +122,9 @@ describe('adding lines to the marked block', () => {
     const file = join(sandbox, 'exclude');
     writeFileSync(file, '*.log\r\nbuild/\r\n');
     withExcludeLines(file, ['/.mnema/']);
-    expect(readFileSync(file, 'utf8')).toBe(`*.log\r\nbuild/\r\n${BEGIN}\r\n/.mnema/\r\n${END}\r\n`);
+    expect(readFileSync(file, 'utf8')).toBe(
+      `*.log\r\nbuild/\r\n${BEGIN}\r\n/.mnema/\r\n${END}\r\n`,
+    );
     expect(excludeLinesOf(file)).toEqual(['/.mnema/']);
     withExcludeLines(file, ['/.prettierignore']);
     expect(readFileSync(file, 'utf8')).toBe(

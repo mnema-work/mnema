@@ -42,7 +42,9 @@ export function excludeFileOf(dir: string): string | undefined {
 /** The lines in the block, in order; none for an absent file or a file with no block. */
 export function excludeLinesOf(file: string): string[] {
   const parsed = parse(file);
-  return parsed.block === undefined ? [] : parsed.lines.slice(parsed.block.begin + 1, parsed.block.end).map(textOf);
+  return parsed.block === undefined
+    ? []
+    : parsed.lines.slice(parsed.block.begin + 1, parsed.block.end).map(textOf);
 }
 
 /** Adds the lines the block lacks. True when the file changed. */
@@ -108,8 +110,11 @@ function parse(file: string): Parsed {
   try {
     raw = readFileSync(file, 'utf8');
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { lines: [], block: undefined, eol: '\n' };
-    throw new ExcludeBlockError(`Cannot read ${file}: ${(error as NodeJS.ErrnoException).code ?? 'unreadable'}.`);
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT')
+      return { lines: [], block: undefined, eol: '\n' };
+    throw new ExcludeBlockError(
+      `Cannot read ${file}: ${(error as NodeJS.ErrnoException).code ?? 'unreadable'}.`,
+    );
   }
   const lines: Line[] = [];
   for (const match of raw.matchAll(/([^\n]*?)(\r?\n|$)/g)) {
@@ -157,7 +162,10 @@ function write(file: string, lines: readonly Line[]): void {
     mkdirSync(dirname(file), { recursive: true });
     const temporary = `${file}.mnema-${process.pid}.tmp`;
     try {
-      writeFileSync(temporary, lines.map((l) => l.text + l.eol).join(''), { flag: 'wx', mode: 0o644 });
+      writeFileSync(temporary, lines.map((l) => l.text + l.eol).join(''), {
+        flag: 'wx',
+        mode: 0o644,
+      });
       renameSync(temporary, file);
     } catch (error) {
       rmSync(temporary, { force: true });
@@ -165,6 +173,8 @@ function write(file: string, lines: readonly Line[]): void {
     }
   } catch (error) {
     if (error instanceof ExcludeBlockError) throw error;
-    throw new ExcludeBlockError(`Cannot write ${file}: ${(error as NodeJS.ErrnoException).code ?? 'failed'}.`);
+    throw new ExcludeBlockError(
+      `Cannot write ${file}: ${(error as NodeJS.ErrnoException).code ?? 'failed'}.`,
+    );
   }
 }
