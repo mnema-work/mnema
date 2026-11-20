@@ -77,8 +77,8 @@ WITHOUT the option the file chose; when the file does not say which it chose, no
 recorded as turned down, and the plan says so. A file with no decision, context or lead
 has its sections read as the reason, each under its own heading, and the plan says so.
 A reason or a turned-down text over the size a recorded field may hold is cut, on a
-blank line, and ends in a note with the SHA-256 of the whole text, which stays in the
-file the decision names; a title over that size is refused.
+blank line, and ends in a note with the SHA-256 of the whole text as the import read it
+from the file; a title over that size is refused.
 
 With --format the same road reads other places decisions are written: the ECC Memory
 Vault (a directory of *.json memories; only `kind: "decision"` is read, and a `rejected`
@@ -95,5 +95,5 @@ What recording means here:
   Do not record credentials: a recognized format is replaced with a placeholder
   and reported back, but what mnema does not recognize is written verbatim.
   Nor personal data: an email address is replaced with <email>; the mnid already says who wrote.
-  Each text field holds at most 65536 bytes; a longer one is refused.
+  Each text field holds at most 65536 bytes; a longer reason or turned-down text is cut; a longer title is refused.
 ```
