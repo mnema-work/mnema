@@ -119,7 +119,7 @@ describe('Qwen Code', () => {
     ]);
     expect(thePersonsWords('qwen', path)).toEqual([
       { line: 1, text: 'Use SQLite', chosen: false },
-      { line: 13, text: 'keep the tests', chosen: false },
+      { line: 12, text: 'keep the tests', chosen: false },
     ]);
   });
 
