@@ -870,6 +870,7 @@ export const HANDED_OVER: Readonly<
   'docs/packages.md': { line: 2, name: 4 },
   'docs/platforms.md': { line: 1, name: 3 },
   'docs/recording-decisions.md': { line: 8, name: 6 },
+  'docs/reference/cli/audit-antipatterns.md': { line: 1 },
   'docs/reference/cli/backup-restore.md': { line: 1, name: 1 },
   'docs/reference/cli/backup-verify.md': { line: 1, name: 1 },
   'docs/reference/cli/backup.md': { line: 7, name: 3 },
