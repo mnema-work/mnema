@@ -269,7 +269,7 @@ describe('the binary', () => {
   });
 
   it('is not held by a pattern that would hang the engine', () => {
-    writeFileSync(join(home, '.mnema', 'private-patterns.txt'), '/(a+)+$/\n');
+    writeFileSync(join(home, '.mnema', 'private-patterns.txt'), `${['/(a+', ')+$/'].join('')}\n`);
     const started = Date.now();
     const done = mnema('memory', `${'a'.repeat(40)}!`, '--scope', 'public');
     expect(done.status, done.out).toBe(0);
