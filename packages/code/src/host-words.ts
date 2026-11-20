@@ -50,6 +50,12 @@ export const HOST_WORDS: Readonly<Record<HostName, HostWords>> = {
     reads: false,
     why: `it leaves no session id in the environment mnema reads, and ${NO_FORMAT}`,
   },
+  cursorIde: {
+    names: ['cursor-ide', 'cursor-editor'],
+    sessionEnv: undefined,
+    reads: false,
+    why: `Cursor’s editor was only read in its documentation, it leaves no session id in the environment mnema reads, and ${NO_FORMAT}`,
+  },
   codex: {
     names: ['codex', 'codex-cli', 'codex-mcp-client'],
     sessionEnv: undefined,

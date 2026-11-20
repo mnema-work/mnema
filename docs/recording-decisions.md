@@ -184,7 +184,7 @@ only where this tree holds the host's conversation format with a fixture; a host
 |---|---|---|---|
 | Claude Code | `CLAUDE_CODE_SESSION_ID` | read from the transcript its hooks name | read; an accept from the command line with no session id is refused |
 | GitHub Copilot CLI | `COPILOT_AGENT_SESSION_ID` | not readable yet | no conversation format proved here |
-| VS Code's agent, Cursor, Codex, OpenCode, Gemini CLI, Qwen Code, Antigravity, Factory Droid, Goose | none read | not readable yet | no conversation format proved here |
+| VS Code's agent, Cursor (command line and editor), Codex, OpenCode, Gemini CLI, Qwen Code, Antigravity, Factory Droid, Goose | none read | not readable yet | no conversation format proved here |
 
 An accept from a host that is not readable yet passes and says the words were not checked, and `mnema audit antipatterns` counts it
 among the agent accepts without the person's words. It applies only in Claude Code with the plugin: the `SessionStart` hook leaves the transcript's path beside the session journal
