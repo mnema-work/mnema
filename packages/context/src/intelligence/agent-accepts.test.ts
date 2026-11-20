@@ -107,17 +107,22 @@ describe('agentAcceptsReading', () => {
   });
 
   describe('agent accepts that quote no words of the person', () => {
-    it('does not flag "Chosen by the maintainer" or a typed quote, and flags the rest', () => {
+    it('flags every agent accept without a contentful double-quoted passage', () => {
       const b = bench();
       accepted(b, 'chosen', 'claude', 'Chosen by the maintainer among the options offered.');
-      accepted(b, 'typed', 'claude', 'The maintainer wrote: "use pnpm here".');
+      accepted(b, 'single', 'claude', "The maintainer wrote: 'use pnpm for the workspace'.");
+      accepted(b, 'assent', 'claude', 'The maintainer said "sim, pode fazer, por favor".');
+      accepted(b, 'typed', 'claude', 'The maintainer wrote: "use pnpm for the workspace".');
       accepted(b, 'bare', 'claude', 'Looks right to me.');
       accepted(b, 'nobody', undefined, 'Looks right to me.');
       const r = agentAcceptsReading(b.events());
       expect(r.acceptsWithoutTheirWords.map((x) => [x.decision, x.which])).toEqual([
+        ['chosen', 'claude'],
+        ['single', 'claude'],
+        ['assent', 'claude'],
         ['bare', 'claude'],
       ]);
-      expect(r.agentAccepts).toBe(3);
+      expect(r.agentAccepts).toBe(5);
       expect(r.undeclaredAccepts).toBe(1);
       expect(r.undeclaredWithoutTheirWords.map((x) => x.decision)).toEqual(['nobody']);
     });
@@ -125,16 +130,21 @@ describe('agentAcceptsReading', () => {
 
   describe('restsOnThePerson', () => {
     it.each([
-      ['Chosen by the maintainer among the options offered: "Only the reading".', true],
-      ['dictated by the maintainer', true],
-      ['They said “sim, faça”.', true],
-      ["Typed in the session: 'use pnpm here'.", true],
-      ['The maintainer chose in this session: option A.', true],
-      ['Accepted as dictated.', true],
-      ['The maintainer kept the second option.', true],
+      ['Chosen by the maintainer among the options offered: "Only the reading of the record".', true],
+      ['They said \u201csim, fa\u00e7a assim, sem o cache\u201d.', true],
+      ['Typed: \u00abuse pnpm for the workspace\u00bb.', true],
+      ['Typed: "  Use   PNPM for the\nworkspace  ".', true],
+      ['Chosen by the maintainer among the options offered.', false],
+      ["Typed in the session: 'use pnpm for the workspace'.", false],
+      ['dictated by the maintainer', false],
+      ['The maintainer chose in this session: option A.', false],
+      ['Accepted as dictated.', false],
+      ['The maintainer kept the second option.', false],
+      ['They said "use pnpm" and nothing more.', false],
+      ['They said "sim, pode fazer, por favor".', false],
+      ['They said "Yes, go ahead, please do it".', false],
       ["I don't think it's wrong, isn't it fine", false],
       ["The users' note and the agents' choice.", false],
-      ['The maintainer asked. It looks right.', false],
       ['An empty pair "" is no words.', false],
       ['A lone " quote mark.', false],
       ['Looks right.', false],

@@ -16,10 +16,10 @@
  * says more than that. Nothing here is a verdict on a decision, nothing is written, and no
  * clock is read: the order is the record's.
  *
- * "QUOTES THE PERSON" is what ADR-611 says counts as resting on the person's words: words they
- * typed, quoted, or an option they chose in a question (the note then says "chosen by" or
- * "dictated by"). It is read from the words of the note, so a note that cites the person
- * falsely passes; the reading says what the note says and cannot say that it is true.
+ * "QUOTES THE PERSON" is the same definition as the accept gate's: a passage between double
+ * quotes of at least 20 characters that is not pure assent. The reading judges by the form of
+ * the note alone and cannot see the conversation, so a note that cites the person falsely
+ * passes; the gate checks the passage at accept time, this reading does not.
  *
  * There is no threshold: the numbers are the reading, and the person decides.
  */
@@ -65,56 +65,49 @@ export interface AgentAcceptsReading {
   }[];
 }
 
-const DOUBLE_OPEN = '"“«';
-const DOUBLE_CLOSE = '"”»';
-const SINGLE_OPEN = "'‘";
-const SINGLE_CLOSE = "'’";
-const WORD_CHAR = /[\p{L}\p{N}]/u;
-const CHOSEN_OR_DICTATED = /\b(?:chosen|dictated) by\b|\bas dictated\b/i;
-const MAINTAINER = /\bmaintainer\b/i;
-const DID_IT = /\b(?:chose|chosen|said|kept|dictated)\b/i;
-
 /**
- * Whether a pair of the given quote marks encloses words. Read by walking the marks once,
- * never by a pattern with two open-ended runs around the words, which backtracks
- * quadratically on a long note with many marks. A single quote opens at the start of a
- * word and closes at its end, so the apostrophe of "don't" or "users'" is not a pair.
+ * The shortest quoted passage that counts as the person's words, after folding. The accept
+ * gate asks the same of a note; this reading keeps its own copy of the predicate so that it
+ * can be switched to the gate's helper once that lands.
  */
-function quotes(note: string, open: string, close: string, atWordEdges: boolean): boolean {
-  const marks: number[] = [];
-  for (let i = 0; i < note.length; i += 1) {
-    if (open.includes(note.charAt(i)) || close.includes(note.charAt(i))) marks.push(i);
-  }
-  for (let k = 0; k + 1 < marks.length; k += 1) {
-    const from = marks[k] as number;
-    const to = marks[k + 1] as number;
-    if (!open.includes(note.charAt(from)) || !close.includes(note.charAt(to))) continue;
-    if (atWordEdges) {
-      if (from > 0 && WORD_CHAR.test(note.charAt(from - 1))) continue;
-      if (to + 1 < note.length && WORD_CHAR.test(note.charAt(to + 1))) continue;
-    }
-    if (note.slice(from + 1, to).trim() !== '') return true;
-  }
-  return false;
+const LEAST_QUOTED = 20;
+const QUOTED = /"([^"]+)"|\u201c([^\u201d]+)\u201d|\u00ab([^\u00bb]+)\u00bb/g;
+/** The words a passage of pure assent is made of ("yes", "sim, pode", "ok", "go ahead"). */
+const ASSENT = new Set([
+  'yes', 'yep', 'yeah', 'sure', 'ok', 'okay', 'go', 'ahead', 'please', 'do', 'it', 'that', 'is', 'fine',
+  'right', 'agreed', 'approved', 'accept', 'accepted', 'sim', 'pode', 'claro', 'certo', 'isso', 'mesmo',
+  'exato', 'aceito', 'aceita', 'aprovado', 'concordo', 'bora', 'vai', 'fazer', 'faca', 'faz', 'por', 'favor',
+  'tudo', 'bem', 'beleza', 'otimo', 'perfeito', 'combinado', 'ta', 'esta', 'e', 'o', 'a',
+]);
+
+/** Text folded to compare: NFC, lower case, the curly apostrophe straight, spaces collapsed. */
+function folded(text: string): string {
+  return text.normalize('NFC').toLowerCase().replaceAll('\u2019', "'").replace(/\s+/g, ' ').trim();
 }
 
-/** A sentence in which the maintainer chose, said, kept or dictated it. */
-function maintainerDidIt(note: string): boolean {
-  return note.split(/[.\n]/).some((sentence) => MAINTAINER.test(sentence) && DID_IT.test(sentence));
+/** Whether a folded passage is nothing but assent, accents and punctuation set aside. */
+function pureAssent(passage: string): boolean {
+  const words = passage
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .split(/[^\p{L}\p{N}']+/u)
+    .filter((w) => w !== '');
+  return words.every((w) => ASSENT.has(w));
 }
 
 /**
- * Whether an acceptance note quotes the person: a quoted span with words in it, or the
- * words "chosen by" or "dictated by" (an option the person picked), "as dictated", or a
- * sentence in which the maintainer chose, said, kept or dictated it.
+ * Whether an acceptance note rests on the person, judged by the note's form only: a passage
+ * between double quotes (straight, curly or Portuguese), of at least 20 characters once
+ * folded, that is not pure assent. The passage is not checked against the conversation here
+ * (the reading cannot see the transcript); the accept gate checks it at accept time. Single
+ * quotes, "chosen by" and "the maintainer said" do not count.
  */
 export function restsOnThePerson(note: string): boolean {
-  return (
-    quotes(note, DOUBLE_OPEN, DOUBLE_CLOSE, false) ||
-    quotes(note, SINGLE_OPEN, SINGLE_CLOSE, true) ||
-    CHOSEN_OR_DICTATED.test(note) ||
-    maintainerDidIt(note)
-  );
+  for (const match of note.matchAll(QUOTED)) {
+    const passage = folded(match[1] ?? match[2] ?? match[3] ?? '');
+    if (passage.length >= LEAST_QUOTED && !pureAssent(passage)) return true;
+  }
+  return false;
 }
 
 /** Reads the three signals over the record's events, in the order handed in. */

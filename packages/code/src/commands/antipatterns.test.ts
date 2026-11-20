@@ -262,7 +262,7 @@ describe('mnema audit antipatterns (recurring shapes, with evidence)', () => {
       if (!m.ok) throw new Error(`setup: supersede refused (${m.reason})`);
     };
     const a = decide('a', { note: 'agreed' });
-    const b = decide('b', { note: 'Chosen by the maintainer: "yes"', which: 'claude-code' });
+    const b = decide('b', { note: 'The maintainer wrote: "use pnpm for the workspace"', which: 'claude-code' });
     const c = decide('c', { note: 'looks right', which: 'claude-code' });
     replace(a, b, 'claude-code');
     replace(b, c);
