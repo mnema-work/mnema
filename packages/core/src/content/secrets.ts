@@ -768,6 +768,14 @@ const A_COUNT = /^\d{1,3}[.,;]?$/;
 const A_PREFIX = /^[A-Za-z0-9]{1,10}[_-]$/;
 
 /**
+ * The same prefix with its body elided (`agm_…`, `ghp_...`): a page that shows the SHAPE of a
+ * token (`"token":"agm_…"` in a protocol's example) writes the issuer's prefix and a mark for the
+ * rest. The elision carries nothing, so the value is the prefix alone, which {@link A_PREFIX}
+ * keeps too; a body after the mark (`agm_…x9`) is not this shape and is replaced.
+ */
+const A_PREFIX_ELIDED = /^[A-Za-z0-9]{1,10}[_-](?:\u2026|\.{3})$/;
+
+/**
  * A name standing before a reference to the value (`anthropic=<key>`, `admin:$PASSWORD`), the way
  * a tool that takes several providers' keys in one flag is shown being called.
  */
@@ -832,6 +840,7 @@ function readsAsNoCredential(value: string, text: string, at: number): boolean {
     A_PATH.test(value) ||
     A_PLAIN_URL.test(value) ||
     A_PREFIX.test(value) ||
+    (A_PREFIX_ELIDED.test(value) && !underAPassword(text, at)) ||
     A_NAMED_REFERENCE.test(value)
   ) {
     return true;
@@ -861,6 +870,17 @@ const A_KEY_AND_COLON = new RegExp(`${LINE_KEY}:${GAP}$`, 'i');
 /** A password's name and its colon, just before the value. */
 const UNDER_A_PASSWORD =
   /(?:pass(?:word|wd|phrase)|(?<![a-z])pass|pwd)["'\x60]?[ \t]{0,8}:[ \t]{0,8}$/i;
+
+/**
+ * Whether the value at `at` stands under a password's name, with a colon or an `=` and an optional
+ * quote between: a password is any string, so `hunter2_...` there is a password and not a token's
+ * shape.
+ */
+function underAPassword(text: string, at: number): boolean {
+  return /(?:pass(?:word|wd|phrase)|(?<![a-z])pass|pwd)["'\x60]?[ \t]{0,8}[:=][ \t]{0,8}["'\x60]?$/i.test(
+    text.slice(Math.max(0, at - 48), at),
+  );
+}
 
 /** A single word of letters, with the mark a sentence may close it with. */
 const A_SINGLE_WORD = /^[A-Za-z]+[.,;:!?]?$/;
