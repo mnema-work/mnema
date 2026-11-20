@@ -38,7 +38,7 @@
 
 import { spawnSync } from 'node:child_process';
 import { channelIsOn } from '@mnema/context';
-import { resolveTrees } from '@mnema/core';
+import { type ProjectionCache, resolveTrees, type Scope } from '@mnema/core';
 import { RECORD_PUBLISH_CHANNEL, STARTS_OFF } from '../record-framing.js';
 import { withScopedCaches } from '../tree-sources.js';
 import {
@@ -190,27 +190,41 @@ function isListed(value: unknown): value is Listed {
 export function recordPublishIsOn(ctx: RecordCommitContext): boolean {
   const trees = resolveTrees(ctx.cwd, ctx.env);
   return withScopedCaches(trees, (sources) =>
-    channelIsOn(
-      sources.map((source) =>
-        source.scope !== 'public'
-          ? source
-          : {
-              scope: source.scope,
-              cache: {
-                channelSwitch: (channel: string) => {
-                  const row = source.cache.channelSwitch(channel);
-                  return row?.on === true ? null : row;
-                },
-              },
+    channelIsOn(asRecordPublishReadsThem(sources), RECORD_PUBLISH_CHANNEL, STARTS_OFF),
+  );
+}
+
+/** What a switch is read from: a tree's scope and its projection's answer about a channel. */
+export interface ASwitchSource {
+  readonly scope: Scope;
+  readonly cache: Pick<ProjectionCache, 'channelSwitch'>;
+}
+
+/**
+ * The sources as the verb reads them: an `on` of `record-publish` in the tree a clone gets is no
+ * switch at all. The listing of `mnema switch` reads through this too, so it says what the verb does.
+ */
+export function asRecordPublishReadsThem<S extends ASwitchSource>(
+  sources: readonly S[],
+): readonly ASwitchSource[] {
+  return sources.map((source) =>
+    source.scope !== 'public'
+      ? source
+      : {
+          scope: source.scope,
+          cache: {
+            channelSwitch: (channel: string) => {
+              const row = source.cache.channelSwitch(channel);
+              return channel === RECORD_PUBLISH_CHANNEL && row?.on === true ? null : row;
             },
-      ),
-      RECORD_PUBLISH_CHANNEL,
-      STARTS_OFF,
-    ),
+          },
+        },
   );
 }
 
 const GH_TIMEOUT_MS = 60_000;
+/** The open pull requests asked of `gh` at once; a full page is a refusal, not a clean answer. */
+const PULL_REQUESTS_READ = 100;
 const PUSH_TIMEOUT_MS = 120_000;
 
 /** One `gh`, never prompting; `absent` where the program is not on the PATH. */
@@ -242,8 +256,14 @@ function gh(
 }
 
 /** The e-mail a git configuration level holds for `user.email`, lower-cased. */
-function emailOf(ctx: Scrubbed, top: string, level: '--local' | '--global'): string | undefined {
-  const held = said(git(ctx, top, ['config', level, '--get', 'user.email']));
+function emailOf(
+  ctx: Scrubbed,
+  top: string,
+  level: '--local' | '--global' | '--system',
+): string | undefined {
+  // `--includes` because git turns includes off when a level is named, and a work address in a file
+  // the global configuration includes is still the global one.
+  const held = said(git(ctx, top, ['config', level, '--includes', '--get', 'user.email']));
   return held === undefined || held === '' ? undefined : held.toLowerCase();
 }
 
@@ -292,14 +312,19 @@ function publish(
   // 3. The identity this repository publishes under.
   const own = emailOf(ctx, top, '--local');
   if (own === undefined) return { ok: false, reason: 'NO_PUBLIC_IDENTITY', why: 'unset' };
-  if (own === emailOf(ctx, top, '--global')) {
+  if (own === emailOf(ctx, top, '--global') || own === emailOf(ctx, top, '--system')) {
     return { ok: false, reason: 'NO_PUBLIC_IDENTITY', why: 'same-as-global' };
   }
 
   // 4. One pull request at a time, read from the forge.
+  // Raw addresses (`insteadOf` not applied), and the push address too: the pull request is asked of
+  // the repository the push reaches, so a push address that names another one is refused.
   const url = said(git(ctx, top, ['config', '--get', `remote.${to.remote}.url`])) ?? '';
-  const repo = gitHubRepositoryOf(url);
-  if (repo === undefined) return { ok: false, reason: 'NOT_GITHUB', remote: to.remote };
+  const pushUrl = said(git(ctx, top, ['config', '--get', `remote.${to.remote}.pushurl`]));
+  const repo = gitHubRepositoryOf(pushUrl ?? url);
+  if (repo === undefined || (pushUrl !== undefined && gitHubRepositoryOf(url) !== repo)) {
+    return { ok: false, reason: 'NOT_GITHUB', remote: to.remote };
+  }
   const listed = gh(ctx, top, [
     'pr',
     'list',
@@ -310,7 +335,7 @@ function publish(
     '--base',
     to.branch,
     '--limit',
-    '100',
+    String(PULL_REQUESTS_READ),
     '--json',
     'number,url,createdAt,files',
   ]);
@@ -329,6 +354,14 @@ function publish(
       ok: false,
       reason: 'GH_FAILED',
       said: 'gh pr list answered something else than a list of pull requests',
+    };
+  }
+  // A full page may hide a record pull request past it: said, and nothing is cut.
+  if (parsed.length >= PULL_REQUESTS_READ) {
+    return {
+      ok: false,
+      reason: 'GH_FAILED',
+      said: `${PULL_REQUESTS_READ} or more pull requests are open into ${to.branch}, and a record pull request could be past the ones read`,
     };
   }
   const open = parsed.find((one) => changesOnlyTheRecord(one.files, recordDir));

@@ -65,7 +65,10 @@ beforeEach(() => {
     [
       '#!/bin/sh',
       'printf "%s\\n" "$*" >> "$GH_LOG"',
-      'if [ "$1 $2" = "pr list" ]; then cat "$GH_LIST"; exit 0; fi',
+      'if [ "$1 $2" = "pr list" ]; then',
+      '  if [ -f "$GH_LIST_FAILS" ]; then echo "HTTP 502" >&2; exit 1; fi',
+      '  cat "$GH_LIST"; exit 0',
+      'fi',
       'if [ "$1 $2" = "pr create" ]; then',
       '  cat > "$GH_BODY"',
       '  if [ -f "$GH_CREATE_FAILS" ]; then echo "HTTP 422" >&2; exit 1; fi',
@@ -93,6 +96,7 @@ function env(more: Record<string, string> = {}): Record<string, string> {
     GH_LIST: join(sandbox, 'list.json'),
     GH_BODY: join(sandbox, 'gh.body'),
     GH_CREATE_FAILS: join(sandbox, 'create-fails'),
+    GH_LIST_FAILS: join(sandbox, 'list-fails'),
     ...more,
   };
 }
@@ -248,6 +252,8 @@ describe('mnema record publish', SLOW, () => {
     const ctx = { cwd: local, env: { home: join(sandbox, 'home') }, processEnv: env(), now: NOW };
     expect(recordPublishIsOn(ctx)).toBe(false);
     expect(publish(local)).toEqual({ ok: false, reason: 'SWITCH_OFF' });
+    // The listing says what the verb does: off, though the committed tree holds an on.
+    expect(mnema(local, 'switch').out).toMatch(/record-publish +off /);
 
     switchOn(local);
     expect(recordPublishIsOn(ctx)).toBe(true);
@@ -409,6 +415,65 @@ describe('mnema record publish', SLOW, () => {
     expect(publish(local)).toMatchObject({ ok: true, kind: 'published' });
   });
 
+  it('reads the global e-mail through the files its configuration includes', () => {
+    const { local } = world();
+    switchOn(local);
+    decide(local, 'a decision');
+    const work = join(sandbox, 'work.gitconfig');
+    writeFileSync(work, `[user]\n\temail = ${WORK}\n`);
+    writeFileSync(
+      globalConfig,
+      `[include]\n\tpath = ${GIT_WITHOUT_MAINTENANCE}\n\tpath = ${work}\n`,
+    );
+    expect(git(local, 'config', 'user.email', WORK).status).toBe(0);
+    expect(publish(local)).toEqual({
+      ok: false,
+      reason: 'NO_PUBLIC_IDENTITY',
+      why: 'same-as-global',
+    });
+    expect(recordBranches(local)).toBe('');
+  });
+
+  it('refuses, and cuts nothing, where gh cannot say what is open', () => {
+    const { local } = world();
+    switchOn(local);
+    decide(local, 'a decision');
+    const refused = () => expect(publish(local)).toMatchObject({ ok: false, reason: 'GH_FAILED' });
+
+    writeFileSync(join(sandbox, 'list-fails'), '');
+    refused();
+    rmSync(join(sandbox, 'list-fails'));
+    writeFileSync(join(sandbox, 'list.json'), 'not json');
+    refused();
+    writeFileSync(join(sandbox, 'list.json'), '{"number": 1}');
+    refused();
+    writeFileSync(join(sandbox, 'list.json'), '[{"number": 1}]');
+    refused();
+    // A full page of pull requests may hide a record one past it.
+    listed(
+      ...Array.from({ length: 100 }, (_, at) => ({
+        number: at + 1,
+        hoursAgo: 1,
+        files: ['src/a.ts'],
+      })),
+    );
+    refused();
+    expect(recordBranches(local)).toBe('');
+    expect(ghCalls().filter((line) => line.startsWith('pr create'))).toEqual([]);
+  });
+
+  it('asks the forge about the repository the push reaches, and refuses a push address that names another', () => {
+    const { local } = world();
+    switchOn(local);
+    decide(local, 'a decision');
+    expect(
+      git(local, 'config', 'remote.origin.pushurl', 'https://github.com/someone/fork.git').status,
+    ).toBe(0);
+    expect(publish(local)).toEqual({ ok: false, reason: 'NOT_GITHUB', remote: 'origin' });
+    expect(recordBranches(local)).toBe('');
+    expect(ghCalls()).toEqual([]);
+  });
+
   it('says what to do by hand where gh is absent or the remote is not GitHub’s', () => {
     const { local } = world();
     switchOn(local);
@@ -438,14 +503,13 @@ describe('mnema record publish', SLOW, () => {
     decide(local, 'a decision');
 
     // The push is refused: the branch stays here, and the next run pushes it.
-    expect(git(local, 'config', 'remote.origin.pushurl', join(sandbox, 'nowhere.git')).status).toBe(
-      0,
-    );
+    writeFileSync(join(remote, 'hooks', 'pre-receive'), '#!/bin/sh\nexit 1\n');
+    chmodSync(join(remote, 'hooks', 'pre-receive'), 0o755);
     const failed = publish(local);
     expect(failed).toMatchObject({ ok: false, reason: 'PUSH_FAILED' });
     expect(recordBranches(local)).not.toBe('');
     expect(ghCalls().filter((line) => line.startsWith('pr create'))).toEqual([]);
-    expect(git(local, 'config', '--unset', 'remote.origin.pushurl').status).toBe(0);
+    rmSync(join(remote, 'hooks', 'pre-receive'));
 
     // The push lands and gh refuses: the branch is on the remote, and the next run opens it.
     writeFileSync(join(sandbox, 'create-fails'), '');
