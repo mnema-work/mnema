@@ -65,6 +65,7 @@ export type {
   AdrDocument,
   AdrRefusalCode,
 } from './adr/read.js';
+export { DERIVED_KEY, type MadrDocument, madrOf } from './adr/madr.js';
 export {
   type AdrScan,
   adrFileNames,
