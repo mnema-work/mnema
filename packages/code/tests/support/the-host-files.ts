@@ -112,7 +112,7 @@ const atTheEnd = (host: EndHost): Json[] => [
 
 /**
  * `--reads no` for a host whose transcript this product does not read yet (`ENDS`, the row's
- * `reads`): the handler ends before it starts `node` and `mnema` twice a turn for a verb that
+ * `reads`): the handler ends before it starts `mnema` twice a turn for a verb that
  * would only say so. The row is the one place it is said: the day a host's reader exists and its
  * row says `reads: true`, the flag leaves the file and the verbs run.
  */
@@ -347,8 +347,14 @@ function atTheEndOfATurn(): readonly Json[] {
   const handlers = ['session-tally.mjs', 'session-corrections.mjs'];
   return [
     {
+      // `--skip vscode` while the row of VS Code's agent says its transcript is not read: it reads
+      // this group too, sets no variable, and the handler turns its transcript away by where it is
+      // kept. The day the row says `reads: true` the flag leaves the file and the verb runs.
       hooks: handlers.map((handler) =>
-        command(handler, variables.length === 0 ? [] : ['--unless', variables.join(',')]),
+        command(handler, [
+          ...(variables.length === 0 ? [] : ['--unless', variables.join(',')]),
+          ...(ENDS.vscode.reads ? [] : ['--skip', 'vscode']),
+        ]),
       ),
     },
     ...own.map((name) => {

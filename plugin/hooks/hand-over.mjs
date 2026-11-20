@@ -745,7 +745,7 @@ export function theHostIsNotHere(argv, env) {
 
 /**
  * Whether the hooks file's `--reads no` turns the run away: the host's row says this product does
- * not read the transcript that host names yet, so a verb run for it would start `node` and `mnema`
+ * not read the transcript that host names yet, so a verb run for it would start `mnema`
  * to say so and do nothing else, twice a turn. Left out by the generator the day the row says it
  * reads (`ENDS` in `host-names.ts`).
  *
@@ -757,24 +757,30 @@ export function theTranscriptIsNotRead(argv) {
 }
 
 /**
- * Where VS Code's agent keeps the transcript it names at the end of a turn. A copy of
+ * Where VS Code's agent keeps the transcript it names at the end of a turn (the folder is the
+ * extension's publisher.name, `GitHub.copilot-chat`: `microsoft/vscode@794308978b6d`,
+ * `extensions/copilot`, `sessionTranscriptService.ts`; case-insensitive). A copy of
  * `VSCODE_TRANSCRIPT` in `host-hook.ts`, because the plugin runs with no build; the test of the end
  * of a turn holds the two together.
  */
 const VSCODE_TRANSCRIPT =
-  /[\\/]workspaceStorage[\\/][^\\/]+[\\/]GitHub\.copilot-chat[\\/]transcripts[\\/]/;
+  /[\\/]workspaceStorage[\\/][^\\/]+[\\/]GitHub\.copilot-chat[\\/]transcripts[\\/]/i;
 
 /**
  * Whether a run that names no host was handed the transcript of VS Code's agent, which reads the
- * hooks file Claude Code's pair is in and sets no variable to be told apart by: that transcript is
- * not read, so the run ends before `mnema` starts, as the verb itself would end it.
+ * hooks file Claude Code's pair is in and sets no variable to be told apart by: where the hooks file
+ * says that transcript is not read (`--skip vscode`, which the generator writes from the row `ENDS.vscode`
+ * and leaves out the day it says `reads: true`), the run ends before `mnema` starts, as the verb itself
+ * would end it. Without the flag the verb is run, and it reads VS Code's transcript with VS Code's reader.
  *
  * @param {readonly string[]} argv The handler's own arguments, from the hooks file.
  * @param {string} input What the host handed this hook.
  * @returns {boolean}
  */
 export function itIsVsCodesTranscript(argv, input) {
-  if (flagValue(argv, '--host') !== undefined) return false;
+  if (flagValue(argv, '--skip') !== 'vscode' || flagValue(argv, '--host') !== undefined) {
+    return false;
+  }
   try {
     const path = JSON.parse(input)?.transcript_path;
     return typeof path === 'string' && VSCODE_TRANSCRIPT.test(path);
@@ -801,8 +807,8 @@ export function theToolIsNotNamed(argv, input) {
 }
 
 /**
- * The handler's own arguments without the four that only say whether to start (`--tools`,
- * `--unless`, `--where` and `--reads`, each with its value): what is left is what the verb is handed.
+ * The handler's own arguments without the five that only say whether to start (`--tools`,
+ * `--unless`, `--where`, `--reads` and `--skip`, each with its value): what is left is what the verb is handed.
  *
  * @param {readonly string[]} argv
  * @returns {string[]}
@@ -814,7 +820,8 @@ export function withoutTheFiltersOfTheHooksFile(argv) {
       argv[i] === '--tools' ||
       argv[i] === '--unless' ||
       argv[i] === '--where' ||
-      argv[i] === '--reads'
+      argv[i] === '--reads' ||
+      argv[i] === '--skip'
     )
       i++;
     else kept.push(/** @type {string} */ (argv[i]));

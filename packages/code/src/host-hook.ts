@@ -302,9 +302,15 @@ export type EndOfTurn =
  * for, and it reads Claude Code's hooks file, so a run that names no host and is handed a
  * transcript from here is VS Code's, not Claude Code's. The plugin's handlers carry the same
  * pattern (`hand-over.mjs`), held to this one by `the-end-of-a-turn-reaches-every-host.test.ts`.
+ *
+ * THE SOURCE of the folder name: VS Code's Copilot Chat extension writes the transcripts it hands a
+ * hook under `<workspaceStorage>/<hash>/<publisher.name of the extension>/transcripts/`, and the
+ * extension's publisher.name is `GitHub.copilot-chat` (`microsoft/vscode@794308978b6d`,
+ * `extensions/copilot`, `sessionTranscriptService.ts`). The match is case-insensitive: a file
+ * system that folds case can spell the folder either way.
  */
 export const VSCODE_TRANSCRIPT =
-  /[\\/]workspaceStorage[\\/][^\\/]+[\\/]GitHub\.copilot-chat[\\/]transcripts[\\/]/;
+  /[\\/]workspaceStorage[\\/][^\\/]+[\\/]GitHub\.copilot-chat[\\/]transcripts[\\/]/i;
 
 /**
  * Reads a payload as `host` hands it at the end of a turn: `{ end: false }` for any other event.

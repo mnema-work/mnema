@@ -460,8 +460,8 @@ describe('the hooks files that run the verbs', () => {
   it("runs a pair of its own for Cursor and for Qwen Code at Stop, only where each says it is there, and Claude Code's pair in neither, with `--reads no` where the row says the transcript is not read", () => {
     const stop = commandsOf(hooksJson(), 'Stop');
     expect(stop).toEqual([
-      runs('session-tally.mjs', '--unless CURSOR_VERSION,QWEN_PROJECT_DIR'),
-      runs('session-corrections.mjs', '--unless CURSOR_VERSION,QWEN_PROJECT_DIR'),
+      runs('session-tally.mjs', '--unless CURSOR_VERSION,QWEN_PROJECT_DIR --skip vscode'),
+      runs('session-corrections.mjs', '--unless CURSOR_VERSION,QWEN_PROJECT_DIR --skip vscode'),
       runs(
         'session-tally.mjs',
         '--host cursor --where CURSOR_VERSION --unless QWEN_PROJECT_DIR --reads no',
@@ -473,6 +473,11 @@ describe('the hooks files that run the verbs', () => {
       runs('session-tally.mjs', '--host qwen --where QWEN_PROJECT_DIR --reads no'),
       runs('session-corrections.mjs', '--host qwen --where QWEN_PROJECT_DIR --reads no'),
     ]);
+  });
+
+  it("writes `--skip vscode` into Claude Code's pair exactly while the row of VS Code's agent says its transcript is not read", () => {
+    const stop = commandsOf(hooksJson(), 'Stop').slice(0, 2);
+    for (const line of stop) expect(line.includes('--skip vscode')).toBe(!ENDS.vscode.reads);
   });
 
   it('puts `--reads no` on exactly the hosts whose row says the transcript is not read', () => {
@@ -546,21 +551,33 @@ describe('the plugin commands a host runs at the end of a turn', () => {
       );
     });
 
-    it(`${name} starts nothing, with no host named, for the transcript VS Code's agent keeps, and still for Claude Code's`, () => {
-      const { bin, calls } = stub();
+    it(`${name} turns away the transcript VS Code's agent keeps only where the hooks file says \`--skip vscode\`, and runs the verb where it does not (the row says it reads)`, () => {
       const viaVsCode = JSON.stringify(payloadOf('vscode', VSCODE_PATH));
-      const run = (input: string) =>
-        spawnSync(process.execPath, [join(PLUGIN, 'hooks', name)], {
+      const run = (args: string[], input: string, bin: string) =>
+        spawnSync(process.execPath, [join(PLUGIN, 'hooks', name), ...args], {
           cwd: repo,
           input,
           encoding: 'utf-8',
           env: { HOME: join(sandbox, 'home'), PATH: `${bin}:${process.env.PATH ?? ''}` },
         });
-      expect(run(viaVsCode).stdout).toBe('');
-      expect(existsSync(calls), 'a mnema was started for a transcript of VS Code').toBe(false);
-      expect(run(JSON.stringify(payloadOf('claude', aClaudeTranscript()))).stdout).toContain(
-        'counted',
-      );
+      const verb = name === 'session-tally.mjs' ? 'tally' : 'corrections';
+      // The row says VS Code's transcript is not read: the file carries the flag, and nothing starts.
+      const skipped = stub();
+      expect(run(['--skip', 'vscode'], viaVsCode, skipped.bin).stdout).toBe('');
+      expect(existsSync(skipped.calls), 'a mnema was started for a transcript of VS Code').toBe(false);
+      // The row says it reads: the flag is not in the file, the handler leaves the path alone and the
+      // verb runs (the verb reads it with VS Code's reader, which the row says exists).
+      const reading = stub();
+      expect(JSON.parse(run([], viaVsCode, reading.bin).stdout)).toEqual({ systemMessage: 'counted' });
+      expect(
+        readFileSync(reading.calls, 'utf-8')
+          .trim()
+          .split('\n')
+          .filter((line) => line !== '--identify'),
+      ).toEqual([verb]);
+      // And Claude Code's own transcript is run in both.
+      const claude = JSON.stringify(payloadOf('claude', aClaudeTranscript()));
+      expect(run(['--skip', 'vscode'], claude, stub().bin).stdout).toContain('counted');
     });
 
     it(`${name} hands the verb the host and not the filters, where Cursor says it is there`, () => {

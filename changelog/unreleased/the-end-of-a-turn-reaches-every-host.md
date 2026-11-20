@@ -11,6 +11,6 @@ Added
   journal and the corrections work; the transcript of VS Code's agent, Codex, Copilot CLI, Gemini CLI, Cursor's
   command-line agent and Qwen Code is not read yet (no reader of its format is built), so for them nothing is counted,
   no journal is kept and no proposal is recorded. Where the row says so, the hooks file carries `--reads no` and the
-  handler ends before it starts `node` and `mnema` twice a turn (Gemini CLI's script does the same by a constant); run
+  handler ends before it starts `mnema` twice a turn (Gemini CLI's script does the same by a constant); run
   by hand, the verbs say it on their second stream. VS Code's agent and Qwen Code, which share Claude Code's hooks file,
   no longer have their transcripts parsed as Claude Code's.
