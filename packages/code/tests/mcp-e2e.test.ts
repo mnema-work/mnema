@@ -636,6 +636,44 @@ describe('MCP session + tools: unit', () => {
     ).toBe(true);
   });
 
+  it('record_observation refuses the id of a real task whose last group was changed, and writes nothing', () => {
+    const project = makeProject('proj');
+    const session = openSession({
+      clientName: 'claude-code',
+      roots: [pathToFileURL(project).href],
+      env,
+    });
+    const task = aTaskIn(session);
+    const groups = task.split('-');
+    const last = groups[groups.length - 1] as string;
+    groups[groups.length - 1] = (last.startsWith('0') ? '1' : '0') + last.slice(1);
+    const mistyped = groups.join('-');
+    expect(mistyped).not.toBe(task);
+    const held = (): string[] =>
+      (['public', 'private'] as const).flatMap((scope) =>
+        orderedEvents(
+          { root: chainRootForScope(session.trees, scope as Scope) as string },
+          catalogUpcasters(),
+        ).map((e) => e.id),
+      );
+    const before = held();
+
+    for (const scope of [undefined, 'public', 'private'] as const) {
+      const given = scope === undefined ? {} : { scope };
+      const refused = runRecordObservation(session, {
+        about: mistyped,
+        topic: 't',
+        text: 'x',
+        ...given,
+      });
+      expect(refused).toMatchObject({ ok: false, code: 'UNKNOWN_RECORD' });
+      if (!refused.ok) expect(refused.message).toContain(mistyped);
+    }
+    expect(held()).toEqual(before);
+    // The right id is still accepted, so the refusal above is about the id and nothing else.
+    expect(runRecordObservation(session, { about: task, topic: 't', text: 'x' }).ok).toBe(true);
+  });
+
   it('record_handoff refuses a scope absent here as data', () => {
     const session = openSession({ clientName: 'claude-code', roots: [], env });
     const refused = runRecordHandoff(session, {
