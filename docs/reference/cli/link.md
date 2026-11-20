@@ -23,7 +23,7 @@ In the help under **Record**.
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
 
-A target that is an absolute path under a temporary folder (`os.tmpdir()`, `/tmp`, `/var/tmp`, `$TMPDIR`, or `%TEMP%` on Windows) is recorded, in any tree, and the command then says that a reboot or a cleanup can clear that folder and asks for a copy under the project to be linked instead. A path under the project's own root, a relative path and an id are not warned about. The MCP tool `link_knowledge` says the same.
+A target that is an absolute path under a temporary folder (`os.tmpdir()`, `/tmp`, `/var/tmp`, `$TMPDIR`, or `%TEMP%` on Windows) is recorded, in any tree, and the command then says that a reboot or a cleanup can clear that folder and asks for a copy under the project to be linked instead. A path under the project's own root, a relative path and an id are not warned about. The MCP tool `link_knowledge` says the same. A file that exists is compared by where it really is (so `/tmp` and `/private/tmp` are one place on macOS); on Windows the comparison is by the text of the path, a `\\?\` prefix is dropped and a short 8.3 name is not expanded. A `$TMPDIR` that is `/`, the home folder or a folder holding the project is not read as a temporary folder.
 
 <!-- End of the part written by hand. -->
 

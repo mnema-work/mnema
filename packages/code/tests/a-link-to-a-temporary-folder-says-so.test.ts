@@ -7,7 +7,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -155,3 +155,65 @@ describe('the one function', () => {
     expect(isUnderATemporaryFolder('/tmp/elsewhere/x', '/tmp/p', env)).toBe(true);
   });
 });
+
+describe('the one function, where a path has two spellings', () => {
+  let real: string;
+  let link: string;
+
+  beforeEach(() => {
+    // The macOS shape: the temporary folder is a link (`/tmp`) to the place it really is (`/private/tmp`).
+    real = join(sandbox, 'private-tmp');
+    link = join(sandbox, 'tmp-link');
+    mkdirSync(join(real, 'p'), { recursive: true });
+    symlinkSync(real, link);
+  });
+
+  it('does not warn on the project own file, spelled through the link, when the root is the real path', () => {
+    expect(isUnderATemporaryFolder(join(link, 'p', 'notes.md'), join(real, 'p'), {}, link)).toBe(
+      false,
+    );
+  });
+
+  it('warns for a file at the real spelling of a temporary folder named by its link', () => {
+    expect(isUnderATemporaryFolder(join(real, 'x'), join(sandbox, 'elsewhere'), {}, link)).toBe(
+      true,
+    );
+  });
+
+  it('knows the macOS spellings by name', () => {
+    for (const target of ['/private/tmp/x', '/private/var/folders/ab/cd/T/x']) {
+      expect(isUnderATemporaryFolder(target, '/home/me/p', {}), target).toBe(true);
+    }
+  });
+
+  it('ignores a TMPDIR that is the root, the home folder or a folder holding the project', () => {
+    for (const TMPDIR of ['/', '/home/me', '/home/me/work']) {
+      const env = { TMPDIR };
+      expect(isUnderATemporaryFolder('/opt/x', '/home/me/work/p', env, '/', '/home/me'), TMPDIR).toBe(
+        false,
+      );
+      expect(isUnderATemporaryFolder('/home/me/notes.md', '/home/me/work/p', env, '/', '/home/me')).toBe(
+        false,
+      );
+    }
+  });
+
+  it('reads a folder named ..cache as inside, not as a way out', () => {
+    expect(isUnderATemporaryFolder('/tmp/..cache/x', '/home/me/p', {})).toBe(true);
+    expect(isUnderATemporaryFolder('/scratch/..cache/x', '/home/me/p', { TMPDIR: '/scratch' })).toBe(
+      true,
+    );
+    expect(isUnderATemporaryFolder('/scratch/..cache/x', '/scratch/..cache', { TMPDIR: '/scratch' })).toBe(
+      false,
+    );
+  });
+
+  it('drops the Windows extended-length prefix', () => {
+    expect(
+      isUnderATemporaryFolder('\\\\?\\C:\\Users\\me\\Temp\\x', undefined, {
+        TEMP: 'C:\\Users\\me\\Temp',
+      }),
+    ).toBe(true);
+  });
+});
+
