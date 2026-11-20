@@ -299,7 +299,22 @@ function unsignedLine(
   if (run.byNote) {
     return `${where} ${one ? 'is' : 'are'} signed by this machine’s note of what it wrote and by no checkpoint: ${one ? 'it is' : 'they are'} served and ${one ? 'governs' : 'govern'} here, and this machine’s next write signs ${one ? 'it' : 'them'}.`;
   }
-  return `${where} ${one ? 'is' : 'are'} recorded and not yet signed: ${one ? 'it is' : 'they are'} served and listed as such, and ${one ? 'it does' : 'they do'} not govern until a checkpoint signed by the tail’s key covers ${one ? 'it' : 'them'}.`;
+  const until = `${one ? 'it is' : 'they are'} served and listed as such, and ${one ? 'it does' : 'they do'} not govern until a checkpoint signed by the tail’s key covers ${one ? 'it' : 'them'}`;
+  return `${where} ${one ? 'is' : 'are'} recorded and not yet signed: ${until}. While ${one ? 'it stands' : 'they stand'}, ${REREAD} ${endingIt(broken)}`;
+}
+
+/**
+ * The cost of a window nobody signs: while it stands the tail is not folded clean, so a catch-up
+ * cannot take only the new lines and every session reads the whole record again. A forged window
+ * nobody signs makes that permanent, so it is said where the window is.
+ */
+const REREAD = 'every session reads the whole record again instead of its new lines:';
+
+/** How the window ends: its owner's write signs it, or, in the tree git keeps, the tail is put back. */
+function endingIt(broken: ScopedLinkBreak): string {
+  const owner = 'the tail’s owner writes once';
+  if (broken.scope !== 'public') return `${owner} to end it.`;
+  return `${owner} and commits to end it, or \`mnema tail repair ${oneLine(broken.tail)}\` puts the tail back from the repository’s history.`;
 }
 
 /**

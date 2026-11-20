@@ -56,10 +56,6 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'holds what a function of the chain says of a tail from its files alone; the chain has no projection cache and the question is not asked of one',
   'packages/chain/src/chain/the-products-reads-open-no-link.test.ts':
     'holds what the functions of the chain that the product reads through say of a record whose files became links; the chain has no projection cache and the question is not asked of one (the cache states are held by the-products-reads-serve-around-a-linked-record, through the binary)',
-  'packages/chain/src/chain/a-tail-is-signed-as-soon-as-it-is-founded.test.ts':
-    'holds which checkpoints the write that founds a tail signs, and what the fold of its checkpoints says of the tail with no note of this machine, in the functions of the chain alone; nothing is damaged and the chain has no projection cache (a clone of such a record is read by the binary in only-proven-events-reach-the-projection)',
-  'packages/chain/src/chain/verify-reads-the-checkpoints-before-the-tail.test.ts':
-    'holds the order in which the verdict of the chain reads a tail and its checkpoints, with a signed write landing between the two readings; nothing is damaged and the chain has no projection cache',
   'packages/chain/src/chain/checkpoint-ruling.test.ts':
     'holds what the fold of a tail’s checkpoints says of tails and checkpoints laid out by hand, in the function alone; the chain has no projection cache (the cache states are held through the binary in a-forged-checkpoint-is-said-first-and-stops-the-gate)',
   'packages/core/src/projections/only-proven-events-reach-the-projection.test.ts':
@@ -212,6 +208,23 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'DEBT: checkpoints emptied or cut, then the verdict painted, through the in-process CLI entry; needs the split and an in-process run',
   'packages/code/tests/a-key-whose-tail-was-cut-is-told-what-happened.test.ts':
     'DEBT: a founder tail deleted and the next write judged, through the built binary; a plain found/damage/run conversion that is owed',
+};
+
+/**
+ * The test files that write into tails or checkpoints and plant no damage, each with the reason: they
+ * build a record by the product, or lay one out by hand, and judge it, so there is nothing to judge
+ * in more than one cache state. This is the honest way out for a file the tripwire below pulls in:
+ * the mark `// @plants-damage` is for a file that damages a record, and a file in this set that gains
+ * the mark, a damage helper or a `@proves` tag is accused, because then it is an integrity file and
+ * belongs to the helper or to EXEMPT. A file here that no longer writes into a tail is accused too.
+ * It reads the mark and the imports, not what the bytes become: a file that forges a tail or a
+ * checkpoint by hand plants damage, wears the mark and belongs to EXEMPT, not here.
+ */
+export const WRITES_BUT_PLANTS_NOTHING: Readonly<Record<string, string>> = {
+  'packages/chain/src/chain/a-tail-is-signed-as-soon-as-it-is-founded.test.ts':
+    'holds which checkpoints the write that founds a tail signs, and what the fold of its checkpoints says of the tail with no note of this machine, in the functions of the chain alone; nothing is damaged and the chain has no projection cache (a clone of such a record is read by the binary in only-proven-events-reach-the-projection)',
+  'packages/chain/src/chain/verify-reads-the-checkpoints-before-the-tail.test.ts':
+    'holds the order in which the verdict of the chain reads a tail and its checkpoints, with a signed write landing between the two readings; nothing is damaged and the chain has no projection cache',
 };
 
 /** What the guard reads of one test file. */
@@ -512,6 +525,7 @@ export function accusations(
   exempt: Readonly<Record<string, string>>,
   frozen: ReadonlySet<string> = FROZEN,
   writers: ReadonlySet<string> = new Set(),
+  honest: Readonly<Record<string, string>> = {},
 ): string[] {
   const out: string[] = [];
   for (const [file, source] of sources) {
@@ -522,19 +536,40 @@ export function accusations(
       !uses &&
       exempt[file] === undefined &&
       !frozen.has(file) &&
+      honest[file] === undefined &&
       (writesIntoTails(source.text) || source.imports.some((name) => writers.has(name)))
     )
       out.push(
-        `${file} writes into a tail or its checkpoints and was not asked what the cache does to it: mark it with a line // @plants-damage if it damages a record and judges it, and run it through ${HELPER} or list it in EXEMPT with the reason`,
+        `${file} writes into a tail or its checkpoints and was not asked what the cache does to it: mark it with a line // @plants-damage if it damages a record and judges it, and run it through ${HELPER} or list it in EXEMPT with the reason; if it only writes and plants nothing, list it in WRITES_BUT_PLANTS_NOTHING with the reason`,
       );
     if (integrity && !uses && exempt[file] === undefined)
       out.push(
         `${file} proves integrity or plants damage and does not run in every cache state: import ${HELPER} and run its cases through inEveryCacheState, or list the file in EXEMPT with the reason`,
       );
+    if (honest[file] !== undefined && integrity)
+      out.push(
+        `${file} is in WRITES_BUT_PLANTS_NOTHING and plants damage or proves integrity: drop the entry and run it through ${HELPER} or list it in EXEMPT`,
+      );
+    if (
+      honest[file] !== undefined &&
+      !writesIntoTails(source.text) &&
+      !source.imports.some((name) => writers.has(name))
+    )
+      out.push(
+        `${file} is in WRITES_BUT_PLANTS_NOTHING and writes into no tail any more: drop the entry`,
+      );
     if (exempt[file] !== undefined && uses)
       out.push(`${file} is in EXEMPT and uses ${HELPER}: drop the entry`);
     if (exempt[file] !== undefined && !integrity)
       out.push(`${file} is in EXEMPT and is not an integrity file any more: drop the entry`);
+  }
+  for (const [file, reason] of Object.entries(honest)) {
+    if (!sources.has(file))
+      out.push(`${file} is in WRITES_BUT_PLANTS_NOTHING and is not a test file: drop the entry`);
+    if (reason.trim().split(/\s+/).length < 5)
+      out.push(
+        `${file} is in WRITES_BUT_PLANTS_NOTHING with no reason worth the name: write the sentence`,
+      );
   }
   for (const [file, reason] of Object.entries(exempt)) {
     if (!sources.has(file)) out.push(`${file} is in EXEMPT and is not a test file: drop the entry`);
@@ -581,7 +616,9 @@ describe('the integrity tests and the states of the projection cache', () => {
   it('has every file that proves integrity or plants damage run through the helper, or say why not', () => {
     const { sources, planters, writers } = read();
     expect(sources.size).toBeGreaterThan(100);
-    expect(accusations(sources, planters, EXEMPT, FROZEN, writers)).toEqual([]);
+    expect(
+      accusations(sources, planters, EXEMPT, FROZEN, writers, WRITES_BUT_PLANTS_NOTHING),
+    ).toEqual([]);
     const gone = [...FROZEN].filter((file) => !sources.has(file));
     expect(gone, 'FROZEN names a file that is not a test file: drop the entry').toEqual([]);
   });
@@ -703,6 +740,58 @@ describe('the integrity tests and the states of the projection cache', () => {
       writesIntoTails("rmSync(join(repo, '.mnema', 'tails', tail), { recursive: true });"),
     ).toBe(true);
     expect(writesIntoTails("writeFileSync(join(dir, 'notes.txt'), 'x');")).toBe(false);
+  });
+
+  it('lets a file that writes and plants nothing say so, and accuses it once it plants or stops writing (the honest way out seen to fire)', () => {
+    const writing = "appendFileSync(join(tail, '000001.jsonl'), 'x');";
+    const file = 'packages/chain/src/chain/a-honest-writer.test.ts';
+    const reason = 'holds what the writer signs over a tail it founds; nothing is damaged here';
+    const judge = (text: string, imports: string[], honest: Record<string, string>) =>
+      accusations(
+        new Map([[file, { text, imports }]]),
+        new Set(['a-damaged-record']),
+        {},
+        new Set(),
+        new Set(),
+        honest,
+      );
+    expect(judge(writing, [], {})).toHaveLength(1);
+    expect(judge(writing, [], { [file]: reason })).toEqual([]);
+    expect(
+      judge(`// @plants-damage\n${writing}`, [], { [file]: reason }).filter((line) =>
+        line.includes('WRITES_BUT_PLANTS_NOTHING'),
+      ),
+    ).toEqual([
+      `${file} is in WRITES_BUT_PLANTS_NOTHING and plants damage or proves integrity: drop the entry and run it through ${HELPER} or list it in EXEMPT`,
+    ]);
+    for (const [text, imports] of [
+      [writing, ['a-damaged-record']],
+      [`// ${PROVES} the-claim\n${writing}`, []],
+    ] as const)
+      expect(
+        judge(text, [...imports], { [file]: reason }).filter((line) =>
+          line.includes('WRITES_BUT_PLANTS_NOTHING'),
+        ),
+      ).toHaveLength(1);
+    expect(judge("it('x', () => {});", [], { [file]: reason })).toEqual([
+      `${file} is in WRITES_BUT_PLANTS_NOTHING and writes into no tail any more: drop the entry`,
+    ]);
+    expect(judge(writing, [], { [file]: 'nothing damaged' })).toEqual([
+      `${file} is in WRITES_BUT_PLANTS_NOTHING with no reason worth the name: write the sentence`,
+    ]);
+    expect(accusations(new Map(), new Set(), {}, new Set(), new Set(), { [file]: reason })).toEqual(
+      [`${file} is in WRITES_BUT_PLANTS_NOTHING and is not a test file: drop the entry`],
+    );
+  });
+
+  it('holds the files that really sit in WRITES_BUT_PLANTS_NOTHING to what it says', () => {
+    const { sources } = read();
+    for (const file of Object.keys(WRITES_BUT_PLANTS_NOTHING)) {
+      const source = sources.get(file) as Source;
+      expect(PLANTS.test(source.text), file).toBe(false);
+      expect(writesIntoTails(source.text), file).toBe(true);
+    }
+    expect(Object.keys(WRITES_BUT_PLANTS_NOTHING).length).toBeGreaterThanOrEqual(2);
   });
 
   it('reads the imports of a test under tests/ and of one a directory down', () => {

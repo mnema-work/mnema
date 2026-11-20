@@ -96,11 +96,16 @@ describe('a run no signature proves, as every read says it', () => {
 
   it('says a run served and not yet signed last, alone, with no opening and no closing', () => {
     expect(linkBreakBlock([unsigned(2, false)])).toEqual([
-      '2 events of the project’s public record (tail tail-1, seq 5 to 6) are recorded and not yet signed: they are served and listed as such, and they do not govern until a checkpoint signed by the tail’s key covers them.',
+      '2 events of the project’s public record (tail tail-1, seq 5 to 6) are recorded and not yet signed: they are served and listed as such, and they do not govern until a checkpoint signed by the tail’s key covers them. While they stand, every session reads the whole record again instead of its new lines: the tail’s owner writes once and commits to end it, or `mnema tail repair tail-1` puts the tail back from the repository’s history.',
     ]);
     expect(linkBreakBlockOnWrite([unsigned(1, true)])).toEqual([
       '1 event of the project’s public record (tail tail-1, seq 5 to 5) is signed by this machine’s note of what it wrote and by no checkpoint: it is served and governs here, and this machine’s next write signs it.',
     ]);
+    // A tree git does not keep has no history to put the tail back from: the verb is not named.
+    const privately = linkBreakBlock([{ ...unsigned(1, false), scope: 'private' }])[0] as string;
+    expect(privately).toContain('every session reads the whole record again');
+    expect(privately).toContain('the tail’s owner writes once to end it');
+    expect(privately).not.toContain('tail repair');
     const mixed = linkBreakBlock([failed, unsigned(1, false)])[0] as string;
     expect(mixed.split('\n')[0]).toBe(
       'The record this answer came off does not chain, so its proof is broken:',
