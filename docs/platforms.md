@@ -16,16 +16,26 @@ drives the installed binary:
   does, and none is made there, nor a link at any other place a reader reads, nor a OneDrive placeholder (which both
   readers read as the file it holds) or a WSL link (a link to the binary from Node 24.16, whose libuv is 1.52, and not on the floor, 24.15);
 - `mnema doctor`;
-- two of the plugin's hook scripts, started as Node starts them: `session-start.mjs` must hand over a decision in
-  force, and `edit-refuses-a-write.mjs`, with Cursor's arguments (`--host cursor`) and a Cursor payload, must refuse
-  a write under a rule, naming that rule (a refusal that says `mnema` could not answer fails the check), when the
-  host names the file with backslashes and a drive letter, with forward slashes, with the drive letter in lower
-  case, in the 8.3 short spelling of the temp directory (`RUNNER~1`), and, for a folder that exists, in another
-  letter case. The same scripts for the other hosts (Claude Code, VS Code, Codex, Copilot) take other arguments and
-  payloads, and OpenCode's module and Gemini's extension are separate files: none of those was run.
+- every command line of the plugin's hook files, for every host (`hooks.json` for Claude Code, VS Code, Cursor and
+  Qwen Code, `codex.json`, `copilot.json` and Gemini's `hooks/hooks.json`), read from the files themselves, so a hook added
+  later is run later, and started as Node starts them: the handler with the arguments the file gives it, a payload in the
+  shape measured where `docs/evidence.md` measures it and, for the rest, the common fields, and the paths written the way the system writes them. Each must start, exit 0, and
+  say nothing that means it could not run. Where the project fixes the answer, it is checked: every opening
+  (`session-start.mjs` for each file, with Codex's and Copilot's arguments, Gemini's `open`, and the subagent's) must hand
+  over a decision in force, and every gate (VS Code, Codex, Copilot, Qwen Code, Cursor, Gemini's `gate`) must refuse a
+  write under the rule, naming it (a refusal that says `mnema` could not answer fails the check), and let a write
+  elsewhere through. The two that hand rules over beside a write (Copilot's `edit-rules-beside.mjs` and Gemini's `beside`)
+  must name a rule linked `governs` at the folder written, and the one after a write in Claude Code (`after-a-write.mjs`),
+  given a write to `.claude/rules/x.txt` with a line that opens as a decision does, must say the record cites it nowhere.
+  The rest (the recall, the compaction, the tally, the corrections, the dispatch,
+  the subagent's stop, the settled choice) are shown only to start and exit 0: the job says so on each, and does not claim
+  they ran `mnema`. For Cursor the paths are also tried with backslashes and a drive letter, forward slashes, the drive
+  letter in lower case, the 8.3 short spelling of the temp directory (`RUNNER~1`), and, for a folder that exists, another
+  letter case. The `mcp_tool` entry of `hooks.json` is a call into the server and not a process, and is not run; neither is
+  OpenCode's module.
 
 Not run there: the test suite (about ten minutes on Linux, and it leans on `sh`, a pty and `unshare`, so it runs
-on Linux only), the commands of the plugin's `hooks.json` as a host starts them (they are `node` and a handler, no shell line), the Python reader on any
+on Linux only), the commands of the plugin's hook files as a host starts them (here `node` runs the handler; a host's own shell does not, which matters for Copilot's two lines that end in `; exit 0`), the Python reader on any
 version but 3.9, and any host itself. A rule addressed at a folder that is not on disk yet is matched by its
 letters as written, so on a case-insensitive volume a write that spells that folder in other case goes round it.
 

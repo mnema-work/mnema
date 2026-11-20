@@ -783,9 +783,10 @@ jobs:
   # writes on that system: `mnema.cmd` on Windows), and drives the INSTALLED binary through `init`,
   # `decision record`, a rule that refuses a write, `verify`, a clone checked out with
   # `core.autocrlf=true` (the record must still verify), the Python reader over it, `doctor`, and
-  # the plugin's hook handlers on payloads whose paths are written the way that system writes them
-  # (backslashes, drive letters, the temp directory's second spelling, upper case on the
-  # case-insensitive volume). The steps are `.github/the-other-systems/smoke.mjs`, so the same
+  # every command line of the plugin's four hook files, for every host, read from the files and run
+  # with that host's arguments and a payload measured where docs/evidence.md measures it and, for the rest, the common fields; for Cursor, the paths are also
+  # written the way that system writes them (backslashes, drive letters, the temp directory's second
+  # spelling, upper case on the case-insensitive volume). The steps are `.github/the-other-systems/smoke.mjs`, so the same
   # command runs on a workstation: `pnpm build && node .github/the-other-systems/smoke.mjs`.
   #
   # WHY A SMOKE AND NOT THE SUITE. The suite is about ten minutes on Ubuntu with eight cores and
