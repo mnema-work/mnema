@@ -377,6 +377,52 @@ describe('two claims at once, and a quiet answer', () => {
     expect(writes.map((w) => w.write)).toEqual(['assign', 'assign', 'unassign', 'comment']);
   });
 
+  it('counts a claim made since the issue was freed, never one from before: exactly one keeps it, in both orders', () => {
+    const spent = claimAt(5, 'second', '2026-11-01T10:00:00Z');
+    const freed = {
+      id: 6,
+      created_at: '2026-11-15T10:00:00Z',
+      user: { login: BOT },
+      body: freedMarker(daysAgo(16)),
+    };
+    const comments = [spent, freed, older, newer];
+    for (const [event, other] of [
+      [newer, 'first'],
+      [older, 'second'],
+    ] as const) {
+      const api = racing(other, comments);
+      claim(eventOf(event), api, NOW);
+      expect(api.issue(7).assignees).toEqual([{ login: 'first' }]);
+    }
+  });
+
+  it('counts the first claim when the issue was never freed, so a second comment does not lose the place', () => {
+    const early = claimAt(12, 'first', '2026-12-01T10:00:00Z');
+    const again = claimAt(13, 'first', '2026-12-01T11:30:00Z');
+    const api = racing('first', [early, newer, again]);
+    expect(claim(eventOf(newer), api, NOW).action).toBe('taken');
+    expect(api.issue(7).assignees).toEqual([{ login: 'first' }]);
+  });
+
+  it('tells the loser once when its own run answers between this run reading and writing', () => {
+    const api = racing('second', [older, newer]);
+    const read = api.comments;
+    let first = true;
+    api.comments = (number: number) => {
+      const seen = [...read(number)];
+      if (number === 7 && first) {
+        first = false;
+        api.comment(7, `${takenMarker('second')}\nthe loser's own run`);
+      }
+      return seen;
+    };
+    claim(eventOf(older), api, NOW);
+    const told = (api.writes as { write: string; body?: string }[]).filter(
+      (w) => w.write === 'comment' && w.body?.includes(takenMarker('second')),
+    );
+    expect(told).toHaveLength(1);
+  });
+
   it('does not take the issue from an assignee whose claim is older than this one', () => {
     const api = racing('first', [older, newer]);
     expect(claim(eventOf(newer), api, NOW).action).toBe('taken');

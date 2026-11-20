@@ -710,6 +710,32 @@ const olderThan = (a, b) => {
 };
 
 /**
+ * The one claim of `who` that counts on this issue: their first claim comment written after the
+ * last time the workflow freed it (a claim from before that is spent), or their first claim at all
+ * when it was never freed. Comments come in the order written.
+ *
+ * @param {Json[]} comments
+ * @param {string} who
+ * @returns {Json | null}
+ */
+const claimThatCounts = (comments, who) => {
+  let since = 0;
+  comments.forEach((c, at) => {
+    if (c.user?.login === OUR_ACCOUNT && FREED_MARKER.test(c.body ?? '')) since = at + 1;
+  });
+  return (
+    comments
+      .slice(since)
+      .find(
+        (c) =>
+          c.user?.login?.toLowerCase() === who.toLowerCase() &&
+          c.user?.login !== OUR_ACCOUNT &&
+          isClaim(c.body ?? ''),
+      ) ?? null
+  );
+};
+
+/**
  * The claim of another assignee that came before this one: another login now on the issue that
  * wrote a claim on it, older than ours. A maintainer's hand assignment has no such claim.
  *
@@ -718,20 +744,18 @@ const olderThan = (a, b) => {
  * @param {string[]} assignees
  * @param {string} login
  */
-const claimedBefore = (comments, ours, assignees, login) => {
-  const others = assignees.filter((who) => who.toLowerCase() !== login.toLowerCase());
-  return comments.some(
-    (c) =>
-      others.some((who) => who.toLowerCase() === c.user?.login?.toLowerCase()) &&
-      isClaim(c.body ?? '') &&
-      olderThan(c, ours),
-  );
-};
+const claimedBefore = (comments, ours, assignees, login) =>
+  assignees.some((who) => {
+    if (who.toLowerCase() === login.toLowerCase()) return false;
+    const theirs = claimThatCounts(comments, who);
+    return theirs !== null && olderThan(theirs, ours);
+  });
 
 /**
- * The other assignees whose claim on the issue came after ours and none before it: the claim that
- * lost. A maintainer's comment never makes an assignment a lost claim, and neither does an assignee
- * who never claimed it, so a hand assignment stays.
+ * The other assignees whose claim that counts came after ours: the claim that lost. A maintainer's
+ * comment never makes an assignment a lost claim, and neither does an assignee who never claimed
+ * it, so a hand assignment stays. It is the same claim `claimedBefore` compares, so of two people
+ * exactly one gives the issue up.
  *
  * @param {Json[]} comments
  * @param {Json} ours the comment this run is answering
@@ -742,14 +766,12 @@ const claimedBefore = (comments, ours, assignees, login) => {
 const claimedAfter = (comments, ours, assignees, login) =>
   assignees.filter((who) => {
     if (who.toLowerCase() === login.toLowerCase()) return false;
-    const theirs = comments.filter(
-      (c) =>
-        c.user?.login?.toLowerCase() === who.toLowerCase() &&
-        c.user?.login !== OUR_ACCOUNT &&
-        !MAINTAINER_ASSOCIATIONS.includes(c.author_association ?? '') &&
-        isClaim(c.body ?? ''),
+    const theirs = claimThatCounts(comments, who);
+    return (
+      theirs !== null &&
+      !MAINTAINER_ASSOCIATIONS.includes(theirs.author_association ?? '') &&
+      olderThan(ours, theirs)
     );
-    return theirs.length > 0 && theirs.every((c) => olderThan(ours, c));
   });
 
 /**
@@ -830,7 +852,8 @@ export function claim(event, api, now = new Date()) {
   // The other run assigned before this one and could not see it: the older claim keeps the issue.
   for (const loser of claimedAfter(comments, comment, assigned, login)) {
     api.unassign(number, loser);
-    if (!toldTaken(comments, loser)) api.comment(number, replies.taken(loser));
+    // read again: the loser's own run may have told it a moment ago
+    if (!toldTaken(api.comments(number), loser)) api.comment(number, replies.taken(loser));
   }
   api.comment(number, replies.assigned(login, now));
   return verdict;
