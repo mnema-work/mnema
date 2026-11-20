@@ -396,6 +396,19 @@ describe('two claims at once, and a quiet answer', () => {
     }
   });
 
+  it('compares each person by their own claim that counts, not by the comment the run answers: without a freed marker exactly one keeps it, in both orders', () => {
+    const unspent = claimAt(5, 'second', '2026-12-01T10:00:00Z');
+    const comments = [unspent, older, newer];
+    for (const [event, other] of [
+      [newer, 'first'],
+      [older, 'second'],
+    ] as const) {
+      const api = racing(other, comments);
+      claim(eventOf(event), api, NOW);
+      expect(api.issue(7).assignees).toEqual([{ login: 'second' }]);
+    }
+  });
+
   it('counts the first claim when the issue was never freed, so a second comment does not lose the place', () => {
     const early = claimAt(12, 'first', '2026-12-01T10:00:00Z');
     const again = claimAt(13, 'first', '2026-12-01T11:30:00Z');

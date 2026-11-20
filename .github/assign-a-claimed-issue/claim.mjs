@@ -839,7 +839,9 @@ export function claim(event, api, now = new Date()) {
     throw new Error(`the assignment of #${number} to ${login} did not take`);
   }
   const comments = api.comments(number);
-  if (claimedBefore(comments, comment, assigned, login)) {
+  // Both runs compare the same thing: each person's own claim that counts, not the comment answered.
+  const ours = claimThatCounts(comments, login) ?? comment;
+  if (claimedBefore(comments, ours, assigned, login)) {
     api.unassign(number, login);
     if (!toldTaken(comments, login)) api.comment(number, replies.taken(login));
     return { action: 'taken', why: 'an older claim holds it' };
@@ -850,7 +852,7 @@ export function claim(event, api, now = new Date()) {
     return { action: 'cap', why: `holds ${MOST_HELD} already` };
   }
   // The other run assigned before this one and could not see it: the older claim keeps the issue.
-  for (const loser of claimedAfter(comments, comment, assigned, login)) {
+  for (const loser of claimedAfter(comments, ours, assigned, login)) {
     api.unassign(number, loser);
     // read again: the loser's own run may have told it a moment ago
     if (!toldTaken(api.comments(number), loser)) api.comment(number, replies.taken(loser));
