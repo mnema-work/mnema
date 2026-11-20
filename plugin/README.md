@@ -148,7 +148,7 @@ document, delivered by the host instead of waited for.
   question through `AskUserQuestion` and the answer came back, it hands the agent one sentence beside
   the answer: that a choice may have been settled there, that `record_decision` records it with
   the options not taken as `alternatives`, and that `decision_transition` accepts it with a note
-  quoting the answer (a person accepts it, where `agent-accepts` is off). It records nothing and
+  quoting the person’s answer between double quotes (the option they chose, or their exact words; a person accepts it, where `agent-accepts` is off). It records nothing and
   reads which tool ran and whether `agent-accepts` is on, never the answer. The handler is given the tool it answers (`--tools AskUserQuestion`) and starts no `mnema`
   for any other, because VS Code runs this file's hooks whatever their matcher says. Held against the real Claude Code binary by
   `a-settled-choice-reaches-the-model.test.ts`; the hooks files of Codex, Copilot CLI, Gemini CLI and

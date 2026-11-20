@@ -54,7 +54,7 @@ Each line says what it does and what it leaves unproven; the page it points to h
 - **A question answered is a moment the agent is told about.** In Claude Code, after the agent asked
   the person through `AskUserQuestion` and the answer came back, `mnema settled` hands it one
   sentence beside the answer: a choice may have been settled there, `record_decision` records
-  it and `decision_transition` accepts it with a note quoting the answer (a person accepts it,
+  it and `decision_transition` accepts it with a note quoting the person’s answer between double quotes, the option they chose or their exact words (a person accepts it,
   where `agent-accepts` is off). It records nothing and reads which tool ran and that switch, never the answer; `mnema switch off
   choice-settled` turns it off. The other hosts' hooks files carry it on their own question tools,
   documented and not measured.

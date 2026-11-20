@@ -162,7 +162,8 @@ describe('mnema settled', () => {
       'A question to the person was answered here. Where the answer settled a choice, ' +
         '`record_decision` records it in this project’s record, with the options not taken as ' +
         '`alternatives`, and `decision_transition` (action `accept`) accepts it, the note quoting ' +
-        'the answer; nothing has been recorded from this answer.',
+        'the person’s answer between double quotes (the option they chose, or their exact words); ' +
+        'nothing has been recorded from this answer.',
     );
   });
 

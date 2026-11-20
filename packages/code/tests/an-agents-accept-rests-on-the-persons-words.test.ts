@@ -151,6 +151,30 @@ describe('what an accept rests on, with a transcript that is known', () => {
 });
 
 describe('an agent accept at the command line', () => {
+  it('passes end to end: the hook says to quote the answer, the person chooses an option, the note quotes its label', {
+    timeout: 60_000,
+  }, () => {
+    const id = aProposedDecision();
+    const hook = mnema(
+      {},
+      JSON.stringify({
+        hook_event_name: 'PostToolUse',
+        tool_name: 'AskUserQuestion',
+        session_id: SESSION,
+        transcript_path: transcript,
+      }),
+      'settled',
+    );
+    expect(hook.status, hook.out).toBe(0);
+    expect(hook.out).toContain('between double quotes');
+    writeFileSync(transcript, `${chose('Which cache?', 'Keep it on disk (Recommended)')}\n`);
+    theSessionOpens();
+    const moved = accept(id, 'The person chose "Keep it on disk (Recommended)" when asked');
+    expect(moved.status, moved.out).toBe(0);
+    expect(moved.out).toContain('an option the person chose');
+    expect(state(id)).toContain('(accepted)');
+  });
+
   it('finds the transcript from a Stop alone, with no SessionStart before it', {
     timeout: 60_000,
   }, () => {
