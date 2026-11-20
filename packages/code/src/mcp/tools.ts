@@ -159,6 +159,7 @@ import {
   scopedEventsOf,
 } from '../intelligence-source.js';
 import { type Addressed, addressed, resolveLabel } from '../label-as-address.js';
+import { notHereInAWorktree } from '../linked-worktree.js';
 import {
   isLabelShaped,
   linkRefusal,
@@ -2655,7 +2656,8 @@ export function runReadRecordTool(session: Session, input: { id: string }): Read
  * defect measured on a directory name, one step closer to whoever is calling.
  */
 function notInAnyProject(session: Session, id: string): string {
-  return `no record with id "${oneLine(id)}" ${inEveryTreeThisSessionSees(session)}`;
+  const hint = notHereInAWorktree(session.project ?? process.cwd());
+  return `no record with id "${oneLine(id)}" ${inEveryTreeThisSessionSees(session)}${hint === undefined ? '' : `. ${hint}`}`;
 }
 
 /** An intelligence read's result: the derivation, or a refusal when no project. */
