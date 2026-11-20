@@ -176,8 +176,6 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'holds the witness request a record produces; it damages no record and has no projection cache beneath it',
   'packages/chain/src/events/unannounced.test.ts':
     'holds how an event of a kind nobody announced is read; no record is damaged and no cache is read',
-  'packages/code/src/commands/witness-sigstore-check.test.ts':
-    'holds what `witness sigstore-check` says of a countersignature filed beside a checkpoint; it damages no record and reads no projection cache',
   'packages/code/src/sigstore/sigstore.test.ts':
     'holds what a sigstore bundle says and what leaves the machine; it judges bundles and certificates, and no projection cache is read',
   'packages/code/src/site/the-verdict-in-the-browser.test.ts':

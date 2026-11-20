@@ -1631,6 +1631,8 @@ const UNREACHABLE: Readonly<Record<string, string>> = {
     'the same act, once Fulcio answered',
   'witness.ts «holds: {}» #1': 'the bundle that holds, read offline',
   'witness.ts «sigstore: the {} tree was not read: its verdict is a break, so which checkpoint a bundle is over is not settled» #1':
+    'needs a tree whose verdict is a break and a bundle beside it: the same words `verify --against-sigstore` has',
+  'witness.ts «sigstore: the {} tree was not read: its verdict is a break, so which checkpoint a bundle is over is not settled» #1':
     'the scope, a closed word',
   'witness.ts «sigstore: {} checkpoint {}: the bundle holds but names {} ({}), not the identity and issuer expected» #1':
     'the bundle that holds and names another signer',
