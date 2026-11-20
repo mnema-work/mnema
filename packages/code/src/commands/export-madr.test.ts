@@ -163,6 +163,60 @@ describe('mnema export --madr', () => {
     expect(existsSync(inside)).toBe(false);
   });
 
+  it('refuses a symbolic link among the files, dangling or to a file outside, and writes nothing', () => {
+    const source = project('source');
+    record(source, ADOPTED);
+    const mine = 'adr-1-keep-the-cache-in-sqlite-not-postgres.md';
+    const outside = join(sandbox, 'outside');
+    mkdirSync(outside);
+
+    const dangling = join(sandbox, 'dangling-out');
+    mkdirSync(dangling);
+    symlinkSync(join(outside, 'created.md'), join(dangling, mine));
+    expect(runExportMadr({ cwd: source, env }, { out: dangling })).toMatchObject({
+      ok: false,
+      code: 'OUT_HOLDS_A_LINK',
+    });
+    expect(existsSync(join(outside, 'created.md'))).toBe(false);
+
+    const marked = join(outside, 'ours.md');
+    writeFileSync(marked, '---\nmnema-decision: x\n---\nkeep me\n');
+    const toFile = join(sandbox, 'file-out');
+    mkdirSync(toFile);
+    symlinkSync(marked, join(toFile, mine));
+    expect(runExportMadr({ cwd: source, env }, { out: toFile })).toMatchObject({
+      ok: false,
+      code: 'OUT_HOLDS_A_LINK',
+    });
+    expect(readFileSync(marked, 'utf8')).toBe('---\nmnema-decision: x\n---\nkeep me\n');
+  });
+
+  it('refuses a folder inside a .git folder', () => {
+    const source = project('source');
+    record(source, ADOPTED);
+    const inGit = join(sandbox, 'somewhere', '.git', 'madr');
+    expect(runExportMadr({ cwd: source, env }, { out: inGit })).toMatchObject({
+      ok: false,
+      code: 'OUT_IN_GIT',
+    });
+    expect(existsSync(inGit)).toBe(false);
+  });
+
+  it('says why a decision will not import as the same words', () => {
+    const source = project('source');
+    const id = record(source, { title: 'Star *title*', rationale: 'one\n## two' });
+    const done = runExportMadr({ cwd: source, env }, { out: join(sandbox, 'madr') });
+    expect(done.ok && done.unfaithful).toEqual([
+      {
+        id,
+        why: [
+          'a line of the text starts with ## and the reader cuts there',
+          'the title holds a * the reader removes',
+        ],
+      },
+    ]);
+  });
+
   it('refuses outside a project', () => {
     const bare = join(sandbox, 'bare');
     mkdirSync(bare);

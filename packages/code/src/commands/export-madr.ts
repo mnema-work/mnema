@@ -19,12 +19,19 @@
  *
  * IT REFUSES BEFORE IT WRITES: a folder inside the record (its folder holds only proof), a path
  * that is a file, and a file already in the folder that is not one of its own (a person's
- * hand-written ADR with the same name is never overwritten). A file it wrote itself is
+ * hand-written ADR with the same name is never overwritten), a symbolic link among the files, a folder inside `.git`. A file it wrote itself is
  * rewritten, so exporting twice is exporting once.
  */
 
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { isAbsolute, join, relative, resolve } from 'node:path';
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { catalogUpcasters } from '@mnema/chain';
 import {
   DERIVED_KEY,
@@ -50,7 +57,7 @@ export interface ExportMadrDone {
   /** One entry per decision, in the record's order. */
   readonly files: readonly { readonly id: string; readonly file: string }[];
   /** The decisions whose file does not read back as the same title, rationale and alternatives. */
-  readonly unfaithful: readonly string[];
+  readonly unfaithful: readonly { readonly id: string; readonly why: readonly string[] }[];
 }
 
 export type ExportMadrRefused =
@@ -98,6 +105,14 @@ export function runExportMadr(
       message: `${input.out} is inside the record, and the record's folder holds only what is proof: name a folder outside it`,
     };
   }
+  if (realOfMaybeMissing(target).split(sep).includes('.git')) {
+    return {
+      ok: false,
+      reason: 'REFUSED',
+      code: 'OUT_IN_GIT',
+      message: `${input.out} is inside a .git folder, where the private tree of the record lives: name a folder outside it`,
+    };
+  }
   if (existsSync(target) && !statSync(target).isDirectory()) {
     return {
       ok: false,
@@ -118,6 +133,24 @@ export function runExportMadr(
     taken.add(name);
     return { decision, file: `${name}.md`, madr: madrOf(decision, (id) => labels.get(id) ?? id) };
   });
+  // A symbolic link among the files would carry the write somewhere else (a dangling one creates
+  // the file at its far end, one to a file of ours rewrites a file outside the folder), so any link
+  // refuses the whole export. The folder the person typed may itself be a link: that is theirs to name.
+  const linked = planned.filter(({ file }) => {
+    try {
+      return lstatSync(join(target, file)).isSymbolicLink();
+    } catch {
+      return false;
+    }
+  });
+  if (linked.length > 0) {
+    return {
+      ok: false,
+      reason: 'REFUSED',
+      code: 'OUT_HOLDS_A_LINK',
+      message: `${linked.map(({ file }) => file).join(', ')} in ${input.out} ${linked.length === 1 ? 'is a symbolic link' : 'are symbolic links'}, and a write would go through it: nothing was written`,
+    };
+  }
   const foreign = planned.filter(({ file }) => {
     const path = join(target, file);
     return existsSync(path) && !readFileSync(path, 'utf8').includes(`\n${DERIVED_KEY}: `);
@@ -136,6 +169,8 @@ export function runExportMadr(
     ok: true,
     out: input.out,
     files: planned.map(({ decision, file }) => ({ id: decision.id, file })),
-    unfaithful: planned.filter(({ madr }) => !madr.faithful).map(({ decision }) => decision.id),
+    unfaithful: planned
+      .filter(({ madr }) => !madr.faithful)
+      .map(({ decision, madr }) => ({ id: decision.id, why: madr.why })),
   };
 }

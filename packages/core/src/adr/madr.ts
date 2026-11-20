@@ -31,6 +31,8 @@ export interface MadrDocument {
   readonly text: string;
   /** False when the text holds something the reader would cut or trim, so the import would not give the same words. */
   readonly faithful: boolean;
+  /** Why it would not, one sentence each; empty when it would. */
+  readonly why: readonly string[];
 }
 
 /** The line every file carries, so a re-export can tell its own files from a person's. */
@@ -76,10 +78,16 @@ export function madrOf(
       : []),
   ];
   const text = `${parts.join('\n\n')}\n`;
-  const faithful =
-    ![decision.rationale, decision.alternatives ?? ''].some(cutsTheReading) &&
-    !decision.title.includes('*') &&
-    decision.rationale === decision.rationale.trim() &&
-    (decision.alternatives === undefined || decision.alternatives === decision.alternatives.trim());
-  return { text, faithful };
+  const why = [
+    ...(cutsTheReading(decision.rationale) || cutsTheReading(decision.alternatives ?? '')
+      ? ['a line of the text starts with ## and the reader cuts there']
+      : []),
+    ...(decision.title.includes('*') ? ['the title holds a * the reader removes'] : []),
+    ...(decision.rationale !== decision.rationale.trim() ||
+    (decision.alternatives !== undefined && decision.alternatives !== decision.alternatives.trim())
+      ? ['the text has a space or a break at its edge, which the reader trims']
+      : []),
+  ];
+  const faithful = why.length === 0;
+  return { text, faithful, why };
 }

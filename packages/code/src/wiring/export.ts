@@ -135,12 +135,10 @@ async function exportMadr(
       ),
     ),
   );
-  if (result.unfaithful.length > 0) {
+  for (const one of result.unfaithful) {
     io.err(
       render(
-        fact(
-          onOneLine`${result.unfaithful.length} file(s) do not read back as the same decision (a heading line inside the text): ${result.unfaithful.join(', ')}`,
-        ),
+        fact(onOneLine`${one.id} will not import as the same words: ${one.why.join('; ')}`),
       ),
     );
   }

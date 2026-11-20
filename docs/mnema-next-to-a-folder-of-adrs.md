@@ -75,6 +75,17 @@ out), and refuses a folder inside the record, a path that is a file, and a file 
 (a hand-written ADR with the same name is never overwritten); a file it wrote itself is rewritten. It writes no
 index page, because one would be read back as a decision.
 
-`mnema decision import` of these files into another project gives the same title, rationale and alternatives. A
-decision whose text holds a line that is itself a `#` heading is cut where the reader cuts it, and the verb names
-it on standard error rather than leaving the import to find out.
+`mnema decision import` of these files into another project gives the same title, rationale and alternatives, with
+these limits:
+
+- `import` skips a file whose status is retired (`superseded`, `rejected`, `deprecated`), so those decisions are
+  exported but do not come back.
+- What comes back is always `proposed`: an `accepted` decision is proposed again and someone accepts it here.
+- `superseded-by` and `supersedes` are written for a reader and are not relinked by `import`.
+- A decision that would not come back as the same words is named on standard error with each reason: a line of the
+  text that starts with `##` (the reader cuts there), a `*` in the title (the reader removes it), or a space or break
+  at the edge of the text (the reader trims it). The file is still written.
+
+It also refuses to write through a symbolic link: if any file it would write is one, nothing is written. A folder
+inside a `.git` folder, where the private tree of the record lives, is refused too. The folder you name may itself
+be a link: that is yours to choose.

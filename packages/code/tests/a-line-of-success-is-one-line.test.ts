@@ -1004,10 +1004,10 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'minted',
       why: 'the number of files the verb wrote, a count and no text',
     },
-  'export.ts «{} file(s) do not read back as the same decision (a heading line inside the text): {}» #1':
+  'export.ts «{} will not import as the same words: {}» #1':
     {
       verdict: 'collapsed',
-      why: 'a count, and the ids of the decisions read back out of the record',
+      why: 'the id of a decision and the reasons the verb worded itself',
     },
   'export.ts «{}/{}» #1': {
     verdict: 'collapsed',
@@ -1251,7 +1251,7 @@ describe('every line this wiring words is classified', () => {
     // 203 with the lines `backup restore` and `backup status` print of the folders kept aside, and none of a deletion.
     // 204 with the line `backup hook` prints of where it put the hook and where it took it from.
     // 207 with the three lines `backup restore --global` prints, the two folder counts and the heading.
-    // 210 with the lines `export --madr` prints: the files it wrote, and a count of the ones that do not read back.
+    // 210 with the lines `export --madr` prints: the files it wrote, and, per decision, why it will not import as the same words.
     expect(FOUND.sites.length).toBe(210);
   });
 
@@ -1415,8 +1415,8 @@ const UNREACHABLE: Readonly<Record<string, string>> = {
   'export.ts «{}/{}» #1':
     'the folder is the caller’s, so a break in it names a folder with a break; ' +
     'no case types one yet, so the tag is what holds this line',
-  'export.ts «{} file(s) do not read back as the same decision (a heading line inside the text): {}» #1':
-    'the ids are minted by the record and a count is a number; the line is reached only by a ' +
+  'export.ts «{} will not import as the same words: {}» #1':
+    'the id is minted by the record and the reasons are the verb's own words; the line is reached only by a ' +
     'decision whose text holds a heading line, which `core/src/adr/madr.test.ts` makes and this verb reports',
   'backup.ts «The backup of record {}... is kept in {}» #1':
     'the folder is the caller’s and is made by a run, so a break in it names a folder with a break; ' +
