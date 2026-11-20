@@ -16,24 +16,34 @@
  * takes verbatim. There is no `## Context and Problem Statement`: the record has one field for
  * the why, and inventing a second one would put words in the file that nobody wrote.
  *
- * IT CALLS {@link readAdr} ON WHAT IT WROTE and says whether the document reads back as the same
- * title, rationale and alternatives. A rationale with a line that is a `##` heading, say, is cut
- * where the reader cuts it; the file is still written, and the caller is told which decisions
- * did not survive the trip instead of finding out at the import.
+ * IT SAYS WHEN A DECISION WILL NOT COME BACK AS THE SAME WORDS: a rationale or alternatives with a
+ * line that is a `##` heading is cut where the reader cuts it, a title with `*` loses it, and a
+ * text with leading or trailing space is trimmed. The file is still written, and the caller is
+ * told which decisions did not survive the trip instead of finding out at the import. It does not
+ * run the reader over the text to find out: that would put record text through the reader's
+ * patterns, and the cases here (`madr.test.ts`) are what hold the two sides together.
  */
 
 import type { DecisionProjection } from '../projections/decision.js';
-import { readAdr } from './read.js';
 
 /** A decision as a MADR document, and whether the document reads back as the decision. */
 export interface MadrDocument {
   readonly text: string;
-  /** True when {@link readAdr} on `text` gives the same title, rationale and alternatives. */
+  /** False when the text holds something the reader would cut or trim, so the import would not give the same words. */
   readonly faithful: boolean;
 }
 
 /** The line every file carries, so a re-export can tell its own files from a person's. */
 export const DERIVED_KEY = 'mnema-decision';
+
+/**
+ * Whether a body holds a line the reader cuts at: a `##` heading starts a section of its own and a
+ * `###` one ends the decision's text, so what follows it would not come back as the same words.
+ * A scan of lines, with no pattern run over the text.
+ */
+function cutsTheReading(body: string): boolean {
+  return body.split('\n').some((line) => line.startsWith('##'));
+}
 
 /**
  * `decision` as a MADR document. `labelOf` names another decision by its `ADR-<n>` label for the
@@ -66,11 +76,10 @@ export function madrOf(
       : []),
   ];
   const text = `${parts.join('\n\n')}\n`;
-  const back = readAdr(text);
   const faithful =
-    back.ok &&
-    back.title === decision.title &&
-    back.rationale === decision.rationale &&
-    back.alternatives === decision.alternatives;
+    ![decision.rationale, decision.alternatives ?? ''].some(cutsTheReading) &&
+    !decision.title.includes('*') &&
+    decision.rationale === decision.rationale.trim() &&
+    (decision.alternatives === undefined || decision.alternatives === decision.alternatives.trim());
   return { text, faithful };
 }
