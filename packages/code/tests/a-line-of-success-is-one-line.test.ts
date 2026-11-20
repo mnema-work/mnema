@@ -1339,6 +1339,8 @@ const PROBES: readonly Probe[] = [
     keys: ['decision.ts «Governs: {}» #1'],
     argv: ['decision', 'record', 'a title', 'a rationale', '--governs', VALUE],
     says: `Governs: ${VALUE}`,
+    // The line of what the path covers names it again, on its own line.
+    lines: 2,
   },
   {
     keys: ['handoff.ts «Recorded handoff on {}: {} → {}» #1'],

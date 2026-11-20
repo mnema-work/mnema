@@ -94,7 +94,10 @@ export function reachNotice(reach: AddressReach | undefined): string[] {
  */
 export function reachNotices(reaches: readonly AddressReach[]): string[] {
   const lines = reaches.flatMap((reach) =>
-    reachNotice(reach).filter((line) => !line.includes('Files on disk, not edits')),
+    reachNotice(reach)
+      .filter((line) => !line.includes('Files on disk, not edits'))
+      // The address is the caller's text: a line break in it must not make a line of its own.
+      .map((line) => oneLine(line)),
   );
   return lines.length === 0
     ? []
