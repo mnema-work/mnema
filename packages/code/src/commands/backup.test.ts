@@ -573,6 +573,25 @@ describe('a copy read back, and put back', () => {
     expect(existsSync(priv)).toBe(false);
   });
 
+  it('fails verify for a manifest that does not read, and only says one that is not there', () => {
+    const { a, copy } = backedUp();
+    const manifest = join(copy, 'mnema-backup.json');
+    const whole = readFileSync(manifest);
+    writeFileSync(manifest, '{"files": ');
+    const unreadable = runBackupVerify(a);
+    expect(unreadable.ok && unreadable.sound).toBe(false);
+    const reading =
+      unreadable.ok && unreadable.trees[0] && 'reading' in unreadable.trees[0]
+        ? unreadable.trees[0].reading
+        : undefined;
+    expect(reading?.manifest).toBe('unreadable');
+    rmSync(manifest);
+    const absent = runBackupVerify(a);
+    expect(absent).toMatchObject({ ok: true, sound: true });
+    writeFileSync(manifest, whole);
+    expect(runBackupVerify(a)).toMatchObject({ ok: true, sound: true });
+  });
+
   it('refuses to verify or restore where the project has no copy', () => {
     const a = project('alpha', true);
     expect(runBackupSetup(a, join(sandbox, 'empty')).ok).toBe(true);
