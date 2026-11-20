@@ -488,7 +488,7 @@ describe('one rule for newest first', () => {
     // what makes a scan that suddenly matches nothing a failure rather than a pass.
     expect(INSTALLED.length).toBeGreaterThanOrEqual(44);
     expect(NAMED.length).toBeGreaterThanOrEqual(20);
-    expect(THE_ORDERINGS.filter((each) => each.means === NEWEST)).toHaveLength(12);
+    expect(THE_ORDERINGS.filter((each) => each.means === NEWEST)).toHaveLength(13);
     expect(THE_ORDERINGS.filter((each) => each.means === OLDEST)).toHaveLength(4);
   });
 

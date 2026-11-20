@@ -39,8 +39,6 @@ const HELPER = 'every-cache-state';
  * long cases; they are owed.
  */
 export const EXEMPT: Readonly<Record<string, string>> = {
-  'packages/context/src/context/not-seen.test.ts':
-    'appends accepts and showings with the bench’s writer and merges a clone’s tail to hold which rules the list of what a person did not accept keeps; nothing is damaged, and every read is of a cache the bench rebuilds whole, so no cache state changes what it reads',
   'packages/core/src/workflow/a-showing-is-a-persons.test.ts':
     'holds that a showing is refused before anything is read or written (no terminal, an agent declared) and lands when a person writes it; it opens no projection cache and damages nothing',
   'packages/chain/src/chain/a-part-the-disk-will-not-open-is-handed-to-a-collector.test.ts':
