@@ -666,6 +666,7 @@ describe('MCP session + tools: unit', () => {
       recorded: ['inspired-by-a-dream'],
       scope: 'public',
       project,
+      targetIsUnheld: true,
     });
 
     const chainRoot = chainRootForScope(session.trees, travelTree(session)) as string;

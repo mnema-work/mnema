@@ -124,6 +124,7 @@ import {
   reachNotice,
   replacementNotice,
   subjectReachNotice,
+  targetReachNotice,
 } from '../recorded-content.js';
 import { REFERENCE_DIRECTIONS } from '../reference-directions.js';
 import { patternsFraming, SERVED_PATTERN_CONTRACT } from '../served-patterns.js';
@@ -1252,6 +1253,8 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
             result.subjectIsATask === true,
             { subject, rel: result.recorded[0] ?? rel },
             result.project ?? active.project,
+          ).concat(
+            targetReachNotice(result.scope, target, result.targetIsUnheld, result.targetScope),
           ),
         },
       );

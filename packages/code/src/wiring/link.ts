@@ -16,6 +16,7 @@ import {
   RECORD_CONTRACT_HELP,
   reachNotice,
   subjectReachNotice,
+  targetReachNotice,
 } from '../recorded-content.js';
 import { hereWriting } from './context.js';
 import { scopeOption } from './enumerated.js';
@@ -106,6 +107,15 @@ export function registerLink(program: Command, wiring: Wiring): Declared {
                 rel: result.rel,
               },
               process.cwd(),
+            ),
+          );
+          writeLines(
+            io,
+            targetReachNotice(
+              result.scope,
+              result.target,
+              result.targetIsUnheld,
+              result.targetScope,
             ),
           );
           return;

@@ -17,7 +17,13 @@ import { existsSync } from 'node:fs';
 import { dirname, isAbsolute, join } from 'node:path';
 import type { UpcasterRegistry } from '@mnema/chain';
 import type { RecordedAs } from '@mnema/context';
-import { ADDRESS_RELATIONS, locateLinkScope, type ResolvedTrees, type Scope } from '@mnema/core';
+import {
+  ADDRESS_RELATIONS,
+  locateLinkScope,
+  mintedIdsIn,
+  type ResolvedTrees,
+  type Scope,
+} from '@mnema/core';
 import { inAWorkTree } from './git-log.js';
 import { addressLiesOutside, addressRelativeToRoot } from './governed-tree.js';
 import { oneLine } from './one-line.js';
@@ -25,6 +31,12 @@ import { oneLine } from './one-line.js';
 /** Whether a word has the shape of a decision label (`ADR-` and a number). */
 export function isLabelShaped(word: string): boolean {
   return /^ADR-\d+$/i.test(word.trim());
+}
+
+/** Whether a word has the shape of a record id this product minted, the whole word and nothing more. */
+export function isIdShaped(word: string): boolean {
+  const found = mintedIdsIn(word);
+  return found.length === 1 && found[0]?.id === word;
 }
 
 /** The sentence that refuses a link, or `undefined` when neither end is a label left raw. */
