@@ -10,6 +10,23 @@ with its own changelog.
 
 ## [Unreleased]
 
+### Changed
+
+- **An act with no agent on it is read as "no agent declared", not as "a person".** The command line writes no `which`
+  whenever none was named, and a person at a terminal, a script and a hook leave the same envelope, so `show`, `brief`,
+  `status`, the console, the record page, the provenance of a pattern and the refusal of a second accept now say
+  `no agent declared`. No signed byte changes: records written before read the same way from this release.
+- **`mnema init` says what was given to it, not who gave it.** The note of its first decision, and the reason of the switch
+  it turns off, read `--accepts no was given to mnema init when the project was founded` (or `"..." was chosen on the
+  screen of mnema init`) instead of `The person gave --accepts no`. Notes already written are not rewritten.
+- **The handoff a hook records names the orchestrator.** The handoff, and the brief that goes with it, that the dispatch
+  hook records carry `which: orchestrator` where they carried none.
+
+### Added
+
+- **`mnema verify --verbose` counts the facts that name no agent** (`census [undeclared-which]`), and the second reader says
+  the same number. It says no agent was declared, which does not say a person acted. A clean `verify` stays one line.
+
 ## [0.1.8] - 2026-11-11
 
 ### Added

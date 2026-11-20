@@ -421,7 +421,7 @@ function transition(
             code: 'ILLEGAL_TRANSITION',
             message:
               agent === undefined
-                ? `${oneLine(current.adr)} is already accepted, by a person, at ${oneLine(current.updatedAt)}: nothing changed.`
+                ? `${oneLine(current.adr)} is already accepted, by no agent declared, at ${oneLine(current.updatedAt)}: nothing changed.`
                 : `${oneLine(current.adr)} is already accepted, by an agent (${oneLine(agent)}), at ${oneLine(current.updatedAt)}: nothing changed.`,
           },
         };

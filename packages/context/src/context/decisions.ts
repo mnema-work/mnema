@@ -155,7 +155,7 @@ const AWAITING_JUDGEMENT = statesMeaning(
  * carry them.
  *
  * `by` is the identity (shortened, see below) and `agent`
- * is the executor when the accepting act had one: ABSENT means a person, at the command line,
+ * is the executor when the accepting act had one: ABSENT means no agent was declared, at the command line,
  * with no agent on the envelope. Whether that is true of the human in front of the machine is
  * a fact about the machine this module cannot see, which is why it says what the envelope
  * says and nothing more.

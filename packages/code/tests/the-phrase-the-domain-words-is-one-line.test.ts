@@ -2593,12 +2593,12 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'collapsed',
       why: 'the successor `--by` named, which is the caller’s word until the record answers about it',
     },
-  '@mnema/core workflow/decision-operations.ts «{} is already accepted, by a person, at {}: nothing changed.» oneLine(current.adr) #1':
+  '@mnema/core workflow/decision-operations.ts «{} is already accepted, by no agent declared, at {}: nothing changed.» oneLine(current.adr) #1':
     {
       verdict: 'collapsed',
       why: 'the label of a decision, read out of the record, in the refusal of an accept the state has already had',
     },
-  '@mnema/core workflow/decision-operations.ts «{} is already accepted, by a person, at {}: nothing changed.» oneLine(current.updatedAt) #1':
+  '@mnema/core workflow/decision-operations.ts «{} is already accepted, by no agent declared, at {}: nothing changed.» oneLine(current.updatedAt) #1':
     {
       verdict: 'collapsed',
       why: 'the instant of the accepting move, read out of the record like every other field of it',

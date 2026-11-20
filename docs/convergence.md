@@ -75,8 +75,8 @@ mnema show ADR-1
 #> this decision: divergence between the rejection by mnid:8072d8bf at 2026-10-16T… and the accept by mnid:79aa1e6b at 2026-10-16T…, made on machines that had not seen each other; not in force until it is decided again: record it as a new decision, which a person, or an agent where agent-accepts is on, accepts.
 #> decision 01a14265-a017-7000-a83b-c9516d78ff90  ·  public
 #>   ADR-1: Use SQLite for the cache (accepted)
-#>   recorded by mnid:8072d8bf (a person)
-#>   accepted by mnid:79aa1e6b (a person)
+#>   recorded by mnid:8072d8bf (no agent declared)
+#>   accepted by mnid:79aa1e6b (no agent declared)
 #>
 #> Embedded, and fast enough at our sizes.
 #>

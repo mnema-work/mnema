@@ -934,7 +934,7 @@ describe('who accepted the rule, said where a rule is handed over', () => {
 
   it('words the clause once: a person, an agent, and the mark that needs somebody to ask', () => {
     expect(acceptedBy({ by: 'mnid:ab12cd34', unconfirmed: false })).toBe(
-      'accepted by mnid:ab12cd34 (a person)',
+      'accepted by mnid:ab12cd34 (no agent declared)',
     );
     expect(acceptedBy({ by: 'mnid:ab12cd34', agent: 'claude-code', unconfirmed: true })).toBe(
       'accepted by mnid:ab12cd34 (agent claude-code; unconfirmed)',
