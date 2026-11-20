@@ -106,7 +106,9 @@ export function runExportMadr(
       message: `${input.out} is a file, and --madr names the folder the decisions are written into`,
     };
   }
-  const decisions = [...projectDecisions(orderedEvents({ root: publicRoot }, catalogUpcasters())).values()];
+  const decisions = [
+    ...projectDecisions(orderedEvents({ root: publicRoot }, catalogUpcasters())).values(),
+  ];
   const labels = new Map(decisions.map((d) => [d.id, d.adr] as const));
   const taken = new Set<string>();
   const planned = decisions.map((decision) => {

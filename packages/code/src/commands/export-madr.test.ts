@@ -1,13 +1,17 @@
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { catalogUpcasters } from '@mnema/chain';
-import {
-  type DiscoveryEnv,
-  orderedEvents,
-  projectDecisions,
-  resolveTrees,
-} from '@mnema/core';
+import { type DiscoveryEnv, orderedEvents, projectDecisions, resolveTrees } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runDecision } from './decision.js';
 import { runDecisionImport } from './decision-import.js';
@@ -55,7 +59,10 @@ describe('mnema export --madr', () => {
   it('round trips: the files imported into a fresh project give the same title, rationale and alternatives', () => {
     const source = project('source');
     record(source, ADOPTED);
-    record(source, { title: 'Credits are a ledger', rationale: 'Balances are derived, not stored.' });
+    record(source, {
+      title: 'Credits are a ledger',
+      rationale: 'Balances are derived, not stored.',
+    });
 
     const out = join(sandbox, 'madr');
     const exported = runExportMadr({ cwd: source, env }, { out });
