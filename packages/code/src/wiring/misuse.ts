@@ -319,13 +319,13 @@ function excessArguments({ command }: Misuse): Line | undefined {
  * several words, or the topic typed where only a flag takes it.
  */
 const EXTRA_WORDS_MEAN = new Map<string, string>([
-  ['memory', 'It takes one text: quote it, or give it with --stdin or --body-file.'],
-  ['observe', 'The topic and the text go in flags: --topic <label> and --text <text>.'],
+  ['mnema memory', 'It takes one text: quote it, or give it with --stdin or --body-file.'],
+  ['mnema observe', 'The topic and the text go in flags: --topic <label> and --text <text>.'],
 ]);
 
 /** Where to read decisions, for a group that has no verb that lists them. */
 const WHERE_TO_READ = new Map<string, string>([
-  ['decision', 'To read decisions, run `mnema search --kind decision`, or `mnema status`.'],
+  ['mnema decision', 'To read decisions, run `mnema search --kind decision`, or `mnema status`.'],
 ]);
 
 /**

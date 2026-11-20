@@ -72,7 +72,7 @@ describe('a mistyped command says what it meant', () => {
 
   it('observe given the topic as a word names --topic and --text', async () => {
     await mnema('init');
-    const said = await mnema('observe', 'ADR-1', 'cli0');
+    const said = await mnema('observe', 'ADR-1', 'cli0', '--topic', 't');
     expect(said.failed).toBe(true);
     expect(said.err).toContain('does not take "cli0"');
     expect(said.err).toContain('--topic <label> and --text <text>');
