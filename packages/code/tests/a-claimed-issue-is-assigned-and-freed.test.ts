@@ -39,6 +39,7 @@ import {
   namesIssue,
   readsAsAClaim,
   remind,
+  takenMarker,
   waitingSince,
 } from '../../../.github/assign-a-claimed-issue/claim.mjs';
 
@@ -340,12 +341,47 @@ describe('two claims at once, and a quiet answer', () => {
     expect((api.writes[3] as { body: string }).body).toContain('already holds this issue');
   });
 
-  it('keeps the issue for the older claim, which says it is theirs', () => {
+  it('keeps the issue for the older claim, gives it back from the newer one that was assigned first, and tells it', () => {
     const api = racing('second', [older, newer]);
     expect(claim(eventOf(older), api, NOW).action).toBe('assign');
-    const writes = api.writes as { write: string; body?: string }[];
-    expect(writes.map((w) => w.write)).toEqual(['assign', 'assign', 'comment']);
-    expect(writes[2]?.body).toContain('This issue is yours');
+    const writes = api.writes as { write: string; login?: string; body?: string }[];
+    expect(writes.map((w) => w.write)).toEqual(['assign', 'assign', 'unassign', 'comment', 'comment']);
+    expect(writes[2]).toEqual({ write: 'unassign', number: 7, login: 'second' });
+    expect(writes[3]?.body).toContain('Thanks, @second: someone already holds this issue');
+    expect(writes[4]?.body).toContain('This issue is yours');
+    expect(api.issue(7).assignees).toEqual([{ login: 'first' }]);
+  });
+
+  it('never leaves both assigned, whichever order the two runs finish in', () => {
+    for (const [event, other, kept] of [
+      [newer, 'first', 'first'],
+      [older, 'second', 'first'],
+    ] as const) {
+      const api = racing(other, [older, newer]);
+      claim(eventOf(event), api, NOW);
+      expect(api.issue(7).assignees).toEqual([{ login: kept }]);
+    }
+  });
+
+  it('does not tell the loser a second time when it was told already', () => {
+    const told = { user: { login: BOT }, body: takenMarker('second') };
+    const api = racing('second', [older, newer, told]);
+    claim(eventOf(older), api, NOW);
+    const writes = api.writes as { write: string }[];
+    expect(writes.map((w) => w.write)).toEqual(['assign', 'assign', 'unassign', 'comment']);
+  });
+
+  it('does not take the issue from an assignee whose claim is older than this one', () => {
+    const api = racing('first', [older, newer]);
+    expect(claim(eventOf(newer), api, NOW).action).toBe('taken');
+    expect(api.issue(7).assignees).toEqual([{ login: 'first' }]);
+  });
+
+  it('does not take it from a maintainer who commented a claim after assigning it by hand', () => {
+    const lead = { ...claimAt(12, 'lead', '2026-12-01T11:00:09Z'), author_association: 'MEMBER' };
+    const api = racing('lead', [older, lead]);
+    claim(eventOf(older), api, NOW);
+    expect((api.writes as { write: string }[]).some((w) => w.write === 'unassign')).toBe(false);
   });
 
   it('breaks a tie of the clock by the comment id', () => {
@@ -408,6 +444,17 @@ describe('two claims at once, and a quiet answer', () => {
     api.assign = () => undefined;
     expect(() => claim(eventOf(older), api, NOW)).toThrow(/did not take/);
     expect(api.writes).toEqual([]);
+  });
+
+  it('does not read a stranger\'s copy of the taken marker as an answer already given', () => {
+    const forged = { id: 5, user: { login: 'stranger' }, body: takenMarker('first') };
+    const api = fixtureApi(
+      { issues: { '7': issueOf(7, ['other']) }, comments: { '7': [forged] } },
+      () => {},
+    );
+    expect(claim(eventOf(older), api, NOW).action).toBe('taken');
+    expect((api.writes as { body?: string }[])[0]?.body).toContain('someone already holds');
+    expect(api.writes).toHaveLength(1);
   });
 
   it('answers "taken" to a login once, and stays silent the second time', () => {

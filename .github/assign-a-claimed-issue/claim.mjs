@@ -729,6 +729,30 @@ const claimedBefore = (comments, ours, assignees, login) => {
 };
 
 /**
+ * The other assignees whose claim on the issue came after ours and none before it: the claim that
+ * lost. A maintainer's comment never makes an assignment a lost claim, and neither does an assignee
+ * who never claimed it, so a hand assignment stays.
+ *
+ * @param {Json[]} comments
+ * @param {Json} ours the comment this run is answering
+ * @param {string[]} assignees
+ * @param {string} login
+ * @returns {string[]}
+ */
+const claimedAfter = (comments, ours, assignees, login) =>
+  assignees.filter((who) => {
+    if (who.toLowerCase() === login.toLowerCase()) return false;
+    const theirs = comments.filter(
+      (c) =>
+        c.user?.login?.toLowerCase() === who.toLowerCase() &&
+        c.user?.login !== OUR_ACCOUNT &&
+        !MAINTAINER_ASSOCIATIONS.includes(c.author_association ?? '') &&
+        isClaim(c.body ?? ''),
+    );
+    return theirs.length > 0 && theirs.every((c) => olderThan(ours, c));
+  });
+
+/**
  * One created comment.
  *
  * Two comments can arrive together and GitHub keeps one waiting run per group, so there is no
@@ -802,6 +826,11 @@ export function claim(event, api, now = new Date()) {
     api.unassign(number, login);
     api.comment(number, replies.cap(login));
     return { action: 'cap', why: `holds ${MOST_HELD} already` };
+  }
+  // The other run assigned before this one and could not see it: the older claim keeps the issue.
+  for (const loser of claimedAfter(comments, comment, assigned, login)) {
+    api.unassign(number, loser);
+    if (!toldTaken(comments, loser)) api.comment(number, replies.taken(loser));
   }
   api.comment(number, replies.assigned(login, now));
   return verdict;
