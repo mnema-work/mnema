@@ -16,12 +16,18 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { VERSION } from '../src/version.js';
 import { MNEMA_CLI } from './support/the-cli.js';
 
 const PRELOAD = fileURLToPath(
   new URL('./support/a-registry-from-the-fixtures.mjs', import.meta.url),
 );
 const FIXTURES = fileURLToPath(new URL('./fixtures/the-new-version', import.meta.url));
+
+/** The version the recorded document lists as the latest. */
+const LISTED = (
+  JSON.parse(readFileSync(join(FIXTURES, 'version-newer.json'), 'utf-8')) as { version: string }
+).version;
 
 let sandbox = '';
 beforeEach(() => {
@@ -63,7 +69,7 @@ describe('mnema doctor --latest', () => {
     expect(ran.status).toBe(0);
     expect(ran.asked).toEqual(['https://registry.npmjs.org/@mnema%2fcode/latest redirect=error']);
     expect(ran.stdout).toContain(
-      'npm lists @mnema/code 0.1.8 as the latest and this is 0.1.8: nothing newer is listed',
+      `npm lists @mnema/code ${LISTED} as the latest and this is ${VERSION}: nothing newer is listed`,
     );
     expect(ran.stdout).toContain('never what your own registry serves');
   });

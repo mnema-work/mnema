@@ -11,7 +11,6 @@
  * `commands/doctor-merge-driver.ts`).
  */
 
-import { realpathSync } from 'node:fs';
 import type { Command } from 'commander';
 import { discoveryEnv } from '../env.js';
 import { fact } from '../presentation/detail.js';
@@ -19,15 +18,6 @@ import { VERSION } from '../version.js';
 import { here } from './context.js';
 import { runTheUpgrade } from './upgrade.js';
 import { type Declared, readsTheRecord, type Wiring } from './verb.js';
-
-/** The real path of the running file: what tells how it was installed. The path as given where it cannot be resolved. */
-function realOf(file: string): string {
-  try {
-    return realpathSync(file);
-  } catch {
-    return file;
-  }
-}
 
 interface DoctorOptions {
   fix?: string;
@@ -115,12 +105,14 @@ export function registerDoctor(program: Command, wiring: Wiring): Declared {
           io.fail();
           return;
         }
-        const { askTheRegistry, sayLatest } = await import('../commands/doctor-latest.js');
+        const { askTheRegistry, installedFrom, sayLatest } = await import(
+          '../commands/doctor-latest.js'
+        );
         const now = new Date();
         const found = await askTheRegistry({
           running: VERSION,
           node: process.versions.node,
-          from: { file: realOf(process.argv[1] ?? ''), node: process.execPath },
+          from: installedFrom(process.argv[1] ?? '', process.execPath),
           now,
         });
         for (const line of sayLatest(found, VERSION, now)) io.out(line);

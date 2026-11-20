@@ -1,6 +1,7 @@
 /**
  * The provenance of a published version is read against RECORDED answers of the registry (the
- * attestations and the version document of 0.1.5, 0.1.7 and 0.1.8, fetched once and kept in
+ * attestations and the version document of three versions (the newer, the older, and one built when
+ * the repository had another owner), fetched once and kept in
  * `tests/fixtures/the-new-version/`): no test here asks a network.
  *
  * The library verifies a genuine bundle of ANY version, so what these cases hold is the four
@@ -29,51 +30,61 @@ const FIXTURES = join(
   'the-new-version',
 );
 const recorded = (name: string): string => readFileSync(join(FIXTURES, name), 'utf-8');
-const integrityOf = (version: string): string =>
-  (JSON.parse(recorded(`version-${version}.json`)) as { dist: { integrity: string } }).dist
-    .integrity;
-const attestations = (version: string): string => recorded(`attestations-${version}.json`);
+
+/** The three recorded versions by ROLE, so no case types a number the product itself is at. */
+type Role = 'newer' | 'older' | 'moved';
+const versionOf = (role: Role): string =>
+  (JSON.parse(recorded(`version-${role}.json`)) as { version: string }).version;
+const integrityOf = (role: Role): string =>
+  (JSON.parse(recorded(`version-${role}.json`)) as { dist: { integrity: string } }).dist.integrity;
+const attestations = (role: Role): string => recorded(`attestations-${role}.json`);
 
 const HEX_OF = (integrity: string): string =>
   Buffer.from(integrity.slice('sha512-'.length), 'base64').toString('hex');
 
-/** Claims that hold for `version`, which each case then spoils in ONE place. */
-function claims(version: string): Claimed {
+/** Claims that hold for the version of `role`, which each case then spoils in ONE place. */
+function claims(role: Role): Claimed {
   return {
     identity: PINNED_WORKFLOW,
-    subjects: [{ name: `pkg:npm/%40mnema/code@${version}`, sha512: HEX_OF(integrityOf(version)) }],
+    subjects: [
+      { name: `pkg:npm/%40mnema/code@${versionOf(role)}`, sha512: HEX_OF(integrityOf(role)) },
+    ],
     repository: PINNED_REPOSITORY,
   };
 }
-const expected = (version: string) => ({ version, integrity: integrityOf(version) });
+const expected = (role: Role) => ({ version: versionOf(role), integrity: integrityOf(role) });
 
 describe('the four comparisons, each alone', () => {
   it('holds when every claim is the one expected', () => {
-    expect(compareClaims(claims('0.1.8'), expected('0.1.8'))).toBeUndefined();
+    expect(compareClaims(claims('newer'), expected('newer'))).toBeUndefined();
   });
 
   it('refuses another identity', () => {
     const other = `${PINNED_REPOSITORY}/.github/workflows/other.yml@refs/heads/main`;
-    expect(compareClaims({ ...claims('0.1.8'), identity: other }, expected('0.1.8'))).toBe(
+    expect(compareClaims({ ...claims('newer'), identity: other }, expected('newer'))).toBe(
       'identity',
     );
-    expect(compareClaims({ ...claims('0.1.8'), identity: '' }, expected('0.1.8'))).toBe('identity');
+    expect(compareClaims({ ...claims('newer'), identity: '' }, expected('newer'))).toBe('identity');
   });
 
   it('refuses a statement that names another version', () => {
-    const subjects = [{ ...claims('0.1.8').subjects[0], name: 'pkg:npm/%40mnema/code@0.1.7' }];
-    expect(compareClaims({ ...claims('0.1.8'), subjects }, expected('0.1.8'))).toBe('purl');
-    const namesake = [{ ...claims('0.1.8').subjects[0], name: 'pkg:npm/%40other/code@0.1.8' }];
-    expect(compareClaims({ ...claims('0.1.8'), subjects: namesake }, expected('0.1.8'))).toBe(
+    const subjects = [
+      { ...claims('newer').subjects[0], name: `pkg:npm/%40mnema/code@${versionOf('older')}` },
+    ];
+    expect(compareClaims({ ...claims('newer'), subjects }, expected('newer'))).toBe('purl');
+    const namesake = [
+      { ...claims('newer').subjects[0], name: `pkg:npm/%40other/code@${versionOf('newer')}` },
+    ];
+    expect(compareClaims({ ...claims('newer'), subjects: namesake }, expected('newer'))).toBe(
       'purl',
     );
   });
 
   it('refuses a digest that is not the one the registry gave', () => {
-    const subjects = [{ ...claims('0.1.8').subjects[0], sha512: HEX_OF(integrityOf('0.1.7')) }];
-    expect(compareClaims({ ...claims('0.1.8'), subjects }, expected('0.1.8'))).toBe('digest');
-    const notHex = [{ ...claims('0.1.8').subjects[0], sha512: 'zz' }];
-    expect(compareClaims({ ...claims('0.1.8'), subjects: notHex }, expected('0.1.8'))).toBe(
+    const subjects = [{ ...claims('newer').subjects[0], sha512: HEX_OF(integrityOf('older')) }];
+    expect(compareClaims({ ...claims('newer'), subjects }, expected('newer'))).toBe('digest');
+    const notHex = [{ ...claims('newer').subjects[0], sha512: 'zz' }];
+    expect(compareClaims({ ...claims('newer'), subjects: notHex }, expected('newer'))).toBe(
       'digest',
     );
   });
@@ -81,19 +92,19 @@ describe('the four comparisons, each alone', () => {
   it('refuses a workflow that ran in another repository', () => {
     expect(
       compareClaims(
-        { ...claims('0.1.8'), repository: 'https://github.com/someone-else/mnema' },
-        expected('0.1.8'),
+        { ...claims('newer'), repository: 'https://github.com/someone-else/mnema' },
+        expected('newer'),
       ),
     ).toBe('repository');
-    expect(compareClaims({ ...claims('0.1.8'), repository: undefined }, expected('0.1.8'))).toBe(
+    expect(compareClaims({ ...claims('newer'), repository: undefined }, expected('newer'))).toBe(
       'repository',
     );
   });
 });
 
 describe('the recorded bundles, through the real library', () => {
-  it('verifies the genuine bundle of 0.1.8 for 0.1.8 and says when it was logged', () => {
-    const reading = readProvenance(attestations('0.1.8'), expected('0.1.8'));
+  it('verifies the genuine bundle of the newer version for itself and says when it was logged', () => {
+    const reading = readProvenance(attestations('newer'), expected('newer'));
     expect(reading).toEqual({
       kind: 'verified',
       loggedAt: '2026-11-11T18:29:33.000Z',
@@ -101,32 +112,35 @@ describe('the recorded bundles, through the real library', () => {
     });
   });
 
-  it('NEGATIVE CONTROL: the genuine bundle of 0.1.7 offered for 0.1.8 is refused by the comparisons', () => {
+  it('NEGATIVE CONTROL: the genuine bundle of the older version offered for the newer is refused by the comparisons', () => {
     // It is a bundle the library verifies: only the comparisons stand between it and a pass.
-    expect(readProvenance(attestations('0.1.7'), expected('0.1.7')).kind).toBe('verified');
-    const replayed = readProvenance(attestations('0.1.7'), expected('0.1.8'));
+    expect(readProvenance(attestations('older'), expected('older')).kind).toBe('verified');
+    const replayed = readProvenance(attestations('older'), expected('newer'));
     expect(replayed).toEqual({ kind: 'refused', refusal: 'purl' });
   });
 
-  it('refuses the genuine bundle of 0.1.8 offered for 0.1.7, and for a digest of another version', () => {
-    expect(readProvenance(attestations('0.1.8'), expected('0.1.7'))).toEqual({
+  it('refuses the genuine bundle of the newer version offered for the older, and for a digest of another version', () => {
+    expect(readProvenance(attestations('newer'), expected('older'))).toEqual({
       kind: 'refused',
       refusal: 'purl',
     });
     expect(
-      readProvenance(attestations('0.1.8'), { version: '0.1.8', integrity: integrityOf('0.1.7') }),
+      readProvenance(attestations('newer'), {
+        version: versionOf('newer'),
+        integrity: integrityOf('older'),
+      }),
     ).toEqual({ kind: 'refused', refusal: 'digest' });
   });
 
-  it('refuses the genuine bundle of 0.1.5, built when the repository had another owner', () => {
-    expect(readProvenance(attestations('0.1.5'), expected('0.1.5'))).toEqual({
+  it('refuses the genuine bundle of a version built when the repository had another owner', () => {
+    expect(readProvenance(attestations('moved'), expected('moved'))).toEqual({
       kind: 'refused',
       refusal: 'identity',
     });
   });
 
   it('refuses a statement edited after it was signed, by the library', () => {
-    const doc = JSON.parse(attestations('0.1.8')) as {
+    const doc = JSON.parse(attestations('newer')) as {
       attestations: { predicateType: string; bundle: { dsseEnvelope: { payload: string } } }[];
     };
     const slsa = doc.attestations.find(
@@ -135,26 +149,26 @@ describe('the recorded bundles, through the real library', () => {
     const statement = Buffer.from(slsa?.bundle.dsseEnvelope.payload ?? '', 'base64').toString();
     if (slsa === undefined) throw new Error('the fixture has no SLSA entry');
     slsa.bundle.dsseEnvelope.payload = Buffer.from(
-      statement.replace(HEX_OF(integrityOf('0.1.8')), HEX_OF(integrityOf('0.1.7'))),
+      statement.replace(HEX_OF(integrityOf('newer')), HEX_OF(integrityOf('older'))),
     ).toString('base64');
-    expect(readProvenance(JSON.stringify(doc), expected('0.1.8'))).toEqual({
+    expect(readProvenance(JSON.stringify(doc), expected('newer'))).toEqual({
       kind: 'refused',
       refusal: 'bundle',
     });
   });
 
   it('says there is no provenance where the answer has none, and refuses what is not an answer', () => {
-    expect(readProvenance('{"attestations":[]}', expected('0.1.8'))).toEqual({
+    expect(readProvenance('{"attestations":[]}', expected('newer'))).toEqual({
       kind: 'refused',
       refusal: 'no-provenance',
     });
-    expect(readProvenance('not json', expected('0.1.8'))).toEqual({
+    expect(readProvenance('not json', expected('newer'))).toEqual({
       kind: 'refused',
       refusal: 'no-provenance',
     });
-    const onlyPublish = JSON.parse(attestations('0.1.8')) as { attestations: unknown[] };
+    const onlyPublish = JSON.parse(attestations('newer')) as { attestations: unknown[] };
     onlyPublish.attestations = onlyPublish.attestations.slice(0, 1);
-    expect(readProvenance(JSON.stringify(onlyPublish), expected('0.1.8'))).toEqual({
+    expect(readProvenance(JSON.stringify(onlyPublish), expected('newer'))).toEqual({
       kind: 'refused',
       refusal: 'no-provenance',
     });
@@ -162,7 +176,7 @@ describe('the recorded bundles, through the real library', () => {
 
   it('refuses a bundle the carried trust root does not cover', () => {
     const root = { mediaType: 'application/vnd.dev.sigstore.trustedroot+json;version=0.1' };
-    expect(readProvenance(attestations('0.1.8'), expected('0.1.8'), root)).toEqual({
+    expect(readProvenance(attestations('newer'), expected('newer'), root)).toEqual({
       kind: 'refused',
       refusal: 'bundle',
     });

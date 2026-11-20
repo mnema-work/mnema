@@ -11,7 +11,6 @@ globalThis.fetch = async (url, init) => {
     `${url} redirect=${init?.redirect ?? ''}\n`,
   );
   const text = String(url);
-  const version = text.endsWith('/latest') ? '0.1.8' : text.slice(text.lastIndexOf('@') + 1);
-  const name = text.endsWith('/latest') ? `version-${version}.json` : `attestations-${version}.json`;
+  const name = text.endsWith('/latest') ? 'version-newer.json' : 'attestations-newer.json';
   return new Response(readFileSync(join(fixtures, name), 'utf-8'), { status: 200 });
 };

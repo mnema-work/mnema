@@ -18,6 +18,7 @@
  * Every sentence is what npm.org LISTS: never that the person's own registry serves it.
  */
 
+import { realpathSync } from 'node:fs';
 import { acceptedBy, floorRefusal } from '../node-floor.js';
 import { isOlderThan } from '../version.js';
 
@@ -160,6 +161,15 @@ export interface InstalledFrom {
 }
 
 /** What a path may hold to be composed into a command: no space, quote, `$`, backtick, `;`, `&` or `|`. */
+/** Where the running file really is: its real path where that can be resolved, as given where it cannot. */
+export function installedFrom(file: string, node: string): InstalledFrom {
+  try {
+    return { file: realpathSync(file), node };
+  } catch {
+    return { file, node };
+  }
+}
+
 const SAFE_PATH = /^[A-Za-z0-9_./~-]+$/;
 /** What the running file's path may hold to be read at all: the layouts themselves carry `@` and `+`. */
 const READABLE_PATH = /^[A-Za-z0-9_./~@+-]+$/;
@@ -303,7 +313,8 @@ export function sayLatest(found: Latest, running: string, now: Date): readonly s
         `npm lists @mnema/code ${found.listed}, newer than ${running}, built by this project's release workflow, and it needs ${found.said}: no command is given.`,
       ];
     case 'verified': {
-      const age = Math.max(0, Math.floor((now.getTime() - Date.parse(found.loggedAt)) / DAY_MS));
+      const signed = Date.parse(found.loggedAt);
+      const age = Math.max(0, Math.floor((Number(now) - signed) / DAY_MS));
       const lines = [
         `npm lists @mnema/code ${found.listed}, newer than ${running}: built by this project's release workflow, signed into the public log at ${found.loggedAt} (${age} days ago).${found.commit === undefined ? '' : ` Commit ${found.commit}; compare it with \`git ls-remote --tags https://github.com/mnema-work/mnema v${found.listed}\`.`}`,
         found.command === undefined
