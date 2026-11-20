@@ -25,7 +25,7 @@ const END = '# <<< mnema';
 
 let sandbox: string;
 beforeEach(() => {
-  sandbox = realpathSync(mkdtempSync(join(tmpdir(), 'mnema-git-exclude-')));
+  sandbox = mkdtempSync(join(tmpdir(), 'mnema-git-exclude-'));
 });
 afterEach(() => {
   rmSync(sandbox, { recursive: true, force: true });
