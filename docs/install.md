@@ -65,7 +65,7 @@ chmod +x mnema-<version>-linux-x64
 ```
 
 `sha256sum` prints `OK` for the file or says it did not match: in that case do not run it. The record verbs, `verify` and the
-hooks do not need a Node; `mnema stack index`, `mnema stack add` of a built-in stack and `mnema site` read files the executable
+hooks do not need a Node; `mnema stack index`, adding a built-in stack by name and `mnema site` read files the executable
 does not carry and do not work in it. It is about 150 MB, which is Node itself. `npm i -g @mnema/code` stays the way to
 install mnema, and the way to get the plugin's hooks to find it.
 [How the file is built](build-from-source.md#the-single-executable).
