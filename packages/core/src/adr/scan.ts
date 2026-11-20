@@ -14,7 +14,7 @@
  * list in the same order. ADR file names carry their own sequence number, so this
  * is also the order their authors intended.
  *
- * TWO REFUSALS ARE THIS PRODUCT'S AND NOT THE DOCUMENT'S, and they are applied here
+ * TWO THINGS ARE THIS PRODUCT'S AND NOT THE DOCUMENT'S: one refusal and one cut, applied here
  * rather than in the reader because they are about what may enter the record:
  *
  *   - `HOLDS_A_SECRET`: a field carries something shaped like a credential. Text
@@ -28,14 +28,24 @@
  *     Detection here is the SAME function the door uses (`detectSecrets`), so
  *     there is one idea of what a credential looks like and not two.
  *
- *   - `FIELD_TOO_LARGE`: a field is over {@link FIELD_BYTE_LIMIT}. The door would
- *     refuse this append anyway; refusing it here means the caller learns it while
- *     nothing has been written, instead of halfway through a directory.
+ *   - `TITLE_TOO_LARGE`: the title is over {@link FIELD_BYTE_LIMIT}. A title is a name, and a
+ *     name cut short would name another decision, so the file is refused.
+ *
+ * AND ONE CUT, which replaces what used to be a refusal (`FIELD_TOO_LARGE`, for any field). The
+ * why and the turned-down text over {@link FIELD_BYTE_LIMIT} are CUT to fit, and the text that
+ * is kept ends in a note that says so and carries the SHA-256 of the whole text. This refused
+ * the whole document on the premise that a field over the limit was a document that could not
+ * be recorded; a real 70,287-byte decision section falsified it, and one oversized section
+ * made a whole ADR vanish from the plan. The document stays in the repository and the proposal's
+ * `derived-from` edge names it, so the hash lets a reader prove later that the file still says
+ * what was read. The credential screen runs over the WHOLE text, before the cut, so a secret
+ * past the cut point still refuses the file.
  *
  * And one skip that is a POLICY and says so: `RETIRED`, a document whose own status
  * says it is no longer in force. See {@link adrIsInForce}.
  */
 
+import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { FIELD_BYTE_LIMIT } from '../content/screen.js';
@@ -50,8 +60,8 @@ export type ScanRefusalCode =
   | 'RETIRED'
   /** A field carries something shaped like a credential; nothing is proposed from it. */
   | 'HOLDS_A_SECRET'
-  /** A field is over the limit a recorded field may weigh. */
-  | 'FIELD_TOO_LARGE'
+  /** The title is over the limit a recorded field may weigh: a name is not cut. */
+  | 'TITLE_TOO_LARGE'
   /** The file could not be read from disk (permission, a broken link, a race). */
   | 'UNREADABLE'
   /** A bridge's file does not have the shape its source documents: nothing is proposed from it. */
@@ -70,6 +80,20 @@ export interface ScannedDecision extends AdrDocument {
    * for a source cited by its name alone, where two directories can hold the same name.
    */
   readonly digest?: string;
+  /**
+   * What the triage CUT to fit {@link FIELD_BYTE_LIMIT}, per field: the bytes kept (the note not
+   * counted) and the bytes the text had. Absent when nothing was cut.
+   */
+  readonly cut?: {
+    readonly rationale?: CutField;
+    readonly alternatives?: CutField;
+  };
+}
+
+/** One field cut to fit: the bytes of text kept, and the bytes the whole text had. */
+export interface CutField {
+  readonly kept: number;
+  readonly of: number;
 }
 
 /** One file that produced no proposal, and why. */
@@ -146,10 +170,48 @@ function fieldsOf(document: AdrDocument): readonly string[] {
   ];
 }
 
+/** The note that closes a cut field: product text, one line, carrying the proof of the whole. */
+function noteOf(whole: string): string {
+  const hash = createHash('sha256').update(whole, 'utf8').digest('hex');
+  const bytes = weight(whole).toLocaleString('en-US');
+  const limit = FIELD_BYTE_LIMIT.toLocaleString('en-US');
+  return (
+    `[Cut on import: this text runs to ${bytes} bytes and a recorded field holds at most ${limit}. ` +
+    `The whole text is in the document this decision was imported from; its SHA-256 is ${hash}.]`
+  );
+}
+
 /**
- * The two refusals that are this product's and not the document's, applied to a document
- * already read: whatever file shape it came out of. One function, so a bridge from another
- * tool's notes is screened by the same size limit and the same idea of a credential as an ADR.
+ * A text cut so that what is kept PLUS the closing note weigh at most {@link FIELD_BYTE_LIMIT}
+ * bytes of UTF-8, or the text itself when it already fits. The cut falls at the last blank line
+ * that fits, else the last line break, else the last whole code point: never inside a multi-byte
+ * sequence (held by `scan.test.ts`, "cuts at a whole character when two and four byte characters
+ * cross the limit").
+ */
+export function cutToFit(text: string): { readonly text: string; readonly cut?: CutField } {
+  const of = weight(text);
+  if (of <= FIELD_BYTE_LIMIT) return { text };
+  const note = noteOf(text);
+  const budget = FIELD_BYTE_LIMIT - weight(note) - 2;
+  const bytes = Buffer.from(text, 'utf8');
+  let end = budget;
+  // A continuation byte (10xxxxxx) is the middle of a character: step back to its first byte.
+  while (end > 0 && ((bytes[end] as number) & 0xc0) === 0x80) end -= 1;
+  const fits = bytes.subarray(0, end).toString('utf8');
+  let blank = -1;
+  for (const match of fits.matchAll(/\n[ \t]*\n/g)) blank = match.index;
+  const lineBreak = fits.lastIndexOf('\n');
+  const at = blank > 0 ? blank : lineBreak > 0 ? lineBreak : fits.length;
+  const kept = fits.slice(0, at).trimEnd();
+  return { text: `${kept}\n\n${note}`, cut: { kept: weight(kept), of } };
+}
+
+/**
+ * What this product does to a document already read, whatever file shape it came out of, in
+ * this order: refuse a file that holds something shaped like a credential (over everything that
+ * was read), refuse a title over the limit, and cut the why and the turned-down text to fit.
+ * One function, so a bridge from another tool's notes is screened, refused and cut by the same
+ * rules and the same idea of a credential as an ADR.
  */
 export function triage(
   path: string,
@@ -157,17 +219,30 @@ export function triage(
   line?: number,
 ): ScannedDecision | ScanRefusal {
   const at = line !== undefined ? { line } : {};
-  const fields = fieldsOf(document);
-  if (fields.some((field) => weight(field) > FIELD_BYTE_LIMIT)) {
-    return { path, ...at, code: 'FIELD_TOO_LARGE' };
-  }
   // Screened over what was READ, not only over what is kept: the whole options section is
-  // screened even where the list is not recorded (see {@link AdrDocument.considered}).
+  // screened even where the list is not recorded (see {@link AdrDocument.considered}), and the
+  // credential screen runs BEFORE the cut, so a secret past the cut point still refuses the file.
+  const fields = fieldsOf(document);
   const screened = document.considered !== undefined ? [...fields, document.considered] : fields;
   const classes = [...new Set(screened.flatMap((field) => detectSecrets(field)))].sort();
   if (classes.length > 0) return { path, ...at, code: 'HOLDS_A_SECRET', classes };
+  if (weight(document.title) > FIELD_BYTE_LIMIT) return { path, ...at, code: 'TITLE_TOO_LARGE' };
+  const why = cutToFit(document.rationale);
+  const turnedDown =
+    document.alternatives !== undefined ? cutToFit(document.alternatives) : undefined;
+  const cut = {
+    ...(why.cut !== undefined ? { rationale: why.cut } : {}),
+    ...(turnedDown?.cut !== undefined ? { alternatives: turnedDown.cut } : {}),
+  };
   const { considered: _considered, ...fieldsOfDocument } = document;
-  return { ...fieldsOfDocument, path, ...at };
+  return {
+    ...fieldsOfDocument,
+    rationale: why.text,
+    ...(turnedDown !== undefined ? { alternatives: turnedDown.text } : {}),
+    ...(Object.keys(cut).length > 0 ? { cut } : {}),
+    path,
+    ...at,
+  };
 }
 
 /**

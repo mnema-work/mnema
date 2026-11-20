@@ -157,4 +157,29 @@ describe('decision import --format', () => {
       from: sandbox,
     });
   });
+
+  it('cuts an entry over the size a field may hold, with the same note as an ADR', () => {
+    put(
+      repo,
+      'vault/big.json',
+      JSON.stringify({
+        id: 'mem-2',
+        kind: 'decision',
+        state: 'active',
+        title: 'A very long memory',
+        body: Array.from({ length: 3000 }, (_, i) => `paragraph ${i} ${'m'.repeat(30)}`).join(
+          '\n\n',
+        ),
+      }),
+    );
+    const done = runDecisionImport(
+      { cwd: repo, env },
+      { from: 'vault', format: 'ecc-vault', write: true },
+    );
+    expect(done.ok && done.stopped).toBeUndefined();
+    expect(done.ok && done.proposals.map((p) => p.cut?.rationale !== undefined)).toEqual([true]);
+    const rationale = [...tree().decisions.values()][0]?.rationale as string;
+    expect(Buffer.byteLength(rationale)).toBeLessThanOrEqual(65_536);
+    expect(rationale).toMatch(/\[Cut on import: .* its SHA-256 is [0-9a-f]{64}\.\]$/);
+  });
 });

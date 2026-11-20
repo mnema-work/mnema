@@ -41,8 +41,10 @@ carries a line number, so a ledger edited above a line is read as new.
 **The shape it reads is two things.** A level-1 title, and a why: the file's own decision
 (the *Chosen option, because* sentence of a MADR `## Decision Outcome`, or the `## Decision`
 of a Nygard record) when it has one; else a `## Context` section (`## Contexto` is read too)
-or prose directly under the title. The context is the situation and not the reason, so a
-file that states a decision is recorded with the decision. Everything else (the status, the
+or prose directly under the title; and a file with none of those has its own `##` sections
+read as the why, in its order, each under the heading its author wrote (the status and the
+sections about options left out), and the plan says so beside the proposal. The context is
+the situation and not the reason, so a file that states a decision is recorded with the decision. Everything else (the status, the
 alternatives) is read when it is there and absent when it is not: a MADR `## Considered
 Options` lists every option, the chosen one included, so it is recorded without the option
 the file chose, and when the file does not say which it chose, none is recorded as turned
@@ -56,8 +58,16 @@ down and the plan says so. This is the smallest file that goes in:
 Three services send us times in three zones and the comparisons were wrong.
 ```
 
-**What it will not read, and what it cannot tell.** A file with no title, or with no
-prose it can read as a why, is refused BY NAME with the reason beside it: a rule like
+**A text over the size a record may hold is cut, not refused.** A why or a turned-down text
+over 65,536 bytes (UTF-8) is cut at the last blank line that fits, and what is kept ends in
+a line that says so and gives the SHA-256 of the whole text; the plan says `its why was cut
+at N of M bytes`. The whole text stays in the file the decision names, and the hash lets you
+prove later that the file still says what was read. The credential check runs over the whole
+text before the cut, so a secret past the cut point still refuses the file. A title over that
+size is refused, because a name cut short would name another decision.
+
+**What it will not read, and what it cannot tell.** A file with no title, or with nothing
+under it that says a why, is refused BY NAME with the reason beside it: a rule like
 `---` under the header is punctuation, not a reason, and is refused as one. But a file
 this CAN read is proposed even when it is no decision: an index page, a roadmap and a
 `DECISIONS.md` holding a hundred rows all have a title and prose under it, and no fact

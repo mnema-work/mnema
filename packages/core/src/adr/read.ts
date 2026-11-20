@@ -62,10 +62,18 @@ export interface AdrDocument {
   readonly title: string;
   /**
    * The WHY: what the document's own decision section says (MADR's *because*, or Nygard's
-   * `## Decision`), else its context section, else its lead. The context is the question or the
-   * situation; it is the reason only for a document that states no decision section at all.
+   * `## Decision`), else its context section, else its lead, else (see {@link whyFromSections})
+   * the document's own sections, each under the heading its author wrote. The context is the
+   * question or the situation; it is the reason only for a document that states no decision
+   * section at all.
    */
   readonly rationale: string;
+  /**
+   * True when the document has no decision section, no context section and no lead, and the
+   * rationale is therefore the body of the document itself ({@link whyFromSections}). The import
+   * says so beside the proposal: nothing in the document says WHICH of its sections is the why.
+   */
+  readonly whyFromSections?: true;
   /**
    * What was considered and turned down. Absent when the document names none, and absent,
    * with {@link optionsUnclear} set, when it lists its options without saying which it chose.
@@ -98,9 +106,17 @@ export type AdrRefusalCode =
   /** No level-1 heading and no frontmatter `title`: nothing names the decision. */
   | 'NO_TITLE'
   /**
-   * No context section and no lead: the document states a decision and never
-   * states a why. The product requires a rationale (a decision with none records
-   * nothing worth proving), so there is nothing honest to propose.
+   * Nothing under the title states a why: no decision section, no context section, no lead, and
+   * no other section that says anything (one of status or of options is not a why). The product
+   * requires a rationale (a decision with none records nothing worth proving), so there is
+   * nothing honest to propose.
+   *
+   * THIS ALSO REFUSED A DOCUMENT WHOSE ONLY SECTIONS HAD OTHER NAMES, on the premise that a
+   * document without a context section or a lead states no why. A probe over 199 real
+   * documents falsified it: one had four sections (a search, its items, a loop, its guardrails)
+   * and no label this reader knows, and it was refused as having no why while it said a great
+   * deal. The fourth link of the chain ({@link whyFromSections}) reads such a document's body as
+   * its why, and this code is left for a document with nothing to read.
    */
   | 'NO_RATIONALE'
   /**
@@ -298,6 +314,8 @@ function stripAdrNumbering(title: string): string {
 /** A `##` section: its normalized label and its body. */
 interface Section {
   readonly label: string;
+  /** The heading as the author wrote it (markers of emphasis and all), for {@link whyFromSections}. */
+  readonly heading: string;
   readonly body: string;
 }
 
@@ -370,14 +388,19 @@ function split(text: string): { readonly lead: string; readonly sections: readon
   const lines = text.split('\n');
   const sections: Section[] = [];
   const lead: string[] = [];
-  let current: { label: string; body: string[] } | undefined;
+  let current: { label: string; heading: string; body: string[] } | undefined;
   let seenTitle = false;
   for (const line of lines) {
     const heading = /^##\s+(.+?)\s*$/.exec(line);
     if (heading !== null) {
       if (current !== undefined)
-        sections.push({ label: current.label, body: current.body.join('\n').trim() });
+        sections.push({
+          label: current.label,
+          heading: current.heading,
+          body: current.body.join('\n').trim(),
+        });
       current = {
+        heading: (heading[1] as string).trim(),
         label: normalizeLabel((heading[1] as string).replace(/<!--.*?-->/g, '').replace(/\*/g, '')),
         body: [],
       };
@@ -394,7 +417,11 @@ function split(text: string): { readonly lead: string; readonly sections: readon
     if (seenTitle && !isMetadataLine(line)) lead.push(line);
   }
   if (current !== undefined)
-    sections.push({ label: current.label, body: current.body.join('\n').trim() });
+    sections.push({
+      label: current.label,
+      heading: current.heading,
+      body: current.body.join('\n').trim(),
+    });
   return { lead: lead.join('\n').trim(), sections };
 }
 
@@ -402,6 +429,39 @@ function split(text: string): { readonly lead: string; readonly sections: readon
 function sectionBody(sections: readonly Section[], labels: readonly string[]): string | undefined {
   const found = sections.find((section) => labels.includes(section.label));
   return found !== undefined && statesSomething(found.body) ? found.body : undefined;
+}
+
+/**
+ * A label that is about options or alternatives under any wording (`As opções`, `Options we
+ * weighed`): such a section is the list of what was set against the decision, which
+ * {@link readAdr} puts in `alternatives` when the label is one it knows, and which is never the
+ * decision's own why.
+ */
+const ABOUT_OPTIONS = /\b(?:options?|opcoes|opcao|alternatives?|alternativas?)\b/;
+
+/**
+ * The FOURTH link of the why's chain, for a document with no decision section, no context
+ * section and no lead: the document's own `##` sections in the order it wrote them, each under
+ * the heading its author wrote, joined by a blank line.
+ *
+ * Choosing one section would be guessing which of them is the why, so none is chosen: the text
+ * is the author's, whole and in their order, and the plan says it was read this way. Left out are
+ * the status section, every section about options or alternatives (those are `alternatives`),
+ * and a section that says nothing or is only a template's marker. Undefined when none is left.
+ *
+ * Held by `read.test.ts`: "reads the sections of a document with no context as its why".
+ */
+function whyFromSections(sections: readonly Section[]): string | undefined {
+  const kept = sections.filter(
+    (section) =>
+      !STATUS_LABELS.includes(section.label) &&
+      !ALTERNATIVE_LABELS.includes(section.label) &&
+      !ABOUT_OPTIONS.test(section.label) &&
+      statesSomething(section.body) &&
+      !isMarker(section.body),
+  );
+  if (kept[0] === undefined) return undefined;
+  return kept.map((section) => `## ${section.heading}\n\n${section.body}`).join('\n\n');
 }
 
 /**
@@ -636,10 +696,11 @@ export function readAdr(text: string): AdrRead | AdrRefused {
       : statesSomething(beforeSubsections(statedDecision))
         ? beforeSubsections(statedDecision)
         : statedDecision;
-  const rationale =
+  const stated =
     decisionText ??
     sectionBody(sections, CONTEXT_LABELS) ??
     (statesSomething(lead) ? lead : undefined);
+  const rationale = stated ?? whyFromSections(sections);
   if (rationale === undefined) return { ok: false, code: 'NO_RATIONALE' };
   if (isMarker(rationale)) return { ok: false, code: 'RATIONALE_IS_A_MARKER' };
 
@@ -659,6 +720,7 @@ export function readAdr(text: string): AdrRead | AdrRefused {
     ok: true,
     title,
     rationale,
+    ...(stated === undefined ? { whyFromSections: true as const } : {}),
     ...(read.alternatives !== undefined ? { alternatives: read.alternatives } : {}),
     ...(read.unclear === true ? { optionsUnclear: true as const } : {}),
     ...(listed !== undefined ? { considered: listed.body } : {}),

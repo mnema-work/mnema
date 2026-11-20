@@ -114,6 +114,13 @@ export interface ImportedProposal {
    * from the losers.
    */
   readonly optionsUnclear: boolean;
+  /**
+   * Whether the document has no decision, context or lead, so its why was read from its own
+   * sections, each under its own heading.
+   */
+  readonly whyFromSections: boolean;
+  /** What was cut to fit a recorded field: the bytes kept and the bytes the text had, per field. */
+  readonly cut?: ScannedDecision['cut'];
   /** The status the FILE states, verbatim; absent when it states none. */
   readonly status?: string;
   /** The minted id: present only once it was actually written. */
@@ -265,6 +272,8 @@ function proposed(document: ScannedDecision): ImportedProposal {
     title: document.title,
     alternatives: document.alternatives !== undefined,
     optionsUnclear: document.optionsUnclear === true,
+    whyFromSections: document.whyFromSections === true,
+    ...(document.cut !== undefined ? { cut: document.cut } : {}),
     ...(document.status !== undefined ? { status: document.status } : {}),
   };
 }
