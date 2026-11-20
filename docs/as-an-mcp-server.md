@@ -207,8 +207,12 @@ is the terminal.
 A line is `mnema-trace ` and one JSON object:
 
 ```text
-mnema-trace {"door":"mcp","tool":"record_observation","ms":412.3,"rchar":158001234,"wchar":114002345,"projections":[{"root":"/work/repo/.git/mnema/%2E/private","outcome":"replayed","branch":"active-segment","path":"/work/repo/.git/mnema/%2E/private/tails/ab12/000001.jsonl","expected":"88213:1763600000123456789, sha256 3f2a… of the first 88213 bytes","found":"88301:1763600411987654321, sha256 9c0d… of the first 88213 bytes"}]}
+mnema-trace {"door":"cli","tool":"search","ms":64.5,"rchar":492493,"wchar":1505672,"projections":[{"root":"/work/repo/.mnema","outcome":"replayed","branch":"stamp","expected":"another-build","found":"fcf01a22c1ffe85ea87da8b4a90aafe9"},{"root":"/work/repo/.git/mnema/%2E/private","outcome":"replayed","branch":"first-read"},{"root":"/home/me/.mnema/global","outcome":"replayed","branch":"first-read"}]}
 ```
+
+That one is a command whose cache file was written by another build of mnema: the first projection
+was replayed whole because the stamp it recorded (`expected`) is not this code's (`found`), the other two had
+no file kept and were read for the first time. The next line, over the same trees, has `"outcome":"unchanged"`.
 
 - `tool` is the tool's name, or the command's verb; never an argument.
 - `ms` is the call's wall time; `rchar` and `wchar` are the bytes the process asked to read and write during
