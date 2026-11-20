@@ -193,9 +193,9 @@ The working tree's changes are never read to find the paths: they could credit t
 
 ## A mistyped verb says what it most likely meant
 
-There is no `mnema decision list`. The refusal says to put `record` before a title and points at where decisions
-are read: `mnema search --kind decision` and `mnema status`. `mnema decision move` takes the action before the id
-(`mnema decision move accept <id>`), and when an id is typed where the action goes it says so.
+No verb lists decisions: they are read with `mnema search --kind decision` and `mnema status`, and the refusal of a
+word the `decision` group does not know points there. In a move the action goes before the id, and an id typed where
+the action goes is said so.
 
 ## Recording the same decision twice
 
