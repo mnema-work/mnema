@@ -29,8 +29,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { generateKeyPair } from './keys.js';
 import { ensureKeyRootIgnored, materializePublicKey } from './keystore.js';
-import { RecordLinkedError } from './linked-write.js';
 import { witnessBlocksPath, witnessProofPath } from './layout.js';
+import { RecordLinkedError } from './linked-write.js';
 import { writeWitness } from './witness.js';
 
 const MARK = 'BYTES-NO-ONE-SIGNED\n';

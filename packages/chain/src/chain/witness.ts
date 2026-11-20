@@ -79,13 +79,13 @@ import { checkpointHash } from './checkpoint.js';
 import type { ChainLayout } from './layout.js';
 import { witnessBlocksPath, witnessDir, witnessProofPath } from './layout.js';
 import type { WitnessStatus } from './level.js';
+import { refuseToWriteThrough } from './linked-write.js';
 import {
   MAX_PROOF_BYTES,
   parseOtsProof,
   type ReachedAttestation,
   reachedAttestations,
 } from './ots.js';
-import { refuseToWriteThrough } from './linked-write.js';
 import { lastTailCheckpoint, listedWithoutLinks, refuseLinksOfTail } from './store.js';
 
 /**

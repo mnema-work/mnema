@@ -69,18 +69,15 @@ describe.each([
     const place = join(globalDir, LOG_FILE);
     const target = plant(place, live);
 
-    const noted = noteInternalError(
-      Object.assign(new TypeError('x'), { code: 'ERR_FAULT_1' }),
-      {
-        cwd: env.home,
-        env,
-        now: new Date('2026-11-20T10:00:00.000Z'),
-        version: '0.1.8',
-        argv: ['show'],
-        verbs: ['show'],
-        aPersonIsHere: true,
-      },
-    );
+    const noted = noteInternalError(Object.assign(new TypeError('x'), { code: 'ERR_FAULT_1' }), {
+      cwd: env.home,
+      env,
+      now: new Date('2026-11-20T10:00:00.000Z'),
+      version: '0.1.8',
+      argv: ['show'],
+      verbs: ['show'],
+      aPersonIsHere: true,
+    });
 
     expect(noted).toEqual({ offer: false, linked: place });
     expect(linkedLogSentence(place, 'diagnostic log')).toMatch(
@@ -96,7 +93,12 @@ describe.each([
     const place = join(dir, 'tool-calls', 'abc.jsonl');
     const target = plant(place, live);
     const said: string[] = [];
-    const call = { at: '2026-11-20T10:00:00.000Z', tool: 'bootstrap', effect: 'reads', result: 'ok' };
+    const call = {
+      at: '2026-11-20T10:00:00.000Z',
+      tool: 'bootstrap',
+      effect: 'reads',
+      result: 'ok',
+    };
 
     appendToolCall(place, call as never, (file) => said.push(file));
     appendToolCall(place, call as never, (file) => said.push(file));
@@ -111,7 +113,12 @@ describe('the same logs, with no link in the way', () => {
   it('still count a call', () => {
     const file = join(dir, 'tool-calls', 'abc.jsonl');
     const said: string[] = [];
-    const call = { at: '2026-11-20T10:00:00.000Z', tool: 'bootstrap', effect: 'reads', result: 'ok' };
+    const call = {
+      at: '2026-11-20T10:00:00.000Z',
+      tool: 'bootstrap',
+      effect: 'reads',
+      result: 'ok',
+    };
 
     appendToolCall(file, call as never, (place) => said.push(place));
 

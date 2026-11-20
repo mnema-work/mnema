@@ -35,8 +35,8 @@
 import { createHash } from 'node:crypto';
 import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { isLinkAt } from './linked-log.js';
 import type { ResolvedTrees } from '@mnema/core';
+import { isLinkAt } from './linked-log.js';
 import type { RecordEffect } from './record-effect.js';
 
 /** The directory, under the machine data directory, that holds one file per project. */

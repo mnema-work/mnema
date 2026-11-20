@@ -100,6 +100,7 @@ import {
 import { z } from 'zod';
 import { acceptedByAnAgent, stateOfANewDecision } from '../agent-accepts.js';
 import { keyFileLineForAModel } from '../key-file.js';
+import { linkedLogSentence } from '../linked-log.js';
 import { movedLine } from '../moved-record.js';
 import { passedOverSentences } from '../not-a-project.js';
 import { neutralized, oneLine } from '../one-line.js';
@@ -127,7 +128,6 @@ import {
 } from '../recorded-content.js';
 import { REFERENCE_DIRECTIONS } from '../reference-directions.js';
 import { patternsFraming, SERVED_PATTERN_CONTRACT } from '../served-patterns.js';
-import { linkedLogSentence } from '../linked-log.js';
 import {
   countToolCall,
   flushToolCalls,
@@ -810,12 +810,16 @@ function countedLocally<Input extends ZodRawShapeCompat | undefined>(
       // `a-refusal-leaves-nothing.test.ts`), and the first write that signs is what makes the
       // key root: the calls from then on are counted, the ones before it are the cost.
       if (!existsSync(session.trees.keyRoot)) return;
-      countToolCall(file, {
-        at: new Date().toISOString(),
-        tool: what.act,
-        effect: what.effect,
-        result,
-      }, (link) => say(linkedLogSentence(link, 'count of tool calls')));
+      countToolCall(
+        file,
+        {
+          at: new Date().toISOString(),
+          tool: what.act,
+          effect: what.effect,
+          result,
+        },
+        (link) => say(linkedLogSentence(link, 'count of tool calls')),
+      );
     } catch {
       // A count that cannot be kept is not a reason for a tool to answer differently.
     }
