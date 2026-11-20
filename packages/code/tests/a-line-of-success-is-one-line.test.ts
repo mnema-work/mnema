@@ -1416,7 +1416,7 @@ const UNREACHABLE: Readonly<Record<string, string>> = {
     'the folder is the caller’s, so a break in it names a folder with a break; ' +
     'no case types one yet, so the tag is what holds this line',
   'export.ts «{} will not import as the same words: {}» #1':
-    'the id is minted by the record and the reasons are the verb's own words; the line is reached only by a ' +
+    'the id is minted by the record and the reasons are the verb’s own words; the line is reached only by a ' +
     'decision whose text holds a heading line, which `core/src/adr/madr.test.ts` makes and this verb reports',
   'backup.ts «The backup of record {}... is kept in {}» #1':
     'the folder is the caller’s and is made by a run, so a break in it names a folder with a break; ' +

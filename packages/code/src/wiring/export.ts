@@ -137,9 +137,7 @@ async function exportMadr(
   );
   for (const one of result.unfaithful) {
     io.err(
-      render(
-        fact(onOneLine`${one.id} will not import as the same words: ${one.why.join('; ')}`),
-      ),
+      render(fact(onOneLine`${one.id} will not import as the same words: ${one.why.join('; ')}`)),
     );
   }
 }
