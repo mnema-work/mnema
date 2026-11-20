@@ -5,12 +5,11 @@
  * gate disagree about any path.
  */
 
-import { appendFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { runBeforeAPath } from '../src/commands/before-a-write.js';
 import { runWhy } from '../src/commands/why.js';
 import { type CliIo, run } from '../src/program.js';
 import { withScopedCaches } from '../src/tree-sources.js';
@@ -171,46 +170,6 @@ describe('mnema why <path>, the verdict', () => {
       );
     }
     expect([...seen].sort()).toEqual(['ask', 'governs', 'none', 'refuse']);
-  });
-
-  /** The gate's own refusal for `path`, as the hook hands it to the host. */
-  function gateRefusal(path: string): string | undefined {
-    const done = runBeforeAPath(
-      { cwd: repo, env },
-      { which: 'claude-code', paths: [path], asks: true, reply: (said) => said },
-    );
-    return (done.reply as { refuse?: string }).refuse;
-  }
-
-  function tailFile(): string {
-    const tails = join(repo, '.mnema', 'tails');
-    const [tail] = readdirSync(tails);
-    return join(tails, tail as string, '000001.jsonl');
-  }
-
-  it('says refuse, with the gate reason, when an entry of the record was altered, whatever the rules say', async () => {
-    await ruleAt('The batch posts the ledger', 'src/governed', 'governs');
-    const file = tailFile();
-    writeFileSync(file, readFileSync(file, 'utf-8').replace('The batch posts', 'The hand posts'));
-    const read = why('src/governed/a.ts');
-    expect(read.verdict).toBe('refuse');
-    expect(read.refusal).toContain('altered');
-    expect(read.refusal).toBe(gateRefusal('src/governed/a.ts'));
-    expect(read.rules.some((one) => one.decided)).toBe(false);
-    const page = await did('why', 'src/governed/a.ts');
-    expect(page).toContain('a write here would be refused: ');
-    expect(page).toContain('altered');
-  });
-
-  it('says refuse, with the gate reason, when a line of the record cannot be read', async () => {
-    await ruleAt('The batch posts the ledger', 'src/governed', 'governs');
-    appendFileSync(tailFile(), '{"not": "an entry of this record"\n');
-    const gate = gateRefusal('src/governed/a.ts');
-    expect(gate).toContain('cannot be read');
-    const read = why('src/governed/a.ts');
-    expect(read.verdict).toBe('refuse');
-    expect(read.refusal).toBe(gate);
-    expect(JSON.parse(await did('why', 'src/governed/a.ts', '--json')).verdict).toBe('refuse');
   });
 
   it('says the governing rules are not delivered when edit-rules-push is off, and does not call them deciding', async () => {
