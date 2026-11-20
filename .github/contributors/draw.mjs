@@ -2,16 +2,19 @@
 /**
  * THE CONTRIBUTORS GRID IS DRAWN FROM A LIST, NOT TYPED.
  *
- * `.github/contributors/contributors.json` lists the logins of the outside contributors whose pull
- * request was merged, in the order they first contributed. Two things come from it:
+ * `.github/contributors/contributors.json` has two lists of logins, in the order they first contributed:
+ * `people`, the outside contributors whose pull request was merged, and `automated`, the accounts that
+ * declare themselves automated and whose pull request was merged. The grid shows people only; an
+ * automated account is thanked on a line of its own below it, with no photo. Two things come from it:
  *
  *   node .github/contributors/draw.mjs
  *     Fetches each login's avatar from github.com/<login>.png, writes `docs/assets/contributor-<login>.svg`
  *     (the avatar cut to a circle, with a thin neutral ring, embedded as a data URI because an image
- *     shown from a README may not load anything else) and rewrites the table between the two marker
- *     comments in README.md.
+ *     shown from a README may not load anything else) for each of `people`, and rewrites the table and
+ *     the line below it between the two marker comments in README.md.
  *   node .github/contributors/draw.mjs --check
- *     Exits 1 when the README table is not the one the list gives, or a listed login has no SVG. No network.
+ *     Exits 1 when the README block is not the one the list gives, or a login of `people` has no SVG.
+ *     No network.
  *
  * The files sit flat in `docs/assets/`: the site build copies that folder file by file and refuses a subfolder.
  * GitHub strips `style` from a README, so the roundness has to live in the image.
@@ -52,8 +55,20 @@ export function renderSvg(login, png) {
 const cell = (login) =>
   `<td align="center"><a href="https://github.com/${login}"><img src="${svgPath(login)}" width="${SIZE}" height="${SIZE}" alt="@${login}"><br><sub>${login}</sub></a></td>`;
 
-/** The marked block, markers included. @param {string[]} logins */
-export function renderBlock(logins) {
+/** @param {string[]} logins */
+const thanks = (logins) =>
+  `<p align="center">Thank you also to ${logins
+    .map((login) => `<a href="https://github.com/${login}">@${login}</a>`)
+    .join(
+      ', ',
+    )}, ${logins.length === 1 ? 'an account' : 'accounts'} that declare${logins.length === 1 ? 's' : ''} ${logins.length === 1 ? 'itself' : 'themselves'} automated, whose pull requests were merged.</p>`;
+
+/**
+ * The marked block, markers included: the grid of people, then the line for the automated accounts
+ * when there are any.
+ * @param {string[]} logins @param {string[]} [automated]
+ */
+export function renderBlock(logins, automated = []) {
   const rows = [];
   for (let i = 0; i < logins.length; i += PER_ROW) {
     rows.push(
@@ -63,29 +78,32 @@ export function renderBlock(logins) {
         .join('\n')}\n</tr>`,
     );
   }
-  return `${START}\n<table align="center">\n${rows.join('\n')}\n</table>\n${END}`;
+  const line = automated.length > 0 ? `\n${thanks(automated)}` : '';
+  return `${START}\n<table align="center">\n${rows.join('\n')}\n</table>${line}\n${END}`;
 }
 
 /**
  * The README with the text between the markers replaced; throws when a marker is missing.
- * @param {string} readme @param {string[]} logins
+ * @param {string} readme @param {string[]} logins @param {string[]} [automated]
  */
-export function rewriteReadme(readme, logins) {
+export function rewriteReadme(readme, logins, automated = []) {
   const from = readme.indexOf(START);
   const to = readme.indexOf(END);
   if (from < 0 || to < from) throw new Error('README.md has no contributors markers');
-  return readme.slice(0, from) + renderBlock(logins) + readme.slice(to + END.length);
+  return readme.slice(0, from) + renderBlock(logins, automated) + readme.slice(to + END.length);
 }
 
 /**
- * What is out of date, as sentences; empty when nothing is. `hasSvg` says whether a login has its file.
+ * What is out of date, as sentences; empty when nothing is. `hasSvg` says whether a login of `logins`
+ * has its file; an automated account has none.
  * @param {string} readme @param {string[]} logins @param {(login: string) => boolean} hasSvg
+ * @param {string[]} [automated]
  */
-export function problems(readme, logins, hasSvg) {
+export function problems(readme, logins, hasSvg, automated = []) {
   const found = [];
   let want;
   try {
-    want = rewriteReadme(readme, logins);
+    want = rewriteReadme(readme, logins, automated);
   } catch (e) {
     return [e instanceof Error ? e.message : String(e)];
   }
@@ -105,13 +123,18 @@ async function fetchAvatar(login) {
 
 /** @param {string[]} argv */
 async function main(argv) {
-  const logins = JSON.parse(
+  const { people: logins, automated = [] } = JSON.parse(
     readFileSync(join(ROOT, '.github/contributors/contributors.json'), 'utf8'),
   );
   const readmePath = join(ROOT, 'README.md');
   const readme = readFileSync(readmePath, 'utf8');
   if (argv.includes('--check')) {
-    const found = problems(readme, logins, (login) => existsSync(join(ROOT, svgPath(login))));
+    const found = problems(
+      readme,
+      logins,
+      (login) => existsSync(join(ROOT, svgPath(login))),
+      automated,
+    );
     for (const line of found) console.error(line);
     process.exit(found.length === 0 ? 0 : 1);
   }
@@ -119,7 +142,7 @@ async function main(argv) {
   for (const login of logins) {
     writeFileSync(join(ROOT, svgPath(login)), renderSvg(login, await fetchAvatar(login)));
   }
-  writeFileSync(readmePath, rewriteReadme(readme, logins));
+  writeFileSync(readmePath, rewriteReadme(readme, logins, automated));
 }
 
 if (process.argv[1] && dirname(process.argv[1]) === dirname(fileURLToPath(import.meta.url))) {

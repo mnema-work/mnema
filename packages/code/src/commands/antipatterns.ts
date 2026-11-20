@@ -1,7 +1,7 @@
 /**
  * `mnema audit antipatterns`: recurring shapes in the record, with their evidence.
  *
- * The third INTELLIGENCE read: it folds the present trees ({@link recordEvents}) and
+ * The third INTELLIGENCE read: it folds the present trees ({@link recordEventsRead}) and
  * surfaces the shapes that recur (tasks reopened, decisions superseded, skills
  * deprecated) each with the exact events that make up the count, plus the `ADR-<n>`
  * labels that name more than one rule. It POINTS, it does not CONCLUDE: nothing here
@@ -50,8 +50,7 @@ import {
   patternMoveWitness,
 } from '@mnema/context';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
-import { recordEvents } from '../intelligence-source.js';
-import { newerLinesOfTrees } from '../tree-sources.js';
+import { recordEventsRead } from '../intelligence-source.js';
 
 /** What the antipatterns command needs: injected so it is testable. */
 export interface AntipatternsContext {
@@ -101,11 +100,11 @@ export function runAntipatterns(ctx: AntipatternsContext): AntipatternsDone | An
   if (trees.projectPublic === undefined) {
     return { ok: false, reason: 'NO_PROJECT' };
   }
-  const record = recordEvents(trees, catalogUpcasters());
+  const { record, newer } = recordEventsRead(trees, catalogUpcasters());
   return {
     ok: true,
     patterns: antipatterns(record),
     moves: patternMoveWitness(record.events),
-    ...newerLinesOfTrees(trees),
+    ...newer,
   };
 }

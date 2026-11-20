@@ -317,7 +317,11 @@ const dispatch = () =>
 
 const correction = () => {
   const typed = (text: string) =>
-    JSON.stringify({ type: 'user', message: { role: 'user', content: text } });
+    JSON.stringify({
+      type: 'user',
+      origin: { kind: 'human' },
+      message: { role: 'user', content: text },
+    });
   const assistant = JSON.stringify({
     type: 'assistant',
     message: { role: 'assistant', content: [{ type: 'text', text: 'ok' }] },

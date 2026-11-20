@@ -244,6 +244,19 @@ export function orderedEvents(
 }
 
 /**
+ * {@link orderedEvents} and the lines of a kind this binary does not know that the same reading
+ * read past: one reading, two answers, for a read that says where a newer mnema wrote and must
+ * not fold the tails a second time to learn it.
+ */
+export function orderedEventsAndUnread(
+  layout: ChainLayout,
+  upcasters: UpcasterRegistry,
+): { readonly events: CatalogEvent[]; readonly unread: readonly UnreadLine[] } {
+  const { events, unread } = chainReplay(layout, upcasters);
+  return { events, unread };
+}
+
+/**
  * How far one tail was read: the last position proven, and the segment files that
  * held it.
  *
@@ -908,6 +921,8 @@ export interface RecordOrder {
    * de-duplication.
    */
   readonly across: readonly CatalogEvent[];
+  /** The lines of a kind this binary does not know, which both views leave out, in every chain. */
+  readonly unread: readonly UnreadLine[];
 }
 
 /**
@@ -958,6 +973,7 @@ export function orderedEventsOfRecord(
   return {
     chains: chains.map((chain) => chain.events),
     across: mergeStreams(perChain.flat(), false).events.filter((event) => !left.has(event)),
+    unread: perChain.flatMap((streams) => streams.flatMap((stream) => stream.unread)),
   };
 }
 

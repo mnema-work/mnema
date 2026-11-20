@@ -42,6 +42,7 @@ import {
   type Scope,
 } from '@mnema/core';
 import { openTreeForWriting, switchChannel } from '@mnema/core/write';
+import { mayTurnAgentAcceptsOn } from '../agent-accepts.js';
 import { type AnchorForms, anchorForms } from '../anchors.js';
 import {
   STARTS_OFF,
@@ -220,6 +221,11 @@ export function runSwitch(
     scope?: Scope;
     which?: string;
     run?: string;
+    /**
+     * Whether a person is at a terminal here: the door's own answer (`agent-accepts.ts`). A door
+     * that does not say is not at one, so the switching-on of `agent-accepts` it carries is turned away.
+     */
+    atATerminal?: boolean;
   },
 ): SwitchRecorded | SwitchRefused {
   if (!isSwitchable(input.channel)) {
@@ -237,6 +243,16 @@ export function runSwitch(
   }
 
   const which = whichOfTheWrite(writing, scope, input.which);
+
+  // THE BRAKE IS NOT RELEASED BY THE PARTY IT BRAKES (`agent-accepts.ts`): switching `agent-accepts`
+  // ON is a person's, at a terminal; switching it off, and every other channel, is anyone's.
+  const turnedAway = mayTurnAgentAcceptsOn({
+    channel: input.channel,
+    on: input.on,
+    agent: which,
+    atATerminal: input.atATerminal === true,
+  });
+  if (turnedAway !== undefined) return { ok: false, reason: 'REFUSED', ...turnedAway };
 
   const writer = openTreeForWriting(trees, scope);
   const recorded = writer.exclusively(() => {

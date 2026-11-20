@@ -32,6 +32,7 @@ import { ListRootsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildMcpServer } from '../src/mcp/server.js';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
+import { arrivedSince, inPty } from './support/pty.js';
 import { MNEMA_CLI } from './support/the-cli.js';
 
 const CLI = MNEMA_CLI;
@@ -293,7 +294,7 @@ describe('the setting', () => {
     // The words of THIS switch: it hands nothing to a model, so the sentences the other channels
     // use for being off would be false of it.
     expect(off.out).toContain("agent-accepts is now OFF: an agent's accept is refused.");
-    expect(off.out).toContain('a person at a terminal still accepts a decision');
+    expect(off.out).toContain('a person at a terminal still accepts or replaces a decision');
     expect(off.out).not.toContain('reaches a model');
     expect(off.out).not.toContain('in front of a model');
 
@@ -352,9 +353,25 @@ describe('the setting', () => {
     expect(rejected.status, rejected.out).toBe(0);
 
     // Back on, the agent accepts again.
-    const on = mnema(atA, a, 'switch', 'on', 'agent-accepts');
-    expect(on.status).toBe(0);
-    expect(on.out).toContain('agent-accepts is now ON: an agent may accept a decision');
+    // Switching it back on is a person's: the agent is refused, and a person at a terminal does it.
+    const agentOn = mnema(atA, a, 'switch', 'on', 'agent-accepts', '--which', 'a-script');
+    expect(agentOn.status, agentOn.out).toBe(1);
+    expect(agentOn.out).toContain('AGENT_ACCEPTS_NEEDS_A_PERSON');
+    const on = await inPty(
+      {
+        cli: CLI,
+        verb: 'switch on agent-accepts',
+        project: atA,
+        scratch: sandbox,
+        environment: { PATH: process.env.PATH ?? '', HOME: a, GIT_CONFIG_NOSYSTEM: '1' },
+      },
+      {
+        columns: 160,
+        rows: 40,
+        steps: [{ until: arrivedSince('now ON'), what: 'the switch was reported' }],
+      },
+    );
+    expect(on.bytes).toContain('agent-accepts is now ON');
     const [again] = await throughTheServer(atA, a, [
       { name: 'decision_transition', arguments: { id: one, action: 'accept', note: 'now it may' } },
     ]);

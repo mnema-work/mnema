@@ -33,6 +33,8 @@ Comment `/take` (or `/claim`) on an open `good first issue` or `help wanted` iss
 
 The assignment frees itself after 14 days without an open pull request of yours that names the issue (write `#<number>` in its description), and says so on the issue; a daily run does that, for an issue a maintainer assigned to you by hand as well. A pull request that meets the issue's "Done when" and shows its "How to check" is what the review looks at.
 
+An issue whose body says "Starts after #N" is not assigned while #N is open: the reply names #N, and the daily release does not free an assignment while #N is open.
+
 If a maintainer asks for a change on your pull request and you do not answer, you get one reminder after 7 days and one note after 14: the maintainers then finish it on your branch (leave "Allow edits by maintainers" ticked), merge it and thank you here with the credit still yours, or close it with thanks. The workflow only comments; a person does the rest.
 
 ## Before a pull request
@@ -308,7 +310,8 @@ be able to explain any line.
   change. A pull request that leaves the field out will be asked to fill it in before review.
 - **Credit.** You do not need a commit trailer. When the pull request is squash-merged, the maintainer puts
   one line in the commit message, taken from that field: `Assisted-by: <model> via <host>`.
-- **The README grid.** At the merge of a first outside pull request, add the login to `.github/contributors/contributors.json`
+- **The README grid.** At the merge of a first outside pull request, add the login to `people` in `.github/contributors/contributors.json`
+  (to `automated` for an account that declares itself automated: it is thanked on a line below the grid, with no photo)
   and run `node .github/contributors/draw.mjs`: it draws the round avatar and rewrites the README table (`--check` verifies it).
 - **Check it first.** Run `pnpm check:contribution` before you open the pull request (see
   [Before a pull request](#before-a-pull-request)), and keep one change per pull request.

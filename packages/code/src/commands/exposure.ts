@@ -41,8 +41,7 @@
 import { catalogUpcasters } from '@mnema/chain';
 import { type Exposure, exposure, type NewerLines } from '@mnema/context';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
-import { scopedEvents } from '../intelligence-source.js';
-import { newerLinesOfTrees } from '../tree-sources.js';
+import { recordTrees, scopedEventsRead } from '../intelligence-source.js';
 
 /** What the exposure command needs: injected so it is testable. */
 export interface ExposureContext {
@@ -76,9 +75,6 @@ export function runExposure(ctx: ExposureContext): ExposureDone | ExposureRefuse
   if (trees.projectPublic === undefined) {
     return { ok: false, reason: 'NO_PROJECT' };
   }
-  return {
-    ok: true,
-    report: exposure(scopedEvents(trees, catalogUpcasters())),
-    ...newerLinesOfTrees(trees),
-  };
+  const { sources, newer } = scopedEventsRead(recordTrees(trees, undefined), catalogUpcasters());
+  return { ok: true, report: exposure(sources), ...newer };
 }

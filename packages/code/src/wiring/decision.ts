@@ -293,6 +293,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
       proof: { ...(opts.reason !== undefined ? { reason: opts.reason } : {}) },
       ...(given.which !== undefined ? { which: given.which } : {}),
       ...(run !== undefined ? { run } : {}),
+      atATerminal: io.aPersonIsHere === true,
     });
     await reportDecisionMove(result, oldId, wiring);
   });
