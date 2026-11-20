@@ -1052,7 +1052,7 @@ export const PRESENCE = {
     subagentStart: notRead,
     subagentStop: {
       ...HOSTS.codex.subagentStop,
-      what: 'SubagentStop; the plugin runs `mnema handback` there',
+      what: 'SubagentStop; the plugin runs its hand-back check there',
     },
   },
   copilot: {
@@ -1063,7 +1063,7 @@ export const PRESENCE = {
     subagentStart: notRead,
     subagentStop: {
       ...HOSTS.copilot.subagentStop,
-      what: 'subagentStop (as `SubagentStop`); the plugin runs `mnema handback` there, which cannot tell a second stop of the same subagent, the host naming no field for it',
+      what: 'subagentStop (as `SubagentStop`); the plugin runs its hand-back check there, which cannot tell a second stop of the same subagent, the host naming no field for it',
     },
   },
   gemini: {
