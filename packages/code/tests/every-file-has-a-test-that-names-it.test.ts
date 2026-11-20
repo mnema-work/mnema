@@ -1529,7 +1529,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-refused-run-is-refused-everywhere.test.ts': 13,
   'packages/code/tests/the-registry-entry-is-what-the-package-says.test.ts': 5,
   'packages/code/tests/the-release-prepare-writes-every-number.test.ts': 7,
-  'packages/code/tests/the-release-workflow-publishes-without-a-token.test.ts': 5,
+  'packages/code/tests/the-release-workflow-publishes-without-a-token.test.ts': 4,
   'packages/code/tests/the-replaced-decision-is-named-where-it-is-read.test.ts': 17,
   'packages/code/tests/the-repository-says-where-it-lives.test.ts': 5,
   'packages/code/tests/the-rule-has-an-address.test.ts': 11,
