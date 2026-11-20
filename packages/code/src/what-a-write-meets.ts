@@ -126,38 +126,6 @@ export function everyRuleInForceAt(
   };
 }
 
-/** What a write at a path would meet: the gate's grade, or `governs`, or `none`. */
-export type VerdictAtAPath = WriteVerdict['grade'] | 'governs' | 'none';
-
-/**
- * The verdict a write at `read.path` would meet, for a reader that TELLS (`mnema why`): the answer of
- * {@link whatAWriteMeets}, the function every door asks, and only when it answers nothing, `governs`
- * when a governing rule is in force there and `none` when none is. Each rule of `rules` is marked
- * `decided` when it is one the verdict stands on: a rule the gate named under its grade, or, under
- * `governs`, a governing rule. A rule outranked by another relation, or whose channel is switched off,
- * is not.
- */
-export function verdictAtAPath(
-  sources: readonly ScopedCache[],
-  read: GovernedRead,
-  rules: readonly RuleInForceUnder[],
-): { readonly verdict: VerdictAtAPath; readonly decided: (rule: RuleInForceUnder) => boolean } {
-  const met = whatAWriteMeets(sources, { paths: [read.path], root: read.root, from: read.from });
-  const verdict: VerdictAtAPath =
-    met?.grade ?? (rules.some((rule) => rule.relation === GOVERNS_RELATION) ? 'governs' : 'none');
-  const relation = {
-    refuse: REFUSES_A_WRITE_RELATION,
-    ask: ASKS_FOR_A_PERSON_RELATION,
-    governs: GOVERNS_RELATION,
-    none: undefined,
-  }[verdict];
-  const named = new Set(met?.at.flatMap((at) => at.rules.map((rule) => rule.id)));
-  return {
-    verdict,
-    decided: (rule) => rule.relation === relation && (met === undefined || named.has(rule.id)),
-  };
-}
-
 /**
  * The one line a gate, a push or an asked reading owes when a rule it names was moved out of one
  * state more than once by machines that had not seen each other (`movedApartSentence` says the
@@ -839,4 +807,36 @@ function whyNotRecorded(error: unknown): string {
 export function unrecordedCharge(grade: WriteVerdict['grade'], why: string): string {
   const what = grade === 'refuse' ? 'This refusal' : 'This request for a person';
   return `${what} could not be recorded in the project's record, so the record does not show it: ${why.replace(/\.+$/, '')}.`;
+}
+
+/** What a write at a path would meet: the gate's grade, or `governs`, or `none`. */
+export type VerdictAtAPath = WriteVerdict['grade'] | 'governs' | 'none';
+
+/**
+ * The verdict a write at `read.path` would meet, for a reader that TELLS (`mnema why`): the answer of
+ * {@link whatAWriteMeets}, the function every door asks, and only when it answers nothing, `governs`
+ * when a governing rule is in force there and `none` when none is. Each rule of `rules` is marked
+ * `decided` when it is one the verdict stands on: a rule the gate named under its grade, or, under
+ * `governs`, a governing rule. A rule outranked by another relation, or whose channel is switched off,
+ * is not.
+ */
+export function verdictAtAPath(
+  sources: readonly ScopedCache[],
+  read: GovernedRead,
+  rules: readonly RuleInForceUnder[],
+): { readonly verdict: VerdictAtAPath; readonly decided: (rule: RuleInForceUnder) => boolean } {
+  const met = whatAWriteMeets(sources, { paths: [read.path], root: read.root, from: read.from });
+  const verdict: VerdictAtAPath =
+    met?.grade ?? (rules.some((rule) => rule.relation === GOVERNS_RELATION) ? 'governs' : 'none');
+  const relation = {
+    refuse: REFUSES_A_WRITE_RELATION,
+    ask: ASKS_FOR_A_PERSON_RELATION,
+    governs: GOVERNS_RELATION,
+    none: undefined,
+  }[verdict];
+  const named = new Set(met?.at.flatMap((at) => at.rules.map((rule) => rule.id)));
+  return {
+    verdict,
+    decided: (rule) => rule.relation === relation && (met === undefined || named.has(rule.id)),
+  };
 }

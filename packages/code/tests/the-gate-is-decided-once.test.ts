@@ -82,9 +82,12 @@ describe('the gate is decided once', () => {
     // ask about a write a rule refuses.
     expectOnlyCallers('whatAWriteAsks', ['packages/code/src/what-a-write-meets.ts']);
     // And the doors are the ones that decide what a write meets: the MCP tool and the command.
+    // `verdictAtAPath`, in the gate module, asks it for the reader that tells (`mnema why`): the
+    // verdict `why` says is this function's answer, not a second reading of the rules.
     expectOnlyCallers('whatAWriteMeets', [
       'packages/code/src/commands/before-a-write.ts',
       'packages/code/src/mcp/tools.ts',
+      'packages/code/src/what-a-write-meets.ts',
     ]);
   });
 });
