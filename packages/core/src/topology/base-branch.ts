@@ -167,8 +167,9 @@ export function tailIsHeldOnlyBy(
  * The branch a worktree has checked out, or undefined for a detached HEAD or where it cannot be said.
  * Read from the worktree's `HEAD` file; a repository kept in the `reftable` format writes the stub
  * `refs/heads/.invalid` there in every worktree, whatever the branch, so there git is asked
- * (`symbolic-ref`, within the same bounded time), and where it does not answer the HEAD counts as
- * detached, which asks the base branch (the side that cannot conflict).
+ * (`symbolic-ref`, within the same bounded time, and once for each state of the worktree's
+ * `reftable/tables.list`), and where it does not answer the HEAD counts as detached, which asks the
+ * base branch (the side that cannot conflict).
  */
 export function branchOfWorktree(gitDir: string, top: string): string | undefined {
   let head: string;
@@ -180,6 +181,12 @@ export function branchOfWorktree(gitDir: string, top: string): string | undefine
   if (!head.startsWith('ref: refs/heads/')) return undefined;
   const named = head.slice('ref: refs/heads/'.length);
   if (named !== '.invalid') return named;
+  // In a reftable repository the HEAD file is a stub that never changes; any update of a ref,
+  // HEAD's included, rewrites `reftable/tables.list` with the name of a new table. So the answer
+  // of git is kept for the content of that list and asked again the moment it differs.
+  const stack = tableStackOf(gitDir);
+  const kept = BRANCH_OF_A_REFTABLE_STACK.get(gitDir);
+  if (stack !== undefined && kept !== undefined && kept.stack === stack) return kept.branch;
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     GIT_OPTIONAL_LOCKS: '0',
@@ -193,7 +200,25 @@ export function branchOfWorktree(gitDir: string, top: string): string | undefine
     timeout: GIT_BUDGET_MS,
   });
   const ref = ran.status === 0 ? ran.stdout.trim() : '';
-  return ref.startsWith('refs/heads/') ? ref.slice('refs/heads/'.length) : undefined;
+  const branch = ref.startsWith('refs/heads/') ? ref.slice('refs/heads/'.length) : undefined;
+  // A git that did not answer (a timeout, an error) is not kept: the next write asks again. Status 1 is a detached HEAD, an answer.
+  if (stack !== undefined && (ran.status === 0 || ran.status === 1)) BRANCH_OF_A_REFTABLE_STACK.set(gitDir, { stack, branch });
+  return branch;
+}
+
+/** The branch git said for a worktree, with the content of the table list it said it for. */
+const BRANCH_OF_A_REFTABLE_STACK = new Map<
+  string,
+  { readonly stack: string; readonly branch: string | undefined }
+>();
+
+/** The content of the worktree's `reftable/tables.list`, or undefined where it cannot be read (then git is asked every time). */
+function tableStackOf(gitDir: string): string | undefined {
+  try {
+    return readFileSync(join(gitDir, 'reftable', 'tables.list'), 'utf-8');
+  } catch {
+    return undefined;
+  }
 }
 
 /** Whether a line of the segment is the entry whose own hash is `hash`: a later line that names it as its `prev` is not. */

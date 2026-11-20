@@ -13,13 +13,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { branchOfWorktree, entryIsOnTheBase, tailIsHeldOnlyBy } from './base-branch.js';
 
 /** `refsFail` makes the git call that lists the refs holding a commit (`for-each-ref`) answer status 1; every other call reaches the real git. */
-const broken = vi.hoisted(() => ({ refsFail: false }));
+const broken = vi.hoisted(() => ({ refsFail: false, symbolicRefs: 0 }));
 vi.mock('node:child_process', async (original) => {
   const real = await original<typeof import('node:child_process')>();
   return {
     ...real,
     spawnSync: ((...args: Parameters<typeof real.spawnSync>) => {
       const [command, argv] = args;
+      if (command === 'git' && Array.isArray(argv) && argv[0] === 'symbolic-ref') broken.symbolicRefs += 1;
       if (
         broken.refsFail &&
         command === 'git' &&
@@ -182,6 +183,43 @@ describe('the branch a worktree has checked out', () => {
       expect(branchOfWorktree(join(table, '.git'), table)).toBe('main');
       spawnSync('git', ['symbolic-ref', 'HEAD', 'refs/heads/feature/x'], { cwd: table });
       expect(branchOfWorktree(join(table, '.git'), table)).toBe('feature/x');
+    },
+  );
+
+  it.skipIf(!REFTABLE)(
+    'asks git once for each state of a reftable worktree and again when its HEAD moves',
+    () => {
+      const table = join(sandbox, 'reftable-asked-once');
+      mkdirSync(table);
+      const env = {
+        PATH: process.env.PATH ?? '',
+        HOME: sandbox,
+        GIT_CONFIG_NOSYSTEM: '1',
+        GIT_CONFIG_GLOBAL: '/dev/null',
+      };
+      const init = spawnSync('git', ['init', '-q', '--ref-format=reftable', '-b', 'main'], {
+        cwd: table,
+        encoding: 'utf-8',
+        env,
+      });
+      expect(init.status, init.stderr).toBe(0);
+      const gitDir = join(table, '.git');
+      broken.symbolicRefs = 0;
+      for (let write = 0; write < 5; write += 1) {
+        expect(branchOfWorktree(gitDir, table)).toBe('main');
+      }
+      expect(broken.symbolicRefs).toBe(1);
+      const moved = spawnSync('git', ['symbolic-ref', 'HEAD', 'refs/heads/feature/x'], {
+        cwd: table,
+        encoding: 'utf-8',
+        env,
+      });
+      expect(moved.status, moved.stderr).toBe(0);
+      broken.symbolicRefs = 0;
+      for (let write = 0; write < 5; write += 1) {
+        expect(branchOfWorktree(gitDir, table)).toBe('feature/x');
+      }
+      expect(broken.symbolicRefs).toBe(1);
     },
   );
 });

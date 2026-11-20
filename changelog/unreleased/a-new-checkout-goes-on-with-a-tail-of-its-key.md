@@ -9,7 +9,7 @@ Fixed
   it, or a detached HEAD, the tail the hint names included): a branch cut from another that the host has not merged founds a tail, so
   two branches never write one tail file past the point they share and a squash merge of one and a merge of the other on a host with
   no merge driver conflict on none. A tail no mark of the worktree speaks of (written before marks were kept) is asked of the base
-  branch once, and the first write after it is marked. In a repository kept in the `reftable` format, whose `HEAD` file names no
+  branch once, and the first write after it is marked; as the end of such a tail is usually not pushed, the first write after an upgrade usually founds a tail. In a repository kept in the `reftable` format, whose `HEAD` file names no
   branch, the branch is asked of git. The questions put to the base branch take ten seconds in all; a git that does not answer in that
   time counts as no, the write opens a tail, and the sentence says the base branch did not answer. Where a repository has no remote, or no default branch
   known to it, a worktree goes on only with the tails it wrote itself. No event, field, check or vector differs, and the second reader
