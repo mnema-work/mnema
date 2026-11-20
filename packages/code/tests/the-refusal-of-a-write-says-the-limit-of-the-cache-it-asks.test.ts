@@ -88,6 +88,8 @@ describe('the refusal of a write and the cache it asks', () => {
 
     const warm = mnema('memory', 'a note written over the rewrite');
     expect(warm.status, warm.out).toBe(0);
+    // That write changed the size of the segment, so the next read of the tree accuses the entry.
+    expect(mnema('status').out).toContain('altered after it was written');
 
     for (const cache of [...derivedCaches(sandbox), ...derivedCaches(home)]) rmSync(cache);
     const cold = mnema('memory', 'a note written over the rewrite, cold');

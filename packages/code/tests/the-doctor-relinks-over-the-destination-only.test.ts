@@ -1,12 +1,12 @@
 /**
- * `mnema doctor --fix private-tree` OVER AN ALTERED ENTRY: the door asks about the tree the relink WRITES INTO (the
- * shared private tree, the destination), at the writer it opens there, and about nothing else. The tree left behind
- * in the worktree is read by the relink itself, which refuses a tail that does not verify with its own words: the
- * door does not reach into it, so the refusal is not the altered-entry one and says nothing of `tail repair`.
+ * `mnema doctor --fix private-tree` OVER AN ALTERED ENTRY: the door asks about the trees of the writer the relink opens
+ * to write into (the shared private tree, the destination). The tree left behind in the worktree is read by the relink
+ * itself, which refuses a tail that does not verify with its own words before any writer opens: the door is never
+ * reached, so the refusal is not the altered-entry one.
  *
  *   - an entry of the destination altered: the fix is refused `ALTERED_ENTRY`, and neither tree has a byte more or less;
- *   - an entry of the tree left behind altered: the fix is refused by the relink (`TAIL_DOES_NOT_VERIFY`), not by the
- *     door, and neither tree has a byte more or less.
+ *   - an entry of the tree left behind altered: a relink refuses first (`TAIL_DOES_NOT_VERIFY`), the door is never
+ *     reached, and neither tree has a byte more or less.
  */
 // @plants-damage
 import { spawnSync } from 'node:child_process';
@@ -116,7 +116,7 @@ describe('the fix of the private tree over an altered entry', () => {
     expect([everythingUnder(oldTree()), everythingUnder(shared())]).toEqual(before);
   });
 
-  it('is refused by the relink, not the door, where only the tree left behind holds it, and moves nothing', () => {
+  it('is refused first by the relink, the door never reached, where only the tree left behind holds it, and moves nothing', () => {
     alter(oldTree(), 'founded apart');
     const before = [everythingUnder(oldTree()), everythingUnder(shared())];
     const ran = mnema(repo, 'doctor', '--fix', 'private-tree');
