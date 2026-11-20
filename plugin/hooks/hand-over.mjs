@@ -761,7 +761,8 @@ export function theTranscriptIsNotRead(argv) {
  * `VSCODE_TRANSCRIPT` in `host-hook.ts`, because the plugin runs with no build; the test of the end
  * of a turn holds the two together.
  */
-const VSCODE_TRANSCRIPT = /[\\/]workspaceStorage[\\/][^\\/]+[\\/]GitHub\.copilot-chat[\\/]transcripts[\\/]/;
+const VSCODE_TRANSCRIPT =
+  /[\\/]workspaceStorage[\\/][^\\/]+[\\/]GitHub\.copilot-chat[\\/]transcripts[\\/]/;
 
 /**
  * Whether a run that names no host was handed the transcript of VS Code's agent, which reads the

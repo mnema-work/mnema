@@ -303,7 +303,8 @@ export type EndOfTurn =
  * transcript from here is VS Code's, not Claude Code's. The plugin's handlers carry the same
  * pattern (`hand-over.mjs`), held to this one by `the-end-of-a-turn-reaches-every-host.test.ts`.
  */
-export const VSCODE_TRANSCRIPT = /[\\/]workspaceStorage[\\/][^\\/]+[\\/]GitHub\.copilot-chat[\\/]transcripts[\\/]/;
+export const VSCODE_TRANSCRIPT =
+  /[\\/]workspaceStorage[\\/][^\\/]+[\\/]GitHub\.copilot-chat[\\/]transcripts[\\/]/;
 
 /**
  * Reads a payload as `host` hands it at the end of a turn: `{ end: false }` for any other event.

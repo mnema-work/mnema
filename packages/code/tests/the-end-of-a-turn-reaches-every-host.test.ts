@@ -189,7 +189,8 @@ function payloadOf(host: EndHost, file: string | null): Record<string, unknown> 
 }
 
 /** Where VS Code's agent keeps the transcript a hook names. */
-const VSCODE_PATH = '/home/person/.config/Code/User/workspaceStorage/0f3a9c/GitHub.copilot-chat/transcripts/s1.jsonl';
+const VSCODE_PATH =
+  '/home/person/.config/Code/User/workspaceStorage/0f3a9c/GitHub.copilot-chat/transcripts/s1.jsonl';
 
 const OTHER_HOSTS = END_HOSTS.filter((host) => host !== 'claude');
 
@@ -339,7 +340,7 @@ describe("VS Code's agent and Qwen Code, which read Claude Code's hooks file", (
     return path;
   }
 
-  it("does not read a Claude-format transcript a Qwen Code or a VS Code payload names, and keeps no journal", async () => {
+  it('does not read a Claude-format transcript a Qwen Code or a VS Code payload names, and keeps no journal', async () => {
     await did('switch', 'on', 'user-corrections');
     for (const host of ['qwen', 'vscode'] as const) {
       const file = aClaudeTranscript();
@@ -380,7 +381,11 @@ describe("VS Code's agent and Qwen Code, which read Claude Code's hooks file", (
       VSCODE_TRANSCRIPT.toString(),
     );
     expect(VSCODE_TRANSCRIPT.test(VSCODE_PATH)).toBe(true);
-    expect(VSCODE_TRANSCRIPT.test('C:\\Users\\p\\AppData\\Roaming\\Code\\User\\workspaceStorage\\h\\GitHub.copilot-chat\\transcripts\\s.jsonl')).toBe(true);
+    expect(
+      VSCODE_TRANSCRIPT.test(
+        'C:\\Users\\p\\AppData\\Roaming\\Code\\User\\workspaceStorage\\h\\GitHub.copilot-chat\\transcripts\\s.jsonl',
+      ),
+    ).toBe(true);
     expect(VSCODE_TRANSCRIPT.test('/home/p/.claude/projects/x/s.jsonl')).toBe(false);
   });
 });
@@ -474,7 +479,11 @@ describe('the hooks files that run the verbs', () => {
     const flagged = (files.match(/--host (\w+)[^"]*--reads no/g) ?? []).map(
       (line) => /--host (\w+)/.exec(line)?.[1],
     );
-    expect(new Set(flagged)).toEqual(new Set(END_HOSTS.filter((host) => !ENDS[host].reads && host !== 'gemini' && host !== 'vscode')));
+    expect(new Set(flagged)).toEqual(
+      new Set(
+        END_HOSTS.filter((host) => !ENDS[host].reads && host !== 'gemini' && host !== 'vscode'),
+      ),
+    );
     expect(geminiHookScript()).toContain(`const ENDED_READS = ${ENDS.gemini.reads};`);
   });
 
@@ -531,7 +540,9 @@ describe('the plugin commands a host runs at the end of a turn', () => {
       const { bin, calls } = stub();
       const own = ['--host', 'qwen', '--where', 'QWEN_PROJECT_DIR', '--reads', 'no'];
       expect(handler(name, own, { QWEN_PROJECT_DIR: '/x' }, bin).stdout).toBe('');
-      expect(existsSync(calls), 'a mnema was started for a transcript that is not read').toBe(false);
+      expect(existsSync(calls), 'a mnema was started for a transcript that is not read').toBe(
+        false,
+      );
     });
 
     it(`${name} starts nothing, with no host named, for the transcript VS Code's agent keeps, and still for Claude Code's`, () => {

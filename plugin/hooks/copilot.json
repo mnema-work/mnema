@@ -56,12 +56,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-tally.mjs\" --host copilot",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-tally.mjs\" --host copilot --reads no",
             "timeout": 15
           },
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-corrections.mjs\" --host copilot",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-corrections.mjs\" --host copilot --reads no",
             "timeout": 15
           }
         ]
