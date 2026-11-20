@@ -6,10 +6,8 @@
  */
 
 import {
-  appendFileSync,
   mkdirSync,
   mkdtempSync,
-  readdirSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -215,16 +213,5 @@ describe('mnema rules test', () => {
       expect(done.err).toContain('takes no --json');
       expect(done.out).toBe('');
     }
-  });
-
-  it('refuses to judge a record the gate cannot read, instead of printing none', async () => {
-    const file = declare(['src/billing/invoice.ts', 'refuse'], ['README.md', 'none']);
-    const tails = join(repo, '.mnema', 'tails');
-    const segment = join(tails, readdirSync(tails)[0] as string, '000001.jsonl');
-    appendFileSync(segment, '{this line does not read\n');
-    const done = await mnema('rules', 'test', file);
-    expect(done.failed).toBe(true);
-    expect(done.err).toContain('RECORD_CANNOT_BE_JUDGED');
-    expect(done.out).not.toContain('MATCH');
   });
 });

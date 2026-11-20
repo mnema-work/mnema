@@ -27,7 +27,7 @@ same function the per-edit hook asks, so a switch turned off or a link that lead
 as it changes the gate's); `governs` is a rule linked `governs` there with nothing refusing or asking; `none` is
 no rule standing over the path. Each case prints `MATCH` or `MISMATCH` with what the path met and the ids of the
 rules behind it. The exit code is 1 when any case misses, and a file with no case, a verdict it does not know or
-a file that is not JSON is refused. Nothing is written.
+a file that is not JSON is refused, and so is a case whose path is absolute or leaves the project, and a record the gate cannot read (an unreadable line or an altered entry: the gate would deny every write, so no verdict is printed). `--json` is not supported and is refused. `test` is a verb of `rules`, so a folder named `test` is asked as `./test`. Nothing is written.
 
 ## A rule that carries its check
 
