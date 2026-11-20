@@ -1367,7 +1367,10 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
         'project and lands PUBLIC: committed, so the team gets it on clone (global ' +
         'outside a project); it is born `proposed`, so recording one proposes it ' +
         'rather than settling it. Optionally pick the project it lands in, when the ' +
-        'workspace holds more than one. Returns the citable ADR-<n> label (a ' +
+        'workspace holds more than one. Optionally give `governs`, the paths of this ' +
+        'project it governs: each is recorded as a `governs` link in the same act, ' +
+        'under the rules of `link_knowledge`, and one refused refuses the whole call ' +
+        'with nothing written. Returns the citable ADR-<n> label (a ' +
         'decision has no short alias) and which tree it landed in.' +
         RECORD_CONTRACT,
       inputSchema: {
@@ -1382,16 +1385,25 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
               'name of a rejected option without its reason loses most of the value. ' +
               'Omit it when there was no real alternative.',
           ),
+        governs: z
+          .array(z.string().min(1))
+          .min(1)
+          .optional()
+          .describe(
+            'Paths of this project the decision governs, one `governs` link each, recorded ' +
+              'with the decision. Omit it when it governs no file.',
+          ),
         scope: scopeField('Where the decision lands; overrides the routing rule (public).'),
         project: PROJECT_ARG,
       },
     },
-    async ({ title, rationale, alternatives, scope, project }) => {
+    async ({ title, rationale, alternatives, governs, scope, project }) => {
       const active = await ensureSession();
       const result = runRecordDecision(active, {
         title,
         rationale,
         ...(alternatives !== undefined ? { alternatives } : {}),
+        ...(governs !== undefined ? { governs } : {}),
         ...(scope !== undefined ? { scope } : {}),
         ...(project !== undefined ? { project } : {}),
       });
@@ -1399,10 +1411,16 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
         return refused(active, result);
       }
       if (result.alreadyRecorded) {
-        return replied(active, [alreadyRecordedLine(result, result.scope)], { wrote: false });
+        return replied(active, [alreadyRecordedLine(result, result.scope, governs?.length)], {
+          wrote: false,
+        });
       }
       return recorded(active, `Recorded decision ${result.adr} (${result.id})`, result, {
-        after: [stateOfANewDecision(result.agentsAccept, 'agent-tool'), ...result.offered],
+        after: [
+          ...(result.governs.length > 0 ? [`Governs: ${result.governs.join(', ')}`] : []),
+          stateOfANewDecision(result.agentsAccept, 'agent-tool'),
+          ...result.offered,
+        ],
       });
     },
   );

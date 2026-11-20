@@ -169,6 +169,17 @@ A supersede whose successor is still `proposed` leaves nothing in force on that 
 move says so. Rejecting that successor leaves the decision it replaced `superseded`, by a decision that never governed,
 and the rejection says so too, naming it, from the command line and in `decision_transition`.
 
+## Recording a decision with the paths it governs
+
+`mnema decision record --governs <path>` (repeatable) and the `governs` list of `record_decision` address the decision at
+one or more paths of the project in the same act that records it. The decision and one `governs` link per path are written
+in a single append, so they land together or not at all; the record keeps them as the two kinds of event they always were,
+the same ones `mnema link <id> <path> --rel governs` writes. A path is held to the rules that link applies: a path outside the
+project is refused in the public tree, one typed absolute under the project's root is recorded relative to it, and a label
+left raw (`ADR-3`) is no path. The first path refused refuses the whole act and nothing is written, the decision included. A
+path given twice is linked once. A decision recorded a second time writes nothing, links included, and says that no path was
+linked by that call. A decision addressed this way is not offered an address (below).
+
 ## What a recorded decision offers
 
 After "Recorded decision ADR-n (id)", `mnema decision record <title> <rationale>` and the `record_decision` tool may add lines that

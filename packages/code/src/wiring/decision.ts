@@ -70,6 +70,25 @@ const TURNED_DOWN_AT_BIRTH =
   'what a decision turned down is recorded with the decision itself: pass it to ' +
   '`mnema decision record` with the title and the rationale.';
 
+/**
+ * Why a move refuses the group's `--governs`: the paths a decision is addressed at are recorded
+ * with the decision, and a move records no decision. Later, `mnema link` adds one.
+ */
+const ADDRESSED_AT_BIRTH =
+  'the paths a decision governs are recorded with the decision itself: pass them to ' +
+  '`mnema decision record`, or add one later with `mnema link <id> <path> --rel governs`.';
+
+/** What `--governs` is, said once for the group and for `record`, which both declare it. */
+const GOVERNS_HELP =
+  'a path of this project the decision governs, recorded as a `governs` link in the same act ' +
+  '(repeatable). It is held to the rules of `mnema link --rel governs`: one refused refuses ' +
+  'the whole act and nothing is written.';
+
+/** Collects a repeatable flag. */
+function collected(value: string, previous: string[] = []): string[] {
+  return [...previous, value];
+}
+
 /** What `--alternatives` is, said once for the group and for `record`, which both declare it. */
 const ALTERNATIVES_HELP =
   'what was considered and turned down, and why not (optional). A decision ' +
@@ -83,6 +102,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
     .command('decision')
     .description('record a decision, or move one, in the current project')
     .option('--alternatives <text>', ALTERNATIVES_HELP)
+    .option('--governs <path>', GOVERNS_HELP, collected)
     .addOption(
       scopeOption(
         'decision',
@@ -105,6 +125,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
     .argument('<title>', 'the decision title')
     .argument('[rationale]', 'why the decision was made (or give it with --stdin or --body-file)')
     .option('--alternatives <text>', ALTERNATIVES_HELP)
+    .option('--governs <path>', GOVERNS_HELP, collected)
     .addOption(
       scopeOption(
         'decision',
@@ -118,6 +139,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
   record.action(async (title: string, typed: string | undefined) => {
     const given = await fromTheGroup<{
       alternatives?: string;
+      governs?: string[];
       scope?: string;
       which?: string;
       stdin?: boolean;
@@ -146,16 +168,18 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
       title,
       rationale,
       ...(given.alternatives !== undefined ? { alternatives: given.alternatives } : {}),
+      ...(given.governs !== undefined ? { governs: given.governs } : {}),
       ...(scope !== undefined ? { scope } : {}),
       ...(given.which !== undefined ? { which: given.which } : {}),
       ...(run !== undefined ? { run } : {}),
     });
     if (result.ok && result.alreadyRecorded) {
-      io.out(alreadyRecordedLine(result, result.scope));
+      io.out(alreadyRecordedLine(result, result.scope, given.governs?.length));
       return;
     }
     if (result.ok) {
       io.out(`Recorded decision ${result.adr} (${result.id})`);
+      if (result.governs.length > 0) io.out(`Governs: ${result.governs.join(', ')}`);
       io.out(stateBesideADecision(writing, given.which, result.id));
       reportRecorded(result, io);
       const text = {
@@ -193,7 +217,11 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
     .addHelpText('after', RECORD_CONTRACT_HELP);
   takesFromItsGroup(decisionMove, {
     takes: ['--which'],
-    refuses: { '--scope': A_MOVE_FOLLOWS_THE_DECISION, '--alternatives': TURNED_DOWN_AT_BIRTH },
+    refuses: {
+      '--scope': A_MOVE_FOLLOWS_THE_DECISION,
+      '--alternatives': TURNED_DOWN_AT_BIRTH,
+      '--governs': ADDRESSED_AT_BIRTH,
+    },
   });
   decisionMove.action(async (action: string, ids: string[], opts: { note?: string }) => {
     const given = await fromTheGroup<{ which?: string }>(decisionMove, wiring);
@@ -251,6 +279,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
       '--which': 'a review is a person’s: it signs with your own key, not an agent’s.',
       '--scope': A_MOVE_FOLLOWS_THE_DECISION,
       '--alternatives': TURNED_DOWN_AT_BIRTH,
+      '--governs': ADDRESSED_AT_BIRTH,
     },
   });
   review.action(async () => {
@@ -275,7 +304,11 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
     .addHelpText('after', RECORD_CONTRACT_HELP);
   takesFromItsGroup(supersede, {
     takes: ['--which'],
-    refuses: { '--scope': A_MOVE_FOLLOWS_THE_DECISION, '--alternatives': TURNED_DOWN_AT_BIRTH },
+    refuses: {
+      '--scope': A_MOVE_FOLLOWS_THE_DECISION,
+      '--alternatives': TURNED_DOWN_AT_BIRTH,
+      '--governs': ADDRESSED_AT_BIRTH,
+    },
   });
   supersede.action(async (oldId: string, newId: string, opts: { reason?: string }) => {
     const given = await fromTheGroup<{ which?: string }>(supersede, wiring);
@@ -390,6 +423,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
       '--alternatives':
         'what each proposal turned down is read from its own file, from a section such as ' +
         '`## Considered Options`.',
+      '--governs': ADDRESSED_AT_BIRTH,
     },
   });
   decisionImport.action(async (dir: string, opts: { write?: boolean; format?: string }) => {

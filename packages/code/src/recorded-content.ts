@@ -249,8 +249,15 @@ export function landedNotice(scope: Scope, project?: string): string {
 export function alreadyRecordedLine(
   recorded: { readonly adr: string; readonly id: string },
   scope: Scope,
+  governsAsked = 0,
 ): string {
-  return `Decision ${recorded.adr} (${recorded.id}) is already recorded in the ${scope} tree with this title, rationale and alternatives. Nothing was written.`;
+  // A repeat writes nothing, the links the first act wrote included: said, so a path that was
+  // not part of that act is not taken for linked.
+  const unlinked =
+    governsAsked > 0
+      ? ` No path was linked by this call: \`governs\` is written only with a decision that is new, and \`link_knowledge\` or \`mnema link ${recorded.id} <path> --rel governs\` adds one.`
+      : '';
+  return `Decision ${recorded.adr} (${recorded.id}) is already recorded in the ${scope} tree with this title, rationale and alternatives. Nothing was written.${unlinked}`;
 }
 
 /**

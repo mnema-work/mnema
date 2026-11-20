@@ -32,9 +32,12 @@ import {
   decisionBirth,
   decisionTransitioned,
   type Entry,
+  GOVERNS_RELATION,
+  knowledgeLinked,
   type TransitionFields,
   type UpcasterRegistry,
 } from '@mnema/chain';
+import type { ReplacedClass } from '../content/personal.js';
 import {
   type ScreenedWrite,
   type ScreenRefusal,
@@ -120,6 +123,14 @@ export interface RecordInput {
    * same refusal any other blank text field earns.
    */
   readonly alternatives?: string;
+  /**
+   * The paths this decision is addressed at, each recorded as a `governs` link from the new
+   * decision in the SAME append as its birth pair: all of them land with the decision or none
+   * does. The paths are the caller's, already held to the rules of a link (`link-target.ts` in
+   * the command package); here they are screened as a link's target is and asked of the door.
+   * Absent when there is none, never empty.
+   */
+  readonly governs?: readonly string[];
   /** The agent that executed it, if any. `who` is derived from the writer's key. */
   readonly which?: string;
   /** The run this belongs to, if any. */
@@ -177,6 +188,18 @@ function isInForceOrProposed(state: string): boolean {
   return isDecisionState(state) && findDecisionTransition(state, 'supersede') !== undefined;
 }
 
+/** The paths a decision governs, screened as a link's target is. */
+function screenedPaths(
+  paths: readonly string[],
+):
+  | { readonly ok: true; readonly paths: readonly string[]; readonly replaced: ReplacedClass[] }
+  | ScreenRefusal {
+  if (paths.length === 0) return { ok: true, paths, replaced: [] };
+  const screenedTargets = screenContent({ target: paths });
+  if (!screenedTargets.ok) return screenedTargets;
+  return { ok: true, paths: screenedTargets.fields.target, replaced: screenedTargets.replaced };
+}
+
 /**
  * Records a new decision: mints its id, derives the frozen `ADR-<n>` label from
  * the current decision count, then appends the birth pair (`decision.recorded`
@@ -209,6 +232,10 @@ export function recordDecision(
     run: input.run,
   });
   if (!text.ok) return text;
+  // The paths it governs are screened as a link's target is, one field per path, so a path that
+  // carries a credential refuses the whole act here, before anything is founded or appended.
+  const addressed = screenedPaths(input.governs ?? []);
+  if (!addressed.ok) return addressed;
 
   // `who` is derived from local material and the record, always a real anchor;
   // the only authority check left is that the executing agent is not that identity.
@@ -309,6 +336,20 @@ export function recordDecision(
                       ? { alternatives: text.fields.alternatives }
                       : {}),
                   },
+                ).concat(
+                  addressed.paths.map((target) =>
+                    knowledgeLinked(
+                      {
+                        at,
+                        who,
+                        signerFp: ctx.writer.signerFingerprint,
+                        subject: id,
+                        ...(which !== undefined ? { which } : {}),
+                        ...(text.fields.run !== undefined ? { run: text.fields.run } : {}),
+                      },
+                      { target, rel: GOVERNS_RELATION },
+                    ),
+                  ),
                 ),
               );
               if (!appended.ok) return appended;
@@ -318,7 +359,7 @@ export function recordDecision(
                 id,
                 adr,
                 entries: [e1, e2],
-                ...screened([...text.replaced, ...agent.replaced]),
+                ...screened([...text.replaced, ...agent.replaced, ...addressed.replaced]),
               };
             },
           },
