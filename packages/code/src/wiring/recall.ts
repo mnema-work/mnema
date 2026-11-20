@@ -128,7 +128,8 @@ export function registerRecall(program: Command, wiring: Wiring): Declared {
         const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
         const { runRecall } = await import('../commands/recall.js');
         const { recallDocument, recallWithin } = await import('../presentation/recall.js');
-        const { hookCeilingFor, roomBeside } = await import('../presentation/within-a-hook.js');
+        const { roomBeside } = await import('../presentation/within-a-hook.js');
+        const { hookCeilingFor } = await import('../host-hook.js');
         const ceiling = hookCeilingFor(host);
         const result = runRecall({ ...here(), session: opts.session });
         if (!result.ok) {

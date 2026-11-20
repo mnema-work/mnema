@@ -224,7 +224,8 @@ export function registerBrief(program: Command, wiring: Wiring): Declared {
       const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
       const { runBrief, stacksReaderFor } = await import('../commands/brief.js');
       const { briefDocument, briefWithin } = await import('../presentation/brief.js');
-      const { hookCeilingFor, roomBeside } = await import('../presentation/within-a-hook.js');
+      const { roomBeside } = await import('../presentation/within-a-hook.js');
+      const { hookCeilingFor } = await import('../host-hook.js');
       const ceiling = hookCeilingFor(host);
       const result =
         opts.hook === true

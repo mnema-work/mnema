@@ -75,12 +75,12 @@ import {
 } from '@mnema/core/write';
 import { anchorsBefore, foundingsSince, treesOf } from '../a-new-identity.js';
 import { editRulesToldAcross, readThePush, type ThePush } from '../edit-rules-push.js';
-import { asksAPerson, pathsOfAWrite, replyFor } from '../host-hook.js';
+import { asksAPerson, hookCeilingFor, pathsOfAWrite, replyFor } from '../host-hook.js';
 import { type HookHost, pushesWithTheGate } from '../host-names.js';
 import { withInheritedSource } from '../inherited-record.js';
 import { recordTrees } from '../intelligence-source.js';
 import type { HookSaid } from '../mcp/hook-reply.js';
-import { type HookCeiling, hookCeilingFor } from '../presentation/within-a-hook.js';
+import type { HookCeiling } from '../presentation/within-a-hook.js';
 import {
   ASKS_A_PERSON_CHANNEL,
   EDIT_PUSH_CHANNEL,

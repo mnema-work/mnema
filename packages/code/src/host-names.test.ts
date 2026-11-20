@@ -10,11 +10,8 @@ import {
   hostSessionOf,
   SESSION_VARIABLES,
 } from './host-names.js';
-import {
-  CLAUDE_CODE_CEILING,
-  ceilingInWords,
-  hookCeilingFor,
-} from './presentation/within-a-hook.js';
+import { hookCeilingFor } from './host-hook.js';
+import { CLAUDE_CODE_CEILING, ceilingInWords } from './presentation/within-a-hook.js';
 
 describe('the session an MCP server reads from its environment', () => {
   it('reads Claude Code’s and Copilot CLI’s variable, and says which hosts they are', () => {

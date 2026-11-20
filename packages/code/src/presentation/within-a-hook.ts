@@ -41,8 +41,6 @@
  * generates for it (`--host`), never by guessing.
  */
 
-import { HOSTS, type HostName, hookTextIsAssumed, hookTextOf } from '../host-names.js';
-
 /**
  * The most a hook's text may hold and still arrive as text, in the host's own unit: see
  * this module's header for the measurement.
@@ -137,18 +135,6 @@ export function hookCeilingOf(
     lengthOf: bytesOf,
     said: { count: tokens, bytesPerToken },
   };
-}
-
-/**
- * The ceiling a `--host` run cuts to: the host's own where its row measured one, Claude Code's
- * where the host is not named, and Claude Code's marked as assumed where the row says the host's
- * was never measured.
- */
-export function hookCeilingFor(host: HostName | null): HookCeiling {
-  if (host === null) return CLAUDE_CODE_CEILING;
-  const measured = hookTextOf(host);
-  if (measured !== undefined || !hookTextIsAssumed(host)) return hookCeilingOf(measured);
-  return { ...CLAUDE_CODE_CEILING, assumedFor: HOSTS[host].title };
 }
 
 /**

@@ -23,9 +23,8 @@
  * the second stream, which nothing reads to decide.
  */
 
-import { pathsOfAWrite, replyBeside } from '../host-hook.js';
+import { hookCeilingFor, pathsOfAWrite, replyBeside } from '../host-hook.js';
 import type { BesideHost } from '../host-names.js';
-import { hookCeilingFor } from '../presentation/within-a-hook.js';
 import { sessionIdOf } from '../session-journal.js';
 import {
   type BeforeAWriteContext,
