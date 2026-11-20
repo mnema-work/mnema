@@ -628,8 +628,8 @@ export const NAMES_THAT_NEED_MORE: Readonly<
     why: 'the verb named beside `rules` in the list item on an inherited record; the reference hands it over with a path or a commit',
   },
   'CHANGELOG.md: mnema decision import': {
-    times: 2,
-    why: 'the verb named in the entry that says which files a directory it reads leaves out, and in the entry about the page for teams with ADR files; the package page hands the whole line over',
+    times: 3,
+    why: 'the verb named in the entry that says which files a directory it reads leaves out, in the entry about the page for teams with ADR files, and in the entry about an ADR with no context section or a large field; the package page hands the whole line over',
   },
   'docs/mnema-next-to-a-folder-of-adrs.md: mnema decision import': {
     times: 1,

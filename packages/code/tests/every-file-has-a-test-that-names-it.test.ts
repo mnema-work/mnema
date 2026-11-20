@@ -1631,7 +1631,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/core/src/adr/bridges.test.ts': 6,
   'packages/core/src/adr/published-templates.test.ts': 2,
   'packages/core/src/adr/read.test.ts': 3,
-  'packages/core/src/adr/scan.test.ts': 6,
+  'packages/core/src/adr/scan.test.ts': 7,
   'packages/core/src/boundaries.test.ts': 4,
   'packages/core/src/checks/a-rule-carries-its-check.test.ts': 14,
   'packages/core/src/content/every-door.test.ts': 14,

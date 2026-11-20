@@ -192,9 +192,9 @@ describe('reading a directory of decision documents', () => {
       Math.ceil((FIELD_BYTE_LIMIT * 2) / Buffer.byteLength(character)),
     );
     const cut = cutToFit(whole);
-    expect(Buffer.byteLength(cut.text)).toBeLessThanOrEqual(FIELD_BYTE_LIMIT);
-    expect(cut.text).not.toContain('\uFFFD');
-    const kept = cut.text.replace(NOTE, '');
+    expect(Buffer.byteLength(cut.value)).toBeLessThanOrEqual(FIELD_BYTE_LIMIT);
+    expect(cut.value).not.toContain('\uFFFD');
+    const kept = cut.value.replace(NOTE, '');
     expect([...kept].every((c) => c === character)).toBe(true);
     // Counted in bytes: a count of characters would keep up to twice as much and break the limit.
     expect(Buffer.byteLength(kept)).toBeGreaterThan(FIELD_BYTE_LIMIT - 400);
@@ -203,11 +203,11 @@ describe('reading a directory of decision documents', () => {
   it('falls back to a line break, then to a character, when there is no blank line', () => {
     const lines = Array.from({ length: 4000 }, (_, i) => `line ${i} ${'y'.repeat(20)}`).join('\n');
     const byLine = cutToFit(lines);
-    const keptLines = byLine.text.replace(NOTE, '');
+    const keptLines = byLine.value.replace(NOTE, '');
     expect(lines.slice(keptLines.length, keptLines.length + 1)).toBe('\n');
     const solid = cutToFit('z'.repeat(FIELD_BYTE_LIMIT * 2));
-    expect(Buffer.byteLength(solid.text)).toBeLessThanOrEqual(FIELD_BYTE_LIMIT);
-    expect(NOTE.test(solid.text)).toBe(true);
+    expect(Buffer.byteLength(solid.value)).toBeLessThanOrEqual(FIELD_BYTE_LIMIT);
+    expect(NOTE.test(solid.value)).toBe(true);
   });
 
   it('cuts the turned-down text the same way, beside a why that fits', () => {

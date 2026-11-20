@@ -188,9 +188,9 @@ function noteOf(whole: string): string {
  * sequence (held by `scan.test.ts`, "cuts at a whole character when two and four byte characters
  * cross the limit").
  */
-export function cutToFit(text: string): { readonly text: string; readonly cut?: CutField } {
+export function cutToFit(text: string): { readonly value: string; readonly cut?: CutField } {
   const of = weight(text);
-  if (of <= FIELD_BYTE_LIMIT) return { text };
+  if (of <= FIELD_BYTE_LIMIT) return { value: text };
   const note = noteOf(text);
   const budget = FIELD_BYTE_LIMIT - weight(note) - 2;
   const bytes = Buffer.from(text, 'utf8');
@@ -203,7 +203,7 @@ export function cutToFit(text: string): { readonly text: string; readonly cut?: 
   const lineBreak = fits.lastIndexOf('\n');
   const at = blank > 0 ? blank : lineBreak > 0 ? lineBreak : fits.length;
   const kept = fits.slice(0, at).trimEnd();
-  return { text: `${kept}\n\n${note}`, cut: { kept: weight(kept), of } };
+  return { value: `${kept}\n\n${note}`, cut: { kept: weight(kept), of } };
 }
 
 /**
@@ -237,8 +237,8 @@ export function triage(
   const { considered: _considered, ...fieldsOfDocument } = document;
   return {
     ...fieldsOfDocument,
-    rationale: why.text,
-    ...(turnedDown !== undefined ? { alternatives: turnedDown.text } : {}),
+    rationale: why.value,
+    ...(turnedDown !== undefined ? { alternatives: turnedDown.value } : {}),
     ...(Object.keys(cut).length > 0 ? { cut } : {}),
     path,
     ...at,
