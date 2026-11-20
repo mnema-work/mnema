@@ -78,8 +78,8 @@ describe('mnema rules test', () => {
   it('passes a file every path meets, and exits 0', async () => {
     const done = await mnema('rules', 'test', declare(...ALL_FOUR));
     expect(done.failed).toBe(false);
-    expect(done.out).toContain(`MATCH src/billing/invoice.ts: refuse (${ids['src/billing']})`);
-    expect(done.out).toContain('MATCH README.md: none');
+    expect(done.out).toContain(`MATCH: src/billing/invoice.ts: refuse (${ids['src/billing']})`);
+    expect(done.out).toContain('MATCH: README.md: none');
     expect(done.out).toContain('4 of 4 case(s) met their verdict.');
   });
 
@@ -95,12 +95,12 @@ describe('mnema rules test', () => {
     );
     expect(done.failed).toBe(true);
     expect(done.out).toContain(
-      `MISMATCH src/billing/invoice.ts: expected ask, got refuse (${ids['src/billing']})`,
+      `MISMATCH: src/billing/invoice.ts: expected ask, got refuse (${ids['src/billing']})`,
     );
     expect(done.out).toContain(
-      `MISMATCH src/ledger/entry.ts: expected none, got ask (${ids['src/ledger']})`,
+      `MISMATCH: src/ledger/entry.ts: expected none, got ask (${ids['src/ledger']})`,
     );
-    expect(done.out).toContain('MATCH src/docs/guide.md: governs');
+    expect(done.out).toContain('MATCH: src/docs/guide.md: governs');
     expect(done.out).toContain('1 of 3 case(s) met their verdict.');
   });
 
@@ -110,14 +110,14 @@ describe('mnema rules test', () => {
     await mnema('unlink', ids['src/billing'] as string, 'src/billing', '--rel', 'refuses-a-write');
     const after = await mnema('rules', 'test', file);
     expect(after.failed).toBe(true);
-    expect(after.out).toContain('MISMATCH src/billing/invoice.ts: expected refuse, got none');
+    expect(after.out).toContain('MISMATCH: src/billing/invoice.ts: expected refuse, got none');
   });
 
   it('follows the gate: a refusal switched off is not met', async () => {
     await mnema('switch', 'off', 'edit-refuses-a-write');
     const done = await mnema('rules', 'test', declare(['src/billing/invoice.ts', 'refuse']));
     expect(done.failed).toBe(true);
-    expect(done.out).toContain('MISMATCH src/billing/invoice.ts: expected refuse, got none');
+    expect(done.out).toContain('MISMATCH: src/billing/invoice.ts: expected refuse, got none');
   });
 
   it('refuses a file with no case, an unknown verdict and a file that is not JSON', async () => {
