@@ -46,7 +46,7 @@ import {
   UpcasterRegistry,
   type VersionedEvent,
 } from '@mnema/chain';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ensureSchema, PROJECTION_TABLES } from '../db/schema.js';
 import { IN_MEMORY, openDatabase, type SqliteDatabase } from '../db/sqlite.js';
 import { captureMemory, recordObservation, retractNote } from '../knowledge/operations.js';
@@ -57,6 +57,17 @@ import { endRun, startRun } from '../workflow/session-operations.js';
 import { createSkill } from '../workflow/skill-operations.js';
 import { ProjectionCache } from './cache.js';
 import { keepProductVersion, ownerOfTheFile } from './cache-meta.js';
+
+// Every open goes through the real thing; a case that needs the database to fail AFTER it was opened
+// asks the next open for a wrapper (`failingAfterTheOpen`).
+const theRealOpen = vi.hoisted(() => ({
+  open: undefined as undefined | ((path: string) => unknown),
+}));
+vi.mock('../db/sqlite.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../db/sqlite.js')>();
+  theRealOpen.open = actual.openDatabase;
+  return { ...actual, openDatabase: vi.fn(actual.openDatabase) };
+});
 
 const upcasters = catalogUpcasters();
 
@@ -973,7 +984,7 @@ describe('who takes over a file another build’s code wrote', () => {
     expect(theMetaOfTheFile().version).toBe('4.1.10');
   });
 
-  it('a file that is busy is not a file with no owner: it is left as it is and read in memory', {
+  it('busy never rewrites: a file another process holds is left as it is and read in memory', {
     timeout: 20_000,
   }, () => {
     aFileWrittenBy('the-owner', '4.1.8');
@@ -996,6 +1007,75 @@ describe('who takes over a file another build’s code wrote', () => {
     cache.close();
     expect(theMetaOfTheFile()).toEqual({ stamp: 'the-owner', version: '4.1.8' });
     expect(rowsOf(path).memories?.some((row) => row.includes('a-marker'))).toBe(true);
+  });
+
+  /**
+   * The next open of a database hands back the real one with one statement made to fail with SQLITE_BUSY
+   * AFTER the open (so the failure is the one of the owner question or of the schema step, not of the
+   * pragmas the open itself runs).
+   */
+  function failingAfterTheOpen(which: 'prepare' | 'exec', pattern: RegExp): void {
+    const busy = (): never => {
+      throw Object.assign(new Error('database is locked'), {
+        code: 'ERR_SQLITE_ERROR',
+        errcode: 5,
+      });
+    };
+    vi.mocked(openDatabase).mockImplementationOnce((path: string) => {
+      const db = (theRealOpen.open as (path: string) => SqliteDatabase)(path);
+      return new Proxy(db, {
+        get(target, property) {
+          if (property === which) {
+            return (sql: string, ...rest: unknown[]) => {
+              if (pattern.test(sql)) return busy();
+              return (target[which] as (...args: unknown[]) => unknown).call(target, sql, ...rest);
+            };
+          }
+          const value = Reflect.get(target, property) as unknown;
+          return typeof value === 'function' ? value.bind(target) : value;
+        },
+      });
+    });
+  }
+
+  it('a file that cannot be asked who owns it is left as it is: the owner question fails busy after the open', () => {
+    aFileWrittenBy('the-owner', '4.1.8');
+    keepProductVersion('4.1.9');
+    const before = theFileAsItIs();
+    failingAfterTheOpen('prepare', /key IN/);
+    const cache = persisted();
+    cache.refresh();
+    // Were the failure read as "no owner", this newer version would take the file over.
+    expect(cache.leftTheFileToAnotherBuild).toBe(true);
+    expect(answersOf(cache)).toEqual(answersOf(replayed()));
+    cache.close();
+    expect(theFileAsItIs()).toEqual(before);
+    expect(theMetaOfTheFile()).toEqual({ stamp: 'the-owner', version: '4.1.8' });
+  });
+
+  it('a schema step that fails busy never drops the tables of the file: it is a held file, not one of another shape', () => {
+    const ctx = writing();
+    aRecord(ctx);
+    for (const suffix of ['', '-wal', '-shm']) {
+      rmSync(`${projectionCachePath({ root })}${suffix}`, { force: true });
+    }
+    const other = openDatabase(projectionCachePath({ root }));
+    other.exec('CREATE TABLE tasks (only_column TEXT)');
+    other.exec("INSERT INTO tasks (only_column) VALUES ('kept')");
+    other.close();
+    failingAfterTheOpen('exec', /CREATE TABLE/);
+    const cache = persisted();
+    cache.refresh();
+    expect(answersOf(cache)).toEqual(answersOf(replayed()));
+    cache.close();
+    const file = openDatabase(projectionCachePath({ root }));
+    try {
+      expect(file.prepare('SELECT only_column FROM tasks').all()).toEqual([
+        { only_column: 'kept' },
+      ]);
+    } finally {
+      file.close();
+    }
   });
 
   it('ownerOfTheFile: an error of the database that is not "no table" says unknown, and one that is says none', () => {

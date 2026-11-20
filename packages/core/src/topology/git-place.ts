@@ -40,8 +40,8 @@ export const REFUSE_TREES_OUTSIDE = 'MNEMA_REFUSE_TREES_OUTSIDE';
 export function refuseOutsideTheTestRoot(path: string, what: string): void {
   const named = process.env[REFUSE_TREES_OUTSIDE];
   if (named === undefined || named === '') return;
-  // More than one directory may be named, separated as a PATH is (`path.delimiter`).
-  const root = named;
+  // More than one directory may be named, separated as a PATH is: `;` on Windows, `:` elsewhere
+  // (written out, because the bundle of the site replaces `node:path` with a shim that has no `delimiter`).
   const spelled = [path, realOrUndefined(path)].filter((each) => each !== undefined);
   const roots = named
     .split(process.platform === 'win32' ? ';' : ':')
@@ -50,7 +50,7 @@ export function refuseOutsideTheTestRoot(path: string, what: string): void {
     .filter((each) => each !== undefined);
   if (spelled.some((each) => roots.some((inRoot) => isWithin(each, inRoot)))) return;
   throw new Error(
-    `A test resolved ${what} ${path}, outside the temporary root ${root} (${REFUSE_TREES_OUTSIDE}). ` +
+    `A test resolved ${what} ${path}, outside the temporary root ${named} (${REFUSE_TREES_OUTSIDE}). ` +
       'A test works in a sandbox of its own; reaching the checkout it runs in reads and rebuilds a real record.',
   );
 }

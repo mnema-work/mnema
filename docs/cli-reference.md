@@ -802,7 +802,10 @@ update takes the file over once, and from then on the file is incremental for th
 On the same version (two checkouts under development) or an older one (a build left installed
 beside a newer one), and on a file that is busy or locked, the process builds its answers in
 memory and leaves the file as it is. A file written before the version was stored counts as
-the oldest, and the first newer build takes it. The process that does not take the file pays a
+the oldest, and the first newer build takes it. Versions are ordered by their three numbers only: a suffix
+such as `-beta` does not order, so `0.2.0` does not take over the file of `0.2.0-beta` (deleting
+`locks/projection.db` settles it). The SDK called with an explicit `env` declares no version, and so
+never takes over the file of another build. The process that does not take the file pays a
 replay each time it starts: on every command and every hook of the command line, and once per
 MCP server, which then keeps what it built. On a large record that is the time of a build
 instead of a read of the file (about a second on a 13 MB private tree, with a few hundred
