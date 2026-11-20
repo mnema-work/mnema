@@ -21,8 +21,8 @@ import type { runDecisionTransition } from '../commands/decision-transition.js';
 import { fact } from '../presentation/detail.js';
 import {
   alreadyRecordedLine,
-  reachNotices,
   RECORD_CONTRACT_HELP,
+  reachNotices,
   replacementNotice,
 } from '../recorded-content.js';
 import { addBodySourceOptions } from './body-source.js';

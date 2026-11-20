@@ -101,7 +101,10 @@ export function reachNotices(reaches: readonly AddressReach[]): string[] {
   );
   return lines.length === 0
     ? []
-    : [...lines, '  Files on disk, not edits: a directory nobody touches counts the same as a busy one.'];
+    : [
+        ...lines,
+        '  Files on disk, not edits: a directory nobody touches counts the same as a busy one.',
+      ];
 }
 
 /**
