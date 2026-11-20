@@ -1062,6 +1062,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-client-that-never-initializes.test.ts': 9,
   'packages/code/tests/a-commit-hook-only-suggests.test.ts': 10,
   'packages/code/tests/a-correction-becomes-a-proposal.test.ts': 15,
+  'packages/code/tests/a-decision-is-recorded-with-the-paths-it-governs.test.ts': 12,
   'packages/code/tests/a-decision-recorded-twice-is-the-one-on-the-record.test.ts': 12,
   'packages/code/tests/a-directory-of-two-records-governs-nothing.test.ts': 15,
   'packages/code/tests/a-first-run-tour.test.ts': 20,

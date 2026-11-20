@@ -278,6 +278,10 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'collapsed',
     why: 'the agent name of facts in a run marked run.unannounced, read back out of the record',
   },
+  'decision.ts «Governs: {}» #1': {
+    verdict: 'collapsed',
+    why: 'the paths a person typed after --governs, read back out of the record',
+  },
   'decision.ts «Moved {} of {}; the rest were refused above and nothing was written for them.» #1':
     {
       verdict: 'minted',
@@ -1237,7 +1241,7 @@ describe('every line this wiring words is classified', () => {
     // 203 with the lines `backup restore` and `backup status` print of the folders kept aside, and none of a deletion.
     // 204 with the line `backup hook` prints of where it put the hook and where it took it from.
     // 207 with the three lines `backup restore --global` prints, the two folder counts and the heading.
-    expect(FOUND.sites.length).toBe(207);
+    expect(FOUND.sites.length).toBe(208);
   });
 
   it('reads the verdict off the source rather than believing the table', () => {
@@ -1257,9 +1261,9 @@ describe('every line this wiring words is classified', () => {
   it('found sites of both kinds, and the scanner sees a tag when there is one', () => {
     // Neither arm of the case above may be empty, or half of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
-    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(117);
+    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(118);
     expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(90);
-    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(117);
+    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(118);
   });
 
   it('every reason says where the value comes from', () => {
@@ -1329,6 +1333,13 @@ const PROBES: readonly Probe[] = [
     argv: ['link', VALUE, 'a-target', '--rel', 'relates-to'],
     says: `Linked ${VALUE} -relates-to→ a-target`,
     // The notice that no tree holds the subject names it again, on its own line.
+    lines: 2,
+  },
+  {
+    keys: ['decision.ts «Governs: {}» #1'],
+    argv: ['decision', 'record', 'a title', 'a rationale', '--governs', VALUE],
+    says: `Governs: ${VALUE}`,
+    // The line of what the path covers names it again, on its own line.
     lines: 2,
   },
   {
