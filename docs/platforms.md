@@ -19,7 +19,7 @@ drives the installed binary:
 - every command line of the plugin's hook files, for every host (`hooks.json` for Claude Code, VS Code, Cursor and
   Qwen Code, `codex.json`, `copilot.json` and Gemini's `hooks/hooks.json`), read from the files themselves, so a hook added
   later is run later, and started as Node starts them: the handler with the arguments the file gives it, a payload in the
-  shape that host was measured to write, and the paths written the way the system writes them. Each must start, exit 0, and
+  shape measured where `docs/evidence.md` measures it and, for the rest, the common fields, and the paths written the way the system writes them. Each must start, exit 0, and
   say nothing that means it could not run. Where the project fixes the answer, it is checked: every opening
   (`session-start.mjs` for each file, with Codex's and Copilot's arguments, Gemini's `open`, and the subagent's) must hand
   over a decision in force, and every gate (VS Code, Codex, Copilot, Qwen Code, Cursor, Gemini's `gate`) must refuse a

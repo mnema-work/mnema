@@ -44,6 +44,9 @@ const FILES = [
   },
 ];
 
+/** The hook files this reads, by path from the root of the repository. */
+export const HOOK_FILES = FILES.map((one) => one.file);
+
 /**
  * `node "${<variable>}/<script>" <words>` and, for Copilot, the `; exit 0` that ends the line. A word is
  * plain: no quote, no `$`, no shell operator, so the arguments are the words split on a space.
@@ -134,7 +137,7 @@ export function theEnvironmentAsked(command) {
 }
 
 /**
- * The stdin of the line, in the shape the host was measured to write (`docs/evidence.md`, the lines
+ * The stdin of the line, in the shape measured where `docs/evidence.md` measures it (the lines
  * "What <host> writes on the stdin of the hook", and `packages/code/tests/host-contract/`). Where the
  * handler reads no field of it, or the host's payload for that event was not measured, a payload of
  * the common fields stands in and the comment says which. `file` is the path of a write, spelled the

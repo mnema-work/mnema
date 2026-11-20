@@ -530,7 +530,7 @@ try {
   }
 
   // Every command line of the four hook files, for every host, run by `node` with the arguments the
-  // file gives it and a payload in the shape the host was measured to write. The list is read from
+  // file gives it and a payload measured where docs/evidence.md measures it, the common fields for the rest. The list is read from
   // the files (`the-hook-commands.mjs`), so a hook added tomorrow is run tomorrow, and a line this
   // cannot read stops the smoke. A line whose answer the project fixes is checked for it; any other
   // is checked to start and exit 0 with no sign that it could not, and says so.
