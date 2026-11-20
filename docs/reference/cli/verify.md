@@ -31,6 +31,11 @@ checks and does not read, also has `newerMnema`: the sentence every surface says
 surface with room for one line per tree (the VS Code status bar tooltip shows `short`) shows these and words nothing itself. They are added beside
 the reading: the prose, `record`, `requirementMet` and the exit code are the ones they were. In a `--workspace` reading the fields
 are on the trees of each project.
+**A symbolic link in the record is refused, and nothing behind it is read.** `verify` lists every link at the places it reads
+before it reads anything: `LINKED TAIL: tails/<name>` for a tail that is a link, `LINKED ENTRY: <path>` for any other place (a
+segment, `checkpoints.jsonl`, `tailproof.json`, a key file, a witness file), whatever the link points at, and the second reader
+says the same words. The reads under `status`, `brief`, the hooks and the edit gate name the link and serve the rest; a write
+is refused with `RECORD_LINKED` and writes nothing through it. Replace the link with the folder or file it points to.
 <!-- End of the part written by hand. -->
 
 ## The whole help

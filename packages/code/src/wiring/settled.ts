@@ -39,6 +39,8 @@ export function registerSettled(program: Command, wiring: Wiring): Declared {
         '  outside a project, or with the channel off, it prints {}.',
         '  It reads which tool ran and never the answer, and writes nothing. It can be switched off',
         '  with `mnema switch off choice-settled`.',
+        '  With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its',
+        '  code alone on the first line of the error stream; typed by a person, nothing changes.',
       ].join('\n'),
     )
     .action(async (options: { readonly reply?: string }) => {
