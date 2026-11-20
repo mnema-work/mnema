@@ -185,10 +185,7 @@ export function plan(root, version, date) {
   if ([...install.matchAll(NPX_PINNED)].length !== 5) {
     throw new Error(`${INSTALL_PAGE}: expected five pinned npx lines`);
   }
-  put(
-    INSTALL_PAGE,
-    install.replace(PINNED, `$1${version}$2`).replace(NPX_PINNED, `$1${version}`),
-  );
+  put(INSTALL_PAGE, install.replace(PINNED, `$1${version}$2`).replace(NPX_PINNED, `$1${version}`));
   // The hosts that read a file or a folder of this repository, not a marketplace, are told the tag.
   const hosts = read(HOSTS_PAGE);
   if (
