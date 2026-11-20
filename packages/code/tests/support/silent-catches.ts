@@ -50,7 +50,9 @@ export function silentCatches(source: string): SilentCatch[] {
     const rethrows = /\bthrow\b/.test(body);
     const usesTheError =
       binding !== undefined &&
-      new RegExp(`(?<![\\w$.])${binding.replace(/\$/g, '\\$')}(?![\\w$])`).test(body);
+      new RegExp(`(?<![\\w$.])${binding.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&')}(?![\\w$])`).test(
+        body,
+      );
     if (rethrows || usesTheError) continue;
     found.push({
       line: code.slice(0, match.index ?? 0).split('\n').length,
