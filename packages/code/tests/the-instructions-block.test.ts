@@ -209,7 +209,9 @@ describe('mnema instructions in a file of the person’s', () => {
     const v4line = (KNOWN_BODIES['v4'] as string)
       .split('\n')
       .find((one) => one.includes('born `proposed`'));
-    expect(v3.replace(oldLine, '')).toBe((KNOWN_BODIES['v4'] as string).replace(v4line as string, ''));
+    expect(v3.replace(oldLine, '')).toBe(
+      (KNOWN_BODIES['v4'] as string).replace(v4line as string, ''),
+    );
   });
 
   it('replaces a v3 block with the current one in every file the product wrote, and touches nothing outside the markers', () => {
@@ -267,7 +269,7 @@ describe('mnema instructions in a file of the person’s', () => {
       state: 'outdated',
     });
     expect(did(writeInstructions(project))['AGENTS.md']).toBe('replaced');
-    expect(text('AGENTS.md')).toBe(`${THEIRS}\n${INSTRUCTIONS_BLOCK}\n\n## After\n`);
+    expect(text('AGENTS.md')).toBe(`${THEIRS}\n${INSTRUCTIONS_BLOCK}\n## After\n`);
     expect(text('AGENTS.md')).toContain(beginMarker('v6'));
     expect(text('AGENTS.md')).toContain('their exact words between double quotes');
   });

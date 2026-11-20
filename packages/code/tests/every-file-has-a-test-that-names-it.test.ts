@@ -1455,7 +1455,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-install-line-of-a-host-is-what-its-section-says.test.ts': 4,
   'packages/code/tests/the-instructions-block-is-formatted-and-its-example-runs.test.ts': 9,
   'packages/code/tests/the-instructions-block-survives-a-formatter.test.ts': 6,
-  'packages/code/tests/the-instructions-block.test.ts': 8,
+  'packages/code/tests/the-instructions-block.test.ts': 9,
   'packages/code/tests/the-instructions-left-out-are-said.test.ts': 7,
   'packages/code/tests/the-instructions-verb-says-each-file.test.ts': 7,
   'packages/code/tests/the-issues-a-workflow-opens-carry-labels.test.ts': 4,
