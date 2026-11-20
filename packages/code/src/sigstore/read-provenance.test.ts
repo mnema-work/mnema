@@ -71,7 +71,10 @@ describe('the four comparisons, each alone', () => {
 
   it('refuses a certificate another OIDC issuer vouched for, whatever workflow it names', () => {
     expect(
-      compareClaims({ ...claims('newer'), issuer: 'https://accounts.google.com' }, expected('newer')),
+      compareClaims(
+        { ...claims('newer'), issuer: 'https://accounts.google.com' },
+        expected('newer'),
+      ),
     ).toBe('identity');
     expect(compareClaims({ ...claims('newer'), issuer: '' }, expected('newer'))).toBe('identity');
   });
