@@ -29,7 +29,7 @@ so if two clones ever disagreed about it, the chain is the one that decides.
 
 - **`bootstrap`**: the opening context for a session, focused on one actor:
   where they left off (their latest run and open focus), the LIVE work by
-  NAME (id, title, state; freshest first, cut to a limit, with `workTotal` saying
+  NAME (id, title, state; a task IN_PROGRESS first, then the freshest, cut to a limit, with `workTotal` saying
   how many there were), the names of the adopted patterns to work by, the
   decisions IN FORCE by name (title, the citable `ADR-<n>` label, id; freshest
   first, cut to the same limit, with `decisionsTotal` saying how many there were),
@@ -205,7 +205,7 @@ const lastGoal = opening.resume.lastRun?.goal; // "ship the parser"
 const openFor = opening.resume.lastRun?.ageSeconds; // how long it has been open
 const didWrite = opening.resume.lastRun?.wrote; // WHAT went in: [{ kind, count }, …]
 // A run does not repeat the actor: `opening.resume.actor` says it once for all of them.
-const firstJob = opening.work[0]; // the freshest live task: a NAME
+const firstJob = opening.work[0]; // a live task, the one in progress first: a NAME
 const more = opening.workTotal > opening.work.length; // was the list cut?
 const patterns = opening.skills.map((s) => s.name); // names only, one line each
 const governing = opening.decisions.map((d) => `${d.adr} ${d.title}`); // names only

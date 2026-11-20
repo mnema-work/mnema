@@ -299,7 +299,7 @@ function sessionLines(
 }
 
 /**
- * The live work: what a reader still has something to do about, freshest first.
+ * The live work: what a reader still has something to do about, a task IN_PROGRESS first, then the freshest.
  *
  * IT SAID `actionable` UNTIL THE WORD BECAME FALSE, and the rename is the point of
  * this paragraph rather than a tidy-up. The list used to mean "has a legal move", and

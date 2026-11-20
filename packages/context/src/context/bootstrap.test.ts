@@ -312,6 +312,30 @@ describe('bootstrap: the opening context, focused on the actor', () => {
     }
   });
 
+  it('serves the task IN_PROGRESS first, and keeps it through the cut, whatever is newer', () => {
+    bench = makeBench();
+    // The one being worked on is the OLDEST write; the debts are all newer drafts.
+    const inFlight = birthTask(bench, 'task-0-in-flight', 'The work in flight');
+    moveTask(bench, inFlight, 'DRAFT', 'READY', 'submit');
+    moveTask(bench, inFlight, 'READY', 'IN_PROGRESS', 'start');
+    const drafts = SEARCH_DEFAULT_LIMIT + 5;
+    for (let i = 0; i < drafts; i += 1) {
+      birthTask(bench, `task-draft-${String(i).padStart(3, '0')}`, `Draft ${i}`);
+    }
+    const cache = bench.cache();
+    try {
+      const b = bootstrap([cache], asking(bench.who));
+      // Newest-first alone cuts it: twenty-five newer drafts push it past the limit.
+      expect(b.work.map((w) => w.id)[0]).toBe('task-0-in-flight');
+      expect(b.work).toHaveLength(SEARCH_DEFAULT_LIMIT);
+      expect(b.workTotal).toBe(drafts + 1);
+      // Behind it, the rest keep the old rule: the freshest first.
+      expect(b.work[1]?.id).toBe(`task-draft-${String(drafts - 1).padStart(3, '0')}`);
+    } finally {
+      cache.close();
+    }
+  });
+
   it('stays lean on the actor’s side: another actor’s run never enters the resume', () => {
     bench = makeBench();
     startRun(bench, 'run-mine', { agent: 'claude', who: 'alice' });
