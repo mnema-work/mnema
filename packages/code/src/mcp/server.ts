@@ -128,6 +128,7 @@ import {
 } from '../recorded-content.js';
 import { REFERENCE_DIRECTIONS } from '../reference-directions.js';
 import { patternsFraming, SERVED_PATTERN_CONTRACT } from '../served-patterns.js';
+import { noteSwallowed } from '../swallowed-ledger.js';
 import {
   countToolCall,
   flushToolCalls,
@@ -135,7 +136,6 @@ import {
   toolCallsFile,
   UNCODED_FAILURE,
 } from '../tool-calls.js';
-import { noteSwallowed } from '../swallowed-ledger.js';
 import { VERSION } from '../version.js';
 import {
   actionsRequiring,

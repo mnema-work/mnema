@@ -35,14 +35,7 @@
  * no line behind it.
  */
 
-import {
-  appendFileSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  renameSync,
-  statSync,
-} from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
 import { VERSION } from './version.js';
 
@@ -85,7 +78,10 @@ export function dataDirOf(processEnv: NodeJS.ProcessEnv = process.env): string |
 }
 
 /** The two files of the ledger under `dataDir`. */
-export function swallowedFiles(dataDir: string): { readonly file: string; readonly rotated: string } {
+export function swallowedFiles(dataDir: string): {
+  readonly file: string;
+  readonly rotated: string;
+} {
   const dir = join(dataDir, SWALLOWED_DIR);
   return { file: join(dir, SWALLOWED_FILE), rotated: join(dir, SWALLOWED_ROTATED) };
 }
@@ -106,18 +102,24 @@ function withoutPaths(text: string, dataDir: string): string {
     .replace(/(['"`])((?:[A-Za-z]:\\|\/)[^'"`]*)\1/g, (all, quote: string, found: string) =>
       mine(found) ? all : `${quote}<path>${quote}`,
     )
-    .replace(/(?<![A-Za-z0-9])(?:[A-Za-z]:\\|\/)[^\s'"`,;)]*/g, (found) => (mine(found) ? found : '<path>'));
+    .replace(/(?<![A-Za-z0-9])(?:[A-Za-z]:\\|\/)[^\s'"`,;)]*/g, (found) =>
+      mine(found) ? found : '<path>',
+    );
 }
 
 /** What the ledger keeps of an error: see the head of this file. */
 function whatIsKept(error: unknown, dataDir: string): Pick<Swallowed, 'name' | 'code' | 'message'> {
-  const held = typeof error === 'object' && error !== null ? (error as Record<string, unknown>) : {};
-  const name = (error instanceof Error ? error.name : typeof held.name === 'string' ? held.name : '')
+  const held =
+    typeof error === 'object' && error !== null ? (error as Record<string, unknown>) : {};
+  const name = (
+    error instanceof Error ? error.name : typeof held.name === 'string' ? held.name : ''
+  )
     .replace(/[^A-Za-z0-9_.$-]/g, '')
     .slice(0, NAME_LIMIT);
   const coded = typeof held.code === 'string' && /^[A-Z][A-Z0-9_]{1,63}$/.test(held.code);
   const first = coded && typeof held.message === 'string' ? held.message.split(/\r?\n/, 1)[0] : '';
-  const message = first === undefined || first === '' ? '' : withoutPaths(first, dataDir).slice(0, MESSAGE_LIMIT);
+  const message =
+    first === undefined || first === '' ? '' : withoutPaths(first, dataDir).slice(0, MESSAGE_LIMIT);
   return {
     name: name === '' ? 'unknown' : name,
     ...(coded ? { code: held.code as string } : {}),
@@ -164,7 +166,10 @@ export function noteSwallowed(
     const line = `${JSON.stringify({ at, where: site, ...kept, version: VERSION })}\n`;
     const { file, rotated } = swallowedFiles(dataDir);
     mkdirSync(join(dataDir, SWALLOWED_DIR), { recursive: true, mode: 0o700 });
-    if (existsSync(file) && statSync(file).size + Buffer.byteLength(line) > SWALLOWED_CEILING_BYTES) {
+    if (
+      existsSync(file) &&
+      statSync(file).size + Buffer.byteLength(line) > SWALLOWED_CEILING_BYTES
+    ) {
       renameSync(file, rotated);
     }
     appendFileSync(file, line, { mode: 0o600 });

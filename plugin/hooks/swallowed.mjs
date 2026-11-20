@@ -54,7 +54,9 @@ const withoutPaths = (text, dataDir) => {
 /** @param {unknown} error @param {string} dataDir */
 const whatIsKept = (error, dataDir) => {
   const held = typeof error === 'object' && error !== null ? /** @type {any} */ (error) : {};
-  const name = String(error instanceof Error ? error.name : typeof held.name === 'string' ? held.name : '')
+  const name = String(
+    error instanceof Error ? error.name : typeof held.name === 'string' ? held.name : '',
+  )
     .replace(/[^A-Za-z0-9_.$-]/g, '')
     .slice(0, NAME_LIMIT);
   const coded = typeof held.code === 'string' && /^[A-Z][A-Z0-9_]{1,63}$/.test(held.code);
@@ -98,7 +100,10 @@ export function noteSwallowed(where, error, options = {}) {
     const dir = join(dataDir, SWALLOWED_DIR);
     const file = join(dir, SWALLOWED_FILE);
     mkdirSync(dir, { recursive: true, mode: 0o700 });
-    if (existsSync(file) && statSync(file).size + Buffer.byteLength(line) > SWALLOWED_CEILING_BYTES) {
+    if (
+      existsSync(file) &&
+      statSync(file).size + Buffer.byteLength(line) > SWALLOWED_CEILING_BYTES
+    ) {
       renameSync(file, join(dir, SWALLOWED_ROTATED));
     }
     appendFileSync(file, line, { mode: 0o600 });

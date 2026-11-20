@@ -66,7 +66,10 @@ function pluginWithoutItsSharedModule(): string {
   return copy;
 }
 
-function runHook(copy: string, file: string): { status: number | null; stdout: string; stderr: string } {
+function runHook(
+  copy: string,
+  file: string,
+): { status: number | null; stdout: string; stderr: string } {
   const ran = spawnSync(process.execPath, [join(copy, 'hooks', file)], {
     cwd: sandbox,
     encoding: 'utf-8',
@@ -134,11 +137,34 @@ function throughTheHookCopy(env: Record<string, string>, failures: readonly obje
 
 describe('the copy a hook carries', () => {
   const failures = [
-    { where: 'a.site', at: '2026-11-20T12:00:00.5Z', name: 'Error', code: 'EACCES', message: "denied, open '/home/x/y z/a.md' now\nsecond" },
-    { where: 'b.site', at: '2026-11-20T12:00:01Z', name: 'SyntaxError', message: 'Unexpected token "secret words"' },
-    { where: 'c.site', at: '2026-11-21T12:00:01Z', name: 'Error', code: 'EIO', message: 'i/o error at /tmp/q' },
+    {
+      where: 'a.site',
+      at: '2026-11-20T12:00:00.5Z',
+      name: 'Error',
+      code: 'EACCES',
+      message: "denied, open '/home/x/y z/a.md' now\nsecond",
+    },
+    {
+      where: 'b.site',
+      at: '2026-11-20T12:00:01Z',
+      name: 'SyntaxError',
+      message: 'Unexpected token "secret words"',
+    },
+    {
+      where: 'c.site',
+      at: '2026-11-21T12:00:01Z',
+      name: 'Error',
+      code: 'EIO',
+      message: 'i/o error at /tmp/q',
+    },
     { where: 'Not A Name!', at: '2026-11-21T12:00:02Z', name: 'Error', message: 'plain' },
-    { where: 'a.site', at: '2026-11-20T12:00:09Z', name: 'Error', code: 'EACCES', message: 'again' },
+    {
+      where: 'a.site',
+      at: '2026-11-20T12:00:09Z',
+      name: 'Error',
+      code: 'EACCES',
+      message: 'again',
+    },
   ];
 
   it('writes the same lines the product writes, for the same failures', () => {

@@ -99,16 +99,16 @@ import { oneLine } from '../one-line.js';
 import { pluginTreeHash } from '../plugin-tree-hash.js';
 import { newerLinesSentence } from '../record-integrity.js';
 import {
-  personsKeyInTheClear,
-  THE_AGENT_KEY_SEPARATES_NOTHING,
-} from '../the-persons-key-in-the-clear.js';
-import {
   DAYS_READ,
   dataDirOf,
   readSwallowed,
   sitesByCount,
   swallowedFiles,
 } from '../swallowed-ledger.js';
+import {
+  personsKeyInTheClear,
+  THE_AGENT_KEY_SEPARATES_NOTHING,
+} from '../the-persons-key-in-the-clear.js';
 import { isOlderThan } from '../version.js';
 import { mergeDriverLines } from './doctor-merge-driver.js';
 import { type Plan, planFix, readLocations, SETTING, settingsCandidates } from './doctor-vscode.js';
@@ -1672,7 +1672,10 @@ function swallowedFindings(ctx: DoctorContext): Finding[] {
     .slice(0, 3)
     .map(({ where, count }) => `${where} (${count})`)
     .join(', ');
-  const newest = read.entries.reduce((latest, entry) => (entry.at > latest ? entry.at : latest), '');
+  const newest = read.entries
+    .map((entry) => entry.at)
+    .sort()
+    .at(-1);
   return [
     {
       topic: 'swallowed',

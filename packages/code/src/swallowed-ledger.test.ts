@@ -39,8 +39,7 @@ afterEach(() => {
   rmSync(home, { recursive: true, force: true });
 });
 
-const coded = (code: string, message: string): Error =>
-  Object.assign(new Error(message), { code });
+const coded = (code: string, message: string): Error => Object.assign(new Error(message), { code });
 const lines = (): Record<string, unknown>[] =>
   readFileSync(swallowedFiles(home).file, 'utf-8')
     .split('\n')
@@ -72,18 +71,26 @@ describe('the ledger of what was swallowed', () => {
       coded('ENOENT', `no such file or directory, open '/home/someone/${secret}/notes.md'`),
       { processEnv: env, now: NOW },
     );
-    noteSwallowed('b.site', new SyntaxError(`Unexpected token 'h', "${secret}" is not valid JSON`), {
-      processEnv: env,
-      now: NOW,
-    });
+    noteSwallowed(
+      'b.site',
+      new SyntaxError(`Unexpected token 'h', "${secret}" is not valid JSON`),
+      {
+        processEnv: env,
+        now: NOW,
+      },
+    );
     noteSwallowed('c.site', coded('EEXIST', `file exists, mkdir '${home}/log'`), {
       processEnv: env,
       now: NOW,
     });
-    noteSwallowed('d.site', coded('EACCES', "permission denied, open '/home/some one/private folder/x.md'"), {
-      processEnv: env,
-      now: NOW,
-    });
+    noteSwallowed(
+      'd.site',
+      coded('EACCES', "permission denied, open '/home/some one/private folder/x.md'"),
+      {
+        processEnv: env,
+        now: NOW,
+      },
+    );
     const text = readFileSync(swallowedFiles(home).file, 'utf-8');
     expect(text).not.toContain('private folder');
     expect(text).not.toContain(secret);
@@ -97,7 +104,8 @@ describe('the ledger of what was swallowed', () => {
   });
 
   it('writes one line for a site, an error and a day in one process, and no more than a handful in all', () => {
-    for (let at = 0; at < 5; at += 1) noteSwallowed('a.site', coded('EIO', 'x'), { processEnv: env, now: NOW });
+    for (let at = 0; at < 5; at += 1)
+      noteSwallowed('a.site', coded('EIO', 'x'), { processEnv: env, now: NOW });
     expect(lines()).toHaveLength(1);
     for (let at = 0; at < LINES_PER_PROCESS * 2; at += 1) {
       noteSwallowed(`site.n${at}`, coded('EIO', 'x'), { processEnv: env, now: NOW });
@@ -113,26 +121,42 @@ describe('the ledger of what was swallowed', () => {
     expect(statSync(rotated).size).toBe(SWALLOWED_CEILING_BYTES - 9);
     expect(lines()).toHaveLength(1);
     expect(statSync(file).size).toBeLessThan(SWALLOWED_CEILING_BYTES);
-    expect(readdirSync(join(home, 'log')).sort()).toEqual([SWALLOWED_ROTATED, SWALLOWED_FILE].sort());
+    expect(readdirSync(join(home, 'log')).sort()).toEqual(
+      [SWALLOWED_ROTATED, SWALLOWED_FILE].sort(),
+    );
   });
 
   it('never throws, whatever it is handed or wherever it cannot write', () => {
     mkdirSync(join(home, 'log'));
     // A file where the directory should be, a read-only directory, an error that is not an Error.
     chmodSync(join(home, 'log'), 0o500);
-    expect(() => noteSwallowed('a.site', coded('EIO', 'x'), { processEnv: env, now: NOW })).not.toThrow();
+    expect(() =>
+      noteSwallowed('a.site', coded('EIO', 'x'), { processEnv: env, now: NOW }),
+    ).not.toThrow();
     chmodSync(join(home, 'log'), 0o700);
-    for (const odd of [undefined, null, 7, 'text', { code: 5, message: 6, name: {} }, Object.create(null)]) {
+    for (const odd of [
+      undefined,
+      null,
+      7,
+      'text',
+      { code: 5, message: 6, name: {} },
+      Object.create(null),
+    ]) {
       expect(() => noteSwallowed('b.site', odd, { processEnv: env, now: NOW })).not.toThrow();
     }
-    expect(() => noteSwallowed('c.site', new Error('x'), { processEnv: {}, now: NOW })).not.toThrow();
+    expect(() =>
+      noteSwallowed('c.site', new Error('x'), { processEnv: {}, now: NOW }),
+    ).not.toThrow();
   });
 
   it('makes nothing where the machine has no key of its own, and none where the home is not an absolute path', () => {
     const bare = mkdtempSync(join(tmpdir(), 'mnema-swallowed-bare-'));
     try {
       noteSwallowed('a.site', coded('EIO', 'x'), { processEnv: { MNEMA_HOME: bare }, now: NOW });
-      noteSwallowed('a.site', coded('EIO', 'x'), { processEnv: { MNEMA_HOME: 'relative/dir' }, now: NOW });
+      noteSwallowed('a.site', coded('EIO', 'x'), {
+        processEnv: { MNEMA_HOME: 'relative/dir' },
+        now: NOW,
+      });
       expect(readdirSync(bare)).toEqual([]);
     } finally {
       rmSync(bare, { recursive: true, force: true });
@@ -150,13 +174,21 @@ describe('the ledger of what was swallowed', () => {
     mkdirSync(join(home, 'log'));
     const line = (at: string, where: string) =>
       `${JSON.stringify({ at, where, name: 'Error', version: '0.0.0' })}\n`;
-    writeFileSync(rotated, line('2026-11-19T00:00:00Z', 'b.site') + line('2026-11-01T00:00:00Z', 'old.site'));
+    writeFileSync(
+      rotated,
+      line('2026-11-19T00:00:00Z', 'b.site') + line('2026-11-01T00:00:00Z', 'old.site'),
+    );
     writeFileSync(
       file,
       `${line('2026-11-20T01:00:00Z', 'a.site')}${line('2026-11-20T02:00:00Z', 'b.site')}{torn\n${line('2026-11-20T03:00:00Z', 'b.site')}`,
     );
     const read = readSwallowed(home, { now: NOW, days: 7 });
-    expect(read.entries.map((entry) => entry.where)).toEqual(['b.site', 'a.site', 'b.site', 'b.site']);
+    expect(read.entries.map((entry) => entry.where)).toEqual([
+      'b.site',
+      'a.site',
+      'b.site',
+      'b.site',
+    ]);
     expect(read.passedOver).toBe(1);
     expect(sitesByCount(read.entries)).toEqual([
       { where: 'b.site', count: 3 },

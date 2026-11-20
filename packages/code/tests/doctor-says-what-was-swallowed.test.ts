@@ -94,7 +94,7 @@ describe('mnema doctor reads the ledger of caught failures', () => {
       env: { HOME: home, PATH: join(sandbox, 'empty') },
     });
     expect(ran.status).toBe(0);
-    const ours = ran.stdout.split('\n').filter((line) => line.includes('swallowed'));
+    const ours = ran.stdout.split('\n').filter((line) => line.includes('· swallowed:'));
     expect(ours).toHaveLength(1);
     expect(ours[0]).toContain('to do · swallowed: 1 failure(s) were caught');
     expect(readFileSync(swallowedFiles(mnemaHome()).file, 'utf-8')).toBe(before);
