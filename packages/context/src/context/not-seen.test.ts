@@ -1,3 +1,5 @@
+import { cpSync, existsSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { decisionSeen, decisionTransitioned } from '@mnema/chain';
 import { describe, expect, it } from 'vitest';
 import {
@@ -5,7 +7,6 @@ import {
   birthDecision,
   cloneOf,
   makeBench,
-  mergeTailInto,
   supersedeDecision,
 } from '../../tests/support/chain.js';
 import { rulesNotSeenBy } from './not-seen.js';
@@ -50,6 +51,20 @@ function show(
       { moves },
     ),
   );
+}
+
+/**
+ * Lands the clone's tails in `into`'s tree, as two clones of a repository meet: the tails it does
+ * not hold, and the keys. Signed first, as the product signs every act. It writes the tails of a
+ * sandbox and plants no damage.
+ */
+function mergeTails(into: Bench, from: Bench): void {
+  from.writer.checkpoint();
+  for (const tail of readdirSync(join(from.root, 'tails'))) {
+    if (existsSync(join(into.root, 'tails', tail))) continue;
+    cpSync(join(from.root, 'tails', tail), join(into.root, 'tails', tail), { recursive: true });
+  }
+  cpSync(join(from.root, 'keys'), join(into.root, 'keys'), { recursive: true });
 }
 
 function listed(b: Bench, identity = b.who): string[] {
@@ -109,7 +124,7 @@ describe('the rules in force a person did not accept themselves', () => {
     show(a, 'shared', [here]);
     expect(listed(a)).toEqual([]);
     accept(clone, 'shared', { which: 'codex' });
-    mergeTailInto(a, clone);
+    mergeTails(a, clone);
     expect(listed(a)).toEqual(['shared']);
   });
 
@@ -121,7 +136,7 @@ describe('the rules in force a person did not accept themselves', () => {
     const clone = cloneOf(a);
     accept(a, 'shared');
     const there = accept(clone, 'shared', { which: 'codex' });
-    mergeTailInto(a, clone);
+    mergeTails(a, clone);
     show(a, 'shared', [there]);
     expect(listed(a)).toEqual(['shared']);
   });
@@ -132,7 +147,7 @@ describe('the rules in force a person did not accept themselves', () => {
     const clone = cloneOf(a);
     const here = accept(a, 'shared');
     const there = accept(clone, 'shared', { which: 'codex' });
-    mergeTailInto(a, clone);
+    mergeTails(a, clone);
     show(a, 'shared', [here, there]);
     expect(listed(a)).toEqual([]);
   });

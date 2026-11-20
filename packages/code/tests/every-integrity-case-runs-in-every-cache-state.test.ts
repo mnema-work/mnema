@@ -221,6 +221,8 @@ export const EXEMPT: Readonly<Record<string, string>> = {
  * checkpoint by hand plants damage, wears the mark and belongs to EXEMPT, not here.
  */
 export const WRITES_BUT_PLANTS_NOTHING: Readonly<Record<string, string>> = {
+  'packages/context/src/context/not-seen.test.ts':
+    'copies a clone’s tails into the bench’s tree, as two clones meet, to hold which rules the list of what a person did not accept keeps when two machines accepted one decision; nothing is damaged, and every read is of a cache the bench rebuilds whole',
   'packages/code/tests/the-audit-verbs-fold-the-record-once.test.ts':
     'appends one line of a kind no version declares, signed by a checkpoint as a newer mnema writes it, and damages nothing: it holds that four verbs which open no cache fold the tails once and carry the same field, so no cache state changes what it reads',
   'packages/chain/src/chain/a-tail-is-signed-as-soon-as-it-is-founded.test.ts':

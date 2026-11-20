@@ -1605,7 +1605,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/context/src/context/focus.test.ts': 5,
   'packages/context/src/context/newer-lines.test.ts': 3,
   'packages/context/src/context/next-action.test.ts': 4,
-  'packages/context/src/context/not-seen.test.ts': 4,
+  'packages/context/src/context/not-seen.test.ts': 6,
   'packages/context/src/context/presence.test.ts': 5,
   'packages/context/src/context/search.test.ts': 6,
   'packages/context/src/context/skills.test.ts': 6,
