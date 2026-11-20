@@ -322,6 +322,8 @@ const LED_NOWHERE: Readonly<Record<string, string>> = {
     "The context package's barrel. This one DOES exist under packages/, and is unresolvable for the other reason entirely: the coverage gate excludes a package's src/index.ts from what it measures, PRODUCTION implements that exclusion, and so the barrel is in no corpus for a specifier to land in.",
   'packages/core/src/index.test.ts -> ./index.js':
     "The core package's barrel, named by the case that sits next to it. Excluded by the same glob as the context package barrel, and worth its own row because the two are reached differently: this one is imported from inside src/, where a test file lives beside the source it names.",
+  'packages/code/tests/every-hook-command-runs-on-the-other-systems.test.ts -> ../../../.github/the-other-systems/the-hook-commands.mjs':
+    "The reader that turns the plugin's four hook files into the list of command lines the Windows and macOS job runs, with the payload each is run with. Plain ESM under .github/ beside the smoke that imports it, outside the packages/ walk, and this resolver only ever names a .ts: the specifier is right and the scanner cannot follow it.",
 };
 
 // ---------------------------------------------------------------------------
@@ -1195,6 +1197,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/every-file-has-a-test-that-names-it.test.ts': 7,
   'packages/code/tests/every-git-that-writes-runs-without-maintenance.test.ts': 9,
   'packages/code/tests/every-group-flag-is-read-or-refused.test.ts': 9,
+  'packages/code/tests/every-hook-command-runs-on-the-other-systems.test.ts': 5,
   'packages/code/tests/every-instant-is-its-own.test.ts': 4,
   'packages/code/tests/every-integrity-case-runs-in-every-cache-state.test.ts': 5,
   'packages/code/tests/every-link-a-page-carries-lands.test.ts': 6,
@@ -2474,8 +2477,8 @@ describe('every file has a test that names it', () => {
     });
     // Non-vacuity in both parts: the walk really did follow specifiers, and the list
     // really does hold rows; a scanner returning nothing would satisfy the line above.
-    expect(unresolved.length).toBe(36);
-    expect(Object.keys(LED_NOWHERE)).toHaveLength(36);
+    expect(unresolved.length).toBe(37);
+    expect(Object.keys(LED_NOWHERE)).toHaveLength(37);
     // And each row says what THAT module is, by the ledger's rule, at the ledger's floor.
     const why = Object.values(LED_NOWHERE);
     expect(new Set(why).size).toBe(why.length);

@@ -7,17 +7,19 @@
 //   init, decision record, accept, a rule that refuses a write, verify, the record in a clone that
 //   git checked out with the system's own line endings, the Python reader over that record, a
 //   tail of it turned into a junction (a symbolic link elsewhere) and refused by both readers,
-//   doctor, and the plugin's hook handlers on payloads whose paths are written the way that
-//   system writes them.
+//   doctor, and every command line of the plugin's hook files (all four, for every host) on payloads
+//   whose paths are written the way that system writes them.
 //
 // It is a script and not a test for the reason `the-packed-install/run.sh` is: only a package
 // installed from what `pnpm pack` made, with nothing of the workspace beside it, finds what the
 // workspace hides. It touches nothing outside the temporary directory it makes. Run it from the
 // root of a built workspace: `node .github/the-other-systems/smoke.mjs`.
 //
-// WHAT IT DOES NOT PROVE: that a host starts the plugin's `hooks.json` commands (`node`, the handler
-// from `${CLAUDE_PLUGIN_ROOT}` and its arguments): the handlers are run directly here, with the
-// arguments the file gives them. The vitest suite does not run here; it runs on Linux.
+// WHAT IT DOES NOT PROVE: that a host starts the plugin's hook commands (`node`, the handler from
+// `${CLAUDE_PLUGIN_ROOT}` and its arguments, and for Copilot the `; exit 0` of a shell line): the
+// handlers are run directly here by `node`, with the arguments the file gives them, read from the
+// files by `the-hook-commands.mjs`. Not run: the OpenCode module, the `mcp_tool` entries (a call
+// into the server, no process) and any host. The vitest suite does not run here; it runs on Linux.
 
 import { spawnSync } from 'node:child_process';
 import {
@@ -34,6 +36,8 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
+
+import { payloadOf, readHookCommands, theEnvironmentAsked } from './the-hook-commands.mjs';
 
 const WINDOWS = process.platform === 'win32';
 const MAC = process.platform === 'darwin';
@@ -82,7 +86,12 @@ const baseEnv = {
   [PATH_KEY]: `${binDir}${delimiter}${process.env[PATH_KEY] ?? ''}`,
 };
 for (const key of Object.keys(baseEnv)) {
-  if (key.startsWith('MNEMA_') || key === 'CLAUDE_PROJECT_DIR' || key === 'CURSOR_VERSION') {
+  if (
+    key.startsWith('MNEMA_') ||
+    key === 'CLAUDE_PROJECT_DIR' ||
+    key === 'CURSOR_VERSION' ||
+    key === 'QWEN_PROJECT_DIR'
+  ) {
     delete baseEnv[key];
   }
 }
@@ -519,6 +528,115 @@ try {
       join(project, 'SRC', 'Billing', 'invoice.ts'),
     );
   }
+
+  // Every command line of the four hook files, for every host, run by `node` with the arguments the
+  // file gives it and a payload in the shape the host was measured to write. The list is read from
+  // the files (`the-hook-commands.mjs`), so a hook added tomorrow is run tomorrow, and a line this
+  // cannot read stops the smoke. A line whose answer the project fixes is checked for it; any other
+  // is checked to start and exit 0 with no sign that it could not, and says so.
+  section('every command line of the plugin hook files, for every host');
+  const { commands, mcpTools } = readHookCommands(root);
+  const everyVariable = new Set(commands.flatMap((one) => theEnvironmentAsked(one).set));
+  for (const one of commands)
+    for (const name of theEnvironmentAsked(one).unset) everyVariable.add(name);
+  const rule = join(project, 'src', 'billing', 'invoice.ts');
+  const elsewhere = join(project, 'src', 'other', 'a.ts');
+  const couldNotRun =
+    /could not be started|EINVAL|ENOENT|is not recognized|did not answer|was not consulted|could not answer|gate could not run/;
+  /** The handlers that write a refusal, and the ones that hand over the decision in force. */
+  const GATES = new Set(['edit-refuses-a-write.mjs', 'edit-asks-a-person.mjs']);
+  const OPENS = new Set(['session-start.mjs', 'subagent-start.mjs']);
+  let checkedFor = 0;
+  let startedOnly = 0;
+  /**
+   * @param {(typeof commands)[number]} one
+   * @param {string} file
+   */
+  const runOne = (one, file) => {
+    /** @type {Record<string, string | undefined>} */
+    const env = {
+      ...baseEnv,
+      CLAUDE_PROJECT_DIR: project,
+      CLAUDE_PLUGIN_ROOT: join(root, 'plugin'),
+    };
+    for (const name of everyVariable) delete env[name];
+    for (const name of theEnvironmentAsked(one).set) env[name] = project;
+    if (one.args.includes('--host') && one.args[one.args.indexOf('--host') + 1] === 'cursor') {
+      env.CURSOR_VERSION = '2026.09.18';
+    }
+    const input = JSON.stringify(payloadOf(one, { project, file }));
+    const again = () =>
+      run(process.execPath, [one.script, ...one.args], { cwd: project, env, input });
+    let ran = again();
+    // A slow runner can take a gate past its 10 s: it closes without naming a rule, as it must. That
+    // one answer, and only that one, is asked again (twice at most).
+    for (let times = 1; times <= 2 && /did not answer in 10 seconds/.test(ran.out); times++) {
+      console.log(`(the gate did not answer in 10 seconds, asking again: ${times} of 2)`);
+      ran = again();
+    }
+    return ran;
+  };
+  for (const one of commands) {
+    const label =
+      `${one.file} ${one.event}${one.matcher === undefined ? '' : ` [${one.matcher.slice(0, 30)}]`} ${one.handler} ${one.args.join(' ')}`.trim();
+    if (payloadOf(one, { project, file: rule }) === undefined) {
+      fail(`a command line with no payload in this smoke: ${label}`);
+      continue;
+    }
+    const ran = runOne(one, rule);
+    const said = `${ran.out}${ran.err}`;
+    console.log(`$ ${label}\n${said.slice(0, 500).replace(/^/gm, '  ')}`);
+    let json = true;
+    if (ran.out.trim() !== '') {
+      try {
+        JSON.parse(ran.out);
+      } catch {
+        json = false;
+      }
+    }
+    check(
+      ran.status === 0 &&
+        ran.error === undefined &&
+        !couldNotRun.test(said.replace(ruleId, '')) &&
+        json,
+      `starts, exits 0, writes nothing that says it could not run, and what it writes is JSON: ${label}`,
+    );
+    const gemini = one.handler === 'mnema.mjs';
+    if (OPENS.has(one.handler) || (gemini && one.args[0] === 'open')) {
+      checkedFor += 1;
+      check(
+        ran.out.includes('Keep money as integer cents'),
+        `hands over the decision in force: ${label}`,
+      );
+    } else if (GATES.has(one.handler) || (gemini && one.args[0] === 'gate')) {
+      checkedFor += 1;
+      check(
+        /deny/.test(ran.out) &&
+          ran.out.includes(ruleId) &&
+          !couldNotRun.test(ran.out.replace(ruleId, '')),
+        `refuses a write under the rule and names it: ${label}`,
+      );
+      const free = runOne(one, elsewhere);
+      check(
+        free.status === 0 && !/deny/.test(free.out),
+        `lets a write elsewhere through: ${label}`,
+      );
+    } else {
+      startedOnly += 1;
+      console.log(
+        `  (no positive check: what ${one.handler} answers is not fixed by this project, so only that it started and exited 0 is shown)`,
+      );
+    }
+  }
+  for (const one of mcpTools) {
+    console.log(
+      `not run (a call into the server, not a process): ${one.file} ${one.event} [${one.matcher}] ${one.tool}`,
+    );
+  }
+  console.log(
+    `${commands.length} command lines run, ${checkedFor} with a positive check, ${startedOnly} started and exited 0 only; ${mcpTools.length} mcp_tool entries not run`,
+  );
+  check(commands.length > 0, 'the hook files hold command lines');
 } catch (fault) {
   fail(`the smoke itself stopped: ${fault instanceof Error ? fault.stack : String(fault)}`);
 } finally {
