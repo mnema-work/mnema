@@ -18,7 +18,9 @@
 import {
   existsSync,
   lstatSync,
+  mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   symlinkSync,
@@ -280,6 +282,9 @@ describe('restoreKey: refusals, each writing nothing', () => {
     symlinkSync(outside, place);
 
     expect(() => restoreKey({ privateKeyPath: lost.vaultCopy, keyRoot, tree, upcasters })).toThrow(
+      /This restore did not complete, nothing was restored/,
+    );
+    expect(() => restoreKey({ privateKeyPath: lost.vaultCopy, keyRoot, tree, upcasters })).toThrow(
       RecordLinkedError,
     );
 
@@ -287,6 +292,40 @@ describe('restoreKey: refusals, each writing nothing', () => {
     expect(lstatSync(place).isSymbolicLink()).toBe(true);
     expect(listPrivateKeyFingerprints({ root: keyRoot })).toEqual([]);
   });
+
+  it('refuses a restore whose keys/ is a symbolic link, and writes nothing', () => {
+    const lost = establishThenLoseTheKey();
+    const elsewhere = tmp('mnema-restore-keys-elsewhere-');
+    rmSync(join(tree, 'keys'), { recursive: true, force: true });
+    symlinkSync(elsewhere, join(tree, 'keys'));
+
+    expect(() => restoreKey({ privateKeyPath: lost.vaultCopy, keyRoot, tree, upcasters })).toThrow(
+      /keys is a symbolic link/,
+    );
+
+    expect(readdirSync(elsewhere)).toEqual([]);
+    expect(listPrivateKeyFingerprints({ root: keyRoot })).toEqual([]);
+  });
+
+  for (const dangling of [true, false]) {
+    it(`refuses a founding whose anchor place is a ${dangling ? 'dangling' : 'live'} symbolic link`, () => {
+      const { writer, ctx } = machine(tree, keyRoot);
+      const outside = join(tmp('mnema-founding-outside-'), 'elsewhere');
+      if (!dangling) writeFileSync(outside, 'not an anchor\n');
+      mkdirSync(join(tree, 'keys'), { recursive: true });
+      const place = join(tree, 'keys', `${writer.signerFingerprint}.anchor`);
+      symlinkSync(outside, place);
+
+      // A live link is read as a stale anchor and refused there; a dangling one reads as no anchor,
+      // so only the refusal in writeAnchor stops the founding.
+      if (dangling) expect(() => establishIdentity(ctx, { keyRoot })).toThrow(RecordLinkedError);
+      else expect(() => establishIdentity(ctx, { keyRoot })).toThrow();
+
+      expect(existsSync(outside)).toBe(!dangling);
+      if (!dangling) expect(readFileSync(outside, 'utf-8')).toBe('not an anchor\n');
+      expect(lstatSync(place).isSymbolicLink()).toBe(true);
+    });
+  }
 
   it('refuses UNREADABLE_KEY for a file that is not a private key, and for none at all', () => {
     const junk = join(vault, 'not-a-key.txt');
