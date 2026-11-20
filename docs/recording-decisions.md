@@ -173,15 +173,15 @@ nothing is written and the decision stays `proposed`, for a person to rule on wi
 accept again with a note that quotes the person). What is looked for are the passages the note puts between double quotes
 (straight, curly or Portuguese, 20 characters or more after folding case and spacing, and not pure assent such as "yes", "sim, pode", "ok" or "go ahead", judged against a small closed list of assent words in English and Portuguese, accents folded) in what the person said, read off the host's
 transcript: a line the host marks as typed by a person, and an answer in its question tool. One found passage is enough, and the
-reply says whether it was typed words or a chosen option (an option's label is the agent's own text: the choice is the person's). A short option label, under 20 characters, does not count on its own: quote the person's own words then.
+reply says whether it was typed words or a chosen option (an option's label is the agent's own text: the choice is the person's). A short option label, under 20 characters, does not count on its own: quote the person's own words then. The agent's mark "(Recommended)" or "(recomendado)" is taken off a label, on both sides, before it is measured or judged for assent.
 Nothing is added to the record, the quotation is not stored, and a line that sits earlier in the same session still counts.
 
 It applies only in Claude Code with the plugin: the `SessionStart` hook leaves the transcript's path beside the session journal
 (a path, never a word of it; `mnema switch off session-journal` stops it) and the command or the server finds it by the session
-id the host gives (`CLAUDE_CODE_SESSION_ID`). The command with `--which claude-code` and no such id is refused the same way and
-writes nothing, so unsetting the variable opens no door. Every other host, a session whose hook has not run, and an accept with
+id the host gives (`CLAUDE_CODE_SESSION_ID`). The command with `--which` naming Claude Code (case and separators folded: `claude-code`, `Claude-Code`, `claude_code`, `claudecode`) and no such id is refused the same way and
+writes nothing, so unsetting the variable opens no door. Every other host (any `--which` that is not Claude Code), a session whose hook has not run, and an accept with
 no agent declared keep what they had, and the reply says the words were not checked. It proves that the quoted words are in the
-transcript, not that a person typed them: an agent with a shell can write the transcript.
+transcript, not that a person typed them: an agent with a shell can write the transcript. An accept of another host passes as "words not checked", and `mnema audit antipatterns` counts it among the agent accepts without the person's words.
 
 A supersede whose successor is still `proposed` leaves nothing in force on that subject until it is accepted, and the
 move says so. Rejecting that successor leaves the decision it replaced `superseded`, by a decision that never governed,

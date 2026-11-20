@@ -9,7 +9,7 @@ Changed
   word; `mnema tally` answers that event with `{}`); other hosts, a session with no path left, and an accept with no
   agent declared are as before and say the words were not checked. It proves the words are in the transcript, not that
   a person typed them. A quoted passage counts only with 20 characters or more after folding and when it is not pure
-  assent ("yes", "sim, pode", "go ahead"), so a short option label does not count on its own. The command with
-  `--which claude-code` and no `CLAUDE_CODE_SESSION_ID` is refused as well, and writes nothing. See [Recording decisions](docs/recording-decisions.md).
+  assent ("yes", "sim, pode", "go ahead"), so a short option label does not count on its own. The mark "(Recommended)" is taken off an option label before it is measured. The command with
+  `--which` naming Claude Code in any spelling and no `CLAUDE_CODE_SESSION_ID` is refused as well, and writes nothing. See [Recording decisions](docs/recording-decisions.md).
   The block of standing instructions that `mnema instructions` writes into `AGENTS.md` and the host rules files says it
   too, and is now version v6; a v5 block is the product's to replace and is updated, not read as an edit.

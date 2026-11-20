@@ -170,9 +170,29 @@ describe('what an accept rests on, with a transcript that is known', () => {
     expect(
       whatTheAcceptRestsOn(move(transcript, 'Said "keep the cache between runs"'))?.outcome,
     ).toBe('typed');
-    writeFileSync(transcript, `${chose('Which cache?', 'Keep it on disk (Recommended)')}\n`);
+    writeFileSync(transcript, `${chose('Which cache?', 'Keep the cache on disk (Recommended)')}\n`);
     expect(
-      whatTheAcceptRestsOn(move(transcript, 'Chose "Keep it on disk (Recommended)"'))?.outcome,
+      whatTheAcceptRestsOn(move(transcript, 'Chose "Keep the cache on disk (Recommended)"'))?.outcome,
+    ).toBe('chosen');
+  });
+
+  it('takes the recommended mark off an option label before measuring it and judging assent', () => {
+    for (const label of [
+      'Yes, go ahead (Recommended)',
+      'Sim, pode (Recommended)',
+      'Pode ir (Recommended)',
+      'Entra na 0.1.9 (Recommended)',
+      'Pode ir (recomendado)',
+    ]) {
+      writeFileSync(transcript, `${chose('Which?', label)}\n`);
+      expect(
+        whatTheAcceptRestsOn(move(transcript, `Chose "${label}"`))?.outcome,
+        label,
+      ).toBe('waits');
+    }
+    writeFileSync(transcript, `${chose('Which?', 'Keep the cache on disk')}\n`);
+    expect(
+      whatTheAcceptRestsOn(move(transcript, 'Chose "Keep the cache on disk"'))?.outcome,
     ).toBe('chosen');
   });
 
@@ -200,6 +220,28 @@ describe('what an accept rests on, with a transcript that is known', () => {
 });
 
 describe('an agent accept at the command line', () => {
+  it('is refused with --which in any spelling of Claude Code and no session id', { timeout: 60_000 }, () => {
+    const id = aProposedDecision();
+    const before = held(sandbox);
+    for (const spelling of ['Claude-Code', 'claude_code', 'claudecode']) {
+      const refused = mnema(
+        {},
+        undefined,
+        'decision',
+        'move',
+        'accept',
+        id,
+        '--which',
+        spelling,
+        '--note',
+        'The person said "keep the cache between runs"',
+      );
+      expect(refused.status, `${spelling}: ${refused.out}`).toBe(1);
+      expect(refused.out).toContain('ACCEPT_NEEDS_THE_PERSONS_WORDS');
+    }
+    expect(held(sandbox)).toEqual(before);
+  });
+
   it('is refused with --which claude-code and no session id, and nothing is written', {
     timeout: 60_000,
   }, () => {
@@ -242,9 +284,9 @@ describe('an agent accept at the command line', () => {
     );
     expect(hook.status, hook.out).toBe(0);
     expect(hook.out).toContain('between double quotes');
-    writeFileSync(transcript, `${chose('Which cache?', 'Keep it on disk (Recommended)')}\n`);
+    writeFileSync(transcript, `${chose('Which cache?', 'Keep the cache on disk (Recommended)')}\n`);
     theSessionOpens();
-    const moved = accept(id, 'The person chose "Keep it on disk (Recommended)" when asked');
+    const moved = accept(id, 'The person chose "Keep the cache on disk (Recommended)" when asked');
     expect(moved.status, moved.out).toBe(0);
     expect(moved.out).toContain('an option the person chose');
     expect(state(id)).toContain('(accepted)');
@@ -280,9 +322,9 @@ describe('an agent accept at the command line', () => {
     timeout: 60_000,
   }, () => {
     const id = aProposedDecision();
-    writeFileSync(transcript, `${chose('Which cache?', 'Keep it on disk (Recommended)')}\n`);
+    writeFileSync(transcript, `${chose('Which cache?', 'Keep the cache on disk (Recommended)')}\n`);
     theSessionOpens();
-    const moved = accept(id, 'The person chose "Keep it on disk (Recommended)"');
+    const moved = accept(id, 'The person chose "Keep the cache on disk (Recommended)"');
     expect(moved.status, moved.out).toBe(0);
     expect(moved.out).toContain('an option the person chose');
     expect(state(id)).toContain('(accepted)');

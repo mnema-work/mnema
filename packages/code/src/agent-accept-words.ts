@@ -121,7 +121,24 @@ const QUOTED = /"([^"]+)"|“([^”]+)”|«([^»]+)»/g;
 
 /** Text folded to compare: Unicode NFC, lower case, the curly apostrophe straight, every run of space one space. */
 function folded(text: string): string {
-  return text.normalize('NFC').toLowerCase().replaceAll('\u2019', "'").replace(/\s+/g, ' ').trim();
+  return text
+    .normalize('NFC')
+    .toLowerCase()
+    .replaceAll('\u2019', "'")
+    .replace(RECOMMENDED, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * The mark an agent puts on the option it recommends. It is the agent's, not the person's, so it
+ * is taken off before a passage is measured or judged, on both sides of the match.
+ */
+const RECOMMENDED = /\s*\((?:recommended|recomendado)\)\s*/gi;
+
+/** Whether the agent a move declares is Claude Code, in any spelling: case and separators folded. */
+function isClaudeCode(agent: string): boolean {
+  return agent.toLowerCase().replace(/[^a-z0-9]/g, '') === 'claudecode';
 }
 
 /** The passages a note puts between quotation marks that are long enough to be words and not mere assent, folded. */
@@ -169,7 +186,7 @@ export function whatTheAcceptRestsOn(
 ): WhatTheAcceptRestsOn | undefined {
   if (move.action !== 'accept' || move.agent === undefined) return undefined;
   if (move.hostSession === undefined) {
-    if (move.refuseWithoutASession === true && move.agent === 'claude-code') {
+    if (move.refuseWithoutASession === true && isClaudeCode(move.agent)) {
       return {
         outcome: 'waits',
         code: ACCEPT_NEEDS_THE_PERSONS_WORDS,
