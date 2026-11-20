@@ -99,6 +99,17 @@ describe('the npx recipe runs the page', () => {
     }
   });
 
+  it('pins the version of the package it was written for, in every pin of the page', () => {
+    const version = (
+      JSON.parse(readFileSync(join(ROOT, 'packages/code/package.json'), 'utf-8')) as {
+        version: string;
+      }
+    ).version;
+    const pins = [...PAGE.matchAll(/@mnema\/code@(\d+\.\d+\.\d+)/g)].map((m) => m[1]);
+    expect(pins.length).toBeGreaterThanOrEqual(7);
+    expect(pins.filter((pin) => pin !== version)).toEqual([]);
+  });
+
   it('is a block that founds, records, accepts, reads back and verifies', () => {
     expect(BLOCK).toMatch(/^mkdir mnema-try && cd mnema-try && git init -q$/m);
     expect(BLOCK).toMatch(/^npx --yes @mnema\/code@\S+ init$/m);

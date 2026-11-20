@@ -55,7 +55,9 @@ npx --yes @mnema/code@0.1.8 verify
 In order: the record founded in `.mnema/` of the scratch folder; a decision, which enters proposed; accepting it;
 reading it back; and `verify`, whose one line saying the record is intact is the green. `npx` keeps the package in
 npm's cache, and `init` makes your signing identity under `~/.mnema`, outside the scratch folder: deleting
-`mnema-try` removes the record, not that identity. The pinned number is a published version; use one you mean to
+`mnema-try` removes the record, not that identity, which stays, with its backup key in `~/.mnema/identity/backup`,
+and is the one a later install uses. To remove them too, delete `~/.mnema` (it holds your keys for every project, so
+do that only if this was your first run). The pinned number is a published version; use one you mean to
 try. `.github/the-npx-recipe/run.sh` runs this block, read from this page, against the package packed from
 each commit of `main`.
 
