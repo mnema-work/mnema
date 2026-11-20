@@ -378,7 +378,7 @@ describe("VS Code's agent and Qwen Code, which read Claude Code's hooks file", (
 
   it("is told apart by the same pattern in the plugin's handlers", () => {
     const handlers = readFileSync(join(PLUGIN, 'hooks', 'hand-over.mjs'), 'utf-8');
-    expect(/const VSCODE_TRANSCRIPT =\s*(\/.*\/);/.exec(handlers)?.[1]).toBe(
+    expect(/const VSCODE_TRANSCRIPT =\s*(\/.*\/i);/.exec(handlers)?.[1]).toBe(
       VSCODE_TRANSCRIPT.toString(),
     );
     expect(VSCODE_TRANSCRIPT.test(VSCODE_PATH)).toBe(true);

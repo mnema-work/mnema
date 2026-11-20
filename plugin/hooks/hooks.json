@@ -32,12 +32,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-tally.mjs\" --unless CURSOR_VERSION,QWEN_PROJECT_DIR",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-tally.mjs\" --unless CURSOR_VERSION,QWEN_PROJECT_DIR --skip vscode",
             "timeout": 15
           },
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-corrections.mjs\" --unless CURSOR_VERSION,QWEN_PROJECT_DIR",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-corrections.mjs\" --unless CURSOR_VERSION,QWEN_PROJECT_DIR --skip vscode",
             "timeout": 15
           }
         ]
