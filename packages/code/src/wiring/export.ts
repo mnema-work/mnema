@@ -23,6 +23,7 @@ import { fact } from '../presentation/detail.js';
 import { globalTreeGloss, windowGloss, windowHelp } from '../vocabulary.js';
 import { here } from './context.js';
 import { ACTOR_HELP } from './options.js';
+import { onOneLine } from './on-one-line.js';
 import { reportRefusal } from './report.js';
 import { type Declared, readsTheRecord, type Wiring } from './verb.js';
 
@@ -126,7 +127,7 @@ async function exportMadr(
     reportRefusal(wiring, result);
     return;
   }
-  for (const { file } of result.files) io.out(render(fact(`${result.out}/${file}`)));
+  for (const { file } of result.files) io.out(render(fact(onOneLine`${result.out}/${file}`)));
   io.err(
     render(
       fact(
@@ -138,7 +139,7 @@ async function exportMadr(
     io.err(
       render(
         fact(
-          `${result.unfaithful.length} file(s) do not read back as the same decision (a heading line inside the text): ${result.unfaithful.join(', ')}`,
+          onOneLine`${result.unfaithful.length} file(s) do not read back as the same decision (a heading line inside the text): ${result.unfaithful.join(', ')}`,
         ),
       ),
     );
