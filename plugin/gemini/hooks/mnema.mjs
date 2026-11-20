@@ -943,7 +943,7 @@ function whoIsThere(cwd) {
  * @param {number} until the time, in milliseconds since the epoch, by which both verbs of the opening are done
  */
 function whatItSays(verb, cwd, until) {
-  const ran = run([verb, '--hook'], cwd, undefined, Math.max(1, until - Date.now()));
+  const ran = run([verb, '--hook', '--host', 'gemini'], cwd, undefined, Math.max(1, until - Date.now()));
   if (ran.error !== undefined) {
     return /** @type {NodeJS.ErrnoException} */ (ran.error).code === 'ETIMEDOUT'
       ? { lines: [notConsulted(didNotAnswerIn(OPENING_WAIT))], cut: true }
