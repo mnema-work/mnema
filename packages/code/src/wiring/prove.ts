@@ -5,18 +5,17 @@
  * output, or to `--out <file>`, and says on the other stream what it holds. `mnema prove --check
  * <file>` checks one, from the file alone, and says what it proves AND what it does not: the
  * second list is printed beside every proof accepted, because a proof that verifies is read as
- * more than it is. The words of that list are the chain's (`WHAT_A_PROOF_DOES_NOT_COVER`), so this
- * surface cannot promise more than the checker does.
+ * more than it is. The words of that list are the chain's (`WHAT_A_PROOF_DOES_NOT_COVER`, handed
+ * over by the command), so this surface cannot promise more than the checker does.
  */
 
-import { writeFileSync } from 'node:fs';
-import { type ProofManifest, WHAT_A_PROOF_DOES_NOT_COVER } from '@mnema/chain';
+import type { ProofManifest } from '@mnema/chain';
 import type { Command } from 'commander';
 import type { ProveDone, ProveRefused } from '../commands/prove.js';
-import { oneLine } from '../one-line.js';
 import { fact } from '../presentation/detail.js';
-import { noSuchRecord } from './no-such-record.js';
 import { here } from './context.js';
+import { noSuchRecord } from './no-such-record.js';
+import { onOneLine } from './on-one-line.js';
 import { NO_PROJECT, reportRefusal, reportUsage } from './report.js';
 import { type Declared, readsTheRecord, type Wiring } from './verb.js';
 
@@ -30,7 +29,7 @@ function movesSaid(manifest: ProofManifest): [string, number][] {
   return [
     [`state: ${manifest.state ?? 'none'}, after ${manifest.moves.length} move(s)`, 1],
     ...manifest.moves.map((move): [string, number] => [
-        `${move.action} ${move.from ?? 'null'} -> ${move.to}${move.by === undefined ? '' : ` by ${move.by}`}, ` +
+      `${move.action} ${move.from ?? 'null'} -> ${move.to}${move.by === undefined ? '' : ` by ${move.by}`}, ` +
         `${move.at} by ${move.who}${move.which === undefined ? '' : ` (${move.which})`}, ${move.tail.slice(0, 12)} seq ${move.seq}`,
       2,
     ]),
@@ -49,18 +48,18 @@ function refusalWords(result: Exclude<ProveDone | ProveRefused, ProveDone>): str
       return result.message;
     case 'PRIVATE_DECISION':
       return (
-        `${oneLine(result.id)} is in this machine's private tree, which no clone carries, and a proof hands ` +
+        onOneLine`${result.id} is in this machine's private tree, which no clone carries, and a proof hands ` +
         'its lines to whoever receives the file. Ask with --private to prove it.'
       );
     case 'RECORD_BROKEN':
       return `The ${result.scope} tree does not verify, so no proof is built from it: mnema verify says where.`;
     case 'NOT_YET_SIGNED':
       return (
-        `Not yet signed: seq ${result.seq} of the tail ${oneLine(result.tail)} is above its last ` +
+        onOneLine`Not yet signed: seq ${result.seq} of the tail ${result.tail} is above its last ` +
         'checkpoint, so no signature covers it yet.'
       );
     case 'NO_TAIL_PROOF':
-      return `The tail ${oneLine(result.tail)} holds no tail proof that reads, so nothing signs whose tail it is.`;
+      return onOneLine`The tail ${result.tail} holds no tail proof that reads, so nothing signs whose tail it is.`;
     case 'READS_OTHERWISE':
       return (
         'The lines a proof would carry read this decision otherwise than the whole record does: a ' +
@@ -75,20 +74,30 @@ export function registerProve(program: Command, wiring: Wiring): Declared {
   // Every value printed here came out of a record or out of a file somebody handed over, so each
   // line is made one line before it is printed: a title holding a line feed is not a second line.
   const say = (to: 'out' | 'err', text: string, depth = 1) =>
-    io[to](render(fact(oneLine(text), depth)));
+    io[to](render(fact(onOneLine`${text}`, depth)));
   const proved = program
     .command('prove')
     .description('write the proof of one decision a stranger checks offline, or check one')
     .argument('[decision]', 'the decision: its id or its ADR label')
-    .option('--out <file>', 'write the proof to this file (refused when it exists) instead of standard output')
-    .option('--private', "prove a decision of this machine's private tree, which no clone carries", false)
-    .option('--check <file>', 'check a proof from the file alone, and say what it proves and what it does not')
+    .option(
+      '--out <file>',
+      'write the proof to this file (refused when it exists) instead of standard output',
+    )
+    .option(
+      '--private',
+      "prove a decision of this machine's private tree, which no clone carries",
+      false,
+    )
+    .option(
+      '--check <file>',
+      'check a proof from the file alone, and say what it proves and what it does not',
+    )
     .action(
       async (
         decision: string | undefined,
         opts: { out?: string; private: boolean; check?: string },
       ) => {
-        const { runProve, runProveCheck } = await import('../commands/prove.js');
+        const { runProve, runProveCheck, writeProofFile } = await import('../commands/prove.js');
         if (opts.check !== undefined) {
           if (decision !== undefined || opts.out !== undefined || opts.private) {
             reportUsage(wiring, '--check takes a file and nothing else.');
@@ -112,7 +121,7 @@ export function registerProve(program: Command, wiring: Wiring): Declared {
           }
           say('out', `keys: ${verdict.keys.join(', ')}`);
           say('out', 'what it does not prove:', 0);
-          for (const line of WHAT_A_PROOF_DOES_NOT_COVER) say('out', line);
+          for (const line of checked.notCovered) say('out', line);
           return;
         }
         if (decision === undefined) {
@@ -130,13 +139,9 @@ export function registerProve(program: Command, wiring: Wiring): Declared {
         if (opts.out === undefined) {
           io.out(result.text.slice(0, -1));
         } else {
-          try {
-            writeFileSync(opts.out, result.text, { flag: 'wx' });
-          } catch (error) {
-            reportRefusal(wiring, {
-              reason: 'PROOF_NOT_WRITTEN',
-              message: `${opts.out}: ${(error as Error).message}`,
-            });
+          const written = writeProofFile(opts.out, result.text);
+          if (!written.ok) {
+            reportRefusal(wiring, written);
             return;
           }
         }

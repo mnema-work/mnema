@@ -16,7 +16,7 @@
  * nothing but the file it is given, and needs no project.
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import {
   catalogUpcasters,
   checkProof,
@@ -26,6 +26,7 @@ import {
   proveDecision,
   recordToProve,
   verifyChain,
+  WHAT_A_PROOF_DOES_NOT_COVER,
 } from '@mnema/chain';
 import { chainRootForScope, type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { resolveAddress } from '../label-as-address.js';
@@ -51,7 +52,12 @@ export type ProveRefused =
   | { readonly ok: false; readonly reason: 'AMBIGUOUS_LABEL'; readonly message: string }
   | { readonly ok: false; readonly reason: 'PRIVATE_DECISION'; readonly id: string }
   | { readonly ok: false; readonly reason: 'RECORD_BROKEN'; readonly scope: string }
-  | { readonly ok: false; readonly reason: 'NOT_YET_SIGNED'; readonly tail: string; readonly seq: number }
+  | {
+      readonly ok: false;
+      readonly reason: 'NOT_YET_SIGNED';
+      readonly tail: string;
+      readonly seq: number;
+    }
   | { readonly ok: false; readonly reason: 'NO_TAIL_PROOF'; readonly tail: string }
   | { readonly ok: false; readonly reason: 'READS_OTHERWISE' };
 
@@ -100,7 +106,12 @@ export function runProve(
 
 /** What checking a proof file found: the verdict, or why the file could not be read. */
 export type ProveChecked =
-  | { readonly ok: true; readonly verdict: ProofVerdict }
+  | {
+      readonly ok: true;
+      readonly verdict: ProofVerdict;
+      /** What a proof does not prove, in the chain's words: said beside every proof accepted. */
+      readonly notCovered: readonly string[];
+    }
   | { readonly ok: false; readonly reason: 'UNREADABLE_PROOF'; readonly message: string };
 
 /** Checks the proof in `file`, reading nothing else. */
@@ -112,5 +123,18 @@ export function runProveCheck(file: string): ProveChecked {
   } catch (error) {
     return { ok: false, reason: 'UNREADABLE_PROOF', message: (error as Error).message };
   }
-  return { ok: true, verdict: checkProof(text) };
+  return { ok: true, verdict: checkProof(text), notCovered: WHAT_A_PROOF_DOES_NOT_COVER };
+}
+
+/** Writes a proof to `file`, refusing a file that is already there rather than replacing it. */
+export function writeProofFile(
+  file: string,
+  text: string,
+): { readonly ok: true } | { readonly ok: false; readonly reason: 'PROOF_NOT_WRITTEN'; readonly message: string } {
+  try {
+    writeFileSync(file, text, { flag: 'wx' });
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, reason: 'PROOF_NOT_WRITTEN', message: (error as Error).message };
+  }
 }

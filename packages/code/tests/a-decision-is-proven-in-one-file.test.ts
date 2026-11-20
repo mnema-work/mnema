@@ -21,9 +21,7 @@ import { runInit } from '../src/commands/init.js';
 import { runProve, runProveCheck } from '../src/commands/prove.js';
 import { type CliIo, run } from '../src/program.js';
 
-const VERIFIER = fileURLToPath(
-  new URL('../../chain/verifier/mnema_verify.py', import.meta.url),
-);
+const VERIFIER = fileURLToPath(new URL('../../chain/verifier/mnema_verify.py', import.meta.url));
 
 let sandbox: string;
 let repo: string;
@@ -113,7 +111,10 @@ describe('a decision of the committed record', () => {
     const proved = runProve({ cwd: repo, env }, { decision: id, private: false });
     if (!proved.ok) throw new Error('setup: not proven');
     const file = join(sandbox, 'changed.proof.json');
-    writeFileSync(file, proved.text.replaceAll('one decision in one file', 'one decision in two files'));
+    writeFileSync(
+      file,
+      proved.text.replaceAll('one decision in one file', 'one decision in two files'),
+    );
     expect(readFileSync(file, 'utf-8')).not.toBe(proved.text);
 
     expect(runProveCheck(file)).toMatchObject({ ok: true, verdict: { proven: false } });

@@ -30,6 +30,7 @@ import { type CanonicalValue, canonicalStringify } from '../events/canonical.js'
 import { catalogUpcasters } from '../events/registry.js';
 import { holdsExactly, keyList, parseCanonicalLine } from '../events/stored-json.js';
 import type { UpcasterRegistry } from '../events/upcaster.js';
+import { oneLine } from '../one-line.js';
 import {
   type Checkpoint,
   NAMED_SCHEME,
@@ -57,7 +58,6 @@ import {
   type TailProof,
   verifyTailProof,
 } from './tailproof.js';
-import { oneLine } from '../one-line.js';
 import { decisionReadingOf } from './verify.js';
 
 /** The one scheme of a proof of one decision; a checker refuses any other before reading on. */
@@ -148,7 +148,12 @@ export type ProveRefusal =
   /** No writing of the decision is in the record. */
   | { readonly ok: false; readonly reason: 'NO_SUCH_DECISION' }
   /** A line the proof needs is above its tail's last checkpoint: no signature covers it yet. */
-  | { readonly ok: false; readonly reason: 'NOT_YET_SIGNED'; readonly tail: string; readonly seq: number }
+  | {
+      readonly ok: false;
+      readonly reason: 'NOT_YET_SIGNED';
+      readonly tail: string;
+      readonly seq: number;
+    }
   /** A tail the proof draws from holds no tail proof that reads, so nothing signs whose it is. */
   | { readonly ok: false; readonly reason: 'NO_TAIL_PROOF'; readonly tail: string }
   /**
@@ -629,7 +634,9 @@ function checked(text: string, upcasters: UpcasterRegistry): ProofVerdict {
     named.size === 1 ? ([...named][0] as string) : null,
   );
   const derivedValue = derived as unknown as Record<string, CanonicalValue>;
-  for (const field of [...new Set([...Object.keys(derivedValue), ...Object.keys(claimed)])].sort()) {
+  for (const field of [
+    ...new Set([...Object.keys(derivedValue), ...Object.keys(claimed)]),
+  ].sort()) {
     const said =
       claimed[field] === undefined
         ? undefined
