@@ -33,10 +33,7 @@ beforeEach(async () => {
   env = { home: join(sandbox, 'home') };
   runInit({ cwd: repo, env });
   const { server } = buildMcpServer({ cwd: sandbox, env, log: () => undefined });
-  client = new Client(
-    { name: 'claude-code', version: '1.0.0' },
-    { capabilities: { roots: {} } },
-  );
+  client = new Client({ name: 'claude-code', version: '1.0.0' }, { capabilities: { roots: {} } });
   client.setRequestHandler(ListRootsRequestSchema, () => ({
     roots: [{ uri: pathToFileURL(repo).href }],
   }));
@@ -68,7 +65,9 @@ function aValueFor(schema: JsonSchema): unknown {
 }
 
 function textOf(result: Awaited<ReturnType<Client['callTool']>>): string {
-  return ((result.content ?? []) as { text?: string }[]).map((block) => block.text ?? '').join('\n');
+  return ((result.content ?? []) as { text?: string }[])
+    .map((block) => block.text ?? '')
+    .join('\n');
 }
 
 /** Every `.jsonl` under the sandbox, with its bytes: what a write would have changed. */
