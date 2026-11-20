@@ -1264,7 +1264,7 @@ describe('every line this wiring words is classified', () => {
     // Neither arm of the case above may be empty, or half of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
     expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(117);
-    expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(90);
+    expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(91);
     expect(FOUND.sites.filter((site) => site.tagged).length).toBe(117);
   });
 
