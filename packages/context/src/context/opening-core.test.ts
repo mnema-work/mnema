@@ -1,12 +1,7 @@
 import { rmSync } from 'node:fs';
 import type { ProjectionCache } from '@mnema/core';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  type Bench,
-  birthDecision,
-  makeBench,
-  moveDecision,
-} from '../../tests/support/chain.js';
+import { type Bench, birthDecision, makeBench, moveDecision } from '../../tests/support/chain.js';
 import type { ScopedCache } from '../sources.js';
 import { decisionsOnThePersonsWords, noteQuotesThePerson } from './opening-core.js';
 
@@ -20,7 +15,7 @@ const ROWS: readonly (readonly [string, boolean])[] = [
   ['The maintainer wrote: "use pnpm here".', true],
   ['The maintainer chose in this session: option A.', true],
   ['The maintainer kept the second option.', true],
-  ['Chosen by the maintainer on 2026-11-19 among the options: \'Uma lingua por registro\'.', true],
+  ["Chosen by the maintainer on 2026-11-19 among the options: 'Uma lingua por registro'.", true],
   ['O mantenedor disse: “sim, assim”.', true],
   ['accepted', false],
   ['The maintainer asked. It looks right.', false],
@@ -36,7 +31,7 @@ describe('noteQuotesThePerson', () => {
 
   it('answers a long note of quote marks in linear time', () => {
     const started = Date.now();
-    noteQuotesThePerson('"' + 'a '.repeat(50_000) + "'".repeat(20_000));
+    noteQuotesThePerson(`"${'a '.repeat(50_000)}${"'".repeat(20_000)}`);
     expect(Date.now() - started).toBeLessThan(1_000);
   });
 });

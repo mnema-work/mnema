@@ -1290,7 +1290,9 @@ describe('the hook’s copy that pulls what the work needs (opening-core)', () =
       pulled,
     ).join('\n');
     expect(hook).not.toContain('A private call about a staging run');
-    expect(hook).toContain('Recorded privately on this machine and not handed to you: 1 decision in force');
+    expect(hook).toContain(
+      'Recorded privately on this machine and not handed to you: 1 decision in force',
+    );
     expect(briefDocument(crowded).join('\n')).not.toContain('What else the record holds');
   });
 });

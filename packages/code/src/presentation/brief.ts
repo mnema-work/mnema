@@ -1277,12 +1277,10 @@ function composed(
       whatAwaitsAJudgement(governance.skillsAwaiting, PATTERNS_WAITING),
       skills.map((skill) => rule(skill.name, skill.id, skill.origin)),
     ),
-    ...leftOut(
-      listed.length - decisions.length,
-      governance.skills.length - skills.length,
-      ceiling,
-    ),
-    ...(pulled === undefined ? [] : [...whatElseIsThere(governance, listed.length), ...HOW_TO_PULL]),
+    ...leftOut(listed.length - decisions.length, governance.skills.length - skills.length, ceiling),
+    ...(pulled === undefined
+      ? []
+      : [...whatElseIsThere(governance, listed.length), ...HOW_TO_PULL]),
   ];
 }
 

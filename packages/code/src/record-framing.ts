@@ -817,16 +817,16 @@ export const WHAT_STOPS: { readonly [K in SwitchableChannel]: string } = {
     'write is refused once, with the rules in the reason, and the same write repeated goes ' +
     'through. Off until switched on; it holds in Claude Code, where the server remembers the ' +
     'session',
-  'opening-core':
-    'the shape of the decisions a session opens with: with it on, the opening text hands over the ' +
-    'decisions whose acceptance note quotes the person, an index of what else the record holds ' +
-    'and how to pull it, instead of the newest decisions in force. Off until switched on; the ' +
-    'file `mnema brief` prints is the same either way',
   'user-corrections':
     'the proposals recorded from what a person typed into a session: with it on, a `Stop` hook ' +
     'reads the transcript, and each time the person corrected the agent a decision is recorded ' +
     'as proposed in this machine’s private tree, and so is each answer the person gave to a ' +
     'question the agent asked. Off until switched on',
+  'opening-core':
+    'the shape of the decisions a session opens with: with it on, the opening text hands over the ' +
+    'decisions whose acceptance note quotes the person, an index of what else the record holds ' +
+    'and how to pull it, instead of the newest decisions in force. Off until switched on; the ' +
+    'file `mnema brief` prints is the same either way',
   'choice-settled':
     'the sentence handed to the agent after a question it asked the person was answered: that a ' +
     'choice may have been settled there, which tool records it and which accepts it (or that a ' +
