@@ -20,15 +20,23 @@
  * picks up, holds nothing. So each cited test file must (1) be matched by the include and exclude
  * of `vitest.config.ts`, or by a host-contract configuration (`vitest.host-contract.config.ts`,
  * where the host-contract cases run, one host at a time), and (2) carry at least one case that is
- * not `skip`, `todo`, `xit`, `xdescribe` or inside a skipped `describe`. A row may also name a
- * case: `(case "the title")` right after the link or the span; that title must be a case of the
- * file that is not skipped.
+ * not skipped. A case is skipped when it, or a `describe` that holds it, is `skip` or `todo`
+ * (or `xit`, `xtest`, `xdescribe`), or is `skipIf(true)` or `runIf(false)` with that literal
+ * condition. A row may also name a case: `(case "the title")` (straight double quotes) right
+ * after the link or the span of a test file; that title must be a case of the file that is not
+ * skipped. A `(case` on the page that is not of that form, or sits beside a file that is not a
+ * test, fails the guard: it is never ignored.
  *
  * HOW IT READS THEM: statically. The configurations are imported (the main one) or read as text
  * (the host-contract one, which stops without a host in its environment), and the test files are
  * read lexically for `it`, `test` and `describe` calls with a string title. Nothing here runs a
- * suite and `vitest list` is not used. A case under `skipIf` or `runIf` is counted as running:
- * what the condition says on a machine is not known to a reading.
+ * suite and `vitest list` is not used. Comments and the contents of template strings are blanked
+ * before the calls are matched, so a case written in a comment is not a case. A case under
+ * `skipIf` or `runIf` with any other condition counts as running: what the condition says on a
+ * machine is not known to a reading. A file whose cases a helper generates (`theRowOf`,
+ * `.each`) declares no case a reading sees: it counts as running when it declares no case at
+ * all and has a `describe` that is not skipped. That is every unskipped `describe` with no
+ * lexical case, whatever it holds: the reading does not tell a generator from an empty block.
  *
  * WHAT IT DOES NOT CHECK: that the file holds the claim beside it, or that the case passed on any
  * run. That is a reviewer's reading, and the CI's.
@@ -74,12 +82,47 @@ interface Declared {
 }
 
 /**
+ * The source with the text of comments and of template strings replaced by spaces (newlines and
+ * length kept, so offsets still point into the original). Quoted strings are left, because a
+ * title is one, and are walked so that a `//` inside one is not read as a comment.
+ */
+function blanked(source: string): string {
+  const out = source.split('');
+  const blank = (from: number, to: number) => {
+    for (let k = from; k < to; k++) if (out[k] !== '\n') out[k] = ' ';
+  };
+  let i = 0;
+  while (i < source.length) {
+    const c = source[i] as string;
+    const two = source.slice(i, i + 2);
+    if (two === '/*') {
+      const end = source.indexOf('*/', i + 2);
+      const to = end === -1 ? source.length : end + 2;
+      blank(i, to);
+      i = to;
+    } else if (two === '//') {
+      const end = source.indexOf('\n', i);
+      const to = end === -1 ? source.length : end;
+      blank(i, to);
+      i = to;
+    } else if (c === "'" || c === '"' || c === '`') {
+      let j = i + 1;
+      while (j < source.length && source[j] !== c) j += source[j] === '\\' ? 2 : 1;
+      if (c === '`') blank(i + 1, j);
+      i = j + 1;
+    } else i++;
+  }
+  return out.join('');
+}
+
+/**
  * The `it`, `test` and `describe` calls with a string title, in file order. A case is skipped when
  * its own call, or a `describe` that holds it, is `skip` or `todo` (or `xit`, `xtest`,
  * `xdescribe`). A `describe` holds what is indented under it: the repository is formatted, so the
  * block closes at the first line that starts a `}` at or above the call's own indent.
  */
-export function declaredCases(source: string): Declared[] {
+export function declaredCases(original: string): Declared[] {
+  const source = blanked(original);
   const call =
     /^([ \t]*)(x?)(it|test|describe)((?:\.\w+(?:\([^)\n]*\))?)*)\(\s*(['"`])((?:\\.|(?!\5)[^\\])*)\5/gm;
   const out: Declared[] = [];
@@ -104,13 +147,22 @@ export function declaredCases(source: string): Declared[] {
       m[2] === 'x' ||
       /\.(skip|todo)\b/.test(modifiers) ||
       skippedBlocks.length > 0 ||
-      /\.skipIf\(\s*true\s*\)/.test(m[4] as string);
+      /\.skipIf\(\s*true\s*\)/.test(m[4] as string) ||
+      /\.runIf\(\s*false\s*\)/.test(m[4] as string);
+    // The title is read from the original: a template title was blanked in the copy.
+    const titleAt = index + (m[0] as string).length - (m[6] as string).length - 1;
+    const title = original.slice(titleAt, titleAt + (m[6] as string).length);
     if (m[3] === 'describe') {
-      if (skipped) skippedBlocks.push(indent);
-      out.push({ kind: 'group', title: m[6] as string, skipped });
+      // A describe that opens and closes on its own line holds nothing under it.
+      const eol = source.indexOf('\n', index);
+      const line = source.slice(index, eol === -1 ? undefined : eol);
+      const opens = (line.match(/\{/g) ?? []).length;
+      const closes = (line.match(/\}/g) ?? []).length;
+      if (skipped && opens !== closes) skippedBlocks.push(indent);
+      out.push({ kind: 'group', title, skipped });
       continue;
     }
-    out.push({ kind: 'case', title: m[6] as string, skipped });
+    out.push({ kind: 'case', title, skipped });
   }
   return out;
 }
@@ -148,6 +200,17 @@ function casesCitedBy(page: string, text: string): { file: string; title: string
   return out;
 }
 
+/**
+ * The lines of the page that carry a `(case` which does not parse as `(case "title")` after a
+ * link or a code span, in straight double quotes: a mark that would otherwise be ignored.
+ */
+function malformedCaseMarks(page: string, text: string): string[] {
+  return text.split('\n').filter((line) => {
+    const marks = (line.match(/\(case\b/g) ?? []).length;
+    return marks > 0 && marks !== casesCitedBy(page, line).length;
+  });
+}
+
 /** What is wrong with a cited test file or case; empty when it runs. */
 function whyNotRun(
   files: ReadonlySet<string>,
@@ -156,7 +219,11 @@ function whyNotRun(
   file: string,
   title?: string,
 ): string | undefined {
-  if (!/\.test\.[cm]?[jt]s$/.test(file)) return undefined;
+  if (!/\.test\.[cm]?[jt]s$/.test(file)) {
+    return title === undefined
+      ? undefined
+      : `${file}: a case is named beside a file that is not a test`;
+  }
   if (!files.has(file)) return undefined; // the existence case says it
   if (!runs(file)) return `${file}: no vitest configuration of the suite runs this file`;
   const declared = declaredCases(readSource(file));
@@ -230,6 +297,9 @@ describe('the evidence page cites only what exists', () => {
     const problems = [
       ...new Set(cited.map((file) => whyNotRun(files, runs, sourceOf, file))),
       ...casesCitedBy(PAGE, text).map((c) => whyNotRun(files, runs, sourceOf, c.file, c.title)),
+      ...malformedCaseMarks(PAGE, text).map(
+        (line) => `not \`(case "title")\` after a file: ${line}`,
+      ),
     ].filter((p): p is string => p !== undefined);
     expect(
       problems,
@@ -275,5 +345,40 @@ describe('the evidence page cites only what exists', () => {
     expect(casesCitedBy(PAGE, '| [`t.test.ts`](../a/t.test.ts) (case "x y") |')).toEqual([
       { file: 'a/t.test.ts', title: 'x y' },
     ]);
+    // A case in a comment is not a case; a one-line skipped describe closes at once.
+    const cases = (src: string) => declaredCases(src).filter((c) => c.kind === 'case');
+    expect(cases("/*\nit('ghost', () => {});\n*/\nit.skip('real', () => {});\n")).toEqual([
+      expect.objectContaining({ title: 'real', skipped: true }),
+    ]);
+    expect(cases("// it('ghost', () => {});\nconst t = `\nit('also', () => {});\n`;\n")).toEqual(
+      [],
+    );
+    expect(cases("describe.skip('d', () => {});\nit('after', () => {});\n")).toEqual([
+      expect.objectContaining({ title: 'after', skipped: false }),
+    ]);
+    expect(
+      cases(
+        "it.runIf(false)('r', () => {});\nit.skipIf(true)('s', () => {});\nit.runIf(ok)('c', () => {});\n",
+      ),
+    ).toEqual([
+      expect.objectContaining({ title: 'r', skipped: true }),
+      expect.objectContaining({ title: 's', skipped: true }),
+      expect.objectContaining({ title: 'c', skipped: false }),
+    ]);
+    // A (case mark that does not parse, or sits beside a file that is not a test, is not ignored.
+    expect(
+      malformedCaseMarks(PAGE, '| [`t.test.ts`](../a/t.test.ts) (case \u201cx y\u201d) |'),
+    ).toHaveLength(1);
+    expect(malformedCaseMarks(PAGE, '| a row (case "x") with no file |')).toHaveLength(1);
+    expect(malformedCaseMarks(PAGE, '| [`t.test.ts`](../a/t.test.ts) (case "x y") |')).toEqual([]);
+    expect(
+      whyNotRun(
+        new Set(['docs/h.md']),
+        () => true,
+        () => '',
+        'docs/h.md',
+        'x',
+      ),
+    ).toMatch(/not a test/);
   });
 });
