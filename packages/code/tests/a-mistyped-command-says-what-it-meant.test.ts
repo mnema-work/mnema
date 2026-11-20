@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { appendFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -106,6 +106,53 @@ describe('what a write says about where it landed', () => {
     expect(said.out).toContain('Landed in the public tree: git ignores .mnema/ here');
     expect(said.out).toContain('stays on this machine');
     expect(said.out).not.toContain('reaches every clone');
+  });
+
+  const LOCAL = 'stays on this machine';
+  const COMMITTED = 'reaches every clone';
+
+  it('counts an excluded record as committed when a file under it is tracked', async () => {
+    git('init', '-q');
+    appendFileSync(join(repo, '.git', 'info', 'exclude'), '\n.mnema/\n');
+    await mnema('init');
+    git('add', '-f', '.mnema');
+    const said = await mnema('memory', 'a note for a record that is tracked after all');
+    expect(said.out).toContain(COMMITTED);
+    expect(said.out).not.toContain(LOCAL);
+  });
+
+  it('says nothing about staying here when git cannot be run', async () => {
+    git('init', '-q');
+    appendFileSync(join(repo, '.git', 'info', 'exclude'), '\n.mnema/\n');
+    await mnema('init');
+    const path = process.env.PATH;
+    process.env.PATH = join(sandbox, 'no-such-bin');
+    try {
+      const said = await mnema('memory', 'a note while git is out of reach');
+      expect(said.out).not.toContain(LOCAL);
+    } finally {
+      if (path === undefined) delete process.env.PATH;
+      else process.env.PATH = path;
+    }
+  });
+
+  it('reads the repository from a subdirectory of it', async () => {
+    git('init', '-q');
+    appendFileSync(join(repo, '.git', 'info', 'exclude'), '\n.mnema/\n');
+    await mnema('init');
+    mkdirSync(join(repo, 'src', 'deep'), { recursive: true });
+    process.chdir(join(repo, 'src', 'deep'));
+    const said = await mnema('memory', 'a note from a subdirectory');
+    expect(said.out).toContain(LOCAL);
+  });
+
+  it('notices when the exclusion changes while the process lives', async () => {
+    git('init', '-q');
+    appendFileSync(join(repo, '.git', 'info', 'exclude'), '\n.mnema/\n');
+    await mnema('init');
+    expect((await mnema('memory', 'first, excluded')).out).toContain(LOCAL);
+    writeFileSync(join(repo, '.git', 'info', 'exclude'), '# nothing is excluded now, and longer\n');
+    expect((await mnema('memory', 'second, no longer excluded')).out).toContain(COMMITTED);
   });
 
   it('still says it reaches every clone when the record is not excluded', async () => {

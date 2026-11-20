@@ -209,16 +209,75 @@ const LANDED_PUBLIC_WITHOUT_GIT =
 const LANDED_PUBLIC_LOCAL =
   '  Landed in the public tree: git ignores .mnema/ here and tracks nothing under it, so it stays on this machine and no clone gets it.';
 
+/** What the disk says about a project's public tree, as far as the sentence after a write needs. */
+type PublicTreeFact = 'no-git' | 'local' | 'committed';
+
+/** One answer kept per project, with the files whose change makes it stale. */
+interface KnownFact {
+  readonly fact: PublicTreeFact;
+  readonly stamp: string;
+  readonly watched: readonly string[];
+}
+
+/** The process's memory of {@link publicTreeFact}: a long MCP server asks on every call. */
+const KNOWN_FACTS = new Map<string, KnownFact>();
+
+/** A change of size or time in any of `files` (an absent one counts as one state). */
+function stampOf(files: readonly string[]): string {
+  const { statSync } = process.getBuiltinModule('node:fs');
+  return files
+    .map((file) => {
+      try {
+        const at = statSync(file);
+        return `${at.mtimeMs}:${at.ctimeMs}:${at.size}`;
+      } catch {
+        return 'absent';
+      }
+    })
+    .join('|');
+}
+
 /**
- * Whether the project's public tree is local: git excludes `.mnema` at the repository's top AND
- * tracks no file under it. Read off the disk, inline; when git does not answer it is NOT local, so
- * the sentence that promises less is never said by mistake (the committed one is the default).
+ * What is true of the project's public tree: no git, committed, or local.
+ *
+ * LOCAL IS THE RULE OF ADR-630: git excludes `.mnema` at the repository's top AND tracks no file
+ * under it (`git ls-files` is empty); when git does not answer, the tree counts as committed (say
+ * less, never more). It is written here inline and is to be REPLACED by the core's helper
+ * (`packages/core/src/topology/local-record.ts`) once the pull request that brings the local
+ * backup (#1388) is on main.
+ *
+ * ONE `rev-parse` ANSWERS THE WORK TREE, THE TOP AND THE GIT DIRECTORY, and the exclusion and
+ * tracking questions are asked once per project and then remembered by the process: the answer
+ * is read again only when the git directory's `info/exclude` or `index`, or the top's
+ * `.gitignore`, changed (a stat each), so a server that lives for hours does not start a git
+ * for every write. A project with no git is not remembered, so a later `git init` is seen.
  */
-function publicTreeIsLocal(project: string): boolean {
-  const top = git(project, ['rev-parse', '--show-toplevel'])?.trim();
-  if (top === undefined || top === '') return false;
-  if (git(top, ['check-ignore', '-q', '--', '.mnema']) === null) return false;
-  return git(top, ['ls-files', '--', '.mnema'])?.trim() === '';
+function publicTreeFact(project: string): PublicTreeFact {
+  const known = KNOWN_FACTS.get(project);
+  if (known !== undefined && stampOf(known.watched) === known.stamp) return known.fact;
+  const lines = git(project, [
+    'rev-parse',
+    '--is-inside-work-tree',
+    '--show-toplevel',
+    '--absolute-git-dir',
+  ])
+    ?.trim()
+    .split('\n');
+  const top = lines?.[1];
+  const gitDir = lines?.[2];
+  if (lines?.[0] !== 'true' || top === undefined || top === '' || gitDir === undefined) {
+    KNOWN_FACTS.delete(project);
+    return 'no-git';
+  }
+  const { join } = process.getBuiltinModule('node:path');
+  const watched = [join(gitDir, 'info', 'exclude'), join(gitDir, 'index'), join(top, '.gitignore')];
+  const stamp = stampOf(watched);
+  const local =
+    git(top, ['check-ignore', '-q', '--', '.mnema']) !== null &&
+    git(top, ['ls-files', '--', '.mnema'])?.trim() === '';
+  const fact = local ? 'local' : 'committed';
+  KNOWN_FACTS.set(project, { fact, stamp, watched });
+  return fact;
 }
 
 /**
@@ -248,8 +307,11 @@ export function landedNotice(scope: Scope, project?: string): string {
       // Without git nothing is committed and no clone exists: the folder travels only as far as
       // the project's files are copied. Asked of the project the write fell in; with none named,
       // the sentence is the one a repository earns.
-      if (project !== undefined && !inAWorkTree(project)) return LANDED_PUBLIC_WITHOUT_GIT;
-      if (project !== undefined && publicTreeIsLocal(project)) return LANDED_PUBLIC_LOCAL;
+      if (project !== undefined) {
+        const fact = publicTreeFact(project);
+        if (fact === 'no-git') return LANDED_PUBLIC_WITHOUT_GIT;
+        if (fact === 'local') return LANDED_PUBLIC_LOCAL;
+      }
       return '  Landed in the public tree: committed with the repository, so it reaches every clone.';
     case 'private':
       return "  Landed in the private tree: this machine's own; it is not committed and does not travel.";
