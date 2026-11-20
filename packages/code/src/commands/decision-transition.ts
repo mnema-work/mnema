@@ -41,12 +41,7 @@
  */
 
 import { catalogUpcasters, type TransitionFields } from '@mnema/chain';
-import {
-  chainRootForScope,
-  DECISION_ACTIONS,
-  type DiscoveryEnv,
-  type Scope,
-} from '@mnema/core';
+import { chainRootForScope, DECISION_ACTIONS, type DiscoveryEnv, type Scope } from '@mnema/core';
 import {
   acceptDecision,
   openTreeForWriting,

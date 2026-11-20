@@ -57,13 +57,7 @@
 
 import { dirname } from 'node:path';
 import { catalogUpcasters, listPrivateKeyFingerprints } from '@mnema/chain';
-import {
-  type Bootstrap,
-  bootstrap,
-  type ReportedRun,
-  resume,
-  treeOf,
-} from '@mnema/context';
+import { type Bootstrap, bootstrap, type ReportedRun, resume, treeOf } from '@mnema/context';
 import {
   type Clock,
   chainRootForScope,
@@ -254,11 +248,15 @@ export function runStatus(
       // time the next one asks. So the "prefer my own run" rule has nothing to prefer
       // and the answer stays the actor's latest, which is the right one for a person
       // asking from the command line about work an agent did.
-      status: bootstrap(caches(sources), {
-        actor: anchor,
-        asOf: (ctx.clock ?? systemClock)(),
-        sessionRuns: [],
-      }, treeOf(sources)),
+      status: bootstrap(
+        caches(sources),
+        {
+          actor: anchor,
+          asOf: (ctx.clock ?? systemClock)(),
+          sessionRuns: [],
+        },
+        treeOf(sources),
+      ),
       notInGit: readEventsNotInGit({
         cwd: ctx.cwd,
         env: ctx.env,

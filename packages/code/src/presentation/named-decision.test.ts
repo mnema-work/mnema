@@ -34,7 +34,13 @@ describe('namedDecisionText: how a decision named by a link is worded', () => {
 });
 
 describe('namedDecisionText: the tree of a decision held outside the public one', () => {
-  const named = { found: true as const, id: 'id-1', adr: 'ADR-3', title: 'Use UTC', state: 'superseded' };
+  const named = {
+    found: true as const,
+    id: 'id-1',
+    adr: 'ADR-3',
+    title: 'Use UTC',
+    state: 'superseded',
+  };
 
   it('reads the label with its tree, and leaves a public decision bare', () => {
     expect(namedDecisionText({ ...named, scope: 'private' })).toBe(

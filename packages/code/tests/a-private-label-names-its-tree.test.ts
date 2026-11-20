@@ -67,7 +67,14 @@ describe('the same label in two trees', () => {
   it('reads with its tree when it is private and bare when it is public', async () => {
     const publicWrite = await mnema('decision', 'record', 'Use UTC', 'one clock');
     const publicId = idOf(publicWrite);
-    const privateWrite = await mnema('decision', 'record', 'Use ISO', 'one format', '--scope', 'private');
+    const privateWrite = await mnema(
+      'decision',
+      'record',
+      'Use ISO',
+      'one format',
+      '--scope',
+      'private',
+    );
     const privateId = idOf(privateWrite);
 
     // The write names the tree the decision landed in, only when it is not the public one.
