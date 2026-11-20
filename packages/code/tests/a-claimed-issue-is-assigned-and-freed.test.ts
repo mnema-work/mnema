@@ -1010,6 +1010,35 @@ describe('an issue that starts after another is not assigned while that one is o
     expect(claim(eventOn(1335, '/take'), api, NOW).action).toBe('blocked');
   });
 
+  it('reads at most 5 blockers and no #0, long number, code span or fenced block', () => {
+    expect(blockersOf('Starts after #1 #2 #3 #4 #5 #6 #7.')).toEqual([1, 2, 3, 4, 5]);
+    expect(blockersOf('Starts after #0 and #1234567890 and #12.')).toEqual([12]);
+    expect(blockersOf('Starts after `#5` and #6.')).toEqual([6]);
+    expect(blockersOf('Starts after:\n```\n#5\n\n#7\n```\nand #6.')).toEqual([6]);
+    expect(blockersOf('Starts after:\n~~~\n#5\nnever closed #8')).toEqual([]);
+  });
+
+  it('frees an assignment whose blocker is gone, is a cycle, or is the issue itself', () => {
+    const waits = (number: number, on: number) =>
+      blocked(number, ['newcomer'], `Starts after #${on}.`);
+    const run = (issues: Record<string, object>) => {
+      const api = fixtureApi(
+        { issues, comments: { '10': [assignedBy(40)], '11': [assignedBy(40)] } },
+        () => {},
+      );
+      return expire(api, NOW, REPO);
+    };
+    expect(run({ '10': waits(10, 404) })).toEqual([10]);
+    expect(run({ '10': waits(10, 10) })).toEqual([10]);
+    expect(run({ '10': waits(10, 11), '11': { ...waits(11, 10), assignees: [] } })).toEqual([10]);
+    expect(run({ '10': waits(10, 11), '11': blocker(11, 'open') })).toEqual([]);
+  });
+
+  it('still answers a claim naming a blocker that cannot be read', () => {
+    const api = fixtureApi({ issues: { '10': blocked(10, [], 'Starts after #404.') } }, () => {});
+    expect(claim(eventOn(10, '/take'), api, NOW).action).toBe('blocked');
+  });
+
   it('says taken, not blocked, when someone already holds it, and ignores a maintainer', () => {
     const open = { '1327': blocker(1327, 'open') };
     const held = fixtureApi({ issues: { '1335': blocked(1335, ['other']), ...open } }, () => {});

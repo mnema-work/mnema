@@ -20,7 +20,8 @@
  *     workflow's or a maintainer's by hand), whose assignee has no open pull request that names the
  *     issue, is unassigned and says so. A maintainer's own assignment is never freed, an issue
  *     without a contributor label is ours and is left alone, and an issue still waiting on an open
- *     blocker keeps its assignee.
+ *     blocker keeps its assignee; a blocker that is gone (404), closed or waiting on this issue in turn
+ *     does not hold it.
  *   node .github/assign-a-claimed-issue/claim.mjs adopt
  *     Daily. The author of an open pull request that closes (fixes, closes, resolves) an open,
  *     unassigned contributor issue is assigned to it, once, with a note on the issue.
@@ -123,22 +124,32 @@ export const CLAIM_PHRASES = [
   '/claim',
 ];
 
+/** The most blockers read from one paragraph: a body someone wrote cannot make the workflow ask for more. */
+const MOST_BLOCKERS = 5;
+
 /**
  * The issues a body says it waits on: the `#N` in the paragraph that starts at "Starts after" or
  * "do not take this one until", so the `Part of #N` before it and any `#N` after the blank line are
  * not read. Only digits are taken from the text, and it is the maintainers' text, never a comment.
+ * A `#N` inside a code span or a fenced block is not read, `#0` and a number of more than 9 digits
+ * are not issues, and at most the first 5 are kept.
  *
  * @param {string | null | undefined} body
  * @returns {number[]}
  */
 export function blockersOf(body) {
-  const text = String(body ?? '');
+  const text = String(body ?? '')
+    .replace(/\r?\n?(```|~~~)[\s\S]*?(\1|$)\r?\n?/g, ' ')
+    .replace(/(`+)[\s\S]*?\1/g, ' ');
   const start = text.search(/starts after|do not take this one until/i);
   if (start < 0) return [];
   const paragraph = text.slice(start).split(/\r?\n\s*\r?\n/)[0] ?? '';
   const numbers = new Set();
-  for (const found of paragraph.matchAll(/(?<![\w/.#-])#(\d+)(?!\d)/g))
-    numbers.add(Number(found[1]));
+  for (const found of paragraph.matchAll(/(?<![\w/.#-])#(\d{1,9})(?!\d)/g)) {
+    const number = Number(found[1]);
+    if (number > 0) numbers.add(number);
+    if (numbers.size === MOST_BLOCKERS) break;
+  }
   return [...numbers];
 }
 
@@ -199,7 +210,7 @@ const NEGATION =
  */
 const normalise = (text) =>
   String(text ?? '')
-    .replace(/(```|~~~)[\s\S]*?(\1|$)/g, ' ')
+    .replace(/\r?\n?(```|~~~)[\s\S]*?(\1|$)\r?\n?/g, ' ')
     .replace(/`[^`\n]*`/g, ' ')
     .split('\n')
     .filter((line) => !line.trimStart().startsWith('>'))
@@ -647,23 +658,43 @@ const toldBlocked = (comments, login) =>
   );
 
 /**
- * The issues `issue` waits on that are still open. One that cannot be read counts as open: the
- * safe answer for an issue that says it must wait.
+ * Whether the issue `number` still holds `issue` back. A closed one does not, and neither does one
+ * that waits on `issue` in turn (a cycle that no one could ever break). One that cannot be read
+ * holds it back, except, when `goneIsClosed`, one GitHub says is not there (missing, deleted or
+ * transferred): an assignment must not outlast a body someone wrote.
  *
  * @param {Api} api
  * @param {Json} issue
+ * @param {number} number
+ * @param {boolean} goneIsClosed
+ */
+const holdsBack = (api, issue, number, goneIsClosed) => {
+  let one;
+  try {
+    one = api.issue(number);
+  } catch (error) {
+    const said = `${(/** @type {Json} */ (error))?.stderr ?? ''}${(/** @type {Json} */ (error))?.message ?? ''}`;
+    return !(goneIsClosed && /\b404\b/.test(said));
+  }
+  if (!one) return !goneIsClosed;
+  if (one.state === 'closed') return false;
+  return !blockersOf(one.body).includes(issue.number);
+};
+
+/**
+ * The issues `issue` waits on that still hold it back. When one cannot be read, a claim takes it for
+ * open (the safe answer for an issue that says it must wait); the daily release (`goneIsClosed`)
+ * takes one that is not there for closed.
+ *
+ * @param {Api} api
+ * @param {Json} issue
+ * @param {{ goneIsClosed?: boolean }} [options]
  * @returns {number[]}
  */
-export function openBlockers(api, issue) {
-  return blockersOf(issue.body).filter((number) => {
-    if (number === issue.number) return false;
-    try {
-      const one = api.issue(number);
-      return one?.state !== 'closed';
-    } catch {
-      return true;
-    }
-  });
+export function openBlockers(api, issue, { goneIsClosed = false } = {}) {
+  return blockersOf(issue.body).filter(
+    (number) => number !== issue.number && holdsBack(api, issue, number, goneIsClosed),
+  );
 }
 
 /** Whether this workflow already told `login` on this issue how to claim. @param {Json[]} comments @param {string} login */
@@ -813,7 +844,7 @@ export function expire(api, now = new Date(), repo = '') {
       repo,
     });
     if (!verdict.free) continue;
-    if (openBlockers(api, issue).length > 0) continue;
+    if (openBlockers(api, issue, { goneIsClosed: true }).length > 0) continue;
     const who = String(verdict.login);
     api.unassign(issue.number, who);
     api.comment(issue.number, replies.freed(who, now));

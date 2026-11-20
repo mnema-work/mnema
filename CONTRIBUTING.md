@@ -33,6 +33,8 @@ Comment `/take` (or `/claim`) on an open `good first issue` or `help wanted` iss
 
 The assignment frees itself after 14 days without an open pull request of yours that names the issue (write `#<number>` in its description), and says so on the issue; a daily run does that, for an issue a maintainer assigned to you by hand as well. A pull request that meets the issue's "Done when" and shows its "How to check" is what the review looks at.
 
+An issue whose body says "Starts after #N" is not assigned while #N is open: the reply names #N, and the daily release does not free an assignment while #N is open.
+
 If a maintainer asks for a change on your pull request and you do not answer, you get one reminder after 7 days and one note after 14: the maintainers then finish it on your branch (leave "Allow edits by maintainers" ticked), merge it and thank you here with the credit still yours, or close it with thanks. The workflow only comments; a person does the rest.
 
 ## Before a pull request
