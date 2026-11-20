@@ -3,7 +3,7 @@ $ mnema
 | Your decisions, handed to your agents' sessions and held at the edits they govern: append-only and signed in the repository, and checkable by anyone.
 | A mnema project is founded here.
 | 1 decision(s) await a judgement: `mnema decision review` goes through them.
-| Off on this machine: edit-first-write-gate, user-corrections. Turn one on with `mnema switch on <name>`.
+| Off on this machine: edit-first-write-gate, user-corrections, record-publish. Turn one on with `mnema switch on <name>`.
 | Next:
 |   `mnema status`                                where things stand
 |   `mnema decision record <title> <rationale>`   record a choice that was settled
