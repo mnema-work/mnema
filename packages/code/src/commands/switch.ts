@@ -51,7 +51,6 @@ import {
   type SwitchableChannel,
   WHAT_STOPS,
 } from '../record-framing.js';
-import { asRecordPublishReadsThem } from './record-publish.js';
 import { forwardReplacement, type Landed, type Replacement } from '../recorded-content.js';
 import {
   linkBreaksOf,
@@ -59,6 +58,7 @@ import {
   THE_READING_THAT_OPENED_THESE,
   withScopedCaches,
 } from '../tree-sources.js';
+import { asRecordPublishReadsThem } from './record-publish.js';
 import {
   type AgentWrites,
   originOfTheWrite,
@@ -127,7 +127,11 @@ export interface SwitchListing {
 export function runSwitchList(ctx: SwitchContext): SwitchListing {
   const trees = resolveTrees(ctx.cwd, ctx.env);
   return withScopedCaches(trees, (sources) => {
-    const states = channelStates(asRecordPublishReadsThem(sources), SWITCHABLE_CHANNELS, STARTS_OFF);
+    const states = channelStates(
+      asRecordPublishReadsThem(sources),
+      SWITCHABLE_CHANNELS,
+      STARTS_OFF,
+    );
     return {
       ok: true,
       rows: SWITCHABLE_CHANNELS.map((channel, at) => ({
@@ -150,7 +154,11 @@ export function runSwitchList(ctx: SwitchContext): SwitchListing {
 export function channelsOff(ctx: Pick<SwitchContext, 'cwd' | 'env'>): readonly SwitchableChannel[] {
   const trees = resolveTrees(ctx.cwd, ctx.env);
   return withScopedCaches(trees, (sources) => {
-    const states = channelStates(asRecordPublishReadsThem(sources), SWITCHABLE_CHANNELS, STARTS_OFF);
+    const states = channelStates(
+      asRecordPublishReadsThem(sources),
+      SWITCHABLE_CHANNELS,
+      STARTS_OFF,
+    );
     return SWITCHABLE_CHANNELS.filter((_channel, at) => (states[at] as ChannelState).on === false);
   });
 }
@@ -301,7 +309,11 @@ export function runSwitch(
   // off wins between trees that cannot be ordered, so switching one on may change
   // nothing that the next push will see.
   const read = withScopedCaches(trees, (sources) => ({
-    effective: channelStates(asRecordPublishReadsThem(sources), [recorded.channel], STARTS_OFF)[0] as ChannelState,
+    effective: channelStates(
+      asRecordPublishReadsThem(sources),
+      [recorded.channel],
+      STARTS_OFF,
+    )[0] as ChannelState,
     anchors: anchorForms(sources),
     // Read back over the SAME sources the effective state came off: a switch this verb
     // just wrote is only as good as the tail it landed on, and this is the one write on

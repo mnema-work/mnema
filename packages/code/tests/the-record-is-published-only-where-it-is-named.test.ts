@@ -441,7 +441,11 @@ describe('mnema record publish', SLOW, () => {
     const refused = () => expect(publish(local)).toMatchObject({ ok: false, reason: 'GH_FAILED' });
 
     writeFileSync(join(sandbox, 'list-fails'), '');
-    refused();
+    expect(publish(local)).toMatchObject({
+      ok: false,
+      reason: 'GH_FAILED',
+      said: expect.stringContaining('HTTP 502'),
+    });
     rmSync(join(sandbox, 'list-fails'));
     writeFileSync(join(sandbox, 'list.json'), 'not json');
     refused();
