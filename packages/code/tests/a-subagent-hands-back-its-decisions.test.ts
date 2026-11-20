@@ -602,7 +602,7 @@ describe('the plugin command on Codex and Copilot CLI', () => {
       );
       expect([quiet.status, quiet.stdout, quiet.stderr], name).toEqual([0, '', '']);
     }
-    expect(host(payload('Analysis complete.')).status).toBe(2);
+    expect(hostRun(payload('Analysis complete.')).status).toBe(2);
   });
 });
 
