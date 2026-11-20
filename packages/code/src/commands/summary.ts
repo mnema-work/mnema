@@ -52,11 +52,14 @@ export function summaryHere(ctx: { readonly cwd: string; readonly env: Discovery
       waiting = read.proposals.length;
       const last = read.lastShown;
       const since = last === undefined ? [] : read.toShow.filter((rule) => rule.accepted.at > last);
-      notSeen = {
-        since,
-        older: read.toShow.length - since.length,
-        ...(last !== undefined ? { lastShown: last } : {}),
-      };
+      // Absent when there is nothing on the list: the summary then says nothing of it.
+      if (read.toShow.length > 0) {
+        notSeen = {
+          since,
+          older: read.toShow.length - since.length,
+          ...(last !== undefined ? { lastShown: last } : {}),
+        };
+      }
       // What was read is counted, and what was left out is said first, as `status` says it.
       left = linkBreakSentences(read.linkBreaks);
     }
