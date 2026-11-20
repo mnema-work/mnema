@@ -126,7 +126,7 @@ export function appendToolCall(
 const waiting: {
   readonly file: string;
   readonly call: ToolCall;
-  readonly onLinked?: (file: string) => void;
+  readonly onLinked?: ((file: string) => void) | undefined;
 }[] = [];
 let exitHooked = false;
 
