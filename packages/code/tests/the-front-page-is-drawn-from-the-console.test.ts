@@ -1224,7 +1224,8 @@ function propertiesOf(declarations: string): string[] {
  * an animation outside a keyframes, nor set, in any rule or keyframe, a property outside
  * `CSS_THE_SCRIPT_WRITES`, and each of their keyframes must be one this reads. A stylesheet is read
  * whole: its selectors must be class selectors (`.a` or a list of them), it may hold no at-rule but
- * `@keyframes` (an `@media` and an `@import` are refused), and nothing may stand outside its rules
+ * `@keyframes` and the `@media` of `prefers-reduced-motion: reduce` (any other condition and an
+ * `@import` are refused), and nothing may stand outside its rules
  * and keyframes.
  */
 function unreadIn(svg: string): string[] {
@@ -1284,12 +1285,17 @@ function unreadIn(svg: string): string[] {
     out.push('the stylesheet gives a shape an animation, which this does not read');
   if ((sheet.match(/@keyframes\b/g) ?? []).length !== keyframesOf(svg).size)
     out.push('the stylesheet has a keyframes this does not read');
-  for (const at of new Set(sheet.match(/@(?!keyframes\b)[\w-]*/g) ?? []))
+  // The one condition the script writes is read: its rules are read as any other rule is.
+  const flat = outside.replace(
+    /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{((?:[^{}]*\{[^{}]*\})*)\}/g,
+    '$1',
+  );
+  for (const at of new Set(flat.match(/@(?!keyframes\b)[\w-]*/g) ?? []))
     out.push(`the stylesheet uses ${at}, which this does not read`);
-  const rules = outside.replace(/\/\*[\s\S]*?\*\//g, '');
+  const rules = flat.replace(/\/\*[\s\S]*?\*\//g, '');
   for (const r of rules.matchAll(/([^{}]*)\{[^{}]*\}/g)) {
     const selector = (r[1] as string).trim();
-    if (!/^\.[\w-]+(?:\s*,\s*\.[\w-]+)*$/.test(selector) && !selector.startsWith('@'))
+    if (!/^\.[\w-]+(?:\s*,\s*\.[\w-]+)*$/.test(selector))
       out.push(`the stylesheet has the selector ${selector}, which this does not read`);
   }
   const stray = rules.replace(/[^{}]*\{[^{}]*\}/g, '').trim();
