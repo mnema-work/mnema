@@ -112,9 +112,15 @@ try {
     process.argv.slice(2),
   );
   if (document !== null) process.stdout.write(reply(HOOK_EVENT, document, process.argv.slice(2)));
-} catch {
+} catch (fault) {
   // Silence, deliberately and with nothing to add: the one thing this handler must
   // never do is make somebody else's session worse than it would have been without
   // the plugin installed. There is no `process.exit` here either: exiting while a
-  // pipe still holds bytes is how output gets truncated.
+  // pipe still holds bytes is how output gets truncated. What failed is one line in the
+  // ledger of caught failures (`swallowed.mjs`), which `mnema doctor` reads: a ledger that
+  // cannot be loaded is no reason to say anything either.
+  await import('./swallowed.mjs').then(
+    (ledger) => ledger.noteSwallowed('hook.session-start', fault),
+    () => undefined,
+  );
 }

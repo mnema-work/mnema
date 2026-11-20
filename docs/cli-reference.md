@@ -22,6 +22,7 @@ The long sections of this page are pages of their own, and nothing in them was s
 - [The decisions you already wrote](importing-the-decisions-you-already-wrote.md)
 - [Switching off what mnema hands to a model](switching-off-what-is-handed-to-a-model.md)
 - [The session journal and compaction](the-session-journal-and-compaction.md)
+- [The ledger of caught failures](the-ledger-of-caught-failures.md)
 - [As an MCP server](as-an-mcp-server.md)
 
 [What it proves, and what it does not](what-it-proves.md#the-long-form-claim-by-claim) is the end of the page that holds its table.

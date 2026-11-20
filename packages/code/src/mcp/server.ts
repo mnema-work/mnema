@@ -78,6 +78,7 @@
  */
 
 import { existsSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { CodedError, UnreadableDiskError, UnreadableLineError } from '@mnema/chain';
 import { REFERENCE_DEFAULT_DEPTH, REFERENCE_MAX_DEPTH } from '@mnema/context';
 import {
@@ -127,6 +128,7 @@ import {
 } from '../recorded-content.js';
 import { REFERENCE_DIRECTIONS } from '../reference-directions.js';
 import { patternsFraming, SERVED_PATTERN_CONTRACT } from '../served-patterns.js';
+import { noteSwallowed } from '../swallowed-ledger.js';
 import {
   countToolCall,
   flushToolCalls,
@@ -796,8 +798,10 @@ function countedLocally<Input extends ZodRawShapeCompat | undefined>(
 ): ToolCallback<Input> {
   const called = handle as (...args: unknown[]) => unknown;
   const count = async (result: string): Promise<void> => {
+    let dataDir: string | undefined;
     try {
       const session = await ensureSession();
+      dataDir = dirname(session.trees.global);
       const file = toolCallsFile(session.trees);
       if (file === undefined || !countsToolCalls(session)) return;
       // WHERE THE MACHINE HAS NO KEY OF ITS OWN YET NOTHING IS KEPT, and the count makes no
@@ -812,8 +816,10 @@ function countedLocally<Input extends ZodRawShapeCompat | undefined>(
         effect: what.effect,
         result,
       });
-    } catch {
-      // A count that cannot be kept is not a reason for a tool to answer differently.
+    } catch (error) {
+      // A count that cannot be kept is not a reason for a tool to answer differently. It is said once,
+      // in the ledger of caught failures (`swallowed-ledger.ts`), which `mnema doctor` reads.
+      noteSwallowed('mcp.tool-call-count', error, dataDir === undefined ? {} : { dataDir });
     }
   };
   return (async (...args: unknown[]) => {
