@@ -911,8 +911,8 @@ describe('who takes over a file another build’s code wrote', () => {
   afterEach(() => keepProductVersion(undefined));
 
   it('an update takes the file over once, and the file is incremental for it afterwards', () => {
-    aFileWrittenBy('the-build-before-the-update', '0.1.7');
-    keepProductVersion('0.1.8');
+    aFileWrittenBy('the-build-before-the-update', '4.1.7');
+    keepProductVersion('4.1.8');
     const updated = persisted();
     updated.refresh();
     expect(updated.leftTheFileToAnotherBuild).toBe(false);
@@ -920,7 +920,7 @@ describe('who takes over a file another build’s code wrote', () => {
     expect(answersOf(updated)).toEqual(answersOf(replayed()));
     updated.close();
     const meta = theMetaOfTheFile();
-    expect(meta.version).toBe('0.1.8');
+    expect(meta.version).toBe('4.1.8');
     expect(meta.stamp).toMatch(/^[0-9a-f]{32}$/);
     // The next process of that version reads what the file holds.
     plantAMarker();
@@ -931,18 +931,18 @@ describe('who takes over a file another build’s code wrote', () => {
 
   it('a file written by a build that stored no version is the oldest there is, and is taken over', () => {
     aFileWrittenBy('a-build-that-said-nothing', undefined);
-    keepProductVersion('0.1.8');
+    keepProductVersion('4.1.8');
     const cache = persisted();
     cache.refresh();
     expect(cache.leftTheFileToAnotherBuild).toBe(false);
     expect(theMarkerSurvived(cache)).toBe(false);
     cache.close();
-    expect(theMetaOfTheFile().version).toBe('0.1.8');
+    expect(theMetaOfTheFile().version).toBe('4.1.8');
   });
 
   it('two checkouts of one version with different code never rewrite each other’s file', () => {
-    aFileWrittenBy('the-other-checkout', '0.1.8');
-    keepProductVersion('0.1.8');
+    aFileWrittenBy('the-other-checkout', '4.1.8');
+    keepProductVersion('4.1.8');
     const before = theFileAsItIs();
     const cache = persisted();
     cache.refresh();
@@ -950,12 +950,12 @@ describe('who takes over a file another build’s code wrote', () => {
     expect(answersOf(cache)).toEqual(answersOf(replayed()));
     cache.close();
     expect(theFileAsItIs()).toEqual(before);
-    expect(theMetaOfTheFile()).toEqual({ stamp: 'the-other-checkout', version: '0.1.8' });
+    expect(theMetaOfTheFile()).toEqual({ stamp: 'the-other-checkout', version: '4.1.8' });
   });
 
   it('an older version left beside a newer one leaves the newer one’s file alone', () => {
-    aFileWrittenBy('the-newer-build', '0.2.0');
-    keepProductVersion('0.1.8');
+    aFileWrittenBy('the-newer-build', '4.2.0');
+    keepProductVersion('4.1.8');
     const before = theFileAsItIs();
     const cache = persisted();
     cache.refresh();
@@ -965,19 +965,19 @@ describe('who takes over a file another build’s code wrote', () => {
   });
 
   it('versions are compared by their three numbers, not as text', () => {
-    aFileWrittenBy('the-build-before', '0.1.9');
-    keepProductVersion('0.1.10');
+    aFileWrittenBy('the-build-before', '4.1.9');
+    keepProductVersion('4.1.10');
     const cache = persisted();
     cache.refresh();
     expect(cache.leftTheFileToAnotherBuild).toBe(false);
-    expect(theMetaOfTheFile().version).toBe('0.1.10');
+    expect(theMetaOfTheFile().version).toBe('4.1.10');
   });
 
   it('a file that is busy is not a file with no owner: it is left as it is and read in memory', {
     timeout: 20_000,
   }, () => {
-    aFileWrittenBy('the-owner', '0.1.8');
-    keepProductVersion('0.1.9');
+    aFileWrittenBy('the-owner', '4.1.8');
+    keepProductVersion('4.1.9');
     const path = projectionCachePath({ root });
     // A file in rollback-journal mode held exclusively cannot even be read by another process.
     const holder = new DatabaseSync(path);
@@ -994,7 +994,7 @@ describe('who takes over a file another build’s code wrote', () => {
     }
     expect(answersOf(cache)).toEqual(answersOf(replayed()));
     cache.close();
-    expect(theMetaOfTheFile()).toEqual({ stamp: 'the-owner', version: '0.1.8' });
+    expect(theMetaOfTheFile()).toEqual({ stamp: 'the-owner', version: '4.1.8' });
     expect(rowsOf(path).memories?.some((row) => row.includes('a-marker'))).toBe(true);
   });
 
