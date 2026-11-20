@@ -17,6 +17,11 @@ const ROWS: readonly (readonly [string, boolean])[] = [
   ['The maintainer kept the second option.', false],
   ['O mantenedor disse: “sim, assim”.', false],
   ['Concluded by the agent from the record, nothing dictated.', false],
+  ['Not dictated by the maintainer.', false],
+  ['Not as dictated.', false],
+  ['Dictated by the agent.', false],
+  ['Nothing was dictated by anyone.', false],
+  ['Never dictated by the maintainer, concluded alone.', false],
   ['accepted', false],
   ['', false],
 ];

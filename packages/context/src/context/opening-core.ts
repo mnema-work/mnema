@@ -17,15 +17,26 @@
 import type { ScopedCache } from '../sources.js';
 
 const DICTATED =
-  /\b(?:dictated by|as dictated)\b|\b(?:maintainer|person|user) (?:had |has )?dictated\b/i;
+  /\b(?:dictated by|as dictated)\b|\b(?:maintainer|person|user) (?:had |has )?dictated\b/gi;
+const NEGATION_BEFORE = /\b(?:not|nothing|never|no)\W+(?:\w+\W+){0,3}$/i;
+const BY_AN_AGENT = /^\W*(?:the |an? )?agent\b/i;
 
 /**
  * Whether an acceptance note says the person dictated the rule: "dictated by", "as dictated", or
  * the maintainer, the person or the user having dictated it. A note that only quotes the person,
- * or says they chose, said or kept it, does not.
+ * or says they chose, said or kept it, does not; nor one that negates it ("not dictated by",
+ * "nothing was dictated") or says an agent dictated it.
  */
 export function noteSaysTheyDictatedIt(note: string): boolean {
-  return DICTATED.test(note);
+  for (const hit of note.matchAll(DICTATED)) {
+    const before = note.slice(Math.max(0, hit.index - 40), hit.index);
+    if (NEGATION_BEFORE.test(before)) continue;
+    if (BY_AN_AGENT.test(note.slice(hit.index + hit[0].length, hit.index + hit[0].length + 20))) {
+      continue;
+    }
+    return true;
+  }
+  return false;
 }
 
 /**
