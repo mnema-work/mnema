@@ -1741,6 +1741,46 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'how many decisions the review goes through: a count of the list',
   },
+  'rules-test.ts « ({})» one.by.map(oneLine).join(', ') #1': {
+    verdict: 'collapsed',
+    why: 'the ids of the rules the record holds behind a verdict, each collapsed',
+  },
+  'rules-test.ts «{} of {} case(s) met their verdict.» cases.length #1': {
+    verdict: 'minted',
+    why: 'how many cases the file declared: a count of the list',
+  },
+  'rules-test.ts «{} of {} case(s) met their verdict.» met #1': {
+    verdict: 'minted',
+    why: 'how many of them met their verdict: a count',
+  },
+  'rules-test.ts «{}: expected {}, got {}{}» by #1': {
+    verdict: 'composed',
+    why: 'the clause built above from the collapsed ids, or nothing',
+  },
+  'rules-test.ts «{}: expected {}, got {}{}» one.expect #1': {
+    verdict: 'minted',
+    why: 'one of the four verdict words, parsed against that list before it is kept',
+  },
+  'rules-test.ts «{}: expected {}, got {}{}» one.got #1': {
+    verdict: 'minted',
+    why: 'one of the four verdict words the gate answered',
+  },
+  'rules-test.ts «{}: expected {}, got {}{}» oneLine(one.path) #1': {
+    verdict: 'collapsed',
+    why: 'the path the file declared, typed by whoever wrote the file',
+  },
+  'rules-test.ts «{}: {}{}» by #1': {
+    verdict: 'composed',
+    why: 'the clause built above from the collapsed ids, or nothing',
+  },
+  'rules-test.ts «{}: {}{}» one.got #1': {
+    verdict: 'minted',
+    why: 'one of the four verdict words the gate answered',
+  },
+  'rules-test.ts «{}: {}{}» oneLine(one.path) #1': {
+    verdict: 'collapsed',
+    why: 'the path the file declared, typed by whoever wrote the file',
+  },
 
   // --- rules.ts: which recorded rules govern a path -------------------------------
   'rules.ts subjectLine(oneLine(governed.relative ?? governed.path)) #1': {
@@ -3036,8 +3076,8 @@ describe('every value this layer puts on a line is classified', () => {
     // it measures what the two opening texts print for a hook, and cuts them at a whole item.
     // `named-decision.ts` is a COMPOSER: the decision another decision's link names, whose title is
     // text somebody typed, worded once for `show` and for the document a session opens with.
-    expect(FOUND.composers.length + FOUND.machinery.length).toBe(39);
-    expect(FOUND.composers.length).toBe(27);
+    expect(FOUND.composers.length + FOUND.machinery.length).toBe(40);
+    expect(FOUND.composers.length).toBe(28);
     expect(FOUND.machinery).toContain('items.ts');
     expect(FOUND.machinery).toContain('line.ts');
     expect(FOUND.machinery).toContain('width.ts');
@@ -3069,10 +3109,10 @@ describe('every value this layer puts on a line is classified', () => {
     // No arm of the case above may be empty, or that much of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
     const count = (verdict: Verdict): number => verdicts.filter((said) => said === verdict).length;
-    expect(count('collapsed')).toBe(172);
-    expect(count('minted')).toBe(308);
-    expect(count('composed')).toBe(128);
-    expect(FOUND.sites.filter((site) => /\boneLine\b/.test(site.expression))).toHaveLength(172);
+    expect(count('collapsed')).toBe(175);
+    expect(count('minted')).toBe(313);
+    expect(count('composed')).toBe(130);
+    expect(FOUND.sites.filter((site) => /\boneLine\b/.test(site.expression))).toHaveLength(175);
   });
 
   it('every reason says where the value comes from', () => {
