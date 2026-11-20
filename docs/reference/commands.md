@@ -81,7 +81,7 @@ carries the help the command prints, word for word.
 - [mnema refs](cli/refs.md): show what an entity is connected to across the trees
 - [mnema audit](cli/audit.md): ask the record who authorized what, what recurs, and what looks like a credential
   - [mnema audit accountability](cli/audit-accountability.md): show who authorized what across the record (optionally windowed/filtered)
-  - [mnema audit antipatterns](cli/audit-antipatterns.md): show recurring shapes in the record (reopens, supersessions, deprecations)
+  - [mnema audit antipatterns](cli/audit-antipatterns.md): show recurring shapes in the record (reopens, supersessions, deprecations, and what agents accepted)
   - [mnema audit exposure](cli/audit-exposure.md): show which records hold something shaped like a credential (never the value)
 - [mnema diagram](cli/diagram.md): print a state machine, or an entity’s history or connections, as mermaid
 - [mnema export](cli/export.md): emit the record as an OCSF audit feed (NDJSON, envelope only, never a body)
