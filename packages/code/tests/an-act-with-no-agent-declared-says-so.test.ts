@@ -46,7 +46,9 @@ beforeAll(() => {
   mkdirSync(home, { recursive: true });
   spawnSync('git', ['init', '-q'], { cwd: repo });
   ask('init', '--yes', '--hosts', 'none');
-  decision = /\(([0-9a-f-]{36})\)/.exec(ask('decision', 'record', 'Keep it small', 'Reads are hot'))?.[1] as string;
+  decision = /\(([0-9a-f-]{36})\)/.exec(
+    ask('decision', 'record', 'Keep it small', 'Reads are hot'),
+  )?.[1] as string;
   ask('decision', 'move', 'accept', decision, '--note', 'agreed');
   task = /\(([0-9a-f-]{36})\)/.exec(ask('task', 'create', 'Write the parser'))?.[1] as string;
   ask('task', 'move', 'submit', task);

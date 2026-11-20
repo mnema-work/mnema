@@ -996,10 +996,13 @@ function report(
     // already says so; the note naming WHICH key is informational and waits for `--verbose`. Every
     // other note says a thing a reader may have to act on, and is never behind it. A `which` that the
     // key which signed only stated is the truth of nearly every record, and waits there too.
-    if ((note.kind === 'backup-key' ||
+    if (
+      (note.kind === 'backup-key' ||
         note.kind === 'declared-which' ||
         note.kind === 'undeclared-which') &&
-      !verbose) continue;
+      !verbose
+    )
+      continue;
     io.out(
       render(fact(onOneLine`census [${note.kind}] ${named} ${censusLocus(note)}: ${note.detail}`)),
     );
