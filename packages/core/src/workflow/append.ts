@@ -41,6 +41,7 @@
 import { type CatalogEvent, type ChainWriter, type Entry, unreadableReason } from '@mnema/chain';
 import { unfilledReference, unfilledTitle, unstatedReason } from '../a-reason-states-something.js';
 import { matchPrivate, stringsIn } from '../content/private-patterns.js';
+import { oneLine } from '../one-line.js';
 import { systemClock } from './clock.js';
 import { authorizingAnchor, ensureFounded } from './identity-operations.js';
 import type { WriteContext } from './operations.js';
@@ -305,8 +306,8 @@ function refusePrivate(ctx: WriteContext, event: CatalogEvent): PrivatePatternEr
       ok: false,
       code: 'PRIVATE_PATTERN',
       message:
-        `the text of this public write matches "${match.pattern}", a pattern of this machine's ` +
-        `private list (passage: "${match.passage}"). The fact was NOT recorded: a public record is ` +
+        `the text of this public write matches "${oneLine(match.pattern)}", a pattern of this machine's ` +
+        `private list (passage: "${oneLine(match.passage)}"). The fact was NOT recorded: a public record is ` +
         'committed and cloned. Write it without that passage, record it in the private scope, or, ' +
         'if the mention is meant to be public, say so with --allow-private-pattern ' +
         '(allow_private_pattern in the MCP tools).',

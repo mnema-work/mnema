@@ -8,13 +8,13 @@
  * at the append door, at both doors a person or an agent uses: the binary and the server's tools.
  *
  * WHAT IS ASSERTED, per verb and per door: refused with the code, the pattern and the passage, and
- * the text is on no tail; recorded with the flag; recorded in the private scope with no flag;
- * recorded on a machine with no list. A refusal that left the text on a tail would be the
- * disclosure it exists to prevent, so the tails are read for the words themselves.
+ * the text is not in the public tree; recorded with the flag; recorded in the private scope with no flag;
+ * recorded on a machine with no list. A refusal that left the text in the public tree would be the
+ * disclosure it exists to prevent, so the public tree is read for the words themselves.
  */
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -22,6 +22,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildMcpServer } from '../src/mcp/server.js';
 import { MNEMA_CLI } from './support/the-cli.js';
+import { publicTreeHolds } from './support/the-public-tree-holds.js';
 
 const MARKER = 'nightjar';
 const LIST = ['# this machine only', 'Nightjar', '/host-\\d+/'].join('\n');
@@ -38,7 +39,7 @@ beforeEach(() => {
   mkdirSync(repo, { recursive: true });
   spawnSync('git', ['init', '-q'], { cwd: repo });
   const init = mnema('init', '--yes', '--hosts', 'none', '--accepts', 'no');
-  if (init.status !== 0) throw new Error(`init failed: ${init.stdout}${init.stderr}`);
+  if (init.status !== 0) throw new Error(`init failed: ${init.out}`);
   writeFileSync(join(home, '.mnema', 'private-patterns.txt'), LIST);
 });
 
@@ -55,21 +56,9 @@ function mnema(...argv: string[]): { status: number | null; out: string } {
   return { status: ran.status, out: `${ran.stdout}${ran.stderr}` };
 }
 
-/** Whether the words are on any tail of the public tree: what a clone would receive. */
-function publicTailsHold(words: string): boolean {
-  const tails = join(repo, '.mnema', 'tails');
-  for (const tail of readdirSync(tails)) {
-    for (const file of readdirSync(join(tails, tail))) {
-      if (!file.endsWith('.jsonl')) continue;
-      if (
-        readFileSync(join(tails, tail, file), 'utf-8')
-          .toLowerCase()
-          .includes(words)
-      )
-        return true;
-    }
-  }
-  return false;
+/** Whether the words are in the public tree: what a clone would receive. */
+function publicTreeHeld(words: string): boolean {
+  return publicTreeHolds(repo, words);
 }
 
 /** A task the other verbs can be about, with clean words. */
@@ -104,7 +93,7 @@ const VERBS: readonly Verb[] = [
 describe('the binary', () => {
   for (const verb of VERBS) {
     describe(verb.name, () => {
-      it('is refused with the code, the pattern and the passage, and the words are on no tail', () => {
+      it('is refused with the code, the pattern and the passage, and the words are not in the public tree', () => {
         const task = aTask();
         const refused = mnema(...verb.argv(task), '--scope', 'public');
         expect(refused.status).not.toBe(0);
@@ -112,21 +101,21 @@ describe('the binary', () => {
         expect(refused.out).toContain('"Nightjar"');
         expect(refused.out).toContain('Nightjar');
         expect(refused.out).toContain('--allow-private-pattern');
-        expect(publicTailsHold(MARKER)).toBe(false);
+        expect(publicTreeHeld(MARKER)).toBe(false);
       });
 
       it('is recorded with --allow-private-pattern', () => {
         const task = aTask();
         const passed = mnema(...verb.argv(task), '--scope', 'public', '--allow-private-pattern');
         expect(passed.status, passed.out).toBe(0);
-        expect(publicTailsHold(MARKER)).toBe(true);
+        expect(publicTreeHeld(MARKER)).toBe(true);
       });
 
       it('is recorded in the private scope with no flag, and the public tree does not hold it', () => {
         const task = aTask();
         const passed = mnema(...verb.argv(task), '--scope', 'private');
         expect(passed.status, passed.out).toBe(0);
-        expect(publicTailsHold(MARKER)).toBe(false);
+        expect(publicTreeHeld(MARKER)).toBe(false);
       });
 
       it('is recorded where the machine keeps no list', () => {
@@ -134,7 +123,7 @@ describe('the binary', () => {
         const task = aTask();
         const passed = mnema(...verb.argv(task), '--scope', 'public');
         expect(passed.status, passed.out).toBe(0);
-        expect(publicTailsHold(MARKER)).toBe(true);
+        expect(publicTreeHeld(MARKER)).toBe(true);
       });
     });
   }
@@ -209,14 +198,14 @@ describe('the server', () => {
           expect(refused.text).toContain('Refused (PRIVATE_PATTERN)');
           expect(refused.text).toContain('"Nightjar"');
           expect(refused.text).toContain('allow_private_pattern');
-          expect(publicTailsHold(MARKER)).toBe(false);
+          expect(publicTreeHeld(MARKER)).toBe(false);
 
           const privately = await session.call(tool.name, {
             ...tool.args(task),
             scope: 'private',
           });
           expect(privately.isError, privately.text).toBe(false);
-          expect(publicTailsHold(MARKER)).toBe(false);
+          expect(publicTreeHeld(MARKER)).toBe(false);
 
           const passed = await session.call(tool.name, {
             ...tool.args(task),
@@ -224,7 +213,7 @@ describe('the server', () => {
             allow_private_pattern: true,
           });
           expect(passed.isError, passed.text).toBe(false);
-          expect(publicTailsHold(MARKER)).toBe(true);
+          expect(publicTreeHeld(MARKER)).toBe(true);
         } finally {
           await session.close();
         }
@@ -237,7 +226,7 @@ describe('the server', () => {
         try {
           const passed = await session.call(tool.name, { ...tool.args(task), scope: 'public' });
           expect(passed.isError, passed.text).toBe(false);
-          expect(publicTailsHold(MARKER)).toBe(true);
+          expect(publicTreeHeld(MARKER)).toBe(true);
         } finally {
           await session.close();
         }

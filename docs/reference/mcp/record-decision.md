@@ -15,6 +15,7 @@ Record a decision into the mnema chain, attributed to this agent and pinned to t
 | `alternatives` | string, at least 1 character | no | What was considered and turned down, and WHY NOT: both halves; the name of a rejected option without its reason loses most of the value. Omit it when there was no real alternative. |
 | `scope` | one of `public`, `private`, `global` | no | Where the decision lands; overrides the routing rule (public). |
 | `project` | string, at least 1 character | no | Which project of this workspace the fact belongs to: its absolute path, as this server gave it; a bare name is refused. Omitted, it lands in the project this session resolved to (the one `bootstrap` names). Pass it whenever the work being recorded happened in a different project of this workspace. |
+| `allow_private_pattern` | boolean | no | Record a PUBLIC write even though its text matches a pattern of this machine’s private list; without it such a write is refused. Never asked in the private scope. |
 
 ## Annotations
 

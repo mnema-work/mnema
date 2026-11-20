@@ -154,6 +154,31 @@ It reports **where**, never **what**: the id, the kind, the tree, the instant
 and the class. Printing the value would move the credential into your terminal
 scrollback and your CI log, so the report has no field that could hold one.
 
+## Words that belong to your machine, and not to a repository
+
+A public record is committed and cloned, and a credential is not the only thing a person
+would not have there: an internal plan code, a machine name, the path of a home folder.
+Keep those in `private-patterns.txt`, in the data directory (`~/.mnema`, or `$MNEMA_HOME`
+where it is set), one pattern per line. A line is plain text, matched without regard to
+case, or `/regex/flags`; a blank line and a line that starts with `#` are skipped, and a
+`/regex/` that does not compile is read as the text between its slashes. The file belongs to
+the machine: it is not in the repository, it is not signed and it is not in the record.
+
+With a list there, a decision, a task, a memory, an observation, a skill or a handoff written
+to the **public** tree whose text matches a pattern is **refused** (`PRIVATE_PATTERN`),
+and nothing is recorded. The refusal names the pattern and a short passage around the match,
+which are your own words, and says how to go on: write it without the passage, record it in
+the private scope, or, if the mention is meant to be public, pass `--allow-private-pattern`
+(`allow_private_pattern` on `record_decision`, `create_task`, `capture_memory`,
+`record_observation`, `create_skill` and `record_handoff`). The private and the global trees
+are never asked, and a machine with no list is not asked at all. The check reads the text of
+the fact; it does not read a move's reason, a link or a check.
+
+`mnema record commit` asks the same list of the events its cut carries, and **warns** on the
+second stream, before it builds the branch, of each one that matches: those events are signed
+already, so it does not refuse, and the branch is made all the same. Whether to open the pull
+request is yours to decide.
+
 ## What a recorded decision says of its state
 
 Right after "Recorded decision ADR-n (id)", the command that records a decision and the `record_decision` tool say that the decision is born

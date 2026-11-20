@@ -96,7 +96,18 @@ export interface RecordCommitContext {
    * Told, once and before any branch is built, of each event the cut carries whose text matches a
    * pattern of this machine's private list: a warning, never a refusal. Unset, it is not said.
    */
-  readonly warn?: (sentence: string) => void;
+  readonly warn?: (found: PrivateEventMatch) => void;
+}
+
+/** A carried event whose text matches a pattern of this machine's private list. */
+export interface PrivateEventMatch {
+  readonly tail: string;
+  readonly seq: number | undefined;
+  readonly kind: string | undefined;
+  /** The line of the list that matched, as the person wrote it. */
+  readonly pattern: string;
+  /** A short excerpt around the match. */
+  readonly passage: string;
 }
 
 /** A tail file here that does not grow from the base's copy. */
@@ -708,7 +719,7 @@ function cut(
   // This machine's private list: asked of what the cut adds, and only told, since the events are
   // signed already and a person decides what to do about a pull request.
   const privateList = ctx.warn === undefined ? undefined : readPrivateList(dirname(trees.keyRoot));
-  const privateWarnings: string[] = [];
+  const privateWarnings: PrivateEventMatch[] = [];
   for (const tail of tails) {
     const at = (name: string) => `${recordDir}tails/${tail.id}/${name}`;
     const baseEvents = tail.segments.reduce(
@@ -733,9 +744,13 @@ function cut(
         for (const text of stringsIn(event.payload)) {
           const match = matchPrivate(privateList, text);
           if (match === undefined) continue;
-          privateWarnings.push(
-            `warning: tail ${tail.id}, seq ${event.seq ?? '?'} (${event.kind ?? 'an event'}): the text of a public event this cut carries matches "${match.pattern}", a pattern of this machine's private list (passage: "${match.passage}"). A pull request of this branch publishes it.`,
-          );
+          privateWarnings.push({
+            tail: tail.id,
+            seq: event.seq,
+            kind: event.kind,
+            pattern: match.pattern,
+            passage: match.passage,
+          });
           break;
         }
       }
@@ -785,7 +800,7 @@ function cut(
     });
   }
 
-  for (const sentence of privateWarnings) ctx.warn?.(sentence);
+  for (const found of privateWarnings) ctx.warn?.(found);
 
   // The key files the cut names: the key that signs a tail it carries, a key a line of it names.
   const carriedBytes = [...writes.values()];

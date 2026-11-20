@@ -32,6 +32,7 @@ import {
   cutBranch,
   cutTitle,
   nextCommands,
+  type PrivateEventMatch,
   remoteHost,
   runRecordCommit,
   whatInitWritesInTheRecord,
@@ -798,16 +799,16 @@ describe('the machine private list', () => {
     allowedDecision(local, 'Use Nightjar naming');
     decide(local, 'A clean decision');
 
-    const warned: { sentence: string; branches: string }[] = [];
+    const warned: { found: PrivateEventMatch; branches: string }[] = [];
     const done = runRecordCommit(
       {
         cwd: local,
         env: { home: join(sandbox, 'home') },
         processEnv: env(),
         now: Date.now(),
-        warn: (sentence) =>
+        warn: (found) =>
           warned.push({
-            sentence,
+            found,
             branches: git(local, 'for-each-ref', 'refs/heads/mnema-record/').out,
           }),
       },
@@ -816,10 +817,9 @@ describe('the machine private list', () => {
     expect(done.ok && done.kind).toBe('made');
     expect(warned).toHaveLength(1);
     const [one] = warned as [(typeof warned)[number]];
-    expect(one.sentence).toContain('warning:');
-    expect(one.sentence).toContain('decision.recorded');
-    expect(one.sentence).toContain('"Nightjar"');
-    expect(one.sentence).toContain('Use Nightjar naming');
+    expect(one.found.kind).toBe('decision.recorded');
+    expect(one.found.pattern).toBe('Nightjar');
+    expect(one.found.passage).toContain('Use Nightjar naming');
     // Said before the branch exists: a warning after the cut would be a report, not a warning.
     expect(one.branches).toBe('');
   });
@@ -839,14 +839,14 @@ describe('the machine private list', () => {
     decide(local, 'Use Nightjar naming');
     expect(commitIn(local).ok).toBe(true);
     writeFileSync(join(sandbox, 'home', LIST), 'something else entirely\n');
-    const warned: string[] = [];
+    const warned: PrivateEventMatch[] = [];
     runRecordCommit(
       {
         cwd: local,
         env: { home: join(sandbox, 'home') },
         processEnv: env(),
         now: Date.now(),
-        warn: (sentence) => warned.push(sentence),
+        warn: (found) => warned.push(found),
       },
       {},
     );

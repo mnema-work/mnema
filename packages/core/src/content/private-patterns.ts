@@ -106,7 +106,7 @@ export function matchPrivate(list: PrivateList, text: string): PrivateMatch | un
     if (hit === undefined) continue;
     const from = Math.max(0, hit.at - AROUND);
     const to = Math.min(text.length, hit.at + hit.length + AROUND);
-    const passage = text.slice(from, to).replace(/\s+/g, ' ').trim();
+    const passage = text.slice(from, to).trim();
     return {
       pattern: pattern.source,
       passage: `${from > 0 ? '...' : ''}${passage}${to < text.length ? '...' : ''}`,

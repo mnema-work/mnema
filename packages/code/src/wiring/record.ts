@@ -167,7 +167,14 @@ export function registerRecord(program: Command, wiring: Wiring): Declared {
           ...here(),
           processEnv: process.env,
           now: Date.now(),
-          warn: (sentence) => io.err(render(fact(sentence))),
+          warn: (found) =>
+            io.err(
+              render(
+                fact(
+                  onOneLine`warning: tail ${found.tail}, seq ${found.seq ?? '?'} (${found.kind ?? 'an event'}): the text of a public event this cut carries matches "${found.pattern}", a pattern of this machine's private list (passage: "${found.passage}"). A pull request of this branch publishes it.`,
+                ),
+              ),
+            ),
         },
         opts.through !== undefined ? { through: opts.through } : {},
       );

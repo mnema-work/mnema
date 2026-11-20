@@ -844,8 +844,8 @@ describe('every option the CLI declares feeds something', () => {
       expect(readsItsOwnCopy(declared?.action ?? '', 'global'), act).toBe(false);
       expect(verdictOf(act, declared?.action ?? '', 'global').read.length, act).toBeGreaterThan(0);
     }
-    // The sixteen the tree holds, and no more: an option declared twice anywhere else is new.
-    // Ten are the verbs that create, which declare their group's creation flags.
+    // The ones the tree holds, and no more: an option declared twice anywhere else is new.
+    // All but the three of `witness` are the verbs that create, which declare their group’s creation flags.
     expect(
       OPTIONS.filter((one) => one.takenBy !== undefined)
         .map((one) => `${one.where} ${one.flags}`)
@@ -853,18 +853,22 @@ describe('every option the CLI declares feeds something', () => {
     ).toEqual([
       'mnema decision import --scope <scope>',
       'mnema decision import --which <agent>',
+      'mnema decision record --allow-private-pattern',
       'mnema decision record --alternatives <text>',
       'mnema decision record --body-file <path>',
       'mnema decision record --scope <scope>',
       'mnema decision record --stdin',
       'mnema decision record --which <agent>',
+      'mnema skill create --allow-private-pattern',
       'mnema skill create --body <text>',
       'mnema skill create --body-file <path>',
       'mnema skill create --scope <scope>',
       'mnema skill create --stdin',
       'mnema skill create --which <agent>',
+      'mnema task create --allow-private-pattern',
       'mnema task create --scope <scope>',
       'mnema task create --which <agent>',
+      'mnema task handoff --allow-private-pattern',
       'mnema task handoff --scope <scope>',
       'mnema task handoff --which <agent>',
       'mnema witness sigstore --global',
