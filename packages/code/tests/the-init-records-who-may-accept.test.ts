@@ -115,8 +115,8 @@ describe('the answer of a person', { timeout: 60_000 }, () => {
     expect(heard.failed).toBe(false);
     const decision = await showed();
     expect(decision).toContain('Agents may accept the decisions the person chooses (accepted)');
-    expect(decision).toMatch(/recorded by mnid:[0-9a-f]{8} \(a person\)/);
-    expect(decision).toMatch(/accepted by mnid:[0-9a-f]{8} \(a person\)/);
+    expect(decision).toMatch(/recorded by mnid:[0-9a-f]{8} \(no agent declared\)/);
+    expect(decision).toMatch(/accepted by mnid:[0-9a-f]{8} \(no agent declared\)/);
     expect(decision).toContain('·  public');
     expect(decision).toContain(
       '"Yes, accept at once what I choose" was chosen on the screen of mnema init',

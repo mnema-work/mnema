@@ -294,16 +294,16 @@ describe('a server that lies about a list', { timeout: A_RECORD_IN_A_VM }, () =>
       /^ADR-1 \(note-text of note \S+\): the page says "half up in the ledger"; the events say "half to even in the ledger"$/,
     ],
     [
-      '(f) the badge of an acceptance, an agent made a person',
+      '(f) the badge of an acceptance, an agent made no agent declared',
       (html) =>
         withCard(html, 'ADR-2', (card) =>
           swapped(
             card,
             'data-field="accepted-by">agent claude-code<',
-            'data-field="accepted-by">a person<',
+            'data-field="accepted-by">no agent declared<',
           ),
         ),
-      /^ADR-2 \(accepted-by\): the page says "a person"; the events say "agent claude-code"$/,
+      /^ADR-2 \(accepted-by\): the page says "no agent declared"; the events say "agent claude-code"$/,
     ],
     [
       '(g) the line of counts',

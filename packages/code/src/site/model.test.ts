@@ -188,7 +188,7 @@ describe('the model of the page', () => {
     expect(model.timeline.find((e) => e.kind === 'note-recorded')?.which).toBe('second-agent');
   });
 
-  it('words an act with no agent as a person and one with an agent as the agent', () => {
+  it('words an act with no agent as no agent declared and one with an agent as the agent', () => {
     const model = pageModel([
       ...decided(1, 'd-1', 'ADR-1', 'Keep money in cents', 'accepted'),
       memoryCaptured(at(5, 'm-1', ALICE), { content: 'by hand' }),

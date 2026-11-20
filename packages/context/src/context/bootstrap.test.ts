@@ -46,7 +46,7 @@ describe('bootstrap: the opening context, focused on the actor', () => {
           state: 'IN_PROGRESS',
           updatedAt: expect.any(String),
           lastFact: { at: expect.any(String), line: 'start → IN_PROGRESS' },
-          owner: { name: 'a person', via: 'start' },
+          owner: { name: 'no agent declared', via: 'start' },
         },
       ]);
     } finally {
@@ -271,7 +271,7 @@ describe('bootstrap: the opening context, focused on the actor', () => {
           state: 'IN_REVIEW',
           updatedAt: expect.any(String),
           lastFact: { at: expect.any(String), line: 'submit_review → IN_REVIEW' },
-          owner: { name: 'a person', via: 'start' },
+          owner: { name: 'no agent declared', via: 'start' },
         },
       ]);
     } finally {
@@ -561,7 +561,7 @@ describe('bootstrap: the opening context, focused on the actor', () => {
           state: 'IN_REVIEW',
           updatedAt: expect.any(String),
           lastFact: { at: expect.any(String), line: 'submit_review → IN_REVIEW' },
-          owner: { name: 'a person', via: 'start' },
+          owner: { name: 'no agent declared', via: 'start' },
         },
         {
           kind: 'skill',
