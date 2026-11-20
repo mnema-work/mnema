@@ -83,7 +83,9 @@ describe('the main checkout, as a linked worktree sees it', () => {
     }
   });
 
-  it('adds the not-yet-committed hint in a worktree only, naming the main checkout', () => {
+  it('adds the not-yet-committed hint in a worktree only when the main checkout holds a record', () => {
+    expect(notHereInAWorktree(worktree)).toBeUndefined();
+    mkdirSync(join(repo, '.mnema'));
     expect(notHereInAWorktree(worktree)).toBe(
       `This is a linked worktree: a record written in the main checkout (${repo}) and not yet committed is not here; read it from there.`,
     );

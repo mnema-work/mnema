@@ -38,7 +38,7 @@ export function registerShow(program: Command, wiring: Wiring): Declared {
         // was written and is not found because its entry was left out is not a record that never was.
         for (const line of linkBreakNotice(result.linkBreaks)) io.err(render(line));
         reportRefusal(wiring, result, {
-          UNKNOWN_RECORD: [noSuchRecord('record', id), notHereInAWorktree(process.cwd())]
+          UNKNOWN_RECORD: [noSuchRecord('record', id), notHereInAWorktree(here().cwd)]
             .filter((part) => part !== undefined)
             .join(' '),
         });

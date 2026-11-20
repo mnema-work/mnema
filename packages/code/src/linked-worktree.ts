@@ -44,9 +44,13 @@ export function noProjectInAWorktree(cwd: string): string | undefined {
     : `No mnema project here: this is a linked worktree, and the record is at ${record}, which git does not carry into a checkout. Run mnema from there; \`mnema init\` here would found a second record.`;
 }
 
-/** The sentence a read that found no such record adds in a linked worktree, or undefined elsewhere. */
+/**
+ * The sentence a read that found no such record adds in a linked worktree whose main checkout
+ * holds a `.mnema` folder, or undefined elsewhere: where the main checkout has no record there is
+ * nothing there to have been written and not committed.
+ */
 export function notHereInAWorktree(cwd: string): string | undefined {
   const found = mainCheckoutOf(cwd);
-  if (found === undefined) return undefined;
+  if (found === undefined || recordOfTheMainCheckout(cwd) === undefined) return undefined;
   return `This is a linked worktree: a record written in the main checkout (${found.main}) and not yet committed is not here; read it from there.`;
 }

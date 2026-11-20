@@ -319,8 +319,11 @@ function workLines(render: Render, status: Bootstrap): string[] {
           `${swept} older task(s) blocked when a session stopped with no end are not listed; \`mnema search\` finds them.`,
         ];
   if (status.work.length === 0) return ['No live tasks.', ...older];
+  // Cut: the list is in-progress first, so a cut that leaves some out leaves out the rest, and with
+  // more in progress than the cut keeps, some of those too. The header says which way it favours.
+  const favouring = status.workTotal > status.work.length ? ', in progress first' : '';
   return [
-    `${served(status.work.length, status.workTotal)} live task(s):`,
+    `${served(status.work.length, status.workTotal)} live task(s)${favouring}:`,
     ...status.work.map((item) =>
       render(
         itemLine([asId(item.id), oneLine(item.title), asState(item.state), ...standingOf(item)]),

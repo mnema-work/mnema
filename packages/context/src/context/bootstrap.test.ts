@@ -336,6 +336,27 @@ describe('bootstrap: the opening context, focused on the actor', () => {
     }
   });
 
+  it('fills the whole cut with what is in progress when that is more than the limit', () => {
+    bench = makeBench();
+    const underway = SEARCH_DEFAULT_LIMIT + 1;
+    for (let i = 0; i < underway; i += 1) {
+      const id = birthTask(bench, `task-run-${String(i).padStart(3, '0')}`, `Underway ${i}`);
+      moveTask(bench, id, 'DRAFT', 'READY', 'submit');
+      moveTask(bench, id, 'READY', 'IN_PROGRESS', 'start');
+    }
+    birthTask(bench, 'task-draft-newest', 'A draft written last');
+    const cache = bench.cache();
+    try {
+      const b = bootstrap([cache], asking(bench.who));
+      expect(b.work).toHaveLength(SEARCH_DEFAULT_LIMIT);
+      expect(b.work.every((w) => w.state === 'IN_PROGRESS')).toBe(true);
+      expect(b.work.map((w) => w.id)).not.toContain('task-draft-newest');
+      expect(b.workTotal).toBe(underway + 1);
+    } finally {
+      cache.close();
+    }
+  });
+
   it('stays lean on the actor’s side: another actor’s run never enters the resume', () => {
     bench = makeBench();
     startRun(bench, 'run-mine', { agent: 'claude', who: 'alice' });
