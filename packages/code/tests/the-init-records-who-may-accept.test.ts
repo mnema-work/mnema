@@ -113,6 +113,10 @@ describe('the answer of a person', { timeout: 60_000 }, () => {
   it('on the screen is recorded accepted by the person, in the public tree, and the note quotes the answer', async () => {
     const heard = await atATerminal(['init'], [ENTER, ENTER, ENTER]);
     expect(heard.failed).toBe(false);
+    expect(heard.out).toContain(
+      'Recorded ADR-1: agents may accept what you choose ("Yes, accept at once what I choose" was chosen on the screen of mnema init).',
+    );
+    expect(heard.out).not.toContain('accepted as yours');
     const decision = await showed();
     expect(decision).toContain('Agents may accept the decisions the person chooses (accepted)');
     expect(decision).toMatch(/recorded by mnid:[0-9a-f]{8} \(no agent declared\)/);
@@ -128,6 +132,11 @@ describe('the answer of a person', { timeout: 60_000 }, () => {
   it('as `--accepts no` is a decision and the switch that keeps it: an agent’s accept is refused afterwards', async () => {
     const heard = await alone(['init', '--hosts', 'none', '--accepts', 'no']);
     expect(heard.failed).toBe(false);
+    // The line the verb prints says what was given, as the signed note does, and claims no person.
+    expect(heard.out).toContain(
+      'Recorded ADR-1: agents may not accept what you choose (--accepts no was given to mnema init).',
+    );
+    expect(heard.out).not.toContain('accepted as yours');
     const founding = await showed();
     expect(founding).toContain('Every decision waits for a person to accept it (accepted)');
     // No terminal is here, and a flag can come from a script: the note says what was given, not who gave it.

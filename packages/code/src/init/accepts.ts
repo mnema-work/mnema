@@ -74,6 +74,8 @@ export interface WhoMayAcceptRecorded {
   readonly switchedOff: boolean;
   /** The line a move of a decision is echoed as, where the answer was accepted. */
   readonly moved?: string;
+  /** How the answer reached `init`, in the words of the signed note: the flag given or the screen chosen on. */
+  readonly how?: string;
 }
 
 /** The record refused, and why, in the words the refusing operation used. */
@@ -111,10 +113,11 @@ export function recordWhoMayAccept(
     return { ok: true, adr: recorded.adr, as: 'proposed', switchedOff: false };
   }
   const option = ACCEPTS_OPTIONS.find((each) => each.word === answer)?.description ?? answer;
-  const said =
+  const how =
     by.given === 'screen'
-      ? `"${option}" was chosen on the screen of mnema init when the project was founded.`
-      : `--accepts ${answer} was given to mnema init when the project was founded.`;
+      ? `"${option}" was chosen on the screen of mnema init`
+      : `--accepts ${answer} was given to mnema init`;
+  const said = `${how} when the project was founded.`;
   const accepted = runDecisionTransition(ctx, {
     id: recorded.id,
     action: 'accept',
@@ -131,7 +134,7 @@ export function recordWhoMayAccept(
   }
   const moved = movedLine('decision', accepted.adr, accepted.id, accepted.to);
   if (answer === 'yes') {
-    return { ok: true, adr: recorded.adr, as: 'accepted', switchedOff: false, moved };
+    return { ok: true, adr: recorded.adr, as: 'accepted', switchedOff: false, moved, how };
   }
   const switched = runSwitch(ctx, {
     channel: 'agent-accepts',
@@ -145,5 +148,5 @@ export function recordWhoMayAccept(
       ? { ok: false, code: switched.code, message: switched.message }
       : { ok: false, code: switched.reason, message: 'the switch could not be recorded' };
   }
-  return { ok: true, adr: recorded.adr, as: 'accepted', switchedOff: true, moved };
+  return { ok: true, adr: recorded.adr, as: 'accepted', switchedOff: true, moved, how };
 }
