@@ -299,7 +299,7 @@ export function recordReport(render: Render, body: RecordBody, context: RecordCo
         lines.push(
           render(
             fact(
-              `marked shown at a terminal, no agent declared, by ${actorText(context.anchors, { who: context.shown.who })} at ${context.shown.at}`,
+              `marked shown at a terminal, no agent declared, by ${oneLine(anchorText(context.anchors, context.shown.who))} at ${context.shown.at}`,
             ),
           ),
         );

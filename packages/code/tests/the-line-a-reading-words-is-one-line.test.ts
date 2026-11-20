@@ -1701,10 +1701,10 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
   },
 
   // --- reviewed.ts: what `decision review` shows of a proposed decision --------------
-  'record.ts «marked shown at a terminal, no agent declared, by {} at {}» actorText(context.anchors, { who: context.shown.who }) #1':
+  'record.ts «marked shown at a terminal, no agent declared, by {} at {}» oneLine(anchorText(context.anchors, context.shown.who)) #1':
     {
-      verdict: 'composed',
-      why: 'the identity that signed the newest showing, worded by actorText below',
+      verdict: 'collapsed',
+      why: 'the identity that signed the newest showing, written in its short form, never worded as a person',
     },
   'record.ts «marked shown at a terminal, no agent declared, by {} at {}» context.shown.at #1': {
     verdict: 'minted',
@@ -3178,10 +3178,10 @@ describe('every value this layer puts on a line is classified', () => {
     // No arm of the case above may be empty, or that much of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
     const count = (verdict: Verdict): number => verdicts.filter((said) => said === verdict).length;
-    expect(count('collapsed')).toBe(177);
+    expect(count('collapsed')).toBe(178);
     expect(count('minted')).toBe(324);
-    expect(count('composed')).toBe(132);
-    expect(FOUND.sites.filter((site) => /\boneLine\b/.test(site.expression))).toHaveLength(177);
+    expect(count('composed')).toBe(131);
+    expect(FOUND.sites.filter((site) => /\boneLine\b/.test(site.expression))).toHaveLength(178);
   });
 
   it('every reason says where the value comes from', () => {
