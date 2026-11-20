@@ -162,6 +162,7 @@ complete -c mnema -f -n '__mnema_at "decision"' -a 'help' -d 'display help for c
 complete -c mnema -f -n '__mnema_at "decision"' -l alternatives -r
 complete -c mnema -f -n '__mnema_at "decision"' -l scope -x -a 'public private global'
 complete -c mnema -f -n '__mnema_at "decision"' -l which -r
+complete -c mnema -f -n '__mnema_at "decision"' -l allow-private-pattern
 complete -c mnema -f -n '__mnema_at "decision"' -l stdin
 complete -c mnema -f -n '__mnema_at "decision"' -l body-file -r
 complete -c mnema -f -n '__mnema_at "decision"' -s h -l help
@@ -172,6 +173,7 @@ complete -c mnema -f -n '__mnema_at "decision"' -l color -x -a 'auto always neve
 complete -c mnema -f -n '__mnema_at "decision record"' -l alternatives -r
 complete -c mnema -f -n '__mnema_at "decision record"' -l scope -x -a 'public private global'
 complete -c mnema -f -n '__mnema_at "decision record"' -l which -r
+complete -c mnema -f -n '__mnema_at "decision record"' -l allow-private-pattern
 complete -c mnema -f -n '__mnema_at "decision record"' -l stdin
 complete -c mnema -f -n '__mnema_at "decision record"' -l body-file -r
 complete -c mnema -f -n '__mnema_at "decision record"' -s h -l help
@@ -226,6 +228,7 @@ complete -c mnema -f -n '__mnema_at "unlink"' -l color -x -a 'auto always never'
 # mnema memory
 complete -c mnema -f -n '__mnema_at "memory"' -l scope -x -a 'public private global'
 complete -c mnema -f -n '__mnema_at "memory"' -l which -r
+complete -c mnema -f -n '__mnema_at "memory"' -l allow-private-pattern
 complete -c mnema -f -n '__mnema_at "memory"' -l stdin
 complete -c mnema -f -n '__mnema_at "memory"' -l body-file -r
 complete -c mnema -f -n '__mnema_at "memory"' -s h -l help
@@ -237,6 +240,7 @@ complete -c mnema -f -n '__mnema_at "observe"' -l topic -r
 complete -c mnema -f -n '__mnema_at "observe"' -l text -r
 complete -c mnema -f -n '__mnema_at "observe"' -l scope -x -a 'public private global'
 complete -c mnema -f -n '__mnema_at "observe"' -l which -r
+complete -c mnema -f -n '__mnema_at "observe"' -l allow-private-pattern
 complete -c mnema -f -n '__mnema_at "observe"' -l stdin
 complete -c mnema -f -n '__mnema_at "observe"' -l body-file -r
 complete -c mnema -f -n '__mnema_at "observe"' -s h -l help
@@ -259,6 +263,7 @@ complete -c mnema -f -n '__mnema_at "skill"' -a 'help' -d 'display help for comm
 complete -c mnema -f -n '__mnema_at "skill"' -l body -r
 complete -c mnema -f -n '__mnema_at "skill"' -l scope -x -a 'public private global'
 complete -c mnema -f -n '__mnema_at "skill"' -l which -r
+complete -c mnema -f -n '__mnema_at "skill"' -l allow-private-pattern
 complete -c mnema -f -n '__mnema_at "skill"' -l stdin
 complete -c mnema -f -n '__mnema_at "skill"' -l body-file -r
 complete -c mnema -f -n '__mnema_at "skill"' -s h -l help
@@ -269,6 +274,7 @@ complete -c mnema -f -n '__mnema_at "skill"' -l color -x -a 'auto always never'
 complete -c mnema -f -n '__mnema_at "skill create"' -l body -r
 complete -c mnema -f -n '__mnema_at "skill create"' -l scope -x -a 'public private global'
 complete -c mnema -f -n '__mnema_at "skill create"' -l which -r
+complete -c mnema -f -n '__mnema_at "skill create"' -l allow-private-pattern
 complete -c mnema -f -n '__mnema_at "skill create"' -l stdin
 complete -c mnema -f -n '__mnema_at "skill create"' -l body-file -r
 complete -c mnema -f -n '__mnema_at "skill create"' -s h -l help
@@ -397,6 +403,7 @@ complete -c mnema -f -n '__mnema_at "task"' -a 'guard' -d 'dry-run the gate: wou
 complete -c mnema -f -n '__mnema_at "task"' -a 'help' -d 'display help for command'
 complete -c mnema -f -n '__mnema_at "task"' -l scope -x -a 'public private global'
 complete -c mnema -f -n '__mnema_at "task"' -l which -r
+complete -c mnema -f -n '__mnema_at "task"' -l allow-private-pattern
 complete -c mnema -f -n '__mnema_at "task"' -s h -l help
 complete -c mnema -f -n '__mnema_at "task"' -s V -l version
 complete -c mnema -f -n '__mnema_at "task"' -l color -x -a 'auto always never'
@@ -405,6 +412,7 @@ complete -c mnema -f -n '__mnema_at "task"' -l color -x -a 'auto always never'
 complete -c mnema -f -n '__mnema_at "task create"' -l description -r
 complete -c mnema -f -n '__mnema_at "task create"' -l scope -x -a 'public private global'
 complete -c mnema -f -n '__mnema_at "task create"' -l which -r
+complete -c mnema -f -n '__mnema_at "task create"' -l allow-private-pattern
 complete -c mnema -f -n '__mnema_at "task create"' -s h -l help
 complete -c mnema -f -n '__mnema_at "task create"' -s V -l version
 complete -c mnema -f -n '__mnema_at "task create"' -l color -x -a 'auto always never'
@@ -422,6 +430,7 @@ complete -c mnema -f -n '__mnema_at "task move"' -a 'submit start block unblock 
 # mnema task handoff
 complete -c mnema -f -n '__mnema_at "task handoff"' -l scope -x -a 'public private global'
 complete -c mnema -f -n '__mnema_at "task handoff"' -l which -r
+complete -c mnema -f -n '__mnema_at "task handoff"' -l allow-private-pattern
 complete -c mnema -f -n '__mnema_at "task handoff"' -l brief -r
 complete -c mnema -f -n '__mnema_at "task handoff"' -s h -l help
 complete -c mnema -f -n '__mnema_at "task handoff"' -s V -l version
