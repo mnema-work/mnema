@@ -44,13 +44,14 @@ import { linkKnowledge, openTreeForWriting } from '@mnema/core/write';
 import { reachOfAddress } from '../governed-tree.js';
 import { resolveAddress } from '../label-as-address.js';
 import {
+  isIdShaped,
   linkRefusal,
   outsideTheProject,
   relationNamesAPath,
   targetAsRecorded,
 } from '../link-target.js';
 import { forwardReplacement, type Landed, type Replacement } from '../recorded-content.js';
-import { caches, withScopedCaches } from '../tree-sources.js';
+import { caches, locateRecordScopeKept, withScopedCaches } from '../tree-sources.js';
 import {
   type AgentWrites,
   originOfTheWrite,
@@ -109,6 +110,11 @@ export interface LinkRecorded extends Replacement, Landed {
    * as the sentence knew only rules.
    */
   readonly subjectIsATask?: true;
+  /**
+   * True when the TARGET has the shape of a record id and no tree of the project holds it. The edge
+   * is written all the same (it may name a record only another clone holds); this lets the door say so.
+   */
+  readonly targetIsUnheld?: true;
 }
 
 /** The record was refused. */
@@ -223,12 +229,16 @@ export function runLink(
     withScopedCaches(trees, (sources) =>
       caches(sources).some((cache) => cache.getTask(ends.subject) !== null),
     );
+  const targetIsUnheld =
+    isIdShaped(ends.target) &&
+    locateRecordScopeKept(trees, ends.target, catalogUpcasters()) === undefined;
   return {
     ok: true,
     subject: ends.subject,
     target: ends.target,
     ...(subjectScope !== undefined ? { subjectScope } : {}),
     ...(subjectIsATask ? { subjectIsATask: true as const } : {}),
+    ...(targetIsUnheld ? { targetIsUnheld: true as const } : {}),
     // The relation AS RECORDED: screened, so the echo shows what landed.
     rel: recorded.rel,
     scope,

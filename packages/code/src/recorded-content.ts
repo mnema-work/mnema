@@ -133,9 +133,7 @@ export function subjectReachNotice(
   if (landedIn !== TRAVELS) return [];
   if (subjectScope === TRAVELS) return [];
   if (subjectScope === undefined && plain !== undefined) {
-    return [
-      `  No tree here holds ${oneLine(plain.subject)}, so this link names nothing a reader can open. Check the id.`,
-    ];
+    return [unheldIdNotice(plain.subject)];
   }
   if (subjectScope === undefined) {
     return [
@@ -163,6 +161,27 @@ export function subjectReachNotice(
     '  the address and no rule; record the rule where the address is, or address it from',
     '  the tree it lives in.',
   ];
+}
+
+/** The one sentence a link says of an end that has the shape of an id and that no tree holds. */
+function unheldIdNotice(id: string): string {
+  return `  No tree here holds ${oneLine(id)}, so this link names nothing a reader can open. Check the id.`;
+}
+
+/**
+ * THE TARGET'S HALF OF THAT WARNING, in the subject's words. A link is written to an id no tree
+ * holds on purpose (the record may live only in another clone), so this SAYS and never refuses.
+ * `unheld` is the door's finding that the target has the shape of an id and no tree of the project
+ * holds it; a path target never reaches it. Like the subject's, it is said only of a link that
+ * landed in the tree that travels, the one a clone reads.
+ */
+export function targetReachNotice(
+  landedIn: Scope,
+  target: string,
+  unheld: boolean | undefined,
+): string[] {
+  if (landedIn !== TRAVELS || unheld !== true) return [];
+  return [unheldIdNotice(target)];
 }
 
 /** The one tree a clone of the repository gets. */
