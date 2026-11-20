@@ -46,7 +46,7 @@ describe('which hosts have a reader', () => {
 describe('Gemini CLI', () => {
   it('reads the typed messages in order and leaves out the tool turn and the notices', () => {
     const path = file([
-      GEMINI.header,
+      GEMINI.meta,
       GEMINI.typed('m1', 'Use SQLite for the store'),
       GEMINI.toolTurn('m2'),
       GEMINI.info('m3', 'Compressed the chat'),
@@ -60,7 +60,7 @@ describe('Gemini CLI', () => {
 
   it('reads the answer to ask_user as chosen, with the question', () => {
     const path = file([
-      GEMINI.header,
+      GEMINI.meta,
       GEMINI.typed('m1', 'Set up the store'),
       GEMINI.asked('m2', JSON.stringify({ answers: { '0': 'SQLite' } }), [
         'Which store do we use?',
@@ -75,7 +75,7 @@ describe('Gemini CLI', () => {
   it('reads only ask_user for answers, not another tool whose output has the same shape', () => {
     const other = GEMINI.asked('m2', JSON.stringify({ answers: { '0': 'x' } }), ['Which?']);
     const path = file([
-      GEMINI.header,
+      GEMINI.meta,
       { ...other, toolCalls: other.toolCalls.map((call) => ({ ...call, name: 'read_file' })) },
     ]);
     expect(thePersonsWords('gemini', path)).toEqual([]);
@@ -83,7 +83,7 @@ describe('Gemini CLI', () => {
 
   it('does not read a dismissed question as an answer', () => {
     const path = file([
-      GEMINI.header,
+      GEMINI.meta,
       GEMINI.asked('m2', 'User dismissed ask_user dialog without answering.', ['Which?']),
     ]);
     expect(thePersonsWords('gemini', path)).toEqual([]);
@@ -91,7 +91,7 @@ describe('Gemini CLI', () => {
 
   it('reads a message the host appended again once, and drops what a rewind removed', () => {
     const path = file([
-      GEMINI.header,
+      GEMINI.meta,
       GEMINI.typed('m1', 'first'),
       GEMINI.typed('m2', 'second, rewound'),
       { $rewindTo: 'm2' },

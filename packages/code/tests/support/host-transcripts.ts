@@ -29,7 +29,7 @@ export function jsonl(lines: readonly unknown[]): string {
  *    (tools/definitions/base-declarations.ts).
  */
 export const GEMINI = {
-  header: { sessionId: 'abcd1234-0000', projectHash: 'p', startTime: '2026-11-20T10:00:00.000Z' },
+  meta: { sessionId: 'abcd1234-0000', projectHash: 'p', startTime: '2026-11-20T10:00:00.000Z' },
   typed: (id: string, text: string) => ({
     id,
     timestamp: '2026-11-20T10:00:01.000Z',
