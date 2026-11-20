@@ -26,6 +26,13 @@
  * (a quotation, a blockquote, a pasted issue) and is not read. A message that tells the agent to
  * ignore its instructions, and a sentence that tells it to accept or approve decisions, is never a rule
  * (`a-dictated-rule-is-said.test.ts`). It reads one message and keeps nothing of it.
+ *
+ * A RULE IS PERMANENT AND UNCONDITIONAL. A sentence with a limit in time or place ("today", "here",
+ * "this time", "hoje", "aqui", "desta vez"), one that is a step of this task ("check the logs first,
+ * then tell me") and one that opens with a condition ("if it works, make it a rule") is an
+ * instruction for now, not a rule. Accents are folded before the test, so "nao", "faca", "poe" and
+ * "isso e regra" are read as the accented words are, and a list mark in front of a sentence is not part
+ * of it.
  */
 
 /** How much of a message is read: a rule is said near the start, and a long paste is about something else. */
@@ -38,26 +45,40 @@ const AT_MOST_QUOTED = 280;
  * The imperative verbs a rule opens its instruction with: the ones people give a coding agent. A
  * word after the trigger that is not on the list (a noun, an article, a verb in the indicative) makes
  * the sentence a statement. Kept short on purpose: a verb missing from it is a rule the person says
- * once more, and a verb too many is a statement that lights the hook.
+ * once more, and a verb too many is a statement that lights the hook. `remember to` and `forget to`
+ * are there because "never forget to run the linter" is an instruction.
  */
-const IMPERATIVES_EN =
-  `add ask avoid call check cite commit confirm create delete do document don't ensure export follow format import keep link log make name open prefer push put read record remove rename review run say show start stop tell test update use validate verify wait write`.split(
+const IMPERATIVES_EN = [
+  ...`add ask avoid call check cite commit confirm create delete do document don't ensure export follow format import keep link log make name open prefer push put read record remove rename review run say show start stop tell test update use validate verify wait write`.split(
     ' ',
-  );
+  ),
+  'remember to',
+  'forget to',
+];
 
 /** The same, in Portuguese: the imperative of `você`, and `não` which opens a negative one. */
-const IMPERATIVES_PT =
-  `abra adicione anote apague avise chame cite coloque comente confira confirme crie deixe documente escreva evite exporte faça feche formate importe inclua junte leia mantenha mostre nomeie não pare pergunte peça ponha prefira registre remova renomeie revise rode siga teste use valide verifique`.split(
+const IMPERATIVES_PT = [
+  ...`abra adicione anote apague avise chame cite coloque comente confira confirme crie deixe documente escreva evite exporte faça feche formate importe inclua junte leia mantenha mostre nomeie não pare pergunte peça ponha prefira registre remova renomeie revise rode siga teste use valide verifique`.split(
     ' ',
-  );
+  ),
+  'lembre de',
+  'lembre-se de',
+  'esqueça de',
+];
 
-const VERB_EN = `(?:${IMPERATIVES_EN.join('|')})`;
-const VERB_PT = `(?:${IMPERATIVES_PT.join('|')})`;
-/** What can stand between a trigger and its verb. */
-const POLITE_EN = '(?:please,?\\s+)?';
-const POLITE_PT = '(?:por\\s+favor,?\\s+)?';
-const ADVERB_EN = '(?:(?:always|never)\\s+)?';
-const ADVERB_PT = '(?:(?:sempre|nunca)\\s+)?';
+/** The text with its accents taken off and in lower case: what every pattern below is written for. */
+function fold(text: string): string {
+  return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+}
+
+const VERB_EN = `(?:${IMPERATIVES_EN.map(fold).join('|')})`;
+const VERB_PT = `(?:${IMPERATIVES_PT.map(fold).join('|')})`;
+/** What can stand between a trigger and its verb: a comma, a polite word, an adverb, a reinforcement. */
+const BETWEEN_EN = ',?\\s+(?:please,?\\s+)?(?:(?:always|never)\\s+)?(?:ever\\s+)?(?:please,?\\s+)?';
+const BETWEEN_PT =
+  ',?\\s+(?:por\\s+favor,?\\s+)?(?:(?:sempre|nunca)\\s+)?(?:(?:mais|jamais)\\s+)?(?:por\\s+favor,?\\s+)?';
+const THEN_EN = `${BETWEEN_EN}${VERB_EN}\\b`;
+const THEN_PT = `${BETWEEN_PT}${VERB_PT}\\b`;
 
 /** One shape of a rule dictated: the label the product names it by, and the pattern tried on a sentence. */
 export interface DictatedRuleShape {
@@ -65,6 +86,7 @@ export interface DictatedRuleShape {
   readonly name: string;
   /** Where in the sentence the pattern is tried. */
   readonly at: 'start' | 'anywhere';
+  /** Written for a sentence folded by {@link fold}: no accent, lower case. */
   readonly pattern: RegExp;
 }
 
@@ -75,79 +97,51 @@ export interface DictatedRuleShape {
  * (`a-dictated-rule-is-said.test.ts` holds a positive in each language and a negative for each).
  */
 export const DICTATED_RULE_SHAPES: readonly DictatedRuleShape[] = [
-  {
-    name: 'always …',
-    at: 'start',
-    pattern: new RegExp(`^always\\s+${POLITE_EN}${VERB_EN}\\b`, 'i'),
-  },
-  { name: 'never …', at: 'start', pattern: new RegExp(`^never\\s+${POLITE_EN}${VERB_EN}\\b`, 'i') },
-  {
-    name: 'from now on …',
-    at: 'start',
-    pattern: new RegExp(`^from\\s+now\\s+on,?\\s+${POLITE_EN}${ADVERB_EN}${VERB_EN}\\b`, 'i'),
-  },
-  {
-    name: 'going forward …',
-    at: 'start',
-    pattern: new RegExp(`^going\\s+forward,?\\s+${POLITE_EN}${ADVERB_EN}${VERB_EN}\\b`, 'i'),
-  },
-  {
-    name: 'sempre …',
-    at: 'start',
-    pattern: new RegExp(`^sempre\\s+${POLITE_PT}${VERB_PT}\\b`, 'i'),
-  },
-  {
-    name: 'nunca …',
-    at: 'start',
-    pattern: new RegExp(`^nunca\\s+(?:mais\\s+)?${POLITE_PT}${VERB_PT}\\b`, 'i'),
-  },
+  { name: 'always …', at: 'start', pattern: new RegExp(`^always${THEN_EN}`, 'i') },
+  { name: 'never …', at: 'start', pattern: new RegExp(`^never${THEN_EN}`, 'i') },
+  { name: 'from now on …', at: 'start', pattern: new RegExp(`^from\\s+now\\s+on${THEN_EN}`, 'i') },
+  { name: 'going forward …', at: 'start', pattern: new RegExp(`^going\\s+forward${THEN_EN}`, 'i') },
+  { name: 'sempre …', at: 'start', pattern: new RegExp(`^sempre${THEN_PT}`, 'i') },
+  { name: 'nunca …', at: 'start', pattern: new RegExp(`^nunca${THEN_PT}`, 'i') },
   {
     name: 'a partir de agora …',
     at: 'start',
-    pattern: new RegExp(
-      `^a\\s+partir\\s+de\\s+agora,?\\s+${POLITE_PT}${ADVERB_PT}${VERB_PT}\\b`,
-      'i',
-    ),
+    pattern: new RegExp(`^a\\s+partir\\s+de\\s+agora${THEN_PT}`, 'i'),
   },
   {
     name: 'daqui pra frente …',
     at: 'start',
-    pattern: new RegExp(
-      `^daqui\\s+(?:pra|para)\\s+frente,?\\s+${POLITE_PT}${ADVERB_PT}${VERB_PT}\\b`,
-      'i',
-    ),
+    pattern: new RegExp(`^daqui\\s+(?:pra|para)\\s+frente${THEN_PT}`, 'i'),
   },
   {
     name: 'de agora em diante …',
     at: 'start',
-    pattern: new RegExp(
-      `^de\\s+agora\\s+em\\s+diante,?\\s+${POLITE_PT}${ADVERB_PT}${VERB_PT}\\b`,
-      'i',
-    ),
+    pattern: new RegExp(`^de\\s+agora\\s+em\\s+diante${THEN_PT}`, 'i'),
   },
   {
     name: 'put it as a rule',
     at: 'anywhere',
     pattern:
-      /(?:^|,\s*)(?:please\s+)?(?:put|make|keep|record)\s+(?:it|this|that)\s+as\s+a\s+rule\b/i,
+      /(?:^|,\s*)(?:please\s+)?(?:put|make|keep|record)\s+(?:it|this|that)\s+(?:as\s+)?a\s+rule\b/i,
   },
   { name: 'as a rule: …', at: 'start', pattern: /^as\s+a\s+rule:/i },
   {
     name: 'coloca como regra',
     at: 'anywhere',
     pattern:
-      /(?:^|,\s*)(?:por\s+favor,?\s+)?(?:coloca|coloque|põe|ponha|registra|registre|grava|grave|anota|anote)\s+(?:isso\s+|isto\s+)?como\s+regra\b/i,
+      /(?:^|,\s*)(?:por\s+favor,?\s+)?(?:coloca|coloque|poe|ponha|registra|registre|grava|grave|anota|anote)\s+(?:isso\s+|isto\s+)?como\s+regra\b/i,
   },
   {
     name: 'isso é regra',
     at: 'anywhere',
     pattern:
-      /(?:^|,\s*)(?:isso|isto)\s+é\s+(?:uma\s+)?regra(?:\s+(?:do\s+projeto|aqui|daqui\s+pra\s+frente))?[.!]*$/i,
+      /(?:^|,\s*)(?:isso|isto)\s+e\s+(?:uma\s+)?regra(?:\s+(?:do\s+projeto|aqui|daqui\s+pra\s+frente))?[.!]*$/i,
   },
   {
     name: 'vira regra',
     at: 'anywhere',
-    pattern: /(?:^|,\s*)(?:(?:isso|isto|essa|esta)\s+)?vira\s+regra[.!]*$/i,
+    pattern:
+      /(?:^|,\s*)(?:(?:isso|isto|essa|esta)\s+)?(?:vira|(?:deveria|deve|tem\s+que|precisa)\s+virar)\s+regra[.!]*$/i,
   },
 ];
 
@@ -165,6 +159,33 @@ const SETS_INSTRUCTIONS_ASIDE =
 const TELLS_TO_ACCEPT =
   /\b(?:approv\w*|accept\w*|aprov\w*|aceit\w*)\b.*\b(?:decision\w*|decis[aã]o|decis[oõ]es|rule\w*|regra\w*|everything|tudo)\b/i;
 
+/** A sentence that opens with a condition ("if it works, make it a rule") is not a rule yet. */
+const CONDITIONAL = /^(?:if|se|caso|quando|when|whenever|assim\s+que|once)\b/;
+
+/**
+ * A limit in time or place, or a step of the task at hand: an instruction for now, not a rule. Written
+ * for a folded sentence.
+ */
+const NOT_PERMANENT = new RegExp(
+  [
+    '\\b(?:today|tonight|tomorrow|here|hoje|amanha|aqui|por\\s+enquanto|por\\s+agora|neste\\s+momento)\\b',
+    '\\bthis\\s+(?:time|once|session|week)\\b',
+    '\\b(?:for|right)\\s+now\\b',
+    '\\bjust\\s+(?:this|for)\\b',
+    '\\b(?:desta|dessa)\\s+vez\\b',
+    '\\b(?:so\\s+hoje|agora\\s+so)\\b',
+    '\\b(?:nesta)\\s+(?:sessao|semana)\\b',
+    '\\bthen\\s+(?:tell|let|report|show|reply|answer)\\s+me\\b',
+    '\\bdepois\\s+(?:me\\s+)?(?:diga|avise|conte|mostre|responda)\\b',
+    '\\bfirst\\b.*\\bthen\\b',
+    '\\bprimeiro\\b.*\\bdepois\\b',
+  ].join('|'),
+  'i',
+);
+
+/** What can stand in front of a sentence without being part of it: a list mark, a numeral, a polite word. */
+const BEFORE_A_SENTENCE = /^(?:(?:[-*\u2022]|\d+[.)])\s+)?(?:(?:please|por\s+favor),?\s+)?/;
+
 /** The sentences of `text` that can be a rule: fences removed, each one on a line, none that asks. */
 function sentencesOf(text: string): readonly string[] {
   const unfenced = text.slice(0, READ_UP_TO).replace(FENCED, ' ');
@@ -180,26 +201,53 @@ export interface DictatedRule {
   readonly sentence: string;
 }
 
-/** The shape one sentence has, or `undefined`: a sentence opening with a quote mark or `>` is another's text. */
-function shapeOf(sentence: string): string | undefined {
-  if (TELLS_TO_ACCEPT.test(sentence)) return undefined;
-  return DICTATED_RULE_SHAPES.find((shape) => shape.pattern.test(sentence))?.name;
+/**
+ * The shape one sentence has and where in it the match ends, or `undefined`. A sentence opening with a
+ * quote mark or `>` is another's text: only a space, a list mark or a polite word may stand before it.
+ * `end` counts in the sentence as given, which folding does not move unless the accents were typed apart.
+ */
+function ruleIn(sentence: string): { readonly shape: string; readonly end: number } | undefined {
+  const folded = fold(sentence);
+  const lead = BEFORE_A_SENTENCE.exec(folded)?.[0].length ?? 0;
+  const body = folded.slice(lead);
+  if (TELLS_TO_ACCEPT.test(body) || CONDITIONAL.test(body) || NOT_PERMANENT.test(body)) {
+    return undefined;
+  }
+  for (const shape of DICTATED_RULE_SHAPES) {
+    const at = shape.pattern.exec(body);
+    if (at !== null) {
+      return {
+        shape: shape.name,
+        end: folded.length === sentence.length ? lead + at.index + at[0].length : -1,
+      };
+    }
+  }
+  return undefined;
 }
 
 /** The shape of a rule dictated that `text` has, or `undefined`: the first sentence and shape that match. */
 export function dictatedRuleIn(text: string): DictatedRule | undefined {
   if (SETS_INSTRUCTIONS_ASIDE.test(text)) return undefined;
   for (const sentence of sentencesOf(text)) {
-    const shape = shapeOf(sentence);
-    if (shape !== undefined) return { shape, sentence: sentence.slice(0, AT_MOST_QUOTED) };
+    const found = ruleIn(sentence);
+    if (found !== undefined)
+      return { shape: found.shape, sentence: sentence.slice(0, AT_MOST_QUOTED) };
   }
   return undefined;
 }
 
+/** What separates the clause a rule ends in from the next one: a semicolon, a comma, a dash or a hyphen between spaces. */
+const NEXT_CLAUSE = /;\s*|,\s+|\s[-\u2013\u2014]\s/;
+
+/** A conjunction that only joins the clause that is left to the one that was a rule. */
+const JOINING = /^(?:and(?:\s+then)?|but|also|e|mas|e\s+tambem)\s+/i;
+
 /**
- * `text` with the sentences that have the shape of a rule dictated taken out, the rest as it was: what
- * is left for a reader that looks for something else in the same message (a correction that comes
- * before the rule). Fenced blocks are kept whole, and what is past the limit is not read.
+ * `text` with the rule taken out of each sentence that has the shape of one, the rest as it was: what
+ * is left for a reader that looks for something else in the same message. The rule is the clause the
+ * trigger opens, up to the next semicolon, comma or dash; what follows it stays ("Always use tabs; no,
+ * that's wrong" keeps "no, that's wrong"), and a sentence that is only the rule goes whole. Fenced
+ * blocks are kept whole, and what is past the limit is not read.
  */
 export function withoutDictatedRules(text: string): string {
   if (SETS_INSTRUCTIONS_ASIDE.test(text)) return text;
@@ -211,7 +259,20 @@ export function withoutDictatedRules(text: string): string {
         ? piece
         : piece
             .split(/(?<=[.!?])\s+|\n+/)
-            .filter((sentence) => shapeOf(sentence.replace(/\s+/g, ' ').trim()) === undefined)
+            .map((raw) => {
+              const sentence = raw.replace(/\s+/g, ' ').trim();
+              if (/\?["')”’]*$/.test(sentence)) return sentence;
+              const found = ruleIn(sentence);
+              if (found === undefined) return sentence;
+              if (found.end < 0) return '';
+              const next = NEXT_CLAUSE.exec(sentence.slice(found.end));
+              if (next === null) return '';
+              return sentence
+                .slice(found.end + next.index + next[0].length)
+                .trim()
+                .replace(JOINING, '');
+            })
+            .filter((sentence) => sentence !== '')
             .join(' '),
     )
     .join(' ');

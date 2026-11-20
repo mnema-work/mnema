@@ -126,31 +126,41 @@ export function correctionsIn(
     // is on) the sentence that has the shape of a rule is the agent's to record and accept, so it is
     // taken out of what is read here, and what is left of the same message (a correction that came
     // before the rule) is read as it always was.
-    const text = options.skipWhatIsDictated === true ? withoutDictatedRules(one.text) : one.text;
-    const sentence = openingOf(text);
-    const shape = CORRECTION_SHAPES.find((candidate) => candidate.pattern.test(sentence));
-    if (shape === undefined) {
-      // WHERE THAT HOOK IS OFF the rule is a proposal of this reader (ADR-546: the corrections reader
-      // "with these patterns added"), found by the same table and named by the shape's label.
-      const dictated = options.skipWhatIsDictated === true ? undefined : dictatedRuleIn(one.text);
-      if (dictated !== undefined) {
-        found.push({
-          line: one.line,
-          uuid: one.uuid,
-          session: one.session,
-          shape: dictated.shape,
-          sentence: dictated.sentence.slice(0, OPENING),
-        });
-      }
-      continue;
+    const skip = options.skipWhatIsDictated === true;
+    const without = withoutDictatedRules(one.text);
+    // The opening that corrects is read in the message as said and, failing that, in what is left of
+    // it once the rule is out ("Always use tabs; no, that's wrong" corrects in its second clause).
+    let sentence = openingOf(skip ? without : one.text);
+    let shape = CORRECTION_SHAPES.find((candidate) => candidate.pattern.test(sentence));
+    if (shape === undefined && !skip) {
+      sentence = openingOf(without);
+      shape = CORRECTION_SHAPES.find((candidate) => candidate.pattern.test(sentence));
     }
-    found.push({
-      line: one.line,
-      uuid: one.uuid,
-      session: one.session,
-      shape: shape.name,
-      sentence,
-    });
+    // WHERE THAT HOOK IS OFF the rule is a proposal of this reader too (ADR-546: the corrections reader
+    // "with these patterns added"), found by the same table and named by the shape's label. A message
+    // that corrects and dictates a rule is both, one proposal each; the sentence that does both
+    // ("Never use var.") is the correction alone.
+    const dictated = skip ? undefined : dictatedRuleIn(one.text);
+    const dictatedHere =
+      dictated !== undefined && (shape === undefined || !sentence.startsWith(dictated.sentence));
+    if (shape !== undefined) {
+      found.push({
+        line: one.line,
+        uuid: one.uuid,
+        session: one.session,
+        shape: shape.name,
+        sentence,
+      });
+    }
+    if (dictated !== undefined && dictatedHere) {
+      found.push({
+        line: one.line,
+        uuid: one.uuid,
+        session: one.session,
+        shape: dictated.shape,
+        sentence: dictated.sentence.slice(0, OPENING),
+      });
+    }
   }
   return found;
 }

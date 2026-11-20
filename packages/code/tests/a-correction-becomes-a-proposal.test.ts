@@ -237,7 +237,7 @@ describe('mnema corrections', () => {
       assistant(),
       typed('Ok. A partir de agora, sempre rode o lint antes do commit.'),
       assistant(),
-      typed('Never use var here.'),
+      typed('Never use var.'),
       assistant(),
     ]);
     expect(answer(payload('Stop', file))).toEqual({ reply: {}, notes: [] });
@@ -287,16 +287,51 @@ describe('mnema corrections', () => {
 
   it('records the same message as a correction where the hook of the dictated rule is switched off', async () => {
     await did('switch', 'off', 'dictated-rule');
-    const file = transcript([
-      typed('Fix it'),
-      assistant(),
-      typed('Never use var here.'),
-      assistant(),
-    ]);
+    const file = transcript([typed('Fix it'), assistant(), typed('Never use var.'), assistant()]);
     expect(answer(payload('Stop', file)).reply).toHaveProperty('systemMessage');
     const [recorded] = decisionsIn('projectPrivate');
-    expect(recorded?.payload.title).toBe('Correction: Never use var here.');
+    expect(recorded?.payload.title).toBe('Correction: Never use var.');
   });
+
+  it.each([
+    ['No, wrong file. From now on, ask before deleting.', 'Correction: No, wrong file.'],
+    ["Always use tabs; no, that's wrong", "Correction: no, that's wrong"],
+    ['Sempre rode lint, não use npm.', 'Correction: não use npm.'],
+    ["From now on use tabs - and don't touch the CI.", "Correction: don't touch the CI."],
+  ])(
+    'keeps the correction of "%s" where the hook of the dictated rule is on, and only that',
+    (said, title) => {
+      const file = transcript([typed('Fix it'), assistant(), typed(said), assistant()]);
+      expect(answer(payload('Stop', file)).reply).toHaveProperty('systemMessage');
+      expect(decisionsIn('projectPrivate').map((one) => one.payload.title)).toEqual([title]);
+    },
+  );
+
+  it.each([
+    [
+      'No, wrong file. From now on, ask before deleting.',
+      'Correction: No, wrong file.',
+      'Rule: From now on, ask before deleting.',
+    ],
+    ["Always use tabs; no, that's wrong", "Correction: no, that's wrong", 'Rule: Always use tabs'],
+    [
+      "From now on use tabs - and don't touch the CI.",
+      "Correction: don't touch the CI.",
+      "Rule: From now on use tabs - and don't touch the CI.",
+    ],
+  ])(
+    'records both proposals for "%s" where the hook of the dictated rule is off',
+    async (said, correction, rule) => {
+      await did('switch', 'off', 'dictated-rule');
+      const file = transcript([typed('Fix it'), assistant(), typed(said), assistant()]);
+      expect(answer(payload('Stop', file)).reply).toHaveProperty('systemMessage');
+      const titles = decisionsIn('projectPrivate').map((one) => one.payload.title);
+      expect(titles).toHaveLength(2);
+      expect(titles).toContain(correction);
+      expect(titles.some((title) => title.startsWith('Rule: '))).toBe(true);
+      expect(titles).toContain(rule);
+    },
+  );
 
   it('still records a correction that is not a rule dictated', () => {
     const file = transcript([
