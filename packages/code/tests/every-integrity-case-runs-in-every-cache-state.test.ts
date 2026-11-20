@@ -225,6 +225,8 @@ export const WRITES_BUT_PLANTS_NOTHING: Readonly<Record<string, string>> = {
     'holds which checkpoints the write that founds a tail signs, and what the fold of its checkpoints says of the tail with no note of this machine, in the functions of the chain alone; nothing is damaged and the chain has no projection cache (a clone of such a record is read by the binary in only-proven-events-reach-the-projection)',
   'packages/chain/src/chain/verify-reads-the-checkpoints-before-the-tail.test.ts':
     'holds the order in which the verdict of the chain reads a tail and its checkpoints, with a signed write landing between the two readings; nothing is damaged and the chain has no projection cache',
+  'packages/code/src/commands/witness-sigstore-check.test.ts':
+    'files a Sigstore bundle beside a checkpoint the way `witness sigstore` does and reads it back against an expected identity; no byte of a tail is damaged and the verdict of the record is not what it holds',
 };
 
 /** What the guard reads of one test file. */
