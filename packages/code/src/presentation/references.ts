@@ -75,9 +75,11 @@ export function referenceReport(
         : !node.resolved
           ? ' (unresolved)'
           : node.kind !== undefined
-            ? ` (${node.kind})`
+            ? ` (${node.kind}${node.state !== undefined ? `, ${oneLine(node.state)}` : ''})`
             : '';
-    return `${oneLine(id)}${said}`;
+    // The title is read back out of the record, so it goes through `oneLine` like the id.
+    const titled = node?.title !== undefined ? ` ${oneLine(node.title)}` : '';
+    return `${oneLine(id)}${said}${titled}`;
   };
   /** A heading naming the group and how much is in it, then its items. */
   const group = (heading: string, items: readonly string[]) => {

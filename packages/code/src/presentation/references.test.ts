@@ -102,4 +102,38 @@ describe('the reference report', () => {
     const lines = referenceReport(renderPlain, graph({ truncated: true }));
     expect(lines.at(-1)).toContain('cut at 2 hop(s)');
   });
+
+  describe('the record at the far end', () => {
+    const withNear = (extra: Record<string, string>) =>
+      graph({
+        nodes: [
+          { id: 'origin', depth: 0, resolved: true, kind: 'task', scope: 'public' },
+          { id: 'near', depth: 1, resolved: true, kind: 'task', scope: 'public', ...extra },
+          { id: 'far', depth: 2, resolved: false },
+        ],
+      });
+    const text = (g: ReferenceGraph) => referenceReport(renderPlain, g).join('\n');
+
+    it('says the state and the title after the kind', () => {
+      expect(text(withNear({ state: 'DRAFT', title: 'Child B' }))).toContain(
+        'near (task, DRAFT) Child B',
+      );
+    });
+
+    it('says a title with no state', () => {
+      expect(text(withNear({ title: 'Child B' }))).toContain('near (task) Child B');
+    });
+
+    it('prints a node with neither exactly as before', () => {
+      expect(text(withNear({}))).toBe(text(withNear({ title: undefined as never })));
+      expect(text(withNear({}))).toContain('near (task)');
+    });
+
+    it('puts a title holding a newline and a tab on one line', () => {
+      const out = text(withNear({ state: 'DRAFT', title: 'Child\n\tB' }));
+      expect(out).toContain('near (task, DRAFT) Child B');
+      expect(out).not.toContain('Child\n');
+      expect(out).not.toContain('\t');
+    });
+  });
 });

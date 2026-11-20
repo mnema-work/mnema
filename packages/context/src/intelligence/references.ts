@@ -127,6 +127,14 @@ export interface ReferenceNode {
    * when the holder is the machine-global tree, which the `scope` beside it separates.
    */
   readonly project?: string;
+  /**
+   * The record's title, filled only when the walk was asked to name what it reached.
+   */
+  readonly title?: string;
+  /**
+   * The record's state (`DRAFT`, ...), filled only when the walk was asked to name what it reached.
+   */
+  readonly state?: string;
 }
 
 /** One edge, as the event that asserts it wrote it. */
