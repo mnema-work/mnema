@@ -190,6 +190,7 @@ export {
   tailsACutWouldUnrelink,
 } from './chain/relink-plan.js';
 export {
+  anchorLinksRefused,
   type CheckpointsMark,
   type CommittedKeys,
   committedKeys,

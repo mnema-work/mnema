@@ -57,6 +57,7 @@
  */
 
 import {
+  anchorLinksRefused,
   type CatalogEvent,
   type ChainEntry,
   type ChainLayout,
@@ -414,7 +415,9 @@ export function chainReplay(
   const reading = tailsReadAt(layout, serveAround ? linked.collect : undefined);
   // The key folder the checkpoints are verified under: one the disk will not open is a part of the
   // record not read, named as a segment the disk refuses is, before what it leaves unproven.
-  if (serveAround) keysTheDiskRefuses(layout, linked.collect);
+  if (serveAround && !keysTheDiskRefuses(layout, linked.collect)) {
+    anchorLinksRefused(layout, linked.collect);
+  }
   const streams = streamsOf(layout, upcasters, 0, reading.read, serveAround ? linked : undefined, {
     keys: committedKeys(layout),
     proof: proof ?? proofOf(layout),
@@ -630,7 +633,11 @@ export function chainArrivals(
   // is reported only when no tail broke.
   const broken: LinkBreak[] = [];
   const retained: RetainedEntry[] = [];
-  const refused: RefusedPart[] = [];
+  // A linked anchor under `keys/` met since the cache last looked is a part a replay says, and no mark of a
+  // tail tells it: it is handed over like an arrival's, so the replay that follows names it.
+  const inKeys = refusedParts();
+  anchorLinksRefused(layout, inKeys.collect);
+  const refused: RefusedPart[] = [...inKeys.parts];
   let refusal: ChainArrivals | undefined;
   for (const tail of tails) {
     const covered = frontier.tails.get(tail);
