@@ -19,7 +19,8 @@ const ids: Record<string, string> = {};
 beforeEach(async () => {
   sandbox = mkdtempSync(join(tmpdir(), 'mnema-rules-test-'));
   repo = join(sandbox, 'repo');
-  for (const dir of ['billing', 'ledger', 'docs']) mkdirSync(join(repo, 'src', dir), { recursive: true });
+  for (const dir of ['billing', 'ledger', 'docs'])
+    mkdirSync(join(repo, 'src', dir), { recursive: true });
   mkdirSync(join(sandbox, 'home'));
   process.env.HOME = join(sandbox, 'home');
   delete process.env.MNEMA_RUN;
@@ -107,7 +108,15 @@ describe('mnema rules test', () => {
   it('catches a rule that stopped covering a path', async () => {
     const file = declare(['src/billing/invoice.ts', 'refuse']);
     expect((await mnema('rules', 'test', file)).failed).toBe(false);
-    await mnema('unlink', ids['src/billing'] as string, 'src/billing', '--rel', 'refuses-a-write', '--reason', 'moved');
+    await mnema(
+      'unlink',
+      ids['src/billing'] as string,
+      'src/billing',
+      '--rel',
+      'refuses-a-write',
+      '--reason',
+      'moved',
+    );
     const after = await mnema('rules', 'test', file);
     expect(after.failed).toBe(true);
     expect(after.out).toContain('MISMATCH: src/billing/invoice.ts: expected refuse, got none');

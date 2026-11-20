@@ -113,7 +113,9 @@ export function registerRules(program: Command, wiring: Wiring): Declared {
         );
       }
       const missed = result.cases.filter((one) => !one.matched).length;
-      io.out(`${result.cases.length - missed} of ${result.cases.length} case(s) met their verdict.`);
+      io.out(
+        `${result.cases.length - missed} of ${result.cases.length} case(s) met their verdict.`,
+      );
       if (missed > 0) io.fail();
     });
   return readsTheRecord(rules);

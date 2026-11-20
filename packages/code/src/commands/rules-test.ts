@@ -69,7 +69,9 @@ function casesOf(
   }
   const list = (parsed as { cases?: unknown } | null)?.cases;
   if (!Array.isArray(list) || list.length === 0) {
-    return { message: `${file} needs a non-empty "cases" list: a file with no case checks nothing.` };
+    return {
+      message: `${file} needs a non-empty "cases" list: a file with no case checks nothing.`,
+    };
   }
   const cases: { path: string; expect: Verdict }[] = [];
   for (const [index, one] of list.entries()) {
@@ -79,7 +81,9 @@ function casesOf(
     }
     const verdict = VERDICTS.find((name) => name === expect);
     if (verdict === undefined) {
-      return { message: `case ${index + 1} of ${file} expects ${JSON.stringify(expect)}; it takes one of ${VERDICTS.join(', ')}.` };
+      return {
+        message: `case ${index + 1} of ${file} expects ${JSON.stringify(expect)}; it takes one of ${VERDICTS.join(', ')}.`,
+      };
     }
     cases.push({ path, expect: verdict });
   }
@@ -107,7 +111,9 @@ export function runRulesTest(
               )
             : [];
         const got: Verdict = met?.grade ?? (governing.length > 0 ? 'governs' : 'none');
-        const by = met?.at.flatMap((at) => at.rules.map((rule) => rule.id)) ?? governing.map((rule) => rule.id);
+        const by =
+          met?.at.flatMap((at) => at.rules.map((rule) => rule.id)) ??
+          governing.map((rule) => rule.id);
         return { path, expect, got, by, matched: got === expect };
       }),
     ),
