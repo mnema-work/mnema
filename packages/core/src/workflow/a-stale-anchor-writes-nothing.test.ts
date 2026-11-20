@@ -517,6 +517,8 @@ describe('a checkout the key left writes nothing, through every write of the sur
     encodeKeyRequest: 'serializes one',
     onTheRecordAsItStands: 'holds the lock around a judgement; the write is the caller’s',
     openTreeForWriting: 'opens a writer; the write is the caller’s',
+    privateListFor:
+      'reads this machine’s private list for a public write’s context; appends nothing',
     recordedAnchorOf:
       'asks the question every append asks: whether the recorded identity counts the key',
     refusalBeforeTheAnchorRead:
