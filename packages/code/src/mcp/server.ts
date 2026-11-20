@@ -1417,7 +1417,7 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
       }
       return recorded(active, `Recorded decision ${result.adr} (${result.id})`, result, {
         after: [
-          ...(result.governs.length > 0 ? [`Governs: ${result.governs.join(', ')}`] : []),
+          ...(result.governs.length > 0 ? [`Governs: ${oneLine(result.governs.join(', '))}`] : []),
           stateOfANewDecision(result.agentsAccept, 'agent-tool'),
           ...result.offered,
         ],

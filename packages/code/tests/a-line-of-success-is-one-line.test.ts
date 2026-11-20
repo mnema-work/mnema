@@ -278,6 +278,10 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'collapsed',
     why: 'the agent name of facts in a run marked run.unannounced, read back out of the record',
   },
+  'decision.ts «Governs: {}» #1': {
+    verdict: 'collapsed',
+    why: 'the paths a person typed after --governs, read back out of the record',
+  },
   'decision.ts «Moved {} of {}; the rest were refused above and nothing was written for them.» #1':
     {
       verdict: 'minted',
@@ -1237,7 +1241,7 @@ describe('every line this wiring words is classified', () => {
     // 203 with the lines `backup restore` and `backup status` print of the folders kept aside, and none of a deletion.
     // 204 with the line `backup hook` prints of where it put the hook and where it took it from.
     // 207 with the three lines `backup restore --global` prints, the two folder counts and the heading.
-    expect(FOUND.sites.length).toBe(207);
+    expect(FOUND.sites.length).toBe(208);
   });
 
   it('reads the verdict off the source rather than believing the table', () => {

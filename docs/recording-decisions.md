@@ -171,7 +171,7 @@ and the rejection says so too, naming it, from the command line and in `decision
 
 ## Recording a decision with the paths it governs
 
-`mnema decision record --governs <path>` (repeatable) and the `governs` list of `record_decision` address the decision at
+The `--governs <path>` flag of `decision record` (repeatable) and the `governs` list of `record_decision` address the decision at
 one or more paths of the project in the same act that records it. The decision and one `governs` link per path are written
 in a single append, so they land together or not at all; the record keeps them as the two kinds of event they always were,
 the same ones `mnema link <id> <path> --rel governs` writes. A path is held to the rules that link applies: a path outside the

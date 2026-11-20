@@ -18,6 +18,7 @@ import type { ScanRefusalCode } from '@mnema/core';
 import type { Command } from 'commander';
 import type { runDecisionImport } from '../commands/decision-import.js';
 import type { runDecisionTransition } from '../commands/decision-transition.js';
+import { oneLine } from '../one-line.js';
 import { fact } from '../presentation/detail.js';
 import {
   alreadyRecordedLine,
@@ -75,13 +76,13 @@ const TURNED_DOWN_AT_BIRTH =
  * with the decision, and a move records no decision. Later, `mnema link` adds one.
  */
 const ADDRESSED_AT_BIRTH =
-  'the paths a decision governs are recorded with the decision itself: pass them to ' +
-  '`mnema decision record`, or add one later with `mnema link <id> <path> --rel governs`.';
+  'the paths a decision governs are recorded with the decision itself: give them to the ' +
+  'verb that records it, or add one later with `mnema link <id> <path> --rel governs`.';
 
 /** What `--governs` is, said once for the group and for `record`, which both declare it. */
 const GOVERNS_HELP =
   'a path of this project the decision governs, recorded as a `governs` link in the same act ' +
-  '(repeatable). It is held to the rules of `mnema link --rel governs`: one refused refuses ' +
+  '(repeatable). It is held to the rules of a `governs` link: one refused refuses ' +
   'the whole act and nothing is written.';
 
 /** Collects a repeatable flag. */
@@ -179,7 +180,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
     }
     if (result.ok) {
       io.out(`Recorded decision ${result.adr} (${result.id})`);
-      if (result.governs.length > 0) io.out(`Governs: ${result.governs.join(', ')}`);
+      if (result.governs.length > 0) io.out(`Governs: ${oneLine(result.governs.join(', '))}`);
       io.out(stateBesideADecision(writing, given.which, result.id));
       reportRecorded(result, io);
       const text = {
