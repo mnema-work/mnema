@@ -17,6 +17,7 @@
  *   - A TREE NOBODY HAS WRITTEN TO KEEPS NOTHING, so a read never founds a directory.
  */
 
+import { createHash } from 'node:crypto';
 import {
   appendFileSync,
   chmodSync,
@@ -166,6 +167,15 @@ function rowsOfAReplay(): Record<string, string[]> {
   const rows = rowsOf(memory);
   rmSync(scratch, { recursive: true, force: true });
   return rows;
+}
+
+/** The projection file as it is: its bytes and its modification time, which a rewrite moves. */
+function theFileAsItIs(): { bytes: string; mtimeNs: bigint } {
+  const path = projectionCachePath({ root });
+  return {
+    bytes: createHash('sha256').update(readFileSync(path)).digest('hex'),
+    mtimeNs: statSync(path, { bigint: true }).mtimeNs,
+  };
 }
 
 /** A row no replay of any chain writes: if it is still there, the cache was not built again. */
@@ -388,15 +398,58 @@ describe('a cache that cannot be vouched for is replaced, never trusted', () => 
     return ctx;
   }
 
-  it('written by other code: the stamp is not this code’s', () => {
+  it('written by other code: the file is left to that code and this process answers from memory', () => {
     aWarmFile();
     const db = openDatabase(projectionCachePath({ root }));
     db.prepare("UPDATE cache_meta SET value = 'another-product' WHERE key = 'stamp'").run();
     db.close();
+    const before = theFileAsItIs();
     const cache = persisted();
     cache.refresh();
+    expect(cache.leftTheFileToAnotherBuild).toBe(true);
     expect(theMarkerSurvived(cache)).toBe(false);
     expect(answersOf(cache)).toEqual(answersOf(replayed()));
+    cache.close();
+    expect(theFileAsItIs()).toEqual(before);
+  });
+
+  it('a build of another stamp never rewrites the file, and the build that owns it stays incremental', () => {
+    const ctx = writing();
+    aRecord(ctx);
+    const owner = persisted();
+    owner.refresh();
+    owner.close();
+    const mine = openDatabase(projectionCachePath({ root }));
+    const ownStamp = (
+      mine.prepare("SELECT value FROM cache_meta WHERE key = 'stamp'").get() as { value: string }
+    ).value;
+    mine.prepare("UPDATE cache_meta SET value = 'another-product' WHERE key = 'stamp'").run();
+    mine.close();
+    const before = theFileAsItIs();
+    // The record moves while the foreign build reads: it reads every arrival from memory.
+    for (let round = 0; round < 3; round += 1) {
+      landed(captureMemory(ctx, { content: `an arrival ${round}` }));
+      ctx.writer.checkpoint();
+      const foreign = persisted();
+      foreign.refresh();
+      expect(foreign.listMemories().map((memory) => memory.content)).toContain(
+        `an arrival ${round}`,
+      );
+      foreign.close();
+    }
+    // Writing through the record reads through this same file, so what is compared is the file
+    // as the foreign build left it, and the writes above did not move it either.
+    expect(theFileAsItIs()).toEqual(before);
+
+    // Back in the hands of its owner (the stamp it wrote), the same file is brought forward.
+    const back = openDatabase(projectionCachePath({ root }));
+    back.prepare("UPDATE cache_meta SET value = ? WHERE key = 'stamp'").run(ownStamp);
+    back.close();
+    plantAMarker();
+    const again = persisted();
+    again.refresh();
+    expect(again.leftTheFileToAnotherBuild).toBe(false);
+    expect(theMarkerSurvived(again)).toBe(true);
   });
 
   it('a tail that is gone', () => {
