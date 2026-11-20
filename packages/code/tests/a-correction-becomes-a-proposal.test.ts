@@ -1,10 +1,11 @@
 /**
- * A correction becomes a proposal: with `user-corrections` switched on, the places where a person
- * corrected the agent are recorded, at `Stop`, as `proposed` decisions in the private tree, once
- * each, citing the line they came from.
+ * A correction becomes a proposal: with `user-corrections` on (it is on until switched off, since
+ * ADR-546), the places where a person corrected the agent, and the rules they dictated, are recorded,
+ * at `Stop`, as `proposed` decisions in the private tree, once each, citing the line they came from.
  *
- * WHAT IS HELD HERE. The product's half: that nothing is read or recorded while the channel is off
- * (it starts off), that each opening the reader knows matches its probe and the ones that look like
+ * WHAT IS HELD HERE. The product's half: that a project that never touched the switch is read and
+ * recorded at `Stop`, that nothing is read or recorded once the channel is switched off, that each
+ * opening the reader knows matches its probe and the ones that look like
  * it and are not do not, that a correction is recorded once however many times the transcript is
  * read, that what is recorded is a proposal in the tree that stays on this machine and the reply
  * carries none of the person's words, and that the plugin's command reaches the verb.
@@ -213,11 +214,54 @@ describe('mnema corrections', () => {
     assistant(),
   ];
 
-  it('does nothing while the channel is off, which is how it starts', async () => {
+  it('records in a project that never touched the switch, which is how it begins', () => {
+    // BEGAN OFF UNTIL ADR-546: this case was "does nothing while the channel is off, which is how it
+    // starts", and it is inverted and renamed. No fact of a switch exists in this project.
+    const file = transcript(CORRECTED);
+    expect(answer(payload('Stop', file)).reply).toHaveProperty('systemMessage');
+    expect(decisionsIn('projectPrivate')).toHaveLength(1);
+    expect(decisionsIn('projectPublic')).toHaveLength(0);
+  });
+
+  it('does nothing once the channel is switched off, and reads nothing', async () => {
+    await did('switch', 'off', 'user-corrections');
     const file = transcript(CORRECTED);
     expect(answer(payload('Stop', file))).toEqual({ reply: {}, notes: [] });
     expect(decisionsIn('projectPrivate')).toHaveLength(0);
     expect(decisionsIn('projectPublic')).toHaveLength(0);
+  });
+
+  it('records a rule the person dictated as a proposal, named by the shape that found it', () => {
+    const file = transcript([
+      typed('Fix the build'),
+      assistant(),
+      typed('Ok. A partir de agora, sempre rode o lint antes do commit.'),
+      assistant(),
+    ]);
+    const done = answer(payload('Stop', file));
+    expect(done.reply).toEqual({
+      systemMessage:
+        '1 rule the person dictated in this session was recorded as a proposed decision in this machine’s private tree: ADR-1.',
+    });
+    const [recorded] = decisionsIn('projectPrivate');
+    expect(recorded?.payload.title).toBe(
+      'Rule: A partir de agora, sempre rode o lint antes do commit.',
+    );
+    expect(recorded?.payload.rationale).toContain('The person dictated a rule in a session');
+    expect(recorded?.payload.rationale).toContain('matched by the shape “a partir de agora …”');
+    expect(recorded?.payload.rationale).toContain('[host transcript, session s-1, line 3]');
+    expect(JSON.stringify(done.reply)).not.toContain('lint');
+    expect(decisionsIn('projectPublic')).toHaveLength(0);
+    // Read again, it is the same proposal.
+    expect(answer(payload('Stop', file))).toEqual({ reply: {}, notes: [] });
+    expect(decisionsIn('projectPrivate')).toHaveLength(1);
+  });
+
+  it('takes a correction for a correction, not for a rule, where a message is both', () => {
+    const found = correctionsIn([
+      { line: 1, uuid: undefined, session: undefined, text: 'Never use var here.' },
+    ]);
+    expect(found.map((one) => one.shape)).toEqual(['do not …']);
   });
 
   it('reads the agent the environment names, like any verb that writes: asked for one the private tree does not enrol, with the person’s key protected, it records nothing and says why', async () => {
@@ -410,7 +454,8 @@ describe('mnema corrections', () => {
     ]);
   });
 
-  it('records no answer while the channel is off, which is how it starts', () => {
+  it('records no answer once the channel is switched off', async () => {
+    await did('switch', 'off', 'user-corrections');
     const file = transcript([
       asks('Redis or memory?'),
       typed('Memory'),
@@ -551,7 +596,7 @@ describe('the verb as the command line routes it', () => {
 });
 
 describe('the plugin command a host runs at Stop', () => {
-  it('hands the payload to the verb, and records only where the channel was switched on', async () => {
+  it('hands the payload to the verb, and records only where the channel is on', async () => {
     const bin = join(sandbox, 'bin');
     mkdirSync(bin);
     writeFileSync(
@@ -571,6 +616,7 @@ describe('the plugin command a host runs at Stop', () => {
         },
       });
     const file = transcript([typed('No, use pnpm instead of npm.')]);
+    await did('switch', 'off', 'user-corrections');
     const off = host(payload('Stop', file));
     expect(off.status).toBe(0);
     expect(off.stdout).toBe('');
