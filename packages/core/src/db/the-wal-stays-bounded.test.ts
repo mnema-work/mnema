@@ -95,7 +95,10 @@ describe('the log of a cache on disk', () => {
       );
       let spilledTo: string[] = [];
       if (process.platform === 'linux') {
-        for (const _row of db.prepare('SELECT a FROM t ORDER BY a').iterate()) {
+        const sorted = db.prepare('SELECT a FROM t ORDER BY a') as unknown as {
+          iterate(): Iterable<unknown>;
+        };
+        for (const _row of sorted.iterate()) {
           spilledTo = readdirSync('/proc/self/fd')
             .map((fd) => {
               try {
