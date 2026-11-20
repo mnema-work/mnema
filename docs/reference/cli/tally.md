@@ -31,5 +31,7 @@ What it reads and what it prints:
   It writes nothing to the record. When the hook names its session it also keeps a small file on
   this machine, the session journal (ids and counts, never what was said), and reads the
   transcript from where the last reading stopped. `mnema switch off session-tally` stops the
-  line and `mnema switch off session-journal` stops the file.
+  line and `mnema switch off session-journal` stops the file. When a session opens it prints {}
+  and keeps beside the journal the path of the session’s transcript (a path, never a word of it),
+  which is how an agent’s accept is checked against what the person typed.
 ```
