@@ -1,4 +1,4 @@
-<!-- mnema:begin v5 (written by mnema; `mnema instructions --remove` takes it out) -->
+<!-- mnema:begin v6 (written by mnema; `mnema instructions --remove` takes it out) -->
 
 ## Recording the work (mnema)
 

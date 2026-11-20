@@ -106,7 +106,7 @@ paths of a person's machine; the output of an eval run; build output (`dist/`,
 committed is `.claude/rules/mnema-instructions.md`, written by `mnema instructions`). Run the product against a throwaway
 `HOME`, never your own.
 
-<!-- mnema:begin v5 (written by mnema; `mnema instructions --remove` takes it out) -->
+<!-- mnema:begin v6 (written by mnema; `mnema instructions --remove` takes it out) -->
 
 ## Recording the work (mnema)
 
