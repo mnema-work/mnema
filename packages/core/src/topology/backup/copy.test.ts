@@ -207,6 +207,7 @@ describe('copying a tree into a folder', () => {
       diverged: 0,
       files: 5,
     });
+  });
 
   it('says a manifest that does not read, and names no last run for it', () => {
     copyTree(tree, destination, RECORD, 'private', NOW);
@@ -215,7 +216,6 @@ describe('copying a tree into a folder', () => {
       copiedAt: undefined,
       manifest: 'unreadable',
     });
-  });
   });
 });
 
