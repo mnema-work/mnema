@@ -88,7 +88,7 @@ describe('mnema why, when the record refuses the write', () => {
       const seen = inEveryCacheState(judged(damage));
       for (const state of [seen.warm, seen.cold, seen.session]) {
         const [whyPart, gatePart] = state.said.replace('@@@ why\n', '').split('\n@@@ gate\n');
-        const why = JSON.parse(whyPart as string);
+        const why = JSON.parse((whyPart as string).slice((whyPart as string).indexOf('{\n')));
         expect(state.status, state.state).toBe(0);
         expect(why.verdict, state.state).toBe('refuse');
         expect(why.refusal, state.state).toContain(word);
