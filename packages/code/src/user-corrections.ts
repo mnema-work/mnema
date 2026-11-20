@@ -17,7 +17,9 @@
  *
  * IT LOOKS AT THE OPENING OF A PROMPT ONLY: its first {@link OPENING} characters, because a
  * correction is said first, and a long prompt that mentions "wrong" in its fifth paragraph is
- * about something else.
+ * about something else. The one other thing it finds is a RULE DICTATED, by the table of
+ * `dictated-rules.ts` (which reads further, as a rule can follow a first sentence), tried when no
+ * opening corrects; the shape on the proposal is that table's label (`a-correction-becomes-a-proposal.test.ts`).
  *
  * AN ANSWER TO THE AGENT'S QUESTION IS TAKEN WHATEVER ITS SHAPE ({@link ANSWER_TO_A_QUESTION}):
  * the agent asked because a choice was open, and the person's answer is the one who ruled it
@@ -27,6 +29,7 @@
  * proposal from it would be noise for the person who rules on the list.
  */
 
+import { dictatedRuleIn } from './dictated-rules.js';
 import type { WhatThePersonSaid } from './what-the-session-did.js';
 
 /** How much of a prompt is read for an opening, and the most of it that is ever quoted. */
@@ -115,7 +118,21 @@ export function correctionsIn(said: readonly WhatThePersonSaid[]): readonly Corr
     }
     const sentence = openingOf(one.text);
     const shape = CORRECTION_SHAPES.find((candidate) => candidate.pattern.test(sentence));
-    if (shape === undefined) continue;
+    if (shape === undefined) {
+      // NOT AN OPENING THAT CORRECTS: a message that dictates a rule (`dictated-rules.ts`, the table
+      // `mnema dictated` reads too), found in the first sentences of the message and not only the first.
+      const dictated = dictatedRuleIn(one.text);
+      if (dictated !== undefined) {
+        found.push({
+          line: one.line,
+          uuid: one.uuid,
+          session: one.session,
+          shape: dictated.shape,
+          sentence: dictated.sentence.slice(0, OPENING),
+        });
+      }
+      continue;
+    }
     found.push({
       line: one.line,
       uuid: one.uuid,
