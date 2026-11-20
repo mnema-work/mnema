@@ -1032,11 +1032,13 @@ complete -c mnema -f -n '__mnema_at "beside-a-write"' -s V -l version
 complete -c mnema -f -n '__mnema_at "beside-a-write"' -l color -x -a 'auto always never'
 
 # mnema tally
+complete -c mnema -f -n '__mnema_at "tally"' -l host -x -a 'claude codex copilot gemini cursor'
 complete -c mnema -f -n '__mnema_at "tally"' -s h -l help
 complete -c mnema -f -n '__mnema_at "tally"' -s V -l version
 complete -c mnema -f -n '__mnema_at "tally"' -l color -x -a 'auto always never'
 
 # mnema corrections
+complete -c mnema -f -n '__mnema_at "corrections"' -l host -x -a 'claude codex copilot gemini cursor'
 complete -c mnema -f -n '__mnema_at "corrections"' -s h -l help
 complete -c mnema -f -n '__mnema_at "corrections"' -s V -l version
 complete -c mnema -f -n '__mnema_at "corrections"' -l color -x -a 'auto always never'

@@ -1617,7 +1617,10 @@ $ mnema tally --help
 | answer a host’s Stop hook with what the session wrote and recorded
 |
 | Options:
-|   -h, --help  display help for command
+|   --host <host>  the host whose hook runs this, and whose payload arrives on
+|                  stdin: claude, codex, copilot, gemini, cursor; Claude Code's
+|                  when it is not given
+|   -h, --help     display help for command
 |
 | What it reads and what it prints:
 |   The JSON a host hands a hook on stdin, with the transcript it names. On stdout, the reply
@@ -1626,8 +1629,9 @@ $ mnema tally --help
 |   events of the record are in no git commit yet, how many (`mnema record commit` is what
 |   prepares them), and, on a second line, how many of those decisions still await a
 |   person, or {} when
-|   the hook is not Stop, the session wrote no file in the last response, there is no project
-|   here, or the transcript cannot be read.
+|   the hook is not the end of a turn, the session wrote no file in the last response, there is
+|   no project here, or the transcript cannot be read. Only Claude Code’s transcript is read
+|   today: for any other --host it says so on the second stream and counts and keeps nothing.
 |   It writes nothing to the record. When the hook names its session it also keeps a small file on
 |   this machine, the session journal (ids and counts, never what was said), and reads the
 |   transcript from where the last reading stopped. `mnema switch off session-tally` stops the
@@ -1641,7 +1645,10 @@ $ mnema corrections --help
 | hook
 |
 | Options:
-|   -h, --help  display help for command
+|   --host <host>  the host whose hook runs this, and whose payload arrives on
+|                  stdin: claude, codex, copilot, gemini, cursor; Claude Code's
+|                  when it is not given
+|   -h, --help     display help for command
 |
 | What it reads and what it does:
 |   The JSON a host hands a Stop hook on stdin, with the transcript it names. It finds the
@@ -1656,7 +1663,9 @@ $ mnema corrections --help
 |   On stdout, the reply the host reads: a `systemMessage` saying how many were recorded and
 |   under which labels, or {}.
 |   It does nothing until `mnema switch on user-corrections`, because it reads what a person
-|   typed. With the channel off, or outside a project, it records nothing.
+|   typed. With the channel off, or outside a project, it records nothing. Only Claude Code’s
+|   transcript is read today: for any other --host it says so on the second stream and
+|   records nothing.
 
 ### mnema after-a-write --help
 $ mnema after-a-write --help

@@ -168,7 +168,7 @@ Each tool of the MCP server has its page, in [the tools](reference/mcp-tools.md)
   yet](committing-the-record.md#being-told-what-no-commit-holds-yet)); and, where some of those decisions are still `proposed`, a second line
   saying how many and naming `mnema decision review`: no model is called and nothing is
   recorded. The message goes out as the reply's `systemMessage`; which host shows it was not
-  measured. `mnema switch off session-tally` stops it. The same command keeps the session journal (see
+  measured. `--host` says whose payload arrives (`claude`, `codex`, `copilot`, `gemini`, `cursor`; Claude Code's when it is not given), and the plugin runs it at Codex's `Stop`, Copilot CLI's `Stop`, Gemini CLI's `AfterAgent` and Cursor's `stop` too; only Claude Code's transcript is read, so for the others it says so on the second stream and counts and keeps nothing. `mnema switch off session-tally` stops it. The same command keeps the session journal (see
   [The session journal](the-session-journal-and-compaction.md#the-session-journal)), a small file on this machine that lets the next `Stop` read only
   what the host wrote since. The sixth runs only after a conversation was compacted (the `compact` matcher of
   `SessionStart`) and hands it back what entered the record while its session ran, one sentence read from that journal (see

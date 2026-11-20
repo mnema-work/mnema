@@ -6,6 +6,12 @@ answer a host’s Stop hook with what the session wrote and recorded
 
 In the help under **Called by a host**.
 
+## Options
+
+| Option | What it does |
+| --- | --- |
+| `--host <host>` | the host whose hook runs this, and whose payload arrives on stdin: claude, codex, copilot, gemini, cursor; Claude Code's when it is not given |
+
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
 <!-- End of the part written by hand. -->
 
@@ -17,7 +23,10 @@ Usage: mnema tally [options]
 answer a host’s Stop hook with what the session wrote and recorded
 
 Options:
-  -h, --help  display help for command
+  --host <host>  the host whose hook runs this, and whose payload arrives on
+                 stdin: claude, codex, copilot, gemini, cursor; Claude Code's
+                 when it is not given
+  -h, --help     display help for command
 
 What it reads and what it prints:
   The JSON a host hands a hook on stdin, with the transcript it names. On stdout, the reply
@@ -26,8 +35,9 @@ What it reads and what it prints:
   events of the record are in no git commit yet, how many (`mnema record commit` is what
   prepares them), and, on a second line, how many of those decisions still await a
   person, or {} when
-  the hook is not Stop, the session wrote no file in the last response, there is no project
-  here, or the transcript cannot be read.
+  the hook is not the end of a turn, the session wrote no file in the last response, there is
+  no project here, or the transcript cannot be read. Only Claude Code’s transcript is read
+  today: for any other --host it says so on the second stream and counts and keeps nothing.
   It writes nothing to the record. When the hook names its session it also keeps a small file on
   this machine, the session journal (ids and counts, never what was said), and reads the
   transcript from where the last reading stopped. `mnema switch off session-tally` stops the

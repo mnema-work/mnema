@@ -122,6 +122,11 @@ document, delivered by the host instead of waited for.
   only the lines the host wrote since, and from which the MCP server gives a run its goal and closes it with an
   outcome (`mnema switch off session-journal` stops it; see
   [the reference](https://github.com/mnema-work/mnema/blob/main/docs/cli-reference.md#the-session-journal)).
+  The same two verbs are wired at the end of a turn in the other hosts that document one: Codex's `Stop`, Copilot
+  CLI's `agentStop` (configured as `Stop`), Gemini CLI's `AfterAgent` (which cannot add context, so a line goes to the
+  person) and Cursor's `stop`, each told its host with `--host`. Only Claude Code's transcript is read, so there they
+  say on their second stream that the transcript is not in a format this version reads (or that the payload named
+  none), count nothing, keep no journal and record no proposal. Documented, not measured against the host.
 - **A `SessionStart` hook that runs only after a compaction** (the `compact` matcher), `mnema recall
   --after-a-compaction`. It hands the conversation that continues one sentence, read from the session's journal: the
   decisions that entered the record since it opened (read from the record, by label and the state they have now), the notes copied, the questions answered with no decision after, the

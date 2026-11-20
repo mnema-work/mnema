@@ -149,8 +149,8 @@ _mnema_flags() {
     'run end') echo '--which --outcome -h --help -V --version --color' ;;
     'before-a-write') echo '--host --agent-key -h --help -V --version --color' ;;
     'beside-a-write') echo '--host --agent-key -h --help -V --version --color' ;;
-    'tally') echo '-h --help -V --version --color' ;;
-    'corrections') echo '-h --help -V --version --color' ;;
+    'tally') echo '--host -h --help -V --version --color' ;;
+    'corrections') echo '--host -h --help -V --version --color' ;;
     'after-a-write') echo '-h --help -V --version --color' ;;
     'handback') echo '--schema -h --help -V --version --color' ;;
     'settled') echo '--reply -h --help -V --version --color' ;;
@@ -319,7 +319,9 @@ _mnema_values() {
     'before-a-write:--color') echo 'auto always never' ;;
     'beside-a-write:--host') echo 'copilot gemini' ;;
     'beside-a-write:--color') echo 'auto always never' ;;
+    'tally:--host') echo 'claude codex copilot gemini cursor' ;;
     'tally:--color') echo 'auto always never' ;;
+    'corrections:--host') echo 'claude codex copilot gemini cursor' ;;
     'corrections:--color') echo 'auto always never' ;;
     'after-a-write:--color') echo 'auto always never' ;;
     'handback:--color') echo 'auto always never' ;;
