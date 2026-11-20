@@ -186,6 +186,7 @@ import {
   type CountedChannel,
   EDIT_PUSH_CHANNEL,
   FIRST_WRITE_GATE_CHANNEL,
+  RECORD_PUBLISH_CHANNEL,
   REFUSES_A_WRITE_CHANNEL,
   STARTS_OFF,
   SWITCHABLE_CHANNELS,
@@ -1889,7 +1890,10 @@ export function countsToolCalls(session: Session): boolean {
 export function channelsOffHere(session: Session): readonly SwitchableChannel[] {
   try {
     const states = channelStates(scopedCaches(session), SWITCHABLE_CHANNELS, STARTS_OFF);
-    return SWITCHABLE_CHANNELS.filter((_channel, at) => states[at]?.on === false);
+    // `record-publish` is a verb for a person: an agent is not told it is off.
+    return SWITCHABLE_CHANNELS.filter(
+      (channel, at) => channel !== RECORD_PUBLISH_CHANNEL && states[at]?.on === false,
+    );
   } catch {
     return [];
   }

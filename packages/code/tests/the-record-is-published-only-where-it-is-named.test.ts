@@ -252,6 +252,22 @@ describe('mnema record publish', SLOW, () => {
     switchOn(local);
     expect(recordPublishIsOn(ctx)).toBe(true);
     expect(ghCalls()).toEqual([]);
+
+    // The tree a clone gets can still switch it off, as it can any channel: off wins.
+    const off = openTreeForWriting(trees, 'public');
+    off.exclusively(() => {
+      const written = switchChannel(
+        {
+          writer: off,
+          layout: { root: chainRootForScope(trees, 'public') as string },
+          upcasters: catalogUpcasters(),
+        },
+        { channel: 'record-publish', on: false },
+      );
+      expect(written.ok).toBe(true);
+      off.checkpoint();
+    });
+    expect(recordPublishIsOn(ctx)).toBe(false);
   });
 
   it('pushes the record branch alone and opens one pull request into the named branch', () => {

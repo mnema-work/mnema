@@ -10,9 +10,10 @@
  *
  * WHAT IT REFUSES, in this order, before it cuts anything, so that a refusal leaves no branch:
  *
- *   1. THE SWITCH. `record-publish` is off until a person switches it on, and it is read from this
- *      machine's trees only (the private and the global one): a switch in the tree a clone gets
- *      would turn the verb on in every clone of the repository.
+ *   1. THE SWITCH. `record-publish` is off until a person switches it on, and only this machine's
+ *      trees (the private and the global one) can switch it on: an `on` in the tree a clone gets
+ *      would turn the verb on in every clone of the repository, so it is not read ({@link
+ *      recordPublishIsOn}).
  *   2. THE DESTINATION is named, `<remote>/<branch>`, and never deduced: the base of the cut is that
  *      remote-tracking ref, and the push goes to that remote. A clone's HEAD, the branch it follows
  *      and what a remote calls its default are not read for it (a detached HEAD or a contributor's
@@ -181,12 +182,28 @@ function isListed(value: unknown): value is Listed {
   );
 }
 
-/** Whether this machine's own trees switch the verb on: the tree a clone gets is not read. */
+/**
+ * Whether the verb is switched on here. The tree a clone gets can switch it OFF (an off wins between
+ * trees, as for every channel) and never ON: an `on` found there is read as no switch at all, so that
+ * what a repository commits cannot turn publication on in a clone of it.
+ */
 export function recordPublishIsOn(ctx: RecordCommitContext): boolean {
   const trees = resolveTrees(ctx.cwd, ctx.env);
   return withScopedCaches(trees, (sources) =>
     channelIsOn(
-      sources.filter((source) => source.scope !== 'public'),
+      sources.map((source) =>
+        source.scope !== 'public'
+          ? source
+          : {
+              scope: source.scope,
+              cache: {
+                channelSwitch: (channel: string) => {
+                  const row = source.cache.channelSwitch(channel);
+                  return row !== null && row.on ? null : row;
+                },
+              },
+            },
+      ),
       RECORD_PUBLISH_CHANNEL,
       STARTS_OFF,
     ),

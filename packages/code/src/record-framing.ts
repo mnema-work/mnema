@@ -581,10 +581,11 @@ export const FIRST_WRITE_GATE_CHANNEL: CountedChannel = 'edit-first-write-gate';
  * request on a forge (ADR-617).
  *
  * NOT A CHANNEL TO A MODEL, like {@link TOOL_CALL_COUNT_CHANNEL}: nothing is put in front of anybody,
- * and it is a switch in the form every other one takes. OFF UNTIL A PERSON SWITCHES IT ON, and read
- * from this machine's trees only (the private one and the global one, never the tree a clone gets):
- * a committed `on` would make every clone of a public repository, a contributor's included, start
- * pushing branches. `mnema switch on record-publish` records it privately without being asked to.
+ * and it is a switch in the form every other one takes. OFF UNTIL A PERSON SWITCHES IT ON, and only
+ * this machine's trees (the private one and the global one) can switch it on: a committed `on` would
+ * make every clone of a public repository, a contributor's included, start pushing branches, so the
+ * verb does not read one. `mnema switch on record-publish` records it privately without being asked
+ * to. The agent is not told it is off (`channelsOff` leaves it out): it is a verb for a person.
  */
 export const RECORD_PUBLISH_CHANNEL: SwitchableChannel = 'record-publish';
 
@@ -728,9 +729,9 @@ export const NOT_COUNTED_AS_SERVED: {
     'the sentence is printed by `mnema settled`, which reads the payload and the record’s switches ' +
     'and writes nothing (no event, no key, no run), so a question answered never moves the record',
   'record-publish':
-    'it puts nothing in front of a model: the verb is run by a person, pushes a branch and opens a ' +
-    'pull request, and the forge keeps the record of both, so a fact saying the channel was served ' +
-    'would repeat it',
+    'it puts nothing in front of a model and writes nothing to the record: the verb is run by a ' +
+    'person, pushes a branch and opens a pull request, and the forge keeps the record of both, so ' +
+    'a fact saying the channel was served would repeat it',
   'tool-call-count':
     'it puts nothing in front of a model and writes nothing to the record: the line it keeps is ' +
     'appended to a file on this machine, outside it, so a fact saying it was served would be a ' +
@@ -876,8 +877,8 @@ export const WHAT_STOPS: { readonly [K in SwitchableChannel]: string } = {
   'record-publish':
     'the verb `mnema record publish`, which pushes the branch `mnema record commit` makes and ' +
     'opens its pull request on GitHub, to a destination the person names, one pull request at ' +
-    'a time. Off until switched on, and read from this machine’s own trees only: a switch ' +
-    'recorded in the tree a clone gets does not turn it on',
+    'a time. Off until switched on, and only this machine’s own trees switch it on: an on ' +
+    'recorded in the tree a clone gets is not read',
 };
 
 /**

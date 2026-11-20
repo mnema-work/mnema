@@ -65,8 +65,8 @@ remote calls its default. The base of the cut is the remote-tracking ref you nam
 last read it (`git remote update <remote>` reads it again); the rest of the cut is `record commit`'s,
 with `--through` and `--json`.
 
-The switch is recorded in this machine's private tree: `--scope public` is refused, and one found in
-the committed tree is not read, because a committed `on` would turn the verb on in every clone. It
+The switch is recorded in this machine's private tree: `--scope public` is refused, and an `on` found in
+the committed tree is not read (an `off` there is), because a committed `on` would turn the verb on in every clone. It
 refuses, naming the reason and before it cuts anything:
 
 - **The e-mail.** A pushed commit carries its author's e-mail for good. The one it publishes under is

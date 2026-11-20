@@ -498,6 +498,11 @@ export const SERVES_NO_RECORD_CONTENT: { readonly [path: string]: string } = {
     'signed level and `verify --since` ruled on that tree; a cut whose chain breaks is refused ' +
     'with what the readers said, and no branch is made, so a notice would have nothing left to ' +
     'attach to',
+  'commands/record-publish.ts':
+    'it reads the record only to ask where the `record-publish` switch stands, and then makes what ' +
+    '`record commit` makes (which says why it owes no notice), pushes it and opens the pull ' +
+    'request: it serves no record content to anybody, and a notice about the chain would have ' +
+    'nowhere to land that `mnema verify` does not already rule on',
   'commands/commit-hook.ts':
     'it serves the title and label of each governing decision into a commit message file the ' +
     'person edits, as `#` lines git drops; that file is not a reading anyone asked the record ' +
