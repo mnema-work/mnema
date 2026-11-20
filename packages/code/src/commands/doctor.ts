@@ -1,7 +1,8 @@
 /**
  * `mnema doctor`: what this machine says about how mnema is installed, and what to do about
  * each thing it finds. Asked alone it reads and writes NOTHING: not the record, not a
- * configuration, not a cache, and it asks nobody over a network. `--fix vscode` and
+ * configuration, not a cache, and it asks nobody over a network, unless `--latest` is typed: that one
+ * asks the npm registry and says so (`doctor-latest.ts`). `--fix vscode` and
  * `--fix private-tree` are the two things it writes, each only when a person asks.
  *
  * TEN QUESTIONS, each answered by files that were read and named in the answer:

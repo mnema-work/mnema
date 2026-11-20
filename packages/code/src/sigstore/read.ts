@@ -82,7 +82,7 @@ function utf8StringOf(der: Uint8Array): string | undefined {
 }
 
 /** The run a verified signer's certificate names: undefined when it names none of the four. */
-function runOf(
+export function runOf(
   oids: readonly {
     readonly oid?: { readonly id: readonly number[] } | undefined;
     readonly value?: Uint8Array | undefined;

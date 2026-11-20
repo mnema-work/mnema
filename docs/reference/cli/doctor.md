@@ -13,6 +13,7 @@ In the help under **This machine**.
 | `--fix <what>` | make the one change a finding asks for, and only that one: `vscode` lists the plugin in the chat.pluginLocations setting of VS Code’s settings.json, after keeping a copy of the file; `private-tree` moves the private notes a worktree still holds in .mnema/private/ into the repository’s git directory; `merge-driver` writes, into this repository’s git configuration, the merge driver the record’s tails name and then merge.autoStash and rebase.autoStash, so a plain `git pull` carries the record; it replaces a driver of mnema’s that cannot run here |
 | `--after-update` | what `mnema upgrade` does: bring this project and machine up to the installed version, asking before anything that changes how the repository behaves |
 | `--dry-run` | with --fix or --after-update: say what would change and write nothing |
+| `--latest` | ask the npm registry, once, which version is the newest, check its provenance, and say whether it is named as one to install, and how; the one thing this verb asks over a network, and it writes nothing |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
 
@@ -31,8 +32,9 @@ script that shadows the other, which). It also says whether VS Code's user `sett
 plugin under `chat.pluginLocations` (the setting VS Code's agent needs, marked experimental there)
 and which projects of `~/.claude.json` (the one inside `$CLAUDE_CONFIG_DIR` when that is set) still declare the server, those whose directory no longer
 exists included (`claude mcp remove` does not reach them; the line says what to delete). It reads
-files on this machine and, asked alone, writes nothing; it does not ask the registry, so a package
-that is published and not installed here is outside what it can say.
+files on this machine and, asked alone, writes nothing; it does not ask the registry (a package
+that is published and not installed here is outside what it can say; [`--latest`](#which-version-is-the-newest) is
+the one request, and only when you type it).
 
 In a project whose record is in a git repository it also says when events of the record are in no
 git commit yet, with `mnema record commit` (see [Being told what no commit holds
@@ -103,6 +105,45 @@ key, for one), nothing of that tree is relinked or moved, and its tails stay whe
 and `mnema doctor` without `--fix` says the same reason and advises no fix. Otherwise the exit status
 is 0 whatever it found: a script that wants to act on a finding reads the line.
 
+## Which version is the newest
+
+```sh
+mnema doctor --latest
+```
+
+The one thing `mnema doctor` asks over a network, and only when `--latest` is typed. It makes two public requests to
+`registry.npmjs.org`, a fixed host: the document of the newest version of `@mnema/code`, and, only if that version is
+newer than the one you run, its attestations. The package name is in the path and nothing else leaves: not the
+version you run, no project, no path, no identity, no header of mnema's own (Node's `fetch` adds its own
+`user-agent: node`). npm learns your address, the time and the package name. Each request ends within 5 seconds,
+is read up to a bound, follows no redirect, and a failure is a sentence, not an error. Nothing is written: not the
+record, not a file, not a cache. The verb reads no `.npmrc`, takes no mirror and has no `--json`; it is never asked
+by a hook, the MCP server or CI, and it goes with no other option. Behind a proxy it goes through it only where
+your environment tells Node to (`NODE_USE_ENV_PROXY=1`); without that a machine whose only way out is a proxy
+hears nothing.
+
+The answer is checked before a word of it is said. The version must be three plain numbers. Its provenance is
+verified offline with the Sigstore library and the trust root the binary carries (no request for either), and four
+things must hold: the certificate names this project's release workflow, the statement names `pkg:npm/%40mnema/code@<version>`,
+its digest is the one npm gave for that version, and the workflow ran in `https://github.com/mnema-work/mnema`. A genuine
+bundle of another version fails those comparisons. A version is then named as one to install, with its exact
+command, only two days after the time its signature was logged in the public log (the signed time, not npm's
+own claim), and only if this Node meets the Node range it declares. The command is the one for how this
+`mnema` was installed, read from its real path: `npm i -g @mnema/code@<version>`, the same with `--prefix <prefix>`, or
+`pnpm add -g @mnema/code@<version>`; any other layout gets no command and [`docs/install.md`](../../install.md). Run
+`mnema upgrade` in each project afterwards. If you run the `main` branch from a clone, pull and build it again instead.
+
+A version with no attested provenance is said to exist, with no command; so is one whose provenance does not hold,
+with which comparison refused it. The line reports what npm.org lists and never what your own registry serves: a
+mirror or a package manager that holds new versions back (`min-release-age`, `minimumReleaseAge`) may refuse an install
+that was named. Provenance says where a build came from, not that the commit is good, and two silences are by design:
+a Sigstore key rotation that the trust root in an old binary does not cover, and a second move of the repository.
+`doctor --latest` then says it cannot confirm, with no command.
+
+mnema asks the registry only when a command you or your agent typed asks it. A terminal does not prove a person is at
+it, and an agent that holds a shell can run this verb: it is one request, the same whoever fires it, and the text
+says that a person decides and that an agent does not update on its own.
+
 <!-- End of the part written by hand. -->
 
 ## The whole help
@@ -129,6 +170,10 @@ Options:
                   how the repository behaves
   --dry-run       with --fix or --after-update: say what would change and write
                   nothing
+  --latest        ask the npm registry, once, which version is the newest, check
+                  its provenance, and say whether it is named as one to install,
+                  and how; the one thing this verb asks over a network, and it
+                  writes nothing
   -h, --help      display help for command
 
 What it looks at, and nothing else:
@@ -157,4 +202,17 @@ record not yet committed. It replaces a driver of mnema’s that cannot run, and
 setting of the same name it did not write, and then writes none.
 `--after-update` is `mnema upgrade`: it applies what an update left of mnema’s own, asks before the
 merge driver and its autoStash settings, and says what a host keeps; `--dry-run` shows the plan.
+`--latest` is the one request this verb makes, and only when it is typed: two public GETs to
+registry.npmjs.org (the newest version’s document, then, if it is newer than this one, its
+attestations), with the package name in the path and nothing of this machine, project or version;
+each ends within 5 s. It reads and writes no record, file or cache. A version is named as one to
+install, with its exact command, only after its npm provenance verifies offline (the Sigstore trust
+root this binary carries; the certificate names this project’s release workflow; the statement
+names this package, this version’s digest and this repository) and two days after its signed
+publication time; a version without attested provenance is said to exist, with no command. It
+reports what npm.org lists, never what your own registry serves, and a registry or proxy that
+holds versions back may refuse an install it named. mnema asks the registry only when a command
+you or your agent typed asks it: a terminal does not prove a person is at it. It does not read
+your `.npmrc`, take a mirror, or ask under `--json` (this verb has none), a hook, the MCP server
+or CI.
 ```

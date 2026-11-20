@@ -35,7 +35,9 @@ the mnema server entry that your `~/.claude.json` declares a second time, after 
 ([what it does](reference/cli/upgrade.md#after-installing-a-newer-mnema)). Until `mnema upgrade` has run on a machine
 after a newer version was installed, the first command you run there at a terminal says so in one line, once, and the
 first reply an agent's connection gets carries a note for you to run it; a machine where mnema was just installed says
-nothing. To run the `main` branch instead of the published version,
+nothing. To ask which version is the newest, with its provenance checked and the command for how you installed it, run
+`mnema doctor --latest` ([what it asks](reference/cli/doctor.md#which-version-is-the-newest)); nothing asks the registry
+unless you type it. To run the `main` branch instead of the published version,
 see [Building it from source](build-from-source.md).
 
 ## Check it

@@ -11,6 +11,7 @@
  * `commands/doctor-merge-driver.ts`).
  */
 
+import { realpathSync } from 'node:fs';
 import type { Command } from 'commander';
 import { discoveryEnv } from '../env.js';
 import { fact } from '../presentation/detail.js';
@@ -18,6 +19,22 @@ import { VERSION } from '../version.js';
 import { here } from './context.js';
 import { runTheUpgrade } from './upgrade.js';
 import { type Declared, readsTheRecord, type Wiring } from './verb.js';
+
+/** The real path of the running file: what tells how it was installed. The path as given where it cannot be resolved. */
+function realOf(file: string): string {
+  try {
+    return realpathSync(file);
+  } catch {
+    return file;
+  }
+}
+
+interface DoctorOptions {
+  fix?: string;
+  dryRun?: boolean;
+  afterUpdate?: boolean;
+  latest?: boolean;
+}
 
 /** Registers `mnema doctor` on the program. */
 export function registerDoctor(program: Command, wiring: Wiring): Declared {
@@ -36,6 +53,10 @@ export function registerDoctor(program: Command, wiring: Wiring): Declared {
       'what `mnema upgrade` does: bring this project and machine up to the installed version, asking before anything that changes how the repository behaves',
     )
     .option('--dry-run', 'with --fix or --after-update: say what would change and write nothing')
+    .option(
+      '--latest',
+      'ask the npm registry, once, which version is the newest, check its provenance, and say whether it is named as one to install, and how; the one thing this verb asks over a network, and it writes nothing',
+    )
     .addHelpText(
       'after',
       [
@@ -66,9 +87,45 @@ export function registerDoctor(program: Command, wiring: Wiring): Declared {
         'setting of the same name it did not write, and then writes none.',
         '`--after-update` is `mnema upgrade`: it applies what an update left of mnema’s own, asks before the',
         'merge driver and its autoStash settings, and says what a host keeps; `--dry-run` shows the plan.',
+        '`--latest` is the one request this verb makes, and only when it is typed: two public GETs to',
+        'registry.npmjs.org (the newest version’s document, then, if it is newer than this one, its',
+        'attestations), with the package name in the path and nothing of this machine, project or version;',
+        'each ends within 5 s. It reads and writes no record, file or cache. A version is named as one to',
+        'install, with its exact command, only after its npm provenance verifies offline (the Sigstore trust',
+        'root this binary carries; the certificate names this project’s release workflow; the statement',
+        'names this package, this version’s digest and this repository) and two days after its signed',
+        'publication time; a version without attested provenance is said to exist, with no command. It',
+        'reports what npm.org lists, never what your own registry serves, and a registry or proxy that',
+        'holds versions back may refuse an install it named. mnema asks the registry only when a command',
+        'you or your agent typed asks it: a terminal does not prove a person is at it. It does not read',
+        'your `.npmrc`, take a mirror, or ask under `--json` (this verb has none), a hook, the MCP server',
+        'or CI.',
       ].join('\n'),
     )
-    .action(async (options: { fix?: string; dryRun?: boolean; afterUpdate?: boolean }) => {
+    .action(async (options: DoctorOptions) => {
+      if (options.latest === true) {
+        if (options.fix !== undefined || options.afterUpdate === true || options.dryRun === true) {
+          io.err(
+            render(
+              fact(
+                '`--latest` asks the registry and writes nothing: it goes with no other option.',
+              ),
+            ),
+          );
+          io.fail();
+          return;
+        }
+        const { askTheRegistry, sayLatest } = await import('../commands/doctor-latest.js');
+        const now = new Date();
+        const found = await askTheRegistry({
+          running: VERSION,
+          node: process.versions.node,
+          from: { file: realOf(process.argv[1] ?? ''), node: process.execPath },
+          now,
+        });
+        for (const line of sayLatest(found, VERSION, now)) io.out(line);
+        return;
+      }
       if (options.afterUpdate === true) {
         if (options.fix !== undefined) {
           io.err(render(fact('`--after-update` and `--fix` cannot be given together.')));
