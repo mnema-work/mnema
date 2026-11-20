@@ -487,7 +487,9 @@ async function reportDecisionMove(
     (DECISION_MOVE_ACTIONS as readonly string[]).includes(id);
   const none = noSuchRecord('decision', id);
   reportRefusal(to, result, {
-    UNKNOWN_DECISION: swapped ? `${none} The action goes before the id: mnema decision move ${id} <id>.` : none,
+    UNKNOWN_DECISION: swapped
+      ? `${none} The action goes before the id: mnema decision move ${id} <id>.`
+      : none,
   });
 }
 
