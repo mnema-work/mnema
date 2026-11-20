@@ -1685,7 +1685,7 @@ def _check_enrolment(
     if resolution.undeclared > 0:
         report.note(
             "6.2",
-            f"{resolution.undeclared} event(s) name no agent: no agent was declared, which does "
+            f"{resolution.undeclared} fact(s) name no agent: no agent was declared, which does "
             "not say that a person acted",
         )
     # An agent key the record retired, after the facts it signed while it held the role: the same

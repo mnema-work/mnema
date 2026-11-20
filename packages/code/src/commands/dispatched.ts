@@ -423,7 +423,8 @@ function move(
   action: string,
   proof: { reason?: string; note?: string },
 ): string | undefined {
-  const moved = runTaskTransition(writes(ctx), { id, action, proof });
+  // Like the handoff, a move the hook makes names the orchestrator (declared, as any `which` is).
+  const moved = runTaskTransition(writes(ctx), { id, action, proof, which: ORCHESTRATOR });
   return moved.ok
     ? undefined
     : `The task ${id} could not be moved (${action}): ${refusal(moved as { reason: string; message?: string })}`;
@@ -444,7 +445,11 @@ function closingNote(handoffs: number, skipped: number, elsewhere: number): stri
 
 /** Opens the session's task: private, submitted and started. */
 function openTheTask(ctx: DispatchedContext, now: Date): { id?: string; notes: string[] } {
-  const created = runTask(writes(ctx), { title: titleOfTheTask(now), scope: 'private' });
+  const created = runTask(writes(ctx), {
+    title: titleOfTheTask(now),
+    scope: 'private',
+    which: ORCHESTRATOR,
+  });
   if (!created.ok) {
     return {
       notes: [

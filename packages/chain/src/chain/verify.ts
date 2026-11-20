@@ -779,7 +779,7 @@ export interface UnannouncedWhichNote {
 }
 
 /**
- * The accepted facts that name no agent and are signed by a key that is not an agent key: the
+ * The facts the fold accepted (of any kind, not accepted decisions) that name no agent and are signed by a key that is not an agent key: the
  * envelope has no `which`. The record says that no agent was declared, and nothing more: it does
  * not say a person acted, because the command line writes no `which` whenever none was named, a
  * script and a hook included. Like {@link DeclaredWhichNote} it has NO CLAUSE in the verdict's
@@ -787,7 +787,7 @@ export interface UnannouncedWhichNote {
  */
 export interface UndeclaredWhichNote {
   readonly kind: 'undeclared-which';
-  /** How many accepted facts name no agent. */
+  /** How many facts the fold accepted name no agent (any kind: not only accepted decisions). */
   readonly events: number;
   readonly detail: string;
 }
@@ -829,7 +829,7 @@ function agentsNamed(agents: IdentityResolution['agents']): CensusNote[] {
           {
             kind: 'undeclared-which',
             events: agents.undeclared,
-            detail: `${agents.undeclared} event(s) name no agent: no agent was declared, which does not say that a person acted`,
+            detail: `${agents.undeclared} fact(s) name no agent: no agent was declared, which does not say that a person acted`,
           } satisfies UndeclaredWhichNote,
         ]
       : []),

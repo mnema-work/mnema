@@ -1249,7 +1249,7 @@ describe('the two readers agree on records the product itself wrote: an agent', 
       )
       .sort();
     const second = secondNotes().flatMap((said) => {
-      const found = /^6\.2: (\d+) event\(s\) name no agent/.exec(said);
+      const found = /^6\.2: (\d+) fact\(s\) name no agent/.exec(said);
       return found === null ? [] : [`undeclared ${found[1]}`];
     });
     return { product, second };

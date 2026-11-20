@@ -172,7 +172,7 @@ export interface AgentsNamed {
    */
   readonly unannounced: readonly { readonly which: string; readonly events: number }[];
   /**
-   * How many accepted facts name no agent and were signed by a key without the agent role: the
+   * How many facts the fold accepted (of any kind) name no agent and were signed by a key without the agent role: the
    * envelope carries no `which` (FORMAT.md section 6.2). What that says is that nobody declared an
    * agent, which is not the same as a person having acted. Counted beside the declared ones and
    * never in place of them.

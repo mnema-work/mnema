@@ -52,7 +52,7 @@ No other decision recorded here is awaiting a judgement.
 Names and ids, never bodies: the argument behind a decision is one request away
 (`read_record`, over MCP), and it arrives only when the agent asks for it. What does
 arrive beside each rule is who accepted it, so a rule a stranger's clone planted cannot
-open a session looking like the team's: the identity, a person or an agent, and a mark
+open a session looking like the team's: the identity, an agent or no agent declared, and a mark
 on an identity nobody else has ruled with.
 
 ## Signing as an agent inside a sandbox

@@ -245,6 +245,22 @@ describe('the handoff a hook records', () => {
     },
     WAITS_ON_WRITES,
   );
+
+  it(
+    'names it on the task it opens and on every move the hook makes of it, the end and a reopen included',
+    () => {
+      mirror(dispatch({ type: 'implementar' }));
+      mirror(theEnd());
+      mirror(dispatch({ type: 'revisar' }));
+      const born = eventsOfKind('task.created');
+      const moved = eventsOfKind('task.transitioned');
+      // Opened, submitted and started; completed at the end; reopened by the dispatch that came after.
+      expect(born).toHaveLength(1);
+      expect(moved.length).toBeGreaterThanOrEqual(4);
+      for (const one of [...born, ...moved]) expect(one.which).toBe('orchestrator');
+    },
+    WAITS_ON_WRITES,
+  );
 });
 
 describe('three dispatches of one session', () => {

@@ -1291,7 +1291,7 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'collapsed',
       why: 'the head of the identity a stored `agent.enrolled` names as its subject',
     },
-  '@mnema/chain chain/verify.ts «{} event(s) name no agent: no agent was declared, which does not say that a person acted» agents.undeclared #1':
+  '@mnema/chain chain/verify.ts «{} fact(s) name no agent: no agent was declared, which does not say that a person acted» agents.undeclared #1':
     {
       verdict: 'minted',
       why: 'a count the fold kept, of accepted facts that carry no `which`',
@@ -2598,27 +2598,27 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'collapsed',
       why: 'the successor `--by` named, which is the caller’s word until the record answers about it',
     },
-  '@mnema/core workflow/decision-operations.ts «{} is already accepted, by no agent declared, at {}: nothing changed.» oneLine(current.adr) #1':
+  '@mnema/core workflow/decision-operations.ts «{} is already accepted (no agent declared) at {}: nothing changed.» oneLine(current.adr) #1':
     {
       verdict: 'collapsed',
       why: 'the label of a decision, read out of the record, in the refusal of an accept the state has already had',
     },
-  '@mnema/core workflow/decision-operations.ts «{} is already accepted, by no agent declared, at {}: nothing changed.» oneLine(current.updatedAt) #1':
+  '@mnema/core workflow/decision-operations.ts «{} is already accepted (no agent declared) at {}: nothing changed.» oneLine(current.updatedAt) #1':
     {
       verdict: 'collapsed',
       why: 'the instant of the accepting move, read out of the record like every other field of it',
     },
-  '@mnema/core workflow/decision-operations.ts «{} is already accepted, by an agent ({}), at {}: nothing changed.» oneLine(current.adr) #1':
+  '@mnema/core workflow/decision-operations.ts «{} is already accepted (agent {}) at {}: nothing changed.» oneLine(current.adr) #1':
     {
       verdict: 'collapsed',
       why: 'the label of a decision, read out of the record, in the refusal of an accept the state has already had',
     },
-  '@mnema/core workflow/decision-operations.ts «{} is already accepted, by an agent ({}), at {}: nothing changed.» oneLine(agent) #1':
+  '@mnema/core workflow/decision-operations.ts «{} is already accepted (agent {}) at {}: nothing changed.» oneLine(agent) #1':
     {
       verdict: 'collapsed',
       why: 'the name of the agent that accepted it, free text read out of the record',
     },
-  '@mnema/core workflow/decision-operations.ts «{} is already accepted, by an agent ({}), at {}: nothing changed.» oneLine(current.updatedAt) #1':
+  '@mnema/core workflow/decision-operations.ts «{} is already accepted (agent {}) at {}: nothing changed.» oneLine(current.updatedAt) #1':
     {
       verdict: 'collapsed',
       why: 'the instant of the accepting move, read out of the record like every other field of it',

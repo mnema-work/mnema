@@ -106,7 +106,7 @@ describe('a reading of an act whose envelope names no agent', () => {
   it('verify --verbose: counts the facts that name no agent, and says it is not a person', () => {
     const verified = ask('verify', '--verbose');
     expect(verified).toMatch(
-      /census \[undeclared-which\] .*: \d+ event\(s\) name no agent: no agent was declared, which does not say that a person acted/,
+      /census \[undeclared-which\] .*: \d+ fact\(s\) name no agent: no agent was declared, which does not say that a person acted/,
     );
     expect(ask('verify')).not.toContain('undeclared-which');
   });
@@ -114,7 +114,7 @@ describe('a reading of an act whose envelope names no agent', () => {
   it('the refusal of a second accept says it too', () => {
     const again = mnema('decision', 'move', 'accept', decision, '--note', 'again');
     expect(again.status).toBe(1);
-    expect(again.out).toMatch(/is already accepted, by no agent declared, at /);
+    expect(again.out).toMatch(/is already accepted \(no agent declared\) at /);
   });
 
   it('--which with no value names no agent, and the help does not call the absence a person', () => {
