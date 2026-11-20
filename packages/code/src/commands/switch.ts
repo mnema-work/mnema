@@ -238,9 +238,9 @@ export function runSwitch(
   }
   const writing = treesToWrite(ctx);
   const { trees } = writing;
-  // `record-publish` is this machine's: switched on, it goes to the private tree unless a scope is
-  // named, and never to the tree a clone gets, which the verb does not read for it (ADR-617).
-  const onlyThisMachine = input.channel === RECORD_PUBLISH_CHANNEL && input.on;
+  // `record-publish` is this machine's: switched on or off, it goes to the private tree unless a scope
+  // is named, and never to the tree a clone gets, which would turn it on or off in every clone (ADR-617).
+  const onlyThisMachine = input.channel === RECORD_PUBLISH_CHANNEL;
   const scope = resolveScope(
     'channel.switched',
     originOfTheWrite(writing, input.which),
@@ -252,8 +252,8 @@ export function runSwitch(
       reason: 'REFUSED',
       code: 'MACHINE_ONLY',
       message:
-        '`record-publish` is switched on for this machine only: a switch in the tree a clone gets ' +
-        'would turn it on in every clone, and the verb does not read it there. Leave `--scope` ' +
+        '`record-publish` is switched for this machine only: a switch in the tree a clone gets ' +
+        'would reach every clone, and the verb does not read an on there. Leave `--scope` ' +
         'out, or use `--scope private` or `--scope global`.',
     };
   }
