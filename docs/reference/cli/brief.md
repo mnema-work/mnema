@@ -11,7 +11,7 @@ In the help under **Hand over**.
 | Option | What it does |
 | --- | --- |
 | `--hook` | print it for a Claude Code hook: whole rules up to what a hook carries, and a closing paragraph saying how many were left out and what serves them, and a refusal opens with its code alone on the first line of the error stream (a refusal of usage, such as an invalid --host, carries none: the hook is silent for it) |
-| `--host <host>` | with --hook, the host whose own ceiling to cut the rules to: codex; without it, Claude Code’s |
+| `--host <host>` | with --hook, the host whose own ceiling to cut the rules to: vscode, codex, copilot, opencode, gemini, qwen; without it, Claude Code’s |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
 
@@ -149,7 +149,8 @@ Options:
                  on the first line of the error stream (a refusal of usage, such
                  as an invalid --host, carries none: the hook is silent for it)
   --host <host>  with --hook, the host whose own ceiling to cut the rules to:
-                 codex; without it, Claude Code’s
+                 vscode, codex, copilot, opencode, gemini, qwen; without it,
+                 Claude Code’s
   -h, --help     display help for command
 
 It prints to stdout and writes nothing: the redirection is yours, and `>`
