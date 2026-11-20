@@ -117,7 +117,7 @@ describe('mnema rules test', () => {
     await mnema('switch', 'off', 'edit-refuses-a-write');
     const done = await mnema('rules', 'test', declare(['src/billing/invoice.ts', 'refuse']));
     expect(done.failed).toBe(true);
-    expect(done.out).toContain('expected refuse, got governs'.replace('governs', 'none'));
+    expect(done.out).toContain('MISMATCH src/billing/invoice.ts: expected refuse, got none');
   });
 
   it('refuses a file with no case, an unknown verdict and a file that is not JSON', async () => {
