@@ -296,7 +296,7 @@ function noSuchCommand(command: Command, asked: string): Line {
       ? `${name} has no command ${quoted(asked)}. Run \`${name} --help\` to see what it does.`
       : `${name} has no command ${quoted(asked)}. To ${creating.name()} a ${command.name()}, ` +
         `put \`${creating.name()}\` before its ${what}.`;
-  const reading = WHERE_TO_READ.get(name);
+  const reading = WHERE_TO_READ.get(pathOf(command).join(' '));
   return refusalSentence(reading === undefined ? said : `${said} ${reading}`);
 }
 
@@ -310,7 +310,7 @@ function excessArguments({ command }: Misuse): Line | undefined {
   if (extra.length === 0) return undefined;
   if (isAGroupThatTakesNoWord(command)) return noSuchCommand(command, extra[0] as string);
   const said = `${spoken(command)} does not take ${extra.map(quoted).join(', ')}.`;
-  const hint = EXTRA_WORDS_MEAN.get(spoken(command));
+  const hint = EXTRA_WORDS_MEAN.get(pathOf(command).join(' '));
   return refusalSentence(hint === undefined ? said : `${said} ${hint}`);
 }
 
@@ -319,13 +319,13 @@ function excessArguments({ command }: Misuse): Line | undefined {
  * several words, or the topic typed where only a flag takes it.
  */
 const EXTRA_WORDS_MEAN = new Map<string, string>([
-  ['mnema memory', 'It takes one text: quote it, or give it with --stdin or --body-file.'],
-  ['mnema observe', 'The topic and the text go in flags: --topic <label> and --text <text>.'],
+  ['memory', 'It takes one text: quote it, or give it with --stdin or --body-file.'],
+  ['observe', 'The topic and the text go in flags: --topic <label> and --text <text>.'],
 ]);
 
 /** Where to read decisions, for a group that has no verb that lists them. */
 const WHERE_TO_READ = new Map<string, string>([
-  ['mnema decision', 'To read decisions, run `mnema search --kind decision`, or `mnema status`.'],
+  ['decision', 'To read decisions, run `mnema search --kind decision`, or `mnema status`.'],
 ]);
 
 /**

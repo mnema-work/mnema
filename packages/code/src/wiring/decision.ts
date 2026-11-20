@@ -485,10 +485,9 @@ async function reportDecisionMove(
     action !== undefined &&
     !(DECISION_MOVE_ACTIONS as readonly string[]).includes(action) &&
     (DECISION_MOVE_ACTIONS as readonly string[]).includes(id);
+  const none = noSuchRecord('decision', id);
   reportRefusal(to, result, {
-    UNKNOWN_DECISION: swapped
-      ? `${noSuchRecord('decision', id)} The action goes before the id: mnema decision move ${id} <id>.`
-      : noSuchRecord('decision', id),
+    UNKNOWN_DECISION: swapped ? `${none} The action goes before the id: mnema decision move ${id} <id>.` : none,
   });
 }
 
