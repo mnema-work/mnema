@@ -72,39 +72,51 @@ import { oneLine } from './one-line.js';
  */
 export function reachNotice(reach: AddressReach | undefined): string[] {
   if (reach === undefined) return [];
+  const line = reachLine(reach);
+  return reach.address === undefined ? [line] : [line, FILES_ON_DISK_NOT_EDITS];
+}
+
+/** The qualification every count travels with, said from this one place so no surface rewrites it. */
+const FILES_ON_DISK_NOT_EDITS =
+  '  Files on disk, not edits: a directory nobody touches counts the same as a busy one.';
+
+/**
+ * The one line about what an address covers. `named` is the path as the caller gave it: the
+ * line for an address outside the project names it when the caller has several, since a reach
+ * outside the project carries no address of its own.
+ */
+function reachLine(reach: AddressReach, named?: string): string {
   if (reach.address === undefined) {
     // An address outside the project covers nothing here, and saying "0 of 1,204"
     // would report that as a narrow address rather than as a different question.
-    return [`  That address lies outside this project, so it covers nothing here.`];
+    return named === undefined
+      ? `  That address lies outside this project, so it covers nothing here.`
+      : `  ${oneLine(named)} lies outside this project, so it covers nothing here.`;
   }
   const counted = `${reach.under} of ${reach.counted} file(s)`;
   const floor = reach.truncated
     ? ` (the walk stopped at ${reach.counted}, so both are floors)`
     : '';
   const left = reach.skipped.length === 0 ? '' : `; not counted: ${[...reach.skipped].join(', ')}`;
-  return [
-    `  ${reach.address} covers ${counted} counted in the working tree${floor}${left}.`,
-    '  Files on disk, not edits: a directory nobody touches counts the same as a busy one.',
-  ];
+  return `  ${reach.address} covers ${counted} counted in the working tree${floor}${left}.`;
+}
+
+/** What one path of a decision's `governs` covers: the path as given, and its reach. */
+export interface GovernedReach {
+  readonly target: string;
+  readonly reach: AddressReach;
 }
 
 /**
- * The lines a decision recorded with `governs` paths prints of what they cover: one line per path
- * ({@link reachNotice}'s own words) and the sentence about files on disk once, after them all.
+ * The lines a decision recorded with `governs` paths prints of what they cover: one line per
+ * path, naming it when it lies outside the project, and the qualification about files on disk
+ * once, after them all, only when at least one path is inside the project.
  */
-export function reachNotices(reaches: readonly AddressReach[]): string[] {
-  const lines = reaches.flatMap((reach) =>
-    reachNotice(reach)
-      .filter((line) => !line.includes('Files on disk, not edits'))
-      // The address is the caller's text: a line break in it must not make a line of its own.
-      .map((line) => oneLine(line)),
-  );
-  return lines.length === 0
-    ? []
-    : [
-        ...lines,
-        '  Files on disk, not edits: a directory nobody touches counts the same as a busy one.',
-      ];
+export function reachNotices(reaches: readonly GovernedReach[]): string[] {
+  const lines = reaches.map(({ target, reach }) => oneLine(reachLine(reach, target)));
+  return reaches.some(({ reach }) => reach.address !== undefined)
+    ? [...lines, FILES_ON_DISK_NOT_EDITS]
+    : lines;
 }
 
 /**

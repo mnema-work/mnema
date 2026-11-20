@@ -203,6 +203,7 @@ import {
 import {
   type FellIn,
   forwardReplacement,
+  type GovernedReach,
   type Landed,
   type PersonSigned,
   type Replacement,
@@ -327,7 +328,7 @@ export type RecordDecisionResult =
         /** The paths it was recorded as governing, as the tree holds them: empty when none was given. */
         readonly governs: readonly string[];
         /** What each of those paths covers in the working tree, in the same order: a report, never a gate. */
-        readonly reaches: readonly AddressReach[];
+        readonly reaches: readonly GovernedReach[];
         /**
          * What the new decision OFFERS beside its acknowledgement, as lines (none when there is
          * nothing to offer): the paths this connection looked at it could be addressed at, and the

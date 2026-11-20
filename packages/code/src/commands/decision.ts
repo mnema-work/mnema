@@ -29,7 +29,6 @@
 
 import { dirname } from 'node:path';
 import { catalogUpcasters } from '@mnema/chain';
-import type { AddressReach } from '@mnema/context';
 import {
   chainRootForScope,
   type DiscoveryEnv,
@@ -48,7 +47,12 @@ import {
   decisionsInView,
   supersedeOfferLines,
 } from '../offers-beside-a-recorded-decision.js';
-import { forwardReplacement, type Landed, type Replacement } from '../recorded-content.js';
+import {
+  forwardReplacement,
+  type GovernedReach,
+  type Landed,
+  type Replacement,
+} from '../recorded-content.js';
 import { withScopedCaches } from '../tree-sources.js';
 import {
   type AgentWrites,
@@ -75,7 +79,7 @@ export interface DecisionRecorded extends Replacement, Landed {
   /** The paths it was recorded as governing, as the tree holds them: empty when none was asked. */
   readonly governs: readonly string[];
   /** What each of those paths covers in the working tree, in the same order: a report, never a gate. */
-  readonly reaches: readonly AddressReach[];
+  readonly reaches: readonly GovernedReach[];
   /**
    * Set when the decision was already on the record (same title, rationale and alternatives,
    * in force or awaiting a judgement): nothing was written, and `id` and `adr` are the existing one's.

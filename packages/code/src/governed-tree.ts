@@ -51,7 +51,7 @@ import {
   type ScopedCache,
   type WalkOutcome,
 } from '@mnema/context';
-import { ADDRESS_RELATIONS, GOVERNS_RELATION } from '@mnema/core';
+import { ADDRESS_RELATIONS } from '@mnema/core';
 
 /**
  * What a `governs` read is asked: a path, the project it belongs to, and the
@@ -456,8 +456,22 @@ export function reachOfAddress(
  * order given: {@link reachOfAddress} for the `governs` relation, one per path, so a mistyped path
  * shows as covering nothing instead of passing silently. A fact, never a gate: the act is done.
  */
-export function reachesOfGoverns(targets: readonly string[], root: string): AddressReach[] {
-  return targets.flatMap((target) => reachOfAddress(GOVERNS_RELATION, target, root) ?? []);
+export function reachesOfGoverns(
+  targets: readonly string[],
+  root: string,
+): { target: string; reach: AddressReach }[] {
+  if (targets.length === 0) return [];
+  // ONE WALK of the tree, however many paths: the listing is read from disk once and each
+  // path is counted against it (a walk per path was ten walks of a repository for ten paths).
+  const listing: string[] = [];
+  const outcome = walkProject(root, (relative) => listing.push(relative), WALK_CEILING);
+  return targets.map((target) => ({
+    target,
+    reach: reachOver(target, root, (visit) => {
+      for (const relative of listing) visit(relative);
+      return outcome;
+    }),
+  }));
 }
 
 /** The one call that derives a reach: the walk is the caller's, so a question that needs none can pass an empty one. */

@@ -248,6 +248,24 @@ describe('mnema decision record --governs', () => {
     expect(edges('private')).toEqual([`${idOf(done.out)} -> /etc (governs)`]);
   });
 
+  it('names a path outside the project on its own line, and says files-on-disk only beside a path inside', async () => {
+    const onlyOutside = await mnema(
+      'decision', 'record', 'Outside only', 'audit', '--scope', 'private', '--governs', '/etc',
+    );
+    expect(onlyOutside.failed, onlyOutside.out).toBe(false);
+    expect(onlyOutside.out).toContain('/etc lies outside this project, so it covers nothing here.');
+    expect(onlyOutside.out).not.toContain('Files on disk, not edits');
+    mkdirSync(join(repo, 'src/a'), { recursive: true });
+    writeFileSync(join(repo, 'src/a/x.ts'), 'x');
+    const both = await mnema(
+      'decision', 'record', 'Both', 'audit', '--scope', 'private',
+      '--governs', '/etc', '--governs', 'src/a',
+    );
+    expect(both.out).toContain('/etc lies outside this project');
+    expect(both.out).toMatch(/src\/a covers 1 of \d+ file\(s\)/);
+    expect(both.out.match(/Files on disk, not edits/g)).toHaveLength(1);
+  });
+
   it('says a repeat linked no path, and writes nothing', async () => {
     await mnema('decision', 'record', 'Keep the ledger', 'audit');
     const again = await mnema(
