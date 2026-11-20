@@ -500,10 +500,11 @@ describe('the backup of a local record: a clone whose record git does not hold',
   it('still asks before a copy of another record replaces a local record that is there', () => {
     const one = localProject('first');
     const two = localProject('second');
-    const first = runBackupSetup(one, join(sandbox, 'folder-first'));
+    const folder = join(sandbox, 'folder-first');
+    const first = runBackupSetup(one, folder);
     if (!first.ok) throw new Error('setup refused');
-    expect(runBackupSetup(two, join(sandbox, 'folder-second')).ok).toBe(true);
     expect(runBackupRun(one).ok).toBe(true);
+    expect(runBackupSetup(two, folder).ok).toBe(true);
     const root = resolveTrees(two.cwd, env).projectPublic as string;
     const live = digest(root);
     const plan = planBackupRestore(two, first.record);
