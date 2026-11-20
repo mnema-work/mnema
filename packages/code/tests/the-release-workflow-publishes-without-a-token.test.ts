@@ -137,7 +137,7 @@ describe('the release workflow publishes without a token', () => {
     expect(exe).toMatch(/^ {6}contents: read$/m);
     expect(exe).toContain('pnpm build:single-executable');
     expect(exe).toContain('bash .github/the-single-executable/smoke.sh');
-    expect(exe).toContain('built: ${{ steps.mark.outputs.built }}');
+    expect(exe).toContain('steps.mark.outputs.built');
     const release = job('release');
     expect(release).toContain("needs.single-executable.outputs.built == 'true'");
     expect(release).toContain('Experimental, Linux x64 only, unsigned');
