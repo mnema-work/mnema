@@ -1343,6 +1343,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-address-a-proof-names-is-checked.test.ts': 6,
   'packages/code/tests/the-address-names-a-rule-a-reader-can-open.test.ts': 15,
   'packages/code/tests/the-address-says-what-it-covers.test.ts': 14,
+  'packages/code/tests/the-after-write-hook-reads-a-windows-path.test.ts': 6,
   'packages/code/tests/the-agent-ci-step-installs-the-key-the-agent-signs-with.test.ts': 11,
   'packages/code/tests/the-agent-is-handed-an-altered-entry-first-and-never-its-text.test.ts': 11,
   'packages/code/tests/the-agent-is-told-a-move-was-made-apart.test.ts': 15,
