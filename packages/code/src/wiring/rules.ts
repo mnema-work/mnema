@@ -20,6 +20,7 @@
 
 import type { Command } from 'commander';
 import { here } from './context.js';
+import { fromTheGroup, REFUSED, takesFromItsGroup } from './from-the-group.js';
 import { writeLines } from './io.js';
 import { reportRefusal, reportUsage } from './report.js';
 import { type Declared, readsTheRecord, type Wiring } from './verb.js';
@@ -77,7 +78,7 @@ export function registerRules(program: Command, wiring: Wiring): Declared {
       }
       writeLines(io, rulesReport(render, result.governed));
     });
-  rules
+  const test = rules
     .command('test')
     .description('check the verdicts a file declares for paths against the record’s rules')
     .argument('<file>', 'a JSON file: { "cases": [ { "path": "src/a.ts", "expect": "refuse" } ] }')
@@ -97,10 +98,7 @@ export function registerRules(program: Command, wiring: Wiring): Declared {
       ].join('\n'),
     )
     .action(async (file: string) => {
-      if (rules.opts<{ json?: boolean }>().json === true) {
-        reportUsage(wiring, '`rules test` takes no --json: it prints one line per case.');
-        return;
-      }
+      if ((await fromTheGroup(test, wiring)) === REFUSED) return;
       const { runRulesTest } = await import('../commands/rules-test.js');
       const { rulesTestReport } = await import('../presentation/rules-test.js');
       const result = runRulesTest(here(), { file });
@@ -109,8 +107,12 @@ export function registerRules(program: Command, wiring: Wiring): Declared {
         else reportRefusal(wiring, result, {});
         return;
       }
+      const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
+      for (const line of linkBreakNotice(result.linkBreaks)) io.err(render(line));
+      for (const line of newerLinesNotice(result.newerLines, 'the record')) io.err(render(line));
       writeLines(io, rulesTestReport(render, result.cases));
       if (result.cases.some((one) => !one.matched)) io.fail();
     });
+  takesFromItsGroup(test, { refuses: { '--json': 'it prints one line per case.' } });
   return readsTheRecord(rules);
 }

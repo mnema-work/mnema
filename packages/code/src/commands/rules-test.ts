@@ -19,10 +19,17 @@
 
 import { readFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, posix } from 'node:path';
+import type { NewerLines } from '@mnema/context';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { withInheritedSource } from '../inherited-record.js';
 import { recordTrees } from '../intelligence-source.js';
-import { linkBreaksOf, THE_READING_THAT_OPENED_THESE, withScopedCaches } from '../tree-sources.js';
+import {
+  linkBreaksOf,
+  newerLinesIn,
+  type ScopedLinkBreak,
+  THE_READING_THAT_OPENED_THESE,
+  withScopedCaches,
+} from '../tree-sources.js';
 import {
   everyRuleInForceAt,
   refusalOfAnAlteredRecord,
@@ -56,6 +63,10 @@ export interface CaseResult {
 export interface RulesTestDone {
   readonly ok: true;
   readonly cases: readonly CaseResult[];
+  /** The tails read that do not chain, as every read verb says them (see `linkBreaksOf`). */
+  readonly linkBreaks: readonly ScopedLinkBreak[];
+  /** What a newer mnema wrote that this one reads past, when it wrote any. */
+  readonly newerLines?: NewerLines;
 }
 
 /** The verb could not run: there is no project, or the file is not a list of cases it can read. */
@@ -136,8 +147,11 @@ export function runRulesTest(
     if (refusal === undefined) throw error;
     return cannotBeJudged(refusal);
   }
-  const cases = withScopedCaches(trees, (own) =>
-    withInheritedSource(trees, own, (sources) =>
+  return withScopedCaches(trees, (own) => ({
+    ok: true as const,
+    linkBreaks: linkBreaksOf(own, THE_READING_THAT_OPENED_THESE),
+    ...newerLinesIn(own),
+    cases: withInheritedSource(trees, own, (sources) =>
       declared.cases.map(({ path, expect }): CaseResult => {
         const met = whatAWriteMeets(sources, { paths: [path], root, from: root });
         const governing =
@@ -153,8 +167,7 @@ export function runRulesTest(
         return { path, expect, got, by, matched: got === expect };
       }),
     ),
-  );
-  return { ok: true, cases };
+  }));
 }
 
 function cannotBeJudged(message: string): RulesTestRefused {
