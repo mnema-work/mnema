@@ -553,15 +553,19 @@ export function recordDecisionSeen(
   const who = authorizingAnchor(ctx);
   const agent = resolveExecutingAgent(who, input.which);
   if (!agent.ok) return agent;
-  if (agent.which !== undefined || !input.atATerminal) {
-    const why =
-      agent.which !== undefined ? `an agent (${oneLine(agent.which)})` : 'no terminal here';
+  if (agent.which !== undefined) {
+    return {
+      ok: false,
+      code: SEEN_NEEDS_A_PERSON,
+      message: `A rule in force is marked as shown only to a person at a terminal, and this is from an agent (${oneLine(agent.which)}). Nothing was written.`,
+    };
+  }
+  if (!input.atATerminal) {
     return {
       ok: false,
       code: SEEN_NEEDS_A_PERSON,
       message:
-        `A rule in force is marked as shown only to a person at a terminal, and this is from ${why}. ` +
-        'Nothing was written.',
+        'A rule in force is marked as shown only to a person at a terminal, and there is no terminal here. Nothing was written.',
     };
   }
   if (input.moves.length === 0) {

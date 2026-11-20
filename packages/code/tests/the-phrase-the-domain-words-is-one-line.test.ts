@@ -2583,6 +2583,11 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'collapsed',
       why: 'the action, in the refusal that says only `supersede` names one',
     },
+  '@mnema/core workflow/decision-operations.ts «A rule in force is marked as shown only to a person at a terminal, and this is from an agent ({}). Nothing was written.» oneLine(agent.which) #1':
+    {
+      verdict: 'collapsed',
+      why: 'the agent a caller declared on a showing, which is refused',
+    },
   '@mnema/core workflow/decision-operations.ts «decision "{}" does not exist» oneLine(input.id) #1':
     {
       verdict: 'collapsed',
@@ -2909,8 +2914,8 @@ describe('every value the domain puts in a sentence is classified', () => {
     // are equal. The scale is stated, and so is what the HANDOFF said (twenty-three
     // sites, twelve in `core` and eleven in `chain`), because it counted sentences
     // written at a `message:` or a `detail:` directly, and a value is not a sentence.
-    expect(SITES.length).toBe(453);
-    expect(FOUND[0]?.sites.length).toBe(234);
+    expect(SITES.length).toBe(454);
+    expect(FOUND[0]?.sites.length).toBe(235);
     expect(FOUND[1]?.sites.length).toBe(219);
     expect(FOUND.flatMap((layer) => layer.wording).length).toBeGreaterThan(15);
   });
