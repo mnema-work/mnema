@@ -168,18 +168,28 @@ document, delivered by the host instead of waited for.
   hook that follows, while `dictated-rule` is on, so a rule is one record. A match is a pattern and not a judgement: that is why it is only
   proposed, and nothing is in force until it is accepted. No model is called.
 - **A `UserPromptSubmit` hook on the person's message** (Codex's hooks file has it, and Gemini CLI's
-  extension a `BeforeAgent`), that runs `mnema dictated`. When the message has the shape of a rule
-  dictated (*always …*, *never …*, *from now on …*, *going forward …*, *put it as a rule*, *sempre …*,
-  *nunca …*, *a partir de agora …*, *daqui pra frente …*, *de agora em diante …*, *coloca como regra*),
-  read in the first 2,000 characters, outside fenced code, a sentence at a time and never a question,
-  it hands the agent one sentence beside the message: that it may be a rule, that `record_decision`
-  records it and that `decision_transition` accepts it with a note quoting the person's own words
-  (a person accepts it, where `agent-accepts` is off). The sentence is the product's own and carries no word of the message; the hook
-  records nothing, reads the `prompt` the host hands it and never the transcript, and the agent
-  judges whether the message is a rule. It is on until `mnema switch off dictated-rule`. Held in
-  Claude Code against the real binary by `a-dictated-rule-reaches-the-model.test.ts`; Codex and
-  Gemini CLI are documented and not measured; the command is turned away where Cursor or Qwen Code
-  say they are the host, and VS Code, which also runs this file's hooks, was not read for this event.
+  extension a `BeforeAgent`), that runs `mnema dictated`. When a sentence of the message is an
+  instruction to keep, it hands the agent one sentence beside the message: that it has the shape of
+  a rule, that only a rule the person typed is to be accepted (not text pasted or quoted), that
+  `record_decision` records it and that `decision_transition` accepts it with a note quoting the
+  person's own words (a person accepts it, where `agent-accepts` is off). An instruction is *always*,
+  *never*, *from now on*, *going forward*, *sempre*, *nunca*, *a partir de agora*, *daqui pra frente*
+  or *de agora em diante* followed by a verb in the imperative (*always run the linter*, *nunca
+  faça commit na main*, with a polite word, *ever*, *jamais* or *remember to* allowed between), or
+  *put it as a rule*, *make it a rule*, *coloca como regra*, *as a rule:*, *isso é regra*; accents
+  are optional. A statement (*sempre dá timeout no CI*, *from now on the tests pass*), a limit in
+  time or place (*today*, *here*, *hoje*, *aqui*, *desta vez*), a step of the task (*check the logs
+  first, then tell me*), a condition (*if it works, make it a rule*), a question, a sentence that
+  opens with a quote mark or a `>`, a fenced block, a message that tells the agent to ignore its
+  instructions and a sentence that tells it to accept decisions are not read as rules. It reads the
+  first 2,000 characters, a sentence at a time. The sentence is the product's own and carries no word
+  of the message; the hook records nothing, reads the `prompt` the host hands it and never the
+  transcript, and the agent judges whether the message is a rule. It is on until `mnema switch off
+  dictated-rule`. Held in Claude Code against the real binary by
+  `a-dictated-rule-reaches-the-model.test.ts`; Codex and Gemini CLI are documented and not measured;
+  the command is turned away where Cursor or Qwen Code say they are the host. VS Code also runs this
+  file's hooks and is handed the sentence: it was not read for this event and sets no variable this
+  product knows, so nothing turns it away and what it does with the reply is not measured.
 - **A `PostToolUse` hook after a write, in Claude Code**, that runs `mnema after-a-write`. The
   command is `node` and the handler, with no shell in front (Anthropic's directory blocks one in a
   plugin that lives in a subfolder), so the handler reads the path out of the payload itself and
