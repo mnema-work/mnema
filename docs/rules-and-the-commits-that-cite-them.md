@@ -79,6 +79,11 @@ mnema commits ADR-4
 # Under which decisions a file stands, or a commit: the rules in force that address it, each
 # saying what it does there (governs, refuses a write, asks for a person), and the commits that
 # touched it and carry a trailer. A rule the project inherits is listed too, naming its origin.
+# For a file it also says the verdict a write there would meet: `refuse`, `ask` (it waits for a
+# person), `governs` (it goes through with the rules beside it) or `none`. The rules come in the
+# order the gate applies them (a refusal, then an asking, then the governing), and each says
+# whether it `decides` or `does not decide` the verdict. `--json` carries `verdict` and, on each
+# rule, `decided`.
 mnema why src/billing/invoice.ts
 # With `edit-rules-push` switched off, `rules` and `why` add, on the second stream, that
 # the rules governing the path are not handed to an agent when it edits there.
@@ -86,6 +91,16 @@ mnema why src/billing/invoice.ts
 # Accepted decisions whose addressed paths changed in many commits since they were accepted.
 mnema aging --min-commits 10
 ```
+
+**The verdict is the gate's own answer.** `why` asks the same function the hook before a write and
+`governing_rules` ask (`whatAWriteMeets`), over the same rules, so the verdict it says is the one
+a write at that path would meet, including a channel switched off: a refusal whose channel is off
+is listed and `does not decide`. When the record itself refuses the write (an entry altered after it
+was written, or a line this mnema cannot read), the verdict is `refuse` whatever the rules say, with
+the gate's own reason (`refusal` in `--json`, its first paragraph on the page), and no rule decides.
+With `edit-rules-push` off, a governing rule still stands over the path and the write goes through,
+but the rules are not handed to an agent: the page says so, `--json` carries `notDelivered`, and the
+rules do not `decide`. An asking is `ask` for the gate even in a host that does not ask a person.
 
 **What it proves.** That a commit's message carries the trailer, and that a commit touched a path
 a decision addresses: facts git holds and anyone can re-run with `git log`. **What it does not.**

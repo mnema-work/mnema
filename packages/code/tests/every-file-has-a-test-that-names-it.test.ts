@@ -1595,6 +1595,8 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/what-the-record-can-witness.test.ts': 10,
   'packages/code/tests/what-the-suite-left-behind.test.ts': 7,
   'packages/code/tests/where-things-stand.test.ts': 11,
+  'packages/code/tests/why-says-the-record-refuses-a-write.test.ts': 5,
+  'packages/code/tests/why-says-the-verdict-a-write-would-meet.test.ts': 9,
   'packages/context/src/boundaries.test.ts': 3,
   'packages/context/src/context/bootstrap.test.ts': 6,
   'packages/context/src/context/brief.test.ts': 7,
