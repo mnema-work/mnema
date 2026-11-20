@@ -146,7 +146,7 @@ export function registerTask(program: Command, wiring: Wiring): Declared {
     .addHelpText('after', WHICH_ON_SUBCOMMAND_HELP)
     .addHelpText('after', RECORD_CONTRACT_HELP);
   takesFromItsGroup(move, {
-    takes: ['--which'],
+    takes: ['--allow-private-pattern', '--which'],
     refuses: { '--scope': 'a move follows the task to the tree it was born in.' },
   });
   move.action(
@@ -161,7 +161,10 @@ export function registerTask(program: Command, wiring: Wiring): Declared {
       // forbids (the move follows the entity's home tree, not a chosen scope), so
       // it is rejected; a `--which` is the agent that executed the move, which the
       // record should name, so it is forwarded.
-      const given = await fromTheGroup<{ which?: string }>(move, wiring);
+      const given = await fromTheGroup<{ which?: string; allowPrivatePattern?: boolean }>(
+        move,
+        wiring,
+      );
       if (given === REFUSED) return;
       const { runTaskTransition } = await import('../commands/task-transition.js');
       const { movedLine } = await import('../moved-record.js');
@@ -179,6 +182,7 @@ export function registerTask(program: Command, wiring: Wiring): Declared {
           ...(opts.feedback !== undefined ? { feedback: opts.feedback } : {}),
         },
         ...(given.which !== undefined ? { which: given.which } : {}),
+        ...(given.allowPrivatePattern === true ? { allowPrivatePattern: true as const } : {}),
         ...(run !== undefined ? { run } : {}),
       });
       if (result.ok) {

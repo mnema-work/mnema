@@ -214,7 +214,7 @@ export function registerSkill(program: Command, wiring: Wiring): Declared {
     .addHelpText('after', WHICH_ON_SUBCOMMAND_HELP)
     .addHelpText('after', RECORD_CONTRACT_HELP);
   takesFromItsGroup(skillMove, {
-    takes: ['--which'],
+    takes: ['--allow-private-pattern', '--which'],
     refuses: {
       '--scope': 'a move follows the skill to the tree it was born in.',
       '--body':
@@ -222,7 +222,10 @@ export function registerSkill(program: Command, wiring: Wiring): Declared {
     },
   });
   skillMove.action(async (action: string, id: string, opts: { note?: string; reason?: string }) => {
-    const given = await fromTheGroup<{ which?: string }>(skillMove, wiring);
+    const given = await fromTheGroup<{ which?: string; allowPrivatePattern?: boolean }>(
+      skillMove,
+      wiring,
+    );
     if (given === REFUSED) return;
     const { runSkillTransition } = await import('../commands/skill-transition.js');
     const { movedLine } = await import('../moved-record.js');
@@ -239,6 +242,7 @@ export function registerSkill(program: Command, wiring: Wiring): Declared {
         ...(opts.reason !== undefined ? { reason: opts.reason } : {}),
       },
       ...(given.which !== undefined ? { which: given.which } : {}),
+      ...(given.allowPrivatePattern === true ? { allowPrivatePattern: true as const } : {}),
       ...(run !== undefined ? { run } : {}),
     });
     if (result.ok) {

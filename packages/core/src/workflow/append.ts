@@ -298,8 +298,20 @@ function foundedThenBuilt(
  * It is asked beside the reader's rule and before the founding, so a refusal leaves nothing behind.
  */
 function refusePrivate(ctx: WriteContext, event: CatalogEvent): PrivatePatternErr | undefined {
+  return refusePrivateText(ctx, stringsIn(event.payload));
+}
+
+/**
+ * {@link refusePrivate} over texts that are not on one event: an operation that appends a fact and then
+ * a note (a task and its description, a handoff and its brief) asks the whole of what it will write
+ * BEFORE its first append, so a refusal leaves no half behind.
+ */
+export function refusePrivateText(
+  ctx: WriteContext,
+  texts: Iterable<string>,
+): PrivatePatternErr | undefined {
   if (ctx.privateList === undefined) return undefined;
-  for (const text of stringsIn(event.payload)) {
+  for (const text of texts) {
     const match = matchPrivate(ctx.privateList, text);
     if (match === undefined) continue;
     return {

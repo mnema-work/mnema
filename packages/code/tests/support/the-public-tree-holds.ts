@@ -22,3 +22,18 @@ export function publicTreeHolds(repo: string, words: string): boolean {
   }
   return false;
 }
+
+/** How many lines the public tree's files hold: a refused write leaves this number as it was. */
+export function publicTreeLines(repo: string): number {
+  const record = join(repo, '.mnema', 'tails');
+  let lines = 0;
+  for (const folder of readdirSync(record)) {
+    for (const file of readdirSync(join(record, folder))) {
+      if (!file.endsWith('.jsonl')) continue;
+      lines += readFileSync(join(record, folder, file), 'utf-8')
+        .split('\n')
+        .filter(Boolean).length;
+    }
+  }
+  return lines;
+}

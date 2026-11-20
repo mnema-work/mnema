@@ -15,14 +15,19 @@ import {
 
 describe('the private list: what a line is', () => {
   const list = parsePrivateList(
-    ['# a comment', '', 'Project Nightjar', '  /home/felipe  ', '/wave-\\d+/i', '/(unclosed/'].join(
-      '\n',
-    ),
+    [
+      '# a comment',
+      '',
+      'Project Nightjar',
+      '  /home/someone  ',
+      '/wave-\\d+/i',
+      '/(unclosed/',
+    ].join('\n'),
   );
 
   it('skips comments and blank lines and keeps the rest in order', () => {
     expect(list.patterns.map((p) => p.source)).toEqual(
-      ['Project Nightjar', '/home/felipe', '/wave-\\d+/i', '/(unclosed/'].map((s) => s.trim()),
+      ['Project Nightjar', '/home/someone', '/wave-\\d+/i', '/(unclosed/'].map((s) => s.trim()),
     );
   });
 
@@ -44,6 +49,18 @@ describe('the private list: what a line is', () => {
 
   it('reads a regex that does not compile as the plain text between its slashes', () => {
     expect(matchPrivate(list, 'the (unclosed thing')?.pattern).toBe('/(unclosed/');
+  });
+
+  it('reads a regex with a nested quantifier as plain text, so it cannot hang a write', () => {
+    const nested = parsePrivateList('/(a+)+$/');
+    const started = Date.now();
+    expect(matchPrivate(nested, `${'a'.repeat(40)}!`)).toBeUndefined();
+    expect(Date.now() - started).toBeLessThan(1000);
+    // Read as the text between the slashes, it still guards that text.
+    expect(matchPrivate(nested, 'see (a+)+$ here')?.pattern).toBe('/(a+)+$/');
+    // A quantifier that is not nested stays a regex.
+    expect(matchPrivate(parsePrivateList('/(ab)+c/'), 'xababc')).toBeDefined();
+    expect(matchPrivate(parsePrivateList('/[+*]a+/'), 'x+aa')).toBeDefined();
   });
 
   it('finds nothing in clean text', () => {

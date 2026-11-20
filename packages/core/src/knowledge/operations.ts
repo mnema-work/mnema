@@ -77,7 +77,7 @@ import { canonicalId, mintId } from '../identity/id.js';
 import { oneLine } from '../one-line.js';
 import { linkOf, projectLinkAssertions, withdraws } from '../projections/knowledge.js';
 import { orderedEvents } from '../projections/order.js';
-import { type AppendRefusal, appendFact } from '../workflow/append.js';
+import { type AppendRefusal, appendFact, refusePrivateText } from '../workflow/append.js';
 import { type Judged, onTheRecordAsItStands } from '../workflow/as-the-record-stands.js';
 import { authorizingAnchor } from '../workflow/identity-operations.js';
 import type { WriteContext } from '../workflow/operations.js';
@@ -400,6 +400,11 @@ export function recordHandoff(ctx: WriteContext, input: HandoffInput): HandoffOk
   const which = agent.which;
   const task = canonicalId(agents.fields.subject) ?? agents.fields.subject;
 
+  // The brief is a second append; the list is asked of it before the first.
+  if (input.brief !== undefined) {
+    const asked = refusePrivateText(ctx, [input.brief]);
+    if (asked !== undefined) return asked;
+  }
   const appended = appendFact(ctx, ({ at }) =>
     handoffRecorded(
       {

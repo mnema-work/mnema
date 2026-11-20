@@ -32,7 +32,7 @@
 
 import { catalogUpcasters, type TransitionFields } from '@mnema/chain';
 import { chainRootForScope, type DiscoveryEnv, deriveAlias } from '@mnema/core';
-import { openTreeForWriting, transitionTask } from '@mnema/core/write';
+import { openTreeForWriting, privateListFor, transitionTask } from '@mnema/core/write';
 import { forwardReplacement, type Replacement } from '../recorded-content.js';
 import { locateEntityScopeKept } from '../tree-sources.js';
 import { type AgentWrites, treesToWrite, whichOfTheWrite } from './write-as-the-agent.js';
@@ -93,7 +93,14 @@ export type TaskTransitionRefused =
  */
 export function runTaskTransition(
   ctx: TaskTransitionContext,
-  input: { id: string; action: string; proof?: TaskTransitionProof; which?: string; run?: string },
+  input: {
+    id: string;
+    action: string;
+    proof?: TaskTransitionProof;
+    which?: string;
+    allowPrivatePattern?: boolean;
+    run?: string;
+  },
 ): TaskTransitioned | TaskTransitionRefused {
   const upcasters = catalogUpcasters();
   const writing = treesToWrite(ctx);
@@ -119,6 +126,7 @@ export function runTaskTransition(
         writer,
         layout: { root: chainRootForScope(trees, scope) as string },
         upcasters,
+        ...privateListFor(trees, scope, input.allowPrivatePattern),
       },
       {
         id: input.id,

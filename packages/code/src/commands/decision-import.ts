@@ -76,6 +76,7 @@ import {
   linkKnowledge,
   onTheRecordAsItStands,
   openTreeForWriting,
+  privateListFor,
   recordDecision,
 } from '@mnema/core/write';
 import {
@@ -297,6 +298,8 @@ export function runDecisionImport(
     write?: boolean;
     scope?: Scope;
     which?: string;
+    /** Pass the machine's private list (`--allow-private-pattern`). */
+    allowPrivatePattern?: boolean;
     run?: string;
   },
 ): ImportDone | ImportRefused {
@@ -369,7 +372,12 @@ export function runDecisionImport(
 
   const which = whichOfTheWrite(writing, scope, input.which);
   const writer = openTreeForWriting(trees, scope);
-  const context = { writer, layout, upcasters: catalogUpcasters() };
+  const context = {
+    writer,
+    layout,
+    upcasters: catalogUpcasters(),
+    ...privateListFor(trees, scope, input.allowPrivatePattern),
+  };
   // What the record holds derived from each file, as of `knownAt`: read again only when the
   // tree moved since, and kept in step with this run's own writes, which it makes under the lock.
   let known = derived.byTarget;

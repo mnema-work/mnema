@@ -714,7 +714,14 @@ export type LinkRecordedResult =
  */
 export function runLinkKnowledge(
   session: Session,
-  input: { subject: string; target: string; rel: string; scope?: Scope; project?: string },
+  input: {
+    subject: string;
+    target: string;
+    rel: string;
+    scope?: Scope;
+    project?: string;
+    allowPrivatePattern?: boolean;
+  },
 ): LinkRecordedResult {
   const route = routeWrite(session, 'knowledge.linked', input);
   if (!route.ok) return route;
@@ -743,7 +750,9 @@ export function runLinkKnowledge(
   // What the public tree records is the target relative to the root when it was typed absolute.
   const recordedTarget =
     publicRoot === undefined ? target.id : targetAsRecorded(input.rel, target.id, publicRoot);
-  const { ctx, run, which } = openWrite(session, route.scope, route.target);
+  const { ctx, run, which } = openWrite(session, route.scope, route.target, {
+    allowed: input.allowPrivatePattern === true,
+  });
   const recorded = ctx.writer.exclusively(() => {
     const written = linkKnowledge(ctx, {
       subject: subject.id,
@@ -888,14 +897,23 @@ export function runCreateTask(
  */
 export function runTaskTransition(
   session: Session,
-  input: { id: string; action: string; reason?: string; note?: string; feedback?: string },
+  input: {
+    id: string;
+    action: string;
+    reason?: string;
+    note?: string;
+    feedback?: string;
+    allowPrivatePattern?: boolean;
+  },
 ): TransitionResult {
   // Route by the task's home tree, not the session's scope: the move follows the
   // entity so its history stays whole in one tree, in whichever project that is.
   const located = locateEntity(session, input.id);
   if (located.outcome !== 'found') return refuseUnlocated(session, 'task', input.id, located);
 
-  const { ctx, run, which } = openWrite(session, located.home.scope, located.home.target);
+  const { ctx, run, which } = openWrite(session, located.home.scope, located.home.target, {
+    allowed: input.allowPrivatePattern === true,
+  });
   const fields = proofToFields(input);
   const moved = ctx.writer.exclusively(() => {
     const written = transitionTask(ctx, {
@@ -1077,7 +1095,14 @@ function lookedAt(session: Session, path: string): void {
  */
 export function runDecisionTransition(
   session: Session,
-  asked: { id: string; action: string; by?: string; note?: string; reason?: string },
+  asked: {
+    id: string;
+    action: string;
+    by?: string;
+    note?: string;
+    reason?: string;
+    allowPrivatePattern?: boolean;
+  },
 ): DecisionTransitionResult {
   // A label one decision carries becomes its id, for the decision and for a successor; one several
   // carry is refused with their ids.
@@ -1120,7 +1145,9 @@ export function runDecisionTransition(
   });
   if (turnedAway !== undefined) return { ok: false, ...turnedAway };
 
-  const { ctx, run, which } = openWrite(session, located.home.scope, located.home.target);
+  const { ctx, run, which } = openWrite(session, located.home.scope, located.home.target, {
+    allowed: asked.allowPrivatePattern === true,
+  });
   const fields = decisionProofToFields(input);
   // Every move carries the session's `which` (the executing agent) and `run`, so
   // the transition is attributed to the agent even when it lands in the public
@@ -1419,7 +1446,13 @@ export function runCreateSkill(
  */
 export function runSkillTransition(
   session: Session,
-  input: { id: string; action: string; note?: string; reason?: string },
+  input: {
+    id: string;
+    action: string;
+    note?: string;
+    reason?: string;
+    allowPrivatePattern?: boolean;
+  },
 ): SkillTransitionResult {
   const upcasters = catalogUpcasters();
   // Route by the skill's home tree, not the session's scope: the move follows the
@@ -1438,7 +1471,9 @@ export function runSkillTransition(
     };
   }
 
-  const { ctx, run, which } = openWrite(session, located.home.scope, located.home.target);
+  const { ctx, run, which } = openWrite(session, located.home.scope, located.home.target, {
+    allowed: input.allowPrivatePattern === true,
+  });
   const fields = skillProofToFields(input);
   // Every move carries the session's `which` (the executing agent) and `run`, so
   // the transition is attributed to the agent even when it lands in the public

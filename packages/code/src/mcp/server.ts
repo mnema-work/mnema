@@ -1237,9 +1237,10 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
         rel: z.string().min(1).describe('The relation label (an open string).'),
         scope: scopeField('Where the link lands; overrides the routing rule (public).'),
         project: PROJECT_ARG,
+        allow_private_pattern: ALLOW_PRIVATE_PATTERN_ARG,
       },
     },
-    async ({ subject, target, rel, scope, project }) => {
+    async ({ subject, target, rel, scope, project, allow_private_pattern }) => {
       const active = await ensureSession();
       const result = runLinkKnowledge(active, {
         subject,
@@ -1247,6 +1248,7 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
         rel,
         ...(scope !== undefined ? { scope } : {}),
         ...(project !== undefined ? { project } : {}),
+        ...(allow_private_pattern === true ? { allowPrivatePattern: true } : {}),
       });
       if (!result.ok) {
         return refused(active, result);
@@ -1350,9 +1352,10 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
         reason: proofField('Why', 'task', 'reason'),
         note: proofField('What was done', 'task', 'note'),
         feedback: proofField('What must change', 'task', 'feedback'),
+        allow_private_pattern: ALLOW_PRIVATE_PATTERN_ARG,
       },
     },
-    async ({ id, action, reason, note, feedback }) => {
+    async ({ id, action, reason, note, feedback, allow_private_pattern }) => {
       const active = await ensureSession();
       const result = runTaskTransition(active, {
         id,
@@ -1360,6 +1363,7 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
         ...(reason !== undefined ? { reason } : {}),
         ...(note !== undefined ? { note } : {}),
         ...(feedback !== undefined ? { feedback } : {}),
+        ...(allow_private_pattern === true ? { allowPrivatePattern: true } : {}),
       });
       if (!result.ok) {
         // The gate refused: surface it as a tool error so the agent sees the
@@ -1460,9 +1464,10 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
           ),
         note: proofField('Why this verdict', 'decision', 'note'),
         reason: proofField('Why it is being replaced', 'decision', 'reason'),
+        allow_private_pattern: ALLOW_PRIVATE_PATTERN_ARG,
       },
     },
-    async ({ id, action, by, note, reason }) => {
+    async ({ id, action, by, note, reason, allow_private_pattern }) => {
       const active = await ensureSession();
       const result = runDecisionTransition(active, {
         id,
@@ -1470,6 +1475,7 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
         ...(by !== undefined ? { by } : {}),
         ...(note !== undefined ? { note } : {}),
         ...(reason !== undefined ? { reason } : {}),
+        ...(allow_private_pattern === true ? { allowPrivatePattern: true } : {}),
       });
       if (!result.ok) {
         return refused(active, result);
@@ -1542,15 +1548,17 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
           .describe(`The transition: ${orListed(SKILL_ACTIONS)}.`),
         note: proofField('Why this verdict', 'skill', 'note'),
         reason: proofField('Why it fell out of use', 'skill', 'reason'),
+        allow_private_pattern: ALLOW_PRIVATE_PATTERN_ARG,
       },
     },
-    async ({ id, action, note, reason }) => {
+    async ({ id, action, note, reason, allow_private_pattern }) => {
       const active = await ensureSession();
       const result = runSkillTransition(active, {
         id,
         action,
         ...(note !== undefined ? { note } : {}),
         ...(reason !== undefined ? { reason } : {}),
+        ...(allow_private_pattern === true ? { allowPrivatePattern: true } : {}),
       });
       if (!result.ok) {
         return refused(active, result);

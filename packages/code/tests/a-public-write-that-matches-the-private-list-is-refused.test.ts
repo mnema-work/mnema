@@ -22,7 +22,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildMcpServer } from '../src/mcp/server.js';
 import { MNEMA_CLI } from './support/the-cli.js';
-import { publicTreeHolds } from './support/the-public-tree-holds.js';
+import { publicTreeHolds, publicTreeLines } from './support/the-public-tree-holds.js';
 
 const MARKER = 'nightjar';
 const LIST = ['# this machine only', 'Nightjar', '/host-\\d+/'].join('\n');
@@ -68,6 +68,82 @@ function aTask(): string {
   if (id === undefined) throw new Error(`no task id: ${made.out}`);
   return id;
 }
+
+/** A decision with clean words, public or private; its id. */
+function aDecision(scope: 'public' | 'private', title = 'A clean decision'): string {
+  const made = mnema('decision', 'record', title, 'a clean rationale', '--scope', scope);
+  const id = /\(([0-9a-f-]{36})\)/.exec(made.out)?.[1];
+  if (id === undefined) throw new Error(`no decision id: ${made.out}`);
+  return id;
+}
+
+/** A skill with clean words; its id. */
+function aSkill(scope: 'public' | 'private'): string {
+  const made = mnema('skill', 'create', 'A clean skill', '--body', 'clean', '--scope', scope);
+  const id = /\(([0-9a-f-]{36})\)/.exec(made.out)?.[1];
+  if (id === undefined) throw new Error(`no skill id: ${made.out}`);
+  return id;
+}
+
+/** A task with clean words, in the given scope; its id. */
+function aTaskIn(scope: 'public' | 'private'): string {
+  const made = mnema('task', 'create', 'a clean task', '--scope', scope);
+  const id = /\(([0-9a-f-]{36})\)/.exec(made.out)?.[1];
+  if (id === undefined) throw new Error(`no task id: ${made.out}`);
+  return id;
+}
+
+/** A write whose words are in a note, a reason or an edge of a record that already exists. */
+interface Follow {
+  readonly name: string;
+  /** The record it is about, born clean in the scope. */
+  readonly born: (scope: 'public' | 'private') => string[];
+  /** The argv of the write, given what `born` returned. */
+  readonly argv: (born: string[], scope: 'public' | 'private') => string[];
+}
+
+const FOLLOWS: readonly Follow[] = [
+  {
+    name: 'decision move',
+    born: (scope) => [aDecision(scope)],
+    argv: ([id]) => ['decision', 'move', 'reject', id as string, '--note', 'the Nightjar budget'],
+  },
+  {
+    name: 'decision supersede',
+    born: (scope) => [aDecision(scope, 'Old one'), aDecision(scope, 'New one')],
+    argv: ([old, next]) => [
+      'decision',
+      'supersede',
+      old as string,
+      next as string,
+      '--reason',
+      'moved off Nightjar',
+    ],
+  },
+  {
+    name: 'task move',
+    born: (scope) => [aTaskIn(scope)],
+    argv: ([id]) => ['task', 'move', 'cancel', id as string, '--reason', 'Nightjar was dropped'],
+  },
+  {
+    name: 'skill move',
+    born: (scope) => [aSkill(scope)],
+    argv: ([id]) => ['skill', 'move', 'reject', id as string, '--note', 'not for Nightjar'],
+  },
+  {
+    name: 'link',
+    born: (scope) => [aTaskIn(scope)],
+    argv: ([id], scope) => [
+      'link',
+      id as string,
+      'the-nightjar-notes',
+      '--rel',
+      'relates-to',
+      '--scope',
+      scope,
+    ],
+  },
+];
 
 interface Verb {
   readonly name: string;
@@ -128,6 +204,78 @@ describe('the binary', () => {
     });
   }
 
+  for (const follow of FOLLOWS) {
+    describe(follow.name, () => {
+      it('is refused, leaves the public tree as it was, and passes with the flag', () => {
+        const born = follow.born('public');
+        const before = publicTreeLines(repo);
+        const refused = mnema(...follow.argv(born, 'public'));
+        expect(refused.status, refused.out).not.toBe(0);
+        expect(refused.out).toContain('Refused (PRIVATE_PATTERN)');
+        expect(publicTreeLines(repo)).toBe(before);
+        expect(publicTreeHeld(MARKER)).toBe(false);
+        const passed = mnema(...follow.argv(born, 'public'), '--allow-private-pattern');
+        expect(passed.status, passed.out).toBe(0);
+        expect(publicTreeHeld(MARKER)).toBe(true);
+      });
+
+      it('is not asked of a record in the private scope, nor where there is no list', () => {
+        const privately = mnema(...follow.argv(follow.born('private'), 'private'));
+        expect(privately.status, privately.out).toBe(0);
+        expect(publicTreeHeld(MARKER)).toBe(false);
+        rmSync(join(home, '.mnema', 'private-patterns.txt'));
+        const bare = mnema(...follow.argv(follow.born('public'), 'public'));
+        expect(bare.status, bare.out).toBe(0);
+      });
+    });
+  }
+
+  describe('decision import', () => {
+    function adrDir(): void {
+      const dir = join(repo, 'docs', 'adr');
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(
+        join(dir, '0001-use-nightjar.md'),
+        '# 1. Use Nightjar\n\n## Status\n\nAccepted\n\n## Context\n\nWe need a queue.\n\n## Decision\n\nWe use it.\n',
+      );
+    }
+
+    it('is refused with --write, writes nothing, and passes with the flag', () => {
+      adrDir();
+      const before = publicTreeLines(repo);
+      const refused = mnema('decision', 'import', 'docs/adr', '--write');
+      expect(refused.out).toContain('PRIVATE_PATTERN');
+      expect(publicTreeLines(repo)).toBe(before);
+      expect(publicTreeHeld(MARKER)).toBe(false);
+      const passed = mnema('decision', 'import', 'docs/adr', '--write', '--allow-private-pattern');
+      expect(passed.status, passed.out).toBe(0);
+      expect(publicTreeHeld(MARKER)).toBe(true);
+    });
+  });
+
+  it('a task created with a clean title and a description that matches leaves no half behind', () => {
+    const before = publicTreeLines(repo);
+    const refused = mnema('task', 'create', 'a clean title', '--description', 'about Nightjar');
+    expect(refused.out).toContain('Refused (PRIVATE_PATTERN)');
+    expect(publicTreeLines(repo)).toBe(before);
+  });
+
+  it('a handoff with a brief that matches leaves no half behind', () => {
+    const task = aTask();
+    const before = publicTreeLines(repo);
+    const refused = mnema('task', 'handoff', task, 'a', 'b', '--brief', 'read the Nightjar brief');
+    expect(refused.out).toContain('Refused (PRIVATE_PATTERN)');
+    expect(publicTreeLines(repo)).toBe(before);
+  });
+
+  it('is not held by a pattern that would hang the engine', () => {
+    writeFileSync(join(home, '.mnema', 'private-patterns.txt'), '/(a+)+$/\n');
+    const started = Date.now();
+    const done = mnema('memory', `${'a'.repeat(40)}!`, '--scope', 'public');
+    expect(done.status, done.out).toBe(0);
+    expect(Date.now() - started).toBeLessThan(15_000);
+  });
+
   it('reads a /regex/ line of the list', () => {
     const refused = mnema('memory', 'CI moved to host-42', '--scope', 'public');
     expect(refused.out).toContain('Refused (PRIVATE_PATTERN)');
@@ -186,6 +334,93 @@ describe('the server', () => {
       args: (task) => ({ task, from: 'a', to: 'b', brief: 'read the Nightjar brief' }),
     },
   ];
+
+  const FOLLOWING: readonly {
+    readonly name: string;
+    readonly born: (scope: 'public' | 'private') => string[];
+    readonly args: (born: string[], scope: 'public' | 'private') => Record<string, unknown>;
+  }[] = [
+    {
+      name: 'decision_transition',
+      born: (scope) => [aDecision(scope)],
+      args: ([id]) => ({ id, action: 'reject', note: 'the Nightjar budget' }),
+    },
+    {
+      name: 'task_transition',
+      born: (scope) => [aTaskIn(scope)],
+      args: ([id]) => ({ id, action: 'cancel', reason: 'Nightjar was dropped' }),
+    },
+    {
+      name: 'skill_transition',
+      born: (scope) => [aSkill(scope)],
+      args: ([id]) => ({ id, action: 'reject', note: 'not for Nightjar' }),
+    },
+    {
+      name: 'link_knowledge',
+      born: (scope) => [aTaskIn(scope)],
+      args: ([id], scope) => ({
+        subject: id,
+        target: 'the-nightjar-notes',
+        rel: 'relates-to',
+        scope,
+      }),
+    },
+  ];
+
+  for (const tool of FOLLOWING) {
+    describe(tool.name, () => {
+      it('is refused with the public tree as it was, passes with allow_private_pattern, and is not asked in private', async () => {
+        const session = await connected();
+        try {
+          const born = tool.born('public');
+          const before = publicTreeLines(repo);
+          const refused = await session.call(tool.name, tool.args(born, 'public'));
+          expect(refused.isError, refused.text).toBe(true);
+          expect(refused.text).toContain('Refused (PRIVATE_PATTERN)');
+          expect(publicTreeLines(repo)).toBe(before);
+          const privately = await session.call(
+            tool.name,
+            tool.args(tool.born('private'), 'private'),
+          );
+          expect(privately.isError, privately.text).toBe(false);
+          expect(publicTreeHeld(MARKER)).toBe(false);
+          const passed = await session.call(tool.name, {
+            ...tool.args(born, 'public'),
+            allow_private_pattern: true,
+          });
+          expect(passed.isError, passed.text).toBe(false);
+          expect(publicTreeHeld(MARKER)).toBe(true);
+        } finally {
+          await session.close();
+        }
+      });
+    });
+  }
+
+  it('create_task with a description that matches, and record_handoff with such a brief, leave no half behind', async () => {
+    const task = aTask();
+    const session = await connected();
+    try {
+      const before = publicTreeLines(repo);
+      const created = await session.call('create_task', {
+        title: 'a clean title',
+        description: 'about Nightjar',
+        scope: 'public',
+      });
+      expect(created.text).toContain('Refused (PRIVATE_PATTERN)');
+      const handed = await session.call('record_handoff', {
+        task,
+        from: 'a',
+        to: 'b',
+        brief: 'read the Nightjar brief',
+        scope: 'public',
+      });
+      expect(handed.text).toContain('Refused (PRIVATE_PATTERN)');
+      expect(publicTreeLines(repo)).toBe(before);
+    } finally {
+      await session.close();
+    }
+  });
 
   for (const tool of TOOLS) {
     describe(tool.name, () => {

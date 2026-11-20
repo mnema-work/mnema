@@ -74,7 +74,7 @@ import { DESCRIPTION_TOPIC } from '../knowledge/companion-topics.js';
 import { recordObservation } from '../knowledge/operations.js';
 import { oneLine } from '../one-line.js';
 import { projectTasks } from '../projections/task.js';
-import { type AppendRefusal, appendFact, appendFacts } from './append.js';
+import { type AppendRefusal, appendFact, appendFacts, refusePrivateText } from './append.js';
 import {
   type Judged,
   onTheRecordAsItStands,
@@ -408,6 +408,11 @@ export function createTask(ctx: WriteContext, input: CreateInput): CreateOk | Wr
   // appended atomically: a torn birth would leave a created task with no state, permanently
   // burning the id (the projection drops a stateless subject, so every later transition on it
   // fails as UNKNOWN_TASK).
+  // The description is a second append; the list is asked of it before the first.
+  if (input.description !== undefined) {
+    const asked = refusePrivateText(ctx, [input.description]);
+    if (asked !== undefined) return asked;
+  }
   const appended = appendFacts(ctx, ({ at }) =>
     taskBirth(
       {
