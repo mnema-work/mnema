@@ -41,14 +41,14 @@ describe('agentAcceptsReading', () => {
     );
   }
 
-  describe('a rule a person accepted that an agent took out of force', () => {
+  describe('a rule accepted with no agent declared that an agent took out of force', () => {
     it('shows when the accept declares no agent and an agent superseded it', () => {
       const b = bench();
       accepted(b, 'd1', undefined);
       accepted(b, 'd2', 'claude', 'Chosen by the maintainer: "ok"');
       supersedeDecision(b, 'd1', 'd2', 'accepted', 'claude');
       const r = agentAcceptsReading(b.events());
-      expect(r.personRulesSupersededByAgent.map((x) => [x.decision, x.by, x.which])).toEqual([
+      expect(r.rulesSupersededByAgent.map((x) => [x.decision, x.by, x.which])).toEqual([
         ['d1', 'd2', 'claude'],
       ]);
     });
@@ -58,7 +58,7 @@ describe('agentAcceptsReading', () => {
       accepted(b, 'd1', undefined);
       accepted(b, 'd2', undefined);
       supersedeDecision(b, 'd1', 'd2');
-      expect(agentAcceptsReading(b.events()).personRulesSupersededByAgent).toEqual([]);
+      expect(agentAcceptsReading(b.events()).rulesSupersededByAgent).toEqual([]);
     });
 
     it('does not show when an agent accepted the rule and an agent superseded it', () => {
@@ -66,7 +66,7 @@ describe('agentAcceptsReading', () => {
       accepted(b, 'd1', 'claude', 'Chosen by the maintainer: "ok"');
       accepted(b, 'd2', 'claude', 'Chosen by the maintainer: "ok"');
       supersedeDecision(b, 'd1', 'd2', 'accepted', 'claude');
-      expect(agentAcceptsReading(b.events()).personRulesSupersededByAgent).toEqual([]);
+      expect(agentAcceptsReading(b.events()).rulesSupersededByAgent).toEqual([]);
     });
 
     it('shows an addressed rule an agent accepted and an agent superseded', () => {
@@ -75,9 +75,9 @@ describe('agentAcceptsReading', () => {
       accepted(b, 'd2', 'claude', 'Chosen by the maintainer: "ok"');
       link(b, 'd1', 'src/billing', 'asks-for-a-person');
       supersedeDecision(b, 'd1', 'd2', 'accepted', 'claude');
-      expect(
-        agentAcceptsReading(b.events()).personRulesSupersededByAgent.map((x) => x.decision),
-      ).toEqual(['d1']);
+      expect(agentAcceptsReading(b.events()).rulesSupersededByAgent.map((x) => x.decision)).toEqual(
+        ['d1'],
+      );
     });
 
     it('does not count a proposal an agent superseded: it was never in force', () => {
@@ -85,7 +85,7 @@ describe('agentAcceptsReading', () => {
       birthDecision(b, 'd1', 'rule d1');
       accepted(b, 'd2', undefined);
       supersedeDecision(b, 'd1', 'd2', 'proposed', 'claude');
-      expect(agentAcceptsReading(b.events()).personRulesSupersededByAgent).toEqual([]);
+      expect(agentAcceptsReading(b.events()).rulesSupersededByAgent).toEqual([]);
     });
   });
 
@@ -118,6 +118,8 @@ describe('agentAcceptsReading', () => {
         ['bare', 'claude'],
       ]);
       expect(r.agentAccepts).toBe(3);
+      expect(r.undeclaredAccepts).toBe(1);
+      expect(r.undeclaredWithoutTheirWords.map((x) => x.decision)).toEqual(['nobody']);
     });
   });
 
@@ -126,6 +128,13 @@ describe('agentAcceptsReading', () => {
       ['Chosen by the maintainer among the options offered: "Only the reading".', true],
       ['dictated by the maintainer', true],
       ['They said “sim, faça”.', true],
+      ["Typed in the session: 'use pnpm here'.", true],
+      ['The maintainer chose in this session: option A.', true],
+      ['Accepted as dictated.', true],
+      ['The maintainer kept the second option.', true],
+      ["I don't think it's wrong, isn't it fine", false],
+      ["The users' note and the agents' choice.", false],
+      ['The maintainer asked. It looks right.', false],
       ['An empty pair "" is no words.', false],
       ['A lone " quote mark.', false],
       ['Looks right.', false],

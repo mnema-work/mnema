@@ -23,12 +23,17 @@ the same mark.
 - **Rules taken out of force by an agent.** A decision accepted by an event that declares no agent, or one that carries an
   address (`governs`, `asks-for-a-person`, `refuses-a-write`), and then superseded by an event that declares one. A
   decision superseded by an event that declares none is not counted.
-- **Chains of three decisions or more.** A replaced by B, B by C, each id in order.
-- **Accepts that quote no words of the person.** Of the accepts that declare an agent, the ones whose note holds no
-  quoted words and does not say the option was "chosen by" or "dictated by" the person. It is read from the words of the
-  note: a note that cites the person falsely passes, and one that paraphrases honestly is counted.
+- **Chains of three decisions or more.** A replaced by B, B by C, each id in order. The chain follows the first supersede
+  of each decision and does not look at the state it left (`from`), so a proposal replaced and then a decision replaced
+  count the same.
+- **Accepts that quote no words of the person.** Two totals, kept apart: the accepts that declare an agent, and the accepts
+  that declare none (not read as a person's), each with how many hold no words of the person. A note has them when it holds
+  a quoted passage (straight, curly, single or Portuguese quotes), says "chosen by", "dictated by" or "as dictated", or
+  says in one sentence that the maintainer chose, said, kept or dictated it. It is read from the words of the note: a note
+  that cites the person falsely passes, and one that paraphrases honestly is counted.
 
-`--json` carries the same three under `agentAccepts`, with the `at` each event claims. The command line's reading only:
+The text lists at most 10 ids per signal and then says how many more there are; `--json` carries the same three under
+`agentAccepts` in full, with the `at` each event claims. The command line's reading only:
 the agent's `audit_antipatterns` tool does not carry it.
 <!-- End of the part written by hand. -->
 

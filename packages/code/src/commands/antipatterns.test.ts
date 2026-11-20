@@ -270,7 +270,7 @@ describe('mnema audit antipatterns (recurring shapes, with evidence)', () => {
     const result = runAntipatterns(here);
     if (!result.ok) throw new Error('refused');
     const reading = result.agentAccepts;
-    expect(reading.personRulesSupersededByAgent.map((x) => [x.decision, x.by])).toEqual([[a, b]]);
+    expect(reading.rulesSupersededByAgent.map((x) => [x.decision, x.by])).toEqual([[a, b]]);
     expect(reading.chains).toEqual([[a, b, c]]);
     expect(reading.agentAccepts).toBe(2);
     expect(reading.acceptsWithoutTheirWords.map((x) => x.decision)).toEqual([c]);

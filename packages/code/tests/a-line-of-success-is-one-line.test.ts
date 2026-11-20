@@ -825,6 +825,10 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'collapsed',
     why: 'decision ids out of the record, in the reading of what agents accepted',
   },
+  'antipatterns.ts «{}» #6': {
+    verdict: 'collapsed',
+    why: 'decision ids out of the record, in the reading of what agents accepted',
+  },
   'resume.ts «{}» #1': {
     verdict: 'collapsed',
     why: 'the agent a run names: text whoever opened the session wrote',
@@ -1249,7 +1253,7 @@ describe('every line this wiring words is classified', () => {
     // 203 with the lines `backup restore` and `backup status` print of the folders kept aside, and none of a deletion.
     // 204 with the line `backup hook` prints of where it put the hook and where it took it from.
     // 207 with the three lines `backup restore --global` prints, the two folder counts and the heading.
-    expect(FOUND.sites.length).toBe(210);
+    expect(FOUND.sites.length).toBe(211);
   });
 
   it('reads the verdict off the source rather than believing the table', () => {
@@ -1269,9 +1273,9 @@ describe('every line this wiring words is classified', () => {
   it('found sites of both kinds, and the scanner sees a tag when there is one', () => {
     // Neither arm of the case above may be empty, or half of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
-    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(120);
+    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(121);
     expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(90);
-    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(120);
+    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(121);
   });
 
   it('every reason says where the value comes from', () => {
@@ -1520,6 +1524,8 @@ const UNREACHABLE: Readonly<Record<string, string>> = {
     'needs accepts that declare an agent, and a supersede of a rule a person accepted',
   'antipatterns.ts «{}» #5':
     'needs accepts that declare an agent, and a supersede of a rule a person accepted',
+  'antipatterns.ts «{}» #6':
+    'needs accepts that declare no agent, and a supersede of a rule a person accepted',
   'commit-hook.ts «{}: {}» #1': 'needs a repository whose hooks path holds a line break',
   'resume.ts «{}» #1': 'the run’s own line: driven by `run start`, read back by `resume`',
   'resume.ts «: {}» #1': 'the same line',

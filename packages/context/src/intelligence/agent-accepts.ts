@@ -27,7 +27,7 @@
 import { ADDRESS_RELATIONS } from '@mnema/core';
 import type { CatalogEvent } from './events.js';
 
-/** A rule a person accepted, or an addressed one, that an agent superseded. */
+/** A rule accepted with no agent declared, or an addressed one, that an agent superseded. */
 export interface PersonRuleSuperseded {
   /** The decision taken out of force. */
   readonly decision: string;
@@ -37,8 +37,8 @@ export interface PersonRuleSuperseded {
   readonly which: string;
   /** The `at` the supersede claims. */
   readonly at: string;
-  /** Why it is on the list: the accept declared no agent, or the rule carries an address. */
-  readonly because: 'accepted-by-a-person' | 'addressed';
+  /** Why it is on the list: the accept declared no agent (not proof of a person), or the rule carries an address. */
+  readonly because: 'accepted-with-no-agent-declared' | 'addressed';
 }
 
 /** An accept that declares an agent and quotes no words of the person. */
@@ -50,33 +50,52 @@ export interface AcceptWithoutTheirWords {
 
 /** The three readings, and the count the third is a share of. */
 export interface AgentAcceptsReading {
-  readonly personRulesSupersededByAgent: readonly PersonRuleSuperseded[];
+  readonly rulesSupersededByAgent: readonly PersonRuleSuperseded[];
   /** Each chain as the decision ids, oldest first: three or more. */
   readonly chains: readonly (readonly string[])[];
   /** How many accepts declare an agent. */
   readonly agentAccepts: number;
   readonly acceptsWithoutTheirWords: readonly AcceptWithoutTheirWords[];
+  /** How many accepts declare no agent: not read as a person's. */
+  readonly undeclaredAccepts: number;
+  /** Those among them whose note quotes no words of the person, apart from the list above. */
+  readonly undeclaredWithoutTheirWords: readonly {
+    readonly decision: string;
+    readonly at: string;
+  }[];
 }
 
 const QUOTED = /["“«][^"“”«»]*\S[^"“”«»]*["”»]/;
-const CHOSEN_OR_DICTATED = /\b(?:chosen|dictated) by\b/i;
+// A single quote opens at the start of a word and closes at the end of one, so the
+// apostrophe of "don't" and "isn't" is not a pair.
+const SINGLE_QUOTED = /(?<![\p{L}\p{N}])['‘][^'‘’]*\S[^'‘’]*['’](?![\p{L}\p{N}])/u;
+const CHOSEN_OR_DICTATED = /\b(?:chosen|dictated) by\b|\bas dictated\b/i;
+const MAINTAINER_SAID = /\bmaintainer\b[^.\n]*\b(?:chose|chosen|said|kept|dictated)\b/i;
 
 /**
  * Whether an acceptance note quotes the person: a quoted span with words in it, or the
- * words "chosen by" or "dictated by" (an option the person picked).
+ * words "chosen by" or "dictated by" (an option the person picked), "as dictated", or a
+ * sentence in which the maintainer chose, said, kept or dictated it.
  */
 export function restsOnThePerson(note: string): boolean {
-  return QUOTED.test(note) || CHOSEN_OR_DICTATED.test(note);
+  return (
+    QUOTED.test(note) ||
+    SINGLE_QUOTED.test(note) ||
+    CHOSEN_OR_DICTATED.test(note) ||
+    MAINTAINER_SAID.test(note)
+  );
 }
 
 /** Reads the three signals over the record's events, in the order handed in. */
 export function agentAcceptsReading(events: readonly CatalogEvent[]): AgentAcceptsReading {
-  const acceptedByPerson = new Set<string>();
+  const acceptedWithNoAgent = new Set<string>();
   const addressed = new Set<string>();
   const superseded: PersonRuleSuperseded[] = [];
   const next = new Map<string, string>();
   const unquoted: AcceptWithoutTheirWords[] = [];
   let agentAccepts = 0;
+  let undeclaredAccepts = 0;
+  const undeclared: { decision: string; at: string }[] = [];
   const retracted = (e: CatalogEvent): string | undefined =>
     e.kind === 'link.retracted'
       ? `${e.subject}\u0000${e.payload.rel}\u0000${e.payload.target}`
@@ -96,7 +115,9 @@ export function agentAcceptsReading(events: readonly CatalogEvent[]): AgentAccep
     const note = move.fields?.note;
     if (move.action === 'accept') {
       if (e.which === undefined) {
-        acceptedByPerson.add(e.subject);
+        acceptedWithNoAgent.add(e.subject);
+        undeclaredAccepts += 1;
+        if (!restsOnThePerson(note ?? '')) undeclared.push({ decision: e.subject, at: e.at });
         continue;
       }
       agentAccepts += 1;
@@ -108,8 +129,8 @@ export function agentAcceptsReading(events: readonly CatalogEvent[]): AgentAccep
     if (move.action !== 'supersede' || move.by === undefined) continue;
     if (!next.has(e.subject)) next.set(e.subject, move.by);
     if (move.from !== 'accepted' || e.which === undefined) continue;
-    const because = acceptedByPerson.has(e.subject)
-      ? 'accepted-by-a-person'
+    const because = acceptedWithNoAgent.has(e.subject)
+      ? 'accepted-with-no-agent-declared'
       : addressed.has(e.subject)
         ? 'addressed'
         : undefined;
@@ -118,10 +139,12 @@ export function agentAcceptsReading(events: readonly CatalogEvent[]): AgentAccep
     }
   }
   return {
-    personRulesSupersededByAgent: superseded,
+    rulesSupersededByAgent: superseded,
     chains: chainsOf(next),
     agentAccepts,
     acceptsWithoutTheirWords: unquoted,
+    undeclaredAccepts,
+    undeclaredWithoutTheirWords: undeclared,
   };
 }
 

@@ -169,8 +169,8 @@ export function registerAntipatterns(program: Command, wiring: Wiring): Declared
       io.out(
         render(
           statement(
-            'rules a person accepted, or addressed, that an agent took out of force',
-            String(accepts.personRulesSupersededByAgent.length),
+            'rules accepted with no agent declared, or addressed, that an agent took out of force',
+            String(accepts.rulesSupersededByAgent.length),
           ),
         ),
       );
@@ -191,12 +191,24 @@ export function registerAntipatterns(program: Command, wiring: Wiring): Declared
           ),
         ),
       );
-      if (accepts.personRulesSupersededByAgent.length > 0) {
+      io.out(render(statement('accepts that declare no agent', String(accepts.undeclaredAccepts))));
+      io.out(
+        render(
+          statement(
+            'of them, quoting no words of the person',
+            String(accepts.undeclaredWithoutTheirWords.length),
+          ),
+        ),
+      );
+      if (accepts.rulesSupersededByAgent.length > 0) {
         io.out(
           render(
             statement(
               'taken out of force by an agent',
-              accepts.personRulesSupersededByAgent.map((x) => onOneLine`${x.decision}`).join(', '),
+              accepts.rulesSupersededByAgent
+                .slice(0, SHOWN)
+                .map((x) => onOneLine`${x.decision}`)
+                .join(', ') + andMore(accepts.rulesSupersededByAgent.length),
             ),
           ),
         );
@@ -207,8 +219,9 @@ export function registerAntipatterns(program: Command, wiring: Wiring): Declared
             statement(
               'replaced in a row',
               accepts.chains
+                .slice(0, SHOWN)
                 .map((chain) => chain.map((id) => onOneLine`${id}`).join(' > '))
-                .join(', '),
+                .join(', ') + andMore(accepts.chains.length),
             ),
           ),
         );
@@ -218,7 +231,23 @@ export function registerAntipatterns(program: Command, wiring: Wiring): Declared
           render(
             statement(
               'accepted with no words of the person',
-              accepts.acceptsWithoutTheirWords.map((x) => onOneLine`${x.decision}`).join(', '),
+              accepts.acceptsWithoutTheirWords
+                .slice(0, SHOWN)
+                .map((x) => onOneLine`${x.decision}`)
+                .join(', ') + andMore(accepts.acceptsWithoutTheirWords.length),
+            ),
+          ),
+        );
+      }
+      if (accepts.undeclaredWithoutTheirWords.length > 0) {
+        io.out(
+          render(
+            statement(
+              'accepted, no agent declared, with no words of the person',
+              accepts.undeclaredWithoutTheirWords
+                .slice(0, SHOWN)
+                .map((x) => onOneLine`${x.decision}`)
+                .join(', ') + andMore(accepts.undeclaredWithoutTheirWords.length),
             ),
           ),
         );
@@ -229,4 +258,12 @@ export function registerAntipatterns(program: Command, wiring: Wiring): Declared
       io.out(moves.note);
     });
   return readsTheRecord(antipatterns);
+}
+
+/** How many ids a list of the agent-accepts reading prints; `--json` lists them all. */
+const SHOWN = 10;
+
+/** What follows a list cut at {@link SHOWN}: how many were left out, and where they are. */
+function andMore(total: number): string {
+  return total > SHOWN ? `, …and ${String(total - SHOWN)} more, all in --json` : '';
 }
