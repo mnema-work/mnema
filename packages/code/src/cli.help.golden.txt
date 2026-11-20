@@ -1045,7 +1045,8 @@ $ mnema audit --help
 |   accountability [options]  show who authorized what across the record
 |                             (optionally windowed/filtered)
 |   antipatterns [options]    show recurring shapes in the record (reopens,
-|                             supersessions, deprecations)
+|                             supersessions, deprecations, and what agents
+|                             accepted)
 |   exposure [options]        show which records hold something shaped like a
 |                             credential (never the value)
 |   help [command]            display help for command
@@ -2660,7 +2661,8 @@ $ mnema audit accountability --help
 $ mnema audit antipatterns --help
 | Usage: mnema audit antipatterns [options]
 |
-| show recurring shapes in the record (reopens, supersessions, deprecations)
+| show recurring shapes in the record (reopens, supersessions, deprecations, and
+| what agents accepted)
 |
 | Options:
 |   --json      emit the faithful shapes with their evidence as JSON

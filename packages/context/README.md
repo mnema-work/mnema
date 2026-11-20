@@ -277,7 +277,9 @@ and the one document it feeds is committed.
   (who authorized what), `antipatterns` (recurring shapes), `exposure`
   (records holding a credential format), `provenance` (who proposed and who
   adopted each pattern), and `pattern-moves` (whether the run that moved a pattern
-  had been served its body, and, where nothing was listening, that nothing was).
+  had been served its body, and, where nothing was listening, that nothing was), and `agent-accepts` (what agents
+  accepted: the rules a person accepted that an agent took out of force, the chains of three decisions or more, and
+  the accepts whose note quotes no words of the person).
 - **`guard/`**: `guard`, the workflow gate exposed as a read-only consultation.
 
 To understand the boundary that justifies this being a package of its own, read

@@ -142,7 +142,7 @@ _mnema_described() {
       'help:display help for command' ;;
     'audit') printf '%s\n' \
       'accountability:show who authorized what across the record (optionally windowed/filtered)' \
-      'antipatterns:show recurring shapes in the record (reopens, supersessions, deprecations)' \
+      'antipatterns:show recurring shapes in the record (reopens, supersessions, deprecations, and what agents accepted)' \
       'exposure:show which records hold something shaped like a credential (never the value)' \
       'help:display help for command' ;;
     'commit-hook') printf '%s\n' \
