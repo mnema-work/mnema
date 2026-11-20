@@ -30,6 +30,9 @@ import { AGENT_ACCEPTS_CHANNEL } from './record-framing.js';
 /** The one action the switch is about, typed so a rename in the workflow does not leave it behind. */
 const ACCEPT: DecisionAction = 'accept';
 
+/** The two moves of a pattern that change what governs: it comes into force, or falls out of it. */
+const SKILL_ACTIONS_OF_A_PERSON: readonly string[] = ['adopt', 'deprecate'];
+
 /** The other action that takes a decision out of the rule with the switch off: replacing it. */
 const SUPERSEDE: DecisionAction = 'supersede';
 
@@ -40,7 +43,7 @@ export const AGENT_ACCEPTS_IS_OFF = 'AGENT_ACCEPTS_IS_OFF';
 export const AGENT_ACCEPTS_NEEDS_A_PERSON = 'AGENT_ACCEPTS_NEEDS_A_PERSON';
 
 /**
- * Whether this accept or supersede may be made: `undefined` when it may, and the refusal's code and
+ * Whether this accept, supersede, or adoption or deprecation of a pattern may be made: `undefined` when it may, and the refusal's code and
  * words when the switch is off and the act is not a person's. A `supersede` is asked like an
  * `accept` because it is the other way an act takes a decision out of force or puts one in its
  * place (a merely proposed successor leaves nothing in force). A `reject` is not asked.
@@ -60,12 +63,22 @@ export function agentMayAccept(
     readonly atATerminal: boolean;
   },
 ): { readonly code: string; readonly message: string } | undefined {
-  if (move.action !== ACCEPT && move.action !== SUPERSEDE) return undefined;
+  const ofAPattern = SKILL_ACTIONS_OF_A_PERSON.includes(move.action);
+  if (move.action !== ACCEPT && move.action !== SUPERSEDE && !ofAPattern) return undefined;
   if (move.agent === undefined && move.atATerminal) return undefined;
   const state = channelStates(sources, [AGENT_ACCEPTS_CHANNEL])[0];
   if (state === undefined || state.on) return undefined;
   const who = move.agent === undefined ? 'no agent declared and no terminal here' : 'an agent';
   const switchedOff = `${AGENT_ACCEPTS_CHANNEL} was switched off by ${oneLine(state.by ?? '')} at ${oneLine(state.at ?? '')}, `;
+  if (ofAPattern) {
+    return {
+      code: AGENT_ACCEPTS_IS_OFF,
+      message:
+        `${switchedOff}and this ${move.action} is from ${who}: only a person at a terminal adopts or deprecates a pattern here, ` +
+        'because that changes what governs, and a person at a terminal turns the switch back on ' +
+        '(`mnema switch on agent-accepts`). The pattern was not moved.',
+    };
+  }
   if (move.action === SUPERSEDE) {
     return {
       code: AGENT_ACCEPTS_IS_OFF,

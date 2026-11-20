@@ -787,10 +787,10 @@ export const WHAT_STOPS: { readonly [K in SwitchableChannel]: string } = {
     'the refusal of a write where a rule of the record refuses one: such a write goes ' +
     'through, the rules go on arriving, and a rule that asks for a person still asks',
   'agent-accepts':
-    'an agent ruling a decision in force: with it off, an `accept` or a `supersede` that declares ' +
+    'an agent ruling a decision in force: with it off, an `accept`, a `supersede`, an `adopt` or a `deprecate` that declares ' +
     'an agent is refused, and so is one that declares none unless it is made at a terminal ' +
     '(standard input and standard error both a TTY; through the MCP server never): only a person ' +
-    'at a terminal accepts or replaces a decision, and only a person at a terminal switches it back ' +
+    'at a terminal accepts or replaces a decision or adopts or deprecates a pattern, and only a person at a terminal switches it back ' +
     "on (stopping it is anyone's), a proposed decision waits, and nothing else changes. " +
     'A terminal is a heuristic for a person, not a proof of one',
   'edit-first-write-gate':

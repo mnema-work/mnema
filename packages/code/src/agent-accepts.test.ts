@@ -83,6 +83,30 @@ describe('whether an agent may accept', () => {
     }
   });
 
+  it('turns away adopting or deprecating a pattern like a supersede, and never review or reject', () => {
+    for (const action of ['adopt', 'deprecate']) {
+      for (const agent of ['claude-code', undefined]) {
+        const turnedAway = agentMayAccept(sources('off'), { action, agent, atATerminal: false });
+        expect(turnedAway?.code).toBe(AGENT_ACCEPTS_IS_OFF);
+        expect(turnedAway?.message).toContain(`this ${action}`);
+        expect(turnedAway?.message).toContain('The pattern was not moved.');
+      }
+      expect(agentMayAccept(sources('off'), { action, agent: undefined, atATerminal: true })).toBe(
+        undefined,
+      );
+      expect(
+        agentMayAccept(sources('on'), { action, agent: 'claude-code', atATerminal: false }),
+      ).toBe(undefined);
+    }
+    expect(
+      agentMayAccept(sources('off'), {
+        action: 'review',
+        agent: 'claude-code',
+        atATerminal: false,
+      }),
+    ).toBe(undefined);
+  });
+
   it('lets a supersede through while the switch is on or was never touched', () => {
     for (const switched of ['never', 'on'] as const) {
       expect(

@@ -235,6 +235,7 @@ export function registerSkill(program: Command, wiring: Wiring): Declared {
       },
       ...(given.which !== undefined ? { which: given.which } : {}),
       ...(run !== undefined ? { run } : {}),
+      atATerminal: io.aPersonIsHere === true,
     });
     if (result.ok) {
       io.out(movedLine('skill', result.name, result.id, result.to));

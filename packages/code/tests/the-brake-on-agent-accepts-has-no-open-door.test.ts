@@ -210,3 +210,127 @@ describe('switching agent-accepts', () => {
     expect(on.status, on.out).toBe(0);
   });
 });
+
+/** A project holding a skill that was reviewed (and, if asked, adopted), with the switch still on. */
+function aSkillReviewed(adopted: boolean): string {
+  expect(mnema({}, 'init').status).toBe(0);
+  const made = mnema({}, 'skill', 'create', 'A pattern', '--body', 'do it so');
+  expect(made.status, made.out).toBe(0);
+  const id = idOf(made.out);
+  const reviewed = mnema({}, 'skill', 'move', 'review', id, '--note', 'ok');
+  expect(reviewed.status, reviewed.out).toBe(0);
+  if (adopted) {
+    const done = mnema({}, 'skill', 'move', 'adopt', id, '--note', 'ok');
+    expect(done.status, done.out).toBe(0);
+  }
+  return id;
+}
+
+describe('adopting or deprecating a pattern with the switch off', () => {
+  it('is refused with no terminal, declared or not, and the record is as it was', {
+    timeout: 60_000,
+  }, () => {
+    const id = aSkillReviewed(false);
+    expect(off().status).toBe(0);
+    const before = held(sandbox);
+    for (const which of [[], ['--which', 'claude-code']]) {
+      const refused = mnema({}, 'skill', 'move', 'adopt', id, '--note', 'ok', ...which);
+      expect(refused.status, refused.out).toBe(1);
+      expect(refused.out).toContain('AGENT_ACCEPTS_IS_OFF');
+      expect(refused.out).toContain('this adopt');
+      expect(held(sandbox)).toEqual(before);
+    }
+    expect(state(id)).toContain('(reviewed)');
+  });
+
+  it('refuses a deprecation the same way, and lets review and reject through', {
+    timeout: 60_000,
+  }, () => {
+    const id = aSkillReviewed(true);
+    expect(off().status).toBe(0);
+    const before = held(sandbox);
+    const refused = mnema(
+      {},
+      'skill',
+      'move',
+      'deprecate',
+      id,
+      '--reason',
+      'x',
+      '--which',
+      'claude-code',
+    );
+    expect(refused.status, refused.out).toBe(1);
+    expect(refused.out).toContain('AGENT_ACCEPTS_IS_OFF');
+    expect(held(sandbox)).toEqual(before);
+    expect(state(id)).toContain('(adopted)');
+    const other = mnema({}, 'skill', 'create', 'Another', '--body', 'do it so too');
+    const rejected = mnema(
+      {},
+      'skill',
+      'move',
+      'reject',
+      idOf(other.out),
+      '--note',
+      'no',
+      '--which',
+      'claude-code',
+    );
+    expect(rejected.status, rejected.out).toBe(0);
+  });
+
+  it('passes for a person at a pseudo-terminal', { timeout: 60_000 }, async () => {
+    const id = aSkillReviewed(false);
+    expect(off().status).toBe(0);
+    const ran = await inPty(
+      {
+        cli: MNEMA_CLI,
+        verb: `skill move adopt ${id} --note ok`,
+        project,
+        scratch: sandbox,
+        environment: env(),
+      },
+      {
+        columns: 120,
+        rows: 40,
+        steps: [{ until: arrivedSince('adopted'), what: 'the move was reported' }],
+      },
+    );
+    expect(ran.bytes).not.toContain('AGENT_ACCEPTS_IS_OFF');
+    expect(state(id)).toContain('(adopted)');
+  });
+
+  it('passes for an agent while the switch is on', { timeout: 60_000 }, () => {
+    const id = aSkillReviewed(false);
+    const moved = mnema({}, 'skill', 'move', 'adopt', id, '--note', 'ok', '--which', 'claude-code');
+    expect(moved.status, moved.out).toBe(0);
+  });
+
+  it('is refused through the MCP server too, and the record is as it was', {
+    timeout: 60_000,
+  }, async () => {
+    const id = aSkillReviewed(false);
+    expect(off().status).toBe(0);
+    const before = held(sandbox);
+    const { server } = buildMcpServer({ cwd: sandbox, env: { home }, log: () => {} });
+    const client = new Client(
+      { name: 'claude-code', version: '1.0.0' },
+      { capabilities: { roots: {} } },
+    );
+    client.setRequestHandler(ListRootsRequestSchema, () => ({
+      roots: [{ uri: pathToFileURL(project).href }],
+    }));
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    await Promise.all([client.connect(clientSide), server.connect(serverSide)]);
+    const reply = (await client.callTool({
+      name: 'skill_transition',
+      arguments: { id, action: 'adopt', note: 'ok' },
+    })) as { isError?: boolean; content: { text: string }[] };
+    await client.close();
+    const told = reply.content.map((block) => block.text).join('\n');
+    expect(reply.isError, told).toBe(true);
+    expect(told).toContain('AGENT_ACCEPTS_IS_OFF');
+    expect(held(sandbox)).toEqual(before);
+    expect(state(id)).toContain('(reviewed)');
+  });
+});
