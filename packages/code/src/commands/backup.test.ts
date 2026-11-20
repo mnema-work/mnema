@@ -596,6 +596,9 @@ describe('a copy read back, and put back', () => {
     const { a, priv, copy } = backedUp();
     const manifest = join(copy, 'mnema-backup.json');
     const whole = readFileSync(manifest);
+    writeFileSync(manifest, '{');
+    const status = runBackupStatus(a);
+    expect(status.ok && status.trees.some((one) => one.manifest === 'unreadable')).toBe(true);
     rmSync(priv, { recursive: true, force: true });
     for (const broken of ['{"files": ', '[]']) {
       writeFileSync(manifest, broken);
@@ -609,8 +612,6 @@ describe('a copy read back, and put back', () => {
     mkdirSync(manifest);
     expect(runBackupRestore(a, false)).toMatchObject({ ok: false, code: 'BROKEN_COPY' });
     expect(existsSync(priv)).toBe(false);
-    const status = runBackupStatus(a);
-    expect(status.ok && status.trees.some((one) => one.manifest === 'unreadable')).toBe(true);
     // Not there at all: restored, and the copy says it has no date.
     rmSync(manifest, { recursive: true });
     expect(runBackupRestore(a, false)).toMatchObject({ ok: true });
