@@ -35,13 +35,13 @@ export const WHAT_A_SUBCOMMAND_READS: Readonly<Record<string, readonly string[]>
     '--which',
   ],
   // The moves name the agent that executed them, and follow the entity to its tree.
-  'task move': ['--which'],
-  'decision move': ['--which'],
-  'decision supersede': ['--which'],
-  'skill move': ['--which'],
+  'task move': ['--allow-private-pattern', '--which'],
+  'decision move': ['--allow-private-pattern', '--which'],
+  'decision supersede': ['--allow-private-pattern', '--which'],
+  'skill move': ['--allow-private-pattern', '--which'],
   // A birth over one tree fewer: its own two, read off the group where commander put them.
-  'decision import': ['--scope', '--which'],
-  'decision review': [],
+  'decision import': ['--allow-private-pattern', '--scope', '--which'],
+  'decision review': ['--allow-private-pattern'],
   // Nothing is born, moved or recorded, so there is nothing to scope or to credit.
   'skill export': [],
   'skill provenance': [],
