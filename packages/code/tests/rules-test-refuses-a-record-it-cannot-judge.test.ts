@@ -5,7 +5,14 @@
  * non-zero and names why, in every state the projection cache can be in.
  */
 
-import { appendFileSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  mkdirSync,
+  readdirSync,
+  renameSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
@@ -23,7 +30,9 @@ const mnema = (planted: Planted, args: string[]) =>
     env: { PATH: process.env.PATH ?? '', HOME: planted.home, GIT_CONFIG_NOSYSTEM: '1' },
   });
 
-function theCase(): TheCase<Planted> {
+type Damage = (segment: string) => void;
+
+function theCase(damaged: Damage): TheCase<Planted> {
   return {
     found(dir) {
       const planted = { repo: join(dir, 'repo'), home: join(dir, 'home') };
@@ -48,7 +57,7 @@ function theCase(): TheCase<Planted> {
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 40);
       const tails = join(planted.repo, '.mnema', 'tails');
       const segment = join(tails, readdirSync(tails)[0] as string, '000001.jsonl');
-      appendFileSync(segment, '{this line does not read\n');
+      damaged(segment);
     },
     run(planted, ctx): Answered {
       ctx.forget();
@@ -62,9 +71,20 @@ function theCase(): TheCase<Planted> {
   };
 }
 
-describe('rules test over a line that does not read, in every state of the cache', () => {
+const DAMAGES: [string, Damage][] = [
+  ['a line that does not read', (segment) => appendFileSync(segment, '{this line does not read\n')],
+  [
+    'a segment that is a symbolic link',
+    (segment) => {
+      renameSync(segment, `${segment}.real`);
+      symlinkSync(`${segment}.real`, segment);
+    },
+  ],
+];
+
+describe.each(DAMAGES)('rules test over %s, in every state of the cache', (_name, how) => {
   it('refuses to judge and exits non-zero, never printing a verdict', () => {
-    const seen = inEveryCacheState(theCase());
+    const seen = inEveryCacheState(theCase(how));
     for (const state of [seen.warm, seen.cold, seen.session]) {
       expect(state.status, state.state).not.toBe(0);
       expect(state.said, state.state).toContain('RECORD_CANNOT_BE_JUDGED');

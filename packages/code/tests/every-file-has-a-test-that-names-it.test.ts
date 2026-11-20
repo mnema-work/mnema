@@ -1309,6 +1309,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/promote-over-the-projects-it-is-named.test.ts': 12,
   'packages/code/tests/promoting-what-recurs.test.ts': 6,
   'packages/code/tests/rules-test-checks-declared-verdicts.test.ts': 7,
+  'packages/code/tests/rules-test-refuses-a-record-it-cannot-judge.test.ts': 5,
   'packages/code/tests/support/a-disk-that-fails.ts': 3,
   'packages/code/tests/support/a-machine-that-saw-the-tour.ts': 3,
   'packages/code/tests/support/a-newer-mnema-writes.ts': 4,
