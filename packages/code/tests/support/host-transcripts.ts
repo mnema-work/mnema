@@ -35,6 +35,11 @@ export function jsonl(lines: readonly unknown[]): string {
  *    (a <state_snapshot>) becomes a plain `user` turn, and after it the host writes a `$set`
  *    with `messages` (chatRecordingService.ts, updateMessagesFromHistory and the loader's
  *    checkpoint branch).
+ *  - packages/core/src/utils/approvalModeUtils.ts (getPlanModeExitMessage) added through
+ *    useGeminiStream.ts addHistory; client.ts (909-915, 1294-1310): 'Please continue.' and the
+ *    'System: Potential loop detected. ...' feedback are sent as plain requests;
+ *    chatCompressionService.ts (~671): the summary turn is followed by the model turn
+ *    'Got it. Thanks for the additional context!'.
  *  - packages/core/src/core/geminiChat.ts (536-551): the typed text is kept apart as
  *    displayContent when it differs from the content sent.
  *  - packages/core/src/tools/ask-user.ts (execute): llmContent is
@@ -56,6 +61,13 @@ export const GEMINI = {
     timestamp: '2026-11-20T10:00:03.000Z',
     type: 'user',
     content: [{ functionResponse: { id: 'call-1', name: 'ask_user', response: { output: 'x' } } }],
+  }),
+  /** The model turn the host writes right after a compaction summary. */
+  acknowledged: (id: string) => ({
+    id,
+    timestamp: '2026-11-20T10:00:05.000Z',
+    type: 'gemini',
+    content: [{ text: 'Got it. Thanks for the additional context!' }],
   }),
   /** A message whose model-bound content carries more than the person typed. */
   typedWith: (id: string, parts: readonly string[], displayContent?: string) => ({

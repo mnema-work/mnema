@@ -125,6 +125,33 @@ describe('Gemini CLI', () => {
     expect(thePersonsWords('gemini', path)?.map((said) => said.text)).toEqual(['Use SQLite']);
   });
 
+  it('leaves out the compaction summary even when it carries no state_snapshot tag', () => {
+    const path = file([
+      GEMINI.meta,
+      GEMINI.typed('m1', 'Use SQLite'),
+      GEMINI.typedWith('m2', ['The user wanted Postgres, summarised.']),
+      GEMINI.acknowledged('m3'),
+      GEMINI.typed('m4', 'keep the tests'),
+    ]);
+    expect(thePersonsWords('gemini', path)?.map((said) => said.text)).toEqual([
+      'Use SQLite',
+      'keep the tests',
+    ]);
+  });
+
+  it('leaves out the plan-mode exit turn and the host follow-up requests', () => {
+    const path = file([
+      GEMINI.meta,
+      GEMINI.typedWith('m1', ['User has manually exited Plan Mode. Switching to Default mode.']),
+      GEMINI.typedWith('m2', ['Please continue.']),
+      GEMINI.typedWith('m3', ['System: Potential loop detected. Details: x. Please take a step back.']),
+      GEMINI.typed('m4', 'please continue with the tests'),
+    ]);
+    expect(thePersonsWords('gemini', path)?.map((said) => said.text)).toEqual([
+      'please continue with the tests',
+    ]);
+  });
+
   it('rebuilds from a checkpoint, and a rewind to an id only the checkpoint holds drops from there', () => {
     const path = file([
       GEMINI.meta,

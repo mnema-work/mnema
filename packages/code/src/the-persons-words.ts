@@ -50,11 +50,16 @@ export type HostReader = (path: string) => readonly PersonWord[];
  *  - `Here is the user's editor context` and `Here is a summary of changes in the user's editor
  *    context`: the IDE companion's turns (`client.ts`, `getIdeContextParts`).
  *  - `- **Workspace Directories:**`: the directory turn (`addDirectoryContext`, `environmentContext.ts`).
+ *  - `User has manually exited Plan Mode.`: the turn the terminal UI adds when the person leaves
+ *    plan mode by hand (`approvalModeUtils.ts`, `useGeminiStream.ts`, through `addHistory`).
+ *  - `Please continue.` and `System: Potential loop detected.`: the host's own follow-up requests
+ *    (`client.ts`, `sendMessageStream`). They pass the caller's `displayContent` on, so with a
+ *    caller that gave none (a headless run) the record holds them as plain content.
  * The host writes each of these turns through `recordSyntheticMessage`, so the record alone does
  * not say they are not typed.
  */
 const GEMINI_HOST_TEXT =
-  /^\s*(<session_context>|<hook_context>|Here is the user's editor context|Here is a summary of changes in the user's editor context|- \*\*Workspace Directories:\*\*)/;
+  /^\s*(<session_context>|<hook_context>|Here is the user's editor context|Here is a summary of changes in the user's editor context|- \*\*Workspace Directories:\*\*|User has manually exited Plan Mode\.|Please continue\.\s*$|System: Potential loop detected\.)/;
 
 /**
  * The words of a Gemini `user` record: what the person typed, or `''`. The host keeps the typed text
@@ -121,9 +126,14 @@ function geminiAnswer(
 /** What is kept of one Gemini message: its words and its chosen answers, never the record. */
 interface GeminiKept {
   readonly line: number;
+  /** A model turn that is exactly the host's acknowledgement of a compaction summary. */
+  readonly acknowledges?: true;
   readonly words: string;
   readonly answers: readonly { text: string; question?: string }[];
 }
+
+/** What the host's model turn says right after it stores a compaction summary (`chatCompressionService.ts`). */
+const COMPACTION_ACKNOWLEDGEMENT = 'Got it. Thanks for the additional context!';
 
 function geminiKept(line: number, record: Record<string, unknown>): GeminiKept {
   if (record.type === 'user') return { line, words: geminiWords(record), answers: [] };
@@ -136,7 +146,14 @@ function geminiKept(line: number, record: Record<string, unknown>): GeminiKept {
       if (answer !== undefined) answers.push(answer);
     }
   }
-  return { line, words: '', answers };
+  const model = Array.isArray(record.content) ? record.content : [record.content];
+  const acknowledges =
+    record.type === 'gemini' &&
+    model
+      .map((part) => (typeof part === 'string' ? part : asObject(part)?.text))
+      .join('')
+      .trim() === COMPACTION_ACKNOWLEDGEMENT;
+  return { line, words: '', answers, ...(acknowledges ? { acknowledges: true as const } : {}) };
 }
 
 /**
@@ -184,8 +201,11 @@ const readGemini: HostReader = (path) => {
     return true;
   });
   const said: PersonWord[] = [];
-  for (const kept of messages.values()) {
-    if (kept.words.trim() !== '') said.push({ line: kept.line, text: kept.words, chosen: false });
+  const all = [...messages.values()];
+  for (const [index, kept] of all.entries()) {
+    // The user turn the host's acknowledgement follows is the compaction summary, tag or no tag.
+    const summary = all[index + 1]?.acknowledges === true;
+    if (!summary && kept.words.trim() !== '') said.push({ line: kept.line, text: kept.words, chosen: false });
     for (const answer of kept.answers) said.push({ line: kept.line, chosen: true, ...answer });
   }
   return said;
