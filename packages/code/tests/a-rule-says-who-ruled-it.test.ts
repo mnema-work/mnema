@@ -243,13 +243,13 @@ describe('an agent may accept, and the trail says it', () => {
     ]);
     const text = replies[0]?.content.map((block) => block.text).join('\n') ?? '';
     expect(replies[0]?.isError, text).not.toBe(true);
-    expect(text).toContain('recorded as made by an agent (codex)');
+    expect(text).toContain('recorded as made by an agent (claude-code)');
     expect(text).toContain('mnema switch off agent-accepts');
     expect(mnema(atA, a, 'show', id).out).toMatch(
-      /accepted by mnid:[0-9a-f]+ \(agent codex\)/,
+      /accepted by mnid:[0-9a-f]+ \(agent claude-code\)/,
     );
     expect(BRIEF_RULE('A call').exec(mnema(atA, a, 'brief').stdout)?.[0]).toContain(
-      'agent codex',
+      'agent claude-code',
     );
   }, 120_000);
 
