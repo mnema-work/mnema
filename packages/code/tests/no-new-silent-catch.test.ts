@@ -4,7 +4,7 @@
  * the count may only fall.
  *
  * A catch is silent when its body neither rethrows nor uses the error (see `silentCatches`). The
- * source holds 327 of them in every package's `src` and `plugin/hooks`, each one written with a good
+ * source holds 327 of them in every package's `src` and every `.mjs`, `.cjs` and `.js` under `plugin/`, each one written with a good
  * reason and none of them seen by anyone but its author: the count grew by 128 clauses in the week
  * before this guard, with every new one commented. So the convention could not hold the line.
  *
@@ -17,6 +17,11 @@
  *   it, or rethrow it) or, where the silence is the design, say so in {@link EXEMPT} with the reason;
  * - a frozen entry the source no longer has (the catch was fixed or deleted): drop it from the list,
  *   so the count only falls and the next one cannot hide behind the room this one left.
+ *
+ * WHAT IT DOES NOT SEE. The count is per file and per body, so deleting one silent catch and adding
+ * another with the same body in the same file passes. A promise's `.catch(() => {})` is not a catch
+ * clause and is not read, and neither is a destructured `catch ({ code })`. A binding that is only
+ * mentioned (`void error`) counts as a use. Those are limits of a ratchet, not permissions.
  *
  * Editing the body of a frozen catch changes what it does, so its entry leaves with it: if it is
  * still silent it is a new silent catch and this file asks again.
@@ -36,6 +41,26 @@ const EXEMPT: Readonly<Record<string, string>> = {};
 
 /** Silent catches today: file, then the body of the catch, then how many. It may only shrink. */
 const FROZEN: Readonly<Record<string, Readonly<Record<string, number>>>> = {
+  'plugin/gemini/hooks/mnema.mjs': {
+    'return false;': 2,
+    'return path;': 1,
+    'return [path];': 1,
+    'return undefined;': 2,
+    'return true;': 1,
+    'return [];': 1,
+    'if (dirname(at) === at) return [path]; rest.unshift(at.slice(dirname(at).length + 1));': 1,
+    '': 1,
+  },
+  'plugin/opencode/mnema.js': {
+    'return false;': 2,
+    'return path;': 1,
+    'return [path];': 1,
+    'return undefined;': 1,
+    'return true;': 1,
+    'return [];': 1,
+    'if (dirname(at) === at) return [path]; rest.unshift(at.slice(dirname(at).length + 1));': 1,
+    'return;': 2,
+  },
   'packages/action/src/record.ts': {
     'continue;': 2,
     '': 1,
@@ -586,6 +611,18 @@ const FROZEN: Readonly<Record<string, Readonly<Record<string, number>>>> = {
   },
 };
 
+/** Every `.mjs`, `.cjs` and `.js` under the plugin: the hooks and the launchers that run on a person's machine. */
+function pluginScripts(directory: string): string[] {
+  const found: string[] = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name !== 'node_modules') found.push(...pluginScripts(path));
+    } else if (/\.(?:mjs|cjs|js)$/.test(entry.name)) found.push(path);
+  }
+  return found;
+}
+
 function filesRead(): string[] {
   const files: string[] = [];
   for (const entry of readdirSync(join(REPO_ROOT, 'packages'), { withFileTypes: true })) {
@@ -594,9 +631,7 @@ function filesRead(): string[] {
     if (readdirSync(join(REPO_ROOT, 'packages', entry.name)).includes('src'))
       files.push(...sourceFiles(src));
   }
-  for (const name of readdirSync(join(REPO_ROOT, 'plugin', 'hooks'))) {
-    if (name.endsWith('.mjs')) files.push(join(REPO_ROOT, 'plugin', 'hooks', name));
-  }
+  files.push(...pluginScripts(join(REPO_ROOT, 'plugin')));
   return files.sort();
 }
 
@@ -617,6 +652,15 @@ function measured(): Map<string, Map<string, number[]>> {
 
 describe('no new silent catch', () => {
   const now = measured();
+
+  it('reads a body of code at all', () => {
+    const total = [...now.values()].reduce(
+      (sum, bodies) => sum + [...bodies.values()].reduce((n, lines) => n + lines.length, 0),
+      0,
+    );
+    expect(total).toBeGreaterThan(0);
+    expect(filesRead().length).toBeGreaterThan(0);
+  });
 
   it('holds no silent catch the frozen list does not have', () => {
     const newOnes: string[] = [];
@@ -640,7 +684,9 @@ describe('no new silent catch', () => {
     for (const [path, bodies] of Object.entries(FROZEN)) {
       for (const [body, frozen] of Object.entries(bodies)) {
         const held = now.get(path)?.get(body)?.length ?? 0;
-        if (held < frozen) gone.push(`${path} x${frozen - held} catch { ${body} }`);
+        if (held >= frozen) continue;
+        const where = (now.get(path)?.get(body) ?? []).join(', ') || 'nowhere';
+        gone.push(`${path} x${frozen - held} catch { ${body} } (still found at line: ${where})`);
       }
     }
     expect(
