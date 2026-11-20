@@ -51,6 +51,14 @@ In a project inside a git repository it also names each worktree that still hold
 in `.mnema/private/`, where they lived before the private tree moved into the repository's git
 directory: nothing reads them there, and removing that worktree deletes them.
 
+On Windows, in a project, it also checks the record against the 260 characters Windows allows a whole path: the deepest path
+the record holds, and the longest name a witnessed record would add (`tails/<id>/witness/<digest>.sigstore.json`, 190
+characters below the record's folder). Where either passes 260 and git's `core.longpaths` (read with
+`git config --get core.longpaths`) is not true, the line **states** `git config --global core.longpaths true` and says
+the Python reader needs the system's `LongPathsEnabled` (registry key `HKLM\SYSTEM\CurrentControlSet\Control\FileSystem`).
+It never runs the command and never writes git's global configuration, `--fix` included: that configuration is yours.
+Off Windows it says nothing of this.
+
 It also says when the project lacks what `mnema init` leaves beside the record, which is the `.mnema/README.md`, the
 `.mnema/.editorconfig`, or the line `.mnema/` in a `.prettierignore` where prettier is declared. It writes none: each
 finding says to run `mnema init`, which adds exactly that. (`--fix` takes a named target, and these are not among them.)
