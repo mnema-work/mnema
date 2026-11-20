@@ -101,6 +101,7 @@ import {
   type TimelineEntry,
   taskStanding,
   timeline,
+  treeOf,
   type WorkspaceAccountability,
   type WorkspaceAntipatterns,
   type WorkspaceExposure,
@@ -1513,7 +1514,7 @@ export function runBootstrap(session: Session): Bootstrap {
   // the actor LEFT OFF is not: the session's run lives in the project its first write went to,
   // which may be another one of the workspace.
   return {
-    ...bootstrap(sessionCaches(session), asking),
+    ...bootstrap(sessionCaches(session), asking, treeOf(scopedCaches(session))),
     resume: resume(actorCaches(session), asking),
   };
 }

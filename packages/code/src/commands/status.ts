@@ -57,7 +57,13 @@
 
 import { dirname } from 'node:path';
 import { catalogUpcasters, listPrivateKeyFingerprints } from '@mnema/chain';
-import { type Bootstrap, bootstrap, type ReportedRun, resume } from '@mnema/context';
+import {
+  type Bootstrap,
+  bootstrap,
+  type ReportedRun,
+  resume,
+  treeOf,
+} from '@mnema/context';
 import {
   type Clock,
   chainRootForScope,
@@ -252,7 +258,7 @@ export function runStatus(
         actor: anchor,
         asOf: (ctx.clock ?? systemClock)(),
         sessionRuns: [],
-      }),
+      }, treeOf(sources)),
       notInGit: readEventsNotInGit({
         cwd: ctx.cwd,
         env: ctx.env,

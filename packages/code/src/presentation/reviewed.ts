@@ -7,13 +7,16 @@
  * goes through the rule of the line, so a reason with a newline in it is one line here.
  */
 
+import type { Scope } from '@mnema/core';
 import { oneLine } from '../one-line.js';
 import { fact, subjectLine } from './detail.js';
+import { readLabel } from './label.js';
 import type { Line } from './line.js';
 
 /** A decision as the review shows it. */
 export interface Shown {
   readonly adr: string;
+  readonly scope?: Scope;
   readonly id: string;
   readonly title: string;
   readonly rationale: string;
@@ -23,7 +26,7 @@ export interface Shown {
 /** The lines for the decision at `position` of `total`, in the order a person reads them. */
 export function proposalLines(shown: Shown, position: number, total: number): Line[] {
   return [
-    subjectLine(`${shown.adr} (${shown.id})`, `${position} of ${total}`),
+    subjectLine(`${readLabel(shown.adr, shown.scope)} (${shown.id})`, `${position} of ${total}`),
     fact(`Title: ${oneLine(shown.title)}`),
     fact(`Why: ${oneLine(shown.rationale)}`),
     ...(shown.alternatives !== undefined

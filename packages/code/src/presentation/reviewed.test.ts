@@ -33,3 +33,13 @@ describe('what a review shows of a decision', () => {
     );
   });
 });
+
+describe('the label of a decision held outside the public tree', () => {
+  it('carries its tree in the review heading, and the public one stays bare', () => {
+    const heading = (scope?: 'private' | 'global') =>
+      renderPlain(proposalLines({ ...shown, ...(scope !== undefined ? { scope } : {}) }, 1, 1)[0] as never);
+    expect(heading('private')).toContain('ADR-4 (private) (01a15ca7');
+    expect(heading('global')).toContain('ADR-4 (global) (01a15ca7');
+    expect(heading()).toContain('ADR-4 (01a15ca7');
+  });
+});

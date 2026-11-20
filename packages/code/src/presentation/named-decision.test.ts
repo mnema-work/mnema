@@ -32,3 +32,17 @@ describe('namedDecisionText: how a decision named by a link is worded', () => {
     expect(text).toContain('forged');
   });
 });
+
+describe('namedDecisionText: the tree of a decision held outside the public one', () => {
+  const named = { found: true as const, id: 'id-1', adr: 'ADR-3', title: 'Use UTC', state: 'superseded' };
+
+  it('reads the label with its tree, and leaves a public decision bare', () => {
+    expect(namedDecisionText({ ...named, scope: 'private' })).toBe(
+      'ADR-3 (private): Use UTC (superseded)',
+    );
+    expect(namedDecisionText({ ...named, scope: 'global' })).toBe(
+      'ADR-3 (global): Use UTC (superseded)',
+    );
+    expect(namedDecisionText(named)).toBe('ADR-3: Use UTC (superseded)');
+  });
+});

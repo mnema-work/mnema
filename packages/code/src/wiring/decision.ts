@@ -19,6 +19,7 @@ import type { Command } from 'commander';
 import type { runDecisionImport } from '../commands/decision-import.js';
 import type { runDecisionTransition } from '../commands/decision-transition.js';
 import { fact } from '../presentation/detail.js';
+import { readLabel } from '../presentation/label.js';
 import {
   alreadyRecordedLine,
   RECORD_CONTRACT_HELP,
@@ -155,7 +156,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
       return;
     }
     if (result.ok) {
-      io.out(`Recorded decision ${result.adr} (${result.id})`);
+      io.out(`Recorded decision ${readLabel(result.adr, result.scope)} (${result.id})`);
       io.out(stateBesideADecision(writing, given.which, result.id));
       reportRecorded(result, io);
       const text = {
@@ -469,7 +470,7 @@ async function reportDecisionMove(
 ): Promise<void> {
   if (result.ok) {
     const { movedLine } = await import('../moved-record.js');
-    to.io.out(movedLine('decision', result.adr, result.id, result.to));
+    to.io.out(movedLine('decision', readLabel(result.adr, result.scope), result.id, result.to));
     if (result.notice !== undefined) to.io.out(to.render(fact(result.notice)));
     if (result.acceptedByAgent !== undefined) {
       const { acceptedByAnAgent } = await import('../agent-accepts.js');

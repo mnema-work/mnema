@@ -14,6 +14,7 @@
 import type { AcceptState } from '../agent-accepts.js';
 import { agentKeyFromEnvironment, discoveryEnv } from '../env.js';
 import { fact } from '../presentation/detail.js';
+import { readLabel } from '../presentation/label.js';
 import { proposalLines, reviewedSummary } from '../presentation/reviewed.js';
 import { linkBreakNotice } from './integrity.js';
 import { reportRefusal } from './report.js';
@@ -150,7 +151,7 @@ export async function reviewDecisions(wiring: Wiring): Promise<void> {
       },
     );
     if (result.ok) {
-      io.out(movedLine('decision', result.adr, result.id, result.to));
+      io.out(movedLine('decision', readLabel(result.adr, result.scope), result.id, result.to));
       if (verdict.action === 'accept') counts.accepted += 1;
       else counts.rejected += 1;
     } else {

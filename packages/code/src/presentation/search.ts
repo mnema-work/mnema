@@ -47,6 +47,13 @@ export function searchReport(
       ? `${result.hits.length} of ${result.total}`
       : `${result.total}`;
   const lines = [`${shown} record(s)${forTerm}:`];
+  // A CUT LIST SAYS HOW TO REACH THE REST. There is no offset: the way on is a window of dates,
+  // which `--from` and `--to` already are, so the line names them and the number that matched.
+  if (result.total > result.hits.length) {
+    lines.push(
+      `${result.total} matched and ${result.hits.length} are shown; to reach the rest, search a window of dates with --from <iso> and --to <iso>.`,
+    );
+  }
   for (const kind of SEARCH_KINDS) {
     const group = result.hits.filter((hit) => hit.kind === kind);
     if (group.length === 0) continue;
