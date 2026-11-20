@@ -165,7 +165,17 @@ describe('what a write says about where it landed', () => {
 
   it('notices an edit of the common exclude from a linked worktree', async () => {
     git('init', '-q');
-    git('-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-q', '--allow-empty', '-m', 'x');
+    git(
+      '-c',
+      'user.name=t',
+      '-c',
+      'user.email=t@example.com',
+      'commit',
+      '-q',
+      '--allow-empty',
+      '-m',
+      'x',
+    );
     const linked = join(sandbox, 'linked');
     git('worktree', 'add', '-q', linked);
     appendFileSync(join(repo, '.git', 'info', 'exclude'), '\n.mnema/\n');
@@ -196,7 +206,9 @@ describe('what a write says about where it landed', () => {
       if (path === undefined) delete process.env.PATH;
       else process.env.PATH = path;
     }
-    const calls = readFileSync(counted, 'utf-8').split('\n').filter((l) => l !== '').length;
+    const calls = readFileSync(counted, 'utf-8')
+      .split('\n')
+      .filter((l) => l !== '').length;
     expect(calls).toBeLessThanOrEqual(3);
   });
 
