@@ -890,7 +890,7 @@ export const HANDED_OVER: Readonly<
   'docs/reference/cli/usage.md': { line: 4, name: 3 },
   'docs/reference/cli/witness.md': { line: 1, name: 3 },
   'docs/rule-arrival.md': { line: 1 },
-  'docs/rules-and-the-commits-that-cite-them.md': { line: 7, name: 6, flag: 1 },
+  'docs/rules-and-the-commits-that-cite-them.md': { line: 8, name: 6, flag: 1 },
   'docs/site.md': { line: 3, name: 7 },
   'docs/switches.md': { line: 21, name: 5 },
   'docs/switching-off-what-is-handed-to-a-model.md': { line: 1, name: 2 },
