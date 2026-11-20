@@ -82,7 +82,7 @@ describe('the npx recipe runs the page', () => {
   it('packs the package, runs npx in an empty HOME with a trap for a bare mnema, and bounds the run', () => {
     expect(SCRIPT_CODE).toMatch(/pnpm pack --pack-destination/);
     expect(SCRIPT_CODE).toContain('command npx --yes --package');
-    expect(SCRIPT_CODE).toContain('env -i HOME="$home"');
+    expect(SCRIPT_CODE).toContain('HOME="$home" PATH="$work/trap:$PATH"');
     expect(SCRIPT_CODE).toContain('the block called mnema outside npx');
     expect(SCRIPT_CODE).toMatch(/^bound=\d+$/m);
     expect(SCRIPT_CODE).toMatch(/timeout "\$bound"/);
