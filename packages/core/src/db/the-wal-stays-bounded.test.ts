@@ -96,11 +96,19 @@ describe('the log of a cache on disk', () => {
       db.exec(
         'WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c WHERE x < 200000) INSERT INTO t SELECT randomblob(100) FROM c',
       );
-      let spilledTo: string[] = [];
-      if (process.platform === 'linux') {
+      // What SQLite was told, on every platform.
+      const told = db.prepare('PRAGMA temp_store_directory').get() as {
+        temp_store_directory: string;
+      };
+      expect(told.temp_store_directory).toBe(dir);
+      // And where the files really go, where the build of SQLite keeps temporary files on disk at all.
+      db.exec('PRAGMA temp_store = FILE');
+      const onDisk = (db.prepare('PRAGMA temp_store').get() as { temp_store: number }).temp_store === 1;
+      if (process.platform === 'linux' && onDisk) {
         const sorted = db.prepare('SELECT a FROM t ORDER BY a') as unknown as {
           iterate(): Iterable<unknown>;
         };
+        let spilledTo: string[] = [];
         for (const _row of sorted.iterate()) {
           spilledTo = readdirSync('/proc/self/fd')
             .map((fd) => {
