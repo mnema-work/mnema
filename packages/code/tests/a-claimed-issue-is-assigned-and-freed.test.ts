@@ -345,7 +345,13 @@ describe('two claims at once, and a quiet answer', () => {
     const api = racing('second', [older, newer]);
     expect(claim(eventOf(older), api, NOW).action).toBe('assign');
     const writes = api.writes as { write: string; login?: string; body?: string }[];
-    expect(writes.map((w) => w.write)).toEqual(['assign', 'assign', 'unassign', 'comment', 'comment']);
+    expect(writes.map((w) => w.write)).toEqual([
+      'assign',
+      'assign',
+      'unassign',
+      'comment',
+      'comment',
+    ]);
     expect(writes[2]).toEqual({ write: 'unassign', number: 7, login: 'second' });
     expect(writes[3]?.body).toContain('Thanks, @second: someone already holds this issue');
     expect(writes[4]?.body).toContain('This issue is yours');
@@ -446,7 +452,7 @@ describe('two claims at once, and a quiet answer', () => {
     expect(api.writes).toEqual([]);
   });
 
-  it('does not read a stranger\'s copy of the taken marker as an answer already given', () => {
+  it("does not read a stranger's copy of the taken marker as an answer already given", () => {
     const forged = { id: 5, user: { login: 'stranger' }, body: takenMarker('first') };
     const api = fixtureApi(
       { issues: { '7': issueOf(7, ['other']) }, comments: { '7': [forged] } },
