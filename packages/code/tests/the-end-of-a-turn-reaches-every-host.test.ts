@@ -583,13 +583,31 @@ describe('the plugin commands a host runs at the end of a turn', () => {
           .filter((line) => line !== '--identify'),
       ).toEqual([verb]);
       // And Claude Code's own transcript is run in both.
+      // The shipped hooks file passes `--skip vscode` on every Claude Code Stop: the verb must be
+      // handed the verb alone, for the binary refuses an option it does not take.
       const claude = JSON.stringify(payloadOf('claude', aClaudeTranscript()));
-      expect(run(['--skip', 'vscode'], claude, stub().bin).stdout).toContain('counted');
+      rmSync(reading.calls);
+      expect(run(['--skip', 'vscode'], claude, reading.bin).stdout).toContain('counted');
+      expect(
+        readFileSync(reading.calls, 'utf-8')
+          .trim()
+          .split('\n')
+          .filter((line) => line !== '--identify'),
+      ).toEqual([verb]);
     });
 
     it(`${name} hands the verb the host and not the filters, where Cursor says it is there`, () => {
       const { bin, calls } = stub();
-      const own = ['--host', 'cursor', '--where', 'CURSOR_VERSION', '--unless', 'QWEN_PROJECT_DIR'];
+      const own = [
+        '--host',
+        'cursor',
+        '--where',
+        'CURSOR_VERSION',
+        '--unless',
+        'QWEN_PROJECT_DIR',
+        '--skip',
+        'vscode',
+      ];
       const done = handler(name, own, { CURSOR_VERSION: '1' }, bin);
       expect(JSON.parse(done.stdout)).toEqual({ systemMessage: 'counted' });
       const asked = readFileSync(calls, 'utf-8')
