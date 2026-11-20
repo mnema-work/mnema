@@ -31,7 +31,12 @@ import type { DiscoveryEnv } from '@mnema/core';
 import { Command } from 'commander';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { dictatedSentence, ON_A_MESSAGE, runDictated } from '../src/commands/dictated.js';
-import { DICTATED_RULE_SHAPES, dictatedRuleIn, READ_UP_TO } from '../src/dictated-rules.js';
+import {
+  DICTATED_RULE_SHAPES,
+  dictatedRuleIn,
+  READ_UP_TO,
+  withoutDictatedRules,
+} from '../src/dictated-rules.js';
 import { renderPlain } from '../src/presentation/plain.js';
 import { type CliIo, run } from '../src/program.js';
 import { tellsWhatToDo } from '../src/record-framing.js';
