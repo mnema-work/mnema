@@ -14,7 +14,8 @@
  */
 
 import { existsSync } from 'node:fs';
-import { dirname, isAbsolute, join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { dirname, isAbsolute, join, posix, win32 } from 'node:path';
 import type { UpcasterRegistry } from '@mnema/chain';
 import type { RecordedAs } from '@mnema/context';
 import { ADDRESS_RELATIONS, locateLinkScope, type ResolvedTrees, type Scope } from '@mnema/core';
@@ -137,4 +138,32 @@ export function locateLinkAsRecorded(
   // The public tree is searched first, so a `public` answer is the public tree's own.
   const scope = locateLinkScope(trees, { ...edge, target }, upcasters);
   return scope === 'public' ? { scope, target } : undefined;
+}
+
+/**
+ * Whether a target is a path under a temporary folder: `os.tmpdir()`, `/tmp`, `/var/tmp`, `$TMPDIR` and
+ * the Windows `%TEMP%` and `%TMP%`. Such a folder is cleared by a reboot or a cleanup, so a link to a
+ * file there names something that may be gone when a reader follows it. Only an absolute path is asked
+ * (a relative one is read against a folder the link does not say), and a path under the project's own
+ * root never is: a project may live under a temporary folder and its files are its own.
+ *
+ * The comparison is by the text of the path, as `addressLiesOutside` compares: no filesystem is read.
+ */
+export function isUnderATemporaryFolder(
+  target: string,
+  root: string | undefined,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+  tmp: string = tmpdir(),
+): boolean {
+  const flavor = /^[A-Za-z]:[\\/]|^\\\\/u.test(target) ? win32 : posix;
+  if (!flavor.isAbsolute(target)) return false;
+  const under = (path: string, folder: string): boolean => {
+    const into = flavor.relative(flavor.resolve(folder), flavor.resolve(path));
+    return into === '' || (!into.startsWith('..') && !flavor.isAbsolute(into));
+  };
+  if (root !== undefined && flavor.isAbsolute(root) && under(target, root)) return false;
+  const folders = ['/tmp', '/var/tmp', tmp, env.TMPDIR, env.TEMP, env.TMP].filter(
+    (folder): folder is string => folder !== undefined && flavor.isAbsolute(folder),
+  );
+  return folders.some((folder) => under(target, folder));
 }

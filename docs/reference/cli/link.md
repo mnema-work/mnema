@@ -22,6 +22,9 @@ In the help under **Record**.
 | `--which <agent>` | the agent that executed this, when an agent (a script, a CI step) is driving mnema: omit it when you are acting directly. Declared (by this flag, or by MNEMA_AGENT_KEY), never assumed; where that agent’s key signs, the fact names the agent as the record does. It names the executor. See --scope for where the fact lands. A value that names no agent (an unset variable) is refused, never credited to you. |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
+
+A target that is an absolute path under a temporary folder (`os.tmpdir()`, `/tmp`, `/var/tmp`, `$TMPDIR`, or `%TEMP%` on Windows) is recorded, in any tree, and the command then says that a reboot or a cleanup can clear that folder and asks for a copy under the project to be linked instead. A path under the project's own root, a relative path and an id are not warned about. The MCP tool `link_knowledge` says the same.
+
 <!-- End of the part written by hand. -->
 
 ## The whole help
