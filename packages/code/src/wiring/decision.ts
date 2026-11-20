@@ -209,6 +209,8 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
     // the only thing that is one. Each id is moved or refused on its own account, and a refusal
     // does not stop the ones after it (an append-only record cannot take the ones before it
     // back, so stopping would only leave the rest undone for no reason the person gave).
+    const { hostSessionOf } = await import('../host-words.js');
+    const hostSession = hostSessionOf(given.which, process.env);
     let moved = 0;
     for (const id of ids) {
       const result = runDecisionTransition(hereWriting(wiring), {
@@ -219,9 +221,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
         ...(run !== undefined ? { run } : {}),
         atATerminal: io.aPersonIsHere === true,
         viaTheCommandLine: true,
-        ...(process.env.CLAUDE_CODE_SESSION_ID !== undefined
-          ? { hostSession: process.env.CLAUDE_CODE_SESSION_ID }
-          : {}),
+        ...(hostSession !== undefined ? { hostSession } : {}),
       });
       await reportDecisionMove(result, id, wiring);
       if (result.ok) moved += 1;

@@ -30,6 +30,7 @@
  */
 
 import { statSync } from 'node:fs';
+import { HOST_WORDS, hostOfAgent } from './host-words.js';
 import { type WhatThePersonSaid, whatThePersonSaid } from './what-the-session-did.js';
 
 /** The code a refused accept carries. */
@@ -136,11 +137,6 @@ function folded(text: string): string {
  */
 const RECOMMENDED = /\s*\((?:recommended|recomendado)\)\s*/gi;
 
-/** Whether the agent a move declares is Claude Code, in any spelling: case and separators folded. */
-function isClaudeCode(agent: string): boolean {
-  return agent.toLowerCase().replace(/[^a-z0-9]/g, '') === 'claudecode';
-}
-
 /** The passages a note puts between quotation marks that are long enough to be words and not mere assent, folded. */
 export function quotedPassages(note: string): readonly string[] {
   const passages: string[] = [];
@@ -185,13 +181,23 @@ export function whatTheAcceptRestsOn(
   read: ReadsWhatTheyEntered = whatThePersonSaid,
 ): WhatTheAcceptRestsOn | undefined {
   if (move.action !== 'accept' || move.agent === undefined) return undefined;
+  // THE HOST COMES FROM THE NAME THE AGENT DECLARES (`host-words.ts`), and a session id the door
+  // holds with no name any row knows is Claude Code's, the only one whose id the doors read.
+  const host = hostOfAgent(move.agent) ?? (move.hostSession === undefined ? undefined : 'claude');
+  if (host === undefined) {
+    return { outcome: 'not-checked', why: 'no row of the host table knows this agent' };
+  }
+  const row = HOST_WORDS[host];
+  if (!row.reads) {
+    return { outcome: 'not-checked', why: `this host’s words are not readable yet: ${row.why}` };
+  }
   if (move.hostSession === undefined) {
-    if (move.refuseWithoutASession === true && isClaudeCode(move.agent)) {
+    if (move.refuseWithoutASession === true) {
       return {
         outcome: 'waits',
         code: ACCEPT_NEEDS_THE_PERSONS_WORDS,
         message:
-          'this accept declares claude-code and the session id Claude Code gives (`CLAUDE_CODE_SESSION_ID`) is not set, ' +
+          `this accept declares ${move.agent}, a host whose words are read, and the session id it gives (\`${row.sessionEnv ?? 'its session id'}\`) is not set, ` +
           'so the words it rests on cannot be looked for: a person accepts it (`mnema decision review`). ' +
           'The decision stays proposed and was not moved.',
       };

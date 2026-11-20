@@ -17,6 +17,8 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { ListRootsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { isPureAssent, quotedPassages, whatTheAcceptRestsOn } from '../src/agent-accept-words.js';
+import { HOST_NAMES } from '../src/host-names.js';
+import { HOST_WORDS, hostOfAgent, hostSessionOf } from '../src/host-words.js';
 import { buildMcpServer } from '../src/mcp/server.js';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
 import { MNEMA_CLI } from './support/the-cli.js';
@@ -126,6 +128,80 @@ describe('the passages a note quotes', () => {
       'use wal mode for the cache',
       'faz assim e depois isso',
     ]);
+  });
+});
+
+describe('the host table: one row for every host', () => {
+  const spellings = (name: string) => [
+    name,
+    name.toUpperCase(),
+    name.replaceAll('-', '_'),
+    name.replaceAll('-', ''),
+    name
+      .split('-')
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join('-'),
+  ];
+
+  it('has a row for every host the product supports', () => {
+    expect(Object.keys(HOST_WORDS).sort()).toEqual([...HOST_NAMES].sort());
+  });
+
+  for (const host of HOST_NAMES) {
+    const row = HOST_WORDS[host];
+
+    it(`${host}: every name it declares, in any spelling, is that host`, () => {
+      for (const name of row.names) {
+        for (const spelling of spellings(name)) expect(hostOfAgent(spelling), spelling).toBe(host);
+      }
+    });
+
+    it(`${host}: ${row.reads ? 'reads the words and needs its session id' : 'is not readable yet and passes as not checked'}`, () => {
+      writeFileSync(transcript, `${typed('Yes, keep the cache between runs, do it.')}\n`);
+      const note = 'The person said "keep the cache between runs"';
+      for (const name of row.names) {
+        const withSession = whatTheAcceptRestsOn({
+          action: 'accept',
+          agent: name,
+          note,
+          hostSession: SESSION,
+          transcript,
+        });
+        const without = whatTheAcceptRestsOn({
+          action: 'accept',
+          agent: name,
+          note,
+          hostSession: undefined,
+          transcript: undefined,
+          refuseWithoutASession: true,
+        });
+        if (row.reads) {
+          expect(withSession?.outcome, name).toBe('typed');
+          expect(without?.outcome, name).toBe('waits');
+        } else {
+          expect(withSession?.outcome, name).toBe('not-checked');
+          expect(without?.outcome, name).toBe('not-checked');
+          expect(JSON.stringify(without)).toContain('not readable yet');
+        }
+        expect(hostSessionOf(name, { [row.sessionEnv ?? 'NONE']: SESSION })).toBe(
+          row.sessionEnv === undefined ? undefined : SESSION,
+        );
+      }
+    });
+  }
+
+  it('does not know a name no row has, and passes it as not checked', () => {
+    expect(hostOfAgent('a-script')).toBeUndefined();
+    expect(
+      whatTheAcceptRestsOn({
+        action: 'accept',
+        agent: 'a-script',
+        note: 'x',
+        hostSession: undefined,
+        transcript: undefined,
+        refuseWithoutASession: true,
+      })?.outcome,
+    ).toBe('not-checked');
   });
 });
 

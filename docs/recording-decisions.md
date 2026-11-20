@@ -176,7 +176,18 @@ transcript: a line the host marks as typed by a person, and an answer in its que
 reply says whether it was typed words or a chosen option (an option's label is the agent's own text: the choice is the person's). A short option label, under 20 characters, does not count on its own: quote the person's own words then. The agent's mark "(Recommended)" or "(recomendado)" is taken off a label, on both sides, before it is measured or judged for assent.
 Nothing is added to the record, the quotation is not stored, and a line that sits earlier in the same session still counts.
 
-It applies only in Claude Code with the plugin: the `SessionStart` hook leaves the transcript's path beside the session journal
+The words are read for each host as its row says, in one table (`packages/code/src/host-words.ts`, a row for every host; a name is
+compared with case and separators folded, so `claude-code`, `Claude-Code`, `claude_code` and `claudecode` are one host). A row reads
+only where this tree holds the host's conversation format with a fixture; a host's conversation format is never guessed.
+
+| Host | Session id | Words | State |
+|---|---|---|---|
+| Claude Code | `CLAUDE_CODE_SESSION_ID` | read from the transcript its hooks name | read; an accept from the command line with no session id is refused |
+| GitHub Copilot CLI | `COPILOT_AGENT_SESSION_ID` | not readable yet | no conversation format proved here |
+| VS Code's agent, Cursor, Codex, OpenCode, Gemini CLI, Qwen Code, Antigravity, Factory Droid, Goose | none read | not readable yet | no conversation format proved here |
+
+An accept from a host that is not readable yet passes and says the words were not checked, and `mnema audit antipatterns` counts it
+among the agent accepts without the person's words. It applies only in Claude Code with the plugin: the `SessionStart` hook leaves the transcript's path beside the session journal
 (a path, never a word of it; `mnema switch off session-journal` stops it) and the command or the server finds it by the session
 id the host gives (`CLAUDE_CODE_SESSION_ID`). The command with `--which` naming Claude Code (case and separators folded: `claude-code`, `Claude-Code`, `claude_code`, `claudecode`) and no such id is refused the same way and
 writes nothing, so unsetting the variable opens no door. Every other host (any `--which` that is not Claude Code), a session whose hook has not run, and an accept with
