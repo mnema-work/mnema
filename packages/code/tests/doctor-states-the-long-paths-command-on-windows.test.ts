@@ -96,7 +96,11 @@ describe('a path the record already holds', () => {
   it('is measured as it is, past what the witness name would reach', () => {
     const dir = project(5);
     // 14 folders of 20 characters, then a file: well past 260 with the project folder.
-    const deep = join(dir, '.mnema', ...Array.from({ length: 14 }, (_, i) => `d${i}`.padEnd(20, 'x')));
+    const deep = join(
+      dir,
+      '.mnema',
+      ...Array.from({ length: 14 }, (_, i) => `d${i}`.padEnd(20, 'x')),
+    );
     mkdirSync(deep, { recursive: true });
     writeFileSync(join(deep, 'f.jsonl'), '');
     const [line] = said(dir, 'win32', undefined);
