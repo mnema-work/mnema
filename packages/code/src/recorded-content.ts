@@ -165,6 +165,18 @@ export function subjectReachNotice(
   ];
 }
 
+/**
+ * THE WARNING FOR A TARGET UNDER A TEMPORARY FOLDER, in any tree. The edge is written all the same
+ * (the file may be exactly what the person means to cite); this says, at the one moment the link can
+ * still be repeated with a durable target, that a reboot or a cleanup may take the file away.
+ */
+export function temporaryTargetNotice(target: string, temporary: boolean | undefined): string[] {
+  if (temporary !== true) return [];
+  return [
+    `  ${oneLine(target)} is under a temporary folder, which a reboot or a cleanup can clear, so the link may name a file nobody can open later. Copy the file under the project and link that.`,
+  ];
+}
+
 /** The one tree a clone of the repository gets. */
 const TRAVELS: Scope = 'public';
 
