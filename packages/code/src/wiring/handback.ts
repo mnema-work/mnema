@@ -38,8 +38,8 @@ export function registerHandback(program: Command, wiring: Wiring): Declared {
       [
         '',
         'What it reads and what it prints:',
-        '  The JSON a host hands a SubagentStop hook on stdin: Claude Code\'s, Codex\'s, or, with',
-        '  --host copilot, Copilot CLI\'s (under either spelling of its event). A subagent hands the decisions it',
+        "  The JSON a host hands a SubagentStop hook on stdin: Claude Code's, Codex's, or, with",
+        "  --host copilot, Copilot CLI's (under either spelling of its event). A subagent hands the decisions it",
         '  settled back in its final reply, in one fenced block whose info string is',
         '  `mnema-handback`, holding {"decisions":[{"settled","why","turnedDown"}]}, the list',
         '  empty where it settled nothing. On stdout, the reply the host reads: a block decision',
@@ -59,7 +59,10 @@ export function registerHandback(program: Command, wiring: Wiring): Declared {
       }
       const { fact } = await import('../presentation/detail.js');
       const payload = io.input === undefined ? '' : await io.input();
-      const done = runHandback(here(), { payload, ...(options.host === undefined ? {} : { host: options.host }) });
+      const done = runHandback(here(), {
+        payload,
+        ...(options.host === undefined ? {} : { host: options.host }),
+      });
       for (const note of done.notes) io.err(render(fact(note, 0)));
       io.out(JSON.stringify(done.reply));
     });

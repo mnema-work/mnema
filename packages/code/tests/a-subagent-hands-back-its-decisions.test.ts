@@ -509,8 +509,12 @@ describe('what each host that documents a subagent stop hands the verb', () => {
   it('Codex: the documented payload sends a reply with no block back, once', () => {
     const sent = answerFor('codex', codexPayload('Analysis complete.'));
     expect(sent.reply['decision']).toBe('block');
-    expect(String(sent.reply['reason'])).toContain('it has no block whose info string is mnema-handback');
-    expect(answerFor('codex', codexPayload('Analysis complete.', { stop_hook_active: true })).reply).toEqual({});
+    expect(String(sent.reply['reason'])).toContain(
+      'it has no block whose info string is mnema-handback',
+    );
+    expect(
+      answerFor('codex', codexPayload('Analysis complete.', { stop_hook_active: true })).reply,
+    ).toEqual({});
     expect(answerFor('codex', codexPayload(`Done.\n${block(ONE)}`)).reply).toEqual({});
   });
 
@@ -554,7 +558,9 @@ describe('what each host that documents a subagent stop hands the verb', () => {
     >[1]);
     await program.parseAsync(['handback', '--host', 'copilot'], { from: 'user' });
     expect(seen.out.map((line) => JSON.parse(line).decision)).toEqual(['block']);
-    await expect(program.parseAsync(['handback', '--host', 'gemini'], { from: 'user' })).rejects.toThrow();
+    await expect(
+      program.parseAsync(['handback', '--host', 'gemini'], { from: 'user' }),
+    ).rejects.toThrow();
   });
 });
 
@@ -596,7 +602,9 @@ describe('the plugin command on Codex and Copilot CLI', () => {
   it('writes nothing for a reply in the format, and Claude Code still exits 2', () => {
     for (const name of ['codex', 'copilot']) {
       const quiet = hostRun(
-        name === 'codex' ? codexPayload(`Done.\n${block(ONE)}`) : copilotPayload(`Done.\n${block(ONE)}`),
+        name === 'codex'
+          ? codexPayload(`Done.\n${block(ONE)}`)
+          : copilotPayload(`Done.\n${block(ONE)}`),
         '--host',
         name,
       );
@@ -617,7 +625,9 @@ describe('the hooks files of the hosts that read them', () => {
       ['codex.json', 'codex'],
       ['copilot.json', 'copilot'],
     ] as const) {
-      const commands = (read(file).hooks['SubagentStop'] ?? []).flatMap((g) => g.hooks.map((h) => h.command));
+      const commands = (read(file).hooks['SubagentStop'] ?? []).flatMap((g) =>
+        g.hooks.map((h) => h.command),
+      );
       expect(commands, file).toHaveLength(1);
       expect(commands[0], file).toContain('subagent-stop.mjs');
       expect(commands[0], file).toContain(`--host ${name}`);
