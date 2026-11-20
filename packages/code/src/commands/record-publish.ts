@@ -132,8 +132,12 @@ export function destinationOf(
 ): { readonly remote: string; readonly branch: string } | undefined {
   const named = [...remotes]
     .sort((a, b) => b.length - a.length)
-    .find((remote) => destination.startsWith(`${remote}/`) && destination.length > remote.length + 1);
-  return named === undefined ? undefined : { remote: named, branch: destination.slice(named.length + 1) };
+    .find(
+      (remote) => destination.startsWith(`${remote}/`) && destination.length > remote.length + 1,
+    );
+  return named === undefined
+    ? undefined
+    : { remote: named, branch: destination.slice(named.length + 1) };
 }
 
 /** The `owner/name` of a remote's address when it is GitHub's; undefined for any other host. */

@@ -81,12 +81,12 @@ describe('what the table says', () => {
     expect(flipCommand('edit-first-write-gate')).toBe('mnema switch on edit-first-write-gate');
     expect(flipCommand('user-corrections')).toBe('mnema switch on user-corrections');
     expect(flipCommand('brief-document')).toBe('mnema switch off brief-document');
-    expect(STARTS_OFF).toEqual(['edit-first-write-gate', 'user-corrections']);
+    expect(STARTS_OFF).toEqual(['edit-first-write-gate', 'user-corrections', 'record-publish']);
   });
 
   it('names the channels that begin off, in the sentence of the plugin page', () => {
     expect(offSentence()).toBe(
-      'All are on to begin with but two: `edit-first-write-gate` and `user-corrections`, below, are off until you switch them on.',
+      'All are on to begin with but three: `edit-first-write-gate`, `user-corrections` and `record-publish`, below, are off until you switch them on.',
     );
   });
 });

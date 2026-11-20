@@ -19,7 +19,7 @@ $ mnema init
 |   where no `CLAUDE.md` exists):
 |     @MNEMA.md
 |
-|   Off until switched on: edit-first-write-gate, user-corrections.
+|   Off until switched on: edit-first-write-gate, user-corrections, record-publish.
 |   Turn one on with `mnema switch on <name>`; `mnema switch` lists every channel.
 |   Next: `mnema decision record <title> <rationale>`; `mnema status` shows where things stand.
 $ mnema init
@@ -255,7 +255,7 @@ $ mnema tail prune <backup-key-fingerprint> --reason 'the key that never wrote a
 
 ### switching what the product pushes
 $ mnema switch
-| 19 channel(s), looked in public, private, global:
+| 20 channel(s), looked in public, private, global:
 |   brief-document         on   the document `mnema brief` prints, which a session opens with and a subagent starts with: the decisions in force and the adopted patterns of the committed record, by name
 |   recall-document        on   the notes `mnema recall` prints, which a session opens with: the memories and observations recorded for this project, from every tree this machine holds for it, the ones near what the session touches first
 |   edit-rules-push        on   the rules addressed at a file, handed over at each edit of it, beside the result of that write
@@ -275,13 +275,14 @@ $ mnema switch
 |   session-journal        on   the session journal: with it off, no file is kept of what a session did with the record, and nothing can say, to a later session, to a compaction or on the run that closes, what this one did. The journal is a file on this machine, outside the record, holding ids and counts and none of the session’s words
 |   agent-mirror           on   the mirror of what a session hands to other agents: with it on, a `PostToolUse` hook on the host’s `Agent` tool records a private task for the session and a private handoff for each dispatch (its short description and the path of a brief file, never the prompt), leaves out a dispatch whose prompt cites a place in another repository and none in this project (only absolute, `~/`, `./` and `../` paths count, and a place in no repository counts for neither), and the session’s end closes the task with the count. It needs `session-journal` on, and records nothing to the tree a clone gets
 |   session-tally          on   the line a session’s `Stop` hook prints: how many files its own tool calls wrote and how many decisions were recorded since it opened, and how many events of the record are in no git commit yet, and, on a second line, how many of those decisions still await a person
+|   record-publish         off  the verb `mnema record publish`, which pushes the branch `mnema record commit` makes and opens its pull request on GitHub, to a destination the person names, one pull request at a time. Off until switched on, and read from this machine’s own trees only: a switch recorded in the tree a clone gets does not turn it on  ·  off until switched on: `mnema switch on record-publish`
 $ mnema switch off edit-rules-push --reason 'noisy while porting'
 | Switched edit-rules-push off
 |   Landed in the public tree: a folder of this project, not committed (there is no git here); it travels only as the project's files are copied.
 |   edit-rules-push is now OFF: nothing of it reaches a model. The switch that decides it was made by <anchor-short> at <at:01>.
 |   Nothing was removed and nothing else stopped: the record still holds what it held, and every read and tool still answers whoever asks. What stops is this product putting it in front of a model unasked.
 $ mnema switch
-| 19 channel(s), looked in public, private, global:
+| 20 channel(s), looked in public, private, global:
 |   brief-document         on   the document `mnema brief` prints, which a session opens with and a subagent starts with: the decisions in force and the adopted patterns of the committed record, by name
 |   recall-document        on   the notes `mnema recall` prints, which a session opens with: the memories and observations recorded for this project, from every tree this machine holds for it, the ones near what the session touches first
 |   edit-rules-push        off  the rules addressed at a file, handed over at each edit of it, beside the result of that write  ·  switched off by <anchor-short>  <at:01>  reason: noisy while porting  `mnema switch on edit-rules-push` turns it on
@@ -301,6 +302,7 @@ $ mnema switch
 |   session-journal        on   the session journal: with it off, no file is kept of what a session did with the record, and nothing can say, to a later session, to a compaction or on the run that closes, what this one did. The journal is a file on this machine, outside the record, holding ids and counts and none of the session’s words
 |   agent-mirror           on   the mirror of what a session hands to other agents: with it on, a `PostToolUse` hook on the host’s `Agent` tool records a private task for the session and a private handoff for each dispatch (its short description and the path of a brief file, never the prompt), leaves out a dispatch whose prompt cites a place in another repository and none in this project (only absolute, `~/`, `./` and `../` paths count, and a place in no repository counts for neither), and the session’s end closes the task with the count. It needs `session-journal` on, and records nothing to the tree a clone gets
 |   session-tally          on   the line a session’s `Stop` hook prints: how many files its own tool calls wrote and how many decisions were recorded since it opened, and how many events of the record are in no git commit yet, and, on a second line, how many of those decisions still await a person
+|   record-publish         off  the verb `mnema record publish`, which pushes the branch `mnema record commit` makes and opens its pull request on GitHub, to a destination the person names, one pull request at a time. Off until switched on, and read from this machine’s own trees only: a switch recorded in the tree a clone gets does not turn it on  ·  off until switched on: `mnema switch on record-publish`
 $ mnema switch on edit-rules-push
 | Switched edit-rules-push on
 |   Landed in the public tree: a folder of this project, not committed (there is no git here); it travels only as the project's files are copied.
@@ -435,6 +437,6 @@ $ mnema init
 |   where no `CLAUDE.md` exists):
 |     @MNEMA.md
 |
-|   Off until switched on: edit-first-write-gate, user-corrections.
+|   Off until switched on: edit-first-write-gate, user-corrections, record-publish.
 |   Turn one on with `mnema switch on <name>`; `mnema switch` lists every channel.
 |   Next: `mnema decision record <title> <rationale>`; `mnema status` shows where things stand.
