@@ -211,6 +211,7 @@ const DECLARED_TWICE: Readonly<Record<string, Reading>> = {
   'skill create --allow-private-pattern': 'where it was written',
   'skill create --scope': 'where it was written',
   'skill create --which': 'where it was written',
+  'decision import --allow-private-pattern': 'where it was written',
   'decision import --scope': 'where it was written',
   'decision import --which': 'where it was written',
   'witness sigstore --global': 'where it was written',
