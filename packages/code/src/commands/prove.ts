@@ -130,7 +130,9 @@ export function runProveCheck(file: string): ProveChecked {
 export function writeProofFile(
   file: string,
   text: string,
-): { readonly ok: true } | { readonly ok: false; readonly reason: 'PROOF_NOT_WRITTEN'; readonly message: string } {
+):
+  | { readonly ok: true }
+  | { readonly ok: false; readonly reason: 'PROOF_NOT_WRITTEN'; readonly message: string } {
   try {
     writeFileSync(file, text, { flag: 'wx' });
     return { ok: true };
