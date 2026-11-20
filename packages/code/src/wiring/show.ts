@@ -10,6 +10,8 @@
 
 import type { Command } from 'commander';
 import { here } from './context.js';
+import { fact } from '../presentation/detail.js';
+import { oneLine } from '../one-line.js';
 import { writeLines } from './io.js';
 import { noSuchRecord } from './no-such-record.js';
 import { idOrRefuse, reportRefusal } from './report.js';
@@ -45,6 +47,18 @@ export function registerShow(program: Command, wiring: Wiring): Declared {
       // The same stream and the same place, for a fact about the record the answer hides:
       // the projection below keeps the last move, and this says there was another.
       for (const line of divergenceNotice(result.divergent)) io.err(render(line));
+      // A label two trees carry: the one served is named, and the other, so the choice is seen.
+      if (result.sameLabel !== undefined) {
+        const { typed, served, others } = result.sameLabel;
+        const also = others.map((other) => `${other.scope} tree (${other.id})`).join(' and the ');
+        io.err(
+          render(
+            fact(
+              `${oneLine(typed)} is carried by two records: this one, in the ${served.scope} tree (${served.id}), and the ${also}. Use the id to read the other.`,
+            ),
+          ),
+        );
+      }
       // And the lines a newer mnema wrote about this record, which this one does not apply.
       for (const line of newerLinesNotice(result.newerLines, 'one record')) io.err(render(line));
       if (opts.json === true) {

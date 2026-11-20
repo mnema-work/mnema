@@ -37,7 +37,7 @@ import { ADDRESS_RELATIONS, RECOMMENDED_LINK_RELATIONS } from '@mnema/chain';
 import type { AddressReach } from '@mnema/context';
 import type { ReplacedClass, Scope } from '@mnema/core';
 import { EMAIL_PLACEHOLDER, FIELD_BYTE_LIMIT, secretPlaceholder } from '@mnema/core';
-import { inAWorkTree } from './git-log.js';
+import { git, inAWorkTree } from './git-log.js';
 import { oneLine } from './one-line.js';
 
 /**
@@ -205,6 +205,22 @@ function placeholderOf(replaced: ReplacedClass): string {
 const LANDED_PUBLIC_WITHOUT_GIT =
   "  Landed in the public tree: a folder of this project, not committed (there is no git here); it travels only as the project's files are copied.";
 
+/** What the public tree is when git excludes it and tracks nothing under it: a record local to this machine. */
+const LANDED_PUBLIC_LOCAL =
+  "  Landed in the public tree: git ignores .mnema/ here and tracks nothing under it, so it stays on this machine and no clone gets it.";
+
+/**
+ * Whether the project's public tree is local: git excludes `.mnema` at the repository's top AND
+ * tracks no file under it. Read off the disk, inline; when git does not answer it is NOT local, so
+ * the sentence that promises less is never said by mistake (the committed one is the default).
+ */
+function publicTreeIsLocal(project: string): boolean {
+  const top = git(project, ['rev-parse', '--show-toplevel'])?.trim();
+  if (top === undefined || top === '') return false;
+  if (git(top, ['check-ignore', '-q', '--', '.mnema']) === null) return false;
+  return git(top, ['ls-files', '--', '.mnema'])?.trim() === '';
+}
+
 /**
  * WHERE the write landed, as the line that follows every confirmation.
  *
@@ -233,6 +249,7 @@ export function landedNotice(scope: Scope, project?: string): string {
       // the project's files are copied. Asked of the project the write fell in; with none named,
       // the sentence is the one a repository earns.
       if (project !== undefined && !inAWorkTree(project)) return LANDED_PUBLIC_WITHOUT_GIT;
+      if (project !== undefined && publicTreeIsLocal(project)) return LANDED_PUBLIC_LOCAL;
       return '  Landed in the public tree: committed with the repository, so it reaches every clone.';
     case 'private':
       return "  Landed in the private tree: this machine's own; it is not committed and does not travel.";

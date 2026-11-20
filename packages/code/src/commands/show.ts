@@ -128,6 +128,12 @@ export interface ShowDone {
    * them. Absent when no such line names it, which is every record this version wrote.
    */
   readonly newerLines?: NewerLines;
+  /** When the word typed is a label two trees both carry: the record served, and the other one. */
+  readonly sameLabel?: {
+    readonly typed: string;
+    readonly served: { readonly scope: Scope; readonly id: string };
+    readonly others: readonly { readonly scope: Scope; readonly id: string }[];
+  };
 }
 
 /** No visible tree holds a record with this id. */
@@ -183,6 +189,7 @@ export function runShow(ctx: ShowContext, input: { id: string }): ShowDone | Sho
         readRecord([holder, ...opened.filter((source) => source !== holder)], input.id) ?? found;
     }
     const id = found.id;
+    const sameLabel = sameLabelIn(input.id, found, SCOPES[next - 1] as Scope, open);
     // Over EVERY tree the project holds, as `read_record` counts them: the lines a newer mnema
     // wrote about this record may be in a tree this read stopped short of, and the two doors say
     // one number. It opens the trees left shut (a replay each) only when a record is served.
@@ -212,6 +219,7 @@ export function runShow(ctx: ShowContext, input: { id: string }): ShowDone | Sho
         linkBreaks: linkBreaksOf(opened, THE_READING_THAT_OPENED_THESE),
         divergent,
         ...newer(),
+        ...sameLabel,
         ...(attested.recordedBy === true || attested.acceptedBy === true ? { attested } : {}),
         ...(unannounced.recordedBy === true || unannounced.acceptedBy === true
           ? { unannounced }
@@ -227,6 +235,7 @@ export function runShow(ctx: ShowContext, input: { id: string }): ShowDone | Sho
       linkBreaks: linkBreaksOf(opened, THE_READING_THAT_OPENED_THESE),
       divergent,
       ...newer(),
+      ...sameLabel,
       ...(found.kind === 'skill'
         ? { consultations: consultationsByRun(opened).get(found.id) ?? 0 }
         : {}),
@@ -239,6 +248,30 @@ export function runShow(ctx: ShowContext, input: { id: string }): ShowDone | Sho
  * section 6.9): the event that recorded it, and the event that ruled it accepted (the latest).
  * It reads the envelopes of the events this tree already indexes, and only in a tree with a mark.
  */
+/**
+ * A label (`ADR-1`) is numbered inside one tree, so two trees can each carry it. The read stops at the
+ * first tree that holds it, which is the right answer to serve; what it must not do is say nothing
+ * about the other one, so the trees after the holder are asked for the same word, and the ones that
+ * answer with another record are named.
+ */
+function sameLabelIn(
+  typed: string,
+  served: RecordBody,
+  heldIn: Scope,
+  open: (scope: Scope) => ScopedCache | undefined,
+): { sameLabel?: NonNullable<ShowDone['sameLabel']> } {
+  if (typed === served.id) return {};
+  const others: { scope: Scope; id: string }[] = [];
+  for (const scope of SCOPES.slice(SCOPES.indexOf(heldIn) + 1)) {
+    const source = open(scope);
+    const other = source === undefined ? null : readRecord([source], typed);
+    if (other !== null && other.id !== served.id) others.push({ scope, id: other.id });
+  }
+  return others.length === 0
+    ? {}
+    : { sameLabel: { typed, served: { scope: heldIn, id: served.id }, others } };
+}
+
 function unannouncedActors(
   holder: ScopedCache,
   body: RecordBody,
