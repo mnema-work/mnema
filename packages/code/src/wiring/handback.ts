@@ -49,6 +49,8 @@ export function registerHandback(program: Command, wiring: Wiring): Declared {
         '  is the second one, so there the check is not once per stop.',
         '  It reads, and writes nothing. It can be switched off with',
         '  `mnema switch off subagent-handback`.',
+        '  With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its',
+        '  code alone on the first line of the error stream; typed by a person, nothing changes.',
       ].join('\n'),
     )
     .action(async (options: { readonly schema?: boolean; readonly host?: HandbackHost }) => {
