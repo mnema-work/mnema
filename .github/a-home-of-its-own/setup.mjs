@@ -66,7 +66,7 @@ import { randomUUID } from 'node:crypto';
 import { lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { createRequire, syncBuiltinESMExports } from 'node:module';
 import { tmpdir, userInfo } from 'node:os';
-import { basename, dirname, isAbsolute, join, resolve, sep } from 'node:path';
+import { basename, delimiter, dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
 import { afterAll, afterEach, expect } from 'vitest';
 
@@ -122,7 +122,12 @@ process.on('exit', () => rmSync(CACHE_OF_ITS_OWN, { recursive: true, force: true
  * in the core, with the path and the stack of the caller (`refuseOutsideTheTestRoot`).
  */
 export const THE_TEST_ROOT = realpathSync.native(tmpdir());
-process.env.MNEMA_REFUSE_TREES_OUTSIDE = THE_TEST_ROOT;
+// A runner's own temp (`RUNNER_TEMP`) is a temp too: the action's cases make their sandboxes there.
+const runnerTemp = process.env.RUNNER_TEMP;
+process.env.MNEMA_REFUSE_TREES_OUTSIDE =
+  runnerTemp !== undefined && runnerTemp !== '' && isAbsolute(runnerTemp)
+    ? [THE_TEST_ROOT, runnerTemp].join(delimiter)
+    : THE_TEST_ROOT;
 // The agent a shell asked the verbs that write to sign as would change every one of them: a case
 // that wants it writes it.
 delete process.env.MNEMA_AGENT_KEY;

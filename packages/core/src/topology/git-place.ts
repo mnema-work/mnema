@@ -19,13 +19,13 @@
  */
 
 import { readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
-import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { delimiter, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 /** The folder of mnema's own in a repository's git directory. */
 export const IN_GIT_DIR = 'mnema';
 
 /**
- * The test switch: when this variable names a directory, resolving a record tree or a repository
+ * The test switch: when this variable names a directory (or several, separated as a PATH is), resolving a record tree or a repository
  * outside it throws ({@link refuseOutsideTheTestRoot}). Only the test setup sets it; the product
  * never reads it for anything else.
  */
@@ -38,10 +38,16 @@ export const REFUSE_TREES_OUTSIDE = 'MNEMA_REFUSE_TREES_OUTSIDE';
  * rebuild the cache of, a record somebody is using.
  */
 export function refuseOutsideTheTestRoot(path: string, what: string): void {
-  const root = process.env[REFUSE_TREES_OUTSIDE];
-  if (root === undefined || root === '') return;
+  const named = process.env[REFUSE_TREES_OUTSIDE];
+  if (named === undefined || named === '') return;
+  // More than one directory may be named, separated as a PATH is (`path.delimiter`).
+  const root = named;
   const spelled = [path, realOrUndefined(path)].filter((each) => each !== undefined);
-  const roots = [root, realOrUndefined(root)].filter((each) => each !== undefined);
+  const roots = named
+    .split(delimiter)
+    .filter((each) => each !== '')
+    .flatMap((each) => [each, realOrUndefined(each)])
+    .filter((each) => each !== undefined);
   if (spelled.some((each) => roots.some((inRoot) => isWithin(each, inRoot)))) return;
   throw new Error(
     `A test resolved ${what} ${path}, outside the temporary root ${root} (${REFUSE_TREES_OUTSIDE}). ` +

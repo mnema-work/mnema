@@ -1,6 +1,6 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { delimiter, dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   gitPlaceOf,
@@ -211,6 +211,19 @@ describe('the test switch: a tree outside the temporary root is refused', () => 
       expect(() => gitPlaceOf(join(sandbox, 'checkout'))).toThrow(/the git directory .*common/);
     } finally {
       rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
+  it('several roots may be named, separated as a PATH is, and a tree under any one of them is read', () => {
+    const other = mkdtempSync(join(tmpdir(), 'mnema-git-place-other-'));
+    try {
+      aGitDir(join(other, 'repo', '.git'));
+      aGitDir(join(sandbox, 'repo', '.git'));
+      process.env.MNEMA_REFUSE_TREES_OUTSIDE = [join(sandbox, 'elsewhere'), other].join(delimiter);
+      expect(gitPlaceOf(join(other, 'repo'))?.top).toBe(join(other, 'repo'));
+      expect(() => gitPlaceOf(join(sandbox, 'repo'))).toThrow(/outside the temporary root/);
+    } finally {
+      rmSync(other, { recursive: true, force: true });
     }
   });
 
