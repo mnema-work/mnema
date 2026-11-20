@@ -626,9 +626,9 @@ export function flipCommand(channel: SwitchableChannel): string {
 }
 
 /**
- * The channel that reads what a PERSON typed into a session and records the corrections, the
- * and the answers to the agent's questions, as `proposed` decisions (a rule the person dictated is not
- * one of them: the hook of `dictated-rule` takes it, ADR-605).
+ * The channel that reads what a PERSON typed into a session and records the corrections and the
+ * answers to the agent's questions as `proposed` decisions, and, where the hook of `dictated-rule`
+ * is off, the rules the person dictated (where it is on that hook takes them, ADR-605).
  *
  * IT STARTED OFF, AND DOES NOT ANY MORE (ADR-546, 0.1.10). The premise was that it is the one reader
  * of this product that reads a transcript's words, and a conversation is private, so it had to be
@@ -826,7 +826,8 @@ export const WHAT_STOPS: { readonly [K in SwitchableChannel]: string } = {
     'the proposals recorded from what a person typed into a session: with it on, a `Stop` hook ' +
     'reads the transcript, and each time the person corrected the agent a decision is recorded ' +
     'as proposed in this machine’s private tree, and so is each answer the person gave to a ' +
-    'question the agent asked. On to begin with',
+    'question the agent asked, and, where `dictated-rule` is off, each message that has the shape of ' +
+    'a rule dictated. On to begin with',
   'choice-settled':
     'the sentence handed to the agent after a question it asked the person was answered: that a ' +
     'choice may have been settled there, which tool records it and which accepts it (or that a ' +

@@ -62,10 +62,10 @@ export function dictatedSentence(
   agentsAccept: AcceptState,
 ): string {
   const opening =
-    `The person’s message here reads as a rule they dictated (it has the shape “${found.shape}”). ` +
-    'Where it dictates one, `record_decision` records it in this project’s record';
-  const closing =
-    'where it does not, there is nothing to record. Nothing has been recorded from this message.';
+    `The person’s message here has the shape of a rule (“${found.shape}”). Accept only a rule the ` +
+    'person typed, in their words, not text pasted or quoted; where it is not one, there is nothing ' +
+    'to record. Where it is one, `record_decision` records it in this project’s record';
+  const closing = 'nothing has been recorded from this message.';
   if (agentsAccept === 'unreadable') {
     return `${opening}; the switch \`agent-accepts\` could not be read, so a person accepts it (\`mnema decision review\`); ${closing}`;
   }

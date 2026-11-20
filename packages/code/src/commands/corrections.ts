@@ -30,6 +30,7 @@
 
 import { channelIsOn } from '@mnema/context';
 import { type DiscoveryEnv, resolveTrees, scrubEmails } from '@mnema/core';
+import { DICTATED_RULE_SHAPES } from '../dictated-rules.js';
 import { DICTATED_RULE_CHANNEL, STARTS_OFF, USER_CORRECTIONS_CHANNEL } from '../record-framing.js';
 import { withScopedCaches } from '../tree-sources.js';
 import { ANSWER_TO_A_QUESTION, type Correction, correctionsIn } from '../user-corrections.js';
@@ -76,6 +77,10 @@ function silent(notes: readonly string[] = []): CorrectionsDone {
 /** Whether a finding is an answer to the agent's question rather than a correction. */
 const isAnAnswer = (correction: Correction): boolean => correction.shape === ANSWER_TO_A_QUESTION;
 
+/** Whether a finding is a rule the person dictated: the shape is a line of the table that finds those. */
+const isADictatedRule = (correction: Correction): boolean =>
+  DICTATED_RULE_SHAPES.some((shape) => shape.name === correction.shape);
+
 /**
  * The title a proposal is given: the opening of what the person said, cut on one line.
  *
@@ -89,7 +94,12 @@ function titleOf(correction: Correction): string {
     sentence.length <= TITLE_LENGTH
       ? sentence
       : `${sentence.slice(0, TITLE_LENGTH - 1).trimEnd()}…`;
-  return `${isAnAnswer(correction) ? 'Answer' : 'Correction'}: ${cut}`;
+  const kind = isAnAnswer(correction)
+    ? 'Answer'
+    : isADictatedRule(correction)
+      ? 'Rule'
+      : 'Correction';
+  return `${kind}: ${cut}`;
 }
 
 /** The reason a proposal carries: what was said, the shape it matched, where it is from. */
@@ -144,6 +154,7 @@ export function runCorrections(
   const notes: string[] = [];
   const adrs: string[] = [];
   let answers = 0;
+  let rules = 0;
   for (const one of candidates.slice(0, MOST_PER_STOP)) {
     const done = runDecision(ctx, {
       title: titleOf(one),
@@ -155,6 +166,7 @@ export function runCorrections(
     if (done.ok) {
       adrs.push(done.adr);
       if (isAnAnswer(one)) answers += 1;
+      else if (isADictatedRule(one)) rules += 1;
     } else {
       notes.push(
         `The correction at line ${one.line} was not recorded: ${done.reason === 'REFUSED' ? done.message : done.reason}`,
@@ -164,7 +176,8 @@ export function runCorrections(
   if (adrs.length === 0) return silent(notes);
   const n = adrs.length;
   const what = [
-    ...counted(n - answers, 'correction', 'corrections', 'the person made'),
+    ...counted(n - answers - rules, 'correction', 'corrections', 'the person made'),
+    ...counted(rules, 'rule', 'rules', 'the person dictated'),
     ...counted(answers, 'answer', 'answers', 'the person gave to a question of the agent'),
   ].join(' and ');
   return {

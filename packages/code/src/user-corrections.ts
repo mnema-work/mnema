@@ -17,12 +17,22 @@
  *
  * IT LOOKS AT THE OPENING OF A PROMPT ONLY: its first {@link OPENING} characters, because a
  * correction is said first, and a long prompt that mentions "wrong" in its fifth paragraph is
- * about something else. A message that has the shape of a rule dictated (`dictated-rules.ts`) is
- * skipped where asked (`skipWhatIsDictated`): the hook of `mnema dictated` took it, and a rule dictated
- * is one record, not that decision and a proposal besides (`a-correction-becomes-a-proposal.test.ts`).
+ * about something else. The one other thing it finds is a RULE DICTATED, by the table of
+ * `dictated-rules.ts` (which reads further, as a rule can follow a first sentence), tried when no
+ * opening corrects and only where the hook of `mnema dictated` is off: where it speaks, the sentence
+ * that has the shape of a rule is taken out of the message (`skipWhatIsDictated`) and the rest is read
+ * for a correction, so a rule dictated is one record and not that decision and a proposal besides
+ * (`a-correction-becomes-a-proposal.test.ts`).
+ *
+ * AN ANSWER TO THE AGENT'S QUESTION IS TAKEN WHATEVER ITS SHAPE ({@link ANSWER_TO_A_QUESTION}):
+ * the agent asked because a choice was open, and the person's answer is the one who ruled it
+ * ruling. It is quoted with the question it answers, because "yes" alone says nothing, and it is a
+ * proposal like the rest. AN ANSWER THAT ONLY ASSENTS IS NOT ONE ({@link ONLY_ASSENTS}): "yes", "ok",
+ * "go ahead" or "pode" after a question of confirmation carries no choice of the person's, and a
+ * proposal from it would be noise for the person who rules on the list.
  */
 
-import { dictatedRuleIn } from './dictated-rules.js';
+import { dictatedRuleIn, withoutDictatedRules } from './dictated-rules.js';
 import type { WhatThePersonSaid } from './what-the-session-did.js';
 
 /** How much of a prompt is read for an opening, and the most of it that is ever quoted. */
@@ -112,13 +122,28 @@ export function correctionsIn(
       });
       continue;
     }
-    // ONE RECORD FOR A RULE DICTATED (ADR-605): a message the hook of `mnema dictated` already took
-    // (the same table, `dictated-rules.ts`) is the agent's to record and accept, so it is not also a
-    // proposal here. Asked only where that hook speaks (its channel is on).
-    if (options.skipWhatIsDictated === true && dictatedRuleIn(one.text) !== undefined) continue;
-    const sentence = openingOf(one.text);
+    // ONE RECORD FOR A RULE DICTATED (ADR-605): where the hook of `mnema dictated` speaks (its channel
+    // is on) the sentence that has the shape of a rule is the agent's to record and accept, so it is
+    // taken out of what is read here, and what is left of the same message (a correction that came
+    // before the rule) is read as it always was.
+    const text = options.skipWhatIsDictated === true ? withoutDictatedRules(one.text) : one.text;
+    const sentence = openingOf(text);
     const shape = CORRECTION_SHAPES.find((candidate) => candidate.pattern.test(sentence));
-    if (shape === undefined) continue;
+    if (shape === undefined) {
+      // WHERE THAT HOOK IS OFF the rule is a proposal of this reader (ADR-546: the corrections reader
+      // "with these patterns added"), found by the same table and named by the shape's label.
+      const dictated = options.skipWhatIsDictated === true ? undefined : dictatedRuleIn(one.text);
+      if (dictated !== undefined) {
+        found.push({
+          line: one.line,
+          uuid: one.uuid,
+          session: one.session,
+          shape: dictated.shape,
+          sentence: dictated.sentence.slice(0, OPENING),
+        });
+      }
+      continue;
+    }
     found.push({
       line: one.line,
       uuid: one.uuid,

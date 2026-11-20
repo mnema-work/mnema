@@ -245,6 +245,45 @@ describe('mnema corrections', () => {
     expect(decisionsIn('projectPublic')).toHaveLength(0);
   });
 
+  it('keeps the correction of a message that also dictates a rule, and leaves only the rule', () => {
+    const file = transcript([
+      typed('Fix it'),
+      assistant(),
+      typed('No, wrong file. From now on, ask before deleting.'),
+      assistant(),
+    ]);
+    expect(answer(payload('Stop', file)).reply).toHaveProperty('systemMessage');
+    const proposals = decisionsIn('projectPrivate');
+    expect(proposals).toHaveLength(1);
+    expect(proposals[0]?.payload.title).toBe('Correction: No, wrong file.');
+    expect(proposals[0]?.payload.rationale).not.toContain('ask before deleting');
+  });
+
+  it('records a rule the person dictated as a proposal where the hook of the dictated rule is off', async () => {
+    await did('switch', 'off', 'dictated-rule');
+    const rules = [
+      'A partir de agora, sempre rode o lint antes do commit.',
+      'From now on, name branches after the change.',
+    ];
+    const file = transcript([
+      typed('Fix the build'),
+      assistant(),
+      typed(rules[0] as string),
+      assistant(),
+      typed(rules[1] as string),
+      assistant(),
+    ]);
+    expect(answer(payload('Stop', file)).reply).toHaveProperty('systemMessage');
+    expect(
+      decisionsIn('projectPrivate')
+        .map((one) => one.payload.title)
+        .sort(),
+    ).toEqual(rules.map((said) => `Rule: ${said}`).sort());
+    const [first] = decisionsIn('projectPrivate');
+    expect(first?.payload.rationale).toContain('The person dictated a rule in a session');
+    expect(decisionsIn('projectPublic')).toHaveLength(0);
+  });
+
   it('records the same message as a correction where the hook of the dictated rule is switched off', async () => {
     await did('switch', 'off', 'dictated-rule');
     const file = transcript([
