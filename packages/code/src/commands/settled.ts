@@ -69,7 +69,7 @@ export function settledSentence(agentsAccept: AcceptState): string {
     return `${opening}; the switch \`agent-accepts\` could not be read, so a person accepts it (\`mnema decision review\`); ${closing}`;
   }
   return agentsAccept === 'on'
-    ? `${opening}, and \`decision_transition\` (action \`accept\`) accepts it, the note quoting the person’s answer between double quotes (the option they chose, or their exact words); ${closing}`
+    ? `${opening}, and \`decision_transition\` (action \`accept\`) accepts it, the note quoting the person’s answer between double quotes (the option they chose, if its label is 20 characters or more, or their exact words); ${closing}`
     : `${opening}; \`agent-accepts\` is off, so a person accepts it (\`mnema decision review\`); ${closing}`;
 }
 

@@ -116,10 +116,12 @@ afterEach(() => {
 });
 
 describe('the passages a note quotes', () => {
-  it('reads straight, curly and Portuguese quotes of six characters or more, folded', () => {
+  it('reads straight, curly and Portuguese quotes of twenty characters or more, folded, and no pure assent', () => {
     expect(
-      quotedPassages('He said "Keep   The Cache", “use WAL mode” and «faz assim», not "no".'),
-    ).toEqual(['keep the cache', 'use wal mode', 'faz assim']);
+      quotedPassages(
+        'He said "Keep   The Cache between runs", “use WAL mode for the cache” and «faz assim e depois isso», not "no", not "please", not "sim, pode ser, claro, faça isso".',
+      ),
+    ).toEqual(['keep the cache between runs', 'use wal mode for the cache', 'faz assim e depois isso']);
   });
 });
 
@@ -130,6 +132,39 @@ describe('what an accept rests on, with a transcript that is known', () => {
     note,
     hostSession: SESSION,
     transcript,
+  });
+
+  it('waits when the quote is shorter than twenty characters, even if the person typed it', () => {
+    writeFileSync(transcript, `${typed('Please do that for the cache.')}\n`);
+    expect(whatTheAcceptRestsOn(move(transcript, 'He said "please"'))?.outcome).toBe('waits');
+    expect(whatTheAcceptRestsOn(move(transcript, 'He said "for the cache"'))?.outcome).toBe('waits');
+  });
+
+  it('waits when the quote is twenty characters or more and only says yes', () => {
+    writeFileSync(transcript, `${typed('Yes, go ahead and do it please.')}\n`);
+    expect(
+      whatTheAcceptRestsOn(move(transcript, 'He said "Yes, go ahead and do it please"'))?.outcome,
+    ).toBe('waits');
+    writeFileSync(transcript, `${typed('Sim, pode ser, claro, faça isso.')}\n`);
+    expect(
+      whatTheAcceptRestsOn(move(transcript, 'Disse "sim, pode ser, claro, faça isso"'))?.outcome,
+    ).toBe('waits');
+  });
+
+  it('passes a contentful typed quote of twenty characters, and a chosen option of twenty or more', () => {
+    writeFileSync(transcript, `${typed('Yes, keep the cache between runs.')}\n`);
+    expect(
+      whatTheAcceptRestsOn(move(transcript, 'Said "keep the cache between runs"'))?.outcome,
+    ).toBe('typed');
+    writeFileSync(transcript, `${chose('Which cache?', 'Keep it on disk (Recommended)')}\n`);
+    expect(
+      whatTheAcceptRestsOn(move(transcript, 'Chose "Keep it on disk (Recommended)"'))?.outcome,
+    ).toBe('chosen');
+  });
+
+  it('waits when the option label chosen is shorter than twenty characters', () => {
+    writeFileSync(transcript, `${chose('Where?', 'On disk')}\n`);
+    expect(whatTheAcceptRestsOn(move(transcript, 'Chose "On disk"'))?.outcome).toBe('waits');
   });
 
   it('waits when the transcript is empty and when it cannot be read', () => {
@@ -151,6 +186,30 @@ describe('what an accept rests on, with a transcript that is known', () => {
 });
 
 describe('an agent accept at the command line', () => {
+  it('is refused with --which claude-code and no session id, and nothing is written', { timeout: 60_000 }, () => {
+    const id = aProposedDecision();
+    writeFileSync(transcript, `${typed('Yes, keep the cache between runs, do it.')}\n`);
+    theSessionOpens();
+    const before = held(sandbox);
+    const refused = mnema(
+      {},
+      undefined,
+      'decision',
+      'move',
+      'accept',
+      id,
+      '--which',
+      'claude-code',
+      '--note',
+      'The person said "keep the cache between runs"',
+    );
+    expect(refused.status, refused.out).toBe(1);
+    expect(refused.out).toContain('ACCEPT_NEEDS_THE_PERSONS_WORDS');
+    expect(refused.out).toContain('CLAUDE_CODE_SESSION_ID');
+    expect(held(sandbox)).toEqual(before);
+    expect(state(id)).toContain('(proposed)');
+  });
+
   it('passes end to end: the hook says to quote the answer, the person chooses an option, the note quotes its label', {
     timeout: 60_000,
   }, () => {

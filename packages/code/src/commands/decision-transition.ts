@@ -225,6 +225,7 @@ export function runDecisionTransition(
     agent: which,
     note: input.proof?.note,
     hostSession: input.hostSession,
+    refuseWithoutASession: true,
     transcript:
       input.hostSession === undefined ? undefined : transcriptOf(trees, input.hostSession),
   });

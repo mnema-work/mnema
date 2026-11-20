@@ -9,7 +9,7 @@
  * that switch and before anything is written, so a refusal leaves the record as it found it.
  *
  * WHAT IS CHECKED. The passages the note puts between double quotes (straight, curly or
- * Portuguese ones, {@link LEAST_QUOTED} characters or more, case, spacing and the curly apostrophe folded) are looked for
+ * Portuguese ones, {@link LEAST_QUOTED} characters or more once folded, and not pure assent) are looked for
  * in what the person said, read off the host's own transcript by `whatThePersonSaid`: a line the
  * host marks as typed by a person, and the answer given in its question tool. One passage found
  * is enough; the reply says which of the two it was found in. Nothing is written: not the passage, not
@@ -35,8 +35,29 @@ import { type WhatThePersonSaid, whatThePersonSaid } from './what-the-session-di
 /** The code a refused accept carries. */
 export const ACCEPT_NEEDS_THE_PERSONS_WORDS = 'ACCEPT_NEEDS_THE_PERSONS_WORDS';
 
-/** The shortest passage that counts as words: a quoted word or a name is not a rule's source. */
-export const LEAST_QUOTED = 6;
+/**
+ * The shortest passage that counts as words: one that carries content ties the accept to what the
+ * person said or chose, where a fragment such as "please" fits any accept. A short option label is
+ * therefore not enough on its own: the person's own words are.
+ */
+export const LEAST_QUOTED = 20;
+
+/**
+ * The words of assent, a small closed list: a passage whose every word is one of these (or
+ * punctuation) says yes to something and not what to, so it counts for no accept.
+ */
+const ASSENT = new Set([
+  'yes', 'yep', 'yeah', 'sure', 'ok', 'okay', 'fine', 'great', 'agreed', 'agree', 'accept', 'approved',
+  'go', 'ahead', 'do', 'it', 'please', 'and', 'then', 'now', 'thanks', 'perfect',
+  'sim', 'pode', 'ser', 'claro', 'certo', 'isso', 'mesmo', 'faça', 'faca', 'faz', 'aceito', 'aceite',
+  'aprovado', 'concordo', 'perfeito', 'obrigado', 'por', 'favor', 'então', 'entao', 'e', 'tudo', 'bem',
+]);
+
+/** Whether a folded passage is pure assent: it has words, and each of them is a word of assent. */
+export function isPureAssent(passage: string): boolean {
+  const words = passage.split(/[^\p{L}\p{N}]+/u).filter((word) => word !== '');
+  return words.length > 0 && words.every((word) => ASSENT.has(word));
+}
 
 /** The most a transcript may weigh to be read at an accept: a larger one is not known, and said so. */
 const MOST_BYTES = 256 * 1024 * 1024;
@@ -48,12 +69,12 @@ function folded(text: string): string {
   return text.normalize('NFC').toLowerCase().replaceAll('\u2019', "'").replace(/\s+/g, ' ').trim();
 }
 
-/** The passages a note puts between quotation marks that are long enough to be words, folded. */
+/** The passages a note puts between quotation marks that are long enough to be words and not mere assent, folded. */
 export function quotedPassages(note: string): readonly string[] {
   const passages: string[] = [];
   for (const match of note.matchAll(QUOTED)) {
     const passage = folded(match[1] ?? match[2] ?? match[3] ?? '');
-    if (passage.length >= LEAST_QUOTED) passages.push(passage);
+    if (passage.length >= LEAST_QUOTED && !isPureAssent(passage)) passages.push(passage);
   }
   return passages;
 }
@@ -73,6 +94,11 @@ export interface AcceptToCheck {
   /** The host's session id when the door knows it, and the transcript path left for that session. */
   readonly hostSession: string | undefined;
   readonly transcript: string | undefined;
+  /**
+   * Set by the command line: an agent that declares Claude Code with no session id has left the one
+   * thing the check reads by, so its accept waits (and does not pass as "not checked").
+   */
+  readonly refuseWithoutASession?: boolean;
 }
 
 /** What `whatThePersonSaid` is asked at: swapped by a test only. */
@@ -88,6 +114,16 @@ export function whatTheAcceptRestsOn(
 ): WhatTheAcceptRestsOn | undefined {
   if (move.action !== 'accept' || move.agent === undefined) return undefined;
   if (move.hostSession === undefined) {
+    if (move.refuseWithoutASession === true && move.agent === 'claude-code') {
+      return {
+        outcome: 'waits',
+        code: ACCEPT_NEEDS_THE_PERSONS_WORDS,
+        message:
+          'this accept declares claude-code and the session id Claude Code gives (`CLAUDE_CODE_SESSION_ID`) is not set, ' +
+          'so the words it rests on cannot be looked for: a person accepts it (`mnema decision review`). ' +
+          'The decision stays proposed and was not moved.',
+      };
+    }
     return { outcome: 'not-checked', why: 'this host does not hand its session to mnema' };
   }
   if (move.transcript === undefined) {
@@ -120,7 +156,7 @@ export function whatTheAcceptRestsOn(
     code: ACCEPT_NEEDS_THE_PERSONS_WORDS,
     message:
       'this accept is from an agent and its note quotes no words the person typed in this session ' +
-      '(a passage between double quotes of 6 characters or more, exactly as typed) and no option ' +
+      '(a passage between double quotes of 20 characters or more that says more than yes, exactly as typed) and no option ' +
       'the person chose in a question: a person accepts it (`mnema decision review`), or the ' +
       'agent accepts again with a note that quotes what the person said. The decision stays ' +
       'proposed and was not moved.',
