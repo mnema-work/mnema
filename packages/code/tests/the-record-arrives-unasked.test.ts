@@ -633,6 +633,7 @@ describe('the record arrives unasked', () => {
     expect(commands.map(handlerOf)).toEqual([
       DOCUMENT_HOOK,
       NOTES_HOOK,
+      TALLY_HOOK,
       COMPACTED_HOOK,
       TALLY_HOOK,
       CORRECTIONS_HOOK,
@@ -1433,8 +1434,8 @@ describe('the record arrives unasked', () => {
       expect([...reached]).toEqual([
         'brief --hook',
         'recall --hook',
-        `recall --after-a-compaction --session ${A_SESSION} --hook`,
         'tally',
+        `recall --after-a-compaction --session ${A_SESSION} --hook`,
         'corrections',
         'before-a-write --host cursor --agent-key cursor',
         'before-a-write --host vscode --agent-key vscode',
@@ -1543,6 +1544,7 @@ describe('the record arrives unasked', () => {
     expect(validated).toEqual([
       'command:/hooks/session-start.mjs',
       'command:/hooks/session-recall.mjs',
+      'command:/hooks/session-tally.mjs',
       'command:/hooks/session-compacted.mjs',
       'command:/hooks/session-tally.mjs',
       'command:/hooks/session-corrections.mjs',

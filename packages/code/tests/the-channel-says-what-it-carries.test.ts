@@ -525,6 +525,7 @@ describe('every handler that pushes declares the channel it carries', () => {
     expect(ruled).toEqual([
       'SessionStart:command:session-start.mjs',
       'SessionStart:command:session-recall.mjs',
+      'SessionStart:command:session-tally.mjs',
       'SessionStart:command:session-compacted.mjs',
       'Stop:command:session-tally.mjs',
       'Stop:command:session-corrections.mjs',
