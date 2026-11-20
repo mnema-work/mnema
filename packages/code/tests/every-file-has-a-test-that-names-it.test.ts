@@ -928,7 +928,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/chain/src/events/unannounced.test.ts': 3,
   'packages/chain/src/events/upcaster.test.ts': 2,
   'packages/chain/src/events/workflow.test.ts': 4,
-  'packages/chain/src/format-doc.test.ts': 10,
+  'packages/chain/src/format-doc.test.ts': 11,
   'packages/chain/src/one-line.test.ts': 4,
   'packages/chain/src/readme-example.test.ts': 5,
   'packages/chain/tests/support/second-reader-session.ts': 4,
