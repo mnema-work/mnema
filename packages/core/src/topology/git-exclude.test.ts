@@ -1,11 +1,13 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   realpathSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
@@ -216,4 +218,91 @@ describe('a block that is not one block', () => {
       expect(readFileSync(file, 'utf8')).toBe(text);
     });
   }
+});
+
+describe('what the write keeps of the file it rewrites', () => {
+  it('keeps every byte outside the block, bytes that are not UTF-8 included', () => {
+    const file = join(sandbox, 'exclude');
+    const before = Buffer.concat([Buffer.from('# '), Buffer.from([0xff, 0xfe, 0xe9]), Buffer.from('\n*.log\n')]);
+    writeFileSync(file, before);
+    withExcludeLines(file, ['/.mnema/']);
+    const after = readFileSync(file);
+    expect(after.subarray(0, before.length).equals(before)).toBe(true);
+    expect(after.subarray(before.length).toString('utf8')).toBe(`${BEGIN}\n/.mnema/\n${END}\n`);
+    withoutExcludeLines(file, ['/.mnema/']);
+    expect(readFileSync(file).equals(before)).toBe(true);
+  });
+
+  it('writes a line that is not ASCII as UTF-8, and reads it back as written', () => {
+    const file = join(sandbox, 'exclude');
+    withExcludeLines(file, ['/café/']);
+    expect(readFileSync(file).includes(Buffer.from('/café/\n'))).toBe(true);
+    expect(excludeLinesOf(file)).toEqual(['/café/']);
+    expect(withExcludeLines(file, ['/café/'])).toBe(false);
+  });
+
+  it('keeps the mode the file had, whatever the umask', () => {
+    const file = join(sandbox, 'exclude');
+    writeFileSync(file, '*.log\n');
+    chmodSync(file, 0o600);
+    withExcludeLines(file, ['/.mnema/']);
+    expect(statSync(file).mode & 0o777).toBe(0o600);
+    withoutExcludeLines(file, ['/.mnema/']);
+    expect(statSync(file).mode & 0o777).toBe(0o600);
+  });
+
+  it('removes an empty block on the next write', () => {
+    const file = join(sandbox, 'exclude');
+    writeFileSync(file, `a\n${BEGIN}\n${END}\nb\n`);
+    expect(withoutExcludeLines(file, ['/.mnema/'])).toBe(true);
+    expect(readFileSync(file, 'utf8')).toBe('a\nb\n');
+    writeFileSync(file, `a\n${BEGIN}\n${END}\nb\n`);
+    withExcludeLines(file, ['/x/']);
+    expect(readFileSync(file, 'utf8')).toBe(`a\n${BEGIN}\n/x/\n${END}\nb\n`);
+  });
+});
+
+describe('two writers of the same file', () => {
+  it('lose no line: each add waits for the lock of the one before it', async () => {
+    const file = join(sandbox, 'exclude');
+    writeFileSync(file, '*.log\n');
+    const script = join(sandbox, 'writer.mjs');
+    const module = join(process.cwd(), 'packages/core/dist/topology/git-exclude.js');
+    writeFileSync(
+      script,
+      `import { withExcludeLines } from ${JSON.stringify(`file://${module}`)};
+       for (let i = 0; i < 40; i++) withExcludeLines(process.argv[2], [process.argv[3] + i]);`,
+    );
+    const run = (tag: string): Promise<number | null> =>
+      new Promise((done) => {
+        spawn(process.execPath, [script, file, tag], { stdio: 'ignore' }).on('exit', done);
+      });
+    expect(await Promise.all([run('/a'), run('/b')])).toEqual([0, 0]);
+    const held = excludeLinesOf(file);
+    expect(held).toHaveLength(80);
+    expect(readFileSync(file, 'utf8').startsWith('*.log\n')).toBe(true);
+  });
+
+  it('breaks the lock of a process that died, and clears its temporary file', () => {
+    const file = join(sandbox, 'exclude');
+    writeFileSync(file, '*.log\n');
+    const dead = spawnSync(process.execPath, ['-e', '']).pid as number;
+    writeFileSync(`${file}.mnema-lock`, `${dead} ${Date.now()}\n`);
+    writeFileSync(`${file}.mnema-${dead}.tmp`, 'half');
+    const live = `${file}.mnema-${process.pid}.tmp`;
+    writeFileSync(live, 'mine');
+    withExcludeLines(file, ['/.mnema/']);
+    expect(existsSync(`${file}.mnema-${dead}.tmp`)).toBe(false);
+    expect(readFileSync(live, 'utf8')).toBe('mine');
+    expect(existsSync(`${file}.mnema-lock`)).toBe(false);
+    expect(excludeLinesOf(file)).toEqual(['/.mnema/']);
+  });
+
+  it('refuses, naming the file, when a live process holds the lock', () => {
+    const file = join(sandbox, 'exclude');
+    writeFileSync(file, '*.log\n');
+    writeFileSync(`${file}.mnema-lock`, `${process.pid} ${Date.now()}\n`);
+    expect(() => withExcludeLines(file, ['/.mnema/'])).toThrow(/another mnema process/);
+    expect(readFileSync(file, 'utf8')).toBe('*.log\n');
+  });
 });

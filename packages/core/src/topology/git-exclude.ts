@@ -15,11 +15,31 @@
  * guess about what the person meant would rewrite lines that are theirs.
  *
  * The file is written whole through a temporary file beside it and a rename, and never through a
- * link: a link in its place is refused by name. A file in CRLF gets the block in CRLF.
+ * link: a link in its place is refused by name. A file in CRLF gets the block in CRLF, a file that
+ * is not UTF-8 keeps each of its bytes (it is read and written as bytes, and only the lines this
+ * module adds are encoded), and the file keeps the mode it had (0644 when this makes it).
+ *
+ * ONE WRITER AT A TIME: the read, the change and the rename happen under a lock file beside the
+ * exclude file (`exclude.mnema-lock`, created exclusively, the tail lock's own primitive, so a
+ * lock of a dead process is broken the same way), and a temporary file a dead process left is
+ * removed under it. Two mnema processes therefore never lose each other's line; a process of
+ * another program writing the file is not stopped by a lock it does not know. An empty block (its
+ * two markers and nothing between) is removed by the next write.
  */
 
-import { lstatSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import {
+  chmodSync,
+  lstatSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
+import { basename, dirname, join } from 'node:path';
+import { alive, TailBusyError, withTailLock } from '@mnema/chain';
 import { gitPlaceOf } from './git-place.js';
 
 const BEGIN = '# >>> mnema (managed by mnema; edit only outside these two lines)';
@@ -42,9 +62,7 @@ export function excludeFileOf(dir: string): string | undefined {
 /** The lines in the block, in order; none for an absent file or a file with no block. */
 export function excludeLinesOf(file: string): string[] {
   const parsed = parse(file);
-  return parsed.block === undefined
-    ? []
-    : parsed.lines.slice(parsed.block.begin + 1, parsed.block.end).map(textOf);
+  return parsed.block === undefined ? [] : insideOf(parsed).map((l) => decode(l.text));
 }
 
 /** Adds the lines the block lacks. True when the file changed. */
@@ -54,41 +72,48 @@ export function withExcludeLines(file: string, lines: readonly string[]): boolea
       throw new ExcludeBlockError(`${JSON.stringify(line)} is not a line the block can hold.`);
     }
   }
-  const parsed = parse(file);
-  const held = parsed.block === undefined ? [] : excludeLinesOf(file);
-  const missing = lines.filter((line, at) => !held.includes(line) && lines.indexOf(line) === at);
-  if (missing.length === 0) return false;
-  const eol = parsed.eol;
-  const added = missing.map((line) => ({ text: line, eol }));
-  let next: Line[];
-  if (parsed.block === undefined) {
-    const before = parsed.lines.map((l, at) =>
-      at === parsed.lines.length - 1 && l.eol === '' ? { text: l.text, eol } : l,
-    );
-    next = [...before, { text: BEGIN, eol }, ...added, { text: END, eol }];
-  } else {
-    next = [...parsed.lines];
-    next.splice(parsed.block.end, 0, ...added);
-  }
-  write(file, next);
-  return true;
+  return underLock(file, () => {
+    const parsed = parse(file);
+    const wanted = lines.map(encode);
+    const held = parsed.block === undefined ? [] : insideOf(parsed).map(textOf);
+    const missing = wanted.filter((line, at) => !held.includes(line) && wanted.indexOf(line) === at);
+    if (missing.length === 0) return false;
+    const eol = parsed.eol;
+    const added = missing.map((line) => ({ text: line, eol }));
+    let next: Line[];
+    if (parsed.block === undefined) {
+      const before = parsed.lines.map((l, at) =>
+        at === parsed.lines.length - 1 && l.eol === '' ? { text: l.text, eol } : l,
+      );
+      next = [...before, { text: BEGIN, eol }, ...added, { text: END, eol }];
+    } else {
+      next = [...parsed.lines];
+      next.splice(parsed.block.end, 0, ...added);
+    }
+    write(file, next);
+    return true;
+  });
 }
 
 /** Takes the lines out of the block (the block with its last one). True when the file changed. */
 export function withoutExcludeLines(file: string, lines: readonly string[]): boolean {
-  const parsed = parse(file);
-  if (parsed.block === undefined) return false;
-  const { begin, end } = parsed.block;
-  const inside = parsed.lines.slice(begin + 1, end);
-  const kept = inside.filter((l) => !lines.includes(textOf(l)));
-  if (kept.length === inside.length) return false;
-  const next = [
-    ...parsed.lines.slice(0, begin),
-    ...(kept.length === 0 ? [] : [parsed.lines[begin] as Line, ...kept, parsed.lines[end] as Line]),
-    ...parsed.lines.slice(end + 1),
-  ];
-  write(file, next);
-  return true;
+  if (lstatSync(file, { throwIfNoEntry: false }) === undefined) return false;
+  return underLock(file, () => {
+    const parsed = parse(file);
+    if (parsed.block === undefined) return false;
+    const { begin, end } = parsed.block;
+    const inside = parsed.lines.slice(begin + 1, end);
+    const gone = lines.map(encode);
+    const kept = inside.filter((l) => !gone.includes(l.text));
+    if (kept.length === inside.length && inside.length > 0) return false;
+    const next = [
+      ...parsed.lines.slice(0, begin),
+      ...(kept.length === 0 ? [] : [parsed.lines[begin] as Line, ...kept, parsed.lines[end] as Line]),
+      ...parsed.lines.slice(end + 1),
+    ];
+    write(file, next);
+    return true;
+  });
 }
 
 interface Line {
@@ -105,13 +130,22 @@ interface Parsed {
 
 const textOf = (line: Line): string => line.text;
 
+/** The file is held as latin1 text: one character per byte, so no byte is changed by reading it. */
+const encode = (text: string): string => Buffer.from(text, 'utf8').toString('latin1');
+const decode = (text: string): string => Buffer.from(text, 'latin1').toString('utf8');
+
+function insideOf(parsed: Parsed): Line[] {
+  return parsed.block === undefined ? [] : parsed.lines.slice(parsed.block.begin + 1, parsed.block.end);
+}
+
 function parse(file: string): Parsed {
   let raw: string;
   try {
-    raw = readFileSync(file, 'utf8');
+    raw = readFileSync(file).toString('latin1');
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT')
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       return { lines: [], block: undefined, eol: '\n' };
+    }
     throw new ExcludeBlockError(
       `Cannot read ${file}: ${(error as NodeJS.ErrnoException).code ?? 'unreadable'}.`,
     );
@@ -154,18 +188,54 @@ function parse(file: string): Parsed {
   };
 }
 
+function underLock<T>(file: string, act: () => T): T {
+  const dir = dirname(file);
+  try {
+    mkdirSync(dir, { recursive: true });
+    return withTailLock(
+      `${file}.mnema-lock`,
+      () => {
+        clearTemporariesOfTheDead(file);
+        return act();
+      },
+      { waitMs: 3_000 },
+    );
+  } catch (error) {
+    if (error instanceof TailBusyError) {
+      throw new ExcludeBlockError(
+        `Another mnema process is changing ${file}${error.heldBy === undefined ? '' : ` (pid ${error.heldBy})`}; nothing was written. Try again.`,
+      );
+    }
+    if (error instanceof ExcludeBlockError) throw error;
+    throw new ExcludeBlockError(
+      `Cannot change ${file}: ${(error as NodeJS.ErrnoException).code ?? 'failed'}.`,
+    );
+  }
+}
+
+function clearTemporariesOfTheDead(file: string): void {
+  const prefix = `${basename(file)}.mnema-`;
+  for (const name of readdirSync(dirname(file))) {
+    const pid = name.startsWith(prefix) && name.endsWith('.tmp') ? name.slice(prefix.length, -4) : '';
+    if (/^\d+$/.test(pid) && !alive(Number(pid))) {
+      rmSync(join(dirname(file), name), { force: true });
+    }
+  }
+}
+
 function write(file: string, lines: readonly Line[]): void {
   try {
-    if (lstatSync(file, { throwIfNoEntry: false })?.isSymbolicLink()) {
+    const found = lstatSync(file, { throwIfNoEntry: false });
+    if (found?.isSymbolicLink()) {
       throw new ExcludeBlockError(`${file} is a link, and mnema writes no file through a link.`);
     }
-    mkdirSync(dirname(file), { recursive: true });
+    const mode = found === undefined ? 0o644 : statSync(file).mode & 0o777;
     const temporary = `${file}.mnema-${process.pid}.tmp`;
     try {
-      writeFileSync(temporary, lines.map((l) => l.text + l.eol).join(''), {
-        flag: 'wx',
-        mode: 0o644,
+      writeFileSync(temporary, Buffer.from(lines.map((l) => l.text + l.eol).join(''), 'latin1'), {
+        mode,
       });
+      chmodSync(temporary, mode);
       renameSync(temporary, file);
     } catch (error) {
       rmSync(temporary, { force: true });
