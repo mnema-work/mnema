@@ -1630,8 +1630,6 @@ const UNREACHABLE: Readonly<Record<string, string>> = {
   'witness.ts «No identity of this record names it, so the bundle dates the checkpoint and says nothing about who wrote it: \\`mnema key sigstore {}\\` names it.» #1':
     'the same act, once Fulcio answered',
   'witness.ts «holds: {}» #1': 'the bundle that holds, read offline',
-  'witness.ts «sigstore: the {} tree was not read: its verdict is a break, so which checkpoint a bundle is over is not settled» #1':
-    'the scope, a closed word',
   'witness.ts «sigstore: {} checkpoint {}: the bundle holds but names {} ({}), not the identity and issuer expected» #1':
     'the bundle that holds and names another signer',
   'witness.ts «{}» #3': 'the bundle that does not hold',
