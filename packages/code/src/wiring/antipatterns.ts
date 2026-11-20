@@ -44,7 +44,9 @@ export function registerAntipatterns(program: Command, wiring: Wiring): Declared
   const { io, render } = wiring;
   const antipatterns = program
     .command('antipatterns')
-    .description('show recurring shapes in the record (reopens, supersessions, deprecations, and what agents accepted)')
+    .description(
+      'show recurring shapes in the record (reopens, supersessions, deprecations, and what agents accepted)',
+    )
     .option('--json', 'emit the faithful shapes with their evidence as JSON')
     .action(async (opts: { json?: boolean }) => {
       const { runAntipatterns } = await import('../commands/antipatterns.js');
