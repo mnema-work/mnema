@@ -861,7 +861,7 @@ export const HANDED_OVER: Readonly<
   'docs/features.md': { line: 11, name: 17 },
   'docs/first-record.md': { line: 9, name: 11 },
   'docs/glossary.md': { name: 3 },
-  'docs/how-it-works.md': { line: 3, name: 3 },
+  'docs/how-it-works.md': { line: 3, name: 4 },
   'docs/hosts.md': { line: 2, name: 4 },
   'docs/importing-the-decisions-you-already-wrote.md': { line: 2, name: 2 },
   'docs/install.md': { line: 3, name: 6 },
