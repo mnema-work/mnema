@@ -144,7 +144,9 @@ describe('Gemini CLI', () => {
       GEMINI.meta,
       GEMINI.typedWith('m1', ['User has manually exited Plan Mode. Switching to Default mode.']),
       GEMINI.typedWith('m2', ['Please continue.']),
-      GEMINI.typedWith('m3', ['System: Potential loop detected. Details: x. Please take a step back.']),
+      GEMINI.typedWith('m3', [
+        'System: Potential loop detected. Details: x. Please take a step back.',
+      ]),
       GEMINI.typed('m4', 'please continue with the tests'),
     ]);
     expect(thePersonsWords('gemini', path)?.map((said) => said.text)).toEqual([

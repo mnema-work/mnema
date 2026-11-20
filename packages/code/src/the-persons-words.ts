@@ -205,7 +205,8 @@ const readGemini: HostReader = (path) => {
   for (const [index, kept] of all.entries()) {
     // The user turn the host's acknowledgement follows is the compaction summary, tag or no tag.
     const summary = all[index + 1]?.acknowledges === true;
-    if (!summary && kept.words.trim() !== '') said.push({ line: kept.line, text: kept.words, chosen: false });
+    if (!summary && kept.words.trim() !== '')
+      said.push({ line: kept.line, text: kept.words, chosen: false });
     for (const answer of kept.answers) said.push({ line: kept.line, chosen: true, ...answer });
   }
   return said;
