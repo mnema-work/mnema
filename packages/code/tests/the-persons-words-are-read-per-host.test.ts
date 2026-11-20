@@ -62,7 +62,9 @@ describe('Gemini CLI', () => {
     const path = file([
       GEMINI.header,
       GEMINI.typed('m1', 'Set up the store'),
-      GEMINI.asked('m2', JSON.stringify({ answers: { '0': 'SQLite' } }), ['Which store do we use?']),
+      GEMINI.asked('m2', JSON.stringify({ answers: { '0': 'SQLite' } }), [
+        'Which store do we use?',
+      ]),
     ]);
     expect(thePersonsWords('gemini', path)).toEqual([
       { line: 2, text: 'Set up the store', chosen: false },
@@ -113,7 +115,9 @@ describe('Qwen Code', () => {
       'agent_mention',
       'slash_command',
       'goal_runtime',
-    ].map((subtype) => QWEN.record({ type: 'user', subtype, message: QWEN.content(`from ${subtype}`) }));
+    ].map((subtype) =>
+      QWEN.record({ type: 'user', subtype, message: QWEN.content(`from ${subtype}`) }),
+    );
     const path = file([
       QWEN.record({ type: 'user', message: QWEN.content('Use SQLite') }),
       ...injected,
@@ -123,7 +127,11 @@ describe('Qwen Code', () => {
         type: 'user',
         message: { role: 'user', parts: [{ functionResponse: { name: 'x', response: {} } }] },
       }),
-      QWEN.record({ type: 'user', provenance: 'external_agent', message: QWEN.content('an agent') }),
+      QWEN.record({
+        type: 'user',
+        provenance: 'external_agent',
+        message: QWEN.content('an agent'),
+      }),
       QWEN.record({ type: 'user', message: QWEN.content('keep the tests') }),
     ]);
     expect(thePersonsWords('qwen', path)).toEqual([
@@ -150,8 +158,16 @@ describe('VS Code agent mode', () => {
       VSCODE.entry('session.start', { sessionId: 's', producer: 'copilot-agent' }),
       VSCODE.entry('user.message', { content: 'Use SQLite', attachments: [] }),
       VSCODE.entry('assistant.turn_start', { turnId: '0.0' }),
-      VSCODE.entry('assistant.message', { messageId: 'a', content: 'Which store?', toolRequests: [] }),
-      VSCODE.entry('tool.execution_complete', { toolCallId: 't', success: true, result: { content: 'x' } }),
+      VSCODE.entry('assistant.message', {
+        messageId: 'a',
+        content: 'Which store?',
+        toolRequests: [],
+      }),
+      VSCODE.entry('tool.execution_complete', {
+        toolCallId: 't',
+        success: true,
+        result: { content: 'x' },
+      }),
       VSCODE.entry('user.message', { content: 'keep the tests' }),
     ]);
     expect(thePersonsWords('vscode', path)).toEqual([
@@ -176,7 +192,10 @@ describe('Claude Code, behind the same door', () => {
       { type: 'user', message: { role: 'user', content: 'no origin' } },
       {
         type: 'user',
-        message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't', content: 'ok' }] },
+        message: {
+          role: 'user',
+          content: [{ type: 'tool_result', tool_use_id: 't', content: 'ok' }],
+        },
         toolUseResult: { answers: { 'Which store?': 'SQLite' } },
       },
     ]);

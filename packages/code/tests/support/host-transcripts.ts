@@ -58,7 +58,9 @@ export const GEMINI = {
       {
         id: 'call-1',
         name: 'ask_user',
-        args: { questions: questions.map((question) => ({ question, header: 'Q', type: 'choice' })) },
+        args: {
+          questions: questions.map((question) => ({ question, header: 'Q', type: 'choice' })),
+        },
         result: [{ functionResponse: { id: 'call-1', name: 'ask_user', response: { output } } }],
         status: 'success',
         timestamp: '2026-11-20T10:00:02.500Z',

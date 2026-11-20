@@ -72,7 +72,9 @@ function geminiOutput(result: unknown): string | undefined {
 }
 
 /** What the person chose in a stored `ask_user` call, or `undefined` for a dismissed or failed one. */
-function geminiAnswer(call: Record<string, unknown>): { text: string; question?: string } | undefined {
+function geminiAnswer(
+  call: Record<string, unknown>,
+): { text: string; question?: string } | undefined {
   const output = geminiOutput(call.result);
   if (output === undefined) return undefined;
   let answers: Record<string, unknown> | undefined;
