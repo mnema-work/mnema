@@ -141,7 +141,7 @@ function wordsOf(passage: string): string[] {
 }
 
 /** An option label's own tag, which the person did not type. */
-const OPTION_TAG = /\s*\((?:recommended|recomendado)\)\s*/gi;
+const OPTION_TAG = /\((?:recommended|recomendado)\)/gi;
 
 /**
  * Whether an acceptance note rests on the person, judged by the note's form only: a passage
