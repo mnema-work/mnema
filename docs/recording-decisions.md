@@ -180,19 +180,18 @@ The words are read for each host as its row says, in one table (`packages/code/s
 compared with case and separators folded, so `claude-code`, `Claude-Code`, `claude_code` and `claudecode` are one host). A row reads
 only where this tree holds the host's conversation format with a fixture; a host's conversation format is never guessed.
 
-| Host | Session id | Words | State |
-|---|---|---|---|
-| Claude Code | `CLAUDE_CODE_SESSION_ID` | read from the transcript its hooks name | read; an accept from the command line with no session id is refused |
-| GitHub Copilot CLI | `COPILOT_AGENT_SESSION_ID` | not readable yet | no conversation format proved here |
-| VS Code's agent, Cursor (command line and editor), Codex, OpenCode, Gemini CLI, Qwen Code, Antigravity, Factory Droid, Goose | none read | not readable yet | no conversation format proved here |
+<!-- The table below is generated from packages/code/src/host-words.ts: edit the words in the-host-words-page-is-generated.test.ts. -->
 
-An accept from a host that is not readable yet passes and says the words were not checked, and `mnema audit antipatterns` counts it
-among the agent accepts without the person's words. It applies only in Claude Code with the plugin: the `SessionStart` hook leaves the transcript's path beside the session journal
+| placeholder |
+
+<!-- End of the generated table. -->
+
+An accept from a host that is not readable yet passes and the reply marks it "words not checked" (the audit reading of the note's form, when it lands, judges the note and nothing else). It applies only in Claude Code with the plugin: the `SessionStart` hook leaves the transcript's path beside the session journal
 (a path, never a word of it; `mnema switch off session-journal` stops it) and the command or the server finds it by the session
 id the host gives (`CLAUDE_CODE_SESSION_ID`). The command with `--which` naming Claude Code (case and separators folded: `claude-code`, `Claude-Code`, `claude_code`, `claudecode`) and no such id is refused the same way and
-writes nothing, so unsetting the variable opens no door. Every other host (any `--which` that is not Claude Code), a session whose hook has not run, and an accept with
+writes nothing, so unsetting the variable opens no door. The environment is believed over the declared name: where the session variable of a host whose words are read is set (`CLAUDE_CODE_SESSION_ID` today), the command is in that host, and the person's words are checked against that session whatever `--which` says (`--which codex` or an unknown name included). Every other host (any `--which` that is not Claude Code), a session whose hook has not run, and an accept with
 no agent declared keep what they had, and the reply says the words were not checked. It proves that the quoted words are in the
-transcript, not that a person typed them: an agent with a shell can write the transcript. An accept of another host passes as "words not checked", and `mnema audit antipatterns` counts it among the agent accepts without the person's words.
+transcript, not that a person typed them: an agent with a shell can write the transcript. An accept of another host passes marked "words not checked".
 
 A supersede whose successor is still `proposed` leaves nothing in force on that subject until it is accepted, and the
 move says so. Rejecting that successor leaves the decision it replaced `superseded`, by a decision that never governed,

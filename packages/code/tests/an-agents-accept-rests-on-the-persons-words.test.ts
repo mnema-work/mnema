@@ -296,6 +296,44 @@ describe('what an accept rests on, with a transcript that is known', () => {
 });
 
 describe('an agent accept at the command line', () => {
+  it('believes the environment over the declared name: inside a Claude Code session any --which is checked', { timeout: 60_000 }, () => {
+    const id = aProposedDecision();
+    writeFileSync(transcript, `${typed('Yes, keep the cache between runs, do it.')}\n`);
+    theSessionOpens();
+    const before = held(sandbox);
+    for (const name of ['zz', 'codex']) {
+      const refused = mnema(
+        { CLAUDE_CODE_SESSION_ID: SESSION },
+        undefined,
+        'decision',
+        'move',
+        'accept',
+        id,
+        '--which',
+        name,
+        '--note',
+        'The agent agrees with this on its own',
+      );
+      expect(refused.status, `${name}: ${refused.out}`).toBe(1);
+      expect(refused.out).toContain('ACCEPT_NEEDS_THE_PERSONS_WORDS');
+    }
+    expect(held(sandbox)).toEqual(before);
+    const passes = mnema(
+      { CLAUDE_CODE_SESSION_ID: SESSION },
+      undefined,
+      'decision',
+      'move',
+      'accept',
+      id,
+      '--which',
+      'codex',
+      '--note',
+      'The person said "keep the cache between runs"',
+    );
+    expect(passes.status, passes.out).toBe(0);
+    expect(state(id)).toContain('(accepted)');
+  });
+
   it('is refused with --which in any spelling of Claude Code and no session id', {
     timeout: 60_000,
   }, () => {

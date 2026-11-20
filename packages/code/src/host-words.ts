@@ -133,3 +133,24 @@ export function hostSessionOf(
   const variable = host === undefined ? undefined : HOST_WORDS[host].sessionEnv;
   return variable === undefined ? undefined : env[variable];
 }
+
+/**
+ * The host this process is in and its session, believing the ENVIRONMENT over the declared name: the
+ * session variable of any host whose words are read, when set, proves where the process runs, whatever
+ * `--which` says; failing that, the variable of the declared name's host. `undefined` where neither is.
+ */
+export function sessionHere(
+  name: string | undefined,
+  env: Readonly<Record<string, string | undefined>>,
+): { readonly host: HostName; readonly session: string } | undefined {
+  for (const [host, row] of Object.entries(HOST_WORDS)) {
+    const session = row.reads && row.sessionEnv !== undefined ? env[row.sessionEnv] : undefined;
+    if (session !== undefined && session !== '') return { host: host as HostName, session };
+  }
+  const host = name === undefined ? undefined : hostOfAgent(name);
+  const variable = host === undefined ? undefined : HOST_WORDS[host].sessionEnv;
+  const session = variable === undefined ? undefined : env[variable];
+  return host === undefined || session === undefined || session === ''
+    ? undefined
+    : { host, session };
+}

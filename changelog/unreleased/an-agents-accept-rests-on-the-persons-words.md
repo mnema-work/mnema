@@ -11,7 +11,9 @@ Changed
   a person typed them. A quoted passage counts only with 20 characters or more after folding and when it is not pure
   assent ("yes", "sim, pode", "go ahead"), so a short option label does not count on its own. The mark "(Recommended)" is taken off an option label before it is measured. The check keeps what it knows of each host in
   one table, a row for every host (names folded for case and separators, the session id variable, whether the words
-  can be read): only Claude Code reads today, and the rest pass as "words not checked" until a format is proved. The command with
+  can be read): only Claude Code reads today, and the rest pass as "words not checked" until a format is proved. At the command line the environment is believed over
+  the declared name: where the session variable of a host whose words are read is set, the person's words are checked against
+  that session whatever `--which` says. The command with
   `--which` naming Claude Code in any spelling and no `CLAUDE_CODE_SESSION_ID` is refused as well, and writes nothing. See [Recording decisions](docs/recording-decisions.md).
   The block of standing instructions that `mnema instructions` writes into `AGENTS.md` and the host rules files says it
   too, and is now version v6; a v5 block is the product's to replace and is updated, not read as an edit.

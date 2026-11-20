@@ -48,6 +48,7 @@ import {
   rejectDecision,
   supersedeDecision,
 } from '@mnema/core/write';
+import type { HostName } from '../host-names.js';
 import { saysWhatTheAcceptRestedOn, whatTheAcceptRestsOn } from '../agent-accept-words.js';
 import { type AcceptState, acceptStateHere, agentMayAccept } from '../agent-accepts.js';
 import { resolveAddress } from '../label-as-address.js';
@@ -151,6 +152,8 @@ export function runDecisionTransition(
     atATerminal?: boolean;
     /** The host's id for the session this runs in (Claude Code's `CLAUDE_CODE_SESSION_ID`), when the door has it. */
     hostSession?: string;
+    /** The host whose session variable the door found: the environment says where the process runs, whatever name the act declares. */
+    sessionHost?: HostName;
     /** Set by the command line: an accept declaring Claude Code with no session id is refused there (`agent-accept-words.ts`). */
     viaTheCommandLine?: boolean;
   },
@@ -227,6 +230,7 @@ export function runDecisionTransition(
     agent: which,
     note: input.proof?.note,
     hostSession: input.hostSession,
+    ...(input.sessionHost !== undefined ? { sessionHost: input.sessionHost } : {}),
     refuseWithoutASession: input.viaTheCommandLine === true,
     transcript:
       input.hostSession === undefined ? undefined : transcriptOf(trees, input.hostSession),

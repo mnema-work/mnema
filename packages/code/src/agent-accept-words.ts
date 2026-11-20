@@ -30,6 +30,7 @@
  */
 
 import { statSync } from 'node:fs';
+import type { HostName } from './host-names.js';
 import { HOST_WORDS, hostOfAgent } from './host-words.js';
 import { type WhatThePersonSaid, whatThePersonSaid } from './what-the-session-did.js';
 
@@ -161,6 +162,8 @@ export interface AcceptToCheck {
   readonly note: string | undefined;
   /** The host's session id when the door knows it, and the transcript path left for that session. */
   readonly hostSession: string | undefined;
+  /** The host whose session variable the door found, which outranks the name the act declares. */
+  readonly sessionHost?: HostName;
   readonly transcript: string | undefined;
   /**
    * Set by the command line: an agent that declares Claude Code with no session id has left the one
@@ -181,9 +184,13 @@ export function whatTheAcceptRestsOn(
   read: ReadsWhatTheyEntered = whatThePersonSaid,
 ): WhatTheAcceptRestsOn | undefined {
   if (move.action !== 'accept' || move.agent === undefined) return undefined;
-  // THE HOST COMES FROM THE NAME THE AGENT DECLARES (`host-words.ts`), and a session id the door
-  // holds with no name any row knows is Claude Code's, the only one whose id the doors read.
-  const host = hostOfAgent(move.agent) ?? (move.hostSession === undefined ? undefined : 'claude');
+  // THE HOST COMES FROM THE ENVIRONMENT BEFORE THE NAME (`host-words.ts`): a session variable the door
+  // found says where the process runs, whatever name the act declares; failing that, the declared
+  // name, and a session the door holds with no name any row knows is Claude Code's.
+  const host =
+    move.sessionHost ??
+    hostOfAgent(move.agent) ??
+    (move.hostSession === undefined ? undefined : 'claude');
   if (host === undefined) {
     return { outcome: 'not-checked', why: 'no row of the host table knows this agent' };
   }
