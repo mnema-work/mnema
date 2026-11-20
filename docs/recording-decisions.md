@@ -177,10 +177,19 @@ mention is meant to be public, pass `--allow-private-pattern` (`allow_private_pa
 `link_knowledge`). The private and the global trees are never asked, and a machine with no list
 is not asked at all. A retraction's reason is not asked.
 
-A `/regex/` that nests a quantifier (a group that holds `*`, `+` or `{n,}` and is itself
-quantified, such as `(a+)+$`) is read as the text between its slashes, not as a regular
-expression: such a pattern can hang a write, and Node cannot stop a regular expression once it
-runs.
+A `decision import --write` is asked whole, before its first event: every title, rationale,
+alternatives and file path of the plan. If one matches, nothing at all is recorded and the refusal
+names the file and the pattern; a file whose title is clean but whose path is not does not leave
+a decision with no edge behind.
+
+A retraction's reason and `unlink` are not asked, on purpose: they take a fact out of effect, and
+the person withdrawing a leak must be able to say why, even in the words the list guards. Refusing
+them would leave the leak standing.
+
+A `/regex/` runs on a clock: each pattern is allowed 50 ms on one text, in a context of its own
+(the pattern that runs longer is one that hangs the write, and the shapes that do so are too many
+to name by reading the pattern). One that overruns, or nests a quantifier, or does not compile, is
+read from then on as the text between its slashes, and the refusal or the warning says so.
 
 `mnema record commit` asks the same list of the events its cut carries, and **warns** on the
 second stream, before it builds the branch, of each one that matches: those events are signed

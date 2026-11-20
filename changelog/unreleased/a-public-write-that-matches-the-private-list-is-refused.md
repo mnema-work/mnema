@@ -7,8 +7,9 @@ Added
   its description or a handoff and its brief: a decision, task, memory, observation, skill or handoff, the note or reason
   of a decision, task or skill move or a supersede (and `decision review`), a link, and `decision import --write`.
   `--allow-private-pattern` on those verbs (`allow_private_pattern` on the matching MCP tools) records it anyway. The
-  private and global trees are never asked, and a machine with no list is not asked at all. A `/regex/` that nests a
-  quantifier (`(a+)+`), which can hang a write, is read as the text between its slashes. The file is never in a
+  private and global trees are never asked, and a machine with no list is not asked at all. A `decision import --write` is asked whole before its first event: if any file matches, nothing is recorded and
+  the refusal names the file. A `/regex/` runs with a 50 ms limit per pattern and text; one that overruns, nests a
+  quantifier or does not compile is read as the text between its slashes, and the refusal says so. The file is never in a
   repository and is never signed or recorded. `mnema record commit` warns, on the second stream and before it builds the
-  branch, of each event it carries whose text matches the list; it still makes the branch. A retraction's reason is not
-  asked. See [Recording decisions](docs/recording-decisions.md).
+  branch, of each event it carries whose text matches the list; it still makes the branch. A retraction's reason and `unlink` are
+  not asked: they take a fact out of effect, and a person withdrawing a leak must be able to say why. See [Recording decisions](docs/recording-decisions.md).

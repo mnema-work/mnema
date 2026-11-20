@@ -7,7 +7,7 @@
  * themselves, so committing it would publish what it exists to keep out. A blank line and a line
  * that starts with `#` are skipped. A line is plain text, matched without regard to case, or
  * `/regex/flags`, a regular expression. A `/regex/` that does not compile, or that nests a quantifier
- * (`(a+)+`, which can hang a write), is read as the plain text
+ * (`(a+)+`, which can hang a write), or that runs over {@link PATTERN_TIMEOUT_MS}, is read as the plain text
  * between its slashes, so a typo still guards the words it names instead of guarding nothing.
  *
  * A PUBLIC write whose text matches a pattern is refused with the passage and the pattern, and
@@ -48,7 +48,7 @@ export interface PrivateMatch {
 
 /**
  * Whether a regular expression nests a quantifier: a group that holds a quantifier (`*`, `+`, `{n,}`)
- * and is itself quantified, as in `(a+)+$`. Node runs a regex synchronously and cannot stop it, and
+ * and is itself quantified, as in `(a+)+$`. Node runs a regex synchronously, and
  * such a pattern held one public write for twenty seconds (and a server for as long), so it is read
  * as the plain text it spells instead. Escapes and character classes are not read as syntax.
  */

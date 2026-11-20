@@ -946,7 +946,7 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'collapsed',
     why: 'the paths of files in the working tree, which a name in it can carry',
   },
-  'record.ts «warning: tail {}, seq {} ({}): the text of a public event this cut carries matches "{}", a pattern of this machine\'s private list (passage: "{}"). A pull request of this branch publishes it.» #1':
+  'record.ts «warning: tail {}, seq {} ({}): the text of a public event this cut carries matches "{}", a pattern of this machine\'s private list (passage: "{}"). A pull request of this branch publishes it.{}» #1':
     {
       verdict: 'collapsed',
       why: 'the tail, kind, pattern and passage of an event on this clone, and a pattern the person wrote: text read off the disk',
@@ -1448,7 +1448,7 @@ const UNREACHABLE: Readonly<Record<string, string>> = {
   'record.ts «kept in {}, since the pull left another side there: {}» #1':
     'needs a file of the record that forked between the check and the pull, a race over a real ' +
     'remote; the tag is the fence for the paths',
-  'record.ts «warning: tail {}, seq {} ({}): the text of a public event this cut carries matches "{}", a pattern of this machine\'s private list (passage: "{}"). A pull request of this branch publishes it.» #1':
+  'record.ts «warning: tail {}, seq {} ({}): the text of a public event this cut carries matches "{}", a pattern of this machine\'s private list (passage: "{}"). A pull request of this branch publishes it.{}» #1':
     'needs a record whose carried event matches a list in the data directory, over a real remote; the ' +
     'built binary prints it over real git in `the-record-reaches-git-through-a-pull-request.test.ts`',
   'record.ts «{}: put back as this checkout held it, the longer side or the only one» #1':

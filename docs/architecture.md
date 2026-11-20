@@ -101,7 +101,7 @@ Through MCP the tool `record_decision` ([`mutatesTheRecord`](../packages/code/sr
 
 ### Committing the record
 
-[`runRecordCommit`](../packages/code/src/commands/record-commit.ts#L574) (`mnema record commit`) writes nothing to the working tree, the index or `HEAD`. It cuts each tail at a checkpoint, never below what the base branch already holds, copies those files and the public keys they cite into a tree built with git plumbing in a scratch index, verifies that tree in a temporary repository (`verify --require signed`, and `--since` the base), and only then makes the commit on a `mnema-record/` branch. It pushes nothing; it prints the commands.
+[`runRecordCommit`](../packages/code/src/commands/record-commit.ts#L576) (`mnema record commit`) writes nothing to the working tree, the index or `HEAD`. It cuts each tail at a checkpoint, never below what the base branch already holds, copies those files and the public keys they cite into a tree built with git plumbing in a scratch index, verifies that tree in a temporary repository (`verify --require signed`, and `--since` the base), and only then makes the commit on a `mnema-record/` branch. It pushes nothing; it prints the commands.
 
 ### The merge driver
 
