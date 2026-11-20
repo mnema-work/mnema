@@ -91,7 +91,7 @@ export {
 } from './backup/verify.js';
 export { type Ask, type DefaultBranch, theDefaultBranch } from './default-branch.js';
 export { gitPlaceOf, isWithin, notesRootOf } from './git-place.js';
-export { publicTreeIsExcluded, vanishedLocalTrees } from './local-record.js';
+export { publicTreeIsLocal, vanishedLocalTrees } from './local-record.js';
 export {
   type BirthProbe,
   type HeldTail,

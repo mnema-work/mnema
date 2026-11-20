@@ -14,7 +14,7 @@ For each tree it copies, the copy holds two kinds of file and nothing else:
 
 A project's copy is `<folder>/<name of the record>/<tree>/`. The private tree is always copied; the
 public tree only where git does not hold it: a project outside git, or a **local record**, one a
-repository excludes (`.git/info/exclude` names `.mnema/`) and never commits. A committed record's
+repository excludes (`.git/info/exclude` names `.mnema/`) and holds no file of (`git ls-files -- .mnema` is empty). A committed record's
 history is the public tree's own backup. The machine's **global tree** is a copy of its own, `<folder>/global/`, made only
 by `mnema backup run --global` into the folder `mnema backup setup --global <folder>` gave it. It mixes the
 memory and the decisions of every project on the machine, so a project's run never copies it, and
@@ -106,7 +106,11 @@ moves; the second reader (the Python program) is not run on it.
 A local record whose `.mnema/` folder is gone (`git clean -fdX` removes an excluded folder) is restored from the top of its
 repository: `mnema backup restore` finds the place where git still excludes `.mnema/`, takes the name of the record from the
 copy this machine has (`--from <record>` when it has more than one), and puts both trees back. It looks only at the top of the
-repository, and only where the folder is excluded; a repository that commits its record has its history to restore from.
+repository (a project in a subfolder with a local record is not restored from a folder that is gone), and only where
+git excludes the folder and holds none of it; a repository that commits its record has its history to restore from.
+
+`mnema doctor`, `mnema tail repair` and the place where a restore keeps what it replaces still take a project in a repository
+for one whose public tree git keeps, local record or not.
 
 The same question is asked when a project has no record name at all: a project without git, or with a local record, backs up its public tree, and
 when that tree lost its tails nothing names the record. `restore` then takes the name from the copy's manifest, shows it, and

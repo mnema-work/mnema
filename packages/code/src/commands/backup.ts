@@ -62,7 +62,7 @@ import {
   type Pushed,
   prepareCopy,
   prepareRestore,
-  publicTreeIsExcluded,
+  publicTreeIsLocal,
   type Restored,
   readBackupConfig,
   readCopy,
@@ -138,7 +138,7 @@ const saysOfNaming = (state: string): string =>
 function publicIsKeptByGit(resolved: ReturnType<typeof resolveTrees>): boolean {
   return (
     resolved.projectPublicMachinery !== undefined &&
-    !publicTreeIsExcluded(resolved.projectPublic as string)
+    !publicTreeIsLocal(resolved.projectPublic as string)
   );
 }
 

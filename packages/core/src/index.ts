@@ -340,7 +340,7 @@ export {
   prepareRestore,
   privateTreesLeftBehind,
   privateTreeVisibility,
-  publicTreeIsExcluded,
+  publicTreeIsLocal,
   type ResolvedTrees,
   type Restored,
   type RoutedKind,

@@ -474,6 +474,64 @@ describe('the backup of a local record: a clone whose record git does not hold',
     });
   });
 
+  it('brings back only the public tree, or only the private one, and leaves the other as it was', () => {
+    const a = localProject('halves');
+    expect(runBackupSetup(a, join(sandbox, 'folder-halves')).ok).toBe(true);
+    expect(runBackupRun(a).ok).toBe(true);
+    const trees = resolveTrees(a.cwd, env);
+    const root = trees.projectPublic as string;
+    const priv = trees.projectPrivate as string;
+    const tails = (dir: string) =>
+      filesUnder(join(dir, 'tails'))
+        .map((file) => `${file}:${readFileSync(join(dir, 'tails', file)).toString('base64')}`)
+        .join('\n');
+    const [publicTails, privateTails] = [tails(root), tails(priv)];
+    rmSync(root, { recursive: true, force: true });
+    expect(runBackupRestore(a, false).ok).toBe(true);
+    expect(tails(root)).toBe(publicTails);
+    expect(tails(priv)).toBe(privateTails);
+    rmSync(priv, { recursive: true, force: true });
+    expect(runBackupRestore(a, false).ok).toBe(true);
+    expect(tails(priv)).toBe(privateTails);
+    expect(tails(root)).toBe(publicTails);
+    expect(runBackupVerify(a)).toMatchObject({ ok: true, sound: true });
+  });
+
+  it('still asks before a copy of another record replaces a local record that is there', () => {
+    const one = localProject('first');
+    const two = localProject('second');
+    const first = runBackupSetup(one, join(sandbox, 'folder-first'));
+    if (!first.ok) throw new Error('setup refused');
+    expect(runBackupSetup(two, join(sandbox, 'folder-second')).ok).toBe(true);
+    expect(runBackupRun(one).ok).toBe(true);
+    const root = resolveTrees(two.cwd, env).projectPublic as string;
+    const live = digest(root);
+    const plan = planBackupRestore(two, first.record);
+    expect(plan).toMatchObject({ ok: true, asks: true });
+    expect(runBackupRestore(two, false, { from: first.record })).toMatchObject({
+      ok: false,
+      code: 'NOT_CONFIRMED',
+    });
+    expect(digest(root)).toBe(live);
+  });
+
+  it('takes a committed record for committed even when a global exclude names its folder', () => {
+    const a = project('global-exclude', true);
+    const exclude = join(sandbox, 'global-exclude-file');
+    writeFileSync(exclude, '.mnema/\n');
+    const git = (...args: string[]) =>
+      spawnSync('git', args, {
+        cwd: a.cwd,
+        env: { PATH: process.env.PATH ?? '', HOME: sandbox, GIT_CONFIG_GLOBAL: '/dev/null' },
+      });
+    expect(git('config', 'core.excludesFile', exclude).status).toBe(0);
+    expect(git('add', '-f', '.mnema/tails').status).toBe(0);
+    expect(runBackupSetup(a, join(sandbox, 'folder-global')).ok).toBe(true);
+    const ran = runBackupRun(a);
+    expect(ran).toMatchObject({ ok: true, publicIsInGit: true });
+    expect(ran.ok && ran.copied.map((one) => one.tree)).toEqual(['private']);
+  });
+
   it('restores from a folder that is gone only where git excludes it, and refuses elsewhere', () => {
     const committed = project('committed', true);
     const folder = join(sandbox, 'folder-committed');

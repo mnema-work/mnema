@@ -32,36 +32,39 @@ const REPOSITORY_VARIABLES = [
 ] as const;
 
 /**
- * Whether git excludes the `.mnema/` folder at `publicTree` (its path, there or not). False outside a
- * repository, where there is nothing to exclude from, and false where git cannot answer: the record
- * is then taken for the committed kind, which is the one a backup copies less of, never more.
+ * Whether the record folder at `publicTree` (its path, there or not) is a local record: git excludes
+ * it AND holds none of it (`git ls-files` lists nothing under it). The second half is not optional:
+ * `check-ignore` says yes for a tracked file under an exclude (a global `core.excludesFile` that lists
+ * `.mnema/` does it), and a committed record taken for a local one would have its tree copied and
+ * restored over what git already keeps. False outside a repository, and false where git cannot
+ * answer: the record is then taken for the committed kind, which a backup copies less of, never more.
  */
-export function publicTreeIsExcluded(publicTree: string): boolean {
+export function publicTreeIsLocal(publicTree: string): boolean {
   const place = gitPlaceOf(dirname(publicTree));
   if (place === undefined) return false;
   const env: NodeJS.ProcessEnv = { ...process.env, GIT_OPTIONAL_LOCKS: '0' };
   for (const name of REPOSITORY_VARIABLES) Reflect.deleteProperty(env, name);
-  const ran = spawnSync(
-    'git',
-    [
-      '-c',
-      'gc.auto=0',
-      '-c',
-      'maintenance.auto=false',
-      'check-ignore',
-      '-q',
-      '--no-index',
-      '--',
-      relative(place.top, join(publicTree, PROBE)),
-    ],
-    { cwd: place.top, env, timeout: 5_000 },
-  );
-  return ran.status === 0;
+  const ask = (args: readonly string[]) =>
+    spawnSync('git', ['-c', 'gc.auto=0', '-c', 'maintenance.auto=false', ...args], {
+      cwd: place.top,
+      env,
+      timeout: 5_000,
+    });
+  const excluded = ask([
+    'check-ignore',
+    '-q',
+    '--no-index',
+    '--',
+    relative(place.top, join(publicTree, PROBE)),
+  ]);
+  if (excluded.status !== 0) return false;
+  const held = ask(['ls-files', '--', relative(place.top, publicTree)]);
+  return held.status === 0 && held.stdout.length === 0;
 }
 
 /**
  * The trees of the local record that was at the top of the repository `cwd` is in, when its `.mnema/`
- * is gone: the walk up finds no project, and git still excludes `<top>/.mnema/`. Undefined where
+ * is gone: the walk up finds no project, and git still excludes `<top>/.mnema/` and holds none of it. Undefined where
  * there is no such repository, or the top can be no project's root (the home directory).
  *
  * Only the top of the repository: below it, an exclude that names `.mnema/` matches at every level,
@@ -73,6 +76,6 @@ export function vanishedLocalTrees(cwd: string, env: DiscoveryEnv): ResolvedTree
   if (place === undefined) return undefined;
   if (whyNoProjectRootAt(place.top, env) !== undefined) return undefined;
   const tree = join(place.top, PROJECT_DIR);
-  if (!publicTreeIsExcluded(tree)) return undefined;
+  if (!publicTreeIsLocal(tree)) return undefined;
   return treesOfTheProjectAt(tree, env);
 }
