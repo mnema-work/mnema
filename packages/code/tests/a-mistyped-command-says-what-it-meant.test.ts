@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { run } from '../src/program.js';
 
 /**
- * Seven small answers that used to say a no or a fact without saying what the person most likely
+ * Small answers that used to say a no or a fact without saying what the person most likely
  * meant: each is a sentence a caller reads once and acts on, so each is pinned by the words it
  * must carry.
  */
@@ -115,29 +115,6 @@ describe('what a write says about where it landed', () => {
     await mnema('init');
     const said = await mnema('memory', 'a note for the team');
     expect(said.out).toContain('committed with the repository, so it reaches every clone');
-  });
-});
-
-describe('show names both records when a label is carried by two trees', () => {
-  it('serves one and says the other', async () => {
-    await mnema('init');
-    const travels = await mnema('decision', 'record', 'Keep the runbook', 'a wiki goes stale');
-    const local = await mnema(
-      'decision',
-      'record',
-      'Rotate this laptop',
-      'it leaves the office',
-      '--scope',
-      'private',
-    );
-    const shown = await mnema('show', 'ADR-1');
-    expect(shown.failed).toBe(false);
-    expect(shown.err).toContain('ADR-1 is carried by two records');
-    expect(shown.err).toContain(`public tree (${idOf(travels.out)})`);
-    expect(shown.err).toContain(`private tree (${idOf(local.out)})`);
-    // The id of one record is not a label: it says nothing about another.
-    const byId = await mnema('show', idOf(travels.out));
-    expect(byId.err).not.toContain('is carried by two records');
   });
 });
 

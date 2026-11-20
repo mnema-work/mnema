@@ -588,6 +588,25 @@ describe('MCP session + tools: unit', () => {
     expect(events.find((e) => e.kind === 'handoff.recorded')?.which).toBe('claude-code');
   });
 
+  it('record_observation refuses the id of a real task with its last characters changed, and writes nothing', () => {
+    const project = makeProject('proj');
+    const session = openSession({
+      clientName: 'claude-code',
+      roots: [pathToFileURL(project).href],
+      env,
+    });
+    const task = aTaskIn(session);
+    const last = task.slice(-1);
+    const mistyped = task.slice(0, -1) + (last === '0' ? '1' : '0');
+    expect(mistyped).not.toBe(task);
+    const root = chainRootForScope(session.trees, 'public') as string;
+    const before = orderedEvents({ root }, catalogUpcasters()).length;
+    expect(
+      runRecordObservation(session, { about: mistyped, topic: 't', text: 'lost?' }),
+    ).toMatchObject({ ok: false, code: 'UNKNOWN_RECORD' });
+    expect(orderedEvents({ root }, catalogUpcasters()).length).toBe(before);
+  });
+
   it('record_handoff and record_observation refuse an id no tree of the workspace holds, and write nothing', () => {
     const project = makeProject('proj');
     const session = openSession({
