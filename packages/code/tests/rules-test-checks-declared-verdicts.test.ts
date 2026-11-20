@@ -151,10 +151,18 @@ describe('mnema rules test', () => {
     );
     if (!done.ok) throw new Error('the file was refused');
     expect(done.cases).toEqual([
-      { path: 'src/billing/x.ts', expect: 'ask', got: 'refuse', by: [ids['src/billing']], matched: false },
+      {
+        path: 'src/billing/x.ts',
+        expect: 'ask',
+        got: 'refuse',
+        by: [ids['src/billing']],
+        matched: false,
+      },
       { path: 'README.md', expect: 'none', got: 'none', by: [], matched: true },
     ]);
-    expect(rulesTestReport((line) => `${line.parts.map((part) => part.text).join(': ')}`, done.cases)).toEqual([
+    expect(
+      rulesTestReport((line) => `${line.parts.map((part) => part.text).join(': ')}`, done.cases),
+    ).toEqual([
       `MISMATCH: src/billing/x.ts: expected ask, got refuse (${ids['src/billing']})`,
       'MATCH: README.md: none',
       '1 of 2 case(s) met their verdict.',
