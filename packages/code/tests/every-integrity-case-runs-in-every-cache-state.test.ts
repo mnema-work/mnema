@@ -221,6 +221,8 @@ export const EXEMPT: Readonly<Record<string, string>> = {
  * checkpoint by hand plants damage, wears the mark and belongs to EXEMPT, not here.
  */
 export const WRITES_BUT_PLANTS_NOTHING: Readonly<Record<string, string>> = {
+  'packages/core/src/workflow/the-anchor-follows-the-founding.test.ts':
+    'makes a first write fail between its steps (a lock file laid in locks/, an append patched to throw) and holds the order of the anchor and the founding; no byte of a tail is damaged, and it reads the tail directory only to say that a file is there',
   'packages/chain/src/chain/staging.test.ts':
     'creates and removes empty staging files and notes in a temporary locks/ folder and holds which of them the next writer of a tail clears; it writes into no tail and no checkpoints, so there is no record and no cache to judge',
   'packages/code/tests/the-audit-verbs-fold-the-record-once.test.ts':
