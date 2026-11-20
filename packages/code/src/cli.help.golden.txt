@@ -880,22 +880,26 @@ $ mnema witness --help
 | ask an outside witness to date this record, and read where that stands
 |
 | Options:
-|   --global            also cover this machine's global tree (left out by
-|                       default): it belongs to no project and is present in every
-|                       one, and a witness over a tree no verdict reads is work
-|                       with no reader (default: false)
-|   --json              emit where the proof stands as JSON instead of prose: one
-|                       entry per tail, with the reading as the verifier derived
-|                       it
-|   -h, --help          display help for command
+|   --global                  also cover this machine's global tree (left out by
+|                             default): it belongs to no project and is present in
+|                             every one, and a witness over a tree no verdict
+|                             reads is work with no reader (default: false)
+|   --json                    emit where the proof stands as JSON instead of
+|                             prose: one entry per tail, with the reading as the
+|                             verifier derived it
+|   -h, --help                display help for command
 |
 | Commands:
-|   stamp [options]     ask an outside witness to date each tail's last checkpoint
-|                       (T3)
-|   upgrade [options]   go back for every attestation this record is waiting on
-|                       (T3)
-|   sigstore [options]  countersign each tail's last checkpoint with a Sigstore
-|                       certificate: who signed in, and when it was logged
+|   stamp [options]           ask an outside witness to date each tail's last
+|                             checkpoint (T3)
+|   upgrade [options]         go back for every attestation this record is waiting
+|                             on (T3)
+|   sigstore [options]        countersign each tail's last checkpoint with a
+|                             Sigstore certificate: who signed in, and when it was
+|                             logged
+|   sigstore-check [options]  check offline that the Sigstore countersignatures of
+|                             this record name the identity you expect, as `cosign
+|                             verify-blob` would
 
 ### mnema check --help
 $ mnema check --help
@@ -2597,6 +2601,41 @@ $ mnema witness sigstore --help
 | an identity of this record only once that identity names the same e-mail or workflow:
 | `mnema key sigstore <identity>`. It is not a witness level: `verify` reads it only with
 | `--against-sigstore`, as notes.
+
+### mnema witness sigstore-check --help
+$ mnema witness sigstore-check --help
+| Usage: mnema witness sigstore-check [options]
+|
+| check offline that the Sigstore countersignatures of this record name the
+| identity you expect, as `cosign verify-blob` would
+|
+| Options:
+|   --identity <identity>  the identity the certificate must name, exactly: the
+|                          e-mail, or the workflow URI (cosign’s
+|                          --certificate-identity)
+|   --issuer <url>         the OpenID issuer that must have vouched for it,
+|                          exactly (cosign’s --certificate-oidc-issuer)
+|   --message-dir <dir>    write the message each bundle signs into this folder,
+|                          one file per checkpoint named by its SHA-256, and print
+|                          the `cosign verify-blob` line that checks the same
+|                          bundle beside it
+|   --global               also cover this machine's global tree (left out by
+|                          default): it belongs to no project and is present in
+|                          every one, and a witness over a tree no verdict reads
+|                          is work with no reader (default: false)
+|   -h, --help             display help for command
+|
+| The message a bundle signs is the checkpoint’s own signed message, recomputed from
+| checkpoints.jsonl and never taken from the bundle; its SHA-256 is the name the bundle
+| is filed under. Exit 0 only when there is a bundle, every one holds by Sigstore’s own
+| checks, and its certificate names this identity and this issuer.
+|
+| OFFLINE: the certificate chain, the certificate-transparency timestamp, Rekor’s signed
+| promise and its proof of inclusion are inside the bundle and are checked against the
+| Sigstore trust root this binary carries. It does not ask anybody whether that root is
+| still current or whether Rekor still holds the entry.
+|
+| It says who signed in to Sigstore, not who wrote the record, and it moves no witness level.
 
 ### mnema check declare --help
 $ mnema check declare --help

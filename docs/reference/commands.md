@@ -68,6 +68,7 @@ carries the help the command prints, word for word.
   - [mnema witness stamp](cli/witness-stamp.md): ask an outside witness to date each tail's last checkpoint (T3)
   - [mnema witness upgrade](cli/witness-upgrade.md): go back for every attestation this record is waiting on (T3)
   - [mnema witness sigstore](cli/witness-sigstore.md): countersign each tail's last checkpoint with a Sigstore certificate: who signed in, and when it was logged
+  - [mnema witness sigstore-check](cli/witness-sigstore-check.md): check offline that the Sigstore countersignatures of this record name the identity you expect, as `cosign verify-blob` would
 - [mnema check](cli/check.md): give a rule a program that checks it, and record whether it held at a commit
   - [mnema check declare](cli/check-declare.md): declare the program that checks a rule (no shell: the program and its arguments)
   - [mnema check run](cli/check-run.md): run the check of every rule in force and record each result (run by a checker key, in CI)

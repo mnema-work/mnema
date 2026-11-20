@@ -32,9 +32,9 @@ import {
   witnessSigstorePath,
 } from '@mnema/chain';
 import type { Scope } from '@mnema/core';
+import type { TreeReport } from './verify.js';
 import type { SigstoreFinding } from './verify-sigstore.js';
 import { readSigstoreReceipts } from './verify-sigstore.js';
-import type { TreeReport } from './verify.js';
 
 /** Who the third party expects the certificate to name: cosign's two flags, taken whole, never as a pattern. */
 export interface ExpectedSigner {
@@ -80,11 +80,7 @@ function shellWord(word: string): string {
 }
 
 /** The command `cosign` takes for this bundle, message file and expectation, as one line. */
-export function cosignCommand(
-  bundle: string,
-  message: string,
-  expected: ExpectedSigner,
-): string {
+export function cosignCommand(bundle: string, message: string, expected: ExpectedSigner): string {
   return [
     'cosign verify-blob',
     '--bundle',
@@ -142,7 +138,14 @@ export function checkSigstoreWitnesses(
     }
     const file = join(messageDir, `${finding.checkpoint}.message`);
     writeFileSync(file, message);
-    return { ...at, verdict, finding, bundle, message: file, cosign: cosignCommand(bundle, file, expected) };
+    return {
+      ...at,
+      verdict,
+      finding,
+      bundle,
+      message: file,
+      cosign: cosignCommand(bundle, file, expected),
+    };
   });
   const ok =
     rows.length > 0 &&

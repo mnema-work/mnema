@@ -8,7 +8,12 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { checkpointHash, checkpointMessage, readTailCheckpoints, witnessSigstorePath } from '@mnema/chain';
+import {
+  checkpointHash,
+  checkpointMessage,
+  readTailCheckpoints,
+  witnessSigstorePath,
+} from '@mnema/chain';
 import type { DiscoveryEnv } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -69,7 +74,9 @@ describe('checking a Sigstore countersignature against who was expected', () => 
   });
 
   it('refuses a certificate that names somebody else, and says who', async () => {
-    const { sigstore } = await countersigned('https://github.com/other/repo/.github/workflows/x.yml@refs/heads/main');
+    const { sigstore } = await countersigned(
+      'https://github.com/other/repo/.github/workflows/x.yml@refs/heads/main',
+    );
     const check = checkSigstoreWitnesses(trees(), expected, { trustedRoot: sigstore.trustedRoot });
     expect(check.ok).toBe(false);
     expect(check.rows[0]?.verdict).toEqual({
@@ -130,7 +137,12 @@ describe('checking a Sigstore countersignature against who was expected', () => 
   });
 
   it('quotes what a shell would split', () => {
-    expect(cosignCommand('/a b/x.sigstore.json', '/m/y.message', { identity: "o'neil@example.com", issuer: ACTIONS_ISSUER })).toBe(
+    expect(
+      cosignCommand('/a b/x.sigstore.json', '/m/y.message', {
+        identity: "o'neil@example.com",
+        issuer: ACTIONS_ISSUER,
+      }),
+    ).toBe(
       `cosign verify-blob --bundle '/a b/x.sigstore.json' --certificate-identity 'o'\\''neil@example.com' ` +
         `--certificate-oidc-issuer ${ACTIONS_ISSUER} /m/y.message`,
     );
@@ -171,7 +183,14 @@ describe('the verb, as typed', () => {
     return { out: out.join('\n'), err: err.join('\n'), failed };
   }
 
-  const args = ['witness', 'sigstore-check', '--identity', AUTHOR_WORKFLOW, '--issuer', ACTIONS_ISSUER];
+  const args = [
+    'witness',
+    'sigstore-check',
+    '--identity',
+    AUTHOR_WORKFLOW,
+    '--issuer',
+    ACTIONS_ISSUER,
+  ];
 
   it('fails, and says so, over a record with no bundle', async () => {
     await typed('init');
@@ -194,7 +213,9 @@ describe('the verb, as typed', () => {
     const answer = await typed(...args, '--message-dir', join(sandbox, 'm'));
     expect(answer.failed).toBe(true);
     expect(answer.err).toContain('refused it');
-    expect(readFileSync(join(sandbox, 'm', `${checkpointHash(head)}.message`)).length).toBeGreaterThan(0);
+    expect(
+      readFileSync(join(sandbox, 'm', `${checkpointHash(head)}.message`)).length,
+    ).toBeGreaterThan(0);
     expect(answer.out).toContain(`cosign verify-blob --bundle ${file}`);
   });
 
