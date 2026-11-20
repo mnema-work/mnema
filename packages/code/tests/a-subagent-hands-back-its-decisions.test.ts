@@ -17,6 +17,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -325,20 +326,20 @@ describe('the verb as the command line routes it', () => {
     expect(seen.err).toEqual([]);
   });
 
-  it('is a read, and takes one option', () => {
+  it('is a read, and takes two options', () => {
     const program = new Command('mnema');
     const declared = registerHandback(program, {
       io: {},
       render: renderPlain,
     } as unknown as Parameters<typeof registerHandback>[1]);
     expect(declared.effect).toBe('reads');
-    expect(declared.act.options.map((option) => option.long)).toEqual(['--schema']);
+    expect(declared.act.options.map((option) => option.long)).toEqual(['--schema', '--host']);
   });
 });
 
 describe('the plugin command a host runs when a subagent stops', () => {
   /** Runs the handler as the host does, with a `mnema` on the PATH that is this tree's build. */
-  function host(input: string, withMnema = true) {
+  function host(input: string, withMnema = true, args: readonly string[] = []) {
     const bin = join(sandbox, 'bin');
     mkdirSync(bin, { recursive: true });
     writeFileSync(
@@ -352,7 +353,7 @@ describe('the plugin command a host runs when a subagent stops', () => {
     const only = join(sandbox, 'node-only');
     mkdirSync(only, { recursive: true });
     if (!existsSync(join(only, 'node'))) symlinkSync(process.execPath, join(only, 'node'));
-    return spawnSync(process.execPath, [join(PLUGIN, 'hooks', 'subagent-stop.mjs')], {
+    return spawnSync(process.execPath, [join(PLUGIN, 'hooks', 'subagent-stop.mjs'), ...args], {
       cwd: repo,
       input,
       encoding: 'utf-8',
@@ -440,5 +441,186 @@ describe('the plugin command a host runs when a subagent stops', () => {
     const garbage = host('not json');
     expect(garbage.status).toBe(0);
     expect(garbage.stderr).toBe('');
+  });
+});
+
+/**
+ * What Codex hands a `SubagentStop` command hook: the fields of `SubagentStopCommandInput`
+ * (`codex-rs/hooks/src/events/stop.rs`, the commit the host table pins), the reply under
+ * `last_assistant_message`.
+ */
+const codexPayload = (reply: unknown, extra: Record<string, unknown> = {}): string =>
+  JSON.stringify({
+    session_id: 'thread-1',
+    transcript_path: null,
+    agent_transcript_path: null,
+    cwd: repo,
+    hook_event_name: 'SubagentStop',
+    stop_hook_active: false,
+    agent_id: 'agent-1',
+    agent_type: 'explorer',
+    last_assistant_message: reply,
+    ...extra,
+  });
+
+/**
+ * What Copilot CLI hands a `SubagentStop` hook configured under the PascalCase name: "the VS Code
+ * compatible input" of its hooks reference (github/docs at 9f651797), which names no
+ * `stop_hook_active`.
+ */
+const copilotPayload = (reply: unknown): string =>
+  JSON.stringify({
+    hook_event_name: 'SubagentStop',
+    session_id: 's-1',
+    timestamp: '2026-11-20T12:00:00.000Z',
+    cwd: repo,
+    transcript_path: '/tmp/t.jsonl',
+    agent_id: 'a-1',
+    agent_type: 'explore',
+    agent_name: 'explore',
+    last_assistant_message: reply,
+    stop_reason: 'end_turn',
+  });
+
+/** The same hook configured under the camelCase name: no event name in it, the reply under `response`. */
+const copilotCamelPayload = (reply: unknown): string =>
+  JSON.stringify({
+    sessionId: 's-1',
+    timestamp: 1_790_000_000_000,
+    cwd: repo,
+    transcriptPath: '/tmp/t.jsonl',
+    agentId: 'a-1',
+    agentType: 'explore',
+    agentName: 'explore',
+    response: reply,
+    stopReason: 'end_turn',
+  });
+
+/** What the verb answers for `host`, as the host parses it. */
+function answerFor(host: 'claude' | 'codex' | 'copilot', input: string) {
+  const done = runHandback({ cwd: repo, env }, { payload: input, host });
+  return {
+    reply: JSON.parse(JSON.stringify(done.reply)) as Record<string, unknown>,
+    notes: done.notes,
+  };
+}
+
+describe('what each host that documents a subagent stop hands the verb', () => {
+  it('Codex: the documented payload sends a reply with no block back, once', () => {
+    const sent = answerFor('codex', codexPayload('Analysis complete.'));
+    expect(sent.reply['decision']).toBe('block');
+    expect(String(sent.reply['reason'])).toContain('it has no block whose info string is mnema-handback');
+    expect(answerFor('codex', codexPayload('Analysis complete.', { stop_hook_active: true })).reply).toEqual({});
+    expect(answerFor('codex', codexPayload(`Done.\n${block(ONE)}`)).reply).toEqual({});
+  });
+
+  it('Codex: a stop with no final reply (null, as the host sends it) is checked as nothing and said', () => {
+    const none = answerFor('codex', codexPayload(null));
+    expect(none.reply).toEqual({});
+    expect(none.notes.join(' ')).toContain('carried no final reply');
+  });
+
+  it('Copilot CLI: the PascalCase payload sends a reply with no block back', () => {
+    const sent = answerFor('copilot', copilotPayload('Analysis complete.'));
+    expect(sent.reply['decision']).toBe('block');
+    expect(answerFor('copilot', copilotPayload(`Done.\n${block(ONE)}`)).reply).toEqual({});
+  });
+
+  it('Copilot CLI: the camelCase payload, which names no event, is read under its own field', () => {
+    const sent = answerFor('copilot', copilotCamelPayload('Analysis complete.'));
+    expect(sent.reply['decision']).toBe('block');
+    expect(answerFor('copilot', copilotCamelPayload(`Done.\n${block(ONE)}`)).reply).toEqual({});
+    // Said as Claude Code's, the same bytes are no `SubagentStop` and nothing is checked.
+    expect(answerFor('claude', copilotCamelPayload('Analysis complete.')).reply).toEqual({});
+  });
+
+  it('a payload of another event is nothing on every host, the camelCase shape included', () => {
+    for (const host of ['claude', 'codex', 'copilot'] as const) {
+      expect(answerFor(host, codexPayload('Done.', { hook_event_name: 'Stop' })).reply).toEqual({});
+    }
+  });
+
+  it('the command line takes --host for the three hosts and refuses another', async () => {
+    const seen = { out: [] as string[], err: [] as string[] };
+    const io = {
+      out: (line: string) => seen.out.push(line),
+      err: (line: string) => seen.err.push(line),
+      fail: () => {},
+      input: async () => copilotCamelPayload('Done.'),
+    };
+    const program = new Command('mnema').exitOverride().configureOutput({ writeErr: () => {} });
+    registerHandback(program, { io, render: renderPlain } as unknown as Parameters<
+      typeof registerHandback
+    >[1]);
+    await program.parseAsync(['handback', '--host', 'copilot'], { from: 'user' });
+    expect(seen.out.map((line) => JSON.parse(line).decision)).toEqual(['block']);
+    await expect(program.parseAsync(['handback', '--host', 'gemini'], { from: 'user' })).rejects.toThrow();
+  });
+});
+
+describe('the plugin command on Codex and Copilot CLI', () => {
+  const hostRun = (input: string, ...args: string[]) => {
+    const bin = join(sandbox, 'bin');
+    mkdirSync(bin, { recursive: true });
+    writeFileSync(
+      join(bin, 'mnema'),
+      ['#!/bin/sh', `exec "${process.execPath}" "${CLI}" "$@"`, ''].join('\n'),
+    );
+    chmodSync(join(bin, 'mnema'), 0o755);
+    const only = join(sandbox, 'node-only');
+    mkdirSync(only, { recursive: true });
+    if (!existsSync(join(only, 'node'))) symlinkSync(process.execPath, join(only, 'node'));
+    return spawnSync(process.execPath, [join(PLUGIN, 'hooks', 'subagent-stop.mjs'), ...args], {
+      cwd: repo,
+      input,
+      encoding: 'utf-8',
+      timeout: 20_000,
+      env: { HOME: join(sandbox, 'home'), PATH: `${bin}:${only}`, CLAUDE_PROJECT_DIR: repo },
+    });
+  };
+
+  it('answers the decision on stdout and exits 0, where the host reads a decision and not an exit code', () => {
+    for (const [name, input] of [
+      ['codex', codexPayload('Analysis complete.')],
+      ['copilot', copilotPayload('Analysis complete.')],
+    ] as const) {
+      const sent = hostRun(input, '--host', name);
+      expect(sent.status, name).toBe(0);
+      const said = JSON.parse(sent.stdout) as { decision: string; reason: string };
+      expect(said.decision, name).toBe('block');
+      expect(said.reason, name).toContain('```mnema-handback');
+      expect(sent.stderr, name).toBe('');
+    }
+  });
+
+  it('writes nothing for a reply in the format, and Claude Code still exits 2', () => {
+    for (const name of ['codex', 'copilot']) {
+      const quiet = hostRun(
+        name === 'codex' ? codexPayload(`Done.\n${block(ONE)}`) : copilotPayload(`Done.\n${block(ONE)}`),
+        '--host',
+        name,
+      );
+      expect([quiet.status, quiet.stdout, quiet.stderr], name).toEqual([0, '', '']);
+    }
+    expect(host(payload('Analysis complete.')).status).toBe(2);
+  });
+});
+
+describe('the hooks files of the hosts that read them', () => {
+  const read = (name: string) =>
+    JSON.parse(readFileSync(join(PLUGIN, 'hooks', name), 'utf-8')) as {
+      hooks: Record<string, { hooks: { command: string }[] }[]>;
+    };
+
+  it('Codex and Copilot CLI run the handback at SubagentStop, naming their host', () => {
+    for (const [file, name] of [
+      ['codex.json', 'codex'],
+      ['copilot.json', 'copilot'],
+    ] as const) {
+      const commands = (read(file).hooks['SubagentStop'] ?? []).flatMap((g) => g.hooks.map((h) => h.command));
+      expect(commands, file).toHaveLength(1);
+      expect(commands[0], file).toContain('subagent-stop.mjs');
+      expect(commands[0], file).toContain(`--host ${name}`);
+    }
   });
 });
