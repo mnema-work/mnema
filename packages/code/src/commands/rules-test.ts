@@ -93,7 +93,12 @@ function casesOf(
       return { message: `case ${index + 1} of ${file} has no "path".` };
     }
     const inside = posix.normalize(path.replaceAll('\\', '/'));
-    if (isAbsolute(path) || posix.isAbsolute(inside) || inside === '..' || inside.startsWith('../')) {
+    if (
+      isAbsolute(path) ||
+      posix.isAbsolute(inside) ||
+      inside === '..' ||
+      inside.startsWith('../')
+    ) {
       return {
         message: `case ${index + 1} of ${file} names ${JSON.stringify(path)}: a path is relative to the project root and stays inside it.`,
       };

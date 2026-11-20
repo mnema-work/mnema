@@ -5,7 +5,14 @@
  * unlinked from a path makes the case that relied on it fail, which is what the verb is for.
  */
 
-import { appendFileSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -183,7 +190,11 @@ describe('mnema rules test', () => {
   });
 
   it('refuses a case whose path is absolute or leaves the project, naming the case', async () => {
-    const outside = await mnema('rules', 'test', declare(['README.md', 'none'], ['../x.ts', 'none']));
+    const outside = await mnema(
+      'rules',
+      'test',
+      declare(['README.md', 'none'], ['../x.ts', 'none']),
+    );
     expect(outside.failed).toBe(true);
     expect(outside.err).toContain('case 2 of');
     expect(outside.err).toContain('"../x.ts"');
