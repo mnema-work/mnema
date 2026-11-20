@@ -198,7 +198,7 @@ describe('mnema instructions in a file of the person’s', () => {
     expect(INSTRUCTIONS_VERSION).toBe('v5');
     const line = INSTRUCTIONS_BODY.split('\n').find((one) => one.includes('born `proposed`'));
     expect(line).toBe(
-      '- A decision is born `proposed`; once it is accepted it is in force here. If the person dictated it, or chose it among options you offered (a recommended one included), accept it now with `decision_transition` and a note quoting their answer; one you concluded alone waits for the person. An agent’s acceptance is recorded as an agent’s, and `mnema switch off agent-accepts` leaves every acceptance to a person.',
+      '- A decision is born `proposed`; once it is accepted it is in force here. If the person dictated it, or chose it among options you offered (a recommended one included), accept it now with `decision_transition` and a note quoting their exact words between double quotes; one you concluded alone waits for the person. An agent’s acceptance is recorded as an agent’s, and `mnema switch off agent-accepts` leaves every acceptance to a person.',
     );
     const oldLine =
       '- A decision is born `proposed`; once it is accepted it is in force here (an acceptance made by an agent is recorded as an agent’s, and `mnema switch off agent-accepts` leaves it to a person).';

@@ -171,7 +171,7 @@ export function stateOfANewDecision(
       : `\`mnema decision move accept ${oneLine(command.id)} --which ${oneLine(command.agent)}\``;
   return (
     `${born} If the person dictated it, or chose it among options you offered ` +
-    `(a recommended one included), accept it now with ${how}, the note quoting their answer; ` +
+    `(a recommended one included), accept it now with ${how}, the note quoting their exact words between double quotes; ` +
     `if you concluded it alone, it waits for the person (${review}).`
   );
 }

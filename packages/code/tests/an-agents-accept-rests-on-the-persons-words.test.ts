@@ -16,7 +16,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { ListRootsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { quotedPassages } from '../src/agent-accept-words.js';
+import { quotedPassages, whatTheAcceptRestsOn } from '../src/agent-accept-words.js';
 import { buildMcpServer } from '../src/mcp/server.js';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
 import { MNEMA_CLI } from './support/the-cli.js';
@@ -123,7 +123,45 @@ describe('the passages a note quotes', () => {
   });
 });
 
+describe('what an accept rests on, with a transcript that is known', () => {
+  const move = (transcript: string, note: string) => ({
+    action: 'accept',
+    agent: 'claude-code',
+    note,
+    hostSession: SESSION,
+    transcript,
+  });
+
+  it('waits when the transcript is empty and when it cannot be read', () => {
+    writeFileSync(transcript, '');
+    expect(whatTheAcceptRestsOn(move(transcript, 'He said "keep the cache"'))?.outcome).toBe('waits');
+    const gone = join(sandbox, 'gone.jsonl');
+    expect(whatTheAcceptRestsOn(move(gone, 'He said "keep the cache"'))?.outcome).toBe('waits');
+  });
+
+  it('reads the curly apostrophe and the straight one as the same, on both sides', () => {
+    writeFileSync(transcript, `${typed('Please don\u2019t drop the cache, it\'s needed.')}\n`);
+    expect(
+      whatTheAcceptRestsOn(move(transcript, 'Said "don\'t drop the cache, it\u2019s needed"'))?.outcome,
+    ).toBe('typed');
+  });
+});
+
 describe('an agent accept at the command line', () => {
+  it('finds the transcript from a Stop alone, with no SessionStart before it', { timeout: 60_000 }, () => {
+    const id = aProposedDecision();
+    writeFileSync(transcript, `${typed('Yes, keep the cache between runs, do it.')}\n`);
+    const told = mnema(
+      {},
+      JSON.stringify({ hook_event_name: 'Stop', session_id: SESSION, transcript_path: transcript }),
+      'tally',
+    );
+    expect(told.status, told.out).toBe(0);
+    const moved = accept(id, 'The person said "keep the cache between runs"');
+    expect(moved.status, moved.out).toBe(0);
+    expect(moved.out).toContain('quotes words the person typed');
+  });
+
   it('passes when the note quotes words the person typed', { timeout: 60_000 }, () => {
     const id = aProposedDecision();
     writeFileSync(transcript, `${typed('Yes, keep the cache between runs, do it.')}\n`);

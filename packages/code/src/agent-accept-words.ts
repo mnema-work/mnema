@@ -9,7 +9,7 @@
  * that switch and before anything is written, so a refusal leaves the record as it found it.
  *
  * WHAT IS CHECKED. The passages the note puts between double quotes (straight, curly or
- * Portuguese ones, {@link LEAST_QUOTED} characters or more, case and spacing folded) are looked for
+ * Portuguese ones, {@link LEAST_QUOTED} characters or more, case, spacing and the curly apostrophe folded) are looked for
  * in what the person said, read off the host's own transcript by `whatThePersonSaid`: a line the
  * host marks as typed by a person, and the answer given in its question tool. One passage found
  * is enough; the reply says which of the two it was found in. Nothing is written: not the passage, not
@@ -43,9 +43,9 @@ const MOST_BYTES = 256 * 1024 * 1024;
 
 const QUOTED = /"([^"]+)"|“([^”]+)”|«([^»]+)»/g;
 
-/** Text folded to compare: Unicode NFC, lower case, every run of space one space. */
+/** Text folded to compare: Unicode NFC, lower case, the curly apostrophe straight, every run of space one space. */
 function folded(text: string): string {
-  return text.normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim();
+  return text.normalize('NFC').toLowerCase().replaceAll('\u2019', "'").replace(/\s+/g, ' ').trim();
 }
 
 /** The passages a note puts between quotation marks that are long enough to be words, folded. */
