@@ -165,10 +165,14 @@ export function prepareRestore(
   if (manifest.state === 'unreadable') {
     throw new BackupRefusedError(
       'BROKEN_COPY',
-      `The copy at ${folder} has a ${BACKUP_MANIFEST} that does not read as the manifest of a copy (not JSON, not a list of files, an entry with no path and size, or a file the disk refuses): \`mnema backup verify\` says so. A copy that is broken is not put into the tree.`,
+      `${join(folder, BACKUP_MANIFEST)} does not read as the manifest of a copy (not JSON, not a list of files, an entry with no path and size, or a file the disk refuses): \`mnema backup verify\` says so. A copy that is broken is not put into the tree.`,
     );
   }
-  if (manifest.state === 'whole' && typeof manifest.record === 'string' && manifest.record !== copyRecord) {
+  if (
+    manifest.state === 'whole' &&
+    typeof manifest.record === 'string' &&
+    manifest.record !== copyRecord
+  ) {
     refuseMismatch(copyRecord as string, folder, 'its manifest says another');
   }
   const naming = recordNamedIn([folder]);
