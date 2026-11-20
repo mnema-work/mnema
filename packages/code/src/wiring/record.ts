@@ -171,7 +171,7 @@ export function registerRecord(program: Command, wiring: Wiring): Declared {
             io.err(
               render(
                 fact(
-                  onOneLine`warning: tail ${found.tail}, seq ${found.seq ?? '?'} (${found.kind ?? 'an event'}): the text of a public event this cut carries matches "${found.pattern}", a pattern of this machine's private list (passage: "${found.passage}"). A pull request of this branch publishes it.`,
+                  onOneLine`warning: tail ${found.tail}, seq ${found.seq ?? '?'} (${found.kind ?? 'an event'}): the text of a public event this cut carries matches "${found.pattern}", a pattern of this machine's private list (passage: "${found.passage}"). A pull request of this branch publishes it.${found.readAsText ? ' The pattern is a regular expression that could not be run in time, so it was read as the text between its slashes.' : ''}`,
                 ),
               ),
             ),

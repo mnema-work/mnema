@@ -51,17 +51,35 @@ describe('the private list: what a line is', () => {
     expect(matchPrivate(list, 'the (unclosed thing')?.pattern).toBe('/(unclosed/');
   });
 
-  it('reads a regex with a nested quantifier as plain text, so it cannot hang a write', () => {
-    // Spelled from parts: it is the pattern that hangs an engine, and a scanner reads it as one.
-    const spelled = ['/(a+', ')+$/'].join('');
-    const nested = parsePrivateList(spelled);
-    const started = Date.now();
-    expect(matchPrivate(nested, `${'a'.repeat(40)}!`)).toBeUndefined();
-    expect(Date.now() - started).toBeLessThan(1000);
-    // Read as the text between the slashes, it still guards that text.
-    expect(matchPrivate(nested, 'see (a+)+$ here')?.pattern).toBe(spelled);
-    // A quantifier that is not nested stays a regex.
-    expect(matchPrivate(parsePrivateList('/(ab)+c/'), 'xababc')).toBeDefined();
+  // Each of these hangs an engine on `aaaa...!`. They are spelled from parts: a scanner reads the
+  // whole literal as a pattern of ours, and it is one.
+  const slash = (...parts: string[]): string => `/${parts.join('')}/`;
+  const HANGING: Readonly<Record<string, string>> = {
+    nested: slash('(a+', ')+$'),
+    'a group inside a group': slash('((a+', '))+$'),
+    'an optional before the quantifier': slash('(x?(a+', '))+$'),
+    'two equal branches': slash('(a|', 'a)+$'),
+    'a counted group': slash('(.*a)', '{20}$'),
+    'overlapping branches': slash('(a|', 'aa)+$'),
+  };
+
+  for (const [name, spelled] of Object.entries(HANGING)) {
+    it(`does not let a pattern with ${name} hang a write: it is read as text, and says so`, () => {
+      const list = parsePrivateList(spelled);
+      const started = Date.now();
+      expect(matchPrivate(list, `${'a'.repeat(60)}!`)).toBeUndefined();
+      expect(Date.now() - started).toBeLessThan(2000);
+      // Read as the text between its slashes from then on, it still guards that text.
+      const found = matchPrivate(list, `see ${spelled.slice(1, -1)} here`);
+      expect(found?.pattern).toBe(spelled);
+      expect(found?.readAsText).toBe(true);
+    });
+  }
+
+  it('keeps an honest regex a regex, and does not call it text', () => {
+    const found = matchPrivate(parsePrivateList('/(ab)+c/'), 'xababc');
+    expect(found).toBeDefined();
+    expect(found?.readAsText).toBeUndefined();
     expect(matchPrivate(parsePrivateList('/[+*]a+/'), 'x+aa')).toBeDefined();
   });
 

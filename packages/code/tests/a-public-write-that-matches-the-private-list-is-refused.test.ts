@@ -244,12 +244,47 @@ describe('the binary', () => {
       adrDir();
       const before = publicTreeLines(repo);
       const refused = mnema('decision', 'import', 'docs/adr', '--write');
-      expect(refused.out).toContain('PRIVATE_PATTERN');
+      expect(refused.out).toContain('whole or not at all');
       expect(publicTreeLines(repo)).toBe(before);
       expect(publicTreeHeld(MARKER)).toBe(false);
       const passed = mnema('decision', 'import', 'docs/adr', '--write', '--allow-private-pattern');
       expect(passed.status, passed.out).toBe(0);
       expect(publicTreeHeld(MARKER)).toBe(true);
+    });
+  });
+
+  describe('decision import goes in whole or not at all', () => {
+    const adr = (title: string): string =>
+      `# 1. ${title}\n\n## Status\n\nAccepted\n\n## Context\n\nWe need a queue.\n\n## Decision\n\nWe use it.\n`;
+
+    it('refuses a clean title whose path matches, naming the file, and records nothing', () => {
+      const dir = join(repo, 'docs', 'adr');
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, '0002-nightjar.md'), adr('Use a queue'));
+      const before = publicTreeLines(repo);
+      const refused = mnema('decision', 'import', 'docs/adr', '--write');
+      expect(refused.status).not.toBe(0);
+      expect(refused.out).toContain('docs/adr/0002-nightjar.md');
+      expect(refused.out).toContain('"Nightjar"');
+      expect(refused.out).toContain('whole or not at all');
+      expect(publicTreeLines(repo)).toBe(before);
+      // The next run is not told "already in the record": nothing was half written.
+      const again = mnema('decision', 'import', 'docs/adr', '--write');
+      expect(again.out).not.toContain('already');
+    });
+
+    it('with two files, the second matching, writes neither', () => {
+      const dir = join(repo, 'docs', 'adr');
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, '0001-a-queue.md'), adr('Use a queue'));
+      writeFileSync(join(dir, '0002-b-cache.md'), adr('Use the Nightjar cache'));
+      const before = publicTreeLines(repo);
+      const refused = mnema('decision', 'import', 'docs/adr', '--write');
+      expect(refused.status).not.toBe(0);
+      expect(refused.out).toContain('0002-b-cache.md');
+      expect(publicTreeLines(repo)).toBe(before);
+      const passed = mnema('decision', 'import', 'docs/adr', '--write', '--allow-private-pattern');
+      expect(passed.status, passed.out).toBe(0);
     });
   });
 
@@ -269,7 +304,7 @@ describe('the binary', () => {
   });
 
   it('is not held by a pattern that would hang the engine', () => {
-    writeFileSync(join(home, '.mnema', 'private-patterns.txt'), `${['/(a+', ')+$/'].join('')}\n`);
+    writeFileSync(join(home, '.mnema', 'private-patterns.txt'), `${['/(a|', 'aa)+$/'].join('')}\n`);
     const started = Date.now();
     const done = mnema('memory', `${'a'.repeat(40)}!`, '--scope', 'public');
     expect(done.status, done.out).toBe(0);

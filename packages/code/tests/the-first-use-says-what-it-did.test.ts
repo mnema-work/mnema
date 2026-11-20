@@ -55,10 +55,19 @@ afterEach(() => {
 
 /** Runs one command line and says what it printed, on both streams, and whether it failed. */
 async function mnema(...argv: string[]): Promise<{ out: string; err: string; failed: boolean }> {
+  return mnemaSeatedAs(false, ...argv);
+}
+
+/** The same, with a person at a terminal or none (a supersede with `agent-accepts` off asks the seat). */
+async function mnemaSeatedAs(
+  aPersonIsHere: boolean,
+  ...argv: string[]
+): Promise<{ out: string; err: string; failed: boolean }> {
   const out: string[] = [];
   const err: string[] = [];
   let failed = false;
   const io: CliIo = {
+    aPersonIsHere,
     out: (line) => out.push(line),
     err: (line) => err.push(line),
     fail: () => {
@@ -273,7 +282,15 @@ describe('a supersede by a proposal', () => {
     await mnema('switch', 'off', 'agent-accepts');
     const next2 = idOf((await mnema('decision', 'record', 'Use Z', 'offset')).out);
     const old2 = idOf((await mnema('decision', 'record', 'Use local', 'zones')).out);
-    const off = await mnema('decision', 'supersede', old2, next2, '--reason', 'newer');
+    const off = await mnemaSeatedAs(
+      true,
+      'decision',
+      'supersede',
+      old2,
+      next2,
+      '--reason',
+      'newer',
+    );
     expect(off.out).toContain(
       `is still proposed, so nothing is in force on this subject until a person accepts it (\`agent-accepts\` is switched off)`,
     );

@@ -2,9 +2,11 @@ import type { ScopedCache } from '@mnema/context';
 import { describe, expect, it } from 'vitest';
 import {
   AGENT_ACCEPTS_IS_OFF,
+  AGENT_ACCEPTS_NEEDS_A_PERSON,
   acceptedByAnAgent,
   acceptStateHere,
   agentMayAccept,
+  mayTurnAgentAcceptsOn,
   stateOfANewDecision,
 } from './agent-accepts.js';
 import { tellsWhatToDo } from './record-framing.js';
@@ -49,17 +51,108 @@ describe('whether an agent may accept', () => {
     expect(turnedAway?.message).toContain('The decision was not moved.');
   });
 
-  it('asks only about an accept: a person at a terminal, and every other action, pass while it is off', () => {
-    expect(
-      agentMayAccept(sources('off'), { action: 'accept', agent: undefined, atATerminal: true }),
-    ).toBe(undefined);
-    for (const action of ['reject', 'supersede']) {
-      expect(
-        agentMayAccept(sources('off'), { action, agent: 'claude-code', atATerminal: false }),
-      ).toBe(undefined);
-      expect(agentMayAccept(sources('off'), { action, agent: undefined, atATerminal: false })).toBe(
+  it('asks about an accept and a supersede: a person at a terminal passes, a reject is never asked', () => {
+    for (const action of ['accept', 'supersede']) {
+      expect(agentMayAccept(sources('off'), { action, agent: undefined, atATerminal: true })).toBe(
         undefined,
       );
+    }
+    expect(
+      agentMayAccept(sources('off'), {
+        action: 'reject',
+        agent: 'claude-code',
+        atATerminal: false,
+      }),
+    ).toBe(undefined);
+    expect(
+      agentMayAccept(sources('off'), { action: 'reject', agent: undefined, atATerminal: false }),
+    ).toBe(undefined);
+  });
+
+  it('turns away a supersede from an agent, and from no one outside a terminal, saying it is a supersede', () => {
+    for (const agent of ['claude-code', undefined]) {
+      const turnedAway = agentMayAccept(sources('off'), {
+        action: 'supersede',
+        agent,
+        atATerminal: false,
+      });
+      expect(turnedAway?.code).toBe(AGENT_ACCEPTS_IS_OFF);
+      expect(turnedAway?.message).toContain('this supersede');
+      expect(turnedAway?.message).toContain('The decision was not moved.');
+      expect(turnedAway?.message).not.toContain('this accept');
+    }
+  });
+
+  it('turns away adopting or deprecating a pattern like a supersede, and never review or reject', () => {
+    for (const action of ['adopt', 'deprecate']) {
+      for (const agent of ['claude-code', undefined]) {
+        const turnedAway = agentMayAccept(sources('off'), { action, agent, atATerminal: false });
+        expect(turnedAway?.code).toBe(AGENT_ACCEPTS_IS_OFF);
+        expect(turnedAway?.message).toContain(`this ${action}`);
+        expect(turnedAway?.message).toContain('The pattern was not moved.');
+      }
+      expect(agentMayAccept(sources('off'), { action, agent: undefined, atATerminal: true })).toBe(
+        undefined,
+      );
+      expect(
+        agentMayAccept(sources('on'), { action, agent: 'claude-code', atATerminal: false }),
+      ).toBe(undefined);
+    }
+    expect(
+      agentMayAccept(sources('off'), {
+        action: 'review',
+        agent: 'claude-code',
+        atATerminal: false,
+      }),
+    ).toBe(undefined);
+  });
+
+  it('lets a supersede through while the switch is on or was never touched', () => {
+    for (const switched of ['never', 'on'] as const) {
+      expect(
+        agentMayAccept(sources(switched), {
+          action: 'supersede',
+          agent: 'claude-code',
+          atATerminal: false,
+        }),
+      ).toBe(undefined);
+    }
+  });
+
+  it('turns away switching agent-accepts back on from an agent and from no terminal, never switching it off', () => {
+    for (const agent of ['claude-code', undefined]) {
+      const turnedAway = mayTurnAgentAcceptsOn({
+        channel: 'agent-accepts',
+        on: true,
+        agent,
+        atATerminal: false,
+      });
+      expect(turnedAway?.code).toBe(AGENT_ACCEPTS_NEEDS_A_PERSON);
+      expect(turnedAway?.message).toContain('Nothing was switched.');
+    }
+    expect(
+      mayTurnAgentAcceptsOn({
+        channel: 'agent-accepts',
+        on: true,
+        agent: undefined,
+        atATerminal: true,
+      }),
+    ).toBe(undefined);
+    expect(
+      mayTurnAgentAcceptsOn({
+        channel: 'agent-accepts',
+        on: true,
+        agent: 'claude-code',
+        atATerminal: true,
+      }),
+    ).not.toBe(undefined);
+    for (const agent of ['claude-code', undefined]) {
+      expect(
+        mayTurnAgentAcceptsOn({ channel: 'agent-accepts', on: false, agent, atATerminal: false }),
+      ).toBe(undefined);
+      expect(
+        mayTurnAgentAcceptsOn({ channel: 'choice-settled', on: true, agent, atATerminal: false }),
+      ).toBe(undefined);
     }
   });
 

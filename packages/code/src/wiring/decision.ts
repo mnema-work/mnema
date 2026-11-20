@@ -39,6 +39,7 @@ import { fromTheGroup, REFUSED, takesFromItsGroup } from './from-the-group.js';
 import { writeLines } from './io.js';
 import { createsBy } from './misuse.js';
 import { noSuchRecord } from './no-such-record.js';
+import { onOneLine } from './on-one-line.js';
 import {
   ALLOW_PRIVATE_PATTERN_HELP,
   declaredAgent,
@@ -307,6 +308,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
       ...(given.which !== undefined ? { which: given.which } : {}),
       ...(given.allowPrivatePattern === true ? { allowPrivatePattern: true as const } : {}),
       ...(run !== undefined ? { run } : {}),
+      atATerminal: io.aPersonIsHere === true,
     });
     await reportDecisionMove(result, oldId, wiring);
   });
@@ -453,6 +455,10 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
     }
     reportRefusal(wiring, result, {
       OUTSIDE_PROJECT: `"${dir}" is not inside this project. The provenance a proposal records has to be citable by every clone, so the directory has to be one.`,
+      PRIVATE_PATTERN:
+        result.reason === 'PRIVATE_PATTERN'
+          ? onOneLine`Nothing was recorded: ${result.path} matches "${result.pattern}", a pattern of this machine's private list (passage: "${result.passage}"). The import goes in whole or not at all. Take the passage out of the file, or pass --allow-private-pattern if the mention is meant to be public.${result.readAsText ? ' The pattern is a regular expression that could not be run in time, so it was read as the text between its slashes.' : ''}`
+          : '',
       GLOBAL_TREE:
         '`decision import` does not write to the global tree: a proposal records the file it came from as a path inside this project, and every project reads the global tree, where that path names a file of its own. Leave --scope out, or use --scope private.',
     });

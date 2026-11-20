@@ -322,7 +322,10 @@ export function refusePrivateText(
         `private list (passage: "${oneLine(match.passage)}"). The fact was NOT recorded: a public record is ` +
         'committed and cloned. Write it without that passage, record it in the private scope, or, ' +
         'if the mention is meant to be public, say so with --allow-private-pattern ' +
-        '(allow_private_pattern in the MCP tools).',
+        '(allow_private_pattern in the MCP tools).' +
+        (match.readAsText === true
+          ? ' The pattern is a regular expression this machine could not run in time (or at all), so it was read as the text between its slashes.'
+          : ''),
     };
   }
   return undefined;

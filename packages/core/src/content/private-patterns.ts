@@ -18,6 +18,7 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import vm from 'node:vm';
 
 /** The file, in the data directory. */
 export const PRIVATE_PATTERNS_FILE = 'private-patterns.txt';
@@ -27,7 +28,9 @@ export interface PrivatePattern {
   /** The line as the person wrote it: what a refusal quotes. */
   readonly source: string;
   /** Where the pattern first matches in `text`, with the length of the match. */
-  readonly find: (text: string) => { readonly at: number; readonly length: number } | undefined;
+  readonly find: (
+    text: string,
+  ) => { readonly at: number; readonly length: number; readonly asText?: true } | undefined;
 }
 
 /** The patterns of a list, in the order the file has them. */
@@ -38,6 +41,8 @@ export interface PrivateList {
 /** A match: the pattern that matched and a short excerpt around the match. */
 export interface PrivateMatch {
   readonly pattern: string;
+  /** The line was a /regex/ read as the text between its slashes (nested, uncompilable or too slow). */
+  readonly readAsText?: true;
   readonly passage: string;
 }
 
@@ -79,32 +84,71 @@ export function nestsAQuantifier(source: string): boolean {
 const REGEX_LINE = /^\/(.+)\/([a-z]*)$/;
 const AROUND = 24;
 
-function patternOf(line: string): PrivatePattern {
-  const spelled = REGEX_LINE.exec(line);
-  if (spelled !== null && !nestsAQuantifier(spelled[1] as string)) {
-    try {
-      const flags = (spelled[2] ?? '').replace(/[gy]/g, '');
-      const regex = new RegExp(spelled[1] as string, flags);
-      return {
-        source: line,
-        find: (text) => {
-          const hit = regex.exec(text);
-          return hit === null || hit[0].length === 0
-            ? undefined
-            : { at: hit.index, length: hit[0].length };
-        },
-      };
-    } catch {
-      // Not a regular expression after all: the words it spells guard as plain text.
-    }
-  }
-  // A /regex/ that did not compile guards the text between its slashes.
-  const needle = (spelled?.[1] ?? line).toLowerCase();
+/**
+ * How long one pattern may run on one text, in milliseconds. A regular expression can take longer
+ * than the age of the machine on a text it was not written for, Node runs it synchronously, and
+ * no static reading of its source catches every such shape (`(a|aa)+$`, `(.*a){20}$`), so the
+ * guarantee is the clock: each pattern runs in a `vm` context with this timeout. 50 ms is far over
+ * what an honest pattern takes on the 64 KiB a field may hold (microseconds to a few
+ * milliseconds) and small beside the write it guards; a pattern that overruns is read as the text
+ * between its slashes from then on, and the refusal or the warning says so.
+ */
+export const PATTERN_TIMEOUT_MS = 50;
+
+type Found = { readonly at: number; readonly length: number; readonly asText?: true };
+
+function plainTextOf(line: string, needle: string, asText: boolean): PrivatePattern {
+  const lowered = needle.toLowerCase();
   return {
     source: line,
-    find: (text) => {
-      const at = text.toLowerCase().indexOf(needle);
-      return at < 0 ? undefined : { at, length: needle.length };
+    find: (text): Found | undefined => {
+      const at = text.toLowerCase().indexOf(lowered);
+      return at < 0
+        ? undefined
+        : { at, length: lowered.length, ...(asText ? { asText: true as const } : {}) };
+    },
+  };
+}
+
+function patternOf(line: string): PrivatePattern {
+  const spelled = REGEX_LINE.exec(line);
+  if (spelled === null) return plainTextOf(line, line, false);
+  const body = spelled[1] as string;
+  // The static reading is a shortcut for the shape that is known to hang; the clock is the guarantee.
+  if (nestsAQuantifier(body)) return plainTextOf(line, body, true);
+  const flags = (spelled[2] ?? '').replace(/[gy]/g, '');
+  try {
+    new RegExp(body, flags);
+  } catch {
+    // Not a regular expression after all: the words it spells guard as plain text.
+    return plainTextOf(line, body, true);
+  }
+  const asText = plainTextOf(line, body, true);
+  let context: vm.Context | undefined;
+  let timedOut = false;
+  const script = new vm.Script(
+    '(function () { var m = re.exec(text); return m === null || m[0].length === 0 ? null : [m.index, m[0].length]; })()',
+  );
+  return {
+    source: line,
+    find: (text): Found | undefined => {
+      if (timedOut) return asText.find(text);
+      if (context === undefined) {
+        context = vm.createContext({ re: undefined, text: '' });
+        new vm.Script(
+          `re = new RegExp(${JSON.stringify(body)}, ${JSON.stringify(flags)});`,
+        ).runInContext(context);
+      }
+      context.text = text;
+      try {
+        const hit = script.runInContext(context, { timeout: PATTERN_TIMEOUT_MS }) as
+          | [number, number]
+          | null;
+        return hit === null ? undefined : { at: hit[0], length: hit[1] };
+      } catch {
+        timedOut = true;
+        return asText.find(text);
+      }
     },
   };
 }
@@ -145,6 +189,7 @@ export function matchPrivate(list: PrivateList, text: string): PrivateMatch | un
     const passage = text.slice(from, to).trim();
     return {
       pattern: pattern.source,
+      ...(hit.asText === true ? { readAsText: true as const } : {}),
       passage: `${from > 0 ? '...' : ''}${passage}${to < text.length ? '...' : ''}`,
     };
   }

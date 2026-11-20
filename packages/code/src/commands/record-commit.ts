@@ -108,6 +108,8 @@ export interface PrivateEventMatch {
   readonly pattern: string;
   /** A short excerpt around the match. */
   readonly passage: string;
+  /** The pattern is a /regex/ read as the text between its slashes. */
+  readonly readAsText: boolean;
 }
 
 /** A tail file here that does not grow from the base's copy. */
@@ -750,6 +752,7 @@ function cut(
             kind: event.kind,
             pattern: match.pattern,
             passage: match.passage,
+            readAsText: match.readAsText === true,
           });
           break;
         }

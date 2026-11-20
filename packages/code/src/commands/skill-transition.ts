@@ -52,8 +52,10 @@ import {
   rejectSkill,
   reviewSkill,
 } from '@mnema/core/write';
+import { agentMayAccept } from '../agent-accepts.js';
 import { movedDisplay } from '../moved-record.js';
 import { forwardReplacement, type Replacement } from '../recorded-content.js';
+import { withScopedCaches } from '../tree-sources.js';
 import { type AgentWrites, treesToWrite, whichOfTheWrite } from './write-as-the-agent.js';
 
 /** What the transition command needs: injected so it is testable. */
@@ -119,6 +121,8 @@ export function runSkillTransition(
     which?: string;
     allowPrivatePattern?: boolean;
     run?: string;
+    /** Whether a person is at a terminal here: the door's own answer (`agent-accepts.ts`). */
+    atATerminal?: boolean;
   },
 ): SkillTransitioned | SkillTransitionRefused {
   const upcasters = catalogUpcasters();
@@ -166,7 +170,17 @@ export function runSkillTransition(
     ...(which !== undefined ? { which } : {}),
     ...(input.run !== undefined ? { run: input.run } : {}),
   };
+  // ADOPTING OR DEPRECATING IS A PERSON'S WITH THE SWITCH OFF (`agent-accepts.ts`), asked under
+  // the tail's lock so a switch turned off a moment before the append is seen.
   const moved = writer.exclusively(() => {
+    const turnedAway = withScopedCaches(trees, (sources) =>
+      agentMayAccept(sources, {
+        action: input.action,
+        agent: which,
+        atATerminal: input.atATerminal === true,
+      }),
+    );
+    if (turnedAway !== undefined) return { ok: false as const, ...turnedAway };
     const written =
       input.action === 'review'
         ? reviewSkill(opCtx, args)

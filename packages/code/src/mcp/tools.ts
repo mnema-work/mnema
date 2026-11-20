@@ -1475,6 +1475,14 @@ export function runSkillTransition(
     allowed: input.allowPrivatePattern === true,
   });
   const fields = skillProofToFields(input);
+  // Adopting or deprecating is a person's with `agent-accepts` off (`agent-accepts.ts`); every call
+  // here is an agent's, with no terminal. Asked under the tail's lock, below.
+  const refusedWhen = () =>
+    agentMayAccept(workspaceCaches(session), {
+      action: input.action,
+      agent: which,
+      atATerminal: false,
+    });
   // Every move carries the session's `which` (the executing agent) and `run`, so
   // the transition is attributed to the agent even when it lands in the public
   // tree, who (the machine) != which (the agent) is preserved on a skill move
@@ -1482,6 +1490,8 @@ export function runSkillTransition(
   const stamp = { which, run };
   const args = { id: input.id, ...(fields !== undefined ? { fields } : {}), ...stamp };
   const moved = ctx.writer.exclusively(() => {
+    const turnedAway = refusedWhen();
+    if (turnedAway !== undefined) return { ok: false as const, ...turnedAway };
     const written =
       input.action === 'review'
         ? reviewSkill(ctx, args)
