@@ -377,6 +377,19 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
             onOneLine`${t} tree: ONE reader read this copy. The second reader is a Python program of the source repository: \`python3 packages/chain/verifier/mnema_verify.py record ${reading.folder}\` runs it by hand`,
           ),
         );
+        if (reading.manifest === 'unreadable') {
+          lines.push(
+            fact(
+              onOneLine`${t} tree: ${reading.folder}/mnema-backup.json does not read as the manifest of a copy (not JSON, not a list of files, or an entry with no path and size): the copy is not sound`,
+            ),
+          );
+        } else if (reading.manifest === 'absent') {
+          lines.push(
+            fact(
+              onOneLine`${t} tree: the copy has no mnema-backup.json, so no list of files to measure it against; that is said and is not a failure`,
+            ),
+          );
+        }
         for (const path of reading.missing) {
           lines.push(
             fact(

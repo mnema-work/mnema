@@ -66,6 +66,12 @@ export interface CopyReading {
   readonly tree: BackupTree;
   readonly folder: string;
   readonly copiedAt: string | undefined;
+  /**
+   * What the copy's manifest is: `whole` when it reads, `absent` when the copy has none (said, and not
+   * a failure), `unreadable` when it is there and is not JSON, is not an object with a list of files,
+   * or lists an entry with no path and size (a failure: the copy has nothing to be measured against).
+   */
+  readonly manifest: 'whole' | 'absent' | 'unreadable';
   /** Files the copy holds. */
   readonly files: number;
   /** Files its manifest lists that are not in it, or are shorter. */
@@ -118,19 +124,30 @@ export function readCopy(
 
   let copiedAt: string | undefined;
   const missing: string[] = [];
-  try {
-    const manifest = JSON.parse(readFileSync(join(folder, BACKUP_MANIFEST), 'utf-8')) as {
-      copiedAt?: unknown;
-      files?: { path?: unknown; bytes?: unknown }[];
-    };
-    if (typeof manifest.copiedAt === 'string') copiedAt = manifest.copiedAt;
-    for (const listed of manifest.files ?? []) {
-      if (typeof listed.path !== 'string' || typeof listed.bytes !== 'number') continue;
-      const held = copied.find((file) => file.path === listed.path);
-      if (held === undefined || held.bytes.length < listed.bytes) missing.push(listed.path);
+  let manifest: CopyReading['manifest'] = 'whole';
+  const manifestPath = join(folder, BACKUP_MANIFEST);
+  if (lstatSync(manifestPath, { throwIfNoEntry: false }) === undefined) {
+    manifest = 'absent';
+  } else {
+    try {
+      const read: unknown = JSON.parse(readFileSync(manifestPath, 'utf-8'));
+      const listed = (read as { files?: unknown } | null)?.files ?? [];
+      if (typeof read !== 'object' || read === null || Array.isArray(read) || !Array.isArray(listed))
+        throw new TypeError('the manifest is not an object with a list of files');
+      for (const one of listed as { path?: unknown; bytes?: unknown }[]) {
+        if (typeof one?.path !== 'string' || typeof one.bytes !== 'number')
+          throw new TypeError('an entry of the manifest has no path and size');
+        const held = copied.find((file) => file.path === one.path);
+        if (held === undefined || held.bytes.length < one.bytes) missing.push(one.path);
+      }
+      const stamp = (read as { copiedAt?: unknown }).copiedAt;
+      if (typeof stamp === 'string') copiedAt = stamp;
+    } catch {
+      // A manifest that is there and does not read says nothing of the copy: the reading says so, and fails.
+      manifest = 'unreadable';
+      copiedAt = undefined;
+      missing.length = 0;
     }
-  } catch {
-    // A copy with no manifest, or one that does not read, has no list to be measured against.
   }
 
   const result = verifyChain({ root: folder }, catalogUpcasters());
@@ -169,6 +186,7 @@ export function readCopy(
   const standing: Standing = { same, behind, cut, lost, forked };
   const ok =
     result.ok &&
+    manifest !== 'unreadable' &&
     missing.length === 0 &&
     cut.length === 0 &&
     lost.length === 0 &&
@@ -177,6 +195,7 @@ export function readCopy(
     tree,
     folder,
     copiedAt,
+    manifest,
     files: copied.length,
     missing,
     reader: { ok: result.ok, level: result.level, summary: result.summary },
