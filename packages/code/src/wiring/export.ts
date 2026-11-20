@@ -22,8 +22,8 @@ import type { Command } from 'commander';
 import { fact } from '../presentation/detail.js';
 import { globalTreeGloss, windowGloss, windowHelp } from '../vocabulary.js';
 import { here } from './context.js';
-import { ACTOR_HELP } from './options.js';
 import { onOneLine } from './on-one-line.js';
+import { ACTOR_HELP } from './options.js';
 import { reportRefusal } from './report.js';
 import { type Declared, readsTheRecord, type Wiring } from './verb.js';
 

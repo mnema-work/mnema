@@ -999,14 +999,16 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'the trees this feed covered, joined from the closed scope vocabulary: the declaration that lets a filtered feed be told from a complete one',
   },
-  'export.ts «wrote {} decision file(s) from the committed record only: a reading of the record, not the record» #1': {
-    verdict: 'minted',
-    why: 'the number of files the verb wrote, a count and no text',
-  },
-  'export.ts «{} file(s) do not read back as the same decision (a heading line inside the text): {}» #1': {
-    verdict: 'collapsed',
-    why: 'a count, and the ids of the decisions read back out of the record',
-  },
+  'export.ts «wrote {} decision file(s) from the committed record only: a reading of the record, not the record» #1':
+    {
+      verdict: 'minted',
+      why: 'the number of files the verb wrote, a count and no text',
+    },
+  'export.ts «{} file(s) do not read back as the same decision (a heading line inside the text): {}» #1':
+    {
+      verdict: 'collapsed',
+      why: 'a count, and the ids of the decisions read back out of the record',
+    },
   'export.ts «{}/{}» #1': {
     verdict: 'collapsed',
     why: 'the folder the person typed and a file name the verb composed from the record',
