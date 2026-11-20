@@ -142,7 +142,7 @@ export function correctionsIn(
     // ("Never use var.") is the correction alone.
     const dictated = skip ? undefined : dictatedRuleIn(one.text);
     const dictatedHere =
-      dictated !== undefined && (shape === undefined || !sentence.startsWith(dictated.sentence));
+      dictated !== undefined && (shape === undefined || sentence !== dictated.sentence);
     if (shape !== undefined) {
       found.push({
         line: one.line,

@@ -313,7 +313,11 @@ describe('mnema corrections', () => {
       'Correction: No, wrong file.',
       'Rule: From now on, ask before deleting.',
     ],
-    ["Always use tabs; no, that's wrong", "Correction: no, that's wrong", 'Rule: Always use tabs'],
+    [
+      "Always use tabs; no, that's wrong",
+      "Correction: Always use tabs; no, that's wrong",
+      'Rule: Always use tabs',
+    ],
     [
       "From now on use tabs - and don't touch the CI.",
       "Correction: don't touch the CI.",
