@@ -77,7 +77,7 @@ import { oneLine } from '../one-line.js';
 import { headerCarriesRealWork, parseBlockHeader } from './bitcoin.js';
 import { checkpointHash } from './checkpoint.js';
 import type { ChainLayout } from './layout.js';
-import { witnessBlocksPath, witnessDir, witnessProofPath } from './layout.js';
+import { witnessBlocksPath, witnessDir, witnessProofPath, witnessSigstorePath } from './layout.js';
 import type { WitnessStatus } from './level.js';
 import { refuseToWriteThrough } from './linked-write.js';
 import {
@@ -332,6 +332,28 @@ export function writeWitness(
   // so this write holds no template that reads like a SENTENCE with a break in it.
   const lines = headers.map(([height, header]) => `${serializeStoredHeader(height, header)}\n`);
   writeFileSync(witnessBlocksPath(layout, tailId, checkpointHash), lines.join(''), 'utf-8');
+}
+
+/**
+ * Files the Sigstore bundle (`witness/<checkpoint>.sigstore.json`) of one checkpoint. Like
+ * {@link writeWitness} it asks the places it writes first and refuses a symbolic link there, a
+ * link to nothing too, with `RECORD_LINKED` and nothing written.
+ */
+export function writeSigstoreBundle(
+  layout: ChainLayout,
+  tailId: string,
+  checkpointHash: string,
+  text: string,
+): void {
+  const inWitness = ['tails', tailId, 'witness'];
+  refuseToWriteThrough(layout, [
+    'tails',
+    ['tails', tailId].join('/'),
+    inWitness.join('/'),
+    [...inWitness, basename(witnessSigstorePath(layout, tailId, checkpointHash))].join('/'),
+  ]);
+  mkdirSync(witnessDir(layout, tailId), { recursive: true });
+  writeFileSync(witnessSigstorePath(layout, tailId, checkpointHash), text, 'utf-8');
 }
 
 /**

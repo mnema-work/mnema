@@ -293,6 +293,7 @@ export {
   type WitnessReading,
   witnessOfTail,
   witnessWalk,
+  writeSigstoreBundle,
   writeWitness,
 } from './chain/witness.js';
 export {

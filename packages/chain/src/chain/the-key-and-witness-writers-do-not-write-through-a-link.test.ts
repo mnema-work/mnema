@@ -29,9 +29,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { generateKeyPair } from './keys.js';
 import { ensureKeyRootIgnored, materializePublicKey } from './keystore.js';
-import { witnessBlocksPath, witnessProofPath } from './layout.js';
+import { migratedMarkPath, witnessBlocksPath, witnessProofPath, witnessSigstorePath } from './layout.js';
+import { migrateMachinery } from './migration.js';
 import { RecordLinkedError } from './linked-write.js';
-import { writeWitness } from './witness.js';
+import { writeSigstoreBundle, writeWitness } from './witness.js';
 
 const MARK = 'BYTES-NO-ONE-SIGNED\n';
 const TAIL = `${'b'.repeat(64)}-${'c'.repeat(32)}`;
@@ -113,6 +114,35 @@ describe.each([
     expect(existsSync(witnessProofPath({ root }, TAIL, CHECKPOINT))).toBe(false);
   });
 
+  it('is refused by writeSigstoreBundle, which writes nothing through it', () => {
+    const place = witnessSigstorePath({ root }, TAIL, CHECKPOINT);
+    const target = plant(place, live);
+
+    expect(() => writeSigstoreBundle({ root }, TAIL, CHECKPOINT, '{}\n')).toThrow(
+      RecordLinkedError,
+    );
+
+    holdsTarget(place, target, live);
+  });
+
+  it('is refused by the migration, which keeps no mark through it', () => {
+    const checkout = { root: join(dir, 'checkout') };
+    const fingerprint = 'e'.repeat(64);
+    const place = migratedMarkPath(checkout, fingerprint);
+    const target = plant(place, live);
+
+    expect(() =>
+      migrateMachinery({
+        chain: { root },
+        shared: { root: join(dir, 'shared') },
+        checkout,
+        fingerprint,
+      }),
+    ).toThrow(RecordLinkedError);
+
+    holdsTarget(place, target, live);
+  });
+
   it('is refused by ensureKeyRootIgnored, which writes nothing through it', () => {
     const keyRoot = join(dir, 'home', 'identity');
     const place = join(keyRoot, '.gitignore');
@@ -137,6 +167,9 @@ describe('the same writers, with no link in the way', () => {
     });
     expect(readFileSync(witnessProofPath({ root }, TAIL, CHECKPOINT), 'utf-8')).toBe('PROOF');
     expect(existsSync(witnessBlocksPath({ root }, TAIL, CHECKPOINT))).toBe(true);
+
+    writeSigstoreBundle({ root }, TAIL, CHECKPOINT, '{}\n');
+    expect(readFileSync(witnessSigstorePath({ root }, TAIL, CHECKPOINT), 'utf-8')).toBe('{}\n');
 
     const keyRoot = join(dir, 'home', 'identity');
     ensureKeyRootIgnored({ root: keyRoot });

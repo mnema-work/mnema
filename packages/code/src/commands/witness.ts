@@ -67,7 +67,7 @@
  * are named by what they attest.
  */
 
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import {
   type ChainLayout,
   type Checkpoint,
@@ -85,6 +85,7 @@ import {
   readTailCheckpoints,
   readTailEntries,
   readWitness,
+  RecordLinkedError,
   stampCheckpoint,
   tailStanding,
   verify,
@@ -92,10 +93,10 @@ import {
   type WitnessReading,
   type WitnessRefusal,
   type WitnessReturnVisit,
-  witnessDir,
   witnessOfTail,
   witnessSigstorePath,
   witnessWalk,
+  writeSigstoreBundle,
   writeWitness,
 } from '@mnema/chain';
 import {
@@ -652,11 +653,23 @@ export async function runWitnessSigstore(
       });
       return;
     }
-    mkdirSync(witnessDir(chain.layout, chain.tail), { recursive: true });
-    writeFileSync(
-      witnessSigstorePath(chain.layout, chain.tail, signed.digest),
-      `${JSON.stringify(signed.bundle, null, 2)}\n`,
-    );
+    try {
+      writeSigstoreBundle(
+        chain.layout,
+        chain.tail,
+        signed.digest,
+        `${JSON.stringify(signed.bundle, null, 2)}\n`,
+      );
+    } catch (error) {
+      if (!(error instanceof RecordLinkedError)) throw error;
+      outcomes.push({
+        scope: chain.scope,
+        tail: chain.tail,
+        did: 'failed',
+        detail: `checkpoint ${signed.digest} was logged but its bundle was not filed: ${error.message}`,
+      });
+      return;
+    }
     const logIndex = String(
       (signed.bundle.verificationMaterial.tlogEntries[0] as { logIndex?: unknown }).logIndex ?? '',
     );
