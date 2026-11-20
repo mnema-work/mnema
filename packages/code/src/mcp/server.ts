@@ -230,6 +230,19 @@ const PROJECT_ARG = z
   );
 
 /**
+ * The `allow_private_pattern` argument of the tools that write prose to a record: the explicit pass
+ * for a public write whose text matches a pattern of this machine's private list. The refusal
+ * (`PRIVATE_PATTERN`) names the passage and the pattern; this says the mention is meant.
+ */
+const ALLOW_PRIVATE_PATTERN_ARG = z
+  .boolean()
+  .optional()
+  .describe(
+    'Record a PUBLIC write even though its text matches a pattern of this machine’s private list; ' +
+      'without it such a write is refused. Never asked in the private scope.',
+  );
+
+/**
  * The `scope` argument a WRITE carries: which of the three trees the fact lands in.
  *
  * ONE schema for all eight, and the set is the DOMAIN's: `SCOPES`, the same value the
@@ -1005,14 +1018,16 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
         content: z.string().min(1).describe('The memory to record.'),
         scope: scopeField('Where the memory lands; overrides the session default.'),
         project: PROJECT_ARG,
+        allow_private_pattern: ALLOW_PRIVATE_PATTERN_ARG,
       },
     },
-    async ({ content, scope, project }) => {
+    async ({ content, scope, project, allow_private_pattern }) => {
       const active = await ensureSession();
       const result = runCaptureMemory(active, {
         content,
         ...(scope !== undefined ? { scope } : {}),
         ...(project !== undefined ? { project } : {}),
+        ...(allow_private_pattern === true ? { allowPrivatePattern: true } : {}),
       });
       if (!result.ok) {
         // The override named a tree absent here: surface it as a tool error so
@@ -1046,9 +1061,10 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
         text: z.string().min(1).describe('The observation itself.'),
         scope: scopeField('Where the observation lands; overrides the session default.'),
         project: PROJECT_ARG,
+        allow_private_pattern: ALLOW_PRIVATE_PATTERN_ARG,
       },
     },
-    async ({ about, topic, text, scope, project }) => {
+    async ({ about, topic, text, scope, project, allow_private_pattern }) => {
       const active = await ensureSession();
       const result = runRecordObservation(active, {
         about,
@@ -1056,6 +1072,7 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
         text,
         ...(scope !== undefined ? { scope } : {}),
         ...(project !== undefined ? { project } : {}),
+        ...(allow_private_pattern === true ? { allowPrivatePattern: true } : {}),
       });
       if (!result.ok) {
         return refused(active, result);
@@ -1161,9 +1178,10 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
           .describe('What the next agent must read; recorded as an observation about the task.'),
         scope: scopeField('Where the handoff lands; overrides following the task.'),
         project: PROJECT_ARG,
+        allow_private_pattern: ALLOW_PRIVATE_PATTERN_ARG,
       },
     },
-    async ({ task, from, to, brief, scope, project }) => {
+    async ({ task, from, to, brief, scope, project, allow_private_pattern }) => {
       const active = await ensureSession();
       const result = runRecordHandoff(active, {
         task,
@@ -1172,6 +1190,7 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
         ...(brief !== undefined ? { brief } : {}),
         ...(scope !== undefined ? { scope } : {}),
         ...(project !== undefined ? { project } : {}),
+        ...(allow_private_pattern === true ? { allowPrivatePattern: true } : {}),
       });
       if (!result.ok) {
         return refused(active, result);
@@ -1284,15 +1303,17 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
           .describe('The task in prose; recorded as an observation about it.'),
         scope: scopeField('Where the task lands; overrides the routing rule (public).'),
         project: PROJECT_ARG,
+        allow_private_pattern: ALLOW_PRIVATE_PATTERN_ARG,
       },
     },
-    async ({ title, description, scope, project }) => {
+    async ({ title, description, scope, project, allow_private_pattern }) => {
       const active = await ensureSession();
       const result = runCreateTask(active, {
         title,
         ...(description !== undefined ? { description } : {}),
         ...(scope !== undefined ? { scope } : {}),
         ...(project !== undefined ? { project } : {}),
+        ...(allow_private_pattern === true ? { allowPrivatePattern: true } : {}),
       });
       if (!result.ok) {
         return refused(active, result);
@@ -1384,9 +1405,10 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
           ),
         scope: scopeField('Where the decision lands; overrides the routing rule (public).'),
         project: PROJECT_ARG,
+        allow_private_pattern: ALLOW_PRIVATE_PATTERN_ARG,
       },
     },
-    async ({ title, rationale, alternatives, scope, project }) => {
+    async ({ title, rationale, alternatives, scope, project, allow_private_pattern }) => {
       const active = await ensureSession();
       const result = runRecordDecision(active, {
         title,
@@ -1394,6 +1416,7 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
         ...(alternatives !== undefined ? { alternatives } : {}),
         ...(scope !== undefined ? { scope } : {}),
         ...(project !== undefined ? { project } : {}),
+        ...(allow_private_pattern === true ? { allowPrivatePattern: true } : {}),
       });
       if (!result.ok) {
         return refused(active, result);
@@ -1479,15 +1502,17 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
         body: z.string().min(1).describe('The reusable pattern itself.'),
         scope: scopeField('Where the skill lands; overrides the routing rule (public).'),
         project: PROJECT_ARG,
+        allow_private_pattern: ALLOW_PRIVATE_PATTERN_ARG,
       },
     },
-    async ({ name, body, scope, project }) => {
+    async ({ name, body, scope, project, allow_private_pattern }) => {
       const active = await ensureSession();
       const result = runCreateSkill(active, {
         name,
         body,
         ...(scope !== undefined ? { scope } : {}),
         ...(project !== undefined ? { project } : {}),
+        ...(allow_private_pattern === true ? { allowPrivatePattern: true } : {}),
       });
       if (!result.ok) {
         return refused(active, result);
