@@ -28,6 +28,8 @@
 
 import { channelIsOn } from '@mnema/context';
 import { type DiscoveryEnv, resolveTrees, scrubEmails } from '@mnema/core';
+import { endOfTurnOf } from '../host-hook.js';
+import type { EndHost } from '../host-names.js';
 import { STARTS_OFF, USER_CORRECTIONS_CHANNEL } from '../record-framing.js';
 import { withScopedCaches } from '../tree-sources.js';
 import { ANSWER_TO_A_QUESTION, type Correction, correctionsIn } from '../user-corrections.js';
@@ -107,7 +109,7 @@ function counted(n: number, one: string, many: string, rest: string): string[] {
 /** Answers the hook payload `input.payload`: records the corrections it finds, or `{}`. */
 export function runCorrections(
   ctx: CorrectionsContext,
-  input: { readonly payload: string },
+  input: { readonly payload: string; readonly host?: EndHost },
 ): CorrectionsDone {
   let payload: Record<string, unknown>;
   try {
@@ -117,11 +119,19 @@ export function runCorrections(
   } catch {
     return silent(['The hook input was not JSON, so no correction was read.']);
   }
-  if (payload['hook_event_name'] !== 'Stop') return silent();
-  const transcript = payload['transcript_path'];
-  if (typeof transcript !== 'string' || transcript === '') {
-    return silent(['The Stop input named no transcript, so no correction was read.']);
+  const end = endOfTurnOf(input.host ?? 'claude', payload);
+  if (!end.end) return silent();
+  if (end.transcript === undefined) {
+    return silent([`The ${end.event} input named no transcript, so no correction was read.`]);
   }
+  // A transcript this product cannot read is said, for the host it came from, and nothing is read
+  // or recorded: the reader understands Claude Code's lines and no other host's.
+  if (!end.reads) {
+    return silent([
+      `${end.title}'s transcript is in a format this version does not read, so no correction was read.`,
+    ]);
+  }
+  const transcript = end.transcript;
   const trees = resolveTrees(ctx.cwd, ctx.env);
   if (trees.projectPublic === undefined) return silent();
 

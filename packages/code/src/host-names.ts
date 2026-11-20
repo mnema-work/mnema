@@ -887,6 +887,47 @@ export const BESIDE_HOSTS = HOOK_HOSTS.filter(
 ) as readonly BesideHost[];
 
 /**
+ * The host hooks that run when the agent finishes a turn, and what each hands one: the event it
+ * names itself by, the fields that carry the session and the transcript, and whether this product
+ * reads that transcript.
+ *
+ * ONE ROW PER HOST, so `mnema tally --host` and `mnema corrections --host` are told which payload
+ * they were handed and never guess it from the event name. The event is the one the host's own
+ * documentation names for the end of a turn: Claude Code, Codex and Copilot CLI (under the
+ * PascalCase name, which hands the payload in snake_case) call it `Stop`; Gemini CLI `AfterAgent`;
+ * Cursor `stop`; VS Code's agent and Qwen Code, which read Claude Code's hooks file, `Stop`.
+ *
+ * `reads` IS WHETHER THE TRANSCRIPT NAMED CAN BE READ, and today only Claude Code's can: the
+ * readers (`what-the-session-did.ts`, `user-corrections.ts`) understand its JSONL line by line,
+ * and no other host's transcript was measured. Reading another host's file with them would count
+ * nothing, or the wrong things, so a verb handed such a payload says that on its second stream and
+ * does nothing else: no count, no journal, no proposal.
+ *
+ * `session` IS `null` WHERE THE DOCUMENTED PAYLOAD HAS NO FIELD FOR IT: Cursor's names the
+ * conversation (`conversation_id`), which no case here has held, so none is guessed.
+ */
+export const ENDS = {
+  claude: { event: 'Stop', session: 'session_id', transcript: 'transcript_path', reads: true },
+  vscode: { event: 'Stop', session: 'session_id', transcript: 'transcript_path', reads: false },
+  codex: { event: 'Stop', session: 'session_id', transcript: 'transcript_path', reads: false },
+  copilot: { event: 'Stop', session: 'session_id', transcript: 'transcript_path', reads: false },
+  gemini: {
+    event: 'AfterAgent',
+    session: 'session_id',
+    transcript: 'transcript_path',
+    reads: false,
+  },
+  cursor: { event: 'stop', session: null, transcript: 'transcript_path', reads: false },
+  qwen: { event: 'Stop', session: 'session_id', transcript: 'transcript_path', reads: false },
+} as const;
+
+/** A host whose end of a turn this product answers, in the order of {@link ENDS}. */
+export type EndHost = keyof typeof ENDS;
+
+/** Every {@link EndHost}, as the list `mnema tally --host` and `mnema corrections --host` enumerate. */
+export const END_HOSTS = Object.keys(ENDS) as readonly EndHost[];
+
+/**
  * Whether the gate before a write, `mnema before-a-write`, hands the rules over in its own reply for
  * this host: where the cell says it does and the row does not put the hook after the write.
  */
@@ -1026,7 +1067,10 @@ export const PRESENCE = {
       VSCODE_MEMORY,
     ),
     file: documented('PostToolUse, which the host runs whatever the matcher', VSCODE_HOOKS),
-    end: documented('Stop', VSCODE_HOOKS),
+    end: documented(
+      'Stop; it reads the same hooks file as Claude Code, is told apart by the folder its transcript is in, and that transcript is not read yet',
+      VSCODE_HOOKS,
+    ),
     subagentStart: documented('SubagentStart', VSCODE_HOOKS),
     subagentStop: documented('SubagentStop', VSCODE_HOOKS),
   },
@@ -1034,7 +1078,10 @@ export const PRESENCE = {
     choice: noChannel(),
     memory: noChannel(),
     file: documented('postToolUse, with additional context', CURSOR_HOOKS),
-    end: documented('stop, which can only ask for a new turn', CURSOR_HOOKS),
+    end: documented(
+      'stop, which can only ask for a new turn; the plugin runs its two verbs there, and the transcript it names is not read yet',
+      CURSOR_HOOKS,
+    ),
     subagentStart: notRead,
     subagentStop: documented('subagentStop', CURSOR_HOOKS),
   },
@@ -1042,7 +1089,10 @@ export const PRESENCE = {
     choice: documented('PostToolUse on `request_user_input`', CODEX_HOOKS),
     memory: noChannel('its memories are made in the background, with no tool and no hook'),
     file: documented('PostToolUse on `apply_patch`', CODEX_HOOKS),
-    end: documented('Stop', CODEX_HOOKS),
+    end: documented(
+      'Stop; the plugin runs its two verbs there, and the transcript it names is not read yet',
+      CODEX_HOOKS,
+    ),
     subagentStart: notRead,
     subagentStop: { ...HOSTS.codex.subagentStop, what: 'SubagentStop' },
   },
@@ -1050,7 +1100,10 @@ export const PRESENCE = {
     choice: documented('postToolUse on `ask_user`', COPILOT_HOOKS),
     memory: documented('`store_memory`, which keeps it in the cloud', COPILOT_MEMORY),
     file: documented('postToolUse on a write', COPILOT_HOOKS),
-    end: documented('agentStop', COPILOT_HOOKS),
+    end: documented(
+      'agentStop (as `Stop`); the plugin runs its two verbs there, and the transcript it names is not read yet',
+      COPILOT_HOOKS,
+    ),
     subagentStart: notRead,
     subagentStop: { ...HOSTS.copilot.subagentStop, what: 'subagentStop' },
   },
@@ -1061,7 +1114,10 @@ export const PRESENCE = {
       GEMINI_TREE,
     ),
     file: documented('AfterTool on `write_file` and `replace`', GEMINI_TREE),
-    end: documented('AfterAgent, which cannot add context', GEMINI_TREE),
+    end: documented(
+      'AfterAgent, which cannot add context; the plugin runs its two verbs there for what they need none for, and the transcript it names is not read yet',
+      GEMINI_TREE,
+    ),
     subagentStart: noChannel(),
     subagentStop: noChannel(),
   },

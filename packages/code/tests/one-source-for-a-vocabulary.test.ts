@@ -214,7 +214,8 @@ describe('a declaration lists the set it takes', () => {
     // `beside-a-write` takes a `--host` set, read from `host-names.ts`.
     // 40 with `init --accepts`, which takes `yes` or `no`.
     // 41 with `init --git-pull`, which takes `yes` or `no` too.
-    expect(DECLARED_SETS.length).toBe(41);
+    // 43 with the `--host` of `tally` and of `corrections`, read from `host-names.ts`.
+    expect(DECLARED_SETS.length).toBe(43);
   });
 
   it('takes the set from the DOMAIN, at each of the levels that take one', () => {

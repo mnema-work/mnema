@@ -414,14 +414,14 @@ describe('the verb as the command line routes it', () => {
     expect(quiet.failed).toBe(false);
   });
 
-  it('is a read, and takes no option', () => {
+  it('is a read, and takes one option: the host whose payload arrives', () => {
     const program = new Command('mnema');
     const declared = registerTally(program, {
       io: {},
       render: renderPlain,
     } as unknown as Parameters<typeof registerTally>[1]);
     expect(declared.effect).toBe('reads');
-    expect(declared.act.options).toEqual([]);
+    expect(declared.act.options.map((option) => option.long)).toEqual(['--host']);
   });
 });
 

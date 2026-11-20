@@ -25,6 +25,18 @@
         ]
       }
     ],
+    "AfterAgent": [
+      {
+        "hooks": [
+          {
+            "name": "mnema-ended",
+            "type": "command",
+            "command": "node \"${extensionPath}/hooks/mnema.mjs\" ended",
+            "timeout": 15000
+          }
+        ]
+      }
+    ],
     "AfterTool": [
       {
         "matcher": "^ask_user$",
