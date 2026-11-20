@@ -248,7 +248,8 @@ describe('what an accept rests on, with a transcript that is known', () => {
     ).toBe('typed');
     writeFileSync(transcript, `${chose('Which cache?', 'Keep the cache on disk (Recommended)')}\n`);
     expect(
-      whatTheAcceptRestsOn(move(transcript, 'Chose "Keep the cache on disk (Recommended)"'))?.outcome,
+      whatTheAcceptRestsOn(move(transcript, 'Chose "Keep the cache on disk (Recommended)"'))
+        ?.outcome,
     ).toBe('chosen');
   });
 
@@ -261,15 +262,14 @@ describe('what an accept rests on, with a transcript that is known', () => {
       'Pode ir (recomendado)',
     ]) {
       writeFileSync(transcript, `${chose('Which?', label)}\n`);
-      expect(
-        whatTheAcceptRestsOn(move(transcript, `Chose "${label}"`))?.outcome,
-        label,
-      ).toBe('waits');
+      expect(whatTheAcceptRestsOn(move(transcript, `Chose "${label}"`))?.outcome, label).toBe(
+        'waits',
+      );
     }
     writeFileSync(transcript, `${chose('Which?', 'Keep the cache on disk')}\n`);
-    expect(
-      whatTheAcceptRestsOn(move(transcript, 'Chose "Keep the cache on disk"'))?.outcome,
-    ).toBe('chosen');
+    expect(whatTheAcceptRestsOn(move(transcript, 'Chose "Keep the cache on disk"'))?.outcome).toBe(
+      'chosen',
+    );
   });
 
   it('waits when the option label chosen is shorter than twenty characters', () => {
@@ -296,7 +296,9 @@ describe('what an accept rests on, with a transcript that is known', () => {
 });
 
 describe('an agent accept at the command line', () => {
-  it('is refused with --which in any spelling of Claude Code and no session id', { timeout: 60_000 }, () => {
+  it('is refused with --which in any spelling of Claude Code and no session id', {
+    timeout: 60_000,
+  }, () => {
     const id = aProposedDecision();
     const before = held(sandbox);
     for (const spelling of ['Claude-Code', 'claude_code', 'claudecode']) {
