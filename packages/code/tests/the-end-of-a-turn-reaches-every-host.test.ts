@@ -382,6 +382,7 @@ describe("VS Code's agent and Qwen Code, which read Claude Code's hooks file", (
       VSCODE_TRANSCRIPT.toString(),
     );
     expect(VSCODE_TRANSCRIPT.test(VSCODE_PATH)).toBe(true);
+    expect(VSCODE_TRANSCRIPT.test(VSCODE_PATH.replace('GitHub.copilot-chat', 'github.Copilot-Chat'))).toBe(true);
     expect(
       VSCODE_TRANSCRIPT.test(
         'C:\\Users\\p\\AppData\\Roaming\\Code\\User\\workspaceStorage\\h\\GitHub.copilot-chat\\transcripts\\s.jsonl',
