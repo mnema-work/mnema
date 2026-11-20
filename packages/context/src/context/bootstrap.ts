@@ -239,7 +239,13 @@
  * reshuffle the list.
  */
 
-import { newestFirst, type ProjectionCache, SEARCH_DEFAULT_LIMIT } from '@mnema/core';
+import {
+  newestFirst,
+  type ProjectionCache,
+  SEARCH_DEFAULT_LIMIT,
+  type TaskState,
+  taskIsUnderway,
+} from '@mnema/core';
 import {
   type DecisionAwaitingJudgement,
   type DecisionRef,
@@ -547,9 +553,10 @@ function byUpdatedDesc(
  * order, so the task somebody is doing is the last one it would leave out.
  */
 function inProgressThenNewest(
-  a: { readonly id: string; readonly updatedAt: string; readonly state: string },
-  b: { readonly id: string; readonly updatedAt: string; readonly state: string },
+  a: { readonly id: string; readonly updatedAt: string; readonly state: TaskState },
+  b: { readonly id: string; readonly updatedAt: string; readonly state: TaskState },
 ): number {
-  const rank = (task: { readonly state: string }): number => (task.state === 'IN_PROGRESS' ? 0 : 1);
+  const rank = (task: { readonly state: TaskState }): number =>
+    taskIsUnderway(task.state) ? 0 : 1;
   return rank(a) - rank(b) || byUpdatedDesc(a, b);
 }

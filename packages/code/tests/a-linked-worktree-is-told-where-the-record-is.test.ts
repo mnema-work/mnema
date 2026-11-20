@@ -57,7 +57,11 @@ function mnema(cwd: string, ...argv: string[]) {
 }
 
 function git(cwd: string, ...args: string[]) {
-  const ran = spawnSync('git', args, { cwd, encoding: 'utf-8', env: ENV() });
+  const ran = spawnSync('git', args, {
+    cwd,
+    encoding: 'utf-8',
+    env: { ...ENV(), GIT_CONFIG_GLOBAL: GIT_WITHOUT_MAINTENANCE },
+  });
   return { status: ran.status, out: `${ran.stdout}${ran.stderr}` };
 }
 
@@ -77,10 +81,12 @@ function setUp(withRecord: boolean): void {
 }
 
 beforeEach(() => {
-  sandbox = realpathSync(mkdtempSync(join(tmpdir(), 'mnema-linked-says-where-')));
-  home = join(sandbox, 'home');
-  repo = join(sandbox, 'repo');
-  worktree = join(sandbox, 'wt');
+  sandbox = mkdtempSync(join(tmpdir(), 'mnema-linked-says-where-'));
+  // The folder git reports is the real one, so the paths asserted are too.
+  const real = realpathSync(sandbox);
+  home = join(real, 'home');
+  repo = join(real, 'repo');
+  worktree = join(real, 'wt');
   mkdirSync(home);
   mkdirSync(repo);
 });
