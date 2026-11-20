@@ -28,7 +28,7 @@ import {
   GOVERNS_RELATION,
   REFUSES_A_WRITE_RELATION,
 } from '@mnema/core';
-import { walkProject, WALK_CEILING } from './governed-tree.js';
+import { WALK_CEILING, walkProject } from './governed-tree.js';
 import { everyRuleInForceAt } from './what-a-write-meets.js';
 
 /** The layers a file falls under, strongest first. */

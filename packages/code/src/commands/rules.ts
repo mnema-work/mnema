@@ -37,8 +37,8 @@ import type { RecordGroup } from '@mnema/chain';
 import type { GoverningRules, NewerLines } from '@mnema/context';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { readGoverningRulesWhereItLands } from '../governed-tree.js';
-import { coverageByLayer, type RuleCoverage } from '../rule-coverage.js';
 import { type InheritedReading, withInheritedSource } from '../inherited-record.js';
+import { coverageByLayer, type RuleCoverage } from '../rule-coverage.js';
 import { rulesNotPushedLine } from '../rules-not-pushed.js';
 import {
   linkBreaksOf,

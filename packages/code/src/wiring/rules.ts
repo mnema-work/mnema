@@ -47,7 +47,9 @@ export function registerRules(program: Command, wiring: Wiring): Declared {
       const { runRules, runRulesCoverage } = await import('../commands/rules.js');
       const { rulesReport, coverageReport } = await import('../presentation/rules.js');
       const result =
-        opts.coverage === true ? runRulesCoverage(here()) : runRules(here(), { path: path as string });
+        opts.coverage === true
+          ? runRulesCoverage(here())
+          : runRules(here(), { path: path as string });
       if (!result.ok) {
         reportRefusal(wiring, result, {});
         return;

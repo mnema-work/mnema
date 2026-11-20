@@ -33,9 +33,9 @@
  */
 
 import type { AddressedRule, GoverningRules } from '@mnema/context';
-import type { RuleCoverage } from '../rule-coverage.js';
 import { inheritedFromText } from '../inherited-record.js';
 import { oneLine } from '../one-line.js';
+import type { RuleCoverage } from '../rule-coverage.js';
 import { fact, subjectLine } from './detail.js';
 import { asId, asScope, itemLine } from './items.js';
 import type { Render } from './render.js';
@@ -205,7 +205,9 @@ export function coverageReport(render: Render, coverage: RuleCoverage): string[]
     `${one.refuses} refused · ${one.asks} ask for a person · ${one.governs} governed · ${one.none} under no rule`;
   const lines = [
     render(subjectLine('rule coverage', 'in this project')),
-    render(fact(`${coverage.files} file${coverage.files === 1 ? '' : 's'}: ${counts(coverage.layers)}`)),
+    render(
+      fact(`${coverage.files} file${coverage.files === 1 ? '' : 's'}: ${counts(coverage.layers)}`),
+    ),
     render(
       fact(
         'each file counts once, under the strongest layer over it: refused, then asks for a person, then governs',

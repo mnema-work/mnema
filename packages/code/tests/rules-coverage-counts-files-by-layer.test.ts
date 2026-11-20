@@ -64,8 +64,9 @@ beforeEach(async () => {
   env = { home: join(sandbox, 'home') };
   process.chdir(repo);
   await did('init');
-  // 2 refused, 3 ask, 4 governed (one of them also under a weaker layer's reach), 5 under none
-  // (the two root files count under `.`), and 1 file inside node_modules that is not counted.
+  // 2 refused, 3 ask, 4 governed, 4 under none of the fixture's own, and 1 file inside
+  // node_modules that is not counted. `init` writes four instruction files of its own
+  // (AGENTS.md at the root, one each under .claude, .cursor and .github), also under none.
   files(
     'src/frozen/a.ts',
     'src/frozen/b.ts',
@@ -106,10 +107,13 @@ describe('mnema rules --coverage', () => {
     await arrange();
     const done = runRulesCoverage({ cwd: repo, env });
     if (!done.ok) throw new Error('refused');
-    expect(done.coverage.files).toBe(13);
-    expect(done.coverage.layers).toEqual({ refuses: 2, asks: 3, governs: 4, none: 4 });
+    expect(done.coverage.files).toBe(17);
+    expect(done.coverage.layers).toEqual({ refuses: 2, asks: 3, governs: 4, none: 8 });
     expect(done.coverage.folders).toEqual([
-      { folder: '.', files: 1, refuses: 0, asks: 0, governs: 0, none: 1 },
+      { folder: '.', files: 2, refuses: 0, asks: 0, governs: 0, none: 2 },
+      { folder: '.claude', files: 1, refuses: 0, asks: 0, governs: 0, none: 1 },
+      { folder: '.cursor', files: 1, refuses: 0, asks: 0, governs: 0, none: 1 },
+      { folder: '.github', files: 1, refuses: 0, asks: 0, governs: 0, none: 1 },
       { folder: 'docs', files: 2, refuses: 0, asks: 0, governs: 2, none: 0 },
       { folder: 'src', files: 8, refuses: 2, asks: 3, governs: 2, none: 1 },
       { folder: 'tools', files: 2, refuses: 0, asks: 0, governs: 0, none: 2 },
@@ -122,7 +126,9 @@ describe('mnema rules --coverage', () => {
     await arrange();
     const said = await did('rules', '--coverage');
     expect(said.failed, said.err).toBe(false);
-    expect(said.out).toContain('13 files: 2 refused · 3 ask for a person · 4 governed · 4 under no rule');
+    expect(said.out).toContain(
+      '17 files: 2 refused · 3 ask for a person · 4 governed · 8 under no rule',
+    );
     expect(said.out).toContain('not counted, as not hand-written: .mnema, node_modules');
     expect(said.out).not.toContain('%');
     expect(said.out).not.toContain('floor');
@@ -133,10 +139,13 @@ describe('mnema rules --coverage', () => {
     const said = await did('rules', '--coverage', '--json');
     expect(said.failed, said.err).toBe(false);
     const json = JSON.parse(said.out);
-    expect(json.files).toBe(13);
-    expect(json.layers).toEqual({ refuses: 2, asks: 3, governs: 4, none: 4 });
+    expect(json.files).toBe(17);
+    expect(json.layers).toEqual({ refuses: 2, asks: 3, governs: 4, none: 8 });
     expect(json.folders.map((f: { folder: string }) => f.folder)).toEqual([
       '.',
+      '.claude',
+      '.cursor',
+      '.github',
       'docs',
       'src',
       'tools',
@@ -147,7 +156,7 @@ describe('mnema rules --coverage', () => {
   it('counts a project with no rules wholly under none', async () => {
     const done = runRulesCoverage({ cwd: repo, env });
     if (!done.ok) throw new Error('refused');
-    expect(done.coverage.layers).toEqual({ refuses: 0, asks: 0, governs: 0, none: 13 });
+    expect(done.coverage.layers).toEqual({ refuses: 0, asks: 0, governs: 0, none: 17 });
   });
 
   it('stops at the walk ceiling and says every count is a floor', async () => {

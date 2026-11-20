@@ -204,6 +204,14 @@ Each tool of the MCP server has its page, in [the tools](reference/mcp-tools.md)
   job against the host's real binary; [Hosts](hosts.md) says how, host by host. Qwen Code
   installs the plugin itself, converted into an extension of its own, and runs the same hooks file:
   the refusal is a command in it that starts only where `QWEN_PROJECT_DIR` is set.
+- **How far the rules reach, as numbers**: `mnema rules --coverage` (with `--json`) walks the project's files once, the walk
+  that counts what an address covers when `mnema link` records it, and counts how many fall under each layer of the
+  rules in force: refused by a rule that refuses a write, asking for a person, governed, and under no rule, in all and
+  per top-level folder. Each file counts once, under the strongest layer over it (refused, then asks, then governs), so
+  the four numbers add up to the files walked. It reads the rules the way `mnema why` does, so a gate switched off still
+  counts, since the rule is still in the record. It gives numbers and no percentage or grade. The six names left out as not
+  hand-written (`.git`, `.mnema`, `node_modules`, `dist`, `build`, `coverage`) are named, a symbolic link is not counted,
+  and the walk stops at 50,000 files: it then says every count is a floor.
 - **A rules file for a host without the plugin**: `mnema rules-file --host vscode` prints the
   committed rules in force whose address is a file or a directory, as a `.instructions.md` with an `applyTo`,
   `--host cursor` as a `.mdc` with `globs`, and `--host claude` as a `.claude/rules/mnema.md` with
