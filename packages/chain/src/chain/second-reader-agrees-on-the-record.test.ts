@@ -215,9 +215,9 @@ describe('the second reader can be run at all', () => {
     expect(said).toMatch(/the fold over an empty range reproduces/);
     expect(said).toMatch(/the entry hash of a genesis entry reproduces/);
     expect(said).toMatch(/the entry hash of a linked entry reproduces/);
-    expect(said).toMatch(/the content root over all 41 vectors reproduces/);
+    expect(said).toMatch(/the content root over all 42 vectors reproduces/);
     // The one of a kind no version declares is read past, its payload unread (section 7.1).
-    expect(said).toMatch(/40 of 41 published vectors rebuild byte-identically/);
+    expect(said).toMatch(/41 of 42 published vectors rebuild byte-identically/);
     expect(said).toMatch(
       /1 published vector\(s\) of a kind no contract declares \(x\.from-the-future\)/,
     );

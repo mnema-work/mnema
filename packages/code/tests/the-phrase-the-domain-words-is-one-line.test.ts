@@ -2915,8 +2915,8 @@ describe('every value the domain puts in a sentence is classified', () => {
     // sites, twelve in `core` and eleven in `chain`), because it counted sentences
     // written at a `message:` or a `detail:` directly, and a value is not a sentence.
     expect(SITES.length).toBe(454);
-    expect(FOUND[0]?.sites.length).toBe(235);
-    expect(FOUND[1]?.sites.length).toBe(219);
+    expect(FOUND[0]?.sites.length).toBe(234);
+    expect(FOUND[1]?.sites.length).toBe(220);
     expect(FOUND.flatMap((layer) => layer.wording).length).toBeGreaterThan(15);
   });
 
@@ -2967,11 +2967,11 @@ describe('every value the domain puts in a sentence is classified', () => {
     // No arm of the case above may be empty, or that much of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
     const count = (verdict: Verdict): number => verdicts.filter((said) => said === verdict).length;
-    expect(count('collapsed')).toBe(310);
+    expect(count('collapsed')).toBe(311);
     expect(count('minted')).toBe(110);
     expect(count('composed')).toBe(33);
     expect(SITES.filter((site) => new RegExp(`\\b${DOOR}\\b`).test(site.expression))).toHaveLength(
-      310,
+      311,
     );
   });
 
