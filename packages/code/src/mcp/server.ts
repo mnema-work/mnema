@@ -103,7 +103,6 @@ import { keyFileLineForAModel } from '../key-file.js';
 import { movedLine } from '../moved-record.js';
 import { passedOverSentences } from '../not-a-project.js';
 import { neutralized, oneLine } from '../one-line.js';
-import { readLabel } from '../presentation/label.js';
 import {
   type Declared,
   mutatesTheRecord,
@@ -1402,14 +1401,9 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
       if (result.alreadyRecorded) {
         return replied(active, [alreadyRecordedLine(result, result.scope)], { wrote: false });
       }
-      return recorded(
-        active,
-        `Recorded decision ${readLabel(result.adr, result.scope)} (${result.id})`,
-        result,
-        {
-          after: [stateOfANewDecision(result.agentsAccept, 'agent-tool'), ...result.offered],
-        },
-      );
+      return recorded(active, `Recorded decision ${result.adr} (${result.id})`, result, {
+        after: [stateOfANewDecision(result.agentsAccept, 'agent-tool'), ...result.offered],
+      });
     },
   );
 
@@ -1457,16 +1451,11 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
       if (!result.ok) {
         return refused(active, result);
       }
-      return moved(
-        active,
-        movedLine('decision', readLabel(result.adr, result.scope), result.id, result.to),
-        result,
-        {
-          after:
-            result.acceptedByAgent === undefined ? [] : [acceptedByAnAgent(result.acceptedByAgent)],
-          ...(result.notice !== undefined ? { notice: result.notice } : {}),
-        },
-      );
+      return moved(active, movedLine('decision', result.adr, result.id, result.to), result, {
+        after:
+          result.acceptedByAgent === undefined ? [] : [acceptedByAnAgent(result.acceptedByAgent)],
+        ...(result.notice !== undefined ? { notice: result.notice } : {}),
+      });
     },
   );
 

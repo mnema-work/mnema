@@ -41,7 +41,7 @@
  */
 
 import { catalogUpcasters, type TransitionFields } from '@mnema/chain';
-import { chainRootForScope, DECISION_ACTIONS, type DiscoveryEnv, type Scope } from '@mnema/core';
+import { chainRootForScope, DECISION_ACTIONS, type DiscoveryEnv } from '@mnema/core';
 import {
   acceptDecision,
   openTreeForWriting,
@@ -92,8 +92,6 @@ export interface DecisionTransitioned extends Replacement {
   readonly id: string;
   /** The decision's citable `ADR-<n>` label, resolved from the projection. */
   readonly adr: string;
-  /** The tree that holds it, when it is not the public one: absent is public. */
-  readonly scope?: Scope;
   /** The state the decision is now in, resolved by the gate. */
   readonly to: string;
   /**
@@ -286,7 +284,6 @@ export function runDecisionTransition(
     ok: true,
     id: input.id,
     adr,
-    ...(scope !== 'public' ? { scope } : {}),
     to: moved.to,
     ...(notice !== undefined ? { notice } : {}),
     ...(input.action === 'accept' && which !== undefined ? { acceptedByAgent: which } : {}),
