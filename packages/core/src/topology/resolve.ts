@@ -44,7 +44,12 @@
 import { realpathSync, statSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { agentNameRefusal } from '../identity/agent-name.js';
-import { type MachineryPlace, privateTreePlace, publicMachineryPlace } from './git-place.js';
+import {
+  type MachineryPlace,
+  privateTreePlace,
+  publicMachineryPlace,
+  refuseOutsideTheTestRoot,
+} from './git-place.js';
 
 /** The directory name a project tree lives in, at a repo's root. */
 export const PROJECT_DIR = '.mnema';
@@ -234,6 +239,7 @@ export function discover(cwd: string, env: DiscoveryEnv): Discovery {
 
 /** The trees of the project whose `.mnema/` is `project`, over the machine's `base`. */
 function treesOfProject(project: string, base: ResolvedTrees): ResolvedTrees {
+  refuseOutsideTheTestRoot(project, 'the record tree');
   const inRepository = privateTreePlace(dirname(project));
   const machinery = publicMachineryPlace(dirname(project));
   return {

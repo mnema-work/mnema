@@ -12,6 +12,12 @@ workstation it is somebody's real record.
 
 - points `HOME` at a path of its own under the machine's temp, which exists only once something
   writes under it and is removed after the file;
+- keeps the cache of reads in a directory of its own (`MNEMA_CACHE_DIR`, removed with the file), so a test never opens a
+  `projection.db` that a process of another build, or a session using the checkout, shares;
+- sets `MNEMA_REFUSE_TREES_OUTSIDE` to the machine's temp: under it the core throws, naming the path and the caller's stack,
+  when a test resolves a record tree or a repository (the working tree or its git directory) outside that root. A suite
+  run from a checkout inside the temp (a clone made in `/tmp`) is not caught by it; run such a clone with `TMPDIR` set to
+  another directory;
 - **removes** `MNEMA_HOME`, so the value of whoever runs the suite reaches no case;
 - stands in front of the seven ways `node:child_process` starts a process, and a child that would
   resolve the machine's home (a `HOME` that is missing, empty, relative or the machine's own, or a
