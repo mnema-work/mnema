@@ -9,7 +9,7 @@ import { publicTreeIsExcluded, vanishedLocalTrees } from './local-record.js';
 
 let sandbox: string;
 beforeEach(() => {
-  sandbox = realpathSync(mkdtempSync(join(tmpdir(), 'mnema-local-record-')));
+  sandbox = mkdtempSync(join(tmpdir(), 'mnema-local-record-'));
 });
 afterEach(() => rmSync(sandbox, { recursive: true, force: true }));
 
@@ -40,10 +40,11 @@ describe('a record folder that git excludes', () => {
     const env = { home: join(sandbox, 'home') };
     const local = repository('local', '.mnema/\n');
     mkdirSync(join(local, 'src'));
+    const place = join(realpathSync(local), '.mnema');
     const found = vanishedLocalTrees(local, env);
-    expect(found?.projectPublic).toBe(join(local, '.mnema'));
-    expect(found?.projectPrivate).toContain(join(local, '.git'));
-    expect(vanishedLocalTrees(join(local, 'src'), env)?.projectPublic).toBe(join(local, '.mnema'));
+    expect(found?.projectPublic).toBe(place);
+    expect(found?.projectPrivate).toContain(join(realpathSync(local), '.git'));
+    expect(vanishedLocalTrees(join(local, 'src'), env)?.projectPublic).toBe(place);
     expect(vanishedLocalTrees(repository('committed'), env)).toBeUndefined();
     expect(vanishedLocalTrees(join(sandbox, 'outside'), env)).toBeUndefined();
   });
