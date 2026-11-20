@@ -5,7 +5,7 @@
  * unlinked from a path makes the case that relied on it fail, which is what the verb is for.
  */
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -169,8 +169,51 @@ describe('mnema rules test', () => {
     ]);
   });
 
-  it('still answers a path named like the verb as the path it is', async () => {
-    const done = await mnema('rules', 'src/billing/invoice.ts');
-    expect(done.out).toContain(ids['src/billing']);
+  it('asks a folder named like the verb as ./test, and gets its rules', async () => {
+    mkdirSync(join(repo, 'test'));
+    const said = await mnema('decision', 'record', 'Tests stay fast', 'because');
+    const id = said.out.match(/\(([0-9a-f-]{20,})\)/)?.[1] as string;
+    await mnema('decision', 'move', 'accept', id, '--note', 'agreed');
+    await mnema('link', id, 'test', '--rel', 'governs');
+    const asked = await mnema('rules', './test');
+    expect(asked.out).toContain(id);
+    const verb = await mnema('rules', 'test');
+    expect(verb.failed).toBe(true);
+    expect(verb.out).not.toContain(id);
+  });
+
+  it('refuses a case whose path is absolute or leaves the project, naming the case', async () => {
+    const outside = await mnema('rules', 'test', declare(['README.md', 'none'], ['../x.ts', 'none']));
+    expect(outside.failed).toBe(true);
+    expect(outside.err).toContain('case 2 of');
+    expect(outside.err).toContain('"../x.ts"');
+    const absolute = await mnema('rules', 'test', declare(['/etc/passwd', 'none']));
+    expect(absolute.failed).toBe(true);
+    expect(absolute.err).toContain('case 1 of');
+    expect(absolute.out).not.toContain('MATCH');
+  });
+
+  it('refuses --json, which it does not support, wherever it is typed', async () => {
+    const file = declare(['README.md', 'none']);
+    for (const argv of [
+      ['rules', 'test', file, '--json'],
+      ['rules', '--json', 'test', file],
+    ]) {
+      const done = await mnema(...argv);
+      expect(done.failed).toBe(true);
+      expect(done.err).toContain('takes no --json');
+      expect(done.out).toBe('');
+    }
+  });
+
+  it('refuses to judge a record the gate cannot read, instead of printing none', async () => {
+    const file = declare(['src/billing/invoice.ts', 'refuse'], ['README.md', 'none']);
+    const tails = join(repo, '.mnema', 'tails');
+    const segment = join(tails, readdirSync(tails)[0] as string, '000001.jsonl');
+    appendFileSync(segment, '{this line does not read\n');
+    const done = await mnema('rules', 'test', file);
+    expect(done.failed).toBe(true);
+    expect(done.err).toContain('RECORD_CANNOT_BE_JUDGED');
+    expect(done.out).not.toContain('MATCH');
   });
 });

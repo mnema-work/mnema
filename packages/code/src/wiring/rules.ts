@@ -32,6 +32,13 @@ export function registerRules(program: Command, wiring: Wiring): Declared {
     .description('show which recorded rules govern a path, and which address nothing')
     .argument('<path>', 'the path to ask about, relative to here or absolute')
     .option('--json', 'emit the faithful reading as JSON')
+    .addHelpText(
+      'after',
+      [
+        '',
+        'The word `test` after `rules` is the verb `rules test <file>`: a folder named test is asked as ./test.',
+      ].join('\n'),
+    )
     .action(async (path: string, opts: { json?: boolean }) => {
       const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
       const { runRules } = await import('../commands/rules.js');
@@ -85,10 +92,15 @@ export function registerRules(program: Command, wiring: Wiring): Declared {
         '  none     no rule stands over the path',
         'The answer is the gate’s own, so a switch turned off changes it as it changes the gate.',
         'Every case that does not meet its verdict is named, with the rules that stand there,',
-        'and the exit code is 1; a file with no case is refused. Nothing is written.',
+        'and the exit code is 1; a file with no case, a path that is absolute or leaves the project,',
+        'or a record the gate cannot read is refused. Nothing is written.',
       ].join('\n'),
     )
     .action(async (file: string) => {
+      if (rules.opts<{ json?: boolean }>().json === true) {
+        reportUsage(wiring, '`rules test` takes no --json: it prints one line per case.');
+        return;
+      }
       const { runRulesTest } = await import('../commands/rules-test.js');
       const { rulesTestReport } = await import('../presentation/rules-test.js');
       const result = runRulesTest(here(), { file });

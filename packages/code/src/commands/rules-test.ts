@@ -18,11 +18,17 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { dirname, isAbsolute, join } from 'node:path';
+import { dirname, isAbsolute, join, posix } from 'node:path';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { withInheritedSource } from '../inherited-record.js';
-import { withScopedCaches } from '../tree-sources.js';
-import { everyRuleInForceAt, whatAWriteMeets } from '../what-a-write-meets.js';
+import { recordTrees } from '../intelligence-source.js';
+import { linkBreaksOf, THE_READING_THAT_OPENED_THESE, withScopedCaches } from '../tree-sources.js';
+import {
+  everyRuleInForceAt,
+  refusalOfAnAlteredRecord,
+  refusalOfAnUnreadableRecord,
+  whatAWriteMeets,
+} from '../what-a-write-meets.js';
 
 /** What the verb needs: injected so it is testable. */
 export interface RulesTestContext {
@@ -55,7 +61,14 @@ export interface RulesTestDone {
 /** The verb could not run: there is no project, or the file is not a list of cases it can read. */
 export type RulesTestRefused =
   | { readonly ok: false; readonly reason: 'NO_PROJECT' }
-  | { readonly ok: false; readonly reason: 'BAD_CASES'; readonly message: string };
+  | { readonly ok: false; readonly reason: 'BAD_CASES'; readonly message: string }
+  /** The record cannot be judged (a line that does not read, an altered entry): the gate would deny every write. */
+  | {
+      readonly ok: false;
+      readonly reason: 'RECORD_CANNOT_BE_JUDGED';
+      readonly code: 'RECORD_CANNOT_BE_JUDGED';
+      readonly message: string;
+    };
 
 /** The cases a file declares, or why it declares none this verb can check. */
 function casesOf(
@@ -79,6 +92,12 @@ function casesOf(
     if (typeof path !== 'string' || path === '') {
       return { message: `case ${index + 1} of ${file} has no "path".` };
     }
+    const inside = posix.normalize(path.replaceAll('\\', '/'));
+    if (isAbsolute(path) || posix.isAbsolute(inside) || inside === '..' || inside.startsWith('../')) {
+      return {
+        message: `case ${index + 1} of ${file} names ${JSON.stringify(path)}: a path is relative to the project root and stays inside it.`,
+      };
+    }
     const verdict = VERDICTS.find((name) => name === expect);
     if (verdict === undefined) {
       return {
@@ -100,6 +119,18 @@ export function runRulesTest(
   const root = dirname(trees.projectPublic);
   const declared = casesOf(isAbsolute(input.file) ? input.file : join(ctx.cwd, input.file));
   if ('message' in declared) return { ok: false, reason: 'BAD_CASES', message: declared.message };
+  // THE RECORD IS JUDGED BEFORE ANY CASE, as the gate judges it: a record the gate cannot read or
+  // that leaves a line out denies every write, and a `none` read off it would be a false green.
+  try {
+    const refusal = withScopedCaches(trees, (own) =>
+      refusalOfAnAlteredRecord(linkBreaksOf(own, THE_READING_THAT_OPENED_THESE)),
+    );
+    if (refusal !== undefined) return cannotBeJudged(refusal);
+  } catch (error) {
+    const refusal = refusalOfAnUnreadableRecord(error, recordTrees(trees, undefined));
+    if (refusal === undefined) throw error;
+    return cannotBeJudged(refusal);
+  }
   const cases = withScopedCaches(trees, (own) =>
     withInheritedSource(trees, own, (sources) =>
       declared.cases.map(({ path, expect }): CaseResult => {
@@ -119,4 +150,8 @@ export function runRulesTest(
     ),
   );
   return { ok: true, cases };
+}
+
+function cannotBeJudged(message: string): RulesTestRefused {
+  return { ok: false, reason: 'RECORD_CANNOT_BE_JUDGED', code: 'RECORD_CANNOT_BE_JUDGED', message };
 }
