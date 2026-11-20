@@ -36,5 +36,6 @@ Each case names a path, relative to the project root, and what it must meet:
   none     no rule stands over the path
 The answer is the gate’s own, so a switch turned off changes it as it changes the gate.
 Every case that does not meet its verdict is named, with the rules that stand there,
-and the exit code is 1; a file with no case is refused. Nothing is written.
+and the exit code is 1; a file with no case, a path that is absolute or leaves the project,
+or a record the gate cannot read is refused. Nothing is written.
 ```

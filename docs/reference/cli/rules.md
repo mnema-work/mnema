@@ -44,4 +44,6 @@ Options:
 Commands:
   test <file>  check the verdicts a file declares for paths against the record’s
                rules
+
+The word `test` after `rules` is the verb `rules test <file>`: a folder named test is asked as ./test.
 ```

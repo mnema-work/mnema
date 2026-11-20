@@ -691,6 +691,8 @@ $ mnema rules --help
 | Commands:
 |   test <file>  check the verdicts a file declares for paths against the record’s
 |                rules
+|
+| The word `test` after `rules` is the verb `rules test <file>`: a folder named test is asked as ./test.
 
 ### mnema rules-file --help
 $ mnema rules-file --help
@@ -2413,7 +2415,8 @@ $ mnema rules test --help
 |   none     no rule stands over the path
 | The answer is the gate’s own, so a switch turned off changes it as it changes the gate.
 | Every case that does not meet its verdict is named, with the rules that stand there,
-| and the exit code is 1; a file with no case is refused. Nothing is written.
+| and the exit code is 1; a file with no case, a path that is absolute or leaves the project,
+| or a record the gate cannot read is refused. Nothing is written.
 
 ### mnema switch off --help
 $ mnema switch off --help

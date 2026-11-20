@@ -45,9 +45,9 @@ function theCase(damaged: Damage): TheCase<Planted> {
       )?.[1] as string;
       expect(mnema(planted, ['decision', 'move', 'accept', id, '--note', 'agreed']).status).toBe(0);
       mkdirSync(join(planted.repo, 'src', 'billing'), { recursive: true });
-      expect(
-        mnema(planted, ['link', id, 'src/billing', '--rel', 'refuses-a-write']).status,
-      ).toBe(0);
+      expect(mnema(planted, ['link', id, 'src/billing', '--rel', 'refuses-a-write']).status).toBe(
+        0,
+      );
       writeFileSync(
         join(planted.repo, 'cases.json'),
         JSON.stringify({ cases: [{ path: 'src/billing/a.ts', expect: 'refuse' }] }),
@@ -77,7 +77,10 @@ const DAMAGES: [string, Damage][] = [
   [
     'an entry altered after it was written',
     (segment) =>
-      writeFileSync(segment, readFileSync(segment, 'utf8').replace('Never edit billing', 'Never edit billinx')),
+      writeFileSync(
+        segment,
+        readFileSync(segment, 'utf8').replace('Never edit billing', 'Never edit billinx'),
+      ),
   ],
   [
     'a segment that is a symbolic link',
