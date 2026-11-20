@@ -160,7 +160,6 @@ export interface InstalledFrom {
   readonly node: string;
 }
 
-/** What a path may hold to be composed into a command: no space, quote, `$`, backtick, `;`, `&` or `|`. */
 /** Where the running file really is: its real path where that can be resolved, as given where it cannot. */
 export function installedFrom(file: string, node: string): InstalledFrom {
   try {
@@ -170,9 +169,12 @@ export function installedFrom(file: string, node: string): InstalledFrom {
   }
 }
 
+/** What a path may hold to be composed into a command: no space, quote, `$`, backtick, `;`, `&` or `|`. */
 const SAFE_PATH = /^[A-Za-z0-9_./~-]+$/;
 /** What the running file's path may hold to be read at all: the layouts themselves carry `@` and `+`. */
 const READABLE_PATH = /^[A-Za-z0-9_./~@+-]+$/;
+/** pnpm's global directory: `<home>/global/<n>/` holds the `.pnpm` store of what was added with `-g`. */
+const PNPM_GLOBAL = /\/global\/\d+\/(?:node_modules\/)?\.pnpm\//;
 const NPM_LAYOUT = /^(.*)\/lib\/node_modules\/@mnema\/code\/dist\/bundle\/cli\.js$/;
 
 /**
@@ -183,7 +185,9 @@ const NPM_LAYOUT = /^(.*)\/lib\/node_modules\/@mnema\/code\/dist\/bundle\/cli\.j
  */
 export function installCommand(from: InstalledFrom, version: string): string | undefined {
   if (!/^\d+\.\d+\.\d+$/.test(version) || !READABLE_PATH.test(from.file)) return undefined;
-  if (from.file.split('/').includes('.pnpm')) return `pnpm add -g @mnema/code@${version}`;
+  if (PNPM_GLOBAL.test(from.file)) return `pnpm add -g @mnema/code@${version}`;
+  // A `.pnpm` segment elsewhere is a project's own install (`pnpm exec`): `-g` would be another one.
+  if (from.file.split('/').includes('.pnpm')) return undefined;
   const prefix = NPM_LAYOUT.exec(from.file)?.[1];
   if (prefix === undefined || prefix === '') return undefined;
   const byDefault = from.node.replace(/\/[^/]*$/, '').replace(/\/[^/]*$/, '');

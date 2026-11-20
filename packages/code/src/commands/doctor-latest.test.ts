@@ -317,6 +317,15 @@ describe('the command is the one for how this binary was installed', () => {
     ).toBe(`npm i -g --prefix /home/ana/.local @mnema/code@${NEWER}`);
   });
 
+  it('nothing for a pnpm install inside a project (`pnpm exec`): `-g` would be another install', () => {
+    expect(
+      command(
+        `/home/ana/proj/node_modules/.pnpm/@mnema+code@${OLDER}/node_modules/@mnema/code/dist/bundle/cli.js`,
+        '/usr/bin/node',
+      ),
+    ).toBeUndefined();
+  });
+
   it('pnpm global', () => {
     expect(
       command(

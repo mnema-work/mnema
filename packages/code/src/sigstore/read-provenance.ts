@@ -7,7 +7,8 @@
  * says is WHOSE bundle it is: a genuine bundle of another version, or of another project's
  * workflow, verifies as a bundle. So the reading compares, after the library, in this order:
  *
- *   1. identity   the certificate names the release workflow of this repository;
+ *   1. identity   the certificate names the release workflow of this repository, and its OIDC
+ *                 issuer is GitHub Actions';
  *   2. purl       the statement's subject names `pkg:npm/%40mnema/code@<version>`;
  *   3. digest     that subject's sha512 is the `dist.integrity` the registry gave for the version;
  *   4. repository the statement says the workflow ran in this repository.
@@ -30,6 +31,9 @@ export const PINNED_REPOSITORY = 'https://github.com/mnema-work/mnema';
 /** The workflow identity a certificate must name: the release workflow, on `main`. */
 export const PINNED_WORKFLOW = `${PINNED_REPOSITORY}/.github/workflows/release.yml@refs/heads/main`;
 
+/** The OIDC issuer a certificate for a GitHub Actions run names. */
+export const PINNED_ISSUER = 'https://token.actions.githubusercontent.com';
+
 const SLSA_PROVENANCE = 'https://slsa.dev/provenance/v1';
 
 /** What the four comparisons are made against. */
@@ -43,6 +47,8 @@ export interface Expected {
 export interface Claimed {
   /** The identity the verified certificate names. */
   readonly identity: string;
+  /** The OpenID issuer that vouched for the identity. */
+  readonly issuer: string;
   /** The statement's subjects, as they were signed. */
   readonly subjects: readonly { readonly name?: unknown; readonly sha512?: unknown }[];
   /** The repository the statement says the workflow ran in. */
@@ -81,7 +87,7 @@ function integrityOf(hex: unknown): string | undefined {
  * refusal, and `undefined` is every one holding.
  */
 export function compareClaims(claimed: Claimed, expected: Expected): Refusal | undefined {
-  if (claimed.identity !== PINNED_WORKFLOW) return 'identity';
+  if (claimed.identity !== PINNED_WORKFLOW || claimed.issuer !== PINNED_ISSUER) return 'identity';
   const subject = claimed.subjects.find(
     (one) => one.name === `pkg:npm/%40mnema/code@${expected.version}`,
   );
@@ -140,6 +146,7 @@ export function readProvenance(
     const refusal = compareClaims(
       {
         identity: signer.identity?.subjectAlternativeName ?? '',
+        issuer: signer.identity?.extensions?.issuer ?? '',
         subjects: (statement.subject as { name?: unknown; digest?: { sha512?: unknown } }[]).map(
           (one) => ({ name: one?.name, sha512: one?.digest?.sha512 }),
         ),

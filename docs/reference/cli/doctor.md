@@ -136,9 +136,11 @@ own claim), and only if this Node meets the Node range it declares. The command 
 A version with no attested provenance is said to exist, with no command; so is one whose provenance does not hold,
 with which comparison refused it. The line reports what npm.org lists and never what your own registry serves: a
 mirror or a package manager that holds new versions back (`min-release-age`, `minimumReleaseAge`) may refuse an install
-that was named. Provenance says where a build came from, not that the commit is good, and two silences are by design:
-a Sigstore key rotation that the trust root in an old binary does not cover, and a second move of the repository.
-`doctor --latest` then says it cannot confirm, with no command.
+that was named. Provenance says where a build came from, not that the commit is good, and two failures are
+by design and are said as a refusal, never as a pass: a Sigstore key rotation that the trust root in an old binary
+does not cover (the library refuses the bundle, so the line says `its provenance did not hold (bundle)`, because
+this binary cannot tell a rotation from a forged bundle), and a second move of the repository (`(identity)`). Either
+way no command is given.
 
 mnema asks the registry only when a command you or your agent typed asks it. A terminal does not prove a person is at
 it, and an agent that holds a shell can run this verb: it is one request, the same whoever fires it, and the text

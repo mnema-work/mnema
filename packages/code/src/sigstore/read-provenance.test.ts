@@ -16,6 +16,7 @@ import { describe, expect, it } from 'vitest';
 import {
   type Claimed,
   compareClaims,
+  PINNED_ISSUER,
   PINNED_REPOSITORY,
   PINNED_WORKFLOW,
   readProvenance,
@@ -46,6 +47,7 @@ const HEX_OF = (integrity: string): string =>
 function claims(role: Role): Claimed {
   return {
     identity: PINNED_WORKFLOW,
+    issuer: PINNED_ISSUER,
     subjects: [
       { name: `pkg:npm/%40mnema/code@${versionOf(role)}`, sha512: HEX_OF(integrityOf(role)) },
     ],
@@ -65,6 +67,13 @@ describe('the four comparisons, each alone', () => {
       'identity',
     );
     expect(compareClaims({ ...claims('newer'), identity: '' }, expected('newer'))).toBe('identity');
+  });
+
+  it('refuses a certificate another OIDC issuer vouched for, whatever workflow it names', () => {
+    expect(
+      compareClaims({ ...claims('newer'), issuer: 'https://accounts.google.com' }, expected('newer')),
+    ).toBe('identity');
+    expect(compareClaims({ ...claims('newer'), issuer: '' }, expected('newer'))).toBe('identity');
   });
 
   it('refuses a statement that names another version', () => {
