@@ -19,7 +19,7 @@ Added
   terminal or answered `mnema init` on its screen. The edit hook of VS Code and Cursor reads such a line past as
   `mnema` from 0.1.5 does, and still starts `mnema` where a line holds an address marker or is a version ahead of a kind it
   reads.
-- **Two versions of mnema on one clone rebuild the read cache in turns.** The cache (`projection.db`) is stamped with the
-  code that built it, so a binary of this version and one of an earlier version (a terminal and an editor extension, say)
-  each rebuild it whenever the other was last: measured on a record of 3,449 lines, 0.64 to 0.84 s a `status` instead of
-  0.21 s. This is so for any two versions until the cache keeps one file per version (ADR-633).
+- **Two versions of mnema on one clone share one read cache file.** The cache (`projection.db`) is stamped with the code that
+  built it, and only the newer version takes the file over; a binary of an older or the same version (a terminal and an editor
+  extension, say) builds the cache in memory for that process and leaves the file alone, so it pays a replay of the record on each
+  command: that replay was measured, on a record of 3,449 lines, at 0.64 to 0.84 s a `status` against 0.21 s with the cache (ADR-633).

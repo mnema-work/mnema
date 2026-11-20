@@ -97,9 +97,10 @@ stays on the list. Any accept you make at a terminal with no agent declared (`de
 the review, `mnema init` answering on its screen) is marked the same way, so it is not on your list.
 `mnema` with nothing after it lists the ones that entered force since your last review or accept at
 a terminal, one line each, and says how many older ones you have not been shown. Two versions of
-mnema used on one clone (a terminal and an editor extension) each rebuild the read cache whenever
-the other was last, which costs a fraction of a second a command until the cache keeps one file
-per version (ADR-633). The mark stays in the private record,
+mnema used on one clone (a terminal and an editor extension) share one read cache file: only the
+newer version takes it over, and an older or the same version builds the cache in memory and leaves
+the file alone, which costs it a replay of the record, a fraction of a second, on each command
+(ADR-633). The mark stays in the private record,
 so another clone or machine of yours does not have it, and it says that your key signed at a
 terminal with no agent declared, not that a person read the rule.
 

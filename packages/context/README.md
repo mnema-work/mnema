@@ -271,7 +271,8 @@ and the one document it feeds is committed.
   own),
   `focus`/`resume` (an actor's current and last work), `next-action`
   (the moves a state allows), `search` (finding what was recorded), and `skills`
-  (the patterns: the adopted ones, and the ones awaiting a ruling).
+  (the patterns: the adopted ones, and the ones awaiting a ruling), and `not-seen`
+  (`rulesNotSeenBy`: the rules in force that a person did not accept themselves and has not been shown).
 - **`intelligence/`**: the auditor's reads over every visible tree, `timeline`
   (an entity's history), `references` (what it connects to), `accountability`
   (who authorized what), `antipatterns` (recurring shapes), `exposure`

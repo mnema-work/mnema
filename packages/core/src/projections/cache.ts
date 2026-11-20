@@ -40,6 +40,8 @@ import {
   activeStampsBefore,
   type CacheMeta,
   keepActiveMarks,
+  mayTakeOver,
+  ownerOfTheFile,
   productStamp,
   readGeneration,
   readMeta,
@@ -198,6 +200,12 @@ function isSqliteFailure(error: unknown): boolean {
   return failure?.code === 'ERR_SQLITE_ERROR' && typeof failure.errcode === 'number';
 }
 
+/** SQLITE_BUSY (5) and SQLITE_LOCKED (6), and their extended forms: the file is held, not wrong. */
+function isBusyOrLocked(error: unknown): boolean {
+  const code = (error as { errcode?: unknown } | null)?.errcode;
+  return typeof code === 'number' && ((code & 0xff) === 5 || (code & 0xff) === 6);
+}
+
 export class ProjectionCache {
   /**
    * How far into the chain the tables reach, and with it everything {@link refresh} needs in
@@ -299,6 +307,20 @@ export class ProjectionCache {
     this.untouched = !persisted;
   }
 
+  private foreign = false;
+
+  /**
+   * True when the file this cache would keep in the tree carries the stamp of another build's code
+   * and was therefore left alone: this process reads from memory (a replay of the record, once)
+   * and the file stays what the build that wrote it left. ONE FILE PER TREE is keyed by no build,
+   * so a process of another build that rewrote it would send the first build's next open to replay
+   * it back; with this, two builds on one machine cost the one that does not own the file a replay
+   * per process, and the owner nothing.
+   */
+  get leftTheFileToAnotherBuild(): boolean {
+    return this.foreign;
+  }
+
   /**
    * Opens a cache over the chain rooted at `chainRoot`. Ensures the schema
    * exists but does NOT rebuild: call {@link refresh} to bring it to the chain (taking
@@ -331,12 +353,28 @@ export class ProjectionCache {
     }
     try {
       const db = openDatabase(path);
+      // A file another build's code wrote is that build's unless this one is a newer version: the
+      // process builds its own tables in memory and leaves the file as it is, because rewriting it
+      // would send the other build's next open to replay it back. A file that could not be asked
+      // (busy, locked) may have an owner too, and is left alone the same way.
+      const owner = ownerOfTheFile(db);
+      if (
+        owner.state === 'unknown' ||
+        (owner.state === 'owned' && owner.stamp !== productStamp() && !mayTakeOver(owner.version))
+      ) {
+        db.close();
+        const cache = new ProjectionCache(openMemory(), layout, upcasters, false);
+        cache.foreign = true;
+        return cache;
+      }
       try {
         ensureSchema(db);
       } catch (error) {
         // A file whose tables this code cannot create over is a file of another shape: it is
         // a cache, so it is dropped and made again rather than reported.
-        if (!isSqliteFailure(error)) throw error;
+        // A busy or locked file is somebody's, not a file of another shape: the outer catch
+        // leaves it and reads in memory.
+        if (!isSqliteFailure(error) || isBusyOrLocked(error)) throw error;
         dropProjections(db);
         ensureSchema(db);
       }
@@ -768,6 +806,12 @@ export class ProjectionCache {
     }
     if (meta.generation === this.generation && this.frontier !== undefined) return;
     this.generation = meta.generation;
+    if (this.persisted && meta.stamp !== productStamp() && !mayTakeOver(meta.version)) {
+      // Another build's code (not an older version of this one) wrote the file since this one opened it: leave it to that build.
+      this.degrade();
+      this.foreign = true;
+      return;
+    }
     const active = this.persisted ? activeSegmentsHold(meta.active) : meta.active;
     if (
       meta.stamp !== productStamp() ||
