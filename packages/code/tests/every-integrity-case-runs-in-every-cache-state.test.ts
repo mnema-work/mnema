@@ -755,8 +755,10 @@ describe('the integrity tests and the states of the projection cache', () => {
       true,
     );
     expect(writesIntoTails("writeFileSync(join(locks, 't1.head'), 'x');")).toBe(true);
-    expect(writesIntoTails("rmSync(tailDir({ root }, tail), { recursive: true });")).toBe(true);
-    expect(writesIntoTails("rmSync(join(root, 'tailDirectory'), { recursive: true });")).toBe(false);
+    expect(writesIntoTails('rmSync(tailDir({ root }, tail), { recursive: true });')).toBe(true);
+    expect(writesIntoTails("rmSync(join(root, 'tailDirectory'), { recursive: true });")).toBe(
+      false,
+    );
     expect(writesIntoTails("rmSync(join(repo, 'segments'), { recursive: true });")).toBe(true);
   });
 
