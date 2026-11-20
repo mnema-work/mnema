@@ -303,16 +303,22 @@ export function standingOfCache(
   return { unpushed, diverged: unpushed > 0 && behind > 0 };
 }
 
-/** Runs `act` holding the lock of the cache, so two runs never interleave; a run that cannot get it says another is going. */
-export function withCacheLock<T>(cache: string, act: () => T): T {
+/**
+ * Runs `act` holding the lock of the cache, so two runs never interleave; a run that cannot get it
+ * says another is going, which process holds `<cache>.lock` and how to clear it. A live pid is
+ * never overruled (a process that answers is a holder), so a pid reused by an unrelated process
+ * keeps the lock until the file is deleted, and the sentence says so.
+ */
+export function withCacheLock<T>(cache: string, act: () => T, waitMs = 30_000): T {
   mkdirSync(dirname(cache), { recursive: true });
   try {
-    return withTailLock(`${cache}.lock`, act, { waitMs: 30_000 });
+    return withTailLock(`${cache}.lock`, act, { waitMs });
   } catch (error) {
     if (error instanceof TailBusyError) {
+      const holder = error.heldBy === undefined ? 'another process' : `process ${error.heldBy}`;
       throw new GitDestinationError(
         'GIT_FAILED',
-        'Another backup run is in progress on this destination, and it did not finish in 30 seconds. Nothing was changed: run again when it has.',
+        `Another backup run is in progress on this destination (${holder} holds ${error.tailLock}), and it did not finish in ${waitMs / 1000} seconds. Nothing was changed: run again when it has. If that process is not a mnema backup that is still running, delete ${error.tailLock} and run again.`,
       );
     }
     throw error;

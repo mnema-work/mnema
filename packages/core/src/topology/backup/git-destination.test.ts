@@ -289,6 +289,21 @@ describe('a push that did not go up', () => {
     });
     expect(existsSync(`${cache}.lock`)).toBe(false);
   });
+
+  it('names the lock file, the process that holds it and how to clear it when a pid that is still alive holds it', () => {
+    // The parent of this process answers to a signal and is not a backup: a pid reused by another process.
+    writeFileSync(`${cache}.lock`, `${process.ppid} ${Date.now()}\n`);
+    let said = '';
+    try {
+      withCacheLock(cache, () => 'never', 1000);
+    } catch (error) {
+      said = (error as Error).message;
+    }
+    expect(said).toContain(`process ${process.ppid} holds ${cache}.lock`);
+    expect(said).toContain(`delete ${cache}.lock and run again`);
+    expect(said).toContain('did not finish in 1 seconds');
+    expect(existsSync(`${cache}.lock`)).toBe(true);
+  });
 });
 
 describe('a destination written with a password', () => {
