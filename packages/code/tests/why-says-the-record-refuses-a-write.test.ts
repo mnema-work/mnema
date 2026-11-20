@@ -55,7 +55,11 @@ function judged(damage: (text: string) => string): TheCase<Planted> {
     },
     // What differs between the states without being a difference: the fingerprints of the tails and where the sandbox was.
     normalize: (said, planted) =>
-      said.split(planted.repo).join('<repo>').replace(/[0-9a-f]{12,}/g, '<hex>'),
+      said
+        .split(planted.repo)
+        .join('<repo>')
+        .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, '<id>')
+        .replace(/[0-9a-f]{12,}/g, '<hex>'),
     run(planted, ctx) {
       ctx.forget(planted.repo);
       const why = mnema(planted, ['why', PATH, '--json']);
