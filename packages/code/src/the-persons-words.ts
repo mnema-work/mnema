@@ -40,8 +40,11 @@ export interface PersonWord {
 /** A reader of one host's transcript file. */
 export type HostReader = (path: string) => readonly PersonWord[];
 
-/** The text parts of a Gemini `PartListUnion`, or `undefined` when a part is a tool's response. */
-function geminiText(content: unknown): string | undefined {
+/**
+ * The text parts of a Gemini `PartListUnion`. A `user` record that hands a tool's response back
+ * holds `functionResponse` parts, which are not text and are left out, so it comes out empty.
+ */
+function geminiText(content: unknown): string {
   if (typeof content === 'string') return content;
   const parts = Array.isArray(content) ? content : [content];
   const texts: string[] = [];
@@ -52,8 +55,6 @@ function geminiText(content: unknown): string | undefined {
     }
     const object = asObject(part);
     if (object === undefined) continue;
-    // A `user` record also holds the turn that hands a tool's response back to the model.
-    if (object.functionResponse !== undefined) return undefined;
     if (typeof object.text === 'string') texts.push(object.text);
   }
   return texts.join('');
@@ -125,7 +126,7 @@ const readGemini: HostReader = (path) => {
   for (const { line: at, record } of messages.values()) {
     if (record.type === 'user') {
       const text = geminiText(record.content);
-      if (text !== undefined && text.trim() !== '') said.push({ line: at, text, chosen: false });
+      if (text.trim() !== '') said.push({ line: at, text, chosen: false });
     } else if (record.type === 'gemini' && Array.isArray(record.toolCalls)) {
       for (const call of record.toolCalls) {
         const object = asObject(call);
@@ -138,15 +139,14 @@ const readGemini: HostReader = (path) => {
   return said;
 };
 
-/** The text of a Qwen `Content` (`{role, parts}`), or `undefined` when a part is a tool's response. */
-function qwenText(message: unknown): string | undefined {
+/** The text parts of a Qwen `Content` (`{role, parts}`). */
+function qwenText(message: unknown): string {
   const parts = asObject(message)?.parts;
   if (!Array.isArray(parts)) return '';
   const texts: string[] = [];
   for (const part of parts) {
     const object = asObject(part);
     if (object === undefined) continue;
-    if (object.functionResponse !== undefined) return undefined;
     if (typeof object.text === 'string') texts.push(object.text);
   }
   return texts.join('\n');
@@ -174,7 +174,6 @@ const readQwen: HostReader = (path) => {
     if (record === undefined || record.type !== 'user' || record.subtype !== undefined) return true;
     if (record.provenance !== undefined && record.provenance !== 'real_user') return true;
     const sent = qwenText(record.message);
-    if (sent === undefined) return true;
     const shown = asObject(record.systemPayload)?.displayText;
     const words = typeof shown === 'string' && shown.trim() !== '' ? shown : sent;
     if (words.trim() !== '') said.push({ line, text: words, chosen: false });

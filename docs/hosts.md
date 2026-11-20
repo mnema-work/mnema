@@ -179,6 +179,20 @@ host's documentation says, as the command `mnema` with the one argument `mcp`, r
 root. The agent then has every tool of the server; nothing opens its sessions, refuses a write or
 pauses one.
 
+## Reading what the person typed, per host
+
+To check that a decision rests on the person's words, mnema needs the conversation as the host wrote it. A reader exists only for a host whose own source says what its transcript lines are, and each is held by a test whose lines are built from that source. For each host, what the reader does today:
+
+| Host | Reader | What it takes as the person's | Answers to the host's question tool |
+|---|---|---|---|
+| Claude Code | yes | a `user` line marked `origin.kind` `human`, not injected text, not a subagent's | read, marked chosen |
+| Gemini CLI | yes ([`chatRecordingService.ts`](https://github.com/google-gemini/gemini-cli/blob/573846625af9e93b3b968e0e0b86bb093a4c9b16/packages/core/src/services/chatRecordingService.ts), [`ask-user.ts`](https://github.com/google-gemini/gemini-cli/blob/573846625af9e93b3b968e0e0b86bb093a4c9b16/packages/core/src/tools/ask-user.ts)) | a message of type `user` that carries text; the turn that hands a tool's response back is not; a rewind drops what it rewinds | read from `ask_user`'s stored result, marked chosen; a dismissed question gives none |
+| Qwen Code | yes ([`chatRecordingService.ts`](https://github.com/QwenLM/qwen-code/blob/b475278c4a300acebe6cfc990a9e1b1d18819bfc/packages/core/src/services/chatRecordingService.ts)) | a `user` record with no subtype (every subtype is text the host wrote), the submitted text rather than the copy that carries hook context | not read: the stored shape of an answer is not in the source read |
+| VS Code agent mode | yes ([`sessionTranscriptService.ts`](https://github.com/microsoft/vscode/blob/794308978b6d99a6268d7675f216867a78501e3f/extensions/copilot/src/platform/chat/common/sessionTranscriptService.ts)) | a `user.message` entry | not read: where the extension logs an answer is not in the source read |
+| Codex, GitHub Copilot CLI, OpenCode, Cursor, Antigravity, Factory Droid, Goose | no | none: the person's words on these hosts are not read from a transcript | none |
+
+A host with no reader is not read through another host's shape. Codex's format is still changing, Copilot CLI's event schema and the shape of its answers were not found in its documentation, OpenCode keeps its conversation in a database and Cursor's transcript format is not documented. The reader is a module of its own (`the-persons-words.ts`); this page says what it reads, not who calls it.
+
 ## Without a plugin
 
 Without the plugin, `mnema rules-file --host claude`, `--host vscode` or `--host cursor` prints the committed rules

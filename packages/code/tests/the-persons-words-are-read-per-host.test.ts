@@ -70,6 +70,15 @@ describe('Gemini CLI', () => {
     ]);
   });
 
+  it('reads only ask_user for answers, not another tool whose output has the same shape', () => {
+    const other = GEMINI.asked('m2', JSON.stringify({ answers: { '0': 'x' } }), ['Which?']);
+    const path = file([
+      GEMINI.header,
+      { ...other, toolCalls: other.toolCalls.map((call) => ({ ...call, name: 'read_file' })) },
+    ]);
+    expect(thePersonsWords('gemini', path)).toEqual([]);
+  });
+
   it('does not read a dismissed question as an answer', () => {
     const path = file([
       GEMINI.header,
