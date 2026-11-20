@@ -9,5 +9,5 @@ Added
   folder, and the name of the record comes from the copy this machine has (or `--from`). A restore over a `.mnema/` that is there
   still asks when the copy is of another record. What does not change for a committed record: its public tree is not copied.
   What this does not do: a project in a subfolder of a repository (a monorepo) with a local record is not restored from a
-  folder that is gone, only one at the top is; and `mnema doctor`, `mnema tail repair` and the place where a restore keeps what it
+  folder that is gone, only one at the top is; and `mnema doctor`, the tail repair and the place where a restore keeps what it
   replaces still use the earlier test (a project in a repository), not this one.

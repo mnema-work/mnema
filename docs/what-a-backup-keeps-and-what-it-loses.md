@@ -109,7 +109,7 @@ copy this machine has (`--from <record>` when it has more than one), and puts bo
 repository (a project in a subfolder with a local record is not restored from a folder that is gone), and only where
 git excludes the folder and holds none of it; a repository that commits its record has its history to restore from.
 
-`mnema doctor`, `mnema tail repair` and the place where a restore keeps what it replaces still take a project in a repository
+`mnema doctor`, the tail repair and the place where a restore keeps what it replaces still take a project in a repository
 for one whose public tree git keeps, local record or not.
 
 The same question is asked when a project has no record name at all: a project without git, or with a local record, backs up its public tree, and
