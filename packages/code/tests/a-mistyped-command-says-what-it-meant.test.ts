@@ -248,7 +248,11 @@ describe('what a write says about where it landed', () => {
       if (path === undefined) delete process.env.PATH;
       else process.env.PATH = path;
     }
-    expect(readFileSync(asked, 'utf-8').split('\n').filter((l) => l !== '')).toHaveLength(2);
+    expect(
+      readFileSync(asked, 'utf-8')
+        .split('\n')
+        .filter((l) => l !== ''),
+    ).toHaveLength(2);
   });
 
   it('still says it reaches every clone when the record is not excluded', async () => {
