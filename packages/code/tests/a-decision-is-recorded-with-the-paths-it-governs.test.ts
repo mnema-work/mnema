@@ -250,7 +250,14 @@ describe('mnema decision record --governs', () => {
 
   it('names a path outside the project on its own line, and says files-on-disk only beside a path inside', async () => {
     const onlyOutside = await mnema(
-      'decision', 'record', 'Outside only', 'audit', '--scope', 'private', '--governs', '/etc',
+      'decision',
+      'record',
+      'Outside only',
+      'audit',
+      '--scope',
+      'private',
+      '--governs',
+      '/etc',
     );
     expect(onlyOutside.failed, onlyOutside.out).toBe(false);
     expect(onlyOutside.out).toContain('/etc lies outside this project, so it covers nothing here.');
@@ -258,8 +265,16 @@ describe('mnema decision record --governs', () => {
     mkdirSync(join(repo, 'src/a'), { recursive: true });
     writeFileSync(join(repo, 'src/a/x.ts'), 'x');
     const both = await mnema(
-      'decision', 'record', 'Both', 'audit', '--scope', 'private',
-      '--governs', '/etc', '--governs', 'src/a',
+      'decision',
+      'record',
+      'Both',
+      'audit',
+      '--scope',
+      'private',
+      '--governs',
+      '/etc',
+      '--governs',
+      'src/a',
     );
     expect(both.out).toContain('/etc lies outside this project');
     expect(both.out).toMatch(/src\/a covers 1 of \d+ file\(s\)/);
