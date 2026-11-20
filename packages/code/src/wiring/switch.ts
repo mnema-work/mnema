@@ -69,7 +69,7 @@ const NO_SUCH_CHANNEL = 'mnema pushes no channel by that name: `mnema switch` li
  * rules: everything the record holds is still there and still answers whoever asks.
  */
 const OFF_LIMIT_OF_AN_ACT =
-  'Nothing was removed: the record still holds what it held, and a person at a terminal still accepts a decision. What stops is an agent ruling one in force.';
+  'Nothing was removed: the record still holds what it held, and a person at a terminal still accepts or replaces a decision and switches this back on. What stops is an agent ruling one in force, or releasing the brake.';
 
 const OFF_LIMIT =
   'Nothing was removed and nothing else stopped: the record still holds what it held, and every read and tool still answers whoever asks. What stops is this product putting it in front of a model unasked.';
@@ -165,6 +165,7 @@ function position(group: Command, wiring: Wiring, word: 'off' | 'on', descriptio
         ...(scope !== undefined ? { scope } : {}),
         ...(opts.which !== undefined ? { which: opts.which } : {}),
         ...(run !== undefined ? { run } : {}),
+        atATerminal: io.aPersonIsHere === true,
       });
       if (!result.ok) {
         reportRefusal(wiring, result, { UNKNOWN_CHANNEL: NO_SUCH_CHANNEL });

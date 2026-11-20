@@ -30,12 +30,20 @@ import { AGENT_ACCEPTS_CHANNEL } from './record-framing.js';
 /** The one action the switch is about, typed so a rename in the workflow does not leave it behind. */
 const ACCEPT: DecisionAction = 'accept';
 
-/** The code a refused acceptance carries. */
+/** The other action that takes a decision out of the rule with the switch off: replacing it. */
+const SUPERSEDE: DecisionAction = 'supersede';
+
+/** The code a refused acceptance, or a refused supersede, carries. */
 export const AGENT_ACCEPTS_IS_OFF = 'AGENT_ACCEPTS_IS_OFF';
 
+/** The code a refused switching-on of `agent-accepts` carries. */
+export const AGENT_ACCEPTS_NEEDS_A_PERSON = 'AGENT_ACCEPTS_NEEDS_A_PERSON';
+
 /**
- * Whether this accept may be made: `undefined` when it may, and the refusal's code and words when
- * the switch is off and the act is not a person's. Every action other than `accept` is not asked.
+ * Whether this accept or supersede may be made: `undefined` when it may, and the refusal's code and
+ * words when the switch is off and the act is not a person's. A `supersede` is asked like an
+ * `accept` because it is the other way an act takes a decision out of force or puts one in its
+ * place (a merely proposed successor leaves nothing in force). A `reject` is not asked.
  *
  * WHO IS A PERSON HERE, with the switch off, is read from the SEAT as well as from the envelope:
  * an accept that declares an agent is refused, and an accept that declares none is refused too
@@ -52,18 +60,51 @@ export function agentMayAccept(
     readonly atATerminal: boolean;
   },
 ): { readonly code: string; readonly message: string } | undefined {
-  if (move.action !== ACCEPT) return undefined;
+  if (move.action !== ACCEPT && move.action !== SUPERSEDE) return undefined;
   if (move.agent === undefined && move.atATerminal) return undefined;
   const state = channelStates(sources, [AGENT_ACCEPTS_CHANNEL])[0];
   if (state === undefined || state.on) return undefined;
   const who = move.agent === undefined ? 'no agent declared and no terminal here' : 'an agent';
+  const switchedOff = `${AGENT_ACCEPTS_CHANNEL} was switched off by ${oneLine(state.by ?? '')} at ${oneLine(state.at ?? '')}, `;
+  if (move.action === SUPERSEDE) {
+    return {
+      code: AGENT_ACCEPTS_IS_OFF,
+      message:
+        `${switchedOff}and this supersede is from ${who}: only a person at a terminal replaces a decision here, ` +
+        'because replacing one takes it out of force, and a person at a terminal turns the switch back on ' +
+        '(`mnema switch on agent-accepts`). The decision was not moved.',
+    };
+  }
   return {
     code: AGENT_ACCEPTS_IS_OFF,
     message:
-      `${AGENT_ACCEPTS_CHANNEL} was switched off by ${oneLine(state.by ?? '')} at ${oneLine(state.at ?? '')}, ` +
-      `and this accept is from ${who}: only a person at a terminal accepts a decision here ` +
-      '(`mnema decision review`), and `mnema switch on agent-accepts` lets an agent accept again. ' +
+      `${switchedOff}and this accept is from ${who}: only a person at a terminal accepts a decision here ` +
+      '(`mnema decision review`), and a person at a terminal turns the switch back on ' +
+      '(`mnema switch on agent-accepts`) to let an agent accept again. ' +
       'The decision was not moved.',
+  };
+}
+
+/**
+ * Whether this switch may be made: `undefined` when it may, and the refusal when it turns
+ * `agent-accepts` back ON and the act is not a person's. Switching it off is open to anyone, and so is
+ * every other channel: the brake is the party it brakes's to apply, never to release. WHO IS A PERSON is
+ * read as `agentMayAccept` reads it: no agent declared and `atATerminal`.
+ */
+export function mayTurnAgentAcceptsOn(move: {
+  readonly channel: string;
+  readonly on: boolean;
+  readonly agent: string | undefined;
+  readonly atATerminal: boolean;
+}): { readonly code: string; readonly message: string } | undefined {
+  if (move.channel !== AGENT_ACCEPTS_CHANNEL || !move.on) return undefined;
+  if (move.agent === undefined && move.atATerminal) return undefined;
+  const who = move.agent === undefined ? 'no agent declared and no terminal here' : 'an agent';
+  return {
+    code: AGENT_ACCEPTS_NEEDS_A_PERSON,
+    message:
+      `Switching ${AGENT_ACCEPTS_CHANNEL} on is from ${who}: only a person at a terminal turns it back on, ` +
+      'since it is the brake on what an agent may accept. Switching it off is open to anyone. Nothing was switched.',
   };
 }
 
