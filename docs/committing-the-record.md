@@ -80,6 +80,8 @@ refuses, naming the reason and before it cuts anything:
   remote whose address is GitHub's; with `gh` absent or another host it refuses and says to check by hand,
   then run `record commit`. One open for 24 hours or more is said to have stalled: it needs merging or
   closing before the record goes on.
+  It also refuses when the remote's push address (`pushurl`) and its read address name different
+  repositories, because the pull request is asked of the one the push reaches.
 
 It pushes `refs/heads/<branch>:refs/heads/<branch>` of the branch `record commit` made, without force
 and without a prompt for a password, never the destination branch, and then `gh pr create`. If the push

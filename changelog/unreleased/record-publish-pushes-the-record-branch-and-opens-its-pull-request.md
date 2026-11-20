@@ -7,5 +7,5 @@ Added
   tree is not read), and it refuses, before it cuts anything: a repository that sets no `user.email` of its own or sets the
   global one; a record pull request already open into the destination, found by what it changes (every file under the
   record's folder) and not by its branch's name, said to have stalled once it is open past 24 hours; `gh` absent or a remote
-  that is not GitHub's, with the manual steps. A cut whose author or committer is another e-mail is never pushed. It never
+  that is not GitHub's, with the manual steps. A remote whose push address and read address name different repositories is refused too. A cut whose author or committer is another e-mail is never pushed. It never
   merges and no hook runs it.
