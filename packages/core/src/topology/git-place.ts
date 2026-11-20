@@ -19,13 +19,13 @@
  */
 
 import { readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
-import { delimiter, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 /** The folder of mnema's own in a repository's git directory. */
 export const IN_GIT_DIR = 'mnema';
 
 /**
- * The test switch: when this variable names a directory (or several, separated as a PATH is), resolving a record tree or a repository
+ * The test switch: when this variable names a directory (or several, separated as a PATH is: `;` on Windows, `:` elsewhere), resolving a record tree or a repository
  * outside it throws ({@link refuseOutsideTheTestRoot}). Only the test setup sets it; the product
  * never reads it for anything else.
  */
@@ -44,7 +44,7 @@ export function refuseOutsideTheTestRoot(path: string, what: string): void {
   const root = named;
   const spelled = [path, realOrUndefined(path)].filter((each) => each !== undefined);
   const roots = named
-    .split(delimiter)
+    .split(process.platform === 'win32' ? ';' : ':')
     .filter((each) => each !== '')
     .flatMap((each) => [each, realOrUndefined(each)])
     .filter((each) => each !== undefined);
