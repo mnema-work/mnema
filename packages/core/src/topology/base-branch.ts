@@ -202,7 +202,8 @@ export function branchOfWorktree(gitDir: string, top: string): string | undefine
   const ref = ran.status === 0 ? ran.stdout.trim() : '';
   const branch = ref.startsWith('refs/heads/') ? ref.slice('refs/heads/'.length) : undefined;
   // A git that did not answer (a timeout, an error) is not kept: the next write asks again. Status 1 is a detached HEAD, an answer.
-  if (stack !== undefined && (ran.status === 0 || ran.status === 1)) BRANCH_OF_A_REFTABLE_STACK.set(gitDir, { stack, branch });
+  if (stack !== undefined && (ran.status === 0 || ran.status === 1))
+    BRANCH_OF_A_REFTABLE_STACK.set(gitDir, { stack, branch });
   return branch;
 }
 

@@ -743,9 +743,13 @@ describe('the integrity tests and the states of the projection cache', () => {
     ).toBe(true);
     expect(writesIntoTails("writeFileSync(join(dir, 'notes.txt'), 'x');")).toBe(false);
     expect(writesIntoTails("writeFileSync(join(dir, 'details.txt'), headers.header);")).toBe(false);
-    expect(writesIntoTails("writeFileSync(join(dir, 'x'), 'the headline and the retails');")).toBe(false);
+    expect(writesIntoTails("writeFileSync(join(dir, 'x'), 'the headline and the retails');")).toBe(
+      false,
+    );
     expect(writesIntoTails("writeFileSync(join(dir, 'segmentation.txt'), 'x');")).toBe(false);
-    expect(writesIntoTails("writeFileSync(join(repo, '.mnema/tails/t/000001.jsonl'), 'x');")).toBe(true);
+    expect(writesIntoTails("writeFileSync(join(repo, '.mnema/tails/t/000001.jsonl'), 'x');")).toBe(
+      true,
+    );
     expect(writesIntoTails("writeFileSync(join(locks, 't1.head'), 'x');")).toBe(true);
     expect(writesIntoTails("rmSync(join(repo, 'segments'), { recursive: true });")).toBe(true);
   });

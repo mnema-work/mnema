@@ -20,7 +20,8 @@ vi.mock('node:child_process', async (original) => {
     ...real,
     spawnSync: ((...args: Parameters<typeof real.spawnSync>) => {
       const [command, argv] = args;
-      if (command === 'git' && Array.isArray(argv) && argv[0] === 'symbolic-ref') broken.symbolicRefs += 1;
+      if (command === 'git' && Array.isArray(argv) && argv[0] === 'symbolic-ref')
+        broken.symbolicRefs += 1;
       if (
         broken.refsFail &&
         command === 'git' &&
