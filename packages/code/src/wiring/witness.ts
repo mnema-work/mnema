@@ -40,7 +40,7 @@ import { fromTheGroup, REFUSED, takesFromItsGroup } from './from-the-group.js';
 import { writeLines } from './io.js';
 import { onOneLine } from './on-one-line.js';
 import { reportRefusal } from './report.js';
-import { type Declared, mutatesTheRecord, type Wiring } from './verb.js';
+import { type Declared, groupOf, mutatesTheRecord, readsTheRecord, type Wiring } from './verb.js';
 
 /**
  * What `--global` says here: the shared sentence, plus what covering it costs a
@@ -275,7 +275,117 @@ export function registerWitness(program: Command, wiring: Wiring): Declared {
     );
   });
 
-  return mutatesTheRecord(witness);
+  // READS, BESIDE THREE ACTS: it sends nothing anywhere and writes the record nothing. Its own
+  // exit says whether a third party can take the countersignature as the one they expected.
+  const sigstoreCheck = witness
+    .command('sigstore-check')
+    .description(
+      'check offline that the Sigstore countersignatures of this record name the identity you expect, as `cosign verify-blob` would',
+    )
+    .requiredOption(
+      '--identity <identity>',
+      'the identity the certificate must name, exactly: the e-mail, or the workflow URI ' +
+        '(cosign’s --certificate-identity)',
+    )
+    .requiredOption(
+      '--issuer <url>',
+      'the OpenID issuer that must have vouched for it, exactly ' +
+        '(cosign’s --certificate-oidc-issuer)',
+    )
+    .option(
+      '--message-dir <dir>',
+      'write the message each bundle signs into this folder, one file per checkpoint named ' +
+        'by its SHA-256, and print the `cosign verify-blob` line that checks the same bundle ' +
+        'beside it',
+    )
+    .addHelpText(
+      'after',
+      [
+        '',
+        'The message a bundle signs is the checkpoint’s own signed message, recomputed from',
+        'checkpoints.jsonl and never taken from the bundle; its SHA-256 is the name the bundle',
+        'is filed under. Exit 0 only when there is a bundle, every one holds by Sigstore’s own',
+        'checks, and its certificate names this identity and this issuer.',
+        '',
+        'OFFLINE: the certificate chain, the certificate-transparency timestamp, Rekor’s signed',
+        'promise and its proof of inclusion are inside the bundle and are checked against the',
+        'Sigstore trust root this binary carries. It does not ask anybody whether that root is',
+        'still current or whether Rekor still holds the entry.',
+        '',
+        'It says who signed in to Sigstore, not who wrote the record, and it moves no witness level.',
+      ].join('\n'),
+    )
+    .option('--global', GLOBAL_HELP, false);
+  takesFromItsGroup(sigstoreCheck, { refuses: { '--json': THE_READING_IS_THE_JSON } });
+  sigstoreCheck.action(async (opts: { identity: string; issuer: string; messageDir?: string }) => {
+    const given = await fromTheGroup<{ global: boolean }>(sigstoreCheck, wiring);
+    if (given === REFUSED) return;
+    const { runVerify } = await import('../commands/verify.js');
+    const result = runVerify({ ...here(), requirement: 'chained', global: given.global });
+    if (!result.ok) {
+      reportRefusal(wiring, { reason: 'NO_PROJECT' });
+      return;
+    }
+    const { checkSigstoreWitnesses } = await import('../commands/witness-sigstore-check.js');
+    const { sigstoreLine } = await import('./verify.js');
+    const check = checkSigstoreWitnesses(
+      result.trees,
+      { identity: opts.identity, issuer: opts.issuer },
+      opts.messageDir === undefined ? {} : { messageDir: opts.messageDir },
+    );
+    for (const scope of check.notRead) {
+      io.err(
+        render(
+          fact(
+            `sigstore: the ${scope} tree was not read: its verdict is a break, so which checkpoint a bundle is over is not settled`,
+          ),
+        ),
+      );
+    }
+    for (const row of check.rows) {
+      if (row.verdict.kind === 'holds') {
+        io.out(render(fact(onOneLine`holds: ${sigstoreLine(row.finding)}`)));
+      } else if (row.verdict.kind === 'other-signer') {
+        io.err(
+          render(
+            fact(
+              onOneLine`sigstore: ${row.tail} checkpoint ${row.checkpoint.slice(0, 12)}: the bundle holds but names ${row.verdict.identity} (${row.verdict.issuer}), not the identity and issuer expected`,
+            ),
+          ),
+        );
+      } else {
+        io.err(render(fact(onOneLine`${sigstoreLine(row.finding)}`)));
+      }
+      if (row.cosign !== undefined) io.out(row.cosign);
+    }
+    if (check.rows.length === 0) {
+      io.err(
+        render(
+          fact(
+            'sigstore: no Sigstore bundle in this record, so nothing names the expected identity (`mnema witness sigstore` files one)',
+          ),
+        ),
+      );
+    }
+    if (check.ok) {
+      io.out(
+        render(
+          fact(
+            'sigstore: every bundle holds and names the expected identity and issuer. That is who signed in to Sigstore to countersign the checkpoint, on Sigstore’s word; not who wrote the record.',
+          ),
+        ),
+      );
+      return;
+    }
+    io.fail();
+  });
+
+  return groupOf(witness, [
+    mutatesTheRecord(stamp),
+    mutatesTheRecord(upgrade),
+    mutatesTheRecord(sigstore),
+    readsTheRecord(sigstoreCheck),
+  ]);
 }
 
 /**
