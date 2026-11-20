@@ -47,7 +47,8 @@ import { dirname } from 'node:path';
 import { channelIsOn } from '@mnema/context';
 import { type DiscoveryEnv, INITIAL_DECISION_STATE, resolveTrees } from '@mnema/core';
 import { readEventsNotInGit, saysEventsNotInGit } from '../events-not-in-git.js';
-import { type EndHost, endOfTurnOf } from '../host-hook.js';
+import { endOfTurnOf } from '../host-hook.js';
+import type { EndHost } from '../host-names.js';
 import { SESSION_JOURNAL_CHANNEL, SESSION_TALLY_CHANNEL } from '../record-framing.js';
 import {
   exclusivelyOn,

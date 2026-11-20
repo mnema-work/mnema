@@ -28,7 +28,8 @@
 
 import { channelIsOn } from '@mnema/context';
 import { type DiscoveryEnv, resolveTrees, scrubEmails } from '@mnema/core';
-import { type EndHost, endOfTurnOf } from '../host-hook.js';
+import { endOfTurnOf } from '../host-hook.js';
+import type { EndHost } from '../host-names.js';
 import { STARTS_OFF, USER_CORRECTIONS_CHANNEL } from '../record-framing.js';
 import { withScopedCaches } from '../tree-sources.js';
 import { ANSWER_TO_A_QUESTION, type Correction, correctionsIn } from '../user-corrections.js';

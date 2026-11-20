@@ -18,11 +18,13 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { QUESTION_TOOLS } from '../../src/commands/settled.js';
-import { END_HOSTS, type EndHost, writeToolsOf } from '../../src/host-hook.js';
+import { writeToolsOf } from '../../src/host-hook.js';
 import {
   type Capability,
   type Cell,
   does,
+  END_HOSTS,
+  type EndHost,
   HOST_NAMES,
   HOSTS,
   type HookHost,

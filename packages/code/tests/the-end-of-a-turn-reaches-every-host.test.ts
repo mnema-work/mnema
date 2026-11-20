@@ -32,11 +32,10 @@ import { Command } from 'commander';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runCorrections } from '../src/commands/corrections.js';
 import { runSessionTally } from '../src/commands/tally.js';
-import { END_HOSTS, ENDS, type EndHost } from '../src/host-hook.js';
-import { HOSTS, PRESENCE } from '../src/host-names.js';
-import { journalsDir } from '../src/session-journal.js';
+import { END_HOSTS, ENDS, type EndHost, HOSTS, PRESENCE } from '../src/host-names.js';
 import { renderPlain } from '../src/presentation/plain.js';
 import { type CliIo, run } from '../src/program.js';
+import { journalsDir } from '../src/session-journal.js';
 import { registerCorrections } from '../src/wiring/corrections.js';
 import { registerTally } from '../src/wiring/tally.js';
 import {
@@ -48,6 +47,10 @@ import {
 } from './support/the-host-files.js';
 
 const PLUGIN = fileURLToPath(new URL('../../../plugin/', import.meta.url));
+
+/** The line that runs one handler of the plugin, as the hooks files write it: the host expands the variable. */
+const runs = (handler: string, args = ''): string =>
+  `node "${'$'}{CLAUDE_PLUGIN_ROOT}/hooks/${handler}"${args === '' ? '' : ` ${args}`}`;
 
 let sandbox: string;
 let repo: string;
@@ -75,7 +78,7 @@ async function did(...argv: string[]): Promise<string[]> {
 
 const LONG_AGO = '2020-01-01T00:00:00.000Z';
 
-/** A transcript in the shape Claude Code writes: a response that wrote two files, and a correction. */
+/** A transcript in the shape Claude Code writes: a correction, then a response that wrote two files. */
 function aClaudeTranscript(): string {
   const lines = [
     {
@@ -83,7 +86,7 @@ function aClaudeTranscript(): string {
       timestamp: LONG_AGO,
       cwd: repo,
       origin: { kind: 'human' },
-      message: { role: 'user', content: 'rename the module' },
+      message: { role: 'user', content: 'No, use pnpm instead of npm.' },
     },
     {
       type: 'assistant',
@@ -96,13 +99,6 @@ function aClaudeTranscript(): string {
           { type: 'tool_use', id: 'b', name: 'Write', input: { file_path: join(repo, 'b.ts') } },
         ],
       },
-    },
-    {
-      type: 'user',
-      timestamp: '2020-01-01T00:00:02.000Z',
-      cwd: repo,
-      origin: { kind: 'human' },
-      message: { role: 'user', content: 'no, use the other name instead of that one' },
     },
   ];
   const path = join(sandbox, 'session.jsonl');
@@ -339,7 +335,9 @@ describe('the verbs as the command line routes them', () => {
       const spoke = await typed(verb, ['--host', 'codex'], payload);
       expect(spoke.failed).toBe(false);
       expect(spoke.out).toEqual(['{}']);
-      expect(spoke.err.join('\n')).toContain("Codex's transcript is in a format this version does not read");
+      expect(spoke.err.join('\n')).toContain(
+        "Codex's transcript is in a format this version does not read",
+      );
       const refused = await typed(verb, ['--host', 'nonsense'], payload);
       expect(refused.out).toEqual([]);
       expect(refused.err.join('\n')).toContain(`--host takes one of ${END_HOSTS.join(', ')}`);
@@ -360,28 +358,29 @@ describe('the hooks files that run the verbs', () => {
       ['copilot', copilotHooksJson()],
     ] as const) {
       expect(commandsOf(file, 'Stop'), host).toEqual([
-        `node "\${CLAUDE_PLUGIN_ROOT}/hooks/session-tally.mjs" --host ${host}`,
-        `node "\${CLAUDE_PLUGIN_ROOT}/hooks/session-corrections.mjs" --host ${host}`,
+        runs('session-tally.mjs', `--host ${host}`),
+        runs('session-corrections.mjs', `--host ${host}`),
       ]);
     }
   });
 
   it("runs the extension's script in its `ended` mode on Gemini CLI's AfterAgent, which names the host to both verbs", () => {
     expect(commandsOf(geminiHooksJson(), 'AfterAgent')).toEqual([
-      'node "${extensionPath}/hooks/mnema.mjs" ended',
+      `node "${'$'}{extensionPath}/hooks/mnema.mjs" ended`,
     ]);
-    expect(geminiHookScript()).toContain(
-      "const heard = run([verb, '--host', 'gemini'], cwd, raw,",
-    );
+    expect(geminiHookScript()).toContain("const heard = run([verb, '--host', 'gemini'], cwd, raw,");
   });
 
   it("runs Cursor's own pair at Stop, only where Cursor says it is there, and Claude Code's pair not there", () => {
     const stop = commandsOf(hooksJson(), 'Stop');
     expect(stop).toEqual([
-      'node "${CLAUDE_PLUGIN_ROOT}/hooks/session-tally.mjs" --unless CURSOR_VERSION',
-      'node "${CLAUDE_PLUGIN_ROOT}/hooks/session-corrections.mjs" --unless CURSOR_VERSION',
-      'node "${CLAUDE_PLUGIN_ROOT}/hooks/session-tally.mjs" --host cursor --where CURSOR_VERSION --unless QWEN_PROJECT_DIR',
-      'node "${CLAUDE_PLUGIN_ROOT}/hooks/session-corrections.mjs" --host cursor --where CURSOR_VERSION --unless QWEN_PROJECT_DIR',
+      runs('session-tally.mjs', '--unless CURSOR_VERSION'),
+      runs('session-corrections.mjs', '--unless CURSOR_VERSION'),
+      runs('session-tally.mjs', '--host cursor --where CURSOR_VERSION --unless QWEN_PROJECT_DIR'),
+      runs(
+        'session-corrections.mjs',
+        '--host cursor --where CURSOR_VERSION --unless QWEN_PROJECT_DIR',
+      ),
     ]);
   });
 
@@ -425,8 +424,12 @@ describe('the plugin commands a host runs at the end of a turn', () => {
       const { bin, calls } = stub();
       const own = ['--host', 'cursor', '--where', 'CURSOR_VERSION', '--unless', 'QWEN_PROJECT_DIR'];
       expect(handler(name, own, {}, bin).stdout).toBe('');
-      expect(handler(name, own, { CURSOR_VERSION: '1', QWEN_PROJECT_DIR: '/x' }, bin).stdout).toBe('');
-      expect(handler(name, ['--unless', 'CURSOR_VERSION'], { CURSOR_VERSION: '1' }, bin).stdout).toBe('');
+      expect(handler(name, own, { CURSOR_VERSION: '1', QWEN_PROJECT_DIR: '/x' }, bin).stdout).toBe(
+        '',
+      );
+      expect(
+        handler(name, ['--unless', 'CURSOR_VERSION'], { CURSOR_VERSION: '1' }, bin).stdout,
+      ).toBe('');
       expect(existsSync(calls), 'a mnema was started for a host that is not here').toBe(false);
     });
 
@@ -439,7 +442,9 @@ describe('the plugin commands a host runs at the end of a turn', () => {
         .trim()
         .split('\n')
         .filter((line) => line !== '--identify');
-      expect(asked).toEqual([`${name === 'session-tally.mjs' ? 'tally' : 'corrections'} --host cursor`]);
+      expect(asked).toEqual([
+        `${name === 'session-tally.mjs' ? 'tally' : 'corrections'} --host cursor`,
+      ]);
     });
   }
 

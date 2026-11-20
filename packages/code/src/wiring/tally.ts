@@ -15,7 +15,7 @@
  */
 
 import type { Command } from 'commander';
-import { END_HOSTS, type EndHost } from '../host-hook.js';
+import { END_HOSTS, type EndHost } from '../host-names.js';
 import { here } from './context.js';
 import { enumeratedOption, listed } from './enumerated.js';
 import { reportUsage } from './report.js';

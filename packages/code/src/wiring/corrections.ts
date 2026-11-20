@@ -13,7 +13,7 @@
  */
 
 import type { Command } from 'commander';
-import { END_HOSTS, type EndHost } from '../host-hook.js';
+import { END_HOSTS, type EndHost } from '../host-names.js';
 import { hereWriting } from './context.js';
 import { enumeratedOption, listed } from './enumerated.js';
 import { reportUsage } from './report.js';
@@ -66,7 +66,10 @@ export function registerCorrections(program: Command, wiring: Wiring): Declared 
       const { runCorrections } = await import('../commands/corrections.js');
       const { fact } = await import('../presentation/detail.js');
       const payload = io.input === undefined ? '' : await io.input();
-      const done = runCorrections(hereWriting(wiring), { payload, ...(host === undefined ? {} : { host }) });
+      const done = runCorrections(hereWriting(wiring), {
+        payload,
+        ...(host === undefined ? {} : { host }),
+      });
       for (const note of done.notes) io.err(render(fact(note, 0)));
       io.out(JSON.stringify(done.reply));
     });
