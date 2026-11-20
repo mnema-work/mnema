@@ -18,7 +18,6 @@ import type { ScanRefusalCode } from '@mnema/core';
 import type { Command } from 'commander';
 import type { runDecisionImport } from '../commands/decision-import.js';
 import type { runDecisionTransition } from '../commands/decision-transition.js';
-import { oneLine } from '../one-line.js';
 import { fact } from '../presentation/detail.js';
 import {
   alreadyRecordedLine,
@@ -40,6 +39,7 @@ import { fromTheGroup, REFUSED, takesFromItsGroup } from './from-the-group.js';
 import { writeLines } from './io.js';
 import { createsBy } from './misuse.js';
 import { noSuchRecord } from './no-such-record.js';
+import { onOneLine } from './on-one-line.js';
 import {
   declaredAgent,
   INVALID,
@@ -180,7 +180,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
     }
     if (result.ok) {
       io.out(`Recorded decision ${result.adr} (${result.id})`);
-      if (result.governs.length > 0) io.out(`Governs: ${oneLine(result.governs.join(', '))}`);
+      if (result.governs.length > 0) io.out(onOneLine`Governs: ${result.governs.join(', ')}`);
       io.out(stateBesideADecision(writing, given.which, result.id));
       reportRecorded(result, io);
       const text = {
