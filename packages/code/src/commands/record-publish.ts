@@ -199,7 +199,7 @@ export function recordPublishIsOn(ctx: RecordCommitContext): boolean {
               cache: {
                 channelSwitch: (channel: string) => {
                   const row = source.cache.channelSwitch(channel);
-                  return row !== null && row.on ? null : row;
+                  return row?.on === true ? null : row;
                 },
               },
             },
