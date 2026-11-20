@@ -1004,11 +1004,10 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'minted',
       why: 'the number of files the verb wrote, a count and no text',
     },
-  'export.ts «{} will not import as the same words: {}» #1':
-    {
-      verdict: 'collapsed',
-      why: 'the id of a decision and the reasons the verb worded itself',
-    },
+  'export.ts «{} will not import as the same words: {}» #1': {
+    verdict: 'collapsed',
+    why: 'the id of a decision and the reasons the verb worded itself',
+  },
   'export.ts «{}/{}» #1': {
     verdict: 'collapsed',
     why: 'the folder the person typed and a file name the verb composed from the record',
