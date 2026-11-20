@@ -4,7 +4,7 @@ A rule that names the program that checks it, and the verbs that read the git lo
 
 ## Rules that are checked against paths
 
-A person or CI declares, in a JSON file, the paths and the verdict each must meet, and `mnema rules test`
+A person or CI declares, in a JSON file, the paths and the verdict each must meet, and the verb below
 checks them against the record's rules, so a rule that stops covering a path is caught.
 
 ```json

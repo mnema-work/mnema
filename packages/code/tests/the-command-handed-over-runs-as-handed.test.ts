@@ -1174,7 +1174,7 @@ describe('a name whose verb needs more is one somebody looked at', () => {
       .filter((command) => command.commands.length > 0 && actsOnItsOwn(command))
       .map((command) => command.name())
       .sort();
-    expect(acting).toEqual(['switch', 'witness']);
+    expect(acting).toEqual(['rules', 'switch', 'witness']);
     // And the source reads no private field of commander's.
     const source = readFileSync(new URL(import.meta.url), 'utf8');
     expect(codeOnly(source).includes(['_action', 'Handler'].join(''))).toBe(false);
