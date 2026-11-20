@@ -178,6 +178,7 @@ describe('the copy a hook carries', () => {
       at: '2026-11-20T12:00:09Z',
       name: 'Error',
       code: 'EACCES',
+      syscall: 'open',
       message: 'again',
     },
   ];
@@ -222,36 +223,44 @@ describe('the copy a hook carries', () => {
   it.each([
     ['the hook copy', join(PLUGIN, 'hooks', 'swallowed.mjs')],
     ['the product', fileURLToPath(new URL('../dist/swallowed-ledger.js', import.meta.url))],
-  ])('%s: two processes at the ceiling lose neither the older half nor a line', async (_who, module) => {
-    mkdirSync(join(mnemaHome, 'identity'), { recursive: true });
-    mkdirSync(join(mnemaHome, SWALLOWED_DIR));
-    const { file, rotated } = swallowedFiles(mnemaHome);
-    const old = (n: number): string =>
-      `${JSON.stringify({ at: '2026-11-20T01:00:00Z', where: 'hook.session-start', name: `Old${n}`, version: '0.0.0' })}\n`;
-    let held = '';
-    for (let n = 0; held.length + old(n).length < SWALLOWED_CEILING_BYTES - 150; n += 1) held += old(n);
-    writeFileSync(file, held);
-    const oldCount = held.trimEnd().split('\n').length;
-    const writer = (tag: string): Promise<number | null> =>
-      new Promise((done) => {
-        const script = `
+  ])(
+    '%s: two processes at the ceiling lose neither the older half nor a line',
+    async (_who, module) => {
+      mkdirSync(join(mnemaHome, 'identity'), { recursive: true });
+      mkdirSync(join(mnemaHome, SWALLOWED_DIR));
+      const { file, rotated } = swallowedFiles(mnemaHome);
+      const old = (n: number): string =>
+        `${JSON.stringify({ at: '2026-11-20T01:00:00Z', where: 'hook.session-start', name: `Old${n}`, version: '0.0.0' })}\n`;
+      let held = '';
+      for (let n = 0; held.length + old(n).length < SWALLOWED_CEILING_BYTES - 150; n += 1)
+        held += old(n);
+      writeFileSync(file, held);
+      const oldCount = held.trimEnd().split('\n').length;
+      const writer = (tag: string): Promise<number | null> =>
+        new Promise((done) => {
+          const script = `
           const ledger = await import(${JSON.stringify(pathToFileURL(module).href)});
           for (let n = 0; n < 6; n += 1) {
-            ledger.noteSwallowed('hook.session-start', Object.assign(new Error('x'), { code: 'EIO' }),
+            ledger.noteSwallowed('hook.n' + n, Object.assign(new Error('x'), { code: 'EIO' }),
               { now: new Date('2026-11-21T0' + n + ':00:00Z') });
           }`;
-        spawn(process.execPath, ['--input-type=module', '-e', script.replaceAll('EIO', `E${tag}`)], {
-          env: { HOME: home, MNEMA_HOME: mnemaHome, PATH: '/nonexistent' },
-          stdio: 'ignore',
-        }).on('close', done);
-      });
-    expect(await Promise.all([writer('AAA'), writer('BBB')])).toEqual([0, 0]);
-    const all = [rotated, file].flatMap((path) =>
-      existsSync(path) ? readFileSync(path, 'utf-8').trimEnd().split('\n') : [],
-    );
-    expect(all.filter((line) => line.includes('"Old'))).toHaveLength(oldCount);
-    expect(all.filter((line) => line.includes('"EAAA"'))).toHaveLength(6);
-    expect(all.filter((line) => line.includes('"EBBB"'))).toHaveLength(6);
-    expect(existsSync(`${file}.lock`)).toBe(false);
-  });
+          spawn(
+            process.execPath,
+            ['--input-type=module', '-e', script.replaceAll('EIO', `E${tag}`)],
+            {
+              env: { HOME: home, MNEMA_HOME: mnemaHome, PATH: '/nonexistent' },
+              stdio: 'ignore',
+            },
+          ).on('close', done);
+        });
+      expect(await Promise.all([writer('AAA'), writer('BBB')])).toEqual([0, 0]);
+      const all = [rotated, file].flatMap((path) =>
+        existsSync(path) ? readFileSync(path, 'utf-8').trimEnd().split('\n') : [],
+      );
+      expect(all.filter((line) => line.includes('"Old'))).toHaveLength(oldCount);
+      expect(all.filter((line) => line.includes('"EAAA"'))).toHaveLength(6);
+      expect(all.filter((line) => line.includes('"EBBB"'))).toHaveLength(6);
+      expect(existsSync(`${file}.lock`)).toBe(false);
+    },
+  );
 });

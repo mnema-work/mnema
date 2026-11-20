@@ -70,14 +70,26 @@ describe('the ledger of what was swallowed', () => {
   });
 
   it.each([
-    ['a relative path', "ENOENT: no such file or directory, open 'relative/secret notes.md'", 'secret notes'],
+    [
+      'a relative path',
+      "ENOENT: no such file or directory, open 'relative/secret notes.md'",
+      'secret notes',
+    ],
     ['a short relative path', "ENOENT: open 'src/secret.md'", 'secret.md'],
     ['a dot path', "ENOENT: open './x-private'", 'x-private'],
     ['a UNC path', 'EACCES: open \\\\server\\share\\hr\\salaries.xlsx', 'salaries'],
     ['a tilde path', "ENOENT: open '~/diary.txt'", 'diary'],
     ['a folder with a space', 'ENOENT: open /home/x/my project/a.mjs', 'my project'],
-    ['a package name', "Cannot find module 'left-pad-of-the-acme-corp' imported from x", 'acme-corp'],
-    ['a quoted statement', "SQLITE_BUSY: INSERT INTO notes VALUES ('the person said hunter2')", 'hunter2'],
+    [
+      'a package name',
+      "Cannot find module 'left-pad-of-the-acme-corp' imported from x",
+      'acme-corp',
+    ],
+    [
+      'a quoted statement',
+      "SQLITE_BUSY: INSERT INTO notes VALUES ('the person said hunter2')",
+      'hunter2',
+    ],
   ])('keeps no message: %s does not reach the ledger', (_shape, message, fragment) => {
     noteSwallowed(
       'hook.session-start',
@@ -183,7 +195,8 @@ describe('the ledger of what was swallowed', () => {
       `${JSON.stringify({ at, where, name: 'Error', version: '0.0.0' })}\n`;
     writeFileSync(
       rotated,
-      line('2026-11-19T00:00:00Z', 'hook.after-a-write') + line('2026-11-01T00:00:00Z', 'hook.choice-settled'),
+      line('2026-11-19T00:00:00Z', 'hook.after-a-write') +
+        line('2026-11-01T00:00:00Z', 'hook.choice-settled'),
     );
     writeFileSync(
       file,

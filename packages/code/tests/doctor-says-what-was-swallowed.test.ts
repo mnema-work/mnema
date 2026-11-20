@@ -83,7 +83,12 @@ describe('mnema doctor reads the ledger of caught failures', () => {
     const odd = (where: string, name: string): string =>
       `${JSON.stringify({ at: '2026-11-20T01:00:00Z', where, name, version: 'SECRET-VERSION' })}\n`;
     const now = new Date().toISOString().slice(0, 19);
-    const fresh = JSON.stringify({ at: `${now}Z`, where: 'my secret notes', name: 'SECRET-NAME', version: '1' });
+    const fresh = JSON.stringify({
+      at: `${now}Z`,
+      where: 'my secret notes',
+      name: 'SECRET-NAME',
+      version: '1',
+    });
     writeFileSync(swallowedFiles(mnemaHome()).file, `${fresh}\n${odd('x', 'y')}`);
     const [line] = swallowedLines();
     expect(line).toContain('holds only lines that do not read as its own (2)');
