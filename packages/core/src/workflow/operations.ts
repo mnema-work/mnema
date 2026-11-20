@@ -60,6 +60,7 @@ import {
   taskTransitioned,
   type UpcasterRegistry,
 } from '@mnema/chain';
+import type { PrivateList } from '../content/private-patterns.js';
 import {
   type ScreenedWrite,
   type ScreenRefusal,
@@ -67,7 +68,6 @@ import {
   screened,
   screenPassedAs,
 } from '../content/screen.js';
-import type { PrivateList } from '../content/private-patterns.js';
 import { resolveExecutingAgent } from '../identity/authority.js';
 import { canonicalId, mintId } from '../identity/id.js';
 import { DESCRIPTION_TOPIC } from '../knowledge/companion-topics.js';

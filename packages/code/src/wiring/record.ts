@@ -163,7 +163,12 @@ export function registerRecord(program: Command, wiring: Wiring): Declared {
       const { runRecordCommit } = await import('../commands/record-commit.js');
       const { nameRefusals } = await import('./no-such-decision.js');
       const result = runRecordCommit(
-        { ...here(), processEnv: process.env, now: Date.now() },
+        {
+          ...here(),
+          processEnv: process.env,
+          now: Date.now(),
+          warn: (sentence) => io.err(render(fact(sentence))),
+        },
         opts.through !== undefined ? { through: opts.through } : {},
       );
       if (!result.ok) {

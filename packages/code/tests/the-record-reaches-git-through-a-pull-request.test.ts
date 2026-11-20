@@ -783,3 +783,73 @@ describe('a remote whose host is an ssh alias', () => {
     expect(existsSync(asked)).toBe(false);
   });
 });
+
+describe('the machine private list', () => {
+  const LIST = join('.mnema', 'private-patterns.txt');
+
+  function allowedDecision(checkout: string, title: string): void {
+    const ran = mnema(checkout, 'decision', 'record', title, 'why', '--allow-private-pattern');
+    expect(ran.status, ran.out).toBe(0);
+  }
+
+  it('warns, before the branch is built, of a carried event whose text matches it, and still cuts', () => {
+    const { local } = world();
+    writeFileSync(join(sandbox, 'home', LIST), '# mine\nNightjar\n');
+    allowedDecision(local, 'Use Nightjar naming');
+    decide(local, 'A clean decision');
+
+    const warned: { sentence: string; branches: string }[] = [];
+    const done = runRecordCommit(
+      {
+        cwd: local,
+        env: { home: join(sandbox, 'home') },
+        processEnv: env(),
+        now: Date.now(),
+        warn: (sentence) =>
+          warned.push({
+            sentence,
+            branches: git(local, 'for-each-ref', 'refs/heads/mnema-record/').out,
+          }),
+      },
+      {},
+    );
+    expect(done.ok && done.kind).toBe('made');
+    expect(warned).toHaveLength(1);
+    const [one] = warned as [(typeof warned)[number]];
+    expect(one.sentence).toContain('warning:');
+    expect(one.sentence).toContain('decision.recorded');
+    expect(one.sentence).toContain('"Nightjar"');
+    expect(one.sentence).toContain('Use Nightjar naming');
+    // Said before the branch exists: a warning after the cut would be a report, not a warning.
+    expect(one.branches).toBe('');
+  });
+
+  it('prints the warning on the second stream of the binary and makes the branch', () => {
+    const { local } = world();
+    writeFileSync(join(sandbox, 'home', LIST), 'Nightjar\n');
+    allowedDecision(local, 'Use Nightjar naming');
+    const ran = mnema(local, 'record', 'commit');
+    expect(ran.status, ran.out).toBe(0);
+    expect(ran.out).toContain('warning:');
+    expect(ran.out).toContain('Made mnema-record/');
+  });
+
+  it('says nothing where the machine keeps no list, or the text matches nothing', () => {
+    const { local } = world();
+    decide(local, 'Use Nightjar naming');
+    expect(commitIn(local).ok).toBe(true);
+    writeFileSync(join(sandbox, 'home', LIST), 'something else entirely\n');
+    const warned: string[] = [];
+    runRecordCommit(
+      {
+        cwd: local,
+        env: { home: join(sandbox, 'home') },
+        processEnv: env(),
+        now: Date.now(),
+        warn: (sentence) => warned.push(sentence),
+      },
+      {},
+    );
+    expect(warned).toEqual([]);
+  });
+});

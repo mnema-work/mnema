@@ -64,7 +64,13 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { checkpointHash, ensureTree, parseCheckpoint, readingWhatTheDiskLets } from '@mnema/chain';
-import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
+import {
+  type DiscoveryEnv,
+  matchPrivate,
+  readPrivateList,
+  resolveTrees,
+  stringsIn,
+} from '@mnema/core';
 import { type DecisionFacts, nameOf, readDecisionFacts } from '../decisions-in-git.js';
 import { theDefaultBranch } from '../events-not-in-git.js';
 import { withTreesRead } from '../tree-sources.js';
@@ -86,6 +92,11 @@ export interface RecordCommitContext {
   readonly processEnv: NodeJS.ProcessEnv;
   /** Now, in milliseconds: how old the base is, is said against it. */
   readonly now: number;
+  /**
+   * Told, once and before any branch is built, of each event the cut carries whose text matches a
+   * pattern of this machine's private list: a warning, never a refusal. Unset, it is not said.
+   */
+  readonly warn?: (sentence: string) => void;
 }
 
 /** A tail file here that does not grow from the base's copy. */
@@ -259,6 +270,8 @@ interface EventLine {
   readonly seq: number | undefined;
   readonly kind: string | undefined;
   readonly subject: string | undefined;
+  /** What the event says, to be asked of the machine's private list. */
+  readonly payload: unknown;
 }
 
 /**
@@ -266,7 +279,10 @@ interface EventLine {
  * line is judged: a line this misreads is in the tree the readers rule on before any branch.
  */
 function readEvent(segment: string, line: Buffer, end: number): EventLine {
-  let stored: { event?: { kind?: string; subject?: string }; link?: { seq?: number } } = {};
+  let stored: {
+    event?: { kind?: string; subject?: string; payload?: unknown };
+    link?: { seq?: number };
+  } = {};
   try {
     stored = JSON.parse(line.toString('utf-8'));
   } catch {
@@ -278,6 +294,7 @@ function readEvent(segment: string, line: Buffer, end: number): EventLine {
     seq: stored.link?.seq,
     kind: stored.event?.kind,
     subject: stored.event?.subject,
+    payload: stored.event?.payload,
   };
 }
 
@@ -688,6 +705,10 @@ function cut(
   const moved = new Set<string>();
   let leftEvents = 0;
   const through = throughTail;
+  // This machine's private list: asked of what the cut adds, and only told, since the events are
+  // signed already and a person decides what to do about a pull request.
+  const privateList = ctx.warn === undefined ? undefined : readPrivateList(dirname(trees.keyRoot));
+  const privateWarnings: string[] = [];
   for (const tail of tails) {
     const at = (name: string) => `${recordDir}tails/${tail.id}/${name}`;
     const baseEvents = tail.segments.reduce(
@@ -707,6 +728,18 @@ function cut(
       continue;
     }
     const carried = checkpoint.toSeq + 1;
+    if (privateList !== undefined) {
+      for (const event of tail.events.slice(baseEvents, carried)) {
+        for (const text of stringsIn(event.payload)) {
+          const match = matchPrivate(privateList, text);
+          if (match === undefined) continue;
+          privateWarnings.push(
+            `warning: tail ${tail.id}, seq ${event.seq ?? '?'} (${event.kind ?? 'an event'}): the text of a public event this cut carries matches "${match.pattern}", a pattern of this machine's private list (passage: "${match.passage}"). A pull request of this branch publishes it.`,
+          );
+          break;
+        }
+      }
+    }
     let grew = false;
     const put = (name: string, bytes: Buffer) => {
       const theirs = heldBytes(at(name));
@@ -751,6 +784,8 @@ function cut(
       left: Math.max(0, tail.events.length - carried),
     });
   }
+
+  for (const sentence of privateWarnings) ctx.warn?.(sentence);
 
   // The key files the cut names: the key that signs a tail it carries, a key a line of it names.
   const carriedBytes = [...writes.values()];
