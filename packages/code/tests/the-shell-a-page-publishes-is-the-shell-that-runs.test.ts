@@ -233,7 +233,7 @@ export const PAGES: Readonly<Record<string, number>> = {
   'docs/reference/cli/backup.md': 5,
   'docs/reference/cli/brief.md': 3,
   'docs/reference/cli/completion.md': 4,
-  'docs/reference/cli/doctor.md': 1,
+  'docs/reference/cli/doctor.md': 2,
   'docs/reference/cli/instructions.md': 4,
   'docs/reference/cli/recall.md': 1,
   'docs/reference/cli/report.md': 1,

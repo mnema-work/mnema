@@ -1,0 +1,10 @@
+{
+  "name": "@mnema/code",
+  "version": "0.1.5",
+  "dist": {
+    "integrity": "sha512-mwK5upn+4raDamT8mwsSR1vbg0nIoAPbdWuxQDDnGA+VsV4fQ4CYm1vaQJ3FaTBbkNUfkEkxbB2nCkWPN8K9wA=="
+  },
+  "engines": {
+    "node": "^24.15.0 || >=26.0.0"
+  }
+}

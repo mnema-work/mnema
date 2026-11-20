@@ -28,8 +28,9 @@ No version is given for any line: what a release carries is said by the [CHANGEL
   a rule arrive at an edit. [ADR-160](https://mnema.work/record/#ADR-160)
 - **A redesigned record page** is expected to have a view of one decision by its hash, one timeline and a sidebar, and a lineage graph
   drawn at build; it is expected to show only what the record proves. [ADR-141](https://mnema.work/record/#ADR-141)
-- **The check for a newer version, asked for by the person,** is expected to be a `--latest` option of `doctor` (or a machine switch the
-  person turns on); nothing asks the npm registry unprompted. [ADR-140](https://mnema.work/record/#ADR-140)
+- **The check for a newer version, asked for by the person,** has its first part in `mnema doctor --latest`; what is expected is
+  a machine switch the person turns on, and the readers of what it keeps (the terminal line, the MCP note, the VS Code tooltip);
+  nothing asks the npm registry unprompted. [ADR-140](https://mnema.work/record/#ADR-140)
 
 ## Moved before
 

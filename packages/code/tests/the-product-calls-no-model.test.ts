@@ -87,6 +87,9 @@ const MANIFESTS: readonly string[] = TRACKED.filter(
 const MAY_REACH_THE_NETWORK: readonly string[] = [
   'packages/chain/src/chain/witness-request.ts',
   'packages/code/src/commands/verify-github.ts',
+  // `mnema doctor --latest`: two bounded GETs to registry.npmjs.org, only when the verb is typed, to
+  // read the newest version and its attestations; never a model.
+  'packages/code/src/commands/doctor-latest.ts',
   // Reaches GitHub's REST API (`api.github.com`) to read a pull request and write one comment;
   // never a model. Only this file names the global `fetch`; `run.ts` hands it in and nothing
   // else in the package reaches the network.
