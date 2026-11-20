@@ -2311,6 +2311,7 @@ const PRODUCTION_FILES: readonly string[] = [
   'packages/core/src/topology/backup/verify.ts',
   'packages/core/src/topology/base-branch.ts',
   'packages/core/src/topology/default-branch.ts',
+  'packages/core/src/topology/git-exclude.ts',
   'packages/core/src/topology/git-place.ts',
   'packages/core/src/topology/index.ts',
   'packages/core/src/topology/locate.ts',
