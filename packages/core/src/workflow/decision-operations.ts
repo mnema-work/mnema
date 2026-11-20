@@ -189,9 +189,7 @@ function isInForceOrProposed(state: string): boolean {
 }
 
 /** The paths a decision governs, screened as a link's target is. */
-function screenedPaths(
-  paths: readonly string[],
-):
+function screenedPaths(paths: readonly string[]):
   | {
       readonly ok: true;
       readonly paths: readonly string[];
