@@ -813,18 +813,30 @@ export function unrecordedCharge(grade: WriteVerdict['grade'], why: string): str
 export type VerdictAtAPath = WriteVerdict['grade'] | 'governs' | 'none';
 
 /**
- * The verdict a write at `read.path` would meet, for a reader that TELLS (`mnema why`): the answer of
- * {@link whatAWriteMeets}, the function every door asks, and only when it answers nothing, `governs`
- * when a governing rule is in force there and `none` when none is. Each rule of `rules` is marked
- * `decided` when it is one the verdict stands on: a rule the gate named under its grade, or, under
- * `governs`, a governing rule. A rule outranked by another relation, or whose channel is switched off,
- * is not.
+ * The verdict a write at `read.path` would meet, for a reader that TELLS (`mnema why`, and any
+ * reader that must say what the gate would say): what the gate answers, in the gate's own order.
+ * First a record with an altered or unreadable line ({@link refusalOfAnAlteredRecord}, over `facts`,
+ * the link breaks of the project's own trees): the write is refused whatever the rules say, with that
+ * reason. Then {@link whatAWriteMeets}, the function every door asks. Only when both answer nothing,
+ * `governs` when a governing rule is in force there and `none` when none is.
+ *
+ * Each rule of `rules` is marked `decided` when it is one the verdict stands on: a rule the gate named
+ * under its grade, or, under `governs`, a governing rule. A rule outranked by another relation, whose
+ * channel is switched off, or beside a refusal of the record, is not.
  */
 export function verdictAtAPath(
   sources: readonly ScopedCache[],
   read: GovernedRead,
   rules: readonly RuleInForceUnder[],
-): { readonly verdict: VerdictAtAPath; readonly decided: (rule: RuleInForceUnder) => boolean } {
+  facts: readonly ScopedLinkBreak[] = [],
+): {
+  readonly verdict: VerdictAtAPath;
+  readonly decided: (rule: RuleInForceUnder) => boolean;
+  /** The reason the gate hands over, when the record itself refuses the write. */
+  readonly refusal?: string;
+} {
+  const refusal = refusalOfAnAlteredRecord(facts);
+  if (refusal !== undefined) return { verdict: 'refuse', decided: () => false, refusal };
   const met = whatAWriteMeets(sources, { paths: [read.path], root: read.root, from: read.from });
   const verdict: VerdictAtAPath =
     met?.grade ?? (rules.some((rule) => rule.relation === GOVERNS_RELATION) ? 'governs' : 'none');

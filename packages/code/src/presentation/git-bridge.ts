@@ -125,6 +125,18 @@ const THE_VERDICT: Readonly<Record<WhyVerdict, string>> = {
   none: 'a write here would go through; no rule addresses it',
 };
 
+/** The verdict line: the gate's own reason's first paragraph when the record refuses the write. */
+function verdictSentence(done: WhyFile): string {
+  if (done.refusal !== undefined) {
+    return `${THE_VERDICT.refuse}: ${oneLine(done.refusal.split('\n\n')[0] ?? '')}`;
+  }
+  if (done.notDelivered === true) return NOT_DELIVERED;
+  return THE_VERDICT[done.verdict];
+}
+
+const NOT_DELIVERED =
+  'a write here would go through; the rules that govern it are not handed to an agent (edit-rules-push is off)';
+
 /** The rows of the rules that address something. */
 function ruleRows(render: Render, rules: readonly WhyRule[]): string[] {
   return rules.map((rule) =>
@@ -186,7 +198,7 @@ export function whyReport(render: Render, done: WhyFile | WhyCommitDone): string
         done.exists ? 'in the working tree' : 'not in the working tree',
       ),
     ),
-    render(fact(`verdict: ${THE_VERDICT[done.verdict]}`)),
+    render(fact(`verdict: ${verdictSentence(done)}`)),
     render(
       fact(
         `rules in force that address this path: ${done.rules.length}` +

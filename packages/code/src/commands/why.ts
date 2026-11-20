@@ -104,6 +104,14 @@ export interface WhyFile {
   readonly exists: boolean;
   /** What a write at this path would meet, as the write gate answers it. */
   readonly verdict: WhyVerdict;
+  /**
+   * The reason the write gate hands over when the record itself refuses the write (an entry altered
+   * after it was written, or a line this mnema cannot read), whatever the rules say. Then `verdict`
+   * is `refuse` and no rule decides. Absent otherwise.
+   */
+  readonly refusal?: string;
+  /** Under `governs` with `edit-rules-push` off: the rules stand but are not handed to an agent. */
+  readonly notDelivered?: true;
   /** The rules in force, in the order the gate applies their relations: refuse, ask, governs. */
   readonly rules: readonly WhyRule[];
   readonly git: boolean;
@@ -253,22 +261,30 @@ export function runWhy(
       at.relative !== undefined && gitHere ? commitsWithTrailer(root, [at.relative]) : [];
     const listed = touched ?? [];
     // THE VERDICT IS THE GATE'S OWN ANSWER, asked through the gate module, never a second reading.
-    const { verdict, decided } = verdictAtAPath(
+    const { verdict, decided, refusal } = verdictAtAPath(
       sources,
       { path: input.target, root, from: ctx.cwd },
       at.rules,
+      linkBreaks,
     );
     const notPushed = rulesNotPushedLine(
       sources,
       at.rules.filter((rule) => rule.relation === 'governs').length,
     );
+    // WITH THE PUSH OFF a governing rule stands over the path but is not handed to an agent at the
+    // edit: the write still goes through, and the rules are marked as not deciding anything.
+    const notDelivered = verdict === 'governs' && notPushed !== undefined;
     return {
       ok: true,
       about: 'file',
       ...(at.relative !== undefined ? { relative: at.relative } : {}),
       exists,
       verdict,
-      rules: inGateOrder(at.rules).map((rule) => ruleOf(rule, undefined, decided(rule))),
+      ...(refusal !== undefined ? { refusal } : {}),
+      ...(notDelivered ? { notDelivered: true as const } : {}),
+      rules: inGateOrder(at.rules).map((rule) =>
+        ruleOf(rule, undefined, decided(rule) && !notDelivered),
+      ),
       git: gitHere,
       shallow: gitHere && isShallow(root),
       commits: listed.slice(0, LISTED).map((one) => describe(all, one)),
