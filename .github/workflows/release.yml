@@ -317,9 +317,61 @@ jobs:
           path: ${{ runner.temp }}/release-assets
           if-no-files-found: error
 
+  # THE EXPERIMENTAL SINGLE EXECUTABLE. A Linux x64 file of the CLI made with Node's single executable applications,
+  # run once without a Node (`.github/the-single-executable/smoke.sh`) and kept as an artifact for the release to
+  # attach with its SHA-256, marked experimental and unsigned. It asks for no token, holds no secret and does not stand
+  # between the publish and the release: when it cannot be built or does not run, `built` stays empty and the release
+  # goes out without it. It is not one of the five tarballs, and the `attest` job does not sign it.
+  single-executable:
+    name: build the experimental single executable
+    needs: plan
+    if: needs.plan.outputs.action == 'publish'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      built: ${{ steps.mark.outputs.built }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '26'
+          package-manager-cache: false
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build
+
+      - run: pnpm build:single-executable
+
+      - run: bash .github/the-single-executable/smoke.sh packages/code/dist/single-executable
+
+      - name: Keep the file and its SHA-256 line
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/single-executable"
+          mkdir "$out"
+          cp packages/code/dist/single-executable/mnema-*-linux-x64 packages/code/dist/single-executable/mnema-*-linux-x64.sha256 "$out/"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: single-executable
+          path: ${{ runner.temp }}/single-executable
+          if-no-files-found: error
+
+      - name: Say that it was built
+        id: mark
+        run: echo "built=true" >> "$GITHUB_OUTPUT"
+
   release:
     name: tag and release what npm serves
-    needs: [plan, publish, attest]
+    needs: [plan, publish, attest, single-executable]
     if: ${{ !cancelled() && ((needs.publish.result == 'success' && needs.attest.result == 'success') || needs.plan.outputs.action == 'tag-only') }}
     runs-on: ubuntu-24.04
     environment: npm
@@ -361,6 +413,13 @@ jobs:
           name: release-assets
           path: ${{ runner.temp }}/release-assets
 
+      # The experimental single executable, when the job above built it and ran it.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: needs.plan.outputs.action == 'publish' && needs.single-executable.outputs.built == 'true'
+        with:
+          name: single-executable
+          path: ${{ runner.temp }}/single-executable
+
       - name: Create the tag and the release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -379,6 +438,13 @@ jobs:
           printf '\nnpm: https://www.npmjs.com/package/@mnema/code/v/%s\n' "$VERSION" >> "$notes"
           files=()
           if [ "$ACTION" = publish ]; then files=("$RUNNER_TEMP"/release-assets/*); fi
+          if [ -d "$RUNNER_TEMP/single-executable" ]; then
+            files+=("$RUNNER_TEMP"/single-executable/*)
+            printf '\nExperimental, Linux x64 only, unsigned: `%s`, one file that needs no Node. Check it with `sha256sum --check %s.sha256` before you run it. SHA-256: `%s`\n' \
+              "$(cd "$RUNNER_TEMP/single-executable" && ls mnema-*-linux-x64)" \
+              "$(cd "$RUNNER_TEMP/single-executable" && ls mnema-*-linux-x64)" \
+              "$(cut -d' ' -f1 "$RUNNER_TEMP"/single-executable/mnema-*-linux-x64.sha256)" >> "$notes"
+          fi
           gh release create "v$VERSION" --target "$SHA" --title "v$VERSION" --notes-file "$notes" "${files[@]}"
 
       # THE BRANCH THE PLUGINS ARE INSTALLED FROM. The marketplace lists both plugins at `ref: release`, so
