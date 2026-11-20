@@ -29,6 +29,7 @@
 
 import { dirname } from 'node:path';
 import { catalogUpcasters } from '@mnema/chain';
+import type { AddressReach } from '@mnema/context';
 import {
   chainRootForScope,
   type DiscoveryEnv,
@@ -38,6 +39,7 @@ import {
 } from '@mnema/core';
 import { openTreeForWriting, recordDecision } from '@mnema/core/write';
 import { type AcceptState, acceptStateHere, stateOfANewDecision } from '../agent-accepts.js';
+import { reachesOfGoverns } from '../governed-tree.js';
 import { governsTargets } from '../link-target.js';
 import {
   addressOfferLines,
@@ -72,6 +74,8 @@ export interface DecisionRecorded extends Replacement, Landed {
   readonly adr: string;
   /** The paths it was recorded as governing, as the tree holds them: empty when none was asked. */
   readonly governs: readonly string[];
+  /** What each of those paths covers in the working tree, in the same order: a report, never a gate. */
+  readonly reaches: readonly AddressReach[];
   /**
    * Set when the decision was already on the record (same title, rationale and alternatives,
    * in force or awaiting a judgement): nothing was written, and `id` and `adr` are the existing one's.
@@ -179,6 +183,10 @@ export function runDecision(
     id: recorded.id,
     adr: recorded.adr,
     governs: 'already' in recorded ? [] : governs.targets,
+    reaches:
+      'already' in recorded || trees.projectPublic === undefined
+        ? []
+        : reachesOfGoverns(governs.targets, dirname(trees.projectPublic)),
     scope,
     ...forwardReplacement(recorded),
     ...('already' in recorded ? { alreadyRecorded: true as const } : {}),

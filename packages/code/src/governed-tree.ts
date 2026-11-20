@@ -51,7 +51,7 @@ import {
   type ScopedCache,
   type WalkOutcome,
 } from '@mnema/context';
-import { ADDRESS_RELATIONS } from '@mnema/core';
+import { ADDRESS_RELATIONS, GOVERNS_RELATION } from '@mnema/core';
 
 /**
  * What a `governs` read is asked: a path, the project it belongs to, and the
@@ -449,6 +449,15 @@ export function reachOfAddress(
 ): AddressReach | undefined {
   if (!(ADDRESS_RELATIONS as readonly string[]).includes(rel)) return undefined;
   return reachOver(target, root, (visit) => walkProject(root, visit, ceiling));
+}
+
+/**
+ * What each path a decision was just recorded as governing covers in the working tree, in the
+ * order given: {@link reachOfAddress} for the `governs` relation, one per path, so a mistyped path
+ * shows as covering nothing instead of passing silently. A fact, never a gate: the act is done.
+ */
+export function reachesOfGoverns(targets: readonly string[], root: string): AddressReach[] {
+  return targets.flatMap((target) => reachOfAddress(GOVERNS_RELATION, target, root) ?? []);
 }
 
 /** The one call that derives a reach: the walk is the caller's, so a question that needs none can pass an empty one. */

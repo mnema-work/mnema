@@ -21,6 +21,7 @@ import type { runDecisionTransition } from '../commands/decision-transition.js';
 import { fact } from '../presentation/detail.js';
 import {
   alreadyRecordedLine,
+  reachNotices,
   RECORD_CONTRACT_HELP,
   replacementNotice,
 } from '../recorded-content.js';
@@ -181,6 +182,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
     if (result.ok) {
       io.out(`Recorded decision ${result.adr} (${result.id})`);
       if (result.governs.length > 0) io.out(onOneLine`Governs: ${result.governs.join(', ')}`);
+      for (const line of reachNotices(result.reaches)) io.out(line);
       io.out(stateBesideADecision(writing, given.which, result.id));
       reportRecorded(result, io);
       const text = {

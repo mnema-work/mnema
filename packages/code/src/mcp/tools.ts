@@ -150,7 +150,7 @@ import {
 import { type AcceptState, acceptStateHere, agentMayAccept } from '../agent-accepts.js';
 import { editRulesTold, firstWriteNotice, readThePush } from '../edit-rules-push.js';
 import { type FileBehindAPath, fileOfTheOrigin } from '../file-behind-a-path.js';
-import { reachOfAddress, readGoverningRules } from '../governed-tree.js';
+import { reachesOfGoverns, reachOfAddress, readGoverningRules } from '../governed-tree.js';
 import { inheritedNotReadLine, inheritedTreeOf } from '../inherited-record.js';
 import {
   projectEventsOf,
@@ -326,6 +326,8 @@ export type RecordDecisionResult =
         readonly adr: string;
         /** The paths it was recorded as governing, as the tree holds them: empty when none was given. */
         readonly governs: readonly string[];
+        /** What each of those paths covers in the working tree, in the same order: a report, never a gate. */
+        readonly reaches: readonly AddressReach[];
         /**
          * What the new decision OFFERS beside its acknowledgement, as lines (none when there is
          * nothing to offer): the paths this connection looked at it could be addressed at, and the
@@ -993,6 +995,10 @@ export function runRecordDecision(
     ...routedTo(session, route),
     ...forwardReplacement(recorded),
     governs: repeated ? [] : governs.targets,
+    reaches:
+      repeated || trees.projectPublic === undefined
+        ? []
+        : reachesOfGoverns(governs.targets, dirname(trees.projectPublic)),
     offered: repeated
       ? []
       : offersBesideADecision(session, route, input, recorded, governs.targets.length > 0),

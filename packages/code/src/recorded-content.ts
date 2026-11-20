@@ -89,6 +89,19 @@ export function reachNotice(reach: AddressReach | undefined): string[] {
 }
 
 /**
+ * The lines a decision recorded with `governs` paths prints of what they cover: one line per path
+ * ({@link reachNotice}'s own words) and the sentence about files on disk once, after them all.
+ */
+export function reachNotices(reaches: readonly AddressReach[]): string[] {
+  const lines = reaches.flatMap((reach) =>
+    reachNotice(reach).filter((line) => !line.includes('Files on disk, not edits')),
+  );
+  return lines.length === 0
+    ? []
+    : [...lines, '  Files on disk, not edits: a directory nobody touches counts the same as a busy one.'];
+}
+
+/**
  * WHAT THE LINK JUST RECORDED WILL REACH, AND WHAT THE RULE IT NAMES WILL NOT.
  *
  * The lines a link prints when it travels further than its subject, and NONE when it

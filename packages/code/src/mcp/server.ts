@@ -122,6 +122,7 @@ import {
   RECORD_CONTRACT,
   type Replacement,
   reachNotice,
+  reachNotices,
   replacementNotice,
   subjectReachNotice,
 } from '../recorded-content.js';
@@ -1418,6 +1419,7 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
       return recorded(active, `Recorded decision ${result.adr} (${result.id})`, result, {
         after: [
           ...(result.governs.length > 0 ? [`Governs: ${oneLine(result.governs.join(', '))}`] : []),
+          ...reachNotices(result.reaches),
           stateOfANewDecision(result.agentsAccept, 'agent-tool'),
           ...result.offered,
         ],

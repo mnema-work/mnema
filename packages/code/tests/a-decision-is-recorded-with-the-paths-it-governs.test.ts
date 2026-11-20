@@ -12,7 +12,7 @@
  * chain back: what counts is the events, not the words.
  */
 
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -191,18 +191,46 @@ describe('mnema decision record --governs', () => {
     expect(edges()).toEqual([]);
   });
 
-  it('refuses a label left raw as a path, and writes nothing', async () => {
+  it('refuses a label as a path, and says so truthfully, whether or not a decision carries it', async () => {
+    // ADR-1 exists, so "a label no decision carries" would be false of it.
+    const first = await mnema('decision', 'record', 'The first one', 'because');
+    expect(first.out).toContain('Recorded decision ADR-1');
+    for (const label of ['ADR-1', 'ADR-9']) {
+      const done = await mnema(
+        'decision',
+        'record',
+        `Keep the ledger ${label}`,
+        'audit',
+        '--governs',
+        label,
+      );
+      expect(done.failed, done.out).toBe(true);
+      expect(done.out).toContain(`"${label}" is a decision label, not a path`);
+      expect(done.out).not.toContain('no decision here carries');
+    }
+    expect(decisions()).toBe(1);
+    expect(edges()).toEqual([]);
+  });
+
+  it('says what each path covers, so a mistyped one does not pass silently', async () => {
+    mkdirSync(join(repo, 'src/a'), { recursive: true });
+    writeFileSync(join(repo, 'src/a/x.ts'), 'x');
+    writeFileSync(join(repo, 'src/other.ts'), 'x');
     const done = await mnema(
       'decision',
       'record',
       'Keep the ledger',
       'audit',
       '--governs',
-      'ADR-9',
+      'src/a',
+      '--governs',
+      'src/zz',
     );
-    expect(done.failed).toBe(true);
-    expect(decisions()).toBe(0);
-    expect(edges()).toEqual([]);
+    expect(done.failed, done.out).toBe(false);
+    expect(done.out).toMatch(/src\/a covers 1 of \d+ file\(s\)/);
+    expect(done.out).toMatch(/src\/zz covers 0 of \d+ file\(s\)/);
+    // The sentence about files on disk is said once, after the paths.
+    expect(done.out.match(/Files on disk, not edits/g)).toHaveLength(1);
   });
 
   it('takes a path outside the project in the private tree, as a link does', async () => {
@@ -236,10 +264,18 @@ describe('mnema decision record --governs', () => {
     expect(edges()).toEqual([]);
   });
 
-  it('is refused by a verb that records no decision', async () => {
-    const done = await mnema('decision', 'move', 'accept', 'whatever', '--governs', 'src/a');
-    expect(done.failed).toBe(true);
-    expect(done.out).toContain('--governs');
+  it('is refused by every verb of the group that records no decision', async () => {
+    const verbs: [string, string[]][] = [
+      ['move', ['move', 'accept', 'whatever']],
+      ['supersede', ['supersede', 'old-id', 'new-id']],
+      ['review', ['review']],
+      ['import', ['import', 'some-dir']],
+    ];
+    for (const [name, argv] of verbs) {
+      const done = await mnema('decision', ...argv, '--governs', 'src/a');
+      expect(done.failed, name).toBe(true);
+      expect(done.out, name).toContain(`\`decision ${name}\` takes no --governs`);
+    }
     expect(edges()).toEqual([]);
   });
 });
@@ -256,7 +292,47 @@ describe('record_decision with governs, over a real client', () => {
     const id = idOf(reply);
     expect(edges()).toEqual([`${id} -> src/a (governs)`, `${id} -> docs/b (governs)`]);
     expect(reply).toContain('Governs: src/a, docs/b');
-    expect(reply).not.toContain('nothing was linked');
+    expect(reply).toMatch(/src\/a covers \d+ of \d+ file\(s\)/);
+    expect(reply).toMatch(/docs\/b covers 0 of \d+ file\(s\)/);
+  });
+
+  it('offers no address to a decision it addressed, where the connection looked at a path', async () => {
+    const client = await connect();
+    await client.callTool({ name: 'governing_rules', arguments: { path: 'src/a.ts' } });
+    // The control: without governs, the offer to address it is in the reply.
+    const bare = said(
+      await client.callTool({
+        name: 'record_decision',
+        arguments: { title: 'Without paths', rationale: 'audit' },
+      }),
+    );
+    expect(bare).toContain('nothing was linked');
+    const addressed = said(
+      await client.callTool({
+        name: 'record_decision',
+        arguments: { title: 'With paths', rationale: 'audit', governs: ['src/a.ts'] },
+      }),
+    );
+    expect(addressed).toContain('Governs: src/a.ts');
+    expect(addressed).not.toContain('nothing was linked');
+  });
+
+  it('says a repeat linked no path, and writes nothing', async () => {
+    const client = await connect();
+    await client.callTool({
+      name: 'record_decision',
+      arguments: { title: 'Keep the ledger', rationale: 'audit' },
+    });
+    const again = said(
+      await client.callTool({
+        name: 'record_decision',
+        arguments: { title: 'Keep the ledger', rationale: 'audit', governs: ['src/a'] },
+      }),
+    );
+    expect(again).toContain('Nothing was written.');
+    expect(again).toContain('No path was linked by this call');
+    expect(decisions()).toBe(1);
+    expect(edges()).toEqual([]);
   });
 
   it('refuses the whole call for a path outside the project, and writes nothing', async () => {
