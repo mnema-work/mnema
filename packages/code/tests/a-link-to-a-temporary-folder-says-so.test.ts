@@ -189,23 +189,24 @@ describe('the one function, where a path has two spellings', () => {
   it('ignores a TMPDIR that is the root, the home folder or a folder holding the project', () => {
     for (const TMPDIR of ['/', '/home/me', '/home/me/work']) {
       const env = { TMPDIR };
-      expect(isUnderATemporaryFolder('/opt/x', '/home/me/work/p', env, '/', '/home/me'), TMPDIR).toBe(
-        false,
-      );
-      expect(isUnderATemporaryFolder('/home/me/notes.md', '/home/me/work/p', env, '/', '/home/me')).toBe(
-        false,
-      );
+      expect(
+        isUnderATemporaryFolder('/opt/x', '/home/me/work/p', env, '/', '/home/me'),
+        TMPDIR,
+      ).toBe(false);
+      expect(
+        isUnderATemporaryFolder('/home/me/notes.md', '/home/me/work/p', env, '/', '/home/me'),
+      ).toBe(false);
     }
   });
 
   it('reads a folder named ..cache as inside, not as a way out', () => {
     expect(isUnderATemporaryFolder('/tmp/..cache/x', '/home/me/p', {})).toBe(true);
-    expect(isUnderATemporaryFolder('/scratch/..cache/x', '/home/me/p', { TMPDIR: '/scratch' })).toBe(
-      true,
-    );
-    expect(isUnderATemporaryFolder('/scratch/..cache/x', '/scratch/..cache', { TMPDIR: '/scratch' })).toBe(
-      false,
-    );
+    expect(
+      isUnderATemporaryFolder('/scratch/..cache/x', '/home/me/p', { TMPDIR: '/scratch' }),
+    ).toBe(true);
+    expect(
+      isUnderATemporaryFolder('/scratch/..cache/x', '/scratch/..cache', { TMPDIR: '/scratch' }),
+    ).toBe(false);
   });
 
   it('drops the Windows extended-length prefix', () => {
@@ -216,4 +217,3 @@ describe('the one function, where a path has two spellings', () => {
     ).toBe(true);
   });
 });
-

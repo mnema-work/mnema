@@ -178,7 +178,12 @@ export function isUnderATemporaryFolder(
       flavor.isAbsolute(folder) &&
       flavor.resolve(folder) !== flavor.parse(flavor.resolve(folder)).root &&
       !(flavor === posix && where(folder) === where(home)) &&
-      !(root !== undefined && flavor.isAbsolute(root) && holds(folder, root) && !holds(root, folder)),
+      !(
+        root !== undefined &&
+        flavor.isAbsolute(root) &&
+        holds(folder, root) &&
+        !holds(root, folder)
+      ),
   );
   const folders = [...['/tmp', '/var/tmp', '/private/tmp', '/private/var/folders'], ...named];
   return folders.some((folder) => holds(folder, typed));
