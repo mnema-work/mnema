@@ -226,6 +226,7 @@ export const READER_OF: Readonly<Record<HostName, HostReader | undefined>> = {
   qwen: readQwen,
   vscode: readVSCode,
   cursor: undefined,
+  cursorIde: undefined,
   codex: undefined,
   copilot: undefined,
   opencode: undefined,
