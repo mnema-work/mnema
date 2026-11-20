@@ -107,7 +107,7 @@ describe('mnema rules test', () => {
   it('catches a rule that stopped covering a path', async () => {
     const file = declare(['src/billing/invoice.ts', 'refuse']);
     expect((await mnema('rules', 'test', file)).failed).toBe(false);
-    await mnema('unlink', ids['src/billing'] as string, 'src/billing', '--rel', 'refuses-a-write');
+    await mnema('unlink', ids['src/billing'] as string, 'src/billing', '--rel', 'refuses-a-write', '--reason', 'moved');
     const after = await mnema('rules', 'test', file);
     expect(after.failed).toBe(true);
     expect(after.out).toContain('MISMATCH: src/billing/invoice.ts: expected refuse, got none');
