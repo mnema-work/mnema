@@ -153,10 +153,42 @@ describe('reading one decision document', () => {
     });
   });
 
-  it('refuses a document that states a decision and never states a why', () => {
-    // The product requires a rationale, a decision with none records nothing worth
-    // proving, so there is nothing honest to propose from such a file.
-    expect(readAdr('# Use UTC\n\n## Consequences\n\nclocks agree\n')).toEqual({
+  it('reads the sections of a document with no context as its why', () => {
+    // A document with no decision, no context and no lead used to be refused as stating no why.
+    // Its sections are the author's text: read whole, in order, each under its own heading.
+    const read = readAdr(
+      '# The search\n\n- **Status:** accepted\n- **Date:** 2026-01-02\n\n' +
+        '## Search\n\nfind by words\n\n## Context items\n\none per line\n\n' +
+        '## The loop\n\nask, read, answer\n\n## Guardrails\n\nnever call out\n\n' +
+        '## Status\n\naccepted\n\n## Alternatives\n\na vector index: too heavy\n',
+    );
+    expect(read.ok).toBe(true);
+    if (!read.ok) return;
+    expect(read.rationale).toBe(
+      '## Search\n\nfind by words\n\n## Context items\n\none per line\n\n' +
+        '## The loop\n\nask, read, answer\n\n## Guardrails\n\nnever call out',
+    );
+    expect(read.whyFromSections).toBe(true);
+    expect(read.alternatives).toBe('a vector index: too heavy');
+  });
+
+  it('keeps the heading as the author wrote it, and says nothing of the sections that say nothing', () => {
+    const read = readAdr(
+      '# Use UTC\n\n## **Consequences** <!-- keep -->\n\nclocks agree\n\n## Notes\n\n---\n\n## Todo\n\n<why>\n',
+    );
+    expect(read.ok).toBe(true);
+    if (read.ok) expect(read.rationale).toBe('## **Consequences** <!-- keep -->\n\nclocks agree');
+  });
+
+  it('does not flag a document whose why is stated', () => {
+    const read = readAdr(NYGARD);
+    expect(read.ok).toBe(true);
+    if (read.ok) expect(read.whyFromSections).toBeUndefined();
+  });
+
+  it('refuses a document with a title and nothing else that states anything', () => {
+    expect(readAdr('# Use UTC\n')).toEqual({ ok: false, code: 'NO_RATIONALE' });
+    expect(readAdr('# Use UTC\n\n## Status\n\naccepted\n\n## Options\n\na\nb\n')).toEqual({
       ok: false,
       code: 'NO_RATIONALE',
     });
@@ -365,9 +397,10 @@ describe('nothing a document writes as punctuation is read as a field', () => {
     // chosen option's title and the options section). The function they call is the one the
     // write door asks too, imported rather than defined here, so the two doors cannot come to
     // read a reason two ways again. And the marker is asked by the door's own function too, of
-    // the three fields that are recorded.
-    expect(source.match(/statesSomething\(/g) ?? []).toHaveLength(10);
-    expect(source.match(/isMarker\(/g) ?? []).toHaveLength(3);
+    // the three fields that are recorded and of each section the fourth link of the why reads (so
+    // eleven calls to the first and four to the second).
+    expect(source.match(/statesSomething\(/g) ?? []).toHaveLength(11);
+    expect(source.match(/isMarker\(/g) ?? []).toHaveLength(4);
     expect(source).toContain(
       "import { isMarker, statesSomething } from '../a-reason-states-something.js';",
     );

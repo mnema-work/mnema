@@ -369,13 +369,21 @@ export const RECORD_CONTRACT =
  * trying to do something else, and a paragraph there is a paragraph that gets
  * skipped. The three facts survive; the elaboration does not.
  */
-export const RECORD_CONTRACT_HELP = [
-  '',
-  'What recording means here:',
-  '  Permanent: mnema is append-only and nothing deletes a fact. A public record',
-  '  is committed and reaches every machine that clones the repository.',
-  '  Do not record credentials: a recognized format is replaced with a placeholder',
-  '  and reported back, but what mnema does not recognize is written verbatim.',
-  '  Nor personal data: an email address is replaced with <email>; the mnid already says who wrote.',
-  `  Each text field holds at most ${FIELD_BYTE_LIMIT} bytes; a longer one is refused.`,
-].join('\n');
+const contractHelp = (longer: string): string =>
+  [
+    '',
+    'What recording means here:',
+    '  Permanent: mnema is append-only and nothing deletes a fact. A public record',
+    '  is committed and reaches every machine that clones the repository.',
+    '  Do not record credentials: a recognized format is replaced with a placeholder',
+    '  and reported back, but what mnema does not recognize is written verbatim.',
+    '  Nor personal data: an email address is replaced with <email>; the mnid already says who wrote.',
+    `  Each text field holds at most ${FIELD_BYTE_LIMIT} bytes; ${longer}`,
+  ].join('\n');
+
+export const RECORD_CONTRACT_HELP = contractHelp('a longer one is refused.');
+
+/** The same, for `decision import` alone: it cuts a longer reason or turned-down text, and refuses a longer title. */
+export const RECORD_CONTRACT_HELP_IMPORT = contractHelp(
+  'a longer reason or turned-down text is cut; a longer title is refused.',
+);

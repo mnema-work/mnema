@@ -22,6 +22,7 @@ import { fact } from '../presentation/detail.js';
 import {
   alreadyRecordedLine,
   RECORD_CONTRACT_HELP,
+  RECORD_CONTRACT_HELP_IMPORT,
   replacementNotice,
 } from '../recorded-content.js';
 import { addBodySourceOptions } from './body-source.js';
@@ -373,7 +374,11 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
         'The reason is what the file’s own decision section says (MADR’s “Chosen option, because”,\n' +
         'Nygard’s `## Decision`). A list of every option (MADR’s `## Considered Options`) is recorded\n' +
         'WITHOUT the option the file chose; when the file does not say which it chose, none is\n' +
-        'recorded as turned down, and the plan says so.\n\n' +
+        'recorded as turned down, and the plan says so. A file with no decision, context or lead\n' +
+        'has its sections read as the reason, each under its own heading, and the plan says so.\n' +
+        'A reason or a turned-down text over the size a recorded field may hold is cut, on a\n' +
+        'blank line, and ends in a note with the SHA-256 of the whole text as the import read it\n' +
+        'from the file; a title over that size is refused.\n\n' +
         'With --format the same road reads other places decisions are written: the ECC Memory\n' +
         'Vault (a directory of *.json memories; only `kind: "decision"` is read, and a `rejected`\n' +
         'or `superseded` state is skipped), the `Ruling:` lines of one ledger file (each line is\n' +
@@ -383,7 +388,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
         'project is cited as `<format>:<file>`, a name no clone can open. A file that does not\n' +
         'have its source’s shape is named and nothing is read from it.',
     )
-    .addHelpText('after', RECORD_CONTRACT_HELP);
+    .addHelpText('after', RECORD_CONTRACT_HELP_IMPORT);
   takesFromItsGroup(decisionImport, {
     refuses: {
       '--alternatives':
@@ -512,6 +517,19 @@ function importLines(
       ...(proposal.optionsUnclear
         ? ['lists its options but not which was chosen, so none is recorded as turned down']
         : []),
+      ...(proposal.whyFromSections
+        ? ['no Context or Decision section: its why is read from its sections']
+        : []),
+      ...(proposal.cut?.rationale !== undefined
+        ? [
+            `its why was cut at ${proposal.cut.rationale.kept.toLocaleString('en-US')} of ${proposal.cut.rationale.of.toLocaleString('en-US')} bytes`,
+          ]
+        : []),
+      ...(proposal.cut?.alternatives !== undefined
+        ? [
+            `what it turned down was cut at ${proposal.cut.alternatives.kept.toLocaleString('en-US')} of ${proposal.cut.alternatives.of.toLocaleString('en-US')} bytes`,
+          ]
+        : []),
     ];
     lines.push(`      ${notes.join(' · ')}`);
     // In the words every write says it, under the proposal it is about. This was a second
@@ -555,7 +573,7 @@ function importLines(
  */
 const IMPORT_REFUSALS: Record<ScanRefusalCode, string> = {
   NO_TITLE: 'no level-1 title; nothing names the decision',
-  NO_RATIONALE: 'no context section and no lead; it states a decision and never states a why',
+  NO_RATIONALE: 'nothing under its title states a why: no section and no prose',
   TITLE_IS_A_MARKER:
     'its title is only the marker a template leaves where the words go; nothing names the decision',
   RATIONALE_IS_A_MARKER:
@@ -564,7 +582,7 @@ const IMPORT_REFUSALS: Record<ScanRefusalCode, string> = {
     'what it turned down is only the marker a template leaves where the words go: write what was turned down, or leave the section out',
   RETIRED: 'the document’s own status says it is no longer in force',
   HOLDS_A_SECRET: 'it holds something shaped like a credential, so nothing was read from it',
-  FIELD_TOO_LARGE: 'a field is over the size a recorded field may hold',
+  TITLE_TOO_LARGE: 'its title is over the size a recorded field may hold',
   UNREADABLE: 'the file could not be read from disk',
   MALFORMED: 'it does not have the shape of its source, so nothing was read from it',
   NOT_A_DECISION: 'it is not a decision (its kind says so), so nothing was read from it',

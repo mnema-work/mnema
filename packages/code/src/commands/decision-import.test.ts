@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -11,6 +12,7 @@ import {
   resolveTrees,
 } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { MNEMA_CLI } from '../../tests/support/the-cli.js';
 import { runDecisionImport } from './decision-import.js';
 import { runInit } from './init.js';
 
@@ -270,5 +272,83 @@ describe('two files that say the same words', () => {
     expect(links.map((l) => [l.subject, l.target, l.rel])).toEqual([
       [first, 'docs/adr/0001-utc.md', DERIVED_FROM_RELATION],
     ]);
+  });
+});
+
+describe('a document with no context section, and a document with a field over the limit', () => {
+  const NO_CONTEXT =
+    '# ADR-0017: Search and context\n\n- **Status:** accepted\n- **Date:** 2026-02-03\n\n' +
+    '## Search\n\nfind by words\n\n## Context items\n\none per line\n\n' +
+    '## The loop\n\nask, read, answer\n\n## Guardrails\n\nnever call out\n';
+
+  const bigDecision = (): string => {
+    const parts = Array.from(
+      { length: 900 },
+      (_, i) => `### Part ${i}\n\n${'word '.repeat(15)}${i}`,
+    );
+    return `# ADR-0058: A big one\n\n## Decision\n\n${parts.join('\n\n')}\n`;
+  };
+
+  it('plans both, says how each was read, and records them through the write door', () => {
+    const { repo, env } = setup({
+      '0017-search.md': NO_CONTEXT,
+      '0058-big.md': bigDecision(),
+    });
+
+    const plan = runDecisionImport({ cwd: repo, env }, { from: 'docs/adr' });
+    expect(plan.ok).toBe(true);
+    if (!plan.ok) return;
+    expect(plan.refused).toEqual([]);
+    expect(
+      plan.proposals.map((p) => [p.title, p.whyFromSections, p.cut?.rationale !== undefined]),
+    ).toEqual([
+      ['Search and context', true, false],
+      ['A big one', false, true],
+    ]);
+
+    const done = runDecisionImport({ cwd: repo, env }, { from: 'docs/adr', write: true });
+    expect(done.ok).toBe(true);
+    if (!done.ok) return;
+    // Nothing stopped at the door: no CONTENT_TOO_LARGE for the cut text.
+    expect(done.stopped).toBeUndefined();
+    expect(done.proposals).toHaveLength(2);
+    const { decisions, links } = publicTree(repo, env);
+    const byTitle = new Map([...decisions.values()].map((d) => [d.title, d]));
+    expect(byTitle.get('Search and context')?.rationale).toContain(
+      '## Context items\n\none per line',
+    );
+    const big = byTitle.get('A big one')?.rationale as string;
+    expect(Buffer.byteLength(big)).toBeLessThanOrEqual(65_536);
+    expect(big).toMatch(/its SHA-256 is [0-9a-f]{64}\.\]$/);
+    expect(links.map((l) => [l.target, l.rel])).toEqual([
+      ['docs/adr/0017-search.md', DERIVED_FROM_RELATION],
+      ['docs/adr/0058-big.md', DERIVED_FROM_RELATION],
+    ]);
+
+    // A second run finds both by their edges and writes nothing.
+    const again = runDecisionImport({ cwd: repo, env }, { from: 'docs/adr', write: true });
+    expect(again.ok && [again.proposals.length, again.already.length]).toEqual([0, 2]);
+  });
+
+  it('says in the plan, as the binary prints it, how each document was read', () => {
+    const { repo, env } = setup({ '0017-search.md': NO_CONTEXT, '0058-big.md': bigDecision() });
+    const ran = spawnSync(
+      process.execPath,
+      [MNEMA_CLI, '--color=never', 'decision', 'import', 'docs/adr'],
+      {
+        cwd: repo,
+        encoding: 'utf-8',
+        env: { PATH: process.env.PATH ?? '', HOME: env.home as string },
+      },
+    );
+    expect(ran.status, ran.stderr).toBe(0);
+    expect(ran.stdout).toContain('its why is read from its sections');
+    expect(ran.stdout).toMatch(/its why was cut at \d{2},\d{3} of \d{2},\d{3} bytes/);
+  });
+
+  it('still refuses a title over the limit, by name', () => {
+    const { repo, env } = setup({ '0001-huge.md': decision('x'.repeat(70_000)) });
+    const plan = runDecisionImport({ cwd: repo, env }, { from: 'docs/adr' });
+    expect(plan.ok && plan.refused.map((r) => r.code)).toEqual(['TITLE_TOO_LARGE']);
   });
 });

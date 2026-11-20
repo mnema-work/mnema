@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -156,5 +157,38 @@ describe('decision import --format', () => {
       reason: 'OUTSIDE_PROJECT',
       from: sandbox,
     });
+  });
+
+  it('cuts an entry over the size a field may hold, with the same note as an ADR', () => {
+    const body = Array.from({ length: 3000 }, (_, i) => `paragraph ${i} ${'m'.repeat(30)}`).join(
+      '\n\n',
+    );
+    put(
+      repo,
+      'vault/big.json',
+      JSON.stringify({
+        id: 'mem-2',
+        kind: 'decision',
+        state: 'active',
+        title: 'A very long memory',
+        body: Array.from({ length: 3000 }, (_, i) => `paragraph ${i} ${'m'.repeat(30)}`).join(
+          '\n\n',
+        ),
+      }),
+    );
+    const done = runDecisionImport(
+      { cwd: repo, env },
+      { from: 'vault', format: 'ecc-vault', write: true },
+    );
+    expect(done.ok && done.stopped).toBeUndefined();
+    expect(done.ok && done.proposals.map((p) => p.cut?.rationale !== undefined)).toEqual([true]);
+    const rationale = [...tree().decisions.values()][0]?.rationale as string;
+    expect(Buffer.byteLength(rationale)).toBeLessThanOrEqual(65_536);
+    expect(rationale).toMatch(/\[Cut on import: .* its SHA-256 is [0-9a-f]{64}\.\]$/);
+    // The hash is of the entry's own body, not of the origin line the import put before it.
+    expect(rationale.startsWith('Imported as written in ecc-vault big.json; ')).toBe(true);
+    expect(rationale.match(/its SHA-256 is ([0-9a-f]{64})/)?.[1]).toBe(
+      createHash('sha256').update(body, 'utf8').digest('hex'),
+    );
   });
 });
