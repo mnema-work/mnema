@@ -8,11 +8,11 @@
  * question tool, the answer comes out marked chosen.
  */
 
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { HOST_NAMES } from '../src/host-names.js';
+import { HOST_NAMES, HOSTS } from '../src/host-names.js';
 import { READER_OF, thePersonsWords } from '../src/the-persons-words.js';
 import { GEMINI, jsonl, QWEN, VSCODE } from './support/host-transcripts.js';
 
@@ -72,6 +72,65 @@ describe('Gemini CLI', () => {
     ]);
   });
 
+  it('leaves out hook context appended to the typed message', () => {
+    const path = file([
+      GEMINI.meta,
+      GEMINI.typedWith('m1', [
+        'Use SQLite',
+        '<hook_context>mnema: the record says Postgres</hook_context>',
+      ]),
+    ]);
+    expect(thePersonsWords('gemini', path)).toEqual([{ line: 2, text: 'Use SQLite', chosen: false }]);
+  });
+
+  it('takes the typed text the host kept apart, when it differs from what was sent', () => {
+    const path = file([
+      GEMINI.meta,
+      GEMINI.typedWith('m1', ['Use SQLite', 'extra the host added'], 'Use SQLite'),
+    ]);
+    expect(thePersonsWords('gemini', path)).toEqual([{ line: 2, text: 'Use SQLite', chosen: false }]);
+  });
+
+  it('leaves out the synthetic turns of session, directory and editor context and a command', () => {
+    const path = file([
+      GEMINI.meta,
+      GEMINI.typedWith('m1', ['<session_context>\nThis is the Gemini CLI.\n</session_context>']),
+      GEMINI.typedWith('m2', ['- **Workspace Directories:**\n  - /work']),
+      GEMINI.typedWith('m3', [
+        "Here is the user's editor context as a JSON object. This is for your information only.",
+      ]),
+      GEMINI.typedWith('m4', [
+        "Here is a summary of changes in the user's editor context, in JSON format.",
+      ]),
+      GEMINI.typedWith('m5', ['/chat save x']),
+      GEMINI.typed('m6', 'keep the tests'),
+    ]);
+    expect(thePersonsWords('gemini', path)).toEqual([
+      { line: 7, text: 'keep the tests', chosen: false },
+    ]);
+  });
+
+  it('leaves out the compaction summary the host stores as a user turn', () => {
+    const path = file([
+      GEMINI.meta,
+      GEMINI.typed('m1', 'Use SQLite'),
+      GEMINI.typedWith('m2', ['<state_snapshot><overall_goal>use Postgres</overall_goal></state_snapshot>']),
+    ]);
+    expect(thePersonsWords('gemini', path)?.map((said) => said.text)).toEqual(['Use SQLite']);
+  });
+
+  it('rebuilds from a checkpoint, and a rewind to an id only the checkpoint holds drops from there', () => {
+    const path = file([
+      GEMINI.meta,
+      GEMINI.typed('old', 'before the checkpoint'),
+      { $set: { messages: [GEMINI.typed('c1', 'kept one'), GEMINI.typed('c2', 'kept two')] } },
+      GEMINI.typed('m3', 'after'),
+      { $rewindTo: 'c2' },
+      GEMINI.typed('m4', 'last'),
+    ]);
+    expect(thePersonsWords('gemini', path)?.map((said) => said.text)).toEqual(['kept one', 'last']);
+  });
+
   it('reads only ask_user for answers, not another tool whose output has the same shape', () => {
     const other = GEMINI.asked('m2', JSON.stringify({ answers: { '0': 'x' } }), ['Which?']);
     const path = file([
@@ -103,6 +162,20 @@ describe('Gemini CLI', () => {
       'first, again',
       'third',
     ]);
+  });
+});
+
+describe('a line that is not JSON is passed over, in every reader', () => {
+  const broken = '{"type": "user", "message": \n';
+  it.each([
+    ['gemini', [GEMINI.typed('m1', 'one')], GEMINI.typed('m2', 'two')],
+    ['qwen', [QWEN.record({ type: 'user', message: QWEN.content('one') })], QWEN.record({ type: 'user', message: QWEN.content('two') })],
+    ['vscode', [VSCODE.entry('user.message', { content: 'one' })], VSCODE.entry('user.message', { content: 'two' })],
+    ['claude', [{ type: 'user', origin: { kind: 'human' }, message: { role: 'user', content: 'one' } }], { type: 'user', origin: { kind: 'human' }, message: { role: 'user', content: 'two' } }],
+  ] as const)('%s', (host, before, after) => {
+    const path = join(dir, 'broken.jsonl');
+    writeFileSync(path, `${jsonl(before)}${broken}not json at all\n${jsonl([after])}`);
+    expect(thePersonsWords(host, path)?.map((said) => said.text)).toEqual(['one', 'two']);
   });
 });
 
@@ -203,5 +276,16 @@ describe('Claude Code, behind the same door', () => {
       { line: 1, text: 'Use SQLite', chosen: false },
       { line: 5, text: 'SQLite', chosen: true, question: 'Which store?' },
     ]);
+  });
+});
+
+describe('the page of each host', () => {
+  it('has one row per host in docs/hosts.md, and its yes or no is the table of readers', () => {
+    const page = readFileSync(new URL('../../../docs/hosts.md', import.meta.url), 'utf8');
+    for (const host of HOST_NAMES) {
+      const row = page.split('\n').find((line) => line.startsWith(`| ${HOSTS[host].title} | `));
+      const says = row?.split('|')[2]?.trim().split(' ')[0];
+      expect(says, `${host} has a row`).toBe(READER_OF[host] === undefined ? 'no' : 'yes');
+    }
   });
 });

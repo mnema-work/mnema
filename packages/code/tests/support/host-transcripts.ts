@@ -23,6 +23,20 @@ export function jsonl(lines: readonly unknown[]): string {
  *    call.response.responseParts.
  *  - packages/core/src/utils/generateContentResponseUtilities.ts (createFunctionResponsePart):
  *    a string output is stored as {functionResponse: {id, name, response: {output}}}.
+ *  - packages/core/src/utils/sessionUtils.ts (isIgnoredUserContent): the host ignores user
+ *    content starting with '/', '?', '<session_context>' or '<hook_context>'.
+ *  - packages/core/src/core/client.ts: a hook's additionalContext is appended to the request as
+ *    one more part, `<hook_context>...</hook_context>` (~964-967); getIdeContextParts and
+ *    addDirectoryContext add `user` history turns that geminiChat.addHistory writes through
+ *    recordSyntheticMessage (client.ts 378, 749; geminiChat.ts 1210).
+ *  - packages/core/src/utils/environmentContext.ts: the directory turn starts with
+ *    '- **Workspace Directories:**'; the environment turn is wrapped in <session_context>.
+ *  - packages/core/src/services/chatCompressionService.ts (~643-668): the compaction summary
+ *    (a <state_snapshot>) becomes a plain `user` turn, and after it the host writes a `$set`
+ *    with `messages` (chatRecordingService.ts, updateMessagesFromHistory and the loader's
+ *    checkpoint branch).
+ *  - packages/core/src/core/geminiChat.ts (536-551): the typed text is kept apart as
+ *    displayContent when it differs from the content sent.
  *  - packages/core/src/tools/ask-user.ts (execute): llmContent is
  *    JSON.stringify({answers: {"<question index>": "<answer>"}}); a dismissal is the text
  *    'User dismissed ask_user dialog without answering.'. The tool name is 'ask_user'
@@ -42,6 +56,14 @@ export const GEMINI = {
     timestamp: '2026-11-20T10:00:03.000Z',
     type: 'user',
     content: [{ functionResponse: { id: 'call-1', name: 'ask_user', response: { output: 'x' } } }],
+  }),
+  /** A message whose model-bound content carries more than the person typed. */
+  typedWith: (id: string, parts: readonly string[], displayContent?: string) => ({
+    id,
+    timestamp: '2026-11-20T10:00:01.000Z',
+    type: 'user',
+    content: parts.map((text) => ({ text })),
+    ...(displayContent === undefined ? {} : { displayContent: [{ text: displayContent }] }),
   }),
   info: (id: string, text: string) => ({
     id,

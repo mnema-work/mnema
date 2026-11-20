@@ -41,23 +41,43 @@ export interface PersonWord {
 export type HostReader = (path: string) => readonly PersonWord[];
 
 /**
- * The text parts of a Gemini `PartListUnion`. A `user` record that hands a tool's response back
- * holds `functionResponse` parts, which are not text and are left out, so it comes out empty.
+ * Text the host itself puts in a `user` record, which is not the person's (`GEMINI_HOST_TEXT`), by
+ * what the text of one part starts with:
+ *  - `<session_context>`: the environment turn (`environmentContext.ts`); `<hook_context>`: what a
+ *    hook's `additionalContext` is wrapped in, appended as one more part of the person's own
+ *    message (`client.ts`), as this product's hooks do. The host's resume code ignores both
+ *    (`isIgnoredUserContent`, `sessionUtils.ts`).
+ *  - `Here is the user's editor context` and `Here is a summary of changes in the user's editor
+ *    context`: the IDE companion's turns (`client.ts`, `getIdeContextParts`).
+ *  - `- **Workspace Directories:**`: the directory turn (`addDirectoryContext`, `environmentContext.ts`).
+ * The host writes each of these turns through `recordSyntheticMessage`, so the record alone does
+ * not say they are not typed.
  */
-function geminiText(content: unknown): string {
-  if (typeof content === 'string') return content;
-  const parts = Array.isArray(content) ? content : [content];
+const GEMINI_HOST_TEXT =
+  /^\s*(<session_context>|<hook_context>|Here is the user's editor context|Here is a summary of changes in the user's editor context|- \*\*Workspace Directories:\*\*)/;
+
+/**
+ * The words of a Gemini `user` record: what the person typed, or `''`. The host keeps the typed text
+ * apart from the text sent to the model in `displayContent` when the two differ (`geminiChat.ts`),
+ * and that is taken when it is there; otherwise the parts of `content`, less the parts the host
+ * wrote (`GEMINI_HOST_TEXT`). A record the host's own resume code ignores (a line starting with
+ * `/` or `?`, which is a command, not a sentence) and the compaction summary (a `<state_snapshot>`,
+ * `chatCompressionService.ts`, stored as a plain `user` turn) have no words. A turn that hands a
+ * tool's response back holds `functionResponse` parts, which are not text, so it comes out empty.
+ */
+function geminiWords(record: Record<string, unknown>): string {
+  const source = record.displayContent !== undefined ? record.displayContent : record.content;
+  const parts = typeof source === 'string' || !Array.isArray(source) ? [source] : source;
   const texts: string[] = [];
   for (const part of parts) {
-    if (typeof part === 'string') {
-      texts.push(part);
-      continue;
-    }
-    const object = asObject(part);
-    if (object === undefined) continue;
-    if (typeof object.text === 'string') texts.push(object.text);
+    const text = typeof part === 'string' ? part : asObject(part)?.text;
+    if (typeof text === 'string' && !GEMINI_HOST_TEXT.test(text)) texts.push(text);
   }
-  return texts.join('');
+  const words = texts.join('');
+  const trimmed = words.trim();
+  if (trimmed.startsWith('/') || trimmed.startsWith('?')) return '';
+  if (words.includes('<state_snapshot>')) return '';
+  return words;
 }
 
 /** The `output` string of the function response a Gemini tool call stored as its `result`. */
@@ -98,15 +118,39 @@ function geminiAnswer(
   };
 }
 
+/** What is kept of one Gemini message: its words and its chosen answers, never the record. */
+interface GeminiKept {
+  readonly line: number;
+  readonly words: string;
+  readonly answers: readonly { text: string; question?: string }[];
+}
+
+function geminiKept(line: number, record: Record<string, unknown>): GeminiKept {
+  if (record.type === 'user') return { line, words: geminiWords(record), answers: [] };
+  const answers: { text: string; question?: string }[] = [];
+  if (record.type === 'gemini' && Array.isArray(record.toolCalls)) {
+    for (const call of record.toolCalls) {
+      const object = asObject(call);
+      if (object?.name !== 'ask_user') continue;
+      const answer = geminiAnswer(object);
+      if (answer !== undefined) answers.push(answer);
+    }
+  }
+  return { line, words: '', answers };
+}
+
 /**
  * Gemini CLI: `~/.gemini/tmp/<project>/chats/session-<ts>-<id>.jsonl`. A record is a message
  * `{id, type, content, toolCalls?}`, a `{$set}` metadata update or a `{$rewindTo: id}`. The host
- * appends a message again each time it changes (a tool call gets its result), and the file is
- * read back by the last record of an id, in the order the id first appeared, with a rewind
- * dropping that message and every one after it; this reads it the same way.
+ * appends a message again each time it changes (a tool call gets its result), and reads the file
+ * back by the last record of an id, in the order the id first appeared; a rewind drops that
+ * message and every one after it (or all of them, when the id is not there); and a `$set` that
+ * carries `messages` is a checkpoint, which clears what was read and rebuilds it from that array
+ * (`chatRecordingService.ts`, `loadConversationRecord`). This reads it the same way, and keeps
+ * only the words and the chosen answers of each message, not the record.
  */
 const readGemini: HostReader = (path) => {
-  const messages = new Map<string, { line: number; record: Record<string, unknown> }>();
+  const messages = new Map<string, GeminiKept>();
   let line = 0;
   forEachLine(path, (text) => {
     line += 1;
@@ -119,24 +163,30 @@ const readGemini: HostReader = (path) => {
         if (found) messages.delete(id);
       }
       if (!found) messages.clear();
-    } else if (typeof record.id === 'string' && typeof record.type === 'string') {
-      messages.set(record.id, { line, record });
+      return true;
+    }
+    const update = asObject(record.$set);
+    if (update !== undefined) {
+      if (Array.isArray(update.messages)) {
+        messages.clear();
+        for (const one of update.messages) {
+          const object = asObject(one);
+          if (typeof object?.id === 'string' && typeof object.type === 'string') {
+            messages.set(object.id, geminiKept(line, object));
+          }
+        }
+      }
+      return true;
+    }
+    if (typeof record.id === 'string' && typeof record.type === 'string') {
+      messages.set(record.id, geminiKept(line, record));
     }
     return true;
   });
   const said: PersonWord[] = [];
-  for (const { line: at, record } of messages.values()) {
-    if (record.type === 'user') {
-      const text = geminiText(record.content);
-      if (text.trim() !== '') said.push({ line: at, text, chosen: false });
-    } else if (record.type === 'gemini' && Array.isArray(record.toolCalls)) {
-      for (const call of record.toolCalls) {
-        const object = asObject(call);
-        if (object?.name !== 'ask_user') continue;
-        const answer = geminiAnswer(object);
-        if (answer !== undefined) said.push({ line: at, chosen: true, ...answer });
-      }
-    }
+  for (const kept of messages.values()) {
+    if (kept.words.trim() !== '') said.push({ line: kept.line, text: kept.words, chosen: false });
+    for (const answer of kept.answers) said.push({ line: kept.line, chosen: true, ...answer });
   }
   return said;
 };
@@ -165,7 +215,9 @@ function qwenText(message: unknown): string {
  * host set to anything but `real_user` is not the person's either.
  *
  * No answer is read: the stored shape of an answer to this host's question tool is not in the
- * source read, so none is claimed.
+ * source read, so none is claimed. A `/rewind` is not followed (the host marks it with a `rewind`
+ * record and a `parentUuid` chain): a prompt the person typed and then rewound is still words they
+ * typed, so it is returned.
  */
 const readQwen: HostReader = (path) => {
   const said: PersonWord[] = [];
@@ -190,6 +242,12 @@ const readQwen: HostReader = (path) => {
  * request, with the request's own message as `data.content`; the assistant's text, a tool's
  * result and the session header are other types. No answer is read: where the extension logs the
  * answer to a question is not in the source read.
+ *
+ * KNOWN RISK, not closed: the loop logs the request's message the same way for a subagent
+ * (`toolCallingLoop.ts`, `runStartHooks`), under the conversation's session id, and the entry has
+ * no marker of whose it is. The loop starts the transcript only for a regular session, so a
+ * subagent's prompt can reach this file only if its session id is the parent's; the source read
+ * does not say.
  */
 const readVSCode: HostReader = (path) => {
   const said: PersonWord[] = [];
