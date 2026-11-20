@@ -911,6 +911,7 @@ export const HANDED_OVER: Readonly<
   'docs/cli-reference.md': { line: 39, name: 69 },
   'packages/code/README.md': { line: 8, name: 14 },
   'packages/code/src/a-new-identity.ts': { line: 2, name: 2 },
+  'packages/code/src/agent-accept-words.ts': { name: 1 },
   'packages/code/src/agent-accepts.ts': { line: 6, name: 2 },
   'packages/code/src/commands/after-a-write.ts': { line: 2 },
   'packages/code/src/commands/after-update.ts': { line: 2, name: 2 },

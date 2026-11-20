@@ -338,14 +338,17 @@ describe('the three echoes, each naming a record a reader can find', () => {
 
     for (const [reply, id, reads] of replies) {
       // THE ECHO IS ONE LINE, and what may follow it is the sentences an acceptance by an agent
-      // says about itself (who made it, and whether its quoted words were checked), and the directory of the project it fell in: the product's own words,
-      // never a second line a record could forge.
+      // says about itself (who made it, and whether its quoted words were checked), and the
+      // directory of the project it fell in: the product's own words, never a second line a
+      // record could forge.
       const [line = '', ...after] = textOf(reply).split('\n');
       expect(
         after.every(
           (one) =>
             one.startsWith('This acceptance is recorded as made by an agent') ||
-            one.startsWith('The words the note quotes were not checked against what the person said') ||
+            one.startsWith(
+              'The words the note quotes were not checked against what the person said',
+            ) ||
             one.startsWith('  In the project at '),
         ),
         after.join(' / '),
