@@ -495,7 +495,7 @@ export function addressRelativeToRoot(address: string, root: string): string {
  * the link successfully must not fail afterwards over a permission on a directory
  * nobody asked about, and the entry lands in `skipped` so the base still says so.
  */
-function walkProject(
+export function walkProject(
   root: string,
   visit: (relative: string) => void,
   ceiling: number,

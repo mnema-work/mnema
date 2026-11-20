@@ -30,13 +30,24 @@ export function registerRules(program: Command, wiring: Wiring): Declared {
   const rules = program
     .command('rules')
     .description('show which recorded rules govern a path, and which address nothing')
-    .argument('<path>', 'the path to ask about, relative to here or absolute')
+    .argument('[path]', 'the path to ask about, relative to here or absolute')
+    .option(
+      '--coverage',
+      'instead of a path: count the project files by layer (refused, asked, governed, none), per top-level folder, with no score',
+    )
     .option('--json', 'emit the faithful reading as JSON')
-    .action(async (path: string, opts: { json?: boolean }) => {
+    .action(async (path: string | undefined, opts: { json?: boolean; coverage?: boolean }) => {
+      if (opts.coverage === true && path !== undefined) {
+        rules.error('--coverage counts the whole project: give it no path');
+      }
+      if (opts.coverage !== true && path === undefined) {
+        rules.error("missing required argument 'path' (or pass --coverage)");
+      }
       const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
-      const { runRules } = await import('../commands/rules.js');
-      const { rulesReport } = await import('../presentation/rules.js');
-      const result = runRules(here(), { path });
+      const { runRules, runRulesCoverage } = await import('../commands/rules.js');
+      const { rulesReport, coverageReport } = await import('../presentation/rules.js');
+      const result =
+        opts.coverage === true ? runRulesCoverage(here()) : runRules(here(), { path: path as string });
       if (!result.ok) {
         reportRefusal(wiring, result, {});
         return;
@@ -54,6 +65,22 @@ export function registerRules(program: Command, wiring: Wiring): Declared {
       const { severalRecordsSentence } = await import('../record-integrity.js');
       if (result.severalRecords.length > 0) {
         io.err(render(fact(severalRecordsSentence(result.severalRecords))));
+      }
+      if ('coverage' in result) {
+        if (opts.json === true) {
+          io.out(
+            JSON.stringify(
+              result.severalRecords.length === 0
+                ? result.coverage
+                : { ...result.coverage, severalRecords: result.severalRecords },
+              null,
+              2,
+            ),
+          );
+          return;
+        }
+        writeLines(io, coverageReport(render, result.coverage));
+        return;
       }
       if (result.notPushed !== undefined) io.err(render(fact(result.notPushed)));
       if (opts.json === true) {

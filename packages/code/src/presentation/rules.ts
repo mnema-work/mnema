@@ -33,6 +33,7 @@
  */
 
 import type { AddressedRule, GoverningRules } from '@mnema/context';
+import type { RuleCoverage } from '../rule-coverage.js';
 import { inheritedFromText } from '../inherited-record.js';
 import { oneLine } from '../one-line.js';
 import { fact, subjectLine } from './detail.js';
@@ -189,5 +190,56 @@ export function rulesReport(render: Render, governed: GoverningRules): string[] 
   group('naming a rule no tree here holds', governed.unresolved);
   group('asking on behalf of a rule no tree here holds', governed.asksUnresolved);
   group('refusing on behalf of a rule no tree here holds', governed.refusesUnresolved);
+  return lines;
+}
+
+/**
+ * The lines `mnema rules --coverage` prints: how many of the project's files fall under each
+ * layer, in all and per top-level folder, as numbers and nothing else. No percentage and no
+ * word of praise or blame: a count is what the record can say, and whether it is enough is the
+ * project's. A folder name came off the disk, so it is collapsed to one line like any value that
+ * did not come from this surface.
+ */
+export function coverageReport(render: Render, coverage: RuleCoverage): string[] {
+  const counts = (one: RuleCoverage['layers']) =>
+    `${one.refuses} refused · ${one.asks} ask for a person · ${one.governs} governed · ${one.none} under no rule`;
+  const lines = [
+    render(subjectLine('rule coverage', 'in this project')),
+    render(fact(`${coverage.files} file${coverage.files === 1 ? '' : 's'}: ${counts(coverage.layers)}`)),
+    render(
+      fact(
+        'each file counts once, under the strongest layer over it: refused, then asks for a person, then governs',
+      ),
+    ),
+  ];
+  if (coverage.skipped.length > 0) {
+    lines.push(
+      render(fact(`not counted, as not hand-written: ${coverage.skipped.map(oneLine).join(', ')}`)),
+    );
+  }
+  if (coverage.truncated) {
+    lines.push(
+      render(
+        fact(
+          `the walk stopped at ${coverage.ceiling} files: every count here is a floor, and the folders after the stop are missing or short`,
+        ),
+      ),
+    );
+  }
+  if (coverage.folders.length > 0) {
+    lines.push('');
+    lines.push(`per top-level folder (${coverage.folders.length})`);
+    for (const folder of coverage.folders) {
+      lines.push(
+        render(
+          itemLine([
+            oneLine(folder.folder === '.' ? '. (files at the root)' : folder.folder),
+            `${folder.files} file${folder.files === 1 ? '' : 's'}`,
+            counts(folder),
+          ]),
+        ),
+      );
+    }
+  }
   return lines;
 }
