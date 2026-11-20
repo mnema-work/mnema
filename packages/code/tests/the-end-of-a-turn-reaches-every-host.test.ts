@@ -32,6 +32,7 @@ import { Command } from 'commander';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runCorrections } from '../src/commands/corrections.js';
 import { runSessionTally } from '../src/commands/tally.js';
+import { VSCODE_TRANSCRIPT } from '../src/host-hook.js';
 import { END_HOSTS, ENDS, type EndHost, HOSTS, PRESENCE } from '../src/host-names.js';
 import { renderPlain } from '../src/presentation/plain.js';
 import { type CliIo, run } from '../src/program.js';
@@ -156,6 +157,24 @@ function payloadOf(host: EndHost, file: string | null): Record<string, unknown> 
         prompt_response: 'done',
         stop_hook_active: false,
       };
+    case 'vscode':
+      return {
+        hook_event_name: 'Stop',
+        session_id: 'vscode-session',
+        timestamp: '2026-11-20T12:00:00Z',
+        cwd: repo,
+        transcript_path: file,
+        stop_hook_active: false,
+      };
+    case 'qwen':
+      return {
+        hook_event_name: 'Stop',
+        session_id: 'qwen-session',
+        transcript_path: file,
+        cwd: repo,
+        timestamp: '2026-11-20T12:00:00Z',
+        stop_hook_active: false,
+      };
     case 'cursor':
       return {
         hook_event_name: 'stop',
@@ -168,6 +187,9 @@ function payloadOf(host: EndHost, file: string | null): Record<string, unknown> 
       };
   }
 }
+
+/** Where VS Code's agent keeps the transcript a hook names. */
+const VSCODE_PATH = '/home/person/.config/Code/User/workspaceStorage/0f3a9c/GitHub.copilot-chat/transcripts/s1.jsonl';
 
 const OTHER_HOSTS = END_HOSTS.filter((host) => host !== 'claude');
 
@@ -208,10 +230,12 @@ describe('the table of the end of a turn', () => {
       Object.fromEntries(END_HOSTS.map((host) => [host, [ENDS[host].event, ENDS[host].reads]])),
     ).toEqual({
       claude: ['Stop', true],
+      vscode: ['Stop', false],
       codex: ['Stop', false],
       copilot: ['Stop', false],
       gemini: ['AfterAgent', false],
       cursor: ['stop', false],
+      qwen: ['Stop', false],
     });
   });
 
@@ -305,6 +329,62 @@ describe('mnema corrections at the end of a turn, by host', () => {
   }
 });
 
+describe("VS Code's agent and Qwen Code, which read Claude Code's hooks file", () => {
+  /** A Claude Code transcript where VS Code keeps its own, so only the path says whose it is. */
+  function inVsCodesFolder(): string {
+    const dir = join(sandbox, 'workspaceStorage', 'abc123', 'GitHub.copilot-chat', 'transcripts');
+    mkdirSync(dir, { recursive: true });
+    const path = join(dir, 'session.jsonl');
+    writeFileSync(path, readFileSync(aClaudeTranscript(), 'utf-8'));
+    return path;
+  }
+
+  it("does not read a Claude-format transcript a Qwen Code or a VS Code payload names, and keeps no journal", async () => {
+    await did('switch', 'on', 'user-corrections');
+    for (const host of ['qwen', 'vscode'] as const) {
+      const file = aClaudeTranscript();
+      expect(tally(host, payloadOf(host, file)).reply, host).toEqual({});
+      expect(corrections(host, payloadOf(host, file)).reply, host).toEqual({});
+    }
+    const dir = journalsDir(resolveTrees(repo, env));
+    expect(dir === undefined || !existsSync(dir), 'a journal was kept').toBe(true);
+    const listed = await did('search', 'Correction', '--kind', 'decision', '--scope', 'private');
+    expect(listed.join('\n')).not.toContain('Correction:');
+  });
+
+  it('tells VS Code by the folder its transcript is in when no host is named, and reads nothing there', async () => {
+    await did('switch', 'on', 'user-corrections');
+    const file = inVsCodesFolder();
+    const payload = payloadOf('vscode', file);
+    const counted = tally('claude', payload);
+    expect(counted.reply).toEqual({});
+    expect(counted.notes).toEqual([
+      `${HOSTS.vscode.title}'s transcript is in a format this version does not read, so nothing was counted.`,
+    ]);
+    const proposed = corrections('claude', payload);
+    expect(proposed.reply).toEqual({});
+    expect(proposed.notes).toEqual([
+      `${HOSTS.vscode.title}'s transcript is in a format this version does not read, so no correction was read.`,
+    ]);
+    const dir = journalsDir(resolveTrees(repo, env));
+    expect(dir === undefined || !existsSync(dir), 'a journal was kept for VS Code').toBe(true);
+    // The control: the same bytes anywhere else are Claude Code's, and are counted.
+    expect(tally('claude', payloadOf('claude', aClaudeTranscript())).reply).toHaveProperty(
+      'systemMessage',
+    );
+  });
+
+  it("is told apart by the same pattern in the plugin's handlers", () => {
+    const handlers = readFileSync(join(PLUGIN, 'hooks', 'hand-over.mjs'), 'utf-8');
+    expect(/const VSCODE_TRANSCRIPT = (\/.*\/);/.exec(handlers)?.[1]).toBe(
+      VSCODE_TRANSCRIPT.toString(),
+    );
+    expect(VSCODE_TRANSCRIPT.test(VSCODE_PATH)).toBe(true);
+    expect(VSCODE_TRANSCRIPT.test('C:\\Users\\p\\AppData\\Roaming\\Code\\User\\workspaceStorage\\h\\GitHub.copilot-chat\\transcripts\\s.jsonl')).toBe(true);
+    expect(VSCODE_TRANSCRIPT.test('/home/p/.claude/projects/x/s.jsonl')).toBe(false);
+  });
+});
+
 describe('the verbs as the command line routes them', () => {
   /** Runs `mnema <verb> <flags>` with `input` on the standard input. */
   async function typed(
@@ -358,8 +438,8 @@ describe('the hooks files that run the verbs', () => {
       ['copilot', copilotHooksJson()],
     ] as const) {
       expect(commandsOf(file, 'Stop'), host).toEqual([
-        runs('session-tally.mjs', `--host ${host}`),
-        runs('session-corrections.mjs', `--host ${host}`),
+        runs('session-tally.mjs', `--host ${host} --reads no`),
+        runs('session-corrections.mjs', `--host ${host} --reads no`),
       ]);
     }
   });
@@ -371,17 +451,31 @@ describe('the hooks files that run the verbs', () => {
     expect(geminiHookScript()).toContain("const heard = run([verb, '--host', 'gemini'], cwd, raw,");
   });
 
-  it("runs Cursor's own pair at Stop, only where Cursor says it is there, and Claude Code's pair not there", () => {
+  it("runs a pair of its own for Cursor and for Qwen Code at Stop, only where each says it is there, and Claude Code's pair in neither, with `--reads no` where the row says the transcript is not read", () => {
     const stop = commandsOf(hooksJson(), 'Stop');
     expect(stop).toEqual([
-      runs('session-tally.mjs', '--unless CURSOR_VERSION'),
-      runs('session-corrections.mjs', '--unless CURSOR_VERSION'),
-      runs('session-tally.mjs', '--host cursor --where CURSOR_VERSION --unless QWEN_PROJECT_DIR'),
+      runs('session-tally.mjs', '--unless CURSOR_VERSION,QWEN_PROJECT_DIR'),
+      runs('session-corrections.mjs', '--unless CURSOR_VERSION,QWEN_PROJECT_DIR'),
+      runs(
+        'session-tally.mjs',
+        '--host cursor --where CURSOR_VERSION --unless QWEN_PROJECT_DIR --reads no',
+      ),
       runs(
         'session-corrections.mjs',
-        '--host cursor --where CURSOR_VERSION --unless QWEN_PROJECT_DIR',
+        '--host cursor --where CURSOR_VERSION --unless QWEN_PROJECT_DIR --reads no',
       ),
+      runs('session-tally.mjs', '--host qwen --where QWEN_PROJECT_DIR --reads no'),
+      runs('session-corrections.mjs', '--host qwen --where QWEN_PROJECT_DIR --reads no'),
     ]);
+  });
+
+  it('puts `--reads no` on exactly the hosts whose row says the transcript is not read', () => {
+    const files = [codexHooksJson(), copilotHooksJson(), hooksJson()].join('\n');
+    const flagged = (files.match(/--host (\w+)[^"]*--reads no/g) ?? []).map(
+      (line) => /--host (\w+)/.exec(line)?.[1],
+    );
+    expect(new Set(flagged)).toEqual(new Set(END_HOSTS.filter((host) => !ENDS[host].reads && host !== 'gemini' && host !== 'vscode')));
+    expect(geminiHookScript()).toContain(`const ENDED_READS = ${ENDS.gemini.reads};`);
   });
 
   it('is committed as the table generates it', () => {
@@ -433,6 +527,30 @@ describe('the plugin commands a host runs at the end of a turn', () => {
       expect(existsSync(calls), 'a mnema was started for a host that is not here').toBe(false);
     });
 
+    it(`${name} starts nothing for a host whose row says its transcript is not read, though the host is there`, () => {
+      const { bin, calls } = stub();
+      const own = ['--host', 'qwen', '--where', 'QWEN_PROJECT_DIR', '--reads', 'no'];
+      expect(handler(name, own, { QWEN_PROJECT_DIR: '/x' }, bin).stdout).toBe('');
+      expect(existsSync(calls), 'a mnema was started for a transcript that is not read').toBe(false);
+    });
+
+    it(`${name} starts nothing, with no host named, for the transcript VS Code's agent keeps, and still for Claude Code's`, () => {
+      const { bin, calls } = stub();
+      const viaVsCode = JSON.stringify(payloadOf('vscode', VSCODE_PATH));
+      const run = (input: string) =>
+        spawnSync(process.execPath, [join(PLUGIN, 'hooks', name)], {
+          cwd: repo,
+          input,
+          encoding: 'utf-8',
+          env: { HOME: join(sandbox, 'home'), PATH: `${bin}:${process.env.PATH ?? ''}` },
+        });
+      expect(run(viaVsCode).stdout).toBe('');
+      expect(existsSync(calls), 'a mnema was started for a transcript of VS Code').toBe(false);
+      expect(run(JSON.stringify(payloadOf('claude', aClaudeTranscript()))).stdout).toContain(
+        'counted',
+      );
+    });
+
     it(`${name} hands the verb the host and not the filters, where Cursor says it is there`, () => {
       const { bin, calls } = stub();
       const own = ['--host', 'cursor', '--where', 'CURSOR_VERSION', '--unless', 'QWEN_PROJECT_DIR'];
@@ -448,9 +566,31 @@ describe('the plugin commands a host runs at the end of a turn', () => {
     });
   }
 
-  it("Gemini CLI's script, in `ended` mode, runs the two verbs for gemini and says what they say, and says nothing where they say none", () => {
+  it("Gemini CLI's script starts nothing in `ended` mode while its row says the transcript is not read", () => {
     const { bin, calls } = stub();
     const script = join(PLUGIN, 'gemini', 'hooks', 'mnema.mjs');
+    const done = spawnSync(process.execPath, [script, 'ended'], {
+      cwd: repo,
+      input: JSON.stringify(payloadOf('gemini', null)),
+      encoding: 'utf-8',
+      env: { HOME: join(sandbox, 'home'), PATH: `${bin}:${process.env.PATH ?? ''}` },
+    });
+    expect(done.stdout).toBe('');
+    expect(existsSync(calls), 'a mnema was started').toBe(false);
+  });
+
+  it("Gemini CLI's script, in `ended` mode and with the row saying it reads, runs the two verbs for gemini and says what they say, and says nothing where they say none", () => {
+    const { bin, calls } = stub();
+    // The row says `reads: false`, so the committed script ends first; the same script with the row's
+    // constant flipped is what the day a reader exists generates.
+    const script = join(sandbox, 'mnema-gemini.mjs');
+    writeFileSync(
+      script,
+      readFileSync(join(PLUGIN, 'gemini', 'hooks', 'mnema.mjs'), 'utf-8').replace(
+        'const ENDED_READS = false;',
+        'const ENDED_READS = true;',
+      ),
+    );
     const ended = (path: string) =>
       spawnSync(process.execPath, [script, 'ended'], {
         cwd: repo,

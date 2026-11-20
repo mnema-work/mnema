@@ -296,8 +296,27 @@ export type EndOfTurn =
       readonly title: string;
     };
 
-/** Reads a payload as `host` hands it at the end of a turn: `{ end: false }` for any other event. */
-export function endOfTurnOf(host: EndHost, payload: Record<string, unknown>): EndOfTurn {
+/**
+ * Where VS Code's agent keeps the transcript it names at the end of a turn: under its workspace
+ * storage, in the folder of the Copilot Chat extension. VS Code sets no variable a hook can ask
+ * for, and it reads Claude Code's hooks file, so a run that names no host and is handed a
+ * transcript from here is VS Code's, not Claude Code's. The plugin's handlers carry the same
+ * pattern (`hand-over.mjs`), held to this one by `the-end-of-a-turn-reaches-every-host.test.ts`.
+ */
+export const VSCODE_TRANSCRIPT = /[\\/]workspaceStorage[\\/][^\\/]+[\\/]GitHub\.copilot-chat[\\/]transcripts[\\/]/;
+
+/**
+ * Reads a payload as `host` hands it at the end of a turn: `{ end: false }` for any other event.
+ * Where no host is named (Claude Code's, which VS Code and Qwen Code share the hooks file of) and
+ * the transcript is the one VS Code keeps, the host is VS Code's: its transcript is not Claude
+ * Code's, and is not read as if it were.
+ */
+export function endOfTurnOf(asked: EndHost, payload: Record<string, unknown>): EndOfTurn {
+  const path = payload[ENDS[asked].transcript];
+  const host: EndHost =
+    asked === 'claude' && typeof path === 'string' && VSCODE_TRANSCRIPT.test(path)
+      ? 'vscode'
+      : asked;
   const row = ENDS[host];
   if (payload['hook_event_name'] !== row.event) return { end: false };
   const named = payload[row.transcript];

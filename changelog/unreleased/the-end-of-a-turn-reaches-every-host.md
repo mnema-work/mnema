@@ -1,12 +1,16 @@
 Added
 
-- **The end-of-turn hook runs on every host that documents one.** `mnema tally` and `mnema corrections` take `--host`
-  (`claude`, `codex`, `copilot`, `gemini`, `cursor`; Claude Code's when it is not given) and read the end of a turn in
-  the shape the host hands it: Codex's `Stop`, Copilot CLI's `agentStop` (configured as `Stop`), Gemini CLI's
-  `AfterAgent` and Cursor's `stop`. The plugin wires them: `codex.json` and `copilot.json` run both verbs at `Stop`,
-  Gemini CLI's extension runs them at `AfterAgent` (which cannot add context, so a line they say goes to the person as a
-  `systemMessage`), and `hooks.json` gives Cursor a pair of its own, run only where Cursor says it is there. Only
-  Claude Code's transcript is read today: for every other host the verbs say on their second stream that the
-  transcript is in a format this version does not read, or that the payload named none, and count nothing, keep no
-  session journal and record no proposal. The cells of the presence map say it, and reading each host's transcript is
-  what is left.
+- **The end-of-turn hook is wired in every host that documents one, and says what each can do.** `mnema tally` and
+  `mnema corrections` take `--host` (`claude`, `vscode`, `codex`, `copilot`, `gemini`, `cursor`, `qwen`; Claude Code's
+  when it is not given, and VS Code's when the transcript the payload names is in the folder VS Code keeps its own,
+  since it sets no variable) and read the end of a turn in the shape the host hands it: `Stop` in Codex, Copilot CLI
+  (`agentStop`, configured as `Stop`), Qwen Code and VS Code's agent, `AfterAgent` in Gemini CLI, `stop` in Cursor. The
+  plugin wires them: `codex.json` and `copilot.json` at `Stop`, Gemini CLI's extension at `AfterAgent`, and
+  `hooks.json` with a pair each for Cursor and Qwen Code, run only where the host says it is there, Claude Code's pair
+  yielding to both. State per host, from the table of hosts: Claude Code's transcript is read, and the count, the
+  journal and the corrections work; the transcript of VS Code's agent, Codex, Copilot CLI, Gemini CLI, Cursor's
+  command-line agent and Qwen Code is not read yet (no reader of its format is built), so for them nothing is counted,
+  no journal is kept and no proposal is recorded. Where the row says so, the hooks file carries `--reads no` and the
+  handler ends before it starts `node` and `mnema` twice a turn (Gemini CLI's script does the same by a constant); run
+  by hand, the verbs say it on their second stream. VS Code's agent and Qwen Code, which share Claude Code's hooks file,
+  no longer have their transcripts parsed as Claude Code's.

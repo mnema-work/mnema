@@ -6,7 +6,7 @@ What a session keeps between its Stop hooks, what it is handed again after a com
 
 At each `Stop` `mnema tally` keeps a small file for the session, at
 `<data directory>/sessions/<digest of the project>/<the host's session id>.json` (`~/.mnema`, or `$MNEMA_HOME`), when the hook
-names the session (Claude Code does, as `session_id`; the end of a turn in Codex, Copilot CLI, Gemini CLI and Cursor runs the same verb, which keeps no journal there because only Claude Code's transcript is read). It lets the next `Stop` read the transcript from the byte where the last
+names the session (Claude Code does, as `session_id`; the end of a turn in VS Code's agent, Codex, Copilot CLI, Gemini CLI, Cursor's command-line agent and Qwen Code runs the same verb, which keeps no journal there, because only Claude Code's transcript is read so far). It lets the next `Stop` read the transcript from the byte where the last
 reading stopped instead of the whole conversation again, and it holds, in ids and counts, what the session did with the
 record: the decisions recorded since it opened (their ids and state), the notes of the host's memory copied into the private
 tree (their ids), how many questions the person answered with no decision recorded after, how many files that hold decisions

@@ -895,7 +895,7 @@ export const BESIDE_HOSTS = HOOK_HOSTS.filter(
  * they were handed and never guess it from the event name. The event is the one the host's own
  * documentation names for the end of a turn: Claude Code, Codex and Copilot CLI (under the
  * PascalCase name, which hands the payload in snake_case) call it `Stop`; Gemini CLI `AfterAgent`;
- * Cursor `stop`.
+ * Cursor `stop`; VS Code's agent and Qwen Code, which read Claude Code's hooks file, `Stop`.
  *
  * `reads` IS WHETHER THE TRANSCRIPT NAMED CAN BE READ, and today only Claude Code's can: the
  * readers (`what-the-session-did.ts`, `user-corrections.ts`) understand its JSONL line by line,
@@ -908,6 +908,7 @@ export const BESIDE_HOSTS = HOOK_HOSTS.filter(
  */
 export const ENDS = {
   claude: { event: 'Stop', session: 'session_id', transcript: 'transcript_path', reads: true },
+  vscode: { event: 'Stop', session: 'session_id', transcript: 'transcript_path', reads: false },
   codex: { event: 'Stop', session: 'session_id', transcript: 'transcript_path', reads: false },
   copilot: { event: 'Stop', session: 'session_id', transcript: 'transcript_path', reads: false },
   gemini: {
@@ -917,6 +918,7 @@ export const ENDS = {
     reads: false,
   },
   cursor: { event: 'stop', session: null, transcript: 'transcript_path', reads: false },
+  qwen: { event: 'Stop', session: 'session_id', transcript: 'transcript_path', reads: false },
 } as const;
 
 /** A host whose end of a turn this product answers, in the order of {@link ENDS}. */
@@ -1065,7 +1067,10 @@ export const PRESENCE = {
       VSCODE_MEMORY,
     ),
     file: documented('PostToolUse, which the host runs whatever the matcher', VSCODE_HOOKS),
-    end: documented('Stop', VSCODE_HOOKS),
+    end: documented(
+      'Stop; it reads the same hooks file as Claude Code, is told apart by the folder its transcript is in, and that transcript is not read yet',
+      VSCODE_HOOKS,
+    ),
     subagentStart: documented('SubagentStart', VSCODE_HOOKS),
     subagentStop: documented('SubagentStop', VSCODE_HOOKS),
   },

@@ -43,6 +43,18 @@
       "index": 1,
       "runs": "hooks/session-corrections.mjs"
     },
+    "session-tally-stop-qwen": {
+      "event": "Stop",
+      "group": 2,
+      "index": 0,
+      "runs": "hooks/session-tally.mjs"
+    },
+    "session-corrections-qwen": {
+      "event": "Stop",
+      "group": 2,
+      "index": 1,
+      "runs": "hooks/session-corrections.mjs"
+    },
     "rules-before-an-edit": {
       "event": "PreToolUse",
       "group": 0,

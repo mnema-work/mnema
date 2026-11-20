@@ -38,17 +38,28 @@ const VERB = ['tally'];
 try {
   const {
     aHostYields,
+    itIsVsCodesTranscript,
     theHostIsNotHere,
+    theTranscriptIsNotRead,
     whatTheVerbReports,
     whereTheSessionIs,
     withoutTheFiltersOfTheHooksFile,
   } = await import('./hand-over.mjs');
   const argv = process.argv.slice(2);
   // A host that reads a hooks file it shares (Cursor reads Claude Code's) runs the command that is
-  // another host's too: `--where` and `--unless` end it here, before `mnema` starts.
-  if (theHostIsNotHere(argv, process.env) || aHostYields(argv, process.env)) process.exit(0);
+  // another host's too: `--where` and `--unless` end it here, before `mnema` starts, and so does
+  // `--reads no`, for a host whose transcript this product does not read yet.
+  if (
+    theHostIsNotHere(argv, process.env) ||
+    aHostYields(argv, process.env) ||
+    theTranscriptIsNotRead(argv)
+  ) {
+    process.exit(0);
+  }
   const chunks = [];
   for await (const chunk of process.stdin) chunks.push(chunk);
+  // VS Code's agent reads this file too and is told apart only by where its transcript is kept.
+  if (itIsVsCodesTranscript(argv, Buffer.concat(chunks).toString('utf-8'))) process.exit(0);
   const { answer, said } = whatTheVerbReports(
     [...VERB, ...withoutTheFiltersOfTheHooksFile(argv)],
     whereTheSessionIs(),

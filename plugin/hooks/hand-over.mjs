@@ -744,6 +744,45 @@ export function theHostIsNotHere(argv, env) {
 }
 
 /**
+ * Whether the hooks file's `--reads no` turns the run away: the host's row says this product does
+ * not read the transcript that host names yet, so a verb run for it would start `node` and `mnema`
+ * to say so and do nothing else, twice a turn. Left out by the generator the day the row says it
+ * reads (`ENDS` in `host-names.ts`).
+ *
+ * @param {readonly string[]} argv The handler's own arguments, from the hooks file.
+ * @returns {boolean}
+ */
+export function theTranscriptIsNotRead(argv) {
+  return flagValue(argv, '--reads') === 'no';
+}
+
+/**
+ * Where VS Code's agent keeps the transcript it names at the end of a turn. A copy of
+ * `VSCODE_TRANSCRIPT` in `host-hook.ts`, because the plugin runs with no build; the test of the end
+ * of a turn holds the two together.
+ */
+const VSCODE_TRANSCRIPT = /[\\/]workspaceStorage[\\/][^\\/]+[\\/]GitHub\.copilot-chat[\\/]transcripts[\\/]/;
+
+/**
+ * Whether a run that names no host was handed the transcript of VS Code's agent, which reads the
+ * hooks file Claude Code's pair is in and sets no variable to be told apart by: that transcript is
+ * not read, so the run ends before `mnema` starts, as the verb itself would end it.
+ *
+ * @param {readonly string[]} argv The handler's own arguments, from the hooks file.
+ * @param {string} input What the host handed this hook.
+ * @returns {boolean}
+ */
+export function itIsVsCodesTranscript(argv, input) {
+  if (flagValue(argv, '--host') !== undefined) return false;
+  try {
+    const path = JSON.parse(input)?.transcript_path;
+    return typeof path === 'string' && VSCODE_TRANSCRIPT.test(path);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Whether the hooks file's `--tools <a,b,…>` turns a call away: it names tools, and the payload
  * names none of them. Where the hooks file names none, nothing is turned away. This is what the
  * hooks file's shell did for the handlers that carry no gate (`case "$IN" in *'"Agent"'*`), now
@@ -761,8 +800,8 @@ export function theToolIsNotNamed(argv, input) {
 }
 
 /**
- * The handler's own arguments without the three that only say whether to start (`--tools`,
- * `--unless` and `--where`, each with its value): what is left is what the verb is handed.
+ * The handler's own arguments without the four that only say whether to start (`--tools`,
+ * `--unless`, `--where` and `--reads`, each with its value): what is left is what the verb is handed.
  *
  * @param {readonly string[]} argv
  * @returns {string[]}
@@ -770,7 +809,13 @@ export function theToolIsNotNamed(argv, input) {
 export function withoutTheFiltersOfTheHooksFile(argv) {
   const kept = [];
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--tools' || argv[i] === '--unless' || argv[i] === '--where') i++;
+    if (
+      argv[i] === '--tools' ||
+      argv[i] === '--unless' ||
+      argv[i] === '--where' ||
+      argv[i] === '--reads'
+    )
+      i++;
     else kept.push(/** @type {string} */ (argv[i]));
   }
   return kept;

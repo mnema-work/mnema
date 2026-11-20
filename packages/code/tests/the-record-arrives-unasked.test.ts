@@ -466,6 +466,7 @@ function runHook(command: string, at: string): Ran {
       ...(handlerOf(command) === CURSOR_HOOK || command.includes('--where CURSOR_VERSION')
         ? { CURSOR_VERSION: '2026.09.18' }
         : {}),
+      ...(command.includes('--where QWEN_PROJECT_DIR') ? { QWEN_PROJECT_DIR: '/qwen' } : {}),
     },
     encoding: 'utf-8',
   });
@@ -644,6 +645,8 @@ describe('the record arrives unasked', () => {
       DOCUMENT_HOOK,
       NOTES_HOOK,
       COMPACTED_HOOK,
+      TALLY_HOOK,
+      CORRECTIONS_HOOK,
       TALLY_HOOK,
       CORRECTIONS_HOOK,
       TALLY_HOOK,
@@ -1448,8 +1451,6 @@ describe('the record arrives unasked', () => {
         `recall --after-a-compaction --session ${A_SESSION} --hook`,
         'tally',
         'corrections',
-        'tally --host cursor',
-        'corrections --host cursor',
         'before-a-write --host cursor --agent-key cursor',
         'before-a-write --host vscode --agent-key vscode',
         'settled',
@@ -1457,9 +1458,7 @@ describe('the record arrives unasked', () => {
         'dispatched',
         'handback',
       ]);
-      expect(new Set(reached)).toEqual(
-        new Set([...Object.values(VERB_OF), 'tally --host cursor', 'corrections --host cursor']),
-      );
+      expect([...reached]).toEqual([...new Set(Object.values(VERB_OF))]);
 
       // And each is on the side the PRODUCT declares it on. Read off the same declaration the
       // parser routes with, so a verb that ever changed sides would land here rather than in a
@@ -1473,8 +1472,6 @@ describe('the record arrives unasked', () => {
         `recall --after-a-compaction --session ${A_SESSION} --hook: reads`,
         'tally: reads',
         'corrections: mutates',
-        'tally --host cursor: reads',
-        'corrections --host cursor: mutates',
         'before-a-write --host cursor --agent-key cursor: mutates',
         'before-a-write --host vscode --agent-key vscode: mutates',
         'settled: reads',
@@ -1562,6 +1559,8 @@ describe('the record arrives unasked', () => {
       'command:/hooks/session-start.mjs',
       'command:/hooks/session-recall.mjs',
       'command:/hooks/session-compacted.mjs',
+      'command:/hooks/session-tally.mjs',
+      'command:/hooks/session-corrections.mjs',
       'command:/hooks/session-tally.mjs',
       'command:/hooks/session-corrections.mjs',
       'command:/hooks/session-tally.mjs',
