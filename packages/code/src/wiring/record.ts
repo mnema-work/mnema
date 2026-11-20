@@ -14,8 +14,10 @@
  */
 
 import type { Command } from 'commander';
+import type { RecordCommitRefused } from '../commands/record-commit.js';
 import { fact } from '../presentation/detail.js';
 import { here } from './context.js';
+import { nameRefusals } from './no-such-decision.js';
 import { onOneLine } from './on-one-line.js';
 import { reportRefusal } from './report.js';
 import { type Declared, mutatesTheRecord, type Wiring } from './verb.js';
@@ -28,6 +30,50 @@ const NAMED = 10;
 function someOf(paths: readonly string[]): string {
   const named = paths.slice(0, NAMED).join(', ');
   return paths.length > NAMED ? `${named} and ${paths.length - NAMED} more` : named;
+}
+
+/** What each refusal of a cut says: the sentences `record commit` and `record publish` share. */
+function commitRefusals(refused: RecordCommitRefused): Record<string, string> {
+  return {
+    NOT_A_REPOSITORY: 'The record here is not inside a git repository.',
+    A_LINK:
+      refused.reason === 'A_LINK'
+        ? onOneLine`Nothing was made: these are symbolic links where the record keeps files, and a link is not followed into a commit: ${someOf(refused.paths)}.`
+        : '',
+    NO_REMOTE:
+      refused.reason === 'NO_REMOTE'
+        ? refused.remotes.length === 0
+          ? 'This repository has no remote to open a pull request on: `git remote add origin <address>` names one.'
+          : onOneLine`This repository has several remotes (${refused.remotes.join(', ')}), and the current branch follows none of them: \`git branch --set-upstream-to <remote>/<branch>\` names the one.`
+        : '',
+    NO_DEFAULT_BRANCH:
+      refused.reason === 'NO_DEFAULT_BRANCH'
+        ? onOneLine`This clone does not know which branch ${refused.remote} calls its default, and reading it would reach the network: \`git remote set-head ${refused.remote} --auto\` reads it, or \`git remote set-head ${refused.remote} <branch>\` names it.`
+        : '',
+    NO_SUCH_DESTINATION:
+      refused.reason === 'NO_SUCH_DESTINATION'
+        ? onOneLine`This clone does not hold ${refused.remote}/${refused.branch}, and reading it would reach the network: \`git fetch ${refused.remote} ${refused.branch}\` reads it.`
+        : '',
+    NOT_A_PREFIX:
+      refused.reason === 'NOT_A_PREFIX'
+        ? `Nothing was made: the base does not hold the start of the record here. ${refused.found.map((one) => one.said).join(' ')} Bring the base in with \`mnema record pull\` first.`
+        : '',
+    ...(refused.reason === 'NO_SUCH_DECISION' || refused.reason === 'AMBIGUOUS_LABEL'
+      ? nameRefusals(refused)
+      : {}),
+    NOT_COVERED:
+      refused.reason === 'NOT_COVERED'
+        ? onOneLine`No signed checkpoint of the committed tree here covers the recording of ${refused.typed} yet, so no cut ends with it.`
+        : '',
+    GIT_FAILED:
+      refused.reason === 'GIT_FAILED'
+        ? `Git refused to build the commit, and no branch was made: ${refused.said}`
+        : '',
+    DOES_NOT_VERIFY:
+      refused.reason === 'DOES_NOT_VERIFY'
+        ? `The cut does not verify, and no branch was made: ${refused.said.join('; ')}.`
+        : '',
+  };
 }
 
 /** Registers `mnema record` on the program. */
@@ -161,48 +207,12 @@ export function registerRecord(program: Command, wiring: Wiring): Declared {
     )
     .action(async (opts: { through?: string; json?: boolean }) => {
       const { runRecordCommit } = await import('../commands/record-commit.js');
-      const { nameRefusals } = await import('./no-such-decision.js');
       const result = runRecordCommit(
         { ...here(), processEnv: process.env, now: Date.now() },
         opts.through !== undefined ? { through: opts.through } : {},
       );
       if (!result.ok) {
-        reportRefusal(wiring, result, {
-          NOT_A_REPOSITORY: 'The record here is not inside a git repository.',
-          A_LINK:
-            result.reason === 'A_LINK'
-              ? onOneLine`Nothing was made: these are symbolic links where the record keeps files, and a link is not followed into a commit: ${someOf(result.paths)}.`
-              : '',
-          NO_REMOTE:
-            result.reason === 'NO_REMOTE'
-              ? result.remotes.length === 0
-                ? 'This repository has no remote to open a pull request on: `git remote add origin <address>` names one.'
-                : onOneLine`This repository has several remotes (${result.remotes.join(', ')}), and the current branch follows none of them: \`git branch --set-upstream-to <remote>/<branch>\` names the one.`
-              : '',
-          NO_DEFAULT_BRANCH:
-            result.reason === 'NO_DEFAULT_BRANCH'
-              ? onOneLine`This clone does not know which branch ${result.remote} calls its default, and reading it would reach the network: \`git remote set-head ${result.remote} --auto\` reads it, or \`git remote set-head ${result.remote} <branch>\` names it.`
-              : '',
-          NOT_A_PREFIX:
-            result.reason === 'NOT_A_PREFIX'
-              ? `Nothing was made: the base does not hold the start of the record here. ${result.found.map((one) => one.said).join(' ')} Bring the base in with \`mnema record pull\` first.`
-              : '',
-          ...(result.reason === 'NO_SUCH_DECISION' || result.reason === 'AMBIGUOUS_LABEL'
-            ? nameRefusals(result)
-            : {}),
-          NOT_COVERED:
-            result.reason === 'NOT_COVERED'
-              ? onOneLine`No signed checkpoint of the committed tree here covers the recording of ${result.typed} yet, so no cut ends with it.`
-              : '',
-          GIT_FAILED:
-            result.reason === 'GIT_FAILED'
-              ? `Git refused to build the commit, and no branch was made: ${result.said}`
-              : '',
-          DOES_NOT_VERIFY:
-            result.reason === 'DOES_NOT_VERIFY'
-              ? `The cut does not verify, and no branch was made: ${result.said.join('; ')}.`
-              : '',
-        });
+        reportRefusal(wiring, result, commitRefusals(result));
         return;
       }
       if (opts.json === true) {
@@ -270,6 +280,109 @@ export function registerRecord(program: Command, wiring: Wiring): Declared {
       );
       io.out(render(fact(onOneLine`next: ${result.next.push}`)));
       io.out(render(fact(onOneLine`then: ${result.next.open}`)));
+    });
+
+  group
+    .command('publish')
+    .description('push the record branch and open its pull request, to a destination you name')
+    .option('--to <remote/branch>', 'the branch the pull request asks to merge into, on its remote')
+    .option('--through <decision>', 'cut the tail that records this decision where it is covered')
+    .option('--json', 'emit what was published as JSON')
+    .addHelpText(
+      'after',
+      [
+        '',
+        'Off until `mnema switch on record-publish` (recorded for this machine only). It makes what',
+        '`mnema record commit` makes, on top of the remote-tracking ref you name (the destination is',
+        'never deduced from HEAD), then pushes that branch alone, without force, and opens the pull',
+        'request on GitHub through `gh`. It refuses, before it cuts anything, when this repository',
+        'sets no `user.email` of its own or sets the global one, and when a pull request that',
+        'changes only the record is open into the destination: it says how long ago it was opened,',
+        'and that it has stalled past 24 hours. It never merges.',
+      ].join('\n'),
+    )
+    .action(async (opts: { to?: string; through?: string; json?: boolean }) => {
+      const { runRecordPublish, STALLED_AFTER_HOURS } = await import(
+        '../commands/record-publish.js'
+      );
+      const result = runRecordPublish(
+        { ...here(), processEnv: process.env, now: Date.now() },
+        {
+          to: opts.to,
+          ...(opts.through !== undefined ? { through: opts.through } : {}),
+        },
+      );
+      if (!result.ok) {
+        if (result.reason === 'CUT_REFUSED') {
+          reportRefusal(wiring, result.refused, commitRefusals(result.refused));
+          return;
+        }
+        reportRefusal(wiring, result, {
+          NOT_A_REPOSITORY: 'The record here is not inside a git repository.',
+          SWITCH_OFF:
+            'Publishing the record is off on this machine: `mnema switch on record-publish` turns it on, for this machine only.',
+          NO_DESTINATION:
+            result.reason === 'NO_DESTINATION'
+              ? result.typed === undefined
+                ? onOneLine`Name the branch the pull request asks to merge into, with \`--to <remote>/<branch>\`${result.remotes.length > 0 ? ` (the remotes here: ${result.remotes.join(', ')})` : ''}.`
+                : onOneLine`${result.typed} is not a branch of a remote of this repository${result.remotes.length > 0 ? ` (the remotes here: ${result.remotes.join(', ')})` : ''}: name it as \`--to <remote>/<branch>\`.`
+              : '',
+          NO_PUBLIC_IDENTITY:
+            result.reason === 'NO_PUBLIC_IDENTITY'
+              ? result.why === 'unset'
+                ? 'Nothing was made: this repository sets no e-mail of its own (`git config user.email <address>` in it), and a commit that is pushed carries its author’s e-mail for good.'
+                : 'Nothing was made: the e-mail this repository sets is the global one, and the one a pull request publishes is the repository’s own (`git config user.email <address>` in it).'
+              : '',
+          NOT_GITHUB:
+            result.reason === 'NOT_GITHUB'
+              ? onOneLine`Nothing was made: the address of ${result.remote} is not GitHub's, and the pull requests are read and opened through \`gh\`. By hand: check that no record pull request is open, then \`mnema record commit\` and what it prints.`
+              : '',
+          GH_ABSENT:
+            'Nothing was made: `gh` is not installed here, and an open pull request of the record is read through it. By hand: check that no record pull request is open, then `mnema record commit` and what it prints.',
+          GH_FAILED:
+            result.reason === 'GH_FAILED'
+              ? `Nothing was made: \`gh\` did not list the open pull requests (${result.said}).`
+              : '',
+          PULL_REQUEST_OPEN:
+            result.reason === 'PULL_REQUEST_OPEN'
+              ? onOneLine`Nothing was made: the pull request ${result.pullRequest.url} changes only the record and is open, for ${result.pullRequest.hoursOpen} h; a second cut would carry its lines again.${result.pullRequest.stalled ? ` It has stalled: it is open past ${STALLED_AFTER_HOURS} h, and it needs merging or closing before the record goes on.` : ''}`
+              : '',
+          AUTHOR_NOT_PUBLIC:
+            result.reason === 'AUTHOR_NOT_PUBLIC'
+              ? onOneLine`The branch ${result.branch} was made here and carries an author or a committer e-mail other than this repository's own, so nothing was pushed: delete it (\`git branch -D ${result.branch}\`) and run this again without \`GIT_AUTHOR_EMAIL\` or \`GIT_COMMITTER_EMAIL\` set.`
+              : '',
+          PUSH_FAILED:
+            result.reason === 'PUSH_FAILED'
+              ? onOneLine`The branch ${result.branch} was made here and git did not push it: ${result.said}. Running this again pushes it.`
+              : '',
+          PULL_REQUEST_NOT_OPENED:
+            result.reason === 'PULL_REQUEST_NOT_OPENED'
+              ? onOneLine`The branch ${result.branch} is pushed and \`gh\` did not open its pull request: ${result.said}. Running this again opens it.`
+              : '',
+        });
+        return;
+      }
+      if (opts.json === true) {
+        io.out(JSON.stringify(result, null, 2));
+        return;
+      }
+      if (result.kind === 'nothing') {
+        io.out(
+          render(
+            fact(
+              onOneLine`Nothing to publish: ${result.base.ref} already holds the record here through the last signed checkpoint of each tail.`,
+            ),
+          ),
+        );
+        return;
+      }
+      io.out(
+        render(
+          fact(
+            onOneLine`Pushed ${result.branch} (${result.events} event(s)) and opened ${result.url} into ${result.base.ref}; nothing was merged.`,
+          ),
+        ),
+      );
     });
 
   group

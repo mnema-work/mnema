@@ -45,6 +45,7 @@ import { openTreeForWriting, switchChannel } from '@mnema/core/write';
 import { mayTurnAgentAcceptsOn } from '../agent-accepts.js';
 import { type AnchorForms, anchorForms } from '../anchors.js';
 import {
+  RECORD_PUBLISH_CHANNEL,
   STARTS_OFF,
   SWITCHABLE_CHANNELS,
   type SwitchableChannel,
@@ -233,11 +234,25 @@ export function runSwitch(
   }
   const writing = treesToWrite(ctx);
   const { trees } = writing;
+  // `record-publish` is this machine's: switched on, it goes to the private tree unless a scope is
+  // named, and never to the tree a clone gets, which the verb does not read for it (ADR-617).
+  const onlyThisMachine = input.channel === RECORD_PUBLISH_CHANNEL && input.on;
   const scope = resolveScope(
     'channel.switched',
     originOfTheWrite(writing, input.which),
-    input.scope,
+    input.scope ?? (onlyThisMachine ? 'private' : undefined),
   );
+  if (onlyThisMachine && scope === 'public') {
+    return {
+      ok: false,
+      reason: 'REFUSED',
+      code: 'MACHINE_ONLY',
+      message:
+        '`record-publish` is switched on for this machine only: a switch in the tree a clone gets ' +
+        'would turn it on in every clone, and the verb does not read it there. Leave `--scope` ' +
+        'out, or use `--scope private` or `--scope global`.',
+    };
+  }
   if (scope !== 'global' && trees.projectPublic === undefined) {
     return { ok: false, reason: 'NO_PROJECT' };
   }

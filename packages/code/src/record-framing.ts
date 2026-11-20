@@ -392,7 +392,8 @@ export type SwitchableChannel =
   | 'session-journal'
   | 'agent-mirror'
   | 'last-session'
-  | 'private-rules';
+  | 'private-rules'
+  | 'record-publish';
 
 /**
  * The two switchable channels, each named once, so no consumer spells one.
@@ -576,12 +577,25 @@ export const SUBAGENT_HANDBACK_CHANNEL: SwitchableChannel = 'subagent-handback';
 export const FIRST_WRITE_GATE_CHANNEL: CountedChannel = 'edit-first-write-gate';
 
 /**
+ * The switch of `mnema record publish`, the verb that pushes the record's branch and opens its pull
+ * request on a forge (ADR-617).
+ *
+ * NOT A CHANNEL TO A MODEL, like {@link TOOL_CALL_COUNT_CHANNEL}: nothing is put in front of anybody,
+ * and it is a switch in the form every other one takes. OFF UNTIL A PERSON SWITCHES IT ON, and read
+ * from this machine's trees only (the private one and the global one, never the tree a clone gets):
+ * a committed `on` would make every clone of a public repository, a contributor's included, start
+ * pushing branches. `mnema switch on record-publish` records it privately without being asked to.
+ */
+export const RECORD_PUBLISH_CHANNEL: SwitchableChannel = 'record-publish';
+
+/**
  * The switchable channels that begin OFF: every other begins on. Read by every consumer that asks
  * where a channel stands, so "off until switched on" is one list and not a default repeated.
  */
 export const STARTS_OFF: readonly SwitchableChannel[] = [
   'edit-first-write-gate',
   'user-corrections',
+  'record-publish',
   // NOT `host-memory-mirror`, which writes without a verb and begins ON all the same: ADR-39 decided
   // it, named here because it is the one exception to "a channel that writes without a verb starts
   // off", and the rule still holds for every other such channel.
@@ -713,6 +727,10 @@ export const NOT_COUNTED_AS_SERVED: {
   'choice-settled':
     'the sentence is printed by `mnema settled`, which reads the payload and the record’s switches ' +
     'and writes nothing (no event, no key, no run), so a question answered never moves the record',
+  'record-publish':
+    'it puts nothing in front of a model: the verb is run by a person, pushes a branch and opens a ' +
+    'pull request, and the forge keeps the record of both, so a fact saying the channel was served ' +
+    'would repeat it',
   'tool-call-count':
     'it puts nothing in front of a model and writes nothing to the record: the line it keeps is ' +
     'appended to a file on this machine, outside it, so a fact saying it was served would be a ' +
@@ -855,6 +873,11 @@ export const WHAT_STOPS: { readonly [K in SwitchableChannel]: string } = {
     'wrote and how many decisions were recorded since it opened, and how many events of the ' +
     'record are in no git commit yet, and, on a second line, how many of those decisions still ' +
     'await a person',
+  'record-publish':
+    'the verb `mnema record publish`, which pushes the branch `mnema record commit` makes and ' +
+    'opens its pull request on GitHub, to a destination the person names, one pull request at ' +
+    'a time. Off until switched on, and read from this machine’s own trees only: a switch ' +
+    'recorded in the tree a clone gets does not turn it on',
 };
 
 /**
