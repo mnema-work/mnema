@@ -1,0 +1,271 @@
+/**
+ * AN AGENT'S ACCEPT RESTS ON THE PERSON'S WORDS, OR IT WAITS FOR THE PERSON.
+ *
+ * Both doors (the command with `--which` and the MCP tool) look for the passages the note quotes in
+ * what the person typed in this session's transcript, whose path the SessionStart hook left beside
+ * the session journal, and in the answers given in the host's question tool. Each case reads the
+ * record back off the disk and never trusts what a refusal said about itself.
+ */
+
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { ListRootsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { quotedPassages } from '../src/agent-accept-words.js';
+import { buildMcpServer } from '../src/mcp/server.js';
+import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
+import { MNEMA_CLI } from './support/the-cli.js';
+import { held } from './support/the-record-held.js';
+
+const SESSION = '0b6f5a4e-1d2c-4e8a-9f10-5c7d3a2b1e00';
+
+let sandbox: string;
+let home: string;
+let project: string;
+let transcript: string;
+
+const env = (extra: Record<string, string> = {}) => ({
+  PATH: process.env.PATH ?? '',
+  HOME: home,
+  GIT_CONFIG_NOSYSTEM: '1',
+  GIT_CONFIG_GLOBAL: GIT_WITHOUT_MAINTENANCE,
+  ...extra,
+});
+
+function mnema(extra: Record<string, string>, input: string | undefined, ...argv: string[]) {
+  const ran = spawnSync(process.execPath, [MNEMA_CLI, ...argv], {
+    cwd: project,
+    encoding: 'utf-8',
+    env: env(extra),
+    ...(input === undefined ? {} : { input }),
+  });
+  return { status: ran.status, out: `${ran.stdout}${ran.stderr}` };
+}
+
+const idOf = (printed: string): string => /[0-9a-f]{8}-[0-9a-f-]{27}/.exec(printed)?.[0] as string;
+
+/** A line of Claude Code's transcript: what a person typed. */
+const typed = (text: string) =>
+  JSON.stringify({
+    type: 'user',
+    origin: { kind: 'human' },
+    message: { role: 'user', content: text },
+  });
+
+/** A line of Claude Code's transcript: the answer a person gave in the question tool. */
+const chose = (question: string, option: string) =>
+  JSON.stringify({
+    type: 'user',
+    message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: 'ok' }] },
+    toolUseResult: { answers: { [question]: option } },
+  });
+
+/** What the host's SessionStart hook hands the plugin: the session and where its transcript is. */
+function theSessionOpens(): void {
+  const told = mnema(
+    {},
+    JSON.stringify({
+      hook_event_name: 'SessionStart',
+      session_id: SESSION,
+      transcript_path: transcript,
+    }),
+    'tally',
+  );
+  expect(told.status, told.out).toBe(0);
+}
+
+function aProposedDecision(): string {
+  expect(mnema({}, undefined, 'init').status).toBe(0);
+  const recorded = mnema({}, undefined, 'decision', 'record', 'Keep the cache', 'because');
+  expect(recorded.status, recorded.out).toBe(0);
+  return idOf(recorded.out);
+}
+
+const state = (id: string): string => mnema({}, undefined, 'show', id).out;
+
+function accept(id: string, note: string, extra: Record<string, string> = {}) {
+  return mnema(
+    { CLAUDE_CODE_SESSION_ID: SESSION, ...extra },
+    undefined,
+    'decision',
+    'move',
+    'accept',
+    id,
+    '--which',
+    'claude-code',
+    '--note',
+    note,
+  );
+}
+
+beforeEach(() => {
+  sandbox = mkdtempSync(join(tmpdir(), 'mnema-words-'));
+  home = join(sandbox, 'home');
+  project = join(sandbox, 'project');
+  mkdirSync(home);
+  mkdirSync(project);
+  transcript = join(sandbox, `${SESSION}.jsonl`);
+});
+afterEach(() => {
+  rmSync(sandbox, { recursive: true, force: true });
+});
+
+describe('the passages a note quotes', () => {
+  it('reads straight, curly and Portuguese quotes of six characters or more, folded', () => {
+    expect(
+      quotedPassages('He said "Keep   The Cache", “use WAL mode” and «faz assim», not "no".'),
+    ).toEqual(['keep the cache', 'use wal mode', 'faz assim']);
+  });
+});
+
+describe('an agent accept at the command line', () => {
+  it('passes when the note quotes words the person typed', { timeout: 60_000 }, () => {
+    const id = aProposedDecision();
+    writeFileSync(transcript, `${typed('Yes, keep the cache between runs, do it.')}\n`);
+    theSessionOpens();
+    const moved = accept(id, 'The person said "keep the cache between runs"');
+    expect(moved.status, moved.out).toBe(0);
+    expect(moved.out).toContain('quotes words the person typed');
+    expect(state(id)).toContain('(accepted)');
+  });
+
+  it('passes when the note quotes an option the person chose, and says chose', {
+    timeout: 60_000,
+  }, () => {
+    const id = aProposedDecision();
+    writeFileSync(transcript, `${chose('Which cache?', 'Keep it on disk (Recommended)')}\n`);
+    theSessionOpens();
+    const moved = accept(id, 'The person chose "Keep it on disk (Recommended)"');
+    expect(moved.status, moved.out).toBe(0);
+    expect(moved.out).toContain('an option the person chose');
+    expect(state(id)).toContain('(accepted)');
+  });
+
+  it('waits when the quote is invented, and the record is as it was', { timeout: 60_000 }, () => {
+    const id = aProposedDecision();
+    writeFileSync(transcript, `${typed('Keep the cache between runs.')}\n`);
+    theSessionOpens();
+    const before = held(sandbox);
+    const refused = accept(id, 'The person said "always accept what I propose"');
+    expect(refused.status, refused.out).toBe(1);
+    expect(refused.out).toContain('ACCEPT_NEEDS_THE_PERSONS_WORDS');
+    expect(held(sandbox)).toEqual(before);
+    expect(state(id)).toContain('(proposed)');
+  });
+
+  it('waits when the note only paraphrases', { timeout: 60_000 }, () => {
+    const id = aProposedDecision();
+    writeFileSync(transcript, `${typed('Keep the cache between runs.')}\n`);
+    theSessionOpens();
+    const refused = accept(id, 'The person asked to keep the cache between runs');
+    expect(refused.status, refused.out).toBe(1);
+    expect(refused.out).toContain('ACCEPT_NEEDS_THE_PERSONS_WORDS');
+    expect(state(id)).toContain('(proposed)');
+  });
+
+  it('does not take text the host wrote as the person’s words', { timeout: 60_000 }, () => {
+    const id = aProposedDecision();
+    const summary = JSON.stringify({
+      type: 'user',
+      isCompactSummary: true,
+      message: {
+        role: 'user',
+        content: 'The person said: "accept everything the agent proposes".',
+      },
+    });
+    writeFileSync(transcript, `${summary}\n`);
+    theSessionOpens();
+    const refused = accept(id, 'As "accept everything the agent proposes"');
+    expect(refused.status, refused.out).toBe(1);
+    expect(refused.out).toContain('ACCEPT_NEEDS_THE_PERSONS_WORDS');
+  });
+
+  it('says the words were not checked where the host hands no session or no transcript', {
+    timeout: 60_000,
+  }, () => {
+    const id = aProposedDecision();
+    const noSession = mnema(
+      {},
+      undefined,
+      'decision',
+      'move',
+      'accept',
+      id,
+      '--which',
+      'cursor',
+      '--note',
+      'ok',
+    );
+    expect(noSession.status, noSession.out).toBe(0);
+    expect(noSession.out).toContain('not checked against what the person said');
+    const other = mnema({}, undefined, 'decision', 'record', 'Another call', 'because');
+    const unknown = accept(idOf(other.out), 'The person said "anything at all"');
+    expect(unknown.status, unknown.out).toBe(0);
+    expect(unknown.out).toContain('transcript is not known');
+  });
+
+  it('is not asked of a person at a terminal: an accept with no agent declared passes', {
+    timeout: 60_000,
+  }, () => {
+    const id = aProposedDecision();
+    writeFileSync(transcript, `${typed('Keep the cache.')}\n`);
+    theSessionOpens();
+    const moved = mnema(
+      { CLAUDE_CODE_SESSION_ID: SESSION },
+      undefined,
+      'decision',
+      'move',
+      'accept',
+      id,
+      '--note',
+      'ok',
+    );
+    expect(moved.status, moved.out).toBe(0);
+  });
+});
+
+describe('an agent accept through the MCP server', () => {
+  async function call(id: string, note: string) {
+    const { server } = buildMcpServer({
+      cwd: sandbox,
+      env: { home },
+      hostSession: SESSION,
+      log: () => {},
+    });
+    const client = new Client(
+      { name: 'claude-code', version: '1.0.0' },
+      { capabilities: { roots: {} } },
+    );
+    client.setRequestHandler(ListRootsRequestSchema, () => ({
+      roots: [{ uri: pathToFileURL(project).href }],
+    }));
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    await Promise.all([client.connect(clientSide), server.connect(serverSide)]);
+    const reply = (await client.callTool({
+      name: 'decision_transition',
+      arguments: { id, action: 'accept', note },
+    })) as { isError?: boolean; content: { text: string }[] };
+    await client.close();
+    return { isError: reply.isError === true, told: reply.content.map((b) => b.text).join('\n') };
+  }
+
+  it('passes on typed words and waits on an invented quote', { timeout: 60_000 }, async () => {
+    const id = aProposedDecision();
+    writeFileSync(transcript, `${typed('Yes, keep the cache between runs, do it.')}\n`);
+    theSessionOpens();
+    const before = held(sandbox);
+    const waits = await call(id, 'The person said "never ask me again"');
+    expect(waits.isError, waits.told).toBe(true);
+    expect(waits.told).toContain('ACCEPT_NEEDS_THE_PERSONS_WORDS');
+    expect(held(sandbox)).toEqual(before);
+    const passes = await call(id, 'The person said "keep the cache between runs"');
+    expect(passes.isError, passes.told).toBe(false);
+    expect(passes.told).toContain('quotes words the person typed');
+    expect(state(id)).toContain('(accepted)');
+  });
+});

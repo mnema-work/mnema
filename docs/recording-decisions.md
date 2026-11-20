@@ -163,7 +163,24 @@ if the person dictated it, or chose it among options the agent offered (a recomm
 it concluded alone waits for the person, who rules on it with `mnema decision review`. With `agent-accepts` off, the line says
 that only a person accepts here. To the command with no `--which`, it says that a person accepts it with `mnema decision review`.
 A decision recorded a second time wrote nothing and says nothing of its state. It is a sentence of words: the product reads
-no answer, and what the agent was told is not what the gate checks (`agent-accepts` is).
+no answer, and what the agent was told is not what the gate checks (`agent-accepts` is, and the words of the note, below).
+
+### An agent's accept rests on the person's words
+
+An accept by an agent (the tool, and the command with `--which`) stands when its note quotes words the person typed in this
+session, or an option the person chose in the host's question tool; otherwise it is refused with `ACCEPT_NEEDS_THE_PERSONS_WORDS`,
+nothing is written and the decision stays `proposed`, for a person to rule on with `mnema decision review` (or for the agent to
+accept again with a note that quotes the person). What is looked for are the passages the note puts between double quotes
+(straight, curly or Portuguese, 6 characters or more, case and spacing folded) in what the person said, read off the host's
+transcript: a line the host marks as typed by a person, and an answer in its question tool. One found passage is enough, and the
+reply says whether it was typed words or a chosen option (an option's label is the agent's own text: the choice is the person's).
+Nothing is added to the record, the quotation is not stored, and a line that sits earlier in the same session still counts.
+
+It applies only in Claude Code with the plugin: the `SessionStart` hook leaves the transcript's path beside the session journal
+(a path, never a word of it; `mnema switch off session-journal` stops it) and the command or the server finds it by the session
+id the host gives (`CLAUDE_CODE_SESSION_ID`). Every other host, a session whose hook has not run, and an accept with no agent
+declared keep what they had, and the reply says the words were not checked. It proves that the quoted words are in the
+transcript, not that a person typed them: an agent with a shell can write the transcript.
 
 A supersede whose successor is still `proposed` leaves nothing in force on that subject until it is accepted, and the
 move says so. Rejecting that successor leaves the decision it replaced `superseded`, by a decision that never governed,

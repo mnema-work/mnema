@@ -147,6 +147,7 @@ import {
   transitionTask,
   type WriteContext,
 } from '@mnema/core/write';
+import { saysWhatTheAcceptRestedOn, whatTheAcceptRestsOn } from '../agent-accept-words.js';
 import { type AcceptState, acceptStateHere, agentMayAccept } from '../agent-accepts.js';
 import { editRulesTold, firstWriteNotice, readThePush } from '../edit-rules-push.js';
 import { type FileBehindAPath, fileOfTheOrigin } from '../file-behind-a-path.js';
@@ -206,6 +207,7 @@ import {
   type PersonSigned,
   type Replacement,
 } from '../recorded-content.js';
+import { transcriptOf } from '../session-journal.js';
 import {
   linkBreaksOf,
   THE_CHAIN_AS_IT_STANDS_NOW,
@@ -1095,6 +1097,19 @@ export function runDecisionTransition(
   });
   if (turnedAway !== undefined) return { ok: false, ...turnedAway };
 
+  // AN AGENT'S ACCEPT RESTS ON THE PERSON'S WORDS (`agent-accept-words.ts`), or it waits for them.
+  const rested = whatTheAcceptRestsOn({
+    action: input.action,
+    agent: whichOfWrite(session, located.home.scope, located.home.target),
+    note: input.note,
+    hostSession: session.hostSession,
+    transcript:
+      session.hostSession === undefined
+        ? undefined
+        : transcriptOf(session.trees, session.hostSession),
+  });
+  if (rested?.outcome === 'waits') return { ok: false, code: rested.code, message: rested.message };
+  const restedSaid = rested === undefined ? undefined : saysWhatTheAcceptRestedOn(rested);
   const { ctx, run, which } = openWrite(session, located.home.scope, located.home.target);
   const fields = decisionProofToFields(input);
   // Every move carries the session's `which` (the executing agent) and `run`, so
@@ -1160,7 +1175,7 @@ export function runDecisionTransition(
     id: input.id,
     adr,
     to: moved.to,
-    ...(notice !== undefined ? { notice } : {}),
+    ...((notice ?? restedSaid) !== undefined ? { notice: (notice ?? restedSaid) as string } : {}),
     ...(input.action === 'accept' && which !== undefined ? { acceptedByAgent: which } : {}),
     ...whereItFell(session, located.home.scope, located.home.target),
     ...personSignedIn(session, located.home.scope, located.home.target),
