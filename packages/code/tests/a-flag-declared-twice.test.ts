@@ -193,18 +193,22 @@ const DECLARED_TWICE: Readonly<Record<string, Reading>> = {
   // The three verbs that create. The groups used to create themselves, with the title right
   // after their name; creating moved into a subcommand that declares the group's creation flags
   // so its `--help` lists them, and reads them off the group the way `decision import` does.
+  'task create --allow-private-pattern': 'where it was written',
   'task create --scope': 'where it was written',
   'task create --which': 'where it was written',
+  'task handoff --allow-private-pattern': 'where it was written',
   'task handoff --scope': 'where it was written',
   'task handoff --which': 'where it was written',
   'decision record --alternatives': 'where it was written',
   'decision record --body-file': 'where it was written',
   'decision record --stdin': 'where it was written',
+  'decision record --allow-private-pattern': 'where it was written',
   'decision record --scope': 'where it was written',
   'decision record --which': 'where it was written',
   'skill create --body': 'where it was written',
   'skill create --body-file': 'where it was written',
   'skill create --stdin': 'where it was written',
+  'skill create --allow-private-pattern': 'where it was written',
   'skill create --scope': 'where it was written',
   'skill create --which': 'where it was written',
   'decision import --scope': 'where it was written',
