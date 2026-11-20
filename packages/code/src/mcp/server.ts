@@ -432,7 +432,7 @@ export interface McpServerOptions {
   readonly cwd: string;
   /**
    * The host's id for the session this server was started in, where the host leaves one in the
-   * server's environment: what `mnema mcp` reads from `CLAUDE_CODE_SESSION_ID`. It names the
+   * server's environment: what `mnema mcp` reads through the host table (`hostSessionOf`: Claude Code's `CLAUDE_CODE_SESSION_ID`, Copilot CLI's `COPILOT_AGENT_SESSION_ID`). It names the
    * session journal a run takes its goal from and closes with the outcome of.
    */
   readonly hostSession?: string | undefined;

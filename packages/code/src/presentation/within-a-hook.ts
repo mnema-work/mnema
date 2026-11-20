@@ -41,6 +41,8 @@
  * generates for it (`--host`), never by guessing.
  */
 
+import { HOSTS, type HostName, hookTextIsAssumed, hookTextOf } from '../host-names.js';
+
 /**
  * The most a hook's text may hold and still arrive as text, in the host's own unit: see
  * this module's header for the measurement.
@@ -95,6 +97,11 @@ export interface HookCeiling {
    * tokens of so many bytes; the words are the composer's, the numbers are these.
    */
   readonly said: { readonly count: number; readonly bytesPerToken?: number };
+  /**
+   * The title of the host whose own ceiling was never measured, so that Claude Code's stands in
+   * for it: the declaration of a cut says that it is assumed, and for whom.
+   */
+  readonly assumedFor?: string;
 }
 
 /** Claude Code's ceiling, and every host's that the host table names none for. */
@@ -132,11 +139,29 @@ export function hookCeilingOf(
   };
 }
 
-/** A host's ceiling as a paragraph that declares a cut says it: characters, or tokens of so many bytes. */
+/**
+ * The ceiling a `--host` run cuts to: the host's own where its row measured one, Claude Code's
+ * where the host is not named, and Claude Code's marked as assumed where the row says the host's
+ * was never measured.
+ */
+export function hookCeilingFor(host: HostName | null): HookCeiling {
+  if (host === null) return CLAUDE_CODE_CEILING;
+  const measured = hookTextOf(host);
+  if (measured !== undefined || !hookTextIsAssumed(host)) return hookCeilingOf(measured);
+  return { ...CLAUDE_CODE_CEILING, assumedFor: HOSTS[host].title };
+}
+
+/**
+ * A host's ceiling as a paragraph that declares a cut says it: characters, or tokens of so many
+ * bytes, and where the number is Claude Code's assumed for another host, that it is assumed.
+ */
 export function ceilingInWords(ceiling: HookCeiling): string {
   const count = ceiling.said.count.toLocaleString('en-US');
   const bytes = ceiling.said.bytesPerToken;
-  return bytes === undefined ? `${count} characters` : `${count} tokens of ${bytes} bytes`;
+  const words = bytes === undefined ? `${count} characters` : `${count} tokens of ${bytes} bytes`;
+  return ceiling.assumedFor === undefined
+    ? words
+    : `${words} (Claude Code’s, assumed: ${ceiling.assumedFor}’s own ceiling has not been measured)`;
 }
 
 /**

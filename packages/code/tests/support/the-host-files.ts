@@ -390,7 +390,7 @@ const COPILOT_HOOKS_DESCRIPTION =
 export function copilotHooksJson(): string {
   const tools = writeToolsOf('copilot');
   const reply = HOSTS.copilot.openingReply;
-  const handed = reply === undefined ? [] : ['--reply', reply];
+  const handed = [...(reply === undefined ? [] : ['--reply', reply]), '--host', 'copilot'];
   const handler = does('copilot', 'asks') ? 'edit-asks-a-person.mjs' : 'edit-refuses-a-write.mjs';
   const file: Json = {
     description: COPILOT_HOOKS_DESCRIPTION,
@@ -604,7 +604,7 @@ function whoIsThere(cwd) {
  * project and a channel switched off are silence. \`cut\` says the run used up the budget.
  */
 function whatItSays(verb, cwd, until) {
-  const ran = run([verb, '--hook'], cwd, undefined, Math.max(1, until - Date.now()));
+  const ran = run([verb, '--hook', '--host', 'opencode'], cwd, undefined, Math.max(1, until - Date.now()));
   if (ran.error !== undefined) {
     return /** @type {NodeJS.ErrnoException} */ (ran.error).code === 'ETIMEDOUT'
       ? { lines: [notConsulted(didNotAnswerIn(OPENING_WAIT))], cut: true }
@@ -992,7 +992,7 @@ function whoIsThere(cwd) {
  * @param {number} until the time, in milliseconds since the epoch, by which both verbs of the opening are done
  */
 function whatItSays(verb, cwd, until) {
-  const ran = run([verb, '--hook'], cwd, undefined, Math.max(1, until - Date.now()));
+  const ran = run([verb, '--hook', '--host', 'gemini'], cwd, undefined, Math.max(1, until - Date.now()));
   if (ran.error !== undefined) {
     return /** @type {NodeJS.ErrnoException} */ (ran.error).code === 'ETIMEDOUT'
       ? { lines: [notConsulted(didNotAnswerIn(OPENING_WAIT))], cut: true }
@@ -1441,6 +1441,18 @@ function presenceText(cell: Presence, base: string): string {
   }
 }
 
+/** What a host's row says of the session id in the environment of the MCP server it starts. */
+function sessionText(cell: Host['sessionVariable'], base: string): string | undefined {
+  if (cell === undefined) return undefined;
+  if (cell.held === 'a test') {
+    const held = `The MCP server reads its session from \`${cell.name}\` ([held by a test](${base}${cell.by}))`;
+    return cell.note === undefined ? `${held}.` : `${held}; ${cell.note}.`;
+  }
+  return cell.candidate === undefined
+    ? 'No session variable is shown in the MCP server’s environment yet, so the server does not know its session here.'
+    : `The MCP server does not read a session id here yet: \`${cell.candidate}\` is on the contract’s list, and it is read the day a run of the host shows it.`;
+}
+
 /** What a host's cells say of the moments the opening and the gate already cover. */
 function coveredBy(name: HostName, moment: 'opening' | 'middle'): Cell {
   return HOSTS[name].cells[moment === 'opening' ? 'opens' : 'refuses'];
@@ -1509,7 +1521,15 @@ function withTheTable(page: string, base: string, path: string): string {
       host.afterAQuestion === undefined
         ? undefined
         : `After a question to the person is answered: ${cellText(host.afterAQuestion, base)}.`;
-    const said = [host.note, stops, asked].filter((text) => text !== undefined);
+    const said = [
+      host.note,
+      stops,
+      asked,
+      sessionText(host.sessionVariable, base),
+      host.hookTextUnmeasured === true
+        ? 'The ceiling on a hook’s text is not measured: the opening is cut to Claude Code’s 10,000 characters and says that it assumes it.'
+        : undefined,
+    ].filter((text) => text !== undefined);
     return said.length === 0 ? [] : [`**${host.title}.** ${said.join(' ')}`];
   });
   const under = notes.length === 0 ? '' : `${notes.join('\n\n')}\n\n`;
