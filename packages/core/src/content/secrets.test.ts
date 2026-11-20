@@ -690,6 +690,31 @@ describe('scrubSecrets: a value after a credential’s name or header', () => {
       secret: 'authorization-header',
     },
     { text: 'Authorization: rawtoken42', value: 'rawtoken42', secret: 'authorization-header' },
+    {
+      text: '{"type":"stream.hello","token":"agm_Zx81yQkP3nLw9Tr"}',
+      value: 'agm_Zx81yQkP3nLw9Tr',
+      secret: 'named-credential',
+    },
+    {
+      text: '{"token":"agm_\u2026x9Kq2LmZp"}',
+      value: 'agm_\u2026x9Kq2LmZp',
+      secret: 'named-credential',
+    },
+    {
+      text: 'curl -H "Authorization: Bearer agm_Zx81yQkP3nLw9Tr"',
+      value: 'agm_Zx81yQkP3nLw9Tr',
+      secret: 'authorization-header',
+    },
+    {
+      text: 'X-Api-Key: agm_Zx81yQkP3nLw9Tr',
+      value: 'agm_Zx81yQkP3nLw9Tr',
+      secret: 'named-credential',
+    },
+    {
+      text: 'MACHINE_TOKEN=agm_Zx81yQkP3nLw9Tr',
+      value: 'agm_Zx81yQkP3nLw9Tr',
+      secret: 'named-credential',
+    },
     { text: 'PASSWORD=hunter2', value: 'hunter2', secret: 'named-credential' },
     {
       text: 'export DATABASE_PASSWORD=S3nh4F0rte',
@@ -792,6 +817,13 @@ describe('scrubSecrets: a value after a credential’s name or header', () => {
       text: "HOLDS_A_SECRET: 'the field reads as a credential and was refused'",
     },
     { why: 'a name used in a sentence', text: "x ? 'a password' : 'a token'" },
+    {
+      why: 'a protocol sentence showing the shape of a token with its body elided',
+      text:
+        'a request with an `Origin` is refused. The first text frame: ' +
+        '`{"type":"stream.hello","token":"agm_\u2026","streamId":"<43 base64url>"}` (the machine\'s token)',
+    },
+    { why: 'an issuer prefix with three dots for a body', text: 'token: "ghp_..." in the example' },
     // The nine notes that destroyed the first class read by name, measured then and
     // asserted now: each is where a secret lives, not the secret.
     {
