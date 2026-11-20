@@ -29,8 +29,8 @@
       "record_observation"
     ],
     "definitions": {
-      "bytes": 11889,
-      "tokens": 2653
+      "bytes": 12113,
+      "tokens": 2697
     },
     "answer": {
       "bytes": 477,
@@ -68,8 +68,8 @@
       "task_transition"
     ],
     "definitions": {
-      "bytes": 52719,
-      "tokens": 12037
+      "bytes": 53615,
+      "tokens": 12212
     },
     "answer": {
       "bytes": 2195,
