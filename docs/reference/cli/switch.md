@@ -36,5 +36,5 @@ What each line of `mnema switch` says, and why it is on it:
   What it carries is what stops arriving when it is off.
   An off switch says who made it and when, and whether a clone of this
   repository holds it: a switch recorded privately governs only this machine.
-  A channel with no switch is on, except edit-first-write-gate and user-corrections, which are off until switched on.
+  A channel with no switch is on, except edit-first-write-gate, user-corrections and opening-core, which are off until switched on.
 ```

@@ -108,6 +108,7 @@ export {
   nextActions,
   nextActionsForTask,
 } from './context/next-action.js';
+export { decisionsTheyDictated } from './context/opening-core.js';
 export {
   A_RUN_IS_HERE_FOR_SECONDS,
   CLOCKS_MAY_DIFFER_BY_SECONDS,
