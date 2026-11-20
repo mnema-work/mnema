@@ -333,6 +333,9 @@ export function tally({ dir, root, expect, perLabel }) {
   const cutOf = new Map();
   const reported = new Set(reports.map((r) => `${r.label}--${r.seq}`));
   const cutSeen = new Set();
+  /** @type {Map<string, number>} */
+  const highest = new Map();
+  for (const r of reports) highest.set(r.label, Math.max(highest.get(r.label) ?? 0, r.seq));
   let owed = 0;
   for (const cut of cuts) {
     const key = `${cut.label}--${cut.seq}`;
@@ -340,6 +343,10 @@ export function tally({ dir, root, expect, perLabel }) {
       broken.push(`a cut marker names a run outside the ${perLabel} asked for: ${cut.path}`);
     } else if (reported.has(key)) {
       broken.push(`run "${key}" is both reported and marked as never started: ${cut.path}`);
+    } else if (cut.seq < (highest.get(cut.label) ?? 0)) {
+      broken.push(
+        `a cut marker precedes a reported run of its label, so that run may have started and hung: ${cut.path}`,
+      );
     } else if (cutSeen.has(key)) {
       broken.push(`two cut markers claim "${key}": ${cut.path}`);
     } else {
@@ -458,7 +465,7 @@ export function render(result) {
   );
   out.push('');
   out.push(
-    `**${runs} runs** of the suite, ${result.perLabel} per label, over ${result.labels.length} label${many}.`,
+    `**${runs} runs** of the suite, ${result.cut > 0 ? 'up to ' : ''}${result.perLabel} per label, over ${result.labels.length} label${many}.`,
   );
   if (result.cut > 0) {
     out.push(
