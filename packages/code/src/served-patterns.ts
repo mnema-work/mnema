@@ -17,7 +17,7 @@
  *   - {@link SERVED_PATTERN_CONTRACT} declares, in the tool's description, what a
  *     pattern IS before one is ever asked for;
  *   - {@link patternsFraming} states it again with the answer, and names the
- *     agent that adopted each one, or says a person did, or says that NOTHING has,
+ *     agent that adopted each one, or says no agent was declared, or says that NOTHING has,
  *     which is the line a pattern awaiting a judgement gets. It also says when the
  *     answer carries NAMES rather than bodies, which is the one thing a reader could
  *     not see for itself: an unannounced list of names looks like a record of empty
