@@ -1408,7 +1408,7 @@ export function runSkillTransition(
   const { ctx, run, which } = openWrite(session, located.home.scope, located.home.target);
   const fields = skillProofToFields(input);
   // Adopting or deprecating is a person's with `agent-accepts` off (`agent-accepts.ts`); every call
-  // here is an agent's, with no terminal. Asked again under the tail's lock, below.
+  // here is an agent's, with no terminal. Asked under the tail's lock, below.
   const refusedWhen = () =>
     agentMayAccept(workspaceCaches(session), {
       action: input.action,
