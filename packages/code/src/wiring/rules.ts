@@ -21,7 +21,7 @@
 import type { Command } from 'commander';
 import { here } from './context.js';
 import { writeLines } from './io.js';
-import { reportRefusal } from './report.js';
+import { reportRefusal, reportUsage } from './report.js';
 import { type Declared, readsTheRecord, type Wiring } from './verb.js';
 
 /** Registers `mnema rules` on the program. */
@@ -69,6 +69,52 @@ export function registerRules(program: Command, wiring: Wiring): Declared {
         return;
       }
       writeLines(io, rulesReport(render, result.governed));
+    });
+  rules
+    .command('test')
+    .description('check the verdicts a file declares for paths against the record’s rules')
+    .argument('<file>', 'a JSON file: { "cases": [ { "path": "src/a.ts", "expect": "refuse" } ] }')
+    .addHelpText(
+      'after',
+      [
+        '',
+        'Each case names a path, relative to the project root, and what it must meet:',
+        '  refuse   the gate refuses a write there',
+        '  ask      the gate holds a write there for a person',
+        '  governs  a rule is linked `governs` there, and none refuses or asks',
+        '  none     no rule stands over the path',
+        'The answer is the gate’s own, so a switch turned off changes it as it changes the gate.',
+        'Every case that does not meet its verdict is named, with the rules that stand there,',
+        'and the exit code is 1; a file with no case is refused. Nothing is written.',
+      ].join('\n'),
+    )
+    .action(async (file: string) => {
+      const { runRulesTest } = await import('../commands/rules-test.js');
+      const { oneLine } = await import('../one-line.js');
+      const { statement } = await import('../presentation/verdict.js');
+      const result = runRulesTest(here(), { file });
+      if (!result.ok) {
+        if (result.reason === 'BAD_CASES') reportUsage(wiring, result.message);
+        else reportRefusal(wiring, result, {});
+        return;
+      }
+      for (const one of result.cases) {
+        const by = one.by.length === 0 ? '' : ` (${one.by.map(oneLine).join(', ')})`;
+        io.out(
+          render(
+            one.matched
+              ? statement('MATCH', `${oneLine(one.path)}: ${one.got}${by}`, 'good')
+              : statement(
+                  'MISMATCH',
+                  `${oneLine(one.path)}: expected ${one.expect}, got ${one.got}${by}`,
+                  'bad',
+                ),
+          ),
+        );
+      }
+      const missed = result.cases.filter((one) => !one.matched).length;
+      io.out(`${result.cases.length - missed} of ${result.cases.length} case(s) met their verdict.`);
+      if (missed > 0) io.fail();
     });
   return readsTheRecord(rules);
 }
