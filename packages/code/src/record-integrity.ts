@@ -472,6 +472,11 @@ export const SERVES_NO_RECORD_CONTENT: { readonly [path: string]: string } = {
     '`agent-accepts` switch stands, to turn an agent’s accept away, and it serves nothing of ' +
     'the record to anybody: a notice about the chain would be said to a caller who asked to ' +
     'change it, and the reads that follow (`show`, `brief`) carry it',
+  'commands/skill-transition.ts':
+    'a move of a pattern is a write, answered by the move; the one thing it reads first is where ' +
+    'the `agent-accepts` switch stands, to turn an agent’s adopt or deprecate away, and it serves ' +
+    'nothing of the record to anybody: a notice about the chain would be said to a caller who ' +
+    'asked to change it, and the reads that follow (`show`, `brief`) carry it',
   'moved-record.ts':
     'it reads the one label a move echoes (the ADR number of a decision, the name of a skill) ' +
     'and whether a supersede’s successor is still proposed, after a write the caller asked for; ' +

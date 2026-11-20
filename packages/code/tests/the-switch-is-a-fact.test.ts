@@ -116,10 +116,16 @@ interface Said {
 
 /** Runs `mnema <argv>` the way the binary does. */
 async function mnema(...argv: string[]): Promise<Said> {
+  return mnemaSeatedAs(false, ...argv);
+}
+
+/** Runs `mnema <argv>` with a person at a terminal or none: switching `agent-accepts` on asks the seat. */
+async function mnemaSeatedAs(aPersonIsHere: boolean, ...argv: string[]): Promise<Said> {
   const out: string[] = [];
   const err: string[] = [];
   let failed = false;
   const io: CliIo = {
+    aPersonIsHere,
     out: (line) => out.push(line),
     err: (line) => err.push(line),
     fail: () => {
@@ -785,7 +791,9 @@ describe('a channel that is switched off stops', () => {
       await did('switch', 'off', channel, '--reason', 'not while I am porting this');
       expect(await driver.speaks(), `${channel} still speaks while switched off`).toBe(false);
 
-      await did('switch', 'on', channel);
+      // `agent-accepts` is switched back on only by a person at a terminal (`agent-accepts.ts`).
+      const turnedOn = await mnemaSeatedAs(true, 'switch', 'on', channel);
+      expect(turnedOn.failed, turnedOn.err.join(' / ')).toBe(false);
       expect(await driver.speaks(), `${channel} stays quiet after being switched on`).toBe(true);
     });
   }

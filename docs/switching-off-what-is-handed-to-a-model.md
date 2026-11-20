@@ -8,7 +8,9 @@ before a write where a rule asks for a person, the refusal of a write where a ru
 (`edit-refuses-a-write`), and `agent-accepts`, which is **on**: an
 agent may accept a decision, freely, and the record keeps which agent did, the reply says
 so, and the document a session opens with marks the rule. Switching it off makes an agent's
-accept a refusal; a person's still lands. Every channel, where it begins and the command that
+accept, its supersede of a decision and its adopting or deprecating of a pattern a refusal; a person's at a
+terminal still lands. Switching it back on is a person's too, at a terminal: an agent is refused, while
+switching it off is open to anyone. Every channel, where it begins and the command that
 flips it are in [the table of switches](switches.md).
 
 <!-- The listing below is generated from packages/code/src/record-framing.ts: edit the table there. -->

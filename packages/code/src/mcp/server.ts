@@ -1421,7 +1421,7 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
         'in the project that holds it: the id decides, so no `project` is taken. An ' +
         'acceptance made through this tool is recorded as an agent’s, says so in the ' +
         'reply, and is marked as such wherever the decision is read. The switch ' +
-        '`agent-accepts` turns it off, and then an accept is refused.' +
+        '`agent-accepts` turns it off, and then an accept or a supersede is refused.' +
         RECORD_CONTRACT,
       inputSchema: {
         id: z.string().min(1).describe('The decision id to move.'),
@@ -1507,7 +1507,8 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
         `need a note; ${slashed(actionsRequiring('skill', 'reason'))} needs a reason. An illegal move or missing proof ` +
         'is refused with the gate’s reason. The skill is looked for in EVERY project ' +
         'of this workspace and the move lands in the project that holds it: the id ' +
-        'decides, so no `project` is taken.' +
+        'decides, so no `project` is taken. With the switch `agent-accepts` off, adopt and ' +
+        'deprecate are refused here: only a person at a terminal makes them.' +
         RECORD_CONTRACT,
       inputSchema: {
         id: z.string().min(1).describe('The skill id to move.'),
