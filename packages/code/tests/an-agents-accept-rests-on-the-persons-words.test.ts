@@ -121,7 +121,11 @@ describe('the passages a note quotes', () => {
       quotedPassages(
         'He said "Keep   The Cache between runs", “use WAL mode for the cache” and «faz assim e depois isso», not "no", not "please", not "sim, pode ser, claro, faça isso".',
       ),
-    ).toEqual(['keep the cache between runs', 'use wal mode for the cache', 'faz assim e depois isso']);
+    ).toEqual([
+      'keep the cache between runs',
+      'use wal mode for the cache',
+      'faz assim e depois isso',
+    ]);
   });
 });
 
@@ -137,7 +141,9 @@ describe('what an accept rests on, with a transcript that is known', () => {
   it('waits when the quote is shorter than twenty characters, even if the person typed it', () => {
     writeFileSync(transcript, `${typed('Please do that for the cache.')}\n`);
     expect(whatTheAcceptRestsOn(move(transcript, 'He said "please"'))?.outcome).toBe('waits');
-    expect(whatTheAcceptRestsOn(move(transcript, 'He said "for the cache"'))?.outcome).toBe('waits');
+    expect(whatTheAcceptRestsOn(move(transcript, 'He said "for the cache"'))?.outcome).toBe(
+      'waits',
+    );
   });
 
   it('waits when the quote is twenty characters or more and only says yes', () => {
@@ -186,7 +192,9 @@ describe('what an accept rests on, with a transcript that is known', () => {
 });
 
 describe('an agent accept at the command line', () => {
-  it('is refused with --which claude-code and no session id, and nothing is written', { timeout: 60_000 }, () => {
+  it('is refused with --which claude-code and no session id, and nothing is written', {
+    timeout: 60_000,
+  }, () => {
     const id = aProposedDecision();
     writeFileSync(transcript, `${typed('Yes, keep the cache between runs, do it.')}\n`);
     theSessionOpens();

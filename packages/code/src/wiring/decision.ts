@@ -218,6 +218,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
         ...(given.which !== undefined ? { which: given.which } : {}),
         ...(run !== undefined ? { run } : {}),
         atATerminal: io.aPersonIsHere === true,
+        viaTheCommandLine: true,
         ...(process.env.CLAUDE_CODE_SESSION_ID !== undefined
           ? { hostSession: process.env.CLAUDE_CODE_SESSION_ID }
           : {}),

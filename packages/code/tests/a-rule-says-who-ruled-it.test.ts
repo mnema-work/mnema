@@ -216,18 +216,18 @@ describe('an agent may accept, and the trail says it', () => {
       '--note',
       'ok',
       '--which',
-      'claude-code',
+      'codex',
     );
     expect(accepted.status, accepted.out).toBe(0);
-    expect(accepted.out).toContain('recorded as made by an agent (claude-code)');
+    expect(accepted.out).toContain('recorded as made by an agent (codex)');
 
     const shown = mnema(atA, a, 'show', id).out;
     expect(shown).toMatch(/recorded by mnid:[0-9a-f]+ \(a person\)/);
-    expect(shown).toMatch(/accepted by mnid:[0-9a-f]+ \(agent claude-code\)/);
+    expect(shown).toMatch(/accepted by mnid:[0-9a-f]+ \(agent codex\)/);
 
     const brief = mnema(atA, a, 'brief').stdout;
     // The brief of a record with one identity does not mark the rule: nobody to confirm with.
-    expect(BRIEF_RULE('A call').exec(brief)?.[0]).toMatch(/\(agent claude-code\)/);
+    expect(BRIEF_RULE('A call').exec(brief)?.[0]).toMatch(/\(agent codex\)/);
     expect(brief).not.toContain('unconfirmed');
     expect(brief).toContain('1 of them was accepted by an agent');
   }, 120_000);
@@ -243,24 +243,24 @@ describe('an agent may accept, and the trail says it', () => {
     ]);
     const text = replies[0]?.content.map((block) => block.text).join('\n') ?? '';
     expect(replies[0]?.isError, text).not.toBe(true);
-    expect(text).toContain('recorded as made by an agent (claude-code)');
+    expect(text).toContain('recorded as made by an agent (codex)');
     expect(text).toContain('mnema switch off agent-accepts');
     expect(mnema(atA, a, 'show', id).out).toMatch(
-      /accepted by mnid:[0-9a-f]+ \(agent claude-code\)/,
+      /accepted by mnid:[0-9a-f]+ \(agent codex\)/,
     );
     expect(BRIEF_RULE('A call').exec(mnema(atA, a, 'brief').stdout)?.[0]).toContain(
-      'agent claude-code',
+      'agent codex',
     );
   }, 120_000);
 
   it('adds nothing to the record: the envelope already said which agent', () => {
     const { a, atA } = aTeamOfTwo();
     const id = idOf(mnema(atA, a, 'decision', 'record', 'A call', 'because').out);
-    mnema(atA, a, 'decision', 'move', 'accept', id, '--note', 'ok', '--which', 'claude-code');
+    mnema(atA, a, 'decision', 'move', 'accept', id, '--note', 'ok', '--which', 'codex');
     const json = JSON.parse(mnema(atA, a, 'show', id, '--json').stdout) as {
       record: { acceptedBy: { who: string; which?: string }; recordedBy: { which?: string } };
     };
-    expect(json.record.acceptedBy.which).toBe('claude-code');
+    expect(json.record.acceptedBy.which).toBe('codex');
     expect(json.record.recordedBy.which).toBeUndefined();
   }, 120_000);
 });

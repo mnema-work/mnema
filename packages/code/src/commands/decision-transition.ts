@@ -151,6 +151,8 @@ export function runDecisionTransition(
     atATerminal?: boolean;
     /** The host's id for the session this runs in (Claude Code's `CLAUDE_CODE_SESSION_ID`), when the door has it. */
     hostSession?: string;
+    /** Set by the command line: an accept declaring Claude Code with no session id is refused there (`agent-accept-words.ts`). */
+    viaTheCommandLine?: boolean;
   },
 ): DecisionTransitioned | DecisionTransitionRefused {
   const upcasters = catalogUpcasters();
@@ -225,7 +227,7 @@ export function runDecisionTransition(
     agent: which,
     note: input.proof?.note,
     hostSession: input.hostSession,
-    refuseWithoutASession: true,
+    refuseWithoutASession: input.viaTheCommandLine === true,
     transcript:
       input.hostSession === undefined ? undefined : transcriptOf(trees, input.hostSession),
   });
