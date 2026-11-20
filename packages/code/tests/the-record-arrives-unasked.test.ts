@@ -262,9 +262,16 @@ const ASKED_FIRST = '--identify';
  * addresses a path. Where one does (`addressed`) it runs its verb, which "runs the verbs it names"
  * reaches, and `a-write-no-rule-can-meet-starts-no-mnema.test.ts` holds both halves.
  */
-function callsOf(handler: string): string[] {
+function callsOf(handler: string, command = ''): string[] {
   const verb = VERB_OF[handler] as string;
   if (GATES.includes(handler)) return [];
+  // Cursor's own pair is told its host, which the verb is handed (the filters are not).
+  if (
+    command.includes('--host cursor') &&
+    (handler === TALLY_HOOK || handler === CORRECTIONS_HOOK)
+  ) {
+    return [`${verb} --host cursor`];
+  }
   return handler === TALLY_HOOK ||
     handler === COMPACTED_HOOK ||
     handler === CORRECTIONS_HOOK ||
@@ -629,7 +636,7 @@ describe('the record arrives unasked', () => {
       // And it was TRIED. Without this line the case is green on a handler that runs
       // nothing at all, which is the shape a broken command path has. The gate is the one that
       // tries nothing here: outside a project no rule can be met (`callsOf`).
-      expect(ran.mnema, command).toEqual(callsOf(handlerOf(command)));
+      expect(ran.mnema, command).toEqual(callsOf(handlerOf(command), command));
     }
     // Every handler, which is what "every command" has to mean now: the gate included, which
     // starts no verb outside a project and writes no byte for it.
@@ -1441,6 +1448,8 @@ describe('the record arrives unasked', () => {
         `recall --after-a-compaction --session ${A_SESSION} --hook`,
         'tally',
         'corrections',
+        'tally --host cursor',
+        'corrections --host cursor',
         'before-a-write --host cursor --agent-key cursor',
         'before-a-write --host vscode --agent-key vscode',
         'settled',
@@ -1448,7 +1457,9 @@ describe('the record arrives unasked', () => {
         'dispatched',
         'handback',
       ]);
-      expect([...reached]).toEqual([...new Set(Object.values(VERB_OF))]);
+      expect(new Set(reached)).toEqual(
+        new Set([...Object.values(VERB_OF), 'tally --host cursor', 'corrections --host cursor']),
+      );
 
       // And each is on the side the PRODUCT declares it on. Read off the same declaration the
       // parser routes with, so a verb that ever changed sides would land here rather than in a
@@ -1462,6 +1473,8 @@ describe('the record arrives unasked', () => {
         `recall --after-a-compaction --session ${A_SESSION} --hook: reads`,
         'tally: reads',
         'corrections: mutates',
+        'tally --host cursor: reads',
+        'corrections --host cursor: mutates',
         'before-a-write --host cursor --agent-key cursor: mutates',
         'before-a-write --host vscode --agent-key vscode: mutates',
         'settled: reads',
