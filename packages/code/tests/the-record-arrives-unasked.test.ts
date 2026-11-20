@@ -461,7 +461,6 @@ function runHook(command: string, at: string): Ran {
       ...(handlerOf(command) === CURSOR_HOOK || command.includes('--where CURSOR_VERSION')
         ? { CURSOR_VERSION: '2026.09.18' }
         : {}),
-      ...(command.includes('--where QWEN_PROJECT_DIR') ? { QWEN_PROJECT_DIR: '/qwen' } : {}),
     },
     encoding: 'utf-8',
   });
