@@ -69,6 +69,7 @@
  */
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { basename } from 'node:path';
 
 import { canonicalStringify } from '../events/canonical.js';
 import { holdsExactly, parseCanonicalLine } from '../events/stored-json.js';
@@ -84,6 +85,7 @@ import {
   type ReachedAttestation,
   reachedAttestations,
 } from './ots.js';
+import { refuseToWriteThrough } from './linked-write.js';
 import { lastTailCheckpoint, listedWithoutLinks, refuseLinksOfTail } from './store.js';
 
 /**
@@ -308,9 +310,22 @@ export function writeWitness(
   checkpointHash: string,
   witness: { readonly proof: Buffer; readonly headers?: ReadonlyMap<number, Buffer> },
 ): void {
+  const headers = [...(witness.headers ?? new Map<number, Buffer>())].sort((a, b) => a[0] - b[0]);
+  // Opening a file for writing follows a link, a dangling one too: each place written is asked
+  // first, the directories before what is in them, and a link is refused with `RECORD_LINKED`
+  // before the proof is written, so a refusal leaves the witness as it was.
+  const inWitness = `tails/${tailId}/witness`;
+  refuseToWriteThrough(layout, [
+    'tails',
+    `tails/${tailId}`,
+    inWitness,
+    `${inWitness}/${basename(witnessProofPath(layout, tailId, checkpointHash))}`,
+    ...(headers.length === 0
+      ? []
+      : [`${inWitness}/${basename(witnessBlocksPath(layout, tailId, checkpointHash))}`]),
+  ]);
   mkdirSync(witnessDir(layout, tailId), { recursive: true });
   writeFileSync(witnessProofPath(layout, tailId, checkpointHash), witness.proof);
-  const headers = [...(witness.headers ?? new Map<number, Buffer>())].sort((a, b) => a[0] - b[0]);
   if (headers.length === 0) return;
   // Each line carries its own terminator rather than being joined by one, so the file
   // ends in a newline like every other line-per-record file this package writes, and
