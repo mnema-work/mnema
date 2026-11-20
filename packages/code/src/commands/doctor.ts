@@ -29,6 +29,8 @@
  *     does it already TRACK something there: asked of git and not of one file, because the ignore
  *     can come from `.git/info/exclude` or a global file, and a tracked file is published whatever
  *     any line says. Said with the command to run, never run: no `git rm` here;
+ *   - did a catch block that keeps a ledger swallow a failure in the last days (`swallowed-ledger.ts`: the
+ *     file's own lines, never a place or a message of the person's), said with how many and where most;
  *   - and, for each agent key this machine holds, does this project's record enrol it, does a
  *     host asked to sign as an agent hold a key to do it with, and does the person's own key being
  *     unencrypted leave the whole separation to nothing.

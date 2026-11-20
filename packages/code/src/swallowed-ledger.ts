@@ -106,7 +106,7 @@ function withoutPaths(text: string, dataDir: string): string {
     .replace(/(['"`])((?:[A-Za-z]:\\|\/)[^'"`]*)\1/g, (all, quote: string, found: string) =>
       mine(found) ? all : `${quote}<path>${quote}`,
     )
-    .replace(/(?:[A-Za-z]:\\|\/)[^\s'"`,;)]*/g, (found) => (mine(found) ? found : '<path>'));
+    .replace(/(?<![A-Za-z0-9])(?:[A-Za-z]:\\|\/)[^\s'"`,;)]*/g, (found) => (mine(found) ? found : '<path>'));
 }
 
 /** What the ledger keeps of an error: see the head of this file. */
