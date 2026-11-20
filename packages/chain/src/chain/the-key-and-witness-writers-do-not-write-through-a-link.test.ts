@@ -29,9 +29,14 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { generateKeyPair } from './keys.js';
 import { ensureKeyRootIgnored, materializePublicKey } from './keystore.js';
-import { migratedMarkPath, witnessBlocksPath, witnessProofPath, witnessSigstorePath } from './layout.js';
-import { migrateMachinery } from './migration.js';
+import {
+  migratedMarkPath,
+  witnessBlocksPath,
+  witnessProofPath,
+  witnessSigstorePath,
+} from './layout.js';
 import { RecordLinkedError } from './linked-write.js';
+import { migrateMachinery } from './migration.js';
 import { writeSigstoreBundle, writeWitness } from './witness.js';
 
 const MARK = 'BYTES-NO-ONE-SIGNED\n';
