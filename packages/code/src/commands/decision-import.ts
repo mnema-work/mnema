@@ -62,6 +62,7 @@ import {
   chainRootForScope,
   DERIVED_FROM_RELATION,
   type DiscoveryEnv,
+  matchPrivate,
   type ReplacedClass,
   resolveScope,
   resolveTrees,
@@ -76,6 +77,7 @@ import {
   linkKnowledge,
   onTheRecordAsItStands,
   openTreeForWriting,
+  privateListFor,
   recordDecision,
 } from '@mnema/core/write';
 import {
@@ -179,7 +181,19 @@ export type ImportRefused =
    * that path names another project's file, so the import writes only into the trees of the
    * project it read ({@link IMPORT_SCOPES} carries what was measured).
    */
-  | { readonly ok: false; readonly reason: 'GLOBAL_TREE' };
+  | { readonly ok: false; readonly reason: 'GLOBAL_TREE' }
+  /**
+   * A document of the plan, its path included, matches a pattern of this machine's private list.
+   * The whole import is refused before any event is appended: it goes in whole or not at all.
+   */
+  | {
+      readonly ok: false;
+      readonly reason: 'PRIVATE_PATTERN';
+      readonly path: string;
+      readonly pattern: string;
+      readonly passage: string;
+      readonly readAsText: boolean;
+    };
 
 /** What `decision import` reads: a directory of decision files, or one of the bridges. */
 export type ImportFormat = 'adr' | BridgeFormat;
@@ -297,6 +311,8 @@ export function runDecisionImport(
     write?: boolean;
     scope?: Scope;
     which?: string;
+    /** Pass the machine's private list (`--allow-private-pattern`). */
+    allowPrivatePattern?: boolean;
     run?: string;
   },
 ): ImportDone | ImportRefused {
@@ -367,9 +383,38 @@ export function runDecisionImport(
     };
   }
 
+  // THE WHOLE PLAN IS ASKED OF THE PRIVATE LIST BEFORE ANY EVENT: a decision and the edge that
+  // names its file are two appends, and a document whose title is clean and whose path is not
+  // would otherwise leave the decision with no edge, which the next run reports as "already in
+  // the record". The import goes in whole or not at all, and the refusal names the file.
+  const asked = privateListFor(trees, scope, input.allowPrivatePattern);
+  if (asked.privateList !== undefined) {
+    for (const document of fresh) {
+      const texts = [
+        document.title,
+        document.rationale,
+        ...(document.alternatives !== undefined ? [document.alternatives] : []),
+        document.path,
+      ];
+      for (const text of texts) {
+        const found = matchPrivate(asked.privateList, text);
+        if (found !== undefined) {
+          return {
+            ok: false,
+            reason: 'PRIVATE_PATTERN',
+            path: document.path,
+            pattern: found.pattern,
+            passage: found.passage,
+            readAsText: found.readAsText === true,
+          };
+        }
+      }
+    }
+  }
+
   const which = whichOfTheWrite(writing, scope, input.which);
   const writer = openTreeForWriting(trees, scope);
-  const context = { writer, layout, upcasters: catalogUpcasters() };
+  const context = { writer, layout, upcasters: catalogUpcasters(), ...asked };
   // What the record holds derived from each file, as of `knownAt`: read again only when the
   // tree moved since, and kept in step with this run's own writes, which it makes under the lock.
   let known = derived.byTarget;

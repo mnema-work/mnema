@@ -18,7 +18,13 @@ import { hereWriting } from './context.js';
 import { scopeOption } from './enumerated.js';
 import { fromTheGroup, REFUSED } from './from-the-group.js';
 import { onOneLine } from './on-one-line.js';
-import { declaredAgent, INVALID, parseScope, WHICH_HELP } from './options.js';
+import {
+  ALLOW_PRIVATE_PATTERN_HELP,
+  declaredAgent,
+  INVALID,
+  parseScope,
+  WHICH_HELP,
+} from './options.js';
 import { reportRecorded, reportRefusal } from './report.js';
 import { PIN_REFUSED } from './run-pin.js';
 import { type Declared, mutatesTheRecord, type Wiring } from './verb.js';
@@ -41,13 +47,18 @@ export function registerHandoff(task: Command, wiring: Wiring): Declared {
     // The agent RECORDING the handoff, which is not necessarily either of the two
     // agents it is about: `<from>`/`<to>` are the subject, `--which` is the author.
     .option('--which <agent>', WHICH_HELP, declaredAgent)
+    .option('--allow-private-pattern', ALLOW_PRIVATE_PATTERN_HELP)
     .option(
       '--brief <text>',
       'what the next agent must read (up to 64 KiB); recorded as an observation about the task',
     )
     .addHelpText('after', RECORD_CONTRACT_HELP)
     .action(async (taskId: string, from: string, to: string, opts: { brief?: string }) => {
-      const given = await fromTheGroup<{ scope?: string; which?: string }>(handoff, wiring);
+      const given = await fromTheGroup<{
+        scope?: string;
+        which?: string;
+        allowPrivatePattern?: boolean;
+      }>(handoff, wiring);
       if (given === REFUSED) return;
       const { runHandoff } = await import('../commands/handoff.js');
       const scope = parseScope(given.scope, wiring);
@@ -64,6 +75,7 @@ export function registerHandoff(task: Command, wiring: Wiring): Declared {
         ...(opts.brief !== undefined ? { brief: opts.brief } : {}),
         ...(scope !== undefined ? { scope } : {}),
         ...(given.which !== undefined ? { which: given.which } : {}),
+        ...(given.allowPrivatePattern === true ? { allowPrivatePattern: true as const } : {}),
         ...(run !== undefined ? { run } : {}),
       });
       if (result.ok) {

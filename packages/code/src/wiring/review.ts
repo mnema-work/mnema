@@ -72,7 +72,7 @@ export function reviewNeedsATerminal(count: number, ids: string, accepts: Accept
 }
 
 /** Runs the review. Nothing is written before the terminal is known to be one. */
-export async function reviewDecisions(wiring: Wiring): Promise<void> {
+export async function reviewDecisions(wiring: Wiring, allowPrivatePattern = false): Promise<void> {
   const { io, render, pinnedRun } = wiring;
   const ctx = { cwd: process.cwd(), env: discoveryEnv() };
   const { proposalsToReview } = await import('../commands/decision-review.js');
@@ -145,6 +145,7 @@ export async function reviewDecisions(wiring: Wiring): Promise<void> {
         id: proposal.id,
         action: verdict.action,
         proof: { note: verdict.note ?? shared },
+        ...(allowPrivatePattern ? { allowPrivatePattern: true as const } : {}),
         ...(run !== undefined ? { run } : {}),
         atATerminal: io.aPersonIsHere === true,
       },

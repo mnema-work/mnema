@@ -143,6 +143,7 @@ export {
   deferredWrite,
   type OpenTreeOptions,
   openTreeForWriting,
+  privateListFor,
   signerFor,
   signerHeldFor,
 } from './topology/index.js';

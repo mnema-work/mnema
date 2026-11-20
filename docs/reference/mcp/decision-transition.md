@@ -15,6 +15,7 @@ Move an existing decision to a new state. accept and reject a proposed decision 
 | `by` | string | no | The successor decision id: required by supersede, refused with any other action. |
 | `note` | string | no | Why this verdict (accept, reject). |
 | `reason` | string | no | Why it is being replaced (supersede). |
+| `allow_private_pattern` | boolean | no | Record a PUBLIC write even though its text matches a pattern of this machine’s private list; without it such a write is refused. Never asked in the private scope. |
 
 ## Annotations
 

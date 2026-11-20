@@ -80,6 +80,7 @@ import {
   endRun,
   openTreeForWriting,
   prepareRun,
+  privateListFor,
   signerHeldFor,
   type WriteContext,
 } from '@mnema/core/write';
@@ -1018,7 +1019,18 @@ export interface SessionWrite {
  * `.gitignore` and marks the cache stale) and the run it would pin to has just been
  * closed.
  */
-export function openWrite(session: Session, scope: Scope, target?: WriteTarget): SessionWrite {
+export function openWrite(
+  session: Session,
+  scope: Scope,
+  target?: WriteTarget,
+  /**
+   * Present on the tools that write prose to a record (a decision, a task, a memory, an
+   * observation, a skill, a handoff): the write then asks this machine's private list when it is
+   * public, unless `allowed` says the mention is meant (`allow_private_pattern`). Absent, the write
+   * is not asked.
+   */
+  privateList?: { readonly allowed: boolean },
+): SessionWrite {
   // Before anything: a fact cites the run that authorizes it, and this connection's
   // runs are ended. Landing anyway would put work inside a session the record says
   // was already over: the shape a close and an in-flight call produce together.
@@ -1048,9 +1060,15 @@ export function openWrite(session: Session, scope: Scope, target?: WriteTarget):
   };
   session.recordPage.opened(trees.projectPublic, keyRootsOf(trees));
   const which = whichIn(trees, scope, session);
+  const asks = privateList === undefined ? {} : privateListFor(trees, scope, privateList.allowed);
   const open = session.runs.get(chainRootForScope(trees, scope) as string);
-  if (open !== undefined)
-    return { run: open.id, ctx: writeContext(trees, scope, session.caches, tellTheAgent), which };
+  if (open !== undefined) {
+    return {
+      run: open.id,
+      ctx: { ...writeContext(trees, scope, session.caches, tellTheAgent), ...asks },
+      which,
+    };
+  }
   // No run here yet: one is PREPARED, and written by the operation's own first fact, on the
   // context the operation writes through, so a first call the operation refuses leaves no run,
   // no founding and no key behind it (see `ensureRun`).
@@ -1058,7 +1076,7 @@ export function openWrite(session: Session, scope: Scope, target?: WriteTarget):
   const pending = ensureRun(session, trees, scope, ctx);
   return {
     run: pending.id,
-    ctx: { ...ctx, beforeTheFirstFact: pending.start, askedBeforeFounding: pending.ask },
+    ctx: { ...ctx, ...asks, beforeTheFirstFact: pending.start, askedBeforeFounding: pending.ask },
     which,
   };
 }

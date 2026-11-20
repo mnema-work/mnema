@@ -817,6 +817,8 @@ describe('every write refuses what no read could accept', () => {
     wouldRelinkTails: 'asks whether a relink would count; opens no writer and appends nothing',
     onTheRecordAsItStands: 'holds the lock around a judgement; the write is the caller’s',
     openTreeForWriting: 'opens a writer; the write is the caller’s',
+    privateListFor:
+      'reads this machine’s private list for a public write’s context; appends nothing',
     recordedAnchorOf: 'asks whether the recorded identity still counts the key; appends nothing',
     refusalBeforeTheAnchorRead: 'reads the tail’s damage from the disk; appends nothing',
     refusalBeforeTheAnchor: 'says which refusal a write earns first; appends nothing',

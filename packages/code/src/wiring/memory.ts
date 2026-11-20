@@ -12,7 +12,13 @@ import { addBodySourceOptions } from './body-source.js';
 import { hereWriting } from './context.js';
 import { scopeOption } from './enumerated.js';
 import { REFUSED } from './from-the-group.js';
-import { declaredAgent, INVALID, parseScope, WHICH_HELP } from './options.js';
+import {
+  ALLOW_PRIVATE_PATTERN_HELP,
+  declaredAgent,
+  INVALID,
+  parseScope,
+  WHICH_HELP,
+} from './options.js';
 import { reportRecorded, reportRefusal } from './report.js';
 import { PIN_REFUSED } from './run-pin.js';
 import { type Declared, mutatesTheRecord, type Wiring } from './verb.js';
@@ -31,12 +37,19 @@ export function registerMemory(program: Command, wiring: Wiring): Declared {
       ),
     )
     .option('--which <agent>', WHICH_HELP, declaredAgent)
+    .option('--allow-private-pattern', ALLOW_PRIVATE_PATTERN_HELP)
     .addHelpText('after', RECORD_CONTRACT_HELP);
   addBodySourceOptions(memory, 'memory');
   memory.action(
     async (
       typed: string | undefined,
-      opts: { scope?: string; which?: string; stdin?: boolean; bodyFile?: string },
+      opts: {
+        scope?: string;
+        which?: string;
+        allowPrivatePattern?: boolean;
+        stdin?: boolean;
+        bodyFile?: string;
+      },
     ) => {
       const { bodyFrom } = await import('./body-source.js');
       const content = await bodyFrom(wiring, 'memory', 'as an argument', {
@@ -57,6 +70,7 @@ export function registerMemory(program: Command, wiring: Wiring): Declared {
         content,
         ...(scope !== undefined ? { scope } : {}),
         ...(opts.which !== undefined ? { which: opts.which } : {}),
+        ...(opts.allowPrivatePattern === true ? { allowPrivatePattern: true as const } : {}),
         ...(run !== undefined ? { run } : {}),
       });
       if (result.ok && result.alreadyRecorded) {

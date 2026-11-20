@@ -946,6 +946,11 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'collapsed',
     why: 'the paths of files in the working tree, which a name in it can carry',
   },
+  'record.ts «warning: tail {}, seq {} ({}): the text of a public event this cut carries matches "{}", a pattern of this machine\'s private list (passage: "{}"). A pull request of this branch publishes it.{}» #1':
+    {
+      verdict: 'collapsed',
+      why: 'the tail, kind, pattern and passage of an event on this clone, and a pattern the person wrote: text read off the disk',
+    },
   'record.ts «next: {}» #1': {
     verdict: 'collapsed',
     why: 'the remote and the branch, quoted for a shell: names a remote or a person chose',
@@ -1237,7 +1242,8 @@ describe('every line this wiring words is classified', () => {
     // 203 with the lines `backup restore` and `backup status` print of the folders kept aside, and none of a deletion.
     // 204 with the line `backup hook` prints of where it put the hook and where it took it from.
     // 207 with the three lines `backup restore --global` prints, the two folder counts and the heading.
-    expect(FOUND.sites.length).toBe(207);
+    // 208 with the warning `record commit` prints of a carried event that matches the private list.
+    expect(FOUND.sites.length).toBe(208);
   });
 
   it('reads the verdict off the source rather than believing the table', () => {
@@ -1257,9 +1263,9 @@ describe('every line this wiring words is classified', () => {
   it('found sites of both kinds, and the scanner sees a tag when there is one', () => {
     // Neither arm of the case above may be empty, or half of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
-    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(117);
+    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(118);
     expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(90);
-    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(117);
+    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(118);
   });
 
   it('every reason says where the value comes from', () => {
@@ -1442,6 +1448,9 @@ const UNREACHABLE: Readonly<Record<string, string>> = {
   'record.ts «kept in {}, since the pull left another side there: {}» #1':
     'needs a file of the record that forked between the check and the pull, a race over a real ' +
     'remote; the tag is the fence for the paths',
+  'record.ts «warning: tail {}, seq {} ({}): the text of a public event this cut carries matches "{}", a pattern of this machine\'s private list (passage: "{}"). A pull request of this branch publishes it.{}» #1':
+    'needs a record whose carried event matches a list in the data directory, over a real remote; the ' +
+    'built binary prints it over real git in `the-record-reaches-git-through-a-pull-request.test.ts`',
   'record.ts «{}: put back as this checkout held it, the longer side or the only one» #1':
     'needs an untracked tail the branch followed already holds, over a real remote; the built binary ' +
     'prints it over real git in `a-tail-merges-and-pulls.test.ts`',

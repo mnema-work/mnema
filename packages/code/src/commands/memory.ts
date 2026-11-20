@@ -25,7 +25,7 @@
 
 import { catalogUpcasters } from '@mnema/chain';
 import { chainRootForScope, type DiscoveryEnv, resolveScope, type Scope } from '@mnema/core';
-import { captureMemory, openTreeForWriting } from '@mnema/core/write';
+import { captureMemory, openTreeForWriting, privateListFor } from '@mnema/core/write';
 import { forwardReplacement, type Landed, type Replacement } from '../recorded-content.js';
 import {
   type AgentWrites,
@@ -79,7 +79,14 @@ export type MemoryRefused =
  */
 export function runMemory(
   ctx: MemoryContext,
-  input: { content: string; scope?: Scope; which?: string; run?: string },
+  input: {
+    content: string;
+    scope?: Scope;
+    which?: string;
+    /** Pass the machine's private list (`--allow-private-pattern`): the text is recorded though it matches. */
+    allowPrivatePattern?: boolean;
+    run?: string;
+  },
 ): MemoryCaptured | MemoryRefused {
   const writing = treesToWrite(ctx);
   const { trees } = writing;
@@ -104,6 +111,7 @@ export function runMemory(
         writer,
         layout: { root: chainRootForScope(trees, scope) as string },
         upcasters: catalogUpcasters(),
+        ...privateListFor(trees, scope, input.allowPrivatePattern),
       },
       {
         content: input.content,

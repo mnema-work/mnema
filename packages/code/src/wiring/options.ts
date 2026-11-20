@@ -44,6 +44,19 @@ export const WHICH_HELP =
   'A value that names no agent (an unset variable) is refused, never credited to you.';
 
 /**
+ * The help for `--allow-private-pattern`, one wording on every verb that writes prose to a record
+ * (a decision, a task, a memory, an observation, a skill, a handoff).
+ *
+ * It only means something in the PUBLIC scope and on a machine that keeps a private list
+ * (`private-patterns.txt` in the data directory): there, text matching a pattern of the list is
+ * refused, and this says the mention is meant. In the private scope nothing is asked.
+ */
+export const ALLOW_PRIVATE_PATTERN_HELP =
+  'record a public write even though its text matches a pattern of this machine’s private list ' +
+  '(private-patterns.txt in the data directory); without it such a write is refused. ' +
+  'Never asked in the private scope.';
+
+/**
  * What a `--which` that names nobody is told.
  *
  * It gives both ways out, because both are legitimate: name the agent, or drop the

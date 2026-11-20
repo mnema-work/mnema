@@ -40,7 +40,7 @@ import {
   resolveScope,
   type Scope,
 } from '@mnema/core';
-import { linkKnowledge, openTreeForWriting } from '@mnema/core/write';
+import { linkKnowledge, openTreeForWriting, privateListFor } from '@mnema/core/write';
 import { reachOfAddress } from '../governed-tree.js';
 import { resolveAddress } from '../label-as-address.js';
 import {
@@ -141,6 +141,7 @@ export function runLink(
     rel: string;
     scope?: Scope;
     which?: string;
+    allowPrivatePattern?: boolean;
     run?: string;
   },
 ): LinkRecorded | LinkRefused {
@@ -190,6 +191,7 @@ export function runLink(
         writer,
         layout: { root: chainRootForScope(trees, scope) as string },
         upcasters: catalogUpcasters(),
+        ...privateListFor(trees, scope, input.allowPrivatePattern),
       },
       {
         subject: ends.subject,

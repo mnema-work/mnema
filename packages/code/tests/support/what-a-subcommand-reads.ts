@@ -16,18 +16,32 @@
 export const WHAT_A_SUBCOMMAND_READS: Readonly<Record<string, readonly string[]>> = {
   // The births: every flag of the group, which the group declares for them; its own copy is
   // what its `--help` lists, and the value is read off the group where commander put it.
-  'task create': ['--scope', '--which'],
-  'task handoff': ['--scope', '--which'],
-  'decision record': ['--alternatives', '--body-file', '--scope', '--stdin', '--which'],
-  'skill create': ['--body', '--body-file', '--scope', '--stdin', '--which'],
+  'task create': ['--allow-private-pattern', '--scope', '--which'],
+  'task handoff': ['--allow-private-pattern', '--scope', '--which'],
+  'decision record': [
+    '--allow-private-pattern',
+    '--alternatives',
+    '--body-file',
+    '--scope',
+    '--stdin',
+    '--which',
+  ],
+  'skill create': [
+    '--allow-private-pattern',
+    '--body',
+    '--body-file',
+    '--scope',
+    '--stdin',
+    '--which',
+  ],
   // The moves name the agent that executed them, and follow the entity to its tree.
-  'task move': ['--which'],
-  'decision move': ['--which'],
-  'decision supersede': ['--which'],
-  'skill move': ['--which'],
+  'task move': ['--allow-private-pattern', '--which'],
+  'decision move': ['--allow-private-pattern', '--which'],
+  'decision supersede': ['--allow-private-pattern', '--which'],
+  'skill move': ['--allow-private-pattern', '--which'],
   // A birth over one tree fewer: its own two, read off the group where commander put them.
-  'decision import': ['--scope', '--which'],
-  'decision review': [],
+  'decision import': ['--allow-private-pattern', '--scope', '--which'],
+  'decision review': ['--allow-private-pattern'],
   // Nothing is born, moved or recorded, so there is nothing to scope or to credit.
   'skill export': [],
   'skill provenance': [],

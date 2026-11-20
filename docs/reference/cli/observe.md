@@ -20,6 +20,7 @@ In the help under **Record**.
 | `--text <text>` | the observation itself (or give it with --stdin or --body-file) |
 | `--scope <scope>` | where the observation is born: public (team-visible), private (this machine, this project), or global (personal, cross-project). Defaults to public; an agent that declares itself with --which defaults to private. |
 | `--which <agent>` | the agent that executed this, when an agent (a script, a CI step) is driving mnema: omit it when you are acting directly. Declared (by this flag, or by MNEMA_AGENT_KEY), never assumed; where that agent’s key signs, the fact names the agent as the record does. It names the executor. See --scope for where the fact lands. A value that names no agent (an unset variable) is refused, never credited to you. |
+| `--allow-private-pattern` | record a public write even though its text matches a pattern of this machine’s private list (private-patterns.txt in the data directory); without it such a write is refused. Never asked in the private scope. |
 | `--stdin` | read the observation from standard input instead of the line |
 | `--body-file <path>` | read the observation from this file instead of the line |
 
@@ -34,28 +35,36 @@ Usage: mnema observe [options] <about>
 record an observation about an entity in the current project
 
 Arguments:
-  about               the id of the entity being observed (a task, decision, …)
+  about                    the id of the entity being observed (a task,
+                           decision, …)
 
 Options:
-  --topic <label>     a short topic label
-  --text <text>       the observation itself (or give it with --stdin or
-                      --body-file)
-  --scope <scope>     where the observation is born: public (team-visible),
-                      private (this machine, this project), or global (personal,
-                      cross-project). Defaults to public; an agent that declares
-                      itself with --which defaults to private.
-  --which <agent>     the agent that executed this, when an agent (a script, a
-                      CI step) is driving mnema: omit it when you are acting
-                      directly. Declared (by this flag, or by MNEMA_AGENT_KEY),
-                      never assumed; where that agent’s key signs, the fact
-                      names the agent as the record does. It names the executor.
-                      See --scope for where the fact lands. A value that names
-                      no agent (an unset variable) is refused, never credited to
-                      you.
-  --stdin             read the observation from standard input instead of the
-                      line
-  --body-file <path>  read the observation from this file instead of the line
-  -h, --help          display help for command
+  --topic <label>          a short topic label
+  --text <text>            the observation itself (or give it with --stdin or
+                           --body-file)
+  --scope <scope>          where the observation is born: public (team-visible),
+                           private (this machine, this project), or global
+                           (personal, cross-project). Defaults to public; an
+                           agent that declares itself with --which defaults to
+                           private.
+  --which <agent>          the agent that executed this, when an agent (a
+                           script, a CI step) is driving mnema: omit it when you
+                           are acting directly. Declared (by this flag, or by
+                           MNEMA_AGENT_KEY), never assumed; where that agent’s
+                           key signs, the fact names the agent as the record
+                           does. It names the executor. See --scope for where
+                           the fact lands. A value that names no agent (an unset
+                           variable) is refused, never credited to you.
+  --allow-private-pattern  record a public write even though its text matches a
+                           pattern of this machine’s private list
+                           (private-patterns.txt in the data directory); without
+                           it such a write is refused. Never asked in the
+                           private scope.
+  --stdin                  read the observation from standard input instead of
+                           the line
+  --body-file <path>       read the observation from this file instead of the
+                           line
+  -h, --help               display help for command
 
 What recording means here:
   Permanent: mnema is append-only and nothing deletes a fact. A public record

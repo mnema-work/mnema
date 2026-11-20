@@ -45,6 +45,7 @@ import { chainRootForScope, DECISION_ACTIONS, type DiscoveryEnv } from '@mnema/c
 import {
   acceptDecision,
   openTreeForWriting,
+  privateListFor,
   rejectDecision,
   supersedeDecision,
 } from '@mnema/core/write';
@@ -141,6 +142,8 @@ export function runDecisionTransition(
     by?: string;
     proof?: DecisionTransitionProof;
     which?: string;
+    /** Pass the machine's private list (`--allow-private-pattern`). */
+    allowPrivatePattern?: boolean;
     run?: string;
     /**
      * Whether a person is at a terminal here: the door's own answer (`agent-accepts.ts`). A door
@@ -178,7 +181,12 @@ export function runDecisionTransition(
   const which = whichOfTheWrite(writing, scope, input.which);
   const root = chainRootForScope(trees, scope) as string;
   const writer = openTreeForWriting(trees, scope);
-  const opCtx = { writer, layout: { root }, upcasters };
+  const opCtx = {
+    writer,
+    layout: { root },
+    upcasters,
+    ...privateListFor(trees, scope, input.allowPrivatePattern),
+  };
   const fields = proofToFields(input.proof);
 
   // Route the action to its typed operation. Unlike a task, where one generic

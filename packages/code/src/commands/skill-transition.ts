@@ -48,6 +48,7 @@ import {
   adoptSkill,
   deprecateSkill,
   openTreeForWriting,
+  privateListFor,
   rejectSkill,
   reviewSkill,
 } from '@mnema/core/write';
@@ -118,6 +119,7 @@ export function runSkillTransition(
     action: string;
     proof?: SkillTransitionProof;
     which?: string;
+    allowPrivatePattern?: boolean;
     run?: string;
     /** Whether a person is at a terminal here: the door's own answer (`agent-accepts.ts`). */
     atATerminal?: boolean;
@@ -153,7 +155,12 @@ export function runSkillTransition(
   const root = chainRootForScope(trees, scope) as string;
   const which = whichOfTheWrite(writing, scope, input.which);
   const writer = openTreeForWriting(trees, scope);
-  const opCtx = { writer, layout: { root }, upcasters };
+  const opCtx = {
+    writer,
+    layout: { root },
+    upcasters,
+    ...privateListFor(trees, scope, input.allowPrivatePattern),
+  };
   const fields = proofToFields(input.proof);
   // The four ops take the same shape, so the executing agent is stamped once, in
   // the shared args: no branch can be the one that forgets it.

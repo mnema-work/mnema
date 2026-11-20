@@ -14,6 +14,7 @@ Move an existing skill to a new state: review a proposed skill, adopt a reviewed
 | `action` | string, at least 1 character | yes | The transition: review, adopt, reject, or deprecate. |
 | `note` | string | no | Why this verdict (review, adopt, reject). |
 | `reason` | string | no | Why it fell out of use (deprecate). |
+| `allow_private_pattern` | boolean | no | Record a PUBLIC write even though its text matches a pattern of this machine’s private list; without it such a write is refused. Never asked in the private scope. |
 
 ## Annotations
 

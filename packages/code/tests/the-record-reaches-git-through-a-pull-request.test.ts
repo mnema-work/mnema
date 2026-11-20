@@ -32,6 +32,7 @@ import {
   cutBranch,
   cutTitle,
   nextCommands,
+  type PrivateEventMatch,
   remoteHost,
   runRecordCommit,
   whatInitWritesInTheRecord,
@@ -781,5 +782,74 @@ describe('a remote whose host is an ssh alias', () => {
     nextCommands({ ...ask, url: 'git@gitlab.com:o/r.git', env });
     nextCommands({ ...ask, url: 'https://code.example.org/o/r.git', env });
     expect(existsSync(asked)).toBe(false);
+  });
+});
+
+describe('the machine private list', () => {
+  const LIST = join('.mnema', 'private-patterns.txt');
+
+  function allowedDecision(checkout: string, title: string): void {
+    const ran = mnema(checkout, 'decision', 'record', title, 'why', '--allow-private-pattern');
+    expect(ran.status, ran.out).toBe(0);
+  }
+
+  it('warns, before the branch is built, of a carried event whose text matches it, and still cuts', () => {
+    const { local } = world();
+    writeFileSync(join(sandbox, 'home', LIST), '# mine\nNightjar\n');
+    allowedDecision(local, 'Use Nightjar naming');
+    decide(local, 'A clean decision');
+
+    const warned: { found: PrivateEventMatch; branches: string }[] = [];
+    const done = runRecordCommit(
+      {
+        cwd: local,
+        env: { home: join(sandbox, 'home') },
+        processEnv: env(),
+        now: Date.now(),
+        warn: (found) =>
+          warned.push({
+            found,
+            branches: git(local, 'for-each-ref', 'refs/heads/mnema-record/').out,
+          }),
+      },
+      {},
+    );
+    expect(done.ok && done.kind).toBe('made');
+    expect(warned).toHaveLength(1);
+    const [one] = warned as [(typeof warned)[number]];
+    expect(one.found.kind).toBe('decision.recorded');
+    expect(one.found.pattern).toBe('Nightjar');
+    expect(one.found.passage).toContain('Use Nightjar naming');
+    // Said before the branch exists: a warning after the cut would be a report, not a warning.
+    expect(one.branches).toBe('');
+  });
+
+  it('prints the warning on the second stream of the binary and makes the branch', () => {
+    const { local } = world();
+    writeFileSync(join(sandbox, 'home', LIST), 'Nightjar\n');
+    allowedDecision(local, 'Use Nightjar naming');
+    const ran = mnema(local, 'record', 'commit');
+    expect(ran.status, ran.out).toBe(0);
+    expect(ran.out).toContain('warning:');
+    expect(ran.out).toContain('Made mnema-record/');
+  });
+
+  it('says nothing where the machine keeps no list, or the text matches nothing', () => {
+    const { local } = world();
+    decide(local, 'Use Nightjar naming');
+    expect(commitIn(local).ok).toBe(true);
+    writeFileSync(join(sandbox, 'home', LIST), 'something else entirely\n');
+    const warned: PrivateEventMatch[] = [];
+    runRecordCommit(
+      {
+        cwd: local,
+        env: { home: join(sandbox, 'home') },
+        processEnv: env(),
+        now: Date.now(),
+        warn: (found) => warned.push(found),
+      },
+      {},
+    );
+    expect(warned).toEqual([]);
   });
 });

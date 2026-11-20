@@ -436,7 +436,7 @@ export type SkillTransitionResult =
  */
 export function runCaptureMemory(
   session: Session,
-  input: { content: string; scope?: Scope; project?: string },
+  input: { content: string; scope?: Scope; project?: string; allowPrivatePattern?: boolean },
 ): CaptureResult {
   // Where this write goes, in one answer. A `project` naming nothing this session
   // can write to, a `project` naming two of them, or a `scope` naming a tree the
@@ -444,7 +444,9 @@ export function runCaptureMemory(
   // shapes them into a tool error and the agent sees the capture did not happen.
   const route = routeWrite(session, 'memory.captured', input);
   if (!route.ok) return route;
-  const { ctx, run, which } = openWrite(session, route.scope, route.target);
+  const { ctx, run, which } = openWrite(session, route.scope, route.target, {
+    allowed: input.allowPrivatePattern === true,
+  });
   const captured = ctx.writer.exclusively(() => {
     const written = captureMemory(ctx, {
       content: input.content,
@@ -535,7 +537,14 @@ export type FactRecordedResult =
  */
 export function runRecordObservation(
   session: Session,
-  input: { about: string; topic: string; text: string; scope?: Scope; project?: string },
+  input: {
+    about: string;
+    topic: string;
+    text: string;
+    scope?: Scope;
+    project?: string;
+    allowPrivatePattern?: boolean;
+  },
 ): RecordObservationResult {
   const about = addressedIn(session, input.about);
   if (!about.ok) return ambiguousLabel(about.message);
@@ -544,7 +553,9 @@ export function runRecordObservation(
   // What an observation is about has to be a record some tree of the workspace holds: asked by the
   // door after every refusal of the fact's shape, before anything is founded.
   const located = locateEntity(session, about.id, 'records');
-  const opened = openWrite(session, route.scope, route.target);
+  const opened = openWrite(session, route.scope, route.target, {
+    allowed: input.allowPrivatePattern === true,
+  });
   const { run, which } = opened;
   const ctx = unlessLocated(session, opened.ctx, 'record', about.id, located);
   const recorded = ctx.writer.exclusively(() => {
@@ -594,6 +605,7 @@ export function runRecordHandoff(
     brief?: string;
     scope?: Scope;
     project?: string;
+    allowPrivatePattern?: boolean;
   },
 ): FactRecordedResult {
   const named = routeWrite(session, 'handoff.recorded', input);
@@ -620,7 +632,9 @@ export function runRecordHandoff(
       followedNoTree = `  No tree of that project holds ${oneLine(input.task)}, so the handoff took the default tree (${named.scope}).`;
     }
   }
-  const opened = openWrite(session, route.scope, route.target);
+  const opened = openWrite(session, route.scope, route.target, {
+    allowed: input.allowPrivatePattern === true,
+  });
   const { run, which } = opened;
   const ctx = unlessLocated(session, opened.ctx, 'task', input.task, located);
   const recorded = ctx.writer.exclusively(() => {
@@ -700,7 +714,14 @@ export type LinkRecordedResult =
  */
 export function runLinkKnowledge(
   session: Session,
-  input: { subject: string; target: string; rel: string; scope?: Scope; project?: string },
+  input: {
+    subject: string;
+    target: string;
+    rel: string;
+    scope?: Scope;
+    project?: string;
+    allowPrivatePattern?: boolean;
+  },
 ): LinkRecordedResult {
   const route = routeWrite(session, 'knowledge.linked', input);
   if (!route.ok) return route;
@@ -729,7 +750,9 @@ export function runLinkKnowledge(
   // What the public tree records is the target relative to the root when it was typed absolute.
   const recordedTarget =
     publicRoot === undefined ? target.id : targetAsRecorded(input.rel, target.id, publicRoot);
-  const { ctx, run, which } = openWrite(session, route.scope, route.target);
+  const { ctx, run, which } = openWrite(session, route.scope, route.target, {
+    allowed: input.allowPrivatePattern === true,
+  });
   const recorded = ctx.writer.exclusively(() => {
     const written = linkKnowledge(ctx, {
       subject: subject.id,
@@ -799,11 +822,19 @@ export function runLinkKnowledge(
  */
 export function runCreateTask(
   session: Session,
-  input: { title: string; description?: string; scope?: Scope; project?: string },
+  input: {
+    title: string;
+    description?: string;
+    scope?: Scope;
+    project?: string;
+    allowPrivatePattern?: boolean;
+  },
 ): CreateTaskResult {
   const route = routeWrite(session, 'task.created', input);
   if (!route.ok) return route;
-  const { ctx, run, which } = openWrite(session, route.scope, route.target);
+  const { ctx, run, which } = openWrite(session, route.scope, route.target, {
+    allowed: input.allowPrivatePattern === true,
+  });
   const created = ctx.writer.exclusively(() => {
     const written = createTask(ctx, {
       title: input.title,
@@ -866,14 +897,23 @@ export function runCreateTask(
  */
 export function runTaskTransition(
   session: Session,
-  input: { id: string; action: string; reason?: string; note?: string; feedback?: string },
+  input: {
+    id: string;
+    action: string;
+    reason?: string;
+    note?: string;
+    feedback?: string;
+    allowPrivatePattern?: boolean;
+  },
 ): TransitionResult {
   // Route by the task's home tree, not the session's scope: the move follows the
   // entity so its history stays whole in one tree, in whichever project that is.
   const located = locateEntity(session, input.id);
   if (located.outcome !== 'found') return refuseUnlocated(session, 'task', input.id, located);
 
-  const { ctx, run, which } = openWrite(session, located.home.scope, located.home.target);
+  const { ctx, run, which } = openWrite(session, located.home.scope, located.home.target, {
+    allowed: input.allowPrivatePattern === true,
+  });
   const fields = proofToFields(input);
   const moved = ctx.writer.exclusively(() => {
     const written = transitionTask(ctx, {
@@ -943,11 +983,14 @@ export function runRecordDecision(
     alternatives?: string;
     scope?: Scope;
     project?: string;
+    allowPrivatePattern?: boolean;
   },
 ): RecordDecisionResult {
   const route = routeWrite(session, 'decision.recorded', input);
   if (!route.ok) return route;
-  const { ctx, run, which } = openWrite(session, route.scope, route.target);
+  const { ctx, run, which } = openWrite(session, route.scope, route.target, {
+    allowed: input.allowPrivatePattern === true,
+  });
   const recorded = ctx.writer.exclusively(() => {
     const written = recordDecision(ctx, {
       title: input.title,
@@ -1052,7 +1095,14 @@ function lookedAt(session: Session, path: string): void {
  */
 export function runDecisionTransition(
   session: Session,
-  asked: { id: string; action: string; by?: string; note?: string; reason?: string },
+  asked: {
+    id: string;
+    action: string;
+    by?: string;
+    note?: string;
+    reason?: string;
+    allowPrivatePattern?: boolean;
+  },
 ): DecisionTransitionResult {
   // A label one decision carries becomes its id, for the decision and for a successor; one several
   // carry is refused with their ids.
@@ -1095,7 +1145,9 @@ export function runDecisionTransition(
   });
   if (turnedAway !== undefined) return { ok: false, ...turnedAway };
 
-  const { ctx, run, which } = openWrite(session, located.home.scope, located.home.target);
+  const { ctx, run, which } = openWrite(session, located.home.scope, located.home.target, {
+    allowed: asked.allowPrivatePattern === true,
+  });
   const fields = decisionProofToFields(input);
   // Every move carries the session's `which` (the executing agent) and `run`, so
   // the transition is attributed to the agent even when it lands in the public
@@ -1334,11 +1386,19 @@ function decisionProofToFields(input: {
  */
 export function runCreateSkill(
   session: Session,
-  input: { name: string; body: string; scope?: Scope; project?: string },
+  input: {
+    name: string;
+    body: string;
+    scope?: Scope;
+    project?: string;
+    allowPrivatePattern?: boolean;
+  },
 ): CreateSkillResult {
   const route = routeWrite(session, 'skill.created', input);
   if (!route.ok) return route;
-  const { ctx, run, which } = openWrite(session, route.scope, route.target);
+  const { ctx, run, which } = openWrite(session, route.scope, route.target, {
+    allowed: input.allowPrivatePattern === true,
+  });
   const created = ctx.writer.exclusively(() => {
     const written = createSkill(ctx, {
       name: input.name,
@@ -1386,7 +1446,13 @@ export function runCreateSkill(
  */
 export function runSkillTransition(
   session: Session,
-  input: { id: string; action: string; note?: string; reason?: string },
+  input: {
+    id: string;
+    action: string;
+    note?: string;
+    reason?: string;
+    allowPrivatePattern?: boolean;
+  },
 ): SkillTransitionResult {
   const upcasters = catalogUpcasters();
   // Route by the skill's home tree, not the session's scope: the move follows the
@@ -1405,7 +1471,9 @@ export function runSkillTransition(
     };
   }
 
-  const { ctx, run, which } = openWrite(session, located.home.scope, located.home.target);
+  const { ctx, run, which } = openWrite(session, located.home.scope, located.home.target, {
+    allowed: input.allowPrivatePattern === true,
+  });
   const fields = skillProofToFields(input);
   // Adopting or deprecating is a person's with `agent-accepts` off (`agent-accepts.ts`); every call
   // here is an agent's, with no terminal. Asked under the tail's lock, below.

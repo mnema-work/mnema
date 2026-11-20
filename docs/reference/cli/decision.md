@@ -13,6 +13,7 @@ In the help under **Record**.
 | `--alternatives <text>` | what was considered and turned down, and why not (optional). A decision is immutable, so this is recorded at birth: an option rejected later is a new decision, or supersedes this one. |
 | `--scope <scope>` | where the decision is born: public (team-visible), private (this machine, this project), or global (personal, cross-project). Omitted, a decision lands in the public tree (a declaration about the project). |
 | `--which <agent>` | the agent that executed this, when an agent (a script, a CI step) is driving mnema: omit it when you are acting directly. Declared (by this flag, or by MNEMA_AGENT_KEY), never assumed; where that agent’s key signs, the fact names the agent as the record does. It names the executor. See --scope for where the fact lands. A value that names no agent (an unset variable) is refused, never credited to you. |
+| `--allow-private-pattern` | record a public write even though its text matches a pattern of this machine’s private list (private-patterns.txt in the data directory); without it such a write is refused. Never asked in the private scope. |
 | `--stdin` | read the rationale from standard input instead of the line |
 | `--body-file <path>` | read the rationale from this file instead of the line |
 
@@ -40,6 +41,7 @@ Options:
   --alternatives <text>                  what was considered and turned down, and why not (optional). A decision is immutable, so this is recorded at birth: an option rejected later is a new decision, or supersedes this one.
   --scope <scope>                        where the decision is born: public (team-visible), private (this machine, this project), or global (personal, cross-project). Omitted, a decision lands in the public tree (a declaration about the project).
   --which <agent>                        the agent that executed this, when an agent (a script, a CI step) is driving mnema: omit it when you are acting directly. Declared (by this flag, or by MNEMA_AGENT_KEY), never assumed; where that agent’s key signs, the fact names the agent as the record does. It names the executor. See --scope for where the fact lands. A value that names no agent (an unset variable) is refused, never credited to you.
+  --allow-private-pattern                record a public write even though its text matches a pattern of this machine’s private list (private-patterns.txt in the data directory); without it such a write is refused. Never asked in the private scope.
   --stdin                                read the rationale from standard input instead of the line
   --body-file <path>                     read the rationale from this file instead of the line
   -h, --help                             display help for command

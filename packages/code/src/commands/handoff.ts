@@ -25,7 +25,7 @@
 
 import { catalogUpcasters } from '@mnema/chain';
 import { chainRootForScope, type DiscoveryEnv, resolveScope, type Scope } from '@mnema/core';
-import { openTreeForWriting, recordHandoff } from '@mnema/core/write';
+import { openTreeForWriting, privateListFor, recordHandoff } from '@mnema/core/write';
 import { oneLine } from '../one-line.js';
 import { forwardReplacement, type Landed, type Replacement } from '../recorded-content.js';
 import { locateTaskScopeKept } from '../tree-sources.js';
@@ -86,6 +86,8 @@ export function runHandoff(
     brief?: string;
     scope?: Scope;
     which?: string;
+    /** Pass the machine's private list (`--allow-private-pattern`): the text is recorded though it matches. */
+    allowPrivatePattern?: boolean;
     run?: string;
   },
 ): HandoffRecorded | HandoffRefused {
@@ -114,6 +116,7 @@ export function runHandoff(
         writer,
         layout: { root: chainRootForScope(trees, scope) as string },
         upcasters: catalogUpcasters(),
+        ...privateListFor(trees, scope, input.allowPrivatePattern),
         askedBeforeFounding: () =>
           home === undefined
             ? {

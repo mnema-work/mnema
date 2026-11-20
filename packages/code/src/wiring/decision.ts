@@ -39,7 +39,9 @@ import { fromTheGroup, REFUSED, takesFromItsGroup } from './from-the-group.js';
 import { writeLines } from './io.js';
 import { createsBy } from './misuse.js';
 import { noSuchRecord } from './no-such-record.js';
+import { onOneLine } from './on-one-line.js';
 import {
+  ALLOW_PRIVATE_PATTERN_HELP,
   declaredAgent,
   INVALID,
   parseScope,
@@ -90,6 +92,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
       ),
     )
     .option('--which <agent>', WHICH_HELP, declaredAgent)
+    .option('--allow-private-pattern', ALLOW_PRIVATE_PATTERN_HELP)
     .addHelpText('after', RECORD_CONTRACT_HELP);
   addBodySourceOptions(decision, 'rationale');
 
@@ -112,6 +115,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
       ),
     )
     .option('--which <agent>', WHICH_HELP, declaredAgent)
+    .option('--allow-private-pattern', ALLOW_PRIVATE_PATTERN_HELP)
     .addHelpText('after', RECORD_CONTRACT_HELP);
   addBodySourceOptions(record, 'rationale');
   createsBy(record);
@@ -120,6 +124,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
       alternatives?: string;
       scope?: string;
       which?: string;
+      allowPrivatePattern?: boolean;
       stdin?: boolean;
       bodyFile?: string;
     }>(record, wiring);
@@ -148,6 +153,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
       ...(given.alternatives !== undefined ? { alternatives: given.alternatives } : {}),
       ...(scope !== undefined ? { scope } : {}),
       ...(given.which !== undefined ? { which: given.which } : {}),
+      ...(given.allowPrivatePattern === true ? { allowPrivatePattern: true as const } : {}),
       ...(run !== undefined ? { run } : {}),
     });
     if (result.ok && result.alreadyRecorded) {
@@ -192,11 +198,14 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
     .addHelpText('after', WHICH_ON_SUBCOMMAND_HELP)
     .addHelpText('after', RECORD_CONTRACT_HELP);
   takesFromItsGroup(decisionMove, {
-    takes: ['--which'],
+    takes: ['--allow-private-pattern', '--which'],
     refuses: { '--scope': A_MOVE_FOLLOWS_THE_DECISION, '--alternatives': TURNED_DOWN_AT_BIRTH },
   });
   decisionMove.action(async (action: string, ids: string[], opts: { note?: string }) => {
-    const given = await fromTheGroup<{ which?: string }>(decisionMove, wiring);
+    const given = await fromTheGroup<{ which?: string; allowPrivatePattern?: boolean }>(
+      decisionMove,
+      wiring,
+    );
     if (given === REFUSED) return;
     const { runDecisionTransition } = await import('../commands/decision-transition.js');
     const run = pinnedRun();
@@ -216,6 +225,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
         action,
         proof: { ...(opts.note !== undefined ? { note: opts.note } : {}) },
         ...(given.which !== undefined ? { which: given.which } : {}),
+        ...(given.allowPrivatePattern === true ? { allowPrivatePattern: true as const } : {}),
         ...(run !== undefined ? { run } : {}),
         atATerminal: io.aPersonIsHere === true,
       });
@@ -247,6 +257,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
     )
     .addHelpText('after', RECORD_CONTRACT_HELP);
   takesFromItsGroup(review, {
+    takes: ['--allow-private-pattern'],
     refuses: {
       '--which': 'a review is a person’s: it signs with your own key, not an agent’s.',
       '--scope': A_MOVE_FOLLOWS_THE_DECISION,
@@ -254,10 +265,10 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
     },
   });
   review.action(async () => {
-    const given = await fromTheGroup<object>(review, wiring);
+    const given = await fromTheGroup<{ allowPrivatePattern?: boolean }>(review, wiring);
     if (given === REFUSED) return;
     const { reviewDecisions } = await import('./review.js');
-    await reviewDecisions(wiring);
+    await reviewDecisions(wiring, given.allowPrivatePattern === true);
   });
 
   // `decision supersede <old-id> <new-id> --reason`: supersede as its own verb.
@@ -274,11 +285,14 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
     .addHelpText('after', WHICH_ON_SUBCOMMAND_HELP)
     .addHelpText('after', RECORD_CONTRACT_HELP);
   takesFromItsGroup(supersede, {
-    takes: ['--which'],
+    takes: ['--allow-private-pattern', '--which'],
     refuses: { '--scope': A_MOVE_FOLLOWS_THE_DECISION, '--alternatives': TURNED_DOWN_AT_BIRTH },
   });
   supersede.action(async (oldId: string, newId: string, opts: { reason?: string }) => {
-    const given = await fromTheGroup<{ which?: string }>(supersede, wiring);
+    const given = await fromTheGroup<{ which?: string; allowPrivatePattern?: boolean }>(
+      supersede,
+      wiring,
+    );
     if (given === REFUSED) return;
     const { runDecisionTransition } = await import('../commands/decision-transition.js');
     const run = pinnedRun();
@@ -292,6 +306,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
       by: newId,
       proof: { ...(opts.reason !== undefined ? { reason: opts.reason } : {}) },
       ...(given.which !== undefined ? { which: given.which } : {}),
+      ...(given.allowPrivatePattern === true ? { allowPrivatePattern: true as const } : {}),
       ...(run !== undefined ? { run } : {}),
       atATerminal: io.aPersonIsHere === true,
     });
@@ -361,6 +376,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
       ),
     )
     .option('--which <agent>', WHICH_HELP, declaredAgent)
+    .option('--allow-private-pattern', ALLOW_PRIVATE_PATTERN_HELP)
     .addHelpText(
       'after',
       '\nEvery proposal is born `proposed`, whatever the file says its status is: what\n' +
@@ -396,7 +412,11 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
     // Written after `import`, both flags still land on the GROUP, which declares the same
     // two, so that is where their values are read. This command's own declarations are
     // what its `--help` lists and what `ownFlagsWrittenBefore` knows to look for.
-    const given = await fromTheGroup<{ scope?: string; which?: string }>(decisionImport, wiring);
+    const given = await fromTheGroup<{
+      scope?: string;
+      which?: string;
+      allowPrivatePattern?: boolean;
+    }>(decisionImport, wiring);
     if (given === REFUSED) return;
     const { linkBreakNotice } = await import('./integrity.js');
     const { runDecisionImport } = await import('../commands/decision-import.js');
@@ -418,6 +438,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
       ...(opts.write === true ? { write: true } : {}),
       ...(scope !== undefined ? { scope } : {}),
       ...(given.which !== undefined ? { which: given.which } : {}),
+      ...(given.allowPrivatePattern === true ? { allowPrivatePattern: true as const } : {}),
       ...(run !== undefined ? { run } : {}),
     });
     if (result.ok) {
@@ -434,6 +455,10 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
     }
     reportRefusal(wiring, result, {
       OUTSIDE_PROJECT: `"${dir}" is not inside this project. The provenance a proposal records has to be citable by every clone, so the directory has to be one.`,
+      PRIVATE_PATTERN:
+        result.reason === 'PRIVATE_PATTERN'
+          ? onOneLine`Nothing was recorded: ${result.path} matches "${result.pattern}", a pattern of this machine's private list (passage: "${result.passage}"). The import goes in whole or not at all. Take the passage out of the file, or pass --allow-private-pattern if the mention is meant to be public.${result.readAsText ? ' The pattern is a regular expression that could not be run in time, so it was read as the text between its slashes.' : ''}`
+          : '',
       GLOBAL_TREE:
         '`decision import` does not write to the global tree: a proposal records the file it came from as a path inside this project, and every project reads the global tree, where that path names a file of its own. Leave --scope out, or use --scope private.',
     });

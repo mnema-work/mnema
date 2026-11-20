@@ -154,6 +154,48 @@ It reports **where**, never **what**: the id, the kind, the tree, the instant
 and the class. Printing the value would move the credential into your terminal
 scrollback and your CI log, so the report has no field that could hold one.
 
+## Words that belong to your machine, and not to a repository
+
+A public record is committed and cloned, and a credential is not the only thing a person
+would not have there: an internal plan code, a machine name, the path of a home folder.
+Keep those in `private-patterns.txt`, in the data directory (`~/.mnema`, or `$MNEMA_HOME`
+where it is set), one pattern per line. A line is plain text, matched without regard to
+case, or `/regex/flags`; a blank line and a line that starts with `#` are skipped, and a
+`/regex/` that does not compile is read as the text between its slashes. The file belongs to
+the machine: it is not in the repository, it is not signed and it is not in the record.
+
+With a list there, a text written to the **public** tree that matches a pattern is **refused**
+(`PRIVATE_PATTERN`), and nothing is recorded, not even the first half of a write that has two
+(a task and its description, a handoff and its brief). That covers a decision, a task, a memory,
+an observation, a skill and a handoff; the note or reason of a decision, task or skill move
+(including `decision review`) and of a supersede; a link; and `decision import --write`. The
+refusal names the pattern and a short passage around the match, which are your own words, and
+says how to go on: write it without the passage, record it in the private scope, or, if the
+mention is meant to be public, pass `--allow-private-pattern` (`allow_private_pattern` on
+`record_decision`, `create_task`, `capture_memory`, `record_observation`, `create_skill`,
+`record_handoff`, `decision_transition`, `task_transition`, `skill_transition` and
+`link_knowledge`). The private and the global trees are never asked, and a machine with no list
+is not asked at all. A retraction's reason is not asked.
+
+A `decision import --write` is asked whole, before its first event: every title, rationale,
+alternatives and file path of the plan. If one matches, nothing at all is recorded and the refusal
+names the file and the pattern; a file whose title is clean but whose path is not does not leave
+a decision with no edge behind.
+
+A retraction's reason and `unlink` are not asked, on purpose: they take a fact out of effect, and
+the person withdrawing a leak must be able to say why, even in the words the list guards. Refusing
+them would leave the leak standing.
+
+A `/regex/` runs on a clock: each pattern is allowed 50 ms on one text, in a context of its own
+(the pattern that runs longer is one that hangs the write, and the shapes that do so are too many
+to name by reading the pattern). One that overruns, or nests a quantifier, or does not compile, is
+read from then on as the text between its slashes, and the refusal or the warning says so.
+
+`mnema record commit` asks the same list of the events its cut carries, and **warns** on the
+second stream, before it builds the branch, of each one that matches: those events are signed
+already, so it does not refuse, and the branch is made all the same. Whether to open the pull
+request is yours to decide.
+
 ## What a recorded decision says of its state
 
 Right after "Recorded decision ADR-n (id)", the command that records a decision and the `record_decision` tool say that the decision is born

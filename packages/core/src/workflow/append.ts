@@ -40,6 +40,8 @@
 
 import { type CatalogEvent, type ChainWriter, type Entry, unreadableReason } from '@mnema/chain';
 import { unfilledReference, unfilledTitle, unstatedReason } from '../a-reason-states-something.js';
+import { matchPrivate, stringsIn } from '../content/private-patterns.js';
+import { oneLine } from '../one-line.js';
 import { systemClock } from './clock.js';
 import { authorizingAnchor, ensureFounded } from './identity-operations.js';
 import type { WriteContext } from './operations.js';
@@ -117,11 +119,24 @@ export interface UnknownRecordErr {
 }
 
 /**
+ * A PUBLIC write refused because its text matches a pattern of this machine's private list
+ * (`private-patterns.txt`); nothing was appended. The message carries the passage and the pattern,
+ * which are the person's own words and are not a credential, and says how to pass.
+ */
+export interface PrivatePatternErr {
+  readonly ok: false;
+  readonly code: 'PRIVATE_PATTERN';
+  readonly message: string;
+}
+
+/**
  * Why the door refused an event: a read could not open it, its why says nothing, its title is a
- * marker or names nothing, or a reference it is looked up by is a marker.
+ * marker or names nothing, a reference it is looked up by is a marker, or its text matches this
+ * machine's private list.
  */
 export type AppendRefusal =
   | UnreadableEventErr
+  | PrivatePatternErr
   | NotAReasonErr
   | NotATitleErr
   | NotAReferenceErr
@@ -243,7 +258,8 @@ export function askTheDoor(
   ctx: WriteContext,
   build: (stamp: FactStamp) => CatalogEvent,
 ): AppendRefusal | undefined {
-  return refuse(build({ at: ASKED_ONLY, anchor: authorizingAnchor(ctx) }));
+  const event = build({ at: ASKED_ONLY, anchor: authorizingAnchor(ctx) });
+  return refuse(event) ?? refusePrivate(ctx, event);
 }
 
 /**
@@ -263,7 +279,7 @@ function foundedThenBuilt(
   | { readonly ok: true; readonly events: readonly CatalogEvent[]; readonly anchor: string }
   | AppendRefusal {
   for (const event of build({ at: ASKED_ONLY, anchor: authorizingAnchor(ctx) })) {
-    const refusal = refuse(event);
+    const refusal = refuse(event) ?? refusePrivate(ctx, event);
     if (refusal !== undefined) return refusal;
   }
   const owed = ctx.askedBeforeFounding?.();
@@ -271,6 +287,48 @@ function foundedThenBuilt(
   const anchor = ensureFounded(ctx);
   const at = (ctx.clock ?? systemClock)();
   return { ok: true, events: build({ at, anchor }), anchor };
+}
+
+/**
+ * The refusal a PUBLIC write earns when its text matches this machine's private list, or undefined.
+ *
+ * The list is on the context only where the surface put it: a write to a public tree that was not
+ * told to pass (`privateListFor`). A context with none is not asked, which is how a private or a
+ * global write, a write with the explicit flag, and a machine with no list are all the same here.
+ * It is asked beside the reader's rule and before the founding, so a refusal leaves nothing behind.
+ */
+function refusePrivate(ctx: WriteContext, event: CatalogEvent): PrivatePatternErr | undefined {
+  return refusePrivateText(ctx, stringsIn(event.payload));
+}
+
+/**
+ * {@link refusePrivate} over texts that are not on one event: an operation that appends a fact and then
+ * a note (a task and its description, a handoff and its brief) asks the whole of what it will write
+ * BEFORE its first append, so a refusal leaves no half behind.
+ */
+export function refusePrivateText(
+  ctx: WriteContext,
+  texts: Iterable<string>,
+): PrivatePatternErr | undefined {
+  if (ctx.privateList === undefined) return undefined;
+  for (const text of texts) {
+    const match = matchPrivate(ctx.privateList, text);
+    if (match === undefined) continue;
+    return {
+      ok: false,
+      code: 'PRIVATE_PATTERN',
+      message:
+        `the text of this public write matches "${oneLine(match.pattern)}", a pattern of this machine's ` +
+        `private list (passage: "${oneLine(match.passage)}"). The fact was NOT recorded: a public record is ` +
+        'committed and cloned. Write it without that passage, record it in the private scope, or, ' +
+        'if the mention is meant to be public, say so with --allow-private-pattern ' +
+        '(allow_private_pattern in the MCP tools).' +
+        (match.readAsText === true
+          ? ' The pattern is a regular expression this machine could not run in time (or at all), so it was read as the text between its slashes.'
+          : ''),
+    };
+  }
+  return undefined;
 }
 
 /**

@@ -21,7 +21,13 @@ import { hereWriting } from './context.js';
 import { scopeOption } from './enumerated.js';
 import { writeLines } from './io.js';
 import { onOneLine } from './on-one-line.js';
-import { declaredAgent, INVALID, parseScope, WHICH_HELP } from './options.js';
+import {
+  ALLOW_PRIVATE_PATTERN_HELP,
+  declaredAgent,
+  INVALID,
+  parseScope,
+  WHICH_HELP,
+} from './options.js';
 import { reportRecorded, reportRefusal } from './report.js';
 import { PIN_REFUSED } from './run-pin.js';
 import { type Declared, mutatesTheRecord, type Wiring } from './verb.js';
@@ -52,12 +58,13 @@ export function registerLink(program: Command, wiring: Wiring): Declared {
       ),
     )
     .option('--which <agent>', WHICH_HELP, declaredAgent)
+    .option('--allow-private-pattern', ALLOW_PRIVATE_PATTERN_HELP)
     .addHelpText('after', RECORD_CONTRACT_HELP)
     .action(
       async (
         subject: string,
         target: string,
-        opts: { rel: string; scope?: string; which?: string },
+        opts: { rel: string; scope?: string; which?: string; allowPrivatePattern?: boolean },
       ) => {
         const { runLink } = await import('../commands/link.js');
         const scope = parseScope(opts.scope, wiring);
@@ -73,6 +80,7 @@ export function registerLink(program: Command, wiring: Wiring): Declared {
           rel: opts.rel,
           ...(scope !== undefined ? { scope } : {}),
           ...(opts.which !== undefined ? { which: opts.which } : {}),
+          ...(opts.allowPrivatePattern === true ? { allowPrivatePattern: true as const } : {}),
           ...(run !== undefined ? { run } : {}),
         });
         if (result.ok) {
