@@ -15,7 +15,16 @@
  *   - a refusal writes nothing at all: a half-done restore is the split.
  */
 
-import { existsSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  lstatSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -32,6 +41,7 @@ import {
   materializePublicKey,
   openChainForWriting,
   protectPrivateKeys,
+  RecordLinkedError,
   sign,
   verify,
 } from '@mnema/chain';
@@ -261,6 +271,23 @@ describe('restoreKey: the identity after the loss is the identity from before it
 });
 
 describe('restoreKey: refusals, each writing nothing', () => {
+  it('refuses to write the anchor through a symbolic link, and writes nothing', () => {
+    const lost = establishThenLoseTheKey();
+    const outside = join(tmp('mnema-restore-outside-'), 'elsewhere');
+    writeFileSync(outside, 'not an anchor\n');
+    const place = join(tree, 'keys', `${lost.backupFp}.anchor`);
+    rmSync(place, { force: true });
+    symlinkSync(outside, place);
+
+    expect(() => restoreKey({ privateKeyPath: lost.vaultCopy, keyRoot, tree, upcasters })).toThrow(
+      RecordLinkedError,
+    );
+
+    expect(readFileSync(outside, 'utf-8')).toBe('not an anchor\n');
+    expect(lstatSync(place).isSymbolicLink()).toBe(true);
+    expect(listPrivateKeyFingerprints({ root: keyRoot })).toEqual([]);
+  });
+
   it('refuses UNREADABLE_KEY for a file that is not a private key, and for none at all', () => {
     const junk = join(vault, 'not-a-key.txt');
     writeFileSync(junk, 'BEGIN NOTHING\n', 'utf-8');

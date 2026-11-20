@@ -39,7 +39,9 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { basename } from 'node:path';
 import {
+  anchorPath,
   CodedError,
   isProtected,
   type KeyPair,
@@ -47,6 +49,7 @@ import {
   passphraseFromEnvironment,
   persistKeyPair,
   readPrivateKeyPair,
+  refuseToWriteThrough,
   type UpcasterRegistry,
   writeAnchor,
 } from '@mnema/chain';
@@ -182,6 +185,11 @@ export function restoreKey(input: RestoreInput): RestoreOk | RestoreErr {
     };
   }
 
+  // The anchor is opened for writing, which follows a link: one at `keys/` or at the anchor's place
+  // would take the bytes where nobody looks, as the writer refuses it (`RecordLinkedError`).
+  const layout = { root: input.tree };
+  const anchorFile = basename(anchorPath(layout, keyPair.fingerprint));
+  refuseToWriteThrough(layout, ['keys', ['keys', anchorFile].join('/')]);
   writeAnchor({ root: input.tree }, keyPair.fingerprint, found.anchor);
   noteSettledHere(input.tree, keyPair.fingerprint);
   // A copy that was protected is installed protected, with the passphrase it was just opened by:
