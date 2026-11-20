@@ -106,8 +106,11 @@ function titleOf(correction: Correction): string {
 function rationaleOf(correction: Correction): string {
   const said = isAnAnswer(correction)
     ? `The person answered a question the agent asked in a session, in these words: “${correction.sentence}”`
-    : `The person corrected the agent in a session, in these words: “${correction.sentence}”, ` +
-      `matched by the shape “${correction.shape}”`;
+    : isADictatedRule(correction)
+      ? `The person dictated a rule in a session, in these words: “${correction.sentence}”, ` +
+        `matched by the shape “${correction.shape}”`
+      : `The person corrected the agent in a session, in these words: “${correction.sentence}”, ` +
+        `matched by the shape “${correction.shape}”`;
   return `${said}. Nobody has ruled whether it is a decision to keep. Source: ${markerOf(correction)}.`;
 }
 
