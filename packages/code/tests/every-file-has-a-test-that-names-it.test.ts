@@ -1689,7 +1689,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/core/src/projections/one-window-three-readings.test.ts': 8,
   'packages/core/src/projections/only-proven-events-reach-the-projection.test.ts': 7,
   'packages/core/src/projections/order.test.ts': 6,
-  'packages/core/src/projections/persisted-cache.test.ts': 15,
+  'packages/core/src/projections/persisted-cache.test.ts': 22,
   'packages/core/src/projections/proof.test.ts': 2,
   'packages/core/src/projections/reference-store.test.ts': 6,
   'packages/core/src/projections/run-store.test.ts': 7,
