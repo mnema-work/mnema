@@ -10,7 +10,7 @@ In the help under **Hand over** · a command of [`mnema switch`](switch.md).
 
 | Argument | What it does |
 | --- | --- |
-| `channel` | the channel to switch (brief-document, recall-document, edit-rules-push, edit-asks-a-person, edit-refuses-a-write, agent-accepts, edit-first-write-gate, user-corrections, choice-settled, host-memory-mirror, decision-file-written, subagent-handback, tool-call-count, last-session, private-rules, after-a-compaction, session-journal, agent-mirror, session-tally) |
+| `channel` | the channel to switch (brief-document, recall-document, edit-rules-push, edit-asks-a-person, edit-refuses-a-write, agent-accepts, edit-first-write-gate, user-corrections, opening-core, choice-settled, host-memory-mirror, decision-file-written, subagent-handback, tool-call-count, last-session, private-rules, after-a-compaction, session-journal, agent-mirror, session-tally) |
 
 ## Options
 
@@ -34,10 +34,10 @@ Arguments:
   channel          the channel to switch (brief-document, recall-document,
                    edit-rules-push, edit-asks-a-person, edit-refuses-a-write,
                    agent-accepts, edit-first-write-gate, user-corrections,
-                   choice-settled, host-memory-mirror, decision-file-written,
-                   subagent-handback, tool-call-count, last-session,
-                   private-rules, after-a-compaction, session-journal,
-                   agent-mirror, session-tally)
+                   opening-core, choice-settled, host-memory-mirror,
+                   decision-file-written, subagent-handback, tool-call-count,
+                   last-session, private-rules, after-a-compaction,
+                   session-journal, agent-mirror, session-tally)
 
 Options:
   --reason <text>  why (recorded in the fact; never required)

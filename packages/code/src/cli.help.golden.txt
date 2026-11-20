@@ -3,7 +3,7 @@ $ mnema
 | Your decisions, handed to your agents' sessions and held at the edits they govern: append-only and signed in the repository, and checkable by anyone.
 | A mnema project is founded here.
 | 1 decision(s) await a judgement: `mnema decision review` goes through them.
-| Off on this machine: edit-first-write-gate, user-corrections. Turn one on with `mnema switch on <name>`.
+| Off on this machine: edit-first-write-gate, user-corrections, opening-core. Turn one on with `mnema switch on <name>`.
 | Next:
 |   `mnema status`                                where things stand
 |   `mnema decision record <title> <rationale>`   record a choice that was settled
@@ -764,7 +764,7 @@ $ mnema switch --help
 |   What it carries is what stops arriving when it is off.
 |   An off switch says who made it and when, and whether a clone of this
 |   repository holds it: a switch recorded privately governs only this machine.
-|   A channel with no switch is on, except edit-first-write-gate and user-corrections, which are off until switched on.
+|   A channel with no switch is on, except edit-first-write-gate, user-corrections and opening-core, which are off until switched on.
 
 ### mnema inherit --help
 $ mnema inherit --help
@@ -2399,10 +2399,10 @@ $ mnema switch off --help
 |   channel          the channel to switch (brief-document, recall-document,
 |                    edit-rules-push, edit-asks-a-person, edit-refuses-a-write,
 |                    agent-accepts, edit-first-write-gate, user-corrections,
-|                    choice-settled, host-memory-mirror, decision-file-written,
-|                    subagent-handback, tool-call-count, last-session,
-|                    private-rules, after-a-compaction, session-journal,
-|                    agent-mirror, session-tally)
+|                    opening-core, choice-settled, host-memory-mirror,
+|                    decision-file-written, subagent-handback, tool-call-count,
+|                    last-session, private-rules, after-a-compaction,
+|                    session-journal, agent-mirror, session-tally)
 |
 | Options:
 |   --reason <text>  why (recorded in the fact; never required)
@@ -2439,10 +2439,10 @@ $ mnema switch on --help
 |   channel          the channel to switch (brief-document, recall-document,
 |                    edit-rules-push, edit-asks-a-person, edit-refuses-a-write,
 |                    agent-accepts, edit-first-write-gate, user-corrections,
-|                    choice-settled, host-memory-mirror, decision-file-written,
-|                    subagent-handback, tool-call-count, last-session,
-|                    private-rules, after-a-compaction, session-journal,
-|                    agent-mirror, session-tally)
+|                    opening-core, choice-settled, host-memory-mirror,
+|                    decision-file-written, subagent-handback, tool-call-count,
+|                    last-session, private-rules, after-a-compaction,
+|                    session-journal, agent-mirror, session-tally)
 |
 | Options:
 |   --reason <text>  why (recorded in the fact; never required)
