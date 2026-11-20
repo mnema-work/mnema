@@ -108,6 +108,9 @@ export {
   nextActions,
   nextActionsForTask,
 } from './context/next-action.js';
+// The list of the rules in force a person did not accept themselves (ADR-623): read by bare `mnema`
+// and by `decision review`, which marks what it shows.
+export { type NotSeen, type RuleNotSeen, rulesNotSeenBy } from './context/not-seen.js';
 export {
   A_RUN_IS_HERE_FOR_SECONDS,
   CLOCKS_MAY_DIFFER_BY_SECONDS,

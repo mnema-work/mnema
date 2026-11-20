@@ -141,6 +141,7 @@ export {
 export { keepProductVersion } from './projections/cache-meta.js';
 export type { ChannelSwitchProjection } from './projections/channel.js';
 export {
+  type AcceptMove,
   type AdrCollision,
   adrCollisions,
   type DecisionActor,
@@ -216,6 +217,7 @@ export {
   type ReferenceRow,
   type ReferenceSeed,
   type ReferringRole,
+  type Showing,
   type SubjectRun,
   tallyAuthorship,
   walkReferences,

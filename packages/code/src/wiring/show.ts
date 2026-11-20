@@ -56,6 +56,7 @@ export function registerShow(program: Command, wiring: Wiring): Declared {
         recordReport(render, result.record, {
           anchors: result.anchors,
           ...(result.consultations !== undefined ? { consultations: result.consultations } : {}),
+          ...(result.shown !== undefined ? { shown: result.shown } : {}),
           ...(result.attested !== undefined ? { attested: result.attested } : {}),
           ...(result.unannounced !== undefined ? { unannounced: result.unannounced } : {}),
         }),

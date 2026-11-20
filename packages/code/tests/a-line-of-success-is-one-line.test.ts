@@ -608,6 +608,11 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'a uuid this write minted, and the only value on the line',
   },
+  "review.ts «{} rule(s) in force you did not accept yourself. Each one shown here is marked shown to you, in this machine's private record.» #1":
+    {
+      verdict: 'minted',
+      why: 'a count of the rules this reading listed',
+    },
   'retract.ts «Retracted {} {}» #1': {
     verdict: 'minted',
     why: 'the kind of the note the record holds, and its id in the record’s canonical form',
@@ -1237,7 +1242,8 @@ describe('every line this wiring words is classified', () => {
     // 203 with the lines `backup restore` and `backup status` print of the folders kept aside, and none of a deletion.
     // 204 with the line `backup hook` prints of where it put the hook and where it took it from.
     // 207 with the three lines `backup restore --global` prints, the two folder counts and the heading.
-    expect(FOUND.sites.length).toBe(207);
+    // 208 with the line `decision review` prints before the rules in force it shows and marks.
+    expect(FOUND.sites.length).toBe(208);
   });
 
   it('reads the verdict off the source rather than believing the table', () => {
@@ -1258,7 +1264,7 @@ describe('every line this wiring words is classified', () => {
     // Neither arm of the case above may be empty, or half of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
     expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(117);
-    expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(90);
+    expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(91);
     expect(FOUND.sites.filter((site) => site.tagged).length).toBe(117);
   });
 
