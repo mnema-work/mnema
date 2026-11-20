@@ -26,8 +26,9 @@
  *
  * A RESPONSE IS WHAT FOLLOWS THE LAST PERSON'S PROMPT. Tool results are `user` lines too, so a
  * prompt is the `user` line whose content is text and whose sender is a person: the host flags
- * text it injected (`isMeta`) and names a sender that is not `human` on task notifications and a
- * subagent's hand-back, so neither is mistaken for somebody typing.
+ * text it injected (`isMeta`), names a sender that is not `human` on task notifications and a
+ * subagent's hand-back, and leaves the sender out of a compaction summary and a local command, so
+ * none of them is mistaken for somebody typing: only a line marked `human` is a person's.
  */
 
 import { createHash } from 'node:crypto';
@@ -302,20 +303,42 @@ function filesWritten(
 }
 
 /**
- * Whether a `user` line is a person's prompt: text, not a tool result, not text the host
- * injected, not a notification or a subagent's hand-back.
+ * Whether a `user` line is a person's prompt: the host marks the line as written by a person
+ * (`origin.kind` is `human`), and it is text, not a tool result, not text the host injected, not
+ * a notification or a subagent's hand-back.
+ *
+ * THE POSITIVE MARKER IS REQUIRED. A line with no `origin` is not taken as a person's: the host
+ * writes a compaction summary, a local command (`<command-name>`, `<local-command-stdout>`) and the
+ * interruption marker as `user` lines without it, and reading them as somebody typing would put
+ * the host's words in a person's mouth. The flags and the shape of the text are checked as well,
+ * so a line that carries the marker and is still the host's (a summary, a command) is passed over.
+ * Only Claude Code's transcript is read here; no other host's is, so no other marker is assumed.
  */
 function isAPrompt(line: Record<string, unknown>): boolean {
-  if (line.isMeta === true || line.isSidechain === true) return false;
-  const sender = asObject(line['origin']);
-  if (sender !== undefined && sender.kind !== 'human') return false;
+  if (line.isMeta === true || line.isSidechain === true || line.isCompactSummary === true) {
+    return false;
+  }
+  if (asObject(line['origin'])?.kind !== 'human') return false;
   const content = asObject(line.message)?.content;
-  if (typeof content === 'string') return true;
+  if (typeof content === 'string') return !isHarnessText(content);
+  if (!Array.isArray(content)) return false;
+  const texts = content.flatMap((block) => {
+    const one = asObject(block);
+    return one?.type === 'text' && typeof one.text === 'string' ? [one.text] : [];
+  });
   return (
-    Array.isArray(content) &&
-    content.some((block) => asObject(block)?.type === 'text') &&
+    texts.length > 0 &&
+    !texts.every(isHarnessText) &&
     !content.some((block) => asObject(block)?.type === 'tool_result')
   );
+}
+
+/** The text the host writes itself: a local command and its output, and the interruption marker. */
+const HARNESS_TEXT =
+  /^\s*(<(command-name|command-message|command-args|local-command-[a-z]+)>|\[Request interrupted by user)/;
+
+function isHarnessText(text: string): boolean {
+  return HARNESS_TEXT.test(text);
 }
 
 /** One thing a person typed into a session, and where it is. */

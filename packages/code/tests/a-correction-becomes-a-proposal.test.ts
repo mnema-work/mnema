@@ -435,6 +435,37 @@ describe('mnema corrections', () => {
     expect(decisionsIn('projectPrivate')).toHaveLength(0);
   });
 
+  it('reads as the person only a line the host marks as human, and not harness text', async () => {
+    await did('switch', 'on', 'user-corrections');
+    const bare = (content: unknown, extra: Record<string, unknown> = {}): string =>
+      JSON.stringify({
+        type: 'user',
+        sessionId: 's-1',
+        uuid: `u-bare-${JSON.stringify(content).length}`,
+        timestamp: '2026-10-01T10:00:00.000Z',
+        message: { role: 'user', content },
+        ...extra,
+      });
+    const file = transcript([
+      bare(
+        'No, this summary is not a person. This session is being continued from a previous one.',
+        {
+          isCompactSummary: true,
+        },
+      ),
+      bare(
+        'No, this summary has lost its flag. This session is being continued from a previous conversation.',
+      ),
+      bare('<command-name>/clear</command-name>\n<command-message>clear</command-message>'),
+      bare('<local-command-stdout>No, not the person</local-command-stdout>'),
+      bare([{ type: 'text', text: '[Request interrupted by user]' }]),
+      bare('No, a line with no sender at all.'),
+      typed('<command-name>/model</command-name> no, still harness text'),
+    ]);
+    expect(answer(payload('Stop', file))).toEqual({ reply: {}, notes: [] });
+    expect(decisionsIn('projectPrivate')).toHaveLength(0);
+  });
+
   it('answers only a Stop, and says what it could not read on the second stream', async () => {
     await did('switch', 'on', 'user-corrections');
     const file = transcript(CORRECTED);
