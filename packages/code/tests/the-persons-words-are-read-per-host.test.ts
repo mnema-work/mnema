@@ -80,7 +80,9 @@ describe('Gemini CLI', () => {
         '<hook_context>mnema: the record says Postgres</hook_context>',
       ]),
     ]);
-    expect(thePersonsWords('gemini', path)).toEqual([{ line: 2, text: 'Use SQLite', chosen: false }]);
+    expect(thePersonsWords('gemini', path)).toEqual([
+      { line: 2, text: 'Use SQLite', chosen: false },
+    ]);
   });
 
   it('takes the typed text the host kept apart, when it differs from what was sent', () => {
@@ -88,7 +90,9 @@ describe('Gemini CLI', () => {
       GEMINI.meta,
       GEMINI.typedWith('m1', ['Use SQLite', 'extra the host added'], 'Use SQLite'),
     ]);
-    expect(thePersonsWords('gemini', path)).toEqual([{ line: 2, text: 'Use SQLite', chosen: false }]);
+    expect(thePersonsWords('gemini', path)).toEqual([
+      { line: 2, text: 'Use SQLite', chosen: false },
+    ]);
   });
 
   it('leaves out the synthetic turns of session, directory and editor context and a command', () => {
@@ -114,7 +118,9 @@ describe('Gemini CLI', () => {
     const path = file([
       GEMINI.meta,
       GEMINI.typed('m1', 'Use SQLite'),
-      GEMINI.typedWith('m2', ['<state_snapshot><overall_goal>use Postgres</overall_goal></state_snapshot>']),
+      GEMINI.typedWith('m2', [
+        '<state_snapshot><overall_goal>use Postgres</overall_goal></state_snapshot>',
+      ]),
     ]);
     expect(thePersonsWords('gemini', path)?.map((said) => said.text)).toEqual(['Use SQLite']);
   });
@@ -169,9 +175,21 @@ describe('a line that is not JSON is passed over, in every reader', () => {
   const broken = '{"type": "user", "message": \n';
   it.each([
     ['gemini', [GEMINI.typed('m1', 'one')], GEMINI.typed('m2', 'two')],
-    ['qwen', [QWEN.record({ type: 'user', message: QWEN.content('one') })], QWEN.record({ type: 'user', message: QWEN.content('two') })],
-    ['vscode', [VSCODE.entry('user.message', { content: 'one' })], VSCODE.entry('user.message', { content: 'two' })],
-    ['claude', [{ type: 'user', origin: { kind: 'human' }, message: { role: 'user', content: 'one' } }], { type: 'user', origin: { kind: 'human' }, message: { role: 'user', content: 'two' } }],
+    [
+      'qwen',
+      [QWEN.record({ type: 'user', message: QWEN.content('one') })],
+      QWEN.record({ type: 'user', message: QWEN.content('two') }),
+    ],
+    [
+      'vscode',
+      [VSCODE.entry('user.message', { content: 'one' })],
+      VSCODE.entry('user.message', { content: 'two' }),
+    ],
+    [
+      'claude',
+      [{ type: 'user', origin: { kind: 'human' }, message: { role: 'user', content: 'one' } }],
+      { type: 'user', origin: { kind: 'human' }, message: { role: 'user', content: 'two' } },
+    ],
   ] as const)('%s', (host, before, after) => {
     const path = join(dir, 'broken.jsonl');
     writeFileSync(path, `${jsonl(before)}${broken}not json at all\n${jsonl([after])}`);
