@@ -143,10 +143,15 @@ export function forgetWhatWasNoted(): void {
 export function noteSwallowed(
   where: string,
   error: unknown,
-  options: { readonly processEnv?: NodeJS.ProcessEnv; readonly now?: Date } = {},
+  options: {
+    readonly processEnv?: NodeJS.ProcessEnv;
+    /** The data directory itself, where the caller already knows it: in place of the environment's. */
+    readonly dataDir?: string;
+    readonly now?: Date;
+  } = {},
 ): void {
   try {
-    const dataDir = dataDirOf(options.processEnv);
+    const dataDir = options.dataDir ?? dataDirOf(options.processEnv);
     if (dataDir === undefined || !existsSync(join(dataDir, KEY_ROOT_DIR))) return;
     const now = options.now ?? new Date();
     const at = `${now.toISOString().slice(0, 19)}Z`;

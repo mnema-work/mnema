@@ -22,6 +22,7 @@ import {
   sitesByCount,
   swallowedFiles,
 } from './swallowed-ledger.js';
+import { appendToolCall } from './tool-calls.js';
 import { VERSION } from './version.js';
 
 let home: string;
@@ -167,5 +168,17 @@ describe('the ledger of what was swallowed', () => {
       present: false,
       unreadable: false,
     });
+  });
+
+  it('says once that the tool-call count could not be written, from the data directory the file sits in', () => {
+    // `tool-calls` is a file where the directory should be: the append cannot make its folder.
+    writeFileSync(join(home, 'tool-calls'), 'in the way');
+    const file = join(home, 'tool-calls', 'project.jsonl');
+    const call = { at: NOW.toISOString(), tool: 'search', effect: 'reads', result: 'ok' } as const;
+    expect(() => appendToolCall(file, call)).not.toThrow();
+    appendToolCall(file, call);
+    expect(readSwallowed(home, { now: new Date() }).entries).toMatchObject([
+      { where: 'tool-calls.append', code: expect.stringMatching(/^E[A-Z]+$/) },
+    ]);
   });
 });
