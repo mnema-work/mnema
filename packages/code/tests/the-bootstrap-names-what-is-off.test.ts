@@ -132,6 +132,8 @@ describe('the opening read names the channels that are off', () => {
       roots: [pathToFileURL(repo).href],
       env,
     });
-    expect(channelsOffHere(session)).toEqual(STARTS_OFF.filter((name) => name !== 'record-publish'));
+    expect(channelsOffHere(session)).toEqual(
+      STARTS_OFF.filter((name) => name !== 'record-publish'),
+    );
   });
 });

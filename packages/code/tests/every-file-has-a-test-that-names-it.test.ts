@@ -1558,7 +1558,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-star-is-suggested-once.test.ts': 8,
   'packages/code/tests/the-strict-gate-catches-the-forgery.test.ts': 7,
   'packages/code/tests/the-suite-is-split-whole.test.ts': 4,
-  'packages/code/tests/the-switch-is-a-fact.test.ts': 28,
+  'packages/code/tests/the-switch-is-a-fact.test.ts': 29,
   'packages/code/tests/the-switch-pages-are-generated.test.ts': 5,
   'packages/code/tests/the-three-cache-states-answer-alike.test.ts': 8,
   'packages/code/tests/the-three-doors-are-one.test.ts': 31,
