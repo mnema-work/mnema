@@ -336,6 +336,30 @@ describe('an agent accept at the command line', () => {
     expect(state(id)).toContain('(accepted)');
   });
 
+  it('refuses an accept from any name when the session variable points at no conversation', { timeout: 60_000 }, () => {
+    const id = aProposedDecision();
+    const before = held(sandbox);
+    for (const session of ['invented-session', 'not a valid id!']) {
+      const refused = mnema(
+        { CLAUDE_CODE_SESSION_ID: session },
+        undefined,
+        'decision',
+        'move',
+        'accept',
+        id,
+        '--which',
+        'zz',
+        '--note',
+        'The person said "keep the cache between runs"',
+      );
+      expect(refused.status, `${session}: ${refused.out}`).toBe(1);
+      expect(refused.out).toContain('ACCEPT_NEEDS_THE_PERSONS_WORDS');
+      expect(refused.out).toContain('was not found');
+    }
+    expect(held(sandbox)).toEqual(before);
+    expect(state(id)).toContain('(proposed)');
+  });
+
   it('is refused with --which in any spelling of Claude Code and no session id', {
     timeout: 60_000,
   }, () => {
@@ -487,7 +511,7 @@ describe('an agent accept at the command line', () => {
     expect(refused.out).toContain('ACCEPT_NEEDS_THE_PERSONS_WORDS');
   });
 
-  it('says the words were not checked where the host hands no session or no transcript', {
+  it('says the words were not checked where the host is not readable, and refuses a readable host whose conversation is not found', {
     timeout: 60_000,
   }, () => {
     const id = aProposedDecision();
@@ -506,9 +530,12 @@ describe('an agent accept at the command line', () => {
     expect(noSession.status, noSession.out).toBe(0);
     expect(noSession.out).toContain('not checked against what the person said');
     const other = mnema({}, undefined, 'decision', 'record', 'Another call', 'because');
+    const before = held(sandbox);
     const unknown = accept(idOf(other.out), 'The person said "anything at all"');
-    expect(unknown.status, unknown.out).toBe(0);
-    expect(unknown.out).toContain('transcript is not known');
+    expect(unknown.status, unknown.out).toBe(1);
+    expect(unknown.out).toContain('ACCEPT_NEEDS_THE_PERSONS_WORDS');
+    expect(unknown.out).toContain('was not found');
+    expect(held(sandbox)).toEqual(before);
   });
 
   it('is not asked of a person at a terminal: an accept with no agent declared passes', {

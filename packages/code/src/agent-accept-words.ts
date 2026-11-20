@@ -166,8 +166,9 @@ export interface AcceptToCheck {
   readonly sessionHost?: HostName;
   readonly transcript: string | undefined;
   /**
-   * Set by the command line: an agent that declares Claude Code with no session id has left the one
-   * thing the check reads by, so its accept waits (and does not pass as "not checked").
+   * Set by the command line: an agent of a host whose words are read, with no session id or with no
+   * conversation found for the one it gives, has left the one thing the check reads, so its accept
+   * waits (and does not pass as "not checked").
    */
   readonly refuseWithoutASession?: boolean;
 }
@@ -212,6 +213,16 @@ export function whatTheAcceptRestsOn(
     return { outcome: 'not-checked', why: 'this host does not hand its session to mnema' };
   }
   if (move.transcript === undefined) {
+    if (move.refuseWithoutASession === true) {
+      return {
+        outcome: 'waits',
+        code: ACCEPT_NEEDS_THE_PERSONS_WORDS,
+        message:
+          'the conversation of the session this process is in (the variable of a host whose words are read) was not found, ' +
+          'so the words this accept rests on cannot be looked for: a person reviews it (`mnema decision review`). ' +
+          'The decision stays proposed and was not moved.',
+      };
+    }
     return {
       outcome: 'not-checked',
       why: 'this session’s transcript is not known to mnema (its hooks have not run here)',
