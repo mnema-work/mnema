@@ -207,7 +207,7 @@ const LANDED_PUBLIC_WITHOUT_GIT =
 
 /** What the public tree is when git excludes it and tracks nothing under it: a record local to this machine. */
 const LANDED_PUBLIC_LOCAL =
-  "  Landed in the public tree: git ignores .mnema/ here and tracks nothing under it, so it stays on this machine and no clone gets it.";
+  '  Landed in the public tree: git ignores .mnema/ here and tracks nothing under it, so it stays on this machine and no clone gets it.';
 
 /**
  * Whether the project's public tree is local: git excludes `.mnema` at the repository's top AND
