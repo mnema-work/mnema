@@ -52,7 +52,7 @@ function commitRefusals(refused: RecordCommitRefused): Record<string, string> {
         : '',
     NO_SUCH_DESTINATION:
       refused.reason === 'NO_SUCH_DESTINATION'
-        ? onOneLine`This clone does not hold ${refused.remote}/${refused.branch}, and reading it would reach the network: \`git fetch ${refused.remote} ${refused.branch}\` reads it.`
+        ? onOneLine`This clone does not hold ${refused.remote}/${refused.branch}, and reading it would reach the network: \`git remote update ${refused.remote}\` reads it.`
         : '',
     NOT_A_PREFIX:
       refused.reason === 'NOT_A_PREFIX'

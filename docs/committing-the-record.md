@@ -49,6 +49,43 @@ the cut ends: run again with nothing new it says the branch is there, and once t
 it says there is nothing to commit. After the pull request merges, `record pull` brings the branch
 followed back over the events that stayed out.
 
+## Publishing the record: the push and the pull request
+
+`record commit` pushes nothing. Where you want one command to do the cut, the push and the pull
+request, `record publish` does, and it is off until you switch it on, for this machine only:
+
+```sh
+mnema switch on record-publish
+mnema record publish --to origin/main
+```
+
+`--to <remote>/<branch>` is the branch the pull request asks to merge into, and the remote it is
+pushed to. It is never deduced: not from `HEAD`, not from the branch you are on, not from what a
+remote calls its default. The base of the cut is the remote-tracking ref you name, as this clone
+last read it (`git remote update <remote>` reads it again); the rest of the cut is `record commit`'s,
+with `--through` and `--json`.
+
+The switch is recorded in this machine's private tree: `--scope public` is refused, and one found in
+the committed tree is not read, because a committed `on` would turn the verb on in every clone. It
+refuses, naming the reason and before it cuts anything:
+
+- **The e-mail.** A pushed commit carries its author's e-mail for good. The one it publishes under is
+  the repository's own `user.email` (`git config user.email <address>` inside it): a repository that sets none,
+  or sets the one the global configuration holds, is refused, and so is a cut whose author or committer is
+  another (for instance a `GIT_AUTHOR_EMAIL` in the environment): that branch stays here, unpushed.
+- **One record pull request at a time.** A second cut while the first is open carries the first one's
+  lines too, and merged one after the other they conflict in the tail file. A pull request into the
+  destination counts as the record's by what it changes (every file under the record's folder), never
+  by the name of its branch. It is read through `gh pr list`, so the verb needs `gh`, logged in, and a
+  remote whose address is GitHub's; with `gh` absent or another host it refuses and says to check by hand,
+  then run `record commit`. One open for 24 hours or more is said to have stalled: it needs merging or
+  closing before the record goes on.
+
+It pushes `refs/heads/<branch>:refs/heads/<branch>` of the branch `record commit` made, without force
+and without a prompt for a password, never the destination branch, and then `gh pr create`. If the push
+is refused, or the pull request does not open, the branch stays and running it again continues from there.
+It never merges and turns no auto-merge on, and nothing runs it by itself: a hook is not part of it.
+
 ## Being told what no commit holds yet
 
 Nothing commits the events a writer appends, so `mnema status`, `mnema doctor` and the end of a

@@ -127,13 +127,13 @@ export type RecordPublishDone =
 
 /** `<remote>/<branch>` against the remotes this clone has: the longest remote name that fits. */
 export function destinationOf(
-  typed: string,
+  destination: string,
   remotes: readonly string[],
 ): { readonly remote: string; readonly branch: string } | undefined {
   const named = [...remotes]
     .sort((a, b) => b.length - a.length)
-    .find((remote) => typed.startsWith(`${remote}/`) && typed.length > remote.length + 1);
-  return named === undefined ? undefined : { remote: named, branch: typed.slice(named.length + 1) };
+    .find((remote) => destination.startsWith(`${remote}/`) && destination.length > remote.length + 1);
+  return named === undefined ? undefined : { remote: named, branch: destination.slice(named.length + 1) };
 }
 
 /** The `owner/name` of a remote's address when it is GitHub's; undefined for any other host. */

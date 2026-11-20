@@ -98,7 +98,7 @@ function env(more: Record<string, string> = {}): Record<string, string> {
 }
 
 function git(cwd: string, ...args: string[]): { status: number; out: string } {
-  const ran = spawnSync('git', ['-c', 'init.defaultBranch=main', ...args], {
+  const ran = spawnSync('git', ['-c', 'init.defaultBranch=main', '-c', 'gc.auto=0', '-c', 'maintenance.auto=false', ...args], {
     cwd,
     encoding: 'utf-8',
     env: env(),
