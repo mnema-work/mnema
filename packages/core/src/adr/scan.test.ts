@@ -218,6 +218,8 @@ describe('reading a directory of decision documents', () => {
     const kept = cut.value.replace(NOTE, '');
     // Whatever is kept holds a balanced number of fences, so the note is never inside a block.
     expect((kept.match(/^```/gm) ?? []).length % 2).toBe(0);
+    // The only blank line outside the block is the one after the intro: the cut falls there.
+    expect(kept).toBe('intro paragraph');
     expect(Buffer.byteLength(cut.value)).toBeLessThanOrEqual(FIELD_BYTE_LIMIT);
     // A block open at the cut is closed before the note.
     const open = cutToFit(`\`\`\`\n${'x '.repeat(FIELD_BYTE_LIMIT)}`);
