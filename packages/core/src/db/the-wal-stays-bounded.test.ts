@@ -103,7 +103,8 @@ describe('the log of a cache on disk', () => {
       expect(told.temp_store_directory).toBe(dir);
       // And where the files really go, where the build of SQLite keeps temporary files on disk at all.
       db.exec('PRAGMA temp_store = FILE');
-      const onDisk = (db.prepare('PRAGMA temp_store').get() as { temp_store: number }).temp_store === 1;
+      const onDisk =
+        (db.prepare('PRAGMA temp_store').get() as { temp_store: number }).temp_store === 1;
       if (process.platform === 'linux' && onDisk) {
         const sorted = db.prepare('SELECT a FROM t ORDER BY a') as unknown as {
           iterate(): Iterable<unknown>;
