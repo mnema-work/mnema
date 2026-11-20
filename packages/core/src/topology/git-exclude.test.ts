@@ -223,7 +223,11 @@ describe('a block that is not one block', () => {
 describe('what the write keeps of the file it rewrites', () => {
   it('keeps every byte outside the block, bytes that are not UTF-8 included', () => {
     const file = join(sandbox, 'exclude');
-    const before = Buffer.concat([Buffer.from('# '), Buffer.from([0xff, 0xfe, 0xe9]), Buffer.from('\n*.log\n')]);
+    const before = Buffer.concat([
+      Buffer.from('# '),
+      Buffer.from([0xff, 0xfe, 0xe9]),
+      Buffer.from('\n*.log\n'),
+    ]);
     writeFileSync(file, before);
     withExcludeLines(file, ['/.mnema/']);
     const after = readFileSync(file);
@@ -289,7 +293,7 @@ describe('two writers of the same file', () => {
     const dead = spawnSync(process.execPath, ['-e', '']).pid as number;
     writeFileSync(`${file}.mnema-lock`, `${dead} ${Date.now()}\n`);
     writeFileSync(`${file}.mnema-${dead}.tmp`, 'half');
-    const live = `${file}.mnema-${process.pid}.tmp`;
+    const live = `${file}.mnema-${process.ppid}.tmp`;
     writeFileSync(live, 'mine');
     withExcludeLines(file, ['/.mnema/']);
     expect(existsSync(`${file}.mnema-${dead}.tmp`)).toBe(false);
@@ -302,7 +306,7 @@ describe('two writers of the same file', () => {
     const file = join(sandbox, 'exclude');
     writeFileSync(file, '*.log\n');
     writeFileSync(`${file}.mnema-lock`, `${process.pid} ${Date.now()}\n`);
-    expect(() => withExcludeLines(file, ['/.mnema/'])).toThrow(/another mnema process/);
+    expect(() => withExcludeLines(file, ['/.mnema/'])).toThrow(/another mnema process/i);
     expect(readFileSync(file, 'utf8')).toBe('*.log\n');
   });
 });

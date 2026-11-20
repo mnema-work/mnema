@@ -76,7 +76,9 @@ export function withExcludeLines(file: string, lines: readonly string[]): boolea
     const parsed = parse(file);
     const wanted = lines.map(encode);
     const held = parsed.block === undefined ? [] : insideOf(parsed).map(textOf);
-    const missing = wanted.filter((line, at) => !held.includes(line) && wanted.indexOf(line) === at);
+    const missing = wanted.filter(
+      (line, at) => !held.includes(line) && wanted.indexOf(line) === at,
+    );
     if (missing.length === 0) return false;
     const eol = parsed.eol;
     const added = missing.map((line) => ({ text: line, eol }));
@@ -108,7 +110,9 @@ export function withoutExcludeLines(file: string, lines: readonly string[]): boo
     if (kept.length === inside.length && inside.length > 0) return false;
     const next = [
       ...parsed.lines.slice(0, begin),
-      ...(kept.length === 0 ? [] : [parsed.lines[begin] as Line, ...kept, parsed.lines[end] as Line]),
+      ...(kept.length === 0
+        ? []
+        : [parsed.lines[begin] as Line, ...kept, parsed.lines[end] as Line]),
       ...parsed.lines.slice(end + 1),
     ];
     write(file, next);
@@ -135,7 +139,9 @@ const encode = (text: string): string => Buffer.from(text, 'utf8').toString('lat
 const decode = (text: string): string => Buffer.from(text, 'latin1').toString('utf8');
 
 function insideOf(parsed: Parsed): Line[] {
-  return parsed.block === undefined ? [] : parsed.lines.slice(parsed.block.begin + 1, parsed.block.end);
+  return parsed.block === undefined
+    ? []
+    : parsed.lines.slice(parsed.block.begin + 1, parsed.block.end);
 }
 
 function parse(file: string): Parsed {
@@ -216,7 +222,8 @@ function underLock<T>(file: string, act: () => T): T {
 function clearTemporariesOfTheDead(file: string): void {
   const prefix = `${basename(file)}.mnema-`;
   for (const name of readdirSync(dirname(file))) {
-    const pid = name.startsWith(prefix) && name.endsWith('.tmp') ? name.slice(prefix.length, -4) : '';
+    const pid =
+      name.startsWith(prefix) && name.endsWith('.tmp') ? name.slice(prefix.length, -4) : '';
     if (/^\d+$/.test(pid) && !alive(Number(pid))) {
       rmSync(join(dirname(file), name), { force: true });
     }
