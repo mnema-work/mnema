@@ -240,10 +240,11 @@ describe('the table of the end of a turn', () => {
     });
   });
 
-  it('is a host of the table of hosts, each with the moment in the presence map', () => {
-    for (const host of END_HOSTS) {
-      expect(HOSTS[host].title).not.toBe('');
-      expect(PRESENCE[host].end.held, host).toBe('documentation');
+  it('is a host of the table of hosts, each the presence map reads with the moment', () => {
+    for (const host of END_HOSTS) expect(HOSTS[host].title).not.toBe('');
+    // Qwen Code has no row in the presence map: it was not read for the moments of the work.
+    for (const host of END_HOSTS.filter((one) => one !== 'qwen')) {
+      expect(PRESENCE[host as keyof typeof PRESENCE].end.held, host).toBe('documentation');
     }
   });
 });
@@ -377,7 +378,7 @@ describe("VS Code's agent and Qwen Code, which read Claude Code's hooks file", (
 
   it("is told apart by the same pattern in the plugin's handlers", () => {
     const handlers = readFileSync(join(PLUGIN, 'hooks', 'hand-over.mjs'), 'utf-8');
-    expect(/const VSCODE_TRANSCRIPT = (\/.*\/);/.exec(handlers)?.[1]).toBe(
+    expect(/const VSCODE_TRANSCRIPT =\s*(\/.*\/);/.exec(handlers)?.[1]).toBe(
       VSCODE_TRANSCRIPT.toString(),
     );
     expect(VSCODE_TRANSCRIPT.test(VSCODE_PATH)).toBe(true);

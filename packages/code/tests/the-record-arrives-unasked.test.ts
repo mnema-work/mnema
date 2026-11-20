@@ -265,13 +265,8 @@ const ASKED_FIRST = '--identify';
 function callsOf(handler: string, command = ''): string[] {
   const verb = VERB_OF[handler] as string;
   if (GATES.includes(handler)) return [];
-  // Cursor's own pair is told its host, which the verb is handed (the filters are not).
-  if (
-    command.includes('--host cursor') &&
-    (handler === TALLY_HOOK || handler === CORRECTIONS_HOOK)
-  ) {
-    return [`${verb} --host cursor`];
-  }
+  // The pair of a host whose transcript is not read yet (`--reads no`) starts no verb at all.
+  if (command.includes('--reads no')) return [];
   return handler === TALLY_HOOK ||
     handler === COMPACTED_HOOK ||
     handler === CORRECTIONS_HOOK ||
