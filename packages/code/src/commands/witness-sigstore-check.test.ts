@@ -69,8 +69,8 @@ describe('checking a Sigstore countersignature against who was expected', () => 
     const { sigstore, hash } = await countersigned();
     const check = checkSigstoreWitnesses(trees(), expected, { trustedRoot: sigstore.trustedRoot });
     expect(check.ok).toBe(true);
-    expect(check.rows).toHaveLength(1);
-    expect(check.rows[0]).toMatchObject({ checkpoint: hash, verdict: { kind: 'holds' } });
+    expect(check.bundles).toHaveLength(1);
+    expect(check.bundles[0]).toMatchObject({ checkpoint: hash, verdict: { kind: 'holds' } });
   });
 
   it('refuses a certificate that names somebody else, and says who', async () => {
@@ -79,7 +79,7 @@ describe('checking a Sigstore countersignature against who was expected', () => 
     );
     const check = checkSigstoreWitnesses(trees(), expected, { trustedRoot: sigstore.trustedRoot });
     expect(check.ok).toBe(false);
-    expect(check.rows[0]?.verdict).toEqual({
+    expect(check.bundles[0]?.verdict).toEqual({
       kind: 'other-signer',
       identity: 'https://github.com/other/repo/.github/workflows/x.yml@refs/heads/main',
       issuer: ACTIONS_ISSUER,
@@ -91,7 +91,7 @@ describe('checking a Sigstore countersignature against who was expected', () => 
       { trustedRoot: sigstore.trustedRoot },
     );
     expect(issuer.ok).toBe(false);
-    expect(issuer.rows[0]?.verdict.kind).toBe('other-signer');
+    expect(issuer.bundles[0]?.verdict.kind).toBe('other-signer');
   });
 
   it('refuses a bundle with one byte changed', async () => {
@@ -104,19 +104,19 @@ describe('checking a Sigstore countersignature against who was expected', () => 
     writeFileSync(file, JSON.stringify(bundle));
     const check = checkSigstoreWitnesses(trees(), expected, { trustedRoot: sigstore.trustedRoot });
     expect(check.ok).toBe(false);
-    expect(check.rows[0]?.verdict.kind).toBe('refused');
+    expect(check.bundles[0]?.verdict.kind).toBe('refused');
   });
 
   it('refuses a bundle the carried trust root does not reach, which is the public one here', async () => {
     await countersigned();
     const check = checkSigstoreWitnesses(trees(), expected);
     expect(check.ok).toBe(false);
-    expect(check.rows[0]?.verdict.kind).toBe('refused');
+    expect(check.bundles[0]?.verdict.kind).toBe('refused');
   });
 
   it('says nothing is checked when the record holds no bundle', () => {
     const check = checkSigstoreWitnesses(trees(), expected);
-    expect(check).toMatchObject({ ok: false, rows: [], notRead: [] });
+    expect(check).toMatchObject({ ok: false, bundles: [], notRead: [] });
   });
 
   it('writes the signed message under its SHA-256 and prints the cosign line that checks the same bundle', async () => {
@@ -130,7 +130,7 @@ describe('checking a Sigstore countersignature against who was expected', () => 
     // The blob cosign hashes is the one the bundle names: its SHA-256 is the checkpoint's hash.
     expect(createHash('sha256').update(readFileSync(written)).digest('hex')).toBe(hash);
     expect(Buffer.compare(readFileSync(written), Buffer.from(message))).toBe(0);
-    expect(check.rows[0]?.cosign).toBe(
+    expect(check.bundles[0]?.cosign).toBe(
       `cosign verify-blob --bundle ${file} --certificate-identity ${AUTHOR_WORKFLOW} ` +
         `--certificate-oidc-issuer ${ACTIONS_ISSUER} ${written}`,
     );

@@ -868,6 +868,7 @@ describe('every option the CLI declares feeds something', () => {
       'mnema task handoff --scope <scope>',
       'mnema task handoff --which <agent>',
       'mnema witness sigstore --global',
+      'mnema witness sigstore-check --global',
       'mnema witness stamp --global',
       'mnema witness upgrade --global',
     ]);

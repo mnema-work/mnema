@@ -683,6 +683,10 @@ export const NAMES_THAT_NEED_MORE: Readonly<
     times: 1,
     why: 'the line saying no identity names a bundle’s signer, naming the verb with the signer it would name',
   },
+  'docs/what-it-proves.md: mnema witness sigstore-check': {
+    times: 1,
+    why: 'the row that says a third party can check a Sigstore bundle against the identity they expect, naming the verb whose two flags are what they bring',
+  },
   'docs/what-it-proves.md: mnema key sigstore': {
     times: 2,
     why: 'the row that says when a Sigstore signature speaks for an identity, naming the claim by its verb, and the row that says the claim keeps an e-mail as its hash',

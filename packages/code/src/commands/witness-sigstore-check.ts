@@ -66,9 +66,9 @@ export interface WitnessCheckRow {
   readonly cosign?: string;
 }
 
-/** The answer: the rows, the trees left out, and whether a third party can take it as a yes. */
+/** The answer: the bundles, the trees left out, and whether a third party can take it as a yes. */
 export interface WitnessCheck {
-  readonly rows: readonly WitnessCheckRow[];
+  readonly bundles: readonly WitnessCheckRow[];
   readonly notRead: readonly Scope[];
   /** True only when there is at least one bundle, every one holds and names who was expected, and no tree was left out. */
   readonly ok: boolean;
@@ -118,7 +118,7 @@ export function checkSigstoreWitnesses(
   );
   const messageDir = options.messageDir === undefined ? undefined : resolve(options.messageDir);
   if (messageDir !== undefined) mkdirSync(messageDir, { recursive: true });
-  const rows = receipts.findings.map((finding): WitnessCheckRow => {
+  const bundles = receipts.findings.map((finding): WitnessCheckRow => {
     const tree = trees.find((one) => one.kind === 'verdict' && one.scope === finding.scope);
     const bundle =
       tree?.kind === 'verdict'
@@ -148,8 +148,8 @@ export function checkSigstoreWitnesses(
     };
   });
   const ok =
-    rows.length > 0 &&
+    bundles.length > 0 &&
     receipts.notRead.length === 0 &&
-    rows.every((row) => row.verdict.kind === 'holds');
-  return { rows, notRead: receipts.notRead, ok };
+    bundles.every((row) => row.verdict.kind === 'holds');
+  return { bundles, notRead: receipts.notRead, ok };
 }

@@ -342,7 +342,7 @@ export function registerWitness(program: Command, wiring: Wiring): Declared {
         ),
       );
     }
-    for (const row of check.rows) {
+    for (const row of check.bundles) {
       if (row.verdict.kind === 'holds') {
         io.out(render(fact(onOneLine`holds: ${sigstoreLine(row.finding)}`)));
       } else if (row.verdict.kind === 'other-signer') {
@@ -358,7 +358,7 @@ export function registerWitness(program: Command, wiring: Wiring): Declared {
       }
       if (row.cosign !== undefined) io.out(row.cosign);
     }
-    if (check.rows.length === 0) {
+    if (check.bundles.length === 0) {
       io.err(
         render(
           fact(
