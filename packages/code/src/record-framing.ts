@@ -106,6 +106,7 @@
  * now SAY SO in a table, where before their being different was nowhere at all.
  */
 
+import type { ProjectionCache, Scope } from '@mnema/core';
 /** What a channel served, which is what its declaration names. */
 export type ServedSubject =
   /** Pattern bodies: the recipes themselves, served on request. */
@@ -589,6 +590,34 @@ export const FIRST_WRITE_GATE_CHANNEL: CountedChannel = 'edit-first-write-gate';
  * and the summary a person reads lists it.
  */
 export const RECORD_PUBLISH_CHANNEL: SwitchableChannel = 'record-publish';
+
+/** What a switch is read from: a tree's scope and its projection's answer about a channel. */
+export interface ASwitchSource {
+  readonly scope: Scope;
+  readonly cache: Pick<ProjectionCache, 'channelSwitch'>;
+}
+
+/**
+ * The sources as the verb reads them: an `on` of `record-publish` in the tree a clone gets is no
+ * switch at all. The listing of `mnema switch` reads through this too, so it says what the verb does.
+ */
+export function asRecordPublishReadsThem<S extends ASwitchSource>(
+  sources: readonly S[],
+): readonly ASwitchSource[] {
+  return sources.map((source) =>
+    source.scope !== 'public'
+      ? source
+      : {
+          scope: source.scope,
+          cache: {
+            channelSwitch: (channel: string) => {
+              const row = source.cache.channelSwitch(channel);
+              return channel === RECORD_PUBLISH_CHANNEL && row?.on === true ? null : row;
+            },
+          },
+        },
+  );
+}
 
 /**
  * The switchable channels that begin OFF: every other begins on. Read by every consumer that asks

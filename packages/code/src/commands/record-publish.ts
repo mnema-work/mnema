@@ -38,8 +38,8 @@
 
 import { spawnSync } from 'node:child_process';
 import { channelIsOn } from '@mnema/context';
-import { type ProjectionCache, resolveTrees, type Scope } from '@mnema/core';
-import { RECORD_PUBLISH_CHANNEL, STARTS_OFF } from '../record-framing.js';
+import { resolveTrees } from '@mnema/core';
+import { asRecordPublishReadsThem, RECORD_PUBLISH_CHANNEL, STARTS_OFF } from '../record-framing.js';
 import { withScopedCaches } from '../tree-sources.js';
 import {
   type Base,
@@ -87,6 +87,7 @@ export type RecordPublishRefused =
       readonly why: 'unset' | 'same-as-global';
     }
   | { readonly ok: false; readonly reason: 'NOT_GITHUB'; readonly remote: string }
+  | { readonly ok: false; readonly reason: 'ADDRESSES_DIFFER'; readonly remote: string }
   | { readonly ok: false; readonly reason: 'GH_ABSENT' }
   | { readonly ok: false; readonly reason: 'GH_FAILED'; readonly said: string }
   | {
@@ -194,34 +195,6 @@ export function recordPublishIsOn(ctx: RecordCommitContext): boolean {
   );
 }
 
-/** What a switch is read from: a tree's scope and its projection's answer about a channel. */
-export interface ASwitchSource {
-  readonly scope: Scope;
-  readonly cache: Pick<ProjectionCache, 'channelSwitch'>;
-}
-
-/**
- * The sources as the verb reads them: an `on` of `record-publish` in the tree a clone gets is no
- * switch at all. The listing of `mnema switch` reads through this too, so it says what the verb does.
- */
-export function asRecordPublishReadsThem<S extends ASwitchSource>(
-  sources: readonly S[],
-): readonly ASwitchSource[] {
-  return sources.map((source) =>
-    source.scope !== 'public'
-      ? source
-      : {
-          scope: source.scope,
-          cache: {
-            channelSwitch: (channel: string) => {
-              const row = source.cache.channelSwitch(channel);
-              return channel === RECORD_PUBLISH_CHANNEL && row?.on === true ? null : row;
-            },
-          },
-        },
-  );
-}
-
 const GH_TIMEOUT_MS = 60_000;
 /** The open pull requests asked of `gh` at once; a full page is a refusal, not a clean answer. */
 const PULL_REQUESTS_READ = 100;
@@ -322,8 +295,9 @@ function publish(
   const url = said(git(ctx, top, ['config', '--get', `remote.${to.remote}.url`])) ?? '';
   const pushUrl = said(git(ctx, top, ['config', '--get', `remote.${to.remote}.pushurl`]));
   const repo = gitHubRepositoryOf(pushUrl ?? url);
-  if (repo === undefined || (pushUrl !== undefined && gitHubRepositoryOf(url) !== repo)) {
-    return { ok: false, reason: 'NOT_GITHUB', remote: to.remote };
+  if (repo === undefined) return { ok: false, reason: 'NOT_GITHUB', remote: to.remote };
+  if (pushUrl !== undefined && gitHubRepositoryOf(url) !== repo) {
+    return { ok: false, reason: 'ADDRESSES_DIFFER', remote: to.remote };
   }
   const listed = gh(ctx, top, [
     'pr',

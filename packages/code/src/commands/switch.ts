@@ -45,6 +45,7 @@ import { openTreeForWriting, switchChannel } from '@mnema/core/write';
 import { mayTurnAgentAcceptsOn } from '../agent-accepts.js';
 import { type AnchorForms, anchorForms } from '../anchors.js';
 import {
+  asRecordPublishReadsThem,
   RECORD_PUBLISH_CHANNEL,
   STARTS_OFF,
   SWITCHABLE_CHANNELS,
@@ -58,7 +59,6 @@ import {
   THE_READING_THAT_OPENED_THESE,
   withScopedCaches,
 } from '../tree-sources.js';
-import { asRecordPublishReadsThem } from './record-publish.js';
 import {
   type AgentWrites,
   originOfTheWrite,

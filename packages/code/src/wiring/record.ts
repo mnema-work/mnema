@@ -337,6 +337,10 @@ export function registerRecord(program: Command, wiring: Wiring): Declared {
             result.reason === 'NOT_GITHUB'
               ? onOneLine`Nothing was made: the address of ${result.remote} is not GitHub's, and the pull requests are read and opened through \`gh\`. By hand: check that no record pull request is open, then \`mnema record commit\` and what it prints.`
               : '',
+          ADDRESSES_DIFFER:
+            result.reason === 'ADDRESSES_DIFFER'
+              ? onOneLine`Nothing was made: the address ${result.remote} pushes to and the address it reads from name different repositories, and the pull request is asked of the one the push reaches. Make them name the same one (\`git config remote.${result.remote}.pushurl\`).`
+              : '',
           GH_ABSENT:
             'Nothing was made: `gh` is not installed here, and an open pull request of the record is read through it. By hand: check that no record pull request is open, then `mnema record commit` and what it prints.',
           GH_FAILED:

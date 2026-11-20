@@ -473,7 +473,7 @@ describe('mnema record publish', SLOW, () => {
     expect(
       git(local, 'config', 'remote.origin.pushurl', 'https://github.com/someone/fork.git').status,
     ).toBe(0);
-    expect(publish(local)).toEqual({ ok: false, reason: 'NOT_GITHUB', remote: 'origin' });
+    expect(publish(local)).toEqual({ ok: false, reason: 'ADDRESSES_DIFFER', remote: 'origin' });
     expect(recordBranches(local)).toBe('');
     expect(ghCalls()).toEqual([]);
   });
