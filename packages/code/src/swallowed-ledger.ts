@@ -95,13 +95,18 @@ function siteName(where: string): string {
   return /^[a-z0-9][a-z0-9._:-]{0,63}$/.test(where) ? where : 'unnamed';
 }
 
-/** The text with every absolute path outside `dataDir` replaced by `<path>`. */
+/**
+ * The text with every absolute path outside `dataDir` replaced by `<path>`: a quoted one whole (a
+ * folder's name may hold spaces), a bare one up to the next space.
+ */
 function withoutPaths(text: string, dataDir: string): string {
-  return text.replace(/(?:[A-Za-z]:\\|\/)[^\s'"`,;)]*/g, (found) =>
-    found === dataDir || found.startsWith(`${dataDir}/`) || found.startsWith(`${dataDir}\\`)
-      ? found
-      : '<path>',
-  );
+  const mine = (found: string): boolean =>
+    found === dataDir || found.startsWith(`${dataDir}/`) || found.startsWith(`${dataDir}\\`);
+  return text
+    .replace(/(['"`])((?:[A-Za-z]:\\|\/)[^'"`]*)\1/g, (all, quote: string, found: string) =>
+      mine(found) ? all : `${quote}<path>${quote}`,
+    )
+    .replace(/(?:[A-Za-z]:\\|\/)[^\s'"`,;)]*/g, (found) => (mine(found) ? found : '<path>'));
 }
 
 /** What the ledger keeps of an error: see the head of this file. */

@@ -100,6 +100,13 @@ import {
   personsKeyInTheClear,
   THE_AGENT_KEY_SEPARATES_NOTHING,
 } from '../the-persons-key-in-the-clear.js';
+import {
+  DAYS_READ,
+  dataDirOf,
+  readSwallowed,
+  sitesByCount,
+  swallowedFiles,
+} from '../swallowed-ledger.js';
 import { isOlderThan } from '../version.js';
 import { mergeDriverLines } from './doctor-merge-driver.js';
 import { type Plan, planFix, readLocations, SETTING, settingsCandidates } from './doctor-vscode.js';
@@ -159,7 +166,8 @@ export interface Finding {
     | 'merge-driver'
     | 'newer-mnema'
     | 'record-in-git'
-    | 'fork-kept-aside';
+    | 'fork-kept-aside'
+    | 'swallowed';
   readonly state: 'fine' | 'attention';
   /** One line: what was found, then what to do. */
   readonly line: string;
@@ -1637,6 +1645,44 @@ function forkKeptAsideFindings(ctx: DoctorContext): Finding[] {
     : [{ topic: 'fork-kept-aside', state: 'attention', line: saysForkKeptAside(found) }];
 }
 
+/**
+ * What the catch blocks that keep a ledger swallowed in the last days (`swallowed-ledger.ts`): how many,
+ * and the sites that did it most. Silent where there is no ledger and where it holds nothing in the days
+ * read, which is a healthy machine; said where the file is there and does not read, and never written over.
+ */
+function swallowedFindings(ctx: DoctorContext): Finding[] {
+  // The data directory the environment names, by the rule `swallowed-ledger.ts` writes under: no home, no ledger.
+  const dataDir = dataDirOf({ MNEMA_HOME: ctx.env.mnemaHome, HOME: ctx.env.home });
+  if (dataDir === undefined) return [];
+  const read = readSwallowed(dataDir);
+  const { file } = swallowedFiles(dataDir);
+  if (read.unreadable) {
+    return [
+      {
+        topic: 'swallowed',
+        state: 'attention',
+        line: `the ledger of caught failures at ${file} cannot be read, so none were counted: check who owns it; nothing here writes over it.`,
+      },
+    ];
+  }
+  if (read.entries.length === 0) return [];
+  const sites = sitesByCount(read.entries)
+    .slice(0, 3)
+    .map(({ where, count }) => `${where} (${count})`)
+    .join(', ');
+  const newest = read.entries.reduce((latest, entry) => (entry.at > latest ? entry.at : latest), '');
+  return [
+    {
+      topic: 'swallowed',
+      state: 'attention',
+      line:
+        `${read.entries.length} failure(s) were caught and the work went on, in the last ${DAYS_READ} days, newest ${newest}; ` +
+        `most often at ${sites}. Each is one line (site, error class and code) in ${file}, kept on this machine and never sent: ` +
+        'if one site repeats, open an issue with its name and code; delete the file to start the count again.',
+    },
+  ];
+}
+
 /** Reads the machine and answers, in the order the questions are asked above. */
 export function runDoctor(ctx: DoctorContext): { readonly findings: readonly Finding[] } {
   const plugins = installedPlugins(ctx);
@@ -1663,6 +1709,7 @@ export function runDoctor(ctx: DoctorContext): { readonly findings: readonly Fin
       ...stackFindings(ctx),
       ...agentKeyFindings(ctx),
       ...newerMnemaFindings(ctx),
+      ...swallowedFindings(ctx),
     ],
   };
 }

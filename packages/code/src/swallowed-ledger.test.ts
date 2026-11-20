@@ -79,12 +79,17 @@ describe('the ledger of what was swallowed', () => {
       processEnv: env,
       now: NOW,
     });
+    noteSwallowed('d.site', coded('EACCES', "permission denied, open '/home/some one/private folder/x.md'"), {
+      processEnv: env,
+      now: NOW,
+    });
     const text = readFileSync(swallowedFiles(home).file, 'utf-8');
+    expect(text).not.toContain('private folder');
     expect(text).not.toContain(secret);
     expect(text).not.toContain('/home/someone');
     expect(text).not.toContain('stack');
     const [first, second, third] = lines();
-    expect(first?.message).toBe("no such file or directory, open <path>");
+    expect(first?.message).toBe("no such file or directory, open '<path>'");
     expect(second).toMatchObject({ name: 'SyntaxError' });
     expect(second).not.toHaveProperty('message');
     expect(third?.message).toContain(`${home}/log`);
