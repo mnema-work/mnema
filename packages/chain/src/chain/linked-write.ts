@@ -19,6 +19,7 @@ import { basename, join } from 'node:path';
 
 import { CodedError } from './coded-error.js';
 import {
+  anchorPath,
   type ChainLayout,
   checkpointsPath,
   isSegmentFile,
@@ -79,7 +80,7 @@ export function refuseToLockThroughALink(shared: ChainLayout, tailId: string): v
 
 /**
  * Every other path the writer writes, for the tail `tailId` signing with `fingerprint`: the
- * directories first (`tails/`, the tail, `keys/`, `locks/`), then the public key, the notes in
+ * directories first (`tails/`, the tail, `keys/`, `locks/`), then the public key and the anchor (a founding writes the anchor right after it appends), the notes in
  * `locks/` with the staging file each is written through (named for `pid`, this process), and
  * the files of the tail directory, taken from its listing so that a segment the write has yet to
  * rotate to is asked as well. Asked under the lock and before the writer recovers or seals.
@@ -98,7 +99,10 @@ export function refuseToWriteThroughALink(
   ]);
   refuseToWriteThrough(layout, ['tails', `tails/${tailId}`, 'keys']);
   refuseToWriteThrough(shared, ['locks']);
-  refuseToWriteThrough(layout, [`keys/${basename(publicKeyPath(layout, fingerprint))}`]);
+  refuseToWriteThrough(layout, [
+    `keys/${basename(publicKeyPath(layout, fingerprint))}`,
+    `keys/${basename(anchorPath(layout, fingerprint))}`,
+  ]);
   refuseToWriteThrough(shared, [`locks/${tailId}.lock`, ...notes]);
   let entries: ReturnType<typeof listedEntries>;
   try {
