@@ -1378,42 +1378,46 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'composed',
     why: 'a base with documents the record has none for, worded by `status.ts`’s `toImport`: the hook copy’s bullet is that one spelling',
   },
-  "brief.ts «- Awaiting a judgement: {} and {}.» counted(governance.decisionsAwaiting, 'decision', 'decisions') #1": {
+  "brief.ts «- Awaiting a judgement: {} and {}.» counted(governance.decisionsAwaiting, 'decision', 'decisions') #1":
+    {
+      verdict: 'minted',
+      why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',
+    },
+  "brief.ts «- Awaiting a judgement: {} and {}.» counted(governance.skillsAwaiting, 'pattern', 'patterns') #1":
+    {
+      verdict: 'minted',
+      why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',
+    },
+  'brief.ts «- Decisions in force: {}, {} in the core and {} outside it.» core #1': {
     verdict: 'minted',
     why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',
   },
-  "brief.ts «- Awaiting a judgement: {} and {}.» counted(governance.skillsAwaiting, 'pattern', 'patterns') #1": {
+  'brief.ts «- Decisions in force: {}, {} in the core and {} outside it.» decisions #1': {
     verdict: 'minted',
     why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',
   },
-  "brief.ts «- Decisions in force: {}, {} in the core and {} outside it.» core #1": {
+  'brief.ts «- Decisions in force: {}, {} in the core and {} outside it.» decisions - core #1': {
     verdict: 'minted',
     why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',
   },
-  "brief.ts «- Decisions in force: {}, {} in the core and {} outside it.» decisions #1": {
+  'brief.ts «- Patterns adopted: {}.» governance.skills.length #1': {
     verdict: 'minted',
     why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',
   },
-  "brief.ts «- Decisions in force: {}, {} in the core and {} outside it.» decisions - core #1": {
+  'brief.ts «- Rules with an address: {}.» governance.addressed #1': {
     verdict: 'minted',
     why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',
   },
-  "brief.ts «- Patterns adopted: {}.» governance.skills.length #1": {
-    verdict: 'minted',
-    why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',
-  },
-  "brief.ts «- Rules with an address: {}.» governance.addressed #1": {
-    verdict: 'minted',
-    why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',
-  },
-  "brief.ts «This text hands over the core: the {} in force, of {}, whose acceptance note quotes the person,» counted(core, 'decision', 'decisions') #1": {
-    verdict: 'minted',
-    why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',
-  },
-  "brief.ts «This text hands over the core: the {} in force, of {}, whose acceptance note quotes the person,» governance.decisions.length #1": {
-    verdict: 'minted',
-    why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',
-  },
+  "brief.ts «This text hands over the core: the {} in force, of {}, whose acceptance note quotes the person,» counted(core, 'decision', 'decisions') #1":
+    {
+      verdict: 'minted',
+      why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',
+    },
+  'brief.ts «This text hands over the core: the {} in force, of {}, whose acceptance note quotes the person,» governance.decisions.length #1':
+    {
+      verdict: 'minted',
+      why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',
+    },
   "brief.ts «Not in the record: {} in this checkout, by file name, with no decision derived from them here.» counted(total, 'decision document', 'decision documents') #1":
     {
       verdict: 'composed',

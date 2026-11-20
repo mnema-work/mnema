@@ -47,7 +47,6 @@ export {
   bootstrap,
   proposedDecisionsNewestFirst,
 } from './context/bootstrap.js';
-export { decisionsOnThePersonsWords } from './context/opening-core.js';
 export {
   type Brief,
   type BriefChannels,
@@ -109,6 +108,7 @@ export {
   nextActions,
   nextActionsForTask,
 } from './context/next-action.js';
+export { decisionsOnThePersonsWords } from './context/opening-core.js';
 export {
   A_RUN_IS_HERE_FOR_SECONDS,
   CLOCKS_MAY_DIFFER_BY_SECONDS,
