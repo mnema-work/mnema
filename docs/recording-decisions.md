@@ -182,7 +182,20 @@ only where this tree holds the host's conversation format with a fixture; a host
 
 <!-- The table below is generated from packages/code/src/host-words.ts: edit the words in the-host-words-page-is-generated.test.ts. -->
 
-| placeholder |
+| Host | Session id | Words |
+| --- | --- | --- |
+| Claude Code | `CLAUDE_CODE_SESSION_ID` | read: the transcript the plugin’s hooks name (`transcript_path`), read for the lines the host marks as typed by a person |
+| VS Code's agent | none read | not readable yet: it leaves no session id in the environment mnema reads, and its conversation file format has not been proved here with a fixture |
+| Cursor's command-line agent | none read | not readable yet: it leaves no session id in the environment mnema reads, and its conversation file format has not been proved here with a fixture |
+| Codex | none read | not readable yet: its conversation file format has not been proved here with a fixture, and no session id in its environment was read |
+| GitHub Copilot CLI | `COPILOT_AGENT_SESSION_ID` | not readable yet: it leaves COPILOT_AGENT_SESSION_ID in the environment (docs/evidence.md), but its conversation file format has not been proved here with a fixture |
+| OpenCode | none read | not readable yet: it leaves no session id in the environment mnema reads, and its conversation file format has not been proved here with a fixture |
+| Gemini CLI | none read | not readable yet: it leaves no session id in the environment mnema reads, and its conversation file format has not been proved here with a fixture |
+| Qwen Code | none read | not readable yet: it leaves no session id in the environment mnema reads, and its conversation file format has not been proved here with a fixture |
+| Cursor's editor | none read | not readable yet: Cursor’s editor was only read in its documentation, it leaves no session id in the environment mnema reads, and its conversation file format has not been proved here with a fixture |
+| Antigravity's command line (`agy`) | none read | not readable yet: it leaves no session id in the environment mnema reads, and its conversation file format has not been proved here with a fixture |
+| Factory Droid | none read | not readable yet: it leaves no session id in the environment mnema reads, and its conversation file format has not been proved here with a fixture |
+| Goose | none read | not readable yet: it leaves no session id in the environment mnema reads, and its conversation file format has not been proved here with a fixture |
 
 <!-- End of the generated table. -->
 

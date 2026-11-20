@@ -1438,6 +1438,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-hooks-that-answer-in-json-say-every-refusal.test.ts': 12,
   'packages/code/tests/the-host-contract-checks-have-stable-names.test.ts': 3,
   'packages/code/tests/the-host-files-are-generated.test.ts': 5,
+  'packages/code/tests/the-host-words-page-is-generated.test.ts': 5,
   'packages/code/tests/the-hosts-table-shows-the-vendors-own-logos.test.ts': 4,
   'packages/code/tests/the-hot-path-keeps-its-budget.test.ts': 6,
   'packages/code/tests/the-init-asks-which-host-files-to-write.test.ts': 16,

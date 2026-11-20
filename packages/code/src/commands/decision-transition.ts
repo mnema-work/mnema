@@ -48,9 +48,9 @@ import {
   rejectDecision,
   supersedeDecision,
 } from '@mnema/core/write';
-import type { HostName } from '../host-names.js';
 import { saysWhatTheAcceptRestedOn, whatTheAcceptRestsOn } from '../agent-accept-words.js';
 import { type AcceptState, acceptStateHere, agentMayAccept } from '../agent-accepts.js';
+import type { HostName } from '../host-names.js';
 import { resolveAddress } from '../label-as-address.js';
 import {
   movedDisplay,

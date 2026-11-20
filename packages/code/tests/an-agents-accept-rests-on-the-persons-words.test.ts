@@ -296,7 +296,9 @@ describe('what an accept rests on, with a transcript that is known', () => {
 });
 
 describe('an agent accept at the command line', () => {
-  it('believes the environment over the declared name: inside a Claude Code session any --which is checked', { timeout: 60_000 }, () => {
+  it('believes the environment over the declared name: inside a Claude Code session any --which is checked', {
+    timeout: 60_000,
+  }, () => {
     const id = aProposedDecision();
     writeFileSync(transcript, `${typed('Yes, keep the cache between runs, do it.')}\n`);
     theSessionOpens();
