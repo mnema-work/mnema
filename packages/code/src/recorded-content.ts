@@ -250,8 +250,9 @@ function stampOf(files: readonly string[]): string {
  * the answer is read again only when the common directory's `info/exclude`, the git directory's
  * `index` or the top's `.gitignore` changed (a stat each), so a server that lives for hours does
  * not start a git for every write. A project with no git is not remembered, so a later `git init`
- * is seen. NOT WATCHED: `core.excludesFile` and `.git/config`; a stale answer corrects itself at
- * the next change of the index, and the stale side is "committed", the sentence that says less.
+ * is seen. NOT WATCHED: `core.excludesFile` and `.git/config`; a stale answer, in either
+ * direction, corrects itself at the next change of the index. A git directory that is not absolute
+ * (an older git echoes the option it does not know) is answered and not kept.
  */
 function publicTreeFact(project: string): PublicTreeFact {
   const known = KNOWN_FACTS.get(project);
@@ -274,7 +275,10 @@ function publicTreeFact(project: string): PublicTreeFact {
     KNOWN_FACTS.delete(project);
     return 'no-git';
   }
-  const { join } = process.getBuiltinModule('node:path');
+  const { isAbsolute, join } = process.getBuiltinModule('node:path');
+  // An older git echoes an option it does not know as a line of the answer, so a directory that is
+  // not absolute is not one: the answer is given, and not kept, because nothing can be watched.
+  const keep = isAbsolute(gitDir) && isAbsolute(commonDir ?? gitDir);
   const watched = [
     join(commonDir ?? gitDir, 'info', 'exclude'),
     join(gitDir, 'index'),
@@ -285,7 +289,8 @@ function publicTreeFact(project: string): PublicTreeFact {
     git(top, ['check-ignore', '-q', '--', '.mnema']) !== null &&
     git(top, ['ls-files', '--', '.mnema'])?.trim() === '';
   const fact = local ? 'local' : 'committed';
-  KNOWN_FACTS.set(project, { fact, stamp, watched });
+  if (keep) KNOWN_FACTS.set(project, { fact, stamp, watched });
+  else KNOWN_FACTS.delete(project);
   return fact;
 }
 

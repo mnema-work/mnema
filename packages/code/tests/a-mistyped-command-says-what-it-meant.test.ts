@@ -217,6 +217,40 @@ describe('what a write says about where it landed', () => {
     expect(calls).toBeLessThanOrEqual(3);
   });
 
+  it('does not keep an answer when git echoes an option it does not know', async () => {
+    git('init', '-q');
+    appendFileSync(join(repo, '.git', 'info', 'exclude'), '\n.mnema/\n');
+    await mnema('init');
+    const real = execFileSync('which', ['git'], { encoding: 'utf-8' }).trim();
+    const bin = join(sandbox, 'old-git');
+    const asked = join(sandbox, 'asked');
+    mkdirSync(bin);
+    writeFileSync(asked, '');
+    // What git before 2.31 prints for `--path-format=absolute`: the option itself, as a line.
+    writeFileSync(
+      join(bin, 'git'),
+      [
+        '#!/bin/sh',
+        'case "$*" in',
+        `  *--path-format=absolute*) echo x >> "${asked}"; echo true; echo "${repo}"; echo --path-format=absolute; echo "${join(repo, '.git')}"; echo .git; exit 0;;`,
+        'esac',
+        `exec "${real}" "$@"`,
+        '',
+      ].join('\n'),
+      { mode: 0o755 },
+    );
+    const path = process.env.PATH;
+    process.env.PATH = `${bin}:${path ?? ''}`;
+    try {
+      expect(landedNotice('public', repo)).toContain(LOCAL);
+      expect(landedNotice('public', repo)).toContain(LOCAL);
+    } finally {
+      if (path === undefined) delete process.env.PATH;
+      else process.env.PATH = path;
+    }
+    expect(readFileSync(asked, 'utf-8').split('\n').filter((l) => l !== '')).toHaveLength(2);
+  });
+
   it('still says it reaches every clone when the record is not excluded', async () => {
     git('init', '-q');
     await mnema('init');
