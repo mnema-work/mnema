@@ -10,18 +10,6 @@ with its own changelog.
 
 ## [Unreleased]
 
-### Changed
-
-- **`mnema status` and the opening context list the task in progress first.** The live work used to be ordered by when each
-  task last moved, so a task being worked on, if it was older than twenty newer drafts, was left out of the list. A task
-  IN_PROGRESS now leads, the others follow freshest first, and the cut keeps it. `status`, the `bootstrap` tool and the
-  hook's opening are one list, so they agree.
-- **A read in a linked worktree says where the record is.** A record git keeps out of its commits is not carried into a new
-  worktree, and a read there said "Run `mnema init` first", which would have founded a second record. When the main
-  checkout holds a `.mnema` folder, the refusal now says so and names it. `mnema show` and the `read_record` tool, for an id
-  they cannot find in a worktree, add that a record written in the main checkout and not yet committed is not there. Only a
-  hint: nothing is read from the main checkout's tree.
-
 ## [0.1.8] - 2026-11-11
 
 ### Added
