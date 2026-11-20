@@ -243,7 +243,11 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
       '\nAsks for one note at the start, used for every verdict unless you write another after the\n' +
         'letter (`a because the benchmark held`). Each verdict is the move `decision move` makes,\n' +
         'signed with your own key; a refusal on one decision is said and the review goes on. Without a\n' +
-        'terminal it writes nothing and prints the `decision move` command that rules the same decisions.',
+        'terminal it writes nothing and prints the `decision move` command that rules the same decisions.\n' +
+        '\nThen it shows the rules in force you did not accept yourself (an agent accepted them, or no\n' +
+        'agent was declared on the accept), newest first, and marks each one it shows as shown to you,\n' +
+        'in this machine\'s private record; `q` stops it, and what was not shown stays on the list.\n' +
+        'A mark says your key signed at a terminal with no agent declared, not that a person read it.',
     )
     .addHelpText('after', RECORD_CONTRACT_HELP);
   takesFromItsGroup(review, {

@@ -89,6 +89,16 @@ write another after the letter. Each verdict is the same move `decision move` ma
 your own key; without a terminal it writes nothing and prints the `decision move` command that
 rules the same decisions.
 
+After the proposals, the same review shows the rules in force you did not accept yourself: those an
+agent accepted, and those whose accept declared no agent (an agent running the command line without
+`--which` looks like that too). Newest first, each one it puts on the screen is marked as shown to
+you, a `decision.seen` fact in this machine's private record, and `q` stops it; what it did not show
+stays on the list. Your own accept at a terminal is marked the same way, so it is not on your list.
+`mnema` with nothing after it lists the ones that entered force since your last review, one line
+each, and says how many older ones you have not been shown. The mark stays in the private record,
+so another clone or machine of yours does not have it, and it says that your key signed at a
+terminal with no agent declared, not that a person read the rule.
+
 That diagram is the output of `mnema diagram decision`, read from the gate's own table;
 `skill` and `task` print theirs, and `timeline <id>` and `refs <id>` draw one entity's
 history and connections. It is mermaid text on stdout, and it writes nothing.
