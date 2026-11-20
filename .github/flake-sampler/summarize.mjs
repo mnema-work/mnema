@@ -67,6 +67,15 @@ import { fileURLToPath } from 'node:url';
  */
 
 /**
+ * ONE REPETITION THAT NEVER STARTED BECAUSE THE TIME BUDGET WAS SPENT: the marker file the loop
+ * writes, `cut--<label>--<seq>.txt`, when what is left of the budget could not hold one more run
+ * of the slowest speed this shard has seen. It is a statement that the run was not begun, and
+ * nothing else: a run that began and left no report has no marker, and stays a refusal.
+ *
+ * @typedef {{ label: string, seq: number, path: string }} Cut
+ */
+
+/**
  * A VITEST JSON REPORT AS IT ARRIVES: every field optional, because `tally` is what checks
  * them. THIS TYPE STATES WHAT IS READ, NOT WHAT IS VERIFIED: `tally` checks that `testResults`
  * is an array and `numTotalTests` a number, and NOTHING checks the fields under them.
@@ -103,6 +112,7 @@ import { fileURLToPath } from 'node:url';
  *   read: number,
  *   expect: number,
  *   perLabel: number,
+ *   cut: number,
  *   labels: { label: string, count: number }[],
  *   cases: { least: number, most: number } | null,
  *   rows: Row[],
@@ -129,6 +139,9 @@ function whySaid(thrown) {
 /** The name a report file must carry: `run--<label>--<seq>.json`. A label may carry a dot: `node24.15.0-shard1`. */
 const REPORT_NAME = /^run--([a-z0-9][a-z0-9.-]*)--(\d+)\.json$/;
 
+/** The marker of a repetition the time budget kept from starting: `cut--<label>--<seq>.txt`. */
+const CUT_NAME = /^cut--([a-z0-9][a-z0-9.-]*)--(\d+)\.txt$/;
+
 /** The row a file-level failure with no failed assertion under it gets. */
 export const THE_FILE_ITSELF = '(the file itself, a collection or import error)';
 
@@ -151,7 +164,7 @@ export const EXIT = { CLEAN: 0, FLAKY: 1, BROKEN: 2 };
  *
  * @param {string} dir
  * @param {Map<string, string>} [seen]
- * @returns {{ reports: Found[], problems: string[] }}
+ * @returns {{ reports: Found[], problems: string[], cuts: Cut[] }}
  */
 export function collectReports(dir, seen = new Map()) {
   const problems = [];
@@ -160,16 +173,28 @@ export function collectReports(dir, seen = new Map()) {
     names = readdirSync(dir).sort();
   } catch (why) {
     const said = whySaid(why);
-    return { reports: [], problems: [`the reports directory could not be read: ${dir} (${said})`] };
+    return {
+      reports: [],
+      problems: [`the reports directory could not be read: ${dir} (${said})`],
+      cuts: [],
+    };
   }
 
   const reports = [];
+  /** @type {Cut[]} */
+  const cuts = [];
   for (const name of names) {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) {
       const nested = collectReports(path, seen);
       reports.push(...nested.reports);
       problems.push(...nested.problems);
+      cuts.push(...nested.cuts);
+      continue;
+    }
+    const cutNamed = CUT_NAME.exec(name);
+    if (cutNamed?.[1] !== undefined && cutNamed[2] !== undefined) {
+      cuts.push({ label: cutNamed[1], seq: Number(cutNamed[2]), path });
       continue;
     }
     if (!name.endsWith('.json')) continue;
@@ -191,7 +216,7 @@ export function collectReports(dir, seen = new Map()) {
     seen.set(key, path);
     reports.push({ label, seq: Number(seq), path });
   }
-  return { reports, problems };
+  return { reports, problems, cuts };
 }
 
 /**
@@ -254,7 +279,7 @@ export function tally({ dir, root, expect, perLabel }) {
     broken.push(`--per-label must be a whole number of at least 1, and it was ${perLabel}`);
   }
 
-  const { reports, problems } = collectReports(dir);
+  const { reports, problems, cuts } = collectReports(dir);
   broken.push(...problems);
 
   const labels = new Map();
@@ -300,15 +325,47 @@ export function tally({ dir, root, expect, perLabel }) {
     }
   }
 
+  // A REPETITION THE BUDGET KEPT FROM STARTING IS NOT A RUN THAT FAILED TO REPORT. Each marker
+  // lowers what is owed by one, for its own label only, and only when it names a sequence inside
+  // the count and no report claims that same sequence. A run that started and wrote nothing has
+  // no marker, so it still comes out as a short count below.
+  /** @type {Map<string, number>} */
+  const cutOf = new Map();
+  const reported = new Set(reports.map((r) => `${r.label}--${r.seq}`));
+  const cutSeen = new Set();
+  let owed = 0;
+  for (const cut of cuts) {
+    const key = `${cut.label}--${cut.seq}`;
+    if (cut.seq < 1 || cut.seq > perLabel) {
+      broken.push(`a cut marker names a run outside the ${perLabel} asked for: ${cut.path}`);
+    } else if (reported.has(key)) {
+      broken.push(`run "${key}" is both reported and marked as never started: ${cut.path}`);
+    } else if (cutSeen.has(key)) {
+      broken.push(`two cut markers claim "${key}": ${cut.path}`);
+    } else {
+      cutSeen.add(key);
+      cutOf.set(cut.label, (cutOf.get(cut.label) ?? 0) + 1);
+      owed += 1;
+    }
+  }
+
   if (broken.length === 0) {
-    if (read !== expect) {
-      broken.push(`asked for ${expect} run${expect === 1 ? '' : 's'} and could read ${read}`);
+    if (read !== expect - owed) {
+      broken.push(
+        `asked for ${expect} run${expect === 1 ? '' : 's'}${owed > 0 ? `, of which ${owed} never started for want of time,` : ''} and could read ${read}`,
+      );
     }
     for (const [label, count] of [...labels].sort()) {
-      if (count !== perLabel) {
+      const due = perLabel - (cutOf.get(label) ?? 0);
+      if (count !== due) {
         broken.push(
-          `label "${label}" carries ${count} run${count === 1 ? '' : 's'}, not the ${perLabel} asked for`,
+          `label "${label}" carries ${count} run${count === 1 ? '' : 's'}, not the ${due} asked for`,
         );
+      }
+    }
+    for (const label of cutOf.keys()) {
+      if (!labels.has(label)) {
+        broken.push(`label "${label}" was cut by the time budget and reported no run at all`);
       }
     }
   }
@@ -323,6 +380,7 @@ export function tally({ dir, root, expect, perLabel }) {
     read,
     expect,
     perLabel,
+    cut: owed,
     labels: [...labels].sort().map(([label, count]) => ({ label, count })),
     cases: totals.length === 0 ? null : { least: Math.min(...totals), most: Math.max(...totals) },
     rows: ordered,
@@ -402,6 +460,11 @@ export function render(result) {
   out.push(
     `**${runs} runs** of the suite, ${result.perLabel} per label, over ${result.labels.length} label${many}.`,
   );
+  if (result.cut > 0) {
+    out.push(
+      `${result.cut} further run${result.cut === 1 ? ' was' : 's were'} never started, because the time budget of a shard could not hold one more of its slowest run. The counts above are the runs that happened.`,
+    );
+  }
   if (result.cases !== null) {
     out.push(
       result.cases.least === result.cases.most
