@@ -631,8 +631,8 @@ export const USER_CORRECTIONS_CHANNEL: SwitchableChannel = 'user-corrections';
 /**
  * The channel that changes the SHAPE of the decisions the session's opening text hands over
  * (`mnema brief --hook`): instead of the newest decisions in force, the decisions whose acceptance
- * note quotes the person, an index of what else the record holds, and how to pull it
- * (ADR-609, ADR-610).
+ * note says the person dictated them, an index of what else the record holds, and how to pull it
+ * (ADR-650, ADR-610).
  *
  * OFF UNTIL SOMEBODY SWITCHES IT ON ({@link STARTS_OFF}), and off is exactly the text the hook
  * handed before it existed. It starts off because what an opening carries is the one thing every
@@ -824,7 +824,7 @@ export const WHAT_STOPS: { readonly [K in SwitchableChannel]: string } = {
     'question the agent asked. Off until switched on',
   'opening-core':
     'the shape of the decisions a session opens with: with it on, the opening text hands over the ' +
-    'decisions whose acceptance note quotes the person, an index of what else the record holds ' +
+    'decisions whose acceptance note says the person dictated them, an index of what else the record holds ' +
     'and how to pull it, instead of the newest decisions in force. Off until switched on; the ' +
     'file `mnema brief` prints is the same either way',
   'choice-settled':

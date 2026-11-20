@@ -3,40 +3,37 @@ import type { ProjectionCache } from '@mnema/core';
 import { afterEach, describe, expect, it } from 'vitest';
 import { type Bench, birthDecision, makeBench, moveDecision } from '../../tests/support/chain.js';
 import type { ScopedCache } from '../sources.js';
-import { decisionsOnThePersonsWords, noteQuotesThePerson } from './opening-core.js';
+import { decisionsTheyDictated, noteSaysTheyDictatedIt } from './opening-core.js';
 
-/**
- * The same rows the antipatterns reading holds its own copy of this function to (PR 1386): while
- * the two exist, a row that moves in one and not in the other is a defect in one of them.
- */
+/** What an accept note says about who dictated the rule: only "the person dictated it" counts. */
 const ROWS: readonly (readonly [string, boolean])[] = [
-  ['Chosen by the maintainer among the options offered: "Only the reading".', true],
+  ['Dictated by the maintainer on 2026-11-19: "use pnpm here".', true],
   ['dictated by the maintainer', true],
-  ['The maintainer wrote: "use pnpm here".', true],
-  ['The maintainer chose in this session: option A.', true],
-  ['The maintainer kept the second option.', true],
-  ["Chosen by the maintainer on 2026-11-19 among the options: 'Uma lingua por registro'.", true],
-  ['O mantenedor disse: “sim, assim”.', true],
+  ['Accepted as dictated (ADR-30).', true],
+  ['The date was set in 2026-11, which the maintainer dictated ("two lines").', true],
+  ['Chosen by the maintainer among the options offered: "Only the reading".', false],
+  ['The maintainer chose in this session: option A.', false],
+  ['The maintainer wrote: "use pnpm here".', false],
+  ['The maintainer kept the second option.', false],
+  ['O mantenedor disse: “sim, assim”.', false],
+  ['Concluded by the agent from the record, nothing dictated.', false],
   ['accepted', false],
-  ['The maintainer asked. It looks right.', false],
-  ['An empty pair "" is no words.', false],
-  ['A lone " quote mark.', false],
-  ["Users' tokens don't leak.", false],
+  ['', false],
 ];
 
-describe('noteQuotesThePerson', () => {
+describe('noteSaysTheyDictatedIt', () => {
   it.each(ROWS)('%s -> %s', (note, expected) => {
-    expect(noteQuotesThePerson(note)).toBe(expected);
+    expect(noteSaysTheyDictatedIt(note)).toBe(expected);
   });
 
-  it('answers a long note of quote marks in linear time', () => {
+  it('answers a long note in linear time', () => {
     const started = Date.now();
-    noteQuotesThePerson(`"${'a '.repeat(50_000)}${"'".repeat(20_000)}`);
+    noteSaysTheyDictatedIt(`${'dictated '.repeat(50_000)}maintainer`);
     expect(Date.now() - started).toBeLessThan(1_000);
   });
 });
 
-describe('decisionsOnThePersonsWords', () => {
+describe('decisionsTheyDictated', () => {
   let benches: Bench[] = [];
   let opened: ProjectionCache[] = [];
   afterEach(() => {
@@ -68,15 +65,16 @@ describe('decisionsOnThePersonsWords', () => {
     );
   };
 
-  it('names the decisions whose accept note quotes the person, whoever executed the accept', () => {
+  it('names the decisions whose accept note says the person dictated them, whoever executed the accept', () => {
     const source = tree('public', (b) => {
-      acceptedWith(b, 'dictated', 'Chosen by the maintainer: "yes, that one".', 'claude-code');
+      acceptedWith(b, 'dictated', 'Dictated by the maintainer: "yes, that one".', 'claude-code');
+      acceptedWith(b, 'chosen', 'Chosen by the maintainer among the options: "that one".', 'claude-code');
       acceptedWith(b, 'typed-by-hand', 'The maintainer dictated it.');
       acceptedWith(b, 'plain-click', 'accepted');
       acceptedWith(b, 'agent-alone', 'It follows from the record.', 'claude-code');
     });
-    const ids = ['dictated', 'typed-by-hand', 'plain-click', 'agent-alone', 'never-accepted'];
-    expect([...decisionsOnThePersonsWords([source], ids)].sort()).toEqual([
+    const ids = ['dictated', 'chosen', 'typed-by-hand', 'plain-click', 'agent-alone', 'never-accepted'];
+    expect([...decisionsTheyDictated([source], ids)].sort()).toEqual([
       'dictated',
       'typed-by-hand',
     ]);
@@ -84,12 +82,12 @@ describe('decisionsOnThePersonsWords', () => {
 
   it('reads only the tree that travels', () => {
     const publicTree = tree('public', (b) => {
-      acceptedWith(b, 'one', 'Chosen by the maintainer: "ok".', 'claude-code');
+      acceptedWith(b, 'one', 'Dictated by the maintainer: "ok".', 'claude-code');
     });
     const privateTree = tree('private', (b) => {
-      acceptedWith(b, 'secret', 'Chosen by the maintainer: "ok".');
+      acceptedWith(b, 'secret', 'Dictated by the maintainer: "ok".');
     });
-    const found = decisionsOnThePersonsWords([publicTree, privateTree], ['one', 'secret']);
+    const found = decisionsTheyDictated([publicTree, privateTree], ['one', 'secret']);
     expect([...found]).toEqual(['one']);
   });
 });

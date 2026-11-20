@@ -1110,7 +1110,7 @@ function inheritedSection(inherited: InheritedReading | undefined): string[] {
 
 /**
  * What the opening carries INSTEAD of the newest decisions while `opening-core` is on: the ids of
- * the decisions in force whose acceptance note quotes the person (`decisionsOnThePersonsWords`).
+ * the decisions in force whose acceptance note says the person dictated them (`decisionsTheyDictated`).
  * A function of the record alone, so the text stays one a second reader can recompute.
  */
 export interface PulledOpening {
@@ -1123,7 +1123,7 @@ export interface PulledOpening {
  */
 function theCoreIs(governance: Brief, core: number): string[] {
   return [
-    `This text hands over the core: the ${counted(core, 'decision', 'decisions')} in force, of ${governance.decisions.length}, whose acceptance note quotes the person,`,
+    `This text hands over the core: the ${counted(core, 'decision', 'decisions')} in force, of ${governance.decisions.length}, whose acceptance note says the person dictated them,`,
     'newest first. It does not hand over the rest; the section after the patterns says how to pull it.',
   ];
 }

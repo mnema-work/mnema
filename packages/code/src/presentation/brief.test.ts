@@ -1189,7 +1189,7 @@ describe('the hook’s copy that pulls what the work needs (opening-core)', () =
     decisionsAwaiting: 3,
     addressed: 2,
   });
-  // Every fifth decision rests on the person's words.
+  // Every fifth decision is one the person dictated.
   const core = new Set(all.filter((_, at) => at % 5 === 0).map((one) => one.id));
   const bullets = (lines: readonly string[]) => lines.filter((line) => line.startsWith('- **'));
   const pulled = { core };

@@ -1408,12 +1408,12 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',
   },
-  "brief.ts «This text hands over the core: the {} in force, of {}, whose acceptance note quotes the person,» counted(core, 'decision', 'decisions') #1":
+  "brief.ts «This text hands over the core: the {} in force, of {}, whose acceptance note says the person dictated them,» counted(core, 'decision', 'decisions') #1":
     {
       verdict: 'minted',
       why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',
     },
-  'brief.ts «This text hands over the core: the {} in force, of {}, whose acceptance note quotes the person,» governance.decisions.length #1':
+  'brief.ts «This text hands over the core: the {} in force, of {}, whose acceptance note says the person dictated them,» governance.decisions.length #1':
     {
       verdict: 'minted',
       why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',

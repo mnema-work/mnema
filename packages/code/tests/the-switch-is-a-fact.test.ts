@@ -402,7 +402,7 @@ const HONOURED: Readonly<
   },
   [OPENING_CORE_CHANNEL]: {
     // THE SHAPE OF THE HOOK'S COPY of the document, driven the way the plugin asks for it: a rule in
-    // force whose accept note quotes the person, and `brief --hook`. It starts off, so the case
+    // force whose accept note says the person dictated it, and `brief --hook`. It starts off, so the case
     // switches it on first. "Speaks" is the core heading, which the copy has only while it is on.
     setUp: async () => {
       const id = idIn(await did('decision', 'record', 'A call the person dictated', 'why'));

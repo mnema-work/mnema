@@ -73,7 +73,7 @@ import {
   brief,
   channelIsOn,
   channelStates,
-  decisionsOnThePersonsWords,
+  decisionsTheyDictated,
   type PrivateRules,
   rulesHeldPrivately,
   rulesKeptPrivate,
@@ -182,7 +182,7 @@ export interface BriefDone {
   readonly privateRules?: PrivateRules;
   /**
    * The decisions in force that the opening hands over as its fixed core while `opening-core` is
-   * on (the ones whose acceptance note quotes the person, ADR-609), as ids. Present only when the
+   * on (the ones whose acceptance note says the person dictated them, ADR-650), as ids. Present only when the
    * caller asked ({@link runBrief}'s `outside`) and the channel is on: absent is the opening this
    * verb has always handed over, so with the switch off nothing changes.
    */
@@ -328,7 +328,7 @@ export function runBrief(
       ...(asked.outside === true && channelIsOn(sources, OPENING_CORE_CHANNEL, STARTS_OFF)
         ? {
             pulled: {
-              core: decisionsOnThePersonsWords(
+              core: decisionsTheyDictated(
                 sources,
                 governance.decisions.map((decision) => decision.id),
               ),

@@ -610,18 +610,19 @@ describe('mnema brief (what governs the work here)', () => {
       const { repo, env } = setup();
       runInit({ cwd: repo, env });
       const here = { cwd: repo, env };
-      acceptedWith(here, 'Dictated call', 'Chosen by the maintainer: "yes".');
+      acceptedWith(here, 'Dictated call', 'Dictated by the maintainer: "yes".');
       const done = opening(here);
       expect(done.ok && done.pulled).toBeUndefined();
     });
 
-    it('with it on, names the decisions whose note quotes the person, in the hook copy only', () => {
+    it('with it on, names the decisions whose note says the person dictated them, in the hook copy only', () => {
       const { repo, env } = setup();
       runInit({ cwd: repo, env });
       const here = { cwd: repo, env };
-      const dictated = acceptedWith(here, 'Dictated call', 'Chosen by the maintainer: "yes".');
+      const dictated = acceptedWith(here, 'Dictated call', 'Dictated by the maintainer: "yes".');
+      acceptedWith(here, 'Chosen call', 'Chosen by the maintainer among the options: "yes".');
       acceptedWith(here, 'Plain call', 'agreed in review');
-      acceptedWith(here, 'Private dictated', 'Chosen by the maintainer: "yes".', 'private');
+      acceptedWith(here, 'Private dictated', 'Dictated by the maintainer: "yes".', 'private');
       expect(runSwitch(here, { channel: 'opening-core', on: true }).ok).toBe(true);
 
       const done = opening(here);
