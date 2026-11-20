@@ -52,13 +52,20 @@
  */
 
 import type { ChainLayout, UpcasterRegistry } from '@mnema/chain';
-import type { ProjectEvents, RecordEvents, ScopedEvents } from '@mnema/context';
+import {
+  type NewerLines,
+  newerLinesFrom,
+  type ProjectEvents,
+  type RecordEvents,
+  type ScopedEvents,
+} from '@mnema/context';
 import {
   chainRootForScope,
-  orderedEvents,
+  orderedEventsAndUnread,
   orderedEventsOfRecord,
   type ResolvedTrees,
   type Scope,
+  type UnreadLine,
 } from '@mnema/core';
 
 /** The order the trees of one record are listed in: a role at a time, fixed. */
@@ -139,8 +146,28 @@ export function unionLayouts(trees: ResolvedTrees): ChainLayout[] {
  * Read-only: it reads the tails of the present trees, opening no cache and no writer.
  */
 export function recordEvents(trees: ResolvedTrees, upcasters: UpcasterRegistry): RecordEvents {
-  const { chains, across } = orderedEventsOfRecord(unionLayouts(trees), upcasters);
-  return { events: across, chains };
+  return recordEventsRead(trees, upcasters).record;
+}
+
+/**
+ * What a newer mnema wrote into the trees a read took its events from, as the field a read's answer
+ * carries, or nothing when it wrote none (ADR-140): the sentence every other read says, off the lines
+ * the reading ALREADY read past, so a read that folds the tails itself does not fold them again for it.
+ */
+export function newerLinesRead(unread: readonly UnreadLine[]): {
+  readonly newerLines?: NewerLines;
+} {
+  const newer = newerLinesFrom(unread);
+  return newer === undefined ? {} : { newerLines: newer };
+}
+
+/** {@link recordEvents}, and the field of the lines the same reading read past. */
+export function recordEventsRead(
+  trees: ResolvedTrees,
+  upcasters: UpcasterRegistry,
+): { readonly record: RecordEvents; readonly newer: { readonly newerLines?: NewerLines } } {
+  const { chains, across, unread } = orderedEventsOfRecord(unionLayouts(trees), upcasters);
+  return { record: { events: across, chains }, newer: newerLinesRead(unread) };
 }
 
 /**
@@ -171,11 +198,28 @@ export function scopedEventsOf(
   trees: readonly ScopedTree[],
   upcasters: UpcasterRegistry,
 ): readonly ScopedEvents[] {
-  return trees.map((tree) => ({
-    scope: tree.scope,
-    ...(tree.project !== undefined ? { project: tree.project } : {}),
-    events: orderedEvents({ root: tree.chainRoot }, upcasters),
-  }));
+  return scopedEventsRead(trees, upcasters).sources;
+}
+
+/** {@link scopedEventsOf}, and the field of the lines the same reading read past. */
+export function scopedEventsRead(
+  trees: readonly ScopedTree[],
+  upcasters: UpcasterRegistry,
+): {
+  readonly sources: readonly ScopedEvents[];
+  readonly newer: { readonly newerLines?: NewerLines };
+} {
+  const unread: UnreadLine[] = [];
+  const sources = trees.map((tree) => {
+    const read = orderedEventsAndUnread({ root: tree.chainRoot }, upcasters);
+    unread.push(...read.unread);
+    return {
+      scope: tree.scope,
+      ...(tree.project !== undefined ? { project: tree.project } : {}),
+      events: read.events,
+    };
+  });
+  return { sources, newer: newerLinesRead(unread) };
 }
 
 /**

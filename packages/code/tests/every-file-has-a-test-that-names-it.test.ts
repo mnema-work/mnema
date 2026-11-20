@@ -1352,6 +1352,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-antigravity-cli-rises-only-with-a-capture.test.ts': 4,
   'packages/code/tests/the-architecture-page-is-what-the-code-draws.test.ts': 5,
   'packages/code/tests/the-arrival-page-is-the-table.test.ts': 5,
+  'packages/code/tests/the-audit-verbs-fold-the-record-once.test.ts': 13,
   'packages/code/tests/the-bare-name-asks.test.ts': 17,
   'packages/code/tests/the-bare-name-says-what-is-off.test.ts': 8,
   'packages/code/tests/the-bin-runs-the-bundle.test.ts': 8,
