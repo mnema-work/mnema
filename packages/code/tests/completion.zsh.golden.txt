@@ -311,7 +311,7 @@ _mnema_flags() {
     'tally') echo '-h --help -V --version --color' ;;
     'corrections') echo '-h --help -V --version --color' ;;
     'after-a-write') echo '-h --help -V --version --color' ;;
-    'handback') echo '--schema -h --help -V --version --color' ;;
+    'handback') echo '--schema --host -h --help -V --version --color' ;;
     'settled') echo '--reply -h --help -V --version --color' ;;
     'dispatched') echo '-h --help -V --version --color' ;;
   esac
@@ -480,6 +480,7 @@ _mnema_values() {
     'tally:--color') echo 'auto always never' ;;
     'corrections:--color') echo 'auto always never' ;;
     'after-a-write:--color') echo 'auto always never' ;;
+    'handback:--host') echo 'claude codex copilot' ;;
     'handback:--color') echo 'auto always never' ;;
     'settled:--color') echo 'auto always never' ;;
     'dispatched:--color') echo 'auto always never' ;;
