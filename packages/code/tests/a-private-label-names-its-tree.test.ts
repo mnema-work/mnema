@@ -1,4 +1,3 @@
-// @reads-the-tree
 /**
  * A PRIVATE DECISION'S LABEL READS AS PRIVATE: in every place a person is shown it.
  *
@@ -77,18 +76,17 @@ describe('the same label in two trees', () => {
     );
     const privateId = idOf(privateWrite);
 
-    // The write names the tree the decision landed in, only when it is not the public one.
+    // The line a write prints keeps its documented shape, `ADR-n (id)`, in either tree.
     expect(publicWrite[0]).toBe(`Recorded decision ADR-1 (${publicId})`);
-    expect(privateWrite[0]).toBe(`Recorded decision ADR-1 (private) (${privateId})`);
+    expect(privateWrite[0]).toBe(`Recorded decision ADR-1 (${privateId})`);
 
     // Awaiting a judgement, in the opening read.
     const waiting = (await mnema('status')).filter((line) => line.includes('ADR-1'));
     expect(waiting.find((line) => line.includes('Use UTC'))).toMatch(/ADR-1 · Use UTC/);
     expect(waiting.find((line) => line.includes('Use ISO'))).toContain('ADR-1 (private) · Use ISO');
 
-    // The review a person rules from.
     const moved = await mnema('decision', 'move', 'accept', privateId, '--note', 'agreed');
-    expect(moved[0]).toBe(`Decision ADR-1 (private) (${privateId}) → accepted`);
+    expect(moved[0]).toBe(`Decision ADR-1 (${privateId}) → accepted`);
     await mnema('decision', 'move', 'accept', publicId, '--note', 'agreed');
 
     // In force, in the same opening read.

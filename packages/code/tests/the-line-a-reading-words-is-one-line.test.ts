@@ -1477,9 +1477,25 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'collapsed',
     why: 'the topic `--topic` named: free text, on a fact line of its own',
   },
-  'record.ts «{}: {}» body.record.adr #1': {
+  'record.ts «{}: {}» readLabel(body.record.adr, body.scope) #1': {
     verdict: 'minted',
     why: 'the `ADR-<n>` the decision was minted with',
+  },
+  'label.ts «{} ({})» adr #1': {
+    verdict: 'minted',
+    why: 'the `ADR-<n>` the decision was minted with',
+  },
+  'label.ts «{} ({})» scope #1': {
+    verdict: 'minted',
+    why: 'the tree the decision is held in: one of the three words of the closed table of trees',
+  },
+  'search.ts «{} matched and {} are shown; to reach the rest, search a window of dates with --from <iso> and --to <iso>.» result.total #1': {
+    verdict: 'minted',
+    why: 'the count of records that matched',
+  },
+  'search.ts «{} matched and {} are shown; to reach the rest, search a window of dates with --from <iso> and --to <iso>.» result.hits.length #1': {
+    verdict: 'minted',
+    why: 'the count of records shown',
   },
   'record.ts «{}: {}» oneLine(body.record.title) #1': {
     verdict: 'collapsed',
@@ -1547,7 +1563,7 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'composed',
     why: 'namedDecisionText, whose only value is the id when the other end is not in the trees read, collapsed there',
   },
-  'named-decision.ts «{}: {} {}» oneLine(named.adr) #1': {
+  'named-decision.ts «{}: {} {}» oneLine(readLabel(named.adr, named.scope)) #1': {
     verdict: 'collapsed',
     why: 'the label frozen into the record at write time, collapsed because a line is this module’s',
   },
@@ -1725,7 +1741,7 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'collapsed',
     why: 'the decision’s reason, typed by whoever recorded it',
   },
-  'reviewed.ts «{} ({})» shown.adr #1': {
+  'reviewed.ts «{} ({})» readLabel(shown.adr, shown.scope) #1': {
     verdict: 'minted',
     why: 'the decision’s ADR label, which the product numbers',
   },
@@ -2077,7 +2093,7 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'composed',
       why: 'the same pair of counts, for the mixed list',
     },
-  'status.ts «{} · {}» item.adr #1': {
+  'status.ts «{} · {}» readLabel(item.adr, item.scope) #1': {
     verdict: 'composed',
     why: 'the label half of a waiting decision’s name: collapsed whole at the call site',
   },
@@ -2891,7 +2907,7 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'the task’s position: a word of its transition table',
   },
-  'status.ts itemLine(item.adr) #1': {
+  'status.ts itemLine(readLabel(item.adr, item.scope)) #1': {
     verdict: 'minted',
     why: 'the `ADR-<n>` the decision was minted with',
   },
@@ -3036,8 +3052,8 @@ describe('every value this layer puts on a line is classified', () => {
     // it measures what the two opening texts print for a hook, and cuts them at a whole item.
     // `named-decision.ts` is a COMPOSER: the decision another decision's link names, whose title is
     // text somebody typed, worded once for `show` and for the document a session opens with.
-    expect(FOUND.composers.length + FOUND.machinery.length).toBe(39);
-    expect(FOUND.composers.length).toBe(27);
+    expect(FOUND.composers.length + FOUND.machinery.length).toBe(40);
+    expect(FOUND.composers.length).toBe(28);
     expect(FOUND.machinery).toContain('items.ts');
     expect(FOUND.machinery).toContain('line.ts');
     expect(FOUND.machinery).toContain('width.ts');
