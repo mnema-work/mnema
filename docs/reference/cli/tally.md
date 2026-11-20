@@ -28,10 +28,16 @@ What it reads and what it prints:
   person, or {} when
   the hook is not Stop, the session wrote no file in the last response, there is no project
   here, or the transcript cannot be read.
+  A response begins at a line Claude Code marks as typed by a person (origin.kind human):
+  a compaction summary, a local command and “[Request interrupted by user]” never count, a
+  slash command opens a response, and a transcript of an older Claude Code with no origin
+  yields no typed line of the person’s.
   It writes nothing to the record. When the hook names its session it also keeps a small file on
   this machine, the session journal (ids and counts, never what was said), and reads the
   transcript from where the last reading stopped. `mnema switch off session-tally` stops the
   line and `mnema switch off session-journal` stops the file. When a session opens it prints {}
   and keeps beside the journal the path of the session’s transcript (a path, never a word of it),
   which is how an agent’s accept is checked against what the person typed.
+  With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
+  code alone on the first line of the error stream; typed by a person, nothing changes.
 ```

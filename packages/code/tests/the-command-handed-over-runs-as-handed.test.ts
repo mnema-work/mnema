@@ -436,8 +436,8 @@ export const NAMES_THAT_NEED_MORE: Readonly<
     why: 'the verb named in the list of where the sections of the page went, and in the tour, where it says what writes a relink; the page of the verb hands the whole line over',
   },
   'docs/cli-reference.md: mnema tail repair': {
-    times: 1,
-    why: 'the verb named in the list of where the sections of the page went; the page of the verb hands the whole line over',
+    times: 2,
+    why: 'the verb named in the list of where the sections of the page went, and as the way out the bare summary names for a line it cannot read; the page of the verb hands the whole line over',
   },
   'packages/action/README.md: mnema rules': {
     times: 2,
@@ -858,7 +858,7 @@ export const HANDED_OVER: Readonly<
   'docs/committing-the-record.md': { line: 7, name: 18 },
   'docs/convergence.md': { line: 6, name: 2 },
   'docs/evidence.md': { line: 1, flag: 1 },
-  'docs/features.md': { line: 11, name: 17 },
+  'docs/features.md': { line: 12, name: 17 },
   'docs/first-record.md': { line: 9, name: 11 },
   'docs/glossary.md': { name: 3 },
   'docs/how-it-works.md': { line: 3, name: 3 },
