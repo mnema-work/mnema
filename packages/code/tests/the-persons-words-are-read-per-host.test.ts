@@ -1,0 +1,179 @@
+/**
+ * The files under test are `src/the-persons-words.ts` (the table of readers and the door in front
+ * of it) and, behind the Claude entry, `src/what-the-session-did.ts` (`whatThePersonSaid`).
+ *
+ * Each host's lines come from `support/host-transcripts.ts`, built from the host's source at a
+ * pinned commit. What is held for each: the person's typed message comes out, in order; what the
+ * host injected, wrote for a tool or summarised does not; and where a reader reads the host's
+ * question tool, the answer comes out marked chosen.
+ */
+
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { HOST_NAMES } from '../src/host-names.js';
+import { READER_OF, thePersonsWords } from '../src/the-persons-words.js';
+import { GEMINI, jsonl, QWEN, VSCODE } from './support/host-transcripts.js';
+
+let dir: string;
+beforeEach(() => {
+  dir = mkdtempSync(join(tmpdir(), 'persons-words-'));
+});
+afterEach(() => {
+  rmSync(dir, { recursive: true, force: true });
+});
+
+function file(lines: readonly unknown[]): string {
+  const path = join(dir, 'transcript.jsonl');
+  writeFileSync(path, jsonl(lines));
+  return path;
+}
+
+describe('which hosts have a reader', () => {
+  it('names a reader for Claude Code, Gemini CLI, Qwen Code and VS Code, and says no for the rest', () => {
+    const has = HOST_NAMES.filter((host) => READER_OF[host] !== undefined);
+    expect(has).toEqual(['claude', 'vscode', 'gemini', 'qwen']);
+    expect(thePersonsWords('codex', join(dir, 'none.jsonl'))).toBeUndefined();
+    expect(thePersonsWords('goose', join(dir, 'none.jsonl'))).toBeUndefined();
+  });
+
+  it('returns nothing, and does not throw, for a transcript that is not there', () => {
+    expect(thePersonsWords('gemini', join(dir, 'none.jsonl'))).toEqual([]);
+  });
+});
+
+describe('Gemini CLI', () => {
+  it('reads the typed messages in order and leaves out the tool turn and the notices', () => {
+    const path = file([
+      GEMINI.header,
+      GEMINI.typed('m1', 'Use SQLite for the store'),
+      GEMINI.toolTurn('m2'),
+      GEMINI.info('m3', 'Compressed the chat'),
+      GEMINI.typed('m4', 'and keep the tests'),
+    ]);
+    expect(thePersonsWords('gemini', path)).toEqual([
+      { line: 2, text: 'Use SQLite for the store', chosen: false },
+      { line: 5, text: 'and keep the tests', chosen: false },
+    ]);
+  });
+
+  it('reads the answer to ask_user as chosen, with the question', () => {
+    const path = file([
+      GEMINI.header,
+      GEMINI.typed('m1', 'Set up the store'),
+      GEMINI.asked('m2', JSON.stringify({ answers: { '0': 'SQLite' } }), ['Which store do we use?']),
+    ]);
+    expect(thePersonsWords('gemini', path)).toEqual([
+      { line: 2, text: 'Set up the store', chosen: false },
+      { line: 3, text: 'SQLite', chosen: true, question: 'Which store do we use?' },
+    ]);
+  });
+
+  it('does not read a dismissed question as an answer', () => {
+    const path = file([
+      GEMINI.header,
+      GEMINI.asked('m2', 'User dismissed ask_user dialog without answering.', ['Which?']),
+    ]);
+    expect(thePersonsWords('gemini', path)).toEqual([]);
+  });
+
+  it('reads a message the host appended again once, and drops what a rewind removed', () => {
+    const path = file([
+      GEMINI.header,
+      GEMINI.typed('m1', 'first'),
+      GEMINI.typed('m2', 'second, rewound'),
+      { $rewindTo: 'm2' },
+      GEMINI.typed('m1', 'first, again'),
+      GEMINI.typed('m3', 'third'),
+      { $set: { summary: 'x' } },
+    ]);
+    expect(thePersonsWords('gemini', path)?.map((said) => said.text)).toEqual([
+      'first, again',
+      'third',
+    ]);
+  });
+});
+
+describe('Qwen Code', () => {
+  it('reads a user record with no subtype and passes over every injected kind', () => {
+    const injected = [
+      'notification',
+      'cron',
+      'mid_turn_user_message',
+      'agent_mention',
+      'slash_command',
+      'goal_runtime',
+    ].map((subtype) => QWEN.record({ type: 'user', subtype, message: QWEN.content(`from ${subtype}`) }));
+    const path = file([
+      QWEN.record({ type: 'user', message: QWEN.content('Use SQLite') }),
+      ...injected,
+      QWEN.record({ type: 'assistant', message: { role: 'model', parts: [{ text: 'ok' }] } }),
+      QWEN.record({ type: 'system', subtype: 'chat_compression', systemPayload: {} }),
+      QWEN.record({
+        type: 'user',
+        message: { role: 'user', parts: [{ functionResponse: { name: 'x', response: {} } }] },
+      }),
+      QWEN.record({ type: 'user', provenance: 'external_agent', message: QWEN.content('an agent') }),
+      QWEN.record({ type: 'user', message: QWEN.content('keep the tests') }),
+    ]);
+    expect(thePersonsWords('qwen', path)).toEqual([
+      { line: 1, text: 'Use SQLite', chosen: false },
+      { line: 13, text: 'keep the tests', chosen: false },
+    ]);
+  });
+
+  it('takes the submitted text, not the model-bound copy that carries hook context', () => {
+    const path = file([
+      QWEN.record({
+        type: 'user',
+        message: QWEN.content('Use SQLite\n<hook-context>injected</hook-context>'),
+        systemPayload: { displayText: 'Use SQLite', hookContext: 'injected' },
+      }),
+    ]);
+    expect(thePersonsWords('qwen', path)).toEqual([{ line: 1, text: 'Use SQLite', chosen: false }]);
+  });
+});
+
+describe('VS Code agent mode', () => {
+  it('reads user.message and nothing the assistant or a tool wrote', () => {
+    const path = file([
+      VSCODE.entry('session.start', { sessionId: 's', producer: 'copilot-agent' }),
+      VSCODE.entry('user.message', { content: 'Use SQLite', attachments: [] }),
+      VSCODE.entry('assistant.turn_start', { turnId: '0.0' }),
+      VSCODE.entry('assistant.message', { messageId: 'a', content: 'Which store?', toolRequests: [] }),
+      VSCODE.entry('tool.execution_complete', { toolCallId: 't', success: true, result: { content: 'x' } }),
+      VSCODE.entry('user.message', { content: 'keep the tests' }),
+    ]);
+    expect(thePersonsWords('vscode', path)).toEqual([
+      { line: 2, text: 'Use SQLite', chosen: false },
+      { line: 6, text: 'keep the tests', chosen: false },
+    ]);
+  });
+});
+
+describe('Claude Code, behind the same door', () => {
+  it('reads a human line, passes over meta and sidechain lines, and marks an answer chosen', () => {
+    const human = (text: string, extra: Record<string, unknown> = {}) => ({
+      type: 'user',
+      origin: { kind: 'human' },
+      message: { role: 'user', content: text },
+      ...extra,
+    });
+    const path = file([
+      human('Use SQLite'),
+      human('injected', { isMeta: true }),
+      human('a subagent', { isSidechain: true }),
+      { type: 'user', message: { role: 'user', content: 'no origin' } },
+      {
+        type: 'user',
+        message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't', content: 'ok' }] },
+        toolUseResult: { answers: { 'Which store?': 'SQLite' } },
+      },
+    ]);
+    expect(thePersonsWords('claude', path)).toEqual([
+      { line: 1, text: 'Use SQLite', chosen: false },
+      { line: 5, text: 'SQLite', chosen: true, question: 'Which store?' },
+    ]);
+  });
+});

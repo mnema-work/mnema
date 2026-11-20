@@ -351,6 +351,8 @@ export interface WhatThePersonSaid {
    * question tool put, or the last sentence of a response that ended in a question mark.
    */
   readonly question?: string | undefined;
+  /** True when these are the options the person chose in the host's question tool, not words they typed. */
+  readonly chosen?: true;
 }
 
 /**
@@ -389,7 +391,7 @@ export function whatThePersonSaid(path: string): readonly WhatThePersonSaid[] {
     };
     if (!isAPrompt(read)) {
       const chosen = answersToTheQuestionTool(read);
-      if (chosen !== undefined) said.push({ ...where, ...chosen });
+      if (chosen !== undefined) said.push({ ...where, ...chosen, chosen: true });
       return true;
     }
     const question = asked;
