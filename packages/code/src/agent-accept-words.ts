@@ -47,56 +47,25 @@ export const LEAST_QUOTED = 20;
  * punctuation) says yes to something and not what to, so it counts for no accept.
  */
 const ASSENT = new Set([
-  'yes',
-  'yep',
-  'yeah',
-  'sure',
-  'ok',
-  'okay',
-  'fine',
-  'great',
-  'agreed',
-  'agree',
-  'accept',
-  'approved',
-  'go',
-  'ahead',
-  'do',
-  'it',
-  'please',
-  'and',
-  'then',
-  'now',
-  'thanks',
-  'perfect',
-  'sim',
-  'pode',
-  'ser',
-  'claro',
-  'certo',
-  'isso',
-  'mesmo',
-  'faça',
-  'faca',
-  'faz',
-  'aceito',
-  'aceite',
-  'aprovado',
-  'concordo',
-  'perfeito',
-  'obrigado',
-  'por',
-  'favor',
-  'então',
-  'entao',
-  'e',
-  'tudo',
-  'bem',
+  'yes', 'yeah', 'yep', 'ok', 'okay', 'sure', 'fine', 'good', 'great', 'sounds', 'lets', 'go', 'ahead',
+  'on', 'do', 'it', 'please', 'proceed', 'approved', 'agreed', 'right', 'correct', 'that', 'this',
+  'sim', 'pode', 'ir', 'em', 'frente', 'manda', 'segue', 'vamos', 'fechado', 'de', 'acordo', 'beleza',
+  'certo', 'isso', 'faca', 'faz', 'por', 'favor', 'claro', 'perfeito', 'otimo', 'bora', 'vai', 'esse', 'essa',
 ]);
+
+/** A word of a passage: letters only, accents folded, so "let's" is "lets" and "faça" is "faca". */
+function wordsOf(passage: string): string[] {
+  return passage
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/['\u2019]/g, '')
+    .split(/[^\p{L}]+/u)
+    .filter((word) => word !== '');
+}
 
 /** Whether a folded passage is pure assent: it has words, and each of them is a word of assent. */
 export function isPureAssent(passage: string): boolean {
-  const words = passage.split(/[^\p{L}\p{N}]+/u).filter((word) => word !== '');
+  const words = wordsOf(passage);
   return words.length > 0 && words.every((word) => ASSENT.has(word));
 }
 

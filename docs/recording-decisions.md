@@ -171,7 +171,7 @@ An accept by an agent (the tool, and the command with `--which`) stands when its
 session, or an option the person chose in the host's question tool; otherwise it is refused with `ACCEPT_NEEDS_THE_PERSONS_WORDS`,
 nothing is written and the decision stays `proposed`, for a person to rule on with `mnema decision review` (or for the agent to
 accept again with a note that quotes the person). What is looked for are the passages the note puts between double quotes
-(straight, curly or Portuguese, 20 characters or more after folding case and spacing, and not pure assent such as "yes", "sim, pode", "ok" or "go ahead", judged against a small closed list of assent words) in what the person said, read off the host's
+(straight, curly or Portuguese, 20 characters or more after folding case and spacing, and not pure assent such as "yes", "sim, pode", "ok" or "go ahead", judged against a small closed list of assent words in English and Portuguese, accents folded) in what the person said, read off the host's
 transcript: a line the host marks as typed by a person, and an answer in its question tool. One found passage is enough, and the
 reply says whether it was typed words or a chosen option (an option's label is the agent's own text: the choice is the person's). A short option label, under 20 characters, does not count on its own: quote the person's own words then.
 Nothing is added to the record, the quotation is not stored, and a line that sits earlier in the same session still counts.

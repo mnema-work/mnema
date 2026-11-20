@@ -16,7 +16,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { ListRootsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { quotedPassages, whatTheAcceptRestsOn } from '../src/agent-accept-words.js';
+import { isPureAssent, quotedPassages, whatTheAcceptRestsOn } from '../src/agent-accept-words.js';
 import { buildMcpServer } from '../src/mcp/server.js';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
 import { MNEMA_CLI } from './support/the-cli.js';
@@ -119,7 +119,7 @@ describe('the passages a note quotes', () => {
   it('reads straight, curly and Portuguese quotes of twenty characters or more, folded, and no pure assent', () => {
     expect(
       quotedPassages(
-        'He said "Keep   The Cache between runs", “use WAL mode for the cache” and «faz assim e depois isso», not "no", not "please", not "sim, pode ser, claro, faça isso".',
+        'He said "Keep   The Cache between runs", “use WAL mode for the cache” and «faz assim e depois isso», not "no", not "please", not "sim, pode ir em frente, claro".',
       ),
     ).toEqual([
       'keep the cache between runs',
@@ -138,6 +138,14 @@ describe('what an accept rests on, with a transcript that is known', () => {
     transcript,
   });
 
+  it('judges pure assent by a closed list of words, accents folded', () => {
+    expect(isPureAssent('sim, pode ir em frente')).toBe(true);
+    expect(isPureAssent('let\u2019s go ahead, please')).toBe(true);
+    expect(isPureAssent('faça isso, por favor')).toBe(true);
+    expect(isPureAssent('pode publicar a versao agora')).toBe(false);
+    expect(isPureAssent('yes, keep the cache')).toBe(false);
+  });
+
   it('waits when the quote is shorter than twenty characters, even if the person typed it', () => {
     writeFileSync(transcript, `${typed('Please do that for the cache.')}\n`);
     expect(whatTheAcceptRestsOn(move(transcript, 'He said "please"'))?.outcome).toBe('waits');
@@ -147,13 +155,13 @@ describe('what an accept rests on, with a transcript that is known', () => {
   });
 
   it('waits when the quote is twenty characters or more and only says yes', () => {
-    writeFileSync(transcript, `${typed('Yes, go ahead and do it please.')}\n`);
+    writeFileSync(transcript, `${typed('Yes, go ahead, do it please.')}\n`);
     expect(
-      whatTheAcceptRestsOn(move(transcript, 'He said "Yes, go ahead and do it please"'))?.outcome,
+      whatTheAcceptRestsOn(move(transcript, 'He said "Yes, go ahead, do it please"'))?.outcome,
     ).toBe('waits');
-    writeFileSync(transcript, `${typed('Sim, pode ser, claro, faça isso.')}\n`);
+    writeFileSync(transcript, `${typed('Sim, pode ir em frente, claro.')}\n`);
     expect(
-      whatTheAcceptRestsOn(move(transcript, 'Disse "sim, pode ser, claro, faça isso"'))?.outcome,
+      whatTheAcceptRestsOn(move(transcript, 'Disse "sim, pode ir em frente, claro"'))?.outcome,
     ).toBe('waits');
   });
 
