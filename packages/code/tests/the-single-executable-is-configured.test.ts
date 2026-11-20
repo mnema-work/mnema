@@ -45,7 +45,7 @@ describe('the file node --build-sea reads', () => {
   });
 
   it('is named by version, platform and architecture', () => {
-    expect(nameOfTheExecutable('0.1.8')).toBe('mnema-0.1.8-linux-x64');
+    expect(nameOfTheExecutable('1.2.3')).toBe('mnema-1.2.3-linux-x64');
     expect(nameOfTheExecutable('0.2.0-beta')).toBe('mnema-0.2.0-beta-linux-x64');
   });
 });

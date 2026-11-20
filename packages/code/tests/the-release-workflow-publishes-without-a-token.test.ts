@@ -101,6 +101,7 @@ describe('the release workflow publishes without a token', () => {
       'packed-install',
       'publish',
       'attest',
+      'single-executable',
       'release',
       'vsix',
       'attest-vsix',
@@ -128,6 +129,18 @@ describe('the release workflow publishes without a token', () => {
     expect(job('pack')).toContain('pnpm install --frozen-lockfile');
     expect(job('pack')).toContain('sha256sum');
     expect(job('pack')).toContain('actions/upload-artifact@');
+  });
+
+  it('builds the experimental single executable without a token, and the release attaches it only when it was built', () => {
+    const exe = job('single-executable');
+    expect(exe).not.toMatch(/id-token|secrets\./);
+    expect(exe).toMatch(/^ {6}contents: read$/m);
+    expect(exe).toContain('pnpm build:single-executable');
+    expect(exe).toContain('bash .github/the-single-executable/smoke.sh');
+    expect(exe).toContain('built: ${{ steps.mark.outputs.built }}');
+    const release = job('release');
+    expect(release).toContain("needs.single-executable.outputs.built == 'true'");
+    expect(release).toContain('Experimental, Linux x64 only, unsigned');
   });
 
   it('publishes without installing or building anything', () => {
@@ -190,7 +203,7 @@ describe('the release workflow publishes without a token', () => {
 
   it('cuts the tag and the release after the publish, and nowhere before', () => {
     const release = job('release');
-    expect(release).toMatch(/needs: \[plan, publish, attest\]/);
+    expect(release).toMatch(/needs: \[plan, publish, attest, single-executable\]/);
     expect(release).toMatch(/^ {6}contents: write$/m);
     expect(release).not.toMatch(/id-token/);
     expect(release).toContain('gh release create');
