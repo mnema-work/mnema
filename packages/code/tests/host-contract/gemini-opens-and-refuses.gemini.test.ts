@@ -64,8 +64,12 @@ describe('gemini cli opens with the record and refuses the write', () => {
       call: writing('src/billing/invoice.ts'),
     });
     expect(session.requests.length).toBeGreaterThanOrEqual(2);
-    expect(session.calls.filter((call) => call === 'brief --hook')).toHaveLength(1);
-    expect(session.calls.filter((call) => call === 'recall --hook')).toHaveLength(1);
+    expect(
+      session.calls.filter((call) => call === 'brief --hook --host gemini'),
+    ).toHaveLength(1);
+    expect(
+      session.calls.filter((call) => call === 'recall --hook --host gemini'),
+    ).toHaveLength(1);
   }, 180_000);
 
   it('deny, `write_file`: the file is not created and the model reads the rule that refused it', async () => {
