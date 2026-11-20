@@ -441,6 +441,25 @@ describe('mnema record publish', SLOW, () => {
     expect(publish(local)).toMatchObject({ ok: true, kind: 'published', branch });
   });
 
+  it('never forces the push: a branch of that name that the remote holds elsewhere stays as it is', () => {
+    const { local, remote } = world();
+    switchOn(local);
+    decide(local, 'a decision');
+    const first = publish(local);
+    if (!first.ok || first.kind !== 'published') throw new Error(JSON.stringify(first));
+
+    // Someone put an unrelated commit under the same name on the remote.
+    const empty = git(local, 'hash-object', '-t', 'tree', '/dev/null').out;
+    const stray = git(local, 'commit-tree', empty, '-m', 'a stray').out;
+    expect(git(local, 'push', '-f', 'origin', `${stray}:refs/heads/${first.branch}`).status).toBe(
+      0,
+    );
+
+    const again = publish(local);
+    expect(again).toMatchObject({ ok: false, reason: 'PUSH_FAILED', branch: first.branch });
+    expect(git(remote, 'rev-parse', `refs/heads/${first.branch}`).out).toBe(stray);
+  });
+
   it('says there is nothing to publish where the base holds the record, and opens nothing', () => {
     const { local } = world();
     switchOn(local);
