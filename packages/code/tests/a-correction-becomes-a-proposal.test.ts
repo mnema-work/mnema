@@ -279,8 +279,9 @@ describe('mnema corrections', () => {
         .map((one) => one.payload.title)
         .sort(),
     ).toEqual(rules.map((said) => `Rule: ${said}`).sort());
-    const [first] = decisionsIn('projectPrivate');
-    expect(first?.payload.rationale).toContain('The person dictated a rule in a session');
+    for (const one of decisionsIn('projectPrivate')) {
+      expect(one.payload.rationale).toContain('The person dictated a rule in a session');
+    }
     expect(decisionsIn('projectPublic')).toHaveLength(0);
   });
 

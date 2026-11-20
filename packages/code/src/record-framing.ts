@@ -834,9 +834,10 @@ export const WHAT_STOPS: { readonly [K in SwitchableChannel]: string } = {
     'person accepts it, where `agent-accepts` is off). It reads which tool ran and whether ' +
     '`agent-accepts` is on, and writes nothing',
   'dictated-rule':
-    'the sentence handed to the agent beside a message of the person’s that has the shape of a ' +
-    'rule dictated (always, never, from now on, put it as a rule): which tool records it and which ' +
-    'accepts it, the note quoting the person’s own words (or that a person accepts it, where ' +
+    'the sentence handed to the agent beside a message of the person’s that is an instruction to keep ' +
+    '(always, never, from now on followed by a verb in the imperative, or put it as a rule): that only ' +
+    'a rule the person typed is accepted, which tool records it and which accepts it, the note quoting ' +
+    'the person’s own words (or that a person accepts it, where ' +
     '`agent-accepts` is off). It reads the message for that shape and whether `agent-accepts` is on, ' +
     'says none of the message’s words, and writes nothing',
   'host-memory-mirror':

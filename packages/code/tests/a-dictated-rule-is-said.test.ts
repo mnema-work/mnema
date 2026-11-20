@@ -496,10 +496,58 @@ describe('the table has two readers and no copy', () => {
       const holders = readdirSync(join(REPO, 'packages/code/src'), { recursive: true })
         .map(String)
         .filter((file) => file.endsWith('.ts') && !file.endsWith('.test.ts'))
-        .filter((file) => readFileSync(join(REPO, 'packages/code/src', file), 'utf-8').includes(trigger));
+        .filter((file) =>
+          readFileSync(join(REPO, 'packages/code/src', file), 'utf-8').includes(trigger),
+        );
       expect(holders, trigger).toEqual(['dictated-rules.ts']);
     }
   });
+});
+
+describe('the plugin hook a host runs on a message', () => {
+  /** The `UserPromptSubmit` group of the plugin's hooks file that runs this handler: one. */
+  function theGroup(): { hooks: { command: string }[] } {
+    const file = JSON.parse(readFileSync(join(PLUGIN, 'hooks', 'hooks.json'), 'utf-8')) as {
+      hooks: { UserPromptSubmit?: { hooks: { command: string }[] }[] };
+    };
+    const groups = (file.hooks.UserPromptSubmit ?? []).filter((group) =>
+      group.hooks.some((hook) => hook.command.includes('rule-dictated.mjs')),
+    );
+    expect(groups.length).toBe(1);
+    return groups[0] as { hooks: { command: string }[] };
+  }
+
+  /**
+   * Runs the hook's command line, as the host does, with a `mnema` on the PATH that leaves a mark
+   * before it runs the real one: the mark says whether `mnema` was started at all.
+   */
+  function host(input: string, extraEnv: Record<string, string> = {}) {
+    const bin = join(sandbox, 'bin');
+    mkdirSync(bin, { recursive: true });
+    const mark = join(sandbox, 'mnema-started');
+    writeFileSync(
+      join(bin, 'mnema'),
+      [
+        '#!/bin/sh',
+        `echo started >> "${mark}"`,
+        `exec "${process.execPath}" "${CLI}" "$@"`,
+        '',
+      ].join('\n'),
+    );
+    chmodSync(join(bin, 'mnema'), 0o755);
+    const sent = spawnSync('/bin/sh', ['-c', theGroup().hooks[0]?.command ?? 'exit 9'], {
+      cwd: repo,
+      input,
+      encoding: 'utf-8',
+      timeout: 20_000,
+      env: {
+        HOME: join(sandbox, 'home'),
+        PATH: `${bin}:${dirname(process.execPath)}:/usr/bin:/bin`,
+        CLAUDE_PLUGIN_ROOT: PLUGIN,
+        CLAUDE_PROJECT_DIR: repo,
+        ...extraEnv,
+      },
+    });
     const started = existsSync(mark);
     rmSync(mark, { force: true });
     return { ...sent, started };
