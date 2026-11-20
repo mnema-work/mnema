@@ -44,7 +44,7 @@
 import type { NamedDecision, RecordBody, TaskStory } from '@mnema/context';
 import type { DecisionActor, NoteRetraction, TransitionProof } from '@mnema/core';
 import { type AnchorForms, anchorText } from '../anchors.js';
-import { A_PERSON, NO_NAME_ANNOUNCED, neutralized, oneLine } from '../one-line.js';
+import { NO_AGENT_DECLARED, NO_NAME_ANNOUNCED, neutralized, oneLine } from '../one-line.js';
 import { DERIVED_FROM } from '../provenance.js';
 import { consultedLine } from './consultation.js';
 import { fact, statedFact, subjectLine } from './detail.js';
@@ -142,7 +142,7 @@ function aboveTheBody(lines: string[], facts: readonly string[]): string[] {
   return lines;
 }
 
-/** `mnid:ab12cd34 (a person)` or `mnid:ab12cd34 (agent claude-code)`. */
+/** `mnid:ab12cd34 (no agent declared)` or `mnid:ab12cd34 (agent claude-code)`. */
 function actorText(
   anchors: AnchorForms,
   actor: DecisionActor,
@@ -151,7 +151,7 @@ function actorText(
 ): string {
   const act =
     actor.which === undefined
-      ? A_PERSON
+      ? NO_AGENT_DECLARED
       : `agent ${oneLine(actor.which)}${attested ? ', attested by its own key' : ''}${unannounced ? `, ${NO_NAME_ANNOUNCED}` : ''}`;
   return `${oneLine(anchorText(anchors, actor.who))} (${act})`;
 }

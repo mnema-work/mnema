@@ -35,10 +35,10 @@ import {
 } from '@mnema/core';
 
 /**
- * How a task started by a person with no agent is said to be had: the record holds the identity as a
+ * How a task started with no agent declared is said to be had: the record holds the identity as a
  * 64-digit anchor, which says nothing to a reader and costs an opening context forty tokens per task.
  */
-const A_PERSON = 'a person';
+const NO_AGENT_DECLARED = 'no agent declared';
 
 /** How many notes a task's story serves before it says how many it left out. */
 export const NOTES_SHOWN = 8;
@@ -74,7 +74,7 @@ export interface TaskStory {
 
 /** Who has a task and the most recent thing that happened to it, each as a short phrase. */
 export interface TaskStanding {
-  /** The agent that has the task (`a person` when a person started it), and how that was known. */
+  /** The agent that has the task (`no agent declared` when none was named), and how that was known. */
   readonly owner?: { readonly name: string; readonly via: 'handoff' | 'start' };
   /** The most recent note or move, on one line. */
   readonly lastFact?: { readonly at: string; readonly line: string };
@@ -203,7 +203,7 @@ export function taskStanding(caches: readonly ProjectionCache[], id: string): Ta
     ...(lastHandoff !== undefined
       ? { owner: { name: lastHandoff.toAgent, via: 'handoff' as const } }
       : started !== undefined
-        ? { owner: { name: started.which ?? A_PERSON, via: 'start' as const } }
+        ? { owner: { name: started.which ?? NO_AGENT_DECLARED, via: 'start' as const } }
         : {}),
     ...(lastFact !== undefined ? { lastFact } : {}),
   };

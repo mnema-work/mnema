@@ -572,8 +572,8 @@ const WHERE_THE_RATIONALE_IS = [
  * The facts that tell the two apart were already in the chain (the accepting event names the
  * identity and, when one executed it, the agent) and this file did not carry them.
  *
- * IT SAYS WHAT THE ENVELOPE SAYS AND NOTHING MORE. `a person` is an act with no agent on it, not
- * a claim that a human typed it; `agent <name>` is an act that had one. `unconfirmed` is the
+ * IT SAYS WHAT THE ENVELOPE SAYS AND NOTHING MORE. `no agent declared` is an act with no agent on
+ * it, not a claim that a human typed it; `agent <name>` is an act that had one. `unconfirmed` is the
  * record's shape and not a verdict on the rule (see {@link Acceptance}): an identity that has
  * only ever accepted what it recorded itself, with nobody else ruling on any of it. Every rule
  * of a one-person project is marked, truthfully; the mark leaves the day a second identity

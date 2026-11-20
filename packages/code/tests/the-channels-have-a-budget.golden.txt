@@ -1,16 +1,16 @@
 The size of every channel the model reads, over one fixture record.
 Bytes are UTF-8; tokens are o200k_base, a relative measure and not what a Claude model bills.
 
-session start: brief --hook                  2557 B      682 tok
+session start: brief --hook                  2584 B      685 tok
 session start: recall --hook                  812 B      200 tok
-subagent start: brief --hook                 2557 B      682 tok
-file form: brief (what MNEMA.md carries)     2614 B      698 tok
+subagent start: brief --hook                 2584 B      685 tok
+file form: brief (what MNEMA.md carries)     2641 B      701 tok
 instructions                                 2041 B      478 tok
-edit: rules pushed                            331 B       92 tok
-edit: asks for a person                       515 B      137 tok
-edit: refuses the write                       643 B      184 tok
+edit: rules pushed                            340 B       93 tok
+edit: asks for a person                       524 B      138 tok
+edit: refuses the write                       652 B      185 tok
 tool answer: bootstrap                       2287 B      842 tok
-tool answer: skills                           302 B       89 tok
+tool answer: skills                           311 B       90 tok
 tool answer: focus                            743 B      295 tok
 tool answer: resume                          1127 B      439 tok
 tool answer: search                          1305 B      464 tok
@@ -38,7 +38,7 @@ tool definition: decision_transition         2305 B      513 tok
 tool definition: create_skill                2466 B      545 tok
 tool definition: skill_transition            2039 B      466 tok
 tool definition: bootstrap                   2291 B      570 tok
-tool definition: skills                      2508 B      589 tok
+tool definition: skills                      2506 B      588 tok
 tool definition: focus                       1221 B      286 tok
 tool definition: resume                      1300 B      302 tok
 tool definition: next_actions                 953 B      220 tok
@@ -52,4 +52,4 @@ tool definition: rules_before_an_edit        2427 B      546 tok
 tool definition: audit_accountability        1986 B      440 tok
 tool definition: audit_exposure              1626 B      364 tok
 tool definition: audit_antipatterns          1447 B      314 tok
-tool definitions: all 27                    55266 B    12547 tok
+tool definitions: all 27                    55264 B    12546 tok

@@ -833,7 +833,7 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'collapsed',
     why: 'three positionals, none validated: a task and two agent NAMES',
   },
-  'init.ts «Recorded {}: agents {} accept what you choose, accepted as yours.» #1': {
+  'init.ts «Recorded {}: agents {} accept what you choose{}.» #1': {
     verdict: 'minted',
     why: 'an `ADR-<n>` label minted by the write that just landed, and one of two words of this verb',
   },
