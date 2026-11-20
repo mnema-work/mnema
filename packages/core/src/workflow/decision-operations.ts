@@ -192,7 +192,7 @@ function isInForceOrProposed(state: string): boolean {
 function screenedPaths(
   paths: readonly string[],
 ):
-  | { readonly ok: true; readonly paths: readonly string[]; readonly replaced: ReplacedClass[] }
+  | { readonly ok: true; readonly paths: readonly string[]; readonly replaced: readonly ReplacedClass[] }
   | ScreenRefusal {
   if (paths.length === 0) return { ok: true, paths, replaced: [] };
   const screenedTargets = screenContent({ target: paths });
