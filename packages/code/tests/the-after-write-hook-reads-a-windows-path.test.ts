@@ -47,6 +47,7 @@ describe.skipIf(process.platform === 'win32')(
       );
       chmodSync(fake, 0o755);
       mkdirSync(join(directory, 'C:\\p'));
+      mkdirSync(join(directory, 'c:\\p'));
       mkdirSync(join(directory, 'p'));
     });
     afterAll(() => rmSync(directory, { recursive: true, force: true }));
@@ -82,6 +83,8 @@ describe.skipIf(process.platform === 'win32')(
 
     it('does not reach the verb for a .md file inside the project that is no decision file', () => {
       expect(handedFor('C:\\p\\notes\\x.md', 'C:\\p')).toBeNull();
+      expect(handedFor('c:\\p\\notes\\x.md', 'C:\\p')).toBeNull();
+      expect(handedFor('C:\\p\\notes\\x.md', 'c:\\p')).toBeNull();
     });
 
     it('reaches the verb for a .md file outside the project, as a moved memory directory', () => {

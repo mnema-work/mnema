@@ -77,7 +77,12 @@ const slashed = (path) => path.replaceAll('\\', '/');
 const canBeOne = (path, project) => {
   const seen = slashed(path);
   if (NAMED.some((pattern) => pattern.test(seen))) return true;
-  return !seen.startsWith(`${slashed(project).replace(/\/+$/, '')}/`) && seen.endsWith('.md');
+  const root = `${slashed(project).replace(/\/+$/, '')}/`;
+  // A project on a drive is on a volume that ignores case (`c:\p` is `C:\p`): both are read in one case.
+  const inside = /^[A-Za-z]:/.test(root)
+    ? seen.toLowerCase().startsWith(root.toLowerCase())
+    : seen.startsWith(root);
+  return !inside && seen.endsWith('.md');
 };
 
 try {
