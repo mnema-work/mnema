@@ -868,7 +868,7 @@ export const HANDED_OVER: Readonly<
   'docs/mnema-next-to-a-folder-of-adrs.md': { line: 5, name: 2 },
   'docs/north-star.md': { name: 1 },
   'docs/packages.md': { line: 2, name: 4 },
-  'docs/platforms.md': { line: 1, name: 3 },
+  'docs/platforms.md': { line: 1, name: 4 },
   'docs/recording-decisions.md': { line: 8, name: 6 },
   'docs/reference/cli/backup-restore.md': { line: 1, name: 1 },
   'docs/reference/cli/backup-verify.md': { line: 1, name: 1 },

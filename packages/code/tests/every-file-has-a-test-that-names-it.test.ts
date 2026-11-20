@@ -1186,6 +1186,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/doctor-edits-vscode-settings-without-losing-a-byte.test.ts': 2,
   'packages/code/tests/doctor-removes-an-mcp-declaration-without-losing-a-byte.test.ts': 2,
   'packages/code/tests/doctor-says-how-mnema-is-installed.test.ts': 8,
+  'packages/code/tests/doctor-states-the-long-paths-command-on-windows.test.ts': 6,
   'packages/code/tests/doctor-tells-vs-code-where-the-plugin-is.test.ts': 7,
   'packages/code/tests/events-not-in-git-are-said.test.ts': 9,
   'packages/code/tests/every-action-is-pinned-by-sha.test.ts': 5,
