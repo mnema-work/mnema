@@ -791,7 +791,7 @@ export const WHAT_STOPS: { readonly [K in SwitchableChannel]: string } = {
     'an agent is refused, and so is one that declares none unless it is made at a terminal ' +
     '(standard input and standard error both a TTY; through the MCP server never): only a person ' +
     'at a terminal accepts or replaces a decision, and only a person at a terminal switches it back ' +
-    "on (switching it off is anyone's), a proposed decision waits, and nothing else changes. " +
+    "on (stopping it is anyone's), a proposed decision waits, and nothing else changes. " +
     'A terminal is a heuristic for a person, not a proof of one',
   'edit-first-write-gate':
     'the hold on the first write of a session to a file a rule addresses: with it on, that ' +
