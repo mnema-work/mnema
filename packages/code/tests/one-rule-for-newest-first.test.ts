@@ -174,6 +174,7 @@ const THE_ORDERINGS: readonly Rostered[] = [
   { file: 'context/src/context/decisions.ts', by: 'bySettledDesc', means: NEWEST },
   { file: 'context/src/context/focus.ts', by: 'byStartedDesc', means: NEWEST },
   { file: 'context/src/context/focus.ts', by: 'byStartedDesc', means: NEWEST },
+  { file: 'context/src/context/not-seen.ts', by: 'byNewestAccept', means: NEWEST },
   { file: 'context/src/context/search.ts', by: 'byTarget', means: OTHER },
   {
     file: 'context/src/context/search.ts',
