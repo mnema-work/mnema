@@ -11,11 +11,7 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import {
-  inEveryCacheState,
-  type Planted,
-  type TheCase,
-} from './support/every-cache-state.js';
+import { inEveryCacheState, type Planted, type TheCase } from './support/every-cache-state.js';
 import { runMerged } from './support/merged-streams.js';
 
 const mnema = (planted: Planted, args: string[], input?: string) =>
@@ -57,6 +53,9 @@ function judged(damage: (text: string) => string): TheCase<Planted> {
       expect(damage(held)).not.toBe(held);
       writeFileSync(file, damage(held));
     },
+    // What differs between the states without being a difference: the fingerprints of the tails and where the sandbox was.
+    normalize: (said, planted) =>
+      said.split(planted.repo).join('<repo>').replace(/[0-9a-f]{12,}/g, '<hex>'),
     run(planted, ctx) {
       ctx.forget(planted.repo);
       const why = mnema(planted, ['why', PATH, '--json']);
@@ -78,7 +77,11 @@ function judged(damage: (text: string) => string): TheCase<Planted> {
 }
 
 const CASES: readonly (readonly [string, (text: string) => string, string])[] = [
-  ['an entry altered after it was written', (t) => t.replace('The batch posts', 'The hand posts'), 'altered'],
+  [
+    'an entry altered after it was written',
+    (t) => t.replace('The batch posts', 'The hand posts'),
+    'altered',
+  ],
   ['a line this mnema cannot read', (t) => `<<<<<<< HEAD${t.slice(12)}`, 'cannot be read'],
 ];
 
@@ -98,7 +101,9 @@ describe('mnema why, when the record refuses the write', () => {
         ).toBe(false);
         // The gate in the same record denies, with the reason `why` gave.
         expect(gatePart, state.state).toContain('deny');
-        expect(gatePart, state.state).toContain(JSON.stringify(why.refusal).slice(1, -1).split('\\n\\n')[0]);
+        expect(gatePart, state.state).toContain(
+          JSON.stringify(why.refusal).slice(1, -1).split('\\n\\n')[0],
+        );
       }
       expect(seen.warm.said).toBe(seen.cold.said);
       expect(seen.session.said).toBe(seen.cold.said);

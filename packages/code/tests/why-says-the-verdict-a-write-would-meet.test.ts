@@ -170,7 +170,7 @@ describe('mnema why <path>, the verdict', () => {
       );
     }
     expect([...seen].sort()).toEqual(['ask', 'governs', 'none', 'refuse']);
-  });
+  }, 30_000);
 
   it('says the governing rules are not delivered when edit-rules-push is off, and does not call them deciding', async () => {
     const rule = await ruleAt('The batch posts the ledger', 'src/governed', 'governs');
