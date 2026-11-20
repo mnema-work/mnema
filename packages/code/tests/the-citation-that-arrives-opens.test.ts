@@ -61,7 +61,7 @@ import { sourceFiles } from './support/reading-source.js';
 
 /** The clause that says who accepted a rule: held where the lines say it, ignored where they are not about it. */
 const bare = (line: string | undefined): string | undefined =>
-  line?.replace(/ · accepted by mnid:[0-9a-f]{8} \(a person\)$/, '');
+  line?.replace(/ · accepted by mnid:[0-9a-f]{8} \(no agent declared\)$/, '');
 
 /** The file whose own number is not the number the record will freeze. */
 const GATEWAY = 'ADR-008-the-gateway-is-idempotent.md';
