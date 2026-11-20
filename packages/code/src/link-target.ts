@@ -157,13 +157,13 @@ export function isUnderATemporaryFolder(
 ): boolean {
   const flavor = /^[A-Za-z]:[\\/]|^\\\\/u.test(target) ? win32 : posix;
   if (!flavor.isAbsolute(target)) return false;
-  const under = (path: string, folder: string): boolean => {
+  const holds = (folder: string, path: string): boolean => {
     const into = flavor.relative(flavor.resolve(folder), flavor.resolve(path));
     return into === '' || (!into.startsWith('..') && !flavor.isAbsolute(into));
   };
-  if (root !== undefined && flavor.isAbsolute(root) && under(target, root)) return false;
+  if (root !== undefined && flavor.isAbsolute(root) && holds(root, target)) return false;
   const folders = ['/tmp', '/var/tmp', tmp, env.TMPDIR, env.TEMP, env.TMP].filter(
     (folder): folder is string => folder !== undefined && flavor.isAbsolute(folder),
   );
-  return folders.some((folder) => under(target, folder));
+  return folders.some((folder) => holds(folder, target));
 }
