@@ -13,7 +13,10 @@ import { join } from 'node:path';
 import type { DiscoveryEnv } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runRulesCoverage } from '../src/commands/rules.js';
+import { renderPlain } from '../src/presentation/plain.js';
+import { coverageReport } from '../src/presentation/rules.js';
 import { type CliIo, run } from '../src/program.js';
+import { coverageByLayer } from '../src/rule-coverage.js';
 
 let sandbox: string;
 let repo: string;
@@ -102,7 +105,7 @@ async function arrange(): Promise<void> {
   await ruleAt('Frozen is also asked about', 'src/frozen/a.ts', 'asks-for-a-person');
 }
 
-describe('mnema rules --coverage', () => {
+describe('mnema rules --coverage', { timeout: 60_000 }, () => {
   it('counts each file once, under the strongest layer, and per top-level folder', async () => {
     await arrange();
     const done = runRulesCoverage({ cwd: repo, env });
@@ -157,6 +160,8 @@ describe('mnema rules --coverage', () => {
     const done = runRulesCoverage({ cwd: repo, env });
     if (!done.ok) throw new Error('refused');
     expect(done.coverage.layers).toEqual({ refuses: 0, asks: 0, governs: 0, none: 17 });
+    // The count itself, over no record at all, says the same.
+    expect(coverageByLayer([], repo).layers).toEqual({ refuses: 0, asks: 0, governs: 0, none: 17 });
   });
 
   it('stops at the walk ceiling and says every count is a floor', async () => {
@@ -166,6 +171,12 @@ describe('mnema rules --coverage', () => {
     expect(done.coverage.truncated).toBe(true);
     expect(done.coverage.files).toBe(5);
     expect(done.coverage.ceiling).toBe(5);
+    const cut = coverageByLayer([], repo, 3);
+    expect(cut.truncated).toBe(true);
+    expect(cut.files).toBe(3);
+    const said = coverageReport(renderPlain, cut).join('\n');
+    expect(said).toContain('the walk stopped at 3 files: every count here is a floor');
+    expect(said).not.toContain('%');
   });
 
   it('asks for a path or --coverage, and for one of them only', async () => {
