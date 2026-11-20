@@ -330,8 +330,9 @@ still refused by both readers
 
 **So do the other writes of this product that open a path for writing.** The public key of another
 member materialized into `keys/` (when a member is enrolled, a checker vouched for or a backup key
-registered, and again before a founding appends), the files of a witness (`tails/<tail>/witness/<checkpoint>.ots`
-and `.blocks`, with the directories above them) and the `.gitignore` of the key root (in the home, before the first
+registered, and again before a founding appends), the files of a witness (`tails/<tail>/witness/<checkpoint>.ots`,
+`.blocks` and the Sigstore bundle `.sigstore.json`, with the directories above them), the checkout's mark
+that the machinery of an earlier version was moved (`migrated/<fingerprint>`) and the `.gitignore` of the key root (in the home, before the first
 private byte of a key) are asked about first, a link to nothing included (which the write would create
 at its target), and a symbolic link there is refused with `RECORD_LINKED` before anything is written; the
 witness is left as it was. The local logs of the data directory (the diagnostic log and the count of tool calls)
