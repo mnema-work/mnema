@@ -249,12 +249,25 @@ export function sealedFingerprints(frontier: ChainFrontier): Readonly<Record<str
   return fingerprints;
 }
 
+/** A fingerprint or mark that is not what a cache recorded: where, what it recorded, and what is there now. */
+export interface Miss {
+  readonly path: string;
+  readonly expected: string;
+  readonly found: string;
+}
+
+/** The first sealed segment that is not the file a cache recorded, or undefined when every one is. */
+export function sealedSegmentMiss(recorded: Readonly<Record<string, string>>): Miss | undefined {
+  for (const [segment, fingerprint] of Object.entries(recorded)) {
+    const found = fingerprintOf(segment);
+    if (found !== fingerprint) return { path: segment, expected: fingerprint, found };
+  }
+  return undefined;
+}
+
 /** Whether every sealed segment a cache recorded is still the file it recorded. */
 export function sealedSegmentsHold(recorded: Readonly<Record<string, string>>): boolean {
-  for (const [segment, fingerprint] of Object.entries(recorded)) {
-    if (fingerprintOf(segment) !== fingerprint) return false;
-  }
-  return true;
+  return sealedSegmentMiss(recorded) === undefined;
 }
 
 /**
@@ -326,32 +339,53 @@ export function activeMarks(
 
 /**
  * The marks to keep when every active segment a cache recorded is still what it recorded, or
- * undefined when one is not: the same size and the same modification time, or else the same bytes
+ * the first that is not: the same size and the same modification time, or else the same bytes
  * below the frontier (the sha256 computed once, because something moved).
  *
  * A segment whose time moved over the same bytes (a `touch`, a checkout that wrote the file back)
  * comes back with the mark of its new size and time, so the caller can keep it and the next open
  * finds the two numbers equal instead of hashing again.
  */
-export function activeSegmentsHold(
+export function checkActiveSegments(
   recorded: Readonly<Record<string, string>>,
-): Readonly<Record<string, string>> | undefined {
+): { readonly kept: Readonly<Record<string, string>> } | { readonly miss: Miss } {
   const kept: Record<string, string> = {};
   for (const [segment, mark] of Object.entries(recorded)) {
     const parts = mark.split(':');
     const [size, mtime, bytes, digest] = parts;
-    if (parts.length !== 4 || bytes === undefined || digest === undefined) return undefined;
+    if (parts.length !== 4 || bytes === undefined || digest === undefined) {
+      return { miss: { path: segment, expected: mark, found: 'a mark that is not one' } };
+    }
     const before = stampOf(segment);
-    if (before === undefined) return undefined;
+    if (before === undefined) {
+      return { miss: { path: segment, expected: `${size}:${mtime}`, found: 'unreadable' } };
+    }
     if (before === `${size}:${mtime}`) {
       kept[segment] = mark;
       continue;
     }
-    if (prefixDigest(segment, Number(bytes)) !== digest) return undefined;
+    const hashed = prefixDigest(segment, Number(bytes));
+    if (hashed !== digest) {
+      return {
+        miss: {
+          path: segment,
+          expected: `${size}:${mtime}, sha256 ${digest} of the first ${bytes} bytes`,
+          found: `${before}, sha256 ${hashed ?? 'unreadable'} of the first ${bytes} bytes`,
+        },
+      };
+    }
     // Re-stamped only if the file did not move while it was hashed.
     kept[segment] = stampOf(segment) === before ? `${before}:${bytes}:${digest}` : mark;
   }
-  return kept;
+  return { kept };
+}
+
+/** {@link checkActiveSegments}, answering only the marks to keep, or undefined when one segment is not what was recorded. */
+export function activeSegmentsHold(
+  recorded: Readonly<Record<string, string>>,
+): Readonly<Record<string, string>> | undefined {
+  const checked = checkActiveSegments(recorded);
+  return 'kept' in checked ? checked.kept : undefined;
 }
 
 function markOfActive(

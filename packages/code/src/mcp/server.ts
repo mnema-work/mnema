@@ -134,6 +134,7 @@ import {
   toolCallsFile,
   UNCODED_FAILURE,
 } from '../tool-calls.js';
+import { startTracing, type Tracer, traceIsOn } from '../trace.js';
 import { VERSION } from '../version.js';
 import {
   actionsRequiring,
@@ -154,6 +155,7 @@ import {
   refusalOfAPartForARecordingAct,
 } from '../what-a-write-meets.js';
 import type { ClientWorkspace } from './context.js';
+import { createIdleCheckpoint, IDLE_CHECKPOINT_MS, type IdleCheckpoint } from './idle-checkpoint.js';
 import { SERVER_INSTRUCTIONS } from './instructions.js';
 import { armSessionClose, type Lifecycle } from './lifecycle.js';
 import { namedProjects } from './route.js';
@@ -438,6 +440,10 @@ export interface McpServerOptions {
   readonly hostSession?: string | undefined;
   /** Where to write diagnostics (never stdout: that carries the protocol). */
   readonly log?: (line: string) => void;
+  /** Whether to trace every call (`trace.ts`); absent, `MNEMA_TRACE=1` in the process decides. */
+  readonly trace?: boolean | undefined;
+  /** How long the server must be idle after a write before the caches' logs are cut back; absent, {@link IDLE_CHECKPOINT_MS}. */
+  readonly idleCheckpointMs?: number | undefined;
 }
 
 /**
@@ -634,7 +640,12 @@ export function buildMcpServer(options: McpServerOptions): {
   // are collected as they are registered, never listed beside the registrations, which
   // is the list that goes stale the one time it matters.
   const declaredTools: DeclaredTool[] = [];
-  registerTools(declaringInto(server, declaredTools, ensureSession), ensureSession);
+  const tracer = (options.trace ?? traceIsOn()) ? startTracing(log) : undefined;
+  const idle = createIdleCheckpoint({
+    afterMs: options.idleCheckpointMs ?? IDLE_CHECKPOINT_MS,
+    checkpoint: () => openedSession?.caches.checkpointAll(),
+  });
+  registerTools(declaringInto(server, declaredTools, ensureSession, { tracer, idle }), ensureSession);
 
   /**
    * Ends the connection's session: every run it opened, then its caches.
@@ -659,6 +670,8 @@ export function buildMcpServer(options: McpServerOptions): {
    * they can read on disk, which is the whole use of this line.
    */
   const closeNow = (): void => {
+    idle.stop();
+    tracer?.stop();
     // The count's lines wait for the turn after the reply; a signal or the end of stdin can
     // arrive first, and a process asked to stop does not come back for that turn.
     flushToolCalls();
@@ -764,19 +777,48 @@ function declaringInto(
   server: McpServer,
   declared: DeclaredTool[],
   ensureSession: () => Promise<Session>,
+  observers: { readonly tracer: Tracer | undefined; readonly idle: IdleCheckpoint },
 ): ToolRegistrar {
   return (what, config, handle) => {
     declared.push(what);
     server.registerTool(
       what.act,
       { ...config, annotations: hintsOf(what) },
-      countedLocally(
-        answeringThrownRefusals(handle, ensureSession, what.effect),
-        ensureSession,
+      observed(
+        countedLocally(
+          answeringThrownRefusals(handle, ensureSession, what.effect),
+          ensureSession,
+          what,
+        ),
         what,
+        observers,
       ),
     );
   };
+}
+
+/**
+ * `handle`, with the two things a long-lived server watches of every call: the trace line when
+ * `MNEMA_TRACE=1` (no wrapper at all when it is off) and the idle clock that decides when the
+ * caches' logs are cut back, which must know whether a call is in flight and whether it wrote.
+ */
+function observed<Input extends ZodRawShapeCompat | undefined>(
+  handle: ToolCallback<Input>,
+  what: DeclaredTool,
+  observers: { readonly tracer: Tracer | undefined; readonly idle: IdleCheckpoint },
+): ToolCallback<Input> {
+  const called = handle as (...args: unknown[]) => Promise<unknown>;
+  const { tracer, idle } = observers;
+  return (async (...args: unknown[]) => {
+    idle.began();
+    try {
+      return await (tracer === undefined
+        ? called(...args)
+        : tracer.call(what.act, () => called(...args)));
+    } finally {
+      idle.ended(what.effect === 'mutates');
+    }
+  }) as ToolCallback<Input>;
 }
 
 /**

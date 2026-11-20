@@ -206,6 +206,11 @@ export interface CacheRegistry {
    * record this product wrote.
    */
   opened(): readonly { readonly chainRoot: string; readonly cache: ProjectionCache }[];
+  /**
+   * Cuts the write-ahead log of every retained cache kept on disk back to nothing. For the idle
+   * moments of a server (`idle-checkpoint.ts`): never called from a read.
+   */
+  checkpointAll(): void;
   /** Closes every retained database and forgets them. Called when the session ends. */
   closeAll(): void;
 }
@@ -288,7 +293,7 @@ export function createCacheRegistry(
           // suffix, and the arrivals are read from the byte the cache stopped at and never see
           // what is below it, so it is replayed whole and not asked what arrived.
           if (existing.extent !== extent && rewrittenInPlace(existing.extent, extent)) {
-            existing.cache.rebuild();
+            existing.cache.rebuild({ branch: 'rewritten-in-place' });
           } else {
             existing.cache.refresh();
           }
@@ -336,6 +341,10 @@ export function createCacheRegistry(
     invalidate(chainRoot: string): void {
       const existing = entries.get(chainRoot);
       if (existing !== undefined) existing.stale = true;
+    },
+
+    checkpointAll(): void {
+      for (const entry of entries.values()) entry.cache.checkpoint();
     },
 
     closeAll(): void {

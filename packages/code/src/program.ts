@@ -708,10 +708,17 @@ export async function start(argv: readonly string[], entry: Entry): Promise<void
  */
 export function runAsTheBinary(): void {
   exitQuietlyOnClosedPipe();
-  void start(process.argv.slice(2), {
-    io: processIo,
-    input: process.stdin,
-    output: process.stdout,
-    interactive: process.stdin.isTTY === true && process.stdout.isTTY === true,
-  });
+  void (async () => {
+    // Only a process that asked for the trace loads it, and before the command starts: `MNEMA_TRACE=1` (`trace.ts`).
+    if (process.env.MNEMA_TRACE === '1') {
+      const { traceTheCommand } = await import('./trace.js');
+      traceTheCommand(process.argv.slice(2));
+    }
+    await start(process.argv.slice(2), {
+      io: processIo,
+      input: process.stdin,
+      output: process.stdout,
+      interactive: process.stdin.isTTY === true && process.stdout.isTTY === true,
+    });
+  })();
 }

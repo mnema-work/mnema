@@ -134,6 +134,12 @@ export {
 export { BRIEF_TOPIC, DESCRIPTION_TOPIC } from './knowledge/companion-topics.js';
 export { type CacheOptions, ProjectionCache } from './projections/cache.js';
 export {
+  observeRefreshes,
+  type RefreshReport,
+  type ReplayBranch,
+  type ReplayReason,
+} from './projections/refresh-trace.js';
+export {
   CACHE_DIR_VARIABLE,
   keepReadCacheIn,
   readCacheIsChosen,
