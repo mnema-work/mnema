@@ -56,6 +56,8 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'holds what a function of the chain says of a tail from its files alone; the chain has no projection cache and the question is not asked of one',
   'packages/chain/src/chain/the-products-reads-open-no-link.test.ts':
     'holds what the functions of the chain that the product reads through say of a record whose files became links; the chain has no projection cache and the question is not asked of one (the cache states are held by the-products-reads-serve-around-a-linked-record, through the binary)',
+  'packages/chain/src/chain/checkpoint-ruling.test.ts':
+    'holds what the fold of a tail’s checkpoints says of tails and checkpoints laid out by hand, in the function alone; the chain has no projection cache (the cache states are held through the binary in a-forged-checkpoint-is-said-first-and-stops-the-gate)',
   'packages/core/src/projections/only-proven-events-reach-the-projection.test.ts':
     'holds which events the reading hands a projection over tails the writer wrote and copied without their notes, as a clone has them; nothing is damaged, and the cache states over damage are held through the binary in a-forged-checkpoint-is-said-first-and-stops-the-gate',
   'packages/chain/src/chain/tail-repair.test.ts':
@@ -213,14 +215,14 @@ export const EXEMPT: Readonly<Record<string, string>> = {
  * the mark `// @plants-damage` is for a file that damages a record, and a file in this set that gains
  * the mark, a damage helper or a `@proves` tag is accused, because then it is an integrity file and
  * belongs to the helper or to EXEMPT. A file here that no longer writes into a tail is accused too.
+ * It reads the mark and the imports, not what the bytes become: a file that forges a tail or a
+ * checkpoint by hand plants damage, wears the mark and belongs to EXEMPT, not here.
  */
 export const WRITES_BUT_PLANTS_NOTHING: Readonly<Record<string, string>> = {
   'packages/chain/src/chain/a-tail-is-signed-as-soon-as-it-is-founded.test.ts':
     'holds which checkpoints the write that founds a tail signs, and what the fold of its checkpoints says of the tail with no note of this machine, in the functions of the chain alone; nothing is damaged and the chain has no projection cache (a clone of such a record is read by the binary in only-proven-events-reach-the-projection)',
   'packages/chain/src/chain/verify-reads-the-checkpoints-before-the-tail.test.ts':
     'holds the order in which the verdict of the chain reads a tail and its checkpoints, with a signed write landing between the two readings; nothing is damaged and the chain has no projection cache',
-  'packages/chain/src/chain/checkpoint-ruling.test.ts':
-    'holds what the fold of a tail’s checkpoints says of tails and checkpoints laid out by hand, in the function alone; the chain has no projection cache (the cache states are held through the binary in a-forged-checkpoint-is-said-first-and-stops-the-gate)',
 };
 
 /** What the guard reads of one test file. */
@@ -787,7 +789,7 @@ describe('the integrity tests and the states of the projection cache', () => {
       expect(PLANTS.test(source.text), file).toBe(false);
       expect(writesIntoTails(source.text), file).toBe(true);
     }
-    expect(Object.keys(WRITES_BUT_PLANTS_NOTHING).length).toBeGreaterThanOrEqual(3);
+    expect(Object.keys(WRITES_BUT_PLANTS_NOTHING).length).toBeGreaterThanOrEqual(2);
   });
 
   it('reads the imports of a test under tests/ and of one a directory down', () => {
