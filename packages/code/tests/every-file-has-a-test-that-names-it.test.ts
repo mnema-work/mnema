@@ -1090,7 +1090,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-lost-tail-is-not-called-an-idle-agent.test.ts': 13,
   'packages/code/tests/a-marker-is-not-a-reason.test.ts': 7,
   'packages/code/tests/a-marker-is-not-a-title.test.ts': 7,
-  'packages/code/tests/a-mistyped-command-says-what-it-meant.test.ts': 6,
+  'packages/code/tests/a-mistyped-command-says-what-it-meant.test.ts': 8,
   'packages/code/tests/a-move-reads-the-record-once.test.ts': 13,
   'packages/code/tests/a-new-checkout-continues-its-tail.test.ts': 7,
   'packages/code/tests/a-new-checkout-goes-on-with-a-tail-of-its-key.test.ts': 8,
