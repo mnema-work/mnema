@@ -100,6 +100,13 @@ describe('a hook whose handler fails', () => {
     expect(existsSync(mnemaHome)).toBe(false);
   });
 
+  it.each(HOOKS)('%s stays silent and exits 0 where the ledger cannot be written', (file) => {
+    mkdirSync(join(mnemaHome, 'identity'), { recursive: true });
+    writeFileSync(join(mnemaHome, SWALLOWED_DIR), 'a file where the folder should be');
+    const copy = pluginWithoutItsSharedModule();
+    expect(runHook(copy, file)).toEqual({ status: 0, stdout: '', stderr: '' });
+  });
+
   it('stays silent even where the ledger itself cannot be loaded', () => {
     mkdirSync(join(mnemaHome, 'identity'), { recursive: true });
     const copy = pluginWithoutItsSharedModule();
