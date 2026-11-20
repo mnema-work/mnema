@@ -1892,6 +1892,7 @@ const PRODUCTION_FILES: readonly string[] = [
   'packages/code/src/commands/decision-transition.ts',
   'packages/code/src/commands/decision.ts',
   'packages/code/src/commands/dispatched.ts',
+  'packages/code/src/commands/doctor-long-paths.ts',
   'packages/code/src/commands/doctor-mcp.ts',
   'packages/code/src/commands/doctor-merge-driver.ts',
   'packages/code/src/commands/doctor-vscode.ts',

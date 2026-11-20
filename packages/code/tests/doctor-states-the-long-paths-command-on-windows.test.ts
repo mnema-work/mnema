@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runDoctor } from '../src/commands/doctor.js';
+import { longPathsLines } from '../src/commands/doctor-long-paths.js';
 
 const COMMAND = 'git config --global core.longpaths true';
 
@@ -113,5 +114,26 @@ describe('a path the record already holds', () => {
 describe('no project', () => {
   it('has no record to measure and says nothing', () => {
     expect(said(sandbox, 'win32', undefined)).toEqual([]);
+  });
+});
+
+describe('the check on its own', () => {
+  it('is the finding the doctor carries, and reads git only with config --get', () => {
+    const cwd = project(200);
+    const asked: string[][] = [];
+    const lines = longPathsLines({
+      cwd,
+      env: { home },
+      processEnv: { PATH: '' },
+      platform: 'win32',
+      gitConfigLongPaths: (_cwd, args) => {
+        asked.push([...args]);
+        return undefined;
+      },
+    });
+    expect(lines).toHaveLength(1);
+    expect(lines[0]?.state).toBe('attention');
+    expect(lines[0]?.line).toContain(COMMAND);
+    expect(asked.flat()).toEqual(['config', '--type=bool', '--get', 'core.longpaths']);
   });
 });
