@@ -123,9 +123,7 @@ export function startTracing(
       return;
     }
     // A refresh outside any call (the session opening) is a line of its own.
-    emit(
-      formatTraceLine({ door: 'mcp', tool: '(outside a call)', ms: 0, projections: [report] }),
-    );
+    emit(formatTraceLine({ door: 'mcp', tool: '(outside a call)', ms: 0, projections: [report] }));
   });
   return {
     async call<T>(tool: string, run: () => Promise<T>): Promise<T> {

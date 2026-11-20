@@ -6,7 +6,15 @@
  * Each case is read off a real file in a real tree, opened by a second cache the way a second process opens it.
  */
 
-import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
+import {
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -231,4 +239,3 @@ describe('a refresh is reported with the branch that decided it', () => {
     expect(heard).toEqual([]);
   });
 });
-

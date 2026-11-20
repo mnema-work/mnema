@@ -155,7 +155,11 @@ import {
   refusalOfAPartForARecordingAct,
 } from '../what-a-write-meets.js';
 import type { ClientWorkspace } from './context.js';
-import { createIdleCheckpoint, IDLE_CHECKPOINT_MS, type IdleCheckpoint } from './idle-checkpoint.js';
+import {
+  createIdleCheckpoint,
+  IDLE_CHECKPOINT_MS,
+  type IdleCheckpoint,
+} from './idle-checkpoint.js';
 import { SERVER_INSTRUCTIONS } from './instructions.js';
 import { armSessionClose, type Lifecycle } from './lifecycle.js';
 import { namedProjects } from './route.js';
@@ -645,7 +649,10 @@ export function buildMcpServer(options: McpServerOptions): {
     afterMs: options.idleCheckpointMs ?? IDLE_CHECKPOINT_MS,
     checkpoint: () => openedSession?.caches.checkpointAll(),
   });
-  registerTools(declaringInto(server, declaredTools, ensureSession, { tracer, idle }), ensureSession);
+  registerTools(
+    declaringInto(server, declaredTools, ensureSession, { tracer, idle }),
+    ensureSession,
+  );
 
   /**
    * Ends the connection's session: every run it opened, then its caches.

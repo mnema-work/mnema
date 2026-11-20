@@ -77,7 +77,9 @@ function spillBeside(db: DatabaseSync, path: string): void {
 export function truncateWal(db: SqliteDatabase): boolean {
   db.exec('PRAGMA busy_timeout = 0');
   try {
-    const row = db.prepare('PRAGMA wal_checkpoint(TRUNCATE)').get() as { busy?: number } | undefined;
+    const row = db.prepare('PRAGMA wal_checkpoint(TRUNCATE)').get() as
+      | { busy?: number }
+      | undefined;
     return row !== undefined && Number(row.busy) === 0;
   } catch {
     return false;

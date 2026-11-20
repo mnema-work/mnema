@@ -87,11 +87,6 @@ import {
 import { type ChainFrontier, chainArrivals, chainReplay, type SignedFact } from './order.js';
 import { rebuild } from './rebuild.js';
 import {
-  observingRefreshes,
-  type ReplayReason,
-  reportRefresh,
-} from './refresh-trace.js';
-import {
   type AuthorshipFilter,
   type AuthorshipTally,
   type ChargeAt,
@@ -109,6 +104,7 @@ import {
   tallyAuthorship,
   walkReferences,
 } from './reference-store.js';
+import { observingRefreshes, type ReplayReason, reportRefresh } from './refresh-trace.js';
 import type { RunProjection } from './run.js';
 import { getRun, listOpenRuns, listRuns } from './run-store.js';
 import {
@@ -789,7 +785,10 @@ export class ProjectionCache {
     if (meta === undefined) {
       this.whyUnagreed = this.persisted
         ? { branch: 'no-cache-meta' }
-        : { branch: this.whyUnagreed.branch === 'database-failed' ? 'database-failed' : 'first-read' };
+        : {
+            branch:
+              this.whyUnagreed.branch === 'database-failed' ? 'database-failed' : 'first-read',
+          };
       this.frontier = undefined;
       this.breaks = [];
       this.retainedLines = [];

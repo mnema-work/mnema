@@ -134,12 +134,6 @@ export {
 export { BRIEF_TOPIC, DESCRIPTION_TOPIC } from './knowledge/companion-topics.js';
 export { type CacheOptions, ProjectionCache } from './projections/cache.js';
 export {
-  observeRefreshes,
-  type RefreshReport,
-  type ReplayBranch,
-  type ReplayReason,
-} from './projections/refresh-trace.js';
-export {
   CACHE_DIR_VARIABLE,
   keepReadCacheIn,
   readCacheIsChosen,
@@ -225,6 +219,12 @@ export {
   tallyAuthorship,
   walkReferences,
 } from './projections/reference-store.js';
+export {
+  observeRefreshes,
+  type RefreshReport,
+  type ReplayBranch,
+  type ReplayReason,
+} from './projections/refresh-trace.js';
 export { projectRuns, type RunProjection, type WrittenInRun } from './projections/run.js';
 export { getRun, listOpenRuns, listRuns } from './projections/run-store.js';
 export {

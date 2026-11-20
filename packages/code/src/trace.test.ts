@@ -87,7 +87,10 @@ describe('a traced call', () => {
 
   it('prints the line when the call throws, and the throw goes on', async () => {
     const lines: string[] = [];
-    const tracer = startTracing((line) => lines.push(line), () => undefined);
+    const tracer = startTracing(
+      (line) => lines.push(line),
+      () => undefined,
+    );
     await expect(
       tracer.call('a_tool', async () => {
         throw new Error('refused');
@@ -103,7 +106,10 @@ describe('a traced call', () => {
 
   it('keeps two calls in flight apart', async () => {
     const lines: string[] = [];
-    const tracer = startTracing((line) => lines.push(line), () => undefined);
+    const tracer = startTracing(
+      (line) => lines.push(line),
+      () => undefined,
+    );
     const roots: Record<string, string> = {};
     const slow = tracer.call('slow', async () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
