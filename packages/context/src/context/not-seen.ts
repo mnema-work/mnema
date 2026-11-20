@@ -33,6 +33,8 @@ export interface RuleNotSeen {
   readonly title: string;
   /** The newest accept of it: when it last entered force, by whom, and whether an agent was declared. */
   readonly accepted: AcceptMove;
+  /** Every accept of it the fold applied: what a showing of it covers. */
+  readonly accepts: readonly AcceptMove[];
 }
 
 /** The list for one identity, and when that identity last marked a rule shown. */
@@ -71,7 +73,13 @@ export function rulesNotSeenBy(caches: readonly ProjectionCache[], identity: str
         undefined,
       );
       if (unseen && newest !== undefined) {
-        rules.push({ id: decision.id, adr: decision.adr, title: decision.title, accepted: newest });
+        rules.push({
+          id: decision.id,
+          adr: decision.adr,
+          title: decision.title,
+          accepted: newest,
+          accepts,
+        });
       }
       break;
     }

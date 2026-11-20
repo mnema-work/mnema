@@ -56,17 +56,8 @@
  */
 
 import { dirname } from 'node:path';
-import { catalogUpcasters, listPrivateKeyFingerprints } from '@mnema/chain';
 import { type Bootstrap, bootstrap, type ReportedRun, resume } from '@mnema/context';
-import {
-  type Clock,
-  chainRootForScope,
-  type DiscoveryEnv,
-  type ResolvedTrees,
-  resolveTrees,
-  systemClock,
-} from '@mnema/core';
-import { authorizingAnchor, recordedAnchorOf, signerFor } from '@mnema/core/write';
+import { type Clock, type DiscoveryEnv, resolveTrees, systemClock } from '@mnema/core';
 import { type AnchorForms, anchorForms, resolveTypedAnchor } from '../anchors.js';
 import { type EventsNotInGit, readEventsNotInGit } from '../events-not-in-git.js';
 import { type ForkKeptAside, readForkKeptAside } from '../fork-kept-aside.js';
@@ -83,6 +74,7 @@ import {
   THE_READING_THAT_OPENED_THESE,
   withScopedCaches,
 } from '../tree-sources.js';
+import { thisMachinesAnchorIn } from './shown.js';
 
 /** What the status command needs: injected so it is testable. */
 export interface StatusContext {
@@ -182,24 +174,6 @@ export type StatusRefused =
  * `NO_PROJECT`; an actor that names no identity here is refused rather than answered
  * about.
  */
-/**
- * The identity THIS MACHINE writes as in this project, or undefined when the machine has no key.
- *
- * It asks what `mnema init` asks to say who writes here (`recordedAnchorOf`, else
- * `authorizingAnchor`), and it is a READ: a machine with no private key of its own is answered
- * `undefined` BEFORE a signer is asked for, because asking a signer for a machine without a key
- * mints one, and a verb that only reports must not found somebody to report on.
- */
-function thisMachinesAnchor(trees: ResolvedTrees): string | undefined {
-  if (listPrivateKeyFingerprints({ root: trees.keyRoot }).length < 1) return undefined;
-  const asked = {
-    writer: signerFor(trees, 'public'),
-    layout: { root: chainRootForScope(trees, 'public') as string },
-    upcasters: catalogUpcasters(),
-  };
-  return recordedAnchorOf(asked)?.anchor ?? authorizingAnchor(asked);
-}
-
 export function runStatus(
   ctx: StatusContext,
   input: { actor?: string },
@@ -220,7 +194,7 @@ export function runStatus(
       }
       anchor = actor.anchor;
     } else {
-      const mine = thisMachinesAnchor(trees);
+      const mine = thisMachinesAnchorIn(trees, 'public');
       if (mine === undefined) {
         return {
           ok: false,

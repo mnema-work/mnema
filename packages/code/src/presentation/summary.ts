@@ -7,8 +7,10 @@
  */
 
 import type { Summary } from '../commands/summary.js';
+import { oneLine } from '../one-line.js';
 import { PRODUCT_PROMISE } from '../promise.js';
 import { SWITCH_ON_COMMAND } from '../record-framing.js';
+import { acceptedByWords } from './reviewed.js';
 
 /** The summary, one string per line. */
 export function summaryLines(summary: Summary): string[] {
@@ -39,6 +41,7 @@ export function summaryLines(summary: Summary): string[] {
         `${summary.waiting} decision(s) await a judgement: \`mnema decision review\` goes through them.`,
       );
     }
+    if (summary.notSeen !== undefined) lines.push(...notSeenLines(summary.notSeen));
   }
   if (summary.off.length > 0) {
     lines.push(
@@ -55,6 +58,37 @@ export function summaryLines(summary: Summary): string[] {
     '  `mnema decision record <title> <rationale>`   record a choice that was settled',
     '  `mnema switch`                                what is on and what is off',
     '`mnema --help` lists every command.',
+  );
+  return lines;
+}
+
+/**
+ * The rules in force you did not accept yourself (ADR-623): those that entered force since your
+ * last review, one line each, and the older total in one line. Before the first review only the
+ * total is said, since a list of every rule ever accepted by an agent is noise, not news.
+ */
+function notSeenLines(notSeen: NonNullable<Summary['notSeen']>): string[] {
+  const review = '`mnema decision review` shows each one and marks it shown.';
+  const total = notSeen.since.length + notSeen.older;
+  if (total === 0) return [];
+  if (notSeen.lastShown === undefined) {
+    return [
+      `${total} rule(s) in force you did not accept yourself, none shown to you yet: ${review}`,
+    ];
+  }
+  const lines: string[] = [];
+  if (notSeen.since.length > 0) {
+    lines.push(
+      `${notSeen.since.length} rule(s) in force you did not accept yourself entered since your last review (${notSeen.lastShown.slice(0, 10)}):`,
+    );
+    for (const rule of notSeen.since) {
+      lines.push(`  ${rule.adr}  ${oneLine(rule.title)} (${acceptedByWords(rule.accepted)})`);
+    }
+  }
+  lines.push(
+    notSeen.older > 0
+      ? `${notSeen.older} older rule(s) in force you did not accept yourself have not been shown to you. ${review}`
+      : review,
   );
   return lines;
 }

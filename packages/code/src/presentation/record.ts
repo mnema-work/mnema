@@ -63,6 +63,8 @@ export interface RecordContext {
   readonly attested?: { readonly recordedBy?: true; readonly acceptedBy?: true };
   /** The actors of a decision whose name no MCP client announced (FORMAT.md section 6.9). */
   readonly unannounced?: { readonly recordedBy?: true; readonly acceptedBy?: true };
+  /** The newest showing of a decision with no agent declared: who signed it and when. */
+  readonly shown?: { readonly who: string; readonly at: string };
 }
 
 /**
@@ -287,6 +289,17 @@ export function recordReport(render: Render, body: RecordBody, context: RecordCo
           render(
             fact(
               `accepted by ${actorText(context.anchors, body.record.acceptedBy, context.attested?.acceptedBy === true, context.unannounced?.acceptedBy === true)}`,
+            ),
+          ),
+        );
+      }
+      // A showing is the key signing at a terminal with no agent declared, and that is all it is
+      // worded as (ADR-623): never "seen by a person".
+      if (context.shown !== undefined) {
+        lines.push(
+          render(
+            fact(
+              `marked shown at a terminal, no agent declared, by ${actorText(context.anchors, { who: context.shown.who })} at ${context.shown.at}`,
             ),
           ),
         );
