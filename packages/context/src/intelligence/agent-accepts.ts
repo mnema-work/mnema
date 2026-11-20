@@ -65,12 +65,43 @@ export interface AgentAcceptsReading {
   }[];
 }
 
-const QUOTED = /["“«][^"“”«»]*\S[^"“”«»]*["”»]/;
-// A single quote opens at the start of a word and closes at the end of one, so the
-// apostrophe of "don't" and "isn't" is not a pair.
-const SINGLE_QUOTED = /(?<![\p{L}\p{N}])['‘][^'‘’]*\S[^'‘’]*['’](?![\p{L}\p{N}])/u;
+const DOUBLE_OPEN = '"“«';
+const DOUBLE_CLOSE = '"”»';
+const SINGLE_OPEN = "'‘";
+const SINGLE_CLOSE = "'’";
+const WORD_CHAR = /[\p{L}\p{N}]/u;
 const CHOSEN_OR_DICTATED = /\b(?:chosen|dictated) by\b|\bas dictated\b/i;
-const MAINTAINER_SAID = /\bmaintainer\b[^.\n]*\b(?:chose|chosen|said|kept|dictated)\b/i;
+const MAINTAINER = /\bmaintainer\b/i;
+const DID_IT = /\b(?:chose|chosen|said|kept|dictated)\b/i;
+
+/**
+ * Whether a pair of the given quote marks encloses words. Read by walking the marks once,
+ * never by a pattern with two open-ended runs around the words, which backtracks
+ * quadratically on a long note with many marks. A single quote opens at the start of a
+ * word and closes at its end, so the apostrophe of "don't" or "users'" is not a pair.
+ */
+function quotes(note: string, open: string, close: string, atWordEdges: boolean): boolean {
+  const marks: number[] = [];
+  for (let i = 0; i < note.length; i += 1) {
+    if (open.includes(note.charAt(i)) || close.includes(note.charAt(i))) marks.push(i);
+  }
+  for (let k = 0; k + 1 < marks.length; k += 1) {
+    const from = marks[k] as number;
+    const to = marks[k + 1] as number;
+    if (!open.includes(note.charAt(from)) || !close.includes(note.charAt(to))) continue;
+    if (atWordEdges) {
+      if (from > 0 && WORD_CHAR.test(note.charAt(from - 1))) continue;
+      if (to + 1 < note.length && WORD_CHAR.test(note.charAt(to + 1))) continue;
+    }
+    if (note.slice(from + 1, to).trim() !== '') return true;
+  }
+  return false;
+}
+
+/** A sentence in which the maintainer chose, said, kept or dictated it. */
+function maintainerDidIt(note: string): boolean {
+  return note.split(/[.\n]/).some((sentence) => MAINTAINER.test(sentence) && DID_IT.test(sentence));
+}
 
 /**
  * Whether an acceptance note quotes the person: a quoted span with words in it, or the
@@ -79,10 +110,10 @@ const MAINTAINER_SAID = /\bmaintainer\b[^.\n]*\b(?:chose|chosen|said|kept|dictat
  */
 export function restsOnThePerson(note: string): boolean {
   return (
-    QUOTED.test(note) ||
-    SINGLE_QUOTED.test(note) ||
+    quotes(note, DOUBLE_OPEN, DOUBLE_CLOSE, false) ||
+    quotes(note, SINGLE_OPEN, SINGLE_CLOSE, true) ||
     CHOSEN_OR_DICTATED.test(note) ||
-    MAINTAINER_SAID.test(note)
+    maintainerDidIt(note)
   );
 }
 
