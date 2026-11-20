@@ -73,7 +73,7 @@ describe.each([
       cwd: env.home,
       env,
       now: new Date('2026-11-20T10:00:00.000Z'),
-      version: '0.1.8',
+      version: '0.0.1',
       argv: ['show'],
       verbs: ['show'],
       aPersonIsHere: true,

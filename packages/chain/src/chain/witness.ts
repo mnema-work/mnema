@@ -314,15 +314,15 @@ export function writeWitness(
   // Opening a file for writing follows a link, a dangling one too: each place written is asked
   // first, the directories before what is in them, and a link is refused with `RECORD_LINKED`
   // before the proof is written, so a refusal leaves the witness as it was.
-  const inWitness = `tails/${tailId}/witness`;
+  const inWitness = ['tails', tailId, 'witness'];
   refuseToWriteThrough(layout, [
     'tails',
-    `tails/${tailId}`,
-    inWitness,
-    `${inWitness}/${basename(witnessProofPath(layout, tailId, checkpointHash))}`,
+    ['tails', tailId].join('/'),
+    inWitness.join('/'),
+    [...inWitness, basename(witnessProofPath(layout, tailId, checkpointHash))].join('/'),
     ...(headers.length === 0
       ? []
-      : [`${inWitness}/${basename(witnessBlocksPath(layout, tailId, checkpointHash))}`]),
+      : [[...inWitness, basename(witnessBlocksPath(layout, tailId, checkpointHash))].join('/')]),
   ]);
   mkdirSync(witnessDir(layout, tailId), { recursive: true });
   writeFileSync(witnessProofPath(layout, tailId, checkpointHash), witness.proof);
