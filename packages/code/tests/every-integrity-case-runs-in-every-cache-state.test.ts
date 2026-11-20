@@ -133,8 +133,6 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'holds the projection cache itself over a tree it damages: a replay, a connection open before the damage and a cache kept on disk are its cases; the states of the binary are held by a-line-this-mnema-cannot-read-is-said-first-and-the-rest-is-served',
   'packages/code/tests/the-agent-is-told-of-a-line-it-cannot-read-and-served-the-rest.test.ts':
     'opens its own connections: one after the damage (cold) and one that read the record before it (session), over the protocol; the warm state of the command line is held by a-line-this-mnema-cannot-read-is-said-first-and-the-rest-is-served',
-  'packages/code/tests/the-audit-verbs-fold-the-record-once.test.ts':
-    'appends one line of a kind no version declares, as a newer mnema writes it, and damages nothing: what it asks is that four verbs which open no cache fold the tails once and carry the same field, so no cache state changes what it reads',
   'packages/code/tests/the-console-does-not-show-an-altered-entry-that-arrives.test.ts':
     'holds the console follower, which opens no cache and reads the tail past where the session stood: there is no warm or cold state to vary',
   'packages/core/src/projections/an-entry-whose-hash-fails-is-left-out.test.ts':
@@ -221,6 +219,8 @@ export const EXEMPT: Readonly<Record<string, string>> = {
  * checkpoint by hand plants damage, wears the mark and belongs to EXEMPT, not here.
  */
 export const WRITES_BUT_PLANTS_NOTHING: Readonly<Record<string, string>> = {
+  'packages/code/tests/the-audit-verbs-fold-the-record-once.test.ts':
+    'appends one line of a kind no version declares, signed by a checkpoint as a newer mnema writes it, and damages nothing: it holds that four verbs which open no cache fold the tails once and carry the same field, so no cache state changes what it reads',
   'packages/chain/src/chain/a-tail-is-signed-as-soon-as-it-is-founded.test.ts':
     'holds which checkpoints the write that founds a tail signs, and what the fold of its checkpoints says of the tail with no note of this machine, in the functions of the chain alone; nothing is damaged and the chain has no projection cache (a clone of such a record is read by the binary in only-proven-events-reach-the-projection)',
   'packages/chain/src/chain/verify-reads-the-checkpoints-before-the-tail.test.ts':

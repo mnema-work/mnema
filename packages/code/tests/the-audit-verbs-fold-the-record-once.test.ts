@@ -10,11 +10,9 @@
  * no projection cache is opened by the four, and the field they carry is still the one the sentence is
  * made of, written here as a literal and not recomputed from the code that counts it.
  *
- * The mutation that lights it: put `newerLinesOfTrees` (a replay through `withTreesRead`) back into one
- * of the four commands, and that verb is the one named.
+ * The mutation that lights it: put a second replay (a throwaway cache per tree through `withTreesRead`)
+ * back into one of the four commands, and that verb is the one named.
  */
-
-// @plants-damage
 
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
