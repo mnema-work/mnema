@@ -229,22 +229,36 @@ export function discover(cwd: string, env: DiscoveryEnv): Discovery {
   const walked = walkUp(cwd, homeSpellings(env));
   if (walked.project === undefined) return { trees: base, passedOver: walked.passedOver };
 
-  const inRepository = privateTreePlace(dirname(walked.project));
-  const machinery = publicMachineryPlace(dirname(walked.project));
+  return { trees: treesOfProject(walked.project, base), passedOver: walked.passedOver };
+}
+
+/** The trees of the project whose `.mnema/` is `project`, over the machine's `base`. */
+function treesOfProject(project: string, base: ResolvedTrees): ResolvedTrees {
+  const inRepository = privateTreePlace(dirname(project));
+  const machinery = publicMachineryPlace(dirname(project));
   return {
-    trees: {
-      projectPublic: walked.project,
-      ...(machinery === undefined ? {} : { projectPublicMachinery: machinery }),
-      ...(inRepository === undefined
-        ? { projectPrivate: join(walked.project, PRIVATE_DIR) }
-        : {
-            projectPrivate: inRepository.tree,
-            projectPrivateInstallation: inRepository.installation,
-          }),
-      ...base,
-    },
-    passedOver: walked.passedOver,
+    projectPublic: project,
+    ...(machinery === undefined ? {} : { projectPublicMachinery: machinery }),
+    ...(inRepository === undefined
+      ? { projectPrivate: join(project, PRIVATE_DIR) }
+      : {
+          projectPrivate: inRepository.tree,
+          projectPrivateInstallation: inRepository.installation,
+        }),
+    ...base,
   };
+}
+
+/**
+ * The trees of the project whose `.mnema/` is at `project`, there or not: what a restore needs for a
+ * folder that was deleted, which the walk up cannot find. The caller has decided it is a project's.
+ */
+export function treesOfTheProjectAt(project: string, env: DiscoveryEnv): ResolvedTrees {
+  const appDir = appDataDir(env);
+  return treesOfProject(project, {
+    global: join(appDir, GLOBAL_DIR),
+    keyRoot: join(appDir, IDENTITY_DIR),
+  });
 }
 
 /**

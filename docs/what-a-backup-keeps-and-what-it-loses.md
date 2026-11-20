@@ -13,8 +13,9 @@ For each tree it copies, the copy holds two kinds of file and nothing else:
 - the **public keys**: `keys/*.pub`, the public halves of the keys the tree's events name.
 
 A project's copy is `<folder>/<name of the record>/<tree>/`. The private tree is always copied; the
-public tree only where the project is not in git, because a repository's history is the public
-tree's own backup. The machine's **global tree** is a copy of its own, `<folder>/global/`, made only
+public tree only where git does not hold it: a project outside git, or a **local record**, one a
+repository excludes (`.git/info/exclude` names `.mnema/`) and never commits. A committed record's
+history is the public tree's own backup. The machine's **global tree** is a copy of its own, `<folder>/global/`, made only
 by `mnema backup run --global` into the folder `mnema backup setup --global <folder>` gave it. It mixes the
 memory and the decisions of every project on the machine, so a project's run never copies it, and
 the folder of a project is not the folder of the global tree unless you name the same one for both.
@@ -102,7 +103,12 @@ it by hand. The machine's global tree has its own restore, `mnema backup restore
 machine reads the global tree, and a global restore never touches a project's trees, nor a project's restore the global tree. The tree is checked by this mnema's reader before and after it
 moves; the second reader (the Python program) is not run on it.
 
-The same question is asked when a project has no record name at all: a project without git backs up its public tree, and
+A local record whose `.mnema/` folder is gone (`git clean -fdX` removes an excluded folder) is restored from the top of its
+repository: `mnema backup restore` finds the place where git still excludes `.mnema/`, takes the name of the record from the
+copy this machine has (`--from <record>` when it has more than one), and puts both trees back. It looks only at the top of the
+repository, and only where the folder is excluded; a repository that commits its record has its history to restore from.
+
+The same question is asked when a project has no record name at all: a project without git, or with a local record, backs up its public tree, and
 when that tree lost its tails nothing names the record. `restore` then takes the name from the copy's manifest, shows it, and
 asks (when this machine has the copy of more than one record, it asks for `--from`). A copy that disagrees with itself (the folder, its
 manifest and its tails name different records) is refused, never asked.

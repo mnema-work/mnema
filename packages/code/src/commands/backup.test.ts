@@ -408,6 +408,92 @@ describe("the backup of the machine's global tree", () => {
   });
 });
 
+/** A project in git whose record is local: `.mnema/` is excluded before it exists, so git never sees it. */
+function localProject(label: string) {
+  const cwd = join(sandbox, label);
+  mkdirSync(cwd, { recursive: true });
+  const git = {
+    PATH: process.env.PATH ?? '',
+    HOME: sandbox,
+    GIT_CONFIG_NOSYSTEM: '1',
+    GIT_CONFIG_GLOBAL: '/dev/null',
+  };
+  expect(spawnSync('git', ['init', '-q'], { cwd, env: git }).status).toBe(0);
+  writeFileSync(join(cwd, '.git', 'info', 'exclude'), '.mnema/\n');
+  runInit({ cwd, env });
+  const ctx = { cwd, env };
+  expect(runTask(ctx, { title: `work of ${label}` }).ok).toBe(true);
+  expect(runTask(ctx, { title: `private work of ${label}`, scope: 'private' }).ok).toBe(true);
+  const status = spawnSync('git', ['status', '--porcelain', '--', '.mnema'], { cwd, env: git });
+  expect(status.stdout.toString()).toBe('');
+  return ctx;
+}
+
+describe('the backup of a local record: a clone whose record git does not hold', () => {
+  it('copies the public tree too, judges it, and brings it back into a project whose .mnema is gone', () => {
+    const a = localProject('local');
+    const folder = join(sandbox, 'folder-local');
+    const set = runBackupSetup(a, folder);
+    if (!set.ok) throw new Error('setup refused');
+    const ran = runBackupRun(a);
+    expect(ran).toMatchObject({ ok: true, publicIsInGit: false });
+    expect(ran.ok && ran.copied.map((one) => one.tree)).toEqual(['private', 'public']);
+    expect(runBackupStatus(a)).toMatchObject({ ok: true, publicIsInGit: false });
+    const verified = runBackupVerify(a);
+    expect(verified).toMatchObject({ ok: true, sound: true });
+    expect(verified.ok && verified.trees.map((one) => one.tree)).toEqual(['private', 'public']);
+
+    const root = resolveTrees(a.cwd, env).projectPublic as string;
+    const priv = resolveTrees(a.cwd, env).projectPrivate as string;
+    // What a copy holds: the tails and the public keys, byte for byte (README, ignore files and locks are not in a copy).
+    const kept = (dir: string) =>
+      filesUnder(dir)
+        .filter((file) => file.startsWith('tails/') || /^keys\/.*\.pub$/.test(file))
+        .map((file) => `${file}:${readFileSync(join(dir, file)).toString('base64')}`)
+        .join('\n');
+    const publicBefore = kept(root);
+    const privateBefore = kept(priv);
+    expect(publicBefore).toContain('tails/');
+    // What git clean -fdX does to an excluded folder: it is gone, and so is the project for discovery.
+    rmSync(root, { recursive: true, force: true });
+    rmSync(priv, { recursive: true, force: true });
+    expect(resolveTrees(a.cwd, env).projectPublic).toBeUndefined();
+
+    const dry = runBackupRestore(a, true);
+    expect(dry).toMatchObject({ ok: true, dryRun: true });
+    expect(existsSync(root)).toBe(false);
+    const done = runBackupRestore(a, false);
+    if (!done.ok) throw new Error(JSON.stringify(done));
+    expect(done.trees.map((one) => one.tree)).toEqual(['private', 'public']);
+    expect(kept(root)).toBe(publicBefore);
+    expect(kept(priv)).toBe(privateBefore);
+    expect(runBackupVerify(a)).toMatchObject({ ok: true, sound: true });
+    expect(runVerify({ ...a, requirement: 'signed', global: false })).toMatchObject({
+      ok: true,
+      requirementMet: true,
+    });
+  });
+
+  it('restores from a folder that is gone only where git excludes it, and refuses elsewhere', () => {
+    const committed = project('committed', true);
+    const folder = join(sandbox, 'folder-committed');
+    expect(runBackupSetup(committed, folder).ok).toBe(true);
+    expect(runBackupRun(committed)).toMatchObject({ ok: true, publicIsInGit: true });
+    const trees = resolveTrees(committed.cwd, env);
+    rmSync(trees.projectPublic as string, { recursive: true, force: true });
+    expect(runBackupRestore(committed, false)).toMatchObject({ ok: false, reason: 'NO_PROJECT' });
+  });
+
+  it('leaves a committed record as it was: the public tree is kept by git and not copied', () => {
+    const a = project('kept-by-git', true);
+    const folder = join(sandbox, 'folder-kept');
+    expect(runBackupSetup(a, folder).ok).toBe(true);
+    const ran = runBackupRun(a);
+    expect(ran.ok && ran.copied.map((one) => one.tree)).toEqual(['private']);
+    expect(runBackupVerify(a)).toMatchObject({ ok: true, sound: true });
+  });
+});
+
 describe('a copy read back, and put back', () => {
   /** A project in git with its backup set up and run, and the places a restore is about. */
   function backedUp(label = 'alpha') {
