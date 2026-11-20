@@ -85,6 +85,7 @@ $ mnema link <decision-runbook> <task-runbook> --rel relates-to
 $ mnema link <task-runbook> <task-chore> --rel derived-from
 | Linked <task-runbook> -derived-from→ <task-chore>
 |   Landed in the public tree: a folder of this project, not committed (there is no git here); it travels only as the project's files are copied.
+|   The record <task-chore> is in the private tree, which does not travel, so a clone cannot open it. A reader of one gets the link and no record.
 $ mnema link <decision-runbook> docs/runbook --rel governs
 | Linked <decision-runbook> -governs→ docs/runbook
 |   docs/runbook covers 1 of 5 file(s) counted in the working tree; not counted: .mnema.

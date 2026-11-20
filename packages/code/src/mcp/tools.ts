@@ -775,13 +775,13 @@ export function runLinkKnowledge(
   // note is as ordinary as a link to a task) and over the trees of THIS WRITE'S project plus the
   // machine's own, the set the command line asks: the workspace's other projects are other records.
   const targetHome = isIdShaped(target.id)
-    ? locateEntityAcross(
+    ? locateEntity(
         session,
+        target.id,
+        'records',
         workspaceTrees(session).filter(
           (tree) => tree.target === undefined || tree.target.dir === route.target?.dir,
         ),
-        target.id,
-        'records',
       )
     : undefined;
   const targetScope = targetHome?.outcome === 'found' ? targetHome.home.scope : undefined;
@@ -1704,8 +1704,13 @@ function unlessLocated(
  * a different answer than the other four: a narrower list is the defect this closed,
  * and a walk of its own is a second rule to keep in step.
  */
-function locateEntity(session: Session, id: string, reach: Reach = 'entities'): EntityLocation {
-  return locateEntityAcross(session, workspaceTrees(session), id, reach);
+function locateEntity(
+  session: Session,
+  id: string,
+  reach: Reach = 'entities',
+  trees: readonly WorkspaceTree[] = workspaceTrees(session),
+): EntityLocation {
+  return locateEntityAcross(session, trees, id, reach);
 }
 
 /**
