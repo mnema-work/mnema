@@ -135,7 +135,7 @@ function verdictSentence(done: WhyFile): string {
 }
 
 const NOT_DELIVERED =
-  'a write here would go through; the rules that govern it are not handed to an agent (edit-rules-push is off)';
+  'a write here would go through; the rules that govern it are not handed to an agent when it edits there';
 
 /** The rows of the rules that address something. */
 function ruleRows(render: Render, rules: readonly WhyRule[]): string[] {
