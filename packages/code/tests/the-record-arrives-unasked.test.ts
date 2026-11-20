@@ -1455,8 +1455,8 @@ describe('the record arrives unasked', () => {
       expect([...reached].map((line) => `${line}: ${sideOf(line)}`)).toEqual([
         'brief --hook: reads',
         'recall --hook: reads',
-        `recall --after-a-compaction --session ${A_SESSION} --hook: reads`,
         'tally: reads',
+        `recall --after-a-compaction --session ${A_SESSION} --hook: reads`,
         'corrections: mutates',
         'before-a-write --host cursor --agent-key cursor: mutates',
         'before-a-write --host vscode --agent-key vscode: mutates',
