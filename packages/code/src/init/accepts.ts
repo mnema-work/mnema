@@ -113,8 +113,8 @@ export function recordWhoMayAccept(
   const option = ACCEPTS_OPTIONS.find((each) => each.word === answer)?.description ?? answer;
   const said =
     by.given === 'screen'
-      ? `The person answered "${option}" when the project was founded.`
-      : `The person gave --accepts ${answer} to mnema init when the project was founded.`;
+      ? `"${option}" was chosen on the screen of mnema init when the project was founded.`
+      : `--accepts ${answer} was given to mnema init when the project was founded.`;
   const accepted = runDecisionTransition(ctx, {
     id: recorded.id,
     action: 'accept',
