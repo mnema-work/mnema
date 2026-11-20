@@ -93,9 +93,13 @@ After the proposals, the same review shows the rules in force you did not accept
 agent accepted, and those whose accept declared no agent (an agent running the command line without
 `--which` looks like that too). Newest first, each one it puts on the screen is marked as shown to
 you, a `decision.seen` fact in this machine's private record, and `q` stops it; what it did not show
-stays on the list. Your own accept at a terminal is marked the same way, so it is not on your list.
-`mnema` with nothing after it lists the ones that entered force since your last review, one line
-each, and says how many older ones you have not been shown. The mark stays in the private record,
+stays on the list. Any accept you make at a terminal with no agent declared (`decision move accept`,
+the review, `mnema init` answering on its screen) is marked the same way, so it is not on your list.
+`mnema` with nothing after it lists the ones that entered force since your last review or accept at
+a terminal, one line each, and says how many older ones you have not been shown. Two versions of
+mnema used on one clone (a terminal and an editor extension) each rebuild the read cache whenever
+the other was last, which costs a fraction of a second a command until the cache keeps one file
+per version (ADR-633). The mark stays in the private record,
 so another clone or machine of yours does not have it, and it says that your key signed at a
 terminal with no agent declared, not that a person read the rule.
 

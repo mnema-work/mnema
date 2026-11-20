@@ -1788,12 +1788,12 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'minted',
       why: 'a fixed sentence of this surface naming the verb',
     },
-  'summary.ts «{} rule(s) in force you did not accept yourself entered since your last review ({}):» notSeen.lastShown.slice(0, 10) #1':
+  'summary.ts «{} rule(s) in force you did not accept yourself entered since your last review or accept at a terminal ({}):» notSeen.lastShown.slice(0, 10) #1':
     {
       verdict: 'minted',
       why: "the date of a showing, cut from the clock's canonical spelling",
     },
-  'summary.ts «{} rule(s) in force you did not accept yourself entered since your last review ({}):» notSeen.since.length #1':
+  'summary.ts «{} rule(s) in force you did not accept yourself entered since your last review or accept at a terminal ({}):» notSeen.since.length #1':
     {
       verdict: 'minted',
       why: 'a count this reading computed',

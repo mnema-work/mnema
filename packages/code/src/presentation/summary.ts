@@ -79,7 +79,7 @@ function notSeenLines(notSeen: NonNullable<Summary['notSeen']>): string[] {
   const lines: string[] = [];
   if (notSeen.since.length > 0) {
     lines.push(
-      `${notSeen.since.length} rule(s) in force you did not accept yourself entered since your last review (${notSeen.lastShown.slice(0, 10)}):`,
+      `${notSeen.since.length} rule(s) in force you did not accept yourself entered since your last review or accept at a terminal (${notSeen.lastShown.slice(0, 10)}):`,
     );
     for (const rule of notSeen.since) {
       lines.push(`  ${rule.adr}  ${oneLine(rule.title)} (${acceptedByWords(rule.accepted)})`);

@@ -22,7 +22,9 @@
  * line is passed over here only when it reads as the reader reads it: UTF-8, canonical, an entry
  * whose event is of a `kind` and `v` in `event-schema.json` (a copy of the declarations the first
  * version published to the npm registry held, which every later one reads: `FORMAT.md` §7.1) with
- * every field declared and of its declared shape, or a checkpoint of its declared shape.
+ * every field declared and of its declared shape, or a checkpoint of its declared shape. A line of
+ * a `kind` no version of that copy declares is read past as `mnema` reads it from 0.1.5 on: its
+ * envelope declared, its payload an object, its file searched for the marker like any other.
  *
  * EVERY DOUBT RUNS `mnema`, and being wrong that way costs what every write cost before: a tree
  * that cannot be listed or read, a line that does not read as above, a `MNEMA_HOME` that is not
@@ -256,7 +258,22 @@ function anEntry(value, schema) {
   if (link.prev !== null && !isText(link.prev)) throw new Doubt('the link');
   if (!isObject(event) || typeof event.v !== 'number') throw new Doubt('the event');
   const payload = schema.contracts.get(`${event.kind}@${event.v}`);
-  if (payload === undefined) throw new Doubt('a kind or a version not read here');
+  if (payload === undefined) {
+    // A VERSION AHEAD of a kind the copy reads is refused by every mnema, so it is a doubt.
+    if (
+      !isText(event.kind) ||
+      [...schema.contracts.keys()].some((pair) => pair.startsWith(`${event.kind}@`))
+    ) {
+      throw new Doubt('a version not read here');
+    }
+    // A KIND NO VERSION OF THE COPY DECLARES is read past, as mnema reads it from 0.1.5 on
+    // (`FORMAT.md` section 7.1): its envelope held to the declarations, its payload an object and
+    // not read. It cannot hold an address unseen: the bytes of its file were searched for every
+    // marker above, before any line was read. What this does not reach is a binary from before
+    // 0.1.5, which refuses such a record where this answers that no rule can be met.
+    declared(event, { ...schema.envelope, payload: 'object' }, schema);
+    return;
+  }
   declared(event, { ...schema.envelope, payload: 'object' }, schema);
   declared(event.payload, payload, schema);
 }
