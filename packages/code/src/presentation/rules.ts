@@ -214,6 +214,15 @@ export function coverageReport(render: Render, coverage: RuleCoverage): string[]
       ),
     ),
   ];
+  if (coverage.switchedOff.length > 0) {
+    lines.push(
+      render(
+        fact(
+          `switched off: ${coverage.switchedOff.join(', ')}; as the gate does, a file under a rule of that layer counts under the next one`,
+        ),
+      ),
+    );
+  }
   if (coverage.skipped.length > 0) {
     lines.push(
       render(fact(`not counted, as not hand-written: ${coverage.skipped.map(oneLine).join(', ')}`)),

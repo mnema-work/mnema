@@ -156,6 +156,19 @@ describe('mnema rules --coverage', { timeout: 60_000 }, () => {
     expect(json.truncated).toBe(false);
   });
 
+  it('follows the gate: a layer whose channel is off counts under the next one, and says so', async () => {
+    await arrange();
+    await did('switch', 'off', 'edit-refuses-a-write');
+    const done = runRulesCoverage({ cwd: repo, env });
+    if (!done.ok) throw new Error('refused');
+    // src/frozen/a.ts is also asked about, src/frozen/b.ts falls to none.
+    expect(done.coverage.layers).toEqual({ refuses: 0, asks: 4, governs: 4, none: 9 });
+    expect(done.coverage.switchedOff).toEqual(['edit-refuses-a-write']);
+    const said = await did('rules', '--coverage');
+    expect(said.out).toContain('switched off: edit-refuses-a-write');
+    expect(said.out).toContain('0 refused · 4 ask for a person · 4 governed · 9 under no rule');
+  });
+
   it('counts a project with no rules wholly under none', async () => {
     const done = runRulesCoverage({ cwd: repo, env });
     if (!done.ok) throw new Error('refused');

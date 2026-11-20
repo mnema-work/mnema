@@ -33,7 +33,7 @@ export function registerRules(program: Command, wiring: Wiring): Declared {
     .argument('[path]', 'the path to ask about, relative to here or absolute')
     .option(
       '--coverage',
-      'instead of a path: count the project files by layer (refused, asked, governed, none), per top-level folder, with no score',
+      'instead of a path: count the project files by layer (refused, asked, governed, none), per top-level folder, with no score, following the switches of the gate',
     )
     .option('--json', 'emit the faithful reading as JSON')
     .action(async (path: string | undefined, opts: { json?: boolean; coverage?: boolean }) => {
@@ -45,6 +45,13 @@ export function registerRules(program: Command, wiring: Wiring): Declared {
         return;
       }
       if (opts.coverage !== true && path === undefined) {
+        // NO PROJECT FIRST: outside one, the answer to every read is the same, whatever was typed.
+        const { runRules: probe } = await import('../commands/rules.js');
+        const outside = probe(here(), { path: '.' });
+        if (!outside.ok) {
+          reportRefusal(wiring, outside, {});
+          return;
+        }
         reportRefusal(wiring, {
           reason: 'USAGE',
           message: 'a path to ask about, or --coverage to count the whole project.',

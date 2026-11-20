@@ -5,11 +5,15 @@
  * layer that stands over it, so the four numbers sum to the files walked and no file is counted
  * twice. A rule in force that REFUSES a write at the file is the first layer; failing that, one
  * that ASKS FOR A PERSON; failing that, one that GOVERNS; and a file none of them addresses is
- * under none. Which rules stand over a file is `everyRuleInForceAt`, the reading `mnema why`
- * tells from, so this module decides no layer of its own: a second reading of "refuses" is how
- * one surface would say a file is free where another refuses it. Like that reading it asks what
- * the record holds and not whether a channel is switched on: a gate switched off stops applying a
- * rule, it does not make the rule leave the record.
+ * under none. Which rules stand over a file is read ONCE for the whole walk
+ * (`rulesInForceReach`: every address of every rule in force, by the gate's own in-force reading
+ * and its own prefix comparison), and each walked file is matched against that set: the record is
+ * never read per file, which is what keeps the count linear in the files.
+ *
+ * IT FOLLOWS THE GATE'S SWITCHES, as the gate does: with the channel that refuses a write (or the
+ * one that asks for a person) switched off, that layer does not apply and a file under such a rule
+ * counts under the next layer. The channels that are off are carried out beside the counts and
+ * said, so the numbers are never read as if the gate were on.
  *
  * ONE WALK, AND IT IS THE REACH'S: `walkProject` is what counts what an address covers when it is
  * recorded, so what a file of the project IS (the six names left out as not hand-written, a link
@@ -22,14 +26,14 @@
  * somebody else's repository.
  */
 
-import type { ScopedCache } from '@mnema/context';
+import { channelIsOn, relationsCovering, rulesInForceReach, type ScopedCache } from '@mnema/context';
 import {
   ASKS_FOR_A_PERSON_RELATION,
   GOVERNS_RELATION,
   REFUSES_A_WRITE_RELATION,
 } from '@mnema/core';
 import { WALK_CEILING, walkProject } from './governed-tree.js';
-import { everyRuleInForceAt } from './what-a-write-meets.js';
+import { ASKS_A_PERSON_CHANNEL, REFUSES_A_WRITE_CHANNEL } from './record-framing.js';
 
 /** The layers a file falls under, strongest first. */
 export const LAYERS = ['refuses', 'asks', 'governs', 'none'] as const;
@@ -56,6 +60,11 @@ export interface RuleCoverage {
   /** The walk stopped at {@link ceiling}: every count is a floor. */
   readonly truncated: boolean;
   readonly ceiling: number;
+  /**
+   * The gate's channels that are switched off, which the counts follow: a file whose strongest
+   * rule is of a layer whose channel is off counts under the next layer, as the gate treats it.
+   */
+  readonly switchedOff: readonly string[];
 }
 
 const empty = (): Record<Layer, number> => ({ refuses: 0, asks: 0, governs: 0, none: 0 });
@@ -77,13 +86,22 @@ export function coverageByLayer(
   root: string,
   ceiling: number = WALK_CEILING,
 ): RuleCoverage {
+  const own = sources.filter((source) => source.inherited === undefined);
+  const switchedOff = [
+    ...(channelIsOn(own, REFUSES_A_WRITE_CHANNEL) ? [] : [REFUSES_A_WRITE_CHANNEL]),
+    ...(channelIsOn(own, ASKS_A_PERSON_CHANNEL) ? [] : [ASKS_A_PERSON_CHANNEL]),
+  ];
+  const reach = rulesInForceReach(sources, { root });
   const total = empty();
   const byFolder = new Map<string, Record<Layer, number>>();
   const outcome = walkProject(
     root,
     (relative) => {
-      const stands = everyRuleInForceAt(sources, { path: relative, root, from: root });
-      const layer = layerOf(new Set(stands.rules.map((rule) => rule.relation)));
+      const relations = relationsCovering(reach, relative);
+      for (const channel of switchedOff) {
+        relations.delete(channel === REFUSES_A_WRITE_CHANNEL ? REFUSES_A_WRITE_RELATION : ASKS_FOR_A_PERSON_RELATION);
+      }
+      const layer = layerOf(relations);
       const slash = relative.indexOf('/');
       const folder = slash === -1 ? '.' : relative.slice(0, slash);
       const row = byFolder.get(folder) ?? empty();
@@ -107,5 +125,6 @@ export function coverageByLayer(
     skipped: outcome.skipped,
     truncated: outcome.truncated,
     ceiling,
+    switchedOff,
   };
 }
