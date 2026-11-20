@@ -291,12 +291,13 @@ function noSuchCommand(command: Command, asked: string): Line {
   const name = spoken(command);
   const creating = CREATES_BY.get(command);
   const what = creating?.registeredArguments[0]?.name();
-  return refusalSentence(
+  const said =
     creating === undefined || what === undefined
       ? `${name} has no command ${quoted(asked)}. Run \`${name} --help\` to see what it does.`
       : `${name} has no command ${quoted(asked)}. To ${creating.name()} a ${command.name()}, ` +
-          `put \`${creating.name()}\` before its ${what}.`,
-  );
+        `put \`${creating.name()}\` before its ${what}.`;
+  const reading = WHERE_TO_READ.get(pathOf(command).join(' '));
+  return refusalSentence(reading === undefined ? said : `${said} ${reading}`);
 }
 
 /**
@@ -308,8 +309,24 @@ function excessArguments({ command }: Misuse): Line | undefined {
   const extra = command.args.slice(command.registeredArguments.length);
   if (extra.length === 0) return undefined;
   if (isAGroupThatTakesNoWord(command)) return noSuchCommand(command, extra[0] as string);
-  return refusalSentence(`${spoken(command)} does not take ${extra.map(quoted).join(', ')}.`);
+  const said = `${spoken(command)} does not take ${extra.map(quoted).join(', ')}.`;
+  const hint = EXTRA_WORDS_MEAN.get(pathOf(command).join(' '));
+  return refusalSentence(hint === undefined ? said : `${said} ${hint}`);
 }
+
+/**
+ * What a surplus word most likely was, for the verbs where it is a known slip: the text typed as
+ * several words, or the topic typed where only a flag takes it.
+ */
+const EXTRA_WORDS_MEAN = new Map<string, string>([
+  ['memory', 'It takes one text: quote it, or give it with --stdin or --body-file.'],
+  ['observe', 'The topic and the text go in flags: --topic <label> and --text <text>.'],
+]);
+
+/** Where to read decisions, for a group that has no verb that lists them. */
+const WHERE_TO_READ = new Map<string, string>([
+  ['decision', 'To read decisions, run `mnema search --kind decision`, or `mnema status`.'],
+]);
 
 /**
  * A value a declared parser refused: an OPTION's first, then a positional ARGUMENT's.
