@@ -85,7 +85,7 @@ const ASSENT = new Set([
   'great',
   'sounds',
   'lets',
-  'let's',
+  "let's",
   'go',
   'ahead',
   'on',
