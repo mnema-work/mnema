@@ -138,7 +138,7 @@ did exactly that to every completed task, which stayed on the work list because 
 is always legal from `DONE`. So a task waiting on a reviewer is on the fourth list and
 not the first, and a task that is finished or cancelled is on neither.
 
-Three of the four lists are cut to the freshest items, and
+Three of the four lists are cut to the freshest items (the live work lists a task IN_PROGRESS first, so the cut never leaves it out), and
 `workTotal`/`decisionsTotal`/`awaitingJudgementTotal` say how many there were, so a
 cut never reads as "this is everything". The adopted patterns are the exception:
 every one is listed, so that list carries no total. One more cut is by age and not by

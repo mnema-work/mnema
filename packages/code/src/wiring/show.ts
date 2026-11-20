@@ -9,6 +9,7 @@
  */
 
 import type { Command } from 'commander';
+import { notHereInAWorktree } from '../linked-worktree.js';
 import { here } from './context.js';
 import { writeLines } from './io.js';
 import { noSuchRecord } from './no-such-record.js';
@@ -36,7 +37,11 @@ export function registerShow(program: Command, wiring: Wiring): Declared {
         // The refusal says what the trees it read say about their proof, first: a record that
         // was written and is not found because its entry was left out is not a record that never was.
         for (const line of linkBreakNotice(result.linkBreaks)) io.err(render(line));
-        reportRefusal(wiring, result, { UNKNOWN_RECORD: noSuchRecord('record', id) });
+        reportRefusal(wiring, result, {
+          UNKNOWN_RECORD: [noSuchRecord('record', id), notHereInAWorktree(here().cwd)]
+            .filter((part) => part !== undefined)
+            .join(' '),
+        });
         return;
       }
       // BEFORE the answer, and on the other stream, so it survives a pipe, and so
