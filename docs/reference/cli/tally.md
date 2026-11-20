@@ -6,12 +6,6 @@ answer a host’s Stop hook with what the session wrote and recorded
 
 In the help under **Called by a host**.
 
-## Options
-
-| Option | What it does |
-| --- | --- |
-| `--host <host>` | the host whose hook runs this, and whose payload arrives on stdin: claude, vscode, codex, copilot, gemini, cursor, qwen; Claude Code's when it is not given |
-
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
 <!-- End of the part written by hand. -->
 
@@ -23,10 +17,7 @@ Usage: mnema tally [options]
 answer a host’s Stop hook with what the session wrote and recorded
 
 Options:
-  --host <host>  the host whose hook runs this, and whose payload arrives on
-                 stdin: claude, vscode, codex, copilot, gemini, cursor, qwen;
-                 Claude Code's when it is not given
-  -h, --help     display help for command
+  -h, --help  display help for command
 
 What it reads and what it prints:
   The JSON a host hands a hook on stdin, with the transcript it names. On stdout, the reply
@@ -35,11 +26,16 @@ What it reads and what it prints:
   events of the record are in no git commit yet, how many (`mnema record commit` is what
   prepares them), and, on a second line, how many of those decisions still await a
   person, or {} when
-  the hook is not the end of a turn, the session wrote no file in the last response, there is
-  no project here, or the transcript cannot be read. Only Claude Code’s transcript is read
-  today: for any other --host it says so on the second stream and counts and keeps nothing.
+  the hook is not Stop, the session wrote no file in the last response, there is no project
+  here, or the transcript cannot be read.
+  A response begins at a line Claude Code marks as typed by a person (origin.kind human):
+  a compaction summary, a local command and “[Request interrupted by user]” never count, a
+  slash command opens a response, and a transcript of an older Claude Code with no origin
+  yields no typed line of the person’s.
   It writes nothing to the record. When the hook names its session it also keeps a small file on
   this machine, the session journal (ids and counts, never what was said), and reads the
   transcript from where the last reading stopped. `mnema switch off session-tally` stops the
   line and `mnema switch off session-journal` stops the file.
+  With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
+  code alone on the first line of the error stream; typed by a person, nothing changes.
 ```

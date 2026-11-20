@@ -50,10 +50,17 @@ export function registerCorrections(program: Command, wiring: Wiring): Declared 
         '  person accepts or rejects.',
         '  On stdout, the reply the host reads: a `systemMessage` saying how many were recorded and',
         '  under which labels, or {}.',
+        '  A typed line is the person’s only where Claude Code marks it origin.kind human: a',
+        '  compaction summary, a local command and “[Request interrupted by user]” never count, a',
+        '  slash command opens an answer but is never quoted, and a transcript of an older Claude',
+        '  Code with no origin yields no typed line. An option chosen in the question tool is read',
+        '  from the tool’s result, which carries no origin.',
         '  It does nothing until `mnema switch on user-corrections`, because it reads what a person',
         '  typed. With the channel off, or outside a project, it records nothing. Only Claude Code’s',
         '  transcript is read today: for any other --host it says so on the second stream and',
         '  records nothing.',
+        '  With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its',
+        '  code alone on the first line of the error stream; typed by a person, nothing changes.',
       ].join('\n'),
     )
     .action(async (opts: { host?: string }) => {
