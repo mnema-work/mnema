@@ -36,6 +36,77 @@ export type SqliteDatabase = Omit<DatabaseSync, 'prepare'> & {
   prepare(sql: string): SqliteStatement;
 };
 
+/**
+ * What the write-ahead log is cut back to once a checkpoint has emptied it: 4 MiB, the size the
+ * default auto-checkpoint (1000 pages of 4 KiB) lets it grow to anyway.
+ *
+ * Without a limit SQLite keeps the file at the largest size it ever reached, and a log that once
+ * held a replay of the whole record stays that big for as long as a process holds the database
+ * open, which for an MCP server is days.
+ */
+export const WAL_SIZE_LIMIT_BYTES = 4 * 1024 * 1024;
+
+/**
+ * Where SQLite puts the temporary files a big sort or index build spills into: the directory of
+ * the cache file, unless the person chose one.
+ *
+ * SQLite's own default is `/var/tmp` when `$TMPDIR` is unset, which is a place on the machine
+ * that nothing here owns and that is often small: a probe saw 37 MB of `etilqs_*` files land
+ * there. The cache's own directory already exists, is writable (the file is in it), is
+ * git-ignored and is the file system the cache is on. `$SQLITE_TMPDIR` and `$TMPDIR` are the
+ * person's and keep winning: the setting is made only when neither is set. It is process-wide in
+ * SQLite, so the last cache opened decides; a directory that is gone is passed over by SQLite
+ * for the next place it knows.
+ */
+function spillBeside(db: DatabaseSync, path: string): void {
+  if (process.env.SQLITE_TMPDIR !== undefined || process.env.TMPDIR !== undefined) return;
+  try {
+    db.exec(`PRAGMA temp_store_directory = '${dirname(path).replaceAll("'", "''")}'`);
+    spillRefused = undefined;
+  } catch (error) {
+    // A build of SQLite without the setting spills where it always did: the trace says so.
+    spillRefused = error instanceof Error ? error.message : String(error);
+  }
+}
+
+let spillRefused: string | undefined;
+
+/** Why the last attempt to point SQLite's temporary files beside the cache was refused, or undefined when it was not. */
+export function spillRefusal(): string | undefined {
+  return spillRefused;
+}
+
+/** What a cut of the write-ahead log came to: done, or why not. */
+export type WalCut = { readonly cut: true } | { readonly cut: false; readonly because: string };
+
+/**
+ * Cuts the write-ahead log back to nothing, and says whether it did and, if not, why.
+ *
+ * It does not wait: a reader (the command line, another server) holding the log blocks it, and
+ * the answer is `{ cut: false, because }` rather than a call that stalls an event loop; the next idle
+ * moment tries again. Never run it inside a read: it takes the write lock for as long as it copies.
+ */
+export function truncateWal(db: SqliteDatabase): WalCut {
+  db.exec('PRAGMA busy_timeout = 0');
+  try {
+    const row = db.prepare('PRAGMA wal_checkpoint(TRUNCATE)').get() as
+      | { busy?: number }
+      | undefined;
+    if (row !== undefined && Number(row.busy) === 0) return { cut: true };
+    return {
+      cut: false,
+      because:
+        row === undefined
+          ? 'the checkpoint answered nothing'
+          : 'busy: another connection holds the log (a reader or a writer)',
+    };
+  } catch (error) {
+    return { cut: false, because: error instanceof Error ? error.message : String(error) };
+  } finally {
+    db.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
+  }
+}
+
 /** How long a blocked writer waits on a busy database before giving up. */
 export const BUSY_TIMEOUT_MS = 5000;
 
@@ -65,6 +136,8 @@ export function openDatabase(path: string): SqliteDatabase {
   });
   db.exec('PRAGMA journal_mode = WAL');
   db.exec('PRAGMA synchronous = NORMAL');
+  db.exec(`PRAGMA journal_size_limit = ${WAL_SIZE_LIMIT_BYTES}`);
+  if (path !== IN_MEMORY) spillBeside(db, path);
   return rememberingStatements(db);
 }
 

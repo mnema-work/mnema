@@ -29,22 +29,30 @@ import {
   unannouncedRunsOf,
 } from '@mnema/chain';
 import { dropProjections, ensureSchema } from '../db/schema.js';
-import { IN_MEMORY, inTransaction, openDatabase, type SqliteDatabase } from '../db/sqlite.js';
+import {
+  IN_MEMORY,
+  inTransaction,
+  openDatabase,
+  type SqliteDatabase,
+  truncateWal,
+  type WalCut,
+} from '../db/sqlite.js';
 import { type FoundedBeside, identitiesFoundedBeside } from '../identity/founded-beside.js';
 import { agentKeysIn, rosterIn, rosterOf } from '../identity/membership.js';
 import { advance } from './advance.js';
 import { readCacheFileFor } from './cache-home.js';
 import {
   activeMarks,
-  activeSegmentsHold,
   activeStampsBefore,
   type CacheMeta,
+  checkActiveSegments,
   keepActiveMarks,
+  type Miss,
   productStamp,
   readGeneration,
   readMeta,
   sealedFingerprints,
-  sealedSegmentsHold,
+  sealedSegmentMiss,
   writeMeta,
 } from './cache-meta.js';
 import type { ChannelSwitchProjection } from './channel.js';
@@ -97,6 +105,7 @@ import {
   tallyAuthorship,
   walkReferences,
 } from './reference-store.js';
+import { observingRefreshes, type ReplayReason, reportRefresh } from './refresh-trace.js';
 import type { RunProjection } from './run.js';
 import { getRun, listOpenRuns, listRuns } from './run-store.js';
 import {
@@ -280,6 +289,11 @@ export class ProjectionCache {
    */
   private generation = -1;
   /**
+   * Why {@link frontier} is undefined, set where it is made so: the branch the replay that follows
+   * names when something is listening (`refresh-trace.ts`). It decides nothing.
+   */
+  private whyUnagreed: ReplayReason = { branch: 'first-read' };
+  /**
    * True while the database is a memory one that nothing has been written into since it was
    * made with its tables, so that the first replay has nothing to drop: dropping them to make
    * them again is what a replay of a database that HAD rows needs, and what every cold open
@@ -345,8 +359,8 @@ export class ProjectionCache {
   }
 
   /** Drops the cache and replays it from the chain. Safe to call any time. */
-  rebuild(): void {
-    this.guarded(() => this.replay());
+  rebuild(why: ReplayReason = { branch: 'asked' }): void {
+    this.guarded(() => this.replay(why));
   }
 
   /**
@@ -582,14 +596,14 @@ export class ProjectionCache {
       for (let attempt = 0; attempt < MAX_REFRESH_ATTEMPTS; attempt += 1) {
         this.agree();
         if (this.frontier === undefined) {
-          this.replay();
+          this.replay(this.whyUnagreed);
           return;
         }
         // A PART THIS MNEMA DOES NOT READ that lies where a catch-up reads (a link, or a line past
         // what the frontier covers) is not one the marks below it can say was mended or taken away,
         // so the record is replayed whole rather than believed over it.
         if (this.refusedPartPastTheFrontier(this.frontier)) {
-          this.replay();
+          this.replay({ branch: 'refused-part-past-the-frontier' });
           return;
         }
         // The stamps of the segments each tail appends to, BEFORE the reading, are what the marks
@@ -597,14 +611,15 @@ export class ProjectionCache {
         const before = this.persisted ? activeStampsBefore(this.layout) : {};
         const arrived = chainArrivals(this.layout, this.upcasters, this.frontier);
         if (!arrived.suffix) {
-          this.replay();
+          this.replay({ branch: 'not-a-suffix' });
           return;
         }
         this.several = arrived.several;
         if (arrived.events.length === 0) {
           // Lines of a kind this binary does not know and nothing else: the tables stay as they
           // are, and the replay is what records them, once, beside the frontier it takes.
-          if (arrived.unread.length > 0) this.replay();
+          if (arrived.unread.length > 0) this.replay({ branch: 'unread-lines' });
+          else if (observingRefreshes()) this.reported({ outcome: 'unchanged' });
           return;
         }
         const from = this.frontier.events;
@@ -631,18 +646,21 @@ export class ProjectionCache {
           { immediate: true },
         );
         if (moved === 'judge-it-whole') {
-          this.replay();
+          this.replay({ branch: 'judge-it-whole' });
           return;
         }
         if (moved) {
           this.frontier = arrived.frontier;
           this.unreadLines = [...this.unreadLines, ...arrived.unread];
           this.generation = expected + 1;
+          if (observingRefreshes()) {
+            this.reported({ outcome: 'incremental', arrived: arrived.events.length });
+          }
           return;
         }
       }
       // Another process kept winning the file: say so by replaying, which is correct whoever wins.
-      this.replay();
+      this.replay({ branch: 'file-kept-moving' });
     });
   }
 
@@ -682,7 +700,7 @@ export class ProjectionCache {
   }
 
   /** Replays the chain whole into the tables: the one place a rebuild is written. */
-  private replay(): void {
+  private replay(why: ReplayReason): void {
     const before = this.persisted ? activeStampsBefore(this.layout) : {};
     const replay = chainReplay(this.layout, this.upcasters, true);
     this.generation = inTransaction(
@@ -712,6 +730,17 @@ export class ProjectionCache {
     this.unreadLines = replay.unread;
     this.signedFacts = replay.signed;
     this.several = replay.several;
+    this.reported({ outcome: 'replayed', ...why });
+  }
+
+  /** Tells the observer how a refresh went, building the report only when one listens. */
+  private reported(
+    report:
+      | { readonly outcome: 'unchanged' }
+      | { readonly outcome: 'incremental'; readonly arrived: number }
+      | ({ readonly outcome: 'replayed' } & ReplayReason),
+  ): void {
+    if (observingRefreshes()) reportRefresh({ root: this.layout.root, ...report });
   }
 
   /** Writes what the cache says about itself, in the transaction that changed the tables. */
@@ -755,6 +784,12 @@ export class ProjectionCache {
     }
     const meta = this.guardedRead(() => readMeta(this.db));
     if (meta === undefined) {
+      this.whyUnagreed = this.persisted
+        ? { branch: 'no-cache-meta' }
+        : {
+            branch:
+              this.whyUnagreed.branch === 'database-failed' ? 'database-failed' : 'first-read',
+          };
       this.frontier = undefined;
       this.breaks = [];
       this.retainedLines = [];
@@ -766,11 +801,19 @@ export class ProjectionCache {
     }
     if (meta.generation === this.generation && this.frontier !== undefined) return;
     this.generation = meta.generation;
-    const active = this.persisted ? activeSegmentsHold(meta.active) : meta.active;
+    const checked = this.persisted ? checkActiveSegments(meta.active) : undefined;
+    const active =
+      checked === undefined ? meta.active : 'kept' in checked ? checked.kept : undefined;
+    const sealedMiss = this.persisted ? sealedSegmentMiss(meta.sealed) : undefined;
     if (
       meta.stamp !== productStamp() ||
-      (this.persisted && !(sealedSegmentsHold(meta.sealed) && active !== undefined))
+      (this.persisted && !(sealedMiss === undefined && active !== undefined))
     ) {
+      this.whyUnagreed = whyTheFileIsNotBelieved(
+        meta.stamp,
+        sealedMiss,
+        checked !== undefined && 'miss' in checked ? checked.miss : undefined,
+      );
       this.frontier = undefined;
       this.breaks = [];
       this.retainedLines = [];
@@ -830,6 +873,7 @@ export class ProjectionCache {
     this.db = openMemory();
     this.untouched = true;
     this.persisted = false;
+    this.whyUnagreed = { branch: 'database-failed' };
     this.frontier = undefined;
     this.breaks = [];
     this.retainedLines = [];
@@ -1183,9 +1227,22 @@ export class ProjectionCache {
     return walkReferences(this.db, seeds, direction, maxDepth);
   }
 
-  /** Closes the underlying database. Closing a cache already closed is nothing to do. */
+  /**
+   * Cuts the write-ahead log of a cache kept on disk back to nothing, and says whether it did and why not: for
+   * the moment a long-lived process has nothing to answer (`truncateWal` says why it never waits).
+   * A cache in memory has no log, and one whose file failed has given it up.
+   */
+  checkpoint(): WalCut {
+    if (!this.persisted) return { cut: false, because: 'the cache is in memory: it has no log' };
+    if (!this.db.isOpen) return { cut: false, because: 'the cache is closed' };
+    return truncateWal(this.db);
+  }
+
+  /** Closes the underlying database, its log cut back first. Closing a cache already closed is nothing to do. */
   close(): void {
-    if (this.db.isOpen) this.db.close();
+    if (!this.db.isOpen) return;
+    this.checkpoint();
+    this.db.close();
   }
 }
 
@@ -1202,4 +1259,18 @@ function cacheStandsAtALink(layout: ChainLayout): boolean {
     if (error instanceof LinkedRecordError) return true;
     throw error;
   }
+}
+
+/** The branch a file that cannot be believed is replayed under, and the first thing that said so. */
+function whyTheFileIsNotBelieved(
+  recordedStamp: string,
+  sealedMiss: Miss | undefined,
+  activeMiss: Miss | undefined,
+): ReplayReason {
+  if (recordedStamp !== productStamp()) {
+    return { branch: 'stamp', expected: recordedStamp, found: productStamp() };
+  }
+  if (sealedMiss !== undefined) return { branch: 'sealed-segment', ...sealedMiss };
+  if (activeMiss !== undefined) return { branch: 'active-segment', ...activeMiss };
+  return { branch: 'no-cache-meta' };
 }

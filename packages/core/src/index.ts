@@ -85,7 +85,12 @@ export {
   type SecretClass,
   secretPlaceholder,
 } from './content/secrets.js';
-export { openDatabase, type SqliteDatabase } from './db/sqlite.js';
+export {
+  openDatabase,
+  type SqliteDatabase,
+  spillRefusal,
+  type WalCut,
+} from './db/sqlite.js';
 // The account an identity names on a code host, and the rule a name has to keep to be one.
 export {
   GITHUB_SERVICE,
@@ -219,6 +224,12 @@ export {
   tallyAuthorship,
   walkReferences,
 } from './projections/reference-store.js';
+export {
+  observeRefreshes,
+  type RefreshReport,
+  type ReplayBranch,
+  type ReplayReason,
+} from './projections/refresh-trace.js';
 export { projectRuns, type RunProjection, type WrittenInRun } from './projections/run.js';
 export { getRun, listOpenRuns, listRuns } from './projections/run-store.js';
 export {
