@@ -305,14 +305,15 @@ function filesWritten(
 /**
  * Whether a `user` line is a person's prompt: the host marks the line as written by a person
  * (`origin.kind` is `human`), and it is text, not a tool result, not text the host injected, not
- * a notification or a subagent's hand-back.
+ * a compaction summary, a notification or a subagent's hand-back. A slash command the person typed
+ * carries the mark and IS a prompt: it begins a new response.
  *
  * THE POSITIVE MARKER IS REQUIRED. A line with no `origin` is not taken as a person's: the host
- * writes a compaction summary, a local command (`<command-name>`, `<local-command-stdout>`) and the
- * interruption marker as `user` lines without it, and reading them as somebody typing would put
- * the host's words in a person's mouth. The flags and the shape of the text are checked as well,
- * so a line that carries the marker and is still the host's (a summary, a command) is passed over.
- * Only Claude Code's transcript is read here; no other host's is, so no other marker is assumed.
+ * writes a compaction summary and the interruption marker as `user` lines without it, and reading
+ * them as somebody typing would put the host's words in a person's mouth. A transcript of an older
+ * Claude Code that has no `origin` at all therefore has no line read as the person's (it fails
+ * closed). Only Claude Code's transcript is read here; no other host's is, so no other marker is
+ * assumed.
  */
 function isAPrompt(line: Record<string, unknown>): boolean {
   if (line.isMeta === true || line.isSidechain === true || line.isCompactSummary === true) {
@@ -320,26 +321,20 @@ function isAPrompt(line: Record<string, unknown>): boolean {
   }
   if (asObject(line['origin'])?.kind !== 'human') return false;
   const content = asObject(line.message)?.content;
-  if (typeof content === 'string') return !isHarnessText(content);
-  if (!Array.isArray(content)) return false;
-  const texts = content.flatMap((block) => {
-    const one = asObject(block);
-    return one?.type === 'text' && typeof one.text === 'string' ? [one.text] : [];
-  });
+  if (typeof content === 'string') return true;
   return (
-    texts.length > 0 &&
-    !texts.every(isHarnessText) &&
+    Array.isArray(content) &&
+    content.some((block) => asObject(block)?.type === 'text') &&
     !content.some((block) => asObject(block)?.type === 'tool_result')
   );
 }
 
-/** The text the host writes itself: a local command and its output, and the interruption marker. */
+/**
+ * The text the host writes itself, which is not the person's speech even where they caused it: a
+ * slash command and its output, and the interruption marker. A prompt, but not WORDS.
+ */
 const HARNESS_TEXT =
   /^\s*(<(command-name|command-message|command-args|local-command-[a-z]+)>|\[Request interrupted by user)/;
-
-function isHarnessText(text: string): boolean {
-  return HARNESS_TEXT.test(text);
-}
 
 /** One thing a person typed into a session, and where it is. */
 export interface WhatThePersonSaid {
@@ -411,7 +406,7 @@ export function whatThePersonSaid(path: string): readonly WhatThePersonSaid[] {
               )
               .join('\n')
           : '';
-    if (text.trim() === '') return true;
+    if (text.trim() === '' || HARNESS_TEXT.test(text)) return true;
     said.push({ ...where, text, ...(question === undefined ? {} : { question }) });
     return true;
   });

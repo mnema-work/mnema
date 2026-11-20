@@ -447,6 +447,8 @@ describe('mnema corrections', () => {
         ...extra,
       });
     const file = transcript([
+      typed('Fix the build'),
+      assistant(),
       bare(
         'No, this summary is not a person. This session is being continued from a previous one.',
         {
@@ -460,7 +462,21 @@ describe('mnema corrections', () => {
       bare('<local-command-stdout>No, not the person</local-command-stdout>'),
       bare([{ type: 'text', text: '[Request interrupted by user]' }]),
       bare('No, a line with no sender at all.'),
-      typed('<command-name>/model</command-name> no, still harness text'),
+      typed(
+        '<command-message>No, do not use Redis</command-message>\n<command-name>/model</command-name>',
+      ),
+    ]);
+    expect(answer(payload('Stop', file))).toEqual({ reply: {}, notes: [] });
+    expect(decisionsIn('projectPrivate')).toHaveLength(0);
+  });
+
+  it('does not quote a slash command the person typed as a correction', async () => {
+    await did('switch', 'on', 'user-corrections');
+    const file = transcript([
+      typed('Fix the build'),
+      assistant(),
+      typed('<command-message>No, use pnpm instead of npm.</command-message>'),
+      assistant(),
     ]);
     expect(answer(payload('Stop', file))).toEqual({ reply: {}, notes: [] });
     expect(decisionsIn('projectPrivate')).toHaveLength(0);
