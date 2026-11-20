@@ -236,8 +236,8 @@ const SUBAGENT_HOOK = 'subagent-start.mjs';
 const VERB_OF: Readonly<Record<string, string>> = {
   [DOCUMENT_HOOK]: 'brief --hook',
   [NOTES_HOOK]: 'recall --hook',
-  [COMPACTED_HOOK]: `recall --after-a-compaction --session ${A_SESSION} --hook`,
   [TALLY_HOOK]: 'tally',
+  [COMPACTED_HOOK]: `recall --after-a-compaction --session ${A_SESSION} --hook`,
   [CORRECTIONS_HOOK]: 'corrections',
   [CURSOR_HOOK]: 'before-a-write --host cursor --agent-key cursor',
   [GATE_HOOK]: 'before-a-write --host vscode --agent-key vscode',

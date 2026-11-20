@@ -134,21 +134,26 @@ describe('what an accept rests on, with a transcript that is known', () => {
 
   it('waits when the transcript is empty and when it cannot be read', () => {
     writeFileSync(transcript, '');
-    expect(whatTheAcceptRestsOn(move(transcript, 'He said "keep the cache"'))?.outcome).toBe('waits');
+    expect(whatTheAcceptRestsOn(move(transcript, 'He said "keep the cache"'))?.outcome).toBe(
+      'waits',
+    );
     const gone = join(sandbox, 'gone.jsonl');
     expect(whatTheAcceptRestsOn(move(gone, 'He said "keep the cache"'))?.outcome).toBe('waits');
   });
 
   it('reads the curly apostrophe and the straight one as the same, on both sides', () => {
-    writeFileSync(transcript, `${typed('Please don\u2019t drop the cache, it\'s needed.')}\n`);
+    writeFileSync(transcript, `${typed("Please don\u2019t drop the cache, it's needed.")}\n`);
     expect(
-      whatTheAcceptRestsOn(move(transcript, 'Said "don\'t drop the cache, it\u2019s needed"'))?.outcome,
+      whatTheAcceptRestsOn(move(transcript, 'Said "don\'t drop the cache, it\u2019s needed"'))
+        ?.outcome,
     ).toBe('typed');
   });
 });
 
 describe('an agent accept at the command line', () => {
-  it('finds the transcript from a Stop alone, with no SessionStart before it', { timeout: 60_000 }, () => {
+  it('finds the transcript from a Stop alone, with no SessionStart before it', {
+    timeout: 60_000,
+  }, () => {
     const id = aProposedDecision();
     writeFileSync(transcript, `${typed('Yes, keep the cache between runs, do it.')}\n`);
     const told = mnema(
