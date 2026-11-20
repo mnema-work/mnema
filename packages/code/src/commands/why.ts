@@ -163,6 +163,18 @@ function describe(all: readonly DecisionFacts[], commit: Commit): WhyCommit {
   };
 }
 
+/** The order the gate applies the relations in: a refusal, then an asking, then the governing. */
+const GATE_ORDER: readonly RuleInForceUnder['relation'][] = [
+  'refuses-a-write',
+  'asks-for-a-person',
+  'governs',
+];
+
+/** The rules in the gate's order of relations; inside one relation, the reading's own (most specific first). */
+function inGateOrder(rules: readonly RuleInForceUnder[]): RuleInForceUnder[] {
+  return GATE_ORDER.flatMap((relation) => rules.filter((rule) => rule.relation === relation));
+}
+
 /** A pushed rule as the answer carries it. */
 function ruleOf(rule: RuleInForceUnder, files?: number, decided?: boolean): WhyRule {
   return {
@@ -260,7 +272,7 @@ export function runWhy(
       ...(at.relative !== undefined ? { relative: at.relative } : {}),
       exists,
       verdict,
-      rules: at.rules.map((rule) => ruleOf(rule, undefined, decides(rule))),
+      rules: inGateOrder(at.rules).map((rule) => ruleOf(rule, undefined, decides(rule))),
       git: gitHere,
       shallow: gitHere && isShallow(root),
       commits: listed.slice(0, LISTED).map((one) => describe(all, one)),
