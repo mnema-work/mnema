@@ -113,6 +113,19 @@ describe('the rules in force a person did not accept themselves', () => {
     expect(listed(a)).toEqual(['shared']);
   });
 
+  it('keeps a rule whose showing covered only the other machine’s accept', () => {
+    // The other order of the case above: the accept the showing names is the one from the clone,
+    // and the one made here is left uncovered.
+    const a = makeBench();
+    birthDecision(a, 'shared', 'Accepted on two machines');
+    const clone = cloneOf(a);
+    accept(a, 'shared');
+    const there = accept(clone, 'shared', { which: 'codex' });
+    mergeTailInto(a, clone);
+    show(a, 'shared', [there]);
+    expect(listed(a)).toEqual(['shared']);
+  });
+
   it('a showing that covers both accepts takes it off again', () => {
     const a = makeBench();
     birthDecision(a, 'shared', 'Accepted on two machines');

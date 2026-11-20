@@ -52,6 +52,7 @@ describe('a showing is a person’s', () => {
     }
   });
 
+  // @proves a-rule-marked-shown-was-read-by-a-person
   it('is refused with no terminal and no agent declared, and writes nothing', () => {
     const { ctx, events } = tree();
     const result = recordDecisionSeen(ctx, {

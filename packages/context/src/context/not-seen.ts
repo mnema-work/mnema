@@ -84,8 +84,11 @@ export function rulesNotSeenBy(caches: readonly ProjectionCache[], identity: str
       break;
     }
   }
-  rules.sort((a, b) =>
-    newestFirst({ at: a.accepted.at, id: a.id }, { at: b.accepted.at, id: b.id }),
-  );
+  rules.sort(byNewestAccept);
   return { rules, ...(lastShown !== undefined ? { lastShown } : {}) };
+}
+
+/** Newest accept first, by the core's {@link newestFirst}: this names the instant and asks nothing else. */
+function byNewestAccept(a: RuleNotSeen, b: RuleNotSeen): number {
+  return newestFirst({ at: a.accepted.at, id: a.id }, { at: b.accepted.at, id: b.id });
 }
