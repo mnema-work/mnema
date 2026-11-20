@@ -99,7 +99,7 @@ _mnema_flags() {
     'audit antipatterns') echo '--json -h --help -V --version --color' ;;
     'audit exposure') echo '--json -h --help -V --version --color' ;;
     'diagram') echo '-h --help -V --version --color' ;;
-    'export') echo '--from --to --who --which --global -h --help -V --version --color' ;;
+    'export') echo '--from --to --who --which --madr --global -h --help -V --version --color' ;;
     'usage') echo '--tools -h --help -V --version --color' ;;
     'resume') echo '--actor --json -h --help -V --version --color' ;;
     'repl') echo '-h --help -V --version --color' ;;
