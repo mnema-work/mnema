@@ -1,4 +1,3 @@
-// @plants-damage
 /**
  * WHAT A READ PROVES OF A TAIL BY ITS CHECKPOINTS (ADR-557 to ADR-562): the events a holding
  * checkpoint covers are proven, the range of a line that does not hold is withheld, one write's
