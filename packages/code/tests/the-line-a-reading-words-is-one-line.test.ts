@@ -1741,7 +1741,7 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'how many decisions the review goes through: a count of the list',
   },
-  'rules-test.ts « ({})» one.by.map(oneLine).join(', ') #1': {
+  "rules-test.ts « ({})» one.by.map(oneLine).join(', ') #1": {
     verdict: 'collapsed',
     why: 'the ids of the rules the record holds behind a verdict, each collapsed',
   },
