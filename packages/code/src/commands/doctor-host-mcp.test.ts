@@ -418,6 +418,9 @@ describe('what a review of the first version found', () => {
   });
 });
 
+/** A variable the host expands before it starts the command, as Gemini CLI, Cursor and VS Code write one. */
+const HOST_VARIABLE = ['$', '{env:SOMEONE}'].join('');
+
 describe('an entry that cannot be verified is neither dead nor the one that stays', () => {
   const claudeJson = (): string => join(home, '.claude.json');
   const unknownUser = (): Record<string, unknown> => ({
@@ -445,7 +448,7 @@ describe('an entry that cannot be verified is neither dead nor the one that stay
     const text = pretty({
       mcpServers: { mnema: unknownUser() },
       projects: {
-        [repo]: { mcpServers: { mnema: { command: '/x/${env:HOME}/mnema', args: ['mcp'] } } },
+        [repo]: { mcpServers: { mnema: { command: `/x/${HOST_VARIABLE}/mnema`, args: ['mcp'] } } },
       },
     });
     put(claudeJson(), text);
@@ -458,8 +461,8 @@ describe('an entry that cannot be verified is neither dead nor the one that stay
     const gemini = join(home, '.gemini', 'settings.json');
     const text = pretty({
       mcpServers: {
-        mnema: { command: '/home/${env:SOMEONE}/bin/mnema', args: ['mcp'] },
-        viaHome: { command: '${userHome}/bin/mnema', args: ['mcp'], cwd: '/gone/$WHERE' },
+        mnema: { command: `/home/${HOST_VARIABLE}/bin/mnema`, args: ['mcp'] },
+        viaHome: { command: `${HOST_VARIABLE}/bin/mnema`, args: ['mcp'], cwd: '/gone/$WHERE' },
       },
     });
     put(gemini, text);
