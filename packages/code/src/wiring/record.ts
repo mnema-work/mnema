@@ -105,6 +105,15 @@ export function registerRecord(program: Command, wiring: Wiring): Declared {
           ),
         );
       }
+      if (result.linked !== undefined) {
+        io.err(
+          render(
+            fact(
+              onOneLine`${result.linked.join(', ')}: a symbolic link stands there now, and this mnema does not write through a link, which can point outside the record: what this checkout held there was not put back and stays in the folder above. Replace the link with the file it points to, then copy that file back.`,
+            ),
+          ),
+        );
+      }
       if (result.unresolved !== undefined) {
         const { conflicted, stashKept } = result.unresolved;
         if (conflicted.length > 0) {

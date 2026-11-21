@@ -598,6 +598,10 @@ export async function parseWith(built: BuiltProgram, argv: readonly string[]): P
         verbs: program.commands.map((command) => command.name()),
         aPersonIsHere: io.aPersonIsHere === true,
       });
+      if (noted.linked !== undefined) {
+        const { linkedLogSentence } = await import('./linked-log.js');
+        io.err(render(fact(linkedLogSentence(noted.linked, 'diagnostic log'), 0)));
+      }
       if (noted.offer) io.err(render(reportOfferSentence()));
       io.fail(INTERNAL_ERROR_EXIT);
       return;

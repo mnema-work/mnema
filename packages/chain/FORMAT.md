@@ -328,6 +328,21 @@ above. This binds this product's writer and nothing else: another writer that pu
 still refused by both readers
 (`packages/chain/src/chain/the-writer-does-not-write-through-a-link.test.ts`).
 
+**So do the other writes of this product that open a path for writing.** The public key of another
+member materialized into `keys/` (when a member is enrolled, a checker vouched for or a backup key
+registered, and again before a founding appends), the files of a witness (`tails/<tail>/witness/<checkpoint>.ots`,
+`.blocks` and the Sigstore bundle `.sigstore.json`, with the directories above them), the checkout's mark
+that the machinery of an earlier version was moved (`migrated/<fingerprint>`) and the `.gitignore` of the key root (in the home, before the first
+private byte of a key) are asked about first, a link to nothing included (which the write would create
+at its target), and a symbolic link there is refused with `RECORD_LINKED` before anything is written; the
+witness is left as it was. The acts that send something before they write (a stamp to the calendars,
+a signature to Rekor, a return visit to a calendar) ask first, so a refusal costs nothing outside. The local logs of the data directory (the diagnostic log and the count of tool calls)
+never break the call they belong to, so a log that is a symbolic link is not written to and the words of
+the refusal are said once where each reports: after an internal error for the first, on the error stream of the
+MCP server for the second
+(`packages/chain/src/chain/the-key-and-witness-writers-do-not-write-through-a-link.test.ts`,
+`packages/code/tests/the-logs-of-the-data-dir-do-not-write-through-a-link.test.ts`).
+
 The tail is the concatenation of its segments in name order, and sequence numbers
 are contiguous across that concatenation: **which segment a given sequence number
 falls in is not specified**, and a verifier should not depend on it. Nothing else
