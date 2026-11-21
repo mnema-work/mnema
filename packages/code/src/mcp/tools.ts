@@ -114,6 +114,7 @@ import {
   isSearchKind,
   keyRefusalIn,
   type ProjectionCache,
+  parseWindow,
   type ReferenceDirection,
   type ReplacedClass,
   type ResolvedTrees,
@@ -211,6 +212,7 @@ import {
   THE_CHAIN_AS_IT_STANDS_NOW,
   THE_READING_THAT_OPENED_THESE,
 } from '../tree-sources.js';
+import { windowRefusalSentence } from '../vocabulary.js';
 import {
   ALTERED_RECORD_NOTE,
   type ChargeRecorded,
@@ -2492,7 +2494,7 @@ export type SearchToolResult =
   | {
       readonly ok: false;
       /** `SCOPE_UNAVAILABLE` (a tree absent here) or `UNKNOWN_KIND`. */
-      readonly code: 'SCOPE_UNAVAILABLE' | 'UNKNOWN_KIND';
+      readonly code: 'SCOPE_UNAVAILABLE' | 'UNKNOWN_KIND' | 'INVALID_WINDOW';
       /** The human-readable reason. */
       readonly message: string;
     };
@@ -2555,7 +2557,23 @@ export function runSearchTool(session: Session, input: RecordQuery = {}): Search
       message: `"${input.kind}" is not a kind of record (one of: ${SEARCH_KINDS.join(', ')})`,
     };
   }
-  return { ok: true, value: searchRecords(workspaceCaches(session), input) };
+  // The window is read as dates and timestamps, not compared as strings: `to: "garbage"`
+  // sorts after every stamp and used to return the whole record as if it were an answer.
+  const window = parseWindow(input);
+  if (!window.ok)
+    return { ok: false, code: 'INVALID_WINDOW', message: windowRefusalSentence(window, 'field') };
+  return {
+    ok: true,
+    value: searchRecords(workspaceCaches(session), { ...withoutWindow(input), ...window.window }),
+  };
+}
+
+/** A query's fields other than its raw window, which the caller replaces by the parsed one. */
+function withoutWindow<T extends { readonly from?: string; readonly to?: string }>(
+  input: T,
+): Omit<T, 'from' | 'to'> {
+  const { from: _from, to: _to, ...rest } = input;
+  return rest;
 }
 
 /** One whole record, or a typed refusal. */
@@ -2664,10 +2682,11 @@ type IntelligenceResult<T> =
   | {
       readonly ok: false;
       /**
-       * There is no project here (an intelligence read is about a project's record) or the
-       * `ADR-<n>` it was asked about names several decisions.
+       * There is no project here (an intelligence read is about a project's record), the
+       * `ADR-<n>` it was asked about names several decisions, or a `from`/`to` is not a
+       * date or a timestamp.
        */
-      readonly code: 'NO_PROJECT' | 'AMBIGUOUS_LABEL';
+      readonly code: 'NO_PROJECT' | 'AMBIGUOUS_LABEL' | 'INVALID_WINDOW';
       /** The human-readable reason. */
       readonly message: string;
     };
@@ -3408,7 +3427,16 @@ export function runAccountabilityTool(
 ): AccountabilityToolResult {
   const refused = requireProject(session);
   if (refused !== undefined) return refused;
-  return { ok: true, value: accountabilityByProject(workspaceCaches(session), input) };
+  const window = parseWindow(input);
+  if (!window.ok)
+    return { ok: false, code: 'INVALID_WINDOW', message: windowRefusalSentence(window, 'field') };
+  return {
+    ok: true,
+    value: accountabilityByProject(workspaceCaches(session), {
+      ...withoutWindow(input),
+      ...window.window,
+    }),
+  };
 }
 
 /** The `audit_exposure` result, where a credential format sits, or a refusal. */
