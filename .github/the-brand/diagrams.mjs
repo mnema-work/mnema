@@ -103,7 +103,8 @@ const DASH =
 
 /**
  * A soft pulse along a line: a copy of it, a dash of the theme's ink that runs the line's length in the first share of
- * the cycle. Where the animation does not run, the resting offset leaves no dash on the line.
+ * the cycle. A line that is itself drawn in the ink (a sign's colour on the light theme) is run by a dash of the
+ * ground, a gap of light along it, since a dash of its own colour would not show. Where the animation does not run, the resting offset leaves no dash on the line.
  * @param {Pen} t
  * @param {string} d the line's data, absolute
  * @param {boolean} [strong] a line of a sign's colour, which the pulse shows more on
@@ -111,7 +112,7 @@ const DASH =
 const pulse = (t, d, strong = false) => {
   const reversed = endsOf(d)[0] > endsOf(d)[1];
   t.used.add(reversed ? 'kr' : 'k');
-  return `<path class="${reversed ? 'kr' : 'k'}" d="${relative(d)}" ${DASH} stroke="${t.ink}" stroke-opacity="${strong ? '.9' : '.5'}" stroke-width="${strong ? '2.2' : '1.8'}"/>`;
+  return `<path class="${reversed ? 'kr' : 'k'}" d="${relative(d)}" ${DASH} stroke="${strong && t.acc === t.ink ? t.bg : t.ink}" stroke-opacity="${strong ? '.9' : '.5'}" stroke-width="${strong ? '2.2' : '1.8'}"/>`;
 };
 
 /**

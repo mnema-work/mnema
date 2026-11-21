@@ -1073,6 +1073,39 @@ describe('the diagrams are outlines of their words, drawn in the brand', () => {
       },
     );
 
+    it.each(FOURTEEN)('%s runs each pulse in a colour other than the line it copies', (path) => {
+      const svg = diagrams[path] ?? '';
+      // a line and the pulse drawn right after it, and a band's lines (the stroke on their group) and its pulses
+      const single = [
+        ...svg.matchAll(
+          /<path d="[^"]*"(?: fill="none")? stroke="(#\w+)"[^>]*\/><path class="kr?" [^>]* stroke="(#\w+)"/g,
+        ),
+      ].map((m) => [m[1], m[2]]);
+      const banded = [
+        ...svg.matchAll(
+          /<g mask="[^"]*" fill="none" stroke="(#\w+)"[^>]*>(?:<path d="[^"]*"\/>)+<\/g><g mask="[^"]*"><path class="kr?" [^>]* stroke="(#\w+)"/g,
+        ),
+      ].map((m) => [m[1], m[2]]);
+      expect(single.length + banded.length).toBeGreaterThan(0);
+      expect([...single, ...banded].filter(([line, pulse]) => line === pulse)).toEqual([]);
+    });
+
+    it('sends out no ripple from a sign of the legend', () => {
+      for (const theme of ['dark', 'light']) {
+        const svg = diagrams[`${ASSETS}/how-mnema-fits-${theme}.svg`] ?? '';
+        const at = (m: RegExpMatchArray) => `${m[1]},${m[2]}`;
+        // the legend's four signs are drawn at radius 7 along the foot
+        const legend = [...svg.matchAll(/<circle cx="([\d.]+)" cy="(494)" r="7"(?! class)/g)].map(
+          at,
+        );
+        expect(legend).toHaveLength(4);
+        const rippling = [
+          ...svg.matchAll(/<circle class="h d\d+" cx="([\d.]+)" cy="([\d.]+)"/g),
+        ].map(at);
+        expect(rippling.filter((p) => legend.includes(p))).toEqual([]);
+      }
+    });
+
     // The eye at rest as the diagrams drew it before they moved, said here by its digest (the id of its clip left out).
     const AT_REST = {
       dark: '9c2b2efbdca012aa6509433d8852973ad08898a93ed8a3313764db28adacf27c',
