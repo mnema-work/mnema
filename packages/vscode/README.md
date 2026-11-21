@@ -1,6 +1,6 @@
 # @mnema/vscode
 
-[![CI](https://img.shields.io/github/actions/workflow/status/mnema-work/mnema/ci.yml?branch=main&style=flat-square&label=CI&color=997dbf)](https://github.com/mnema-work/mnema/actions/workflows/ci.yml) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-997dbf?style=flat-square)](../../LICENSE) ![Node 24.15.0 or a later 24, or 26.0.0 or later](https://img.shields.io/badge/node-%5E24.15.0%20%7C%7C%20%3E%3D26.0.0-997dbf?style=flat-square) ![Published as mnema.mnema on the Visual Studio Marketplace and Open VSX](https://img.shields.io/badge/extension-mnema.mnema-997dbf?style=flat-square)
+[![CI](https://img.shields.io/github/actions/workflow/status/mnema-work/mnema/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/mnema-work/mnema/actions/workflows/ci.yml) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-6b6862?style=flat-square)](../../LICENSE) ![Node 24.15.0 or a later 24, or 26.0.0 or later](https://img.shields.io/badge/node-%5E24.15.0%20%7C%7C%20%3E%3D26.0.0-6b6862?style=flat-square) ![Published as mnema.mnema on the Visual Studio Marketplace and Open VSX](https://img.shields.io/badge/extension-mnema.mnema-6b6862?style=flat-square)
 
 A VS Code extension for the person who reviews the [mnema](https://github.com/mnema-work/mnema)
 record, not for the agent. The record already says which decisions govern a file and which wait for
@@ -18,7 +18,7 @@ the `mnema` command line, which the extension does not bring: `@mnema/code` stay
   `mnema rules --json -- <path>` (the path comes after `--`, so a file named `-x` is a file). Clicking it lists them: the decision's name, what it does to the
   file, and who accepted it, as the record says; picking one opens that decision whole (see below),
   with no judgment button, since it is in force. A file no rule in force addresses has no lens.
-- **A container of its own in the activity bar, titled mnema, with the banner's M as its icon.** It holds
+- **A container of its own in the activity bar, titled mnema, with the M of the console's wordmark as its icon.** It holds
   the two views below, "Awaiting Judgment" and "Stacks", and carries a badge: the number of decisions
   awaiting a judgment, as many as `mnema` says exist (not only the ones listed), nothing at zero and
   nothing when the list was not read. The icon is the first letter of the console's wordmark, drawn when

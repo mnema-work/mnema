@@ -1,31 +1,21 @@
-// Draws the front page's banner, `docs/assets/banner-{dark,light}.svg`, in the family's paint and motion, and the social
-// card. The diagrams of the README and of the packages, which this file drew once, are drawn in `.github/the-brand/`
-// (`node .github/the-brand/diagrams.mjs`), and their text is outlines there; none of that is here.
+// Draws the social card, and keeps the pieces that others read. The README's banner is not drawn here: it is the lockup of
+// the brand, the eye and the word, and `node .github/the-brand/banner.mjs` draws it. The diagrams of the README and of the
+// packages are drawn in `.github/the-brand/` too (`node .github/the-brand/diagrams.mjs`). Not every picture of the
+// repository is drawn from the console's rows any more: this one is, and it is the social card.
 //
 // THE EXPORTS STAY BECAUSE OTHERS READ THEM: the site imports `CELL`, `inkFoot`, `PAGE` and `socialCard` from a checkout of
 // this repository, the extension's icon builder imports `CELL`, `inkFoot` and `PAGE`, and a page of the record copies
-// `PAGE`. This file imports statically nothing but `node:fs`, `node:url` and `./accent.mjs`, so that import keeps working in a checkout
-// that has no `node_modules`.
+// `PAGE`. This file imports statically nothing but `./accent.mjs`, so that import keeps working in a checkout that has no
+// `node_modules`, and it imports nothing of `.github/the-brand/`, whose outlines need `opentype.js`.
 //
-// THE BANNER IS THE CONSOLE'S WORDMARK. Its rows are read from `THE_BLOCKS`
-// (`packages/code/src/presentation/banner.ts`, through the build) and each glyph is drawn as
-// geometry in a cell of the terminal's proportions: a full block as a filled cell, a
-// double-line box glyph as its two strokes. Geometry rather than text, because GitHub serves an
-// SVG as an image and a block font cannot be counted on there. Beside it, a short chain of
-// blocks. The only hue is the accent (`accent.mjs`); everything else is a grey. A faint light
-// passes over the letters and the blocks and moves nothing; out of it, the banner is as drawn.
+// THE SOCIAL CARD IS THE CONSOLE'S WORDMARK. Its rows are read from `THE_BLOCKS`
+// (`packages/code/src/presentation/banner.ts`, through the build, by the site) and each glyph is drawn as geometry in a cell
+// of the terminal's proportions: a full block as a filled cell, a double-line box glyph as its two strokes. Geometry rather
+// than text, because a link preview is an image. Beside it, a short chain of blocks, and under it the pitch of the README.
 //
-// From the root of a built checkout (`pnpm build`):
-//
-//   node .github/the-front-page/draw.mjs          writes the pictures
-//   node .github/the-front-page/draw.mjs --check  writes nothing; exits 1 if one differs
-//
-// `packages/code/tests/the-front-page-is-drawn-from-the-console.test.ts` calls
-// `drawTheFrontPage` over the rows the console draws today and holds each committed banner to
-// what it returns.
+// `packages/code/tests/the-front-page-is-drawn-from-the-console.test.ts` holds what this file exports to the values it has
+// today: `CELL`, `PAGE`, `inkFoot` and the bytes of `socialCard`.
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
 import { ACCENT } from './accent.mjs';
 
 /** The greys of each theme: GitHub's own text, muted text and border. */
@@ -35,7 +25,6 @@ const NEUTRAL = Object.freeze({
 });
 
 const SANS = "-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans',Helvetica,Arial,sans-serif";
-const MONO = "ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace";
 
 /**
  * A number as the picture writes it: at most two decimals, no trailing zeros.
@@ -258,104 +247,6 @@ function chain(accent, muted, x0, cy, paint) {
   return { parts, width: shades.length * 2 * dx + (shades.length - 1) * link };
 }
 
-/** The room between what the banner, the steps and how mnema fits draw and each side of their frame. */
-const FRONT_MARGIN = 8;
-
-/** The banner's loop, in seconds: long, for a light that is barely there. */
-const BANNER_LOOP = 12;
-/** How many columns of the wordmark one band of the light that passes over the letters covers. */
-const BAND_COLUMNS = 4;
-
-/**
- * The banner, in the family's paint: its own page and the glow behind it, and a light that is
- * barely there. A band of light passes over the letters from left to right, then the four cubes
- * light one after the other, and all four go dark together; nothing moves. Every light is laid
- * over the drawing and is out in the last frame, so a reader who asked for less motion sees the
- * banner as it is drawn.
- * @param {readonly string[]} blocks
- * @param {'dark' | 'light'} theme
- */
-function banner(blocks, theme) {
-  const s = { ...scene(BANNER_LOOP, theme), paint: frontPalette(theme) };
-  const accent = ACCENT[theme];
-  const { muted, text } = NEUTRAL[theme];
-  const columns = Math.max(...blocks.map((row) => [...row].length));
-  const markWidth = columns * CELL.w;
-  const gap = 56;
-  // The drawing on the middle of the frame, the margin in from each side: the cubes' outer stroke
-  // reaches past their row by half its width, and the last row of the wordmark is shadow only,
-  // whose lowest stroke is the lower one of a double line on the middle of its cell.
-  const x0 = FRONT_MARGIN;
-  const y0 = FRONT_MARGIN;
-  const foot = inkFoot(blocks);
-  // The chain sits on the middle of the letters' faces.
-  const middle = y0 + ((blocks.length - 1) * CELL.h) / 2;
-  const { parts, width } = chain(accent, muted, x0 + markWidth + gap, middle, s.paint);
-  // Written to a hundredth, up, so the margin on the right is never under the one on the left.
-  const w = Math.ceil((x0 + markWidth + gap + width + 1.75 / 2 + FRONT_MARGIN) * 100) / 100;
-  const h = y0 + foot + FRONT_MARGIN;
-  const [blockPath, linePath] = wordmark(blocks, accent, x0, y0);
-  const letters = /\bd="([^"]*)"/.exec(blockPath ?? '')?.[1] ?? '';
-  /** @type {string[]} */
-  const light = [];
-  // The light over the letters: a band of columns at a time, each up and down once, the next a
-  // little after, in the deepest grey of the theme over the accent, faint.
-  const bands = Math.ceil(columns / BAND_COLUMNS);
-  for (let k = 0; k < bands; k++) {
-    const t = 0.8 + 0.15 * k;
-    light.push(
-      `<rect ${s.goes(
-        [
-          [0, '0'],
-          [t, '0'],
-          [t + 0.6, '1'],
-          [t + 1.4, '0'],
-          [s.loop, '0'],
-        ],
-        '0',
-      )} x="${n(x0 + k * BAND_COLUMNS * CELL.w)}" y="${y0}" width="${BAND_COLUMNS * CELL.w}" height="${foot}" fill="${text}" fill-opacity="0.16" clip-path="url(#letters)"/>`,
-    );
-  }
-  // The cubes light one after the other, faintly, and go dark together.
-  const a = 30;
-  const step = 2 * a * COS30 + 18;
-  for (let i = 0; i < 4; i++) {
-    const t = 4.2 + 0.5 * i;
-    light.push(
-      `<path ${s.goes(
-        [
-          [0, '0'],
-          [t, '0'],
-          [t + 0.8, '1'],
-          [9.0, '1'],
-          [9.8, '0'],
-          [s.loop, '0'],
-        ],
-        '0',
-      )} d="${hexagon(x0 + markWidth + gap + a * COS30 + i * step, middle, a)}" fill="${accent}" fill-opacity="${s.paint.glows}"/>`,
-    );
-  }
-  return [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${n(w)}" height="${n(h)}" viewBox="0 0 ${n(w)} ${n(h)}" role="img" aria-label="mnema">`,
-    '<title>mnema</title>',
-    '<style>',
-    `.a{animation-duration:${BANNER_LOOP}s;animation-iteration-count:infinite;animation-timing-function:ease-in-out}`,
-    ...s.css,
-    '@media (prefers-reduced-motion: reduce){.a{animation:none!important}}',
-    '</style>',
-    `<defs><clipPath id="letters"><path d="${letters}"/></clipPath></defs>`,
-    ...s.paint.defs,
-    `<rect width="${n(w)}" height="${n(h)}" fill="${PAGE[theme]}"/>`,
-    `<ellipse cx="${n(w / 2)}" cy="${n(h / 2)}" rx="${n(w / 2 - 8)}" ry="${n(h / 2)}" fill="url(#glow)"/>`,
-    blockPath,
-    linePath,
-    ...parts,
-    ...light,
-    '</svg>',
-    '',
-  ].join('\n');
-}
-
 /** The size of the social card, the one every link preview takes: 1200 by 630. */
 export const CARD = Object.freeze({ w: 1200, h: 630 });
 
@@ -383,9 +274,9 @@ function wrapped(text, size, limit) {
 }
 
 /**
- * The social card of the site, one picture for every page: a link preview takes a still image. The banner's
- * wordmark and four cubes, drawn by the pieces the banner draws with and nothing that moves, on the dark
- * page, and under them the pitch of the README, its line and its paragraph, as the only words. Each line
+ * The social card of the site, one picture for every page: a link preview takes a still image. The console's
+ * wordmark and four cubes, nothing that moves, on the dark page, and under them the pitch of the README, its line
+ * and its paragraph, as the only words. Each line
  * is a `<text>` in the front page's sans face; the card is rasterized with those letters drawn.
  * @param {{ blocks: readonly string[], pitch: { title: string, body: string } }} options
  */
@@ -438,195 +329,18 @@ export function socialCard({ blocks, pitch }) {
   ].join('\n');
 }
 
-// ---------------------------------------------------------------------------------------------
-// What the banner is drawn with: a scene of keyframes, and the paint of a theme
-//
-// `scene` also carries helpers that write text and that give an element its keyframes (`say`, `sayIn`, `stays`, `passes`,
-// `leaves`); the banner calls none of them. They are what the diagrams were once drawn with, and stay only because `scene`
-// is one function that the banner calls whole. The diagrams are drawn in `.github/the-brand/`.
-
 /** @param {string} text */
 const escaped = (text) =>
   text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 
-const LOOP = 14;
-
 /**
- * Keyframes for one property over the loop, from [seconds, value] stops. The first stop must
- * be at 0 and the last at LOOP, with the same value, so the loop closes on itself.
- * @param {string} name
- * @param {string} property
- * @param {[number, string][]} stops
- * @param {number} [loop]
- */
-function keyframes(name, property, stops, loop = LOOP) {
-  const at = stops.map(([t, v]) => `${n((t / loop) * 100)}%{${property}:${v}}`).join('');
-  return `@keyframes ${name}{${at}}`;
-}
-
-/**
- * An opacity that is 0 outside [from, to], fading over `fade` seconds at each end.
- * @param {number} from
- * @param {number} to
- * @param {number} [fade]
- * @param {number} [loop]
- * @returns {[number, string][]}
- */
-function shown(from, to, fade = 0.3, loop = LOOP) {
-  return [
-    [0, '0'],
-    [from, '0'],
-    [from + fade, '1'],
-    [to - fade, '1'],
-    [to, '0'],
-    [loop, '0'],
-  ];
-}
-
-/** @typedef {{ said: string, where: string }} Said */
-/** @typedef {readonly (Said | string)[]} Line */
-
-/**
- * What a line puts on the picture.
- * @param {Line} line
- */
-const textOf = (line) => line.map((p) => (typeof p === 'string' ? p : p.said)).join('');
-
-/**
- * The page of each theme: the ground the banner and the social card are drawn on, and the one the
- * site and the extension's icon read.
+ * The page of each theme: the ground the social card is drawn on, and the one the site and the extension's icon
+ * read.
  */
 export const PAGE = Object.freeze({ dark: '#0d1117', light: '#ffffff' });
 
-/**
- * One size for each role a text plays in `scene`'s `say`: the name of a thing, the name on a box, a
- * grey caption beside a thing, a literal of code or of output, and a row of a list or of a table.
- * `centre` is how far below the middle of a box the baseline of a line of that size goes for its
- * ink to sit on the middle. Nothing draws with these now that the banner is the only picture
- * `scene` serves.
- */
-const TYPE = Object.freeze({
-  heading: { size: 15, weight: '600', centre: 4.7 },
-  label: { size: 13, weight: '600', centre: 4 },
-  caption: { size: 12, weight: '', centre: 3.7 },
-  code: { size: 12, weight: '', centre: 3.7 },
-  value: { size: 12, weight: '', centre: 3.7 },
-});
-
-/** @typedef {keyof typeof TYPE} Role */
-
-/** Half the distance between two rows of text inside a box. */
-const HALF_ROW = 10;
 /** The advance of one character of the monospace face, as a share of its size. */
 const ADVANCE = 0.6;
-
-/**
- * The baseline of a line of a role inside a box, `row` half rows off its middle.
- * @param {{ y: number, h: number }} frame
- * @param {Role} role
- * @param {number} [row]
- */
-const inside = (frame, role, row = 0) => frame.y + frame.h / 2 + TYPE[role].centre + row * HALF_ROW;
-
-/**
- * The paint of one theme, and the helpers that give an element its keyframes over a package's
- * own loop. An element that `stays` is there in the last frame and carries no opacity of its
- * own; one that `passes` is not, and carries `opacity="0"`. Everything there in the last frame
- * leaves at once, at `ends` (`leaves`), so nothing is left alone on the page at the end of a loop.
- * @param {number} loop
- * @param {'dark' | 'light'} theme
- */
-function scene(loop, theme) {
-  const accent = ACCENT[theme];
-  const { text, muted, border } = NEUTRAL[theme];
-  /** @type {string[]} */
-  const css = [];
-  let count = 0;
-  /**
-   * @param {string} property
-   * @param {[number, string][]} stops
-   */
-  const animate = (property, stops) => {
-    const name = `k${count++}`;
-    css.push(keyframes(name, property, stops, loop));
-    return name;
-  };
-  const ends = loop - 0.7;
-  /**
-   * The stops of an element there in the last frame, closed the way every such element closes.
-   * @param {[number, string][]} stops
-   * @returns {[number, string][]}
-   */
-  const leaves = (stops) => [...stops, [ends - 0.3, '1'], [ends, '0'], [loop, '0']];
-  /**
-   * @param {[number, string][]} stops
-   * @param {string} last the opacity of the last frame
-   */
-  const goes = (stops, last) =>
-    `class="a" style="animation-name:${animate('opacity', stops)}"${last === '1' ? '' : ` opacity="${last}"`}`;
-  /**
-   * A line as a text element, in the size of its role.
-   * @param {Line} line
-   * @param {number} x
-   * @param {number} y
-   * @param {Role} role
-   * @param {{ fill?: string, anchor?: string, attrs?: string }} [o]
-   */
-  const say = (line, x, y, role, o = {}) =>
-    `<text${o.attrs ? ` ${o.attrs}` : ''} x="${n(x)}" y="${n(y)}" font-family="${MONO}" font-size="${TYPE[role].size}"${TYPE[role].weight ? ` font-weight="${TYPE[role].weight}"` : ''} fill="${o.fill ?? (role === 'caption' ? muted : text)}"${o.anchor ? ` text-anchor="${o.anchor}"` : ''}>${escaped(textOf(line))}</text>`;
-  return {
-    theme,
-    accent,
-    text,
-    muted,
-    border,
-    paint: palette(theme),
-    css,
-    loop,
-    ends,
-    animate,
-    goes,
-    leaves,
-    /** @param {number} from */
-    stays: (from) =>
-      goes(
-        leaves([
-          [0, '0'],
-          [from, '0'],
-          [from + 0.3, '1'],
-        ]),
-        '1',
-      ),
-    /** @param {number} from @param {number} to */
-    passes: (from, to) => goes(shown(from, to, 0.3, loop), '0'),
-    say,
-    /**
-     * A line inside a box, the only way a text is put in one: on the box's middle, or `row` half
-     * rows above (negative) or below it.
-     * @param {Line} line
-     * @param {number} x
-     * @param {{ y: number, h: number }} frame
-     * @param {Role} role
-     * @param {{ fill?: string, anchor?: string, attrs?: string }} [o]
-     * @param {number} [row]
-     */
-    sayIn: (line, x, frame, role, o = {}, row = 0) =>
-      say(line, x, inside(frame, role, row), role, o),
-  };
-}
-
-/** @typedef {ReturnType<typeof scene>} Scene */
-
-/**
- * The outline of a cube, as path data, for a glow laid over it.
- * @param {number} x
- * @param {number} cy
- * @param {number} a
- */
-function hexagon(x, cy, a) {
-  const dx = a * COS30;
-  return `M${n(x)} ${n(cy - a)}L${n(x + dx)} ${n(cy - a / 2)}L${n(x + dx)} ${n(cy + a / 2)}L${n(x)} ${n(cy + a)}L${n(x - dx)} ${n(cy + a / 2)}L${n(x - dx)} ${n(cy - a / 2)}z`;
-}
 
 /** How strongly the three faces of a cube on a package's picture are filled: top, left, right. */
 const SHADE = Object.freeze([0.3, 0.16, 0.06]);
@@ -659,7 +373,7 @@ function palette(theme) {
 }
 
 /**
- * The paint of the banner, the steps and how mnema fits. On a dark page it is the family's. On a
+ * The paint of the social card, the steps and how mnema fits. On a dark page it is the family's. On a
  * light page the accent itself is under three and a half to one on the page, so every surface a
  * line, a dot or an edge in the accent lies on is fainter than the family's: the glow, a card's
  * tint, the inside of a number, a tab, a halo and the faces of a cube, laid one over the other,
@@ -703,51 +417,4 @@ function frontPalette(theme) {
     solid: true,
     glows: '0.04',
   };
-}
-
-/** @typedef {{ x: number, y: number, w: number, h: number }} Frame */
-
-/**
- * The banner of each theme, by its file name under `docs/assets/`, drawn from the console's rows.
- * @param {readonly string[]} blocks
- * @returns {Record<string, string>}
- */
-export function drawTheFrontPage(blocks) {
-  return {
-    'banner-dark.svg': banner(blocks, 'dark'),
-    'banner-light.svg': banner(blocks, 'light'),
-  };
-}
-
-if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const built = new URL('../../packages/code/dist/presentation/banner.js', import.meta.url);
-  const { THE_BLOCKS } = await import(built.href);
-  const check = process.argv.includes('--check');
-  /** @param {string} path */
-  const committedAt = (path) => {
-    try {
-      return readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
-    } catch {
-      return '';
-    }
-  };
-  /** @type {Record<string, string>} */
-  const drawn = {};
-  for (const [file, svg] of Object.entries(drawTheFrontPage(THE_BLOCKS)))
-    drawn[`docs/assets/${file}`] = svg;
-  let differs = 0;
-  for (const [path, content] of Object.entries(drawn)) {
-    const at = new URL(`../../${path}`, import.meta.url);
-    if (check) {
-      if (committedAt(path) !== content) {
-        differs++;
-        console.error(`${path} is not what the console draws today`);
-      }
-    } else if (committedAt(path) !== content) {
-      mkdirSync(new URL('.', at), { recursive: true });
-      writeFileSync(at, content);
-      console.log(`wrote ${path}`);
-    }
-  }
-  if (differs > 0) process.exit(1);
 }
