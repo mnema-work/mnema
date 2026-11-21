@@ -290,6 +290,9 @@ describe('the two doors of the one function', () => {
   });
 });
 
+/** An entry verified to work whatever the PATH of the machine: the command is a file that is there and runs. */
+const OURS = { command: process.execPath, args: ['mcp'] };
+
 describe('the mnema MCP server declared a second time', () => {
   const claudeJson = (): string => join(home, '.claude.json');
   const turnOn = (value: boolean): void =>
@@ -305,11 +308,11 @@ describe('the mnema MCP server declared a second time', () => {
         numStartups: 41,
         mcpServers: {
           other: { command: 'other-server', args: ['--x'] },
-          mnema: { command: 'mnema', args: ['mcp'] },
+          mnema: OURS,
         },
         projects: {
-          [repo]: { allowedTools: [], mcpServers: { mnema: { command: 'mnema', args: ['mcp'] } } },
-          '/elsewhere': { mcpServers: { mnema: { command: 'mnema', args: ['mcp'] } } },
+          [repo]: { allowedTools: [], mcpServers: { mnema: OURS } },
+          '/elsewhere': { mcpServers: { mnema: OURS } },
         },
         tips: { seen: 3 },
       },
@@ -380,10 +383,10 @@ describe('the mnema MCP server declared a second time', () => {
     const said = await mnema(['upgrade']);
     expect(said.failed, said.err.join(' / ')).toBe(false);
     const after = JSON.parse(readFileSync(claudeJson(), 'utf8'));
-    expect(after.mcpServers.mnema).toEqual({ command: 'mnema', args: ['mcp'] });
+    expect(after.mcpServers.mnema).toEqual(OURS);
     expect(after.projects[repo].mcpServers).toEqual({});
     expect(after.projects['/elsewhere'].mcpServers.mnema).toBeDefined();
-    const lone = JSON.stringify({ mcpServers: { mnema: { command: 'mnema', args: ['mcp'] } } });
+    const lone = JSON.stringify({ mcpServers: { mnema: OURS } });
     put(claudeJson(), lone);
     const again = await mnema(['upgrade']);
     expect(again.out.join('\n')).not.toMatch(/· mcp:/);
@@ -408,7 +411,7 @@ describe('the mnema MCP server declared a second time', () => {
     expect(said.failed, said.err.join(' / ')).toBe(false);
     const after = JSON.parse(readFileSync(claudeJson(), 'utf8'));
     // Nothing that works here declares it but this file, so the user entry stays (the project one is the second of the file's own).
-    expect(after.mcpServers.mnema).toEqual({ command: 'mnema', args: ['mcp'] });
+    expect(after.mcpServers.mnema).toEqual(OURS);
     expect(JSON.parse(before).mcpServers.mnema).toEqual(after.mcpServers.mnema);
     expect(after.projects[repo].mcpServers).toEqual({});
   };
