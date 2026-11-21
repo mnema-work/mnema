@@ -114,7 +114,7 @@ describe('the MCP tools that take a window', () => {
     session = openSession({
       clientName: 'claude-code',
       roots: [pathToFileURL(join(sandbox, 'project')).href],
-      env: { HOME: join(sandbox, 'home') },
+      env: { home: join(sandbox, 'home') },
     });
     expect(runCaptureMemory(session, { content: 'a note about the window' }).ok).toBe(true);
   });
