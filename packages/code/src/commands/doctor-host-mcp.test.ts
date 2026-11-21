@@ -502,11 +502,17 @@ describe('an entry that cannot be verified is neither dead nor the one that stay
       () => ['@bare:node22', join(sandbox, 'gone', 'cli.js'), 'mcp'],
     ],
     ['node is given a folder', () => [sandbox, 'mcp']],
-    ['an absolute node22 runs a missing script', () => ['@abs:node22', join(sandbox, 'gone', 'cli.js'), 'mcp']],
+    [
+      'an absolute node22 runs a missing script',
+      () => ['@abs:node22', join(sandbox, 'gone', 'cli.js'), 'mcp'],
+    ],
     ['an absolute node22 runs a relative script', () => ['@abs:node22', 'dist/missing.js', 'mcp']],
     ['an absolute node22 is given a folder', () => ['@abs:node22', sandbox, 'mcp']],
     ['an absolute npx starts it', () => ['@abs:npx', '-y', '@mnema/code', 'mcp']],
-    ['an absolute bun runs a script that is there', () => ['@abs:bun', fileURLToPath(import.meta.url), 'mcp']],
+    [
+      'an absolute bun runs a script that is there',
+      () => ['@abs:bun', fileURLToPath(import.meta.url), 'mcp'],
+    ],
     ['a package runner starts it', () => ['@bare:npx', '-y', '@mnema/code', 'mcp']],
     ['bun runs a script that is there', () => ['@bare:bun', fileURLToPath(import.meta.url), 'mcp']],
     [

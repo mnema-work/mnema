@@ -209,7 +209,8 @@ function isVerified(launch: Launch): boolean {
     return false;
   }
   const name = basename(command);
-  const isMnema = name === 'mnema' || (process.platform === 'win32' && /^mnema\.(cmd|exe)$/i.test(name));
+  const isMnema =
+    name === 'mnema' || (process.platform === 'win32' && /^mnema\.(cmd|exe)$/i.test(name));
   const program = name.replace(/\.exe$/i, '');
   const isNode = program === 'node' || program === 'nodejs';
   if (!isMnema && !isNode) return false;
