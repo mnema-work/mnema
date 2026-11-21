@@ -36,6 +36,7 @@ export const WHAT_A_SUBCOMMAND_READS: Readonly<Record<string, readonly string[]>
   'task next': [],
   // The tree an act covers; the reading's `--json` is the reading's.
   'witness sigstore': ['--global'],
+  'witness sigstore-check': ['--global'],
   'witness stamp': ['--global'],
   'witness upgrade': ['--global'],
 };
