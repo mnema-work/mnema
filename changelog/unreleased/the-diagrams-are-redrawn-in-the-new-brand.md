@@ -6,4 +6,6 @@ Changed
   text is outlines of Archivo and IBM Plex Mono (committed with their licence in `.github/the-brand/fonts/`), because an image loads
   no web font; `node .github/the-brand/diagrams.mjs` draws them and the blocks of the READMEs, and the guard reads the words from
   `data-said` where it read a `<text>`. The npm page of each version reads the pictures from `main`, so they change when this lands.
-  The banner and the badges are not part of this change.
+  The diagrams move: the eye at the top blinks on the banner's 9-second cycle, a soft pulse runs along the lines every 7 seconds and
+  each sign sends out a ripple as it passes. Under `prefers-reduced-motion` the pulse and the ripples are not drawn and the eye stays
+  open and still. The banner and the badges are not part of this change.

@@ -4,8 +4,12 @@
 //
 // A diagram is the field of lines (`./field.mjs`) with fixed points on it, and four signs for what a decision is: a ring
 // is a proposed decision, a point one in force, a crossed point a refused write, a ticked point a verified record; a dim
-// point and a dim ring are a decision no longer in force and one never accepted. The eye at the top is the brand's mark,
-// at rest (`./eye.mjs`), and never an icon in a diagram.
+// point and a dim ring are a decision no longer in force and one never accepted. The eye at the top is the brand's mark
+// (`./eye.mjs`), and never an icon in a diagram.
+//
+// A DIAGRAM MOVES, AND STOPS WHEN ASKED TO. The eye blinks on the banner's 9 s cycle; every 7 s a soft pulse runs along
+// the lines from left to right, and each sign sends out a ripple as the pulse passes it. Under `prefers-reduced-motion`
+// the pulse and the ripples are not drawn and the eye shows its still copy. The motion adds no words.
 //
 // EVERY TEXT IS AN OUTLINE, AND ONE DOOR WRITES IT. GitHub shows an SVG as an image, and an image loads no web font, so
 // `say` is the only function that turns a line into the outline of its glyphs (`./outline.mjs`), and it writes the line it
@@ -22,8 +26,8 @@
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { eye } from './eye.mjs';
-import { f, line, smooth } from './field.mjs';
+import { blinkingEye, eye } from './eye.mjs';
+import { f, line, relative, smooth } from './field.mjs';
 import {
   CHAIN_LINES,
   CONTEXT_LINES,
@@ -45,19 +49,123 @@ export { DIGEST, FAMILY_ALT, FAMILY_LINES, SEPARATORS, textOf } from './lines.mj
 /** @typedef {import('./field.mjs').Stone} Stone */
 /** @typedef {'ink' | 'dim' | 'acc'} Ink */
 /**
- * One picture's pen: the theme's paint, and the ids of this picture only. The counter is local to the one picture, so
- * drawing twice in a process gives the same bytes.
- * @typedef {(typeof DIAGRAM)['dark' | 'light'] & { id: (kind: string) => string }} Pen
+ * One picture's pen: the theme's paint, the ids of this picture only, its width, and what its motion has used so far. The
+ * counter is local to the one picture, so drawing twice in a process gives the same bytes. `quiet` is a pen whose signs
+ * send out no ripple (the legend's).
+ * @typedef {(typeof DIAGRAM)['dark' | 'light'] & {
+ *   id: (kind: string) => string,
+ *   width: number,
+ *   delays: Map<string, number>,
+ *   used: Set<string>,
+ *   quiet?: boolean,
+ * }} Pen
  */
 
 /**
  * @param {string} file the picture's name, which every id in it starts with
  * @param {'dark' | 'light'} theme
+ * @param {number} width
  * @returns {Pen}
  */
-const pen = (file, theme) => {
+const pen = (file, theme, width) => {
   let n = 0;
-  return { ...DIAGRAM[theme], id: (kind) => `${file}-${kind}-${++n}` };
+  return {
+    ...DIAGRAM[theme],
+    id: (kind) => `${file}-${kind}-${++n}`,
+    width,
+    delays: new Map(),
+    used: new Set(),
+  };
+};
+
+// ---------------------------------------------------------------- the motion
+
+/** The cycle of the pulse, in seconds, and the share of it in which the pulse crosses: then the field rests. */
+const CYCLE = 7;
+const RUN = 0.62;
+/** The eye's own cycle, in seconds, which is the banner's. */
+const BLINK_BEGIN = -1.5;
+
+/**
+ * The first and last x of a path of the diagrams' lines, to tell a line drawn right to left.
+ * @param {string} d
+ * @returns {[number, number]}
+ */
+const endsOf = (d) => {
+  const numbers = (d.match(/-?\d*\.?\d+/g) ?? []).map(Number);
+  const last = /H(-?[\d.]+)$/.exec(d);
+  return [numbers[0] ?? 0, last === null ? (numbers[numbers.length - 2] ?? 0) : Number(last[1])];
+};
+
+/** The attributes a pulse shares: a dash of 9 in 100 of the line's length, and the resting offset that hides it. */
+const DASH =
+  'pathLength="100" fill="none" stroke-linecap="round" stroke-dasharray="9 200" stroke-dashoffset="-100"';
+
+/**
+ * A soft pulse along a line: a copy of it, a dash of the theme's ink that runs the line's length in the first share of
+ * the cycle. Where the animation does not run, the resting offset leaves no dash on the line.
+ * @param {Pen} t
+ * @param {string} d the line's data, absolute
+ * @param {boolean} [strong] a line of a sign's colour, which the pulse shows more on
+ */
+const pulse = (t, d, strong = false) => {
+  const reversed = endsOf(d)[0] > endsOf(d)[1];
+  t.used.add(reversed ? 'kr' : 'k');
+  return `<path class="${reversed ? 'kr' : 'k'}" d="${relative(d)}" ${DASH} stroke="${t.ink}" stroke-opacity="${strong ? '.9' : '.5'}" stroke-width="${strong ? '2.2' : '1.8'}"/>`;
+};
+
+/**
+ * A ripple from a sign as the pulse reaches it: an unfilled circle that grows and fades. Its delay is the sign's place
+ * along the run, from the left margin to the right one. A sign under 7 in radius sends none.
+ * @param {Pen} t
+ * @param {number} x
+ * @param {number} y
+ * @param {number} r
+ * @param {boolean} yellow a sign of the brand's yellow, whose ripple is the theme's accent
+ */
+const ripple = (t, x, y, r, yellow) => {
+  if (r < 7 || t.quiet === true) return '';
+  const share = Math.max(0, Math.min(1, (x - 40) / (t.width - 80)));
+  const delay = f(share * RUN * CYCLE);
+  if (!t.delays.has(delay)) t.delays.set(delay, t.delays.size);
+  t.used.add('h');
+  return `<circle class="h d${t.delays.get(delay)}" cx="${f(x)}" cy="${f(y)}" r="${r}" fill="none" stroke="${yellow ? t.acc : t.ink}" stroke-width="1.6" opacity="0"/>`;
+};
+
+/**
+ * The stylesheet of one picture: the classes of what moves, their keyframes, and the one rule for a reader who asks for
+ * less motion. Class selectors only, and only `@keyframes` and that one `@media`.
+ * @param {Pen} t
+ */
+const sheet = (t) => {
+  const used = t.used;
+  const rules = [
+    ...(used.has('k') ? [`.k{animation:k ${CYCLE}s linear infinite}`] : []),
+    ...(used.has('kr') ? [`.kr{animation:kr ${CYCLE}s linear infinite}`] : []),
+    ...(used.has('h')
+      ? [
+          `.h{transform-box:fill-box;transform-origin:center;animation:h ${CYCLE}s ease-out infinite}`,
+          ...[...t.delays].map(([delay, i]) => `.d${i}{animation-delay:${delay}s}`),
+        ]
+      : []),
+    ...(used.has('k')
+      ? [
+          `@keyframes k{0%{stroke-dashoffset:9}${RUN * 100}%{stroke-dashoffset:-100}100%{stroke-dashoffset:-100}}`,
+        ]
+      : []),
+    ...(used.has('kr')
+      ? [
+          `@keyframes kr{0%{stroke-dashoffset:-100}${RUN * 100}%{stroke-dashoffset:9}100%{stroke-dashoffset:9}}`,
+        ]
+      : []),
+    ...(used.has('h')
+      ? [
+          '@keyframes h{0%{opacity:.7;transform:scale(1)}12%{opacity:0;transform:scale(2.1)}100%{opacity:0;transform:scale(2.1)}}',
+        ]
+      : []),
+    `@media (prefers-reduced-motion: reduce){${[...['k', 'kr', 'h'].filter((c) => used.has(c)).map((c) => `.${c}`), '.ea'].join(',')}{display:none}.es{display:inline}}`,
+  ];
+  return `<style>${rules.join('')}</style>`;
 };
 
 /** @param {string} text */
@@ -102,22 +210,24 @@ const own = (text) => [text];
 const band = (t, x0, x1, yc, n, pitch, stones, { sw = 1.6, skip = [] } = {}) => {
   const id = t.id('band');
   const half = (n - 1) / 2;
-  const paths = Array.from({ length: n }, (_, k) =>
+  const drawn = Array.from({ length: n }, (_, k) =>
     skip.includes(k)
       ? ''
-      : `<path d="${smooth(line(yc + (k - half) * pitch, stones, x0, x1, Math.round((x1 - x0) / 10)))}"/>`,
-  ).join('');
-  return `<defs><linearGradient id="${id}g"><stop offset="0" stop-color="${PALETTE.mask}" stop-opacity="0"/><stop offset=".06" stop-color="${PALETTE.mask}"/><stop offset=".94" stop-color="${PALETTE.mask}"/><stop offset="1" stop-color="${PALETTE.mask}" stop-opacity="0"/></linearGradient><mask id="${id}" maskUnits="userSpaceOnUse" x="${x0}" y="${yc - n * pitch}" width="${x1 - x0}" height="${2 * n * pitch}"><rect x="${x0}" y="${yc - n * pitch}" width="${x1 - x0}" height="${2 * n * pitch}" fill="url(#${id}g)"/></mask></defs><g mask="url(#${id})" fill="none" stroke="${t.line}" stroke-width="${sw}" stroke-linecap="round">${paths}</g>`;
+      : smooth(line(yc + (k - half) * pitch, stones, x0, x1, Math.round((x1 - x0) / 10))),
+  ).filter((d) => d !== '');
+  const paths = drawn.map((d) => `<path d="${d}"/>`).join('');
+  const pulses = drawn.map((d) => pulse(t, d)).join('');
+  return `<defs><linearGradient id="${id}g"><stop offset="0" stop-color="${PALETTE.mask}" stop-opacity="0"/><stop offset=".06" stop-color="${PALETTE.mask}"/><stop offset=".94" stop-color="${PALETTE.mask}"/><stop offset="1" stop-color="${PALETTE.mask}" stop-opacity="0"/></linearGradient><mask id="${id}" maskUnits="userSpaceOnUse" x="${x0}" y="${yc - n * pitch}" width="${x1 - x0}" height="${2 * n * pitch}"><rect x="${x0}" y="${yc - n * pitch}" width="${x1 - x0}" height="${2 * n * pitch}" fill="url(#${id}g)"/></mask></defs><g mask="url(#${id})" fill="none" stroke="${t.line}" stroke-width="${sw}" stroke-linecap="round">${paths}</g><g mask="url(#${id})">${pulses}</g>`;
 };
 
 // THE SIGNS, the only icons a diagram uses. Each is `(pen, x, y, radius)`.
 
 /** A proposed decision. @param {Pen} t @param {number} x @param {number} y @param {number} [r] */
 const ring = (t, x, y, r = 12) =>
-  `<circle cx="${x}" cy="${y}" r="${r}" fill="${t.bg}" stroke="${t.ring ? t.ink : PALETTE.sulphur}" stroke-width="2.6"/>`;
+  `<circle cx="${x}" cy="${y}" r="${r}" fill="${t.bg}" stroke="${t.ring ? t.ink : PALETTE.sulphur}" stroke-width="2.6"/>${ripple(t, x, y, r, true)}`;
 /** A decision in force. @param {Pen} t @param {number} x @param {number} y @param {number} [r] */
 const pt = (t, x, y, r = 12) =>
-  `<circle cx="${x}" cy="${y}" r="${r}" fill="${PALETTE.sulphur}"${t.ring ? ` stroke="${t.ink}" stroke-width="2"` : ''}/>`;
+  `<circle cx="${x}" cy="${y}" r="${r}" fill="${PALETTE.sulphur}"${t.ring ? ` stroke="${t.ink}" stroke-width="2"` : ''}/>${ripple(t, x, y, r, true)}`;
 /** A write refused. @param {Pen} t @param {number} x @param {number} y @param {number} [r] */
 const refused = (t, x, y, r = 12) =>
   `${pt(t, x, y, r)}<path d="M${x - r * 0.4},${y - r * 0.4}l${r * 0.8},${r * 0.8}m0,${-r * 0.8}l${-r * 0.8},${r * 0.8}" stroke="${t.mark}" stroke-width="${f(r * 0.2)}" stroke-linecap="round"/>`;
@@ -125,10 +235,11 @@ const refused = (t, x, y, r = 12) =>
 const verified = (t, x, y, r = 12) =>
   `${pt(t, x, y, r)}<path d="M${f(x - r * 0.45)},${y}l${f(r * 0.32)},${f(r * 0.36)}l${f(r * 0.6)},${f(-r * 0.7)}" fill="none" stroke="${t.mark}" stroke-width="${f(r * 0.2)}" stroke-linecap="round" stroke-linejoin="round"/>`;
 /** A decision no longer in force. @param {Pen} t @param {number} x @param {number} y @param {number} [r] */
-const dimPt = (t, x, y, r = 12) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${t.muted}"/>`;
+const dimPt = (t, x, y, r = 12) =>
+  `<circle cx="${x}" cy="${y}" r="${r}" fill="${t.muted}"/>${ripple(t, x, y, r, false)}`;
 /** A decision never accepted. @param {Pen} t @param {number} x @param {number} y @param {number} [r] */
 const dimRing = (t, x, y, r = 12) =>
-  `<circle cx="${x}" cy="${y}" r="${r}" fill="${t.bg}" stroke="${t.muted}" stroke-width="2.6"/>`;
+  `<circle cx="${x}" cy="${y}" r="${r}" fill="${t.bg}" stroke="${t.muted}" stroke-width="2.6"/>${ripple(t, x, y, r, false)}`;
 
 /**
  * A chip: a pill with a short text on its middle.
@@ -142,12 +253,30 @@ const chip = (t, x, y, words, w = 200) =>
   `<rect x="${f(x - w / 2)}" y="${y - 16}" width="${w}" height="30" rx="15" fill="${t.chip}" stroke="${t.line}"/>${say(t, words, x, y + 4, 'chip', 'middle', 'acc')}`;
 
 /**
- * The eye at the top of a picture, looking down at the flow, at rest.
+ * The eye at the top of a picture: the brand's eye blinking on the banner's cycle, and, hidden, its copy at rest looking
+ * down at the flow, which a reader who asks for less motion is shown.
  * @param {Pen} t
  * @param {number} w
  */
-const watcher = (t, w) =>
-  `<g transform="translate(${w / 2},44) scale(.6)">${eye({ id: t.id('eye'), ink: t.ink, iris: PALETTE.sulphur, ringInk: PALETTE.charcoal, ring: t.ring, look: 5 })}</g>`;
+const watcher = (t, w) => {
+  const still = eye({
+    id: t.id('eye'),
+    ink: t.ink,
+    iris: PALETTE.sulphur,
+    ringInk: PALETTE.charcoal,
+    ring: t.ring,
+    look: 5,
+  });
+  const blinking = blinkingEye({
+    id: t.id('eye'),
+    ink: t.ink,
+    iris: PALETTE.sulphur,
+    ringInk: PALETTE.charcoal,
+    ring: t.ring,
+    begin: BLINK_BEGIN,
+  });
+  return `<g transform="translate(${w / 2},44) scale(.6)"><g class="ea">${blinking}</g><g class="es" display="none">${still}</g></g>`;
+};
 
 /**
  * A picture says what it is (`role`, `aria-label`, `<title>`) and how big it is.
@@ -158,7 +287,7 @@ const watcher = (t, w) =>
  * @param {{ label: string, title: string }} says
  */
 const frame = (t, w, h, body, { label, title }) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="${xml(label)}"><title>${xml(title)}</title><rect width="${w}" height="${h}" fill="${t.bg}"/>${body}${watcher(t, w)}</svg>`;
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="${xml(label)}"><title>${xml(title)}</title>${sheet(t)}<rect width="${w}" height="${h}" fill="${t.bg}"/>${body}${watcher(t, w)}</svg>`;
 
 /**
  * The heading of a picture.
@@ -171,13 +300,14 @@ const frame = (t, w, h, body, { label, title }) =>
 const heading = (t, x, y, words, anchor = 'start') => say(t, words, x, y, 'title', anchor, 'ink');
 
 /**
- * The four signs and what each means, along the foot of a picture.
+ * The four signs and what each means, along the foot of a picture. They are a key and send out no ripple.
  * @param {Pen} t
  * @param {number} x
  * @param {number} y
  */
-const legend = (t, x, y) =>
-  /** @type {const} */ ([
+const legend = (t, x, y) => {
+  const quiet = { ...t, quiet: true };
+  return /** @type {const} */ ([
     [ring, 'proposed'],
     [pt, 'in force'],
     [refused, 'write refused'],
@@ -185,9 +315,10 @@ const legend = (t, x, y) =>
   ])
     .map(
       ([sign, label], i) =>
-        `${sign(t, x + i * 200, y, 7)}${say(t, own(label), x + i * 200 + 14, y + 4, 'small', 'start', 'dim')}`,
+        `${sign(quiet, x + i * 200, y, 7)}${say(t, own(label), x + i * 200 + 14, y + 4, 'small', 'start', 'dim')}`,
     )
     .join('');
+};
 
 // ---------------------------------------------------------------- the seven diagrams
 
@@ -281,8 +412,10 @@ function fits(t) {
    * @param {number} k
    * @param {number} x1
    */
-  const lane = (k, x1) =>
-    `<path d="${smooth(line(lv(k) + 0.01, k === 1 ? [] : st, L - 30, x1, 50))}" fill="none" stroke="${t.acc}" stroke-width="3" stroke-linecap="round"/>`;
+  const lane = (k, x1) => {
+    const d = smooth(line(lv(k) + 0.01, k === 1 ? [] : st, L - 30, x1, 50));
+    return `<path d="${d}" fill="none" stroke="${t.acc}" stroke-width="3" stroke-linecap="round"/>${pulse(t, d, true)}`;
+  };
   const left = /** @type {const} */ ([
     [1, '2 · write refused', 'src/billing/total.ts'],
     [6, '3 · write lands', 'src/cart/price.ts'],
@@ -424,7 +557,7 @@ function chain(t) {
     320,
     heading(t, 40, 50, L.name) +
       band(t, 20, 700, y, 4, 15, st, { sw: 1.3 }) +
-      `<path d="M70,${y}H${(xs[3] ?? 0) - 13}" stroke="${t.acc}" stroke-width="2"/><path d="M${(xs[3] ?? 0) + 13},${y}H650" stroke="${t.dim}" stroke-width="2" stroke-dasharray="4 5"/>` +
+      `<path d="M70,${y}H${(xs[3] ?? 0) - 13}" stroke="${t.acc}" stroke-width="2"/>${pulse(t, `M70,${y}H${(xs[3] ?? 0) - 13}`, true)}<path d="M${(xs[3] ?? 0) + 13},${y}H650" stroke="${t.dim}" stroke-width="2" stroke-dasharray="4 5"/>` +
       nodes +
       label(0, L.event, L.link, 'acc') +
       label(3, L.mismatch, L.altered, 'acc') +
@@ -455,8 +588,10 @@ function converge(t, { title, ins, centre, outs, foot, alt }) {
   const inL = ins
     .map(({ sign, name, note }, i) => {
       const y = yIn[i] ?? 0;
+      const d = `M${xl + 22},${y}C${xl + 140},${y} ${cx - 140},${cy} ${cx - 34},${cy}`;
       return (
-        `<path d="M${xl + 22},${y}C${xl + 140},${y} ${cx - 140},${cy} ${cx - 34},${cy}" fill="none" stroke="${t.line}" stroke-width="1.6"/>` +
+        `<path d="${d}" fill="none" stroke="${t.line}" stroke-width="1.6"/>` +
+        pulse(t, d) +
         sign(t, xl, y, 9) +
         say(t, name, xl - 24, y - 2, 'label', 'end', 'ink') +
         (note === null ? '' : say(t, note, xl - 24, y + 15, 'small', 'end', 'dim'))
@@ -466,8 +601,10 @@ function converge(t, { title, ins, centre, outs, foot, alt }) {
   const outL = outs
     .map(({ name, rows }, i) => {
       const y = yOut[i] ?? 0;
+      const d = `M${cx + 34},${cy}C${cx + 140},${cy} ${xr - 140},${y} ${xr - 14},${y}`;
       return (
-        `<path d="M${cx + 34},${cy}C${cx + 140},${cy} ${xr - 140},${y} ${xr - 14},${y}" fill="none" stroke="${t.acc}" stroke-width="1.8"/>` +
+        `<path d="${d}" fill="none" stroke="${t.acc}" stroke-width="1.8"/>` +
+        pulse(t, d, true) +
         pt(t, xr, y, 6) +
         say(t, name, xr + 22, y - 2, 'label', 'start', 'acc') +
         rows
@@ -620,16 +757,28 @@ export const FAMILY_HEADING = '## The mnema family';
  * @returns {Record<string, string>}
  */
 export function drawTheDiagrams() {
-  /** @type {readonly { path: (theme: string) => string, name: string, draw: (t: Pen) => string }[]} */
+  /** @type {readonly { path: (theme: string) => string, name: string, draw: (t: Pen) => string, w: number }[]} */
   const all = [
-    { name: 'how-it-works', path: (theme) => `docs/assets/how-it-works-${theme}.svg`, draw: works },
+    {
+      name: 'how-it-works',
+      path: (theme) => `docs/assets/how-it-works-${theme}.svg`,
+      draw: works,
+      w: 1200,
+    },
     {
       name: 'how-mnema-fits',
       path: (theme) => `docs/assets/how-mnema-fits-${theme}.svg`,
       draw: fits,
+      w: 1200,
     },
-    { name: 'the-family', path: (theme) => `docs/assets/the-family-${theme}.svg`, draw: family },
-    ...PACKAGE_PICTURES.map(({ dir, draw }) => ({
+    {
+      name: 'the-family',
+      path: (theme) => `docs/assets/the-family-${theme}.svg`,
+      draw: family,
+      w: FAMILY_WIDTH,
+    },
+    ...PACKAGE_PICTURES.map(({ dir, draw, w }) => ({
+      w,
       name: dir,
       path: (/** @type {string} */ theme) => `packages/${dir}/assets/${dir}-${theme}.svg`,
       draw,
@@ -637,9 +786,9 @@ export function drawTheDiagrams() {
   ];
   /** @type {Record<string, string>} */
   const out = {};
-  for (const { name, path, draw } of all) {
+  for (const { name, path, draw, w } of all) {
     for (const theme of /** @type {const} */ (['dark', 'light'])) {
-      out[path(theme)] = `${draw(pen(`${name}-${theme}`, theme))}\n`;
+      out[path(theme)] = `${draw(pen(`${name}-${theme}`, theme, w))}\n`;
     }
   }
   return out;

@@ -42,9 +42,10 @@
  * hold on its new carrier, not to rewrite its expectations. The banner is still held byte for byte to what the script
  * draws. The diagrams are shown scaled (1200 units wide in a column of about 830 pixels), so a
  * unit is not a pixel and the grid of the pixel, the middle of the frame and the margin do not apply to them; the drawing
- * is a grid of columns on symmetric margins, not a mass centred in its frame. They draw no arrow, no running dot and no
- * keyframe (the eye moves only on the banner), so the guards of arrows, of keyframes and of the exit of a loop are the
- * banner's alone. A text no longer has a size of its own: it has a role, a key of the table `ROLES`, which the type of
+ * is a grid of columns on symmetric margins, not a mass centred in its frame. They draw no arrow and no running dot, so
+ * the guards of arrows and of the exit of a loop are the banner's alone. They do move, and stop when asked to: the eye
+ * blinks on the banner's cycle, a pulse runs along the lines and each sign sends out a ripple, and under
+ * `prefers-reduced-motion` none of that is drawn and the eye shows its still copy (the cases of `the motion`). A text no longer has a size of its own: it has a role, a key of the table `ROLES`, which the type of
  * `say` checks (`pnpm typecheck`), so a guard of the sizes written is the compiler's.
  *
  * HOW THE PICTURES ARE MADE AGAIN, from the root of a checkout:
@@ -760,7 +761,7 @@ type Box = [number, number, number, number];
 /** The points a path's data reaches, with each arc's whole circle: the box holds the path. */
 function pathPoints(d: string): [number, number][] {
   const points: [number, number][] = [];
-  const tokens = [...d.matchAll(/[MmLlHhVvCcQqAaZz]|-?\d*\.?\d+(?:e-?\d+)?/g)].map((m) => m[0]);
+  const tokens = [...d.matchAll(/[MmLlHhVvCcSsQqAaZz]|-?\d*\.?\d+(?:e-?\d+)?/g)].map((m) => m[0]);
   let x = 0;
   let y = 0;
   let start: [number, number] = [0, 0];
@@ -791,6 +792,12 @@ function pathPoints(d: string): [number, number][] {
       case 'C':
         // A cubic curve lies inside the hull of its four points, so its two controls box it.
         for (let c = 0; c < 2; c++) points.push([ox + next(), oy + next()]);
+        x = ox + next();
+        y = oy + next();
+        break;
+      case 'S':
+        // A smooth curve's first control is the mirror of the one before it, inside the same hull.
+        points.push([ox + next(), oy + next()]);
         x = ox + next();
         y = oy + next();
         break;
@@ -915,10 +922,176 @@ describe('the diagrams are outlines of their words, drawn in the brand', () => {
     expect(diagrams[path] ?? '').not.toMatch(/NaN|undefined|Infinity/);
   });
 
-  // N2: nothing in a diagram moves; the eye moves only on the banner.
-  it.each(FOURTEEN)('%s does not move', (path) => {
-    const svg = diagrams[path] ?? '';
-    expect(svg).not.toMatch(/<animate|@keyframes|animation|<style/);
+  // N2: a diagram moves, and stops when asked to. The eye blinks on the banner's cycle, a pulse runs along the lines, and
+  // each sign sends out a ripple as the pulse reaches it; under `prefers-reduced-motion` none of that is drawn and the
+  // eye shows its still copy.
+  describe('the motion', () => {
+    /** The stylesheets of a picture, whole. */
+    const sheetsOf = (svg: string): string[] =>
+      [...svg.matchAll(/<style>([\s\S]*?)<\/style>/g)].map((m) => m[1] as string);
+    /** The sheet with its keyframes taken out: the rules that name an animation or a class. */
+    const withoutKeyframes = (sheet: string): string =>
+      sheet.replace(/@keyframes\s+\w+\s*\{(?:[^{}]*\{[^{}]*\})*\}/g, '');
+    /** Every class that a pulse or a ripple carries in a picture, and the ones the eye carries. */
+    const classesOf = (svg: string, tag: string): string[] =>
+      [...svg.matchAll(new RegExp(`<${tag} class="([^"]+)"`, 'g'))].map((m) => m[1] as string);
+    const pulses = (svg: string): string[] =>
+      [...svg.matchAll(/<path class="kr?" [^>]*>/g)].map((m) => m[0]);
+    const ripples = (svg: string): { cx: number; r: number; delay: number }[] => {
+      const delays = new Map(
+        [...(sheetsOf(svg)[0] ?? '').matchAll(/\.(d\d+)\{animation-delay:([\d.]+)s\}/g)].map(
+          (m) => [m[1] as string, Number(m[2])] as const,
+        ),
+      );
+      return [...svg.matchAll(/<circle class="h (d\d+)" cx="([\d.]+)"[^>]* r="([\d.]+)"/g)].map(
+        (m) => ({
+          cx: Number(m[2]),
+          r: Number(m[3]),
+          delay: delays.get(m[1] as string) ?? Number.NaN,
+        }),
+      );
+    };
+
+    /**
+     * What a stylesheet of a diagram may be: class selectors only; no at-rule but `@keyframes` and the one `@media` of
+     * `prefers-reduced-motion: reduce`; no `@import`; and no text outside its rules.
+     */
+    const offTheForm = (sheet: string): string[] => {
+      const out: string[] = [];
+      const flat = withoutKeyframes(sheet).replace(
+        /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{((?:[^{}]*\{[^{}]*\})*)\}/g,
+        '$1',
+      );
+      for (const at of new Set(flat.match(/@[\w-]*/g) ?? [])) out.push(`uses ${at}`);
+      for (const r of flat.matchAll(/([^{}]*)\{[^{}]*\}/g)) {
+        const selector = (r[1] as string).trim();
+        if (!/^\.[\w-]+(?:\s*,\s*\.[\w-]+)*$/.test(selector)) out.push(`selector ${selector}`);
+      }
+      const stray = flat.replace(/[^{}]*\{[^{}]*\}/g, '').trim();
+      if (stray !== '') out.push(`stray ${stray}`);
+      return out;
+    };
+
+    it.each(FOURTEEN)(
+      '%s has the one rule that stops the motion, and shows the eye at rest under it',
+      (path) => {
+        const svg = diagrams[path] ?? '';
+        const [sheet = ''] = sheetsOf(svg);
+        expect(sheetsOf(svg)).toHaveLength(1);
+        const media = /@media \(prefers-reduced-motion: reduce\)\{([^@]*)\}$/.exec(sheet)?.[1];
+        expect(media, 'the reduced-motion rule').toBeDefined();
+        const hidden = new Set(
+          [...(media as string).matchAll(/([^{}]+)\{display:none\}/g)].flatMap((m) =>
+            (m[1] as string).split(','),
+          ),
+        );
+        // every class a pulse, a ripple or the blinking eye carries is hidden under it
+        const carried = [
+          ...classesOf(svg, 'path').filter((c) => /^kr?$/.test(c)),
+          ...classesOf(svg, 'circle').map((c) => c.split(' ')[0] as string),
+          ...classesOf(svg, 'g').filter((c) => c === 'ea'),
+        ];
+        expect(carried.length).toBeGreaterThan(5);
+        expect(carried.filter((c) => !hidden.has(`.${c}`))).toEqual([]);
+        // and the eye at rest is drawn, hidden where nothing asks for less motion, and shown under the rule
+        expect(media).toContain('.es{display:inline}');
+        expect(svg).toContain('<g class="es" display="none">');
+      },
+    );
+
+    it.each(FOURTEEN)('%s has a stylesheet of the form the front page reads', (path) => {
+      const sheets = sheetsOf(diagrams[path] ?? '');
+      expect(sheets.length).toBeGreaterThan(0);
+      for (const sheet of sheets) expect(offTheForm(sheet)).toEqual([]);
+    });
+
+    it('reads a stylesheet that is not of that form as one', () => {
+      expect(offTheForm('rect[width="1.5"]{opacity:0}')).toEqual(['selector rect[width="1.5"]']);
+      expect(offTheForm('@import url(a.css);.a{opacity:0}')).toContain('uses @import');
+      expect(offTheForm('@media (min-width:1px){.a{opacity:0}}')).toContain('uses @media');
+      expect(offTheForm('.a{opacity:0}loose')).toEqual(['stray loose']);
+    });
+
+    it.each(FOURTEEN)(
+      '%s names an animation only to run keyframes it defines, and defines no other',
+      (path) => {
+        const [sheet = ''] = sheetsOf(diagrams[path] ?? '');
+        const named = new Set(
+          [...withoutKeyframes(sheet).matchAll(/animation(?:-name)?:\s*(\w+)/g)].map(
+            (m) => m[1] as string,
+          ),
+        );
+        const defined = new Set(
+          [...sheet.matchAll(/@keyframes\s+(\w+)/g)].map((m) => m[1] as string),
+        );
+        expect(named.size).toBeGreaterThanOrEqual(2);
+        expect([...named].sort()).toEqual([...defined].sort());
+      },
+    );
+
+    it.each(FOURTEEN)('%s hides each pulse at rest, where the animation does not run', (path) => {
+      const found = pulses(diagrams[path] ?? '');
+      expect(found.length).toBeGreaterThan(2);
+      for (const pulse of found) {
+        expect(pulse).toContain('pathLength="100"');
+        expect(pulse).toContain('stroke-dasharray="9 200"');
+        expect(pulse).toContain('stroke-dashoffset="-100"');
+      }
+    });
+
+    it.each(FOURTEEN)(
+      '%s sends out each ripple as the pulse reaches its sign, from left to right',
+      (path) => {
+        const found = ripples(diagrams[path] ?? '');
+        expect(found.length).toBeGreaterThan(1);
+        expect(found.filter((r) => r.r < 7 || Number.isNaN(r.delay))).toEqual([]);
+        const byPlace = [...found].sort((a, b) => a.cx - b.cx);
+        expect(byPlace.filter((r, i) => i > 0 && r.delay < (byPlace[i - 1]?.delay ?? 0))).toEqual(
+          [],
+        );
+        expect(Math.max(...found.map((r) => r.delay))).toBeGreaterThan(
+          Math.min(...found.map((r) => r.delay)),
+        );
+        // the whole run is inside the share of the cycle in which the pulse crosses
+        expect(Math.max(...found.map((r) => r.delay))).toBeLessThanOrEqual(7 * 0.62);
+      },
+    );
+
+    it.each(FOURTEEN)(
+      '%s blinks the eye on the banner cycle, the lids and the iris and nothing else',
+      (path) => {
+        const svg = diagrams[path] ?? '';
+        const blinking = /<g class="ea">([\s\S]*?)<\/g><g class="es"/.exec(svg)?.[1] ?? '';
+        const animated = [
+          ...blinking.matchAll(/<animate attributeName="(\w+)" dur="(\w+)" begin="([^"]+)"/g),
+        ];
+        expect(animated.map((a) => a[1])).toEqual(['cx', 'ry', 'd', 'd', 'd', 'd', 'd', 'd']);
+        expect(new Set(animated.map((a) => `${a[2]} ${a[3]}`))).toEqual(new Set(['9s -1.5s']));
+        // the almond the lids are clipped to stays
+        expect(blinking).toContain('<path d="M-47,0Q0,-86 47,0Q0,86 -47,0Z"/>');
+        expect(blinking).not.toMatch(/<animate attributeName="(?:x|y|width|height|transform)"/);
+      },
+    );
+
+    // The eye at rest as the diagrams drew it before they moved, said here by its digest (the id of its clip left out).
+    const AT_REST = {
+      dark: '9c2b2efbdca012aa6509433d8852973ad08898a93ed8a3313764db28adacf27c',
+      light: 'c237a42785858e92285f557875a71e3bab7b5251a7e857bc1f4c63d3739fc53f',
+    } as const;
+
+    it.each(FOURTEEN)(
+      '%s keeps the eye at rest it had, looking down, as its still copy',
+      (path) => {
+        const svg = diagrams[path] ?? '';
+        const still =
+          /<g class="es" display="none">([\s\S]*)<\/g><\/g><\/svg>\n$/.exec(svg)?.[1] ?? '';
+        const theme = path.endsWith('-dark.svg') ? 'dark' : 'light';
+        const digest = createHash('sha256')
+          .update(still.replace(/[\w-]+-eye-\d+/g, 'ID'))
+          .digest('hex');
+        expect(digest).toBe(AT_REST[theme]);
+      },
+    );
   });
 
   // N3: the fonts are the authors' own, listed with the sha256 they have, each with its licence.

@@ -116,3 +116,77 @@ export const smooth = (pts, closed = false) => {
   }
   return d + (closed ? 'Z' : '');
 };
+
+/** One decimal, taken on the absolute coordinate so that no rounding drifts along a path. @param {number} n */
+const tenth = (n) => Math.round(n * 10) / 10;
+
+/** A number as the compact paths write it: no leading zero, and a minus sign needs no space before it. @param {number} n */
+const short = (n) => String(n).replace(/^(-?)0\./, '$1.');
+
+/**
+ * A path of absolute `M`, `C`, `L` and `H` commands, written again as a move in absolute terms and every other command
+ * relative to the point before it, each number to one decimal, as the text of the pictures is written. A run of one
+ * command writes its letter once, and a curve whose first control mirrors the second control of the curve before it (as
+ * `smooth` draws them) is an `s`, which leaves that control out. The step is the difference of two rounded absolutes, so a
+ * point is never off by more than half a tenth of a unit.
+ * @param {string} d
+ */
+export const relative = (d) => {
+  const tokens = d.match(/[MCLH]|-?\d*\.?\d+/g) ?? [];
+  let px = 0;
+  let py = 0;
+  // the end of the last curve and its second control, as drawn, to tell a join that is smooth
+  let rx = Number.NaN;
+  let ry = Number.NaN;
+  let cx = Number.NaN;
+  let cy = Number.NaN;
+  let out = '';
+  let last = '';
+  let i = 0;
+  /** @type {string} */
+  let command = '';
+  const next = () => Number(tokens[i++]);
+  /** @param {number[]} drawn */
+  const step = (drawn) => {
+    /** @type {number[]} */
+    const steps = [];
+    for (let k = 0; k < drawn.length; k += 2) {
+      steps.push(
+        tenth(tenth(/** @type {number} */ (drawn[k])) - px),
+        tenth(tenth(/** @type {number} */ (drawn[k + 1])) - py),
+      );
+    }
+    return steps;
+  };
+  while (i < tokens.length) {
+    if (/[A-Z]/.test(tokens[i] ?? '')) command = /** @type {string} */ (tokens[i++]);
+    /** @type {number[]} */
+    let written = [];
+    let letter = command === 'M' ? 'M' : command.toLowerCase();
+    if (command === 'M' || command === 'L') {
+      const [x, y] = [next(), next()];
+      written = command === 'M' ? [tenth(x), tenth(y)] : step([x, y]);
+      [px, py, rx, ry, cx, cy] = [
+        tenth(x),
+        tenth(y),
+        Number.NaN,
+        Number.NaN,
+        Number.NaN,
+        Number.NaN,
+      ];
+    } else if (command === 'H') {
+      const x = tenth(next());
+      written = [tenth(x - px)];
+      [px, rx, ry, cx, cy] = [x, Number.NaN, Number.NaN, Number.NaN, Number.NaN];
+    } else if (command === 'C') {
+      const [x1, y1, x2, y2, x, y] = [next(), next(), next(), next(), next(), next()];
+      const joined = Math.abs(x1 - (2 * rx - cx)) < 0.02 && Math.abs(y1 - (2 * ry - cy)) < 0.02;
+      written = joined ? step([x2, y2, x, y]) : step([x1, y1, x2, y2, x, y]);
+      if (joined) letter = 's';
+      [px, py, rx, ry, cx, cy] = [tenth(x), tenth(y), x, y, x2, y2];
+    } else throw new Error(`a path command this does not write: ${command}`);
+    out += (letter === last ? ' ' : letter) + written.map(short).join(' ').replaceAll(' -', '-');
+    last = letter;
+  }
+  return out;
+};
