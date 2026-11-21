@@ -391,7 +391,8 @@ describe('the mnema MCP server declared a second time', () => {
   });
 
   it('refuses a host file it cannot edit, writes nothing and fails the run', async () => {
-    const broken = '{\n  "mcpServers": {\n    "mnema": {},\n    "mnema": {}\n  }\n}\n';
+    const works = JSON.stringify({ command: process.execPath, args: ['mcp'] });
+    const broken = `{\n  "mcpServers": {\n    "mnema": ${works},\n    "mnema": ${works}\n  }\n}\n`;
     put(claudeJson(), broken);
     const said = await mnema(['upgrade']);
     expect(said.failed).toBe(true);

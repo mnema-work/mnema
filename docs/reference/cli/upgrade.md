@@ -114,6 +114,7 @@ A mnema MCP server entry of a host whose command or folder is gone (Claude Code�
 Qwen Code’s, Copilot CLI’s, OpenCode’s, Cursor’s, VS Code’s) is only named without `--fix`. With it, a file
 in strict JSON loses that entry, after a copy of the file is kept beside it; a Codex config.toml, a file
 with comments and a file the project commits are not edited: the exact line to remove is said. An entry
-that still works is never touched, and a bare command name (`mnema`, `npx`) is not judged.
+that works is never touched; a path that may come back, one with a $ in it and a bare name off the PATH are
+unknown, not dead. A duplicate is cut only beside an entry verified to work.
 A run that finished writes the version it brought things to into this machine’s state file.
 ```

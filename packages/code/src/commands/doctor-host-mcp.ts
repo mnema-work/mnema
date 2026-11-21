@@ -151,7 +151,8 @@ export function isGone(path: string): boolean {
     if (code !== 'ENOENT' && code !== 'ENOTDIR') return false;
   }
   const slashed = path.replace(/\\/g, '/');
-  if (COMES_AND_GOES.test(slashed) || VERSION_MANAGERS.some((one) => one.test(slashed))) return false;
+  if (COMES_AND_GOES.test(slashed) || VERSION_MANAGERS.some((one) => one.test(slashed)))
+    return false;
   return !fstabMounts().some((mount) => path === mount || path.startsWith(`${mount}/`));
 }
 
@@ -195,7 +196,8 @@ function judge(launch: Launch): { dead: string | undefined; verified: boolean } 
   const { command, args, cwd } = launch;
   const program = basename(command).replace(/\.exe$/i, '');
   const script = args[0];
-  const runsScript = (program === 'node' || program === 'nodejs') && script !== undefined && isAbsolute(script);
+  const runsScript =
+    (program === 'node' || program === 'nodejs') && script !== undefined && isAbsolute(script);
   if (command !== '' && isAbsolute(command) && isGone(command)) {
     return { dead: `its command ${command} no longer exists`, verified: false };
   }

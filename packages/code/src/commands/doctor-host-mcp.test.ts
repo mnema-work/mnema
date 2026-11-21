@@ -444,7 +444,9 @@ describe('an entry that cannot be verified is neither dead nor the one that stay
   it('removes nothing when no entry is verified, and says why', async () => {
     const text = pretty({
       mcpServers: { mnema: unknownUser() },
-      projects: { [repo]: { mcpServers: { mnema: { command: '/x/${env:HOME}/mnema', args: ['mcp'] } } } },
+      projects: {
+        [repo]: { mcpServers: { mnema: { command: '/x/${env:HOME}/mnema', args: ['mcp'] } } },
+      },
     });
     put(claudeJson(), text);
     const fixed = await mnema(['upgrade', '--fix']);
@@ -467,7 +469,9 @@ describe('an entry that cannot be verified is neither dead nor the one that stay
 
   it('leaves the paths of a package store and a Windows version manager alone', () => {
     expect(isGone('/opt/x/Cellar/node/20.1.0/bin/node')).toBe(false);
-    expect(isGone(join(home, '.local', 'share', 'pnpm', 'nodejs', '20.1.0', 'bin', 'node'))).toBe(false);
+    expect(isGone(join(home, '.local', 'share', 'pnpm', 'nodejs', '20.1.0', 'bin', 'node'))).toBe(
+      false,
+    );
     expect(isGone('C:\\Users\\a\\AppData\\Roaming\\nvm\\v20.1.0\\node.exe')).toBe(false);
     expect(isGone('D:\\Users\\a\\AppData\\Local\\fnm_multishells\\1\\node.exe')).toBe(false);
     expect(isGone(join(sandbox, 'gone', 'mnema'))).toBe(true);
