@@ -23,7 +23,7 @@ Each case ends in one of three words: `held`, `did-not-hold`, `not-run`. A case 
 a finding, and a good capture.
 
 1. **A folder with no `.mnema`.** Open it. The extension does not start on opening: no status bar item.
-   The activity bar has the mnema container, with the M as its icon and no badge. Open it (that starts the
+   The activity bar has the mnema container, with the eye as its icon and no badge. Open it (that starts the
    extension, and nothing runs `mnema`: no status bar item appears either). Its two views, Awaiting Judgment and
    Stacks, say the folder holds no record and how to start one, in sentences, with no blue button. Run
    `mnema: Refresh` from the palette: one message says the folder holds no record.
@@ -46,10 +46,11 @@ a finding, and a good capture.
    refresh: the document shows the new state.
 5. **The lens.** Open a file under an address a decision in force names: the lens above its first
    line says how many rules govern it, and clicking it opens the list; picking a rule opens that decision whole, without buttons.
-6. **The status bar on three themes.** Light, dark and high contrast. The icon, the mnema M, and the
-   text are legible on each, at 100 and at 200 percent zoom: the M is ten pixels square at the editor's
-   16 pixel icon size, so look at it in high contrast in particular, where it must not vanish. With a
-   record that fails `mnema verify` the M gives way to the editor's error icon. The item never shows a check mark or a seal: only the level `mnema verify`
+6. **The status bar on three themes.** Light, dark and high contrast. The icon, the mnema eye, and the
+   text are legible on each, at 100 and at 200 percent zoom: the eye's ink is about 12.7 by 11.5 pixels at the
+   editor's 16 pixel icon size, drawn in curves, so look at it in high contrast in particular, where it must not
+   vanish, and at 200 percent, where its edges must stay smooth. With a record that fails `mnema verify` the eye
+   gives way to the editor's error icon. The item never shows a check mark or a seal: only the level `mnema verify`
    printed, and `N to judge` when something awaits. Hover it: the tooltip is markdown, with one line per tree
    (the words are the ones `mnema verify --json` carries for the tree, the private tree's included) and an
    error or info icon in front of a tree that is not clean; the link Show the full verification opens the
@@ -67,7 +68,7 @@ a finding, and a good capture.
    that says the command, the path and the hour it was read at, and the text `mnema why` printed, which says how many rules in force address the file
    and how many commits touch it. Run it again after a change: a new document, with the new hour. Over a file outside the folder
    the command says so and opens nothing. A file named `-x` gets its lens and its why like any other.
-9. **The mark on the record's folder.** In the Explorer the `.mnema` folder wears the letter `M` and the accent colour, and
+9. **The mark on the record's folder.** In the Explorer the `.mnema` folder wears the badge `◉` and the brand's colour (yellow on a dark theme, charcoal on a light one), and
    its tooltip says what it is; on the light, dark and high-contrast themes the badge is legible. No file under it, and no file
    a rule governs, carries a mark. Delete the folder in a throwaway copy and create it again: the mark follows.
 10. **Zoom to 200 percent, and the walkthrough.** The views, the welcome texts and the status bar item

@@ -263,7 +263,8 @@ function theEyeOnTheGrid(): { eye: Uint8Array; almond: Uint8Array } {
           else hi = mid;
         }
         for (let k = lo; k < points.length - 1; k++) {
-          const [a, b] = [points[k] ?? [0, 0], points[k + 1] ?? [0, 0]];
+          const a: [number, number] = points[k] ?? [0, 0];
+          const b: [number, number] = points[k + 1] ?? [0, 0];
           if (a[0] > x + half) break;
           if (distance(x, y, a, b) <= half) return true;
         }
@@ -375,11 +376,5 @@ describe("the glyph of the status bar is the brand's eye, read by another hand",
     expect(coreCount).toBeGreaterThan(15_000);
     expect(missing.map((n) => [n % EM, Math.floor(n / EM)])).toEqual([]);
     expect(extra.map((n) => [n % EM, Math.floor(n / EM)])).toEqual([]);
-    let differ = 0;
-    for (let n = 0; n < EM * EM; n++) if (filled[n] !== eye[n]) differ++;
-    require('node:fs').writeFileSync(
-      '/tmp/wnbt/diverged.txt',
-      `${differ} of ${EM * EM}, eye ${eye.reduce((a, b) => a + b, 0)}, core ${coreCount}`,
-    );
   }, 60_000);
 });

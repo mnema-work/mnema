@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- The extension shows the eye of mnema in place of the M. The store icon is the eye at rest in a dark rounded square; the
+  side bar's icon is the eye in one colour; the status bar's icon is the same eye as one glyph of the extension's own font,
+  now drawn in quadratic curves instead of rectangles on whole pixels, so it is no longer a grid of pixels. The icon's id in
+  `contributes.icons` is `mnema-eye` (was `mnema-m`).
+- The `.mnema` folder in the Explorer wears the badge `◉` (was `M`) in the brand's colour: sulphur yellow on a dark
+  or dark high-contrast theme, charcoal on a light one (the colour `mnema.recordFolder`, which a theme can still override).
+- The store banner is charcoal, the brand's dark ground.
+
 ## 0.1.8
 
 - The status bar tooltip is the verdict and one line per tree, and the long text is behind a link. The block of
