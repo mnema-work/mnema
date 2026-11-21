@@ -368,14 +368,19 @@ function ownDirectories(dir: string): boolean {
 
 /**
  * Appends the lines that fit under {@link FILE_LIMIT} to `file` in ONE write, through a descriptor
- * opened without following a link (`O_NOFOLLOW`) whose mode is set on the descriptor, so a link
+ * opened without following a link (`O_NOFOLLOW`) and without waiting for a reader (`O_NONBLOCK`: a
+ * FIFO at the path fails at once instead of holding the hook until the host cuts it), whose mode is set on the descriptor, so a link
  * planted at the file is refused instead of written through and its target's mode left alone. A line
  * that would cross the limit is not written, nor are the ones after it. Answers whether any line was
  * written.
  */
 function appendWithinTheLimit(file: string, lines: readonly Buffer[]): boolean {
   const flags =
-    constants.O_WRONLY | constants.O_APPEND | constants.O_CREAT | (constants.O_NOFOLLOW ?? 0);
+    constants.O_WRONLY |
+    constants.O_APPEND |
+    constants.O_CREAT |
+    constants.O_NONBLOCK |
+    (constants.O_NOFOLLOW ?? 0);
   const fd = openSync(file, flags, FILE_MODE);
   try {
     const here = fstatSync(fd);

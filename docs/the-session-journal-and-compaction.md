@@ -117,7 +117,7 @@ characters, and a session's file never passes 4 MiB (an entry that would cross i
 hook can fire for a turn the host starts by itself, and the entry cannot tell: Claude Code documents that its hook does.
 
 **Where, and for how long.** `<data directory>/sessions/<digest of the project>/<the host's session id>.words.jsonl`, beside the
-[session journal](#the-session-journal), mode `0600` in a `0700` directory whatever the umask. The file is opened without following a link, and nothing is written when `sessions` or the project's directory under it is a link or not a directory of yours. It is outside the record: nothing
+[session journal](#the-session-journal), mode `0600` in a `0700` directory whatever the umask. The file is opened without following a link, and nothing is written when `sessions` or the project's directory under it is a link or not a directory of yours. These checks are best effort: they look at the path, and a process of your own user that races them is out of reach, so they are not a promise against one. It is outside the record: nothing
 is signed or written to the chain, `mnema verify` does not read it, it is never in the repository, and the verb prints none of
 it. When a journal is pruned (untouched for 30 days, or beyond the newest 50) its words go with it; and the words files have
 limits of their own, whether or not the journal remains: one untouched for 30 days goes, and only the newest 50 stay. Switching the session journal off does not stop

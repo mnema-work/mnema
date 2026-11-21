@@ -9,6 +9,7 @@
  * host with this product; the table says so in its `source` column and the docs page repeats it.
  */
 
+import { spawnSync } from 'node:child_process';
 import {
   chmodSync,
   existsSync,
@@ -38,6 +39,7 @@ import {
   wordsFile,
 } from '../src/persons-words.js';
 import { type CliIo, run } from '../src/program.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 import { type Journal, PRUNE_AFTER_MS, PRUNE_KEEP, writeJournal } from '../src/session-journal.js';
 import { emptyReading } from '../src/what-the-session-did.js';
 
@@ -663,6 +665,26 @@ describe('the limits are exact', () => {
     expect(cutAtACodePoint('a'.repeat(ENTRY_LIMIT + 5))).toHaveLength(ENTRY_LIMIT);
     keep('claude', { session_id: 'emoji', prompt: text });
     expect(personsWordsFor('emoji', 'claude', trees())[0]?.text).toBe(cut);
+  });
+});
+
+describe('a FIFO planted at the words file', () => {
+  it('does not hold the hook: the verb returns at once and writes nothing', () => {
+    const file = wordsFile(trees(), 'fifo-1') ?? '';
+    mkdirSync(join(file, '..'), { recursive: true });
+    const made = spawnSync('mkfifo', [file]);
+    expect(made.status).toBe(0);
+    const ran = spawnSync(process.execPath, [MNEMA_CLI, 'words', '--host', 'claude'], {
+      cwd: repo,
+      input: JSON.stringify({ session_id: 'fifo-1', prompt: 'a private sentence' }),
+      timeout: 8000,
+      env: { HOME: join(sandbox, 'home'), PATH: process.env['PATH'] ?? '', GIT_CONFIG_NOSYSTEM: '1' },
+      encoding: 'utf-8',
+    });
+    expect(ran.error).toBeUndefined();
+    expect(ran.status).toBe(0);
+    expect(ran.stdout).toBe('{}\n');
+    expect(statSync(file).isFIFO()).toBe(true);
   });
 });
 
