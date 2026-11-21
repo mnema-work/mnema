@@ -12,7 +12,7 @@ In the help under **Verify** · a command of [`mnema witness`](witness.md).
 | --- | --- |
 | `--identity <identity>` | the identity the certificate must name, exactly: the e-mail, or the workflow URI (cosign’s --certificate-identity) |
 | `--issuer <url>` | the OpenID issuer that must have vouched for it, exactly (cosign’s --certificate-oidc-issuer) |
-| `--message-dir <dir>` | write the message each bundle signs into this folder, one file per checkpoint named by its SHA-256, and print the `cosign verify-blob` line that checks the same bundle beside it. Refused when the folder is, or passes through, a symbolic link, or is inside a record folder; a message file that already exists is never overwritten |
+| `--message-dir <dir>` | write the message each bundle signs into this folder, one file per checkpoint named by its SHA-256, and print the `cosign verify-blob` line that checks the same bundle beside it. A link among the folders above it is followed and the messages land at the real path; refused when the folder itself is a symbolic link, or when its real path is inside a record (a .mnema or .git folder, case folded on macOS and Windows, or the root of a record checked). Folders are made only after every check passes, and a message file that already exists is never overwritten |
 | `--global` | also cover this machine's global tree (left out by default): it belongs to no project and is present in every one, and a witness over a tree no verdict reads is work with no reader (default: false) |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
@@ -35,9 +35,14 @@ Options:
   --message-dir <dir>    write the message each bundle signs into this folder,
                          one file per checkpoint named by its SHA-256, and print
                          the `cosign verify-blob` line that checks the same
-                         bundle beside it. Refused when the folder is, or passes
-                         through, a symbolic link, or is inside a record folder;
-                         a message file that already exists is never overwritten
+                         bundle beside it. A link among the folders above it is
+                         followed and the messages land at the real path;
+                         refused when the folder itself is a symbolic link, or
+                         when its real path is inside a record (a .mnema or .git
+                         folder, case folded on macOS and Windows, or the root
+                         of a record checked). Folders are made only after every
+                         check passes, and a message file that already exists is
+                         never overwritten
   --global               also cover this machine's global tree (left out by
                          default): it belongs to no project and is present in
                          every one, and a witness over a tree no verdict reads
