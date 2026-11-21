@@ -864,7 +864,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/chain/src/chain/ots.test.ts': 5,
   'packages/chain/src/chain/outside-vectors.test.ts': 11,
   'packages/chain/src/chain/pool.test.ts': 11,
-  'packages/chain/src/chain/proof.test.ts': 12,
+  'packages/chain/src/chain/proof.test.ts': 14,
   'packages/chain/src/chain/range.test.ts': 5,
   'packages/chain/src/chain/record-name.test.ts': 6,
   'packages/chain/src/chain/relink-plan.test.ts': 15,
