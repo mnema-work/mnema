@@ -25,13 +25,15 @@
 import {
   closeSync,
   constants,
+  existsSync,
   lstatSync,
   mkdirSync,
   openSync,
   realpathSync,
+  statSync,
   writeSync,
 } from 'node:fs';
-import { join, resolve, sep } from 'node:path';
+import { basename, dirname, join, resolve, sep } from 'node:path';
 import {
   type ChainLayout,
   checkpointHash,
@@ -126,51 +128,50 @@ export function namesTheExpected(
   );
 }
 
+/** Whether this machine's file system folds case, so `.MNEMA` is `.mnema`: darwin and win32. */
+const FOLDS_CASE = process.platform === 'darwin' || process.platform === 'win32';
+
 /**
- * Makes `dir` ready for the messages, or says why it will not be written to: a folder that is, or
- * passes through, a symbolic link (a clone can ship one), and a folder inside a record (the
- * trees checked, any `.mnema` or `.git` folder): messages are not the record's files.
+ * Where the messages will go, or why they will not: a REAL path, taken from the deepest folder of
+ * `dir` that exists (a link among the ancestors, a system temp folder or a linked home, is followed
+ * and accepted) with the folders still to make appended. The given path itself may not be a symbolic
+ * link, and the real path may not lie in a record: any `.mnema` or `.git` folder (case folded where the
+ * file system folds it) or the root of a verified tree (itself taken to its real path). Nothing is made
+ * here: the folders are created only after every check has passed.
  */
-function readyMessageDir(
+function whereTheMessagesGo(
   dir: string,
   trees: readonly TreeReport[],
-): { readonly ok: true } | { readonly ok: false; readonly why: string } {
-  const wanted = resolve(dir);
-  const parts = wanted.split(sep);
-  if (parts.includes('.mnema') || parts.includes('.git')) {
-    return { ok: false, why: `${wanted} is inside a record folder (.mnema or .git): pick another` };
+  foldsCase: boolean,
+): { readonly ok: true; readonly real: string } | { readonly ok: false; readonly why: string } {
+  const fold = (path: string): string => (foldsCase ? path.toLowerCase() : path);
+  const given = resolve(dir);
+  const own = lstatSync(given, { throwIfNoEntry: false });
+  if (own?.isSymbolicLink()) {
+    return { ok: false, why: `${given} is a symbolic link: name the folder it points to instead` };
+  }
+  const rest: string[] = [];
+  let existing = given;
+  while (lstatSync(existing, { throwIfNoEntry: false }) === undefined) {
+    rest.unshift(basename(existing));
+    const up = dirname(existing);
+    if (up === existing) break;
+    existing = up;
+  }
+  if (!statSync(existing).isDirectory()) return { ok: false, why: `${existing} is not a folder` };
+  const real = join(realpathSync(existing), ...rest);
+  if (real.split(sep).some((part) => ['.mnema', '.git'].includes(fold(part)))) {
+    return { ok: false, why: `${real} is inside a record folder (.mnema or .git): pick another` };
   }
   for (const tree of trees) {
     if (tree.kind !== 'verdict') continue;
-    const root = resolve(tree.root);
-    if (wanted === root || wanted.startsWith(root + sep)) {
-      return { ok: false, why: `${wanted} is inside the record at ${root}: pick another` };
+    const root = fold(existsSync(tree.root) ? realpathSync(tree.root) : resolve(tree.root));
+    const at = fold(real);
+    if (at === root || at.startsWith(root + sep)) {
+      return { ok: false, why: `${real} is inside the record at ${root}: pick another` };
     }
   }
-  let at = parts[0] === '' ? sep : (parts[0] as string);
-  for (const part of parts.slice(1)) {
-    at = join(at, part);
-    let stat = lstatSync(at, { throwIfNoEntry: false });
-    if (stat === undefined) {
-      mkdirSync(at);
-      stat = lstatSync(at);
-    }
-    if (stat.isSymbolicLink()) {
-      return {
-        ok: false,
-        why: `${at} is a symbolic link: a message folder may not be, or pass through, one`,
-      };
-    }
-    if (!stat.isDirectory()) return { ok: false, why: `${at} is not a folder` };
-  }
-  const real = realpathSync(wanted);
-  if (real !== wanted) {
-    return {
-      ok: false,
-      why: `${wanted} resolves to ${real}: a message folder may not pass through a link`,
-    };
-  }
-  return { ok: true };
+  return { ok: true, real };
 }
 
 /** Writes one message as a new regular file: never through a link, never over a file already there. */
@@ -202,7 +203,12 @@ function writeNewFile(file: string, bytes: Uint8Array): string | undefined {
 export function checkSigstoreWitnesses(
   trees: readonly TreeReport[],
   expected: ExpectedSigner,
-  options: { readonly messageDir?: string; readonly trustedRoot?: unknown } = {},
+  options: {
+    readonly messageDir?: string;
+    readonly trustedRoot?: unknown;
+    /** Whether the file system folds case; the platform's own when not given. */
+    readonly foldsCase?: boolean;
+  } = {},
 ): WitnessCheck {
   const receipts = readSigstoreReceipts(
     trees,
@@ -212,12 +218,14 @@ export function checkSigstoreWitnesses(
   if (expected.identity === '' || expected.issuer === '') {
     refusals.push('the identity and the issuer to expect may not be empty');
   }
-  let messageDir = options.messageDir === undefined ? undefined : resolve(options.messageDir);
-  if (messageDir !== undefined) {
-    const ready = readyMessageDir(messageDir, trees);
-    if (!ready.ok) {
-      refusals.push(ready.why);
-      messageDir = undefined;
+  let messageDir: string | undefined;
+  if (options.messageDir !== undefined) {
+    const where = whereTheMessagesGo(options.messageDir, trees, options.foldsCase ?? FOLDS_CASE);
+    if (where.ok) {
+      mkdirSync(where.real, { recursive: true });
+      messageDir = where.real;
+    } else {
+      refusals.push(where.why);
     }
   }
   const bundles = receipts.findings.map((finding): WitnessCheckRow => {

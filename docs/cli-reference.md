@@ -670,7 +670,7 @@ the ones `verify` gives without it.
 exactly that identity and that issuer (a bundle that holds and names somebody else is said by name
 and fails). What a bundle signs is the checkpoint's own signed message, recomputed from
 `checkpoints.jsonl` and never taken from the bundle, and its SHA-256 is the name the bundle is filed under.
-With `--message-dir <dir>` it writes each of those messages as `<sha256>.message` (the folder may not be, or pass through, a symbolic link, nor lie inside a record folder, and a file already there is never overwritten: it is refused) and prints the
+With `--message-dir <dir>` it writes each of those messages as `<sha256>.message` (a link among the folders above it is followed and the messages land at the real path; the folder itself may not be a symbolic link, and its real path may not lie inside a record, that is any `.mnema` or `.git` folder, compared without case on macOS and Windows, or the root of a record checked; folders are made only after every check passes, and a file already there is never overwritten: it is refused) and prints the
 line that checks the same bundle with [cosign](https://docs.sigstore.dev/cosign/verifying/verify/), so the
 answer does not rest on this binary alone:
 

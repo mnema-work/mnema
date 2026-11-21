@@ -11,6 +11,7 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -170,14 +171,50 @@ describe('checking a Sigstore countersignature against who was expected', () => 
       expect(readdirSync(real)).toEqual([]);
     });
 
-    it('refuses a folder that passes through a symbolic link', async () => {
+    it('accepts a folder under a linked ancestor, and the message lands at the real path', async () => {
       const real = join(sandbox, 'real');
       mkdirSync(real);
       symlinkSync(real, join(sandbox, 'link'));
-      const { check } = await run(join(sandbox, 'link', 'inner'));
+      const { check, hash } = await run(join(sandbox, 'link', 'inner', 'deeper'));
+      expect(check.refusals).toEqual([]);
+      expect(check.ok).toBe(true);
+      const landed = join(realpathSync(real), 'inner', 'deeper', `${hash}.message`);
+      expect(existsSync(landed)).toBe(true);
+      expect(check.bundles[0]?.message).toBe(landed);
+    });
+
+    it('refuses a record folder reached through a linked ancestor', async () => {
+      symlinkSync(join(cwd, '.mnema'), join(sandbox, 'into-the-record'));
+      const { check } = await run(join(sandbox, 'into-the-record', 'msgs'));
       expect(check.ok).toBe(false);
-      expect(check.refusals.join(' ')).toContain('symbolic link');
-      expect(readdirSync(real)).toEqual([]);
+      expect(check.refusals.join(' ')).toContain('inside');
+      expect(existsSync(join(cwd, '.mnema', 'msgs'))).toBe(false);
+    });
+
+    it('refuses .MNEMA where the file system folds case, and takes it for a folder where it does not', async () => {
+      const { sigstore } = await countersigned();
+      const given = join(cwd, '.MNEMA', 'x');
+      const folds = checkSigstoreWitnesses(trees(), expected, {
+        messageDir: given,
+        trustedRoot: sigstore.trustedRoot,
+        foldsCase: true,
+      });
+      expect(folds.ok).toBe(false);
+      expect(folds.refusals.join(' ')).toContain('inside');
+      expect(existsSync(join(cwd, '.MNEMA'))).toBe(false);
+      const keeps = checkSigstoreWitnesses(trees(), expected, {
+        messageDir: given,
+        trustedRoot: sigstore.trustedRoot,
+        foldsCase: false,
+      });
+      expect(keeps.refusals.join(' ')).not.toContain('record folder');
+    });
+
+    it('creates nothing when a check refuses, however deep the folder asked for', async () => {
+      const deep = join(cwd, '.mnema', 'a', 'b', 'c');
+      const { check } = await run(deep);
+      expect(check.ok).toBe(false);
+      expect(existsSync(join(cwd, '.mnema', 'a'))).toBe(false);
     });
 
     it('does not follow a message file that is a link to somebody else’s file', async () => {
