@@ -17,7 +17,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type CliIo, run } from '../program.js';
@@ -518,10 +518,23 @@ describe('an entry that cannot be verified is neither dead nor the one that stay
         projects: { [repo]: { mcpServers: { mnema: live() } } },
       });
       put(claudeJson(), text);
-      for (const argv of [['upgrade', '--dry-run'], ['upgrade'], ['upgrade', '--fix']]) {
-        const said = await mnema(argv);
-        expect(said.out).not.toMatch(/applied · mcp|would apply · mcp/);
-        expect(readFileSync(claudeJson(), 'utf8')).toBe(text);
+      // The programs exist on the PATH, as on the machine of a person who has them: the allowlist is what leaves them unknown.
+      const bin = join(sandbox, 'bin');
+      for (const name of ['node22', 'npx', 'bun']) {
+        put(join(bin, name), '#!/bin/sh\n');
+        chmodSync(join(bin, name), 0o755);
+      }
+      const path = process.env.PATH;
+      process.env.PATH = `${bin}${delimiter}${path ?? ''}`;
+      try {
+        for (const argv of [['upgrade', '--dry-run'], ['upgrade'], ['upgrade', '--fix']]) {
+          const said = await mnema(argv);
+          expect(said.out).not.toMatch(/applied · mcp|would apply · mcp/);
+          expect(readFileSync(claudeJson(), 'utf8')).toBe(text);
+        }
+      } finally {
+        if (path === undefined) delete process.env.PATH;
+        else process.env.PATH = path;
       }
       expect(copies(claudeJson())).toEqual([]);
     },
