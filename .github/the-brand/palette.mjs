@@ -18,15 +18,15 @@ export const PALETTE = Object.freeze({
   lineLight: '#cdc8bc',
   dimDark: '#a29e94',
   dimLight: '#5b574f',
-  // The colours of GitHub's own page, dark and light: the only ground a diagram ever paints, and only under a sign that
-  // must hide a line. A diagram has no ground of its own, so it sits on whatever page shows it.
+  // The colours of GitHub's own page, dark and light. They stand only for the page, under the light theme's pulse gap, as
+  // a stroke: no sign is ever filled with them. A diagram has no ground of its own, so it sits on whatever page shows it.
   pageDark: '#0d1117',
   pageLight: '#ffffff',
 });
 
 /**
- * What a diagram paints with, by theme: the colour of the page it hides a line with (`page`: the picture has no ground
- * of its own), its ink, the lines of the band and the threads (`line`), its
+ * What a diagram paints with, by theme: the colour of the page (`page`: used only as the stroke of the light theme's pulse
+ * gap, never as a fill; the picture has no ground of its own), its ink, the lines of the band and the threads (`line`), its
  * secondary text (`dim`), the colour of an emphasised text (`acc`), whether a sign carries a ring of ink round its point
  * (`ring`), the opacity of the ink that tints a chip (`chipOpacity`), the dim sign (`muted`: a decision no longer in force, or never accepted) and the ink
  * of the mark drawn across a sign (`mark`).

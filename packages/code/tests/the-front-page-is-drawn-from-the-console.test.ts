@@ -1206,6 +1206,29 @@ describe('the diagrams are outlines of their words, drawn in the brand', () => {
       },
     );
 
+    it.each(['dark', 'light'])(
+      'chain-%s.svg crosses no dashed ring with a dotted segment',
+      (theme) => {
+        const nodes = nodesOf(read(`packages/chain/assets/chain-${theme}.svg`));
+        const rings = nodes.filter((n) => n.tag === 'circle' && n.at['stroke-dasharray'] === '3 3');
+        expect(rings.length).toBeGreaterThan(0);
+        const dotted = nodes.filter((n) => n.at['stroke-dasharray'] === '4 5');
+        expect(dotted.length).toBeGreaterThan(0);
+        const crossing: string[] = [];
+        for (const seg of dotted) {
+          const [, a, b] = /^M(-?[\d.]+),-?[\d.]+H(-?[\d.]+)$/.exec(seg.at.d ?? '') ?? [];
+          expect(a, seg.at.d).toBeDefined();
+          const [from, to] = [Number(a), Number(b)].sort((x, y) => x - y) as [number, number];
+          for (const ring of rings) {
+            const lo = Number(ring.at.cx) - Number(ring.at.r) - 1;
+            const hi = Number(ring.at.cx) + Number(ring.at.r) + 1;
+            if (from < hi && to > lo) crossing.push(`${seg.at.d} over ${ring.at.cx}`);
+          }
+        }
+        expect(crossing).toEqual([]);
+      },
+    );
+
     it('has panels to read: the chips of the steps and of the states', () => {
       const withPanels = FOURTEEN.filter((path) =>
         nodesOf(read(path)).some((n) => n.tag === 'rect' && n.at.rx !== undefined),
