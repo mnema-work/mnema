@@ -33,9 +33,14 @@ Nothing in it is signed anew. It carries bytes the record already holds and alre
 - a manifest: the decision's title, rationale, alternatives and label, its moves with who made each
   and where its line is, its state, and the record the tails name.
 
-A range is carried whole, because a checkpoint's signature covers every line of its range. The lines
-beside the decision's in a range travel with it, so a decision's proof can show a few other facts of
-the same act. On this repository's own record a proof is about ten kilobytes.
+A range is carried whole, because a checkpoint's signature covers every line of its range, and on each
+tail the file carries every range from the first it needs to the last, with no gap: nothing between
+two lines it carries (a move, a writing, a revoked key) can be left out. So the lines beside the
+decision's travel with it, and the file grows with the distance between them: a decision recorded far
+down the tail that also holds its identity's founding carries that tail from the founding on. Measured
+over thirty decisions of this repository's own record (two tails, 2.9 MB): from 9 KB to 1.1 MB, half
+of them under about 20 KB, the large ones being the decisions written on the tail that holds the
+founding.
 
 ## What it proves
 
@@ -48,7 +53,8 @@ one field differs: change one word of a line, or of the manifest, and both check
 
 Both checkers print this beside every proof they accept.
 
-- **That nothing came after it.** A proof covers the record up to its last range. A supersede, a
+- **That nothing came after it.** On each tail it carries, a proof covers every line from the first it
+  carries to the last, and nothing after. A supersede, a
   rejection, a new writing or a revoked key written later is not in it, and the file cannot say there
   was none. To know the decision is still in force, read the record itself, or ask for a newer proof.
 - **That no other tail holds something.** The record is the set of its tails, one per machine, and the

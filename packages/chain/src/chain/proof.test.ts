@@ -159,7 +159,6 @@ describe('the published proof of one decision', () => {
     expect(second.refused.join('\n')).toMatch(/seq 5\.\.6 is not carried/);
   });
 });
-});
 
 /** One way to break the published proof, and what the product's checker names first. */
 interface Broken {

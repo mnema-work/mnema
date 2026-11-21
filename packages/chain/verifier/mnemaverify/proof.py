@@ -39,9 +39,9 @@ RANGE_KEYS = ["checkpoint", "entries"]
 # Section 9, "What a proof does not prove", in its order and words. Said beside every proof this
 # reader accepts, because a proof that verifies is read as more than it is.
 NOT_COVERED = (
-    "that nothing was written after the last range it carries: a later move (a supersede, a "
-    "rejection), a later writing or a revocation of a key sits after it, where this file does not "
-    "reach",
+    "that nothing was written after the last range it carries on each tail: a later move (a "
+    "supersede, a rejection), a later writing or a revocation of a key sits after it, where this "
+    "file does not reach",
     "that no tail it does not carry holds a move or a writing of this decision, or a roster fact "
     "of an identity it names: the record is the set of its tails, and this file carries some of "
     "them",

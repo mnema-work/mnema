@@ -68,7 +68,7 @@ export const PROOF_SCHEME = 'mnema-proof/1';
  * beside every proof they accept, because a proof that verifies is read as more than it is.
  */
 export const WHAT_A_PROOF_DOES_NOT_COVER: readonly string[] = [
-  'that nothing was written after the last range it carries: a later move (a supersede, a ' +
+  'that nothing was written after the last range it carries on each tail: a later move (a supersede, a ' +
     'rejection), a later writing or a revocation of a key sits after it, where this file does not reach',
   'that no tail it does not carry holds a move or a writing of this decision, or a roster fact of ' +
     'an identity it names: the record is the set of its tails, and this file carries some of them',
@@ -252,17 +252,26 @@ export function proveDecision(
 
   const ranges = new Map<string, Map<number, Checkpoint>>();
   const anchors = new Set<string>();
-  const carried = (tail: string, seq: number): boolean => {
-    for (const checkpoint of ranges.get(tail)?.values() ?? []) {
-      if (checkpoint.fromSeq <= seq && seq <= checkpoint.toSeq) return true;
+  // The checkpoint that signs each seq of each tail, read once: the walk below asks it per line.
+  const signing = new Map<string, Map<number, Checkpoint>>();
+  for (const [tail, held] of record.tails) {
+    const bySigned = new Map<number, Checkpoint>();
+    for (const checkpoint of held.checkpoints) {
+      for (let at = checkpoint.fromSeq; at <= checkpoint.toSeq; at += 1) {
+        if (!bySigned.has(at)) bySigned.set(at, checkpoint);
+      }
     }
-    return false;
+    signing.set(tail, bySigned);
+  }
+  const carried = (tail: string, seq: number): boolean => {
+    const checkpoint = signing.get(tail)?.get(seq);
+    return checkpoint !== undefined && ranges.get(tail)?.get(checkpoint.fromSeq) === checkpoint;
   };
-  while (wanted.length > 0) {
-    const { tail, seq } = wanted.shift() as { tail: string; seq: number };
+  for (let next = 0; next < wanted.length; next += 1) {
+    const { tail, seq } = wanted[next] as { tail: string; seq: number };
     if (carried(tail, seq)) continue;
     const held = record.tails.get(tail) as TailToProve;
-    const checkpoint = held.checkpoints.find((c) => c.fromSeq <= seq && seq <= c.toSeq);
+    const checkpoint = signing.get(tail)?.get(seq);
     if (checkpoint === undefined) {
       return {
         ok: false,
@@ -276,14 +285,21 @@ export function proveDecision(
       atTail = new Map();
       ranges.set(tail, atTail);
     }
+    const before =
+      atTail.size === 0 ? undefined : [Math.min(...atTail.keys()), Math.max(...atTail.keys())];
     atTail.set(checkpoint.fromSeq, checkpoint);
     // No gap (FORMAT.md section 9): every range between the first and the last this tail gives
     // the proof travels too, so no move, writing or revocation between two of them can be left out.
-    const first = Math.min(...atTail.keys());
-    const last = Math.max(...atTail.keys());
-    for (const between of held.checkpoints) {
-      if (between.fromSeq > first && between.fromSeq < last && !atTail.has(between.fromSeq)) {
-        wanted.push({ tail, seq: between.fromSeq });
+    // Only what this range newly spans is asked for, once.
+    if (before !== undefined) {
+      const [first, last] = before as [number, number];
+      const from = Math.min(first, checkpoint.fromSeq);
+      const to = Math.max(last, checkpoint.fromSeq);
+      for (const between of held.checkpoints) {
+        const fresh = between.fromSeq < first || between.fromSeq > last;
+        if (fresh && between.fromSeq > from && between.fromSeq < to) {
+          wanted.push({ tail, seq: between.fromSeq });
+        }
       }
     }
     // Every identity an event of the range speaks for brings its roster with it.
