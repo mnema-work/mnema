@@ -34,7 +34,11 @@ import { type CliIo, run } from '../program.js';
 import { runInit } from './init.js';
 import { runMemory } from './memory.js';
 import { runVerify } from './verify.js';
-import { checkSigstoreWitnesses, cosignCommand, namesTheExpected } from './witness-sigstore-check.js';
+import {
+  checkSigstoreWitnesses,
+  cosignCommand,
+  namesTheExpected,
+} from './witness-sigstore-check.js';
 
 describe('checking a Sigstore countersignature against who was expected', () => {
   let sandbox: string;
@@ -223,8 +227,12 @@ describe('checking a Sigstore countersignature against who was expected', () => 
     );
     expect(check.ok).toBe(false);
     expect(check.refusals.join(' ')).toContain('may not be empty');
-    expect(namesTheExpected({ identity: '', issuer: '' }, { identity: '', issuer: '' })).toBe(false);
-    expect(namesTheExpected({ identity: 'a', issuer: 'b' }, { identity: 'a', issuer: 'b' })).toBe(true);
+    expect(namesTheExpected({ identity: '', issuer: '' }, { identity: '', issuer: '' })).toBe(
+      false,
+    );
+    expect(namesTheExpected({ identity: 'a', issuer: 'b' }, { identity: 'a', issuer: 'b' })).toBe(
+      true,
+    );
   });
 
   it('reports a folder named like a bundle as unreadable instead of throwing', async () => {
@@ -322,7 +330,14 @@ describe('the verb, as typed', () => {
 
   it('refuses an empty identity or issuer', async () => {
     await typed('init');
-    const answer = await typed('witness', 'sigstore-check', '--identity', '', '--issuer', ACTIONS_ISSUER);
+    const answer = await typed(
+      'witness',
+      'sigstore-check',
+      '--identity',
+      '',
+      '--issuer',
+      ACTIONS_ISSUER,
+    );
     expect(answer.failed).toBe(true);
     expect(answer.err).toContain('non-empty');
   });

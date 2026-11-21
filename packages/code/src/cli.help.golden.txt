@@ -2643,7 +2643,9 @@ $ mnema witness sigstore-check --help
 |   --message-dir <dir>    write the message each bundle signs into this folder,
 |                          one file per checkpoint named by its SHA-256, and print
 |                          the `cosign verify-blob` line that checks the same
-|                          bundle beside it
+|                          bundle beside it. Refused when the folder is, or passes
+|                          through, a symbolic link, or is inside a record folder;
+|                          a message file that already exists is never overwritten
 |   --global               also cover this machine's global tree (left out by
 |                          default): it belongs to no project and is present in
 |                          every one, and a witness over a tree no verdict reads

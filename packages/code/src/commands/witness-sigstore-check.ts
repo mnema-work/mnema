@@ -113,7 +113,6 @@ function messageOf(tree: TreeReport | undefined, finding: SigstoreFinding): Uint
   return found === undefined ? undefined : checkpointMessage(found);
 }
 
-
 /** The signer a reading names equals what was expected: a missing name (read as '') equals nothing. */
 export function namesTheExpected(
   reading: { readonly identity: string; readonly issuer: string },
@@ -157,13 +156,19 @@ function readyMessageDir(
       stat = lstatSync(at);
     }
     if (stat.isSymbolicLink()) {
-      return { ok: false, why: `${at} is a symbolic link: a message folder may not be, or pass through, one` };
+      return {
+        ok: false,
+        why: `${at} is a symbolic link: a message folder may not be, or pass through, one`,
+      };
     }
     if (!stat.isDirectory()) return { ok: false, why: `${at} is not a folder` };
   }
   const real = realpathSync(wanted);
   if (real !== wanted) {
-    return { ok: false, why: `${wanted} resolves to ${real}: a message folder may not pass through a link` };
+    return {
+      ok: false,
+      why: `${wanted} resolves to ${real}: a message folder may not pass through a link`,
+    };
   }
   return { ok: true };
 }
