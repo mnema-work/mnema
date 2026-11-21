@@ -32,4 +32,6 @@ What it reads and what it does:
   cites nowhere gets one line naming the command that reads it, once per session and
   file. Nothing is written for it.
   On stdout, the reply the host reads, or {}.
+  With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
+  code alone on the first line of the error stream; typed by a person, nothing changes.
 ```

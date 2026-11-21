@@ -175,7 +175,7 @@ Each tool of the MCP server has its page, in [the tools](reference/mcp-tools.md)
   [After a compaction](the-session-journal-and-compaction.md#after-a-compaction)); nothing runs before a compaction, because the host throws away what a
   hook says then. The seventh runs `mnema corrections`, also at `Stop`, and is **off until you switch it on**
   (`mnema switch on user-corrections`): it reads the transcript's own words, the one reader here
-  that does, finds the prompts that open by correcting the agent ("no, …", "stop …", "do not …",
+  that does (a typed line counts as the person's only where Claude Code marks it `origin.kind` `human`: a compaction summary, a local command and `[Request interrupted by user]` never count, a slash command opens an answer but is never quoted, and a transcript of an older Claude Code with no `origin` yields no typed line; an option chosen in the question tool is read from the tool's result, which carries no `origin`), finds the prompts that open by correcting the agent ("no, …", "stop …", "do not …",
   "that is wrong", "use … instead", in English and Portuguese), and the answers the person gave to
   a question of the agent (the option chosen in the host's question tool, or the prompt after a
   response that ended in a question mark, quoted with the question), and records each as a `proposed`
@@ -263,7 +263,7 @@ Typed with nothing after it, `mnema` prints a short summary on stdout and exits 
 what you want to do instead): what the product does in a sentence, whether a project is founded here and how
 many decisions await a judgement, which channels are off on this machine and the command that turns one on,
 three verbs to go on with, and a pointer to `mnema --help`, which prints every command. The summary reads the
-record and writes nothing; a part it cannot read (a line of the record, or the switches) is not guessed: one line says so and names `mnema verify`, and neither claims the project is not founded nor lists what could not be read. `mnema init` names the channels that begin off in
+record and writes nothing; a line of the record it cannot read does not stop it: what reads is counted, and the unreadable line is said first, with `mnema tail repair` named as the way to put the tail back from the repository's history for the public tree (for the private and the global tree, which are not versioned, it says to restore the file from a copy, or to repair or remove the line). Only a record that does not read at all, or switches that do not, is not guessed: one line says it is unread and names `mnema verify`, and neither claims the project is not founded nor lists what could not be read. `mnema init` names the channels that begin off in
 two lines before its "Next" line, and `mnema switch` ends each off line with the command that turns it on
 ([every switch](switches.md)).
 
@@ -457,6 +457,13 @@ named once and never read: `verify` says `N stray entry(ies) in a tail directory
 prints each name in the census, and exits as it would without it. The files an operating system writes
 on its own (`.DS_Store`, `._*`) are skipped and not named. The second reader, `mnema_verify.py`, says the
 same sentence.
+
+A symbolic link anywhere `verify` reads in the record is refused, first, and nothing behind it is read: `LINKED TAIL:
+tails/<name>` for a tail that is a link, and `LINKED ENTRY: <path>` for a segment, `checkpoints.jsonl`, `tailproof.json`, a
+key file or a witness file that is one (the second reader says the same words). The other reads (`status`, `brief`, the hooks, the
+edit gate and the server's tools) name the link, serve the rest of the record and open nothing it points at; a write is refused
+with `RECORD_LINKED`, naming the path, and writes nothing through it. The way out is to replace the link with the folder or file it
+points to; no version of mnema writes a link into a record.
 A tail removed *together with its key*, while another remains, may leave nothing to report at
 all, and only a history outside this record (the one a git remote keeps) can testify to what
 was taken out.
@@ -793,6 +800,25 @@ sits where the tree's own `.gitignore` already looks away, and a clone never car
 A read of a tree nobody has written to creates nothing, and where the file cannot be
 had (a read-only directory, a damaged file), the read builds it in memory and answers
 the same.
+
+Two builds of mnema on one machine (an editor extension and a command line of different
+versions, or a checkout you are developing in) share that one file per tree, and the file says
+which build's code wrote it and which mnema version that was. A process whose code is not the
+one that wrote the file rewrites it only when its version is newer than the one stored: an
+update takes the file over once, and from then on the file is incremental for the new version.
+On the same version (two checkouts under development) or an older one (a build left installed
+beside a newer one), and on a file that is busy or locked, the process builds its answers in
+memory and leaves the file as it is. A file written before the version was stored counts as
+the oldest, and the first newer build takes it. Versions are ordered by their three numbers only: a suffix
+such as `-beta` does not order, so `0.2.0` does not take over the file of `0.2.0-beta` (deleting
+`locks/projection.db` settles it). The SDK called with an explicit `env` declares no version, and so
+never takes over the file of another build. The process that does not take the file pays a
+replay each time it starts: on every command and every hook of the command line, and once per
+MCP server, which then keeps what it built. On a large record that is the time of a build
+instead of a read of the file (about a second on a 13 MB private tree, with a few hundred
+megabytes of memory), until that build is updated or `MNEMA_CACHE_DIR` gives it a directory of
+its own. Deleting `locks/projection.db` is always safe: it is only a cache, and the next read
+builds it again. A missing or damaged file is built and kept as before.
 
 The MCP server keeps it for the two trees of the project it is in, and for no other tree: the
 other projects of the workspace and the global tree are built in memory for the connection, as
