@@ -45,6 +45,8 @@ import {
   type GoverningRules,
   governingRules,
   governsInForceEverywhere,
+  type RuleReach,
+  rulesInForceReach,
   type RulesAtPath,
   refusesAWriteAt,
   rulesInForceAt,
@@ -271,6 +273,21 @@ export function readGovernsInForceEverywhere(
   root: string,
 ): ReturnType<typeof governsInForceEverywhere> {
   return governsInForceEverywhere(sources, {
+    root,
+    onDisk: (relative) => existsSync(join(root, relative)),
+  });
+}
+
+/**
+ * Every address of every rule in force, under all three relations, read once: what the coverage
+ * count matches each walked file against. Same root and same disk probe as the others, written
+ * here for the same reason.
+ */
+export function readRulesInForceReach(
+  sources: readonly ScopedCache[],
+  root: string,
+): readonly RuleReach[] {
+  return rulesInForceReach(sources, {
     root,
     onDisk: (relative) => existsSync(join(root, relative)),
   });

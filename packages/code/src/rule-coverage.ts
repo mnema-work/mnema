@@ -26,7 +26,7 @@
  * somebody else's repository.
  */
 
-import { channelIsOn, relationsCovering, rulesInForceReach, type ScopedCache } from '@mnema/context';
+import { channelIsOn, relationsCovering, type ScopedCache } from '@mnema/context';
 import {
   ASKS_FOR_A_PERSON_RELATION,
   GOVERNS_RELATION,
@@ -91,7 +91,7 @@ export function coverageByLayer(
     ...(channelIsOn(own, REFUSES_A_WRITE_CHANNEL) ? [] : [REFUSES_A_WRITE_CHANNEL]),
     ...(channelIsOn(own, ASKS_A_PERSON_CHANNEL) ? [] : [ASKS_A_PERSON_CHANNEL]),
   ];
-  const reach = rulesInForceReach(sources, { root });
+  const reach = readRulesInForceReach(sources, root);
   const total = empty();
   const byFolder = new Map<string, Record<Layer, number>>();
   const outcome = walkProject(
