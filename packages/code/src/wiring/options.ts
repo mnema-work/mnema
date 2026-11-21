@@ -10,7 +10,7 @@
  * to close.
  */
 
-import { canonicalIdentity, type Scope } from '@mnema/core';
+import { canonicalIdentity, parseWindow, type Scope, type Window } from '@mnema/core';
 import { InvalidArgumentError } from 'commander';
 import { SCOPES } from './enumerated.js';
 import { type Reporter, reportUsage } from './report.js';
@@ -180,6 +180,25 @@ export function parseScope(
   if ((SCOPES as readonly string[]).includes(value)) return value as Scope;
   reportUsage(to, `Invalid --scope "${value}". Use one of: ${SCOPES.join(', ')}.`);
   return INVALID;
+}
+
+/** Returned by {@link parseWindowOptions} when a bound is not a date or a timestamp. */
+export const INVALID_WINDOW = Symbol('invalid-window');
+
+/**
+ * Reads `--from`/`--to` as the dates and timestamps they claim to be (the core's
+ * `parseWindow`), and REPORTS a bound that is neither as a one-line usage error naming the
+ * flag. What it returns is in the stored form, so the read compares like with like; a bound
+ * left raw would be string-compared and `--to garbage` would let every record through.
+ */
+export function parseWindowOptions(
+  raw: { readonly from?: string; readonly to?: string },
+  to: Reporter,
+): Window | typeof INVALID_WINDOW {
+  const read = parseWindow(raw);
+  if (read.ok) return read.window;
+  reportUsage(to, read.message);
+  return INVALID_WINDOW;
 }
 
 /** Returned by {@link parseLimit} when the value is not a positive whole number. */
