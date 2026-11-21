@@ -9,7 +9,15 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,7 +26,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runDecision } from '../src/commands/decision.js';
 import { runDecisionTransition } from '../src/commands/decision-transition.js';
 import { runInit } from '../src/commands/init.js';
-import { runProve, runProveCheck } from '../src/commands/prove.js';
+import { runProve, runProveCheck, writeProofFile } from '../src/commands/prove.js';
 import { type CliIo, run } from '../src/program.js';
 
 const VERIFIER = fileURLToPath(new URL('../../chain/verifier/mnema_verify.py', import.meta.url));
@@ -145,5 +153,49 @@ describe('a decision no tree holds', () => {
       reason: 'NO_SUCH_DECISION',
       typed: 'not-a-decision',
     });
+  });
+});
+
+describe('what is refused before any proof is checked or built', () => {
+  it('a record that does not verify is not proven from', () => {
+    const id = decide('Prove one decision in one file');
+    const tails = join(repo, '.mnema', 'tails');
+    const [tail] = readdirSync(tails);
+    appendFileSync(join(tails, tail as string, '000001.jsonl'), '{"event":{},"link":{}}\n');
+    expect(runProve({ cwd: repo, env }, { decision: id, private: false })).toEqual({
+      ok: false,
+      reason: 'RECORD_BROKEN',
+      scope: 'public',
+    });
+  });
+
+  it('a file that is not there, or not UTF-8, is no proof to check', () => {
+    expect(runProveCheck(join(sandbox, 'nowhere.json'))).toMatchObject({
+      ok: false,
+      reason: 'UNREADABLE_PROOF',
+    });
+    const file = join(sandbox, 'latin1.json');
+    writeFileSync(file, Buffer.from([0x7b, 0xe9, 0x7d, 0x0a]));
+    expect(runProveCheck(file)).toMatchObject({ ok: false, reason: 'UNREADABLE_PROOF' });
+  });
+
+  it('a proof is never written over a file that is there', () => {
+    const file = join(sandbox, 'there.json');
+    writeFileSync(file, 'kept');
+    expect(writeProofFile(file, 'a proof\n')).toMatchObject({
+      ok: false,
+      reason: 'PROOF_NOT_WRITTEN',
+    });
+    expect(readFileSync(file, 'utf-8')).toBe('kept');
+    expect(writeProofFile(join(sandbox, 'new.json'), 'a proof\n')).toEqual({ ok: true });
+  });
+
+  it('the verb asks for a decision or a file, and not both', async () => {
+    const neither = await mnema('prove');
+    expect(neither.failed).toBe(true);
+    expect(neither.err).toContain('Name a decision to prove, or give --check <file>.');
+    const both = await mnema('prove', 'ADR-1', '--check', join(sandbox, 'any.json'));
+    expect(both.failed).toBe(true);
+    expect(both.err).toContain('--check takes a file and nothing else.');
   });
 });

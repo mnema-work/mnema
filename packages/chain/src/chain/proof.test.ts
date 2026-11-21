@@ -148,6 +148,111 @@ describe('the published proof of one decision', () => {
   });
 });
 
+/** One way to break the published proof, and what the product's checker names first. */
+interface Broken {
+  readonly name: string;
+  readonly text: (published: string) => string;
+  readonly refusal: RegExp;
+}
+
+type Proof = Record<string, unknown>;
+type Tail = { tail: string; tailproof: string; ranges: { checkpoint: string; entries: unknown[] }[] };
+const tailOf = (proof: Proof): Tail => (proof.tails as Tail[])[0] as Tail;
+const withSig = (line: string): string => line.replace(/"sig":"([0-9a-f])/, (_, c: string) => `"sig":"${c === '0' ? '1' : '0'}`);
+
+const BROKEN: readonly Broken[] = [
+  { name: 'two line feeds at the end', text: (t) => `${t}\n`, refusal: /exactly one line feed/ },
+  {
+    name: 'laid out with spaces',
+    text: (t) => `${JSON.stringify(JSON.parse(t), null, 1)}\n`,
+    refusal: /not the canonical serialization/,
+  },
+  {
+    name: 'a scheme no reader knows',
+    text: (t) => changed(t, (p) => { p.scheme = 'mnema-proof/9'; }),
+    refusal: /scheme this reader does not know/,
+  },
+  {
+    name: 'a key beside the four',
+    text: (t) => changed(t, (p) => { p.forged = true; }),
+    refusal: /proof keys are/,
+  },
+  {
+    name: 'no key',
+    text: (t) => changed(t, (p) => { p.keys = []; }),
+    refusal: /not a list of keys/,
+  },
+  {
+    name: 'a key twice',
+    text: (t) => changed(t, (p) => { p.keys = [...(p.keys as string[]), ...(p.keys as string[])]; }),
+    refusal: /ascending order of their fingerprints/,
+  },
+  {
+    name: 'a key that is not one',
+    text: (t) => changed(t, (p) => { p.keys = ['no key here']; }),
+    refusal: /a key/,
+  },
+  {
+    name: 'no tail',
+    text: (t) => changed(t, (p) => { p.tails = []; }),
+    refusal: /not a list of tails/,
+  },
+  {
+    name: 'a tail of a key the proof does not carry',
+    text: (t) => changed(t, (p) => { tailOf(p).tail = `${'0'.repeat(64)}-${'cd'.repeat(16)}`; }),
+    refusal: /names a key the proof does not carry/,
+  },
+  {
+    name: 'a tail proof whose signature was changed',
+    text: (t) => changed(t, (p) => { tailOf(p).tailproof = withSig(tailOf(p).tailproof); }),
+    refusal: /tail proof of .* does not verify/,
+  },
+  {
+    name: 'a checkpoint whose signature was changed',
+    text: (t) => changed(t, (p) => {
+      const range = tailOf(p).ranges[1] as { checkpoint: string };
+      range.checkpoint = withSig(range.checkpoint);
+    }),
+    refusal: /does not verify: bad-signature/,
+  },
+  {
+    name: 'a range with a line taken out',
+    text: (t) => changed(t, (p) => { tailOf(p).ranges[1]?.entries.pop(); }),
+    refusal: /signs 2 line\(s\), and the range carries 1/,
+  },
+  {
+    name: 'two ranges swapped',
+    text: (t) => changed(t, (p) => { tailOf(p).ranges.reverse(); }),
+    refusal: /does not begin after the range before it/,
+  },
+  {
+    name: 'a line that is not a string',
+    text: (t) => changed(t, (p) => { (tailOf(p).ranges[0] as { entries: unknown[] }).entries[0] = 7; }),
+    refusal: /a line that is not a string/,
+  },
+  {
+    name: 'a manifest that names no decision',
+    text: (t) => changed(t, (p) => { delete (p.manifest as Proof).decision; }),
+    refusal: /names no decision/,
+  },
+  {
+    name: 'a manifest about another decision',
+    text: (t) => changed(t, (p) => { (p.manifest as Proof).decision = 'another'; }),
+    refusal: /carries no writing of the decision/,
+  },
+];
+
+describe('every way the published proof is broken here, refused by both readers', () => {
+  it.each(BROKEN)('$name', ({ text, refusal }) => {
+    const broken = text(readFileSync(PUBLISHED, 'utf-8'));
+    const checked = checkProof(broken);
+    expect(checked).toMatchObject({ proven: false });
+    if (checked.proven) return;
+    expect(checked.refusal).toMatch(refusal);
+    expect(secondReader(broken).verdict).toBe('REFUSED');
+  });
+});
+
 const NEVER = 10_000;
 
 function open(): ChainWriter {
