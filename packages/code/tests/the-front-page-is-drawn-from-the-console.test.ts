@@ -1168,16 +1168,29 @@ describe('the diagrams are outlines of their words, drawn in the brand', () => {
       },
     );
 
-    it.each(FOURTEEN)("%s fills with no page's colour but its own theme's", (path) => {
-      const theme = themeOf(path);
-      const other = PAGE[theme === 'dark' ? 'light' : 'dark'];
+    it.each(FOURTEEN)("%s fills with no page's colour, of either theme", (path) => {
+      const pages: string[] = Object.values(PAGE);
       const fills = nodesOf(read(path)).flatMap((n) =>
         n.at.fill?.startsWith('#') ? [hex6(n.at.fill)] : [],
       );
-      expect(fills.filter((c) => c === other)).toEqual([]);
-      // Whatever stands for the ground is the page's colour of the theme, and the palette says so.
-      expect(Object.values(PALETTE)).toContain(PAGE[theme]);
+      expect(fills.filter((c) => pages.includes(c))).toEqual([]);
     });
+
+    it.each(FOURTEEN)(
+      "%s carries a page's colour only as the stroke of a light pulse gap",
+      (path) => {
+        const pages: string[] = Object.values(PAGE);
+        const found = nodesOf(read(path)).flatMap((n) =>
+          Object.entries(n.at)
+            .filter(([, v]) => v.startsWith('#') && pages.includes(hex6(v)))
+            .map(([k, v]) => `${n.at.class ?? n.tag} ${k}=${hex6(v)}`),
+        );
+        const gap = (c: string): boolean => /^kr? stroke=#ffffff$/.test(c);
+        expect(found.filter((c) => !gap(c))).toEqual([]);
+        // The dark theme has no gap of light: its pulse is drawn in the accent.
+        if (themeOf(path) === 'dark') expect(found).toEqual([]);
+      },
+    );
 
     it.each(FOURTEEN)(
       "%s tints a panel with the theme's ink, and not with a colour of its own",

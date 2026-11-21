@@ -531,12 +531,23 @@ function chain(t) {
   const xs = [0, 1, 2, 3, 4, 5].map((i) => 110 + 100 * i);
   const L = CHAIN_LINES;
   /**
-   * The dotted line of the chain runs through these two, so each hides it with the page's colour: the only ground left.
+   * The dotted line of the chain stops at the edge of each of these two (see `dotted` below), so a ring needs no fill to hide it.
    * @param {number} x
    * @param {number} r
    */
   const after = (x, r) =>
-    `<circle cx="${x}" cy="${y}" r="${r}" fill="${t.page}" stroke="${t.dim}" stroke-width="2" stroke-dasharray="3 3"/>`;
+    `<circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="${t.dim}" stroke-width="2" stroke-dasharray="3 3"/>`;
+  /** The dotted line after the break, cut at the outer edge of each ring (its radius and half its stroke) so nothing shows inside one. */
+  const dotted = [
+    [(xs[3] ?? 0) + 13, (xs[4] ?? 0) - 9],
+    [(xs[4] ?? 0) + 9, (xs[5] ?? 0) - 13],
+    [(xs[5] ?? 0) + 13, 650],
+  ]
+    .map(
+      ([a, b]) =>
+        `<path d="M${a},${y}H${b}" stroke="${t.dim}" stroke-width="2" stroke-dasharray="4 5"/>`,
+    )
+    .join('');
   const nodes = xs
     .map((x, i) =>
       i === 3 ? refused(t, x, y, 11) : i > 3 ? after(x, i === 5 ? 12 : 8) : pt(t, x, y, 8),
@@ -559,7 +570,7 @@ function chain(t) {
     320,
     heading(t, 40, 50, L.name) +
       band(t, 20, 700, y, 4, 15, st, { sw: 1.3 }) +
-      `<path d="M70,${y}H${(xs[3] ?? 0) - 13}" stroke="${t.acc}" stroke-width="2"/>${pulse(t, `M70,${y}H${(xs[3] ?? 0) - 13}`, true)}<path d="M${(xs[3] ?? 0) + 13},${y}H650" stroke="${t.dim}" stroke-width="2" stroke-dasharray="4 5"/>` +
+      `<path d="M70,${y}H${(xs[3] ?? 0) - 13}" stroke="${t.acc}" stroke-width="2"/>${pulse(t, `M70,${y}H${(xs[3] ?? 0) - 13}`, true)}${dotted}` +
       nodes +
       label(0, L.event, L.link, 'acc') +
       label(3, L.mismatch, L.altered, 'acc') +
