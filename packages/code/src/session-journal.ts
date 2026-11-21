@@ -450,8 +450,10 @@ export const WORDS_SUFFIX = '.words.jsonl';
 /**
  * Lets go of the journals older than {@link PRUNE_AFTER_MS} and of all but the newest
  * {@link PRUNE_KEEP}, and of the file of the person's words that goes with each journal let go (and
- * of those older than {@link PRUNE_AFTER_MS} or beyond the newest {@link PRUNE_KEEP}): the words of a
- * session live exactly as long as its journal does. Never throws on a file that is gone already.
+ * of those older than {@link PRUNE_AFTER_MS} or beyond the newest {@link PRUNE_KEEP}). So the words of
+ * a session go with its journal, AND go on their own limits whether or not the journal remains: a
+ * words file with no journal is let go by the same age, and only the newest {@link PRUNE_KEEP} words
+ * files stay. Never throws on a file that is gone already.
  */
 export function pruneSessions(dir: string, now: Date): void {
   const kept: { path: string; mtime: number; id: string }[] = [];

@@ -10,6 +10,7 @@
  */
 
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -17,6 +18,7 @@ import {
   readFileSync,
   rmSync,
   statSync,
+  symlinkSync,
   utimesSync,
   writeFileSync,
 } from 'node:fs';
@@ -27,6 +29,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { HOST_NAMES, HOSTS, type HostName } from '../src/host-names.js';
 import {
   chosenOf,
+  cutAtACodePoint,
   ENTRY_LIMIT,
   FILE_LIMIT,
   keepPersonsWords,
@@ -586,6 +589,81 @@ describe('the pruning, with the session journal', () => {
     expect(left).not.toContain('ancient.words.jsonl');
     expect(personsWordsFor('s-0', 'claude', trees())).toEqual([]);
     expect(personsWordsFor('last', 'claude', trees())).toHaveLength(1);
+  });
+});
+
+describe('a link planted where the words go', () => {
+  const claude = (session: string, prompt = 'a private sentence') => ({
+    session_id: session,
+    prompt,
+  });
+
+  it('is not written through when it sits at the words file, and its target keeps its mode', () => {
+    const file = wordsFile(trees(), 'link-1') ?? '';
+    mkdirSync(join(file, '..'), { recursive: true });
+    const target = join(sandbox, 'target.txt');
+    writeFileSync(target, 'mine\n');
+    chmodSync(target, 0o644);
+    symlinkSync(target, file);
+    const done = keep('claude', claude('link-1'));
+    expect(done.kept).toBe('nothing');
+    expect(readFileSync(target, 'utf-8')).toBe('mine\n');
+    expect(statSync(target).mode & 0o777).toBe(0o644);
+  });
+
+  it('is not written through when it sits at the project directory: nothing lands in the repository', () => {
+    const file = wordsFile(trees(), 'link-2') ?? '';
+    const evil = join(repo, 'evil');
+    mkdirSync(evil);
+    mkdirSync(join(file, '..', '..'), { recursive: true });
+    symlinkSync(evil, join(file, '..'));
+    expect(keep('claude', claude('link-2')).kept).toBe('nothing');
+    expect(readdirSync(evil)).toEqual([]);
+  });
+
+  it('is not written through when it sits at the sessions directory', () => {
+    const file = wordsFile(trees(), 'link-3') ?? '';
+    const evil = join(repo, 'evil');
+    mkdirSync(evil);
+    mkdirSync(join(file, '..', '..', '..'), { recursive: true });
+    symlinkSync(evil, join(file, '..', '..'));
+    expect(keep('claude', claude('link-3')).kept).toBe('nothing');
+    expect(readdirSync(evil)).toEqual([]);
+  });
+});
+
+describe('the limits are exact', () => {
+  it('refuses an append that would cross the file limit, and keeps one that fits exactly', () => {
+    keep('claude', { session_id: 'edge', prompt: 'first' });
+    const file = wordsFile(trees(), 'edge') ?? '';
+    const used = statSync(file).size;
+    const filler = FILE_LIMIT - used - 10;
+    writeFileSync(file, readFileSync(file, 'utf-8') + ' '.repeat(filler));
+    expect(statSync(file).size).toBe(FILE_LIMIT - 10);
+    expect(keep('claude', { session_id: 'edge', prompt: 'too long to fit' }).kept).toBe('nothing');
+    expect(statSync(file).size).toBe(FILE_LIMIT - 10);
+    expect(
+      keep('claude', {
+        session_id: 'edge',
+        prompt: 'x'.repeat(
+          FILE_LIMIT -
+            (FILE_LIMIT - 10) -
+            Buffer.byteLength(
+              `${JSON.stringify({ kind: 'typed', text: '', host: 'claude', at: new Date().toISOString() })}\n`,
+            ),
+        ),
+      }).kept,
+    ).toBe('typed');
+    expect(statSync(file).size).toBe(FILE_LIMIT);
+  });
+
+  it('cuts a long entry on a code point, never between the halves of a surrogate pair', () => {
+    const text = `${'a'.repeat(ENTRY_LIMIT - 1)}\u{1F600}`;
+    const cut = cutAtACodePoint(text);
+    expect(cut).toBe('a'.repeat(ENTRY_LIMIT - 1));
+    expect(cutAtACodePoint('a'.repeat(ENTRY_LIMIT + 5))).toHaveLength(ENTRY_LIMIT);
+    keep('claude', { session_id: 'emoji', prompt: text });
+    expect(personsWordsFor('emoji', 'claude', trees())[0]?.text).toBe(cut);
   });
 });
 

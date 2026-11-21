@@ -31,7 +31,18 @@
  * no words.
  */
 
-import { appendFileSync, chmodSync, mkdirSync, readFileSync, statSync } from 'node:fs';
+import {
+  chmodSync,
+  closeSync,
+  constants,
+  fchmodSync,
+  fstatSync,
+  lstatSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  writeSync,
+} from 'node:fs';
 import { dirname } from 'node:path';
 import { type DiscoveryEnv, type ResolvedTrees, resolveTrees } from '@mnema/core';
 import { QUESTION_TOOLS } from './commands/settled.js';
@@ -321,6 +332,71 @@ export function wordsFile(trees: ResolvedTrees, session: string): string | undef
   return journal === undefined ? undefined : `${journal.slice(0, -'.json'.length)}${WORDS_SUFFIX}`;
 }
 
+/** `text` cut to {@link ENTRY_LIMIT} characters, never between the two halves of a surrogate pair. */
+export function cutAtACodePoint(text: string): string {
+  if (text.length <= ENTRY_LIMIT) return text;
+  const last = text.charCodeAt(ENTRY_LIMIT - 1);
+  return text.slice(0, last >= 0xd800 && last <= 0xdbff ? ENTRY_LIMIT - 1 : ENTRY_LIMIT);
+}
+
+/** Whether `path` is a directory of this user and not a link to one. */
+function isOwnDirectory(path: string): boolean {
+  const here = lstatSync(path);
+  const uid = process.getuid?.();
+  return here.isDirectory() && !here.isSymbolicLink() && (uid === undefined || here.uid === uid);
+}
+
+/**
+ * Makes `<data directory>/sessions/<digest>` where it is missing, and answers whether `sessions` and
+ * `sessions/<digest>` are both real directories of this user: a link at either would carry the
+ * words somewhere else (into the repository, for one), so nothing is written through one.
+ */
+function ownDirectories(dir: string): boolean {
+  const sessions = dirname(dir);
+  mkdirSync(dirname(sessions), { recursive: true, mode: DIRECTORY_MODE });
+  for (const path of [sessions, dir]) {
+    try {
+      lstatSync(path);
+    } catch {
+      mkdirSync(path, { mode: DIRECTORY_MODE });
+    }
+    if (!isOwnDirectory(path)) return false;
+    chmodSync(path, DIRECTORY_MODE);
+  }
+  return true;
+}
+
+/**
+ * Appends the lines that fit under {@link FILE_LIMIT} to `file` in ONE write, through a descriptor
+ * opened without following a link (`O_NOFOLLOW`) whose mode is set on the descriptor, so a link
+ * planted at the file is refused instead of written through and its target's mode left alone. A line
+ * that would cross the limit is not written, nor are the ones after it. Answers whether any line was
+ * written.
+ */
+function appendWithinTheLimit(file: string, lines: readonly Buffer[]): boolean {
+  const flags =
+    constants.O_WRONLY | constants.O_APPEND | constants.O_CREAT | (constants.O_NOFOLLOW ?? 0);
+  const fd = openSync(file, flags, FILE_MODE);
+  try {
+    const here = fstatSync(fd);
+    const uid = process.getuid?.();
+    if (!here.isFile() || (uid !== undefined && here.uid !== uid)) return false;
+    fchmodSync(fd, FILE_MODE);
+    let size = here.size;
+    const fit: Buffer[] = [];
+    for (const line of lines) {
+      if (size + line.length > FILE_LIMIT) break;
+      fit.push(line);
+      size += line.length;
+    }
+    if (fit.length === 0) return false;
+    writeSync(fd, Buffer.concat(fit));
+    return true;
+  } finally {
+    closeSync(fd);
+  }
+}
+
 /** What {@link keepPersonsWords} did. */
 export interface Kept {
   readonly kept: WordKind | 'nothing';
@@ -369,28 +445,17 @@ export function keepPersonsWords(
     if (file === undefined) return { kept: 'nothing' };
     const now = input.now ?? new Date();
     const dir = dirname(file);
-    mkdirSync(dir, { recursive: true, mode: DIRECTORY_MODE });
-    chmodSync(dir, DIRECTORY_MODE);
-    chmodSync(dirname(dir), DIRECTORY_MODE);
-    let size = 0;
-    try {
-      size = statSync(file).size;
-    } catch {
-      // No file yet.
+    if (!ownDirectories(dir)) {
+      return { kept: 'nothing', why: 'the sessions directory is not a directory of this user' };
     }
-    if (size >= FILE_LIMIT)
-      return { kept: 'nothing', why: 'this session already holds the most it keeps' };
-    const lines = texts.map((text) => {
-      const word: PersonsWord = {
-        kind,
-        text: text.slice(0, ENTRY_LIMIT),
-        host,
-        at: now.toISOString(),
-      };
-      return `${JSON.stringify(word)}\n`;
-    });
-    appendFileSync(file, lines.join(''), { mode: FILE_MODE });
-    chmodSync(file, FILE_MODE);
+    const lines = texts.map((text) =>
+      Buffer.from(
+        `${JSON.stringify({ kind, text: cutAtACodePoint(text), host, at: now.toISOString() } satisfies PersonsWord)}\n`,
+      ),
+    );
+    if (!appendWithinTheLimit(file, lines)) {
+      return { kept: 'nothing', why: 'nothing was appended: a link, not a file of this user, or the limit' };
+    }
     pruneSessions(dir, now);
     return { kept: kind };
   } catch {

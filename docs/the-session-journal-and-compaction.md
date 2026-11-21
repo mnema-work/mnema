@@ -113,14 +113,14 @@ line per host event in the table below).
 **What is kept.** The text of a prompt as the host's prompt hook delivered it, marked `typed`; and, from the hook after the
 host's question tool, the label of each option the person chose, marked `chosen` (an answer to a question the host marks
 secret, Codex's `is_secret`, is not kept). Each entry also holds the host and the instant. A long paste is cut at 65,536
-characters, and a session stops being kept at 4 MiB. Never the agent's words, a tool's output or the environment. A host's prompt
+characters, and a session's file never passes 4 MiB (an entry that would cross it is not kept). Never the agent's words, a tool's output or the environment. A host's prompt
 hook can fire for a turn the host starts by itself, and the entry cannot tell: Claude Code documents that its hook does.
 
 **Where, and for how long.** `<data directory>/sessions/<digest of the project>/<the host's session id>.words.jsonl`, beside the
-[session journal](#the-session-journal), mode `0600` in a `0700` directory whatever the umask. It is outside the record: nothing
+[session journal](#the-session-journal), mode `0600` in a `0700` directory whatever the umask. The file is opened without following a link, and nothing is written when `sessions` or the project's directory under it is a link or not a directory of yours. It is outside the record: nothing
 is signed or written to the chain, `mnema verify` does not read it, it is never in the repository, and the verb prints none of
-it. It lives as long as the journal does: when a journal is pruned (untouched for 30 days, or beyond the newest 50) its words go
-with it, and words with no journal are let go by the same age and number. Switching the session journal off does not stop
+it. When a journal is pruned (untouched for 30 days, or beyond the newest 50) its words go with it; and the words files have
+limits of their own, whether or not the journal remains: one untouched for 30 days goes, and only the newest 50 stay. Switching the session journal off does not stop
 it, and deleting the file loses nothing the record holds. The data is what you typed: it can hold anything you typed, so it is
 kept on this machine only.
 
