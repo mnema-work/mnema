@@ -32,7 +32,7 @@ import {
   GOVERNS_RELATION,
   REFUSES_A_WRITE_RELATION,
 } from '@mnema/core';
-import { WALK_CEILING, walkProject } from './governed-tree.js';
+import { readRulesInForceReach, WALK_CEILING, walkProject } from './governed-tree.js';
 import { ASKS_A_PERSON_CHANNEL, REFUSES_A_WRITE_CHANNEL } from './record-framing.js';
 
 /** The layers a file falls under, strongest first. */
