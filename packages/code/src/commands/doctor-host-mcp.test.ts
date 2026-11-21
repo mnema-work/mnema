@@ -7,6 +7,7 @@
 
 import {
   chmodSync,
+  symlinkSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -479,4 +480,30 @@ describe('an entry that cannot be verified is neither dead nor the one that stay
     expect(isGone('D:\\Users\\a\\AppData\\Local\\fnm_multishells\\1\\node.exe')).toBe(false);
     expect(isGone(join(sandbox, 'gone', 'mnema'))).toBe(true);
   });
+
+  it.each([
+    ['a flag comes first', () => ['--enable-source-maps', join(sandbox, 'gone', 'cli.js'), 'mcp']],
+    ['the script is a relative path', () => [join('dist', 'missing', 'cli.js'), 'mcp']],
+    [
+      'the script is a link that points nowhere',
+      () => {
+        const link = join(sandbox, 'dangling.js');
+        symlinkSync(join(sandbox, 'nowhere.js'), link);
+        return [link, 'mcp'];
+      },
+    ],
+  ])('does not take a node entry as working when %s: the project entry that works stays', async (_why, args) => {
+    const text = pretty({
+      mcpServers: { mnema: { command: process.execPath, args: args() } },
+      projects: { [repo]: { mcpServers: { mnema: live() } } },
+    });
+    put(claudeJson(), text);
+    for (const argv of [['upgrade', '--dry-run'], ['upgrade'], ['upgrade', '--fix']]) {
+      const said = await mnema(argv);
+      expect(said.out).not.toMatch(/applied · mcp|would apply · mcp/);
+      expect(readFileSync(claudeJson(), 'utf8')).toBe(text);
+    }
+    expect(copies(claudeJson())).toEqual([]);
+  });
 });
+

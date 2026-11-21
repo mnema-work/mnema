@@ -9,7 +9,7 @@
  * whether it resolves depends on the PATH of the host's own process, which this one cannot know.
  */
 
-import { accessSync, constants, lstatSync, readFileSync } from 'node:fs';
+import { accessSync, constants, lstatSync, readFileSync, statSync } from 'node:fs';
 import { basename, delimiter, dirname, isAbsolute, join } from 'node:path';
 import { planRemoval, type TablePath } from './doctor-mcp.js';
 import { objectAt, rootObject, settingsCandidates, Unsafe } from './doctor-vscode.js';
@@ -168,10 +168,10 @@ function runnable(path: string): boolean {
   }
 }
 
-/** Whether a folder or file is there. */
+/** Whether a folder or file is there, a link followed: a link that points nowhere is not. */
 function there(path: string): boolean {
   try {
-    lstatSync(path);
+    statSync(path);
     return true;
   } catch {
     return false;
@@ -196,8 +196,8 @@ function judge(launch: Launch): { dead: string | undefined; verified: boolean } 
   const { command, args, cwd } = launch;
   const program = basename(command).replace(/\.exe$/i, '');
   const script = args[0];
-  const runsScript =
-    (program === 'node' || program === 'nodejs') && script !== undefined && isAbsolute(script);
+  const isNode = program === 'node' || program === 'nodejs';
+  const runsScript = isNode && script !== undefined && isAbsolute(script);
   if (command !== '' && isAbsolute(command) && isGone(command)) {
     return { dead: `its command ${command} no longer exists`, verified: false };
   }
@@ -213,7 +213,9 @@ function judge(launch: Launch): { dead: string | undefined; verified: boolean } 
     (isAbsolute(command) ? runnable(command) : !/[\\/]/.test(command) && onThePath(command));
   const verified =
     commandWorks &&
-    (!runsScript || (!script.includes('$') && there(script))) &&
+    // What node runs is known only when its first argument is an absolute path, with no `$`, to a script that is there: a flag
+    // first, or a relative path, is a shape this does not follow, and the entry is unknown.
+    (!isNode || (runsScript && !script.includes('$') && there(script))) &&
     (cwd === undefined || (!cwd.includes('$') && isAbsolute(cwd) && there(cwd)));
   return { dead: undefined, verified };
 }
