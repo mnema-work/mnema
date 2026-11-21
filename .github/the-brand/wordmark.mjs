@@ -89,7 +89,8 @@ const SKELETON = (() => {
   let bowls = '';
   let tall = '';
   [...'mnema'].forEach((ch, i) => {
-    const letter = (LETTERS[ch] ?? (() => ({ w: 0 })))(x);
+    /** @type {Letter} */
+    const letter = LETTERS[ch]?.(x) ?? { w: 0 };
     stems.push(...(letter.stems ?? []));
     arches += letter.arches ?? '';
     bowls += letter.bowls ?? '';
