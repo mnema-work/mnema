@@ -920,10 +920,11 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'collapsed',
     why: 'a folder under the git directory and the paths of files in the working tree',
   },
-  'record.ts «{}: a symbolic link stands there now, and this mnema does not write through a link, which can point outside the record: what this checkout held there was not put back and stays in the folder above. Replace the link with the file it points to, then copy that file back.» #1': {
-    verdict: 'collapsed',
-    why: 'the paths of files in the working tree, which a name in it can carry',
-  },
+  'record.ts «{}: a symbolic link stands there now, and this mnema does not write through a link, which can point outside the record: what this checkout held there was not put back and stays in the folder above. Replace the link with the file it points to, then copy that file back.» #1':
+    {
+      verdict: 'collapsed',
+      why: 'the paths of files in the working tree, which a name in it can carry',
+    },
   'record.ts «{}: put back as this checkout held it, the longer side or the only one» #1': {
     verdict: 'collapsed',
     why: 'the path of a file in the working tree, which a name in it can carry',
