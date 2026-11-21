@@ -163,8 +163,8 @@ def _check(raw: bytes, report: Report) -> None:
         last_tail = tail
         # Section 3: the tail id begins with a key the file carries.
         fingerprint = _tail_fingerprint(tail)
-        key = ring.get(fingerprint)
-        if key is None:
+        tail_key = ring.get(fingerprint)
+        if tail_key is None:
             raise _refuse(f"the tail {tail} names a key the proof does not carry")
         # Section 6.1: the tail proof, by the key the tail id names.
         try:
@@ -177,7 +177,7 @@ def _check(raw: bytes, report: Report) -> None:
             raise _refuse(f"the tail proof of {tail} does not verify: tail-mismatch")
         if proof_read.stored["signerFp"] != fingerprint:
             raise _refuse(f"the tail proof of {tail} does not verify: signer-mismatch")
-        if not _signature_holds(key, proof_read.stored["sig"], proof_read.message):
+        if not _signature_holds(tail_key, proof_read.stored["sig"], proof_read.message):
             raise _refuse(f"the tail proof of {tail} does not verify: bad-signature")
         signed_for = proof_read.stored["scheme"] == NAMED_TAILPROOF_SCHEME
         if proof_read.record is not None:
@@ -250,7 +250,7 @@ def _check(raw: bytes, report: Report) -> None:
                 span.append(entry)
             if content_root(entry.event_bytes for entry in span) != stored["contentRoot"]:
                 raise _refuse(f"{where} does not verify: content-root-mismatch")
-            if not _signature_holds(key, stored["sig"], checkpoint.message):
+            if not _signature_holds(tail_key, stored["sig"], checkpoint.message):
                 raise _refuse(f"{where} does not verify: bad-signature")
             # Section 6: every event of a signed range names its signer, and none authorizes itself.
             found = binding_break([entry.event for entry in span], stored["signerFp"])
