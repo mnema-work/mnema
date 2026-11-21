@@ -156,9 +156,14 @@ interface Broken {
 }
 
 type Proof = Record<string, unknown>;
-type Tail = { tail: string; tailproof: string; ranges: { checkpoint: string; entries: unknown[] }[] };
+type Tail = {
+  tail: string;
+  tailproof: string;
+  ranges: { checkpoint: string; entries: unknown[] }[];
+};
 const tailOf = (proof: Proof): Tail => (proof.tails as Tail[])[0] as Tail;
-const withSig = (line: string): string => line.replace(/"sig":"([0-9a-f])/, (_, c: string) => `"sig":"${c === '0' ? '1' : '0'}`);
+const withSig = (line: string): string =>
+  line.replace(/"sig":"([0-9a-f])/, (_, c: string) => `"sig":"${c === '0' ? '1' : '0'}`);
 
 const BROKEN: readonly Broken[] = [
   { name: 'two line feeds at the end', text: (t) => `${t}\n`, refusal: /exactly one line feed/ },
@@ -169,76 +174,156 @@ const BROKEN: readonly Broken[] = [
   },
   {
     name: 'a scheme no reader knows',
-    text: (t) => changed(t, (p) => { p.scheme = 'mnema-proof/9'; }),
+    text: (t) =>
+      changed(t, (p) => {
+        p.scheme = 'mnema-proof/9';
+      }),
     refusal: /scheme this reader does not know/,
   },
   {
     name: 'a key beside the four',
-    text: (t) => changed(t, (p) => { p.forged = true; }),
+    text: (t) =>
+      changed(t, (p) => {
+        p.forged = true;
+      }),
     refusal: /proof keys are/,
   },
   {
     name: 'no key',
-    text: (t) => changed(t, (p) => { p.keys = []; }),
+    text: (t) =>
+      changed(t, (p) => {
+        p.keys = [];
+      }),
     refusal: /not a list of keys/,
   },
   {
     name: 'a key twice',
-    text: (t) => changed(t, (p) => { p.keys = [...(p.keys as string[]), ...(p.keys as string[])]; }),
+    text: (t) =>
+      changed(t, (p) => {
+        p.keys = [...(p.keys as string[]), ...(p.keys as string[])];
+      }),
     refusal: /ascending order of their fingerprints/,
   },
   {
     name: 'a key that is not one',
-    text: (t) => changed(t, (p) => { p.keys = ['no key here']; }),
+    text: (t) =>
+      changed(t, (p) => {
+        p.keys = ['no key here'];
+      }),
     refusal: /a key/,
   },
   {
     name: 'no tail',
-    text: (t) => changed(t, (p) => { p.tails = []; }),
+    text: (t) =>
+      changed(t, (p) => {
+        p.tails = [];
+      }),
     refusal: /not a list of tails/,
   },
   {
     name: 'a tail of a key the proof does not carry',
-    text: (t) => changed(t, (p) => { tailOf(p).tail = `${'0'.repeat(64)}-${'cd'.repeat(16)}`; }),
+    text: (t) =>
+      changed(t, (p) => {
+        tailOf(p).tail = `${'0'.repeat(64)}-${'cd'.repeat(16)}`;
+      }),
     refusal: /names a key the proof does not carry/,
   },
   {
     name: 'a tail proof whose signature was changed',
-    text: (t) => changed(t, (p) => { tailOf(p).tailproof = withSig(tailOf(p).tailproof); }),
+    text: (t) =>
+      changed(t, (p) => {
+        tailOf(p).tailproof = withSig(tailOf(p).tailproof);
+      }),
     refusal: /tail proof of .* does not verify/,
   },
   {
     name: 'a checkpoint whose signature was changed',
-    text: (t) => changed(t, (p) => {
-      const range = tailOf(p).ranges[1] as { checkpoint: string };
-      range.checkpoint = withSig(range.checkpoint);
-    }),
+    text: (t) =>
+      changed(t, (p) => {
+        const range = tailOf(p).ranges[1] as { checkpoint: string };
+        range.checkpoint = withSig(range.checkpoint);
+      }),
     refusal: /does not verify: bad-signature/,
   },
   {
     name: 'a range with a line taken out',
-    text: (t) => changed(t, (p) => { tailOf(p).ranges[1]?.entries.pop(); }),
+    text: (t) =>
+      changed(t, (p) => {
+        tailOf(p).ranges[1]?.entries.pop();
+      }),
     refusal: /signs 2 line\(s\), and the range carries 1/,
   },
   {
     name: 'two ranges swapped',
-    text: (t) => changed(t, (p) => { tailOf(p).ranges.reverse(); }),
+    text: (t) =>
+      changed(t, (p) => {
+        tailOf(p).ranges.reverse();
+      }),
     refusal: /does not begin after the range before it/,
   },
   {
     name: 'a line that is not a string',
-    text: (t) => changed(t, (p) => { (tailOf(p).ranges[0] as { entries: unknown[] }).entries[0] = 7; }),
+    text: (t) =>
+      changed(t, (p) => {
+        (tailOf(p).ranges[0] as { entries: unknown[] }).entries[0] = 7;
+      }),
     refusal: /a line that is not a string/,
   },
   {
     name: 'a manifest that names no decision',
-    text: (t) => changed(t, (p) => { delete (p.manifest as Proof).decision; }),
+    text: (t) =>
+      changed(t, (p) => {
+        delete (p.manifest as Proof).decision;
+      }),
     refusal: /names no decision/,
   },
   {
     name: 'a manifest about another decision',
-    text: (t) => changed(t, (p) => { (p.manifest as Proof).decision = 'another'; }),
+    text: (t) =>
+      changed(t, (p) => {
+        (p.manifest as Proof).decision = 'another';
+      }),
     refusal: /carries no writing of the decision/,
+  },
+  {
+    name: 'a tail with a key beside its three',
+    text: (t) =>
+      changed(t, (p) => {
+        (tailOf(p) as unknown as Proof).forged = true;
+      }),
+    refusal: /a tail whose keys are not/,
+  },
+  {
+    name: 'a tail id that is not a string',
+    text: (t) =>
+      changed(t, (p) => {
+        (tailOf(p) as unknown as Proof).tail = 7;
+      }),
+    refusal: /not of its type/,
+  },
+  {
+    name: 'a range with a key beside its two',
+    text: (t) =>
+      changed(t, (p) => {
+        (tailOf(p).ranges[0] as unknown as Proof).forged = true;
+      }),
+    refusal: /a range of .* whose keys are not/,
+  },
+  {
+    name: 'a range whose lines are not a list',
+    text: (t) =>
+      changed(t, (p) => {
+        (tailOf(p).ranges[0] as unknown as Proof).entries = 'none';
+      }),
+    refusal: /whose checkpoint or entries is not of its type/,
+  },
+  {
+    name: 'the lines of a range in another order',
+    text: (t) =>
+      changed(t, (p) => {
+        tailOf(p).ranges[1]?.entries.reverse();
+      }),
+    refusal: /seq 2 where 1 was due/,
   },
 ];
 

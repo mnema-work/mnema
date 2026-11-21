@@ -75,7 +75,15 @@ export function runProve(
   for (const scope of ['public', 'private'] as const) {
     const root = chainRootForScope(trees, scope);
     if (root === undefined || !holdsRecord({ root })) continue;
-    const record = recordToProve({ root }, upcasters);
+    const verified = () => verifyChain({ root }, upcasters, { keyRoot: trees.keyRoot }).ok;
+    let record: ReturnType<typeof recordToProve>;
+    try {
+      record = recordToProve({ root }, upcasters);
+    } catch (error) {
+      // A line the reader cannot parse is a break `verify` names; anything else is not ours to word.
+      if (!verified()) return { ok: false, reason: 'RECORD_BROKEN', scope };
+      throw error;
+    }
     const holds = [...record.tails.values()].some(({ entries }) =>
       entries.some(
         ({ event }) =>
@@ -89,7 +97,7 @@ export function runProve(
     }
     // A proof is handed out as the record's word: none is built from a record this product
     // calls broken, whatever the lines the proof would carry say on their own.
-    if (!verifyChain({ root }, upcasters, { keyRoot: trees.keyRoot }).ok) {
+    if (!verified()) {
       return { ok: false, reason: 'RECORD_BROKEN', scope };
     }
     const proved = proveDecision(record, named.id, upcasters);

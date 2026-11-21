@@ -199,3 +199,52 @@ describe('what is refused before any proof is checked or built', () => {
     expect(both.err).toContain('--check takes a file and nothing else.');
   });
 });
+
+describe('the verb, run by the program in the project', () => {
+  /** Runs `mnema` with this project as the cwd and its sandbox as HOME, as a person would. */
+  async function inTheProject(...argv: string[]) {
+    const cwd = process.cwd();
+    const home = process.env.HOME;
+    const relocated = process.env.MNEMA_HOME;
+    process.chdir(repo);
+    process.env.HOME = env.home;
+    delete process.env.MNEMA_HOME;
+    try {
+      return await mnema(...argv);
+    } finally {
+      process.chdir(cwd);
+      if (home === undefined) delete process.env.HOME;
+      else process.env.HOME = home;
+      if (relocated !== undefined) process.env.MNEMA_HOME = relocated;
+    }
+  }
+
+  it('writes the proof to a file, says what it holds, and refuses a private one by name', async () => {
+    const id = decide('Prove one decision in one file');
+    const file = join(sandbox, 'by-the-verb.json');
+    const written = await inTheProject('prove', id, '--out', file);
+    expect(written.failed).toBe(false);
+    expect(written.out).toContain(`proof of ADR-1 ${id}: "Prove one decision in one file"`);
+    expect(written.out).toContain(
+      'from the public tree, checked by this mnema before it was handed over',
+    );
+    expect(runProveCheck(file)).toMatchObject({ ok: true, verdict: { proven: true } });
+
+    const toOut = await inTheProject('prove', id);
+    expect(`${toOut.out}\n`).toBe(readFileSync(file, 'utf-8'));
+    expect(toOut.err).toContain(`proof of ADR-1 ${id}`);
+
+    const again = await inTheProject('prove', id, '--out', file);
+    expect(again.failed).toBe(true);
+    expect(again.err).toContain('PROOF_NOT_WRITTEN');
+
+    const kept = decide('Kept on this machine', 'private');
+    const refused = await inTheProject('prove', kept);
+    expect(refused.failed).toBe(true);
+    expect(refused.err).toContain("is in this machine's private tree, which no clone carries");
+
+    const nowhere = await inTheProject('prove', 'not-a-decision');
+    expect(nowhere.failed).toBe(true);
+    expect(nowhere.err).toContain('No decision not-a-decision here.');
+  });
+});
