@@ -46,10 +46,10 @@ import {
   governingRules,
   governsInForceEverywhere,
   type RuleReach,
-  rulesInForceReach,
   type RulesAtPath,
   refusesAWriteAt,
   rulesInForceAt,
+  rulesInForceReach,
   type ScopedCache,
   type WalkOutcome,
 } from '@mnema/context';

@@ -1956,10 +1956,11 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     why: 'how many files fall under one layer: a count',
   },
 
-  "rules.ts «switched off: {}; as the gate does, a file under a rule of that layer counts under the next one» coverage.switchedOff.join(', ') #1": {
-    verdict: 'minted',
-    why: 'the names of the gate channels that are off, which are the product’s own',
-  },
+  "rules.ts «switched off: {}; as the gate does, a file under a rule of that layer counts under the next one» coverage.switchedOff.join(', ') #1":
+    {
+      verdict: 'minted',
+      why: 'the names of the gate channels that are off, which are the product’s own',
+    },
 
   // --- runs.ts: a run, for all three readings ------------------------------------
   'runs.ts «last run {} ({})» run.id #1': {

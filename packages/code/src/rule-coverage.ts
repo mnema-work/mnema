@@ -99,7 +99,11 @@ export function coverageByLayer(
     (relative) => {
       const relations = relationsCovering(reach, relative);
       for (const channel of switchedOff) {
-        relations.delete(channel === REFUSES_A_WRITE_CHANNEL ? REFUSES_A_WRITE_RELATION : ASKS_FOR_A_PERSON_RELATION);
+        relations.delete(
+          channel === REFUSES_A_WRITE_CHANNEL
+            ? REFUSES_A_WRITE_RELATION
+            : ASKS_FOR_A_PERSON_RELATION,
+        );
       }
       const layer = layerOf(relations);
       const slash = relative.indexOf('/');

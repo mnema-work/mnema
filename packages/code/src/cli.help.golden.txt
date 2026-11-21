@@ -686,7 +686,8 @@ $ mnema rules --help
 |
 | Options:
 |   --coverage  instead of a path: count the project files by layer (refused,
-|               asked, governed, none), per top-level folder, with no score
+|               asked, governed, none), per top-level folder, with no score,
+|               following the switches of the gate
 |   --json      emit the faithful reading as JSON
 |   -h, --help  display help for command
 
