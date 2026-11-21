@@ -39,4 +39,7 @@ Options:
 The window:
   A window (`from`/`to`) selects the FACTS themselves,
   by the instant each was recorded.
+  A bound is a date (YYYY-MM-DD, read as UTC: --from is the start of the day,
+  --to its last millisecond) or a timestamp ending in Z or an offset
+  (<date:01>T10:30:00-03:00). Anything else is refused.
 ```
