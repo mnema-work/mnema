@@ -213,7 +213,7 @@ code { overflow-wrap: anywhere; }
 #verdict-status[data-state="pending"], #lists-status[data-state="unchecked"] { color: var(--wait); }
 .decision { margin: 1rem 0; border-left: 4px solid var(--accent); }
 .decision h3 { margin: 0 0 0.25rem; }
-.permalink { margin-left: 0.5rem; font-size: 0.85em; text-decoration: none; }
+.permalink { margin-left: 0.5rem; font-size: 0.85em; color: var(--muted); text-decoration: underline; }
 .state { display: inline-block; font-size: 0.8em; font-weight: 600; border: 1px solid; border-radius: 0.25rem; padding: 0 0.4rem; color: var(--muted); }
 .state[data-state="accepted"] { color: var(--ok); }
 .state[data-state="rejected"] { color: var(--muted); }
