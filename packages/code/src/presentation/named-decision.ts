@@ -11,6 +11,7 @@
 
 import type { NamedDecision } from '@mnema/context';
 import { oneLine } from '../one-line.js';
+import { readLabel } from './label.js';
 import { asState } from './state.js';
 
 /**
@@ -37,5 +38,5 @@ export function namedDecisionText(named: NamedDecision, titleLimit?: number): st
   const state = asState(
     named.divergence === true ? 'not in force, divergence' : oneLine(named.state),
   ).text;
-  return `${oneLine(named.adr)}: ${titleLimit === undefined ? oneLine(named.title) : cutTitle(oneLine(named.title), titleLimit)} ${state}`;
+  return `${oneLine(readLabel(named.adr, named.scope))}: ${titleLimit === undefined ? oneLine(named.title) : cutTitle(oneLine(named.title), titleLimit)} ${state}`;
 }

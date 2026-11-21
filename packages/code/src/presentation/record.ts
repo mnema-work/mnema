@@ -49,6 +49,7 @@ import { DERIVED_FROM } from '../provenance.js';
 import { consultedLine } from './consultation.js';
 import { fact, statedFact, subjectLine } from './detail.js';
 import { asId, itemLine } from './items.js';
+import { readLabel } from './label.js';
 import { namedDecisionText } from './named-decision.js';
 import type { Render } from './render.js';
 import { asState } from './state.js';
@@ -249,7 +250,7 @@ export function recordReport(render: Render, body: RecordBody, context: RecordCo
       lines.push(
         render(
           statedFact(
-            `${body.record.adr}: ${oneLine(body.record.title)}`,
+            `${readLabel(body.record.adr, body.scope)}: ${oneLine(body.record.title)}`,
             asState(body.record.state),
           ),
         ),

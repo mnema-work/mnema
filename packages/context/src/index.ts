@@ -81,6 +81,8 @@ export {
   decisionDisposition,
   type NamedDecision,
   ruleIdsInForce,
+  type TreeOf,
+  treeOf,
 } from './context/decisions.js';
 // The vocabulary the two accessors answer IN. A consumer that maps every disposition
 // to something of its own needs the union to be TOTAL over, and a caller holding only

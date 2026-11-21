@@ -16,7 +16,7 @@
  */
 
 import type { RecordSearch } from '@mnema/context';
-import { SEARCH_KINDS } from '@mnema/core';
+import { SEARCH_KINDS, SEARCH_MAX_LIMIT } from '@mnema/core';
 import { oneLine } from '../one-line.js';
 import { asId, asScope, asWhen, itemLine } from './items.js';
 import { replacementFact } from './record.js';
@@ -47,6 +47,16 @@ export function searchReport(
       ? `${result.hits.length} of ${result.total}`
       : `${result.total}`;
   const lines = [`${shown} record(s)${forTerm}:`];
+  // A CUT LIST SAYS HOW TO REACH THE REST, and the way depends on what cut it. Below the ceiling
+  // the limit asked for did, and a bigger `--limit` shows more. AT the ceiling no limit reaches
+  // further, there is no offset, and the way on is a window of dates (`--from` and `--to`).
+  if (result.total > result.hits.length) {
+    lines.push(
+      result.hits.length >= SEARCH_MAX_LIMIT
+        ? `${result.total} matched and ${result.hits.length} are shown, the most one search returns; to reach the rest, search a window of dates with --from <iso> and --to <iso>.`
+        : `${result.total} matched and ${result.hits.length} are shown; to see more, raise --limit (up to ${SEARCH_MAX_LIMIT}).`,
+    );
+  }
   for (const kind of SEARCH_KINDS) {
     const group = result.hits.filter((hit) => hit.kind === kind);
     if (group.length === 0) continue;

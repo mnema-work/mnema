@@ -10,7 +10,7 @@
  */
 
 import { proposedDecisionsNewestFirst } from '@mnema/context';
-import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
+import { type DiscoveryEnv, resolveTrees, type Scope } from '@mnema/core';
 import { type AcceptState, acceptStateHere } from '../agent-accepts.js';
 import {
   caches,
@@ -24,6 +24,8 @@ import {
 export interface ProposalToReview {
   readonly id: string;
   readonly adr: string;
+  /** The tree that holds it, when it is not the public one: absent is public. */
+  readonly scope?: Scope;
   readonly title: string;
   readonly rationale: string;
   readonly alternatives?: string;
@@ -51,12 +53,13 @@ export function proposalsToReview(ctx: {
   return withScopedCaches(trees, (sources) => {
     const proposals: ProposalToReview[] = [];
     for (const item of proposedDecisionsNewestFirst(caches(sources))) {
-      for (const { cache } of sources) {
+      for (const { cache, scope } of sources) {
         const decision = cache.getDecision(item.id);
         if (decision === null) continue;
         proposals.push({
           id: decision.id,
           adr: decision.adr,
+          ...(scope !== 'public' ? { scope } : {}),
           title: decision.title,
           rationale: decision.rationale,
           ...(decision.alternatives !== undefined && decision.alternatives !== ''
