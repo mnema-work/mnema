@@ -1,14 +1,15 @@
 // @reads-the-tree
 /**
  * THE FRONT PAGE IS DRAWN FROM ITS SOURCES: the pictures of `docs/assets/` and of the packages are made by scripts from
- * the same sources the console and the product's own files draw from, and painted in the brand's colours.
+ * the brand's own pieces and from the product's own files, and painted in the brand's colours.
  *
- *   - THE BANNER is the console's wordmark: `.github/the-front-page/draw.mjs` reads the rows of `THE_BLOCKS`
- *     (`src/presentation/banner.ts`) and draws each glyph as geometry. Here the script runs again in memory over the
- *     rows the console draws today, and each banner it makes is held byte for byte to the one committed, so a wordmark
- *     changed in the console and not drawn again fails here, and so does a banner edited by hand. It is the only
- *     picture that script draws now, and the only one still held to the keyframes it defines and to the middle of its
- *     frame.
+ *   - THE BANNER is the lockup of the brand, the eye and the word beside it: `.github/the-brand/banner.mjs` draws
+ *     `docs/assets/banner-{dark,light}.svg`, and each is held here byte for byte to what the script draws, so a banner
+ *     edited by hand fails here. It draws no words and has no ground of its own. THE EYE BLINKS, AND STOPS WHEN ASKED TO:
+ *     the motion is SMIL, which a media query cannot stop, so the banner holds two copies of the eye, one that moves and
+ *     one at rest, and a media query inside the SVG swaps them under `prefers-reduced-motion`. `the banner blinks` below
+ *     holds the swap (the two copies, the one `<style>`, the still copy being the moving one without its `<animate>`s),
+ *     and `README.md` showing it with the text alternative the banner carries.
  *   - THE DIAGRAMS are fourteen pictures, dark and light: how mnema works, how mnema fits and the family in `docs/assets/`,
  *     and one for each published package but `@mnema/code` in `packages/<p>/assets/`, drawn by
  *     `.github/the-brand/diagrams.mjs` and held byte for byte like the banner. THEIR TEXT IS OUTLINES. This guard used
@@ -24,35 +25,45 @@
  *     outlines.
  *   - THE FONTS are the authors' own, intact: each file in `.github/the-brand/fonts/` is listed in its `SOURCES.md` with
  *     the sha256 it has, and each face has its licence beside it.
- *   - THE COLOURS: the banner uses no hue but the accent of its theme (`.github/the-front-page/accent.mjs`); the diagrams
- *     use no hue but `PALETTE.sulphur` (`.github/the-brand/palette.mjs`), no colour that is not a value of the palette,
- *     and no script of theirs writes a hex colour but the palette.
+ *   - THE COLOURS: the sixteen pictures (the fourteen diagrams and the two banners) use no hue but `PALETTE.sulphur`
+ *     (`.github/the-brand/palette.mjs`) and no colour that is not a value of the palette, and no script of the brand
+ *     writes a hex colour but the palette.
  *   - THE BLOCKS OF THE READMES: `README.md` holds, under "The mnema family", the block the script writes, and the
  *     README of a package opens, under its title, with the block the script writes, pointing at the file on the
  *     repository's `main` branch by the address the package's `package.json` says, with no version in it, because a
  *     version that is not published yet is a picture that does not load. The `alt` of an image is the text alternative
  *     the picture carries.
- *   - THE BADGES: a shields.io badge in `README.md` or a package's README that sets a colour, in `color=` or in its path
- *     (`/badge/label-message-colour`), sets the light accent.
+ *   - THE BADGES: every shields.io badge in `README.md` or a package's README is in dark stone (`PALETTE.darkStone`),
+ *     except the one for the CI workflow, which carries no colour at all, so that shields.io paints it red when the build
+ *     fails.
+ *   - WHAT `draw.mjs` STILL EXPORTS: the site and the extension's icon import `CELL`, `PAGE`, `inkFoot` and `socialCard`
+ *     from it, in a checkout with no `node_modules`; their values and the bytes of the social card are held here by
+ *     hand, so that taking the banner out of that file moved none of them.
  *
  * WHAT NO LONGER HOLDS, and why. THE GRID OF THE PIXEL (every stroke of one unit on the middle of a pixel, with the table
- * of mutations that proved the reader of it) is gone whole: its mutations were laid into a copy of one picture, the
- * steps, and two of its rows (a picture without a `</defs>`, and a `</defs>` without a `<defs>`) do not hold on the
- * banner, which draws two `<defs>` where the steps drew one, and the rule was to drop the guard whole when a row would not
- * hold on its new carrier, not to rewrite its expectations. The banner is still held byte for byte to what the script
- * draws. The diagrams are shown scaled (1200 units wide in a column of about 830 pixels), so a
- * unit is not a pixel and the grid of the pixel, the middle of the frame and the margin do not apply to them; the drawing
- * is a grid of columns on symmetric margins, not a mass centred in its frame. They draw no arrow and no running dot, so
- * the guards of arrows and of the exit of a loop are the banner's alone. They do move, and stop when asked to: the eye
- * blinks on the banner's cycle, a pulse runs along the lines and each sign sends out a ripple, and under
- * `prefers-reduced-motion` none of that is drawn and the eye shows its still copy (the cases of `the motion`). A text no longer has a size of its own: it has a role, a key of the table `ROLES`, which the type of
+ * of mutations that proved the reader of it) is gone whole, and no guard of a grid is written for the banner: the banner
+ * is shown at 640 pixels from a frame of 1280 units, so a unit is half a pixel, and it draws no stroke of one unit (the
+ * eye's are 9.5, 4.75 and 2.2 under a scale of 1.45, the word's 9, 8.46 and 7.92 under 1.69). The diagrams are shown
+ * scaled too (1200 units wide in a column of about 830 pixels), so the grid of the pixel, the middle of the frame and the
+ * margin do not apply to them; the drawing is a grid of columns on symmetric margins, not a mass centred in its frame.
+ * THE BANNER'S CASES OF FRAME AND OF CENTRING are gone with the banner the console's rows drew: their instruments
+ * (`nodesOf`, `boxesOf`, `transformOf`) leave out a `clipPath` on purpose, read no `<animate>` and read the first of two
+ * `translate`s, so on the lockup they would measure wrong; the centring is computed in one place, in
+ * `.github/the-brand/banner.mjs`, and the file is held byte for byte. THE CASES OF KEYFRAMES (`the banner rests as it is
+ * drawn`, which read the CSS `@keyframes` of the old banner) are gone because the banner's motion is SMIL now, and what
+ * holds it is the still copy and the swap. The case that drew every glyph of the console's wordmark is gone with the
+ * wordmark. The diagrams draw no arrow and no running dot, so the guards of arrows and of the exit of a loop are gone.
+ * They move, and stop when asked to: the eye blinks on the banner's cycle, a pulse runs along the lines and each sign
+ * sends out a ripple, and under `prefers-reduced-motion` none of that is drawn and the eye shows its still copy (the cases
+ * of `the motion`). A text no longer has a size of its own: it has a role, a key of the table `ROLES`, which the type of
  * `say` checks (`pnpm typecheck`), so a guard of the sizes written is the compiler's.
  *
  * HOW THE PICTURES ARE MADE AGAIN, from the root of a checkout:
  *
  *     node .github/the-brand/diagrams.mjs          # the diagrams and the blocks of the READMEs
  *     node .github/the-brand/diagrams.mjs --check  # exits 1 when a committed one differs
- *     node .github/the-front-page/draw.mjs         # the banner, after `pnpm build`
+ *     node .github/the-brand/banner.mjs            # the banner; it needs no `pnpm build`
+ *     node .github/the-brand/banner.mjs --check    # exits 1 when a committed one differs
  *
  * WHAT IT DOES NOT CHECK: how the pictures look. The geometry is held to its source, not to an eye; a reviewer sees the
  * picture in the pull request.
@@ -69,13 +80,18 @@ import { ROOT, read } from './support/published-examples.js';
 
 /** Named by a variable, because these are scripts of the repository and not modules of the product. */
 const DRAW = join(ROOT, '.github', 'the-front-page', 'draw.mjs');
-const ACCENT_FILE = join(ROOT, '.github', 'the-front-page', 'accent.mjs');
 const BRAND = join(ROOT, '.github', 'the-brand');
 
 type Line = readonly ({ said: string; where: string } | string)[];
 type Pen = Readonly<Record<string, unknown>>;
-const { drawTheFrontPage } = (await import(pathToFileURL(DRAW).href)) as {
-  drawTheFrontPage: (blocks: readonly string[]) => Record<string, string>;
+const { CELL, PAGE, inkFoot, socialCard } = (await import(pathToFileURL(DRAW).href)) as {
+  CELL: { w: number; h: number };
+  PAGE: { dark: string; light: string };
+  inkFoot: (blocks: readonly string[]) => number;
+  socialCard: (o: { blocks: readonly string[]; pitch: { title: string; body: string } }) => string;
+};
+const { drawTheBanner } = (await import(pathToFileURL(join(BRAND, 'banner.mjs')).href)) as {
+  drawTheBanner: () => Record<string, string>;
 };
 const {
   drawTheDiagrams,
@@ -124,9 +140,6 @@ const { PALETTE, DIAGRAM } = (await import(pathToFileURL(join(BRAND, 'palette.mj
   PALETTE: Readonly<Record<string, string>>;
   DIAGRAM: { light: Pen; dark: Pen };
 };
-const { ACCENT } = (await import(pathToFileURL(ACCENT_FILE).href)) as {
-  ACCENT: { dark: string; light: string };
-};
 
 const ASSETS = 'docs/assets';
 
@@ -166,13 +179,6 @@ function whyNot(colour: string, accent: readonly string[]): string | undefined {
   return `${colour}: a hue that is not the accent (${accent.join(' or ')})`;
 }
 
-/** The accent a file may use, by the theme its name says. */
-function accentFor(file: string): string[] {
-  if (file.endsWith('-dark.svg')) return [ACCENT.dark];
-  if (file.endsWith('-light.svg')) return [ACCENT.light];
-  return [ACCENT.dark, ACCENT.light];
-}
-
 /**
  * Every picture a page shows: the front page's, and each package's own. A contributor's avatar
  * (`contributor-<login>.svg`) is a photograph in a circle, not art drawn here, so it has no accent to hold.
@@ -192,12 +198,12 @@ const svgs = [
   }),
 ].filter((f) => f.endsWith('.svg'));
 
-describe('the front page is drawn from the console', () => {
-  const drawn = drawTheFrontPage(THE_BLOCKS);
+describe('the front page is drawn from its scripts', () => {
+  const drawn = drawTheBanner();
   const diagrams = drawTheDiagrams();
 
   it('draws the banner, dark and light, and no other picture', () => {
-    expect(Object.keys(drawn).sort()).toEqual(['banner-dark.svg', 'banner-light.svg']);
+    expect(Object.keys(drawn).sort()).toEqual([BANNER.dark, BANNER.light]);
   });
 
   it('draws exactly the fourteen diagrams, dark and light, by the paths they have always had', () => {
@@ -220,30 +226,13 @@ describe('the front page is drawn from the console', () => {
 
   // The banner by the script that draws it, the three diagrams of the README by the one that draws them.
   it.each([
-    ...Object.keys(drawn).map((file) => [`${ASSETS}/${file}`, drawn[file]] as const),
+    ...Object.keys(drawn).map((path) => [path, drawn[path]] as const),
     ...Object.keys(diagrams)
       .filter((path) => path.startsWith(`${ASSETS}/`))
       .map((path) => [path, diagrams[path]] as const),
   ])('%s is what the script draws today', (path, svg) => {
     expect(svg?.length).toBeGreaterThan(1000);
     expect(read(path)).toBe(svg);
-  });
-
-  it('draws every glyph of the wordmark the console has', () => {
-    // A glyph the script skipped would leave the banner short of the console and the case above
-    // green, so the counts are asked of the rows themselves: one filled cell per full block, two
-    // strokes per double-line glyph.
-    const glyphs = [...THE_BLOCKS.join('')].filter((g) => g !== ' ');
-    const full = glyphs.filter((g) => g === '█').length;
-    const subpaths = (kind: string): number => {
-      const d = new RegExp(`data-of="${kind}"[^>]* d="([^"]*)"`).exec(
-        drawn['banner-dark.svg'] ?? '',
-      );
-      return (d?.[1] ?? '').match(/M/g)?.length ?? 0;
-    };
-    expect(full).toBeGreaterThan(100);
-    expect(subpaths('blocks')).toBe(full);
-    expect(subpaths('lines')).toBe(2 * (glyphs.length - full));
   });
 });
 
@@ -292,14 +281,13 @@ const FRONT = [
 ] as const;
 
 /** The banner, which draws no text, and its frame, said here by hand. */
-const BANNER = {
-  id: 'banner',
-  ...themed(`${ASSETS}/banner`),
-  frame: { w: 910.73, h: 151.5, band: 0, shapes: 20, margin: 8 },
-};
+const BANNER = { id: 'banner', ...themed(`${ASSETS}/banner`), frame: { w: 1280, h: 220 } };
 
 /** The fourteen diagrams, dark and light. */
 const FOURTEEN = [...LINED, ...FRONT].flatMap((p) => [p.dark, p.light]);
+
+/** The fourteen diagrams and the two banners: every picture drawn in the brand. */
+const SIXTEEN = [...FOURTEEN, BANNER.dark, BANNER.light];
 
 /**
  * Every text of the README's two diagrams, in the order a reader meets it, said here by hand apart from the script: a
@@ -415,64 +403,177 @@ describe('the steps and how mnema fits say what they say, in their words', () =>
   });
 });
 
-describe('the banner rests as it is drawn', () => {
-  const drawn = drawTheFrontPage(THE_BLOCKS);
+/** The text alternative of the banner, said here by hand: the README's `alt`, and the banner's own `aria-label` and `<title>`. */
+const BANNER_ALT = 'mnema: the decision record for AI coding agents';
 
-  it.each(['dark', 'light'])(
-    'the banner (%s) rests as it is drawn: every light over it is out in the last frame, and nothing moves',
-    (theme) => {
-      const svg = drawn[`banner-${theme}.svg`] ?? '';
-      const moving = nodesOf(svg).filter((n) =>
-        [n.at.style, ...n.groups.map((g) => g.style)].some((s) => /animation-name:/.test(s ?? '')),
-      );
-      expect(moving.length).toBeGreaterThan(10);
-      expect(moving.filter((n) => n.at.opacity !== '0').map((n) => n.at.d ?? n.at.x)).toEqual([]);
-      // The wordmark itself, its blocks and its lines, is never one of them.
-      expect(moving.filter((n) => n.at['data-of'] !== undefined)).toEqual([]);
-      const frames = keyframesOf(svg);
-      expect(
-        [...frames.values()].flat().filter((stop) => !stop.value.startsWith('opacity:')),
-      ).toEqual([]);
-    },
-  );
+/**
+ * The whole of a group of a picture, by its class: from its opening tag to the `</g>` that closes it, counting the groups
+ * inside it.
+ */
+function groupOf(svg: string, className: string): string {
+  const open = `<g class="${className}">`;
+  const start = svg.indexOf(open);
+  expect(start, `no <g class="${className}">`).toBeGreaterThanOrEqual(0);
+  let depth = 0;
+  for (const m of svg.slice(start).matchAll(/<g\b[^>]*>|<\/g>/g)) {
+    depth += m[0] === '</g>' ? -1 : 1;
+    if (depth === 0) return svg.slice(start, start + (m.index ?? 0) + m[0].length);
+  }
+  throw new Error(`<g class="${className}"> is never closed`);
+}
 
-  it.each([BANNER.dark, BANNER.light])('%s moves by keyframes it defines', (path) => {
-    // A name with no keyframes leaves its element still, in the last frame, and the picture
-    // reads as drawn: one was written before the story that names the keyframes had run.
-    const svg = drawn[path.slice(ASSETS.length + 1)] ?? '';
-    const named = [...svg.matchAll(/animation-name:([^"]+)"/g)].flatMap((m) =>
-      (m[1] as string).split(','),
+describe('the banner blinks, and stops when asked to', () => {
+  const drawn = drawTheBanner();
+  /** The phase of the blink is a constant of each file, said here by hand. */
+  const BEGIN = { dark: '-6.1s', light: '-0.8s' } as const;
+
+  /** The two classes the banner holds its eye in, read from the groups: the one that moves, then the one at rest. */
+  const classesOf = (svg: string): [string, string] => {
+    const found = [...svg.matchAll(/<g class="([^"]+)">/g)].map((m) => m[1] as string);
+    expect(found, 'two groups with a class: the eye that moves and the eye at rest').toHaveLength(
+      2,
     );
-    const defined = new Set([...svg.matchAll(/@keyframes (\w+)\{/g)].map((m) => m[1]));
-    expect(named.length).toBeGreaterThan(10);
-    expect(named.filter((name) => !defined.has(name))).toEqual([]);
+    return [found[0] as string, found[1] as string];
+  };
+
+  it.each(['dark', 'light'] as const)('banner-%s holds the eye twice, in one clip', (theme) => {
+    const svg = drawn[`${ASSETS}/banner-${theme}.svg`] ?? '';
+    const [moving, still] = classesOf(svg);
+    expect(svg.match(/<clipPath\b/g)).toHaveLength(1);
+    expect(svg.match(/clip-path="url\(#/g)).toHaveLength(1);
+    // Both copies are inside the one clip, the one that moves first.
+    const clipped = svg.slice(svg.indexOf('<g clip-path='));
+    expect(clipped.indexOf(`<g class="${moving}">`)).toBeGreaterThan(0);
+    expect(clipped.indexOf(`<g class="${still}">`)).toBeGreaterThan(
+      clipped.indexOf(`<g class="${moving}">`),
+    );
   });
 
-  it.each([BANNER.dark, BANNER.light])(
-    '%s leaves no element alone at the end of the loop',
-    (path) => {
-      // Every element there in the last frame fades out at the same moment; one that went out
-      // later stayed on the page by itself, the rest of the picture already gone.
-      const exits = [
-        ...(drawn[path.slice(ASSETS.length + 1)] ?? '').matchAll(
-          /@keyframes (\w+)\{((?:[\d.]+%\{opacity:[\d.]+\})+)\}/g,
-        ),
-      ].map((m) => {
-        const stops = [...(m[2] as string).matchAll(/([\d.]+)%\{opacity:([\d.]+)\}/g)].map(
-          (s) => [Number(s[1]), Number(s[2])] as const,
-        );
-        let out = stops.length - 1;
-        while (out > 0 && stops[out - 1]?.[1] === 0) out--;
-        return { name: m[1] as string, at: stops[out]?.[0] ?? 0 };
-      });
-      const counts = new Map<number, number>();
-      for (const { at } of exits) counts.set(at, (counts.get(at) ?? 0) + 1);
-      const together = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 0;
-      expect(exits.length).toBeGreaterThan(10);
-      expect(together).toBeLessThan(100);
-      expect(exits.filter(({ at }) => at > together)).toEqual([]);
+  it.each(['dark', 'light'] as const)(
+    'banner-%s shows the eye at rest, and only that, under prefers-reduced-motion',
+    (theme) => {
+      const svg = drawn[`${ASSETS}/banner-${theme}.svg`] ?? '';
+      const [moving, still] = classesOf(svg);
+      // One stylesheet, and its text is the swap, built here from the two classes the groups carry.
+      expect([...svg.matchAll(/<style>([\s\S]*?)<\/style>/g)].map((m) => m[1])).toEqual([
+        `.${still}{display:none}@media (prefers-reduced-motion:reduce){.${moving}{display:none}.${still}{display:inline}}`,
+      ]);
+      // A media query does not stop SMIL, so nothing may move outside the group the swap hides.
+      const outside = svg.replace(groupOf(svg, moving), '');
+      expect(outside).not.toMatch(/<(?:animate|set|animateTransform|animateMotion)\b/);
+      expect(groupOf(svg, moving).match(/<animate\b/g)?.length).toBeGreaterThan(5);
+      // Nor may a stylesheet animate anything: the only motion there is, is the one the swap hides.
+      expect(svg).not.toMatch(/@keyframes|animation/);
     },
   );
+
+  it.each(['dark', 'light'] as const)(
+    'banner-%s rests as the first stop of the cycle: the moving eye without its <animate>s',
+    (theme) => {
+      const svg = drawn[`${ASSETS}/banner-${theme}.svg`] ?? '';
+      const [moving, still] = classesOf(svg);
+      const movingWithoutMotion = groupOf(svg, moving)
+        .replace(/<animate\b[^>]*\/>/g, '')
+        .replace(`<g class="${moving}">`, `<g class="${still}">`);
+      expect(groupOf(svg, still)).toBe(movingWithoutMotion);
+      for (const group of [groupOf(svg, moving), groupOf(svg, still)]) {
+        // The iris alone is an ellipse, and the six lines of the field are the paths: no glint, no pupil.
+        expect(group.match(/<ellipse\b/g)).toHaveLength(1);
+        expect(group.match(/<path\b/g)).toHaveLength(6);
+      }
+    },
+  );
+
+  it.each(['dark', 'light'] as const)('banner-%s moves on the cycle of nine seconds', (theme) => {
+    const svg = drawn[`${ASSETS}/banner-${theme}.svg`] ?? '';
+    const [moving] = classesOf(svg);
+    const animates = [...groupOf(svg, moving).matchAll(/<animate\b([^>]*)\/>/g)].map((m) =>
+      attributesOf(m[1] as string),
+    );
+    // The iris moves along the lines and closes; each of the six lines changes its shape.
+    expect(animates.map((a) => a.attributeName).sort()).toEqual(
+      ['cx', 'd', 'd', 'd', 'd', 'd', 'd', 'ry'].sort(),
+    );
+    for (const a of animates) {
+      expect(a.dur).toBe('9s');
+      expect(a.begin).toBe(BEGIN[theme]);
+      expect(a.repeatCount).toBe('indefinite');
+      expect(a.values?.split(';')).toHaveLength(16);
+    }
+  });
+
+  it.each(['dark', 'light'] as const)(
+    'banner-%s draws the ink of its theme, and no ground',
+    (theme) => {
+      const svg = drawn[`${ASSETS}/banner-${theme}.svg`] ?? '';
+      const ink = theme === 'dark' ? PALETTE.bone : PALETTE.charcoal;
+      // The lines of the eye and the word are in the ink; the iris is the sulphur.
+      expect(svg).toContain(`stroke="${ink}"`);
+      expect(svg).toContain(`fill="${ink}"`);
+      expect(svg).toContain(`fill="${PALETTE.sulphur}"`);
+      expect(svg).not.toContain('<rect');
+      // A light page gives the yellow 1.2 to 1, so the iris is ringed there and nowhere else.
+      const irises = [...svg.matchAll(/<ellipse\b([^>]*)>/g)].map((m) =>
+        attributesOf(m[1] as string),
+      );
+      expect(irises).toHaveLength(2);
+      for (const iris of irises) {
+        expect(iris.stroke).toBe(theme === 'light' ? PALETTE.charcoal : undefined);
+        expect(iris['stroke-width']).toBe(theme === 'light' ? '2.2' : undefined);
+      }
+    },
+  );
+
+  it.each(['dark', 'light'] as const)('banner-%s draws no word of its own', (theme) => {
+    const svg = drawn[`${ASSETS}/banner-${theme}.svg`] ?? '';
+    expect(svg).not.toContain('<text');
+    expect(svg).not.toContain('data-said');
+  });
+});
+
+describe('the README shows the banner', () => {
+  const readme = read('README.md');
+
+  it('has the picture once, the light one first and the dark one for a dark page, with the banner alt', () => {
+    expect(readme.match(/<img src="docs\/assets\/banner-light\.svg" alt="/g)).toHaveLength(1);
+    expect(readme.match(/srcset="docs\/assets\/banner-dark\.svg"/g)).toHaveLength(1);
+    const alt = /<img src="docs\/assets\/banner-light\.svg" alt="([^"]*)"/.exec(readme)?.[1];
+    expect(alt).toBe(BANNER_ALT);
+    // The `alt` is the `aria-label` the banner carries, in both of its files.
+    for (const theme of ['dark', 'light'])
+      expect(ariaOf(read(`${ASSETS}/banner-${theme}.svg`))).toBe(alt);
+  });
+
+  it('is read by the site as it reads it: a heading, the paragraph after it, and the banner alt', () => {
+    // The three expressions the site's page builder reads the top of the README with (`pitchOf`).
+    expect(/<h3>([\s\S]*?)<\/h3>/.exec(readme)?.[1]).toBe(
+      'mnema is the decision record for AI coding agents.',
+    );
+    expect(/<\/h3>\s*<p>([\s\S]*?)<\/p>/.exec(readme)?.[1]?.trim()).toMatch(
+      /^Who decided this, and why\?/,
+    );
+    expect(/<img src="docs\/assets\/banner-light\.svg" alt="([^"]*)"/.exec(readme)?.[1]).toBe(
+      BANNER_ALT,
+    );
+  });
+});
+
+describe('draw.mjs keeps what the site and the extension read', () => {
+  it('has the cell, the page and the foot of the wordmark it always had, and draws the social card byte for byte', () => {
+    expect(CELL).toEqual({ w: 12, h: 24 });
+    expect(PAGE).toEqual({ dark: '#0d1117', light: '#ffffff' });
+    expect(inkFoot(THE_BLOCKS)).toBe(135.5);
+    const card = socialCard({
+      blocks: THE_BLOCKS,
+      pitch: {
+        title: 'mnema is the decision record for AI coding agents.',
+        body: 'Who decided this, and why? What was turned down? Has it changed since?',
+      },
+    });
+    expect(createHash('sha256').update(card).digest('hex')).toBe(
+      '56366347a02b34ebaadeb48586124df42a8eb4db9e4408069fe1ea14b5e0b228',
+    );
+  });
 });
 
 /** The text alternative a picture carries, in its `aria-label`. */
@@ -910,8 +1011,14 @@ const SULPHUR = '#e6da2e';
 
 describe('the diagrams are outlines of their words, drawn in the brand', () => {
   const diagrams = drawTheDiagrams();
+  const banners = drawTheBanner();
+  /** A picture by its path: a diagram or a banner. */
+  const pictureOf = (path: string): string => diagrams[path] ?? banners[path] ?? '';
   const frameOf = new Map(
-    [...LINED, ...FRONT].flatMap((p) => [[p.dark, p.frame] as const, [p.light, p.frame] as const]),
+    [...LINED, ...FRONT, BANNER].flatMap((p) => [
+      [p.dark, p.frame] as const,
+      [p.light, p.frame] as const,
+    ]),
   );
 
   // N1: the words are in `data-said`, and not in a `<text>`; a value this does not read is a failure, not a pass.
@@ -921,10 +1028,10 @@ describe('the diagrams are outlines of their words, drawn in the brand', () => {
     expect(wordsOf(svg).length).toBeGreaterThan(5);
   });
 
-  it.each(FOURTEEN)('%s draws no outline that a number could not be written for', (path) => {
+  it.each(SIXTEEN)('%s draws no outline that a number could not be written for', (path) => {
     // The outline of a glyph at some coordinates came out as `NaN` from the library's own writer: a path with a
     // `NaN` in it draws nothing from there on, and shows as a text cut short.
-    expect(diagrams[path] ?? '').not.toMatch(/NaN|undefined|Infinity/);
+    expect(pictureOf(path)).not.toMatch(/NaN|undefined|Infinity/);
   });
 
   // N2: a diagram moves, and stops when asked to. The eye blinks on the banner's cycle, a pulse runs along the lines, and
@@ -1351,10 +1458,11 @@ describe('the diagrams are outlines of their words, drawn in the brand', () => {
   // N6: a drawing is its bytes, and an id names one thing in one file.
   it('draws the same bytes the second time in the same process', () => {
     expect(drawTheDiagrams()).toEqual(diagrams);
+    expect(drawTheBanner()).toEqual(banners);
   });
 
-  it.each(FOURTEEN)('%s names nothing twice and points only at what it names', (path) => {
-    const svg = diagrams[path] ?? '';
+  it.each(SIXTEEN)('%s names nothing twice and points only at what it names', (path) => {
+    const svg = pictureOf(path);
     const ids = [...svg.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1] as string);
     expect(ids.length).toBeGreaterThan(0);
     expect(ids.filter((id, i) => ids.indexOf(id) !== i)).toEqual([]);
@@ -1363,8 +1471,8 @@ describe('the diagrams are outlines of their words, drawn in the brand', () => {
   });
 
   // N7: each diagram says what it is, and how big, and the block of a README says the same.
-  it.each(FOURTEEN)('%s is an image with a name, a title and a size', (path) => {
-    const svg = diagrams[path] ?? '';
+  it.each(SIXTEEN)('%s is an image with a name, a title and a size', (path) => {
+    const svg = pictureOf(path);
     const frame = frameOf.get(path);
     expect(svg).toMatch(/^<svg [^>]*\brole="img"/);
     expect(ariaOf(svg)?.length).toBeGreaterThan(10);
@@ -1381,6 +1489,12 @@ describe('the diagrams are outlines of their words, drawn in the brand', () => {
       expect(ariaOf(svg)).toBe(alt);
       expect(svg).toContain(`<title>@mnema/${dir}</title>`);
     }
+  });
+
+  it.each([BANNER.dark, BANNER.light])('says of %s what it says by hand', (path) => {
+    const svg = banners[path] ?? '';
+    expect(ariaOf(svg)).toBe(BANNER_ALT);
+    expect(svg).toContain(`<title>${BANNER_ALT}</title>`);
   });
 
   it('says of the README diagrams the words they have always said', () => {
@@ -1432,7 +1546,7 @@ describe('the diagrams are outlines of their words, drawn in the brand', () => {
     expect(hues.map(([name]) => name)).toEqual(['sulphur']);
   });
 
-  it.each(FOURTEEN)('%s uses no colour that is not a value of the palette', (path) => {
+  it.each(SIXTEEN)('%s uses no colour that is not a value of the palette', (path) => {
     const values = new Set(Object.values(PALETTE));
     // The committed file, not what the script would draw: a colour written by hand is read as one.
     const foreign = coloursIn(read(path)).filter(
@@ -1449,35 +1563,23 @@ describe('the diagrams are outlines of their words, drawn in the brand', () => {
     expect(found).toEqual([]);
   });
 
-  it('leaves the banner script with the imports the site, built without node_modules, can resolve', () => {
+  it('leaves the script of the social card with the imports the site, built without node_modules, can resolve', () => {
     const imports = [
       ...read('.github/the-front-page/draw.mjs').matchAll(/^import [^;]*? from '([^']+)';$/gm),
     ].map((m) => m[1]);
-    expect(imports).toEqual(['node:fs', 'node:url', './accent.mjs']);
+    expect(imports).toEqual(['./accent.mjs']);
   });
 });
 
-describe('every diagram and the banner is drawn inside its frame', () => {
-  const drawn: Record<string, string> = {
-    ...drawTheDiagrams(),
-    ...Object.fromEntries(
-      Object.entries(drawTheFrontPage(THE_BLOCKS)).map(([file, svg]) => [`${ASSETS}/${file}`, svg]),
-    ),
-  };
-  const pictures = [
-    ...[BANNER.dark, BANNER.light].map((path) => ({
+describe('every diagram is drawn inside its frame', () => {
+  const drawn: Record<string, string> = drawTheDiagrams();
+  const pictures = [...LINED, ...FRONT].flatMap((p) =>
+    [p.dark, p.light].map((path) => ({
       path,
-      frame: BANNER.frame,
+      frame: { ...p.frame, shapes: 10 },
       svg: drawn[path] ?? '',
     })),
-    ...[...LINED, ...FRONT].flatMap((p) =>
-      [p.dark, p.light].map((path) => ({
-        path,
-        frame: { ...p.frame, shapes: 10 },
-        svg: drawn[path] ?? '',
-      })),
-    ),
-  ];
+  );
 
   it.each(pictures)('$path paints every shape inside its frame', ({ svg, frame }) => {
     // A stroke past the edge of the frame is cut off: half of it is not drawn. The ink of a text is the box of the
@@ -1486,7 +1588,7 @@ describe('every diagram and the banner is drawn inside its frame', () => {
     const shapes = nodesOf(svg).filter(
       (n) => n.tag !== 'text' && !(n.tag === 'rect' && n.at.x === undefined),
     );
-    expect(shapes.length).toBeGreaterThan('shapes' in frame ? frame.shapes : 0);
+    expect(shapes.length).toBeGreaterThan(frame.shapes);
     const outside = shapes.flatMap((n) =>
       boxesOf(n, frames)
         .filter(([x0, y0, x1, y1]) => x0 < 0 || y0 < 0 || x1 > frame.w || y1 > frame.h)
@@ -1497,60 +1599,6 @@ describe('every diagram and the banner is drawn inside its frame', () => {
     );
     expect(outside).toEqual([]);
   });
-
-  /**
-   * How far each way what is there in the last frame of the banner reaches, shapes only (it draws no text). The glow behind
-   * it is not counted: it is centred by itself, and as wide as it is it would hide a drawing set off the middle.
-   */
-  const reach = (svg: string): { left: number; right: number; top: number; foot: number } => {
-    const frames = keyframesOf(svg);
-    const boxes = nodesOf(svg)
-      .filter(
-        (n) =>
-          n.at.opacity !== '0' &&
-          !n.groups.some((g) => g.opacity === '0') &&
-          !(n.tag === 'rect' && n.at.x === undefined) &&
-          !(n.at.fill ?? '').startsWith('url(#glow'),
-      )
-      .flatMap((n) => boxesOf(n, frames));
-    expect(boxes.length).toBeGreaterThan(10);
-    return {
-      left: Math.min(...boxes.map((b) => b[0])),
-      right: Math.max(...boxes.map((b) => b[2])),
-      top: Math.min(...boxes.map((b) => b[1])),
-      foot: Math.max(...boxes.map((b) => b[3])),
-    };
-  };
-  const banners = pictures.filter((p) => p.path.includes('/banner-'));
-
-  it.each(banners)('$path sets what it draws on the middle of its frame', ({ svg, frame }) => {
-    // It spans as far from the left edge as from the right.
-    const { left, right } = reach(svg);
-    expect(Math.abs(left + right - frame.w) / 2, `${left}..${right}`).toBeLessThanOrEqual(0.5);
-  });
-
-  it.each(banners)(
-    '$path leaves room between what it draws and each side of its frame',
-    ({ svg, frame }) => {
-      const { left, right } = reach(svg);
-      expect(
-        Math.min(left, frame.w - right),
-        `${left}..${right} in 0..${frame.w}`,
-      ).toBeGreaterThanOrEqual(BANNER.frame.margin);
-    },
-  );
-
-  it.each(banners)(
-    '$path sets what it draws on the middle of its frame from top to foot, the margin in from each',
-    ({ svg, frame }) => {
-      const { left, right, top, foot } = reach(svg);
-      expect(Math.abs(top + foot - frame.h) / 2, `${top}..${foot}`).toBeLessThanOrEqual(0.5);
-      expect(
-        Math.min(left, top, frame.w - right, frame.h - foot),
-        `${left}..${right} x ${top}..${foot} in ${frame.w} x ${frame.h}`,
-      ).toBeGreaterThanOrEqual(BANNER.frame.margin);
-    },
-  );
 });
 
 // A badge sets its colour in the query (`color=` / `colorB=`, after `?`, `&` or the `;` of an
@@ -1565,7 +1613,7 @@ function* badgeColours(url: string): Generator<string> {
   }
 }
 
-describe('the front page has one accent', () => {
+describe('the front page keeps to the one hue of the brand', () => {
   it('has pictures to read', () => {
     expect(svgs.length).toBeGreaterThanOrEqual(4);
   });
@@ -1574,22 +1622,28 @@ describe('the front page has one accent', () => {
     expect(svgs.filter((f) => f.startsWith('packages/')).length).toBe(8);
   });
 
-  // The banner is painted in the accent of its theme; the fourteen diagrams, in the one hue of the brand, which each has.
-  it.each(svgs)('%s uses no hue but the accent of its theme', (file) => {
+  // The fourteen diagrams and the two banners are painted in the one hue of the brand, which each has; every picture
+  // there is, is one of the sixteen.
+  it('has no picture that is not one of the sixteen', () => {
+    expect([...svgs].sort()).toEqual([...SIXTEEN].sort());
+  });
+
+  it.each(svgs)('%s uses no hue but the sulphur', (file) => {
     const svg = read(file);
-    const accent = FOURTEEN.includes(file) ? [SULPHUR] : accentFor(file);
     const wrong = coloursIn(svg)
-      .map((c) => whyNot(c, accent))
+      .map((c) => whyNot(c, [SULPHUR]))
       .filter((w) => w !== undefined);
     expect(wrong).toEqual([]);
-    expect(svg.toLowerCase()).toContain(accent[0]);
+    expect(svg.toLowerCase()).toContain(SULPHUR);
   });
 
   it('reads a hue that is not the accent as one', () => {
-    expect(whyNot('#ff0000', [ACCENT.dark])).toBeDefined();
-    expect(whyNot('#997dbf', [ACCENT.dark])).toBeDefined();
-    expect(whyNot('red', [ACCENT.dark])).toBeDefined();
-    expect(whyNot('#9198a1', [ACCENT.dark])).toBeUndefined();
+    // A hue the front page once used, here as a plain hex: it is the accent of this case and nothing else.
+    const hue = '#c4a0f5';
+    expect(whyNot('#ff0000', [hue])).toBeDefined();
+    expect(whyNot('#997dbf', [hue])).toBeDefined();
+    expect(whyNot('red', [hue])).toBeDefined();
+    expect(whyNot('#9198a1', [hue])).toBeUndefined();
     // The brand's hue passes against itself, and the old accent is a hue against it.
     expect(whyNot(SULPHUR, [SULPHUR])).toBeUndefined();
     expect(whyNot('#997dbf', [SULPHUR])).toBeDefined();
@@ -1597,36 +1651,77 @@ describe('the front page has one accent', () => {
     // A gradient is read by its stops; a paint that points at no gradient of the file is not read.
     const stops = (colour: string) =>
       `<linearGradient id="g"><stop stop-color="${colour}"/></linearGradient><rect fill="url(#g)"/>`;
-    expect(coloursIn(stops(ACCENT.dark)).map((c) => whyNot(c, [ACCENT.dark]))).toEqual([
-      undefined,
-      undefined,
-    ]);
-    expect(coloursIn(stops('#2da44e')).map((c) => whyNot(c, [ACCENT.dark]))).toContainEqual(
+    expect(coloursIn(stops(hue)).map((c) => whyNot(c, [hue]))).toEqual([undefined, undefined]);
+    expect(coloursIn(stops('#2da44e')).map((c) => whyNot(c, [hue]))).toContainEqual(
       expect.stringContaining('#2da44e'),
     );
     expect(whyNot(coloursIn('<rect fill="url(#elsewhere)"/>')[0] ?? '', [])).toBeDefined();
   });
+});
 
-  it('gives every shields.io badge that sets a colour the light accent', () => {
-    const pages = [
-      'README.md',
-      ...readdirSync(join(ROOT, 'packages'))
-        .map((p) => `packages/${p}/README.md`)
-        .filter((p) => {
-          try {
-            read(p);
-            return true;
-          } catch {
-            return false;
-          }
-        }),
-    ];
-    const colours = pages.flatMap((page) =>
-      [...read(page).matchAll(/https:\/\/img\.shields\.io\/[^\s)"'<>]*/g)].flatMap((m) =>
-        [...badgeColours(m[0])].map((c) => `${page}: ${c}`),
+describe('the badges are in dark stone', () => {
+  const pages = [
+    'README.md',
+    ...readdirSync(join(ROOT, 'packages'))
+      .map((p) => `packages/${p}/README.md`)
+      .filter((p) => {
+        try {
+          read(p);
+          return true;
+        } catch {
+          return false;
+        }
+      }),
+  ];
+  const badges = pages.flatMap((page) =>
+    [...read(page).matchAll(/https:\/\/img\.shields\.io\/[^\s)"'<>]*/g)].map((m) => ({
+      page,
+      url: m[0],
+      colours: [...badgeColours(m[0])],
+    })),
+  );
+  /** The badge of the CI workflow: the one a colour must never be fixed on. */
+  const isCi = (url: string) =>
+    url.startsWith('https://img.shields.io/github/actions/workflow/status/');
+  const stone = PALETTE.darkStone?.slice(1) ?? '';
+
+  it('reads nine pages and every badge on them: nine of CI and twenty-eight others', () => {
+    // The counts are said by hand: a README the list did not reach, or a badge added without a colour, changes one.
+    expect(stone).toBe('6b6862');
+    expect(new Set(badges.map((b) => b.page)).size).toBe(9);
+    expect(pages).toHaveLength(9);
+    expect(badges.filter((b) => isCi(b.url))).toHaveLength(9);
+    expect(badges.filter((b) => !isCi(b.url))).toHaveLength(28);
+  });
+
+  it('gives the CI badge no colour at all, so that shields.io paints it red when the build fails', () => {
+    expect(
+      badges.filter((b) => isCi(b.url) && b.colours.length > 0).map((b) => `${b.page}: ${b.url}`),
+    ).toEqual([]);
+  });
+
+  it('gives every other badge exactly one colour, and it is the dark stone', () => {
+    expect(
+      badges
+        .filter((b) => !isCi(b.url) && (b.colours.length !== 1 || b.colours[0] !== stone))
+        .map((b) => `${b.page}: ${b.url}`),
+    ).toEqual([]);
+  });
+
+  it('reads a colour set in the query, escaped or not, and the last segment of a static badge', () => {
+    expect([
+      ...badgeColours('https://img.shields.io/npm/v/x?style=flat-square&amp;color=997dbf'),
+    ]).toEqual(['997dbf']);
+    expect([...badgeColours('https://img.shields.io/npm/v/x?color=997dbf&label=npm')]).toEqual([
+      '997dbf',
+    ]);
+    expect([
+      ...badgeColours('https://img.shields.io/badge/license-Apache--2.0-6b6862?style=flat-square'),
+    ]).toEqual(['6b6862']);
+    expect([
+      ...badgeColours(
+        'https://img.shields.io/github/actions/workflow/status/o/r/ci.yml?branch=main',
       ),
-    );
-    const light = ACCENT.light.slice(1);
-    expect(colours.filter((c) => !c.endsWith(`: ${light}`))).toEqual([]);
+    ]).toEqual([]);
   });
 });
