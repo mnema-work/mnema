@@ -9,7 +9,7 @@ instructions                                 2041 B      478 tok
 edit: rules pushed                            331 B       92 tok
 edit: asks for a person                       515 B      137 tok
 edit: refuses the write                       643 B      184 tok
-tool answer: bootstrap                       2344 B      869 tok
+tool answer: bootstrap                       2326 B      864 tok
 tool answer: skills                           302 B       89 tok
 tool answer: focus                            743 B      295 tok
 tool answer: resume                          1127 B      439 tok

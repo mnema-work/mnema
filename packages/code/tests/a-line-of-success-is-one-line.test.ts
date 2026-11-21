@@ -692,7 +692,7 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'minted',
       why: 'the closed channel, read back off the write',
     },
-  "switch.ts «{} is now ON: it was off until this switch, and it now records a person's corrections as proposed decisions in this machine's private tree.» #1":
+  "switch.ts «{} is now ON: it records a person's corrections as proposed decisions in this machine's private tree, as it did before.» #1":
     {
       verdict: 'minted',
       why: 'the user-corrections channel, read back off the write',
