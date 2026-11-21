@@ -158,8 +158,19 @@ describe('the presence map', () => {
     // VS Code documents SubagentStart, and the hooks file reaches it: generated for, not held.
     expect(cell("VS Code's agent", 7)).toContain('documented, not measured');
     expect(cell("VS Code's agent", 7)).not.toContain('held by a test');
-    expect(cell('Gemini CLI', 7)).toBe('no channel');
+    expect(cell('Gemini CLI', 7)).toBe('its hooks name no event for a subagent: no channel');
     expect(cell('OpenCode', 6)).toBe('not read');
+    expect(cell('Gemini CLI', 8).replace(/ \|$/, '')).toBe(
+      'its hooks name no event for a subagent: no channel',
+    );
+    expect(cell('OpenCode', 7)).toBe('not read');
+    expect(cell('OpenCode', 8).replace(/ \|$/, '')).toBe('not read');
+    // Codex and Copilot CLI: the plugin runs the hand-back check there, and the host is not run for it.
+    for (const host of ['Codex', 'GitHub Copilot CLI']) {
+      expect(cell(host, 8)).toContain('the plugin runs its hand-back check there');
+      expect(cell(host, 8)).toContain('documented, not measured');
+      expect(cell(host, 8)).not.toContain('held by a test');
+    }
   });
 
   it('is declared as a hook of the plugin where a host that reads that file has the event', () => {

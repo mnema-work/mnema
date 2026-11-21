@@ -6,7 +6,9 @@
  * IT DECIDES NOTHING. The payload the host hands a `SubagentStop` hook goes to `mnema handback`
  * byte for byte; whether the reply is in the format, and what the reason says, are the verb's.
  * This file only turns the verb's answer into what the host reads as "do not stop yet": the
- * reason on the second stream and exit 2. The rule for running a verb is `hand-over.mjs`'s.
+ * reason on the second stream and exit 2 (Claude Code), or the same decision on stdout and exit 0
+ * (`--host codex` and `--host copilot`, whose documentation reads it there; Copilot CLI makes exit 2
+ * a warning). The rule for running a verb is `hand-over.mjs`'s.
  *
  * IT BLOCKS ONCE AND ONLY WHEN THE VERB SAYS SO. The verb is silent the second time the host asks
  * (`stop_hook_active`), when no project is here, when the channel is switched off
@@ -26,15 +28,22 @@
  */
 export const MODEL_CHANNEL = 'subagent-handback';
 
-/** The verb and nothing else: the event is in the payload, never guessed from a flag. */
+/**
+ * The verb, and the host the hooks file names with `--host`: the event is in the payload, never
+ * guessed from a flag, and the flag says which host's payload it is.
+ */
 const VERB = ['handback'];
 
 try {
-  const { whatTheVerbReports, whereTheSessionIs } = await import('./hand-over.mjs');
+  const { whatTheVerbReports, whereTheSessionIs, withoutTheFiltersOfTheHooksFile } = await import(
+    './hand-over.mjs'
+  );
+  const argv = process.argv.slice(2);
+  const host = argv.includes('--host') ? argv[argv.indexOf('--host') + 1] : 'claude';
   const chunks = [];
   for await (const chunk of process.stdin) chunks.push(chunk);
   const { answer, said } = whatTheVerbReports(
-    VERB,
+    [...VERB, ...withoutTheFiltersOfTheHooksFile(argv)],
     whereTheSessionIs(),
     Buffer.concat(chunks).toString('utf-8'),
   );
@@ -44,8 +53,15 @@ try {
   if (answer !== null) {
     const said = JSON.parse(answer);
     if (said?.decision === 'block' && typeof said.reason === 'string' && said.reason !== '') {
-      process.stderr.write(`${said.reason}\n`);
-      process.exitCode = 2;
+      // Claude Code reads exit 2 with the reason on the second stream (measured). Codex and Copilot
+      // CLI read the decision itself on stdout with exit 0 (their documentation): Copilot CLI treats
+      // exit 2 as a warning that lets the subagent go.
+      if (host === 'claude') {
+        process.stderr.write(`${said.reason}\n`);
+        process.exitCode = 2;
+      } else {
+        process.stdout.write(`${JSON.stringify({ decision: 'block', reason: said.reason })}\n`);
+      }
     }
   }
 } catch {

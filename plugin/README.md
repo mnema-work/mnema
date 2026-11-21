@@ -142,8 +142,14 @@ document, delivered by the host instead of waited for.
   with no such block, or with one outside the schema, is sent back with the format as the reason (exit 2),
   once: the host's second stop of the same subagent is let through. It checks the shape and not whether the
   subagent settled something, calls no model and records nothing. Held against the real Claude Code binary
-  by `a-subagent-is-sent-back-for-its-handback.test.ts`; the other hosts that read this hooks file were not
-  measured on the event. `mnema switch off subagent-handback` stops it.
+  by `a-subagent-is-sent-back-for-its-handback.test.ts`. **Codex and Copilot CLI run it too** (`codex.json` and
+  `copilot.json` under `SubagentStop`, with `--host codex` and `--host copilot`), and there the reply is the
+  decision itself on stdout with exit 0, which is what each host's documentation reads (Copilot CLI makes exit 2 a
+  warning). That is held by a test fed the payload each host documents, not by a run of either host. Copilot CLI
+  documents no field for a second stop of the same subagent, so there the check is not once: only the host's own
+  limit of eight consecutive continuations bounds it (documented, not measured), and its built-in `general-purpose`
+  agent emits no such event. **Gemini CLI has no hook event for a subagent, and OpenCode was not read for one**, so
+  neither carries it (`docs/evidence.md`, the presence map). `mnema switch off subagent-handback` stops it.
 - **A `PostToolUse` hook after a question**, `mnema settled`. After the agent asked the person a
   question through `AskUserQuestion` and the answer came back, it hands the agent one sentence beside
   the answer: that a choice may have been settled there, that `record_decision` records it with
