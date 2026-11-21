@@ -31,7 +31,7 @@ import {
   realpathSync,
   writeSync,
 } from 'node:fs';
-import { dirname, join, resolve, sep } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import {
   type ChainLayout,
   checkpointHash,
