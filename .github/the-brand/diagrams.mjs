@@ -104,7 +104,7 @@ const DASH =
 /**
  * A soft pulse along a line: a copy of it, a dash of the theme's ink that runs the line's length in the first share of
  * the cycle. A line that is itself drawn in the ink (a sign's colour on the light theme) is run by a dash of the
- * ground, a gap of light along it, since a dash of its own colour would not show. Where the animation does not run, the resting offset leaves no dash on the line.
+ * page colour, a gap of light along it, since a dash of its own colour would not show. Where the animation does not run, the resting offset leaves no dash on the line.
  * @param {Pen} t
  * @param {string} d the line's data, absolute
  * @param {boolean} [strong] a line of a sign's colour, which the pulse shows more on
@@ -112,7 +112,7 @@ const DASH =
 const pulse = (t, d, strong = false) => {
   const reversed = endsOf(d)[0] > endsOf(d)[1];
   t.used.add(reversed ? 'kr' : 'k');
-  return `<path class="${reversed ? 'kr' : 'k'}" d="${relative(d)}" ${DASH} stroke="${strong && t.acc === t.ink ? t.bg : t.ink}" stroke-opacity="${strong ? '.9' : '.5'}" stroke-width="${strong ? '2.2' : '1.8'}"/>`;
+  return `<path class="${reversed ? 'kr' : 'k'}" d="${relative(d)}" ${DASH} stroke="${strong && t.acc === t.ink ? t.page : t.ink}" stroke-opacity="${strong ? '.9' : '.5'}" stroke-width="${strong ? '2.2' : '1.8'}"/>`;
 };
 
 /**
@@ -225,7 +225,7 @@ const band = (t, x0, x1, yc, n, pitch, stones, { sw = 1.6, skip = [] } = {}) => 
 
 /** A proposed decision. @param {Pen} t @param {number} x @param {number} y @param {number} [r] */
 const ring = (t, x, y, r = 12) =>
-  `<circle cx="${x}" cy="${y}" r="${r}" fill="${t.bg}" stroke="${t.ring ? t.ink : PALETTE.sulphur}" stroke-width="2.6"/>${ripple(t, x, y, r, true)}`;
+  `<circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="${t.ring ? t.ink : PALETTE.sulphur}" stroke-width="2.6"/>${ripple(t, x, y, r, true)}`;
 /** A decision in force. @param {Pen} t @param {number} x @param {number} y @param {number} [r] */
 const pt = (t, x, y, r = 12) =>
   `<circle cx="${x}" cy="${y}" r="${r}" fill="${PALETTE.sulphur}"${t.ring ? ` stroke="${t.ink}" stroke-width="2"` : ''}/>${ripple(t, x, y, r, true)}`;
@@ -240,7 +240,7 @@ const dimPt = (t, x, y, r = 12) =>
   `<circle cx="${x}" cy="${y}" r="${r}" fill="${t.muted}"/>${ripple(t, x, y, r, false)}`;
 /** A decision never accepted. @param {Pen} t @param {number} x @param {number} y @param {number} [r] */
 const dimRing = (t, x, y, r = 12) =>
-  `<circle cx="${x}" cy="${y}" r="${r}" fill="${t.bg}" stroke="${t.muted}" stroke-width="2.6"/>${ripple(t, x, y, r, false)}`;
+  `<circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="${t.muted}" stroke-width="2.6"/>${ripple(t, x, y, r, false)}`;
 
 /**
  * A chip: a pill with a short text on its middle.
@@ -251,7 +251,7 @@ const dimRing = (t, x, y, r = 12) =>
  * @param {number} [w]
  */
 const chip = (t, x, y, words, w = 200) =>
-  `<rect x="${f(x - w / 2)}" y="${y - 16}" width="${w}" height="30" rx="15" fill="${t.chip}" stroke="${t.line}"/>${say(t, words, x, y + 4, 'chip', 'middle', 'acc')}`;
+  `<rect x="${f(x - w / 2)}" y="${y - 16}" width="${w}" height="30" rx="15" fill="${t.ink}" fill-opacity="${t.chipOpacity}" stroke="${t.line}"/>${say(t, words, x, y + 4, 'chip', 'middle', 'acc')}`;
 
 /**
  * The eye at the top of a picture: the brand's eye blinking on the banner's cycle, and, hidden, its copy at rest looking
@@ -288,7 +288,7 @@ const watcher = (t, w) => {
  * @param {{ label: string, title: string }} says
  */
 const frame = (t, w, h, body, { label, title }) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="${xml(label)}"><title>${xml(title)}</title>${sheet(t)}<rect width="${w}" height="${h}" fill="${t.bg}"/>${body}${watcher(t, w)}</svg>`;
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="${xml(label)}"><title>${xml(title)}</title>${sheet(t)}${body}${watcher(t, w)}</svg>`;
 
 /**
  * The heading of a picture.
@@ -531,11 +531,12 @@ function chain(t) {
   const xs = [0, 1, 2, 3, 4, 5].map((i) => 110 + 100 * i);
   const L = CHAIN_LINES;
   /**
+   * The dotted line of the chain runs through these two, so each hides it with the page's colour: the only ground left.
    * @param {number} x
    * @param {number} r
    */
   const after = (x, r) =>
-    `<circle cx="${x}" cy="${y}" r="${r}" fill="${t.bg}" stroke="${t.dim}" stroke-width="2" stroke-dasharray="3 3"/>`;
+    `<circle cx="${x}" cy="${y}" r="${r}" fill="${t.page}" stroke="${t.dim}" stroke-width="2" stroke-dasharray="3 3"/>`;
   const nodes = xs
     .map((x, i) =>
       i === 3 ? refused(t, x, y, 11) : i > 3 ? after(x, i === 5 ? 12 : 8) : pt(t, x, y, 8),
@@ -621,7 +622,7 @@ function converge(t, { title, ins, centre, outs, foot, alt }) {
     heading(t, 60, 56, title) +
       inL +
       outL +
-      `<circle cx="${cx}" cy="${cy}" r="34" fill="${t.bg}" stroke="${t.line}" stroke-width="1.4"/>` +
+      `<circle cx="${cx}" cy="${cy}" r="34" fill="none" stroke="${t.line}" stroke-width="1.4"/>` +
       centre.sign(t, cx, cy, 18) +
       say(t, centre.name, cx, cy + 58, 'name', 'middle', 'acc') +
       say(t, centre.note, cx, cy + 78, 'small', 'middle', 'dim') +

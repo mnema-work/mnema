@@ -4,54 +4,55 @@
 // Every grey has channels within 17 units of each other; `sulphur` is the one hue, and it appears only where it means
 // something: the iris, a decision in force, a record verified.
 
-/** @typedef {'charcoal' | 'charcoalRaised' | 'bone' | 'stone' | 'darkStone' | 'sulphur' | 'paper' | 'mask' | 'lineDark' | 'lineLight' | 'dimDark' | 'dimLight' | 'chipDark' | 'chipLight'} PaletteName */
+/** @typedef {'charcoal' | 'bone' | 'stone' | 'darkStone' | 'sulphur' | 'mask' | 'lineDark' | 'lineLight' | 'dimDark' | 'dimLight' | 'pageDark' | 'pageLight'} PaletteName */
 
 /** @type {Readonly<Record<PaletteName, string>>} */
 export const PALETTE = Object.freeze({
   charcoal: '#131312',
-  charcoalRaised: '#1c1c1a',
   bone: '#efebe1',
   stone: '#8c8a82',
   darkStone: '#6b6862',
   sulphur: '#e6da2e',
-  paper: '#f6f3ec',
   mask: '#fff',
   lineDark: '#46453f',
   lineLight: '#cdc8bc',
   dimDark: '#a29e94',
   dimLight: '#5b574f',
-  chipDark: '#252523',
-  chipLight: '#ebe7de',
+  // The colours of GitHub's own page, dark and light: the only ground a diagram ever paints, and only under a sign that
+  // must hide a line. A diagram has no ground of its own, so it sits on whatever page shows it.
+  pageDark: '#0d1117',
+  pageLight: '#ffffff',
 });
 
 /**
- * What a diagram paints with, by theme: its ground (`bg`), its ink, the lines of the band and the threads (`line`), its
+ * What a diagram paints with, by theme: the colour of the page it hides a line with (`page`: the picture has no ground
+ * of its own), its ink, the lines of the band and the threads (`line`), its
  * secondary text (`dim`), the colour of an emphasised text (`acc`), whether a sign carries a ring of ink round its point
- * (`ring`), the ground of a chip, the dim sign (`muted`: a decision no longer in force, or never accepted) and the ink
+ * (`ring`), the opacity of the ink that tints a chip (`chipOpacity`), the dim sign (`muted`: a decision no longer in force, or never accepted) and the ink
  * of the mark drawn across a sign (`mark`).
  */
 export const DIAGRAM = Object.freeze({
   dark: Object.freeze({
     name: /** @type {const} */ ('dark'),
-    bg: PALETTE.charcoalRaised,
+    page: PALETTE.pageDark,
     ink: PALETTE.bone,
     line: PALETTE.lineDark,
     dim: PALETTE.dimDark,
     acc: PALETTE.sulphur,
     ring: false,
-    chip: PALETTE.chipDark,
+    chipOpacity: '.04',
     muted: PALETTE.stone,
     mark: PALETTE.charcoal,
   }),
   light: Object.freeze({
     name: /** @type {const} */ ('light'),
-    bg: PALETTE.paper,
+    page: PALETTE.pageLight,
     ink: PALETTE.charcoal,
     line: PALETTE.lineLight,
     dim: PALETTE.dimLight,
     acc: PALETTE.charcoal,
     ring: true,
-    chip: PALETTE.chipLight,
+    chipOpacity: '.05',
     muted: PALETTE.darkStone,
     mark: PALETTE.charcoal,
   }),

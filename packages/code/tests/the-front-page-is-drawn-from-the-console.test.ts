@@ -122,7 +122,7 @@ const { outlineOf, ROLES } = (await import(pathToFileURL(join(BRAND, 'outline.mj
 };
 const { PALETTE, DIAGRAM } = (await import(pathToFileURL(join(BRAND, 'palette.mjs')).href)) as {
   PALETTE: Readonly<Record<string, string>>;
-  DIAGRAM: { light: Pen };
+  DIAGRAM: { light: Pen; dark: Pen };
 };
 const { ACCENT } = (await import(pathToFileURL(ACCENT_FILE).href)) as {
   ACCENT: { dark: string; light: string };
@@ -1125,6 +1125,85 @@ describe('the diagrams are outlines of their words, drawn in the brand', () => {
         expect(digest).toBe(AT_REST[theme]);
       },
     );
+  });
+
+  // N2b: a diagram has no ground of its own. GitHub shows it on its own page (white, dark, dimmed), so a picture that paints
+  // a ground shows as a box of another colour; what has to hide a line under a sign is the page's colour of the file's theme.
+  describe('the ground', () => {
+    const PAGE = { dark: '#0d1117', light: '#ffffff' } as const;
+    const themeOf = (path: string): 'dark' | 'light' =>
+      path.endsWith('-dark.svg') ? 'dark' : 'light';
+    const hex6 = (c: string): string =>
+      /^#[0-9a-f]{3}$/i.test(c)
+        ? `#${[...c.slice(1)].map((h) => h + h).join('')}`.toLowerCase()
+        : c.toLowerCase();
+    const opaque = (n: Node): boolean =>
+      (n.at.fill ?? 'black') !== 'none' && (n.at['fill-opacity'] ?? '1') !== '0';
+
+    it.each(FOURTEEN)('%s paints no shape that covers its frame', (path) => {
+      const svg = read(path);
+      const [, vw, vh] = /viewBox="0 0 (\d+) (\d+)"/.exec(svg) ?? [];
+      const [w, h] = [Number(vw), Number(vh)];
+      const covering = nodesOf(svg)
+        .filter((n) => opaque(n))
+        .filter((n) => {
+          if (n.tag === 'rect')
+            return (
+              Number(n.at.x ?? 0) <= 0 &&
+              Number(n.at.y ?? 0) <= 0 &&
+              Number(n.at.width) >= w &&
+              Number(n.at.height) >= h
+            );
+          if (n.tag === 'circle') return Number(n.at.r) * 2 >= Math.max(w, h);
+          if (n.tag === 'ellipse') return Number(n.at.rx) * 2 >= w && Number(n.at.ry) * 2 >= h;
+          return false;
+        });
+      expect(covering.map((n) => n.tag)).toEqual([]);
+    });
+
+    it.each(FOURTEEN)(
+      '%s names neither of the old grounds, nor the old tints of a panel',
+      (path) => {
+        expect(read(path).match(/#(?:1c1c1a|f6f3ec|252523|ebe7de)\b/gi) ?? []).toEqual([]);
+      },
+    );
+
+    it.each(FOURTEEN)("%s fills with no page's colour but its own theme's", (path) => {
+      const theme = themeOf(path);
+      const other = PAGE[theme === 'dark' ? 'light' : 'dark'];
+      const fills = nodesOf(read(path)).flatMap((n) =>
+        n.at.fill?.startsWith('#') ? [hex6(n.at.fill)] : [],
+      );
+      expect(fills.filter((c) => c === other)).toEqual([]);
+      // Whatever stands for the ground is the page's colour of the theme, and the palette says so.
+      expect(Object.values(PALETTE)).toContain(PAGE[theme]);
+    });
+
+    it.each(FOURTEEN)(
+      "%s tints a panel with the theme's ink, and not with a colour of its own",
+      (path) => {
+        const theme = themeOf(path);
+        const panels = nodesOf(read(path)).filter((n) => n.tag === 'rect' && n.at.rx !== undefined);
+        for (const p of panels) {
+          expect(p.at.fill, path).toBe(DIAGRAM[theme].ink);
+          const opacity = Number(p.at['fill-opacity']);
+          expect(opacity).toBeGreaterThan(0);
+          expect(opacity).toBeLessThanOrEqual(0.12);
+        }
+      },
+    );
+
+    it('has panels to read: the chips of the steps and of the states', () => {
+      const withPanels = FOURTEEN.filter((path) =>
+        nodesOf(read(path)).some((n) => n.tag === 'rect' && n.at.rx !== undefined),
+      );
+      expect(withPanels.map((p) => p.split('/').pop())).toEqual([
+        'core-dark.svg',
+        'core-light.svg',
+        'how-it-works-dark.svg',
+        'how-it-works-light.svg',
+      ]);
+    });
   });
 
   // N3: the fonts are the authors' own, listed with the sha256 they have, each with its licence.

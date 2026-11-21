@@ -8,4 +8,5 @@ Changed
   `data-said` where it read a `<text>`. The npm page of each version reads the pictures from `main`, so they change when this lands.
   The diagrams move: the eye at the top blinks on the banner's 9-second cycle, a soft pulse runs along the lines every 7 seconds and
   each sign sends out a ripple as it passes. Under `prefers-reduced-motion` the pulse and the ripples are not drawn and the eye stays
-  open and still. The banner and the badges are not part of this change.
+  open and still. The pictures have no ground of their own: they are transparent and sit on the page that shows them, whether GitHub's
+white, dark or dimmed page, and the panels behind the commands are a low tint of the picture's ink. The banner and the badges are not part of this change.
