@@ -88,16 +88,16 @@ describe.each([
   });
 
   it('accepts a date and a timestamp with an offset', async () => {
-    const date = await mnema([...verb, '--from', '2000-01-01', '--to', TODAY, '--json']);
+    const date = await mnema([...verb, '--from', '2000-01-01', '--to', TODAY]);
     expect(date.failed, date.err).toBe(false);
-    const stamp = await mnema([...verb, '--from', '2000-01-01T00:00:00-03:00', '--json']);
+    const stamp = await mnema([...verb, '--from', '2000-01-01T00:00:00-03:00']);
     expect(stamp.failed, stamp.err).toBe(false);
   });
 });
 
 describe('what the window selects once it is parsed', () => {
   it('search: the whole of today is inside --to today, and a past --to leaves nothing', async () => {
-    const today = await mnema(['search', 'window', '--to', TODAY, '--json']);
+    const today = await mnema(['search', 'window', '--to', TODAY]);
     expect(today.failed, today.err).toBe(false);
     expect(JSON.parse(today.out).total).toBeGreaterThan(0);
     const past = await mnema(['search', 'window', '--to', '2000-01-01', '--json']);
