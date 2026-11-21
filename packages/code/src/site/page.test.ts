@@ -6,8 +6,6 @@
  */
 
 import { createHash } from 'node:crypto';
-import { dirname, join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { FakePage } from '../../tests/support/a-page-in-a-vm.js';
 import { A_PERSON } from '../one-line.js';
@@ -23,10 +21,6 @@ import {
   STYLE,
   TEXT_FLOOR,
 } from './page.js';
-
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
-const source = async <T>(path: string): Promise<T> =>
-  (await import(pathToFileURL(join(ROOT, path)).href)) as T;
 
 const decision = (over: Partial<PageDecision>): PageDecision => ({
   id: 'd-1',
@@ -449,28 +443,42 @@ describe('the colours', () => {
     expect(pairs).toBe(2 * 7 * 2);
   });
 
-  it("is the banner's: the accent and the ground are the front page's, and the accent as text is what the page's own rule gives", async () => {
-    const { ACCENT } = await source<{ ACCENT: Record<'dark' | 'light', string> }>(
-      '.github/the-front-page/accent.mjs',
-    );
-    const { PAGE } = await source<{ PAGE: Record<'dark' | 'light', string> }>(
-      '.github/the-front-page/draw.mjs',
-    );
+  it("takes the accent as text by the page's own rule, and a link has the colour of the text, told apart by its underline", () => {
+    // The equality of each value with the brand's palette is held where the brand's source may be read:
+    // `packages/code/tests/the-editor-and-the-record-page-wear-the-new-brand.test.ts`.
     for (const theme of ['dark', 'light'] as const) {
       const other = theme === 'dark' ? 'light' : 'dark';
-      expect(PALETTE[theme].accent).toBe(ACCENT[theme]);
-      expect(PALETTE[theme].bg).toBe(PAGE[theme]);
       expect(PALETTE[theme].accentText).toBe(
         textAccent({
-          ink: ACCENT[theme],
-          toward: PAGE[other],
+          ink: PALETTE[theme].accent,
+          toward: PALETTE[other].bg,
           grounds: [PALETTE[theme].bg, PALETTE[theme].surface],
           floor: TEXT_FLOOR,
         }),
       );
+      expect(PALETTE[theme].focus).toBe(PALETTE[theme].accentText);
+      expect(PALETTE[theme].accentText, theme).toBe(PALETTE[theme].text);
     }
-    // The accent as small text is darker than the banner's where the banner's does not read.
-    expect(PALETTE.light.accentText).not.toBe(ACCENT.light);
+    expect(STYLE).toContain('a { color: var(--accent-text); }');
+    expect(STYLE).not.toMatch(/\ba\b[^{}]*\{[^}]*text-decoration:\s*none/);
+  });
+
+  it('keeps the red for a failure alone: a broken or unverified record and lists that differ, and nothing else', () => {
+    const rules = [...STYLE.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({
+      selector: (m[1] as string).trim(),
+      body: m[2] as string,
+    }));
+    const red = rules
+      .filter(({ body }) => body.includes('var(--bad)'))
+      .map(({ selector }) => selector);
+    expect(red).toEqual([
+      '#verdict-status[data-state="broken"], #verdict-status[data-state="unverified"], #lists-status[data-state="differ"]',
+    ]);
+    const colourOf = (selector: string) =>
+      rules.find((rule) => rule.selector === selector)?.body.match(/color:\s*([^;]+);/)?.[1];
+    // A decision rejected is not a failure, and neither is a note taken back: both are secondary text.
+    expect(colourOf('.state[data-state="rejected"]')).toBe('var(--muted)');
+    expect(colourOf('.retraction')).toBe('var(--muted)');
   });
 
   it('is in the style: every colour of the palette is written into it, once per theme', () => {

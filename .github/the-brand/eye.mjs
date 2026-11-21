@@ -16,6 +16,24 @@ export const ALMOND = 'M-47,0Q0,-86 47,0Q0,86 -47,0Z';
 const LIDS = LEVELS.map((c) => smooth(line(c, [[0, 0, EYE.a, EYE.k]], -58, 58, 16)));
 
 /**
+ * The eye at rest, looking ahead, as data: the almond it is clipped to, the iris, and the six lines, each as absolute path
+ * data and its width (the two lids in the middle are half as wide). It is the one place the widths are written: `eye` and
+ * `blinkingInside` read them from here, and so does whatever draws the eye outside the pictures (the icons of the editor
+ * extension and the plugin).
+ * @type {Readonly<{ almond: string, iris: Readonly<{ cx: number, cy: number, r: number }>, lines: readonly Readonly<{ d: string, width: number }>[] }>}
+ */
+export const EYE_AT_REST = Object.freeze({
+  almond: ALMOND,
+  iris: Object.freeze({ cx: 0, cy: 0, r: EYE.r }),
+  lines: Object.freeze(
+    LIDS.map((d, i) => Object.freeze({ d, width: i === 2 || i === 3 ? 4.75 : 9.5 })),
+  ),
+});
+
+/** The width of line `i`, as the eye at rest gives it. @param {number} i */
+const widthOf = (i) => EYE_AT_REST.lines[i]?.width ?? 0;
+
+/**
  * The eye as the inside of an `<svg>` with the view box `-48 -48 96 96`: its clip, and the iris and the lines drawn in it.
  * `look` shifts the iris down by a share of itself, as a glance does. `ring` draws a thin ring round the iris, which a light
  * ground needs, since the iris gives little contrast on it.
@@ -23,9 +41,7 @@ const LIDS = LEVELS.map((c) => smooth(line(c, [[0, 0, EYE.a, EYE.k]], -58, 58, 1
  */
 export function eye({ id, ink, iris, ringInk, ring, look }) {
   const ellipse = `<ellipse cx="0" cy="${f(look * 0.45)}" rx="${EYE.r}" ry="${EYE.r}" fill="${iris}"${ring ? ` stroke="${ringInk}" stroke-width="2.2"` : ''}></ellipse>`;
-  const lids = LIDS.map(
-    (d, i) => `<path d="${d}" stroke-width="${i === 2 || i === 3 ? 4.75 : 9.5}"></path>`,
-  ).join('');
+  const lids = LIDS.map((d, i) => `<path d="${d}" stroke-width="${widthOf(i)}"></path>`).join('');
   return `<clipPath id="${id}"><path d="${ALMOND}"/></clipPath><g clip-path="url(#${id})">${ellipse}<g fill="none" stroke="${ink}" stroke-linecap="round">${lids}</g></g>`;
 }
 
@@ -106,7 +122,7 @@ export function blinkingInside({ ink, iris, ringInk, ring, begin }) {
   )}</ellipse>`;
   const lids = LEVELS.map(
     (_, i) =>
-      `<path d="${FRAMES[0]?.[i]}" stroke-width="${i === 2 || i === 3 ? 4.75 : 9.5}">${move(
+      `<path d="${FRAMES[0]?.[i]}" stroke-width="${widthOf(i)}">${move(
         'd',
         FRAMES.map((frame) => frame[i] ?? ''),
       )}</path>`,
