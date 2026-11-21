@@ -97,7 +97,7 @@ describe.each([
 
 describe('what the window selects once it is parsed', () => {
   it('search: the whole of today is inside --to today, and a past --to leaves nothing', async () => {
-    const today = await mnema(['search', 'window', '--to', TODAY]);
+    const today = await mnema(['search', 'window', '--to', TODAY, '--json']);
     expect(today.failed, today.err).toBe(false);
     expect(JSON.parse(today.out).total).toBeGreaterThan(0);
     const past = await mnema(['search', 'window', '--to', '2000-01-01', '--json']);
