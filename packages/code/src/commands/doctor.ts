@@ -51,7 +51,7 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { basename, delimiter, dirname, join, relative } from 'node:path';
+import { delimiter, dirname, join, relative } from 'node:path';
 import {
   type ChainWriter,
   catalogUpcasters,
@@ -101,6 +101,14 @@ import {
   THE_AGENT_KEY_SEPARATES_NOTHING,
 } from '../the-persons-key-in-the-clear.js';
 import { isOlderThan } from '../version.js';
+import {
+  byHand,
+  type HostMcpScan,
+  keyOf,
+  scanClaudeJson,
+  scanEveryHost,
+  startsMnema,
+} from './doctor-host-mcp.js';
 import { mergeDriverLines } from './doctor-merge-driver.js';
 import { type Plan, planFix, readLocations, SETTING, settingsCandidates } from './doctor-vscode.js';
 import { checkInstructions, leftOut, leftOutLine, stateLine } from './instructions.js';
@@ -567,17 +575,6 @@ export function pluginsLeftBehind(ctx: DoctorContext): readonly Finding[] {
   return pluginFindings(ctx, installedPlugins(ctx)).filter((finding) => finding.behind === true);
 }
 
-/** Whether one entry of an MCP configuration starts this product's server. */
-function startsMnema(name: string, entry: unknown): boolean {
-  const one = asRecord(entry);
-  const command = typeof one?.command === 'string' ? basename(one.command) : '';
-  const args = Array.isArray(one?.args) ? one.args.map(String) : [];
-  if (args.includes('@mnema/code')) return true;
-  if (command === 'mnema' && args.includes('mcp')) return true;
-  // The name alone is ours only where nothing says the entry starts another program.
-  return name === 'mnema' && (command === '' || command === 'mnema' || args.includes('mcp'));
-}
-
 /** The mnema entries of a `{ <name>: <entry> }` table. */
 function mnemaIn(table: unknown): string[] {
   const entries = asRecord(table);
@@ -590,7 +587,115 @@ function mnemaIn(table: unknown): string[] {
 function mcpFindings(ctx: DoctorContext, plugins: InstalledPlugin[] | 'unreadable'): Finding[] {
   const trees = resolveTrees(ctx.cwd, ctx.env);
   const root = trees.projectPublic === undefined ? ctx.cwd : dirname(trees.projectPublic);
-  return [...declaredFindings(ctx, plugins, root), ...otherProjectFindings(ctx, root)];
+  return [
+    ...declaredFindings(ctx, plugins, root),
+    ...otherProjectFindings(ctx, root),
+    ...hostFileFindings(ctx, root),
+  ];
+}
+
+/** What reading one host's config file says, in a line (or none for Claude Code's, where the others already speak). */
+function hostFileFinding(scan: HostMcpScan, root: string): Finding | undefined {
+  const where = oneLine(scan.file);
+  const mcp = (state: Finding['state'], line: string): Finding => ({ topic: 'mcp', state, line });
+  if (scan.state === 'unreadable') {
+    return mcp(
+      'fine',
+      `${scan.title}: ${where} could not be checked, ${scan.why ?? 'it could not be read'}: look in it by hand for a mnema entry.`,
+    );
+  }
+  const dead = scan.entries.filter((entry) => entry.dead !== undefined && !entry.projectGone);
+  // Claude Code loads the user table and the table of the one project it runs in: another project's entry is no duplicate.
+  const live = scan.entries.filter(
+    (entry) =>
+      entry.dead === undefined && (entry.table[0] !== 'projects' || entry.table[1] === root),
+  );
+  if (dead.length > 0) {
+    const named = dead
+      .map((entry) => `“${oneLine(entry.name)}”: ${oneLine(entry.dead ?? '')}`)
+      .join('; ');
+    const cuts = dead.filter((entry) => scan.removable.includes(keyOf(entry)));
+    const rest = dead.filter((entry) => !cuts.includes(entry));
+    const todo = [
+      ...(cuts.length > 0
+        ? ['`mnema upgrade --fix` removes it, after a copy of the file is kept']
+        : []),
+      ...rest.map((entry) =>
+        scan.shared
+          ? `${oneLine(byHand(scan, entry))} (the team shares this file: it is not edited here)`
+          : oneLine(byHand(scan, entry)),
+      ),
+    ].join('; ');
+    return mcp(
+      'attention',
+      `${scan.title}: ${where} declares the mnema MCP server where it cannot start (${named}); ${todo}.`,
+    );
+  }
+  if (live.length > 1) {
+    const extra = live.slice(1).map((entry) => oneLine(byHand(scan, entry)));
+    return mcp(
+      'attention',
+      `${scan.title}: the mnema MCP server is declared ${live.length} times in ${where} (${live.map((entry) => `“${oneLine(entry.name)}”`).join(', ')}), and a session is offered every tool once per declaration: keep one, and ${extra.join('; ')}; nothing is removed for you, both work.`,
+    );
+  }
+  if (live.length === 1 && scan.entries.length === 1 && scan.host !== 'claude') {
+    return mcp(
+      'fine',
+      `${scan.title}: the mnema MCP server is declared once in ${where}: nothing to do.`,
+    );
+  }
+  return undefined;
+}
+
+/** Every host's own config file, one finding for each that exists and holds something to say; the absent ones in one line. */
+function hostFileFindings(ctx: DoctorContext, root: string): Finding[] {
+  const scans = [
+    scanClaudeJson(claudeJsonPath(ctx)),
+    ...scanEveryHost({
+      home: ctx.env.home,
+      processEnv: ctx.processEnv,
+      platform: ctx.platform ?? process.platform,
+      root,
+      claudeJson: claudeJsonPath(ctx),
+    }),
+  ];
+  const found = scans
+    .map((scan) => hostFileFinding(scan, root))
+    .filter((one): one is Finding => one !== undefined);
+  const present = new Set(
+    scans.filter((scan) => scan.state !== 'absent').map((scan) => scan.title),
+  );
+  const absent = [
+    ...new Set(
+      scans
+        .filter((scan) => scan.state === 'absent' && !present.has(scan.title))
+        .map((scan) => scan.title),
+    ),
+  ].filter((title) => title !== 'OpenCode (this project)' && title !== 'Claude Code');
+  const silent = scans
+    .filter((scan) => scan.state === 'read' && scan.entries.length === 0)
+    .map((scan) => scan.title);
+  return [
+    ...found,
+    ...(silent.length > 0
+      ? [
+          {
+            topic: 'mcp' as const,
+            state: 'fine' as const,
+            line: `${[...new Set(silent)].join(', ')}: a config file is there and declares no mnema MCP server: nothing to do.`,
+          },
+        ]
+      : []),
+    ...(absent.length > 0
+      ? [
+          {
+            topic: 'mcp' as const,
+            state: 'fine' as const,
+            line: `no MCP config file of ${absent.join(', ')} found where this machine looks (the user files of each host): nothing to check there.`,
+          },
+        ]
+      : []),
+  ];
 }
 
 /** Where the mnema MCP server is declared, and which of the declarations an update can leave behind. */
@@ -748,7 +853,7 @@ function otherProjectFindings(ctx: DoctorContext, root: string): Finding[] {
     found.push({
       topic: 'mcp',
       state: 'attention',
-      line: `${oneLine(claudeJson)} still declares the mnema MCP server for ${gone.length} project ${gone.length === 1 ? 'directory' : 'directories'} that no longer exist (${gone.join(', ')}); \`claude mcp remove\` cannot reach those: open the file and, under "projects", delete the mnema entry of "mcpServers" at each of those paths.`,
+      line: `${oneLine(claudeJson)} still declares the mnema MCP server for ${gone.length} project ${gone.length === 1 ? 'directory' : 'directories'} that no longer exist (${gone.join(', ')}); \`claude mcp remove\` cannot reach those: \`mnema upgrade --fix\` removes them, after a copy of the file is kept, or open the file and, under "projects", delete the mnema entry of "mcpServers" at each of those paths.`,
     });
   }
   if (there.length > 0) {
