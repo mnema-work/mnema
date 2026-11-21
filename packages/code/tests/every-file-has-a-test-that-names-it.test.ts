@@ -1462,6 +1462,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-last-session-is-told-to-the-next.test.ts': 13,
   'packages/code/tests/the-line-a-reading-words-is-one-line.test.ts': 10,
   'packages/code/tests/the-margins-are-the-same-width.test.ts': 9,
+  'packages/code/tests/the-merge-driver-of-a-single-executable.test.ts': 3,
   'packages/code/tests/the-moves-say-what-they-said.test.ts': 18,
   'packages/code/tests/the-name-and-the-hints.test.ts': 17,
   'packages/code/tests/the-name-in-full-blocks.test.ts': 10,

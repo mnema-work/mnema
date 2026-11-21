@@ -47,13 +47,15 @@ got="$(run_in "$name" --version)"
 mkdir "$work/project"
 cd "$work/project"
 run_in git init -q
-run_in "$name" init
+# `init` sets up a plain `git pull` only in a clone that has a remote.
+run_in git remote add origin https://example.invalid/project.git
+run_in "$name" init --git-pull yes
 run_in "$name" decision record "Keep money as integer cents" "Float sums drift; cents are exact."
 out="$(run_in "$name" verify)"
 echo "$out"
 grep -q "local integrity verified" <<<"$out" || { echo "FAIL: verify did not say the record is intact"; exit 1; }
 
-driver="$(run_in git config --get-regexp '^merge\..*\.driver$' | head -n 1 | cut -d' ' -f2-)"
+driver="$(run_in git config --get-regexp '^merge\..*\.driver$' | head -n 1 | cut -d' ' -f2- || true)"
 [ -n "$driver" ] || { echo "FAIL: init wrote no merge driver into git's configuration"; exit 1; }
 echo "merge driver: $driver"
 tail_file="$(find .mnema/tails -name '*.jsonl' ! -name checkpoints.jsonl | head -n 1)"

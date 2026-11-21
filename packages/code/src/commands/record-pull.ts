@@ -28,10 +28,10 @@
  * repository runs.
  */
 
-import { isSea } from 'node:sea';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { isSea } from 'node:sea';
 import type { LevelRequirement } from '@mnema/chain';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { oneLine } from '../one-line.js';
