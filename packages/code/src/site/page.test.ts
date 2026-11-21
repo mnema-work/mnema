@@ -460,7 +460,38 @@ describe('the colours', () => {
       expect(PALETTE[theme].accentText, theme).toBe(PALETTE[theme].text);
     }
     expect(STYLE).toContain('a { color: var(--accent-text); }');
-    expect(STYLE).not.toMatch(/\ba\b[^{}]*\{[^}]*text-decoration:\s*none/);
+    // Every rule that styles an anchor: the bare `a`, and the classes the page puts on an `<a>`, read from the page.
+    const page = new FakePage(
+      renderPage(
+        model([decision({ id: 'u-1', adr: 'ADR-1' }), decision({ id: 'u-2', adr: 'ADR-1' })]),
+        '/*v*/',
+        '../index.html',
+      ),
+    );
+    const classes = new Set(
+      page
+        .querySelectorAll('a')
+        .flatMap((a) => (a.getAttribute('class') ?? '').split(/\s+/))
+        .filter((c) => c !== ''),
+    );
+    expect([...classes].sort()).toEqual(['permalink', 'skip']);
+    const stylesAnchor = (selector: string) =>
+      selector
+        .split(',')
+        .map((part) => part.trim())
+        .some(
+          (part) =>
+            /^a(?![\w-])/.test(part) ||
+            [...classes].some((c) => new RegExp(`\\.${c}(?![\\w-])`).test(part)),
+        );
+    let seen = 0;
+    for (const m of STYLE.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      if (!stylesAnchor(m[1] as string)) continue;
+      seen++;
+      expect(m[2], (m[1] as string).trim()).not.toMatch(/text-decoration:\s*none/);
+    }
+    expect(seen).toBeGreaterThanOrEqual(4);
+    expect(STYLE).toMatch(/\.permalink \{[^}]*text-decoration:\s*underline/);
   });
 
   it('keeps the red for a failure alone: a broken or unverified record and lists that differ, and nothing else', () => {
