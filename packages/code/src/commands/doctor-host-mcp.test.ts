@@ -495,7 +495,10 @@ describe('an entry that cannot be verified is neither dead nor the one that stay
   it.each([
     ['a flag comes first', () => ['--enable-source-maps', join(sandbox, 'gone', 'cli.js'), 'mcp']],
     ['the script is a relative path', () => [join('dist', 'missing', 'cli.js'), 'mcp']],
-    ['node22 runs a missing script', () => ['@bare:node22', join(sandbox, 'gone', 'cli.js'), 'mcp']],
+    [
+      'node22 runs a missing script',
+      () => ['@bare:node22', join(sandbox, 'gone', 'cli.js'), 'mcp'],
+    ],
     ['node is given a folder', () => [sandbox, 'mcp']],
     ['a package runner starts it', () => ['@bare:npx', '-y', '@mnema/code', 'mcp']],
     ['bun runs a script that is there', () => ['@bare:bun', fileURLToPath(import.meta.url), 'mcp']],
