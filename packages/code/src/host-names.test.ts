@@ -47,10 +47,15 @@ describe('a hook ceiling that was never measured', () => {
   });
 
   it('is not announced by the hosts that run the hooks file Claude Code does', () => {
-    const file = readFileSync(new URL('../../../plugin/hooks/hooks.json', import.meta.url), 'utf-8');
-    const start = (JSON.parse(file) as { hooks: { SessionStart: { hooks: { command: string }[] }[] } })
-      .hooks.SessionStart.flatMap((group) => group.hooks.map((hook) => hook.command))
-      .filter((command) => command.includes('session-start.mjs'));
+    const file = readFileSync(
+      new URL('../../../plugin/hooks/hooks.json', import.meta.url),
+      'utf-8',
+    );
+    const start = (
+      JSON.parse(file) as { hooks: { SessionStart: { hooks: { command: string }[] }[] } }
+    ).hooks.SessionStart.flatMap((group) => group.hooks.map((hook) => hook.command)).filter(
+      (command) => command.includes('session-start.mjs'),
+    );
     expect(start.length).toBe(1);
     expect(start[0]).not.toContain('--host');
     expect(HOSTS.vscode.hookTextUnmeasured).toBe('not announced');
