@@ -335,7 +335,8 @@ registered, and again before a founding appends), the files of a witness (`tails
 that the machinery of an earlier version was moved (`migrated/<fingerprint>`) and the `.gitignore` of the key root (in the home, before the first
 private byte of a key) are asked about first, a link to nothing included (which the write would create
 at its target), and a symbolic link there is refused with `RECORD_LINKED` before anything is written; the
-witness is left as it was. The local logs of the data directory (the diagnostic log and the count of tool calls)
+witness is left as it was. The acts that send something before they write (a stamp to the calendars,
+a signature to Rekor, a return visit to a calendar) ask first, so a refusal costs nothing outside. The local logs of the data directory (the diagnostic log and the count of tool calls)
 never break the call they belong to, so a log that is a symbolic link is not written to and the words of
 the refusal are said once where each reports: after an internal error for the first, on the error stream of the
 MCP server for the second

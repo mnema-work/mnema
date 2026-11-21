@@ -6,3 +6,6 @@ Fixed
   by name, with `RECORD_LINKED`, before anything is written. The two logs of the data directory, the diagnostic log and the
   count of tool calls, do the same without ever failing the call: a log that is a link is skipped, and the words say so once
   (after an internal error, and on the MCP server's error stream), with nothing written and nothing the link points at opened.
+  A stamp, a Sigstore signature and a return visit ask about the link before anything is sent, so a link at the file costs no
+  publication to a calendar or to Rekor; and `record pull` writes nothing through a symbolic link that the pull brought to the
+  path of a tail file it kept aside (git carries links), leaving the file in the folder it was kept in and saying so.
