@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.9
+
+- No change to the extension's code, only its version, so that it matches the command line it is released with.
+- One thing is different for the person using it, and it comes from the command line: the extension runs
+  `mnema decision move accept` with no terminal, so with `agent-accepts` switched off (`mnema switch`) the Accept button
+  is refused (`AGENT_ACCEPTS_IS_OFF`) and nothing is written. A person accepts then with `mnema decision review` in a
+  terminal. Reject is not affected. The page of the extension says so.
+- It still needs the `mnema` command line (`@mnema/code`) where the editor can start it, and it
+  adds no verifier of its own: what it shows is what `mnema` printed.
+
 ## 0.1.8
 
 - The status bar tooltip is the verdict and one line per tree, and the long text is behind a link. The block of
