@@ -3,7 +3,7 @@
 <p align="center">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/mnema-work/mnema/main/packages/stacks/assets/stacks-dark.svg">
-  <img src="https://raw.githubusercontent.com/mnema-work/mnema/main/packages/stacks/assets/stacks-light.svg" alt="The stack contract: the stack.json schema, the validator, and the canonical digest a stack is identified by. A pure library; it runs nothing." width="720">
+  <img src="https://raw.githubusercontent.com/mnema-work/mnema/main/packages/stacks/assets/stacks-light.svg" alt="@mnema/stacks: validateStack reads the files of a stack, refuses an MCP server, and gives the digest that identifies the stack" width="1200">
 </picture>
 </p>
 

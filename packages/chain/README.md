@@ -3,7 +3,7 @@
 <p align="center">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/mnema-work/mnema/main/packages/chain/assets/chain-dark.svg">
-  <img src="https://raw.githubusercontent.com/mnema-work/mnema/main/packages/chain/assets/chain-light.svg" alt="The mnema proof engine: typed event catalog, per-tail hash chain, Ed25519 checkpoints, and verification. Zero runtime dependencies." width="720">
+  <img src="https://raw.githubusercontent.com/mnema-work/mnema/main/packages/chain/assets/chain-light.svg" alt="@mnema/chain: an entry of the chain was altered, so mnema verify finds the entry hash mismatch, nothing after it is verified, and the record reads local integrity FAILED: see issues" width="720">
 </picture>
 </p>
 

@@ -3,7 +3,7 @@
 <p align="center">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/mnema-work/mnema/main/packages/context/assets/context-dark.svg">
-  <img src="https://raw.githubusercontent.com/mnema-work/mnema/main/packages/context/assets/context-light.svg" alt="The mnema context layer: read-only derivations that turn the proven record into the context that guides an agent. Depends on @mnema/core." width="720">
+  <img src="https://raw.githubusercontent.com/mnema-work/mnema/main/packages/context/assets/context-light.svg" alt="@mnema/context: bootstrap reads decisions superseded, accepted and proposed, and composes what a session opens with: the decisions in force, those awaiting a judgement, and where the last session stopped; it writes nothing" width="1200">
 </picture>
 </p>
 

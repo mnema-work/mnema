@@ -3,7 +3,7 @@
 <p align="center">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/mnema-work/mnema/main/packages/core/assets/core-dark.svg">
-  <img src="https://raw.githubusercontent.com/mnema-work/mnema/main/packages/core/assets/core-light.svg" alt="The mnema work domain: the gate over the SHAPE of a change, projections, identity, and queries. Depends on @mnema/chain." width="720">
+  <img src="https://raw.githubusercontent.com/mnema-work/mnema/main/packages/core/assets/core-light.svg" alt="@mnema/core: a decision is proposed, then accepted, superseded or rejected, each move a new event and never an edit; accepting a rejected decision is refused" width="1200">
 </picture>
 </p>
 
