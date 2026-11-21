@@ -35,8 +35,8 @@ for each other host, the config file the host keeps in your home (Codex `config.
 `settings.json`, Copilot CLI `mcp-config.json`, OpenCode `opencode.json` and the one in this project, Cursor
 `mcp.json`, VS Code `mcp.json`) and says per host what it found: no mnema server, one, more than one (two live
 declarations in one file are named, never removed for you), or an entry that is dead because its command, the
-script `node` runs for it or its folder no longer exists (a bare command name such as `mnema` or `npx` is not judged,
-since whether it resolves depends on the host's own `PATH`). A file that is not strict JSON is said to be unchecked.
+script `node` runs for it or its folder is gone (a path that is only unknown, such as a bare name off the `PATH`, one with a
+`$` the host expands, or one under a version manager, is not called dead). A file that is not strict JSON is said to be unchecked.
 `mnema upgrade --fix` removes a dead entry; the line says the exact one to delete by hand where that verb does not edit
 the file. It reads
 files on this machine and, asked alone, writes nothing; it does not ask the registry, so a package

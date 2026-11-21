@@ -179,7 +179,7 @@ function deadMcpSteps(
     const byYou = dead.filter((entry) => !cut.includes(entry));
     const living = scan.entries.filter(
       (entry) =>
-        entry.dead === undefined &&
+        entry.verified &&
         (entry.table[0] !== 'projects' || entry.table[1] === declared.projectRoot),
     );
     const stays =
@@ -274,14 +274,14 @@ export function whatAnUpdateAsks(ctx: AfterUpdateContext): readonly UpdateStep[]
     });
   }
   const declared = mcpDeclarations(ctx);
-  // A dead entry is not a candidate to stay: the live one is kept, and the dead one is the dead step's to say or cut.
-  const dead = new Set(
-    scanClaudeJson(declared.claudeJson)
-      .entries.filter((entry) => entry.dead !== undefined)
-      .map(keyOf),
+  // Only an entry VERIFIED to work can be the one that stays, and only a verified one is a duplicate to cut: a dead one is
+  // the dead step's, and an unknown one (a path that may come back, one the host expands, a bare name off the PATH) is left.
+  const inScope = scanClaudeJson(declared.claudeJson).entries.filter(
+    (entry) => entry.table[0] !== 'projects' || entry.table[1] === declared.projectRoot,
   );
+  const verified = new Set(inScope.filter((entry) => entry.verified).map(keyOf));
   const alive = (table: TablePath, names: readonly string[]): string[] =>
-    names.filter((name) => !dead.has(keyOf({ name, table, dead: undefined })));
+    names.filter((name) => verified.has(keyOf({ name, table, dead: undefined, verified: true })));
   steps.push(
     ...deadMcpSteps(
       ctx,
@@ -293,6 +293,14 @@ export function whatAnUpdateAsks(ctx: AfterUpdateContext): readonly UpdateStep[]
       }),
     ),
   );
+  const unknown = inScope.filter((entry) => entry.dead === undefined && !entry.verified);
+  if (inScope.length >= 2 && unknown.length > 0) {
+    steps.push({
+      topic: 'mcp',
+      class: 'said',
+      line: `${oneLine(declared.claudeJson)} declares the mnema MCP server ${inScope.length} times for this project (the user table and this project's), and ${unknown.map((entry) => `“${oneLine(entry.name)}” in ${entry.table[0] === 'projects' ? 'this project' : 'the user table'}`).join(', ')} could not be verified to work (a path that is not there today but may come back, one the host expands, one it cannot read, or a name not on the PATH): nothing was removed on its account, because a duplicate is cut only beside an entry verified to work. Check it, then \`claude mcp remove mnema\` for the one you do not want.`,
+    });
+  }
   const forDriver = { ...ctx, ...(attributeWillBeWritten ? { attributeWillBeWritten } : {}) };
   if (mergeDriverLines(forDriver).length > 0) {
     const would = fixMergeDriver(forDriver, { dryRun: true, driver: ctx.driver });

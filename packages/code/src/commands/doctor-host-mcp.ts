@@ -9,8 +9,8 @@
  * whether it resolves depends on the PATH of the host's own process, which this one cannot know.
  */
 
-import { lstatSync, readFileSync } from 'node:fs';
-import { basename, dirname, isAbsolute, join } from 'node:path';
+import { accessSync, constants, lstatSync, readFileSync } from 'node:fs';
+import { basename, delimiter, dirname, isAbsolute, join } from 'node:path';
 import { planRemoval, type TablePath } from './doctor-mcp.js';
 import { objectAt, rootObject, settingsCandidates, Unsafe } from './doctor-vscode.js';
 
@@ -51,6 +51,12 @@ export interface HostMcpEntry {
   readonly table: TablePath;
   /** Why it is dead, in words, or undefined where it is not. */
   readonly dead: string | undefined;
+  /**
+   * Verified to work: the command exists and can be run (or is found on the PATH), and the script and folder it names
+   * exist. An entry that is neither dead nor verified is UNKNOWN: it is never removed, and never counts as the one that
+   * stays when duplicates are resolved.
+   */
+  readonly verified: boolean;
   /** For TOML, the first and last line (1-based) of the table that declares it. */
   readonly lines?: readonly [number, number];
   /** The entry of a Claude Code project whose folder is gone: the doctor already says those. */
@@ -102,8 +108,18 @@ export function startsMnema(name: string, entry: unknown): boolean {
 
 /** Folders where a disk comes and goes: a path under one that is not there today may be back when the disk is. */
 const COMES_AND_GOES = /^(\/mnt|\/media|\/run\/media|\/Volumes|\/net|\/mount)(\/|$)/;
-/** Version managers: a version removed today is one a person may install again. */
-const VERSION_MANAGERS = /\/\.(nvm|fnm|volta|asdf|nodenv|n)\/|\/\.local\/share\/(fnm|mise)\//;
+/**
+ * Version managers and package stores, on every platform (the path is read with its backslashes as slashes): a version
+ * removed today is one a person may install again.
+ */
+const VERSION_MANAGERS = [
+  /(^|\/)\.?(nvm|fnm|volta|asdf|nodenv|mise|n)(\/|$)/i,
+  /\/fnm_multishells\//i,
+  /\/\.local\/share\/(fnm|mise|pnpm\/nodejs)\//,
+  /\/pnpm\/nodejs\//i,
+  /\/Cellar\//,
+  /\/AppData\/(Roaming|Local)\/(nvm|fnm|Volta|fnm_multishells)\//i,
+];
 
 /** The mount points `/etc/fstab` names, where a disk that is not mounted leaves an empty folder or none. */
 function fstabMounts(): string[] {
@@ -125,6 +141,8 @@ function fstabMounts(): string[] {
  * dead: a path that does not exist today may come back, and the copy `--fix` keeps restores the entry.
  */
 export function isGone(path: string): boolean {
+  // A host expands `$VAR`, `${env:VAR}` and `${userHome}` before it starts the command: this product does not.
+  if (path.includes('$')) return false;
   try {
     lstatSync(path);
     return false;
@@ -132,30 +150,70 @@ export function isGone(path: string): boolean {
     const code = (error as NodeJS.ErrnoException).code;
     if (code !== 'ENOENT' && code !== 'ENOTDIR') return false;
   }
-  if (COMES_AND_GOES.test(path) || VERSION_MANAGERS.test(path)) return false;
+  const slashed = path.replace(/\\/g, '/');
+  if (COMES_AND_GOES.test(slashed) || VERSION_MANAGERS.some((one) => one.test(slashed))) return false;
   return !fstabMounts().some((mount) => path === mount || path.startsWith(`${mount}/`));
 }
 
-/** Why an entry is dead, or undefined: only an absolute path that is not there counts, and a bare name is left alone. */
-function whyDead(launch: ReturnType<typeof launchOf>): string | undefined {
-  const { command, args, cwd } = launch;
-  if (command !== '' && isAbsolute(command) && isGone(command)) {
-    return `its command ${command} no longer exists`;
+type Launch = ReturnType<typeof launchOf>;
+
+/** Whether a file is there and can be run. */
+function runnable(path: string): boolean {
+  try {
+    accessSync(path, constants.X_OK);
+    return true;
+  } catch {
+    return false;
   }
+}
+
+/** Whether a folder or file is there. */
+function there(path: string): boolean {
+  try {
+    lstatSync(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Whether a bare command name resolves on this process's PATH. */
+function onThePath(command: string): boolean {
+  return (process.env.PATH ?? '')
+    .split(delimiter)
+    .filter((dir) => dir !== '')
+    .some((dir) => runnable(join(dir, command)));
+}
+
+/**
+ * What can be said of an entry, in three states: DEAD (an absolute path the system says is not there, with the reason),
+ * VERIFIED (everything it names is there and the command can be run or is on the PATH) and UNKNOWN (neither). A path
+ * with `$` in it, one that cannot be read, one under a disk or a version manager that may come back, and a bare name that
+ * is not on the PATH are unknown.
+ */
+function judge(launch: Launch): { dead: string | undefined; verified: boolean } {
+  const { command, args, cwd } = launch;
   const program = basename(command).replace(/\.exe$/i, '');
   const script = args[0];
-  if (
-    (program === 'node' || program === 'nodejs') &&
-    script !== undefined &&
-    isAbsolute(script) &&
-    isGone(script)
-  ) {
-    return `the script ${script} it runs no longer exists`;
+  const runsScript = (program === 'node' || program === 'nodejs') && script !== undefined && isAbsolute(script);
+  if (command !== '' && isAbsolute(command) && isGone(command)) {
+    return { dead: `its command ${command} no longer exists`, verified: false };
+  }
+  if (runsScript && isGone(script)) {
+    return { dead: `the script ${script} it runs no longer exists`, verified: false };
   }
   if (cwd !== undefined && isAbsolute(cwd) && isGone(cwd)) {
-    return `its folder ${cwd} no longer exists`;
+    return { dead: `its folder ${cwd} no longer exists`, verified: false };
   }
-  return undefined;
+  const commandWorks =
+    command !== '' &&
+    !command.includes('$') &&
+    (isAbsolute(command) ? runnable(command) : !/[\\/]/.test(command) && onThePath(command));
+  const verified =
+    commandWorks &&
+    (!runsScript || (!script.includes('$') && there(script))) &&
+    (cwd === undefined || (!cwd.includes('$') && isAbsolute(cwd) && there(cwd)));
+  return { dead: undefined, verified };
 }
 
 /** The config files of every host, read from the person's home. Claude Code's is the one table of `~/.claude.json`. */
@@ -292,7 +350,7 @@ function readToml(text: string): HostMcpEntry[] {
     found.push({
       name,
       table: ['mcp_servers', name],
-      dead: whyDead(launch),
+      ...judge(launch),
       lines: [span.first, span.last],
     });
   }
@@ -304,7 +362,7 @@ function entriesOf(table: unknown, path: TablePath): HostMcpEntry[] {
   if (servers === undefined) return [];
   return Object.entries(servers)
     .filter(([name, entry]) => startsMnema(name, entry))
-    .map(([name, entry]) => ({ name, table: path, dead: whyDead(launchOf(entry)) }));
+    .map(([name, entry]) => ({ name, table: path, ...judge(launchOf(entry)) }));
 }
 
 function tableAt(json: unknown, path: TablePath): unknown {
@@ -422,8 +480,13 @@ export function scanClaudeJson(file: string): HostMcpScan {
       const gone = isAbsolute(dir) && isGone(dir);
       entries.push(
         gone
-          ? { ...entry, dead: `its project folder ${dir} no longer exists`, projectGone: true }
-          : entry,
+          ? {
+              ...entry,
+              dead: `its project folder ${dir} no longer exists`,
+              verified: false,
+              projectGone: true,
+            }
+          : { ...entry, verified: entry.verified && isAbsolute(dir) && there(dir) },
       );
     }
   }

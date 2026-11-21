@@ -56,18 +56,24 @@ team commits, when an enabled plugin declares the server too (without a terminal
 
 **Only with `--fix`: a dead mnema MCP entry of any host.** An entry is dead when the command it names is an absolute path
 that is no longer there, the script `node` is told to run is, its `cwd` is, or (in `~/.claude.json`) the project folder
-it sits under is gone; a bare command name (`mnema`, `npx`) is not judged, and an entry that works is never touched.
+it sits under is gone; an entry that cannot be said to be gone is not dead (see below), and one that works is never touched.
 `mnema upgrade` names each dead entry per host and changes nothing; `mnema upgrade --fix` removes it from a file this
 verb edits byte for byte (strict JSON: `~/.claude.json`, Gemini CLI and Qwen Code `settings.json`, Copilot CLI
 `mcp-config.json`, OpenCode `opencode.json`, Cursor `mcp.json`, VS Code `mcp.json`), after a copy of that file is kept
 beside it (`<file>.mnema-backup-<time>-<suffix>`), and `--dry-run` with it shows the plan. The copy holds the whole file, env
 blocks and their tokens included, so it is written readable by you alone (mode 0600) whatever the original's mode; the run
-prints where it is, and it is never cleaned up: delete it yourself when you no longer need it. Where a project has one
-entry that works and one that does not, the one that works stays and the plan says which. A Codex `config.toml`, a file
+prints where it is, and it is never cleaned up: delete it yourself when you no longer need it. Three states, not two: an entry is **dead** (a path the system says is not there), **verified** (the command exists and can
+be run, or is a bare name found on the `PATH`, and the script and folder it names exist) or **unknown** (neither). Where
+`~/.claude.json` declares the server twice for this project, a duplicate is cut only beside an entry **verified** to work, and the
+plan says which stays; with no verified entry nothing is removed and the plan says why. An unknown entry is never removed
+and is never the one that stays. A Codex `config.toml`, a file
 with comments, and `opencode.json` of the project (the team commits it) are not edited: the line says the exact table
-or member to delete. A path is called gone only when the system says it is not there (ENOENT). A path that cannot be read (EACCES), one under a
+or member to delete. A path is called gone only when the system answers that it is not there (ENOENT or ENOTDIR). A path that cannot be read (EACCES), one with a `$` in it
+(Gemini CLI, Cursor and VS Code expand `${env:NAME}` and `${userHome}`; this verb does not), a bare name that is not on the
+`PATH`, one under a
 folder where a disk comes and goes (`/mnt`, `/media`, `/Volumes`, a mount point of `/etc/fstab`), and one under a version
-manager's folder (`.nvm`, `.fnm`, `.volta`, `.asdf`) is not judged: a path that does not exist today may come back, and the
+manager's or package store's folder (`.nvm`, `.fnm`, `.volta`, `.asdf`, `mise`, pnpm's `nodejs`, Homebrew's `Cellar`, and the
+Windows folders of nvm-windows and fnm) is unknown, not dead: a path that does not exist today may come back, and the
 copy restores the entry if you need it. In `~/.claude.json` duplicates are judged as Claude Code loads them, the user
 table and the one project it runs in, never across projects. The files looked at are the ones in your home that each host reads; `CODEX_HOME`, `COPILOT_HOME`,
 `XDG_CONFIG_HOME` and `CLAUDE_CONFIG_DIR` move them as they move the host's own.

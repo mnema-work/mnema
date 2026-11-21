@@ -22,6 +22,7 @@ import { type CliIo, run } from '../program.js';
 import {
   byHand,
   hostMcpFiles,
+  isGone,
   keyOf,
   scanClaudeJson,
   scanHostMcp,
@@ -414,5 +415,61 @@ describe('what a review of the first version found', () => {
     const file = join(home, '.gemini', 'settings.json');
     const [copy] = copies(file);
     expect(statSync(join(dirname(file), copy as string)).mode & 0o777).toBe(0o600);
+  });
+});
+
+describe('an entry that cannot be verified is neither dead nor the one that stays', () => {
+  const claudeJson = (): string => join(home, '.claude.json');
+  const unknownUser = (): Record<string, unknown> => ({
+    command: join(home, '.nvm', 'versions', 'node', 'v20.1.0', 'bin', 'mnema'),
+    args: ['mcp'],
+  });
+
+  it('keeps the project entry that works beside a user entry on a missing nvm path, with and without --fix', async () => {
+    const text = pretty({
+      mcpServers: { mnema: unknownUser() },
+      projects: { [repo]: { mcpServers: { mnema: live() } } },
+    });
+    put(claudeJson(), text);
+    const plain = await mnema(['upgrade']);
+    expect(readFileSync(claudeJson(), 'utf8')).toBe(text);
+    expect(plain.out).toContain('could not be verified to work');
+    expect(plain.out).not.toMatch(/applied · mcp/);
+    const fixed = await mnema(['upgrade', '--fix']);
+    expect(fixed.failed).toBe(false);
+    expect(readFileSync(claudeJson(), 'utf8')).toBe(text);
+    expect(copies(claudeJson())).toEqual([]);
+  });
+
+  it('removes nothing when no entry is verified, and says why', async () => {
+    const text = pretty({
+      mcpServers: { mnema: unknownUser() },
+      projects: { [repo]: { mcpServers: { mnema: { command: '/x/${env:HOME}/mnema', args: ['mcp'] } } } },
+    });
+    put(claudeJson(), text);
+    const fixed = await mnema(['upgrade', '--fix']);
+    expect(readFileSync(claudeJson(), 'utf8')).toBe(text);
+    expect(fixed.out).toContain('a duplicate is cut only beside an entry verified to work');
+  });
+
+  it('does not call a path with a variable in it dead, because the host expands it', async () => {
+    const gemini = join(home, '.gemini', 'settings.json');
+    const text = pretty({
+      mcpServers: {
+        mnema: { command: '/home/${env:SOMEONE}/bin/mnema', args: ['mcp'] },
+        viaHome: { command: '${userHome}/bin/mnema', args: ['mcp'], cwd: '/gone/$WHERE' },
+      },
+    });
+    put(gemini, text);
+    await mnema(['upgrade', '--fix']);
+    expect(readFileSync(gemini, 'utf8')).toBe(text);
+  });
+
+  it('leaves the paths of a package store and a Windows version manager alone', () => {
+    expect(isGone('/opt/x/Cellar/node/20.1.0/bin/node')).toBe(false);
+    expect(isGone(join(home, '.local', 'share', 'pnpm', 'nodejs', '20.1.0', 'bin', 'node'))).toBe(false);
+    expect(isGone('C:\\Users\\a\\AppData\\Roaming\\nvm\\v20.1.0\\node.exe')).toBe(false);
+    expect(isGone('D:\\Users\\a\\AppData\\Local\\fnm_multishells\\1\\node.exe')).toBe(false);
+    expect(isGone(join(sandbox, 'gone', 'mnema'))).toBe(true);
   });
 });
