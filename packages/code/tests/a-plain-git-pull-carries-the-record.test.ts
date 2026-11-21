@@ -429,7 +429,7 @@ describe('the fix writes all of the settings or none', SLOW, () => {
     expect(mnema(local, 'status').out).not.toMatch(/Kept aside by a pull/);
   });
 
-  it('treats the driver a single executable wrote as mnema\'s: says it cannot run once the file is gone, and the fix rewrites it', () => {
+  it("treats the driver a single executable wrote as mnema's: says it cannot run once the file is gone, and the fix rewrites it", () => {
     const { local } = world();
     const exe = join(sandbox, 'mnema-moved-linux-x64');
     writeFileSync(exe, '#!/bin/sh\n');
