@@ -505,9 +505,7 @@ async function upgradeTail(
       refuseWitnessThroughALink(chain.layout, chain.tail, at, ['proof', 'blocks']);
     } catch (error) {
       if (!(error instanceof RecordLinkedError)) throw error;
-      outcomes.push(
-        said(chain, 'failed', `nothing was asked: ${error.message}`, walked.reading),
-      );
+      outcomes.push(said(chain, 'failed', `nothing was asked: ${error.message}`, walked.reading));
       continue;
     }
     let done: Awaited<ReturnType<typeof completeWitness>>;

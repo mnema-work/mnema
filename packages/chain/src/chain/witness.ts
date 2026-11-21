@@ -340,7 +340,12 @@ export function writeWitness(
   witness: { readonly proof: Buffer; readonly headers?: ReadonlyMap<number, Buffer> },
 ): void {
   const headers = [...(witness.headers ?? new Map<number, Buffer>())].sort((a, b) => a[0] - b[0]);
-  refuseWitnessThroughALink(layout, tailId, checkpointHash, headers.length === 0 ? ['proof'] : ['proof', 'blocks']);
+  refuseWitnessThroughALink(
+    layout,
+    tailId,
+    checkpointHash,
+    headers.length === 0 ? ['proof'] : ['proof', 'blocks'],
+  );
   mkdirSync(witnessDir(layout, tailId), { recursive: true });
   writeFileSync(witnessProofPath(layout, tailId, checkpointHash), witness.proof);
   if (headers.length === 0) return;

@@ -288,12 +288,12 @@ export {
   type ProvenCheckpoint,
   readStoredWitness,
   readWitness,
+  refuseWitnessThroughALink,
   type WalkedWitness,
   type WitnessedTail,
   type WitnessReading,
   witnessOfTail,
   witnessWalk,
-  refuseWitnessThroughALink,
   writeSigstoreBundle,
   writeWitness,
 } from './chain/witness.js';
