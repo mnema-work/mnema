@@ -131,10 +131,11 @@ export interface Host {
   };
   /**
    * That the host's ceiling for a hook's text was never measured, so the opening is cut to Claude
-   * Code's 10,000 UTF-16 code units and says that it assumes it. Absent where the host has a
+   * Code's 10,000 UTF-16 code units and says that it assumes it, or, as `not announced`, for a host
+   * that runs Claude Code's hooks file, whose command names no host, cuts to it without saying so. Absent where the host has a
    * `hookText` of its own, and on rows no hook of the plugin's reaches.
    */
-  readonly hookTextUnmeasured?: true;
+  readonly hookTextUnmeasured?: true | 'not announced';
   /**
    * The host's id for its session in the environment of the MCP server it starts: `a test` where a
    * case of the host contract shows the variable there (`name`, and `by`, the case; `note` says
@@ -314,7 +315,7 @@ export const HOSTS = {
     },
     door: 'command',
     sessionVariable: { held: 'not yet' },
-    hookTextUnmeasured: true,
+    hookTextUnmeasured: 'not announced',
     cells: {
       server: {
         does: true,
@@ -673,7 +674,7 @@ export const HOSTS = {
     install: { at: 'qwen-code', commands: ['qwen extensions install /path/to/mnema/plugin'] },
     door: 'command',
     sessionVariable: { held: 'not yet' },
-    hookTextUnmeasured: true,
+    hookTextUnmeasured: 'not announced',
     // Qwen Code converts a Claude Code plugin it is told to install into an extension of its own
     // and loads that plugin's `hooks/hooks.json`, so it reads the file every other host that
     // reads Claude Code's format reads, and it applies the matcher Claude Code applies (`Write`
@@ -963,7 +964,7 @@ export const HOOK_TEXT_HOSTS = HOST_NAMES.filter(
 /** Whether a host's ceiling for a hook's text is Claude Code's, assumed because it was never measured. */
 export function hookTextIsAssumed(host: HostName): boolean {
   const row: Host = HOSTS[host];
-  return row.hookTextUnmeasured === true;
+  return row.hookTextUnmeasured !== undefined;
 }
 
 /** The variables a host contract showed a host leaves its MCP server, with the host that does. */

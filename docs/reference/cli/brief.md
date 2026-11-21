@@ -104,9 +104,10 @@ the file is a rule the agent does not follow. The copy the plugin hands a sessio
 whole text with a file path it does not ask the model to open, so `--hook` stops at a
 whole rule inside that and ends by saying how many it left out and which read serves them.
 That is Claude Code's ceiling. Codex's own (2,500 tokens of 4 bytes) was measured and is used with
-`--host codex`. For Copilot CLI, Gemini CLI, OpenCode, Qwen Code and VS Code the ceiling was never
-measured: `--host` names them, the cut stays at 10,000 characters, and the closing paragraph says that
-the ceiling is Claude Code's, assumed for that host.
+`--host codex`. For Copilot CLI, Gemini CLI and OpenCode the ceiling was never measured: their hooks
+name the host, the cut stays at 10,000 characters, and the closing paragraph says that the ceiling is
+Claude Code's, assumed for that host. Qwen Code and VS Code run the hooks file Claude Code does, whose
+command names no host, so their cut is the same assumed one and the paragraph does not say so.
 
 What it does leave out is the record that **does not travel**. A decision or a pattern
 recorded with `--scope private`, or in your machine-global tree, governs your own work

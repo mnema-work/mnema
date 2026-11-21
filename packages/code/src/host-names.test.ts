@@ -3,10 +3,12 @@
  * hosts whose ceiling for a hook's text was never measured.
  */
 
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { hookCeilingFor } from './host-hook.js';
 import {
   HOOK_TEXT_HOSTS,
+  HOSTS,
   hookTextIsAssumed,
   hostSessionOf,
   SESSION_VARIABLES,
@@ -42,6 +44,17 @@ describe('a hook ceiling that was never measured', () => {
     expect(ceilingInWords(hookCeilingFor('gemini'))).toBe(
       '10,000 characters (Claude Code’s, assumed: Gemini CLI’s own ceiling has not been measured)',
     );
+  });
+
+  it('is not announced by the hosts that run the hooks file Claude Code does', () => {
+    const file = readFileSync(new URL('../../../plugin/hooks/hooks.json', import.meta.url), 'utf-8');
+    const start = (JSON.parse(file) as { hooks: { SessionStart: { hooks: { command: string }[] }[] } })
+      .hooks.SessionStart.flatMap((group) => group.hooks.map((hook) => hook.command))
+      .filter((command) => command.includes('session-start.mjs'));
+    expect(start.length).toBe(1);
+    expect(start[0]).not.toContain('--host');
+    expect(HOSTS.vscode.hookTextUnmeasured).toBe('not announced');
+    expect(HOSTS.qwen.hookTextUnmeasured).toBe('not announced');
   });
 
   it('is not assumed where it was measured, or where no host is named', () => {

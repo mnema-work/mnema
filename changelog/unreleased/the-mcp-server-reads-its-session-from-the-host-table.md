@@ -7,5 +7,5 @@ Changed
   they are read the day a run of the host shows them.
 - **A hook's text ceiling that was never measured is said to be assumed.** For Copilot CLI, Gemini CLI, OpenCode, Qwen Code and VS Code
   the opening stays cut at Claude Code's 10,000 characters, and its closing paragraph now says that the number is Claude Code's, assumed
-  for that host. the `--host` of `mnema brief --hook` and of `mnema recall --hook` takes those hosts, and the Copilot CLI, Gemini CLI and
-  OpenCode hooks name theirs. Qwen Code and VS Code share Claude Code's hooks file, so their opening does not name them yet.
+  for that host. The `--host` of `mnema brief --hook` and of `mnema recall --hook` takes those hosts, and the Copilot CLI, Gemini CLI and
+  OpenCode hooks name theirs. Qwen Code and VS Code share Claude Code's hooks file, so their opening is cut at the same assumed ceiling without saying so; the host table says it.

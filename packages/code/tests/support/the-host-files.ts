@@ -390,14 +390,16 @@ const COPILOT_HOOKS_DESCRIPTION =
 export function copilotHooksJson(): string {
   const tools = writeToolsOf('copilot');
   const reply = HOSTS.copilot.openingReply;
-  const handed = [...(reply === undefined ? [] : ['--reply', reply]), '--host', 'copilot'];
+  const handed = reply === undefined ? [] : ['--reply', reply];
+  // `--host` is the opening's alone: `mnema settled` takes `--reply` and nothing else.
+  const opening = [...handed, '--host', 'copilot'];
   const handler = does('copilot', 'asks') ? 'edit-asks-a-person.mjs' : 'edit-refuses-a-write.mjs';
   const file: Json = {
     description: COPILOT_HOOKS_DESCRIPTION,
     hooks: {
       SessionStart: [
         {
-          hooks: [command('session-start.mjs', handed), command('session-recall.mjs', handed)],
+          hooks: [command('session-start.mjs', opening), command('session-recall.mjs', opening)],
         },
       ],
       PreToolUse: [
@@ -1538,7 +1540,9 @@ function withTheTable(page: string, base: string, path: string): string {
       sessionText(host.sessionVariable, base),
       host.hookTextUnmeasured === true
         ? 'The ceiling on a hook’s text is not measured: the opening is cut to Claude Code’s 10,000 characters and says that it assumes it.'
-        : undefined,
+        : host.hookTextUnmeasured === 'not announced'
+          ? 'The ceiling on a hook’s text is not measured: the opening is cut to Claude Code’s 10,000 characters, assumed and not announced, because this host runs the hooks file Claude Code does, whose command names no host.'
+          : undefined,
     ].filter((text) => text !== undefined);
     return said.length === 0 ? [] : [`**${host.title}.** ${said.join(' ')}`];
   });
