@@ -225,9 +225,9 @@ _mnema_values() {
     'task guard:') echo 'submit start block unblock submit_review request_changes approve complete cancel reopen' ;;
     'promote:--color') echo 'auto always never' ;;
     'status:--color') echo 'auto always never' ;;
-    'brief:--host') echo 'codex' ;;
+    'brief:--host') echo 'vscode codex copilot opencode gemini qwen' ;;
     'brief:--color') echo 'auto always never' ;;
-    'recall:--host') echo 'codex' ;;
+    'recall:--host') echo 'vscode codex copilot opencode gemini qwen' ;;
     'recall:--color') echo 'auto always never' ;;
     'rules:--color') echo 'auto always never' ;;
     'rules-file:--host') echo 'claude vscode cursor' ;;
