@@ -5,7 +5,16 @@
  */
 
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import {
@@ -25,7 +34,7 @@ import { type CliIo, run } from '../program.js';
 import { runInit } from './init.js';
 import { runMemory } from './memory.js';
 import { runVerify } from './verify.js';
-import { checkSigstoreWitnesses, cosignCommand } from './witness-sigstore-check.js';
+import { checkSigstoreWitnesses, cosignCommand, namesTheExpected } from './witness-sigstore-check.js';
 
 describe('checking a Sigstore countersignature against who was expected', () => {
   let sandbox: string;
@@ -136,6 +145,98 @@ describe('checking a Sigstore countersignature against who was expected', () => 
     );
   });
 
+  describe('where the messages go', () => {
+    const run = async (dir: string) => {
+      const { sigstore, hash } = await countersigned();
+      const check = checkSigstoreWitnesses(trees(), expected, {
+        messageDir: dir,
+        trustedRoot: sigstore.trustedRoot,
+      });
+      return { check, hash };
+    };
+
+    it('refuses a folder that is a symbolic link, and writes nothing through it', async () => {
+      const real = join(sandbox, 'real');
+      mkdirSync(real);
+      const link = join(sandbox, 'link');
+      symlinkSync(real, link);
+      const { check } = await run(link);
+      expect(check.ok).toBe(false);
+      expect(check.refusals.join(' ')).toContain('symbolic link');
+      expect(readdirSync(real)).toEqual([]);
+    });
+
+    it('refuses a folder that passes through a symbolic link', async () => {
+      const real = join(sandbox, 'real');
+      mkdirSync(real);
+      symlinkSync(real, join(sandbox, 'link'));
+      const { check } = await run(join(sandbox, 'link', 'inner'));
+      expect(check.ok).toBe(false);
+      expect(check.refusals.join(' ')).toContain('symbolic link');
+      expect(readdirSync(real)).toEqual([]);
+    });
+
+    it('does not follow a message file that is a link to somebody else’s file', async () => {
+      const { sigstore, hash } = await countersigned();
+      const dir = join(sandbox, 'msgs');
+      mkdirSync(dir);
+      const target = join(sandbox, 'bashrc');
+      writeFileSync(target, 'mine');
+      symlinkSync(target, join(dir, `${hash}.message`));
+      const check = checkSigstoreWitnesses(trees(), expected, {
+        messageDir: dir,
+        trustedRoot: sigstore.trustedRoot,
+      });
+      expect(check.ok).toBe(false);
+      expect(readFileSync(target, 'utf-8')).toBe('mine');
+    });
+
+    it('never overwrites a message file that is already there', async () => {
+      const { sigstore, hash } = await countersigned();
+      const dir = join(sandbox, 'msgs');
+      mkdirSync(dir);
+      writeFileSync(join(dir, `${hash}.message`), 'keep me');
+      const check = checkSigstoreWitnesses(trees(), expected, {
+        messageDir: dir,
+        trustedRoot: sigstore.trustedRoot,
+      });
+      expect(check.ok).toBe(false);
+      expect(check.refusals.join(' ')).toContain('already exists');
+      expect(readFileSync(join(dir, `${hash}.message`), 'utf-8')).toBe('keep me');
+    });
+
+    it('refuses a folder inside the record, and creates nothing there', async () => {
+      const inside = join(cwd, '.mnema', 'msgs');
+      const { check } = await run(inside);
+      expect(check.ok).toBe(false);
+      expect(check.refusals.join(' ')).toContain('inside');
+      expect(existsSync(inside)).toBe(false);
+    });
+  });
+
+  it('fails when nothing is expected, and a signer with no name equals nothing', async () => {
+    const { sigstore } = await countersigned();
+    const check = checkSigstoreWitnesses(
+      trees(),
+      { identity: '', issuer: '' },
+      { trustedRoot: sigstore.trustedRoot },
+    );
+    expect(check.ok).toBe(false);
+    expect(check.refusals.join(' ')).toContain('may not be empty');
+    expect(namesTheExpected({ identity: '', issuer: '' }, { identity: '', issuer: '' })).toBe(false);
+    expect(namesTheExpected({ identity: 'a', issuer: 'b' }, { identity: 'a', issuer: 'b' })).toBe(true);
+  });
+
+  it('reports a folder named like a bundle as unreadable instead of throwing', async () => {
+    const { sigstore, file } = await countersigned();
+    rmSync(file);
+    mkdirSync(file);
+    const check = checkSigstoreWitnesses(trees(), expected, { trustedRoot: sigstore.trustedRoot });
+    expect(check.ok).toBe(false);
+    expect(check.bundles[0]?.verdict).toMatchObject({ kind: 'refused' });
+    expect(JSON.stringify(check.bundles[0]?.verdict)).toContain('cannot be read');
+  });
+
   it('quotes what a shell would split', () => {
     expect(
       cosignCommand('/a b/x.sigstore.json', '/m/y.message', {
@@ -199,7 +300,7 @@ describe('the verb, as typed', () => {
     expect(answer.err).toContain('no Sigstore bundle in this record');
   });
 
-  it('refuses a bundle of a Sigstore this binary does not carry, and offers no cosign line it did not write', async () => {
+  it('refuses a bundle of a Sigstore this binary does not carry, and still writes the message and prints the cosign line that checks it', async () => {
     await typed('init');
     const root = join(process.cwd(), '.mnema');
     const tail = readdirSync(join(root, 'tails'))[0] as string;
@@ -217,6 +318,13 @@ describe('the verb, as typed', () => {
       readFileSync(join(sandbox, 'm', `${checkpointHash(head)}.message`)).length,
     ).toBeGreaterThan(0);
     expect(answer.out).toContain(`cosign verify-blob --bundle ${file}`);
+  });
+
+  it('refuses an empty identity or issuer', async () => {
+    await typed('init');
+    const answer = await typed('witness', 'sigstore-check', '--identity', '', '--issuer', ACTIONS_ISSUER);
+    expect(answer.failed).toBe(true);
+    expect(answer.err).toContain('non-empty');
   });
 
   it('requires both halves of who is expected, as cosign does', async () => {

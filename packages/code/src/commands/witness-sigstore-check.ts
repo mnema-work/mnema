@@ -22,8 +22,16 @@
  * touched; this has an exit of its own: nonzero unless every bundle holds and names who was expected.
  */
 
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import {
+  closeSync,
+  constants,
+  lstatSync,
+  mkdirSync,
+  openSync,
+  realpathSync,
+  writeSync,
+} from 'node:fs';
+import { dirname, join, resolve, sep } from 'node:path';
 import {
   type ChainLayout,
   checkpointHash,
@@ -70,6 +78,8 @@ export interface WitnessCheckRow {
 export interface WitnessCheck {
   readonly bundles: readonly WitnessCheckRow[];
   readonly notRead: readonly Scope[];
+  /** Why a message could not be written, or the expectation was empty: each one fails the check. */
+  readonly refusals: readonly string[];
   /** True only when there is at least one bundle, every one holds and names who was expected, and no tree was left out. */
   readonly ok: boolean;
 }
@@ -103,6 +113,83 @@ function messageOf(tree: TreeReport | undefined, finding: SigstoreFinding): Uint
   return found === undefined ? undefined : checkpointMessage(found);
 }
 
+
+/** The signer a reading names equals what was expected: a missing name (read as '') equals nothing. */
+export function namesTheExpected(
+  reading: { readonly identity: string; readonly issuer: string },
+  expected: ExpectedSigner,
+): boolean {
+  return (
+    reading.identity !== '' &&
+    reading.issuer !== '' &&
+    reading.identity === expected.identity &&
+    reading.issuer === expected.issuer
+  );
+}
+
+/**
+ * Makes `dir` ready for the messages, or says why it will not be written to: a folder that is, or
+ * passes through, a symbolic link (a clone can ship one), and a folder inside a record (the
+ * trees checked, any `.mnema` or `.git` folder): messages are not the record's files.
+ */
+function readyMessageDir(
+  dir: string,
+  trees: readonly TreeReport[],
+): { readonly ok: true } | { readonly ok: false; readonly why: string } {
+  const wanted = resolve(dir);
+  const parts = wanted.split(sep);
+  if (parts.includes('.mnema') || parts.includes('.git')) {
+    return { ok: false, why: `${wanted} is inside a record folder (.mnema or .git): pick another` };
+  }
+  for (const tree of trees) {
+    if (tree.kind !== 'verdict') continue;
+    const root = resolve(tree.root);
+    if (wanted === root || wanted.startsWith(root + sep)) {
+      return { ok: false, why: `${wanted} is inside the record at ${root}: pick another` };
+    }
+  }
+  let at = parts[0] === '' ? sep : (parts[0] as string);
+  for (const part of parts.slice(1)) {
+    at = join(at, part);
+    let stat = lstatSync(at, { throwIfNoEntry: false });
+    if (stat === undefined) {
+      mkdirSync(at);
+      stat = lstatSync(at);
+    }
+    if (stat.isSymbolicLink()) {
+      return { ok: false, why: `${at} is a symbolic link: a message folder may not be, or pass through, one` };
+    }
+    if (!stat.isDirectory()) return { ok: false, why: `${at} is not a folder` };
+  }
+  const real = realpathSync(wanted);
+  if (real !== wanted) {
+    return { ok: false, why: `${wanted} resolves to ${real}: a message folder may not pass through a link` };
+  }
+  return { ok: true };
+}
+
+/** Writes one message as a new regular file: never through a link, never over a file already there. */
+function writeNewFile(file: string, bytes: Uint8Array): string | undefined {
+  try {
+    const fd = openSync(
+      file,
+      constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW,
+      0o644,
+    );
+    try {
+      writeSync(fd, bytes);
+    } finally {
+      closeSync(fd);
+    }
+    return undefined;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    return code === 'EEXIST' || code === 'ELOOP'
+      ? `${file} already exists: it is never overwritten, remove it or pick another folder`
+      : `${file} could not be written: ${error instanceof Error ? error.message : String(error)}`;
+  }
+}
+
 /**
  * Checks every Sigstore bundle of the trees that verified against `expected`. Offline, and it
  * writes only where asked: each signed message to `options.messageDir`, named by its SHA-256.
@@ -116,8 +203,18 @@ export function checkSigstoreWitnesses(
     trees,
     options.trustedRoot === undefined ? {} : { trustedRoot: options.trustedRoot },
   );
-  const messageDir = options.messageDir === undefined ? undefined : resolve(options.messageDir);
-  if (messageDir !== undefined) mkdirSync(messageDir, { recursive: true });
+  const refusals: string[] = [];
+  if (expected.identity === '' || expected.issuer === '') {
+    refusals.push('the identity and the issuer to expect may not be empty');
+  }
+  let messageDir = options.messageDir === undefined ? undefined : resolve(options.messageDir);
+  if (messageDir !== undefined) {
+    const ready = readyMessageDir(messageDir, trees);
+    if (!ready.ok) {
+      refusals.push(ready.why);
+      messageDir = undefined;
+    }
+  }
   const bundles = receipts.findings.map((finding): WitnessCheckRow => {
     const tree = trees.find((one) => one.kind === 'verdict' && one.scope === finding.scope);
     const bundle =
@@ -128,7 +225,7 @@ export function checkSigstoreWitnesses(
     const verdict: WitnessCheckVerdict =
       reading.kind === 'not-covered'
         ? { kind: 'refused', why: reading.why }
-        : reading.identity === expected.identity && reading.issuer === expected.issuer
+        : namesTheExpected(reading, expected)
           ? { kind: 'holds' }
           : { kind: 'other-signer', identity: reading.identity, issuer: reading.issuer };
     const at = { scope: finding.scope, tail: finding.tail, checkpoint: finding.checkpoint };
@@ -137,7 +234,11 @@ export function checkSigstoreWitnesses(
       return { ...at, verdict, finding, bundle };
     }
     const file = join(messageDir, `${finding.checkpoint}.message`);
-    writeFileSync(file, message);
+    const failed = writeNewFile(file, message);
+    if (failed !== undefined) {
+      refusals.push(failed);
+      return { ...at, verdict, finding, bundle };
+    }
     return {
       ...at,
       verdict,
@@ -149,7 +250,8 @@ export function checkSigstoreWitnesses(
   });
   const ok =
     bundles.length > 0 &&
+    refusals.length === 0 &&
     receipts.notRead.length === 0 &&
     bundles.every((row) => row.verdict.kind === 'holds');
-  return { bundles, notRead: receipts.notRead, ok };
+  return { bundles, notRead: receipts.notRead, refusals, ok };
 }

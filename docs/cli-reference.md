@@ -670,7 +670,7 @@ the ones `verify` gives without it.
 exactly that identity and that issuer (a bundle that holds and names somebody else is said by name
 and fails). What a bundle signs is the checkpoint's own signed message, recomputed from
 `checkpoints.jsonl` and never taken from the bundle, and its SHA-256 is the name the bundle is filed under.
-With `--message-dir <dir>` it writes each of those messages as `<sha256>.message` and prints the
+With `--message-dir <dir>` it writes each of those messages as `<sha256>.message` (the folder may not be, or pass through, a symbolic link, nor lie inside a record folder, and a file already there is never overwritten: it is refused) and prints the
 line that checks the same bundle with [cosign](https://docs.sigstore.dev/cosign/verifying/verify/), so the
 answer does not rest on this binary alone:
 
@@ -684,8 +684,7 @@ promise and its proof of inclusion travel inside the bundle. Not offline: neithe
 whether the trust root it holds is still the current one or whether Rekor still holds the entry;
 mnema checks against the root this binary carries (a certificate from a root Sigstore rotated later
 reads `refused`: update mnema), and cosign fetches its root through TUF the first time it runs
-(`--trusted-root` points it at a file instead). This page does not claim that a given cosign version
-accepts the v0.3 bundle without a flag: that was not run here. Like `--against-sigstore`, it says who signed in to Sigstore, not who wrote the record.
+(`--trusted-root` points it at a file instead). The bundle is the Sigstore bundle v0.3: on cosign 2.x the printed line may need `--new-bundle-format` added, and that was not run here (unverified), so this page claims no cosign version. Like `--against-sigstore`, it says who signed in to Sigstore, not who wrote the record.
 
 ### Bold, dim, and what a pipe gets
 

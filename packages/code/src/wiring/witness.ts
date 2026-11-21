@@ -39,7 +39,7 @@ import { here } from './context.js';
 import { fromTheGroup, REFUSED, takesFromItsGroup } from './from-the-group.js';
 import { writeLines } from './io.js';
 import { onOneLine } from './on-one-line.js';
-import { reportRefusal } from './report.js';
+import { reportRefusal, reportUsage } from './report.js';
 import { type Declared, groupOf, mutatesTheRecord, readsTheRecord, type Wiring } from './verb.js';
 
 /**
@@ -296,7 +296,8 @@ export function registerWitness(program: Command, wiring: Wiring): Declared {
       '--message-dir <dir>',
       'write the message each bundle signs into this folder, one file per checkpoint named ' +
         'by its SHA-256, and print the `cosign verify-blob` line that checks the same bundle ' +
-        'beside it',
+        'beside it. Refused when the folder is, or passes through, a symbolic link, or is ' +
+        'inside a record folder; a message file that already exists is never overwritten',
     )
     .addHelpText(
       'after',
@@ -320,6 +321,14 @@ export function registerWitness(program: Command, wiring: Wiring): Declared {
   sigstoreCheck.action(async (opts: { identity: string; issuer: string; messageDir?: string }) => {
     const given = await fromTheGroup<{ global: boolean }>(sigstoreCheck, wiring);
     if (given === REFUSED) return;
+    if (opts.identity.trim() === '' || opts.issuer.trim() === '') {
+      reportUsage(
+        wiring,
+        '`witness sigstore-check` needs a non-empty --identity and --issuer',
+        'Say who you expect: the e-mail or workflow, and the issuer that vouched for it.',
+      );
+      return;
+    }
     const { runVerify } = await import('../commands/verify.js');
     const result = runVerify({ ...here(), requirement: 'chained', global: given.global });
     if (!result.ok) {
@@ -333,6 +342,7 @@ export function registerWitness(program: Command, wiring: Wiring): Declared {
       { identity: opts.identity, issuer: opts.issuer },
       opts.messageDir === undefined ? {} : { messageDir: opts.messageDir },
     );
+    for (const refusal of check.refusals) io.err(render(fact(refusal)));
     for (const scope of check.notRead) {
       io.err(
         render(
