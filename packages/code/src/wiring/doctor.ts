@@ -80,12 +80,12 @@ export function registerDoctor(program: Command, wiring: Wiring): Declared {
       }
       const { fixPrivateTree, fixVscode, runDoctor } = await import('../commands/doctor.js');
       const { fixMergeDriver } = await import('../commands/doctor-merge-driver.js');
-      const { driverCommand } = await import('../commands/record-pull.js');
+      const { ownDriverCommand, ownRunningFile } = await import('../commands/record-pull.js');
       const ctx = {
         ...here(),
         env: discoveryEnv(),
         processEnv: process.env,
-        running: { file: process.argv[1] ?? '', version: VERSION },
+        running: { file: ownRunningFile(), version: VERSION },
       };
       if (options.fix !== undefined) {
         if (
@@ -111,7 +111,7 @@ export function registerDoctor(program: Command, wiring: Wiring): Declared {
               ? fixPrivateTree(ctx, { dryRun })
               : fixMergeDriver(ctx, {
                   dryRun,
-                  driver: driverCommand(process.execPath, process.argv[1] ?? ''),
+                  driver: ownDriverCommand(),
                 });
         for (const line of fixed.lines) io.out(line);
         if (fixed.refused) io.fail();

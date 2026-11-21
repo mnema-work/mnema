@@ -68,8 +68,23 @@ export function invokedAsTheBinary(moduleUrl: string, argv1: string | undefined)
   }
 }
 
+/**
+ * Whether this process is a single executable (Node's SEA). There `process.argv[1]` is the name the program was
+ * typed with, not a script, and a name found through the PATH is no file of the working directory: the program
+ * runs whatever it says. Read through `getBuiltinModule` and not imported, so the entry still links only what
+ * every Node in the guard's range has (a Node that lacks either answers no).
+ */
+function isASingleExecutable(): boolean {
+  try {
+    const sea = process.getBuiltinModule?.('node:sea') as { isSea(): boolean } | undefined;
+    return sea?.isSea() === true;
+  } catch {
+    return false;
+  }
+}
+
 // Auto-run when invoked as the binary (not when something imports this file).
-if (invokedAsTheBinary(import.meta.url, process.argv[1])) {
+if (isASingleExecutable() || invokedAsTheBinary(import.meta.url, process.argv[1])) {
   void import('./program.js').then(({ runAsTheBinary }) => {
     runAsTheBinary();
   });
