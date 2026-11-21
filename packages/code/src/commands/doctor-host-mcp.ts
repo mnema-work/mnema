@@ -513,7 +513,7 @@ export function scanClaudeJson(file: string): HostMcpScan {
               verified: false,
               projectGone: true,
             }
-          : { ...entry, verified: entry.verified && isAbsolute(dir) && there(dir) },
+          : { ...entry, verified: entry.verified && isAbsolute(dir) && kind(dir) === 'dir' },
       );
     }
   }
