@@ -277,6 +277,15 @@ export function proveDecision(
       ranges.set(tail, atTail);
     }
     atTail.set(checkpoint.fromSeq, checkpoint);
+    // No gap (FORMAT.md section 9): every range between the first and the last this tail gives
+    // the proof travels too, so no move, writing or revocation between two of them can be left out.
+    const first = Math.min(...atTail.keys());
+    const last = Math.max(...atTail.keys());
+    for (const between of held.checkpoints) {
+      if (between.fromSeq > first && between.fromSeq < last && !atTail.has(between.fromSeq)) {
+        wanted.push({ tail, seq: between.fromSeq });
+      }
+    }
     // Every identity an event of the range speaks for brings its roster with it.
     for (let at = checkpoint.fromSeq; at <= checkpoint.toSeq; at += 1) {
       const entry = bySeq.get(tail)?.get(at);
@@ -526,6 +535,9 @@ function checked(text: string, upcasters: UpcasterRegistry): ProofVerdict {
     const lines: ChainEntry[] = [];
     const spans: [number, number][] = [];
     let lastTo = -1;
+    // The last line carried on this tail: the ranges are contiguous, so every line after the
+    // tail's first chains to the one before it, across a range's edge as inside one.
+    let previous: ChainEntry | undefined;
     for (const range of ranges) {
       if (!isObject(range) || !holdsExactly(range, RANGE_KEYS)) {
         refuse(`a range of ${tail} whose keys are not ${keyList(RANGE_KEYS)}`);
@@ -545,6 +557,12 @@ function checked(text: string, upcasters: UpcasterRegistry): ProofVerdict {
       if (checkpoint.fromSeq <= lastTo) {
         refuse(`${where} does not begin after the range before it`);
       }
+      if (lastTo >= 0 && checkpoint.fromSeq !== lastTo + 1) {
+        refuse(
+          `${tail} seq ${lastTo + 1}..${checkpoint.fromSeq - 1} is not carried, and a proof ` +
+            'carries every range of a tail between the first it carries and the last',
+        );
+      }
       lastTo = checkpoint.toSeq;
       // Section 6.10: a first-scheme checkpoint where the tail had named its record.
       if (checkpoint.scheme === NAMED_SCHEME) signedFor = true;
@@ -556,7 +574,6 @@ function checked(text: string, upcasters: UpcasterRegistry): ProofVerdict {
           `${where} signs ${checkpoint.toSeq - checkpoint.fromSeq + 1} line(s), and the range carries ${entries.length}`,
         );
       }
-      let previous: ChainEntry | undefined;
       const span: ChainEntry[] = [];
       entries.forEach((stored, offset) => {
         const seq = checkpoint.fromSeq + offset;

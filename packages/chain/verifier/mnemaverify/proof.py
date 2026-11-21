@@ -209,6 +209,11 @@ def _check(raw: bytes, report: Report) -> None:
                 )
             if checkpoint.from_seq <= last_to:
                 raise _refuse(f"{where} does not begin after the range before it")
+            if last_to >= 0 and checkpoint.from_seq != last_to + 1:
+                raise _refuse(
+                    f"{tail} seq {last_to + 1}..{checkpoint.from_seq - 1} is not carried, and a "
+                    "proof carries every range of a tail between the first it carries and the last"
+                )
             last_to = checkpoint.to_seq
             # Section 6.10: a first-scheme checkpoint where the tail had named its record.
             if stored["scheme"] == NAMED_CHECKPOINT_SCHEME:
@@ -240,12 +245,12 @@ def _check(raw: bytes, report: Report) -> None:
                     raise _refuse(f"{where}: seq {entry.seq} where {seq} was due")
                 if entry_hash(entry.event_bytes, tail, seq, entry.prev) != entry.stored_hash:
                     raise _refuse(f"{tail} seq {seq}: the entry hash does not hold")
-                if not span:
+                if not lines and not span:
                     if (seq == 0) != (entry.prev is None):
                         raise _refuse(
                             f"{tail} seq {seq}: a genesis link is a null prev, and only seq 0 has one"
                         )
-                elif entry.prev != span[-1].stored_hash:
+                elif entry.prev != (span[-1] if span else lines[-1]).stored_hash:
                     raise _refuse(f"{tail} seq {seq}: prev does not chain")
                 span.append(entry)
             if content_root(entry.event_bytes for entry in span) != stored["contentRoot"]:

@@ -126,8 +126,10 @@ export type ProveChecked =
 export function runProveCheck(file: string): ProveChecked {
   let text: string;
   try {
-    // Strict UTF-8: a byte that is not one is refused, never read as U+FFFD (FORMAT.md section 4).
-    text = new TextDecoder('utf-8', { fatal: true }).decode(readFileSync(file));
+    // Strict UTF-8: a byte that is not one is refused, never read as U+FFFD (FORMAT.md section 4),
+    // and a byte-order mark is kept as the character it is, so the file is not canonical and is
+    // refused, as the second reader refuses it.
+    text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(readFileSync(file));
   } catch (error) {
     return { ok: false, reason: 'UNREADABLE_PROOF', message: (error as Error).message };
   }

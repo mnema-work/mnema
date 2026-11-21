@@ -81,13 +81,15 @@ describe('the published proof of one decision', () => {
       'accept',
       'supersede',
     ]);
-    // The task's range (seq 3) is not carried: a range travels only for what the decision needs.
+    // The task's range (seq 3) is carried too: it sits between two ranges the decision needs, and
+    // a proof leaves no gap on a tail, so nothing between them can be left out.
     expect(checked.covers).toEqual([
       {
         tail: expect.any(String),
         ranges: [
           [0, 0],
           [1, 2],
+          [3, 3],
           [4, 4],
           [5, 6],
           [7, 7],
@@ -136,16 +138,27 @@ describe('the published proof of one decision', () => {
     expect(secondReader(text).verdict).toBe('REFUSED');
   });
 
-  it('is refused by both readers when a range it needs is taken out', () => {
-    // Without the range of the successor's birth, the supersede names a decision whose birth the
-    // file does not hold, so section 6.7 does not apply it and the decision reads accepted.
+  it('is refused by both readers when the successor\u2019s birth is taken out, the manifest said again', () => {
+    // The omission the no-gap rule closes: without the range of the successor's birth, section 6.7
+    // does not apply the supersede, and a manifest recomputed honestly over what is left says the
+    // decision is accepted, which the record does not. Both readers refuse the gap by its seqs.
     const text = changed(readFileSync(PUBLISHED, 'utf-8'), (proof) => {
-      const [tail] = proof.tails as { ranges: unknown[] }[];
-      tail?.ranges.splice(3, 1);
+      const [tail] = proof.tails as { ranges: { checkpoint: string }[] }[];
+      const at = tail?.ranges.findIndex((range) => range.checkpoint.includes('"fromSeq":5,')) ?? -1;
+      tail?.ranges.splice(at, 1);
+      const manifest = proof.manifest as { state: string; moves: unknown[] };
+      manifest.state = 'accepted';
+      manifest.moves = manifest.moves.slice(0, 2);
     });
-    expect(checkProof(text)).toMatchObject({ proven: false });
-    expect(secondReader(text).verdict).toBe('REFUSED');
+    const checked = checkProof(text);
+    expect(checked).toMatchObject({ proven: false });
+    if (checked.proven) return;
+    expect(checked.refusal).toMatch(/seq 5\.\.6 is not carried/);
+    const second = secondReader(text);
+    expect(second.verdict).toBe('REFUSED');
+    expect(second.refused.join('\n')).toMatch(/seq 5\.\.6 is not carried/);
   });
+});
 });
 
 /** One way to break the published proof, and what the product's checker names first. */
@@ -286,6 +299,14 @@ const BROKEN: readonly Broken[] = [
     refusal: /carries no writing of the decision/,
   },
   {
+    name: 'a middle range dropped',
+    text: (t) =>
+      changed(t, (p) => {
+        tailOf(p).ranges.splice(2, 1);
+      }),
+    refusal: /seq 3\.\.3 is not carried/,
+  },
+  {
     name: 'a tail with a key beside its three',
     text: (t) =>
       changed(t, (p) => {
@@ -400,6 +421,7 @@ describe('a proof of a decision this product wrote', () => {
     expect(checked.covers[0]?.ranges).toEqual([
       [0, 0],
       [1, 2],
+      [3, 3],
       [4, 4],
     ]);
     expect(secondReader(proved.text)).toEqual({ verdict: 'VERIFIED', refused: [] });

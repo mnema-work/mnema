@@ -180,6 +180,16 @@ describe('what is refused before any proof is checked or built', () => {
     expect(runProveCheck(file)).toMatchObject({ ok: false, reason: 'UNREADABLE_PROOF' });
   });
 
+  it('a proof that begins with a byte-order mark is refused by both readers', () => {
+    const id = decide('Prove one decision in one file');
+    const proved = runProve({ cwd: repo, env }, { decision: id, private: false });
+    if (!proved.ok) throw new Error('setup: not proven');
+    const file = join(sandbox, 'bom.proof.json');
+    writeFileSync(file, Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(proved.text)]));
+    expect(runProveCheck(file)).toMatchObject({ ok: true, verdict: { proven: false } });
+    expect(secondReader(file)).toBe('REFUSED');
+  });
+
   it('a proof is never written over a file that is there', () => {
     const file = join(sandbox, 'there.json');
     writeFileSync(file, 'kept');
