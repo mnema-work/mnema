@@ -48,7 +48,9 @@ import {
   rejectDecision,
   supersedeDecision,
 } from '@mnema/core/write';
+import { saysWhatTheAcceptRestedOn, whatTheAcceptRestsOn } from '../agent-accept-words.js';
 import { type AcceptState, acceptStateHere, agentMayAccept } from '../agent-accepts.js';
+import type { HostName } from '../host-names.js';
 import { resolveAddress } from '../label-as-address.js';
 import {
   movedDisplay,
@@ -57,6 +59,7 @@ import {
   supersedeLeavesNothingInForce,
 } from '../moved-record.js';
 import { forwardReplacement, type Replacement } from '../recorded-content.js';
+import { transcriptOf } from '../session-journal.js';
 import { locateEntityScopeKept, withScopedCaches } from '../tree-sources.js';
 import { type AgentWrites, treesToWrite, whichOfTheWrite } from './write-as-the-agent.js';
 
@@ -147,6 +150,12 @@ export function runDecisionTransition(
      * that does not say is not at one, so the accept it carries is the one the switch turns away.
      */
     atATerminal?: boolean;
+    /** The host's id for the session this runs in (Claude Code's `CLAUDE_CODE_SESSION_ID`), when the door has it. */
+    hostSession?: string;
+    /** The host whose session variable the door found: the environment says where the process runs, whatever name the act declares. */
+    sessionHost?: HostName;
+    /** Set by the command line: an accept declaring Claude Code with no session id is refused there (`agent-accept-words.ts`). */
+    viaTheCommandLine?: boolean;
   },
 ): DecisionTransitioned | DecisionTransitionRefused {
   const upcasters = catalogUpcasters();
@@ -214,6 +223,22 @@ export function runDecisionTransition(
     }),
   );
   if (turnedAway !== undefined) return { ok: false, reason: 'REFUSED', ...turnedAway };
+
+  // AN AGENT'S ACCEPT RESTS ON THE PERSON'S WORDS (`agent-accept-words.ts`), or it waits for them.
+  const rested = whatTheAcceptRestsOn({
+    action: input.action,
+    agent: which,
+    note: input.proof?.note,
+    hostSession: input.hostSession,
+    ...(input.sessionHost !== undefined ? { sessionHost: input.sessionHost } : {}),
+    refuseWithoutASession: input.viaTheCommandLine === true,
+    transcript:
+      input.hostSession === undefined ? undefined : transcriptOf(trees, input.hostSession),
+  });
+  if (rested?.outcome === 'waits') {
+    return { ok: false, reason: 'REFUSED', code: rested.code, message: rested.message };
+  }
+  const restedSaid = rested === undefined ? undefined : saysWhatTheAcceptRestedOn(rested);
 
   // The executing agent and the run it belongs to, stamped on whichever op the
   // action routes to: built once so no branch can be the one that forgets them.
@@ -285,7 +310,7 @@ export function runDecisionTransition(
     id: input.id,
     adr,
     to: moved.to,
-    ...(notice !== undefined ? { notice } : {}),
+    ...((notice ?? restedSaid) !== undefined ? { notice: (notice ?? restedSaid) as string } : {}),
     ...(input.action === 'accept' && which !== undefined ? { acceptedByAgent: which } : {}),
     ...forwardReplacement(moved),
   };
