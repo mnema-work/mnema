@@ -37,6 +37,7 @@ import { isAbsolute, join, resolve } from 'node:path';
 import {
   Doubt,
   globalTrees,
+  isALink,
   isDirectory,
   privateTreesAbove,
   projectTreesAbove,
@@ -158,6 +159,7 @@ function holdsAnAddress(root, depth, schema) {
   }
   for (const name of entries) {
     const path = join(root, name);
+    if (isALink(path)) throw new Doubt('a link in a tree');
     if (!isDirectory(path)) continue;
     const holds =
       name === 'tails' ? tailsHoldAnAddress(path, schema) : holdsAnAddress(path, depth + 1, schema);
@@ -176,9 +178,11 @@ function holdsAnAddress(root, depth, schema) {
 function tailsHoldAnAddress(tails, schema) {
   for (const tail of readdirSync(tails)) {
     const dir = join(tails, tail);
+    if (isALink(dir)) throw new Doubt('a link in a tree');
     if (!isDirectory(dir)) continue;
     for (const file of readdirSync(dir)) {
       if (!file.endsWith('.jsonl')) continue;
+      if (isALink(join(dir, file))) throw new Doubt('a link in a tree');
       const bytes = readFileSync(join(dir, file));
       if (MARKERS.some((marker) => bytes.includes(marker))) return true;
       const vouch = file === 'checkpoints.jsonl' ? aCheckpoint : anEntry;

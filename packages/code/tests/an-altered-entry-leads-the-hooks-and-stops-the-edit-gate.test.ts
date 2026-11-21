@@ -161,7 +161,7 @@ describe('over a record with an altered entry', () => {
     expect(answered.stdout).toContain('"permissionDecision":"deny"');
     expect(reason).toMatch(/issue \[T1\] public/);
     expect(reason).toContain('000001.jsonl line');
-    expect(reason).toContain('restore the line from the repository');
+    expect(reason).toContain('mnema tail repair ');
     expect(answered.stdout).not.toContain('evil.example');
   });
 

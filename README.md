@@ -20,6 +20,7 @@ Your decisions, handed to your agents' sessions and held at the edits they gover
 <a href="https://github.com/mnema-work/mnema/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/mnema-work/mnema/ci.yml?branch=main&amp;style=flat-square&amp;label=CI&amp;color=997dbf"></a>
 <a href="https://www.npmjs.com/package/@mnema/code"><img alt="npm: @mnema/code" src="https://img.shields.io/npm/v/@mnema/code?style=flat-square&amp;label=npm&amp;color=997dbf"></a>
 <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-997dbf?style=flat-square"></a>
+<a href="https://scorecard.dev/viewer/?uri=github.com/mnema-work/mnema"><img alt="OpenSSF Scorecard" src="https://img.shields.io/ossf-scorecard/github.com/mnema-work/mnema?style=flat-square&amp;label=OpenSSF%20Scorecard&amp;color=997dbf"></a>
 <img alt="Node 24.15.0 or a later 24, or 26.0.0 or later" src="https://img.shields.io/badge/node-%5E24.15.0%20%7C%7C%20%E2%89%A526.0.0-997dbf?style=flat-square">
 </p>
 
@@ -129,7 +130,7 @@ mnema works with any agent host that has an MCP client, and how much more a host
 what its hooks allow, one rung at a time: (a) the MCP server and rules in a file, (b) the opening
 of a session, (c) a refusal before a write, (d) a pause for a person.
 
-<!-- The host summary below is generated from packages/code/src/host-names.ts: edit the table there. -->
+<!-- The host summary below is generated: the rows, their order, the rungs, what each gets and the install links come from packages/code/src/host-names.ts, the names, the vendor lines, the logo files and their heights from SHOWN in packages/code/tests/support/the-host-files.ts. -->
 
 | | Host | Rung | What it gets | Install |
 | :---: | :--- | :---: | :--- | :--- |
@@ -226,6 +227,7 @@ claim about the agent hosts is held, and which are not held yet, is in [`docs/ev
   [Where a rule arrives](docs/rule-arrival.md) · [What it proves](docs/what-it-proves.md) ·
   [Recording decisions](docs/recording-decisions.md) · [Rules and the commits that cite them](docs/rules-and-the-commits-that-cite-them.md) ·
   [Committing the record](docs/committing-the-record.md) · [A second machine and your key](docs/a-second-machine-and-your-key.md) ·
+  [What a backup keeps, and what it loses](docs/what-a-backup-keeps-and-what-it-loses.md) ·
   [A record that inherits another](docs/a-record-inheriting-another.md) ·
   [Importing the decisions you already wrote](docs/importing-the-decisions-you-already-wrote.md) ·
   [Switching off what is handed to a model](docs/switching-off-what-is-handed-to-a-model.md) ·
@@ -242,6 +244,24 @@ claim about the agent hosts is held, and which are not held yet, is in [`docs/ev
   [Verify without installing](docs/verify-without-installing.md) · [What comes next](docs/what-comes-next.md) ·
   [North star](docs/north-star.md) · [Architecture](docs/architecture.md) · [Contributing](CONTRIBUTING.md) · [Build from source](docs/build-from-source.md) ·
   [Security policy](SECURITY.md) · [Changelog](CHANGELOG.md)
+
+## Contributors
+
+<p align="center">Thank you to everyone whose pull request made mnema better.</p>
+
+<!-- contributors:start -->
+<table align="center">
+<tr>
+<td align="center"><a href="https://github.com/mentallyunstable-lab"><img src="docs/assets/contributor-mentallyunstable-lab.svg" width="72" height="72" alt="@mentallyunstable-lab"><br><sub>mentallyunstable-lab</sub></a></td>
+<td align="center"><a href="https://github.com/tylrcc"><img src="docs/assets/contributor-tylrcc.svg" width="72" height="72" alt="@tylrcc"><br><sub>tylrcc</sub></a></td>
+<td align="center"><a href="https://github.com/jay23606"><img src="docs/assets/contributor-jay23606.svg" width="72" height="72" alt="@jay23606"><br><sub>jay23606</sub></a></td>
+<td align="center"><a href="https://github.com/prascli"><img src="docs/assets/contributor-prascli.svg" width="72" height="72" alt="@prascli"><br><sub>prascli</sub></a></td>
+</tr>
+</table>
+<p align="center">Thank you also to <a href="https://github.com/bfs2021">@bfs2021</a>, an account that declares itself automated, whose pull requests were merged.</p>
+<!-- contributors:end -->
+
+<p align="center">To join them, start from <a href="CONTRIBUTING.md"><code>CONTRIBUTING.md</code></a>, the pinned <a href="https://github.com/mnema-work/mnema/issues/1345">Start here</a> issue, or an issue labelled <code>ready for an agent</code>.</p>
 
 ## License
 

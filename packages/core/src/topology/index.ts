@@ -20,7 +20,77 @@
  * {@link treesSearched}, for the reading that has to say where it looked.
  */
 
-export { gitPlaceOf } from './git-place.js';
+export {
+  AsideError,
+  type AsideListed,
+  type AsidePlace,
+  asidePlaceInGit,
+  asidePlaceInHome,
+  asidesFor,
+  asidesIn,
+  describeAside,
+  type KeptAside,
+  setAside,
+  treesToKeep,
+  type Undone,
+  undoAside,
+  undoCommandFor,
+  withRestoreLock,
+} from './backup/aside.js';
+export {
+  type Assigned,
+  assignDestination,
+  assignGlobalDestination,
+  BACKUP_CONFIG,
+  BackupConfigError,
+  backupConfigPath,
+  destinationOf,
+  globalDestinationOf,
+  readBackupConfig,
+  whyNotADestination,
+} from './backup/config.js';
+export {
+  BACKUP_MANIFEST,
+  BackupRefusedError,
+  type BackupTree,
+  type Copied,
+  type CopyStanding,
+  type PreparedCopy,
+  planCopy,
+  prepareCopy,
+  standingOfCopy,
+  writeCopy,
+} from './backup/copy.js';
+export {
+  type CacheStanding,
+  cacheOf,
+  cleanGitEnv,
+  commitAndPush,
+  GitDestinationError,
+  isGitDestination,
+  keptAs,
+  type Pushed,
+  standingOfCache,
+  syncCache,
+  whyNotARemote,
+  withCacheLock,
+  withoutUserinfo,
+} from './backup/git-destination.js';
+export {
+  copyNamed,
+  noWriterHolds,
+  type PreparedRestore,
+  prepareRestore,
+  type Restored,
+  restoreCopies,
+} from './backup/restore.js';
+export {
+  type CopyReading,
+  readCopy,
+  type Standing,
+} from './backup/verify.js';
+export { type Ask, type DefaultBranch, theDefaultBranch } from './default-branch.js';
+export { gitPlaceOf, isWithin, notesRootOf } from './git-place.js';
 export {
   type BirthProbe,
   type HeldTail,
@@ -33,6 +103,7 @@ export {
   tailsHeld,
   treesSearched,
 } from './locate.js';
+export { MachineryUnavailableError } from './machinery-place.js';
 export {
   type PrivateTreeVisibility,
   PrivateTreeVisibleError,
@@ -69,6 +140,7 @@ export {
   chainRootForScope,
   type DeferredWrite,
   deferredWrite,
+  guardWrites,
   type KeyChoice,
   keyChoiceIn,
   keyRefusalIn,
@@ -83,4 +155,5 @@ export {
   signerHeldFor,
   TreeUnavailableError,
   treeWords,
+  type WriteGuard,
 } from './routing.js';

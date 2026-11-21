@@ -230,55 +230,72 @@ function whatAPathMeets(ctx: BeforeAWriteContext, input: APathAsked): BeforeAWri
   // The project root is the PARENT of its `.mnema/`, the directory every address is written
   // against; a relative path is the host's, written against where it started the hook.
   const root = dirname(trees.projectPublic);
-  const { met, others, pushes, altered, integrity } = withScopedCaches(trees, (sources) => {
-    // AN ALTERED ENTRY REFUSES THE WRITE (ADR-395), before any rule is derived: which rules apply
-    // cannot be known from a record that leaves a line out. Only the gate refuses; the hook that
-    // runs after the write (`push.only`) cannot, and says the fact in the text it hands over.
-    const facts = linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE);
-    const refusal = input.push?.only === true ? undefined : refusalOfAnAlteredRecord(facts);
-    if (refusal !== undefined) {
-      return { met: undefined, others: [], pushes: [], altered: refusal, integrity: [] };
-    }
-    // THE SWITCH OF THE PUSH IS ASKED BEFORE ANY RULE IS DERIVED, as the MCP tool asks it: switched
-    // off, the reply is the gate's alone and the derivation behind the text never runs.
-    const pushing = input.push !== undefined && channelIsOn(sources, EDIT_PUSH_CHANNEL);
-    // THE RECORD THIS PROJECT INHERITS is read beside its own: a rule of it that refuses or asks at
-    // the path applies here as the project's would, and says where it comes from.
-    const read = withInheritedSource(trees, sources, (all) => {
-      const found =
-        input.push?.only === true
-          ? undefined
-          : whatAWriteMeets(all, { paths, root, from: ctx.cwd });
-      // WHERE THE HOST DOES NOT ASK, AN ASKING IS NOT ONE: the write would go through, and the
-      // record would say a person was asked.
-      const gate =
-        found === undefined || (found.grade === 'ask' && !input.asks) ? undefined : found;
-      // A REFUSAL ENDS THE CALL: there is no write for the rules to ride beside.
-      const pushed =
-        pushing && gate?.grade !== 'refuse'
-          ? paths.map((path) =>
-              readThePush(all, sources, { path, root, from: ctx.cwd }, gate === undefined),
-            )
-          : [];
-      return { gate, pushed };
-    });
-    // A push with no rule in force still speaks when it carries the line of a rule moved apart.
-    const spoken = read.pushed.filter((one) => one.at.rules.length > 0 || one.apart !== undefined);
-    // WHO ELSE WAS CHARGED AT THE PATH is read only where the hook is going to speak, so the
-    // ordinary case, a write nothing charges, pays nothing for it.
-    const place = read.gate?.at[0] ?? spoken[0]?.at;
-    return {
-      met: read.gate,
-      others: place === undefined ? [] : otherRunsAt(trees, sources, place),
-      pushes: spoken,
-      altered: undefined as string | undefined,
-      // ONLY THE HOOK AFTER THE WRITE SAYS GAPS AND FORKS: the gate that lets a write through says
-      // neither (ADR-395), and its push is the rules alone.
-      integrity: input.push?.only === true ? linkBreakSentences(facts) : [],
-    };
-  });
+  const { met, others, pushes, altered, integrity, couldNotRead } = withScopedCaches(
+    trees,
+    (sources) => {
+      // AN ALTERED ENTRY REFUSES THE WRITE (ADR-395), before any rule is derived: which rules apply
+      // cannot be known from a record that leaves a line out. Only the gate refuses; the hook that
+      // runs after the write (`push.only`) cannot, and says the fact in the text it hands over.
+      const facts = linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE);
+      const refusal = input.push?.only === true ? undefined : refusalOfAnAlteredRecord(facts);
+      if (refusal !== undefined) {
+        return {
+          met: undefined,
+          others: [],
+          pushes: [],
+          altered: refusal,
+          integrity: [],
+          couldNotRead: facts.some((fact) => fact.unread !== undefined),
+        };
+      }
+      // THE SWITCH OF THE PUSH IS ASKED BEFORE ANY RULE IS DERIVED, as the MCP tool asks it: switched
+      // off, the reply is the gate's alone and the derivation behind the text never runs.
+      const pushing = input.push !== undefined && channelIsOn(sources, EDIT_PUSH_CHANNEL);
+      // THE RECORD THIS PROJECT INHERITS is read beside its own: a rule of it that refuses or asks at
+      // the path applies here as the project's would, and says where it comes from.
+      const read = withInheritedSource(trees, sources, (all) => {
+        const found =
+          input.push?.only === true
+            ? undefined
+            : whatAWriteMeets(all, { paths, root, from: ctx.cwd });
+        // WHERE THE HOST DOES NOT ASK, AN ASKING IS NOT ONE: the write would go through, and the
+        // record would say a person was asked.
+        const gate =
+          found === undefined || (found.grade === 'ask' && !input.asks) ? undefined : found;
+        // A REFUSAL ENDS THE CALL: there is no write for the rules to ride beside.
+        const pushed =
+          pushing && gate?.grade !== 'refuse'
+            ? paths.map((path) =>
+                readThePush(all, sources, { path, root, from: ctx.cwd }, gate === undefined),
+              )
+            : [];
+        return { gate, pushed };
+      });
+      // A push with no rule in force still speaks when it carries the line of a rule moved apart.
+      const spoken = read.pushed.filter(
+        (one) => one.at.rules.length > 0 || one.apart !== undefined,
+      );
+      // WHO ELSE WAS CHARGED AT THE PATH is read only where the hook is going to speak, so the
+      // ordinary case, a write nothing charges, pays nothing for it.
+      const place = read.gate?.at[0] ?? spoken[0]?.at;
+      return {
+        met: read.gate,
+        others: place === undefined ? [] : otherRunsAt(trees, sources, place),
+        pushes: spoken,
+        altered: undefined as string | undefined,
+        couldNotRead: false,
+        // ONLY THE HOOK AFTER THE WRITE SAYS GAPS AND FORKS: the gate that lets a write through says
+        // neither (ADR-395), and its push is the rules alone.
+        integrity: input.push?.only === true ? linkBreakSentences(facts) : [],
+      };
+    },
+  );
   if (altered !== undefined) {
-    return { ok: true, reply: input.reply({ refuse: altered }), notes: [ALTERED_RECORD_NOTE] };
+    return {
+      ok: true,
+      reply: input.reply({ refuse: altered }),
+      notes: [couldNotRead ? UNREADABLE_RECORD_NOTE : ALTERED_RECORD_NOTE],
+    };
   }
   if (met === undefined && pushes.length === 0) return silent();
 

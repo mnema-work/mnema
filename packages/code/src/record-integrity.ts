@@ -65,18 +65,25 @@
  * measurement), and `verify` is not reachable from the MCP at all, so "call `verify`"
  * would be a pointer at a door the agent does not have.
  *
- * ## Why a write is told and not REFUSED
+ * ## Why a write is told for a gap or a fork, and refused for an altered or an unreadable entry
  *
- * The same ruling the read made, for a reason of its own. The record is append-only and
- * the break is BEHIND: the new event chains from the last hash the tail held, so it is
- * sound from there forward and nothing about it is made worse by landing. Refusing would
- * turn a broken chain into a stopped product, and a record whose purpose is to survive
- * the accident cannot decline to work after one. The exit code and the `isError` flag
- * stay what they were, for the reason they do on a read: the act DID happen, and ruling
- * on the record is a verb of its own.
+ * The record is append-only and a gap or a fork is BEHIND: the new event chains from the last hash
+ * the tail held, so it is sound from there forward and nothing about it is made worse by landing.
+ * Refusing would turn a broken chain into a stopped product, and a record whose purpose is to
+ * survive the accident cannot decline to work after one. So for those two a write is told, and the
+ * exit code and the `isError` flag stay what they were, for the reason they do on a read: the act
+ * DID happen, and ruling on the record is a verb of its own.
+ *
+ * An entry whose hash does not hold, and a line no parser can open, are not behind. The first is a
+ * line somebody changed and the second one this mnema cannot read, so the record's own proof of
+ * what it says is gone at that line, and a new entry signed over it would be taken by the next
+ * reader for the record's word on a record that no longer answers for itself. Those two are
+ * REFUSED, by every write and by `switch off`, which is a write to the same record (ADR-396); the
+ * words are `what-a-write-meets.ts`, and the reading around them degrades (they are left out of
+ * the answer and said first).
  */
 
-import type { RecordGroup } from '@mnema/chain';
+import type { RecordGroup, WithheldRun } from '@mnema/chain';
 import type { NewerLines } from '@mnema/context';
 import {
   acceptedAgainstRetired,
@@ -97,7 +104,8 @@ import { oneLine } from './one-line.js';
 export interface ScopedLinkBreak {
   readonly scope: Scope;
   readonly tail: string;
-  readonly seq: number;
+  /** The seq the fact is about: absent for a part of the record that was not read (`unread`), which has none. */
+  readonly seq?: number;
   readonly detail: string;
   /**
    * Present when the fact is an entry LEFT OUT of what was served because its hash does not
@@ -105,6 +113,37 @@ export interface ScopedLinkBreak {
    * tail that stops chaining (a gap, a fork, a `prev` that names something else).
    */
   readonly retained?: { readonly segment: string; readonly line: number };
+  /**
+   * Present when the fact is a PART OF THE RECORD THIS MNEMA DOES NOT READ, which the answer was
+   * served around: a line of a segment that does not parse, or a symbolic link (ADR-396, ADR-406).
+   * `place` is where it is in the record, `line` the line of a line, `reason` why it is not read, and
+   * `root` the directory of the tree's record, so the refusal of a write can say what it always said.
+   */
+  readonly unread?: {
+    readonly kind: 'line' | 'link' | 'disk';
+    readonly place: string;
+    readonly line?: number;
+    readonly reason: string;
+    readonly root: string;
+  };
+  /**
+   * Present when the fact is a run of a tail WITHHELD because no signature proves it (ADR-557 to
+   * ADR-562): a checkpoint that does not hold over it, a signed event that is gone, checkpoints
+   * this machine signed that are no longer in the file, or more unsigned events than one write
+   * leaves. Fact A: the run was not served, and the gate and every write refuse while it stands.
+   */
+  readonly checkpoint?: WithheldRun;
+  /**
+   * Present when the fact is a run of a tail served and NOT signed by a checkpoint (Fact B): one
+   * write's window at the tail's end, which governs nothing until a checkpoint covers it, or, with
+   * `byNote`, events this machine's signed note vouches for, which govern.
+   */
+  readonly unsigned?: {
+    readonly fromSeq: number;
+    readonly toSeq: number;
+    readonly count: number;
+    readonly byNote: boolean;
+  };
 }
 
 /**
@@ -144,17 +183,138 @@ const LEFT_OUT =
   'an entry named above was altered after it was written: this answer leaves it out, and ' +
   'what it said is not shown.';
 
+/**
+ * What is said once, however many runs were withheld, when a run is not proven by a signature of its
+ * tail (ADR-557 to ADR-562): it is NOT in the answer, and the same standing as {@link LEFT_OUT}.
+ */
+const NOT_SIGNED_OUT =
+  'an entry named above is not what its checkpoint signed: this answer leaves it out, and what it said is not shown.';
+
+/**
+ * What is said once, however many parts were left out, when a part of the record is one this mnema
+ * does not read: that it is NOT in the answer, whatever it holds. The same standing as
+ * {@link LEFT_OUT}, for the other way a part of the record is left out.
+ */
+const LEFT_UNREAD =
+  'a part of the record named above is one this mnema does not read: this answer leaves it out, ' +
+  'and what it holds is not shown.';
+
+/**
+ * What is said of a line of a tree the repository does not keep: it is not versioned, so there is no
+ * history to put the line back from. The words a refusal of a write has always said of such a line
+ * (`what-a-write-meets.ts`), which the reads say now too.
+ */
+export const NOT_VERSIONED =
+  'This record is not versioned: update mnema if a newer one wrote the line, restore the file from a copy, or repair or remove the line named above.';
+
+/** What a part this mnema does not read is, by its kind, as an issue line says it. */
+const THE_PART = {
+  line: 'a line that does not read',
+  link: 'a symbolic link',
+  disk: 'a part the disk does not let this mnema open',
+} as const;
+
+/** The way out of a part the disk does not let this mnema open: the part itself is to be put right, in any tree. */
+export const DISK_WAY_OUT =
+  'Give this user access to it, or put back the folder or file that belongs there.';
+
+/** The way out of a part this mnema does not read, by its kind and the tree it is in (ADR-408). */
+function wayOut(
+  broken: ScopedLinkBreak & { readonly unread: NonNullable<ScopedLinkBreak['unread']> },
+): string {
+  if (broken.unread.kind === 'link') {
+    return 'Replace the link with the folder or file it points to.';
+  }
+  // Nothing in the repository’s history puts a permission or a folder back, in any tree.
+  if (broken.unread.kind === 'disk') return DISK_WAY_OUT;
+  // Only the public tree is kept by the repository, so only its way out is a restore from history.
+  return broken.scope === 'public'
+    ? `Update mnema if a newer one wrote the line, or \`mnema tail repair ${oneLine(broken.tail)}\` puts it back from the repository’s history.`
+    : NOT_VERSIONED;
+}
+
 /** One issue line per broken tail, in the shape `verify` gives an issue. */
 function issueLines(breaks: readonly ScopedLinkBreak[]): readonly string[] {
   // Every value here came out of the record, so every value goes through the collapse:
   // a tail name or a detail carrying a newline would turn one issue into two lines, and
   // the second would read as an issue about a tail nobody named.
   return breaks.map((broken) => {
+    if (broken.checkpoint !== undefined) return withheldLine(broken, broken.checkpoint);
+    if (broken.unsigned !== undefined) return unsignedLine(broken, broken.unsigned);
+    if (broken.unread !== undefined) {
+      const where = `${oneLine(broken.unread.place)}${broken.unread.line === undefined ? '' : ` line ${oneLine(String(broken.unread.line))}`}`;
+      const what = THE_PART[broken.unread.kind];
+      return `issue [T1] ${oneLine(broken.scope)} ${oneLine(broken.tail === '' ? broken.unread.place : broken.tail)}: ${what} (${where}): ${oneLine(broken.unread.reason)}; this part was not read. ${wayOut({ ...broken, unread: broken.unread })}`;
+    }
     const at = `issue [T1] ${oneLine(broken.scope)} ${oneLine(broken.tail)}#${oneLine(String(broken.seq))}: ${oneLine(broken.detail)}`;
     if (broken.retained === undefined) return at;
     // WHERE THE LINE IS and that it was not served: the entry's own text never rides here.
     return `${at} (${oneLine(broken.retained.segment)} line ${oneLine(String(broken.retained.line))}); this entry was not served`;
   });
+}
+
+/** The words for a scope, as the Fact B line names the tree. */
+const THE_TREE: Readonly<Record<Scope, string>> = {
+  public: 'the project’s public record',
+  private: 'the project’s private record on this machine',
+  global: 'this machine’s global record',
+};
+
+/**
+ * One issue line for a run withheld because no signature proves it (Fact A), in the shape `verify`
+ * gives an issue and with the words of the line that failed where one did.
+ */
+function withheldLine(broken: ScopedLinkBreak, run: WithheldRun): string {
+  const head = (seq: number): string =>
+    `issue [T2/T4] ${oneLine(broken.scope)} ${oneLine(broken.tail)}#${seq}:`;
+  const range = `seq ${run.fromSeq} to ${run.toSeq}`;
+  const line = run.line === undefined ? '' : `checkpoints.jsonl line ${run.line}`;
+  switch (run.why) {
+    case 'checkpoint':
+      return `${head(run.fromSeq)} ${oneLine(run.detail ?? 'checkpoint failed')} (${line}, ${range}); these entries were not served`;
+    case 'with-a-break':
+      return `${head(run.fromSeq)} the checkpoint over ${range} (${line}) does not verify across the break this tail holds (${oneLine(run.detail ?? 'checkpoint failed')}), so ${range} were not served`;
+    case 'missing-signed':
+      return `${head(run.missing ?? run.fromSeq)} the checkpoint over ${range} (${line}) proves an event stood at seq ${run.missing ?? run.fromSeq}, and it is not in the tail; ${range} were not served`;
+    case 'checkpoints-removed':
+      return `${head(run.fromSeq)} the checkpoints this machine signed up to seq ${run.toSeq} are no longer in checkpoints.jsonl (the signed note in locks/ names checkpoint ${oneLine((run.noteCheckpoint ?? '').slice(0, 12))}...); ${range} were not served`;
+    case 'unproven-beyond-one-write':
+      return `${head(run.fromSeq)} ${eventsWord(run.toSeq - run.fromSeq + 1)} (${range}) ${run.toSeq === run.fromSeq ? 'is' : 'are'} covered by no signature, more than one write leaves or not at the tail’s end; these entries were not served`;
+    case 'no-checkpoint':
+      return `${head(0)} this tail holds ${eventsWord(run.toSeq - run.fromSeq + 1)} and no checkpoint that verifies; these entries were not served`;
+  }
+}
+
+function eventsWord(count: number): string {
+  return `${count} ${count === 1 ? 'event' : 'events'}`;
+}
+
+/** The line for a run served and not signed by a checkpoint (Fact B), last in the block. */
+function unsignedLine(
+  broken: ScopedLinkBreak,
+  run: NonNullable<ScopedLinkBreak['unsigned']>,
+): string {
+  const one = run.count === 1;
+  const where = `${eventsWord(run.count)} of ${THE_TREE[broken.scope]} (tail ${oneLine(broken.tail)}, seq ${run.fromSeq} to ${run.toSeq})`;
+  if (run.byNote) {
+    return `${where} ${one ? 'is' : 'are'} signed by this machine’s note of what it wrote and by no checkpoint: ${one ? 'it is' : 'they are'} served and ${one ? 'governs' : 'govern'} here, and this machine’s next write signs ${one ? 'it' : 'them'}.`;
+  }
+  const until = `${one ? 'it is' : 'they are'} served and listed as such, and ${one ? 'it does' : 'they do'} not govern until a checkpoint signed by the tail’s key covers ${one ? 'it' : 'them'}`;
+  return `${where} ${one ? 'is' : 'are'} recorded and not yet signed: ${until}. While ${one ? 'it stands' : 'they stand'}, ${REREAD} ${endingIt(broken)}`;
+}
+
+/**
+ * The cost of a window nobody signs: while it stands the tail is not folded clean, so a catch-up
+ * cannot take only the new lines and every session reads the whole record again. A forged window
+ * nobody signs makes that permanent, so it is said where the window is.
+ */
+const REREAD = 'every session reads the whole record again instead of its new lines:';
+
+/** How the window ends: its owner's write signs it, or, in the tree git keeps, the tail is put back. */
+function endingIt(broken: ScopedLinkBreak): string {
+  const owner = 'the tail’s owner writes once';
+  if (broken.scope !== 'public') return `${owner} to end it.`;
+  return `${owner} and commits to end it, or \`mnema tail repair ${oneLine(broken.tail)}\` puts the tail back from the repository’s history.`;
 }
 
 /**
@@ -164,7 +324,17 @@ function issueLines(breaks: readonly ScopedLinkBreak[]): readonly string[] {
 function closing(breaks: readonly ScopedLinkBreak[], next: string): string {
   const parts = [
     ...(breaks.some((broken) => broken.retained !== undefined) ? [LEFT_OUT] : []),
-    ...(breaks.some((broken) => broken.retained === undefined) ? [STILL_ON_THE_TAIL] : []),
+    ...(breaks.some((broken) => broken.checkpoint !== undefined) ? [NOT_SIGNED_OUT] : []),
+    ...(breaks.some((broken) => broken.unread !== undefined) ? [LEFT_UNREAD] : []),
+    ...(breaks.some(
+      (broken) =>
+        broken.retained === undefined &&
+        broken.unread === undefined &&
+        broken.checkpoint === undefined &&
+        broken.unsigned === undefined,
+    )
+      ? [STILL_ON_THE_TAIL]
+      : []),
   ];
   return `${parts.join(' ')} ${next}`;
 }
@@ -180,7 +350,14 @@ function closing(breaks: readonly ScopedLinkBreak[], next: string): string {
  */
 export function linkBreakSentences(breaks: readonly ScopedLinkBreak[]): readonly string[] {
   if (breaks.length === 0) return [];
+  // Events served and not yet signed are no broken proof: said alone, with no closing.
+  if (breaks.every(isUnsigned)) return issueLines(breaks);
   return [...issueLines(breaks), closing(breaks, ASK_VERIFY)];
+}
+
+/** Whether a fact is only a run served and not signed by a checkpoint (Fact B). */
+function isUnsigned(broken: ScopedLinkBreak): boolean {
+  return broken.unsigned !== undefined;
 }
 
 /**
@@ -218,6 +395,8 @@ const LANDED_ON = 'The record this landed on does not chain, so its proof is bro
 /** The block itself, once the caller's door has said how it opens. */
 function block(opening: string, breaks: readonly ScopedLinkBreak[]): readonly string[] {
   if (breaks.length === 0) return [];
+  // Events served and not yet signed are no broken proof: they open no block of their own.
+  if (breaks.every(isUnsigned)) return [issueLines(breaks).join('\n')];
   return [[opening, ...issueLines(breaks), closing(breaks, TELL_SOMEBODY)].join('\n')];
 }
 
@@ -293,6 +472,11 @@ export const SERVES_NO_RECORD_CONTENT: { readonly [path: string]: string } = {
     '`agent-accepts` switch stands, to turn an agent’s accept away, and it serves nothing of ' +
     'the record to anybody: a notice about the chain would be said to a caller who asked to ' +
     'change it, and the reads that follow (`show`, `brief`) carry it',
+  'commands/skill-transition.ts':
+    'a move of a pattern is a write, answered by the move; the one thing it reads first is where ' +
+    'the `agent-accepts` switch stands, to turn an agent’s adopt or deprecate away, and it serves ' +
+    'nothing of the record to anybody: a notice about the chain would be said to a caller who ' +
+    'asked to change it, and the reads that follow (`show`, `brief`) carry it',
   'moved-record.ts':
     'it reads the one label a move echoes (the ADR number of a decision, the name of a skill) ' +
     'and whether a supersede’s successor is still proposed, after a write the caller asked for; ' +

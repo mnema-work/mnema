@@ -34,6 +34,7 @@ import { PROJECT_DIR, resolveTrees } from '@mnema/core';
 import { fixMergeDriver, type MergeDriverFixed } from '../commands/doctor-merge-driver.js';
 import { type InitContext, readInit, runInit } from '../commands/init.js';
 import { driverCommand } from '../commands/record-pull.js';
+import { readMachineState, writeMachineState } from '../machine-state.js';
 import { fact } from '../presentation/detail.js';
 import { VERSION } from '../version.js';
 import { here } from '../wiring/context.js';
@@ -56,7 +57,7 @@ import { HOST_ROWS, ownFilesOf, readHostsFlag, yoursOf } from './hosts.js';
 import { theWidthOf } from './layout.js';
 import { type Answers, type Machine, planOf } from './plan.js';
 import { planPage } from './screens.js';
-import { foundingPage, summaryPage } from './summary.js';
+import { foundingPage, starPage, summaryPage } from './summary.js';
 
 /** A path as a person is told it: the home directory as `~`. */
 export function shownFrom(home: string): (path: string) => string {
@@ -97,6 +98,28 @@ function pullFlag(opts: InitOptions): 'yes' | 'no' | undefined {
 /** The answer as the field of the answers it is, or nothing. */
 function pullAnswer(answer: 'yes' | 'no' | undefined): { readonly pull?: 'yes' | 'no' } {
   return answer === undefined ? {} : { pull: answer };
+}
+
+/**
+ * The suggestion of a star, once per machine: shown at the end of a founding at a terminal, and the machine
+ * remembers it was (`machine-state.ts`), so a second project on it, or a second run, is not asked again. A
+ * machine whose state cannot be read is taken as already told.
+ */
+function suggestAStarOnce(
+  out: Pick<Wiring, 'io' | 'render'>,
+  width: number,
+  cwd: string,
+  env: InitContext['env'],
+): void {
+  const dir = resolveTrees(cwd, env).global;
+  const state = readMachineState(dir);
+  if (state.starShown) return;
+  printed(out, starPage(width));
+  try {
+    writeMachineState(dir, { ...state, starShown: true });
+  } catch {
+    // A machine that cannot keep it says it again next time; the founding is done and is not undone by this.
+  }
 }
 
 /** Runs `mnema init`. */
@@ -274,6 +297,7 @@ export async function runTheFounding(wiring: Wiring, opts: InitOptions): Promise
     const width = theWidthOf(render);
     printed({ io, render }, foundingPage(founded, width));
     printed({ io, render }, summaryPage(founded, width));
+    suggestAStarOnce({ io, render }, width, ctx.cwd, ctx.env);
   }
   if (refusal !== undefined) {
     reportRefusal(wiring, {

@@ -36,12 +36,15 @@ const WHAT_IT_MATCHES: { readonly [K in SecretClass]: string } = {
   'aws-access-key':
     'An AWS access key id: `AKIA`, `ASIA`, `ABIA` or `ACCA`, then 16 or more capitals and digits.',
   'github-token':
-    'A GitHub token: `ghp_`, `gho_`, `ghu_`, `ghs_` or `ghr_`, then 36 or more letters and digits.',
+    'A GitHub token: `ghp_`, `gho_`, `ghu_`, `ghs_` or `ghr_`, then 36 or more letters and digits; or a fine-grained one, `github_pat_`, then two runs of letters and digits joined by `_`.',
+  'gitlab-token':
+    'A GitLab token: `glpat-`, `gloas-`, `gldt-`, `glrt-`, `glrtr-`, `glcbt-`, `glptt-`, `glft-`, `glimt-`, `glagent-`, `glwt-`, `glsoat-` or `glffct-`, then 20 or more letters, digits, `_` or `-`.',
+  'huggingface-token': 'A Hugging Face token: `hf_`, then 30 or more letters and digits.',
   'anthropic-key': 'An Anthropic key: `sk-ant-`, then 20 or more letters, digits, `_` or `-`.',
   'openai-key':
     'An OpenAI-style key: `sk-` or `sk-proj-`, then 20 or more letters, digits, `_` or `-`; a value whose every piece is a lowercase word is read as a name and left alone.',
   'stripe-key':
-    'A Stripe key: `sk_live_`, `sk_test_`, `rk_live_` or `rk_test_`, then 20 or more letters and digits.',
+    'A Stripe key: `sk_live_`, `sk_test_`, `rk_live_` or `rk_test_`, then 20 or more letters and digits; or a webhook signing secret, `whsec_`, then 24 or more.',
   'slack-token':
     'A Slack token: `xoxb-`, `xoxa-`, `xoxp-`, `xoxr-` or `xoxs-`, then 10 or more letters, digits or `-`.',
   'google-api-key': 'A Google API key: `AIza`, then 30 or more letters, digits, `_` or `-`.',
@@ -51,6 +54,10 @@ const WHAT_IT_MATCHES: { readonly [K in SecretClass]: string } = {
     'A private key in PEM form (`-----BEGIN ... PRIVATE KEY-----`) or mnema’s own protected key file, the whole block when it is closed, only its header when it is not.',
   'url-password':
     'The password of `scheme://user:password@host`; the scheme, the user and the host stay.',
+  'authorization-header':
+    'The value of an `Authorization` or `Proxy-Authorization` header, after its scheme (`Bearer`, `Basic`, ...) or alone on its line or in its quotes; the header and the scheme stay.',
+  'named-credential':
+    'The value written after a name that ends as a credential’s (`password`, `passwd`, `passphrase`, `pass`, `pwd`, `secret`, `token`, `api_key`, `access_key`, `private_key`, `secret_key`, `auth`, in any case and spelling): quoted after `:` or `=`, right after `=`, alone on its line, after a flag (`--password ...`), or as `curl -u user:...`, `docker login -p ...` and `mysql -p...` take it; and after a colon in a sentence, the first word when it reads as drawn at random (`token: abc123XYZ987 for staging`). The whole value goes, to its closing quote or to the blank after it, and on a line of its own after a name in capitals to the end of the line; a comma or a semicolon after it ends it. The name stays. A variable, a placeholder, a mask, a type, a path, an address with no credential in it, a line of code and a count are left as written, and so is a cursor (`next_token`) or a form token (`csrf_token`).',
 };
 
 /** The table the page carries between its markers. */

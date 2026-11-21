@@ -57,11 +57,23 @@
  * is born or sealed ({@link AnotherRecordError}).
  */
 
-import { existsSync, mkdirSync, statSync, truncateSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+import {
+  closeSync,
+  existsSync,
+  fstatSync,
+  fsyncSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  readSync,
+  statSync,
+  truncateSync,
+} from 'node:fs';
+import { basename, dirname } from 'node:path';
 
 import type { CatalogEvent } from '../events/catalog.js';
 import { EventParseError, unreadableReason } from '../events/parse.js';
+import { isJsonText } from '../events/stored-json.js';
 import type { UpcasterRegistry } from '../events/upcaster.js';
 import {
   type Checkpoint,
@@ -72,7 +84,8 @@ import {
 } from './checkpoint.js';
 import { type Cited, HeadsToCite } from './cited-heads.js';
 import { CodedError } from './coded-error.js';
-import { appendDurably } from './durable.js';
+import { recordedNotSigned, signatureNotConfirmed, WriteNotLandedError } from './disk-words.js';
+import { appendDurably, writeFileDurably } from './durable.js';
 import {
   type ChainEntry,
   type Entry,
@@ -86,6 +99,8 @@ import {
   type KeptHead,
   keepHead,
   keepWrittenHead,
+  keepWrittenHeadDurably,
+  keptHeadPath,
   readKeptHead,
   readWrittenHead,
   type WrittenHead,
@@ -95,15 +110,31 @@ import { materializePublicKey, signerOf, writeAnchor } from './keystore.js';
 import {
   type ChainLayout,
   checkpointsPath,
+  installationIdPath,
   segmentPath,
   tailDir,
   tailLockPath,
   tailProofPath,
 } from './layout.js';
 import { linesFromEnd, parseStoredLine } from './lines.js';
+import {
+  refuseToLockThroughALink,
+  refuseToWriteThrough,
+  refuseToWriteThroughALink,
+} from './linked-write.js';
+import {
+  firstTailOfTheRepository,
+  type HintOfTheId,
+  inflightNames,
+  markInflight,
+  type PoolOptions,
+  scanThePool,
+  wroteOnThisBranch,
+} from './pool.js';
 import { recordToWriteUnder, type WriteUnder } from './record-name.js';
+import { clearOrphanedStaging } from './staging.js';
 import { lastTailCheckpoint, orderedSegments, readTailTip } from './store.js';
-import { withTailLock } from './tail-lock.js';
+import { TailBusyError, withTailLock } from './tail-lock.js';
 import { firstEntries, type NamesRelinked, namesRelinkedAt } from './tail-names.js';
 import { serializeTailProof, signTailProof } from './tailproof.js';
 import { unprovenWaiverReason } from './waiver.js';
@@ -153,6 +184,13 @@ export interface WriterOptions {
    */
   readonly onNewTail?: (opened: NewTail) => void;
   /**
+   * Told, in a sentence, when a fact is on the tail and the disk failed what came after it (its
+   * signature, or the sync of its line): the write succeeded and says so instead of failing
+   * ({@link recordedNotSigned}). A write the disk refused before any of it landed is not told here:
+   * it throws {@link WriteNotLandedError}. Unset, the sentence is lost.
+   */
+  readonly onUnsigned?: (sentence: string) => void;
+  /**
    * The record this directory continues, asked only where none of its tails names one yet
    * (`recordToWriteUnder`, step 3): a project's private tree founded in the repository's git
    * directory while the tree from before it moved there still names a record, so the two join
@@ -160,6 +198,20 @@ export interface WriterOptions {
    * names it.
    */
   readonly continues?: () => string | undefined;
+  /**
+   * Where the locks and the notes of what this machine wrote last (`locks/<tail>.lock`, `.head`,
+   * `.head.sig`, `.cited`) are kept, when they are not in the record's own `locks/`: the place
+   * every worktree of a repository shares (FORMAT.md section 4). Present, the notes are read by
+   * more than the checkout that wrote them, so the note of an append's intent is kept to the disk
+   * and checked before the line ({@link keepWrittenHeadDurably}). Absent, the chain root holds them.
+   */
+  readonly sharedRoot?: string;
+  /**
+   * The tails this writer may go on with, in a repository whose worktrees share the notes
+   * ({@link sharedRoot}), when the one its hint names does not go on here: see `pool.ts`. Absent,
+   * the writer founds a tail at once, as it always did where nothing is shared.
+   */
+  readonly pool?: PoolOptions & { readonly hint?: HintOfTheId };
   /**
    * The record this writer's tail is to name, decided by its caller: the record a relink joins
    * (FORMAT.md section 6.11), which is written from a tail of the relinked tail's key that names
@@ -201,21 +253,69 @@ export interface NewTail {
   readonly left?:
     | { readonly relinked: string }
     | { readonly names: string; readonly joins: string }
-    | { readonly unvouched: number };
+    | { readonly unvouched: number }
+    | { readonly offBase: true; readonly unanswered?: true };
+  /**
+   * Why this write founded a tail where the record already holds others of this key, in a
+   * repository whose worktrees share the notes: no tail of the key has a note of this machine
+   * writing it (`no-note`), none ends here where this machine left it, or is on the base branch
+   * (`none-ends-here`), the ones that do are the hint of another worktree (`reserved`), or were being
+   * written by another process (`busy`). With `from` equal to `to` the write founded the tail its hint
+   * named; otherwise it left `from` for the reason above and this adds why no other tail was taken.
+   * `known` is how many tails of the key the record held.
+   */
+  readonly founded?: { readonly why: Founded; readonly known: number };
 }
+
+/** Why no other tail of the key went on: see {@link NewTail.founded}. */
+export type Founded = 'no-note' | 'none-ends-here' | 'reserved' | 'busy' | 'base-unanswered';
+
+const FOUNDED_AFTER_THE_MOVE: Record<Founded, string> = {
+  'no-note':
+    ', and this repository holds no note of this machine writing any other tail of this key',
+  'none-ends-here':
+    ', and no other tail of this key can go on from here (each ends elsewhere than where this machine left it, or is not on the base branch and was not written by this worktree on this branch)',
+  reserved:
+    ', and the tails of this key that end here where this machine left them are the ones other worktrees write',
+  busy: ', and the tails of this key that could go on here were being written by another process',
+  'base-unanswered':
+    ', and the base branch did not answer in time about the tails of this key that could go on here',
+};
+
+const FOUNDED_HERE: Record<Founded, (known: number) => string> = {
+  'no-note': (known) =>
+    `this key already writes ${known} tail(s) in this record, and this repository holds no note of this machine writing any of them (a new clone, or this key on another machine), so appending to one could fork it`,
+  'none-ends-here': (known) =>
+    `none of the ${known} tail(s) this key already writes in this record can go on from here (each ends elsewhere than where this machine left it, or is not on the base branch and was not written by this worktree on this branch), so appending to one could fork it or make a merge conflict`,
+  reserved: () =>
+    'the tails of this key that end here where this machine left them are the ones other worktrees write, so this one writes its own',
+  busy: () =>
+    'the tails of this key that could go on here were being written by another process, so this one writes its own',
+  'base-unanswered': () =>
+    'the base branch did not answer in time about the tails of this key that could go on here, so this one writes its own',
+};
 
 /** The sentence a {@link NewTail} is told in: one wording for every surface that tells it. */
 export function describeNewTail(opened: NewTail): string {
+  const founded = opened.founded;
+  if (founded !== undefined && opened.from === opened.to) {
+    return `mnema: wrote to a new tail, ${opened.to}: ${FOUNDED_HERE[founded.why](founded.known)}.`;
+  }
   const left = opened.left;
   if (left !== undefined) {
     const why =
-      'unvouched' in left
-        ? `${left.unvouched} event(s) above its last checkpoint are not ones this installation's signed note says it wrote, so this key does not sign them; they stay unsigned, and \`mnema verify --require=signed\` fails on them`
-        : 'relinked' in left
-          ? `its owner relinked it into record ${left.relinked.slice(0, 12)}..., which freezes it at the entry the relink names, and appending there would undo the relink`
-          : `it names record ${left.names.slice(0, 12)}..., and this write joins record ${left.joins.slice(0, 12)}...: a tail names one record, so the write is made from a tail of this key born in the record it joins`;
+      'offBase' in left
+        ? left.unanswered === true
+          ? 'the base branch did not answer in time about whether its end is on it, and it was not written by this worktree on this branch, so appending there could make a merge conflict where branches meet'
+          : 'its end is not on the base branch and it was not written by this worktree on this branch, so appending there could make a merge conflict where branches meet'
+        : 'unvouched' in left
+          ? `${left.unvouched} event(s) above its last checkpoint are not ones this installation's signed note says it wrote, so this key does not sign them; they stay unsigned, and \`mnema verify --require=signed\` fails on them`
+          : 'relinked' in left
+            ? `its owner relinked it into record ${left.relinked.slice(0, 12)}..., which freezes it at the entry the relink names, and appending there would undo the relink`
+            : `it names record ${left.names.slice(0, 12)}..., and this write joins record ${left.joins.slice(0, 12)}...: a tail names one record, so the write is made from a tail of this key born in the record it joins`;
     return `mnema: wrote to a new tail, ${opened.to}, and left tail ${opened.from} as it is: ${why}.`;
   }
+  const beside = founded === undefined ? '' : FOUNDED_AFTER_THE_MOVE[founded.why];
   const held = (opened.found?.seq ?? -1) + 1;
   const why =
     opened.kept === undefined
@@ -229,7 +329,7 @@ export function describeNewTail(opened: NewTail): string {
           : `it ends at seq ${opened.found.seq}, not at the entry this installation wrote last ` +
             `(seq ${opened.kept.seq})`;
   return (
-    `mnema: wrote to a new tail, ${opened.to}, and left tail ${opened.from} as it is: ${why}. ` +
+    `mnema: wrote to a new tail, ${opened.to}, and left tail ${opened.from} as it is: ${why}${beside}. ` +
     'A branch switch, a merge, a restored backup or a copied checkout does that, and appending ' +
     'there would fork the tail.'
   );
@@ -271,7 +371,46 @@ interface TailMark {
   readonly nextSegment: boolean;
   /** Size of `checkpoints.jsonl`, or -1 if absent. */
   readonly checkpointBytes: number;
+  /** Size of the tail's first segment, or -1 if absent: losing the start is a move. */
+  readonly firstBytes: number;
+  /**
+   * The clear note of this tail in the shared place, or null: where other worktrees write the same
+   * tail, one that went on with it after this writer's last hold leaves the files of THIS checkout
+   * as they were (it wrote them in its own, and this one merged them in later), and only the note says so.
+   */
+  readonly note: string | null;
 }
+
+/** What a hold decided: the act's result, or the tail to go to instead. */
+type Held<T> = { readonly result: T } | Elsewhere;
+type Elsewhere =
+  | { readonly movedOn: NewTail; readonly next: string }
+  | { readonly pooled: string }
+  | { readonly hinted: string }
+  | { readonly back: true };
+
+/** What one write learnt while it looked for a tail to go on with: see {@link ChainWriter.decideTheTail}. */
+interface PoolRound {
+  /** The tails of the pool this write found unfit, or busy. */
+  readonly tried: Set<string>;
+  /** The tails the pool offered and this write has not tried yet; undefined until it looked. */
+  queue?: string[];
+  /** What the look found, for the sentence of a founding. */
+  known?: number;
+  noted?: number;
+  reserved: boolean;
+  unanswered?: boolean;
+  busy: boolean;
+}
+
+/** A mark no real tail can produce, so the first act on a tail always recovers. */
+const NO_MARK: TailMark = {
+  segmentBytes: -2,
+  nextSegment: false,
+  checkpointBytes: -2,
+  firstBytes: -2,
+  note: '-',
+};
 
 export class ChainWriter {
   private head: string | null = null;
@@ -316,7 +455,7 @@ export class ChainWriter {
    * It starts as a value no real tail can produce, so the first act always recovers
    * rather than trusting a default that happens to match an empty tail.
    */
-  private mark: TailMark = { segmentBytes: -2, nextSegment: false, checkpointBytes: -2 };
+  private mark: TailMark = NO_MARK;
 
   /**
    * Whether this writer has already made sure its tail is born: see {@link ensureBorn}.
@@ -337,8 +476,24 @@ export class ChainWriter {
   private heads: HeadsToCite | undefined;
 
   private tailId: string;
+  /** Where this writer's locks and notes are: {@link WriterOptions.sharedRoot}, or the chain's own root. */
+  private readonly shared: ChainLayout;
+  /** Whether the notes are shared by other checkouts, which is what makes the intent note durable. */
+  private readonly sharedNotes: boolean;
+  /** {@link WriterOptions.pool}, once there is a hint to move: absent where nothing is shared. */
+  private readonly pool: (PoolOptions & { readonly hint?: HintOfTheId }) | undefined;
+  /** The installation id of the hint this writer started from or moved it to: not always the tail it writes. */
+  private hintId: string;
+  /** Whether the tail this writer is at was offered by the pool and is not yet the hint: see {@link decideTheTail}. */
+  private fromPool = false;
   private readonly citeHeads: boolean;
   private readonly onNewTail: ((opened: NewTail) => void) | undefined;
+  private readonly onUnsigned: ((sentence: string) => void) | undefined;
+  /**
+   * Set when a line landed and the disk failed its sync: that fact is told as not yet signed, so
+   * nothing signs it until the next append of this writer, whose checkpoint covers it.
+   */
+  private holdSigning = false;
   /** {@link WriterOptions.continues}. */
   private readonly continues: (() => string | undefined) | undefined;
   /** {@link WriterOptions.joins}. */
@@ -388,11 +543,18 @@ export class ChainWriter {
     this.maxSegmentBytes = options.maxSegmentBytes ?? DEFAULT_MAX_SEGMENT_BYTES;
     this.maxUnsignedEvents = options.maxUnsignedEvents ?? DEFAULT_MAX_UNSIGNED_EVENTS;
     this.tailId = `${keyPair.fingerprint}-${installationId}`;
+    this.hintId = installationId;
+    this.pool = options.pool;
+    this.sharedNotes = options.sharedRoot !== undefined;
+    this.shared = options.sharedRoot === undefined ? layout : { root: options.sharedRoot };
     this.citeHeads = options.citeHeads === true;
     this.onNewTail = options.onNewTail;
+    this.onUnsigned = options.onUnsigned;
     this.continues = options.continues;
     this.joins = options.joins;
-    this.heads = this.citeHeads ? new HeadsToCite(layout, this.tailId, upcasters) : undefined;
+    this.heads = this.citeHeads
+      ? new HeadsToCite(layout, this.tailId, upcasters, this.shared)
+      : undefined;
     // NOTHING IS WRITTEN HERE. Both the recovery and the birth happen in the first act,
     // under the tail's lock.
     //
@@ -442,6 +604,7 @@ export class ChainWriter {
     this.keepBeforeBirth?.();
     materializePublicKey(this.layout, this.keyPair);
     mkdirSync(tailDir(this.layout, this.tailId), { recursive: true });
+    clearOrphanedStaging(this.shared, this.tailId);
     this.ensureTailProof();
     this.born = true;
   }
@@ -491,53 +654,205 @@ export class ChainWriter {
     // has a name for.
     //
     // A TAIL THAT NO LONGER ENDS WHERE THIS INSTALLATION LEFT IT is not written to: the resync
-    // finds it ({@link recover}), the act does not run, and the next installation id is chosen
-    // while this tail's lock is still held, so a second process of this installation that
-    // meets the same end after it adopts the id it chose instead of choosing another. The act
-    // then runs under the new tail's lock. Two rounds at most: a new id names a tail nobody
-    // has written, and one another process chose ends where that process left it.
+    // finds it ({@link recover}), the act does not run, and the tail to go on with is decided while
+    // this tail's lock is still held ({@link decideTheTail}): the hint another process of this
+    // worktree moved, else a tail of this key that ends here where this machine left it (the pool),
+    // else a new installation id, which is chosen here so a second process of this installation that
+    // meets the same end after it adopts the id it chose instead of choosing another. The act then
+    // runs under that tail's lock. A tail the pool offered is taken without waiting: one being
+    // written is left to its writer, and the decision is made again without it.
+    const round: PoolRound = { tried: new Set(), reserved: false, busy: false };
     for (;;) {
-      const held = withTailLock(tailLockPath(this.layout, this.tailId), () => {
-        this.holding = true;
-        try {
-          this.resyncIfMoved();
-          const movedOn = this.movedOn;
-          if (movedOn !== undefined) {
-            return { movedOn, next: this.chooseNextInstallation() };
-          }
-          const result = act();
-          this.mark = this.readMark();
-          return { result };
-        } finally {
-          this.keepHeadIfWritten();
-          this.holding = false;
-        }
-      });
+      // Before the lock, which is itself a write: taking it makes `locks/` and the lock file. A window
+      // stays between this question and the lock's creation: where `locks/` becomes a link in it, the
+      // lock file is created at the link's target, and the question under the lock refuses right after.
+      refuseToLockThroughALink(this.shared, this.tailId);
+      let held: Held<T>;
+      try {
+        held = withTailLock(
+          tailLockPath(this.shared, this.tailId),
+          () => this.heldAct(act, round),
+          this.fromPool ? { waitMs: 0 } : {},
+        );
+      } catch (error) {
+        if (!(this.fromPool && error instanceof TailBusyError)) throw error;
+        round.tried.add(this.tailId);
+        round.busy = true;
+        this.pointAt(this.hintId);
+        continue;
+      }
       if ('result' in held) return held.result;
-      this.moveTo(held.movedOn, held.next);
+      if ('pooled' in held) {
+        this.pointAt(held.pooled);
+        this.fromPool = true;
+      } else if ('hinted' in held) {
+        // The hint another process of this worktree moved while this tail had nothing in it.
+        this.hintId = held.hinted.slice(this.keyPair.fingerprint.length + 1);
+        this.pointAt(held.hinted);
+      } else if ('back' in held) {
+        // A tail the pool offered turned out not to go on here: the decision is made again from the hint.
+        this.pointAt(`${this.keyPair.fingerprint}-${this.hintId}`);
+      } else {
+        this.moveTo(held.movedOn, held.next, this.whyFounded(round, (round.known ?? 1) - 1));
+      }
     }
+  }
+
+  /** What the lock of the tail runs: the resync, the decision of which tail, and the act. */
+  private heldAct<T>(act: () => T, round: PoolRound): Held<T> {
+    this.holding = true;
+    // Nothing is kept on the way out of a refusal to write through a link: the notes are paths it names.
+    let mayWrite = false;
+    let returned = false;
+    try {
+      // Under the lock and before the resync, which can cut the segment, and before anything is sealed.
+      refuseToWriteThroughALink(this.layout, this.shared, this.tailId, this.keyPair.fingerprint);
+      if (this.pool !== undefined) {
+        refuseToWriteThrough({ root: this.pool.checkoutRoot }, [
+          'inflight',
+          `inflight/${this.tailId}`,
+          `inflight/${this.tailId}.${process.pid}`,
+        ]);
+      }
+      mayWrite = true;
+      this.resyncIfMoved();
+      const decided = this.decideTheTail(round);
+      if (decided !== undefined) return decided;
+      if (this.fromPool) this.takeTheHint();
+      const result = act();
+      returned = true;
+      return { result };
+    } finally {
+      if (mayWrite) this.keepHeadIfWritten();
+      // After the notes, which the mark reads: a mark taken before them would be stale on the next act.
+      if (returned) this.mark = this.readMark();
+      this.holding = false;
+    }
+  }
+
+  /**
+   * Where this act goes, decided under the lock of the tail it found: nowhere else when the tail goes
+   * on here (undefined), or the tail to move to. A tail that does not end where this machine left it is
+   * left, and so is a hint that names a tail with nothing in it where the pool holds one to go on with
+   * (a worktree that has written nothing yet): the hint another process moved, the pool, a new id.
+   */
+  private decideTheTail(round: PoolRound): Elsewhere | undefined {
+    const movedOn = this.movedOn;
+    if (this.fromPool && (movedOn !== undefined || this.damage !== undefined)) {
+      round.tried.add(this.tailId);
+      return { back: true };
+    }
+    const pool = this.pool;
+    const hint = pool?.hint;
+    const unwritten = !this.fromPool && this.head === null && this.damage === undefined;
+    if (movedOn === undefined && !(hint !== undefined && unwritten)) return undefined;
+    if (pool !== undefined && hint !== undefined) {
+      const there = hint.read();
+      if (there !== this.hintId) {
+        // Another process of this worktree moved the hint first: this write goes where it did.
+        return movedOn === undefined
+          ? { hinted: `${this.keyPair.fingerprint}-${there}` }
+          : { movedOn, next: there };
+      }
+      const picked = this.fromThePool(pool, round);
+      if (picked !== undefined) return { pooled: picked };
+    }
+    if (movedOn === undefined) {
+      this.sayFoundedHere(round);
+      return undefined;
+    }
+    return { movedOn, next: this.chooseNextInstallation() };
+  }
+
+  /** The first tail of the pool this write may go on with, or undefined where none can. */
+  private fromThePool(pool: PoolOptions, round: PoolRound): string | undefined {
+    const except = new Set([...round.tried, this.tailId]);
+    if (round.queue === undefined) {
+      const scan = scanThePool({
+        layout: this.layout,
+        shared: this.shared,
+        checkout: { root: pool.checkoutRoot },
+        fingerprint: this.keyPair.fingerprint,
+        except,
+        pool,
+        upcasters: this.upcasters,
+      });
+      round.queue = [...scan.queue];
+      round.known = scan.known;
+      round.noted = scan.noted;
+      round.reserved = scan.reserved;
+      round.unanswered = scan.unanswered;
+    }
+    for (;;) {
+      const next = round.queue.shift();
+      if (next === undefined) return undefined;
+      if (!except.has(next)) return next;
+    }
+  }
+
+  /** The reason a write found no tail to go on with, for the sentence of a new tail: none where the key has no other tail. */
+  private whyFounded(round: PoolRound, known: number): NewTail['founded'] {
+    if (this.pool === undefined || round.known === undefined || known < 1) return undefined;
+    const why: Founded = round.busy
+      ? 'busy'
+      : round.unanswered === true
+        ? 'base-unanswered'
+        : round.reserved
+          ? 'reserved'
+          : round.noted === 0
+            ? 'no-note'
+            : 'none-ends-here';
+    return { why, known };
+  }
+
+  /** Founding the tail the hint named, where the key already writes others: said once the tail is born. */
+  private sayFoundedHere(round: PoolRound): void {
+    // A move to a new tail already said why it left the old one.
+    if (this.unsaid !== undefined) return;
+    const founded = this.whyFounded(round, round.known ?? 0);
+    if (founded === undefined) return;
+    this.unsaid = {
+      from: this.tailId,
+      to: this.tailId,
+      kept: undefined,
+      found: undefined,
+      founded,
+    };
   }
 
   /** The installation id the next tail is written under: see {@link nextInstallationId}. */
   private chooseNextInstallation(): string {
-    const current = this.tailId.slice(this.keyPair.fingerprint.length + 1);
     if (this.nextInstallationId === undefined) {
       throw new Error(
         `chain: tail ${this.tailId} does not end where this installation left it, and this ` +
           'writer was given no way to choose another installation id',
       );
     }
-    return this.nextInstallationId(current);
+    return this.nextInstallationId(this.hintId);
   }
 
-  /** Points this writer at the tail of `installationId` and tells whoever asked to be told. */
-  private moveTo(movedOn: NewTail, installationId: string): void {
-    this.tailId = `${this.keyPair.fingerprint}-${installationId}`;
+  /** Points this writer at the tail `tailId`, which it has not read. */
+  private pointAt(tailId: string): void {
+    this.tailId = tailId;
+    this.fromPool = false;
     this.heads = this.citeHeads
-      ? new HeadsToCite(this.layout, this.tailId, this.upcasters)
+      ? new HeadsToCite(this.layout, this.tailId, this.upcasters, this.shared)
       : undefined;
     this.resetForTail();
-    this.unsaid = { ...movedOn, to: this.tailId };
+  }
+
+  /** Points this writer at the tail of `installationId`, which becomes its hint, and tells whoever asked to be told. */
+  private moveTo(movedOn: NewTail, installationId: string, founded: NewTail['founded']): void {
+    this.hintId = installationId;
+    this.pointAt(`${this.keyPair.fingerprint}-${installationId}`);
+    this.unsaid = { ...movedOn, to: this.tailId, ...(founded === undefined ? {} : { founded }) };
+  }
+
+  /** A tail the pool offered went on here: it is this worktree's hint from now on, and nothing is said of it. */
+  private takeTheHint(): void {
+    this.hintId = this.tailId.slice(this.keyPair.fingerprint.length + 1);
+    this.pool?.hint?.adopt(this.hintId);
+    this.fromPool = false;
   }
 
   /**
@@ -569,7 +884,7 @@ export class ChainWriter {
     this.record = undefined;
     this.namesRead = undefined;
     this.born = false;
-    this.mark = { segmentBytes: -2, nextSegment: false, checkpointBytes: -2 };
+    this.mark = NO_MARK;
   }
 
   /**
@@ -588,7 +903,18 @@ export class ChainWriter {
       checkpoint: this.lastCheckpointHash,
       next: { seq: last.link.seq, hash: last.link.hash },
     };
-    keepWrittenHead(this.layout, this.tailId, note, this.keyPair);
+    // The mark that this worktree began the act, before the note that names it: where other worktrees
+    // read the note, only the one whose mark names the entry may finish an act that died ({@link recover}).
+    if (this.pool !== undefined && note.next !== null) {
+      markInflight({ root: this.pool.checkoutRoot }, this.tailId, note.next, this.pool.branch());
+    }
+    // Where other checkouts read the note, it is certain before the line it names or the act is refused.
+    (this.sharedNotes ? keepWrittenHeadDurably : keepWrittenHead)(
+      this.shared,
+      this.tailId,
+      note,
+      this.keyPair,
+    );
     this.keptNote = noteSaying(note);
   }
 
@@ -611,11 +937,11 @@ export class ChainWriter {
     };
     const saying = noteSaying(note);
     if (saying !== this.keptNote) {
-      keepWrittenHead(this.layout, this.tailId, note, this.keyPair);
+      keepWrittenHead(this.shared, this.tailId, note, this.keyPair);
       this.keptNote = saying;
     }
     if (this.head === this.keptHash) return;
-    keepHead(this.layout, this.tailId, { seq: note.seq, hash: this.head });
+    keepHead(this.shared, this.tailId, { seq: note.seq, hash: this.head });
     this.keptHash = this.head;
   }
 
@@ -643,6 +969,25 @@ export class ChainWriter {
   }
 
   /**
+   * Refuses with {@link TailDamagedError} when the tail's end falls short of what its last
+   * checkpoint signed, or when its first segment does not begin at seq 0 (a start that is
+   * missing: `tail prune` removes a tail whole and never a segment, so a tail that begins
+   * higher lost its first file), and does nothing otherwise. It takes the hold and brings the writer up to
+   * what the disk holds first, so what it says is the files' state now. It is for a caller that
+   * has another refusal in hand and owes the person the real problem before it: the tail's
+   * damage comes first, because a refusal about the anchor sends someone to a file that is not
+   * the damage.
+   *
+   * @throws {TailDamagedError} the damage, exactly as an append would throw it.
+   * @throws {TailBusyError} if another process holds the tail past the wait budget.
+   */
+  refuseIfDamaged(): void {
+    this.underTailLock(() => {
+      this.refuseDamagedTail();
+    });
+  }
+
+  /**
    * Re-reads the tail's end if, and only if, its files are not where this writer left
    * them. The cheap question that keeps the expensive one rare: see {@link TailMark}.
    */
@@ -656,6 +1001,8 @@ export class ChainWriter {
       segmentBytes: sizeOf(segmentPath(this.layout, this.tailId, this.segment)),
       nextSegment: sizeOf(segmentPath(this.layout, this.tailId, this.segment + 1)) >= 0,
       checkpointBytes: sizeOf(checkpointsPath(this.layout, this.tailId)),
+      firstBytes: sizeOf(segmentPath(this.layout, this.tailId, 1)),
+      note: this.pool === undefined ? null : noteOf(this.shared, this.tailId),
     };
   }
 
@@ -663,13 +1010,15 @@ export class ChainWriter {
    * Writes this tail's proof of ownership once, at birth: the key signs a
    * statement naming its own tail id, so the verifier can tie the locally-chosen
    * installation-id suffix to the key that owns it. Idempotent (a reopened tail
-   * already has one) and never overwrites, so it costs nothing after birth.
+   * already has one) and never overwrites a proof that reads, whoever's it is (ADR-354). A proof
+   * that is empty or does not parse is what a power cut at birth leaves: no reader can use it and
+   * nothing else would ever replace it, so it is written again, to the disk, like the birth.
    */
   private ensureTailProof(): void {
     const path = tailProofPath(this.layout, this.tailId);
-    if (existsSync(path)) return;
+    if (existsSync(path) && !unreadableProof(path)) return;
     const proof = signTailProof(this.tailId, this.keyPair, this.recordName());
-    writeFileSync(path, `${serializeTailProof(proof)}\n`, 'utf-8');
+    writeFileDurably(path, `${serializeTailProof(proof)}\n`);
   }
 
   /**
@@ -749,7 +1098,9 @@ export class ChainWriter {
    *      deletes, leaving the next append chained to a hash no reader can find.
    *      One read of the END of the tail then answers the remaining questions:
    *      the last complete entry is the head, and the entries above the coverage
-   *      are the events the next checkpoint owes a signature.
+   *      are the events the next checkpoint owes a signature. The same read says whether
+   *      the tail BEGINS at seq 0 ({@link damageInTheFiles}): one that does not is refused
+   *      like a cut end, whatever the anchor says.
    *   3. THE CUT, ONLY ABOVE THE COVERAGE. THIS USED TO HEAL FIRST, before the
    *      checkpoint was read, and so cut whatever the end held: a signed line
    *      truncated by an edit, or one that had only lost its newline, went with
@@ -773,29 +1124,18 @@ export class ChainWriter {
     const lastCp = lastTailCheckpoint(this.layout, this.tailId);
     this.lastCheckpointedSeq = lastCp?.toSeq ?? -1;
     this.lastCheckpointHash = lastCp === undefined ? null : checkpointHash(lastCp);
-    const segments = orderedSegments(this.layout, this.tailId);
-    const lastSegment = segments.at(-1);
-    let fragment: TornFragment | undefined;
+    const end = readEndOfTheTail(this.layout, this.tailId, this.upcasters, lastCp);
+    const { lastSegment, fragment, walked, tip, lastComplete } = end;
     if (lastSegment !== undefined) {
       const match = /(\d+)\.jsonl$/.exec(lastSegment);
       this.segment = match ? Number.parseInt(match[1] as string, 10) : 1;
-      fragment = tornFragment(lastSegment, this.upcasters);
       this.segmentBytes = fragment?.start ?? Math.max(sizeOf(lastSegment), 0);
     }
-    // A fragment that parses is the walk's first entry and not a line the tail holds, so the
-    // walk goes one entry further down to still reach the coverage without it.
-    const walked = readTailTip(
-      this.layout,
-      this.tailId,
-      this.upcasters,
-      this.lastCheckpointedSeq - (fragment?.parses ? 1 : 0),
-    );
-    const tip = fragment?.parses ? walked.slice(0, -1) : walked;
-    const lastComplete = tip.at(-1)?.link.seq ?? -1;
-    if (lastCp !== undefined && lastComplete < lastCp.toSeq) {
+    const damaged = damageInTheFiles(this.layout, this.tailId, this.upcasters, lastCp, end);
+    if (damaged !== undefined) {
       // Nothing is cut, nothing is owed a signature, and both append doors refuse.
-      this.damage = new TailDamagedError(this.tailId, lastCp.toSeq, lastComplete);
-      this.nextSeq = lastCp.toSeq + 1;
+      this.damage = damaged;
+      this.nextSeq = damaged.signedThrough + 1;
       this.pending = [];
       return;
     }
@@ -810,13 +1150,13 @@ export class ChainWriter {
     // is left exactly as it is, fragment included, and the act goes to a new tail
     // ({@link NewTail}). A tail that holds nothing has nothing to fork.
     const last = tip.at(-1);
-    const kept = readKeptHead(this.layout, this.tailId);
+    const kept = readKeptHead(this.shared, this.tailId);
     const found = last === undefined ? undefined : { seq: last.link.seq, hash: last.link.hash };
     // THE SIGNED NOTE SAYS IT FIRST (ADR-314). It is kept before every append as well as after the
     // hold ({@link keepIntent}), so an end it names, or the entry its pending append was about to
     // write, is this installation's whatever the clear note says: a kill between the line and the
     // clear note left the clear note behind, and that end used to go to a new tail, unsigned.
-    const note = readWrittenHead(this.layout, this.tailId, this.keyPair.publicKey);
+    const note = readWrittenHead(this.shared, this.tailId, this.keyPair.publicKey);
     const endSeq = found?.seq ?? -1;
     const isEnd = (end: { seq: number; hash: string | null }): boolean =>
       end.seq === endSeq && end.hash === (found?.hash ?? null);
@@ -838,15 +1178,61 @@ export class ChainWriter {
       kept !== undefined &&
       kept.seq === (found?.seq ?? -1) + 1 &&
       (!fragment.parses || walked.at(-1)?.link.hash === kept.hash);
+    // AN ACT THAT DIED IN ANOTHER WORKTREE is not this one's to finish. Its note names the end it began
+    // from and the entry it was about to write, and the clear note still names the end it began from:
+    // a worktree whose tail ends there too would go on with it, while the one that died may hold the
+    // entry the note names, and the two would write one tail from the same end. Only the worktree whose
+    // mark names that entry goes on from the end (the end the entry makes is anyone's who holds it).
+    const foreignAct =
+      this.pool !== undefined &&
+      note?.next != null &&
+      !isEnd(note.next) &&
+      !inflightNames({ root: this.pool.checkoutRoot }, this.tailId, note.next);
     const endsWhereLeft =
-      ownBySignedNote ||
-      tornOwnWrite ||
-      (kept === undefined
-        ? found === undefined
-        : found !== undefined && found.seq === kept.seq && found.hash === kept.hash);
+      !foreignAct &&
+      (ownBySignedNote ||
+        tornOwnWrite ||
+        (kept === undefined
+          ? found === undefined
+          : found !== undefined && found.seq === kept.seq && found.hash === kept.hash));
     if (!endsWhereLeft) {
       this.movedOn = { from: this.tailId, to: this.tailId, kept, found };
       return;
+    }
+    // A TAIL THIS WORKTREE DID NOT WRITE ON THE BRANCH IT IS ON goes on only where its end is on the base
+    // branch (ADR-446): a branch cut from the one that wrote it would otherwise write the same tail file
+    // past the point they share, which a squash merge of the first and a merge of the second cannot
+    // settle. That includes a tail no mark speaks of (written before marks were kept): it is asked once,
+    // and the first write after it is marked, unless it is the first tail of the repository.
+    // A tail the pool offered was asked when it was offered.
+    if (
+      found !== undefined &&
+      this.pool !== undefined &&
+      !this.fromPool &&
+      lastSegment !== undefined
+    ) {
+      const here = { root: this.pool.checkoutRoot };
+      // The one tail `mnema init` wrote before the repository existed is the exception: see
+      // {@link firstTailOfTheRepository}.
+      if (
+        !wroteOnThisBranch(here, this.tailId, this.pool.branch()) &&
+        !firstTailOfTheRepository({
+          layout: this.layout,
+          shared: this.shared,
+          checkout: here,
+          tailId: this.tailId,
+          fingerprint: this.keyPair.fingerprint,
+          pool: this.pool,
+        })
+      ) {
+        const onBase = this.pool.onBase(this.tailId, basename(lastSegment), found.hash);
+        if (onBase !== true) {
+          const left: NewTail['left'] =
+            onBase === undefined ? { offBase: true, unanswered: true } : { offBase: true };
+          this.movedOn = { from: this.tailId, to: this.tailId, kept, found, left };
+          return;
+        }
+      }
     }
     // A TAIL THAT HOLDS ENTRIES MAY HAVE BEEN RELINKED, here or by its owner elsewhere, and a
     // relinked tail is frozen at the head the relink names (FORMAT.md section 6.11): an entry more
@@ -982,7 +1368,7 @@ export class ChainWriter {
   private appendLocked(handed: CatalogEvent): Entry {
     this.refuseDamagedTail();
     // The citations are read under the lock, so the heads are the ones on disk as this lands.
-    const cited = this.cite(handed);
+    const cited = this.cite([handed]);
     const event = cited.event;
     refuseUnreadable(event);
     this.refuseUnprovenWaiver(event);
@@ -1001,7 +1387,8 @@ export class ChainWriter {
     const line = `${serializeEntry(entry)}\n`;
     const path = segmentPath(this.layout, this.tailId, this.segment);
     this.keepIntent(entry);
-    appendDurably(path, line);
+    this.holdSigning = false;
+    this.landOnTail(path, line, this.segmentBytes);
 
     this.headPrev = entry.link.prev;
     this.head = entry.link.hash;
@@ -1013,7 +1400,7 @@ export class ChainWriter {
     this.pending.push(entry.written);
     cited.remember();
 
-    this.capUnsignedWindow();
+    this.signAFoundingOrCap(entry.link.seq);
     return entry;
   }
 
@@ -1047,7 +1434,7 @@ export class ChainWriter {
   private appendAllLocked(handed: readonly CatalogEvent[]): Entry[] {
     this.refuseDamagedTail();
     // The batch is one act: its first event cites, and the rest follow it by `seq`.
-    const cited = this.cite(handed[0] as CatalogEvent);
+    const cited = this.cite(handed);
     const events = [cited.event, ...handed.slice(1)];
     for (const event of events) {
       refuseUnreadable(event);
@@ -1073,7 +1460,8 @@ export class ChainWriter {
     }
     const path = segmentPath(this.layout, this.tailId, this.segment);
     this.keepIntent(entries.at(-1) as Entry);
-    appendDurably(path, lines);
+    this.holdSigning = false;
+    this.landOnTail(path, lines, this.segmentBytes);
 
     this.headPrev = (entries.at(-1) as Entry).link.prev;
     this.head = prev;
@@ -1083,8 +1471,29 @@ export class ChainWriter {
     for (const entry of entries) this.pending.push(entry.written);
     cited.remember();
 
-    this.capUnsignedWindow();
+    this.signAFoundingOrCap((entries[0] as Entry).link.seq);
     return entries;
+  }
+
+  /**
+   * Appends `text` to the segment at `path`, which held `before` bytes, and tells a disk that
+   * failed it apart from a line that did not land. The call can throw after its bytes are in the
+   * file (the sync), so the end of the file decides: where it ends in `text`, the line is on the
+   * tail, the write goes on as the success it is, and signing waits for the next append, with the
+   * disk's error told as a sentence ({@link recordedNotSigned}); where it does not, nothing landed
+   * and the refusal names the errno ({@link WriteNotLandedError}). A batch the disk tore may have left
+   * whole entries of it on the tail, so the segment is cut back to its size before the write
+   * ({@link cutBack}) for the refusal to be true; where the cut itself fails, the refusal says so.
+   */
+  private landOnTail(path: string, text: string, before: number): void {
+    try {
+      appendDurably(path, text);
+    } catch (error) {
+      if (!endsWith(path, text, before))
+        throw new WriteNotLandedError(error, cutBack(path, before));
+      this.holdSigning = true;
+      this.onUnsigned?.(recordedNotSigned(error));
+    }
   }
 
   /**
@@ -1097,8 +1506,10 @@ export class ChainWriter {
   }
 
   /** `event` as this writer writes it: citing what it read, when it cites ({@link HeadsToCite}). */
-  private cite(event: CatalogEvent): Cited {
-    return this.heads?.cite(event) ?? { event, remember: () => undefined };
+  private cite(events: readonly CatalogEvent[]): Cited {
+    return (
+      this.heads?.cite(events) ?? { event: events[0] as CatalogEvent, remember: () => undefined }
+    );
   }
 
   /**
@@ -1131,6 +1542,24 @@ export class ChainWriter {
     throw new EventParseError(
       `refusing to seal a waiver the record does not bear out: ${reason}. This write was not appended.`,
     );
+  }
+
+  /**
+   * THE WRITE THAT FOUNDS A TAIL SIGNS WHAT IT FOUNDED AT ONCE (ADR-569), before the act goes on;
+   * every later write keeps to the ceiling ({@link capUnsignedWindow}) and the act's own end.
+   *
+   * A clone withholds a tail that holds events and no checkpoint (ADR-561), so a new tail's first
+   * act killed after its appends and before the checkpoint that ends it left a tail no clone could
+   * read. Signed here, the same kill leaves at most the act's later writes above a checkpoint that
+   * holds, which a clone reads as the one write's window. The founding is the write that lands seq
+   * 0: a tail is born by it ({@link ensureBorn}), and no later write of the tail lands it again. An
+   * act that founds and writes nothing more signs nothing at its end (the buffer is empty); one
+   * that goes on pays one signature more. The checkpoint is the one {@link signLocked} always
+   * signs: its format, its range rule and its signature are unchanged.
+   */
+  private signAFoundingOrCap(firstSeq: number): void {
+    if (firstSeq === 0) this.signLocked();
+    else this.capUnsignedWindow();
   }
 
   /**
@@ -1192,11 +1621,18 @@ export class ChainWriter {
     return (
       now.segmentBytes === this.mark.segmentBytes &&
       now.nextSegment === this.mark.nextSegment &&
-      now.checkpointBytes === this.mark.checkpointBytes
+      now.checkpointBytes === this.mark.checkpointBytes &&
+      now.firstBytes === this.mark.firstBytes &&
+      now.note === this.mark.note
     );
   }
 
   private signLocked(): Checkpoint | null {
+    // A tail with no beginning is signed over by nobody: what is above its coverage is not a range
+    // a checkpoint may claim. (A cut end signs nothing already, as nextSeq stops at the coverage.)
+    if (this.damage?.startsAt !== undefined) throw this.damage;
+    // A line whose sync failed was told as not yet signed: it is signed by the next append.
+    if (this.holdSigning) return null;
     const fromSeq = this.lastCheckpointedSeq + 1;
     const toSeq = this.nextSeq - 1;
     if (toSeq < fromSeq) return null;
@@ -1211,7 +1647,21 @@ export class ChainWriter {
     });
     const path = checkpointsPath(this.layout, this.tailId);
     ensureDir(path);
-    appendDurably(path, `${serializeCheckpoint(checkpoint)}\n`);
+    const line = `${serializeCheckpoint(checkpoint)}\n`;
+    const before = Math.max(0, sizeOf(path));
+    try {
+      appendDurably(path, line);
+    } catch (error) {
+      // The events are on the tail already, so this is not a write that failed. Where the line
+      // is not at the file's end the checkpoint did not land: the buffer stays intact, the state
+      // stays as it was, and the next write signs the same range. Where it is, it landed and
+      // only its sync failed, which is told as that.
+      if (!endsWith(path, line, before)) {
+        this.onUnsigned?.(recordedNotSigned(error));
+        return null;
+      }
+      this.onUnsigned?.(signatureNotConfirmed(error));
+    }
     // Advanced only after the checkpoint reached the file, so a failed append
     // leaves the buffer intact and a retry signs the same range again.
     this.lastCheckpointedSeq = toSeq;
@@ -1282,8 +1732,10 @@ export class TailDamagedError extends CodedError {
      * installation signed says this key signed ({@link readWrittenHead}).
      */
     readonly checkpointsEndAt?: number,
+    /** Set when the tail's first line is not seq 0: the seq it begins at. */
+    readonly startsAt?: number,
   ) {
-    super(tailDamage(tail, signedThrough, lastComplete, checkpointsEndAt));
+    super(tailDamage(tail, signedThrough, lastComplete, checkpointsEndAt, startsAt));
     this.name = 'TailDamagedError';
   }
 }
@@ -1294,7 +1746,17 @@ function tailDamage(
   signedThrough: number,
   lastComplete: number,
   checkpointsEndAt: number | undefined,
+  startsAt?: number,
 ): string {
+  if (startsAt !== undefined) {
+    return (
+      `this machine's tail ${tail} begins at seq ${startsAt} and not at seq 0: the start of the ` +
+      'tail is missing (its first segment file), which no crash leaves. This write was not ' +
+      'appended, and the tail was left as it was. A read of the record shows it as a seq gap: ' +
+      'compare its files with the last copy you trust (the repository, a backup) and put them ' +
+      'back before writing again.'
+    );
+  }
   if (checkpointsEndAt !== undefined) {
     const now =
       checkpointsEndAt < 0
@@ -1321,6 +1783,175 @@ function tailDamage(
     'newline, so a pass does not clear this tail: compare its files with the last copy you ' +
     'trust (the repository, a backup) and put them back before writing again.'
   );
+}
+
+/**
+ * The seq of the first line the tail holds, or undefined where there is none to read (no segment,
+ * every segment empty or unfinished, a first line that does not parse or that is longer than
+ * {@link FIRST_LINE_LIMIT}, or a segment that vanished between the listing and the open: other
+ * refusals say those). A first segment that is empty or whose first line was never finished,
+ * with segments after it, is a start that is gone, so the walk goes on to the first line of the
+ * next one and the seq it begins at says so. Each file is read in small pieces up to its first
+ * newline, never past the limit.
+ */
+function firstSeqOfTheTail(
+  layout: ChainLayout,
+  tailId: string,
+  upcasters: UpcasterRegistry,
+): number | undefined {
+  for (const segment of orderedSegments(layout, tailId)) {
+    const line = firstLineOf(segment);
+    if (line === 'unfinished') continue;
+    if (line === undefined) return undefined;
+    try {
+      return parseEntry(line, upcasters).link.seq;
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
+/** The most of a first line that is read: a longer one is no entry. */
+const FIRST_LINE_LIMIT = 1 << 20;
+
+/**
+ * The first line of a file, `'unfinished'` for a file that is empty or ends before a newline, and
+ * undefined for one that cannot be read or whose first line passes {@link FIRST_LINE_LIMIT}.
+ */
+function firstLineOf(file: string): string | undefined | 'unfinished' {
+  let fd: number | undefined;
+  try {
+    fd = openSync(file, 'r');
+    const chunk = Buffer.alloc(8192);
+    const parts: Buffer[] = [];
+    let at = 0;
+    while (at < FIRST_LINE_LIMIT) {
+      const read = readSync(fd, chunk, 0, chunk.length, at);
+      if (read === 0) return 'unfinished';
+      const newline = chunk.subarray(0, read).indexOf(0x0a);
+      if (newline >= 0) {
+        parts.push(Buffer.from(chunk.subarray(0, newline)));
+        return Buffer.concat(parts).toString('utf-8');
+      }
+      parts.push(Buffer.from(chunk.subarray(0, read)));
+      at += read;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+  }
+}
+
+/**
+ * The damage the tail of this installation shows, asked of the disk and of nothing else: no
+ * writer is opened, no lock is taken and no file is written, so a command that only says what a
+ * write would say (`mnema init`) can ask it and leave the machine as it found it. Undefined where
+ * there is no damage to name: no installation id kept, a tail that is not there at all, or one
+ * whose files end where its checkpoints say and begin at seq 0.
+ *
+ * It is the same rule the writer's recovery applies ({@link damageInTheFiles}): the end of the
+ * tail short of what its last checkpoint signed, and a start above seq 0. It does not name what
+ * the writer names from a signed note of this key's last write (checkpoints taken out or replaced
+ * under a whole end): that one needs the key's note. For a tree that holds no installation id of
+ * this key it returns undefined silently; only the public `init` asks it today. A first line it
+ * cannot parse is the readers' to refuse and throws from here as it does from them.
+ */
+export function readTailDamage(
+  layout: ChainLayout,
+  fingerprint: string,
+  upcasters: UpcasterRegistry,
+  installation: ChainLayout = layout,
+): TailDamagedError | undefined {
+  // The hint a worktree keeps first; the id an earlier mnema kept in the record, until the first
+  // write of this one moves it.
+  for (const place of [installation, layout]) {
+    let installationId: string;
+    try {
+      installationId = readFileSync(installationIdPath(place, fingerprint), 'utf-8').trim();
+    } catch {
+      continue;
+    }
+    if (installationId === '') return undefined;
+    return readTailDamageOf(layout, `${fingerprint}-${installationId}`, upcasters);
+  }
+  return undefined;
+}
+
+/** {@link readTailDamage} for a tail already named: the one a writer opened over is `writer.tail`. */
+export function readTailDamageOf(
+  layout: ChainLayout,
+  tailId: string,
+  upcasters: UpcasterRegistry,
+): TailDamagedError | undefined {
+  if (!existsSync(tailDir(layout, tailId))) return undefined;
+  const lastCp = lastTailCheckpoint(layout, tailId);
+  const end = readEndOfTheTail(layout, tailId, upcasters, lastCp);
+  return damageInTheFiles(layout, tailId, upcasters, lastCp, end);
+}
+
+/** What the end of a tail holds: the segment it ends in, the torn piece, and the entries read. */
+interface EndOfTheTail {
+  readonly lastSegment: string | undefined;
+  readonly fragment: TornFragment | undefined;
+  /** The walk from the end down to the coverage, a fragment that parses included. */
+  readonly walked: ChainEntry[];
+  /** `walked` without a fragment that parses: the lines the tail holds. */
+  readonly tip: ChainEntry[];
+  readonly lastComplete: number;
+}
+
+/** The clear note of a tail as it is on the disk, or null for none. */
+function noteOf(shared: ChainLayout, tailId: string): string | null {
+  try {
+    return readFileSync(keptHeadPath(shared, tailId), 'utf-8');
+  } catch {
+    return null;
+  }
+}
+
+/** Reads the end of a tail from its files; the writer's recovery and the read-only ask both use it. */
+function readEndOfTheTail(
+  layout: ChainLayout,
+  tailId: string,
+  upcasters: UpcasterRegistry,
+  lastCp: Checkpoint | undefined,
+): EndOfTheTail {
+  const lastSegment = orderedSegments(layout, tailId).at(-1);
+  const fragment = lastSegment === undefined ? undefined : tornFragment(lastSegment, upcasters);
+  const coverage = lastCp?.toSeq ?? -1;
+  // A fragment that parses is the walk's first entry and not a line the tail holds, so the
+  // walk goes one entry further down to still reach the coverage without it.
+  const walked = readTailTip(layout, tailId, upcasters, coverage - (fragment?.parses ? 1 : 0));
+  const tip = fragment?.parses ? walked.slice(0, -1) : walked;
+  return { lastSegment, fragment, walked, tip, lastComplete: tip.at(-1)?.link.seq ?? -1 };
+}
+
+/**
+ * THE ONE RULE FOR WHAT THE FILES OF A TAIL SHOW AS DAMAGE, asked by the writer's recovery
+ * (under the lock, after its resync) and by {@link readTailDamage} (from the disk alone): a last
+ * complete line below what the last checkpoint signed, or a first segment that does not begin at
+ * seq 0 (`tail prune` removes a tail whole and never a segment). The only damage it does not
+ * name is the one that needs this key's signed note: checkpoints taken out or replaced under a
+ * whole end, which `recover()` alone names.
+ */
+function damageInTheFiles(
+  layout: ChainLayout,
+  tailId: string,
+  upcasters: UpcasterRegistry,
+  lastCp: Checkpoint | undefined,
+  end: EndOfTheTail,
+): TailDamagedError | undefined {
+  if (lastCp !== undefined && end.lastComplete < lastCp.toSeq) {
+    return new TailDamagedError(tailId, lastCp.toSeq, end.lastComplete);
+  }
+  const startsAt = firstSeqOfTheTail(layout, tailId, upcasters);
+  if (startsAt !== undefined && startsAt !== 0) {
+    return new TailDamagedError(tailId, lastCp?.toSeq ?? -1, end.lastComplete, undefined, startsAt);
+  }
+  return undefined;
 }
 
 /**
@@ -1398,6 +2029,21 @@ function refuseUnreadable(event: CatalogEvent): void {
 }
 
 /**
+ * Whether the proof file at `path` is empty or is not JSON at all, which is what a cut leaves. A
+ * file that cannot be read is left to whoever reads it, and one that is JSON is left whole, whoever's
+ * it is and however it is spelled: a reformatted proof is for the readers to name (ADR-354).
+ */
+function unreadableProof(path: string): boolean {
+  let text: string;
+  try {
+    text = readFileSync(path, 'utf-8');
+  } catch {
+    return false;
+  }
+  return text.trim() === '' || !isJsonText(text);
+}
+
+/**
  * A file's size in bytes, or -1 if it is not there.
  *
  * Absent and empty have to be TOLD APART here (a segment that does not exist yet and
@@ -1409,6 +2055,43 @@ function sizeOf(filePath: string): number {
     return statSync(filePath).size;
   } catch {
     return -1;
+  }
+}
+
+/**
+ * Cuts the segment at `path` back to the `before` bytes it held, durably, and says whether it did.
+ * What a failed append left (an unfinished line, or the whole entries of a batch it tore) is not
+ * the fact, and a refusal that promises nothing was written has to be true of the file. A segment
+ * that was never created (the open itself failed) holds nothing to cut, so it counts as cut.
+ */
+function cutBack(path: string, before: number): boolean {
+  if (!existsSync(path)) return true;
+  let fd: number | undefined;
+  try {
+    truncateSync(path, before);
+    fd = openSync(path, 'r+');
+    fsyncSync(fd);
+    return true;
+  } catch {
+    return false;
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+  }
+}
+
+/** Whether the file at `path`, which held `before` bytes, now ends in exactly `text`. */
+function endsWith(path: string, text: string, before: number): boolean {
+  const bytes = Buffer.from(text, 'utf-8');
+  let fd: number | undefined;
+  try {
+    fd = openSync(path, 'r');
+    if (fstatSync(fd).size !== before + bytes.length) return false;
+    const found = Buffer.alloc(bytes.length);
+    return readSync(fd, found, 0, bytes.length, before) === bytes.length && found.equals(bytes);
+  } catch {
+    return false;
+  } finally {
+    if (fd !== undefined) closeSync(fd);
   }
 }
 

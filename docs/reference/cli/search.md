@@ -17,7 +17,7 @@ In the help under **Read**.
 | Option | What it does |
 | --- | --- |
 | `--kind <kind>` | only this kind of record: memory, observation, decision, task, skill |
-| `--scope <scope>` | only this tree: public, private, global |
+| `--scope <scope>` | only this tree: public, private, global; leave it out, or say all, to search the three together |
 | `--state <state>` | only records in this state NOW (excludes kinds that have none) |
 | `--from <iso>` | only records at or after this ISO-8601 instant (inclusive) |
 | `--to <iso>` | only records at or before this ISO-8601 instant (inclusive) |
@@ -25,6 +25,7 @@ In the help under **Read**.
 | `--json` | emit the faithful index as JSON (one ordered list) |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
+A term of several words finds only the records that contain every one of them; when none does, the reply says so and suggests trying fewer words.
 <!-- End of the part written by hand. -->
 
 ## The whole help
@@ -40,7 +41,8 @@ Arguments:
 Options:
   --kind <kind>    only this kind of record: memory, observation, decision,
                    task, skill
-  --scope <scope>  only this tree: public, private, global
+  --scope <scope>  only this tree: public, private, global; leave it out, or say
+                   all, to search the three together
   --state <state>  only records in this state NOW (excludes kinds that have
                    none)
   --from <iso>     only records at or after this ISO-8601 instant (inclusive)

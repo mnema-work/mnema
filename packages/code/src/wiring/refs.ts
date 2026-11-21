@@ -39,7 +39,7 @@ export function registerReferences(program: Command, wiring: Wiring): Declared {
     )
     .option('--json', 'emit the faithful graph as JSON')
     .action(async (id: string, opts: { direction?: string; depth?: string; json?: boolean }) => {
-      const { linkBreakNotice } = await import('./integrity.js');
+      const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
       const { runReferences } = await import('../commands/references.js');
       const { referenceReport } = await import('../presentation/references.js');
       const depth = Number.parseInt(opts.depth ?? '', 10);
@@ -76,6 +76,7 @@ export function registerReferences(program: Command, wiring: Wiring): Declared {
       // BEFORE the answer, and on the other stream, so it survives a pipe, and so
       // `--json` stays the machine-readable thing it promises to be.
       for (const line of linkBreakNotice(result.linkBreaks)) io.err(render(line));
+      for (const line of newerLinesNotice(result.newerLines, 'the record')) io.err(render(line));
       if (opts.json === true) {
         io.out(
           JSON.stringify(

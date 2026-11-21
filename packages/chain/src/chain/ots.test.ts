@@ -10,6 +10,8 @@
  * them.
  */
 
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -25,11 +27,42 @@ import {
   PENDING_PROOF_BASE64,
   PENDING_PROOF_CALENDARS,
   PENDING_PROOF_DIGEST,
+  PROOF_WITH_A_TRAILING_BYTE_HEX,
 } from './witness-vectors.js';
 
 const REAL = Buffer.from(PENDING_PROOF_BASE64, 'base64');
 
+const VERIFIER_DIR = fileURLToPath(new URL('../../verifier/', import.meta.url));
+
 describe('a detached OpenTimestamps proof', () => {
+  it('refuses a byte after the grammar ends, as the second reader does, over the same bytes', () => {
+    const bytes = Buffer.from(PROOF_WITH_A_TRAILING_BYTE_HEX, 'hex');
+    // NON-VACUITY: without the stray byte the same bytes are a proof.
+    expect(() => parseOtsProof(bytes.subarray(0, -1))).not.toThrow();
+    expect(() => parseOtsProof(bytes)).toThrow(UnreadableProofError);
+    expect(() => parseOtsProof(bytes)).toThrow('1 trailing bytes after the proof');
+    // A real calendar answer with one byte appended is refused the same way.
+    expect(() => parseOtsProof(Buffer.concat([REAL, Buffer.from([0xff])]))).toThrow(
+      '1 trailing bytes after the proof',
+    );
+
+    const second = spawnSync(
+      'python3',
+      [
+        '-I',
+        '-c',
+        `import sys; sys.path.insert(0, ${JSON.stringify(VERIFIER_DIR)}); ` +
+          'from mnemaverify import ots\nfrom mnemaverify.verdict import Refusal\n' +
+          `raw = bytes.fromhex(${JSON.stringify(PROOF_WITH_A_TRAILING_BYTE_HEX)})\n` +
+          'ots.parse(raw[:-1])\n' +
+          'try:\n  ots.parse(raw)\nexcept Refusal as refusal:\n  print(refusal)\n',
+      ],
+      { encoding: 'utf-8' },
+    );
+    expect(second.error).toBeUndefined();
+    expect(second.stdout).toContain('1 trailing bytes after the proof');
+  });
+
   it('reads a real calendar answer: the digest it commits to, and nothing else', () => {
     const proof = parseOtsProof(REAL);
     expect(proof.version).toBe(1);

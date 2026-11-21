@@ -25,13 +25,14 @@
  * could append a link naming an e-mail of their own.
  */
 
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   catalogUpcasters,
   checkpointHash,
   checkpointMessage,
   isCatalogEvent,
+  listedWithoutLinks,
   readTailCheckpoints,
   readTailEntries,
   witnessDir,
@@ -111,7 +112,11 @@ export function readSigstoreReceipts(
           .filter((checkpoint) => checkpoint.toSeq <= tail.checkpointedThrough)
           .map((checkpoint) => [checkpointHash(checkpoint), checkpoint] as const),
       );
-      for (const name of readdirSync(dir).sort()) {
+      const held = listedWithoutLinks(layout, `tails/${tail.tail}/witness`, [
+        'tails',
+        `tails/${tail.tail}`,
+      ]).map((entry) => entry.name);
+      for (const name of held.sort()) {
         if (!name.endsWith(BUNDLE_SUFFIX)) continue;
         const digest = name.slice(0, -BUNDLE_SUFFIX.length);
         const checkpoint = proven.get(digest);

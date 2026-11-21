@@ -6,6 +6,10 @@ Five steps. Steps 1 to 3 need no agent and no plugin; step 4 hands the record to
 `mnema` command is every line it prints; a … marks the one thing this page shortens: a path on your disk,
 or an id that runs to 64 hex characters.
 
+On a machine that has never run mnema, the first bare `mnema` at a terminal opens a short tour of four pages in place of the
+menu (what the record is, what `init` chooses, how an agent reads it, the commands to start with); it writes nothing to the
+record, and `mnema tour` opens it again ([the reference](reference/cli/tour.md#the-tour-of-the-first-run)).
+
 ## 1. Found the record
 
 ```sh
@@ -43,7 +47,7 @@ the work, or in a pull request of their own that `mnema record commit` prepares.
 At a terminal `mnema init` does not print those lines. It shows what it found around the folder, asks which agent
 hosts should read the mnema instructions (the arrows move, Space marks, Enter confirms, Esc founds nothing) and whether
 an agent may accept what you choose (in a repository with a remote it also asks whether to make a plain `git pull`
-carry the record), and shows everything it is about to write, once, before it writes any of it.
+carry the record), and shows everything it is about to write, once, before it writes any of it. When it is done it says what it chose, one line for each choice with the command that changes it later, and what to do next, with a question to ask the agent once the plugin is in only for Claude Code and Codex, the hosts where the plugin's tools are shown reaching the model. On the first `init` at a terminal on a machine it ends with one line that suggests a star on the repository; it does not say it again.
 `mnema init --dry-run` prints that plan and writes nothing; `--hosts`, `--yes`, `--accepts` and `--git-pull` answer the questions
 without asking them ([the reference](reference/cli/instructions.md#the-mnema-instructions-in-the-files-a-host-reads)).
 
@@ -69,7 +73,8 @@ mnema decision move accept "$ADR" --note "Agreed in review."
 A decision enters awaiting a judgement, and it is the accepted ones that govern the work. The number
 is the one mnema printed for the decision you recorded, so it is read from that line, never assumed.
 A long rationale can come from a file (`--body-file why.md`) or a pipe (`--stdin`) instead of the line, which keeps
-it out of the shell history; from two places at once, it is refused.
+it out of the shell history; from two places at once, it is refused. The refusal names the places the text came from
+(the argument, `--stdin`, or `--body-file`) and the one way to give it, so the line can be corrected without guessing.
 
 The line about the public tree is the one a project in a repository earns. In a folder with no git it says
 instead that the tree is a folder of the project, not committed, which travels only as the project's files are
@@ -133,7 +138,7 @@ break its signatures. Where a Biome configuration does not leave `.mnema/` alone
 ends by saying the entries to add, the same ones `mnema doctor` says. It also writes the mnema instructions into the files agent hosts read at the start of a
 session (an `AGENTS.md`, created where there is none, a `CLAUDE.md` or a `GEMINI.md` where one exists, and a
 rule file of its own for Claude Code, Copilot and Cursor), after what each of yours holds, and names each file (a
-`CLAUDE.md` that imports `AGENTS.md` with the line `@AGENTS.md` gets no block while `AGENTS.md` is written, since Claude
+`CLAUDE.md` that imports `AGENTS.md` with `@AGENTS.md`, alone on a line or in a sentence, gets no block while `AGENTS.md` is written, since Claude
 Code reads that file from there, and the line says so). At a
 terminal it first shows what it found around the folder and asks which agent hosts to write them for (the arrows
 and Space mark a host, a `CLAUDE.md` or `GEMINI.md` of yours is a mark of its own, Esc founds nothing) and whether an

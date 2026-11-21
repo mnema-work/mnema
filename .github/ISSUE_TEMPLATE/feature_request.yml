@@ -1,0 +1,59 @@
+name: Feature request
+description: Something the product should do that it does not do today
+labels: [enhancement, needs triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please search the open and closed issues first: your idea may already be asked for or decided.
+
+        Want to work on an issue that is already open? Comment `/take` on it (or `/claim`): if it is labelled `good first issue` or `help wanted` and nobody holds it, you are assigned.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Where the change would land.
+      options:
+        - "The record: decisions, tasks and the commands that read and write them"
+        - The MCP server and its tools
+        - Host plugins, hooks and host contracts
+        - "Instructions and the agents' rules files"
+        - Stacks and their index
+        - CI templates for other forges and exports
+        - Build and packaging
+        - "The contributor's own path"
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you are trying to do and cannot, or can only do badly. Start from the situation, not from the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: wanted
+    attributes:
+      label: What you would want instead
+      description: "The behaviour you have in mind: a command, an MCP tool, a line in the record."
+    validations:
+      required: true
+  - type: textarea
+    id: keep-true
+    attributes:
+      label: What it has to keep true
+      description: The record is signed and append-only, and the verify command has to keep meaning what it says. If your idea writes something new, say what a reader could then check that it could not before; if it cannot be checked, say so.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+      description: Including doing nothing, and doing it outside the product.
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        Please leave out the contents of your record and anything that names you or your machine.

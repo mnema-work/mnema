@@ -434,6 +434,8 @@ describe('no parent takes a word of its own, and every one refuses a mistyped su
       'record',
       'key',
       'tail',
+      'backup',
+      'backup hook',
       'run',
     ]);
 
@@ -467,6 +469,8 @@ describe('no parent takes a word of its own, and every one refuses a mistyped su
       'record: has no command',
       'key: has no command',
       'tail: has no command',
+      'backup: has no command',
+      'backup hook: has no command',
       'run: has no command',
     ]);
   }, 60_000);

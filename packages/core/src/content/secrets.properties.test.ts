@@ -53,16 +53,45 @@ const SECRETS: { readonly [K in SecretClass]: fc.Arbitrary<string> } = {
   'aws-access-key': fc
     .tuple(fc.constantFrom('AKIA', 'ASIA', 'ABIA', 'ACCA'), run(`${UPPER}${DIGITS}`, 16, 28))
     .map(([prefix, body]) => `${prefix}${body}`),
-  'github-token': fc
-    .tuple(fc.constantFrom('p', 'o', 'u', 's', 'r'), run(ALNUM, 36, 50))
-    .map(([kind, body]) => `gh${kind}_${body}`),
+  'github-token': fc.oneof(
+    fc
+      .tuple(fc.constantFrom('p', 'o', 'u', 's', 'r'), run(ALNUM, 36, 50))
+      .map(([kind, body]) => `gh${kind}_${body}`),
+    fc
+      .tuple(run(ALNUM, 20, 30), run(ALNUM, 40, 70))
+      .map(([id, secret]) => `github_pat_${id}_${secret}`),
+  ),
+  'gitlab-token': fc
+    .tuple(
+      fc.constantFrom(
+        'pat',
+        'oas',
+        'dt',
+        'rt',
+        'rtr',
+        'cbt',
+        'ptt',
+        'ft',
+        'imt',
+        'agent',
+        'wt',
+        'soat',
+        'ffct',
+      ),
+      run(URLSAFE, 20, 50),
+    )
+    .map(([kind, body]) => `gl${kind}-${body}`),
+  'huggingface-token': run(ALNUM, 30, 50).map((body) => `hf_${body}`),
   'anthropic-key': dense(URLSAFE, 20, 60).map((body) => `sk-ant-${body}`),
   'openai-key': fc
     .tuple(fc.constantFrom('', 'proj-'), dense(URLSAFE, 20, 60))
     .map(([infix, body]) => `sk-${infix}${body}`),
-  'stripe-key': fc
-    .tuple(fc.constantFrom('sk', 'rk'), fc.constantFrom('live', 'test'), run(ALNUM, 20, 40))
-    .map(([kind, mode, body]) => `${kind}_${mode}_${body}`),
+  'stripe-key': fc.oneof(
+    fc
+      .tuple(fc.constantFrom('sk', 'rk'), fc.constantFrom('live', 'test'), run(ALNUM, 20, 40))
+      .map(([kind, mode, body]) => `${kind}_${mode}_${body}`),
+    run(ALNUM, 24, 40).map((body) => `whsec_${body}`),
+  ),
   'slack-token': fc
     .tuple(
       fc.constantFrom('b', 'a', 'p', 'r', 's'),
@@ -98,12 +127,40 @@ const SECRETS: { readonly [K in SecretClass]: fc.Arbitrary<string> } = {
     .map(
       ([scheme, user, password, host]) => `${scheme}://${user}:${password}@${host}.internal/app`,
     ),
+  'authorization-header': fc
+    .tuple(
+      fc.constantFrom('Authorization', 'authorization', 'Proxy-Authorization'),
+      fc.constantFrom('Bearer', 'Basic', 'bearer', 'Token'),
+      dense(`${ALNUM}._~+/-`, 8, 60),
+    )
+    .map(([header, scheme, token]) => `${header}: ${scheme} ${token}`),
+  // A name as text writes one down: it opens an assignment, so a blank stands before it.
+  'named-credential': fc
+    .tuple(
+      fc.constantFrom(
+        'PASSWORD',
+        'db_password',
+        'API_KEY',
+        'apiKey',
+        'GITHUB_TOKEN',
+        'client_secret',
+        'passwd',
+      ),
+      dense(`${ALNUM}!#*+./@^~-`, 4, 40),
+    )
+    .map(([name, secret]) => ` ${name}=${secret}`),
 };
 
-/** What a credential's value is, for the check that it is gone: the URL's password stands in its URL. */
+/**
+ * What a credential's value is, for the check that it is gone: the URL's password stands in
+ * its URL, and a value read by context stands after its header or its name.
+ */
 function whatMustVanish(secret: SecretClass, value: string): string {
-  if (secret !== 'url-password') return value;
-  return value.slice(value.indexOf('://') + 3, value.indexOf('@') + 1);
+  if (secret === 'url-password')
+    return value.slice(value.indexOf('://') + 3, value.indexOf('@') + 1);
+  if (secret === 'authorization-header') return value.slice(value.lastIndexOf(' ') + 1);
+  if (secret === 'named-credential') return value.slice(value.indexOf('=') + 1);
+  return value;
 }
 
 /** What stands either side of a credential in prose: never a word character. */

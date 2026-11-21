@@ -28,8 +28,7 @@
  * with nothing behind it, or no name at all, for an identity the record already carried events
  * of. Asserted in `durable.test.ts` the same way, by the syncs asked.
  *
- * WHAT IT DOES NOT COVER. A tail's proof of ownership and the key root's ignore file are written
- * as before. A segment truncated back to its last whole
+ * WHAT IT DOES NOT COVER. The key root's ignore file is written as before. A segment truncated back to its last whole
  * line on recovery is not synced either: it shortens a tail to what was already durable.
  * On Windows a directory cannot be opened to be synced, so there only the file is.
  */

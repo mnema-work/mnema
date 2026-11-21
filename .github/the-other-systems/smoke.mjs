@@ -5,7 +5,8 @@
 // macOS, `mnema.cmd` on Windows), and then drives the INSTALLED binary:
 //
 //   init, decision record, accept, a rule that refuses a write, verify, the record in a clone that
-//   git checked out with the system's own line endings, the Python reader over that record,
+//   git checked out with the system's own line endings, the Python reader over that record, a
+//   tail of it turned into a junction (a symbolic link elsewhere) and refused by both readers,
 //   doctor, and the plugin's hook handlers on payloads whose paths are written the way that
 //   system writes them.
 //
@@ -19,7 +20,18 @@
 // arguments the file gives them. The vitest suite does not run here; it runs on Linux.
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  renameSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
 
@@ -245,8 +257,8 @@ try {
   const candidates = WINDOWS ? ['python', 'py', 'python3'] : ['python3', 'python'];
   const python = candidates.find((name) => run(name, ['--version']).status === 0);
   check(python !== undefined, `a Python is on the PATH (${python})`);
+  const reader = join(root, 'packages', 'chain', 'verifier', 'mnema_verify.py');
   if (python !== undefined) {
-    const reader = join(root, 'packages', 'chain', 'verifier', 'mnema_verify.py');
     mustRun('python self-test', run(python, ['-I', reader, 'self-test']), { tail: 300 });
     const readRecord = mustRun(
       'python reads the clone record',
@@ -255,6 +267,153 @@ try {
     );
     check(readRecord.status === 0, 'the Python reader accepts the checked-out record');
   }
+
+  // A junction is what a person on Windows makes without being an administrator, and Node reads it
+  // as a link; Python's `os.path.islink` does not, so the second reader asks the listing's reparse
+  // tag, the three libuv's `lstat` calls a link. On the other systems the type is ignored and this is a symbolic link. The clone is not used after this.
+  section('a tail that is a junction, or a symbolic link, is refused by both readers');
+  const tailsInClone = join(clone, '.mnema', 'tails');
+  const [linkedTail] = readdirSync(tailsInClone);
+  if (linkedTail === undefined) throw new Error('the clone holds no tail');
+  const movedOut = join(real, 'a-tail-moved-out');
+  renameSync(join(tailsInClone, linkedTail), movedOut);
+  symlinkSync(movedOut, join(tailsInClone, linkedTail), 'junction');
+  const refusedHere = mnema(['verify', '--require', 'signed'], clone);
+  check(
+    refusedHere.status === 1 &&
+      `${refusedHere.out}${refusedHere.err}`.includes(`LINKED TAIL: tails/${linkedTail}`),
+    `mnema verify refuses the linked tail by name (exit ${refusedHere.status})`,
+  );
+  if (python !== undefined) {
+    const refusedThere = run(python, ['-I', reader, 'record', join(clone, '.mnema')]);
+    check(
+      refusedThere.status === 1 &&
+        refusedThere.out.includes(`tails/${linkedTail} is a symbolic link`),
+      `the Python reader refuses the linked tail by name (exit ${refusedThere.status})`,
+    );
+  }
+
+  // Where a tail's notes and lock live inside a repository: under the common git directory, shared by
+  // every worktree and out of reach of a clean of what git ignores. A linked worktree names its git
+  // directory with a path relative to its own (`commondir`), on Windows with a folder of its own whose
+  // name holds a space and a letter that is not ASCII.
+  section('a worktree shares the notes of its repository, and a clean does not take them');
+  const worktree = join(real, 'a w\u00e7');
+  mustRun('git worktree add', git(['worktree', 'add', '-q', '-b', 'a-worktree', worktree]));
+  mustRun('mnema memory in the worktree', mnema(['memory', 'from the worktree'], worktree));
+  const sharedLocks = join(project, '.git', 'mnema', '%2E', 'public', 'locks');
+  const notes = readdirSync(sharedLocks).filter((name) => name.endsWith('.head'));
+  check(
+    notes.length >= 2,
+    `the notes of the tails are under the common git directory (${notes.length})`,
+  );
+  check(
+    !readdirSync(join(worktree, '.mnema', 'keys')).some((name) => name.endsWith('.inst')),
+    'the worktree keeps no installation id inside the record',
+  );
+  const tailsBefore = readdirSync(join(project, '.mnema', 'tails')).length;
+  mustRun('git clean -fdX', git(['clean', '-fdXq']));
+  mustRun('mnema memory after the clean', mnema(['memory', 'after the clean'], project));
+  const tailsAfter = readdirSync(join(project, '.mnema', 'tails')).length;
+  check(
+    tailsAfter === tailsBefore,
+    `a clean of what git ignores opens no tail (${tailsBefore} before, ${tailsAfter} after)`,
+  );
+  const inWorktree = mustRun('mnema verify in the worktree', mnema(['verify'], worktree));
+  check(/local integrity verified/.test(inWorktree.out), 'the worktree verifies');
+
+  section('a backup of the project into a folder');
+  mustRun(
+    'mnema decision record (private)',
+    mnema(
+      ['decision', 'record', 'Kept on this machine', 'Not for the team.', '--scope', 'private'],
+      project,
+    ),
+  );
+  const folder = join(real, 'backup-folder');
+  const refused = mnema(['backup', 'setup', folder], project);
+  check(
+    refused.status !== 0 && !existsSync(join(home, '.mnema', 'backup.json')),
+    'backup setup is refused where no person is at a terminal, and assigns nothing',
+  );
+  // The folder is assigned by writing the machine's file, which `setup` writes after a person confirms it.
+  const verdict = JSON.parse(
+    mustRun('mnema verify --json', mnema(['verify', '--json'], project)).out,
+  );
+  const record = verdict.trees.find(
+    (/** @type {{ scope: string }} */ one) => one.scope === 'public',
+  )?.result?.record?.name;
+  check(typeof record === 'string', 'verify names the record');
+  mkdirSync(join(home, '.mnema'), { recursive: true });
+  writeFileSync(
+    join(home, '.mnema', 'backup.json'),
+    JSON.stringify({
+      format: 1,
+      projects: { [record]: { destination: folder, setUpAt: new Date().toISOString() } },
+    }),
+  );
+  const backedUp = mustRun('mnema backup run', mnema(['backup', 'run'], project));
+  check(
+    /private tree: \d+ file\(s\) held/.test(backedUp.out),
+    'backup run copies the private tree',
+  );
+  const copies = readdirSync(folder, { recursive: true }).map(String);
+  check(
+    copies.some((name) => name.endsWith('.jsonl')) && !copies.some((name) => name.endsWith('.key')),
+    'the folder holds the tails and no key',
+  );
+  const standing = mustRun('mnema backup status', mnema(['backup', 'status'], project));
+  check(/nothing to add/.test(standing.out), 'backup status says the copy is up to date');
+
+  // The private tree is lost and put back from the copy, and the copy verifies.
+  const privateTree = join(project, '.git', 'mnema', '%2E', 'private');
+  const tailsInTheTree = readdirSync(join(privateTree, 'tails')).length;
+  rmSync(privateTree, { recursive: true, force: true });
+  const dry = mustRun(
+    'mnema backup restore --dry-run',
+    mnema(['backup', 'restore', '--dry-run'], project),
+  );
+  check(
+    /nothing was written/.test(dry.out) && !existsSync(privateTree),
+    'backup restore --dry-run writes nothing',
+  );
+  mustRun('mnema backup restore', mnema(['backup', 'restore'], project));
+  check(
+    readdirSync(join(privateTree, 'tails')).length === tailsInTheTree,
+    'backup restore puts the private tails back',
+  );
+  const verifiedCopy = mustRun('mnema backup verify', mnema(['backup', 'verify'], project));
+  check(
+    /the copy is a record this mnema accepts/.test(verifiedCopy.out),
+    'backup verify reads the copy and finds the tree as it is',
+  );
+
+  // A restore of another record asks a person, and a smoke has no terminal: without one it refuses,
+  // says the command, and writes nothing. What the person's yes leaves (the live tree moved into
+  // the git directory, under a name with no colon) is planted by hand, and `--undo` puts it back.
+  const askedFirst = mnema(['backup', 'restore', '--from', 'cd'.repeat(32)], project);
+  check(askedFirst.status !== 0, 'backup restore of a record with no copy is refused');
+  const aside = join(project, '.git', 'mnema', 'before-restore-2026-11-12T23-36-30Z');
+  mkdirSync(aside, { recursive: true });
+  writeFileSync(
+    join(aside, 'before-restore.json'),
+    JSON.stringify({ trees: { private: privateTree } }),
+  );
+  renameSync(privateTree, join(aside, 'private'));
+  const undone = mustRun(
+    'mnema backup restore --undo',
+    mnema(['backup', 'restore', '--undo'], project),
+  );
+  check(
+    /Put back the private tree/.test(undone.out) &&
+      readdirSync(join(privateTree, 'tails')).length === tailsInTheTree,
+    'backup restore --undo puts the tree kept aside back',
+  );
+  const undoneTwice = mnema(['backup', 'restore', '--undo'], project);
+  check(
+    undoneTwice.status !== 0 && /nothing to put back/.test(undoneTwice.err + undoneTwice.out),
+    'a second --undo has nothing to put back',
+  );
 
   section('doctor');
   const doctor = mustRun('mnema doctor', mnema(['doctor'], project));

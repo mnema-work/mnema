@@ -56,8 +56,10 @@
  * {@link writeContext}, the single door every MCP write goes through.
  */
 
+import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { catalogUpcasters, describeNewTail, type NewTail } from '@mnema/chain';
+import type { ScopedCache } from '@mnema/context';
 import {
   agentSignsIn,
   chainRootForScope,
@@ -84,8 +86,18 @@ import {
 import { FoundingWatch } from '../a-new-identity.js';
 import { RecordPageWatch } from '../commands/the-record-page.js';
 import { oneLine } from '../one-line.js';
+import type { ScopedLinkBreak } from '../record-integrity.js';
 import { replacementNotice } from '../recorded-content.js';
 import { type Journal, journalFile, markEnded, readJournal } from '../session-journal.js';
+import {
+  linkBreaksOf,
+  THE_READING_THAT_OPENED_THESE,
+  withOpenedCaches,
+  withTreesRead,
+} from '../tree-sources.js';
+import { UpdateNoteOwed } from '../update-notice.js';
+import { VERSION } from '../version.js';
+import { alteredEntrySentence, refuseWhileAltered } from '../what-a-write-meets.js';
 import { type CacheRegistry, createCacheRegistry } from './cache-registry.js';
 import {
   type ClientWorkspace,
@@ -456,6 +468,11 @@ export interface Session {
    */
   readonly newTails: NewTailsOwed;
   /**
+   * The note that a newer mnema is installed and `mnema upgrade` has not run on this machine, owed
+   * once to the connection, on its first reply (`update-notice.ts`).
+   */
+  readonly updateNote: UpdateNoteOwed;
+  /**
    * The chain roots this connection BEGAN writing to: {@link ensureRun} adds one before the
    * run's own append, whether or not the run then opens. A run's opening is two writes when
    * the key has no anchor there (the founding, then `run.started`), so a connection whose run
@@ -666,6 +683,7 @@ export function openSession(input: OpenSessionInput): Session {
     recordPage: new RecordPageWatch(),
     replacementsOwed: new ReplacementsOwed(),
     newTails: new NewTailsOwed(),
+    updateNote: new UpdateNoteOwed(trees.global, VERSION),
     writesBegun: new Set<string>(),
     consulted: new Map<string, Set<string>>(),
     served: new Map<string, Set<string>>(),
@@ -1013,10 +1031,20 @@ export function openWrite(session: Session, scope: Scope, target?: WriteTarget):
   // answer, unchanged, and the whole of the non-regression: a call that says nothing
   // lands exactly where it landed before this parameter existed.
   const trees = target?.trees ?? session.trees;
-  const tellTheAgent = (opened: NewTail): void => {
-    session.newTails.add(opened);
-    // The host's log keeps hearing it, as it did before a reply carried it.
-    session.log(describeNewTail(opened));
+  // AN ALTERED ENTRY REFUSES THE WRITE, whatever it is and wherever it lands: this is the one door
+  // every write of the server opens through, so no tool has to remember it (ADR-396).
+  refuseWhileAltered(alteredEntriesOf(session, trees));
+  const tellTheAgent = {
+    onNewTail: (opened: NewTail): void => {
+      session.newTails.add(opened);
+      // The host's log keeps hearing it, as it did before a reply carried it.
+      session.log(describeNewTail(opened));
+    },
+    // A fact on the tail whose signature the disk failed: the reply says it, in the writer's words.
+    onUnsigned: (sentence: string): void => {
+      session.newTails.addSentence(sentence);
+      session.log(sentence);
+    },
   };
   session.recordPage.opened(trees.projectPublic, keyRootsOf(trees));
   const which = whichIn(trees, scope, session);
@@ -1033,6 +1061,44 @@ export function openWrite(session: Session, scope: Scope, target?: WriteTarget):
     ctx: { ...ctx, beforeTheFirstFact: pending.start, askedBeforeFounding: pending.ask },
     which,
   };
+}
+
+/**
+ * Refuses, before anything is opened, a write over a record with an entry whose hash does not hold
+ * in any tree the destination reaches: its public and private trees and the machine's global one.
+ *
+ * A cache this connection already holds is brought into agreement with its chain first, as a read
+ * does (`get` costs one stat while nothing moved, and replays what did): the cheap reading a write
+ * makes of its caches cannot see a line rewritten below what the cache already took, and an entry
+ * altered after the connection last read is the case that matters. A tree the connection holds no
+ * cache over is opened over the file the tree keeps and let go, OUTSIDE THE REGISTRY, so that asking leaves the
+ * session as it was: a connection that only writes still has no cache to be told a gap or a fork
+ * from, which is what the reply of a write says of it (`linkBreakBlockOnWrite`). A tree with no
+ * files is not asked: asking would make one.
+ */
+function alteredEntriesOf(session: Session, trees: ResolvedTrees): readonly ScopedLinkBreak[] {
+  const held = new Set(session.caches.opened().map((open) => open.chainRoot));
+  const warm: ScopedCache[] = [];
+  const cold: Scope[] = [];
+  for (const { scope, chainRoot } of reachableTrees(trees)) {
+    if (!existsSync(chainRoot)) continue;
+    if (held.has(chainRoot)) warm.push({ scope, chainRoot, cache: session.caches.get(chainRoot) });
+    else cold.push(scope);
+  }
+  return [
+    ...linkBreaksOf(warm, THE_READING_THAT_OPENED_THESE),
+    // Over the cache the tree keeps, opened and closed here and never registered, as the command
+    // line asks it: a cold replay of a long record on a connection's first write is the cost of a read.
+    ...withOpenedCaches(trees, (open, opened) => {
+      for (const scope of cold) if (scope !== 'global') open(scope);
+      return linkBreaksOf(opened, THE_READING_THAT_OPENED_THESE);
+    }),
+    // The machine's global tree is replayed in memory, the small one, so a refusal leaves it as found.
+    ...withTreesRead(
+      reachableTrees(trees).filter((one) => cold.includes(one.scope) && one.scope === 'global'),
+      (read) => linkBreaksOf(read, THE_READING_THAT_OPENED_THESE),
+    ),
+  ];
 }
 
 /**
@@ -1078,7 +1144,15 @@ export class NewTailsOwed {
     this.held.push(describeNewTail(opened));
   }
 
-  /** The sentences owed since the last take (none when no tail was opened) and forgets them. */
+  /**
+   * Holds a sentence the writer worded for the reply (a fact on the tail whose signature the disk
+   * failed), beside the tails: one place the reply asks, and the same order the writes were made.
+   */
+  addSentence(sentence: string): void {
+    this.held.push(sentence);
+  }
+
+  /** The sentences owed since the last take (none when nothing was told) and forgets them. */
   take(): string[] {
     const was = this.held;
     this.held = [];
@@ -1292,6 +1366,13 @@ export function closeSession(session: Session): SessionClose {
     // record that never started it, and that project's own run still open.
     for (const run of session.runs.values()) {
       try {
+        // A RUN IS NOT ENDED OVER AN ALTERED ENTRY: `run.ended` and its checkpoint are signed
+        // appends like any other write, and this is the one door that does not open through
+        // `openWrite`. The run stays open, and the close says so (ADR-396).
+        if (alteredEntrySentence(alteredEntriesOf(session, run.trees)) !== undefined) {
+          leftOpen.push(run.id);
+          continue;
+        }
         const ctx = writeContext(run.trees, run.scope, session.caches);
         // Closed BY the agent that connected, named as the record names it NOW: the key that
         // signs this close is chosen here, not when the run opened, and a person who enrolled
@@ -1428,15 +1509,18 @@ export function writeContext(
   trees: ResolvedTrees,
   scope: Scope,
   caches: CacheRegistry,
-  onNewTail?: (opened: NewTail) => void,
+  told?: {
+    readonly onNewTail: (opened: NewTail) => void;
+    readonly onUnsigned: (sentence: string) => void;
+  },
 ): WriteContext {
   const root = chainRootForScope(trees, scope);
   // An absent tree has no cache to invalidate; `openTreeForWriting` below is
   // what refuses it, so the honest error still comes from one place.
   if (root !== undefined) caches.invalidate(root);
   return {
-    // Unasked, the writer says a new tail on standard error: a close, and a caller with no reply.
-    writer: openTreeForWriting(trees, scope, onNewTail === undefined ? {} : { onNewTail }),
+    // Unasked, the writer says a new tail, or a fact left unsigned, on standard error: a close, and a caller with no reply.
+    writer: openTreeForWriting(trees, scope, told === undefined ? {} : told),
     layout: { root: root as string },
     upcasters: catalogUpcasters(),
     roster: (anchor) => caches.rosterAsOfNow(root as string, anchor),

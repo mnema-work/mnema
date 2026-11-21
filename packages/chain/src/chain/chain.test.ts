@@ -210,12 +210,12 @@ describe('chain: write then verify (happy path, T1/T2/T4)', () => {
   });
 
   it('reports the uncheckpointed window as a declared residual, not a failure', () => {
-    writeSome(5, { maxUnsignedEvents: 100 }); // no checkpoint fires
+    writeSome(5, { maxUnsignedEvents: 100 }); // no checkpoint fires after the founding's own
     const result = verify(root);
     expect(result.ok).toBe(true); // T1 still holds
-    // 5 tasks + the founding event, none checkpointed.
-    expect(result.uncheckpointedEvents).toBe(6);
-    expect(result.tails[0]?.checkpointedThrough).toBe(-1);
+    // The founding signed itself (ADR-569); the 5 tasks after it, none checkpointed.
+    expect(result.uncheckpointedEvents).toBe(5);
+    expect(result.tails[0]?.checkpointedThrough).toBe(0);
   });
 
   it('carries a birth pair (from: null) through write, checkpoint, verify, and re-read', () => {
@@ -1128,7 +1128,8 @@ describe('chain: crash resilience beyond the torn last entry (audit)', () => {
     for (const keep of [30, 'all-but-newline'] as const) {
       rmSync(root, { recursive: true, force: true });
       mkdirSync(root, { recursive: true });
-      writeSome(4, { maxUnsignedEvents: 2 });
+      // Founding (signed at once), then two checkpoints of two, and seq 5 left for the one below.
+      writeSome(5, { maxUnsignedEvents: 2 });
       // A crash while signing ends the process before the hold's notes are kept: the signed note
       // still says the coverage it had before this checkpoint (`kept-head.ts`).
       const note = writtenHeadPath({ root }, tailIdOf(root));

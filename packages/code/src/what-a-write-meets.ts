@@ -23,10 +23,18 @@
  * before it answers the host, and answers the same whether or not they land ({@link recordTheCharge}).
  */
 
-import { sep } from 'node:path';
-import { DEFAULT_WAIT_MS, TailBusyError, UnreadableLineError } from '@mnema/chain';
+import { join, sep } from 'node:path';
+import {
+  CodedError,
+  DEFAULT_WAIT_MS,
+  LinkedRecordError,
+  TailBusyError,
+  UnreadableDiskError,
+  UnreadableLineError,
+} from '@mnema/chain';
 import {
   channelIsOn,
+  newerLinesOf,
   type PushedRule,
   type RulesAtPath,
   ruleTree,
@@ -51,7 +59,13 @@ import {
 } from './governed-tree.js';
 import { oneLine } from './one-line.js';
 import { ASKS_A_PERSON_CHANNEL, REFUSES_A_WRITE_CHANNEL } from './record-framing.js';
-import { linkBreakSentences, type ScopedLinkBreak } from './record-integrity.js';
+import {
+  DISK_WAY_OUT,
+  linkBreakSentences,
+  NOT_VERSIONED,
+  newerLinesSentence,
+  type ScopedLinkBreak,
+} from './record-integrity.js';
 
 /** A rule in force at a path and the relation it holds there: what it does to the path. */
 export interface RuleInForceUnder extends PushedRule {
@@ -175,6 +189,12 @@ export interface WriteVerdict {
   readonly reason: string;
   /** The notices that make up {@link reason}, one per entry of {@link at}, in the same order. */
   readonly notices: readonly string[];
+  /**
+   * What a newer mnema wrote that this one reads past, in the words every surface says it in, when
+   * it wrote any (ADR-140): a refusal or a request for a person is told what the rule it cites may
+   * have lost to a line this binary cannot read, and a write that goes through is told nothing.
+   */
+  readonly newer?: string;
 }
 
 /** The facts of one tree: the paths and rules whose facts are written there. */
@@ -217,21 +237,20 @@ export const NOTICES_SAID_WHOLE = 3;
  * more than the allowed times, so a rule met for the first time is always said whole.
  */
 export function reasonTold(met: WriteVerdict, seen: Map<string, number>): string {
-  return met.at
-    .map((at, index) => {
-      const orders = at.rules.map((rule) => {
-        const key = `${met.grade}:${rule.id}`;
-        const order = (seen.get(key) ?? 0) + 1;
-        seen.set(key, order);
-        return order;
-      });
-      const order = Math.min(...orders);
-      if (orders.length === 0 || order <= NOTICES_SAID_WHOLE) return met.notices[index] as string;
-      const verb = met.grade === 'refuse' ? 'refuses' : 'asks for a person';
-      const ids = at.rules.map((rule) => oneLine(rule.id)).join(', ');
-      return `#${order}: ${ids} ${verb} at ${oneLine(at.relative ?? at.path)} again; the notice is the one above.`;
-    })
-    .join('\n\n');
+  const told = met.at.map((at, index) => {
+    const orders = at.rules.map((rule) => {
+      const key = `${met.grade}:${rule.id}`;
+      const order = (seen.get(key) ?? 0) + 1;
+      seen.set(key, order);
+      return order;
+    });
+    const order = Math.min(...orders);
+    if (orders.length === 0 || order <= NOTICES_SAID_WHOLE) return met.notices[index] as string;
+    const verb = met.grade === 'refuse' ? 'refuses' : 'asks for a person';
+    const ids = at.rules.map((rule) => oneLine(rule.id)).join(', ');
+    return `#${order}: ${ids} ${verb} at ${oneLine(at.relative ?? at.path)} again; the notice is the one above.`;
+  });
+  return (met.newer === undefined ? told : [...told, met.newer]).join('\n\n');
 }
 
 /**
@@ -300,11 +319,44 @@ export function refusalOfAnUnreadableRecord(
   trees: readonly Pick<ScopedCache, 'scope' | 'chainRoot'>[],
 ): string | undefined {
   if (!(error instanceof UnreadableLineError)) return undefined;
-  const words = UNREADABLE_IN[treeOfTheLine(error.locus, trees) ?? 'unknown'];
+  const tree = treeOfTheLine(error.locus, trees) ?? 'unknown';
+  if (error instanceof LinkedRecordError) {
+    return [
+      `The write is refused: ${UNREADABLE_IN[tree].tree} holds a symbolic link, so which rules apply to this path cannot be known.`,
+      error.message,
+      LINKED_WAY_OUT[tree],
+    ].join('\n\n');
+  }
+  if (error instanceof UnreadableDiskError) {
+    return [
+      `The write is refused: ${treeOfThePart(error, tree)} holds a part the disk does not let this mnema open, so which rules apply to this path cannot be known.`,
+      saidWhere(error, tree),
+      DISK_WAY_OUT_OF[tree],
+    ].join('\n\n');
+  }
+  const words = UNREADABLE_IN[tree];
   return [
     `The write is refused: a line of ${words.tree} cannot be read by this mnema, so which rules apply to this path cannot be known.`,
     error.message,
-    words.out,
+    words.out(tailsOfTheLocus(error.locus)),
+  ].join('\n\n');
+}
+
+/**
+ * The refusal of an act that records something (a decision, a note, a task) over a part of the record
+ * the disk does not let this mnema open. It is not about a path, as the refusal of a write before an
+ * edit is: the act names none, so the sentence says the record cannot be written, where it is, and the
+ * way out. `trees` are the trees the caller read, as for {@link refusalOfAnUnreadableRecord}.
+ */
+export function refusalOfAPartForARecordingAct(
+  error: UnreadableDiskError,
+  trees: readonly Pick<ScopedCache, 'scope' | 'chainRoot'>[],
+): string {
+  const tree = treeOfTheLine(error.locus, trees) ?? 'unknown';
+  return [
+    `${treeOfThePart(error, tree)} holds a part the disk does not let this mnema open, so the record cannot be written.`,
+    saidWhere(error, tree),
+    DISK_WAY_OUT_OF[tree],
   ].join('\n\n');
 }
 
@@ -321,38 +373,236 @@ export function refusalOfAnUnreadableRecord(
  * event is served and said, never refused here (ADR-395), so the breaks are not read.
  */
 export function refusalOfAnAlteredRecord(facts: readonly ScopedLinkBreak[]): string | undefined {
+  // A part of the record this mnema does not read is refused in the words an unreadable line always
+  // was, now that the read serves around it (ADR-396): the gate says no, and the way out.
+  const unread = facts.find((fact) => fact.unread !== undefined);
+  if (unread !== undefined) {
+    return refusalOfAnUnreadableRecord(unreadableErrorOf(unread), [
+      { scope: unread.scope, chainRoot: (unread.unread as { root: string }).root },
+    ]);
+  }
   const altered = facts.filter((fact) => fact.retained !== undefined);
-  if (altered.length === 0) return undefined;
+  if (altered.length === 0) return unsignedRefusal(facts, 'The write is refused');
   const trees = [...new Set(altered.map((fact) => fact.scope))];
   return [
     `The write is refused: ${trees.map((tree) => ALTERED_IN[tree].tree).join(' and ')} holds an entry that was altered after it was written, so which rules apply to this path cannot be known.`,
     ...linkBreakSentences(altered),
-    ...trees.map((tree) => ALTERED_IN[tree].out),
+    ...trees.map((tree) => ALTERED_IN[tree].out(tailsOf(altered, tree))),
   ].join('\n\n');
 }
+
+/**
+ * What a write meets where a run of the record is withheld because no signature proves it (Fact A,
+ * ADR-561): which rules apply cannot be known from a record whose signed facts do not hold, so the
+ * gate and every write refuse, as for an altered entry, until the tail is as it was signed.
+ */
+function unsignedRefusal(facts: readonly ScopedLinkBreak[], opening: string): string | undefined {
+  const withheld = facts.filter((fact) => fact.checkpoint !== undefined);
+  if (withheld.length === 0) return undefined;
+  const trees = [...new Set(withheld.map((fact) => fact.scope))];
+  const why = withheld.some((fact) => fact.checkpoint?.why === 'missing-signed')
+    ? 'a signed fact that is missing'
+    : withheld.every(founding)
+      ? 'a tail no checkpoint signs yet'
+      : withheld.every(
+            (fact) =>
+              fact.checkpoint?.why === 'unproven-beyond-one-write' ||
+              fact.checkpoint?.why === 'no-checkpoint',
+          )
+        ? 'events no signature covers, more than one write leaves'
+        : 'a signed checkpoint that does not verify';
+  const cannotBeKnown =
+    opening === 'The write is refused' ? ', so which rules apply to this path cannot be known' : '';
+  return [
+    `${opening}: ${trees.map((tree) => ALTERED_IN[tree].tree).join(' and ')} holds ${why}${cannotBeKnown}.`,
+    ...linkBreakSentences(withheld),
+    ...trees.map((tree) => UNSIGNED_IN[tree](withheld.filter((fact) => fact.scope === tree))),
+  ].join('\n\n');
+}
+
+/** Whether a withheld run is a tail that holds events and no checkpoint that verifies. */
+function founding(fact: ScopedLinkBreak): boolean {
+  return fact.checkpoint?.why === 'no-checkpoint';
+}
+
+/** The tails named as a path of the public tree: `tails/<id>/`, joined by "and". */
+function tailPaths(facts: readonly ScopedLinkBreak[]): string {
+  return [...new Set(facts.map((fact) => fact.tail))].map((tail) => `tails/${tail}/`).join(' and ');
+}
+
+/**
+ * The way out of a run no signature proves, by tree (ADR-408): only the public tree is in git.
+ *
+ * A public tail that holds events and no checkpoint is what a tail committed right after its first
+ * write, before the checkpoint that write signs, looks like in a clone: putting it back as committed
+ * changes nothing there, and what signs it is one more write of the machine that wrote it, which
+ * its own signed note lets write. So that tail is told that way first, and `mnema tail repair`, which
+ * puts a whole tail back from history (ADR-559), stays for a checkpoint that was committed and is
+ * gone, and for every other run.
+ */
+const UNSIGNED_IN: Readonly<Record<Scope, (withheld: readonly ScopedLinkBreak[]) => string>> = {
+  public: (withheld) => {
+    const founded = withheld.filter(founding);
+    const altered = withheld.filter((fact) => !founding(fact));
+    return [
+      ...(altered.length === 0
+        ? []
+        : [
+            `Every write in the project is refused until the tail is as it was signed: ${repairWords(altered.map((fact) => fact.tail))} puts it back from the repository’s history, then run \`mnema verify\`.`,
+          ]),
+      ...(founded.length === 0
+        ? []
+        : [
+            `Every write in the project is refused until a checkpoint signed by the tail’s key covers ${tailPaths(founded)}: on the machine that wrote it, write once more in this project, which signs one, and commit ${tailPaths(founded)}; then run \`mnema verify\`. If the repository committed a checkpoint of ${tailPaths(founded)} that is no longer there, ${repairWords(founded.map((fact) => fact.tail))} puts it back instead.`,
+          ]),
+    ].join('\n\n');
+  },
+  private: () =>
+    `Every write in the project is refused until the tail is as it was signed. ${NOT_VERSIONED_ALTERED}`,
+  global: () =>
+    `This closes every project on this machine: every write in each is refused until the tail is as it was signed. ${NOT_VERSIONED_ALTERED}`,
+};
 
 const NOT_VERSIONED_ALTERED =
   'This record is not versioned: restore the file from a copy, or repair or remove the line named above.';
 
 /** What the refusal says of each tree, for an altered entry: which it is, how far it reaches, the way out. */
-const ALTERED_IN: Readonly<Record<Scope, { tree: string; out: string }>> = {
+const ALTERED_IN: Readonly<
+  Record<Scope, { tree: string; out: (tails: readonly string[]) => string }>
+> = {
   public: {
     tree: 'the project’s public record',
-    out: 'Every write in the project is refused until the line is as it was written: restore the line from the repository’s history.',
+    out: (tails) =>
+      `Every write in the project is refused until the line is as it was written: ${repairWords(tails)} puts it back from the repository’s history.`,
   },
   private: {
     tree: 'the project’s private record on this machine',
-    out: `Every write in the project is refused until the line is as it was written. ${NOT_VERSIONED_ALTERED}`,
+    out: () =>
+      `Every write in the project is refused until the line is as it was written. ${NOT_VERSIONED_ALTERED}`,
   },
   global: {
     tree: 'this machine’s global record',
-    out: `This closes every project on this machine: every write in each is refused until the line is as it was written. ${NOT_VERSIONED_ALTERED}`,
+    out: () =>
+      `This closes every project on this machine: every write in each is refused until the line is as it was written. ${NOT_VERSIONED_ALTERED}`,
   },
+};
+
+/**
+ * `mnema tail repair <tail>` for each of `tails`: the verb that puts a line of the committed public tree
+ * back from git (ADR-398), named only where the tree is the public one (ADR-408).
+ */
+function repairWords(tails: readonly string[]): string {
+  return [...new Set(tails)].map((tail) => `\`mnema tail repair ${tail}\``).join(' and ');
+}
+
+/** The tails of the facts that name `tree`. */
+function tailsOf(facts: readonly ScopedLinkBreak[], tree: Scope): string[] {
+  return facts.filter((fact) => fact.scope === tree).map((fact) => fact.tail);
+}
+
+/**
+ * The tail whose segment a locus names (`<...>/tails/<tail>/000001.jsonl line 3`), when it is a segment
+ * of a tail: the only file `mnema tail repair` puts a line back in. The checkpoints are not one.
+ */
+function tailsOfTheLocus(locus: string): string[] {
+  const named = /[\\/]tails[\\/]([^\\/]+)[\\/]\d+\.jsonl (?:line|byte offset) \d+$/.exec(locus);
+  return named === null ? [] : [named[1] as string];
+}
+
+/**
+ * The way out of a refusal for a symbolic link in a record, by tree and by how far it reaches: the link
+ * is replaced with the folder or file it points to, because a record is read from its own files.
+ */
+const LINKED_WAY_OUT: Readonly<Record<Scope | 'unknown', string>> = {
+  public:
+    'Every write in the project is refused until the link is gone: replace the link with the folder or file it points to.',
+  private:
+    'Every write in the project is refused until the link is gone: replace the link with the folder or file it points to. This record is not versioned.',
+  global:
+    'This closes every project on this machine: every write in each is refused until the link is gone. Replace the link with the folder or file it points to. This record is not versioned.',
+  unknown:
+    'Every write that reads this record is refused until the link is gone: replace the link with the folder or file it points to.',
 };
 
 /** The note on the second stream beside that refusal. */
 export const ALTERED_RECORD_NOTE =
   'The record holds an altered entry, so the write was refused and nothing was recorded.';
+
+/**
+ * The refusal of a WRITE while an entry of the record was altered after it was written (ADR-396):
+ * thrown by the door of the command line and by the one door of the agent's tools before anything
+ * is opened for writing, and answered by each as every refusal the product wrote on purpose is
+ * (`Refused (ALTERED_ENTRY)` for an agent, the code on the first line of the error stream for a
+ * hook). Reading degrades around such an entry; writing does not, because a new entry signed over a
+ * record that no longer proves itself would be taken by the next reader for the record's own word.
+ */
+export class AlteredEntryError extends CodedError {
+  readonly code = 'ALTERED_ENTRY';
+  override readonly name = 'AlteredEntryError';
+}
+
+/**
+ * What a write says when it met an entry whose hash does not hold, or `undefined` when no tree
+ * has one: each entry (tree, tail, seq, the file and the line), how far the refusal reaches and the
+ * way out, which differs by tree for the reason {@link ALTERED_IN} says (only the public tree is
+ * kept by the repository, so only its way out is a restore from history, by `tail repair`). Every write is refused until the line is as it was written, and so is `switch off`: the
+ * switch is a fact of the same record. A gap or a fork is not read here: it is told, never refused.
+ */
+export function alteredEntrySentence(facts: readonly ScopedLinkBreak[]): string | undefined {
+  const unread = facts.find((fact) => fact.unread !== undefined);
+  if (unread !== undefined) {
+    return unreadableLineSentence(unreadableErrorOf(unread), [
+      { scope: unread.scope, chainRoot: (unread.unread as { root: string }).root },
+    ]);
+  }
+  const altered = facts.filter((fact) => fact.retained !== undefined);
+  if (altered.length === 0) {
+    const refused = unsignedRefusal(facts, 'Nothing was done');
+    return refused === undefined
+      ? undefined
+      : `${refused}\n\nSwitching a channel off is a write to the same record, so it is refused too.`;
+  }
+  const trees = [...new Set(altered.map((fact) => fact.scope))];
+  return [
+    `Nothing was done: ${trees.map((tree) => ALTERED_IN[tree].tree).join(' and ')} holds an entry that was altered after it was written.`,
+    ...linkBreakSentences(altered),
+    ...trees.map((tree) => ALTERED_IN[tree].out(tailsOf(altered, tree))),
+    'Switching a channel off is a write to the same record, so it is refused too.',
+  ].join('\n\n');
+}
+
+/**
+ * The refusal a part of the record that was not read stands for, as the reader that met it would
+ * have thrown it: a read serves around such a part, and a write is refused over it as it always was
+ * (ADR-396), by the same error, so every door says it in the same words. `fact.unread` is set.
+ */
+export function unreadableErrorOf(fact: ScopedLinkBreak): UnreadableLineError {
+  const { unread } = fact;
+  if (unread === undefined)
+    throw new Error('a fact that names no part of the record was asked for its refusal');
+  if (unread.kind === 'link') return new LinkedRecordError({ root: unread.root }, unread.place);
+  if (unread.kind === 'disk') {
+    return new UnreadableDiskError(
+      join(unread.root, ...unread.place.split('/')),
+      unread.reason,
+      unread.place,
+      'UNREADABLE',
+    );
+  }
+  const file = join(unread.root, ...unread.place.split('/'));
+  return new UnreadableLineError(`${file} line ${unread.line ?? 0}`, unread.reason);
+}
+
+/**
+ * Refuses the write when any of the facts is a part of the record this mnema does not read (the
+ * error the reader would have thrown) or an altered entry: the one throw of both doors.
+ */
+export function refuseWhileAltered(facts: readonly ScopedLinkBreak[]): void {
+  const unread = facts.find((fact) => fact.unread !== undefined);
+  if (unread !== undefined) throw unreadableErrorOf(unread);
+  const sentence = alteredEntrySentence(facts);
+  if (sentence !== undefined) throw new AlteredEntryError(sentence);
+}
 
 /**
  * What a command line says when it met a stored line it cannot read: the line (file and position, so
@@ -364,11 +614,28 @@ export function unreadableLineSentence(
   error: UnreadableLineError,
   trees: readonly Pick<ScopedCache, 'scope' | 'chainRoot'>[],
 ): string {
-  const words = UNREADABLE_IN[treeOfTheLine(error.locus, trees) ?? 'unknown'];
+  const tree = treeOfTheLine(error.locus, trees) ?? 'unknown';
+  if (error instanceof LinkedRecordError) {
+    return [
+      `Nothing was done: ${UNREADABLE_IN[tree].tree} holds a symbolic link, which this mnema does not follow.`,
+      error.message,
+      LINKED_WAY_OUT[tree],
+      'Switching a channel off is a write to the same record, so it is refused too. `mnema verify` names every link it refuses.',
+    ].join('\n\n');
+  }
+  if (error instanceof UnreadableDiskError) {
+    return [
+      `Nothing was done: ${treeOfThePart(error, tree)} holds a part the disk does not let this mnema open.`,
+      saidWhere(error, tree),
+      DISK_WAY_OUT_OF[tree],
+      'Switching a channel off is a write to the same record, so it is refused too.',
+    ].join('\n\n');
+  }
+  const words = UNREADABLE_IN[tree];
   return [
     `Nothing was done: ${words.tree} holds a line this mnema cannot read.`,
     error.message,
-    words.out,
+    words.out(tailsOfTheLocus(error.locus)),
     'Switching a channel off is a write to the same record, so it is refused too. `mnema verify` lists every unreadable line with its tail and position.',
   ].join('\n\n');
 }
@@ -388,28 +655,70 @@ function treeOfTheLine(
   return holding[0]?.scope;
 }
 
-const NOT_VERSIONED =
-  'This record is not versioned: update mnema if a newer one wrote the line, restore the file from a copy, or repair or remove the line named above.';
+/**
+ * Which record a part the disk will not open belongs to, when it is not under a tree's own folder: inside
+ * a repository the public tree's locks and installation ids are in the git directory, and the
+ * identity's keys are in the mnema home. A part under a tree is that tree's.
+ */
+function treeOfThePart(error: UnreadableDiskError, tree: Scope | 'unknown'): string {
+  if (tree !== 'unknown') return UNREADABLE_IN[tree].tree;
+  if (
+    /[\\/]identity[\\/]keys(?:[\\/]|$)/.test(error.locus) ||
+    error.locus.endsWith(`${sep}identity`)
+  ) {
+    return 'the identity’s keys folder in the mnema home';
+  }
+  if (/[\\/]mnema[\\/][^\\/]+[\\/]public[\\/]/.test(error.locus)) {
+    return 'the project’s public record (its locks and installation ids are kept in the git directory)';
+  }
+  return UNREADABLE_IN.unknown.tree;
+}
+
+/** The part's place in the record, and, where it is outside every tree, where it is on the disk. */
+function saidWhere(error: UnreadableDiskError, tree: Scope | 'unknown'): string {
+  return tree === 'unknown' ? `${error.message}. It is at ${error.locus}.` : error.message;
+}
 
 /** What the refusal says of each tree: which it is, how far the refusal reaches, and the way out. */
-const UNREADABLE_IN: Readonly<Record<Scope | 'unknown', { tree: string; out: string }>> = {
+const UNREADABLE_IN: Readonly<
+  Record<Scope | 'unknown', { tree: string; out: (tails: readonly string[]) => string }>
+> = {
   public: {
     tree: 'the project’s public record',
-    out: 'Every write in the project is refused until the line reads: update mnema if a newer one wrote the line, or restore the line from the repository’s history.',
+    // A line that is not in a segment (a checkpoint's) is not one the verb puts back.
+    out: (tails) =>
+      tails.length === 0
+        ? 'Every write in the project is refused until the line reads: update mnema if a newer one wrote the line, or restore the line from the repository’s history.'
+        : `Every write in the project is refused until the line reads: update mnema if a newer one wrote the line, or ${repairWords(tails)} puts it back from the repository’s history.`,
   },
   private: {
     tree: 'the project’s private record on this machine',
-    out: `Every write in the project is refused until the line reads. ${NOT_VERSIONED}`,
+    out: () => `Every write in the project is refused until the line reads. ${NOT_VERSIONED}`,
   },
   global: {
     tree: 'this machine’s global record',
-    out: `This closes every project on this machine: every write in each is refused until the line reads. ${NOT_VERSIONED}`,
+    out: () =>
+      `This closes every project on this machine: every write in each is refused until the line reads. ${NOT_VERSIONED}`,
   },
   // Not reached by a door, which hands the trees it read; said rather than guessed if it is.
   unknown: {
     tree: 'the record',
-    out: 'Every write that reads this record is refused until the line reads: update mnema if a newer one wrote the line, restore the line from the repository’s history or the file from a copy, or repair or remove the line named above.',
+    out: () =>
+      'Every write that reads this record is refused until the line reads: update mnema if a newer one wrote the line, restore the line from the repository’s history or the file from a copy, or repair or remove the line named above.',
   },
+};
+
+/**
+ * The way out of a refusal for a part the disk does not let this mnema open, by tree and by how far it
+ * reaches. It names no verb that puts a line back: the part to be put right is a permission or a
+ * folder, which no history holds (ADR-408 keeps `mnema tail repair` out of the private and the
+ * global tree, and a line is all it puts back).
+ */
+const DISK_WAY_OUT_OF: Readonly<Record<Scope | 'unknown', string>> = {
+  public: `Every write in the project is refused until the part opens: ${DISK_WAY_OUT}`,
+  private: `Every write in the project is refused until the part opens: ${DISK_WAY_OUT} This record is not versioned.`,
+  global: `This closes every project on this machine: every write in each is refused until the part opens. ${DISK_WAY_OUT} This record is not versioned.`,
+  unknown: `Every write that reads this record is refused until the part opens: ${DISK_WAY_OUT}`,
 };
 
 /** The note on the second stream beside that refusal. */
@@ -425,11 +734,14 @@ function verdict(
     const apart = movedApartLine(sources, one.at.rules);
     return apart === undefined ? one.notice : `${one.notice}\n${apart}`;
   });
+  const newer = newerLinesOf(sources.map((source) => source.cache));
+  const said = newer === undefined ? undefined : newerLinesSentence(newer);
   return {
     grade,
     at: met.map((one) => one.at),
-    reason: notices.join('\n\n'),
+    reason: (said === undefined ? notices : [...notices, said]).join('\n\n'),
     notices,
+    ...(said === undefined ? {} : { newer: said }),
   };
 }
 

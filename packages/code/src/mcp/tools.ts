@@ -74,6 +74,7 @@ import {
   type GuardWithFocus,
   guardWithFocus,
   lookupServedSkill,
+  type NewerLines,
   type NextAction,
   newerLinesAbout,
   newerLinesOf,
@@ -1406,6 +1407,14 @@ export function runSkillTransition(
 
   const { ctx, run, which } = openWrite(session, located.home.scope, located.home.target);
   const fields = skillProofToFields(input);
+  // Adopting or deprecating is a person's with `agent-accepts` off (`agent-accepts.ts`); every call
+  // here is an agent's, with no terminal. Asked under the tail's lock, below.
+  const refusedWhen = () =>
+    agentMayAccept(workspaceCaches(session), {
+      action: input.action,
+      agent: which,
+      atATerminal: false,
+    });
   // Every move carries the session's `which` (the executing agent) and `run`, so
   // the transition is attributed to the agent even when it lands in the public
   // tree, who (the machine) != which (the agent) is preserved on a skill move
@@ -1413,6 +1422,8 @@ export function runSkillTransition(
   const stamp = { which, run };
   const args = { id: input.id, ...(fields !== undefined ? { fields } : {}), ...stamp };
   const moved = ctx.writer.exclusively(() => {
+    const turnedAway = refusedWhen();
+    if (turnedAway !== undefined) return { ok: false as const, ...turnedAway };
     const written =
       input.action === 'review'
         ? reviewSkill(ctx, args)
@@ -1766,6 +1777,21 @@ export function sessionLinkBreaks(session: Session, door: WhichDoor): readonly S
   return linkBreaksOf(
     placed,
     door === A_WRITE ? THE_CHAIN_AS_IT_STANDS_NOW : THE_READING_THAT_OPENED_THESE,
+  );
+}
+
+/**
+ * What a newer mnema wrote into the trees this session has open, which a read has just brought up
+ * to date: asked of the same loaded caches as {@link sessionLinkBreaks}, and so by every read that
+ * leaves through the server's one door for them, never by a second opening.
+ */
+export function sessionNewerLines(session: Session): NewerLines | undefined {
+  const inWorkspace = new Set(workspaceTrees(session).map((tree) => tree.chainRoot));
+  return newerLinesOf(
+    session.caches
+      .opened()
+      .filter((open) => inWorkspace.has(open.chainRoot))
+      .map((open) => open.cache),
   );
 }
 
@@ -2876,7 +2902,7 @@ export function severalRecordsNotes(caches: readonly ProjectionCache[]): readonl
  */
 export function newerLinesNotes(session: Session, id?: string): readonly string[] {
   if (id === undefined) {
-    const newer = newerLinesOf(sessionCaches(session));
+    const newer = sessionNewerLines(session);
     return newer === undefined ? [] : [newerLinesSentence(newer)];
   }
   const newer = newerLinesAbout(
@@ -3014,9 +3040,12 @@ export function runRulesBeforeAnEditTool(
  */
 function alteredRecordRefusal(session: Session): IntelligenceResult<HookReply> | undefined {
   workspaceCaches(session);
-  const altered = refusalOfAnAlteredRecord(sessionLinkBreaks(session, A_WRITE));
+  const facts = sessionLinkBreaks(session, A_WRITE);
+  const altered = refusalOfAnAlteredRecord(facts);
   if (altered === undefined) return undefined;
-  session.log(ALTERED_RECORD_NOTE);
+  session.log(
+    facts.some((fact) => fact.unread !== undefined) ? UNREADABLE_RECORD_NOTE : ALTERED_RECORD_NOTE,
+  );
   return { ok: true, value: hookReply(PRE_TOOL_USE, { refuse: altered }) };
 }
 

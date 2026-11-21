@@ -78,7 +78,7 @@
  */
 
 import { existsSync } from 'node:fs';
-import { CodedError } from '@mnema/chain';
+import { CodedError, UnreadableDiskError, UnreadableLineError } from '@mnema/chain';
 import { REFERENCE_DEFAULT_DEPTH, REFERENCE_MAX_DEPTH } from '@mnema/context';
 import {
   canonicalIdentity,
@@ -149,6 +149,10 @@ import {
   windowDeclaration,
   windowGloss,
 } from '../vocabulary.js';
+import {
+  refusalOfAnUnreadableRecord,
+  refusalOfAPartForARecordingAct,
+} from '../what-a-write-meets.js';
 import type { ClientWorkspace } from './context.js';
 import { SERVER_INSTRUCTIONS } from './instructions.js';
 import { armSessionClose, type Lifecycle } from './lifecycle.js';
@@ -193,6 +197,7 @@ import {
   runTaskTransition,
   runTimelineTool,
   sessionLinkBreaks,
+  workspaceTrees,
 } from './tools.js';
 
 /** The name the server announces itself as (its own identity, not the client's). */
@@ -937,6 +942,25 @@ export function answeringThrownRefusals<Input extends ZodRawShapeCompat | undefi
     try {
       return await called(...args);
     } catch (error) {
+      if (error instanceof UnreadableDiskError && effect === 'mutates') {
+        // A part of the record the disk will not open, met by an act that records: its own code, and
+        // words for an act that names no path (the refusal of a line speaks of the path of an edit).
+        const session = await ensureSession();
+        return refused(session, {
+          code: 'UNREADABLE_PART',
+          message: `${refusalOfAPartForARecordingAct(error, workspaceTrees(session))} ${NOT_RECORDED}`,
+        });
+      }
+      if (error instanceof UnreadableLineError && effect === 'mutates') {
+        // A part of the record this mnema cannot read stops a write: said with its place and the way out,
+        // as the command line says it, and not as the reader's one-line message.
+        const session = await ensureSession();
+        const said = refusalOfAnUnreadableRecord(error, workspaceTrees(session));
+        return refused(session, {
+          code: 'UNREADABLE_LINE',
+          message: `${said ?? error.message} ${NOT_RECORDED}`,
+        });
+      }
       if (!(error instanceof CodedError)) throw error;
       const session = await ensureSession();
       const keyFile =
@@ -1397,7 +1421,7 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
         'in the project that holds it: the id decides, so no `project` is taken. An ' +
         'acceptance made through this tool is recorded as an agent’s, says so in the ' +
         'reply, and is marked as such wherever the decision is read. The switch ' +
-        '`agent-accepts` turns it off, and then an accept is refused.' +
+        '`agent-accepts` turns it off, and then an accept or a supersede is refused.' +
         RECORD_CONTRACT,
       inputSchema: {
         id: z.string().min(1).describe('The decision id to move.'),
@@ -1483,7 +1507,8 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
         `need a note; ${slashed(actionsRequiring('skill', 'reason'))} needs a reason. An illegal move or missing proof ` +
         'is refused with the gate’s reason. The skill is looked for in EVERY project ' +
         'of this workspace and the move lands in the project that holds it: the id ' +
-        'decides, so no `project` is taken.' +
+        'decides, so no `project` is taken. With the switch `agent-accepts` off, adopt and ' +
+        'deprecate are refused here: only a person at a terminal makes them.' +
         RECORD_CONTRACT,
       inputSchema: {
         id: z.string().min(1).describe('The skill id to move.'),
@@ -1564,7 +1589,6 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
       return withRunState(active, context, [
         ...movedApartBlock(active),
         ...bootstrapOfSeveralRecords(active),
-        ...newerLinesNotes(active),
         whereThisSessionIs(active),
         ...switchedOffBlock(active),
       ]);
@@ -2507,11 +2531,12 @@ function served(
  * ({@link withRunState}'s sentence about the connection), because they are about this
  * connection rather than about the record.
  *
- * It does not REFUSE, and that is the same ruling the read made. Nothing is lost when a
- * tail stops chaining, the break is behind, and the new event chains from the last hash
- * it found, so it is sound from there forward. Refusing would turn a broken chain into
- * a stopped product, and an append-only record exists to survive the accident rather
- * than to decline to work after it. `record-integrity.ts` holds the argument in full.
+ * It does not REFUSE a gap or a fork, and that is the same ruling the read made: nothing is lost
+ * when a tail stops chaining, the break is behind, and the new event chains from the last hash it
+ * found, so it is sound from there forward. An altered or an unreadable entry is not behind and
+ * is not told here: the write was refused before it began, at the door every write opens through
+ * (`openWrite`), so what this composes over such a record is only the reply to a call that read.
+ * `record-integrity.ts` holds the argument in full.
  */
 function replied(
   session: Session,
@@ -2533,6 +2558,14 @@ function replied(
       // an acknowledgement carries it the same. The note a newer mnema's version adds
       // comes AFTER this block, never before it.
       ...fact(sessionLinkBreaks(session, wrote ? A_WRITE : A_READ)),
+      // THEN, ONCE PER CONNECTION AND NEVER BEFORE THE FACTS ABOVE, that a newer mnema is installed and
+      // `mnema upgrade` has not run on this machine: for the person to be told, never for the agent to
+      // act on (`update-notice.ts`). Not in the handshake's instructions, nor in the opening text.
+      ...session.updateNote.take(),
+      // AND, RIGHT AFTER IT, WHAT A NEWER MNEMA WROTE that this one reads past (ADR-140): on every
+      // read and on none of the writes, asked of the caches the read has just loaded, so a tool
+      // added later says it without remembering to. Absent for every record this version wrote.
+      ...(wrote ? [] : newerLinesNotes(session)),
       ...before,
       // WHAT THIS CONNECTION'S WRITES FOUNDED since the last reply: asked here and in
       // {@link refused}, which between them are every answer a tool composes, so a tool added
@@ -2617,6 +2650,8 @@ function refused(
   return {
     isError: true,
     content: [
+      // A refusal carries no fact of integrity, so the note, if this is the first reply, leads it.
+      ...session.updateNote.take(),
       `Refused (${refusal.code}): ${refusal.message}`,
       ...session.founding.take(),
       ...session.replacementsOwed.take(),

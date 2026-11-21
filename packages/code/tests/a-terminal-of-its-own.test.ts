@@ -34,7 +34,13 @@ import { renderPlain } from '../src/presentation/plain.js';
 import { renderStyled } from '../src/presentation/styled.js';
 import { buildProgram, type CliIo, run } from '../src/program.js';
 import { completerFor } from '../src/repl/complete.js';
-import { dispositionOf, membersOffered, pathsOffered, verbsOffered } from '../src/repl/gate.js';
+import {
+  DRAW_THEIR_OWN_SCREEN,
+  dispositionOf,
+  membersOffered,
+  pathsOffered,
+  verbsOffered,
+} from '../src/repl/gate.js';
 import { whatTheSessionShowed } from '../src/repl/seen.js';
 import { openSession, theSessionsOwnWords, typedLine } from '../src/repl/session.js';
 import { SESSION_WORDS } from '../src/session-words.js';
@@ -167,6 +173,13 @@ describe('the session offers the reads and refuses the writes', () => {
     const offered = verbsOffered(DECLARED, REPL_VERB);
     for (const verb of verbsThat('reads')) {
       if (verb === REPL_VERB) continue;
+      // A verb that draws a screen of its own is not the session's to run: it would take the terminal the
+      // session is drawing on. It is named by the gate, so this case cannot grow a list of its own.
+      if (DRAW_THEIR_OWN_SCREEN.has(verb)) {
+        expect(dispositionOf(verb, DECLARED, REPL_VERB).does, verb).toBe('refuse');
+        expect(offered, verb).not.toContain(verb);
+        continue;
+      }
       expect(dispositionOf(verb, DECLARED, REPL_VERB).does, verb).toBe('run');
       expect(offered, verb).toContain(verb);
     }
@@ -226,7 +239,7 @@ describe('the session offers the reads and refuses the writes', () => {
     const answers: string[] = [];
     for (const verb of verbsThat('mutates')) await prompt(verb);
     for (const verb of verbsThat('reads')) {
-      if (verb === REPL_VERB) continue;
+      if (verb === REPL_VERB || DRAW_THEIR_OWN_SCREEN.has(verb)) continue;
       // `--help` is what every verb answers without an argument of its own, so the
       // exercise needs no table of invocations to stay enumerated. It runs the verb's
       // whole declaration through the session's own parse.

@@ -295,7 +295,36 @@ describe('what only imitates a formatter is never called one', () => {
 });
 
 describe('the diagnosis reads in memory and writes nothing', () => {
-  it('reads a tail proof through a symlink and writes nothing through it, with no TMPDIR', () => {
+  const listing = (): string[] =>
+    readdirSync(dir, { recursive: true, encoding: 'utf-8' })
+      .map((name) => `${name}:${statSync(join(dir, name)).mtimeMs}`)
+      .sort();
+
+  function verifyWithNoTmpdir(root: string): ReturnType<typeof verify> {
+    const saved = process.env.TMPDIR;
+    process.env.TMPDIR = join(dir, 'no-such-directory');
+    try {
+      return verify(root);
+    } finally {
+      if (saved === undefined) delete process.env.TMPDIR;
+      else process.env.TMPDIR = saved;
+    }
+  }
+
+  it('names a reformatted segment and tail proof and writes nothing, with no TMPDIR', () => {
+    const r = aRecord(2);
+    write(r, r.tailproof, indented(read(r, r.tailproof)));
+    write(r, r.segment, crlf(read(r, r.segment)));
+    const was = listing();
+    const result = verifyWithNoTmpdir(r.root);
+    expect(result.ok).toBe(false);
+    expect(result.reformatted?.files).toEqual([r.segment, r.tailproof]);
+    expect(listing()).toEqual(was);
+  });
+
+  it('reads nothing through a tail proof that is a symlink, and writes nothing through it', () => {
+    // FORMAT.md section 4 (ADR-348): the link is refused by its path and its tail is not read, so
+    // no reformat is diagnosed from what it points at.
     const r = aRecord(2);
     const outside = join(dir, 'outside.json');
     writeFileSync(outside, indented(read(r, r.tailproof)));
@@ -303,22 +332,11 @@ describe('the diagnosis reads in memory and writes nothing', () => {
     symlinkSync(outside, join(r.root, r.tailproof));
     write(r, r.segment, crlf(read(r, r.segment)));
     const before = readFileSync(outside);
-    const listing = (): string[] =>
-      readdirSync(dir, { recursive: true, encoding: 'utf-8' })
-        .map((name) => `${name}:${statSync(join(dir, name)).mtimeMs}`)
-        .sort();
     const was = listing();
-    const saved = process.env.TMPDIR;
-    process.env.TMPDIR = join(dir, 'no-such-directory');
-    let result: ReturnType<typeof verify>;
-    try {
-      result = verify(r.root);
-    } finally {
-      if (saved === undefined) delete process.env.TMPDIR;
-      else process.env.TMPDIR = saved;
-    }
+    const result = verifyWithNoTmpdir(r.root);
     expect(result.ok).toBe(false);
-    expect(result.reformatted?.files).toEqual([r.segment, r.tailproof]);
+    expect(result.issues[0]?.detail).toContain(`LINKED ENTRY: ${r.tailproof} is a symbolic link`);
+    expect(result.reformatted).toBeUndefined();
     expect(readFileSync(outside).equals(before)).toBe(true);
     expect(listing()).toEqual(was);
   });

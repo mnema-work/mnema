@@ -295,11 +295,32 @@ export function tellSomebody(reading, budget, book, run) {
   return 'opened';
 }
 
+/** The labels of the issue about the hot path. */
+const LABELS = ['ci', 'performance'];
+
 /** The issue book of this repository, through the `gh` of the runner. */
 function theIssuesOfThisRepository() {
   const repo = process.env.GITHUB_REPOSITORY ?? '';
   /** @type {(...args: string[]) => string} */
   const gh = (...args) => execFileSync('gh', args, { encoding: 'utf-8' }).trim();
+  // `performance` may not exist in the repository yet: make it, and let an existing one stand.
+  const ensureLabels = () => {
+    try {
+      gh(
+        'label',
+        'create',
+        'performance',
+        '--repo',
+        repo,
+        '--color',
+        'fbca04',
+        '--description',
+        'The speed or the weight of something',
+      );
+    } catch {
+      // already there
+    }
+  };
   /** @type {{ findOpen: (title: string) => string | undefined, comment: (number: string, body: string) => void, open: (title: string, body: string) => void }} */
   const book = {
     findOpen: (title) =>
@@ -317,8 +338,25 @@ function theIssuesOfThisRepository() {
         '--jq',
         '.[0].number // empty',
       ) || undefined,
-    comment: (number, body) => gh('issue', 'comment', number, '--repo', repo, '--body', body),
-    open: (title, body) => gh('issue', 'create', '--repo', repo, '--title', title, '--body', body),
+    comment: (number, body) => {
+      ensureLabels();
+      gh('issue', 'edit', number, '--repo', repo, ...LABELS.flatMap((one) => ['--add-label', one]));
+      gh('issue', 'comment', number, '--repo', repo, '--body', body);
+    },
+    open: (title, body) => {
+      ensureLabels();
+      gh(
+        'issue',
+        'create',
+        '--repo',
+        repo,
+        '--title',
+        title,
+        '--body',
+        body,
+        ...LABELS.flatMap((one) => ['--label', one]),
+      );
+    },
   };
   return book;
 }

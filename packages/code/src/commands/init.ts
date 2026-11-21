@@ -52,6 +52,7 @@ import {
   establishIdentity,
   openTreeForWriting,
   recordedAnchorOf,
+  refusalBeforeTheAnchorRead,
   signerFor,
 } from '@mnema/core/write';
 import { basesNeverImported, type UnimportedBase } from '../outside-the-record.js';
@@ -149,7 +150,7 @@ export interface InitResult {
     readonly gitignore?: true;
   };
   readonly writeRefused?: {
-    readonly code: IdentityUnavailableError['code'];
+    readonly code: IdentityUnavailableError['code'] | 'TAIL_DAMAGED';
     readonly message: string;
     /** Where this machine keeps the key file `mnema key restore "<the key file>"` means. */
     readonly keyFile?: string;
@@ -233,6 +234,9 @@ export function runInit(ctx: InitContext): InitResult | InitRefused {
     const asked = {
       writer: signerFor(trees, 'public'),
       layout: { root: chainRootForScope(trees, 'public') as string },
+      ...(trees.projectPublicMachinery === undefined
+        ? {}
+        : { installation: { root: trees.projectPublicMachinery.checkout } }),
       upcasters: catalogUpcasters(),
     };
     // What the founding leaves beside the record, and a project founded before it did lacks:
@@ -259,7 +263,11 @@ export function runInit(ctx: InitContext): InitResult | InitRefused {
       return { created: false, root, anchor: authorizingAnchor(asked), ...completed };
     }
     if (recorded.counted) return { created: false, root, anchor: recorded.anchor, ...completed };
-    const { refusal } = recorded;
+    // The refusal a write would say FIRST: the damage of the tail, when it has any, and the
+    // anchor's own otherwise. Read from the disk with no writer opened, no lock taken and nothing
+    // written (`refusalBeforeTheAnchorRead`), so this still leaves every file as it found it, and
+    // a tail another session holds does not make `init` fail.
+    const refusal = refusalBeforeTheAnchorRead(asked, recorded.refusal);
     return {
       created: false,
       root,
@@ -270,7 +278,7 @@ export function runInit(ctx: InitContext): InitResult | InitRefused {
         message: refusal.message,
         // The file is said where the words name the restore that takes it: the same path the
         // command line's catch builds for a refused write, from the same key root.
-        ...(refusal.restores !== undefined
+        ...('restores' in refusal && refusal.restores !== undefined
           ? { keyFile: privateKeyPath({ root: trees.keyRoot }, refusal.restores) }
           : {}),
       },

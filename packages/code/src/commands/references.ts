@@ -23,6 +23,7 @@
  */
 
 import { dirname } from 'node:path';
+import type { NewerLines } from '@mnema/context';
 import { type ReferenceDirection, type ReferenceGraph, references } from '@mnema/context';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { type FileBehindAPath, fileOfTheOrigin } from '../file-behind-a-path.js';
@@ -30,6 +31,7 @@ import { targetRecordedAs } from '../link-target.js';
 import { isReferenceDirection } from '../reference-directions.js';
 import {
   linkBreaksOf,
+  newerLinesIn,
   type ScopedLinkBreak,
   THE_READING_THAT_OPENED_THESE,
   withScopedCaches,
@@ -55,6 +57,8 @@ export interface ReferencesDone {
    * says so.
    */
   readonly linkBreaks: readonly ScopedLinkBreak[];
+  /** What a newer mnema wrote that this one reads past, when it wrote any (ADR-140). */
+  readonly newerLines?: NewerLines;
   /**
    * What is at the id today, when no tree authored it and it can be read as a path under the
    * project's root: whether the file is there and the digest of its bytes. Absent for a record.
@@ -103,6 +107,7 @@ export function runReferences(
     return {
       ok: true,
       linkBreaks: linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE),
+      ...newerLinesIn(sources),
       graph,
       ...(file !== undefined ? { file } : {}),
     };

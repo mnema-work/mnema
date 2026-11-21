@@ -40,6 +40,8 @@ import {
   listRegistrations,
   materializePublicKey,
   type RegistrationFault,
+  readTailDamage,
+  TailDamagedError,
   type UpcasterRegistry,
 } from '@mnema/chain';
 import { checkersIn } from '../checks/checkers.js';
@@ -78,6 +80,8 @@ export interface AnchorContext {
   /** The key that would sign here: an open writer, or the signer read without opening one. */
   readonly writer: ChainSigner;
   readonly layout: ChainLayout;
+  /** Where this checkout keeps its hint of the installation id, when that is not the record's own `keys/`. */
+  readonly installation?: ChainLayout;
   readonly upcasters: UpcasterRegistry;
 }
 
@@ -324,10 +328,56 @@ export function ensureFounded(ctx: WriteContext): string {
   return anchor;
 }
 
+/**
+ * What a write says when the recorded identity no longer counts its key: the damage of its own
+ * tail, when the tail has any, and the anchor's refusal otherwise. A tail that lost its founding
+ * line leaves the record without the identity the checkout recorded, so the anchor is the first
+ * thing that looks wrong, and its way out (delete the anchor) is not the damage and only moves
+ * the refusal to the next write. Asked only on the path that refuses: a write that passes pays
+ * nothing for it. A tail with no damage to find (one that is not there at all) falls through to
+ * the anchor's own sentence. `mnema init` asks it too, to say what the write would say.
+ *
+ * Only the tail's damage replaces the refusal: any other failure of the question (a tail held
+ * past the wait budget, say) is thrown as it is.
+ */
+export function refusalBeforeTheAnchor(
+  ctx: Pick<WriteContext, 'writer'>,
+  refusal: IdentityUnavailableError,
+): IdentityUnavailableError | TailDamagedError {
+  try {
+    ctx.writer.refuseIfDamaged();
+  } catch (error) {
+    if (error instanceof TailDamagedError) return error;
+    throw error;
+  }
+  return refusal;
+}
+
+/**
+ * {@link refusalBeforeTheAnchor} for a caller that only SAYS what a write would say and must
+ * leave the machine as it found it (`mnema init`): the tail's damage is read from the disk
+ * ({@link readTailDamage}), with no writer opened, no lock taken and nothing written, and a
+ * question that cannot be answered (a file that cannot be read, a tail held by another session)
+ * is not a failure of the caller: the anchor's own refusal stands, as it did before the question.
+ */
+export function refusalBeforeTheAnchorRead(
+  ctx: AnchorContext,
+  refusal: IdentityUnavailableError,
+): IdentityUnavailableError | TailDamagedError {
+  try {
+    return (
+      readTailDamage(ctx.layout, ctx.writer.signerFingerprint, ctx.upcasters, ctx.installation) ??
+      refusal
+    );
+  } catch {
+    return refusal;
+  }
+}
+
 function foundedAnchor(ctx: WriteContext): string {
   const recorded = recordedAnchorOf(ctx);
   if (recorded !== undefined) {
-    if (!recorded.counted) throw recorded.refusal;
+    if (!recorded.counted) throw refusalBeforeTheAnchor(ctx, recorded.refusal);
     return recorded.anchor;
   }
   // Only the path that may FOUND takes the lock: the recorded anchor above answers every
@@ -343,7 +393,7 @@ function foundedAnchor(ctx: WriteContext): string {
 function foundUnderTheLock(ctx: WriteContext): string {
   const recorded = recordedAnchorOf(ctx);
   if (recorded !== undefined) {
-    if (!recorded.counted) throw recorded.refusal;
+    if (!recorded.counted) throw refusalBeforeTheAnchor(ctx, recorded.refusal);
     return recorded.anchor;
   }
 

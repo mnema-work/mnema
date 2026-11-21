@@ -137,8 +137,8 @@ export function readHostMemory(text: string): HostMemoryNote | undefined {
   const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(text);
   if (match === null) return undefined;
   const front = match[1] ?? '';
-  const name = unquoted(/^name:[ \t]*(.*?)[ \t]*$/m.exec(front)?.[1] ?? '');
-  const type = unquoted(/^[ \t]*type:[ \t]*(.*?)[ \t]*$/m.exec(front)?.[1] ?? '');
+  const name = unquoted(/^name:(.*)$/m.exec(front)?.[1]?.trim() ?? '');
+  const type = unquoted(/^[ \t]*type:(.*)$/m.exec(front)?.[1]?.trim() ?? '');
   const body = (match[2] ?? '').trim();
   if (name === '' || body === '') return undefined;
   return { name, type: type === '' ? undefined : type, body };
@@ -164,8 +164,11 @@ function fromDirectory(
 ): AdrScan {
   const read: ScannedDecision[] = [];
   const refused: ScanRefusal[] = [];
+  let end = directory.length;
+  while (end > 0 && directory[end - 1] === '/') end -= 1;
+  const shown = directory.slice(0, end);
   for (const name of names(directory, extension).filter((n) => !skip(n))) {
-    const path = `${directory.replace(/\/+$/, '')}/${name}`;
+    const path = `${shown}/${name}`;
     let text: string;
     try {
       text = readFileSync(join(directory, name), 'utf8');

@@ -66,7 +66,10 @@
  * WHAT IT DOES NOT CHECK. It is not a verification: signatures, checkpoints and the links between
  * entries are `verify`'s. What it promises is narrower and is the one a gate needs: the events it
  * returns are the ones a replay of this tree would fold for these subjects, in the order it would
- * fold them.
+ * fold them. Which of the lines found a signature proves is the caller's question
+ * ({@link ProvenOnTail}): it is asked of each tail that holds a line found, before any move is
+ * judged, and a line it does not keep is not judged and not returned (ADR-561). With none asked,
+ * every line found is kept, which is the bytes as written.
  */
 
 import { readFileSync } from 'node:fs';
@@ -98,8 +101,20 @@ interface Found {
   readonly tail: number;
   readonly segment: number;
   readonly start: number;
+  readonly seq: number;
+  readonly hash: string;
   readonly event: CatalogEvent;
 }
+
+/**
+ * Which of the lines found on one tail a signature proves: handed the tail and the lines found on
+ * it (their seq and entry hash), it answers the hashes that are proven. Asked once per tail that
+ * holds a line found, for each reading of the subjects.
+ */
+export type ProvenOnTail = (
+  tail: string,
+  found: readonly { readonly seq: number; readonly hash: string }[],
+) => ReadonlySet<string>;
 
 /** What the merge needs of each entry of one tail, by position. */
 interface TailKeys {
@@ -128,8 +143,9 @@ export function subjectEvents(
   layout: ChainLayout,
   upcasters: UpcasterRegistry,
   ids: readonly string[],
+  proven?: ProvenOnTail,
 ): Map<string, CatalogEvent[]> {
-  const read = readSubjects(layout, upcasters, ids);
+  const read = readSubjects(layout, upcasters, ids, proven);
   // The successors the supersedes name, read for one thing: whether the record holds their birth.
   const named = new Set<string>();
   for (const placed of read.subjects.values()) {
@@ -143,7 +159,7 @@ export function subjectEvents(
   const successors =
     unread.length === 0
       ? new Map<string, PlacedEvent[]>()
-      : readSubjects(layout, upcasters, unread).subjects;
+      : readSubjects(layout, upcasters, unread, proven).subjects;
   const born = (id: string): boolean =>
     (read.subjects.get(id) ?? successors.get(id) ?? []).some(
       ({ event }) => event.kind === 'decision.transitioned' && event.payload.from === null,
@@ -175,6 +191,7 @@ function readSubjects(
   layout: ChainLayout,
   upcasters: UpcasterRegistry,
   ids: readonly string[],
+  proven?: ProvenOnTail,
 ): SubjectsRead {
   const tails = listTails(layout);
   const segments = tails.map((tail) => orderedSegments(layout, tail));
@@ -218,7 +235,14 @@ function readSubjects(
           const entry = entryAt(start, end, newline);
           // A line of a kind this binary does not know is no event of any subject it serves.
           if (entry !== null && isRead(entry) && entry.event.subject === id) {
-            mine.push({ tail, segment, start, event: entry.event });
+            mine.push({
+              tail,
+              segment,
+              start,
+              seq: entry.link.seq,
+              hash: entry.link.hash,
+              event: entry.event,
+            });
           }
         }
       }
@@ -235,6 +259,8 @@ function readSubjects(
               tail,
               segment,
               start,
+              seq: entry.link.seq,
+              hash: entry.link.hash,
               event: entry.event,
             });
           }
@@ -244,6 +270,8 @@ function readSubjects(
       }
     });
   });
+
+  if (proven !== undefined) keepTheProven(found, tails, proven);
 
   const subjects = new Map<string, PlacedEvent[]>();
   let merged: Merged | undefined;
@@ -267,6 +295,29 @@ function readSubjects(
     );
   }
   return { subjects, held: merged?.held ?? [] };
+}
+
+/**
+ * Leaves in `found` only the lines `proven` keeps, asking it once per tail that holds one: a line
+ * no signature proves is neither judged nor returned, as the projection never folds it (ADR-561).
+ */
+function keepTheProven(
+  found: Map<string, Found[]>,
+  tails: readonly string[],
+  proven: ProvenOnTail,
+): void {
+  const byTail = new Map<number, Found[]>();
+  for (const lines of found.values()) {
+    for (const line of lines) byTail.set(line.tail, [...(byTail.get(line.tail) ?? []), line]);
+  }
+  const kept = new Map<number, ReadonlySet<string>>();
+  for (const [tail, lines] of byTail) kept.set(tail, proven(tails[tail] as string, lines));
+  for (const [id, lines] of found) {
+    found.set(
+      id,
+      lines.filter((line) => kept.get(line.tail)?.has(line.hash) === true),
+    );
+  }
 }
 
 /** Where the merge of every tail puts each line found, and the citations it honoured. */

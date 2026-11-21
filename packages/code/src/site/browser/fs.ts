@@ -96,6 +96,12 @@ export function readFileSync(path: string, encoding?: 'utf-8' | 'utf8'): Buffer 
   return encoding === undefined ? copyOf(bytes) : bytes.toString('utf-8');
 }
 
+/** The path itself, for a file or a directory the page carries: the page holds no link. */
+export function realpathSync(path: string): string {
+  if (!existsSync(path)) throw new Error(`ENOENT: no such file or directory, realpath '${path}'`);
+  return path;
+}
+
 export function statSync(path: string): { size: number; isDirectory(): boolean } {
   const bytes = files.get(path);
   if (bytes !== undefined) return { size: bytes.length, isDirectory: () => false };
@@ -144,5 +150,7 @@ export const truncateSync = READ_ONLY('truncateSync');
 export const fsyncSync = READ_ONLY('fsyncSync');
 export const writeSync = READ_ONLY('writeSync');
 export const readlinkSync = READ_ONLY('readlinkSync');
+/** Asked only on Windows, of an entry a listing calls a link; no entry here is one. */
+export const lstatSync = READ_ONLY('lstatSync');
 export const rmSync = READ_ONLY('rmSync');
 export const unlinkSync = READ_ONLY('unlinkSync');

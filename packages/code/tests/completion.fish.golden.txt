@@ -12,7 +12,7 @@
 function __mnema_commands --description 'the subcommands one level of the tree offers'
     switch "$argv[1]"
         case ''
-            echo 'init decision link unlink memory observe retract skill stack task promote status brief recall rules rules-file instructions switch inherit verify witness check site search show timeline refs audit diagram export usage resume repl why commits aging trailer commit-hook record key tail doctor report completion mcp run before-a-write beside-a-write tally corrections after-a-write handback settled dispatched help'
+            echo 'init decision link unlink memory observe retract skill stack task promote status brief recall rules rules-file instructions switch inherit verify witness check site search show timeline refs audit diagram export usage resume repl why commits aging trailer commit-hook record key tail backup doctor upgrade report completion tour mcp run before-a-write beside-a-write tally corrections after-a-write handback settled dispatched help'
         case 'decision'
             echo 'record move review supersede import help'
         case 'skill'
@@ -38,7 +38,11 @@ function __mnema_commands --description 'the subcommands one level of the tree o
         case 'key'
             echo 'restore request enroll github sigstore revoke protect unprotect help'
         case 'tail'
-            echo 'list prune relink help'
+            echo 'list prune relink repair help'
+        case 'backup'
+            echo 'setup run status verify restore hook help'
+        case 'backup hook'
+            echo 'install uninstall help'
         case 'run'
             echo 'start end help'
     end
@@ -114,10 +118,13 @@ complete -c mnema -f -n '__mnema_at ""' -a 'trailer' -d 'print the commit traile
 complete -c mnema -f -n '__mnema_at ""' -a 'commit-hook' -d 'install or remove an optional git hook that suggests the Mnema-Decision trailer'
 complete -c mnema -f -n '__mnema_at ""' -a 'record' -d 'pull the record over events not yet committed, commit them for a pull request, and merge its tails for git'
 complete -c mnema -f -n '__mnema_at ""' -a 'key' -d 'manage this machine\'s signing keys'
-complete -c mnema -f -n '__mnema_at ""' -a 'tail' -d 'act on the record\'s own tails: list them, authorize a cut, relink one'
-complete -c mnema -f -n '__mnema_at ""' -a 'doctor' -d 'say how mnema is installed on this machine, and what to do about each thing found (writes nothing unless you pass --fix)'
+complete -c mnema -f -n '__mnema_at ""' -a 'tail' -d 'act on the record\'s own tails: list them, authorize a cut, relink one, repair a line from git'
+complete -c mnema -f -n '__mnema_at ""' -a 'backup' -d 'copy this project\'s trees into a folder, and say how far the copy is (records nothing)'
+complete -c mnema -f -n '__mnema_at ""' -a 'doctor' -d 'say how mnema is installed on this machine, and what to do about each thing found (writes nothing unless you pass --fix or --after-update)'
+complete -c mnema -f -n '__mnema_at ""' -a 'upgrade' -d 'after installing a newer mnema: bring this project and machine up to it, asking before anything that changes how the repository behaves'
 complete -c mnema -f -n '__mnema_at ""' -a 'report' -d 'show, whole, what mnema would say about its own last internal error, and keep your answer to it (sends nothing)'
 complete -c mnema -f -n '__mnema_at ""' -a 'completion' -d 'print the tab-completion script for a shell'
+complete -c mnema -f -n '__mnema_at ""' -a 'tour' -d 'show what mnema is and how it is used, page by page'
 complete -c mnema -f -n '__mnema_at ""' -a 'mcp' -d 'run the mnema MCP server over stdio (for an agent host)'
 complete -c mnema -f -n '__mnema_at ""' -a 'run' -d 'open and close the session an agent works inside'
 complete -c mnema -f -n '__mnema_at ""' -a 'before-a-write' -d 'answer a host’s hook before a file is written: refuse or ask where a rule says'
@@ -611,7 +618,7 @@ complete -c mnema -f -n '__mnema_at "site"' -l color -x -a 'auto always never'
 
 # mnema search
 complete -c mnema -f -n '__mnema_at "search"' -l kind -x -a 'memory observation decision task skill'
-complete -c mnema -f -n '__mnema_at "search"' -l scope -x -a 'public private global'
+complete -c mnema -f -n '__mnema_at "search"' -l scope -x -a 'public private global all'
 complete -c mnema -f -n '__mnema_at "search"' -l state -r
 complete -c mnema -f -n '__mnema_at "search"' -l from -r
 complete -c mnema -f -n '__mnema_at "search"' -l to -r
@@ -850,6 +857,7 @@ complete -c mnema -f -n '__mnema_at "key unprotect"' -l color -x -a 'auto always
 complete -c mnema -f -n '__mnema_at "tail"' -a 'list' -d 'list the tails that hold events here, the ones a cut can name, with the id `prune` takes'
 complete -c mnema -f -n '__mnema_at "tail"' -a 'prune' -d 'record that one whole tail was authorized to be cut (it removes nothing)'
 complete -c mnema -f -n '__mnema_at "tail"' -a 'relink' -d 'relink whole tails of another record into the one this directory names, each signed by its own key'
+complete -c mnema -f -n '__mnema_at "tail"' -a 'repair' -d 'put back from git the lines of a public tail that do not read or whose hash does not hold, or the whole tail when its signed checkpoints do not hold'
 complete -c mnema -f -n '__mnema_at "tail"' -a 'help' -d 'display help for command'
 complete -c mnema -f -n '__mnema_at "tail"' -s h -l help
 complete -c mnema -f -n '__mnema_at "tail"' -s V -l version
@@ -876,12 +884,90 @@ complete -c mnema -f -n '__mnema_at "tail relink"' -s h -l help
 complete -c mnema -f -n '__mnema_at "tail relink"' -s V -l version
 complete -c mnema -f -n '__mnema_at "tail relink"' -l color -x -a 'auto always never'
 
+# mnema tail repair
+complete -c mnema -f -n '__mnema_at "tail repair"' -l from -r
+complete -c mnema -f -n '__mnema_at "tail repair"' -s h -l help
+complete -c mnema -f -n '__mnema_at "tail repair"' -s V -l version
+complete -c mnema -f -n '__mnema_at "tail repair"' -l color -x -a 'auto always never'
+
+# mnema backup
+complete -c mnema -f -n '__mnema_at "backup"' -a 'setup' -d 'say which folder keeps this project\'s backup, after a person confirms at a terminal that it keeps the text in clear'
+complete -c mnema -f -n '__mnema_at "backup"' -a 'run' -d 'copy this project\'s trees into its folder, or with --global only the global tree'
+complete -c mnema -f -n '__mnema_at "backup"' -a 'status' -d 'say where this project\'s backup is and how far it is from the trees'
+complete -c mnema -f -n '__mnema_at "backup"' -a 'verify' -d 'read each copy as a record and say how it stands against this project\'s trees, which it does not change'
+complete -c mnema -f -n '__mnema_at "backup"' -a 'restore' -d 'put a copy back into the trees that lost files, never over a file the tree holds; a copy of another record is asked first, and --undo puts back what it replaced'
+complete -c mnema -f -n '__mnema_at "backup"' -a 'hook' -d 'install or remove an optional git hook that runs the backup after a commit'
+complete -c mnema -f -n '__mnema_at "backup"' -a 'help' -d 'display help for command'
+complete -c mnema -f -n '__mnema_at "backup"' -s h -l help
+complete -c mnema -f -n '__mnema_at "backup"' -s V -l version
+complete -c mnema -f -n '__mnema_at "backup"' -l color -x -a 'auto always never'
+
+# mnema backup setup
+complete -c mnema -f -n '__mnema_at "backup setup"' -l global
+complete -c mnema -f -n '__mnema_at "backup setup"' -s h -l help
+complete -c mnema -f -n '__mnema_at "backup setup"' -s V -l version
+complete -c mnema -f -n '__mnema_at "backup setup"' -l color -x -a 'auto always never'
+
+# mnema backup run
+complete -c mnema -f -n '__mnema_at "backup run"' -l global
+complete -c mnema -f -n '__mnema_at "backup run"' -s h -l help
+complete -c mnema -f -n '__mnema_at "backup run"' -s V -l version
+complete -c mnema -f -n '__mnema_at "backup run"' -l color -x -a 'auto always never'
+
+# mnema backup status
+complete -c mnema -f -n '__mnema_at "backup status"' -l global
+complete -c mnema -f -n '__mnema_at "backup status"' -l json
+complete -c mnema -f -n '__mnema_at "backup status"' -s h -l help
+complete -c mnema -f -n '__mnema_at "backup status"' -s V -l version
+complete -c mnema -f -n '__mnema_at "backup status"' -l color -x -a 'auto always never'
+
+# mnema backup verify
+complete -c mnema -f -n '__mnema_at "backup verify"' -l global
+complete -c mnema -f -n '__mnema_at "backup verify"' -l json
+complete -c mnema -f -n '__mnema_at "backup verify"' -s h -l help
+complete -c mnema -f -n '__mnema_at "backup verify"' -s V -l version
+complete -c mnema -f -n '__mnema_at "backup verify"' -l color -x -a 'auto always never'
+
+# mnema backup restore
+complete -c mnema -f -n '__mnema_at "backup restore"' -l dry-run
+complete -c mnema -f -n '__mnema_at "backup restore"' -l from -r
+complete -c mnema -f -n '__mnema_at "backup restore"' -l undo
+complete -c mnema -f -n '__mnema_at "backup restore"' -l global
+complete -c mnema -f -n '__mnema_at "backup restore"' -s h -l help
+complete -c mnema -f -n '__mnema_at "backup restore"' -s V -l version
+complete -c mnema -f -n '__mnema_at "backup restore"' -l color -x -a 'auto always never'
+
+# mnema backup hook
+complete -c mnema -f -n '__mnema_at "backup hook"' -a 'install' -d 'add the post-commit hook that runs the backup (refuses a hook that is not a shell script, and a hooksPath inside the working tree)'
+complete -c mnema -f -n '__mnema_at "backup hook"' -a 'uninstall' -d 'take out the post-commit block mnema added, and the file only if mnema wrote it whole'
+complete -c mnema -f -n '__mnema_at "backup hook"' -a 'help' -d 'display help for command'
+complete -c mnema -f -n '__mnema_at "backup hook"' -s h -l help
+complete -c mnema -f -n '__mnema_at "backup hook"' -s V -l version
+complete -c mnema -f -n '__mnema_at "backup hook"' -l color -x -a 'auto always never'
+
+# mnema backup hook install
+complete -c mnema -f -n '__mnema_at "backup hook install"' -s h -l help
+complete -c mnema -f -n '__mnema_at "backup hook install"' -s V -l version
+complete -c mnema -f -n '__mnema_at "backup hook install"' -l color -x -a 'auto always never'
+
+# mnema backup hook uninstall
+complete -c mnema -f -n '__mnema_at "backup hook uninstall"' -s h -l help
+complete -c mnema -f -n '__mnema_at "backup hook uninstall"' -s V -l version
+complete -c mnema -f -n '__mnema_at "backup hook uninstall"' -l color -x -a 'auto always never'
+
 # mnema doctor
 complete -c mnema -f -n '__mnema_at "doctor"' -l fix -r
+complete -c mnema -f -n '__mnema_at "doctor"' -l after-update
 complete -c mnema -f -n '__mnema_at "doctor"' -l dry-run
 complete -c mnema -f -n '__mnema_at "doctor"' -s h -l help
 complete -c mnema -f -n '__mnema_at "doctor"' -s V -l version
 complete -c mnema -f -n '__mnema_at "doctor"' -l color -x -a 'auto always never'
+
+# mnema upgrade
+complete -c mnema -f -n '__mnema_at "upgrade"' -l dry-run
+complete -c mnema -f -n '__mnema_at "upgrade"' -s h -l help
+complete -c mnema -f -n '__mnema_at "upgrade"' -s V -l version
+complete -c mnema -f -n '__mnema_at "upgrade"' -l color -x -a 'auto always never'
 
 # mnema report
 complete -c mnema -f -n '__mnema_at "report"' -l decline
@@ -896,6 +982,11 @@ complete -c mnema -f -n '__mnema_at "completion"' -s h -l help
 complete -c mnema -f -n '__mnema_at "completion"' -s V -l version
 complete -c mnema -f -n '__mnema_at "completion"' -l color -x -a 'auto always never'
 complete -c mnema -f -n '__mnema_at "completion"' -a 'bash zsh fish'
+
+# mnema tour
+complete -c mnema -f -n '__mnema_at "tour"' -s h -l help
+complete -c mnema -f -n '__mnema_at "tour"' -s V -l version
+complete -c mnema -f -n '__mnema_at "tour"' -l color -x -a 'auto always never'
 
 # mnema mcp
 complete -c mnema -f -n '__mnema_at "mcp"' -l project -r

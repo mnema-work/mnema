@@ -216,18 +216,24 @@ const DOORS: readonly Door[] = [
 const NOTES_AS_WELL = new Set(['the Gemini CLI open mode', 'the OpenCode session start']);
 
 describe.each(DOORS)('$name', (door) => {
-  it('says in one line that a record with a line nobody can read was not handed over, naming the tail', {
+  it('hands over the document with the line nobody can read named first, or says nothing where there is no document', {
     timeout: 60_000,
   }, async () => {
     const said = await door.says(unreadable, bins.real);
-    expect(said).toContain('UNREADABLE_LINE');
-    expect(said).toContain(theTail);
-    expect(said).toContain('000001.jsonl');
-    // One line per refusal, and what the stored line itself says is not carried.
-    const lines = said.split('\n').filter((line) => line !== '');
-    expect(lines.length).toBe(NOTES_AS_WELL.has(door.name) ? 2 : 1);
+    // The notes door has no note to hand over in this project, and the opening document says the
+    // fact (the verb keeps the silence of an empty answer: `wiring/recall.ts`).
+    if (door.name === 'session-recall.mjs') {
+      expect(said).toBe('');
+      return;
+    }
+    // The record is read around the line and the facts lead the text the model is handed.
+    expect(said.split('\n')[0]).toMatch(
+      new RegExp(
+        `^issue \\[T1\\] public ${theTail}: a line that does not read \\(tails/${theTail}/000001\\.jsonl line \\d+\\)`,
+      ),
+    );
+    expect(said).toContain('What governs the work here');
     expect(said).not.toContain('a line nobody can read');
-    expect(said).not.toContain('not valid JSON');
   });
 
   it('says in one line that the record was not consulted where another process holds it', {
@@ -309,13 +315,24 @@ describe('the verb, asked for a hook', () => {
       encoding: 'utf-8',
     });
 
+  it('serves around a line nobody can read: the facts lead brief on stdout and recall stays as silent as it was', () => {
+    const brief = asked(unreadable, 'brief', '--hook');
+    expect(brief.status).toBe(0);
+    expect((brief.stdout ?? '').split('\n')[0]).toContain(
+      `public ${theTail}: a line that does not read`,
+    );
+    expect(brief.stderr ?? '').toBe('');
+    // No note here, so no text to lead: the opening document says it.
+    const recall = asked(unreadable, 'recall', '--hook');
+    expect(recall.status).toBe(0);
+    expect(recall.stdout ?? '').toBe('');
+  });
+
   it.each([
     ['brief', 'NO_PROJECT', () => none],
     ['recall', 'NO_PROJECT', () => none],
     ['brief', 'SWITCHED_OFF', () => switchedOff],
     ['recall', 'SWITCHED_OFF', () => switchedOff],
-    ['brief', 'UNREADABLE_LINE', () => unreadable],
-    ['recall', 'UNREADABLE_LINE', () => unreadable],
   ] as const)(
     '%s opens a refusal with its code (%s), alone on the first line',
     (verb, code, at) => {

@@ -15,7 +15,15 @@
 // by a code on the first line of its error stream. `settled` and `beside`, which run after the
 // work, say the same line, in the field that carries context, where the record did not answer.
 import { spawnSync } from 'node:child_process';
-import { accessSync, constants, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import {
+  accessSync,
+  constants,
+  lstatSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  statSync,
+} from 'node:fs';
 import { homedir, userInfo } from 'node:os';
 import { delimiter, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
@@ -209,9 +217,9 @@ function spawnTarget(program, args, platform = process.platform) {
   if ([program, ...args].some((text) => NOT_QUOTABLE.test(text)))
     return { command: program, args, shell: false, refused: true };
   const word = (/** @type {string} */ text) =>
-    [...text].every((char) => SAFE_IN_A_SHELL.includes(char)) ? text : '"' + text + '"';
+    [...text].every((char) => SAFE_IN_A_SHELL.includes(char)) ? text : `"${text}"`;
   return {
-    command: ['"' + program + '"', ...args.map(word)].join(' '),
+    command: [`"${program}"`, ...args.map(word)].join(' '),
     args: [],
     shell: true,
     refused: false,
@@ -540,6 +548,17 @@ function isDirectory(path) {
   return statOrNothing(path)?.isDirectory() === true;
 }
 
+/**
+ * Whether `path` is a symbolic link, by `lstat`: nothing is opened and nothing followed. A record is
+ * read from its own files and a link can point outside it (ADR-348), so a reader that meets one in
+ * a tree doubts, and the verb that refuses it is run.
+ *
+ * @param {string} path
+ */
+function isALink(path) {
+  return lstatSync(path, { throwIfNoEntry: false })?.isSymbolicLink() === true;
+}
+
 /** @param {string} path */
 function statOrNothing(path) {
   return statSync(path, { throwIfNoEntry: false });
@@ -660,6 +679,7 @@ function readEdges(root, depth, standing, rules, relations) {
   }
   for (const name of entries) {
     const path = join(root, name);
+    if (isALink(path)) throw new Doubt('a link in a tree');
     if (!isDirectory(path)) continue;
     if (name !== 'tails') {
       readEdges(path, depth + 1, standing, rules, relations);
@@ -667,9 +687,11 @@ function readEdges(root, depth, standing, rules, relations) {
     }
     for (const tail of readdirSync(path)) {
       const dir = join(path, tail);
+      if (isALink(dir)) throw new Doubt('a link in a tree');
       if (!isDirectory(dir)) continue;
       for (const file of readdirSync(dir)) {
         if (!file.endsWith('.jsonl') || file === 'checkpoints.jsonl') continue;
+        if (isALink(join(dir, file))) throw new Doubt('a link in a tree');
         for (const line of readFileSync(join(dir, file), 'utf-8').split('\n')) {
           if (
             line.includes('"kind":"knowledge.linked"') ||

@@ -29,7 +29,13 @@ export PATH="$HOME/.local/bin:$PATH"
 
 Add the `export` line to your shell's startup file so it lasts.
 
-To update, run the same install again. To run the `main` branch instead of the published version,
+To update, run the same install again, then `mnema upgrade` in each project: it brings that project and this
+machine up to the new version and asks before anything that changes how the repository behaves (it may also remove
+the mnema server entry that your `~/.claude.json` declares a second time, after keeping a copy of the file)
+([what it does](reference/cli/upgrade.md#after-installing-a-newer-mnema)). Until `mnema upgrade` has run on a machine
+after a newer version was installed, the first command you run there at a terminal says so in one line, once, and the
+first reply an agent's connection gets carries a note for you to run it; a machine where mnema was just installed says
+nothing. To run the `main` branch instead of the published version,
 see [Building it from source](build-from-source.md).
 
 ## Check it
@@ -49,7 +55,7 @@ your `PATH` is the one you meant and whether the `node` it uses takes it. It wri
 npm i -g @mnema/code@0.1.8
 ```
 
-To update, run the unpinned install again.
+To update, run the unpinned install again, then `mnema upgrade` in each project.
 
 ## Where the package came from
 
@@ -67,6 +73,11 @@ It prints how many packages have verified registry signatures and how many have 
 attestations; `npm audit signatures --json --include-attestations` names each, and every
 `@mnema/*` package carries an SLSA provenance attestation. The registry serves one tarball per
 version, so this checks the same package a global install of that version fetches.
+
+From the release after 0.1.8, the GitHub release also carries a Sigstore provenance bundle for the five tarballs
+(`mnema-npm-packages-<version>.sigstore.json`) and one for the extension's `.vsix`
+(`mnema-<version>.vsix.sigstore.json`). Download a file and its bundle from the release page, then
+`gh attestation verify <file> --repo mnema-work/mnema` checks the file against its attestation.
 
 From 0.1.7, the `mnema` command is one bundle inside `@mnema/code`
 (`dist/bundle/`): the code of its dependencies is copied into it at build time, so the
@@ -97,7 +108,7 @@ One line for each host. The rung is how far the host takes the record, one rung 
 server and rules in a file, (b) the opening of a session, (c) a refusal before a write, (d) a pause for a
 person ([how each cell is known](evidence.md#each-hosts-rung)).
 
-<!-- The host table below is generated from packages/code/src/host-names.ts: edit the table there. -->
+<!-- The host table below is generated: the rows, their order, the rungs and the install lines come from packages/code/src/host-names.ts, the names shown from SHOWN in packages/code/tests/support/the-host-files.ts. -->
 
 | Host | Rung | Install |
 | :--- | :---: | :--- |

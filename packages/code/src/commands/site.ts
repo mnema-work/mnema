@@ -29,9 +29,17 @@
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join, relative, resolve } from 'node:path';
-import { catalogUpcasters, ensureTree, verify } from '@mnema/chain';
-import { type DiscoveryEnv, orderedEvents, realOfMaybeMissing, resolveTrees } from '@mnema/core';
+import { catalogUpcasters, ensureTree, readingWhatTheDiskLets, verify } from '@mnema/chain';
+import type { NewerLines } from '@mnema/context';
+import {
+  type DiscoveryEnv,
+  orderedEventsAndUnread,
+  realOfMaybeMissing,
+  resolveTrees,
+  type UnreadLine,
+} from '@mnema/core';
 import { inAWorkTree } from '../git-log.js';
+import { newerLinesRead } from '../intelligence-source.js';
 import { tailsOfFiles } from '../site/browser/tails.js';
 import { pageModel } from '../site/model.js';
 import { renderPage, type SiteHead } from '../site/page.js';
@@ -55,6 +63,8 @@ export interface SiteDone {
   readonly events: number;
   /** How many of the record's files the page carries for its own verification. */
   readonly files: number;
+  /** What a newer mnema wrote into the public tree that this one reads past (ADR-140). */
+  readonly newerLines?: NewerLines;
   /**
    * What the chain says of the public tree, so a person about to publish a record that does not
    * verify is told here and not only by the page: the page says it to its readers, and the
@@ -127,7 +137,10 @@ export function readSiteHead(text: string): SiteHead | string {
 function filesUnder(base: string, dir: string): string[] {
   if (!existsSync(dir)) return [];
   const found: string[] = [];
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+  const place = dir.slice(base.length + 1).replaceAll('\\', '/');
+  for (const entry of readingWhatTheDiskLets(dir, place, () =>
+    readdirSync(dir, { withFileTypes: true }),
+  )) {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) found.push(...filesUnder(base, path));
     else if (entry.isFile())
@@ -153,7 +166,9 @@ function recordFiles(publicRoot: string): Record<string, string> {
   ];
   const files: Record<string, string> = {};
   for (const file of wanted) {
-    files[file] = readFileSync(join(publicRoot, file)).toString('base64');
+    files[file] = readingWhatTheDiskLets(join(publicRoot, file), file, () =>
+      readFileSync(join(publicRoot, file)),
+    ).toString('base64');
   }
   return files;
 }
@@ -230,8 +245,11 @@ export function runSite(
     };
   }
   let page: ReturnType<typeof pageModel>;
+  let unread: readonly UnreadLine[];
   try {
-    page = pageModel(orderedEvents({ root: publicRoot }, catalogUpcasters()));
+    const read = orderedEventsAndUnread({ root: publicRoot }, catalogUpcasters());
+    page = pageModel(read.events);
+    unread = read.unread;
   } catch (error) {
     return {
       ok: false,
@@ -265,5 +283,6 @@ export function runSite(
     files: Object.keys(files).length,
     verdict: { ok: ruled.ok, summary: ruled.summary },
     git: inAWorkTree(publicRoot),
+    ...newerLinesRead(unread),
   };
 }

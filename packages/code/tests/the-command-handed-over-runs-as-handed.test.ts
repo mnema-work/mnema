@@ -411,6 +411,18 @@ export const NOT_CHECKED: Readonly<Record<string, string>> = {
 export const NAMES_THAT_NEED_MORE: Readonly<
   Record<string, { readonly times: number; readonly why: string }>
 > = {
+  'CHANGELOG.md: mnema backup hook': {
+    times: 1,
+    why: 'the new group named in prose, with its two acts after it; the reference page of the group hands the whole line over',
+  },
+  'CHANGELOG.md: mnema backup setup': {
+    times: 1,
+    why: 'the verb named in prose, as the one that now accepts a git remote; the reference page hands the whole line over',
+  },
+  'packages/code/src/wiring/backup.ts: mnema backup setup': {
+    times: 1,
+    why: 'the verb named in the note the hook prints, as what gives the project a destination; the page of the verb hands the whole line over',
+  },
   'CHANGELOG.md: mnema tail prune': {
     times: 1,
     why: 'the verb named in prose, as the cut the new refusal of a host tail is about; the reference hands the whole line over',
@@ -422,6 +434,10 @@ export const NAMES_THAT_NEED_MORE: Readonly<
   'docs/cli-reference.md: mnema tail relink': {
     times: 2,
     why: 'the verb named in the list of where the sections of the page went, and in the tour, where it says what writes a relink; the page of the verb hands the whole line over',
+  },
+  'docs/cli-reference.md: mnema tail repair': {
+    times: 2,
+    why: 'the verb named in the list of where the sections of the page went, and as the way out the bare summary names for a line it cannot read; the page of the verb hands the whole line over',
   },
   'packages/action/README.md: mnema rules': {
     times: 2,
@@ -831,32 +847,35 @@ export const HANDED_OVER: Readonly<
   '.github/instructions/mnema-instructions.instructions.md': { line: 2 },
   '.github/the-hot-path-budget/README.md': { name: 2 },
   'AGENTS.md': { line: 2, name: 1 },
-  'CHANGELOG.md': { line: 101, name: 219, flag: 4 },
+  'CHANGELOG.md': { line: 98, name: 211, flag: 4 },
   'README.md': { line: 4, name: 8 },
   'SECURITY.md': { name: 2 },
   'docs/a-record-inheriting-another.md': { line: 9, name: 8 },
-  'docs/a-second-machine-and-your-key.md': { line: 12, name: 15 },
+  'docs/a-second-machine-and-your-key.md': { line: 12, name: 16 },
   'docs/agent-hosts.md': { line: 4, name: 3 },
-  'docs/architecture.md': { name: 5 },
+  'docs/architecture.md': { name: 6 },
   'docs/as-an-mcp-server.md': { line: 1, name: 3 },
   'docs/committing-the-record.md': { line: 7, name: 18 },
   'docs/convergence.md': { line: 6, name: 2 },
   'docs/evidence.md': { line: 1, flag: 1 },
-  'docs/features.md': { line: 10, name: 16 },
-  'docs/first-record.md': { line: 9, name: 10 },
+  'docs/features.md': { line: 12, name: 17 },
+  'docs/first-record.md': { line: 9, name: 11 },
   'docs/glossary.md': { name: 3 },
   'docs/how-it-works.md': { line: 3, name: 3 },
   'docs/hosts.md': { line: 2, name: 4 },
   'docs/importing-the-decisions-you-already-wrote.md': { line: 2, name: 2 },
-  'docs/install.md': { line: 3, name: 3 },
+  'docs/install.md': { line: 3, name: 6 },
   'docs/mnema-next-to-a-folder-of-adrs.md': { line: 5, name: 2 },
   'docs/north-star.md': { name: 1 },
-  'docs/packages.md': { line: 2, name: 3 },
+  'docs/packages.md': { line: 2, name: 4 },
   'docs/platforms.md': { line: 1, name: 3 },
   'docs/recording-decisions.md': { line: 8, name: 6 },
+  'docs/reference/cli/backup-restore.md': { line: 1, name: 1 },
+  'docs/reference/cli/backup-verify.md': { line: 1, name: 1 },
+  'docs/reference/cli/backup.md': { line: 7, name: 3 },
   'docs/reference/cli/brief.md': { line: 5, name: 5 },
   'docs/reference/cli/completion.md': { line: 6, flag: 1 },
-  'docs/reference/cli/doctor.md': { line: 2, name: 10 },
+  'docs/reference/cli/doctor.md': { line: 3, name: 11 },
   'docs/reference/cli/instructions.md': { line: 10, name: 15 },
   'docs/reference/cli/recall.md': { line: 3, name: 10 },
   'docs/reference/cli/report.md': { name: 2 },
@@ -865,6 +884,9 @@ export const HANDED_OVER: Readonly<
   'docs/reference/cli/stack.md': { line: 3, name: 7 },
   'docs/reference/cli/tail-prune.md': { line: 2, name: 1 },
   'docs/reference/cli/tail-relink.md': { line: 1, name: 1 },
+  'docs/reference/cli/tail-repair.md': { line: 3, name: 1 },
+  'docs/reference/cli/tour.md': { name: 4 },
+  'docs/reference/cli/upgrade.md': { line: 4, name: 2 },
   'docs/reference/cli/usage.md': { line: 4, name: 3 },
   'docs/reference/cli/witness.md': { line: 1, name: 3 },
   'docs/rule-arrival.md': { line: 1 },
@@ -874,6 +896,7 @@ export const HANDED_OVER: Readonly<
   'docs/switching-off-what-is-handed-to-a-model.md': { line: 1, name: 2 },
   'docs/the-session-journal-and-compaction.md': { line: 5, name: 5 },
   'docs/verify-without-installing.md': { name: 1 },
+  'docs/what-a-backup-keeps-and-what-it-loses.md': { line: 8, name: 11 },
   'docs/what-it-proves.md': { line: 15, name: 29 },
   'docs/what-comes-next.md': { name: 1 },
   'docs/where-it-fits.md': { line: 1, name: 2 },
@@ -885,11 +908,14 @@ export const HANDED_OVER: Readonly<
   'packages/chain/src/chain/relink-plan.ts': { name: 5 },
   'packages/chain/src/chain/tree.ts': { name: 1 },
   'packages/chain/src/chain/writer.ts': { line: 1, name: 4 },
-  'docs/cli-reference.md': { line: 39, name: 64 },
+  'docs/cli-reference.md': { line: 39, name: 70 },
   'packages/code/README.md': { line: 8, name: 14 },
   'packages/code/src/a-new-identity.ts': { line: 2, name: 2 },
-  'packages/code/src/agent-accepts.ts': { line: 4, name: 2 },
+  'packages/code/src/agent-accepts.ts': { line: 6, name: 2 },
   'packages/code/src/commands/after-a-write.ts': { line: 2 },
+  'packages/code/src/commands/after-update.ts': { line: 2, name: 2 },
+  'packages/code/src/commands/backup-hook.ts': { name: 3 },
+  'packages/code/src/commands/backup.ts': { line: 6, name: 1 },
   'packages/code/src/commands/before-a-write.ts': { name: 1 },
   'packages/code/src/commands/brief.ts': { name: 1 },
   'packages/code/src/commands/check.ts': { line: 1 },
@@ -918,8 +944,8 @@ export const HANDED_OVER: Readonly<
   'packages/code/src/init/accepts.ts': { line: 4, name: 5 },
   'packages/code/src/init/run.ts': { name: 1 },
   'packages/code/src/init/screens.ts': { line: 1, name: 3 },
-  'packages/code/src/init/summary.ts': { line: 4, name: 5 },
-  'packages/code/src/instructions-block.ts': { line: 9 },
+  'packages/code/src/init/summary.ts': { line: 4, name: 3 },
+  'packages/code/src/instructions-block.ts': { line: 12 },
   'packages/code/src/mcp/context.ts': { name: 1, flag: 2 },
   'packages/code/src/mcp/instructions.ts': { name: 1 },
   'packages/code/src/mcp/server.ts': { line: 1 },
@@ -932,16 +958,21 @@ export const HANDED_OVER: Readonly<
   'packages/code/src/presentation/site.ts': { name: 1 },
   'packages/code/src/presentation/status.ts': { line: 2, name: 1 },
   'packages/code/src/presentation/summary.ts': { line: 2, name: 8 },
+  'packages/code/src/presentation/tail-repair.ts': { line: 3, name: 3 },
   'packages/code/src/presentation/usage.ts': { line: 1, name: 2 },
   'packages/code/src/record-framing.ts': { line: 3, name: 12 },
-  'packages/code/src/record-integrity.ts': { name: 9 },
+  'packages/code/src/record-integrity.ts': { line: 2, name: 9 },
   'packages/code/src/repl/gate.ts': { unwritten: 2 },
   'packages/code/src/repl/promotable.ts': { line: 1 },
   'packages/code/src/repl/session.ts': { unwritten: 2 },
   'packages/code/src/the-persons-key-in-the-clear.ts': { name: 1 },
   'packages/code/src/rules-not-pushed.ts': { line: 1 },
-  'packages/code/src/what-a-write-meets.ts': { line: 1, name: 1 },
+  'packages/code/src/tour/pages.ts': { line: 1, name: 11 },
+  'packages/code/src/tour/run.ts': { name: 1 },
+  'packages/code/src/update-notice.ts': { name: 3 },
+  'packages/code/src/what-a-write-meets.ts': { line: 2, name: 4 },
   'packages/code/src/wiring/after-a-write.ts': { line: 1 },
+  'packages/code/src/wiring/backup.ts': { line: 17, name: 12 },
   'packages/code/src/wiring/before-a-write.ts': { line: 4 },
   'packages/code/src/wiring/beside-a-write.ts': { line: 2 },
   'packages/code/src/wiring/brief.ts': { line: 4, name: 6 },
@@ -950,7 +981,7 @@ export const HANDED_OVER: Readonly<
   'packages/code/src/wiring/decision.ts': { line: 1, name: 1 },
   'packages/code/src/wiring/diagram.ts': { line: 4 },
   'packages/code/src/wiring/dispatched.ts': { line: 2 },
-  'packages/code/src/wiring/doctor.ts': { name: 2 },
+  'packages/code/src/wiring/doctor.ts': { name: 4 },
   'packages/code/src/wiring/handback.ts': { line: 1 },
   'packages/code/src/wiring/inherit.ts': { line: 1, name: 3 },
   'packages/code/src/wiring/init.ts': { line: 4, name: 6 },
@@ -974,6 +1005,8 @@ export const HANDED_OVER: Readonly<
   'packages/code/src/wiring/switch.ts': { name: 2 },
   'packages/code/src/wiring/tail.ts': { name: 4 },
   'packages/code/src/wiring/tally.ts': { line: 2, name: 1 },
+  'packages/code/src/wiring/tour.ts': { name: 1 },
+  'packages/code/src/wiring/upgrade.ts': { line: 1 },
   'packages/code/src/wiring/usage.ts': { line: 1 },
   'packages/code/src/wiring/verify.ts': { line: 5, name: 7 },
   'packages/code/src/wiring/witness.ts': { line: 3, name: 1 },
@@ -985,6 +1018,9 @@ export const HANDED_OVER: Readonly<
   'packages/core/src/identity/membership.ts': { line: 8, name: 2 },
   'packages/core/src/identity/restore.ts': { line: 3 },
   'packages/core/src/identity/roster.ts': { line: 6 },
+  'packages/core/src/topology/backup/aside.ts': { line: 2 },
+  'packages/core/src/topology/backup/restore.ts': { name: 2 },
+  'packages/core/src/topology/backup/verify.ts': { name: 1 },
   'packages/core/src/topology/routing.ts': { line: 5 },
   'packages/core/src/workflow/identity-operations.ts': { name: 1 },
   'packages/core/src/workflow/prune-operations.ts': { line: 1, name: 1 },
@@ -1031,13 +1067,38 @@ const unreadable = [...onPages, ...inSources].flatMap((one) => one.unreadable);
 /** Every handed-over command with its readings, computed once. */
 const read = handed.map((one) => ({ ...one, readings: readingsOf(program, one.text) }));
 
+/** A changelog entry file: written to be gathered into `CHANGELOG.md` at a release. */
+const isAnEntry = (file: string): boolean => file.startsWith('changelog/unreleased/');
+
 /**
- * The file a count is kept under. A changelog entry file is written to be gathered into
- * `CHANGELOG.md`, so what it hands over is counted there: the rows do not move when a release
- * gathers the entries, and a new entry file is not a row somebody has to write.
+ * The file a roster key is kept under: what an entry hands over is named under `CHANGELOG.md`,
+ * the page it is gathered into. The COUNTS of `HANDED_OVER` do not use it: an entry is not
+ * counted at all (see the case that holds the counts), so two branches that each add an entry
+ * never touch the same line of the ledger.
  */
 const homeOf = (file: string): string =>
   file.startsWith('changelog/unreleased/') ? 'CHANGELOG.md' : file;
+
+/** What each file hands over, by kind of reading. An entry file is held by no count. */
+const countsOf = (
+  items: readonly { where: string; readings: readonly Reading[] }[],
+): Record<string, Partial<Record<Reading['kind'], number>>> => {
+  const counted: Record<string, Partial<Record<Reading['kind'], number>>> = {};
+  for (const one of items) {
+    const file = one.where.split(':')[0] as string;
+    // An entry is held by the other cases (each of its commands is read whole, parsed and
+    // named on the rosters) and by no count: its count would be one line every branch moves.
+    if (isAnEntry(file)) continue;
+    const row = counted[file] ?? {};
+    counted[file] = row;
+    for (const reading of one.readings) row[reading.kind] = (row[reading.kind] ?? 0) + 1;
+  }
+  // A file that hands over commands and reads none of them (a bare listing) is not a row.
+  for (const [file, row] of Object.entries(counted)) {
+    if (Object.keys(row).length === 0) delete counted[file];
+  }
+  return counted;
+};
 
 /** How a failure names one command: the address and the words. */
 const where = (one: Handed): string => `${one.where}  ${shown(one.text)}`;
@@ -1122,17 +1183,7 @@ describe('a name whose verb needs more is one somebody looked at', () => {
 
 describe('the readings know what they read', () => {
   it('each file hands over what the count says, and no other file hands over any', () => {
-    const counted: Record<string, Partial<Record<Reading['kind'], number>>> = {};
-    for (const one of read) {
-      const file = homeOf(one.where.split(':')[0] as string);
-      const row = counted[file] ?? {};
-      counted[file] = row;
-      for (const reading of one.readings) row[reading.kind] = (row[reading.kind] ?? 0) + 1;
-    }
-    // A file that hands over commands and reads none of them (a bare listing) is not a row.
-    for (const [file, row] of Object.entries(counted)) {
-      if (Object.keys(row).length === 0) delete counted[file];
-    }
+    const counted = countsOf(read);
     const handed = holdTheCounts({
       testFile: import.meta.url,
       name: 'HANDED_OVER',
@@ -1143,6 +1194,17 @@ describe('the readings know what they read', () => {
       counted,
       'HANDED_OVER: add a row for each file that now hands commands over, and remove the row of each that no longer does',
     ).toEqual(handed);
+  });
+
+  it('a new changelog entry moves no count: two branches that each add one do not meet on the ledger', () => {
+    const before = countsOf(read);
+    const entry = (name: string) => ({
+      where: `changelog/unreleased/${name}.md:3`,
+      readings: [{ kind: 'name', path: ['show'] }] as readonly Reading[],
+    });
+    const withTwo = countsOf([...read, entry('one-more'), entry('another-one')]);
+    expect(withTwo).toEqual(before);
+    expect(Object.keys(HANDED_OVER).some(isAnEntry)).toBe(false);
   });
 
   it('the pages it reads are the documentation', () => {

@@ -19,7 +19,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { collect, lintFailed } from '../../../.github/what-failed/collect.mjs';
-import { buildComment, MARKER, readReport, tell } from '../../../.github/what-failed/comment.mjs';
+import {
+  buildComment,
+  MARKER,
+  readReport,
+  tell,
+  whyReview,
+} from '../../../.github/what-failed/comment.mjs';
 
 const SHA = 'a1b2c3d4e5f60718293a4b5c6d7e8f9012345678';
 const RUN = 'https://github.com/mnema-work/mnema/actions/runs/42';
@@ -414,7 +420,11 @@ describe('what the comment says', () => {
 });
 
 /** An API that answers from a table and writes down what was asked of it. */
-function github(pulls: unknown[], comments: Record<number, unknown[]>) {
+function github(
+  pulls: unknown[],
+  comments: Record<number, unknown[]>,
+  files: Record<number, unknown[]> = {},
+) {
   const done: string[] = [];
   return {
     done,
@@ -423,6 +433,8 @@ function github(pulls: unknown[], comments: Record<number, unknown[]>) {
         if (path === `repos/${REPO}/pulls?state=open&per_page=100`) return pulls;
         const m = /^repos\/mnema-work\/mnema\/issues\/(\d+)\/comments\?per_page=100$/.exec(path);
         if (m?.[1] !== undefined) return comments[Number(m[1])] ?? [];
+        const f = /^repos\/mnema-work\/mnema\/pulls\/(\d+)\/files\?per_page=100$/.exec(path);
+        if (f?.[1] !== undefined) return files[Number(f[1])] ?? [];
         throw new Error(`unexpected path ${path}`);
       },
       post: async (path: string, body: string) => {
@@ -430,6 +442,9 @@ function github(pulls: unknown[], comments: Record<number, unknown[]>) {
       },
       patch: async (path: string, body: string) => {
         done.push(`PATCH ${path} ${body.split('\n')[1] ?? ''}`);
+      },
+      label: async (number: number, name: string) => {
+        done.push(`LABEL #${number} ${name}`);
       },
     },
   };
@@ -542,6 +557,109 @@ describe('one comment per pull request, on the pull request whose head ran', () 
       ]);
       expect(done).toEqual([]);
     }
+  });
+});
+
+describe('a fork that changes what runs is marked for a security review', () => {
+  const named = (...names: string[]) => names.map((filename) => ({ filename }));
+
+  it('labels a fork that changes a package.json, once, and names the file and why', async () => {
+    const { api, done } = github(
+      [pull(7, SHA)],
+      {},
+      { 7: named('docs/a.md', 'packages/code/package.json') },
+    );
+    const said = await tell({ event: event('success'), report: null, api, repository: REPO });
+    expect(done).toEqual(['LABEL #7 needs security review']);
+    expect(said).toEqual([
+      '#7: marked "needs security review", from a fork that changes:',
+      '  - packages/code/package.json: a package.json, which names dependencies and install scripts',
+      '#7: green, nothing to say',
+    ]);
+  });
+
+  it('labels it whatever the run said, and still writes the comment a red run asks for', async () => {
+    const files = { 7: named('.github/workflows/ci.yml') };
+    const { api, done } = github([pull(7, SHA)], {}, files);
+    await tell({ event: event('failure'), report: null, api, repository: REPO });
+    expect(done[0]).toBe('LABEL #7 needs security review');
+    expect(done).toHaveLength(2);
+    expect(done[1]).toContain(`POST repos/${REPO}/issues/7/comments`);
+  });
+
+  it.each([
+    ['.github/workflows/ci.yml', 'under .github/'],
+    ['.github/the-hidden-characters/check.mjs', 'under .github/'],
+    ['package.json', 'package.json'],
+    ['packages/code/package.json', 'package.json'],
+    ['pnpm-lock.yaml', 'lockfile'],
+    ['pnpm-workspace.yaml', 'lockfile'],
+    ['.npmrc', '.npmrc'],
+    ['packages/code/build/the-cli-bundle.mjs', 'build or install script'],
+    ['packages/x/scripts/prepare.mjs', 'build or install script'],
+    ['recordings/first-record.sh', 'shell script'],
+    ['plugin/hooks/hooks.json', 'plugin'],
+    ['plugin/hooks/codex.json', 'plugin'],
+    ['plugin/gemini/hooks/hooks.json', 'plugin'],
+    ['plugin/hooks/after-a-write.mjs', 'plugin'],
+    ['plugin/bin/mnema.mjs', 'plugin'],
+    ['.husky/pre-commit', 'git hook'],
+    ['vitest.config.ts', 'tool configuration'],
+    ['vitest.guards.config.ts', 'tool configuration'],
+    ['packages/code/tsup.config.mjs', 'tool configuration'],
+  ])('asks a person to look when a fork changes %s', (file, why) => {
+    expect(whyReview(file)).toContain(why);
+  });
+
+  it.each([
+    'docs/guides/a.md',
+    'packages/code/src/a.ts',
+    'README.md',
+    'packages/code/src/buildings.ts',
+    'packages/code/src/package.json.ts',
+    'plugin/README.md',
+    'plugin/.claude-plugin/plugin.json',
+    'plugin/captures/cursor-2026-10-22.json',
+    'packages/code/src/the-config.ts',
+    'docs/guides/vitest.config.md',
+  ])('asks nothing when a fork changes %s', (file) => {
+    expect(whyReview(file)).toBeNull();
+  });
+
+  it('reads the old name of a renamed file too', async () => {
+    const files = { 7: [{ filename: 'docs/b.md', previous_filename: 'scripts/install.sh' }] };
+    const { api, done } = github([pull(7, SHA)], {}, files);
+    await tell({ event: event('success'), report: null, api, repository: REPO });
+    expect(done).toEqual(['LABEL #7 needs security review']);
+  });
+
+  it('does not label a fork that changes only what the review reads anyway', async () => {
+    const files = { 7: named('docs/a.md', 'packages/code/src/a.ts', 'README.md') };
+    const { api, done } = github([pull(7, SHA)], {}, files);
+    expect(await tell({ event: event('success'), report: null, api, repository: REPO })).toEqual([
+      '#7: green, nothing to say',
+    ]);
+    expect(done).toEqual([]);
+  });
+
+  it('does not label the repository own pull request that changes the same files', async () => {
+    const own = pull(7, SHA, 'CONTRIBUTOR', { repo: REPO, ref: 'fix-it' });
+    const ownEvent = event('success');
+    ownEvent.workflow_run.head_repository.full_name = REPO;
+    const files = { 7: named('package.json', '.github/workflows/ci.yml', 'pnpm-lock.yaml') };
+    const { api, done } = github([own], {}, files);
+    await tell({ event: ownEvent, report: null, api, repository: REPO });
+    expect(done).toEqual([]);
+  });
+
+  it('prints a file name without its control characters or backticks', async () => {
+    const files = { 7: named('.github/a\n::error::x`y.yml') };
+    const { api } = github([pull(7, SHA)], {}, files);
+    const said = await tell({ event: event('success'), report: null, api, repository: REPO });
+    expect(said[1]).toBe(
+      '  - .github/a?::error::x?y.yml: a workflow, an action or a script under .github/',
+    );
+    for (const line of said) expect(line).not.toMatch(/^::/);
   });
 });
 

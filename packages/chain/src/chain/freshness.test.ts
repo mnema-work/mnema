@@ -208,7 +208,8 @@ describe('a chain it cannot read', () => {
     symlinkSync(join(root, 'nowhere'), segmentPath(layout, 'tail-b', 1));
 
     const before = chainExtent(layout);
-    expect(before).toContain('tail-b=!ENOENT');
+    // A link is refused where it is read, and a refusal is this mark (a segment that is a link to nothing).
+    expect(before).toContain('tail-b=!UNREADABLE');
     expect(chainExtent(layout)).toBe(before);
 
     writeSegment('tail-a', 1, 'readable\nand longer\n');

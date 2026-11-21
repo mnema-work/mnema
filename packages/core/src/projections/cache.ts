@@ -10,15 +10,19 @@
  * of it that can be discarded and rebuilt at any time.
  */
 
+import { basename } from 'node:path';
 import {
   type ChainLayout,
   catalogUpcasters,
   type EventKind,
   type LinkBreak,
-  listTails,
+  LinkedRecordError,
+  listTailsToChooseACacheBy,
   projectionCachePath,
   type RecordGroup,
+  type RefusedPart,
   type RetainedEntry,
+  refuseLinks,
   tailsReadAt,
   type UnreadLine,
   type UpcasterRegistry,
@@ -36,6 +40,8 @@ import {
   activeStampsBefore,
   type CacheMeta,
   keepActiveMarks,
+  mayTakeOver,
+  ownerOfTheFile,
   productStamp,
   readGeneration,
   readMeta,
@@ -73,7 +79,7 @@ import {
   listObservationsAbout,
   memoriesSaying,
 } from './knowledge-store.js';
-import { type ChainFrontier, chainArrivals, chainReplay } from './order.js';
+import { type ChainFrontier, chainArrivals, chainReplay, type SignedFact } from './order.js';
 import { rebuild } from './rebuild.js';
 import {
   type AuthorshipFilter,
@@ -192,6 +198,12 @@ function isSqliteFailure(error: unknown): boolean {
   return failure?.code === 'ERR_SQLITE_ERROR' && typeof failure.errcode === 'number';
 }
 
+/** SQLITE_BUSY (5) and SQLITE_LOCKED (6), and their extended forms: the file is held, not wrong. */
+function isBusyOrLocked(error: unknown): boolean {
+  const code = (error as { errcode?: unknown } | null)?.errcode;
+  return typeof code === 'number' && ((code & 0xff) === 5 || (code & 0xff) === 6);
+}
+
 export class ProjectionCache {
   /**
    * How far into the chain the tables reach, and with it everything {@link refresh} needs in
@@ -263,7 +275,10 @@ export class ProjectionCache {
   private breaks: readonly LinkBreak[] = [];
   /** What the last replay or catch-up read past: the lines of a kind this binary does not know. */
   private retainedLines: readonly RetainedEntry[] = [];
+  private refusedParts: readonly RefusedPart[] = [];
   private unreadLines: readonly UnreadLine[] = [];
+  /** What the tails' checkpoints proved, as of the last replay: see {@link signed}. */
+  private signedFacts: readonly SignedFact[] = [];
   /** What the last replay or catch-up found of the records the tree holds: {@link severalRecords}. */
   private several: readonly RecordGroup[] | undefined;
   /**
@@ -290,6 +305,20 @@ export class ProjectionCache {
     this.untouched = !persisted;
   }
 
+  private foreign = false;
+
+  /**
+   * True when the file this cache would keep in the tree carries the stamp of another build's code
+   * and was therefore left alone: this process reads from memory (a replay of the record, once)
+   * and the file stays what the build that wrote it left. ONE FILE PER TREE is keyed by no build,
+   * so a process of another build that rewrote it would send the first build's next open to replay
+   * it back; with this, two builds on one machine cost the one that does not own the file a replay
+   * per process, and the owner nothing.
+   */
+  get leftTheFileToAnotherBuild(): boolean {
+    return this.foreign;
+  }
+
   /**
    * Opens a cache over the chain rooted at `chainRoot`. Ensures the schema
    * exists but does NOT rebuild: call {@link refresh} to bring it to the chain (taking
@@ -301,11 +330,16 @@ export class ProjectionCache {
     const upcasters = options.upcasters ?? catalogUpcasters();
     // A tree nobody has written to has nothing to keep, and a read must not be what creates its
     // directories: persisting waits for the first tail.
-    const keeps = options.persist === true && listTails(layout).length > 0;
+    // A link among the tails is left out here and named by the replay: choosing where to keep the cache refuses nothing.
+    const keeps = options.persist === true && listTailsToChooseACacheBy(layout).length > 0;
     const chosenFile = options.persist === true ? readCacheFileFor(layout) : undefined;
     const path =
       options.dbPath ?? (keeps ? (chosenFile ?? projectionCachePath(layout)) : IN_MEMORY);
-    if (path === IN_MEMORY) {
+    // The tree's own place is `locks/projection.db`: where `locks/` or the file (or one beside it that
+    // SQLite makes) is a link, opening it would create a file where the link points, outside the
+    // record, so the cache stays in memory as it does where it cannot write.
+    const ownPlace = options.dbPath === undefined && chosenFile === undefined;
+    if (path === IN_MEMORY || (ownPlace && cacheStandsAtALink(layout))) {
       return new ProjectionCache(openMemory(), layout, upcasters, false);
     }
     // A named path is the caller's and fails loudly; the one this class chose is a cache and
@@ -317,12 +351,28 @@ export class ProjectionCache {
     }
     try {
       const db = openDatabase(path);
+      // A file another build's code wrote is that build's unless this one is a newer version: the
+      // process builds its own tables in memory and leaves the file as it is, because rewriting it
+      // would send the other build's next open to replay it back. A file that could not be asked
+      // (busy, locked) may have an owner too, and is left alone the same way.
+      const owner = ownerOfTheFile(db);
+      if (
+        owner.state === 'unknown' ||
+        (owner.state === 'owned' && owner.stamp !== productStamp() && !mayTakeOver(owner.version))
+      ) {
+        db.close();
+        const cache = new ProjectionCache(openMemory(), layout, upcasters, false);
+        cache.foreign = true;
+        return cache;
+      }
       try {
         ensureSchema(db);
       } catch (error) {
         // A file whose tables this code cannot create over is a file of another shape: it is
         // a cache, so it is dropped and made again rather than reported.
-        if (!isSqliteFailure(error)) throw error;
+        // A busy or locked file is somebody's, not a file of another shape: the outer catch
+        // leaves it and reads in memory.
+        if (!isSqliteFailure(error) || isBusyOrLocked(error)) throw error;
         dropProjections(db);
         ensureSchema(db);
       }
@@ -364,6 +414,27 @@ export class ProjectionCache {
    */
   get retained(): readonly RetainedEntry[] {
     return this.retainedLines;
+  }
+
+  /**
+   * What the tails' checkpoints proved, as of the last replay (ADR-557 to ADR-562): the runs left
+   * out of the tables because a checkpoint does not hold over them or nothing signed them past one
+   * write (Fact A), and the runs served and not signed (Fact B). Empty for every record the
+   * product wrote and nothing damaged, once its checkpoints landed.
+   */
+  get signed(): readonly SignedFact[] {
+    return this.signedFacts;
+  }
+
+  /**
+   * The parts of the record the reading did not read, ALL of them in every tree the replay read: a
+   * line of a segment that does not parse and a symbolic link, left out of every projection here and
+   * said by every surface, with where each is and why, never what it holds. They ride with the replay
+   * as {@link retained} does, and are kept in the file beside the frontier; empty for every record
+   * nothing damaged. Like {@link retained}, this is no verdict: a line below the frontier is `verify`'s.
+   */
+  get refused(): readonly RefusedPart[] {
+    return this.refusedParts;
   }
 
   /**
@@ -436,12 +507,27 @@ export class ProjectionCache {
   integrityAsOfNow(): {
     readonly breaks: readonly LinkBreak[];
     readonly retained: readonly RetainedEntry[];
+    readonly refused: readonly RefusedPart[];
+    readonly signed: readonly SignedFact[];
   } {
     this.agree();
-    const standing = { breaks: this.breaks, retained: this.retainedLines };
+    const standing = {
+      breaks: this.breaks,
+      retained: this.retainedLines,
+      refused: this.refusedParts,
+      signed: this.signedFacts,
+    };
     if (this.frontier === undefined) return standing;
     const arrived = chainArrivals(this.layout, this.upcasters, this.frontier);
     if (arrived.suffix) return standing;
+    // What arrived is not what a checkpoint proves: the chain as it stands is read whole for what
+    // its checkpoints say, without bringing the tables forward (the next refresh replays them).
+    if (arrived.why === 'AN_ARRIVAL_IS_NOT_SIGNED') {
+      return {
+        ...standing,
+        signed: chainReplay(this.layout, this.upcasters, true).signed,
+      };
+    }
     if (arrived.why !== 'AN_ARRIVAL_DOES_NOT_CHAIN' && arrived.why !== 'AN_ARRIVAL_IS_RETAINED') {
       return standing;
     }
@@ -455,9 +541,19 @@ export class ProjectionCache {
     const where = (one: RetainedEntry): string => `${one.tail}/${one.segment}:${one.line}`;
     const knownLines = new Set(this.retainedLines.map(where));
     const found = arrived.retained.filter((one) => !knownLines.has(where(one)));
+    const knownParts = this.refusedParts;
+    const newParts = arrived.refused.filter(
+      (part) =>
+        !knownParts.some(
+          (known) =>
+            known.kind === part.kind && known.place === part.place && known.line === part.line,
+        ),
+    );
     return {
       breaks: fresh.length === 0 ? this.breaks : [...this.breaks, ...fresh],
       retained: found.length === 0 ? this.retainedLines : [...this.retainedLines, ...found],
+      refused: newParts.length === 0 ? knownParts : [...knownParts, ...newParts],
+      signed: this.signedFacts,
     };
   }
 
@@ -483,9 +579,13 @@ export class ProjectionCache {
   rosterAsOfNow(anchor: string): Set<string> {
     const tree = this.layout.root;
     this.agree();
-    if (this.frontier === undefined) return rosterOf({ tree, upcasters: this.upcasters }, anchor);
+    if (this.frontier === undefined) {
+      return rosterOf({ tree, upcasters: this.upcasters }, anchor);
+    }
     const arrived = chainArrivals(this.layout, this.upcasters, this.frontier);
-    if (!arrived.suffix) return rosterOf({ tree, upcasters: this.upcasters }, anchor);
+    if (!arrived.suffix) {
+      return rosterOf({ tree, upcasters: this.upcasters }, anchor);
+    }
     return rosterIn([...readMembership(this.db), ...arrived.events], tree, anchor);
   }
 
@@ -523,6 +623,13 @@ export class ProjectionCache {
           this.replay();
           return;
         }
+        // A PART THIS MNEMA DOES NOT READ that lies where a catch-up reads (a link, or a line past
+        // what the frontier covers) is not one the marks below it can say was mended or taken away,
+        // so the record is replayed whole rather than believed over it.
+        if (this.refusedPartPastTheFrontier(this.frontier)) {
+          this.replay();
+          return;
+        }
         // The stamps of the segments each tail appends to, BEFORE the reading, are what the marks
         // record: see {@link activeStampsBefore}.
         const before = this.persisted ? activeStampsBefore(this.layout) : {};
@@ -551,7 +658,9 @@ export class ProjectionCache {
               arrived.frontier,
               this.breaks,
               this.retainedLines,
+              this.refusedParts,
               [...this.unreadLines, ...arrived.unread],
+              this.signedFacts,
               expected + 1,
               before,
             );
@@ -576,6 +685,25 @@ export class ProjectionCache {
   }
 
   /**
+   * Whether a part of the record this cache left out ({@link refused}) may lie past what its
+   * frontier covers: a link, which no mark of a segment says, or a line that starts at or after the
+   * byte a tail's reading ended on. A line below that byte is under the marks that say a segment was
+   * rewritten; one past it is read again by every catch-up, and the one that reads it fine is the
+   * one that has to drop it.
+   */
+  private refusedPartPastTheFrontier(frontier: ChainFrontier): boolean {
+    return this.refusedParts.some((part) => {
+      if (part.kind === 'link' || part.kind === 'disk') return true;
+      const reached = frontier.tails.get(part.tail)?.boundary;
+      if (reached === undefined) return true;
+      const segment = basename(reached.segment);
+      const mine = basename(part.place);
+      if (mine !== segment) return mine > segment;
+      return part.start === undefined || part.start >= reached.bytes;
+    });
+  }
+
+  /**
    * Brings a cache kept on disk forward when ANOTHER process has written the file since this
    * one last agreed with it, and says whether it did: one query for the file's generation.
    *
@@ -594,7 +722,7 @@ export class ProjectionCache {
   /** Replays the chain whole into the tables: the one place a rebuild is written. */
   private replay(): void {
     const before = this.persisted ? activeStampsBefore(this.layout) : {};
-    const replay = chainReplay(this.layout, this.upcasters);
+    const replay = chainReplay(this.layout, this.upcasters, true);
     this.generation = inTransaction(
       this.db,
       () => {
@@ -604,7 +732,9 @@ export class ProjectionCache {
           replay.frontier,
           replay.linkBreaks,
           replay.retained,
+          replay.refused,
           replay.unread,
+          replay.signed,
           generation,
           before,
         );
@@ -616,7 +746,9 @@ export class ProjectionCache {
     this.frontier = replay.frontier;
     this.breaks = replay.linkBreaks;
     this.retainedLines = replay.retained;
+    this.refusedParts = replay.refused;
     this.unreadLines = replay.unread;
+    this.signedFacts = replay.signed;
     this.several = replay.several;
   }
 
@@ -625,7 +757,9 @@ export class ProjectionCache {
     frontier: ChainFrontier,
     breaks: readonly LinkBreak[],
     retained: readonly RetainedEntry[],
+    refused: readonly RefusedPart[],
     unread: readonly UnreadLine[],
+    signed: readonly SignedFact[],
     generation: number,
     before: Readonly<Record<string, string>>,
   ): void {
@@ -635,7 +769,9 @@ export class ProjectionCache {
       frontier,
       breaks,
       retained,
+      refused,
       unread,
+      signed,
       sealed: this.persisted ? sealedFingerprints(frontier) : {},
       active: this.persisted ? activeMarks(frontier, before) : {},
     };
@@ -660,12 +796,20 @@ export class ProjectionCache {
       this.frontier = undefined;
       this.breaks = [];
       this.retainedLines = [];
+      this.refusedParts = [];
       this.unreadLines = [];
+      this.signedFacts = [];
       this.generation = -1;
       return;
     }
     if (meta.generation === this.generation && this.frontier !== undefined) return;
     this.generation = meta.generation;
+    if (this.persisted && meta.stamp !== productStamp() && !mayTakeOver(meta.version)) {
+      // Another build's code (not an older version of this one) wrote the file since this one opened it: leave it to that build.
+      this.degrade();
+      this.foreign = true;
+      return;
+    }
     const active = this.persisted ? activeSegmentsHold(meta.active) : meta.active;
     if (
       meta.stamp !== productStamp() ||
@@ -674,13 +818,17 @@ export class ProjectionCache {
       this.frontier = undefined;
       this.breaks = [];
       this.retainedLines = [];
+      this.refusedParts = [];
       this.unreadLines = [];
+      this.signedFacts = [];
       return;
     }
     this.frontier = meta.frontier;
     this.breaks = meta.breaks;
     this.retainedLines = meta.retained;
+    this.refusedParts = meta.refused;
     this.unreadLines = meta.unread;
+    this.signedFacts = meta.signed;
     // A segment whose time moved over the same bytes was hashed to be believed: its new stamp is
     // kept, so the next open does not hash it again (and a read that finds nothing new, which
     // never stores, would otherwise hash on every open until the next write).
@@ -729,7 +877,9 @@ export class ProjectionCache {
     this.frontier = undefined;
     this.breaks = [];
     this.retainedLines = [];
+    this.refusedParts = [];
     this.unreadLines = [];
+    this.signedFacts = [];
     this.generation = -1;
   }
 
@@ -1080,5 +1230,20 @@ export class ProjectionCache {
   /** Closes the underlying database. Closing a cache already closed is nothing to do. */
   close(): void {
     if (this.db.isOpen) this.db.close();
+  }
+}
+
+/** Whether the tree's own cache file, or `locks/` or a file SQLite keeps beside it, is a symbolic link. */
+function cacheStandsAtALink(layout: ChainLayout): boolean {
+  const file = basename(projectionCachePath(layout));
+  try {
+    refuseLinks(layout, [
+      'locks',
+      ...['', '-wal', '-shm', '-journal'].map((suffix) => `locks/${file}${suffix}`),
+    ]);
+    return false;
+  } catch (error) {
+    if (error instanceof LinkedRecordError) return true;
+    throw error;
   }
 }

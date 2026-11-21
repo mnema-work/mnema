@@ -1,0 +1,495 @@
+/**
+ * `mnema backup` at the surface: the confirmation `setup` asks before it assigns a folder, what
+ * `run` says it copied, and what `status` says and gives as JSON.
+ */
+
+// @plants-damage
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { resolveTrees } from '@mnema/core';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { type CliIo, run } from '../program.js';
+import { KEPT_IN_CLEAR, WHAT_RESTORE_DOES_NOT_BRING } from './backup.js';
+
+let sandbox: string;
+let repo: string;
+let originalCwd: string;
+let originalHome: string | undefined;
+
+interface Said {
+  readonly out: string[];
+  readonly err: string[];
+  readonly failed: boolean;
+}
+
+async function mnema(argv: string[], io: Partial<CliIo> = {}): Promise<Said> {
+  const out: string[] = [];
+  const err: string[] = [];
+  let failed = false;
+  await run(argv, {
+    out: (line) => out.push(line),
+    err: (line) => err.push(line),
+    fail: () => {
+      failed = true;
+    },
+    ...io,
+  });
+  return { out, err, failed };
+}
+
+beforeEach(async () => {
+  sandbox = mkdtempSync(join(tmpdir(), 'mnema-backup-verb-'));
+  repo = join(sandbox, 'repo');
+  mkdirSync(repo, { recursive: true });
+  originalCwd = process.cwd();
+  originalHome = process.env.HOME;
+  process.env.HOME = join(sandbox, 'home');
+  delete process.env.MNEMA_HOME;
+  process.chdir(repo);
+  const founded = await mnema(['init']);
+  expect(founded.failed, founded.err.join(' / ')).toBe(false);
+  const recorded = await mnema([
+    'decision',
+    'record',
+    'A choice',
+    'a reason',
+    '--scope',
+    'private',
+  ]);
+  expect(recorded.failed, recorded.err.join(' / ')).toBe(false);
+});
+
+afterEach(() => {
+  process.chdir(originalCwd);
+  if (originalHome === undefined) delete process.env.HOME;
+  else process.env.HOME = originalHome;
+  rmSync(sandbox, { recursive: true, force: true });
+});
+
+/** What a person at a terminal answers. */
+const answering = (answer: string): Partial<CliIo> => ({
+  aPersonIsHere: true,
+  ask: async () => answer,
+});
+
+describe('mnema backup setup', () => {
+  it('assigns nothing where an answer can be read but no person is at a terminal (a pipe)', async () => {
+    const folder = join(sandbox, 'folder');
+    const said = await mnema(['backup', 'setup', folder], { ask: async () => 'yes' });
+    expect(said.failed).toBe(true);
+    expect(existsSync(join(sandbox, 'home', '.mnema', 'backup.json'))).toBe(false);
+  });
+
+  it('assigns nothing without a terminal, with a flag that would answer or without, and says the command for a person', async () => {
+    const folder = join(sandbox, 'folder');
+    for (const argv of [
+      ['backup', 'setup', folder],
+      ['backup', 'setup', '--yes', folder],
+    ]) {
+      const said = await mnema(argv);
+      expect(said.failed, argv.join(' ')).toBe(true);
+      expect(existsSync(join(sandbox, 'home', '.mnema', 'backup.json'))).toBe(false);
+    }
+    const said = await mnema(['backup', 'setup', folder]);
+    expect(said.err.join(' ')).toContain('keeps the text in clear');
+    expect(said.err.join(' ')).toContain('in a terminal');
+    expect(said.err.join(' ')).not.toContain('--yes');
+  });
+
+  it('asks the person, says the sentence, and assigns only on yes', async () => {
+    const folder = join(sandbox, 'folder');
+    const asked: string[] = [];
+    const asking = (answer: string): Partial<CliIo> => ({
+      aPersonIsHere: true,
+      ask: async (question) => {
+        asked.push(question);
+        return answer;
+      },
+    });
+    const no = await mnema(['backup', 'setup', folder], asking('no'));
+    expect(no.out.join('\n')).toContain(KEPT_IN_CLEAR);
+    expect(existsSync(join(sandbox, 'home', '.mnema', 'backup.json'))).toBe(false);
+    const yes = await mnema(['backup', 'setup', folder], asking('Yes'));
+    expect(yes.failed, yes.err.join(' / ')).toBe(false);
+    expect(asked).toHaveLength(2);
+    expect(existsSync(join(sandbox, 'home', '.mnema', 'backup.json'))).toBe(true);
+  });
+});
+
+describe('mnema backup run and status', () => {
+  it('copies the trees of a project with no git, and says the copy is up to date', async () => {
+    const folder = join(sandbox, 'folder');
+    expect((await mnema(['backup', 'setup', folder], answering('yes'))).failed).toBe(false);
+    const ran = await mnema(['backup', 'run']);
+    expect(ran.failed, ran.err.join(' / ')).toBe(false);
+    expect(ran.out.join('\n')).toMatch(/private tree: \d+ file\(s\) held/);
+    expect(readdirSync(folder)).toHaveLength(1);
+
+    const status = await mnema(['backup', 'status']);
+    expect(status.out.join('\n')).toContain('nothing to add');
+    expect(status.out.join('\n')).toContain('the private key is not copied');
+
+    const json = await mnema(['backup', 'status', '--json']);
+    const reading = JSON.parse(json.out.join('\n')) as { destination: string; trees: unknown[] };
+    expect(reading.destination).toBe(folder);
+    expect(reading.trees).toHaveLength(2);
+  });
+
+  it('says what a second setup replaced, and that a project has no private tree yet', async () => {
+    const first = join(sandbox, 'first');
+    const second = join(sandbox, 'second');
+    await mnema(['backup', 'setup', first], answering('yes'));
+    const again = await mnema(['backup', 'setup', second], answering('yes'));
+    expect(again.out.join('\n')).toContain(`it was ${first}`);
+    const trees = resolveTrees(repo, { home: join(sandbox, 'home') });
+    rmSync(trees.projectPrivate as string, { recursive: true, force: true });
+    const ran = await mnema(['backup', 'run']);
+    expect(ran.out.join('\n')).toContain('private tree: none on this machine yet');
+    const status = await mnema(['backup', 'status']);
+    expect(status.out.join('\n')).toContain('private tree: none on this machine yet');
+  });
+
+  it('refuses a run for a project with no folder', async () => {
+    const said = await mnema(['backup', 'run']);
+    expect(said.failed).toBe(true);
+    expect(said.err.join(' ')).toContain('mnema backup setup <folder>');
+  });
+});
+
+describe('mnema backup --global', () => {
+  const home = () => join(sandbox, 'home', '.mnema', 'backup.json');
+
+  it('assigns nothing without a terminal, and names the global command for the person', async () => {
+    const said = await mnema(['backup', 'setup', '--global', join(sandbox, 'g')]);
+    expect(said.failed).toBe(true);
+    expect(said.err.join(' ')).toContain('mnema backup setup --global <folder>');
+    expect(existsSync(home())).toBe(false);
+  });
+
+  it('copies only the global tree to its folder, and says the project run did not', async () => {
+    await mnema(['task', 'create', 'memory', '--scope', 'global']);
+    const folder = join(sandbox, 'g');
+    expect((await mnema(['backup', 'setup', '--global', folder], answering('yes'))).failed).toBe(
+      false,
+    );
+    const refused = await mnema(['backup', 'run']);
+    expect(refused.err.join(' ')).toContain('mnema backup setup <folder>');
+    expect(existsSync(folder)).toBe(false);
+
+    const ran = await mnema(['backup', 'run', '--global']);
+    expect(ran.failed, ran.err.join(' / ')).toBe(false);
+    expect(ran.out.join('\n')).toMatch(/global tree: \d+ file\(s\) held/);
+    expect(readdirSync(folder)).toEqual(['global']);
+
+    const status = await mnema(['backup', 'status', '--global']);
+    expect(status.out.join('\n')).toContain('global tree: last copied');
+    expect(status.out.join('\n')).toContain('nothing to add');
+    const json = JSON.parse(
+      (await mnema(['backup', 'status', '--global', '--json'])).out.join('\n'),
+    );
+    expect(json.destination).toBe(folder);
+  });
+
+  it('refuses a global run for a machine whose global tree has no folder', async () => {
+    const said = await mnema(['backup', 'run', '--global']);
+    expect(said.failed).toBe(true);
+    expect(said.err.join(' ')).toContain('mnema backup setup --global <folder>');
+  });
+});
+
+describe('mnema backup verify and restore', () => {
+  it('puts a deleted private tree back, says what a restore does not bring, and verifies the result', async () => {
+    const folder = join(sandbox, 'folder');
+    await mnema(['backup', 'setup', folder], answering('yes'));
+    expect((await mnema(['backup', 'run'])).failed).toBe(false);
+    const trees = resolveTrees(repo, { home: join(sandbox, 'home') });
+    rmSync(trees.projectPrivate as string, { recursive: true, force: true });
+
+    const lost = await mnema(['backup', 'verify']);
+    expect(lost.failed).toBe(true);
+    expect(lost.out.join('\n')).toMatch(/is in the copy and not in the tree/);
+
+    const dry = await mnema(['backup', 'restore', '--dry-run']);
+    expect(dry.failed, dry.err.join(' / ')).toBe(false);
+    expect(dry.out.join('\n')).toContain('Dry run: nothing was written');
+    expect(existsSync(trees.projectPrivate as string)).toBe(false);
+
+    const restored = await mnema(['backup', 'restore']);
+    expect(restored.failed, restored.err.join(' / ')).toBe(false);
+    const said = restored.out.join('\n');
+    // The key is not in the copy, and the restore says so in words that promise nothing about it.
+    for (const words of WHAT_RESTORE_DOES_NOT_BRING) expect(said).toContain(words);
+    expect(said).toContain('counts you twice');
+    expect(said).toMatch(/put back \d+ file\(s\) \(1 tail\(s\) the tree did not have\)/);
+    expect(said).not.toMatch(/restores? (your|the) key/);
+
+    const verified = await mnema(['backup', 'verify']);
+    expect(verified.failed, verified.out.join(' / ')).toBe(false);
+    expect(verified.out.join('\n')).toContain('the copy is as far as the tree');
+    expect(verified.out.join('\n')).toContain('ONE reader read this copy');
+    const json = JSON.parse((await mnema(['backup', 'verify', '--json'])).out.join('\n')) as {
+      sound: boolean;
+    };
+    expect(json.sound).toBe(true);
+  });
+
+  it('names what it finds: a copy behind, a tree that went further, a file kept, a tree cut or forked, a manifest that lists more', async () => {
+    const folder = join(sandbox, 'folder');
+    await mnema(['backup', 'setup', folder], answering('yes'));
+    await mnema(['backup', 'run']);
+    const trees = resolveTrees(repo, { home: join(sandbox, 'home') });
+    const priv = trees.projectPrivate as string;
+    const [tail] = readdirSync(join(priv, 'tails'));
+    const segment = join(priv, 'tails', tail as string, '000001.jsonl');
+    const whole = readFileSync(segment);
+    const copyDir = join(folder, readdirSync(folder)[0] as string, 'private');
+
+    await mnema(['task', 'create', 'written after the copy', '--scope', 'private']);
+    const behind = await mnema(['backup', 'verify']);
+    expect(behind.failed).toBe(false);
+    expect(behind.out.join('\n')).toContain('the copy is BEHIND');
+    expect(behind.out.join('\n')).toMatch(
+      /the copy lacks \d+ entries of the tail \S+, which the tree holds/,
+    );
+    // One line for the tail, counted over its segments and not its checkpoints.
+    expect(behind.out.join('\n').match(/the copy lacks/g)).toHaveLength(1);
+
+    writeFileSync(join(priv, 'tails', tail as string, 'tailproof.json'), '{"other":true}');
+    const goingOn = await mnema(['backup', 'restore']);
+    expect(goingOn.failed, goingOn.err.join(' / ')).toBe(false);
+    expect(goingOn.out.join('\n')).toContain('holds more in the tree than in the copy');
+    expect(goingOn.out.join('\n')).toContain('holds other bytes in the tree');
+
+    const manifest = join(copyDir, 'mnema-backup.json');
+    const listed = JSON.parse(readFileSync(manifest, 'utf-8')) as { files: { bytes: number }[] };
+    writeFileSync(
+      manifest,
+      JSON.stringify({
+        ...listed,
+        files: listed.files.map((f) => ({ ...f, bytes: f.bytes + 99 })),
+      }),
+    );
+    const missing = await mnema(['backup', 'verify']);
+    expect(missing.out.join('\n')).toContain('is listed by the copy');
+    writeFileSync(manifest, JSON.stringify(listed));
+
+    writeFileSync(segment, whole.subarray(0, whole.indexOf(0x0a) + 1));
+    const cut = await mnema(['backup', 'verify']);
+    expect(cut.failed).toBe(true);
+    expect(cut.out.join('\n')).toContain('the tree is cut');
+
+    const forked = Buffer.from(whole);
+    forked[2] = forked[2] === 0x61 ? 0x62 : 0x61;
+    writeFileSync(segment, forked);
+    const fork = await mnema(['backup', 'verify']);
+    expect(fork.failed).toBe(true);
+    expect(fork.out.join('\n')).toContain('a fork, or a cut, and no side is taken');
+    const refused = await mnema(['backup', 'restore']);
+    expect(refused.failed).toBe(true);
+    expect(refused.err.join(' ')).toContain('do not agree');
+    rmSync(priv, { recursive: true, force: true });
+    const gone = await mnema(['backup', 'verify']);
+    expect(gone.out.join('\n')).toContain('is in the copy and not in the tree');
+  });
+
+  it('asks at a terminal before it takes the name of a copy for a record that lost its tails, and writes nothing without a yes', async () => {
+    const folder = join(sandbox, 'folder');
+    await mnema(['backup', 'setup', folder], answering('yes'));
+    expect((await mnema(['backup', 'run'])).failed).toBe(false);
+    const trees = resolveTrees(repo, { home: join(sandbox, 'home') });
+    const tails = join(trees.projectPublic as string, 'tails');
+    const record = readdirSync(folder)[0] as string;
+    rmSync(tails, { recursive: true, force: true });
+
+    // A pipe can be read but is nobody: refused, with the command a person runs, and nothing written.
+    const asked: string[] = [];
+    for (const io of [
+      { ask: async () => 'yes' },
+      {},
+      { aPersonIsHere: true },
+    ] satisfies Partial<CliIo>[]) {
+      const piped = await mnema(['backup', 'restore'], io);
+      expect(piped.failed).toBe(true);
+      expect(piped.err.join(' ')).toContain('run `mnema backup restore` in a terminal');
+      expect(piped.err.join(' ')).toContain(record);
+      expect(existsSync(tails)).toBe(false);
+    }
+
+    // A dry run says the names and asks nobody.
+    const dry = await mnema(['backup', 'restore', '--dry-run'], {
+      aPersonIsHere: true,
+      ask: async (question) => {
+        asked.push(question);
+        return 'yes';
+      },
+    });
+    expect(dry.failed, dry.err.join(' / ')).toBe(false);
+    expect(dry.out.join('\n')).toContain(record);
+    expect(asked).toEqual([]);
+    expect(existsSync(tails)).toBe(false);
+
+    // Anything but yes is no.
+    const no = await mnema(['backup', 'restore'], answering('y'));
+    expect(no.out.join('\n')).toContain('Nothing was restored.');
+    expect(existsSync(tails)).toBe(false);
+
+    const yes = await mnema(['backup', 'restore'], answering('yes'));
+    expect(yes.failed, yes.err.join(' / ')).toBe(false);
+    expect(yes.out.join('\n')).toContain(`Restored record ${record.slice(0, 12)}`);
+    expect(existsSync(tails)).toBe(true);
+    expect((await mnema(['backup', 'verify'])).failed).toBe(false);
+  });
+
+  it("asks about another record's copy in a project outside git, says where the live record goes and that it stays until deleted, and puts it back", async () => {
+    // Another project, outside git too, whose copy is in the folder this one is then set up with.
+    const other = join(sandbox, 'other');
+    mkdirSync(other);
+    process.chdir(other);
+    expect((await mnema(['init'])).failed).toBe(false);
+    expect((await mnema(['task', 'create', 'work of other'])).failed).toBe(false);
+    const folder = join(sandbox, 'folder');
+    expect((await mnema(['backup', 'setup', folder], answering('yes'))).failed).toBe(false);
+    expect((await mnema(['backup', 'run'])).failed).toBe(false);
+    const beta = readdirSync(folder)[0] as string;
+    process.chdir(repo);
+    expect((await mnema(['backup', 'setup', folder], answering('yes'))).failed).toBe(false);
+    const trees = resolveTrees(repo, { home: join(sandbox, 'home') });
+    const tails = join(trees.projectPublic as string, 'tails');
+    const live = readdirSync(tails);
+
+    const asked: string[] = [];
+    const piped = await mnema(['backup', 'restore', '--from', beta]);
+    expect(piped.failed).toBe(true);
+    const where = join(sandbox, 'home', '.mnema', 'before-restore');
+    expect(piped.err.join(' ')).toContain(`${where}/<date>/`);
+    expect(piped.err.join(' ')).toContain(
+      `run \`mnema backup restore --from ${beta}\` in a terminal`,
+    );
+    expect(readdirSync(tails)).toEqual(live);
+
+    const yes = await mnema(['backup', 'restore', '--from', beta], {
+      aPersonIsHere: true,
+      ask: async (question) => {
+        asked.push(question);
+        return 'yes';
+      },
+    });
+    expect(yes.failed, yes.err.join(' / ')).toBe(false);
+    expect(asked).toHaveLength(1);
+    expect(yes.out.join('\n')).toContain(`is kept at ${where}/`);
+    expect(yes.out.join('\n')).toContain('you delete them by hand');
+    expect(readdirSync(tails)).not.toEqual(live);
+
+    const undone = await mnema(['backup', 'restore', '--undo']);
+    expect(undone.failed, undone.err.join(' / ')).toBe(false);
+    expect(undone.out.join('\n')).toContain('you delete it by hand');
+    expect(readdirSync(tails)).toEqual(live);
+  });
+
+  it("asks about another machine's global copy, says every project reads it and where it is kept, and puts it back", async () => {
+    // Another machine: its own mnema home, a task in its global tree, its global copy in a folder.
+    const mine = process.env.HOME as string;
+    process.env.HOME = join(sandbox, 'other-home');
+    expect(
+      (await mnema(['task', 'create', 'memory of the other machine', '--scope', 'global'])).failed,
+    ).toBe(false);
+    const folder = join(sandbox, 'folder-global');
+    expect((await mnema(['backup', 'setup', '--global', folder], answering('yes'))).failed).toBe(
+      false,
+    );
+    expect((await mnema(['backup', 'run', '--global'])).failed).toBe(false);
+    process.env.HOME = mine;
+    expect(
+      (await mnema(['task', 'create', 'memory of this machine', '--scope', 'global'])).failed,
+    ).toBe(false);
+    expect((await mnema(['backup', 'setup', '--global', folder], answering('yes'))).failed).toBe(
+      false,
+    );
+    const global = resolveTrees(repo, { home: mine }).global;
+    const tails = join(global, 'tails');
+    const live = readdirSync(tails);
+
+    const mixed = await mnema(['backup', 'restore', '--global', '--from', 'x']);
+    expect(mixed.failed).toBe(true);
+    expect(mixed.err.join(' ')).toContain('--global takes no --from');
+    const verified = await mnema(['backup', 'verify', '--global']);
+    expect(verified.out.join('\n')).toContain('global tree: ');
+    expect(verified.out.join('\n')).toContain('Backup of the global tree in');
+
+    const where = join(mine, '.mnema', 'before-restore');
+    const piped = await mnema(['backup', 'restore', '--global']);
+    expect(piped.failed).toBe(true);
+    expect(piped.err.join(' ')).toContain('every project on it reads it');
+    expect(piped.err.join(' ')).toContain(`${where}/<date>/`);
+    expect(piped.err.join(' ')).toContain('run `mnema backup restore --global` in a terminal');
+    expect(readdirSync(tails)).toEqual(live);
+    const dry = await mnema(['backup', 'restore', '--global', '--dry-run']);
+    expect(dry.failed, dry.err.join(' / ')).toBe(false);
+    expect(readdirSync(tails)).toEqual(live);
+    expect(existsSync(where)).toBe(false);
+
+    const asked: string[] = [];
+    const yes = await mnema(['backup', 'restore', '--global'], {
+      aPersonIsHere: true,
+      ask: async (question) => {
+        asked.push(question);
+        return 'yes';
+      },
+    });
+    expect(yes.failed, yes.err.join(' / ')).toBe(false);
+    expect(asked).toHaveLength(1);
+    expect(yes.out.join('\n')).toContain('Restored the global tree from');
+    expect(yes.out.join('\n')).toContain(`what the global tree held is kept at ${where}/`);
+    expect(yes.out.join('\n')).toContain('`mnema backup verify --global` reads the result');
+    expect(yes.out.join('\n')).toContain('`mnema backup restore --global --undo` puts it back');
+    expect(readdirSync(tails)).not.toEqual(live);
+    const listed = await mnema(['backup', 'status', '--global']);
+    expect(listed.out.join('\n')).toContain(
+      'kept aside by a restore of another record: the global tree',
+    );
+    expect(listed.out.join('\n')).toContain('you delete them by hand');
+
+    rmSync(join(mine, '.mnema', 'backup.json'));
+    const noFolder = await mnema(['backup', 'status', '--global']);
+    expect(noFolder.out.join('\n')).toContain(
+      'kept aside by a restore of another record: the global tree',
+    );
+    expect(noFolder.failed).toBe(true);
+    await mnema(['backup', 'setup', '--global', folder], answering('yes'));
+
+    const undone = await mnema(['backup', 'restore', '--global', '--undo']);
+    expect(undone.failed, undone.err.join(' / ')).toBe(false);
+    expect(undone.out.join('\n')).toContain('Put back the global tree');
+    expect(readdirSync(tails)).toEqual(live);
+  });
+
+  it('takes --undo alone, and says there is nothing to put back where nothing was kept', async () => {
+    const folder = join(sandbox, 'folder');
+    await mnema(['backup', 'setup', folder], answering('yes'));
+    const mixed = await mnema(['backup', 'restore', '--undo', '--dry-run']);
+    expect(mixed.failed).toBe(true);
+    expect(mixed.err.join(' ')).toContain('--undo takes no other option');
+    const none = await mnema(['backup', 'restore', '--undo']);
+    expect(none.failed).toBe(true);
+  });
+
+  it('refuses where the project has no folder for its backup', async () => {
+    for (const argv of [
+      ['backup', 'verify'],
+      ['backup', 'restore'],
+    ]) {
+      const said = await mnema(argv);
+      expect(said.failed).toBe(true);
+      expect(said.err.join(' ')).toContain('mnema backup setup <folder>');
+    }
+  });
+});

@@ -104,12 +104,19 @@ $ mnema --help
 | This machine:
 |   key             manage this machine's signing keys
 |   tail            act on the record's own tails: list them, authorize a cut,
-|                   relink one
+|                   relink one, repair a line from git
+|   backup          copy this project's trees into a folder, and say how far the
+|                   copy is (records nothing)
 |   doctor          say how mnema is installed on this machine, and what to do
-|                   about each thing found (writes nothing unless you pass --fix)
+|                   about each thing found (writes nothing unless you pass --fix
+|                   or --after-update)
+|   upgrade         after installing a newer mnema: bring this project and machine
+|                   up to it, asking before anything that changes how the
+|                   repository behaves
 |   report          show, whole, what mnema would say about its own last internal
 |                   error, and keep your answer to it (sends nothing)
 |   completion      print the tab-completion script for a shell
+|   tour            show what mnema is and how it is used, page by page
 |
 | Called by a host:
 |   mcp             run the mnema MCP server over stdio (for an agent host)
@@ -732,7 +739,7 @@ $ mnema instructions --help
 | it names (claude, cursor, vscode, codex; a person’s CLAUDE.md or GEMINI.md under the host that
 | is named), which is how to add the block to one file without writing the others.
 |
-| A CLAUDE.md that imports AGENTS.md (a line of its own, @AGENTS.md or @./AGENTS.md) or a
+| A CLAUDE.md that imports AGENTS.md (@AGENTS.md or @./AGENTS.md, in a line or a sentence) or a
 | .claude/CLAUDE.md that does (@../AGENTS.md: a relative import is read from the folder of the
 | file that holds it) gets no block while AGENTS.md is written: Claude Code reads that file
 | from there. One that holds a block already is said to be read twice, and at a terminal the
@@ -969,7 +976,8 @@ $ mnema search --help
 | Options:
 |   --kind <kind>    only this kind of record: memory, observation, decision,
 |                    task, skill
-|   --scope <scope>  only this tree: public, private, global
+|   --scope <scope>  only this tree: public, private, global; leave it out, or say
+|                    all, to search the three together
 |   --state <state>  only records in this state NOW (excludes kinds that have
 |                    none)
 |   --from <iso>     only records at or after this ISO-8601 instant (inclusive)
@@ -1278,7 +1286,8 @@ $ mnema key --help
 $ mnema tail --help
 | Usage: mnema tail [options] [command]
 |
-| act on the record's own tails: list them, authorize a cut, relink one
+| act on the record's own tails: list them, authorize a cut, relink one, repair a
+| line from git
 |
 | Options:
 |   -h, --help                   display help for command
@@ -1290,28 +1299,81 @@ $ mnema tail --help
 |                                cut (it removes nothing)
 |   relink [options] <tails...>  relink whole tails of another record into the one
 |                                this directory names, each signed by its own key
+|   repair [options] <tail>      put back from git the lines of a public tail that
+|                                do not read or whose hash does not hold, or the
+|                                whole tail when its signed checkpoints do not
+|                                hold
 |   help [command]               display help for command
+
+### mnema backup --help
+$ mnema backup --help
+| Usage: mnema backup [options] [command]
+|
+| copy this project's trees into a folder, and say how far the copy is (records
+| nothing)
+|
+| Options:
+|   -h, --help                display help for command
+|
+| Commands:
+|   setup [options] <folder>  say which folder keeps this project's backup, after
+|                             a person confirms at a terminal that it keeps the
+|                             text in clear
+|   run [options]             copy this project's trees into its folder, or with
+|                             --global only the global tree
+|   status [options]          say where this project's backup is and how far it is
+|                             from the trees
+|   verify [options]          read each copy as a record and say how it stands
+|                             against this project's trees, which it does not
+|                             change
+|   restore [options]         put a copy back into the trees that lost files,
+|                             never over a file the tree holds; a copy of another
+|                             record is asked first, and --undo puts back what it
+|                             replaced
+|   hook                      install or remove an optional git hook that runs the
+|                             backup after a commit
+|   help [command]            display help for command
+|
+| The copy is a folder per project, kept under the name of its record: the tails up to their
+| last complete line and the public keys, and nothing else. The private tree is always copied;
+| the public tree only where the project is not in git, whose history is its own backup. No
+| private key is copied: a run is refused whole if a file it would copy holds one, and so is a
+| symbolic link in the tree or in the folder. A copy only grows. The folder keeps the text in
+| clear, which `setup` asks a person to confirm at a terminal. A machine can have a folder per project; a project has the one it was set up with.
+| `verify` reads the copy as a record (with this mnema's reader) and says how it stands against the trees; `restore` puts it
+| back into a tree that lost files, and never over a file the tree holds; a copy of another record is asked first,
+| what the tree held is kept aside (in the git directory, or in the mnema home for a project outside git), and `restore --undo` puts it back.
+| A destination may be a git remote (or the folder of a bare repository): `run` commits the copy to a clone of it
+| in the data directory and pushes it, one more commit each run, and never squashes, amends or forces: the
+| destination keeps the whole history. `hook install` adds an optional post-commit hook that runs the backup.
+| The machine's global tree, which mixes the memory of every project, is never part of a project's
+| backup: `--global` copies it, and only it, into the folder `setup --global` gave it, as
+| <folder>/global/.
 
 ### mnema doctor --help
 $ mnema doctor --help
 | Usage: mnema doctor [options]
 |
 | say how mnema is installed on this machine, and what to do about each thing
-| found (writes nothing unless you pass --fix)
+| found (writes nothing unless you pass --fix or --after-update)
 |
 | Options:
-|   --fix <what>  make the one change a finding asks for, and only that one:
-|                 `vscode` lists the plugin in the chat.pluginLocations setting of
-|                 VS Code’s settings.json, after keeping a copy of the file;
-|                 `private-tree` moves the private notes a worktree still holds in
-|                 .mnema/private/ into the repository’s git directory;
-|                 `merge-driver` writes, into this repository’s git configuration,
-|                 the merge driver the record’s tails name and then
-|                 merge.autoStash and rebase.autoStash, so a plain `git pull`
-|                 carries the record; it replaces a driver of mnema’s that cannot
-|                 run here
-|   --dry-run     with --fix: say what would change and write nothing
-|   -h, --help    display help for command
+|   --fix <what>    make the one change a finding asks for, and only that one:
+|                   `vscode` lists the plugin in the chat.pluginLocations setting
+|                   of VS Code’s settings.json, after keeping a copy of the file;
+|                   `private-tree` moves the private notes a worktree still holds
+|                   in .mnema/private/ into the repository’s git directory;
+|                   `merge-driver` writes, into this repository’s git
+|                   configuration, the merge driver the record’s tails name and
+|                   then merge.autoStash and rebase.autoStash, so a plain `git
+|                   pull` carries the record; it replaces a driver of mnema’s that
+|                   cannot run here
+|   --after-update  what `mnema upgrade` does: bring this project and machine up
+|                   to the installed version, asking before anything that changes
+|                   how the repository behaves
+|   --dry-run       with --fix or --after-update: say what would change and write
+|                   nothing
+|   -h, --help      display help for command
 |
 | What it looks at, and nothing else:
 |   the `mnema` executables on the PATH and which one is running; Claude Code’s list of
@@ -1337,6 +1399,31 @@ $ mnema doctor --help
 | written while the driver cannot run here), so that a plain `git pull` carries events of the
 | record not yet committed. It replaces a driver of mnema’s that cannot run, and leaves a
 | setting of the same name it did not write, and then writes none.
+| `--after-update` is `mnema upgrade`: it applies what an update left of mnema’s own, asks before the
+| merge driver and its autoStash settings, and says what a host keeps; `--dry-run` shows the plan.
+
+### mnema upgrade --help
+$ mnema upgrade --help
+| Usage: mnema upgrade [options]
+|
+| after installing a newer mnema: bring this project and machine up to it, asking
+| before anything that changes how the repository behaves
+|
+| Options:
+|   --dry-run   show the plan and write nothing
+|   -h, --help  display help for command
+|
+| The same as `mnema doctor --after-update`. It does not install anything: `npm i -g @mnema/code` stays
+| yours, and it asks no network. Run it in the project, after the install.
+| It applies, without asking: this version’s instructions block in the files that already hold an earlier
+| one, the line of the record’s .gitattributes that names the merge driver, and the setting of VS Code’s
+| settings.json that points at a plugin folder that is gone (a copy of the file is kept), and the mnema MCP
+| server entry of your ~/.claude.json when an enabled plugin or an approved .mcp.json declares it too (a
+| copy is kept; the entries of the project’s committed .mcp.json are asked, like the git settings).
+| It asks, at a terminal, before the merge driver and merge.autoStash and rebase.autoStash go into this
+| repository’s .git/config (they apply to every file of the clone); without a terminal it lists that as the
+| command to run. It says, and does not do, what a plugin a host keeps needs: the host updates it.
+| A run that finished writes the version it brought things to into this machine’s state file.
 
 ### mnema report --help
 $ mnema report --help
@@ -1384,6 +1471,22 @@ $ mnema completion --help
 | would mean running mnema on every Tab: more than the command itself costs.
 | The script is generated from this program, so a verb added to it is completed
 | the same day. Print it again after an upgrade.
+
+### mnema tour --help
+$ mnema tour --help
+| Usage: mnema tour [options]
+|
+| show what mnema is and how it is used, page by page
+|
+| Options:
+|   -h, --help  display help for command
+|
+| Four pages: what the record is, what `mnema init` chooses and why, how an agent reads it, and the
+| commands to start with. At a terminal one page is drawn at a time (Enter or → for the next, ← for
+| the one before, Esc to leave); without one the pages are printed in order. It writes nothing to
+| the record and founds no project; at a terminal it notes in a file of this machine, outside the
+| record, that the tour was shown. The first time `mnema` is run on a machine at a terminal, with no
+| arguments, this is what it opens, in place of the menu; after that the menu is back.
 
 ### mnema mcp --help
 $ mnema mcp --help
@@ -1477,6 +1580,8 @@ $ mnema before-a-write --help
 |   tree does that in every project of this machine. The switches read the
 |   same record, so they do not turn that off; update mnema, or restore the
 |   line.
+|   With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
+|   code alone on the first line of the error stream; typed by a person, nothing changes.
 
 ### mnema beside-a-write --help
 $ mnema beside-a-write --help
@@ -1506,6 +1611,8 @@ $ mnema beside-a-write --help
 |   write. It needs the `session_id` of the payload: the first reply of a session records one
 |   `channel.served` and the others none, and a payload without one is handed no rules.
 |   `mnema switch off edit-rules-push` stops it.
+|   With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
+|   code alone on the first line of the error stream; typed by a person, nothing changes.
 
 ### mnema tally --help
 $ mnema tally --help
@@ -1525,10 +1632,16 @@ $ mnema tally --help
 |   person, or {} when
 |   the hook is not Stop, the session wrote no file in the last response, there is no project
 |   here, or the transcript cannot be read.
+|   A response begins at a line Claude Code marks as typed by a person (origin.kind human):
+|   a compaction summary, a local command and “[Request interrupted by user]” never count, a
+|   slash command opens a response, and a transcript of an older Claude Code with no origin
+|   yields no typed line of the person’s.
 |   It writes nothing to the record. When the hook names its session it also keeps a small file on
 |   this machine, the session journal (ids and counts, never what was said), and reads the
 |   transcript from where the last reading stopped. `mnema switch off session-tally` stops the
 |   line and `mnema switch off session-journal` stops the file.
+|   With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
+|   code alone on the first line of the error stream; typed by a person, nothing changes.
 
 ### mnema corrections --help
 $ mnema corrections --help
@@ -1552,8 +1665,15 @@ $ mnema corrections --help
 |   person accepts or rejects.
 |   On stdout, the reply the host reads: a `systemMessage` saying how many were recorded and
 |   under which labels, or {}.
+|   A typed line is the person’s only where Claude Code marks it origin.kind human: a
+|   compaction summary, a local command and “[Request interrupted by user]” never count, a
+|   slash command opens an answer but is never quoted, and a transcript of an older Claude
+|   Code with no origin yields no typed line. An option chosen in the question tool is read
+|   from the tool’s result, which carries no origin.
 |   It does nothing until `mnema switch on user-corrections`, because it reads what a person
 |   typed. With the channel off, or outside a project, it records nothing.
+|   With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
+|   code alone on the first line of the error stream; typed by a person, nothing changes.
 
 ### mnema after-a-write --help
 $ mnema after-a-write --help
@@ -1577,6 +1697,8 @@ $ mnema after-a-write --help
 |   cites nowhere gets one line naming the command that reads it, once per session and
 |   file. Nothing is written for it.
 |   On stdout, the reply the host reads, or {}.
+|   With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
+|   code alone on the first line of the error stream; typed by a person, nothing changes.
 
 ### mnema handback --help
 $ mnema handback --help
@@ -1600,6 +1722,8 @@ $ mnema handback --help
 |   no project here, or the reply cannot be read.
 |   It reads, and writes nothing. It can be switched off with
 |   `mnema switch off subagent-handback`.
+|   With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
+|   code alone on the first line of the error stream; typed by a person, nothing changes.
 
 ### mnema settled --help
 $ mnema settled --help
@@ -1622,6 +1746,8 @@ $ mnema settled --help
 |   outside a project, or with the channel off, it prints {}.
 |   It reads which tool ran and never the answer, and writes nothing. It can be switched off
 |   with `mnema switch off choice-settled`.
+|   With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
+|   code alone on the first line of the error stream; typed by a person, nothing changes.
 
 ### mnema dispatched --help
 $ mnema dispatched --help
@@ -1648,6 +1774,8 @@ $ mnema dispatched --help
 |   kept in the session journal, so `mnema switch off session-journal` stops it, and so does
 |   `mnema switch off agent-mirror`. Nothing goes to the public tree.
 |   On stdout, {}.
+|   With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
+|   code alone on the first line of the error stream; typed by a person, nothing changes.
 
 ### mnema decision record --help
 $ mnema decision record --help
@@ -2889,6 +3017,139 @@ $ mnema tail relink --help
 |   Nor personal data: an email address is replaced with <email>; the mnid already says who wrote.
 |   Each text field holds at most 65536 bytes; a longer one is refused.
 
+### mnema tail repair --help
+$ mnema tail repair --help
+| Usage: mnema tail repair [options] <tail>
+|
+| put back from git the lines of a public tail that do not read or whose hash does
+| not hold, or the whole tail when its signed checkpoints do not hold
+|
+| Arguments:
+|   tail          the tail to repair, as `tail list` spells it:
+|                 <fingerprint>-<installation>
+|
+| Options:
+|   --from <rev>  the revision the lines or the tail are taken from (default
+|                 HEAD): an older one, when the damage was committed
+|   -h, --help    display help for command
+|
+| A line is put back only when the revision holds it at the same place in the same file, it reads,
+| its hash is the one its content gives, and it chains to the line before it and, where one follows,
+| to the line after it (the last line of a tail has none). A last line that a crash cut short is left.
+|
+| When every line holds and the tail’s signed checkpoints do not (events rewritten and re-chained,
+| `checkpoints.jsonl` emptied or forged, a signed event gone), the whole tail is put back: the
+| revision’s tail, which has to prove itself (its events chain from seq 0 and every checkpoint
+| signature holds under the committed key), and above it only the events a checkpoint that holds
+| or this machine’s signed note proves. Any other event is removed; honest events whose
+| links were computed again by someone else get their links computed again as they were signed.
+|
+| Nothing is signed, and `keys/`, `tailproof.json`, the notes beside the lock and every tree but the
+| committed public one are not touched. Each file as it was is kept in the repository’s git
+| directory, beside the tail’s lock, until you delete it, and the files put back are a change in
+| the working tree for you to commit. Only the public tree is repaired: it is the one git keeps.
+
+### mnema backup setup --help
+$ mnema backup setup --help
+| Usage: mnema backup setup [options] <folder>
+|
+| say which folder keeps this project's backup, after a person confirms at a
+| terminal that it keeps the text in clear
+|
+| Arguments:
+|   folder      the folder (outside the working tree, the record and the git
+|               directory), or a git remote that keeps the copy
+|
+| Options:
+|   --global    assign the folder to the machine's global tree instead of this
+|               project
+|   -h, --help  display help for command
+
+### mnema backup run --help
+$ mnema backup run --help
+| Usage: mnema backup run [options]
+|
+| copy this project's trees into its folder, or with --global only the global tree
+|
+| Options:
+|   --global    copy the machine's global tree, and only it, into the folder it
+|               was assigned
+|   -h, --help  display help for command
+
+### mnema backup status --help
+$ mnema backup status --help
+| Usage: mnema backup status [options]
+|
+| say where this project's backup is and how far it is from the trees
+|
+| Options:
+|   --global    say it of the machine's global tree instead of this project
+|   --json      emit the faithful reading as JSON
+|   -h, --help  display help for command
+
+### mnema backup verify --help
+$ mnema backup verify --help
+| Usage: mnema backup verify [options]
+|
+| read each copy as a record and say how it stands against this project's trees,
+| which it does not change
+|
+| Options:
+|   --global    read the copy of the machine's global tree instead of this
+|               project's
+|   --json      emit the faithful reading as JSON
+|   -h, --help  display help for command
+
+### mnema backup restore --help
+$ mnema backup restore --help
+| Usage: mnema backup restore [options]
+|
+| put a copy back into the trees that lost files, never over a file the tree
+| holds; a copy of another record is asked first, and --undo puts back what it
+| replaced
+|
+| Options:
+|   --dry-run        say what would be put back, and put nothing
+|   --from <record>  take the copy of this record (64 hex) from the project's
+|                    folder, instead of the project's own
+|   --undo           put back what the last restore of another record kept aside
+|   --global         restore the machine's global tree from the folder `setup
+|                    --global` gave it, and no project's tree
+|   -h, --help       display help for command
+|
+| What a restore of another record replaces is moved, never copied, and is kept until you delete it by hand:
+| in a repository, to <git directory>/mnema/before-restore-<UTC date>/; in a project outside git, to
+| <mnema home>/before-restore/<UTC date>/ (the mnema home is ~/.mnema, or $MNEMA_HOME when it is set).
+| No restore deletes a folder kept there, and `mnema backup status` lists them.
+|
+| The global tree is the machine's, read by every project on it: `--global` restores it from
+| <folder>/global/, and only it, kept aside in <mnema home>/before-restore/<UTC date>/global/.
+| A project's restore never touches it.
+
+### mnema backup hook --help
+$ mnema backup hook --help
+| Usage: mnema backup hook [options] [command]
+|
+| install or remove an optional git hook that runs the backup after a commit
+|
+| Options:
+|   -h, --help      display help for command
+|
+| Commands:
+|   install         add the post-commit hook that runs the backup (refuses a hook
+|                   that is not a shell script, and a hooksPath inside the working
+|                   tree)
+|   uninstall       take out the post-commit block mnema added, and the file only
+|                   if mnema wrote it whole
+|   help [command]  display help for command
+|
+| The hook is a post-commit script that runs `mnema backup run` in the background, so a commit
+| never waits for a network and never fails because of one. It runs only where `install` put
+| it. It is written where git reads hooks, and refused where core.hooksPath is inside the
+| working tree (a directory the repository shares). A shell hook that is already there keeps
+| its text and gets a marked block at the end; any other hook is left as it is. `uninstall`
+| takes out only what `install` put.
+
 ### mnema run start --help
 $ mnema run start --help
 | Usage: mnema run start [options]
@@ -2915,3 +3176,23 @@ $ mnema run end --help
 |                     agent is credited to you
 |   --outcome <text>  a short note on how the session went
 |   -h, --help        display help for command
+
+### mnema backup hook install --help
+$ mnema backup hook install --help
+| Usage: mnema backup hook install [options]
+|
+| add the post-commit hook that runs the backup (refuses a hook that is not a
+| shell script, and a hooksPath inside the working tree)
+|
+| Options:
+|   -h, --help  display help for command
+
+### mnema backup hook uninstall --help
+$ mnema backup hook uninstall --help
+| Usage: mnema backup hook uninstall [options]
+|
+| take out the post-commit block mnema added, and the file only if mnema wrote it
+| whole
+|
+| Options:
+|   -h, --help  display help for command

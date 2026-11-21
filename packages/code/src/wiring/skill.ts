@@ -235,6 +235,7 @@ export function registerSkill(program: Command, wiring: Wiring): Declared {
       },
       ...(given.which !== undefined ? { which: given.which } : {}),
       ...(run !== undefined ? { run } : {}),
+      atATerminal: io.aPersonIsHere === true,
     });
     if (result.ok) {
       io.out(movedLine('skill', result.name, result.id, result.to));
@@ -274,7 +275,7 @@ export function registerSkill(program: Command, wiring: Wiring): Declared {
   });
   skillExport.action(async (id: string, opts: { out: string; description?: string }) => {
     if ((await fromTheGroup(skillExport, wiring)) === REFUSED) return;
-    const { linkBreakNotice } = await import('./integrity.js');
+    const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
     const { runSkillExport } = await import('../commands/skill-export.js');
     const { exportReport, exportWarning } = await import('../presentation/exported.js');
     const result = runSkillExport(here(), {
@@ -291,6 +292,7 @@ export function registerSkill(program: Command, wiring: Wiring): Declared {
     // proof failed, and the person who ran the export is the one who can still decide
     // what to do about the file.
     for (const line of linkBreakNotice(result.linkBreaks)) io.err(render(line));
+    for (const line of newerLinesNotice(result.newerLines, 'the record')) io.err(render(line));
     writeLines(io, exportReport(render, result));
     for (const line of exportWarning(result)) io.err(render(line));
   });
@@ -327,13 +329,14 @@ export function registerSkill(program: Command, wiring: Wiring): Declared {
   });
   provenance.action(async (opts: { json?: boolean }) => {
     if ((await fromTheGroup(provenance, wiring)) === REFUSED) return;
-    const { linkBreakNotice } = await import('./integrity.js');
+    const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
     const { runSkills } = await import('../commands/skills.js');
     const { provenanceReport } = await import('../presentation/provenance.js');
     const result = runSkills(here());
     // BEFORE the answer, and on the other stream, so it survives a pipe, and so
     // `--json` stays the machine-readable thing it promises to be.
     for (const line of linkBreakNotice(result.linkBreaks)) io.err(render(line));
+    for (const line of newerLinesNotice(result.newerLines, 'the record')) io.err(render(line));
     if (opts.json === true) {
       io.out(JSON.stringify(result.patterns, null, 2));
       return;

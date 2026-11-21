@@ -1417,12 +1417,58 @@ describe('mnema CLI: search and show (the record made readable), end to end', ()
     expect(onlyPrivate).toContain('on this machine');
   });
 
+  it('treats --scope all like leaving --scope out, across the trees', async () => {
+    await run(['init'], capture().io);
+    await output(['memory', 'a shared word, in public']);
+    await output(['memory', 'a shared word, on this machine', '--scope', 'private']);
+
+    const without = await output(['search', 'shared']);
+    const withAll = await output(['search', 'shared', '--scope', 'all']);
+    expect(withAll).toBe(without);
+    expect(without).toContain('public');
+    expect(without).toContain('private');
+  });
+
   it('answers a term nothing matches plainly, and an empty record too', async () => {
     await run(['init'], capture().io);
 
     expect(await output(['search'])).toContain('Nothing recorded here yet.');
     await output(['memory', 'something']);
     expect(await output(['search', 'zebra'])).toContain('Nothing recorded matching "zebra".');
+  });
+
+  it('says every word must match when a term of several words finds nothing', async () => {
+    await run(['init'], capture().io);
+    await output(['memory', 'the deploy runbook']);
+    const hint = 'Every word has to be in the same record: try fewer words.';
+
+    // two words, no record holds both: both lines.
+    const both = await output(['search', 'deploy zebra']);
+    expect(both).toContain('Nothing recorded matching "deploy zebra".');
+    expect(both).toContain(hint);
+
+    // one word, nothing matches: the first line only.
+    const first = await output(['search', 'zebra']);
+    expect(first).not.toContain(hint);
+    expect(first).toContain('Nothing recorded matching "zebra".');
+
+    // words that DO match: the hit and no hint.
+    const hit = await output(['search', 'deploy']);
+    expect(hit).toContain('1 record(s) matching "deploy"');
+    expect(hit).not.toContain(hint);
+
+    // both words in one record: the hit, no hint.
+    const hitBoth = await output(['search', 'deploy runbook']);
+    expect(hitBoth).toContain('1 record(s) matching "deploy runbook"');
+    expect(hitBoth).not.toContain(hint);
+
+    // --json is untouched still the empty index.
+    const json = JSON.parse(await output(['search', 'deploy zebra', '--json'])) as {
+      hits: unknown[];
+      total: number;
+    };
+    expect(json.total).toBe(0);
+    expect(json.hits).toHaveLength(0);
   });
 
   it('rejects a kind, a scope and a limit that are not valid: nothing is searched', async () => {

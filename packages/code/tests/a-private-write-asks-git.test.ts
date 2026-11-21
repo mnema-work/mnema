@@ -190,10 +190,12 @@ describe('a private tree inside the working tree that nothing ignores', () => {
   it('is refused on the command line where the git directory itself lies inside the worktree', () => {
     // `.git` is a file naming `realgd`, a directory of the working tree: the private tree under
     // it is a path `git add -A` stages, whatever is or is not in `.mnema/.gitignore`.
+    // The project is founded first: a public write from a git directory inside the working tree is
+    // itself refused (the machinery of the public tree may not be where `git add` reaches).
+    expect(mnema(undefined, 'init').status).toBe(0);
     expect(
       git('init', '-q', '-b', 'main', '--separate-git-dir', join(project, 'realgd')).status,
     ).toBe(0);
-    expect(mnema(undefined, 'init').status).toBe(0);
     const wrote = mnema(undefined, 'memory', '--scope', 'private', 'a note for this machine');
     expect(wrote.status, wrote.out).toBe(1);
     expect(wrote.out).toContain('git would stage realgd/mnema/');
@@ -204,12 +206,12 @@ describe('a private tree inside the working tree that nothing ignores', () => {
   it('is refused on the command line where .git is a symbolic link to a directory inside the worktree', () => {
     // Asked by its spelling, git answers "beyond a symbolic link" with exit 128; read as "cannot
     // tell", the write went on and `git add -A` staged six files of the private tree.
+    expect(mnema(undefined, 'init').status).toBe(0);
     expect(
       git('init', '-q', '-b', 'main', '--separate-git-dir', join(project, 'realgd')).status,
     ).toBe(0);
     rmSync(join(project, '.git'));
     symlinkSync('realgd', join(project, '.git'));
-    expect(mnema(undefined, 'init').status).toBe(0);
     const wrote = mnema(undefined, 'memory', '--scope', 'private', 'a note for this machine');
     expect(wrote.status, wrote.out).toBe(1);
     expect(wrote.out).toContain('git would stage realgd/mnema/');

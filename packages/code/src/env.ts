@@ -9,7 +9,8 @@
  */
 
 import { homedir, userInfo } from 'node:os';
-import { type DiscoveryEnv, keepReadCacheIn } from '@mnema/core';
+import { type DiscoveryEnv, keepProductVersion, keepReadCacheIn } from '@mnema/core';
+import { VERSION } from './version.js';
 
 /**
  * Builds the discovery environment from a process environment map (defaulting to this
@@ -38,6 +39,9 @@ export function discoveryEnv(processEnv: NodeJS.ProcessEnv = process.env): Disco
   // through this function: the command line, the server a host spawns and the library. The core
   // decides what the value means (`keepReadCacheIn`) and refuses one that cannot serve.
   keepReadCacheIn(processEnv.MNEMA_CACHE_DIR);
+  // The version is what decides, with the stamp, whether this process may take over a read cache
+  // another build wrote (`cache-meta.ts`).
+  keepProductVersion(VERSION);
   const relocated = processEnv.MNEMA_HOME;
   const account = accountHome();
   return {

@@ -19,7 +19,7 @@
 
 import { existsSync } from 'node:fs';
 import { dirname, isAbsolute, join } from 'node:path';
-import type { InheritedFrom, ScopedCache } from '@mnema/context';
+import type { InheritedFrom, NewerLines, ScopedCache } from '@mnema/context';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { type DecisionFacts, nameOf, readDecisionFacts } from '../decisions-in-git.js';
 import {
@@ -35,6 +35,7 @@ import { type InheritedReading, withInheritedSource } from '../inherited-record.
 import { rulesNotPushedLine } from '../rules-not-pushed.js';
 import {
   linkBreaksOf,
+  newerLinesIn,
   type ScopedLinkBreak,
   THE_READING_THAT_OPENED_THESE,
   withScopedCaches,
@@ -92,6 +93,8 @@ export interface WhyFile {
   readonly commits: readonly WhyCommit[];
   readonly more: boolean;
   readonly linkBreaks: readonly ScopedLinkBreak[];
+  /** What a newer mnema wrote that this one reads past, when it wrote any (ADR-140). */
+  readonly newerLines?: NewerLines;
   /** What reading the record this project inherits came to, when it points at one. */
   readonly inherited?: InheritedReading;
   /**
@@ -114,6 +117,8 @@ export interface WhyCommitDone {
   readonly files: number;
   readonly moreFiles: boolean;
   readonly linkBreaks: readonly ScopedLinkBreak[];
+  /** What a newer mnema wrote that this one reads past, when it wrote any (ADR-140). */
+  readonly newerLines?: NewerLines;
   /** What reading the record this project inherits came to, when it points at one. */
   readonly inherited?: InheritedReading;
 }
@@ -202,6 +207,7 @@ export function runWhy(
         files: changed.files.length,
         moreFiles: changed.more,
         linkBreaks,
+        ...newerLinesIn(own),
       };
     }
     const at = everyRuleInForceAt(sources, {
@@ -228,6 +234,7 @@ export function runWhy(
       commits: listed.slice(0, LISTED).map((one) => describe(all, one)),
       more: listed.length > LISTED,
       linkBreaks,
+      ...newerLinesIn(own),
       ...(notPushed !== undefined ? { notPushed } : {}),
     };
   }

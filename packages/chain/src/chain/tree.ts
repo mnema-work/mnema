@@ -28,12 +28,14 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 import { type ChainLayout, gitattributesPath, gitignorePath } from './layout.js';
+import { refuseToWriteThrough } from './linked-write.js';
 
 /**
  * The chain's own `.gitignore`, self-contained at the tree root. It ignores the
  * private subtree, every local key-material file, the writers' lock directory
- * (`locks/`, which holds machinery rather than record: the locks, `tailLockPath`,
- * and two files that persist, `projectionCachePath` and `citedHeadsPath`), and the page
+ * (`locks/`, which holds machinery rather than record: the projection, `projectionCachePath`, and,
+ * outside a git repository, the locks, `tailLockPath`, and the notes that persist, `citedHeadsPath`,
+ * `coveredHeadsPath`, the citation index, `citationIndexPath`, and the written-head ones; inside one those move to the repository's common git directory), and the page
  * `mnema site` writes by default (`site/`, derived from the record, rebuilt at will, never
  * committed), and,
  * by NOT ignoring them,
@@ -111,6 +113,8 @@ const MERGE_LINE = `tails/*/*.jsonl merge=${TAIL_MERGE_DRIVER}`;
  * was absent), false if one already existed (even if a line was appended to it).
  */
 export function ensureTree(layout: ChainLayout): boolean {
+  // A file it would write or append to is not one it writes through a link ({@link RecordLinkedError}).
+  refuseToWriteThrough(layout, ['.gitignore', '.gitattributes']);
   mkdirSync(layout.root, { recursive: true });
   ensureLine(
     gitattributesPath(layout),
@@ -141,6 +145,18 @@ export function ensureTree(layout: ChainLayout): boolean {
     );
   }
   return wrote;
+}
+
+/**
+ * Whether the tree's `.gitattributes` lacks the line that names the merge driver for a tail's files:
+ * what `ensureTree` appends at the next write of a tree made before the line existed. Reads only.
+ */
+export function mergeLineIsMissing(layout: ChainLayout): boolean {
+  const path = gitattributesPath(layout);
+  if (!existsSync(path)) return true;
+  return !readFileSync(path, 'utf-8')
+    .split(/\r?\n/)
+    .some((line) => line.trim() === MERGE_LINE);
 }
 
 /**

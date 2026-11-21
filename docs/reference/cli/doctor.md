@@ -2,7 +2,7 @@
 
 <!-- This page is generated from the help of the command, written where the command is defined under packages/code/src/wiring/: edit it there, then run `pnpm vitest run packages/code/src/cli.golden.test.ts -u` (which rewrites packages/code/src/cli.help.golden.txt) and `pnpm vitest run packages/code/tests/the-reference-pages-are-generated.test.ts -u`. -->
 
-say how mnema is installed on this machine, and what to do about each thing found (writes nothing unless you pass --fix)
+say how mnema is installed on this machine, and what to do about each thing found (writes nothing unless you pass --fix or --after-update)
 
 In the help under **This machine**.
 
@@ -11,7 +11,8 @@ In the help under **This machine**.
 | Option | What it does |
 | --- | --- |
 | `--fix <what>` | make the one change a finding asks for, and only that one: `vscode` lists the plugin in the chat.pluginLocations setting of VS Code’s settings.json, after keeping a copy of the file; `private-tree` moves the private notes a worktree still holds in .mnema/private/ into the repository’s git directory; `merge-driver` writes, into this repository’s git configuration, the merge driver the record’s tails name and then merge.autoStash and rebase.autoStash, so a plain `git pull` carries the record; it replaces a driver of mnema’s that cannot run here |
-| `--dry-run` | with --fix: say what would change and write nothing |
+| `--after-update` | what `mnema upgrade` does: bring this project and machine up to the installed version, asking before anything that changes how the repository behaves |
+| `--dry-run` | with --fix or --after-update: say what would change and write nothing |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
 
@@ -23,7 +24,7 @@ mnema doctor
 
 One line to a finding, each with what to do about it: whether a `mnema` is on the `PATH` and which
 one runs, whether the first `node` on the `PATH` takes it (a hook starts `mnema` through `#!/usr/bin/env node`)
-and, where the Node Cursor's command-line agent carries is on this machine, what it leaves the plugin's hooks, whether the Claude Code plugin is installed and at what version, whether the MCP server is
+and, where the Node Cursor's command-line agent carries is on this machine, what it leaves the plugin's hooks, whether the Claude Code plugin is installed and at what version, and whether its files are the ones released with this binary (a host moves the files only when the label changes, so the same label over other content is named, with the update that puts the released files in; where the files cannot be read the line says it does not know), whether the MCP server is
 declared more than once (a session is offered every tool once per declaration), and whether a second
 `mnema`, or an npm package of that name, is installed (and, when the first one on the `PATH` is a
 script that shadows the other, which). It also says whether VS Code's user `settings.json` lists the
@@ -44,6 +45,8 @@ when your own key is still unprotected while an agent key exists.
 In a project it also names each macOS metadata file (`keys/._<name>.pub`) in the committed record: both verifiers skip
 it as they skip `.DS_Store`, and the line says you can delete it.
 
+It also lists, as something to do, each `keys/` or `locks/` folder the disk will not let this mnema open (the record's own `keys/`, the identity's `keys/`, and, inside a repository, the `locks/` and `keys/` kept in the git directory): the line names where it is and says every write is refused until it opens. It never writes there.
+
 In a project inside a git repository it also names each worktree that still holds private notes
 in `.mnema/private/`, where they lived before the private tree moved into the repository's git
 directory: nothing reads them there, and removing that worktree deletes them.
@@ -57,6 +60,9 @@ where the line is there it says a `!` rule re-includes the page, and `init` chan
 tracks files under `.mnema/site/`, with their count and the command to stop tracking them, `git rm -r --cached
 .mnema/site`, which the doctor never runs. Outside a repository, with no `git` on the `PATH` or when git does not
 answer, it says nothing of either.
+
+`mnema doctor --after-update` is [`mnema upgrade`](upgrade.md#after-installing-a-newer-mnema): the same function, run after
+installing a newer mnema, with `--dry-run` to show its plan.
 It says, too, each file an agent host reads that lacks this version's mnema instructions (one with none, an earlier
 version's block, or a block somebody edited), with what `mnema instructions` would do about it. Of `AGENTS.md` and the
 three files of mnema's own it looks at the ones that hold the instructions, which is how it knows which you chose, and
@@ -107,21 +113,25 @@ is 0 whatever it found: a script that wants to act on a finding reads the line.
 Usage: mnema doctor [options]
 
 say how mnema is installed on this machine, and what to do about each thing
-found (writes nothing unless you pass --fix)
+found (writes nothing unless you pass --fix or --after-update)
 
 Options:
-  --fix <what>  make the one change a finding asks for, and only that one:
-                `vscode` lists the plugin in the chat.pluginLocations setting of
-                VS Code’s settings.json, after keeping a copy of the file;
-                `private-tree` moves the private notes a worktree still holds in
-                .mnema/private/ into the repository’s git directory;
-                `merge-driver` writes, into this repository’s git configuration,
-                the merge driver the record’s tails name and then
-                merge.autoStash and rebase.autoStash, so a plain `git pull`
-                carries the record; it replaces a driver of mnema’s that cannot
-                run here
-  --dry-run     with --fix: say what would change and write nothing
-  -h, --help    display help for command
+  --fix <what>    make the one change a finding asks for, and only that one:
+                  `vscode` lists the plugin in the chat.pluginLocations setting
+                  of VS Code’s settings.json, after keeping a copy of the file;
+                  `private-tree` moves the private notes a worktree still holds
+                  in .mnema/private/ into the repository’s git directory;
+                  `merge-driver` writes, into this repository’s git
+                  configuration, the merge driver the record’s tails name and
+                  then merge.autoStash and rebase.autoStash, so a plain `git
+                  pull` carries the record; it replaces a driver of mnema’s that
+                  cannot run here
+  --after-update  what `mnema upgrade` does: bring this project and machine up
+                  to the installed version, asking before anything that changes
+                  how the repository behaves
+  --dry-run       with --fix or --after-update: say what would change and write
+                  nothing
+  -h, --help      display help for command
 
 What it looks at, and nothing else:
   the `mnema` executables on the PATH and which one is running; Claude Code’s list of
@@ -147,4 +157,6 @@ merge.autoStash and rebase.autoStash (which apply to every file of the clone, an
 written while the driver cannot run here), so that a plain `git pull` carries events of the
 record not yet committed. It replaces a driver of mnema’s that cannot run, and leaves a
 setting of the same name it did not write, and then writes none.
+`--after-update` is `mnema upgrade`: it applies what an update left of mnema’s own, asks before the
+merge driver and its autoStash settings, and says what a host keeps; `--dry-run` shows the plan.
 ```

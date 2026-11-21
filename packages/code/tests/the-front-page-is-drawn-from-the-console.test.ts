@@ -173,9 +173,14 @@ function accentFor(file: string): string[] {
   return [ACCENT.dark, ACCENT.light];
 }
 
-/** Every picture a page shows: the front page's, and each package's own. */
+/**
+ * Every picture a page shows: the front page's, and each package's own. A contributor's avatar
+ * (`contributor-<login>.svg`) is a photograph in a circle, not art drawn here, so it has no accent to hold.
+ */
 const svgs = [
-  ...readdirSync(join(ROOT, ASSETS)).map((f) => `${ASSETS}/${f}`),
+  ...readdirSync(join(ROOT, ASSETS))
+    .filter((f) => !f.startsWith('contributor-'))
+    .map((f) => `${ASSETS}/${f}`),
   ...readdirSync(join(ROOT, 'packages')).flatMap((p) => {
     try {
       return readdirSync(join(ROOT, 'packages', p, 'assets')).map(

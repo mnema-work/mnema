@@ -17,6 +17,7 @@ The long sections of this page are pages of their own, and nothing in them was s
 - [Rules that govern a path, and the commits that cite them](rules-and-the-commits-that-cite-them.md)
 - [Committing the record through a pull request](committing-the-record.md)
 - [A second machine, and your key](a-second-machine-and-your-key.md)
+- [What a backup keeps, and what it loses](what-a-backup-keeps-and-what-it-loses.md)
 - [A record that inherits another repository's decisions](a-record-inheriting-another.md)
 - [The decisions you already wrote](importing-the-decisions-you-already-wrote.md)
 - [Switching off what mnema hands to a model](switching-off-what-is-handed-to-a-model.md)
@@ -27,17 +28,21 @@ The long sections of this page are pages of their own, and nothing in them was s
 
 What belongs to one command is on that command's page, in [the commands](reference/commands.md):
 
+- `mnema backup run`: [Backing up a project's trees to a folder](reference/cli/backup.md#backing-up-a-projects-trees-to-a-folder)
 - `mnema brief`: [Handing the record to an agent that never asked for it](reference/cli/brief.md#handing-the-record-to-an-agent-that-never-asked-for-it)
 - `mnema completion`: [Finishing a verb with Tab](reference/cli/completion.md#finishing-a-verb-with-tab)
 - `mnema doctor`: [Is mnema set up on this machine](reference/cli/doctor.md#is-mnema-set-up-on-this-machine)
+- `mnema tour`: [The tour of the first run](reference/cli/tour.md#the-tour-of-the-first-run)
 - `mnema instructions`: [The mnema instructions in the files a host reads](reference/cli/instructions.md#the-mnema-instructions-in-the-files-a-host-reads)
 - `mnema recall`: [The notes a session opens with](reference/cli/recall.md#the-notes-a-session-opens-with)
 - `mnema report`: [When mnema itself fails](reference/cli/report.md#when-mnema-itself-fails)
 - `mnema run`: [Framing that work in a session](reference/cli/run.md#framing-that-work-in-a-session)
 - `mnema skill export`: [Sending a pattern where a host will read it](reference/cli/skill-export.md#sending-a-pattern-where-a-host-will-read-it)
 - `mnema stack`: [Skills and agents a project adopts: stacks](reference/cli/stack.md#skills-and-agents-a-project-adopts-stacks)
+- `mnema upgrade`: [After installing a newer mnema](reference/cli/upgrade.md#after-installing-a-newer-mnema)
 - `mnema tail prune`: [Authorizing a cut, which is not the same as making one](reference/cli/tail-prune.md#authorizing-a-cut-which-is-not-the-same-as-making-one)
 - `mnema tail relink`: [Joining a tail of another record: `tail relink`](reference/cli/tail-relink.md#joining-a-tail-of-another-record-tail-relink)
+- `mnema tail repair`: [Putting back a line from git: `tail repair`](reference/cli/tail-repair.md#putting-back-a-line-from-git-tail-repair)
 - `mnema usage`: [What those sessions cost, which the record does not hold](reference/cli/usage.md#what-those-sessions-cost-which-the-record-does-not-hold)
 - `mnema usage`: [How often each tool was called, which the record does not hold either](reference/cli/usage.md#how-often-each-tool-was-called-which-the-record-does-not-hold-either)
 - `mnema witness`: [Asking somebody outside to date the record](reference/cli/witness.md#asking-somebody-outside-to-date-the-record)
@@ -170,7 +175,7 @@ Each tool of the MCP server has its page, in [the tools](reference/mcp-tools.md)
   [After a compaction](the-session-journal-and-compaction.md#after-a-compaction)); nothing runs before a compaction, because the host throws away what a
   hook says then. The seventh runs `mnema corrections`, also at `Stop`, and is **off until you switch it on**
   (`mnema switch on user-corrections`): it reads the transcript's own words, the one reader here
-  that does, finds the prompts that open by correcting the agent ("no, …", "stop …", "do not …",
+  that does (a typed line counts as the person's only where Claude Code marks it `origin.kind` `human`: a compaction summary, a local command and `[Request interrupted by user]` never count, a slash command opens an answer but is never quoted, and a transcript of an older Claude Code with no `origin` yields no typed line; an option chosen in the question tool is read from the tool's result, which carries no `origin`), finds the prompts that open by correcting the agent ("no, …", "stop …", "do not …",
   "that is wrong", "use … instead", in English and Portuguese), and the answers the person gave to
   a question of the agent (the option chosen in the host's question tool, or the prompt after a
   response that ended in a question mark, quoted with the question), and records each as a `proposed`
@@ -258,7 +263,7 @@ Typed with nothing after it, `mnema` prints a short summary on stdout and exits 
 what you want to do instead): what the product does in a sentence, whether a project is founded here and how
 many decisions await a judgement, which channels are off on this machine and the command that turns one on,
 three verbs to go on with, and a pointer to `mnema --help`, which prints every command. The summary reads the
-record and writes nothing; a part it cannot read (a line of the record, or the switches) is not guessed: one line says so and names `mnema verify`, and neither claims the project is not founded nor lists what could not be read. `mnema init` names the channels that begin off in
+record and writes nothing; a line of the record it cannot read does not stop it: what reads is counted, and the unreadable line is said first, with `mnema tail repair` named as the way to put the tail back from the repository's history for the public tree (for the private and the global tree, which are not versioned, it says to restore the file from a copy, or to repair or remove the line). Only a record that does not read at all, or switches that do not, is not guessed: one line says it is unread and names `mnema verify`, and neither claims the project is not founded nor lists what could not be read. `mnema init` names the channels that begin off in
 two lines before its "Next" line, and `mnema switch` ends each off line with the command that turns it on
 ([every switch](switches.md)).
 
@@ -371,7 +376,7 @@ handoff that names no `--scope` follows its task to the tree that holds it, brie
 `read_record` count the notes about a task over every tree this machine holds. `mnema refs <path>` and `audit_refs`,
 for an id no tree authored that reads as a path under the project, add whether the file exists now and the SHA-256
 of its bytes: a reading of the working tree, written nowhere. A path that leads out of the project, even through a
-directory link inside it, is not read; a link that stays inside is followed. `mnema search "ADR-48"` finds the decision by its label, as `mnema show ADR-48` does. A decision that replaced another, or was replaced, says so on its line in `mnema search` and in the `search` tool: `superseded by ADR-n: <title> (<state>) · <id>`, or `supersedes ...`, named from the tree the decision is in (and `(not in the trees read)` when that tree does not hold the other end).
+directory link inside it, is not read; a link that stays inside is followed. `mnema search "ADR-48"` finds the decision by its label, as `mnema show ADR-48` does. For `mnema search`, leaving `--scope` out, or passing `--scope all`, searches the public, private and global trees together. A decision that replaced another, or was replaced, says so on its line in `mnema search` and in the `search` tool: `superseded by ADR-n: <title> (<state>) · <id>`, or `supersedes ...`, named from the tree the decision is in (and `(not in the trees read)` when that tree does not hold the other end).
 
 `mnema verify` exits non-zero when the record is **broken** (in **either** tree, in
 **any** project it was told to cover, and the line says which), so it drops into
@@ -452,6 +457,13 @@ named once and never read: `verify` says `N stray entry(ies) in a tail directory
 prints each name in the census, and exits as it would without it. The files an operating system writes
 on its own (`.DS_Store`, `._*`) are skipped and not named. The second reader, `mnema_verify.py`, says the
 same sentence.
+
+A symbolic link anywhere `verify` reads in the record is refused, first, and nothing behind it is read: `LINKED TAIL:
+tails/<name>` for a tail that is a link, and `LINKED ENTRY: <path>` for a segment, `checkpoints.jsonl`, `tailproof.json`, a
+key file or a witness file that is one (the second reader says the same words). The other reads (`status`, `brief`, the hooks, the
+edit gate and the server's tools) name the link, serve the rest of the record and open nothing it points at; a write is refused
+with `RECORD_LINKED`, naming the path, and writes nothing through it. The way out is to replace the link with the folder or file it
+points to; no version of mnema writes a link into a record.
 A tail removed *together with its key*, while another remains, may leave nothing to report at
 all, and only a history outside this record (the one a git remote keeps) can testify to what
 was taken out.
@@ -489,7 +501,10 @@ without the line, and say so when it exists: `mnema status` prints one line unde
 prints it on the error stream, never in the document, and the copy a hook hands a session counts it among
 what has to fit; `mnema show <id>` and the agent's `read_record` say it for the record a line names as its
 subject, since a reading of that record may be out of date by it; the agent's `bootstrap` carries it beside
-its payload; and `mnema doctor` lists it as a finding. The line counts the lines and names at most three
+its payload; every other read of the agent (`search`, `resume`, `focus`, `governing_rules`, the audit tools) carries it
+as a block before its payload; every other command-line verb that reads the record (`recall`, `rules-file`, `timeline`, `refs`, `commits`, `aging`, `trailer`, `diagram`, `usage`, `site`, `export`, `audit accountability`, `audit exposure`, `audit antipatterns`, `task next`, `task guard`, `skill provenance`) says it on the error stream, and `search`, `resume`, `rules` and `why` too, and the console
+says it under the tree that holds the lines; the gate that refuses a write, or holds it for a person, says it in its
+reason and says nothing when it lets the write through; and `mnema doctor` lists it as a finding. The line counts the lines and names at most three
 kinds, says that this binary reads and applies none of them, and says what to do: update mnema, and not
 guess what they say. It cannot say which mnema wrote them, because nothing in the record says. It is absent
 for a record no newer mnema wrote into.
@@ -763,7 +778,11 @@ Moved to [Switching off what mnema hands to a model](switching-off-what-is-hande
   .gitattributes            `* -text`: a checkout never rewrites the signed lines' ends;
                             `merge=mnema-tail` for a tail's files (`mnema record pull`)
   tails/<id>/witness/       external attestations over this tail's checkpoints (T3)
-  locks/                    gitignored: writers' locks, and the projection a read keeps
+  locks/                    gitignored: the projection a read keeps (and, outside a repository,
+                            writers' locks and notes)
+<git common dir>/mnema/<encoded path>/public/
+                            inside a repository: writers' locks and notes (locks/), shared by
+                            its worktrees, and this worktree's hint of its id (keys/) and its marks (inflight/)
 <git common dir>/mnema/<encoded path>/private/
                             this machine, this project only: beside the repository's
                             objects, shared by its worktrees, kept when one is removed;
@@ -781,6 +800,25 @@ sits where the tree's own `.gitignore` already looks away, and a clone never car
 A read of a tree nobody has written to creates nothing, and where the file cannot be
 had (a read-only directory, a damaged file), the read builds it in memory and answers
 the same.
+
+Two builds of mnema on one machine (an editor extension and a command line of different
+versions, or a checkout you are developing in) share that one file per tree, and the file says
+which build's code wrote it and which mnema version that was. A process whose code is not the
+one that wrote the file rewrites it only when its version is newer than the one stored: an
+update takes the file over once, and from then on the file is incremental for the new version.
+On the same version (two checkouts under development) or an older one (a build left installed
+beside a newer one), and on a file that is busy or locked, the process builds its answers in
+memory and leaves the file as it is. A file written before the version was stored counts as
+the oldest, and the first newer build takes it. Versions are ordered by their three numbers only: a suffix
+such as `-beta` does not order, so `0.2.0` does not take over the file of `0.2.0-beta` (deleting
+`locks/projection.db` settles it). The SDK called with an explicit `env` declares no version, and so
+never takes over the file of another build. The process that does not take the file pays a
+replay each time it starts: on every command and every hook of the command line, and once per
+MCP server, which then keeps what it built. On a large record that is the time of a build
+instead of a read of the file (about a second on a 13 MB private tree, with a few hundred
+megabytes of memory), until that build is updated or `MNEMA_CACHE_DIR` gives it a directory of
+its own. Deleting `locks/projection.db` is always safe: it is only a cache, and the next read
+builds it again. A missing or damaged file is built and kept as before.
 
 The MCP server keeps it for the two trees of the project it is in, and for no other tree: the
 other projects of the workspace and the global tree are built in memory for the connection, as

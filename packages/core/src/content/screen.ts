@@ -71,7 +71,7 @@
 
 import { type ScreenedKey, screensAsAName } from './fields.js';
 import { type ReplacedClass, scrubEmails } from './personal.js';
-import { type SecretClass, scrubSecrets } from './secrets.js';
+import { detectSecretsInAName, type SecretClass, scrubSecrets } from './secrets.js';
 
 /**
  * The most any single free-text field may weigh, in bytes of UTF-8: the form the
@@ -207,16 +207,18 @@ export function screenContent<
     if (typeof value === 'string') {
       const oversize = refuseIfOversize(field, byteLength(value));
       if (oversize !== undefined) return oversize;
-      const scrubbed = scrubSecrets(value);
       if (isName) {
-        // The name is carried through UNCHANGED when it is clean, byte for byte, the
-        // scrub's own contract when nothing matched, and the whole write is refused
-        // when it is not. There is no third outcome: a partly-redacted name is the
-        // corrupted identity this branch exists to prevent.
-        if (scrubbed.replaced.length > 0) return refuseNamedSecret(field, scrubbed.replaced);
+        // The name is carried through UNCHANGED when it is clean, byte for byte, and the
+        // whole write is refused when it is not. There is no third outcome: a
+        // partly-redacted name is the corrupted identity this branch exists to prevent.
+        // It is read as a name is (`detectSecretsInAName`), without the one shape that
+        // guesses at a word, since here a guess costs the write and not a word.
+        const found = detectSecretsInAName(value);
+        if (found.length > 0) return refuseNamedSecret(field, found);
         screened[field] = value;
         continue;
       }
+      const scrubbed = scrubSecrets(value);
       const bare = scrubEmails(scrubbed.text);
       replaced.push(...scrubbed.replaced, ...bare.replaced);
       screened[field] = bare.text;
@@ -229,17 +231,16 @@ export function screenContent<
     if (oversize !== undefined) return oversize;
     const items: string[] = [];
     for (const item of value) {
-      const scrubbed = scrubSecrets(item);
       // A list-valued name is refused on its FIRST dirty item, for the reason a
       // string-valued one is: the list is the address, and an address with one member
-      // replaced names a different set. No field of the catalog is both a name and a
-      // list today; this is what the door does the day one is declared, rather than a
-      // case it would fall through.
+      // replaced names a different set (a check's `args`).
       if (isName) {
-        if (scrubbed.replaced.length > 0) return refuseNamedSecret(field, scrubbed.replaced);
+        const found = detectSecretsInAName(item);
+        if (found.length > 0) return refuseNamedSecret(field, found);
         items.push(item);
         continue;
       }
+      const scrubbed = scrubSecrets(item);
       const bare = scrubEmails(scrubbed.text);
       replaced.push(...scrubbed.replaced, ...bare.replaced);
       items.push(bare.text);

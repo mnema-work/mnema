@@ -39,11 +39,63 @@ const HELPER = 'every-cache-state';
  * long cases; they are owed.
  */
 export const EXEMPT: Readonly<Record<string, string>> = {
+  'packages/chain/src/chain/a-part-the-disk-will-not-open-is-handed-to-a-collector.test.ts':
+    'holds what the readers of the chain hand a collector, or throw, for a folder or a file the disk will not open; the chain has no projection cache (the cache states are asked of the binary in a-part-the-disk-will-not-open-is-named-and-never-an-errno)',
+  'packages/code/tests/a-part-the-disk-will-not-open-is-named-and-never-an-errno.test.ts':
+    'holds what the binary says when the DISK refuses a folder or a file of a tree, which the cache never keeps: no cache state changes whether the disk lets a path open, and the cache is not what the case asks',
+  'packages/code/tests/an-update-not-yet-applied-is-said-once.test.ts':
+    'holds where a note about an installed version stands in a reply, once, after the fact of integrity: one entry is altered to give the fact a place to be ahead of it, and what the case asks is the order and the count of blocks, never the verdict, so the cache state changes nothing it reads',
   // Not a claim about damage: the case never damages a record and the cache is not what it reads.
+  'packages/chain/src/chain/a-segment-the-disk-never-created-is-not-reported-uncut.test.ts':
+    'holds the sentence a refusal says when the disk would not create the first segment of a tail; no record is damaged, and the chain has no projection cache',
   'packages/code/tests/a-client-that-never-initializes.test.ts':
     'holds what the server answers to a client that skips the handshake; no record is damaged',
   'packages/code/tests/a-rule-carries-its-check.test.ts':
     'holds the check runner and the key that signs only results; the record is built by the product and never damaged',
+  'packages/chain/src/chain/a-damaged-tail-is-read-without-opening-a-writer.test.ts':
+    'holds what a function of the chain says of a tail from its files alone; the chain has no projection cache and the question is not asked of one',
+  'packages/chain/src/chain/the-products-reads-open-no-link.test.ts':
+    'holds what the functions of the chain that the product reads through say of a record whose files became links; the chain has no projection cache and the question is not asked of one (the cache states are held by the-products-reads-serve-around-a-linked-record, through the binary)',
+  'packages/chain/src/chain/checkpoint-ruling.test.ts':
+    'holds what the fold of a tail’s checkpoints says of tails and checkpoints laid out by hand, in the function alone; the chain has no projection cache (the cache states are held through the binary in a-forged-checkpoint-is-said-first-and-stops-the-gate)',
+  'packages/core/src/projections/only-proven-events-reach-the-projection.test.ts':
+    'holds which events the reading hands a projection over tails the writer wrote and copied without their notes, as a clone has them; nothing is damaged, and the cache states over damage are held through the binary in a-forged-checkpoint-is-said-first-and-stops-the-gate',
+  'packages/chain/src/chain/tail-repair.test.ts':
+    'holds what the function that puts a line back says over a tail the writer made and bytes it damaged, in the function alone; the chain has no projection cache (the cache states of the repair are held through the binary in a-line-is-repaired-from-git)',
+  'packages/code/src/commands/tail-repair.test.ts':
+    'holds which tree the adapter serves and what it asks git, over a record it damages by one byte; the cache states of the repair are held through the binary in a-line-is-repaired-from-git',
+  'packages/chain/src/chain/migration.test.ts':
+    'holds what the move of an earlier layout does with the notes and the id of a key, on files laid out by hand; no record is damaged and the chain has no projection cache',
+  'packages/code/tests/a-new-checkout-continues-its-tail.test.ts':
+    "holds where a tail's notes, lock and id live and how an earlier layout is moved, through the binary; the tails are written by the product and never damaged, and what is planted is a note, a link or a permission beside them",
+  'packages/chain/src/chain/pool.test.ts':
+    'holds which tail a write goes on with, on tails written by the product in checkouts laid out by hand; no record is damaged and the chain has no projection cache',
+  'packages/code/tests/a-new-checkout-goes-on-with-a-tail-of-its-key.test.ts':
+    'holds which tail a write goes on with, through the binary; the tails are written by the product and never damaged, and what is planted is a branch, a worktree or a clone beside them',
+  'packages/core/src/topology/base-branch.test.ts':
+    'holds whether an entry is on the base branch of a repository built with git plumbing; the segment is a line committed by hand and nothing is read as a record',
+  'packages/chain/src/chain/the-writer-does-not-write-through-a-link.test.ts':
+    'holds what the chain writer does at a path that became a link: it asks the files, before it reads or writes; the chain has no projection cache and the question is not asked of one',
+  'packages/code/tests/the-writer-refuses-a-linked-record.test.ts':
+    'holds that the writer refuses a link at a place it writes, through the binary: the refusal is asked of the files under the tail lock and not of the projection the reads built, which the case leaves as the first write made it',
+  'packages/chain/src/chain/the-two-damage-checks-answer-the-same.test.ts':
+    'holds what the chain writer and a read of its files say of a damaged tail; the chain has no projection cache and the question is not asked of one',
+  'packages/core/src/topology/backup/aside.test.ts':
+    'holds where a tree is kept and put back, over files laid out by hand; it moves folders and reads the files, never the projection cache, and no verdict about the record is asked of what is planted',
+  'packages/core/src/topology/backup/copy.test.ts':
+    'holds what a copy of a tree takes and refuses, over files laid out by hand; the copy reads the files and never the projection cache, and no verdict about the record is asked of what is planted',
+  'packages/code/src/wiring/backup.test.ts':
+    'holds what the backup verbs say over a copy or a tree a case cut or forked; they read the files and never the projection cache',
+  'packages/core/src/topology/backup/restore.test.ts':
+    'holds what a restore turns away before it reads the tree, over files laid out by hand; it reads the files and never the projection cache',
+  'packages/core/src/topology/backup/verify.test.ts':
+    'holds how a copy stands against its tree, over files laid out by hand; it reads the files and never the projection cache',
+  'packages/code/tests/the-second-reader-reads-a-backup-copy.test.ts':
+    'holds that the second reader reads a copy as this one does, over a copy the product made and one byte flipped; the second reader reads the files and has no projection cache',
+  'packages/code/src/commands/backup.test.ts':
+    'holds whose folder keeps which project and that a key or a link planted in a tail stops a run; the copy reads the files and never the projection cache, and no verdict about the record is asked of what is planted',
+  'packages/code/tests/a-backup-can-be-kept-in-a-git-repository.test.ts':
+    'holds that a backup kept in a git repository is committed and read back, over trees the product wrote and a private tree deleted before a restore; the copy reads the files and never the projection cache, and no verdict about the record is asked of what is planted',
   'packages/code/tests/a-write-says-what-it-founded.test.ts':
     'holds the sentence a founding write prints; the records are built by the product and never damaged',
   'packages/code/tests/every-write-signs-what-it-wrote.test.ts':
@@ -56,6 +108,8 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'holds whose key signs a write through the agent variable; no damage',
   'packages/code/tests/the-cost-comes-from-the-host.test.ts':
     'holds what `mnema usage` prints, tokens and never dollars; no record is damaged',
+  'packages/code/tests/the-hooks-own-readers-doubt-a-link.test.ts':
+    'holds what the readers a command hook runs before mnema answer over a record whose segment became a link, and that the edit hook then denies; each case reads the files in a new process and no projection cache is read',
   'packages/code/tests/the-hooks-that-answer-in-json-say-every-refusal.test.ts':
     'holds what each hook that answers the host in JSON says when the verb refuses; the one stored line it plants is a fixture of that refusal, and the verdict on the damage is not what it reads',
   'packages/code/tests/the-hooks-say-what-the-record-refused.test.ts':
@@ -73,10 +127,20 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'runs the plugin handlers and the two gates as fresh processes over one altered record, each reading what the last run left; the three states of the reads they run are held by an-altered-entry-is-said-first-and-never-served',
   'packages/code/tests/the-agent-is-handed-an-altered-entry-first-and-never-its-text.test.ts':
     'opens its own connections: one after the alteration (cold) and one that read the record before it (session), over the protocol; the warm state of the command line is held by an-altered-entry-is-said-first-and-never-served',
+  'packages/chain/src/chain/a-reader-hands-what-it-cannot-read-to-a-collector.test.ts':
+    'holds what the readers of the chain hand a collector over a tail it damages, in the functions alone; the chain has no projection cache (the cache states are held through the binary in a-line-this-mnema-cannot-read-is-said-first-and-the-rest-is-served)',
+  'packages/core/src/projections/a-part-this-mnema-does-not-read-is-left-out-and-named.test.ts':
+    'holds the projection cache itself over a tree it damages: a replay, a connection open before the damage and a cache kept on disk are its cases; the states of the binary are held by a-line-this-mnema-cannot-read-is-said-first-and-the-rest-is-served',
+  'packages/code/tests/the-agent-is-told-of-a-line-it-cannot-read-and-served-the-rest.test.ts':
+    'opens its own connections: one after the damage (cold) and one that read the record before it (session), over the protocol; the warm state of the command line is held by a-line-this-mnema-cannot-read-is-said-first-and-the-rest-is-served',
   'packages/code/tests/the-console-does-not-show-an-altered-entry-that-arrives.test.ts':
     'holds the console follower, which opens no cache and reads the tail past where the session stood: there is no warm or cold state to vary',
   'packages/core/src/projections/an-entry-whose-hash-fails-is-left-out.test.ts':
     'is the cache’s own test: it opens the cache cold, with a connection that read before the alteration, and kept on disk, over one altered tail',
+  'packages/code/tests/a-write-is-refused-while-an-entry-is-altered.test.ts':
+    'judges the write door, which asks the chain as it stands now in memory and over no cache the command line keeps; the one state a cache can vary for a write, a session that read before the alteration, is its own case',
+  'packages/code/tests/every-writer-passes-the-check-that-refuses-a-damaged-record.test.ts':
+    'judges the write door of every writer, which asks the chain as it stands now in memory and over no cache the command line keeps; the cache states of the door are held by a-write-is-refused-while-an-entry-is-altered',
   // Declared debt: damage a record and judge it, and run only in the state the last write left.
   'packages/code/tests/the-ci-recipe-catches-what-verify-cannot.test.ts':
     'DEBT: damaged records judged by the published CI recipe in a sandbox, a base clone and a bin directory built once in a beforeAll; each case needs its own found/damage/run split',
@@ -142,6 +206,25 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'DEBT: checkpoints emptied or cut, then the verdict painted, through the in-process CLI entry; needs the split and an in-process run',
   'packages/code/tests/a-key-whose-tail-was-cut-is-told-what-happened.test.ts':
     'DEBT: a founder tail deleted and the next write judged, through the built binary; a plain found/damage/run conversion that is owed',
+};
+
+/**
+ * The test files that write into tails or checkpoints and plant no damage, each with the reason: they
+ * build a record by the product, or lay one out by hand, and judge it, so there is nothing to judge
+ * in more than one cache state. This is the honest way out for a file the tripwire below pulls in:
+ * the mark `// @plants-damage` is for a file that damages a record, and a file in this set that gains
+ * the mark, a damage helper or a `@proves` tag is accused, because then it is an integrity file and
+ * belongs to the helper or to EXEMPT. A file here that no longer writes into a tail is accused too.
+ * It reads the mark and the imports, not what the bytes become: a file that forges a tail or a
+ * checkpoint by hand plants damage, wears the mark and belongs to EXEMPT, not here.
+ */
+export const WRITES_BUT_PLANTS_NOTHING: Readonly<Record<string, string>> = {
+  'packages/code/tests/the-audit-verbs-fold-the-record-once.test.ts':
+    'appends one line of a kind no version declares, signed by a checkpoint as a newer mnema writes it, and damages nothing: it holds that four verbs which open no cache fold the tails once and carry the same field, so no cache state changes what it reads',
+  'packages/chain/src/chain/a-tail-is-signed-as-soon-as-it-is-founded.test.ts':
+    'holds which checkpoints the write that founds a tail signs, and what the fold of its checkpoints says of the tail with no note of this machine, in the functions of the chain alone; nothing is damaged and the chain has no projection cache (a clone of such a record is read by the binary in only-proven-events-reach-the-projection)',
+  'packages/chain/src/chain/verify-reads-the-checkpoints-before-the-tail.test.ts':
+    'holds the order in which the verdict of the chain reads a tail and its checkpoints, with a signed write landing between the two readings; nothing is damaged and the chain has no projection cache',
 };
 
 /** What the guard reads of one test file. */
@@ -281,6 +364,7 @@ export const FROZEN: ReadonlySet<string> = new Set([
   'packages/code/tests/cli-e2e.test.ts',
   'packages/code/tests/events-not-in-git-are-said.test.ts',
   'packages/code/tests/every-integrity-case-runs-in-every-cache-state.test.ts',
+  'packages/code/tests/every-read-verb-says-where-a-newer-mnema-wrote.test.ts',
   'packages/code/tests/every-sandbox-is-removed-where-it-was-made.test.ts',
   'packages/code/tests/every-tool-says-if-it-writes.test.ts',
   'packages/code/tests/every-verb-says-if-it-writes.test.ts',
@@ -441,6 +525,7 @@ export function accusations(
   exempt: Readonly<Record<string, string>>,
   frozen: ReadonlySet<string> = FROZEN,
   writers: ReadonlySet<string> = new Set(),
+  honest: Readonly<Record<string, string>> = {},
 ): string[] {
   const out: string[] = [];
   for (const [file, source] of sources) {
@@ -451,19 +536,40 @@ export function accusations(
       !uses &&
       exempt[file] === undefined &&
       !frozen.has(file) &&
+      honest[file] === undefined &&
       (writesIntoTails(source.text) || source.imports.some((name) => writers.has(name)))
     )
       out.push(
-        `${file} writes into a tail or its checkpoints and was not asked what the cache does to it: mark it with a line // @plants-damage if it damages a record and judges it, and run it through ${HELPER} or list it in EXEMPT with the reason`,
+        `${file} writes into a tail or its checkpoints and was not asked what the cache does to it: mark it with a line // @plants-damage if it damages a record and judges it, and run it through ${HELPER} or list it in EXEMPT with the reason; if it only writes and plants nothing, list it in WRITES_BUT_PLANTS_NOTHING with the reason`,
       );
     if (integrity && !uses && exempt[file] === undefined)
       out.push(
         `${file} proves integrity or plants damage and does not run in every cache state: import ${HELPER} and run its cases through inEveryCacheState, or list the file in EXEMPT with the reason`,
       );
+    if (honest[file] !== undefined && integrity)
+      out.push(
+        `${file} is in WRITES_BUT_PLANTS_NOTHING and plants damage or proves integrity: drop the entry and run it through ${HELPER} or list it in EXEMPT`,
+      );
+    if (
+      honest[file] !== undefined &&
+      !writesIntoTails(source.text) &&
+      !source.imports.some((name) => writers.has(name))
+    )
+      out.push(
+        `${file} is in WRITES_BUT_PLANTS_NOTHING and writes into no tail any more: drop the entry`,
+      );
     if (exempt[file] !== undefined && uses)
       out.push(`${file} is in EXEMPT and uses ${HELPER}: drop the entry`);
     if (exempt[file] !== undefined && !integrity)
       out.push(`${file} is in EXEMPT and is not an integrity file any more: drop the entry`);
+  }
+  for (const [file, reason] of Object.entries(honest)) {
+    if (!sources.has(file))
+      out.push(`${file} is in WRITES_BUT_PLANTS_NOTHING and is not a test file: drop the entry`);
+    if (reason.trim().split(/\s+/).length < 5)
+      out.push(
+        `${file} is in WRITES_BUT_PLANTS_NOTHING with no reason worth the name: write the sentence`,
+      );
   }
   for (const [file, reason] of Object.entries(exempt)) {
     if (!sources.has(file)) out.push(`${file} is in EXEMPT and is not a test file: drop the entry`);
@@ -510,7 +616,9 @@ describe('the integrity tests and the states of the projection cache', () => {
   it('has every file that proves integrity or plants damage run through the helper, or say why not', () => {
     const { sources, planters, writers } = read();
     expect(sources.size).toBeGreaterThan(100);
-    expect(accusations(sources, planters, EXEMPT, FROZEN, writers)).toEqual([]);
+    expect(
+      accusations(sources, planters, EXEMPT, FROZEN, writers, WRITES_BUT_PLANTS_NOTHING),
+    ).toEqual([]);
     const gone = [...FROZEN].filter((file) => !sources.has(file));
     expect(gone, 'FROZEN names a file that is not a test file: drop the entry').toEqual([]);
   });
@@ -632,6 +740,58 @@ describe('the integrity tests and the states of the projection cache', () => {
       writesIntoTails("rmSync(join(repo, '.mnema', 'tails', tail), { recursive: true });"),
     ).toBe(true);
     expect(writesIntoTails("writeFileSync(join(dir, 'notes.txt'), 'x');")).toBe(false);
+  });
+
+  it('lets a file that writes and plants nothing say so, and accuses it once it plants or stops writing (the honest way out seen to fire)', () => {
+    const writing = "appendFileSync(join(tail, '000001.jsonl'), 'x');";
+    const file = 'packages/chain/src/chain/a-honest-writer.test.ts';
+    const reason = 'holds what the writer signs over a tail it founds; nothing is damaged here';
+    const judge = (text: string, imports: string[], honest: Record<string, string>) =>
+      accusations(
+        new Map([[file, { text, imports }]]),
+        new Set(['a-damaged-record']),
+        {},
+        new Set(),
+        new Set(),
+        honest,
+      );
+    expect(judge(writing, [], {})).toHaveLength(1);
+    expect(judge(writing, [], { [file]: reason })).toEqual([]);
+    expect(
+      judge(`// @plants-damage\n${writing}`, [], { [file]: reason }).filter((line) =>
+        line.includes('WRITES_BUT_PLANTS_NOTHING'),
+      ),
+    ).toEqual([
+      `${file} is in WRITES_BUT_PLANTS_NOTHING and plants damage or proves integrity: drop the entry and run it through ${HELPER} or list it in EXEMPT`,
+    ]);
+    for (const [text, imports] of [
+      [writing, ['a-damaged-record']],
+      [`// ${PROVES} the-claim\n${writing}`, []],
+    ] as const)
+      expect(
+        judge(text, [...imports], { [file]: reason }).filter((line) =>
+          line.includes('WRITES_BUT_PLANTS_NOTHING'),
+        ),
+      ).toHaveLength(1);
+    expect(judge("it('x', () => {});", [], { [file]: reason })).toEqual([
+      `${file} is in WRITES_BUT_PLANTS_NOTHING and writes into no tail any more: drop the entry`,
+    ]);
+    expect(judge(writing, [], { [file]: 'nothing damaged' })).toEqual([
+      `${file} is in WRITES_BUT_PLANTS_NOTHING with no reason worth the name: write the sentence`,
+    ]);
+    expect(accusations(new Map(), new Set(), {}, new Set(), new Set(), { [file]: reason })).toEqual(
+      [`${file} is in WRITES_BUT_PLANTS_NOTHING and is not a test file: drop the entry`],
+    );
+  });
+
+  it('holds the files that really sit in WRITES_BUT_PLANTS_NOTHING to what it says', () => {
+    const { sources } = read();
+    for (const file of Object.keys(WRITES_BUT_PLANTS_NOTHING)) {
+      const source = sources.get(file) as Source;
+      expect(PLANTS.test(source.text), file).toBe(false);
+      expect(writesIntoTails(source.text), file).toBe(true);
+    }
+    expect(Object.keys(WRITES_BUT_PLANTS_NOTHING).length).toBeGreaterThanOrEqual(2);
   });
 
   it('reads the imports of a test under tests/ and of one a directory down', () => {

@@ -691,6 +691,8 @@ export function link(b: Bench, subject: string, target: string, rel = 'relates-t
  */
 export function cloneOf(of: Bench): Bench {
   const clone = makeBench();
+  // Signed first, as the product signs every act: a clone carries no note of this machine.
+  of.writer.checkpoint();
   cpSync(join(of.root, 'tails'), join(clone.root, 'tails'), { recursive: true });
   cpSync(join(of.root, 'keys'), join(clone.root, 'keys'), { recursive: true });
   return clone;
@@ -710,6 +712,8 @@ export function cloneOf(of: Bench): Bench {
  * `cache()` now see both tails.
  */
 export function mergeTailInto(into: Bench, from: Bench): void {
+  // Signed first, as the product signs every act: a merged tail carries no note of its machine.
+  from.writer.checkpoint();
   for (const tail of readdirSync(join(from.root, 'tails'))) {
     if (existsSync(join(into.root, 'tails', tail))) continue;
     cpSync(join(from.root, 'tails', tail), join(into.root, 'tails', tail), { recursive: true });

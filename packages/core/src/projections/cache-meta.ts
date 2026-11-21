@@ -41,7 +41,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { closeSync, openSync, readdirSync, readFileSync, readSync, statSync } from 'node:fs';
+import { closeSync, lstatSync, openSync, readdirSync, readFileSync, readSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -50,17 +50,23 @@ import {
   type LinkBreak,
   listTails,
   orderedSegments,
+  type RefusedPart,
   type RetainedEntry,
   type UnreadLine,
   WORKFLOWS,
 } from '@mnema/chain';
 import { BUSY_TIMEOUT_MS, inTransaction, type SqliteDatabase } from '../db/sqlite.js';
-import type { ChainFrontier, TailReach } from './order.js';
+import type { ChainFrontier, SignedFact, TailReach } from './order.js';
 
 /** What is stored under the cache's own keys. */
 export interface CacheMeta {
   /** What produced the rows ({@link productStamp}). */
   readonly stamp: string;
+  /**
+   * The mnema version that wrote the file ({@link keepProductVersion}), or undefined for a file
+   * written by a build that did not say, which is read as the oldest version there is.
+   */
+  readonly version?: string | undefined;
   /** Moves with every change to the rows, so a writer can tell that another process wrote. */
   readonly generation: number;
   /** How far into the chain the rows reach. */
@@ -73,8 +79,20 @@ export interface CacheMeta {
    * the read asked, and is read as no cache (the rows may hold such a line).
    */
   readonly retained: readonly RetainedEntry[];
+  /**
+   * The parts of the record the reading did not read (a line that does not parse, a symbolic link),
+   * as of the same reading: left out of the rows and said by every surface that opens the cache. A
+   * file that does not carry the key is read as no cache, as for {@link retained}.
+   */
+  readonly refused: readonly RefusedPart[];
   /** The lines of a kind this binary does not know that the rows reach: read past, never applied. */
   readonly unread: readonly UnreadLine[];
+  /**
+   * What the tails' checkpoints proved, as of the same reading (ADR-557 to ADR-562): the runs left
+   * out of the rows (Fact A) and the runs served and not signed (Fact B). A file that does not
+   * carry the key was built before the read folded the checkpoints, and is read as no cache.
+   */
+  readonly signed: readonly SignedFact[];
   /** Size and modification time of every sealed segment the frontier covers, by path. */
   readonly sealed: Readonly<Record<string, string>>;
   /**
@@ -143,16 +161,21 @@ export function readMeta(db: SqliteDatabase): CacheMeta | undefined {
   const frontier = byKey.get('frontier');
   const breaks = byKey.get('breaks');
   const retained = byKey.get('retained');
+  const refused = byKey.get('refused');
   const unread = byKey.get('unread');
+  const signed = byKey.get('signed');
   const sealed = byKey.get('sealed');
   const active = byKey.get('active');
+  const version = byKey.get('version');
   if (
     stampHere === undefined ||
     generation === undefined ||
     frontier === undefined ||
     breaks === undefined ||
     retained === undefined ||
+    refused === undefined ||
     unread === undefined ||
+    signed === undefined ||
     sealed === undefined ||
     active === undefined
   ) {
@@ -160,14 +183,96 @@ export function readMeta(db: SqliteDatabase): CacheMeta | undefined {
   }
   return {
     stamp: stampHere,
+    version,
     generation: Number(generation),
     frontier: decodeFrontier(frontier),
     breaks: JSON.parse(breaks) as LinkBreak[],
     retained: JSON.parse(retained) as RetainedEntry[],
+    refused: JSON.parse(refused) as RefusedPart[],
     unread: JSON.parse(unread) as UnreadLine[],
+    signed: JSON.parse(signed) as SignedFact[],
     sealed: JSON.parse(sealed) as Record<string, string>,
     active: JSON.parse(active) as Record<string, string>,
   };
+}
+
+/** The mnema version this process says it is, or undefined where nobody said ({@link keepProductVersion}). */
+let ownVersion: string | undefined;
+
+/**
+ * Says which mnema version this process is. The surface says it once, where it builds its
+ * environment; the core never reads a manifest for it. Without it a process never takes over a
+ * file another build's code wrote ({@link mayTakeOver}).
+ */
+export function keepProductVersion(version: string | undefined): void {
+  ownVersion = version;
+}
+
+/** The three numbers before any suffix, or undefined when `version` is not three numbers. */
+function numbersOf(version: string): [number, number, number] | undefined {
+  const found = /^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(version);
+  if (found === null) return undefined;
+  return [Number(found[1]), Number(found[2]), Number(found[3])];
+}
+
+/** Whether `version` is newer than `than`, by the three numbers (a suffix does not order). */
+export function isNewerVersion(version: string, than: string): boolean {
+  const mine = numbersOf(version);
+  const theirs = numbersOf(than);
+  if (mine === undefined || theirs === undefined) return false;
+  for (let at = 0; at < 3; at += 1) {
+    if ((mine[at] as number) !== (theirs[at] as number)) {
+      return (mine[at] as number) > (theirs[at] as number);
+    }
+  }
+  return false;
+}
+
+/**
+ * Whether this process may rewrite a file whose stamp is not its own: only when it knows its
+ * version and that version is newer than the one the file carries. A file with no version is the
+ * oldest there is. The same version (two checkouts of one release under development) and an older
+ * one (a build left installed beside a newer one) read in memory and leave the file alone.
+ */
+export function mayTakeOver(storedVersion: string | undefined): boolean {
+  if (ownVersion === undefined) return false;
+  return storedVersion === undefined || isNewerVersion(ownVersion, storedVersion);
+}
+
+/** What a projection file says about who made it, as far as asking could tell. */
+export type FileOwner =
+  | { readonly state: 'none' }
+  | { readonly state: 'unknown' }
+  | { readonly state: 'owned'; readonly stamp: string; readonly version: string | undefined };
+
+/** SQLite's primary result codes (the low byte of `errcode`). */
+const SQLITE_ERROR = 1;
+const SQLITE_CORRUPT = 11;
+const SQLITE_NOTADB = 26;
+
+/**
+ * Whom the file belongs to. `none` is a file that says nothing because it cannot (no `cache_meta`,
+ * no `stamp` row, a file that is not a database or is corrupt): nobody's, made again. `unknown` is
+ * a file that COULD not be asked (busy, locked, an I/O error): it may well have an owner, so the
+ * caller leaves it untouched and reads in memory. A failure that is not the database's goes up.
+ */
+export function ownerOfTheFile(db: SqliteDatabase): FileOwner {
+  try {
+    const rows = db
+      .prepare("SELECT key, value FROM cache_meta WHERE key IN ('stamp', 'version')")
+      .all() as { key: string; value: string }[];
+    const stamp = rows.find((row) => row.key === 'stamp')?.value;
+    if (stamp === undefined) return { state: 'none' };
+    return { state: 'owned', stamp, version: rows.find((row) => row.key === 'version')?.value };
+  } catch (error) {
+    const failure = error as { code?: unknown; errcode?: unknown } | null;
+    if (failure?.code !== 'ERR_SQLITE_ERROR' || typeof failure.errcode !== 'number') throw error;
+    const primary = failure.errcode & 0xff;
+    if (primary === SQLITE_ERROR || primary === SQLITE_CORRUPT || primary === SQLITE_NOTADB) {
+      return { state: 'none' };
+    }
+    return { state: 'unknown' };
+  }
 }
 
 /** The counter alone: what a writer asks, inside its transaction, before it writes. */
@@ -182,11 +287,15 @@ export function readGeneration(db: SqliteDatabase): number {
 export function writeMeta(db: SqliteDatabase, meta: CacheMeta): void {
   const put = db.prepare('INSERT OR REPLACE INTO cache_meta (key, value) VALUES (?, ?)');
   put.run('stamp', meta.stamp);
+  if (ownVersion === undefined) db.prepare("DELETE FROM cache_meta WHERE key = 'version'").run();
+  else put.run('version', ownVersion);
   put.run('generation', String(meta.generation));
   put.run('frontier', encodeFrontier(meta.frontier));
   put.run('breaks', JSON.stringify(meta.breaks));
   put.run('retained', JSON.stringify(meta.retained));
+  put.run('refused', JSON.stringify(meta.refused));
   put.run('unread', JSON.stringify(meta.unread));
+  put.run('signed', JSON.stringify(meta.signed));
   put.run('sealed', JSON.stringify(meta.sealed));
   put.run('active', JSON.stringify(meta.active));
 }
@@ -236,10 +345,15 @@ export function sealedSegmentsHold(recorded: Readonly<Record<string, string>>): 
   return true;
 }
 
-/** `<size>:<mtimeMs>` of a file, or `unreadable`: what a sealed segment cannot keep if it is rewritten. */
+/**
+ * `<size>:<mtimeMs>` of a file, or `unreadable`: what a sealed segment cannot keep if it is rewritten.
+ * A link is `unreadable` too, and is never followed: a cache is not believed over a segment that
+ * became a link (ADR-406), and the read that replaces it refuses the link by name.
+ */
 export function fingerprintOf(path: string): string {
   try {
-    const stat = statSync(path);
+    const stat = lstatSync(path);
+    if (stat.isSymbolicLink()) return 'unreadable';
     return `${stat.size}:${stat.mtimeMs}`;
   } catch {
     return 'unreadable';
@@ -339,10 +453,12 @@ function markOfActive(
   return `${stamp}:${bytes}:${digest}`;
 }
 
+/** The size and time of a file, never of what a link points at: a link is a segment that cannot be stamped. */
 function statOf(path: string): { size: bigint; mtimeNs: bigint } | undefined {
   try {
-    const { size, mtimeNs } = statSync(path, { bigint: true });
-    return { size, mtimeNs };
+    const held = lstatSync(path, { bigint: true });
+    if (held.isSymbolicLink()) return undefined;
+    return { size: held.size, mtimeNs: held.mtimeNs };
   } catch {
     return undefined;
   }

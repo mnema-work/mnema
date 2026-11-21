@@ -439,7 +439,10 @@ describe('a hook of Claude Code, and of the hosts that run its command, says a r
     expect(real.stdout).toBe('');
   }, 60_000);
 
-  it('says an unreadable record through the real binary, from the verb the hook after a compaction runs', async () => {
+  it('leaves the hook after a compaction as silent as it was over a record with a line nobody can read, which is served around', async () => {
+    // The record is read around the line, so there is no refusal to say: the verb hands back what the
+    // session recorded, led by the facts, and with no session to hand back it says nothing, as it does
+    // over an altered entry (the opening document says the fact: `commands/compacted.ts`).
     const printed = await run(
       join(PLUGIN, 'hooks', 'session-compacted.mjs'),
       [],
@@ -447,14 +450,7 @@ describe('a hook of Claude Code, and of the hosts that run its command, says a r
       bins.real,
       payloads.compact,
     );
-    const line = nested('SessionStart')(replyOf(printed)) as string;
-    expect(
-      line.startsWith(
-        "The project's mnema record was not handed to this session (UNREADABLE_LINE): ",
-      ),
-    ).toBe(true);
-    expect(line).toContain(theTail);
-    expect(line).not.toContain('a line nobody can read');
+    expect(printed.stdout.trim()).toBe('');
   }, 60_000);
 
   it.each([

@@ -71,6 +71,19 @@ export const HOST_ROWS: readonly HostRow[] = [
   },
 ];
 
+/**
+ * THE HOSTS WHERE `init` SUGGESTS A QUESTION TO ASK THE AGENT once the plugin is installed, to see that it
+ * has the mnema tools. A host is here only where a contract test of `tests/host-contract/` shows the plugin's
+ * tools reaching the model: `the-tool-definitions-the-host-sends.test.ts` for Claude Code and
+ * `the-tool-definitions-the-host-sends.<id>.test.ts` for the others. Cursor and VS Code's editor have no
+ * such test, so a question about them would promise an answer nobody has seen; a host joins this table the
+ * day its test does (`the-check-question-is-only-where-a-host-is-shown-answering.test.ts` holds that).
+ */
+export const CHECK_QUESTION_HOSTS: ReadonlySet<RowId> = new Set<RowId>(['claude', 'codex']);
+
+/** The question, as a person types it to the agent. */
+export const CHECK_QUESTION = 'Which mnema tools do you have?';
+
 /** The names `--hosts` takes for a row, which are the keys of the product's table of hosts. */
 export const HOST_NAMES_OFFERED: readonly RowId[] = HOST_ROWS.map((row) => row.id);
 

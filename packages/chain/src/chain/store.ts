@@ -7,8 +7,17 @@
  * layers the T1/T2/T4 checks on top of what this returns.
  */
 
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { basename } from 'node:path';
+import {
+  closeSync,
+  existsSync,
+  lstatSync,
+  openSync,
+  readdirSync,
+  readFileSync,
+  readSync,
+  statSync,
+} from 'node:fs';
+import { basename, join } from 'node:path';
 
 import { decodeStoredBytes, StoredJsonError } from '../events/stored-json.js';
 import type { UpcasterRegistry } from '../events/upcaster.js';
@@ -41,41 +50,272 @@ import {
   locatedFromEnd,
   parsedFromEnd,
   parseStoredLine,
+  readingWhatTheDiskLets,
   splitLines,
+  UnreadableDiskError,
   UnreadableLineError,
 } from './lines.js';
 
 const NEWLINE = 0x0a;
 
 /**
- * Lists the tail ids present in a chain (each is one machine's directory).
+ * A READ THAT MET A SYMBOLIC LINK where it reads a record (FORMAT.md section 4, ADR-348, ADR-406).
  *
- * A symbolic link under `tails/` is not one, whatever it points at: `readdirSync` reports the
- * entry itself, never its target, so a link is no directory here. No reading and no writer
- * follows it, and the verifier refuses it by name ({@link listLinkedTails}, FORMAT.md section 4).
+ * The product's reads open nothing a link stands for: it can point outside the record, at bytes
+ * no one signed, and a read that followed it would serve them. It is an {@link UnreadableLineError}
+ * so that every door that already refuses a record it cannot read refuses this one the same way:
+ * the read stops, a write is refused, the gate denies. `path` is the link's place in the record
+ * (`tails/<tail>`, `tails/<tail>/000001.jsonl`, `keys/<name>`), `locus` its place on the disk.
  */
-export function listTails(layout: ChainLayout): string[] {
-  const dir = tailsDir(layout);
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
-    .map((e) => e.name)
-    .sort();
+export class LinkedRecordError extends UnreadableLineError {
+  override readonly name: string = 'LinkedRecordError';
+  /** The link's place in the record, `/`-separated. */
+  readonly path: string;
+
+  constructor(layout: ChainLayout, path: string) {
+    super(join(layout.root, ...path.split('/')), 'it is a symbolic link');
+    this.path = path;
+    this.message = `${path} is a symbolic link, and a record is read from its own files and directories: this mnema follows no link there, which can point outside it`;
+  }
 }
 
 /**
- * The names under `tails/` that are symbolic links (FORMAT.md section 4): what {@link listTails}
- * leaves out and the verifier refuses by name, so a link is never read by one reader and
- * skipped in silence by the other (`tail-linked-beside-a-real-one`,
- * `both-readers-read-the-same-bytes.test.ts`).
+ * Refuses a read of what a tail holds, as {@link refuseLinks} does for the tail's directory and
+ * `tails/` above it, then for each of `inRecord` (paths in the record, below the tail).
  */
-export function listLinkedTails(layout: ChainLayout): string[] {
+export function refuseLinksOfTail(
+  layout: ChainLayout,
+  tailId: string,
+  ...inRecord: readonly string[]
+): void {
+  refuseLinks(layout, ['tails', `tails/${tailId}`, ...inRecord]);
+}
+
+/**
+ * Refuses a read that would pass through a symbolic link at any of `places` (paths in the record,
+ * each asked in turn, so a parent comes before what is under it). It asks `lstat`, which is what the
+ * listing of a directory asks ({@link listedEntries}) and the verdict's {@link listLinksInRecord}
+ * builds on, so a path is a link here exactly when it is one there; a path that is not there is not.
+ */
+export function refuseLinks(layout: ChainLayout, places: readonly string[]): void {
+  for (const place of places) {
+    let held: ReturnType<typeof lstatSync> | undefined;
+    try {
+      held = lstatSync(join(layout.root, ...place.split('/')), { throwIfNoEntry: false });
+    } catch {
+      continue;
+    }
+    if (held?.isSymbolicLink()) throw new LinkedRecordError(layout, place);
+  }
+}
+
+/** The name of a tail's folder: a key's fingerprint and the installation, both in hex. */
+const A_TAIL_FOLDER = /^[0-9a-f]{64}-[0-9a-f]{32}$/;
+
+/**
+ * The directory listing of `place` (empty where there is none), refused when the directory or one
+ * of `above` is a link or an entry of it is.
+ *
+ * Given `refused`, a link is handed to it instead and the listing goes on without it: a link at
+ * `place` or above it leaves an empty listing, and a link among the entries leaves the others. Only
+ * the reads that serve the record ask for this; each link is still named, by the collector, and
+ * nothing it stands for is opened.
+ */
+export function listedWithoutLinks(
+  layout: ChainLayout,
+  place: string,
+  above: readonly string[],
+  refused?: RefusedLine,
+): ListedEntry[] {
+  try {
+    refuseLinks(layout, [...above, place]);
+  } catch (error) {
+    if (refused === undefined || !(error instanceof LinkedRecordError)) throw error;
+    refused(error);
+    return [];
+  }
+  let entries: ListedEntry[];
+  try {
+    entries = listedEntries(join(layout.root, ...place.split('/')));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+    if (!(error instanceof UnreadableDiskError)) throw error;
+    // The folder is named by its place in the record, where the listing knew only the disk.
+    const named = new UnreadableDiskError(error.locus, error.reason, place, error.code);
+    if (refused === undefined) throw named;
+    refused(named);
+    return [];
+  }
+  // A file named as a tail stands where its folder belongs: the reads that serve the record name it
+  // and go on without it, as they do a folder the disk will not open.
+  if (place === 'tails' && refused !== undefined) {
+    for (const entry of entries) {
+      if (!entry.file || !A_TAIL_FOLDER.test(entry.name)) continue;
+      refused(
+        new UnreadableDiskError(
+          join(layout.root, 'tails', entry.name),
+          'a file stands where a folder is expected',
+          `tails/${entry.name}`,
+          'ENOTDIR',
+        ),
+      );
+    }
+  }
+  const links = entries.filter((entry) => entry.link);
+  if (links.length === 0) return entries;
+  const [first] = links;
+  if (refused === undefined)
+    throw new LinkedRecordError(layout, `${place}/${(first as ListedEntry).name}`);
+  for (const link of links) refused(new LinkedRecordError(layout, `${place}/${link.name}`));
+  return entries.filter((entry) => !entry.link);
+}
+
+/**
+ * Lists the tail ids present in a chain (each is one machine's directory).
+ *
+ * A symbolic link at `tails/` or under it is refused ({@link LinkedRecordError}), whatever it
+ * points at: it used to be skipped in silence, so a linked tail vanished from every surface that
+ * reads the record. Nothing it points at is opened. Given `refused`, a reader that serves the record
+ * is handed each link instead and goes on without it (see {@link listedWithoutLinks}).
+ */
+export function listTails(layout: ChainLayout, refused?: RefusedLine): string[] {
+  return listedWithoutLinks(layout, 'tails', [], refused)
+    .filter((e) => e.directory)
+    .map((e) => e.name);
+}
+
+/**
+ * The tails as a verdict lists them, a link left out and never refused: the verifier names each
+ * link itself ({@link listLinksInRecord}) before it reads, and a question of whether a record holds
+ * anything at all does not read a link either.
+ */
+export function listTailsLeavingLinks(layout: ChainLayout): string[] {
   const dir = tailsDir(layout);
   if (!existsSync(dir)) return [];
-  return readdirSync(dir, { withFileTypes: true })
-    .filter((e) => e.isSymbolicLink())
-    .map((e) => e.name)
-    .sort();
+  return listedEntries(dir)
+    .filter((e) => e.directory)
+    .map((e) => e.name);
+}
+
+/**
+ * The tails a reader that only chooses where to keep a cache looks at: as {@link listTailsLeavingLinks}
+ * has them, and none when the disk does not let `tails/` be listed. Choosing a place refuses nothing: the
+ * reading that serves the record names the part ({@link UnreadableDiskError}), and a tree that cannot
+ * be listed is kept in memory until it can.
+ */
+export function listTailsToChooseACacheBy(layout: ChainLayout): string[] {
+  try {
+    return listTailsLeavingLinks(layout);
+  } catch (error) {
+    if (error instanceof UnreadableDiskError) return [];
+    throw error;
+  }
+}
+
+/** What a directory listing says one entry is, nothing at it opened or followed. */
+export interface ListedEntry {
+  readonly name: string;
+  readonly link: boolean;
+  readonly directory: boolean;
+  readonly file: boolean;
+}
+
+/** What `lstat` says of a path, as far as {@link listedEntries} asks it. */
+export type LinkCheck = (path: string) => {
+  isSymbolicLink(): boolean;
+  isDirectory(): boolean;
+  isFile(): boolean;
+};
+
+/**
+ * Where the listing has to be confirmed: on Windows only. A Windows listing (libuv's
+ * `fs__scandir`) types EVERY reparse point as a link, a cloud placeholder (OneDrive) or a
+ * deduplicated file included, while libuv's `lstat` (`fs__stat_handle`, `fs__readlink_handle`) calls
+ * a link only a symbolic link, a junction to a drive path and an app execution alias, and reads
+ * any other reparse point as the file or folder it is, as `readFileSync` opens it. Elsewhere the
+ * listing's type is the `lstat` type, and nothing more is asked.
+ */
+const CONFIRMED_ON_THIS_SYSTEM: LinkCheck | undefined =
+  typeof process !== 'undefined' && process.platform === 'win32' ? lstatSync : undefined;
+
+/**
+ * THE ENTRIES OF A DIRECTORY, by what each is, in name order (UTF-16), for every reader of a record
+ * that types what it lists: the tails ({@link listTails}), a tail's entries
+ * ({@link classifyTailDirectory}) and the links refused ({@link listLinksInRecord}). An entry the
+ * listing calls a link is one only when `check` (Windows' `lstat`, see above) agrees; one it does
+ * not is what `check` says it is, so a placeholder folder is a tail like any other and not one
+ * that is neither a link nor a tail. The second reader asks the same of its listing (`_listing`).
+ */
+export function listedEntries(
+  dir: string,
+  check: LinkCheck | undefined = CONFIRMED_ON_THIS_SYSTEM,
+): ListedEntry[] {
+  return readingWhatTheDiskLets(dir, undefined, () => readdirSync(dir, { withFileTypes: true }))
+    .map((entry): ListedEntry => {
+      const said = {
+        name: entry.name,
+        link: entry.isSymbolicLink(),
+        directory: entry.isDirectory(),
+        file: entry.isFile(),
+      };
+      if (!said.link || check === undefined) return said;
+      let held: ReturnType<LinkCheck>;
+      try {
+        held = check(join(dir, entry.name));
+      } catch {
+        return said;
+      }
+      if (held.isSymbolicLink()) return said;
+      return { name: entry.name, link: false, directory: held.isDirectory(), file: held.isFile() };
+    })
+    .sort((a, b) => compareUtf16(a.name, b.name));
+}
+
+/**
+ * EVERY SYMBOLIC LINK AT A PLACE A READER READS IN A RECORD (FORMAT.md section 4, ADR-348), by its
+ * path in the record: `keys` and `tails` themselves, each entry of either, each entry of each tail
+ * directory, and each entry of a tail's `witness/`. Nothing below a link is listed, and no link is
+ * followed: each entry is judged by the directory listing (`lstat`, never `stat`), which on Windows
+ * takes a symbolic link, a junction and an app execution alias for a link and any other reparse
+ * point (a cloud placeholder) for what it holds ({@link listedEntries}). The second reader asks the
+ * same of the same listing.
+ *
+ * The verdict asks this BEFORE it reads anything, and reads nothing a link stands for: a tail with a
+ * link in it is not read, a key file that is one is not read, and neither is anything under `keys/`
+ * or `tails/` when that directory is one. The root and the directories above it are not judged
+ * (the path is the caller's), and neither is anything a reader does not read (a stray folder of a
+ * tail, `locks/`). The second reader walks the same places in the same order (`record_links`).
+ */
+export function listLinksInRecord(layout: ChainLayout): string[] {
+  const links: string[] = [];
+  if (!existsSync(layout.root)) return links;
+  const top = listedEntries(layout.root);
+  for (const dir of ['keys', 'tails']) {
+    const entry = top.find((one) => one.name === dir);
+    if (entry === undefined) continue;
+    if (entry.link) {
+      links.push(dir);
+      continue;
+    }
+    if (!entry.directory) continue;
+    for (const held of listedEntries(join(layout.root, dir))) {
+      const path = `${dir}/${held.name}`;
+      if (held.link) links.push(path);
+      else if (dir === 'tails' && held.directory) linksInTail(layout, held.name, links);
+    }
+  }
+  return links;
+}
+
+function linksInTail(layout: ChainLayout, tail: string, links: string[]): void {
+  for (const held of listedEntries(tailDir(layout, tail))) {
+    if (held.link) links.push(`tails/${tail}/${held.name}`);
+    else if (held.name === 'witness' && held.directory) {
+      for (const attested of listedEntries(join(tailDir(layout, tail), 'witness'))) {
+        if (attested.link) links.push(`tails/${tail}/witness/${attested.name}`);
+      }
+    }
+  }
 }
 
 /**
@@ -101,26 +341,22 @@ export function classifyTailDirectory(
   layout: ChainLayout,
   tailId: string,
 ): { readonly name: string; readonly kind: TailEntryKind }[] {
-  return readdirSync(tailDir(layout, tailId), { withFileTypes: true })
-    .map((entry) => ({ name: entry.name, kind: classifyTailEntry(entry) }))
-    .sort((a, b) => compareUtf16(a.name, b.name));
+  return listedEntries(tailDir(layout, tailId)).map((entry) => ({
+    name: entry.name,
+    kind: classifyTailEntry(entry),
+  }));
 }
 
-function classifyTailEntry(entry: {
-  readonly name: string;
-  isSymbolicLink(): boolean;
-  isFile(): boolean;
-  isDirectory(): boolean;
-}): TailEntryKind {
+function classifyTailEntry(entry: ListedEntry): TailEntryKind {
   const { name } = entry;
   if (name === '.DS_Store' || name.startsWith(APPLE_DOUBLE_PREFIX)) return 'os';
-  if (entry.isSymbolicLink()) return 'link';
-  if (entry.isFile()) {
+  if (entry.link) return 'link';
+  if (entry.file) {
     if (isSegmentFile(name)) return 'segment';
     if (name === 'checkpoints.jsonl') return 'checkpoints';
     if (name === 'tailproof.json') return 'tailproof';
   }
-  if (entry.isDirectory() && name === 'witness') return 'witness';
+  if (entry.directory && name === 'witness') return 'witness';
   return 'stray';
 }
 
@@ -139,7 +375,7 @@ export const APPLE_DOUBLE_PREFIX = '._';
 export function listAppleDoubleKeyFiles(layout: ChainLayout): string[] {
   const dir = keysDir(layout);
   if (!existsSync(dir)) return [];
-  return readdirSync(dir)
+  return readingWhatTheDiskLets(dir, 'keys', () => readdirSync(dir))
     .filter((name) => name.endsWith('.pub') && name.startsWith(APPLE_DOUBLE_PREFIX))
     .sort();
 }
@@ -154,10 +390,26 @@ export function listAppleDoubleKeyFiles(layout: ChainLayout): string[] {
 export function listPublicKeyFingerprints(layout: ChainLayout): string[] {
   const dir = keysDir(layout);
   if (!existsSync(dir)) return [];
-  return readdirSync(dir)
+  return readingWhatTheDiskLets(dir, 'keys', () => readdirSync(dir))
     .filter((name) => name.endsWith('.pub') && !name.startsWith(APPLE_DOUBLE_PREFIX))
     .map((name) => name.slice(0, -'.pub'.length))
     .sort();
+}
+
+/**
+ * Whether the disk refuses the key folder of `layout`, handing the refusal to `refused`: a reading
+ * that serves around the parts it cannot open names the folder, as it names a segment, and a write
+ * is then refused by the part (`cannot be opened`) before anything the missing keys leave unproven.
+ */
+export function keysTheDiskRefuses(layout: ChainLayout, refused: RefusedLine): boolean {
+  try {
+    listPublicKeyFingerprints(layout);
+    return false;
+  } catch (error) {
+    if (!(error instanceof UnreadableDiskError)) throw error;
+    refused(error);
+    return true;
+  }
 }
 
 /**
@@ -233,6 +485,7 @@ export function committedKeys(layout: ChainLayout): CommittedKeys {
 
 /** One read of one committed key off the disk, or why it holds none: see {@link committedKeys}. */
 function committedKey(layout: ChainLayout, fingerprint: string): CommittedKey | string {
+  refuseLinks(layout, ['keys', `keys/${fingerprint}.pub`]);
   const read = readCommittedKeyFile(publicKeyPath(layout, fingerprint));
   if ('holdsNoKey' in read) return read.holdsNoKey;
   const { key } = read;
@@ -291,16 +544,24 @@ export function readCommittedKeyFile(path: string): CommittedKeyFile {
  * INSTEAD of a verification, never before one that then runs anyway.
  */
 export function holdsRecord(layout: ChainLayout): boolean {
-  return listTails(layout).length > 0 || listPublicKeyFingerprints(layout).length > 0;
+  return listTailsLeavingLinks(layout).length > 0 || listPublicKeyFingerprints(layout).length > 0;
 }
 
-/** The sealed + current segment files of a tail, in segment order. */
-export function orderedSegments(layout: ChainLayout, tailId: string): string[] {
+/**
+ * The sealed + current segment files of a tail, in segment order. A link at the tail's directory,
+ * at `tails/`, or anywhere in the tail's directory is refused ({@link LinkedRecordError}): a tail
+ * with a link in it is not read, and nothing the link points at is opened. Given `refused`, the link
+ * is handed to it and the segments that are not links are listed ({@link listedWithoutLinks}).
+ */
+export function orderedSegments(
+  layout: ChainLayout,
+  tailId: string,
+  refused?: RefusedLine,
+): string[] {
   const dir = tailDir(layout, tailId);
-  if (!existsSync(dir)) return [];
   // A folder named like a segment is no segment: nothing reads it, and it is named as a stray entry.
-  return readdirSync(dir, { withFileTypes: true })
-    .filter((entry) => isSegmentFile(entry.name) && !entry.isDirectory())
+  return listedWithoutLinks(layout, `tails/${tailId}`, ['tails'], refused)
+    .filter((entry) => isSegmentFile(entry.name) && !entry.directory)
     .map((entry) => entry.name)
     .sort((a, b) => segmentNumberOf(a) - segmentNumberOf(b))
     .map((name) => `${dir}/${name}`);
@@ -331,12 +592,14 @@ interface SegmentRead {
  * line's address and the reason, as {@link UnreadableLineError} carries them. The line is left
  * out of what the read returns and the read goes on to the next one.
  *
- * Only the verifier asks for this. Every other reader of a tail still stops at the first line it
- * cannot read, because what it returns is the tail and a tail with a hole in it is not one; the
- * verifier returns a verdict, and a verdict that stops at the first refused line hides every other
- * cause in that tail (see `verify.ts`).
+ * Two readers ask for this. The verifier does, because it returns a verdict, and a verdict that
+ * stops at the first refused line hides every other cause in that tail (see `verify.ts`). The
+ * reads that serve the record do too, through {@link refusedPartOf}: they serve what they read and
+ * name what they did not (FORMAT.md section 7.1), and the line after a refused one breaks the
+ * chain as it always did. Every other reader of a tail still stops at the first line it cannot
+ * read, because what it returns is the tail and a tail with a hole in it is not one.
  */
-export type RefusedLine = (line: UnreadableLineError) => void;
+export type RefusedLine = (line: UnreadableLineError, lineNumber?: number, start?: number) => void;
 
 /**
  * What a reading that PUTS BACK A REFORMAT is handed for a line that would not parse: the line's
@@ -376,7 +639,10 @@ export function relaying<T>(
 const REFUSED = Symbol('refused');
 
 /** One line's read: a refused line goes to `refused` when there is one, and throws when not. */
-function readOn<T>(refused: RefusedLine | undefined, read: () => T): T | typeof REFUSED {
+function readOn<T>(
+  refused: ((error: UnreadableLineError) => void) | undefined,
+  read: () => T,
+): T | typeof REFUSED {
   if (refused === undefined) return read();
   try {
     return read();
@@ -384,6 +650,21 @@ function readOn<T>(refused: RefusedLine | undefined, read: () => T): T | typeof 
     if (!(error instanceof UnreadableLineError)) throw error;
     refused(error);
     return REFUSED;
+  }
+}
+
+/**
+ * The bytes of one file of a tail, or `undefined` for a file the disk will not open when the reader
+ * serves the record: the part is handed to `refused` and the read goes on without it. A reader with no
+ * `refused` stops with the {@link UnreadableDiskError}.
+ */
+function readOrHandOver(file: string, refused: RefusedLine | undefined): Buffer | undefined {
+  try {
+    return readingWhatTheDiskLets(file, undefined, () => readFileSync(file));
+  } catch (error) {
+    if (refused === undefined || !(error instanceof UnreadableDiskError)) throw error;
+    refused(error);
+    return undefined;
   }
 }
 
@@ -413,7 +694,8 @@ function entriesOfSegment(
   const relaidEntryOf = relaying(entryOf, relaid, file);
   // Read as BYTES: each line is decoded by {@link parseStoredLine}, which refuses one
   // that is not UTF-8 instead of reading U+FFFD in its place.
-  const raw = readFileSync(file);
+  const raw = readOrHandOver(file, refused);
+  if (raw === undefined) return { entries: [], partialFinalLine: false, bytes: 0, retained: [] };
   const endsWithNewline = raw.at(-1) === NEWLINE;
   const lines = splitLines(raw);
   const entries: ChainEntry[] = [];
@@ -439,8 +721,9 @@ function entriesOfSegment(
     if (line.length === 0) continue;
     const couldBeTorn = isLast && !endsWithNewline && i === lines.length - 1;
     at = i + 1;
-    const entry = readOn(refused, () =>
-      parseStoredLine(line, couldBeTorn, couldBeTorn ? entryOf : relaidEntryOf, where),
+    const entry = readOn(
+      refused === undefined ? undefined : (error) => refused(error, at, start),
+      () => parseStoredLine(line, couldBeTorn, couldBeTorn ? entryOf : relaidEntryOf, where),
     );
     if (entry === REFUSED) continue;
     if (entry !== null) {
@@ -498,6 +781,74 @@ export interface RetainedEntry {
   readonly segment: string;
   /** The line's place in that file, counted from 1 (blank lines included). */
   readonly line: number;
+}
+
+/**
+ * A part of a record that a read SERVED AROUND because this mnema does not read it: a line of a
+ * segment that does not parse (damage, a merge's markers, or a line a newer mnema wrote), or a
+ * symbolic link, which the product follows nowhere (ADR-348, ADR-406). One shape for both, said by
+ * every surface in the block it says an altered entry in (`record-integrity.ts`), because to a
+ * reader they are one fact: something the record holds that the answer leaves out.
+ *
+ * It says where the part is and why, in the reader's own words, and nothing of what it holds: the
+ * bytes behind a link never travel with it, nor does a line beyond what the parser's message quotes.
+ */
+export interface RefusedPart {
+  /** A line that would not parse, or a symbolic link. */
+  readonly kind: 'line' | 'link' | 'disk';
+  /** The tail directory the part is in, or `''` for a link above every tail (`tails`). */
+  readonly tail: string;
+  /** The part's place in the record, `/`-separated: the segment of the line, or the link itself. */
+  readonly place: string;
+  /** For a line, its place in the segment, counted from 1 (blank lines included). */
+  readonly line?: number;
+  /** For a line, the byte it starts at in that segment: where it stands against what a reading covered. */
+  readonly start?: number;
+  /** Why the part is not read: the reader's own words. */
+  readonly reason: string;
+}
+
+/**
+ * The {@link RefusedPart} a refused read stands for. `line` is the line's number when the walk that
+ * refused it knows it better than the locus does (a backward walk names a byte offset): the
+ * second and third arguments of a {@link RefusedLine}.
+ */
+export function refusedPartOf(
+  error: UnreadableLineError,
+  line?: number,
+  start?: number,
+): RefusedPart {
+  if (error instanceof LinkedRecordError) {
+    const [top, tail] = error.path.split('/');
+    return {
+      kind: 'link',
+      tail: top === 'tails' && tail !== undefined ? tail : '',
+      place: error.path,
+      reason: error.reason,
+    };
+  }
+  if (error instanceof UnreadableDiskError) {
+    const held = /[\\/]tails[\\/]([^\\/]+)/.exec(error.locus);
+    const place = error.path ?? /(?:^|[\\/])(tails(?:[\\/][^\\/]+){0,2})$/.exec(error.locus)?.[1];
+    return {
+      kind: 'disk',
+      tail: held?.[1] ?? '',
+      place: (place ?? error.locus).replaceAll('\\', '/'),
+      reason: error.reason,
+    };
+  }
+  const named = /[\\/]tails[\\/]([^\\/]+)[\\/]([^\\/]+) (?:line|byte offset) (\d+)$/.exec(
+    error.locus,
+  );
+  if (named === null) return { kind: 'line', tail: '', place: error.locus, reason: error.reason };
+  return {
+    kind: 'line',
+    tail: named[1] as string,
+    place: `tails/${named[1]}/${named[2]}`,
+    line: line ?? Number(named[3]),
+    ...(start !== undefined ? { start } : {}),
+    reason: error.reason,
+  };
 }
 
 /**
@@ -589,8 +940,9 @@ export function readTail(
   refused?: RefusedLine,
   relaid?: RelaidLine,
   served: Served = 'what holds',
+  linked?: RefusedLine,
 ): TailRead {
-  const segments = orderedSegments(layout, tailId);
+  const segments = orderedSegments(layout, tailId, linked);
   const every: ChainEntry[] = [];
   const held: { entry: ChainEntry; file: string; line: number }[] = [];
   let partialFinalLine = false;
@@ -730,8 +1082,9 @@ export function readTailTip(
   tailId: string,
   upcasters: UpcasterRegistry,
   minSeq: number,
+  refused?: RefusedLine,
 ): ChainEntry[] {
-  const segments = orderedSegments(layout, tailId);
+  const segments = orderedSegments(layout, tailId, refused);
   const tip: ChainEntry[] = [];
   for (let s = segments.length - 1; s >= 0; s -= 1) {
     const file = segments[s] as string;
@@ -740,7 +1093,7 @@ export function readTailTip(
     // An empty segment yields nothing and moves no boundary: the last one can
     // be empty because a recovering writer truncated a torn fragment out of it,
     // and the walk simply continues into the segment before it.
-    for (const entry of parsedFromEnd(file, s === segments.length - 1, parse)) {
+    for (const entry of parsedFromEnd(file, s === segments.length - 1, parse, refused)) {
       tip.push(entry);
       if (entry.link.seq <= minSeq) {
         reachedCoverage = true;
@@ -763,7 +1116,10 @@ function sizeOf(file: string): number {
 
 /** The line (counted from 1) that starts at byte `start` of `file`. */
 function lineAtOffset(file: string, start: number): number {
-  const before = readFileSync(file).subarray(0, start);
+  const before = readingWhatTheDiskLets(file, undefined, () => readFileSync(file)).subarray(
+    0,
+    start,
+  );
   let line = 1;
   for (const byte of before) if (byte === NEWLINE) line += 1;
   return line;
@@ -826,8 +1182,9 @@ export function readTailSince(
   upcasters: UpcasterRegistry,
   boundary: TailBoundary,
   lastHash: string | null,
+  refused?: RefusedLine,
 ): TailSince | undefined {
-  const segments = orderedSegments(layout, tailId);
+  const segments = orderedSegments(layout, tailId, refused);
   const at = segments.indexOf(boundary.segment);
   if (at < 0) return undefined;
   // One byte of slack for the newline a torn final line may lack: the reading that set the
@@ -851,31 +1208,44 @@ export function readTailSince(
       boundary,
     };
   };
-  for (let s = segments.length - 1; s >= at; s -= 1) {
-    const file = segments[s] as string;
-    const parse = (line: string): ChainEntry => parseEntry(line, upcasters);
-    for (const found of locatedFromEnd(file, s === segments.length - 1, parse)) {
-      // A line STARTING before the boundary is at or below it: the walk has reached what
-      // the previous reading covered, and everything pushed so far is new. Only the
-      // boundary's OWN segment is walked into: every segment after it arrived whole.
-      if (s === at && found.start < boundary.bytes) {
-        // That line is the one the previous reading ended on, or the file is not the one it
-        // read: it must END where the boundary is and be the entry the reading took last. A
-        // checkout to a branch whose live segment shares the head of this one and then
-        // diverges leaves a longer file whose line at the boundary is another entry, and
-        // the lines after it would read as arrivals of the tail that was served.
-        if (found.end + 1 !== boundary.bytes) return undefined;
-        if (lastHash !== null && found.value.link.hash !== lastHash) return undefined;
-        return answer(reached ?? boundary);
+  // A file the disk will not open is not a boundary this reading can resume from: the whole reading
+  // is asked for instead, and it names the part and serves around it.
+  try {
+    for (let s = segments.length - 1; s >= at; s -= 1) {
+      const file = segments[s] as string;
+      const parse = (line: string): ChainEntry => parseEntry(line, upcasters);
+      // Said as the forward walk says it: the line's number, and not the byte it starts at.
+      const onRefused =
+        refused === undefined
+          ? undefined
+          : (error: UnreadableLineError, start: number): void =>
+              refused(error, lineAtOffset(file, start), start);
+      for (const found of locatedFromEnd(file, s === segments.length - 1, parse, onRefused)) {
+        // A line STARTING before the boundary is at or below it: the walk has reached what
+        // the previous reading covered, and everything pushed so far is new. Only the
+        // boundary's OWN segment is walked into: every segment after it arrived whole.
+        if (s === at && found.start < boundary.bytes) {
+          // That line is the one the previous reading ended on, or the file is not the one it
+          // read: it must END where the boundary is and be the entry the reading took last. A
+          // checkout to a branch whose live segment shares the head of this one and then
+          // diverges leaves a longer file whose line at the boundary is another entry, and
+          // the lines after it would read as arrivals of the tail that was served.
+          if (found.end + 1 !== boundary.bytes) return undefined;
+          if (lastHash !== null && found.value.link.hash !== lastHash) return undefined;
+          return answer(reached ?? boundary);
+        }
+        // The walk's first line is the tail's last, so this is set once and names the end
+        // of the newest entry: `+ 1` for the newline that ends it.
+        reached ??= { segment: file, bytes: found.end + 1 };
+        arrivals.push(found.value);
+        // Unshifted, because the walk is from the end: `held` is in the order the lines are stored.
+        if (!entryHashHolds(found.value))
+          held.unshift({ entry: found.value, file, start: found.start });
       }
-      // The walk's first line is the tail's last, so this is set once and names the end
-      // of the newest entry: `+ 1` for the newline that ends it.
-      reached ??= { segment: file, bytes: found.end + 1 };
-      arrivals.push(found.value);
-      // Unshifted, because the walk is from the end: `held` is in the order the lines are stored.
-      if (!entryHashHolds(found.value))
-        held.unshift({ entry: found.value, file, start: found.start });
     }
+  } catch (error) {
+    if (error instanceof UnreadableDiskError) return undefined;
+    throw error;
   }
   // The walk ran off the front of the boundary's segment without reaching the offset:
   // the file holds fewer bytes than the reading that set the boundary read from it.
@@ -903,11 +1273,13 @@ export function readTailCheckpoints(
   relaid?: RelaidLine,
   onPartialFinalLine?: () => void,
 ): Checkpoint[] {
+  refuseLinks(layout, ['tails', `tails/${tailId}`, `tails/${tailId}/checkpoints.jsonl`]);
   const file = checkpointsPath(layout, tailId);
   if (!existsSync(file)) return [];
   const relaidCheckpointOf = relaying(parseCheckpoint, relaid, file);
   // As bytes, for the reason {@link entriesOfSegment} reads a segment so.
-  const raw = readFileSync(file);
+  const raw = readOrHandOver(file, refused);
+  if (raw === undefined) return [];
   const endsWithNewline = raw.at(-1) === NEWLINE;
   const lines = splitLines(raw);
   const checkpoints: Checkpoint[] = [];
@@ -925,6 +1297,149 @@ export function readTailCheckpoints(
     else if (checkpoint !== REFUSED) checkpoints.push(checkpoint);
   }
   return checkpoints;
+}
+
+/**
+ * Where a reading of a tail's `checkpoints.jsonl` ended: the bytes the file held, and where its
+ * last complete line starts, so a later reading reads that line again (it must still be the line
+ * the first reading folded) and then only the lines after it.
+ */
+export interface CheckpointsMark {
+  readonly bytes: number;
+  readonly lastLineAt: number;
+  /** The file's modification time in nanoseconds, as text: a file of the same size and another time was rewritten. */
+  readonly mtimeNs: string;
+}
+
+/** A file's modification time in nanoseconds, as text, or `''` for one that is not there. */
+function mtimeNsOf(file: string): string {
+  try {
+    return String(statSync(file, { bigint: true }).mtimeNs);
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * {@link readTailCheckpoints}, with where the reading ended ({@link CheckpointsMark}): for a read that
+ * folds the checkpoints and takes only the new lines on its next catch-up.
+ */
+export function readTailCheckpointsMarked(
+  layout: ChainLayout,
+  tailId: string,
+  refused?: RefusedLine,
+): { readonly checkpoints: Checkpoint[]; readonly mark: CheckpointsMark } {
+  refuseLinks(layout, ['tails', `tails/${tailId}`, `tails/${tailId}/checkpoints.jsonl`]);
+  const file = checkpointsPath(layout, tailId);
+  const none = { checkpoints: [], mark: { bytes: 0, lastLineAt: 0, mtimeNs: '' } };
+  if (!existsSync(file)) return none;
+  // The time first: a line appended after it was taken moves it again, and the next reading
+  // reads the file again rather than believe it.
+  const mtimeNs = mtimeNsOf(file);
+  const raw = readOrHandOver(file, refused);
+  if (raw === undefined) return none;
+  const read = checkpointLinesOf(raw, 0, file, refused);
+  return {
+    checkpoints: read.checkpoints,
+    mark: { bytes: raw.length, lastLineAt: read.lastLineAt, mtimeNs },
+  };
+}
+
+/**
+ * The checkpoint lines stored after `mark`, or undefined when the file is not the one that mark
+ * was taken of: shorter, or its line at `lastLineAt` is not the checkpoint whose hash is `prev`
+ * (old lines rewritten under an append). Undefined then asks the caller to read the tail whole.
+ */
+export function readTailCheckpointsSince(
+  layout: ChainLayout,
+  tailId: string,
+  mark: CheckpointsMark,
+  prev: string | null,
+  hashOf: (checkpoint: Checkpoint) => string,
+): { readonly checkpoints: Checkpoint[]; readonly mark: CheckpointsMark } | undefined {
+  refuseLinks(layout, ['tails', `tails/${tailId}`, `tails/${tailId}/checkpoints.jsonl`]);
+  const file = checkpointsPath(layout, tailId);
+  const size = sizeOf(file);
+  if (size < 0) return mark.bytes === 0 ? { checkpoints: [], mark } : undefined;
+  if (size < mark.bytes) return undefined;
+  const mtimeNs = mtimeNsOf(file);
+  if (size === mark.bytes) return mtimeNs === mark.mtimeNs ? { checkpoints: [], mark } : undefined;
+  // Only the bytes from the last line folded on: the line read again, and what came after it.
+  let raw: Buffer;
+  try {
+    raw = bytesFrom(file, mark.lastLineAt, size);
+  } catch {
+    return undefined;
+  }
+  let read: { checkpoints: Checkpoint[]; lastLineAt: number };
+  try {
+    read = checkpointLinesOf(raw, mark.lastLineAt, file, undefined);
+  } catch {
+    return undefined;
+  }
+  const [first, ...rest] = read.checkpoints;
+  if (prev === null) {
+    // Nothing was read before: every line is new.
+    if (mark.bytes !== 0) return undefined;
+    return {
+      checkpoints: read.checkpoints,
+      mark: { bytes: raw.length, lastLineAt: read.lastLineAt, mtimeNs },
+    };
+  }
+  if (first === undefined || hashOf(first) !== prev) return undefined;
+  return {
+    checkpoints: rest,
+    mark: { bytes: mark.lastLineAt + raw.length, lastLineAt: read.lastLineAt, mtimeNs },
+  };
+}
+
+/** The bytes of `file` from `start` to `end`, read through a descriptor: never the whole file. */
+function bytesFrom(file: string, start: number, end: number): Buffer {
+  const buffer = Buffer.alloc(Math.max(0, end - start));
+  const fd = openSync(file, 'r');
+  try {
+    let read = 0;
+    while (read < buffer.length) {
+      const got = readSync(fd, buffer, read, buffer.length - read, start + read);
+      if (got === 0) break;
+      read += got;
+    }
+    return buffer.subarray(0, read);
+  } finally {
+    closeSync(fd);
+  }
+}
+
+/** The checkpoints of `raw` (bytes of the file from `offset`) and where the last complete one starts. */
+function checkpointLinesOf(
+  raw: Buffer,
+  offset: number,
+  file: string,
+  refused: RefusedLine | undefined,
+): { checkpoints: Checkpoint[]; lastLineAt: number } {
+  const endsWithNewline = raw.at(-1) === NEWLINE;
+  const lines = splitLines(raw);
+  const checkpoints: Checkpoint[] = [];
+  let at = 0;
+  let start = 0;
+  let lastLineAt = offset;
+  const where = (): string => `${file} line ${at}`;
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i] as Uint8Array;
+    const begins = start;
+    start += line.length + 1;
+    if (line.length === 0) continue;
+    const couldBeTorn = !endsWithNewline && i === lines.length - 1;
+    at = i + 1;
+    const checkpoint = readOn(refused, () =>
+      parseStoredLine(line, couldBeTorn, parseCheckpoint, where),
+    );
+    if (checkpoint !== null && checkpoint !== REFUSED) {
+      checkpoints.push(checkpoint);
+      lastLineAt = offset + begins;
+    }
+  }
+  return { checkpoints, lastLineAt };
 }
 
 /**
@@ -952,6 +1467,7 @@ export function readTailCheckpoints(
  * file and the line.
  */
 export function lastTailCheckpoint(layout: ChainLayout, tailId: string): Checkpoint | undefined {
+  refuseLinks(layout, ['tails', `tails/${tailId}`, `tails/${tailId}/checkpoints.jsonl`]);
   const file = checkpointsPath(layout, tailId);
   if (!existsSync(file)) return undefined;
   for (const checkpoint of parsedFromEnd(file, true, parseCheckpoint)) return checkpoint;

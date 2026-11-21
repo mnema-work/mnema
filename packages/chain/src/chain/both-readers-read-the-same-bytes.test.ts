@@ -36,6 +36,7 @@ import {
   readFileSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -356,7 +357,11 @@ type Agreement =
   | {
       readonly name: string;
       readonly verdict: 'refused';
-      readonly product: { readonly layer: string; readonly says: string };
+      /**
+       * `issues`, where given, is how many the product names: the first cause alone is the same
+       * whether or not a reader went on to read behind it, and the count is what tells.
+       */
+      readonly product: { readonly layer: string; readonly says: string; readonly issues?: number };
       readonly second: {
         readonly section: string;
         readonly says: string;
@@ -370,6 +375,27 @@ type Agreement =
  * where the second reader names a refusal of that one tail.
  */
 const TAIL_OF_A_REFOUNDED_RECORD = `06e3fd8fda29bb60ab59557de61edb0aecdb231134be30e75b455f8e1b792fa9-${'ab'.repeat(16)}`;
+
+/** The one tail of the witnessed record, under the fixture's key: where a link in it is named. */
+const WITNESSED_TAIL =
+  'tails/7e5a72fd0ea237237651690087e4a87133dab8b78847efadde778f633214cca4-05e27e636158e547a09e594545603717';
+
+/**
+ * A link at each place a reader reads (FORMAT.md section 4, ADR-348), what it points at being what
+ * was there: a reader that followed it would verify the record it always held. Both refuse it by
+ * its path, first, and read nothing of what it stands for. A tail with a link in it is not read, so
+ * a record whose one tail it is holds no tail read (the second refusal); a key that is one is no key,
+ * so its tail has none, and nothing it signed verifies. Both counts are asserted, so a reader that
+ * read behind the link (and found the record whole) names fewer causes and goes red.
+ */
+function linkedAt(name: string, path: string, refusals: number, issues: number): Agreement {
+  return {
+    name,
+    verdict: 'refused',
+    product: { layer: 'T1', says: `LINKED ENTRY: ${path} is a symbolic link`, issues },
+    second: { section: '4', says: `${path} is a symbolic link`, where: path, refusals },
+  };
+}
 
 const AGREEMENTS: readonly Agreement[] = [
   {
@@ -435,6 +461,24 @@ const AGREEMENTS: readonly Agreement[] = [
       refusals: 1,
     },
   },
+  linkedAt('segment-linked', `${WITNESSED_TAIL}/000001.jsonl`, 2, 2),
+  linkedAt('segment-linked-inside-the-record', `${WITNESSED_TAIL}/000001.jsonl`, 2, 2),
+  linkedAt('checkpoints-linked', `${WITNESSED_TAIL}/checkpoints.jsonl`, 2, 2),
+  linkedAt('tailproof-linked', `${WITNESSED_TAIL}/tailproof.json`, 2, 2),
+  linkedAt(
+    'witness-file-linked',
+    `${WITNESSED_TAIL}/witness/f84396462713a5fd1fefd3a043cddb2eed81c00f5fead86f0474bfaa551c42e2.ots`,
+    2,
+    2,
+  ),
+  linkedAt(
+    'key-file-linked',
+    'keys/7e5a72fd0ea237237651690087e4a87133dab8b78847efadde778f633214cca4.pub',
+    2,
+    5,
+  ),
+  linkedAt('keys-dir-linked', 'keys', 1, 6),
+  linkedAt('tails-dir-linked', 'tails', 2, 2),
   {
     // ADR-123: one tail written from one head in two places and joined. Both readers used to
     // call it a gap in the sequence, which says nothing of what happened; both name it a fork,
@@ -748,6 +792,47 @@ const AGREEMENTS: readonly Agreement[] = [
 ];
 
 /**
+ * NO BYTE BEHIND A LINK REACHES A VERDICT (FORMAT.md section 4, ADR-348). A segment linked to a
+ * file outside the record, the file marked: neither reader's verdict holds the mark, while the same
+ * bytes put in place of the segment, no link, are read and named by both, so the mark is one a
+ * reader that read the file would have said.
+ */
+describe('a link to a file outside the record, to both readers', () => {
+  const MARK = 'outside-the-record-5c1e9a';
+  const MARKED = `{"${MARK}":"${MARK}"}\n`;
+
+  function bothSaid(record: string): { here: string; there: string } {
+    const here = verify(record, catalogUpcasters());
+    const run = python([VERIFIER, '--json', 'record', record]);
+    return { here: JSON.stringify(here), there: `${run.stdout}${run.stderr}` };
+  }
+
+  it('reads nothing of it, in either reader', () => {
+    const record = copyOf('witnessed-record');
+    const segment = join(tailOf(record), '000001.jsonl');
+    const outside = join(root, 'outside.jsonl');
+    writeFileSync(outside, MARKED);
+    rmSync(segment);
+    symlinkSync(outside, segment);
+
+    const { here, there } = bothSaid(record);
+    expect(here).toContain('LINKED ENTRY: tails/');
+    expect(there).toContain('000001.jsonl is a symbolic link');
+    expect(here).not.toContain(MARK);
+    expect(there).not.toContain(MARK);
+  });
+
+  it('names the same bytes when they are the segment itself, so the mark is one a reader says', () => {
+    const record = copyOf('witnessed-record');
+    writeFileSync(join(tailOf(record), '000001.jsonl'), MARKED);
+
+    const { here, there } = bothSaid(record);
+    expect(here).toContain(MARK);
+    expect(there).toContain(MARK);
+  });
+});
+
+/**
  * WHAT A TAIL DIRECTORY HOLDS THAT IS NOT OF THE FORMAT IS NAMED, NOT REFUSED AND NOT READ
  * (FORMAT.md section 4), and both readers say the SAME sentence about it.
  *
@@ -899,6 +984,7 @@ describe('the two readers reach the same verdict on the same bytes, and name the
     const first = here.issues[0];
     expect(first?.layer).toBe(row.product.layer);
     expect(first?.detail).toContain(row.product.says);
+    if (row.product.issues !== undefined) expect(here.issues).toHaveLength(row.product.issues);
     const named = there.refusals[0];
     expect(named?.section).toBe(row.second.section);
     expect(named?.what).toContain(row.second.says);
@@ -1261,7 +1347,7 @@ describe('the rule has one place', () => {
   });
 
   /**
-   * The FIVE documents read through the tolerant `parseStoredJson` rather than through
+   * The SIX documents read through the tolerant `parseStoredJson` rather than through
    * `parseCanonicalLine`, each with why it is not a line of the record. Reconciled in both
    * directions: a file that starts calling the tolerant reader is accused until somebody
    * says here why its document may be re-spelled, and an entry whose file stopped is accused
@@ -1270,6 +1356,8 @@ describe('the rule has one place', () => {
   const TOLERANT_READERS: Readonly<Record<string, string>> = {
     [join('chain', 'cited-heads.ts')]:
       "the note of which heads a tail last cited, under the tree's `locks/`: never committed, never read by the second reader, and a lost or unreadable note costs one redundant citation, never an order",
+    [join('chain', 'citation-index.ts')]:
+      "the note of which hashes a tail cites, under the tree's `locks/`: never committed, never read by the second reader, believed only after the bytes of the tail agree with it, and rebuilt from them when they do not",
     [join('chain', 'kept-head.ts')]:
       "the signed note of the last entry this installation wrote to a tail, under the tree's `locks/`: never committed, never read by a reader, and its signature is over the canonical bytes of the values read, so a re-spelled note verifies as the same note and a changed value does not",
     [join('chain', 'backup.ts')]:
@@ -1293,11 +1381,12 @@ describe('the rule has one place', () => {
       .sort();
   }
 
-  it('reads every line of the record through parseCanonicalLine, and only five other documents through the tolerant reader', () => {
+  it('reads every line of the record through parseCanonicalLine, and only six other documents through the tolerant reader', () => {
     expect(callersOf('parseStoredJson')).toEqual(Object.keys(TOLERANT_READERS).sort());
     expect(callersOf('parseCanonicalLine')).toEqual(
       [
         join('chain', 'checkpoint.ts'),
+        join('chain', 'citation-index.ts'),
         join('chain', 'entry.ts'),
         join('chain', 'tailproof.ts'),
         join('chain', 'witness.ts'),

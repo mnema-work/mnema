@@ -94,5 +94,7 @@ jobs:
 
       # The workspace's lockfile. No Python requirements file: the verifier in `packages/chain/verifier` imports the
       # standard library alone. The site's lockfile is no longer scanned here: the site has its own repository, which has Dependabot.
+      # `osv-scanner.toml` beside the lockfile is read by this command: it ignores one advisory (picomatch, no patched release)
+      # until 2026-12-17, with its reason written there; after that date the check accuses it again.
       - name: Read the lockfile
         run: ./osv-scanner scan source --lockfile pnpm-lock.yaml

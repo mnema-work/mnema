@@ -266,7 +266,7 @@ const VERBS_NOT_IN_THE_LIBRARY: Readonly<Record<string, string>> = {
   unlink: 'see `retract_link`',
   key: 'keys are a person’s',
   switch: 'a switch is a person’s',
-  tail: 'a tail is pruned by a person',
+  tail: 'a tail is pruned, relinked or repaired by a person; `tail repair` is command-line only, for the person, and an agent may suggest the command (ADR-432)',
   'before-a-write': 'covered: the `PreToolUse` hook',
   'beside-a-write': 'covered by nothing: a hook the plugin runs after a write, not an operation',
   run: 'a run is pinned by the host',
@@ -281,6 +281,18 @@ const VERBS_NOT_IN_THE_LIBRARY: Readonly<Record<string, string>> = {
   mcp: 'it serves the MCP door, which is the second of the three',
   check: 'a rule’s check is declared by a person and run by a machine with a key of its own',
   inherit: 'trusting another repository’s record is a person’s decision',
+};
+
+/**
+ * Every verb that writes nothing to the record and is on the command line alone (ADR-432): none is
+ * an MCP tool, and the library door has no method for it. `has, for every verb that writes` above
+ * is about the verbs that write the record; these are the ones it cannot ask.
+ */
+const VERBS_THAT_WRITE_NOTHING_AND_ARE_NOT_TOOLS: Readonly<Record<string, string>> = {
+  backup:
+    'it copies the trees into a folder the person named and writes nothing to the record; a person at a shell asks for it, and an agent may suggest the command',
+  upgrade:
+    'it puts mnema’s own text of an earlier version at this one and asks before the merge driver goes into a clone’s git configuration; it writes nothing to the record, a person at a shell asks for it, and an agent may suggest the command',
 };
 
 /**
@@ -864,6 +876,27 @@ describe('an operation on one door has the others', () => {
     expect(lacking).toEqual([]);
     const stale = Object.keys(VERBS_NOT_IN_THE_LIBRARY).filter((verb) => !writing.includes(verb));
     expect(stale).toEqual([]);
+  });
+
+  it('lists every verb that is on the command line alone, writes nothing to the record, and is no tool', () => {
+    const io: CliIo = { out: () => undefined, err: () => undefined, fail: () => undefined };
+    const declared = registerVerbs(new Command(), {
+      io,
+      render: renderPlain,
+      renderingAt: () => renderPlain,
+      pinnedRun: () => undefined,
+    });
+    const reading = declared
+      .filter((verb) => verb.effect === 'reads')
+      .map((verb) => verb.act.name());
+    const { tools } = buildMcpServer({ cwd: sandbox, env: { home: sandbox }, log: () => {} });
+    const asTools = new Set(tools.map((tool) => tool.act));
+    const methods = new Set(OPERATIONS.map((row) => row.verb));
+    for (const verb of Object.keys(VERBS_THAT_WRITE_NOTHING_AND_ARE_NOT_TOOLS)) {
+      expect(reading, `${verb} is a verb that reads the record`).toContain(verb);
+      expect(asTools.has(verb), `${verb} is no MCP tool`).toBe(false);
+      expect(methods.has(verb), `${verb} has no method in the library`).toBe(false);
+    }
   });
 
   it('has, for every subcommand of a verb the library covers, a method or a reason', () => {

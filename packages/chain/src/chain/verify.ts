@@ -111,13 +111,17 @@ import type { MoveEvent, MoveRule } from '../events/workflow.js';
 import { oneLine } from '../one-line.js';
 import { isBackupRegistration, listRegistrations } from './backup.js';
 import { causalOrder } from './causal-order.js';
+import { type Checkpoint, checkpointSignatureHolds, NAMED_SCHEME } from './checkpoint.js';
+
+// Re-exported where they were always read from: the ruling module holds them now.
+export { canonicalIdentityForm, TAIL_SIGNER_MISMATCH } from './checkpoint-ruling.js';
+
 import {
-  type Checkpoint,
-  checkpointHash,
-  checkpointSignatureHolds,
-  NAMED_SCHEME,
-  verifyCheckpoint,
-} from './checkpoint.js';
+  checkpointBelongsToItsTail,
+  checkpointOfAnotherKeySentence,
+  ruleOnCheckpoint,
+  TAIL_SIGNER_MISMATCH,
+} from './checkpoint-ruling.js';
 import { decisionTexts } from './decision-text.js';
 import { type IdentityResolution, type RetiredElsewhere, resolveIdentity } from './enrollment.js';
 import {
@@ -133,7 +137,6 @@ import {
   sealEntry,
   unreadLinesOf,
 } from './entry.js';
-import { contentRoot } from './hash.js';
 import {
   type ChainLayout,
   isSegmentFile,
@@ -159,12 +162,14 @@ import {
   relinkedNaming,
 } from './record-name.js';
 import {
+  type CommittedKey,
   type CommittedKeys,
   classifyTailDirectory,
   committedKeys,
-  listLinkedTails,
+  listLinksInRecord,
   listPublicKeyFingerprints,
   listTails,
+  listTailsLeavingLinks,
   type RefusedLine,
   type RelaidLine,
   readTail,
@@ -1019,6 +1024,8 @@ export function relinksReadAt(
     for (const tail of listTails(layout)) {
       if (entriesByTail.has(tail)) continue;
       const refused: TailIssue[] = [];
+      // The checkpoints BEFORE the tail (ADR-571), as `verifyReading` reads them.
+      const checkpoints = readTailCheckpoints(layout, tail, refusedLine(layout, tail, refused));
       const read = readTail(
         layout,
         tail,
@@ -1027,7 +1034,6 @@ export function relinksReadAt(
         undefined,
         'every line',
       );
-      const checkpoints = readTailCheckpoints(layout, tail, refusedLine(layout, tail, refused));
       entriesByTail.set(tail, refused.length > 0 ? [] : read.entries);
       checkpointsByTail.set(tail, checkpoints);
       keysByTail.set(tail, keysOf[at] as CommittedKeys);
@@ -1180,6 +1186,8 @@ function readForTheFold(
   const covered = new Map<string, number>();
   for (const tail of listTails(layout)) {
     const refused: TailIssue[] = [];
+    // The checkpoints BEFORE the tail (ADR-571), as `verifyReading` reads them.
+    const checkpoints = readTailCheckpoints(layout, tail, refusedLine(layout, tail, refused));
     const read = readTail(
       layout,
       tail,
@@ -1188,7 +1196,6 @@ function readForTheFold(
       undefined,
       'every line',
     );
-    const checkpoints = readTailCheckpoints(layout, tail, refusedLine(layout, tail, refused));
     if (refused.length > 0) {
       entries.set(tail, []);
       continue;
@@ -1314,7 +1321,16 @@ function verifyReading(
   relaid: RelaidLine | undefined,
   seen?: (identity: IdentityResolution) => void,
 ): VerifyResult {
-  const tails = listTails(layout);
+  // Every link at a place a reader reads, listed BEFORE anything is read (FORMAT.md section 4,
+  // ADR-348): each is refused by name, and nothing a link stands for is read. A tail with a link in
+  // it is not read at all, so no byte of what the link points at reaches the verdict; its
+  // directory is still there, so its key is not one whose tail is gone.
+  const links = listLinksInRecord(layout);
+  const linked = new Set(links);
+  const present = linked.has('tails') ? [] : listTailsLeavingLinks(layout);
+  const tails = present.filter((tail) => !links.some((at) => at.startsWith(`tails/${tail}/`)));
+  const keyLinked = (fingerprint: string): boolean =>
+    linked.has('keys') || linked.has(`keys/${fingerprint}.pub`);
   let uncheckpointed = 0;
   // A tail directory is named `<fingerprint>-<installationId>`: the owning key's
   // fingerprint, then a local per-installation suffix. Bind the directory to a
@@ -1328,12 +1344,14 @@ function verifyReading(
   // roster and closes that duplication: a fabricated name has no committed
   // fingerprint to match, so it is still rejected. (A pre-suffix tail named by a
   // bare fingerprint matches the whole name, so it is accepted unchanged.)
-  const committedFingerprints = new Set(listPublicKeyFingerprints(layout));
+  const committedFingerprints = new Set(
+    linked.has('keys') ? [] : listPublicKeyFingerprints(layout).filter((name) => !keyLinked(name)),
+  );
   // One reader of the committed keys for the whole verification: every checkpoint, every
   // ownership proof and every enrolment that names a key asks it, and the disk is read
   // once per key (store.ts). It is made HERE, per call, so no verdict reads a key an
   // earlier verdict read.
-  const keys = committedKeys(layout);
+  const keys = notThroughALink(committedKeys(layout), keyLinked);
   const entriesByTail = new Map<string, readonly ChainEntry[]>();
   const issuesByTail = new Map<string, TailIssue[]>();
   const checkpointedByTail = new Map<string, number>();
@@ -1365,6 +1383,24 @@ function verifyReading(
     // (a second line, a checkpoint whose signature fails, a missing ownership proof) while the
     // second reader named them all. Each refused line is left out of what is read, so what
     // follows is asked only what a hole leaves checkable: see `lineRefused` below.
+    //
+    // THE CHECKPOINTS ARE READ BEFORE THE TAIL (ADR-571), the reverse of the order the writer
+    // writes them (events, then the checkpoint that covers them). Read the other way round, a
+    // write landing between the two readings left a checkpoint covering a seq the reading of the
+    // tail did not hold, which this verdict named as a signed fact that is gone. The lines the
+    // checkpoints refuse are put after the tail's, so the issues keep the order they were named
+    // in when the tail was read first.
+    const checkpointIssues: TailIssue[] = [];
+    let checkpointsPartial = false;
+    const checkpoints = readTailCheckpoints(
+      layout,
+      tail,
+      refusedLine(layout, tail, checkpointIssues),
+      relaid,
+      () => {
+        checkpointsPartial = true;
+      },
+    );
     const read = readTail(
       layout,
       tail,
@@ -1375,16 +1411,7 @@ function verifyReading(
     );
     // A refused EVENT line leaves a hole in the entries; a refused checkpoint line does not.
     const holed = issues.length > 0;
-    let checkpointsPartial = false;
-    const checkpoints = readTailCheckpoints(
-      layout,
-      tail,
-      refusedLine(layout, tail, issues),
-      relaid,
-      () => {
-        checkpointsPartial = true;
-      },
-    );
+    issues.push(...checkpointIssues);
     const lineRefused = issues.length > 0;
     const entries = read.entries;
     if (read.partialFinalLine) {
@@ -1503,10 +1530,12 @@ function verifyReading(
   );
   const record = recordOf(relinks.named);
   const allIssues: TailIssue[] = [
+    // First, in both readers: what a link stands for was not read, so what follows from that (a
+    // tail with no committed key, a record with no tail read) is a consequence of it.
+    ...links.map(linkedEntry),
     ...keyFilesWithoutAKey(committedFingerprints, keys),
     ...misnamedKeys(committedFingerprints, keys),
-    ...listLinkedTails(layout).map(linkedTail),
-    ...(counted.length === 0 ? [noTailHeld(layout, tails)] : []),
+    ...(counted.length === 0 ? [noTailHeld(layout, linked, present, tails)] : []),
     // A refused relink before the record's agreement, which it explains: the tail it did not move
     // is what leaves the directory two records, and both readers say the cause first.
     ...relinks.refused.map(
@@ -1533,7 +1562,7 @@ function verifyReading(
     // A file that holds no key is refused above, and is no key whose tail may have gone.
     ...keysWithoutTail(
       new Set([...committedFingerprints].filter((name) => keys.holdsNoKey(name) === undefined)),
-      tails,
+      present,
       waivers,
       backups,
       identity.backups,
@@ -1683,6 +1712,13 @@ function reformatSentence(files: readonly string[]): string {
  */
 export const NO_TAIL_HELD = 'no tail in this record holds an event or a checkpoint';
 
+/** Why no tail is counted when `tails/` is a link: the second reader says the same words. */
+export const NO_TAIL_THROUGH_A_LINKED_DIRECTORY = 'tails/ is a link, which no reader follows';
+
+/** Why no tail is counted when a tail is there and was not read for a link it holds. */
+export const NO_TAIL_READ_FOR_A_LINK =
+  'every tail in it holds a link, which no reader follows, or holds no event and no checkpoint';
+
 /**
  * THE RECORD IN WHICH NO TAIL HOLDS ANYTHING, refused by name (FORMAT.md section 4).
  *
@@ -1699,15 +1735,26 @@ export const NO_TAIL_HELD = 'no tail in this record holds an event or a checkpoi
  * record with ANOTHER tail still standing is not this case: a tail removed whole beside it stays
  * a census note.
  *
- * The reason is said as the code found it, in the words the second reader uses for the same three
- * shapes, so the two verdicts can be compared by their text.
+ * The reason is said as the code found it, in the words the second reader uses for the same
+ * shapes, so the two verdicts can be compared by their text. A link is said as one: `tails/` that
+ * is a link, and tails that are there but not read because each holds one (FORMAT.md section 4),
+ * are not "no tails".
  */
-function noTailHeld(layout: ChainLayout, tails: readonly string[]): TailIssue {
-  const why = !existsSync(tailsDir(layout))
-    ? 'there is no tails/ directory'
-    : tails.length === 0
-      ? 'there are no tails'
-      : 'every tail in it holds no event and no checkpoint';
+function noTailHeld(
+  layout: ChainLayout,
+  linked: ReadonlySet<string>,
+  present: readonly string[],
+  read: readonly string[],
+): TailIssue {
+  const why = linked.has('tails')
+    ? NO_TAIL_THROUGH_A_LINKED_DIRECTORY
+    : !existsSync(tailsDir(layout))
+      ? 'there is no tails/ directory'
+      : present.length === 0
+        ? 'there are no tails'
+        : read.length < present.length
+          ? NO_TAIL_READ_FOR_A_LINK
+          : 'every tail in it holds no event and no checkpoint';
   return {
     layer: 'T1',
     detail: `NO TAIL: ${NO_TAIL_HELD}: ${why}, so the record asserts no fact, and nothing verifies over nothing`,
@@ -1722,16 +1769,47 @@ export const LINKED_TAIL =
   'is a symbolic link, and a tail is a directory of the record: no reader follows a link there, which can point outside it';
 
 /**
- * A TAIL THAT IS A SYMBOLIC LINK, refused by name (FORMAT.md section 4), whatever it points at.
- * The product skipped it in silence while the second reader followed it, so over a record with
- * one tail beside it the two verified different events.
+ * How a link anywhere else a reader reads is named (FORMAT.md section 4, ADR-348): in a tail
+ * directory, under its `witness/`, under `keys/`, or `keys` and `tails` themselves. The second
+ * reader says the same sentence after the same path.
  */
-function linkedTail(name: string): TailIssue {
+export const LINKED_ENTRY =
+  'is a symbolic link, and a reader reads a record from its own files and directories: no reader follows a link there, which can point outside it';
+
+/**
+ * A SYMBOLIC LINK AT A PLACE A READER READS, refused by name (FORMAT.md section 4), whatever it
+ * points at, inside the record or out of it. A tail that is one keeps the words it was refused by
+ * first, `LINKED TAIL: tails/<name>`, which the second reader says too; every other place says
+ * `LINKED ENTRY: <path>`. The product used to skip a linked tail in silence while the second
+ * reader followed it, and both followed a link to a segment, a checkpoint file, a tail proof, an
+ * attestation or a key.
+ */
+function linkedEntry(path: string): TailIssue {
+  const parts = path.split('/');
+  const tail = parts[0] === 'tails' ? parts[1] : undefined;
+  if (tail !== undefined && parts.length === 2) {
+    return { tail, layer: 'T1', detail: `LINKED TAIL: tails/${oneLine(tail)} ${LINKED_TAIL}` };
+  }
   return {
-    tail: name,
+    ...(tail === undefined ? {} : { tail }),
     layer: 'T1',
-    detail: `LINKED TAIL: tails/${oneLine(name)} ${LINKED_TAIL}`,
+    detail: `LINKED ENTRY: ${oneLine(path)} ${LINKED_ENTRY}`,
   };
+}
+
+/**
+ * The committed keys a verdict reads: a key whose file, or whose `keys/`, is a link is answered as
+ * no key, and its file is never opened ({@link listLinksInRecord}).
+ */
+function notThroughALink(
+  keys: CommittedKeys,
+  linked: (fingerprint: string) => boolean,
+): CommittedKeys {
+  const read = (fingerprint: string): CommittedKey | null =>
+    linked(fingerprint) ? null : keys(fingerprint);
+  read.holdsNoKey = (fingerprint: string): string | undefined =>
+    linked(fingerprint) ? undefined : keys.holdsNoKey(fingerprint);
+  return read;
 }
 
 /**
@@ -2499,141 +2577,34 @@ function verifyCheckpointsOnce(
   const between = entries === undefined ? undefined : entriesBetween(entries);
 
   for (const checkpoint of checkpoints) {
-    if (checkpoint.tail !== tail) {
+    // The questions of one line are `ruleOnCheckpoint`'s, the read's too (checkpoint-ruling.ts);
+    // the policy is this loop's: a line that fails advances nothing.
+    const range = between === undefined ? undefined : between(checkpoint.fromSeq, checkpoint.toSeq);
+    const ruling = ruleOnCheckpoint({
+      tail,
+      checkpoint,
+      prev: expectedPrev,
+      from: between === undefined ? undefined : covered + 1,
+      range,
+      keys,
+      signature: signatures === 'every' ? 'checked' : 'bound-by-a-later-one',
+    });
+    if (!ruling.holds) {
       issues.push({
         tail,
         layer: 'T2/T4',
-        detail: `checkpoint names tail ${oneLine(checkpoint.tail)}, stored under ${oneLine(tail)}`,
+        ...(ruling.seq !== undefined ? { seq: ruling.seq } : {}),
+        detail: ruling.detail,
       });
       continue;
     }
-    // Checkpoint chain: each checkpoint links to the previous one's hash, so an
-    // EARLIER checkpoint dropped under a later one breaks here. This said the
-    // LAST one could not be dropped to hide what it covered either; that is false
-    // when its events go with it: the survivors close and nothing remembers the
-    // longer head (`aligned-cut`, `both-readers-read-the-same-bytes.test.ts`). The
-    // last checkpoint dropped ALONE leaves its events above every checkpoint, which
-    // the level reports and `--require=signed` refuses.
-    if (checkpoint.prev !== expectedPrev) {
-      issues.push({
-        tail,
-        layer: 'T2/T4',
-        seq: checkpoint.fromSeq,
-        detail: 'checkpoint chain break: prev does not link to the previous checkpoint',
-      });
-      continue;
-    }
-    if (between !== undefined && checkpoint.fromSeq !== covered + 1) {
-      issues.push({
-        tail,
-        layer: 'T2/T4',
-        seq: checkpoint.fromSeq,
-        detail: `checkpoint coverage gap: expected to start at ${covered + 1}, starts at ${checkpoint.fromSeq}`,
-      });
-      // keep going: report each gap, but do not advance coverage over the hole
-      continue;
-    }
-    const committed = keys(checkpoint.signerFp);
-    if (committed === null) {
-      issues.push({
-        tail,
-        layer: 'T2/T4',
-        seq: checkpoint.fromSeq,
-        detail: `no committed public key for signer ${oneLine(checkpoint.signerFp)}`,
-      });
-      continue;
-    }
-    // Fingerprint binding: the file is NAMED by a fingerprint, but a forger can
-    // overwrite that file with their own key. Re-derive the loaded key's real
-    // fingerprint and require it to equal the one the checkpoint names. Without
-    // this, swapping the committed .pub for the forger's key would let a forged
-    // signature verify: the exact gap the signed-message binding alone leaves
-    // open, since verification uses whatever key the file now holds.
-    if (committed.fingerprint() !== checkpoint.signerFp) {
-      issues.push({
-        tail,
-        layer: 'T2/T4',
-        seq: checkpoint.fromSeq,
-        detail: `public key for ${oneLine(checkpoint.signerFp)} does not match its fingerprint (key was swapped)`,
-      });
-      continue;
-    }
-    if (between === undefined) {
-      if (signatures === 'the-chain') {
-        // No range can be known: the chain is not whole, and `every` answers it.
-        issues.push({ tail, layer: 'T2/T4', detail: 'no range to check the chain over' });
-        continue;
-      }
-      if (!checkpointSignatureHolds(checkpoint, committed.key)) {
-        issues.push({
-          tail,
-          layer: 'T2/T4',
-          seq: checkpoint.fromSeq,
-          detail: 'checkpoint failed: bad-signature',
-        });
-        continue;
-      }
-      expectedPrev = checkpointHash(checkpoint);
-      continue;
-    }
-    const range = between(checkpoint.fromSeq, checkpoint.toSeq);
-    const verdict =
-      signatures === 'every'
-        ? verifyCheckpoint({
-            checkpoint,
-            // The signed root is folded over the events AS WRITTEN. Folding it over
-            // the lifted reading would turn the first version bump into a signature
-            // failure on every chain written before it.
-            events: range.map((e) => e.written),
-            publicKey: committed.key,
-          })
-        : range.length === checkpoint.toSeq - checkpoint.fromSeq + 1 &&
-            contentRoot(range.map((e) => e.written)) === checkpoint.contentRoot
-          ? ({ ok: true } as const)
-          : ({ ok: false, reason: 'root' } as const);
-    if (!verdict.ok) {
-      issues.push({
-        tail,
-        layer: 'T2/T4',
-        seq: checkpoint.fromSeq,
-        detail: `checkpoint failed: ${verdict.reason}`,
-      });
-      continue;
-    }
-    // Signer binding: the checkpoint proves this key signed this range, but that
-    // alone does not bind each EVENT to that signer. Require every event in the
-    // range to name the signer that actually attested it (`signerFp` = the
-    // checkpoint's). Without this a party holding their own committed key could
-    // rewrite the events' `signerFp` to a fabricated identity, re-sign the range
-    // with their real key, and still verify green here: the signature
-    // integrity-protects the bytes; this makes those bytes name the signer.
-    // Whether that signer is authorized to speak for the event's `who` is the
-    // enrollment fold's concern (resolveIdentity), applied to every event
-    // checkpointed or not; here we only pin that `signerFp` is the real signer.
-    // The `which` clause stays: the gate refuses a move where the authorizing
-    // human equals the executing agent (self-authorization), and that invariant
-    // must survive to the signed record; otherwise an editor could smuggle
-    // `who === which` below the crypto. So when `which` is present it must differ
-    // from `who`, compared in the SAME canonical form the gate uses (NFC,
-    // trimmed): a raw byte compare would let `which = who + " "` slip through.
-    const bindingBreak = range.find(
-      (e) =>
-        e.event.signerFp !== checkpoint.signerFp ||
-        (e.event.which !== undefined &&
-          canonicalIdentityForm(e.event.which) === canonicalIdentityForm(e.event.who)),
-    );
-    if (bindingBreak !== undefined) {
-      issues.push({
-        tail,
-        layer: 'T2/T4',
-        seq: bindingBreak.link.seq,
-        detail:
-          'event identity does not bind to its signer: signerFp disagrees with the checkpoint',
-      });
+    if (range === undefined) {
+      // No range can be known: the line's own bytes held, and it covers nothing.
+      expectedPrev = ruling.hash;
       continue;
     }
     covered = checkpoint.toSeq;
-    expectedPrev = checkpointHash(checkpoint);
+    expectedPrev = ruling.hash;
     lastAccepted = checkpoint;
     proven.push({ hash: expectedPrev, toSeq: checkpoint.toSeq });
     if (checkpoint.record !== undefined) {
@@ -2647,13 +2618,6 @@ function verifyCheckpointsOnce(
     ? { covered, proven, named }
     : { covered, proven, named, lastAccepted };
 }
-
-/**
- * The name both readers refuse a write into another key's tail by (FORMAT.md section 6). It is
- * not `signer-mismatch`, which is the tail proof's (section 6.1): that one is about who signed
- * the id, this one about who wrote inside it.
- */
-export const TAIL_SIGNER_MISMATCH = 'tail-signer-mismatch';
 
 /**
  * A TAIL BELONGS TO ONE KEY (FORMAT.md section 6): every checkpoint of the tail, and every
@@ -2677,13 +2641,13 @@ function verifyTailSigner(
   issues: TailIssue[],
 ): void {
   const owner = tailFingerprint(tail);
-  const checkpoint = checkpoints.find((cp) => cp.signerFp !== owner);
+  const checkpoint = checkpoints.find((cp) => !checkpointBelongsToItsTail(tail, cp));
   if (checkpoint !== undefined) {
     issues.push({
       tail,
       layer: 'T2/T4',
       seq: checkpoint.fromSeq,
-      detail: `checkpoint cp[${checkpoint.fromSeq}..${checkpoint.toSeq}] is signed by ${oneLine(checkpoint.signerFp.slice(0, 12))}..., and a tail is written only by the key its id begins with, ${oneLine(owner.slice(0, 12))}... (${TAIL_SIGNER_MISMATCH})`,
+      detail: checkpointOfAnotherKeySentence(tail, checkpoint),
     });
   }
   const event = entries.find((entry) => entry.event.signerFp !== owner);
@@ -2695,19 +2659,6 @@ function verifyTailSigner(
       detail: `seq ${event.link.seq} names ${oneLine(event.event.signerFp.slice(0, 12))}... as its signer, and a tail is written only by the key its id begins with, ${oneLine(owner.slice(0, 12))}... (${TAIL_SIGNER_MISMATCH})`,
     });
   }
-}
-
-/**
- * The canonical form of an identity for the who-vs-which comparison: NFC then
- * trim, the SAME normalization the core's gate applies before it refuses a
- * self-authorizing move (`canonicalIdentity`). The verifier lives in the
- * zero-dependency chain and cannot import the core, so the rule is mirrored
- * here; a property test pins the two forms in agreement. It is only ever used to
- * decide whether `which` and `who` are the same identity, never to rewrite the
- * signed bytes: the event records the identity exactly as it was written.
- */
-export function canonicalIdentityForm(value: string): string {
-  return value.normalize('NFC').trim();
 }
 
 /**

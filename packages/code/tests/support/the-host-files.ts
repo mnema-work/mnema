@@ -483,10 +483,16 @@ function theGateKit(): { readonly imports: string[]; readonly code: string[] } {
   return {
     imports: [...merged.entries()]
       .sort(([one], [other]) => (one < other ? -1 : 1))
-      .map(
-        ([from, names]) =>
-          `import { ${[...names].sort((one, other) => (one.toLowerCase() < other.toLowerCase() ? -1 : 1)).join(', ')} } from '${from}';`,
-      ),
+      .map(([from, names]) => {
+        const sorted = [...names].sort((one, other) =>
+          one.toLowerCase() < other.toLowerCase() ? -1 : 1,
+        );
+        const line = `import { ${sorted.join(', ')} } from '${from}';`;
+        // The formatter's own wrapping, so a generated file is what it leaves.
+        return line.length <= 100
+          ? line
+          : `import {\n${sorted.map((name) => `  ${name},`).join('\n')}\n} from '${from}';`;
+      }),
     code: bodies.join('\n\n').split('\n'),
   };
 }
@@ -1719,7 +1725,7 @@ export function installTable(): string {
 
 /** The line that opens the generated table on the install page. */
 const INSTALL_BEGIN =
-  '<!-- The host table below is generated from packages/code/src/host-names.ts: edit the table there. -->';
+  '<!-- The host table below is generated: the rows, their order, the rungs and the install lines come from packages/code/src/host-names.ts, the names shown from SHOWN in packages/code/tests/support/the-host-files.ts. -->';
 
 /** The line that closes it. */
 const INSTALL_END = '<!-- End of the generated host table. -->';
@@ -1734,7 +1740,7 @@ function withTheInstallTable(page: string, path: string): string {
 
 /** The line that opens the generated summary on a page. */
 const SUMMARY_BEGIN =
-  '<!-- The host summary below is generated from packages/code/src/host-names.ts: edit the table there. -->';
+  '<!-- The host summary below is generated: the rows, their order, the rungs, what each gets and the install links come from packages/code/src/host-names.ts, the names, the vendor lines, the logo files and their heights from SHOWN in packages/code/tests/support/the-host-files.ts. -->';
 
 /** The line that closes it. */
 const SUMMARY_END = '<!-- End of the generated host summary. -->';

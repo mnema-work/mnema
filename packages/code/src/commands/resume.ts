@@ -38,12 +38,13 @@
  * having written only in the team's tree.
  */
 
-import { type Resume, resume } from '@mnema/context';
+import { type NewerLines, type Resume, resume } from '@mnema/context';
 import { type Clock, type DiscoveryEnv, resolveTrees, systemClock } from '@mnema/core';
 import { type AnchorForms, anchorForms, resolveTypedAnchor } from '../anchors.js';
 import {
   caches,
   linkBreaksOf,
+  newerLinesIn,
   type ScopedLinkBreak,
   THE_READING_THAT_OPENED_THESE,
   withScopedCaches,
@@ -73,6 +74,8 @@ export interface ResumeDone {
    * says so.
    */
   readonly linkBreaks: readonly ScopedLinkBreak[];
+  /** What a newer mnema wrote that this one reads past, when it wrote any (ADR-140). */
+  readonly newerLines?: NewerLines;
 }
 
 /** There was no project here, or the actor named no identity in it. */
@@ -112,6 +115,7 @@ export function runResume(
       ok: true,
       anchors,
       linkBreaks: linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE),
+      ...newerLinesIn(sources),
       // Empty: a read opens no run, so nothing here is this command's
       // own and the "prefer my own run" rule has nothing to prefer. The answer stays
       // what it was, the actor's latest run, which is the right one for a person

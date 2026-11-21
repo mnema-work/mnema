@@ -86,6 +86,8 @@ async function mnema(...argv: string[]): Promise<{ out: string[]; failed: boolea
   const out: string[] = [];
   let failed = false;
   const io: CliIo = {
+    // Switching `agent-accepts` back on is a person's, at a terminal (`agent-accepts.ts`).
+    aPersonIsHere: true,
     out: (line) => out.push(line),
     err: (line) => out.push(line),
     fail: () => {

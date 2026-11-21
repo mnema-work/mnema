@@ -19,7 +19,6 @@
 
 import {
   appendFileSync,
-  existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -125,6 +124,13 @@ function forceCheckpoint(w: ChainWriter): Checkpoint {
 }
 
 const layout = (): ChainLayout => ({ root });
+
+/** The checkpoint the founding write signed at once (ADR-569): the tail's only one so far. */
+function theFoundingsCheckpoint(): Checkpoint {
+  const signed = readTailCheckpoints(layout(), tailIdOf());
+  expect(signed.map((cp) => [cp.fromSeq, cp.toSeq])).toEqual([[0, 0]]);
+  return signed[0] as Checkpoint;
+}
 
 function tailIdOf(): string {
   return readdirSync(join(root, 'tails'))[0] as string;
@@ -273,14 +279,13 @@ describe('reading the last checkpoint of a tail', () => {
   });
 
   it('finds the only checkpoint of a tail that has one', () => {
-    const w = openFounded({ maxUnsignedEvents: NEVER });
-    const only = forceCheckpoint(w);
+    openFounded({ maxUnsignedEvents: NEVER });
+    const only = theFoundingsCheckpoint();
     expect(agreesWithTheWholeFile()).toEqual(only);
   });
 
   it('finds the last of many', () => {
-    const w = openFounded({ maxUnsignedEvents: NEVER });
-    forceCheckpoint(w);
+    const w = openFounded({ maxUnsignedEvents: NEVER }); // the founding signs the first
     appendTasks(w, 2);
     forceCheckpoint(w);
     appendTasks(w, 2, 2);
@@ -289,8 +294,8 @@ describe('reading the last checkpoint of a tail', () => {
   });
 
   it('drops a torn last line that fails to parse and takes the one before it', () => {
-    const w = openFounded({ maxUnsignedEvents: NEVER });
-    const intact = forceCheckpoint(w);
+    openFounded({ maxUnsignedEvents: NEVER });
+    const intact = theFoundingsCheckpoint();
     appendFileSync(checkpointsPath(layout(), tailIdOf()), '{"tail":"m-', 'utf-8');
 
     expect(agreesWithTheWholeFile()).toEqual(intact);
@@ -308,7 +313,7 @@ describe('reading the last checkpoint of a tail', () => {
 
   it('takes the last line STORED, not the highest seq it holds', () => {
     const w = openFounded({ maxUnsignedEvents: NEVER });
-    const first = forceCheckpoint(w);
+    const first = theFoundingsCheckpoint();
     appendTasks(w, 2);
     const second = forceCheckpoint(w);
     const file = checkpointsPath(layout(), tailIdOf());
@@ -325,8 +330,7 @@ describe('reading the last checkpoint of a tail', () => {
   });
 
   it('is indifferent to corruption further up, which the whole-file read is not', () => {
-    const w = openFounded({ maxUnsignedEvents: NEVER });
-    forceCheckpoint(w);
+    const w = openFounded({ maxUnsignedEvents: NEVER }); // the founding signs the first
     appendTasks(w, 2);
     const last = forceCheckpoint(w);
     const file = checkpointsPath(layout(), tailIdOf());
@@ -488,12 +492,12 @@ describe('the writer resumes from the end of the tail', () => {
 
   it('does not sign a range a line is missing from: the events it finds there are not its own', () => {
     const w = openFounded({ maxUnsignedEvents: NEVER });
-    appendTasks(w, 3); // seq 0..3, none of them covered
+    appendTasks(w, 3); // seq 0..3, only the founding covered, by its own checkpoint (ADR-569)
     const tail = tailIdOf();
 
     // A lost line is a gap: the last entry still says seq 3, so the range is
-    // 0..3, but only three events read back. Signing a content root over three
-    // events while claiming four would be a silent break of the proof. THIS USED TO BE
+    // 1..3, but only two events read back. Signing a content root over two
+    // events while claiming three would be a silent break of the proof. THIS USED TO BE
     // REFUSED AT THE SIGNING, by the count of the buffer against the range; the recovery now
     // hashes every event it finds above the coverage again, seq by seq, before it may sign one,
     // so a gap is not this installation's end and the write goes to a new tail
@@ -507,7 +511,9 @@ describe('the writer resumes from the end of the tail', () => {
     const resumed = openChain({ maxUnsignedEvents: NEVER });
     expect(resumed.checkpoint()).toBeNull();
     expect(resumed.tail).not.toBe(tail);
-    expect(existsSync(checkpointsPath(layout(), tail))).toBe(false);
+    expect(readTailCheckpoints(layout(), tail).map((cp) => [cp.fromSeq, cp.toSeq])).toEqual([
+      [0, 0],
+    ]);
   });
 });
 
@@ -630,17 +636,17 @@ describe('the bytes a checkpoint signs did not change', () => {
 
   it('signs byte-identical checkpoints to the ones a re-read of the tail produces', () => {
     const w = openFounded({ maxUnsignedEvents: NEVER });
-    appendTasks(w, 3);
 
     // Ed25519 is deterministic, so equal bytes here means the signed message,
-    // and therefore the content root over the events, is the same set.
-    const firstReRead = signFromAReReadOfTheTail(0, 3, null);
-    expect(serializeCheckpoint(forceCheckpoint(w))).toBe(serializeCheckpoint(firstReRead));
+    // and therefore the content root over the events, is the same set. The first
+    // checkpoint is the one the founding write signed at once (ADR-569).
+    const firstReRead = signFromAReReadOfTheTail(0, 0, null);
+    expect(serializeCheckpoint(theFoundingsCheckpoint())).toBe(serializeCheckpoint(firstReRead));
 
     // And again for a CHAINED checkpoint, where `prev` is part of the signed
     // message: a divergence in the link would show up here and nowhere else.
-    appendTasks(w, 2, 3);
-    const secondReRead = signFromAReReadOfTheTail(4, 5, checkpointHash(firstReRead));
+    appendTasks(w, 3);
+    const secondReRead = signFromAReReadOfTheTail(1, 3, checkpointHash(firstReRead));
     expect(serializeCheckpoint(forceCheckpoint(w))).toBe(serializeCheckpoint(secondReRead));
   });
 
@@ -655,7 +661,8 @@ describe('the bytes a checkpoint signs did not change', () => {
     const w = openFounded({ maxUnsignedEvents: NEVER });
     w.append(memoryCaptured(env(w, 'm-1'), { content: decomposed }));
 
-    const reRead = signFromAReReadOfTheTail(0, 1, null);
+    // Above the founding, which signed itself (ADR-569): the checkpoint chains to that one.
+    const reRead = signFromAReReadOfTheTail(1, 1, checkpointHash(theFoundingsCheckpoint()));
     const signed = forceCheckpoint(w);
     expect(signed.contentRoot).toBe(reRead.contentRoot);
     expect(serializeCheckpoint(signed)).toBe(serializeCheckpoint(reRead));
@@ -742,12 +749,12 @@ describe('the writer refuses what no reader could accept', () => {
     const w = found(openChain({ maxUnsignedEvents: NEVER }));
     expect(() => w.append(memoryCaptured(env(w, ''), { content: 'c' }))).toThrow(EventParseError);
     w.append(memoryCaptured(env(w, 'm-1'), { content: 'one' }));
-    // The founding plus this one event is the whole range the checkpoint claims.
-    // Had the refusal been buffered, the buffer would hold three where the range
-    // covers two and signing would throw on the mismatch, which is the loud
+    // This one event is the whole range the checkpoint claims (the founding signed
+    // itself, ADR-569). Had the refusal been buffered, the buffer would hold two where
+    // the range covers one and signing would throw on the mismatch, which is the loud
     // version of the silent break this asserts against.
     const cp = forceCheckpoint(w);
-    expect([cp.fromSeq, cp.toSeq]).toEqual([0, 1]);
+    expect([cp.fromSeq, cp.toSeq]).toEqual([1, 1]);
     expect(verify(root).ok).toBe(true);
   });
 });
@@ -803,12 +810,14 @@ describe('a tail is born at its first append, not when its writer opens', () => 
         `locks/${w.tail}.head`,
         `locks/${w.tail}.head.sig`,
         `tails/${w.tail}/000001.jsonl`,
+        // The founding write signs what it founded at once (ADR-569).
+        `tails/${w.tail}/checkpoints.jsonl`,
         `tails/${w.tail}/tailproof.json`,
       ].sort(),
     );
-    // Born whole: the record an anonymous verifier reads is complete from the first line.
-    w.checkpoint();
-    expect(verify(root).ok).toBe(true);
+    // Born whole: the record an anonymous verifier reads is complete, and signed, from the first line.
+    expect(w.checkpoint()).toBeNull();
+    expect(verify(root).fullySigned).toBe(true);
   });
 
   it('is born by the batch door too, once for the whole batch', () => {

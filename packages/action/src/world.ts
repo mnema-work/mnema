@@ -10,12 +10,13 @@
  */
 
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { discoveryEnv, runRules } from '@mnema/code/library';
 import type { World } from './judge.js';
+import { provenHashes } from './record.js';
 
 /** Largest output read from one child process. */
 const MOST_OUTPUT = 256 * 1024 * 1024;
@@ -65,6 +66,9 @@ export function withoutTheInputs(
   );
 }
 
+const gitBytes = (cwd: string, args: readonly string[]): Buffer =>
+  execFileSync('git', [...args], { cwd, maxBuffer: MOST_OUTPUT });
+
 const git = (cwd: string, args: readonly string[]): string =>
   execFileSync('git', [...args], { cwd, encoding: 'utf-8', maxBuffer: MOST_OUTPUT });
 
@@ -102,6 +106,33 @@ export function worldAt(
           .split('\0')
           .filter((path) => path.endsWith('.jsonl') && !path.endsWith('/checkpoints.jsonl'));
         return files.map((path) => git(cwd, ['show', `${ref}:${path}`]));
+      },
+      provenAt(ref) {
+        // The record's tails and keys as the commit holds them, written out whole (the
+        // checkpoints included) so the product's own reader folds them.
+        const dir = mkdtempSync(join(tmpdir(), 'mnema-proven-'));
+        try {
+          const files = git(cwd, [
+            'ls-tree',
+            '-r',
+            '--name-only',
+            '-z',
+            ref,
+            '--',
+            '.mnema/tails',
+            '.mnema/keys',
+          ])
+            .split('\0')
+            .filter((path) => path !== '');
+          for (const path of files) {
+            const to = join(dir, path.slice('.mnema/'.length));
+            mkdirSync(dirname(to), { recursive: true });
+            writeFileSync(to, gitBytes(cwd, ['show', `${ref}:${path}`]));
+          }
+          return provenHashes(dir);
+        } finally {
+          rmSync(dir, { recursive: true, force: true });
+        }
       },
     },
     mnema: {

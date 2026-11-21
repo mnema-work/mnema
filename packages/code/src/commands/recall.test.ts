@@ -17,7 +17,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { type DiscoveryEnv, SEARCH_DEFAULT_LIMIT } from '@mnema/core';
 import { Command } from 'commander';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GIT_WITHOUT_MAINTENANCE } from '../../tests/support/git-without-maintenance.js';
 import { renderPlain } from '../presentation/plain.js';
 import { recallDocument } from '../presentation/recall.js';
@@ -28,6 +28,13 @@ import { runMemory } from './memory.js';
 import { runObserve } from './observe.js';
 import { runRecall } from './recall.js';
 import { runSwitch } from './switch.js';
+
+// The room a hook has is a constant of the product, and the notes a test can write do not outgrow it:
+// the cut is the one thing made to hand nothing, and everything else stays the real module.
+vi.mock('../presentation/recall.js', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../presentation/recall.js')>();
+  return { ...real, recallWithin: vi.fn(real.recallWithin) };
+});
 
 /** Founds the project; a refusal here is a broken setup, not a case. */
 function found(ctx: InitContext): InitResult {
@@ -168,6 +175,35 @@ describe('mnema recall: the verb', () => {
       '--host',
       '--session',
       '--after-a-compaction',
+    ]);
+  });
+});
+
+describe('mnema recall --hook: when the notes do not fit the room', () => {
+  it('hands nothing on the output and says why on the error stream', async () => {
+    found(here());
+    minted(runMemory(here(), { content: 'a note that exists' }));
+    const { recallWithin } = await import('../presentation/recall.js');
+    vi.mocked(recallWithin).mockReturnValueOnce([]);
+    const out: string[] = [];
+    const err: string[] = [];
+    const program = new Command();
+    registerRecall(program, {
+      io: { out: (l) => out.push(l), err: (l) => err.push(l), fail: () => undefined },
+      render: renderPlain,
+      renderingAt: () => renderPlain,
+      pinnedRun: () => undefined,
+    });
+    const previous = process.cwd();
+    process.chdir(repo);
+    try {
+      await program.parseAsync(['node', 'mnema', 'recall', '--hook']);
+    } finally {
+      process.chdir(previous);
+    }
+    expect(out).toEqual([]);
+    expect(err).toEqual([
+      'recall: the notes are longer than the room a hook has, so none were handed over',
     ]);
   });
 });

@@ -134,6 +134,19 @@ describe('a group whose members answer for themselves is gated by the member', (
   });
 });
 
+describe('a session does not offer a verb that draws a screen of its own', () => {
+  const WITH_THE_TOUR: readonly Declared[] = [...VERBS, declares('tour', 'reads')];
+
+  it('leaves the tour out of what it offers and of the count it states, and refuses it', () => {
+    expect(verbsOffered(WITH_THE_TOUR, SELF)).toEqual(['look', 'read']);
+    expect(pathsOffered(WITH_THE_TOUR, SELF)).toEqual(['look', 'read']);
+    expect(dispositionOf('tour', WITH_THE_TOUR, SELF)).toMatchObject({
+      does: 'refuse',
+      sentence: 'This session does not run `tour`',
+    });
+  });
+});
+
 describe('a session offers the reads and nothing else', () => {
   it('is every verb that declared it reads, minus the session itself', () => {
     expect(verbsOffered(VERBS, SELF)).toEqual(['look', 'read']);

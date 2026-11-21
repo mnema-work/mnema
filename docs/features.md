@@ -33,7 +33,8 @@ Each line says what it does and what it leaves unproven; the page it points to h
   reader's own words. The reach is the tree's: a line of the project's public or private tree refuses
   every write in that project, and a line of the machine's global tree, which every project reads,
   refuses every write in every project of the machine. The ways out are said with it: update mnema,
-  or restore the line: from the repository's history for the public tree, and for the private and
+  or put the line back: `mnema tail repair <tail>` takes it from the repository's history for the public tree
+  ([the verb](reference/cli/tail-repair.md)), and for the private and
   the global tree, which are not versioned, from a copy, or by repairing or removing that line
   ([held by a test](../packages/code/tests/a-rule-that-refuses-a-write.test.ts), and in Claude
   Code, Gemini CLI, Qwen Code and Codex by the host contract). Nothing is recorded, because a refusal fact
@@ -115,7 +116,7 @@ Each line says what it does and what it leaves unproven; the page it points to h
   the record and fails the check when `verify --require=signed --since <base>` does (the Python second reader
   takes `--require signed` as well, and has no `--require witnessed`);
   [`@mnema/vscode`](../packages/vscode/) shows the rules over the open file, rules on waiting
-  decisions (in a side bar container of its own, with the number awaiting on its icon; a click opens one whole, as the text the command line's own read of it gave, and accept or reject on its editor title still ask for a note; a pick of what awaits, a document of `mnema why` for a file, and a mark on the `.mnema` folder in the Explorer), lists the stacks a project adopted, and shows in its status bar the level `mnema verify` reports and how many decisions await (the tooltip has one line per tree, in the command's own words, and a click opens the container) or says that the `mnema` command is missing, which is not the same as nothing pending. **The SDK and the action are not published**: they run from a checkout of this repository. The extension is published to the Visual Studio Marketplace and Open VSX as `mnema.mnema`, by the release, and needs the `mnema` command of `@mnema/code` where the editor can start it.
+  decisions (in a side bar container of its own, with the number awaiting on its icon; a click opens one whole, as the text the command line's own read of it gave, and accept or reject on its editor title still ask for a note, and with `agent-accepts` switched off the accept is refused, since the extension runs the command with no terminal: a person accepts then with `mnema decision review`; a pick of what awaits, a document of `mnema why` for a file, and a mark on the `.mnema` folder in the Explorer), lists the stacks a project adopted, and shows in its status bar the level `mnema verify` reports and how many decisions await (the tooltip has one line per tree, in the command's own words, and a click opens the container) or says that the `mnema` command is missing, which is not the same as nothing pending. **The SDK and the action are not published**: they run from a checkout of this repository. The extension is published to the Visual Studio Marketplace and Open VSX as `mnema.mnema`, by the release, and needs the `mnema` command of `@mnema/code` where the editor can start it.
   The SDK calls the same functions as the command line, and a test holds the doors to the same
   events and refusals.
 - **Skills and agents a project adopts.** `mnema stack add` installs a stack (skills and agents
@@ -126,6 +127,11 @@ Each line says what it does and what it leaves unproven; the page it points to h
 - **A fault in mnema is not a refusal.** An internal error says it is one, and `mnema report` shows
   the report it would make, whole, with no record content, path or name in it. It sends nothing: at
   a terminal it prints a link to GitHub's issue form, and you decide.
+- **A copy of the record, kept elsewhere.** `mnema backup setup <folder>` names where a project's copy goes (a folder, or a git
+  remote), `run` copies the tails and the public keys, `status` says how far the copy is from the trees, `verify` reads it as a
+  record and sets it against them, and `restore` puts back what a tree lost, never over a file and, for a copy of another record,
+  only after a question at a terminal, with `--undo` to take it back. It is a copy, in clear, with no private key in it, and it
+  is not a second record anyone reads from. [What a backup keeps, and what it loses](what-a-backup-keeps-and-what-it-loses.md).
 - **Your machine, checked.** `mnema doctor` says whether a `mnema` is on the `PATH`, whether the first `node` there takes it (and the Node
   Cursor's command-line agent carries, where it is on this machine), whether the
   plugin is installed, whether VS Code's settings tell its agent where the plugin is, and whether the

@@ -95,12 +95,13 @@ import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PROJECT_DIR } from '@mnema/core';
+import { recordNamedIn } from '@mnema/chain';
+import { assignDestination, backupConfigPath, PROJECT_DIR, resolveTrees } from '@mnema/core';
 import { Command } from 'commander';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { renderPlain } from '../src/presentation/plain.js';
 import { buildProgram, type CliIo, run } from '../src/program.js';
-import { dispositionOf, pathsOffered } from '../src/repl/gate.js';
+import { DRAW_THEIR_OWN_SCREEN, dispositionOf, pathsOffered } from '../src/repl/gate.js';
 import { optionsTakenFromTheGroup } from '../src/wiring/from-the-group.js';
 import { registerVerbs } from '../src/wiring/index.js';
 import type { PinnedRun } from '../src/wiring/run-pin.js';
@@ -294,6 +295,9 @@ const INVOCATION: Readonly<Record<string, Invocation>> = {
   inherit: CANNOT_BE_EXERCISED,
   mcp: CANNOT_BE_EXERCISED,
   // The reads.
+  // A group whose acts write a folder and never the record. `setup` asks a person at a terminal, which this harness
+  // has not, so the fixture assigns the folder and the row runs the copy.
+  backup: { argv: () => ['backup', 'run'] },
   status: { argv: (f) => ['status', '--actor', f.anchor] },
   resume: { argv: (f) => ['resume', '--actor', f.anchor] },
   search: { argv: () => ['search', 'task'] },
@@ -324,6 +328,10 @@ const INVOCATION: Readonly<Record<string, Invocation>> = {
   brief: { argv: () => ['brief'] },
   recall: { argv: () => ['recall'] },
   doctor: { argv: () => ['doctor'] },
+  // Without a terminal it prints its pages and writes nothing, to the record or to the machine.
+  tour: { argv: () => ['tour'] },
+  // It applies what is mnema's own to a project's files and the machine's state file, never an event.
+  upgrade: { argv: () => ['upgrade'] },
   // It shows the report of the last internal error from a file of the machine's, outside the chain.
   report: { argv: () => ['report'] },
   // A HOST FEEDS IT, like `before-a-write`, and in process there is no standard input to hand it:
@@ -487,6 +495,7 @@ afterEach(() => {
   process.env.HOME = before.home;
   process.env.XDG_DATA_HOME = before.xdg;
   rmSync(sandbox, { recursive: true, force: true });
+  rmSync(`${sandbox}-backup`, { recursive: true, force: true });
 });
 
 /** Runs `mnema <argv>` against the fixture, and says whether it exited non-zero. */
@@ -554,6 +563,18 @@ async function fixture(name: string): Promise<Fixture> {
   // The edge `unlink` takes back.
   const linked = await mnema(['link', rule[1], id[1], '--rel', 'relates-to']);
   if (linked.failed) throw new Error(`fixture: link refused: ${linked.out}`);
+  // A folder for the backup, assigned the way `setup` does it (which asks a person at a terminal, as this
+  // harness is not): the file is the machine's own, and `backup run` is what the row exercises. The folder is
+  // beside the sandbox and not in it, because what the measure counts is the events under the sandbox.
+  const trees = resolveTrees(project, { home: process.env.HOME as string });
+  const named = recordNamedIn([trees.projectPublic as string]);
+  if (named.state !== 'named') throw new Error('fixture: the record has no name');
+  assignDestination(
+    backupConfigPath(trees),
+    named.name,
+    join(`${sandbox}-backup`, name),
+    new Date(),
+  );
   return {
     note: note[1],
     rule: rule[1],
@@ -735,9 +756,12 @@ describe('every verb says if it writes', () => {
       'commits',
       'aging',
       'trailer',
+      'backup',
       'doctor',
+      'upgrade',
       'report',
       'completion',
+      'tour',
       'tally',
       'handback',
       'settled',
@@ -816,6 +840,11 @@ describe('every verb says if it writes', () => {
     for (const verb of DECLARED) {
       const name = verb.act.name();
       if (name === 'repl') continue;
+      // A verb that draws a screen of its own is a read the session leaves to the shell, by the gate's own list.
+      if (DRAW_THEIR_OWN_SCREEN.has(name)) {
+        expect(dispositionOf(name, DECLARED, 'repl').does, name).toBe('refuse');
+        continue;
+      }
       const acts = verb.members ?? [verb];
       for (const act of acts) {
         const line = verb.members === undefined ? name : `${name} ${act.act.name()}`;

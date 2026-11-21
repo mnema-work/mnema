@@ -139,14 +139,16 @@ describe('mnema verify over a record in which no tail holds anything', () => {
         return said;
       },
     });
-  });
+    // The case starts the built binary and git: about 2 s on a runner at rest, so it carries its own ceiling.
+  }, 20_000);
 
   it('exits 0 on a project init has just founded', () => {
     did('init');
     const said = mnema('verify');
     expect(said.status, said.stderr).toBe(0);
     expect(said.stderr).not.toContain(NO_TAIL);
-  });
+    // The case starts the built binary and git: about 2 s on a runner at rest, so it carries its own ceiling.
+  }, 20_000);
 
   it('exits 0 on a clone of it read on another machine', () => {
     aRecord();
@@ -157,7 +159,8 @@ describe('mnema verify over a record in which no tail holds anything', () => {
     cpSync(join(repo, '.mnema'), join(clone, '.mnema'), { recursive: true });
     const said = mnemaIn(clone, elsewhere, 'verify');
     expect(said.status, said.stderr).toBe(0);
-  });
+    // The case starts the built binary and git: about 2 s on a runner at rest, so it carries its own ceiling.
+  }, 20_000);
 
   it('exits 0 with a machine enrolled that has not written yet, beside the tail that has', () => {
     const anchor = aRecord();
@@ -172,7 +175,8 @@ describe('mnema verify over a record in which no tail holds anything', () => {
     expect(said.status, said.stderr).toBe(0);
     expect(said.stdout).toContain('census [key-without-tail] public');
     expect(said.stderr).not.toContain(NO_TAIL);
-  });
+    // The case starts the built binary and git: about 2 s on a runner at rest, so it carries its own ceiling.
+  }, 20_000);
 
   // As root a read-only home is writable, so init does not fail half way and there is nothing to prove.
   it.skipIf(process.getuid?.() === 0)(
@@ -198,6 +202,8 @@ describe('mnema verify over a record in which no tail holds anything', () => {
       const founded = mnema('verify');
       expect(founded.status, founded.stderr).toBe(0);
     },
+    // The case starts the built binary five times: a few seconds at rest, hence its own ceiling.
+    20_000,
   );
 });
 
@@ -244,5 +250,7 @@ describe('the two readers exit alike over a record with no tail that holds anyth
         },
       });
     },
+    // The cases start the built binary and git: about 2 s on a runner at rest, so they carry their own ceiling.
+    20_000,
   );
 });

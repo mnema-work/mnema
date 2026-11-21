@@ -486,6 +486,82 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'the id of a decision the write found in the record, or it refused',
   },
+  'backup.ts «The backup of record {}... is kept in {}» #1': {
+    verdict: 'collapsed',
+    why: 'the folder is the caller’s spelling of a path, which can hold a control character',
+  },
+  'backup.ts «it was {}; what is there is left as it is» #1': {
+    verdict: 'collapsed',
+    why: 'the folder a project had, read back out of the machine’s backup file',
+  },
+  'backup.ts «Backed up record {}... to {}» #1': {
+    verdict: 'collapsed',
+    why: 'the folder is read back out of the machine’s backup file, which a person can edit',
+  },
+  'backup.ts «The backup of the global tree is kept in {}» #1': {
+    verdict: 'collapsed',
+    why: 'the folder is the caller’s spelling of a path, which can hold a control character',
+  },
+  'backup.ts «it was {}; what is there is left as it is» #2': {
+    verdict: 'collapsed',
+    why: 'the folder the global tree had, read back out of the machine’s backup file',
+  },
+  'backup.ts «Backed up the global tree to {}» #1': {
+    verdict: 'collapsed',
+    why: 'the folder is read back out of the machine’s backup file, which a person can edit',
+  },
+  'backup.ts «global tree: {} file(s) held, {} written or grown» #1': {
+    verdict: 'minted',
+    why: 'the counts of files the run made, and nothing a person typed',
+  },
+  'backup.ts «{} tree: {} file(s) held, {} written or grown» #1': {
+    verdict: 'minted',
+    why: 'the name of a tree the product has two of, and counts the run made',
+  },
+  'backup.ts «{} record {}... from {}» #1': {
+    verdict: 'collapsed',
+    why: 'the folder is read back out of the machine’s backup file, which a person can edit',
+  },
+  'backup.ts «{} tree: {} {} {} file(s)» #1': {
+    verdict: 'collapsed',
+    why: 'the date of the copy is read out of a manifest in the folder, which a person can edit',
+  },
+  "backup.ts «{} tree: {} holds more in the tree than in the copy: the tree's is kept» #1": {
+    verdict: 'collapsed',
+    why: 'a path read out of the folder of the copy, where a file can be named with a control character',
+  },
+  'backup.ts «{} tree: {} holds other bytes in the tree: left as it is» #1': {
+    verdict: 'collapsed',
+    why: 'a path read out of the folder of the copy, where a file can be named with a control character',
+  },
+  'backup.ts «Put back the {} tree kept in {}» #1': {
+    verdict: 'collapsed',
+    why: 'a folder of the git directory read back from the disk, whose path can hold a control character',
+  },
+  'backup.ts «what stood in its place is kept at {}, and nothing was deleted» #1': {
+    verdict: 'collapsed',
+    why: 'a folder of the git directory read back from the disk, whose path can hold a control character',
+  },
+  'backup.ts «what the {} tree held is kept at {}» #1': {
+    verdict: 'collapsed',
+    why: 'a folder of the git directory, whose path can hold a control character',
+  },
+  'backup.ts «{} folder(s) kept aside for this project, which no restore deletes: you delete them by hand; \\`mnema backup status\\` lists them» #1':
+    { verdict: 'minted', why: 'a count of folders the product listed' },
+  'backup.ts «{} other folder(s) kept aside for this project are still there: \\`mnema backup restore --undo\\` puts back the next newest that has a tree to put back, and \\`mnema backup status\\` lists them all» #1':
+    { verdict: 'minted', why: 'a count of folders the product listed' },
+  'backup.ts «{} folder(s) kept aside for the global tree, which no restore deletes: you delete them by hand; \\`mnema backup status --global\\` lists them» #1':
+    { verdict: 'minted', why: 'a count of folders the product listed' },
+  'backup.ts «{} other folder(s) kept aside for the global tree are still there: \\`mnema backup restore --global --undo\\` puts back the next newest that has a tree to put back, and \\`mnema backup status --global\\` lists them all» #1':
+    { verdict: 'minted', why: 'a count of folders the product listed' },
+  'backup.ts «{} the global tree from {}» #1': {
+    verdict: 'collapsed',
+    why: 'the folder is read back out of the machine’s backup file, which a person can edit',
+  },
+  'backup.ts «{} tree: no copy, nothing to restore» #1': {
+    verdict: 'minted',
+    why: 'the name of a tree the product has two of',
+  },
   'check.ts «passed {}» #1': { verdict: 'minted', why: 'the id of a rule the record holds' },
   'check.ts «failed {}: {}» #1': {
     verdict: 'collapsed',
@@ -502,6 +578,10 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
   'check.ts «recorded in {}» #1': {
     verdict: 'collapsed',
     why: 'the project root, discovered from the cwd: the same value `init` prints',
+  },
+  'backup.ts «{}: {}» #1': {
+    verdict: 'collapsed',
+    why: 'the hook’s path, which comes from the repository’s configuration (`core.hooksPath`) and may hold anything a directory name can',
   },
   'commit-hook.ts «{}: {}» #1': {
     verdict: 'collapsed',
@@ -1122,6 +1202,7 @@ describe('every line this wiring words is classified', () => {
     // 111 once `key sigstore` said the hash the record keeps for an e-mail.
     // 112 with the line `unlink` prints for the edge it took back.
     // 115 with the five lines `stack add` and `stack remove` print.
+    // 116 with the heading `backup restore --global` prints.
     // 122 with the seven lines `stack export`, `check`, `enable` and `disable` print.
     // 134 with the twelve lines the three agent verbs print.
     // 135 with the agent an agent key attested, on the line of the author in `audit accountability`.
@@ -1150,7 +1231,13 @@ describe('every line this wiring words is classified', () => {
     // question is asked with arrows now, and an answer cannot be off the list.
     // 186 with the two lines `init` prints of the answer it recorded about agents accepting, without a screen.
     // 185 without the line a handoff printed of a task no tree held, which it now refuses.
-    expect(FOUND.sites.length).toBe(185);
+    // 189 with the four lines `backup setup` and `backup run` print.
+    // 198 with the five lines `backup restore` prints.
+    // 202 with the four lines `backup restore` prints of what it kept aside, put back and deleted.
+    // 203 with the lines `backup restore` and `backup status` print of the folders kept aside, and none of a deletion.
+    // 204 with the line `backup hook` prints of where it put the hook and where it took it from.
+    // 207 with the three lines `backup restore --global` prints, the two folder counts and the heading.
+    expect(FOUND.sites.length).toBe(207);
   });
 
   it('reads the verdict off the source rather than believing the table', () => {
@@ -1170,9 +1257,9 @@ describe('every line this wiring words is classified', () => {
   it('found sites of both kinds, and the scanner sees a tag when there is one', () => {
     // Neither arm of the case above may be empty, or half of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
-    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(102);
-    expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(83);
-    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(102);
+    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(117);
+    expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(90);
+    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(117);
   });
 
   it('every reason says where the value comes from', () => {
@@ -1310,6 +1397,34 @@ describe('a value from outside cannot forge a second line', () => {
  * somebody closed and nobody drove, and the reconciliation below is what says so.
  */
 const UNREACHABLE: Readonly<Record<string, string>> = {
+  'backup.ts «The backup of record {}... is kept in {}» #1':
+    'the folder is the caller’s and is made by a run, so a break in it names a folder with a break; ' +
+    'no case types one yet, so the tag is what holds this line',
+  'backup.ts «it was {}; what is there is left as it is» #1':
+    'the folder is read back out of the machine’s own backup file, which setup wrote; ' +
+    'no case edits one by hand yet, so the tag is what holds this line',
+  'backup.ts «Backed up record {}... to {}» #1': 'the same folder as the line of setup',
+  'backup.ts «The backup of the global tree is kept in {}» #1':
+    'the same folder as the line of setup',
+  'backup.ts «it was {}; what is there is left as it is» #2':
+    'the same folder as the line of setup',
+  'backup.ts «Backed up the global tree to {}» #1': 'the same folder as the line of setup',
+  'backup.ts «{} record {}... from {}» #1': 'the same folder as the line of setup',
+  'backup.ts «{} the global tree from {}» #1': 'the same folder as the line of setup',
+  'backup.ts «Put back the {} tree kept in {}» #1':
+    'a path with a break in it in the git directory, which no case plants yet, so the tag is what holds this line',
+  'backup.ts «what stood in its place is kept at {}, and nothing was deleted» #1':
+    'a path with a break in it in the git directory, which no case plants yet, so the tag is what holds this line',
+  'backup.ts «what the {} tree held is kept at {}» #1':
+    'a path with a break in it in the git directory, which no case plants yet, so the tag is what holds this line',
+  'backup.ts «{} tree: {} {} {} file(s)» #1':
+    'the manifest is written by a run, and no case edits its date by hand yet, so the tag is what holds this line',
+  "backup.ts «{} tree: {} holds more in the tree than in the copy: the tree's is kept» #1":
+    'a name with a break in it in the copy, which no case plants yet, so the tag is what holds this line',
+  'backup.ts «{} tree: {} holds other bytes in the tree: left as it is» #1':
+    'a name with a break in it in the copy, which no case plants yet, so the tag is what holds this line',
+  'backup.ts «{}: {}» #1':
+    'a hooks directory whose name holds a break, which no case plants yet, so the tag is what holds this line',
   'observe.ts «Recorded observation {} about {}» #1':
     'the `about` has to be a record some tree holds, and a record has an id that was minted, so no ' +
     'value that forges a line gets as far as this line: the refusal that names it goes through ' +

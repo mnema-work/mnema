@@ -58,6 +58,7 @@ import {
 import { IdentityUnavailableError, membershipIn, rosterByRole } from '../identity/membership.js';
 import { canonicalIdentity } from '../identity/who.js';
 import type { DeferredWriteContext } from '../workflow/operations.js';
+import { machineryRootsOf } from './machinery-place.js';
 import { PrivateTreeVisibleError, privateTreeVisibility } from './private-tree.js';
 import { recordLeftBehind } from './private-tree-move.js';
 import type { AgentSigning, ResolvedTrees } from './resolve.js';
@@ -289,6 +290,11 @@ export interface OpenTreeOptions {
    */
   readonly onNewTail?: (opened: NewTail) => void;
   /**
+   * Told, in a sentence, when a fact is on the tail and the disk failed its signature or the sync of
+   * its line (`WriterOptions.onUnsigned`). Unset, it goes to standard error like a new tail.
+   */
+  readonly onUnsigned?: (sentence: string) => void;
+  /**
    * The key root to sign with instead of the one the trees choose: a relink is signed by the key
    * the relinked tail's id names, the person's or an agent's kept on this machine.
    */
@@ -300,6 +306,26 @@ export interface OpenTreeOptions {
 /** Where a write that opened a new tail says so when its caller did not ask to be told. */
 function sayNewTail(opened: NewTail): void {
   process.stderr.write(`${describeNewTail(opened)}\n`);
+}
+
+/** Where a write that succeeded with the disk failing part of it says so when nobody asked to be told. */
+function sayUnsigned(sentence: string): void {
+  process.stderr.write(`${sentence}\n`);
+}
+
+/** What is asked of the trees before any writer opens over them: it throws to refuse. */
+export type WriteGuard = (trees: ResolvedTrees) => void;
+
+let guardOfWrites: WriteGuard | undefined;
+
+/**
+ * Sets the question every writer is opened behind, or clears it with `undefined`. It is the caller's
+ * (the command line's, which refuses a write over an altered entry): this process asks it at the one
+ * door every write to a tree opens through, so a verb that never opens a writer is never asked, and
+ * one added tomorrow is asked without knowing.
+ */
+export function guardWrites(guard: WriteGuard | undefined): void {
+  guardOfWrites = guard;
 }
 
 /**
@@ -328,8 +354,13 @@ export function openTreeForWriting(
   if (chainRoot === undefined) {
     throw new TreeUnavailableError(`no ${scope} tree in this context`);
   }
+  guardOfWrites?.(trees);
   // Decided first: a write the key refuses leaves the tree as it found it, `.gitignore` included.
   const keyRoot = options.keyRoot ?? keyRootFor(trees, chainRoot);
+  // The PUBLIC tree's locks and notes are one set for every worktree of a repository, and each worktree
+  // keeps a hint of its id (`machinery-place.ts`); the private tree keeps one tail per worktree. Asked
+  // here too, before anything is written: a place that cannot be used refuses the write by name.
+  const machinery = scope === 'public' ? machineryRootsOf(trees) : undefined;
   // A project write, public or private, first makes the public tree own the
   // `.gitignore` that hides `private/`. `projectPublic` is defined whenever
   // `projectPrivate` is (both come from the same discovered project), so this is
@@ -356,6 +387,8 @@ export function openTreeForWriting(
     keyRoot,
     citeHeads: true,
     onNewTail: sayNewTail,
+    onUnsigned: sayUnsigned,
+    ...(machinery ?? {}),
     ...(installationRoot === undefined || projectPublic === undefined
       ? {}
       : { installationRoot, continues: () => recordLeftBehind(dirname(projectPublic)) }),

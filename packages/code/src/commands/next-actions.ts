@@ -17,10 +17,12 @@
  */
 
 import { catalogUpcasters } from '@mnema/chain';
+import type { NewerLines } from '@mnema/context';
 import { type NextAction, nextActionsForTask } from '@mnema/context';
 import { chainRootForScope, type DiscoveryEnv, locateEntityScope, resolveTrees } from '@mnema/core';
 import {
   linkBreaksOf,
+  newerLinesIn,
   type ScopedLinkBreak,
   THE_READING_THAT_OPENED_THESE,
   withCache,
@@ -48,6 +50,8 @@ export interface NextActionsDone {
    * says so.
    */
   readonly linkBreaks: readonly ScopedLinkBreak[];
+  /** What a newer mnema wrote that this one reads past, when it wrote any (ADR-140). */
+  readonly newerLines?: NewerLines;
 }
 
 /** The read was refused. */
@@ -101,6 +105,7 @@ export function runNextActions(
       id: input.id,
       actions,
       linkBreaks: linkBreaksOf([{ scope, chainRoot: root, cache }], THE_READING_THAT_OPENED_THESE),
+      ...newerLinesIn([{ scope, chainRoot: root, cache }]),
     };
   });
 }

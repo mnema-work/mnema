@@ -151,10 +151,15 @@ describe('the same globs reach every instrument this repository ships or runs', 
     expect(theInstruments()).toEqual([
       '.github/a-home-of-its-own/setup.mjs',
       '.github/a-timeout-is-run-once-more/retry.mjs',
+      '.github/assign-a-claimed-issue/claim.mjs',
       '.github/check-contribution/run.mjs',
+      '.github/contributors/draw.mjs',
       '.github/flake-sampler/summarize.mjs',
+      '.github/label-an-issue/label.mjs',
       '.github/release-prepare/prepare.mjs',
       '.github/release-prepare/server-json.mjs',
+      '.github/rerun-a-cancelled-runner/rerun.mjs',
+      '.github/rerun-a-cancelled-runner/select.mjs',
       '.github/the-architecture-page/graph.mjs',
       '.github/the-binary-runs/mark-it-runnable.mjs',
       '.github/the-brand/diagrams.mjs',
@@ -167,6 +172,7 @@ describe('the same globs reach every instrument this repository ships or runs', 
       '.github/the-fast-guards/marked.mjs',
       '.github/the-front-page/accent.mjs',
       '.github/the-front-page/draw.mjs',
+      '.github/the-hidden-characters/check.mjs',
       '.github/the-hot-path-budget/generate.mjs',
       '.github/the-hot-path-budget/measure.mjs',
       '.github/the-hot-path-budget/verdict.mjs',
@@ -176,6 +182,7 @@ describe('the same globs reach every instrument this repository ships or runs', 
       '.github/the-plugin-icon/make.mjs',
       '.github/the-property-seed/setup.mjs',
       '.github/what-a-guard-checks/header.mjs',
+      '.github/what-a-pr-touches/decide.mjs',
       '.github/what-failed/collect.mjs',
       '.github/what-failed/comment.mjs',
       '.github/what-the-suite-left-behind/sweep.mjs',
@@ -201,6 +208,19 @@ describe('the same globs reach every instrument this repository ships or runs', 
       'plugin/hooks/where-the-record-is.mjs',
       'plugin/server/launch.mjs',
     ]);
+  });
+
+  it('runs the one Biome the manifest pins, and the schema in biome.json names that same version', () => {
+    const pinned = readConfig<{ devDependencies: Record<string, string> }>(
+      join(REPO, 'package.json'),
+    ).devDependencies['@biomejs/biome'];
+    const installed = readConfig<{ version: string }>(
+      join(REPO, 'node_modules', '@biomejs', 'biome', 'package.json'),
+    ).version;
+    const schema = readConfig<{ $schema: string }>(join(REPO, 'biome.json')).$schema;
+    expect(pinned).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(installed).toBe(pinned);
+    expect(schema).toBe(`https://biomejs.dev/schemas/${pinned}/schema.json`);
   });
 });
 

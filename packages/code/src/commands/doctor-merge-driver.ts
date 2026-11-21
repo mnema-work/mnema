@@ -51,6 +51,12 @@ export interface MergeDriverContext {
   readonly cwd: string;
   readonly env: DiscoveryEnv;
   readonly processEnv: NodeJS.ProcessEnv;
+  /**
+   * Taken as true where the record's `.gitattributes` does not name the driver YET but a step about to run
+   * writes that line (`mnema upgrade` planning before it writes): the check of the attribute is skipped, and
+   * nothing else is.
+   */
+  readonly attributeWillBeWritten?: boolean;
 }
 
 /** The key of the driver's command. */
@@ -178,6 +184,7 @@ function governed(ctx: MergeDriverContext): { readonly top: string } | undefined
   if (record === undefined) return undefined;
   const top = gitIn(ctx, record, ['rev-parse', '--show-toplevel']);
   if (top === undefined || top.status !== 0) return undefined;
+  if (ctx.attributeWillBeWritten === true) return { top: top.out };
   const named = gitIn(ctx, record, ['check-attr', 'merge', '--', 'tails/any/000001.jsonl']);
   if (named === undefined || !named.out.endsWith(`: merge: ${MERGE_DRIVER}`)) return undefined;
   return { top: top.out };
@@ -188,6 +195,12 @@ function setting(ctx: MergeDriverContext, top: string, key: string): string | un
   const bool = (AUTOSTASH_KEYS as readonly string[]).includes(key);
   const got = gitIn(ctx, top, ['config', ...(bool ? ['--type=bool'] : []), '--get', key]);
   return got?.status === 0 ? got.out : undefined;
+}
+
+/** Whether the repository's configuration names a remote. */
+function namesARemote(ctx: MergeDriverContext, top: string): boolean {
+  const got = gitIn(ctx, top, ['config', '--get-regexp', '^remote\\..*\\.url$']);
+  return got?.status === 0 && got.out !== '';
 }
 
 /**
@@ -214,6 +227,9 @@ export function mergeDriverLines(ctx: MergeDriverContext): string[] {
   const stash = AUTOSTASH_KEYS.map((key) => [key, setting(ctx, here.top, key)] as const);
   const on = stash.filter(([, now]) => now === 'true').map(([key]) => key);
   if (driver === undefined) {
+    // A repository that names no remote has nothing to pull from, and `init` asked nothing for that reason: a
+    // record founded there is not told to do what no pull needs. A setting already on (an autoStash) still is.
+    if (on.length === 0 && !namesARemote(ctx, here.top)) return [];
     const without =
       on.length === 0
         ? ''
@@ -245,6 +261,8 @@ export function mergeDriverLines(ctx: MergeDriverContext): string[] {
 export interface MergeDriverFixed {
   readonly refused: boolean;
   readonly lines: readonly string[];
+  /** The settings written, or with `dryRun` the ones that would be: empty where nothing needed to change. */
+  readonly keys?: readonly string[];
 }
 
 /**
@@ -328,5 +346,5 @@ export function fixMergeDriver(
   }
   if (options.dryRun) lines.push('nothing was written.');
   lines.push(AUTOSTASH_APPLIES_TO_EVERY_FILE);
-  return { refused: false, lines };
+  return { refused: false, lines, keys: toWrite.map(([key]) => key) };
 }

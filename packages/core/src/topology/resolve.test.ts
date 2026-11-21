@@ -267,11 +267,31 @@ describe('resolveTrees: the private tree lives in the repository, not in a worki
     );
   });
 
+  it('puts the machinery of the public tree in the common git directory, and the hint of each worktree in its own', () => {
+    const repo = repoWithACommit(join(realpathSync(sandbox), 'repo'));
+    const wt = join(realpathSync(sandbox), 'wt');
+    git(repo, 'worktree', 'add', '-q', wt);
+    mkdirSync(join(repo, '.mnema'));
+    mkdirSync(join(wt, '.mnema'), { recursive: true });
+    const [inRepo, inWorktree] = [repo, wt].map(
+      (dir) => resolveTrees(dir, { home: home() }).projectPublicMachinery,
+    );
+    // Shared by the two, so a tail's notes and lock are one set for the repository...
+    expect(inRepo?.shared).toBe(join(repo, '.git', 'mnema', '%2E', 'public'));
+    expect(inWorktree?.shared).toBe(inRepo?.shared);
+    // ...and the hint of the id is each worktree's own, which goes with it when git removes it.
+    expect(inRepo?.checkout).toBe(join(repo, '.git', 'mnema', '%2E', 'public'));
+    expect(inWorktree?.checkout).toBe(
+      join(repo, '.git', 'worktrees', 'wt', 'mnema', '%2E', 'public'),
+    );
+  });
+
   it('keeps it in .mnema/private where there is no repository', () => {
     mkdirSync(join(sandbox, '.mnema'));
     const trees = resolveTrees(sandbox, { home: home() });
     expect(trees.projectPrivate).toBe(join(sandbox, '.mnema', 'private'));
     expect(trees.projectPrivateInstallation).toBeUndefined();
+    expect(trees.projectPublicMachinery).toBeUndefined();
   });
 });
 
@@ -433,5 +453,31 @@ describe('whyNoProjectRootAt: the rule `mnema init` asks before founding', () =>
     expect(whyNoProjectRootAt(plain, { home: h })).toBeUndefined();
     // Under the home is not the home.
     expect(whyNoProjectRootAt(join(h, 'code'), { home: h })).toBeUndefined();
+  });
+});
+
+describe('resolveTrees: the test switch refuses a project tree outside the temporary root', () => {
+  const was = process.env.MNEMA_REFUSE_TREES_OUTSIDE;
+
+  afterEach(() => {
+    if (was === undefined) delete process.env.MNEMA_REFUSE_TREES_OUTSIDE;
+    else process.env.MNEMA_REFUSE_TREES_OUTSIDE = was;
+  });
+
+  it('a project outside any repository throws naming its tree, and one inside the root resolves', () => {
+    const outside = mkdtempSync(join(tmpdir(), 'mnema-resolve-outside-'));
+    try {
+      mkdirSync(join(outside, 'p', '.mnema'), { recursive: true });
+      mkdirSync(join(sandbox, 'p', '.mnema'), { recursive: true });
+      process.env.MNEMA_REFUSE_TREES_OUTSIDE = sandbox;
+      expect(resolveTrees(join(sandbox, 'p'), { home: home() }).projectPublic).toBe(
+        join(sandbox, 'p', '.mnema'),
+      );
+      expect(() => resolveTrees(join(outside, 'p'), { home: home() })).toThrow(
+        new RegExp(`the record tree ${join(outside, 'p', '.mnema')}`),
+      );
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
   });
 });

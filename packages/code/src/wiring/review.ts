@@ -11,6 +11,7 @@
  * and a refusal on one decision is said and the review goes on to the next.
  */
 
+import type { AcceptState } from '../agent-accepts.js';
 import { agentKeyFromEnvironment, discoveryEnv } from '../env.js';
 import { fact } from '../presentation/detail.js';
 import { proposalLines, reviewedSummary } from '../presentation/reviewed.js';
@@ -53,6 +54,23 @@ export function verdictOf(line: string): Verdict {
   return { action: 'again' };
 }
 
+/**
+ * What a review refuses with when no person is at a terminal. The accept line is offered only where
+ * an agent may accept: with `agent-accepts` off, or a switch that could not be read, only a person at
+ * a terminal accepts, so the line left is the reject.
+ */
+export function reviewNeedsATerminal(count: number, ids: string, accepts: AcceptState): string {
+  const how =
+    accepts === 'on'
+      ? `and \`mnema decision move accept ${ids} --note "<why>"\` (or \`reject\`) rules them without one. `
+      : `and \`mnema decision move reject ${ids} --note "<why>"\` rules them without one: ` +
+        (accepts === 'off'
+          ? '`agent-accepts` is switched off, '
+          : 'the switch `agent-accepts` could not be read, ') +
+        'so only a person at a terminal accepts. ';
+  return `a review is asked at a terminal, and this is not one. ${count} decision(s) await a judgement, ${how}Nothing was written.`;
+}
+
 /** Runs the review. Nothing is written before the terminal is known to be one. */
 export async function reviewDecisions(wiring: Wiring): Promise<void> {
   const { io, render, pinnedRun } = wiring;
@@ -64,7 +82,7 @@ export async function reviewDecisions(wiring: Wiring): Promise<void> {
     return;
   }
   for (const line of linkBreakNotice(read.linkBreaks)) io.err(render(line));
-  const { proposals, acceptIsOff } = read;
+  const { proposals, accepts } = read;
   if (proposals.length === 0) {
     io.out('Nothing awaiting a judgement.');
     return;
@@ -74,12 +92,7 @@ export async function reviewDecisions(wiring: Wiring): Promise<void> {
     reportRefusal(wiring, {
       reason: 'REFUSED',
       code: NEEDS_A_PERSON,
-      message:
-        `a review is asked at a terminal, and this is not one. ${proposals.length} decision(s) await a judgement, ` +
-        (acceptIsOff
-          ? `and \`mnema decision move reject ${ids} --note "<why>"\` rules them without one: \`agent-accepts\` is switched off, so only a person at a terminal accepts. `
-          : `and \`mnema decision move accept ${ids} --note "<why>"\` (or \`reject\`) rules them without one. `) +
-        'Nothing was written.',
+      message: reviewNeedsATerminal(proposals.length, ids, accepts),
     });
     return;
   }

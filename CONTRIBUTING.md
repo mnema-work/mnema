@@ -3,6 +3,11 @@
 This page is for someone who has just cloned the repository and wants to change it. What
 the product is, and what it does and does not prove, is on the [front page](README.md).
 
+If mnema helps your work, a star on the repository helps others find it; it is only ever yours to give.
+
+To work on it without installing anything, [open the repository in a GitHub Codespace](https://codespaces.new/mnema-work/mnema?devcontainer_path=.devcontainer%2Fdevcontainer.json):
+it uses the dev container in [`.devcontainer/`](.devcontainer/devcontainer.json), which brings Node and Python and runs `pnpm install`.
+
 ## What you need
 
 - **Node.** Requires Node 24.15.0 or a later 24, or 26.0.0 or later: that is the range `engines.node` declares in the root
@@ -17,6 +22,20 @@ the product is, and what it does and does not prove, is on the [front page](READ
   [its page](packages/chain/verifier/README.md), which is the one place that number lives.
 - **git**, and the `script` and `stty` of util-linux: the cases that drive the console through
   a pseudo-terminal call both. CI runs on Ubuntu.
+
+## Before you open an issue
+
+Search the open and closed issues first: yours may be reported, decided or fixed. Then pick the form that fits: a **bug report** (the version of mnema, the host, your system and Node version, how you installed mnema, the steps from a new empty folder, what you expected and what happened) or a **feature request** (the problem, what you would want instead, what it has to keep true, the alternatives). A question or an idea that is not a concrete bug or request belongs in [Discussions](https://github.com/mnema-work/mnema/discussions); blank issues are closed. Paste the output of the failing command, and never the contents of your record, paths, e-mail addresses, keys or tokens. A security problem goes to the private report on the Security tab, not to an issue: see [`SECURITY.md`](SECURITY.md).
+
+## Taking an issue
+
+Comment `/take` (or `/claim`) on an open `good first issue` or `help wanted` issue to take it. Plain sentences work too ("I'll take this", "I'd like to work on this", "assign me", "I'm working on this"; a comment that only talks about the issue does not count), and a comment that sounds like a claim but is not understood gets one reply that says to write `/take`. If nobody holds the issue and you hold fewer than 3 issues assigned this way, a workflow assigns it to you and replies once. If you open a pull request that closes a free issue ("Fixes #123") without having claimed it, the daily run assigns the issue to you.
+
+The assignment frees itself after 14 days without an open pull request of yours that names the issue (write `#<number>` in its description), and says so on the issue; a daily run does that, for an issue a maintainer assigned to you by hand as well. A pull request that meets the issue's "Done when" and shows its "How to check" is what the review looks at.
+
+An issue whose body says "Starts after #N" is not assigned while #N is open: the reply names #N, and the daily release does not free an assignment while #N is open.
+
+If a maintainer asks for a change on your pull request and you do not answer, you get one reminder after 7 days and one note after 14: the maintainers then finish it on your branch (leave "Allow edits by maintainers" ticked), merge it and thank you here with the credit still yours, or close it with thanks. The workflow only comments; a person does the rest.
 
 ## Before a pull request
 
@@ -71,7 +90,7 @@ pnpm test
 Beside the suite, CI runs two scanners on every pull request and on `main`, outside the checks a
 pull request must carry: `gitleaks` reads the whole history for a committed credential, and
 `osv-scanner` reads `pnpm-lock.yaml` for a dependency with a published advisory (and again every
-Monday, against the lockfile as it is). `.gitleaks.toml` lists what is public or made up and why;
+Monday, against the lockfile as it is). `osv-scanner.toml` ignores one advisory that has no patched release, with its reason, until 2026-12-17; after that date the check accuses it again. `.gitleaks.toml` lists what is public or made up and why;
 a finding that is not on that list is a credential to rotate, not a line to add to it.
 CodeQL reads the JavaScript and TypeScript, the Python of the repository and the workflows with its default
 query suite, on every pull request, on `main` and every Tuesday, also outside the required checks;
@@ -82,6 +101,11 @@ every file that needs a test), the ones a change breaks without touching them. R
 a change to text, a page, the changelog or a list of files; it does not replace `pnpm test`, and
 `pnpm check:contribution` runs it for you.
 A case joins it by carrying `// @reads-the-tree` as its first line.
+
+While you iterate, run `pnpm vitest run --changed`: it runs only the test files that import what you have
+changed since the last commit (`--changed origin/main` for everything since you branched). Run the whole
+suite, `pnpm test`, once at the end, before you push; the guards above are the part of it that a change
+breaks without touching, so `pnpm test:guards` is the cheap check in between.
 
 **When a case goes red, keep the output before you run it again**, then run
 `pnpm why-it-went-red`. It runs each red case again on its own and says which of two things
@@ -182,7 +206,10 @@ with the site's own build (`node build/build.mjs --from <this checkout> --check`
 **Publishing to npm is the maintainer's own act**: the first version was published by hand, and from then on
 a workflow publishes, but only when a person approves it. A release needs no token and no secret in this
 repository: npm trusts `.github/workflows/release.yml` (see below) and signs a provenance statement with
-each package.
+each package. From the release after 0.1.8, the GitHub release also carries the five tarballs, their SHA-256 and a
+Sigstore provenance bundle for them (`mnema-npm-packages-<version>.sigstore.json`), and the extension's `.vsix` carries
+one of its own (`mnema-<version>.vsix.sigstore.json`); `gh attestation verify <file> --repo mnema-work/mnema` checks
+a downloaded file against it.
 
 The check that runs before any of this packs the five publishable packages, installs the `@mnema/code` tarball
 alone (as a person does) into an empty prefix and an empty `HOME`, and runs `init`, `decision record` and `verify`
@@ -283,14 +310,29 @@ be able to explain any line.
   change. A pull request that leaves the field out will be asked to fill it in before review.
 - **Credit.** You do not need a commit trailer. When the pull request is squash-merged, the maintainer puts
   one line in the commit message, taken from that field: `Assisted-by: <model> via <host>`.
+- **The README grid.** At the merge of a first outside pull request, add the login to `people` in `.github/contributors/contributors.json`
+  (to `automated` for an account that declares itself automated: it is thanked on a line below the grid, with no photo)
+  and run `node .github/contributors/draw.mjs`: it draws the round avatar and rewrites the README table (`--check` verifies it).
 - **Check it first.** Run `pnpm check:contribution` before you open the pull request (see
   [Before a pull request](#before-a-pull-request)), and keep one change per pull request.
+
+### Issues written for an agent
+
+The issues labelled `ready for an agent` are written so that a coding agent can do them: where the change goes, what
+"done" means, and how to check it. You may hand one to Claude Code, Codex, Cursor or any other agent. What we still
+ask of you is the above: read the diff yourself, run `pnpm check:contribution`, and fill in the "Written with an
+agent" field of the pull request template. The pinned issue
+[Start here](https://github.com/mnema-work/mnema/issues/1345) walks through picking one.
 
 ## Review and merge
 
 - **A first response from a person within 3 working days**, on a pull request or an issue. If you have
   heard nothing after that, add one comment that mentions the maintainer listed in
   [`.github/CODEOWNERS`](.github/CODEOWNERS). That is the expected way to ask, not a nuisance.
+- **Two checks read what a pull request adds.** One refuses an invisible or bidirectional character (such as U+202E or a
+  zero-width space) in an added line and names the file and line; write the escape instead. The other puts the label
+  `needs security review` on a pull request from a fork that changes a workflow, a dependency, the lockfile, the npm
+  settings or a build or install script, so a maintainer reads those files first. The label is not a verdict.
 - **Once CI has run on your first pull request, an automatic comment welcomes you** and says what failed and
   the command that fixes it, or that every check passed (see the comment CI writes, described under
   [A pull request](#a-pull-request)). A first pull request from a fork waits for a maintainer to approve
@@ -314,7 +356,9 @@ be able to explain any line.
   `CHANGELOG.md`, where every pull request wrote at the same place and collided. Add
   `changelog/unreleased/<short-slug>.md`: the section on its first line (`Added`, `Changed`,
   `Deprecated`, `Removed`, `Fixed` or `Security`), then the entry as a bullet, the way `CHANGELOG.md`
-  prints them (`- **What changed.** Why it matters, in a sentence or two.`). `pnpm release:prepare`
+  prints them (`- **What changed.** Why it matters, in a sentence or two.`). If an outside contributor wrote the change, put
+  `Contributor: <their GitHub login>` on the line after the section; the release notes then end the entry with
+  "Thanks @login.". `pnpm release:prepare`
   gathers the files into the new section of `CHANGELOG.md`, grouped by section, and removes them, so
   `Unreleased` in `CHANGELOG.md` stays empty between releases.
 - **When CI is over, one comment on the pull request says what failed** and the command that fixes

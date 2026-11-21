@@ -21,7 +21,7 @@ export function registerAging(program: Command, wiring: Wiring): Declared {
     .option('--min-commits <n>', 'commits on its paths since acceptance to be listed (default 20)')
     .option('--json', 'emit the faithful reading as JSON')
     .action(async (opts: { minCommits?: string; json?: boolean }) => {
-      const { linkBreakNotice } = await import('./integrity.js');
+      const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
       const { runAging, DEFAULT_MIN_COMMITS } = await import('../commands/aging.js');
       const { agingReport } = await import('../presentation/git-bridge.js');
       const asked = opts.minCommits === undefined ? DEFAULT_MIN_COMMITS : Number(opts.minCommits);
@@ -35,8 +35,9 @@ export function registerAging(program: Command, wiring: Wiring): Declared {
         return;
       }
       for (const line of linkBreakNotice(result.linkBreaks)) io.err(render(line));
+      for (const line of newerLinesNotice(result.newerLines, 'the record')) io.err(render(line));
       if (opts.json === true) {
-        const { linkBreaks: _breaks, ok: _ok, ...reading } = result;
+        const { linkBreaks: _breaks, newerLines: _newer, ok: _ok, ...reading } = result;
         io.out(JSON.stringify(reading, null, 2));
         return;
       }

@@ -74,23 +74,62 @@ place of each:
 | Replaced by | What it matches |
 | --- | --- |
 | `<SECRET:aws-access-key>` | An AWS access key id: `AKIA`, `ASIA`, `ABIA` or `ACCA`, then 16 or more capitals and digits. |
-| `<SECRET:github-token>` | A GitHub token: `ghp_`, `gho_`, `ghu_`, `ghs_` or `ghr_`, then 36 or more letters and digits. |
+| `<SECRET:github-token>` | A GitHub token: `ghp_`, `gho_`, `ghu_`, `ghs_` or `ghr_`, then 36 or more letters and digits; or a fine-grained one, `github_pat_`, then two runs of letters and digits joined by `_`. |
+| `<SECRET:gitlab-token>` | A GitLab token: `glpat-`, `gloas-`, `gldt-`, `glrt-`, `glrtr-`, `glcbt-`, `glptt-`, `glft-`, `glimt-`, `glagent-`, `glwt-`, `glsoat-` or `glffct-`, then 20 or more letters, digits, `_` or `-`. |
+| `<SECRET:huggingface-token>` | A Hugging Face token: `hf_`, then 30 or more letters and digits. |
 | `<SECRET:anthropic-key>` | An Anthropic key: `sk-ant-`, then 20 or more letters, digits, `_` or `-`. |
 | `<SECRET:openai-key>` | An OpenAI-style key: `sk-` or `sk-proj-`, then 20 or more letters, digits, `_` or `-`; a value whose every piece is a lowercase word is read as a name and left alone. |
-| `<SECRET:stripe-key>` | A Stripe key: `sk_live_`, `sk_test_`, `rk_live_` or `rk_test_`, then 20 or more letters and digits. |
+| `<SECRET:stripe-key>` | A Stripe key: `sk_live_`, `sk_test_`, `rk_live_` or `rk_test_`, then 20 or more letters and digits; or a webhook signing secret, `whsec_`, then 24 or more. |
 | `<SECRET:slack-token>` | A Slack token: `xoxb-`, `xoxa-`, `xoxp-`, `xoxr-` or `xoxs-`, then 10 or more letters, digits or `-`. |
 | `<SECRET:google-api-key>` | A Google API key: `AIza`, then 30 or more letters, digits, `_` or `-`. |
 | `<SECRET:npm-token>` | An npm token: `npm_`, then 36 or more letters and digits. |
 | `<SECRET:jwt>` | A JSON Web Token: three dot-separated base64url parts, the first beginning `eyJ`. |
 | `<SECRET:private-key-block>` | A private key in PEM form (`-----BEGIN ... PRIVATE KEY-----`) or mnema’s own protected key file, the whole block when it is closed, only its header when it is not. |
 | `<SECRET:url-password>` | The password of `scheme://user:password@host`; the scheme, the user and the host stay. |
+| `<SECRET:authorization-header>` | The value of an `Authorization` or `Proxy-Authorization` header, after its scheme (`Bearer`, `Basic`, ...) or alone on its line or in its quotes; the header and the scheme stay. |
+| `<SECRET:named-credential>` | The value written after a name that ends as a credential’s (`password`, `passwd`, `passphrase`, `pass`, `pwd`, `secret`, `token`, `api_key`, `access_key`, `private_key`, `secret_key`, `auth`, in any case and spelling): quoted after `:` or `=`, right after `=`, alone on its line, after a flag (`--password ...`), or as `curl -u user:...`, `docker login -p ...` and `mysql -p...` take it; and after a colon in a sentence, the first word when it reads as drawn at random (`token: abc123XYZ987 for staging`). The whole value goes, to its closing quote or to the blank after it, and on a line of its own after a name in capitals to the end of the line; a comma or a semicolon after it ends it. The name stays. A variable, a placeholder, a mask, a type, a path, an address with no credential in it, a line of code and a count are left as written, and so is a cursor (`next_token`) or a form token (`csrf_token`). |
 | `<email>` | An e-mail address, except `noreply@`, `no-reply@` and GitHub’s `noreply.github.com` form, which name no one. |
 
 <!-- End of the generated table. -->
 
-Three limits, all stated rather than hidden. **It catches only formats it
-recognizes**: a proprietary token or a password in prose goes in verbatim, so
-the placeholder is damage reduction and not a licence to paste secrets. **A value
+Besides the formats, two places are read for what they hold whatever its shape:
+the value of an `Authorization` header and the value written after a credential's
+name (`PASSWORD=hunter2`, `"api_key": "..."`, `X-Api-Key: ...` on its own line,
+`--password ...`, `curl -u user:...`). The whole value goes, punctuation and blanks
+inside its quotes included, because a piece of a password left beside a placeholder
+is still a leak. The name is read only where text writes a key down, so a sentence
+that merely says the word keeps it: `Rotate the token every week`, `password:
+unchanged since the migration`, `max_tokens=1024`, `id-token: write`, `pwd: /home/me`
+and `auth=oidc` are recorded as written. In a title or another name the same reading
+refuses the write: a title that reads as holding a credential (`Rotate API_KEY=abc123`)
+is refused, and the refusal says the way out, another name, or rotating the value if
+it was real. A name is not refused for the first word after a colon that only looks
+drawn at random: `Password: Argon2id over bcrypt` and `Token: Base64Url encoding` are
+taken as titles, and the same word is replaced in a body.
+
+Three limits, all stated rather than hidden. **It catches only what it
+recognizes**: a proprietary token with no name around it, a password in prose, a
+single word after a flag (`--password hunter`), and a short word in small letters
+after a colon under a name that is not a password's (`token: abcd`) go in verbatim,
+so the placeholder is damage reduction and not a licence to paste secrets. Under a
+credential's name these go in verbatim too, each read as something else:
+
+- a passphrase of several words with no quotes around it (`secret: correct horse
+  battery staple`), read as a sentence;
+- a token that is a slug of small letters without digits (`token=abcd-efgh-ijkl`),
+  read as the name of a thing;
+- a value that is a plain path or an address (`webhook_secret=/T000/B000/abcdefgh`,
+  a webhook URL whose secret is its path), read as where something lives;
+- a value of three digits or fewer (`password=123`), read as a count;
+- a key of several lines without its `BEGIN` line (`private_key: |` and the body
+  below it), whose lines are not on the name's line;
+- a short word with a digit or two after a colon and followed by more words
+  (`password: Hunter2 was the old one`), read as a version's or an algorithm's name
+  (`OAuth2`, `Ed25519`);
+- 7 to 10 hex digits under a token's, a key's or a secret's name (`token: 01a1f59d`),
+  read as an id.
+
+**A value
 that reads as a name is left alone**: `sk-` is a prefix several key issuers
 reuse and also the two letters you reach for when you name a skill, so a value
 whose every piece is a lowercase word is recorded the way you typed it; measured

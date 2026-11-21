@@ -45,6 +45,17 @@ import {
 import { oneLine } from '../one-line.js';
 import { orderedEvents } from '../projections/order.js';
 
+/**
+ * The events a fold of identity stands on. It serves around a part of the record this mnema cannot
+ * read (a line, a link) and goes on, as the projection cache's own reads do: which keys count is
+ * asked by the reads that serve the record (`status` says whose identity a machine writes as), and
+ * the part is named by the facts those reads open with. A WRITE does not stand on this alone: every
+ * write is refused over such a part before it opens a writer (`an-altered-entry-stops-a-write.ts`).
+ */
+function eventsOf(tree: string, upcasters: UpcasterRegistry): CatalogEvent[] {
+  return orderedEvents({ root: tree }, upcasters, true);
+}
+
 /** Which record to read, and how to read events written under older contracts. */
 export interface MembershipQuery {
   /** The chain root whose facts decide: a tree, never a key root. */
@@ -173,7 +184,7 @@ export function membershipIn(
   /** Anchors that retired this key and did not take it back. */
   const retired = new Set<string>();
 
-  for (const fact of enrollmentFactsOf(orderedEvents({ root: query.tree }, query.upcasters))) {
+  for (const fact of enrollmentFactsOf(eventsOf(query.tree, query.upcasters))) {
     if (fact.fingerprint !== key.fingerprint) continue;
     switch (fact.kind) {
       case 'founded':
@@ -329,7 +340,7 @@ function ambiguityOf(
   // An identity whose only key this is has no installation writing as it but this key's own, so
   // what the record can name is where this key has written.
   const wroteAs = new Set<string>();
-  for (const event of orderedEvents({ root: query.tree }, query.upcasters)) {
+  for (const event of eventsOf(query.tree, query.upcasters)) {
     if (event.signerFp === key.fingerprint) wroteAs.add(event.who);
   }
   const how = (anchor: string): string =>
@@ -441,7 +452,8 @@ export function staleAnchorRefusal(
   // a record nobody read: measured on the binary after a merge of two inits, this said that nothing
   // ever founded an identity with the key and to delete the anchor, and the write after the
   // deletion was refused `ANOTHER_RECORD`, a file lost on the way. The anchor is not what is wrong.
-  const several = tailsReadAt(layout).several;
+  // A link among the tails is named by the answer the reads give and refused by every write: here only the tails that read count.
+  const several = tailsReadAt(layout, () => {}).several;
   if (several.length > 1) {
     const records = several
       .map((group) => `${group.name.slice(0, 12)}... (${group.tails.join(', ')})`)
@@ -457,7 +469,7 @@ export function staleAnchorRefusal(
   // founding; one that names it lost the half.
   const named =
     half === null &&
-    [...enrollmentFactsOf(orderedEvents(layout, query.upcasters))].some(
+    [...enrollmentFactsOf(eventsOf(layout.root, query.upcasters))].some(
       (fact) => fact.fingerprint === fingerprint,
     );
   if (named) {
@@ -501,7 +513,7 @@ export function staleAnchorRefusal(
  * that cannot actually sign.
  */
 export function rosterOf(query: MembershipQuery, anchor: string): Set<string> {
-  return rosterIn(orderedEvents({ root: query.tree }, query.upcasters), query.tree, anchor);
+  return rosterIn(eventsOf(query.tree, query.upcasters), query.tree, anchor);
 }
 
 /**
@@ -562,7 +574,7 @@ export interface AgentRole {
  * retirement does not give the key back.
  */
 export function agentRoleIn(query: MembershipQuery, fingerprint: string): AgentRole | undefined {
-  const events = orderedEvents({ root: query.tree }, query.upcasters);
+  const events = eventsOf(query.tree, query.upcasters);
   const role = agentKeysIn(events, query.tree).get(fingerprint);
   if (role === undefined) return undefined;
   const retired = [...enrollmentFactsOf(events)].some(
@@ -584,7 +596,7 @@ export interface RosterByRole {
 
 /** {@link personsRosterOf} and {@link agentsOf} from ONE replay of the record. */
 export function rosterByRole(query: MembershipQuery, anchor: string): RosterByRole {
-  const events = orderedEvents({ root: query.tree }, query.upcasters);
+  const events = eventsOf(query.tree, query.upcasters);
   const { valid, agents } = foldRoster(events, query.tree, anchor);
   const held = new Map<string, string>();
   for (const [fingerprint, name] of agents) {

@@ -223,6 +223,7 @@ import type { Command } from 'commander';
 import { registerAfterAWrite } from './after-a-write.js';
 import { registerAging } from './aging.js';
 import { registerAudit } from './audit.js';
+import { registerBackup } from './backup.js';
 import { registerBeforeAWrite } from './before-a-write.js';
 import { registerBesideAWrite } from './beside-a-write.js';
 import { registerBrief } from './brief.js';
@@ -268,8 +269,10 @@ import { registerTail } from './tail.js';
 import { registerTally } from './tally.js';
 import { registerTask } from './task.js';
 import { registerTimeline } from './timeline.js';
+import { registerTour } from './tour.js';
 import { registerTrailer } from './trailer.js';
 import { registerUnlink } from './unlink.js';
+import { registerUpgrade } from './upgrade.js';
 import { registerUsage } from './usage.js';
 import type { Declared, Verb, Wiring } from './verb.js';
 import { registerVerify } from './verify.js';
@@ -352,7 +355,16 @@ export const GROUPS: readonly Group[] = [
   },
   {
     heading: 'This machine:',
-    verbs: [registerKey, registerTail, registerDoctor, registerProblemReport, registerCompletion],
+    verbs: [
+      registerKey,
+      registerTail,
+      registerBackup,
+      registerDoctor,
+      registerUpgrade,
+      registerProblemReport,
+      registerCompletion,
+      registerTour,
+    ],
   },
   {
     heading: 'Called by a host:',

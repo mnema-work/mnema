@@ -208,8 +208,13 @@ describe('a chain written before a version bump still proves itself', () => {
     // reason and this whole file would be theatre.
     writeChainBeforeTheBump({ checkpoint: true });
     const registry = afterTheBump();
-    const entries = readEntries(readTailEntries({ root }, tailIdOf(), registry));
-    const checkpoint = readTailCheckpoints({ root }, tailIdOf())[0];
+    // The last checkpoint: the founding signed itself at once (ADR-569), and the lifted events
+    // after it are what the one that ends the act signs.
+    const checkpoint = readTailCheckpoints({ root }, tailIdOf()).at(-1);
+    const entries = readEntries(readTailEntries({ root }, tailIdOf(), registry)).filter(
+      (e) => e.link.seq >= (checkpoint?.fromSeq ?? 0),
+    );
+    expect(entries.map((e) => e.event.v)).toEqual([2, 2, 2]);
 
     expect(contentRoot(entries.map((e) => e.written))).toBe(checkpoint?.contentRoot);
     expect(contentRoot(entries.map((e) => writtenAsBuilt(e.event)))).not.toBe(
@@ -223,7 +228,7 @@ describe('a chain written before a version bump still proves itself', () => {
     // tail, and those entries came off the disk: lifted. A checkpoint folded
     // over them would be a real signature over bytes that are not on the tail:
     // undetectable as a forgery, and fatal to every later verification.
-    writeChainBeforeTheBump({ checkpoint: false }); // 4 events, nothing signed yet
+    writeChainBeforeTheBump({ checkpoint: false }); // 4 events, only the founding signed
     const registry = afterTheBump();
 
     const resumed = openChainForWriting(root, {
@@ -234,8 +239,9 @@ describe('a chain written before a version bump still proves itself', () => {
     resumed.append(taskCreated(env(resumed, 't-2'), { title: 'appended after the bump' }));
     const checkpoint = resumed.checkpoint();
 
-    // It really did sign the recovered range, not just the event it appended.
-    expect(checkpoint?.fromSeq).toBe(0);
+    // It really did sign the recovered range, not just the event it appended: every event above
+    // the founding, which signed itself (ADR-569).
+    expect(checkpoint?.fromSeq).toBe(1);
     expect(checkpoint?.toSeq).toBe(4);
 
     const result = verify(root, registry);

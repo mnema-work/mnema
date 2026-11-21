@@ -4,8 +4,9 @@ Changed
   the subagent's start, Gemini CLI's opening and OpenCode's session start) used to open a session with nothing
   when `mnema` refused, so a session that believed it had the rules could have none. They now say it in one line:
   the first paragraph of the refusal (for a stored line the reader cannot read, with its tail named), and that the record
-  was not consulted where another process holds it or the run was cut after nine seconds (two seconds for `mnema --identify`;
-  the generated programs of Gemini CLI and OpenCode share nine seconds between the two verbs of the opening and say it once).
+  was not consulted where another process holds it or the run was cut after nine seconds (the plugin's hooks also say it when `mnema --identify` is
+  not answered in two seconds; the generated programs of Gemini CLI and OpenCode share nine seconds between the two verbs
+  of the opening and say it once, and open a session in silence when `mnema --identify` itself does not answer).
   They stay silent with no project and with a channel switched off. A program on the `PATH` that is not `mnema` is still
   named to the session by the opening and the subagent's start, and the notes and the two generated programs stay silent
   about it. To tell the silent refusals apart from the rest, `mnema brief --hook` and `mnema recall --hook` open a refusal

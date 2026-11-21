@@ -104,6 +104,8 @@ const ANSWERS_ANYWAY: Readonly<Record<string, string>> = {
   switch: 'where a channel stands is a question about the trees there are, not about a project',
   doctor:
     'it asks the machine how mnema is installed, which is true wherever it is run, and it reads no record',
+  upgrade:
+    'it brings up to date what an update left of the machine’s (a plugin path in VS Code’s settings, a plugin a host keeps), which is true wherever it is run, and has nothing to do for a project where there is none',
   report:
     'it shows what this machine logged about mnema’s own faults, from a file of the machine’s beside the record and not in it',
   'tail list': 'the tails it lists are the ones held here, in whichever trees exist',
@@ -112,6 +114,7 @@ const ANSWERS_ANYWAY: Readonly<Record<string, string>> = {
     'the three state machines are read from the gate’s tables and need no record; `timeline` and `refs` refuse as the reads they draw do',
   'key unprotect':
     'it writes this machine’s key files back in the clear, and a machine with none is told so; the key root is the machine’s, not a project’s',
+  tour: 'it only explains what mnema is, in pages that need no record, and writes nothing to one',
   completion: 'the script it writes is generated from the declarations, and no record is consulted',
   witness: 'it reports on the tails it can see, and says so when there are none',
   'witness upgrade': 'the same: with no tail waiting on an attestation there is nothing to refuse',
@@ -223,6 +226,8 @@ const REFUSES_SOMETHING_ELSE_FIRST: Readonly<Record<string, string>> = {
   'stack export': NO_SUCH_STACK_HERE,
   'stack show': NO_SUCH_STACK_HERE,
   audit: THE_PARSER_ANSWERED_FIRST,
+  backup: THE_PARSER_ANSWERED_FIRST,
+  'backup hook': THE_PARSER_ANSWERED_FIRST,
   run: THE_PARSER_ANSWERED_FIRST,
   check: THE_PARSER_ANSWERED_FIRST,
   key: THE_PARSER_ANSWERED_FIRST,
@@ -232,6 +237,9 @@ const REFUSES_SOMETHING_ELSE_FIRST: Readonly<Record<string, string>> = {
   'commit-hook install':
     'a hook belongs to a git repository, not to a project: outside a repository it refuses with its own sentence',
   'commit-hook uninstall': 'the same: it asks for a git repository, never for a project',
+  'backup hook install':
+    'a hook belongs to a git repository, not to a project: outside a repository it refuses with its own sentence',
+  'backup hook uninstall': 'the same: it asks for a git repository, never for a project',
   record: THE_PARSER_ANSWERED_FIRST,
   'record merge-tail':
     'the merge driver git runs on the files it hands: it needs no project, and with none of them the parser asks for its arguments first',

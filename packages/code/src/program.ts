@@ -241,9 +241,29 @@ export function buildProgram(
   // was just registered, so a verb added to the list above arrives covered.
   speakUsageErrors(program, { io, render: resolved }, typed);
 
+  refuseAWriteOverAnAlteredEntry(program, verbs);
   sayWhatAWriteFounded(program, io, resolved, verbs);
 
   return { program, render: resolved, io, verbs };
+}
+
+/**
+ * Before a verb runs: the door that refuses a write while an entry of the record is altered (ADR-396)
+ * is armed for it, or cleared. It refuses at the writer, with the refusal `AlteredEntryError` names,
+ * which the catch of {@link parseWith} says as it says every refusal the product wrote on purpose.
+ * Registered first, so it is armed before anything the other hooks do. Which invocations, and why the
+ * door stands at the writer, is `a-write-over-an-altered-entry.ts`.
+ */
+function refuseAWriteOverAnAlteredEntry(program: Command, verbs: readonly Declared[]): void {
+  program.hook('preAction', async (_program, action) => {
+    const { armsTheDoor, armTheDoor, asksAtOnce } = await import(
+      './a-write-over-an-altered-entry.js'
+    );
+    await armTheDoor(
+      armsTheDoor(verbs, action),
+      asksAtOnce(action) ? resolveTrees(here().cwd, here().env) : undefined,
+    );
+  });
 }
 
 /**
@@ -357,6 +377,7 @@ export async function run(
 ): Promise<void> {
   const built = buildProgram(io, argv, render);
   sayWhatTheWalkPassesOver(built);
+  sayAnUpdateNotApplied(built, argv);
   if (argv.length === 0) return await saySummary(built);
   await parseWith(built, argv);
 }
@@ -410,6 +431,43 @@ function sayWhatTheWalkPassesOver({ program, io, render }: BuiltProgram): void {
       for (const sentence of passedOverFrom(cwd, env)) io.err(render(fact(sentence, 0)));
     } catch {
       // See above: a notice that cannot be composed is a notice not given.
+    }
+  });
+}
+
+/**
+ * Before a verb's answer, on stderr: one line, once per machine and version, when the mnema that runs is
+ * newer than the last one `mnema upgrade` brought this machine to (`update-notice.ts`).
+ *
+ * ONLY FOR A PERSON: at a terminal, without `--json`, outside a hook, and never for the server (`mnema
+ * mcp` says it in its own replies) nor for the verbs that bring a machine up to date. Without a terminal
+ * it says nothing and marks nothing. It reads one small file and no project, and a throw here is
+ * swallowed: a notice that cannot be composed is a notice not given.
+ */
+function sayAnUpdateNotApplied(
+  { program, io, render }: BuiltProgram,
+  argv: readonly string[],
+): void {
+  if (
+    io.aPersonIsHere !== true ||
+    argv.includes('--json') ||
+    argv.includes('--hook') ||
+    argv.includes('--after-update') ||
+    process.env[FOR_A_HOOK_ENV] === '1'
+  ) {
+    return;
+  }
+  program.hook('preAction', async (_program, action) => {
+    if (topLevelVerbOf(action) === MCP_VERB || topLevelVerbOf(action) === 'upgrade') return;
+    try {
+      const { noteTheVersionOnTheFirstVerb, updateLineOnce } = await import('./update-notice.js');
+      const { cwd, env } = here();
+      const dir = resolveTrees(cwd, env).global;
+      const line = updateLineOnce(dir, VERSION, true);
+      if (line !== undefined) io.err(render(fact(line, 0)));
+      if (topLevelVerbOf(action) !== 'init') noteTheVersionOnTheFirstVerb(dir);
+    } catch {
+      // See above.
     }
   });
 }
@@ -611,10 +669,25 @@ export async function start(argv: readonly string[], entry: Entry): Promise<void
   // Reached by a dynamic import, and the whole of `choice/` behind it: the layout library
   // is the most expensive import on this surface, and `mnema --version` must not know it
   // exists (`tests/the-floor-is-the-declaration.test.ts`).
-  const [{ theChoice }, { leavingProcess }] = await Promise.all([
+  const [{ theChoice }, { leavingProcess }, tour] = await Promise.all([
     import('./choice/asked.js'),
     import('./repl/leaving.js'),
+    import('./tour/run.js'),
   ]);
+  // THE FIRST RUN ON A MACHINE OPENS THE TOUR IN PLACE OF THE MENU, and ends there with nothing chosen: it
+  // only explains, so there is no line to run. The next bare name asks as it always did (`tour/run.ts`).
+  const there = here();
+  if (tour.theTourIsNew(there)) {
+    await tour.tourAtATerminal(
+      {
+        io: entry.io,
+        render: buildProgram(entry.io).render,
+        terminal: { input: entry.input, output: entry.output, leaving: leavingProcess },
+      },
+      there,
+    );
+    return;
+  }
   const chosen = await theChoice({
     io: entry.io,
     input: entry.input,

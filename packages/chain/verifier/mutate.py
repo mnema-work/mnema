@@ -1236,6 +1236,80 @@ def tail_linked_beside_a_real_one(root: str) -> tuple[bool, str]:
     return os.path.islink(place), f"tails/{other[:20]}... is a link, beside a real tail"
 
 
+def _link_out(root: str, place: str) -> tuple[bool, str]:
+    """Move what is at `place` out of the record, beside it, and leave a symbolic link to it there.
+
+    What the link points at is what was there, byte for byte: a reader that followed it would read
+    the record it always held, so only a reader that refuses the link refuses the record.
+    """
+    relative = os.path.relpath(place, root)
+    outside = os.path.join(
+        os.path.dirname(os.path.abspath(root)), "linked-" + relative.replace(os.sep, "-")
+    )
+    shutil.move(place, outside)
+    os.symlink(os.path.relpath(outside, os.path.dirname(place)), place)
+    return os.path.islink(place), f"{relative.replace(os.sep, '/')} is a link to what it held, moved outside"
+
+
+def segment_linked(root: str) -> tuple[bool, str]:
+    """A segment moved out of the record and a symbolic link to it left in its place.
+
+    Section 4: a reader does not follow a link anywhere it reads, so the tail holding it is
+    refused by the link's name and nothing of it is read.
+    """
+    return _link_out(root, _segment(root))
+
+
+def checkpoints_linked(root: str) -> tuple[bool, str]:
+    """The tail's `checkpoints.jsonl` moved out of the record and linked in its place."""
+    return _link_out(root, _checkpoints(root))
+
+
+def tailproof_linked(root: str) -> tuple[bool, str]:
+    """The tail's `tailproof.json` moved out of the record and linked in its place."""
+    return _link_out(root, os.path.join(_tail_dir(root), "tailproof.json"))
+
+
+def witness_file_linked(root: str) -> tuple[bool, str]:
+    """An attestation under the tail's `witness/` moved out of the record and linked in its place."""
+    witness = os.path.join(_tail_dir(root), "witness")
+    if not os.path.isdir(witness):
+        return False, "there is no witness directory"
+    names = sorted(name for name in os.listdir(witness) if name.endswith(".ots"))
+    if not names:
+        return False, "there is no attestation"
+    return _link_out(root, os.path.join(witness, names[0]))
+
+
+def key_file_linked(root: str) -> tuple[bool, str]:
+    """The key of the record's tail moved out of `keys/` and linked in its place."""
+    fingerprint = os.path.basename(_tail_dir(root)).rsplit("-", 1)[0]
+    return _link_out(root, os.path.join(root, "keys", fingerprint + ".pub"))
+
+
+def keys_dir_linked(root: str) -> tuple[bool, str]:
+    """The whole `keys/` directory moved out of the record and linked in its place."""
+    return _link_out(root, os.path.join(root, "keys"))
+
+
+def tails_dir_linked(root: str) -> tuple[bool, str]:
+    """The whole `tails/` directory moved out of the record and linked in its place."""
+    return _link_out(root, os.path.join(root, "tails"))
+
+
+def segment_linked_inside_the_record(root: str) -> tuple[bool, str]:
+    """A segment moved to the record's root, which no reader enumerates, and linked in its place.
+
+    A link is refused for being one, not for where it points: one that stays inside the record
+    is refused by the same words as one that leaves it.
+    """
+    segment = _segment(root)
+    kept = os.path.join(root, os.path.basename(segment))
+    shutil.move(segment, kept)
+    os.symlink(os.path.relpath(kept, os.path.dirname(segment)), segment)
+    return os.path.islink(segment), "the segment is a link to its own bytes, kept at the record's root"
+
+
 def forked_tail(root: str) -> tuple[bool, str]:
     """A second, different line at the last seq, following the same line the first one follows.
 
@@ -2215,6 +2289,14 @@ MUTATIONS = {
     "checkpoints-out-of-order-one-names-a-record": checkpoints_out_of_order_one_names_a_record,
     "tail-linked": tail_linked,
     "tail-linked-beside-a-real-one": tail_linked_beside_a_real_one,
+    "segment-linked": segment_linked,
+    "checkpoints-linked": checkpoints_linked,
+    "tailproof-linked": tailproof_linked,
+    "witness-file-linked": witness_file_linked,
+    "key-file-linked": key_file_linked,
+    "keys-dir-linked": keys_dir_linked,
+    "tails-dir-linked": tails_dir_linked,
+    "segment-linked-inside-the-record": segment_linked_inside_the_record,
     "named-record": named_record,
     "tail-of-another-record": tail_of_another_record,
     "tail-names-two-records": tail_names_two_records,

@@ -45,7 +45,7 @@ export function registerAccountability(program: Command, wiring: Wiring): Declar
         json?: boolean;
       }) => {
         const { anchorText } = await import('../anchors.js');
-        const { linkBreakNotice } = await import('./integrity.js');
+        const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
         const { runAccountability } = await import('../commands/accountability.js');
         const result = runAccountability(here(), {
           ...(opts.from !== undefined ? { from: opts.from } : {}),
@@ -60,6 +60,7 @@ export function registerAccountability(program: Command, wiring: Wiring): Declar
         // BEFORE the answer, and on the other stream, so it survives a pipe, and so
         // `--json` stays the machine-readable thing it promises to be.
         for (const line of linkBreakNotice(result.linkBreaks)) io.err(render(line));
+        for (const line of newerLinesNotice(result.newerLines, 'the record')) io.err(render(line));
         if (opts.json === true) {
           // The account as it is, and in each author's entry the foundings the line below
           // prints beside that author: every one in a tree where other identities were already

@@ -35,11 +35,19 @@
 
 import type { Command } from 'commander';
 import { hookTextOf } from '../host-names.js';
+import { fact } from '../presentation/detail.js';
 import { hookHostOf, hookHostOption, switchedOff } from './brief.js';
 import { here } from './context.js';
 import { writeLines } from './io.js';
 import { reportRefusal } from './report.js';
 import { type Declared, readsTheRecord, type Wiring } from './verb.js';
+
+/**
+ * What a person running the hook form by hand reads on the error stream when the notes exist but
+ * are longer than the room a hook has: the hook hands nothing then, and this says why.
+ */
+const NOTHING_HANDED_BECAUSE_IT_DOES_NOT_FIT =
+  'recall: the notes are longer than the room a hook has, so none were handed over';
 
 /** Registers `mnema recall` on the program. */
 export function registerRecall(program: Command, wiring: Wiring): Declared {
@@ -118,7 +126,7 @@ export function registerRecall(program: Command, wiring: Wiring): Declared {
           if (reminder.text !== undefined) io.out(reminder.text);
           return;
         }
-        const { linkBreakNotice } = await import('./integrity.js');
+        const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
         const { runRecall } = await import('../commands/recall.js');
         const { recallDocument, recallWithin } = await import('../presentation/recall.js');
         const { hookCeilingOf, roomBeside } = await import('../presentation/within-a-hook.js');
@@ -138,24 +146,32 @@ export function registerRecall(program: Command, wiring: Wiring): Declared {
         // (ADR-394, ADR-410), and nothing else is said on `err` by this verb; where there are no
         // notes there is no text to lead, and the verb stays as silent as it was (the opening
         // document says the fact).
-        const notice = linkBreakNotice(result.linkBreaks);
-        // With the flag the notice is part of what has to fit, as it is for `brief`.
+        const integrity = linkBreakNotice(result.linkBreaks);
+        // What is not integrity (a newer mnema wrote lines) stays on `err` even with the flag, under
+        // the document, where the handler appends it; the room beside the document counts only what goes to `out`.
+        const others = newerLinesNotice(result.newerLines, 'the record');
+        const notice = [...integrity, ...others];
+        // With the flag the facts of integrity are part of what has to fit: they lead the document on `out`.
         const document =
           opts.hook === true
             ? recallWithin(
                 result,
                 roomBeside(
-                  notice.map((line) => render(line)),
+                  integrity.map((line) => render(line)),
                   ceiling,
                 ),
                 ceiling.lengthOf,
               )
             : recallDocument(result);
+        if (opts.hook === true && document.length === 0 && recallDocument(result).length > 0) {
+          io.err(render(fact(NOTHING_HANDED_BECAUSE_IT_DOES_NOT_FIT, 0)));
+        }
         if (opts.hook !== true) {
           for (const line of notice) io.err(render(line));
         } else if (document.length > 0) {
-          for (const line of notice) io.out(render(line));
-          if (notice.length > 0) io.out('');
+          for (const line of others) io.err(render(line));
+          for (const line of integrity) io.out(render(line));
+          if (integrity.length > 0) io.out('');
         }
         writeLines(io, document);
       },

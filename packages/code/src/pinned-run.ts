@@ -25,18 +25,20 @@
  * is the answer that keeps a session from vouching for work in a repository it
  * never saw.
  *
- * WHAT IT IS PROVEN BY. The run's own events on the chain (`subjectEvents`), folded by the run
+ * WHAT IT IS PROVEN BY. The run's own events on the chain that a signature proves
+ * (`provenSubjectEvents`, ADR-561), folded by the run
  * projection's fold, not the projection the tree keeps, which is a file beside the record that
  * nothing signs: a row of it edited to say a closed run is open would have let a fact be pinned to
  * a session the record had closed.
  */
 
-import { catalogUpcasters, subjectEvents } from '@mnema/chain';
+import { catalogUpcasters } from '@mnema/chain';
 import {
   canonicalId,
   chainRootForScope,
   type DiscoveryEnv,
   projectRuns,
+  provenSubjectEvents,
   resolveTrees,
 } from '@mnema/core';
 
@@ -107,7 +109,7 @@ export function resolvePinnedRun(
   const found =
     id === undefined
       ? undefined
-      : projectRuns(subjectEvents({ root }, catalogUpcasters(), [id]).get(id) ?? []).get(id);
+      : projectRuns(provenSubjectEvents({ root }, catalogUpcasters(), [id]).get(id) ?? []).get(id);
   if (found === undefined) {
     return {
       ok: false,

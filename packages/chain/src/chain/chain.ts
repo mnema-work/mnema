@@ -14,6 +14,7 @@
 import { catalogUpcasters } from '../events/registry.js';
 import type { UpcasterRegistry } from '../events/upcaster.js';
 import {
+  adoptInstallationId,
   type ChainSigner,
   installationIdToKeep,
   keyToSignWith,
@@ -23,6 +24,8 @@ import {
   signerOf,
 } from './keystore.js';
 import type { ChainLayout } from './layout.js';
+import { refuseToWriteThrough } from './linked-write.js';
+import { migrateMachinery } from './migration.js';
 import { type VerifyOptions, type VerifyResult, verifyChain } from './verify.js';
 import { ChainWriter, type WriterOptions } from './writer.js';
 
@@ -40,6 +43,10 @@ export interface OpenOptions extends WriterOptions {
    * not the chain root: a chain several working trees of one repository share gives each its own
    * id, and so its own tail. The id is chosen locally (FORMAT.md §6.1), so where it is kept is
    * nothing a reader sees. Defaults to the chain root.
+   *
+   * Given together with {@link WriterOptions.sharedRoot}, it is a checkout's hint: the id (and
+   * the notes, in the shared place) an earlier mnema kept in the chain root are moved there
+   * once, at the first open ({@link migrateMachinery}).
    */
   readonly installationRoot?: string;
 }
@@ -77,16 +84,39 @@ export function openChainForWriting(chainRoot: string, options: OpenOptions): Ch
   const key = keyToSignWith({ root: options.keyRoot });
   const installationLayout: ChainLayout = { root: options.installationRoot ?? chainRoot };
   const upcasters = options.upcasters ?? catalogUpcasters();
+  // The installation id is written in `keys/` of the installation's tree, here or at the first append
+  // (a link at the id's own file is refused by name where the id is read: `DanglingInstallationIdError`).
+  refuseToWriteThrough(installationLayout, ['keys']);
   const keepKey = key.keep;
   if (keepKey === undefined) {
     const fingerprint = key.keyPair.fingerprint;
+    if (options.sharedRoot !== undefined && options.installationRoot !== undefined) {
+      migrateMachinery({
+        chain: chainLayout,
+        shared: { root: options.sharedRoot },
+        checkout: installationLayout,
+        fingerprint,
+      });
+    }
     const installationId = loadOrCreateInstallationId(installationLayout, fingerprint);
+    const pool = options.pool;
     return new ChainWriter(
       chainLayout,
       key.keyPair,
       installationId,
       upcasters,
-      options,
+      pool === undefined
+        ? options
+        : {
+            ...options,
+            pool: {
+              ...pool,
+              hint: {
+                read: () => loadOrCreateInstallationId(installationLayout, fingerprint),
+                adopt: (id) => adoptInstallationId(installationLayout, fingerprint, id),
+              },
+            },
+          },
       undefined,
       (current) => nextInstallationId(installationLayout, fingerprint, current),
     );

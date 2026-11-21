@@ -67,17 +67,35 @@ export type HookPlace =
   | { readonly ok: true; readonly path: string }
   | { readonly ok: false; readonly reason: 'NOT_A_REPOSITORY' };
 
-/** Where git would read `prepare-commit-msg` from, in the repository `cwd` is in. */
-export function hookPlace(cwd: string): HookPlace {
+/** The directory git reads hooks from in the repository `cwd` is in, and whether `core.hooksPath` said so. */
+export type HooksDir =
+  | {
+      readonly ok: true;
+      readonly dir: string;
+      /** The work tree's top, which is where git runs hooks from. */
+      readonly top: string;
+      readonly configured: boolean;
+    }
+  | { readonly ok: false; readonly reason: 'NOT_A_REPOSITORY' };
+
+/** Where git would look for hooks: `core.hooksPath` when it is set, otherwise the repository's own hooks directory. */
+export function hooksDirOf(cwd: string): HooksDir {
   const top = git(cwd, ['rev-parse', '--show-toplevel'])?.trim();
   if (top === undefined || top === '') return { ok: false, reason: 'NOT_A_REPOSITORY' };
   const configured = git(cwd, ['config', '--type=path', '--get', 'core.hooksPath'])?.trim();
-  const dir =
-    configured !== undefined && configured !== ''
-      ? resolve(top, configured)
-      : git(cwd, ['rev-parse', '--path-format=absolute', '--git-path', 'hooks'])?.trim();
+  const isConfigured = configured !== undefined && configured !== '';
+  const dir = isConfigured
+    ? resolve(top, configured)
+    : git(cwd, ['rev-parse', '--path-format=absolute', '--git-path', 'hooks'])?.trim();
   if (dir === undefined || dir === '') return { ok: false, reason: 'NOT_A_REPOSITORY' };
-  return { ok: true, path: join(dir, HOOK_NAME) };
+  return { ok: true, dir, top, configured: isConfigured };
+}
+
+/** Where git would read `prepare-commit-msg` from, in the repository `cwd` is in. */
+export function hookPlace(cwd: string): HookPlace {
+  const found = hooksDirOf(cwd);
+  if (!found.ok) return found;
+  return { ok: true, path: join(found.dir, HOOK_NAME) };
 }
 
 /** What `install` and `uninstall` answer with. */

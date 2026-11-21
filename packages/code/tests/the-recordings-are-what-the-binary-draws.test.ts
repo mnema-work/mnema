@@ -67,6 +67,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { THE_FLOOR } from '../src/repl/floor.js';
+import { aMachineThatSawTheTour } from './support/a-machine-that-saw-the-tour.js';
 import { accountsFor, asMinted } from './support/a-page-held-to-a-run.js';
 import { ENDS_THE_INPUT } from './support/console.js';
 import { aFrameSince, FRAME_IS_DRAWN, inPty, type Ran, type Step } from './support/pty.js';
@@ -569,6 +570,8 @@ describe('the console recording', () => {
     project = join(home, 'your-repository');
     mkdirSync(project, { recursive: true });
     environment = { PATH: process.env.PATH ?? '', HOME: home };
+    // The recording starts at the menu: the machine has been through the tour, as the tour's own state says.
+    aMachineThatSawTheTour(environment, project);
     spawnSync('git', ['init', '-q'], { cwd: project, env: environment });
     let last: string | undefined;
     for (const argv of script.record) {

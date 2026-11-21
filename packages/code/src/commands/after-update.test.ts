@@ -1,0 +1,509 @@
+/**
+ * What an update leaves undone, on a project an earlier mnema founded (`after-update.ts`): the three things that
+ * are mnema's own are applied, the merge driver with its autoStash is asked and never applied by itself, a plugin
+ * a host keeps is said, and the two doors of the function print the same.
+ *
+ * The "fossil" is a project as 0.1.5 left it: an instructions block of an earlier version, a record whose
+ * `.gitattributes` has no merge line, VS Code's `settings.json` listing a plugin folder of Claude Code's cache that
+ * is gone, a git configuration with no driver, and a plugin installed at the old label.
+ */
+
+import { execFileSync } from 'node:child_process';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { resolveTrees } from '@mnema/core';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { discoveryEnv } from '../env.js';
+import {
+  beginMarker,
+  INSTRUCTIONS_BLOCK,
+  INSTRUCTIONS_END,
+  KNOWN_BODIES,
+} from '../instructions-block.js';
+import { MACHINE_STATE_FILE } from '../machine-state.js';
+import { type CliIo, run } from '../program.js';
+import { VERSION } from '../version.js';
+import { bringUpToDate, whatAnUpdateAsks } from './after-update.js';
+import { settingsCandidates } from './doctor-vscode.js';
+
+let sandbox: string;
+let home: string;
+let repo: string;
+let originalCwd: string;
+let originalHome: string | undefined;
+let originalClaude: string | undefined;
+
+interface Said {
+  readonly out: string[];
+  readonly err: string[];
+  readonly failed: boolean;
+}
+
+async function mnema(argv: string[], io: Partial<CliIo> = {}): Promise<Said> {
+  const out: string[] = [];
+  const err: string[] = [];
+  let failed = false;
+  await run(argv, {
+    out: (line) => out.push(line),
+    err: (line) => err.push(line),
+    fail: () => {
+      failed = true;
+    },
+    ...io,
+  });
+  return { out, err, failed };
+}
+
+const git = (...args: string[]): string =>
+  execFileSync('git', args, { cwd: repo, encoding: 'utf8', env: { ...process.env, HOME: home } });
+
+const gitConfig = (key: string): string | undefined => {
+  try {
+    return git('config', '--local', '--get', key).trim();
+  } catch {
+    return undefined;
+  }
+};
+
+const OLD_BLOCK = `${beginMarker('v1')}\n${KNOWN_BODIES.v1}${INSTRUCTIONS_END}\n`;
+const GONE = () => join(home, '.claude', 'plugins', 'cache', 'mnema', 'mnema', '0.1.5');
+const STABLE = () => join(home, '.claude', 'plugins', 'marketplaces', 'mnema', 'plugin');
+const SETTINGS = () => settingsCandidates(home, process.platform, process.env)[0] as string;
+
+function put(path: string, text: string): void {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, text);
+}
+
+/** The project as 0.1.5 left it, whatever state it was in. */
+function makeTheFossil(): void {
+  put(join(repo, 'CLAUDE.md'), `# Mine\n\n${OLD_BLOCK}`);
+  const attributes = join(repo, '.mnema', '.gitattributes');
+  put(
+    attributes,
+    readFileSync(attributes, 'utf8')
+      .split('\n')
+      .filter((line) => !line.includes('merge=mnema-tail'))
+      .join('\n'),
+  );
+  for (const key of [
+    'merge.mnema-tail.name',
+    'merge.mnema-tail.driver',
+    'merge.autoStash',
+    'rebase.autoStash',
+  ]) {
+    if (gitConfig(key) !== undefined) git('config', '--local', '--unset', key);
+  }
+  put(
+    join(STABLE(), '.claude-plugin', 'plugin.json'),
+    JSON.stringify({ name: 'mnema', version: VERSION }),
+  );
+  put(SETTINGS(), `{\n  "chat.pluginLocations": {\n    ${JSON.stringify(GONE())}: true\n  }\n}\n`);
+  put(
+    join(home, '.claude', 'plugins', 'installed_plugins.json'),
+    JSON.stringify({
+      plugins: { 'mnema@mnema': [{ version: '0.1.5', scope: 'user', installPath: GONE() }] },
+    }),
+  );
+  rmSync(stateFile(), { force: true });
+}
+
+beforeEach(async () => {
+  sandbox = mkdtempSync(join(tmpdir(), 'mnema-after-update-'));
+  home = join(sandbox, 'home');
+  repo = join(sandbox, 'repo');
+  mkdirSync(home, { recursive: true });
+  mkdirSync(repo, { recursive: true });
+  originalCwd = process.cwd();
+  originalHome = process.env.HOME;
+  originalClaude = process.env.CLAUDE_CONFIG_DIR;
+  process.env.HOME = home;
+  delete process.env.MNEMA_HOME;
+  delete process.env.CLAUDE_CONFIG_DIR;
+  process.chdir(repo);
+  git('init', '-q');
+  git('remote', 'add', 'origin', 'https://example.invalid/some/repo.git');
+  const founded = await mnema(['init', '--yes']);
+  expect(founded.failed, founded.err.join(' / ')).toBe(false);
+  makeTheFossil();
+});
+
+afterEach(() => {
+  process.chdir(originalCwd);
+  if (originalHome === undefined) delete process.env.HOME;
+  else process.env.HOME = originalHome;
+  if (originalClaude !== undefined) process.env.CLAUDE_CONFIG_DIR = originalClaude;
+  rmSync(sandbox, { recursive: true, force: true });
+});
+
+const stateFile = (): string => join(resolveTrees(repo, discoveryEnv()).global, MACHINE_STATE_FILE);
+
+const stateOf = (): string | undefined => {
+  const file = stateFile();
+  return existsSync(file) ? readFileSync(file, 'utf8') : undefined;
+};
+
+/** The timestamp a kept copy of settings.json carries, which is the one thing two runs do not share. */
+const steady = (lines: string[]): string =>
+  lines.join('\n').replace(/mnema-backup-\d{8}T\d{6}/g, 'mnema-backup-STAMP');
+
+describe('the plan on a project as 0.1.5 left it', () => {
+  it('names the three applied steps, asks the merge driver and says the plugin, and writes nothing', async () => {
+    const before = [
+      readFileSync(join(repo, 'CLAUDE.md'), 'utf8'),
+      readFileSync(join(repo, '.mnema', '.gitattributes'), 'utf8'),
+      readFileSync(SETTINGS(), 'utf8'),
+    ];
+    const said = await mnema(['upgrade', '--dry-run']);
+    expect(said.failed, said.err.join(' / ')).toBe(false);
+    const out = said.out.join('\n');
+    expect(out).toMatch(/would apply · instructions: CLAUDE\.md /);
+    expect(out).toMatch(/would apply · record: .*merge=mnema-tail/);
+    expect(out).toMatch(/would apply · vscode: /);
+    expect(out).toMatch(/would ask · merge-driver: .*merge\.autoStash.*rebase\.autoStash/);
+    expect(out).toContain('(mnema doctor --fix merge-driver)');
+    expect(out).toMatch(/to do · plugin: plugin mnema@mnema is installed at 0\.1\.5/);
+    expect(out).toContain('claude plugin update mnema@mnema');
+    expect(out.trimEnd().endsWith('nothing was written.')).toBe(true);
+    expect([
+      readFileSync(join(repo, 'CLAUDE.md'), 'utf8'),
+      readFileSync(join(repo, '.mnema', '.gitattributes'), 'utf8'),
+      readFileSync(SETTINGS(), 'utf8'),
+    ]).toEqual(before);
+    expect(gitConfig('merge.autoStash')).toBeUndefined();
+    expect(stateOf()).toBeUndefined();
+  });
+});
+
+describe('the plan as a value', () => {
+  it('sorts the five steps of the fossil by what each costs, in the order they run, and reads nothing it would write', () => {
+    const plan = whatAnUpdateAsks({
+      cwd: repo,
+      env: discoveryEnv(),
+      processEnv: process.env,
+      running: { file: process.argv[1] ?? '', version: VERSION },
+      driver: `'${process.execPath}' '${process.argv[1]}' record merge-tail %O %A %B %P`,
+    });
+    expect(plan.map((step) => `${step.class} ${step.topic}`)).toEqual([
+      'applied instructions',
+      'applied record',
+      'applied vscode',
+      'asked merge-driver',
+      'said plugin',
+    ]);
+    expect(plan.find((step) => step.topic === 'merge-driver')?.command).toBe(
+      'mnema doctor --fix merge-driver',
+    );
+    expect(readFileSync(join(repo, 'CLAUDE.md'), 'utf8')).toContain(beginMarker('v1'));
+  });
+});
+
+describe('mnema upgrade without a terminal', () => {
+  it('applies the three, leaves the autoStash to a person and lists it as a command', async () => {
+    const said = await mnema(['upgrade']);
+    expect(said.failed, said.err.join(' / ')).toBe(false);
+    const out = said.out.join('\n');
+    expect(readFileSync(join(repo, 'CLAUDE.md'), 'utf8')).toBe(`# Mine\n\n${INSTRUCTIONS_BLOCK}`);
+    expect(readFileSync(join(repo, '.mnema', '.gitattributes'), 'utf8')).toContain(
+      'merge=mnema-tail',
+    );
+    expect(readFileSync(SETTINGS(), 'utf8')).toContain(STABLE());
+    expect(readFileSync(SETTINGS(), 'utf8')).not.toContain(GONE());
+    expect(readdirSync(dirname(SETTINGS())).some((name) => name.includes('mnema-backup-'))).toBe(
+      true,
+    );
+    // The one that changes how the clone behaves is not done, and nothing says it was.
+    expect(gitConfig('merge.autoStash')).toBeUndefined();
+    expect(gitConfig('rebase.autoStash')).toBeUndefined();
+    expect(gitConfig('merge.mnema-tail.driver')).toBeUndefined();
+    expect(out).toMatch(/to run · merge-driver: .*\(mnema doctor --fix merge-driver\)/);
+    expect(out).not.toMatch(/applied · merge-driver/);
+    expect(JSON.parse(stateOf() as string).appliedVersion).toBe(VERSION);
+  });
+
+  it('has nothing of its own left to apply the second time, and still lists what is a person’s', async () => {
+    await mnema(['upgrade']);
+    const again = await mnema(['upgrade']);
+    expect(again.failed).toBe(false);
+    expect(again.out.join('\n')).not.toMatch(/^applied ·|· (instructions|record|vscode):/m);
+    expect(again.out.join('\n')).toMatch(/to run · merge-driver/);
+    expect(again.out.join('\n')).toMatch(/to do · plugin/);
+  });
+});
+
+describe('mnema upgrade at a terminal', () => {
+  it('writes the merge driver and the autoStash only on a yes', async () => {
+    const asked: string[] = [];
+    const no = await mnema(['upgrade'], {
+      aPersonIsHere: true,
+      ask: async (question) => {
+        asked.push(question);
+        return 'no';
+      },
+    });
+    expect(asked).toHaveLength(1);
+    expect(asked[0]).toContain('merge.autoStash');
+    expect(no.out.join('\n')).toMatch(/will apply · instructions/);
+    expect(no.out.join('\n')).toMatch(/left · merge-driver/);
+    expect(gitConfig('merge.autoStash')).toBeUndefined();
+
+    const yes = await mnema(['upgrade'], { aPersonIsHere: true, ask: async () => 'Yes' });
+    expect(yes.failed, yes.err.join(' / ')).toBe(false);
+    expect(gitConfig('merge.autoStash')).toBe('true');
+    expect(gitConfig('rebase.autoStash')).toBe('true');
+    expect(gitConfig('merge.mnema-tail.driver')).toContain('record merge-tail');
+  });
+});
+
+describe('the two doors of the one function', () => {
+  it('print the same plan, and the same account of what they did', async () => {
+    const upgrade = await mnema(['upgrade', '--dry-run']);
+    const doctor = await mnema(['doctor', '--after-update', '--dry-run']);
+    expect(doctor.out).toEqual(upgrade.out);
+    expect(upgrade.out.length).toBeGreaterThan(3);
+
+    const viaUpgrade = await mnema(['upgrade']);
+    const stateAfter = stateOf();
+    rmSync(stateFile(), { force: true });
+    rmSync(dirname(SETTINGS()), { recursive: true, force: true });
+    makeTheFossil();
+    const viaDoctor = await mnema(['doctor', '--after-update']);
+    expect(steady(viaDoctor.out)).toBe(steady(viaUpgrade.out));
+    expect(stateOf()).toBe(stateAfter);
+  });
+
+  it('refuse a flag that belongs to the other act', async () => {
+    const both = await mnema(['doctor', '--after-update', '--fix', 'vscode']);
+    expect(both.failed).toBe(true);
+    const alone = await mnema(['doctor', '--dry-run']);
+    expect(alone.failed).toBe(true);
+    expect(alone.err.join(' ')).toContain('--after-update');
+  });
+});
+
+describe('the mnema MCP server declared a second time', () => {
+  const claudeJson = (): string => join(home, '.claude.json');
+  const turnOn = (value: boolean): void =>
+    put(
+      join(home, '.claude', 'settings.json'),
+      JSON.stringify({ enabledPlugins: { 'mnema@mnema': value } }),
+    );
+  beforeEach(() => turnOn(true));
+  /** What a host writes: its own state, another project's server, the person's other servers, and two of ours. */
+  const hostFile = (): string =>
+    `${JSON.stringify(
+      {
+        numStartups: 41,
+        mcpServers: {
+          other: { command: 'other-server', args: ['--x'] },
+          mnema: { command: 'mnema', args: ['mcp'] },
+        },
+        projects: {
+          [repo]: { allowedTools: [], mcpServers: { mnema: { command: 'mnema', args: ['mcp'] } } },
+          '/elsewhere': { mcpServers: { mnema: { command: 'mnema', args: ['mcp'] } } },
+        },
+        tips: { seen: 3 },
+      },
+      null,
+      2,
+    )}\n`;
+
+  it('removes the entries of the host file beside a plugin, keeps every other byte and a copy, and asks for .mcp.json', async () => {
+    put(claudeJson(), hostFile());
+    put(
+      join(repo, '.mcp.json'),
+      '{\n  "mcpServers": {\n    "mnema": { "command": "mnema", "args": ["mcp"] }\n  }\n}\n',
+    );
+    const before = readFileSync(claudeJson(), 'utf8');
+    const dry = await mnema(['upgrade', '--dry-run']);
+    expect(dry.out.join('\n')).toMatch(
+      /would apply · mcp: .*\.claude\.json declares the mnema MCP server again/,
+    );
+    expect(dry.out.join('\n')).toMatch(/would ask · mcp: .*\.mcp\.json declares/);
+    expect(readFileSync(claudeJson(), 'utf8')).toBe(before);
+
+    const said = await mnema(['upgrade']);
+    expect(said.failed, said.err.join(' / ')).toBe(false);
+    const after = readFileSync(claudeJson(), 'utf8');
+    const expected = JSON.parse(before);
+    delete expected.mcpServers.mnema;
+    delete expected.projects[repo].mcpServers.mnema;
+    // Exactly the two entries went, and the lines around them are the bytes they were.
+    expect(JSON.parse(after)).toEqual(expected);
+    expect(after).toContain('  "numStartups": 41,\n');
+    expect(after).toContain(
+      '    "other": {\n      "command": "other-server",\n      "args": [\n        "--x"\n      ]\n    }\n  },\n',
+    );
+    expect(after).toContain('"/elsewhere"');
+    const copies = readdirSync(home).filter((name) =>
+      name.startsWith('.claude.json.mnema-backup-'),
+    );
+    expect(copies).toHaveLength(1);
+    expect(readFileSync(join(home, copies[0] as string), 'utf8')).toBe(before);
+    // The file a team commits is asked about, and without a terminal it is listed as a command, untouched.
+    expect(said.out.join('\n')).toMatch(
+      /to run · mcp: .*\(claude mcp remove mnema --scope project\)/,
+    );
+    expect(readFileSync(join(repo, '.mcp.json'), 'utf8')).toContain('"mnema"');
+  });
+
+  it('writes .mcp.json only on a yes', async () => {
+    put(
+      join(repo, '.mcp.json'),
+      '{\n  "mcpServers": {\n    "mnema": { "command": "mnema", "args": ["mcp"] }\n  }\n}\n',
+    );
+    await mnema(['upgrade'], {
+      aPersonIsHere: true,
+      ask: async (question) => (question.startsWith('mcp:') ? 'no' : 'no'),
+    });
+    expect(readFileSync(join(repo, '.mcp.json'), 'utf8')).toContain('"mnema"');
+    const yes = await mnema(['upgrade'], {
+      aPersonIsHere: true,
+      ask: async (question) => (question.startsWith('mcp:') ? 'yes' : 'no'),
+    });
+    expect(yes.failed, yes.err.join(' / ')).toBe(false);
+    expect(JSON.parse(readFileSync(join(repo, '.mcp.json'), 'utf8'))).toEqual({ mcpServers: {} });
+  });
+
+  it('keeps the one declaration there is, and the user one of two in the host file alone', async () => {
+    rmSync(join(home, '.claude', 'plugins', 'installed_plugins.json'));
+    put(claudeJson(), hostFile());
+    const said = await mnema(['upgrade']);
+    expect(said.failed, said.err.join(' / ')).toBe(false);
+    const after = JSON.parse(readFileSync(claudeJson(), 'utf8'));
+    expect(after.mcpServers.mnema).toEqual({ command: 'mnema', args: ['mcp'] });
+    expect(after.projects[repo].mcpServers).toEqual({});
+    expect(after.projects['/elsewhere'].mcpServers.mnema).toBeDefined();
+    const lone = JSON.stringify({ mcpServers: { mnema: { command: 'mnema', args: ['mcp'] } } });
+    put(claudeJson(), lone);
+    const again = await mnema(['upgrade']);
+    expect(again.out.join('\n')).not.toMatch(/· mcp:/);
+    expect(readFileSync(claudeJson(), 'utf8')).toBe(lone);
+  });
+
+  it('refuses a host file it cannot edit, writes nothing and fails the run', async () => {
+    const broken = '{\n  "mcpServers": {\n    "mnema": {},\n    "mnema": {}\n  }\n}\n';
+    put(claudeJson(), broken);
+    const said = await mnema(['upgrade']);
+    expect(said.failed).toBe(true);
+    expect(said.out.join('\n')).toMatch(/failed · mcp: .*appears more than once/);
+    expect(readFileSync(claudeJson(), 'utf8')).toBe(broken);
+    expect(readdirSync(home).some((name) => name.includes('mnema-backup-'))).toBe(false);
+  });
+
+  const stays = async (): Promise<void> => {
+    put(claudeJson(), hostFile());
+    const before = readFileSync(claudeJson(), 'utf8');
+    const said = await mnema(['upgrade']);
+    expect(said.failed, said.err.join(' / ')).toBe(false);
+    const after = JSON.parse(readFileSync(claudeJson(), 'utf8'));
+    // Nothing that works here declares it but this file, so the user entry stays (the project one is the second of the file's own).
+    expect(after.mcpServers.mnema).toEqual({ command: 'mnema', args: ['mcp'] });
+    expect(JSON.parse(before).mcpServers.mnema).toEqual(after.mcpServers.mnema);
+    expect(after.projects[repo].mcpServers).toEqual({});
+  };
+
+  it('keeps the entry when only another host declares it', async () => {
+    rmSync(join(home, '.claude', 'plugins', 'installed_plugins.json'));
+    put(
+      join(repo, '.vscode', 'mcp.json'),
+      '{"servers":{"mnema":{"command":"mnema","args":["mcp"]}}}',
+    );
+    put(
+      join(repo, '.cursor', 'mcp.json'),
+      '{"mcpServers":{"mnema":{"command":"mnema","args":["mcp"]}}}',
+    );
+    await stays();
+    expect(JSON.parse(readFileSync(claudeJson(), 'utf8')).projects[repo].mcpServers).toEqual({});
+  });
+
+  it('keeps the entry when the plugin is installed for another project', async () => {
+    put(
+      join(home, '.claude', 'plugins', 'installed_plugins.json'),
+      JSON.stringify({
+        plugins: {
+          'mnema@mnema': [{ version: '0.1.5', scope: 'project', projectPath: '/somewhere/else' }],
+        },
+      }),
+    );
+    await stays();
+  });
+
+  it('keeps the entry when the plugin is turned off', async () => {
+    turnOn(false);
+    await stays();
+  });
+
+  it('keeps the entry beside a .mcp.json the host has not approved, and cuts it beside one it has', async () => {
+    rmSync(join(home, '.claude', 'plugins', 'installed_plugins.json'));
+    put(join(repo, '.mcp.json'), '{"mcpServers":{"mnema":{"command":"mnema","args":["mcp"]}}}');
+    await stays();
+    const approved = JSON.parse(hostFile());
+    approved.projects[repo].enabledMcpjsonServers = ['mnema'];
+    put(claudeJson(), `${JSON.stringify(approved, null, 2)}\n`);
+    await mnema(['upgrade']);
+    expect(JSON.parse(readFileSync(claudeJson(), 'utf8')).mcpServers.mnema).toBeUndefined();
+  });
+
+  it('does not count a server named mnema that starts another program', async () => {
+    const other = JSON.parse(hostFile());
+    other.mcpServers.mnema = { command: '/usr/bin/something-else', args: ['serve'] };
+    put(claudeJson(), `${JSON.stringify(other, null, 2)}\n`);
+    await mnema(['upgrade']);
+    expect(JSON.parse(readFileSync(claudeJson(), 'utf8')).mcpServers.mnema).toEqual(
+      other.mcpServers.mnema,
+    );
+  });
+
+  it('keeps a backup of each of two upgrades, under names that do not collide, and leaves no temporary file', async () => {
+    put(claudeJson(), hostFile());
+    const first = await mnema(['upgrade']);
+    expect(first.failed, first.err.join(' / ')).toBe(false);
+    put(claudeJson(), hostFile());
+    const second = await mnema(['upgrade']);
+    expect(second.failed, second.err.join(' / ')).toBe(false);
+    expect(
+      readdirSync(home).filter((name) => name.startsWith('.claude.json.mnema-backup-')),
+    ).toHaveLength(2);
+    expect(readdirSync(home).some((name) => name.includes('.mnema-tmp-'))).toBe(false);
+  });
+
+  it('does not write a file the host changed between the plan and the write', async () => {
+    put(claudeJson(), hostFile());
+    const base = {
+      env: discoveryEnv(),
+      processEnv: process.env,
+      running: { file: process.argv[1] ?? '', version: VERSION },
+      driver: `'${process.execPath}' '${process.argv[1]}' record merge-tail %O %A %B %P`,
+    };
+    let reads = 0;
+    let mutateAt = -1;
+    const hostsNew = `${JSON.stringify({ ...JSON.parse(hostFile()), hostNew: 'written by the host meanwhile' }, null, 2)}\n`;
+    const ctx = {
+      ...base,
+      get cwd(): string {
+        reads += 1;
+        if (reads === mutateAt) put(claudeJson(), hostsNew);
+        return repo;
+      },
+    };
+    expect(whatAnUpdateAsks(ctx).some((step) => step.topic === 'mcp')).toBe(true);
+    // The plan reads the project this many times; the first read after it belongs to the first step.
+    mutateAt = reads + 1;
+    reads = 0;
+    const said = await bringUpToDate(ctx, { dryRun: false });
+    expect(said.failed).toBe(true);
+    expect(said.lines.join('\n')).toMatch(/failed · mcp: .*changed since the plan read it/);
+    expect(readFileSync(claudeJson(), 'utf8')).toBe(hostsNew);
+    expect(readdirSync(home).filter((name) => /mnema-(backup|tmp)-/.test(name))).toEqual([]);
+  });
+});

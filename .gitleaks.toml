@@ -60,3 +60,7 @@ condition = "AND"
 paths = ['''measurements/free-block-2026-10/kit/(relay/relay\.test|measured/fake-upstream|measured/session\.test)\.mjs''']
 regexTarget = "match"
 regexes = ['''sk-or-v1-(0123456789abcdef)+''']
+
+[[allowlists]]
+description = "A made-up value the redaction's page, its generated table and a comment beside the shape show being replaced after a credential's name (`token: abc123XYZ987 for the staging box`). This value and no other."
+regexes = ['''^abc123XYZ987$''']

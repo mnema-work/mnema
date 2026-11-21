@@ -135,6 +135,8 @@ describe('screened: absence means nothing was taken out', () => {
 const CLASS_SAMPLE: Readonly<Record<string, string>> = {
   'aws-access-key': 'AKIAIOSFODNN7EXAMPLE',
   'github-token': `ghp_${'A1b2C3d4E5'.repeat(4)}`,
+  'gitlab-token': `glpat-${'xK3_m9Pq-2'.repeat(2)}`,
+  'huggingface-token': `hf_${'aBcD3fGh1J'.repeat(3)}xyzA`,
   'anthropic-key': `sk-ant-api03-${'Xy9'.repeat(12)}`,
   'openai-key': `sk-proj-${'Xy9'.repeat(12)}`,
   'stripe-key': `sk_live_${'4a7B'.repeat(8)}`,
@@ -147,11 +149,20 @@ const CLASS_SAMPLE: Readonly<Record<string, string>> = {
   // The one class whose secret is a SLOT rather than the whole value: the URL around
   // it has to survive a redaction, and the whole write is refused in a name anyway.
   'url-password': 'postgres://svc:Tr0ub4dor3@db.internal/app',
+  // The two classes read by context are slots too: the value after a header or a name.
+  'authorization-header': 'Authorization: Bearer Zq8Rt5Wx2Ly',
+  'named-credential': 'DB_PASSWORD=S3nh4F0rte',
 };
 
 /** The part of a sample that must never reach the record. */
+const SLOT: Readonly<Record<string, string>> = {
+  'url-password': 'Tr0ub4dor3',
+  'authorization-header': 'Zq8Rt5Wx2Ly',
+  'named-credential': 'S3nh4F0rte',
+};
+
 function mustNotSurvive(secret: string): string {
-  return secret === 'url-password' ? 'Tr0ub4dor3' : (CLASS_SAMPLE[secret] as string);
+  return SLOT[secret] ?? (CLASS_SAMPLE[secret] as string);
 }
 
 describe('every class the sieve knows is refused in a name and redacted in a body', () => {
@@ -228,6 +239,67 @@ describe('every class the sieve knows is refused in a name and redacted in a bod
     if (!asName.ok) return;
     expect(asName.fields.title).toBe(chosen);
     expect(asName.replaced).toEqual([]);
+  });
+});
+
+describe('a name is read by shape and by context, not by a first word that looks drawn at random', () => {
+  // A credential's name, a colon and a word with letters and digits is how a title says what
+  // it is about (`Password: Argon2id over bcrypt`) as often as how a sentence leaks a value.
+  // In a body the word is replaced and the fact survives; in a name the word cannot be
+  // replaced, only refused, and a refusal there turned away titles nobody would call secret.
+  const S = '<SECRET:named-credential>';
+  const TITLES: readonly (readonly [string, string])[] = [
+    ['Password: Argon2id over bcrypt', `Password: ${S} over bcrypt`],
+    ['Password: bcrypt12 hashing', `Password: ${S} hashing`],
+    ['Token: Base64Url encoding', `Token: ${S} encoding`],
+    ['Secret: SHA3-256 checksum', `Secret: ${S} checksum`],
+    ['Token: 01a1f59d-2c5c-7000-bd90-b08f51a5d168 superseded', `Token: ${S} superseded`],
+  ];
+
+  it('writes the placeholder the body samples below expect', () => {
+    expect(secretPlaceholder('named-credential')).toBe(S);
+  });
+
+  for (const [title, inABody] of TITLES) {
+    it(`takes "${title}" unchanged as a title, an about, a topic, a skill's name and an argument`, () => {
+      const result = screenContent({
+        title,
+        about: title,
+        topic: title,
+        name: title,
+        args: [title],
+      });
+
+      expect(result.ok, `${title} was refused in a name`).toBe(true);
+      if (!result.ok) return;
+      expect(result.fields).toEqual({
+        title,
+        about: title,
+        topic: title,
+        name: title,
+        args: [title],
+      });
+      expect(result.replaced).toEqual([]);
+    });
+
+    it(`still replaces the word after the colon of "${title}" in a body`, () => {
+      const result = screenContent({ rationale: title, text: title });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.fields).toEqual({ rationale: inABody, text: inABody });
+      expect(result.replaced).toEqual(['named-credential', 'named-credential']);
+    });
+  }
+
+  it('still refuses a name where the value stands alone after the name, or after an equals sign', () => {
+    for (const title of ['api_key: Zq8Rt5Wx2LyAbCd', 'rotate DB_PASSWORD=S3nh4F0rte now']) {
+      const result = screenContent({ title });
+      expect(result.ok, `${title} was taken as a name`).toBe(false);
+      if (result.ok) return;
+      expect(result.code).toBe('NAME_HOLDS_A_SECRET');
+      expect(result.message).toContain('named-credential');
+    }
   });
 });
 

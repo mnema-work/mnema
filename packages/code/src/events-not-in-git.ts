@@ -38,7 +38,14 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
+import { readingWhatTheDiskLets, UnreadableDiskError } from '@mnema/chain';
+import {
+  type Ask,
+  type DefaultBranch,
+  type DiscoveryEnv,
+  resolveTrees,
+  theDefaultBranch,
+} from '@mnema/core';
 import { oneLine } from './one-line.js';
 
 /** What the reading needs: injected so it is testable against a sandbox. */
@@ -87,57 +94,7 @@ const REPOSITORY_VARIABLES = [
   'GIT_ALTERNATE_OBJECT_DIRECTORIES',
 ] as const;
 
-type Ask = (args: readonly string[]) => string | undefined;
-
-/** What the record's default branch is, as this clone last read it: no network. */
-export type DefaultBranch =
-  | {
-      readonly ok: true;
-      readonly remote: string;
-      /** The remote-tracking ref `refs/remotes/<remote>/HEAD` names, in full. */
-      readonly headRef: string;
-      /** The default branch's name on the remote (`main`). */
-      readonly branch: string;
-      readonly commit: string;
-    }
-  | { readonly ok: false; readonly reason: 'NO_REMOTE'; readonly remotes: readonly string[] }
-  | { readonly ok: false; readonly reason: 'NO_DEFAULT_BRANCH'; readonly remote: string };
-
-/**
- * The default branch of the remote the current branch follows (else the only remote, else
- * `origin`), as `refs/remotes/<remote>/HEAD` names it, with no network. `ask` runs one git in the
- * repository and answers its trimmed output, or `undefined` where it failed. The one reading
- * `mnema record commit` takes its base from (ADR-171) and this module takes its count from.
- */
-export function theDefaultBranch(ask: Ask): DefaultBranch {
-  const remotes = (ask(['remote']) ?? '').split('\n').filter(Boolean);
-  const current = ask(['symbolic-ref', '--quiet', '--short', 'HEAD']);
-  const followed = current === undefined ? undefined : ask(['config', `branch.${current}.remote`]);
-  const remote =
-    followed !== undefined && remotes.includes(followed)
-      ? followed
-      : remotes.length === 1
-        ? remotes[0]
-        : remotes.includes('origin')
-          ? 'origin'
-          : undefined;
-  if (remote === undefined) return { ok: false, reason: 'NO_REMOTE', remotes };
-  const headRef = ask(['symbolic-ref', '--quiet', `refs/remotes/${remote}/HEAD`]);
-  const commit =
-    headRef === undefined
-      ? undefined
-      : ask(['rev-parse', '--verify', '--quiet', `${headRef}^{commit}`]);
-  if (headRef === undefined || commit === undefined) {
-    return { ok: false, reason: 'NO_DEFAULT_BRANCH', remote };
-  }
-  return {
-    ok: true,
-    remote,
-    headRef,
-    branch: headRef.slice(`refs/remotes/${remote}/`.length),
-    commit,
-  };
-}
+export { type DefaultBranch, theDefaultBranch };
 
 const SEGMENT = /^\d{6}\.jsonl$/;
 
@@ -232,11 +189,25 @@ export function readEventsNotInGit(ctx: EventsNotInGitContext): EventsNotInGit |
   let oldest: string | undefined;
   let untrackedFile: string | undefined;
   let unreadable = false;
-  for (const id of readdirSync(tailsDir).sort()) {
+  // What the disk will not open is said by the reads of the record, on their first line: the count
+  // of what waits is not made over a part it cannot see.
+  const readable = (dir: string): string[] | undefined => {
+    try {
+      return readingWhatTheDiskLets(dir, undefined, () => readdirSync(dir)).sort();
+    } catch (error) {
+      if (error instanceof UnreadableDiskError) return undefined;
+      throw error;
+    }
+  };
+  const ids = readable(tailsDir);
+  if (ids === undefined) return undefined;
+  for (const id of ids) {
     const dir = join(tailsDir, id);
     if (!lstatSync(dir).isDirectory()) continue;
     let waiting = 0;
-    for (const name of readdirSync(dir).sort()) {
+    const names = readable(dir);
+    if (names === undefined) return undefined;
+    for (const name of names) {
       if (!SEGMENT.test(name)) continue;
       const file = join(dir, name);
       const stat = lstatSync(file);
@@ -244,7 +215,13 @@ export function readEventsNotInGit(ctx: EventsNotInGitContext): EventsNotInGit |
       const path = `tails/${id}/${name}`;
       const inHead = held.get(path);
       if (inHead?.size === stat.size) continue;
-      const here = readFileSync(file);
+      let here: Buffer;
+      try {
+        here = readingWhatTheDiskLets(file, undefined, () => readFileSync(file));
+      } catch (error) {
+        if (error instanceof UnreadableDiskError) return undefined;
+        throw error;
+      }
       let before = 0;
       if (inHead !== undefined) {
         const blob = gitRun(['cat-file', 'blob', inHead.oid]);

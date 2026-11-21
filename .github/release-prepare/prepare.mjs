@@ -69,7 +69,8 @@ export function trackedManifests(root) {
 
 /**
  * The entries waiting for the next release: one file each under `changelog/unreleased/`, the
- * section on its first line and the entry (the bullet as CHANGELOG.md prints it) after it. A
+ * section on its first line, an optional `Contributor: <login>` line (printed as "Thanks @login." at
+ * the end of the entry) and the entry (the bullet as CHANGELOG.md prints it) after it. A
  * file whose section is not one of SECTIONS, or whose entry is empty, is an error, not skipped.
  * @param {string} root
  * @returns {{ file: string, section: string, entry: string }[]}
@@ -83,7 +84,15 @@ export function unreleasedEntries(root) {
     .map((file) => {
       const [first = '', ...rest] = readFileSync(join(dir, file), 'utf-8').split('\n');
       const section = first.trim();
-      const entry = rest.join('\n').trim();
+      // An optional `Contributor: <login>` line right after the section names who to thank.
+      const named = /^Contributor:[ \t]*(.*)$/.exec(rest[0] ?? '');
+      const login = named ? (named[1] ?? '').trim() : undefined;
+      if (named) rest.shift();
+      if (login !== undefined && !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/.test(login)) {
+        throw new Error(`${UNRELEASED}/${file}: "${login}" is not a GitHub login`);
+      }
+      const body = rest.join('\n').trim();
+      const entry = login !== undefined && body !== '' ? `${body} Thanks @${login}.` : body;
       if (!SECTIONS.includes(section)) {
         throw new Error(
           `${UNRELEASED}/${file}: "${section}" is not a section (${SECTIONS.join(', ')})`,

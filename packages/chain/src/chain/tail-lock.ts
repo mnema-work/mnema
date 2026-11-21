@@ -77,6 +77,7 @@ import {
 import { dirname } from 'node:path';
 
 import { CodedError } from './coded-error.js';
+import { readingWhatTheDiskLets, refusedByTheDisk } from './lines.js';
 import { sleepSync } from './sleep.js';
 
 /**
@@ -199,10 +200,12 @@ function acquire(path: string, waitMs: number): number {
         // it in its constructor", from when the lock lived beside the segments; it
         // moved to `locks/`, see `tailLockPath`, and a writer's constructor now
         // makes nothing at all, see `ChainWriter.ensureBorn`.)
-        mkdirSync(dirname(path), { recursive: true });
+        readingWhatTheDiskLets(path, 'locks', () => mkdirSync(dirname(path), { recursive: true }));
         continue;
       }
-      if (code !== 'EEXIST') throw error;
+      // A folder with no permission, or a file where `locks/` belongs, is a part of the record
+      // the disk will not open: named, never the system's own message.
+      if (code !== 'EEXIST') throw refusedByTheDisk(error, path, 'locks') ?? error;
     }
     const held = holderOf(path);
     heldBy = held?.pid;
@@ -309,7 +312,7 @@ function breakIfAbandoned(path: string, held: Holder): boolean {
 }
 
 /** Whether a pid exists. `EPERM` means it does and belongs to somebody else. */
-function alive(pid: number): boolean {
+export function alive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;

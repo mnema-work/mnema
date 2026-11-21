@@ -1370,9 +1370,17 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'the words a tail that is a symbolic link is refused by, a constant of the module',
   },
-  '@mnema/chain chain/verify.ts «LINKED TAIL: tails/{} {}» oneLine(name) #1': {
+  '@mnema/chain chain/verify.ts «LINKED TAIL: tails/{} {}» oneLine(tail) #1': {
     verdict: 'collapsed',
     why: 'the name of a link under `tails/`: whoever wrote the directory chose it',
+  },
+  '@mnema/chain chain/verify.ts «LINKED ENTRY: {} {}» LINKED_ENTRY #1': {
+    verdict: 'minted',
+    why: 'the words a link anywhere else a reader reads is refused by, a constant of the module',
+  },
+  '@mnema/chain chain/verify.ts «LINKED ENTRY: {} {}» oneLine(path) #1': {
+    verdict: 'collapsed',
+    why: 'the path in the record of a link a reader met: whoever wrote the directory chose its names',
   },
   '@mnema/chain chain/verify.ts «MISNAMED KEY: the key file keys/{}.pub {} (it hashes to » MISNAMED_KEY #1':
     {
@@ -1553,21 +1561,22 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'a whole number: the catalog refuses the entry before this if it is not one',
   },
-  '@mnema/chain chain/verify.ts «checkpoint names tail {}, stored under {}» oneLine(checkpoint.tail) #1':
+  '@mnema/chain chain/checkpoint-ruling.ts «checkpoint names tail {}, stored under {}» oneLine(checkpoint.tail) #1':
     {
       verdict: 'collapsed',
       why: 'the tail a stored checkpoint names, on the same terms as an entry’s',
     },
-  '@mnema/chain chain/verify.ts «checkpoint names tail {}, stored under {}» oneLine(tail) #1': {
-    verdict: 'collapsed',
-    why: 'the directory the checkpoint was found in',
-  },
-  '@mnema/chain chain/verify.ts «checkpoint coverage gap: expected to start at {}, starts at {}» covered + 1 #1':
+  '@mnema/chain chain/checkpoint-ruling.ts «checkpoint names tail {}, stored under {}» oneLine(tail) #1':
+    {
+      verdict: 'collapsed',
+      why: 'the directory the checkpoint was found in',
+    },
+  '@mnema/chain chain/checkpoint-ruling.ts «checkpoint coverage gap: expected to start at {}, starts at {}» from #1':
     {
       verdict: 'minted',
       why: 'one past the seq this walk has covered so far: arithmetic, not text',
     },
-  '@mnema/chain chain/verify.ts «checkpoint coverage gap: expected to start at {}, starts at {}» checkpoint.fromSeq #1':
+  '@mnema/chain chain/checkpoint-ruling.ts «checkpoint coverage gap: expected to start at {}, starts at {}» checkpoint.fromSeq #1':
     {
       verdict: 'minted',
       why: 'a whole number the catalog requires of a checkpoint’s range',
@@ -1642,27 +1651,27 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'collapsed',
       why: 'every group, its name’s head and its tail ids, read off stored artifacts and directory names',
     },
-  '@mnema/chain chain/verify.ts «checkpoint cp[{}..{}] is signed by {}..., and a tail is written only by the key its id begins with, {}... ({})» TAIL_SIGNER_MISMATCH #1':
+  '@mnema/chain chain/checkpoint-ruling.ts «checkpoint cp[{}..{}] is signed by {}..., and a tail is written only by the key its id begins with, {}... ({})» TAIL_SIGNER_MISMATCH #1':
     {
       verdict: 'minted',
       why: 'the name a write into another key’s tail is refused by, a constant of the module',
     },
-  '@mnema/chain chain/verify.ts «checkpoint cp[{}..{}] is signed by {}..., and a tail is written only by the key its id begins with, {}... ({})» checkpoint.fromSeq #1':
+  '@mnema/chain chain/checkpoint-ruling.ts «checkpoint cp[{}..{}] is signed by {}..., and a tail is written only by the key its id begins with, {}... ({})» checkpoint.fromSeq #1':
     {
       verdict: 'minted',
       why: 'a whole number the catalog requires of a checkpoint’s range',
     },
-  '@mnema/chain chain/verify.ts «checkpoint cp[{}..{}] is signed by {}..., and a tail is written only by the key its id begins with, {}... ({})» checkpoint.toSeq #1':
+  '@mnema/chain chain/checkpoint-ruling.ts «checkpoint cp[{}..{}] is signed by {}..., and a tail is written only by the key its id begins with, {}... ({})» checkpoint.toSeq #1':
     {
       verdict: 'minted',
       why: 'a whole number the catalog requires of a checkpoint’s range',
     },
-  '@mnema/chain chain/verify.ts «checkpoint cp[{}..{}] is signed by {}..., and a tail is written only by the key its id begins with, {}... ({})» oneLine(checkpoint.signerFp.slice(0, 12)) #1':
+  '@mnema/chain chain/checkpoint-ruling.ts «checkpoint cp[{}..{}] is signed by {}..., and a tail is written only by the key its id begins with, {}... ({})» oneLine(checkpoint.signerFp.slice(0, 12)) #1':
     {
       verdict: 'collapsed',
       why: 'the head of the signer a stored checkpoint names: a string whoever wrote the file chose',
     },
-  '@mnema/chain chain/verify.ts «checkpoint cp[{}..{}] is signed by {}..., and a tail is written only by the key its id begins with, {}... ({})» oneLine(owner.slice(0, 12)) #1':
+  '@mnema/chain chain/checkpoint-ruling.ts «checkpoint cp[{}..{}] is signed by {}..., and a tail is written only by the key its id begins with, {}... ({})» oneLine(tailFingerprint(tail).slice(0, 12)) #1':
     {
       verdict: 'collapsed',
       why: 'the head of the fingerprint the directory name begins with',
@@ -1762,17 +1771,17 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'composed',
       why: 'the name of an entry a tail directory holds, quoted as JSON with every character outside printable ASCII escaped (`jsonAscii`: controls, DEL and non-ASCII), which is how the second reader writes it: it cannot hold a line break, and collapsing whitespace would make the two sentences differ',
     },
-  '@mnema/chain chain/verify.ts «no committed public key for signer {}» oneLine(checkpoint.signerFp) #1':
+  '@mnema/chain chain/checkpoint-ruling.ts «no committed public key for signer {}» oneLine(checkpoint.signerFp) #1':
     {
       verdict: 'collapsed',
       why: 'the fingerprint a stored checkpoint claims signed it, before anything has matched it',
     },
-  '@mnema/chain chain/verify.ts «public key for {} does not match its fingerprint (key was swapped)» oneLine(checkpoint.signerFp) #1':
+  '@mnema/chain chain/checkpoint-ruling.ts «public key for {} does not match its fingerprint (key was swapped)» oneLine(checkpoint.signerFp) #1':
     {
       verdict: 'collapsed',
       why: 'the same claimed fingerprint, on the branch where the committed key disagrees with it',
     },
-  '@mnema/chain chain/verify.ts «checkpoint failed: {}» verdict.reason #1': {
+  '@mnema/chain chain/checkpoint-ruling.ts «checkpoint failed: {}» verdict.reason #1': {
     verdict: 'minted',
     why: 'one of `verifyCheckpoint`’s three words: a closed union, so there is nothing to collapse',
   },
@@ -2780,6 +2789,10 @@ const NOT_A_SENTENCE: Readonly<Record<string, string>> = {
     'the other half of the same `Map` key, a tail id the disk named',
   "@mnema/chain chain/verify.ts «\\\\u{}» unit.charCodeAt(0).toString(16).padStart(4, '0')":
     'four hex digits of one UTF-16 code unit, the escape `jsonAscii` writes for a character outside ASCII',
+  '@mnema/chain chain/verify.ts «keys/{}.pub» fingerprint':
+    'the path in the record of the key file a fingerprint names, a key of a `Set` of links that is never printed',
+  '@mnema/chain chain/verify.ts «tails/{}/» tail':
+    'the start of every path in the record under one tail, matched against the links found and never printed',
   '@mnema/chain chain/verify.ts «{}#{}» issue.seq':
     'half of where an event the identity fold refused sits, `<tail>#<seq>`, a key of a `Set` that is never printed',
   '@mnema/chain chain/verify.ts «{}#{}» issue.tail':
@@ -2896,8 +2909,8 @@ describe('every value the domain puts in a sentence is classified', () => {
     // are equal. The scale is stated, and so is what the HANDOFF said (twenty-three
     // sites, twelve in `core` and eleven in `chain`), because it counted sentences
     // written at a `message:` or a `detail:` directly, and a value is not a sentence.
-    expect(SITES.length).toBe(451);
-    expect(FOUND[0]?.sites.length).toBe(232);
+    expect(SITES.length).toBe(453);
+    expect(FOUND[0]?.sites.length).toBe(234);
     expect(FOUND[1]?.sites.length).toBe(219);
     expect(FOUND.flatMap((layer) => layer.wording).length).toBeGreaterThan(15);
   });
@@ -2909,8 +2922,9 @@ describe('every value the domain puts in a sentence is classified', () => {
     // misses the census note's own account of a cut. The second sink of the core is the
     // refusal of a checkout whose recorded identity no longer counts its key
     // (`staleAnchorRefusal`): its five sentences go through it, and without it they would
-    // be templates this walk never read as sentences at all.
-    expect(FOUND[0]?.sinks).toEqual(['push', 'refuse', 'ruled']);
+    // be templates this walk never read as sentences at all. The ruling on one checkpoint line
+    // words each refusal through `fails` (`checkpoint-ruling.ts`), which `verify` and the read share.
+    expect(FOUND[0]?.sinks).toEqual(['fails', 'push', 'refuse', 'ruled']);
     expect(FOUND[1]?.sinks).toEqual(['err', 'stale']);
     expect(FOUND[0]?.producers).toContain('keyWithoutTailDetail');
     expect(FOUND[0]?.producers).toContain('coverageClause');
@@ -2948,11 +2962,11 @@ describe('every value the domain puts in a sentence is classified', () => {
     // No arm of the case above may be empty, or that much of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
     const count = (verdict: Verdict): number => verdicts.filter((said) => said === verdict).length;
-    expect(count('collapsed')).toBe(309);
-    expect(count('minted')).toBe(109);
+    expect(count('collapsed')).toBe(310);
+    expect(count('minted')).toBe(110);
     expect(count('composed')).toBe(33);
     expect(SITES.filter((site) => new RegExp(`\\b${DOOR}\\b`).test(site.expression))).toHaveLength(
-      309,
+      310,
     );
   });
 
@@ -3067,12 +3081,17 @@ describe('the rule has one door and it is below both packages', () => {
     // `replace` of its own for the reason this case exists (two collapses would be two
     // rules) and it is named so the day it stops importing the door this goes red.
     //
+    // `disk-words.ts` is a third: it words what the disk reported in a sentence the writer hands
+    // to whoever asked to be told, which is a function the surfaces CALL and no `detail:` or sink
+    // this walk follows.
+    //
     // `divergent-moves.ts` is the other: `divergenceSentence` words a sentence out of a record's
     // `who`, `at` and `to`, and it is a function the readings CALL, not a `detail:` or a sink this
     // walk follows, so each value goes through the door there and no site here holds it.
     expect(importing).toEqual(
       [
         ...collapsing,
+        '@mnema/chain chain/disk-words.ts',
         '@mnema/core projections/search-store.ts',
         '@mnema/core projections/divergent-moves.ts',
       ].sort(),
@@ -3106,6 +3125,7 @@ describe('the rule has one door and it is below both packages', () => {
     }
     // The same one, from the other direction: one collapse in the source, none at a site.
     expect(unaccounted).toEqual([
+      '@mnema/chain chain/disk-words.ts: 1 in source, 0 classified',
       '@mnema/core projections/divergent-moves.ts: 3 in source, 0 classified',
       '@mnema/core projections/search-store.ts: 1 in source, 0 classified',
     ]);

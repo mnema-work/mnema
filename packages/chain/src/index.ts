@@ -35,13 +35,32 @@ export {
   type CheckpointVerdict,
   checkpointHash,
   checkpointMessage,
+  checkpointSignatureHolds,
   parseCheckpoint,
   serializeCheckpoint,
   signCheckpoint,
   verifyCheckpoint,
 } from './chain/checkpoint.js';
+export {
+  type CheckpointFault,
+  type CheckpointQuestion,
+  type CheckpointRuling,
+  checkpointBelongsToItsTail,
+  type FoldQuestion,
+  foldCheckpoints,
+  ruleOnCheckpoint,
+  type TailSigned,
+  type Withheld,
+  type WithheldRun,
+} from './chain/checkpoint-ruling.js';
 export { CodedError } from './chain/coded-error.js';
 export { decisionTexts, precedesItsText } from './chain/decision-text.js';
+export {
+  recordedNotSigned,
+  signatureNotConfirmed,
+  WriteNotLandedError,
+  whatTheDiskSaid,
+} from './chain/disk-words.js';
 export {
   type IdentityIssue,
   type IdentityResolution,
@@ -75,6 +94,7 @@ export {
   writtenAsBuilt,
   writtenAsStored,
 } from './chain/hash.js';
+export { IntentNotKeptError, readWrittenHead, type WrittenHead } from './chain/kept-head.js';
 export {
   isProtected,
   KEY_PASSPHRASE_VARIABLE,
@@ -125,10 +145,13 @@ export {
   anchorPath,
   type ChainLayout,
   gitignorePath,
+  isSegmentFile,
   privateKeyPath,
   projectionCachePath,
   publicKeyPath,
   tailDir,
+  tailFingerprint,
+  tailLockPath,
   witnessDir,
   witnessSigstorePath,
 } from './chain/layout.js';
@@ -141,8 +164,15 @@ export {
   requiredLevel,
   weakerLevel,
 } from './chain/level.js';
-export { UnreadableLineError } from './chain/lines.js';
+export {
+  readingWhatTheDiskLets,
+  UnreadableDiskError,
+  UnreadableLineError,
+} from './chain/lines.js';
+export { RecordLinkedError, refuseToWriteThrough } from './chain/linked-write.js';
+export { MigrationUnsettledError } from './chain/migration.js';
 export { illegalMoves, type PlacedEvent } from './chain/moves.js';
+export type { PoolOptions } from './chain/pool.js';
 export type {
   Arrivals,
   RecordGroup,
@@ -160,27 +190,43 @@ export {
   tailsACutWouldUnrelink,
 } from './chain/relink-plan.js';
 export {
+  type CheckpointsMark,
+  type CommittedKeys,
+  committedKeys,
   firstLinkBreakFrom,
   holdsRecord,
+  keysTheDiskRefuses,
   type LinkBreak,
+  LinkedRecordError,
+  lastTailCheckpoint,
   listAppleDoubleKeyFiles,
+  listedWithoutLinks,
+  listLinksInRecord,
   listPublicKeyFingerprints,
   listTails,
+  listTailsLeavingLinks,
+  listTailsToChooseACacheBy,
   orderedSegments,
+  type RefusedLine,
+  type RefusedPart,
   type RetainedEntry,
   readTail,
   readTailCheckpoints,
+  readTailCheckpointsMarked,
+  readTailCheckpointsSince,
   readTailEntries,
   readTailSince,
   readTailTip,
+  refusedPartOf,
+  refuseLinks,
   type Served,
   type TailBoundary,
   type TailRead,
   type TailSince,
 } from './chain/store.js';
-export { subjectEvents } from './chain/subject-events.js';
+export { type ProvenOnTail, subjectEvents } from './chain/subject-events.js';
 export { type KeyATailHolds, type KeyIntroduction, keysATailHolds } from './chain/tail-keys.js';
-export { DEFAULT_WAIT_MS, TailBusyError } from './chain/tail-lock.js';
+export { alive, DEFAULT_WAIT_MS, TailBusyError, withTailLock } from './chain/tail-lock.js';
 export {
   arrivalsSince,
   namesOfTails,
@@ -188,7 +234,15 @@ export {
   recordNamedIn,
   tailsReadAt,
 } from './chain/tail-names.js';
-export { ensureTree, TAIL_MERGE_DRIVER } from './chain/tree.js';
+export {
+  type LinePutBack,
+  repairTail,
+  type TailRepaired,
+  type TailRepairInput,
+  type TailRepairRefusal,
+  type WholeTailPutBack,
+} from './chain/tail-repair.js';
+export { ensureTree, mergeLineIsMissing, TAIL_MERGE_DRIVER } from './chain/tree.js';
 export {
   type BackupKeyNote,
   type CensusNote,
@@ -223,6 +277,7 @@ export {
   tailStanding,
   tailWaiversIn,
 } from './chain/waiver.js';
+export type { SeqRun, WholeTailRefusal } from './chain/whole-tail.js';
 // T3, the external witness. What crosses this line is what the SURFACE uses: the two
 // acts, where a witness is filed, and how one reads, per checkpoint, per tail, and as
 // the walk down the tail that the reading and the act that completes an attestation
@@ -256,6 +311,7 @@ export {
   DEFAULT_MAX_UNSIGNED_EVENTS,
   describeNewTail,
   type NewTail,
+  readTailDamage,
   TailDamagedError,
   type WriterOptions,
 } from './chain/writer.js';

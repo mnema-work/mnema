@@ -1,8 +1,14 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { gitPlaceOf, isWithin, privateTreePlace } from './git-place.js';
+import {
+  gitPlaceOf,
+  isWithin,
+  otherGitDirsOf,
+  privateTreePlace,
+  publicMachineryPlace,
+} from './git-place.js';
 
 let sandbox: string;
 
@@ -76,11 +82,154 @@ describe('privateTreePlace', () => {
   });
 });
 
+describe('publicMachineryPlace', () => {
+  it('shares the locks and notes in the common directory and keeps the hint in the worktree’s own, for the top and for a nested project', () => {
+    const common = aGitDir(join(sandbox, 'repo', '.git'));
+    const own = aGitDir(join(common, 'worktrees', 'wt'));
+    writeFileSync(join(own, 'commondir'), '../..\n');
+    mkdirSync(join(sandbox, 'wt', 'packages', 'a b'), { recursive: true });
+    writeFileSync(join(sandbox, 'wt', '.git'), 'gitdir: ../repo/.git/worktrees/wt\n');
+    const real = realpathSync.native(sandbox);
+
+    const top = publicMachineryPlace(join(sandbox, 'wt'));
+    expect(top?.shared).toBe(join(real, 'repo', '.git', 'mnema', '%2E', 'public'));
+    expect(top?.checkout).toBe(
+      join(real, 'repo', '.git', 'worktrees', 'wt', 'mnema', '%2E', 'public'),
+    );
+
+    const nested = publicMachineryPlace(join(sandbox, 'wt', 'packages', 'a b'));
+    expect(nested?.shared).toBe(join(real, 'repo', '.git', 'mnema', 'packages%2Fa%20b', 'public'));
+  });
+
+  it('is the place of the private tree’s project, beside it, so one encoding names both', () => {
+    aGitDir(join(sandbox, 'repo', '.git'));
+    const machinery = publicMachineryPlace(join(sandbox, 'repo'));
+    const real = realpathSync.native(sandbox);
+    const privateTree = privateTreePlace(join(real, 'repo'))?.tree ?? '';
+    expect(machinery?.shared).toBe(join(dirname(privateTree), 'public'));
+  });
+
+  it('reaches one place by the folder and by a link to it, which a spelling through the link would miss', () => {
+    aGitDir(join(sandbox, 'repo', '.git'));
+    mkdirSync(join(sandbox, 'repo', 'sub'));
+    symlinkSync(join(sandbox, 'repo', 'sub'), join(sandbox, 'link'), 'dir');
+    expect(publicMachineryPlace(join(sandbox, 'link'))?.shared).toBe(
+      publicMachineryPlace(join(sandbox, 'repo', 'sub'))?.shared,
+    );
+    expect(publicMachineryPlace(join(sandbox, 'link'))?.shared).toContain(
+      join('.git', 'mnema', 'sub', 'public'),
+    );
+  });
+
+  it('answers nothing outside a repository', () => {
+    expect(publicMachineryPlace(sandbox)).toBeUndefined();
+  });
+});
+
 describe('isWithin', () => {
   it('is true for the directory and what is under it, and false for a sibling that shares a prefix', () => {
     expect(isWithin('/r/.git', '/r/.git')).toBe(true);
     expect(isWithin('/r/.git/mnema/private', '/r/.git')).toBe(true);
     expect(isWithin('/r/.github/mnema', '/r/.git')).toBe(false);
     expect(isWithin('/r/.mnema/private', '/r/.git')).toBe(false);
+  });
+});
+
+describe('otherGitDirsOf: the other worktrees of a repository that still exist', () => {
+  /** A linked worktree as git lays it out: its admin directory under the common one, and its `.git` file. */
+  function aLinkedWorktree(common: string, name: string, kept: boolean): string {
+    const own = aGitDir(join(common, 'worktrees', name));
+    writeFileSync(join(own, 'commondir'), '../..\n');
+    const top = join(sandbox, name);
+    mkdirSync(top);
+    writeFileSync(join(top, '.git'), `gitdir: ${own}\n`);
+    writeFileSync(join(own, 'gitdir'), `${join(top, '.git')}\n`);
+    if (!kept) rmSync(top, { recursive: true });
+    return own;
+  }
+
+  it('names the main one and every linked one whose folder is there, from a linked worktree, and not itself', () => {
+    const common = aGitDir(join(sandbox, 'repo', '.git'));
+    const one = aLinkedWorktree(common, 'one', true);
+    const two = aLinkedWorktree(common, 'two', true);
+    aLinkedWorktree(common, 'gone', false);
+    const place = gitPlaceOf(join(sandbox, 'one'));
+    expect(place?.gitDir).toBe(one);
+    expect([...otherGitDirsOf(place as NonNullable<typeof place>)].sort()).toEqual(
+      [common, two].sort(),
+    );
+  });
+
+  it('names the linked ones, and not the main one itself, from the main worktree, and none where there are none', () => {
+    const common = aGitDir(join(sandbox, 'repo', '.git'));
+    expect(
+      otherGitDirsOf({ top: join(sandbox, 'repo'), gitDir: common, commonDir: common }),
+    ).toEqual([]);
+    const one = aLinkedWorktree(common, 'one', true);
+    writeFileSync(join(common, 'worktrees', 'no-gitdir-file'), 'not a directory');
+    expect(
+      otherGitDirsOf({ top: join(sandbox, 'repo'), gitDir: common, commonDir: common }),
+    ).toEqual([one]);
+  });
+});
+
+describe('the test switch: a tree outside the temporary root is refused', () => {
+  const was = process.env.MNEMA_REFUSE_TREES_OUTSIDE;
+
+  afterEach(() => {
+    if (was === undefined) delete process.env.MNEMA_REFUSE_TREES_OUTSIDE;
+    else process.env.MNEMA_REFUSE_TREES_OUTSIDE = was;
+  });
+
+  it('a repository outside the root throws, naming its path, and one inside it is read', () => {
+    const outside = mkdtempSync(join(tmpdir(), 'mnema-git-place-outside-'));
+    try {
+      aGitDir(join(outside, 'repo', '.git'));
+      aGitDir(join(sandbox, 'repo', '.git'));
+      process.env.MNEMA_REFUSE_TREES_OUTSIDE = sandbox;
+      expect(gitPlaceOf(join(sandbox, 'repo'))?.top).toBe(join(sandbox, 'repo'));
+      expect(() => gitPlaceOf(join(outside, 'repo'))).toThrow(
+        new RegExp(`${outside}.*outside the temporary root ${sandbox}`),
+      );
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
+  it('a git directory outside the root throws even when the working tree is inside it', () => {
+    const outside = mkdtempSync(join(tmpdir(), 'mnema-git-place-outside-'));
+    try {
+      aGitDir(join(outside, 'common'));
+      aGitDir(join(outside, 'common', 'worktrees', 'w'));
+      writeFileSync(join(outside, 'common', 'worktrees', 'w', 'commondir'), '../..\n');
+      mkdirSync(join(sandbox, 'checkout'), { recursive: true });
+      writeFileSync(
+        join(sandbox, 'checkout', '.git'),
+        `gitdir: ${join(outside, 'common', 'worktrees', 'w')}\n`,
+      );
+      process.env.MNEMA_REFUSE_TREES_OUTSIDE = sandbox;
+      expect(() => gitPlaceOf(join(sandbox, 'checkout'))).toThrow(/the git directory .*common/);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
+  it('several roots may be named, separated as a PATH is, and a tree under any one of them is read', () => {
+    const other = mkdtempSync(join(tmpdir(), 'mnema-git-place-other-'));
+    try {
+      aGitDir(join(other, 'repo', '.git'));
+      aGitDir(join(sandbox, 'repo', '.git'));
+      process.env.MNEMA_REFUSE_TREES_OUTSIDE = [join(sandbox, 'elsewhere'), other].join(delimiter);
+      expect(gitPlaceOf(join(other, 'repo'))?.top).toBe(join(other, 'repo'));
+      expect(() => gitPlaceOf(join(sandbox, 'repo'))).toThrow(/outside the temporary root/);
+    } finally {
+      rmSync(other, { recursive: true, force: true });
+    }
+  });
+
+  it('with the switch unset nothing is refused', () => {
+    aGitDir(join(sandbox, 'repo', '.git'));
+    delete process.env.MNEMA_REFUSE_TREES_OUTSIDE;
+    expect(gitPlaceOf(join(sandbox, 'repo'))?.top).toBe(join(sandbox, 'repo'));
   });
 });

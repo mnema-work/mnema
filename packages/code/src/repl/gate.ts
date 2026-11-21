@@ -33,6 +33,7 @@
  */
 
 import { CLEAR, PREFIX, THE_KEY_THAT_LEAVES } from '../session-words.js';
+import { TOUR_VERB } from '../wiring/tour.js';
 import type { Declared } from '../wiring/verb.js';
 
 /**
@@ -62,6 +63,19 @@ export type Disposition =
   | { readonly does: 'refuse'; readonly sentence: string; readonly detail?: string };
 
 /**
+ * THE VERBS THAT DRAW A SCREEN OF THEIR OWN, which a session does not offer beside its own verb: the tour
+ * is one, and it would take the terminal a session is already drawing on. Named by the word each registers
+ * under, imported from the verb's wiring so a rename cannot leave this pointing at nothing.
+ */
+export const DRAW_THEIR_OWN_SCREEN: ReadonlySet<string> = new Set([TOUR_VERB]);
+
+/** Whether a verb is not the session's to offer: the session itself, or one that draws a screen of its own. */
+function isTheSessions(verb: Declared, self: string): boolean {
+  const name = verb.act.name();
+  return name === self || DRAW_THEIR_OWN_SCREEN.has(name);
+}
+
+/**
  * The verbs a session OFFERS: everything declared `reads`, minus the session's own verb.
  *
  * One function, because two consumers ask the same question and a second derivation
@@ -78,7 +92,7 @@ export type Disposition =
  */
 export function verbsOffered(verbs: readonly Declared[], self: string): readonly string[] {
   return verbs
-    .filter((verb) => verb.act.name() !== self && theReadsOf(verb).length > 0)
+    .filter((verb) => !isTheSessions(verb, self) && theReadsOf(verb).length > 0)
     .map((verb) => verb.act.name());
 }
 
@@ -104,7 +118,7 @@ function theReadsOf(verb: Declared): readonly string[] {
  */
 export function pathsOffered(verbs: readonly Declared[], self: string): readonly string[] {
   return verbs
-    .filter((verb) => verb.act.name() !== self)
+    .filter((verb) => !isTheSessions(verb, self))
     .flatMap((verb) => {
       // A group that reads whole (`audit`) is the verbs inside it, each one a thing to type: the
       // same count the surface had when they were verbs of the root.

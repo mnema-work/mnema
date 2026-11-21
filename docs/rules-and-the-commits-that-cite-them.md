@@ -103,10 +103,11 @@ that hold an address are asked about. `commits` and `why` show the newest 30 of 
 **A hook that suggests the trailer, if you want one.**
 
 ```sh
-mnema commit-hook install     # writes the prepare-commit-msg hook in this repository
-mnema commit-hook uninstall   # removes it, if mnema wrote it
+mnema commit-hook install
+mnema commit-hook uninstall
 ```
 
+The first writes the `prepare-commit-msg` hook in this repository, the second removes it, if mnema wrote it.
 Only these two verbs touch your hooks; `mnema init` does not. The hook goes where git reads hooks
 (`core.hooksPath` when it is set, otherwise the repository's `hooks/`), and if a `prepare-commit-msg`
 is already there that mnema did not write, `install` refuses and prints its path; `uninstall` removes

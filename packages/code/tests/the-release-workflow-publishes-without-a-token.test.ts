@@ -11,6 +11,9 @@
  *   extension to Open VSX (which reads one, and only that), no `NODE_AUTH_TOKEN`, no `NPM_TOKEN`;
  * - it publishes the tarball of each package with `--provenance --access public`, in the order chain, core,
  *   context, stacks, code;
+ * - the job that publishes names the npm registry in its `setup-node` (what the OpenSSF Scorecard reads to
+ *   find a publishing workflow), still with no token; the tarballs and the extension are signed by two jobs that
+ *   hold `id-token` and `attestations` and install, build and publish nothing, and the release carries the bundles;
  * - the tag and the release belong to a job that needs the publish, and no step before the publish creates one;
  * - the packed install runs first, on the three Nodes, on the very tarballs that are then published;
  * - the two jobs that write outside (the publish and the tag and release) ask for the `npm` environment, in
@@ -97,8 +100,10 @@ describe('the release workflow publishes without a token', () => {
       'pack',
       'packed-install',
       'publish',
+      'attest',
       'release',
       'vsix',
+      'attest-vsix',
       'attach-vsix',
       'publish-marketplace',
       'publish-open-vsx',
@@ -111,7 +116,13 @@ describe('the release workflow publishes without a token', () => {
       }
     }
     const asking = names.filter((name) => /^ {6}id-token: write$/m.test(job(name)));
-    expect(asking).toEqual(['publish', 'publish-marketplace', 'publish-registry']);
+    expect(asking).toEqual([
+      'publish',
+      'attest',
+      'attest-vsix',
+      'publish-marketplace',
+      'publish-registry',
+    ]);
     expect(job('publish-open-vsx')).not.toMatch(/id-token|--oidc/);
     expect(job('pack')).toMatch(/^ {6}contents: read$/m);
     expect(job('pack')).toContain('pnpm install --frozen-lockfile');
@@ -160,7 +171,8 @@ describe('the release workflow publishes without a token', () => {
     expect(market).toMatch(/^ {4}environment: extension-stores$/m);
     expect(CODE.replace(stores, '').replace(market, '')).not.toMatch(/extension-stores/);
     expect(CODE).not.toMatch(/NODE_AUTH_TOKEN|NPM_TOKEN|_authToken|npm login|npm adduser/);
-    expect(CODE).not.toMatch(/registry-url:/);
+    expect(CODE.match(/registry-url:/g)).toHaveLength(1);
+    expect(job('publish')).toContain("registry-url: 'https://registry.npmjs.org'");
   });
 
   it('publishes each tarball with provenance, in dependency order', () => {
@@ -178,7 +190,7 @@ describe('the release workflow publishes without a token', () => {
 
   it('cuts the tag and the release after the publish, and nowhere before', () => {
     const release = job('release');
-    expect(release).toMatch(/needs: \[plan, publish\]/);
+    expect(release).toMatch(/needs: \[plan, publish, attest\]/);
     expect(release).toMatch(/^ {6}contents: write$/m);
     expect(release).not.toMatch(/id-token/);
     expect(release).toContain('gh release create');
@@ -188,6 +200,35 @@ describe('the release workflow publishes without a token', () => {
     const outside = CODE.replace(release, '').replace(attach, '');
     expect(outside).not.toMatch(/gh release|git tag|git push/);
     expect(release.indexOf('is not on npm')).toBeLessThan(release.indexOf('gh release create'));
+  });
+
+  it('signs the tarballs after the publish and the extension after its pack, and the release carries the signatures', () => {
+    for (const name of ['attest', 'attest-vsix']) {
+      const text = job(name);
+      expect(text).toMatch(/^ {6}contents: read\n {6}id-token: write\n {6}attestations: write\n/m);
+      expect(text).toMatch(/uses: actions\/attest@[0-9a-f]{40} # v\d+\.\d+\.\d+/);
+      expect(text).not.toMatch(/pnpm|npm (install|ci|publish)|checkout|secrets\.|environment:/);
+      // The SHA-256 of each file is compared with the pack job's before anything is signed: both the hash and the
+      // comparison must be there, and before the action (an index of -1 would pass a bare toBeLessThan).
+      const hashed = text.indexOf('sha256sum');
+      const compared = text.search(
+        /\[ -n "\$(want|SHA256)" \] && \[ "\$have" = "\$(want|SHA256)" \] \|\| \{[^}]*exit 1; \}/,
+      );
+      expect(hashed).toBeGreaterThan(-1);
+      expect(compared).toBeGreaterThan(hashed);
+      expect(compared).toBeLessThan(text.indexOf('actions/attest@'));
+    }
+    expect(job('attest')).toMatch(/needs: \[plan, pack, publish\]/);
+    expect(job('attest-vsix')).toMatch(/needs: \[plan, vsix\]/);
+    expect(job('attest')).toContain('mnema-npm-packages-$VERSION.sigstore.json');
+    expect(job('attest-vsix')).toContain('mnema-$VERSION.vsix.sigstore.json');
+    expect(job('release')).toContain('name: release-assets');
+    expect(job('release')).toContain("needs.attest.result == 'success'");
+    expect(job('release')).toContain('"$' + '{files[@]}"');
+    expect(job('attach-vsix')).toContain(
+      '"$RUNNER_TEMP/vsix-signature/mnema-$VERSION.vsix.sigstore.json"',
+    );
+    expect(job('attach-vsix')).toMatch(/needs: \[plan, vsix, attest-vsix\]/);
   });
 
   it('waits for npm to serve the five, up to a ceiling, before it tags', () => {

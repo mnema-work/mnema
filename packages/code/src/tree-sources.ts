@@ -27,7 +27,7 @@
 
 import type { UpcasterRegistry } from '@mnema/chain';
 import { catalogUpcasters, ENTRY_HASH_MISMATCH } from '@mnema/chain';
-import type { ScopedCache } from '@mnema/context';
+import { type NewerLines, newerLinesOf, type ScopedCache } from '@mnema/context';
 import {
   type BirthProbe,
   chainRootForScope,
@@ -77,7 +77,10 @@ export function withCache<T>(
   upcasters: UpcasterRegistry,
   read: (cache: ProjectionCache) => T,
 ): T {
-  const cache = ProjectionCache.open(chainRoot, { upcasters, persist: true });
+  const cache = ProjectionCache.open(chainRoot, {
+    upcasters,
+    persist: true,
+  });
   try {
     cache.refresh();
     return read(cache);
@@ -210,7 +213,9 @@ export function withTreesRead<T>(
   const opened: ScopedCache[] = [];
   try {
     for (const tree of trees) {
-      const cache = ProjectionCache.open(tree.chainRoot, { upcasters });
+      const cache = ProjectionCache.open(tree.chainRoot, {
+        upcasters,
+      });
       opened.push({
         scope: tree.scope,
         chainRoot: tree.chainRoot,
@@ -319,10 +324,15 @@ export function linkBreaksOf(
   asOf: BreaksAsOf,
 ): readonly ScopedLinkBreak[] {
   return sources.flatMap((source) => {
-    const { breaks, retained } =
+    const { breaks, retained, refused, signed } =
       asOf === THE_CHAIN_AS_IT_STANDS_NOW
         ? source.cache.integrityAsOfNow()
-        : { breaks: source.cache.linkBreaks, retained: source.cache.retained };
+        : {
+            breaks: source.cache.linkBreaks,
+            retained: source.cache.retained,
+            refused: source.cache.refused,
+            signed: source.cache.signed,
+          };
     return [
       // The entries left out of what was served come first: they are the line that was altered.
       ...retained.map((left) => ({
@@ -332,14 +342,68 @@ export function linkBreaksOf(
         detail: ENTRY_HASH_MISMATCH,
         retained: { segment: left.segment, line: left.line },
       })),
+      // The parts of the record this mnema does not read follow them, named as `verify` names an
+      // unreadable line, and carry the tree's record directory for the refusal of a write.
+      ...refused.map((part) => ({
+        scope: source.scope,
+        tail: part.tail,
+        detail: `UNREADABLE: ${part.place}${part.line === undefined ? '' : ` line ${part.line}`}: ${part.reason}`,
+        unread: {
+          kind: part.kind,
+          place: part.place,
+          ...(part.line !== undefined ? { line: part.line } : {}),
+          reason: part.reason,
+          root: source.chainRoot,
+        },
+      })),
+      // The runs no signature proves (Fact A): withheld, and named with the line that failed.
+      ...signed.flatMap((fact) =>
+        fact.withheld === undefined
+          ? []
+          : [
+              {
+                scope: source.scope,
+                tail: fact.tail,
+                seq: fact.withheld.fromSeq,
+                detail: fact.withheld.detail ?? fact.withheld.why,
+                checkpoint: fact.withheld,
+              },
+            ],
+      ),
       ...breaks.map((broken) => ({
         scope: source.scope,
         tail: broken.tail,
         seq: broken.seq,
         detail: broken.detail,
       })),
+      // The runs served and not signed (Fact B) come last: they are no broken proof.
+      ...signed.flatMap((fact) =>
+        fact.unsigned === undefined
+          ? []
+          : [
+              {
+                scope: source.scope,
+                tail: fact.tail,
+                seq: fact.unsigned.fromSeq,
+                detail: 'not yet signed',
+                unsigned: fact.unsigned,
+              },
+            ],
+      ),
     ];
   });
+}
+
+/**
+ * What a newer mnema wrote into the trees a read opened, as the field a read's answer carries, or
+ * nothing when it wrote none (ADR-140): the same loaded sources as {@link linkBreaksOf}, so a read
+ * that asks one asks the other, and a surface says the fact off the cache it already holds.
+ */
+export function newerLinesIn(sources: readonly ScopedCache[]): {
+  readonly newerLines?: NewerLines;
+} {
+  const newer = newerLinesOf(sources.map((source) => source.cache));
+  return newer === undefined ? {} : { newerLines: newer };
 }
 
 /**

@@ -3,7 +3,8 @@
  * stood where the `@AGENTS.md` line is, so a block in both files is read twice (three times with the rules file).
  *
  * WHAT IS HELD, each by the bytes of the files and the lines the verbs say:
- *   - `importsAgents` reads the line `@AGENTS.md` or `@./AGENTS.md` on a line of its own, outside a code fence.
+ *   - `importsAgents` reads `@AGENTS.md` or `@./AGENTS.md` in the prose of a line, alone or in a sentence, outside a code
+ *     span, a code fence and an HTML comment.
  *   - With the import and AGENTS.md among the files, the CLAUDE.md (and the `.claude/CLAUDE.md`) is left byte for
  *     byte, is not "left out", and `init`, `instructions`, `instructions --check` and `doctor` say why in one line.
  *   - Without AGENTS.md among the files, the import covers nothing and the block is written there as ever.
@@ -56,6 +57,8 @@ describe('importsAgents', () => {
       '<!-- a --> <!-- b -->\n@AGENTS.md\n',
       'CLAUDE.md',
     ],
+    ['the import inside a sentence', 'See @AGENTS.md for the rules.\n', 'CLAUDE.md'],
+    ['the import after a code span', 'Use `npm` and @./AGENTS.md here.\n', 'CLAUDE.md'],
     ['the root file reached from .claude/CLAUDE.md', '@../AGENTS.md\n', '.claude/CLAUDE.md'],
     ['the ./../ form from .claude/CLAUDE.md', '@./../AGENTS.md\n', '.claude/CLAUDE.md'],
   ])('is true for %s', (_name, text, file) => {
@@ -67,10 +70,13 @@ describe('importsAgents', () => {
     ['the import in a backtick fence', '```md\n@AGENTS.md\n```\n', 'CLAUDE.md'],
     ['the import in a tilde fence', '~~~\n@./AGENTS.md\n~~~\n', 'CLAUDE.md'],
     ['the import indented as code', '    @AGENTS.md\n', 'CLAUDE.md'],
-    ['the import inside a sentence', 'See @AGENTS.md for the rules.\n', 'CLAUDE.md'],
     ['the import in inline code', '`@AGENTS.md`\n', 'CLAUDE.md'],
+    ['the import after a longer run of backticks', '`a ``` @AGENTS.md`\n', 'CLAUDE.md'],
     ['another file', '@docs/AGENTS.md\n', 'CLAUDE.md'],
     ['another name', '@AGENTS.md.bak\n', 'CLAUDE.md'],
+    ['a path followed by a full stop', 'See @AGENTS.md.\n', 'CLAUDE.md'],
+    ['a path in parentheses', 'See (@AGENTS.md) for the rules.\n', 'CLAUDE.md'],
+    ['an @ inside a word', 'Mail me@AGENTS.md now.\n', 'CLAUDE.md'],
     ['another case', '@agents.md\n', 'CLAUDE.md'],
     ['the import in an HTML comment', '<!-- @AGENTS.md -->\n', 'CLAUDE.md'],
     ['the import in a comment of several lines', '<!--\nold:\n@AGENTS.md\n-->\n', 'CLAUDE.md'],
@@ -98,6 +104,13 @@ describe('importsAgents', () => {
     ['@../AGENTS.md reaching a folder above the root', '@../../AGENTS.md\n', '.claude/CLAUDE.md'],
   ])('is false for %s', (_name, text, file) => {
     expect(importsAgents(text, file)).toBe(false);
+  });
+
+  it('reads a long run of unclosed comments in under a second', () => {
+    const text = '<!-- x\n'.repeat(20_000);
+    const start = performance.now();
+    expect(importsAgents(text)).toBe(false);
+    expect(performance.now() - start).toBeLessThan(1_000);
   });
 });
 

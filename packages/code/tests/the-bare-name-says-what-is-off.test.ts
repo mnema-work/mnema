@@ -124,7 +124,7 @@ describe('the bare name, with no terminal', () => {
     });
   });
 
-  it('a record with a line that cannot be read is said so, naming verify, and is not called unfounded', async () => {
+  it('a record with a line that cannot be read is counted around it, the part named first, as status names it', async () => {
     await mnema('init');
     const tails = join(repo, '.mnema', 'tails');
     for (const tail of readdirSync(tails)) {
@@ -133,14 +133,16 @@ describe('the bare name, with no terminal', () => {
     const said = await mnema();
     expect(said.failed).toBe(false);
     const text = said.out.join('\n');
-    expect(text).toContain('could not be read');
-    expect(text).toContain('`mnema verify` says why.');
+    expect(said.out[0]).toMatch(/^issue \[T1\] public \S+: a line that does not read \(tails\//);
+    expect(text).toContain('a part of the record named above is one this mnema does not read');
+    expect(text).toContain('A mnema project is founded here.');
+    expect(text).toContain('Off on this machine');
+    expect(text).not.toContain('could not be read, so nothing is said');
     expect(text).not.toContain('`mnema init`');
-    expect(text).not.toContain('is founded here');
-    expect(text).not.toContain('Off on this machine');
     expect(summaryHere({ cwd: repo, env: { home: join(sandbox, 'home') } })).toMatchObject({
-      unread: expect.arrayContaining(['record']),
-      off: [],
+      founded: true,
+      waiting: 0,
+      left: [expect.stringContaining('a line that does not read'), expect.any(String)],
     });
   });
 

@@ -40,10 +40,10 @@
  */
 
 import { catalogUpcasters } from '@mnema/chain';
-import { type AuditEvent, auditFeed } from '@mnema/context';
+import { type AuditEvent, auditFeed, type NewerLines } from '@mnema/context';
 import { type AuthorshipFilter, type DiscoveryEnv, resolveTrees, type Scope } from '@mnema/core';
 import { resolveAnchorInRecord } from '../anchors.js';
-import { recordTrees, scopedEventsOf } from '../intelligence-source.js';
+import { recordTrees, scopedEventsRead } from '../intelligence-source.js';
 import { VERSION } from '../version.js';
 
 /** What the export command needs: injected so it is testable. */
@@ -68,6 +68,8 @@ export interface ExportDone {
   readonly ok: true;
   /** The events themselves: the faithful objects a line is written from. */
   readonly events: readonly AuditEvent[];
+  /** What a newer mnema wrote that this one reads past, when it wrote any (ADR-140). */
+  readonly newerLines?: NewerLines;
   /**
    * WHICH TREES THE FEED COVERS, so a filtered one can be told from a complete one.
    *
@@ -135,9 +137,11 @@ export function runExport(
   const covered = recordTrees(trees, undefined).filter(
     (tree) => tree.scope !== 'global' || alsoGlobal === true,
   );
+  const { sources, newer } = scopedEventsRead(covered, catalogUpcasters());
   return {
     ok: true,
     trees: covered.map((tree) => tree.scope),
-    events: auditFeed(scopedEventsOf(covered, catalogUpcasters()), PRODUCER, filter),
+    events: auditFeed(sources, PRODUCER, filter),
+    ...newer,
   };
 }

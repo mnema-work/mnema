@@ -44,7 +44,12 @@
 import { realpathSync, statSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { agentNameRefusal } from '../identity/agent-name.js';
-import { privateTreePlace } from './git-place.js';
+import {
+  type MachineryPlace,
+  privateTreePlace,
+  publicMachineryPlace,
+  refuseOutsideTheTestRoot,
+} from './git-place.js';
 
 /** The directory name a project tree lives in, at a repo's root. */
 export const PROJECT_DIR = '.mnema';
@@ -120,6 +125,13 @@ export interface ResolvedTrees {
    * repository, where the id lives in the private tree as in every other tree.
    */
   readonly projectPrivateInstallation?: string;
+  /**
+   * Where the machinery of the PUBLIC tree lives inside a repository (`publicMachineryPlace`): the
+   * locks and notes every worktree shares, and this worktree's hint of its installation id. Absent
+   * outside a repository, where they stay in the record's own `locks/` and `keys/`. The tree itself
+   * is `projectPublic`, committed; this is what a writer notes about it and git never sees.
+   */
+  readonly projectPublicMachinery?: MachineryPlace;
   /** `~/.mnema/global` (under `$MNEMA_HOME` when set): this machine, across all projects. Always present. */
   readonly global: string;
   /** `~/.mnema/identity` (under `$MNEMA_HOME` when set): the key root the three trees reference. Always present. */
@@ -222,10 +234,13 @@ export function discover(cwd: string, env: DiscoveryEnv): Discovery {
   const walked = walkUp(cwd, homeSpellings(env));
   if (walked.project === undefined) return { trees: base, passedOver: walked.passedOver };
 
+  refuseOutsideTheTestRoot(walked.project, 'the record tree');
   const inRepository = privateTreePlace(dirname(walked.project));
+  const machinery = publicMachineryPlace(dirname(walked.project));
   return {
     trees: {
       projectPublic: walked.project,
+      ...(machinery === undefined ? {} : { projectPublicMachinery: machinery }),
       ...(inRepository === undefined
         ? { projectPrivate: join(walked.project, PRIVATE_DIR) }
         : {

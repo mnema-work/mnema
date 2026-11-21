@@ -24,7 +24,7 @@ import {
   signCheckpoint,
   writtenAsStored,
 } from '@mnema/chain';
-
+import { notesOf } from './the-notes-of-a-record.js';
 /** The kind no version declares (`x.from-the-future`, reserved by `FORMAT.md` section 7.1). */
 export const FUTURE = 'x.from-the-future';
 
@@ -79,7 +79,7 @@ export function aNewerMnemaWrites(
   );
   // The note of the last entry this installation wrote (`kept-head.ts`): a newer writer keeps it
   // as this one does, so the next write here continues this tail rather than starting another.
-  const head = join(record, 'locks', `${tail}.head`);
+  const head = join(notesOf(record), `${tail}.head`);
   if (!existsSync(head)) throw new Error(`setup: no kept head at ${head}`);
   writeFileSync(head, `${seq} ${hash}\n`);
   return tail;

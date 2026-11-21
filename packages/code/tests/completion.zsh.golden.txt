@@ -12,7 +12,7 @@
 
 _mnema_commands() {
   case "$1" in
-    '') echo 'init decision link unlink memory observe retract skill stack task promote status brief recall rules rules-file instructions switch inherit verify witness check site search show timeline refs audit diagram export usage resume repl why commits aging trailer commit-hook record key tail doctor report completion mcp run before-a-write beside-a-write tally corrections after-a-write handback settled dispatched help' ;;
+    '') echo 'init decision link unlink memory observe retract skill stack task promote status brief recall rules rules-file instructions switch inherit verify witness check site search show timeline refs audit diagram export usage resume repl why commits aging trailer commit-hook record key tail backup doctor upgrade report completion tour mcp run before-a-write beside-a-write tally corrections after-a-write handback settled dispatched help' ;;
     'decision') echo 'record move review supersede import help' ;;
     'skill') echo 'create move export provenance help' ;;
     'stack') echo 'add remove list index show diff check export enable disable help' ;;
@@ -25,7 +25,9 @@ _mnema_commands() {
     'commit-hook') echo 'install uninstall suggest help' ;;
     'record') echo 'pull commit merge-tail help' ;;
     'key') echo 'restore request enroll github sigstore revoke protect unprotect help' ;;
-    'tail') echo 'list prune relink help' ;;
+    'tail') echo 'list prune relink repair help' ;;
+    'backup') echo 'setup run status verify restore hook help' ;;
+    'backup hook') echo 'install uninstall help' ;;
     'run') echo 'start end help' ;;
   esac
 }
@@ -73,10 +75,13 @@ _mnema_described() {
       'commit-hook:install or remove an optional git hook that suggests the Mnema-Decision trailer' \
       'record:pull the record over events not yet committed, commit them for a pull request, and merge its tails for git' \
       'key:manage this machine'\''s signing keys' \
-      'tail:act on the record'\''s own tails: list them, authorize a cut, relink one' \
-      'doctor:say how mnema is installed on this machine, and what to do about each thing found (writes nothing unless you pass --fix)' \
+      'tail:act on the record'\''s own tails: list them, authorize a cut, relink one, repair a line from git' \
+      'backup:copy this project'\''s trees into a folder, and say how far the copy is (records nothing)' \
+      'doctor:say how mnema is installed on this machine, and what to do about each thing found (writes nothing unless you pass --fix or --after-update)' \
+      'upgrade:after installing a newer mnema: bring this project and machine up to it, asking before anything that changes how the repository behaves' \
       'report:show, whole, what mnema would say about its own last internal error, and keep your answer to it (sends nothing)' \
       'completion:print the tab-completion script for a shell' \
+      'tour:show what mnema is and how it is used, page by page' \
       'mcp:run the mnema MCP server over stdio (for an agent host)' \
       'run:open and close the session an agent works inside' \
       'before-a-write:answer a host’s hook before a file is written: refuse or ask where a rule says' \
@@ -164,6 +169,19 @@ _mnema_described() {
       'list:list the tails that hold events here, the ones a cut can name, with the id `prune` takes' \
       'prune:record that one whole tail was authorized to be cut (it removes nothing)' \
       'relink:relink whole tails of another record into the one this directory names, each signed by its own key' \
+      'repair:put back from git the lines of a public tail that do not read or whose hash does not hold, or the whole tail when its signed checkpoints do not hold' \
+      'help:display help for command' ;;
+    'backup') printf '%s\n' \
+      'setup:say which folder keeps this project'\''s backup, after a person confirms at a terminal that it keeps the text in clear' \
+      'run:copy this project'\''s trees into its folder, or with --global only the global tree' \
+      'status:say where this project'\''s backup is and how far it is from the trees' \
+      'verify:read each copy as a record and say how it stands against this project'\''s trees, which it does not change' \
+      'restore:put a copy back into the trees that lost files, never over a file the tree holds; a copy of another record is asked first, and --undo puts back what it replaced' \
+      'hook:install or remove an optional git hook that runs the backup after a commit' \
+      'help:display help for command' ;;
+    'backup hook') printf '%s\n' \
+      'install:add the post-commit hook that runs the backup (refuses a hook that is not a shell script, and a hooksPath inside the working tree)' \
+      'uninstall:take out the post-commit block mnema added, and the file only if mnema wrote it whole' \
       'help:display help for command' ;;
     'run') printf '%s\n' \
       'start:open a session for an agent (facts written in it are pinned to it)' \
@@ -269,9 +287,21 @@ _mnema_flags() {
     'tail list') echo '-h --help -V --version --color' ;;
     'tail prune') echo '--reason --which --lose-keys -h --help -V --version --color' ;;
     'tail relink') echo '--into --reason --which -h --help -V --version --color' ;;
-    'doctor') echo '--fix --dry-run -h --help -V --version --color' ;;
+    'tail repair') echo '--from -h --help -V --version --color' ;;
+    'backup') echo '-h --help -V --version --color' ;;
+    'backup setup') echo '--global -h --help -V --version --color' ;;
+    'backup run') echo '--global -h --help -V --version --color' ;;
+    'backup status') echo '--global --json -h --help -V --version --color' ;;
+    'backup verify') echo '--global --json -h --help -V --version --color' ;;
+    'backup restore') echo '--dry-run --from --undo --global -h --help -V --version --color' ;;
+    'backup hook') echo '-h --help -V --version --color' ;;
+    'backup hook install') echo '-h --help -V --version --color' ;;
+    'backup hook uninstall') echo '-h --help -V --version --color' ;;
+    'doctor') echo '--fix --after-update --dry-run -h --help -V --version --color' ;;
+    'upgrade') echo '--dry-run -h --help -V --version --color' ;;
     'report') echo '--decline --off --on -h --help -V --version --color' ;;
     'completion') echo '-h --help -V --version --color' ;;
+    'tour') echo '-h --help -V --version --color' ;;
     'mcp') echo '--project --agent-key -h --help -V --version --color' ;;
     'run') echo '-h --help -V --version --color' ;;
     'run start') echo '--which --goal -h --help -V --version --color' ;;
@@ -382,7 +412,7 @@ _mnema_values() {
     'check run:--color') echo 'auto always never' ;;
     'site:--color') echo 'auto always never' ;;
     'search:--kind') echo 'memory observation decision task skill' ;;
-    'search:--scope') echo 'public private global' ;;
+    'search:--scope') echo 'public private global all' ;;
     'search:--color') echo 'auto always never' ;;
     'show:--color') echo 'auto always never' ;;
     'timeline:--color') echo 'auto always never' ;;
@@ -423,10 +453,22 @@ _mnema_values() {
     'tail list:--color') echo 'auto always never' ;;
     'tail prune:--color') echo 'auto always never' ;;
     'tail relink:--color') echo 'auto always never' ;;
+    'tail repair:--color') echo 'auto always never' ;;
+    'backup:--color') echo 'auto always never' ;;
+    'backup setup:--color') echo 'auto always never' ;;
+    'backup run:--color') echo 'auto always never' ;;
+    'backup status:--color') echo 'auto always never' ;;
+    'backup verify:--color') echo 'auto always never' ;;
+    'backup restore:--color') echo 'auto always never' ;;
+    'backup hook:--color') echo 'auto always never' ;;
+    'backup hook install:--color') echo 'auto always never' ;;
+    'backup hook uninstall:--color') echo 'auto always never' ;;
     'doctor:--color') echo 'auto always never' ;;
+    'upgrade:--color') echo 'auto always never' ;;
     'report:--color') echo 'auto always never' ;;
     'completion:--color') echo 'auto always never' ;;
     'completion:') echo 'bash zsh fish' ;;
+    'tour:--color') echo 'auto always never' ;;
     'mcp:--color') echo 'auto always never' ;;
     'run:--color') echo 'auto always never' ;;
     'run start:--color') echo 'auto always never' ;;

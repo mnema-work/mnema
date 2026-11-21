@@ -39,6 +39,7 @@ import { THE_FLOOR } from '../src/repl/floor.js';
 import { PICK } from '../src/repl/palette.js';
 import { INIT_VERB } from '../src/wiring/init.js';
 import { REPL_VERB } from '../src/wiring/repl.js';
+import { aMachineThatSawTheTour } from './support/a-machine-that-saw-the-tour.js';
 import { ESC, fakeTerminal, until, withoutLayout } from './support/console.js';
 import {
   arrivedSince,
@@ -129,6 +130,8 @@ beforeAll(async () => {
     TERM: 'xterm-256color',
   };
   delete environment.MNEMA_RUN;
+  // A MACHINE THAT HAS BEEN THROUGH THE TOUR: the first bare name on one opens it, and this file is about the menu.
+  aMachineThatSawTheTour(environment, project);
 }, 180_000);
 
 afterAll(() => {

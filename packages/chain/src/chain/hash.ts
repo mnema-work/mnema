@@ -106,9 +106,22 @@ export function writtenAsStored(value: CanonicalValue): WrittenEvent {
   return { value } as WrittenEvent;
 }
 
+/**
+ * The canonical bytes of each written event, computed once: a read asks them of every line twice,
+ * for its entry hash and for the content root of the checkpoint that covers it. A written event is
+ * never changed once made (it is the line as it reached the disk, or as it is about to), so the
+ * bytes of one object are the bytes for as long as it lives, and they go with it.
+ */
+const BYTES = new WeakMap<WrittenEvent, Uint8Array>();
+
 /** The canonical bytes of the written event: the content every proof is over. */
 export function eventBytes(written: WrittenEvent): Uint8Array {
-  return canonicalBytes(written.value);
+  let bytes = BYTES.get(written);
+  if (bytes === undefined) {
+    bytes = canonicalBytes(written.value);
+    BYTES.set(written, bytes);
+  }
+  return bytes;
 }
 
 /**
@@ -147,11 +160,23 @@ export function entryHash(input: {
  * It folds the WRITTEN events, not the read ones: see {@link WrittenEvent}.
  */
 export function contentRoot(events: readonly WrittenEvent[]): string {
-  let acc = new FramedHash(ROOT_DOMAIN).text('empty').digest();
-  for (const event of events) {
-    acc = new FramedHash(ROOT_DOMAIN).field(acc).field(eventBytes(event)).digest();
-  }
+  let acc = contentRootStart();
+  for (const event of events) acc = contentRootStep(acc, event);
   return acc.toString('hex');
+}
+
+/**
+ * The accumulator {@link contentRoot} starts from: the root of an empty range. With
+ * {@link contentRootStep} it lets a reader fold a root ONE EVENT AT A TIME and share the prefix of
+ * two candidate ranges (`checkpoint-ruling.ts`); the bytes are the same fold's.
+ */
+export function contentRootStart(): Buffer {
+  return new FramedHash(ROOT_DOMAIN).text('empty').digest();
+}
+
+/** One step of {@link contentRoot}: the accumulator after `event`. */
+export function contentRootStep(acc: Buffer, event: WrittenEvent): Buffer {
+  return new FramedHash(ROOT_DOMAIN).field(acc).field(eventBytes(event)).digest();
 }
 
 /**

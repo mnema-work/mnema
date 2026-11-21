@@ -63,7 +63,8 @@ went to another project of the workspace whose tree does not enrol that agent, t
 saying the person's key signed it and the agent it names is declared, not attested
 (`tests/a-write-the-person-signs-for-an-agent-says-so.test.ts`).
 A write that the writer sent to a new tail, because the tail of this installation no longer ends where it left it (a
-branch switch, a merge, a restored backup, a copied checkout), says so in its reply, in the sentence the command line
+branch switch, a merge, a restored backup, a copied checkout) and no other tail of its key ends there where this
+machine left it, says so in its reply (and says why none was gone on with, where the key already writes other tails), in the sentence the command line
 prints on standard error (`mnema: wrote to a new tail, ...`), once, and the connection's log hears it too
 (`tests/an-mcp-agent-is-told-of-a-new-tail.test.ts`). The sentence is said once the new tail holds something: a write that
 is refused before it appends anything says only its refusal, since none went to a new tail

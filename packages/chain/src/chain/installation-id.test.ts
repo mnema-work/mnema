@@ -45,6 +45,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { generateKeyPair } from './keys.js';
 import {
+  adoptInstallationId,
   INSTALLATION_ID_POLL_MS,
   INSTALLATION_ID_WAIT_MS,
   linkToNothingAt,
@@ -382,5 +383,26 @@ describe('what took the name, asked only of a create that found it taken', () =>
     expect(linkToNothingAt(toAFile)).toBeUndefined();
     expect(linkToNothingAt(aFile)).toBeUndefined();
     expect(linkToNothingAt(join(root, 'nothing-here'))).toBeUndefined();
+  });
+});
+
+describe('adoptInstallationId: a worktree names another tail as the one it starts from', () => {
+  it('replaces the id whole, leaves no staging file, and makes the place when there is none', () => {
+    const first = anId();
+    writeFileSync(path, `${first}\n`);
+    const next = anId();
+    adoptInstallationId(layout, fingerprint, next);
+    expect(readFileSync(path, 'utf-8')).toBe(`${next}\n`);
+    expect(readdirSync(dirname(path))).toEqual([`${fingerprint}.inst`]);
+
+    const elsewhere = { root: join(root, 'another', 'place') };
+    adoptInstallationId(elsewhere, fingerprint, first);
+    expect(readFileSync(installationIdPath(elsewhere, fingerprint), 'utf-8')).toBe(`${first}\n`);
+  });
+
+  it('is refused, with no staging file left, where the id’s place cannot take it', () => {
+    mkdirSync(path);
+    expect(() => adoptInstallationId(layout, fingerprint, anId())).toThrow();
+    expect(readdirSync(dirname(path))).toEqual([`${fingerprint}.inst`]);
   });
 });

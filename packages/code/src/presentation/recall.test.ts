@@ -333,3 +333,44 @@ describe('the hook’s copy of the notes stays inside what a hook carries', () =
     expect(cut).toContain('9999 are recorded here, and none of them is below; `search` with');
   });
 });
+
+describe('the last session of a record with hundreds of decisions', () => {
+  const decisions = Array.from({ length: 700 }, (_, n) => ({
+    label: `ADR-${n + 1}`,
+    state: 'accepted',
+  }));
+  const last = {
+    agoSeconds: 1800,
+    goal: null,
+    decisions,
+    filesEdited: 4,
+    wrote: true,
+    decisionFilesUncited: 0,
+    questionsWithoutDecision: 0,
+    tasksInProgress: 0,
+  };
+  const withNotes = {
+    touched: untouched,
+    memories: all([memory(1, 'A memory')]),
+    observations: none,
+    lastSession: last,
+  };
+
+  it('names a few of its decisions and counts the rest, on one line', () => {
+    const line = recallDocument(withNotes).find((one) => one.startsWith('- Decisions it recorded'));
+    expect(line).toBe(
+      '- Decisions it recorded: 700; the newest: ADR-696: accepted; ADR-697: accepted; ADR-698: accepted; ADR-699: accepted; ADR-700: accepted; and 695 more',
+    );
+  });
+
+  it('stays inside what a hook carries, with the whole text', () => {
+    const text = recallWithin(withNotes, HOOK_TEXT_CEILING);
+    expect(printedLength(text)).toBeLessThanOrEqual(HOOK_TEXT_CEILING);
+    expect(text).toEqual(recallDocument(withNotes));
+  });
+
+  it('hands nothing, not a text above the room, when not even the fixed part fits', () => {
+    const text = recallWithin(withNotes, 500);
+    expect(text).toEqual([]);
+  });
+});

@@ -1,0 +1,3 @@
+Changed
+
+- **The claim workflow reads more claims and answers the ones it cannot read.** "Claiming this", "I'm working on this", "I'll take it", "assign me" and the like assign a free `good first issue` or `help wanted` issue to a contributor as `/take` does, a comment that sounds like a claim but matches nothing gets one reply that says to write `/take`, and the daily run assigns the author of an open pull request that closes a free issue and frees a hand assignment of an outside contributor after 14 days without a pull request, as it does its own. An outside pull request that waits on its author after a maintainer requested changes, or asked the author by name in a comment, gets one reminder after 7 days and one note after 14 days; the workflow only comments.

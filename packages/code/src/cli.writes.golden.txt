@@ -205,7 +205,7 @@ $ mnema skill move adopt no-such-id --note 'nothing to adopt'
 ! No skill no-such-id here.
 [exit 1]
 $ mnema skill create 'A skill with no body'
-! the reusable pattern is missing.: Give it with --body, with --stdin, or with --body-file <path>.
+! the reusable pattern is missing: Give it with --body, with --stdin, or with --body-file <path>.
 [exit 1]
 $ mnema run end --which agent-beta
 ! `mnema run end` needs a run: pass its id, or set MNEMA_RUN to the one `mnema run start` printed.
@@ -261,7 +261,7 @@ $ mnema switch
 |   edit-rules-push        on   the rules addressed at a file, handed over at each edit of it, beside the result of that write
 |   edit-asks-a-person     on   the pause before a file is written where the record asks that a person look first: the rules go on arriving, and nothing stops
 |   edit-refuses-a-write   on   the refusal of a write where a rule of the record refuses one: such a write goes through, the rules go on arriving, and a rule that asks for a person still asks
-|   agent-accepts          on   an agent ruling a decision in force: with it off, an `accept` that declares an agent is refused, and so is one that declares none unless it is made at a terminal (standard input and standard error both a TTY; through the MCP server never): only a person at a terminal accepts, a proposed decision waits, and nothing else changes. A terminal is a heuristic for a person, not a proof of one
+|   agent-accepts          on   an agent ruling a decision in force: with it off, an `accept`, a `supersede`, an `adopt` or a `deprecate` that declares an agent is refused, and so is one that declares none unless it is made at a terminal (standard input and standard error both a TTY; through the MCP server never): only a person at a terminal accepts or replaces a decision or adopts or deprecates a pattern, and only a person at a terminal switches it back on (stopping it is anyone's), a proposed decision waits, and nothing else changes. A terminal is a heuristic for a person, not a proof of one
 |   edit-first-write-gate  off  the hold on the first write of a session to a file a rule addresses: with it on, that write is refused once, with the rules in the reason, and the same write repeated goes through. Off until switched on; it holds in Claude Code, where the server remembers the session  ·  off until switched on: `mnema switch on edit-first-write-gate`
 |   user-corrections       off  the proposals recorded from what a person typed into a session: with it on, a `Stop` hook reads the transcript, and each time the person corrected the agent a decision is recorded as proposed in this machine’s private tree, and so is each answer the person gave to a question the agent asked. Off until switched on  ·  off until switched on: `mnema switch on user-corrections`
 |   choice-settled         on   the sentence handed to the agent after a question it asked the person was answered: that a choice may have been settled there, which tool records it and which accepts it (or that a person accepts it, where `agent-accepts` is off). It reads which tool ran and whether `agent-accepts` is on, and writes nothing
@@ -287,7 +287,7 @@ $ mnema switch
 |   edit-rules-push        off  the rules addressed at a file, handed over at each edit of it, beside the result of that write  ·  switched off by <anchor-short>  <at:01>  reason: noisy while porting  `mnema switch on edit-rules-push` turns it on
 |   edit-asks-a-person     on   the pause before a file is written where the record asks that a person look first: the rules go on arriving, and nothing stops
 |   edit-refuses-a-write   on   the refusal of a write where a rule of the record refuses one: such a write goes through, the rules go on arriving, and a rule that asks for a person still asks
-|   agent-accepts          on   an agent ruling a decision in force: with it off, an `accept` that declares an agent is refused, and so is one that declares none unless it is made at a terminal (standard input and standard error both a TTY; through the MCP server never): only a person at a terminal accepts, a proposed decision waits, and nothing else changes. A terminal is a heuristic for a person, not a proof of one
+|   agent-accepts          on   an agent ruling a decision in force: with it off, an `accept`, a `supersede`, an `adopt` or a `deprecate` that declares an agent is refused, and so is one that declares none unless it is made at a terminal (standard input and standard error both a TTY; through the MCP server never): only a person at a terminal accepts or replaces a decision or adopts or deprecates a pattern, and only a person at a terminal switches it back on (stopping it is anyone's), a proposed decision waits, and nothing else changes. A terminal is a heuristic for a person, not a proof of one
 |   edit-first-write-gate  off  the hold on the first write of a session to a file a rule addresses: with it on, that write is refused once, with the rules in the reason, and the same write repeated goes through. Off until switched on; it holds in Claude Code, where the server remembers the session  ·  off until switched on: `mnema switch on edit-first-write-gate`
 |   user-corrections       off  the proposals recorded from what a person typed into a session: with it on, a `Stop` hook reads the transcript, and each time the person corrected the agent a decision is recorded as proposed in this machine’s private tree, and so is each answer the person gave to a question the agent asked. Off until switched on  ·  off until switched on: `mnema switch on user-corrections`
 |   choice-settled         on   the sentence handed to the agent after a question it asked the person was answered: that a choice may have been settled there, which tool records it and which accepts it (or that a person accepts it, where `agent-accepts` is off). It reads which tool ran and whether `agent-accepts` is on, and writes nothing
@@ -311,7 +311,7 @@ $ mnema switch off no-such-channel
 
 ### refusals: what the parser turns down
 $ mnema decision record 'A decision with no rationale'
-! the rationale is missing.: Give it as an argument, with --stdin, or with --body-file <path>.
+! the rationale is missing: Give it as an argument, with --stdin, or with --body-file <path>.
 [exit 1]
 $ mnema task create 'A task' 'and one word too many'
 ! mnema task create does not take "and one word too many".

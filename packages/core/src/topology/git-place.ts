@@ -18,11 +18,42 @@
  * that points git elsewhere with them is answered from the `.git` on disk.
  */
 
-import { readFileSync, realpathSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
-/** The directory name, under a git directory, that holds this product's private trees. */
-const IN_GIT_DIR = 'mnema';
+/** The folder of mnema's own in a repository's git directory. */
+export const IN_GIT_DIR = 'mnema';
+
+/**
+ * The test switch: when this variable names a directory (or several, separated as a PATH is: `;` on Windows, `:` elsewhere), resolving a record tree or a repository
+ * outside it throws ({@link refuseOutsideTheTestRoot}). Only the test setup sets it; the product
+ * never reads it for anything else.
+ */
+export const REFUSE_TREES_OUTSIDE = 'MNEMA_REFUSE_TREES_OUTSIDE';
+
+/**
+ * Under {@link REFUSE_TREES_OUTSIDE}, throws when `path` lies outside the directory it names, with
+ * the path and (the error's own) stack, which names the caller that reached a tree no test owns.
+ * A test that resolved the real tree of the checkout it runs in would otherwise read, and
+ * rebuild the cache of, a record somebody is using.
+ */
+export function refuseOutsideTheTestRoot(path: string, what: string): void {
+  const named = process.env[REFUSE_TREES_OUTSIDE];
+  if (named === undefined || named === '') return;
+  // More than one directory may be named, separated as a PATH is: `;` on Windows, `:` elsewhere
+  // (written out, because the bundle of the site replaces `node:path` with a shim that has no `delimiter`).
+  const spelled = [path, realOrUndefined(path)].filter((each) => each !== undefined);
+  const roots = named
+    .split(process.platform === 'win32' ? ';' : ':')
+    .filter((each) => each !== '')
+    .flatMap((each) => [each, realOrUndefined(each)])
+    .filter((each) => each !== undefined);
+  if (spelled.some((each) => roots.some((inRoot) => isWithin(each, inRoot)))) return;
+  throw new Error(
+    `A test resolved ${what} ${path}, outside the temporary root ${named} (${REFUSE_TREES_OUTSIDE}). ` +
+      'A test works in a sandbox of its own; reaching the checkout it runs in reads and rebuilds a real record.',
+  );
+}
 
 /** Where git keeps the repository a directory belongs to. */
 export interface GitPlace {
@@ -49,7 +80,10 @@ export function gitPlaceOf(dir: string): GitPlace | undefined {
       if (gitDir === undefined || statOrUndefined(join(gitDir, 'HEAD')) === undefined) {
         return undefined;
       }
-      return { top: at, gitDir, commonDir: commonDirOf(gitDir) };
+      const place = { top: at, gitDir, commonDir: commonDirOf(gitDir) };
+      refuseOutsideTheTestRoot(place.top, 'the repository');
+      refuseOutsideTheTestRoot(place.commonDir, 'the git directory');
+      return place;
     }
     const parent = dirname(at);
     if (parent === at) return undefined;
@@ -92,8 +126,97 @@ export function privateTreePlace(
  * path is empty, is `%2E`: an encoded `.`, which no relative path spells.
  */
 export function privateTreeUnder(gitDir: string, within: string): string {
+  return placeUnder(gitDir, within, 'private');
+}
+
+/**
+ * `<gitDir>/mnema/<one component>/<leaf>` for the project at `within`: the private tree is the
+ * `private` leaf, and the machinery of the public tree is the `public` one ({@link
+ * publicMachineryPlace}). One encoding, so no two leaves of a project, nor two projects, meet.
+ */
+function placeUnder(gitDir: string, within: string, leaf: 'private' | 'public'): string {
   const component = encodeURIComponent(within.split(sep).join('/'));
-  return join(gitDir, IN_GIT_DIR, component === '' ? '%2E' : component, 'private');
+  return join(gitDir, IN_GIT_DIR, component === '' ? '%2E' : component, leaf);
+}
+
+/** Where the machinery of a project's public tree lives inside a repository. */
+export interface MachineryPlace {
+  /**
+   * `<common git dir>/mnema/<project>/public`: the locks, and the notes of what this machine wrote
+   * last to each tail, shared by every worktree of the repository (its `locks/`).
+   */
+  readonly shared: string;
+  /**
+   * `<this worktree's git dir>/mnema/<project>/public`: the hint of the installation id this
+   * checkout starts from (its `keys/`), and the mark that it moved what an earlier mnema kept in
+   * the record (its `migrated/`). It goes with the worktree when git removes it.
+   */
+  readonly checkout: string;
+  /** The repository the project is in, as the file system spells it. */
+  readonly place: GitPlace;
+}
+
+/**
+ * Where the machinery of the PUBLIC tree of the project at `projectDir` lives, or undefined when the
+ * project is in no repository, and the machinery stays in the record's own `locks/` and `keys/`.
+ *
+ * The directory is taken AS THE FILE SYSTEM SPELLS IT (`realpath`), and the repository is looked
+ * for from there: two spellings of one checkout (a link to a nested project, a macOS `/tmp`) must
+ * reach one place and so one lock, and a spelling that passes through a link would otherwise find
+ * no repository and keep the machinery where it used to be, beside the same tail files the other
+ * spelling writes under another lock.
+ */
+export function publicMachineryPlace(projectDir: string): MachineryPlace | undefined {
+  const dir = realOrUndefined(projectDir) ?? resolve(projectDir);
+  const place = gitPlaceOf(dir);
+  if (place === undefined) return undefined;
+  const within = relative(place.top, dir);
+  return {
+    shared: placeUnder(place.commonDir, within, 'public'),
+    checkout: placeUnder(place.gitDir, within, 'public'),
+    place,
+  };
+}
+
+/**
+ * Where a reading of the tree at `chainRoot` finds the signed notes of what this machine wrote
+ * (`ReadProof.notesRoot`): the shared machinery of the project's public tree inside a repository,
+ * or undefined outside one, where the notes are in the tree's own `locks/`. Asked of any tree, it
+ * names a place no note of another tree is in, so a reading of such a tree reads its own `locks/`.
+ */
+export function notesRootOf(chainRoot: string): string | undefined {
+  return publicMachineryPlace(dirname(chainRoot))?.shared;
+}
+
+/**
+ * The git directories of the OTHER worktrees of the repository that still exist: the main one (when
+ * this is a linked worktree) and every linked one whose working tree is there. A linked worktree
+ * whose folder was deleted without `git worktree remove` is not counted: git has not pruned it yet,
+ * and nothing is being written in it.
+ */
+export function otherGitDirsOf(place: GitPlace): string[] {
+  const own = realOrUndefined(place.gitDir);
+  const found: string[] = [];
+  if (realOrUndefined(place.commonDir) !== own && statOrUndefined(join(place.commonDir, 'HEAD'))) {
+    found.push(place.commonDir);
+  }
+  let names: string[];
+  try {
+    names = readdirSync(join(place.commonDir, 'worktrees'));
+  } catch {
+    return found;
+  }
+  for (const name of names) {
+    const gitDir = join(place.commonDir, 'worktrees', name);
+    if (realOrUndefined(gitDir) === own) continue;
+    try {
+      const dotGit = readFileSync(join(gitDir, 'gitdir'), 'utf-8').split('\n')[0] as string;
+      if (statOrUndefined(resolve(gitDir, dotGit)) !== undefined) found.push(gitDir);
+    } catch {
+      // No `gitdir` to read: git cannot say where that worktree is, and nothing is writing in it.
+    }
+  }
+  return found;
 }
 
 /**

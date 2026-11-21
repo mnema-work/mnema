@@ -84,7 +84,21 @@ describe('what is stored', () => {
       frontier: frontierOver(['/x/000001.jsonl']),
       breaks: [{ tail: 'a-tail', seq: 3, detail: 'seq gap: expected 3, found 4' }],
       retained: [{ tail: 'a-tail', seq: 2, segment: '000001.jsonl', line: 3 }],
+      refused: [
+        {
+          kind: 'line',
+          tail: 'a-tail',
+          place: 'tails/a-tail/000001.jsonl',
+          line: 4,
+          reason: 'not valid JSON',
+        },
+        { kind: 'link', tail: 'a-tail', place: 'tails/a-tail', reason: 'it is a symbolic link' },
+      ],
       unread: [{ kind: 'x.from-the-future', tail: 'a-tail', subject: 'a-subject' }],
+      signed: [
+        { tail: 'a-tail', withheld: { fromSeq: 0, toSeq: 1, why: 'checkpoint', line: 1 } },
+        { tail: 'a-tail', unsigned: { fromSeq: 5, toSeq: 6, count: 2, byNote: false } },
+      ],
       sealed: { '/x/000001.jsonl': '10:1' },
       active: { '/x/000002.jsonl': '10:1:10:abc' },
     };
@@ -232,7 +246,9 @@ describe('keeping the active marks', () => {
       frontier: frontierOver([]),
       breaks: [],
       retained: [],
+      refused: [],
       unread: [],
+      signed: [],
       sealed: {},
       active: { '/x/000001.jsonl': 'old' },
     });
@@ -267,7 +283,9 @@ describe('keeping the active marks', () => {
         frontier: frontierOver([]),
         breaks: [],
         retained: [],
+        refused: [],
         unread: [],
+        signed: [],
         sealed: {},
         active: {},
       });

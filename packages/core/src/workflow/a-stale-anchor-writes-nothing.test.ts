@@ -1,4 +1,4 @@
-import { cpSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -11,6 +11,7 @@ import {
   publicKeyPath,
   readTailEntries,
   signerAt,
+  TailDamagedError,
   writeAnchor,
 } from '@mnema/chain';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -518,6 +519,10 @@ describe('a checkout the key left writes nothing, through every write of the sur
     openTreeForWriting: 'opens a writer; the write is the caller’s',
     recordedAnchorOf:
       'asks the question every append asks: whether the recorded identity counts the key',
+    refusalBeforeTheAnchorRead:
+      'reads the tail’s damage from the disk to say what a write would say; opens no writer and appends nothing',
+    refusalBeforeTheAnchor:
+      'says which refusal a write earns first, the damaged tail’s or the anchor’s; appends nothing',
     runRuleChecks:
       'signs under the checker’s own anchor, which no identity retires; a key that is not a checker is refused before it appends',
     requestAgentEnrollment:
@@ -943,6 +948,60 @@ describe('ProjectionCache.rosterAsOfNow: the roster a session asks, equal to a r
       expect(cache.rosterAsOfNow(anchor)).toEqual(replayed);
     } finally {
       cache.close();
+    }
+  });
+});
+
+describe('the refusal a write earns first: the damaged tail’s, then the anchor’s', () => {
+  const refusal = new IdentityUnavailableError('STALE_ANCHOR', 'the anchor is stale');
+  const damage = new TailDamagedError('a-tail', 3, -1);
+  const writerThat = (act: () => void) => ({ writer: { refuseIfDamaged: act } });
+
+  it('says the damage when the writer finds it, and the anchor when there is none', () => {
+    expect(
+      writeSurface.refusalBeforeTheAnchor(
+        writerThat(() => {
+          throw damage;
+        }) as never,
+        refusal,
+      ),
+    ).toBe(damage);
+    expect(writeSurface.refusalBeforeTheAnchor(writerThat(() => undefined) as never, refusal)).toBe(
+      refusal,
+    );
+  });
+
+  it('throws what is not the tail’s damage, a tail held past the wait budget for one', () => {
+    const busy = new Error('the tail is busy');
+    expect(() =>
+      writeSurface.refusalBeforeTheAnchor(
+        writerThat(() => {
+          throw busy;
+        }) as never,
+        refusal,
+      ),
+    ).toThrow(busy);
+  });
+
+  it('reads the damage from the disk, and keeps the anchor’s refusal where it cannot', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'mnema-refusal-read-'));
+    try {
+      const layout = { root: dir };
+      const ctx = {
+        writer: { signerFingerprint: 'fp', anchor: 'a', hasAnchor: true },
+        layout,
+        upcasters: catalogUpcasters(),
+      };
+      // No installation id kept: nothing to name.
+      expect(writeSurface.refusalBeforeTheAnchorRead(ctx, refusal)).toBe(refusal);
+      // A tail whose only line cannot be read: the question fails, and the anchor’s refusal stands.
+      mkdirSync(join(dir, 'keys'), { recursive: true });
+      writeFileSync(join(dir, 'keys', 'fp.inst'), 'id1\n');
+      mkdirSync(join(dir, 'tails', 'fp-id1'), { recursive: true });
+      writeFileSync(join(dir, 'tails', 'fp-id1', '000001.jsonl'), 'not an entry\n');
+      expect(writeSurface.refusalBeforeTheAnchorRead(ctx, refusal)).toBe(refusal);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 });

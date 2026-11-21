@@ -210,8 +210,20 @@ gap. It is refused like every other break, and it changes no byte of this format
 avoids the common way to make one: it keeps, outside the record, the last entry it
 wrote to its tail, and when the tail no longer ends there (one checkout switched to
 another branch, an installation id copied into another checkout) it writes to a new
-tail instead of appending. A copy that carries that note with it cannot be seen by
-its writer, which is why the readers name what it leaves.
+tail instead of appending. In a git repository that note is kept in the repository's
+common git directory, which every worktree of it shares and a clean of what git ignores
+leaves alone, and the installation id a worktree starts from is kept as a hint under its
+own git directory (§4), with a mark of the act it last began on each tail it wrote. Before
+it opens a new tail, a write goes on with another tail of the same key that does end
+where this machine left it, when this worktree wrote that tail on the branch it has checked
+out now or its end is already on the repository's base branch (the default branch of the
+remote, as the clone last read it), and no other worktree that still exists names it as
+its hint (so a branch cut from the one that wrote a tail, and a detached HEAD, ask the
+base branch like any other, the hint's tail included, and so does a tail no mark of this
+worktree speaks of; a base branch that does not answer in time counts as no); an act that died is
+finished only by the worktree whose mark names the entry the act was about to write. A
+copy that carries that note with it cannot be seen by its writer, which is why the
+readers name what it leaves.
 
 **A cut has one account in the format, and it is for a WHOLE tail: the waiver.** A
 `tail.pruned` (`payload.tail`, `payload.throughHash`, `payload.eventCount`,
@@ -252,7 +264,7 @@ if they were events. The layout, which only ever appeared here incidentally in �
 <record>/.editorconfig                          `unset` for every property an outer EditorConfig could impose on these bytes; written by `init`; not part of the proof
 <record>/README.md                              written by `init`, for a person or an agent who opens the folder; not part of the proof
 <record>/site/                                  the page `mnema site` writes by default; ignored by the tree's .gitignore; not part of the proof
-<record>/locks/                                 the lock of each tail while a write holds it (`<tailId>.lock`), the note of which heads a tail last cited (`<tailId>.cited`), the note of the last entry this installation wrote to its tail (`<tailId>.head`) and the same note with the entry before it and the coverage it was written under, signed with the tail's own key under the scheme `mnema-written-head/1` (`<tailId>.head.sig`), without which a writer signs none of the events it finds above its tail's last checkpoint; it is signed before each append as well, naming in `next` (`{"hash","seq"}`, null once the act ended) the last entry the append is about to write, so the events of an act killed before its end are signed by the next write of that key in the same tail, and an end it names that the tail no longer holds is never appended to, whatever the clear note says (the write goes to a new tail), unless an earlier signed note of that tail is put back with the cut: a signed note carries no counter, so an earlier one still verifies and the write chains on; and the projection a reader keeps (`projection.db`, and the files SQLite keeps beside it); ignored by the tree's .gitignore; never read by a reader; deleting it costs a rebuild, one repeated citation or one new tail, and leaves unsigned the events above a tail's last checkpoint that no signed note vouches for, which `--require signed` refuses as it refuses any unsigned event; not part of the proof
+<record>/locks/                                 outside a git repository, and in one `<common git dir>/mnema/<project>/public/locks/`, shared by every worktree, inside one: the lock of each tail while a write holds it (`<tailId>.lock`), the note of which heads a tail last cited directly (`<tailId>.cited`), the note of the heads its citations cover and which tail covers each (`<tailId>.covered`), the index of what a tail cites, which any writer of the record keeps for the tails it reads (`<tailId>.citations`), the note of the last entry this installation wrote to its tail (`<tailId>.head`) and the same note with the entry before it and the coverage it was written under, signed with the tail's own key under the scheme `mnema-written-head/1` (`<tailId>.head.sig`), without which a writer signs none of the events it finds above its tail's last checkpoint; it is signed before each append as well, naming in `next` (`{"hash","seq"}`, null once the act ended) the last entry the append is about to write, so the events of an act killed before its end are signed by the next write of that key in the same tail, and an end it names that the tail no longer holds is never appended to, whatever the clear note says (the write goes to a new tail), unless an earlier signed note of that tail is put back with the cut: a signed note carries no counter, so an earlier one still verifies and the write chains on; the segment `mnema tail repair` replaced, kept as `<tailId>.<segment>.<ms>.before-repair` until a person deletes it, the segment of the revision git committed that a repair left out because the signed working events won at a fork, kept as `<tailId>.<segment>.<ms>.revision.before-repair` on the same terms, and the file it stages the repaired segment in (`<tailId>.<segment>.repair.<pid>`, removed by the next repair when its process is dead), and the projection a reader keeps (`projection.db`, and the files SQLite keeps beside it); ignored by the tree's .gitignore; never read by a reader; deleting it costs a rebuild, a re-read of the tails, one repeated citation or one new tail, and leaves unsigned the events above a tail's last checkpoint that no signed note vouches for, which `--require signed` refuses as it refuses any unsigned event; inside a repository, the record's own `locks/` then holds the projection, and the notes an earlier mnema left there, which the next write of their key moves; not part of the proof
 <record>/inherit.json                           the record this one inherits, by its location and one commit (`mnema inherit`); committed; not part of the proof
 <record>/keys/<fingerprint>.pub                 the public keys (§6)
 <record>/tails/<tailId>/NNNNNN.jsonl            the segments, six digits, in name order
@@ -276,14 +288,45 @@ is the private tree of a project outside a git repository and, inside one, where
 version kept it before it moved into the repository's git directory; the product names one
 still there as left behind and, when asked, moves it.
 
-**A tail is a directory, and a symbolic link under `tails/` is refused by name**, whatever it
-points at (a directory, a file, nothing). A reader does not follow it, does not count it as a
-tail and reads nothing through it, and refuses the record naming `tails/<name>`, with or
-without other tails beside it: a link can point outside the repository, and a reader that
-followed it would verify events another reader of the same bytes never sees
-(`packages/chain/src/chain/both-readers-read-the-same-bytes.test.ts`, `tail-linked` and
-`tail-linked-beside-a-real-one`). Any other entry under `tails/` that is not a directory is
-not read.
+**A reader follows no link in a record, and refuses each one by name.** A symbolic link, or on
+Windows a junction or an app execution alias, at a place a reader reads (`keys/` and `tails/` themselves, any entry of either, any
+entry of a tail directory and any entry of a tail's `witness/`) is refused, whatever it points
+at: a directory, a file, nothing, or a place inside the record itself. A reader finds them by
+the directory listing and `lstat`, never following what they list, before it reads anything (any
+other Windows reparse point, a cloud placeholder among them, is the file or folder it holds),
+and opens nothing through one: a tail that is a link, or that holds one, is not read and not
+counted as a tail (its directory still names its key's tail, §6.5); a key file that is a link is
+not read and holds no key; and nothing under `keys/` or `tails/` is read when that directory is
+a link. A link can point outside the repository, and a reader that followed it would verify
+bytes another reader of the same record never sees. These refusals come before any other, in
+the order of the places above and of the names in each, and both readers word them alike: a tail
+that is a link as `LINKED TAIL: tails/<name> is a symbolic link, and a tail is a directory of the
+record: …`, any other as `LINKED ENTRY: <path> is a symbolic link, and a reader reads a record
+from its own files and directories: …`, `<path>` being its place in the record with `/` between
+the names (the second reader says the path and the same words). The record's root and the
+directories above it are not judged, since the path is the caller's and may cross a link of its
+own, and neither is a place no reader reads: `locks/`, the root's other entries, a folder of a
+tail named as a stray entry below. Any other entry under `tails/` that is not a directory is not
+read. This rule was tightened after the first publication (§7.1): no writer of 0.1.0 to 0.1.8
+put a link in a record, and a version from before it follows such a link and refuses nothing,
+except a link in place of a tail, which 0.1.8 refuses already
+(`packages/chain/src/chain/both-readers-read-the-same-bytes.test.ts`, `tail-linked`,
+`tail-linked-beside-a-real-one`, `segment-linked`, `segment-linked-inside-the-record`,
+`checkpoints-linked`, `tailproof-linked`, `witness-file-linked`, `key-file-linked`,
+`keys-dir-linked` and `tails-dir-linked`, and "a link to a file outside the record, to both
+readers").
+
+**The writer of this product refuses to write through a link.** Before the first byte of a write, with
+the tail's lock held and before anything is sealed, it asks for every directory it writes in (`tails/`,
+its own tail, `keys/`, `locks/`, wherever §4 says that one is kept) and every file it writes (the tail's segments, `checkpoints.jsonl`,
+`tailproof.json`, the key's public file in `keys/`, and in `locks/` the tail's lock, its notes
+`<tail>.head`, `<tail>.head.sig`, `<tail>.cited` and `<tail>.covered`, and the staging file each is written through; and the index `<tail>.citations` of each tail it reads, with its staging file, asked as that tail is read),
+and where one is a symbolic link it refuses with `RECORD_LINKED`, naming the path: nothing is written,
+nothing the link points at is opened, and it does not found a new tail in the link's place. The
+lock is asked before it is taken, since taking it is a write. A link elsewhere is for the readers
+above. This binds this product's writer and nothing else: another writer that puts a link in a record is
+still refused by both readers
+(`packages/chain/src/chain/the-writer-does-not-write-through-a-link.test.ts`).
 
 The tail is the concatenation of its segments in name order, and sequence numbers
 are contiguous across that concatenation: **which segment a given sequence number
@@ -300,8 +343,8 @@ and nothing in it is vouched for`, the name quoted as JSON with every character
 outside printable ASCII escaped (a byte that is not UTF-8 reads as U+FFFD). What an operating system writes on its own, `.DS_Store` and any
 name starting `._`, is skipped and not named, by the rule `keys/` uses. A segment is a regular file whose whole name is
 `NNNNNN.jsonl`: a folder of that name, and a file named `witness`, are named like any
-other entry and read by nobody. A symbolic
-link is classified and not said. `witness/` and the record's root are not covered by
+other entry and read by nobody. A link
+is refused by the rule above, not named here. `witness/` and the record's root are not covered by
 this note (`packages/chain/src/chain/both-readers-read-the-same-bytes.test.ts`,
 `stray-file-in-a-tail`, `stray-folder-in-a-tail` and `os-file-in-a-tail`).
 
@@ -332,7 +375,8 @@ holding anything, the record is refused, by the rule below.
 
 **A record in which no tail holds anything asserts no fact, and is refused.** When no
 tail is counted (there is no `tails/` directory, there is no tail directory in it, or
-every tail directory in it holds no event and no checkpoint), a reader refuses the record
+every tail directory in it holds no event and no checkpoint or was not read for a link it
+holds, or `tails/` is a link), a reader refuses the record
 by name, whatever level the caller requires of it, and with the same refusal as any other,
 not a verdict of its own. It still says what §6.5 says of each committed key with no tail,
 so a record whose one tail was deleted says whose key it was. A record is never in this
@@ -760,7 +804,9 @@ where the whole tie-break is written out).
 
 So a key's first event follows its enrolment whatever the two machines' clocks said, as
 long as it cites the head of the enroller's tail it had read, which is at or after the
-enrolment, since it was read after it. This product's writer always cites. An event that
+enrolment, since it was read after it. This product's writer cites the head of every tail
+that holds an enrolment directly, whatever other head covers it ("What this product's writer
+cites"). An event that
 cites nothing is placed by its `at` alone, as every event was before citations existed:
 then a second machine whose clock is behind the enroller's stamps its first event before
 the enrolment, and the fold refuses an honest record. Both halves are held over drawn
@@ -1247,7 +1293,8 @@ already written
 
 **Why the judgment binds the text.** An accept is a person's word on what they read, and what
 they had read is in the bytes: its own tail, and the heads its tail cites, which this product's
-writer cites at every append ("Reading many tails"). A writing dated back on a tail the judgment
+writer cites directly on every move, the head of every tail that holds the subject
+("Reading many tails"). A writing dated back on a tail the judgment
 never cited, appended after it or on a clone its writer had not pulled, is first in the merged
 order whatever it says, because `at` is the signer's to write; it is not what was accepted, and
 it is named, never served ("serves the text accepted, and names the writing dated back from an
@@ -1423,7 +1470,7 @@ second-scheme proof, else by its last checkpoint when that one is of the second 
 signature checked under the committed key its id names. The writer writes nothing where the other
 tails name two records, or where its own tail names one and every other named tail another
 (`ANOTHER_RECORD`). It never appends to a tail whose end it holds no note of having written
-(the `<tailId>.head` of §4): it opens a new tail, named, instead. So a tail written before 0.1.5
+(the `<tailId>.head` of §4, wherever §4 says it is kept): it opens a new tail, named, instead. So a tail written before 0.1.5
 is never bound by its owner's first second-scheme checkpoint in practice, and stays unnamed: the
 protection holds from 0.1.5 on (`packages/chain/src/chain/the-writer-names-the-record.test.ts`).
 
@@ -1599,7 +1646,19 @@ this product's, and the tests named below hold both readers beside this document
   that kind up to v1. If a newer mnema wrote the line, read the record with it.* The second reader
   names the pair and what the table it read declares of the kind. Nothing in a record says which
   version wrote a line, and no field is added to say it, so the refusal names the version that
-  does not read the line rather than the one that does. This product's `verify` fails on it. A checkpoint or a tail proof under
+  does not read the line rather than the one that does. This product's `verify` fails on it, and the two readers
+  refuse it alike. What the product's other reads do with a line that does not read, for this reason or any other
+  (damage, a merge's markers), is its own and does not change the verdict: the surfaces that serve the record from the projection
+  cache (`status`, `show`, `search`, `brief`, `rules`, `why`, the hooks, the console and the agent's tools)
+  serve what they read, leave the line out, and name the part on the first line of every surface, with the tail, the line and the way out (a
+  newer mnema's line: update mnema); the line after it breaks its tail's chain as it would in the verdict. A
+  symbolic link at a segment or a tail (§4) is named the same way, with the rest served, and so is a folder or a file
+  the disk will not let the product open (no permission, a file where a folder belongs, a loop of links): it is a part that
+  was not read, and the system's own error never reaches a person in its place. The tools that audit the
+  record (`export`, `exposure`, `antipatterns` and the agent's audit tools) read the tails themselves and still
+  refuse such a line. Every write of the
+  product is refused while such a part stands, and the repair of a tail from git is the one write that passes. A
+  checkpoint or a tail proof under
   a scheme of its family a reader does not read is refused the same way, before its other keys:
   *a checkpoint scheme this reader does not know: '\<a later scheme\>': mnema \<version\> reads
   mnema-checkpoint/1 and mnema-checkpoint/2. If a newer mnema wrote the line, read the record
@@ -1705,8 +1764,12 @@ above; and the same record with a kind no version declares, which both read past
   it reads, without what the line says. A newer kind that changes who may sign (a revocation it
   writes), what state a decision is in, or which note stands, is not applied by it: it accepts what
   the newer one would refuse there, and serves a state the newer one would not. The census line is
-  what says so, and naming those lines on the surfaces that serve the record is not yet this
-  product's; a person who sees it reads the record with the newer mnema.
+  what says so, and this product says it too on every command-line verb that reads the record (`status`, `brief`, `recall`, `show`, `search`, `resume`, `rules`, `rules-file`, `why`, `timeline`, `refs`, `commits`, `aging`, `trailer`, `diagram`, `usage`, `site`, `export`, `audit accountability`, `audit exposure`, `audit antipatterns`, `task next`, `task guard`, `skill provenance`, `doctor`), the console and the agent's tools that read: each names how many lines a newer mnema
+  wrote into the record and of which kinds, that this reader applies none of them, and that the
+  record is read with the newer mnema. The verbs that read no line of the record (`repl`, which
+  says it on its own door, `stack`, `backup`, the hooks that read one switch, and the few that read none) are
+  held in a table by `every-read-verb-says-where-a-newer-mnema-wrote.test.ts`, with the reason of each. A write the gate lets through is told
+  nothing of them; a write it refuses or holds for a person is told in the reason.
 - **The order between tails.** It rests on the writers' clocks and on what each cites ("Reading
   many tails"), a limit stated there and outside this promise.
 
@@ -1972,11 +2035,55 @@ existed before the entry citing it was written), the head with the smallest `at`
 so the order is total whatever the bytes say; that case is not held by a test, because an honest
 writer cannot produce it.
 
-**What this product's writer cites.** At every append, the head of each other tail of the same
+**What this product's writer cites.** The frontier of the heads of the other tails of the same
 record that its own tail has not cited yet, read off the disk as it writes: what existed when it
-wrote, and so nothing it cannot back. Nothing new to cite, no field
+wrote, and so nothing it cannot back. A citation orders the entry after the head it names and after
+everything that head's tail had cited, so a head that another tail's head already cites needs none of
+its own: the writer cites, in `after`, (a) the heads no other tail's head covers, (b) on a move
+(§6.7) and on a retraction (§6.4), the head of every tail that holds a line of the subject, (c) the
+head of every tail that holds the enrolment of a key (`identity.founded`, `key.enrolled`,
+`agent.enrolled`, `checker.enrolled`), and, for a fact of §6.2 itself (the ones that add, remove or
+vouch for a key: `identity.founded`, `key.enrolled`, `key.revoked`, `backup.declared`,
+`checker.enrolled`, `checker.retired`, `agent.enrolled`, `agent.retired`, `account.linked`), every
+head it has not cited directly. A tail that a `tail.pruned` names, one whose bytes this writer
+cannot read as canonical lines, and one whose key the record does not commit, cover nothing. An
+entry that cited every head grew with the number of tails and a record with their square: a
+first line among 300 tails took 20 KB, and now takes about 660 bytes, whatever the number
+(`packages/chain/src/chain/cited-heads.test.ts`, "a new tail among a hundred and fifty cites what no
+other head covers"). Nothing new to cite, no field
 (`packages/chain/src/chain/cited-heads.test.ts`, "cites the head of another tail the first time,
 and not again until that tail moves"). A writer cites the tails of its own record only.
+
+No reader changes, and a record written either way reads the same: the field, its form (a list,
+strictly ascending, never empty) and the rules of the merge are the ones above, and a writer that
+cites more is read exactly as before. In a record that holds every tail, the order and what a move
+had read are the ones citing every head gives, entry by entry
+(`packages/chain/src/chain/a-frontier-gives-the-order-every-head-gives.test.ts`), and both readers
+verify a record the frontier wrote (`a-record-the-frontier-wrote-is-read-by-both-readers.test.ts`, over
+`__fixtures__/written-by-the-frontier`).
+
+**What a partial record loses.** A record that does not hold every tail (a clone missing the tail
+that covered another, a tail cut by a waiver) has entries whose cover is not there: the citation of
+the cover is ignored and named in the census (above), and the entry is placed by its `at` where the
+cover would have held it back. What stays protected is what an entry's meaning rests on: the
+enrolments of §6.2 and what a move had read (§6.7), since both are cited directly. What can change
+position is informative: the order between subjects, and the writes that are not a move or a
+retraction (a rewrite of §6.8, a link made again after it was taken back, a stack adopted or
+removed, a channel switched). It needs clocks that disagree: with the clocks of one machine the
+order is the same. Measured with this writer on a record of 120 tails (one write each, founded one
+after another, 128 entries with eight more from existing tails), each tail's clock offset by a
+constant drawn between a minute behind and a minute ahead, with one tail removed at a time (120
+removals) and the order compared position by position with the one citing every head would give on
+the same removal: over three seeds an entry changed position, on average over the removals, for
+32.2, 32.5 and 37.1 of 128, and for 119, 99 and 101 at most. A citation of a hash the record does
+not hold is ignored and named in the census (above), never refused.
+
+The writer keeps what it needs to tell what is covered in `locks/`, beside the notes of §4: for its
+own tail, `<tailId>.covered` (the heads in its past through another it cited, and the tail that
+covers each), and for every tail, `<tailId>.citations` (the hashes that tail cites, up to the line
+whose hash the note names). A note is believed only while the bytes of the tail agree with it, and
+is rebuilt from them otherwise: a reader never reads either, and deleting them costs a re-read
+of the tails.
 
 **What a citation fixes.** Three honest records the selection by `at` alone read wrong, each
 written by a machine whose clock is an hour behind, on top of what it had pulled

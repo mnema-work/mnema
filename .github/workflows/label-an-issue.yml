@@ -1,0 +1,38 @@
+name: Label an issue
+
+# WHAT THIS IS. An issue opened from one of the forms in `.github/ISSUE_TEMPLATE/` gets the `area:`
+# label its host or area answer names, and `needs triage`. `.github/label-an-issue/label.mjs` owns the
+# rules and its comment says what it does and does not do.
+#
+# THE LINE IT HOLDS. The body of an issue is text a stranger wrote. The script reads it from the event
+# file and writes it nowhere: no expression of the event is put in a shell line, nothing is checked out
+# but this repository's default branch for the script alone, nothing is installed and no package
+# script runs. The token can write issues and nothing else.
+
+on:
+  issues:
+    types: [opened]
+
+permissions: {}
+
+jobs:
+  label:
+    name: label the issue
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/label-an-issue
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+
+      - name: Add the labels the form's answers name
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/label-an-issue/label.mjs "$GITHUB_EVENT_PATH"

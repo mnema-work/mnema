@@ -115,13 +115,25 @@ carries the help the command prints, word for word.
   - [mnema key revoke](cli/key-revoke.md): retire a key from this identity, from this point forward
   - [mnema key protect](cli/key-protect.md): encrypt this machine's private keys at rest with the passphrase in MNEMA_KEY_PASSPHRASE
   - [mnema key unprotect](cli/key-unprotect.md): write this machine's private keys back in the clear (needs MNEMA_KEY_PASSPHRASE)
-- [mnema tail](cli/tail.md): act on the record's own tails: list them, authorize a cut, relink one
+- [mnema tail](cli/tail.md): act on the record's own tails: list them, authorize a cut, relink one, repair a line from git
   - [mnema tail list](cli/tail-list.md): list the tails that hold events here, the ones a cut can name, with the id `prune` takes
   - [mnema tail prune](cli/tail-prune.md): record that one whole tail was authorized to be cut (it removes nothing)
   - [mnema tail relink](cli/tail-relink.md): relink whole tails of another record into the one this directory names, each signed by its own key
-- [mnema doctor](cli/doctor.md): say how mnema is installed on this machine, and what to do about each thing found (writes nothing unless you pass --fix)
+  - [mnema tail repair](cli/tail-repair.md): put back from git the lines of a public tail that do not read or whose hash does not hold, or the whole tail when its signed checkpoints do not hold
+- [mnema backup](cli/backup.md): copy this project's trees into a folder, and say how far the copy is (records nothing)
+  - [mnema backup setup](cli/backup-setup.md): say which folder keeps this project's backup, after a person confirms at a terminal that it keeps the text in clear
+  - [mnema backup run](cli/backup-run.md): copy this project's trees into its folder, or with --global only the global tree
+  - [mnema backup status](cli/backup-status.md): say where this project's backup is and how far it is from the trees
+  - [mnema backup verify](cli/backup-verify.md): read each copy as a record and say how it stands against this project's trees, which it does not change
+  - [mnema backup restore](cli/backup-restore.md): put a copy back into the trees that lost files, never over a file the tree holds; a copy of another record is asked first, and --undo puts back what it replaced
+  - [mnema backup hook](cli/backup-hook.md): install or remove an optional git hook that runs the backup after a commit
+  - [mnema backup hook install](cli/backup-hook-install.md): add the post-commit hook that runs the backup (refuses a hook that is not a shell script, and a hooksPath inside the working tree)
+  - [mnema backup hook uninstall](cli/backup-hook-uninstall.md): take out the post-commit block mnema added, and the file only if mnema wrote it whole
+- [mnema doctor](cli/doctor.md): say how mnema is installed on this machine, and what to do about each thing found (writes nothing unless you pass --fix or --after-update)
+- [mnema upgrade](cli/upgrade.md): after installing a newer mnema: bring this project and machine up to it, asking before anything that changes how the repository behaves
 - [mnema report](cli/report.md): show, whole, what mnema would say about its own last internal error, and keep your answer to it (sends nothing)
 - [mnema completion](cli/completion.md): print the tab-completion script for a shell
+- [mnema tour](cli/tour.md): show what mnema is and how it is used, page by page
 
 ## Called by a host
 
