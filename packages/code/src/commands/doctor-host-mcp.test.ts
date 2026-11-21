@@ -7,13 +7,13 @@
 
 import {
   chmodSync,
-  symlinkSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -497,18 +497,20 @@ describe('an entry that cannot be verified is neither dead nor the one that stay
         return [link, 'mcp'];
       },
     ],
-  ])('does not take a node entry as working when %s: the project entry that works stays', async (_why, args) => {
-    const text = pretty({
-      mcpServers: { mnema: { command: process.execPath, args: args() } },
-      projects: { [repo]: { mcpServers: { mnema: live() } } },
-    });
-    put(claudeJson(), text);
-    for (const argv of [['upgrade', '--dry-run'], ['upgrade'], ['upgrade', '--fix']]) {
-      const said = await mnema(argv);
-      expect(said.out).not.toMatch(/applied · mcp|would apply · mcp/);
-      expect(readFileSync(claudeJson(), 'utf8')).toBe(text);
-    }
-    expect(copies(claudeJson())).toEqual([]);
-  });
+  ])(
+    'does not take a node entry as working when %s: the project entry that works stays',
+    async (_why, args) => {
+      const text = pretty({
+        mcpServers: { mnema: { command: process.execPath, args: args() } },
+        projects: { [repo]: { mcpServers: { mnema: live() } } },
+      });
+      put(claudeJson(), text);
+      for (const argv of [['upgrade', '--dry-run'], ['upgrade'], ['upgrade', '--fix']]) {
+        const said = await mnema(argv);
+        expect(said.out).not.toMatch(/applied · mcp|would apply · mcp/);
+        expect(readFileSync(claudeJson(), 'utf8')).toBe(text);
+      }
+      expect(copies(claudeJson())).toEqual([]);
+    },
+  );
 });
-
