@@ -4,7 +4,7 @@
 
 - No change to the extension's code, only its version, so that it matches the command line it is released with.
 - One thing is different for the person using it, and it comes from the command line: the extension runs
-  `mnema decision move accept` with no terminal, so with `agent-accepts` switched off (`mnema switch`) the Accept button
+  `mnema decision move accept <id> --note <note>` with no terminal, so with `agent-accepts` switched off (`mnema switch`) the Accept button
   is refused (`AGENT_ACCEPTS_IS_OFF`) and nothing is written. A person accepts then with `mnema decision review` in a
   terminal. Reject is not affected. The page of the extension says so.
 - It still needs the `mnema` command line (`@mnema/code`) where the editor can start it, and it
