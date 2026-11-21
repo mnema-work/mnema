@@ -396,6 +396,20 @@ export async function runWitnessStamp(
       });
       continue;
     }
+    // Before anything is sent: a link where the proof is filed would refuse the write after the
+    // calendars were asked, and a rerun would ask them again.
+    try {
+      refuseWitnessThroughALink(chain.layout, chain.tail, checkpoint, ['proof']);
+    } catch (error) {
+      if (!(error instanceof RecordLinkedError)) throw error;
+      outcomes.push(
+        said(chain, 'failed', `nothing was sent: ${error.message}`, {
+          status: 'not-covered',
+          detail: error.message,
+        }),
+      );
+      continue;
+    }
     const stamped = await stampCheckpoint(checkpoint, network);
     writeWitness(chain.layout, chain.tail, checkpoint, { proof: stamped.proof });
     outcomes.push({
@@ -484,6 +498,15 @@ async function upgradeTail(
           `checkpoint ${at} holds nothing a calendar can complete: ${walked.reading.detail}`,
           walked.reading,
         ),
+      );
+      continue;
+    }
+    try {
+      refuseWitnessThroughALink(chain.layout, chain.tail, at, ['proof', 'blocks']);
+    } catch (error) {
+      if (!(error instanceof RecordLinkedError)) throw error;
+      outcomes.push(
+        said(chain, 'failed', `nothing was asked: ${error.message}`, walked.reading),
       );
       continue;
     }
@@ -628,6 +651,15 @@ export async function runWitnessSigstore(
       continue;
     }
     const digest = head.hash;
+    // Before anything is signed: a bundle goes to Rekor, which is public and permanent, and a link
+    // where it is filed would refuse the write afterwards and lose it.
+    try {
+      refuseWitnessThroughALink(chain.layout, chain.tail, digest, ['sigstore']);
+    } catch (error) {
+      if (!(error instanceof RecordLinkedError)) throw error;
+      outcomes.push(said('failed', `nothing was signed: ${error.message}`));
+      continue;
+    }
     if (existsSync(witnessSigstorePath(chain.layout, chain.tail, digest))) {
       outcomes.push(said('skipped', `checkpoint ${digest} is already countersigned`));
       continue;

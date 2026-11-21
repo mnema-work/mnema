@@ -26,11 +26,13 @@
 import { createHash } from 'node:crypto';
 import {
   cpSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -47,7 +49,12 @@ import { type DiscoveryEnv, resolveTrees, tailsHeld } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runInit } from './init.js';
 import { runMemory } from './memory.js';
-import { runWitnessList, runWitnessStamp, runWitnessUpgrade } from './witness.js';
+import {
+  runWitnessList,
+  runWitnessSigstore,
+  runWitnessStamp,
+  runWitnessUpgrade,
+} from './witness.js';
 
 let sandbox: string;
 
@@ -877,3 +884,84 @@ function tamper(root: string): void {
   lines[0] = JSON.stringify(first);
   writeFileSync(path, `${lines.join('\n')}\n`, 'utf-8');
 }
+
+describe('a link where a witness file is filed is met before anything leaves the machine', () => {
+  /** The record, stamped once to learn the checkpoint's name, its witness folder then taken away. */
+  async function stampedOnce(): Promise<{
+    ctx: ReturnType<typeof setup>;
+    witness: string;
+    name: string;
+  }> {
+    const ctx = setup();
+    await runWitnessStamp(ctx, { calendars: [CALENDAR], fetch: network(() => promises()).fetch });
+    const root = publicRoot(ctx);
+    const witness = join(root, 'tails', tailOf(root), 'witness');
+    const name = (readdirSync(witness).find((f) => f.endsWith('.ots')) as string).slice(0, -4);
+    rmSync(witness, { recursive: true });
+    return { ctx, witness, name };
+  }
+
+  /** Plants a link to nothing, outside the tree, at `file` of the witness folder. */
+  function plant(witness: string, file: string): string {
+    mkdirSync(witness, { recursive: true });
+    const target = join(sandbox, 'outside', file);
+    mkdirSync(join(sandbox, 'outside'), { recursive: true });
+    symlinkSync(target, join(witness, file));
+    return target;
+  }
+
+  it('stamp asks no calendar, and says nothing was sent', async () => {
+    const { ctx, witness, name } = await stampedOnce();
+    const target = plant(witness, `${name}.ots`);
+    const calendar = network(() => promises());
+
+    const act = await runWitnessStamp(ctx, { calendars: [CALENDAR], fetch: calendar.fetch });
+
+    expect(calendar.sent).toEqual([]);
+    if (!act.ok) throw new Error(act.message);
+    expect(act.outcomes.map((o) => o.did)).toEqual(['failed']);
+    expect(act.outcomes[0]?.detail).toMatch(/nothing was sent: .*is a symbolic link/);
+    expect(existsSync(target)).toBe(false);
+  });
+
+  it('sigstore signs nothing and publishes nothing, and says nothing was signed', async () => {
+    const { ctx, witness, name } = await stampedOnce();
+    const target = plant(witness, `${name}.sigstore.json`);
+    const reached: string[] = [];
+
+    const act = await runWitnessSigstore(ctx, {
+      fetch: async (url) => {
+        reached.push(String(url));
+        throw new Error('the network is not to be reached');
+      },
+      token: async () => {
+        reached.push('token');
+        throw new Error('no token is to be asked');
+      },
+    });
+
+    expect(reached).toEqual([]);
+    if (!act.ok) throw new Error(act.message);
+    expect(act.outcomes.map((o) => o.did)).toEqual(['failed']);
+    expect(act.outcomes[0]?.detail).toMatch(/nothing was signed: .*is a symbolic link/);
+    expect(existsSync(target)).toBe(false);
+  });
+
+  it('upgrade asks no calendar for a proof whose headers file is a link', async () => {
+    const ctx = setup();
+    await runWitnessStamp(ctx, { calendars: [CALENDAR], fetch: network(() => promises()).fetch });
+    const root = publicRoot(ctx);
+    const witness = join(root, 'tails', tailOf(root), 'witness');
+    const name = (readdirSync(witness).find((f) => f.endsWith('.ots')) as string).slice(0, -4);
+    const target = plant(witness, `${name}.blocks`);
+    const calendar = network(() => promises());
+
+    const act = await runWitnessUpgrade(ctx, { fetch: calendar.fetch });
+
+    expect(calendar.sent).toEqual([]);
+    if (!act.ok) throw new Error('refused');
+    expect(act.outcomes.map((o) => o.did)).toEqual(['failed']);
+    expect(act.outcomes[0]?.detail).toMatch(/nothing was asked: .*is a symbolic link/);
+    expect(existsSync(target)).toBe(false);
+  });
+});

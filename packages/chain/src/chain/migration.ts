@@ -90,7 +90,7 @@ export function migrateMachinery(places: MigrationPlaces): void {
   // Before the first byte: nothing is moved through a link, and a note that is one is refused by name.
   refuseToWriteThrough(chain, ['keys', 'locks', ...leftover.flatMap(notesIn)]);
   refuseToWriteThrough(shared, ['locks']);
-  refuseToWriteThrough(checkout, ['keys', 'migrated']);
+  refuseToWriteThrough(checkout, ['keys', 'migrated', ['migrated', fingerprint].join('/')]);
 
   let id = readId(legacyIdPath);
   for (let tries = 0; id !== undefined; tries += 1) {

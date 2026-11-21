@@ -162,6 +162,27 @@ describe.each([
   });
 });
 
+describe('the migration, before it moves anything', () => {
+  it('refuses a link to nothing at the mark while the machinery of an earlier version is still where it was', () => {
+    const checkout = { root: join(dir, 'checkout') };
+    const chain = { root };
+    const fingerprint = 'e'.repeat(64);
+    const legacyId = installationIdPath(chain, fingerprint);
+    mkdirSync(join(legacyId, '..'), { recursive: true });
+    writeFileSync(legacyId, `${'a'.repeat(32)}\n`);
+    const place = migratedMarkPath(checkout, fingerprint);
+    const target = plant(place, false);
+
+    expect(() =>
+      migrateMachinery({ chain, shared: { root: join(dir, 'shared') }, checkout, fingerprint }),
+    ).toThrow(RecordLinkedError);
+
+    holdsTarget(place, target, false);
+    expect(readFileSync(legacyId, 'utf-8')).toBe(`${'a'.repeat(32)}\n`);
+    expect(readdirSync(checkout.root)).toEqual(['migrated']);
+  });
+});
+
 describe('the same writers, with no link in the way', () => {
   it('still write what they write', () => {
     const key = generateKeyPair();

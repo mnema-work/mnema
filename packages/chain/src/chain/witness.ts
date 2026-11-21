@@ -293,6 +293,35 @@ export function serializeStoredHeader(height: number, header: Buffer): string {
 }
 
 /**
+ * Refuses, with `RECORD_LINKED` and nothing written, a symbolic link at any place a witness file
+ * of one checkpoint is written (a link to nothing too, which a write would create at its target):
+ * `tails/`, the tail, `witness/` and then each of `files` (`proof` is the `.ots`, `blocks` the
+ * headers beside it, `sigstore` the bundle). The acts that SEND something before they write (a
+ * stamp to the calendars, a signature to Rekor) ask it first, so a refusal costs nothing outside.
+ */
+export function refuseWitnessThroughALink(
+  layout: ChainLayout,
+  tailId: string,
+  checkpointHash: string,
+  files: readonly ('proof' | 'blocks' | 'sigstore')[],
+): void {
+  const inWitness = ['tails', tailId, 'witness'];
+  const named = {
+    proof: witnessProofPath,
+    blocks: witnessBlocksPath,
+    sigstore: witnessSigstorePath,
+  } as const;
+  refuseToWriteThrough(layout, [
+    'tails',
+    ['tails', tailId].join('/'),
+    inWitness.join('/'),
+    ...files.map((file) =>
+      [...inWitness, basename(named[file](layout, tailId, checkpointHash))].join('/'),
+    ),
+  ]);
+}
+
+/**
  * Stores a witness over one checkpoint: the proof, and the headers it needs.
  *
  * IT OVERWRITES, and that is what the naming is for. A proof is born incomplete and
@@ -311,19 +340,7 @@ export function writeWitness(
   witness: { readonly proof: Buffer; readonly headers?: ReadonlyMap<number, Buffer> },
 ): void {
   const headers = [...(witness.headers ?? new Map<number, Buffer>())].sort((a, b) => a[0] - b[0]);
-  // Opening a file for writing follows a link, a dangling one too: each place written is asked
-  // first, the directories before what is in them, and a link is refused with `RECORD_LINKED`
-  // before the proof is written, so a refusal leaves the witness as it was.
-  const inWitness = ['tails', tailId, 'witness'];
-  refuseToWriteThrough(layout, [
-    'tails',
-    ['tails', tailId].join('/'),
-    inWitness.join('/'),
-    [...inWitness, basename(witnessProofPath(layout, tailId, checkpointHash))].join('/'),
-    ...(headers.length === 0
-      ? []
-      : [[...inWitness, basename(witnessBlocksPath(layout, tailId, checkpointHash))].join('/')]),
-  ]);
+  refuseWitnessThroughALink(layout, tailId, checkpointHash, headers.length === 0 ? ['proof'] : ['proof', 'blocks']);
   mkdirSync(witnessDir(layout, tailId), { recursive: true });
   writeFileSync(witnessProofPath(layout, tailId, checkpointHash), witness.proof);
   if (headers.length === 0) return;
@@ -345,13 +362,7 @@ export function writeSigstoreBundle(
   checkpointHash: string,
   text: string,
 ): void {
-  const inWitness = ['tails', tailId, 'witness'];
-  refuseToWriteThrough(layout, [
-    'tails',
-    ['tails', tailId].join('/'),
-    inWitness.join('/'),
-    [...inWitness, basename(witnessSigstorePath(layout, tailId, checkpointHash))].join('/'),
-  ]);
+  refuseWitnessThroughALink(layout, tailId, checkpointHash, ['sigstore']);
   mkdirSync(witnessDir(layout, tailId), { recursive: true });
   writeFileSync(witnessSigstorePath(layout, tailId, checkpointHash), text, 'utf-8');
 }
