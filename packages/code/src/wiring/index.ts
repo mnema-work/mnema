@@ -278,6 +278,7 @@ import type { Declared, Verb, Wiring } from './verb.js';
 import { registerVerify } from './verify.js';
 import { registerWhy } from './why.js';
 import { registerWitness } from './witness.js';
+import { registerWords } from './words.js';
 
 /** A heading of `mnema --help` and the verbs listed under it, in the order they are listed. */
 export interface Group {
@@ -378,6 +379,7 @@ export const GROUPS: readonly Group[] = [
       registerAfterAWrite,
       registerHandback,
       registerSettled,
+      registerWords,
       registerDispatched,
     ],
   },

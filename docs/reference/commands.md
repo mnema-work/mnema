@@ -148,4 +148,5 @@ carries the help the command prints, word for word.
 - [mnema after-a-write](cli/after-a-write.md): copy a note of the host’s memory into the private tree, or name the door of a decision file, for a PostToolUse hook
 - [mnema handback](cli/handback.md): check what a subagent hands back when it stops, or print the format it is checked by
 - [mnema settled](cli/settled.md): say to the agent, after a question to the person was answered, which tool records a choice
+- [mnema words](cli/words.md): keep, on this machine and outside the record, what the person typed or chose, from a host’s hook
 - [mnema dispatched](cli/dispatched.md): record a session’s dispatches to other agents as one private task and a handoff each, for a PostToolUse or SessionEnd hook

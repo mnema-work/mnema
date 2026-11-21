@@ -644,6 +644,10 @@ const UNWITNESSED: Readonly<Record<string, Debt>> = {
     reached: 'nobody imports it',
     why: 'Declares the `witness` group and prints its outcomes; one suite proves --calendar reaches `stamp` and --global the bare reading, another runs both acts over the global tail on the binary (each reads --global off the group now, where it used to reach nothing) and no golden ever invokes the verb.',
   },
+  'packages/code/src/wiring/words.ts': {
+    reached: 'nobody imports it',
+    why: "The words verb's wiring, reading a host's hook payload through the standard-input port; the-persons-words-are-kept-by-the-hooks.test.ts drives it through the program for a prompt and for a host that has no prompt hook, and every-verb-says-if-it-writes.test.ts exercises it in process.",
+  },
   'packages/context/src/intelligence/events.ts': {
     reached: 'nobody imports it',
     why: 'CatalogEvent and EventKind, two aliases computed from orderedEvents across a package boundary: nothing of it survives compilation, so the two tests naming it borrow a vocabulary and never a value.',
@@ -700,7 +704,7 @@ const UNWITNESSED: Readonly<Record<string, Debt>> = {
  * reading, so nothing can fall in two.
  */
 const THE_SHAPE_OF_WHAT_IS_LEFT: Readonly<Record<string, number>> = {
-  wiring: 52,
+  wiring: 53,
   presentation: 7,
   projections: 3,
   completion: 4,
@@ -1484,6 +1488,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-page-shows-its-seams.test.ts': 20,
   'packages/code/tests/the-panel.test.ts': 21,
   'packages/code/tests/the-pattern-leaves-in-the-hosts-shape.test.ts': 6,
+  'packages/code/tests/the-persons-words-are-kept-by-the-hooks.test.ts': 12,
   'packages/code/tests/the-phrase-the-domain-words-is-one-line.test.ts': 8,
   'packages/code/tests/the-plugin-icon-is-the-mark-it-names.test.ts': 8,
   'packages/code/tests/the-plugin-runs-the-binary-the-person-named.test.ts': 6,
@@ -2025,6 +2030,7 @@ const PRODUCTION_FILES: readonly string[] = [
   'packages/code/src/one-line.ts',
   'packages/code/src/outside-the-record.ts',
   'packages/code/src/package-root.ts',
+  'packages/code/src/persons-words.ts',
   'packages/code/src/pinned-run.ts',
   'packages/code/src/plugin-tree-hash.ts',
   'packages/code/src/presentation/accepted-by.ts',
@@ -2214,6 +2220,7 @@ const PRODUCTION_FILES: readonly string[] = [
   'packages/code/src/wiring/verify.ts',
   'packages/code/src/wiring/why.ts',
   'packages/code/src/wiring/witness.ts',
+  'packages/code/src/wiring/words.ts',
   'packages/code/src/wiring/written-before.ts',
   'packages/context/src/context/bootstrap.ts',
   'packages/context/src/context/brief.ts',
@@ -2433,8 +2440,9 @@ describe('every file has a test that names it', () => {
     // 79 once the status printer's test imports it.
     // 80 with the record group's wiring, which a-tail-merges-and-pulls.test.ts drives through the binary.
     // 81 with the upgrade verb's wiring, which after-update.test.ts drives through the program.
-    expect(found.size).toBe(81);
-    expect(byReach('nobody imports it')).toBe(81);
+    // 82 with the words verb's wiring, which the-persons-words-are-kept-by-the-hooks.test.ts drives through the program.
+    expect(found.size).toBe(82);
+    expect(byReach('nobody imports it')).toBe(82);
     expect(byReach('imported, and no assertion observes it')).toBe(0);
   });
 
@@ -2456,7 +2464,7 @@ describe('every file has a test that names it', () => {
     // Announced in the header and, until now, kept by hand. A shared excuse is how a table
     // like this turns into a rubber stamp, and a row drained to a stub is how it starts.
     const reasons = Object.values(UNWITNESSED).map((one) => one.why);
-    expect(reasons).toHaveLength(81);
+    expect(reasons).toHaveLength(82);
     expect(new Set(reasons).size).toBe(reasons.length);
     // The shortest reason standing is 156 characters; the floor is under it and well over
     // anything that could be written without saying what reaches that file.
