@@ -20,6 +20,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { resolveTrees } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { discoveryEnv } from '../env.js';
@@ -291,7 +292,7 @@ describe('the two doors of the one function', () => {
 });
 
 /** An entry verified to work whatever the PATH of the machine: the command is a file that is there and runs. */
-const OURS = { command: process.execPath, args: ['mcp'] };
+const OURS = { command: process.execPath, args: [fileURLToPath(import.meta.url), 'mcp'] };
 
 describe('the mnema MCP server declared a second time', () => {
   const claudeJson = (): string => join(home, '.claude.json');
@@ -394,7 +395,7 @@ describe('the mnema MCP server declared a second time', () => {
   });
 
   it('refuses a host file it cannot edit, writes nothing and fails the run', async () => {
-    const works = JSON.stringify({ command: process.execPath, args: ['mcp'] });
+    const works = JSON.stringify(OURS);
     const broken = `{\n  "mcpServers": {\n    "mnema": ${works},\n    "mnema": ${works}\n  }\n}\n`;
     put(claudeJson(), broken);
     const said = await mnema(['upgrade']);

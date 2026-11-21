@@ -18,6 +18,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type CliIo, run } from '../program.js';
 import {
@@ -93,7 +94,11 @@ afterEach(() => {
 
 const deadCommand = (): string => join(sandbox, 'gone', 'mnema');
 const dead = (): Record<string, unknown> => ({ command: deadCommand(), args: ['mcp'] });
-const live = (): Record<string, unknown> => ({ command: process.execPath, args: ['mcp'] });
+/** Node running a script that is there: an entry verified to work on any machine. */
+const live = (): Record<string, unknown> => ({
+  command: process.execPath,
+  args: [fileURLToPath(import.meta.url), 'mcp'],
+});
 const other = { command: 'other-server', args: ['--x'] };
 const pretty = (value: unknown): string => `${JSON.stringify(value, null, 2)}\n`;
 
