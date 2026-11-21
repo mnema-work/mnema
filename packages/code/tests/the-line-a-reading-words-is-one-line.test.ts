@@ -1489,12 +1489,24 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'the tree the decision is held in: one of the three words of the closed table of trees',
   },
-  'search.ts «{} matched and {} are shown; to reach the rest, search a window of dates with --from <iso> and --to <iso>.» result.total #1':
+  'search.ts «{} matched and {} are shown, the most one search returns; to reach the rest, search a window of dates with --from <iso> and --to <iso>.» result.total #1':
     {
       verdict: 'minted',
       why: 'the count of records that matched',
     },
-  'search.ts «{} matched and {} are shown; to reach the rest, search a window of dates with --from <iso> and --to <iso>.» result.hits.length #1':
+  'search.ts «{} matched and {} are shown; to see more, raise --limit (up to {}).» result.total #1': {
+    verdict: 'minted',
+    why: 'the count of records that matched',
+  },
+  'search.ts «{} matched and {} are shown; to see more, raise --limit (up to {}).» result.hits.length #1': {
+    verdict: 'minted',
+    why: 'the count of records shown',
+  },
+  'search.ts «{} matched and {} are shown; to see more, raise --limit (up to {}).» SEARCH_MAX_LIMIT #1': {
+    verdict: 'minted',
+    why: 'the most records one search returns, a constant of the product',
+  },
+  'search.ts «{} matched and {} are shown, the most one search returns; to reach the rest, search a window of dates with --from <iso> and --to <iso>.» result.hits.length #1':
     {
       verdict: 'minted',
       why: 'the count of records shown',
@@ -3077,8 +3089,8 @@ describe('every value this layer puts on a line is classified', () => {
     // 251 until the renderer began making an actor's control bytes visible and joined the
     // composers with its two template values; then 253 until the rules in force began saying who
     // accepted them (`brief.ts`, `record.ts`); 294 until `mnema rules` printed the four numbers
-    // of the relation that refuses a write; 301 with the three the trunk added meanwhile; 395 with the lines `mnema site` prints; 306 once the document counts the rules that refuse a write; 367 with the pages of the git bridge; 377 with its shallow sentence and the recipe aging prints; 389 with the section for an inherited record; 415 with the mark on a link taken back, in the graph and its diagram; 418 once the closing paragraph words a host's ceiling in its own unit; 425 with the paragraph naming the stacks adopted; 447 with the lines `decision review` shows; 452 with the summary of the bare name and the commands that turn a channel on; 466 with a task's notes, its last handoff, who has it, and the file behind a path; 467 with the outcome a run closed with; 474 with where the last session stopped; 475 with the sentence for a session that wrote nothing to the record; 476 with the channel a switch needs, said on its line; 477 with the word a rule's row says it does; 485 with where an inherited rule came from, and the count of the inherited record's addresses; 497 with those addresses by relation, on the rules report and in the brief; 500 with the run of each tree that `mnema status` names; 497 once the host's ceiling in words lives with the ceiling (`ceilingInWords`), and the push of the rules at an edit words it too; 514 with the line a promotion answers when the global tree already held the decision; 516 with the clause beside an agent name no client announced, in the brief and in show; 517 with the cut a replaced decision's title takes on a fitted line; 518 with the line that counts the swept tasks the opening leaves out; 522 with the paragraph that names a decision an accept and a retirement crossed on; 524 with the group of the rules reading that lists it and the words a line names it by; 525 with the line for a directory that holds tails of more than one record; 527 with the mark on a tail that holds keys; 532 with the sentence of what a pull left aside of the tails; 540 with the section that lists this machine's private rules in the hook's copy; 543 with their `private` label; 545 with the clause that names the other end of a replaced decision on a search hit; 572 with what `tail repair` says; 603 with what it says of a whole tail put back; 608 with the last session's decisions counted and the newest of them named. 611 with the state and the title a reference row names its far end by; 615 with the tree a private label is read with and the line a cut search adds.
-    expect(FOUND.sites.length).toBe(615);
+    // of the relation that refuses a write; 301 with the three the trunk added meanwhile; 395 with the lines `mnema site` prints; 306 once the document counts the rules that refuse a write; 367 with the pages of the git bridge; 377 with its shallow sentence and the recipe aging prints; 389 with the section for an inherited record; 415 with the mark on a link taken back, in the graph and its diagram; 418 once the closing paragraph words a host's ceiling in its own unit; 425 with the paragraph naming the stacks adopted; 447 with the lines `decision review` shows; 452 with the summary of the bare name and the commands that turn a channel on; 466 with a task's notes, its last handoff, who has it, and the file behind a path; 467 with the outcome a run closed with; 474 with where the last session stopped; 475 with the sentence for a session that wrote nothing to the record; 476 with the channel a switch needs, said on its line; 477 with the word a rule's row says it does; 485 with where an inherited rule came from, and the count of the inherited record's addresses; 497 with those addresses by relation, on the rules report and in the brief; 500 with the run of each tree that `mnema status` names; 497 once the host's ceiling in words lives with the ceiling (`ceilingInWords`), and the push of the rules at an edit words it too; 514 with the line a promotion answers when the global tree already held the decision; 516 with the clause beside an agent name no client announced, in the brief and in show; 517 with the cut a replaced decision's title takes on a fitted line; 518 with the line that counts the swept tasks the opening leaves out; 522 with the paragraph that names a decision an accept and a retirement crossed on; 524 with the group of the rules reading that lists it and the words a line names it by; 525 with the line for a directory that holds tails of more than one record; 527 with the mark on a tail that holds keys; 532 with the sentence of what a pull left aside of the tails; 540 with the section that lists this machine's private rules in the hook's copy; 543 with their `private` label; 545 with the clause that names the other end of a replaced decision on a search hit; 572 with what `tail repair` says; 603 with what it says of a whole tail put back; 608 with the last session's decisions counted and the newest of them named. 611 with the state and the title a reference row names its far end by; 615 with the tree a private label is read with and the line a cut search adds; 618 once that line says which limit it points at.
+    expect(FOUND.sites.length).toBe(618);
   });
 
   it('reads the verdict off the source rather than believing the table', () => {
@@ -3100,7 +3112,7 @@ describe('every value this layer puts on a line is classified', () => {
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
     const count = (verdict: Verdict): number => verdicts.filter((said) => said === verdict).length;
     expect(count('collapsed')).toBe(174);
-    expect(count('minted')).toBe(312);
+    expect(count('minted')).toBe(315);
     expect(count('composed')).toBe(129);
     expect(FOUND.sites.filter((site) => /\boneLine\b/.test(site.expression))).toHaveLength(174);
   });

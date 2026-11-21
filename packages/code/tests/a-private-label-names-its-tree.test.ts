@@ -11,10 +11,15 @@
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { proposalsToReview } from '../src/commands/decision-review.js';
+import { closeSession, openSession } from '../src/mcp/session.js';
+import { runBootstrap } from '../src/mcp/tools.js';
 import { type CliIo, run } from '../src/program.js';
 
 let sandbox: string;
+let repo: string;
 let originalCwd: string;
 let originalHome: string | undefined;
 
@@ -44,7 +49,7 @@ function idOf(lines: readonly string[]): string {
 
 beforeEach(async () => {
   sandbox = mkdtempSync(join(tmpdir(), 'mnema-private-label-'));
-  const repo = join(sandbox, 'repo');
+  repo = join(sandbox, 'repo');
   mkdirSync(repo, { recursive: true });
   mkdirSync(join(sandbox, 'home'), { recursive: true });
   originalCwd = process.cwd();
@@ -101,5 +106,53 @@ describe('the same label in two trees', () => {
     const shownPublic = await mnema('show', publicId);
     expect(shownPublic.join('\n')).toContain('ADR-1: Use UTC');
     expect(shownPublic.join('\n')).not.toContain('(private)');
+  });
+});
+
+describe('the scope rides the JSON that names a decision outside the public tree', () => {
+  type Named = { adr: string; title: string; scope?: string };
+
+  /** One public rule in force, one private rule in force, one proposal in each tree. */
+  async function aRecordWithBothTrees(): Promise<void> {
+    const inForcePublic = idOf(await mnema('decision', 'record', 'Use UTC', 'one clock'));
+    const inForcePrivate = idOf(
+      await mnema('decision', 'record', 'Use ISO', 'one format', '--scope', 'private'),
+    );
+    await mnema('decision', 'move', 'accept', inForcePublic, '--note', 'agreed');
+    await mnema('decision', 'move', 'accept', inForcePrivate, '--note', 'agreed');
+    await mnema('decision', 'record', 'Use TZ', 'one zone');
+    await mnema('decision', 'record', 'Use NTP', 'one source', '--scope', 'private');
+  }
+
+  const byTitle = (list: readonly Named[], title: string): Named =>
+    list.find((one) => one.title === title) as Named;
+
+  it('names it in the MCP bootstrap, for the rules in force and for the proposals', async () => {
+    await aRecordWithBothTrees();
+    const session = openSession({
+      clientName: 'claude-code',
+      roots: [pathToFileURL(repo).href],
+      env: { home: join(sandbox, 'home') },
+    });
+    try {
+      const opening = JSON.parse(JSON.stringify(runBootstrap(session))) as {
+        decisions: Named[];
+        awaitingJudgement: Named[];
+      };
+      expect(byTitle(opening.decisions, 'Use ISO').scope).toBe('private');
+      expect('scope' in byTitle(opening.decisions, 'Use UTC')).toBe(false);
+      expect(byTitle(opening.awaitingJudgement, 'Use NTP').scope).toBe('private');
+      expect('scope' in byTitle(opening.awaitingJudgement, 'Use TZ')).toBe(false);
+    } finally {
+      closeSession(session);
+    }
+  }, 60_000);
+
+  it('names it in the review of the proposals', async () => {
+    await aRecordWithBothTrees();
+    const reviewed = proposalsToReview({ cwd: repo, env: { home: join(sandbox, 'home') } });
+    if (!reviewed.ok) throw new Error('no project');
+    expect(byTitle(reviewed.proposals, 'Use NTP').scope).toBe('private');
+    expect('scope' in byTitle(reviewed.proposals, 'Use TZ')).toBe(false);
   });
 });

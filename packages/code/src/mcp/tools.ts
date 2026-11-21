@@ -1931,11 +1931,14 @@ function withCaches(session: Session, trees: readonly ScopedTree[]): ScopedCache
  * that serves THE SESSION rather than audits a record: the opening context, the
  * actor's runs, the patterns it may use.
  *
- * The scope is dropped here, and that is what these answers have in common: none of
- * them names a tree. A pattern is a CAPABILITY and applies to the work whatever tree
+ * The scope is dropped here, and most of these answers have it in common: a
+ * pattern is a CAPABILITY and applies to the work whatever tree
  * it was adopted in; a run is the actor's session wherever it was opened; a task is
  * work whether the team's record holds it or this machine's. The readings that DO
- * label items by tree (the index, a history) take the sources themselves.
+ * label items by tree (the index, a history) take the sources themselves. The one
+ * exception is the decisions of the opening context: the same `ADR-<n>` is numbered in
+ * each tree, so {@link runBootstrap} hands `bootstrap` the trees beside these caches
+ * and a decision held outside the public tree carries its `scope`.
  *
  * It used to serve the skills alone, while the work and the runs came from the one
  * tree the session's writes defaulted to. Routing by kind removed that tree's claim
