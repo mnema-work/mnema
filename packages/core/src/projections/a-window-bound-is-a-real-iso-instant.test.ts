@@ -5,7 +5,7 @@
  * the window let everything through, and `--to 2026-13-45` did the same: the answer looked
  * like an answer. `parseWindowBound` reads a bound as the date or the timestamp it claims to
  * be, gives back the stored form (the `toISOString()` of the instant, which is the form every
- * event's `at` has), and says what was wrong, naming the flag, when it is neither.
+ * event's `at` has), and names the flag and the value, for the surface to say, when it is neither.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -55,18 +55,11 @@ describe('a bound that is not', () => {
     ['an empty string', ''],
     ['a number of milliseconds', '1763689206647'],
   ])('refuses %s', (_why, value) => {
-    const refused = parseWindowBound('to', value);
-    expect(refused.ok).toBe(false);
-    if (!refused.ok) {
-      expect(refused.message).toContain('--to');
-      expect(refused.message).toContain(JSON.stringify(value));
-      expect(refused.message).not.toContain('\n');
-    }
+    expect(parseWindowBound('to', value)).toEqual({ ok: false, end: 'to', value });
   });
 
   it('names the flag it was asked about', () => {
-    const refused = parseWindowBound('from', 'soon');
-    expect(refused.ok === false && refused.message).toContain('--from');
+    expect(parseWindowBound('from', 'soon')).toEqual({ ok: false, end: 'from', value: 'soon' });
   });
 });
 
@@ -80,7 +73,6 @@ describe('a window of two bounds', () => {
   });
 
   it('refuses on the first bound that is wrong, --from before --to', () => {
-    const refused = parseWindow({ from: 'x', to: 'y' });
-    expect(refused.ok === false && refused.message).toContain('--from');
+    expect(parseWindow({ from: 'x', to: 'y' })).toEqual({ ok: false, end: 'from', value: 'x' });
   });
 });

@@ -12,6 +12,7 @@
 
 import { canonicalIdentity, parseWindow, type Scope, type Window } from '@mnema/core';
 import { InvalidArgumentError } from 'commander';
+import { windowRefusalSentence } from '../vocabulary.js';
 import { SCOPES } from './enumerated.js';
 import { type Reporter, reportUsage } from './report.js';
 
@@ -192,12 +193,13 @@ export const INVALID_WINDOW = Symbol('invalid-window');
  * left raw would be string-compared and `--to garbage` would let every record through.
  */
 export function parseWindowOptions(
-  raw: { readonly from?: string; readonly to?: string },
+  from: string | undefined,
+  until: string | undefined,
   to: Reporter,
 ): Window | typeof INVALID_WINDOW {
-  const read = parseWindow(raw);
+  const read = parseWindow({ from, to: until });
   if (read.ok) return read.window;
-  reportUsage(to, read.message);
+  reportUsage(to, windowRefusalSentence(read));
   return INVALID_WINDOW;
 }
 

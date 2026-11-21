@@ -44,7 +44,7 @@ export function registerAccountability(program: Command, wiring: Wiring): Declar
         which?: string;
         json?: boolean;
       }) => {
-        const window = parseWindowOptions(opts, wiring);
+        const window = parseWindowOptions(opts.from, opts.to, wiring);
         if (window === INVALID_WINDOW) return;
         const { anchorText } = await import('../anchors.js');
         const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');

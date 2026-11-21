@@ -116,10 +116,21 @@ export function windowConditions(
 /** The flag a bound came from, so a refusal can name it. */
 export type WindowEnd = 'from' | 'to';
 
-/** A bound, read: the instant in the stored form, or the one line that says what was wrong. */
+/**
+ * A bound, read: the instant in the stored form, or the flag and the value that were refused.
+ * The sentence that says so is the surface's (a CLI and a tool each print it in their own
+ * voice, from {@link WindowRefusal}), so this file holds no wording.
+ */
 export type WindowBound =
   | { readonly ok: true; readonly instant: string }
-  | { readonly ok: false; readonly message: string };
+  | WindowRefusal;
+
+/** The bound that was refused: which flag, and what was typed. */
+export interface WindowRefusal {
+  readonly ok: false;
+  readonly end: WindowEnd;
+  readonly value: string;
+}
 
 const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const TIMESTAMP =
@@ -142,12 +153,7 @@ const TIMESTAMP =
  * them over silently, so the parts are checked against the result.
  */
 export function parseWindowBound(end: WindowEnd, value: string): WindowBound {
-  const refused: WindowBound = {
-    ok: false,
-    message:
-      `--${end} takes a date (YYYY-MM-DD) or a timestamp ending in Z or an offset ` +
-      `(2026-11-21T10:30:00Z, 2026-11-21T10:30:00-03:00), not ${JSON.stringify(value)}.`,
-  };
+  const refused: WindowRefusal = { ok: false, end, value };
   const date = DATE.exec(value);
   if (date !== null) {
     const [year, month, day] = [Number(date[1]), Number(date[2]), Number(date[3])];
@@ -191,12 +197,13 @@ export function parseWindowBound(end: WindowEnd, value: string): WindowBound {
 }
 
 /** Both bounds, read: the window in the stored form, or the first refusal. */
-export type WindowParsed =
-  | { readonly ok: true; readonly window: Window }
-  | { readonly ok: false; readonly message: string };
+export type WindowParsed = { readonly ok: true; readonly window: Window } | WindowRefusal;
 
 /** Reads the two raw bounds of a read (either may be absent), `from` first. */
-export function parseWindow(raw: { readonly from?: string; readonly to?: string }): WindowParsed {
+export function parseWindow(raw: {
+  readonly from?: string | undefined;
+  readonly to?: string | undefined;
+}): WindowParsed {
   const window: { from?: string; to?: string } = {};
   for (const end of ['from', 'to'] as const) {
     const value = raw[end];

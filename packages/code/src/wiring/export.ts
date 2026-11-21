@@ -50,7 +50,7 @@ export function registerExport(program: Command, wiring: Wiring): Declared {
         which?: string;
         global: boolean;
       }) => {
-        const window = parseWindowOptions(opts, wiring);
+        const window = parseWindowOptions(opts.from, opts.to, wiring);
         if (window === INVALID_WINDOW) return;
         const { runExport } = await import('../commands/export.js');
         const result = runExport(here(), {

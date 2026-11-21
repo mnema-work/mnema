@@ -75,7 +75,7 @@ export function registerSearch(program: Command, wiring: Wiring): Declared {
         if (scope === INVALID) return;
         const limit = parseLimit(opts.limit, wiring);
         if (limit === INVALID_LIMIT) return;
-        const window = parseWindowOptions(opts, wiring);
+        const window = parseWindowOptions(opts.from, opts.to, wiring);
         if (window === INVALID_WINDOW) return;
         const result = runSearch(here(), {
           ...(term !== undefined ? { term } : {}),

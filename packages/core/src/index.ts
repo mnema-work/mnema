@@ -262,6 +262,7 @@ export {
   type WindowBound,
   type WindowEnd,
   type WindowParsed,
+  type WindowRefusal,
   type WindowSubject,
   parseWindow,
   parseWindowBound,
