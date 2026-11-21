@@ -2047,6 +2047,28 @@ export function decisionTextsOf(
 }
 
 /**
+ * One decision as a reader reads it out of these tails: its text (FORMAT.md section 6.8) and the
+ * moves section 6.7 applies to it, in the merged order of every tail. A proof of one decision
+ * (section 9) is read by this function twice, over the whole record when it is built and over
+ * the lines it carries when it is checked, so the two readings cannot be two rules.
+ */
+export function decisionReadingOf(
+  entriesByTail: ReadonlyMap<string, readonly ChainEntry[]>,
+  decision: string,
+): { readonly text: Entry | undefined; readonly moves: readonly Entry[] } {
+  const { entryAt, order, held } = mergedOrder(entriesByTail);
+  const notApplied = illegalMoves(order, held);
+  const moves: Entry[] = [];
+  order.forEach(({ event, tail, position }, index) => {
+    if (event.kind !== 'decision.transitioned' || event.subject !== decision) return;
+    if (notApplied.has(index)) return;
+    const entry = entryAt(tail, position);
+    if (isRead(entry)) moves.push(entry);
+  });
+  return { text: decisionTextsOf(entriesByTail).get(decision), moves };
+}
+
+/**
  * Every `decision.recorded` that is not its decision's text ({@link DecisionRewriteNote},
  * {@link decisionTextsOf}), named in tail order. The text is judged over the merged order, the
  * one the product's read folds, so a writing is named whatever tail it or the text sits in, and

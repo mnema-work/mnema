@@ -112,6 +112,8 @@ const NEED_NOT: Readonly<Record<string, string>> = {
   report: NOT_A_RECORD,
   tour: NOT_A_RECORD,
   completion: NOT_A_RECORD,
+  prove:
+    'It hands the lines of a decision over byte for byte, a line a newer mnema wrote included, to a file whose checker reads past a kind it does not know (FORMAT.md section 7.1); it serves no reading of them, and the record is verified before a proof is built.',
   tally: A_HOOK,
   handback: A_HOOK,
   settled: A_HOOK,

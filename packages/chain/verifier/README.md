@@ -6,6 +6,7 @@ document** and importing **nothing** of the product it checks.
 ```
 python3 mnema_verify.py record <a record directory>    # T1, T2/T4, T3 over a real record
 python3 mnema_verify.py record <dir> --require signed  # ...and refuse an event no signature covers
+python3 mnema_verify.py proof <a proof file>           # the proof of one decision `mnema prove` wrote (FORMAT.md section 9)
 python3 mnema_verify.py vectors                        # reproduce the 41 published vectors and the 5 signed messages
 python3 mnema_verify.py self-test                      # RFC 8032, section 1, section 8's limits
 python3 mnema_verify.py all --record <dir>             # all three

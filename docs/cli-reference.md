@@ -23,6 +23,7 @@ The long sections of this page are pages of their own, and nothing in them was s
 - [Switching off what mnema hands to a model](switching-off-what-is-handed-to-a-model.md)
 - [The session journal and compaction](the-session-journal-and-compaction.md)
 - [As an MCP server](as-an-mcp-server.md)
+- [A proof of one decision](a-proof-of-one-decision.md)
 
 [What it proves, and what it does not](what-it-proves.md#the-long-form-claim-by-claim) is the end of the page that holds its table.
 

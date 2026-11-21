@@ -248,6 +248,7 @@ import { registerMemory } from './memory.js';
 import { registerObserve } from './observe.js';
 import { registerProblemReport } from './problem-report.js';
 import { registerPromote } from './promote.js';
+import { registerProve } from './prove.js';
 import { registerRecall } from './recall.js';
 import { registerRecord } from './record.js';
 import { registerReferences } from './refs.js';
@@ -325,7 +326,7 @@ export const GROUPS: readonly Group[] = [
   },
   {
     heading: 'Verify:',
-    verbs: [registerVerify, registerWitness, registerCheck, registerSite],
+    verbs: [registerVerify, registerProve, registerWitness, registerCheck, registerSite],
   },
   {
     heading: 'Read:',
