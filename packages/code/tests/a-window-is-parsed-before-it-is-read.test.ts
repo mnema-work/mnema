@@ -152,7 +152,7 @@ describe('the MCP tools that take a window', () => {
     expect(refused.ok).toBe(false);
     if (!refused.ok) {
       expect(refused.code).toBe('INVALID_WINDOW');
-      expect(refused.message).toContain('--to takes a date');
+      expect(refused.message).toContain('`to` takes a date');
     }
   });
 
