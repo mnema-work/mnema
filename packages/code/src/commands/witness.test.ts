@@ -885,7 +885,7 @@ function tamper(root: string): void {
   writeFileSync(path, `${lines.join('\n')}\n`, 'utf-8');
 }
 
-describe('a link where a witness file is filed is met before anything leaves the machine', () => {
+describe('a link where a witness file is filed stops the act before anything leaves the machine', () => {
   /** The record, stamped once to learn the checkpoint's name, its witness folder then taken away. */
   async function stampedOnce(): Promise<{
     ctx: ReturnType<typeof setup>;
@@ -910,7 +910,7 @@ describe('a link where a witness file is filed is met before anything leaves the
     return target;
   }
 
-  it('stamp asks no calendar, and says nothing was sent', async () => {
+  it('stamp asks no calendar: the tree with the link is not stamped over', async () => {
     const { ctx, witness, name } = await stampedOnce();
     const target = plant(witness, `${name}.ots`);
     const calendar = network(() => promises());
@@ -919,12 +919,12 @@ describe('a link where a witness file is filed is met before anything leaves the
 
     expect(calendar.sent).toEqual([]);
     if (!act.ok) throw new Error(act.message);
-    expect(act.outcomes.map((o) => o.did)).toEqual(['failed']);
-    expect(act.outcomes[0]?.detail).toMatch(/nothing was sent: .*is a symbolic link/);
+    expect(act.outcomes.map((o) => o.did)).toEqual(['skipped']);
+    expect(act.outcomes[0]?.detail).toMatch(/the tree is broken/);
     expect(existsSync(target)).toBe(false);
   });
 
-  it('sigstore signs nothing and publishes nothing, and says nothing was signed', async () => {
+  it('sigstore signs nothing and publishes nothing: the tree with the link is not signed over', async () => {
     const { ctx, witness, name } = await stampedOnce();
     const target = plant(witness, `${name}.sigstore.json`);
     const reached: string[] = [];
@@ -942,12 +942,12 @@ describe('a link where a witness file is filed is met before anything leaves the
 
     expect(reached).toEqual([]);
     if (!act.ok) throw new Error(act.message);
-    expect(act.outcomes.map((o) => o.did)).toEqual(['failed']);
-    expect(act.outcomes[0]?.detail).toMatch(/nothing was signed: .*is a symbolic link/);
+    expect(act.outcomes.map((o) => o.did)).toEqual(['skipped']);
+    expect(act.outcomes[0]?.detail).toMatch(/the tree is broken/);
     expect(existsSync(target)).toBe(false);
   });
 
-  it('upgrade asks no calendar for a proof whose headers file is a link', async () => {
+  it('upgrade asks no calendar for a proof whose headers file is a link: it refuses the read', async () => {
     const ctx = setup();
     await runWitnessStamp(ctx, { calendars: [CALENDAR], fetch: network(() => promises()).fetch });
     const root = publicRoot(ctx);
@@ -956,12 +956,11 @@ describe('a link where a witness file is filed is met before anything leaves the
     const target = plant(witness, `${name}.blocks`);
     const calendar = network(() => promises());
 
-    const act = await runWitnessUpgrade(ctx, { fetch: calendar.fetch });
+    await expect(runWitnessUpgrade(ctx, { fetch: calendar.fetch })).rejects.toThrow(
+      /is a symbolic link/,
+    );
 
     expect(calendar.sent).toEqual([]);
-    if (!act.ok) throw new Error('refused');
-    expect(act.outcomes.map((o) => o.did)).toEqual(['failed']);
-    expect(act.outcomes[0]?.detail).toMatch(/nothing was asked: .*is a symbolic link/);
     expect(existsSync(target)).toBe(false);
   });
 });

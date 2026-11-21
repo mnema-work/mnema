@@ -30,6 +30,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { generateKeyPair } from './keys.js';
 import { ensureKeyRootIgnored, materializePublicKey } from './keystore.js';
 import {
+  installationIdPath,
   migratedMarkPath,
   witnessBlocksPath,
   witnessProofPath,
