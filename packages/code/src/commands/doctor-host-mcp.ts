@@ -184,17 +184,23 @@ function onThePath(command: string): boolean {
   return (process.env.PATH ?? '')
     .split(delimiter)
     .filter((dir) => dir !== '')
-    .some((dir) => runnable(join(dir, command)));
+    .some((dir) =>
+      [command, ...(process.platform === 'win32' ? [`${command}.cmd`, `${command}.exe`] : [])].some(
+        (name) => runnable(join(dir, name)),
+      ),
+    );
 }
 
 /**
- * VERIFIED is an ALLOWLIST of two shapes, and everything else is unknown:
- *   (a) the command is an absolute path, or the bare name `mnema` found on the PATH, and resolves to an executable regular
- *       file, and every argument that is an absolute path is there (a file or a folder, no `$`);
+ * VERIFIED is an ALLOWLIST of two shapes, and everything else is unknown, even when the command is given by an absolute path:
+ *   (a) the BASENAME of the command is `mnema` (`mnema.cmd` or `mnema.exe` too, on Windows), as an absolute path or as a bare
+ *       name found on the PATH, and it resolves to an executable regular file, and every argument that is an absolute path is
+ *       there (a file or a folder, no `$`);
  *   (b) the command is `node` or `nodejs` (absolute, or found on the PATH) and its first argument is an absolute path,
  *       with no `$`, to an existing regular file.
  * A `cwd`, where there is one, must be an absolute path to a folder that is there. Other interpreters (node22, bun, deno,
- * tsx), package runners (npx, pnpm dlx, bunx, yarn dlx) and any other bare name are never verified.
+ * tsx), package runners (npx, pnpm dlx, bunx, yarn dlx) and any other program are never verified. What a `mnema` wrapper
+ * script calls is not followed: verified means the file `mnema` names is there and can be run, not that it starts.
  */
 function isVerified(launch: Launch): boolean {
   const { command, args, cwd } = launch;
@@ -202,10 +208,13 @@ function isVerified(launch: Launch): boolean {
   if (cwd !== undefined && !(isAbsolute(cwd) && !cwd.includes('$') && kind(cwd) === 'dir')) {
     return false;
   }
-  const program = basename(command).replace(/\.exe$/i, '');
+  const name = basename(command);
+  const isMnema = name === 'mnema' || (process.platform === 'win32' && /^mnema\.(cmd|exe)$/i.test(name));
+  const program = name.replace(/\.exe$/i, '');
   const isNode = program === 'node' || program === 'nodejs';
+  if (!isMnema && !isNode) return false;
   const bare = !isAbsolute(command) && !/[\\/]/.test(command);
-  if (!isAbsolute(command) && !(bare && (command === 'mnema' || isNode))) return false;
+  if (!isAbsolute(command) && !bare) return false;
   if (isAbsolute(command) ? !runnable(command) : !onThePath(command)) return false;
   if (isNode) {
     const script = args[0];

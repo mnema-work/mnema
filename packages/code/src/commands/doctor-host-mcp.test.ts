@@ -486,11 +486,13 @@ describe('an entry that cannot be verified is neither dead nor the one that stay
     expect(isGone(join(sandbox, 'gone', 'mnema'))).toBe(true);
   });
 
-  /** `@bare:<name>` stands for a bare command name; anything else is the arguments of node. */
+  /** `@bare:<name>` is a bare command name and `@abs:<name>` an absolute path to a stub of that name; anything else is the arguments of node. */
   const entryFor = (list: string[]): Record<string, unknown> =>
     list[0]?.startsWith('@bare:')
       ? { command: list[0].slice('@bare:'.length), args: list.slice(1) }
-      : { command: process.execPath, args: list };
+      : list[0]?.startsWith('@abs:')
+        ? { command: join(sandbox, 'bin', list[0].slice('@abs:'.length)), args: list.slice(1) }
+        : { command: process.execPath, args: list };
 
   it.each([
     ['a flag comes first', () => ['--enable-source-maps', join(sandbox, 'gone', 'cli.js'), 'mcp']],
@@ -500,6 +502,11 @@ describe('an entry that cannot be verified is neither dead nor the one that stay
       () => ['@bare:node22', join(sandbox, 'gone', 'cli.js'), 'mcp'],
     ],
     ['node is given a folder', () => [sandbox, 'mcp']],
+    ['an absolute node22 runs a missing script', () => ['@abs:node22', join(sandbox, 'gone', 'cli.js'), 'mcp']],
+    ['an absolute node22 runs a relative script', () => ['@abs:node22', 'dist/missing.js', 'mcp']],
+    ['an absolute node22 is given a folder', () => ['@abs:node22', sandbox, 'mcp']],
+    ['an absolute npx starts it', () => ['@abs:npx', '-y', '@mnema/code', 'mcp']],
+    ['an absolute bun runs a script that is there', () => ['@abs:bun', fileURLToPath(import.meta.url), 'mcp']],
     ['a package runner starts it', () => ['@bare:npx', '-y', '@mnema/code', 'mcp']],
     ['bun runs a script that is there', () => ['@bare:bun', fileURLToPath(import.meta.url), 'mcp']],
     [
@@ -539,4 +546,21 @@ describe('an entry that cannot be verified is neither dead nor the one that stay
       expect(copies(claudeJson())).toEqual([]);
     },
   );
+
+  it('verifies an absolute path whose basename is mnema, and then cuts the duplicate beside it', async () => {
+    const stub = join(sandbox, 'bin', 'mnema');
+    put(stub, '#!/bin/sh\n');
+    chmodSync(stub, 0o755);
+    put(
+      claudeJson(),
+      pretty({
+        mcpServers: { mnema: { command: stub, args: ['mcp'] } },
+        projects: { [repo]: { mcpServers: { mnema: live() } } },
+      }),
+    );
+    await mnema(['upgrade']);
+    const after = JSON.parse(readFileSync(claudeJson(), 'utf8'));
+    expect(after.mcpServers.mnema).toEqual({ command: stub, args: ['mcp'] });
+    expect(after.projects[repo].mcpServers).toEqual({});
+  });
 });

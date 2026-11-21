@@ -36,8 +36,8 @@ for each other host, the config file the host keeps in your home (Codex `config.
 `mcp.json`, VS Code `mcp.json`) and says per host what it found: no mnema server, one, more than one (two live
 declarations in one file are named, never removed for you), or an entry that is dead because its command, the
 script `node` runs for it or its folder is gone (a path that is only unknown, such as one with a `$` the host expands, or one under a version manager, is not called dead,
-and an entry is called working only in the two shapes `mnema upgrade` lists: an absolute command or `mnema` on the `PATH`, or `node` on an
-absolute script that exists; any other interpreter, package runner or bare name is unknown). A file that is not strict JSON is said to be unchecked.
+and an entry is called working only in the two shapes `mnema upgrade` lists: a command whose basename is `mnema` (absolute or on the `PATH`), or `node` on an
+absolute script that exists; any other program, an absolute one included, is unknown, and what a `mnema` wrapper script calls is not followed). A file that is not strict JSON is said to be unchecked.
 `mnema upgrade --fix` removes a dead entry; the line says the exact one to delete by hand where that verb does not edit
 the file. It reads
 files on this machine and, asked alone, writes nothing; it does not ask the registry, so a package
