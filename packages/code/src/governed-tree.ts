@@ -45,9 +45,11 @@ import {
   type GoverningRules,
   governingRules,
   governsInForceEverywhere,
+  type RuleReach,
   type RulesAtPath,
   refusesAWriteAt,
   rulesInForceAt,
+  rulesInForceReach,
   type ScopedCache,
   type WalkOutcome,
 } from '@mnema/context';
@@ -277,6 +279,21 @@ export function readGovernsInForceEverywhere(
 }
 
 /**
+ * Every address of every rule in force, under all three relations, read once: what the coverage
+ * count matches each walked file against. Same root and same disk probe as the others, written
+ * here for the same reason.
+ */
+export function readRulesInForceReach(
+  sources: readonly ScopedCache[],
+  root: string,
+): readonly RuleReach[] {
+  return rulesInForceReach(sources, {
+    root,
+    onDisk: (relative) => existsSync(join(root, relative)),
+  });
+}
+
+/**
  * The question every path READING is asked: the path made absolute against the directory
  * the caller means, the root every address is relative to, and the probe. It said "both
  * readings" when there were two; there are three, and {@link reachOfAddress} is a fourth
@@ -495,7 +512,7 @@ export function addressRelativeToRoot(address: string, root: string): string {
  * the link successfully must not fail afterwards over a permission on a directory
  * nobody asked about, and the entry lands in `skipped` so the base still says so.
  */
-function walkProject(
+export function walkProject(
   root: string,
   visit: (relative: string) => void,
   ceiling: number,

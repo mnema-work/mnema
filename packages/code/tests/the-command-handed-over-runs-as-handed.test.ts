@@ -439,10 +439,6 @@ export const NAMES_THAT_NEED_MORE: Readonly<
     times: 2,
     why: 'the verb named in the list of where the sections of the page went, and as the way out the bare summary names for a line it cannot read; the page of the verb hands the whole line over',
   },
-  'packages/action/README.md: mnema rules': {
-    times: 2,
-    why: 'the read named in prose, as what the Action asks about each changed file; the same page hands the whole line over, with its path and `--json`',
-  },
   'docs/cli-reference.md: mnema tail prune': {
     times: 3,
     why: 'the verb named in the list of where the sections went, in the overview as the cut the MCP server has no tool for, and beside the CI recipe as the cut that recipe fails on by design; the page of the verb hands the line over',
@@ -575,10 +571,6 @@ export const NAMES_THAT_NEED_MORE: Readonly<
     times: 3,
     why: 'the hook named in the entry that says it reads the agent from the environment, the flag winning, in the one on the rules a project inherits, and in the one that says every read checks the hash of each line and the gate denies an edit while one stands; the package page hands the whole line over, with its host',
   },
-  'CHANGELOG.md: mnema rules': {
-    times: 4,
-    why: 'the verb named twice in the entry on the rules a project inherits, as a reader of the rules over a path, once in the entry on the VS Code extension that puts the path after the double dash, and once among the readings that say a tail of another record was left out; the reference hands it over with the path',
-  },
   'CHANGELOG.md: mnema inherit set': {
     times: 1,
     why: 'the verb named in the entry that says it names the record of the origin; the reference hands it over with the origin',
@@ -590,14 +582,6 @@ export const NAMES_THAT_NEED_MORE: Readonly<
   'docs/a-record-inheriting-another.md: mnema before-a-write': {
     times: 1,
     why: 'the hook named beside the MCP tool it stands for, as the gate before a write that reads an inherited rule; the page of the verb hands the whole line over, with its host',
-  },
-  'docs/cli-reference.md: mnema rules': {
-    times: 1,
-    why: 'the verb named in the sentence on a record of more than one name, as one of the reads that count it; the guide on a record that inherits another hands it over with the path',
-  },
-  'docs/features.md: mnema rules': {
-    times: 1,
-    why: 'the verb named in the list item on a record that inherits another, as a reader of the rules over a path; the reference hands it over with the path',
   },
   'docs/features.md: mnema why': {
     times: 2,
@@ -618,10 +602,6 @@ export const NAMES_THAT_NEED_MORE: Readonly<
   'packages/code/README.md: mnema inherit set': {
     times: 1,
     why: 'the verb named in the list item on an inherited record, as what pins it; the reference hands the whole line over, with the origin and --at',
-  },
-  'packages/code/README.md: mnema rules': {
-    times: 1,
-    why: 'the verb named in the list item on an inherited record, as a reader of the rules over a path; the reference hands it over with the path',
   },
   'packages/code/README.md: mnema why': {
     times: 1,
@@ -710,10 +690,6 @@ export const NAMES_THAT_NEED_MORE: Readonly<
   'packages/vscode/README.md: mnema why': {
     times: 1,
     why: 'names the verb whose output the document of a file holds, in the sentence about what it printed; the reference hands it over with a path or a commit',
-  },
-  'docs/a-record-inheriting-another.md: mnema rules': {
-    times: 2,
-    why: 'the read named in the passages on inherited rules, as what labels a rule inherited and counts it apart from the project’s own; the line that hands it over, with a path, is in the passage on how an inherited rule is read; the two it names are prose naming the verb',
   },
   'docs/a-record-inheriting-another.md: mnema show': {
     times: 1,
@@ -892,7 +868,7 @@ export const HANDED_OVER: Readonly<
   'docs/rule-arrival.md': { line: 1 },
   'docs/rules-and-the-commits-that-cite-them.md': { line: 7, name: 6, flag: 1 },
   'docs/site.md': { line: 3, name: 7 },
-  'docs/switches.md': { line: 21, name: 5 },
+  'docs/switches.md': { line: 23, name: 5 },
   'docs/switching-off-what-is-handed-to-a-model.md': { line: 1, name: 2 },
   'docs/the-session-journal-and-compaction.md': { line: 5, name: 5 },
   'docs/verify-without-installing.md': { name: 1 },
@@ -908,7 +884,7 @@ export const HANDED_OVER: Readonly<
   'packages/chain/src/chain/relink-plan.ts': { name: 5 },
   'packages/chain/src/chain/tree.ts': { name: 1 },
   'packages/chain/src/chain/writer.ts': { line: 1, name: 4 },
-  'docs/cli-reference.md': { line: 39, name: 70 },
+  'docs/cli-reference.md': { line: 40, name: 70 },
   'packages/code/README.md': { line: 8, name: 14 },
   'packages/code/src/a-new-identity.ts': { line: 2, name: 2 },
   'packages/code/src/agent-accepts.ts': { line: 6, name: 2 },
@@ -960,7 +936,7 @@ export const HANDED_OVER: Readonly<
   'packages/code/src/presentation/summary.ts': { line: 2, name: 8 },
   'packages/code/src/presentation/tail-repair.ts': { line: 3, name: 3 },
   'packages/code/src/presentation/usage.ts': { line: 1, name: 2 },
-  'packages/code/src/record-framing.ts': { line: 3, name: 12 },
+  'packages/code/src/record-framing.ts': { line: 5, name: 12 },
   'packages/code/src/record-integrity.ts': { line: 2, name: 9 },
   'packages/code/src/repl/gate.ts': { unwritten: 2 },
   'packages/code/src/repl/promotable.ts': { line: 1 },
