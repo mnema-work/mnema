@@ -213,4 +213,5 @@ run of the real host showed there:
 | OpenCode, Qwen Code, VS Code | none | not yet |
 
 On a host with no variable the server has no session of its own: a run has no goal from the journal and
-no outcome. The cell changes the day a run of the host in the host contract shows the variable.
+no outcome. The id is a record of what the host handed the server, not a lock: it names a journal and
+reserves nothing, and a second session with the same id is not refused. The cell changes the day a run of the host in the host contract shows the variable.
