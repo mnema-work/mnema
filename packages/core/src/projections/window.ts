@@ -165,13 +165,17 @@ export function parseWindowBound(end: WindowEnd, value: string): WindowBound {
   }
   const stamp = TIMESTAMP.exec(value);
   if (stamp === null) return refused;
-  const [year, month, day, hour, minute] = [1, 2, 3, 4, 5].map((i) => Number(stamp[i]));
+  const year = Number(stamp[1]);
+  const month = Number(stamp[2]);
+  const day = Number(stamp[3]);
+  const hour = Number(stamp[4]);
+  const minute = Number(stamp[5]);
   const second = Number(stamp[6] ?? '0');
   if (hour > 23 || minute > 59 || second > 59) return refused;
-  const calendar = new Date(Date.UTC(year as number, (month as number) - 1, day as number));
+  const calendar = new Date(Date.UTC(year, month - 1, day));
   if (
     calendar.getUTCFullYear() !== year ||
-    calendar.getUTCMonth() !== (month as number) - 1 ||
+    calendar.getUTCMonth() !== month - 1 ||
     calendar.getUTCDate() !== day
   ) {
     return refused;
