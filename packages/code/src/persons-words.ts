@@ -454,7 +454,10 @@ export function keepPersonsWords(
       ),
     );
     if (!appendWithinTheLimit(file, lines)) {
-      return { kept: 'nothing', why: 'nothing was appended: a link, not a file of this user, or the limit' };
+      return {
+        kept: 'nothing',
+        why: 'nothing was appended: a link, not a file of this user, or the limit',
+      };
     }
     pruneSessions(dir, now);
     return { kept: kind };

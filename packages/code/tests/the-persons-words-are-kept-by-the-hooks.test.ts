@@ -637,15 +637,22 @@ describe('the limits are exact', () => {
     keep('claude', { session_id: 'edge', prompt: 'first' });
     const file = wordsFile(trees(), 'edge') ?? '';
     const room = 300;
-    writeFileSync(file, readFileSync(file, 'utf-8') + ' '.repeat(FILE_LIMIT - statSync(file).size - room));
+    writeFileSync(
+      file,
+      readFileSync(file, 'utf-8') + ' '.repeat(FILE_LIMIT - statSync(file).size - room),
+    );
     expect(statSync(file).size).toBe(FILE_LIMIT - room);
     const now = new Date('2026-11-20T10:00:00Z');
     const overhead = Buffer.byteLength(
       `${JSON.stringify({ kind: 'typed', text: '', host: 'claude', at: now.toISOString() })}\n`,
     );
-    expect(keep('claude', { session_id: 'edge', prompt: 'x'.repeat(room) }, now).kept).toBe('nothing');
+    expect(keep('claude', { session_id: 'edge', prompt: 'x'.repeat(room) }, now).kept).toBe(
+      'nothing',
+    );
     expect(statSync(file).size).toBe(FILE_LIMIT - room);
-    expect(keep('claude', { session_id: 'edge', prompt: 'x'.repeat(room - overhead) }, now).kept).toBe('typed');
+    expect(
+      keep('claude', { session_id: 'edge', prompt: 'x'.repeat(room - overhead) }, now).kept,
+    ).toBe('typed');
     expect(statSync(file).size).toBe(FILE_LIMIT);
   });
 
