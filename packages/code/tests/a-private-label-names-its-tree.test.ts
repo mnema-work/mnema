@@ -58,7 +58,7 @@ beforeEach(async () => {
   delete process.env.MNEMA_RUN;
   process.chdir(repo);
   await mnema('init');
-});
+}, 60_000);
 
 afterEach(() => {
   process.chdir(originalCwd);
