@@ -257,6 +257,8 @@ export {
 // readings (a predicate and a `WHERE`), plus the declaration of what a given read's
 // window is OVER, which is the half that was silent.
 export {
+  parseWindow,
+  parseWindowBound,
   WINDOW_IS_OVER,
   type Window,
   type WindowBound,
@@ -264,8 +266,6 @@ export {
   type WindowParsed,
   type WindowRefusal,
   type WindowSubject,
-  parseWindow,
-  parseWindowBound,
   windowConditions,
   withinWindow,
 } from './projections/window.js';

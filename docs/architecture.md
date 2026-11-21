@@ -83,7 +83,7 @@ Each step names the function where it happens; the link goes to its definition. 
 6. The command then calls [`checkpoint`](../packages/chain/src/chain/writer.ts#L1606), which signs what is above the last checkpoint ([`signLocked`](../packages/chain/src/chain/writer.ts#L1630)); leaving the lock keeps the notes ([`keepHeadIfWritten`](../packages/chain/src/chain/writer.ts#L928)).
 7. Nothing updates the projection at write time. The next read's [`refresh`](../packages/core/src/projections/cache.ts#L615) advances it from the new lines, or replays the whole record when it cannot prove they are a suffix.
 
-Through MCP the tool `record_decision` ([`mutatesTheRecord`](../packages/code/src/mcp/server.ts#L1354)) calls [`runRecordDecision`](../packages/code/src/mcp/tools.ts#L938), which routes the write to a project and reaches the same [`recordDecision`](../packages/core/src/workflow/decision-operations.ts#L190) and the same writer.
+Through MCP the tool `record_decision` ([`mutatesTheRecord`](../packages/code/src/mcp/server.ts#L1354)) calls [`runRecordDecision`](../packages/code/src/mcp/tools.ts#L940), which routes the write to a project and reaches the same [`recordDecision`](../packages/core/src/workflow/decision-operations.ts#L190) and the same writer.
 
 ### Verify
 
@@ -94,7 +94,7 @@ Through MCP the tool `record_decision` ([`mutatesTheRecord`](../packages/code/sr
 
 ### The rules before an edit
 
-1. In Claude Code, [`hooks.json`](../plugin/hooks/hooks.json) declares a `PreToolUse` hook on `Write|Edit|NotebookEdit` that calls the MCP tool `rules_before_an_edit` ([`mutatesTheRecord`](../packages/code/src/mcp/server.ts#L2052)), which reaches [`rulesBeforeAnEdit`](../packages/code/src/mcp/tools.ts#L3052).
+1. In Claude Code, [`hooks.json`](../plugin/hooks/hooks.json) declares a `PreToolUse` hook on `Write|Edit|NotebookEdit` that calls the MCP tool `rules_before_an_edit` ([`mutatesTheRecord`](../packages/code/src/mcp/server.ts#L2052)), which reaches [`rulesBeforeAnEdit`](../packages/code/src/mcp/tools.ts#L3071).
 2. [`whatAWriteMeets`](../packages/code/src/what-a-write-meets.ts#L261) is the one place that decides: a refusal first ([`readRefusesAWriteAt`](../packages/code/src/governed-tree.ts#L254), over the rules [`refusesAWriteAt`](../packages/context/src/intelligence/governance.ts#L1011) finds by address), and only when nothing refuses, whether a person is asked.
 3. The reply is shaped for the host by [`hookReply`](../packages/code/src/mcp/hook-reply.ts#L212); a refusal is recorded with [`recordTheCharge`](../packages/code/src/what-a-write-meets.ts#L781).
 4. The other hosts run a command hook: [`edit-refuses-a-write.mjs`](../plugin/hooks/edit-refuses-a-write.mjs) calls [`whatTheGateAnswers`](../plugin/hooks/hand-over.mjs#L548), which spawns the `before-a-write` verb ([`runBeforeAWrite`](../packages/code/src/commands/before-a-write.ts#L151), then [`whatAPathMeets`](../packages/code/src/commands/before-a-write.ts#L222)) and answers in the host's own shape ([`replyFor`](../packages/code/src/host-hook.ts#L224)). When `mnema` is there but does not answer (it exits non-zero, times out, or prints no reply) and a rule reaches the path, the hook denies; with no `mnema` at all it stays silent and the write goes through.

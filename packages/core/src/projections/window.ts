@@ -121,9 +121,7 @@ export type WindowEnd = 'from' | 'to';
  * The sentence that says so is the surface's (a CLI and a tool each print it in their own
  * voice, from {@link WindowRefusal}), so this file holds no wording.
  */
-export type WindowBound =
-  | { readonly ok: true; readonly instant: string }
-  | WindowRefusal;
+export type WindowBound = { readonly ok: true; readonly instant: string } | WindowRefusal;
 
 /** The bound that was refused: which flag, and what was typed. */
 export interface WindowRefusal {

@@ -265,7 +265,10 @@ export function windowHelp(subject: WindowSubject): string {
  * The one line that refuses a window bound, naming the flag and the value, and the forms a
  * bound takes. Said once for the command line and the tools, so the two cannot drift.
  */
-export function windowRefusalSentence(refused: { readonly end: 'from' | 'to'; readonly value: string }): string {
+export function windowRefusalSentence(refused: {
+  readonly end: 'from' | 'to';
+  readonly value: string;
+}): string {
   return (
     `--${refused.end} takes a date (YYYY-MM-DD) or a timestamp ending in Z or an offset ` +
     `(2026-11-21T10:30:00Z, 2026-11-21T10:30:00-03:00), not ${JSON.stringify(refused.value)}.`

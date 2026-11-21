@@ -80,12 +80,15 @@ describe.each([
     expect(heard.out).toBe('');
   });
 
-  it.each(WRONG_BOUNDS)('refuses --from with %s, in one line naming the flag', async (_why, bad) => {
-    const heard = await mnema([...verb, '--from', bad]);
-    expect(heard.failed).toBe(true);
-    expect(heard.err).toContain('--from takes a date');
-    expect(heard.err.trim().split('\n')).toHaveLength(1);
-  });
+  it.each(WRONG_BOUNDS)(
+    'refuses --from with %s, in one line naming the flag',
+    async (_why, bad) => {
+      const heard = await mnema([...verb, '--from', bad]);
+      expect(heard.failed).toBe(true);
+      expect(heard.err).toContain('--from takes a date');
+      expect(heard.err.trim().split('\n')).toHaveLength(1);
+    },
+  );
 
   it('accepts a date and a timestamp with an offset', async () => {
     const date = await mnema([...verb, '--from', '2000-01-01', '--to', TODAY]);
@@ -146,4 +149,3 @@ describe('the MCP tools that take a window', () => {
     expect(runAccountabilityTool(session, { from: '2000-01-01', to: TODAY }).ok).toBe(true);
   });
 });
-

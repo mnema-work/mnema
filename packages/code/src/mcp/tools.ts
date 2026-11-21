@@ -113,8 +113,8 @@ import {
   IdentityUnavailableError,
   isSearchKind,
   keyRefusalIn,
-  parseWindow,
   type ProjectionCache,
+  parseWindow,
   type ReferenceDirection,
   type ReplacedClass,
   type ResolvedTrees,
@@ -124,7 +124,6 @@ import {
   SKILL_ACTIONS,
   systemClock,
 } from '@mnema/core';
-import { windowRefusalSentence } from '../vocabulary.js';
 import {
   acceptDecision,
   adoptSkill,
@@ -213,6 +212,7 @@ import {
   THE_CHAIN_AS_IT_STANDS_NOW,
   THE_READING_THAT_OPENED_THESE,
 } from '../tree-sources.js';
+import { windowRefusalSentence } from '../vocabulary.js';
 import {
   ALTERED_RECORD_NOTE,
   type ChargeRecorded,
@@ -2560,7 +2560,8 @@ export function runSearchTool(session: Session, input: RecordQuery = {}): Search
   // The window is read as dates and timestamps, not compared as strings: `to: "garbage"`
   // sorts after every stamp and used to return the whole record as if it were an answer.
   const window = parseWindow(input);
-  if (!window.ok) return { ok: false, code: 'INVALID_WINDOW', message: windowRefusalSentence(window) };
+  if (!window.ok)
+    return { ok: false, code: 'INVALID_WINDOW', message: windowRefusalSentence(window) };
   return {
     ok: true,
     value: searchRecords(workspaceCaches(session), { ...withoutWindow(input), ...window.window }),
@@ -3427,7 +3428,8 @@ export function runAccountabilityTool(
   const refused = requireProject(session);
   if (refused !== undefined) return refused;
   const window = parseWindow(input);
-  if (!window.ok) return { ok: false, code: 'INVALID_WINDOW', message: windowRefusalSentence(window) };
+  if (!window.ok)
+    return { ok: false, code: 'INVALID_WINDOW', message: windowRefusalSentence(window) };
   return {
     ok: true,
     value: accountabilityByProject(workspaceCaches(session), {
