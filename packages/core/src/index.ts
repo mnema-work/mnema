@@ -259,7 +259,12 @@ export {
 export {
   WINDOW_IS_OVER,
   type Window,
+  type WindowBound,
+  type WindowEnd,
+  type WindowParsed,
   type WindowSubject,
+  parseWindow,
+  parseWindowBound,
   windowConditions,
   withinWindow,
 } from './projections/window.js';

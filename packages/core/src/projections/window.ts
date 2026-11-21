@@ -18,7 +18,9 @@
  * WHAT IS ONE HERE AND WHAT CANNOT BE. The BOUNDARY is one: inclusive on both ends,
  * compared on the ISO strings directly; ISO-8601 UTC stamps sort lexically, in the
  * order the chain merges on, and parsing to a date would be a second notion of order and
- * the one place two readings could disagree about a boundary instant. That rule is
+ * the one place two readings could disagree about a boundary instant. What IS parsed is
+ * the VALUE a person types, once, at the door ({@link parseWindowBound}): it becomes the
+ * stored stamp's own form before it reaches the comparison. That rule is
  * {@link withinWindow} and {@link windowConditions}, and neither is a restatement of the
  * other: one answers about a value in memory, the other builds the `WHERE` a query
  * needs, and a predicate cannot be a `GROUP BY`. What makes them agree is
@@ -109,4 +111,95 @@ export function windowConditions(
     params.to = window.to;
   }
   return { sql, params };
+}
+
+/** The flag a bound came from, so a refusal can name it. */
+export type WindowEnd = 'from' | 'to';
+
+/** A bound, read: the instant in the stored form, or the one line that says what was wrong. */
+export type WindowBound =
+  | { readonly ok: true; readonly instant: string }
+  | { readonly ok: false; readonly message: string };
+
+const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+const TIMESTAMP =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,9}))?)?(Z|[+-]\d{2}:\d{2})$/;
+
+/**
+ * Reads one `--from`/`--to` value as the instant it claims to be.
+ *
+ * TWO FORMS ARE ACCEPTED, and nothing else:
+ *   - a date, `YYYY-MM-DD`, read as UTC: `from` is the start of that day and `to` its last
+ *     millisecond, so `--to 2026-11-21` includes the 21st (a string compare against the
+ *     stored stamp left the whole day out);
+ *   - a timestamp, `YYYY-MM-DDTHH:MM[:SS[.fff]]` ending in `Z` or an offset (`+02:00`). A
+ *     timestamp with no zone is refused: which instant it names depends on the machine.
+ *
+ * The answer is `Date#toISOString()`, the form every event's `at` is stored in, so the
+ * comparison that follows ({@link withinWindow}, {@link windowConditions}) stays a plain
+ * string compare between two stamps of the same shape. A value of either form that is not
+ * a real moment (month 13, 30 February, hour 24) is refused: `Date` would roll some of
+ * them over silently, so the parts are checked against the result.
+ */
+export function parseWindowBound(end: WindowEnd, value: string): WindowBound {
+  const refused: WindowBound = {
+    ok: false,
+    message:
+      `--${end} takes a date (YYYY-MM-DD) or a timestamp ending in Z or an offset ` +
+      `(2026-11-21T10:30:00Z, 2026-11-21T10:30:00-03:00), not ${JSON.stringify(value)}.`,
+  };
+  const date = DATE.exec(value);
+  if (date !== null) {
+    const [year, month, day] = [Number(date[1]), Number(date[2]), Number(date[3])];
+    const start = new Date(Date.UTC(year, month - 1, day));
+    start.setUTCFullYear(year);
+    if (
+      start.getUTCFullYear() !== year ||
+      start.getUTCMonth() !== month - 1 ||
+      start.getUTCDate() !== day
+    ) {
+      return refused;
+    }
+    const at = end === 'from' ? start : new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
+    return { ok: true, instant: at.toISOString() };
+  }
+  const stamp = TIMESTAMP.exec(value);
+  if (stamp === null) return refused;
+  const [year, month, day, hour, minute] = [1, 2, 3, 4, 5].map((i) => Number(stamp[i]));
+  const second = Number(stamp[6] ?? '0');
+  if (hour > 23 || minute > 59 || second > 59) return refused;
+  const calendar = new Date(Date.UTC(year as number, (month as number) - 1, day as number));
+  if (
+    calendar.getUTCFullYear() !== year ||
+    calendar.getUTCMonth() !== (month as number) - 1 ||
+    calendar.getUTCDate() !== day
+  ) {
+    return refused;
+  }
+  const zone = stamp[8] as string;
+  if (zone !== 'Z') {
+    const [offsetHour, offsetMinute] = [Number(zone.slice(1, 3)), Number(zone.slice(4, 6))];
+    if (offsetHour > 23 || offsetMinute > 59) return refused;
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return refused;
+  return { ok: true, instant: parsed.toISOString() };
+}
+
+/** Both bounds, read: the window in the stored form, or the first refusal. */
+export type WindowParsed =
+  | { readonly ok: true; readonly window: Window }
+  | { readonly ok: false; readonly message: string };
+
+/** Reads the two raw bounds of a read (either may be absent), `from` first. */
+export function parseWindow(raw: { readonly from?: string; readonly to?: string }): WindowParsed {
+  const window: { from?: string; to?: string } = {};
+  for (const end of ['from', 'to'] as const) {
+    const value = raw[end];
+    if (value === undefined) continue;
+    const bound = parseWindowBound(end, value);
+    if (!bound.ok) return bound;
+    window[end] = bound.instant;
+  }
+  return { ok: true, window };
 }
