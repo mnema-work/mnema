@@ -31,7 +31,6 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { isSea } from 'node:sea';
 import type { LevelRequirement } from '@mnema/chain';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { oneLine } from '../one-line.js';
@@ -115,9 +114,36 @@ export function driverCommandOf(execPath: string, argv1: string, sea: boolean): 
     : driverCommand(execPath, argv1);
 }
 
+/**
+ * Whether this process is a single executable (Node's SEA), read through `getBuiltinModule` and not imported: an
+ * import of `node:sea` is linked before any line runs, and a Node that lacks it must reach the floor refusal first.
+ * (`cli.ts` keeps its own copy for the entry, which may link nothing but a fixed list of builtins.)
+ */
+export function isASingleExecutable(): boolean {
+  try {
+    const sea = process.getBuiltinModule?.('node:sea') as { isSea(): boolean } | undefined;
+    return sea?.isSea() === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The file of the running mnema, for the doctor and the upgrade to compare with the first `mnema` on the PATH. A
+ * script run by node is `argv1`; a single executable is `execPath`, because its `argv1` is only the name typed.
+ */
+export function runningFileOf(execPath: string, argv1: string, sea: boolean): string {
+  return sea ? execPath : argv1;
+}
+
+/** The running file of this very process, for the two callers that say which mnema runs. */
+export function ownRunningFile(): string {
+  return runningFileOf(process.execPath, process.argv[1] ?? '', isASingleExecutable());
+}
+
 /** How this very process is called as a driver: the ONE place the four writers of the setting ask. */
 export function ownDriverCommand(): string {
-  return driverCommandOf(process.execPath, process.argv[1] ?? '', isSea());
+  return driverCommandOf(process.execPath, process.argv[1] ?? '', isASingleExecutable());
 }
 
 /** A git in `cwd`, with automatic maintenance off; bytes out, so a tail is read as it is. */

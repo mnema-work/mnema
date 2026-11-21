@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { whyTheDriverCannotRun } from '../src/commands/doctor-merge-driver.js';
-import { driverCommandOf } from '../src/commands/record-pull.js';
+import { driverCommandOf, runningFileOf } from '../src/commands/record-pull.js';
 
 describe('the driver command of a process', () => {
   it('names the node and the script when it is a script run by node', () => {
@@ -32,5 +32,13 @@ describe('the doctor on a driver of one path', () => {
   it('says which file is not an executable file', () => {
     const driver = driverCommandOf('/nowhere/mnema-x', 'ignored', true);
     expect(whyTheDriverCannotRun({}, driver)).toBe('/nowhere/mnema-x is not an executable file');
+  });
+});
+
+describe('the file that says which mnema runs', () => {
+  it('is the script for a script run by node, and the executable for a single executable', () => {
+    expect(runningFileOf('/usr/bin/node', '/opt/mnema/cli.js', false)).toBe('/opt/mnema/cli.js');
+    // Called by name through the PATH, argv[1] is only the word that was typed.
+    expect(runningFileOf('/opt/bin/mnema-x', 'mnema-x', true)).toBe('/opt/bin/mnema-x');
   });
 });

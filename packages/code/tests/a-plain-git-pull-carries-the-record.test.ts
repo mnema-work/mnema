@@ -20,6 +20,7 @@
 
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
+  chmodSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -39,7 +40,7 @@ import {
   mergeSettings,
   whyTheDriverCannotRun,
 } from '../src/commands/doctor-merge-driver.js';
-import { driverCommand } from '../src/commands/record-pull.js';
+import { driverCommand, driverCommandOf } from '../src/commands/record-pull.js';
 import { readForkKeptAside, saysForkKeptAside } from '../src/fork-kept-aside.js';
 import { withoutSequences } from '../src/presentation/width.js';
 import { type CliIo, run } from '../src/program.js';
@@ -426,6 +427,34 @@ describe('the fix writes all of the settings or none', SLOW, () => {
     expect(git(local, 'config', '--get', 'merge.mnema-tail.driver').out.trim()).toBe(DRIVER);
     expect(mnema(local, 'doctor').out).not.toMatch(/merge-driver/);
     expect(mnema(local, 'status').out).not.toMatch(/Kept aside by a pull/);
+  });
+
+  it('treats the driver a single executable wrote as mnema\'s: says it cannot run once the file is gone, and the fix rewrites it', () => {
+    const { local } = world();
+    const exe = join(sandbox, 'mnema-moved-linux-x64');
+    writeFileSync(exe, '#!/bin/sh\n');
+    chmodSync(exe, 0o755);
+    const moved = driverCommandOf(exe, 'mnema-moved-linux-x64', true);
+    expect(moved).toBe(`'${exe}' record merge-tail %O %A %B %P`);
+    expect(fixMergeDriver(here(local), { dryRun: false, driver: moved }).refused).toBe(false);
+    expect(mergeDriverLines(here(local))).toEqual([]);
+
+    rmSync(exe);
+    const asked = mnema(local, 'doctor').out.replace(/\s+/g, ' ');
+    expect(asked).toMatch(
+      /to do · merge-driver: the mnema-tail driver git holds in .* cannot run here \(.*mnema-moved-linux-x64 is not an executable file\)/,
+    );
+    const status = mnema(local, 'status').out.replace(/\s+/g, ' ');
+    expect(status).toMatch(/Kept aside by a pull:/);
+    expect(status).toMatch(
+      /cannot run here \(.*mnema-moved-linux-x64 is not an executable file\) and an autoStash is on/,
+    );
+
+    const fixed = fixMergeDriver(here(local), { dryRun: false, driver: DRIVER });
+    expect(fixed.refused).toBe(false);
+    expect(fixed.lines.join('\n')).toMatch(/the driver git holds cannot run here/);
+    expect(git(local, 'config', '--get', 'merge.mnema-tail.driver').out.trim()).toBe(DRIVER);
+    expect(mnema(local, 'doctor').out).not.toMatch(/merge-driver/);
   });
 
   it('writes nothing when the driver this installation would write cannot run', () => {

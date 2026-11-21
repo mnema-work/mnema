@@ -18,13 +18,13 @@ import { type Declared, readsTheRecord, type Wiring } from './verb.js';
 export async function runTheUpgrade(wiring: Wiring, options: { dryRun: boolean }): Promise<void> {
   const { io } = wiring;
   const { bringUpToDate } = await import('../commands/after-update.js');
-  const { ownDriverCommand } = await import('../commands/record-pull.js');
+  const { ownDriverCommand, ownRunningFile } = await import('../commands/record-pull.js');
   const report = await bringUpToDate(
     {
       ...here(),
       env: discoveryEnv(),
       processEnv: process.env,
-      running: { file: process.argv[1] ?? '', version: VERSION },
+      running: { file: ownRunningFile(), version: VERSION },
       driver: ownDriverCommand(),
     },
     {

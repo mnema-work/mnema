@@ -152,7 +152,7 @@ export function mergeSettings(driver: string): readonly (readonly [string, strin
 
 /** Whether a driver git holds is one mnema wrote, wherever it finds the program. */
 function isOurDriver(value: string): boolean {
-  return value === PATH_FORM || QUOTED_FORM.test(value);
+  return value === PATH_FORM || QUOTED_FORM.test(value) || QUOTED_SEA_FORM.test(value);
 }
 
 /** The sentence about the autoStash, said wherever the settings are offered or written. */
