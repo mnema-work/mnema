@@ -86,6 +86,7 @@ import {
   readTailCheckpoints,
   readTailEntries,
   readWitness,
+  refuseWitnessThroughALink,
   stampCheckpoint,
   tailStanding,
   verify,
