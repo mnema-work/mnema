@@ -43,6 +43,19 @@ describe('a bound that is a real instant', () => {
   });
 });
 
+describe('the years before 0100', () => {
+  it('are read the same way as a date and as a timestamp', () => {
+    expect(parseWindowBound('from', '0050-03-01')).toEqual({
+      ok: true,
+      instant: '0050-03-01T00:00:00.000Z',
+    });
+    expect(parseWindowBound('from', '0050-03-01T00:00:00Z')).toEqual({
+      ok: true,
+      instant: '0050-03-01T00:00:00.000Z',
+    });
+  });
+});
+
 describe('a bound that is not', () => {
   it.each([
     ['garbage', 'garbage'],

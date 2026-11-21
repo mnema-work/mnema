@@ -130,6 +130,21 @@ export interface WindowRefusal {
   readonly value: string;
 }
 
+/**
+ * The start of a UTC day, or undefined when the year, month and day name no such day.
+ * `Date.UTC` maps the years 0 to 99 onto 1900 to 1999, so the year is set apart, and a date
+ * and a timestamp agree on the years 0000 to 0099.
+ */
+function utcDay(year: number, month: number, day: number): Date | undefined {
+  const start = new Date(Date.UTC(2000, month - 1, day));
+  start.setUTCFullYear(year);
+  return start.getUTCFullYear() === year &&
+    start.getUTCMonth() === month - 1 &&
+    start.getUTCDate() === day
+    ? start
+    : undefined;
+}
+
 const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const TIMESTAMP =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,9}))?)?(Z|[+-]\d{2}:\d{2})$/;
@@ -155,15 +170,8 @@ export function parseWindowBound(end: WindowEnd, value: string): WindowBound {
   const date = DATE.exec(value);
   if (date !== null) {
     const [year, month, day] = [Number(date[1]), Number(date[2]), Number(date[3])];
-    const start = new Date(Date.UTC(year, month - 1, day));
-    start.setUTCFullYear(year);
-    if (
-      start.getUTCFullYear() !== year ||
-      start.getUTCMonth() !== month - 1 ||
-      start.getUTCDate() !== day
-    ) {
-      return refused;
-    }
+    const start = utcDay(year, month, day);
+    if (start === undefined) return refused;
     const at = end === 'from' ? start : new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
     return { ok: true, instant: at.toISOString() };
   }
@@ -176,14 +184,7 @@ export function parseWindowBound(end: WindowEnd, value: string): WindowBound {
   const minute = Number(stamp[5]);
   const second = Number(stamp[6] ?? '0');
   if (hour > 23 || minute > 59 || second > 59) return refused;
-  const calendar = new Date(Date.UTC(year, month - 1, day));
-  if (
-    calendar.getUTCFullYear() !== year ||
-    calendar.getUTCMonth() !== month - 1 ||
-    calendar.getUTCDate() !== day
-  ) {
-    return refused;
-  }
+  if (utcDay(year, month, day) === undefined) return refused;
   const zone = stamp[8] as string;
   if (zone !== 'Z') {
     const [offsetHour, offsetMinute] = [Number(zone.slice(1, 3)), Number(zone.slice(4, 6))];

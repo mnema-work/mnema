@@ -25,4 +25,5 @@ Show who authorized what and which agent executed it, across ALL trees of ALL pr
 | `openWorldHint` | false |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
+`from` and `to` take a date (`YYYY-MM-DD`, read as UTC) or a timestamp ending in `Z` or an offset (`YYYY-MM-DDT10:30:00-03:00`, seconds and fraction optional). A date `from` is the start of that UTC day and a date `to` covers the whole of it, up to its last millisecond. Anything else, an impossible date included, is refused with the code `INVALID_WINDOW`, and the refusal names the field.
 <!-- End of the part written by hand. -->

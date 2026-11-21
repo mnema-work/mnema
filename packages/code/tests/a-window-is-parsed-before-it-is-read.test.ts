@@ -110,6 +110,29 @@ describe('what the window selects once it is parsed', () => {
   });
 });
 
+describe('a date bound is the whole UTC day, on every verb that takes a window', () => {
+  it('audit accountability: --to today counts today, and --from today counts it too', async () => {
+    const to = await mnema(['audit', 'accountability', '--to', TODAY, '--json']);
+    expect(to.failed, to.err).toBe(false);
+    expect(JSON.parse(to.out).total).toBeGreaterThan(0);
+    const from = await mnema(['audit', 'accountability', '--from', TODAY, '--json']);
+    expect(JSON.parse(from.out).total).toBeGreaterThan(0);
+    const past = await mnema(['audit', 'accountability', '--to', '2000-01-01', '--json']);
+    expect(JSON.parse(past.out).total).toBe(0);
+  });
+
+  it('export: --to today carries today, and --from today carries it too', async () => {
+    const lines = (out: string) => out.split('\n').filter((line) => line.startsWith('{'));
+    const to = await mnema(['export', '--to', TODAY]);
+    expect(to.failed, to.err).toBe(false);
+    expect(lines(to.out).length).toBeGreaterThan(0);
+    const from = await mnema(['export', '--from', TODAY]);
+    expect(lines(from.out).length).toBeGreaterThan(0);
+    const past = await mnema(['export', '--to', '2000-01-01']);
+    expect(lines(past.out)).toHaveLength(0);
+  });
+});
+
 describe('the MCP tools that take a window', () => {
   let session: Session;
 
@@ -147,5 +170,31 @@ describe('the MCP tools that take a window', () => {
 
   it('audit_accountability serves a window that parses', () => {
     expect(runAccountabilityTool(session, { from: '2000-01-01', to: TODAY }).ok).toBe(true);
+  });
+
+  it('search: `to` today finds today, `from` today finds it, an old `to` finds nothing', () => {
+    const total = (input: Parameters<typeof runSearchTool>[1]) => {
+      const found = runSearchTool(session, input);
+      return found.ok ? found.value.total : -1;
+    };
+    expect(total({ to: TODAY })).toBeGreaterThan(0);
+    expect(total({ from: TODAY })).toBeGreaterThan(0);
+    expect(total({ to: '2000-01-01' })).toBe(0);
+  });
+
+  it('audit_accountability: `to` today counts today, `from` today counts it, an old `to` counts none', () => {
+    const counted = (input: Parameters<typeof runAccountabilityTool>[1]) => {
+      const result = runAccountabilityTool(session, input);
+      return result.ok ? result.value.byProject.reduce((sum, one) => sum + one.total, 0) : -1;
+    };
+    expect(counted({ to: TODAY })).toBeGreaterThan(0);
+    expect(counted({ from: TODAY })).toBeGreaterThan(0);
+    expect(counted({ to: '2000-01-01' })).toBe(0);
+  });
+
+  it('names the field and not a flag', () => {
+    const refused = runSearchTool(session, { from: 'soon' });
+    expect(!refused.ok && refused.message).toContain('`from` takes a date');
+    expect(!refused.ok && refused.message).not.toContain('--from');
   });
 });

@@ -2561,7 +2561,7 @@ export function runSearchTool(session: Session, input: RecordQuery = {}): Search
   // sorts after every stamp and used to return the whole record as if it were an answer.
   const window = parseWindow(input);
   if (!window.ok)
-    return { ok: false, code: 'INVALID_WINDOW', message: windowRefusalSentence(window) };
+    return { ok: false, code: 'INVALID_WINDOW', message: windowRefusalSentence(window, 'field') };
   return {
     ok: true,
     value: searchRecords(workspaceCaches(session), { ...withoutWindow(input), ...window.window }),
@@ -3429,7 +3429,7 @@ export function runAccountabilityTool(
   if (refused !== undefined) return refused;
   const window = parseWindow(input);
   if (!window.ok)
-    return { ok: false, code: 'INVALID_WINDOW', message: windowRefusalSentence(window) };
+    return { ok: false, code: 'INVALID_WINDOW', message: windowRefusalSentence(window, 'field') };
   return {
     ok: true,
     value: accountabilityByProject(workspaceCaches(session), {
