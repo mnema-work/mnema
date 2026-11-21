@@ -1488,7 +1488,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-page-shows-its-seams.test.ts': 20,
   'packages/code/tests/the-panel.test.ts': 21,
   'packages/code/tests/the-pattern-leaves-in-the-hosts-shape.test.ts': 6,
-  'packages/code/tests/the-persons-words-are-kept-by-the-hooks.test.ts': 10,
+  'packages/code/tests/the-persons-words-are-kept-by-the-hooks.test.ts': 12,
   'packages/code/tests/the-phrase-the-domain-words-is-one-line.test.ts': 8,
   'packages/code/tests/the-plugin-icon-is-the-mark-it-names.test.ts': 8,
   'packages/code/tests/the-plugin-runs-the-binary-the-person-named.test.ts': 6,

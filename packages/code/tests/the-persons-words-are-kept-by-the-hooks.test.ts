@@ -39,9 +39,9 @@ import {
   wordsFile,
 } from '../src/persons-words.js';
 import { type CliIo, run } from '../src/program.js';
-import { MNEMA_CLI } from './support/the-cli.js';
 import { type Journal, PRUNE_AFTER_MS, PRUNE_KEEP, writeJournal } from '../src/session-journal.js';
 import { emptyReading } from '../src/what-the-session-did.js';
+import { MNEMA_CLI } from './support/the-cli.js';
 
 let sandbox: string;
 let repo: string;
@@ -678,7 +678,11 @@ describe('a FIFO planted at the words file', () => {
       cwd: repo,
       input: JSON.stringify({ session_id: 'fifo-1', prompt: 'a private sentence' }),
       timeout: 8000,
-      env: { HOME: join(sandbox, 'home'), PATH: process.env['PATH'] ?? '', GIT_CONFIG_NOSYSTEM: '1' },
+      env: {
+        HOME: join(sandbox, 'home'),
+        PATH: process.env['PATH'] ?? '',
+        GIT_CONFIG_NOSYSTEM: '1',
+      },
       encoding: 'utf-8',
     });
     expect(ran.error).toBeUndefined();
