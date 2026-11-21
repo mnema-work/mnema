@@ -38,9 +38,9 @@ tail the file carries every range from the first it needs to the last, with no g
 two lines it carries (a move, a writing, a revoked key) can be left out. So the lines beside the
 decision's travel with it, and the file grows with the distance between them: a decision recorded far
 down the tail that also holds its identity's founding carries that tail from the founding on. Measured
-over thirty decisions of this repository's own record (two tails, 2.9 MB): from 9 KB to 1.1 MB, half
-of them under about 20 KB, the large ones being the decisions written on the tail that holds the
-founding.
+over all 641 decisions of this repository's own record (two tails, 2.9 MB): from 9 KB to 1.1 MB, half
+of them under 12 KB and one in ten above 700 KB, the large ones being the decisions written on the
+tail that holds the founding.
 
 ## What it proves
 
