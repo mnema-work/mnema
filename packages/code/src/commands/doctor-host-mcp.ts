@@ -158,9 +158,20 @@ export function isGone(path: string): boolean {
 
 type Launch = ReturnType<typeof launchOf>;
 
-/** Whether a file is there and can be run. */
+/** What a path is, a link followed, or undefined where it is not there. */
+function kind(path: string): 'file' | 'dir' | 'other' | undefined {
+  try {
+    const found = statSync(path);
+    return found.isFile() ? 'file' : found.isDirectory() ? 'dir' : 'other';
+  } catch {
+    return undefined;
+  }
+}
+
+/** Whether a path is a regular file that can be run. */
 function runnable(path: string): boolean {
   try {
+    if (kind(path) !== 'file') return false;
     accessSync(path, constants.X_OK);
     return true;
   } catch {
@@ -168,17 +179,7 @@ function runnable(path: string): boolean {
   }
 }
 
-/** Whether a folder or file is there, a link followed: a link that points nowhere is not. */
-function there(path: string): boolean {
-  try {
-    statSync(path);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/** Whether a bare command name resolves on this process's PATH. */
+/** Whether a bare command name resolves, on this process's PATH, to an executable regular file. */
 function onThePath(command: string): boolean {
   return (process.env.PATH ?? '')
     .split(delimiter)
@@ -187,10 +188,42 @@ function onThePath(command: string): boolean {
 }
 
 /**
+ * VERIFIED is an ALLOWLIST of two shapes, and everything else is unknown:
+ *   (a) the command is an absolute path, or the bare name `mnema` found on the PATH, and resolves to an executable regular
+ *       file, and every argument that is an absolute path is there (a file or a folder, no `$`);
+ *   (b) the command is `node` or `nodejs` (absolute, or found on the PATH) and its first argument is an absolute path,
+ *       with no `$`, to an existing regular file.
+ * A `cwd`, where there is one, must be an absolute path to a folder that is there. Other interpreters (node22, bun, deno,
+ * tsx), package runners (npx, pnpm dlx, bunx, yarn dlx) and any other bare name are never verified.
+ */
+function isVerified(launch: Launch): boolean {
+  const { command, args, cwd } = launch;
+  if (command === '' || command.includes('$')) return false;
+  if (cwd !== undefined && !(isAbsolute(cwd) && !cwd.includes('$') && kind(cwd) === 'dir')) {
+    return false;
+  }
+  const program = basename(command).replace(/\.exe$/i, '');
+  const isNode = program === 'node' || program === 'nodejs';
+  const bare = !isAbsolute(command) && !/[\\/]/.test(command);
+  if (!isAbsolute(command) && !(bare && (command === 'mnema' || isNode))) return false;
+  if (isAbsolute(command) ? !runnable(command) : !onThePath(command)) return false;
+  if (isNode) {
+    const script = args[0];
+    return (
+      script !== undefined && isAbsolute(script) && !script.includes('$') && kind(script) === 'file'
+    );
+  }
+  return args.every((one) => {
+    if (!isAbsolute(one)) return true;
+    const found = kind(one);
+    return !one.includes('$') && (found === 'file' || found === 'dir');
+  });
+}
+
+/**
  * What can be said of an entry, in three states: DEAD (an absolute path the system says is not there, with the reason),
- * VERIFIED (everything it names is there and the command can be run or is on the PATH) and UNKNOWN (neither). A path
- * with `$` in it, one that cannot be read, one under a disk or a version manager that may come back, and a bare name that
- * is not on the PATH are unknown.
+ * VERIFIED (one of the two shapes of `isVerified`) and UNKNOWN (neither): a path with `$` in it, one that cannot be read, one
+ * under a disk or a version manager that may come back, and every command or shape the allowlist does not name.
  */
 function judge(launch: Launch): { dead: string | undefined; verified: boolean } {
   const { command, args, cwd } = launch;
@@ -207,17 +240,7 @@ function judge(launch: Launch): { dead: string | undefined; verified: boolean } 
   if (cwd !== undefined && isAbsolute(cwd) && isGone(cwd)) {
     return { dead: `its folder ${cwd} no longer exists`, verified: false };
   }
-  const commandWorks =
-    command !== '' &&
-    !command.includes('$') &&
-    (isAbsolute(command) ? runnable(command) : !/[\\/]/.test(command) && onThePath(command));
-  const verified =
-    commandWorks &&
-    // What node runs is known only when its first argument is an absolute path, with no `$`, to a script that is there: a flag
-    // first, or a relative path, is a shape this does not follow, and the entry is unknown.
-    (!isNode || (runsScript && !script.includes('$') && there(script))) &&
-    (cwd === undefined || (!cwd.includes('$') && isAbsolute(cwd) && there(cwd)));
-  return { dead: undefined, verified };
+  return { dead: undefined, verified: isVerified(launch) };
 }
 
 /** The config files of every host, read from the person's home. Claude Code's is the one table of `~/.claude.json`. */

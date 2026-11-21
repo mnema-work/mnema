@@ -62,10 +62,12 @@ verb edits byte for byte (strict JSON: `~/.claude.json`, Gemini CLI and Qwen Cod
 `mcp-config.json`, OpenCode `opencode.json`, Cursor `mcp.json`, VS Code `mcp.json`), after a copy of that file is kept
 beside it (`<file>.mnema-backup-<time>-<suffix>`), and `--dry-run` with it shows the plan. The copy holds the whole file, env
 blocks and their tokens included, so it is written readable by you alone (mode 0600) whatever the original's mode; the run
-prints where it is, and it is never cleaned up: delete it yourself when you no longer need it. Three states, not two: an entry is **dead** (a path the system says is not there), **verified** (the command exists and can
-be run, or is a bare name found on the `PATH`, and the script and folder it names exist, a link followed) or **unknown** (neither). For `node` the script is known only
-when its first argument is an absolute path, with no `$`, to a file that is there: a flag first, or a relative path, leaves
-the entry unknown, and so does a link that points nowhere. Where
+prints where it is, and it is never cleaned up: delete it yourself when you no longer need it. Three states, not two: an entry is **dead** (a path the system says is not there), **verified** (one of two shapes, an allowlist) or **unknown** (everything else). Verified is (a) a command that is an absolute path,
+or the bare name `mnema` found on the `PATH`, resolving to an executable regular file, with every argument that is an absolute path there
+(a file or a folder, no `$`), or (b) `node` or `nodejs` (absolute, or on the `PATH`) whose first argument is an absolute path, with no `$`,
+to an existing regular file (a folder or a link that points nowhere is not one); a `cwd`, where there is one, must be an absolute path to
+a folder that is there. Other interpreters (`node22`, `bun`, `deno`, `tsx`), package runners (`npx`, `pnpm dlx`, `bunx`, `yarn dlx`) and any other bare
+name are unknown, as is a node entry with a flag first or a relative script. Where
 `~/.claude.json` declares the server twice for this project, a duplicate is cut only beside an entry **verified** to work, and the
 plan says which stays; with no verified entry nothing is removed and the plan says why. An unknown entry is never removed
 and is never the one that stays. A Codex `config.toml`, a file

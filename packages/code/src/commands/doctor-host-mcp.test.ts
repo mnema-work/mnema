@@ -486,9 +486,19 @@ describe('an entry that cannot be verified is neither dead nor the one that stay
     expect(isGone(join(sandbox, 'gone', 'mnema'))).toBe(true);
   });
 
+  /** `@bare:<name>` stands for a bare command name; anything else is the arguments of node. */
+  const entryFor = (list: string[]): Record<string, unknown> =>
+    list[0]?.startsWith('@bare:')
+      ? { command: list[0].slice('@bare:'.length), args: list.slice(1) }
+      : { command: process.execPath, args: list };
+
   it.each([
     ['a flag comes first', () => ['--enable-source-maps', join(sandbox, 'gone', 'cli.js'), 'mcp']],
     ['the script is a relative path', () => [join('dist', 'missing', 'cli.js'), 'mcp']],
+    ['node22 runs a missing script', () => ['@bare:node22', join(sandbox, 'gone', 'cli.js'), 'mcp']],
+    ['node is given a folder', () => [sandbox, 'mcp']],
+    ['a package runner starts it', () => ['@bare:npx', '-y', '@mnema/code', 'mcp']],
+    ['bun runs a script that is there', () => ['@bare:bun', fileURLToPath(import.meta.url), 'mcp']],
     [
       'the script is a link that points nowhere',
       () => {
@@ -498,10 +508,10 @@ describe('an entry that cannot be verified is neither dead nor the one that stay
       },
     ],
   ])(
-    'does not take a node entry as working when %s: the project entry that works stays',
+    'does not take an entry as working when %s: the project entry that works stays',
     async (_why, args) => {
       const text = pretty({
-        mcpServers: { mnema: { command: process.execPath, args: args() } },
+        mcpServers: { mnema: entryFor(args()) },
         projects: { [repo]: { mcpServers: { mnema: live() } } },
       });
       put(claudeJson(), text);
