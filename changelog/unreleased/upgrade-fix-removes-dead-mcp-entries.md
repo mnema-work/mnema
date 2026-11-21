@@ -9,3 +9,6 @@ Added
   Codex's `config.toml`, a file with comments and the project's `opencode.json` are not edited, and the line says the
   exact table or member to delete. `doctor` now also says, per host, whether the file declares no mnema server, one,
   or more than one. See [`mnema upgrade`](docs/reference/cli/upgrade.md).
+  The copy is written readable by its owner alone (0600) and is not cleaned up; a path that cannot be read, a disk
+  that is not mounted and a version a manager can install again are never called dead; where one entry works and the
+  other does not, the one that works stays.

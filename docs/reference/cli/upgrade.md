@@ -60,9 +60,16 @@ it sits under is gone; a bare command name (`mnema`, `npx`) is not judged, and a
 `mnema upgrade` names each dead entry per host and changes nothing; `mnema upgrade --fix` removes it from a file this
 verb edits byte for byte (strict JSON: `~/.claude.json`, Gemini CLI and Qwen Code `settings.json`, Copilot CLI
 `mcp-config.json`, OpenCode `opencode.json`, Cursor `mcp.json`, VS Code `mcp.json`), after a copy of that file is kept
-beside it (`<file>.mnema-backup-<time>-<suffix>`), and `--dry-run` with it shows the plan. A Codex `config.toml`, a file
+beside it (`<file>.mnema-backup-<time>-<suffix>`), and `--dry-run` with it shows the plan. The copy holds the whole file, env
+blocks and their tokens included, so it is written readable by you alone (mode 0600) whatever the original's mode; the run
+prints where it is, and it is never cleaned up: delete it yourself when you no longer need it. Where a project has one
+entry that works and one that does not, the one that works stays and the plan says which. A Codex `config.toml`, a file
 with comments, and `opencode.json` of the project (the team commits it) are not edited: the line says the exact table
-or member to delete. The files looked at are the ones in your home that each host reads; `CODEX_HOME`, `COPILOT_HOME`,
+or member to delete. A path is called gone only when the system says it is not there (ENOENT). A path that cannot be read (EACCES), one under a
+folder where a disk comes and goes (`/mnt`, `/media`, `/Volumes`, a mount point of `/etc/fstab`), and one under a version
+manager's folder (`.nvm`, `.fnm`, `.volta`, `.asdf`) is not judged: a path that does not exist today may come back, and the
+copy restores the entry if you need it. In `~/.claude.json` duplicates are judged as Claude Code loads them, the user
+table and the one project it runs in, never across projects. The files looked at are the ones in your home that each host reads; `CODEX_HOME`, `COPILOT_HOME`,
 `XDG_CONFIG_HOME` and `CLAUDE_CONFIG_DIR` move them as they move the host's own.
 
 **Said**: a Claude Code plugin whose label or files are behind this version. The host updates it, with the commands the

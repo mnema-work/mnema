@@ -5,7 +5,16 @@
  * commits are named with the exact line instead; a live entry is never touched.
  */
 
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -302,5 +311,108 @@ describe('the reading of one host file', () => {
       `delete the “viaNode” member of the “mcpServers” object in ${file}`,
     );
     expect(scanClaudeJson(join(home, 'absent.json')).state).toBe('absent');
+  });
+});
+
+describe('what a review of the first version found', () => {
+  const claudeJson = (): string => join(home, '.claude.json');
+
+  it('keeps the entry that works when the user entry is dead and the project one is live', async () => {
+    put(
+      claudeJson(),
+      pretty({
+        mcpServers: { mnema: dead() },
+        projects: { [repo]: { mcpServers: { mnema: live() } } },
+      }),
+    );
+    const dry = await mnema(['upgrade', '--fix', '--dry-run']);
+    expect(dry.out).toContain('The entry that works stays: “mnema” in this project');
+    await mnema(['upgrade', '--fix']);
+    const after = JSON.parse(readFileSync(claudeJson(), 'utf8'));
+    expect(after.mcpServers).toEqual({});
+    expect(after.projects[repo].mcpServers).toEqual({ mnema: live() });
+  });
+
+  it('keeps the user entry that works when the project one is dead, and one of two live ones', async () => {
+    put(
+      claudeJson(),
+      pretty({
+        mcpServers: { mnema: live() },
+        projects: { [repo]: { mcpServers: { mnema: dead() } } },
+      }),
+    );
+    await mnema(['upgrade', '--fix']);
+    const after = JSON.parse(readFileSync(claudeJson(), 'utf8'));
+    expect(after.mcpServers).toEqual({ mnema: live() });
+    expect(after.projects[repo].mcpServers).toEqual({});
+    put(
+      claudeJson(),
+      pretty({
+        mcpServers: { mnema: live() },
+        projects: { [repo]: { mcpServers: { mnema: live() } } },
+      }),
+    );
+    const dry = await mnema(['upgrade', '--dry-run']);
+    expect(dry.out).toContain('the entry of the user table stays');
+  });
+
+  it('does not call mnema used in two projects a duplicate', async () => {
+    const other = join(sandbox, 'other-project');
+    mkdirSync(other, { recursive: true });
+    put(
+      claudeJson(),
+      pretty({
+        projects: {
+          [repo]: { mcpServers: { mnema: live() } },
+          [other]: { mcpServers: { mnema: live() } },
+        },
+      }),
+    );
+    const doctor = await mnema(['doctor']);
+    expect(doctor.out).not.toMatch(/Claude Code: the mnema MCP server is declared 2 times/);
+    const before = readFileSync(claudeJson(), 'utf8');
+    await mnema(['upgrade', '--fix']);
+    expect(readFileSync(claudeJson(), 'utf8')).toBe(before);
+  });
+
+  it('reads a path that may come back as unknown, not dead', async () => {
+    const gemini = join(home, '.gemini', 'settings.json');
+    const entries = {
+      onADisk: { command: '/mnt/a-disk-not-mounted/bin/mnema', args: ['mcp'] },
+      underNvm: {
+        command: join(home, '.nvm', 'versions', 'node', 'v1', 'bin', 'mnema'),
+        args: ['mcp'],
+      },
+      gone: dead(),
+    };
+    put(gemini, pretty({ mcpServers: entries }));
+    const locked = join(sandbox, 'locked');
+    mkdirSync(locked);
+    writeFileSync(join(locked, 'mnema'), '');
+    chmodSync(locked, 0o000);
+    try {
+      put(
+        join(home, '.qwen', 'settings.json'),
+        pretty({ mcpServers: { mnema: { command: join(locked, 'mnema'), args: ['mcp'] } } }),
+      );
+      await mnema(['upgrade', '--fix']);
+      expect(JSON.parse(readFileSync(gemini, 'utf8')).mcpServers).toEqual({
+        onADisk: entries.onADisk,
+        underNvm: entries.underNvm,
+      });
+      if (process.getuid?.() !== 0) {
+        expect(copies(join(home, '.qwen', 'settings.json'))).toEqual([]);
+      }
+    } finally {
+      chmodSync(locked, 0o700);
+    }
+  });
+
+  it('keeps the copy readable by its owner alone, whatever the original mode', async () => {
+    chmodSync(everyHostWithADeadEntry().gemini as string, 0o644);
+    await mnema(['upgrade', '--fix']);
+    const file = join(home, '.gemini', 'settings.json');
+    const [copy] = copies(file);
+    expect(statSync(join(dirname(file), copy as string)).mode & 0o777).toBe(0o600);
   });
 });

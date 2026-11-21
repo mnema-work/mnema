@@ -595,7 +595,7 @@ function mcpFindings(ctx: DoctorContext, plugins: InstalledPlugin[] | 'unreadabl
 }
 
 /** What reading one host's config file says, in a line (or none for Claude Code's, where the others already speak). */
-function hostFileFinding(scan: HostMcpScan): Finding | undefined {
+function hostFileFinding(scan: HostMcpScan, root: string): Finding | undefined {
   const where = oneLine(scan.file);
   const mcp = (state: Finding['state'], line: string): Finding => ({ topic: 'mcp', state, line });
   if (scan.state === 'unreadable') {
@@ -605,7 +605,11 @@ function hostFileFinding(scan: HostMcpScan): Finding | undefined {
     );
   }
   const dead = scan.entries.filter((entry) => entry.dead !== undefined && !entry.projectGone);
-  const live = scan.entries.filter((entry) => entry.dead === undefined);
+  // Claude Code loads the user table and the table of the one project it runs in: another project's entry is no duplicate.
+  const live = scan.entries.filter(
+    (entry) =>
+      entry.dead === undefined && (entry.table[0] !== 'projects' || entry.table[1] === root),
+  );
   if (dead.length > 0) {
     const named = dead
       .map((entry) => `“${oneLine(entry.name)}”: ${oneLine(entry.dead ?? '')}`)
@@ -634,7 +638,7 @@ function hostFileFinding(scan: HostMcpScan): Finding | undefined {
       `${scan.title}: the mnema MCP server is declared ${live.length} times in ${where} (${live.map((entry) => `“${oneLine(entry.name)}”`).join(', ')}), and a session is offered every tool once per declaration: keep one, and ${extra.join('; ')}; nothing is removed for you, both work.`,
     );
   }
-  if (scan.entries.length === 1 && scan.host !== 'claude') {
+  if (live.length === 1 && scan.entries.length === 1 && scan.host !== 'claude') {
     return mcp(
       'fine',
       `${scan.title}: the mnema MCP server is declared once in ${where}: nothing to do.`,
@@ -655,7 +659,9 @@ function hostFileFindings(ctx: DoctorContext, root: string): Finding[] {
       claudeJson: claudeJsonPath(ctx),
     }),
   ];
-  const found = scans.map(hostFileFinding).filter((one): one is Finding => one !== undefined);
+  const found = scans
+    .map((scan) => hostFileFinding(scan, root))
+    .filter((one): one is Finding => one !== undefined);
   const present = new Set(
     scans.filter((scan) => scan.state !== 'absent').map((scan) => scan.title),
   );

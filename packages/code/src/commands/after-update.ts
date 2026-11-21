@@ -22,14 +22,7 @@
  */
 
 import { createHash, randomBytes } from 'node:crypto';
-import {
-  constants,
-  copyFileSync,
-  readFileSync,
-  renameSync,
-  statSync,
-  writeFileSync,
-} from 'node:fs';
+import { chmodSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ensureTree, mergeLineIsMissing } from '@mnema/chain';
 import { resolveTrees } from '@mnema/core';
@@ -110,10 +103,18 @@ function mcpSteps(found: McpDeclarations): UpdateStep[] {
     .filter((one) => one.names.length > 0);
   if (drops.length > 0) {
     const names = drops.flatMap((one) => one.names).map(oneLine);
+    const leftIn = (one: Drop | undefined): boolean =>
+      one !== undefined &&
+      one.names.length > (drops.find((d) => d.table === one.table)?.names.length ?? 0);
+    const stays = kept
+      ? 'the declaration of the plugin or of the approved .mcp.json stays'
+      : leftIn(here[0])
+        ? 'the entry of the user table stays'
+        : 'the entry of this project stays';
     steps.push({
       topic: 'mcp',
       class: 'applied',
-      line: `${oneLine(found.claudeJson)} declares the mnema MCP server again (${names.join(', ')}) where it is declared once already, so a session is offered every tool twice: the entr${names.length === 1 ? 'y goes' : 'ies go'}, no other byte of the file changes, and a copy of it is kept beside it.`,
+      line: `${oneLine(found.claudeJson)} declares the mnema MCP server again (${names.join(', ')}) where it is declared once already, so a session is offered every tool twice: the entr${names.length === 1 ? 'y goes' : 'ies go'} and ${stays}; no other byte of the file changes, and a copy of it is kept beside it.`,
       command: 'claude mcp remove mnema --scope user',
       edit: { file: found.claudeJson, drops, seen: hashOf(found.claudeJson) },
     });
@@ -176,20 +177,29 @@ function deadMcpSteps(
     const where = oneLine(scan.file);
     const cut = dead.filter((entry) => scan.removable.includes(keyOf(entry)));
     const byYou = dead.filter((entry) => !cut.includes(entry));
+    const living = scan.entries.filter(
+      (entry) =>
+        entry.dead === undefined &&
+        (entry.table[0] !== 'projects' || entry.table[1] === declared.projectRoot),
+    );
+    const stays =
+      living.length === 0
+        ? ''
+        : ` The entry that works stays: ${living.map((entry) => `“${oneLine(entry.name)}” in ${entry.table[0] === 'projects' ? 'this project' : 'the user table'}`).join(', ')}.`;
     const name = (entry: (typeof dead)[number]): string =>
       `“${oneLine(entry.name)}” (${oneLine(entry.dead ?? '')})`;
     if (ctx.fix !== true) {
       steps.push({
         topic: 'mcp',
         class: 'said',
-        line: `${scan.title}: ${where} declares the mnema MCP server where it cannot start: ${dead.map(name).join('; ')}. Nothing was changed${cut.length > 0 ? `: \`${UPGRADE_FIX}\` removes ${cut.length === 1 ? 'it' : 'them'}, after a copy of the file is kept` : ''}${byYou.length > 0 ? `${cut.length > 0 ? '; ' : ': '}${byYou.map((entry) => oneLine(byHand(scan, entry))).join('; ')}` : ''}.`,
+        line: `${scan.title}: ${where} declares the mnema MCP server where it cannot start: ${dead.map(name).join('; ')}. Nothing was changed${cut.length > 0 ? `: \`${UPGRADE_FIX}\` removes ${cut.length === 1 ? 'it' : 'them'}, after a copy of the file is kept` : ''}${byYou.length > 0 ? `${cut.length > 0 ? '; ' : ': '}${byYou.map((entry) => oneLine(byHand(scan, entry))).join('; ')}` : ''}.${stays}`,
       });
       continue;
     }
     if (cut.length > 0) {
       const drops: Drop[] = [];
       for (const entry of cut) drops.push({ table: entry.table, names: [entry.name] });
-      const line = `${scan.title}: ${where} declares the mnema MCP server where it cannot start: ${cut.map(name).join('; ')}: the entr${cut.length === 1 ? 'y goes' : 'ies go'}, no other byte of the file changes, and a copy of it is kept beside it.`;
+      const line = `${scan.title}: ${where} declares the mnema MCP server where it cannot start: ${cut.map(name).join('; ')}: the entr${cut.length === 1 ? 'y goes' : 'ies go'}, no other byte of the file changes, and a copy of it is kept beside it.${stays}`;
       const same = steps.findIndex(
         (one) => one.edit?.file === scan.file && one.class === 'applied',
       );
@@ -264,7 +274,25 @@ export function whatAnUpdateAsks(ctx: AfterUpdateContext): readonly UpdateStep[]
     });
   }
   const declared = mcpDeclarations(ctx);
-  steps.push(...deadMcpSteps(ctx, declared, mcpSteps(declared)));
+  // A dead entry is not a candidate to stay: the live one is kept, and the dead one is the dead step's to say or cut.
+  const dead = new Set(
+    scanClaudeJson(declared.claudeJson)
+      .entries.filter((entry) => entry.dead !== undefined)
+      .map(keyOf),
+  );
+  const alive = (table: TablePath, names: readonly string[]): string[] =>
+    names.filter((name) => !dead.has(keyOf({ name, table, dead: undefined })));
+  steps.push(
+    ...deadMcpSteps(
+      ctx,
+      declared,
+      mcpSteps({
+        ...declared,
+        user: alive(['mcpServers'], declared.user),
+        project: alive(['projects', declared.projectRoot, 'mcpServers'], declared.project),
+      }),
+    ),
+  );
   const forDriver = { ...ctx, ...(attributeWillBeWritten ? { attributeWillBeWritten } : {}) };
   if (mergeDriverLines(forDriver).length > 0) {
     const would = fixMergeDriver(forDriver, { dryRun: true, driver: ctx.driver });
@@ -349,8 +377,10 @@ function dropDeclarations(
   if (keepACopy) {
     const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
     const copy = `${file}.mnema-backup-${stamp}-${randomBytes(3).toString('hex')}`;
-    copyFileSync(file, copy, constants.COPYFILE_EXCL);
-    kept = `; the file as it was is kept at ${oneLine(copy)}`;
+    // The copy holds the whole file, env blocks and their tokens included: readable by its owner alone, whatever the original's mode.
+    writeFileSync(copy, original, { mode: 0o600, flag: 'wx' });
+    chmodSync(copy, 0o600);
+    kept = `; the file as it was is kept at ${oneLine(copy)} (readable by you only, and not cleaned up)`;
   }
   // Beside the file and renamed over it, so a reader never sees half of it; and the mode the host gave it stays.
   const beside = `${file}.mnema-tmp-${randomBytes(3).toString('hex')}`;

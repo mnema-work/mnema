@@ -9,7 +9,7 @@
  * whether it resolves depends on the PATH of the host's own process, which this one cannot know.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
+import { lstatSync, readFileSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join } from 'node:path';
 import { planRemoval, type TablePath } from './doctor-mcp.js';
 import { objectAt, rootObject, settingsCandidates, Unsafe } from './doctor-vscode.js';
@@ -100,10 +100,46 @@ export function startsMnema(name: string, entry: unknown): boolean {
   return startsMnemaWith(name, launchOf(entry));
 }
 
+/** Folders where a disk comes and goes: a path under one that is not there today may be back when the disk is. */
+const COMES_AND_GOES = /^(\/mnt|\/media|\/run\/media|\/Volumes|\/net|\/mount)(\/|$)/;
+/** Version managers: a version removed today is one a person may install again. */
+const VERSION_MANAGERS = /\/\.(nvm|fnm|volta|asdf|nodenv|n)\/|\/\.local\/share\/(fnm|mise)\//;
+
+/** The mount points `/etc/fstab` names, where a disk that is not mounted leaves an empty folder or none. */
+function fstabMounts(): string[] {
+  try {
+    return readFileSync('/etc/fstab', 'utf-8')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line !== '' && !line.startsWith('#'))
+      .map((line) => line.split(/\s+/)[1] ?? '')
+      .filter((mount) => mount.startsWith('/') && mount !== '/');
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Whether a path is GONE: the system said it is not there (ENOENT, ENOTDIR) and nothing says it may be back. Any other
+ * answer (EACCES, a disk that is slow or not mounted, a version a manager can install again) is "not known", never
+ * dead: a path that does not exist today may come back, and the copy `--fix` keeps restores the entry.
+ */
+export function isGone(path: string): boolean {
+  try {
+    lstatSync(path);
+    return false;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code !== 'ENOENT' && code !== 'ENOTDIR') return false;
+  }
+  if (COMES_AND_GOES.test(path) || VERSION_MANAGERS.test(path)) return false;
+  return !fstabMounts().some((mount) => path === mount || path.startsWith(`${mount}/`));
+}
+
 /** Why an entry is dead, or undefined: only an absolute path that is not there counts, and a bare name is left alone. */
 function whyDead(launch: ReturnType<typeof launchOf>): string | undefined {
   const { command, args, cwd } = launch;
-  if (command !== '' && isAbsolute(command) && !existsSync(command)) {
+  if (command !== '' && isAbsolute(command) && isGone(command)) {
     return `its command ${command} no longer exists`;
   }
   const program = basename(command).replace(/\.exe$/i, '');
@@ -112,11 +148,11 @@ function whyDead(launch: ReturnType<typeof launchOf>): string | undefined {
     (program === 'node' || program === 'nodejs') &&
     script !== undefined &&
     isAbsolute(script) &&
-    !existsSync(script)
+    isGone(script)
   ) {
     return `the script ${script} it runs no longer exists`;
   }
-  if (cwd !== undefined && isAbsolute(cwd) && !existsSync(cwd)) {
+  if (cwd !== undefined && isAbsolute(cwd) && isGone(cwd)) {
     return `its folder ${cwd} no longer exists`;
   }
   return undefined;
@@ -383,7 +419,7 @@ export function scanClaudeJson(file: string): HostMcpScan {
   for (const [dir, project] of Object.entries(projects)) {
     const path: TablePath = ['projects', dir, 'mcpServers'];
     for (const entry of entriesOf(asRecord(project)?.mcpServers, path)) {
-      const gone = isAbsolute(dir) && !existsSync(dir);
+      const gone = isAbsolute(dir) && isGone(dir);
       entries.push(
         gone
           ? { ...entry, dead: `its project folder ${dir} no longer exists`, projectGone: true }
