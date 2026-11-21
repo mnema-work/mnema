@@ -28,6 +28,7 @@
  * repository runs.
  */
 
+import { isSea } from 'node:sea';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -101,6 +102,22 @@ function shellWord(word: string): string {
 /** The driver command for this installation: its node, its script, and git's four placeholders. */
 export function driverCommand(node: string, script: string): string {
   return `${shellWord(node)} ${shellWord(script)} record merge-tail %O %A %B %P`;
+}
+
+/**
+ * The driver command for a process that is `execPath` run on `argv1`. In a single executable (Node's SEA)
+ * `argv1` is the name the program was typed with, not a script, so the executable is written once: a second
+ * word would reach the program as a verb and fail `mnema has no command "<exe>"`.
+ */
+export function driverCommandOf(execPath: string, argv1: string, sea: boolean): string {
+  return sea
+    ? `${shellWord(execPath)} record merge-tail %O %A %B %P`
+    : driverCommand(execPath, argv1);
+}
+
+/** How this very process is called as a driver: the ONE place the four writers of the setting ask. */
+export function ownDriverCommand(): string {
+  return driverCommandOf(process.execPath, process.argv[1] ?? '', isSea());
 }
 
 /** A git in `cwd`, with automatic maintenance off; bytes out, so a tail is read as it is. */

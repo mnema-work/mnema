@@ -19,8 +19,12 @@
  *
  * WHAT IT DOES NOT CARRY. The files a package finds beside itself are not inside an executable:
  * the built-in stack index (`mnema stack index`, `stack add` of a built-in name) and the site verifier
- * (`mnema site`). The hooks and the gate, which are what an executable is for where the first `node` on
- * the PATH is the wrong one, and the record verbs, do not read them.
+ * (`mnema site`). The record verbs, `verify` and the merge driver do not read them. The plugins' hooks
+ * are not carried either: each starts with `node`, and finds `mnema` on the PATH.
+ *
+ * HOW IT IS CALLED. A SEA is handed the name it was typed with as `process.argv[1]`, not a script, so
+ * `cli.ts` runs the program whenever `node:sea` says it is one, and the merge driver is written with the
+ * executable once (`ownDriverCommand`).
  *
  * Writes into `outdir` (`dist/single-executable/` unless named): `mnema-<version>-linux-x64` and
  * `mnema-<version>-linux-x64.sha256`, the line `sha256sum --check` reads.

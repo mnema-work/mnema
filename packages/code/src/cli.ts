@@ -23,6 +23,7 @@
 // The guard: below the Node floor this says so and exits 1, before the line that loads the program.
 import './node-floor.js';
 import { realpathSync } from 'node:fs';
+import { isSea } from 'node:sea';
 import { pathToFileURL } from 'node:url';
 
 /**
@@ -69,7 +70,7 @@ export function invokedAsTheBinary(moduleUrl: string, argv1: string | undefined)
 }
 
 // Auto-run when invoked as the binary (not when something imports this file).
-if (invokedAsTheBinary(import.meta.url, process.argv[1])) {
+if (isSea() || invokedAsTheBinary(import.meta.url, process.argv[1])) {
   void import('./program.js').then(({ runAsTheBinary }) => {
     runAsTheBinary();
   });

@@ -46,10 +46,11 @@ jobs:
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
-      # Node 26: `--build-sea` with an ES module as the entry needs 25.7, and 26 is in the engines range.
+      # An exact Node 26: the executable carries the Node that builds it, so which one is known. `--build-sea` with an
+      # ES module as the entry needs 25.7, and 26 is in the engines range.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '26'
+          node-version: '26.13.1'
           package-manager-cache: false
 
       - name: Install dependencies
