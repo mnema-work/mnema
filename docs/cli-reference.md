@@ -211,8 +211,8 @@ Each tool of the MCP server has its page, in [the tools](reference/mcp-tools.md)
   the four numbers add up to the files walked. The rules in force are read once for the whole walk, and each file
   is matched against them by the same prefix the gate uses. It follows the gate's switches: with `edit-refuses-a-write` or
   `edit-asks-a-person` switched off, a file under a rule of that layer counts under the next one, and the output names the
-  channels that are off. It gives numbers and no percentage or grade. The six names left out as not
-  hand-written (`.git`, `.mnema`, `node_modules`, `dist`, `build`, `coverage`) are named, a symbolic link is not counted,
+  channels that are off. It gives numbers and no percentage or grade. Folders left out as not
+  hand-written (`.git`, `.mnema`, `node_modules`, `dist`, `build`, `coverage`) are named, only the ones found, a symbolic link is not counted,
   and the walk stops at 50,000 files: it then says every count is a floor.
 - **A rules file for a host without the plugin**: `mnema rules-file --host vscode` prints the
   committed rules in force whose address is a file or a directory, as a `.instructions.md` with an `applyTo`,

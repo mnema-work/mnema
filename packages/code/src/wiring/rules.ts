@@ -37,15 +37,9 @@ export function registerRules(program: Command, wiring: Wiring): Declared {
     )
     .option('--json', 'emit the faithful reading as JSON')
     .action(async (path: string | undefined, opts: { json?: boolean; coverage?: boolean }) => {
-      if (opts.coverage === true && path !== undefined) {
-        reportRefusal(wiring, {
-          reason: 'USAGE',
-          message: '--coverage counts the whole project: give it no path.',
-        });
-        return;
-      }
-      if (opts.coverage !== true && path === undefined) {
-        // NO PROJECT FIRST: outside one, the answer to every read is the same, whatever was typed.
+      // NO PROJECT FIRST: outside one, the answer to every read is the same, whatever was typed,
+      // so the misuse of the line is judged only once there is a project to ask.
+      if ((opts.coverage === true) === (path !== undefined)) {
         const { runRules: probe } = await import('../commands/rules.js');
         const outside = probe(here(), { path: '.' });
         if (!outside.ok) {
@@ -54,7 +48,10 @@ export function registerRules(program: Command, wiring: Wiring): Declared {
         }
         reportRefusal(wiring, {
           reason: 'USAGE',
-          message: 'a path to ask about, or --coverage to count the whole project.',
+          message:
+            path === undefined
+              ? 'a path to ask about, or --coverage to count the whole project.'
+              : '--coverage counts the whole project: give it no path.',
         });
         return;
       }

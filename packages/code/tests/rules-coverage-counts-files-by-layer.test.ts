@@ -169,6 +169,52 @@ describe('mnema rules --coverage', { timeout: 60_000 }, () => {
     expect(said.out).toContain('0 refused · 4 ask for a person · 4 governed · 9 under no rule');
   });
 
+  it('follows the gate when the asking is off, and when both are off', async () => {
+    await arrange();
+    await did('switch', 'off', 'edit-asks-a-person');
+    const asksOff = runRulesCoverage({ cwd: repo, env });
+    if (!asksOff.ok) throw new Error('refused');
+    // the three ledger files are also governed, so they count there.
+    expect(asksOff.coverage.layers).toEqual({ refuses: 2, asks: 0, governs: 7, none: 8 });
+    expect(asksOff.coverage.switchedOff).toEqual(['edit-asks-a-person']);
+    await did('switch', 'off', 'edit-refuses-a-write');
+    const both = runRulesCoverage({ cwd: repo, env });
+    if (!both.ok) throw new Error('refused');
+    // frozen/a.ts was also asked about (now off), so both frozen files fall to none.
+    expect(both.coverage.layers).toEqual({ refuses: 0, asks: 0, governs: 7, none: 10 });
+    expect(both.coverage.switchedOff).toEqual(['edit-refuses-a-write', 'edit-asks-a-person']);
+    const said = await did('rules', '--coverage');
+    expect(said.out).toContain('switched off: edit-refuses-a-write, edit-asks-a-person');
+  });
+
+  it('counts only rules in force: not a proposed, superseded, unlinked, missing or differently cased address', async () => {
+    const proposed = (await did('decision', 'record', 'Proposed only', 'why')).out.match(
+      /\(([0-9a-f-]{20,})\)/,
+    )?.[1] as string;
+    await did('link', proposed, 'src/ledger', '--rel', 'refuses-a-write');
+    const old = await ruleAt('Replaced rule', 'tools', 'refuses-a-write');
+    const next = (await did('decision', 'record', 'Its successor', 'why')).out.match(
+      /\(([0-9a-f-]{20,})\)/,
+    )?.[1] as string;
+    await did('decision', 'move', 'accept', next, '--note', 'agreed');
+    const replaced = await did('decision', 'supersede', old, next, '--reason', 'newer');
+    expect(replaced.failed, replaced.err).toBe(false);
+    const taken = await ruleAt('Taken back', 'src/billing', 'refuses-a-write');
+    const unlinked = await did('unlink', taken, 'src/billing', '--rel', 'refuses-a-write', '--reason', 'no');
+    expect(unlinked.failed, unlinked.err).toBe(false);
+    await ruleAt('Names nothing', 'src/gone', 'asks-for-a-person');
+    await ruleAt('Wrong case', 'Docs', 'governs');
+    // The one that does count: in force, and held by the private tree.
+    const made = await did('decision', 'record', 'Private rule', 'why', '--scope', 'private');
+    const priv = made.out.match(/\(([0-9a-f-]{20,})\)/)?.[1] as string;
+    await did('decision', 'move', 'accept', priv, '--note', 'agreed');
+    const linked = await did('link', priv, 'src/other', '--rel', 'governs', '--scope', 'private');
+    expect(linked.failed, linked.err).toBe(false);
+    const done = runRulesCoverage({ cwd: repo, env });
+    if (!done.ok) throw new Error('refused');
+    expect(done.coverage.layers).toEqual({ refuses: 0, asks: 0, governs: 1, none: 16 });
+  });
+
   it('counts a project with no rules wholly under none', async () => {
     const done = runRulesCoverage({ cwd: repo, env });
     if (!done.ok) throw new Error('refused');
