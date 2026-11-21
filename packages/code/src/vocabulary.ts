@@ -251,7 +251,14 @@ export function windowGloss(end: 'from' | 'to', subject: WindowSubject): string 
 export function windowHelp(subject: WindowSubject): string {
   // The breaks are the domain's own (see `WINDOW_IS_OVER`), so nothing here decides a
   // width: this surface names the five modules that may, and a vocabulary is not one.
-  return ['', 'The window:', ...WINDOW_IS_OVER[subject].map((line) => `  ${line}`)].join('\n');
+  return [
+    '',
+    'The window:',
+    ...WINDOW_IS_OVER[subject].map((line) => `  ${line}`),
+    '  A bound is a date (YYYY-MM-DD, read as UTC: --from is the start of the day,',
+    '  --to its last millisecond) or a timestamp ending in Z or an offset',
+    '  (2026-11-21T10:30:00-03:00). Anything else is refused.',
+  ].join('\n');
 }
 
 /** The same sentence flat, for a door that wants one line: a tool's field description. */
