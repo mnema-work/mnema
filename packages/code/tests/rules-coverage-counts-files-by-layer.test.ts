@@ -200,7 +200,15 @@ describe('mnema rules --coverage', { timeout: 60_000 }, () => {
     const replaced = await did('decision', 'supersede', old, next, '--reason', 'newer');
     expect(replaced.failed, replaced.err).toBe(false);
     const taken = await ruleAt('Taken back', 'src/billing', 'refuses-a-write');
-    const unlinked = await did('unlink', taken, 'src/billing', '--rel', 'refuses-a-write', '--reason', 'no');
+    const unlinked = await did(
+      'unlink',
+      taken,
+      'src/billing',
+      '--rel',
+      'refuses-a-write',
+      '--reason',
+      'no',
+    );
     expect(unlinked.failed, unlinked.err).toBe(false);
     await ruleAt('Names nothing', 'src/gone', 'asks-for-a-person');
     await ruleAt('Wrong case', 'Docs', 'governs');
