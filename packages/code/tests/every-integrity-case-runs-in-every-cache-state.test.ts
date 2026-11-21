@@ -39,6 +39,8 @@ const HELPER = 'every-cache-state';
  * long cases; they are owed.
  */
 export const EXEMPT: Readonly<Record<string, string>> = {
+  'packages/code/tests/a-decision-is-proven-in-one-file.test.ts':
+    'appends one line no reader parses to a tail to hold that `prove` builds no proof from a record its verify calls broken; the verdict is asked of the chain with no cache, before any proof is read, so no cache state changes what the case asks',
   'packages/chain/src/chain/a-part-the-disk-will-not-open-is-handed-to-a-collector.test.ts':
     'holds what the readers of the chain hand a collector, or throw, for a folder or a file the disk will not open; the chain has no projection cache (the cache states are asked of the binary in a-part-the-disk-will-not-open-is-named-and-never-an-errno)',
   'packages/code/tests/a-part-the-disk-will-not-open-is-named-and-never-an-errno.test.ts':
