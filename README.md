@@ -2,7 +2,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/banner-dark.svg">
-  <img src="docs/assets/banner-light.svg" alt="mnema: a signed, append-only record of the decisions behind AI coding agents' work" width="640">
+  <img src="docs/assets/banner-light.svg" alt="mnema: the decision record for AI coding agents" width="640">
 </picture>
 
 <h3>mnema is the decision record for AI coding agents.</h3>
@@ -17,11 +17,11 @@ Your decisions, handed to your agents' sessions and held at the edits they gover
 </p>
 
 <p>
-<a href="https://github.com/mnema-work/mnema/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/mnema-work/mnema/ci.yml?branch=main&amp;style=flat-square&amp;label=CI&amp;color=997dbf"></a>
-<a href="https://www.npmjs.com/package/@mnema/code"><img alt="npm: @mnema/code" src="https://img.shields.io/npm/v/@mnema/code?style=flat-square&amp;label=npm&amp;color=997dbf"></a>
-<a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-997dbf?style=flat-square"></a>
-<a href="https://scorecard.dev/viewer/?uri=github.com/mnema-work/mnema"><img alt="OpenSSF Scorecard" src="https://img.shields.io/ossf-scorecard/github.com/mnema-work/mnema?style=flat-square&amp;label=OpenSSF%20Scorecard&amp;color=997dbf"></a>
-<img alt="Node 24.15.0 or a later 24, or 26.0.0 or later" src="https://img.shields.io/badge/node-%5E24.15.0%20%7C%7C%20%E2%89%A526.0.0-997dbf?style=flat-square">
+<a href="https://github.com/mnema-work/mnema/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/mnema-work/mnema/ci.yml?branch=main&amp;style=flat-square&amp;label=CI"></a>
+<a href="https://www.npmjs.com/package/@mnema/code"><img alt="npm: @mnema/code" src="https://img.shields.io/npm/v/@mnema/code?style=flat-square&amp;label=npm&amp;color=6b6862"></a>
+<a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-6b6862?style=flat-square"></a>
+<a href="https://scorecard.dev/viewer/?uri=github.com/mnema-work/mnema"><img alt="OpenSSF Scorecard" src="https://img.shields.io/ossf-scorecard/github.com/mnema-work/mnema?style=flat-square&amp;label=OpenSSF%20Scorecard&amp;color=6b6862"></a>
+<img alt="Node 24.15.0 or a later 24, or 26.0.0 or later" src="https://img.shields.io/badge/node-%5E24.15.0%20%7C%7C%20%E2%89%A526.0.0-6b6862?style=flat-square">
 </p>
 
 <picture>
@@ -161,7 +161,7 @@ documented and not measured), and the notes on each host are in
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/mnema-work/mnema/main/docs/assets/the-family-dark.svg">
-  <img src="https://raw.githubusercontent.com/mnema-work/mnema/main/docs/assets/the-family-light.svg" alt="The mnema family: @mnema/code, the command line and the MCP server over one record, with the SDK, a VS Code extension, an agent in CI, the GitHub Action, mnema site and Stacks around it" width="880">
+  <img src="https://raw.githubusercontent.com/mnema-work/mnema/main/docs/assets/the-family-light.svg" alt="The mnema family: @mnema/code, the command line and the MCP server over one record, with the SDK, a VS Code extension, an agent in CI, the GitHub Action, mnema site and Stacks around it" width="1200">
 </picture>
 
 </div>
@@ -252,16 +252,22 @@ claim about the agent hosts is held, and which are not held yet, is in [`docs/ev
 <!-- contributors:start -->
 <table align="center">
 <tr>
-<td align="center"><a href="https://github.com/mentallyunstable-lab"><img src="docs/assets/contributor-mentallyunstable-lab.svg" width="72" height="72" alt="@mentallyunstable-lab"><br><sub>mentallyunstable-lab</sub></a></td>
-<td align="center"><a href="https://github.com/tylrcc"><img src="docs/assets/contributor-tylrcc.svg" width="72" height="72" alt="@tylrcc"><br><sub>tylrcc</sub></a></td>
-<td align="center"><a href="https://github.com/jay23606"><img src="docs/assets/contributor-jay23606.svg" width="72" height="72" alt="@jay23606"><br><sub>jay23606</sub></a></td>
-<td align="center"><a href="https://github.com/prascli"><img src="docs/assets/contributor-prascli.svg" width="72" height="72" alt="@prascli"><br><sub>prascli</sub></a></td>
+<td align="center"><a href="https://github.com/mentallyunstable-lab"><img src="docs/assets/contributor-mentallyunstable-lab.svg" width="168" height="84" alt="@mentallyunstable-lab"><br><sub>mentallyunstable-lab</sub></a></td>
+<td align="center"><a href="https://github.com/tylrcc"><img src="docs/assets/contributor-tylrcc.svg" width="168" height="84" alt="@tylrcc"><br><sub>tylrcc</sub></a></td>
+<td align="center"><a href="https://github.com/bfs2021"><img src="docs/assets/contributor-bfs2021.svg" width="168" height="84" alt="@bfs2021"><br><sub>bfs2021</sub></a></td>
+<td align="center"><a href="https://github.com/jay23606"><img src="docs/assets/contributor-jay23606.svg" width="168" height="84" alt="@jay23606"><br><sub>jay23606</sub></a></td>
+</tr>
+<tr>
+<td align="center"><a href="https://github.com/prascli"><img src="docs/assets/contributor-prascli.svg" width="168" height="84" alt="@prascli"><br><sub>prascli</sub></a></td>
+<td align="center"><a href="https://github.com/dh1011"><img src="docs/assets/contributor-dh1011.svg" width="168" height="84" alt="@dh1011"><br><sub>dh1011</sub></a></td>
+<td align="center"><a href="https://github.com/fkolo"><img src="docs/assets/contributor-fkolo.svg" width="168" height="84" alt="@fkolo"><br><sub>fkolo</sub></a></td>
 </tr>
 </table>
-<p align="center">Thank you also to <a href="https://github.com/bfs2021">@bfs2021</a>, an account that declares itself automated, whose pull requests were merged.</p>
 <!-- contributors:end -->
 
 <p align="center">To join them, start from <a href="CONTRIBUTING.md"><code>CONTRIBUTING.md</code></a>, the pinned <a href="https://github.com/mnema-work/mnema/issues/1345">Start here</a> issue, or an issue labelled <code>ready for an agent</code>.</p>
+
+<p align="center"><sub>If mnema helps your work, a star on the repository helps others find it; it is only ever yours to give.</sub></p>
 
 ## License
 

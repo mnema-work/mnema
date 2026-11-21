@@ -3,15 +3,15 @@
 <p align="center">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/mnema-work/mnema/main/packages/core/assets/core-dark.svg">
-  <img src="https://raw.githubusercontent.com/mnema-work/mnema/main/packages/core/assets/core-light.svg" alt="The mnema work domain: the gate over the SHAPE of a change, projections, identity, and queries. Depends on @mnema/chain." width="720">
+  <img src="https://raw.githubusercontent.com/mnema-work/mnema/main/packages/core/assets/core-light.svg" alt="@mnema/core: a decision is proposed, then accepted, superseded or rejected, each move a new event and never an edit; accepting a rejected decision is refused" width="1200">
 </picture>
 </p>
 
 <p align="center">
-<a href="https://github.com/mnema-work/mnema/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/mnema-work/mnema/ci.yml?branch=main&amp;style=flat-square&amp;label=CI&amp;color=997dbf"></a>
-<a href="https://www.npmjs.com/package/@mnema/core"><img alt="npm: @mnema/core" src="https://img.shields.io/npm/v/@mnema/core?style=flat-square&amp;label=npm&amp;color=997dbf"></a>
-<a href="https://github.com/mnema-work/mnema/blob/main/LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-997dbf?style=flat-square"></a>
-<img alt="Node 24.15.0 or a later 24, or 26.0.0 or later" src="https://img.shields.io/badge/node-%5E24.15.0%20%7C%7C%20%3E%3D26.0.0-997dbf?style=flat-square">
+<a href="https://github.com/mnema-work/mnema/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/mnema-work/mnema/ci.yml?branch=main&amp;style=flat-square&amp;label=CI"></a>
+<a href="https://www.npmjs.com/package/@mnema/core"><img alt="npm: @mnema/core" src="https://img.shields.io/npm/v/@mnema/core?style=flat-square&amp;label=npm&amp;color=6b6862"></a>
+<a href="https://github.com/mnema-work/mnema/blob/main/LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-6b6862?style=flat-square"></a>
+<img alt="Node 24.15.0 or a later 24, or 26.0.0 or later" src="https://img.shields.io/badge/node-%5E24.15.0%20%7C%7C%20%3E%3D26.0.0-6b6862?style=flat-square">
 </p>
 
 The work domain of [mnema](https://github.com/mnema-work/mnema), built on top of

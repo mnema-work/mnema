@@ -5,10 +5,11 @@
 // the tone a reader already sees in every GIF. agg's `github-light` theme carries the same
 // palette, and `#c4a0f5` on white is about 2:1; the other magenta the palette defines (slot 13,
 // `#997dbf`, about 3.5:1 on white) is the light hex. A shields.io badge does not change with the
-// theme, so it takes the light one.
+// theme, so it took the light one: that is no longer so, the badges are dark stone now.
 //
-// `draw.mjs` paints with these, and `packages/code/tests/the-front-page-is-drawn-from-the-console.test.ts`
-// fails on any other saturated colour in `docs/assets/` or in a badge's `color=`.
+// What still paints with these is the social card, which `draw.mjs` draws, and the site's page. The README's banner,
+// the diagrams and the badges are in the brand's palette (`.github/the-brand/palette.mjs`), and
+// `packages/code/tests/the-front-page-is-drawn-from-the-console.test.ts` holds them to it, not to this accent.
 
 /** The accent per theme of the page that shows the picture. */
 export const ACCENT = Object.freeze({ dark: '#c4a0f5', light: '#997dbf' });

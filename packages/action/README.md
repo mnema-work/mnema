@@ -1,6 +1,6 @@
 # @mnema/action
 
-[![CI](https://img.shields.io/github/actions/workflow/status/mnema-work/mnema/ci.yml?branch=main&style=flat-square&label=CI&color=997dbf)](https://github.com/mnema-work/mnema/actions/workflows/ci.yml) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-997dbf?style=flat-square)](../../LICENSE) ![Node 24.15.0 or a later 24, or 26.0.0 or later](https://img.shields.io/badge/node-%5E24.15.0%20%7C%7C%20%3E%3D26.0.0-997dbf?style=flat-square) ![Not published: run from a checkout](https://img.shields.io/badge/npm-not%20published-997dbf?style=flat-square)
+[![CI](https://img.shields.io/github/actions/workflow/status/mnema-work/mnema/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/mnema-work/mnema/actions/workflows/ci.yml) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-6b6862?style=flat-square)](../../LICENSE) ![Node 24.15.0 or a later 24, or 26.0.0 or later](https://img.shields.io/badge/node-%5E24.15.0%20%7C%7C%20%3E%3D26.0.0-6b6862?style=flat-square) ![Not published: run from a checkout](https://img.shields.io/badge/npm-not%20published-6b6862?style=flat-square)
 
 A GitHub Action for [mnema](https://github.com/mnema-work/mnema). On a pull request it reads the
 record the repository already carries in `.mnema/`, writes ONE comment saying what the pull request
