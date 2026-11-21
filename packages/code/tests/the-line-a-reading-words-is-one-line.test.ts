@@ -1494,18 +1494,21 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'minted',
       why: 'the count of records that matched',
     },
-  'search.ts «{} matched and {} are shown; to see more, raise --limit (up to {}).» result.total #1': {
-    verdict: 'minted',
-    why: 'the count of records that matched',
-  },
-  'search.ts «{} matched and {} are shown; to see more, raise --limit (up to {}).» result.hits.length #1': {
-    verdict: 'minted',
-    why: 'the count of records shown',
-  },
-  'search.ts «{} matched and {} are shown; to see more, raise --limit (up to {}).» SEARCH_MAX_LIMIT #1': {
-    verdict: 'minted',
-    why: 'the most records one search returns, a constant of the product',
-  },
+  'search.ts «{} matched and {} are shown; to see more, raise --limit (up to {}).» result.total #1':
+    {
+      verdict: 'minted',
+      why: 'the count of records that matched',
+    },
+  'search.ts «{} matched and {} are shown; to see more, raise --limit (up to {}).» result.hits.length #1':
+    {
+      verdict: 'minted',
+      why: 'the count of records shown',
+    },
+  'search.ts «{} matched and {} are shown; to see more, raise --limit (up to {}).» SEARCH_MAX_LIMIT #1':
+    {
+      verdict: 'minted',
+      why: 'the most records one search returns, a constant of the product',
+    },
   'search.ts «{} matched and {} are shown, the most one search returns; to reach the rest, search a window of dates with --from <iso> and --to <iso>.» result.hits.length #1':
     {
       verdict: 'minted',
