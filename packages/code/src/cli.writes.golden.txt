@@ -19,7 +19,7 @@ $ mnema init
 |   where no `CLAUDE.md` exists):
 |     @MNEMA.md
 |
-|   Off until switched on: edit-first-write-gate, user-corrections.
+|   Off until switched on: edit-first-write-gate.
 |   Turn one on with `mnema switch on <name>`; `mnema switch` lists every channel.
 |   Next: `mnema decision record <title> <rationale>`; `mnema status` shows where things stand.
 $ mnema init
@@ -255,7 +255,7 @@ $ mnema tail prune <backup-key-fingerprint> --reason 'the key that never wrote a
 
 ### switching what the product pushes
 $ mnema switch
-| 19 channel(s), looked in public, private, global:
+| 20 channel(s), looked in public, private, global:
 |   brief-document         on   the document `mnema brief` prints, which a session opens with and a subagent starts with: the decisions in force and the adopted patterns of the committed record, by name
 |   recall-document        on   the notes `mnema recall` prints, which a session opens with: the memories and observations recorded for this project, from every tree this machine holds for it, the ones near what the session touches first
 |   edit-rules-push        on   the rules addressed at a file, handed over at each edit of it, beside the result of that write
@@ -263,8 +263,9 @@ $ mnema switch
 |   edit-refuses-a-write   on   the refusal of a write where a rule of the record refuses one: such a write goes through, the rules go on arriving, and a rule that asks for a person still asks
 |   agent-accepts          on   an agent ruling a decision in force: with it off, an `accept`, a `supersede`, an `adopt` or a `deprecate` that declares an agent is refused, and so is one that declares none unless it is made at a terminal (standard input and standard error both a TTY; through the MCP server never): only a person at a terminal accepts or replaces a decision or adopts or deprecates a pattern, and only a person at a terminal switches it back on (stopping it is anyone's), a proposed decision waits, and nothing else changes. A terminal is a heuristic for a person, not a proof of one
 |   edit-first-write-gate  off  the hold on the first write of a session to a file a rule addresses: with it on, that write is refused once, with the rules in the reason, and the same write repeated goes through. Off until switched on; it holds in Claude Code, where the server remembers the session  ·  off until switched on: `mnema switch on edit-first-write-gate`
-|   user-corrections       off  the proposals recorded from what a person typed into a session: with it on, a `Stop` hook reads the transcript, and each time the person corrected the agent a decision is recorded as proposed in this machine’s private tree, and so is each answer the person gave to a question the agent asked. Off until switched on  ·  off until switched on: `mnema switch on user-corrections`
+|   user-corrections       on   the proposals recorded from what a person typed into a session: with it on, a `Stop` hook reads the transcript, and each time the person corrected the agent a decision is recorded as proposed in this machine’s private tree, and so is each answer the person gave to a question the agent asked, and, where `dictated-rule` is off, each message that has the shape of a rule dictated. On to begin with
 |   choice-settled         on   the sentence handed to the agent after a question it asked the person was answered: that a choice may have been settled there, which tool records it and which accepts it (or that a person accepts it, where `agent-accepts` is off). It reads which tool ran and whether `agent-accepts` is on, and writes nothing
+|   dictated-rule          on   the sentence handed to the agent beside a message of the person’s that is an instruction to keep (always, never, from now on followed by a verb in the imperative, or put it as a rule): that only a rule the person typed is accepted, which tool records it and which accepts it, the note quoting the person’s own words (or that a person accepts it, where `agent-accepts` is off). It reads the message for that shape and whether `agent-accepts` is on, says none of the message’s words, and writes nothing
 |   host-memory-mirror     on   the copy of the host’s own memory: with it on, a `PostToolUse` hook copies each note Claude Code writes to its memory directory into this machine’s private tree, once per content, leaving out the index `MEMORY.md` and the notes about the person (`type: user`)
 |   decision-file-written  on   the line beside a write to a file that holds decisions (an ADR, a plan, a ledger, a rules file) the record cites nowhere, naming the command that reads it into the record, once per session and file
 |   subagent-handback      on   the return of a subagent that ends its final reply without the block of decisions the record asks for: with it on, a `SubagentStop` hook sends the subagent back once, with the format; off, a subagent stops as it would without the plugin
@@ -281,7 +282,7 @@ $ mnema switch off edit-rules-push --reason 'noisy while porting'
 |   edit-rules-push is now OFF: nothing of it reaches a model. The switch that decides it was made by <anchor-short> at <at:01>.
 |   Nothing was removed and nothing else stopped: the record still holds what it held, and every read and tool still answers whoever asks. What stops is this product putting it in front of a model unasked.
 $ mnema switch
-| 19 channel(s), looked in public, private, global:
+| 20 channel(s), looked in public, private, global:
 |   brief-document         on   the document `mnema brief` prints, which a session opens with and a subagent starts with: the decisions in force and the adopted patterns of the committed record, by name
 |   recall-document        on   the notes `mnema recall` prints, which a session opens with: the memories and observations recorded for this project, from every tree this machine holds for it, the ones near what the session touches first
 |   edit-rules-push        off  the rules addressed at a file, handed over at each edit of it, beside the result of that write  ·  switched off by <anchor-short>  <at:01>  reason: noisy while porting  `mnema switch on edit-rules-push` turns it on
@@ -289,8 +290,9 @@ $ mnema switch
 |   edit-refuses-a-write   on   the refusal of a write where a rule of the record refuses one: such a write goes through, the rules go on arriving, and a rule that asks for a person still asks
 |   agent-accepts          on   an agent ruling a decision in force: with it off, an `accept`, a `supersede`, an `adopt` or a `deprecate` that declares an agent is refused, and so is one that declares none unless it is made at a terminal (standard input and standard error both a TTY; through the MCP server never): only a person at a terminal accepts or replaces a decision or adopts or deprecates a pattern, and only a person at a terminal switches it back on (stopping it is anyone's), a proposed decision waits, and nothing else changes. A terminal is a heuristic for a person, not a proof of one
 |   edit-first-write-gate  off  the hold on the first write of a session to a file a rule addresses: with it on, that write is refused once, with the rules in the reason, and the same write repeated goes through. Off until switched on; it holds in Claude Code, where the server remembers the session  ·  off until switched on: `mnema switch on edit-first-write-gate`
-|   user-corrections       off  the proposals recorded from what a person typed into a session: with it on, a `Stop` hook reads the transcript, and each time the person corrected the agent a decision is recorded as proposed in this machine’s private tree, and so is each answer the person gave to a question the agent asked. Off until switched on  ·  off until switched on: `mnema switch on user-corrections`
+|   user-corrections       on   the proposals recorded from what a person typed into a session: with it on, a `Stop` hook reads the transcript, and each time the person corrected the agent a decision is recorded as proposed in this machine’s private tree, and so is each answer the person gave to a question the agent asked, and, where `dictated-rule` is off, each message that has the shape of a rule dictated. On to begin with
 |   choice-settled         on   the sentence handed to the agent after a question it asked the person was answered: that a choice may have been settled there, which tool records it and which accepts it (or that a person accepts it, where `agent-accepts` is off). It reads which tool ran and whether `agent-accepts` is on, and writes nothing
+|   dictated-rule          on   the sentence handed to the agent beside a message of the person’s that is an instruction to keep (always, never, from now on followed by a verb in the imperative, or put it as a rule): that only a rule the person typed is accepted, which tool records it and which accepts it, the note quoting the person’s own words (or that a person accepts it, where `agent-accepts` is off). It reads the message for that shape and whether `agent-accepts` is on, says none of the message’s words, and writes nothing
 |   host-memory-mirror     on   the copy of the host’s own memory: with it on, a `PostToolUse` hook copies each note Claude Code writes to its memory directory into this machine’s private tree, once per content, leaving out the index `MEMORY.md` and the notes about the person (`type: user`)
 |   decision-file-written  on   the line beside a write to a file that holds decisions (an ADR, a plan, a ledger, a rules file) the record cites nowhere, naming the command that reads it into the record, once per session and file
 |   subagent-handback      on   the return of a subagent that ends its final reply without the block of decisions the record asks for: with it on, a `SubagentStop` hook sends the subagent back once, with the format; off, a subagent stops as it would without the plugin
@@ -435,6 +437,6 @@ $ mnema init
 |   where no `CLAUDE.md` exists):
 |     @MNEMA.md
 |
-|   Off until switched on: edit-first-write-gate, user-corrections.
+|   Off until switched on: edit-first-write-gate.
 |   Turn one on with `mnema switch on <name>`; `mnema switch` lists every channel.
 |   Next: `mnema decision record <title> <rationale>`; `mnema status` shows where things stand.

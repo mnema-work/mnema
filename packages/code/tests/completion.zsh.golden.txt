@@ -12,7 +12,7 @@
 
 _mnema_commands() {
   case "$1" in
-    '') echo 'init decision link unlink memory observe retract skill stack task promote status brief recall rules rules-file instructions switch inherit verify witness check site search show timeline refs audit diagram export usage resume repl why commits aging trailer commit-hook record key tail backup doctor upgrade report completion tour mcp run before-a-write beside-a-write tally corrections after-a-write handback settled dispatched help' ;;
+    '') echo 'init decision link unlink memory observe retract skill stack task promote status brief recall rules rules-file instructions switch inherit verify witness check site search show timeline refs audit diagram export usage resume repl why commits aging trailer commit-hook record key tail backup doctor upgrade report completion tour mcp run before-a-write beside-a-write tally corrections after-a-write handback settled dictated dispatched help' ;;
     'decision') echo 'record move review supersede import help' ;;
     'skill') echo 'create move export provenance help' ;;
     'stack') echo 'add remove list index show diff check export enable disable help' ;;
@@ -91,6 +91,7 @@ _mnema_described() {
       'after-a-write:copy a note of the host’s memory into the private tree, or name the door of a decision file, for a PostToolUse hook' \
       'handback:check what a subagent hands back when it stops, or print the format it is checked by' \
       'settled:say to the agent, after a question to the person was answered, which tool records a choice' \
+      'dictated:say to the agent, beside a message that has the shape of a rule the person dictated, which tools record and accept it' \
       'dispatched:record a session’s dispatches to other agents as one private task and a handoff each, for a PostToolUse or SessionEnd hook' \
       'help:display help for command' ;;
     'decision') printf '%s\n' \
@@ -313,6 +314,7 @@ _mnema_flags() {
     'after-a-write') echo '-h --help -V --version --color' ;;
     'handback') echo '--schema -h --help -V --version --color' ;;
     'settled') echo '--reply -h --help -V --version --color' ;;
+    'dictated') echo '-h --help -V --version --color' ;;
     'dispatched') echo '-h --help -V --version --color' ;;
   esac
 }
@@ -394,10 +396,10 @@ _mnema_values() {
     'switch:--color') echo 'auto always never' ;;
     'switch off:--scope') echo 'public private global' ;;
     'switch off:--color') echo 'auto always never' ;;
-    'switch off:') echo 'brief-document recall-document edit-rules-push edit-asks-a-person edit-refuses-a-write agent-accepts edit-first-write-gate user-corrections choice-settled host-memory-mirror decision-file-written subagent-handback tool-call-count last-session private-rules after-a-compaction session-journal agent-mirror session-tally' ;;
+    'switch off:') echo 'brief-document recall-document edit-rules-push edit-asks-a-person edit-refuses-a-write agent-accepts edit-first-write-gate user-corrections choice-settled dictated-rule host-memory-mirror decision-file-written subagent-handback tool-call-count last-session private-rules after-a-compaction session-journal agent-mirror session-tally' ;;
     'switch on:--scope') echo 'public private global' ;;
     'switch on:--color') echo 'auto always never' ;;
-    'switch on:') echo 'brief-document recall-document edit-rules-push edit-asks-a-person edit-refuses-a-write agent-accepts edit-first-write-gate user-corrections choice-settled host-memory-mirror decision-file-written subagent-handback tool-call-count last-session private-rules after-a-compaction session-journal agent-mirror session-tally' ;;
+    'switch on:') echo 'brief-document recall-document edit-rules-push edit-asks-a-person edit-refuses-a-write agent-accepts edit-first-write-gate user-corrections choice-settled dictated-rule host-memory-mirror decision-file-written subagent-handback tool-call-count last-session private-rules after-a-compaction session-journal agent-mirror session-tally' ;;
     'inherit:--color') echo 'auto always never' ;;
     'inherit set:--color') echo 'auto always never' ;;
     'inherit update:--color') echo 'auto always never' ;;
@@ -482,6 +484,7 @@ _mnema_values() {
     'after-a-write:--color') echo 'auto always never' ;;
     'handback:--color') echo 'auto always never' ;;
     'settled:--color') echo 'auto always never' ;;
+    'dictated:--color') echo 'auto always never' ;;
     'dispatched:--color') echo 'auto always never' ;;
   esac
 }
