@@ -34,6 +34,13 @@ What it reads and what it does:
   person accepts or rejects.
   On stdout, the reply the host reads: a `systemMessage` saying how many were recorded and
   under which labels, or {}.
+  A typed line is the person’s only where Claude Code marks it origin.kind human: a
+  compaction summary, a local command and “[Request interrupted by user]” never count, a
+  slash command opens an answer but is never quoted, and a transcript of an older Claude
+  Code with no origin yields no typed line. An option chosen in the question tool is read
+  from the tool’s result, which carries no origin.
   It is on until `mnema switch off user-corrections`; it read nothing before 0.1.10 until a
   person switched it on. With the channel off, or outside a project, it records nothing.
+  With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
+  code alone on the first line of the error stream; typed by a person, nothing changes.
 ```

@@ -1,15 +1,15 @@
 The size of every channel the model reads, over one fixture record.
 Bytes are UTF-8; tokens are o200k_base, a relative measure and not what a Claude model bills.
 
-session start: brief --hook                  2557 B      682 tok
+session start: brief --hook                  2683 B      712 tok
 session start: recall --hook                  812 B      200 tok
-subagent start: brief --hook                 2557 B      682 tok
-file form: brief (what MNEMA.md carries)     2614 B      698 tok
+subagent start: brief --hook                 2683 B      712 tok
+file form: brief (what MNEMA.md carries)     2740 B      728 tok
 instructions                                 2041 B      478 tok
 edit: rules pushed                            331 B       92 tok
 edit: asks for a person                       515 B      137 tok
 edit: refuses the write                       643 B      184 tok
-tool answer: bootstrap                       2269 B      837 tok
+tool answer: bootstrap                       2326 B      864 tok
 tool answer: skills                           302 B       89 tok
 tool answer: focus                            743 B      295 tok
 tool answer: resume                          1127 B      439 tok
@@ -18,7 +18,7 @@ tool answer: search ["term"]                  240 B       87 tok
 tool answer: read_record ["id"]               700 B      273 tok
 tool answer: audit_timeline ["id"]           2518 B     1066 tok
 tool answer: audit_refs ["id"]                577 B      231 tok
-tool answer: governing_rules ["path"]         817 B      275 tok
+tool answer: governing_rules ["path"]         836 B      285 tok
 tool answer: next_actions ["id"]              120 B       31 tok
 tool answer: audit_accountability             916 B      276 tok
 tool answer: audit_exposure                    82 B       26 tok
