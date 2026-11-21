@@ -33,14 +33,13 @@ Nothing in it is signed anew. It carries bytes the record already holds and alre
 - a manifest: the decision's title, rationale, alternatives and label, its moves with who made each
   and where its line is, its state, and the record the tails name.
 
-A range is carried whole, because a checkpoint's signature covers every line of its range, and on each
-tail the file carries every range from the first it needs to the last, with no gap: nothing between
-two lines it carries (a move, a writing, a revoked key) can be left out. So the lines beside the
-decision's travel with it, and the file grows with the distance between them: a decision recorded far
-down the tail that also holds its identity's founding carries that tail from the founding on. Measured
-over all 641 decisions of this repository's own record (two tails, 2.9 MB): from 9 KB to 1.1 MB, half
-of them under 12 KB and one in ten above 700 KB, the large ones being the decisions written on the
-tail that holds the founding.
+A range is carried whole, because a checkpoint's signature covers every line of its range, and every
+tail the file touches is carried from its first line to the last range the decision needs, with no
+gap: nothing before or between the lines it carries (a move, a writing, a revoked key) can be left
+out, on that tail. So the file grows with how far down its tails the decision's lines sit. Measured
+over all 675 decisions of this repository's own record (two tails, 3.1 MB): from 9 KB to 2.2 MB, a
+median of 0.9 MB and one in ten above 1.9 MB. A decision written early on a tail is small; one written
+late carries most of that tail.
 
 ## What it proves
 
@@ -53,8 +52,8 @@ one field differs: change one word of a line, or of the manifest, and both check
 
 Both checkers print this beside every proof they accept.
 
-- **That nothing came after it.** On each tail it carries, a proof covers every line from the first it
-  carries to the last, and nothing after. A supersede, a
+- **That nothing came after it.** On each tail it carries, a proof covers every line from the tail's
+  first to the last it carries, and nothing after. A supersede, a
   rejection, a new writing or a revoked key written later is not in it, and the file cannot say there
   was none. To know the decision is still in force, read the record itself, or ask for a newer proof.
 - **That no other tail holds something.** The record is the set of its tails, one per machine, and the

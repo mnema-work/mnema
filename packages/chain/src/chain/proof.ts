@@ -284,6 +284,9 @@ export function proveDecision(
     if (atTail === undefined) {
       atTail = new Map();
       ranges.set(tail, atTail);
+      // Every tail a proof touches is carried from its first line (FORMAT.md section 9): a move or a
+      // revocation before the first range would otherwise be left out as one between two would.
+      if (seq !== 0) wanted.push({ tail, seq: 0 });
     }
     const before =
       atTail.size === 0 ? undefined : [Math.min(...atTail.keys()), Math.max(...atTail.keys())];
@@ -572,6 +575,12 @@ function checked(text: string, upcasters: UpcasterRegistry): ProofVerdict {
       }
       if (checkpoint.fromSeq <= lastTo) {
         refuse(`${where} does not begin after the range before it`);
+      }
+      if (lastTo < 0 && checkpoint.fromSeq !== 0) {
+        refuse(
+          `${tail}: the first range it carries begins at seq ${checkpoint.fromSeq}, and a proof ` +
+            'carries every tail it touches from seq 0',
+        );
       }
       if (lastTo >= 0 && checkpoint.fromSeq !== lastTo + 1) {
         refuse(

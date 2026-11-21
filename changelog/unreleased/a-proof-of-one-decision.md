@@ -6,9 +6,10 @@ Added
   public keys and a manifest of the decision's text, moves and state; `--out <file>` writes it to a file and never
   replaces one. `mnema prove --check <file>` checks it from the file alone, and so does the second reader
   (`python3 packages/chain/verifier/mnema_verify.py proof <file>`), which imports nothing of the product: one word
-  changed in a line or in the manifest is refused by both. On each tail it carries every range from the first it
-  needs to the last, and both readers refuse a gap, so nothing between two carried lines can be left out; the file
-  grows with the distance between them (9 KB to 1.1 MB over this repository's record). A proof says what it does
+  changed in a line or in the manifest is refused by both. Every tail it touches is carried from its first line to the
+  last range it needs, and both readers refuse a tail carried from a later line or with a gap, so nothing before or
+  between carried lines can be left out; the file grows with how far down its tails the decision sits (9 KB to 2.2 MB,
+  median 0.9 MB, over this repository's record). A proof says what it does
   not prove beside every verdict: nothing written after the last range it carries on a tail (a later supersede or a
   revoked key), nothing on a tail it does not carry, no time but the writer's clock, and not who held a key. A decision of this machine's private tree is
   refused unless `--private` asks for it, and none is proven from a record `verify` calls broken. The format is

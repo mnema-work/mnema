@@ -1998,8 +1998,9 @@ The file is the canonical serialization (§1) of one object, and one line feed:
 - `keys`: the PEM public keys (§6), in ascending order of the fingerprint each one's material
   hashes to, which a checker recomputes.
 - `tails`: in ascending order of their ids, each with its tail proof (§6.1) as stored, and its
-  `ranges` in ascending `fromSeq`, each beginning at the `seq` after the one before it ends: **no
-  gap**, so a tail carries every line from the first it carries to the last. A range is one
+  `ranges` in ascending `fromSeq`, the first beginning at `seq` 0 and each after it at the `seq`
+  after the one before it ends: **from the start, and no gap**, so a tail carries every line from its
+  first to the last it carries. A range is one
   checkpoint line (§6) and EVERY stored line (§4) of its range, `fromSeq` to `toSeq`: a content root
   folds every event of its range (§5), so the lines beside the decision's travel with it.
 - `manifest`: what the file claims, in words: the decision's text (§6.8), the moves §6.7 applies to
@@ -2013,9 +2014,10 @@ the birth of every decision a supersede of it names, since §6.7 applies a super
 successor's birth is held; and, for every identity a carried line names as `who`, every
 `identity.founded`, `key.enrolled`, `key.revoked`, `agent.enrolled` and `agent.retired` whose
 `subject` is that identity (the roster facts), so that the fold of §6.2 has the facts that make each
-signing key valid for its anchor. Each of those lines brings its whole range; on each tail, every
-range between the first it carries and the last comes too, so nothing between two carried lines (a
-move, a writing, a revocation, a retraction) can be left out; and each range brings the identities
+signing key valid for its anchor. Each of those lines brings its whole range; every tail it touches
+is carried from its `seq` 0, and every range between that and the last range the tail gives comes
+too, so nothing before or between carried lines (a move, a writing, a revocation, a retraction) can
+be left out; and each range brings the identities
 its lines name, until nothing new is needed. The keys are the key of every tail carried and every key
 a carried line names for its consent: `newFp` of a `key.enrolled`, `agentFp` of an `agent.enrolled`,
 and `checkerFp` of a `checker.enrolled` (which is no roster fact, since it grants a role and no
@@ -2034,8 +2036,9 @@ the fingerprint of a key the file carries (§3); its tail proof verifies under t
 `toSeq - fromSeq + 1` lines; each line is a stored line (§4) whose event its declaration rebuilds
 (§4.1), of this tail, at its `seq`, whose entry hash holds (§3) and whose `prev` is the line carried
 before it on the tail, across a range's edge as inside one (and `null` exactly at `seq` 0); a range
-begins where the one before it on the tail ended, and a gap is refused, naming the tail and the
-`seq`s it leaves out; the content root and the signature verify (§5, §6); every
+begins where the one before it on the tail ended, the first at `seq` 0: a tail whose first range
+begins later is refused, naming the tail and that `seq`, and a gap is refused, naming the tail and
+the `seq`s it leaves out; the content root and the signature verify (§5, §6); every
 event names the checkpoint's signer and none has a `which` that is its `who` (§6); a first-scheme
 checkpoint does not follow a tail proof or a checkpoint of the second (§6.10). The tails name one
 record at most. Then the fold of §6.2, over the lines the file carries and nothing else, every one of
@@ -2045,7 +2048,7 @@ signature, and a word changed in the manifest breaks this comparison.
 
 **What a proof that checks proves.** That these keys signed these lines at these places of these
 tails, under a tail proof that binds each tail to its key and, where the artifacts name one, to one
-record; that on each tail it carries, nothing sits between the first line it carries and the last
+record; that on each tail it carries, nothing sits from the tail's first line to the last it carries
 that it does not carry; that the record held, at those places, the roster facts that made each key
 valid for the identity it signed for; and that those lines read as this decision, with this text, these moves and
 this state.
@@ -2064,9 +2067,9 @@ this state.
 
 The record is linear: there is no path of logarithmic size to a checkpoint, as in a Merkle log, and a
 proof carries whole ranges with no gap between them. This product's writer signs each act in a
-checkpoint of its own, so a range is a handful of lines; but a decision recorded far down the tail
-that holds its identity's founding carries that tail from the founding to the decision, so a proof
-grows toward the size of the tails it touches.
+checkpoint of its own, so a range is a handful of lines; but every tail a proof touches is carried
+from its first line to the last the decision needs, so a proof grows toward the size of the tails it
+touches.
 
 `proof-vector.json`, beside this file, is a proof built from a small record signed with the key of
 RFC 8032 section 7.1, whose secret the RFC publishes: one tail of eight lines (a founding, a decision

@@ -23,6 +23,8 @@ import {
 } from '../events/build.js';
 import { type CanonicalValue, canonicalStringify } from '../events/canonical.js';
 import { openChainForWriting } from './chain.js';
+import { serializeCheckpoint } from './checkpoint.js';
+import { serializeEntry } from './entry.js';
 import { checkProof, proveDecision, recordToProve, WHAT_A_PROOF_DOES_NOT_COVER } from './proof.js';
 import { proofVector, VECTOR_DECISION } from './proof-vector.js';
 import type { ChainWriter } from './writer.js';
@@ -266,12 +268,21 @@ const BROKEN: readonly Broken[] = [
     refusal: /signs 2 line\(s\), and the range carries 1/,
   },
   {
-    name: 'two ranges swapped',
+    name: 'a range carried twice',
+    text: (t) =>
+      changed(t, (p) => {
+        const { ranges } = tailOf(p);
+        ranges.splice(2, 0, ranges[1] as Tail['ranges'][number]);
+      }),
+    refusal: /does not begin after the range before it/,
+  },
+  {
+    name: 'the ranges in reverse order',
     text: (t) =>
       changed(t, (p) => {
         tailOf(p).ranges.reverse();
       }),
-    refusal: /does not begin after the range before it/,
+    refusal: /the first range it carries begins at seq 7/,
   },
   {
     name: 'a line that is not a string',
@@ -453,5 +464,131 @@ describe('a proof of a decision this product wrote', () => {
       ok: false,
       reason: 'NO_SUCH_DECISION',
     });
+  });
+});
+
+describe('a proof over two tails, one machine each', () => {
+  /** Two installations of one key: tail A founds the identity and accepts d-1; tail B supersedes it. */
+  function twoTails() {
+    const a = open();
+    const b = openChainForWriting(root, {
+      keyRoot: root,
+      installationRoot: mkdtempSync(join(root, 'second-machine-')),
+      maxUnsignedEvents: NEVER,
+    });
+    const on = (w: ChainWriter, subject: string, minute: number) => ({
+      at: `2026-11-20T00:0${minute}:00.000Z`,
+      who: w.anchor,
+      signerFp: w.signerFingerprint,
+      subject,
+    });
+    const text = { rationale: 'Two machines, one record.', initial: 'proposed' };
+    a.append(identityFounded(on(a, a.anchor, 0), { foundingFp: a.signerFingerprint }));
+    a.checkpoint();
+    a.appendAll(decisionBirth(on(a, 'd-1', 1), { ...text, title: 'The first', adr: 'ADR-1' }));
+    a.checkpoint();
+    a.append(
+      decisionTransitioned(on(a, 'd-1', 2), {
+        from: 'proposed',
+        to: 'accepted',
+        action: 'accept',
+        fields: { note: 'agreed' },
+      }),
+    );
+    a.checkpoint();
+    b.append(taskCreated(on(b, 't-1', 3), { title: 'before' }));
+    b.checkpoint();
+    b.appendAll(decisionBirth(on(b, 'd-2', 4), { ...text, title: 'The second', adr: 'ADR-2' }));
+    b.checkpoint();
+    b.append(taskCreated(on(b, 't-2', 5), { title: 'between' }));
+    b.checkpoint();
+    b.append(
+      decisionTransitioned(on(b, 'd-1', 6), {
+        from: 'accepted',
+        to: 'superseded',
+        action: 'supersede',
+        by: 'd-2',
+        fields: { reason: 'the second says it better' },
+      }),
+    );
+    b.checkpoint();
+    b.append(taskCreated(on(b, 't-3', 7), { title: 'after' }));
+    b.checkpoint();
+    const record = recordToProve({ root });
+    const tailA = [...record.tails].find(([, held]) =>
+      held.entries.some(({ event }) => event.kind === 'identity.founded'),
+    )?.[0] as string;
+    const tailB = [...record.tails.keys()].find((tail) => tail !== tailA) as string;
+    return { record, tailA, tailB };
+  }
+
+  type Carried = { tail: string; ranges: { checkpoint: string; entries: string[] }[] };
+
+  it('is accepted by both readers, each tail carried from seq 0', () => {
+    const { record, tailA, tailB } = twoTails();
+    const proved = proveDecision(record, 'd-1');
+    expect(proved).toMatchObject({ ok: true, manifest: { state: 'superseded' } });
+    if (!proved.ok) return;
+    const checked = checkProof(proved.text);
+    expect(checked.proven).toBe(true);
+    if (!checked.proven) return;
+    const ranges = new Map(checked.covers.map(({ tail, ranges }) => [tail, ranges]));
+    expect(ranges.get(tailA)).toEqual([
+      [0, 0],
+      [1, 2],
+      [3, 3],
+    ]);
+    // B is carried from its first line to the supersede, the task before the successor included;
+    // the task after the supersede is not needed and not carried.
+    expect(ranges.get(tailB)).toEqual([
+      [0, 0],
+      [1, 2],
+      [3, 3],
+      [4, 4],
+    ]);
+    expect(secondReader(proved.text)).toEqual({ verdict: 'VERIFIED', refused: [] });
+  });
+
+  it('is refused by both readers when the second tail is carried only after the supersede', () => {
+    // The prefix omission: tail B carried from a range after its supersede of d-1, with the manifest
+    // said again over what is left, reads d-1 as accepted. Every carried tail starts at seq 0.
+    const { record, tailA, tailB } = twoTails();
+    const proved = proveDecision(record, 'd-1');
+    if (!proved.ok) throw new Error('setup: not proven');
+    const held = record.tails.get(tailB);
+    const after = held?.checkpoints.find((checkpoint) => checkpoint.fromSeq === 5);
+    const line = held?.entries.find((entry) => entry.link.seq === 5);
+    if (after === undefined || line === undefined) throw new Error('setup: no range after');
+    const text = changed(proved.text, (proof) => {
+      const tails = proof.tails as Carried[];
+      const b = tails.find((tail) => tail.tail === tailB) as Carried;
+      b.ranges = [{ checkpoint: serializeCheckpoint(after), entries: [serializeEntry(line)] }];
+      const manifest = proof.manifest as { state: string; moves: { action: string }[] };
+      manifest.state = 'accepted';
+      manifest.moves = manifest.moves.filter((move) => move.action !== 'supersede');
+    });
+    expect(tailA).not.toBe(tailB);
+    const checked = checkProof(text);
+    expect(checked).toMatchObject({ proven: false });
+    if (checked.proven) return;
+    expect(checked.refusal).toMatch(/the first range it carries begins at seq 5/);
+    const second = secondReader(text);
+    expect(second.verdict).toBe('REFUSED');
+    expect(second.refused.join('\n')).toMatch(/the first range it carries begins at seq 5/);
+  });
+
+  it('is refused by both readers with a gap on the second tail', () => {
+    const { record, tailB } = twoTails();
+    const proved = proveDecision(record, 'd-1');
+    if (!proved.ok) throw new Error('setup: not proven');
+    const text = changed(proved.text, (proof) => {
+      const b = (proof.tails as Carried[]).find((tail) => tail.tail === tailB) as Carried;
+      b.ranges.splice(2, 1);
+    });
+    const checked = checkProof(text);
+    expect(checked).toMatchObject({ proven: false });
+    if (checked.proven) return;
+    expect(checked.refusal).toMatch(/seq 3\.\.3 is not carried/);
+    expect(secondReader(text).refused.join('\n')).toMatch(/seq 3\.\.3 is not carried/);
   });
 });

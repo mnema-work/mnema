@@ -209,6 +209,11 @@ def _check(raw: bytes, report: Report) -> None:
                 )
             if checkpoint.from_seq <= last_to:
                 raise _refuse(f"{where} does not begin after the range before it")
+            if last_to < 0 and checkpoint.from_seq != 0:
+                raise _refuse(
+                    f"{tail}: the first range it carries begins at seq {checkpoint.from_seq}, and a "
+                    "proof carries every tail it touches from seq 0"
+                )
             if last_to >= 0 and checkpoint.from_seq != last_to + 1:
                 raise _refuse(
                     f"{tail} seq {last_to + 1}..{checkpoint.from_seq - 1} is not carried, and a "
