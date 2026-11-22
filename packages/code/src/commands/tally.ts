@@ -55,6 +55,7 @@ import {
   journalFile,
   readingOf,
   readJournal,
+  rememberTranscript,
   sessionIdOf,
   writeJournal,
 } from '../session-journal.js';
@@ -82,6 +83,7 @@ export interface SessionTallyDone {
 
 /** The one event this answers, by the name the host gives it in the payload. */
 const STOP = 'Stop';
+const SESSION_START = 'SessionStart';
 
 /** The silence, with what to say about it on the second stream. */
 function silent(notes: readonly string[] = []): SessionTallyDone {
@@ -138,7 +140,7 @@ export function runSessionTally(
     return silent(['The hook input was not JSON, so nothing was counted.']);
   }
   const event = payload['hook_event_name'];
-  if (event !== STOP) return silent();
+  if (event !== STOP && event !== SESSION_START) return silent();
   const transcript = payload['transcript_path'];
   if (typeof transcript !== 'string' || transcript === '') {
     return silent([`The ${event} input named no transcript, so nothing was counted.`]);
@@ -147,6 +149,18 @@ export function runSessionTally(
   const trees = resolveTrees(ctx.cwd, ctx.env);
   if (trees.projectPublic === undefined) return silent();
   const session = sessionIdOf(payload['session_id']);
+  if (event === SESSION_START) {
+    // A session opening reads nothing and says nothing: it leaves the path of its transcript beside
+    // the journal, so an accept (`agent-accept-words.ts`) can find what the person said.
+    if (session !== undefined) {
+      withScopedCaches(trees, (sources) => {
+        if (channelIsOn(sources, SESSION_JOURNAL_CHANNEL)) {
+          rememberTranscript(trees, session, transcript);
+        }
+      });
+    }
+    return silent();
+  }
   const root = dirname(trees.projectPublic);
 
   return withScopedCaches(trees, (sources): SessionTallyDone => {
@@ -158,6 +172,7 @@ export function runSessionTally(
         ? journalFile(trees, session)
         : undefined;
     if (!speaks && file === undefined) return silent();
+    if (file !== undefined && session !== undefined) rememberTranscript(trees, session, transcript);
 
     // THE READING STARTS WHERE THE LAST ONE STOPPED when there is a journal to say where: what the
     // host wrote since, and not the whole conversation again, after every response.

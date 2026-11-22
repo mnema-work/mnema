@@ -37,6 +37,8 @@ const EXPECTED: { readonly [K in RoutedKind]: Scope | 'by-origin' } = {
   'decision.recorded': 'public',
   'skill.created': 'public',
   'skill.consulted': 'public',
+  // A showing serves the person shown and no teammate: it is never committed (ADR-623).
+  'decision.seen': 'private',
   'handoff.recorded': 'public',
   'knowledge.linked': 'public',
   // The two kinds the KIND cannot answer for: the same kind holds a fact the team
@@ -140,7 +142,7 @@ describe('resolveScope: the classification is TOTAL over the catalog', () => {
 
   it('is not vacuous: every half holds kinds, and the catalog is not empty', () => {
     expect(catalog.length).toBeGreaterThan(10);
-    expect(BY_KIND.length).toBe(10);
+    expect(BY_KIND.length).toBe(11);
     expect(BY_ORIGIN.length).toBe(2);
     expect(Object.keys(UNROUTED_KINDS).length).toBe(catalog.length - ROUTED.length);
   });

@@ -1006,6 +1006,25 @@ describe('the hook’s copy with this machine’s private rules', () => {
     expect(handed).toContain('- **ADR-1: A call numbered 1**');
   });
 
+  it('says the shape of a private rule line only when no committed header says it', () => {
+    const line = 'Each decision line ends with the day it was accepted';
+    const mine = { decisions: [decision(70, 'Mine alone')], skills: [] };
+    const alone = briefWithin(
+      governance({ decisions: [] }),
+      HOOK_TEXT_CEILING,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      mine,
+    ).join('\n');
+    expect(alone).toContain(line);
+    expect(alone.indexOf(line)).toBeLessThan(alone.indexOf('Mine alone'));
+    expect(withPrivate(HOOK_TEXT_CEILING, mine).join('\n')).not.toContain(line);
+  });
+
   it('is cut nowhere when it fits, and has no section when there are none', () => {
     const handed = withPrivate(HOOK_TEXT_CEILING, {
       decisions: [decision(70, 'Mine alone')],
@@ -1176,5 +1195,123 @@ describe('the hook’s copy beside the line about what a newer mnema wrote', () 
     const rules = (lines: readonly string[]) => lines.filter((line) => line.startsWith('- **'));
     expect(rules(beside).length).toBeLessThanOrEqual(rules(alone).length);
     expect(beside.join('\n')).toContain('Left out of this text:');
+  });
+});
+
+describe('the hook’s copy that pulls what the work needs (opening-core)', () => {
+  const long = (n: number) =>
+    `A call numbered ${n} about ${'the invoice run and its retries '.repeat(6)}`;
+  const all = Array.from({ length: 60 }, (_, at) => decision(at + 1, long(at + 1)));
+  const crowded = governance({
+    decisions: all,
+    skills: [pattern(1)],
+    decisionsAwaiting: 3,
+    addressed: 2,
+  });
+  // Every fifth decision is one the person dictated.
+  const core = new Set(all.filter((_, at) => at % 5 === 0).map((one) => one.id));
+  const bullets = (lines: readonly string[]) => lines.filter((line) => line.startsWith('- **'));
+  const pulled = { core };
+
+  it('with no pulled opening lists the newest rules and none of the pulled sections', () => {
+    const text = briefWithin(crowded, HOOK_TEXT_CEILING).join('\n');
+    for (const absent of ['the core', 'What else the record holds', 'How to pull the rest']) {
+      expect(text).not.toContain(absent);
+    }
+    expect(text).toContain('## Decisions in force (');
+    expect(text).toContain(`\`${all[0]?.id}\``);
+  });
+
+  it('lists the core and not the newest, in the document’s order, and counts the rest', () => {
+    const hook = briefWithin(
+      crowded,
+      HOOK_TEXT_CEILING,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      pulled,
+    );
+    const text = hook.join('\n');
+    const listed = bullets(hook).filter((line) => line.includes('ADR-'));
+    expect(listed).toHaveLength(12);
+    for (const one of all) {
+      expect(text.includes(`\`${one.id}\``), one.adr).toBe(core.has(one.id));
+    }
+    expect(hook).toContain('## Decisions in force: the core (12)');
+    expect(text).toContain('- Decisions in force: 60, 12 in the core and 48 outside it.');
+    expect(text).toContain('- Patterns adopted: 1.');
+    expect(text).toContain('- Awaiting a judgement: 3 decisions and 0 patterns.');
+    expect(text).toContain('- Rules with an address: 2.');
+  });
+
+  it('says how to pull the rest', () => {
+    const text = briefWithin(
+      crowded,
+      HOOK_TEXT_CEILING,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      pulled,
+    ).join('\n');
+    for (const door of ['`search`', '`governing_rules`', '`read_record`', '`mnema show <id>`']) {
+      expect(text).toContain(door);
+    }
+    expect(text).toContain('use the language of the');
+  });
+
+  it('stays inside the room however small, cutting the core from its end and saying so', () => {
+    const many = new Set(all.map((one) => one.id));
+    for (const room of [4_500, 6_000, 8_000, HOOK_TEXT_CEILING]) {
+      const hook = briefWithin(
+        crowded,
+        room,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { core: many },
+      );
+      expect(printedLength(hook), `room ${room}`).toBeLessThanOrEqual(room);
+      const shown = bullets(hook).filter((line) => line.includes('ADR-')).length;
+      expect(shown).toBeLessThan(60);
+      expect(hook.join('\n')).toContain(
+        `Left out of this text: ${60 - shown} decisions in force and 1 adopted pattern`,
+      );
+    }
+  });
+
+  it('hands this machine’s private rules as counts, not names, and never in the file', () => {
+    const mine = {
+      decisions: [decision(70, 'A private call about a staging run')],
+      skills: [],
+    };
+    const hook = briefWithin(
+      crowded,
+      HOOK_TEXT_CEILING,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      mine,
+      pulled,
+    ).join('\n');
+    expect(hook).not.toContain('A private call about a staging run');
+    expect(hook).toContain(
+      'Recorded privately on this machine and not handed to you: 1 decision in force',
+    );
+    expect(briefDocument(crowded).join('\n')).not.toContain('What else the record holds');
   });
 });

@@ -282,6 +282,12 @@ export const AUDIT_BY_KIND: { readonly [K in EventKind]: AuditMapping } = {
     entityType: 'skill',
   },
   'skill.consulted': { activity: ACTIVITY.read, entityTypeId: ENTITY_OTHER, entityType: 'skill' },
+  // A decision shown to a person at a terminal: a reading of it, which is what the fact records.
+  'decision.seen': {
+    activity: ACTIVITY.read,
+    entityTypeId: ENTITY_OTHER,
+    entityType: 'decision',
+  },
   // The subject is the anchor the cut tail spoke for, not the tail.
   'tail.pruned': { activity: ACTIVITY.delete, entityTypeId: ENTITY_USER, entityType: 'identity' },
   // The subject is the anchor the relinked tail spoke for; what moves is the record it is read in.

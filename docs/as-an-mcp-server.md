@@ -138,7 +138,7 @@ did exactly that to every completed task, which stayed on the work list because 
 is always legal from `DONE`. So a task waiting on a reviewer is on the fourth list and
 not the first, and a task that is finished or cancelled is on neither.
 
-Three of the four lists are cut to the freshest items, and
+Three of the four lists are cut to the freshest items (the live work lists a task IN_PROGRESS first, so the cut never leaves it out), and
 `workTotal`/`decisionsTotal`/`awaitingJudgementTotal` say how many there were, so a
 cut never reads as "this is everything". The adopted patterns are the exception:
 every one is listed, so that list carries no total. One more cut is by age and not by
@@ -190,7 +190,7 @@ worked by.
 mnema skill provenance
 #> 2 pattern(s):
 #>   019faa06-30e1-…  adopted     public   stacked-prs  ·  proposed by claude-code · adopted by claude-code (the same agent)
-#>   019faa06-335f-…  adopted     public   trunk-based  ·  proposed by a person · adopted by a person
+#>   019faa06-335f-…  adopted     public   trunk-based  ·  proposed by no agent declared · adopted by no agent declared
 ```
 
 Adopting a pattern is not restricted: an agent can propose one and adopt it, the

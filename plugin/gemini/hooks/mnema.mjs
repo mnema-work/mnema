@@ -3,7 +3,8 @@
 // What Gemini CLI runs for this extension's hooks: `open` hands a session the project's committed
 // mnema record as it starts, `gate` refuses a write where a rule of that record refuses it, and
 // `settled`, after a question to the person was answered, says which tool records a choice, and
-// `beside`, after a write, hands over the rules of the record addressed at the file.
+// `beside`, after a write, hands over the rules of the record addressed at the file, and
+// `dictated`, on a message of the person's, says which tools record a rule it has the shape of.
 // It runs `mnema` from the PATH, and every outcome that is not an answer, such as no `mnema`, no
 // project or a program of that name that is not @mnema/code, leaves the session as it would
 // have been without it: nothing on stdout, exit 0. Two outcomes are not silence. A `mnema` that is
@@ -984,13 +985,13 @@ function closedWhere(because, cwd, raw) {
  * `AfterTool` that carries context.
  * @param {string} line
  */
-function besideTheResult(line) {
-  return { hookSpecificOutput: { hookEventName: 'AfterTool', additionalContext: line } };
+function besideTheResult(line, event = 'AfterTool') {
+  return { hookSpecificOutput: { hookEventName: event, additionalContext: line } };
 }
 
 /**
  * What the hook answers for one payload, or nothing.
- * @param {string | undefined} mode `open`, `gate`, `settled` or `beside`
+ * @param {string | undefined} mode `open`, `gate`, `settled`, `beside` or `dictated`
  * @param {string} raw what the host wrote to stdin
  */
 function answer(mode, raw) {
@@ -1004,6 +1005,7 @@ function answer(mode, raw) {
   if (mode === 'gate' && !WRITES.has(input?.tool_name)) return undefined;
   if (mode === 'settled' && input?.tool_name !== ASKS) return undefined;
   if (mode === 'beside' && !WRITES.has(input?.tool_name)) return undefined;
+  if (mode === 'dictated' && input?.hook_event_name !== 'BeforeAgent') return undefined;
   // NO RULE CAN BE ADDRESSED AT THIS WRITE, SO NO `mnema` STARTS: neither `--identify` nor the verb, which
   // would answer nothing. Read from the stored lines of every tree, and any doubt goes on.
   if (mode === 'beside' && !aRuleReaches(cwd, process.env, raw, ADDRESSED)) return undefined;
@@ -1019,6 +1021,9 @@ function answer(mode, raw) {
   if (who === 'broken' && (mode === 'settled' || mode === 'beside')) {
     return besideTheResult(notConsulted('it did not answer `mnema --identify`.'));
   }
+  if (who === 'broken' && mode === 'dictated') {
+    return besideTheResult(notConsulted('it did not answer `mnema --identify`.'), 'BeforeAgent');
+  }
   if (who !== 'this') return undefined;
   if (mode === 'open') {
     const text = openingOf(cwd).join('\n\n');
@@ -1030,6 +1035,16 @@ function answer(mode, raw) {
     const ran = run(['settled'], cwd, raw, GATE_WAIT);
     const line = whatARunSays(ran, GATE_WAIT);
     if (line !== null) return besideTheResult(line);
+    if (didNotRun(ran) || ran.status !== 0) return undefined;
+    const said = JSON.parse(ran.stdout);
+    return said.hookSpecificOutput === undefined ? undefined : said;
+  }
+  if (mode === 'dictated') {
+    // ON A MESSAGE: the verb reads the `prompt` field and says no word of it; every outcome that is
+    // not an answer is silence, and a record that did not answer is the one line that says so.
+    const ran = run(['dictated'], cwd, raw, GATE_WAIT);
+    const line = whatARunSays(ran, GATE_WAIT);
+    if (line !== null) return besideTheResult(line, 'BeforeAgent');
     if (didNotRun(ran) || ran.status !== 0) return undefined;
     const said = JSON.parse(ran.stdout);
     return said.hookSpecificOutput === undefined ? undefined : said;

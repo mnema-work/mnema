@@ -8,7 +8,7 @@
 import { spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   cacheOf,
@@ -288,6 +288,22 @@ describe('a push that did not go up', () => {
       expect(existsSync(`${cache}.lock`)).toBe(true);
     });
     expect(existsSync(`${cache}.lock`)).toBe(false);
+  });
+
+  it('names the lock file, the process that holds it and how to clear it when a pid that is still alive holds it', () => {
+    // The parent of this process answers to a signal and is not a backup: a pid reused by another process.
+    mkdirSync(dirname(cache), { recursive: true });
+    writeFileSync(`${cache}.lock`, `${process.ppid} ${Date.now()}\n`);
+    let said = '';
+    try {
+      withCacheLock(cache, () => 'never', 1000);
+    } catch (error) {
+      said = (error as Error).message;
+    }
+    expect(said).toContain(`process ${process.ppid} holds ${cache}.lock`);
+    expect(said).toContain(`delete ${cache}.lock and run again`);
+    expect(said).toContain('did not finish in 1 second.');
+    expect(existsSync(`${cache}.lock`)).toBe(true);
   });
 });
 

@@ -175,6 +175,12 @@ export interface Host {
    * cells for the reason {@link subagentStop} is. Absent where the host was not read for it.
    */
   readonly afterAQuestion?: Cell;
+  /**
+   * What it does when the person sends a message: runs the plugin's hook on that event, which hands
+   * the agent one sentence where the message has the shape of a rule dictated. Apart from the cells
+   * for the reason {@link subagentStop} is. Absent where the host was not ported for it.
+   */
+  readonly onAMessage?: Cell;
   /** What it does with each {@link Capability}. */
   readonly cells: { readonly [C in Capability]: Cell };
   /** Where it reads the skills and the agents a stack brings. */
@@ -204,6 +210,7 @@ const HELD = {
   claudeSubagentStart:
     'packages/code/tests/host-contract/a-subagent-starts-with-the-record.test.ts',
   claudeSettled: 'packages/code/tests/host-contract/a-settled-choice-reaches-the-model.test.ts',
+  claudeDictated: 'packages/code/tests/host-contract/a-dictated-rule-reaches-the-model.test.ts',
   claudeMemory: 'packages/code/tests/host-contract/a-note-of-the-hosts-memory-is-copied.test.ts',
 } as const;
 
@@ -294,6 +301,7 @@ export const HOSTS = {
     },
     subagentStop: { does: true, held: 'a test', by: HELD.claudeHandback },
     afterAQuestion: { does: true, held: 'a test', by: HELD.claudeSettled },
+    onAMessage: { does: true, held: 'a test', by: HELD.claudeDictated },
     cells: {
       server: { does: true, held: 'a test', by: HELD.claudeServer },
       rulesFile: { does: true, held: 'a test', by: HELD.aRulesFile },
@@ -410,6 +418,15 @@ export const HOSTS = {
       held: 'documentation',
       at: `${CODEX_SOURCE}/codex-rs/hooks/src/events/post_tool_use.rs#L43`,
       read: '21 October 2026',
+    },
+    // A `UserPromptSubmit` hook is handed the message as `prompt` (`codex-rs/hooks/schema/generated/
+    // user-prompt-submit.command.input.schema.json`) and its `additionalContext` is kept for the
+    // model (`user_prompt_submit.rs`, lines 172-178). Read at the pinned commit, not run.
+    onAMessage: {
+      does: true,
+      held: 'documentation',
+      at: `${CODEX_SOURCE}/codex-rs/hooks/src/events/user_prompt_submit.rs#L172-L178`,
+      read: '19 November 2026',
     },
     cells: {
       server: { does: true, held: 'a test', by: HELD.codexContract },
@@ -641,6 +658,15 @@ export const HOSTS = {
       held: 'documentation',
       at: `${GEMINI_SOURCE}/packages/core/src/hooks/types.ts#L527-L533`,
       read: '21 October 2026',
+    },
+    // A `BeforeAgent` hook is handed the message as `prompt` and its
+    // `hookSpecificOutput.additionalContext` is appended to the prompt for that turn
+    // (`docs/hooks/reference.md`, lines 145-153). Read at the pinned commit, not run.
+    onAMessage: {
+      does: true,
+      held: 'documentation',
+      at: `${GEMINI_SOURCE}/docs/hooks/reference.md#L145-L153`,
+      read: '19 November 2026',
     },
     cells: {
       server: { does: true, held: 'a test', by: HELD.geminiContract },
@@ -1008,6 +1034,7 @@ export function does(host: HostName, capability: Capability): boolean {
 /** One moment of the work in which the record can be present, one column of the presence map. */
 export type Moment =
   | 'choice'
+  | 'message'
   | 'memory'
   | 'file'
   | 'opening'
@@ -1029,12 +1056,15 @@ export type Presence = (Cell | { readonly held: 'no channel' } | { readonly held
 /** The day the hosts below were read for the moments of the work. */
 const PRESENCE_READ_ON = '21 October 2026';
 
-/** A moment a host documents, read on {@link PRESENCE_READ_ON}. */
-const documented = (what: string, at: string): Presence => ({
+/** The day the study of the hosts' prompt events was made. */
+const PROMPT_EVENTS_READ_ON = '18 November 2026';
+
+/** A moment a host documents, read on {@link PRESENCE_READ_ON} unless `read` says another day. */
+const documented = (what: string, at: string, read: string = PRESENCE_READ_ON): Presence => ({
   does: true,
   held: 'documentation',
   at,
-  read: PRESENCE_READ_ON,
+  read,
   what,
 });
 
@@ -1072,6 +1102,12 @@ export const PRESENCE = {
       what: 'PostToolUse on the question tool',
     },
     // HELD AS IT SHIPS: `host-memory-mirror` begins on (ADR-39), and the contract switches nothing.
+    message: {
+      does: true,
+      held: 'a test',
+      by: HELD.claudeDictated,
+      what: 'UserPromptSubmit',
+    },
     memory: {
       does: true,
       held: 'a test',
@@ -1095,6 +1131,7 @@ export const PRESENCE = {
   },
   vscode: {
     choice: notRead,
+    message: notRead,
     memory: documented(
       'a memory folder of the host, the tool that writes it not read',
       VSCODE_MEMORY,
@@ -1106,6 +1143,7 @@ export const PRESENCE = {
   },
   cursor: {
     choice: noChannel(),
+    message: documented('beforeSubmitPrompt', CURSOR_HOOKS, PROMPT_EVENTS_READ_ON),
     memory: noChannel(),
     file: documented('postToolUse, with additional context', CURSOR_HOOKS),
     end: documented('stop, which can only ask for a new turn', CURSOR_HOOKS),
@@ -1114,6 +1152,7 @@ export const PRESENCE = {
   },
   codex: {
     choice: documented('PostToolUse on `request_user_input`', CODEX_HOOKS),
+    message: { ...HOSTS.codex.onAMessage, what: 'UserPromptSubmit' },
     memory: noChannel('its memories are made in the background, with no tool and no hook'),
     file: documented('PostToolUse on `apply_patch`', CODEX_HOOKS),
     end: documented('Stop', CODEX_HOOKS),
@@ -1122,6 +1161,7 @@ export const PRESENCE = {
   },
   copilot: {
     choice: documented('postToolUse on `ask_user`', COPILOT_HOOKS),
+    message: documented('userPromptSubmitted', COPILOT_HOOKS, PROMPT_EVENTS_READ_ON),
     memory: documented('`store_memory`, which keeps it in the cloud', COPILOT_MEMORY),
     file: documented('postToolUse on a write', COPILOT_HOOKS),
     end: documented('agentStop', COPILOT_HOOKS),
@@ -1130,6 +1170,7 @@ export const PRESENCE = {
   },
   gemini: {
     choice: documented('AfterTool on `ask_user`', GEMINI_TREE),
+    message: { ...HOSTS.gemini.onAMessage, what: 'BeforeAgent' },
     memory: documented(
       '`GEMINI.md`, kept by project, the tool that writes it not read',
       GEMINI_TREE,
@@ -1141,6 +1182,7 @@ export const PRESENCE = {
   },
   opencode: {
     choice: documented('`tool.execute.after` on `question`', OPENCODE_TREE),
+    message: notRead,
     memory: noChannel(),
     file: documented('`tool.execute.after`', OPENCODE_TREE),
     end: notRead,

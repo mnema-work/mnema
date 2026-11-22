@@ -231,7 +231,8 @@ claim about the agent hosts is held, and which are not held yet, is in [`docs/ev
   [A record that inherits another](docs/a-record-inheriting-another.md) ·
   [Importing the decisions you already wrote](docs/importing-the-decisions-you-already-wrote.md) ·
   [Switching off what is handed to a model](docs/switching-off-what-is-handed-to-a-model.md) ·
-  [The session journal and compaction](docs/the-session-journal-and-compaction.md) · [As an MCP server](docs/as-an-mcp-server.md) ·
+  [The session journal and compaction](docs/the-session-journal-and-compaction.md) ·
+  [The ledger of caught failures](docs/the-ledger-of-caught-failures.md) · [As an MCP server](docs/as-an-mcp-server.md) ·
   [Features](docs/features.md) · [Where it fits](docs/where-it-fits.md) ·
   [mnema next to a folder of ADRs](docs/mnema-next-to-a-folder-of-adrs.md) · [Windows and macOS](docs/platforms.md) ·
   [When two machines disagree](docs/convergence.md) · [Glossary](docs/glossary.md)
@@ -256,6 +257,8 @@ claim about the agent hosts is held, and which are not held yet, is in [`docs/ev
 <td align="center"><a href="https://github.com/tylrcc"><img src="docs/assets/contributor-tylrcc.svg" width="72" height="72" alt="@tylrcc"><br><sub>tylrcc</sub></a></td>
 <td align="center"><a href="https://github.com/jay23606"><img src="docs/assets/contributor-jay23606.svg" width="72" height="72" alt="@jay23606"><br><sub>jay23606</sub></a></td>
 <td align="center"><a href="https://github.com/prascli"><img src="docs/assets/contributor-prascli.svg" width="72" height="72" alt="@prascli"><br><sub>prascli</sub></a></td>
+<td align="center"><a href="https://github.com/dh1011"><img src="docs/assets/contributor-dh1011.svg" width="72" height="72" alt="@dh1011"><br><sub>dh1011</sub></a></td>
+<td align="center"><a href="https://github.com/fkolo"><img src="docs/assets/contributor-fkolo.svg" width="72" height="72" alt="@fkolo"><br><sub>fkolo</sub></a></td>
 </tr>
 </table>
 <p align="center">Thank you also to <a href="https://github.com/bfs2021">@bfs2021</a>, an account that declares itself automated, whose pull requests were merged.</p>
