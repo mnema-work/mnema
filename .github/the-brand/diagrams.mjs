@@ -523,10 +523,17 @@ function family(t) {
   });
   // The record sits under the eye (x 600); the three columns on each side are spaced with the same ink gap on that side.
   // The two sides differ only because the columns' widths differ.
+  /** @typedef {{ left: number, right: number }} Span */
+  /** @param {Span} s */
   const width = (s) => s.right - s.left;
+  /**
+   * @param {number} from
+   * @param {number} to
+   * @param {readonly Span[]} side
+   */
   const sideGap = (from, to, side) =>
     (to - from - side.reduce((sum, s) => sum + width(s), 0)) / side.length;
-  const record = spans[3];
+  const record = /** @type {Span} */ (spans[3]);
   const leftSide = spans.slice(0, 3);
   const rightSide = spans.slice(4);
   const gapLeft = sideGap(60, EYE_X + record.left, leftSide);
