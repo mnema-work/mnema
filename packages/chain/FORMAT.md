@@ -319,10 +319,11 @@ readers").
 **The writer of this product refuses to write through a link.** Before the first byte of a write, with
 the tail's lock held and before anything is sealed, it asks for every directory it writes in (`tails/`,
 its own tail, `keys/`, `locks/`, wherever §4 says that one is kept) and every file it writes (the tail's segments, `checkpoints.jsonl`,
-`tailproof.json`, the key's public file in `keys/`, and in `locks/` the tail's lock, its notes
+`tailproof.json`, the key's public file in `keys/` and its local anchor `keys/<fingerprint>.anchor`, and in `locks/` the tail's lock, its notes
 `<tail>.head`, `<tail>.head.sig`, `<tail>.cited` and `<tail>.covered`, and the staging file each is written through; and the index `<tail>.citations` of each tail it reads, with its staging file, asked as that tail is read),
 and where one is a symbolic link it refuses with `RECORD_LINKED`, naming the path: nothing is written,
-nothing the link points at is opened, and it does not found a new tail in the link's place. The
+nothing the link points at is opened, and it does not found a new tail in the link's place. A `keys/<fingerprint>.anchor` that is a symbolic link (or a link to nothing) is refused the same way, with
+`RECORD_LINKED`, before anything is sealed or written; a key restore that meets one says "This restore did not complete, nothing was restored". The
 lock is asked before it is taken, since taking it is a write. A link elsewhere is for the readers
 above. This binds this product's writer and nothing else: another writer that puts a link in a record is
 still refused by both readers
