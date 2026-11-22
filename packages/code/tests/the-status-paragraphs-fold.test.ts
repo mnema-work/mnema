@@ -46,6 +46,13 @@ const reportWith = (render: (line: Line) => string): string[] =>
 
 const NARROW = 40;
 
+/** A record with one decision in force, so the line that counts who accepted it is written. */
+const withADecision = {
+  ...opening,
+  decisions: [{ id: '01a201c0-6236-7000-83a1-391079a48c7e', adr: 'ADR-1', title: 'Keep cents' }],
+  decisionsTotal: 1,
+} as unknown as Bootstrap;
+
 describe('the paragraphs of status that were raw strings', () => {
   it('are the same bytes in a pipe as they were: two spaces and the sentence', () => {
     const lines = reportWith(renderPlain);
@@ -82,5 +89,43 @@ describe('the paragraphs of status that were raw strings', () => {
         sentence.split(/\s+/).filter(Boolean),
       );
     }
+  });
+
+  it('fold the line that says who accepted the rules in force, and leave it alone in a pipe', () => {
+    const accepted = { agent: 3, undeclared: 12 };
+    const sentence = '3 accepted by an agent, 12 with no agent declared.';
+    const plain = statusReport(
+      renderPlain,
+      withADecision,
+      'actor',
+      [],
+      [],
+      [],
+      false,
+      undefined,
+      undefined,
+      accepted,
+    );
+    expect(plain).toContain(`  ${sentence}`);
+    const folded = statusReport(
+      foldedAt(NARROW - 10, renderPlain),
+      withADecision,
+      'actor',
+      [],
+      [],
+      [],
+      false,
+      undefined,
+      undefined,
+      accepted,
+    );
+    const at = folded.findIndex((line) => line.includes('accepted by an agent'));
+    expect(at, 'the line is not in the report').toBeGreaterThan(-1);
+    const rows = (folded[at] as string).split('\n');
+    expect(rows.length, 'the line was not folded').toBeGreaterThan(1);
+    for (const row of rows) expect([...row].length).toBeLessThanOrEqual(NARROW - 10);
+    expect(rows.join(' ').split(/\s+/).filter(Boolean)).toEqual(
+      sentence.split(/\s+/).filter(Boolean),
+    );
   });
 });

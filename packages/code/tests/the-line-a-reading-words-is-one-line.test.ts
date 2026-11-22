@@ -683,11 +683,11 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'this module’s own word for an identity that nobody else has ruled with, or nothing',
   },
-  'status.ts «  {} accepted by an agent, {} with no agent declared.» accepted.agent #1': {
+  'status.ts «{} accepted by an agent, {} with no agent declared.» accepted.agent #1': {
     verdict: 'minted',
     why: 'a count of the rules in force, computed by the context layer from the record',
   },
-  'status.ts «  {} accepted by an agent, {} with no agent declared.» accepted.undeclared #1': {
+  'status.ts «{} accepted by an agent, {} with no agent declared.» accepted.undeclared #1': {
     verdict: 'minted',
     why: 'a count of the rules in force, computed by the context layer from the record',
   },
