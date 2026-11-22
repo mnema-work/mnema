@@ -9,9 +9,10 @@ name: Scanners
 # only (a history already read does not change by waiting), on Mondays, from the default branch.
 # A finding on a scheduled run fails the job and shows in the Actions tab; it opens nothing.
 #
-# IT RUNS ON A PULL REQUEST AND ON `main`, and it is not one of the checks a pull request must
-# carry: an advisory published tomorrow against a dependency nobody touched would otherwise stop
-# an unrelated merge. A red here is read, not waived.
+# IT RUNS ON A PULL REQUEST AND ON `main`. `gitleaks` (the check `secrets in the history (gitleaks)`)
+# is one of the checks a pull request must carry. `osv-scanner` is not: an advisory published
+# tomorrow against a dependency nobody touched would otherwise stop an unrelated merge. A red from
+# `osv-scanner` is read, not waived.
 #
 # THE TOOLS ARE THE RELEASE BINARIES, pinned by version and by SHA-256 below, not an action: the
 # gitleaks action asks for a license key on an organization's repository, and a scanner that

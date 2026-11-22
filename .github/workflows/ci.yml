@@ -487,6 +487,7 @@ jobs:
           packages/chain/src/chain/second-reader-session.test.ts
           packages/chain/src/chain/the-promise-between-versions.test.ts
           packages/chain/src/chain/the-writer-names-the-record.test.ts
+          packages/chain/src/events/both-readers-read-a-showing.test.ts
           packages/chain/src/format-doc.test.ts
           packages/code/src/site/the-verdict-in-the-browser.test.ts
           packages/code/tests/a-decision-is-proven-in-one-file.test.ts
@@ -875,6 +876,37 @@ jobs:
       - name: Pack, install the tarballs, run the README's quick start in a terminal, verify
         run: bash .github/the-newcomer-path/run.sh
 
+  # THE NPX RECIPE RUNS THE PAGE. `docs/install.md` shows how to try mnema in a scratch repository with
+  # `npx`, without installing it. This packs `@mnema/code` from the commit and runs that block, read from
+  # the page when the job runs, with `npx` turned toward the tarball (the one substitution), in an empty
+  # HOME, then checks the decision it recorded is accepted and `verify` is green. A block that stops
+  # running makes this red. Every pull request and push, no path filter.
+  # `the-npx-recipe-runs-the-page.test.ts` reads this job and the script.
+  the-npx-recipe:
+    name: the npx recipe from the packed file
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.15.0'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Pack, run the page's npx recipe against the tarball, verify
+        run: bash .github/the-npx-recipe/run.sh
+
   # THE PAGE MOVES WITH THE BEHAVIOUR. On a pull request that changes a golden of the surface (the
   # program's help, its transcripts, its completions, its init screens), the files changed must
   # include a page written by hand and an entry in `changelog/unreleased/`; the generated pages of
@@ -935,6 +967,7 @@ jobs:
       - the-guards
       - the-other-systems
       - the-newcomer-path
+      - the-npx-recipe
       - the-page-moves-with-the-behaviour
     runs-on: ubuntu-24.04
     timeout-minutes: 15

@@ -498,6 +498,11 @@ export const SERVES_NO_RECORD_CONTENT: { readonly [path: string]: string } = {
     'signed level and `verify --since` ruled on that tree; a cut whose chain breaks is refused ' +
     'with what the readers said, and no branch is made, so a notice would have nothing left to ' +
     'attach to',
+  'commands/record-publish.ts':
+    'it reads the record only to ask where the `record-publish` switch stands, and then makes what ' +
+    '`record commit` makes (which says why it owes no notice), pushes it and opens the pull ' +
+    'request: it serves no record content to anybody, and a notice about the chain would have ' +
+    'nowhere to land that `mnema verify` does not already rule on',
   'commands/commit-hook.ts':
     'it serves the title and label of each governing decision into a commit message file the ' +
     'person edits, as `#` lines git drops; that file is not a reading anyone asked the record ' +
@@ -527,6 +532,10 @@ export const SERVES_NO_RECORD_CONTENT: { readonly [path: string]: string } = {
     'a host runs it after a question to the person was answered, and it opens the record only to ' +
     'read one switch; its reply is one sentence of the product’s own, so a notice about the chain ' +
     'has nowhere to land; the same session opens with the document, which says it',
+  'commands/dictated.ts':
+    'a host runs it on a message of the person’s, and it opens the record only to read two ' +
+    'switches; its reply is one sentence of the product’s own, so a notice about the chain has ' +
+    'nowhere to land; the same session opens with the document, which says it',
   'anchors.ts':
     'it resolves a typed prefix into the anchor the CALLER was handed, and answers ' +
     'nobody: the verbs that use it are themselves on the list that owes the notice, so ' +
@@ -568,6 +577,10 @@ export const SERVES_NO_RECORD_CONTENT: { readonly [path: string]: string } = {
     'it asks the verifier\u2019s own verdict of the tree before it builds a proof and refuses a ' +
     'record whose chain does not close (`RECORD_BROKEN`), which is where a break is said; what it ' +
     'hands over is checked again by the proof\u2019s checker, and `--check` reads a file, not a record',
+  'wiring/witness.ts':
+    'its `sigstore-check` runs the verifier and then reads only the trees whose verdict was not a break, ' +
+    'naming a tree whose chain does not close as not read and failing the exit; the other verbs there ' +
+    'refuse a tree below fully signed by that same verdict, so a notice would be the verdict said a second time',
   'site/browser/entry.ts':
     'it IS the verdict, run in a page: it hands the chain\u2019s own sentence and every issue and ' +
     'census note to the page unchanged, so a notice about the chain would be that verdict ' +

@@ -59,6 +59,7 @@ import {
   IdentityUnavailableError,
   type Membership,
   membershipIn,
+  rosterOf,
   staleAnchorRefusal,
 } from '../identity/membership.js';
 import { oneLine } from '../one-line.js';
@@ -218,7 +219,9 @@ export type AnchorDecision =
  *
  * It reads and writes nothing else: the recorded anchor, a roster (the one the caller hands
  * in `WriteContext.roster`, or the kept projection brought up to what arrived) and, on a refusal only, the replays the
- * refusal's words take.
+ * refusal's words take. Where the caller handed no roster, a "not counted" from the kept projection is
+ * confirmed by ONE replay of the chain before it becomes a refusal, so a write that is allowed never pays
+ * a replay (it is asked under the lock) and a projection that lags cannot refuse a key the chain counts.
  */
 export function recordedAnchorOf(
   ctx: AnchorContext & Pick<WriteContext, 'roster'>,
@@ -227,8 +230,16 @@ export function recordedAnchorOf(
   const anchor = ctx.writer.anchor;
   const fingerprint = ctx.writer.signerFingerprint;
   const query = { tree: ctx.layout.root, upcasters: ctx.upcasters };
-  const counted = ctx.roster?.(anchor) ?? rosterAsTheChainIs(ctx, anchor);
+  const handed = ctx.roster?.(anchor);
+  const counted = handed ?? rosterAsTheChainIs(ctx, anchor);
   if (counted.has(fingerprint)) return { anchor, counted: true };
+  // Where the write holds no roster of its own, the kept projection said "not counted": a
+  // refusal shuts a person out, so the chain, which `verify` reads, confirms it first. The
+  // projection can lag a founding another process made a moment before (the replay the refusal's
+  // own words take then said "member" while this said no). Paid on the refusal path only.
+  if (handed === undefined && rosterOf(query, anchor).has(fingerprint)) {
+    return { anchor, counted: true };
+  }
   return { anchor, counted: false, refusal: staleAnchorRefusal(query, fingerprint, anchor) };
 }
 

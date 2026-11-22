@@ -280,6 +280,11 @@ const EAGER_DOMAIN: Readonly<Record<string, string>> = {
     'two modules that want it here, `wiring/no-such-record.ts` and ' +
     '`presentation/runs.ts`, are on this floor, and a curative at their call sites is ' +
     'exactly what two earlier slices paid and this one removed.',
+  'linked-worktree.ts @mnema/core':
+    'a refusal that says "no project" asks where git keeps the repository (`gitPlaceOf`) to say, in a ' +
+    'linked worktree, where the main checkout’s record is. NOT a declaration: `reportRefusal` is ' +
+    'synchronous and called from every verb, so deferring it means awaiting it at a hundred and twenty ' +
+    'call sites, and it costs nothing TODAY because the declarations already hold `@mnema/core` open.',
   'program.ts @mnema/core':
     'the last-resort catch recognizes the domain’s own refusal by its class, and resolves ' +
     'the key root where that refusal’s way out is a restore of this machine’s key file ' +
@@ -357,6 +362,10 @@ const EAGER_EXTERNAL: Readonly<Record<string, string>> = {
   'wiring/options.ts commander':
     'the shared options are commander’s own `Option` objects, which is what makes one ' +
     'declaration serve every verb that takes them.',
+  'linked-worktree.ts node:fs':
+    '`existsSync`, to see whether the main checkout holds a `.mnema` folder, on the refusal path only. A builtin.',
+  'linked-worktree.ts node:path':
+    'path arithmetic from the worktree to the main checkout. A builtin the loader has already brought in.',
   'env.ts node:os':
     '`homedir()` and `userInfo()`, for the discovery environment every verb is handed. A builtin, and ' +
     'the one the entry cannot defer: the environment is resolved before a verb runs.',
@@ -392,6 +401,7 @@ const FLOOR_MODULES: readonly string[] = [
   'program.ts',
   'env.ts',
   'one-line.ts',
+  'linked-worktree.ts',
   'git-log.ts',
   'pinned-run.ts',
   'presentation/detail.ts',
@@ -508,6 +518,7 @@ const FLOOR_MODULES: readonly string[] = [
   'wiring/run.ts',
   'wiring/search.ts',
   'wiring/settled.ts',
+  'wiring/dictated.ts',
   'wiring/show.ts',
   'wiring/site.ts',
   'wiring/skill.ts',
@@ -599,7 +610,7 @@ describe('the floor is the declaration', () => {
     // And the SIZE, so the number this file's own doc states cannot drift from the
     // table it describes. It drifted twice before anybody noticed: the prose said
     // eight through two slices that made it ten and then eleven.
-    expect(Object.keys(EAGER_DOMAIN)).toHaveLength(13);
+    expect(Object.keys(EAGER_DOMAIN)).toHaveLength(14);
   });
 
   it('loads these modules and no others: the ceiling, by name', () => {

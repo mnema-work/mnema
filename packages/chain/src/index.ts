@@ -204,6 +204,7 @@ export {
   tailsACutWouldUnrelink,
 } from './chain/relink-plan.js';
 export {
+  anchorLinksRefused,
   type CheckpointsMark,
   type CommittedKeys,
   committedKeys,
@@ -302,11 +303,13 @@ export {
   type ProvenCheckpoint,
   readStoredWitness,
   readWitness,
+  refuseWitnessThroughALink,
   type WalkedWitness,
   type WitnessedTail,
   type WitnessReading,
   witnessOfTail,
   witnessWalk,
+  writeSigstoreBundle,
   writeWitness,
 } from './chain/witness.js';
 export {
@@ -348,6 +351,7 @@ export {
   checkPassed,
   decisionBirth,
   decisionRecorded,
+  decisionSeen,
   decisionTransitioned,
   enrollmentMessage,
   handoffRecorded,
@@ -399,6 +403,7 @@ export {
   type CheckPassedV1,
   DERIVED_FROM_RELATION,
   type DecisionRecordedV1,
+  type DecisionSeenV1,
   type DecisionTransitionedV1,
   type EventKind,
   GOVERNS_RELATION,

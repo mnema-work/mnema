@@ -4,9 +4,10 @@
  * transcript the host names and records each place where the person corrected the agent as a
  * `proposed` decision in this machine's private tree.
  *
- * OFF UNTIL SOMEBODY SWITCHES IT ON (`mnema switch on user-corrections`). It is the one handler of
- * this plugin that reads what a person typed, and the one that writes without anybody typing a
- * verb, so it does nothing in a project that never asked for it: the verb answers `{}`, and a handler
+ * ON UNTIL SOMEBODY SWITCHES IT OFF (`mnema switch off user-corrections`; ADR-546). It began off, because it
+ * is the one handler of this plugin that reads what a person typed and the one that writes without
+ * anybody typing a verb; the premise fell because nobody switched it on. What it records goes to the
+ * machine's private tree, and in a project that switched it off the verb answers `{}` and a handler
  * that has nothing to say writes no byte.
  *
  * IT DECIDES NOTHING, AND IT CARRIES NO TEXT OF ITS OWN. The payload goes to the verb byte for byte

@@ -142,6 +142,8 @@ const ANSWERS_ANYWAY: Readonly<Record<string, string>> = {
     'a host runs it after every dispatch to another agent and when a session ends, and outside a project it answers `{}`, the same silence, and records nothing, because that session is not the product’s to speak into',
   settled:
     'a host runs it after every question the agent asks the person, and outside a project it answers `{}`, the same silence, because that session is not the product’s to speak into',
+  dictated:
+    'a host runs it at every message the person sends, and outside a project it answers `{}`, the same silence, because that session is not the product’s to speak into',
 };
 
 /**

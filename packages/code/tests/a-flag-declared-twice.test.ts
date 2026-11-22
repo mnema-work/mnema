@@ -199,6 +199,7 @@ const DECLARED_TWICE: Readonly<Record<string, Reading>> = {
   'task handoff --which': 'where it was written',
   'decision record --alternatives': 'where it was written',
   'decision record --body-file': 'where it was written',
+  'decision record --governs': 'where it was written',
   'decision record --stdin': 'where it was written',
   'decision record --scope': 'where it was written',
   'decision record --which': 'where it was written',
@@ -210,6 +211,7 @@ const DECLARED_TWICE: Readonly<Record<string, Reading>> = {
   'decision import --scope': 'where it was written',
   'decision import --which': 'where it was written',
   'witness sigstore --global': 'where it was written',
+  'witness sigstore-check --global': 'where it was written',
   'witness stamp --global': 'where it was written',
   'witness upgrade --global': 'where it was written',
 };
