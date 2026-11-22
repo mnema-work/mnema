@@ -10,7 +10,7 @@
 
 _mnema_commands() {
   case "$1" in
-    '') echo 'init decision link unlink memory observe retract skill stack task promote status brief recall rules rules-file instructions switch inherit verify prove witness check site search show timeline refs audit diagram export usage resume repl why commits aging trailer commit-hook record key tail backup doctor upgrade report completion tour mcp run before-a-write beside-a-write tally corrections after-a-write handback settled dictated dispatched help' ;;
+    '') echo 'init decision link unlink memory observe retract skill stack task promote status brief recall rules rules-file instructions switch inherit verify prove witness check site search show timeline refs audit diagram export usage resume repl why commits aging trailer commit-hook record key tail backup doctor upgrade report completion tour mcp run before-a-write beside-a-write tally corrections after-a-write handback settled words dictated dispatched help' ;;
     'decision') echo 'record move review supersede import help' ;;
     'skill') echo 'create move export provenance help' ;;
     'stack') echo 'add remove list index show diff check export enable disable help' ;;
@@ -144,7 +144,7 @@ _mnema_flags() {
     'backup hook install') echo '-h --help -V --version --color' ;;
     'backup hook uninstall') echo '-h --help -V --version --color' ;;
     'doctor') echo '--fix --after-update --dry-run -h --help -V --version --color' ;;
-    'upgrade') echo '--dry-run -h --help -V --version --color' ;;
+    'upgrade') echo '--dry-run --fix -h --help -V --version --color' ;;
     'report') echo '--decline --off --on -h --help -V --version --color' ;;
     'completion') echo '-h --help -V --version --color' ;;
     'tour') echo '-h --help -V --version --color' ;;
@@ -154,11 +154,12 @@ _mnema_flags() {
     'run end') echo '--which --outcome -h --help -V --version --color' ;;
     'before-a-write') echo '--host --agent-key -h --help -V --version --color' ;;
     'beside-a-write') echo '--host --agent-key -h --help -V --version --color' ;;
-    'tally') echo '-h --help -V --version --color' ;;
-    'corrections') echo '-h --help -V --version --color' ;;
+    'tally') echo '--host -h --help -V --version --color' ;;
+    'corrections') echo '--host -h --help -V --version --color' ;;
     'after-a-write') echo '-h --help -V --version --color' ;;
-    'handback') echo '--schema -h --help -V --version --color' ;;
+    'handback') echo '--schema --host -h --help -V --version --color' ;;
     'settled') echo '--reply -h --help -V --version --color' ;;
+    'words') echo '--host -h --help -V --version --color' ;;
     'dictated') echo '-h --help -V --version --color' ;;
     'dispatched') echo '-h --help -V --version --color' ;;
     *) echo ;;
@@ -329,11 +330,16 @@ _mnema_values() {
     'before-a-write:--color') echo 'auto always never' ;;
     'beside-a-write:--host') echo 'copilot gemini' ;;
     'beside-a-write:--color') echo 'auto always never' ;;
+    'tally:--host') echo 'claude vscode codex copilot gemini cursor qwen' ;;
     'tally:--color') echo 'auto always never' ;;
+    'corrections:--host') echo 'claude vscode codex copilot gemini cursor qwen' ;;
     'corrections:--color') echo 'auto always never' ;;
     'after-a-write:--color') echo 'auto always never' ;;
+    'handback:--host') echo 'claude codex copilot' ;;
     'handback:--color') echo 'auto always never' ;;
     'settled:--color') echo 'auto always never' ;;
+    'words:--host') echo 'claude vscode cursor codex copilot opencode gemini qwen cursorIde antigravity droid goose' ;;
+    'words:--color') echo 'auto always never' ;;
     'dictated:--color') echo 'auto always never' ;;
     'dispatched:--color') echo 'auto always never' ;;
     *) echo ;;

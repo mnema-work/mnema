@@ -402,13 +402,16 @@ export const HOSTS = {
       'on), and so is a record the gate cannot read (held by its test). The opening is cut to Codex’s own ceiling, 2,500 tokens of 4 ' +
       `UTF-8 bytes ([\`output_spill.rs\`](${CODEX_SOURCE}/codex-rs/hooks/src/output_spill.rs#L12)), ` +
       'at a whole rule, held by the same test.',
-    // `events/stop.rs` fires a `SubagentStop` command hook and takes exit 2 with a continuation
-    // prompt on stderr (lines 178-206 and 361-362); this plugin ports nothing to it.
+    // `events/stop.rs` fires a `SubagentStop` command hook with the payload `HANDBACKS.codex` names
+    // and reads a `decision: "block"` with a reason from stdout (`output_parser.rs`,
+    // `parse_subagent_stop`), or exit 2 with a continuation prompt on stderr (lines 178-206 and
+    // 361-362). The plugin runs `mnema handback --host codex` there and answers the JSON decision;
+    // held by a test fed the documented payload, not by a Codex run.
     subagentStop: {
       does: true,
       held: 'documentation',
       at: `${CODEX_SOURCE}/codex-rs/hooks/src/events/stop.rs#L178-L206`,
-      read: '9 October 2026',
+      read: '20 November 2026',
     },
     // The question tool is `request_user_input` (`codex-rs/core/src/tools/handlers/
     // request_user_input.rs`, line 30), and a `PostToolUse` hook hands the model
@@ -498,13 +501,16 @@ export const HOSTS = {
       '(held by its test); with one, the host asks (held by its test). The model is any ' +
       'the host is pointed at, with no GitHub account (`COPILOT_OFFLINE`), under the license ' +
       'at [`LICENSE.md`](https://github.com/github/copilot-cli/blob/a7ae5b0ce17beddfa5930812bb064138fd3a1cb5/LICENSE.md).',
-    // The hooks reference lists `subagentStop` as an event that can block and force continuation;
-    // this plugin ports nothing to it.
+    // The hooks reference lists `subagentStop` as an event that can block and force continuation,
+    // by a `decision: "block"` and a `reason` on stdout (exit 2 is only a warning for it). The
+    // plugin runs `mnema handback --host copilot` under the PascalCase name and answers that JSON;
+    // held by a test fed the documented payload, not by a Copilot CLI run. The payload names no
+    // field that says the stop is a second one, so the check is not one-time there (`HANDBACKS`).
     subagentStop: {
       does: true,
       held: 'documentation',
       at: `${COPILOT_DOCS}/reference/hooks-reference.md#subagentstop--subagentstop`,
-      read: '9 October 2026',
+      read: '20 November 2026',
     },
     // The question tool is `ask_user`, handed to a PascalCase hook as `AskUserQuestion`; the
     // `postToolUse` event and its payload are in the hooks reference, under its own heading.
@@ -957,6 +963,47 @@ export const BESIDE_HOSTS = HOOK_HOSTS.filter(
 ) as readonly BesideHost[];
 
 /**
+ * The host hooks that run when the agent finishes a turn, and what each hands one: the event it
+ * names itself by, the fields that carry the session and the transcript, and whether this product
+ * reads that transcript.
+ *
+ * ONE ROW PER HOST, so `mnema tally --host` and `mnema corrections --host` are told which payload
+ * they were handed and never guess it from the event name. The event is the one the host's own
+ * documentation names for the end of a turn: Claude Code, Codex and Copilot CLI (under the
+ * PascalCase name, which hands the payload in snake_case) call it `Stop`; Gemini CLI `AfterAgent`;
+ * Cursor `stop`; VS Code's agent and Qwen Code, which read Claude Code's hooks file, `Stop`.
+ *
+ * `reads` IS WHETHER THE TRANSCRIPT NAMED CAN BE READ, and today only Claude Code's can: the
+ * readers (`what-the-session-did.ts`, `user-corrections.ts`) understand its JSONL line by line,
+ * and no other host's transcript was measured. Reading another host's file with them would count
+ * nothing, or the wrong things, so a verb handed such a payload says that on its second stream and
+ * does nothing else: no count, no journal, no proposal.
+ *
+ * `session` IS `null` WHERE THE DOCUMENTED PAYLOAD HAS NO FIELD FOR IT: Cursor's names the
+ * conversation (`conversation_id`), which no case here has held, so none is guessed.
+ */
+export const ENDS = {
+  claude: { event: 'Stop', session: 'session_id', transcript: 'transcript_path', reads: true },
+  vscode: { event: 'Stop', session: 'session_id', transcript: 'transcript_path', reads: false },
+  codex: { event: 'Stop', session: 'session_id', transcript: 'transcript_path', reads: false },
+  copilot: { event: 'Stop', session: 'session_id', transcript: 'transcript_path', reads: false },
+  gemini: {
+    event: 'AfterAgent',
+    session: 'session_id',
+    transcript: 'transcript_path',
+    reads: false,
+  },
+  cursor: { event: 'stop', session: null, transcript: 'transcript_path', reads: false },
+  qwen: { event: 'Stop', session: 'session_id', transcript: 'transcript_path', reads: false },
+} as const;
+
+/** A host whose end of a turn this product answers, in the order of {@link ENDS}. */
+export type EndHost = keyof typeof ENDS;
+
+/** Every {@link EndHost}, as the list `mnema tally --host` and `mnema corrections --host` enumerate. */
+export const END_HOSTS = Object.keys(ENDS) as readonly EndHost[];
+
+/**
  * Whether the gate before a write, `mnema before-a-write`, hands the rules over in its own reply for
  * this host: where the cell says it does and the row does not put the hook after the write.
  */
@@ -1137,7 +1184,10 @@ export const PRESENCE = {
       VSCODE_MEMORY,
     ),
     file: documented('PostToolUse, which the host runs whatever the matcher', VSCODE_HOOKS),
-    end: documented('Stop', VSCODE_HOOKS),
+    end: documented(
+      'Stop; it reads the same hooks file as Claude Code, is told apart by the folder its transcript is in, and that transcript is not read yet',
+      VSCODE_HOOKS,
+    ),
     subagentStart: documented('SubagentStart', VSCODE_HOOKS),
     subagentStop: documented('SubagentStop', VSCODE_HOOKS),
   },
@@ -1146,7 +1196,10 @@ export const PRESENCE = {
     message: documented('beforeSubmitPrompt', CURSOR_HOOKS, PROMPT_EVENTS_READ_ON),
     memory: noChannel(),
     file: documented('postToolUse, with additional context', CURSOR_HOOKS),
-    end: documented('stop, which can only ask for a new turn', CURSOR_HOOKS),
+    end: documented(
+      'stop, which can only ask for a new turn; the plugin runs its two verbs there, and the transcript it names is not read yet',
+      CURSOR_HOOKS,
+    ),
     subagentStart: notRead,
     subagentStop: documented('subagentStop', CURSOR_HOOKS),
   },
@@ -1155,18 +1208,30 @@ export const PRESENCE = {
     message: { ...HOSTS.codex.onAMessage, what: 'UserPromptSubmit' },
     memory: noChannel('its memories are made in the background, with no tool and no hook'),
     file: documented('PostToolUse on `apply_patch`', CODEX_HOOKS),
-    end: documented('Stop', CODEX_HOOKS),
+    end: documented(
+      'Stop; the plugin runs its two verbs there, and the transcript it names is not read yet',
+      CODEX_HOOKS,
+    ),
     subagentStart: notRead,
-    subagentStop: { ...HOSTS.codex.subagentStop, what: 'SubagentStop' },
+    subagentStop: {
+      ...HOSTS.codex.subagentStop,
+      what: 'SubagentStop; the plugin runs its hand-back check there',
+    },
   },
   copilot: {
     choice: documented('postToolUse on `ask_user`', COPILOT_HOOKS),
     message: documented('userPromptSubmitted', COPILOT_HOOKS, PROMPT_EVENTS_READ_ON),
     memory: documented('`store_memory`, which keeps it in the cloud', COPILOT_MEMORY),
     file: documented('postToolUse on a write', COPILOT_HOOKS),
-    end: documented('agentStop', COPILOT_HOOKS),
+    end: documented(
+      'agentStop (as `Stop`); the plugin runs its two verbs there, and the transcript it names is not read yet',
+      COPILOT_HOOKS,
+    ),
     subagentStart: notRead,
-    subagentStop: { ...HOSTS.copilot.subagentStop, what: 'subagentStop' },
+    subagentStop: {
+      ...HOSTS.copilot.subagentStop,
+      what: 'subagentStop (as `SubagentStop`); the plugin runs its hand-back check there, which cannot tell a second stop of the same subagent, the host naming no field for it',
+    },
   },
   gemini: {
     choice: documented('AfterTool on `ask_user`', GEMINI_TREE),
@@ -1176,9 +1241,12 @@ export const PRESENCE = {
       GEMINI_TREE,
     ),
     file: documented('AfterTool on `write_file` and `replace`', GEMINI_TREE),
-    end: documented('AfterAgent, which cannot add context', GEMINI_TREE),
-    subagentStart: noChannel(),
-    subagentStop: noChannel(),
+    end: documented(
+      'AfterAgent, which cannot add context; the plugin runs its two verbs there for what they need none for, and the transcript it names is not read yet',
+      GEMINI_TREE,
+    ),
+    subagentStart: noChannel('its hooks name no event for a subagent'),
+    subagentStop: noChannel('its hooks name no event for a subagent'),
   },
   opencode: {
     choice: documented('`tool.execute.after` on `question`', OPENCODE_TREE),
@@ -1197,3 +1265,47 @@ export const PRESENCE = {
 export const PRESENCE_HOSTS = HOST_NAMES.filter(
   (name) => name in PRESENCE,
 ) as readonly (keyof typeof PRESENCE)[];
+
+/**
+ * What a hook at the stop of a subagent is handed by each host that documents one, so `mnema
+ * handback --host` is told which payload it was handed and never guesses it from the shape.
+ *
+ *   - `event` is the name the payload carries for the event: `SubagentStop` in Claude Code, in
+ *     Codex (`SubagentStopCommandInput`, `codex-rs/hooks/src/events/stop.rs`) and in Copilot CLI
+ *     under the PascalCase name, which hands the "VS Code compatible" payload in snake_case.
+ *   - `reply` is the field that holds the subagent's whole final reply.
+ *   - `again` is the field a host sets when it asks for the stop again after a hook sent the
+ *     subagent back, which is what makes the check one-time. Copilot CLI's hooks reference names
+ *     none for `subagentStop` (it names `stop_hook_active` for `agentStop` alone): there the
+ *     product cannot tell a second stop, and the only bound is the host's own, eight consecutive
+ *     continuations (documented, not measured).
+ *   - `bare` is the field that holds the reply in the payload of the same hook configured under the
+ *     camelCase name, which carries no event name: Copilot CLI's `response`. The plugin's hooks file
+ *     uses the PascalCase name; this is for a person's own file. `null` where the host has one shape.
+ */
+export const HANDBACKS = {
+  claude: {
+    event: 'SubagentStop',
+    reply: 'last_assistant_message',
+    again: 'stop_hook_active',
+    bare: null,
+  },
+  codex: {
+    event: 'SubagentStop',
+    reply: 'last_assistant_message',
+    again: 'stop_hook_active',
+    bare: null,
+  },
+  copilot: {
+    event: 'SubagentStop',
+    reply: 'last_assistant_message',
+    again: null,
+    bare: 'response',
+  },
+} as const;
+
+/** A host whose subagent stop `mnema handback --host` reads, in the order of {@link HANDBACKS}. */
+export type HandbackHost = keyof typeof HANDBACKS;
+
+/** Every {@link HandbackHost}, as the list `mnema handback --host` enumerates. */
+export const HANDBACK_HOSTS = Object.keys(HANDBACKS) as readonly HandbackHost[];

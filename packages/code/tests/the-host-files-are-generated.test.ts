@@ -159,8 +159,19 @@ describe('the presence map', () => {
     // VS Code documents SubagentStart, and the hooks file reaches it: generated for, not held.
     expect(cell("VS Code's agent", 8)).toContain('documented, not measured');
     expect(cell("VS Code's agent", 8)).not.toContain('held by a test');
-    expect(cell('Gemini CLI', 8)).toBe('no channel');
+    expect(cell('Gemini CLI', 8)).toBe('its hooks name no event for a subagent: no channel');
     expect(cell('OpenCode', 7)).toBe('not read');
+    expect(cell('Gemini CLI', 9).replace(/ \|$/, '')).toBe(
+      'its hooks name no event for a subagent: no channel',
+    );
+    expect(cell('OpenCode', 8)).toBe('not read');
+    expect(cell('OpenCode', 9).replace(/ \|$/, '')).toBe('not read');
+    // Codex and Copilot CLI: the plugin runs the hand-back check there, and the host is not run for it.
+    for (const host of ['Codex', 'GitHub Copilot CLI']) {
+      expect(cell(host, 9)).toContain('the plugin runs its hand-back check there');
+      expect(cell(host, 9)).toContain('documented, not measured');
+      expect(cell(host, 9)).not.toContain('held by a test');
+    }
     // The message of the person's: read at the pinned commit for Codex and Gemini CLI, not run;
     // VS Code and OpenCode were not read for it.
     expect(cell('Codex', 2)).toContain('UserPromptSubmit: documented, not measured');

@@ -648,6 +648,10 @@ const UNWITNESSED: Readonly<Record<string, Debt>> = {
     reached: 'nobody imports it',
     why: 'Declares the `witness` group and prints its outcomes; one suite proves --calendar reaches `stamp` and --global the bare reading, another runs both acts over the global tail on the binary (each reads --global off the group now, where it used to reach nothing) and no golden ever invokes the verb.',
   },
+  'packages/code/src/wiring/words.ts': {
+    reached: 'nobody imports it',
+    why: "The words verb's wiring, reading a host's hook payload through the standard-input port; the-persons-words-are-kept-by-the-hooks.test.ts drives it through the program for a prompt and for a host that has no prompt hook, and every-verb-says-if-it-writes.test.ts exercises it in process.",
+  },
   'packages/context/src/intelligence/events.ts': {
     reached: 'nobody imports it',
     why: 'CatalogEvent and EventKind, two aliases computed from orderedEvents across a package boundary: nothing of it survives compilation, so the two tests naming it borrow a vocabulary and never a value.',
@@ -704,7 +708,7 @@ const UNWITNESSED: Readonly<Record<string, Debt>> = {
  * reading, so nothing can fall in two.
  */
 const THE_SHAPE_OF_WHAT_IS_LEFT: Readonly<Record<string, number>> = {
-  wiring: 53,
+  wiring: 54,
   presentation: 7,
   projections: 3,
   completion: 4,
@@ -946,7 +950,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/src/cli.golden.test.ts': 9,
   'packages/code/src/cli.test.ts': 3,
   'packages/code/src/commands/accountability.test.ts': 10,
-  'packages/code/src/commands/after-update.test.ts': 13,
+  'packages/code/src/commands/after-update.test.ts': 14,
   'packages/code/src/commands/antipatterns.test.ts': 13,
   'packages/code/src/commands/backup.test.ts': 11,
   'packages/code/src/commands/brief.test.ts': 19,
@@ -956,6 +960,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/src/commands/decision-review.test.ts': 9,
   'packages/code/src/commands/decision-transition.test.ts': 12,
   'packages/code/src/commands/decision.test.ts': 8,
+  'packages/code/src/commands/doctor-host-mcp.test.ts': 8,
   'packages/code/src/commands/export-madr.test.ts': 12,
   'packages/code/src/commands/exposure.test.ts': 13,
   'packages/code/src/commands/guard.test.ts': 11,
@@ -1163,7 +1168,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-sent-command-is-a-band-and-an-answer-has-a-head.test.ts': 20,
   'packages/code/tests/a-session-hands-its-dispatches-to-one-private-task.test.ts': 18,
   'packages/code/tests/a-session-opens-where-nothing-signs.test.ts': 14,
-  'packages/code/tests/a-session-says-what-it-wrote.test.ts': 14,
+  'packages/code/tests/a-session-says-what-it-wrote.test.ts': 15,
   'packages/code/tests/a-settled-choice-is-said.test.ts': 14,
   'packages/code/tests/a-stack-goes-where-nothing-is.test.ts': 8,
   'packages/code/tests/a-stack-is-handled-through-the-program.test.ts': 6,
@@ -1438,6 +1443,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-doctor-relinks-over-the-destination-only.test.ts': 8,
   'packages/code/tests/the-document-is-a-function-of-the-record.test.ts': 6,
   'packages/code/tests/the-echo-names-the-record.test.ts': 13,
+  'packages/code/tests/the-end-of-a-turn-reaches-every-host.test.ts': 18,
   'packages/code/tests/the-evidence-page-cites-what-exists.test.ts': 5,
   'packages/code/tests/the-example-is-read-from-the-page.test.ts': 6,
   'packages/code/tests/the-example-is-type-checked.test.ts': 7,
@@ -1528,6 +1534,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-page-shows-its-seams.test.ts': 20,
   'packages/code/tests/the-panel.test.ts': 21,
   'packages/code/tests/the-pattern-leaves-in-the-hosts-shape.test.ts': 6,
+  'packages/code/tests/the-persons-words-are-kept-by-the-hooks.test.ts': 12,
   'packages/code/tests/the-persons-words-are-read-per-host.test.ts': 7,
   'packages/code/tests/the-phrase-the-domain-words-is-one-line.test.ts': 8,
   'packages/code/tests/the-plugin-icon-is-the-mark-it-names.test.ts': 8,
@@ -1957,6 +1964,7 @@ const PRODUCTION_FILES: readonly string[] = [
   'packages/code/src/commands/decision.ts',
   'packages/code/src/commands/dictated.ts',
   'packages/code/src/commands/dispatched.ts',
+  'packages/code/src/commands/doctor-host-mcp.ts',
   'packages/code/src/commands/doctor-long-paths.ts',
   'packages/code/src/commands/doctor-mcp.ts',
   'packages/code/src/commands/doctor-merge-driver.ts',
@@ -2101,6 +2109,7 @@ const PRODUCTION_FILES: readonly string[] = [
   'packages/code/src/one-line.ts',
   'packages/code/src/outside-the-record.ts',
   'packages/code/src/package-root.ts',
+  'packages/code/src/persons-words.ts',
   'packages/code/src/pinned-run.ts',
   'packages/code/src/plugin-tree-hash.ts',
   'packages/code/src/presentation/accepted-by.ts',
@@ -2297,6 +2306,7 @@ const PRODUCTION_FILES: readonly string[] = [
   'packages/code/src/wiring/verify.ts',
   'packages/code/src/wiring/why.ts',
   'packages/code/src/wiring/witness.ts',
+  'packages/code/src/wiring/words.ts',
   'packages/code/src/wiring/written-before.ts',
   'packages/context/src/context/bootstrap.ts',
   'packages/context/src/context/brief.ts',
@@ -2523,9 +2533,9 @@ describe('every file has a test that names it', () => {
     // 79 once the status printer's test imports it.
     // 80 with the record group's wiring, which a-tail-merges-and-pulls.test.ts drives through the binary.
     // 81 with the upgrade verb's wiring, which after-update.test.ts drives through the program.
-    // 82 with the prove verb's wiring, which a-decision-is-proven-in-one-file.test.ts drives.
-    expect(found.size).toBe(82);
-    expect(byReach('nobody imports it')).toBe(82);
+    // 83 with the words verb's wiring and the prove verb's wiring, which the-persons-words-are-kept-by-the-hooks.test.ts and a-decision-is-proven-in-one-file.test.ts drive.
+    expect(found.size).toBe(83);
+    expect(byReach('nobody imports it')).toBe(83);
     expect(byReach('imported, and no assertion observes it')).toBe(0);
   });
 
@@ -2547,7 +2557,7 @@ describe('every file has a test that names it', () => {
     // Announced in the header and, until now, kept by hand. A shared excuse is how a table
     // like this turns into a rubber stamp, and a row drained to a stub is how it starts.
     const reasons = Object.values(UNWITNESSED).map((one) => one.why);
-    expect(reasons).toHaveLength(82);
+    expect(reasons).toHaveLength(83);
     expect(new Set(reasons).size).toBe(reasons.length);
     // The shortest reason standing is 156 characters; the floor is under it and well over
     // anything that could be written without saying what reaches that file.

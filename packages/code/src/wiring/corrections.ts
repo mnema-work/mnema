@@ -13,7 +13,10 @@
  */
 
 import type { Command } from 'commander';
+import { END_HOSTS, type EndHost } from '../host-names.js';
 import { hereWriting } from './context.js';
+import { enumeratedOption, listed } from './enumerated.js';
+import { reportUsage } from './report.js';
 import { type Declared, mutatesTheRecord, type Wiring } from './verb.js';
 
 /** Registers `mnema corrections` on the program. */
@@ -23,6 +26,13 @@ export function registerCorrections(program: Command, wiring: Wiring): Declared 
     .command('corrections')
     .description(
       'record what a person corrected in a session as proposed decisions, for a Stop hook',
+    )
+    .addOption(
+      enumeratedOption(
+        '--host <host>',
+        `the host whose hook runs this, and whose payload arrives on stdin: ${listed(END_HOSTS)}; Claude Code's when it is not given`,
+        END_HOSTS,
+      ),
     )
     .addHelpText(
       'after',
@@ -48,16 +58,27 @@ export function registerCorrections(program: Command, wiring: Wiring): Declared 
         '  Code with no origin yields no typed line. An option chosen in the question tool is read',
         '  from the tool’s result, which carries no origin.',
         '  It is on until `mnema switch off user-corrections`; it read nothing before 0.1.10 until a',
-        '  person switched it on. With the channel off, or outside a project, it records nothing.',
+        '  person switched it on. With the channel off, or outside a project, it records nothing. Only',
+        '  Claude Code’s transcript is read today: for any other --host it says so on the second stream',
+        '  and records nothing.',
         '  With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its',
         '  code alone on the first line of the error stream; typed by a person, nothing changes.',
       ].join('\n'),
     )
-    .action(async () => {
+    .action(async (opts: { host?: string }) => {
+      const host: EndHost | undefined =
+        opts.host === undefined ? undefined : END_HOSTS.find((one) => one === opts.host);
+      if (opts.host !== undefined && host === undefined) {
+        reportUsage(wiring, `--host takes one of ${listed(END_HOSTS)}, not "${opts.host}".`);
+        return;
+      }
       const { runCorrections } = await import('../commands/corrections.js');
       const { fact } = await import('../presentation/detail.js');
       const payload = io.input === undefined ? '' : await io.input();
-      const done = runCorrections(hereWriting(wiring), { payload });
+      const done = runCorrections(hereWriting(wiring), {
+        payload,
+        ...(host === undefined ? {} : { host }),
+      });
       for (const note of done.notes) io.err(render(fact(note, 0)));
       io.out(JSON.stringify(done.reply));
     });
