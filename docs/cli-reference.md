@@ -88,6 +88,11 @@ Each tool of the MCP server has its page, in [the tools](reference/mcp-tools.md)
   *not observable*, never *did not consult*, for every move whose run recorded no
   reading at all, which is the state a move made by a person is always in. It is on
   this surface only, and the page says what it can witness.
+  It also reads what agents accepted (a reading, never a pause): the rules accepted
+  with no agent declared, or addressed, that an agent took out of force, the chains of
+  three decisions or more, and the accepts that quote no words of the person, with
+  an agent declared and with none in two totals; the text lists at most 10 ids per
+  signal and `--json` all of them.
 - **A feed your SIEM can read**: `mnema export` emits the record as OCSF Entity
   Management events, one JSON object per line, for Security Lake, Splunk, or anything
   else that speaks the schema. It carries the **envelope only** (who authorized what,

@@ -190,6 +190,13 @@ export {
   type WorkspaceAccountability,
 } from './intelligence/accountability.js';
 export {
+  type AcceptWithoutTheirWords,
+  type AgentAcceptsReading,
+  agentAcceptsReading,
+  type PersonRuleSuperseded,
+  restsOnThePerson,
+} from './intelligence/agent-accepts.js';
+export {
   type Antipatterns,
   antipatterns,
   antipatternsByProject,

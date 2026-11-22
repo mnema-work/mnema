@@ -218,6 +218,12 @@ $ mnema audit antipatterns
 | pattern moves with a consultation in the same run: 0
 | pattern moves with none, in a run that recorded others: 0
 | pattern moves in a run with no consultation at all: 0
+| rules accepted with no agent declared, or addressed, that an agent took out of force: 0
+| chains of three decisions or more, each replacing the one before: 0
+| accepts that declare an agent: 0
+| of them, quoting no words of the person: 0
+| accepts that declare no agent: 0
+| of them, quoting no words of the person: 0
 |
 | What this can witness: a consultation is recorded when the AGENT surface serves a body, and nothing records a person who read the pattern with `mnema show`. So a move whose run recorded no consultation at all is NOT OBSERVABLE here: never a move made without consulting. The one case this asserts is a move whose own run recorded a consultation of some other pattern: there the record proves the witness was operating. Nothing was refused, and nothing was written to produce it.
 $ mnema audit antipatterns --json
@@ -233,6 +239,14 @@ $ mnema audit antipatterns --json
 |     "consulted": [],
 |     "movedWithoutConsulting": [],
 |     "notObservable": []
+|   },
+|   "agentAccepts": {
+|     "rulesSupersededByAgent": [],
+|     "chains": [],
+|     "agentAccepts": 0,
+|     "acceptsWithoutTheirWords": [],
+|     "undeclaredAccepts": 0,
+|     "undeclaredWithoutTheirWords": []
 |   }
 | }
 $ mnema status --actor <anchor>
@@ -1396,6 +1410,13 @@ $ mnema audit antipatterns
 | pattern moves with none, in a run that recorded others: 0
 | pattern moves in a run with no consultation at all: 4
 | skill candidates (reopened >1×): <task-runbook>
+| rules accepted with no agent declared, or addressed, that an agent took out of force: 0
+| chains of three decisions or more, each replacing the one before: 0
+| accepts that declare an agent: 0
+| of them, quoting no words of the person: 0
+| accepts that declare no agent: 1
+| of them, quoting no words of the person: 1
+| accepted, no agent declared, with no words of the person: <decision-runbook>
 |
 | What this can witness: a consultation is recorded when the AGENT surface serves a body, and nothing records a person who read the pattern with `mnema show`. So a move whose run recorded no consultation at all is NOT OBSERVABLE here: never a move made without consulting. The one case this asserts is a move whose own run recorded a consultation of some other pattern: there the record proves the witness was operating. Nothing was refused, and nothing was written to produce it.
 $ mnema audit antipatterns --json
@@ -1565,6 +1586,19 @@ $ mnema audit antipatterns --json
 |         "action": "adopt",
 |         "at": "<at:28>",
 |         "run": "<run-first>"
+|       }
+|     ]
+|   },
+|   "agentAccepts": {
+|     "rulesSupersededByAgent": [],
+|     "chains": [],
+|     "agentAccepts": 0,
+|     "acceptsWithoutTheirWords": [],
+|     "undeclaredAccepts": 1,
+|     "undeclaredWithoutTheirWords": [
+|       {
+|         "decision": "<decision-runbook>",
+|         "at": "<at:23>"
 |       }
 |     ]
 |   }

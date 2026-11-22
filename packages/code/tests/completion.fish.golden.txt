@@ -651,7 +651,7 @@ complete -c mnema -f -n '__mnema_at "refs"' -l color -x -a 'auto always never'
 
 # mnema audit
 complete -c mnema -f -n '__mnema_at "audit"' -a 'accountability' -d 'show who authorized what across the record (optionally windowed/filtered)'
-complete -c mnema -f -n '__mnema_at "audit"' -a 'antipatterns' -d 'show recurring shapes in the record (reopens, supersessions, deprecations)'
+complete -c mnema -f -n '__mnema_at "audit"' -a 'antipatterns' -d 'show recurring shapes in the record (reopens, supersessions, deprecations, and what agents accepted)'
 complete -c mnema -f -n '__mnema_at "audit"' -a 'exposure' -d 'show which records hold something shaped like a credential (never the value)'
 complete -c mnema -f -n '__mnema_at "audit"' -a 'help' -d 'display help for command'
 complete -c mnema -f -n '__mnema_at "audit"' -s h -l help
