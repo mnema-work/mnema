@@ -77,6 +77,9 @@ pnpm test
 - `pnpm test` is the whole suite. Every test process runs with a `HOME` made for it, so a run
   never signs with your key or writes to your own records
   ([`.github/a-home-of-its-own/`](.github/a-home-of-its-own/README.md)).
+  It also clears the session variables of the hosts (such as `CLAUDE_CODE_SESSION_ID`) before any
+  test, so a run from inside an agent's session behaves as one on the CI; a case that needs a
+  session sets it itself.
 - `pnpm test:host-contract` starts a real host and is not part of `pnpm test`; it needs
   `MNEMA_HOST_CONTRACT_HOST` and that host's own variables (see
   [`vitest.host-contract.config.ts`](vitest.host-contract.config.ts)). What each host sends of the
