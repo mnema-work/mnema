@@ -776,8 +776,8 @@ describe('every verb says if it writes', () => {
       'tally',
       'handback',
       'settled',
-      'dictated',
       'words',
+      'dictated',
     ]);
     expect(verbsThat('mutates').length + verbsThat('reads').length).toBe(DECLARED.length);
   });
