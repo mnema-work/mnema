@@ -162,7 +162,7 @@ const TO_THE_TAIL = `${ESC}[F`;
  * `the-opening-fits-the-height.test.ts`, and no number here is that answer.
  *
  * AND THE HEIGHT IS THE FLOOR'S NOW RATHER THAN THIRTY. Thirty was a window somebody had while
- * the shortest one this console drew a page on was twenty-four rows; the floor is forty-two and
+ * the shortest one this console drew a page on was twenty-four rows; the floor is thirty-nine and
  * is worked out from the drawing of the name (`src/repl/floor.ts`), so thirty is under it and every case below would be driving the screen
  * that says the window is too small. Read off the floor rather than retyped, for the reason the
  * paragraph above gives about thresholds: this is *a window somebody has*, and what that means
@@ -176,7 +176,7 @@ const THREE_REGIONS = { columns: 120, rows: THE_FLOOR.rows } as const;
  * IT WAS THREE, AND THEN NINE, and the arithmetic under it is the same arithmetic as the size
  * above. The middle region was four rows while the arrangement held fifteen, so three answers
  * filled it twice over; nine was the answer for a window of thirty rows. The window is the
- * floor's now, and the floor followed the drawing down to forty-two; the arrangement beside the
+ * floor's now, and the floor followed the drawing down to thirty-nine; the arrangement beside the
  * mark costs eight of them and the input area five, so the middle is the twenty-nine that are
  * left, and a refused line is worth two rows: twenty-two of them are forty-four and the roll
  * clears the window by fifteen.
@@ -1255,7 +1255,7 @@ async function noFrameOutgrewTheShrink(
 describe('the way out gives the screen back and the transcript with it', () => {
   it('writes everything the session said onto the caller’s own buffer, after leaving', async () => {
     const columns = 100;
-    // AT THE FLOOR'S HEIGHT, which was twenty-four and is forty-two (`src/repl/floor.ts`).
+    // AT THE FLOOR'S HEIGHT, which was twenty-four and is thirty-nine (`src/repl/floor.ts`).
     const rows = THE_FLOOR.rows;
     const ran = await inPty({ columns, rows, steps: [opens, submits('verify'), leaves] });
     // AFTER THE SEQUENCE THAT GIVES THE SCREEN BACK, and this is the whole mechanism: the

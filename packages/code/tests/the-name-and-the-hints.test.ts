@@ -351,7 +351,7 @@ async function openedAt(
  * A window tall enough for whatever a case here is really about: THE FLOOR'S OWN HEIGHT.
  *
  * IT WAS FORTY, which was tall while the shortest window this console drew a page on was
- * twenty-four rows. The floor is forty-two now and it is worked out from the drawing of the name
+ * twenty-four rows. The floor is thirty-nine now and it is worked out from the drawing of the name
  * (`src/repl/floor.ts`), so forty is under it and a session opened there draws no page at all.
  */
 const TALL = THE_FLOOR.rows;

@@ -895,8 +895,8 @@ describe('the mark says which row is picked, and it is a column of the table', (
     // THE SECOND AXIS, AND IT IS OVER THE COLUMN RATHER THAN INSTEAD OF IT. This module used
     // to say *the colour is not an axis at all*; what that argument really supported is that
     // the hue may not be the CARRIER, which the case above holds, and it was read as a ban
-    // on hue. The mark is chrome, so it takes the one accent this surface spends, as a role
-    // (`presentation/line.ts`, `pick`).
+    // on hue, and the hue has since gone from the terminal altogether. The mark is chrome, so it
+    // takes the product's weight (bold, no hue), as a role (`presentation/line.ts`, `pick`).
     const painted = paletteFor({
       offers,
       room: paletteRowsFor(offers),
@@ -907,13 +907,13 @@ describe('the mark says which row is picked, and it is a column of the table', (
     });
     const row = painted.find((line) => stripped(line).trimStart().startsWith(PICK)) as string;
     expect(row, 'no row of the painted list carries the mark').toBeDefined();
-    // THE ACCENT IS ON THE MARK, and it is the accent this surface already spends rather than
-    // a hue chosen here: the same escapes the echo's prompt is wrapped in (`presentation/
-    // styled.ts`, `ACCENT`), read off a line the product composes rather than typed.
+    // THE WEIGHT IS ON THE MARK, and it is the weight this surface already spends rather than
+    // one chosen here: the same escapes the echo's prompt is wrapped in (`presentation/
+    // styled.ts`, `OPENED_BY`), read off a line the product composes rather than typed.
     const accent = renderStyled(echoLine(PROMPT, ''));
     const opens = accent.slice(0, accent.indexOf(PROMPT));
-    expect(opens, 'the accent is not an escape at all').toContain(ESC);
-    expect(row, 'the mark is not painted in the accent').toContain(`${opens}${PICK}`);
+    expect(opens, 'the weight is not an escape at all').toContain(ESC);
+    expect(row, 'the mark is not painted in the prompt\u2019s weight').toContain(`${opens}${PICK}`);
     // AND STRIPPING WHAT WRAPS IT LEAVES THE PLAIN ROW, byte for byte: the word, the padding
     // and what the word is, exactly as a pipe gets them.
     const plain = rowsFor(offers, paletteRowsFor(offers), NOTHING_IS_CUT, picked).find((line) =>
@@ -924,12 +924,11 @@ describe('the mark says which row is picked, and it is a column of the table', (
     // answer: the glyph is in the text either way, and the rows around it are padded to the
     // same width by the same function.
     expect(stripped(row).indexOf(PICK)).toBe(plain.indexOf(PICK));
-    // AND THE WORD CARRIES THE ACCENT TOO, WHICH IS WHAT THIS DELIVERY ADDED. The case read
-    // *NOT VACUOUS: an UNPICKED row carries no escape at all*, and that was true while the mark
-    // was the only part of this list with a role. The word a caller could type is a part with a
-    // role now (`presentation/items.ts`, `asWord`), so what says the paint is not decoration is
-    // COUNTED instead: the word takes one wrap, the mark takes another on the row that has one,
-    // and the description takes none at all.
+    // AND THE WORD CARRIES NOTHING. IT CARRIED THE ACCENT, and the count here was two escapes on
+    // every row of an offer (one wrap) and four on the marked one. The word is a part with a role
+    // (`presentation/items.ts`, `asWord`) that renders bare now, so what says the paint is not
+    // decoration is COUNTED: the mark takes one wrap on the row that has one, and nothing else on
+    // the list takes any.
     const wrapped = (line: string): number => line.split(ESC).length - 1;
     // A ROW OF AN OFFER IS ONE THAT DOES NOT BEGIN WITH THE MARK THAT SAYS THERE IS MORE. It
     // was *a row naming one of the offers*, and the account of what had no room reads `… 13 not
@@ -939,15 +938,13 @@ describe('the mark says which row is picked, and it is a column of the table', (
     const others = painted.filter((line) => line !== row && line !== renderStyled(THE_KEYS));
     expect(others.length).toBeGreaterThan(1);
     for (const other of others.filter(named)) {
-      // TWO OPENERS AND TWO CLOSERS IS ONE WRAP: the accent and the escape that returns the
-      // terminal's own foreground, around the word and around nothing else.
-      expect(wrapped(other), 'an unmarked row is painted somewhere other than its word').toBe(2);
-      expect(other, 'the word does not carry the accent').toContain(opens);
+      // NO ESCAPE AT ALL: the word is bare and so is its description, and the unmarked column
+      // is padding.
+      expect(wrapped(other), 'an unmarked row is painted').toBe(0);
     }
-    // AND THE MARKED ROW CARRIES EXACTLY ONE WRAP MORE: the mark's.
-    expect(wrapped(row), 'the marked row is painted somewhere else as well').toBe(4);
-    // AND THE ROW THAT NAMES NO WORD CARRIES NONE AT ALL, which is what says the hue belongs to
-    // the word rather than to a row of this list: the account of what had no room is a row here
+    // AND THE MARKED ROW CARRIES EXACTLY ONE WRAP: the mark's, an opener and its closer.
+    expect(wrapped(row), 'the marked row is painted somewhere else as well').toBe(2);
+    // AND THE ROW THAT NAMES NO WORD CARRIES NONE AT ALL, like every row but the marked one: the account of what had no room is a row here
     // like any other and it comes out of the renderer bare.
     const account = others.find((line) => !named(line));
     expect(account, 'nothing accounted for the words with no room').toBeDefined();
@@ -1850,10 +1847,10 @@ describe('the mark survives what changes around it', () => {
     // on a loaded machine an index reads the page from BEFORE the resize, and the red then says
     // *the resize lost what the caller had picked*, which is an accusation against the product
     // for something the instrument did (`support/screen.ts`, {@link theSettledScreen}).
-    // AND BY THE MARK AS THE ACCENT CLOSES IT, which is how the frame carries it: the glyph alone
+    // AND BY THE MARK AS ITS WEIGHT CLOSES IT, which is how the frame carries it: the glyph alone
     // is also what a command that was sent begins with, and the screen the session leaves holds one.
     // A sent command's mark is closed after the space inside it, and the pick's before the column.
-    const after = theSettledScreen(ran.bytes, narrower, rows, `${PICK}${ESC}[39m`);
+    const after = theSettledScreen(ran.bytes, narrower, rows, `${PICK}${ESC}[22m`);
     expect(pickedOn(after), 'the resize lost what the caller had picked').toBe(first);
     fillsTheScreen(after, rows, 'the page after a resize with a pick on it');
   }, 240_000);
@@ -1896,17 +1893,16 @@ describe('the mark survives what changes around it', () => {
       expect(pickedOn(screen), `the mark is not on the screen ${said}`).toBe(first);
     }
 
-    // AND THE HUE IS ON THE MARK IN ONE OF THEM AND NOWHERE IN THE OTHER. The accent is read
+    // AND THE WEIGHT IS ON THE MARK IN ONE OF THEM AND NOWHERE IN THE OTHER. The escape is read
     // off a line the product composes rather than typed here (`src/presentation/styled.ts`), and
-    // what is looked for is the accent IMMEDIATELY BEFORE the glyph: the mark painted, rather
-    // than a page that happens to carry the hue somewhere (the rules of the input area are drawn
-    // in it, on every frame of both sessions).
+    // what is looked for is the weight IMMEDIATELY BEFORE the glyph: the mark painted, rather
+    // than a page that happens to carry bold somewhere.
     const accent = renderStyled(echoLine(PROMPT, ''));
     const opensWith = accent.slice(0, accent.indexOf(PROMPT));
     const painted = (ran: Ran, from: number, to: number): boolean =>
       ran.bytes.slice(ran.at[from] as number, ran.at[to] as number).includes(`${opensWith}${PICK}`);
-    expect(painted(withColour, 1, 2), 'the mark was drawn without the accent').toBe(true);
-    expect(painted(without, 1, 2), 'the accent survived NO_COLOR').toBe(false);
+    expect(painted(withColour, 1, 2), 'the mark was drawn without its weight').toBe(true);
+    expect(painted(without, 1, 2), 'the weight survived NO_COLOR').toBe(false);
     // NOT VACUOUS: AND THE INSTRUMENT IT USED FOR THAT IS GONE. It read: *the session with no
     // colour is still a painted page, the layout draws the rules and dims the list out of its
     // own vocabulary, so the absence above is about the MARK and not about a page that has no

@@ -62,8 +62,9 @@ const stripped = (text: string): string => text.replace(SGR, '');
  * instead of through the renderer.
  *
  * IT WAS MAGENTA, *because nothing in `styled.ts` emits it; the day something does, this
- * constant moves again and the cases below say so*. Something does: the accent a prompt
- * carries is SGR 35, so magenta became ours exactly as red did, and this is that day. Cyan
+ * constant moves again and the cases below say so*. Something did: the accent a prompt
+ * carried was SGR 35, so magenta became ours exactly as red did, and that day has passed again,
+ * because the accent is gone and magenta is a hue the renderer does not write. Cyan
  * now, and the same sentence stands over it: a hue the renderer does not write, which is
  * what the constant is FOR.
  */
@@ -269,14 +270,13 @@ describe('the styled line is the plain line, wrapped', () => {
       '  \u001b[2man-id\u001b[22m  \u001b[2mpublic\u001b[22m  ' +
         '\u001b[2m2026-08-05\u001b[22m  a title',
     );
-    // THE ECHO, byte for byte: the prompt in the accent and closed by the foreground, then
+    // THE ECHO, byte for byte: the prompt in bold and closed by the intensity, then
     // what the caller typed in bold and closed by the intensity, and NOTHING between them,
     // because the space the prompt ends in is inside the prompt's own text.
     expect(renderStyled(echoLine('mnema> ', 'search'))).toBe(
-      '\u001b[35mmnema> \u001b[39m\u001b[1msearch\u001b[22m',
+      '\u001b[1mmnema> \u001b[22m\u001b[1msearch\u001b[22m',
     );
-    // AND THE ACCENT IS NOT A SEVERITY: none of the three hues a verdict can carry is on
-    // this line, which is the half that says the two axes did not meet.
+    // AND THE PROMPT IS NOT A HUE: none of the three severities is on this line.
     for (const severity of ['\u001b[31m', '\u001b[32m', '\u001b[33m']) {
       expect(renderStyled(echoLine('mnema> ', 'search'))).not.toContain(severity);
     }

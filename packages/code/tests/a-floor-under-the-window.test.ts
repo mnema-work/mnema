@@ -252,7 +252,7 @@ const clearsAndLeaves: Step = {
 // The floor is a pair of numbers, and the boundary is searched for
 // ---------------------------------------------------------------------------
 
-describe('the floor is eighty by forty-two, and it is a function of both measurements', () => {
+describe('the floor is eighty by thirty-nine, and it is a function of both measurements', () => {
   it('is walked to rather than written down here', () => {
     // THE THRESHOLD, SEARCHED FOR: the same shape every other form on this surface is pinned by.
     // Nothing here knows what the floor is: the walk asks the question at every size and the
@@ -261,19 +261,20 @@ describe('the floor is eighty by forty-two, and it is a function of both measure
     while (narrowest < 400 && !theWindowServes(narrowest, THE_FLOOR.rows)) narrowest += 1;
     let shortest = 0;
     while (shortest < 400 && !theWindowServes(THE_FLOOR.columns, shortest)) shortest += 1;
-    // THE PAIR MOVED TWICE, AND THE HEIGHT IS THE ONE THAT MOVED BOTH TIMES. It was twenty-four
+    // THE PAIR MOVED THRICE, AND THE HEIGHT IS THE ONE THAT MOVED EVERY TIME. It was twenty-four
     // (the canonical terminal), then fifty-one, which is the height a NINE-ROW drawing of the
-    // name is chosen at, and it is forty-two, which is the height the SIX-ROW one is chosen at.
+    // name is chosen at, then forty-two, the height the SIX-ROW one is chosen at, and it is
+    // thirty-nine, the height the brand's FIVE-ROW one is chosen at.
     // The second move was made by a delivery about art that never opened this file's subject: the
     // floor is worked out from the drawing now (`src/repl/floor.ts`, `theFloorFor`), so three
-    // rows of art fewer is nine rows of window given back.
+    // rows of art fewer is nine rows of window given back, and one row fewer is three.
     //
     // THE TWO LITERALS ARE HERE ON PURPOSE, and the derivation is what they are worth rather
     // than what they cost: this is the one case that pins the constant to numbers rather than to
     // itself, so a floor that moved BY ACCIDENT, a drawing edited without anybody meaning to
     // move a window, is red here before it is anywhere else.
     expect(narrowest, 'the narrowest window that serves').toBe(80);
-    expect(shortest, 'the shortest window that serves').toBe(42);
+    expect(shortest, 'the shortest window that serves').toBe(39);
     // AND THE PAIR THE MODULE NAMES IS THE PAIR THE WALK FOUND, which is what keeps the constant
     // from drifting away from the rule that reads it.
     expect([narrowest, shortest]).toEqual([THE_FLOOR.columns, THE_FLOOR.rows]);

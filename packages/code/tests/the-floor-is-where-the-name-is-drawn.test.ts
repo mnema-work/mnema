@@ -34,8 +34,8 @@
  *     come apart.
  *   - THE PREVIEW: a bare slash shows four navigable words and says how many it could not, and
  *     the first letter narrows THAT list without moving the ceiling.
- *   - THE COLOUR: the accent is on the WORD and on nothing else beside it, and `NO_COLOR`
- *     takes the tone and leaves the word. Two real sessions, because the whole question is what
+ *   - THE COLOUR: the word carries no paint of its own (no accent, no weight), and `NO_COLOR`
+ *     takes the rest and leaves the word. Two real sessions, because the whole question is what
  *     a stream carries.
  *   - THE MARGIN: at the floor the widest thing the page draws is on it whole. A margin is
  *     columns of the PAGE, never a character of a line.
@@ -382,11 +382,11 @@ describe('a bare slash shows what there is, and the letter narrows THAT list', (
 });
 
 // ---------------------------------------------------------------------------
-// The word carries the accent, and NO_COLOR takes the tone
+// The word carries no paint of its own, and NO_COLOR takes the rest
 // ---------------------------------------------------------------------------
 
-describe('the word in the list carries the accent, and the description does not', () => {
-  it('paints the word in a session with colour, and leaves it spelled in one without', async () => {
+describe('the word in the list carries no paint of its own, with colour or without', () => {
+  it('leaves the word bare in a session with colour, and spelled the same in one without', async () => {
     // WHAT THE CALLER ASKED FOR: *the verbs in the search should have colour*. Both halves on
     // two REAL sessions, because the whole question is what a stream carries: the tone is the
     // renderer's and it obeys the channel the delivery before this one wired
@@ -420,33 +420,31 @@ describe('the word in the list carries the accent, and the description does not'
       expect(listRowsOn(screen, words).length, `the list is not legible ${said}`).toBe(4);
     }
 
-    // AND THE ACCENT IS ON THE WORD IN ONE AND NOWHERE IN THE OTHER. What is looked for is the
-    // accent IMMEDIATELY BEFORE a word (the word painted, rather than paint anywhere on a page
-    // that is full of it) and the escapes are read off a line the product composes rather than
-    // typed here (`src/presentation/styled.ts`).
-    const painted = renderStyled({ indent: 0, parts: [asWord('search')] });
-    const accent = painted.slice(0, painted.indexOf('search'));
-    expect(accent, 'the accent is not an escape at all').toContain(ESC);
-    const listed = words.filter((word) => withColour.bytes.includes(`${accent}${word}`));
-    expect(listed.length, 'no word of the list was painted in the accent').toBeGreaterThan(0);
+    // AND THE WORD CARRIES NO PAINT OF ITS OWN IN EITHER: no accent (the brand has no colour in the
+    // terminal) and no weight (the highlight by weight was refused). The escapes are read off a
+    // line the product composes rather than typed here (`src/presentation/styled.ts`): the role
+    // `word` renders bare, so a word on the page is preceded by nothing of its own.
+    expect(renderStyled({ indent: 0, parts: [asWord('search')] })).toBe('search');
+    const listed = words.filter((word) => withColour.bytes.includes(word));
+    expect(listed.length, 'no word of the list was on the page').toBeGreaterThan(0);
+    expect(withColour.bytes.includes(`${ESC}[35m`), 'the accent is back on the page').toBe(false);
     for (const word of listed) {
       expect(
-        without.bytes.includes(`${accent}${word}`),
-        `the accent on ${word} survived NO_COLOR`,
+        withColour.bytes.includes(`${ESC}[1m${word}`),
+        `${word} was emboldened: the highlight by weight was refused`,
       ).toBe(false);
     }
-    // AND THE DESCRIPTION BESIDE IT IS BARE, which is what makes the word the subject of its
-    // row: paint both and neither is. The row is read off the page rather than composed here.
-    const row = screenOf(
-      withColour.bytes.slice(0, withColour.at[1] as number),
-      columns,
-      rows,
-    ).rows.find((line) => listRowsOn({ rows: [line] }, words).length === 1);
+    // AND THE ROW IS THE LIST'S: dimmed whole by the layout, which is what the session with colour
+    // writes and the one without does not. The row is read off the page rather than composed here.
     expect(row, 'no row of the list is on the page').toBeDefined();
     expect(row as string, 'the page carries the escapes rather than the glyphs').not.toContain(ESC);
-    // AND NOTHING PAINTED SURVIVES `NO_COLOR` ANYWHERE ON THAT PAGE, which is the standing rule
-    // this colour had to join rather than an exception to it.
-    expect(without.bytes.includes(accent), 'the accent survived NO_COLOR somewhere').toBe(false);
+    // AND NO SEVERITY OR WEIGHT SURVIVES `NO_COLOR` BEFORE A WORD: the standing rule.
+    for (const word of listed) {
+      expect(
+        without.bytes.includes(`${ESC}[2m${word}`) || without.bytes.includes(`${ESC}[1m${word}`),
+        `paint survived NO_COLOR on ${word}`,
+      ).toBe(false);
+    }
   }, 300_000);
 });
 

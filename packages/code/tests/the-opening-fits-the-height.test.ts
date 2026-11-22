@@ -644,7 +644,7 @@ const SHOWS_OF_THE_ANSWER = 14;
  * WHAT THE ARRANGEMENT COSTS ON THAT SCREEN: the second stick, and the one that says the
  * identity survived.
  *
- * FOURTEEN ROWS, AND IT WAS EIGHT, AND THEN SEVENTEEN. Eight was the arrangement at the
+ * THIRTEEN ROWS, AND IT WAS EIGHT, AND THEN SEVENTEEN, AND THEN FOURTEEN. Eight was the arrangement at the
  * twenty-four-row floor: the letterspaced name on one row, the text beside it on six, and the
  * SEAM, the rule that closes the region and the row of breath under it (`repl/region.ts`,
  * `theTop`), on two. THE FIRST TRY AT THAT DELIVERY MADE IT NOUGHT: the arrangement was given
@@ -653,13 +653,13 @@ const SHOWS_OF_THE_ANSWER = 14;
  *
  * WHAT IS DRAWN AT THE FLOOR IS THE WHOLE NAME, which is what the floor MEANS, so nothing gives
  * way here at all: the rows of the art, the six the text takes under it in the stacked form, and
- * the two of the seam. That came to seventeen while the art was nine rows and it is fourteen
- * now that it is six, and the floor came with it, because the floor is three times this number
- * rather than a number of its own (`src/repl/floor.ts`). Fourteen is exactly a third of
- * forty-two: the bound, reached rather than approached, at the shortest window this console
+ * the two of the seam. That came to seventeen while the art was nine rows, fourteen while it was six,
+ * and it is thirteen now that it is five, and the floor came with it, because the floor is three times this number
+ * rather than a number of its own (`src/repl/floor.ts`). Thirteen is exactly a third of
+ * thirty-nine: the bound, reached rather than approached, at the shortest window this console
  * draws a page on.
  */
-const THE_ARRANGEMENT_COSTS = 14;
+const THE_ARRANGEMENT_COSTS = 13;
 
 describe('the answer a caller asked for is on the page, at the shortest window there is', () => {
   it('shows the list of verbs at the floor, where it showed none of it', async () => {
@@ -736,7 +736,7 @@ describe('the answer a caller asked for is on the page, at the shortest window t
       // assertions below are what say the opening really did leave), so it moves with the
       // size of the longest answer this session gives, which is what it has always been
       // worked out from. At twenty-four rows one read filled the window twice over; when
-      // the floor became forty-two, one read no longer pushed the opening past the top and
+      // the floor became forty-two (it is thirty-nine now), one read no longer pushed the opening past the top and
       // this became two. The document grew four rows when each heading started saying how
       // many are awaiting a judgement, and one read reaches past the top again.
       //

@@ -288,8 +288,13 @@ describe('the name has four drawings, and the widest that fits across is the one
     // letterspacing, and a delivery that replaced the SECOND rather than the first would leave
     // nothing between them.
     const [biggest, second] = forms as readonly (readonly string[])[];
-    expect((biggest as readonly string[]).length).toBeGreaterThan(
+    // IT WAS TALLER AS WELL AS WIDER (six rows over five), and the brand's five-row drawing is
+    // as tall as the five-row one under it: wider is the property that makes it the biggest.
+    expect((biggest as readonly string[]).length).toBeGreaterThanOrEqual(
       (second as readonly string[]).length,
+    );
+    expect(widthOf(biggest as readonly string[])).toBeGreaterThan(
+      widthOf(second as readonly string[]),
     );
     expect(widthOf(second as readonly string[])).toBeLessThan(80);
   });
@@ -350,13 +355,14 @@ describe('the name has four drawings, and the widest that fits across is the one
         }
       }
     }
-    // NOT VACUOUS: the drawings really are made of those glyphs rather than of ASCII alone,
-    // so the enumeration is ruling on something. Every one of the named glyphs is used, which
-    // is what makes one more the only thing the guard below can be about.
+    // NOT VACUOUS: the drawings really are made of a named glyph rather than of ASCII alone, so
+    // the enumeration is ruling on something. THE DRAWINGS USE ONE OF THE SEVEN NOW, the full
+    // block: the six pieces of outline belong to the old drawing, which is kept in the module
+    // for the site and drawn nowhere ({@link THE_NAMED}).
     const drawn = new Set(
       [...everyForm().flat().join('')].filter((g) => (g.codePointAt(0) ?? 0) >= 0x80),
     );
-    expect([...drawn].sort(), 'a named glyph is drawn nowhere').toEqual([...GLYPHS].sort());
+    expect([...drawn], 'the console draws a glyph other than the full block').toEqual([INK]);
   });
 
   it('holds those code points in the module and no other unusual byte', () => {
@@ -410,7 +416,7 @@ function masksIn(source: string): readonly (readonly string[])[] {
 }
 
 /**
- * THE ART, AS A SECOND COPY: the six rows of the biggest drawing, written out.
+ * THE ART, AS A SECOND COPY: the five rows of the biggest drawing, written out.
  *
  * IT IS A GOLDEN AND IT IS HERE BECAUSE A ROUND TRIP COULD NOT BE ONE. While the biggest
  * form was a mask, the mask in the source and the drawing that came back were ONE artifact:
@@ -431,27 +437,26 @@ function masksIn(source: string): readonly (readonly string[])[] {
  * Changing the drawing is meant to change this. That is the whole of what it is for.
  */
 const THE_BIGGEST_DRAWING: readonly string[] = [
-  '███╗   ███╗███╗   ██╗███████╗███╗   ███╗ █████╗',
-  '████╗ ████║████╗  ██║██╔════╝████╗ ████║██╔══██╗',
-  '██╔████╔██║██╔██╗ ██║█████╗  ██╔████╔██║███████║',
-  '██║╚██╔╝██║██║╚██╗██║██╔══╝  ██║╚██╔╝██║██╔══██║',
-  '██║ ╚═╝ ██║██║ ╚████║███████╗██║ ╚═╝ ██║██║  ██║',
-  '╚═╝     ╚═╝╚═╝  ╚═══╝╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝',
+  '██      ██  ██     ██  ███████  ██      ██   ██████',
+  '███    ███  ███    ██  ██       ███    ███  ██    ██',
+  '██ █  █ ██  ██ ██  ██  ██████   ██ █  █ ██  ████████',
+  '██  ██  ██  ██   ████  ██       ██  ██  ██  ██    ██',
+  '██      ██  ██     ██  ███████  ██      ██  ██    ██',
 ];
 
-describe('every drawing but the biggest is a mask inked, and every mask is ASCII', () => {
+describe('every drawing is a mask inked, and every mask is ASCII', () => {
   it('reconstructs each masked drawing from the mask beside it, byte for byte', () => {
     const masks = masksIn(readFileSync(BANNER, 'utf-8'));
     const forms = everyForm();
-    // The instrument first: a mask was found for every form but the biggest, in the same
-    // order; a regular expression that matched nothing would otherwise pass this whole case
-    // by having nothing to compare.
+    // The instrument first: a mask was found for every form, in the same order; a regular
+    // expression that matched nothing would otherwise pass this whole case by having nothing to
+    // compare.
     //
-    // IT USED TO BE ONE MASK PER FORM. The biggest drawing is written out rather than
-    // masked, because eight marks is a mask a reader cannot see the shape in, so the masks
-    // are the forms UNDER it, and what holds the biggest one is the copy above and the
-    // enumeration of the named glyphs.
-    expect(masks, 'the masks were not found in the source').toHaveLength(forms.length - 1);
+    // IT WAS ONE MASK PER FORM BUT THE BIGGEST, which was written out because seven marks is a
+    // mask a reader cannot see the shape in. The brand's drawing is one mark again, so every form
+    // is a mask, and what holds the biggest one against an edit that moves both sides of the
+    // round trip is the copy above.
+    expect(masks, 'the masks were not found in the source').toHaveLength(forms.length);
 
     for (const [at, mask] of masks.entries()) {
       // THE MASK IS ASCII TO THE BYTE. It is what a reader edits, and an editor renders
@@ -467,12 +472,12 @@ describe('every drawing but the biggest is a mask inked, and every mask is ASCII
       }
       // THE ROUND TRIP: the mask, with every mark inked, is the drawing the module answers
       // with. A mark added to a mask and not to the table below comes back as itself and
-      // this goes red, and so does a drawing that stopped being made of its mask. The masks
-      // are the forms UNDER the biggest one, so each is compared with the form after it.
+      // this goes red, and so does a drawing that stopped being made of its mask. Each mask is
+      // compared with the form at its own place in the ladder.
       const inked = mask.map((row) =>
         INKS.reduce((drawing, [mark, glyph]) => drawing.split(mark).join(glyph), row),
       );
-      expect(inked, `mask ${at} does not draw form ${at + 1}`).toEqual(forms[at + 1]);
+      expect(inked, `mask ${at} does not draw form ${at}`).toEqual(forms[at]);
     }
   });
 
@@ -486,7 +491,7 @@ describe('every drawing but the biggest is a mask inked, and every mask is ASCII
       THE_BIGGEST_DRAWING,
     );
     // Not vacuous: the copy really is the biggest form and not, say, the floor, and it is the
-    // drawing rather than a mask of one; every row of it holds a glyph no mask may hold.
+    // drawing rather than a mask; every row of it holds a glyph no mask may hold.
     expect(biggest.length).toBe(THE_BIGGEST_DRAWING.length);
     expect(biggest.length).toBeGreaterThan(1);
     for (const row of THE_BIGGEST_DRAWING) {
@@ -993,7 +998,7 @@ async function openedAt(
  *
  * THE THREE SIZES WERE EIGHTY BY TWENTY-FOUR, A HUNDRED BY THIRTY AND A HUNDRED AND TWENTY BY
  * FORTY, and all three are under the floor now. The shortest window this console draws a page on
- * is where the name is drawn whole (`repl/floor.ts`), which is eighty by forty-two, so every one
+ * is where the name is drawn whole (`repl/floor.ts`), which was eighty by forty-two and is eighty by thirty-nine, so every one
  * of those sizes measures the screen that says the window is too small rather than a page. The
  * shape of the table did not move (the floor, a common window, and a large one) and every
  * number in it was measured again on the page each size really draws.
@@ -1028,10 +1033,18 @@ async function openedAt(
  * is seventy-eight columns with its indent, and the page had seventy-four inside a margin of six,
  * so at eighty columns it folded onto a second row; with no margin the page is eighty wide and it
  * is one. The other two sizes were already wide enough, and they did not move.
+ *
+ * AND ONE ROW FELL WHEN THE BRAND REDREW THE NAME IN FIVE ROWS. The two sizes where the drawing
+ * is stacked over the text (the floor and a hundred columns) spend seventeen where they spent
+ * eighteen, measured; the one at a hundred and twenty columns, where the text is BESIDE the
+ * mark and the text is the taller of the two, stays at thirteen, which is what says the change is
+ * the art and nothing else. The floor itself fell from forty-two rows to thirty-nine, measured
+ * in `THE_FLOOR`: three rows of window for the row of art, as the cases of
+ * `the-name-in-full-blocks.test.ts` hold.
  */
 const THE_SCREEN: readonly { columns: number; rows: number; takes: number }[] = [
-  { columns: THE_FLOOR.columns, rows: THE_FLOOR.rows, takes: 18 },
-  { columns: 100, rows: 55, takes: 18 },
+  { columns: THE_FLOOR.columns, rows: THE_FLOOR.rows, takes: 17 },
+  { columns: 100, rows: 55, takes: 17 },
   { columns: 120, rows: 60, takes: 13 },
 ];
 

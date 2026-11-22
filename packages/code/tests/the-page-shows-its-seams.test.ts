@@ -10,14 +10,14 @@
  * hunting for it. What answers all three is chrome: a rule, a margin, and the echo composed like
  * every other line so a renderer can weigh it. THE MARGIN HAD A GUIDE DOWN IT, A PURPLE LINE BESIDE
  * EVERY ROW, AND IT IS GONE: what tells a caller's words from the answer to them is a band behind
- * the command and a dot that opens the answer, and the purple is left to the places that say *this
- * is mnema* (the top, the rules, the row being typed).
+ * the command and a dot that opens the answer, and the product's mark takes weight and no colour
+ * (the prompt of the row being typed is bold).
  *
  * WHAT IS ASSERTED HERE, and every one of them is a measurement off a page rather than a
  * picture:
  *
  *   - THREE RULES AND ONE DRAWING. The page has three seams now and they come out of one
- *     function in one hue: a third way to draw a line across a terminal would be a third thing
+ *     function with no paint: a third way to draw a line across a terminal would be a third thing
  *     to keep in step with the other two.
  *   - THE BREATH IS ONE ROW, and the top region still fits inside the third of the screen the
  *     chrome is allowed. This delivery SPENDS rows on a screen where every row is somebody's
@@ -237,7 +237,7 @@ function rowsOf(page: string): string[] {
 // Three seams, one drawing
 // ---------------------------------------------------------------------------
 
-describe('the page has three rules, and they are the same drawing in the same hue', () => {
+describe('the page has three rules, and they are the same drawing with no paint', () => {
   it('closes the top region with one, and keeps the two the input area sits between', async () => {
     const columns = 100;
     const rows = THE_FLOOR.rows;
@@ -263,29 +263,29 @@ describe('the page has three rules, and they are the same drawing in the same hu
     }
   }, 240_000);
 
-  it('draws all three out of one function, in one hue, and no guide beside the roll', async () => {
+  it('draws all three out of one function, with no paint, and no guide beside the roll', async () => {
     // THE BYTES, in this process, where the paint survives. Three rows of a page cannot be
     // compared for colour on a replayed screen: a screen model answers what is on the page.
     const page = await drivenHere([A_VERB]);
     const drawn = new Set(rowsOf(page).filter(isRule));
     expect(drawn.size, `the rules are not one drawing: ${[...drawn].join(' | ')}`).toBe(1);
     const rule = [...drawn][0] as string;
-    // ONE HUE AND ITS CLOSER, and nothing else on the row: a rule carries no weight, because
-    // nothing composed it; it is an edge the library drew (`repl/region.ts`, `rule`).
-    const escapes = sgrOf(rule);
-    expect(escapes, 'a rule carries something other than one hue').toHaveLength(2);
-    const [accent] = escapes as [string, string];
+    // NO HUE AND NO WEIGHT, and nothing else on the row: a rule is an edge the library drew
+    // (`repl/region.ts`, `rule`) in the terminal's own foreground. IT CARRIED ONE HUE AND ITS
+    // CLOSER (the accent, SGR 35) until the brand dropped its colour from the terminal.
+    expect(sgrOf(rule), 'a rule carries paint').toEqual([]);
     // AND THE GUIDE IS NOT DRAWN: no row of the page, and no byte of the stream, holds the
     // glyph a purple line down the margin was made of.
     expect(
       rowsOf(page).filter((row) => stripped(row).includes(GUIDE)),
       'a guide is drawn beside the roll',
     ).toEqual([]);
-    // AND THE ACCENT IS NONE OF THE THREE A VERDICT CARRIES, which is the rule the whole
-    // surface's colour rests on: hue means news, and this one means the product.
-    for (const severity of ['\u001b[31m', '\u001b[32m', '\u001b[33m']) {
-      expect(accent, 'the chrome took a hue a severity uses').not.toBe(severity);
-    }
+    // AND THE ECHO'S PROMPT, the one place the product's mark is written on the page, is bold and
+    // is no hue: weight is all of the brand a terminal carries, and a severity is the only hue.
+    const typed = rowsOf(page).find((row) => stripped(row).includes(PROMPT)) as string;
+    expect(typed, 'the row being typed is not on the page').toBeDefined();
+    expect(sgrOf(typed), 'the prompt is not bold').toContain('\u001b[1m');
+    expect(page, 'the accent is back on the page').not.toContain('\u001b[35m');
   }, 120_000);
 });
 
@@ -297,7 +297,7 @@ describe('the banner ends in a rule and one row of breath', () => {
   it('leaves exactly one blank row between the seam and what the session says', async () => {
     // AT THE FLOOR, which is where a row costs the most: the shortest window this console draws
     // a page on. IT WAS EIGHTY BY TWENTY-FOUR (the canonical terminal), and it is eighty by
-    // forty-two, which is the height the name is drawn whole at, worked out from the drawing
+    // thirty-nine, which is the height the name is drawn whole at, worked out from the drawing
     // (`src/repl/floor.ts`). Read off the floor rather than retyped, so *at the floor* goes on
     // meaning it.
     const columns = THE_FLOOR.columns;

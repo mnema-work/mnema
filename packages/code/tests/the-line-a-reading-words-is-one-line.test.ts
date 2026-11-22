@@ -2313,11 +2313,11 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'composed',
     why: 'a base under the drift heading, worded by `toImport`: the one spelling of a base, its count and the command, shared with the opening document’s hook copy',
   },
-  'status.ts «  {}» saysEventsNotInGit(notInGit) #1': {
+  'status.ts fact(saysEventsNotInGit(notInGit)) #1': {
     verdict: 'composed',
     why: 'the sentence of `events-not-in-git.ts`: counts and fixed words, and the one name a person chose (the default branch) goes through `oneLine` there',
   },
-  'status.ts «  {}» saysForkKeptAside(forkKeptAside) #1': {
+  'status.ts fact(saysForkKeptAside(forkKeptAside)) #1': {
     verdict: 'composed',
     why: 'the sentence of `fork-kept-aside.ts`: two counts and fixed words, and no name a person chose',
   },

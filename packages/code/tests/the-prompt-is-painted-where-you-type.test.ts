@@ -4,7 +4,7 @@
  * the transcript above them.
  *
  * IT CAME OUT OF THE BYTES. A caller asked for colour on `mnema> verb` and got half of it:
- * the ECHO the roll keeps came out `\e[35mmnema> \e[39m\e[1mstatus\e[22m` and the row being
+ * the ECHO the roll keeps came out `\e[35mmnema> \e[39m\e[1mstatus\e[22m` (the accent has gone since: the prompt is bold now) and the row being
  * TYPED came out `mnema> ` with no byte of colour in it. The half that was missing is the one
  * that is under their eyes while they write.
  *
@@ -170,25 +170,26 @@ async function inPty(options: {
 
 /**
  * WHAT WRAPS THE PROMPT ON THE WIRE, wherever it appears: the escapes immediately before the
- * word and the escapes immediately after the space it ends in.
+ * word.
  *
  * It is read off the STREAM rather than off a screen, and that is the whole question here: a
  * terminal consumes the escapes and shows glyphs, so a page can only say the row is there. What
  * says the row is PAINTED is the bytes that reached the terminal.
  */
 function paintAroundThePrompt(bytes: string): readonly string[] {
-  // WHAT OPENS THE PROMPT AND WHAT CLOSES IT, and the closer is ONE sequence rather than every
-  // sequence that follows: the part after the prompt opens with a weight of its own, so the run
-  // of escapes on that side belongs half to the prompt and half to the words. Taking all of them
-  // would make the answer depend on what the caller happened to have typed.
+  // WHAT OPENS THE PROMPT, and only that. IT WAS THE OPENER AND THE CLOSER (the accent and the
+  // escape giving the foreground back), and the closer is out of the claim: with the prompt bold,
+  // the same row reached the terminal in two spellings that differ only in whether the intensity
+  // reset follows `mnema>` at once (measured: `ESC[1m` before it in both). What says the row is
+  // painted is what opens it, and that is one sequence in both.
   const onePaint = `${ESC}\\[[0-9;]*m`;
-  const pattern = new RegExp(`((?:${onePaint})*)${PROMPT}(${onePaint})?`, 'g');
+  const pattern = new RegExp(`((?:${onePaint})*)${PROMPT}`, 'g');
   const found: string[] = [];
-  for (const hit of bytes.matchAll(pattern)) found.push(`${hit[1] ?? ''}|${hit[2] ?? ''}`);
+  for (const hit of bytes.matchAll(pattern)) found.push(hit[1] ?? '');
   return found;
 }
 
-describe('the prompt under the caller’s fingers carries the accent the transcript carries', () => {
+describe('the prompt under the caller’s fingers carries the weight the transcript carries', () => {
   it('paints the row being typed, in the very escapes the echo of it is painted in', async () => {
     // THE TWO PLACES THE SAME STRING APPEARS, on one real terminal: the row being TYPED,
     // before anything has been sent, and the ECHO of it on the roll after it has. They are
@@ -225,12 +226,12 @@ describe('the prompt under the caller’s fingers carries the accent the transcr
     // (`src/presentation/styled.ts` decides what a `prompt` part opens with).
     const painted = renderStyled(echoLine(PROMPT, ''));
     const accent = painted.slice(0, painted.indexOf(ON_THE_PAGE));
-    expect(accent, 'the accent is not an escape at all').toContain(ESC);
+    expect(accent, 'the weight is not an escape at all').toContain(ESC);
     expect(underTheFingers, 'the row being typed reached the terminal unpainted').toContain(accent);
 
     // AND THE ROLL DOES NOT CARRY IT. The line that was sent is kept under a mark of its own and
-    // in greys: the accent belongs to the places that say *this is mnema* (the top, the rules and
-    // the row being typed) and a command a caller has already sent is not one of them. What
+    // in greys: the product's weight belongs to the prompt of the row being typed and a command a
+    // caller has already sent is not one of them. What
     // arrived since the line was sent holds that row, and the input row, now empty and painted as
     // it was, so the set of spellings of the prompt is still the one.
     const sinceTheLineWasSent = ran.bytes.slice(ran.at[1] as number, ran.at[2] as number);
@@ -242,7 +243,7 @@ describe('the prompt under the caller’s fingers carries the accent the transcr
     expect(sentAt, 'the sent line did not land on the roll').toBeGreaterThan(0);
     expect(
       sinceTheLineWasSent.slice(Math.max(0, sentAt - 24), sentAt + SENT.length + typed.length + 2),
-      'the sent line is painted in the accent',
+      'the sent line is painted in the prompt\u2019s weight',
     ).not.toContain(accent);
 
     // AND BOTH ROWS ARE ON THE PAGE, which is what says the comparison was between two things
