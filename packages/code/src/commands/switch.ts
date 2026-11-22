@@ -45,6 +45,8 @@ import { openTreeForWriting, switchChannel } from '@mnema/core/write';
 import { mayTurnAgentAcceptsOn } from '../agent-accepts.js';
 import { type AnchorForms, anchorForms } from '../anchors.js';
 import {
+  asRecordPublishReadsThem,
+  RECORD_PUBLISH_CHANNEL,
   STARTS_OFF,
   SWITCHABLE_CHANNELS,
   type SwitchableChannel,
@@ -125,7 +127,11 @@ export interface SwitchListing {
 export function runSwitchList(ctx: SwitchContext): SwitchListing {
   const trees = resolveTrees(ctx.cwd, ctx.env);
   return withScopedCaches(trees, (sources) => {
-    const states = channelStates(sources, SWITCHABLE_CHANNELS, STARTS_OFF);
+    const states = channelStates(
+      asRecordPublishReadsThem(sources),
+      SWITCHABLE_CHANNELS,
+      STARTS_OFF,
+    );
     return {
       ok: true,
       rows: SWITCHABLE_CHANNELS.map((channel, at) => ({
@@ -148,7 +154,11 @@ export function runSwitchList(ctx: SwitchContext): SwitchListing {
 export function channelsOff(ctx: Pick<SwitchContext, 'cwd' | 'env'>): readonly SwitchableChannel[] {
   const trees = resolveTrees(ctx.cwd, ctx.env);
   return withScopedCaches(trees, (sources) => {
-    const states = channelStates(sources, SWITCHABLE_CHANNELS, STARTS_OFF);
+    const states = channelStates(
+      asRecordPublishReadsThem(sources),
+      SWITCHABLE_CHANNELS,
+      STARTS_OFF,
+    );
     return SWITCHABLE_CHANNELS.filter((_channel, at) => (states[at] as ChannelState).on === false);
   });
 }
@@ -233,11 +243,25 @@ export function runSwitch(
   }
   const writing = treesToWrite(ctx);
   const { trees } = writing;
+  // `record-publish` is this machine's: switched on or off, it goes to the private tree unless a scope
+  // is named, and never to the tree a clone gets, which would turn it on or off in every clone (ADR-617).
+  const onlyThisMachine = input.channel === RECORD_PUBLISH_CHANNEL;
   const scope = resolveScope(
     'channel.switched',
     originOfTheWrite(writing, input.which),
-    input.scope,
+    input.scope ?? (onlyThisMachine ? 'private' : undefined),
   );
+  if (onlyThisMachine && scope === 'public') {
+    return {
+      ok: false,
+      reason: 'REFUSED',
+      code: 'MACHINE_ONLY',
+      message:
+        '`record-publish` is switched for this machine only: a switch in the tree a clone gets ' +
+        'would reach every clone, and the verb does not read an on there. Leave `--scope` ' +
+        'out, or use `--scope private` or `--scope global`.',
+    };
+  }
   if (scope !== 'global' && trees.projectPublic === undefined) {
     return { ok: false, reason: 'NO_PROJECT' };
   }
@@ -285,7 +309,11 @@ export function runSwitch(
   // off wins between trees that cannot be ordered, so switching one on may change
   // nothing that the next push will see.
   const read = withScopedCaches(trees, (sources) => ({
-    effective: channelStates(sources, [recorded.channel], STARTS_OFF)[0] as ChannelState,
+    effective: channelStates(
+      asRecordPublishReadsThem(sources),
+      [recorded.channel],
+      STARTS_OFF,
+    )[0] as ChannelState,
     anchors: anchorForms(sources),
     // Read back over the SAME sources the effective state came off: a switch this verb
     // just wrote is only as good as the tail it landed on, and this is the one write on

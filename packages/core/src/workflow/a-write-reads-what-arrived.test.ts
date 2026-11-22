@@ -90,12 +90,11 @@ describe('a write reads what arrived and not the whole record', () => {
     expect(theMarkerSurvives(), 'a write built the projection again').toBe(true);
   });
 
-  it('the roster a write checks before it appends comes from the kept projection', () => {
-    // The roster used to be a replay of the whole record, taken UNDER the lock: 2.2 s of hold at
-    // 100 thousand events, which is what a waiting session ran out of. It is read from the kept
-    // projection now, and the case that proves it is a row no replay would write: with the
-    // membership taken out of the projection, the write believes it and is refused; a replay
-    // would have found the key counted and let it through.
+  it('a projection that does not count the key does not refuse a write the chain allows', () => {
+    // The roster is read from the kept projection, so a write does not replay the record under the
+    // lock (2.2 s of hold at 100 thousand events). Only a refusal pays for a replay: with the
+    // membership taken out of the projection the projection says "not counted", and the chain,
+    // which counts the key, confirms the write before it is refused.
     const ctx = writing();
     landed(recordDecision(ctx, { title: 'one', rationale: 'because' }));
     ctx.writer.checkpoint();
@@ -103,7 +102,7 @@ describe('a write reads what arrived and not the whole record', () => {
     const db = openDatabase(projectionCachePath({ root }));
     db.prepare('DELETE FROM membership_facts').run();
     db.close();
-    expect(() => recordDecision(writing(), { title: 'two', rationale: 'because' })).toThrow();
+    landed(recordDecision(writing(), { title: 'two', rationale: 'because' }));
   });
 
   it('standing and asTheChainIs answer as the chain is now', () => {

@@ -1,0 +1,3 @@
+Added
+
+- **A reader of the person's words for each host whose transcript format is documented in its source: Gemini CLI, Qwen Code and VS Code's agent mode, beside Claude Code.** One table keyed by host says which hosts have a reader, and the rest say so instead of borrowing Claude Code's shape. Each reader returns what the person typed and, where the host's source shows how an answer is stored (Claude Code and Gemini CLI), the option they chose in its question tool, marked as chosen; text the host injected, a tool's response and a compaction are not the person's. Each is held by a test whose lines are built from the host's source at a pinned commit; the state of every host is in `docs/hosts.md`. Nothing calls the readers yet.

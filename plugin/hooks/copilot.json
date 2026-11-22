@@ -1,17 +1,17 @@
 {
-  "description": "Hands the project's committed record to the session as it opens: the decisions in force and the adopted patterns, by name, and, beside it, the memories and observations recorded for the project, from every tree this machine holds, the ones that share a word with what the session touches first. Before a file is written, where a rule of that record refuses the write, does not let it happen, citing the rule, and where a rule asks for a person, pauses the write until one decides; each is recorded as a fact of the chain. After a question the agent asked the person was answered, hands the agent one sentence saying that a choice may have been settled there and which tool records it (it records nothing). When a subagent stops, sends it back to end its final reply with the block of the decisions it settled, so they come back to the session that started it (the host names no field that says a stop is the second, so it is not held to once). Each can be switched off with `mnema switch`, which records that it was.",
+  "description": "Hands the project's committed record to the session as it opens: the decisions in force and the adopted patterns, by name, and, beside it, the memories and observations recorded for the project, from every tree this machine holds, the ones that share a word with what the session touches first. Before a file is written, where a rule of that record refuses the write, does not let it happen, citing the rule, and where a rule asks for a person, pauses the write until one decides; each is recorded as a fact of the chain. After a question the agent asked the person was answered, hands the agent one sentence saying that a choice may have been settled there and which tool records it (it records nothing). At the end of a turn, runs the verbs that count what the session wrote and that read what the person corrected; they read only Claude Code's transcript for now, so here they say that on their second stream and do nothing else. When a subagent stops, sends it back to end its final reply with the block of the decisions it settled, so they come back to the session that started it (the host names no field that says a stop is the second, so it is not held to once). Each can be switched off with `mnema switch`, which records that it was.",
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.mjs\" --reply flat",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.mjs\" --reply flat --host copilot",
             "timeout": 15
           },
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-recall.mjs\" --reply flat",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-recall.mjs\" --reply flat --host copilot",
             "timeout": 15
           }
         ]
@@ -46,6 +46,22 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/edit-rules-beside.mjs\" --host copilot --agent-key copilot; exit 0",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-tally.mjs\" --host copilot --reads no",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-corrections.mjs\" --host copilot --reads no",
             "timeout": 15
           }
         ]

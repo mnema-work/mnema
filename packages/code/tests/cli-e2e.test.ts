@@ -1437,6 +1437,40 @@ describe('mnema CLI: search and show (the record made readable), end to end', ()
     expect(await output(['search', 'zebra'])).toContain('Nothing recorded matching "zebra".');
   });
 
+  it('says every word must match when a term of several words finds nothing', async () => {
+    await run(['init'], capture().io);
+    await output(['memory', 'the deploy runbook']);
+    const hint = 'Every word has to be in the same record: try fewer words.';
+
+    // two words, no record holds both: both lines.
+    const both = await output(['search', 'deploy zebra']);
+    expect(both).toContain('Nothing recorded matching "deploy zebra".');
+    expect(both).toContain(hint);
+
+    // one word, nothing matches: the first line only.
+    const first = await output(['search', 'zebra']);
+    expect(first).not.toContain(hint);
+    expect(first).toContain('Nothing recorded matching "zebra".');
+
+    // words that DO match: the hit and no hint.
+    const hit = await output(['search', 'deploy']);
+    expect(hit).toContain('1 record(s) matching "deploy"');
+    expect(hit).not.toContain(hint);
+
+    // both words in one record: the hit, no hint.
+    const hitBoth = await output(['search', 'deploy runbook']);
+    expect(hitBoth).toContain('1 record(s) matching "deploy runbook"');
+    expect(hitBoth).not.toContain(hint);
+
+    // --json is untouched still the empty index.
+    const json = JSON.parse(await output(['search', 'deploy zebra', '--json'])) as {
+      hits: unknown[];
+      total: number;
+    };
+    expect(json.total).toBe(0);
+    expect(json.hits).toHaveLength(0);
+  });
+
   it('rejects a kind, a scope and a limit that are not valid: nothing is searched', async () => {
     await run(['init'], capture().io);
 
@@ -2817,7 +2851,7 @@ describe('mnema CLI: a --which that names nobody', () => {
       const said = t.err.join('\n');
       expect(said).toContain('--which');
       expect(said).toContain('names no agent');
-      expect(said).toContain('a person acted directly');
+      expect(said).toContain('no agent was declared');
 
       // Nothing was born: in ANY tree. The refusal is at the door, before a
       // scope is even resolved, so there is no "it landed somewhere else".
@@ -2915,7 +2949,7 @@ describe('mnema CLI: a --which that names nobody', () => {
     ).toEqual(['claude-code', 'claude-code']);
   });
 
-  it('an ABSENT --which still means a person acted: no which, and the capture is PUBLIC', async () => {
+  it('an ABSENT --which still means no agent declared: no which, and the capture is PUBLIC', async () => {
     // The rule that must NOT change. Defaulting an omitted flag to some agent name
     // would invent an agent where there was a person: the same fiction, inverted.
     await run(['init'], capture().io);
@@ -3267,7 +3301,7 @@ describe('mnema CLI: skills, the provenance audit', () => {
     await adopt('by-hand');
 
     const printed = await output(['skill', 'provenance']);
-    expect(printed).toContain('proposed by a person · adopted by a person');
+    expect(printed).toContain('proposed by no agent declared · adopted by no agent declared');
     // Two absences are not evidence of one actor: a tree can hold two people's
     // facts, so the same-agent line must NOT appear.
     expect(printed).not.toContain('the same agent');
@@ -3407,7 +3441,7 @@ describe('mnema CLI: skills, the provenance audit', () => {
     // forging through the proposal, one through the adoption.
     const forgedLine =
       '  019f0000-0000-7000-8000-000000000000  adopted     public   ' +
-      'padrao-forjado  ·  proposed by a person · adopted by a person';
+      'padrao-forjado  ·  proposed by no agent declared · adopted by no agent declared';
     await adopt('legit-one', `agente\n${forgedLine}`, 'agente');
     await adopt('legit-two', 'agente', `agente\n${forgedLine}`);
     // And one carrying a break in EVERY field of its line at once: the name and
@@ -3718,6 +3752,8 @@ describe('mnema CLI: brief, the record as the file an agent reads', () => {
       // The heading counts the rules, so it changes with them, and it comes first,
       // because the document's order is the document's order.
       '## Decisions in force (2)',
+      // The count of who accepted them changes with the rules too: both had no agent declared here.
+      '0 of them were accepted by an agent and 2 with no agent declared.',
       // No count of rules marked unconfirmed: with one identity in the record there is nobody to
       // confirm with, so the document marks none and says nothing of it.
       expect.stringContaining('Rotate the credentials every quarter'),

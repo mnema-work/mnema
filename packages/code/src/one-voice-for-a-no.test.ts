@@ -425,6 +425,7 @@ describe('no parent takes a word of its own, and every one refuses a mistyped su
       'skill',
       'stack',
       'task',
+      'rules',
       'switch',
       'inherit',
       'witness',
@@ -439,12 +440,17 @@ describe('no parent takes a word of its own, and every one refuses a mistyped su
       'run',
     ]);
 
-    expect(all.filter((p) => p.positionals > 0).map((p) => p.path)).toEqual([]);
+    // ONE PARENT IS DECIDED, AND IT IS A READ: `rules <path>` answers a path and `rules test <file>`
+    // checks a file, so a mistyped word after `rules` is read as a path (answering that nothing
+    // governs it) and not refused. The defect this describe holds against the rest was a WRITE that
+    // acted on the word; this one writes nothing, and `rules <path>` is what the Action and the
+    // docs already call. A folder named `test` is asked as `./test`.
+    expect(all.filter((p) => p.positionals > 0).map((p) => p.path)).toEqual(['rules']);
   });
 
   it('refuses the mistyped word at every parent, in one sentence that names it back', async () => {
     const sentences: string[] = [];
-    for (const parent of parents()) {
+    for (const parent of parents().filter((one) => one.positionals === 0)) {
       const sub = parent.subs[0] as string;
       const said = await invoke(...parent.path.split(' '), `${sub}ZZZ`);
       const where = `mnema ${parent.path} ${sub}ZZZ`;

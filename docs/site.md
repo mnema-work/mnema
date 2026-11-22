@@ -12,7 +12,7 @@ why. A note that belongs to no decision is listed apart, and a timeline lists ea
 record's order (not the clock's). A decision has an anchor by its number (`#ADR-12`) when no other decision on the
 page carries that number, and always one by its id. Tasks, handoffs, runs and the private tree are not on it.
 
-Each act says whether a person or an agent carried it out, in the words the `show` verb uses (`a person`, or `agent`
+Each act says which agent carried it out, in the words the `show` verb uses (`no agent declared`, or `agent`
 and the name the act declared), next to the identity (`mnid:...`) the record holds. The badge is the act's own `which`
 as the record holds it, and the page does not check it any further; neither it nor an identity is a person's name.
 

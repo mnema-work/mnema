@@ -142,6 +142,8 @@ const ANSWERS_ANYWAY: Readonly<Record<string, string>> = {
     'a host runs it after every dispatch to another agent and when a session ends, and outside a project it answers `{}`, the same silence, and records nothing, because that session is not the product’s to speak into',
   settled:
     'a host runs it after every question the agent asks the person, and outside a project it answers `{}`, the same silence, because that session is not the product’s to speak into',
+  dictated:
+    'a host runs it at every message the person sends, and outside a project it answers `{}`, the same silence, because that session is not the product’s to speak into',
 };
 
 /**
@@ -216,6 +218,8 @@ const NO_SUCH_STACK_HERE =
   'it looks for a stack by name in the receipts of every tree that exists; outside a project the project trees have none, and it says that no such stack is installed';
 
 const REFUSES_SOMETHING_ELSE_FIRST: Readonly<Record<string, string>> = {
+  prove:
+    'run with nothing named it asks for a decision or a file before it looks for a project; `prove <decision>` outside one says there is none, and `prove --check` needs none',
   task: THE_PARSER_ANSWERED_FIRST,
   decision: THE_PARSER_ANSWERED_FIRST,
   skill: THE_PARSER_ANSWERED_FIRST,

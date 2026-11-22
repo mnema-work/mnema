@@ -47,6 +47,8 @@ import { dirname } from 'node:path';
 import { channelIsOn } from '@mnema/context';
 import { type DiscoveryEnv, INITIAL_DECISION_STATE, resolveTrees } from '@mnema/core';
 import { readEventsNotInGit, saysEventsNotInGit } from '../events-not-in-git.js';
+import { endHostOf, endOfTurnOf } from '../host-hook.js';
+import { ENDS, type EndHost } from '../host-names.js';
 import { SESSION_JOURNAL_CHANNEL, SESSION_TALLY_CHANNEL } from '../record-framing.js';
 import {
   exclusivelyOn,
@@ -55,6 +57,7 @@ import {
   journalFile,
   readingOf,
   readJournal,
+  rememberTranscript,
   sessionIdOf,
   writeJournal,
 } from '../session-journal.js';
@@ -80,8 +83,8 @@ export interface SessionTallyDone {
   readonly notes: readonly string[];
 }
 
-/** The one event this answers, by the name the host gives it in the payload. */
-const STOP = 'Stop';
+/** The opening of a session, which leaves the path of its transcript and counts nothing. */
+const SESSION_START = 'SessionStart';
 
 /** The silence, with what to say about it on the second stream. */
 function silent(notes: readonly string[] = []): SessionTallyDone {
@@ -124,10 +127,37 @@ function waitingLine(waiting: number): string {
   return `\n${counted(waiting, 'decision recorded since it opened still awaits', 'decisions recorded since it opened still await')} a person’s judgement: \`mnema decision review\`.`;
 }
 
+/**
+ * A session opening reads nothing and says nothing: where the host's transcript is one this product
+ * reads, it leaves the path of it beside the journal, so an accept (`agent-accept-words.ts`) can find
+ * what the person said.
+ */
+function rememberAtStart(
+  ctx: SessionTallyContext,
+  asked: EndHost,
+  payload: Record<string, unknown>,
+): SessionTallyDone {
+  const row = ENDS[endHostOf(asked, payload)];
+  const named = payload[row.transcript];
+  if (typeof named !== 'string' || named === '') {
+    return silent([`The ${SESSION_START} input named no transcript, so nothing was counted.`]);
+  }
+  if (!row.reads) return silent();
+  const trees = resolveTrees(ctx.cwd, ctx.env);
+  if (trees.projectPublic === undefined) return silent();
+  const session = sessionIdOf(row.session === null ? undefined : payload[row.session]);
+  if (session !== undefined) {
+    withScopedCaches(trees, (sources) => {
+      if (channelIsOn(sources, SESSION_JOURNAL_CHANNEL)) rememberTranscript(trees, session, named);
+    });
+  }
+  return silent();
+}
+
 /** Answers the hook payload `input.payload`: the line, or `{}` when there is nothing to count. */
 export function runSessionTally(
   ctx: SessionTallyContext,
-  input: { readonly payload: string },
+  input: { readonly payload: string; readonly host?: EndHost },
 ): SessionTallyDone {
   let payload: Record<string, unknown>;
   try {
@@ -137,16 +167,25 @@ export function runSessionTally(
   } catch {
     return silent(['The hook input was not JSON, so nothing was counted.']);
   }
-  const event = payload['hook_event_name'];
-  if (event !== STOP) return silent();
-  const transcript = payload['transcript_path'];
-  if (typeof transcript !== 'string' || transcript === '') {
-    return silent([`The ${event} input named no transcript, so nothing was counted.`]);
+  const asked = input.host ?? 'claude';
+  if (payload['hook_event_name'] === SESSION_START) return rememberAtStart(ctx, asked, payload);
+  const end = endOfTurnOf(asked, payload);
+  if (!end.end) return silent();
+  if (end.transcript === undefined) {
+    return silent([`The ${end.event} input named no transcript, so nothing was counted.`]);
   }
+  // A transcript this product cannot read is said, for the host it came from, and nothing is
+  // counted or kept: the reader understands Claude Code's lines and no other host's.
+  if (!end.reads) {
+    return silent([
+      `${end.title}'s transcript is in a format this version does not read, so nothing was counted.`,
+    ]);
+  }
+  const transcript = end.transcript;
 
   const trees = resolveTrees(ctx.cwd, ctx.env);
   if (trees.projectPublic === undefined) return silent();
-  const session = sessionIdOf(payload['session_id']);
+  const session = sessionIdOf(end.session);
   const root = dirname(trees.projectPublic);
 
   return withScopedCaches(trees, (sources): SessionTallyDone => {
@@ -158,6 +197,7 @@ export function runSessionTally(
         ? journalFile(trees, session)
         : undefined;
     if (!speaks && file === undefined) return silent();
+    if (file !== undefined && session !== undefined) rememberTranscript(trees, session, transcript);
 
     // THE READING STARTS WHERE THE LAST ONE STOPPED when there is a journal to say where: what the
     // host wrote since, and not the whole conversation again, after every response.

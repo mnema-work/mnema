@@ -56,17 +56,15 @@
  */
 
 import { dirname } from 'node:path';
-import { catalogUpcasters, listPrivateKeyFingerprints } from '@mnema/chain';
-import { type Bootstrap, bootstrap, type ReportedRun, resume } from '@mnema/context';
 import {
-  type Clock,
-  chainRootForScope,
-  type DiscoveryEnv,
-  type ResolvedTrees,
-  resolveTrees,
-  systemClock,
-} from '@mnema/core';
-import { authorizingAnchor, recordedAnchorOf, signerFor } from '@mnema/core/write';
+  acceptancesInForce,
+  type Bootstrap,
+  bootstrap,
+  type ReportedRun,
+  resume,
+  treeOf,
+} from '@mnema/context';
+import { type Clock, type DiscoveryEnv, resolveTrees, systemClock } from '@mnema/core';
 import { type AnchorForms, anchorForms, resolveTypedAnchor } from '../anchors.js';
 import { type EventsNotInGit, readEventsNotInGit } from '../events-not-in-git.js';
 import { type ForkKeptAside, readForkKeptAside } from '../fork-kept-aside.js';
@@ -83,6 +81,7 @@ import {
   THE_READING_THAT_OPENED_THESE,
   withScopedCaches,
 } from '../tree-sources.js';
+import { thisMachinesAnchorIn } from './shown.js';
 
 /** What the status command needs: injected so it is testable. */
 export interface StatusContext {
@@ -163,6 +162,12 @@ export interface StatusDone {
    * same reason, and not in `--json`: it is a fact of this clone's git, said on the screen.
    */
   readonly forkKeptAside: ForkKeptAside | undefined;
+  /**
+   * How many of the rules in force an agent accepted and how many have no agent declared, of every rule in
+   * force and not of the capped list in {@link StatusDone.status}. Beside the derivation and not in
+   * it, for the reason the fields above are: `--json` serves the derivation and only that.
+   */
+  readonly accepted: { readonly agent: number; readonly undeclared: number };
 }
 
 /** There was no project here, or the actor named no identity in it. */
@@ -182,24 +187,6 @@ export type StatusRefused =
  * `NO_PROJECT`; an actor that names no identity here is refused rather than answered
  * about.
  */
-/**
- * The identity THIS MACHINE writes as in this project, or undefined when the machine has no key.
- *
- * It asks what `mnema init` asks to say who writes here (`recordedAnchorOf`, else
- * `authorizingAnchor`), and it is a READ: a machine with no private key of its own is answered
- * `undefined` BEFORE a signer is asked for, because asking a signer for a machine without a key
- * mints one, and a verb that only reports must not found somebody to report on.
- */
-function thisMachinesAnchor(trees: ResolvedTrees): string | undefined {
-  if (listPrivateKeyFingerprints({ root: trees.keyRoot }).length < 1) return undefined;
-  const asked = {
-    writer: signerFor(trees, 'public'),
-    layout: { root: chainRootForScope(trees, 'public') as string },
-    upcasters: catalogUpcasters(),
-  };
-  return recordedAnchorOf(asked)?.anchor ?? authorizingAnchor(asked);
-}
-
 export function runStatus(
   ctx: StatusContext,
   input: { actor?: string },
@@ -220,7 +207,7 @@ export function runStatus(
       }
       anchor = actor.anchor;
     } else {
-      const mine = thisMachinesAnchor(trees);
+      const mine = thisMachinesAnchorIn(trees, 'public');
       if (mine === undefined) {
         return {
           ok: false,
@@ -248,16 +235,21 @@ export function runStatus(
       // time the next one asks. So the "prefer my own run" rule has nothing to prefer
       // and the answer stays the actor's latest, which is the right one for a person
       // asking from the command line about work an agent did.
-      status: bootstrap(caches(sources), {
-        actor: anchor,
-        asOf: (ctx.clock ?? systemClock)(),
-        sessionRuns: [],
-      }),
+      status: bootstrap(
+        caches(sources),
+        {
+          actor: anchor,
+          asOf: (ctx.clock ?? systemClock)(),
+          sessionRuns: [],
+        },
+        treeOf(sources),
+      ),
       notInGit: readEventsNotInGit({
         cwd: ctx.cwd,
         env: ctx.env,
         now: Date.parse((ctx.clock ?? systemClock)()),
       }),
+      accepted: acceptancesInForce(caches(sources)),
       forkKeptAside: readForkKeptAside({ cwd: ctx.cwd, env: ctx.env, processEnv: process.env }),
       runsByTree: sources.flatMap((source) => {
         const { lastRun } = resume(caches([source]), {

@@ -148,7 +148,11 @@ describe('brief: everything that governs the work here', () => {
           title: 'Hand-rolled big-integer arithmetic',
           // WHO RULED IT: the one identity this bench has, which recorded the decision and
           // accepted it itself, and it is the record's only identity, so there is nobody to confirm with and it is not marked.
-          acceptance: { by: expect.stringMatching(/^mnid:[0-9a-f]{8}$/), unconfirmed: false },
+          acceptance: {
+            by: expect.stringMatching(/^mnid:[0-9a-f]{8}$/),
+            unconfirmed: false,
+            day: '2026-01-01',
+          },
         },
       ],
       skills: [{ id: 'sk-1', name: 'One slice per PR' }],
@@ -449,6 +453,7 @@ describe('brief: everything that governs the work here', () => {
     // derived bit. Neither the note it was accepted with nor the rationale rides along.
     expect(Object.keys(composed.decisions[0]?.acceptance ?? {}).sort()).toEqual([
       'by',
+      'day',
       'unconfirmed',
     ]);
     expect(Object.keys(composed.skills[0] ?? {}).sort()).toEqual(['id', 'name']);

@@ -155,6 +155,8 @@ describe('projectDecisions: a decision is the text its first judgment saw', () =
       proof: [{ action: 'accept', at: at(1), said: 'note: Use SQLite, agreed' }],
       recordedBy: { who: 'felipe' },
       acceptedBy: { who: 'felipe' },
+      // Handed to the fold directly, the accept was placed by no reading: it has no entry hash.
+      accepts: [{ who: 'felipe', at: at(1) }],
     });
   });
 

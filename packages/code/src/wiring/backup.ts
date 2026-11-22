@@ -75,6 +75,14 @@ function standingLines(git: {
   return lines;
 }
 
+/** When a copy was last made, or why that is not known: a manifest that does not read is said, not passed over. */
+function lastRun(one: { copiedAt: string | undefined; manifest: string }): string {
+  if (one.manifest === 'unreadable') {
+    return "the copy's mnema-backup.json does not read, so no last run can be named (`mnema backup verify` fails it)";
+  }
+  return one.copiedAt === undefined ? 'never copied' : `last copied ${one.copiedAt}`;
+}
+
 /** Registers `mnema backup` on the program. */
 export function registerBackup(program: Command, wiring: Wiring): Declared {
   const { io, render } = wiring;
@@ -89,7 +97,7 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
         '',
         'The copy is a folder per project, kept under the name of its record: the tails up to their',
         'last complete line and the public keys, and nothing else. The private tree is always copied;',
-        'the public tree only where the project is not in git, whose history is its own backup. No',
+        "the public tree only where git does not hold it (a project outside git, or a local record that a repository excludes), since a committed record's history is its own backup. No",
         'private key is copied: a run is refused whole if a file it would copy holds one, and so is a',
         'symbolic link in the tree or in the folder. A copy only grows. The folder keeps the text in',
         'clear, which `setup` asks a person to confirm at a terminal. A machine can have a folder per project; a project has the one it was set up with.',
@@ -253,7 +261,7 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
         if (one === undefined) {
           lines.push(fact('global tree: none on this machine yet'));
         } else {
-          const when = one.copiedAt === undefined ? 'never copied' : `last copied ${one.copiedAt}`;
+          const when = lastRun(one);
           const behind = one.behind === 0 ? 'nothing to add' : `${one.behind} file(s) to copy`;
           lines.push(fact(`global tree: ${when}; ${behind}`));
           if (one.diverged > 0) {
@@ -292,7 +300,7 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
         ),
       ];
       for (const one of result.trees) {
-        const when = one.copiedAt === undefined ? 'never copied' : `last copied ${one.copiedAt}`;
+        const when = lastRun(one);
         const behind = one.behind === 0 ? 'nothing to add' : `${one.behind} file(s) to copy`;
         lines.push(fact(`${one.tree} tree: ${when}; ${behind}`));
         if (one.diverged > 0) {
@@ -377,6 +385,19 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
             onOneLine`${t} tree: ONE reader read this copy. The second reader is a Python program of the source repository: \`python3 packages/chain/verifier/mnema_verify.py record ${reading.folder}\` runs it by hand`,
           ),
         );
+        if (reading.manifest === 'unreadable') {
+          lines.push(
+            fact(
+              onOneLine`${t} tree: ${reading.folder}/mnema-backup.json does not read as the manifest of a copy (not JSON, not a list of files, or an entry with no path and size): the copy is not sound`,
+            ),
+          );
+        } else if (reading.manifest === 'absent') {
+          lines.push(
+            fact(
+              onOneLine`${t} tree: the copy has no mnema-backup.json, so no list of files to measure it against; that is said and is not a failure`,
+            ),
+          );
+        }
         for (const path of reading.missing) {
           lines.push(
             fact(

@@ -12,11 +12,14 @@
 import { spawnSync } from 'node:child_process';
 import {
   cpSync,
+  existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -570,4 +573,26 @@ describe('mnema record pull outside what it pulls', () => {
     expect(mnema(plain, 'init', '--all-hosts').status).toBe(0);
     expect(pull(plain)).toEqual({ ok: false, reason: 'NOT_A_REPOSITORY' });
   }, 60_000);
+});
+
+describe('mnema record pull, where the pull brings a symbolic link to a tail file', SLOW, () => {
+  it('writes nothing through it: what was kept aside stays aside, and the link points at nothing new', () => {
+    const { local, other } = world();
+    const path = join(theTail(local), '000002.jsonl');
+    const elsewhere = join(sandbox, 'outside', 'elsewhere');
+    symlinkSync(elsewhere, join(other, path));
+    expect(git(other, 'add', path).status).toBe(0);
+    expect(git(other, 'commit', '-qm', 'a link where a segment goes').status).toBe(0);
+    expect(git(other, 'push', '-q', 'origin', 'main').status).toBe(0);
+    writeFileSync(join(local, path), '');
+
+    const pulled = pull(local);
+    if (!pulled.ok) throw new Error(JSON.stringify(pulled));
+
+    expect(existsSync(elsewhere)).toBe(false);
+    expect(lstatSync(join(local, path)).isSymbolicLink()).toBe(true);
+    expect(pulled.linked).toEqual([path]);
+    expect(pulled.keptAside?.paths).toEqual([path]);
+    expect(existsSync(join(pulled.keptAside?.dir ?? '', path))).toBe(true);
+  });
 });

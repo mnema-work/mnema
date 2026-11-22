@@ -33,7 +33,7 @@ import { listPrivateKeyFingerprints } from '@mnema/chain';
 import { PROJECT_DIR, resolveTrees } from '@mnema/core';
 import { fixMergeDriver, type MergeDriverFixed } from '../commands/doctor-merge-driver.js';
 import { type InitContext, readInit, runInit } from '../commands/init.js';
-import { driverCommand } from '../commands/record-pull.js';
+import { ownDriverCommand } from '../commands/record-pull.js';
 import { readMachineState, writeMachineState } from '../machine-state.js';
 import { fact } from '../presentation/detail.js';
 import { VERSION } from '../version.js';
@@ -279,7 +279,7 @@ export async function runTheFounding(wiring: Wiring, opts: InitOptions): Promise
     answers.pull === 'yes'
       ? fixMergeDriver(
           { cwd: ctx.cwd, env: ctx.env, processEnv: process.env },
-          { dryRun: false, driver: driverCommand(process.execPath, process.argv[1] ?? '') },
+          { dryRun: false, driver: ownDriverCommand() },
         )
       : undefined;
 

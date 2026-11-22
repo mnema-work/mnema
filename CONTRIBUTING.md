@@ -29,7 +29,7 @@ Search the open and closed issues first: yours may be reported, decided or fixed
 
 ## Taking an issue
 
-Comment `/take` (or `/claim`) on an open `good first issue` or `help wanted` issue to take it. Plain sentences work too ("I'll take this", "I'd like to work on this", "assign me", "I'm working on this"; a comment that only talks about the issue does not count), and a comment that sounds like a claim but is not understood gets one reply that says to write `/take`. If nobody holds the issue and you hold fewer than 3 issues assigned this way, a workflow assigns it to you and replies once. If you open a pull request that closes a free issue ("Fixes #123") without having claimed it, the daily run assigns the issue to you.
+Comment `/take` (or `/claim`) on an open `good first issue` or `help wanted` issue to take it. Plain sentences work too ("I'll take this", "I'll take this one", "I'd like to work on this", "assign me", "I'm working on this"; a comment that only talks about the issue does not count), and a comment that sounds like a claim but is not understood gets one reply that says to write `/take`. If nobody holds the issue and you hold fewer than 3 issues assigned this way, a workflow assigns it to you and replies once. If you open a pull request that closes a free issue ("Fixes #123") without having claimed it, the daily run assigns the issue to you.
 
 The assignment frees itself after 14 days without an open pull request of yours that names the issue (write `#<number>` in its description), and says so on the issue; a daily run does that, for an issue a maintainer assigned to you by hand as well. A pull request that meets the issue's "Done when" and shows its "How to check" is what the review looks at.
 
@@ -77,6 +77,9 @@ pnpm test
 - `pnpm test` is the whole suite. Every test process runs with a `HOME` made for it, so a run
   never signs with your key or writes to your own records
   ([`.github/a-home-of-its-own/`](.github/a-home-of-its-own/README.md)).
+  It also clears the session variables of the hosts (such as `CLAUDE_CODE_SESSION_ID`) before any
+  test, so a run from inside an agent's session behaves as one on the CI; a case that needs a
+  session sets it itself.
 - `pnpm test:host-contract` starts a real host and is not part of `pnpm test`; it needs
   `MNEMA_HOST_CONTRACT_HOST` and that host's own variables (see
   [`vitest.host-contract.config.ts`](vitest.host-contract.config.ts)). What each host sends of the
@@ -87,10 +90,10 @@ pnpm test
   the four, and the figures `docs/evidence.md` repeats. Without `-u` a different figure fails the case
   and shows the difference.
 
-Beside the suite, CI runs two scanners on every pull request and on `main`, outside the checks a
-pull request must carry: `gitleaks` reads the whole history for a committed credential, and
+Beside the suite, CI runs two scanners on every pull request and on `main`: `gitleaks` reads the
+whole history for a committed credential and is one of the checks a pull request must carry, and
 `osv-scanner` reads `pnpm-lock.yaml` for a dependency with a published advisory (and again every
-Monday, against the lockfile as it is). `osv-scanner.toml` ignores one advisory that has no patched release, with its reason, until 2026-12-17; after that date the check accuses it again. `.gitleaks.toml` lists what is public or made up and why;
+Monday, against the lockfile as it is) and is not one of them. `osv-scanner.toml` ignores one advisory that has no patched release, with its reason, until 2026-12-17; after that date the check accuses it again. `.gitleaks.toml` lists what is public or made up and why;
 a finding that is not on that list is a credential to rotate, not a line to add to it.
 CodeQL reads the JavaScript and TypeScript, the Python of the repository and the workflows with its default
 query suite, on every pull request, on `main` and every Tuesday, also outside the required checks;

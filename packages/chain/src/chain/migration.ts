@@ -84,13 +84,13 @@ export function migrateMachinery(places: MigrationPlaces): void {
   const legacyIdPath = installationIdPath(chain, fingerprint);
   const leftover = legacyTails(chain, fingerprint);
   if (!existsSync(legacyIdPath) && leftover.length === 0) {
-    keepMark(mark);
+    keepMark(checkout, fingerprint);
     return;
   }
   // Before the first byte: nothing is moved through a link, and a note that is one is refused by name.
   refuseToWriteThrough(chain, ['keys', 'locks', ...leftover.flatMap(notesIn)]);
   refuseToWriteThrough(shared, ['locks']);
-  refuseToWriteThrough(checkout, ['keys', 'migrated']);
+  refuseToWriteThrough(checkout, ['keys', 'migrated', ['migrated', fingerprint].join('/')]);
 
   let id = readId(legacyIdPath);
   for (let tries = 0; id !== undefined; tries += 1) {
@@ -115,7 +115,7 @@ export function migrateMachinery(places: MigrationPlaces): void {
       if (!(error instanceof TailBusyError)) throw error;
     }
   }
-  keepMark(mark);
+  keepMark(checkout, fingerprint);
 }
 
 /** The tail ids of `fingerprint` that have a note or a cited-heads file in the record's own `locks/`. */
@@ -184,7 +184,10 @@ function keepHint(checkout: ChainLayout, fingerprint: string, id: string): void 
   mintInstallationId(path, id);
 }
 
-function keepMark(mark: string): void {
+function keepMark(checkout: ChainLayout, fingerprint: string): void {
+  const mark = migratedMarkPath(checkout, fingerprint);
+  // A link at the mark would carry the empty write to whatever it points at: refused by name.
+  refuseToWriteThrough(checkout, ['migrated', ['migrated', fingerprint].join('/')]);
   mkdirSync(dirname(mark), { recursive: true });
   writeFileSync(mark, '');
 }
