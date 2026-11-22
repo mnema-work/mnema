@@ -460,35 +460,63 @@ describe('the colours', () => {
       expect(PALETTE[theme].accentText, theme).toBe(PALETTE[theme].text);
     }
     expect(STYLE).toContain('a { color: var(--accent-text); }');
-    // Every rule that styles an anchor: the bare `a`, and the classes the page puts on an `<a>`, read from the page.
+    // Every anchor the page can draw: the permalinks, the skip link, the back link, the reference links
+    // (a decision that names one it knows) and the timeline's "open" links, read from the render.
     const page = new FakePage(
       renderPage(
-        model([decision({ id: 'u-1', adr: 'ADR-1' }), decision({ id: 'u-2', adr: 'ADR-1' })]),
+        model(
+          [
+            { ...full, id: 'd-1' },
+            decision({ id: 'd-0', adr: 'ADR-0' }),
+            decision({ id: 'd-2', adr: 'ADR-2' }),
+          ],
+          {
+            timeline: [
+              entry('decision-recorded', 'd-1'),
+              entry('decision-moved', 'd-1'),
+              entry('note-recorded', 'n-1'),
+            ],
+          },
+        ),
         '/*v*/',
         '../index.html',
       ),
     );
+    const anchors = page.querySelectorAll('a');
+    const fields = new Set(anchors.map((a) => a.getAttribute('data-field') ?? ''));
+    for (const field of ['permalink', 'supersedes', 'superseded-by', 'entry-link']) {
+      expect(fields.has(field), `the render has an anchor drawn as ${field}`).toBe(true);
+    }
+    expect(anchors.some((a) => a.getAttribute('class') === 'skip')).toBe(true);
+    expect(anchors.some((a) => a.getAttribute('class') === null)).toBe(true);
     const classes = new Set(
-      page
-        .querySelectorAll('a')
-        .flatMap((a) => (a.getAttribute('class') ?? '').split(/\s+/))
-        .filter((c) => c !== ''),
+      anchors.flatMap((a) => (a.getAttribute('class') ?? '').split(/\s+/)).filter((c) => c !== ''),
     );
     expect([...classes].sort()).toEqual(['permalink', 'skip']);
+    // A rule reaches an anchor when the last compound of any selector in its list, after the last
+    // combinator (`.decision a`, `h3 > a`), is `a` or carries a class an anchor has: `:hover` and
+    // `:focus` included. No rule is allowed to take the underline off, and none sets a colour instead.
     const stylesAnchor = (selector: string) =>
       selector
         .split(',')
-        .map((part) => part.trim())
+        .map((part) =>
+          (
+            part
+              .trim()
+              .split(/\s*[\s>+~]\s*/)
+              .pop() ?? ''
+          ).trim(),
+        )
         .some(
-          (part) =>
-            /^a(?![\w-])/.test(part) ||
-            [...classes].some((c) => new RegExp(`\\.${c}(?![\\w-])`).test(part)),
+          (last) =>
+            /^a(?![\w-])/.test(last) ||
+            [...classes].some((c) => new RegExp(`\\.${c}(?![\\w-])`).test(last)),
         );
     let seen = 0;
     for (const m of STYLE.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
       if (!stylesAnchor(m[1] as string)) continue;
       seen++;
-      expect(m[2], (m[1] as string).trim()).not.toMatch(/text-decoration:\s*none/);
+      expect(m[2], (m[1] as string).trim()).not.toMatch(/text-decoration(-line)?:\s*none/);
     }
     expect(seen).toBeGreaterThanOrEqual(4);
     expect(STYLE).toMatch(/\.permalink \{[^}]*text-decoration:\s*underline/);
