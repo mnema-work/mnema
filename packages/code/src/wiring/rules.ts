@@ -31,7 +31,11 @@ export function registerRules(program: Command, wiring: Wiring): Declared {
   const rules = program
     .command('rules')
     .description('show which recorded rules govern a path, and which address nothing')
-    .argument('<path>', 'the path to ask about, relative to here or absolute')
+    .argument('[path]', 'the path to ask about, relative to here or absolute')
+    .option(
+      '--coverage',
+      'instead of a path: count the project files by layer (refused, asked, governed, none), per top-level folder, with no score, following the switches of the gate',
+    )
     .option('--json', 'emit the faithful reading as JSON')
     .addHelpText(
       'after',
@@ -40,11 +44,32 @@ export function registerRules(program: Command, wiring: Wiring): Declared {
         'The word `test` after `rules` is the verb `rules test <file>`: a folder named test is asked as ./test.',
       ].join('\n'),
     )
-    .action(async (path: string, opts: { json?: boolean }) => {
+    .action(async (path: string | undefined, opts: { json?: boolean; coverage?: boolean }) => {
+      // NO PROJECT FIRST: outside one, the answer to every read is the same, whatever was typed,
+      // so the misuse of the line is judged only once there is a project to ask.
+      if ((opts.coverage === true) === (path !== undefined)) {
+        const { runRules: probe } = await import('../commands/rules.js');
+        const outside = probe(here(), { path: '.' });
+        if (!outside.ok) {
+          reportRefusal(wiring, outside, {});
+          return;
+        }
+        reportRefusal(wiring, {
+          reason: 'USAGE',
+          message:
+            path === undefined
+              ? 'a path to ask about, or --coverage to count the whole project.'
+              : '--coverage counts the whole project: give it no path.',
+        });
+        return;
+      }
       const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
-      const { runRules } = await import('../commands/rules.js');
-      const { rulesReport } = await import('../presentation/rules.js');
-      const result = runRules(here(), { path });
+      const { runRules, runRulesCoverage } = await import('../commands/rules.js');
+      const { rulesReport, coverageReport } = await import('../presentation/rules.js');
+      const result =
+        opts.coverage === true
+          ? runRulesCoverage(here())
+          : runRules(here(), { path: path as string });
       if (!result.ok) {
         reportRefusal(wiring, result, {});
         return;
@@ -62,6 +87,22 @@ export function registerRules(program: Command, wiring: Wiring): Declared {
       const { severalRecordsSentence } = await import('../record-integrity.js');
       if (result.severalRecords.length > 0) {
         io.err(render(fact(severalRecordsSentence(result.severalRecords))));
+      }
+      if ('coverage' in result) {
+        if (opts.json === true) {
+          io.out(
+            JSON.stringify(
+              result.severalRecords.length === 0
+                ? result.coverage
+                : { ...result.coverage, severalRecords: result.severalRecords },
+              null,
+              2,
+            ),
+          );
+          return;
+        }
+        writeLines(io, coverageReport(render, result.coverage));
+        return;
       }
       if (result.notPushed !== undefined) io.err(render(fact(result.notPushed)));
       if (opts.json === true) {

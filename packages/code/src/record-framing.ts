@@ -874,10 +874,12 @@ export const WHAT_STOPS: { readonly [K in SwitchableChannel]: string } = {
     'that write',
   'edit-asks-a-person':
     'the pause before a file is written where the record asks that a person look ' +
-    'first: the rules go on arriving, and nothing stops',
+    'first: the rules go on arriving, and nothing stops (`mnema rules --coverage` then counts ' +
+    'the files under such a rule one layer down)',
   'edit-refuses-a-write':
     'the refusal of a write where a rule of the record refuses one: such a write goes ' +
-    'through, the rules go on arriving, and a rule that asks for a person still asks',
+    'through, the rules go on arriving, and a rule that asks for a person still asks ' +
+    '(`mnema rules --coverage` then counts the files under such a rule one layer down)',
   'agent-accepts':
     'an agent ruling a decision in force: with it off, an `accept`, a `supersede`, an `adopt` or a `deprecate` that declares ' +
     'an agent is refused, and so is one that declares none unless it is made at a terminal ' +
