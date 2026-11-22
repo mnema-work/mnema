@@ -276,6 +276,27 @@ describe('the front page is drawn from the console', () => {
     expect(offTheGrid(copy)).toEqual(['the stylesheet sets a stroke, which this does not read']);
   });
 
+  it.each([
+    [
+      'an @media condition',
+      '@media (min-width:0.5px){.a{opacity:0}}',
+      'the stylesheet uses @media, which this does not read',
+    ],
+    [
+      'an @import',
+      '@import url(off-the-grid.css);',
+      'the stylesheet uses @import, which this does not read',
+    ],
+    [
+      'a selector that is not a class',
+      'rect[width="1.5"]{opacity:0}',
+      'the stylesheet has the selector rect[width="1.5"], which this does not read',
+    ],
+  ])('refuses a stylesheet with %s', (_, rule, said) => {
+    const copy = (drawn['how-it-works-light.svg'] ?? '').replace('</style>', `${rule}</style>`);
+    expect(offTheGrid(copy)).toContain(said);
+  });
+
   it('holds a stroke of one unit on the grid under a group that moves it by whole units', () => {
     const copy = (drawn['how-it-works-light.svg'] ?? '').replace(
       '</svg>',
@@ -1201,9 +1222,11 @@ function propertiesOf(declarations: string): string[] {
  * `CSS_THE_SCRIPT_WRITES`, a stroke and a stroke width (a shape's are read); and the stylesheets
  * (every `<style>`) must not set a stroke, a stroke width or `vector-effect`, nor move a shape or name
  * an animation outside a keyframes, nor set, in any rule or keyframe, a property outside
- * `CSS_THE_SCRIPT_WRITES`, and each of their keyframes must be one this reads. Not read: the
- * selectors of a stylesheet (a rule of allowed properties applies to whatever it selects), the
- * condition of an `@media`, and what a stylesheet writes outside braces.
+ * `CSS_THE_SCRIPT_WRITES`, and each of their keyframes must be one this reads. A stylesheet is read
+ * whole: its selectors must be class selectors (`.a` or a list of them), it may hold no at-rule but
+ * `@keyframes` and the `@media` of `prefers-reduced-motion: reduce` (any other condition and an
+ * `@import` are refused), and nothing may stand outside its rules
+ * and keyframes.
  */
 function unreadIn(svg: string): string[] {
   if (!svg.includes('</defs>')) return ['the picture has no </defs>, after which this reads'];
@@ -1262,6 +1285,22 @@ function unreadIn(svg: string): string[] {
     out.push('the stylesheet gives a shape an animation, which this does not read');
   if ((sheet.match(/@keyframes\b/g) ?? []).length !== keyframesOf(svg).size)
     out.push('the stylesheet has a keyframes this does not read');
+  // The one condition the script writes is read: its rules are read as any other rule is.
+  const flat = outside.replace(
+    /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{((?:[^{}]*\{[^{}]*\})*)\}/g,
+    '$1',
+  );
+  for (const at of new Set(flat.match(/@(?!keyframes\b)[\w-]*/g) ?? []))
+    out.push(`the stylesheet uses ${at}, which this does not read`);
+  const rules = flat.replace(/\/\*[\s\S]*?\*\//g, '');
+  for (const r of rules.matchAll(/([^{}]*)\{[^{}]*\}/g)) {
+    const selector = (r[1] as string).trim();
+    if (!/^\.[\w-]+(?:\s*,\s*\.[\w-]+)*$/.test(selector))
+      out.push(`the stylesheet has the selector ${selector}, which this does not read`);
+  }
+  const stray = rules.replace(/[^{}]*\{[^{}]*\}/g, '').trim();
+  if (stray !== '')
+    out.push(`the stylesheet writes ${stray} outside its rules, which this does not read`);
   const declared = [...sheet.matchAll(/\{([^{}]*)\}/g)].flatMap((b) => propertiesOf(b[1] ?? ''));
   for (const p of new Set(declared))
     if (!CSS_THE_SCRIPT_WRITES.has(p) && !['stroke', 'stroke-width', 'vector-effect'].includes(p))
