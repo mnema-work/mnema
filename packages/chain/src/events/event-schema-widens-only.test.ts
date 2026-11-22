@@ -109,7 +109,8 @@ function whatBreaks(last: PublishedSchema, now: PublishedSchema): string[] {
         continue;
       }
       if (old.to !== move.to) problems.push(`${name} went to ${old.to} and now goes to ${move.to}`);
-      if ((old.by ?? false) !== (move.by ?? false)) problems.push(`${name} changed what it says of by`);
+      if ((old.by ?? false) !== (move.by ?? false))
+        problems.push(`${name} changed what it says of by`);
       for (const needed of old.requires) {
         if (!move.requires.includes(needed)) {
           problems.push(`${name} no longer requires ${needed}`);
@@ -126,31 +127,44 @@ describe('the published declarations against the last release', () => {
   });
 
   it('say so on the changes it exists for (the guard is not blind)', () => {
-    const copy = (): PublishedSchema => JSON.parse(JSON.stringify(current)) as PublishedSchema;
+    const changed = (change: (schema: PublishedSchema) => void): string => {
+      const copy = JSON.parse(JSON.stringify(current)) as PublishedSchema;
+      change(copy);
+      return whatBreaks(published, copy).join('\n');
+    };
+    const payloadOf = (schema: PublishedSchema, kind: string) =>
+      (schema.contracts.find((row) => row.kind === kind)?.payload ?? {}) as Record<string, string>;
+    const movesOf = (schema: PublishedSchema, kind: string) =>
+      (flows(schema)[kind]?.moves ?? []) as Move[];
 
-    const dropped = copy();
-    const first = dropped.contracts[0];
-    expect(first).toBeDefined();
-    const field = Object.keys(first?.payload ?? {})[0] ?? '';
-    delete (first?.payload as Record<string, string>)[field];
-    expect(whatBreaks(published, dropped).join('\n')).toContain('is no longer declared');
-
-    const required = copy();
-    const target = required.contracts.find((row) =>
-      Object.values(row.payload).some((rule) => rule.endsWith('?')),
+    expect(changed((s) => delete payloadOf(s, 'decision.recorded').rationale)).toContain(
+      'decision.recorded v1: the field rationale is no longer declared',
     );
-    const optional = Object.entries(target?.payload ?? {}).find(([, rule]) => rule.endsWith('?'));
-    (target?.payload as Record<string, string>)[optional?.[0] ?? ''] = (optional?.[1] ?? '').slice(0, -1);
-    expect(whatBreaks(published, required).join('\n')).toMatch(/was .*\? and is /);
-
-    const newMove = copy();
-    const flow = flows(newMove)['task.transitioned'];
-    (flow?.moves as Move[]).push({ from: 'DONE', action: 'cancel', to: 'CANCELED', requires: [] });
-    expect(whatBreaks(published, newMove).join('\n')).toContain('a move the last release did not allow');
-
-    const looser = copy();
-    const move = flows(looser)['decision.transitioned']?.moves.find((m) => m.action === 'accept');
-    (move?.requires as string[]).length = 0;
-    expect(whatBreaks(published, looser).join('\n')).toContain('no longer requires note');
+    expect(
+      changed((s) => {
+        payloadOf(s, 'decision.recorded').alternatives = 'string';
+      }),
+    ).toContain('alternatives was string? and is string');
+    expect(
+      changed((s) => {
+        payloadOf(s, 'memory.captured').another = 'string';
+      }),
+    ).toContain('the new field another is string, not optional');
+    expect(
+      changed((s) => {
+        movesOf(s, 'task.transitioned').push({
+          from: 'DONE',
+          action: 'cancel',
+          to: 'CANCELED',
+          requires: [],
+        });
+      }),
+    ).toContain('a move the last release did not allow');
+    expect(
+      changed((s) => {
+        const accept = movesOf(s, 'decision.transitioned').find((m) => m.action === 'accept');
+        if (accept !== undefined) (accept.requires as string[]).length = 0;
+      }),
+    ).toContain('no longer requires note');
   });
 });

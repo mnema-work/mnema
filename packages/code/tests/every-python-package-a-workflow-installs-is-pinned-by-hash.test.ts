@@ -88,9 +88,7 @@ function withoutHash(text: string): string[] {
 function unhashed(text: string, file: string, exists: (where: string) => boolean): string[] {
   return pipInstalls(text).flatMap(({ line, command }) => {
     const required = hashedFile(command);
-    return required === undefined || !exists(required)
-      ? [`${file}:${line} ${command.trim()}`]
-      : [];
+    return required === undefined || !exists(required) ? [`${file}:${line} ${command.trim()}`] : [];
   });
 }
 
@@ -115,9 +113,10 @@ describe('a Python package a workflow installs', () => {
     );
     expect(files.size, 'no workflow installs from a requirements file').toBeGreaterThan(0);
     for (const file of files) {
-      expect(withoutHash(readFileSync(join(ROOT, file), 'utf-8')), `${file} has a bare requirement`).toEqual(
-        [],
-      );
+      expect(
+        withoutHash(readFileSync(join(ROOT, file), 'utf-8')),
+        `${file} has a bare requirement`,
+      ).toEqual([]);
     }
   });
 
@@ -132,14 +131,15 @@ describe('a Python package a workflow installs', () => {
     expect(
       unhashed('  pip install --require-hashes -r missing.txt', 'w', () => false),
     ).toHaveLength(1);
-    expect(withoutHash('mypy==1.0 \\\n    --hash=sha256:' + 'a'.repeat(64) + '\nruff==2\n')).toEqual([
-      'ruff',
-    ]);
-    const installing = FILES.filter((file) =>
-      pipInstalls(readFileSync(join(ROOT, file), 'utf-8')).length > 0,
+    expect(
+      withoutHash(`mypy==1.0 \\\n    --hash=sha256:${'a'.repeat(64)}\nruff==2\n`),
+    ).toEqual(['ruff']);
+    const installing = FILES.filter(
+      (file) => pipInstalls(readFileSync(join(ROOT, file), 'utf-8')).length > 0,
     );
-    expect(installing, 'the workflows install nothing with pip, so this guard reads nothing').toContain(
-      '.github/workflows/ci.yml',
-    );
+    expect(
+      installing,
+      'the workflows install nothing with pip, so this guard reads nothing',
+    ).toContain('.github/workflows/ci.yml');
   });
 });

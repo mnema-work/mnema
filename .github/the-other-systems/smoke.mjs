@@ -95,7 +95,11 @@ for (const key of Object.keys(baseEnv)) {
  * @param {string[]} args
  * @param {{ cwd?: string, env?: Record<string, string | undefined>, input?: string, shell?: boolean, timeout?: number }} [options]
  */
-function run(program, args, { cwd = root, env = baseEnv, input, shell = false, timeout = 300_000 } = {}) {
+function run(
+  program,
+  args,
+  { cwd = root, env = baseEnv, input, shell = false, timeout = 300_000 } = {},
+) {
   const ran = spawnSync(program, shell ? args.map((arg) => `"${arg}"`) : args, {
     cwd,
     env,
@@ -442,7 +446,9 @@ try {
     input: `${talk.map((message) => JSON.stringify(message)).join('\n')}\n`,
     timeout: 60_000,
   });
-  console.log(`$ mnema mcp (stdin: initialize, initialized, tools/list)\n${served.err}`.slice(0, 1200));
+  console.log(
+    `$ mnema mcp (stdin: initialize, initialized, tools/list)\n${served.err}`.slice(0, 1200),
+  );
   /** @type {Array<{ id?: number, result?: { serverInfo?: unknown, tools?: Array<{ name?: string }> } }>} */
   const answers = [];
   for (const line of served.out.split(/\r?\n/)) {
@@ -454,16 +460,13 @@ try {
     }
   }
   const initialized = answers.find((answer) => answer.id === 1);
-  const listed = answers.find((answer) => answer.id === 2);
-  const names = (listed?.result?.tools ?? []).map((tool) => tool.name);
+  const toolList = answers.find((answer) => answer.id === 2);
+  const names = (toolList?.result?.tools ?? []).map((tool) => tool.name);
   check(served.status === 0, `mnema mcp exits 0 when its input ends (exited ${served.status})`);
-  check(
-    initialized?.result?.serverInfo !== undefined,
-    'the answer to initialize names the server',
-  );
+  check(initialized?.result?.serverInfo !== undefined, 'the answer to initialize names the server');
   check(
     names.length > 0 && names.includes('bootstrap') && names.includes('capture_memory'),
-    `tools/list answers with tools that include bootstrap and capture_memory (${names.length} listed)`,
+    `tools/list answers with tools that include bootstrap and capture_memory (${names.length} toolList)`,
   );
   check(
     !/\n\s+at .+[:(]\d+/.test(served.err),
