@@ -673,7 +673,8 @@ certificate, through the browser here, or with the job's own token in GitHub Act
 only the checkpoint's digest leaves. **Your identity leaves too, by design:** the
 certificate names the e-mail you sign in with, or the repository, the workflow, the commit and the
 run, and it goes into Sigstore's public log, which does not forget, and into the committed bundle; in
-GitHub Actions the act refuses a private repository. `mnema key sigstore <e-mail or
+GitHub Actions the act refuses a private repository. Where the bundle goes is looked at again, right before each checkpoint
+is sent to the log, after any sign-in: a symbolic link that has appeared there since stops that checkpoint, which is then not logged. `mnema key sigstore <e-mail or
 workflow>` records the signed claim that this identity is that one (an e-mail as its
 SHA-256, never the address, which protects the record and not the bundle or the log) and `mnema verify
 --against-sigstore` reads every bundle **offline**, against the trust root the binary
