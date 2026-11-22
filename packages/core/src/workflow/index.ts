@@ -64,7 +64,7 @@ export {
 } from './decision-transitions.js';
 // The QUESTION crosses the package boundary and the classification does not:
 // `TASK_DISPOSITION` is deliberately absent here (see `disposition.ts`).
-export { type TaskDisposition, taskDisposition } from './disposition.js';
+export { type TaskDisposition, taskDisposition, taskIsUnderway } from './disposition.js';
 export {
   type GateErr,
   type GateErrorCode,

@@ -436,5 +436,6 @@ export {
   TRANSITIONS,
   type Transition,
   taskDisposition,
+  taskIsUnderway,
 } from './workflow/index.js';
 export { lastSeenOfSweptTask, sweptReason } from './workflow/swept-session.js';
