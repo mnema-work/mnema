@@ -910,7 +910,7 @@ export const HANDED_OVER: Readonly<
   'packages/chain/src/chain/relink-plan.ts': { name: 5 },
   'packages/chain/src/chain/tree.ts': { name: 1 },
   'packages/chain/src/chain/writer.ts': { line: 1, name: 4 },
-  'docs/cli-reference.md': { line: 40, name: 74 },
+  'docs/cli-reference.md': { line: 41, name: 74 },
   'packages/code/README.md': { line: 8, name: 14 },
   'packages/code/src/a-new-identity.ts': { line: 2, name: 2 },
   'packages/code/src/agent-accept-words.ts': { name: 3 },
