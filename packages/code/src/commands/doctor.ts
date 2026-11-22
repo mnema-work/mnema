@@ -97,6 +97,7 @@ import { HOOK_HOSTS, HOSTS } from '../host-names.js';
 import { declaredRange, floorRefusal } from '../node-floor.js';
 import { oneLine } from '../one-line.js';
 import { pluginTreeHash } from '../plugin-tree-hash.js';
+import { breaksReadInMemory } from '../an-altered-entry-stops-a-write.js';
 import { newerLinesSentence } from '../record-integrity.js';
 import {
   DAYS_READ,
@@ -110,6 +111,7 @@ import {
   THE_AGENT_KEY_SEPARATES_NOTHING,
 } from '../the-persons-key-in-the-clear.js';
 import { isOlderThan } from '../version.js';
+import { alteredEntryFinding } from '../what-a-write-meets.js';
 import { longPathsLines } from './doctor-long-paths.js';
 import { mergeDriverLines } from './doctor-merge-driver.js';
 import { type Plan, planFix, readLocations, SETTING, settingsCandidates } from './doctor-vscode.js';
@@ -171,6 +173,7 @@ export interface Finding {
     | 'merge-driver'
     | 'long-paths'
     | 'newer-mnema'
+    | 'altered-entry'
     | 'record-in-git'
     | 'fork-kept-aside'
     | 'swallowed';
@@ -1604,6 +1607,16 @@ function twoRecords(from: string, to: string): string | undefined {
 }
 
 /**
+ * A finding only when an entry of the record was altered after it was written (`mnema verify` says
+ * where): every write is refused over it, and `doctor` was the one place that said nothing. The
+ * tails are replayed in memory, so this writes nothing, and silent where nothing is altered.
+ */
+function alteredEntryFindings(ctx: DoctorContext): Finding[] {
+  const line = alteredEntryFinding(breaksReadInMemory(resolveTrees(ctx.cwd, ctx.env)));
+  return line === undefined ? [] : [{ topic: 'altered-entry', state: 'attention', line }];
+}
+
+/**
  * A finding only when a newer mnema wrote lines into the record that this one reads past (ADR-140):
  * which kinds, and what to do, in the words every surface says it in (`newerLinesSentence`). Silent
  * when there are none, which is every record this version wrote, and silent when the record cannot
@@ -1737,6 +1750,7 @@ export function runDoctor(ctx: DoctorContext): { readonly findings: readonly Fin
       ...instructionsFindings(ctx),
       ...stackFindings(ctx),
       ...agentKeyFindings(ctx),
+      ...alteredEntryFindings(ctx),
       ...newerMnemaFindings(ctx),
       ...swallowedFindings(ctx),
     ],

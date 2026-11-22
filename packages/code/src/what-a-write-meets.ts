@@ -572,6 +572,24 @@ export function alteredEntrySentence(facts: readonly ScopedLinkBreak[]): string 
 }
 
 /**
+ * What `mnema doctor` says of a record that holds an entry altered after it was written, or
+ * `undefined` where none does: in one line, the tree, the entry (in the words every surface says it
+ * in) and the way out. The same facts the refusal of a write is made of, said before a write meets them.
+ */
+export function alteredEntryFinding(facts: readonly ScopedLinkBreak[]): string | undefined {
+  const altered = facts.filter((fact) => fact.retained !== undefined);
+  if (altered.length === 0) return undefined;
+  const trees = [...new Set(altered.map((fact) => fact.scope))];
+  return [
+    `${trees.map((tree) => ALTERED_IN[tree].tree).join(' and ')} holds an entry that was altered after it was written.`,
+    ...linkBreakSentences(altered),
+    ...trees.map((tree) => ALTERED_IN[tree].out(tailsOf(altered, tree))),
+  ]
+    .join(' ')
+    .replace(/\s*\n+\s*/g, ' ');
+}
+
+/**
  * The refusal a part of the record that was not read stands for, as the reader that met it would
  * have thrown it: a read serves around such a part, and a write is refused over it as it always was
  * (ADR-396), by the same error, so every door says it in the same words. `fact.unread` is set.

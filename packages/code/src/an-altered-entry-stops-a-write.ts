@@ -114,6 +114,23 @@ function breaksOf(sources: Parameters<typeof linkBreaksOf>[0]): readonly ScopedL
   return [...linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE), ...hidden];
 }
 
+/**
+ * What the trees of `trees` hold that is altered or unread, replayed in memory: nothing is written
+ * into any tree, no cache file left behind. For a reader that must not write (`mnema doctor`).
+ */
+export function breaksReadInMemory(trees: ResolvedTrees): readonly ScopedLinkBreak[] {
+  return reachableTrees(trees)
+    .filter((one) => existsSync(one.chainRoot))
+    .flatMap((tree) => {
+      try {
+        return withTreesRead([tree], (read) => breaksOf(read));
+      } catch (error) {
+        if (error instanceof UnreadableLineError) return [];
+        throw error;
+      }
+    });
+}
+
 /** Throws {@link AlteredEntryError} when any tree of `trees` holds an altered entry. */
 export function checkForAnAlteredEntry(trees: ResolvedTrees): void {
   const reached = reachableTrees(trees).filter((one) => existsSync(one.chainRoot));
