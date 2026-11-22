@@ -56,7 +56,9 @@ describe('a record the frontier wrote', () => {
     expect(here.fullySigned).toBe(true);
     expect(here.tails).toHaveLength(10);
     expect(here.tails.reduce((all, tail) => all + tail.entryCount, 0)).toBe(18);
-    expect(here.census.map((note) => note.kind)).toEqual(['backup-key']);
+    expect(
+      here.census.map((note) => note.kind).filter((kind) => kind !== 'undeclared-which'),
+    ).toEqual(['backup-key']);
   });
 
   it('is verified by the second reader too, six moves applied and nothing left unchecked', () => {

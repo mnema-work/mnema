@@ -1,6 +1,6 @@
 # When two machines disagree
 
-A record holds one tail per installation, plus one each time a writer finds a tail it holds no note of (the first write after upgrading to 0.1.5, a branch switch followed by a write, a deleted `locks/`, or in a repository a deleted notes place under the git directory, which `git clean` does not reach) ([`FORMAT.md`](../packages/chain/FORMAT.md) §4). Two machines
+A record holds one tail per installation, plus one each time a writer finds a tail it holds no note of (the first write after upgrading to 0.1.5, a write after a branch switch that no tail of its key ends at, a deleted `locks/`, or in a repository a deleted notes place under the git directory, which `git clean` does not reach) ([`FORMAT.md`](../packages/chain/FORMAT.md) §4). Two machines
 that have not pulled each other's tail can each write a move on the same decision: one accepts it,
 the other rejects it. Both moves are signed, both are in the record once the tails meet, and
 nothing in the record says which one was meant. This page shows what `show`, `brief` and `verify`
@@ -75,8 +75,8 @@ mnema show ADR-1
 #> this decision: divergence between the rejection by mnid:8072d8bf at 2026-10-16T… and the accept by mnid:79aa1e6b at 2026-10-16T…, made on machines that had not seen each other; not in force until it is decided again: record it as a new decision, which a person, or an agent where agent-accepts is on, accepts.
 #> decision 01a14265-a017-7000-a83b-c9516d78ff90  ·  public
 #>   ADR-1: Use SQLite for the cache (accepted)
-#>   recorded by mnid:8072d8bf (a person)
-#>   accepted by mnid:79aa1e6b (a person)
+#>   recorded by mnid:8072d8bf (no agent declared)
+#>   accepted by mnid:79aa1e6b (no agent declared)
 #>
 #> Embedded, and fast enough at our sizes.
 #>

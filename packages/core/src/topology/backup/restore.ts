@@ -189,6 +189,14 @@ export function prepareRestore(
   // The private tree has a name of its own: where the project has none (its public tree lost its
   // tails), only what the private tree itself names can set the copy apart from it.
   let otherRecord = tree === 'public' || record !== undefined ? copyRecord !== record : false;
+  // A public tree whose folder is gone (a local record that git clean took away) holds nothing a copy replaces: nothing to ask.
+  if (
+    tree === 'public' &&
+    record === undefined &&
+    lstatSync(root, { throwIfNoEntry: false }) === undefined
+  ) {
+    otherRecord = false;
+  }
   // The global tree is the machine's and has no name in the manifest: its tails name a record, as any
   // tree's do. The copy is the tree's own when both name the same one; where the tree holds tails and
   // either names none, nothing says it is the same, and it is asked (a tree with no tail loses nothing).

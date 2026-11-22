@@ -1006,6 +1006,25 @@ describe('the hook’s copy with this machine’s private rules', () => {
     expect(handed).toContain('- **ADR-1: A call numbered 1**');
   });
 
+  it('says the shape of a private rule line only when no committed header says it', () => {
+    const line = 'Each decision line ends with the day it was accepted';
+    const mine = { decisions: [decision(70, 'Mine alone')], skills: [] };
+    const alone = briefWithin(
+      governance({ decisions: [] }),
+      HOOK_TEXT_CEILING,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      mine,
+    ).join('\n');
+    expect(alone).toContain(line);
+    expect(alone.indexOf(line)).toBeLessThan(alone.indexOf('Mine alone'));
+    expect(withPrivate(HOOK_TEXT_CEILING, mine).join('\n')).not.toContain(line);
+  });
+
   it('is cut nowhere when it fits, and has no section when there are none', () => {
     const handed = withPrivate(HOOK_TEXT_CEILING, {
       decisions: [decision(70, 'Mine alone')],

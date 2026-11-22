@@ -64,7 +64,7 @@ const line = oneLine;
 /** A record's long text as `mnema show` prints it ({@link neutralized}). */
 const block = neutralized;
 
-/** The identity as the record names it, and what carried the act out: a person or an agent. */
+/** The identity as the record names it, and what carried the act out: no agent declared or an agent. */
 function actor(prefix: string, who: string, which?: string, unannounced?: true): VKid[] {
   return [
     h('code', { 'data-field': `${prefix}-who` }, line(who)),
