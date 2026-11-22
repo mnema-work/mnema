@@ -416,7 +416,7 @@ function fits(t) {
   /** @param {number} k */
   const lv = (k) => yc + (k - 6) * pitch;
   /** @type {Stone} */
-  const a2 = [560, lv(1), 26];
+  const a2 = [W / 2, lv(1), 26];
   /** @type {readonly Stone[]} */
   const st = [a2];
   /**
@@ -487,6 +487,7 @@ function fits(t) {
 function family(t) {
   const W = 1200;
   const yc = 170;
+  const EYE_X = W / 2;
   const L = FAMILY_LINES;
   /** @type {readonly ({ name: Line, rows: readonly [Line, Line] } | null)[]} */
   const doors = [
@@ -520,13 +521,29 @@ function family(t) {
       right: Math.max(...ink.map((i) => i.right)),
     };
   });
-  const gap = (1080 - spans.reduce((sum, s) => sum + s.right - s.left, 0)) / (spans.length - 1);
+  // The record sits under the eye (x 600); the three columns on each side are spaced with the same ink gap on that side.
+  // The two sides differ only because the columns' widths differ.
+  const width = (s) => s.right - s.left;
+  const sideGap = (from, to, side) =>
+    (to - from - side.reduce((sum, s) => sum + width(s), 0)) / side.length;
+  const record = spans[3];
+  const leftSide = spans.slice(0, 3);
+  const rightSide = spans.slice(4);
+  const gapLeft = sideGap(60, EYE_X + record.left, leftSide);
+  const gapRight = sideGap(EYE_X + record.right, 1140, rightSide);
+  /** @type {number[]} */
+  const cx = [];
   let edge = 60;
-  const cx = spans.map(({ left, right }) => {
-    const x = Math.round((edge - left) * 10) / 10;
-    edge += right - left + gap;
-    return x;
-  });
+  for (const s of leftSide) {
+    cx.push(Math.round((edge - s.left) * 10) / 10);
+    edge += width(s) + gapLeft;
+  }
+  cx.push(EYE_X);
+  edge = EYE_X + record.right + gapRight;
+  for (const s of rightSide) {
+    cx.push(Math.round((edge - s.left) * 10) / 10);
+    edge += width(s) + gapRight;
+  }
   /** @type {readonly Stone[]} */
   const st = cx.map((x, i) => [x, yc, i === 3 ? 40 : 18]);
   return frame(

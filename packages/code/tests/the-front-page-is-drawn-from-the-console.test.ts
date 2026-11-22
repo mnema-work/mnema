@@ -229,6 +229,32 @@ describe('the front page is drawn from its scripts', () => {
     }
   });
 
+  // The eye sits on the diagram's axis, and what is central under it sits there too. The diagrams with such an element are
+  // the family (the record, r 22), fits (the ADR-2 point, r 15), context and stacks (the point of the record, r 18). Chain
+  // (a row of four), core (one point beside its sides) and how it works (four evenly spaced) have none.
+  const UNDER_THE_EYE: readonly (readonly [string, number])[] = [
+    [`${ASSETS}/the-family`, 22],
+    [`${ASSETS}/how-mnema-fits`, 15],
+    ['packages/context/assets/context', 18],
+    ['packages/stacks/assets/stacks', 18],
+  ];
+  it.each(
+    UNDER_THE_EYE.flatMap(([base, r]) =>
+      ['dark', 'light'].map((theme) => [`${base}-${theme}.svg`, r] as const),
+    ),
+  )('%s has its central point under the eye, within 0.5', (path, r) => {
+    const svg = diagrams[path] ?? '';
+    const eye = Number(/translate\(([\d.]+),44\) scale\(\.6\)/.exec(svg)?.[1]);
+    const centres = [
+      ...svg.matchAll(/<circle cx="([\d.]+)" cy="[\d.]+" r="([\d.]+)" fill="#e6da2e"[^>]*>/g),
+    ]
+      .filter((m) => Number(m[2]) === r)
+      .map((m) => Number(m[1]));
+    expect(eye).toBe(600);
+    expect(centres).toHaveLength(1);
+    expect(Math.abs((centres[0] ?? Number.NaN) - eye)).toBeLessThanOrEqual(0.5);
+  });
+
   // The banner by the script that draws it, the three diagrams of the README by the one that draws them.
   it.each([
     ...Object.keys(drawn).map((path) => [path, drawn[path]] as const),
