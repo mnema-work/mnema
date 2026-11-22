@@ -1011,7 +1011,7 @@ async function openedAt(
  * is the drawing and not the page around it.
  *
  * AND EVERY ROW FELL BY EXACTLY THREE WHEN THE DRAWING DID, which is the cleanest reading this
- * table has ever given. The name is drawn in six rows where it was nine, and every size in the
+ * table has ever given. The name was drawn in six rows then, where it had been nine (it is five now), and every size in the
  * table spends three rows fewer (twenty-two to nineteen, twenty-one to eighteen, sixteen to
  * thirteen) including the one at a hundred and twenty columns, where the text sits BESIDE the
  * mark and the mark was the taller of the two. That the fall is the same at all three is what

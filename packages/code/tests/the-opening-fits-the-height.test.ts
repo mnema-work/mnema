@@ -397,9 +397,9 @@ const THE_GEOMETRIES: readonly {
   // there is no arrangement at all, and the console draws a smaller one instead.
   { columns: 80, rows: 24, form: 'bare' },
   // AND THREE ROWS OF THIS TABLE ANSWERED `bare` UNTIL THE DRAWING CHANGED. The biggest drawing
-  // is six rows where it was nine, so the arrangement that holds it BESIDE the text costs eight
-  // rows rather than eleven and its share wants twenty-four rather than thirty-three, which is
-  // a screen everybody has. What moved is the art, not the rule: the same third of the same
+  // was six rows then, where it had been nine (it is five now), so the arrangement that held it
+  // BESIDE the text cost eight rows rather than eleven and its share wanted twenty-four rather
+  // than thirty-three, which is a screen everybody has. What moved is the art, not the rule: the same third of the same
   // screen buys an arrangement now, and the three sizes are kept at their old numbers so that
   // the change is visible here rather than hidden by re-choosing them.
   // The title carries the version, so this row sits where the title's width puts it: the 105 was

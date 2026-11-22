@@ -151,7 +151,6 @@ export function asPick(text: string): Column {
  * WHAT IT IS NOT is a hue, and it is no longer a tint either: it was the accent, and the accent is
  * gone with the colour of the mark. Strip the escapes and the row is the same row, with the
  * same word in the same column, which is the rule every paint on this
- * surface is spent under, which is the rule every hue on this
  * surface is spent under.
  *
  * It takes the text the call site composed, the word PADDED to the width of the column, for

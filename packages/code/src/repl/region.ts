@@ -897,13 +897,32 @@ function Present({
  * is not a severity (nothing about the record is being ruled on) and it is not a second
  * accent, because dimming is the absence of colour rather than a colour.
  *
- * Nothing is added to a row and nothing is taken off one: they arrive composed, padded and
- * cut (`palette.ts`), and all this does is put each on a row of its own.
+ * THE LIST STAYS FAINT AS A WHOLE, the chosen row included. The marker on that row is bold and
+ * the escape that closes a bold (SGR 22) is the one that closes a faint, so a row left as it
+ * arrived would go back to full intensity after its marker and the chosen word and its sentence
+ * would be the loudest thing on the list. Reopening the faint inside the row does not hold (the
+ * frame is rewritten from the characters' styles, and a bold taken off a faint character closes
+ * the faint with it), so the marker is drawn OUTSIDE the faint span and the rest of the row
+ * inside it: the marker is the only bold thing on the row, and the word and the sentence are as
+ * faint as their neighbours.
+ *
+ * Nothing is added to a row's text and nothing is taken off one: they arrive composed, padded and
+ * cut (`palette.ts`), and all this does is put each on a row of its own. The marker is found by
+ * its weight, the one bold stretch a row of this list can open with; a row without one is a
+ * single faint row.
  */
 function dimmed(list: readonly string[]): ReactNode[] {
-  return list.map((row, index) =>
-    node(Text, { key: String(index), dimColor: true, wrap: THE_MARGIN }, row),
-  );
+  return list.map((row, index) => {
+    const key = String(index);
+    const split = /^([^\u001b]*\u001b\[1m[^\u001b]*\u001b\[22m)([\s\S]*)$/.exec(row);
+    if (split === null) return node(Text, { key, dimColor: true, wrap: THE_MARGIN }, row);
+    return node(
+      Box,
+      { key, flexDirection: 'row' },
+      node(Text, { wrap: THE_MARGIN }, split[1]),
+      node(Text, { dimColor: true, wrap: THE_MARGIN }, split[2]),
+    );
+  });
 }
 
 /**

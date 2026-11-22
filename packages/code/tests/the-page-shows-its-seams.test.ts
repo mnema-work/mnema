@@ -351,11 +351,18 @@ describe('the line a caller sent is told from the answer to it', () => {
     expect(echo, 'the caller’s line is nowhere on the page').toBeDefined();
     const answer = rows.find((row) => stripped(row).includes(THE_ANSWER)) as string;
     expect(answer, 'the answer to it is nowhere on the page').toBeDefined();
-    // THE ACCENT IS THE PAIR A RULE CARRIES, and it is the product's hue: a rule, the top and the
-    // row being typed say *this is mnema*, and what a caller asked is not that.
-    const rule = rows.find(isRule) as string;
-    const [accent] = sgrOf(rule) as [string, string];
-    expect(sgrOf(echo), 'a sent command carries the accent').not.toContain(accent);
+    // THERE IS NO HUE ON IT, which is what the brand's terminal has none of: a rule carries no paint
+    // at all (asserted above), so there is no accent here to compare the echo against, and the
+    // witness is the absence itself. A hue is a basic or bright foreground (30 to 37, 90 to 97) or
+    // an index of the 256-colour palette outside its greys (0 to 231), or a true colour.
+    const hue = (escape: string): boolean => {
+      const code = escape.slice(2, -1);
+      if (/^(3[0-7]|9[0-7])$/.test(code)) return true;
+      if (/^38;2;/.test(code)) return true;
+      const indexed = /^38;5;(\d+)$/.exec(code);
+      return indexed !== null && Number(indexed[1]) < 232;
+    };
+    expect(sgrOf(echo).filter(hue), 'a sent command carries a hue').toEqual([]);
     // IT IS PAINTED, THOUGH, in a mark and a line of its own: both are greys, the mark quieter than
     // the words, so what was asked reads as a thing the session said back.
     expect(echo, 'the mark of a sent command is not painted').toContain(`\u001b[38;5;246m${SENT} `);
@@ -367,9 +374,7 @@ describe('the line a caller sent is told from the answer to it', () => {
     expect(beginning.startsWith(`${ANSWERED} `), 'the answer does not open with a dot').toBe(true);
     const beforeTheDot = answer.slice(0, answer.indexOf(ANSWERED));
     expect(beforeTheDot, 'the dot is painted').toBe(stripped(beforeTheDot));
-    expect(sgrOf(answer), 'the answer is painted like the line that asked for it').not.toContain(
-      accent,
-    );
+    expect(sgrOf(answer).filter(hue), 'the answer carries a hue').toEqual([]);
     expect(stripped(answer), 'the answer is not the answer').toContain(THE_ANSWER);
   }, 120_000);
 

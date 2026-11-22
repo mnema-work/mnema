@@ -451,6 +451,59 @@ describe('the word in the list carries no paint of its own, with colour or witho
       ).toBe(false);
     }
   }, 300_000);
+
+  it('keeps the chosen row faint from its marker to its description, the marker alone bold', async () => {
+    // THE LIST STAYS FAINT AS A WHOLE, and the chosen row is one of its rows. The marker is bold
+    // (SGR 1) and the escape that closes a bold is the one that closes a faint (SGR 22), so a
+    // marker closed carelessly leaves the word and the sentence beside it at full intensity: the
+    // chosen row would then shout where it was meant only to be marked. Read off the bytes a real
+    // session with colour writes, tracking the intensity the way a terminal does.
+    const ran = await inPty({
+      columns: 120,
+      rows: THE_FLOOR.rows,
+      steps: [
+        opens,
+        { types: PREFIX, until: arrivedSince(CUT), what: 'opened the preview' },
+        { types: MOVES_DOWN, until: arrivedSince(PICK), what: 'marked a row' },
+        { types: CLEARS_THE_LINE, until: () => true, what: 'abandoned the row' },
+        leaves,
+      ],
+    });
+    const drawn = ran.bytes.slice(ran.at[1] as number, ran.at[2] as number).split('\r\n');
+    const chosen = drawn.filter((row) => row.includes(PICK)).pop() as string;
+    expect(chosen, 'no row of the list carries the marker on the page').toBeDefined();
+    // The intensity at a position: SGR 2 opens faint, 1 opens bold, 22 and 0 close both.
+    const intensityAt = (row: string, at: number): { faint: boolean; bold: boolean } => {
+      const state = { faint: false, bold: false };
+      for (const escape of row.slice(0, at).matchAll(/\u001b\[([0-9;]*)m/g)) {
+        for (const code of (escape[1] ?? '').split(';')) {
+          if (code === '2') state.faint = true;
+          else if (code === '1') state.bold = true;
+          else if (code === '22' || code === '0' || code === '') {
+            state.faint = false;
+            state.bold = false;
+          }
+        }
+      }
+      return state;
+    };
+    const bare = chosen.replace(/\u001b\[[0-9;]*m/g, '');
+    const [word, ...sentence] = bare.slice(bare.indexOf(PICK) + PICK.length).trim().split(/\s{2,}/);
+    expect(sentence.join('  '), 'the chosen row has no description to test').not.toBe('');
+    const markerAt = chosen.indexOf(PICK);
+    expect(intensityAt(chosen, markerAt).bold, 'the marker is not bold').toBe(true);
+    const wordAt = chosen.indexOf(word as string, markerAt + PICK.length);
+    const sentenceAt = chosen.indexOf(sentence[0] as string, wordAt);
+    expect(intensityAt(chosen, wordAt), 'the chosen word is not faint, or is bold').toEqual({
+      faint: true,
+      bold: false,
+    });
+    expect(intensityAt(chosen, sentenceAt), 'the chosen description is not faint').toEqual({
+      faint: true,
+      bold: false,
+    });
+    expect(chosen.slice(markerAt), 'the chosen word carries a hue').not.toMatch(/\u001b\[3\d/);
+  }, 300_000);
 });
 
 // ---------------------------------------------------------------------------
