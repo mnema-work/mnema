@@ -55,7 +55,7 @@ const AFTER_A_TOOL: ReadonlySet<string> = new Set(['PostToolUse', 'AfterTool']);
 
 /**
  * What the agent is handed: a fact, the tool that records, the one that accepts and what its note
- * quotes, and that nothing was recorded. The answer is the person's own word, so a decision it
+ * quotes (the person’s answer, between double quotes, which the accept looks for in the session), and that nothing was recorded. The answer is the person's own word, so a decision it
  * settled is one the agent accepts at once (a standing rule of this record, the product's default
  * now); with `agent-accepts` off only a person accepts, and the sentence says so instead.
  */
@@ -69,7 +69,7 @@ export function settledSentence(agentsAccept: AcceptState): string {
     return `${opening}; the switch \`agent-accepts\` could not be read, so a person accepts it (\`mnema decision review\`); ${closing}`;
   }
   return agentsAccept === 'on'
-    ? `${opening}, and \`decision_transition\` (action \`accept\`) accepts it, the note quoting the answer; ${closing}`
+    ? `${opening}, and \`decision_transition\` (action \`accept\`) accepts it, the note quoting the person’s answer between double quotes (the option they chose, if its label is 20 characters or more, or their exact words); ${closing}`
     : `${opening}; \`agent-accepts\` is off, so a person accepts it (\`mnema decision review\`); ${closing}`;
 }
 

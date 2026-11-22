@@ -75,7 +75,12 @@ try {
   const asked = session === undefined ? handed : [...handed, '--session', session];
   const notes = whatTheVerbSays('recall', whereTheSessionIs(), {}, asked);
   if (notes !== null) process.stdout.write(reply(HOOK_EVENT, notes, handed));
-} catch {
+} catch (fault) {
   // Silence, with nothing to add: the one thing a handler of this plugin must never do is
-  // make somebody else's session worse than it would have been without it.
+  // make somebody else's session worse than it would have been without it. What failed is one line
+  // in the ledger of caught failures (`swallowed.mjs`), which `mnema doctor` reads.
+  await import('./swallowed.mjs').then(
+    (ledger) => ledger.noteSwallowed('hook.session-recall', fault),
+    () => undefined,
+  );
 }

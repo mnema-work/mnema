@@ -12,18 +12,19 @@
 
 _mnema_commands() {
   case "$1" in
-    '') echo 'init decision link unlink memory observe retract skill stack task promote status brief recall rules rules-file instructions switch inherit verify witness check site search show timeline refs audit diagram export usage resume repl why commits aging trailer commit-hook record key tail backup doctor upgrade report completion tour mcp run before-a-write beside-a-write tally corrections after-a-write handback settled dispatched help' ;;
+    '') echo 'init decision link unlink memory observe retract skill stack task promote status brief recall rules rules-file instructions switch inherit verify witness check site search show timeline refs audit diagram export usage resume repl why commits aging trailer commit-hook record key tail backup doctor upgrade report completion tour mcp run before-a-write beside-a-write tally corrections after-a-write handback settled dictated dispatched help' ;;
     'decision') echo 'record move review supersede import help' ;;
     'skill') echo 'create move export provenance help' ;;
     'stack') echo 'add remove list index show diff check export enable disable help' ;;
     'task') echo 'create move handoff next guard help' ;;
+    'rules') echo 'test' ;;
     'switch') echo 'off on' ;;
     'inherit') echo 'set update help' ;;
     'witness') echo 'stamp upgrade sigstore' ;;
     'check') echo 'declare run help' ;;
     'audit') echo 'accountability antipatterns exposure help' ;;
     'commit-hook') echo 'install uninstall suggest help' ;;
-    'record') echo 'pull commit merge-tail help' ;;
+    'record') echo 'pull commit publish merge-tail help' ;;
     'key') echo 'restore request enroll github sigstore revoke protect unprotect help' ;;
     'tail') echo 'list prune relink repair help' ;;
     'backup') echo 'setup run status verify restore hook help' ;;
@@ -91,6 +92,7 @@ _mnema_described() {
       'after-a-write:copy a note of the host’s memory into the private tree, or name the door of a decision file, for a PostToolUse hook' \
       'handback:check what a subagent hands back when it stops, or print the format it is checked by' \
       'settled:say to the agent, after a question to the person was answered, which tool records a choice' \
+      'dictated:say to the agent, beside a message that has the shape of a rule the person dictated, which tools record and accept it' \
       'dispatched:record a session’s dispatches to other agents as one private task and a handoff each, for a PostToolUse or SessionEnd hook' \
       'help:display help for command' ;;
     'decision') printf '%s\n' \
@@ -125,6 +127,8 @@ _mnema_described() {
       'next:show the moves the workflow allows a task next (records nothing)' \
       'guard:dry-run the gate: would a move be allowed on a task, and if not, why?' \
       'help:display help for command' ;;
+    'rules') printf '%s\n' \
+      'test:check the verdicts a file declares for paths against the record’s rules' ;;
     'switch') printf '%s\n' \
       'off:stop a channel handing the record to a model unasked' \
       'on:let a channel hand the record to a model again' ;;
@@ -142,7 +146,7 @@ _mnema_described() {
       'help:display help for command' ;;
     'audit') printf '%s\n' \
       'accountability:show who authorized what across the record (optionally windowed/filtered)' \
-      'antipatterns:show recurring shapes in the record (reopens, supersessions, deprecations)' \
+      'antipatterns:show recurring shapes in the record (reopens, supersessions, deprecations, and what agents accepted)' \
       'exposure:show which records hold something shaped like a credential (never the value)' \
       'help:display help for command' ;;
     'commit-hook') printf '%s\n' \
@@ -153,6 +157,7 @@ _mnema_described() {
     'record') printf '%s\n' \
       'pull:git pull over tails grown here and not yet committed' \
       'commit:commit the signed record to a branch for a pull request' \
+      'publish:push the record branch and open its pull request, to a destination you name' \
       'merge-tail:the merge driver git runs for a tail'\''s files' \
       'help:display help for command' ;;
     'key') printf '%s\n' \
@@ -194,8 +199,8 @@ _mnema_flags() {
   case "$1" in
     '') echo '-V --version --color -h --help' ;;
     'init') echo '--hosts --all-hosts -y --yes --dry-run --accepts --git-pull --which -h --help -V --version --color' ;;
-    'decision') echo '--alternatives --scope --which --stdin --body-file -h --help -V --version --color' ;;
-    'decision record') echo '--alternatives --scope --which --stdin --body-file -h --help -V --version --color' ;;
+    'decision') echo '--alternatives --governs --scope --which --stdin --body-file -h --help -V --version --color' ;;
+    'decision record') echo '--alternatives --governs --scope --which --stdin --body-file -h --help -V --version --color' ;;
     'decision move') echo '--note -h --help --which -V --version --color' ;;
     'decision review') echo '-h --help -V --version --color' ;;
     'decision supersede') echo '--reason -h --help --which -V --version --color' ;;
@@ -232,6 +237,7 @@ _mnema_flags() {
     'brief') echo '--hook --host -h --help -V --version --color' ;;
     'recall') echo '--hook --host --session --after-a-compaction -h --help -V --version --color' ;;
     'rules') echo '--json -h --help -V --version --color' ;;
+    'rules test') echo '-h --help -V --version --color' ;;
     'rules-file') echo '--host -h --help -V --version --color' ;;
     'instructions') echo '--check --remove --hosts --all-hosts -h --help -V --version --color' ;;
     'switch') echo '-h --help -V --version --color' ;;
@@ -273,6 +279,7 @@ _mnema_flags() {
     'record') echo '-h --help -V --version --color' ;;
     'record pull') echo '-h --help -V --version --color' ;;
     'record commit') echo '--through --json -h --help -V --version --color' ;;
+    'record publish') echo '--to --through --json -h --help -V --version --color' ;;
     'record merge-tail') echo '-h --help -V --version --color' ;;
     'key') echo '-h --help -V --version --color' ;;
     'key restore') echo '--agent -h --help -V --version --color' ;;
@@ -313,6 +320,7 @@ _mnema_flags() {
     'after-a-write') echo '-h --help -V --version --color' ;;
     'handback') echo '--schema -h --help -V --version --color' ;;
     'settled') echo '--reply -h --help -V --version --color' ;;
+    'dictated') echo '-h --help -V --version --color' ;;
     'dispatched') echo '-h --help -V --version --color' ;;
   esac
 }
@@ -383,21 +391,22 @@ _mnema_values() {
     'task guard:') echo 'submit start block unblock submit_review request_changes approve complete cancel reopen' ;;
     'promote:--color') echo 'auto always never' ;;
     'status:--color') echo 'auto always never' ;;
-    'brief:--host') echo 'codex' ;;
+    'brief:--host') echo 'vscode codex copilot opencode gemini qwen' ;;
     'brief:--color') echo 'auto always never' ;;
-    'recall:--host') echo 'codex' ;;
+    'recall:--host') echo 'vscode codex copilot opencode gemini qwen' ;;
     'recall:--color') echo 'auto always never' ;;
     'rules:--color') echo 'auto always never' ;;
+    'rules test:--color') echo 'auto always never' ;;
     'rules-file:--host') echo 'claude vscode cursor' ;;
     'rules-file:--color') echo 'auto always never' ;;
     'instructions:--color') echo 'auto always never' ;;
     'switch:--color') echo 'auto always never' ;;
     'switch off:--scope') echo 'public private global' ;;
     'switch off:--color') echo 'auto always never' ;;
-    'switch off:') echo 'brief-document recall-document edit-rules-push edit-asks-a-person edit-refuses-a-write agent-accepts edit-first-write-gate user-corrections choice-settled host-memory-mirror decision-file-written subagent-handback tool-call-count last-session private-rules after-a-compaction session-journal agent-mirror session-tally' ;;
+    'switch off:') echo 'brief-document recall-document edit-rules-push edit-asks-a-person edit-refuses-a-write agent-accepts edit-first-write-gate user-corrections opening-core choice-settled dictated-rule host-memory-mirror decision-file-written subagent-handback tool-call-count last-session private-rules after-a-compaction session-journal agent-mirror session-tally record-publish' ;;
     'switch on:--scope') echo 'public private global' ;;
     'switch on:--color') echo 'auto always never' ;;
-    'switch on:') echo 'brief-document recall-document edit-rules-push edit-asks-a-person edit-refuses-a-write agent-accepts edit-first-write-gate user-corrections choice-settled host-memory-mirror decision-file-written subagent-handback tool-call-count last-session private-rules after-a-compaction session-journal agent-mirror session-tally' ;;
+    'switch on:') echo 'brief-document recall-document edit-rules-push edit-asks-a-person edit-refuses-a-write agent-accepts edit-first-write-gate user-corrections opening-core choice-settled dictated-rule host-memory-mirror decision-file-written subagent-handback tool-call-count last-session private-rules after-a-compaction session-journal agent-mirror session-tally record-publish' ;;
     'inherit:--color') echo 'auto always never' ;;
     'inherit set:--color') echo 'auto always never' ;;
     'inherit update:--color') echo 'auto always never' ;;
@@ -439,6 +448,7 @@ _mnema_values() {
     'record:--color') echo 'auto always never' ;;
     'record pull:--color') echo 'auto always never' ;;
     'record commit:--color') echo 'auto always never' ;;
+    'record publish:--color') echo 'auto always never' ;;
     'record merge-tail:--color') echo 'auto always never' ;;
     'key:--color') echo 'auto always never' ;;
     'key restore:--color') echo 'auto always never' ;;
@@ -482,6 +492,7 @@ _mnema_values() {
     'after-a-write:--color') echo 'auto always never' ;;
     'handback:--color') echo 'auto always never' ;;
     'settled:--color') echo 'auto always never' ;;
+    'dictated:--color') echo 'auto always never' ;;
     'dispatched:--color') echo 'auto always never' ;;
   esac
 }

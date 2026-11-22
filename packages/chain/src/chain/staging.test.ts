@@ -10,8 +10,6 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { clearOrphanedStaging } from './staging.js';
 
-/** The name of the clear note, which the guard that reads a text for a write into a tail would take for one. */
-const NOTE = 'head';
 const dirs: string[] = [];
 afterEach(() => {
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
@@ -43,11 +41,11 @@ describe('the staging a dead writer left', () => {
   it('is removed for this tail, in all three spellings, and nothing else is', async () => {
     const { root, put } = locks();
     const dead = await deadPid();
-    const staging = [`t1.${NOTE}.${dead}`, `t1.${NOTE}.sig.${dead}`, `t1.cited.${dead}`].map(put);
-    const notes = [`t1.${NOTE}`, `t1.${NOTE}.sig`, 't1.cited', 't1.lock', 'projection.db'].map(put);
-    const other = [`t2.${NOTE}.${dead}`, `t1x.${NOTE}.${dead}`].map(put);
+    const staging = [`t1.head.${dead}`, `t1.head.sig.${dead}`, `t1.cited.${dead}`].map(put);
+    const notes = [`t1.head`, `t1.head.sig`, 't1.cited', 't1.lock', 'projection.db'].map(put);
+    const other = [`t2.head.${dead}`, `t1x.head.${dead}`].map(put);
     expect(clearOrphanedStaging({ root }, 't1').sort()).toEqual(
-      [`t1.${NOTE}.${dead}`, `t1.${NOTE}.sig.${dead}`, `t1.cited.${dead}`].sort(),
+      [`t1.head.${dead}`, `t1.head.sig.${dead}`, `t1.cited.${dead}`].sort(),
     );
     expect(staging.map(existsSync)).toEqual([false, false, false]);
     expect(notes.map(existsSync)).toEqual([true, true, true, true, true]);
@@ -59,8 +57,8 @@ describe('the staging a dead writer left', () => {
     const alive = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 60000)']);
     try {
       const staged = [
-        put(`t1.${NOTE}.${alive.pid}`),
-        put(`t1.${NOTE}.sig.${alive.pid}`),
+        put(`t1.head.${alive.pid}`),
+        put(`t1.head.sig.${alive.pid}`),
         put(`t1.cited.${process.pid}`),
       ];
       expect(clearOrphanedStaging({ root }, 't1')).toEqual([]);

@@ -6,6 +6,11 @@ One page per tool the mnema MCP server serves, with the description, the paramet
 annotations an agent host is handed.
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
+
+Every tool refuses a key it does not take: the reply is `Refused (UNKNOWN_INPUT_KEY)`, names the key and the keys the
+tool does take, and runs nothing, so nothing is written (a mistaken `query` for `term` on `search` is refused, not served as
+a search with no term). The schema each tool serves says `additionalProperties: false`, so a host knows before it sends.
+
 <!-- End of the part written by hand. -->
 
 ## Read only

@@ -2,6 +2,33 @@
 
 A rule that names the program that checks it, and the verbs that read the git log against the record.
 
+## Rules that are checked against paths
+
+A person or CI declares, in a JSON file, the paths and the verdict each must meet, and the verb below
+checks them against the record's rules, so a rule that stops covering a path is caught.
+
+```json
+{
+  "cases": [
+    { "path": "src/billing/invoice.ts", "expect": "refuse" },
+    { "path": "src/ledger/entry.ts", "expect": "ask" },
+    { "path": "src/docs/guide.md", "expect": "governs" },
+    { "path": "README.md", "expect": "none" }
+  ]
+}
+```
+
+```sh
+mnema rules test path/to/cases.json
+```
+
+A path is relative to the project's root. `refuse` and `ask` are what the gate answers for a write there (the
+same function the per-edit hook asks, so a switch turned off or a link that leads elsewhere changes the answer
+as it changes the gate's); `governs` is a rule linked `governs` there with nothing refusing or asking; `none` is
+no rule standing over the path. Each case prints `MATCH` or `MISMATCH` with what the path met and the ids of the
+rules behind it. The exit code is 1 when any case misses, and a file with no case, a verdict it does not know or
+a file that is not JSON is refused, and so is a case whose path is absolute or leaves the project, and a record the gate cannot read (an unreadable line or an altered entry: the gate would deny every write, so no verdict is printed). `--json` is not supported and is refused. `test` is a verb of `rules`, so a folder named `test` is asked as `./test`. Nothing is written.
+
 ## A rule that carries its check
 
 A decision in force can name the program that checks it, and a machine of its own can record, at a

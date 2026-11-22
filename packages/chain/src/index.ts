@@ -190,6 +190,7 @@ export {
   tailsACutWouldUnrelink,
 } from './chain/relink-plan.js';
 export {
+  anchorLinksRefused,
   type CheckpointsMark,
   type CommittedKeys,
   committedKeys,
@@ -334,6 +335,7 @@ export {
   checkPassed,
   decisionBirth,
   decisionRecorded,
+  decisionSeen,
   decisionTransitioned,
   enrollmentMessage,
   handoffRecorded,
@@ -385,6 +387,7 @@ export {
   type CheckPassedV1,
   DERIVED_FROM_RELATION,
   type DecisionRecordedV1,
+  type DecisionSeenV1,
   type DecisionTransitionedV1,
   type EventKind,
   GOVERNS_RELATION,

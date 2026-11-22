@@ -48,11 +48,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { ListRootsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { Command } from 'commander';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import {
-  armsTheDoor,
-  OPEN_A_WRITER_AS_READS,
-  RUNS_OVER_AN_ALTERED_ENTRY,
-} from '../src/a-write-over-an-altered-entry.js';
+import { armsTheDoor, RUNS_OVER_AN_ALTERED_ENTRY } from '../src/a-write-over-an-altered-entry.js';
 import { buildMcpServer } from '../src/mcp/server.js';
 import { renderPlain } from '../src/presentation/plain.js';
 import { buildProgram } from '../src/program.js';
@@ -475,6 +471,11 @@ const COMMAND_LINE: Readonly<Record<string, Outcome>> = {
     because:
       'it builds a git commit of the record without changing it, and this project is in no git repository',
   },
+  'record publish': {
+    answers: { argv: () => ['record', 'publish', '--to', 'origin/main'] },
+    because:
+      'it makes a git commit of the record and pushes it without changing the record, and it is off until a person switches it on, which here nobody did',
+  },
   'record merge-tail': {
     answers: { argv: () => ['record', 'merge-tail', 'a', 'b', 'c'] },
     because:
@@ -716,7 +717,7 @@ const WRITES_ELSEWHERE: Readonly<
   doctor: {
     argv: () => ['doctor', '--fix', 'private-tree'],
     because:
-      'it is armed (OPEN_A_WRITER_AS_READS) for the signed moves it makes of private notes a worktree holds in .mnema/private, which this project holds none of',
+      'it is armed (every invocation is) for the signed moves it makes of private notes a worktree holds in .mnema/private, which this project holds none of',
   },
 };
 
@@ -724,25 +725,19 @@ describe('the verbs declared as reads that write outside the record, or open a w
   const io = { out: () => undefined, err: () => undefined, fail: () => undefined };
   const { program, verbs } = buildProgram(io, []);
 
-  it('are declared reads, and the ones the product arms are exactly the table of them', () => {
+  it('are declared reads, and the door stands behind each of them', () => {
     for (const path of Object.keys(WRITES_ELSEWHERE)) {
       const top = path.split(' ')[0] as string;
       const verb = verbs.find((one) => one.act.name() === top);
       expect(verb?.effect, path).toBe('reads');
-      const armed = OPEN_A_WRITER_AS_READS.includes(top);
       let node = program;
       for (const word of path.split(' ')) {
         const next = node.commands.find((one) => one.name() === word);
         if (next === undefined) throw new Error(`no verb ${path}`);
         node = next;
       }
-      expect(armsTheDoor(verbs, node), path).toBe(armed);
+      expect(armsTheDoor(node), path).toBe(true);
     }
-    expect([...OPEN_A_WRITER_AS_READS].sort()).toEqual(
-      Object.keys(WRITES_ELSEWHERE)
-        .map((path) => path.split(' ')[0] as string)
-        .filter((top) => OPEN_A_WRITER_AS_READS.includes(top)),
-    );
   });
 
   for (const name of Object.keys(DAMAGES)) {

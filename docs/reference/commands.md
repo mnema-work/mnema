@@ -52,6 +52,7 @@ carries the help the command prints, word for word.
 - [mnema brief](cli/brief.md): print what governs the work here as markdown, for an agent to read
 - [mnema recall](cli/recall.md): print the notes recorded here as markdown, near ones first, for an agent to read
 - [mnema rules](cli/rules.md): show which recorded rules govern a path, and which address nothing
+  - [mnema rules test](cli/rules-test.md): check the verdicts a file declares for paths against the record’s rules
 - [mnema rules-file](cli/rules-file.md): print the rules addressed at a file as another host’s rules file, and why the rest are not
 - [mnema instructions](cli/instructions.md): write the mnema instructions into the files an agent host reads (AGENTS.md and its kin), check them, or remove them
 - [mnema switch](cli/switch.md): turn off, or back on, what mnema hands to a model unasked, and whether an agent may accept a decision
@@ -81,7 +82,7 @@ carries the help the command prints, word for word.
 - [mnema refs](cli/refs.md): show what an entity is connected to across the trees
 - [mnema audit](cli/audit.md): ask the record who authorized what, what recurs, and what looks like a credential
   - [mnema audit accountability](cli/audit-accountability.md): show who authorized what across the record (optionally windowed/filtered)
-  - [mnema audit antipatterns](cli/audit-antipatterns.md): show recurring shapes in the record (reopens, supersessions, deprecations)
+  - [mnema audit antipatterns](cli/audit-antipatterns.md): show recurring shapes in the record (reopens, supersessions, deprecations, and what agents accepted)
   - [mnema audit exposure](cli/audit-exposure.md): show which records hold something shaped like a credential (never the value)
 - [mnema diagram](cli/diagram.md): print a state machine, or an entity’s history or connections, as mermaid
 - [mnema export](cli/export.md): emit the record as an OCSF audit feed (NDJSON, envelope only, never a body)
@@ -102,6 +103,7 @@ carries the help the command prints, word for word.
 - [mnema record](cli/record.md): pull the record over events not yet committed, commit them for a pull request, and merge its tails for git
   - [mnema record pull](cli/record-pull.md): git pull over tails grown here and not yet committed
   - [mnema record commit](cli/record-commit.md): commit the signed record to a branch for a pull request
+  - [mnema record publish](cli/record-publish.md): push the record branch and open its pull request, to a destination you name
   - [mnema record merge-tail](cli/record-merge-tail.md): the merge driver git runs for a tail's files
 
 ## This machine
@@ -148,4 +150,5 @@ carries the help the command prints, word for word.
 - [mnema after-a-write](cli/after-a-write.md): copy a note of the host’s memory into the private tree, or name the door of a decision file, for a PostToolUse hook
 - [mnema handback](cli/handback.md): check what a subagent hands back when it stops, or print the format it is checked by
 - [mnema settled](cli/settled.md): say to the agent, after a question to the person was answered, which tool records a choice
+- [mnema dictated](cli/dictated.md): say to the agent, beside a message that has the shape of a rule the person dictated, which tools record and accept it
 - [mnema dispatched](cli/dispatched.md): record a session’s dispatches to other agents as one private task and a handoff each, for a PostToolUse or SessionEnd hook
