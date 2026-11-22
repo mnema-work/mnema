@@ -59,6 +59,7 @@ import { runDictated } from '../src/commands/dictated.js';
 import { runDispatched } from '../src/commands/dispatched.js';
 import { runHandback } from '../src/commands/handback.js';
 import { runRecall } from '../src/commands/recall.js';
+import { recordPublishIsOn } from '../src/commands/record-publish.js';
 import { runSettled } from '../src/commands/settled.js';
 import { runSessionTally } from '../src/commands/tally.js';
 import { buildMcpServer } from '../src/mcp/server.js';
@@ -82,6 +83,7 @@ import {
   OPENING_CORE_CHANNEL,
   PRIVATE_RULES_CHANNEL,
   RECALL_CHANNEL,
+  RECORD_PUBLISH_CHANNEL,
   REFUSES_A_WRITE_CHANNEL,
   SESSION_JOURNAL_CHANNEL,
   SESSION_TALLY_CHANNEL,
@@ -769,6 +771,15 @@ const HONOURED: Readonly<
       await client.close();
       return file !== undefined && readToolCalls(file).calls.length > before;
     },
+  },
+  [RECORD_PUBLISH_CHANNEL]: {
+    // A VERB FOR A PERSON, off until a person switches it on (for this machine: the switch goes to the
+    // private tree). "Speaks" is the verb being allowed to run, as the verb asks it.
+    setUp: async () => {
+      await did('switch', 'on', RECORD_PUBLISH_CHANNEL);
+    },
+    speaks: async () =>
+      recordPublishIsOn({ cwd: repo, env, processEnv: process.env, now: Date.now() }),
   },
   [AGENT_ACCEPTS_CHANNEL]: {
     // A GATE ON AN AGENT'S ACT, driven the way the act is made: a fresh proposal each time

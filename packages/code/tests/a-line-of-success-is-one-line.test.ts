@@ -962,6 +962,15 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'collapsed',
       why: 'the base, as the remote names its default branch',
     },
+  'record.ts «Nothing to publish: {} already holds the record here through the last signed checkpoint of each tail.» #1':
+    {
+      verdict: 'collapsed',
+      why: 'the destination the person named, as a remote and a branch name',
+    },
+  'record.ts «Pushed {} ({} event(s)) and opened {} into {}; nothing was merged.» #1': {
+    verdict: 'collapsed',
+    why: 'the branch made, the address `gh` printed and the destination the person named',
+  },
   'record.ts «git keeps no date of when {} was last updated here: \\`git remote update {}\\` reads it again.» #1':
     {
       verdict: 'collapsed',
@@ -1263,7 +1272,8 @@ describe('every line this wiring words is classified', () => {
     // 204 with the line `backup hook` prints of where it put the hook and where it took it from.
     // 207 with the three lines `backup restore --global` prints, the two folder counts and the heading.
     // 208 with the line `decision review` prints before the rules in force it shows and marks.
-    expect(FOUND.sites.length).toBe(213);
+    // 215 with the two lines `record publish` prints.
+    expect(FOUND.sites.length).toBe(215);
   });
 
   it('reads the verdict off the source rather than believing the table', () => {
@@ -1283,9 +1293,9 @@ describe('every line this wiring words is classified', () => {
   it('found sites of both kinds, and the scanner sees a tag when there is one', () => {
     // Neither arm of the case above may be empty, or half of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
-    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(122);
+    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(124);
     expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(91);
-    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(122);
+    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(124);
   });
 
   it('every reason says where the value comes from', () => {
@@ -1483,6 +1493,8 @@ const UNREACHABLE: Readonly<Record<string, string>> = {
       'record.ts «A branch of this cut is there already, made nothing: {}.» #1',
       'record.ts «Made {} on {}, verified with verify --since {}; nothing was pushed.» #1',
       'record.ts «Nothing to commit: {} already holds the record here through the last signed checkpoint of each tail.» #1',
+      'record.ts «Nothing to publish: {} already holds the record here through the last signed checkpoint of each tail.» #1',
+      'record.ts «Pushed {} ({} event(s)) and opened {} into {}; nothing was merged.» #1',
       'record.ts «git keeps no date of when {} was last updated here: \\`git remote update {}\\` reads it again.» #1',
       'record.ts «left out: {} event(s) above the cut{}» #1',
       'record.ts «next: {}» #1',

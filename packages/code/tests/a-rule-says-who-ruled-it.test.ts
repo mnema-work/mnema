@@ -223,14 +223,14 @@ describe('an agent may accept, and the trail says it', () => {
       '--note',
       'ok',
       '--which',
-      'claude-code',
+      'codex',
     );
     expect(accepted.status, accepted.out).toBe(0);
-    expect(accepted.out).toContain('recorded as made by an agent (claude-code)');
+    expect(accepted.out).toContain('recorded as made by an agent (codex)');
 
     const shown = mnema(atA, a, 'show', id).out;
     expect(shown).toMatch(/recorded by mnid:[0-9a-f]+ \(no agent declared\)/);
-    expect(shown).toMatch(/accepted by mnid:[0-9a-f]+ \(agent claude-code\)/);
+    expect(shown).toMatch(/accepted by mnid:[0-9a-f]+ \(agent codex\)/);
 
     const brief = mnema(atA, a, 'brief').stdout;
     // The brief of a record with one identity does not mark the rule: nobody to confirm with.
@@ -261,11 +261,11 @@ describe('an agent may accept, and the trail says it', () => {
   it('adds nothing to the record: the envelope already said which agent', () => {
     const { a, atA } = aTeamOfTwo();
     const id = idOf(mnema(atA, a, 'decision', 'record', 'A call', 'because').out);
-    mnema(atA, a, 'decision', 'move', 'accept', id, '--note', 'ok', '--which', 'claude-code');
+    mnema(atA, a, 'decision', 'move', 'accept', id, '--note', 'ok', '--which', 'codex');
     const json = JSON.parse(mnema(atA, a, 'show', id, '--json').stdout) as {
       record: { acceptedBy: { who: string; which?: string }; recordedBy: { which?: string } };
     };
-    expect(json.record.acceptedBy.which).toBe('claude-code');
+    expect(json.record.acceptedBy.which).toBe('codex');
     expect(json.record.recordedBy.which).toBeUndefined();
   }, 120_000);
 });

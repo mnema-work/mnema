@@ -242,9 +242,9 @@ const SUBAGENT_HOOK = 'subagent-start.mjs';
 const VERB_OF: Readonly<Record<string, string>> = {
   [DOCUMENT_HOOK]: 'brief --hook',
   [NOTES_HOOK]: 'recall --hook',
+  [TALLY_HOOK]: 'tally',
   [COMPACTED_HOOK]: `recall --after-a-compaction --session ${A_SESSION} --hook`,
   [DICTATED_HOOK]: 'dictated',
-  [TALLY_HOOK]: 'tally',
   [CORRECTIONS_HOOK]: 'corrections',
   [CURSOR_HOOK]: 'before-a-write --host cursor --agent-key cursor',
   [GATE_HOOK]: 'before-a-write --host vscode --agent-key vscode',
@@ -650,6 +650,7 @@ describe('the record arrives unasked', () => {
     expect(commands.map(handlerOf)).toEqual([
       DOCUMENT_HOOK,
       NOTES_HOOK,
+      TALLY_HOOK,
       COMPACTED_HOOK,
       DICTATED_HOOK,
       TALLY_HOOK,
@@ -1452,9 +1453,9 @@ describe('the record arrives unasked', () => {
       expect([...reached]).toEqual([
         'brief --hook',
         'recall --hook',
+        'tally',
         `recall --after-a-compaction --session ${A_SESSION} --hook`,
         'dictated',
-        'tally',
         'corrections',
         'before-a-write --host cursor --agent-key cursor',
         'before-a-write --host vscode --agent-key vscode',
@@ -1474,9 +1475,9 @@ describe('the record arrives unasked', () => {
       expect([...reached].map((line) => `${line}: ${sideOf(line)}`)).toEqual([
         'brief --hook: reads',
         'recall --hook: reads',
+        'tally: reads',
         `recall --after-a-compaction --session ${A_SESSION} --hook: reads`,
         'dictated: reads',
-        'tally: reads',
         'corrections: mutates',
         'before-a-write --host cursor --agent-key cursor: mutates',
         'before-a-write --host vscode --agent-key vscode: mutates',
@@ -1564,6 +1565,7 @@ describe('the record arrives unasked', () => {
     expect(validated).toEqual([
       'command:/hooks/session-start.mjs',
       'command:/hooks/session-recall.mjs',
+      'command:/hooks/session-tally.mjs',
       'command:/hooks/session-compacted.mjs',
       'command:/hooks/rule-dictated.mjs',
       'command:/hooks/session-tally.mjs',

@@ -231,6 +231,8 @@ export const WRITES_BUT_PLANTS_NOTHING: Readonly<Record<string, string>> = {
     'copies a clone’s tails into the bench’s tree, as two clones meet, to hold which rules the list of what a person did not accept keeps when two machines accepted one decision; nothing is damaged, and every read is of a cache the bench rebuilds whole',
   'packages/code/tests/the-audit-verbs-fold-the-record-once.test.ts':
     'appends one line of a kind no version declares, signed by a checkpoint as a newer mnema writes it, and damages nothing: it holds that four verbs which open no cache fold the tails once and carry the same field, so no cache state changes what it reads',
+  'packages/code/tests/the-record-is-published-only-where-it-is-named.test.ts':
+    'appends one switch fact to the committed tree by hand to show that the verb does not read a switch there, and damages nothing: it holds what `record publish` refuses and pushes over a bare remote, so no cache state changes what it reads',
   'packages/chain/src/chain/a-tail-is-signed-as-soon-as-it-is-founded.test.ts':
     'holds which checkpoints the write that founds a tail signs, and what the fold of its checkpoints says of the tail with no note of this machine, in the functions of the chain alone; nothing is damaged and the chain has no projection cache (a clone of such a record is read by the binary in only-proven-events-reach-the-projection)',
   'packages/chain/src/chain/verify-reads-the-checkpoints-before-the-tail.test.ts':

@@ -105,7 +105,7 @@ afterEach(() => {
 
 describe('the rules in force you did not accept yourself', () => {
   it('lists an agent’s accept and an undeclared one alike, and only the total before a review', () => {
-    inForce('an agent accepted this', 'claude');
+    inForce('an agent accepted this', 'codex');
     inForce('nobody declared an agent on this');
     const bare = mnema();
     expect(bare.status).toBe(0);
@@ -117,9 +117,9 @@ describe('the rules in force you did not accept yourself', () => {
   it('review marks what it showed and nothing else; bare mnema then says since and older', {
     timeout: 90_000,
   }, async () => {
-    const oldest = inForce('the oldest', 'claude');
+    const oldest = inForce('the oldest', 'codex');
     const middle = inForce('the middle one');
-    const newest = inForce('the newest', 'claude');
+    const newest = inForce('the newest', 'codex');
     // Newest accept first: the person reads one rule and quits.
     const review = await atATerminal('decision review', { prompt: '(n)ext, (q)uit', answer: 'q' });
     expect(review.code).toBe(0);
@@ -138,11 +138,11 @@ describe('the rules in force you did not accept yourself', () => {
       linesUnder(join(project, '.mnema')).filter((line) => line.includes('decision.seen')),
     ).toEqual([]);
 
-    const later = inForce('accepted after the review', 'claude');
+    const later = inForce('accepted after the review', 'codex');
     const bare = mnema();
     expect(bare.out).toContain('1 rule(s) in force you did not accept yourself entered since');
     expect(bare.out).toContain('accepted after the review');
-    expect(bare.out).toContain('the agent claude');
+    expect(bare.out).toContain('the agent codex');
     expect(bare.out).toContain(
       '2 older rule(s) in force you did not accept yourself have not been shown to you.',
     );
@@ -169,7 +169,7 @@ describe('the rules in force you did not accept yourself', () => {
   });
 
   it('review with no terminal writes nothing and says why', () => {
-    inForce('an agent accepted this', 'claude');
+    inForce('an agent accepted this', 'codex');
     const review = mnema('decision', 'review');
     expect(review.status).not.toBe(0);
     expect(review.err).toContain('DECISION_REVIEW_NEEDS_A_PERSON');

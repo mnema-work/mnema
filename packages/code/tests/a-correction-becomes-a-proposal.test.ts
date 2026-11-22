@@ -168,7 +168,7 @@ describe('the openings that correct', () => {
     for (const [shape, prompts] of Object.entries(PROBES)) {
       for (const prompt of prompts) {
         const found = correctionsIn([
-          { line: 1, uuid: undefined, session: undefined, text: prompt },
+          { line: 1, uuid: undefined, session: undefined, text: prompt, from: 'prompt' },
         ]);
         expect(
           found.map((one) => one.shape),
@@ -187,7 +187,9 @@ describe('the openings that correct', () => {
       'Please write a note that says the old way was wrong.',
     ]) {
       expect(
-        correctionsIn([{ line: 1, uuid: undefined, session: undefined, text: prompt }]),
+        correctionsIn([
+          { line: 1, uuid: undefined, session: undefined, text: prompt, from: 'prompt' },
+        ]),
         prompt,
       ).toEqual([]);
     }
@@ -200,6 +202,7 @@ describe('the openings that correct', () => {
         uuid: 'u',
         session: 's',
         text: 'No,\n  use pnpm.   Then run the suite and report.',
+        from: 'prompt',
       },
     ]);
     expect(found).toMatchObject({ line: 4, sentence: 'No, use pnpm.' });
