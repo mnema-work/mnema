@@ -50,7 +50,7 @@ export function eye({ id, ink, iris, ringInk, ring, look }) {
  * `[time as a share of the cycle, the iris's shift along the lines, how open the lids are]`.
  */
 /** @type {readonly (readonly [number, number, number])[]} */
-export const KEY = [
+const KEY = [
   [0, 0, 1],
   [0.1, 0, 1],
   [0.15, -7.5, 1],
@@ -75,7 +75,7 @@ export const KEY = [
  * @param {number} dx
  * @param {number} open
  */
-export const lidsAt = (dx, open) =>
+const lidsAt = (dx, open) =>
   LEVELS.map((c, i) => {
     const lid = i === 2 || i === 3;
     const level = lid ? c * (0.1 + 0.9 * open) : c;
@@ -84,7 +84,7 @@ export const lidsAt = (dx, open) =>
     return relative(smooth(line(level, /** @type {never} */ (opening), -58, 58, 16)));
   });
 
-export const FRAMES = KEY.map(([, dx, open]) => lidsAt(dx, open));
+const FRAMES = KEY.map(([, dx, open]) => lidsAt(dx, open));
 
 /**
  * An `<animate>` of one attribute over the cycle, eased between the stops.

@@ -22,7 +22,8 @@
  * EVERY CELL IS THE SAME WIDTH, AND THE LOGIN NEVER WRAPS. The picture is wider than any login can be at GitHub's
  * `<sub>` size, so the picture sets the width of the cell and the login sits under it on one line: `TILE.w` is
  * at least `LOGIN_MAX` characters at `SUB` pixels in the widest face a reader may be shown (a monospace one, 0.6 of
- * its size an advance). There are `PER_ROW` cells to a row, so that a row fits GitHub's README column.
+ * its size an advance). There are at most `PER_ROW` cells to a row, so that a row fits GitHub's README column, and the rows
+ * are as even as they can be, each in a table of its own, centred: no row hangs to the left of the one above.
  *
  * The files sit flat in `docs/assets/`: the site build copies that folder file by file and refuses a subfolder.
  * GitHub strips `style` from a README, so the roundness and the field have to live in the image.
@@ -95,16 +96,30 @@ const cell = (login) =>
  * @param {string[]} logins
  */
 export function renderBlock(logins) {
-  const rows = [];
-  for (let i = 0; i < logins.length; i += PER_ROW) {
-    rows.push(
-      `<tr>\n${logins
-        .slice(i, i + PER_ROW)
-        .map(cell)
-        .join('\n')}\n</tr>`,
-    );
-  }
-  return `${START}\n<table align="center">\n${rows.join('\n')}\n</table>\n${END}`;
+  const tables = rowsOf(logins).map(
+    (row) => `<table align="center">\n<tr>\n${row.map(cell).join('\n')}\n</tr>\n</table>`,
+  );
+  return `${START}\n${tables.join('\n')}\n${END}`;
+}
+
+/**
+ * The logins in as few rows as `PER_ROW` allows, and as even as they can be: seven are four and three, never four and a
+ * row of three that hangs to the left of it. Each row is its own centred table (see `renderBlock`), so a shorter row sits in
+ * the middle of the one above.
+ * @param {string[]} logins
+ * @returns {string[][]}
+ */
+export function rowsOf(logins) {
+  const rows = Math.ceil(logins.length / PER_ROW);
+  const base = Math.floor(logins.length / rows);
+  const longer = logins.length % rows;
+  let from = 0;
+  return Array.from({ length: rows }, (_, i) => {
+    const size = base + (i < longer ? 1 : 0);
+    const row = logins.slice(from, from + size);
+    from += size;
+    return row;
+  });
 }
 
 /**

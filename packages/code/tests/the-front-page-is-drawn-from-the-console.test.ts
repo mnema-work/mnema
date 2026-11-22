@@ -229,6 +229,32 @@ describe('the front page is drawn from its scripts', () => {
     }
   });
 
+  // The eye sits on the diagram's axis, and what is central under it sits there too. The diagrams with such an element are
+  // the family (the record, r 22), fits (the ADR-2 point, r 15), context and stacks (the point of the record, r 18). Chain
+  // (a row of four), core (one point beside its sides) and how it works (four evenly spaced) have none.
+  const UNDER_THE_EYE: readonly (readonly [string, number])[] = [
+    [`${ASSETS}/the-family`, 22],
+    [`${ASSETS}/how-mnema-fits`, 15],
+    ['packages/context/assets/context', 18],
+    ['packages/stacks/assets/stacks', 18],
+  ];
+  it.each(
+    UNDER_THE_EYE.flatMap(([base, r]) =>
+      ['dark', 'light'].map((theme) => [`${base}-${theme}.svg`, r] as const),
+    ),
+  )('%s has its central point under the eye, within 0.5', (path, r) => {
+    const svg = diagrams[path] ?? '';
+    const eye = Number(/translate\(([\d.]+),44\) scale\(\.6\)/.exec(svg)?.[1]);
+    const centres = [
+      ...svg.matchAll(/<circle cx="([\d.]+)" cy="[\d.]+" r="([\d.]+)" fill="#e6da2e"[^>]*>/g),
+    ]
+      .filter((m) => Number(m[2]) === r)
+      .map((m) => Number(m[1]));
+    expect(eye).toBe(600);
+    expect(centres).toHaveLength(1);
+    expect(Math.abs((centres[0] ?? Number.NaN) - eye)).toBeLessThanOrEqual(0.5);
+  });
+
   // The banner by the script that draws it, the three diagrams of the README by the one that draws them.
   it.each([
     ...Object.keys(drawn).map((path) => [path, drawn[path]] as const),
@@ -1300,6 +1326,38 @@ describe('the diagrams are outlines of their words, drawn in the brand', () => {
       expect(covering.map((n) => n.tag)).toEqual([]);
     });
 
+    // The banners have no rect to refuse: a ground could be a path. So a shape of any tag is boxed, and its fill is the
+    // nearest one written, on itself or on the group it is in.
+    const BANNERS = [BANNER.dark, BANNER.light];
+    const fillOf = (n: Node): string =>
+      [...n.groups.map((g) => g.fill), n.at.fill].filter((v) => v !== undefined).at(-1) ?? 'black';
+
+    it.each(BANNERS)('%s paints no shape, of any tag, that covers its frame', (path) => {
+      const svg = read(path);
+      const { w, h } = BANNER.frame;
+      const covering = nodesOf(svg)
+        .filter((n) => fillOf(n) !== 'none' && (n.at['fill-opacity'] ?? '1') !== '0')
+        .filter((n) =>
+          boxesOf(n, new Map()).some(
+            ([x0, y0, x1, y1]) => x0 <= 0 && y0 <= 0 && x1 >= w && y1 >= h,
+          ),
+        );
+      expect(covering.map((n) => `${n.tag} ${fillOf(n)}`)).toEqual([]);
+      // It does draw shapes, so that the check above reads something.
+      expect(nodesOf(svg).filter((n) => n.tag === 'path').length).toBeGreaterThan(6);
+    });
+
+    it.each(BANNERS)("%s fills with no page's colour, of either theme", (path) => {
+      const pages: string[] = Object.values(PAGE);
+      const fills = nodesOf(read(path)).flatMap((n) =>
+        [...n.groups.map((g) => g.fill), n.at.fill].flatMap((c) =>
+          c?.startsWith('#') ? [hex6(c)] : [],
+        ),
+      );
+      expect(fills.length).toBeGreaterThan(0);
+      expect(fills.filter((c) => pages.includes(c))).toEqual([]);
+    });
+
     it.each(FOURTEEN)(
       '%s names neither of the old grounds, nor the old tints of a panel',
       (path) => {
@@ -1625,6 +1683,203 @@ describe('every diagram is drawn inside its frame', () => {
         ),
     );
     expect(outside).toEqual([]);
+  });
+});
+
+describe('every diagram lays its texts on the edges they line up with', () => {
+  const PICTURES = [...LINED, ...FRONT].flatMap((p) =>
+    [p.dark, p.light].map((path) => ({ path, frame: p.frame })),
+  );
+  const themeOf = (path: string): 'dark' | 'light' =>
+    path.endsWith('-dark.svg') ? 'dark' : 'light';
+  const EDGE = 0.5;
+
+  /** The box of the points a path reaches: for an outlined text, the ink of the line. */
+  const boxOf = (n: Node): Box => {
+    const points = pathPoints(n.at.d ?? '');
+    const xs = points.map((p) => p[0]);
+    const ys = points.map((p) => p[1]);
+    return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+  };
+  /** Every line of text a picture says, with its ink: read from the outlines, as a reader sees it. */
+  const textsOf = (svg: string) =>
+    nodesOf(svg)
+      .filter((n) => n.at['data-said'] !== undefined)
+      .map((n) => ({ said: n.at['data-said'] as string, box: boxOf(n) }));
+  /** The rule of a picture: the one straight line across it in the colour of the theme's lines, from its two ends. */
+  const ruleOf = (svg: string, theme: 'dark' | 'light'): [number, number] | undefined => {
+    for (const n of nodesOf(svg)) {
+      const m = /^M(-?[\d.]+),-?[\d.]+H(-?[\d.]+)$/.exec(n.at.d ?? '');
+      if (m !== null && n.at.class === undefined && n.at.stroke === (DIAGRAM[theme].line as string))
+        return [Number(m[1]), Number(m[2])];
+    }
+    return undefined;
+  };
+
+  it.each(PICTURES)('$path says no text past the edges of its content', ({ path, frame }) => {
+    const svg = read(path);
+    // The edges are the ends of the rule, and where a picture has none, the margin of 40 units.
+    const [from, to] = ruleOf(svg, themeOf(path)) ?? [40, frame.w - 40];
+    const texts = textsOf(svg);
+    expect(texts.length).toBeGreaterThan(3);
+    expect(
+      texts
+        .filter(({ box }) => box[0] < from - EDGE || box[2] > to + EDGE)
+        .map(({ said, box }) => `${said}: ${box[0].toFixed(1)} to ${box[2].toFixed(1)}`),
+    ).toEqual([]);
+  });
+
+  it.each(PICTURES)('$path keeps every text clear of the eye at its top', ({ path }) => {
+    const svg = read(path);
+    const { dx, dy, k } = transformOf(
+      /<g transform="(translate\([^"]*)"><g class="ea">/.exec(svg)?.[1],
+    );
+    const almond = /<clipPath id="[^"]*"><path d="(M[^"]*)"\/><\/clipPath>/.exec(svg)?.[1] ?? '';
+    // The almond is two quadratic curves, mirrors of each other: its half height is the first curve's, which at its
+    // middle is half of its control point's.
+    const [x0, y0, cx, cy, x1, y1] = [...almond.matchAll(/-?[\d.]+/g)]
+      .slice(0, 6)
+      .map((m) => Number(m[0]));
+    const top = Math.min(
+      ...Array.from({ length: 201 }, (_, i) => {
+        const s = i / 200;
+        return (
+          (1 - s) ** 2 * (y0 as number) + 2 * (1 - s) * s * (cy as number) + s ** 2 * (y1 as number)
+        );
+      }),
+    );
+    expect([x0, x1, cx, top]).toEqual([-47, 47, 0, -43]);
+    const eye: Box = [-47 * k + dx, top * k + dy, 47 * k + dx, -top * k + dy];
+    expect(eye[3] - eye[1]).toBeGreaterThan(40);
+    const CLEAR = 6;
+    const touching = textsOf(svg).filter(
+      ({ box }) =>
+        box[0] < eye[2] + CLEAR &&
+        box[2] > eye[0] - CLEAR &&
+        box[1] < eye[3] + CLEAR &&
+        box[3] > eye[1] - CLEAR,
+    );
+    expect(
+      touching.map(
+        ({ said, box }) => `${said}: top ${box[1].toFixed(1)}, eye bottom ${eye[3].toFixed(1)}`,
+      ),
+    ).toEqual([]);
+  });
+
+  describe('the legend of how mnema fits', () => {
+    it.each(['dark', 'light'] as const)(
+      'how-mnema-fits-%s spans its rule, with the same gap between its four items',
+      (theme) => {
+        const svg = read(`${ASSETS}/how-mnema-fits-${theme}.svg`);
+        const rule = ruleOf(svg, theme);
+        expect(rule).toEqual([60, 1140]);
+        const nodes = nodesOf(svg);
+        // The legend's signs are the circles of radius 7, left to right, each with the edge its stroke gives it.
+        const signs = nodes
+          .filter((n) => n.tag === 'circle' && n.at.r === '7')
+          .map((n) => {
+            const stroked = n.at.stroke !== undefined && n.at.stroke !== 'none';
+            return Number(n.at.cx) - 7 - (stroked ? Number(n.at['stroke-width']) / 2 : 0);
+          })
+          .sort((a, b) => a - b);
+        const labels = textsOf(svg)
+          .filter(({ said }) =>
+            ['proposed', 'in force', 'write refused', 'verified'].includes(said),
+          )
+          .sort((a, b) => a.box[0] - b.box[0]);
+        expect(signs).toHaveLength(4);
+        expect(labels.map((l) => l.said)).toEqual([
+          'proposed',
+          'in force',
+          'write refused',
+          'verified',
+        ]);
+        const [from, to] = rule as [number, number];
+        expect(Math.abs((signs[0] as number) - from)).toBeLessThanOrEqual(EDGE);
+        expect(Math.abs((labels[3]?.box[2] as number) - to)).toBeLessThanOrEqual(EDGE);
+        const gaps = [0, 1, 2].map((i) => (signs[i + 1] as number) - (labels[i]?.box[2] as number));
+        for (const gap of gaps)
+          expect(Math.abs(gap - (gaps[0] as number))).toBeLessThanOrEqual(EDGE);
+        expect(gaps[0]).toBeGreaterThan(40);
+      },
+    );
+  });
+
+  describe('the lanes of how mnema fits', () => {
+    it.each(['dark', 'light'] as const)(
+      'how-mnema-fits-%s has its lanes symmetric about the eye, within 0.5',
+      (theme) => {
+        const svg = read(`${ASSETS}/how-mnema-fits-${theme}.svg`);
+        const eye = Number(/translate\(([\d.]+),44\) scale\(\.6\)/.exec(svg)?.[1]);
+        // A lane is the path of stroke 3 from its start, a round cap beyond it, to what ends it: the decision's ring.
+        const starts = [
+          ...svg.matchAll(
+            /<path d="M([\d.]+),[\d.]+C[^"]*" fill="none" stroke="#[0-9a-f]{6}" stroke-width="3"/g,
+          ),
+        ].map((m) => Number(m[1]) - 1.5);
+        const ends = nodesOf(svg)
+          .filter(
+            (n) =>
+              n.tag === 'circle' &&
+              n.at.r === '9' &&
+              n.at.fill === 'none' &&
+              n.at.class === undefined,
+          )
+          .map((n) => Number(n.at.cx) + 9 + Number(n.at['stroke-width']) / 2);
+        expect(starts).toHaveLength(3);
+        expect(ends).toHaveLength(1);
+        const left = Math.min(...starts);
+        const right = Math.max(...ends);
+        expect(eye).toBe(600);
+        expect(Math.abs((left + right) / 2 - eye)).toBeLessThanOrEqual(0.5);
+      },
+    );
+  });
+
+  describe('the family', () => {
+    it.each(['dark', 'light'] as const)(
+      'the-family-%s has the same gap between the columns on each side of the record, from 60 to 1140',
+      (theme) => {
+        const svg = read(`${ASSETS}/the-family-${theme}.svg`);
+        const nodes = nodesOf(svg);
+        const centres = [
+          ...new Set(
+            nodes
+              .filter((n) => n.tag === 'circle' && n.at.cy === '170')
+              .map((n) => Number(n.at.cx)),
+          ),
+        ].sort((a, b) => a - b);
+        expect(centres).toHaveLength(7);
+        // A column is what is said under its point, by the nearest one.
+        const columns = centres.map(() => [] as Box[]);
+        for (const { box } of textsOf(svg).filter(({ box: b }) => b[1] > 200)) {
+          const at = (box[0] + box[2]) / 2;
+          const nearest = centres.reduce(
+            (best, c, i) =>
+              Math.abs(c - at) < Math.abs((centres[best] as number) - at) ? i : best,
+            0,
+          );
+          (columns[nearest] as Box[]).push(box);
+        }
+        const spans = columns.map((boxes) => [
+          Math.min(...boxes.map((b) => b[0])),
+          Math.max(...boxes.map((b) => b[2])),
+        ]);
+        expect(columns.every((c) => c.length >= 3)).toBe(true);
+        expect(Math.abs((spans[0]?.[0] as number) - 60)).toBeLessThanOrEqual(EDGE);
+        expect(Math.abs((spans[6]?.[1] as number) - 1140)).toBeLessThanOrEqual(EDGE);
+        const gaps = [0, 1, 2, 3, 4, 5].map(
+          (i) => (spans[i + 1]?.[0] as number) - (spans[i]?.[1] as number),
+        );
+        // The record sits under the eye, so each side has its own gap: the three on the left are equal, the three on the right
+        // are equal, and they differ from one side to the other only because the columns' widths do.
+        for (const i of [1, 2])
+          expect(Math.abs((gaps[i] as number) - (gaps[0] as number))).toBeLessThanOrEqual(EDGE);
+        for (const i of [4, 5])
+          expect(Math.abs((gaps[i] as number) - (gaps[3] as number))).toBeLessThanOrEqual(EDGE);
+        expect(Math.min(...gaps)).toBeGreaterThan(20);
+      },
+    );
   });
 });
 

@@ -191,7 +191,7 @@ it. The detail of most of them is in [Features](docs/features.md); for the rest,
 <td width="50%" valign="top"><img src="recordings/a-decision-superseded.gif" alt="A decision superseded: it leaves the rules the next session is handed, the call that replaced it names it, and it stays in the record"><br><sub>A decision superseded: a later call takes its place, the old one leaves the rules the next session is handed (the call that replaced it names it) and stays in the record. Recorded from the built binary by <a href="recordings/a-decision-superseded.sh"><code>recordings/a-decision-superseded.sh</code></a>.</sub></td>
 </tr>
 <tr>
-<td width="50%" valign="top"><img src="recordings/console.gif" alt="mnema at a shell, the first door, and the console answering reads"><br><sub>At a terminal, <code>mnema</code> alone asks what you want to do here, and its first door opens the console: a session that reads the record and refuses to write. It needs a window at least 80 columns wide and 42 rows tall. Driven through a pseudo-terminal by <a href="recordings/console.json"><code>recordings/console.json</code></a>.</sub></td>
+<td colspan="2" valign="top"><img src="recordings/console.gif" width="100%" alt="mnema at a shell, the first door, and the console answering reads"><br><sub>At a terminal, <code>mnema</code> alone asks what you want to do here, and its first door opens the console: a session that reads the record and refuses to write. It needs a window at least 80 columns wide and 42 rows tall. Driven through a pseudo-terminal by <a href="recordings/console.json"><code>recordings/console.json</code></a>.</sub></td>
 </tr>
 </table>
 
@@ -257,6 +257,8 @@ claim about the agent hosts is held, and which are not held yet, is in [`docs/ev
 <td align="center"><a href="https://github.com/bfs2021"><img src="docs/assets/contributor-bfs2021.svg" width="168" height="84" alt="@bfs2021"><br><sub>bfs2021</sub></a></td>
 <td align="center"><a href="https://github.com/jay23606"><img src="docs/assets/contributor-jay23606.svg" width="168" height="84" alt="@jay23606"><br><sub>jay23606</sub></a></td>
 </tr>
+</table>
+<table align="center">
 <tr>
 <td align="center"><a href="https://github.com/prascli"><img src="docs/assets/contributor-prascli.svg" width="168" height="84" alt="@prascli"><br><sub>prascli</sub></a></td>
 <td align="center"><a href="https://github.com/dh1011"><img src="docs/assets/contributor-dh1011.svg" width="168" height="84" alt="@dh1011"><br><sub>dh1011</sub></a></td>

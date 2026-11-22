@@ -13,6 +13,8 @@
  *   - EVERY CELL IS THE SAME WIDTH AND THE LOGIN NEVER WRAPS: the picture is wider than the longest login can be at GitHub's
  *     `<sub>` size, in the widest face a reader may be shown, and a row fits GitHub's README column (`the picture sets the
  *     width of the cell`). A login too long for a cell is a problem the check names.
+ *   - NO ROW HANGS: the rows are as even as they can be, each in a centred table of its own, so a shorter row sits in the
+ *     middle of the one above (`has no row that hangs`).
  *   - THE PICTURE IS ONE FILE FOR BOTH THEMES: only the stone, no yellow, no stylesheet and no `prefers-color-scheme`; the
  *     lines part round the photo (`the lines part round the photo`).
  *   - THE STAR LINE is the sentence of `CONTRIBUTING.md`, under the grid and the line that says how to join.
@@ -30,6 +32,7 @@ import {
   renderBlock,
   renderSvg,
   rewriteReadme,
+  rowsOf,
   START,
   SUB,
   svgPath,
@@ -94,7 +97,7 @@ describe('the README table is the one the list gives', () => {
     ).toEqual([]);
   });
 
-  it('has one linked, centred cell per login and four to a row', () => {
+  it('has one linked, centred cell per login and at most four to a row', () => {
     const many = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
     const block = renderBlock(many);
     expect(PER_ROW).toBe(4);
@@ -105,6 +108,48 @@ describe('the README table is the one the list gives', () => {
     );
     expect(block).toContain('<sub>g</sub>');
     expect(block.split('<tr>')[1]?.match(/<td/g)).toHaveLength(4);
+  });
+
+  it('has no row that hangs: the rows are even, and each is a centred table of its own', () => {
+    const names = (n: number) => Array.from({ length: n }, (_, i) => `p${i}`);
+    // Seven are four and three, five are three and two, eight are four and four, and one is one: never four and a lone one.
+    const sizes = [1, 2, 4, 5, 6, 7, 8, 9, 13].map((n) => [
+      n,
+      rowsOf(names(n)).map((r) => r.length),
+    ]);
+    expect(sizes).toEqual([
+      [1, [1]],
+      [2, [2]],
+      [4, [4]],
+      [5, [3, 2]],
+      [6, [3, 3]],
+      [7, [4, 3]],
+      [8, [4, 4]],
+      [9, [3, 3, 3]],
+      [13, [4, 3, 3, 3]],
+    ]);
+    for (let n = 1; n <= 40; n++) {
+      const rows = rowsOf(names(n));
+      expect(rows.flat()).toEqual(names(n));
+      expect(
+        Math.max(...rows.map((r) => r.length)) - Math.min(...rows.map((r) => r.length)),
+      ).toBeLessThanOrEqual(1);
+      expect(Math.max(...rows.map((r) => r.length))).toBeLessThanOrEqual(PER_ROW);
+    }
+    // In the block, a row is a table: a row of three is not a row of four with a cell missing, which would hang to the left.
+    const block = renderBlock(names(7));
+    const tables = block.match(/<table align="center">\n<tr>\n[\s\S]*?<\/tr>\n<\/table>/g) ?? [];
+    expect(tables.map((t) => t.match(/<td align="center">/g)?.length)).toEqual([4, 3]);
+    expect(block.match(/<table\b/g)).toHaveLength(2);
+  });
+
+  it('shows the committed README with no row hanging', () => {
+    const grid = gridOf(read('README.md'));
+    const tables = grid.match(/<table align="center">[\s\S]*?<\/table>/g) ?? [];
+    const sizes = tables.map((t) => t.match(/<td align="center">/g)?.length ?? 0);
+    expect(sizes.reduce((a, b) => a + b, 0)).toBe(logins.length);
+    expect(Math.max(...sizes) - Math.min(...sizes)).toBeLessThanOrEqual(1);
+    expect(grid.match(/<tr>/g)).toHaveLength(tables.length);
   });
 
   it('keeps what is outside the markers', () => {

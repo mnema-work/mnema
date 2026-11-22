@@ -38,7 +38,7 @@ import {
   STACKS_LINES,
   textOf,
 } from './lines.mjs';
-import { outlineOf } from './outline.mjs';
+import { inkOf, outlineOf } from './outline.mjs';
 import { DIAGRAM, PALETTE } from './palette.mjs';
 
 export { DIGEST, FAMILY_ALT, FAMILY_LINES, SEPARATORS, textOf } from './lines.mjs';
@@ -301,23 +301,33 @@ const frame = (t, w, h, body, { label, title }) =>
 const heading = (t, x, y, words, anchor = 'start') => say(t, words, x, y, 'title', anchor, 'ink');
 
 /**
- * The four signs and what each means, along the foot of a picture. They are a key and send out no ripple.
+ * The four signs and what each means, along the foot of a picture, spread between the two ends of the rule above it: the
+ * first sign's outer edge on `x0`, the last label's ink ending on `x1`, and the same gap from the end of each label to the
+ * edge of the next sign. A label is measured by its ink, which `outline.mjs` owns. They are a key and send out no ripple.
  * @param {Pen} t
- * @param {number} x
+ * @param {number} x0 the rule's left end
+ * @param {number} x1 the rule's right end
  * @param {number} y
  */
-const legend = (t, x, y) => {
+const legend = (t, x0, x1, y) => {
   const quiet = { ...t, quiet: true };
-  return /** @type {const} */ ([
+  const items = /** @type {const} */ ([
     [ring, 'proposed'],
     [pt, 'in force'],
     [refused, 'write refused'],
     [verified, 'verified'],
-  ])
-    .map(
-      ([sign, label], i) =>
-        `${sign(quiet, x + i * 200, y, 7)}${say(t, own(label), x + i * 200 + 14, y + 4, 'small', 'start', 'dim')}`,
-    )
+  ]);
+  /** How far a sign reaches from its middle: its radius and half its stroke (a ring's, or the light theme's outline). */
+  const reach = (/** @type {Sign} */ sign) => 7 + (sign === ring ? 1.3 : t.ring ? 1 : 0);
+  const widths = items.map(([sign, label]) => reach(sign) + 14 + inkOf(label, 'small').right);
+  const gap = (x1 - x0 - widths.reduce((sum, w) => sum + w, 0)) / (items.length - 1);
+  let left = x0;
+  return items
+    .map(([sign, label], i) => {
+      const x = left + reach(sign);
+      left += (widths[i] ?? 0) + gap;
+      return `${sign(quiet, Number(f(x)), y, 7)}${say(t, own(label), Number(f(x + 14)), y + 4, 'small', 'start', 'dim')}`;
+    })
     .join('');
 };
 
@@ -398,15 +408,15 @@ function works(t) {
  */
 function fits(t) {
   const W = 1200;
-  const L = 330;
-  const R = 870;
+  const L = 350;
+  const R = 850;
   const yc = 265;
   const pitch = 19;
   const n = 13;
   /** @param {number} k */
   const lv = (k) => yc + (k - 6) * pitch;
   /** @type {Stone} */
-  const a2 = [560, lv(1), 26];
+  const a2 = [W / 2, lv(1), 26];
   /** @type {readonly Stone[]} */
   const st = [a2];
   /**
@@ -461,7 +471,7 @@ function fits(t) {
       left +
       right +
       `<path d="M60,468H1140" stroke="${t.line}"/>` +
-      legend(t, 60, 494),
+      legend(t, 60, 1140, 494),
     {
       label:
         'How mnema fits: a session opens with the decisions in force, a write under a refusing rule is denied, a write elsewhere lands, a recorded decision is signed into the chain, and mnema verify checks it',
@@ -471,13 +481,13 @@ function fits(t) {
 }
 
 /**
- * The family: every door sits on the field, in seven equal columns; the record is the one in the middle.
+ * The family: every door sits on the field, in seven columns; the record is the one in the middle, under the eye, with equal gaps on each side of it.
  * @param {Pen} t
  */
 function family(t) {
   const W = 1200;
   const yc = 170;
-  const cx = Array.from({ length: 7 }, (_, i) => 60 + 154 * i + 77);
+  const EYE_X = W / 2;
   const L = FAMILY_LINES;
   /** @type {readonly ({ name: Line, rows: readonly [Line, Line] } | null)[]} */
   const doors = [
@@ -489,6 +499,58 @@ function family(t) {
     { name: L.site, rows: [L.siteA, L.siteB] },
     { name: L.stacks, rows: [L.stacksA, L.stacksB] },
   ];
+  // The seven columns are laid out by the ink of their texts: the first column's left edge on 60, the last one's right edge
+  // on 1140, the record under the eye, and the gaps equal on each side of it.
+  /** @type {readonly (readonly (readonly [Line, Role])[])[]} */
+  const blocks = doors.map((door) =>
+    door === null
+      ? [
+          [L.code, 'name'],
+          [L.codeA, 'small'],
+          [L.codeB, 'small'],
+        ]
+      : [
+          [door.name, 'name'],
+          ...door.rows.map((row) => /** @type {[Line, Role]} */ ([row, 'small'])),
+        ],
+  );
+  const spans = blocks.map((lines) => {
+    const ink = lines.map(([words, role]) => inkOf(textOf(words), role, 'middle'));
+    return {
+      left: Math.min(...ink.map((i) => i.left)),
+      right: Math.max(...ink.map((i) => i.right)),
+    };
+  });
+  // The record sits under the eye (x 600); the three columns on each side are spaced with the same ink gap on that side.
+  // The two sides differ only because the columns' widths differ.
+  /** @typedef {{ left: number, right: number }} Span */
+  /** @param {Span} s */
+  const width = (s) => s.right - s.left;
+  /**
+   * @param {number} from
+   * @param {number} to
+   * @param {readonly Span[]} side
+   */
+  const sideGap = (from, to, side) =>
+    (to - from - side.reduce((sum, s) => sum + width(s), 0)) / side.length;
+  const record = /** @type {Span} */ (spans[3]);
+  const leftSide = spans.slice(0, 3);
+  const rightSide = spans.slice(4);
+  const gapLeft = sideGap(60, EYE_X + record.left, leftSide);
+  const gapRight = sideGap(EYE_X + record.right, 1140, rightSide);
+  /** @type {number[]} */
+  const cx = [];
+  let edge = 60;
+  for (const s of leftSide) {
+    cx.push(Math.round((edge - s.left) * 10) / 10);
+    edge += width(s) + gapLeft;
+  }
+  cx.push(EYE_X);
+  edge = EYE_X + record.right + gapRight;
+  for (const s of rightSide) {
+    cx.push(Math.round((edge - s.left) * 10) / 10);
+    edge += width(s) + gapRight;
+  }
   /** @type {readonly Stone[]} */
   const st = cx.map((x, i) => [x, yc, i === 3 ? 40 : 18]);
   return frame(
@@ -528,7 +590,7 @@ function family(t) {
 function chain(t) {
   const W = 720;
   const y = 166;
-  const xs = [0, 1, 2, 3, 4, 5].map((i) => 110 + 100 * i);
+  const xs = [0, 1, 2, 3, 4, 5].map((i) => 116 + 100 * i);
   const L = CHAIN_LINES;
   /**
    * The dotted line of the chain stops at the edge of each of these two (see `dotted` below), so a ring needs no fill to hide it.
@@ -570,7 +632,7 @@ function chain(t) {
     320,
     heading(t, 40, 50, L.name) +
       band(t, 20, 700, y, 4, 15, st, { sw: 1.3 }) +
-      `<path d="M70,${y}H${(xs[3] ?? 0) - 13}" stroke="${t.acc}" stroke-width="2"/>${pulse(t, `M70,${y}H${(xs[3] ?? 0) - 13}`, true)}${dotted}` +
+      `<path d="M76,${y}H${(xs[3] ?? 0) - 13}" stroke="${t.acc}" stroke-width="2"/>${pulse(t, `M76,${y}H${(xs[3] ?? 0) - 13}`, true)}${dotted}` +
       nodes +
       label(0, L.event, L.link, 'acc') +
       label(3, L.mismatch, L.altered, 'acc') +
@@ -594,8 +656,8 @@ function converge(t, { title, ins, centre, outs, foot, alt }) {
   const H = 420;
   const cx = 600;
   const cy = 220;
-  const xl = 340;
-  const xr = 860;
+  const xl = 370;
+  const xr = 830;
   const yIn = ins.map((_, i) => cy + (i - (ins.length - 1) / 2) * 52);
   const yOut = outs.map((_, i) => cy + (i - (outs.length - 1) / 2) * 62);
   const inL = ins
@@ -665,7 +727,7 @@ function core(t) {
     W,
     420,
     heading(t, 60, 56, L.name) +
-      say(t, L.life, 60, 80, 'note', 'start', 'dim') +
+      say(t, L.life, 60, 88, 'note', 'start', 'dim') +
       band(
         t,
         40,
