@@ -264,6 +264,12 @@ part of what they answer (a hit from the private tree means something else than 
 same hit from the public one); `brief` because the tree is part of what it EXCLUDES,
 and the one document it feeds is committed.
 
+`ReferenceNode` can carry optional `title` and `state` fields for a walk asked to
+name what it reached. The reference row formatter prints these as `(task, DRAFT)
+Child B`, collapsing recorded text to one line; a title alone follows `(task)`.
+The ordinary `references` walk leaves both fields absent and its rows unchanged
+([`references.test.ts`](https://github.com/mnema-work/mnema/blob/main/packages/code/src/presentation/references.test.ts)).
+
 ## The modules
 
 - **`context/`**: the session context derivations: `bootstrap` (the opening
@@ -277,7 +283,9 @@ and the one document it feeds is committed.
   (who authorized what), `antipatterns` (recurring shapes), `exposure`
   (records holding a credential format), `provenance` (who proposed and who
   adopted each pattern), and `pattern-moves` (whether the run that moved a pattern
-  had been served its body, and, where nothing was listening, that nothing was).
+  had been served its body, and, where nothing was listening, that nothing was), and `agent-accepts` (what agents
+  accepted: the rules a person accepted that an agent took out of force, the chains of three decisions or more, and
+  the accepts whose note quotes no words of the person).
 - **`guard/`**: `guard`, the workflow gate exposed as a read-only consultation.
 
 To understand the boundary that justifies this being a package of its own, read

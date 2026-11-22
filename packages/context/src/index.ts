@@ -76,6 +76,8 @@ export {
 // owes a check to each rule in force. It asks `decisionsInForce`, so the rule is still decided once.
 export {
   type Acceptance,
+  acceptancesInForce,
+  countAcceptances,
   type DecisionRef,
   type DisputedDecision,
   decisionDisposition,
@@ -187,6 +189,13 @@ export {
   type WhoAccount,
   type WorkspaceAccountability,
 } from './intelligence/accountability.js';
+export {
+  type AcceptWithoutTheirWords,
+  type AgentAcceptsReading,
+  agentAcceptsReading,
+  type PersonRuleSuperseded,
+  restsOnThePerson,
+} from './intelligence/agent-accepts.js';
 export {
   type Antipatterns,
   antipatterns,

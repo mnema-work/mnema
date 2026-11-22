@@ -279,11 +279,11 @@ describe('a rule that arrives unasked carries a path that opens', () => {
     // provenance the tree holds to every rule cannot pass here.
     // Sorted, because the ORDER of the two bullets is the document's own, most recently
     // settled first, and this case is about the PAIRING on each line, not about that.
-    // Without the `accepted by` clause the document now ends each bullet with: that is about WHO
-    // ruled, which `a-rule-says-who-ruled-it.test.ts` holds, and this case is about the pairing.
+    // Without the day and the `agent`/`person` word the document ends each bullet with: that is about
+    // WHO ruled, which `a-rule-says-who-ruled-it.test.ts` holds, and this case is about the pairing.
     expect(
       bullets(text)
-        .map((line) => line.replace(/ · accepted by .*$/, ''))
+        .map((line) => line.replace(/ · \d{4}-\d{2}-\d{2} · (agent|no agent declared).*$/, ''))
         .sort(),
     ).toEqual(
       [

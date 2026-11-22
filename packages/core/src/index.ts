@@ -138,6 +138,7 @@ export {
   keepReadCacheIn,
   readCacheIsChosen,
 } from './projections/cache-home.js';
+export { keepProductVersion } from './projections/cache-meta.js';
 export type { ChannelSwitchProjection } from './projections/channel.js';
 export {
   type AdrCollision,
@@ -340,6 +341,7 @@ export {
   prepareRestore,
   privateTreesLeftBehind,
   privateTreeVisibility,
+  publicTreeIsLocal,
   type ResolvedTrees,
   type Restored,
   type RoutedKind,
@@ -367,6 +369,7 @@ export {
   type Undone,
   undoAside,
   undoCommandFor,
+  vanishedLocalTrees,
   whyNoProjectRootAt,
   whyNotADestination,
   whyNotARemote,

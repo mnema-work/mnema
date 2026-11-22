@@ -123,6 +123,7 @@ import type {
   NamedDecision,
   PrivateRules,
 } from '@mnema/context';
+import { countAcceptances } from '@mnema/context';
 import type { DivergentMove } from '@mnema/core';
 import { isStackName, isStackVersion } from '@mnema/core';
 import type { BriefDone } from '../commands/brief.js';
@@ -132,7 +133,7 @@ import { oneLine } from '../one-line.js';
 import { DERIVED_FROM } from '../provenance.js';
 import { recordFraming } from '../record-framing.js';
 import { severalRecordsSentence } from '../record-integrity.js';
-import { acceptedBy } from './accepted-by.js';
+import { acceptedOnLine, usualIdentity } from './accepted-by.js';
 import { NAMED_TITLE_LIMIT, namedDecisionText } from './named-decision.js';
 import { toImport } from './status.js';
 import {
@@ -563,7 +564,9 @@ const WHERE_THE_RATIONALE_IS = [
 ];
 
 /**
- * WHO RULED EACH DECISION, said once above the list and then on every line of it.
+ * WHO RULED EACH DECISION, said in the counts above the list and then, per rule, by its day and
+ * whether an agent accepted it or no agent was declared. The identity is named once, in the header, and a line
+ * names one only when it is another identity's.
  *
  * WHY THE DOCUMENT SAYS IT. It hands decisions over as rules, and a rule is as good as whoever
  * made it one. Measured on the shipped binary, a clone with a key of its own recorded a
@@ -572,8 +575,8 @@ const WHERE_THE_RATIONALE_IS = [
  * The facts that tell the two apart were already in the chain (the accepting event names the
  * identity and, when one executed it, the agent) and this file did not carry them.
  *
- * IT SAYS WHAT THE ENVELOPE SAYS AND NOTHING MORE. `no agent declared` is an act with no agent on
- * it, not a claim that a human typed it; `agent <name>` is an act that had one. `unconfirmed` is the
+ * IT SAYS WHAT THE ENVELOPE SAYS AND NOTHING MORE. `no agent declared` is an act with no agent on it, never a claim about a person, and not
+ * a claim that a human typed it; `agent <name>` is an act that had one. `unconfirmed` is the
  * record's shape and not a verdict on the rule (see {@link Acceptance}): an identity that has
  * only ever accepted what it recorded itself, with nobody else ruling on any of it. Every rule
  * of a one-person project is marked, truthfully; the mark leaves the day a second identity
@@ -586,15 +589,20 @@ const WHERE_THE_RATIONALE_IS = [
  */
 function whoRuled(decisions: Brief['decisions']): string[] {
   if (decisions.length === 0) return [];
-  const byAnAgent = decisions.filter((one) => one.acceptance?.agent !== undefined).length;
+  const { agent, undeclared } = countAcceptances(decisions);
   const unconfirmed = decisions.filter((one) => one.acceptance?.unconfirmed === true).length;
+  const usual = usualIdentity(decisions);
+  const usualUnconfirmed = decisions.some(
+    (one) => one.acceptance?.by === usual && one.acceptance?.unconfirmed === true,
+  );
   return [
-    'Each says who accepted it: the identity, and whether the act had an agent on it or not.',
-    ...(byAnAgent > 0
-      ? [
-          `${byAnAgent} of them ${byAnAgent === 1 ? 'was' : 'were'} accepted by an agent. The record keeps which, and \`mnema switch\` says whether an agent may accept.`,
-        ]
-      : []),
+    'Each line ends with the day it was accepted and whether an agent accepted it or no agent was declared.',
+    ...(usual === undefined
+      ? []
+      : [
+          `The identity is ${oneLine(usual)}${usualUnconfirmed ? ' (marked unconfirmed, see below)' : ''}, unless a line names another.`,
+        ]),
+    `${agent} of them ${agent === 1 ? 'was' : 'were'} accepted by an agent and ${undeclared} with no agent declared.${agent > 0 ? ' The record keeps which agent, and `mnema switch` says whether an agent may accept.' : ''}`,
     ...(unconfirmed > 0
       ? [
           `${unconfirmed} of them ${unconfirmed === 1 ? 'was' : 'were'} accepted by an identity marked unconfirmed: it has accepted only decisions it recorded itself, and no other identity has accepted any of them. That is who has looked, not a verdict on the rule.`,
@@ -826,7 +834,12 @@ export function briefWithin(
         mine > 0 ? WHAT_TRAVELS_WITH_PRIVATE : WHAT_TRAVELS,
       ),
       ...(mine > 0 && privateRules !== undefined
-        ? privateSection(privateRules, Math.max(0, shown - committed), ceiling)
+        ? privateSection(
+            privateRules,
+            Math.max(0, shown - committed),
+            ceiling,
+            governance.decisions.length > 0,
+          )
         : keptPrivateSection(keptPrivate)),
       ...late,
     ],
@@ -840,6 +853,10 @@ const PRIVATE_RULES_ARE = [
   'a clone of the repository does not get them, and the headings above do not count them.',
 ];
 
+/** The shape of a private rule line, said where the committed list's header is not there to say it. */
+const PRIVATE_RULE_LINE =
+  'Each decision line ends with the day it was accepted, whether an agent accepted it or no agent was declared, and the identity.';
+
 /**
  * What the copy a hook carries lists of the rules recorded in this machine's private tree, after
  * the committed ones: one heading, the line that says whose they are, and each rule in the shape
@@ -850,7 +867,12 @@ const PRIVATE_RULES_ARE = [
  * about one machine's private tree. What did not fit is said the way {@link leftOut} says it,
  * with the doors that list the private tree.
  */
-function privateSection(rules: PrivateRules, shown: number, ceiling: HookCeiling): string[] {
+function privateSection(
+  rules: PrivateRules,
+  shown: number,
+  ceiling: HookCeiling,
+  formatSaid: boolean,
+): string[] {
   const decisions = rules.decisions.slice(0, shown);
   const skills = rules.skills.slice(0, Math.max(0, shown - rules.decisions.length));
   const items = [
@@ -872,6 +894,9 @@ function privateSection(rules: PrivateRules, shown: number, ceiling: HookCeiling
     `## Recorded privately on this machine (${items.length})`,
     '',
     ...PRIVATE_RULES_ARE,
+    // The committed list's header says the shape of a rule line; with no committed rule there is
+    // no header, so the line that would otherwise be unexplained is explained here.
+    ...(formatSaid || rules.decisions.length === 0 ? [] : [PRIVATE_RULE_LINE]),
     ...(items.length > 0 ? ['', ...items] : []),
     ...privateLeftOut(leftDecisions, leftPatterns, ceiling),
   ];
@@ -1146,6 +1171,7 @@ function composed(
 ): string[] {
   const decisions = governance.decisions.slice(0, shown);
   const skills = governance.skills.slice(0, Math.max(0, shown - governance.decisions.length));
+  const usual = usualIdentity(governance.decisions);
   return [
     GENERATED,
     '',
@@ -1190,6 +1216,7 @@ function composed(
           decision.origin,
           decision.acceptance,
           decision.supersedes,
+          usual,
         ),
       ),
     ),
@@ -1292,9 +1319,10 @@ function rule(
   origin?: readonly string[],
   acceptance?: Acceptance,
   supersedes?: NamedDecision,
+  usual?: string,
 ): string {
   const from = (origin ?? []).map((target) => ` · ${DERIVED_FROM} \`${oneLine(target)}\``).join('');
-  const by = acceptance === undefined ? '' : ` · ${acceptedBy(acceptance)}`;
+  const by = acceptance === undefined ? '' : ` · ${acceptedOnLine(acceptance, usual)}`;
   // LAST, because the replaced decision's title is text somebody typed: whatever follows a free
   // title on the line is a field it could try to forge, and nothing follows this one.
   const replaced =

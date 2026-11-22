@@ -69,7 +69,9 @@ describe('a reading of an act whose envelope names no agent', () => {
 
   it('brief: the rule line says it', () => {
     const brief = ask('brief');
-    expect(brief).toMatch(/accepted by mnid:[0-9a-f]{8} \(no agent declared\)/);
+    // The brief names the identity once, in its header, and each rule line says the day and `no agent declared`.
+    expect(brief).toMatch(/The identity is mnid:[0-9a-f]{8}/);
+    expect(brief).toMatch(/ · \d{4}-\d{2}-\d{2} · no agent declared$/m);
     expect(brief).not.toContain('(a person');
   });
 

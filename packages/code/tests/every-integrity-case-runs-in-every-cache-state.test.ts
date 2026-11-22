@@ -456,6 +456,7 @@ export const FROZEN: ReadonlySet<string> = new Set([
   'packages/context/src/context/unread.test.ts',
   'packages/context/src/guard/guard.test.ts',
   'packages/context/src/intelligence/accountability.test.ts',
+  'packages/context/src/intelligence/agent-accepts.test.ts',
   'packages/context/src/intelligence/antipatterns.test.ts',
   'packages/context/src/intelligence/consultation.test.ts',
   'packages/context/src/intelligence/governance.test.ts',

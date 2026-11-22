@@ -10,6 +10,576 @@ with its own changelog.
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-11-21
+
+### Added
+
+- **A git repository as the destination of a backup, and `mnema backup hook`.** `mnema backup setup` accepts a git
+  remote (or the folder of a bare repository) in place of a folder. `run` keeps a clone of it in the data directory,
+  commits the copy and pushes it: one more commit each run, and the destination keeps the whole history (nothing is
+  squashed, amended or force-pushed; a remote that went another way is refused with nothing rewritten). `verify` and
+  `restore` read the destination as they read a folder, after bringing the clone up to the remote. Every git it starts
+  runs with no inherited `GIT_*` variable and `GIT_TERMINAL_PROMPT=0`, a remote written with a password (or an
+  `http(s)` one written with a user) is refused so no credential is kept, and a remote is printed without its user.
+  `mnema backup hook install | uninstall` adds, only when asked, a `post-commit` hook that runs the backup in the
+  background (refused where `core.hooksPath` is inside the working tree; a shell hook already there gets a marked
+  block, and `uninstall` takes out only what `install` put). See
+  [What a backup keeps, and what it loses](docs/what-a-backup-keeps-and-what-it-loses.md).
+  `status` and `verify` say how many commits of a git destination did not go up (`verify` fails while any is left), a
+  divergence is refused with the way out named, and two runs never interleave in the clone.
+- **`mnema backup verify` and `mnema backup restore`.** `verify` reads each copy of a project as a record, with this
+  mnema's reader (it says that one reader read it, and the command that runs the second, a Python program of the source
+  repository, by hand), and sets each file of the copy against the tree's: a copy that is behind
+  is named, and a tree that is cut, has lost a file the copy holds, or went another way from it is a failure, with no side
+  taken between a fork and a cut. `restore [--dry-run]` puts a copy back into a tree that lost files and never over a file
+  the tree holds: a name taken with other bytes stays and is named, a live tail that went further wins, a tail the copy is
+  not the start of refuses the whole restore, a `tailproof.json` that is there stays, `locks/`, the installation ids and
+  the anchors are never restored, a copy that does not verify or that belongs to another record is refused, and nothing is
+  touched while a writer holds a tail (the refusal names the process). It brings back the text and not the key: a machine
+  that lost its key still founds a second identity, and the first write after a restore opens a tail of its own. See
+  [What a backup keeps, and what it loses](docs/what-a-backup-keeps-and-what-it-loses.md).
+- **A workflow assigns an open `good first issue` or `help wanted` issue to the outside contributor who comments a claim on it, and frees it after 14 days without a pull request.** `/take`, `/claim` and phrases such as "I'll take this" or "assign me" claim it; someone who already holds three issues is asked to finish one first, an issue someone holds is answered once as taken, and a daily run frees an assignment that went quiet. The workflow only assigns and comments, and CONTRIBUTING.md says how.
+- **`mnema backup restore` asks about a copy of another record, and `--undo` puts back what it replaced.** A copy of another
+  record (`--from <record>`, the copy of that record in the project's folder) was refused; it is now a question at a terminal
+  (a pipe is refused, with the command for a person to run). On a yes the tree is moved to
+  `<git directory>/mnema/before-restore-<UTC date>/`, with no colon in the name and never in the working tree, the copy is put
+  in, and `mnema backup restore --undo` moves it back, keeping what stood there. No restore deletes that folder: it stays until the person deletes it,
+  `--undo` puts back the newest, and `backup status` lists them. A project without git whose public tree lost its tails, so nothing names the record, takes
+  the name from the copy's manifest and asks the same question (ADR-389, ADR-518, ADR-428).
+- **`mnema` with no arguments, the first time on a machine and at a terminal, opens a tour of four pages in place of the menu, and `mnema tour` opens it again.** The pages say what the record is, what `mnema init` chooses and why, how an agent reads it, and the commands to start with. The tour only explains: it writes nothing to the record and founds no project. Its one trace is a field in `machine-state.json`, beside the file that remembers the star line, set when the tour opens; a file that cannot be read counts as seen and is never written over. Without a terminal `mnema tour` prints the same pages as text and writes nothing, and the bare name there is the summary it was. `mnema repl` does not offer `tour`.
+- **A red guard says what it checks.** The guards that read the whole tree are test files marked `// @reads-the-tree`, and the log of
+  one that fails says what differed but not what it is for. The comment on a pull request now shows, for each guard that failed,
+  the paragraph at the top of its file that says what it checks, under a link to the file at the run's commit, and
+  `pnpm check:contribution` prints the same paragraph under the path of each guard that fails in its guards step. A new guard
+  with no such paragraph is red (`.github/what-a-guard-checks/`).
+- **`mnema tail repair <tail>` puts back from git a line of a public tail that does not read or whose hash does not
+  hold.** Until now a NUL in a committed line, or a line edited after it was written, stopped every write and left the way out to
+  the person (restore the line from the history by hand). The verb takes, for each damaged line, the line at the same place in the
+  same file in `HEAD` (or the revision `--from <rev>` names), and puts it back only when it reads, holds its hash, and chains to the line
+  before it and, where one follows, to the line after it as the file will be left (the last line of a tail has none). It never adds, signs or deletes a line, leaves the last line when a
+  crash cut it short, and touches neither `checkpoints.jsonl`, `keys/`, `tailproof.json` nor the private and the global trees; a
+  conflict marker, a line that is the same bytes in the revision and does not read (a newer mnema wrote it), a revision whose line
+  does not chain, and a link are each refused with nothing written. It takes the tail's lock, writes each file atomically and keeps
+  the segment as it was in the repository's git directory, beside the lock, until the person deletes it. It is the one write that passes with an altered or an
+  unreadable record, and it is a command of the shell only: the refusals of a write over a damaged public line (the command's, the
+  edit gate's and the agent's) now name `mnema tail repair <tail>`, and keep "update mnema if a newer one wrote the line".
+- **`mnema backup run` copies a project's trees into a folder.** `backup setup <folder>` says which folder keeps this project's
+  backup (a machine can hold a folder per project, assigned by the name of the project's record, and no project inherits
+  another's; the command says the folder keeps the text in clear and asks a person to confirm it at a terminal, and refuses without one: no flag answers for you),
+  `backup run` copies, and `backup status [--json]` says where the copy is, when it was made and what is still to copy.
+  A copy holds the tails up to their last complete line and the public keys, the private tree always and the public tree
+  only where the project is not in git. A run is refused whole, every tree checked before the first byte of any is written, when a file it would copy holds a private key, wherever in
+  the file, and at a symbolic link in a tree it copies from or in the folder it copies to; a folder inside the working
+  tree, the record or the git directory is refused; a copy only grows. The private key is not copied. The command is
+  on the command line only: it records nothing and is no MCP tool. See
+  [Backing up a project's trees to a folder](docs/reference/cli/backup.md#backing-up-a-projects-trees-to-a-folder).
+- **A pull request is told what failed.** When CI is over for a pull request, one comment, rewritten after every run, names
+  the checks that failed, the verdict of why-it-went-red, the failing tests with what each said, and for lint the exact
+  `pnpm exec biome check --write <files>` command with the diff it applies; a first pull request is welcomed and pointed
+  at CONTRIBUTING.md. CI's last job writes the report with its read-only token, and a separate `workflow_run` workflow,
+  which checks out and runs nothing of the pull request, reads it as data and comments (`.github/what-failed/`).
+- **A release carries a signature.** From the next release, the GitHub release holds the five tarballs, their SHA-256 and
+  a Sigstore build provenance bundle for them (`mnema-npm-packages-<version>.sigstore.json`), and the extension's `.vsix`
+  has its own bundle (`mnema-<version>.vsix.sigstore.json`), made by `actions/attest` after the publish and after the
+  extension is packed. `gh attestation verify <file> --repo mnema-work/mnema` checks a downloaded file against it. The
+  publish job also names the npm registry in its `setup-node`, which changes nothing in how it authenticates (OIDC, no
+  token).
+- **`mnema backup restore` of another record's copy now works in a project outside git.** It was refused where there is no git
+  directory to hold what the restore replaces. The live record is now moved to `<mnema home>/before-restore/<UTC date>/` (the mnema
+  home is `~/.mnema`, or `$MNEMA_HOME` when set), with no colon in the name, and the same question at a terminal, the same mark,
+  the same `--undo` and `restored-<tree>/` rule, the same listing in `backup status` and one lock for the place. No restore deletes
+  a folder kept there: you remove it by hand, and `backup restore --help` and the backup page say where it is. A project in git keeps
+  its place in the git directory (ADR-519, ADR-518).
+- **One line at the end of `mnema init` at a terminal suggests a star on the repository.** It is shown once per machine:
+  the machine remembers it in `machine-state.json`, in the directory of the global tree, outside the record. It is not
+  printed without a terminal, and it is never a tool of the MCP server or a hook.
+- **`verify` names what a tail directory holds that is not of the format.** A `000001.jsonl.bak`, a folder or any other entry
+  beside a tail's segments, `checkpoints.jsonl`, `tailproof.json` and `witness/` is named once in the census and never read, and
+  the record is neither refused nor read differently for it; `.DS_Store` and `._*` are skipped and not named. The second reader
+  says the same sentence, in the same order. A folder named like a segment (`000002.jsonl/`) and a file named `witness` no longer
+  bring either reader down: they are named and left alone, and so is a `000001.jsonl` with a line feed after it, which the second
+  reader used to read as a second segment. A symbolic link inside a tail directory is not named here: it is refused.
+- **`mnema tail repair <tail>` puts back a whole public tail from git when every line holds and its signed checkpoints do not.**
+  A tail rewritten with every later link computed again, its `checkpoints.jsonl` emptied or forged, or a signed event removed,
+  refused every write with no verb to mend it: the refusal said to put the tail back from the history by hand. The verb now
+  takes the tail from `HEAD` (or `--from <rev>`) when that revision proves itself (its events chain from seq 0 and every
+  checkpoint signature holds under the committed key, the tail's proof verifying too), what its checkpoints sign whole, the events
+  committed past its last checkpoint staying as the one write's window they were unless a signed branch forks from them (signed
+  work wins: they are removed, and the revision's segment is kept aside too), and keeps above it only the events a working checkpoint that holds, or
+  this machine's signed note, proves; the rest is removed and said by seq, and an honest event whose link somebody computed
+  again gets its link computed again as it was signed. It refuses a revision that does not hold, a revision behind what this
+  machine signed, and a conflict marker in `checkpoints.jsonl`, each with nothing written. Every file it changes,
+  `checkpoints.jsonl` included, is kept first beside the tail's lock, the segments are put in place before the checkpoints, and
+  it still signs nothing and touches neither `keys/` nor `tailproof.json`. The refusal of a write over a public tail whose
+  checkpoints do not hold now names `mnema tail repair <tail>`.
+- **CONTRIBUTING.md says how an agent is used here and how review goes.** The person who opens the pull request answers for
+  the change and its review; the agent field of the template is required (model and host, or `none`) and the squash commit
+  carries one `Assisted-by: <model> via <host>` line from it. A person answers within 3 working days, pull requests are
+  reviewed in the order they arrive and merged in the order they are ready, and a maintainer pushes only bookkeeping and
+  formatting to a contributor's branch, saying so in a comment.
+- **Opening an issue is held by forms, and the issue is labelled.** Blank issues are closed (questions go to Discussions, security problems to the private report), the bug report asks for the version, host, system, Node version and how mnema was installed, the feature request is a form with required fields and an area, every form applies `needs triage` and its type, and a workflow adds the `area:` label the answers name. CONTRIBUTING.md says what to do before opening an issue.
+- **A line, once, when a newer mnema is installed and `mnema upgrade` has not run on the machine since.** The check
+  reads one small file of the machine (`machine-state.json`, outside the record) and no project: the running version
+  against the one the last finished `mnema upgrade` wrote there. At a terminal, without `--json`, outside a hook, the
+  command line says it on standard error, once per machine and version; without a terminal it says nothing and marks
+  nothing. The MCP server adds one note to the first reply of a connection, right after any fact about the record's
+  integrity, telling the person they can run `mnema upgrade` (the agent is told never to update on its own); it is not
+  in the server's instructions nor in the text a session opens with. A machine with no state file is a new
+  installation: nothing is said, and the first verb a person runs there at a terminal notes the running version (see
+  the entry on a machine that only uses a host's plugin); `init` and the MCP server write nothing. Nothing here touches
+  the network.
+- **CodeQL reads the code from a workflow of the repository.** `.github/workflows/codeql.yml` analyzes the JavaScript and
+  TypeScript, the Python of the repository and the workflows, with the default query suite, on every pull request, on `main` and
+  every Tuesday; its alerts are in the Security tab. It is not one of the checks a pull request must carry.
+- **Four checks read what a pull request brings.** Each is a workflow under `.github/workflows/`, and none is a required check
+  yet. A dependency review (GitHub's) refuses a new dependency with an advisory of moderate severity or worse, or a license
+  outside the ones the repository already carries. `zizmor` reads the workflows themselves on a pull request that touches one,
+  and fails on a finding; the twelve workflows now pass it, with a checkout that keeps no credential and an inline ignore, with its
+  reason, where a trigger or an install is the point of the workflow. The OpenSSF Scorecard workflow runs weekly, sends its result to code
+  scanning and publishes the score the README's badge shows (its action has to be allowed in the repository's settings). And a reading of what a pull request adds refuses an invisible or
+  bidirectional character (U+200B to U+200F, U+202A to U+202E, U+2066 to U+2069, U+FEFF that is not a file's first character) and names
+  `file:line`; a pull request from a fork that changes a workflow, a dependency, the lockfile, the npm settings or a build or
+  install script also gets the label `needs security review`, which the workflow that comments on a pull request adds, since
+  only it holds a token that writes for a fork (`.github/the-hidden-characters/`, `.github/what-failed/`).
+- **`mnema upgrade` removes the mnema MCP server where it is declared a second time.** In your own `~/.claude.json`
+  the entry goes when Claude Code reads another declaration that works here (an enabled plugin, an approved
+  `.mcp.json`; never another host's file), by cutting its bytes only, after a copy of the file is kept beside it; a file the edit cannot read safely is refused with the
+  reason and nothing is written. The entry of the project's committed `.mcp.json` is asked, and only beside an
+  enabled plugin. Entries of other projects are not touched.
+- **`mnema upgrade`, and `mnema doctor --after-update` as the same function.** After installing a newer mnema it
+  applies what is mnema's own: this version's instructions block in the files that hold an earlier one, the line of the
+  record's `.gitattributes` that names the merge driver, and the VS Code setting that points at a plugin folder that is
+  gone. It asks before the merge driver and `merge.autoStash` and `rebase.autoStash` go into the clone's git
+  configuration (without a terminal it lists the command), and says what a host keeps: an installed plugin that is
+  behind. `--dry-run` shows the plan and writes nothing. It installs nothing and asks no network, and it is on the
+  command line alone. A run that finished writes the version it brought things to into the machine's state file.
+- **`pnpm check:contribution` is the check before a pull request.** It runs lint, build, typecheck, the guards and only the
+  tests tied to the files the branch changed against its merge base with `upstream/main` (or `origin/main`, or the ref in
+  `MNEMA_BASE`), with one worker and a 30 s test timeout, and says at the end that CI runs the whole suite. Because
+  `--changed` stops at a package's built `dist`, a change under `packages/<name>/src` also runs every test of the packages
+  that import it, and a change to the Python reader runs its `self-test` and `vectors`. It says what to fetch when the base
+  is missing, and `--plan` prints the steps without running them. A `.devcontainer/devcontainer.json` gives the toolchain:
+  Node at the floor, pnpm through corepack, `python3`.
+- **`mnema backup restore --global` puts back the machine's global tree from its copy, and `mnema backup verify --global` reads that copy.**
+  The copy is the one set up with `mnema backup setup --global <folder>` (`<folder>/global/`), read by this mnema's reader, and restored under the rules
+  of a project's restore: it never overwrites a file, a live tail that went further wins, a copy tail that is not the start of the live one
+  refuses the whole restore, `locks/` and the installation's id and anchor never come back, and a link or a private key refuses before the
+  first byte. A copy of another machine's global tree is asked at a terminal first (the question says that every project on the machine
+  reads the global tree); on a yes the live global tree is moved, never copied, to `<mnema home>/before-restore/<UTC date>/global/`, and
+  `--undo --global` puts it back. Nothing kept aside is ever deleted: `mnema backup status --global` lists it, and you remove it by hand. A global restore
+  never touches a project's trees, and a project's restore never touches the global tree (ADR-528, ADR-519, ADR-518).
+- **`backup` copies the machine's global tree, only when asked, and a new page says what a backup keeps and what it loses.**
+  `backup setup --global <folder>` gives the global tree a folder of its own (the same confirmation, at a terminal only, and it
+  works outside a project), `backup run --global` copies it and only it into `<folder>/global/`, and `backup status --global [--json]`
+  says how far that copy is. A project's `run` never copies the global tree, and `--global` with no folder assigned to the global
+  tree is refused: nothing is taken from a project's folder, since the global tree mixes the memory of every project. The same rules
+  hold for it as for a project's trees. Its `diagnostics.jsonl` and `report-state.json` are not copied. See
+  [What a backup keeps, and what it loses](docs/what-a-backup-keeps-and-what-it-loses.md): what the copy holds and never holds,
+  that it is not encrypted, and that the machine's signing key is not in it.
+  `backup setup` now refuses a folder inside the working tree of any git repository, wherever it is run from (it only
+  knew the current project's), a record name that is not 64 lowercase hexadecimal characters is refused before it becomes a
+  folder, and `backup.json` is read and written under a lock, so two setups at once keep both assignments.
+- **The hot path is measured every week against a budget.** A workflow starts the commands the plugin runs at every edit and
+  when a session opens, against records of 1,000 and 3,000 decisions that the product writes in a sandbox, cold and warm, five
+  runs each. It opens an issue (or comments on the open one) when the time on the large record is more than three times the
+  small one, or when a cell is more than one and a half times the first measurement. It blocks no merge; the numbers and how to
+  read them are in `.github/the-hot-path-budget/README.md`. The case that holds what a session's opening reads from the record
+  now counts whole-table readings for a session that opens on three rules and on twenty-four, and they are the same.
+- **A pull request that changes a golden of the surface owes a page and a changelog entry.** When the files a pull request
+  changes include `cli.help.golden.txt`, the transcripts `cli.reads.golden.txt` and `cli.writes.golden.txt`, a shell
+  completion golden or the init screens, they must also include a page written by hand (`docs/**/*.md` outside
+  `docs/reference/`, the package README, or `plugin/README.md`) and a file under `changelog/unreleased/`. The pages generated
+  under `docs/reference/` change with the help every time and do not count. The job `the page moves with the behaviour` runs
+  on pull requests only, is not a required check, and names the golden and what is missing; `pnpm check:contribution` runs
+  the same check as its last step. Nothing written in a pull request excuses it.
+- **The release notes can thank a contributor.** An entry in `changelog/unreleased/` may carry `Contributor: <login>` on the line after its section, and `pnpm release:prepare` ends the entry in the changelog with "Thanks @login.". The front page now lists the outside contributors whose pull requests were merged, and the contributing guide opens the repository in a GitHub Codespace and says how to hand an issue to a coding agent.
+
+### Changed
+
+- **`mnema instructions` writes no block into a `CLAUDE.md` that imports `AGENTS.md`.** A `CLAUDE.md` with
+  `@AGENTS.md` (or `@./AGENTS.md`), alone on a line or in a sentence, or a `.claude/CLAUDE.md` with `@../AGENTS.md` (an import
+  is resolved from the folder of the file that holds it), outside a code span, a code fence and an HTML comment, is left as it is while `AGENTS.md` is written, since
+  Claude Code reads the imported file there: it is not counted as left out, and `init`, `mnema instructions`, `--check`
+  and `mnema doctor` say in one line why. A block already in it is said to be read twice and taken out by
+  `mnema instructions` only on a yes at a terminal (on a no, an earlier version's block is brought up to date). `.claude/rules/mnema-instructions.md` keeps its file.
+- **A formatter's requoting of the front matter is not taken for an edit.** `.github/instructions/mnema-instructions.instructions.md`
+  and `.cursor/rules/mnema-instructions.mdc` are read by their front matter as keys and values (quotes and order do not
+  matter) and their block by the markers, so prettier with `singleQuote: true`, which writes `applyTo: '**'`, no longer
+  leaves the file reported. Another key or another value, such as an `applyTo` you changed, is still your edit and kept.
+- **A read no longer stops on a line of the record it cannot read: it serves the rest and says the line first.** A line of a segment that does not parse (a merge's `<<<<<<< HEAD`, bytes overwritten, keys in another order, or a line a newer mnema wrote) used to stop `status`, `search`, `brief`, `show`, the hooks, the console and the agent's tools with a refusal, in the public tree as in the private and the global one. They now leave the line out, serve every other line, exit as the read did, and say it on the first line of the answer, in the block that names an altered entry: the tail, the file and the line, the reader's reason, and the way out. In the public tree the way out is to update mnema if a newer one wrote the line, or `mnema tail repair <tail>`, which puts it back from the repository's history; in the private and the global tree, which the repository does not keep, it is the sentence a refused write already used, without the repair. The line after the one left out breaks the chain as it did before, and the answer says that too. Nothing about the writes changed: every write is refused while such a line stands, `switch off` included, with the line named and the record as it was, and the edit gate denies. The verdict of `verify` and its sentence, the format and the second reader are as they were. The tools that audit the record (`export`, `exposure`, `antipatterns` and the agent's audit tools) read the tails themselves and still stop on such a line.
+- **A session is told when the record would not answer it.** The hooks that hand a model a document (the opening, the notes,
+  the subagent's start, Gemini CLI's opening and OpenCode's session start) used to open a session with nothing
+  when `mnema` refused, so a session that believed it had the rules could have none. They now say it in one line:
+  the first paragraph of the refusal (for a stored line the reader cannot read, with its tail named), and that the record
+  was not consulted where another process holds it or the run was cut after nine seconds (the plugin's hooks also say it when `mnema --identify` is
+  not answered in two seconds; the generated programs of Gemini CLI and OpenCode share nine seconds between the two verbs
+  of the opening and say it once, and open a session in silence when `mnema --identify` itself does not answer).
+  They stay silent with no project and with a channel switched off. A program on the `PATH` that is not `mnema` is still
+  named to the session by the opening and the subagent's start, and the notes and the two generated programs stay silent
+  about it. To tell the silent refusals apart from the rest, `mnema brief --hook` and `mnema recall --hook` open a refusal
+  with its code alone on the first line of the error stream (`NO_PROJECT`, `SWITCHED_OFF`, `UNREADABLE_LINE`, or the code of
+  the refusal itself); a refusal of usage, such as an invalid `--host`, carries none, and the hook is silent for it.
+  Without `--hook` nothing changes.
+- **The block `mnema instructions` writes into `AGENTS.md` and the other host files now carries one sentence about starring the repository.** It lets an agent mention once, to a person who said mnema helped, that a star helps others find it, and forbids it to star a repository itself or on the person's behalf. The block is version `v5`; a `v4` block is still replaced by `mnema instructions`. `CONTRIBUTING.md` carries the same suggestion for people who read it to contribute.
+- **An act that died is finished only by the worktree that began it, and a held tail is trusted only while its note is unchanged.**
+  Each worktree keeps a mark, per tail, of the act it last began (`<git dir>/mnema/<project>/public/inflight/`); the signed note an
+  append writes before its line names an end that only the worktree whose mark names the entry may go on from. A writer that holds a
+  tail across two acts also compares the note in the shared place, so a worktree that went on with the same tail in the meantime
+  sends it to another tail instead of a fork. A mark that is lost sends the worktree to another tail, never further than before.
+- **With `agent-accepts` off, an accept that declares no agent is refused outside a terminal.** Until now only an accept that named an
+  agent was turned away, so a script or a host that did not declare one passed as a person. Now the command line, the MCP server and
+  the library door each ask where the accept is made: standard input and standard error both a TTY on the command line and in the
+  library, never through the MCP server. The refusal (`AGENT_ACCEPTS_IS_OFF`) says no agent was declared and no terminal was there, and
+  no longer prints the command that would have got round it. A terminal is a heuristic for a person, not a
+  proof of one, and the seat is not recorded.
+  The VS Code extension runs the command with no terminal, so with the switch off its Accept button is refused too; a person accepts
+  with `mnema decision review` in a terminal. `decision review`, when it is not at a terminal, no longer offers an accept line while
+  the switch is off.
+- **An issue that waits on another one is not assigned while that one is open, and automated accounts are thanked below the Contributors grid.** A `/take` on an issue whose body says "Starts after #N" is answered by naming #N and nothing is assigned; the daily release does not free an assignment while #N is open, and frees it once #N is closed, gone or waiting on this issue in turn. At most five blockers are read, and a `#N` in a code span or a fenced block is not one. The README grid shows people only; an account that declares itself automated is thanked on a line of its own below it.
+- **Both readers refuse a symbolic link anywhere they read in a record, and read nothing behind it.** A link under `tails/`
+  was the only one refused; a segment, `checkpoints.jsonl`, `tailproof.json` or an attestation under `witness/` replaced by
+  a link, a key file under `keys/` that is one, and `keys/` or `tails/` themselves as links were followed by both readers,
+  so a record could verify over bytes outside the repository. `mnema verify` and the second reader now list every link at
+  those places before they read anything and refuse each by its path, first, in the same words: `LINKED TAIL:
+  tails/<name>` for a tail that is a link, as before, and `LINKED ENTRY: <path>` for every other place, whatever the link
+  points at, inside the record or out of it. A tail holding a link is not read at all and a key file that is one holds no
+  key, so no byte behind a link reaches the verdict, and `mnema verify` no longer replays the record to name an agent
+  when it holds a link (a segment linked to a pipe hung the command there). A record that holds no tail it could read
+  says why: a link, not "there are no tails". On Windows a junction and an app execution alias are links too, in both
+  readers, and any other reparse point, a OneDrive placeholder among them, is read as the file or folder it holds; a
+  WSL link counts as a link to the product from Node 24.16 (libuv 1.52), not on the floor, 24.15, nor to the second reader. The record's root and the folders above it are not judged, nor `locks/` or anything else no reader
+  reads. No version of mnema writes a link into a record; a version from before this one follows such a link and refuses
+  nothing, but a tail that is a link, which 0.1.8 already refused (FORMAT.md section 4). The reads under `status`, the brief and the hooks are the next entry's.
+- **CI pays only for what a pull request touches.** The host contract skips its jobs when no file the pull request changes is something it runs or reads, a pull request that changes only `docs/` and `changelog/` Markdown skips the test matrix (the guards always run), the build runs once and is shared by the test cells, and a Windows and macOS job cancelled with its runner is run once more by a workflow of its own.
+- **The README's hosts table shows Codex by OpenAI's Blossom mark.** Codex was shown by its name alone; it now has the
+  mark from OpenAI's own logo kit (the download of https://openai.com/brand/), black on a light page and white on a dark
+  one, unmodified, with its source, date and sha256 in `assets/hosts/SOURCES.md`. It is shown at height 40 where every other
+  host is at 20, because the file draws the mark in about half of its box and the file cannot be cropped: at 20 it read
+  as a dot beside the other logos.
+- **Crediting an assistant in a commit or a pull request is fine, and no check refuses it.** The job that failed a commit message or a pull request description that credited a coding assistant as co-author, and the rule on commit e-mails with it, are removed. CONTRIBUTING.md and AGENTS.md say to name the model, host and version in the field the pull request template asks for, and keep a `users.noreply.github.com` address as a privacy recommendation that nothing enforces.
+- **Every command-line verb that reads the record says where a newer mnema wrote.** `recall`, `rules-file`, `timeline`, `refs`, `commits`,
+  `aging`, `trailer`, `diagram`, `usage`, `site`, `export`, `audit accountability`, `audit exposure`, `audit antipatterns`, `task next`,
+  `task guard` and `skill provenance` now print the sentence the other reads print (how many lines a newer mnema wrote, of which kinds,
+  that this one applies none of them) on the error stream, never in `--json` or in the feed `export` writes. A guard enumerates the verbs
+  the program declares as reads, runs each over a record holding such a line, inside and outside a git repository, and fails for a verb
+  that neither says it nor is excused in its table with a reason. Nothing is said over a record no newer mnema wrote into.
+- **Every read now checks each line's hash, and every surface says an altered line first.** A line of the record whose content was changed in the file by hand (a decision's title swapped for text that tells an agent to pipe a download into a shell, the hash it stores left alone) used to be served by every read with no word about it, and only `mnema verify` refused it. A read, cold, warm or a session catching up, now recomputes the hash of each line it serves: a line that does not hold is left out of the answer and named in the first lines of it, with the tree, the tail, the seq, the file and the line, and the answer says it was not served; the lines after it are measured against the hash it stores, so one altered line is one fact. The same goes for the private and the global tree. The fact comes first in everything: on the command line before the answer, in an MCP reply as the first block, ahead of the payload (the block of a gap or a fork moved up with it), in the document a hook hands a model, in the console and in the pull request comment of the Action. With `--json` the line is on the second stream, as it is for a gap, and the JSON stays the object the agent's tool serves. The edit gate (`mnema before-a-write` and the tool a host calls before an edit) denies a write while such a line stands, naming the tail and the line and saying to restore it from the repository's history; a gap, a fork and an unsigned event are still served and said, and the gate says none of them when it lets a write through. A write over such a record is still said and not refused. What this does not do: it does not read the signature (a line rewritten and re-chained without the key holds its hash and is served, and only `verify --require signed` sees it), and the check the hook-process hosts make before they start mnema does not recompute a hash.
+- **`search`, `resume`, `rules`, `why`, the console and the agent's reads say where a newer mnema wrote.** Lines of a
+  kind this mnema does not know are read past and left out of what is served, and only `status`, `brief`, `show`,
+  `read_record`, `bootstrap` and `doctor` said so. Now `mnema search`, `resume`, `rules` and `why` print the same
+  sentence on the error stream (never in `--json`), the console's opening panel prints it under the tree that holds the
+  lines, and every read of the agent (`search`, `resume`, `focus`, `governing_rules` and the audit tools) carries it as a
+  block before its payload. The reason a gate gives for refusing a write, or for holding it for a person, carries it
+  too; a write that goes through is told nothing. Nothing is said, and no output changes, over a record no newer mnema
+  wrote into.
+- **Every write is refused while an entry of the record is altered.** An entry whose content was changed in the file by hand (the hash it stores left alone) is left out of every read and said first, and a write over it used to go on and sign a new entry on top of a record that no longer proves itself. Every write is now refused until the line is as it was written, switching a channel off included, which is a write to the same record: the command line says `Refused (ALTERED_ENTRY)`, the agent's tools answer it with the fact not recorded (and a session that ends over such an entry leaves its run open instead of signing the end of it), the SDK returns it as a refusal, and the verbs that write for a hook (the copy of a note of the host's memory among them) refuse the same way. The refusal names the tree, the tail, the file and the line, and nothing is written, the record byte for byte as it was. In the public tree the way out is to restore the line from the repository's history; in the private tree and the global one, which no repository keeps, to restore the file from a copy or to repair or remove the line, and the refusal reaches every project of the machine when the line is in the global tree, as a line that cannot be read does. The command line asks where a tree is opened for writing, and before `key request` and the three verbs of `witness` run, which act on the record without opening a writer; so what answers over such an entry is every read, the listing of `switch` and of `witness` typed bare, `inherit` without `--write`, the verbs that only touch key files, `record pull` (the way a restored line arrives), the edit gate (which has its own denial) and the agent's server itself (each tool that writes is refused at its own door). A gap and a fork are still told and never refused. The check and the append are two steps, and an alteration made between them is not seen.
+- **`mnema init` at a terminal says what it chose, in fewer lines.** After the plan is agreed, the list of what was done is
+  one line for each choice (the instruction files, the decision about agents accepting, the merge settings) with the command
+  that changes it later, and no longer one line for each file; the file lines remain only for a file that was kept, left or
+  refused. The summary says the question to ask the agent once the plugin is in (`Which mnema tools do you have?`) only for
+  Claude Code and Codex, the hosts where the plugin's tools are shown reaching the model, and says the Cursor and VS Code
+  steps in one line each. `Off until switched on` is one line naming `mnema switch`.
+- **More credentials are replaced before a write.** The door every text field passes recognizes GitHub's fine-grained
+  tokens (`github_pat_`), GitLab's tokens (`glpat-` and the other prefixes GitLab lists), Hugging Face tokens (`hf_`)
+  and Stripe's webhook signing secrets (`whsec_`), and two places whatever the value looks like: the value of an
+  `Authorization` header (`<SECRET:authorization-header>`) and the value written after a credential's name, such as
+  `PASSWORD=`, `"api_key":`, `X-Api-Key:` on its own line, `--password` or `curl -u user:` (`<SECRET:named-credential>`).
+  The whole value goes, to its closing quote or the blank after it, so no piece of a password is left beside the
+  placeholder. A name is read only where text writes a key down, so a sentence that says the word, a count
+  (`max_tokens`), a cursor (`next_token`), a variable, a placeholder, a path and a line of code are recorded as written.
+  The reply that says what was replaced names the new classes, and `mnema audit exposure` finds them in what was
+  recorded before. A title that reads as holding a credential is refused, as a name that holds a key already was, and
+  the refusal names the way out: another name, or rotating the value if it was real. Over this repository's own record
+  the new classes replace nothing. What a value under a credential's name is still read as, and so recorded as
+  written, is stated there too: a passphrase of several words with no quotes, a slug of small letters without digits,
+  a plain path or address (a webhook URL among them), a value of three digits or fewer, a key of several lines
+  without its `BEGIN` line, a short word with a digit or two after a colon and followed by more words (`Hunter2`), and
+  7 to 10 hex digits under a token's, a key's or a secret's name, read as an id. A name is not refused for the first
+  word after a colon that only looks drawn at random (`Token: Base64Url encoding`); a body still has it replaced. The
+  list is in
+  [Recording decisions](docs/recording-decisions.md#what-goes-into-the-record).
+- **The osv-scanner check ignores one advisory until 2026-12-17.** `osv-scanner.toml` ignores GHSA-fc5q-39xc-vjpf (a ReDoS in
+  picomatch, every version up to 4.0.7, no patched release), with its reason beside it: picomatch is reached only by development
+  tooling (vite and fdir), and the published `@mnema/code` ships `string-width` alone. After that date the check accuses it again.
+- **Every read checks the signed checkpoints, and only what a signature proves governs** (ADR-557 to ADR-562). A read
+  folds each tail's `checkpoints.jsonl` over its events: the root and the link of every line, and the signature of the
+  last line of each tail, which binds every earlier one (every signature when anything fails, to name the first). The
+  events a holding checkpoint covers are proven, and so are the events this machine's signed note in `locks/` vouches
+  for (a write whose checkpoint did not land, the act in progress). The projection holds proven events only, so the
+  edit gate, the switches, the roster and every read that opens the record decide on them alone, and so does the gate
+  of a move: an event no signature proves neither refuses an accept nor lets a supersede name its successor.
+  - A run a checkpoint does not hold over (a rewrite re-chained under its checkpoints, a root or a signature replaced,
+    a checkpoint signed by a key the record does not hold), a signed event that is gone, checkpoints this machine
+    signed that are no longer in the file, and unsigned events beyond one write's window (more than 64, not at the
+    tail's end, or a tail with events and no checkpoint that verifies) are left out of every answer and said first,
+    `issue [T2/T4] ...; these entries were not served`; the gate denies and every write is refused while one stands,
+    with the way out (in the public tree, `mnema tail repair <tail>` puts the tail back from the history; for a tail with no
+    checkpoint, one more write on the machine that wrote it signs one, then commit it).
+  - One write's window at the end of a tail (at most 64 events above the last checkpoint) is served and said last,
+    `recorded and not yet signed`, and governs nothing until a checkpoint covers it; nothing denies over it.
+  - A catch-up takes only what new checkpoint lines prove, each signature checked; anything else replays the record.
+  - What a read does not ask, and `verify` does, is in [What it proves](docs/what-it-proves.md).
+- **Reference rows can show a record's state and title when the node carries them.** The title stays on one line, and rows with neither field keep their original bytes. The ordinary reference walk does not fill these fields yet. Thanks @dh1011.
+- **A search of several words that finds nothing now says every word must match.** Under "Nothing recorded matching …" it adds "Every word has to be in the same record: try fewer words.", so an empty answer no longer reads as nothing recorded on the subject when dropping a word would have found it. Thanks @fkolo.
+- **`mnema search --scope all` is accepted** as the same as leaving `--scope` out, and the flag's help says so. Other `--scope` consumers keep refusing `all`. Thanks @prascli.
+- **`mnema audit exposure`, `audit antipatterns`, `export` and `site` read the tails once.** The sentence about lines a newer mnema wrote used to cost them a second replay of the same tails; it is now taken from the reading they already make, so each is faster (`audit exposure` took about half the time on a record of this repository's size) and prints the same bytes.
+- **The dependencies the package bundles moved up.** `string-width` 9.0.0 (the one dependency `@mnema/code` declares), `@sigstore/bundle` 5.0.1, `@sigstore/verify` 4.1.3 and `commander` 15.1; the notices of the package say so.
+- **The claim workflow reads more claims and answers the ones it cannot read.** "Claiming this", "I'm working on this", "I'll take it", "assign me" and the like assign a free `good first issue` or `help wanted` issue to a contributor as `/take` does, a comment that sounds like a claim but matches nothing gets one reply that says to write `/take`, and the daily run assigns the author of an open pull request that closes a free issue and frees a hand assignment of an outside contributor after 14 days without a pull request, as it does its own. An outside pull request that waits on its author after a maintainer requested changes, or asked the author by name in a comment, gets one reminder after 7 days and one note after 14 days; the workflow only comments.
+- **The counts the guards keep per file restate themselves.** The ledgers of import clauses per file and of the commands
+  each page hands over (three of them) fail, when a count moved, with the line to change and the number to write, and
+  `pnpm vitest run <the guard's file> -u` rewrites those numbers in place. A file with no line and a line with no file
+  still fail: a person lists those on purpose.
+- **The em dash rule is lifted from the repository.** The check "the pull request text" and the guard that refused
+  U+2014 in every text file are removed, with their pages and the rows that named them; CONTRIBUTING.md and AGENTS.md no
+  longer state the rule.
+- **The notice of an update not yet applied reaches a machine that only uses a host's plugin.** The first verb a person
+  runs at a terminal on a machine with no state file (not `init`, `mnema mcp` or `mnema upgrade`, and not under
+  `--json`, in a hook or in a pipe) notes the running version in `machine-state.json` as the one applied, so an update
+  installed later is told the next time. `init` and the MCP server still leave the home as it was found.
+- **The hooks that answer the host in JSON say a record that did not answer.** After a write, after a question to the
+  person, after the agent tool, after a compaction, at the end of a response and at the end of a subagent, a refusal of
+  the record (a line it cannot read), a record held by another process and a run cut by its time (nine seconds for the verbs of Claude Code's hooks and of Copilot CLI's `choice-settled`, ten for the gate of Codex and Qwen Code, six for Copilot CLI's hook after a write, Gemini CLI and OpenCode) were silence;
+  they are now one line inside the reply: that the record was not handed over, or was not consulted. It goes in the
+  field the host reads as context (`additionalContext`; the flat one in Copilot CLI; `AfterTool` in Gemini CLI; the
+  result of the call in OpenCode), never outside the JSON and never as a decision that sends the agent back to work.
+  At the end of a response and of a subagent, whose context field would send the agent back to work, it goes in the
+  `systemMessage`; at the end of a session it is not said. The gate that lets a write through because the record did
+  not answer, where no rule that refuses it or asks for a person addresses the path, says it beside the write in Codex
+  and Qwen Code, and in Copilot CLI and Gemini CLI in the hook that follows the same write, which asks the record itself (it says a record another process holds, a line it cannot read and a run cut by its time, and is silent when no `node` takes `mnema`, when `mnema` exits non-zero with no code and when what it printed is not a reply), and in OpenCode in the result of the call; VS
+  Code and Cursor's agent have no such hook here, and Claude Code's gate is a call the host makes itself, so a write it
+  lets through for want of an answer passes with nothing for the model there (the hook after a write says a record that did not answer
+  only for the files it reads). What the gate refuses, and the words of the refusal, are as before. The hooks set `MNEMA_FOR_A_HOOK=1` for the verbs they run (`after-a-write`,
+  `beside-a-write`, `before-a-write`, `settled`, `tally`, `corrections`, `handback` and `dispatched`), and a refusal then opens
+  with its code alone on the first line of the error stream, as `brief` and `recall` do under `--hook`; a person typing
+  a verb sets nothing and reads what they read before.
+- **The mirror of what a session hands to other agents records only this project's work, and names a brief only when the prompt points at one.** A dispatch whose prompt cites places that exist (a file or a folder, of any extension: an absolute path, `~/`, `./` or `../`), one in another repository and none in this project, is no longer recorded: the second stream says so and the session task's closing note counts it. A place in no repository (a scratch folder) says nothing either way, and only the first twelve places a prompt cites are looked at. The brief names a file only when a word such as `read`, `see`, `follow` or `leia` points at it and it is not in another repository (a file that is only mentioned, like `CHANGELOG.md`, is not named), and the id of a task, decision or pattern of this project that the prompt cites becomes `Brief in the record: <id>` with no pointing word needed. The prompt itself is still never recorded.
+- **`npm i -g @mnema/code` installs 5 packages, not 145.** The published manifest declares only what the bundle imports
+  at run time, `string-width`; the other twelve dependencies (the four sibling packages included) are
+  `devDependencies`, because the bundle carries their code. The tarball holds `dist/bundle/` (the stack index now sits
+  in `dist/bundle/stack-index/`), the notices and the manifest, and its `exports` name only `package.json`. If you
+  imported `@mnema/code` or `@mnema/code/library` from npm, that import now fails with "not exported": the library
+  is not a published surface, and the workspace's own `exports` are unchanged for the packages that build against it
+  here. The packed-install check and the Windows and macOS smoke now install `@mnema/code` alone and fail above five
+  packages.
+- **The pages now describe what changed since 0.1.8.** Documentation only, no behaviour changes: the help of the hook verbs
+  says that a refusal opens with its code alone under `MNEMA_FOR_A_HOOK=1`, and of `corrections` and `tally` what counts as
+  the person's line; the backup pages say that a copy of another record is asked and undone and that a git remote is a
+  destination; the pages on `verify`, `doctor`, `recall`, the glossary and the install page say what a symbolic link in the
+  record does, what `doctor` lists, what the last-session section cites, what a write after a branch switch leaves, and how to
+  check a release's Sigstore bundles.
+- **The marketplace lists both plugins from the `release` branch, and `mnema doctor` says whether the installed plugin's files are the released ones.**
+  The branch is moved to each release's tag by the release workflow, with a deploy key only that job can read, and by a push that
+  is refused unless it is a fast-forward; the entries of `.claude-plugin/marketplace.json` are now of the `git-subdir` form with
+  `ref: release`. A plugin installed from the folder of `main` is updated with the commands in
+  [Install](docs/install.md#if-you-already-had-the-marketplace), measured on Claude Code, Codex and Copilot CLI. `doctor` hashes the
+  folder Claude Code installed the plugin in (a line ending is not a difference) against the digest the build wrote into the binary,
+  and says "the ones released with this binary" or "the label but other content"; it says nothing where the binary is not the
+  bundle. A copy of `plugin/opencode/mnema.js` and the Gemini and Qwen checkouts in the Hosts page are now of a release tag, not `main`.
+- **The property tests spell their seed once, in a setup file every configuration loads, and `exitCodeOf` is pinned to rank a broken ruler above a passed run.** Two small test changes, no change to the product. Thanks @tylrcc.
+- **`status`, `brief`, the hooks, the edit gate and the server's tools name a symbolic link in a record, serve the rest, and open nothing it points at.** Until now only `verify` did: a segment, `checkpoints.jsonl`, `tailproof.json`, a key file or a witness file replaced by a link was followed by every other read, so the bytes of a file outside the repository could be served as the record, and a tail that was a link vanished from them in silence. A segment or a tail that is a link is now left out of the reads that serve the record, and each says where it is (`tails/<tail>/000001.jsonl is a symbolic link, and a record is read from its own files and directories: ...`) with the way out, which is to replace the link with the folder or file it points to. They say it first, as they say a line they cannot read (see the entry on a line that does not read); a link at `checkpoints.jsonl`, `tailproof.json`, a key file or a witness file is not among the parts these reads leave out, and `verify` is what fails on it. A write is refused (the file the link points at is not touched), and the edit gate denies. The readers the command hooks of Cursor, Qwen Code, Gemini CLI and OpenCode run before `mnema` doubt a link too, found by `lstat` and never opened, so the verb runs and denies the write instead of the hook letting it through, and a link to a pipe hangs neither them nor a command. A cache that remembers a segment is not believed over one that became a link. The record's root and the folders above it are not judged.
+- **The suite runs in three shards per Node.** CI used to run the whole suite in one job per Node, 11 to 14 minutes of which
+  the pull request waited. Each Node now runs it as three shards at the same time (`test (node 24.15.0, shard 1/3)` and the
+  other eight), lint and the type-check run once in `lint + typecheck` instead of once per Node, and the coverage of the three
+  shards on Node 24 is merged in `the coverage gate`, which checks the same thresholds against the figures of the whole
+  suite. A guard fails if the matrix and the steps disagree on the number of shards, or if the merge does not wait for them
+  and count their blobs.
+- **The write that founds a tail signs a checkpoint over what it founded before the act goes on.** A process killed later in a new
+  tail's first act, after its writes and before the checkpoint that ends the act, left a tail with events and no checkpoint, which a
+  clone withholds and which denies there until the next write of its key; now a clone reads the founding as proven and the act's later
+  writes as the one write's window, served and governing nothing. Only a crash inside the founding write itself, between its lines and
+  its checkpoint, still leaves a tail with no checkpoint. An act that founds a tail and writes nothing more signs nothing more at its
+  end; one that goes on signs one checkpoint more. The checkpoint, its format and its signature are the ones the writer always signed,
+  a tail that already holds events is written as before, and the second reader needs nothing.
+- **The notice of events recorded and not yet signed says what they cost.** While such a window stands a catch-up cannot take only
+  the new lines, so every session reads the whole record again (on a 503-event record, `mnema status` took 0.33 s without the
+  window and 0.77 s with it, on a loaded machine); a window nobody signs makes that permanent. The line now says so, and says how it
+  ends: the tail's owner writes once (and commits), or, in the public tree, `mnema tail repair <tail>` puts the tail back from the
+  repository's history. What is proven, and what the gate decides, did not change.
+- **What an earlier mnema kept in the record's own `keys/` and `locks/` is moved at the first write.** Once per key and checkout, the
+  id and the notes of the key's tails go to the new places, under the earlier lock and then the new one, the id last: an interruption
+  leaves a write that finishes the move, never a fork. Where the two places hold different notes of one tail, the tail is retired
+  (no write goes on with it, and a new one is opened), and a note or an id an earlier mnema writes in the record again afterwards
+  is left where it is. A checkout that an earlier mnema still writes holds one tail more, for as long as it writes, and `verify`
+  accepts it as it accepts any tail. One window stays: after the move this mnema writes a tail only under the new lock and the earlier
+  one only under its own, so an earlier mnema process that opened its writer before the upgrade and makes a second act in the same
+  process, at the very moment this one writes the same tail, can start from the same end and fork it. Restarting the host after
+  updating closes it.
+- **A write inside a repository is refused where the notes cannot be kept, and the note naming each line is made certain first.**
+  The note an append writes before its line is synced and read back; where that fails, the write is refused with
+  `INTENT_NOT_KEPT` and nothing is written. A git directory that lies inside the working tree, and a place under `.git` that
+  cannot be written, are refused by name with `MACHINERY_UNAVAILABLE`, and a worktree whose git directory is gone is not given
+  one again. The refusal to write through a symbolic link follows the lock and the notes to their new place. Each write in a
+  repository syncs the intent note and its directory, which one write in a repository did not do before.
+- **A project reached through a link notes its tail where the file system says the project is**, so the folder and the link share
+  one place and one lock.
+
+### Fixed
+
+- **A build of mnema no longer rewrites the read cache another build wrote, unless it is a newer version.** `locks/projection.db`
+  is one file per tree and carries the stamp of the code that wrote it, now with the mnema version. A process whose code
+  differs, such as another installed version or a checkout under development, used to replay the whole record and rewrite
+  the file, and the long-lived server of the first build then replayed it back (158 MB read and 114 MB written per write in
+  a measured session). Now only a newer version takes the file over (once, after an update); the same version or an older
+  one, and a file that is busy or locked, builds in memory for that process and leaves the file alone. A file with no stored
+  version counts as the oldest, and a suffix such as `-beta` does not order versions. The process that does not take the file pays a replay on each command and each hook of the
+  command line, and once per MCP server. Deleting `locks/projection.db` is always safe. A missing or damaged file is still
+  built and kept.
+- **A rewrite of the record that keeps its size is no longer served from a warm cache.** An edit to a line before the last one of
+  a tail's live segment, to the same size, used to leave the projection cache and a session's memory of the record where they
+  were: the same unreadable line was refused by a cold read and accepted by a warm one, and a decision turned from accepted to
+  rejected was reported as it had been. The cache now keeps, for the segment each tail is appending to, its size, its modification
+  time and the sha256 of the bytes below what it read, and hashes only when the size or the time moved; a session replays whole
+  when its last segment changed without growing, and the small index of the other projects of a workspace carries the same time.
+  It does not see a rewrite that puts the modification time back on purpose, nor one inside the resolution of the filesystem's
+  clock (a second on HFS+, two on FAT and exFAT): `verify` and a cold read are what read every byte.
+- **A tail proof a power cut left empty or cut short is written again, and the staging notes of a killed writer are removed.** A
+  `tailproof.json` that existed and did not parse was never replaced: every later write passed in silence and `verify`, in both
+  readers, refused the tail for good. The next write of the tail now writes it again, to the disk like the birth, when it is empty
+  or does not parse; one that parses is left as it is, whichever record it names. The files a writer stages in `locks/` before it
+  renames them into place (`<tail>.head.<pid>`, `<tail>.head.sig.<pid>`, `<tail>.cited.<pid>`) stayed for good when the writer was
+  killed in between; a writer holding the tail's lock now removes the ones of that tail whose pid no longer answers, and never the
+  ones of another tail or of a writer that is alive.
+- **A tail that lost its start is refused for the damage first.** When the segment of a tail was emptied or deleted, or the first
+  segment of a tail of several was removed, the first refused write said `STALE_ANCHOR` and advised deleting `keys/<fp>.anchor`,
+  which is not the damage (after it the write said `TAIL_DAMAGED`, or passed over a tail with no start and left `verify` failing).
+  A write whose recorded identity no longer counts its key now asks the tail first and says `TAIL_DAMAGED`: where the tail ends
+  short of what its checkpoints signed, or where it begins above seq 0. `mnema init` says the same refusal, not the anchor's.
+  A tail removed whole is still refused `STALE_ANCHOR` first.
+- **A `CLAUDE.md` with many unclosed HTML comments no longer slows `init`, `instructions` and `doctor`.** Whether the file imports `AGENTS.md` is read in one pass: each comment marker is looked up once, so 20,000 lines of unclosed comments take milliseconds instead of more than a second. Thanks @bfs2021.
+- **A longer run of backticks no longer closes a code span early** when mnema reads whether a `CLAUDE.md` imports `AGENTS.md`: a span closes only at a run of exactly the length of its opener, so a longer run neither ends it nor counts as part of a shorter one. Thanks @jay23606.
+- **A checkout that goes back and forth between two branches no longer opens a tail at every visit, and a worktree no longer opens one
+  for nothing.** When the tail a worktree's hint names does not end where this machine left it, the write now goes on with another tail
+  of the same key that does, before it opens one: a tail this worktree wrote itself on the branch it is on now, or whose end is already
+  on the base branch (the remote's default branch as the clone last read it), and that no other worktree names as its hint. Six visits alternating between two
+  branches leave two tails, not six; a worktree made after the others were merged and removed goes on with a tail they left. A tail
+  whose end only some branch holds is never gone on with by another branch (another worktree's, a branch cut from the one that wrote
+  it, or a detached HEAD, the tail the hint names included): a branch cut from another that the host has not merged founds a tail, so
+  two branches never write one tail file past the point they share and a squash merge of one and a merge of the other on a host with
+  no merge driver conflict on none. A tail no mark of the worktree speaks of (written before marks were kept) is asked of the base
+  branch once, and the first write after it is marked. In a repository kept in the `reftable` format, whose `HEAD` file names no
+  branch, the branch is asked of git. The questions put to the base branch take ten seconds in all; a git that does not answer in that
+  time counts as no, the write opens a tail, and the sentence says the base branch did not answer. Where a repository has no remote, or no default branch
+  known to it, a worktree goes on only with the tails it wrote itself. No event, field, check or vector differs, and the second reader
+  needs nothing.
+- **A write that opens a tail where the key already writes others says why.** `mnema: wrote to a new tail, ...` now says whether this
+  repository holds no note of this machine writing any of them (a new clone, or the key on another machine), none ends here where this
+  machine left it or is on the base branch, the ones that do are the hint of another worktree, or they were being written by another
+  process. The first tail of a key in a record stays silent, as does a write that goes on with a tail.
+- **A tail founded in a record of many tails no longer cites every other tail's head.** The first entry of a new tail used to
+  name the head of every other tail, so it took about 20 KB among 300 tails and the whole record grew with the square of their
+  number. A writer now cites the frontier: the heads that no other tail's head already covers, the head of every tail that holds
+  the enrolment of a key, on a move or a retraction the head of every tail that holds its subject, and for the facts that add,
+  remove or vouch for a key every head it has not cited directly (ADR-321, ADR-506). The same first entry takes about 660
+  bytes at 101 tails and at 301, a record of 301 tails takes 14% of the bytes it took, `verify` is faster in both readers, and
+  a write is within a few percent of what it was. No reader, kind or field changed: both readers verify a record written either
+  way, and in a record that holds every tail the order and what a move had read are the ones citing every head gives. A clone
+  missing a tail that covered another can place some informative entries by the clock; `FORMAT.md` says which and measures it.
+  The writer keeps two notes more in `locks/` (what its citations cover, and what each tail cites), rebuilt from the tails when
+  lost or when they do not agree with the bytes.
+- **A folder or a file the disk will not open is named, not printed as the system's error.** A `tails/` folder, a tail's
+  folder or a segment with no permission, and a file where `tails/` or a tail's folder belongs, used to end commands in the
+  system's own message (`EACCES: permission denied, scandir ...`), inside a repository or outside one. The reads that
+  serve the record (`status`, `show`, `search`, `brief`, `rules`, `why`, the bare command) now serve around the part and
+  say it on the first line, as they say a line they cannot read; every write, `switch off` included, is refused naming where
+  the part is and what to do, and so is a write of the agent's server. The refusal names no repair: the verb that puts a line back from git puts
+  back no permission, and the private and the global tree have no history to put anything back from. A test
+  runs the binary on each damage, outside and inside a repository, and is red on any name from the system's own table
+  of errors.
+  The same holds for the folders a write meets on its way: a `locks/` or a `keys/` folder with no permission, a file
+  where `locks/` belongs, and an installation id the disk will not open or create are named by their place (`locks`,
+  `keys/<name>.inst`) in every tree and in the key folder, and so is the doctor command's listing of `keys/`. A restore
+  of another record over a tree whose `tails/` folder the disk will not open is refused naming the part, instead of
+  reading the tree as holding no tail and putting the copy over it. The agent's server refuses a write over such a part
+  with its own code, `UNREADABLE_PART`, and in words for an act that names no path.
+  A part outside the record's own folder is named with where it is (the git directory's `mnema` folder inside a repository,
+  the identity's keys folder in the mnema home), and `doctor` lists each such folder it cannot open as something to do,
+  as a read, instead of saying all is well.
+  Not covered: the audit commands (`verify`, `export`, `backup status`) refuse in one block and do not serve around the
+  part.
+- **A detached OpenTimestamps proof with bytes after its end is refused by both readers.** The Python reader refused a `.ots`
+  with trailing bytes ("N trailing bytes after the proof"), and the TypeScript reader read the proof and ignored the rest, so
+  the same file was a refusal in one and a verified witness in the other. The TypeScript reader now refuses it with the same
+  words. A vector both readers run (`PROOF_WITH_A_TRAILING_BYTE_HEX`) holds them to it; the existing vectors and the proof
+  format are unchanged.
+- **A `mnema decision review` run with no terminal offers an accept only where an agent may make one.** With `agent-accepts`
+  switched off it already left only the reject line; with the switch unreadable it still offered the accept line,
+  which an agent is then refused. It now leaves only the reject line and says the switch could not be read. The pages that
+  describe the VS Code extension (`docs/packages.md`, `docs/features.md`) now say that with `agent-accepts` off its Accept
+  button is refused and a person accepts with `mnema decision review` in a terminal, as the extension's own README already did.
+- **`git clean -fdX` no longer makes the next write open a tail.** Inside a git repository, a writer's lock and its notes of what it
+  wrote last (`<tail>.lock`, `.head`, `.head.sig` and `.cited`) now live under the repository's common git directory
+  (`<git common dir>/mnema/<project>/public/locks/`), where a clean of what git ignores does not reach, and each worktree keeps its
+  installation id as a hint under its own git directory (`<git dir>/mnema/<project>/public/keys/`). The write after a clean goes on
+  with the same tail instead of opening one, and says nothing, as it never did. What a reader of the record sees is unchanged:
+  no event, no field and no check differs, and the second reader needs nothing.
+- **A write the disk could not create a segment for says nothing was written.** The refusal said the part of the write that
+  reached the tail "could not be cut back" when no file had been created, so nothing had reached it. `docs/what-it-proves.md`
+  now says what a failed `fsync` leaves unproven: a checkpoint proves the bytes the writer saw, not that they reached the disk.
+- **A write the disk fails now says whether the fact landed, and no longer reports a failure for one that did.** A full disk
+  (`ENOSPC`) or an I/O error (`EIO`) used to end a write with the bare errno and exit 1 whichever file call had failed, though
+  three of the four calls that can fail leave the fact on the tail: the append of its checkpoint, and the sync of the segment or of
+  the checkpoint file. A caller that retried wrote the fact twice. Now, where the line was not written, the write is refused
+  by name (`WRITE_NOT_LANDED`, the errno in the sentence, `isError` on the MCP tool, exit 1) and trying again is safe; where the
+  line is on the tail and its checkpoint is not, the write succeeds (exit 0, no `isError`) with one line, `recorded, not yet
+  signed: the next write signs it`, and the disk's error, which the next write then signs; where the checkpoint is in the file
+  and only its sync failed, the line says the disk did not confirm the signature. The command line prints the line on standard
+  error and the server puts it in the reply (a program that calls the library, and a hook, get it on the standard error of their own
+  process, as they do the sentence for a new tail). A write of several entries that the disk tears halfway is cut back to what the
+  segment held before it, so "nothing was written" is true of the file. A sync that fails after the line was written is decided by reading the end of the
+  file, not by the error. It does not retry a failing disk, and a power cut or a disk that fails after reporting success is
+  still for `verify` to find.
+- **Refusals for a long text no longer end in `.:`.** The sentences that report a missing text or a text given from
+  two places ended in a period, and the printer joins the sentence and its detail with `: `, so a person read `.:`.
+  The sentence now has no final period, and the detail keeps its own. Thanks @bfs2021.
+- **Relinking tails no longer writes over an altered entry.** In a directory holding tails of two records, which is
+  where the verb is used, the check that refuses a write while an entry is altered saw nothing, because every reading of
+  such a directory reads no tail; the relink was signed over the altered record. The check now asks the chain's own
+  verification there. A test enumerates every verb, hook and agent tool declared as writing and runs each over an
+  altered entry and over a line that cannot be read.
+- **Four patterns that backtracked quadratically on input the product does not write are read in one pass.** The `name:` and `type:` lines of a host memory file, the e-mail shape of a Sigstore identity, the trailing slashes of a tar entry name and of the folder the two ADR scanners read now take milliseconds where the worst cases took 1.5 to 14 seconds. What each one accepts is unchanged.
+- **Harness text no longer reads as something the person said.** The reading of a Claude Code transcript took a `user`
+  line with no `origin` as the person's prompt, so a compaction summary, a local command (`<command-name>`,
+  `<local-command-stdout>`) and `[Request interrupted by user]` were counted as a person's words: they could end a
+  response in `mnema tally` and be quoted as a correction by the corrections hook. A line is now a person's only when
+  the host marks it `origin.kind: human`, and a compaction summary is passed over even when it carries that mark. A slash
+  command the person typed still begins a new response, but its text is never quoted as something they said. A
+  transcript of an older Claude Code with no `origin` field has no line read as the person's (it fails closed).
+- **With `agent-accepts` off, an agent can no longer replace a decision or switch the brake back on.** A `supersede`
+  is now asked like an `accept`: refused (`AGENT_ACCEPTS_IS_OFF`) when it declares an agent, and when it declares none
+  unless it is made at a terminal, through `decision supersede` and through `decision_transition` alike (before,
+  an agent took a decision a person had accepted out of force by superseding it with a proposed successor, and nothing
+  was in force afterwards). `mnema switch on agent-accepts` is a person's too: it is refused
+  (`AGENT_ACCEPTS_NEEDS_A_PERSON`) with an agent declared and with no terminal, and `switch off` and every other channel
+  stay open to anyone. `reject` is unchanged.
+- **With `agent-accepts` off, an agent cannot adopt or deprecate a pattern either.** `skill_transition` (adopt and
+  deprecate) and the command line's `skill move` are asked like a supersede, under the tail's lock: refused with an
+  agent declared, and with none unless at a terminal. `review` and `reject` are unchanged. The tool descriptions of
+  `decision_transition` and `skill_transition` say so.
+- **The first write after `git init` goes on with the tail `mnema init` wrote, instead of founding a second one.** `mnema init` in a folder that is not yet a git repository writes its first entries to a tail with no mark of the branch, and a repository with no remote has no base branch to ask, so the first write after `git init` founded a second tail and left the first with only those entries. A tail that is the only one of its key in the checkout, that no mark and no note of another tail of the key on this machine speaks of, and that either no commit holds a file of or every ref that contains a commit holding one (branches, remote-tracking branches and tags) is the branch the write is on, alone, is now continued, so `mnema init`, `git init`, a commit of the record and a first write make one tail, not two, and the write marks it with the branch it is on. Everything else is as it was: a tail with a mark on another branch, one of several tails of the key, and one another branch, a remote or a tag holds too still ask the base branch, and so does a branch cut later from the one that wrote the tail. The private tree and the global one keep asking the base branch, since no repository's history holds them.
+- **`mnema recall --hook` stays inside what a hook carries when the last session recorded hundreds of decisions.** The section
+  on where the last session stopped named every decision it recorded on one line; on a record where one session had recorded
+  about 590, the text came to 12,271 characters, over the 10,000 a hook carries, so the host replaced it with a file path
+  and the session opened with no notes. The section now names the newest five and counts the rest, and the verb hands
+  nothing, rather than a text above the ceiling, when even the part that is always printed would not fit, and says on the error
+  stream that it did.
+- **The shell blocks of the command reference pages hold no trailing comment**, so a block a reader pastes runs as pasted. The `completion` and `instructions` pages and `docs/cli-reference.md` were changed first, and four more pages followed. Thanks @mentallyunstable-lab.
+- **A write no longer goes through a symbolic link in the record.** A link where the writer writes (`tails/`, the tail's own
+  directory, `keys/`, `locks/`, or a segment, `checkpoints.jsonl`, `tailproof.json`, the public key, or a lock or note in
+  `locks/`) used to carry the bytes to wherever it pointed while the write read as done, and a `locks/` that was a link
+  received the lock, the notes and the staging files. Now the write is refused by name (`RECORD_LINKED`, the path of the link
+  in the sentence, `isError` on the MCP tool, exit 1), with nothing written and nothing the link points at opened; the
+  hooks' own write says it in the reason. It does not found a new tail in the link's place: the link stays, and the refusal
+  says to replace it with the folder or file it points to. `init` refuses a linked `.gitignore`, `.gitattributes` or
+  `.mnema/README.md` the same way. A read no longer creates its projection cache through a linked `locks/`: the cache
+  stays in memory there, so the folder the link points at gains no file from a read either. A write is refused when a link stands in a place it writes, and not for a link anywhere
+  else in the record, which the reads already refuse. The one gap left is a window between the question about `locks/` and the creation of the lock: a `locks/` that becomes a link in it receives the lock file, and the question under the lock refuses right after.
+- **A write is refused over a tail that begins above seq 0.** With the tail's first segment file gone and the anchor still counting,
+  the next write appended over the rest and left `mnema verify` failing on a seq gap. The writer now refuses it as `TAIL_DAMAGED`
+  ("begins at seq N and not at seq 0"), whatever the anchor says, and leaves the tail as it was; so does a checkpoint over it. A first segment emptied, or cut inside its first line, with segments after it is the same missing start. `mnema init` and the write ask the
+  files one rule: a tail that only lost the last newline of a signed line is named by both (`init` named nothing before). Checkpoints
+  taken out under a whole end are still named by the writer alone, because they need the signed note of the key's last write.
+- **`mnema verify` reads a tail's checkpoints before the tail, and the Action labels a pull request only from proven decisions.** A verify run beside a write no longer reports a signed fact as missing, and its output on a quiet record is unchanged. The GitHub Action names a decision a pull request cites only from events a signed checkpoint proves, as every read of the product does since 0.1.9; a decision past the last checkpoint is named by its id alone.
+
 ## [0.1.8] - 2026-11-11
 
 ### Added
@@ -2997,6 +3567,7 @@ Requires Node ≥ 22.12.0; the packages are ESM-only.
   committed tree (`packages/chain/FORMAT.md` §4.1).
 
 [Unreleased]: https://github.com/mnema-work/mnema/commits/main
+[0.1.9]: https://github.com/mnema-work/mnema/releases/tag/v0.1.9
 [0.1.8]: https://github.com/mnema-work/mnema/releases/tag/v0.1.8
 [0.1.7]: https://github.com/mnema-work/mnema/releases/tag/v0.1.7
 [0.1.6]: https://github.com/mnema-work/mnema/releases/tag/v0.1.6
