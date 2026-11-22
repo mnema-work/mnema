@@ -239,6 +239,18 @@ function namesOf(name: Buffer): Map<number, string> {
   return found;
 }
 
+/** EVERY record of a `name` table (every platform, encoding and language), as text, by name id. */
+function everyNameOf(name: Buffer): { id: number; text: string }[] {
+  return Array.from({ length: name.readUInt16BE(2) }, (_, i) => {
+    const r = 6 + i * 12;
+    const from = name.readUInt16BE(4) + name.readUInt16BE(r + 10);
+    const raw = Buffer.from(name.subarray(from, from + name.readUInt16BE(r + 8)));
+    const text =
+      name.readUInt16BE(r) === 1 ? raw.toString('latin1') : raw.swap16().toString('utf16le');
+    return { id: name.readUInt16BE(r + 6), text };
+  });
+}
+
 /** The tags of the layout features a `GPOS` or `GSUB` table offers. */
 function featuresOf(table: Buffer): string[] {
   const list = table.readUInt16BE(6);
@@ -278,6 +290,13 @@ describe("the record page's fonts", () => {
       .filter((n) => n !== undefined);
     expect(naming).toContain('mnema mono');
     for (const name of naming) expect(name).not.toMatch(/plex|ibm/i);
+    // Every record, on every platform and in every language, but the copyright (0) and the licence (13, 14).
+    const records = everyNameOf(woff2Tables(mono).get('name') ?? Buffer.alloc(0));
+    expect(records.length).toBeGreaterThan(0);
+    for (const { id, text } of records) {
+      if (id === 0 || id === 13 || id === 14) continue;
+      expect(text, `name record ${id}`).not.toMatch(/plex|ibm/i);
+    }
     expect(names.get(0)).toContain('Copyright 2017 IBM Corp.');
     expect(names.get(13)).toContain('SIL Open Font License');
   });

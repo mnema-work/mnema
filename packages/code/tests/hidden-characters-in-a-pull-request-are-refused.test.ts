@@ -335,7 +335,31 @@ describe('the four workflows of the security checks', () => {
     const text = code('.github/workflows/dependency-review.yml');
     expect(text).toContain('fail-on-severity: moderate');
     expect(text).toContain('comment-summary-in-pr: on-failure');
-    expect(text).toMatch(/allow-licenses: >-\n\s+MIT, Apache-2\.0, BSD-2-Clause/);
+    const listed = /allow-licenses: >-\n((?: +[^:\n]+\n)+)/.exec(text)?.[1] ?? '';
+    // The whole list, as it is on main: a license added here is the review's to see.
+    expect(
+      listed
+        .split(',')
+        .map((l) => l.trim())
+        .filter((l) => l !== ''),
+    ).toEqual([
+      'MIT',
+      'Apache-2.0',
+      'BSD-2-Clause',
+      'BSD-3-Clause',
+      'ISC',
+      '0BSD',
+      'BlueOak-1.0.0',
+      'MPL-2.0',
+      'Artistic-2.0',
+      'Zlib',
+      'CC0-1.0',
+    ]);
+    // The action matches argparse by name in any version: the lockfile holds it at 2.0.1 only.
+    const versions = [...code('pnpm-lock.yaml').matchAll(/^ {2}argparse@(\S+?):/gm)].map(
+      (m) => m[1],
+    );
+    expect([...new Set(versions)]).toEqual(['2.0.1']);
     expect(text).toMatch(/^ {10}allow-dependencies-licenses: pkg:npm\/argparse@2\.0\.1$/m);
     expect(text).toMatch(/^ {6}pull-requests: write$/m);
   });

@@ -1,7 +1,8 @@
 /**
  * What the record page wears of the brand, written by a script of the repository and held equal to it by a test:
  * do not edit. The eye of the header and of the favicon are the brand's eye at rest, still; the faces are Archivo
- * (two static instances of the variable font, Latin only) and IBM Plex Mono Regular (the authors' file, whole), as data.
+ * (two static instances of the variable font, Latin only) and IBM Plex Mono Regular
+ * (a subset of it, renamed 'mnema mono' under the OFL), as data.
  * The script's own comment says what is kept of each and why.
  */
 
