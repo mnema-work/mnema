@@ -1652,7 +1652,7 @@ SOFTWARE.
 
 # Fonts embedded in the record page
 
-The page `mnema site` writes carries two typefaces as WOFF2 data, each a Latin subset of the authors' font under the SIL
+The record page that mnema writes carries two typefaces as WOFF2 data, each a Latin subset of the authors' font under the SIL
 Open Font License 1.1, which is the text below each name.
 
 ### Archivo
