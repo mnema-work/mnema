@@ -306,7 +306,7 @@ describe('what the server answers', () => {
 
   it('sends no control byte in any block of any read', async () => {
     const replies = await asked([
-      { name: 'search', arguments: { query: 'Release' } },
+      { name: 'search', arguments: { term: 'Release' } },
       { name: 'search', arguments: {} },
       { name: 'read_record', arguments: { id: decisionId } },
       { name: 'audit_timeline', arguments: { id: decisionId } },

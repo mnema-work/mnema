@@ -16,7 +16,14 @@
 
 import type { AgingDone } from '../commands/aging.js';
 import type { CommitPage, CommitsDone } from '../commands/commits.js';
-import type { WhyCitation, WhyCommit, WhyCommitDone, WhyFile, WhyRule } from '../commands/why.js';
+import type {
+  WhyCitation,
+  WhyCommit,
+  WhyCommitDone,
+  WhyFile,
+  WhyRule,
+  WhyVerdict,
+} from '../commands/why.js';
 import { inheritedFromText } from '../inherited-record.js';
 import { oneLine } from '../one-line.js';
 import { aside, fact, subjectLine } from './detail.js';
@@ -110,6 +117,26 @@ const WHAT_THE_RULE_DOES: Readonly<Record<WhyRule['relation'], string>> = {
   'asks-for-a-person': 'asks for a person',
 };
 
+/** The verdict of a write at a path, as a sentence. */
+const THE_VERDICT: Readonly<Record<WhyVerdict, string>> = {
+  refuse: 'a write here would be refused',
+  ask: 'a write here would wait for a person',
+  governs: 'a write here would go through, with the rules that govern it beside it',
+  none: 'a write here would go through; no rule addresses it',
+};
+
+/** The verdict line: the gate's own reason's first paragraph when the record refuses the write. */
+function verdictSentence(done: WhyFile): string {
+  if (done.refusal !== undefined) {
+    return `${THE_VERDICT.refuse}: ${oneLine(done.refusal.split('\n\n')[0] ?? '')}`;
+  }
+  if (done.notDelivered === true) return NOT_DELIVERED;
+  return THE_VERDICT[done.verdict];
+}
+
+const NOT_DELIVERED =
+  'a write here would go through; the rules that govern it are not handed to an agent when it edits there';
+
 /** The rows of the rules that address something. */
 function ruleRows(render: Render, rules: readonly WhyRule[]): string[] {
   return rules.map((rule) =>
@@ -120,6 +147,7 @@ function ruleRows(render: Render, rules: readonly WhyRule[]): string[] {
         oneLine(rule.name),
         asId(oneLine(rule.id)),
         ...(rule.inherited !== undefined ? [inheritedFromText(rule.inherited)] : []),
+        ...(rule.decided === undefined ? [] : [rule.decided ? 'decides' : 'does not decide']),
         ...(rule.files !== undefined
           ? [`${rule.files} changed file${rule.files === 1 ? '' : 's'}`]
           : []),
@@ -170,6 +198,7 @@ export function whyReport(render: Render, done: WhyFile | WhyCommitDone): string
         done.exists ? 'in the working tree' : 'not in the working tree',
       ),
     ),
+    render(fact(`verdict: ${verdictSentence(done)}`)),
     render(
       fact(
         `rules in force that address this path: ${done.rules.length}` +

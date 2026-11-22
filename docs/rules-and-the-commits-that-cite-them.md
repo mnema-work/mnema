@@ -2,6 +2,33 @@
 
 A rule that names the program that checks it, and the verbs that read the git log against the record.
 
+## Rules that are checked against paths
+
+A person or CI declares, in a JSON file, the paths and the verdict each must meet, and the verb below
+checks them against the record's rules, so a rule that stops covering a path is caught.
+
+```json
+{
+  "cases": [
+    { "path": "src/billing/invoice.ts", "expect": "refuse" },
+    { "path": "src/ledger/entry.ts", "expect": "ask" },
+    { "path": "src/docs/guide.md", "expect": "governs" },
+    { "path": "README.md", "expect": "none" }
+  ]
+}
+```
+
+```sh
+mnema rules test path/to/cases.json
+```
+
+A path is relative to the project's root. `refuse` and `ask` are what the gate answers for a write there (the
+same function the per-edit hook asks, so a switch turned off or a link that leads elsewhere changes the answer
+as it changes the gate's); `governs` is a rule linked `governs` there with nothing refusing or asking; `none` is
+no rule standing over the path. Each case prints `MATCH` or `MISMATCH` with what the path met and the ids of the
+rules behind it. The exit code is 1 when any case misses, and a file with no case, a verdict it does not know or
+a file that is not JSON is refused, and so is a case whose path is absolute or leaves the project, and a record the gate cannot read (an unreadable line or an altered entry: the gate would deny every write, so no verdict is printed). `--json` is not supported and is refused. `test` is a verb of `rules`, so a folder named `test` is asked as `./test`. Nothing is written.
+
 ## A rule that carries its check
 
 A decision in force can name the program that checks it, and a machine of its own can record, at a
@@ -79,6 +106,11 @@ mnema commits ADR-4
 # Under which decisions a file stands, or a commit: the rules in force that address it, each
 # saying what it does there (governs, refuses a write, asks for a person), and the commits that
 # touched it and carry a trailer. A rule the project inherits is listed too, naming its origin.
+# For a file it also says the verdict a write there would meet: `refuse`, `ask` (it waits for a
+# person), `governs` (it goes through with the rules beside it) or `none`. The rules come in the
+# order the gate applies them (a refusal, then an asking, then the governing), and each says
+# whether it `decides` or `does not decide` the verdict. `--json` carries `verdict` and, on each
+# rule, `decided`.
 mnema why src/billing/invoice.ts
 # With `edit-rules-push` switched off, `rules` and `why` add, on the second stream, that
 # the rules governing the path are not handed to an agent when it edits there.
@@ -86,6 +118,16 @@ mnema why src/billing/invoice.ts
 # Accepted decisions whose addressed paths changed in many commits since they were accepted.
 mnema aging --min-commits 10
 ```
+
+**The verdict is the gate's own answer.** `why` asks the same function the hook before a write and
+`governing_rules` ask (`whatAWriteMeets`), over the same rules, so the verdict it says is the one
+a write at that path would meet, including a channel switched off: a refusal whose channel is off
+is listed and `does not decide`. When the record itself refuses the write (an entry altered after it
+was written, or a line this mnema cannot read), the verdict is `refuse` whatever the rules say, with
+the gate's own reason (`refusal` in `--json`, its first paragraph on the page), and no rule decides.
+With `edit-rules-push` off, a governing rule still stands over the path and the write goes through,
+but the rules are not handed to an agent: the page says so, `--json` carries `notDelivered`, and the
+rules do not `decide`. An asking is `ask` for the gate even in a host that does not ask a person.
 
 **What it proves.** That a commit's message carries the trailer, and that a commit touched a path
 a decision addresses: facts git holds and anyone can re-run with `git log`. **What it does not.**

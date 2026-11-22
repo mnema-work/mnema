@@ -15,7 +15,19 @@
  *   - a refusal writes nothing at all: a half-done restore is the split.
  */
 
-import { existsSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  readlinkSync,
+  rmSync,
+  symlinkSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -32,6 +44,7 @@ import {
   materializePublicKey,
   openChainForWriting,
   protectPrivateKeys,
+  RecordLinkedError,
   sign,
   verify,
 } from '@mnema/chain';
@@ -65,6 +78,19 @@ function tmp(prefix: string): string {
   const dir = mkdtempSync(join(tmpdir(), prefix));
   scratch.push(dir);
   return dir;
+}
+
+/** Every file of a tree but `locks/`, by path: its bytes, or where a link points. */
+function treeWithoutLocks(root: string, dir = ''): Record<string, string> {
+  const found: Record<string, string> = {};
+  for (const entry of readdirSync(join(root, dir), { withFileTypes: true })) {
+    const path = dir === '' ? entry.name : `${dir}/${entry.name}`;
+    if (path === 'locks') continue;
+    if (entry.isSymbolicLink()) found[path] = `-> ${readlinkSync(join(root, path))}`;
+    else if (entry.isDirectory()) Object.assign(found, treeWithoutLocks(root, path));
+    else found[path] = readFileSync(join(root, path), 'utf-8');
+  }
+  return found;
 }
 
 /** A clock the test drives, so `at` is deterministic and monotonic. */
@@ -261,6 +287,68 @@ describe('restoreKey: the identity after the loss is the identity from before it
 });
 
 describe('restoreKey: refusals, each writing nothing', () => {
+  it('refuses to write the anchor through a symbolic link, and writes nothing', () => {
+    const lost = establishThenLoseTheKey();
+    const outside = join(tmp('mnema-restore-outside-'), 'elsewhere');
+    writeFileSync(outside, 'not an anchor\n');
+    const place = join(tree, 'keys', `${lost.backupFp}.anchor`);
+    rmSync(place, { force: true });
+    symlinkSync(outside, place);
+
+    expect(() => restoreKey({ privateKeyPath: lost.vaultCopy, keyRoot, tree, upcasters })).toThrow(
+      /This restore did not complete, nothing was restored/,
+    );
+    expect(() => restoreKey({ privateKeyPath: lost.vaultCopy, keyRoot, tree, upcasters })).toThrow(
+      RecordLinkedError,
+    );
+
+    expect(readFileSync(outside, 'utf-8')).toBe('not an anchor\n');
+    expect(lstatSync(place).isSymbolicLink()).toBe(true);
+    expect(listPrivateKeyFingerprints({ root: keyRoot })).toEqual([]);
+  });
+
+  it('refuses a restore whose keys/ is a symbolic link, and writes nothing', () => {
+    const lost = establishThenLoseTheKey();
+    const elsewhere = tmp('mnema-restore-keys-elsewhere-');
+    rmSync(join(tree, 'keys'), { recursive: true, force: true });
+    symlinkSync(elsewhere, join(tree, 'keys'));
+
+    expect(() => restoreKey({ privateKeyPath: lost.vaultCopy, keyRoot, tree, upcasters })).toThrow(
+      /keys is a symbolic link/,
+    );
+
+    expect(readdirSync(elsewhere)).toEqual([]);
+    expect(listPrivateKeyFingerprints({ root: keyRoot })).toEqual([]);
+  });
+
+  for (const dangling of [true, false]) {
+    it(`refuses a founding whose anchor place is a ${dangling ? 'dangling' : 'live'} symbolic link, before it appends`, () => {
+      const { writer, ctx } = machine(tree, keyRoot);
+      const outside = join(tmp('mnema-founding-outside-'), 'elsewhere');
+      if (!dangling) writeFileSync(outside, 'not an anchor\n');
+      mkdirSync(join(tree, 'keys'), { recursive: true });
+      const place = join(tree, 'keys', `${writer.signerFingerprint}.anchor`);
+      symlinkSync(outside, place);
+      const before = treeWithoutLocks(tree);
+
+      // Live or dangling, the writer's own ask about the anchor's place stops the founding before it
+      // reads the anchor (a live one would otherwise be read through as a stale anchor, and a
+      // dangling one as no anchor, which founds).
+      let caught: unknown;
+      try {
+        establishIdentity(ctx, { keyRoot });
+      } catch (error) {
+        caught = error;
+      }
+      expect((caught as { code?: string }).code).toBe('RECORD_LINKED');
+
+      expect(treeWithoutLocks(tree)).toEqual(before);
+      expect(existsSync(outside)).toBe(!dangling);
+      if (!dangling) expect(readFileSync(outside, 'utf-8')).toBe('not an anchor\n');
+      expect(lstatSync(place).isSymbolicLink()).toBe(true);
+    });
+  }
+
   it('refuses UNREADABLE_KEY for a file that is not a private key, and for none at all', () => {
     const junk = join(vault, 'not-a-key.txt');
     writeFileSync(junk, 'BEGIN NOTHING\n', 'utf-8');

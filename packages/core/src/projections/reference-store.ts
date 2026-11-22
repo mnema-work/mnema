@@ -500,6 +500,44 @@ export function listSubjectRuns(db: SqliteDatabase, kind: EventKind): SubjectRun
   return rows.map((row) => ({ entity: row.entity, run: row.run }));
 }
 
+/** One showing of a decision in force (`decision.seen`), as the reference index holds it. */
+export interface Showing {
+  /** The decision shown. */
+  readonly decision: string;
+  /** The identity whose key signed the showing. */
+  readonly who: string;
+  /** The agent declared on it: a showing with one covers nothing, and the product writes none. */
+  readonly which?: string;
+  readonly at: string;
+  /** The entry hashes of the accepts it covers: empty when it names none. */
+  readonly moves: readonly string[];
+}
+
+/** Every showing in this tree, in the tree's order. */
+export function listShowings(db: SqliteDatabase): Showing[] {
+  const rows = db
+    .prepare(
+      `SELECT entity, who, which, at, json_extract(event, '$.payload.moves') AS moves
+         FROM refs
+        WHERE role = 'subject' AND kind = 'decision.seen'
+        ORDER BY ord`,
+    )
+    .all() as Array<{
+    entity: string;
+    who: string;
+    which: string | null;
+    at: string;
+    moves: string | null;
+  }>;
+  return rows.map((row) => ({
+    decision: row.entity,
+    who: row.who,
+    ...(row.which !== null ? { which: row.which } : {}),
+    at: row.at,
+    moves: row.moves === null ? [] : (JSON.parse(row.moves) as string[]),
+  }));
+}
+
 /** A run that was charged at a path, and when it last was. */
 export interface ChargeAt {
   /** The run the charge belongs to. */

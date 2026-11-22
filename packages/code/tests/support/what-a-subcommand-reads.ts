@@ -18,7 +18,14 @@ export const WHAT_A_SUBCOMMAND_READS: Readonly<Record<string, readonly string[]>
   // what its `--help` lists, and the value is read off the group where commander put it.
   'task create': ['--scope', '--which'],
   'task handoff': ['--scope', '--which'],
-  'decision record': ['--alternatives', '--body-file', '--scope', '--stdin', '--which'],
+  'decision record': [
+    '--alternatives',
+    '--body-file',
+    '--governs',
+    '--scope',
+    '--stdin',
+    '--which',
+  ],
   'skill create': ['--body', '--body-file', '--scope', '--stdin', '--which'],
   // The moves name the agent that executed them, and follow the entity to its tree.
   'task move': ['--which'],
@@ -36,6 +43,9 @@ export const WHAT_A_SUBCOMMAND_READS: Readonly<Record<string, readonly string[]>
   'task next': [],
   // The tree an act covers; the reading's `--json` is the reading's.
   'witness sigstore': ['--global'],
+  'witness sigstore-check': ['--global'],
   'witness stamp': ['--global'],
   'witness upgrade': ['--global'],
+  // `rules test` reads no group flag: `--json` is refused by name.
+  'rules test': [],
 };
