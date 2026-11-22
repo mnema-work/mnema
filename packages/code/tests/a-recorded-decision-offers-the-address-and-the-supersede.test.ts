@@ -179,6 +179,29 @@ describe('record_decision, over a real client', () => {
     expect(reply).not.toContain('link_knowledge');
   });
 
+  it("does not offer a path inside another agent's worktree under the project", async () => {
+    const client = await connect();
+    await client.callTool({ name: 'governing_rules', arguments: { path: 'src/own.ts' } });
+    await client.callTool({
+      name: 'governing_rules',
+      arguments: { path: '.claude/worktrees/agent-1/src/copy.ts' },
+    });
+    await client.callTool({
+      name: 'governing_rules',
+      arguments: { path: join(repo, '.claude/worktrees/agent-2/src/other.ts') },
+    });
+    const reply = said(
+      await client.callTool({
+        name: 'record_decision',
+        arguments: { title: 'Keep the copies out', rationale: 'a copy of a branch is not a file' },
+      }),
+    );
+    expect(reply).toContain('the latest first: src/own.ts.');
+    expect(reply).not.toContain('worktrees');
+    expect(reply).not.toContain('copy.ts');
+    expect(reply).not.toContain('other.ts');
+  });
+
   it('offers the replacement of a decision it cites, and moves nothing', async () => {
     const client = await connect();
     const first = idOf(

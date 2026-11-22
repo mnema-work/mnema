@@ -531,7 +531,7 @@ describe('mnema brief (what governs the work here)', () => {
 
       const copy = hookCopy(here);
       expect(copy).toContain('- **ADR-1: What the team settled** · `');
-      expect(copy).toContain('- **private ADR-1: What this machine settled** · `');
+      expect(copy).toContain('- **ADR-1 (private): What this machine settled** · `');
       expect(copy).not.toContain('**ADR-1: What this machine settled**');
       expect(copy.match(/\*\*ADR-1: /g)).toHaveLength(1);
     });

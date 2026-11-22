@@ -169,7 +169,8 @@ or any other extension `PATHEXT` lists.
 those before it merges, whatever the configuration says about merges. What makes it automatic is git's
 autostash, which stashes the events, pulls, and puts them back through the driver. `mnema doctor --fix
 merge-driver`, and the answer to the question `mnema init` asks in a repository with a remote (`--git-pull
-yes`, or `--yes`, which takes the default, yes), write four settings into this clone's `.git/config`,
+yes`, or `--yes`, which takes the default, yes; with no remote and no flag nothing is asked and nothing is written, and the
+founding says so in one line), write four settings into this clone's `.git/config`,
 the driver first, then the autoStash ones: the driver's name, the driver, `merge.autoStash` (read by a merge pull: `git pull`, `git pull
 --no-rebase`) and `rebase.autoStash` (read by `git pull --rebase`, which refuses without it). They are never
 written one without the driver: an autoStash alone leaves git exiting 0 over conflict markers inside signed

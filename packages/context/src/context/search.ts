@@ -500,7 +500,11 @@ function byTarget(a: string, b: string): number {
  * handoff, a link or a run finds nothing here, exactly as it finds nothing in the
  * index (those have no record of their own to read).
  */
-export function readRecord(sources: readonly ScopedCache[], id: string): RecordBody | null {
+export function readRecord(
+  sources: readonly ScopedCache[],
+  id: string,
+  whole = false,
+): RecordBody | null {
   for (const { scope, project, cache } of sources) {
     // The holder, named once for whichever kind answers: an id, the two halves of
     // where it lives, and where it CAME FROM when the record says so. Built per source
@@ -550,6 +554,7 @@ export function readRecord(sources: readonly ScopedCache[], id: string): RecordB
       const story = taskStory(
         sources.map((source) => source.cache),
         id,
+        whole,
       );
       return { kind: 'task', ...held, record: task, ...(story !== undefined ? { story } : {}) };
     }

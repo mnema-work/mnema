@@ -50,6 +50,7 @@ import type { ScopedCache } from '@mnema/context';
 import type { ResolvedTrees, TaskState } from '@mnema/core';
 import { cites } from './commands/after-a-write.js';
 import { HOST_MEMORY_MARK } from './host-memory.js';
+import { readLabel } from './presentation/label.js';
 import { projectDigest } from './tool-calls.js';
 import { emptyReading, type Reading } from './what-the-session-did.js';
 
@@ -685,24 +686,17 @@ export function decisionsRecordedSince(
 
 /**
  * The label of each decision the trees hold, by id. Each tree numbers its own decisions, so two
- * trees can both hold an `ADR-1`: a label that more than one tree holds carries the name of its
- * tree (`ADR-1 (private)`), and one that is only in a single tree stays as the record numbered it.
+ * trees can both hold an `ADR-1`: a decision held outside the public tree carries the name of its
+ * tree (`ADR-1 (private)`), as it does wherever a person reads a label (`readLabel`), and the public
+ * tree's stays as the record numbered it.
  */
 export function labelsOf(sources: readonly ScopedCache[]): ReadonlyMap<string, string> {
-  const held = sources.flatMap((source) =>
-    source.cache.listDecisions().map((one) => ({ id: one.id, adr: one.adr, scope: source.scope })),
-  );
-  const scopesOf = new Map<string, Set<string>>();
-  for (const one of held) {
-    const scopes = scopesOf.get(one.adr) ?? new Set<string>();
-    scopes.add(one.scope);
-    scopesOf.set(one.adr, scopes);
-  }
   return new Map(
-    held.map((one) => [
-      one.id,
-      (scopesOf.get(one.adr)?.size ?? 0) > 1 ? `${one.adr} (${one.scope})` : one.adr,
-    ]),
+    sources.flatMap((source) =>
+      source.cache
+        .listDecisions()
+        .map((one) => [one.id, readLabel(one.adr, source.scope)] as const),
+    ),
   );
 }
 

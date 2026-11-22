@@ -692,33 +692,9 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'a channel of a CLOSED set (an unknown name is refused before the write) and one of two words this wiring owns',
   },
-  'switch.ts «{} is now ON: it hands the record over as it did before.» #1': {
+  'switch.ts «{} is now ON: {}» #1': {
     verdict: 'minted',
-    why: 'the same channel of the closed set, read back off the write',
-  },
-  'switch.ts «{} is now ON: it was off until this switch, and it now acts where a rule addresses a file.» #1':
-    {
-      verdict: 'minted',
-      why: 'the closed channel, read back off the write',
-    },
-  "switch.ts «{} is now ON: it records a person's corrections as proposed decisions in this machine's private tree, as it did before.» #1":
-    {
-      verdict: 'minted',
-      why: 'the user-corrections channel, read back off the write',
-    },
-  'switch.ts «{} is now ON: a write to a file that holds decisions the record cites nowhere is answered, once per session and file, with one line naming the command that reads it.» #1':
-    {
-      verdict: 'minted',
-      why: 'the decision-file-written channel, read back off the write',
-    },
-  "switch.ts «{} is now ON: it copies each note this host writes to its own memory into this machine's private tree.» #1":
-    {
-      verdict: 'minted',
-      why: 'the host-memory-mirror channel, read back off the write',
-    },
-  'switch.ts «{} is now ON: an agent may accept a decision, as it did before.» #1': {
-    verdict: 'minted',
-    why: 'the closed channel, read back off the write',
+    why: 'the closed channel, read back off the write, and the sentence the product keeps for that channel',
   },
   "switch.ts «{} is now OFF: an agent's accept is refused. The switch that decides it was made by {} at {}.» #1":
     {
@@ -1312,7 +1288,8 @@ describe('every line this wiring words is classified', () => {
     // 218 with the lines `export --madr` prints: the files it wrote, and, per decision, why it will not import as the same words.
     // 219 with the line a pull prints for a link that stands where an untracked tail was.
     // 223 with the four lines `witness sigstore-check` words, over a bundle and over a tree it did not read.
-    expect(FOUND.sites.length).toBe(223);
+    // 218 with the six sentences of a switched-on channel collapsed into one line over the product's own table.
+    expect(FOUND.sites.length).toBe(218);
   });
 
   it('reads the verdict off the source rather than believing the table', () => {
@@ -1333,7 +1310,7 @@ describe('every line this wiring words is classified', () => {
     // Neither arm of the case above may be empty, or half of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
     expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(130);
-    expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(93);
+    expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(88);
     expect(FOUND.sites.filter((site) => site.tagged).length).toBe(130);
   });
 

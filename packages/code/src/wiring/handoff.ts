@@ -13,10 +13,11 @@
  */
 
 import type { Command } from 'commander';
-import { RECORD_CONTRACT_HELP } from '../recorded-content.js';
+import { RECORD_CONTRACT_HELP, temporaryBriefNotice } from '../recorded-content.js';
 import { hereWriting } from './context.js';
 import { scopeOption } from './enumerated.js';
 import { fromTheGroup, REFUSED } from './from-the-group.js';
+import { writeLines } from './io.js';
 import { onOneLine } from './on-one-line.js';
 import { declaredAgent, INVALID, parseScope, WHICH_HELP } from './options.js';
 import { reportRecorded, reportRefusal } from './report.js';
@@ -80,6 +81,7 @@ export function registerHandoff(task: Command, wiring: Wiring): Declared {
           io.out(`  The brief is observation ${result.briefId} about the task.`);
         }
         reportRecorded(result, io);
+        writeLines(io, temporaryBriefNotice(opts.brief ?? '', result.briefIsTemporary));
         return;
       }
       reportRefusal(wiring, result);

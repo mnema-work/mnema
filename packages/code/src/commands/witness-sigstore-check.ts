@@ -152,13 +152,22 @@ function whereTheMessagesGo(
   }
   const rest: string[] = [];
   let existing = given;
-  while (lstatSync(existing, { throwIfNoEntry: false }) === undefined) {
-    rest.unshift(basename(existing));
-    const up = dirname(existing);
-    if (up === existing) break;
-    existing = up;
+  try {
+    while (lstatSync(existing, { throwIfNoEntry: false }) === undefined) {
+      rest.unshift(basename(existing));
+      const up = dirname(existing);
+      if (up === existing) break;
+      existing = up;
+    }
+  } catch (error) {
+    // `lstat` of a path below a FILE is ENOTDIR, which `throwIfNoEntry` does not cover.
+    if ((error as NodeJS.ErrnoException).code !== 'ENOTDIR') throw error;
+    return { ok: false, why: `${given} cannot be a folder: a part of its path is a file` };
   }
-  if (!statSync(existing).isDirectory()) return { ok: false, why: `${existing} is not a folder` };
+  // A link that points nowhere is an entry for `lstat` and no entry for `stat`.
+  if (statSync(existing, { throwIfNoEntry: false })?.isDirectory() !== true) {
+    return { ok: false, why: `${existing} is not a folder, nor a link to one` };
+  }
   const real = join(realpathSync(existing), ...rest);
   if (real.split(sep).some((part) => ['.mnema', '.git'].includes(fold(part)))) {
     return { ok: false, why: `${real} is inside a record folder (.mnema or .git): pick another` };

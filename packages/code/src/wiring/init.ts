@@ -294,20 +294,26 @@ export function reportIgnore(io: Wiring['io'], change: PrettierIgnoreChange | un
  * about the working tree, said once, at the moment they are useful.
  * `the-init-says-what-comes-next.test.ts` holds each.
  */
-export function whatComesNext(result: InitResult): string[] {
+export function whatComesNext(result: InitResult, pulled?: MergeDriverFixed): string[] {
   const lines: string[] = [];
   const around = result.around;
   if (around === undefined) return lines;
   lines.push('');
   if (around.gitRoot !== undefined) {
     lines.push(
-      'Commit `.mnema/` with the repository: the record travels with it, and every clone reads it.',
+      around.recordIsLocal === true
+        ? 'Git ignores `.mnema/` here: the record stays on this machine, and no clone gets it.'
+        : 'Commit `.mnema/` with the repository: the record travels with it, and every clone reads it.',
     );
     if (around.foundedBelowTheRoot) {
       lines.push(
         onOneLine`This is not the root of the git repository (${around.gitRoot}). A session opened at that root climbs from there and will not find a project founded below it: run \`mnema init\` there instead, unless the project is meant to live here.`,
       );
     }
+    if (pulled === undefined)
+      lines.push(
+        'A plain `git pull` was not set up for the record: `mnema doctor --fix merge-driver` writes its settings, and `mnema record pull` pulls without them.',
+      );
   }
   lines.push(
     `Off until switched on: ${STARTS_OFF.join(', ')}.`,
@@ -454,5 +460,5 @@ export async function sayClassic(
       : REACHES_AN_AGENT_AFTER_A_WRITE;
   for (const line of reaches) io.out(render(fact(line)));
   io.out(render(fact(THE_LINE_IN_THEIRS, 2)));
-  for (const line of whatComesNext(result)) io.out(line === '' ? '' : render(fact(line)));
+  for (const line of whatComesNext(result, pulled)) io.out(line === '' ? '' : render(fact(line)));
 }

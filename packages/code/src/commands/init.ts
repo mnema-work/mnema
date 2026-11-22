@@ -43,6 +43,7 @@ import {
   type IdentityUnavailableError,
   type NoProjectRoot,
   PROJECT_DIR,
+  publicTreeIsLocal,
   resolveTrees,
   whyNoProjectRootAt,
 } from '@mnema/core';
@@ -115,6 +116,12 @@ export interface InitResult {
     readonly gitRoot?: string;
     /** Whether that root is above the directory the project was founded in. */
     readonly foundedBelowTheRoot: boolean;
+    /**
+     * Present when git excludes `.mnema/` and holds none of it (local mode, or an exclude line a
+     * repository or a machine already had): the record stays on this machine, so "commit it" is not
+     * the next step. Asked of git, after the founding.
+     */
+    readonly recordIsLocal?: true;
     /** The decision bases with documents in them: nothing is imported in a project just founded. */
     readonly neverImported: readonly UnimportedBase[];
     /**
@@ -321,6 +328,7 @@ export function runInit(ctx: InitContext): InitResult | InitRefused {
     around: {
       ...(gitRoot !== undefined ? { gitRoot } : {}),
       foundedBelowTheRoot: gitRoot !== undefined && gitRoot !== ctx.cwd,
+      ...(gitRoot !== undefined && publicTreeIsLocal(root) ? { recordIsLocal: true as const } : {}),
       // Nothing has been imported into a tree founded a moment ago, so no sources are asked.
       neverImported: basesNeverImported([], ctx.cwd),
       ...(prettierIgnore !== undefined ? { prettierIgnore } : {}),

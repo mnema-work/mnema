@@ -195,8 +195,19 @@ export function parseWindowBound(end: WindowEnd, value: string): WindowBound {
   return { ok: true, instant: parsed.toISOString() };
 }
 
+/** Two bounds that are each fine and say nothing together: `from` is after `to`. The words typed, as typed. */
+export interface WindowInverted {
+  readonly ok: false;
+  readonly inverted: true;
+  readonly from: string;
+  readonly to: string;
+}
+
 /** Both bounds, read: the window in the stored form, or the first refusal. */
-export type WindowParsed = { readonly ok: true; readonly window: Window } | WindowRefusal;
+export type WindowParsed =
+  | { readonly ok: true; readonly window: Window }
+  | WindowRefusal
+  | WindowInverted;
 
 /** Reads the two raw bounds of a read (either may be absent), `from` first. */
 export function parseWindow(raw: {
@@ -210,6 +221,9 @@ export function parseWindow(raw: {
     const bound = parseWindowBound(end, value);
     if (!bound.ok) return bound;
     window[end] = bound.instant;
+  }
+  if (window.from !== undefined && window.to !== undefined && window.from > window.to) {
+    return { ok: false, inverted: true, from: raw.from as string, to: raw.to as string };
   }
   return { ok: true, window };
 }

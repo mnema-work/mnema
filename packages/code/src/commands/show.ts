@@ -160,7 +160,10 @@ export interface ShowRefused {
  * facts about other things, with no record of their own to show (a task's
  * handoffs are part of the task's story: `mnema timeline`).
  */
-export function runShow(ctx: ShowContext, input: { id: string }): ShowDone | ShowRefused {
+export function runShow(
+  ctx: ShowContext,
+  input: { id: string; full?: boolean },
+): ShowDone | ShowRefused {
   const trees = resolveTrees(ctx.cwd, ctx.env);
   return withOpenedCaches(trees, (open, opened) => {
     let found: RecordBody | null = null;
@@ -169,7 +172,7 @@ export function runShow(ctx: ShowContext, input: { id: string }): ShowDone | Sho
     for (; next < SCOPES.length && found === null; next++) {
       const source = open(SCOPES[next] as Scope);
       if (source !== undefined) {
-        found = readRecord([source], input.id);
+        found = readRecord([source], input.id, input.full === true);
         holder = source;
       }
     }
@@ -186,7 +189,11 @@ export function runShow(ctx: ShowContext, input: { id: string }): ShowDone | Sho
     if (found.kind === 'task' && holder !== undefined) {
       for (; next < SCOPES.length; next++) open(SCOPES[next] as Scope);
       found =
-        readRecord([holder, ...opened.filter((source) => source !== holder)], input.id) ?? found;
+        readRecord(
+          [holder, ...opened.filter((source) => source !== holder)],
+          input.id,
+          input.full === true,
+        ) ?? found;
     }
     const id = found.id;
     // Over EVERY tree the project holds, as `read_record` counts them: the lines a newer mnema
