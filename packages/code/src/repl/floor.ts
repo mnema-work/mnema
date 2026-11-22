@@ -163,12 +163,15 @@ export function theFloorFor(drawing: readonly Line[]): Floor {
 }
 
 /**
- * THE SHORTEST WINDOW THIS CONSOLE DRAWS ON: eighty columns by forty-two rows.
+ * THE SHORTEST WINDOW THIS CONSOLE DRAWS ON: eighty columns by thirty-nine rows.
  *
  * IT WAS EIGHTY BY FIFTY-ONE, and no decision about windows was taken to move it. The drawing
  * of the name went from nine rows to six ({@link THE_BIGGEST_DRAWING}), the arrangement round it
  * from seventeen to fourteen, and three times fourteen is forty-two: nine rows of window given
- * back to a caller by a delivery about art. That is the whole of what deriving it buys: the
+ * back to a caller by a delivery about art. IT WAS EIGHTY BY FORTY-TWO, AND THE BRAND MOVED IT
+ * AGAIN: its drawing of the name is five rows ({@link THE_BIGGEST_DRAWING}), the arrangement round it
+ * thirteen, and three times thirteen is thirty-nine, measured in `THE_FLOOR` and not typed here.
+ * That is the whole of what deriving it buys: the
  * number is a consequence of the drawing, and a drawing edited without this file being opened
  * moves it.
  *

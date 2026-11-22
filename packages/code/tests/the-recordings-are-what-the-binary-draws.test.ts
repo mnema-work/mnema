@@ -650,7 +650,7 @@ describe('the console recording', () => {
   });
 
   it('keeps the floor: the console is recorded at a size it opens at', () => {
-    // The console draws nothing but the size it lacks under 80 by 42 (`src/repl/floor.ts`), and a
+    // The console draws nothing but the size it lacks under the floor, `THE_FLOOR` (`src/repl/floor.ts`), and a
     // recording made under it would be a recording of that screen.
     expect(columns).toBeGreaterThanOrEqual(80);
     expect(rows).toBeGreaterThanOrEqual(42);

@@ -680,7 +680,7 @@ describe('the width the banner is chosen at is the terminal’s own', () => {
     );
     // AND THE WIDTH STILL CHOOSES, INSIDE THE MODULE, which is where the ladder is reachable
     // and the reason this case may stop asserting it. Every width above the floor holds the
-    // biggest drawing, because it is forty-eight columns and the narrowest page is the floor
+    // biggest drawing, because it is fifty-two columns and the narrowest page is the floor
     // less its margin; the widths that give it away are all under the floor, where no page is
     // drawn.
     expect(drawn(THE_FLOOR.columns)).toEqual(drawn(200));

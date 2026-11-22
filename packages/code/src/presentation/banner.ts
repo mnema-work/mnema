@@ -213,9 +213,9 @@ export const THE_BLOCKS: readonly string[] = [
  * is why that one is written out.
  *
  * IT STOPPED BEING THE BIGGEST FORM AND IT DID NOT GO. It covers the band between the
- * biggest drawing's forty-eight columns and the nine of the letterspaced name (a terminal of
+ * biggest drawing's fifty-two columns and the nine of the letterspaced name (a terminal of
  * forty-something columns is in that band) and with the biggest one put in its place there
- * would be nothing at all between forty-eight columns and nine.
+ * would be nothing at all between fifty-two columns and nine.
  */
 const TALL_MASK: readonly string[] = [
   '#   # #   # ##### #   # #####',
