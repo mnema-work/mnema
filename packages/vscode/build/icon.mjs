@@ -1,20 +1,19 @@
 /**
- * The extension's icon, drawn in code: `drawIcon(blocks)` returns a 128x128 PNG as a Buffer, and
- * `drawIcon(blocks, 512)` the same drawing at 512 pixels, for the plugin's icon in Anthropic's
- * directory (`plugin/.claude-plugin/icon.png`, written by `.github/the-plugin-icon/make.mjs`): every
- * length below is a share of the icon, so the shapes are the same at any size and the 128 pixel file
- * is the bytes it always was.
+ * The extension's icon, drawn in code: `drawIcon()` returns a 128x128 PNG as a Buffer, and
+ * `drawIcon(512)` the same drawing at 512 pixels, for the plugin's icon in Anthropic's directory
+ * (`plugin/.claude-plugin/icon.png`, written by `.github/the-plugin-icon/make.mjs`): every length
+ * below is a share of the icon, so the shapes are the same at any size.
  *
- * The mark is the letter M of the repository's banner, and nothing else: the first letter of the
- * console's wordmark (`THE_BLOCKS`, `packages/code/src/presentation/banner.ts`), in the banner's
- * own paint. A full block is a filled cell in the accent (`.github/the-front-page/accent.mjs`),
- * on the banner's dark page (`PAGE.dark`, the manifest's `galleryBanner`), inside a rounded
- * square with a thin border in the accent. Behind the letter sits the same letter in blocks, a
- * darker lilac and opaque, shifted down and to the right: the solid shadow that gives the blocks
- * their depth (the banner's own thin double-line strokes are not drawn here, they vanish at 16
- * pixels). The shadow's colour is the accent mixed into the page, never a colour of its own.
- * `package-vsix.mjs`
- * hands it the rows of the built console, so a letter changed there is a letter changed here.
+ * The mark is the eye of the brand at rest, looking ahead, inside a dark rounded square, since a
+ * store and the plugin directory ask for a square: the square fills the brand's frame (the view box
+ * `-48 -48 96 96`, a corner radius of 22 units) in charcoal, the lines are bone and the iris is
+ * sulphur, all three values of the brand's palette (`PALETTE`, `.github/the-brand/palette.mjs`),
+ * and outside the square the icon is transparent. There is no border and no ring round the iris:
+ * the ground is the dark one. What paints each point of the frame is `paintAt` of `the-eye.mjs`,
+ * the extension's one door to the eye's geometry. Until this drawing the icon was the letter M of
+ * the console's block wordmark in the old lilac accent, on GitHub's dark page, with a lilac border:
+ * the brand's redesign took that mark away from every surface (ADR-370, ADR-488).
+ *
  * The stores take a PNG and refuse an SVG, and the repository holds no raster tool, so the shapes
  * are filled at 4x4 samples per pixel and written as a PNG with `node:zlib` alone: the same bytes
  * on every run, no binary kept in the tree that has no source. Run by `package-vsix.mjs`, which
@@ -22,47 +21,26 @@
  */
 
 import { deflateSync } from 'node:zlib';
-import { ACCENT } from '../../../.github/the-front-page/accent.mjs';
-import { CELL, inkFoot, PAGE } from '../../../.github/the-front-page/draw.mjs';
-import { firstLetter, letterCells } from './mark.mjs';
+import { PALETTE } from '../../../.github/the-brand/palette.mjs';
+import { paintAt } from './the-eye.mjs';
 
-/** The size of the extension's icon, and the size every length below is written for. */
+/** The size of the extension's icon, in pixels. */
 const SIZE = 128;
 const SAMPLES = 4;
+/** The brand's frame, in its own units, and the corner radius of the square that fills it. */
+const FRAME = 96;
+const RADIUS = 22;
 const rgb = (hex) => [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
-const GROUND = rgb(PAGE.dark);
-const PAINT = rgb(ACCENT.dark);
-/** The share of the accent kept in the shadow: the accent mixed into the page at this share. */
-const SHADOW_SHARE = 0.45;
-const SHADOW = GROUND.map((g, i) => Math.round(g * (1 - SHADOW_SHARE) + PAINT[i] * SHADOW_SHARE));
-/** How far the shadow is shifted down and to the right, in pixels of the 128 icon. */
-const SHADOW_OFFSET = 4;
-/** The letter's width on the icon, as a share of the icon's. */
-const LETTER = 0.66;
-const RADIUS = 24;
-const BORDER = 3;
+const GROUND = rgb(PALETTE.charcoal);
+const LINE = rgb(PALETTE.bone);
+const IRIS = rgb(PALETTE.sulphur);
 
-/**
- * The letter as filled rectangles in the wordmark's own units (only the full blocks).
- * @param {readonly string[]} blocks
- */
-const shapesOf = (blocks) => {
-  const rects = letterCells(blocks).map(([c, r]) => [
-    c * CELL.w,
-    r * CELL.h,
-    (c + 1) * CELL.w,
-    (r + 1) * CELL.h,
-  ]);
-  return { rects, width: (firstLetter(blocks)[0]?.length ?? 0) * CELL.w, height: inkFoot(blocks) };
-};
-
-const inRoundedSquare = (x, y, inset, size) => {
-  const k = size / SIZE;
-  const half = size / 2 - inset;
-  const radius = RADIUS * k - inset;
-  const qx = Math.abs(x - size / 2) - (half - radius);
-  const qy = Math.abs(y - size / 2) - (half - radius);
-  return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) <= radius;
+/** Whether a point of the frame, centred on 0, is inside the rounded square that fills it. */
+const inRoundedSquare = (x, y) => {
+  const reach = FRAME / 2 - RADIUS;
+  const qx = Math.abs(x) - reach;
+  const qy = Math.abs(y) - reach;
+  return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) <= RADIUS;
 };
 
 const crcTable = Array.from({ length: 256 }, (_, n) => {
@@ -85,29 +63,23 @@ const chunk = (type, data) => {
 };
 
 /**
- * The icon over the rows of the console's wordmark (`THE_BLOCKS`), `size` pixels on a side.
- * @param {readonly string[]} blocks
- * @param {number} [size] A whole number of pixels, 128 by default.
+ * The icon, `size` pixels on a side: the eye in its dark rounded square.
+ * @param {number} [size] A whole number of pixels, at least 16; 128 by default.
  * @returns {Buffer}
  */
-export function drawIcon(blocks, size = SIZE) {
-  const k = size / SIZE;
-  const { rects, width, height } = shapesOf(blocks);
-  const scale = (size * LETTER) / width;
-  const x0 = (size - width * scale) / 2;
-  const y0 = (size - height * scale) / 2;
+export function drawIcon(size = SIZE) {
+  if (!Number.isInteger(size) || size < 16)
+    throw new Error(`the icon is a whole number of pixels, at least 16, not ${String(size)}`);
+  const unit = FRAME / size;
 
-  /** The colour at a point: [r, g, b, a] with a in 0..1. */
+  /** The colour at a point of the icon, in pixels: [r, g, b, a] with a in 0..1. */
   const sample = (px, py) => {
-    if (!inRoundedSquare(px, py, 0, size)) return [0, 0, 0, 0];
-    if (!inRoundedSquare(px, py, BORDER * k, size)) return [...PAINT, 1];
-    const covers = (qx, qy) => {
-      const x = (qx - x0) / scale;
-      const y = (qy - y0) / scale;
-      return rects.some(([l, t, r, b]) => x >= l && x < r && y >= t && y < b);
-    };
-    if (covers(px, py)) return [...PAINT, 1];
-    if (covers(px - SHADOW_OFFSET * k, py - SHADOW_OFFSET * k)) return [...SHADOW, 1];
+    const x = px * unit - FRAME / 2;
+    const y = py * unit - FRAME / 2;
+    if (!inRoundedSquare(x, y)) return [0, 0, 0, 0];
+    const paint = paintAt(x, y);
+    if (paint === 'line') return [...LINE, 1];
+    if (paint === 'iris') return [...IRIS, 1];
     return [...GROUND, 1];
   };
 

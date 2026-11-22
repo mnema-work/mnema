@@ -36,9 +36,12 @@
  *   - THE BADGES: every shields.io badge in `README.md` or a package's README is in dark stone (`PALETTE.darkStone`),
  *     except the one for the CI workflow, which carries no colour at all, so that shields.io paints it red when the build
  *     fails.
- *   - WHAT `draw.mjs` STILL EXPORTS: the site and the extension's icon import `CELL`, `PAGE`, `inkFoot` and `socialCard`
- *     from it, in a checkout with no `node_modules`; their values and the bytes of the social card are held here by
- *     hand, so that taking the banner out of that file moved none of them.
+ *   - WHAT THE SITE IMPORTS AT A RELEASE TAG: `CELL`, `PAGE`, `inkFoot` and `socialCard` from `draw.mjs`, `ACCENT` from
+ *     `accent.mjs`, and `firstLetter` and `letterCells` from `packages/vscode/build/mark.mjs`, in a checkout with no
+ *     `node_modules`; their values and the bytes of the social card are held here by hand, so that taking the banner
+ *     out of `draw.mjs` moved none of them. This used to say that the extension's icon imports them too: since the
+ *     extension draws the eye, nothing else in the repository reads `ACCENT`, `firstLetter` or `letterCells`, and these
+ *     literals are what holds them.
  *
  * WHAT NO LONGER HOLDS, and why. THE GRID OF THE PIXEL (every stroke of one unit on the middle of a pixel, with the table
  * of mutations that proved the reader of it) is gone whole, and no guard of a grid is written for the banner: the banner
@@ -80,6 +83,8 @@ import { ROOT, read } from './support/published-examples.js';
 
 /** Named by a variable, because these are scripts of the repository and not modules of the product. */
 const DRAW = join(ROOT, '.github', 'the-front-page', 'draw.mjs');
+const ACCENT_FILE = join(ROOT, '.github', 'the-front-page', 'accent.mjs');
+const MARK = join(ROOT, 'packages', 'vscode', 'build', 'mark.mjs');
 const BRAND = join(ROOT, '.github', 'the-brand');
 
 type Line = readonly ({ said: string; where: string } | string)[];
@@ -558,7 +563,7 @@ describe('the README shows the banner', () => {
   });
 });
 
-describe('draw.mjs keeps what the site and the extension read', () => {
+describe('what the site imports at a release tag keeps its value', () => {
   it('has the cell, the page and the foot of the wordmark it always had, and draws the social card byte for byte', () => {
     expect(CELL).toEqual({ w: 12, h: 24 });
     expect(PAGE).toEqual({ dark: '#0d1117', light: '#ffffff' });
@@ -573,6 +578,28 @@ describe('draw.mjs keeps what the site and the extension read', () => {
     expect(createHash('sha256').update(card).digest('hex')).toBe(
       '56366347a02b34ebaadeb48586124df42a8eb4db9e4408069fe1ea14b5e0b228',
     );
+  });
+
+  it('has the accent it always had, which nothing but the social card and the site paints with now', async () => {
+    const { ACCENT } = (await import(pathToFileURL(ACCENT_FILE).href)) as {
+      ACCENT: { dark: string; light: string };
+    };
+    expect(ACCENT).toEqual({ dark: '#c4a0f5', light: '#997dbf' });
+  });
+
+  it("reads the M of the console's wordmark as it always did: eleven columns, and the 32 full blocks written out by hand", async () => {
+    const { firstLetter, letterCells } = (await import(pathToFileURL(MARK).href)) as {
+      firstLetter: (blocks: readonly string[]) => string[][];
+      letterCells: (blocks: readonly string[]) => [number, number][];
+    };
+    /** The M as the wordmark's full blocks draw it, ten columns by five rows, written out by hand. */
+    const THE_M = ['###....###', '####..####', '##.####.##', '##..##..##', '##......##'];
+    const cells = THE_M.flatMap((row, r) =>
+      [...row].flatMap((glyph, c) => (glyph === '#' ? [[c, r]] : [])),
+    );
+    expect(cells).toHaveLength(32);
+    expect(letterCells(THE_BLOCKS)).toEqual(cells);
+    expect(firstLetter(THE_BLOCKS).map((row) => row.length)).toEqual(THE_BLOCKS.map(() => 11));
   });
 });
 

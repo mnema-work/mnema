@@ -3,7 +3,6 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { THE_BLOCKS } from '../../code/src/presentation/banner.js';
 import { drawIconFont } from '../build/icon-font.mjs';
 
 const CHECK = new URL('../build/check-the-vsix.mjs', import.meta.url).pathname;
@@ -20,7 +19,7 @@ function check(font: Buffer | undefined, fontCharacter = '\\E000'): string {
         contributes: {
           viewsContainers: { activitybar: [{ icon: 'media/mnema.svg' }] },
           icons: {
-            'mnema-m': {
+            'mnema-eye': {
               description: 'The mnema mark',
               default: { fontPath: 'media/mnema-icons.ttf', fontCharacter },
             },
@@ -45,7 +44,7 @@ function check(font: Buffer | undefined, fontCharacter = '\\E000'): string {
   }
 }
 
-const good = drawIconFont(THE_BLOCKS);
+const good = drawIconFont();
 
 /** The font with the tag of one table renamed, every offset intact: the table is "not there". */
 const without = (tag: string): Buffer => {

@@ -31,10 +31,19 @@
  * of 1.3 MB for this repository's own record. They are now drawn from those files when a reader
  * opens a tail, so without the script they are not drawn (the files are still in the page).
  *
- * THE COLOURS ARE THE BANNER'S. {@link PALETTE} takes the accent and the ground of the front
- * page's banner, and the darker accent small text needs is calculated from it by the rule the
- * site's theme uses ({@link textAccent}). Every pair of text and ground is held to WCAG AA in
- * both themes by `page.test.ts`.
+ * THE COLOURS ARE THE BRAND'S. {@link PALETTE} is the brand's palette (ADR-488): charcoal and
+ * paper grounds, bone and charcoal ink, the warm greys of the diagrams for secondary text and rules,
+ * and the sulphur yellow only where it means something (a record verified, a decision in force), on
+ * the dark ground; on the light one that place is charcoal. Waiting is stone on dark and dark stone
+ * on light, the colour of the diagrams' dim signs, so it never shares the colour of in force. Red
+ * stays only for a failure: a broken or unverified record and lists that differ from the files; a
+ * rejected decision and a retracted note are secondary text, since neither is a failure. This used
+ * to say that the page takes the accent and the ground of the front page's banner (the old lilac on
+ * GitHub's grounds); the brand's redesign falsified it, since the banner no longer draws that
+ * accent. The values are copies, since nothing a package publishes reads the brand's source:
+ * `the-editor-and-the-record-page-wear-the-new-brand.test.ts` (in `packages/code/tests/`) holds each one
+ * equal to the brand's value for its role, and `page.test.ts` holds every pair of text and ground to
+ * WCAG AA in both themes and the red to the failures alone.
  */
 
 import { createHash } from 'node:crypto';
@@ -69,14 +78,26 @@ export const TEXT_FLOOR = 4.5;
 export const FOCUS_FLOOR = 3;
 
 /**
- * The front page's banner colours this page takes: the accent per theme and the ground per theme.
- * They are copies of `ACCENT` (`.github/the-front-page/accent.mjs`) and `PAGE`
- * (`.github/the-front-page/draw.mjs`), and `page.test.ts` fails when either drifts from its source.
+ * The brand's colours this page paints with, by the brand's names: copies of the brand's palette,
+ * which `the-editor-and-the-record-page-wear-the-new-brand.test.ts` holds equal to it. This replaces the
+ * front page's banner colours the page took until the brand's redesign (the lilac accent and GitHub's
+ * grounds), which the banner no longer draws.
  */
-const BANNER = {
-  accent: { dark: '#c4a0f5', light: '#997dbf' },
-  page: { dark: '#0d1117', light: '#ffffff' },
+const BRAND = {
+  charcoal: '#131312',
+  bone: '#efebe1',
+  paper: '#f6f3ec',
+  stone: '#8c8a82',
+  darkStone: '#6b6862',
+  sulphur: '#e6da2e',
+  lineDark: '#46453f',
+  lineLight: '#cdc8bc',
+  dimDark: '#a29e94',
+  dimLight: '#5b574f',
 } as const;
+
+/** The ground of each theme, which the accent as text is taken toward from the other theme. */
+const GROUND = { dark: BRAND.charcoal, light: BRAND.paper } as const;
 
 /** One theme's colours. Every one that is text must read at {@link TEXT_FLOOR} on `bg` and on `surface`. */
 export interface Colours {
@@ -88,13 +109,13 @@ export interface Colours {
   readonly muted: string;
   /** A rule between things: not text, not held to a floor. */
   readonly border: string;
-  /** The banner's accent, for what is not text. */
+  /** The accent, for what is not text: bone on dark, charcoal on light. */
   readonly accent: string;
-  /** The accent as small text: the banner's, taken only as far toward the ink as the floor needs. */
+  /** The accent as small text: the accent, taken only as far toward the ink as the floor needs. */
   readonly accentText: string;
   /** A verified record, a decision accepted. */
   readonly ok: string;
-  /** A record that is broken or unverified, a decision rejected. */
+  /** A failure, and only that: a record that is broken or unverified, lists that differ from the files. */
   readonly bad: string;
   /** A record still being checked, a decision proposed. */
   readonly wait: string;
@@ -102,44 +123,49 @@ export interface Colours {
   readonly focus: string;
 }
 
-function themeOf(theme: 'dark' | 'light', rest: Omit<Colours, 'accent' | 'accentText' | 'focus'>) {
+function themeOf(theme: 'dark' | 'light', rest: Omit<Colours, 'accentText' | 'focus'>): Colours {
   const other = theme === 'dark' ? 'light' : 'dark';
-  const accent = BANNER.accent[theme];
+  const { accent } = rest;
   const accentText = textAccent({
     ink: accent,
-    toward: BANNER.page[other],
+    toward: GROUND[other],
     grounds: [rest.bg, rest.surface],
     floor: TEXT_FLOOR,
   });
-  return { ...rest, accent, accentText, focus: accentText };
+  return { ...rest, accentText, focus: accentText };
 }
 
 /**
- * The palette, light and dark. The ground is the banner's; the surface is the ground taken a
- * little toward the other theme's, the way the site's greys are; the state colours are chosen
- * for 4.5:1 on both grounds of their theme (the light verified green is the one GitHub uses, the
- * dark one a lighter green: the dark page's old verified green read 3.59:1).
+ * The palette, light and dark: the light one is the dark one inverted. The surface is the ground
+ * taken a little toward the other theme's. Measured on the ground and on the surface (WCAG): on
+ * dark, bone 15.62 and 13.66, the secondary grey 6.95 and 6.08, sulphur 12.78 and 11.18, stone 5.38
+ * and 4.70, the red 7.37 and 6.45; on light, charcoal 16.78 and 15.62, the secondary grey 6.49 and
+ * 6.04, dark stone 5.01 and 4.66, the red 4.90 and 4.57. The light red is GitHub's `#cf222e` taken
+ * 1% toward charcoal, which is what the page's own rule ({@link textAccent}) gives on the light
+ * surface, where `#cf222e` reads 4.498:1.
  */
 export const PALETTE: { readonly dark: Colours; readonly light: Colours } = {
   dark: themeOf('dark', {
-    bg: BANNER.page.dark,
-    surface: mix(BANNER.page.dark, BANNER.page.light, 0.06),
-    text: '#e6edf3',
-    muted: '#8b949e',
-    border: '#30363d',
-    ok: '#3fb950',
+    bg: BRAND.charcoal,
+    surface: mix(BRAND.charcoal, BRAND.paper, 0.06),
+    text: BRAND.bone,
+    muted: BRAND.dimDark,
+    border: BRAND.lineDark,
+    accent: BRAND.bone,
+    ok: BRAND.sulphur,
     bad: '#ff7b72',
-    wait: '#d29922',
+    wait: BRAND.stone,
   }),
   light: themeOf('light', {
-    bg: BANNER.page.light,
-    surface: mix(BANNER.page.light, BANNER.page.dark, 0.035),
-    text: '#0d1117',
-    muted: '#57606a',
-    border: '#d0d7de',
-    ok: '#1a7f37',
-    bad: '#cf222e',
-    wait: '#8a5a00',
+    bg: BRAND.paper,
+    surface: mix(BRAND.paper, BRAND.charcoal, 0.035),
+    text: BRAND.charcoal,
+    muted: BRAND.dimLight,
+    border: BRAND.lineLight,
+    accent: BRAND.charcoal,
+    ok: BRAND.charcoal,
+    bad: '#cd222e',
+    wait: BRAND.darkStone,
   }),
 };
 
@@ -187,16 +213,16 @@ code { overflow-wrap: anywhere; }
 #verdict-status[data-state="pending"], #lists-status[data-state="unchecked"] { color: var(--wait); }
 .decision { margin: 1rem 0; border-left: 4px solid var(--accent); }
 .decision h3 { margin: 0 0 0.25rem; }
-.permalink { margin-left: 0.5rem; font-size: 0.85em; text-decoration: none; }
+.permalink { margin-left: 0.5rem; font-size: 0.85em; color: var(--muted); text-decoration: underline; }
 .state { display: inline-block; font-size: 0.8em; font-weight: 600; border: 1px solid; border-radius: 0.25rem; padding: 0 0.4rem; color: var(--muted); }
 .state[data-state="accepted"] { color: var(--ok); }
-.state[data-state="rejected"] { color: var(--bad); }
+.state[data-state="rejected"] { color: var(--muted); }
 .state[data-state="proposed"] { color: var(--wait); }
 .badge { font-size: 0.8em; border: 1px solid var(--border); border-radius: 0.25rem; padding: 0 0.35rem; color: var(--muted); }
 .notes, .addresses { margin: 0.75rem 0 0; padding: 0; list-style: none; }
 .note { border-top: 1px solid var(--border); padding: 0.5rem 0; }
 .note.retracted pre { text-decoration: line-through; }
-.retraction { color: var(--bad); margin: 0.25rem 0; }
+.retraction { color: var(--muted); margin: 0.25rem 0; }
 .rel { color: var(--muted); margin-right: 0.35rem; }
 .timeline { padding-left: 1.5rem; }
 .timeline li { margin: 0.35rem 0; }

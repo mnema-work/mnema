@@ -2,22 +2,22 @@
 // (a square PNG of 512 to 2048 pixels, under 2 MB; an SVG is refused), written into each plugin
 // folder as `.claude-plugin/icon.png`, where the manifest's `icon` names it.
 //
-// IT IS THE MARK THE EXTENSION ALREADY HAS, NOT A SECOND DRAWING. The repository keeps no SVG of
-// the M and no raster tool: the M is the first letter of the console's wordmark (`THE_BLOCKS`,
-// `packages/code/src/presentation/banner.ts`), and `packages/vscode/build/icon.mjs` fills its shapes
-// at 4 by 4 samples per pixel and writes the PNG with `node:zlib` alone. This asks that drawing for
-// 512 pixels instead of 128: the shapes are the same, scaled, and the file is the same bytes on
-// every run. Nothing is rasterized from an SVG, and no binary (no ImageMagick, no librsvg, no
-// `sharp`) is needed, on a developer's machine or on a CI runner.
+// IT IS THE MARK THE EXTENSION ALREADY HAS, NOT A SECOND DRAWING: the eye of the brand at rest, in a
+// dark rounded square. The repository keeps no raster tool: `packages/vscode/build/icon.mjs` fills
+// the eye's shapes (read from the brand's geometry, `.github/the-brand/eye.mjs`, through
+// `packages/vscode/build/the-eye.mjs`) at 4 by 4 samples per pixel and writes the PNG with
+// `node:zlib` alone. This asks that drawing for 512 pixels instead of 128: the shapes are the same,
+// scaled, and the file is the same bytes on every run. Nothing is rasterized from an SVG, and no
+// binary (no ImageMagick, no librsvg, no `sharp`) is needed, on a developer's machine or on a CI
+// runner. Until the brand's redesign the mark was the letter M of the console's wordmark.
 //
-// `node .github/the-plugin-icon/make.mjs` writes the files (after `pnpm build`, which makes the
-// wordmark it reads); `--check` writes nothing and exits 1 naming each file that is not what the
-// drawing makes. `packages/code/tests/the-plugin-icon-is-the-mark-it-names.test.ts` holds the same.
+// `node .github/the-plugin-icon/make.mjs` writes the files (no build is needed first); `--check`
+// writes nothing and exits 1 naming each file that is not what the drawing makes.
+// `packages/code/tests/the-plugin-icon-is-the-mark-it-names.test.ts` holds the same.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { THE_BLOCKS } from '../../packages/code/dist/presentation/banner.js';
 import { drawIcon } from '../../packages/vscode/build/icon.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -31,10 +31,10 @@ export const PLUGIN_FOLDERS = ['plugin', 'plugin-server-only'];
 /** Where the icon sits in a plugin folder, as the manifest names it. */
 export const ICON_IN_THE_PLUGIN = '.claude-plugin/icon.png';
 
-/** The PNG: the mark of the extension at {@link SIZE} pixels, drawn once per process (about 3 s). */
+/** The PNG: the mark of the extension at {@link SIZE} pixels, drawn once per process (about 2.2 s, measured). */
 let drawn = null;
 export const theIcon = () => {
-  drawn ??= drawIcon(THE_BLOCKS, SIZE);
+  drawn ??= drawIcon(SIZE);
   return drawn;
 };
 

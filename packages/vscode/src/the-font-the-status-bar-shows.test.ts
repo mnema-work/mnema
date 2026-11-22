@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { THE_BLOCKS } from '../../code/src/presentation/banner.js';
 import { drawIconFont } from '../build/icon-font.mjs';
 
 /**
@@ -7,11 +6,11 @@ import { drawIconFont } from '../build/icon-font.mjs';
  * `build/icon-font.mjs`: both were written by the same hand from the same reading of the format.
  * What does NOT share them is FreeType (`fc-scan` on the packed file, in the pull request) and the
  * editor itself (the captures; `install-check` loads the font, but nothing there verifies that Chromium
- * accepted it). These cases pin the bytes and the geometry; they do not prove the editor takes it.
+ * accepted it). These cases pin the bytes and the form of the outlines; the glyph's shape is held
+ * against the brand's own geometry, through a reader of another hand, in
+ * `packages/code/tests/the-editor-and-the-record-page-wear-the-new-brand.test.ts`. None of them proves the
+ * editor takes it.
  */
-
-/** The M as the wordmark's full blocks draw it, ten columns by five rows, written out by hand. */
-const THE_M = ['###....###', '####..####', '##.####.##', '##..##..##', '##......##'];
 
 const u16 = (b: Buffer, at: number) => b.readUInt16BE(at);
 const i16 = (b: Buffer, at: number) => b.readInt16BE(at);
@@ -49,8 +48,8 @@ const body = (font: Buffer, name: string): Buffer => {
   return font.subarray(t.offset, t.offset + t.length);
 };
 
-/** The glyph's contours, each as its points in font units, read from `loca` and `glyf`. */
-function contours(font: Buffer, glyph: number): { x: number; y: number }[][] {
+/** The glyph's contours, each as its points in font units and whether each is on the curve, read from `loca` and `glyf`. */
+function contours(font: Buffer, glyph: number): { x: number; y: number; on: boolean }[][] {
   const loca = body(font, 'loca');
   const long = i16(body(font, 'head'), 50) === 1;
   const at = (n: number) => (long ? loca.readUInt32BE(4 * n) : 2 * u16(loca, 2 * n));
@@ -90,24 +89,11 @@ function contours(font: Buffer, glyph: number): { x: number; y: number }[][] {
     const ring = Array.from({ length: end - start + 1 }, (_, i) => ({
       x: xs[start + i] ?? 0,
       y: ys[start + i] ?? 0,
+      on: ((flags[start + i] ?? 0) & 1) === 1,
     }));
     start = end + 1;
     return ring;
   });
-}
-
-/** The glyph on the pixel grid of an `em`-pixel line: '#' where it has ink, row 0 at the top. */
-function pixels(font: Buffer, glyph: number, em: number): string[] {
-  const upem = u16(body(font, 'head'), 18);
-  const grid = Array.from({ length: em }, () => Array<string>(em).fill('.'));
-  for (const ring of contours(font, glyph)) {
-    const xs = ring.map((q) => (q.x * em) / upem);
-    const ys = ring.map((q) => (q.y * em) / upem);
-    for (const n of [...xs, ...ys]) expect(Number.isInteger(n), `edge at ${n} px`).toBe(true);
-    for (let y = Math.min(...ys); y < Math.max(...ys); y++)
-      for (let x = Math.min(...xs); x < Math.max(...xs); x++) grid[em - 1 - y]?.splice(x, 1, '#');
-  }
-  return grid.map((row) => row.join(''));
 }
 
 /** The signed area of a ring in y-up coordinates: negative when it runs clockwise. */
@@ -118,10 +104,10 @@ const area = (ring: { x: number; y: number }[]): number =>
   }, 0) / 2;
 
 describe('the font the status bar shows (icon-font.mjs, media/mnema-icons.ttf)', () => {
-  const font = drawIconFont(THE_BLOCKS);
+  const font = drawIconFont();
 
   it('is the same bytes on every run', () => {
-    expect(drawIconFont(THE_BLOCKS).equals(font)).toBe(true);
+    expect(drawIconFont().equals(font)).toBe(true);
   });
 
   it('is a TrueType file with the ten tables a browser sanitizer asks of a web font, in order', () => {
@@ -155,7 +141,7 @@ describe('the font the status bar shows (icon-font.mjs, media/mnema-icons.ttf)',
     expect(sum(font)).toBe(0xb1b0afba);
   });
 
-  it('takes U+E000 to the glyph that draws the M, and nothing else to anything', () => {
+  it('takes U+E000 to the glyph that draws the eye, and nothing else to anything', () => {
     const cmap = body(font, 'cmap');
     expect([u16(cmap, 0), u16(cmap, 2)]).toEqual([0, 1]);
     expect([u16(cmap, 4), u16(cmap, 6)]).toEqual([3, 1]);
@@ -183,16 +169,38 @@ describe('the font the status bar shows (icon-font.mjs, media/mnema-icons.ttf)',
     expect(u16(body(font, 'maxp'), 4)).toBe(2);
   });
 
-  it('draws the banner M on the 16 pixel grid of a status bar icon, every edge on a whole pixel', () => {
-    const grid = pixels(font, 1, 16);
-    const expected = Array.from({ length: 16 }, (_, y) =>
-      Array.from({ length: 16 }, (_, x) => {
-        const row = THE_M[Math.floor((y - 3) / 2)];
-        return y >= 3 && y < 13 && x >= 3 && x < 13 && row?.[x - 3] === '#' ? '#' : '.';
-      }).join(''),
-    );
-    expect(grid).toEqual(expected);
-    expect(pixels(font, 0, 16).join('')).not.toContain('#');
+  it('draws in curves: its outlines hold points off the curve, the controls of quadratics, and points on it', () => {
+    const points = contours(font, 1).flat();
+    const off = points.filter((q) => !q.on).length;
+    const on = points.filter((q) => q.on).length;
+    expect(off, 'points off the curve').toBeGreaterThan(0);
+    expect(on, 'points on the curve').toBeGreaterThan(0);
+    // The iris alone is eight arcs: no outline of the eye is a polygon of on-curve points.
+    for (const ring of contours(font, 1)) expect(ring.some((q) => !q.on)).toBe(true);
+    expect(contours(font, 0)).toEqual([]);
+  });
+
+  it('closes every outline: no two points in a row are the same on-curve point, the last included', () => {
+    for (const ring of contours(font, 1)) {
+      expect(ring.length).toBeGreaterThanOrEqual(3);
+      ring.forEach((q, i) => {
+        const next = ring[(i + 1) % ring.length] ?? q;
+        expect(q.on && next.on && q.x === next.x && q.y === next.y, `point ${i}`).toBe(false);
+      });
+    }
+  });
+
+  it('fits in the em and sits in its middle, to within a unit: the eye drawn 280 units wide in 320', () => {
+    const points = contours(font, 1).flat();
+    const [xMin, xMax] = [Math.min(...points.map((q) => q.x)), Math.max(...points.map((q) => q.x))];
+    const [yMin, yMax] = [Math.min(...points.map((q) => q.y)), Math.max(...points.map((q) => q.y))];
+    for (const n of [xMin, yMin]) expect(n).toBeGreaterThanOrEqual(0);
+    for (const n of [xMax, yMax]) expect(n).toBeLessThanOrEqual(320);
+    expect(Math.abs(xMin + xMax - 320)).toBeLessThanOrEqual(1);
+    expect(Math.abs(yMin + yMax - 320)).toBeLessThanOrEqual(1);
+    // The almond is 94 of the frame's 96 units wide, so the eye's points stay within 274 units.
+    expect(xMax - xMin).toBeLessThanOrEqual(274);
+    expect(xMax - xMin).toBeGreaterThan(200);
   });
 
   it('wraps every outline clockwise, which is the way TrueType fills', () => {
@@ -238,20 +246,5 @@ describe('the font the status bar shows (icon-font.mjs, media/mnema-icons.ttf)',
     }
     expect(strings.get(1)).toBe('mnema-icons');
     expect(strings.get(6)).toBe('mnema-icons');
-  });
-
-  it('is the font of the first letter: changing it changes the font, changing the next ones does not', () => {
-    const [first = ''] = THE_BLOCKS;
-    const other = [...THE_BLOCKS];
-    // The first letter, the M, is ten columns of ink; the thinnest edit is its first block.
-    other[0] = `${first.replace('█', ' ')}`;
-    expect(drawIconFont(other).equals(font)).toBe(false);
-    const later = THE_BLOCKS.map((row) => row.replace(/(?<=.{11})[█]/g, ' '));
-    expect(later).not.toEqual([...THE_BLOCKS]);
-    expect(drawIconFont(later).equals(font)).toBe(true);
-  });
-
-  it('refuses a wordmark with no full block to draw', () => {
-    expect(() => drawIconFont(['', ''])).toThrow(/no full block/);
   });
 });

@@ -4,12 +4,13 @@
 // Every grey has channels within 17 units of each other; `sulphur` is the one hue, and it appears only where it means
 // something: the iris, a decision in force, a record verified.
 
-/** @typedef {'charcoal' | 'bone' | 'stone' | 'darkStone' | 'sulphur' | 'mask' | 'lineDark' | 'lineLight' | 'dimDark' | 'dimLight' | 'pageDark' | 'pageLight'} PaletteName */
+/** @typedef {'charcoal' | 'bone' | 'paper' | 'stone' | 'darkStone' | 'sulphur' | 'mask' | 'lineDark' | 'lineLight' | 'dimDark' | 'dimLight' | 'pageDark' | 'pageLight'} PaletteName */
 
 /** @type {Readonly<Record<PaletteName, string>>} */
 export const PALETTE = Object.freeze({
   charcoal: '#131312',
   bone: '#efebe1',
+  paper: '#f6f3ec',
   stone: '#8c8a82',
   darkStone: '#6b6862',
   sulphur: '#e6da2e',
