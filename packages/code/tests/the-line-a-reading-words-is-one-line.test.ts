@@ -3327,7 +3327,7 @@ describe('every value this layer puts on a line is classified', () => {
     // `named-decision.ts` is a COMPOSER: the decision another decision's link names, whose title is
     // text somebody typed, worded once for `show` and for the document a session opens with.
     expect(FOUND.composers.length + FOUND.machinery.length).toBe(41);
-    expect(FOUND.composers.length).toBe(28);
+    expect(FOUND.composers.length).toBe(29);
     expect(FOUND.machinery).toContain('items.ts');
     expect(FOUND.machinery).toContain('line.ts');
     expect(FOUND.machinery).toContain('width.ts');
