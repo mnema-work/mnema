@@ -32,6 +32,7 @@ import { describe, expect, it } from 'vitest';
 import {
   checkoutOf,
   HOME_OF_ITS_OWN,
+  HOST_SESSION_VARIABLES,
   listRecordPlaces,
   reachesTheMachine,
   recordPlacesOf,
@@ -40,6 +41,8 @@ import {
   takeCaught,
   whatMovedBetween,
 } from '../../../.github/a-home-of-its-own/setup.mjs';
+import { HOSTS } from '../src/host-names.js';
+import { HOST_WORDS } from '../src/host-words.js';
 import { codeOnly } from './support/reading-source.js';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
@@ -285,5 +288,38 @@ describe('the record of the checkout is not written by a file of the suite', () 
     } finally {
       rmSync(sandbox, { recursive: true, force: true });
     }
+  });
+});
+
+describe('no test process inherits a host session variable', () => {
+  /** Every session variable the host table names, a candidate included. */
+  const named = (): string[] => {
+    const names: string[] = [];
+    for (const row of Object.values(HOSTS)) {
+      const cell = (row as { sessionVariable?: { name?: string; candidate?: string } }).sessionVariable;
+      if (cell?.name !== undefined) names.push(cell.name);
+      if (cell?.candidate !== undefined) names.push(cell.candidate);
+    }
+    for (const row of Object.values(HOST_WORDS)) {
+      if (row.sessionEnv !== undefined) names.push(row.sessionEnv);
+    }
+    return names;
+  };
+
+  it('clears every variable the host table names, so a new host row cannot bring the leak back', () => {
+    const names = named();
+    expect(names).toContain('CLAUDE_CODE_SESSION_ID');
+    expect(names).toContain('COPILOT_AGENT_SESSION_ID');
+    for (const name of names) expect(HOST_SESSION_VARIABLES, name).toContain(name);
+  });
+
+  it('leaves none of them in this process or in a child it starts', () => {
+    for (const name of HOST_SESSION_VARIABLES) expect(process.env[name], name).toBeUndefined();
+    const seen = execFileSync(
+      process.execPath,
+      ['-e', `process.stdout.write(JSON.stringify(${JSON.stringify(HOST_SESSION_VARIABLES)}.filter((n) => n in process.env)))`],
+      { encoding: 'utf-8' },
+    );
+    expect(JSON.parse(seen)).toEqual([]);
   });
 });
