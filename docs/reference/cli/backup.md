@@ -133,6 +133,7 @@ what the tree held is kept aside (in the git directory, or in the mnema home for
 A destination may be a git remote (or the folder of a bare repository): `run` commits the copy to a clone of it
 in the data directory and pushes it, one more commit each run, and never squashes, amends or forces: the
 destination keeps the whole history. `hook install` adds an optional post-commit hook that runs the backup.
+The session (`mnema repl`) runs `status` and `verify`; `setup`, `run`, `restore` and `hook` write outside the record and are left to the shell.
 The machine's global tree, which mixes the memory of every project, is never part of a project's
 backup: `--global` copies it, and only it, into the folder `setup --global` gave it, as
 <folder>/global/.
