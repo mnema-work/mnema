@@ -39,6 +39,8 @@ const HELPER = 'every-cache-state';
  * long cases; they are owed.
  */
 export const EXEMPT: Readonly<Record<string, string>> = {
+  'packages/core/src/workflow/a-showing-is-a-persons.test.ts':
+    'holds that a showing is refused before anything is read or written (no terminal, an agent declared) and lands when a person writes it; it opens no projection cache and damages nothing',
   'packages/chain/src/chain/a-part-the-disk-will-not-open-is-handed-to-a-collector.test.ts':
     'holds what the readers of the chain hand a collector, or throw, for a folder or a file the disk will not open; the chain has no projection cache (the cache states are asked of the binary in a-part-the-disk-will-not-open-is-named-and-never-an-errno)',
   'packages/code/tests/a-part-the-disk-will-not-open-is-named-and-never-an-errno.test.ts':
@@ -219,6 +221,8 @@ export const EXEMPT: Readonly<Record<string, string>> = {
  * checkpoint by hand plants damage, wears the mark and belongs to EXEMPT, not here.
  */
 export const WRITES_BUT_PLANTS_NOTHING: Readonly<Record<string, string>> = {
+  'packages/context/src/context/not-seen.test.ts':
+    'copies a clone’s tails into the bench’s tree, as two clones meet, to hold which rules the list of what a person did not accept keeps when two machines accepted one decision; nothing is damaged, and every read is of a cache the bench rebuilds whole',
   'packages/code/tests/the-audit-verbs-fold-the-record-once.test.ts':
     'appends one line of a kind no version declares, signed by a checkpoint as a newer mnema writes it, and damages nothing: it holds that four verbs which open no cache fold the tails once and carry the same field, so no cache state changes what it reads',
   'packages/chain/src/chain/a-tail-is-signed-as-soon-as-it-is-founded.test.ts':

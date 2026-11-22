@@ -3,6 +3,7 @@ $ mnema
 | Your decisions, handed to your agents' sessions and held at the edits they govern: append-only and signed in the repository, and checkable by anyone.
 | A mnema project is founded here.
 | 1 decision(s) await a judgement: `mnema decision review` goes through them.
+| 1 rule(s) in force you did not accept yourself, none shown to you yet: `mnema decision review` shows each one and marks it shown.
 | Off on this machine: edit-first-write-gate. Turn one on with `mnema switch on <name>`.
 | Next:
 |   `mnema status`                                where things stand
@@ -1891,6 +1892,11 @@ $ mnema decision review --help
 | letter (`a because the benchmark held`). Each verdict is the move `decision move` makes,
 | signed with your own key; a refusal on one decision is said and the review goes on. Without a
 | terminal it writes nothing and prints the `decision move` command that rules the same decisions.
+|
+| Then it shows the rules in force you did not accept yourself (an agent accepted them, or no
+| agent was declared on the accept), newest first, and marks each one it shows as shown to you,
+| in this machine's private record; `q` stops it, and what was not shown stays on the list.
+| A mark says your key signed at a terminal with no agent declared, not that a person read it.
 |
 | What recording means here:
 |   Permanent: mnema is append-only and nothing deletes a fact. A public record
