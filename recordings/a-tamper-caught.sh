@@ -47,7 +47,10 @@ mkdir -p "$H/your-repository"
 cd "$H/your-repository"
 git init -q .
 
-mnema() { env -u MNEMA_HOME -u MNEMA_RUN HOME="$H" NO_COLOR=1 node "$CLI" "$@"; }
+# stdin is /dev/null: under `asciinema` the script's stdin is a terminal, and at a terminal a write
+# marks the rule it showed (the private tree), so the second `verify` printed a `private:` verdict
+# line that the test, which runs this script with no terminal, never sees.
+mnema() { env -u MNEMA_HOME -u MNEMA_RUN HOME="$H" NO_COLOR=1 node "$CLI" "$@" </dev/null; }
 tilde() { sed "s|$H|~|g"; }
 folded() { fold -s -w 94; }
 # A tail's name is a 64-digit hash, a dash and 32 more digits: it is shown as its first eight.
