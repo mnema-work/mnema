@@ -139,7 +139,10 @@ CREATE TABLE IF NOT EXISTS decisions (
   recorded_who  TEXT,
   recorded_which TEXT,
   accepted_who  TEXT,
-  accepted_which TEXT
+  accepted_which TEXT,
+  -- Every accept the fold applied, as JSON (AcceptMove[]: who, which, at and the entry hash a
+  -- showing names it by), in the chain's order. NULL for a decision never accepted.
+  accepts       TEXT
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_decisions_state ON decisions (state);

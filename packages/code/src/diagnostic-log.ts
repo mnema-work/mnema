@@ -31,6 +31,7 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
+import { isLinkAt } from './linked-log.js';
 import { asDiagnostic, type Diagnostic, diagnose, renderReport } from './problem-report.js';
 
 export const LOG_FILE = 'diagnostics.jsonl';
@@ -125,15 +126,20 @@ export function mayOffer(state: ReportState, fingerprint: string, now: Date): bo
   return state.offered.filter((o) => o.day === today).length < DAILY_LIMIT;
 }
 
-/** Appends one line, rotating first when it would take the file over its cap. */
-export function appendDiagnostic(dir: string, diagnostic: Diagnostic): void {
+/**
+ * Appends one line, rotating first when it would take the file over its cap. A log that is a
+ * symbolic link is not written to: it answers `linked` and nothing is opened.
+ */
+export function appendDiagnostic(dir: string, diagnostic: Diagnostic): 'written' | 'linked' {
+  const file = join(dir, LOG_FILE);
+  if (isLinkAt(file)) return 'linked';
   mkdirSync(dir, { recursive: true });
   const line = `${JSON.stringify(diagnostic)}\n`;
-  const file = join(dir, LOG_FILE);
   if (existsSync(file) && statSync(file).size + Buffer.byteLength(line) > LOG_LIMIT_BYTES) {
     renameSync(file, join(dir, LOG_ROTATED_FILE));
   }
   appendFileSync(file, line);
+  return 'written';
 }
 
 /** Every line of the log that has its shape, oldest first. */
@@ -167,6 +173,8 @@ export function withheldPlaces(cwd: string, env: DiscoveryEnv): string[] {
 export interface Noted {
   /** True when the person should be told a report can be read: first of its kind, under the day's limit. */
   readonly offer: boolean;
+  /** The log that is a symbolic link and was not written to; the surface says so (`linkedLogSentence`). */
+  readonly linked?: string;
 }
 
 /**
@@ -206,7 +214,9 @@ export function noteInternalError(
     if (renderReport(diagnostic, withheldPlaces(run.cwd, run.env)).refused) {
       return { offer: false };
     }
-    appendDiagnostic(dir, diagnostic);
+    if (appendDiagnostic(dir, diagnostic) === 'linked') {
+      return { offer: false, linked: join(dir, LOG_FILE) };
+    }
     if (!run.aPersonIsHere || !mayOffer(state, diagnostic.fingerprint, run.now))
       return { offer: false };
     writeState(dir, {

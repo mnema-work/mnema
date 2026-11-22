@@ -18,7 +18,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Command } from 'commander';
@@ -65,6 +65,7 @@ const SAYS: Readonly<Record<string, Case>> = {
   brief: aVerbThatAnswers(() => ['brief'], { json: false }),
   recall: aVerbThatAnswers(() => ['recall']),
   rules: aVerbThatAnswers(() => ['rules', 'src/a.ts'], { json: true }),
+  'rules test': aVerbThatAnswers(() => ['rules', 'test', 'cases.json']),
   'rules-file': aVerbThatAnswers(() => ['rules-file', '--host', 'cursor']),
   search: aVerbThatAnswers(() => ['search', 'Postgres'], { json: true }),
   show: aVerbThatAnswers((ids) => ['show', ids.decision], { json: true }),
@@ -117,6 +118,7 @@ const NEED_NOT: Readonly<Record<string, string>> = {
   settled: A_HOOK,
   'witness sigstore-check':
     'It reads the Sigstore bundles beside the checkpoints the verdict proved and no line of a record as content, and names a tree whose chain does not close as not read: where a newer mnema wrote is `mnema verify`\u2019s to say.',
+  dictated: A_HOOK,
   'stack list': ONE_OF_THE('the stacks installed'),
   'stack index': ONE_OF_THE('the stacks installed'),
   'stack show': ONE_OF_THE('the stacks installed'),
@@ -131,8 +133,13 @@ const A_COPY =
 // ---------------------------------------------------------------------------
 
 function everyLeaf(command: Command, path: string): string[] {
-  if (command.commands.length === 0) return [path];
-  return command.commands.flatMap((one) => everyLeaf(one, `${path} ${one.name()}`));
+  const below = command.commands.flatMap((one) => everyLeaf(one, `${path} ${one.name()}`));
+  // A command that takes a word of its own AND has subcommands (`rules <path>`, `rules test`) is
+  // itself a verb that answers, beside the ones below it.
+  if (command.commands.length === 0 || command.registeredArguments.length > 0) {
+    return [path, ...below];
+  }
+  return below;
 }
 
 /** The invocations the program declares unable to change the record, by the words a person types. */
@@ -228,6 +235,10 @@ describe.each([
         0,
       );
     expect(mnema('init').status).toBe(0);
+    writeFileSync(
+      join(repo, 'cases.json'),
+      JSON.stringify({ cases: [{ path: 'src/a.ts', expect: 'none' }] }),
+    );
     const decision = mnema('decision', 'record', 'Use Postgres', 'The team knows it.');
     expect(decision.status, decision.err).toBe(0);
     const task = mnema('task', 'create', 'A task');

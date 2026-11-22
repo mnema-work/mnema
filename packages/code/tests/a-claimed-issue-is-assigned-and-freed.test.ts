@@ -39,6 +39,7 @@ import {
   namesIssue,
   readsAsAClaim,
   remind,
+  takenMarker,
   waitingSince,
 } from '../../../.github/assign-a-claimed-issue/claim.mjs';
 
@@ -340,12 +341,112 @@ describe('two claims at once, and a quiet answer', () => {
     expect((api.writes[3] as { body: string }).body).toContain('already holds this issue');
   });
 
-  it('keeps the issue for the older claim, which says it is theirs', () => {
+  it('keeps the issue for the older claim, gives it back from the newer one that was assigned first, and tells it', () => {
     const api = racing('second', [older, newer]);
     expect(claim(eventOf(older), api, NOW).action).toBe('assign');
-    const writes = api.writes as { write: string; body?: string }[];
-    expect(writes.map((w) => w.write)).toEqual(['assign', 'assign', 'comment']);
-    expect(writes[2]?.body).toContain('This issue is yours');
+    const writes = api.writes as { write: string; login?: string; body?: string }[];
+    expect(writes.map((w) => w.write)).toEqual([
+      'assign',
+      'assign',
+      'unassign',
+      'comment',
+      'comment',
+    ]);
+    expect(writes[2]).toEqual({ write: 'unassign', number: 7, login: 'second' });
+    expect(writes[3]?.body).toContain('Thanks, @second: someone already holds this issue');
+    expect(writes[4]?.body).toContain('This issue is yours');
+    expect(api.issue(7).assignees).toEqual([{ login: 'first' }]);
+  });
+
+  it('never leaves both assigned, whichever order the two runs finish in', () => {
+    for (const [event, other, kept] of [
+      [newer, 'first', 'first'],
+      [older, 'second', 'first'],
+    ] as const) {
+      const api = racing(other, [older, newer]);
+      claim(eventOf(event), api, NOW);
+      expect(api.issue(7).assignees).toEqual([{ login: kept }]);
+    }
+  });
+
+  it('does not tell the loser a second time when it was told already', () => {
+    const told = { user: { login: BOT }, body: takenMarker('second') };
+    const api = racing('second', [older, newer, told]);
+    claim(eventOf(older), api, NOW);
+    const writes = api.writes as { write: string }[];
+    expect(writes.map((w) => w.write)).toEqual(['assign', 'assign', 'unassign', 'comment']);
+  });
+
+  it('counts a claim made since the issue was freed, never one from before: exactly one keeps it, in both orders', () => {
+    const spent = claimAt(5, 'second', '2026-11-01T10:00:00Z');
+    const freed = {
+      id: 6,
+      created_at: '2026-11-15T10:00:00Z',
+      user: { login: BOT },
+      body: freedMarker(daysAgo(16)),
+    };
+    const comments = [spent, freed, older, newer];
+    for (const [event, other] of [
+      [newer, 'first'],
+      [older, 'second'],
+    ] as const) {
+      const api = racing(other, comments);
+      claim(eventOf(event), api, NOW);
+      expect(api.issue(7).assignees).toEqual([{ login: 'first' }]);
+    }
+  });
+
+  it('compares each person by their own claim that counts, not by the comment the run answers: without a freed marker exactly one keeps it, in both orders', () => {
+    const unspent = claimAt(5, 'second', '2026-12-01T10:00:00Z');
+    const comments = [unspent, older, newer];
+    for (const [event, other] of [
+      [newer, 'first'],
+      [older, 'second'],
+    ] as const) {
+      const api = racing(other, comments);
+      claim(eventOf(event), api, NOW);
+      expect(api.issue(7).assignees).toEqual([{ login: 'second' }]);
+    }
+  });
+
+  it('counts the first claim when the issue was never freed, so a second comment does not lose the place', () => {
+    const early = claimAt(12, 'first', '2026-12-01T10:00:00Z');
+    const again = claimAt(13, 'first', '2026-12-01T11:30:00Z');
+    const api = racing('first', [early, newer, again]);
+    expect(claim(eventOf(newer), api, NOW).action).toBe('taken');
+    expect(api.issue(7).assignees).toEqual([{ login: 'first' }]);
+  });
+
+  it('tells the loser once when its own run answers between this run reading and writing', () => {
+    const api = racing('second', [older, newer]);
+    const read = api.comments;
+    let first = true;
+    api.comments = (number: number) => {
+      const seen = [...read(number)];
+      if (number === 7 && first) {
+        first = false;
+        api.comment(7, `${takenMarker('second')}\nthe loser's own run`);
+      }
+      return seen;
+    };
+    claim(eventOf(older), api, NOW);
+    const told = (api.writes as { write: string; body?: string }[]).filter(
+      (w) => w.write === 'comment' && w.body?.includes(takenMarker('second')),
+    );
+    expect(told).toHaveLength(1);
+  });
+
+  it('does not take the issue from an assignee whose claim is older than this one', () => {
+    const api = racing('first', [older, newer]);
+    expect(claim(eventOf(newer), api, NOW).action).toBe('taken');
+    expect(api.issue(7).assignees).toEqual([{ login: 'first' }]);
+  });
+
+  it('does not take it from a maintainer who commented a claim after assigning it by hand', () => {
+    const lead = { ...claimAt(12, 'lead', '2026-12-01T11:00:09Z'), author_association: 'MEMBER' };
+    const api = racing('lead', [older, lead]);
+    claim(eventOf(older), api, NOW);
+    expect((api.writes as { write: string }[]).some((w) => w.write === 'unassign')).toBe(false);
   });
 
   it('breaks a tie of the clock by the comment id', () => {
@@ -408,6 +509,17 @@ describe('two claims at once, and a quiet answer', () => {
     api.assign = () => undefined;
     expect(() => claim(eventOf(older), api, NOW)).toThrow(/did not take/);
     expect(api.writes).toEqual([]);
+  });
+
+  it("does not read a stranger's copy of the taken marker as an answer already given", () => {
+    const forged = { id: 5, user: { login: 'stranger' }, body: takenMarker('first') };
+    const api = fixtureApi(
+      { issues: { '7': issueOf(7, ['other']) }, comments: { '7': [forged] } },
+      () => {},
+    );
+    expect(claim(eventOf(older), api, NOW).action).toBe('taken');
+    expect((api.writes as { body?: string }[])[0]?.body).toContain('someone already holds');
+    expect(api.writes).toHaveLength(1);
   });
 
   it('answers "taken" to a login once, and stays silent the second time', () => {

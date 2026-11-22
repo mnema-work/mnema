@@ -26,11 +26,13 @@
 import { createHash } from 'node:crypto';
 import {
   cpSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -44,10 +46,38 @@ import {
   verify as verifyChainAt,
 } from '@mnema/chain';
 import { type DiscoveryEnv, resolveTrees, tailsHeld } from '@mnema/core';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runInit } from './init.js';
 import { runMemory } from './memory.js';
-import { runWitnessList, runWitnessStamp, runWitnessUpgrade } from './witness.js';
+import {
+  runWitnessList,
+  runWitnessSigstore,
+  runWitnessStamp,
+  runWitnessUpgrade,
+} from './witness.js';
+
+/**
+ * The guard the acts ask before anything leaves the machine is the chain's own
+ * (`refuseWitnessThroughALink`). Its refusal is out of reach of a plant on disk, because the read
+ * that comes first names a link before the act asks, so a case that makes the guard itself answer
+ * is how the answer of each act to it is held.
+ */
+const race = vi.hoisted(() => ({ answer: undefined as 'a link' | 'a fault' | undefined }));
+
+vi.mock('@mnema/chain', async (original) => {
+  const real = await original<typeof import('@mnema/chain')>();
+  return {
+    ...real,
+    refuseWitnessThroughALink: (...args: Parameters<typeof real.refuseWitnessThroughALink>) => {
+      if (race.answer === 'a fault') throw new RangeError('a fault of the product');
+      if (race.answer === 'a link') {
+        const [layout, tail, name] = args;
+        throw new real.RecordLinkedError(layout, `tails/${tail}/witness/${name}.ots`);
+      }
+      return real.refuseWitnessThroughALink(...args);
+    },
+  };
+});
 
 let sandbox: string;
 
@@ -56,6 +86,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  race.answer = undefined;
   rmSync(sandbox, { recursive: true, force: true });
 });
 
@@ -877,3 +908,189 @@ function tamper(root: string): void {
   lines[0] = JSON.stringify(first);
   writeFileSync(path, `${lines.join('\n')}\n`, 'utf-8');
 }
+
+describe('a link where a witness file is filed stops the act before anything leaves the machine', () => {
+  /** The record, stamped once to learn the checkpoint's name, its witness folder then taken away. */
+  async function stampedOnce(): Promise<{
+    ctx: ReturnType<typeof setup>;
+    witness: string;
+    name: string;
+  }> {
+    const ctx = setup();
+    await runWitnessStamp(ctx, { calendars: [CALENDAR], fetch: network(() => promises()).fetch });
+    const root = publicRoot(ctx);
+    const witness = join(root, 'tails', tailOf(root), 'witness');
+    const name = (readdirSync(witness).find((f) => f.endsWith('.ots')) as string).slice(0, -4);
+    rmSync(witness, { recursive: true });
+    return { ctx, witness, name };
+  }
+
+  /** Plants a link to nothing, outside the tree, at `file` of the witness folder. */
+  function plant(witness: string, file: string): string {
+    mkdirSync(witness, { recursive: true });
+    const target = join(sandbox, 'outside', file);
+    mkdirSync(join(sandbox, 'outside'), { recursive: true });
+    symlinkSync(target, join(witness, file));
+    return target;
+  }
+
+  it('stamp asks no calendar: the tree with the link is not stamped over', async () => {
+    const { ctx, witness, name } = await stampedOnce();
+    const target = plant(witness, `${name}.ots`);
+    const calendar = network(() => promises());
+
+    const act = await runWitnessStamp(ctx, { calendars: [CALENDAR], fetch: calendar.fetch });
+
+    expect(calendar.sent).toEqual([]);
+    if (!act.ok) throw new Error(act.message);
+    expect(act.outcomes.map((o) => o.did)).toEqual(['skipped']);
+    expect(act.outcomes[0]?.detail).toMatch(/the tree is broken/);
+    expect(existsSync(target)).toBe(false);
+  });
+
+  it('sigstore signs nothing and publishes nothing: the tree with the link is not signed over', async () => {
+    const { ctx, witness, name } = await stampedOnce();
+    const target = plant(witness, `${name}.sigstore.json`);
+    const reached: string[] = [];
+
+    const act = await runWitnessSigstore(ctx, {
+      fetch: async (url) => {
+        reached.push(String(url));
+        throw new Error('the network is not to be reached');
+      },
+      token: async () => {
+        reached.push('token');
+        throw new Error('no token is to be asked');
+      },
+    });
+
+    expect(reached).toEqual([]);
+    if (!act.ok) throw new Error(act.message);
+    expect(act.outcomes.map((o) => o.did)).toEqual(['skipped']);
+    expect(act.outcomes[0]?.detail).toMatch(/the tree is broken/);
+    expect(existsSync(target)).toBe(false);
+  });
+
+  it('upgrade asks no calendar for a proof whose headers file is a link: it refuses the read', async () => {
+    const ctx = setup();
+    await runWitnessStamp(ctx, { calendars: [CALENDAR], fetch: network(() => promises()).fetch });
+    const root = publicRoot(ctx);
+    const witness = join(root, 'tails', tailOf(root), 'witness');
+    const name = (readdirSync(witness).find((f) => f.endsWith('.ots')) as string).slice(0, -4);
+    const target = plant(witness, `${name}.blocks`);
+    const calendar = network(() => promises());
+
+    await expect(runWitnessUpgrade(ctx, { fetch: calendar.fetch })).rejects.toThrow(
+      /is a symbolic link/,
+    );
+
+    expect(calendar.sent).toEqual([]);
+    expect(existsSync(target)).toBe(false);
+  });
+});
+
+describe('a link that appears after the read, where the act is about to file', () => {
+  /** What the refusal says of the link, whichever act reports it: the place, then the way out. */
+  const SAID = (tail: string, name: string) =>
+    new RegExp(
+      `^tails/${tail}/witness/${name}\\.ots is a symbolic link \\(.*\\), and this mnema does not write through a link.*then write again\\.$`,
+    );
+
+  /** The checkpoint a tail's head is, learnt from a first stamp, which is then undone. */
+  async function stamped(): Promise<{
+    ctx: ReturnType<typeof setup>;
+    tail: string;
+    name: string;
+  }> {
+    const ctx = setup();
+    await runWitnessStamp(ctx, { calendars: [CALENDAR], fetch: network(() => promises()).fetch });
+    const root = publicRoot(ctx);
+    const witness = join(root, 'tails', tailOf(root), 'witness');
+    const name = (readdirSync(witness).find((f) => f.endsWith('.ots')) as string).slice(0, -4);
+    return { ctx, tail: tailOf(root), name };
+  }
+
+  it('stamp says nothing was sent, and asks no calendar', async () => {
+    const ctx = setup();
+    const calendar = network(() => promises());
+    race.answer = 'a link';
+    const act = await runWitnessStamp(ctx, { calendars: [CALENDAR], fetch: calendar.fetch });
+    if (!act.ok) throw new Error(act.message);
+    const root = publicRoot(ctx);
+    expect(calendar.sent).toEqual([]);
+    expect(act.outcomes.map((o) => o.did)).toEqual(['failed']);
+    const detail = act.outcomes[0]?.detail as string;
+    expect(detail.startsWith('nothing was sent: tails/')).toBe(true);
+    expect(detail.slice('nothing was sent: '.length)).toMatch(SAID(tailOf(root), '[0-9a-f]{64}'));
+    expect(act.outcomes[0]?.reading).toEqual({ status: 'not-covered', detail: expect.any(String) });
+    expect(existsSync(join(root, 'tails', tailOf(root), 'witness'))).toBe(false);
+  });
+
+  it('upgrade says nothing was asked, and asks no calendar', async () => {
+    const { ctx, tail, name } = await stamped();
+    const calendar = network(() => promises());
+    race.answer = 'a link';
+    const act = await runWitnessUpgrade(ctx, { fetch: calendar.fetch });
+    if (!act.ok) throw new Error(act.message);
+    expect(calendar.sent).toEqual([]);
+    expect(act.outcomes.map((o) => o.did)).toEqual(['failed']);
+    const detail = act.outcomes[0]?.detail as string;
+    expect(detail.startsWith('nothing was asked: ')).toBe(true);
+    expect(detail.slice('nothing was asked: '.length)).toMatch(SAID(tail, name));
+  });
+
+  it('sigstore says nothing was signed, and reaches neither Sigstore nor a token', async () => {
+    const { ctx, tail } = await stamped();
+    const reached: string[] = [];
+    race.answer = 'a link';
+    const act = await runWitnessSigstore(ctx, {
+      fetch: async (url) => {
+        reached.push(String(url));
+        throw new Error('the network is not to be reached');
+      },
+      token: async () => {
+        reached.push('token');
+        throw new Error('no token is to be asked');
+      },
+    });
+    if (!act.ok) throw new Error(act.message);
+    expect(reached).toEqual([]);
+    expect(act.outcomes.map((o) => o.did)).toEqual(['failed']);
+    const detail = act.outcomes[0]?.detail as string;
+    expect(detail.startsWith('nothing was signed: ')).toBe(true);
+    expect(detail.slice('nothing was signed: '.length)).toMatch(SAID(tail, '[0-9a-f]{64}'));
+  });
+
+  it('anything else the guard throws is a fault of the product: stamp does not turn it into an outcome', async () => {
+    const ctx = setup();
+    const calendar = network(() => promises());
+    race.answer = 'a fault';
+    await expect(
+      runWitnessStamp(ctx, { calendars: [CALENDAR], fetch: calendar.fetch }),
+    ).rejects.toThrow(RangeError);
+    expect(calendar.sent).toEqual([]);
+  });
+
+  it('anything else the guard throws is a fault of the product: upgrade does not turn it into an outcome', async () => {
+    const { ctx } = await stamped();
+    const calendar = network(() => promises());
+    race.answer = 'a fault';
+    await expect(runWitnessUpgrade(ctx, { fetch: calendar.fetch })).rejects.toThrow(RangeError);
+    expect(calendar.sent).toEqual([]);
+  });
+
+  it('anything else the guard throws is a fault of the product: sigstore does not turn it into an outcome', async () => {
+    const { ctx } = await stamped();
+    race.answer = 'a fault';
+    await expect(
+      runWitnessSigstore(ctx, {
+        fetch: async () => {
+          throw new Error('the network is not to be reached');
+        },
+        token: async () => {
+          throw new Error('no token is to be asked');
+        },
+      }),
+    ).rejects.toThrow(RangeError);
+  });
+});

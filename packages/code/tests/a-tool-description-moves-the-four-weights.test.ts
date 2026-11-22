@@ -58,7 +58,7 @@ const HOSTS: Readonly<Record<string, Host>> = {
       description: t.description,
       input_schema: t.inputSchema,
     }),
-    overhead: { bytes: 1_566, tokens: 346 },
+    overhead: { bytes: 783, tokens: 216 },
   },
   'Copilot CLI': {
     file: 'weights/copilot.json',
@@ -67,7 +67,7 @@ const HOSTS: Readonly<Record<string, Host>> = {
       description: t.description,
       input_schema: t.inputSchema,
     }),
-    overhead: { bytes: 1_177, tokens: 560 },
+    overhead: { bytes: 1_293, tokens: 601 },
   },
   'Gemini CLI': {
     file: 'weights/gemini.json',
@@ -76,7 +76,7 @@ const HOSTS: Readonly<Record<string, Host>> = {
       description: t.description,
       parametersJsonSchema: t.inputSchema,
     }),
-    overhead: { bytes: 7_015, tokens: 1_455 },
+    overhead: { bytes: 7_015, tokens: 1_460 },
   },
 };
 

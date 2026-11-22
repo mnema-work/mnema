@@ -203,9 +203,9 @@
  *     which is the same NAMES-not-bodies economy read off a session instead of a list:
  *     a tally per kind, bounded by the catalog, never the facts themselves;
  *   - the work list carries ONLY live tasks, those a reader still has something to
- *     do about, which is `advancing` or `stalled` (see {@link liveWork}), most
- *     recently touched first, so the freshest work leads and the cut falls on the
- *     stalest;
+ *     do about, which is `advancing` or `stalled` (see {@link liveWork}), a task
+ *     IN_PROGRESS first and then most recently touched first, so the work being
+ *     done leads and the cut falls on the stalest of the rest;
  *   - the skill list carries ONLY adopted patterns, by name;
  *   - the decision list carries ONLY decisions in force (`accepted`), by name,
  *     most recently settled first: see {@link decisionsInForce} for why one state
@@ -239,7 +239,13 @@
  * reshuffle the list.
  */
 
-import { newestFirst, type ProjectionCache, SEARCH_DEFAULT_LIMIT } from '@mnema/core';
+import {
+  newestFirst,
+  type ProjectionCache,
+  SEARCH_DEFAULT_LIMIT,
+  type TaskState,
+  taskIsUnderway,
+} from '@mnema/core';
 import {
   type DecisionAwaitingJudgement,
   type DecisionRef,
@@ -426,7 +432,9 @@ export function bootstrap(caches: readonly ProjectionCache[], scope: ActorScope)
   // order belongs to the list that is served and cut, and the same comparator settles
   // both, so "most recently moved first, ties by id DESC" is one rule in one function:
   // the core's `newestFirst`, which every recency listing in the product now asks.
-  const live = liveWork(caches, scope.asOf).sort(byUpdatedDesc);
+  // The task being worked on leads, apart from the debts: ranked before the freshest-first rule
+  // so a stale IN_PROGRESS is neither buried under newer drafts nor cut by the limit.
+  const live = liveWork(caches, scope.asOf).sort(inProgressThenNewest);
   const sweptLeftOut = sweptWorkLeftOut(caches, scope.asOf);
   // Named, never spelled out: the body is dropped here and served by its own
   // read, so the opening context stays one line per pattern.
@@ -537,4 +545,18 @@ function byUpdatedDesc(
   b: { readonly id: string; readonly updatedAt: string },
 ): number {
   return newestFirst({ at: a.updatedAt, id: a.id }, { at: b.updatedAt, id: b.id });
+}
+
+/**
+ * The work list's order: a task IN_PROGRESS before every other live one, and within each group
+ * the freshest first by {@link byUpdatedDesc}. The cut that follows keeps the front of this
+ * order, so the task somebody is doing is the last one it would leave out.
+ */
+function inProgressThenNewest(
+  a: { readonly id: string; readonly updatedAt: string; readonly state: TaskState },
+  b: { readonly id: string; readonly updatedAt: string; readonly state: TaskState },
+): number {
+  const rank = (task: { readonly state: TaskState }): number =>
+    taskIsUnderway(task.state) ? 0 : 1;
+  return rank(a) - rank(b) || byUpdatedDesc(a, b);
 }

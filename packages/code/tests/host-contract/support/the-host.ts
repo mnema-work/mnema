@@ -165,6 +165,8 @@ export interface TheSpec {
   readonly mnemaOnThePath?: boolean;
   /** MCP servers to add beside the plugin's, by name, each with the instructions it sends. */
   readonly servers?: Readonly<Record<string, string>>;
+  /** The person's message the session starts with. Default: `Say hi.` */
+  readonly prompt?: string;
   /** Extra environment for the host. */
   readonly env?: Readonly<Record<string, string>>;
   /** Extra arguments for the host, after the ones every session is started with. */
@@ -316,7 +318,7 @@ export async function aSession(spec: TheSpec = {}): Promise<TheSession> {
   );
   const args = [
     '-p',
-    'Say hi.',
+    spec.prompt ?? 'Say hi.',
     '--model',
     'claude-sonnet-4-5',
     '--output-format',

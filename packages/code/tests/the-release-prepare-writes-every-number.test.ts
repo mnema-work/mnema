@@ -150,6 +150,8 @@ describe('release:prepare with a number', () => {
     const install = readFileSync(join(dir, INSTALL_PAGE), 'utf-8');
     expect(install).toContain(`\nnpm i -g @mnema/code@${TARGET}\n`);
     expect(install).toContain(`\nnpm i --ignore-scripts @mnema/code@${TARGET}\n`);
+    expect(install.split(`npx --yes @mnema/code@${TARGET} `)).toHaveLength(6);
+    expect(install.match(/npx --yes @mnema\/code@\d+\.\d+\.\d+/g)).toHaveLength(5);
     const hosts = readFileSync(join(dir, HOSTS_PAGE), 'utf-8');
     expect(hosts).toContain(
       `raw.githubusercontent.com/mnema-work/mnema/v${TARGET}/plugin/opencode/mnema.js`,
