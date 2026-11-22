@@ -1869,7 +1869,7 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'how many rules the pass goes through: a count of the list',
   },
-  'reviewed.ts «{} ({})» shown.adr #2': {
+  'reviewed.ts «{} ({})» shown.adr #1': {
     verdict: 'minted',
     why: "the decision's ADR label, which the product numbers",
   },
@@ -3326,7 +3326,7 @@ describe('every value this layer puts on a line is classified', () => {
     // it measures what the two opening texts print for a hook, and cuts them at a whole item.
     // `named-decision.ts` is a COMPOSER: the decision another decision's link names, whose title is
     // text somebody typed, worded once for `show` and for the document a session opens with.
-    expect(FOUND.composers.length + FOUND.machinery.length).toBe(40);
+    expect(FOUND.composers.length + FOUND.machinery.length).toBe(41);
     expect(FOUND.composers.length).toBe(28);
     expect(FOUND.machinery).toContain('items.ts');
     expect(FOUND.machinery).toContain('line.ts');
