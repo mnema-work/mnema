@@ -12,6 +12,18 @@
         ]
       }
     ],
+    "BeforeAgent": [
+      {
+        "hooks": [
+          {
+            "name": "mnema-dictated",
+            "type": "command",
+            "command": "node \"${extensionPath}/hooks/mnema.mjs\" dictated",
+            "timeout": 15000
+          }
+        ]
+      }
+    ],
     "BeforeTool": [
       {
         "matcher": "^(write_file|replace)$",
@@ -20,6 +32,18 @@
             "name": "mnema-gate",
             "type": "command",
             "command": "node \"${extensionPath}/hooks/mnema.mjs\" gate",
+            "timeout": 15000
+          }
+        ]
+      }
+    ],
+    "AfterAgent": [
+      {
+        "hooks": [
+          {
+            "name": "mnema-ended",
+            "type": "command",
+            "command": "node \"${extensionPath}/hooks/mnema.mjs\" ended",
             "timeout": 15000
           }
         ]

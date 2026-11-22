@@ -23,8 +23,7 @@
  * No side is taken between a fork and a cut: both are named.
  */
 
-import { lstatSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { lstatSync } from 'node:fs';
 import {
   catalogUpcasters,
   LinkedRecordError,
@@ -33,7 +32,6 @@ import {
   verifyChain,
 } from '@mnema/chain';
 import {
-  BACKUP_MANIFEST,
   BackupRefusedError,
   type BackupTree,
   copiedOf,
@@ -41,6 +39,7 @@ import {
   linked,
   placesOf,
   planCopy,
+  readManifest,
 } from './copy.js';
 
 /** What a tail file of the copy is against the same file of the tree. */
@@ -66,6 +65,12 @@ export interface CopyReading {
   readonly tree: BackupTree;
   readonly folder: string;
   readonly copiedAt: string | undefined;
+  /**
+   * What the copy's manifest is: `whole` when it reads, `absent` when the copy has none (said, and not
+   * a failure), `unreadable` when it is there and is not JSON, is not an object with a list of files,
+   * or lists an entry with no path and size (a failure: the copy has nothing to be measured against).
+   */
+  readonly manifest: 'whole' | 'absent' | 'unreadable';
   /** Files the copy holds. */
   readonly files: number;
   /** Files its manifest lists that are not in it, or are shorter. */
@@ -116,21 +121,15 @@ export function readCopy(
   }
   const copied = planCopy(folder, tree);
 
-  let copiedAt: string | undefined;
+  const read = readManifest(folder);
+  const manifest = read.state;
+  const copiedAt = read.state === 'whole' ? read.copiedAt : undefined;
   const missing: string[] = [];
-  try {
-    const manifest = JSON.parse(readFileSync(join(folder, BACKUP_MANIFEST), 'utf-8')) as {
-      copiedAt?: unknown;
-      files?: { path?: unknown; bytes?: unknown }[];
-    };
-    if (typeof manifest.copiedAt === 'string') copiedAt = manifest.copiedAt;
-    for (const listed of manifest.files ?? []) {
-      if (typeof listed.path !== 'string' || typeof listed.bytes !== 'number') continue;
+  if (read.state === 'whole') {
+    for (const listed of read.files) {
       const held = copied.find((file) => file.path === listed.path);
       if (held === undefined || held.bytes.length < listed.bytes) missing.push(listed.path);
     }
-  } catch {
-    // A copy with no manifest, or one that does not read, has no list to be measured against.
   }
 
   const result = verifyChain({ root: folder }, catalogUpcasters());
@@ -169,6 +168,7 @@ export function readCopy(
   const standing: Standing = { same, behind, cut, lost, forked };
   const ok =
     result.ok &&
+    manifest !== 'unreadable' &&
     missing.length === 0 &&
     cut.length === 0 &&
     lost.length === 0 &&
@@ -177,6 +177,7 @@ export function readCopy(
     tree,
     folder,
     copiedAt,
+    manifest,
     files: copied.length,
     missing,
     reader: { ok: result.ok, level: result.level, summary: result.summary },

@@ -452,6 +452,7 @@ function addressesUnder(
   readonly matching: readonly Addressed[];
   readonly stale: readonly Addressed[];
   readonly unresolved: readonly Addressed[];
+  readonly readable: readonly Addressed[];
   readonly inherited: number;
   readonly elsewhere: number;
 } {
@@ -486,6 +487,7 @@ function addressesUnder(
     matching: asked === null ? [] : readable.filter((entry) => covers(entry.segments, asked)),
     stale: own.filter((entry) => readableRule(entry) && !entry.rule.onDisk),
     unresolved: own.filter((entry) => !readableRule(entry)),
+    readable,
     inherited: inherited.length,
     elsewhere: inherited.length - here.length,
   };
@@ -1064,6 +1066,50 @@ export function governsInForceEverywhere(
     assertedIn: entry.addressed.assertedIn,
     inProject: entry.addressed.address !== undefined,
   }));
+}
+
+/** One address of a rule in force and the relation it holds there. */
+export interface RuleReach {
+  readonly relation: string;
+  /** The address as segments, the project root being none. */
+  readonly segments: readonly string[];
+}
+
+/**
+ * EVERY address of every rule in force, under each of the three relations, read ONCE: what a
+ * reader that must ask the same question of thousands of paths (the coverage count) matches them
+ * against with {@link relationsCovering}, instead of reading the record again per path.
+ *
+ * The walk and the in-force narrowing are the per-path readings' own ({@link addressesUnder},
+ * {@link inForceOf}), and an address is compared by {@link covers}, the prefix the gate is decided
+ * by, so a path is covered here exactly when {@link rulesInForceAt}, {@link asksForAPersonAt} or
+ * {@link refusesAWriteAt} would list the rule at it. An address that names nothing inside the
+ * project is not here.
+ */
+export function rulesInForceReach(
+  sources: readonly ScopedCache[],
+  query: Omit<GovernanceQuery, 'path'>,
+): readonly RuleReach[] {
+  const reach: RuleReach[] = [];
+  for (const relation of [GOVERNS_RELATION, ASKS_FOR_A_PERSON_RELATION, REFUSES_A_WRITE_RELATION]) {
+    const found = addressesUnder(sources, { ...query, path: query.root }, relation, null);
+    for (const entry of inForceOf(sources, found.readable)) {
+      const address = entry.addressed.address;
+      if (address === undefined) continue;
+      reach.push({ relation, segments: address === '.' ? [] : address.split('/') });
+    }
+  }
+  return reach;
+}
+
+/** The relations under which some address of `reach` covers `relative`, a project-relative POSIX path. */
+export function relationsCovering(reach: readonly RuleReach[], relative: string): Set<string> {
+  const segments = relative.split('/');
+  const under = new Set<string>();
+  for (const one of reach) {
+    if (!under.has(one.relation) && covers(one.segments, segments)) under.add(one.relation);
+  }
+  return under;
 }
 
 /**

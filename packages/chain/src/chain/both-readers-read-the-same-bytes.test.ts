@@ -1388,6 +1388,9 @@ describe('the rule has one place', () => {
         join('chain', 'checkpoint.ts'),
         join('chain', 'citation-index.ts'),
         join('chain', 'entry.ts'),
+        // A proof of one decision (FORMAT.md section 9) is read by the rule of a line: canonical,
+        // with no key twice, whatever it carries.
+        join('chain', 'proof.ts'),
         join('chain', 'tailproof.ts'),
         join('chain', 'witness.ts'),
       ].sort(),

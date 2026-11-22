@@ -52,6 +52,7 @@ carries the help the command prints, word for word.
 - [mnema brief](cli/brief.md): print what governs the work here as markdown, for an agent to read
 - [mnema recall](cli/recall.md): print the notes recorded here as markdown, near ones first, for an agent to read
 - [mnema rules](cli/rules.md): show which recorded rules govern a path, and which address nothing
+  - [mnema rules test](cli/rules-test.md): check the verdicts a file declares for paths against the record’s rules
 - [mnema rules-file](cli/rules-file.md): print the rules addressed at a file as another host’s rules file, and why the rest are not
 - [mnema instructions](cli/instructions.md): write the mnema instructions into the files an agent host reads (AGENTS.md and its kin), check them, or remove them
 - [mnema switch](cli/switch.md): turn off, or back on, what mnema hands to a model unasked, and whether an agent may accept a decision
@@ -64,10 +65,12 @@ carries the help the command prints, word for word.
 ## Verify
 
 - [mnema verify](cli/verify.md): verify this project's record: its committed tree and its private one
+- [mnema prove](cli/prove.md): write the proof of one decision a stranger checks offline, or check one
 - [mnema witness](cli/witness.md): ask an outside witness to date this record, and read where that stands
   - [mnema witness stamp](cli/witness-stamp.md): ask an outside witness to date each tail's last checkpoint (T3)
   - [mnema witness upgrade](cli/witness-upgrade.md): go back for every attestation this record is waiting on (T3)
   - [mnema witness sigstore](cli/witness-sigstore.md): countersign each tail's last checkpoint with a Sigstore certificate: who signed in, and when it was logged
+  - [mnema witness sigstore-check](cli/witness-sigstore-check.md): check offline that the Sigstore countersignatures of this record name the identity you expect, as `cosign verify-blob` would
 - [mnema check](cli/check.md): give a rule a program that checks it, and record whether it held at a commit
   - [mnema check declare](cli/check-declare.md): declare the program that checks a rule (no shell: the program and its arguments)
   - [mnema check run](cli/check-run.md): run the check of every rule in force and record each result (run by a checker key, in CI)
@@ -81,17 +84,17 @@ carries the help the command prints, word for word.
 - [mnema refs](cli/refs.md): show what an entity is connected to across the trees
 - [mnema audit](cli/audit.md): ask the record who authorized what, what recurs, and what looks like a credential
   - [mnema audit accountability](cli/audit-accountability.md): show who authorized what across the record (optionally windowed/filtered)
-  - [mnema audit antipatterns](cli/audit-antipatterns.md): show recurring shapes in the record (reopens, supersessions, deprecations)
+  - [mnema audit antipatterns](cli/audit-antipatterns.md): show recurring shapes in the record (reopens, supersessions, deprecations, and what agents accepted)
   - [mnema audit exposure](cli/audit-exposure.md): show which records hold something shaped like a credential (never the value)
 - [mnema diagram](cli/diagram.md): print a state machine, or an entity’s history or connections, as mermaid
-- [mnema export](cli/export.md): emit the record as an OCSF audit feed (NDJSON, envelope only, never a body)
+- [mnema export](cli/export.md): emit the record as an OCSF audit feed (NDJSON, envelope only, never a body), or with --madr write the decisions as MADR files
 - [mnema usage](cli/usage.md): what each run cost, read from this machine's Claude Code transcripts
 - [mnema resume](cli/resume.md): show where an actor left off, and the runs they still have open
 - [mnema repl](cli/repl.md): open an interactive session that reads this project
 
 ## The git log
 
-- [mnema why](cli/why.md): show under which decisions a file or a commit stands
+- [mnema why](cli/why.md): show under which decisions a file or a commit stands; for a file, also the verdict a write there would meet
 - [mnema commits](cli/commits.md): show the commits that cite a decision and those that touched what it addresses
 - [mnema aging](cli/aging.md): show accepted decisions whose addressed paths changed in many commits since
 - [mnema trailer](cli/trailer.md): print the commit trailer that ties a commit to a decision
@@ -102,6 +105,7 @@ carries the help the command prints, word for word.
 - [mnema record](cli/record.md): pull the record over events not yet committed, commit them for a pull request, and merge its tails for git
   - [mnema record pull](cli/record-pull.md): git pull over tails grown here and not yet committed
   - [mnema record commit](cli/record-commit.md): commit the signed record to a branch for a pull request
+  - [mnema record publish](cli/record-publish.md): push the record branch and open its pull request, to a destination you name
   - [mnema record merge-tail](cli/record-merge-tail.md): the merge driver git runs for a tail's files
 
 ## This machine
@@ -149,4 +153,5 @@ carries the help the command prints, word for word.
 - [mnema handback](cli/handback.md): check what a subagent hands back when it stops, or print the format it is checked by
 - [mnema settled](cli/settled.md): say to the agent, after a question to the person was answered, which tool records a choice
 - [mnema words](cli/words.md): keep, on this machine and outside the record, what the person typed or chose, from a host’s hook
+- [mnema dictated](cli/dictated.md): say to the agent, beside a message that has the shape of a rule the person dictated, which tools record and accept it
 - [mnema dispatched](cli/dispatched.md): record a session’s dispatches to other agents as one private task and a handoff each, for a PostToolUse or SessionEnd hook

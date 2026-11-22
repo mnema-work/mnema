@@ -247,6 +247,7 @@ export type CensusNote =
   | AttestedWhichNote
   | DeclaredWhichNote
   | UnannouncedWhichNote
+  | UndeclaredWhichNote
   | UnnamedTailNote
   | RelinkedTailNote
   | RelinkUncoveredNote
@@ -778,6 +779,20 @@ export interface UnannouncedWhichNote {
 }
 
 /**
+ * The facts the fold accepted (of any kind, not accepted decisions) that name no agent and are signed by a key that is not an agent key: the
+ * envelope has no `which`. The record says that no agent was declared, and nothing more: it does
+ * not say a person acted, because the command line writes no `which` whenever none was named, a
+ * script and a hook included. Like {@link DeclaredWhichNote} it has NO CLAUSE in the verdict's
+ * sentence and is said only in the census (`--json`, the page and `mnema verify --verbose`).
+ */
+export interface UndeclaredWhichNote {
+  readonly kind: 'undeclared-which';
+  /** How many facts the fold accepted name no agent (any kind: not only accepted decisions). */
+  readonly events: number;
+  readonly detail: string;
+}
+
+/**
  * What the census says of the agents the accepted facts name: one note per agent key that signed,
  * one per `which` that a key without the role stated, and one per `which` no client announced.
  */
@@ -809,6 +824,15 @@ function agentsNamed(agents: IdentityResolution['agents']): CensusNote[] {
         detail: `${named.events} event(s) name the agent "${oneLine(named.which)}": no name an MCP client announced in a handshake, put in by the writer in place of one (section 6.9)`,
       }),
     ),
+    ...(agents.undeclared > 0
+      ? [
+          {
+            kind: 'undeclared-which',
+            events: agents.undeclared,
+            detail: `${agents.undeclared} fact(s) name no agent: no agent was declared, which does not say that a person acted`,
+          } satisfies UndeclaredWhichNote,
+        ]
+      : []),
   ];
 }
 
@@ -2047,6 +2071,28 @@ export function decisionTextsOf(
 }
 
 /**
+ * One decision as a reader reads it out of these tails: its text (FORMAT.md section 6.8) and the
+ * moves section 6.7 applies to it, in the merged order of every tail. A proof of one decision
+ * (section 9) is read by this function twice, over the whole record when it is built and over
+ * the lines it carries when it is checked, so the two readings cannot be two rules.
+ */
+export function decisionReadingOf(
+  entriesByTail: ReadonlyMap<string, readonly ChainEntry[]>,
+  decision: string,
+): { readonly text: Entry | undefined; readonly moves: readonly Entry[] } {
+  const { entryAt, order, held } = mergedOrder(entriesByTail);
+  const notApplied = illegalMoves(order, held);
+  const moves: Entry[] = [];
+  order.forEach(({ event, tail, position }, index) => {
+    if (event.kind !== 'decision.transitioned' || event.subject !== decision) return;
+    if (notApplied.has(index)) return;
+    const entry = entryAt(tail, position);
+    if (isRead(entry)) moves.push(entry);
+  });
+  return { text: decisionTextsOf(entriesByTail).get(decision), moves };
+}
+
+/**
  * Every `decision.recorded` that is not its decision's text ({@link DecisionRewriteNote},
  * {@link decisionTextsOf}), named in tail order. The text is judged over the merged order, the
  * one the product's read folds, so a writing is named whatever tail it or the text sits in, and
@@ -3047,6 +3093,7 @@ const CENSUS_CLAUSE: Readonly<Record<CensusNote['kind'], ((count: number) => str
   'attested-which': (count) =>
     `${count} agent key(s) attesting the agent their facts name (see census: informational, not a break)`,
   'declared-which': null,
+  'undeclared-which': null,
   'unannounced-which': (count) =>
     `${count} agent name(s) no MCP client announced in a handshake (see census: informational, not a break)`,
   'unnamed-tail': (count) =>

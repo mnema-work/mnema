@@ -314,6 +314,8 @@ const INVOCATION: Readonly<Record<string, Invocation>> = {
   // It writes the person's instruction files, beside the record and never into it.
   instructions: { argv: () => ['instructions'] },
   trailer: { argv: () => ['trailer', 'ADR-1'] },
+  // It writes the proof of one decision to standard output, and nothing to the record.
+  prove: { argv: () => ['prove', 'ADR-1'] },
   // It writes a hook into a git repository, which this harness's fixture is not; refusing there
   // would measure a refusal. What it does to the record, nothing, and to the repository is
   // measured in `a-commit-hook-only-suggests.test.ts`.
@@ -344,6 +346,10 @@ const INVOCATION: Readonly<Record<string, Invocation>> = {
   // The same after a question: in process it has no payload, answers `{}` and writes nothing. What
   // it answers to a payload is held in `a-settled-choice-is-said.test.ts`.
   settled: { argv: () => ['settled'] },
+  // The same on a message of the person's: in process it has no payload, answers `{}` and writes
+  // nothing. What it answers to a payload is held in `a-dictated-rule-is-said.test.ts`.
+  dictated: { argv: () => ['dictated'] },
+
   // The same, for the verb that keeps a session's words in a file of the machine's: in process it
   // has no payload, keeps nothing and answers `{}`. What it keeps is held in
   // `the-persons-words-are-kept-by-the-hooks.test.ts`, and it never writes to the record.
@@ -745,6 +751,7 @@ describe('every verb says if it writes', () => {
       'rules-file',
       'instructions',
       'verify',
+      'prove',
       'site',
       'search',
       'show',
@@ -769,6 +776,7 @@ describe('every verb says if it writes', () => {
       'tally',
       'handback',
       'settled',
+      'dictated',
       'words',
     ]);
     expect(verbsThat('mutates').length + verbsThat('reads').length).toBe(DECLARED.length);
@@ -780,7 +788,12 @@ describe('every verb says if it writes', () => {
     // both directions (the members it declares are the subcommands the program holds) and each
     // member that says it reads is run for real, in both forms, and counted in the chain.
     const grouped = DECLARED.filter((verb) => verb.members !== undefined);
-    expect(grouped.map((verb) => verb.act.name()).sort()).toEqual(['skill', 'stack', 'task']);
+    expect(grouped.map((verb) => verb.act.name()).sort()).toEqual([
+      'skill',
+      'stack',
+      'task',
+      'witness',
+    ]);
     for (const group of grouped) {
       expect(
         (group.members ?? []).map((member) => member.act.name()).sort(),
@@ -796,7 +809,19 @@ describe('every verb says if it writes', () => {
       'stack show': () => ['stack', 'show', 'hello-stack', '--to', stackTo()],
       'stack diff': () => ['stack', 'diff', 'hello-stack', '--to', stackTo()],
       'stack check': () => ['stack', 'check', '--to', stackTo()],
+      'witness sigstore-check': () => [
+        'witness',
+        'sigstore-check',
+        '--identity',
+        'someone@example.com',
+        '--issuer',
+        'https://accounts.example',
+      ],
     };
+    // A reader whose answer over this fixture is a NO, on purpose: the fixture holds no Sigstore
+    // bundle, and a check that found nothing to check must not pass. It is still measured in the
+    // chain below: it may fail, and it may not write.
+    const FAILS_ON_THIS_FIXTURE: ReadonlySet<string> = new Set(['witness sigstore-check']);
     // The stack the four `stack` readers look at: installed into a folder of its own, which
     // records nothing, so the readers are measured against a receipt that really exists.
     const stackTo = (): string => join(sandbox, 'stack-to');
@@ -830,7 +855,9 @@ describe('every verb says if it writes', () => {
       const before = held(sandbox);
       for (const form of forms) {
         const outcome = await mnema(form);
-        expect(outcome.failed, `mnema ${form.join(' ')}: ${outcome.out.join(' / ')}`).toBe(false);
+        expect(outcome.failed, `mnema ${form.join(' ')}: ${outcome.out.join(' / ')}`).toBe(
+          FAILS_ON_THIS_FIXTURE.has(path),
+        );
       }
       const after = held(sandbox);
       expect(after.events - before.events, path).toBe(0);

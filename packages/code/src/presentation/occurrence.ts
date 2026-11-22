@@ -13,8 +13,8 @@
  * refuses every verb that writes (`repl/gate.ts`), so nothing a caller types can produce
  * an occurrence: every line this composes is somebody ELSE's append, and in the ordinary
  * case that somebody is an agent working through the other surface. An event with no
- * agent reads as a person: the same word the served pattern and the provenance report
- * use for the same absence, because an absent `which` is a fact (someone acted directly)
+ * agent reads as "no agent declared": the same words the served pattern and the provenance report
+ * use for the same absence, because an absent `which` is a fact (nobody named an agent)
  * rather than a gap in the record.
  *
  * ONE LINE PER OCCURRENCE, and here the rule is sharper than in a list. Elsewhere a
@@ -28,7 +28,7 @@
  */
 
 import { type CatalogEvent, proofFields, transitionProse } from '@mnema/chain';
-import { A_PERSON, oneLine } from '../one-line.js';
+import { NO_AGENT_DECLARED, oneLine } from '../one-line.js';
 import { fact } from './detail.js';
 import { asId, asWhen, itemLine } from './items.js';
 import type { Line } from './line.js';
@@ -60,7 +60,7 @@ export function occurrenceLine(event: CatalogEvent): Line {
     oneLine(event.kind),
     ...theMove(event),
     asId(oneLine(event.subject)),
-    `${BY} ${oneLine(event.which ?? A_PERSON)}`,
+    `${BY} ${oneLine(event.which ?? NO_AGENT_DECLARED)}`,
   ]);
 }
 

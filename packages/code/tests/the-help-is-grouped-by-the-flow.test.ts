@@ -78,6 +78,7 @@ describe('the help is grouped by the flow of the work', () => {
       'handback',
       'settled',
       'words',
+      'dictated',
       'dispatched',
     ]);
     expect(groups.get('Help:')).toEqual(['help']);

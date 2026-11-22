@@ -17,12 +17,13 @@ import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:f
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { DiscoveryEnv } from '@mnema/core';
+import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { Command } from 'commander';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runSessionTally } from '../src/commands/tally.js';
 import { renderPlain } from '../src/presentation/plain.js';
 import { type CliIo, run } from '../src/program.js';
+import { transcriptOf } from '../src/session-journal.js';
 import { WRITING_TOOLS, whatTheSessionDid } from '../src/what-the-session-did.js';
 import { registerTally } from '../src/wiring/tally.js';
 import { MNEMA_CLI } from './support/the-cli.js';
@@ -379,6 +380,65 @@ describe('mnema tally', () => {
   });
 });
 
+describe('mnema tally as a session opens', () => {
+  const SESSION = 'aaaaaaaa-0000-4000-8000-000000000001';
+  const opening = (file: string, extra: Record<string, unknown> = {}): string =>
+    JSON.stringify({
+      hook_event_name: 'SessionStart',
+      session_id: SESSION,
+      transcript_path: file,
+      cwd: repo,
+      ...extra,
+    });
+  const kept = (): string | undefined => transcriptOf(resolveTrees(repo, env), SESSION);
+
+  it('keeps where the transcript is for a host whose transcript is read, and says nothing', () => {
+    const file = transcript(aWritingSession());
+    const done = runSessionTally({ cwd: repo, env }, { payload: opening(file) });
+    expect(done).toEqual({ ok: true, reply: {}, notes: [] });
+    expect(kept()).toBe(file);
+  });
+
+  it('keeps nothing for a host whose transcript is not read, and says nothing', () => {
+    const file = transcript(aWritingSession());
+    const done = runSessionTally({ cwd: repo, env }, { payload: opening(file), host: 'codex' });
+    expect(done).toEqual({ ok: true, reply: {}, notes: [] });
+    expect(kept()).toBeUndefined();
+  });
+
+  it('keeps nothing for the transcript VS Code keeps, which a run naming no host would take for Claude Code’s', () => {
+    const inVsCode = join(sandbox, 'workspaceStorage', 'h', 'GitHub.copilot-chat', 'transcripts');
+    mkdirSync(inVsCode, { recursive: true });
+    const file = join(inVsCode, 'session.jsonl');
+    writeFileSync(file, `${aWritingSession().join('\n')}\n`);
+    runSessionTally({ cwd: repo, env }, { payload: opening(file) });
+    expect(kept()).toBeUndefined();
+  });
+
+  it('says on the second stream that no transcript was named, and keeps nothing', () => {
+    const done = runSessionTally({ cwd: repo, env }, { payload: opening('') });
+    expect(done).toEqual({
+      ok: true,
+      reply: {},
+      notes: ['The SessionStart input named no transcript, so nothing was counted.'],
+    });
+    expect(kept()).toBeUndefined();
+  });
+
+  it('keeps nothing when the session has no id, or the journal is switched off, or outside a project', async () => {
+    const file = transcript(aWritingSession());
+    runSessionTally({ cwd: repo, env }, { payload: opening(file, { session_id: 'not an id' }) });
+    expect(kept()).toBeUndefined();
+    const elsewhere = join(sandbox, 'elsewhere');
+    mkdirSync(elsewhere);
+    runSessionTally({ cwd: elsewhere, env }, { payload: opening(file) });
+    expect(kept()).toBeUndefined();
+    await did('switch', 'off', 'session-journal');
+    runSessionTally({ cwd: repo, env }, { payload: opening(file) });
+    expect(kept()).toBeUndefined();
+  });
+});
+
 describe('the verb as the command line routes it', () => {
   /** Runs `mnema tally` with `input` on the standard input, and answers what it wrote where. */
   async function typed(input: string): Promise<{ out: string[]; err: string[]; failed: boolean }> {
@@ -414,14 +474,14 @@ describe('the verb as the command line routes it', () => {
     expect(quiet.failed).toBe(false);
   });
 
-  it('is a read, and takes no option', () => {
+  it('is a read, and takes one option: the host whose payload arrives', () => {
     const program = new Command('mnema');
     const declared = registerTally(program, {
       io: {},
       render: renderPlain,
     } as unknown as Parameters<typeof registerTally>[1]);
     expect(declared.effect).toBe('reads');
-    expect(declared.act.options).toEqual([]);
+    expect(declared.act.options.map((option) => option.long)).toEqual(['--host']);
   });
 });
 

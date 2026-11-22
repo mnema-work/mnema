@@ -20,4 +20,6 @@ It takes none.
 | `openWorldHint` | false |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
+
+A decision held outside the public tree carries `scope` (`private` or `global`) beside its `adr` label, because each tree numbers its own decisions and the same `ADR-<n>` can name two. A decision of the public tree carries no `scope`. This holds for the decisions in force and for those awaiting a judgement.
 <!-- End of the part written by hand. -->

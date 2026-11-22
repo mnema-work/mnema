@@ -44,6 +44,7 @@ import { linkKnowledge, openTreeForWriting } from '@mnema/core/write';
 import { reachOfAddress } from '../governed-tree.js';
 import { resolveAddress } from '../label-as-address.js';
 import {
+  isUnderATemporaryFolder,
   linkRefusal,
   outsideTheProject,
   relationNamesAPath,
@@ -109,6 +110,8 @@ export interface LinkRecorded extends Replacement, Landed {
    * as the sentence knew only rules.
    */
   readonly subjectIsATask?: true;
+  /** True when the TARGET is a path under a temporary folder: said after the write, never refused. */
+  readonly targetIsTemporary?: true;
 }
 
 /** The record was refused. */
@@ -229,6 +232,7 @@ export function runLink(
     target: ends.target,
     ...(subjectScope !== undefined ? { subjectScope } : {}),
     ...(subjectIsATask ? { subjectIsATask: true as const } : {}),
+    ...(isUnderATemporaryFolder(target.id, projectDir) ? { targetIsTemporary: true as const } : {}),
     // The relation AS RECORDED: screened, so the echo shows what landed.
     rel: recorded.rel,
     scope,

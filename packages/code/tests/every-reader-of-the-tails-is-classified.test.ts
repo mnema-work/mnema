@@ -79,6 +79,10 @@ const READERS: Readonly<Record<string, Classified>> = {
     why: 'it reads the tails a cut would leave, to write a waiver; it serves nothing',
   },
   'packages/chain/src/index.ts': { reads: 'the reading', why: 'it exports the readers' },
+  'packages/chain/src/chain/proof.ts': {
+    reads: 'as written',
+    why: 'it carries signed ranges into a proof of one decision byte for byte, after `verify` passed, and its checker rules on every line it carries',
+  },
   'packages/chain/src/chain/entry.ts': {
     reads: 'the reading',
     why: 'it defines the parse of one line',
@@ -259,6 +263,10 @@ const READERS: Readonly<Record<string, Classified>> = {
   'packages/code/src/commands/key-request.ts': {
     reads: 'proven',
     why: 'the agent keys enrolled, through `orderedEvents`',
+  },
+  'packages/code/src/commands/export-madr.ts': {
+    reads: 'proven',
+    why: 'the decisions the MADR files are written from, through `orderedEvents`',
   },
   'packages/code/src/commands/site.ts': {
     reads: 'proven',

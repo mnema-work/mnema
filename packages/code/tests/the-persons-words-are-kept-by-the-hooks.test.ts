@@ -39,7 +39,14 @@ import {
   wordsFile,
 } from '../src/persons-words.js';
 import { type CliIo, run } from '../src/program.js';
-import { type Journal, PRUNE_AFTER_MS, PRUNE_KEEP, writeJournal } from '../src/session-journal.js';
+import {
+  type Journal,
+  PRUNE_AFTER_MS,
+  PRUNE_KEEP,
+  pruneSessions,
+  rememberTranscript,
+  writeJournal,
+} from '../src/session-journal.js';
 import { emptyReading } from '../src/what-the-session-did.js';
 import { MNEMA_CLI } from './support/the-cli.js';
 
@@ -591,6 +598,25 @@ describe('the pruning, with the session journal', () => {
     expect(left).not.toContain('ancient.words.jsonl');
     expect(personsWordsFor('s-0', 'claude', trees())).toEqual([]);
     expect(personsWordsFor('last', 'claude', trees())).toHaveLength(1);
+  });
+
+  it('lets go of the path of a transcript with its journal, and of one older than the age', () => {
+    const now = new Date();
+    const dir = join(wordsFile(trees(), 'x') ?? '', '..');
+    for (const id of ['gone', 'ancient', 'stays']) {
+      writeJournal(join(dir, `${id}.json`), aJournal(id), now);
+      rememberTranscript(trees(), id, `/somewhere/${id}.jsonl`);
+    }
+    const longAgo = new Date(now.getTime() - PRUNE_AFTER_MS - 60_000);
+    utimesSync(join(dir, 'gone.json'), longAgo, longAgo);
+    rmSync(join(dir, 'ancient.json'));
+    utimesSync(join(dir, 'ancient.json.transcript'), longAgo, longAgo);
+    pruneSessions(dir, now);
+    const left = readdirSync(dir);
+    expect(left).not.toContain('gone.json.transcript');
+    expect(left).not.toContain('ancient.json.transcript');
+    expect(left).toContain('stays.json.transcript');
+    expect(left).toContain('stays.json');
   });
 });
 
