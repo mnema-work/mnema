@@ -561,7 +561,7 @@ export function buildMcpServer(options: McpServerOptions): {
           `session opened: project=${opened.project ?? '(none: the global tree)'} ` +
             `(${landingOf(opened)}) ` +
             `workspaceProjects=${opened.workspaceProjects.length} ` +
-            `who=${opened.who ?? "(no identity here yet: no key of this machine signs in this session's own trees, which is not an error)"} ` +
+            `who=${opened.who ?? "(not yet: the first write of this session makes or finds the machine's key)"} ` +
             'runs=(none: the first write to a tree opens that tree’s run)',
         ),
       );
