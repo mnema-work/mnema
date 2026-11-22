@@ -30,16 +30,18 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { eye } from './eye.mjs';
 import { PALETTE } from './palette.mjs';
 
+/** @param {string} path */
 const here = (path) => new URL(path, import.meta.url);
 /** The file of the product this script writes. */
 export const TARGET = fileURLToPath(here('../../packages/code/src/site/the-mark.ts'));
 
 /** The codepoints Archivo's instances hold: Basic Latin, Latin-1, general punctuation (dashes, quotes, bullet, ellipsis) and the euro. */
+/** @type {readonly (readonly [number, number])[]} */
 export const ARCHIVO_RANGES = Object.freeze([
-  [0x20, 0x7e],
-  [0xa0, 0xff],
-  [0x2010, 0x2027],
-  [0x20ac, 0x20ac],
+  /** @type {const} */ ([0x20, 0x7e]),
+  /** @type {const} */ ([0xa0, 0xff]),
+  /** @type {const} */ ([0x2010, 0x2027]),
+  /** @type {const} */ ([0x20ac, 0x20ac]),
 ]);
 /** The weights of the instances, at width 100. */
 export const ARCHIVO_WEIGHTS = Object.freeze([400, 700]);
@@ -52,7 +54,9 @@ const loaded = await import(spec);
 /** @type {any} */
 const opentype = loaded.default ?? loaded;
 
+/** @param {string} name */
 const bytesOf = (name) => readFileSync(here(`./fonts/${name}`));
+/** @param {Buffer} b */
 const arrayOf = (b) => b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
 
 /** @param {number} weight the static instance of Archivo at that weight and width 100, as the bytes of an OpenType file */
@@ -61,11 +65,14 @@ function archivoAt(weight) {
   const em = font.unitsPerEm;
   const variation = { wdth: 100, wght: weight };
   /** The glyph drawn at the instance, upright again (a path from `getPath` runs y down) and in whole units. */
+  /** @param {any} glyph @param {number | undefined} unicode */
   const redraw = (glyph, unicode) => {
     const path = new opentype.Path();
+    /** @param {number | undefined} v */
+    const n = (v) => (v === undefined ? undefined : Math.round(v));
+    /** @param {number | undefined} v */
+    const y = (v) => (v === undefined ? undefined : -Math.round(v));
     for (const c of glyph.getPath(0, 0, em, { variation }, font).commands) {
-      const n = (v) => (v === undefined ? undefined : Math.round(v));
-      const y = (v) => (v === undefined ? undefined : -Math.round(v));
       path.commands.push({
         ...c,
         x: n(c.x),
@@ -109,20 +116,18 @@ function archivoAt(weight) {
     createdTimestamp: STAMP / 1000,
     glyphs,
   });
-  const RealDate = globalThis.Date;
-  globalThis.Date = class extends RealDate {
-    constructor(...args) {
-      super(...(args.length === 0 ? [STAMP] : args));
-    }
-  };
+  // The writer stamps the file's modified time from the clock: hold the clock still while it writes.
+  const realGetTime = Date.prototype.getTime;
+  Date.prototype.getTime = () => STAMP;
   try {
     return Buffer.from(instance.toArrayBuffer());
   } finally {
-    globalThis.Date = RealDate;
+    Date.prototype.getTime = realGetTime;
   }
 }
 
 /** The drawing of the eye at rest, still, as the inside of an SVG with the view box `-48 -48 96 96`. */
+/** @param {string} id @param {{ ink: string, iris: string, ringInk: string, ring: boolean }} options */
 const inside = (id, options) => eye({ id, look: 0, ...options });
 
 /** The eye of the header: the ink of the page's text, the iris sulphur, a ring round the iris. */
@@ -135,15 +140,15 @@ export function faviconSvg() {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-48 -48 96 96" width="96" height="96"><rect x="-48" y="-48" width="96" height="96" rx="22" fill="${PALETTE.charcoal}"/>${inside('favicon-eye', { ink: PALETTE.bone, iris: PALETTE.sulphur, ringInk: PALETTE.charcoal, ring: false })}</svg>`;
 }
 
+/** @param {Uint8Array | ArrayBuffer} b */
 const base64 = (b) => Buffer.from(b).toString('base64');
 
 /** The CSS range the Archivo instances answer for, as `unicode-range` writes it. */
 export const archivoRange = () =>
-  ARCHIVO_RANGES.map(([a, b]) =>
-    a === b
-      ? `U+${a.toString(16).toUpperCase()}`
-      : `U+${a.toString(16).toUpperCase()}-${b.toString(16).toUpperCase()}`,
-  ).join(', ');
+  ARCHIVO_RANGES.map(([a, b]) => {
+    const hex = (/** @type {number} */ n) => n.toString(16).toUpperCase();
+    return a === b ? `U+${hex(a)}` : `U+${hex(a)}-${hex(b)}`;
+  }).join(', ');
 
 /** @param {string} name @param {string} value */
 function constant(name, value) {
