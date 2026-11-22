@@ -13,6 +13,12 @@
       "index": 1,
       "runs": "hooks/session-recall.mjs"
     },
+    "session-transcript-path": {
+      "event": "SessionStart",
+      "group": 0,
+      "index": 2,
+      "runs": "hooks/session-tally.mjs"
+    },
     "session-compacted": {
       "event": "SessionStart",
       "group": 1,
@@ -54,6 +60,12 @@
       "group": 3,
       "index": 0,
       "runs": "hooks/edit-refuses-a-write.mjs"
+    },
+    "rule-dictated": {
+      "event": "UserPromptSubmit",
+      "group": 0,
+      "index": 0,
+      "runs": "hooks/rule-dictated.mjs"
     },
     "choice-settled": {
       "event": "PostToolUse",

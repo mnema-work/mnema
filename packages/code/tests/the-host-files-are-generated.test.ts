@@ -140,12 +140,13 @@ describe('the presence map', () => {
     expect(rows.map((row) => row.split(' | ')[0]?.slice(2))).toEqual(
       PRESENCE_HOSTS.map((name) => HOSTS[name].title),
     );
-    for (const row of rows) expect(row.split(' | ')).toHaveLength(9);
+    for (const row of rows) expect(row.split(' | ')).toHaveLength(10);
   });
 
   it('says a moment is held only where a test of this tree holds it, with the file that does', () => {
-    expect(cell('Claude Code', 7)).toContain('held by a test');
-    expect(cell('Claude Code', 7)).toContain('a-subagent-starts-with-the-record.test.ts');
+    expect(cell('Claude Code', 8)).toContain('held by a test');
+    expect(cell('Claude Code', 8)).toContain('a-subagent-starts-with-the-record.test.ts');
+    expect(cell('Claude Code', 2)).toContain('a-dictated-rule-reaches-the-model.test.ts');
     for (const [name, moments] of Object.entries(PRESENCE)) {
       for (const [moment, held] of Object.entries(moments)) {
         if (held.held !== 'a test') continue;
@@ -156,10 +157,16 @@ describe('the presence map', () => {
 
   it('marks what the hosts only document as not measured, and what none offers as no channel', () => {
     // VS Code documents SubagentStart, and the hooks file reaches it: generated for, not held.
-    expect(cell("VS Code's agent", 7)).toContain('documented, not measured');
-    expect(cell("VS Code's agent", 7)).not.toContain('held by a test');
-    expect(cell('Gemini CLI', 7)).toBe('no channel');
-    expect(cell('OpenCode', 6)).toBe('not read');
+    expect(cell("VS Code's agent", 8)).toContain('documented, not measured');
+    expect(cell("VS Code's agent", 8)).not.toContain('held by a test');
+    expect(cell('Gemini CLI', 8)).toBe('no channel');
+    expect(cell('OpenCode', 7)).toBe('not read');
+    // The message of the person's: read at the pinned commit for Codex and Gemini CLI, not run;
+    // VS Code and OpenCode were not read for it.
+    expect(cell('Codex', 2)).toContain('UserPromptSubmit: documented, not measured');
+    expect(cell('Gemini CLI', 2)).toContain('BeforeAgent: documented, not measured');
+    expect(cell("VS Code's agent", 2)).toBe('not read');
+    expect(cell('OpenCode', 2)).toBe('not read');
   });
 
   it('is declared as a hook of the plugin where a host that reads that file has the event', () => {

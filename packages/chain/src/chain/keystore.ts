@@ -26,6 +26,7 @@ import { randomBytes } from 'node:crypto';
 import {
   closeSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   openSync,
   readdirSync,
@@ -70,6 +71,7 @@ import {
   publicKeyPath,
 } from './layout.js';
 import { readingWhatTheDiskLets, refusedByTheDisk } from './lines.js';
+import { refuseToWriteThrough } from './linked-write.js';
 import { sleepSync } from './sleep.js';
 import { readCommittedKeyFile, refuseLinks } from './store.js';
 import { TailBusyError, withTailLock } from './tail-lock.js';
@@ -411,6 +413,9 @@ export function unprotectPrivateKeys(layout: ChainLayout, passphrase: string): K
  */
 export function materializePublicKey(chainLayout: ChainLayout, key: PublicHalf): void {
   const path = publicKeyPath(chainLayout, key.fingerprint);
+  // Opening the file for writing follows a link, a dangling one too (which `existsSync` reads as
+  // absent), so a link at `keys/` or at the file is refused, with `RECORD_LINKED`, before anything.
+  refuseToWriteThrough(chainLayout, ['keys', inKeys(path)]);
   if (existsSync(path)) return;
   readingWhatTheDiskLets(path, inKeys(path), () => {
     mkdirSync(keysDir(chainLayout), { recursive: true });
@@ -777,6 +782,9 @@ export function mintInstallationId(
 export function readAnchor(layout: ChainLayout, fingerprint: string): string | null {
   const path = anchorPath(layout, fingerprint);
   if (!existsSync(path)) return null;
+  // A link is not followed: it can point at an anchor nobody here recorded. It reads as no anchor,
+  // as a dangling one does, and the reads that serve the record name it (`anchorLinksRefused`).
+  if (lstatSync(path, { throwIfNoEntry: false })?.isSymbolicLink()) return null;
   const value = readingWhatTheDiskLets(path, inKeys(path), () =>
     readFileSync(path, 'utf-8'),
   ).trim();
@@ -851,6 +859,9 @@ const KEY_ROOT_GITIGNORE = [
  * `.gitignore`, by contrast, gains the one line it lacks, never more: see `ensureTree`.)
  */
 export function ensureKeyRootIgnored(keyRoot: ChainLayout): void {
+  // A link here is refused, a dangling one too (`existsSync` reads it as absent and the write
+  // would create what it points at): `RECORD_LINKED`, before the key's first byte is written.
+  refuseToWriteThrough(keyRoot, ['.gitignore']);
   mkdirSync(keyRoot.root, { recursive: true });
   const path = gitignorePath(keyRoot);
   if (existsSync(path)) return;
@@ -879,9 +890,24 @@ export function listAnchoredFingerprints(layout: ChainLayout): string[] {
  * Records the anchor this key serves: the anchor it founded (its own) or one it
  * enrolled into. Written once and never committed; a second write with the same
  * value is a harmless no-op, a write with a different value would change which
- * identity this installation speaks for and is the caller's decision to make.
+ * identity this installation speaks for and is the caller's decision to make. A link at the
+ * anchor's place is refused (`RecordLinkedError`), `outcome` saying what the refused act
+ * left undone where it is not a write of the record.
  */
-export function writeAnchor(layout: ChainLayout, fingerprint: string, anchor: string): void {
+export function writeAnchor(
+  layout: ChainLayout,
+  fingerprint: string,
+  anchor: string,
+  outcome?: string,
+): void {
+  // Opening the file for writing follows a link, a dangling one too (which `readAnchor` reads as no
+  // anchor, so a founding would write through it): refused here, for every caller, before anything.
+  // A link at `keys/` is met earlier, by the reads before a restore and the writer's own asks.
+  refuseToWriteThrough(
+    layout,
+    [['keys', basename(anchorPath(layout, fingerprint))].join('/')],
+    outcome,
+  );
   mkdirSync(keysDir(layout), { recursive: true });
   writeFileDurably(anchorPath(layout, fingerprint), `${anchor}\n`, { mode: 0o600 });
 }

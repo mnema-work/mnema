@@ -22,6 +22,7 @@ The long sections of this page are pages of their own, and nothing in them was s
 - [The decisions you already wrote](importing-the-decisions-you-already-wrote.md)
 - [Switching off what mnema hands to a model](switching-off-what-is-handed-to-a-model.md)
 - [The session journal and compaction](the-session-journal-and-compaction.md)
+- [The ledger of caught failures](the-ledger-of-caught-failures.md)
 - [As an MCP server](as-an-mcp-server.md)
 
 [What it proves, and what it does not](what-it-proves.md#the-long-form-claim-by-claim) is the end of the page that holds its table.
@@ -88,19 +89,27 @@ Each tool of the MCP server has its page, in [the tools](reference/mcp-tools.md)
   *not observable*, never *did not consult*, for every move whose run recorded no
   reading at all, which is the state a move made by a person is always in. It is on
   this surface only, and the page says what it can witness.
+  It also reads what agents accepted (a reading, never a pause): the rules accepted
+  with no agent declared, or addressed, that an agent took out of force, the chains of
+  three decisions or more, and the accepts that quote no words of the person, with
+  an agent declared and with none in two totals; the text lists at most 10 ids per
+  signal and `--json` all of them.
 - **A feed your SIEM can read**: `mnema export` emits the record as OCSF Entity
   Management events, one JSON object per line, for Security Lake, Splunk, or anything
   else that speaks the schema. It carries the **envelope only** (who authorized what,
   over which entity, in which session, signed by which key) and never a payload, for
   the reason `mnema audit exposure` exists. It writes to standard output and sends nothing
   anywhere; what it does and does not promise is in [what it proves](what-it-proves.md#the-long-form-claim-by-claim).
+- **The decisions as MADR files**: `mnema export --madr <dir>` writes one markdown file per decision of the
+  committed record, each marked as derived from it. Unlike the feed above, these files carry the bodies; see
+  [next to a folder of ADRs](mnema-next-to-a-folder-of-adrs.md#write-the-decisions-back-out-as-adrs).
 - **A page of the record that verifies itself**: `mnema site` writes one
   `index.html` from the committed (public) tree, by default under `.mnema/site/` (the record's own `.gitignore`
   keeps it out of git, and `mnema site` adds that line first to a record that lacks it); `--out <dir>` names another
   directory, and one inside the record and outside `site/` is refused. The page lists every decision as a card (its reasons,
-  who recorded and who accepted it, as a person or as an agent, its history and the paths it is addressed at) with the public
+  who recorded and who accepted it, as an agent or as no agent declared, its history and the paths it is addressed at) with the public
   notes that belong to it, and a timeline; with JavaScript a filter opens on the decisions in force and narrows them by state,
-  identity, agent or person, day, text and path, and the stored events of a tail are drawn when it is opened. The
+  identity, agent or no agent declared, day, text and path, and the stored events of a tail are drawn when it is opened. The
   page carries the record's files and runs the same verifier as `mnema verify` over them in
   the reader's browser, with no request and no key, and once the record verifies it derives the page's lists again from
   those files with the product's own code and names each difference from what the page shows. Nothing from a private or machine-global
@@ -126,18 +135,18 @@ Each tool of the MCP server has its page, in [the tools](reference/mcp-tools.md)
   The same record always prints the same bytes, which is what makes
   `mnema brief | diff - MNEMA.md` a staleness check.
 - **A plugin for Claude Code**, in [`plugin/`](../plugin/), that stops the delivery
-  from depending on somebody remembering to regenerate a file. It declares fifteen hooks and
+  from depending on somebody remembering to regenerate a file. It declares seventeen hooks and
   the MCP server below, in one installation. As a session opens, one hook runs `mnema
   brief` and hands over the document, and another runs `mnema recall` and hands over the
   **notes**: the memories and observations recorded for the project, from every tree
   this machine holds, including the private one the document may not carry, the ones
   near what the session touches first; a project with no notes gets nothing from the
-  second. A `PreToolUse` hook on
+  second. A third, at the same event, runs `mnema tally`, which says nothing and keeps beside the session journal the path of the session's transcript (a path, never a word of it), which is how an agent's accept is checked against what the person typed. A `PreToolUse` hook on
   `Write|Edit|NotebookEdit` hands over the rules of the record **addressed at the file
   about to be written**, beside the result of that write (the ones still in force, each
   with the id you would cite) and hands over **nothing** for a file none of them
   addresses, which is why the opening document says how many of the project's rules have
-  an address. The two opening hooks are reads: they append nothing and open no run, so the
+  an address. The two opening hooks that hand over a text (`brief` and `recall`) are reads: they append nothing and open no run; the third, `mnema tally`, appends nothing to the record and opens no run either, but writes a file on this machine outside the record (the path of the session's transcript, beside the session journal), so the
   record's `channel.served` counts what the per-edit hook pushed and never the opening
   texts. It is mnema noting that it delivered the hook's answer, not a person's approval of
   anything. The per-edit one records that it served, and holds a write for a person only where a
@@ -146,9 +155,9 @@ Each tool of the MCP server has its page, in [the tools](reference/mcp-tools.md)
   channel's 2,000 newest charges, no further), a rule asked for a
   person or refused a write there, in a run still open, the reply ends with one sentence
   naming that run's agent and how many minutes ago; it is read from the record and appends
-  nothing, and a path no rule has ever charged anyone at gets none. The fourth is that same pause for a
+  nothing, and a path no rule has ever charged anyone at gets none. The fifth is that same pause for a
   host whose hooks are processes: VS Code's agent runs it as `mnema before-a-write --host vscode`
-  before a write, and it asks, and records, exactly where the third would; Claude Code,
+  before a write, and it asks, and records, exactly where the fourth would; Claude Code,
   Cursor and Qwen Code never run it. Beside them, on the same `PreToolUse` matcher, one more hook runs only
   where `$CURSOR_VERSION` is set and `$QWEN_PROJECT_DIR` is not (a Qwen Code opened in a Cursor terminal inherits
   Cursor's variable, and only Qwen Code's refusal runs there): the refusal for Cursor's command-line agent, which answers a
@@ -160,7 +169,7 @@ Each tool of the MCP server has its page, in [the tools](reference/mcp-tools.md)
   host. Copilot CLI and Gemini CLI, whose hook before a write has no field for text, hand over the same
   rules from the hook that runs after it (`mnema beside-a-write --host copilot` or `gemini`): it asks
   the record what `before-a-write` asks and records the same one `channel.served` per session, but it
-  never refuses or asks and records no refusal or asking. Where the machine has no key, `before-a-write` refuses a write it would have had to record, says to run `mnema init`, and makes no key. The fifth is `mnema tally`, run at `Stop`: when the session's own tool calls wrote a file in
+  never refuses or asks and records no refusal or asking. Where the machine has no key, `before-a-write` refuses a write it would have had to record, says to run `mnema init`, and makes no key. The sixth is `mnema tally`, run at `Stop`: when the session's own tool calls wrote a file in
   the last response, it prints a `systemMessage` of one line saying how many files they wrote and how
   many decisions were recorded in the project since the session opened, counted off the
   transcript the host names and off the record, and, when events of the record are in no git
@@ -170,28 +179,29 @@ Each tool of the MCP server has its page, in [the tools](reference/mcp-tools.md)
   recorded. The message goes out as the reply's `systemMessage`; which host shows it was not
   measured. `mnema switch off session-tally` stops it. The same command keeps the session journal (see
   [The session journal](the-session-journal-and-compaction.md#the-session-journal)), a small file on this machine that lets the next `Stop` read only
-  what the host wrote since. The sixth runs only after a conversation was compacted (the `compact` matcher of
+  what the host wrote since. The seventh runs only after a conversation was compacted (the `compact` matcher of
   `SessionStart`) and hands it back what entered the record while its session ran, one sentence read from that journal (see
   [After a compaction](the-session-journal-and-compaction.md#after-a-compaction)); nothing runs before a compaction, because the host throws away what a
-  hook says then. The seventh runs `mnema corrections`, also at `Stop`, and is **off until you switch it on**
-  (`mnema switch on user-corrections`): it reads the transcript's own words, the one reader here
+  hook says then. The eighth runs `mnema corrections`, also at `Stop`, and is **on until you switch it off**
+  (`mnema switch off user-corrections`; it began off until 0.1.10): it reads the transcript's own words, the one reader here
   that does (a typed line counts as the person's only where Claude Code marks it `origin.kind` `human`: a compaction summary, a local command and `[Request interrupted by user]` never count, a slash command opens an answer but is never quoted, and a transcript of an older Claude Code with no `origin` yields no typed line; an option chosen in the question tool is read from the tool's result, which carries no `origin`), finds the prompts that open by correcting the agent ("no, …", "stop …", "do not …",
   "that is wrong", "use … instead", in English and Portuguese), and the answers the person gave to
   a question of the agent (the option chosen in the host's question tool, or the prompt after a
   response that ended in a question mark, quoted with the question), and records each as a `proposed`
   decision in this machine's private tree, citing the session and the line, at most five at a time
-  and never the same line twice. A match is a pattern and not a judgement, which is why it is
-  proposed. No model is called. The eighth is a `SubagentStop` hook that runs `mnema handback`: a subagent hands the decisions it settled back in its final reply, and the hook asks that reply to end with one fenced block, info string `mnema-handback`, holding `{"decisions":[…]}` (the list empty where it settled nothing) in the schema `mnema handback --schema` prints. A reply with no such block, or a block outside the schema, is sent back with the format as the reason (exit 2): once, since the host's second stop of the same subagent is let through. It checks the shape and never whether the subagent settled something; `mnema switch off subagent-handback` stops it. It is held in Claude Code, against the real binary; the other hosts that read the plugin's hooks file were not measured on that event. The ninth is a `PostToolUse` hook on `AskUserQuestion` that runs `mnema settled`: after a question the agent asked the person was answered, it hands the agent one sentence beside the answer, that a choice may have been settled there, that `record_decision` records it and that `decision_transition` accepts it with a note quoting the answer (that a person accepts it, where `agent-accepts` is off), and it records nothing and reads which tool ran and whether `agent-accepts` is on, never the answer. The handler is given the tool it answers (`--tools AskUserQuestion`) and starts no `mnema` for any other tool, since VS Code runs a plugin's hooks whatever their matcher says. It is on until `mnema switch off choice-settled`, and held in Claude Code against the real binary; the hooks files of Codex (`request_user_input`), Copilot CLI (`AskUserQuestion`), Gemini CLI (`ask_user`) and OpenCode (`question`) carry the same hook, documented and not measured. The tenth is a `SubagentStart` hook that runs `mnema brief --hook`: the subagent that begins is handed the same document the session opened with, under the event the host routes the reply by; it is the opening's channel and the opening's switch, so `mnema switch off brief-document` stops both. It is held in Claude Code, against the real binary; VS Code documents the event and was not measured on it. The eleventh is a `PostToolUse` hook on `Write|Edit`, in Claude Code, that runs `mnema after-a-write` with a handler that reads the path out of the payload itself and starts no `mnema` for a path that can be neither of its two kinds. A note of Claude Code's own memory for this project (`projects/<project>/memory/*.md`, `<project>` named as the host names it after the main working tree, so a note in another project's directory is never copied, under `$CLAUDE_CONFIG_DIR` or `~/.claude`, or the directory the `autoMemoryDirectory` setting names in your own settings or the project's `.claude/settings.local.json`) is copied as a memory into this machine's **private** tree, with a marker naming the file and a hash of its content, so a note is copied once per content: this is **on to begin with** (`mnema switch off host-memory-mirror` stops it), never copies the index `MEMORY.md` or a note of `type: user`, and never writes to the public tree. A file that holds decisions (under `docs/adr/`, `docs/decisions/` or an `adr/` directory, or a `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, host rules file, plan, handoff or ledger whose new lines open as `Ruling:`, `Decision:` or a correction does) that the record cites nowhere gets one line beside the write naming the command that reads it, once per session and file; nothing is recorded for it, and `mnema switch off decision-file-written` stops it. The `Stop` line counts the notes copied since the session opened. The thirteenth is a `PostToolUse` hook on the `Agent` tool and the fourteenth a `SessionEnd` hook, both running `mnema dispatched` (see [What a session handed to other agents](the-session-journal-and-compaction.md#what-a-session-handed-to-other-agents)): the first dispatch of a session records one private task, each dispatch a private handoff on it, and the end of the session closes it; `mnema switch off agent-mirror` stops it. It is held in Claude Code on the payload the host measured to hand the hook, and not run against a model; the other hosts that read this hooks file were not measured on either event. All fifteen are **silent** where there is no project, so a
+  and never the same line twice. A message that has the shape of a rule dictated is left to `mnema dictated` while `dictated-rule` is on, so a rule is one record, not that decision and a proposal besides. A match is a pattern and not a judgement, which is why it is
+  proposed. No model is called. The ninth is a `SubagentStop` hook that runs `mnema handback`: a subagent hands the decisions it settled back in its final reply, and the hook asks that reply to end with one fenced block, info string `mnema-handback`, holding `{"decisions":[…]}` (the list empty where it settled nothing) in the schema `mnema handback --schema` prints. A reply with no such block, or a block outside the schema, is sent back with the format as the reason (exit 2): once, since the host's second stop of the same subagent is let through. It checks the shape and never whether the subagent settled something; `mnema switch off subagent-handback` stops it. It is held in Claude Code, against the real binary; the other hosts that read the plugin's hooks file were not measured on that event. The tenth is a `PostToolUse` hook on `AskUserQuestion` that runs `mnema settled`: after a question the agent asked the person was answered, it hands the agent one sentence beside the answer, that a choice may have been settled there, that `record_decision` records it and that `decision_transition` accepts it with a note quoting the person’s answer between double quotes, the option's label if it has 20 characters or more (that a person accepts it, where `agent-accepts` is off), and it records nothing and reads which tool ran and whether `agent-accepts` is on, never the answer. The handler is given the tool it answers (`--tools AskUserQuestion`) and starts no `mnema` for any other tool, since VS Code runs a plugin's hooks whatever their matcher says. It is on until `mnema switch off choice-settled`, and held in Claude Code against the real binary; the hooks files of Codex (`request_user_input`), Copilot CLI (`AskUserQuestion`), Gemini CLI (`ask_user`) and OpenCode (`question`) carry the same hook, documented and not measured. A `UserPromptSubmit` hook (Codex's file has it too, and Gemini CLI's extension a `BeforeAgent`) runs `mnema dictated`: when the person's message has the shape of a rule dictated ("always …", "never …", "from now on …", "put it as a rule", "sempre …", "nunca …", "a partir de agora …", "coloca como regra"), it hands the agent one sentence beside the message, that it may be a rule, that `record_decision` records it and that `decision_transition` accepts it with a note quoting the person's own words (that a person accepts it, where `agent-accepts` is off). The sentence is the product's own and carries no word of the message; the hook records nothing, reads the `prompt` the host hands it and never the transcript, and starts without asking the record for anything else. It is on until `mnema switch off dictated-rule`, held for Claude Code by `a-dictated-rule-reaches-the-model.test.ts` against the real binary, and documented and not measured for Codex and Gemini CLI; Cursor's and Qwen Code's own variables turn it away, and VS Code and the rest were not read for it. The eleventh is a `SubagentStart` hook that runs `mnema brief --hook`: the subagent that begins is handed the same document the session opened with, under the event the host routes the reply by; it is the opening's channel and the opening's switch, so `mnema switch off brief-document` stops both. It is held in Claude Code, against the real binary; VS Code documents the event and was not measured on it. The twelfth is a `PostToolUse` hook on `Write|Edit`, in Claude Code, that runs `mnema after-a-write` with a handler that reads the path out of the payload itself and starts no `mnema` for a path that can be neither of its two kinds. A note of Claude Code's own memory for this project (`projects/<project>/memory/*.md`, `<project>` named as the host names it after the main working tree, so a note in another project's directory is never copied, under `$CLAUDE_CONFIG_DIR` or `~/.claude`, or the directory the `autoMemoryDirectory` setting names in your own settings or the project's `.claude/settings.local.json`) is copied as a memory into this machine's **private** tree, with a marker naming the file and a hash of its content, so a note is copied once per content: this is **on to begin with** (`mnema switch off host-memory-mirror` stops it), never copies the index `MEMORY.md` or a note of `type: user`, and never writes to the public tree. A file that holds decisions (under `docs/adr/`, `docs/decisions/` or an `adr/` directory, or a `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, host rules file, plan, handoff or ledger whose new lines open as `Ruling:`, `Decision:` or a correction does) that the record cites nowhere gets one line beside the write naming the command that reads it, once per session and file; nothing is recorded for it, and `mnema switch off decision-file-written` stops it. The `Stop` line counts the notes copied since the session opened. The fourteenth is a `PostToolUse` hook on the `Agent` tool and the fifteenth a `SessionEnd` hook, both running `mnema dispatched` (see [What a session handed to other agents](the-session-journal-and-compaction.md#what-a-session-handed-to-other-agents)): the first dispatch of a session records one private task, each dispatch a private handoff on it, and the end of the session closes it; `mnema switch off agent-mirror` stops it. It is held in Claude Code on the payload the host measured to hand the hook, and not run against a model; the other hosts that read this hooks file were not measured on either event. All seventeen are **silent** where there is no project, so a
   machine that installs this and opens a session somewhere else sees nothing. Asserted in
   `tests/the-record-arrives-unasked.test.ts`, `tests/the-rule-reaches-the-writing.test.ts`
-  and `tests/the-record-asks-for-a-person.test.ts`, the fourth in
-  `tests/a-host-that-runs-commands-asks-for-a-person.test.ts`, the fifth and sixth in
-  `tests/a-session-says-what-it-wrote.test.ts`, the seventh in
-  `tests/a-correction-becomes-a-proposal.test.ts`, and the eighth in
+  and `tests/the-record-asks-for-a-person.test.ts`, the third (the transcript's path kept at `SessionStart`) in
+  `tests/an-agents-accept-rests-on-the-persons-words.test.ts`, the fifth in
+  `tests/a-host-that-runs-commands-asks-for-a-person.test.ts`, the sixth and seventh in
+  `tests/a-session-says-what-it-wrote.test.ts`, the eighth in
+  `tests/a-correction-becomes-a-proposal.test.ts`, and the ninth in
   `tests/a-subagent-hands-back-its-decisions.test.ts` and
-  `tests/host-contract/a-subagent-is-sent-back-for-its-handback.test.ts`, and the ninth in
+  `tests/host-contract/a-subagent-is-sent-back-for-its-handback.test.ts`, and the tenth in
   `tests/a-settled-choice-is-said.test.ts` and
-  `tests/host-contract/a-settled-choice-reaches-the-model.test.ts`, and the eleventh in
+  `tests/host-contract/a-settled-choice-reaches-the-model.test.ts`, and the twelfth in
   `tests/what-a-write-means-to-the-record.test.ts` and
   `tests/host-contract/a-note-of-the-hosts-memory-is-copied.test.ts`; the plugin's own page states what
   it carries and what it leaves behind. VS Code's agent and Cursor's command-line agent read
@@ -204,6 +214,16 @@ Each tool of the MCP server has its page, in [the tools](reference/mcp-tools.md)
   job against the host's real binary; [Hosts](hosts.md) says how, host by host. Qwen Code
   installs the plugin itself, converted into an extension of its own, and runs the same hooks file:
   the refusal is a command in it that starts only where `QWEN_PROJECT_DIR` is set.
+- **How far the rules reach, as numbers**: `mnema rules --coverage` (with `--json`) walks the project's files once, the walk
+  that counts what an address covers when it is recorded, and counts how many fall under each layer of the
+  rules in force: refused by a rule that refuses a write, asking for a person, governed, and under no rule, in all and
+  per top-level folder. Each file counts once, under the strongest layer over it (refused, then asks, then governs), so
+  the four numbers add up to the files walked. The rules in force are read once for the whole walk, and each file
+  is matched against them by the same prefix the gate uses. It follows the gate's switches: with `edit-refuses-a-write` or
+  `edit-asks-a-person` switched off, a file under a rule of that layer counts under the next one, and the output names the
+  channels that are off. It gives numbers and no percentage or grade. Folders left out as not
+  hand-written (`.git`, `.mnema`, `node_modules`, `dist`, `build`, `coverage`) are named, only the ones found, a symbolic link is not counted,
+  and the walk stops at 50,000 files: it then says every count is a floor.
 - **A rules file for a host without the plugin**: `mnema rules-file --host vscode` prints the
   committed rules in force whose address is a file or a directory, as a `.instructions.md` with an `applyTo`,
   `--host cursor` as a `.mdc` with `globs`, and `--host claude` as a `.claude/rules/mnema.md` with
@@ -663,6 +683,28 @@ that workflow) countersigned the checkpoint by then, at the time Rekor or a time
 prove** is who wrote the record: anybody can countersign the digest of a checkpoint they can
 read. It is no witness level: the verdict, the level, `--require witnessed` and the exit are
 the ones `verify` gives without it.
+
+**Checking that countersignature as somebody who was not there.** `mnema witness sigstore-check
+--identity <e-mail or workflow> --issuer <url>` reads every bundle of a clone **offline** and exits
+0 only when there is a bundle, every one holds by Sigstore's own checks and its certificate names
+exactly that identity and that issuer (a bundle that holds and names somebody else is said by name
+and fails). What a bundle signs is the checkpoint's own signed message, recomputed from
+`checkpoints.jsonl` and never taken from the bundle, and its SHA-256 is the name the bundle is filed under.
+With `--message-dir <dir>` it writes each of those messages as `<sha256>.message` (a link among the folders above it is followed and the messages land at the real path; the folder itself may not be a symbolic link, and its real path may not lie inside a record, that is any `.mnema` or `.git` folder, compared without case on macOS and Windows, or the root of a record checked; folders are made only after every check passes, and a file already there is never overwritten: it is refused) and prints the
+line that checks the same bundle with [cosign](https://docs.sigstore.dev/cosign/verifying/verify/), so the
+answer does not rest on this binary alone:
+
+```text
+cosign verify-blob --bundle <repo>/.mnema/tails/<tail>/witness/<sha256>.sigstore.json \
+  --certificate-identity <identity> --certificate-oidc-issuer <issuer> <dir>/<sha256>.message
+```
+
+Offline in both: the certificate chain, the certificate-transparency timestamp, Rekor's signed
+promise and its proof of inclusion travel inside the bundle. Not offline: neither tool asks anybody
+whether the trust root it holds is still the current one or whether Rekor still holds the entry;
+mnema checks against the root this binary carries (a certificate from a root Sigstore rotated later
+reads `refused`: update mnema), and cosign fetches its root through TUF the first time it runs
+(`--trusted-root` points it at a file instead). The bundle is the Sigstore bundle v0.3: on cosign 2.x the printed line may need `--new-bundle-format` added, and that was not run here (unverified), so this page claims no cosign version. Like `--against-sigstore`, it says who signed in to Sigstore, not who wrote the record.
 
 ### Bold, dim, and what a pipe gets
 

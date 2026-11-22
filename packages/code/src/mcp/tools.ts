@@ -101,6 +101,7 @@ import {
   type TimelineEntry,
   taskStanding,
   timeline,
+  treeOf,
   type WorkspaceAccountability,
   type WorkspaceAntipatterns,
   type WorkspaceExposure,
@@ -147,10 +148,11 @@ import {
   transitionTask,
   type WriteContext,
 } from '@mnema/core/write';
+import { saysWhatTheAcceptRestedOn, whatTheAcceptRestsOn } from '../agent-accept-words.js';
 import { type AcceptState, acceptStateHere, agentMayAccept } from '../agent-accepts.js';
 import { editRulesTold, firstWriteNotice, readThePush } from '../edit-rules-push.js';
 import { type FileBehindAPath, fileOfTheOrigin } from '../file-behind-a-path.js';
-import { reachOfAddress, readGoverningRules } from '../governed-tree.js';
+import { reachesOfGoverns, reachOfAddress, readGoverningRules } from '../governed-tree.js';
 import { inheritedNotReadLine, inheritedTreeOf } from '../inherited-record.js';
 import {
   projectEventsOf,
@@ -160,7 +162,9 @@ import {
 } from '../intelligence-source.js';
 import { type Addressed, addressed, resolveLabel } from '../label-as-address.js';
 import {
+  governsTargets,
   isLabelShaped,
+  isUnderATemporaryFolder,
   linkRefusal,
   locateLinkAsRecorded,
   outsideTheProject,
@@ -168,6 +172,7 @@ import {
   targetAsRecorded,
   targetRecordedAs,
 } from '../link-target.js';
+import { notHereInAWorktree } from '../linked-worktree.js';
 import {
   movedDisplay,
   rejectLeavesNothingInForce,
@@ -186,6 +191,7 @@ import {
   type CountedChannel,
   EDIT_PUSH_CHANNEL,
   FIRST_WRITE_GATE_CHANNEL,
+  RECORD_PUBLISH_CHANNEL,
   REFUSES_A_WRITE_CHANNEL,
   STARTS_OFF,
   SWITCHABLE_CHANNELS,
@@ -202,10 +208,12 @@ import {
 import {
   type FellIn,
   forwardReplacement,
+  type GovernedReach,
   type Landed,
   type PersonSigned,
   type Replacement,
 } from '../recorded-content.js';
+import { transcriptOf } from '../session-journal.js';
 import {
   linkBreaksOf,
   THE_CHAIN_AS_IT_STANDS_NOW,
@@ -323,6 +331,10 @@ export type RecordDecisionResult =
         readonly id: string;
         /** The citable `ADR-<n>` label frozen into the record: a decision's name. */
         readonly adr: string;
+        /** The paths it was recorded as governing, as the tree holds them: empty when none was given. */
+        readonly governs: readonly string[];
+        /** What each of those paths covers in the working tree, in the same order: a report, never a gate. */
+        readonly reaches: readonly GovernedReach[];
         /**
          * What the new decision OFFERS beside its acknowledgement, as lines (none when there is
          * nothing to offer): the paths this connection looked at it could be addressed at, and the
@@ -678,6 +690,8 @@ export type LinkRecordedResult =
       readonly subjectScope?: Scope;
       /** True when the subject is a TASK, so the sentence about where it lives names what it is. */
       readonly subjectIsATask?: true;
+      /** True when the target is a path under a temporary folder. */
+      readonly targetIsTemporary?: true;
     })
   | Extract<FactRecordedResult, { readonly ok: false }>;
 
@@ -778,6 +792,7 @@ export function runLinkKnowledge(
     ...(recordedTarget !== target.id ? { recordedTarget } : {}),
     ...(subjectScope !== undefined ? { subjectScope } : {}),
     ...(subjectIsATask ? { subjectIsATask: true as const } : {}),
+    ...(isUnderATemporaryFolder(target.id, projectDir) ? { targetIsTemporary: true as const } : {}),
     ...forwardReplacement(recorded),
   };
 }
@@ -941,18 +956,31 @@ export function runRecordDecision(
     title: string;
     rationale: string;
     alternatives?: string;
+    /** Paths the decision governs, recorded as `governs` links in the same act. */
+    governs?: readonly string[];
     scope?: Scope;
     project?: string;
   },
 ): RecordDecisionResult {
   const route = routeWrite(session, 'decision.recorded', input);
   if (!route.ok) return route;
+  // The paths are held to the rules of a `governs` link before a writer is opened (the ones the
+  // command line asks, from the same function): one refused refuses the whole act.
+  const trees = route.target?.trees ?? session.trees;
+  const governs = governsTargets(
+    input.governs ?? [],
+    route.scope === 'public' && trees.projectPublic !== undefined
+      ? dirname(trees.projectPublic)
+      : undefined,
+  );
+  if (!governs.ok) return { ok: false, code: governs.code, message: governs.message };
   const { ctx, run, which } = openWrite(session, route.scope, route.target);
   const recorded = ctx.writer.exclusively(() => {
     const written = recordDecision(ctx, {
       title: input.title,
       rationale: input.rationale,
       ...(input.alternatives !== undefined ? { alternatives: input.alternatives } : {}),
+      ...(governs.targets.length > 0 ? { governs: governs.targets } : {}),
       which,
       run,
     });
@@ -976,7 +1004,14 @@ export function runRecordDecision(
     scope: route.scope,
     ...routedTo(session, route),
     ...forwardReplacement(recorded),
-    offered: repeated ? [] : offersBesideADecision(session, route, input, recorded),
+    governs: repeated ? [] : governs.targets,
+    reaches:
+      repeated || trees.projectPublic === undefined
+        ? []
+        : reachesOfGoverns(governs.targets, dirname(trees.projectPublic)),
+    offered: repeated
+      ? []
+      : offersBesideADecision(session, route, input, recorded, governs.targets.length > 0),
     agentsAccept: agentsAcceptInThisSession(session),
     ...(repeated ? { alreadyRecorded: true as const } : {}),
   };
@@ -999,9 +1034,10 @@ function offersBesideADecision(
   route: { readonly scope: Scope; readonly target?: WriteTarget },
   input: { title: string; rationale: string; alternatives?: string },
   recorded: { readonly id: string; readonly adr: string },
+  isAddressed: boolean,
 ): string[] {
   const own = route.target === undefined || route.target.dir === session.project;
-  const lines = own ? addressOfferLines(session.looked, recorded, route.scope) : [];
+  const lines = own && !isAddressed ? addressOfferLines(session.looked, recorded, route.scope) : [];
   try {
     const trees = route.target?.trees ?? session.trees;
     const sources = withCaches(session, recordTrees(trees, route.target?.dir ?? session.project));
@@ -1095,6 +1131,19 @@ export function runDecisionTransition(
   });
   if (turnedAway !== undefined) return { ok: false, ...turnedAway };
 
+  // AN AGENT'S ACCEPT RESTS ON THE PERSON'S WORDS (`agent-accept-words.ts`), or it waits for them.
+  const rested = whatTheAcceptRestsOn({
+    action: input.action,
+    agent: whichOfWrite(session, located.home.scope, located.home.target),
+    note: input.note,
+    hostSession: session.hostSession,
+    transcript:
+      session.hostSession === undefined
+        ? undefined
+        : transcriptOf(session.trees, session.hostSession),
+  });
+  if (rested?.outcome === 'waits') return { ok: false, code: rested.code, message: rested.message };
+  const restedSaid = rested === undefined ? undefined : saysWhatTheAcceptRestedOn(rested);
   const { ctx, run, which } = openWrite(session, located.home.scope, located.home.target);
   const fields = decisionProofToFields(input);
   // Every move carries the session's `which` (the executing agent) and `run`, so
@@ -1160,7 +1209,7 @@ export function runDecisionTransition(
     id: input.id,
     adr,
     to: moved.to,
-    ...(notice !== undefined ? { notice } : {}),
+    ...((notice ?? restedSaid) !== undefined ? { notice: (notice ?? restedSaid) as string } : {}),
     ...(input.action === 'accept' && which !== undefined ? { acceptedByAgent: which } : {}),
     ...whereItFell(session, located.home.scope, located.home.target),
     ...personSignedIn(session, located.home.scope, located.home.target),
@@ -1513,7 +1562,7 @@ export function runBootstrap(session: Session): Bootstrap {
   // the actor LEFT OFF is not: the session's run lives in the project its first write went to,
   // which may be another one of the workspace.
   return {
-    ...bootstrap(sessionCaches(session), asking),
+    ...bootstrap(sessionCaches(session), asking, treeOf(scopedCaches(session))),
     resume: resume(actorCaches(session), asking),
   };
 }
@@ -1889,7 +1938,10 @@ export function countsToolCalls(session: Session): boolean {
 export function channelsOffHere(session: Session): readonly SwitchableChannel[] {
   try {
     const states = channelStates(scopedCaches(session), SWITCHABLE_CHANNELS, STARTS_OFF);
-    return SWITCHABLE_CHANNELS.filter((_channel, at) => states[at]?.on === false);
+    // `record-publish` is a verb for a person: an agent is not told it is off.
+    return SWITCHABLE_CHANNELS.filter(
+      (channel, at) => channel !== RECORD_PUBLISH_CHANNEL && states[at]?.on === false,
+    );
   } catch {
     return [];
   }
@@ -1930,11 +1982,14 @@ function withCaches(session: Session, trees: readonly ScopedTree[]): ScopedCache
  * that serves THE SESSION rather than audits a record: the opening context, the
  * actor's runs, the patterns it may use.
  *
- * The scope is dropped here, and that is what these answers have in common: none of
- * them names a tree. A pattern is a CAPABILITY and applies to the work whatever tree
+ * The scope is dropped here, and most of these answers have it in common: a
+ * pattern is a CAPABILITY and applies to the work whatever tree
  * it was adopted in; a run is the actor's session wherever it was opened; a task is
  * work whether the team's record holds it or this machine's. The readings that DO
- * label items by tree (the index, a history) take the sources themselves.
+ * label items by tree (the index, a history) take the sources themselves. The one
+ * exception is the decisions of the opening context: the same `ADR-<n>` is numbered in
+ * each tree, so {@link runBootstrap} hands `bootstrap` the trees beside these caches
+ * and a decision held outside the public tree carries its `scope`.
  *
  * It used to serve the skills alone, while the work and the runs came from the one
  * tree the session's writes defaulted to. Routing by kind removed that tree's claim
@@ -2655,7 +2710,8 @@ export function runReadRecordTool(session: Session, input: { id: string }): Read
  * defect measured on a directory name, one step closer to whoever is calling.
  */
 function notInAnyProject(session: Session, id: string): string {
-  return `no record with id "${oneLine(id)}" ${inEveryTreeThisSessionSees(session)}`;
+  const hint = notHereInAWorktree(session.project ?? process.cwd());
+  return `no record with id "${oneLine(id)}" ${inEveryTreeThisSessionSees(session)}${hint === undefined ? '' : `. ${hint}`}`;
 }
 
 /** An intelligence read's result: the derivation, or a refusal when no project. */

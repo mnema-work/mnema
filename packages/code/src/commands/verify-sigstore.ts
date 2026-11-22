@@ -131,8 +131,21 @@ export function readSigstoreReceipts(
           });
           continue;
         }
+        let text: string | undefined;
+        try {
+          text = readFileSync(join(dir, name), 'utf-8');
+        } catch (error) {
+          pending.push({
+            ...at,
+            reading: {
+              kind: 'not-covered',
+              why: `the bundle file cannot be read: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          });
+          continue;
+        }
         const reading = readSigstoreBundle(
-          readFileSync(join(dir, name), 'utf-8'),
+          text,
           { digest, message: checkpointMessage(checkpoint) },
           options.trustedRoot,
         );

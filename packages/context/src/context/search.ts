@@ -76,7 +76,7 @@ import {
   type TaskProjection,
 } from '@mnema/core';
 import type { ScopedCache } from '../sources.js';
-import { type NamedDecision, nameDecision } from './decisions.js';
+import { type NamedDecision, nameDecision, type TreeOf, treeOf } from './decisions.js';
 import { type TaskStory, taskStory } from './task-story.js';
 
 /** What to look for, plus the one filter that is about trees rather than rows. */
@@ -521,20 +521,25 @@ export function readRecord(sources: readonly ScopedCache[], id: string): RecordB
     if (memory !== null) return { kind: 'memory', ...held, record: memory };
     const observation = cache.getObservation(id);
     if (observation !== null) return { kind: 'observation', ...held, record: observation };
-    const decision = cache.getDecision(id);
-    if (decision !== null) {
+    const kept = cache.getDecision(id);
+    if (kept !== null) {
+      // The accepts the fold keeps (their entry hashes) are what a showing is matched against, and
+      // nothing a reader of one record asks for: `acceptedBy` already says who ruled it. They are
+      // left out of the record served, as they were before the projection kept them.
+      const { accepts: _matchedOnly, ...decision } = kept;
       const caches = sources.map((source) => source.cache);
+      const trees = treeOf(sources);
       return {
         kind: 'decision',
         ...held,
         record: decision,
         ...(decision.supersedes !== undefined
-          ? { supersedes: nameDecision(caches, decision.supersedes) }
+          ? { supersedes: nameDecision(caches, decision.supersedes, trees) }
           : {}),
         ...(decision.supersededBy !== undefined
-          ? { supersededBy: nameDecision(caches, decision.supersededBy) }
+          ? { supersededBy: nameDecision(caches, decision.supersededBy, trees) }
           : {}),
-        ...alsoSupersededBy(caches, decision),
+        ...alsoSupersededBy(caches, decision, trees),
       };
     }
     const task = cache.getTask(id);
@@ -581,12 +586,13 @@ function otherEndsOf(
   if (hit.kind !== 'decision') return {};
   const held = source.cache.getDecision(hit.id);
   if (held === null) return {};
+  const trees = treeOf([source]);
   return {
     ...(held.supersedes !== undefined
-      ? { supersedes: nameDecision([source.cache], held.supersedes) }
+      ? { supersedes: nameDecision([source.cache], held.supersedes, trees) }
       : {}),
     ...(held.supersededBy !== undefined
-      ? { supersededBy: nameDecision([source.cache], held.supersededBy) }
+      ? { supersededBy: nameDecision([source.cache], held.supersededBy, trees) }
       : {}),
   };
 }
@@ -599,6 +605,7 @@ function otherEndsOf(
 function alsoSupersededBy(
   caches: readonly ProjectionCache[],
   decision: DecisionProjection,
+  trees: TreeOf,
 ): { readonly alsoSupersedes?: readonly NamedDecision[] } {
   const others = new Map<string, DecisionProjection>();
   for (const cache of caches) {
@@ -612,6 +619,6 @@ function alsoSupersededBy(
   return {
     alsoSupersedes: [...others.values()]
       .sort((a, b) => (a.adr < b.adr ? -1 : a.adr > b.adr ? 1 : 0))
-      .map((other) => nameDecision(caches, other.id)),
+      .map((other) => nameDecision(caches, other.id, trees)),
   };
 }

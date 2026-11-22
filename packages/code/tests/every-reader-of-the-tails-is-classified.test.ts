@@ -260,6 +260,10 @@ const READERS: Readonly<Record<string, Classified>> = {
     reads: 'proven',
     why: 'the agent keys enrolled, through `orderedEvents`',
   },
+  'packages/code/src/commands/export-madr.ts': {
+    reads: 'proven',
+    why: 'the decisions the MADR files are written from, through `orderedEvents`',
+  },
   'packages/code/src/commands/site.ts': {
     reads: 'proven',
     why: 'the record page, through `orderedEventsAndUnread`',

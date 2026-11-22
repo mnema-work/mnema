@@ -46,6 +46,7 @@ import {
 import {
   acceptDecision,
   recordDecision,
+  recordDecisionSeen,
   rejectDecision,
   supersedeDecision,
 } from './decision-operations.js';
@@ -311,6 +312,16 @@ describe('a checkout the key left writes nothing, through every write of the sur
       op: 'deprecateSkill',
       refusedBy: 'the anchor',
       drive: (as, _, s) => deprecateSkill(as, { id: s.fixtures.adopted, fields: { reason: 'r' } }),
+    },
+    {
+      op: 'recordDecisionSeen',
+      refusedBy: 'the anchor',
+      drive: (as, _, s) =>
+        recordDecisionSeen(as, {
+          decision: s.fixtures.decisions[0] as string,
+          moves: ['a'.repeat(64)],
+          atATerminal: true,
+        }),
     },
     {
       op: 'recordConsultation',

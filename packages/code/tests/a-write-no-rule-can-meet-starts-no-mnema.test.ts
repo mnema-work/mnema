@@ -40,6 +40,7 @@ import { resolveTrees } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type CliIo, run } from '../src/program.js';
 import { GIT_WITHOUT_MAINTENANCE } from './support/git-without-maintenance.js';
+import { inPty } from './support/pty.js';
 import { MNEMA_CLI } from './support/the-cli.js';
 
 const REPO = fileURLToPath(new URL('../../../', import.meta.url));
@@ -359,6 +360,80 @@ describe('the gate of a host whose hooks are processes', () => {
       expect(met.started, what).toBe(1);
       expect(met.decision, what).toBe('deny');
     }
+  });
+});
+
+describe('a kind the handler’s copy does not declare', () => {
+  it('starts no mnema after a person’s accept at a terminal, which marks the rule shown in the private tree', {
+    timeout: 60_000,
+  }, async () => {
+    // The defect this holds: an accept at a terminal writes a `decision.seen` beside itself, a kind
+    // the copy beside the handler does not declare, and a handler that doubted every such line ran
+    // `mnema` on every edit from then on.
+    const id = idIn(await did('decision', 'record', 'Bill in UTC', 'Because it was agreed'));
+    const ran = await inPty(
+      {
+        cli: CLI,
+        verb: `decision move accept ${id} --note agreed`,
+        project: repo,
+        scratch: sandbox,
+        environment: {
+          HOME: home,
+          PATH: process.env.PATH ?? '',
+          GIT_CONFIG_NOSYSTEM: '1',
+          GIT_CONFIG_GLOBAL: GIT_WITHOUT_MAINTENANCE,
+        },
+      },
+      { columns: 120, rows: 40, steps: [{ until: () => false, what: 'ended' }] },
+    );
+    expect(ran.code).toBe(0);
+    const priv = resolveTrees(repo, { home }).projectPrivate as string;
+    expect(readFileSync(theSegment(priv), 'utf-8')).toContain('"kind":"decision.seen"');
+    for (const host of ['cursor', 'vscode'] as const) {
+      expect(aWrite(host, 'src/billing/invoice.ts').started, host).toBe(0);
+    }
+  });
+
+  it('reads past a listed kind with no marker, and starts it over a marker, a version ahead or any other kind', async () => {
+    await aRule('Bill in UTC');
+    const segment = theSegment(resolveTrees(repo, { home }).projectPublic as string);
+    const sound = readFileSync(segment, 'utf-8');
+    const last = sound.trimEnd().split('\n').at(-1) as string;
+    const unknown = last.replace(/"kind":"[^"]+"/, '"kind":"x.from-the-future"');
+    const [marker] = ADDRESS_RELATIONS;
+    const cases: Record<string, string> = {
+      'a kind it does not know, holding a marker': unknown.replace(
+        '"payload":{',
+        `"payload":{"rel":${JSON.stringify(marker)},`,
+      ),
+      'a version ahead of a kind it reads': last.replace(/"v":1\b/, '"v":2'),
+    };
+    for (const [what, line] of Object.entries(cases)) {
+      writeFileSync(segment, sound);
+      appendFileSync(segment, `${line}\n`);
+      expect(aWrite('cursor', 'src/billing/invoice.ts').started, what).toBe(1);
+    }
+    // A kind off the list, with no marker, is a doubt all the same: a kind added later may
+    // address a path in a shape no marker names.
+    writeFileSync(segment, sound);
+    appendFileSync(segment, `${unknown}\n`);
+    expect(aWrite('cursor', 'src/billing/invoice.ts').started, 'a kind it does not know').toBe(1);
+    // A kind on the list, with no marker, is read past.
+    writeFileSync(segment, sound);
+    appendFileSync(segment, `${last.replace(/"kind":"[^"]+"/, '"kind":"decision.seen"')}\n`);
+    expect(aWrite('cursor', 'src/billing/invoice.ts').started, 'a listed kind').toBe(0);
+  });
+
+  it('reads past exactly the kinds the catalog added after its copy, and nothing else', async () => {
+    // Whoever adds a kind to the catalog decides here whether the handler may read it past: a
+    // kind that can carry an address stays off the list, and runs `mnema`.
+    const { READ_PAST } = await import('../../../plugin/hooks/an-address-can-be-met.mjs');
+    const copy = JSON.parse(
+      readFileSync(join(PLUGIN, 'hooks', 'event-schema.json'), 'utf-8'),
+    ) as SchemaFile;
+    const inTheCopy = new Set(copy.contracts.map((contract) => contract.kind));
+    const added = Object.entries(LATEST_VERSION).filter(([kind]) => !inTheCopy.has(kind));
+    expect([...READ_PAST.entries()].sort()).toEqual(added.sort());
   });
 });
 
