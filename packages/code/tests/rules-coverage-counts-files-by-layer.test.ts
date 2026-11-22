@@ -254,4 +254,10 @@ describe('mnema rules --coverage', { timeout: 60_000 }, () => {
     expect(both.failed).toBe(true);
     expect(both.err).toContain('no path');
   });
+
+  it('refuses to count a folder that is not inside a project', () => {
+    const bare = join(sandbox, 'bare');
+    mkdirSync(bare);
+    expect(runRulesCoverage({ cwd: bare, env })).toEqual({ ok: false, reason: 'NO_PROJECT' });
+  });
 });
