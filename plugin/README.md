@@ -443,7 +443,8 @@ to make readable.
 And if you would rather it did not:
 
 ```sh
-mnema switch                       # where each channel stands, and what each carries
+# where each channel stands, and what each carries
+mnema switch
 mnema switch off edit-rules-push --reason "not while I am porting this"
 ```
 

@@ -67,9 +67,12 @@ An agent key is a second key of your identity that an agent host signs with, so 
 (the [guide on a second machine and your key](a-second-machine-and-your-key.md#a-key-that-signs-for-its-person-under-a-name) has the rest):
 
 ```sh
-mnema key request --agent claude --anchor <your identity>   # makes the key, prints a line
-mnema key enroll --agent claude                             # with your own key: records it
-mnema key revoke --agent <fingerprint> --reason "<why>"     # retires it
+# makes the key, prints a line
+mnema key request --agent claude --anchor <your identity>
+# with your own key: records it
+mnema key enroll --agent claude
+# retires it
+mnema key revoke --agent <fingerprint> --reason "<why>"
 ```
 
 `request` makes the key in `agents/claude/` under the data directory (`~/.mnema`, or `$MNEMA_HOME`), in the clear, apart

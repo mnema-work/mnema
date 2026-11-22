@@ -4,15 +4,24 @@ A verifier for the format specified in [`../FORMAT.md`](../FORMAT.md), written *
 document** and importing **nothing** of the product it checks.
 
 ```
-python3 mnema_verify.py record <a record directory>    # T1, T2/T4, T3 over a real record
-python3 mnema_verify.py record <dir> --require signed  # ...and refuse an event no signature covers
-python3 mnema_verify.py proof <a proof file>           # the proof of one decision `mnema prove` wrote (FORMAT.md section 9)
-python3 mnema_verify.py vectors                        # reproduce the 42 published vectors and the 5 signed messages
-python3 mnema_verify.py self-test                      # RFC 8032, section 1, section 8's limits
-python3 mnema_verify.py all --record <dir>             # all three
-python3 mnema_verify.py gaps                           # where FORMAT.md did not suffice
-python3 mnema_verify.py --json gaps                    # the same registry as data
-python3 mutate.py list                                 # the named mutations (most are refused; five are not)
+# T1, T2/T4, T3 over a real record
+python3 mnema_verify.py record <a record directory>
+# ...and refuse an event no signature covers
+python3 mnema_verify.py record <dir> --require signed
+# the proof of one decision `mnema prove` wrote (FORMAT.md section 9)
+python3 mnema_verify.py proof <a proof file>
+# reproduce the 42 published vectors and the 5 signed messages
+python3 mnema_verify.py vectors
+# RFC 8032, section 1, section 8's limits
+python3 mnema_verify.py self-test
+# all three
+python3 mnema_verify.py all --record <dir>
+# where FORMAT.md did not suffice
+python3 mnema_verify.py gaps
+# the same registry as data
+python3 mnema_verify.py --json gaps
+# the named mutations (most are refused; five are not)
+python3 mutate.py list
 ```
 
 Python 3.9 or later. **No third-party packages**: Ed25519 is RFC 8032 by hand, checked
@@ -203,7 +212,8 @@ that lights it are one artifact.
 
 ```
 python3 mutate.py edited-event-chain-repaired /tmp/a-copy-of-a-record
-python3 mnema_verify.py record /tmp/a-copy-of-a-record      # REFUSED, exit 1
+# REFUSED, exit 1
+python3 mnema_verify.py record /tmp/a-copy-of-a-record
 ```
 
 That one is the sharpest of the keyless ones. It edits an event and then recomputes **every**

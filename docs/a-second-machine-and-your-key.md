@@ -66,12 +66,14 @@ You can put a passphrase on it, and nothing else changes. At a terminal `mnema k
 for it, twice and with nothing echoed; the variable does the same where there is no terminal:
 
 ```sh
-mnema key protect                       # asks twice
+# asks twice
+mnema key protect
 #> New passphrase for the private key:
 #> Again:
 #> Protected 2 of 2 private key file(s)
 #> …
-export MNEMA_KEY_PASSPHRASE='a long passphrase of your own'   # or, with no terminal to ask at
+# or, with no terminal to ask at
+export MNEMA_KEY_PASSPHRASE='a long passphrase of your own'
 mnema key protect
 ```
 
@@ -112,9 +114,12 @@ two facts (`agent.enrolled`, `agent.retired`), and three verbs write them.
 **Making one, enrolling it, retiring it.**
 
 ```sh
-mnema key request --agent claude --anchor <identity>     # where the agent's key will live
-mnema key enroll --agent <the line it printed>           # where your own key is
-mnema key revoke --agent <fingerprint> --reason "<why>"  # when it should sign nothing more
+# where the agent's key will live
+mnema key request --agent claude --anchor <identity>
+# where your own key is
+mnema key enroll --agent <the line it printed>
+# when it should sign nothing more
+mnema key revoke --agent <fingerprint> --reason "<why>"
 ```
 
 `request` makes the key in a folder of its own, `agents/<name>/` under the data directory (`~/.mnema`,
