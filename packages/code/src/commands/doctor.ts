@@ -29,6 +29,8 @@
  *     does it already TRACK something there: asked of git and not of one file, because the ignore
  *     can come from `.git/info/exclude` or a global file, and a tracked file is published whatever
  *     any line says. Said with the command to run, never run: no `git rm` here;
+ *   - did a catch block that keeps a ledger swallow a failure in the last days (`swallowed-ledger.ts`: the
+ *     file's own lines, never a place or a message of the person's), said with how many and where most;
  *   - and, for each agent key this machine holds, does this project's record enrol it, does a
  *     host asked to sign as an agent hold a key to do it with, and does the person's own key being
  *     unencrypted leave the whole separation to nothing.
@@ -97,10 +99,18 @@ import { oneLine } from '../one-line.js';
 import { pluginTreeHash } from '../plugin-tree-hash.js';
 import { newerLinesSentence } from '../record-integrity.js';
 import {
+  DAYS_READ,
+  dataDirOf,
+  readSwallowed,
+  sitesByCount,
+  swallowedFiles,
+} from '../swallowed-ledger.js';
+import {
   personsKeyInTheClear,
   THE_AGENT_KEY_SEPARATES_NOTHING,
 } from '../the-persons-key-in-the-clear.js';
 import { isOlderThan } from '../version.js';
+import { longPathsLines } from './doctor-long-paths.js';
 import { mergeDriverLines } from './doctor-merge-driver.js';
 import { type Plan, planFix, readLocations, SETTING, settingsCandidates } from './doctor-vscode.js';
 import { checkInstructions, leftOut, leftOutLine, stateLine } from './instructions.js';
@@ -118,6 +128,8 @@ export interface DoctorContext {
   readonly running: { readonly file: string; readonly version: string };
   /** Which platform's places VS Code's settings are looked for in; this process's by default. */
   readonly platform?: NodeJS.Platform;
+  /** What git says to a read of `core.longpaths` (`doctor-long-paths.ts`); git itself is asked by default. */
+  readonly gitConfigLongPaths?: (cwd: string, args: readonly string[]) => string | undefined;
   /**
    * The version a `node` executable says it is, or undefined where it does not say one. By default
    * the executable is asked (`node -p process.versions.node`); a test hands its own.
@@ -157,9 +169,11 @@ export interface Finding {
     | 'instructions'
     | 'agent-key'
     | 'merge-driver'
+    | 'long-paths'
     | 'newer-mnema'
     | 'record-in-git'
-    | 'fork-kept-aside';
+    | 'fork-kept-aside'
+    | 'swallowed';
   readonly state: 'fine' | 'attention';
   /** One line: what was found, then what to do. */
   readonly line: string;
@@ -1637,6 +1651,62 @@ function forkKeptAsideFindings(ctx: DoctorContext): Finding[] {
     : [{ topic: 'fork-kept-aside', state: 'attention', line: saysForkKeptAside(found) }];
 }
 
+/**
+ * What the catch blocks that keep a ledger swallowed in the last days (`swallowed-ledger.ts`): how many,
+ * and the sites that did it most. Silent where there is no ledger and where it holds nothing in the days
+ * read, which is a healthy machine; said where the file is there and does not read, and never written over.
+ */
+function swallowedFindings(ctx: DoctorContext): Finding[] {
+  // The data directory the environment names, by the rule `swallowed-ledger.ts` writes under: no home, no ledger.
+  const dataDir = dataDirOf({ MNEMA_HOME: ctx.env.mnemaHome, HOME: ctx.env.home });
+  if (dataDir === undefined) return [];
+  const read = readSwallowed(dataDir);
+  const { file } = swallowedFiles(dataDir);
+  if (read.unreadable) {
+    return [
+      {
+        topic: 'swallowed',
+        state: 'attention',
+        line: `the ledger of caught failures at ${file} cannot be read, so none were counted: check who owns it; nothing here writes over it.`,
+      },
+    ];
+  }
+  const passed =
+    read.passedOver === 0
+      ? ''
+      : ` ${read.passedOver} line(s) did not read as the ledger's own and were not counted.`;
+  if (read.entries.length === 0) {
+    return read.passedOver === 0
+      ? []
+      : [
+          {
+            topic: 'swallowed',
+            state: 'attention',
+            line: `the ledger of caught failures at ${file} holds only lines that do not read as its own (${read.passedOver}); none were counted.`,
+          },
+        ];
+  }
+  const sites = sitesByCount(read.entries)
+    .slice(0, 3)
+    .map(({ where, count }) => `${where} (${count})`)
+    .join(', ');
+  const newest = read.entries
+    .map((entry) => entry.at)
+    .sort()
+    .at(-1);
+  return [
+    {
+      topic: 'swallowed',
+      state: 'attention',
+      line:
+        `${read.entries.length} failure(s) were caught and the work went on, in the last ${DAYS_READ} days, newest ${newest}; ` +
+        `most often at ${sites}. Each is one line (site, error class and code) in ${file}, kept on this machine and never sent: ` +
+        'if one site repeats, open an issue with its name and code; delete the file to start the count again.' +
+        passed,
+    },
+  ];
+}
+
 /** Reads the machine and answers, in the order the questions are asked above. */
 export function runDoctor(ctx: DoctorContext): { readonly findings: readonly Finding[] } {
   const plugins = installedPlugins(ctx);
@@ -1655,6 +1725,11 @@ export function runDoctor(ctx: DoctorContext): { readonly findings: readonly Fin
         state: 'attention' as const,
         line,
       })),
+      ...longPathsLines(ctx).map(({ state, line }) => ({
+        topic: 'long-paths' as const,
+        state,
+        line,
+      })),
       ...forkKeptAsideFindings(ctx),
       ...recordInGitFindings(ctx),
       ...keyMetadataFindings(ctx),
@@ -1663,6 +1738,7 @@ export function runDoctor(ctx: DoctorContext): { readonly findings: readonly Fin
       ...stackFindings(ctx),
       ...agentKeyFindings(ctx),
       ...newerMnemaFindings(ctx),
+      ...swallowedFindings(ctx),
     ],
   };
 }

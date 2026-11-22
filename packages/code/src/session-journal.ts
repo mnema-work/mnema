@@ -408,6 +408,51 @@ export function takeTheFirstServing(
   }
 }
 
+/** The suffix of the file that says where the host keeps the session's transcript. */
+const TRANSCRIPT_SUFFIX = '.transcript';
+
+/**
+ * Keeps the path of the session's transcript beside its journal: the one thing a server with no hook
+ * payload in hand needs to read what the person said (`agent-accept-words.ts`). A PATH, never a word
+ * of the transcript: the file is 0600 like the journal, pruned with it, outside the record, and
+ * `verify` never reads it. A sibling file and not a field of the journal, because the journal is
+ * rewritten whole by whoever reads the transcript and a field that writer does not carry would be
+ * dropped. A path that cannot be kept is the accept not checked, never a failed hook. Never throws.
+ */
+export function rememberTranscript(trees: ResolvedTrees, session: string, path: string): void {
+  const file = journalFile(trees, session);
+  if (file === undefined || path === '' || path.includes('\n')) return;
+  const holder = `${file}${TRANSCRIPT_SUFFIX}`;
+  try {
+    if (readFileSync(holder, 'utf-8') === path) return;
+  } catch {
+    // None yet: made below.
+  }
+  try {
+    const dir = dirname(file);
+    mkdirSync(dir, { recursive: true, mode: DIRECTORY_MODE });
+    chmodSync(dir, DIRECTORY_MODE);
+    const staging = `${holder}.${process.pid}.tmp`;
+    writeFileSync(staging, path, { mode: FILE_MODE });
+    chmodSync(staging, FILE_MODE);
+    renameSync(staging, holder);
+  } catch {
+    // The accept will say its words were not checked.
+  }
+}
+
+/** The path of the transcript kept for `session`, when a hook left one and the file is still there. */
+export function transcriptOf(trees: ResolvedTrees, session: string): string | undefined {
+  const file = journalFile(trees, session);
+  if (file === undefined) return undefined;
+  try {
+    const path = readFileSync(`${file}${TRANSCRIPT_SUFFIX}`, 'utf-8');
+    return path !== '' && statSync(path).isFile() ? path : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** A journal that names a task the session's end never closed, with where it is. */
 export interface LeftOpen {
   readonly file: string;
@@ -450,7 +495,8 @@ function prune(dir: string, now: Date): void {
       !name.endsWith('.tmp') &&
       !name.endsWith(SKIPPED_SUFFIX) &&
       !name.endsWith(ELSEWHERE_SUFFIX) &&
-      !name.endsWith(SERVED_SUFFIX)
+      !name.endsWith(SERVED_SUFFIX) &&
+      !name.endsWith(TRANSCRIPT_SUFFIX)
     )
       continue;
     const path = join(dir, name);

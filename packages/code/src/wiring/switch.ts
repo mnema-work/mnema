@@ -98,7 +98,7 @@ export function registerSwitch(program: Command, wiring: Wiring): Declared {
         '  What it carries is what stops arriving when it is off.',
         '  An off switch says who made it and when, and whether a clone of this',
         '  repository holds it: a switch recorded privately governs only this machine.',
-        `  A channel with no switch is on, except ${startsOff()}, which are off until switched on.`,
+        `  A channel with no switch is on, except ${startsOff()}, which ${STARTS_OFF.length === 1 ? 'is' : 'are'} off until switched on.`,
       ].join('\n'),
     )
     .action(async () => {
@@ -193,11 +193,11 @@ function position(group: Command, wiring: Wiring, word: 'off' | 'on', descriptio
                   ? `${result.channel} is now ON: a write to a file that holds decisions the record cites nowhere is answered, once per session and file, with one line naming the command that reads it.`
                   : result.channel === HOST_MEMORY_MIRROR_CHANNEL
                     ? `${result.channel} is now ON: it copies each note this host writes to its own memory into this machine's private tree.`
-                    : (STARTS_OFF as readonly string[]).includes(result.channel)
-                      ? result.channel === USER_CORRECTIONS_CHANNEL
-                        ? `${result.channel} is now ON: it was off until this switch, and it now records a person's corrections as proposed decisions in this machine's private tree.`
-                        : `${result.channel} is now ON: it was off until this switch, and it now acts where a rule addresses a file.`
-                      : `${result.channel} is now ON: it hands the record over as it did before.`
+                    : result.channel === USER_CORRECTIONS_CHANNEL
+                      ? `${result.channel} is now ON: it records a person's corrections as proposed decisions in this machine's private tree, as it did before.`
+                      : (STARTS_OFF as readonly string[]).includes(result.channel)
+                        ? `${result.channel} is now ON: it was off until this switch, and it now acts where a rule addresses a file.`
+                        : `${result.channel} is now ON: it hands the record over as it did before.`
               : ofAnAct
                 ? `${result.channel} is now OFF: an agent's accept is refused. The switch that decides it was made by ${anchorText(result.anchors, result.effective.by ?? '')} at ${result.effective.at ?? ''}.`
                 : `${result.channel} is now OFF: nothing of it reaches a model. The switch that decides it was made by ${anchorText(result.anchors, result.effective.by ?? '')} at ${result.effective.at ?? ''}.`,

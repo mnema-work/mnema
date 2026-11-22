@@ -287,7 +287,7 @@ describe('over a record that does not chain, every write says so', () => {
     const adr = /Recorded decision (\S+)/.exec(blocks(answered).join(LF))?.[1];
     expect(adr).toBeDefined();
     // And it really is on the tail: a read finds it back.
-    const read = await client.callTool({ name: 'search', arguments: { text: 'keep appending' } });
+    const read = await client.callTool({ name: 'search', arguments: { term: 'keep appending' } });
     expect(blocks(read).join(LF)).toContain('keep appending');
     await client.close();
   }, 60_000);

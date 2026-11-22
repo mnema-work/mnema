@@ -40,7 +40,12 @@ import {
   THE_READING_THAT_OPENED_THESE,
   withScopedCaches,
 } from '../tree-sources.js';
-import { everyRuleInForceAt, type RuleInForceUnder } from '../what-a-write-meets.js';
+import {
+  everyRuleInForceAt,
+  type RuleInForceUnder,
+  type VerdictAtAPath,
+  verdictAtAPath,
+} from '../what-a-write-meets.js';
 
 /** What the command needs: injected so it is testable. */
 export interface WhyContext {
@@ -57,6 +62,12 @@ export interface WhyRule {
   readonly relation: RuleInForceUnder['relation'];
   /** How many of the changed files it covers: a commit's; absent for a file. */
   readonly files?: number;
+  /**
+   * For a file: whether this rule is what produced the verdict a write would meet. A rule that is
+   * outranked (an asking under a refusal, a governing under either) or whose channel is switched
+   * off is listed with `false`. Absent for a commit.
+   */
+  readonly decided?: boolean;
   /** Where it was inherited from, when it is not the project's own rule. */
   readonly inherited?: InheritedFrom;
 }
@@ -78,6 +89,12 @@ export interface WhyCommit {
   readonly cites: readonly WhyCitation[];
 }
 
+/**
+ * What a write at a path would meet: `refuse` (it does not happen), `ask` (it waits for a person),
+ * `governs` (it goes through with the rules beside it) or `none`.
+ */
+export type WhyVerdict = VerdictAtAPath;
+
 /** The answer for a file. */
 export interface WhyFile {
   readonly ok: true;
@@ -85,6 +102,17 @@ export interface WhyFile {
   /** Project-relative, POSIX; absent when the file lies outside the project. */
   readonly relative?: string;
   readonly exists: boolean;
+  /** What a write at this path would meet, as the write gate answers it. */
+  readonly verdict: WhyVerdict;
+  /**
+   * The reason the write gate hands over when the record itself refuses the write (an entry altered
+   * after it was written, or a line this mnema cannot read), whatever the rules say. Then `verdict`
+   * is `refuse` and no rule decides. Absent otherwise.
+   */
+  readonly refusal?: string;
+  /** Under `governs` with `edit-rules-push` off: the rules stand but are not handed to an agent. */
+  readonly notDelivered?: true;
+  /** The rules in force, in the order the gate applies their relations: refuse, ask, governs. */
   readonly rules: readonly WhyRule[];
   readonly git: boolean;
   /** Whether the clone holds only part of the history. */
@@ -148,14 +176,27 @@ function describe(all: readonly DecisionFacts[], commit: Commit): WhyCommit {
   };
 }
 
+/** The order the gate applies the relations in: a refusal, then an asking, then the governing. */
+const GATE_ORDER: readonly RuleInForceUnder['relation'][] = [
+  'refuses-a-write',
+  'asks-for-a-person',
+  'governs',
+];
+
+/** The rules in the gate's order of relations; inside one relation, the reading's own (most specific first). */
+function inGateOrder(rules: readonly RuleInForceUnder[]): RuleInForceUnder[] {
+  return GATE_ORDER.flatMap((relation) => rules.filter((rule) => rule.relation === relation));
+}
+
 /** A pushed rule as the answer carries it. */
-function ruleOf(rule: RuleInForceUnder, files?: number): WhyRule {
+function ruleOf(rule: RuleInForceUnder, files?: number, decided?: boolean): WhyRule {
   return {
     id: rule.id,
     name: rule.name,
     address: rule.address,
     relation: rule.relation,
     ...(files !== undefined ? { files } : {}),
+    ...(decided !== undefined ? { decided } : {}),
     ...(rule.inherited !== undefined ? { inherited: rule.inherited } : {}),
   };
 }
@@ -219,16 +260,31 @@ export function runWhy(
     const touched =
       at.relative !== undefined && gitHere ? commitsWithTrailer(root, [at.relative]) : [];
     const listed = touched ?? [];
+    // THE VERDICT IS THE GATE'S OWN ANSWER, asked through the gate module, never a second reading.
+    const { verdict, decided, refusal } = verdictAtAPath(
+      sources,
+      { path: input.target, root, from: ctx.cwd },
+      at.rules,
+      linkBreaks,
+    );
     const notPushed = rulesNotPushedLine(
       sources,
       at.rules.filter((rule) => rule.relation === 'governs').length,
     );
+    // WITH THE PUSH OFF a governing rule stands over the path but is not handed to an agent at the
+    // edit: the write still goes through, and the rules are marked as not deciding anything.
+    const notDelivered = verdict === 'governs' && notPushed !== undefined;
     return {
       ok: true,
       about: 'file',
       ...(at.relative !== undefined ? { relative: at.relative } : {}),
       exists,
-      rules: at.rules.map((rule) => ruleOf(rule)),
+      verdict,
+      ...(refusal !== undefined ? { refusal } : {}),
+      ...(notDelivered ? { notDelivered: true as const } : {}),
+      rules: inGateOrder(at.rules).map((rule) =>
+        ruleOf(rule, undefined, decided(rule) && !notDelivered),
+      ),
       git: gitHere,
       shallow: gitHere && isShallow(root),
       commits: listed.slice(0, LISTED).map((one) => describe(all, one)),

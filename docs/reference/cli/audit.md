@@ -11,7 +11,7 @@ In the help under **Read**.
 | Command | What it does |
 | --- | --- |
 | [`mnema audit accountability`](audit-accountability.md) | show who authorized what across the record (optionally windowed/filtered) |
-| [`mnema audit antipatterns`](audit-antipatterns.md) | show recurring shapes in the record (reopens, supersessions, deprecations) |
+| [`mnema audit antipatterns`](audit-antipatterns.md) | show recurring shapes in the record (reopens, supersessions, deprecations, and what agents accepted) |
 | [`mnema audit exposure`](audit-exposure.md) | show which records hold something shaped like a credential (never the value) |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
@@ -32,7 +32,8 @@ Commands:
   accountability [options]  show who authorized what across the record
                             (optionally windowed/filtered)
   antipatterns [options]    show recurring shapes in the record (reopens,
-                            supersessions, deprecations)
+                            supersessions, deprecations, and what agents
+                            accepted)
   exposure [options]        show which records hold something shaped like a
                             credential (never the value)
   help [command]            display help for command

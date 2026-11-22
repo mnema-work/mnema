@@ -468,6 +468,29 @@ export function reachOfAddress(
   return reachOver(target, root, (visit) => walkProject(root, visit, ceiling));
 }
 
+/**
+ * What each path a decision was just recorded as governing covers in the working tree, in the
+ * order given: {@link reachOfAddress} for the `governs` relation, one per path, so a mistyped path
+ * shows as covering nothing instead of passing silently. A fact, never a gate: the act is done.
+ */
+export function reachesOfGoverns(
+  targets: readonly string[],
+  root: string,
+): { target: string; reach: AddressReach }[] {
+  if (targets.length === 0) return [];
+  // ONE WALK of the tree, however many paths: the listing is read from disk once and each
+  // path is counted against it (a walk per path was ten walks of a repository for ten paths).
+  const listing: string[] = [];
+  const outcome = walkProject(root, (relative) => listing.push(relative), WALK_CEILING);
+  return targets.map((target) => ({
+    target,
+    reach: reachOver(target, root, (visit) => {
+      for (const relative of listing) visit(relative);
+      return outcome;
+    }),
+  }));
+}
+
 /** The one call that derives a reach: the walk is the caller's, so a question that needs none can pass an empty one. */
 function reachOver(
   address: string,

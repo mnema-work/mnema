@@ -22,6 +22,7 @@ import type { Command } from 'commander';
 import { fact } from '../presentation/detail.js';
 import { globalTreeGloss, windowGloss, windowHelp } from '../vocabulary.js';
 import { here } from './context.js';
+import { onOneLine } from './on-one-line.js';
 import { ACTOR_HELP } from './options.js';
 import { reportRefusal } from './report.js';
 import { type Declared, readsTheRecord, type Wiring } from './verb.js';
@@ -31,7 +32,9 @@ export function registerExport(program: Command, wiring: Wiring): Declared {
   const { io, render } = wiring;
   const exported = program
     .command('export')
-    .description('emit the record as an OCSF audit feed (NDJSON, envelope only, never a body)')
+    .description(
+      'emit the record as an OCSF audit feed (NDJSON, envelope only, never a body), or with --madr write the decisions as MADR files',
+    )
     .option('--from <iso>', windowGloss('from', 'fact'))
     .option('--to <iso>', windowGloss('to', 'fact'))
     .addHelpText('after', windowHelp('fact'))
@@ -41,6 +44,10 @@ export function registerExport(program: Command, wiring: Wiring): Declared {
     // attributed here, and a value naming no recorded agent is an empty feed, which is
     // what every filter with no match gives.
     .option('--which <agent>', 'include only facts executed by this agent')
+    .option(
+      '--madr <dir>',
+      'write each decision of the committed record as a MADR file in <dir>, bodies included, each marked as derived from the record; the feed and its filters are not used',
+    )
     .option('--global', globalTreeGloss('and this is the only read that leaves the machine'), false)
     .action(
       async (opts: {
@@ -49,7 +56,12 @@ export function registerExport(program: Command, wiring: Wiring): Declared {
         who?: string;
         which?: string;
         global: boolean;
+        madr?: string;
       }) => {
+        if (opts.madr !== undefined) {
+          await exportMadr(wiring, opts as typeof opts & { madr: string });
+          return;
+        }
         const { runExport } = await import('../commands/export.js');
         const result = runExport(here(), {
           ...(opts.from !== undefined ? { from: opts.from } : {}),
@@ -79,4 +91,53 @@ export function registerExport(program: Command, wiring: Wiring): Declared {
       },
     );
   return readsTheRecord(exported);
+}
+
+/** The `--madr` side: files, no feed, and none of the feed's filters. */
+async function exportMadr(
+  wiring: Wiring,
+  opts: {
+    madr: string;
+    from?: string;
+    to?: string;
+    who?: string;
+    which?: string;
+    global: boolean;
+  },
+): Promise<void> {
+  const { io, render } = wiring;
+  const feedOnly = [
+    ...(opts.from !== undefined ? ['--from'] : []),
+    ...(opts.to !== undefined ? ['--to'] : []),
+    ...(opts.who !== undefined ? ['--who'] : []),
+    ...(opts.which !== undefined ? ['--which'] : []),
+    ...(opts.global ? ['--global'] : []),
+  ];
+  if (feedOnly.length > 0) {
+    reportRefusal(wiring, {
+      reason: 'REFUSED',
+      code: 'MADR_TAKES_NO_FEED_OPTION',
+      message: `--madr writes the committed decisions as files and is not the feed: ${feedOnly.join(', ')} ${feedOnly.length === 1 ? 'belongs' : 'belong'} to the feed`,
+    });
+    return;
+  }
+  const { runExportMadr } = await import('../commands/export-madr.js');
+  const result = runExportMadr(here(), { out: opts.madr });
+  if (!result.ok) {
+    reportRefusal(wiring, result);
+    return;
+  }
+  for (const { file } of result.files) io.out(render(fact(onOneLine`${result.out}/${file}`)));
+  io.err(
+    render(
+      fact(
+        `wrote ${result.files.length} decision file(s) from the committed record only: a reading of the record, not the record`,
+      ),
+    ),
+  );
+  for (const one of result.unfaithful) {
+    io.err(
+      render(fact(onOneLine`${one.id} will not import as the same words: ${one.why.join('; ')}`)),
+    );
+  }
 }

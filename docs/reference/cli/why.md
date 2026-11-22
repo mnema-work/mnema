@@ -2,7 +2,7 @@
 
 <!-- This page is generated from the help of the command, written where the command is defined under packages/code/src/wiring/: edit it there, then run `pnpm vitest run packages/code/src/cli.golden.test.ts -u` (which rewrites packages/code/src/cli.help.golden.txt) and `pnpm vitest run packages/code/tests/the-reference-pages-are-generated.test.ts -u`. -->
 
-show under which decisions a file or a commit stands
+show under which decisions a file or a commit stands; for a file, also the verdict a write there would meet
 
 In the help under **The git log**.
 
@@ -26,7 +26,8 @@ In the help under **The git log**.
 ```text
 Usage: mnema why [options] <file|commit>
 
-show under which decisions a file or a commit stands
+show under which decisions a file or a commit stands; for a file, also the
+verdict a write there would meet
 
 Arguments:
   file|commit  a path (it wins when it exists) or a commit name

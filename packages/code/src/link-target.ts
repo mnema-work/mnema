@@ -13,11 +13,18 @@
  * is legitimately cross-tree, and an address may name a path the tree does not hold yet.
  */
 
-import { existsSync } from 'node:fs';
-import { dirname, isAbsolute, join } from 'node:path';
+import { existsSync, realpathSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
+import { dirname, isAbsolute, join, posix, win32 } from 'node:path';
 import type { UpcasterRegistry } from '@mnema/chain';
 import type { RecordedAs } from '@mnema/context';
-import { ADDRESS_RELATIONS, locateLinkScope, type ResolvedTrees, type Scope } from '@mnema/core';
+import {
+  ADDRESS_RELATIONS,
+  GOVERNS_RELATION,
+  locateLinkScope,
+  type ResolvedTrees,
+  type Scope,
+} from '@mnema/core';
 import { inAWorkTree } from './git-log.js';
 import { addressLiesOutside, addressRelativeToRoot } from './governed-tree.js';
 import { oneLine } from './one-line.js';
@@ -85,6 +92,45 @@ export function targetAsRecorded(rel: string, target: string, root: string): str
   return reducedToRoot(target, root);
 }
 
+/**
+ * The paths a decision is to govern, held to the rules a `governs` link is held to, for the doors
+ * that write the decision and its links in one act (`mnema decision record --governs`, the
+ * `governs` of `record_decision`). It asks the functions above and no rule of its own: a label
+ * shaped like a decision label is no path (said as such, whether or not a decision carries it), a path outside the project is refused in the public tree
+ * (`outsideTheProject`), and what that tree records is the path relative to the root
+ * (`targetAsRecorded`). `publicRoot` is the project's root when the decision lands in the public
+ * tree and `undefined` for any other tree, which takes any path, as a link does.
+ *
+ * The FIRST path refused refuses the whole act, with the same code and words the link gives, and
+ * the doors write nothing. A path typed twice is recorded once.
+ */
+export function governsTargets(
+  paths: readonly string[],
+  publicRoot: string | undefined,
+):
+  | { readonly ok: true; readonly targets: readonly string[] }
+  | { readonly ok: false; readonly code: string; readonly message: string } {
+  const targets: string[] = [];
+  for (const path of paths) {
+    // A label names a decision whether or not one carries it here, and this takes a path: the
+    // sentence is true for both, which the link's own (for a label no decision carries) is not.
+    if (isLabelShaped(path)) {
+      return {
+        ok: false,
+        code: 'NOT_A_REFERENCE',
+        message: `"${oneLine(path)}" is a decision label, not a path: governs takes a path in this project, such as src/billing. Nothing was recorded.`,
+      };
+    }
+    const outside =
+      publicRoot === undefined ? undefined : outsideTheProject(GOVERNS_RELATION, path, publicRoot);
+    if (outside !== undefined) return { ok: false, code: 'OUTSIDE_PROJECT', message: outside };
+    const recorded =
+      publicRoot === undefined ? path : targetAsRecorded(GOVERNS_RELATION, path, publicRoot);
+    if (!targets.includes(recorded)) targets.push(recorded);
+  }
+  return { ok: true, targets };
+}
+
 /** The one reduction: an absolute path goes relative to the root, anything else stays as it is. */
 function reducedToRoot(target: string, root: string): string {
   if (!isAbsolute(target)) return target;
@@ -137,4 +183,69 @@ export function locateLinkAsRecorded(
   // The public tree is searched first, so a `public` answer is the public tree's own.
   const scope = locateLinkScope(trees, { ...edge, target }, upcasters);
   return scope === 'public' ? { scope, target } : undefined;
+}
+
+/**
+ * Whether a target is a path under a temporary folder: `os.tmpdir()`, `/tmp`, `/var/tmp`, their macOS
+ * spellings (`/private/tmp`, `/private/var/folders`), `$TMPDIR` and the Windows `%TEMP%` and `%TMP%`.
+ * Such a folder is cleared by a reboot or a cleanup, so a link to a file there names something that may
+ * be gone when a reader follows it. Only an absolute path is asked (a relative one is read against a
+ * folder the link does not say), and a path under the project's own root never is: a project may live
+ * under a temporary folder and its files are its own.
+ *
+ * A path that exists is compared by where it really is (so `/tmp/p` and `/private/tmp/p` are one place
+ * on macOS, where the one is a link to the other), one that does not by its text, the way
+ * `addressLiesOutside` compares. A Windows path is compared by text only: a short 8.3 name is not
+ * expanded, and a `\\?\` prefix is dropped. A `$TMPDIR` that is `/`, the home folder or a folder
+ * holding the project is not read as a temporary folder: the rest of the machine is not one.
+ */
+export function isUnderATemporaryFolder(
+  target: string,
+  root: string | undefined,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+  tmp: string = tmpdir(),
+  home: string = homedir(),
+): boolean {
+  const bare = (path: string): string => path.replace(/^\\\\[?.]\\(?=[A-Za-z]:|UNC\\)/u, '');
+  const typed = bare(target);
+  const flavor = /^[A-Za-z]:[\\/]|^\\\\/u.test(typed) ? win32 : posix;
+  if (!flavor.isAbsolute(typed)) return false;
+  const where = (path: string): string =>
+    flavor === posix ? truthfully(flavor.resolve(path)) : flavor.resolve(bare(path));
+  const holds = (folder: string, path: string): boolean => {
+    const into = flavor.relative(where(folder), where(path));
+    return into === '' || (into.split(flavor.sep)[0] !== '..' && !flavor.isAbsolute(into));
+  };
+  if (root !== undefined && flavor.isAbsolute(root) && holds(root, typed)) return false;
+  const named = [tmp, env.TMPDIR, env.TEMP, env.TMP].filter(
+    (folder): folder is string =>
+      folder !== undefined &&
+      flavor.isAbsolute(folder) &&
+      flavor.resolve(folder) !== flavor.parse(flavor.resolve(folder)).root &&
+      !(flavor === posix && where(folder) === where(home)) &&
+      !(
+        root !== undefined &&
+        flavor.isAbsolute(root) &&
+        holds(folder, root) &&
+        !holds(root, folder)
+      ),
+  );
+  const folders = [...['/tmp', '/var/tmp', '/private/tmp', '/private/var/folders'], ...named];
+  return folders.some((folder) => holds(folder, typed));
+}
+
+/** A path as the file system has it: the deepest part that exists is resolved, the rest kept as typed. */
+function truthfully(path: string): string {
+  let head = path;
+  let rest = '';
+  for (;;) {
+    try {
+      return posix.join(realpathSync(head), rest);
+    } catch {
+      const up = dirname(head);
+      if (up === head) return path;
+      rest = posix.join(posix.basename(head), rest);
+      head = up;
+    }
+  }
 }

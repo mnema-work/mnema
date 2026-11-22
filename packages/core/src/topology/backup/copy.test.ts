@@ -193,6 +193,7 @@ describe('copying a tree into a folder', () => {
   it('says how far the copy is from the tree, writing nothing', () => {
     expect(standingOfCopy(tree, destination, RECORD, 'private')).toEqual({
       copiedAt: undefined,
+      manifest: 'absent',
       behind: 5,
       diverged: 0,
       files: 5,
@@ -201,9 +202,19 @@ describe('copying a tree into a folder', () => {
     put(tree, `tails/${TAIL}/checkpoints.jsonl`, '{"cp":1}\n{"cp":2}\n');
     expect(standingOfCopy(tree, destination, RECORD, 'private')).toEqual({
       copiedAt: NOW.toISOString(),
+      manifest: 'whole',
       behind: 1,
       diverged: 0,
       files: 5,
+    });
+  });
+
+  it('says a manifest that does not read, and names no last run for it', () => {
+    copyTree(tree, destination, RECORD, 'private', NOW);
+    writeFileSync(join(destination, RECORD, 'private', 'mnema-backup.json'), '{"copiedAt": ');
+    expect(standingOfCopy(tree, destination, RECORD, 'private')).toMatchObject({
+      copiedAt: undefined,
+      manifest: 'unreadable',
     });
   });
 });

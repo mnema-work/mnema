@@ -48,3 +48,12 @@ published install takes. It is one bundle of the compiled `packages/code/dist/cl
 of everything that file reaches, split into chunks beside it in `dist/bundle/`, so a stack
 trace names a chunk and a line in it, not a file of `src`. The compiled `dist/cli.js` is
 still built and still runs, as the library and the tests in this repository use it. To change the code, start with [`CONTRIBUTING.md`](../CONTRIBUTING.md).
+
+## The single executable
+
+After `pnpm build`, on Linux x64 with Node 25.7 or later (Node 26 is in the supported range), `pnpm build:single-executable`
+folds the CLI into one file with Node's single executable applications and writes it, with its SHA-256 line, to
+`packages/code/dist/single-executable/` as `mnema-<version>-linux-x64` and `mnema-<version>-linux-x64.sha256`. The file
+holds the Node that built it, so it is about 150 MB. It needs no `postject` and adds no dependency: Node's own
+`--build-sea` writes it. A Node below 25.7 is refused by name before anything is written. It is experimental
+([install](install.md#a-single-file-without-node-experimental)).
