@@ -44,7 +44,9 @@ export function registerAntipatterns(program: Command, wiring: Wiring): Declared
   const { io, render } = wiring;
   const antipatterns = program
     .command('antipatterns')
-    .description('show recurring shapes in the record (reopens, supersessions, deprecations)')
+    .description(
+      'show recurring shapes in the record (reopens, supersessions, deprecations, and what agents accepted)',
+    )
     .option('--json', 'emit the faithful shapes with their evidence as JSON')
     .action(async (opts: { json?: boolean }) => {
       const { runAntipatterns } = await import('../commands/antipatterns.js');
@@ -60,7 +62,17 @@ export function registerAntipatterns(program: Command, wiring: Wiring): Declared
         // The note travels INSIDE the JSON for the reason it is on the page: whoever
         // pipes this into something else is the reader most likely to never see the
         // prose beside it.
-        io.out(JSON.stringify({ ...result.patterns, patternMoves: result.moves }, null, 2));
+        io.out(
+          JSON.stringify(
+            {
+              ...result.patterns,
+              patternMoves: result.moves,
+              agentAccepts: result.agentAccepts,
+            },
+            null,
+            2,
+          ),
+        );
         return;
       }
       // Human summary, one level: a count per category, then the skill candidates
@@ -155,10 +167,105 @@ export function registerAntipatterns(program: Command, wiring: Wiring): Declared
           ),
         );
       }
+      const accepts = result.agentAccepts;
+      io.out(
+        render(
+          statement(
+            'rules accepted with no agent declared, or addressed, that an agent took out of force',
+            String(accepts.rulesSupersededByAgent.length),
+          ),
+        ),
+      );
+      io.out(
+        render(
+          statement(
+            'chains of three decisions or more, each replacing the one before',
+            String(accepts.chains.length),
+          ),
+        ),
+      );
+      io.out(render(statement('accepts that declare an agent', String(accepts.agentAccepts))));
+      io.out(
+        render(
+          statement(
+            'of them, quoting no words of the person',
+            String(accepts.acceptsWithoutTheirWords.length),
+          ),
+        ),
+      );
+      io.out(render(statement('accepts that declare no agent', String(accepts.undeclaredAccepts))));
+      io.out(
+        render(
+          statement(
+            'of them, quoting no words of the person',
+            String(accepts.undeclaredWithoutTheirWords.length),
+          ),
+        ),
+      );
+      if (accepts.rulesSupersededByAgent.length > 0) {
+        io.out(
+          render(
+            statement(
+              'taken out of force by an agent',
+              accepts.rulesSupersededByAgent
+                .slice(0, SHOWN)
+                .map((x) => onOneLine`${x.decision}`)
+                .join(', ') + andMore(accepts.rulesSupersededByAgent.length),
+            ),
+          ),
+        );
+      }
+      if (accepts.chains.length > 0) {
+        io.out(
+          render(
+            statement(
+              'replaced in a row',
+              accepts.chains
+                .slice(0, SHOWN)
+                .map((chain) => chain.map((id) => onOneLine`${id}`).join(' > '))
+                .join(', ') + andMore(accepts.chains.length),
+            ),
+          ),
+        );
+      }
+      if (accepts.acceptsWithoutTheirWords.length > 0) {
+        io.out(
+          render(
+            statement(
+              'accepted with no words of the person',
+              accepts.acceptsWithoutTheirWords
+                .slice(0, SHOWN)
+                .map((x) => onOneLine`${x.decision}`)
+                .join(', ') + andMore(accepts.acceptsWithoutTheirWords.length),
+            ),
+          ),
+        );
+      }
+      if (accepts.undeclaredWithoutTheirWords.length > 0) {
+        io.out(
+          render(
+            statement(
+              'accepted, no agent declared, with no words of the person',
+              accepts.undeclaredWithoutTheirWords
+                .slice(0, SHOWN)
+                .map((x) => onOneLine`${x.decision}`)
+                .join(', ') + andMore(accepts.undeclaredWithoutTheirWords.length),
+            ),
+          ),
+        );
+      }
       // The blank line then the note, the shape `usage` closes with: what the counts
       // above can and cannot mean, in the answer rather than beside it.
       io.out('');
       io.out(moves.note);
     });
   return readsTheRecord(antipatterns);
+}
+
+/** How many ids a list of the agent-accepts reading prints; `--json` lists them all. */
+const SHOWN = 10;
+
+/** What follows a list cut at {@link SHOWN}: how many were left out, and where they are. */
+function andMore(total: number): string {
+  return total > SHOWN ? `, …and ${String(total - SHOWN)} more, all in --json` : '';
 }

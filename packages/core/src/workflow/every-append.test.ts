@@ -58,7 +58,7 @@ import {
   recordChannelServed,
   switchChannel,
 } from './channel-operations.js';
-import { recordDecision } from './decision-operations.js';
+import { recordDecision, recordDecisionSeen } from './decision-operations.js';
 import {
   enrollAgent,
   enrollKey,
@@ -425,6 +425,13 @@ describe('every write refuses what no read could accept', () => {
         field: 'skill',
         names: 'at subject',
         drive: () => recordConsultation(ctx, { skill: '' }),
+      },
+      {
+        op: 'recordDecisionSeen',
+        field: 'decision',
+        names: 'at subject',
+        drive: () =>
+          recordDecisionSeen(ctx, { decision: '', moves: ['a'.repeat(64)], atATerminal: true }),
       },
       {
         // The channel becomes the event's SUBJECT, like a consultation's skill: the

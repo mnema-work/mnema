@@ -38,6 +38,7 @@ import { dirname, join } from 'node:path';
 import type { ResolvedTrees } from '@mnema/core';
 import { isLinkAt } from './linked-log.js';
 import type { RecordEffect } from './record-effect.js';
+import { noteSwallowed } from './swallowed-ledger.js';
 
 /** The directory, under the machine data directory, that holds one file per project. */
 export const TOOL_CALLS_DIR = 'tool-calls';
@@ -117,8 +118,10 @@ export function appendToolCall(
       file,
       `${JSON.stringify({ at: call.at, tool: call.tool, effect: call.effect, result: call.result })}\n`,
     );
-  } catch {
-    // The count is a convenience: losing a line is the honest cost of never failing a call.
+  } catch (error) {
+    // The count is a convenience: losing a line is the honest cost of never failing a call. It is said
+    // once, in the ledger of caught failures, in the data directory this file sits two folders under.
+    noteSwallowed('tool-calls.append', error, { dataDir: dirname(dirname(file)) });
   }
 }
 

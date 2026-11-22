@@ -167,8 +167,10 @@ describe('only the identity that wrote a note retracts it', () => {
 
     const verdict = verify(tree, upcasters);
     expect(verdict.ok).toBe(true);
-    expect(verdict.census.map((note) => note.kind)).toEqual(['foreign-retraction']);
-    expect(verdict.census[0]).toMatchObject({
+    expect(
+      verdict.census.filter((note) => note.kind !== 'undeclared-which').map((note) => note.kind),
+    ).toEqual(['foreign-retraction']);
+    expect(verdict.census.filter((note) => note.kind !== 'undeclared-which')[0]).toMatchObject({
       note: taken,
       by: stranger,
       author: ensureFounded(a),
@@ -272,11 +274,13 @@ describe('a note is the identity that first wrote it', () => {
 
       const verdict = verify(tree, upcasters);
       expect(verdict.ok).toBe(true);
-      expect(verdict.census.map((note) => note.kind).sort()).toEqual([
-        'foreign-retraction',
-        'foreign-rewrite',
-      ]);
-      for (const note of verdict.census) {
+      expect(
+        verdict.census
+          .filter((note) => note.kind !== 'undeclared-which')
+          .map((note) => note.kind)
+          .sort(),
+      ).toEqual(['foreign-retraction', 'foreign-rewrite']);
+      for (const note of verdict.census.filter((note) => note.kind !== 'undeclared-which')) {
         expect(note).toMatchObject({ note: taken, by: stranger, author });
       }
 
@@ -323,7 +327,7 @@ describe('a note is the identity that first wrote it', () => {
     }
     const verdict = verify(tree, upcasters);
     expect(verdict.ok).toBe(true);
-    expect(verdict.census).toEqual([]);
+    expect(verdict.census.filter((note) => note.kind !== 'undeclared-which')).toEqual([]);
   });
 });
 
@@ -371,8 +375,8 @@ describe('a note is one id across its two kinds, and a retraction already cached
     }
     const verdict = verify(tree, upcasters);
     expect(verdict.ok).toBe(true);
-    expect(verdict.census).toHaveLength(1);
-    expect(verdict.census[0]).toMatchObject({
+    expect(verdict.census.filter((note) => note.kind !== 'undeclared-which')).toHaveLength(1);
+    expect(verdict.census.filter((note) => note.kind !== 'undeclared-which')[0]).toMatchObject({
       kind: 'foreign-rewrite',
       note: taken,
       by: stranger,

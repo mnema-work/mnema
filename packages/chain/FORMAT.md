@@ -7,7 +7,7 @@ against their implementation, and get the same digests we do.
 
 **Somebody has.** [`verifier/`](./verifier/) beside this file is a second implementation, in
 Python, written from this document and importing nothing of the product it checks. It
-reproduces the 41 published vectors and the four aggregate digests, and checks the frozen
+reproduces the 42 published vectors and the four aggregate digests, and checks the frozen
 records in the test suite beside the product
 (`packages/chain/src/chain/second-reader-agrees-on-the-record.test.ts`), on honest records
 and on every input the format refuses. The two verdicts differ in two pinned cases. With the
@@ -319,10 +319,11 @@ readers").
 **The writer of this product refuses to write through a link.** Before the first byte of a write, with
 the tail's lock held and before anything is sealed, it asks for every directory it writes in (`tails/`,
 its own tail, `keys/`, `locks/`, wherever §4 says that one is kept) and every file it writes (the tail's segments, `checkpoints.jsonl`,
-`tailproof.json`, the key's public file in `keys/`, and in `locks/` the tail's lock, its notes
+`tailproof.json`, the key's public file in `keys/` and its local anchor `keys/<fingerprint>.anchor`, and in `locks/` the tail's lock, its notes
 `<tail>.head`, `<tail>.head.sig`, `<tail>.cited` and `<tail>.covered`, and the staging file each is written through; and the index `<tail>.citations` of each tail it reads, with its staging file, asked as that tail is read),
 and where one is a symbolic link it refuses with `RECORD_LINKED`, naming the path: nothing is written,
-nothing the link points at is opened, and it does not found a new tail in the link's place. The
+nothing the link points at is opened, and it does not found a new tail in the link's place. A `keys/<fingerprint>.anchor` that is a symbolic link (or a link to nothing) is refused the same way, with
+`RECORD_LINKED`, before anything is sealed or written; a key restore that meets one says "This restore did not complete, nothing was restored". The
 lock is asked before it is taken, since taking it is a write. A link elsewhere is for the readers
 above. This binds this product's writer and nothing else: another writer that puts a link in a record is
 still refused by both readers
@@ -571,7 +572,7 @@ vocabulary:
 | `string[]?` | absent, or a non-empty array of non-empty strings |
 | `version` | (envelope only) present, and a whole number of at least 1; with `kind` it selects the contract |
 | `kind` | (envelope only) present, and the non-empty string naming the contract |
-| `hashes?` | (envelope only) absent, or a non-empty array of entry hashes (§3), 64 lower-case hex characters each, in strictly ascending order. Strictly, because an array's order is part of its canonical bytes (§1): any other order, or a repetition, would be a second spelling of the same set. `after` is the one field under it |
+| `hashes?` | absent, or a non-empty array of entry hashes (§3), 64 lower-case hex characters each, in strictly ascending order. Strictly, because an array's order is part of its canonical bytes (§1): any other order, or a repetition, would be a second spelling of the same set. Two fields are under it: the envelope's `after`, and `decision.seen`'s `moves`. It was the envelope's alone until `decision.seen`, and a reader that applied it there by its name, as both readers here do, applies it to `moves` with no new rule |
 | `instant` | (envelope only) present, and the exact spelling `Date.prototype.toISOString` produces (UTC, millisecond precision, trailing `Z`) of a real date. Every producer stamps `at` through the clock, which IS `toISOString`, so a timezone offset or a missing sub-second digit is a corrupt or forged line rather than a differently-spelled one |
 
 An implementation that applies this table refuses what this product refuses: the
@@ -581,6 +582,17 @@ refused (`packages/chain/src/chain/second-reader-agrees-on-the-record.test.ts`).
 `tail.relinked` v1 (§6.11) declares `tail`, `from`, `into`, `throughHash` and `reason` under
 `string`, and `eventCount` under `count`: the shape of `tail.pruned`, with the two names it moves a
 tail between. Whether a relink counts is no field rule: it is §6.11's, over the whole directory.
+
+`decision.seen` v1 declares `moves` under `hashes?`: the entry hashes of the accepts of its subject,
+a decision, that the showing covers. It is what the product writes when it SHOWS a decision in force
+to the identity that signs it, at a terminal and with no agent declared (`mnema decision review`,
+and an accept made at a terminal with no agent declared). The bytes say that this identity's key
+signed, with no `which`, that the decision was shown. They do not say a person read it: the
+terminal is asked when the fact is written and not recorded, and a process an agent opens under a
+pseudo-terminal passes. No reader judges the fact either: a `moves` that names no accept of the
+subject, or a showing with a `which`, is well formed, verifies, and covers nothing for this
+product's list of the rules a person did not accept themselves. The kind restricts nothing, so a
+reader that reads past it (§7.1) reaches the verdict and the state a reader of it reaches.
 
 ## 5. The content root
 
@@ -1667,7 +1679,10 @@ this product's, and the tests named below hold both readers beside this document
   cache (`status`, `show`, `search`, `brief`, `rules`, `why`, the hooks, the console and the agent's tools)
   serve what they read, leave the line out, and name the part on the first line of every surface, with the tail, the line and the way out (a
   newer mnema's line: update mnema); the line after it breaks its tail's chain as it would in the verdict. A
-  symbolic link at a segment or a tail (§4) is named the same way, with the rest served, and so is a folder or a file
+  symbolic link at a segment or a tail (§4) is named the same way, with the rest served, and so is a
+  `keys/<fingerprint>.anchor` that is a symbolic link (`status`, `search` and `brief` name it, as
+  `a symbolic link (keys/<name>)`, and the anchor is read as absent, so the identity is the one the record proves or the key derives; `verify`
+  refuses it as `LINKED ENTRY`, as it does a link at any entry of `keys/`), and so is a folder or a file
   the disk will not let the product open (no permission, a file where a folder belongs, a loop of links): it is a part that
   was not read, and the system's own error never reaches a person in its place. The tools that audit the
   record (`export`, `exposure`, `antipatterns` and the agent's audit tools) read the tails themselves and still
@@ -1778,7 +1793,10 @@ above; and the same record with a kind no version declares, which both read past
   reader from 0.1.5 verifies a record holding such a line, and what it serves of the record is what
   it reads, without what the line says. A newer kind that changes who may sign (a revocation it
   writes), what state a decision is in, or which note stands, is not applied by it: it accepts what
-  the newer one would refuse there, and serves a state the newer one would not. The census line is
+  the newer one would refuse there, and serves a state the newer one would not. A newer kind that
+  restricts nothing, as `decision.seen` (§4.1), costs only the reading it feeds: the older reader
+  reaches every verdict and serves every state the newer one does, and does not have the list of
+  the rules a person did not accept themselves. The census line is
   what says so, and this product says it too on every command-line verb that reads the record (`status`, `brief`, `recall`, `show`, `search`, `resume`, `rules`, `rules-file`, `why`, `timeline`, `refs`, `commits`, `aging`, `trailer`, `diagram`, `usage`, `site`, `export`, `audit accountability`, `audit exposure`, `audit antipatterns`, `task next`, `task guard`, `skill provenance`, `doctor`), the console and the agent's tools that read: each names how many lines a newer mnema
   wrote into the record and of which kinds, that this reader applies none of them, and that the
   record is read with the newer mnema. The verbs that read no line of the record (`repl`, which

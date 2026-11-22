@@ -186,7 +186,9 @@ describe('mnema init', () => {
     const verdict = verify(result.root);
 
     expect(
-      verdict.census.map((note) => ('fingerprint' in note ? note.fingerprint : undefined)),
+      verdict.census
+        .filter((note) => note.kind !== 'undeclared-which')
+        .map((note) => ('fingerprint' in note ? note.fingerprint : undefined)),
     ).toEqual([result.identity?.backup?.fingerprint]);
     expect(verdict.ok).toBe(true);
     expect(verdict.fullySigned).toBe(true);

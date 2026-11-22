@@ -73,6 +73,7 @@ import {
   brief,
   channelIsOn,
   channelStates,
+  decisionsTheyDictated,
   type PrivateRules,
   rulesHeldPrivately,
   rulesKeptPrivate,
@@ -89,8 +90,10 @@ import {
   ASKS_A_PERSON_CHANNEL,
   DOCUMENT_CHANNEL,
   EDIT_PUSH_CHANNEL,
+  OPENING_CORE_CHANNEL,
   PRIVATE_RULES_CHANNEL,
   REFUSES_A_WRITE_CHANNEL,
+  STARTS_OFF,
   type SwitchableChannel,
 } from '../record-framing.js';
 import {
@@ -177,6 +180,13 @@ export interface BriefDone {
    * file somebody commits never carries them.
    */
   readonly privateRules?: PrivateRules;
+  /**
+   * The decisions in force that the opening hands over as its fixed core while `opening-core` is
+   * on (the ones whose acceptance note says the person dictated them, ADR-650), as ids. Present only when the
+   * caller asked ({@link runBrief}'s `outside`) and the channel is on: absent is the opening this
+   * verb has always handed over, so with the switch off nothing changes.
+   */
+  readonly pulled?: { readonly core: ReadonlySet<string> };
 }
 
 /** The read was refused: there is no project to compose a brief for. */
@@ -280,6 +290,11 @@ export function runBrief(
     // file may CARRY is read from one.
     const off = switchedOff(sources, DOCUMENT_CHANNEL);
     if (off !== undefined) return off;
+    const governance = brief(sources, {
+      editPush: EDIT_PUSH_CHANNEL,
+      asksAPerson: ASKS_A_PERSON_CHANNEL,
+      refusesAWrite: REFUSES_A_WRITE_CHANNEL,
+    });
     return {
       ok: true as const,
       // NOT in the document, and the stream is the whole of the reason. This verb's
@@ -309,11 +324,17 @@ export function runBrief(
       // package's. The document explains what a silence at an edit means, and there are now
       // two switches that can produce it: a document naming one of them would explain the
       // silence wrongly half the time, which is worse than not explaining it.
-      brief: brief(sources, {
-        editPush: EDIT_PUSH_CHANNEL,
-        asksAPerson: ASKS_A_PERSON_CHANNEL,
-        refusesAWrite: REFUSES_A_WRITE_CHANNEL,
-      }),
+      brief: governance,
+      ...(asked.outside === true && channelIsOn(sources, OPENING_CORE_CHANNEL, STARTS_OFF)
+        ? {
+            pulled: {
+              core: decisionsTheyDictated(
+                sources,
+                governance.decisions.map((decision) => decision.id),
+              ),
+            },
+          }
+        : {}),
     };
   });
 }

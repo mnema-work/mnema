@@ -78,6 +78,7 @@
  */
 
 import { existsSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { CodedError, UnreadableDiskError, UnreadableLineError } from '@mnema/chain';
 import { REFERENCE_DEFAULT_DEPTH, REFERENCE_MAX_DEPTH } from '@mnema/context';
 import {
@@ -123,11 +124,14 @@ import {
   RECORD_CONTRACT,
   type Replacement,
   reachNotice,
+  reachNotices,
   replacementNotice,
   subjectReachNotice,
+  temporaryTargetNotice,
 } from '../recorded-content.js';
 import { REFERENCE_DIRECTIONS } from '../reference-directions.js';
 import { patternsFraming, SERVED_PATTERN_CONTRACT } from '../served-patterns.js';
+import { noteSwallowed } from '../swallowed-ledger.js';
 import {
   countToolCall,
   flushToolCalls,
@@ -338,7 +342,7 @@ const OPEN_RUN_CONTRACT =
  * The agent a connection is recorded as when the client's own name is no name.
  *
  * On this transport an agent exists BY CONSTRUCTION: a stdio connection is a
- * program talking to a program, and "a person acted directly", what an absent
+ * program talking to a program, and "no agent declared", what an absent
  * `which` means everywhere else in mnema, cannot be true here. So a client that
  * announces nothing usable is recorded as an agent whose name we do not know, which
  * is honest, rather than as nobody, which is false.
@@ -433,7 +437,7 @@ export interface McpServerOptions {
   readonly cwd: string;
   /**
    * The host's id for the session this server was started in, where the host leaves one in the
-   * server's environment: what `mnema mcp` reads from `CLAUDE_CODE_SESSION_ID`. It names the
+   * server's environment: what `mnema mcp` reads through the host table (`hostSessionOf`: Claude Code's `CLAUDE_CODE_SESSION_ID`, Copilot CLI's `COPILOT_AGENT_SESSION_ID`). It names the
    * session journal a run takes its goal from and closes with the outcome of.
    */
   readonly hostSession?: string | undefined;
@@ -559,7 +563,7 @@ export function buildMcpServer(options: McpServerOptions): {
           `session opened: project=${opened.project ?? '(none: the global tree)'} ` +
             `(${landingOf(opened)}) ` +
             `workspaceProjects=${opened.workspaceProjects.length} ` +
-            `who=${opened.who ?? "(none yet: no key of this machine signs in this session's own trees)"} ` +
+            `who=${opened.who ?? "(not yet: the first write of this session makes or finds the machine's key)"} ` +
             'runs=(none: the first write to a tree opens that tree’s run)',
         ),
       );
@@ -769,17 +773,54 @@ function declaringInto(
 ): ToolRegistrar {
   return (what, config, handle) => {
     declared.push(what);
+    const accepted = Object.keys(config.inputSchema ?? {});
+    const takesInput = config.inputSchema !== undefined;
+    const refusingUnknownKeys = (async (...args: unknown[]) => {
+      const given = args[0] as Record<string, unknown> | undefined;
+      const unknown = Object.keys(given ?? {}).filter((key) => !accepted.includes(key));
+      if (unknown.length > 0) {
+        throw new UnknownInputKeyError(what.act, unknown, accepted);
+      }
+      // A tool declared with no input takes only the request's extras, as it did before.
+      return (handle as (...a: unknown[]) => unknown)(...(takesInput ? args : args.slice(1)));
+    }) as unknown as ToolCallback<ZodRawShapeCompat>;
     server.registerTool(
       what.act,
-      { ...config, annotations: hintsOf(what) },
+      {
+        ...config,
+        // The SDK strips a key the shape does not name before the handler sees it, which is how
+        // `query` for `term` became "no term". Passing the rest through is what lets the handler
+        // above refuse it with a reply of the project's shape; the served schema still says
+        // `additionalProperties: false`, so a host knows before it sends. A tool with no input
+        // is given the empty shape for the same reason: a key sent to it is refused too.
+        inputSchema: z
+          .object(config.inputSchema ?? {})
+          .passthrough()
+          .meta({ additionalProperties: false }) as unknown as ZodRawShapeCompat,
+        annotations: hintsOf(what),
+      },
       countedLocally(
-        answeringThrownRefusals(handle, ensureSession, what.effect),
+        answeringThrownRefusals(refusingUnknownKeys, ensureSession, what.effect),
         ensureSession,
         what,
         say,
       ),
     );
   };
+}
+
+/**
+ * A key the tool does not take: refused at the one door, naming it and the keys the tool does
+ * take, before the tool runs, so nothing is written. Answered as a refusal by
+ * {@link answeringThrownRefusals}, which says on a tool that writes that the fact was not recorded.
+ */
+class UnknownInputKeyError extends CodedError {
+  readonly code = 'UNKNOWN_INPUT_KEY';
+  constructor(tool: string, unknown: readonly string[], accepted: readonly string[]) {
+    const named = unknown.map((key) => `\`${key}\``).join(', ');
+    const takes = accepted.length > 0 ? accepted.map((key) => `\`${key}\``).join(', ') : 'none';
+    super(`${tool} does not take ${named}; the keys it takes: ${takes}.`);
+  }
 }
 
 /**
@@ -800,8 +841,10 @@ function countedLocally<Input extends ZodRawShapeCompat | undefined>(
 ): ToolCallback<Input> {
   const called = handle as (...args: unknown[]) => unknown;
   const count = async (result: string): Promise<void> => {
+    let dataDir: string | undefined;
     try {
       const session = await ensureSession();
+      dataDir = dirname(session.trees.global);
       const file = toolCallsFile(session.trees);
       if (file === undefined || !countsToolCalls(session)) return;
       // WHERE THE MACHINE HAS NO KEY OF ITS OWN YET NOTHING IS KEPT, and the count makes no
@@ -820,8 +863,10 @@ function countedLocally<Input extends ZodRawShapeCompat | undefined>(
         },
         (link) => say(linkedLogSentence(link, 'count of tool calls')),
       );
-    } catch {
-      // A count that cannot be kept is not a reason for a tool to answer differently.
+    } catch (error) {
+      // A count that cannot be kept is not a reason for a tool to answer differently. It is said once,
+      // in the ledger of caught failures (`swallowed-ledger.ts`), which `mnema doctor` reads.
+      noteSwallowed('mcp.tool-call-count', error, dataDir === undefined ? {} : { dataDir });
     }
   };
   return (async (...args: unknown[]) => {
@@ -1260,7 +1305,7 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
             result.subjectIsATask === true,
             { subject, rel: result.recorded[0] ?? rel },
             result.project ?? active.project,
-          ),
+          ).concat(temporaryTargetNotice(target, result.targetIsTemporary)),
         },
       );
     },
@@ -1375,7 +1420,10 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
         'project and lands PUBLIC: committed, so the team gets it on clone (global ' +
         'outside a project); it is born `proposed`, so recording one proposes it ' +
         'rather than settling it. Optionally pick the project it lands in, when the ' +
-        'workspace holds more than one. Returns the citable ADR-<n> label (a ' +
+        'workspace holds more than one. Optionally give `governs`, the paths of this ' +
+        'project it governs: each is recorded as a `governs` link in the same act, ' +
+        'under the rules of `link_knowledge`, and one refused refuses the whole call ' +
+        'with nothing written. Returns the citable ADR-<n> label (a ' +
         'decision has no short alias) and which tree it landed in.' +
         RECORD_CONTRACT,
       inputSchema: {
@@ -1390,16 +1438,25 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
               'name of a rejected option without its reason loses most of the value. ' +
               'Omit it when there was no real alternative.',
           ),
+        governs: z
+          .array(z.string().min(1))
+          .min(1)
+          .optional()
+          .describe(
+            'Paths of this project the decision governs, one `governs` link each, recorded ' +
+              'with the decision. Omit it when it governs no file.',
+          ),
         scope: scopeField('Where the decision lands; overrides the routing rule (public).'),
         project: PROJECT_ARG,
       },
     },
-    async ({ title, rationale, alternatives, scope, project }) => {
+    async ({ title, rationale, alternatives, governs, scope, project }) => {
       const active = await ensureSession();
       const result = runRecordDecision(active, {
         title,
         rationale,
         ...(alternatives !== undefined ? { alternatives } : {}),
+        ...(governs !== undefined ? { governs } : {}),
         ...(scope !== undefined ? { scope } : {}),
         ...(project !== undefined ? { project } : {}),
       });
@@ -1407,10 +1464,17 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
         return refused(active, result);
       }
       if (result.alreadyRecorded) {
-        return replied(active, [alreadyRecordedLine(result, result.scope)], { wrote: false });
+        return replied(active, [alreadyRecordedLine(result, result.scope, governs?.length)], {
+          wrote: false,
+        });
       }
       return recorded(active, `Recorded decision ${result.adr} (${result.id})`, result, {
-        after: [stateOfANewDecision(result.agentsAccept, 'agent-tool'), ...result.offered],
+        after: [
+          ...(result.governs.length > 0 ? [`Governs: ${oneLine(result.governs.join(', '))}`] : []),
+          ...reachNotices(result.reaches),
+          stateOfANewDecision(result.agentsAccept, 'agent-tool'),
+          ...result.offered,
+        ],
       });
     },
   );

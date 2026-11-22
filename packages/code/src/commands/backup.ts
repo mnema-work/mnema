@@ -62,6 +62,7 @@ import {
   type Pushed,
   prepareCopy,
   prepareRestore,
+  publicTreeIsLocal,
   type Restored,
   readBackupConfig,
   readCopy,
@@ -75,6 +76,7 @@ import {
   type Undone,
   undoAside,
   undoCommandFor,
+  vanishedLocalTrees,
   whyNotADestination,
   whyNotARemote,
   withCacheLock,
@@ -110,6 +112,8 @@ interface Project {
   readonly trees: readonly (readonly [BackupTree, string])[];
   /** The same, whether or not the tree is on this machine now: what `verify` and `restore` are about. */
   readonly wanted: readonly (readonly [BackupTree, string])[];
+  /** Whether git holds the public tree, so no copy is made of it. */
+  readonly publicIsInGit: boolean;
   readonly configPath: string;
   readonly resolved: ReturnType<typeof resolveTrees>;
 }
@@ -127,27 +131,42 @@ const saysOfNaming = (state: string): string =>
     ? 'its public tree holds tails of more than one record'
     : 'its public tree holds no tail that names a record';
 
-function locate(ctx: BackupContext): Located | BackupRefused {
-  const resolved = resolveTrees(ctx.cwd, ctx.env);
+/**
+ * Whether the public tree is in git's history, so a backup does not copy it: a project in a repository
+ * whose `.mnema/` git does not exclude. A local record is in a repository too, and git holds none of it.
+ */
+function publicIsKeptByGit(resolved: ReturnType<typeof resolveTrees>): boolean {
+  return (
+    resolved.projectPublicMachinery !== undefined &&
+    !publicTreeIsLocal(resolved.projectPublic as string)
+  );
+}
+
+function locate(ctx: BackupContext, vanished = false): Located | BackupRefused {
+  const found = resolveTrees(ctx.cwd, ctx.env);
+  // A restore may start from a local record whose folder is gone: the walk up cannot find it, git's exclude can.
+  const resolved =
+    found.projectPublic === undefined && vanished
+      ? (vanishedLocalTrees(ctx.cwd, ctx.env) ?? found)
+      : found;
   if (resolved.projectPublic === undefined) return { ok: false, reason: 'NO_PROJECT' };
   const naming = recordNamedIn([resolved.projectPublic]);
+  const kept = publicIsKeptByGit(resolved);
   const trees: (readonly [BackupTree, string])[] = [];
   if (resolved.projectPrivate !== undefined && existsSync(resolved.projectPrivate)) {
     trees.push(['private', resolved.projectPrivate]);
   }
-  // A repository's history is the public tree's backup: only a project without git copies it.
-  if (resolved.projectPublicMachinery === undefined) {
-    trees.push(['public', resolved.projectPublic]);
-  }
+  // A repository's history is the public tree's backup: a project without git, or with a local record, copies it.
+  if (!kept) trees.push(['public', resolved.projectPublic]);
   const wanted: (readonly [BackupTree, string])[] = [];
   if (resolved.projectPrivate !== undefined) wanted.push(['private', resolved.projectPrivate]);
-  if (resolved.projectPublicMachinery === undefined)
-    wanted.push(['public', resolved.projectPublic]);
+  if (!kept) wanted.push(['public', resolved.projectPublic]);
   return {
     record: naming.state === 'named' ? naming.name : undefined,
     why: saysOfNaming(naming.state),
     trees,
     wanted,
+    publicIsInGit: kept,
     configPath: backupConfigPath(resolved),
     resolved,
   };
@@ -402,7 +421,7 @@ export function runBackupRun(
     destination: shown(stored),
     copied,
     noPrivateTree: !project.trees.some(([tree]) => tree === 'private'),
-    publicIsInGit: project.resolved.projectPublicMachinery !== undefined,
+    publicIsInGit: project.publicIsInGit,
     pushed,
   };
 }
@@ -440,7 +459,7 @@ export function runBackupStatus(ctx: BackupContext): BackupStatus | BackupRefuse
         ...standingOfCopy(root, destination, project.record, tree),
       })),
       noPrivateTree: !project.trees.some(([tree]) => tree === 'private'),
-      publicIsInGit: project.resolved.projectPublicMachinery !== undefined,
+      publicIsInGit: project.publicIsInGit,
       git: isGitDestination(stored)
         ? { ...standingOfCache(stored, destination), cache: destination }
         : undefined,
@@ -831,7 +850,7 @@ interface RestoreSubject {
 
 /** Reads what a restore would do, and asks nobody and writes nothing. */
 export function planBackupRestore(ctx: BackupContext, from?: string): RestorePlan | BackupRefused {
-  const located = locate(ctx);
+  const located = locate(ctx, true);
   if ('ok' in located) return located;
   const where = whereIsTheCopy(located, from);
   if ('ok' in where) return where;

@@ -26,6 +26,7 @@ import { randomBytes } from 'node:crypto';
 import {
   closeSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   openSync,
   readdirSync,
@@ -781,6 +782,9 @@ export function mintInstallationId(
 export function readAnchor(layout: ChainLayout, fingerprint: string): string | null {
   const path = anchorPath(layout, fingerprint);
   if (!existsSync(path)) return null;
+  // A link is not followed: it can point at an anchor nobody here recorded. It reads as no anchor,
+  // as a dangling one does, and the reads that serve the record name it (`anchorLinksRefused`).
+  if (lstatSync(path, { throwIfNoEntry: false })?.isSymbolicLink()) return null;
   const value = readingWhatTheDiskLets(path, inKeys(path), () =>
     readFileSync(path, 'utf-8'),
   ).trim();
@@ -886,9 +890,24 @@ export function listAnchoredFingerprints(layout: ChainLayout): string[] {
  * Records the anchor this key serves: the anchor it founded (its own) or one it
  * enrolled into. Written once and never committed; a second write with the same
  * value is a harmless no-op, a write with a different value would change which
- * identity this installation speaks for and is the caller's decision to make.
+ * identity this installation speaks for and is the caller's decision to make. A link at the
+ * anchor's place is refused (`RecordLinkedError`), `outcome` saying what the refused act
+ * left undone where it is not a write of the record.
  */
-export function writeAnchor(layout: ChainLayout, fingerprint: string, anchor: string): void {
+export function writeAnchor(
+  layout: ChainLayout,
+  fingerprint: string,
+  anchor: string,
+  outcome?: string,
+): void {
+  // Opening the file for writing follows a link, a dangling one too (which `readAnchor` reads as no
+  // anchor, so a founding would write through it): refused here, for every caller, before anything.
+  // A link at `keys/` is met earlier, by the reads before a restore and the writer's own asks.
+  refuseToWriteThrough(
+    layout,
+    [['keys', basename(anchorPath(layout, fingerprint))].join('/')],
+    outcome,
+  );
   mkdirSync(keysDir(layout), { recursive: true });
   writeFileDurably(anchorPath(layout, fingerprint), `${anchor}\n`, { mode: 0o600 });
 }

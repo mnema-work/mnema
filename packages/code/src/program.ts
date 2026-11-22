@@ -241,7 +241,7 @@ export function buildProgram(
   // was just registered, so a verb added to the list above arrives covered.
   speakUsageErrors(program, { io, render: resolved }, typed);
 
-  refuseAWriteOverAnAlteredEntry(program, verbs);
+  refuseAWriteOverAnAlteredEntry(program);
   sayWhatAWriteFounded(program, io, resolved, verbs);
 
   return { program, render: resolved, io, verbs };
@@ -254,13 +254,13 @@ export function buildProgram(
  * Registered first, so it is armed before anything the other hooks do. Which invocations, and why the
  * door stands at the writer, is `a-write-over-an-altered-entry.ts`.
  */
-function refuseAWriteOverAnAlteredEntry(program: Command, verbs: readonly Declared[]): void {
+function refuseAWriteOverAnAlteredEntry(program: Command): void {
   program.hook('preAction', async (_program, action) => {
     const { armsTheDoor, armTheDoor, asksAtOnce } = await import(
       './a-write-over-an-altered-entry.js'
     );
     await armTheDoor(
-      armsTheDoor(verbs, action),
+      armsTheDoor(action),
       asksAtOnce(action) ? resolveTrees(here().cwd, here().env) : undefined,
     );
   });

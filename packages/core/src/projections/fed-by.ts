@@ -104,6 +104,9 @@ export const FED_BY_KIND: { readonly [K in EventKind]: readonly ProjectionTable[
   // no state and changes no row. What holds it is the reference index, which is
   // where "this pattern was used by that run" is answered from.
   'skill.consulted': [...EVERY_KIND_FEEDS],
+  // A showing moves no decision: the list of rules a person did not accept themselves reads it
+  // from the reference index, beside the accepts the decision table keeps.
+  'decision.seen': [...EVERY_KIND_FEEDS],
   // The waiver a cut is authorized by. The census that reads it reads the CHAIN, not
   // this cache.
   'tail.pruned': [...EVERY_KIND_FEEDS],

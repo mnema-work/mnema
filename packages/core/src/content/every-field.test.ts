@@ -28,7 +28,11 @@ import {
   recordChannelServed,
   switchChannel,
 } from '../workflow/channel-operations.js';
-import { recordDecision, supersedeDecision } from '../workflow/decision-operations.js';
+import {
+  recordDecision,
+  recordDecisionSeen,
+  supersedeDecision,
+} from '../workflow/decision-operations.js';
 import {
   declareBackup,
   enrollAgent,
@@ -406,6 +410,16 @@ const DRIVERS: { readonly [K in EventKind]: Driver } = {
 
   'skill.consulted': (ctx, text) =>
     recordConsultation(ctx, { skill: text('subject'), which: text('which'), run: text('run') }),
+
+  // A showing takes no `which`: one with an agent declared is refused, so the envelope's axis asks
+  // `run` of it and leaves `which` to the kinds that carry one.
+  'decision.seen': (ctx, text) =>
+    recordDecisionSeen(ctx, {
+      decision: text('subject'),
+      moves: ['a'.repeat(64)],
+      atATerminal: true,
+      run: text('run'),
+    }),
 
   'tail.pruned': (ctx, text) => {
     // The only kind whose setup is another MACHINE: a waiver may not name the tail it

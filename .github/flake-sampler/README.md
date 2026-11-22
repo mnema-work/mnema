@@ -11,15 +11,19 @@ green, and it repairs no flake it finds. It produces a **rate**.
 ## What runs
 
 [`../workflows/flake-sampler.yml`](../workflows/flake-sampler.yml) runs the suite five times in
-each of nine jobs (three runtimes times three shards) for **N=15 per runtime** a night, and hands every
+each of nine jobs (three runtimes times three shards), asking for **N=15 per runtime** a night, and hands every
 report to [`summarize.mjs`](summarize.mjs), which publishes one row per case: how many of those
 runs it failed in.
 
-Five and not ten because of the time limit: one run of the suite takes about 13.6 minutes on a
-runner (757 test files, measured on 2026-11-06), so five runs are about 70 minutes against the 90
-a job may take, and ten were about 136, which cancelled every scheduled night from 2026-10-21. The
-runners are shared by the organization that owns the repository, so a night holds nine of them for
-about 70 minutes.
+Five at most, and bounded by time: one run of the suite takes 12 to 18 minutes on a runner,
+depending on the machine it lands on (884 test files, measured on 2026-11-20), so five repetitions
+at the slow end fill the 90 minutes a job may take. Each job has an 80 minute budget for its
+repetitions and stops starting them when what is left could not hold one more of the slowest
+repetition it has seen plus a margin: a slow runner completes four, a fast one five, so a night
+can hold fewer than 15 runs per runtime. A repetition it did not start leaves a marker,
+`cut--<label>--<seq>.txt`, next to the reports. Ten repetitions were about 136 minutes, which
+cancelled every scheduled night from 2026-10-21. The runners are shared by the organization that
+owns the repository, so a night holds nine of them for up to about 80 minutes.
 
 Three shards rather than one job of fifteen, because fifteen repetitions in one job sample one
 virtual machine, and one job would not fit the limit. The split costs a little runner time
@@ -57,7 +61,7 @@ to the one that is open, with that night's rate and the link to the run. The tit
 that is a hash of the file and the case name, and the job looks for an open issue by that token so
 that the next night comments instead of opening a second. That is the intent: the shell loop that
 does it has not yet run against GitHub, and whether the search finds an issue by a token with a
-hyphen in it is for the first real night to show. A night whose ruler broke (a shard that did not report, a short count, or no tally at all) opens
+hyphen in it is for the first real night to show. A night whose ruler broke (a shard that did not report, a short count of repetitions that started, or no tally at all) opens
 one issue of its own, titled `Flake sampler: the ruler broke [sampler-ruler-broken]`, with the run
 and what was short, or comments on it when it is open; it quotes no rate. A clean night says
 nothing. The job that does this
@@ -70,6 +74,13 @@ A counter that returns zero when it in fact read nothing is worse than no counte
 summariser refuses, by name, on a short count, on a label that carries the wrong number of runs,
 on a report it cannot name or parse, and on a report whose `numTotalTests` is zero, which is what
 vitest writes when it matches no test file at all, report file and everything.
+
+A repetition that was **not started** for lack of budget is not a short count: its
+`cut--<label>--<seq>.txt` marker lowers what is owed for that label by one, and the page says how many
+runs never started. A repetition that **started and did not report** leaves no marker, so it is still
+a short count and still breaks the ruler. The summariser also refuses a marker that names a run outside
+the count, a run that is both reported and marked, two markers for one run, a marker that precedes a
+reported run of its label (that run may have started and hung), and a label cut with no run reported.
 
 It prints **no rate table** when it refuses, and it exits `2` rather than the `1` a flake gets.
 
