@@ -33,7 +33,7 @@ tool definition: record_handoff              2758 B      631 tok
 tool definition: link_knowledge              2731 B      610 tok
 tool definition: create_task                 2605 B      575 tok
 tool definition: task_transition             2020 B      447 tok
-tool definition: record_decision             3060 B      668 tok
+tool definition: record_decision             3503 B      778 tok
 tool definition: decision_transition         2305 B      513 tok
 tool definition: create_skill                2466 B      545 tok
 tool definition: skill_transition            2039 B      466 tok
@@ -52,4 +52,4 @@ tool definition: rules_before_an_edit        2427 B      546 tok
 tool definition: audit_accountability        1986 B      440 tok
 tool definition: audit_exposure              1626 B      364 tok
 tool definition: audit_antipatterns          1447 B      314 tok
-tool definitions: all 27                    55264 B    12546 tok
+tool definitions: all 27                    55707 B    12656 tok

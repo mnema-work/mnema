@@ -1067,6 +1067,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-commit-hook-only-suggests.test.ts': 10,
   'packages/code/tests/a-correction-becomes-a-proposal.test.ts': 15,
   'packages/code/tests/a-count-that-fails-is-said-once-in-the-ledger.test.ts': 13,
+  'packages/code/tests/a-decision-is-recorded-with-the-paths-it-governs.test.ts': 12,
   'packages/code/tests/a-decision-recorded-twice-is-the-one-on-the-record.test.ts': 12,
   'packages/code/tests/a-dictated-rule-is-said.test.ts': 15,
   'packages/code/tests/a-directory-of-two-records-governs-nothing.test.ts': 15,

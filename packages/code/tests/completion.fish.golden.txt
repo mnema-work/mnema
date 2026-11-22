@@ -161,6 +161,7 @@ complete -c mnema -f -n '__mnema_at "decision"' -a 'supersede' -d 'supersede a d
 complete -c mnema -f -n '__mnema_at "decision"' -a 'import' -d 'propose the decisions already written in this repository’s decision files'
 complete -c mnema -f -n '__mnema_at "decision"' -a 'help' -d 'display help for command'
 complete -c mnema -f -n '__mnema_at "decision"' -l alternatives -r
+complete -c mnema -f -n '__mnema_at "decision"' -l governs -r
 complete -c mnema -f -n '__mnema_at "decision"' -l scope -x -a 'public private global'
 complete -c mnema -f -n '__mnema_at "decision"' -l which -r
 complete -c mnema -f -n '__mnema_at "decision"' -l stdin
@@ -171,6 +172,7 @@ complete -c mnema -f -n '__mnema_at "decision"' -l color -x -a 'auto always neve
 
 # mnema decision record
 complete -c mnema -f -n '__mnema_at "decision record"' -l alternatives -r
+complete -c mnema -f -n '__mnema_at "decision record"' -l governs -r
 complete -c mnema -f -n '__mnema_at "decision record"' -l scope -x -a 'public private global'
 complete -c mnema -f -n '__mnema_at "decision record"' -l which -r
 complete -c mnema -f -n '__mnema_at "decision record"' -l stdin

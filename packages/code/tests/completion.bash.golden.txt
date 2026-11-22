@@ -35,8 +35,8 @@ _mnema_flags() {
   case "$1" in
     '') echo '-V --version --color -h --help' ;;
     'init') echo '--hosts --all-hosts -y --yes --dry-run --accepts --git-pull --which -h --help -V --version --color' ;;
-    'decision') echo '--alternatives --scope --which --stdin --body-file -h --help -V --version --color' ;;
-    'decision record') echo '--alternatives --scope --which --stdin --body-file -h --help -V --version --color' ;;
+    'decision') echo '--alternatives --governs --scope --which --stdin --body-file -h --help -V --version --color' ;;
+    'decision record') echo '--alternatives --governs --scope --which --stdin --body-file -h --help -V --version --color' ;;
     'decision move') echo '--note -h --help --which -V --version --color' ;;
     'decision review') echo '-h --help -V --version --color' ;;
     'decision supersede') echo '--reason -h --help --which -V --version --color' ;;
