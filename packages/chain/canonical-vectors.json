@@ -382,6 +382,25 @@
       "sha256": "3161936f0827a62a6f4fe50794df8c26d8e34dec9948904f70594b44bf39868e"
     },
     {
+      "name": "decision.seen (two accepts covered, no agent declared)",
+      "kind": "decision.seen",
+      "event": {
+        "v": 1,
+        "kind": "decision.seen",
+        "at": "2026-07-21T00:00:00.000Z",
+        "who": "mnid:1111111111111111111111111111111111111111111111111111111111111111",
+        "signerFp": "2222222222222222222222222222222222222222222222222222222222222222",
+        "subject": "019f81f8-e400-7006-8000-000000000006",
+        "payload": {
+          "moves": [
+            "4444444444444444444444444444444444444444444444444444444444444444",
+            "6666666666666666666666666666666666666666666666666666666666666666"
+          ]
+        }
+      },
+      "sha256": "7f3b71c14d47ef2aeb168a63714fd0e8d41bf840992233bd3618e0aa000e9ba2"
+    },
+    {
       "name": "tail.pruned (a whole tail, authorized before the cut)",
       "kind": "tail.pruned",
       "event": {
@@ -780,7 +799,7 @@
       "vector": "run.ended",
       "entryHash": "bafbebddd9d5ee75b10bdde626c5e36eed44b37d9fe352b4d98f614fa2647b73"
     },
-    "contentRootOverAllVectors": "f01492a6daaceef614955ccdc6b5ae0236d09619c6ae806c957cc370654d8996"
+    "contentRootOverAllVectors": "8caf8464de25b83a277142736ac1cdf77259ae166f8b4e2ce06fb618e8deb6ed"
   },
   "signedMessages": {
     "key": {
