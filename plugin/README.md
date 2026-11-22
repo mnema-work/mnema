@@ -333,7 +333,10 @@ The plugin connects the MCP server itself. If you had registered it yourself bef
 entry is now redundant: with both, a session is offered every tool twice, under two
 prefixes.
 
-Requires Node 24.15.0 or a later 24, or 26.0.0 or later. Nothing here reaches the network, and nothing here writes.
+Requires Node 24.15.0 or a later 24, or 26.0.0 or later. Nothing here reaches the network. The hook scripts themselves write one thing: when a hook catches a failure and goes on past it, a
+line (the instant, the site's name, the error's class, its `code` and `syscall` when it has them, and the plugin's version, never a message or a
+path) is appended to `log/swallowed.jsonl` in mnema's data directory (`~/.mnema`, or `$MNEMA_HOME`), and only where the machine already has its
+own key. The verbs the hooks run write what those verbs write. [The ledger of caught failures](https://github.com/mnema-work/mnema/blob/main/docs/the-ledger-of-caught-failures.md) says the rest.
 
 ## Check that it worked
 
@@ -564,6 +567,7 @@ plugin/
 │   ├── edit-refuses-a-write.mjs the gate of the hosts that run commands and only refuse
 │   ├── edit-rules-beside.mjs    runs `mnema beside-a-write` after a write, in Copilot CLI
 │   ├── choice-settled.mjs       runs `mnema settled` after a question to the person is answered
+│   ├── swallowed.mjs            the line a hook leaves in `log/swallowed.jsonl` when it catches a failure and goes on
 │   ├── rule-dictated.mjs        runs `mnema dictated` on a message of the person's
 │   ├── subagent-start.mjs       runs `mnema brief --hook` when a subagent starts
 │   └── subagent-stop.mjs        runs `mnema handback` when a subagent stops

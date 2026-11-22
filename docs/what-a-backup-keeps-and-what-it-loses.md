@@ -35,6 +35,8 @@ finds otherwise stops and leaves the copy as it was.
   stay out of it until a study of what they hold decides whether a copy should carry them. The list
   of what is copied is a list of what is taken (tails and public keys), so a file added to a tree
   later is not copied until someone decides it should be.
+- **The ledger of caught failures** (`log/swallowed.jsonl`, in the machine's data directory and not in a tree). It holds facts about
+  this machine and is never copied: [what it keeps](the-ledger-of-caught-failures.md).
 - **Anything a symbolic link points at.** A link in a tree it copies from, or in the folder it
   copies to, stops the run, because a link can point outside what you meant.
 
