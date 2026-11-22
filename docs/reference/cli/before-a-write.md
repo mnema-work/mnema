@@ -63,4 +63,6 @@ What it reads and what it prints:
   tree does that in every project of this machine. The switches read the
   same record, so they do not turn that off; update mnema, or restore the
   line.
+  With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
+  code alone on the first line of the error stream; typed by a person, nothing changes.
 ```

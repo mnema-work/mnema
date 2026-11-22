@@ -138,7 +138,7 @@ did exactly that to every completed task, which stayed on the work list because 
 is always legal from `DONE`. So a task waiting on a reviewer is on the fourth list and
 not the first, and a task that is finished or cancelled is on neither.
 
-Three of the four lists are cut to the freshest items, and
+Three of the four lists are cut to the freshest items (the live work lists a task IN_PROGRESS first, so the cut never leaves it out), and
 `workTotal`/`decisionsTotal`/`awaitingJudgementTotal` say how many there were, so a
 cut never reads as "this is everything". The adopted patterns are the exception:
 every one is listed, so that list carries no total. One more cut is by age and not by
@@ -190,9 +190,28 @@ worked by.
 mnema skill provenance
 #> 2 pattern(s):
 #>   019faa06-30e1-…  adopted     public   stacked-prs  ·  proposed by claude-code · adopted by claude-code (the same agent)
-#>   019faa06-335f-…  adopted     public   trunk-based  ·  proposed by a person · adopted by a person
+#>   019faa06-335f-…  adopted     public   trunk-based  ·  proposed by no agent declared · adopted by no agent declared
 ```
 
 Adopting a pattern is not restricted: an agent can propose one and adopt it, the
 same way it can submit a task and approve it. What this shows you is who did,
 which is the part that used to be invisible to everyone downstream.
+
+## The session the server knows
+
+The server takes the goal of a run from the session journal and closes the run with its outcome, which
+needs the host's own id for the session. It reads that id from the environment the host started it
+with, through the one table of hosts (`packages/code/src/host-names.ts`), and only from a variable a
+run of the real host showed there:
+
+| Host | Variable | Known |
+| --- | --- | --- |
+| Claude Code | `CLAUDE_CODE_SESSION_ID` | held by a test |
+| GitHub Copilot CLI | `COPILOT_AGENT_SESSION_ID` | held by a test; that its value is the name of the folder under `~/.copilot/session-state/` which the hook payloads give as the session is not verified |
+| Codex | none read; `CODEX_THREAD_ID` is on the contract's list | not yet |
+| Gemini CLI | none read; `GEMINI_SESSION_ID` is on the contract's list (Gemini sets it for its hooks, the contract asks whether the server gets it too) | not yet |
+| OpenCode, Qwen Code, VS Code | none | not yet |
+
+On a host with no variable the server has no session of its own: a run has no goal from the journal and
+no outcome. The id is a record of what the host handed the server, not a lock: it names a journal and
+reserves nothing, and a second session with the same id is not refused. The cell changes the day a run of the host in the host contract shows the variable.

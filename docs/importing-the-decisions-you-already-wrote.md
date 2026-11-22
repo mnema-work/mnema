@@ -7,7 +7,7 @@ the file says its status is, and you rule on it with `decision move accept`, or 
 terminal with `mnema decision review` (it asks for one note, then accept, reject, skip or quit for each
 proposal, signs with your own key, and without a terminal writes nothing and prints the `move` command).
 Accepting a decision that is already accepted changes nothing and is refused (`ILLEGAL_TRANSITION`) with the facts:
-that it is already accepted, by a person or by which agent, and when.
+that it is already accepted, by which agent, or by no agent declared, and when.
 
 Run it without `--write` first. Nothing is written, and the plan tells you what the
 door made of every file:

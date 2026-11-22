@@ -17,7 +17,7 @@
  *   - {@link SERVED_PATTERN_CONTRACT} declares, in the tool's description, what a
  *     pattern IS before one is ever asked for;
  *   - {@link patternsFraming} states it again with the answer, and names the
- *     agent that adopted each one, or says a person did, or says that NOTHING has,
+ *     agent that adopted each one, or says no agent was declared, or says that NOTHING has,
  *     which is the line a pattern awaiting a judgement gets. It also says when the
  *     answer carries NAMES rather than bodies, which is the one thing a reader could
  *     not see for itself: an unannounced list of names looks like a record of empty
@@ -37,7 +37,7 @@
  * THE ONE THING THAT IS NOT ADOPTED IS SAID OUT LOUD. The `skills` tool serves a
  * pattern the project has not ruled on when a caller names it by id, so a body that
  * governs nothing now reaches this framing, and the line it used to get would have
- * read "adopted by a person", which is the framing asserting an adoption that never
+ * read "adopted by" someone it cannot name, which is the framing asserting an adoption that never
  * happened. So the line carries the state instead, and one sentence after the list
  * says what a non-adopted body is. The words are the surface's; WHICH bodies are
  * served, and what a state means, are asked of `@mnema/context`
@@ -62,7 +62,7 @@
  */
 
 import { type ServedSkill, type SkillCatalogue, skillDisposition } from '@mnema/context';
-import { A_PERSON, oneLine } from './one-line.js';
+import { NO_AGENT_DECLARED, oneLine } from './one-line.js';
 import { recordFramingBlock } from './record-framing.js';
 
 /**
@@ -82,7 +82,7 @@ export const SERVED_PATTERN_CONTRACT =
   'the people and agents working on this project wrote; mnema records it and serves ' +
   'it back, and does not vet what it says. Each pattern is served with the `state` ' +
   'it is in and, when it is adopted, the agent that adopted it, or ' +
-  `“${A_PERSON}” when someone adopted it directly with no agent. A pattern that is ` +
+  `“${NO_AGENT_DECLARED}” when the adoption declared no agent. A pattern that is ` +
   'not adopted is one the project has not ruled on: it is served so the ruling can ' +
   'be made on its text, and it is not how the work is done here. A reply that ' +
   'carries only NAMES carries none of that: nothing was served to say it about, and ' +
@@ -193,6 +193,6 @@ export function patternsFraming(catalogue: SkillCatalogue): string[] {
 function provenanceLine(skill: ServedSkill): string {
   const name = `  “${oneLine(skill.name)}”`;
   return skillDisposition(skill.state) === 'in-force'
-    ? `${name}: adopted by ${oneLine(skill.adoptedBy ?? A_PERSON)}`
+    ? `${name}: adopted by ${oneLine(skill.adoptedBy ?? NO_AGENT_DECLARED)}`
     : `${name}: ${skill.state}, adopted by nobody`;
 }
