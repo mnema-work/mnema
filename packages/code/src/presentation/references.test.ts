@@ -61,6 +61,57 @@ function indents(lines: readonly string[]): number[] {
 }
 
 describe('the reference report', () => {
+  it.each([
+    {
+      name: 'state and title',
+      details: { state: 'DRAFT', title: 'Child B' },
+      label: 'near (task, DRAFT) Child B',
+    },
+    {
+      name: 'a title without a state',
+      details: { title: 'Child B' },
+      label: 'near (task) Child B',
+    },
+    {
+      name: 'a state without a title',
+      details: { state: 'DRAFT' },
+      label: 'near (task, DRAFT)',
+    },
+    {
+      name: 'a title with a newline and a tab',
+      details: { title: 'Child\nB\twith details' },
+      label: 'near (task) Child B with details',
+    },
+  ])('prints $name on every row naming the node', ({ details, label }) => {
+    const named = graph({
+      nodes: [
+        { id: 'origin', depth: 0, resolved: true, kind: 'task', scope: 'public' },
+        { id: 'near', depth: 1, resolved: true, kind: 'task', scope: 'public', ...details },
+        { id: 'far', depth: 2, resolved: false },
+      ],
+    });
+    const lines = referenceReport(renderPlain, named);
+    expect(lines).toContain(`  → target:relates-to  ${label}  [public]`);
+    expect(lines).toContain(`  ${label} → target:derived-from → far (unresolved)  [public]`);
+    expect(lines).toContain(`  1 hop(s)  ${label}`);
+  });
+
+  it('keeps every byte of the report when nodes carry neither a state nor a title', () => {
+    expect(referenceReport(renderPlain, graph())).toEqual([
+      'origin  ·  task',
+      '',
+      'its own edges (1)',
+      '  → target:relates-to  near (decision)  [public]',
+      '',
+      'edges further out (1)',
+      '  near (decision) → target:derived-from → far (unresolved)  [public]',
+      '',
+      'reached, by distance (2)',
+      '  1 hop(s)  near (decision)',
+      '  2 hop(s)  far (unresolved)',
+    ]);
+  });
+
   it('names each list and says how much is in it', () => {
     const lines = referenceReport(renderPlain, graph());
     expect(lines).toContain('its own edges (1)');

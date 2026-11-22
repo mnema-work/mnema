@@ -204,7 +204,7 @@ a leaked key can date a fact before its own retirement, so the record no longer 
 **What the census says, and what it does not.** A fact that `verify` accepts from an agent key is
 counted per key (`census [attested-which] …`: that key, enrolled as that name, signed that many
 facts). A `which` written by a key without the role is counted as declared (`census
-[declared-which] …`, shown with `--verbose`): the key that signed stated it, and nothing attests it. All three are informational:
+[declared-which] …`, shown with `--verbose`): the key that signed stated it, and nothing attests it. The facts that name no agent at all are counted once (`census [undeclared-which] …`, `--verbose`, the second reader the same number): no agent was declared, which does not say a person acted. All four are informational:
 none moves the verdict or the exit code. The record does not say which process held the agent
 key, nor which model drove it; that is a property of the machine, and a program with access to the
 key signs as that agent.

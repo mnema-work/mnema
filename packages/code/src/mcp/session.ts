@@ -135,7 +135,7 @@ export type OpenSessionInput = ClientWorkspace & {
   readonly env: DiscoveryEnv;
   /**
    * The host's id for the session this server was started in, when the host leaves one in the
-   * server's environment (Claude Code's `CLAUDE_CODE_SESSION_ID`): the name of the session
+   * server's environment (the variable the host table names: `hostSessionOf`): the name of the session
    * journal this connection's runs are given a goal from and close with an outcome from.
    */
   readonly hostSession?: string | undefined;

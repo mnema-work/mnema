@@ -29,7 +29,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
-import { describe, expect, it, vi } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import { buildProgram } from '../program.js';
 import { type Keystroke, keystrokesOf } from '../repl/editing.js';
 import type { Leaving } from '../repl/leaving.js';
@@ -134,6 +134,17 @@ const quiet: CliIo = { out: () => undefined, err: () => undefined, fail: () => u
  * every case below also reads the page the product handed the screen, and a disagreement
  * between this list and that page reddens on the mark.
  */
+const originalCwd = process.cwd();
+const aProject = mkdtempSync(join(tmpdir(), 'mnema-asked-project-'));
+mkdirSync(join(aProject, '.mnema'));
+// The question is asked from a project, and the one that stands for it is a sandbox: asking from
+// the checkout this file lives in resolves, and reads, that checkout's real record.
+process.chdir(aProject);
+afterAll(() => {
+  process.chdir(originalCwd);
+  rmSync(aProject, { recursive: true, force: true });
+});
+
 const doors = theDoors(buildProgram(quiet).verbs, standing().project !== undefined);
 
 /** A process that hooks nothing: this file drives the reducer, not the process. */

@@ -471,6 +471,11 @@ const COMMAND_LINE: Readonly<Record<string, Outcome>> = {
     because:
       'it builds a git commit of the record without changing it, and this project is in no git repository',
   },
+  'record publish': {
+    answers: { argv: () => ['record', 'publish', '--to', 'origin/main'] },
+    because:
+      'it makes a git commit of the record and pushes it without changing the record, and it is off until a person switches it on, which here nobody did',
+  },
   'record merge-tail': {
     answers: { argv: () => ['record', 'merge-tail', 'a', 'b', 'c'] },
     because:

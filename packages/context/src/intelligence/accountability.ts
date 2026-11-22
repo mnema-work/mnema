@@ -74,8 +74,7 @@ export interface WhoAccount {
   readonly byKind: readonly KindCount[];
   /**
    * The agents that executed facts under this authority, each with its count:
-   * the who≠which distinction made explicit. A fact with no agent (a human
-   * acting directly) is counted under the `null` agent. Sorted by count then
+   * the who≠which distinction made explicit. A fact with no agent (no agent declared) is counted under the `null` agent. Sorted by count then
    * name for a stable shape.
    */
   readonly byWhich: readonly WhichCount[];

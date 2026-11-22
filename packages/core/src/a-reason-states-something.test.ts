@@ -49,6 +49,7 @@ import { decisionGate } from './workflow/decision-gate.js';
 import {
   acceptDecision,
   recordDecision,
+  recordDecisionSeen,
   supersedeDecision,
 } from './workflow/decision-operations.js';
 import { gate } from './workflow/gate.js';
@@ -602,6 +603,12 @@ describe('every kind says where its references are, and the door asks it there',
     readonly drive: (said: string) => { readonly ok: boolean; readonly code?: string };
   }[] = [
     { kind: 'run.started', site: 'agent', drive: (said) => startRun(ctx, { agent: said }) },
+    {
+      kind: 'decision.seen',
+      site: 'subject',
+      drive: (said) =>
+        recordDecisionSeen(ctx, { decision: said, moves: ['a'.repeat(64)], atATerminal: true }),
+    },
     {
       kind: 'observation.recorded',
       site: 'about',

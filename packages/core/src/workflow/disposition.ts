@@ -110,3 +110,24 @@ export const TASK_DISPOSITION: Readonly<Record<TaskState, TaskDisposition>> = {
 export function taskDisposition(state: TaskState): TaskDisposition {
   return TASK_DISPOSITION[state];
 }
+
+/**
+ * Whether a state is the one a task is in while somebody does the work: the question a list
+ * asks to put what is being done ahead of what is only waiting. It is a position, not one of
+ * the dispositions above (`DRAFT`, `READY` and `IN_PROGRESS` are all `advancing`), so it is
+ * asked here and no surface writes the state out.
+ */
+export function taskIsUnderway(state: TaskState): boolean {
+  return UNDERWAY[state];
+}
+
+/** Total over the states, like {@link TASK_DISPOSITION}, and not exported for the same reason. */
+const UNDERWAY: Readonly<Record<TaskState, boolean>> = {
+  DRAFT: false,
+  READY: false,
+  IN_PROGRESS: true,
+  BLOCKED: false,
+  IN_REVIEW: false,
+  DONE: false,
+  CANCELED: false,
+};

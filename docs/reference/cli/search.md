@@ -25,6 +25,7 @@ In the help under **Read**.
 | `--json` | emit the faithful index as JSON (one ordered list) |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
+A term of several words finds only the records that contain every one of them; when none does, the reply says so and suggests trying fewer words.
 <!-- End of the part written by hand. -->
 
 ## The whole help
