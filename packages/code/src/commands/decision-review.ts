@@ -9,7 +9,7 @@
  * machine and the refusal codes are the same ones).
  */
 
-import { proposedDecisionsNewestFirst } from '@mnema/context';
+import { proposedDecisionsNewestFirst, rulesNotSeenBy } from '@mnema/context';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { type AcceptState, acceptStateHere } from '../agent-accepts.js';
 import {
@@ -19,6 +19,7 @@ import {
   THE_READING_THAT_OPENED_THESE,
   withScopedCaches,
 } from '../tree-sources.js';
+import { thisMachinesAnchorIn, treeOfAShowing } from './shown.js';
 
 /** One proposed decision, with what a person needs to judge it. */
 export interface ProposalToReview {
@@ -29,11 +30,26 @@ export interface ProposalToReview {
   readonly alternatives?: string;
 }
 
+/** One rule in force the person did not accept themselves, with what a showing of it covers. */
+export interface RuleToShow extends ProposalToReview {
+  /** The newest accept: who made it, whether an agent was declared, and when. */
+  readonly accepted: { readonly who: string; readonly which?: string; readonly at: string };
+  /** The entry hashes of every accept of it: what marking it shown covers. */
+  readonly moves: readonly string[];
+}
+
 /** What is waiting, or why there is nothing to read. */
 export type ProposalsToReview =
   | {
       readonly ok: true;
       readonly proposals: readonly ProposalToReview[];
+      /**
+       * The rules in force this machine's identity did not accept itself and has not been shown,
+       * newest accept first (ADR-623): what the review shows after the proposals, marking each.
+       */
+      readonly toShow: readonly RuleToShow[];
+      /** When this identity last marked a rule shown: absent before the first. */
+      readonly lastShown?: string;
       /** The tails read that do not chain: what is shown came off a record whose proof is broken. */
       readonly linkBreaks: readonly ScopedLinkBreak[];
       /** Whether an agent may accept: a refusal to review must offer an accept without a terminal only where it is `on`. */
@@ -48,6 +64,8 @@ export function proposalsToReview(ctx: {
 }): ProposalsToReview {
   const trees = resolveTrees(ctx.cwd, ctx.env);
   if (trees.projectPublic === undefined) return { ok: false, reason: 'NO_PROJECT' };
+  // Asked before the caches open: it reads the key folder and the tree of a showing, never a cache.
+  const identity = thisMachinesAnchorIn(trees, treeOfAShowing(trees));
   return withScopedCaches(trees, (sources) => {
     const proposals: ProposalToReview[] = [];
     for (const item of proposedDecisionsNewestFirst(caches(sources))) {
@@ -66,9 +84,35 @@ export function proposalsToReview(ctx: {
         break;
       }
     }
+    const notSeen = rulesNotSeenBy(caches(sources), identity ?? '');
+    const toShow: RuleToShow[] = [];
+    for (const rule of notSeen.rules) {
+      for (const { cache } of sources) {
+        const decision = cache.getDecision(rule.id);
+        if (decision === null) continue;
+        toShow.push({
+          id: decision.id,
+          adr: decision.adr,
+          title: decision.title,
+          rationale: decision.rationale,
+          ...(decision.alternatives !== undefined && decision.alternatives !== ''
+            ? { alternatives: decision.alternatives }
+            : {}),
+          accepted: {
+            who: rule.accepted.who,
+            ...(rule.accepted.which !== undefined ? { which: rule.accepted.which } : {}),
+            at: rule.accepted.at,
+          },
+          moves: rule.accepts.flatMap((move) => (move.hash === undefined ? [] : [move.hash])),
+        });
+        break;
+      }
+    }
     return {
       ok: true,
       proposals,
+      toShow,
+      ...(notSeen.lastShown !== undefined ? { lastShown: notSeen.lastShown } : {}),
       linkBreaks: linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE),
       accepts: acceptStateHere(sources),
     };

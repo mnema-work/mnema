@@ -17,8 +17,6 @@ No version is given for any line: what a release carries is said by the [CHANGEL
   key only, always encrypted) to a folder by default, or to a git repository the person chooses, with its history kept; to run only when
   called, or from an after-commit hook installed on request; and to restore only tails and public keys, never a machine key.
   [ADR-131](https://mnema.work/record/#ADR-131), [ADR-144](https://mnema.work/record/#ADR-144)
-- **The backup, in the local mode.** It is expected to copy the excluded public tree too.
-  [ADR-232](https://mnema.work/record/#ADR-232)
 
 ## Reading the record
 

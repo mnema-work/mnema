@@ -96,7 +96,7 @@ describe('the census says what a backup is', () => {
     const result = verify(root, upcasters, { keyRoot });
 
     expect(result.ok).toBe(true);
-    expect(result.census).toEqual([
+    expect(result.census.filter((note) => note.kind !== 'undeclared-which')).toEqual([
       {
         kind: 'backup-key',
         fingerprint: backup,
@@ -104,7 +104,7 @@ describe('the census says what a backup is', () => {
         detail: expect.stringContaining('a backup signs nothing until it is restored'),
       },
     ]);
-    const [note] = result.census;
+    const [note] = result.census.filter((note) => note.kind !== 'undeclared-which');
     expect(note?.detail).not.toMatch(/dropped|botched|removed/);
     expect(result.summary).toContain('1 backup key(s), which sign nothing until restored');
     expect(result.summary).not.toContain('without a tail');
@@ -119,7 +119,7 @@ describe('the census says what a backup is', () => {
       verify(root, upcasters),
       verify(root, upcasters, { keyRoot: anotherMachine }),
     ]) {
-      expect(result.census).toEqual([
+      expect(result.census.filter((note) => note.kind !== 'undeclared-which')).toEqual([
         {
           kind: 'key-without-tail',
           fingerprint: backup,
@@ -150,10 +150,13 @@ describe('the census says what a backup is', () => {
     expect(result.ok).toBe(true);
     expect(
       result.census
+        .filter((note) => note.kind !== 'undeclared-which')
         .map((note) => `${note.kind} ${'fingerprint' in note ? note.fingerprint : ''}`)
         .sort(),
     ).toEqual([`backup-key ${backup}`, `key-without-tail ${colleague.signerFingerprint}`].sort());
-    const lost = result.census.find((note) => note.kind === 'key-without-tail');
+    const lost = result.census
+      .filter((note) => note.kind !== 'undeclared-which')
+      .find((note) => note.kind === 'key-without-tail');
     expect(lost?.detail).toContain('the tail may have been dropped');
     expect(result.summary).toContain('1 committed key(s) without a tail');
     expect(result.summary).toContain('1 backup key(s)');
@@ -164,7 +167,7 @@ describe('the census says what a backup is', () => {
     // not in the record, so nothing proves the identity took the key in.
     const { backup } = founded(false);
     const result = verify(root, upcasters, { keyRoot });
-    expect(result.census).toEqual([
+    expect(result.census.filter((note) => note.kind !== 'undeclared-which')).toEqual([
       {
         kind: 'key-without-tail',
         fingerprint: backup,
@@ -183,7 +186,9 @@ describe('the census says what a backup is', () => {
     writeFileSync(path, `${JSON.stringify({ ...fields, role: 'laptop' })}\n`);
     expect(readRegistration({ root: keyRoot }, backup).usable).toBe(true);
 
-    const [note] = verify(root, upcasters, { keyRoot }).census;
+    const [note] = verify(root, upcasters, { keyRoot }).census.filter(
+      (note) => note.kind !== 'undeclared-which',
+    );
     expect(note?.kind).toBe('key-without-tail');
   });
 
@@ -218,8 +223,8 @@ describe('the census says what a backup is', () => {
 
     const result = verify(root, upcasters, { keyRoot });
     expect(result.ok).toBe(true);
-    expect(result.census).toHaveLength(1);
-    const [note] = result.census;
+    expect(result.census.filter((note) => note.kind !== 'undeclared-which')).toHaveLength(1);
+    const [note] = result.census.filter((note) => note.kind !== 'undeclared-which');
     expect(note?.kind).toBe('key-without-tail');
     expect(note?.detail).toContain('the record names the cut');
     expect(note?.detail).toContain('1 event(s)');

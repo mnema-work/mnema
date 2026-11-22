@@ -66,7 +66,7 @@ import { dirname, join } from 'node:path';
 import { checkpointHash, ensureTree, parseCheckpoint, readingWhatTheDiskLets } from '@mnema/chain';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { type DecisionFacts, nameOf, readDecisionFacts } from '../decisions-in-git.js';
-import { theDefaultBranch } from '../events-not-in-git.js';
+import { type DefaultBranch, theDefaultBranch } from '../events-not-in-git.js';
 import { withTreesRead } from '../tree-sources.js';
 import { joinGrownTail } from './record-merge-tail.js';
 import {
@@ -102,6 +102,12 @@ export type RecordCommitRefused =
   | { readonly ok: false; readonly reason: 'A_LINK'; readonly paths: readonly string[] }
   | { readonly ok: false; readonly reason: 'NO_REMOTE'; readonly remotes: readonly string[] }
   | { readonly ok: false; readonly reason: 'NO_DEFAULT_BRANCH'; readonly remote: string }
+  | {
+      readonly ok: false;
+      readonly reason: 'NO_SUCH_DESTINATION';
+      readonly remote: string;
+      readonly branch: string;
+    }
   | { readonly ok: false; readonly reason: 'NOT_A_PREFIX'; readonly found: readonly NotGrown[] }
   | { readonly ok: false; readonly reason: 'NO_SUCH_DECISION'; readonly typed: string }
   | {
@@ -180,7 +186,7 @@ export type RecordCommitDone =
 /** A base older than this is said to be worth updating before the cut. */
 export const STALE_AFTER_HOURS = 1;
 
-type Ran = { readonly status: number; readonly out: Buffer; readonly err: string };
+export type Ran = { readonly status: number; readonly out: Buffer; readonly err: string };
 
 /**
  * The variables that point git at a repository, an index or a work tree other than the one its
@@ -205,7 +211,7 @@ export function repositoryVariables(): readonly string[] {
 }
 
 /** `env` without {@link repositoryVariables}. */
-function withoutRepositoryVariables(
+export function withoutRepositoryVariables(
   env: NodeJS.ProcessEnv,
   names: readonly string[],
 ): NodeJS.ProcessEnv {
@@ -215,7 +221,7 @@ function withoutRepositoryVariables(
 }
 
 /** A git with automatic maintenance off; bytes out, so a tail is read as it is. */
-function git(
+export function git(
   ctx: Scrubbed,
   cwd: string,
   args: readonly string[],
@@ -234,7 +240,7 @@ function git(
   };
 }
 
-function said(ran: Ran): string | undefined {
+export function said(ran: Ran): string | undefined {
   return ran.status === 0 ? ran.out.toString('utf-8').trim() : undefined;
 }
 
@@ -531,9 +537,36 @@ export function cutBranch(labels: readonly string[], digest: string): string {
   return `mnema-record/${words.toLowerCase().replace(/[^a-z0-9-]/g, '-')}-${digest}`;
 }
 
+/**
+ * What a cut is asked: where it ends (`through`), and, for a caller that names its own base
+ * (`record publish`), the remote and the branch of it. Without `to` the base is the default branch
+ * of the remote the clone follows (ADR-171); with it, it is `refs/remotes/<remote>/<branch>` and
+ * nothing is deduced.
+ */
+export interface CutInput {
+  readonly through?: string;
+  readonly to?: { readonly remote: string; readonly branch: string };
+}
+
 /** The context inside the verb: with the variables no git of it may inherit. */
-interface Scrubbed extends RecordCommitContext {
+export interface Scrubbed extends RecordCommitContext {
   readonly repository: readonly string[];
+}
+
+/** The base a caller named: a remote-tracking ref of this clone, read without the network. */
+function theNamedBase(
+  ctx: Scrubbed,
+  top: string,
+  to: { readonly remote: string; readonly branch: string },
+):
+  | Extract<DefaultBranch, { ok: true }>
+  | Extract<RecordCommitRefused, { reason: 'NO_SUCH_DESTINATION' }> {
+  const headRef = `refs/remotes/${to.remote}/${to.branch}`;
+  const commit = said(git(ctx, top, ['rev-parse', '--verify', '--quiet', `${headRef}^{commit}`]));
+  if (commit === undefined || commit === '') {
+    return { ok: false, reason: 'NO_SUCH_DESTINATION', remote: to.remote, branch: to.branch };
+  }
+  return { ok: true, remote: to.remote, headRef, branch: to.branch, commit };
 }
 
 /**
@@ -545,7 +578,7 @@ interface Scrubbed extends RecordCommitContext {
  */
 export function runRecordCommit(
   ctx: RecordCommitContext,
-  input: { readonly through?: string },
+  input: CutInput,
 ): RecordCommitDone | RecordCommitRefused {
   const repository = repositoryVariables();
   const saved = new Map<string, string | undefined>();
@@ -560,10 +593,7 @@ export function runRecordCommit(
   }
 }
 
-function cut(
-  ctx: Scrubbed,
-  input: { readonly through?: string },
-): RecordCommitDone | RecordCommitRefused {
+function cut(ctx: Scrubbed, input: CutInput): RecordCommitDone | RecordCommitRefused {
   const trees = resolveTrees(ctx.cwd, ctx.env);
   if (trees.projectPublic === undefined) return { ok: false, reason: 'NO_PROJECT' };
   const record = trees.projectPublic;
@@ -577,8 +607,12 @@ function cut(
   if (links.length > 0) return { ok: false, reason: 'A_LINK', paths: links };
 
   // 1. The base: the default branch of the remote, as this clone last read it.
-  const theBase = theDefaultBranch((args) => said(git(ctx, top, args)));
+  const theBase =
+    input.to === undefined
+      ? theDefaultBranch((args) => said(git(ctx, top, args)))
+      : theNamedBase(ctx, top, input.to);
   if (!theBase.ok) {
+    if (theBase.reason === 'NO_SUCH_DESTINATION') return theBase;
     return theBase.reason === 'NO_REMOTE'
       ? { ok: false, reason: 'NO_REMOTE', remotes: theBase.remotes }
       : { ok: false, reason: 'NO_DEFAULT_BRANCH', remote: theBase.remote };

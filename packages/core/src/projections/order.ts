@@ -57,6 +57,7 @@
  */
 
 import {
+  anchorLinksRefused,
   type CatalogEvent,
   type ChainEntry,
   type ChainLayout,
@@ -101,6 +102,7 @@ import {
   type WithheldRun,
 } from '@mnema/chain';
 import { notesRootOf } from '../topology/git-place.js';
+import { placedAt } from './entry-hashes.js';
 
 /**
  * What a reading collects of the parts of the record it SERVES AROUND: a collector to hand to the
@@ -414,7 +416,9 @@ export function chainReplay(
   const reading = tailsReadAt(layout, serveAround ? linked.collect : undefined);
   // The key folder the checkpoints are verified under: one the disk will not open is a part of the
   // record not read, named as a segment the disk refuses is, before what it leaves unproven.
-  if (serveAround) keysTheDiskRefuses(layout, linked.collect);
+  if (serveAround && !keysTheDiskRefuses(layout, linked.collect)) {
+    anchorLinksRefused(layout, linked.collect);
+  }
   const streams = streamsOf(layout, upcasters, 0, reading.read, serveAround ? linked : undefined, {
     keys: committedKeys(layout),
     proof: proof ?? proofOf(layout),
@@ -630,7 +634,11 @@ export function chainArrivals(
   // is reported only when no tail broke.
   const broken: LinkBreak[] = [];
   const retained: RetainedEntry[] = [];
-  const refused: RefusedPart[] = [];
+  // A linked anchor under `keys/` met since the cache last looked is a part a replay says, and no mark of a
+  // tail tells it: it is handed over like an arrival's, so the replay that follows names it.
+  const inKeys = refusedParts();
+  anchorLinksRefused(layout, inKeys.collect);
+  const refused: RefusedPart[] = [...inKeys.parts];
   let refusal: ChainArrivals | undefined;
   for (const tail of tails) {
     const covered = frontier.tails.get(tail);
@@ -1249,7 +1257,10 @@ function mergeStreams(
     const position = cursors[tail] as number;
     cursors[tail] = position + 1;
     const event = eventAt(tail, position);
-    if (isCatalogEvent(event)) placed.push({ event, tail, position });
+    if (isCatalogEvent(event)) {
+      placed.push({ event, tail, position });
+      placedAt(event, (streams[tail] as TailStream).hashes[position] as string);
+    }
   }
   const illegal = judged ? illegalMoves(placed, merged.held) : new Map();
   // A decision is the text its first judgment saw (FORMAT.md section 6.8): a writing before that

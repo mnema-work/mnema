@@ -15,6 +15,7 @@
 
 import type { Command } from 'commander';
 import { agentKeyFromEnvironment } from '../env.js';
+import { hostSessionOf } from '../host-names.js';
 import { here } from './context.js';
 import { type Declared, mutatesTheRecord, type Wiring } from './verb.js';
 
@@ -81,7 +82,7 @@ export function registerMcp(program: Command, wiring: Wiring): Declared {
       // walks up from is this process's directory, the one the host started it in.
       const { cwd, env } = here();
       const agentKey = opts.agentKey ?? agentKeyFromEnvironment(process.env);
-      const hostSession = process.env.CLAUDE_CODE_SESSION_ID;
+      const hostSession = hostSessionOf(process.env);
       const { connect } = buildMcpServer({
         cwd,
         env,

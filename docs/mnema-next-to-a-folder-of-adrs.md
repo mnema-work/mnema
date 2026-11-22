@@ -38,7 +38,7 @@ In the second command, `ADR-<n>` is the label that `import` printed for the one 
 
 Once the team has judged a proposal, it is a decision of the record like any other:
 
-- **Signed.** It carries who recorded it and who accepted it, a person or an agent, and `mnema verify` says whether
+- **Signed.** It carries who recorded it and who accepted it, an agent or no agent declared, and `mnema verify` says whether
   anything in the record has been touched since.
 - **Superseded, not lost.** A decision that replaces another is recorded and the earlier one is marked with the new
   one's id (`mnema decision supersede <old-id> <new-id> --reason "..."`); both stay in the record.

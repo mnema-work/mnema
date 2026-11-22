@@ -855,6 +855,7 @@ describe('every option the CLI declares feeds something', () => {
       'mnema decision import --which <agent>',
       'mnema decision record --alternatives <text>',
       'mnema decision record --body-file <path>',
+      'mnema decision record --governs <path>',
       'mnema decision record --scope <scope>',
       'mnema decision record --stdin',
       'mnema decision record --which <agent>',

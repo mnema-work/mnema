@@ -278,6 +278,10 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'collapsed',
     why: 'the agent name of facts in a run marked run.unannounced, read back out of the record',
   },
+  'decision.ts «Governs: {}» #1': {
+    verdict: 'collapsed',
+    why: 'the paths a person typed after --governs, read back out of the record',
+  },
   'decision.ts «Moved {} of {}; the rest were refused above and nothing was written for them.» #1':
     {
       verdict: 'minted',
@@ -608,6 +612,11 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'a uuid this write minted, and the only value on the line',
   },
+  "review.ts «{} rule(s) in force you did not accept yourself. Each one shown here is marked shown to you, in this machine's private record.» #1":
+    {
+      verdict: 'minted',
+      why: 'a count of the rules this reading listed',
+    },
   'retract.ts «Retracted {} {}» #1': {
     verdict: 'minted',
     why: 'the kind of the note the record holds, and its id in the record’s canonical form',
@@ -692,7 +701,7 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'minted',
       why: 'the closed channel, read back off the write',
     },
-  "switch.ts «{} is now ON: it was off until this switch, and it now records a person's corrections as proposed decisions in this machine's private tree.» #1":
+  "switch.ts «{} is now ON: it records a person's corrections as proposed decisions in this machine's private tree, as it did before.» #1":
     {
       verdict: 'minted',
       why: 'the user-corrections channel, read back off the write',
@@ -813,6 +822,22 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'collapsed',
     why: 'the id of the subject moved twice and the states each move went to: the record’s',
   },
+  'antipatterns.ts «{}» #3': {
+    verdict: 'collapsed',
+    why: 'decision ids out of the record, in the reading of what agents accepted',
+  },
+  'antipatterns.ts «{}» #4': {
+    verdict: 'collapsed',
+    why: 'decision ids out of the record, in the reading of what agents accepted',
+  },
+  'antipatterns.ts «{}» #5': {
+    verdict: 'collapsed',
+    why: 'decision ids out of the record, in the reading of what agents accepted',
+  },
+  'antipatterns.ts «{}» #6': {
+    verdict: 'collapsed',
+    why: 'decision ids out of the record, in the reading of what agents accepted',
+  },
   'resume.ts «{}» #1': {
     verdict: 'collapsed',
     why: 'the agent a run names: text whoever opened the session wrote',
@@ -833,7 +858,7 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'collapsed',
     why: 'three positionals, none validated: a task and two agent NAMES',
   },
-  'init.ts «Recorded {}: agents {} accept what you choose, accepted as yours.» #1': {
+  'init.ts «Recorded {}: agents {} accept what you choose{}.» #1': {
     verdict: 'minted',
     why: 'an `ADR-<n>` label minted by the write that just landed, and one of two words of this verb',
   },
@@ -937,6 +962,15 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'collapsed',
       why: 'the base, as the remote names its default branch',
     },
+  'record.ts «Nothing to publish: {} already holds the record here through the last signed checkpoint of each tail.» #1':
+    {
+      verdict: 'collapsed',
+      why: 'the destination the person named, as a remote and a branch name',
+    },
+  'record.ts «Pushed {} ({} event(s)) and opened {} into {}; nothing was merged.» #1': {
+    verdict: 'collapsed',
+    why: 'the branch made, the address `gh` printed and the destination the person named',
+  },
   'record.ts «git keeps no date of when {} was last updated here: \\`git remote update {}\\` reads it again.» #1':
     {
       verdict: 'collapsed',
@@ -1250,8 +1284,10 @@ describe('every line this wiring words is classified', () => {
     // 203 with the lines `backup restore` and `backup status` print of the folders kept aside, and none of a deletion.
     // 204 with the line `backup hook` prints of where it put the hook and where it took it from.
     // 207 with the three lines `backup restore --global` prints, the two folder counts and the heading.
-    // 210 with the lines `export --madr` prints: the files it wrote, and, per decision, why it will not import as the same words.
-    expect(FOUND.sites.length).toBe(210);
+    // 208 with the line `decision review` prints before the rules in force it shows and marks.
+    // 215 with the two lines `record publish` prints.
+    // 218 with the lines `export --madr` prints: the files it wrote, and, per decision, why it will not import as the same words.
+    expect(FOUND.sites.length).toBe(218);
   });
 
   it('reads the verdict off the source rather than believing the table', () => {
@@ -1271,9 +1307,9 @@ describe('every line this wiring words is classified', () => {
   it('found sites of both kinds, and the scanner sees a tag when there is one', () => {
     // Neither arm of the case above may be empty, or half of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
-    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(119);
-    expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(91);
-    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(119);
+    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(126);
+    expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(92);
+    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(126);
   });
 
   it('every reason says where the value comes from', () => {
@@ -1343,6 +1379,13 @@ const PROBES: readonly Probe[] = [
     argv: ['link', VALUE, 'a-target', '--rel', 'relates-to'],
     says: `Linked ${VALUE} -relates-to→ a-target`,
     // The notice that no tree holds the subject names it again, on its own line.
+    lines: 2,
+  },
+  {
+    keys: ['decision.ts «Governs: {}» #1'],
+    argv: ['decision', 'record', 'a title', 'a rationale', '--governs', VALUE],
+    says: `Governs: ${VALUE}`,
+    // The line of what the path covers names it again, on its own line.
     lines: 2,
   },
   {
@@ -1470,6 +1513,8 @@ const UNREACHABLE: Readonly<Record<string, string>> = {
       'record.ts «A branch of this cut is there already, made nothing: {}.» #1',
       'record.ts «Made {} on {}, verified with verify --since {}; nothing was pushed.» #1',
       'record.ts «Nothing to commit: {} already holds the record here through the last signed checkpoint of each tail.» #1',
+      'record.ts «Nothing to publish: {} already holds the record here through the last signed checkpoint of each tail.» #1',
+      'record.ts «Pushed {} ({} event(s)) and opened {} into {}; nothing was merged.» #1',
       'record.ts «git keeps no date of when {} was last updated here: \\`git remote update {}\\` reads it again.» #1',
       'record.ts «left out: {} event(s) above the cut{}» #1',
       'record.ts «next: {}» #1',
@@ -1522,6 +1567,14 @@ const UNREACHABLE: Readonly<Record<string, string>> = {
   'antipatterns.ts «moved twice out of one state ({} {})» #1':
     'needs two machines moving one decision out of one state, then merged',
   'antipatterns.ts «{}: {}» #1': 'the same divergence',
+  'antipatterns.ts «{}» #3':
+    'needs accepts that declare an agent, and a supersede of a rule a person accepted',
+  'antipatterns.ts «{}» #4':
+    'needs accepts that declare an agent, and a supersede of a rule a person accepted',
+  'antipatterns.ts «{}» #5':
+    'needs accepts that declare an agent, and a supersede of a rule a person accepted',
+  'antipatterns.ts «{}» #6':
+    'needs accepts that declare no agent, and a supersede of a rule a person accepted',
   'commit-hook.ts «{}: {}» #1': 'needs a repository whose hooks path holds a line break',
   'resume.ts «{}» #1': 'the run’s own line: driven by `run start`, read back by `resume`',
   'resume.ts «: {}» #1': 'the same line',

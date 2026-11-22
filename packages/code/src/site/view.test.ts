@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { A_PERSON } from '../one-line.js';
+import { NO_AGENT_DECLARED } from '../one-line.js';
 import type { PageDecision, PageNote, TimelineEntry } from './model.js';
 import { countsView, fieldsOf, listViews, permalinkOf, textOf } from './view.js';
 
@@ -82,7 +82,7 @@ describe('a decision card', () => {
       'data-force': 'in-force',
       'data-date': '2026-01-05',
       'data-who': '["mnid:alice","mnid:bob"]',
-      'data-by': `["${A_PERSON}","agent claude-code"]`,
+      'data-by': `["${NO_AGENT_DECLARED}","agent claude-code"]`,
     });
   });
 
@@ -125,7 +125,7 @@ describe('a decision card', () => {
       .filter((f) => f.name.endsWith('-by'))
       .map((f) => [f.name, f.text]);
     expect(by).toEqual([
-      ['recorded-by', A_PERSON],
+      ['recorded-by', NO_AGENT_DECLARED],
       ['accepted-by', 'agent claude-code'],
       ['move-by', 'agent claude-code'],
       ['note-by', 'agent claude-code'],
