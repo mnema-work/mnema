@@ -131,9 +131,9 @@ describe('a Python package a workflow installs', () => {
     expect(
       unhashed('  pip install --require-hashes -r missing.txt', 'w', () => false),
     ).toHaveLength(1);
-    expect(
-      withoutHash(`mypy==1.0 \\\n    --hash=sha256:${'a'.repeat(64)}\nruff==2\n`),
-    ).toEqual(['ruff']);
+    expect(withoutHash(`mypy==1.0 \\\n    --hash=sha256:${'a'.repeat(64)}\nruff==2\n`)).toEqual([
+      'ruff',
+    ]);
     const installing = FILES.filter(
       (file) => pipInstalls(readFileSync(join(ROOT, file), 'utf-8')).length > 0,
     );
