@@ -770,16 +770,53 @@ function declaringInto(
 ): ToolRegistrar {
   return (what, config, handle) => {
     declared.push(what);
+    const accepted = Object.keys(config.inputSchema ?? {});
+    const takesInput = config.inputSchema !== undefined;
+    const refusingUnknownKeys = (async (...args: unknown[]) => {
+      const given = args[0] as Record<string, unknown> | undefined;
+      const unknown = Object.keys(given ?? {}).filter((key) => !accepted.includes(key));
+      if (unknown.length > 0) {
+        throw new UnknownInputKeyError(what.act, unknown, accepted);
+      }
+      // A tool declared with no input takes only the request's extras, as it did before.
+      return (handle as (...a: unknown[]) => unknown)(...(takesInput ? args : args.slice(1)));
+    }) as unknown as ToolCallback<ZodRawShapeCompat>;
     server.registerTool(
       what.act,
-      { ...config, annotations: hintsOf(what) },
+      {
+        ...config,
+        // The SDK strips a key the shape does not name before the handler sees it, which is how
+        // `query` for `term` became "no term". Passing the rest through is what lets the handler
+        // above refuse it with a reply of the project's shape; the served schema still says
+        // `additionalProperties: false`, so a host knows before it sends. A tool with no input
+        // is given the empty shape for the same reason: a key sent to it is refused too.
+        inputSchema: z
+          .object(config.inputSchema ?? {})
+          .passthrough()
+          .meta({ additionalProperties: false }) as unknown as ZodRawShapeCompat,
+        annotations: hintsOf(what),
+      },
       countedLocally(
-        answeringThrownRefusals(handle, ensureSession, what.effect),
+        answeringThrownRefusals(refusingUnknownKeys, ensureSession, what.effect),
         ensureSession,
         what,
       ),
     );
   };
+}
+
+/**
+ * A key the tool does not take: refused at the one door, naming it and the keys the tool does
+ * take, before the tool runs, so nothing is written. Answered as a refusal by
+ * {@link answeringThrownRefusals}, which says on a tool that writes that the fact was not recorded.
+ */
+class UnknownInputKeyError extends CodedError {
+  readonly code = 'UNKNOWN_INPUT_KEY';
+  constructor(tool: string, unknown: readonly string[], accepted: readonly string[]) {
+    const named = unknown.map((key) => `\`${key}\``).join(', ');
+    const takes = accepted.length > 0 ? accepted.map((key) => `\`${key}\``).join(', ') : 'none';
+    super(`${tool} does not take ${named}; the keys it takes: ${takes}.`);
+  }
 }
 
 /**

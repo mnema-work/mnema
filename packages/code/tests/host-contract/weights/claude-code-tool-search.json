@@ -12,8 +12,8 @@
       "record_decision"
     ],
     "definitions": {
-      "bytes": 3376,
-      "tokens": 754
+      "bytes": 3405,
+      "tokens": 758
     },
     "answer": {
       "bytes": 151,
@@ -29,8 +29,8 @@
       "record_observation"
     ],
     "definitions": {
-      "bytes": 11675,
-      "tokens": 2638
+      "bytes": 11820,
+      "tokens": 2658
     },
     "answer": {
       "bytes": 477,
@@ -68,8 +68,8 @@
       "task_transition"
     ],
     "definitions": {
-      "bytes": 51946,
-      "tokens": 11921
+      "bytes": 52989,
+      "tokens": 12104
     },
     "answer": {
       "bytes": 2195,
