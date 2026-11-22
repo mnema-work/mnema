@@ -753,7 +753,7 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
 
   const member = (name: string): Command => {
     const found = backup.commands.find((command) => command.name() === name);
-    if (found === undefined) throw new Error(`mnema backup has no ${name}`);
+    if (found === undefined) throw new Error(`the backup group holds no member called ${name}`);
     return found;
   };
   // None of them touches a chain, and four write outside it (a folder, a tree, a file of git): a

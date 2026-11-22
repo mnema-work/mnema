@@ -71,6 +71,7 @@ afterEach(() => {
   rmSync(sandbox, { recursive: true, force: true });
 });
 
+// @plants-damage
 describe('mnema doctor and an entry altered after it was written', () => {
   it('says nothing over a record as it was written', () => {
     expect(findings()).toEqual([]);
