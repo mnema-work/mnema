@@ -113,15 +113,16 @@ const dataOf = (commands) => {
 /** @typedef {'start' | 'middle' | 'end'} Anchor */
 
 /**
- * The outline of one line of text as the data of a path, in the role's instance, on the baseline `y`, anchored at `x`.
- * A character the face has no glyph for is refused, never drawn as a box.
+ * One line of text typeset: the commands of each glyph, at its own place, in the role's instance, on the baseline `y`,
+ * anchored at `x`. A character the face has no glyph for is refused, never drawn as a box.
  * @param {string} text
  * @param {Role} role
  * @param {number} x
  * @param {number} y
  * @param {Anchor} anchor
+ * @returns {PathCommand[][]}
  */
-export function outlineOf(text, role, x, y, anchor) {
+function typeset(text, role, x, y, anchor) {
   const { face: font, variation, size } = ROLES[role];
   const options = variation === undefined ? {} : { variation };
   const scale = size / font.unitsPerEm;
@@ -142,12 +143,40 @@ export function outlineOf(text, role, x, y, anchor) {
   });
   const width = advances.reduce((sum, a, i) => sum + a + (kerns[i] ?? 0), 0);
   let at = anchor === 'middle' ? x - width / 2 : anchor === 'end' ? x - width : x;
-  return glyphs
-    .map((glyph, i) => {
-      at += kerns[i] ?? 0;
-      const d = dataOf(glyph.getPath(at, y, size, options, font).commands);
-      at += advances[i] ?? 0;
-      return d;
-    })
-    .join('');
+  return glyphs.map((glyph, i) => {
+    at += kerns[i] ?? 0;
+    const { commands } = glyph.getPath(at, y, size, options, font);
+    at += advances[i] ?? 0;
+    return commands;
+  });
+}
+
+/**
+ * The outline of one line of text as the data of a path, in the role's instance, on the baseline `y`, anchored at `x`.
+ * A character the face has no glyph for is refused, never drawn as a box.
+ * @param {string} text
+ * @param {Role} role
+ * @param {number} x
+ * @param {number} y
+ * @param {Anchor} anchor
+ */
+export function outlineOf(text, role, x, y, anchor) {
+  return typeset(text, role, x, y, anchor).map(dataOf).join('');
+}
+
+/**
+ * Where the ink of a line lies along it, the line set at 0 with the anchor: the left and the right of the box of
+ * the points its outline reaches, which is the box `outlineOf` draws. A picture that spreads its texts lays them out by
+ * this and by nothing else.
+ * @param {string} text
+ * @param {Role} role
+ * @param {Anchor} [anchor]
+ * @returns {{ left: number, right: number }}
+ */
+export function inkOf(text, role, anchor = 'start') {
+  const xs = typeset(text, role, 0, 0, anchor)
+    .flat()
+    .flatMap(({ x, x1, x2 }) => [x, x1, x2])
+    .filter((v) => v !== undefined);
+  return { left: Math.min(...xs), right: Math.max(...xs) };
 }
