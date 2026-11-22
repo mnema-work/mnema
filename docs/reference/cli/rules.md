@@ -31,7 +31,7 @@ In the help under **Hand over**.
 ## The whole help
 
 ```text
-Usage: mnema rules [options] [command] <path>
+Usage: mnema rules [options] [command] [path]
 
 show which recorded rules govern a path, and which address nothing
 
@@ -39,6 +39,9 @@ Arguments:
   path         the path to ask about, relative to here or absolute
 
 Options:
+  --coverage   instead of a path: count the project files by layer (refused,
+               asked, governed, none), per top-level folder, with no score,
+               following the switches of the gate
   --json       emit the faithful reading as JSON
   -h, --help   display help for command
 

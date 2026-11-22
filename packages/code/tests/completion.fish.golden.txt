@@ -482,6 +482,7 @@ complete -c mnema -f -n '__mnema_at "recall"' -l color -x -a 'auto always never'
 
 # mnema rules
 complete -c mnema -f -n '__mnema_at "rules"' -a 'test' -d 'check the verdicts a file declares for paths against the record’s rules'
+complete -c mnema -f -n '__mnema_at "rules"' -l coverage
 complete -c mnema -f -n '__mnema_at "rules"' -l json
 complete -c mnema -f -n '__mnema_at "rules"' -s h -l help
 complete -c mnema -f -n '__mnema_at "rules"' -s V -l version
