@@ -61,6 +61,7 @@ describe('mnema why, as a page', () => {
     about: 'file',
     relative: 'src/a.ts',
     exists: true,
+    verdict: 'governs',
     rules: [{ id: 'D1', name: 'keep it small', address: 'src', relation: 'governs' }],
     git: true,
     shallow: false,

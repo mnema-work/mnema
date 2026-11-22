@@ -34,6 +34,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolveTrees } from '@mnema/core';
+import type { Command } from 'commander';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { openRecord } from '../../sdk/src/record.js';
 import {
@@ -367,7 +368,7 @@ describe('the SDK over an altered entry', () => {
 
 describe('the door of the command line', () => {
   const io: CliIo = { out: () => undefined, err: () => undefined, fail: () => undefined };
-  const { program, verbs } = buildProgram(io, []);
+  const { program } = buildProgram(io, []);
   const at = (path: string) => {
     let node = program;
     for (const word of path.split(' ')) {
@@ -378,7 +379,23 @@ describe('the door of the command line', () => {
     return node;
   };
 
-  it('is armed for what can write, and not for what reads or serves', () => {
+  it('is armed for every invocation the program declares, leaf by leaf, but the exempt ones', () => {
+    const leaves: [string, Command][] = [];
+    const walk = (node: Command, words: readonly string[]): void => {
+      for (const next of node.commands) {
+        const path = [...words, next.name()];
+        if (next.commands.length === 0) leaves.push([path.join(' '), next]);
+        else walk(next, path);
+      }
+    };
+    walk(program, []);
+    expect(leaves.length).toBeGreaterThan(100);
+    const unarmed = leaves.filter(([, node]) => !armsTheDoor(node)).map(([path]) => path);
+    expect(unarmed.sort()).toEqual(Object.keys(RUNS_OVER_AN_ALTERED_ENTRY).sort());
+    expect(leaves.map(([path]) => path)).toContain('doctor');
+  });
+
+  it('is armed for every invocation but the exempt ones, reads included (a read opens no writer, so it is never asked)', () => {
     for (const path of [
       'memory',
       'decision record',
@@ -394,10 +411,13 @@ describe('the door of the command line', () => {
       'key request',
       'doctor',
     ]) {
-      expect(armsTheDoor(verbs, at(path)), path).toBe(true);
+      expect(armsTheDoor(at(path)), path).toBe(true);
     }
-    for (const path of ['status', 'search', 'verify', 'before-a-write', 'mcp']) {
-      expect(armsTheDoor(verbs, at(path)), path).toBe(false);
+    for (const path of ['status', 'search', 'verify']) {
+      expect(armsTheDoor(at(path)), path).toBe(true);
+    }
+    for (const path of Object.keys(RUNS_OVER_AN_ALTERED_ENTRY)) {
+      expect(armsTheDoor(at(path)), path).toBe(false);
     }
     for (const path of ['key request', 'witness stamp', 'witness upgrade', 'witness sigstore']) {
       expect(asksAtOnce(at(path)), path).toBe(true);

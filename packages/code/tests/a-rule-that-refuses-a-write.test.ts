@@ -917,7 +917,7 @@ describe('the document a session opens with', () => {
 // `presentation/accepted-by.ts` is the one place the clause is worded; what it says is held here
 // where the lines that carry it are.
 describe('who accepted the rule, said where a rule is handed over', () => {
-  const BY = /accepted by mnid:[0-9a-f]{8} \(a person\)/;
+  const BY = /accepted by mnid:[0-9a-f]{8} \(no agent declared\)/;
 
   it('says it on the line a refusal, an asking and an informing push carry', async () => {
     const refusal = decided(tool('src/billing/invoice.ts')).reason ?? '';
@@ -934,7 +934,7 @@ describe('who accepted the rule, said where a rule is handed over', () => {
 
   it('words the clause once: a person, an agent, and the mark that needs somebody to ask', () => {
     expect(acceptedBy({ by: 'mnid:ab12cd34', unconfirmed: false })).toBe(
-      'accepted by mnid:ab12cd34 (a person)',
+      'accepted by mnid:ab12cd34 (no agent declared)',
     );
     expect(acceptedBy({ by: 'mnid:ab12cd34', agent: 'claude-code', unconfirmed: true })).toBe(
       'accepted by mnid:ab12cd34 (agent claude-code; unconfirmed)',

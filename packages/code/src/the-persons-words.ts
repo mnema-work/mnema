@@ -291,7 +291,7 @@ const readClaude: HostReader = (path) =>
   whatThePersonSaid(path).map((said) => ({
     line: said.line,
     text: said.text,
-    chosen: said.chosen === true,
+    chosen: said.from === 'answer',
     ...(said.question === undefined ? {} : { question: said.question }),
   }));
 

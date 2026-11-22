@@ -56,6 +56,8 @@ const THE_PERSON = [
   'key-github.ts',
   'key-revoke.ts',
   'key-sigstore.ts',
+  // A rule marked shown (`decision.seen`): refused with an agent declared, never signed by an agent's key.
+  'shown.ts',
 ];
 
 /** The verbs whose write is signed by the key a tail's id names: `tail relink`, and the doctor's. */

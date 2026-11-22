@@ -20,8 +20,9 @@
 
 import type { Command } from 'commander';
 import { here } from './context.js';
+import { fromTheGroup, REFUSED, takesFromItsGroup } from './from-the-group.js';
 import { writeLines } from './io.js';
-import { reportRefusal } from './report.js';
+import { reportRefusal, reportUsage } from './report.js';
 import { type Declared, readsTheRecord, type Wiring } from './verb.js';
 
 /** Registers `mnema rules` on the program. */
@@ -32,6 +33,13 @@ export function registerRules(program: Command, wiring: Wiring): Declared {
     .description('show which recorded rules govern a path, and which address nothing')
     .argument('<path>', 'the path to ask about, relative to here or absolute')
     .option('--json', 'emit the faithful reading as JSON')
+    .addHelpText(
+      'after',
+      [
+        '',
+        'The word `test` after `rules` is the verb `rules test <file>`: a folder named test is asked as ./test.',
+      ].join('\n'),
+    )
     .action(async (path: string, opts: { json?: boolean }) => {
       const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
       const { runRules } = await import('../commands/rules.js');
@@ -70,5 +78,41 @@ export function registerRules(program: Command, wiring: Wiring): Declared {
       }
       writeLines(io, rulesReport(render, result.governed));
     });
+  const test = rules
+    .command('test')
+    .description('check the verdicts a file declares for paths against the record’s rules')
+    .argument('<file>', 'a JSON file: { "cases": [ { "path": "src/a.ts", "expect": "refuse" } ] }')
+    .addHelpText(
+      'after',
+      [
+        '',
+        'Each case names a path, relative to the project root, and what it must meet:',
+        '  refuse   the gate refuses a write there',
+        '  ask      the gate holds a write there for a person',
+        '  governs  a rule is linked `governs` there, and none refuses or asks',
+        '  none     no rule stands over the path',
+        'The answer is the gate’s own, so a switch turned off changes it as it changes the gate.',
+        'Every case that does not meet its verdict is named, with the rules that stand there,',
+        'and the exit code is 1; a file with no case, a path that is absolute or leaves the project,',
+        'or a record the gate cannot read is refused. Nothing is written.',
+      ].join('\n'),
+    )
+    .action(async (file: string) => {
+      if ((await fromTheGroup(test, wiring)) === REFUSED) return;
+      const { runRulesTest } = await import('../commands/rules-test.js');
+      const { rulesTestReport } = await import('../presentation/rules-test.js');
+      const result = runRulesTest(here(), { file });
+      if (!result.ok) {
+        if (result.reason === 'BAD_CASES') reportUsage(wiring, result.message);
+        else reportRefusal(wiring, result, {});
+        return;
+      }
+      const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
+      for (const line of linkBreakNotice(result.linkBreaks)) io.err(render(line));
+      for (const line of newerLinesNotice(result.newerLines, 'the record')) io.err(render(line));
+      writeLines(io, rulesTestReport(render, result.cases));
+      if (result.cases.some((one) => !one.matched)) io.fail();
+    });
+  takesFromItsGroup(test, { refuses: { '--json': 'it prints one line per case.' } });
   return readsTheRecord(rules);
 }

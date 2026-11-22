@@ -351,8 +351,8 @@ export interface WhatThePersonSaid {
    * question tool put, or the last sentence of a response that ended in a question mark.
    */
   readonly question?: string | undefined;
-  /** True when these are the options the person chose in the host's question tool, not words they typed. */
-  readonly chosen?: true;
+  /** Whether the words are a prompt the person typed or an answer in the host's question tool. */
+  readonly from: 'prompt' | 'answer';
 }
 
 /**
@@ -391,7 +391,7 @@ export function whatThePersonSaid(path: string): readonly WhatThePersonSaid[] {
     };
     if (!isAPrompt(read)) {
       const chosen = answersToTheQuestionTool(read);
-      if (chosen !== undefined) said.push({ ...where, ...chosen, chosen: true });
+      if (chosen !== undefined) said.push({ ...where, ...chosen, from: 'answer' });
       return true;
     }
     const question = asked;
@@ -409,7 +409,12 @@ export function whatThePersonSaid(path: string): readonly WhatThePersonSaid[] {
               .join('\n')
           : '';
     if (text.trim() === '' || HARNESS_TEXT.test(text)) return true;
-    said.push({ ...where, text, ...(question === undefined ? {} : { question }) });
+    said.push({
+      ...where,
+      text,
+      from: 'prompt',
+      ...(question === undefined ? {} : { question }),
+    });
     return true;
   });
   return said;

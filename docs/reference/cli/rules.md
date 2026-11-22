@@ -18,20 +18,32 @@ In the help under **Hand over**.
 | --- | --- |
 | `--json` | emit the faithful reading as JSON |
 
+## Commands
+
+| Command | What it does |
+| --- | --- |
+| [`mnema rules test`](rules-test.md) | check the verdicts a file declares for paths against the record’s rules |
+
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
 <!-- End of the part written by hand. -->
 
 ## The whole help
 
 ```text
-Usage: mnema rules [options] <path>
+Usage: mnema rules [options] [command] <path>
 
 show which recorded rules govern a path, and which address nothing
 
 Arguments:
-  path        the path to ask about, relative to here or absolute
+  path         the path to ask about, relative to here or absolute
 
 Options:
-  --json      emit the faithful reading as JSON
-  -h, --help  display help for command
+  --json       emit the faithful reading as JSON
+  -h, --help   display help for command
+
+Commands:
+  test <file>  check the verdicts a file declares for paths against the record’s
+               rules
+
+The word `test` after `rules` is the verb `rules test <file>`: a folder named test is asked as ./test.
 ```

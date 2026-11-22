@@ -103,7 +103,7 @@ async function seed(client: Client): Promise<void> {
 const READS: readonly (readonly [string, Record<string, unknown>])[] = [
   ['bootstrap', {}],
   ['search', {}],
-  ['search', { text: 'second' }],
+  ['search', { term: 'second' }],
   ['governing_rules', { path: 'src/index.ts' }],
   ['focus', {}],
   ['resume', {}],

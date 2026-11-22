@@ -10,13 +10,15 @@
  * answering over an altered entry: reading degrades (ADR-396). It also keeps a write that is refused
  * for its own reasons, or reports a plan, from leaving anything behind: asking waits for the writer.
  *
- * Armed before a verb runs, with the question loaded only for a verb that can write: the ones that
- * declared `mutates` (`record-effect.ts`), and the verbs of {@link OPEN_A_WRITER_AS_READS}.
+ * Armed before every invocation but the ones {@link RUNS_OVER_AN_ALTERED_ENTRY} names. The arming is no
+ * list of the verbs that write: a verb declared a read that opens a writer for one of its options
+ * (`doctor --fix private-tree`) is asked as a verb that writes is, and a verb added tomorrow with such an
+ * option is asked without being named here. What an invocation that opens no writer pays is the loading
+ * of the check, never the question.
  */
 
 import { guardWrites, type ResolvedTrees } from '@mnema/core';
 import type { Command } from 'commander';
-import type { Declared } from './wiring/verb.js';
 
 /** Invocations that are not stood behind, and why: by their whole path. */
 export const RUNS_OVER_AN_ALTERED_ENTRY: Readonly<Record<string, string>> = {
@@ -26,12 +28,6 @@ export const RUNS_OVER_AN_ALTERED_ENTRY: Readonly<Record<string, string>> = {
   'tail repair':
     'It is the write that mends an altered or unreadable line (ADR-398): it opens no writer and signs nothing, and everything else stays stopped at the writer.',
 };
-
-/**
- * Verbs declared reads that open a writer for one of their options: `doctor --fix private-tree` moves
- * tails with signed appends. They are armed as the verbs that write are.
- */
-export const OPEN_A_WRITER_AS_READS: readonly string[] = ['doctor'];
 
 /**
  * Invocations that act on the record without opening a writer, and are asked before they run:
@@ -54,13 +50,9 @@ function pathOf(command: Command): string {
   return words.join(' ');
 }
 
-/** Whether the question is to be loaded and asked at the writers this invocation opens. */
-export function armsTheDoor(verbs: readonly Declared[], action: Command): boolean {
-  const path = pathOf(action);
-  if (path in RUNS_OVER_AN_ALTERED_ENTRY) return false;
-  const top = path.split(' ')[0] as string;
-  const verb = verbs.find((one) => one.act.name() === top);
-  return verb?.effect === 'mutates' || OPEN_A_WRITER_AS_READS.includes(top);
+/** Whether the question is to be asked at the writers this invocation opens: every one but the exempt ones. */
+export function armsTheDoor(action: Command): boolean {
+  return !(pathOf(action) in RUNS_OVER_AN_ALTERED_ENTRY);
 }
 
 /** Whether this invocation asks at once, before it runs, and not at a writer. */
