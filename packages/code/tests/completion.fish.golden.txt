@@ -113,7 +113,7 @@ complete -c mnema -f -n '__mnema_at ""' -a 'export' -d 'emit the record as an OC
 complete -c mnema -f -n '__mnema_at ""' -a 'usage' -d 'what each run cost, read from this machine\'s Claude Code transcripts'
 complete -c mnema -f -n '__mnema_at ""' -a 'resume' -d 'show where an actor left off, and the runs they still have open'
 complete -c mnema -f -n '__mnema_at ""' -a 'repl' -d 'open an interactive session that reads this project'
-complete -c mnema -f -n '__mnema_at ""' -a 'why' -d 'show under which decisions a file or a commit stands'
+complete -c mnema -f -n '__mnema_at ""' -a 'why' -d 'show under which decisions a file or a commit stands; for a file, also the verdict a write there would meet'
 complete -c mnema -f -n '__mnema_at ""' -a 'commits' -d 'show the commits that cite a decision and those that touched what it addresses'
 complete -c mnema -f -n '__mnema_at ""' -a 'aging' -d 'show accepted decisions whose addressed paths changed in many commits since'
 complete -c mnema -f -n '__mnema_at ""' -a 'trailer' -d 'print the commit trailer that ties a commit to a decision'

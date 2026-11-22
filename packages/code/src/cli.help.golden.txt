@@ -91,7 +91,8 @@ $ mnema --help
 |   repl            open an interactive session that reads this project
 |
 | The git log:
-|   why             show under which decisions a file or a commit stands
+|   why             show under which decisions a file or a commit stands; for a
+|                   file, also the verdict a write there would meet
 |   commits         show the commits that cite a decision and those that touched
 |                   what it addresses
 |   aging           show accepted decisions whose addressed paths changed in many
@@ -1175,7 +1176,8 @@ $ mnema repl --help
 $ mnema why --help
 | Usage: mnema why [options] <file|commit>
 |
-| show under which decisions a file or a commit stands
+| show under which decisions a file or a commit stands; for a file, also the
+| verdict a write there would meet
 |
 | Arguments:
 |   file|commit  a path (it wins when it exists) or a commit name

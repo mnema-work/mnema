@@ -135,6 +135,7 @@ $ mnema commits no-such-id
 [exit 1]
 $ mnema why docs/runbook/rollback.md
 | docs/runbook/rollback.md  ·  in the working tree
+|   verdict: a write here would go through; no rule addresses it
 |   rules in force that address this path: 0
 |   There is no git work tree here, so no commits were read.
 |
@@ -144,6 +145,7 @@ $ mnema why docs/runbook/rollback.md --json
 |   "about": "file",
 |   "relative": "docs/runbook/rollback.md",
 |   "exists": true,
+|   "verdict": "none",
 |   "rules": [],
 |   "git": false,
 |   "shallow": false,
@@ -940,10 +942,11 @@ $ mnema commits no-such-id
 [exit 1]
 $ mnema why docs/runbook/rollback.md
 | docs/runbook/rollback.md  ·  in the working tree
+|   verdict: a write here would go through, with the rules that govern it beside it
 |   rules in force that address this path: 1
 |   There is no git work tree here, so no commits were read.
 |
-|   docs/runbook  governs  Keep the runbook in the record  <decision-runbook>
+|   docs/runbook  governs  Keep the runbook in the record  <decision-runbook>  decides
 |
 |   Read from git just now; nothing was written to the record.
 $ mnema why docs/runbook/rollback.md --json
@@ -951,12 +954,14 @@ $ mnema why docs/runbook/rollback.md --json
 |   "about": "file",
 |   "relative": "docs/runbook/rollback.md",
 |   "exists": true,
+|   "verdict": "governs",
 |   "rules": [
 |     {
 |       "id": "<decision-runbook>",
 |       "name": "Keep the runbook in the record",
 |       "address": "docs/runbook",
-|       "relation": "governs"
+|       "relation": "governs",
+|       "decided": true
 |     }
 |   ],
 |   "git": false,
