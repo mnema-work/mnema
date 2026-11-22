@@ -1807,7 +1807,7 @@ describe('every diagram lays its texts on the edges they line up with', () => {
 
   describe('the family', () => {
     it.each(['dark', 'light'] as const)(
-      'the-family-%s has the same gap between its seven columns, from 60 to 1140',
+      'the-family-%s has the same gap between the columns on each side of the record, from 60 to 1140',
       (theme) => {
         const svg = read(`${ASSETS}/the-family-${theme}.svg`);
         const nodes = nodesOf(svg);
@@ -1840,9 +1840,13 @@ describe('every diagram lays its texts on the edges they line up with', () => {
         const gaps = [0, 1, 2, 3, 4, 5].map(
           (i) => (spans[i + 1]?.[0] as number) - (spans[i]?.[1] as number),
         );
-        for (const gap of gaps)
-          expect(Math.abs(gap - (gaps[0] as number))).toBeLessThanOrEqual(EDGE);
-        expect(gaps[0]).toBeGreaterThan(20);
+        // The record sits under the eye, so each side has its own gap: the three on the left are equal, the three on the right
+        // are equal, and they differ from one side to the other only because the columns' widths do.
+        for (const i of [1, 2])
+          expect(Math.abs((gaps[i] as number) - (gaps[0] as number))).toBeLessThanOrEqual(EDGE);
+        for (const i of [4, 5])
+          expect(Math.abs((gaps[i] as number) - (gaps[3] as number))).toBeLessThanOrEqual(EDGE);
+        expect(Math.min(...gaps)).toBeGreaterThan(20);
       },
     );
   });
