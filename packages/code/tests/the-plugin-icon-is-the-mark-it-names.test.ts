@@ -2,7 +2,9 @@
  * THE PLUGIN'S ICON IS THE MARK ITS MANIFEST NAMES, AND THE MARK THE EXTENSION HAS: each plugin
  * folder carries `.claude-plugin/icon.png`, its manifest's `icon` points at it, and the file is
  * byte for byte what `.github/the-plugin-icon/make.mjs` draws, a 512 pixel square under the
- * directory's 2 MB, in the same shapes as the extension's 128 pixel icon (`icon.mjs` draws both).
+ * directory's 2 MB, in the same shapes as the extension's 128 pixel icon (`icon.mjs` draws both): the
+ * eye of the brand at rest in a dark rounded square. Which colour each shape is, and where, is held by
+ * `the-editor-and-the-record-page-wear-the-new-brand.test.ts`.
  *
  * WHAT IS HELD HERE AND WHAT IS NOT. That the files are the drawing, that the manifest names them and
  * that the size is the directory's (a square PNG of 512 to 2048 pixels, under 2 MB, per
@@ -19,7 +21,6 @@ import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { inflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { THE_BLOCKS } from '../src/presentation/banner.js';
 
 const ROOT = new URL('../../../', import.meta.url).pathname;
 const MAKE = join(ROOT, '.github', 'the-plugin-icon', 'make.mjs');
@@ -34,7 +35,7 @@ type Make = {
 const make = (await import(pathToFileURL(MAKE).href)) as Make;
 const { drawIcon } = (await import(
   pathToFileURL(join(ROOT, 'packages', 'vscode', 'build', 'icon.mjs')).href
-)) as { drawIcon: (blocks: readonly string[], size?: number) => Buffer };
+)) as { drawIcon: (size?: number) => Buffer };
 
 /** The RGBA of a pixel of a PNG this repository draws (8 bit, RGBA, every row filtered with None). */
 function decode(png: Buffer): { size: number; at: (x: number, y: number) => number[] } {
@@ -62,7 +63,7 @@ describe('the plugin icon', () => {
   }, 60_000);
 
   it('is the extension icon drawn larger: the same shapes, away from the edges the sampling softens', () => {
-    const small = decode(drawIcon(THE_BLOCKS));
+    const small = decode(drawIcon());
     const big = decode(icon);
     let compared = 0;
     let differing = 0;
@@ -89,8 +90,8 @@ describe('the plugin icon', () => {
   }, 60_000);
 
   it('is not the extension icon over again: it has 512 pixels where that one has 128', () => {
-    expect(drawIcon(THE_BLOCKS).readUInt32BE(16)).toBe(128);
-    expect(icon.equals(drawIcon(THE_BLOCKS))).toBe(false);
+    expect(drawIcon().readUInt32BE(16)).toBe(128);
+    expect(icon.equals(drawIcon())).toBe(false);
   }, 60_000);
 });
 

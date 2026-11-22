@@ -10,14 +10,16 @@ describe('the mark on the folder of the record', () => {
     expect(recordFolderOf(FOLDER)).toBe(join(FOLDER, '.mnema'));
   });
 
-  it('is one letter, so the Explorer, which takes two characters, shows it whole', () => {
-    expect(RECORD_BADGE).toBe('M');
-    expect(RECORD_BADGE.length).toBeLessThanOrEqual(2);
+  it('is the fisheye, one character, so the Explorer, which takes two, shows it whole', () => {
+    expect(RECORD_BADGE).toBe('\u25C9');
+    expect([...Buffer.from(RECORD_BADGE, 'utf8')]).toEqual([0xe2, 0x97, 0x89]);
+    expect(RECORD_BADGE.length).toBe(1);
+    expect(RECORD_BADGE).not.toMatch(/\p{Extended_Pictographic}/u);
   });
 
   it('decorates the folder with the badge, the colour the manifest declares and what the folder is', () => {
     expect(decorationFor(file(join(FOLDER, '.mnema')), FOLDER)).toEqual({
-      badge: 'M',
+      badge: '\u25C9',
       tooltip: 'The mnema record of this project. mnema verify reads it.',
       color: RECORD_COLOR,
     });

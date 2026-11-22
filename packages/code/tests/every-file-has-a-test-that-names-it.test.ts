@@ -305,15 +305,13 @@ const LED_NOWHERE: Readonly<Record<string, string>> = {
   'packages/code/tests/the-registry-entry-is-what-the-package-says.test.ts -> ../../../.github/release-prepare/server-json.mjs':
     'The module that makes the server.json the MCP Registry is sent from the one version number. It is plain ESM under .github/ beside the script that writes it with the rest of the release, outside the packages/ walk either corpus makes, and the case importing it asserts the file on disk is what it returns, so the specifier is the proof of the entry and not a dependency the scanner could follow.',
   'packages/vscode/src/the-page-the-stores-show.test.ts -> ../build/icon.mjs':
-    'The build script that draws the extension icon, a plain module outside the package sources the coverage universe covers. The cases importing it assert the PNG it returns (its signature, its size, the same bytes on a second drawing, the pixels of the banner M), so the specifier is the proof of the icon and not a dependency the scanner could follow.',
+    'The build script that draws the extension icon, a plain module outside the package sources the coverage universe covers. The cases importing it assert the PNG it returns (its signature, its size, the same bytes on a second drawing, its sha256, and the refusal of a size that is not a whole number of pixels), so the specifier is the proof of the icon and not a dependency the scanner could follow.',
   'packages/vscode/src/the-font-the-status-bar-shows.test.ts -> ../build/icon-font.mjs':
-    'The build module that draws the M as the TrueType font the status bar names in contributes.icons. A plain module outside the package sources the coverage universe covers. The cases importing it assert the bytes it returns (the ten tables, their checksums, the code point map, the outline cell by cell on the 16 pixel grid, the same bytes on a second drawing), so the specifier is the proof of the font and not a dependency the scanner could follow.',
+    'The build module that draws the eye as the TrueType font the status bar names in contributes.icons. A plain module outside the package sources the coverage universe covers. The cases importing it assert the bytes it returns (the ten tables, their checksums, the code point map, points off the curve and on it, closed clockwise outlines centred in the em, the same bytes on a second drawing), so the specifier is the proof of the font and not a dependency the scanner could follow.',
   'packages/vscode/src/the-vsix-check-refuses-a-font-the-editor-would-drop.test.ts -> ../build/icon-font.mjs':
     'The build module that draws the status bar font, named here by the case that packs its bytes (and the same bytes with one table renamed) and runs the check on the file. A plain module outside the package sources the coverage universe covers, so the specifier is the proof and not a dependency the scanner could follow.',
-  'packages/vscode/src/the-mark-the-side-bar-shows.test.ts -> ../build/icon.mjs':
-    'The build script that draws the extension icon, named here by the case that holds the 128 pixel PNG to the bytes it had before its letter geometry moved into the module below. A plain module outside the package sources the coverage universe covers, so the specifier is the proof and not a dependency the scanner could follow.',
-  'packages/vscode/src/the-mark-the-side-bar-shows.test.ts -> ../build/mark.mjs':
-    'The build module that reads the M out of the console wordmark and draws it as the monochrome SVG of the side bar container. A plain module outside the package sources the coverage universe covers. The cases importing it assert the SVG it returns (one path, the editor colour, whole pixels, the banner M cell by cell, the same bytes on a second drawing), so the specifier is the proof of the mark and not a dependency the scanner could follow.',
+  'packages/vscode/src/the-mark-the-side-bar-shows.test.ts -> ../build/the-eye.mjs':
+    "The build module that is the extension's one door to the eye of the brand and draws it as the monochrome SVG of the side bar container. A plain module outside the package sources the coverage universe covers. The cases importing it assert the SVG it returns (the 24 pixel view box, the almond clip, the iris and six lines, the editor colour or none, the 20 pixel frame with its margin, the same bytes on a second drawing), so the specifier is the proof of the mark and not a dependency the scanner could follow.",
   'packages/chain/src/readme-example.test.ts -> ./index.js':
     "The chain package's barrel, named by the case that runs its README example from inside src/. Excluded by the same glob as the two below, and reached by the shortest specifier of the three because this package keeps its cases beside its sources rather than under tests/.",
   'packages/core/tests/readme-example.test.ts -> ../src/index.js':
@@ -1038,7 +1036,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/src/site/browser/fs.test.ts': 4,
   'packages/code/src/site/colour.test.ts': 2,
   'packages/code/src/site/model.test.ts': 4,
-  'packages/code/src/site/page.test.ts': 9,
+  'packages/code/src/site/page.test.ts': 7,
   'packages/code/src/site/the-lists-are-checked-in-the-browser.test.ts': 22,
   'packages/code/src/site/the-page-model-does-work-in-proportion-to-the-record.test.ts': 2,
   'packages/code/src/site/the-page-script-writes-no-markup.test.ts': 8,
@@ -1399,6 +1397,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-disk-probe-says-what-it-measured.test.ts': 7,
   'packages/code/tests/the-document-is-a-function-of-the-record.test.ts': 6,
   'packages/code/tests/the-echo-names-the-record.test.ts': 13,
+  'packages/code/tests/the-editor-and-the-record-page-wear-the-new-brand.test.ts': 8,
   'packages/code/tests/the-evidence-page-cites-what-exists.test.ts': 4,
   'packages/code/tests/the-example-is-read-from-the-page.test.ts': 6,
   'packages/code/tests/the-example-is-type-checked.test.ts': 7,
@@ -1485,7 +1484,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-panel.test.ts': 21,
   'packages/code/tests/the-pattern-leaves-in-the-hosts-shape.test.ts': 6,
   'packages/code/tests/the-phrase-the-domain-words-is-one-line.test.ts': 8,
-  'packages/code/tests/the-plugin-icon-is-the-mark-it-names.test.ts': 8,
+  'packages/code/tests/the-plugin-icon-is-the-mark-it-names.test.ts': 7,
   'packages/code/tests/the-plugin-runs-the-binary-the-person-named.test.ts': 6,
   'packages/code/tests/the-plugin-spawns-what-the-package-installs.test.ts': 6,
   'packages/code/tests/the-plugin-tree-hash-reads-content-not-line-endings.test.ts': 5,
@@ -1766,17 +1765,17 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/vscode/src/cli.test.ts': 2,
   'packages/vscode/src/decision.test.ts': 3,
   'packages/vscode/src/extension.test.ts': 11,
-  'packages/vscode/src/manifest.test.ts': 5,
+  'packages/vscode/src/manifest.test.ts': 4,
   'packages/vscode/src/proposed.test.ts': 3,
   'packages/vscode/src/record-mark.test.ts': 3,
   'packages/vscode/src/rules.test.ts': 2,
   'packages/vscode/src/stacks.test.ts': 7,
   'packages/vscode/src/status.test.ts': 3,
   'packages/vscode/src/the-bundle-holds-no-database.test.ts': 6,
-  'packages/vscode/src/the-font-the-status-bar-shows.test.ts': 3,
-  'packages/vscode/src/the-mark-the-side-bar-shows.test.ts': 5,
-  'packages/vscode/src/the-page-the-stores-show.test.ts': 5,
-  'packages/vscode/src/the-vsix-check-refuses-a-font-the-editor-would-drop.test.ts': 7,
+  'packages/vscode/src/the-font-the-status-bar-shows.test.ts': 2,
+  'packages/vscode/src/the-mark-the-side-bar-shows.test.ts': 2,
+  'packages/vscode/src/the-page-the-stores-show.test.ts': 4,
+  'packages/vscode/src/the-vsix-check-refuses-a-font-the-editor-would-drop.test.ts': 6,
   'packages/vscode/src/the-vsix-check-refuses-a-paint-of-its-own.test.ts': 5,
   'packages/vscode/src/why.test.ts': 3,
 };
@@ -2475,8 +2474,8 @@ describe('every file has a test that names it', () => {
     });
     // Non-vacuity in both parts: the walk really did follow specifiers, and the list
     // really does hold rows; a scanner returning nothing would satisfy the line above.
-    expect(unresolved.length).toBe(36);
-    expect(Object.keys(LED_NOWHERE)).toHaveLength(36);
+    expect(unresolved.length).toBe(35);
+    expect(Object.keys(LED_NOWHERE)).toHaveLength(35);
     // And each row says what THAT module is, by the ledger's rule, at the ledger's floor.
     const why = Object.values(LED_NOWHERE);
     expect(new Set(why).size).toBe(why.length);

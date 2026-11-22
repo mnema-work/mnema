@@ -18,11 +18,11 @@ the `mnema` command line, which the extension does not bring: `@mnema/code` stay
   `mnema rules --json -- <path>` (the path comes after `--`, so a file named `-x` is a file). Clicking it lists them: the decision's name, what it does to the
   file, and who accepted it, as the record says; picking one opens that decision whole (see below),
   with no judgment button, since it is in force. A file no rule in force addresses has no lens.
-- **A container of its own in the activity bar, titled mnema, with the M of the console's wordmark as its icon.** It holds
+- **A container of its own in the activity bar, titled mnema, with the eye of mnema as its icon.** It holds
   the two views below, "Awaiting Judgment" and "Stacks", and carries a badge: the number of decisions
   awaiting a judgment, as many as `mnema` says exist (not only the ones listed), nothing at zero and
-  nothing when the list was not read. The icon is the first letter of the console's wordmark, drawn when
-  the extension is packed.
+  nothing when the list was not read. The icon is the eye at rest in one colour, drawn when the extension is
+  packed.
 - **A view, "Awaiting Judgment".** The decisions whose state is
   `proposed`, read from one `mnema status --json`, which serves the first 20 with their `ADR-n`; when
   `mnema` counted more than it served, `mnema search --kind decision --state proposed --json` is asked too,
@@ -73,12 +73,13 @@ the `mnema` command line, which the extension does not bring: `@mnema/code` stay
   open folder: runs `mnema why -- <path>` and shows what it printed, as `mnema` words it, in a read-only document under a
   header that says what was asked and when (UTC, with the Z). Each opening is a new document, so a second look is never
   an old reading. A file outside the folder says so and runs nothing.
-- **A mark on the `.mnema` folder.** In the Explorer the record's own folder wears the badge `M` and the accent of the
-  front page (the colour `mnema.recordFolder`, which a theme can override), and its tooltip says what the folder is. No
+- **A mark on the `.mnema` folder.** In the Explorer the record's own folder wears the badge `◉` and the brand's colour for it,
+  yellow in a dark theme and charcoal in a light one (the colour `mnema.recordFolder`, which a theme can override), and its
+  tooltip says what the folder is. No
   file is marked: `mnema` does not list the addresses its rules cover, so a file with no mark would look as if no rule
   reached it, which the record does not say. The mark is a comparison of two paths; it starts no process and reads nothing. The editor draws one badge per
   item: where git marks the folder too (the record has changes git has not committed, say), the badge drawn in the editor
-  measured (1.143.1) is git's, and the accent stays on the name.
+  measured (1.143.1) is git's, and the colour stays on the name.
 - **No notification per proposal.** The record is watched through the editor's file watcher on
   `.mnema/**`; when it has been quiet for 1.5 seconds it is read again, and a decision proposed
   meanwhile raises the badge on the container's icon and the count in the status bar. Nothing
@@ -139,7 +140,7 @@ the `mnema` command line, which the extension does not bring: `@mnema/code` stay
   name (`mnema stack enable <stack> <hook> --from <source>`). The extension has no command for it and says where it is done; the
   command line, started as the extension starts it, refuses with no terminal.
 - **The status bar.** The level `mnema verify --json` reports for the record, with an icon that follows
-  it (the mnema M, drawn from the console's wordmark, wherever `verify` was read, whatever the level, which stays in the word beside it;
+  it (the eye of mnema, wherever `verify` was read, whatever the level, which stays in the word beside it;
   the editor's error mark for a failure, a question mark for an answer it could not read, a warning mark when the command is missing;
   never a check mark or a seal),
   and, when decisions await a judgment, how many (`fully-signed · 2 to judge`, the same number as the
@@ -245,10 +246,11 @@ command line printed into what is shown, `record-mark.ts` says which folder wear
 to the editor through a handed-in `vscode` module. The tests run `extension.ts` against a stand-in
 for that module; nothing downloads or starts an editor.
 
-The marks are not kept in the tree. `package` draws them from the first letter of the console's wordmark, so a letter
-changed there is a letter changed in all of them: the store icon (`icon.png`), the side bar's icon (`media/mnema.svg`, one
-monochrome path) and the font that gives the status bar its M (`media/mnema-icons.ttf`, one glyph at `U+E000`, which
-`contributes.icons` names `mnema-m`). The font is a TrueType file written with `node:` alone, the same bytes on every run; a
+The marks are not kept in the tree. `package` draws them from the eye of the brand, whose geometry lives in one place in
+the repository, so a change there is a change in all of them: the store icon (`icon.png`, the eye in a dark rounded
+square), the side bar's icon (`media/mnema.svg`, the eye in one colour) and the font that gives the status bar its eye
+(`media/mnema-icons.ttf`, one glyph at `U+E000` drawn in quadratic curves, which `contributes.icons` names `mnema-eye`).
+The font is a TrueType file written with `node:` alone, the same bytes on every run; a
 font the editor's sanitizer refuses draws nothing and says nothing, so the check on the packed file refuses one without the
 tables the sanitizer asks for, and the check in a real editor finds the installed font and a bar whose text names it. That the editor then
 draws it is read by eye (the script for a person), not by a test.

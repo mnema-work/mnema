@@ -55,7 +55,7 @@ else {
     }
   }
 }
-// The status bar's M is a glyph of a font the manifest names: the file is in the vsix, is TrueType, and
+// The status bar's eye is a glyph of a font the manifest names: the file is in the vsix, is TrueType, and
 // holds the tables the editor's sanitizer asks of a web font (one it refuses draws nothing, silently).
 const FONT_TABLES = ['OS/2', 'cmap', 'glyf', 'head', 'hhea', 'hmtx', 'loca', 'maxp', 'name', 'post'];
 const icons = Object.entries(manifest.contributes?.icons ?? {});

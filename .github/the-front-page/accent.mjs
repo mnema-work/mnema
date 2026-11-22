@@ -7,9 +7,10 @@
 // `#997dbf`, about 3.5:1 on white) is the light hex. A shields.io badge does not change with the
 // theme, so it took the light one: that is no longer so, the badges are dark stone now.
 //
-// What still paints with these is the social card, which `draw.mjs` draws, and the site's page. The README's banner,
-// the diagrams and the badges are in the brand's palette (`.github/the-brand/palette.mjs`), and
-// `packages/code/tests/the-front-page-is-drawn-from-the-console.test.ts` holds them to it, not to this accent.
+// What still paints with these is the social card, which `draw.mjs` draws, and the site, which imports this file at a
+// release tag. The README's banner, the diagrams, the badges, the record page `mnema site` writes and the editor
+// extension are in the brand's palette (`.github/the-brand/palette.mjs`), not in this accent; the value is held by hand,
+// for the site, in `packages/code/tests/the-front-page-is-drawn-from-the-console.test.ts`.
 
 /** The accent per theme of the page that shows the picture. */
 export const ACCENT = Object.freeze({ dark: '#c4a0f5', light: '#997dbf' });
