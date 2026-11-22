@@ -1214,6 +1214,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/decision-review-is-a-persons-door.test.ts': 8,
   'packages/code/tests/doctor-edits-vscode-settings-without-losing-a-byte.test.ts': 2,
   'packages/code/tests/doctor-removes-an-mcp-declaration-without-losing-a-byte.test.ts': 2,
+  'packages/code/tests/doctor-says-an-altered-entry.test.ts': 8,
   'packages/code/tests/doctor-says-how-mnema-is-installed.test.ts': 8,
   'packages/code/tests/doctor-says-what-was-swallowed.test.ts': 8,
   'packages/code/tests/doctor-states-the-long-paths-command-on-windows.test.ts': 6,
