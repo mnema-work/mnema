@@ -621,6 +621,28 @@ describe('more ways to claim, and the comment that went unanswered', () => {
   });
 });
 
+describe('"this one" is read as "this issue" is', () => {
+  it.each([
+    "I'd like to take this one.",
+    'Can I take this one?',
+    "I'll work on this one",
+    'I will take this one!',
+    "I'd like to take this one. My plan is to change `normalise` in `claim.mjs`, then add a test.",
+  ])('%j is a claim', (text) => {
+    expect(isClaim(text)).toBe(true);
+  });
+
+  it.each([
+    "I don't want to take this one",
+    'Thanks, this one is fixed in `main`.',
+    'Is this one a duplicate?',
+    'This one crashes when I run it.',
+    'Thanks for working on this one!',
+  ])('%j is not a claim', (text) => {
+    expect(isClaim(text)).toBe(false);
+  });
+});
+
 describe('a comment that reads as a claim and matches no phrase', () => {
   it.each([
     'I would take this on if nobody minds',

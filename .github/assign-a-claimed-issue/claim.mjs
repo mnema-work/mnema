@@ -85,7 +85,7 @@ export const CLAIMABLE_LABELS = ['good first issue', 'help wanted'];
 export const MAINTAINER_ASSOCIATIONS = ['OWNER', 'MEMBER', 'COLLABORATOR'];
 
 /**
- * What a claim says, lower case with `this issue` read as `this`. A phrase matches as whole words.
+ * What a claim says, lower case with `this issue` and `this one` read as `this`. A phrase matches as whole words.
  * A question about the issue that asks for nothing to take is not in the list.
  */
 export const CLAIM_PHRASES = [
@@ -217,7 +217,7 @@ const normalise = (text) =>
     .join(' ')
     .replace(/[‘’]/g, "'")
     .toLowerCase()
-    .replace(/this issue/g, 'this')
+    .replace(/\bthis (?:issue|one)\b/g, 'this')
     .replace(/\s+/g, ' ');
 
 /** The sentences of a normalised text, each with its closing mark. @param {string} said */
