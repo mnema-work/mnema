@@ -56,4 +56,7 @@ Options:
 The window:
   A window (`from`/`to`) selects RECORDS by the instant each was RECORDED,
   never by when one last moved, and never by the state it is in now.
+  A bound is a date (YYYY-MM-DD, read as UTC: --from is the start of the day,
+  --to its last millisecond) or a timestamp ending in Z or an offset
+  (YYYY-MM-DDT10:30:00-03:00). Anything else is refused.
 ```

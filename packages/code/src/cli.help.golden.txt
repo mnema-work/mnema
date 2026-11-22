@@ -1030,6 +1030,9 @@ $ mnema search --help
 | The window:
 |   A window (`from`/`to`) selects RECORDS by the instant each was RECORDED,
 |   never by when one last moved, and never by the state it is in now.
+|   A bound is a date (YYYY-MM-DD, read as UTC: --from is the start of the day,
+|   --to its last millisecond) or a timestamp ending in Z or an offset
+|   (YYYY-MM-DDT10:30:00-03:00). Anything else is refused.
 
 ### mnema show --help
 $ mnema show --help
@@ -1139,6 +1142,9 @@ $ mnema export --help
 | The window:
 |   A window (`from`/`to`) selects the FACTS themselves,
 |   by the instant each was recorded.
+|   A bound is a date (YYYY-MM-DD, read as UTC: --from is the start of the day,
+|   --to its last millisecond) or a timestamp ending in Z or an offset
+|   (YYYY-MM-DDT10:30:00-03:00). Anything else is refused.
 
 ### mnema usage --help
 $ mnema usage --help
@@ -2837,6 +2843,9 @@ $ mnema audit accountability --help
 | The window:
 |   A window (`from`/`to`) selects the FACTS themselves,
 |   by the instant each was recorded.
+|   A bound is a date (YYYY-MM-DD, read as UTC: --from is the start of the day,
+|   --to its last millisecond) or a timestamp ending in Z or an offset
+|   (YYYY-MM-DDT10:30:00-03:00). Anything else is refused.
 
 ### mnema audit antipatterns --help
 $ mnema audit antipatterns --help

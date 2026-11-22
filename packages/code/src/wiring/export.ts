@@ -23,7 +23,7 @@ import { fact } from '../presentation/detail.js';
 import { globalTreeGloss, windowGloss, windowHelp } from '../vocabulary.js';
 import { here } from './context.js';
 import { onOneLine } from './on-one-line.js';
-import { ACTOR_HELP } from './options.js';
+import { ACTOR_HELP, INVALID_WINDOW, parseWindowOptions } from './options.js';
 import { reportRefusal } from './report.js';
 import { type Declared, readsTheRecord, type Wiring } from './verb.js';
 
@@ -62,10 +62,11 @@ export function registerExport(program: Command, wiring: Wiring): Declared {
           await exportMadr(wiring, opts as typeof opts & { madr: string });
           return;
         }
+        const window = parseWindowOptions(opts.from, opts.to, wiring);
+        if (window === INVALID_WINDOW) return;
         const { runExport } = await import('../commands/export.js');
         const result = runExport(here(), {
-          ...(opts.from !== undefined ? { from: opts.from } : {}),
-          ...(opts.to !== undefined ? { to: opts.to } : {}),
+          ...window,
           ...(opts.who !== undefined ? { who: opts.who } : {}),
           ...(opts.which !== undefined ? { which: opts.which } : {}),
           global: opts.global,
