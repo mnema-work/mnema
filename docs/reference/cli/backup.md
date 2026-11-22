@@ -33,6 +33,10 @@ mnema backup verify
 mnema backup restore --dry-run
 ```
 
+The destination can also be a git remote (`https://`, `ssh://`, `file://` or `user@host:path`) or the folder of a bare
+repository: `run` then keeps a clone in the data directory, commits the copy and pushes it, one more commit each run and
+never a rewrite. See [What a backup keeps, and what it loses](../../what-a-backup-keeps-and-what-it-loses.md#a-git-repository-as-the-destination).
+
 `setup` says which folder keeps THIS project's backup, `run` copies, and `status` says where the copy is, when it was made and what is still to copy. `verify` reads the copy as a record and sets it against the trees; `restore` puts it back into a tree that lost files.
 
 **One folder per project, by the name of its record.** `setup` assigns the folder to this
@@ -43,8 +47,8 @@ copy is `<name of the record>/<tree>/`, with a `mnema-backup.json` saying when i
 
 **What is copied.** The tails, each up to its last complete line (a line a writer has not
 finished is not copied), and the public keys (`keys/*.pub`) of each tree. The private tree is
-always copied; the public tree only where the project is not in git, because a repository's
-history is the public tree's own backup. Nothing else of a tree is copied: not its locks, not
+always copied; the public tree only where git does not hold it (a project outside git, or a local
+record that the repository excludes), because a committed record's history is its own backup. Nothing else of a tree is copied: not its locks, not
 the installation ids or anchors beside its keys, not `site/`, and nothing of your key root.
 
 **What is refused.** A run stops whole, before it writes a byte, when a file it would copy holds
@@ -76,7 +80,7 @@ touches a project's trees, and a project's restore never touches the global tree
 
 **`verify` reads the copy, and says how it stands against the tree.** It reads each copy as a record with this mnema's reader, ONE reader, and says so: the second reader, written from `FORMAT.md`, is a Python program of the source repository, and the answer names the command that runs it by hand over the copy (`python3 packages/chain/verifier/mnema_verify.py record <the copy>`). It then sets each file of the copy against the tree's, and only the end of a tail can say a tail was cut: a copy that is the start of the tree's file is BEHIND (run it again); a tree whose file is the start of the copy's is CUT; a file the copy holds that the tree does not is LOST; and two files neither of which starts the other are a fork or a cut, and no side is taken. It exits non-zero for a copy the reader refuses and a tree shown cut, lost or forked; a copy that is only behind is said, and is not a failure. It writes nothing.
 
-**`restore` puts a copy back, and never over anything.** It is for a tree that lost files, a private tree that was deleted among them. A file the tree does not have is put there; one it has with the same bytes is left; a segment or checkpoints file the tree holds and the copy is the start of is the tree's (it has written since), and is named; a tail the copy is not the start of, or one the tree's tail lacks, refuses the whole restore, naming the file and both lengths, and takes no side between a fork and a cut; any other file the tree holds with other bytes (a `tailproof.json`, a key) stays, and is named. Nothing is written until every check of every tree is made, and `--dry-run` says what would be put back and puts nothing. A copy that does not verify is not put back, a copy of another record is refused (a way to do that, with a question first, comes next), and nothing is touched while a writer holds the lock of a tail the copy also names: the refusal names the process. `locks/`, the installation ids and the anchors are never restored, so the first write after a restore opens a tail of its own beside the restored ones. **A restore brings back the text, not your key**: if the key was lost with the machine, the next write signs with a new key, and the tree then counts you twice. What the tree wrote after the copy was made is not in the copy.
+**`restore` puts a copy back, and never over anything.** It is for a tree that lost files, a private tree that was deleted among them. A file the tree does not have is put there; one it has with the same bytes is left; a segment or checkpoints file the tree holds and the copy is the start of is the tree's (it has written since), and is named; a tail the copy is not the start of, or one the tree's tail lacks, refuses the whole restore, naming the file and both lengths, and takes no side between a fork and a cut; any other file the tree holds with other bytes (a `tailproof.json`, a key) stays, and is named. Nothing is written until every check of every tree is made, and `--dry-run` says what would be put back and puts nothing. A copy that does not verify is not put back, a copy of another record (`--from <record>`) is asked at a terminal first, and `restore --undo` puts back what it replaced, and nothing is touched while a writer holds the lock of a tail the copy also names: the refusal names the process. `locks/`, the installation ids and the anchors are never restored, so the first write after a restore opens a tail of its own beside the restored ones. **A restore brings back the text, not your key**: if the key was lost with the machine, the next write signs with a new key, and the tree then counts you twice. What the tree wrote after the copy was made is not in the copy.
 
 **The folder keeps the text in clear.** Nothing is encrypted: whoever can read the folder can
 read the record and the public keys it holds. `setup` says so and asks you to confirm it, at a
@@ -119,7 +123,7 @@ Commands:
 
 The copy is a folder per project, kept under the name of its record: the tails up to their
 last complete line and the public keys, and nothing else. The private tree is always copied;
-the public tree only where the project is not in git, whose history is its own backup. No
+the public tree only where git does not hold it (a project outside git, or a local record that a repository excludes), since a committed record's history is its own backup. No
 private key is copied: a run is refused whole if a file it would copy holds one, and so is a
 symbolic link in the tree or in the folder. A copy only grows. The folder keeps the text in
 clear, which `setup` asks a person to confirm at a terminal. A machine can have a folder per project; a project has the one it was set up with.

@@ -5,6 +5,7 @@
  * before it went in; the alpha's `MNEMA:START` block is not recognized and is never touched.
  */
 
+import { createHash } from 'node:crypto';
 import {
   chmodSync,
   existsSync,
@@ -195,18 +196,21 @@ describe('mnema instructions in a file of the person’s', () => {
   });
 
   it('says when an agent accepts, in the one line about a decision born proposed, and keeps the third version byte for byte', () => {
-    expect(INSTRUCTIONS_VERSION).toBe('v5');
+    expect(INSTRUCTIONS_VERSION).toBe('v6');
     const line = INSTRUCTIONS_BODY.split('\n').find((one) => one.includes('born `proposed`'));
     expect(line).toBe(
-      '- A decision is born `proposed`; once it is accepted it is in force here. If the person dictated it, or chose it among options you offered (a recommended one included), accept it now with `decision_transition` and a note quoting their answer; one you concluded alone waits for the person. An agent’s acceptance is recorded as an agent’s, and `mnema switch off agent-accepts` leaves every acceptance to a person.',
+      '- A decision is born `proposed`; once it is accepted it is in force here. If the person dictated it, or chose it among options you offered (a recommended one included), accept it now with `decision_transition` and a note quoting their exact words between double quotes; one you concluded alone waits for the person. An agent’s acceptance is recorded as an agent’s, and `mnema switch off agent-accepts` leaves every acceptance to a person.',
     );
     const oldLine =
       '- A decision is born `proposed`; once it is accepted it is in force here (an acceptance made by an agent is recorded as an agent’s, and `mnema switch off agent-accepts` leaves it to a person).';
     const v3 = KNOWN_BODIES['v3'] as string;
     expect(v3).toContain(`${oldLine}\n`);
     // The two texts differ in that one line and in nothing else.
+    const v4line = (KNOWN_BODIES['v4'] as string)
+      .split('\n')
+      .find((one) => one.includes('born `proposed`'));
     expect(v3.replace(oldLine, '')).toBe(
-      (KNOWN_BODIES['v4'] as string).replace(line as string, ''),
+      (KNOWN_BODIES['v4'] as string).replace(v4line as string, ''),
     );
   });
 
@@ -215,7 +219,7 @@ describe('mnema instructions in a file of the person’s', () => {
     put('AGENTS.md', `${THEIRS}\n${older}\n## After\n`);
     writeInstructions(project);
     expect(text('AGENTS.md')).toBe(`${THEIRS}\n${INSTRUCTIONS_BLOCK}\n## After\n`);
-    expect(text('AGENTS.md')).toContain(beginMarker('v5'));
+    expect(text('AGENTS.md')).toContain(beginMarker('v6'));
     expect(text('AGENTS.md')).not.toContain(beginMarker('v3'));
     expect(text('AGENTS.md')).toContain('accept it now with `decision_transition`');
   });
@@ -229,11 +233,45 @@ describe('mnema instructions in a file of the person’s', () => {
     );
     const v4 = KNOWN_BODIES['v4'] as string;
     expect(v4).not.toContain('github.com/mnema-work');
-    expect(v4).toBe(INSTRUCTIONS_BODY.replace(`${line}\n`, ''));
+    expect(v4).toBe((KNOWN_BODIES['v5'] as string).replace(`${line}\n`, ''));
     const older = `${beginMarker('v4')}\n${v4}${INSTRUCTIONS_END}\n`;
     put('AGENTS.md', `${THEIRS}\n${older}\n## After\n`);
     writeInstructions(project);
     expect(text('AGENTS.md')).toBe(`${THEIRS}\n${INSTRUCTIONS_BLOCK}\n## After\n`);
+  });
+
+  it('keeps every published body byte for byte, each to the digest it had when it was published', () => {
+    // An edit in place of a body already written into people's files would make each of those
+    // blocks read as somebody's edit, refused and never updated again: a new wording is a new version.
+    const published: Readonly<Record<string, string>> = {
+      v1: '2c5d0246735f7c2048a19720af161448414c9da2e49bedd3fa72b0cf4732baa4',
+      v2: '67c0110b7185bcd96e50686452c9445958fef4c7b40824fd1555819fc9ff3a9c',
+      v3: '6838a4c47997d30e11b63b1fb361c6be1adf7e1e43a0b68beb1ded525a225a8e',
+      v4: 'eb914de9d044febe278864ed6310cfd9391ee37f4f286e882d1007b3b2ba3051',
+      v5: '4c41936e1bf76a298d3e39ebe1caf130d6293df23b5aaf301b3d23847e492558',
+      v6: '6fcfc670bf2747e035bd5472f7e0c741944433bdb5aed3784c46317279fdb3a1',
+    };
+    const digests = Object.fromEntries(
+      Object.entries(KNOWN_BODIES).map(([version, body]) => [
+        version,
+        createHash('sha256').update(body).digest('hex'),
+      ]),
+    );
+    expect(digests).toEqual(published);
+    expect(KNOWN_BODIES[INSTRUCTIONS_VERSION]).toBe(INSTRUCTIONS_BODY);
+  });
+
+  it('upgrades a v5 block, as main wrote it, to the current one and does not call it an edit', () => {
+    const v5 = KNOWN_BODIES['v5'] as string;
+    expect(v5).toContain('and a note quoting their answer; one you concluded alone');
+    put('AGENTS.md', `${THEIRS}\n${beginMarker('v5')}\n${v5}${INSTRUCTIONS_END}\n\n## After\n`);
+    expect(checkInstructions(project).find((file) => file.path === 'AGENTS.md')?.found).toEqual({
+      state: 'outdated',
+    });
+    expect(did(writeInstructions(project))['AGENTS.md']).toBe('replaced');
+    expect(text('AGENTS.md')).toBe(`${THEIRS}\n${INSTRUCTIONS_BLOCK}\n## After\n`);
+    expect(text('AGENTS.md')).toContain(beginMarker('v6'));
+    expect(text('AGENTS.md')).toContain('their exact words between double quotes');
   });
 
   it('refuses a block of a version it does not know', () => {
