@@ -100,11 +100,11 @@ export function registerRecord(program: Command, wiring: Wiring): Declared {
       ].join('\n'),
     )
     .action(async () => {
-      const { driverCommand, runRecordPull } = await import('../commands/record-pull.js');
+      const { ownDriverCommand, runRecordPull } = await import('../commands/record-pull.js');
       const result = runRecordPull({
         ...here(),
         processEnv: process.env,
-        driver: driverCommand(process.execPath, process.argv[1] ?? ''),
+        driver: ownDriverCommand(),
         requirement: DEFAULT_REQUIREMENT,
       });
       if (!result.ok) {

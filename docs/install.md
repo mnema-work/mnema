@@ -72,6 +72,29 @@ mnema doctor
 your `PATH` is the one you meant and whether the `node` it uses takes it. It writes nothing.
 [Everything it checks](reference/cli/doctor.md#is-mnema-set-up-on-this-machine).
 
+## A single file, without Node (experimental)
+
+A release may carry `mnema-<version>-linux-x64`: the binary as one executable file that holds its own Node, to run
+the record verbs on a machine where the first `node` on the `PATH` is missing or too old. It is **experimental**, for **Linux x64 only**, and
+**unsigned**: there is none for macOS or Windows yet, and the file carries no signature of its own (the npm packages
+have the build provenance described [below](#where-the-package-came-from); this file does not). What you have to
+trust it by is its SHA-256, which the release notes print and the release publishes as `mnema-<version>-linux-x64.sha256`.
+Check it before you run it, from the folder that holds both files:
+
+```sh
+sha256sum --check mnema-<version>-linux-x64.sha256
+chmod +x mnema-<version>-linux-x64
+./mnema-<version>-linux-x64 --version
+```
+
+`sha256sum` prints `OK` for the file or says it did not match: in that case do not run it. Put it on your `PATH` under the name
+`mnema` (or call it by its path) and it runs without any Node: the record verbs, `verify` and the merge driver that `mnema init`
+writes into git's configuration, which names the file itself. `mnema stack index`, adding a built-in stack by name and
+`mnema site` read files the executable does not carry and do not work in it. The plugins' hooks are not carried either: each starts with
+`node` and looks `mnema` up on the `PATH`, so a host whose first `node` is missing still needs one for them. It is about 150 MB, which is
+Node itself. `npm i -g @mnema/code` stays the way to install mnema and to get the plugin's hooks to find it.
+[How the file is built](build-from-source.md#the-single-executable).
+
 ## Pin a version
 
 ```sh
