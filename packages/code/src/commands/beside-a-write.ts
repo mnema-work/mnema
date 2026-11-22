@@ -23,9 +23,8 @@
  * the second stream, which nothing reads to decide.
  */
 
-import { pathsOfAWrite, replyBeside } from '../host-hook.js';
-import { type BesideHost, hookTextOf } from '../host-names.js';
-import { hookCeilingOf } from '../presentation/within-a-hook.js';
+import { hookCeilingFor, pathsOfAWrite, replyBeside } from '../host-hook.js';
+import type { BesideHost } from '../host-names.js';
 import { sessionIdOf } from '../session-journal.js';
 import {
   type BeforeAWriteContext,
@@ -64,7 +63,7 @@ export function runBesideAWrite(
     which: input.host,
     paths,
     asks: false,
-    ceiling: hookCeilingOf(hookTextOf(input.host)),
+    ceiling: hookCeilingFor(input.host),
     reply: (said) => replyBeside(input.host, said.context),
     push: {
       session: sessionIdOf((payload as Record<string, unknown>)['session_id']),

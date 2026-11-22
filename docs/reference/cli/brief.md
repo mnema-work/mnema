@@ -11,7 +11,7 @@ In the help under **Hand over**.
 | Option | What it does |
 | --- | --- |
 | `--hook` | print it for a Claude Code hook: whole rules up to what a hook carries, and a closing paragraph saying how many were left out and what serves them, and a refusal opens with its code alone on the first line of the error stream (a refusal of usage, such as an invalid --host, carries none: the hook is silent for it) |
-| `--host <host>` | with --hook, the host whose own ceiling to cut the rules to: codex; without it, Claude Code’s |
+| `--host <host>` | with --hook, the host whose own ceiling to cut the rules to: vscode, codex, copilot, opencode, gemini, qwen; without it, Claude Code’s |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
 
@@ -61,12 +61,15 @@ mnema brief
 #>
 #> Each was accepted, and none of them superseded. For the argument behind one, ask
 #> `read_record` for its id.
+#> Each line ends with the day it was accepted and whether an agent accepted it or no agent was declared.
+#> The identity is mnid:c0fc3c71, unless a line names another.
+#> 0 of them were accepted by an agent and 2 with no agent declared.
 #>
 #> 241 more decisions are recorded here and awaiting a judgement, and none is below.
 #> Nothing waiting governs anything yet; ask `bootstrap` for what is waiting.
 #>
-#> - **ADR-2: Keep the runbook in the record** · `019faa06-30e1-7a41-9c05-3d8e6f2a1b44`
-#> - **ADR-1: Rotate the credentials every quarter** · `019faa06-335f-7b02-8e11-6c2fa9d41e07`
+#> - **ADR-2: Keep the runbook in the record** · `019faa06-30e1-7a41-9c05-3d8e6f2a1b44` · 2026-10-01 · no agent declared
+#> - **ADR-1: Rotate the credentials every quarter** · `019faa06-335f-7b02-8e11-6c2fa9d41e07` · 2026-10-01 · no agent declared
 ```
 
 Each heading says how many are **awaiting a judgement**: recorded here, ruled on by
@@ -103,6 +106,11 @@ the file is a rule the agent does not follow. The copy the plugin hands a sessio
 `mnema brief --hook`, and that one is: past 10,000 characters the host replaces a hook's
 whole text with a file path it does not ask the model to open, so `--hook` stops at a
 whole rule inside that and ends by saying how many it left out and which read serves them.
+That is Claude Code's ceiling. Codex's own (2,500 tokens of 4 bytes) was measured and is used with
+`--host codex`. For Copilot CLI, Gemini CLI and OpenCode the ceiling was never measured: their hooks
+name the host, the cut stays at 10,000 characters, and the closing paragraph says that the ceiling is
+Claude Code's, assumed for that host. Qwen Code and VS Code run the hooks file Claude Code does, whose
+command names no host, so their cut is the same assumed one and the paragraph does not say so.
 
 What it does leave out is the record that **does not travel**. A decision or a pattern
 recorded with `--scope private`, or in your machine-global tree, governs your own work
@@ -145,7 +153,8 @@ Options:
                  on the first line of the error stream (a refusal of usage, such
                  as an invalid --host, carries none: the hook is silent for it)
   --host <host>  with --hook, the host whose own ceiling to cut the rules to:
-                 codex; without it, Claude Code’s
+                 vscode, codex, copilot, opencode, gemini, qwen; without it,
+                 Claude Code’s
   -h, --help     display help for command
 
 It prints to stdout and writes nothing: the redirection is yours, and `>`

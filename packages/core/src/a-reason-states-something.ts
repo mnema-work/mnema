@@ -188,6 +188,7 @@ export const REASONS: { readonly [K in EventKind]: readonly ReasonSite<K>[] } = 
   'skill.created': [],
   'skill.transitioned': ['fields'],
   'skill.consulted': [],
+  'decision.seen': [],
   'tail.pruned': ['reason'],
   // The reason a tail was relinked is the whole of what a reader is told of the move.
   'tail.relinked': ['reason'],
@@ -259,6 +260,7 @@ export const TITLES: { readonly [K in EventKind]: readonly TextField<K>[] } = {
   'skill.created': ['name'],
   'skill.transitioned': [],
   'skill.consulted': [],
+  'decision.seen': [],
   'tail.pruned': [],
   'tail.relinked': [],
   'channel.switched': [],
@@ -296,6 +298,7 @@ type ReferenceSubject<K extends EventKind> = K extends
   | 'handoff.recorded'
   | 'knowledge.linked'
   | 'skill.consulted'
+  | 'decision.seen'
   | 'channel.switched'
   | 'channel.served'
   | 'channel.asked'
@@ -335,6 +338,8 @@ export const REFERENCES: { readonly [K in EventKind]: readonly ReferenceSite<K>[
   'skill.created': [],
   'skill.transitioned': [],
   'skill.consulted': ['subject'],
+  // The decision a showing names: handed in by the review that read it, possibly from another tree.
+  'decision.seen': ['subject'],
   'tail.pruned': [],
   'tail.relinked': [],
   'channel.switched': ['subject'],

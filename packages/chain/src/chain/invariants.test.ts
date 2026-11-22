@@ -235,7 +235,7 @@ describe('invariant: an honestly written MULTI-TAIL chain always verifies', () =
       // Each spec becomes its own tail: none collided on merge.
       expect(r.tails).toHaveLength(specs.length);
       // One committed key per tail, all accounted for: no orphan.
-      expect(r.census).toEqual([]);
+      expect(r.census.filter((note) => note.kind !== 'undeclared-which')).toEqual([]);
     });
   }
 });

@@ -216,6 +216,12 @@ const DISPATCHED_HOOK = 'agent-dispatched.mjs';
  */
 const SETTLED_HOOK = 'choice-settled.mjs';
 /**
+ * The handler that hands the agent one sentence beside a message of the person's that has the shape
+ * of a rule dictated. It is handed the payload of that event: in a project it answers where the
+ * message has the shape, outside one it says nothing; what it says is `a-dictated-rule-is-said.test.ts`.
+ */
+const DICTATED_HOOK = 'rule-dictated.mjs';
+/**
  * The handler that hands a subagent, as it starts, the document `mnema brief` prints: the same verb,
  * the same channel and the same switch as the session's opening.
  */
@@ -236,8 +242,9 @@ const SUBAGENT_HOOK = 'subagent-start.mjs';
 const VERB_OF: Readonly<Record<string, string>> = {
   [DOCUMENT_HOOK]: 'brief --hook',
   [NOTES_HOOK]: 'recall --hook',
-  [COMPACTED_HOOK]: `recall --after-a-compaction --session ${A_SESSION} --hook`,
   [TALLY_HOOK]: 'tally',
+  [COMPACTED_HOOK]: `recall --after-a-compaction --session ${A_SESSION} --hook`,
+  [DICTATED_HOOK]: 'dictated',
   [CORRECTIONS_HOOK]: 'corrections',
   [CURSOR_HOOK]: 'before-a-write --host cursor --agent-key cursor',
   [GATE_HOOK]: 'before-a-write --host vscode --agent-key vscode',
@@ -270,6 +277,7 @@ function callsOf(handler: string): string[] {
     handler === CORRECTIONS_HOOK ||
     handler === HANDBACK_HOOK ||
     handler === SETTLED_HOOK ||
+    handler === DICTATED_HOOK ||
     handler === AFTER_A_WRITE_HOOK ||
     handler === DISPATCHED_HOOK
     ? [verb]
@@ -340,6 +348,15 @@ function stdinOf(command: string, at: string): string {
       hook_event_name: 'PostToolUse',
       tool_name: 'AskUserQuestion',
       tool_input: { questions: [] },
+      cwd: at,
+    });
+  }
+  // The message of the person's: tried wherever the hook passes the payload on, with the shape of a
+  // rule so that, where the verb has standing, it would answer.
+  if (handlerOf(command) === DICTATED_HOOK) {
+    return JSON.stringify({
+      hook_event_name: 'UserPromptSubmit',
+      prompt: 'From now on, always run the linter before a commit.',
       cwd: at,
     });
   }
@@ -633,7 +650,9 @@ describe('the record arrives unasked', () => {
     expect(commands.map(handlerOf)).toEqual([
       DOCUMENT_HOOK,
       NOTES_HOOK,
+      TALLY_HOOK,
       COMPACTED_HOOK,
+      DICTATED_HOOK,
       TALLY_HOOK,
       CORRECTIONS_HOOK,
       CURSOR_HOOK,
@@ -1413,6 +1432,7 @@ describe('the record arrives unasked', () => {
       // is a line somebody has to write.
       expect(declaredEvents()).toEqual([
         'SessionStart',
+        'UserPromptSubmit',
         'Stop',
         'PreToolUse',
         'PostToolUse',
@@ -1433,8 +1453,9 @@ describe('the record arrives unasked', () => {
       expect([...reached]).toEqual([
         'brief --hook',
         'recall --hook',
-        `recall --after-a-compaction --session ${A_SESSION} --hook`,
         'tally',
+        `recall --after-a-compaction --session ${A_SESSION} --hook`,
+        'dictated',
         'corrections',
         'before-a-write --host cursor --agent-key cursor',
         'before-a-write --host vscode --agent-key vscode',
@@ -1454,8 +1475,9 @@ describe('the record arrives unasked', () => {
       expect([...reached].map((line) => `${line}: ${sideOf(line)}`)).toEqual([
         'brief --hook: reads',
         'recall --hook: reads',
-        `recall --after-a-compaction --session ${A_SESSION} --hook: reads`,
         'tally: reads',
+        `recall --after-a-compaction --session ${A_SESSION} --hook: reads`,
+        'dictated: reads',
         'corrections: mutates',
         'before-a-write --host cursor --agent-key cursor: mutates',
         'before-a-write --host vscode --agent-key vscode: mutates',
@@ -1543,7 +1565,9 @@ describe('the record arrives unasked', () => {
     expect(validated).toEqual([
       'command:/hooks/session-start.mjs',
       'command:/hooks/session-recall.mjs',
+      'command:/hooks/session-tally.mjs',
       'command:/hooks/session-compacted.mjs',
+      'command:/hooks/rule-dictated.mjs',
       'command:/hooks/session-tally.mjs',
       'command:/hooks/session-corrections.mjs',
       'mcp_tool:rules_before_an_edit',

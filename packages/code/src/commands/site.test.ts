@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { DiscoveryEnv } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { A_PERSON } from '../one-line.js';
+import { NO_AGENT_DECLARED } from '../one-line.js';
 import { theSiteVerifier } from '../site/verifier-bundle.js';
 import { runDecision } from './decision.js';
 import { runDecisionTransition } from './decision-transition.js';
@@ -293,7 +293,7 @@ describe('mnema site', () => {
     expect(card).toContain('cents are a unit of the past');
     expect(card).toContain('Why: <span data-field="note-retracted-reason">it was a draft</span>');
     expect(card).toContain('<span class="badge" data-field="note-by">agent claude-code</span>');
-    expect(card).toContain(`<span class="badge" data-field="note-by">${A_PERSON}</span>`);
+    expect(card).toContain(`<span class="badge" data-field="note-by">${NO_AGENT_DECLARED}</span>`);
     // The note that is about no decision is on the page, and not under one.
     expect(card).not.toContain('a note about nothing in particular');
     expect(page.slice(page.indexOf('id="other-notes"'))).toContain(

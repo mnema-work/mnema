@@ -42,7 +42,7 @@ import { type DiscoveryEnv, PROJECT_DIR } from '@mnema/core';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { ListRootsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildMcpServer } from '../src/mcp/server.js';
 import { closeSession, openSession, type Session } from '../src/mcp/session.js';
 import {
@@ -299,8 +299,12 @@ describe('an id no project holds is refused, and the refusal says where it looke
   });
 
   it('says there is no project when the session resolved to none', () => {
+    // A session with no project asks the directory it runs in whether it is a linked worktree; a
+    // test must not ask the checkout it runs in, so the working directory is the sandbox.
+    const cwd = vi.spyOn(process, 'cwd').mockReturnValue(sandbox);
     const session = openOn();
     const refused = runReadRecordTool(session, { id: NOWHERE });
+    cwd.mockRestore();
     expect(refused.ok).toBe(false);
     if (refused.ok) throw new Error('unreachable');
     expect(refused.message).toContain('machine-global tree');

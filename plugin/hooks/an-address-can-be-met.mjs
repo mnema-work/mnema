@@ -22,7 +22,10 @@
  * line is passed over here only when it reads as the reader reads it: UTF-8, canonical, an entry
  * whose event is of a `kind` and `v` in `event-schema.json` (a copy of the declarations the first
  * version published to the npm registry held, which every later one reads: `FORMAT.md` §7.1) with
- * every field declared and of its declared shape, or a checkpoint of its declared shape.
+ * every field declared and of its declared shape, or a checkpoint of its declared shape. A line of
+ * a kind on {@link READ_PAST} (added to the catalog after the copy, and known to carry no address)
+ * is read past as `mnema` reads it from 0.1.5 on; a line of any other kind the copy does not
+ * declare is a doubt.
  *
  * EVERY DOUBT RUNS `mnema`, and being wrong that way costs what every write cost before: a tree
  * that cannot be listed or read, a line that does not read as above, a `MNEMA_HOME` that is not
@@ -51,6 +54,18 @@ import {
 export const ADDRESS_RELATIONS = ['governs', 'asks-for-a-person', 'refuses-a-write'];
 
 /** What a stored link under an address relation holds, byte for byte. */
+/**
+ * The kinds the catalog added after the copy beside this file, each of which carries no address:
+ * the one list a handler reads past, each at the one version known, closed on purpose. A kind added to the catalog is on it only
+ * when somebody decided so, and a test holds the list to the difference between the catalog and
+ * the copy (`packages/code/tests/a-write-no-rule-can-meet-starts-no-mnema.test.ts`).
+ */
+export const READ_PAST = new Map([
+  ['decision.seen', 1],
+  ['tail.relinked', 1],
+  ['run.unannounced', 1],
+]);
+
 const MARKERS = ADDRESS_RELATIONS.map((rel) => Buffer.from(`"rel":${JSON.stringify(rel)}`));
 
 /** How deep under a tree's root a `tails/` directory is looked for before it is a doubt. */
@@ -256,7 +271,18 @@ function anEntry(value, schema) {
   if (link.prev !== null && !isText(link.prev)) throw new Doubt('the link');
   if (!isObject(event) || typeof event.v !== 'number') throw new Doubt('the event');
   const payload = schema.contracts.get(`${event.kind}@${event.v}`);
-  if (payload === undefined) throw new Doubt('a kind or a version not read here');
+  if (payload === undefined) {
+    // A KIND ON THE LIST of the kinds the catalog added after the copy, each known to carry no
+    // address, is read past as `mnema` reads it from 0.1.5 on (`FORMAT.md` section 7.1): its
+    // envelope held to the declarations, its payload an object and not read. Any other kind, or a
+    // version ahead of one the copy reads, is a doubt: a kind added later may address a path in a
+    // shape no marker here names, and every doubt runs `mnema`. What this does not reach is a binary
+    // from before 0.1.5, which refuses a record holding a listed kind where this answers that no
+    // rule can be met.
+    if (READ_PAST.get(event.kind) !== event.v) throw new Doubt('a kind not read here');
+    declared(event, { ...schema.envelope, payload: 'object' }, schema);
+    return;
+  }
   declared(event, { ...schema.envelope, payload: 'object' }, schema);
   declared(event.payload, payload, schema);
 }

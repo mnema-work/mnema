@@ -22,11 +22,17 @@ name: Flake sampler
 # and one in a hundred is 65% there. NOBODY MAY READ ONE GREEN NIGHT AS "THERE IS NO FLAKE". The
 # page the summary prints says so on its face.
 #
-# IT COSTS NO MERGE, AND IT IS SIZED TO ITS TIME LIMIT. One run of the suite takes about 13.6
-# minutes on a runner (757 test files, measured on 2026-11-06), so five runs are about 70 minutes
-# against the 90 of the limit. Ten were about 136 minutes, and every scheduled night from
-# 2026-10-21 was cancelled by the limit. The runners are shared by the organization that owns this
-# repository, so a night holds nine of them for about 70 minutes.
+# IT COSTS NO MERGE, AND IT IS BOUNDED BY TIME, NOT BY A COUNT ALONE. One run of the suite takes
+# 12 to 18 minutes on a runner, depending on the machine it lands on (884 test files, measured on
+# the night run `44755940345`, 2026-11-20; it was 13.6 minutes at 757 files on 2026-11-06). Five
+# runs at the slow end are 90 minutes, which is the limit of the job, and that night three shards
+# were cancelled in their fifth run and the night read 42 reports of 45, which the summariser
+# called a broken ruler. So the loop asks for five and STOPS STARTING runs when what is left of
+# its budget could not hold one more of the slowest run it has seen plus a margin: a slow runner
+# completes four, a fast one five. A run it did not start leaves a `cut--<label>--<seq>.txt`
+# marker, and the summariser takes the marker as "never started", while a run that started and
+# wrote no report is still a refusal. The runners are shared by the organization that owns this
+# repository, so a night holds nine of them for up to about 80 minutes.
 
 on:
   # WHEN IT ACTUALLY FIRES. This comment first said both triggers were dormant until the file
@@ -160,14 +166,34 @@ jobs:
           esac
           if [ "$N" -lt 1 ]; then echo "REPETITIONS must be at least 1, and it was $N"; exit 1; fi
           mkdir -p "$REPORTS_DIR"
+          # THE TIME BUDGET OF THIS STEP, in seconds: 80 of the 90 minutes of the job, the rest
+          # being setup, the upload and a margin. The first run always starts. A later one starts
+          # only when what is left holds the slowest run so far plus MARGIN; otherwise this and
+          # every later repetition is marked as never started, and the summariser counts that as
+          # a cut, not as a missing report.
+          BUDGET=$((80 * 60))
+          MARGIN=120
+          SLOWEST=0
+          SECONDS=0
           for i in $(seq 1 "$N"); do
             SEQ=$(printf '%02d' "$i")
+            if [ "$i" -gt 1 ] && [ $((BUDGET - SECONDS)) -lt $((SLOWEST + MARGIN)) ]; then
+              echo "$LABEL run $SEQ of $N not started: $((BUDGET - SECONDS)) s left, slowest run so far $SLOWEST s"
+              for j in $(seq "$i" "$N"); do
+                printf 'not started: the time budget could not hold another run\n' \
+                  > "$REPORTS_DIR/cut--$LABEL--$(printf '%02d' "$j").txt"
+              done
+              break
+            fi
+            STARTED=$SECONDS
             echo "::group::$LABEL run $SEQ of $N"
             pnpm test \
               --reporter=default \
               --reporter=json \
               --outputFile.json="$REPORTS_DIR/run--$LABEL--$SEQ.json" || true
             echo "::endgroup::"
+            TOOK=$((SECONDS - STARTED))
+            if [ "$TOOK" -gt "$SLOWEST" ]; then SLOWEST=$TOOK; fi
           done
           ls -la "$REPORTS_DIR"
 
