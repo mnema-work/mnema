@@ -35,7 +35,8 @@ its own: the workflow rules and the proof live in `@mnema/core` and `@mnema/chai
 - **A command line** to record, read, move work through its gates and verify, and **an MCP server**
   over stdio for the agent to do the same: both ask the same gate. At a terminal,
   `mnema decision review` goes through the decisions awaiting a judgement one by one (accept, reject, skip or quit),
-  with no id to copy, and signs each verdict with your own key.
+  with no id to copy, and signs each verdict with your own key; after the proposals it shows the rules in force you did not
+  accept yourself (those an agent accepted, and those whose accept declared no agent), marking each one shown as seen.
 - **`mnema init`**, which founds the record and leaves in `.mnema/` a `README.md` that says what the
   folder is and an `.editorconfig` that unsets what an outer one could impose on its bytes; where the
   repository has a `.prettierignore` or declares prettier, it adds the line `.mnema/` to it and

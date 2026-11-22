@@ -171,6 +171,13 @@ export interface AgentsNamed {
    * {@link declared}, so a client that announced the same word reads as the one that did.
    */
   readonly unannounced: readonly { readonly which: string; readonly events: number }[];
+  /**
+   * How many facts the fold accepted (of any kind) name no agent and were signed by a key without the agent role: the
+   * envelope carries no `which` (FORMAT.md section 6.2). What that says is that nobody declared an
+   * agent, which is not the same as a person having acted. Counted beside the declared ones and
+   * never in place of them.
+   */
+  readonly undeclared: number;
 }
 
 /**
@@ -330,6 +337,7 @@ export function resolveIdentity(
   const attested = new Map<string, number>();
   const declared = new Map<string, number>();
   const unannounced = new Map<string, number>();
+  let undeclared = 0;
   // The runs a `run.unannounced` marks, each for the key that wrote the mark and only where that
   // key's `run.started` opened the run (section 6.9). Read off every event before the fold: the
   // birth is one of the run's facts, and its end is another.
@@ -427,6 +435,8 @@ export function resolveIdentity(
     } else if (event.which !== undefined) {
       const named = isUnannounced(event, marked) ? unannounced : declared;
       named.set(event.which, (named.get(event.which) ?? 0) + 1);
+    } else {
+      undeclared += 1;
     }
   }
 
@@ -804,6 +814,7 @@ export function resolveIdentity(
     }),
     declared: [...declared].map(([which, events]) => ({ which, events })),
     unannounced: [...unannounced].map(([which, events]) => ({ which, events })),
+    undeclared,
   };
   return {
     issues,

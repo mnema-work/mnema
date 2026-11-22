@@ -218,6 +218,12 @@ $ mnema audit antipatterns
 | pattern moves with a consultation in the same run: 0
 | pattern moves with none, in a run that recorded others: 0
 | pattern moves in a run with no consultation at all: 0
+| rules accepted with no agent declared, or addressed, that an agent took out of force: 0
+| chains of three decisions or more, each replacing the one before: 0
+| accepts that declare an agent: 0
+| of them, quoting no words of the person: 0
+| accepts that declare no agent: 0
+| of them, quoting no words of the person: 0
 |
 | What this can witness: a consultation is recorded when the AGENT surface serves a body, and nothing records a person who read the pattern with `mnema show`. So a move whose run recorded no consultation at all is NOT OBSERVABLE here: never a move made without consulting. The one case this asserts is a move whose own run recorded a consultation of some other pattern: there the record proves the witness was operating. Nothing was refused, and nothing was written to produce it.
 $ mnema audit antipatterns --json
@@ -233,6 +239,14 @@ $ mnema audit antipatterns --json
 |     "consulted": [],
 |     "movedWithoutConsulting": [],
 |     "notObservable": []
+|   },
+|   "agentAccepts": {
+|     "rulesSupersededByAgent": [],
+|     "chains": [],
+|     "agentAccepts": 0,
+|     "acceptsWithoutTheirWords": [],
+|     "undeclaredAccepts": 0,
+|     "undeclaredWithoutTheirWords": []
 |   }
 | }
 $ mnema status --actor <anchor>
@@ -355,7 +369,7 @@ $ mnema tail list
 | 1 tail(s) holding events (the ones a cut can name):
 |   <tail-own>  public   3 event(s) through <tail-head-an-empty-project-1>  the tail of <anchor>  ·  no waiver  holds 2 key(s) the record needs (prune refuses it)
 $ mnema switch
-| 20 channel(s), looked in public, private, global:
+| 22 channel(s), looked in public, private, global:
 |   brief-document         on   the document `mnema brief` prints, which a session opens with and a subagent starts with: the decisions in force and the adopted patterns of the committed record, by name
 |   recall-document        on   the notes `mnema recall` prints, which a session opens with: the memories and observations recorded for this project, from every tree this machine holds for it, the ones near what the session touches first
 |   edit-rules-push        on   the rules addressed at a file, handed over at each edit of it, beside the result of that write
@@ -363,8 +377,10 @@ $ mnema switch
 |   edit-refuses-a-write   on   the refusal of a write where a rule of the record refuses one: such a write goes through, the rules go on arriving, and a rule that asks for a person still asks
 |   agent-accepts          on   an agent ruling a decision in force: with it off, an `accept`, a `supersede`, an `adopt` or a `deprecate` that declares an agent is refused, and so is one that declares none unless it is made at a terminal (standard input and standard error both a TTY; through the MCP server never): only a person at a terminal accepts or replaces a decision or adopts or deprecates a pattern, and only a person at a terminal switches it back on (stopping it is anyone's), a proposed decision waits, and nothing else changes. A terminal is a heuristic for a person, not a proof of one
 |   edit-first-write-gate  off  the hold on the first write of a session to a file a rule addresses: with it on, that write is refused once, with the rules in the reason, and the same write repeated goes through. Off until switched on; it holds in Claude Code, where the server remembers the session  ·  off until switched on: `mnema switch on edit-first-write-gate`
-|   user-corrections       off  the proposals recorded from what a person typed into a session: with it on, a `Stop` hook reads the transcript, and each time the person corrected the agent a decision is recorded as proposed in this machine’s private tree, and so is each answer the person gave to a question the agent asked. Off until switched on  ·  off until switched on: `mnema switch on user-corrections`
+|   user-corrections       on   the proposals recorded from what a person typed into a session: with it on, a `Stop` hook reads the transcript, and each time the person corrected the agent a decision is recorded as proposed in this machine’s private tree, and so is each answer the person gave to a question the agent asked, and, where `dictated-rule` is off, each message that has the shape of a rule dictated. On to begin with
+|   opening-core           off  the shape of the decisions a session opens with: with it on, the opening text hands over the decisions whose acceptance note says the person dictated them, an index of what else the record holds and how to pull it, instead of the newest decisions in force. Off until switched on; the file `mnema brief` prints is the same either way  ·  off until switched on: `mnema switch on opening-core`
 |   choice-settled         on   the sentence handed to the agent after a question it asked the person was answered: that a choice may have been settled there, which tool records it and which accepts it (or that a person accepts it, where `agent-accepts` is off). It reads which tool ran and whether `agent-accepts` is on, and writes nothing
+|   dictated-rule          on   the sentence handed to the agent beside a message of the person’s that is an instruction to keep (always, never, from now on followed by a verb in the imperative, or put it as a rule): that only a rule the person typed is accepted, which tool records it and which accepts it, the note quoting the person’s own words (or that a person accepts it, where `agent-accepts` is off). It reads the message for that shape and whether `agent-accepts` is on, says none of the message’s words, and writes nothing
 |   host-memory-mirror     on   the copy of the host’s own memory: with it on, a `PostToolUse` hook copies each note Claude Code writes to its memory directory into this machine’s private tree, once per content, leaving out the index `MEMORY.md` and the notes about the person (`type: user`)
 |   decision-file-written  on   the line beside a write to a file that holds decisions (an ADR, a plan, a ledger, a rules file) the record cites nowhere, naming the command that reads it into the record, once per session and file
 |   subagent-handback      on   the return of a subagent that ends its final reply without the block of decisions the record asks for: with it on, a `SubagentStop` hook sends the subagent back once, with the format; off, a subagent stops as it would without the plugin
@@ -801,7 +817,8 @@ $ mnema rules docs/runbook/rollback.md --json
 |       "state": "accepted",
 |       "acceptance": {
 |         "by": "<anchor-short>",
-|         "unconfirmed": false
+|         "unconfirmed": false,
+|         "day": "<date:01>"
 |       },
 |       "supersedes": {
 |         "found": true,
@@ -828,7 +845,8 @@ $ mnema rules docs/runbook/rollback.md --json
 |       "state": "accepted",
 |       "acceptance": {
 |         "by": "<anchor-short>",
-|         "unconfirmed": false
+|         "unconfirmed": false,
+|         "day": "<date:01>"
 |       },
 |       "supersedes": {
 |         "found": true,
@@ -1394,6 +1412,13 @@ $ mnema audit antipatterns
 | pattern moves with none, in a run that recorded others: 0
 | pattern moves in a run with no consultation at all: 4
 | skill candidates (reopened >1×): <task-runbook>
+| rules accepted with no agent declared, or addressed, that an agent took out of force: 0
+| chains of three decisions or more, each replacing the one before: 0
+| accepts that declare an agent: 0
+| of them, quoting no words of the person: 0
+| accepts that declare no agent: 1
+| of them, quoting no words of the person: 1
+| accepted, no agent declared, with no words of the person: <decision-runbook>
 |
 | What this can witness: a consultation is recorded when the AGENT surface serves a body, and nothing records a person who read the pattern with `mnema show`. So a move whose run recorded no consultation at all is NOT OBSERVABLE here: never a move made without consulting. The one case this asserts is a move whose own run recorded a consultation of some other pattern: there the record proves the witness was operating. Nothing was refused, and nothing was written to produce it.
 $ mnema audit antipatterns --json
@@ -1565,6 +1590,19 @@ $ mnema audit antipatterns --json
 |         "run": "<run-first>"
 |       }
 |     ]
+|   },
+|   "agentAccepts": {
+|     "rulesSupersededByAgent": [],
+|     "chains": [],
+|     "agentAccepts": 0,
+|     "acceptsWithoutTheirWords": [],
+|     "undeclaredAccepts": 1,
+|     "undeclaredWithoutTheirWords": [
+|       {
+|         "decision": "<decision-runbook>",
+|         "at": "<at:23>"
+|       }
+|     ]
 |   }
 | }
 $ mnema status --actor <anchor>
@@ -1578,6 +1616,7 @@ $ mnema status --actor <anchor>
 |   <task-chore>  Rotate the local credentials (DRAFT)  last: created
 |
 | 1 decision(s) in force:
+|   0 accepted by an agent, 1 with no agent declared.
 |   <decision-runbook>  ADR-1  Keep the runbook in the record
 |
 | 1 adopted pattern(s):
@@ -1671,7 +1710,8 @@ $ mnema status --actor <anchor> --json
 |       "title": "Keep the runbook in the record",
 |       "acceptance": {
 |         "by": "<anchor-short>",
-|         "unconfirmed": false
+|         "unconfirmed": false,
+|         "day": "<date:01>"
 |       },
 |       "supersedes": {
 |         "found": true,
@@ -1793,8 +1833,8 @@ $ mnema task guard complete <task-runbook> --actor <anchor> --note 'it is done' 
 | }
 $ mnema skill provenance
 | 2 pattern(s):
-|   <skill-slices>  adopted     public   One slice per PR  ·  proposed by a person · adopted by a person · never consulted
-|   <skill-fridays>  deprecated  private  Ship on Fridays  ·  proposed by a person · adopted by a person · never consulted
+|   <skill-slices>  adopted     public   One slice per PR  ·  proposed by no agent declared · adopted by no agent declared · never consulted
+|   <skill-fridays>  deprecated  private  Ship on Fridays  ·  proposed by no agent declared · adopted by no agent declared · never consulted
 $ mnema skill provenance --json
 | [
 |   {
@@ -1855,12 +1895,14 @@ $ mnema brief
 |
 | Each was accepted, and none of them superseded. For the argument behind one, ask
 | `read_record` for its id.
-| Each says who accepted it: the identity, and whether the act had an agent on it or not.
+| Each line ends with the day it was accepted and whether an agent accepted it or no agent was declared.
+| The identity is <anchor-short>, unless a line names another.
+| 0 of them were accepted by an agent and 1 with no agent declared.
 |
 | 1 more decision is recorded here and awaiting a judgement, and it is not below.
 | Nothing waiting governs anything yet; ask `bootstrap` for what is waiting.
 |
-| - **ADR-1: Keep the runbook in the record** · `<decision-runbook>` · accepted by <anchor-short> (a person) · supersedes ADR-2: Keep the runbook in the wiki (superseded)
+| - **ADR-1: Keep the runbook in the record** · `<decision-runbook>` · <date:01> · no agent declared · supersedes ADR-2: Keep the runbook in the wiki (superseded)
 |
 | ## Patterns adopted (1)
 |
@@ -1906,7 +1948,7 @@ $ mnema tail list
 |   <tail-private>  private  8 event(s) through <tail-head-a-populated-project-2>  the tail of <anchor>  ·  no waiver  holds 1 key(s) the record needs (prune refuses it)
 |   <tail-global>  global   4 event(s) through <tail-head-a-populated-project-3>  the tail of <anchor>  ·  no waiver  holds 1 key(s) the record needs (prune refuses it)
 $ mnema switch
-| 20 channel(s), looked in public, private, global:
+| 22 channel(s), looked in public, private, global:
 |   brief-document         on   the document `mnema brief` prints, which a session opens with and a subagent starts with: the decisions in force and the adopted patterns of the committed record, by name
 |   recall-document        on   the notes `mnema recall` prints, which a session opens with: the memories and observations recorded for this project, from every tree this machine holds for it, the ones near what the session touches first
 |   edit-rules-push        on   the rules addressed at a file, handed over at each edit of it, beside the result of that write
@@ -1914,8 +1956,10 @@ $ mnema switch
 |   edit-refuses-a-write   on   the refusal of a write where a rule of the record refuses one: such a write goes through, the rules go on arriving, and a rule that asks for a person still asks
 |   agent-accepts          on   an agent ruling a decision in force: with it off, an `accept`, a `supersede`, an `adopt` or a `deprecate` that declares an agent is refused, and so is one that declares none unless it is made at a terminal (standard input and standard error both a TTY; through the MCP server never): only a person at a terminal accepts or replaces a decision or adopts or deprecates a pattern, and only a person at a terminal switches it back on (stopping it is anyone's), a proposed decision waits, and nothing else changes. A terminal is a heuristic for a person, not a proof of one
 |   edit-first-write-gate  off  the hold on the first write of a session to a file a rule addresses: with it on, that write is refused once, with the rules in the reason, and the same write repeated goes through. Off until switched on; it holds in Claude Code, where the server remembers the session  ·  off until switched on: `mnema switch on edit-first-write-gate`
-|   user-corrections       off  the proposals recorded from what a person typed into a session: with it on, a `Stop` hook reads the transcript, and each time the person corrected the agent a decision is recorded as proposed in this machine’s private tree, and so is each answer the person gave to a question the agent asked. Off until switched on  ·  off until switched on: `mnema switch on user-corrections`
+|   user-corrections       on   the proposals recorded from what a person typed into a session: with it on, a `Stop` hook reads the transcript, and each time the person corrected the agent a decision is recorded as proposed in this machine’s private tree, and so is each answer the person gave to a question the agent asked, and, where `dictated-rule` is off, each message that has the shape of a rule dictated. On to begin with
+|   opening-core           off  the shape of the decisions a session opens with: with it on, the opening text hands over the decisions whose acceptance note says the person dictated them, an index of what else the record holds and how to pull it, instead of the newest decisions in force. Off until switched on; the file `mnema brief` prints is the same either way  ·  off until switched on: `mnema switch on opening-core`
 |   choice-settled         on   the sentence handed to the agent after a question it asked the person was answered: that a choice may have been settled there, which tool records it and which accepts it (or that a person accepts it, where `agent-accepts` is off). It reads which tool ran and whether `agent-accepts` is on, and writes nothing
+|   dictated-rule          on   the sentence handed to the agent beside a message of the person’s that is an instruction to keep (always, never, from now on followed by a verb in the imperative, or put it as a rule): that only a rule the person typed is accepted, which tool records it and which accepts it, the note quoting the person’s own words (or that a person accepts it, where `agent-accepts` is off). It reads the message for that shape and whether `agent-accepts` is on, says none of the message’s words, and writes nothing
 |   host-memory-mirror     on   the copy of the host’s own memory: with it on, a `PostToolUse` hook copies each note Claude Code writes to its memory directory into this machine’s private tree, once per content, leaving out the index `MEMORY.md` and the notes about the person (`type: user`)
 |   decision-file-written  on   the line beside a write to a file that holds decisions (an ADR, a plan, a ledger, a rules file) the record cites nowhere, naming the command that reads it into the record, once per session and file
 |   subagent-handback      on   the return of a subagent that ends its final reply without the block of decisions the record asks for: with it on, a `SubagentStop` hook sends the subagent back once, with the format; off, a subagent stops as it would without the plugin
@@ -1962,8 +2006,8 @@ $ mnema show <decision-runbook>
 | decision <decision-runbook>  ·  public
 |   ADR-1: Keep the runbook in the record (accepted)
 |   supersedes ADR-2: Keep the runbook in the wiki (superseded) · <decision-wiki>
-|   recorded by <anchor-short> (a person)
-|   accepted by <anchor-short> (a person)
+|   recorded by <anchor-short> (no agent declared)
+|   accepted by <anchor-short> (no agent declared)
 |
 | a wiki page nobody owns goes stale
 |
@@ -1977,7 +2021,7 @@ $ mnema show <decision-wiki>
 | decision <decision-wiki>  ·  public
 |   ADR-2: Keep the runbook in the wiki (superseded)
 |   superseded by ADR-1: Keep the runbook in the record (accepted) · <decision-runbook>
-|   recorded by <anchor-short> (a person)
+|   recorded by <anchor-short> (no agent declared)
 |
 | it is where we look
 |

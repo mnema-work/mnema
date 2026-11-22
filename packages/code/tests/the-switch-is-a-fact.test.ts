@@ -55,6 +55,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runAfterAWrite } from '../src/commands/after-a-write.js';
 import { runAfterACompaction } from '../src/commands/compacted.js';
 import { runCorrections } from '../src/commands/corrections.js';
+import { runDictated } from '../src/commands/dictated.js';
 import { runDispatched } from '../src/commands/dispatched.js';
 import { runHandback } from '../src/commands/handback.js';
 import { runRecall } from '../src/commands/recall.js';
@@ -72,12 +73,14 @@ import {
   ASKS_A_PERSON_CHANNEL,
   CHOICE_SETTLED_CHANNEL,
   DECISION_FILE_WRITTEN_CHANNEL,
+  DICTATED_RULE_CHANNEL,
   DOCUMENT_CHANNEL,
   EDIT_PUSH_CHANNEL,
   FIRST_WRITE_GATE_CHANNEL,
   HOST_MEMORY_MIRROR_CHANNEL,
   LAST_SESSION_CHANNEL,
   NOT_SWITCHABLE,
+  OPENING_CORE_CHANNEL,
   PRIVATE_RULES_CHANNEL,
   RECALL_CHANNEL,
   RECORD_PUBLISH_CHANNEL,
@@ -401,6 +404,20 @@ const HONOURED: Readonly<
       );
     },
   },
+  [OPENING_CORE_CHANNEL]: {
+    // THE SHAPE OF THE HOOK'S COPY of the document, driven the way the plugin asks for it: a rule in
+    // force whose accept note says the person dictated it, and `brief --hook`. It starts off, so the case
+    // switches it on first. "Speaks" is the core heading, which the copy has only while it is on.
+    setUp: async () => {
+      const id = idIn(await did('decision', 'record', 'A call the person dictated', 'why'));
+      await did('decision', 'move', 'accept', id, '--note', 'Chosen by the maintainer: "yes".');
+      await did('switch', 'on', OPENING_CORE_CHANNEL);
+    },
+    speaks: async () => {
+      const said = await mnema('brief', '--hook');
+      return !said.failed && said.out.join('\n').includes('## Decisions in force: the core (');
+    },
+  },
   [RECALL_CHANNEL]: {
     // The notes: a verb whose whole output is what a session is handed, like the document,
     // and silent over a record with no notes, so the note set up here is what lets the case
@@ -461,7 +478,8 @@ const HONOURED: Readonly<
   },
   [USER_CORRECTIONS_CHANNEL]: {
     // A READER THAT WRITES, driven the way a host drives it: a `Stop` naming a transcript in which the
-    // person corrected the agent. It starts off, so the case switches it on first; and each call is
+    // person corrected the agent. It began off until ADR-546 and the case still switches it on first
+    // (a fact on a channel that is on, which changes nothing it reads); and each call is
     // a transcript of a session of its own, because a correction already recorded is not recorded
     // again, which would read as the switch holding. "Speaks" is a proposal being recorded.
     setUp: async () => {
@@ -689,6 +707,24 @@ const HONOURED: Readonly<
           payload: JSON.stringify({
             hook_event_name: 'PostToolUse',
             tool_name: 'AskUserQuestion',
+          }),
+        },
+      );
+      return 'hookSpecificOutput' in done.reply;
+    },
+  },
+  [DICTATED_RULE_CHANNEL]: {
+    // A SENTENCE ON A MESSAGE OF THE PERSON'S, driven the way a host drives it: the payload of a
+    // `UserPromptSubmit` whose message has the shape of a rule dictated. "Speaks" is the reply
+    // carrying the sentence.
+    setUp: async () => {},
+    speaks: async () => {
+      const done = runDictated(
+        { cwd: repo, env },
+        {
+          payload: JSON.stringify({
+            hook_event_name: 'UserPromptSubmit',
+            prompt: 'From now on, always run the linter before a commit.',
           }),
         },
       );

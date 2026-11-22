@@ -11,8 +11,8 @@
       "record_observation"
     ],
     "namespace": {
-      "bytes": 16874,
-      "tokens": 3848
+      "bytes": 17303,
+      "tokens": 3953
     }
   },
   "read what the last session left": {
@@ -27,8 +27,8 @@
       "audit_exposure"
     ],
     "namespace": {
-      "bytes": 14565,
-      "tokens": 3390
+      "bytes": 14563,
+      "tokens": 3389
     }
   }
 }

@@ -186,6 +186,7 @@ export type ModelChannel =
   | 'host-memory-mirror'
   | 'decision-file-written'
   | 'choice-settled'
+  | 'dictated-rule'
   | 'agent-mirror';
 
 /** The channels that carry a declaration: the ones {@link SUBJECT_OF} answers for. */
@@ -336,6 +337,10 @@ export const UNFRAMED_CHANNELS: {
     'what it carries is the product’s own sentence that a question to the person was answered and ' +
     'which tool records a choice, and no record text and nothing of the answer, so there is ' +
     'nobody’s words to say whose they are',
+  'dictated-rule':
+    'what it carries is the product’s own sentence that the person’s message has the shape of a rule ' +
+    'dictated (named by the product’s label for the shape) and which tools record and accept it, and ' +
+    'no record text and no word of the message, so there is nobody’s words to say whose they are',
   'user-corrections':
     'what it carries is a count the product made and the ids of the proposals it recorded (no ' +
     'sentence of the person’s and no record text), so there is nobody’s words to say whose they are',
@@ -389,11 +394,13 @@ export type SwitchableChannel =
   | 'host-memory-mirror'
   | 'decision-file-written'
   | 'choice-settled'
+  | 'dictated-rule'
   | 'tool-call-count'
   | 'session-journal'
   | 'agent-mirror'
   | 'last-session'
   | 'private-rules'
+  | 'opening-core'
   | 'record-publish';
 
 /**
@@ -625,8 +632,13 @@ export function asRecordPublishReadsThem<S extends ASwitchSource>(
  */
 export const STARTS_OFF: readonly SwitchableChannel[] = [
   'edit-first-write-gate',
-  'user-corrections',
+  'opening-core',
   'record-publish',
+  // NOT `user-corrections`, which began here until ADR-546 (0.1.10): the premise was that a channel
+  // reading a transcript's words must be asked for, and it fell because a capture that depends on a
+  // switch nobody turns on captures nothing: the person asked four times in one day for a rule to
+  // reach the record. It is on now and `mnema switch off user-corrections` stops it. What it reads and
+  // where it records are unchanged: the words stay quoted in the private tree.
   // NOT `host-memory-mirror`, which writes without a verb and begins ON all the same: ADR-39 decided
   // it, named here because it is the one exception to "a channel that writes without a verb starts
   // off", and the rule still holds for every other such channel.
@@ -661,15 +673,32 @@ export function flipCommand(channel: SwitchableChannel): string {
 }
 
 /**
- * The channel that reads what a PERSON typed into a session and records the corrections, and the
- * answers to the agent's questions, as `proposed` decisions: off until somebody switches it on.
+ * The channel that reads what a PERSON typed into a session and records the corrections and the
+ * answers to the agent's questions as `proposed` decisions, and, where the hook of `dictated-rule`
+ * is off, the rules the person dictated (where it is on that hook takes them, ADR-605).
  *
- * IT STARTS OFF BECAUSE IT IS THE ONE READER OF THIS PRODUCT THAT READS A TRANSCRIPT'S WORDS. The
- * rest of what reads a transcript reads its shape (`what-the-session-did.ts`), and a conversation is
- * private: whatever a person pasted into it is in there. What it records is quoted from the person's
- * own sentence, so it goes to the tree that stays on this machine and never to the one a clone gets.
+ * IT STARTED OFF, AND DOES NOT ANY MORE (ADR-546, 0.1.10). The premise was that it is the one reader
+ * of this product that reads a transcript's words, and a conversation is private, so it had to be
+ * asked for. What falsified it: nobody asked, and the person had to say four times in one day that a
+ * rule go to the record. It is on until somebody switches it off, and the privacy it kept is kept by
+ * where it records and not by the switch: what it records is quoted from the person's own sentence,
+ * so it goes to the tree that stays on this machine and never to the one a clone gets.
  */
 export const USER_CORRECTIONS_CHANNEL: SwitchableChannel = 'user-corrections';
+
+/**
+ * The channel that changes the SHAPE of the decisions the session's opening text hands over
+ * (`mnema brief --hook`): instead of the newest decisions in force, the decisions whose acceptance
+ * note says the person dictated them, an index of what else the record holds, and how to pull it
+ * (ADR-650, ADR-610).
+ *
+ * OFF UNTIL SOMEBODY SWITCHES IT ON ({@link STARTS_OFF}), and off is exactly the text the hook
+ * handed before it existed. It starts off because what an opening carries is the one thing every
+ * session reads and none asks for, and the shape is a hypothesis about what agents pull that has
+ * to be measured here before it becomes the default. It changes only the hook's copy: the file
+ * `mnema brief > MNEMA.md` writes is the same bytes either way.
+ */
+export const OPENING_CORE_CHANNEL: SwitchableChannel = 'opening-core';
 
 /**
  * The channel that copies a note the host writes to its own memory (Claude Code's
@@ -698,6 +727,14 @@ export const DECISION_FILE_WRITTEN_CHANNEL: SwitchableChannel = 'decision-file-w
  * tool ran, and that is all it looks at (`commands/settled.ts`).
  */
 export const CHOICE_SETTLED_CHANNEL: SwitchableChannel = 'choice-settled';
+
+/**
+ * The channel that hands the agent one sentence of fact beside a message of the person's that has the
+ * shape of a rule dictated ("from now on …", "nunca …", "put it as a rule"): which tool records it
+ * and which accepts it, the note quoting the person's words. ON until switched off (ADR-546): it
+ * writes nothing, and it carries no word of the message (`commands/dictated.ts`).
+ */
+export const DICTATED_RULE_CHANNEL: SwitchableChannel = 'dictated-rule';
 
 /**
  * The switchable channels whose service the record COUNTS: the ones that append a
@@ -758,6 +795,9 @@ export const NOT_COUNTED_AS_SERVED: {
   'choice-settled':
     'the sentence is printed by `mnema settled`, which reads the payload and the record’s switches ' +
     'and writes nothing (no event, no key, no run), so a question answered never moves the record',
+  'dictated-rule':
+    'the sentence is printed by `mnema dictated`, which reads the payload and the record’s switches ' +
+    'and writes nothing (no event, no key, no run), so a message of the person’s never moves the record',
   'record-publish':
     'it puts nothing in front of a model and writes nothing to the record: the verb is run by a ' +
     'person, pushes a branch and opens a pull request, and the forge keeps the record of both, so ' +
@@ -772,6 +812,9 @@ export const NOT_COUNTED_AS_SERVED: {
     'moves the record',
   'private-rules':
     'the section is printed by `mnema brief --hook`, a read that writes nothing, for the reason the ' +
+    'document is not counted',
+  'opening-core':
+    'the text is printed by `mnema brief --hook`, a read that writes nothing, for the reason the ' +
     'document is not counted',
   'after-a-compaction':
     'the sentence is printed by `mnema recall --after-a-compaction`, which reads the journal and the ' +
@@ -851,12 +894,25 @@ export const WHAT_STOPS: { readonly [K in SwitchableChannel]: string } = {
     'the proposals recorded from what a person typed into a session: with it on, a `Stop` hook ' +
     'reads the transcript, and each time the person corrected the agent a decision is recorded ' +
     'as proposed in this machine’s private tree, and so is each answer the person gave to a ' +
-    'question the agent asked. Off until switched on',
+    'question the agent asked, and, where `dictated-rule` is off, each message that has the shape of ' +
+    'a rule dictated. On to begin with',
+  'opening-core':
+    'the shape of the decisions a session opens with: with it on, the opening text hands over the ' +
+    'decisions whose acceptance note says the person dictated them, an index of what else the record holds ' +
+    'and how to pull it, instead of the newest decisions in force. Off until switched on; the ' +
+    'file `mnema brief` prints is the same either way',
   'choice-settled':
     'the sentence handed to the agent after a question it asked the person was answered: that a ' +
     'choice may have been settled there, which tool records it and which accepts it (or that a ' +
     'person accepts it, where `agent-accepts` is off). It reads which tool ran and whether ' +
     '`agent-accepts` is on, and writes nothing',
+  'dictated-rule':
+    'the sentence handed to the agent beside a message of the person’s that is an instruction to keep ' +
+    '(always, never, from now on followed by a verb in the imperative, or put it as a rule): that only ' +
+    'a rule the person typed is accepted, which tool records it and which accepts it, the note quoting ' +
+    'the person’s own words (or that a person accepts it, where ' +
+    '`agent-accepts` is off). It reads the message for that shape and whether `agent-accepts` is on, ' +
+    'says none of the message’s words, and writes nothing',
   'host-memory-mirror':
     'the copy of the host’s own memory: with it on, a `PostToolUse` hook copies each note Claude ' +
     'Code writes to its memory directory into this machine’s private tree, once per content, ' +

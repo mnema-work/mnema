@@ -27,6 +27,7 @@
  * fact and no longer moves the tree.
  */
 
+import { dirname } from 'node:path';
 import { catalogUpcasters } from '@mnema/chain';
 import {
   chainRootForScope,
@@ -37,6 +38,8 @@ import {
 } from '@mnema/core';
 import { openTreeForWriting, recordDecision } from '@mnema/core/write';
 import { type AcceptState, acceptStateHere, stateOfANewDecision } from '../agent-accepts.js';
+import { reachesOfGoverns } from '../governed-tree.js';
+import { governsTargets } from '../link-target.js';
 import {
   addressOfferLines,
   type DecisionText,
@@ -44,7 +47,12 @@ import {
   decisionsInView,
   supersedeOfferLines,
 } from '../offers-beside-a-recorded-decision.js';
-import { forwardReplacement, type Landed, type Replacement } from '../recorded-content.js';
+import {
+  forwardReplacement,
+  type GovernedReach,
+  type Landed,
+  type Replacement,
+} from '../recorded-content.js';
 import { withScopedCaches } from '../tree-sources.js';
 import {
   type AgentWrites,
@@ -68,6 +76,10 @@ export interface DecisionRecorded extends Replacement, Landed {
   readonly id: string;
   /** The citable `ADR-<n>` label frozen into the record: a decision's human name. */
   readonly adr: string;
+  /** The paths it was recorded as governing, as the tree holds them: empty when none was asked. */
+  readonly governs: readonly string[];
+  /** What each of those paths covers in the working tree, in the same order: a report, never a gate. */
+  readonly reaches: readonly GovernedReach[];
   /**
    * Set when the decision was already on the record (same title, rationale and alternatives,
    * in force or awaiting a judgement): nothing was written, and `id` and `adr` are the existing one's.
@@ -105,6 +117,11 @@ export function runDecision(
     title: string;
     rationale: string;
     alternatives?: string;
+    /**
+     * The paths it governs, recorded as `governs` links in the same act as the decision: held to
+     * the rules of `mnema link --rel governs`, and one refused refuses the whole act.
+     */
+    governs?: readonly string[];
     scope?: Scope;
     which?: string;
     /** The `which` is a name the product declares itself, not one a person typed: no line speaks of it. */
@@ -126,6 +143,17 @@ export function runDecision(
     return { ok: false, reason: 'NO_PROJECT' };
   }
 
+  // THE PATHS FIRST, before a writer is opened: the rules of a link (`link-target.ts`), asked of
+  // each path, so a refusal leaves the record as it was.
+  const governs = governsTargets(
+    input.governs ?? [],
+    scope === 'public' && trees.projectPublic !== undefined
+      ? dirname(trees.projectPublic)
+      : undefined,
+  );
+  if (!governs.ok)
+    return { ok: false, reason: 'REFUSED', code: governs.code, message: governs.message };
+
   const which = whichOfTheWrite(writing, scope, input.which, input.whichIsOwn === undefined);
 
   const writer = openTreeForWriting(trees, scope);
@@ -140,6 +168,7 @@ export function runDecision(
         title: input.title,
         rationale: input.rationale,
         ...(input.alternatives !== undefined ? { alternatives: input.alternatives } : {}),
+        ...(governs.targets.length > 0 ? { governs: governs.targets } : {}),
         ...(which !== undefined ? { which } : {}),
         ...(input.run !== undefined ? { run: input.run } : {}),
       },
@@ -157,6 +186,11 @@ export function runDecision(
     ok: true,
     id: recorded.id,
     adr: recorded.adr,
+    governs: 'already' in recorded ? [] : governs.targets,
+    reaches:
+      'already' in recorded || trees.projectPublic === undefined
+        ? []
+        : reachesOfGoverns(governs.targets, dirname(trees.projectPublic)),
     scope,
     ...forwardReplacement(recorded),
     ...('already' in recorded ? { alreadyRecorded: true as const } : {}),
@@ -199,17 +233,25 @@ export function stateBesideADecision(
 export function offeredBesideADecision(
   ctx: Pick<DecisionContext, 'cwd' | 'env'>,
   text: DecisionText,
-  recorded: { readonly id: string; readonly adr: string; readonly scope: Scope },
+  recorded: {
+    readonly id: string;
+    readonly adr: string;
+    readonly scope: Scope;
+    readonly governs: readonly string[];
+  },
 ): string[] {
+  // A decision addressed in the act that recorded it has nothing left to offer an address for.
+  const addressOffer =
+    recorded.governs.length > 0 ? [] : addressOfferLines([], recorded, recorded.scope, 'cli');
   try {
     const held = withScopedCaches(resolveTrees(ctx.cwd, ctx.env), (sources) =>
       decisionsInView(sources, recorded.scope, (source) => source.cache.listDecisions()),
     );
     return [
-      ...addressOfferLines([], recorded, recorded.scope, 'cli'),
+      ...addressOffer,
       ...supersedeOfferLines(decisionsCited(text, held, recorded.id), recorded, 'cli'),
     ];
   } catch {
-    return addressOfferLines([], recorded, recorded.scope, 'cli');
+    return addressOffer;
   }
 }
