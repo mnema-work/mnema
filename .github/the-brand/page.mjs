@@ -47,7 +47,9 @@ export const ARCHIVO_RANGES = Object.freeze([
 /** The weights of the instances, at width 100. */
 export const ARCHIVO_WEIGHTS = Object.freeze([400, 700]);
 /** `subset-font` (HarfBuzz as WebAssembly) is a development dependency of the workspace. */
-const { default: subsetFont } = await import('subset-font');
+const spec = 'subset-font';
+/** @type {{ default: (font: Uint8Array, text: string | undefined, options: object) => Promise<Buffer> }} */
+const { default: subsetFont } = await import(spec);
 
 /** @param {string} name */
 const bytesOf = (name) => readFileSync(here(`./fonts/${name}`));
