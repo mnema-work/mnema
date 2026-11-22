@@ -8,10 +8,12 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { UnreadableLineError } from '@mnema/chain';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runRulesTest } from '../src/commands/rules-test.js';
 import { rulesTestReport } from '../src/presentation/rules-test.js';
 import { type CliIo, run } from '../src/program.js';
+import * as treeSources from '../src/tree-sources.js';
 
 let sandbox: string;
 let repo: string;
@@ -195,6 +197,58 @@ describe('mnema rules test', () => {
     expect(absolute.failed).toBe(true);
     expect(absolute.err).toContain('case 1 of');
     expect(absolute.out).not.toContain('MATCH');
+  });
+
+  it('refuses a case with no path, or an empty one, naming the case, and prints no verdict', async () => {
+    const file = join(sandbox, 'no-path.json');
+    writeFileSync(
+      file,
+      JSON.stringify({ cases: [{ path: 'README.md', expect: 'none' }, { expect: 'none' }] }),
+    );
+    const missing = await mnema('rules', 'test', file);
+    expect(missing.failed).toBe(true);
+    expect(missing.err).toContain(`case 2 of ${file} has no "path".`);
+    expect(missing.out).toBe('');
+    writeFileSync(file, JSON.stringify({ cases: [{ path: '', expect: 'none' }] }));
+    const empty = await mnema('rules', 'test', file);
+    expect(empty.failed).toBe(true);
+    expect(empty.err).toContain(`case 1 of ${file} has no "path".`);
+    expect(empty.out).toBe('');
+  });
+
+  it('answers a line the reading throws on as a record it cannot judge, and rethrows anything else', async () => {
+    const tail = join(repo, '.mnema', 'a-file-of-the-record');
+    const spy = vi.spyOn(treeSources, 'linkBreaksOf');
+    try {
+      spy.mockImplementation(() => {
+        throw new UnreadableLineError(`${tail} line 4`, 'not valid JSON: x');
+      });
+      const refused = runRulesTest(
+        { cwd: repo, env: { home: join(sandbox, 'home') } },
+        { file: declare(['src/billing/invoice.ts', 'refuse']) },
+      );
+      expect(refused).toEqual({
+        ok: false,
+        reason: 'RECORD_CANNOT_BE_JUDGED',
+        code: 'RECORD_CANNOT_BE_JUDGED',
+        message: [
+          'The write is refused: a line of the project\u2019s public record cannot be read by this mnema, so which rules apply to this path cannot be known.',
+          `unreadable stored line at ${tail} line 4: not valid JSON: x`,
+          `Every write in the project is refused until the line reads: update mnema if a newer one wrote the line, or restore the line from the repository\u2019s history.`,
+        ].join('\n\n'),
+      });
+      spy.mockImplementation(() => {
+        throw new RangeError('a fault of the product is a fault, not a refusal');
+      });
+      expect(() =>
+        runRulesTest(
+          { cwd: repo, env: { home: join(sandbox, 'home') } },
+          { file: declare(['README.md', 'none']) },
+        ),
+      ).toThrow(RangeError);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('refuses --json, which it does not support, wherever it is typed', async () => {
