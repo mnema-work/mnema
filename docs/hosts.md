@@ -82,7 +82,7 @@ JavaScript module, copied into the project, and the server is declared in the pr
 
 ```bash
 mkdir -p .opencode/plugins
-curl -fsSL https://raw.githubusercontent.com/mnema-work/mnema/v0.1.8/plugin/opencode/mnema.js \
+curl -fsSL https://raw.githubusercontent.com/mnema-work/mnema/v0.1.9/plugin/opencode/mnema.js \
   -o .opencode/plugins/mnema.js
 ```
 
@@ -127,7 +127,7 @@ installed from a checkout of this repository, where it is the folder `plugin/gem
 the release you run (`main` can be ahead of it):
 
 ```bash
-git clone --branch v0.1.8 https://github.com/mnema-work/mnema.git /path/to/mnema
+git clone --branch v0.1.9 https://github.com/mnema-work/mnema.git /path/to/mnema
 gemini extensions install /path/to/mnema/plugin/gemini
 ```
 
@@ -150,7 +150,7 @@ extension of its own and copies it into your home. From a checkout of this repos
 release you run (`main` can be ahead of it):
 
 ```bash
-git clone --branch v0.1.8 https://github.com/mnema-work/mnema.git /path/to/mnema
+git clone --branch v0.1.9 https://github.com/mnema-work/mnema.git /path/to/mnema
 qwen extensions install /path/to/mnema/plugin
 ```
 
@@ -178,6 +178,27 @@ was read. Declare the server the way the
 host's documentation says, as the command `mnema` with the one argument `mcp`, run in the project's
 root. The agent then has every tool of the server; nothing opens its sessions, refuses a write or
 pauses one.
+
+## Reading what the person typed, per host
+
+To check that a decision rests on the person's words, mnema needs the conversation as the host wrote it. A reader exists only for a host whose own source says what its transcript lines are, and each is held by a test whose lines are built from that source. For each host, what the reader does today:
+
+| Host | Reader | What it takes as the person's | Answers to the host's question tool |
+|---|---|---|---|
+| Claude Code | yes | a `user` line marked `origin.kind` `human`, not injected text, not a subagent's | read, marked chosen |
+| VS Code's agent | yes ([`sessionTranscriptService.ts`](https://github.com/microsoft/vscode/blob/794308978b6d99a6268d7675f216867a78501e3f/extensions/copilot/src/platform/chat/common/sessionTranscriptService.ts)) | a `user.message` entry. Not closed: the host logs a subagent's prompt the same way, and the entry has no marker; the source read does not say whether a subagent's session id is the parent's | not read: where the extension logs an answer is not in the source read |
+| Cursor's command-line agent | no | none | none |
+| Codex | no | none | none |
+| GitHub Copilot CLI | no | none | none |
+| OpenCode | no | none | none |
+| Gemini CLI | yes ([`chatRecordingService.ts`](https://github.com/google-gemini/gemini-cli/blob/573846625af9e93b3b968e0e0b86bb093a4c9b16/packages/core/src/services/chatRecordingService.ts), [`client.ts`](https://github.com/google-gemini/gemini-cli/blob/573846625af9e93b3b968e0e0b86bb093a4c9b16/packages/core/src/core/client.ts), [`ask-user.ts`](https://github.com/google-gemini/gemini-cli/blob/573846625af9e93b3b968e0e0b86bb093a4c9b16/packages/core/src/tools/ask-user.ts)) | the typed text of a `user` message (the part the host keeps apart as `displayContent` when it differs), less the text the host adds to it or writes as its own `user` turns: hook context, session, directory and editor context, a line starting with `/` or `?`, and the compaction summary. The file is read as the host reads it: the last record of an id, a rewind, and a `messages` checkpoint that rebuilds the list (so what a compaction folded away is no longer there) | read from `ask_user`'s stored result, marked chosen; a dismissed question gives none |
+| Qwen Code | yes ([`chatRecordingService.ts`](https://github.com/QwenLM/qwen-code/blob/b475278c4a300acebe6cfc990a9e1b1d18819bfc/packages/core/src/services/chatRecordingService.ts)) | a `user` record with no subtype (every subtype is text the host wrote), the submitted text rather than the copy that carries hook context. A rewind is not followed: a prompt the person typed and rewound is still returned | not read: the stored shape of an answer is not in the source read |
+| Cursor's editor | no | none | none |
+| Antigravity's command line (`agy`) | no | none | none |
+| Factory Droid | no | none | none |
+| Goose | no | none | none |
+
+A host with no reader is not read through another host's shape. Codex's format is still changing, Copilot CLI's event schema and the shape of its answers were not found in its documentation, OpenCode keeps its conversation in a database and Cursor's transcript format is not documented. The reader is a module of its own (`the-persons-words.ts`); this page says what it reads, not who calls it.
 
 ## Without a plugin
 

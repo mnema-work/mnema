@@ -23,6 +23,8 @@
  *      home, or whose `MNEMA_HOME` points into it or is the value this suite was started with, is
  *      started with this process's `HOME` instead and without the variable (so it cannot write
  *      where it was about to) and the case is failed with the line that started it.
+ *      The host session variables (`HOST_SESSION_VARIABLES`) are removed the same way, so a suite run
+ *      from inside a host's session sees none.
  *   3. After each case, this process's own environment is asked the same question.
  *
  * WHY IT DOES NOT LOOK AT `~/.mnema`. A guard that compared the machine's data directory before and
@@ -131,6 +133,21 @@ process.env.MNEMA_REFUSE_TREES_OUTSIDE =
 // The agent a shell asked the verbs that write to sign as would change every one of them: a case
 // that wants it writes it.
 delete process.env.MNEMA_AGENT_KEY;
+
+/**
+ * The variables a host leaves in the environment of what it starts to name its session. The
+ * product reads them (the accept gate reads the person's words when one is set), so one inherited
+ * from the session the suite is run in would change what a case sees, and what every process it
+ * spawns inherits. Cleared before any case; a case that needs a session sets it itself.
+ * `a-home-of-its-own.test.ts` fails when a variable the host table names is missing here.
+ */
+export const HOST_SESSION_VARIABLES = [
+  'CLAUDE_CODE_SESSION_ID',
+  'COPILOT_AGENT_SESSION_ID',
+  'CODEX_THREAD_ID',
+  'GEMINI_SESSION_ID',
+];
+for (const name of HOST_SESSION_VARIABLES) delete process.env[name];
 
 /**
  * Whether `path` is the machine's home, or, with `inside`, a directory under it.

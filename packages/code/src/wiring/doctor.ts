@@ -54,6 +54,8 @@ export function registerDoctor(program: Command, wiring: Wiring): Declared {
         '  each worktree’s .mnema/private/, where private notes lived before they moved into the',
         '  repository’s git directory; and the agent keys this machine holds, against the record of',
         '  each tree it reaches, with the `MNEMA_AGENT_KEY` of its own environment.',
+        'It also reads the ledger of caught failures, <data directory>/log/swallowed.jsonl, for the last 7 days (kept on this',
+        'machine and never sent: docs/the-ledger-of-caught-failures.md).',
         'Asked alone it writes nothing and exits 0 whatever it finds: each line says what to do.',
         '`--fix vscode` writes: it shows what it will change, keeps a copy of settings.json beside',
         'it, keeps the file’s comments, and refuses a file it cannot edit safely.',
@@ -81,12 +83,12 @@ export function registerDoctor(program: Command, wiring: Wiring): Declared {
       }
       const { fixPrivateTree, fixVscode, runDoctor } = await import('../commands/doctor.js');
       const { fixMergeDriver } = await import('../commands/doctor-merge-driver.js');
-      const { driverCommand } = await import('../commands/record-pull.js');
+      const { ownDriverCommand, ownRunningFile } = await import('../commands/record-pull.js');
       const ctx = {
         ...here(),
         env: discoveryEnv(),
         processEnv: process.env,
-        running: { file: process.argv[1] ?? '', version: VERSION },
+        running: { file: ownRunningFile(), version: VERSION },
       };
       if (options.fix !== undefined) {
         if (
@@ -112,7 +114,7 @@ export function registerDoctor(program: Command, wiring: Wiring): Declared {
               ? fixPrivateTree(ctx, { dryRun })
               : fixMergeDriver(ctx, {
                   dryRun,
-                  driver: driverCommand(process.execPath, process.argv[1] ?? ''),
+                  driver: ownDriverCommand(),
                 });
         for (const line of fixed.lines) io.out(line);
         if (fixed.refused) io.fail();

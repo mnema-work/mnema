@@ -58,7 +58,13 @@ function contextFor(w: ChainWriter, r: string, clock: Clock): DecisionWriteConte
  */
 function mustRecord(
   ctx: DecisionWriteContext,
-  input: { title: string; rationale: string; alternatives?: string; which?: string },
+  input: {
+    title: string;
+    rationale: string;
+    alternatives?: string;
+    governs?: readonly string[];
+    which?: string;
+  },
 ): { id: string; adr: string } {
   const result = recordDecision(ctx, input);
   if (!result.ok) throw new Error(`record failed: ${result.code}`);
@@ -189,6 +195,70 @@ describe('recordDecision: what the decision turned down', () => {
     expect(refused.code).toBe('UNREADABLE_EVENT');
     // And nothing landed: the decision was not half-recorded.
     expect(decisionsOf(root).size).toBe(0);
+  });
+});
+
+describe('recordDecision: the paths it governs, written in the same act', () => {
+  /** The `governs` edges of the chain, as (subject, target) pairs in append order. */
+  function governsEdges(r: string): { subject: string; target: string }[] {
+    return orderedEvents({ root: r }, upcasters)
+      .filter((event) => event.kind === 'knowledge.linked')
+      .map((event) => ({
+        subject: event.subject,
+        target: (event.payload as { target: string; rel: string }).target,
+      }));
+  }
+
+  it('records one governs link per path beside the decision, under its id', () => {
+    const w = openChainForWriting(root, { keyRoot: root });
+    const { clock } = fixedClock();
+    const { id } = mustRecord(contextFor(w, root, clock), {
+      title: 'Keep the runbook in the record',
+      rationale: 'It is what the on-call reads.',
+      governs: ['docs/runbook', 'src/billing'],
+      which: WHICH,
+    });
+    expect(governsEdges(root)).toEqual([
+      { subject: id, target: 'docs/runbook' },
+      { subject: id, target: 'src/billing' },
+    ]);
+    for (const event of orderedEvents({ root }, upcasters)) {
+      if (event.kind === 'knowledge.linked') {
+        expect((event.payload as { rel: string }).rel).toBe('governs');
+      }
+    }
+  });
+
+  it('records no link when the caller named no path', () => {
+    const w = openChainForWriting(root, { keyRoot: root });
+    const { clock } = fixedClock();
+    mustRecord(contextFor(w, root, clock), { title: 'A', rationale: 'b', which: WHICH });
+    expect(governsEdges(root)).toEqual([]);
+  });
+
+  it('refuses a blank path and writes neither the decision nor the other links', () => {
+    const w = openChainForWriting(root, { keyRoot: root });
+    const { clock } = fixedClock();
+    const refused = recordDecision(contextFor(w, root, clock), {
+      title: 'A decision',
+      rationale: 'a why',
+      governs: ['src/ok', ''],
+      which: WHICH,
+    });
+    expect(refused.ok).toBe(false);
+    expect(decisionsOf(root).size).toBe(0);
+    expect(governsEdges(root)).toEqual([]);
+  });
+
+  it('writes nothing for a repeat of a decision already on the record', () => {
+    const w = openChainForWriting(root, { keyRoot: root });
+    const { clock } = fixedClock();
+    const ctx = contextFor(w, root, clock);
+    const input = { title: 'A', rationale: 'b', governs: ['src/a'], which: WHICH };
+    mustRecord(ctx, input);
+    const again = recordDecision(ctx, input);
+    expect(again.ok && 'already' in again).toBe(true);
+    expect(governsEdges(root)).toHaveLength(1);
   });
 });
 
@@ -343,7 +413,7 @@ describe('the decision transitions are gated against the chain', () => {
     expect(again).toMatchObject({ ok: false, code: 'ILLEGAL_TRANSITION' });
     if (again.ok) return;
     expect(again.message).toBe(
-      `${adr} is already accepted, by a person, at 2026-07-21T00:00:01.000Z: nothing changed.`,
+      `${adr} is already accepted (no agent declared) at 2026-07-21T00:00:01.000Z: nothing changed.`,
     );
     expect(orderedEvents({ root }, upcasters)).toHaveLength(events);
   });
@@ -360,7 +430,7 @@ describe('the decision transitions are gated against the chain', () => {
     expect(again).toMatchObject({ ok: false, code: 'ILLEGAL_TRANSITION' });
     if (again.ok) return;
     expect(again.message).toBe(
-      `${adr} is already accepted, by an agent (${WHICH}), at 2026-07-21T00:00:01.000Z: nothing changed.`,
+      `${adr} is already accepted (agent ${WHICH}) at 2026-07-21T00:00:01.000Z: nothing changed.`,
     );
   });
 

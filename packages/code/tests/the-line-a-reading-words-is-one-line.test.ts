@@ -619,9 +619,9 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'composed',
     why: 'the replaced decision, worded by namedDecisionText: label, title and state, each collapsed there',
   },
-  'brief.ts « · {}» acceptedBy(acceptance) #1': {
+  'brief.ts « · {}» acceptedOnLine(acceptance, usual) #1': {
     verdict: 'composed',
-    why: 'the clause itself, joined with its separator; its parts are classified where acceptedBy builds them',
+    why: 'the clause itself, joined with its separator; its parts are classified where acceptedOnLine builds them',
   },
   'accepted-by.ts «accepted by {} ({}{})» oneLine(acceptance.by) #1': {
     verdict: 'collapsed',
@@ -644,16 +644,53 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'minted',
       why: 'this product’s own clause, chosen by whether the accepting event’s run was marked run.unannounced',
     },
-  'brief.ts «{} of them {} accepted by an agent. The record keeps which, and \\`mnema switch\\` says whether an agent may accept.» byAnAgent #1':
-    {
-      verdict: 'minted',
-      why: 'a count of the rules in force, computed here from the list the document is made of',
-    },
-  "brief.ts «{} of them {} accepted by an agent. The record keeps which, and \\`mnema switch\\` says whether an agent may accept.» byAnAgent === 1 ? 'was' : 'were' #1":
+  'brief.ts «{} of them {} accepted by an agent and {} with no agent declared.{}» agent #1': {
+    verdict: 'minted',
+    why: 'a count of the rules in force, computed here from the list the document is made of',
+  },
+  "brief.ts «{} of them {} accepted by an agent and {} with no agent declared.{}» agent === 1 ? 'was' : 'were' #1":
     {
       verdict: 'minted',
       why: 'the singular or the plural of a verb written in this module, chosen by the count beside it',
     },
+  'brief.ts «{} of them {} accepted by an agent and {} with no agent declared.{}» undeclared #1': {
+    verdict: 'minted',
+    why: 'a count of the rules in force, computed here from the list the document is made of',
+  },
+  "brief.ts «{} of them {} accepted by an agent and {} with no agent declared.{}» agent > 0 ? ' The record keeps which agent, and `mnema switch` says whether an agent may accept.' : '' #1":
+    {
+      verdict: 'minted',
+      why: 'a sentence written in this module, said only when an agent accepted a rule',
+    },
+  'brief.ts «The identity is {}{}, unless a line names another.» oneLine(usual) #1': {
+    verdict: 'collapsed',
+    why: 'the identity that accepted most rules: an anchor read out of the envelope of the accepting event, shortened',
+  },
+  "brief.ts «The identity is {}{}, unless a line names another.» usualUnconfirmed ? ' (marked unconfirmed, see below)' : '' #1":
+    {
+      verdict: 'minted',
+      why: 'this module’s own clause, chosen by whether the record marks that identity unconfirmed',
+    },
+  'accepted-by.ts «agent, {}» NO_NAME_ANNOUNCED #1': {
+    verdict: 'minted',
+    why: 'this product’s own clause for an agent whose name no client announced, a constant of `one-line.ts`',
+  },
+  'accepted-by.ts «{}{}» oneLine(acceptance.by) #1': {
+    verdict: 'collapsed',
+    why: 'the identity that accepted, when it is not the one the header names: an anchor read out of the envelope, shortened',
+  },
+  "accepted-by.ts «{}{}» acceptance.unconfirmed ? ' (unconfirmed)' : '' #1": {
+    verdict: 'minted',
+    why: 'this module’s own word for an identity that nobody else has ruled with, or nothing',
+  },
+  'status.ts «  {} accepted by an agent, {} with no agent declared.» accepted.agent #1': {
+    verdict: 'minted',
+    why: 'a count of the rules in force, computed by the context layer from the record',
+  },
+  'status.ts «  {} accepted by an agent, {} with no agent declared.» accepted.undeclared #1': {
+    verdict: 'minted',
+    why: 'a count of the rules in force, computed by the context layer from the record',
+  },
   'brief.ts «{} of them {} accepted by an identity marked unconfirmed: it has accepted only decisions it recorded itself, and no other identity has accepted any of them. That is who has looked, not a verdict on the rule.» unconfirmed #1':
     {
       verdict: 'minted',
@@ -1017,6 +1054,11 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'composed',
       why: 'where an inherited rule came from: the origin and commit of `inherit.json`, collapsed inside `inheritedFromText`',
     },
+  "git-bridge.ts itemLine(...(rule.decided === undefined ? [] : [rule.decided ? 'decides' : 'does not decide'])) #1":
+    {
+      verdict: 'minted',
+      why: 'one of two words written in this module, chosen by a flag the reading set: nothing from the record or git reaches it',
+    },
   "git-bridge.ts itemLine(...(rule.files !== undefined ? [`${rule.files} changed file${rule.files === 1 ? '' : 's'}`] : [])) #1":
     {
       verdict: 'minted',
@@ -1163,6 +1205,18 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'a count this reading made, or the threshold the caller gave and the verb validated as an integer',
   },
+  'git-bridge.ts «verdict: {}» verdictSentence(done) #1': {
+    verdict: 'minted',
+    why: 'one of a few sentences written in this module, chosen by the verdict the gate answered, or the first paragraph of the gate reason, collapsed on its own site below',
+  },
+  'git-bridge.ts «{}: {}» THE_VERDICT.refuse #1': {
+    verdict: 'minted',
+    why: 'the sentence written in this module for a refused write',
+  },
+  "git-bridge.ts «{}: {}» oneLine(done.refusal.split('\\n\\n')[0] ?? '') #1": {
+    verdict: 'collapsed',
+    why: 'the first paragraph of the gate reason, which names a tree, a tail and the error of a line of the record: collapsed inside `oneLine`',
+  },
   'git-bridge.ts «{} (a label {} decisions here carry: {})» cite.ambiguous.length #1': {
     verdict: 'minted',
     why: 'a count this reading made, or the threshold the caller gave and the verb validated as an integer',
@@ -1263,7 +1317,7 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'this module’s own word, written above as a constant',
   },
-  'occurrence.ts «{} {}» oneLine(event.which ?? A_PERSON) #1': {
+  'occurrence.ts «{} {}» oneLine(event.which ?? NO_AGENT_DECLARED) #1': {
     verdict: 'collapsed',
     why: 'the agent on the envelope: text whoever opened the session wrote',
   },
@@ -1273,11 +1327,11 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'how many patterns follow: the count the lines under it are counted by',
   },
-  'provenance.ts «proposed by {}» oneLine(pattern.proposedBy ?? A_PERSON) #1': {
+  'provenance.ts «proposed by {}» oneLine(pattern.proposedBy ?? NO_AGENT_DECLARED) #1': {
     verdict: 'collapsed',
     why: 'the agent that proposed it, or this surface’s word for a person',
   },
-  'provenance.ts «adopted by {}» oneLine(pattern.adoption.by ?? A_PERSON) #1': {
+  'provenance.ts «adopted by {}» oneLine(pattern.adoption.by ?? NO_AGENT_DECLARED) #1': {
     verdict: 'collapsed',
     why: 'the agent that adopted it, or this surface’s word for a person',
   },
@@ -1378,6 +1432,46 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'composed',
     why: 'a base with documents the record has none for, worded by `status.ts`’s `toImport`: the hook copy’s bullet is that one spelling',
   },
+  "brief.ts «- Awaiting a judgement: {} and {}.» counted(governance.decisionsAwaiting, 'decision', 'decisions') #1":
+    {
+      verdict: 'minted',
+      why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',
+    },
+  "brief.ts «- Awaiting a judgement: {} and {}.» counted(governance.skillsAwaiting, 'pattern', 'patterns') #1":
+    {
+      verdict: 'minted',
+      why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',
+    },
+  'brief.ts «- Decisions in force: {}, {} in the core and {} outside it.» core #1': {
+    verdict: 'minted',
+    why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',
+  },
+  'brief.ts «- Decisions in force: {}, {} in the core and {} outside it.» decisions #1': {
+    verdict: 'minted',
+    why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',
+  },
+  'brief.ts «- Decisions in force: {}, {} in the core and {} outside it.» decisions - core #1': {
+    verdict: 'minted',
+    why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',
+  },
+  'brief.ts «- Patterns adopted: {}.» governance.skills.length #1': {
+    verdict: 'minted',
+    why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',
+  },
+  'brief.ts «- Rules with an address: {}.» governance.addressed #1': {
+    verdict: 'minted',
+    why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',
+  },
+  "brief.ts «This text hands over the core: the {} in force, of {}, whose acceptance note says the person dictated them,» counted(core, 'decision', 'decisions') #1":
+    {
+      verdict: 'minted',
+      why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',
+    },
+  'brief.ts «This text hands over the core: the {} in force, of {}, whose acceptance note says the person dictated them,» governance.decisions.length #1':
+    {
+      verdict: 'minted',
+      why: 'a count of the committed record (or the noun beside it) made by this module for the pulled opening: no value of the record reaches the line',
+    },
   "brief.ts «Not in the record: {} in this checkout, by file name, with no decision derived from them here.» counted(total, 'decision document', 'decision documents') #1":
     {
       verdict: 'composed',
@@ -1477,10 +1571,43 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'collapsed',
     why: 'the topic `--topic` named: free text, on a fact line of its own',
   },
-  'record.ts «{}: {}» body.record.adr #1': {
+  'record.ts «{}: {}» readLabel(body.record.adr, body.scope) #1': {
     verdict: 'minted',
     why: 'the `ADR-<n>` the decision was minted with',
   },
+  'label.ts «{} ({})» adr #1': {
+    verdict: 'minted',
+    why: 'the `ADR-<n>` the decision was minted with',
+  },
+  'label.ts «{} ({})» scope #1': {
+    verdict: 'minted',
+    why: 'the tree the decision is held in: one of the three words of the closed table of trees',
+  },
+  'search.ts «{} matched and {} are shown, the most one search returns; to reach the rest, search a window of dates with --from <iso> and --to <iso>.» result.total #1':
+    {
+      verdict: 'minted',
+      why: 'the count of records that matched',
+    },
+  'search.ts «{} matched and {} are shown; to see more, raise --limit (up to {}).» result.total #1':
+    {
+      verdict: 'minted',
+      why: 'the count of records that matched',
+    },
+  'search.ts «{} matched and {} are shown; to see more, raise --limit (up to {}).» result.hits.length #1':
+    {
+      verdict: 'minted',
+      why: 'the count of records shown',
+    },
+  'search.ts «{} matched and {} are shown; to see more, raise --limit (up to {}).» SEARCH_MAX_LIMIT #1':
+    {
+      verdict: 'minted',
+      why: 'the most records one search returns, a constant of the product',
+    },
+  'search.ts «{} matched and {} are shown, the most one search returns; to reach the rest, search a window of dates with --from <iso> and --to <iso>.» result.hits.length #1':
+    {
+      verdict: 'minted',
+      why: 'the count of records shown',
+    },
   'record.ts «{}: {}» oneLine(body.record.title) #1': {
     verdict: 'collapsed',
     why: 'the decision’s title: text whoever recorded it wrote',
@@ -1547,7 +1674,7 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'composed',
     why: 'namedDecisionText, whose only value is the id when the other end is not in the trees read, collapsed there',
   },
-  'named-decision.ts «{}: {} {}» oneLine(named.adr) #1': {
+  'named-decision.ts «{}: {} {}» oneLine(readLabel(named.adr, named.scope)) #1': {
     verdict: 'collapsed',
     why: 'the label frozen into the record at write time, collapsed because a line is this module’s',
   },
@@ -1631,11 +1758,15 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
   },
 
   // --- references.ts: what an entity is connected to -----------------------------
-  'references.ts « ({})» node.kind #1': {
+  'references.ts « ({}{})» node.kind #1': {
     verdict: 'minted',
     why: 'a `SearchKind` the walk resolved the far end to',
   },
-  'references.ts «{}{}» oneLine(id) #1': {
+  "references.ts « ({}{})» node.state !== undefined ? `, ${oneLine(node.state)}` : '' #1": {
+    verdict: 'collapsed',
+    why: 'the state of the far end, read back out of the record and collapsed where it enters the parenthesis',
+  },
+  'references.ts «{}{}{}» oneLine(id) #1': {
     verdict: 'collapsed',
     why: 'the entity id on an edge’s row, read back out of the record',
   },
@@ -1647,9 +1778,17 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'composed',
     why: 'the role and relation of an edge, quoted for the diagram where the label is written',
   },
-  'references.ts «{}{}» said #1': {
+  'references.ts «{}{}{}» said #1': {
     verdict: 'composed',
     why: 'the parenthesis after the id: a word of the walk’s vocabulary, carrying its own leading space',
+  },
+  'references.ts « {}» oneLine(node.title) #1': {
+    verdict: 'collapsed',
+    why: 'the title of the far end, read back out of the record and collapsed where it enters the line',
+  },
+  'references.ts «{}{}{}» title #1': {
+    verdict: 'composed',
+    why: 'the title of the far end with its leading space, composed above with the title collapsed',
   },
   'references.ts «{} ({})» heading #1': {
     verdict: 'minted',
@@ -1701,6 +1840,113 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
   },
 
   // --- reviewed.ts: what `decision review` shows of a proposed decision --------------
+  'record.ts «marked shown at a terminal, no agent declared, by {} at {}» oneLine(anchorText(context.anchors, context.shown.who)) #1':
+    {
+      verdict: 'collapsed',
+      why: 'the identity that signed the newest showing, written in its short form, never worded as a person',
+    },
+  'record.ts «marked shown at a terminal, no agent declared, by {} at {}» context.shown.at #1': {
+    verdict: 'minted',
+    why: "the instant of a showing, the clock's canonical spelling, checked by both readers",
+  },
+  'reviewed.ts «accepted {}, {}» accepted.at.slice(0, 10) #1': {
+    verdict: 'minted',
+    why: "the date of an accept, cut from the clock's canonical spelling",
+  },
+  'reviewed.ts «accepted {}, {}» by #1': {
+    verdict: 'composed',
+    why: "one of this surface's two clauses, the agent's name in it collapsed where it is worded",
+  },
+  'reviewed.ts «In force: {}» acceptedByWords(shown.accepted) #1': {
+    verdict: 'composed',
+    why: 'the accept worded by acceptedByWords above',
+  },
+  'reviewed.ts «{} of {}» position #2': {
+    verdict: 'minted',
+    why: 'which rule of the pass this is: a count of the session',
+  },
+  'reviewed.ts «{} of {}» total #2': {
+    verdict: 'minted',
+    why: 'how many rules the pass goes through: a count of the list',
+  },
+  'reviewed.ts «{} ({})» shown.adr #1': {
+    verdict: 'minted',
+    why: "the decision's ADR label, which the product numbers",
+  },
+  'reviewed.ts «{} ({})» shown.id #2': {
+    verdict: 'minted',
+    why: "the decision's id, which the product mints",
+  },
+  'reviewed.ts «Shown and marked: {}; {} not shown, still on the list.» left #1': {
+    verdict: 'minted',
+    why: 'how many rules the pass did not show: a count of the session',
+  },
+  'reviewed.ts «Shown and marked: {}; {} not shown, still on the list.» shown #1': {
+    verdict: 'minted',
+    why: 'how many rules the pass showed and marked: a count of the session',
+  },
+  'reviewed.ts «Shown and marked: {}.» shown #1': {
+    verdict: 'minted',
+    why: 'how many rules the pass showed and marked: a count of the session',
+  },
+  'reviewed.ts «the agent {}» oneLine(accepted.which) #1': {
+    verdict: 'collapsed',
+    why: 'the agent name on an accept, which a caller announced',
+  },
+  'reviewed.ts «Title: {}» oneLine(shown.title) #2': {
+    verdict: 'collapsed',
+    why: "the decision's title, typed by whoever recorded it",
+  },
+  'reviewed.ts «Turned down: {}» oneLine(shown.alternatives) #2': {
+    verdict: 'collapsed',
+    why: 'what the decision turned down, typed by whoever recorded it',
+  },
+  'reviewed.ts «Why: {}» oneLine(shown.rationale) #2': {
+    verdict: 'collapsed',
+    why: "the decision's reason, typed by whoever recorded it",
+  },
+  'summary.ts «  {}  {} ({})» acceptedByWords(rule.accepted) #1': {
+    verdict: 'composed',
+    why: 'the accept worded by acceptedByWords in reviewed.ts',
+  },
+  'summary.ts «  {}  {} ({})» oneLine(rule.title) #1': {
+    verdict: 'collapsed',
+    why: "the decision's title, typed by whoever recorded it",
+  },
+  'summary.ts «  {}  {} ({})» rule.adr #1': {
+    verdict: 'minted',
+    why: "the decision's ADR label, which the product numbers",
+  },
+  'summary.ts «{} older rule(s) in force you did not accept yourself have not been shown to you. {}» notSeen.older #1':
+    {
+      verdict: 'minted',
+      why: 'a count this reading computed',
+    },
+  'summary.ts «{} older rule(s) in force you did not accept yourself have not been shown to you. {}» review #1':
+    {
+      verdict: 'minted',
+      why: 'a fixed sentence of this surface naming the verb',
+    },
+  'summary.ts «{} rule(s) in force you did not accept yourself entered since your last review or accept at a terminal ({}):» notSeen.lastShown.slice(0, 10) #1':
+    {
+      verdict: 'minted',
+      why: "the date of a showing, cut from the clock's canonical spelling",
+    },
+  'summary.ts «{} rule(s) in force you did not accept yourself entered since your last review or accept at a terminal ({}):» notSeen.since.length #1':
+    {
+      verdict: 'minted',
+      why: 'a count this reading computed',
+    },
+  'summary.ts «{} rule(s) in force you did not accept yourself, none shown to you yet: {}» review #1':
+    {
+      verdict: 'minted',
+      why: 'a fixed sentence of this surface naming the verb',
+    },
+  'summary.ts «{} rule(s) in force you did not accept yourself, none shown to you yet: {}» total #1':
+    {
+      verdict: 'minted',
+      why: 'a count this reading computed',
+    },
   'reviewed.ts «Reviewed: {} accepted, {} rejected, {} skipped.» counts.accepted #1': {
     verdict: 'minted',
     why: 'how many decisions this review accepted: a count of the session',
@@ -1725,7 +1971,7 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'collapsed',
     why: 'the decision’s reason, typed by whoever recorded it',
   },
-  'reviewed.ts «{} ({})» shown.adr #1': {
+  'reviewed.ts «{} ({})» readLabel(shown.adr, shown.scope) #1': {
     verdict: 'minted',
     why: 'the decision’s ADR label, which the product numbers',
   },
@@ -1740,6 +1986,46 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
   'reviewed.ts «{} of {}» total #1': {
     verdict: 'minted',
     why: 'how many decisions the review goes through: a count of the list',
+  },
+  "rules-test.ts « ({})» one.by.map(oneLine).join(', ') #1": {
+    verdict: 'collapsed',
+    why: 'the ids of the rules the record holds behind a verdict, each collapsed',
+  },
+  'rules-test.ts «{} of {} case(s) met their verdict.» cases.length #1': {
+    verdict: 'minted',
+    why: 'how many cases the file declared: a count of the list',
+  },
+  'rules-test.ts «{} of {} case(s) met their verdict.» met #1': {
+    verdict: 'minted',
+    why: 'how many of them met their verdict: a count',
+  },
+  'rules-test.ts «{}: expected {}, got {}{}» by #1': {
+    verdict: 'composed',
+    why: 'the clause built above from the collapsed ids, or nothing',
+  },
+  'rules-test.ts «{}: expected {}, got {}{}» one.expect #1': {
+    verdict: 'minted',
+    why: 'one of the four verdict words, parsed against that list before it is kept',
+  },
+  'rules-test.ts «{}: expected {}, got {}{}» one.got #1': {
+    verdict: 'minted',
+    why: 'one of the four verdict words the gate answered',
+  },
+  'rules-test.ts «{}: expected {}, got {}{}» oneLine(one.path) #1': {
+    verdict: 'collapsed',
+    why: 'the path the file declared, typed by whoever wrote the file',
+  },
+  'rules-test.ts «{}: {}{}» by #1': {
+    verdict: 'composed',
+    why: 'the clause built above from the collapsed ids, or nothing',
+  },
+  'rules-test.ts «{}: {}{}» one.got #1': {
+    verdict: 'minted',
+    why: 'one of the four verdict words the gate answered',
+  },
+  'rules-test.ts «{}: {}{}» oneLine(one.path) #1': {
+    verdict: 'collapsed',
+    why: 'the path the file declared, typed by whoever wrote the file',
   },
 
   // --- rules.ts: which recorded rules govern a path -------------------------------
@@ -1897,6 +2183,70 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'the verb ending this report writes, chosen by the count beside it',
   },
+  "rules.ts itemLine(oneLine(folder.folder === '.' ? '. (files at the root)' : folder.folder)) #1":
+    {
+      verdict: 'collapsed',
+      why: 'the name of a top-level folder, which came off the disk and is this module’s to collapse',
+    },
+  "rules.ts «not counted, as not hand-written: {}» coverage.skipped.map(oneLine).join(', ') #1": {
+    verdict: 'collapsed',
+    why: 'the names the walk left out, each a directory name met on the disk',
+  },
+  'rules.ts itemLine(counts(folder)) #1': {
+    verdict: 'minted',
+    why: 'the four counts of one folder, composed from numbers only',
+  },
+  'rules.ts «per top-level folder ({})» coverage.folders.length #1': {
+    verdict: 'minted',
+    why: 'how many folders are listed: a count',
+  },
+  'rules.ts «the walk stopped at {} files: every count here is a floor, and the folders after the stop are missing or short» coverage.ceiling #1':
+    {
+      verdict: 'minted',
+      why: 'the walk ceiling, a number the product fixes',
+    },
+  'rules.ts «{} file{}: {}» counts(coverage.layers) #1': {
+    verdict: 'minted',
+    why: 'the four counts of the whole project, composed from numbers only',
+  },
+  'rules.ts «{} file{}: {}» coverage.files #1': {
+    verdict: 'minted',
+    why: 'how many files the walk counted: a count',
+  },
+  "rules.ts «{} file{}: {}» coverage.files === 1 ? '' : 's' #1": {
+    verdict: 'minted',
+    why: 'the plural ending this report writes, chosen by the count beside it',
+  },
+  'rules.ts «{} file{}» folder.files #1': {
+    verdict: 'minted',
+    why: 'how many files one folder holds: a count',
+  },
+  "rules.ts «{} file{}» folder.files === 1 ? '' : 's' #1": {
+    verdict: 'minted',
+    why: 'the plural ending this report writes, chosen by the count beside it',
+  },
+  'rules.ts «{} refused · {} ask for a person · {} governed · {} under no rule» one.asks #1': {
+    verdict: 'minted',
+    why: 'how many files fall under one layer: a count',
+  },
+  'rules.ts «{} refused · {} ask for a person · {} governed · {} under no rule» one.governs #1': {
+    verdict: 'minted',
+    why: 'how many files fall under one layer: a count',
+  },
+  'rules.ts «{} refused · {} ask for a person · {} governed · {} under no rule» one.none #1': {
+    verdict: 'minted',
+    why: 'how many files fall under one layer: a count',
+  },
+  'rules.ts «{} refused · {} ask for a person · {} governed · {} under no rule» one.refuses #1': {
+    verdict: 'minted',
+    why: 'how many files fall under one layer: a count',
+  },
+
+  "rules.ts «switched off: {}; as the gate does, a file under a rule of that layer counts under the next one» coverage.switchedOff.join(', ') #1":
+    {
+      verdict: 'minted',
+      why: 'the names of the gate channels that are off, which are the product’s own',
+    },
 
   // --- runs.ts: a run, for all three readings ------------------------------------
   'runs.ts «last run {} ({})» run.id #1': {
@@ -2059,9 +2409,13 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'an anchor: the reading resolved the actor to one before this line',
   },
-  'status.ts «{} live task(s):» served(status.work.length, status.workTotal) #1': {
+  'status.ts «{} live task(s){}:» served(status.work.length, status.workTotal) #1': {
     verdict: 'composed',
     why: 'the `n of m` composed below out of two counts',
+  },
+  'status.ts «{} live task(s){}:» favouring #1': {
+    verdict: 'minted',
+    why: 'words the code chose (`, in progress first`) or nothing, from whether the list was cut; no recorded text enters it',
   },
   'status.ts «{} decision(s) in force:» served(status.decisions.length, status.decisionsTotal) #1':
     {
@@ -2077,7 +2431,7 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'composed',
       why: 'the same pair of counts, for the mixed list',
     },
-  'status.ts «{} · {}» item.adr #1': {
+  'status.ts «{} · {}» readLabel(item.adr, item.scope) #1': {
     verdict: 'composed',
     why: 'the label half of a waiting decision’s name: collapsed whole at the call site',
   },
@@ -2891,7 +3245,7 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'the task’s position: a word of its transition table',
   },
-  'status.ts itemLine(item.adr) #1': {
+  'status.ts itemLine(readLabel(item.adr, item.scope)) #1': {
     verdict: 'minted',
     why: 'the `ADR-<n>` the decision was minted with',
   },
@@ -3036,8 +3390,8 @@ describe('every value this layer puts on a line is classified', () => {
     // it measures what the two opening texts print for a hook, and cuts them at a whole item.
     // `named-decision.ts` is a COMPOSER: the decision another decision's link names, whose title is
     // text somebody typed, worded once for `show` and for the document a session opens with.
-    expect(FOUND.composers.length + FOUND.machinery.length).toBe(39);
-    expect(FOUND.composers.length).toBe(27);
+    expect(FOUND.composers.length + FOUND.machinery.length).toBe(41);
+    expect(FOUND.composers.length).toBe(29);
     expect(FOUND.machinery).toContain('items.ts');
     expect(FOUND.machinery).toContain('line.ts');
     expect(FOUND.machinery).toContain('width.ts');
@@ -3047,8 +3401,8 @@ describe('every value this layer puts on a line is classified', () => {
     // 251 until the renderer began making an actor's control bytes visible and joined the
     // composers with its two template values; then 253 until the rules in force began saying who
     // accepted them (`brief.ts`, `record.ts`); 294 until `mnema rules` printed the four numbers
-    // of the relation that refuses a write; 301 with the three the trunk added meanwhile; 395 with the lines `mnema site` prints; 306 once the document counts the rules that refuse a write; 367 with the pages of the git bridge; 377 with its shallow sentence and the recipe aging prints; 389 with the section for an inherited record; 415 with the mark on a link taken back, in the graph and its diagram; 418 once the closing paragraph words a host's ceiling in its own unit; 425 with the paragraph naming the stacks adopted; 447 with the lines `decision review` shows; 452 with the summary of the bare name and the commands that turn a channel on; 466 with a task's notes, its last handoff, who has it, and the file behind a path; 467 with the outcome a run closed with; 474 with where the last session stopped; 475 with the sentence for a session that wrote nothing to the record; 476 with the channel a switch needs, said on its line; 477 with the word a rule's row says it does; 485 with where an inherited rule came from, and the count of the inherited record's addresses; 497 with those addresses by relation, on the rules report and in the brief; 500 with the run of each tree that `mnema status` names; 497 once the host's ceiling in words lives with the ceiling (`ceilingInWords`), and the push of the rules at an edit words it too; 514 with the line a promotion answers when the global tree already held the decision; 516 with the clause beside an agent name no client announced, in the brief and in show; 517 with the cut a replaced decision's title takes on a fitted line; 518 with the line that counts the swept tasks the opening leaves out; 522 with the paragraph that names a decision an accept and a retirement crossed on; 524 with the group of the rules reading that lists it and the words a line names it by; 525 with the line for a directory that holds tails of more than one record; 527 with the mark on a tail that holds keys; 532 with the sentence of what a pull left aside of the tails; 540 with the section that lists this machine's private rules in the hook's copy; 543 with their `private` label; 545 with the clause that names the other end of a replaced decision on a search hit; 572 with what `tail repair` says; 603 with what it says of a whole tail put back; 608 with the last session's decisions counted and the newest of them named.
-    expect(FOUND.sites.length).toBe(608);
+    // of the relation that refuses a write; 301 with the three the trunk added meanwhile; 395 with the lines `mnema site` prints; 306 once the document counts the rules that refuse a write; 367 with the pages of the git bridge; 377 with its shallow sentence and the recipe aging prints; 389 with the section for an inherited record; 415 with the mark on a link taken back, in the graph and its diagram; 418 once the closing paragraph words a host's ceiling in its own unit; 425 with the paragraph naming the stacks adopted; 447 with the lines `decision review` shows; 452 with the summary of the bare name and the commands that turn a channel on; 466 with a task's notes, its last handoff, who has it, and the file behind a path; 467 with the outcome a run closed with; 474 with where the last session stopped; 475 with the sentence for a session that wrote nothing to the record; 476 with the channel a switch needs, said on its line; 477 with the word a rule's row says it does; 485 with where an inherited rule came from, and the count of the inherited record's addresses; 497 with those addresses by relation, on the rules report and in the brief; 500 with the run of each tree that `mnema status` names; 497 once the host's ceiling in words lives with the ceiling (`ceilingInWords`), and the push of the rules at an edit words it too; 514 with the line a promotion answers when the global tree already held the decision; 516 with the clause beside an agent name no client announced, in the brief and in show; 517 with the cut a replaced decision's title takes on a fitted line; 518 with the line that counts the swept tasks the opening leaves out; 522 with the paragraph that names a decision an accept and a retirement crossed on; 524 with the group of the rules reading that lists it and the words a line names it by; 525 with the line for a directory that holds tails of more than one record; 527 with the mark on a tail that holds keys; 532 with the sentence of what a pull left aside of the tails; 540 with the section that lists this machine's private rules in the hook's copy; 543 with their `private` label; 545 with the clause that names the other end of a replaced decision on a search hit; 572 with what `tail repair` says; 603 with what it says of a whole tail put back; 608 with the last session's decisions counted and the newest of them named; 617 with the counts of who accepted the rules in force and the shorter tail of each rule line; 611 with the state and the title a reference row names its far end by; 633 with the rules in force a person did not accept themselves: the review's second pass, the bare name's list and the line `show` prints of the newest showing; 609 with the clause that says a cut work list favours what is in progress; 617 with the counts of the pulled opening; 665 with the lines `mnema rules test` prints; 669 with the verdict `mnema why` says a write would meet; 676 with the tree a private label is read with and the line a cut search adds, which says which limit it points at. 691 with the lines `mnema rules --coverage` prints.
+    expect(FOUND.sites.length).toBe(691);
   });
 
   it('reads the verdict off the source rather than believing the table', () => {
@@ -3069,10 +3423,10 @@ describe('every value this layer puts on a line is classified', () => {
     // No arm of the case above may be empty, or that much of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
     const count = (verdict: Verdict): number => verdicts.filter((said) => said === verdict).length;
-    expect(count('collapsed')).toBe(172);
-    expect(count('minted')).toBe(308);
-    expect(count('composed')).toBe(128);
-    expect(FOUND.sites.filter((site) => /\boneLine\b/.test(site.expression))).toHaveLength(172);
+    expect(count('collapsed')).toBe(188);
+    expect(count('minted')).toBe(369);
+    expect(count('composed')).toBe(134);
+    expect(FOUND.sites.filter((site) => /\boneLine\b/.test(site.expression))).toHaveLength(188);
   });
 
   it('every reason says where the value comes from', () => {
@@ -3340,7 +3694,7 @@ const PROBES: readonly Probe[] = [
   {
     keys: [
       'references.ts subjectLine(oneLine(graph.id)) #1',
-      'references.ts «{}{}» oneLine(id) #1',
+      'references.ts «{}{}{}» oneLine(id) #1',
       'references.ts «{}:{}» oneLine(link.rel) #1',
     ],
     first: ['link', VALUE, 'a-target', '--rel', VALUE],

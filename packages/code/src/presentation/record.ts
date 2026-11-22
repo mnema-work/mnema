@@ -44,11 +44,12 @@
 import type { NamedDecision, RecordBody, TaskStory } from '@mnema/context';
 import type { DecisionActor, NoteRetraction, TransitionProof } from '@mnema/core';
 import { type AnchorForms, anchorText } from '../anchors.js';
-import { A_PERSON, NO_NAME_ANNOUNCED, neutralized, oneLine } from '../one-line.js';
+import { NO_AGENT_DECLARED, NO_NAME_ANNOUNCED, neutralized, oneLine } from '../one-line.js';
 import { DERIVED_FROM } from '../provenance.js';
 import { consultedLine } from './consultation.js';
 import { fact, statedFact, subjectLine } from './detail.js';
 import { asId, itemLine } from './items.js';
+import { readLabel } from './label.js';
 import { namedDecisionText } from './named-decision.js';
 import type { Render } from './render.js';
 import { asState } from './state.js';
@@ -63,6 +64,8 @@ export interface RecordContext {
   readonly attested?: { readonly recordedBy?: true; readonly acceptedBy?: true };
   /** The actors of a decision whose name no MCP client announced (FORMAT.md section 6.9). */
   readonly unannounced?: { readonly recordedBy?: true; readonly acceptedBy?: true };
+  /** The newest showing of a decision with no agent declared: who signed it and when. */
+  readonly shown?: { readonly who: string; readonly at: string };
 }
 
 /**
@@ -142,7 +145,7 @@ function aboveTheBody(lines: string[], facts: readonly string[]): string[] {
   return lines;
 }
 
-/** `mnid:ab12cd34 (a person)` or `mnid:ab12cd34 (agent claude-code)`. */
+/** `mnid:ab12cd34 (no agent declared)` or `mnid:ab12cd34 (agent claude-code)`. */
 function actorText(
   anchors: AnchorForms,
   actor: DecisionActor,
@@ -151,7 +154,7 @@ function actorText(
 ): string {
   const act =
     actor.which === undefined
-      ? A_PERSON
+      ? NO_AGENT_DECLARED
       : `agent ${oneLine(actor.which)}${attested ? ', attested by its own key' : ''}${unannounced ? `, ${NO_NAME_ANNOUNCED}` : ''}`;
   return `${oneLine(anchorText(anchors, actor.who))} (${act})`;
 }
@@ -249,7 +252,7 @@ export function recordReport(render: Render, body: RecordBody, context: RecordCo
       lines.push(
         render(
           statedFact(
-            `${body.record.adr}: ${oneLine(body.record.title)}`,
+            `${readLabel(body.record.adr, body.scope)}: ${oneLine(body.record.title)}`,
             asState(body.record.state),
           ),
         ),
@@ -287,6 +290,17 @@ export function recordReport(render: Render, body: RecordBody, context: RecordCo
           render(
             fact(
               `accepted by ${actorText(context.anchors, body.record.acceptedBy, context.attested?.acceptedBy === true, context.unannounced?.acceptedBy === true)}`,
+            ),
+          ),
+        );
+      }
+      // A showing is the key signing at a terminal with no agent declared, and that is all it is
+      // worded as (ADR-623): never "seen by a person".
+      if (context.shown !== undefined) {
+        lines.push(
+          render(
+            fact(
+              `marked shown at a terminal, no agent declared, by ${oneLine(anchorText(context.anchors, context.shown.who))} at ${context.shown.at}`,
             ),
           ),
         );

@@ -1,0 +1,69 @@
+name: Single executable
+
+# THE EXPERIMENTAL SINGLE EXECUTABLE, BUILT AND RUN. `packages/code/build/the-single-executable.mjs` folds the CLI
+# into one Linux x64 file with Node's single executable applications, and `.github/the-single-executable/smoke.sh`
+# runs it with an empty HOME and a PATH that holds no Node: the version, then `init`, `decision record` and
+# `verify` in an empty project. It goes red if the file cannot be built, does not start, or `verify` does not say the
+# record is intact.
+#
+# WHEN. On a push to `main`, and on a pull request that touches what the executable is made of. It is not a required
+# check and nothing waits for it: the executable is experimental, Linux only and unsigned (`docs/install.md`).
+# The release builds and runs the same two files again before it attaches the executable (`release.yml`).
+#
+# WHAT IT DOES NOT PROVE. That the executable works on a Node-less machine of another distribution (it runs on the
+# runner, which has Node installed, but the smoke's PATH has none), nor on macOS or Windows (no executable is built there).
+# It needs no secret and no account, and publishes nothing.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'packages/*/src/**'
+      - 'packages/code/build/**'
+      - '.github/the-single-executable/**'
+      - '.github/workflows/single-executable.yml'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  the-single-executable:
+    name: the single executable (linux x64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      # An exact Node 26: the executable carries the Node that builds it, so which one is known. `--build-sea` with an
+      # ES module as the entry needs 25.7, and 26 is in the engines range.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '26.13.1'
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Build the single executable
+        run: pnpm build:single-executable
+
+      - name: Run it without a Node, through init, record and verify
+        run: bash .github/the-single-executable/smoke.sh packages/code/dist/single-executable
+
+      - name: The size of the file
+        run: ls -l packages/code/dist/single-executable/mnema-*-linux-x64

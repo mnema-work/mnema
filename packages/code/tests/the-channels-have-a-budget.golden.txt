@@ -1,16 +1,16 @@
 The size of every channel the model reads, over one fixture record.
 Bytes are UTF-8; tokens are o200k_base, a relative measure and not what a Claude model bills.
 
-session start: brief --hook                  2557 B      682 tok
+session start: brief --hook                  2683 B      712 tok
 session start: recall --hook                  812 B      200 tok
-subagent start: brief --hook                 2557 B      682 tok
-file form: brief (what MNEMA.md carries)     2614 B      698 tok
+subagent start: brief --hook                 2683 B      712 tok
+file form: brief (what MNEMA.md carries)     2740 B      728 tok
 instructions                                 2041 B      478 tok
-edit: rules pushed                            331 B       92 tok
-edit: asks for a person                       515 B      137 tok
-edit: refuses the write                       643 B      184 tok
-tool answer: bootstrap                       2287 B      842 tok
-tool answer: skills                           302 B       89 tok
+edit: rules pushed                            340 B       93 tok
+edit: asks for a person                       524 B      138 tok
+edit: refuses the write                       652 B      185 tok
+tool answer: bootstrap                       2340 B      867 tok
+tool answer: skills                           311 B       90 tok
 tool answer: focus                            743 B      295 tok
 tool answer: resume                          1127 B      439 tok
 tool answer: search                          1305 B      464 tok
@@ -18,38 +18,38 @@ tool answer: search ["term"]                  240 B       87 tok
 tool answer: read_record ["id"]               700 B      273 tok
 tool answer: audit_timeline ["id"]           2518 B     1066 tok
 tool answer: audit_refs ["id"]                577 B      231 tok
-tool answer: governing_rules ["path"]         817 B      275 tok
+tool answer: governing_rules ["path"]         836 B      285 tok
 tool answer: next_actions ["id"]              120 B       31 tok
 tool answer: audit_accountability             916 B      276 tok
 tool answer: audit_exposure                    82 B       26 tok
 tool answer: audit_antipatterns               301 B       74 tok
-tool answer: record_decision                  852 B      231 tok
+tool answer: record_decision                  879 B      235 tok
 tool answer: capture_memory                   178 B       53 tok
-tool definition: capture_memory              2117 B      456 tok
-tool definition: record_observation          2411 B      524 tok
-tool definition: retract_note                1839 B      416 tok
-tool definition: retract_link                2064 B      470 tok
-tool definition: record_handoff              2758 B      631 tok
-tool definition: link_knowledge              2731 B      610 tok
-tool definition: create_task                 2605 B      575 tok
-tool definition: task_transition             2020 B      447 tok
-tool definition: record_decision             3060 B      668 tok
-tool definition: decision_transition         2305 B      513 tok
-tool definition: create_skill                2466 B      545 tok
-tool definition: skill_transition            2039 B      466 tok
-tool definition: bootstrap                   2291 B      570 tok
-tool definition: skills                      2508 B      589 tok
-tool definition: focus                       1221 B      286 tok
-tool definition: resume                      1300 B      302 tok
-tool definition: next_actions                 953 B      220 tok
-tool definition: guard                       2886 B      676 tok
-tool definition: search                      2682 B      629 tok
-tool definition: read_record                 1371 B      322 tok
-tool definition: audit_timeline               975 B      224 tok
-tool definition: audit_refs                  1649 B      403 tok
-tool definition: governing_rules             1501 B      339 tok
-tool definition: rules_before_an_edit        2427 B      546 tok
-tool definition: audit_accountability        1986 B      440 tok
-tool definition: audit_exposure              1626 B      364 tok
-tool definition: audit_antipatterns          1447 B      314 tok
-tool definitions: all 27                    55266 B    12547 tok
+tool definition: capture_memory              2146 B      460 tok
+tool definition: record_observation          2440 B      528 tok
+tool definition: retract_note                1868 B      420 tok
+tool definition: retract_link                2093 B      474 tok
+tool definition: record_handoff              2787 B      635 tok
+tool definition: link_knowledge              2760 B      614 tok
+tool definition: create_task                 2634 B      579 tok
+tool definition: task_transition             2049 B      451 tok
+tool definition: record_decision             3532 B      782 tok
+tool definition: decision_transition         2334 B      517 tok
+tool definition: create_skill                2495 B      549 tok
+tool definition: skill_transition            2068 B      470 tok
+tool definition: bootstrap                   2372 B      589 tok
+tool definition: skills                      2535 B      592 tok
+tool definition: focus                       1302 B      305 tok
+tool definition: resume                      1381 B      321 tok
+tool definition: next_actions                 982 B      224 tok
+tool definition: guard                       2915 B      680 tok
+tool definition: search                      2711 B      633 tok
+tool definition: read_record                 1400 B      326 tok
+tool definition: audit_timeline              1004 B      228 tok
+tool definition: audit_refs                  1678 B      407 tok
+tool definition: governing_rules             1530 B      343 tok
+tool definition: rules_before_an_edit        2456 B      550 tok
+tool definition: audit_accountability        2015 B      444 tok
+tool definition: audit_exposure              1707 B      383 tok
+tool definition: audit_antipatterns          1528 B      333 tok
+tool definitions: all 27                    56750 B    12839 tok

@@ -173,6 +173,20 @@ export { RecordLinkedError, refuseToWriteThrough } from './chain/linked-write.js
 export { MigrationUnsettledError } from './chain/migration.js';
 export { illegalMoves, type PlacedEvent } from './chain/moves.js';
 export type { PoolOptions } from './chain/pool.js';
+export {
+  checkProof,
+  type ManifestMove,
+  PROOF_SCHEME,
+  type ProofManifest,
+  type ProofVerdict,
+  type ProveRefusal,
+  type ProveResult,
+  proveDecision,
+  type RecordToProve,
+  recordToProve,
+  type TailToProve,
+  WHAT_A_PROOF_DOES_NOT_COVER,
+} from './chain/proof.js';
 export type {
   Arrivals,
   RecordGroup,
@@ -190,6 +204,7 @@ export {
   tailsACutWouldUnrelink,
 } from './chain/relink-plan.js';
 export {
+  anchorLinksRefused,
   type CheckpointsMark,
   type CommittedKeys,
   committedKeys,
@@ -288,11 +303,13 @@ export {
   type ProvenCheckpoint,
   readStoredWitness,
   readWitness,
+  refuseWitnessThroughALink,
   type WalkedWitness,
   type WitnessedTail,
   type WitnessReading,
   witnessOfTail,
   witnessWalk,
+  writeSigstoreBundle,
   writeWitness,
 } from './chain/witness.js';
 export {
@@ -334,6 +351,7 @@ export {
   checkPassed,
   decisionBirth,
   decisionRecorded,
+  decisionSeen,
   decisionTransitioned,
   enrollmentMessage,
   handoffRecorded,
@@ -385,6 +403,7 @@ export {
   type CheckPassedV1,
   DERIVED_FROM_RELATION,
   type DecisionRecordedV1,
+  type DecisionSeenV1,
   type DecisionTransitionedV1,
   type EventKind,
   GOVERNS_RELATION,

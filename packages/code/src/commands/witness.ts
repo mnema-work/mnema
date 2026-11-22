@@ -67,7 +67,7 @@
  * are named by what they attest.
  */
 
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import {
   type ChainLayout,
   type Checkpoint,
@@ -82,9 +82,11 @@ import {
   meetsRequirement,
   type ProvenCheckpoint,
   type ProvenLevel,
+  RecordLinkedError,
   readTailCheckpoints,
   readTailEntries,
   readWitness,
+  refuseWitnessThroughALink,
   stampCheckpoint,
   tailStanding,
   verify,
@@ -92,10 +94,10 @@ import {
   type WitnessReading,
   type WitnessRefusal,
   type WitnessReturnVisit,
-  witnessDir,
   witnessOfTail,
   witnessSigstorePath,
   witnessWalk,
+  writeSigstoreBundle,
   writeWitness,
 } from '@mnema/chain';
 import {
@@ -395,6 +397,20 @@ export async function runWitnessStamp(
       });
       continue;
     }
+    // Before anything is sent: a link where the proof is filed would refuse the write after the
+    // calendars were asked, and a rerun would ask them again.
+    try {
+      refuseWitnessThroughALink(chain.layout, chain.tail, checkpoint, ['proof']);
+    } catch (error) {
+      if (!(error instanceof RecordLinkedError)) throw error;
+      outcomes.push(
+        said(chain, 'failed', `nothing was sent: ${error.message}`, {
+          status: 'not-covered',
+          detail: error.message,
+        }),
+      );
+      continue;
+    }
     const stamped = await stampCheckpoint(checkpoint, network);
     writeWitness(chain.layout, chain.tail, checkpoint, { proof: stamped.proof });
     outcomes.push({
@@ -484,6 +500,13 @@ async function upgradeTail(
           walked.reading,
         ),
       );
+      continue;
+    }
+    try {
+      refuseWitnessThroughALink(chain.layout, chain.tail, at, ['proof', 'blocks']);
+    } catch (error) {
+      if (!(error instanceof RecordLinkedError)) throw error;
+      outcomes.push(said(chain, 'failed', `nothing was asked: ${error.message}`, walked.reading));
       continue;
     }
     let done: Awaited<ReturnType<typeof completeWitness>>;
@@ -627,6 +650,15 @@ export async function runWitnessSigstore(
       continue;
     }
     const digest = head.hash;
+    // Before anything is signed: a bundle goes to Rekor, which is public and permanent, and a link
+    // where it is filed would refuse the write afterwards and lose it.
+    try {
+      refuseWitnessThroughALink(chain.layout, chain.tail, digest, ['sigstore']);
+    } catch (error) {
+      if (!(error instanceof RecordLinkedError)) throw error;
+      outcomes.push(said('failed', `nothing was signed: ${error.message}`));
+      continue;
+    }
     if (existsSync(witnessSigstorePath(chain.layout, chain.tail, digest))) {
       outcomes.push(said('skipped', `checkpoint ${digest} is already countersigned`));
       continue;
@@ -652,11 +684,23 @@ export async function runWitnessSigstore(
       });
       return;
     }
-    mkdirSync(witnessDir(chain.layout, chain.tail), { recursive: true });
-    writeFileSync(
-      witnessSigstorePath(chain.layout, chain.tail, signed.digest),
-      `${JSON.stringify(signed.bundle, null, 2)}\n`,
-    );
+    try {
+      writeSigstoreBundle(
+        chain.layout,
+        chain.tail,
+        signed.digest,
+        `${JSON.stringify(signed.bundle, null, 2)}\n`,
+      );
+    } catch (error) {
+      if (!(error instanceof RecordLinkedError)) throw error;
+      outcomes.push({
+        scope: chain.scope,
+        tail: chain.tail,
+        did: 'failed',
+        detail: `checkpoint ${signed.digest} was logged but its bundle was not filed: ${error.message}`,
+      });
+      return;
+    }
     const logIndex = String(
       (signed.bundle.verificationMaterial.tlogEntries[0] as { logIndex?: unknown }).logIndex ?? '',
     );

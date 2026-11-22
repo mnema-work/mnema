@@ -408,6 +408,151 @@ describe("the backup of the machine's global tree", () => {
   });
 });
 
+/** A project in git whose record is local: `.mnema/` is excluded before it exists, so git never sees it. */
+function localProject(label: string) {
+  const cwd = join(sandbox, label);
+  mkdirSync(cwd, { recursive: true });
+  const git = {
+    PATH: process.env.PATH ?? '',
+    HOME: sandbox,
+    GIT_CONFIG_NOSYSTEM: '1',
+    GIT_CONFIG_GLOBAL: '/dev/null',
+  };
+  expect(spawnSync('git', ['init', '-q'], { cwd, env: git }).status).toBe(0);
+  writeFileSync(join(cwd, '.git', 'info', 'exclude'), '.mnema/\n');
+  runInit({ cwd, env });
+  const ctx = { cwd, env };
+  expect(runTask(ctx, { title: `work of ${label}` }).ok).toBe(true);
+  expect(runTask(ctx, { title: `private work of ${label}`, scope: 'private' }).ok).toBe(true);
+  const status = spawnSync('git', ['status', '--porcelain', '--', '.mnema'], { cwd, env: git });
+  expect(status.stdout.toString()).toBe('');
+  return ctx;
+}
+
+describe('the backup of a local record: a clone whose record git does not hold', () => {
+  it('copies the public tree too, judges it, and brings it back into a project whose .mnema is gone', () => {
+    const a = localProject('local');
+    const folder = join(sandbox, 'folder-local');
+    const set = runBackupSetup(a, folder);
+    if (!set.ok) throw new Error('setup refused');
+    const ran = runBackupRun(a);
+    expect(ran).toMatchObject({ ok: true, publicIsInGit: false });
+    expect(ran.ok && ran.copied.map((one) => one.tree)).toEqual(['private', 'public']);
+    expect(runBackupStatus(a)).toMatchObject({ ok: true, publicIsInGit: false });
+    const verified = runBackupVerify(a);
+    expect(verified).toMatchObject({ ok: true, sound: true });
+    expect(verified.ok && verified.trees.map((one) => one.tree)).toEqual(['private', 'public']);
+
+    const root = resolveTrees(a.cwd, env).projectPublic as string;
+    const priv = resolveTrees(a.cwd, env).projectPrivate as string;
+    // What a copy holds: the tails and the public keys, byte for byte (README, ignore files and locks are not in a copy).
+    const kept = (dir: string) =>
+      filesUnder(dir)
+        .filter((file) => file.startsWith('tails/') || /^keys\/.*\.pub$/.test(file))
+        .map((file) => `${file}:${readFileSync(join(dir, file)).toString('base64')}`)
+        .join('\n');
+    const publicBefore = kept(root);
+    const privateBefore = kept(priv);
+    expect(publicBefore).toContain('tails/');
+    // What git clean -fdX does to an excluded folder: it is gone, and so is the project for discovery.
+    rmSync(root, { recursive: true, force: true });
+    rmSync(priv, { recursive: true, force: true });
+    expect(resolveTrees(a.cwd, env).projectPublic).toBeUndefined();
+
+    const dry = runBackupRestore(a, true);
+    expect(dry).toMatchObject({ ok: true, dryRun: true });
+    expect(existsSync(root)).toBe(false);
+    const done = runBackupRestore(a, false);
+    if (!done.ok) throw new Error(JSON.stringify(done));
+    expect(done.trees.map((one) => one.tree)).toEqual(['private', 'public']);
+    expect(kept(root)).toBe(publicBefore);
+    expect(kept(priv)).toBe(privateBefore);
+    expect(runBackupVerify(a)).toMatchObject({ ok: true, sound: true });
+    expect(runVerify({ ...a, requirement: 'signed', global: false })).toMatchObject({
+      ok: true,
+      requirementMet: true,
+    });
+  });
+
+  it('brings back only the public tree, or only the private one, and leaves the other as it was', () => {
+    const a = localProject('halves');
+    expect(runBackupSetup(a, join(sandbox, 'folder-halves')).ok).toBe(true);
+    expect(runBackupRun(a).ok).toBe(true);
+    const trees = resolveTrees(a.cwd, env);
+    const root = trees.projectPublic as string;
+    const priv = trees.projectPrivate as string;
+    const tails = (dir: string) =>
+      filesUnder(join(dir, 'tails'))
+        .map((file) => `${file}:${readFileSync(join(dir, 'tails', file)).toString('base64')}`)
+        .join('\n');
+    const [publicTails, privateTails] = [tails(root), tails(priv)];
+    rmSync(root, { recursive: true, force: true });
+    expect(runBackupRestore(a, false).ok).toBe(true);
+    expect(tails(root)).toBe(publicTails);
+    expect(tails(priv)).toBe(privateTails);
+    rmSync(priv, { recursive: true, force: true });
+    expect(runBackupRestore(a, false).ok).toBe(true);
+    expect(tails(priv)).toBe(privateTails);
+    expect(tails(root)).toBe(publicTails);
+    expect(runBackupVerify(a)).toMatchObject({ ok: true, sound: true });
+  });
+
+  it('still asks before a copy of another record replaces a local record that is there', () => {
+    const one = localProject('first');
+    const two = localProject('second');
+    const folder = join(sandbox, 'folder-first');
+    const first = runBackupSetup(one, folder);
+    if (!first.ok) throw new Error('setup refused');
+    expect(runBackupRun(one).ok).toBe(true);
+    expect(runBackupSetup(two, folder).ok).toBe(true);
+    const root = resolveTrees(two.cwd, env).projectPublic as string;
+    const live = digest(root);
+    const plan = planBackupRestore(two, first.record);
+    expect(plan).toMatchObject({ ok: true, asks: true });
+    expect(runBackupRestore(two, false, { from: first.record })).toMatchObject({
+      ok: false,
+      code: 'NOT_CONFIRMED',
+    });
+    expect(digest(root)).toBe(live);
+  });
+
+  it('takes a committed record for committed even when a global exclude names its folder', () => {
+    const a = project('global-exclude', true);
+    const exclude = join(sandbox, 'global-exclude-file');
+    writeFileSync(exclude, '.mnema/\n');
+    const git = (...args: string[]) =>
+      spawnSync('git', args, {
+        cwd: a.cwd,
+        env: { PATH: process.env.PATH ?? '', HOME: sandbox, GIT_CONFIG_GLOBAL: '/dev/null' },
+      });
+    expect(git('config', 'core.excludesFile', exclude).status).toBe(0);
+    expect(git('add', '-f', '.mnema/tails').status).toBe(0);
+    expect(runBackupSetup(a, join(sandbox, 'folder-global')).ok).toBe(true);
+    const ran = runBackupRun(a);
+    expect(ran).toMatchObject({ ok: true, publicIsInGit: true });
+    expect(ran.ok && ran.copied.map((one) => one.tree)).toEqual(['private']);
+  });
+
+  it('restores from a folder that is gone only where git excludes it, and refuses elsewhere', () => {
+    const committed = project('committed', true);
+    const folder = join(sandbox, 'folder-committed');
+    expect(runBackupSetup(committed, folder).ok).toBe(true);
+    expect(runBackupRun(committed)).toMatchObject({ ok: true, publicIsInGit: true });
+    const trees = resolveTrees(committed.cwd, env);
+    rmSync(trees.projectPublic as string, { recursive: true, force: true });
+    expect(runBackupRestore(committed, false)).toMatchObject({ ok: false, reason: 'NO_PROJECT' });
+  });
+
+  it('leaves a committed record as it was: the public tree is kept by git and not copied', () => {
+    const a = project('kept-by-git', true);
+    const folder = join(sandbox, 'folder-kept');
+    expect(runBackupSetup(a, folder).ok).toBe(true);
+    const ran = runBackupRun(a);
+    expect(ran.ok && ran.copied.map((one) => one.tree)).toEqual(['private']);
+    expect(runBackupVerify(a)).toMatchObject({ ok: true, sound: true });
+  });
+});
+
 describe('a copy read back, and put back', () => {
   /** A project in git with its backup set up and run, and the places a restore is about. */
   function backedUp(label = 'alpha') {
@@ -571,6 +716,52 @@ describe('a copy read back, and put back', () => {
     expect(broken.ok && broken.sound).toBe(false);
     expect(runBackupRestore(a, false)).toMatchObject({ ok: false, code: 'BROKEN_COPY' });
     expect(existsSync(priv)).toBe(false);
+  });
+
+  it('fails verify for a manifest that does not read, and only says one that is not there', () => {
+    const { a, copy } = backedUp();
+    const manifest = join(copy, 'mnema-backup.json');
+    const whole = readFileSync(manifest);
+    writeFileSync(manifest, '{"files": ');
+    const unreadable = runBackupVerify(a);
+    expect(unreadable.ok && unreadable.sound).toBe(false);
+    const reading =
+      unreadable.ok && unreadable.trees[0] && 'reading' in unreadable.trees[0]
+        ? unreadable.trees[0].reading
+        : undefined;
+    expect(reading?.manifest).toBe('unreadable');
+    rmSync(manifest);
+    const absent = runBackupVerify(a);
+    expect(absent).toMatchObject({ ok: true, sound: true });
+    writeFileSync(manifest, whole);
+    expect(runBackupVerify(a)).toMatchObject({ ok: true, sound: true });
+  });
+
+  it('refuses to restore a copy whose manifest does not read, and says it in status; a manifest that is not there only is said', () => {
+    const { a, priv, copy } = backedUp();
+    const manifest = join(copy, 'mnema-backup.json');
+    const whole = readFileSync(manifest);
+    writeFileSync(manifest, '{');
+    const status = runBackupStatus(a);
+    expect(status.ok && status.trees.some((one) => one.manifest === 'unreadable')).toBe(true);
+    rmSync(priv, { recursive: true, force: true });
+    for (const broken of ['{"files": ', '[]']) {
+      writeFileSync(manifest, broken);
+      const refused = runBackupRestore(a, false);
+      expect(refused).toMatchObject({ ok: false, code: 'BROKEN_COPY' });
+      expect(refused.ok === false && 'message' in refused && refused.message).toContain(manifest);
+      expect(existsSync(priv)).toBe(false);
+    }
+    // A manifest the disk refuses (a folder where the file should be) does not read either.
+    rmSync(manifest);
+    mkdirSync(manifest);
+    expect(runBackupRestore(a, false)).toMatchObject({ ok: false, code: 'BROKEN_COPY' });
+    expect(existsSync(priv)).toBe(false);
+    // Not there at all: restored, and the copy says it has no date.
+    rmSync(manifest, { recursive: true });
+    expect(runBackupRestore(a, false)).toMatchObject({ ok: true });
+    expect(existsSync(priv)).toBe(true);
+    writeFileSync(manifest, whole);
   });
 
   it('refuses to verify or restore where the project has no copy', () => {

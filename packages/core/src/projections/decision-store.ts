@@ -8,7 +8,7 @@
  */
 
 import type { SqliteDatabase } from '../db/sqlite.js';
-import type { DecisionProjection } from './decision.js';
+import type { AcceptMove, DecisionProjection } from './decision.js';
 import { proofColumn, proofFromColumn } from './proof.js';
 import { verb } from './upsert.js';
 
@@ -30,6 +30,8 @@ interface DecisionRow {
   readonly recorded_which: string | null;
   readonly accepted_who: string | null;
   readonly accepted_which: string | null;
+  /** Every accept applied, JSON-encoded: null for a decision never accepted. */
+  readonly accepts: string | null;
 }
 
 /** The bound-parameter shape: every column present, optionals as null. */
@@ -49,6 +51,7 @@ interface DecisionParams {
   readonly recordedWhich: string | null;
   readonly acceptedWho: string | null;
   readonly acceptedWhich: string | null;
+  readonly accepts: string | null;
 }
 
 /**
@@ -67,8 +70,8 @@ export function materializeDecisions(
   replacing = false,
 ): void {
   const insert = db.prepare(
-    `${verb(replacing)} INTO decisions (id, adr, title, rationale, alternatives, state, superseded_by, supersedes, created_at, updated_at, proof, recorded_who, recorded_which, accepted_who, accepted_which)
-     VALUES (@id, @adr, @title, @rationale, @alternatives, @state, @supersededBy, @supersedes, @createdAt, @updatedAt, @proof, @recordedWho, @recordedWhich, @acceptedWho, @acceptedWhich)`,
+    `${verb(replacing)} INTO decisions (id, adr, title, rationale, alternatives, state, superseded_by, supersedes, created_at, updated_at, proof, recorded_who, recorded_which, accepted_who, accepted_which, accepts)
+     VALUES (@id, @adr, @title, @rationale, @alternatives, @state, @supersededBy, @supersedes, @createdAt, @updatedAt, @proof, @recordedWho, @recordedWhich, @acceptedWho, @acceptedWhich, @accepts)`,
   );
   for (const decision of decisions) {
     insert.run(toParams(decision));
@@ -134,6 +137,7 @@ function toParams(decision: DecisionProjection): DecisionParams {
     recordedWhich: decision.recordedBy?.which ?? null,
     acceptedWho: decision.acceptedBy?.who ?? null,
     acceptedWhich: decision.acceptedBy?.which ?? null,
+    accepts: decision.accepts === undefined ? null : JSON.stringify(decision.accepts),
   };
 }
 
@@ -166,6 +170,7 @@ function toProjection(row: DecisionRow): DecisionProjection {
       ...(row.accepted_which !== null ? { which: row.accepted_which } : {}),
     };
   }
+  if (row.accepts !== null) projection.accepts = JSON.parse(row.accepts) as AcceptMove[];
   return projection;
 }
 

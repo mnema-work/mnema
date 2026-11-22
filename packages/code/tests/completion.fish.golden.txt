@@ -12,7 +12,7 @@
 function __mnema_commands --description 'the subcommands one level of the tree offers'
     switch "$argv[1]"
         case ''
-            echo 'init decision link unlink memory observe retract skill stack task promote status brief recall rules rules-file instructions switch inherit verify witness check site search show timeline refs audit diagram export usage resume repl why commits aging trailer commit-hook record key tail backup doctor upgrade report completion tour mcp run before-a-write beside-a-write tally corrections after-a-write handback settled dispatched help'
+            echo 'init decision link unlink memory observe retract skill stack task promote status brief recall rules rules-file instructions switch inherit verify prove witness check site search show timeline refs audit diagram export usage resume repl why commits aging trailer commit-hook record key tail backup doctor upgrade report completion tour mcp run before-a-write beside-a-write tally corrections after-a-write handback settled words dictated dispatched help'
         case 'decision'
             echo 'record move review supersede import help'
         case 'skill'
@@ -21,12 +21,14 @@ function __mnema_commands --description 'the subcommands one level of the tree o
             echo 'add remove list index show diff check export enable disable help'
         case 'task'
             echo 'create move handoff next guard help'
+        case 'rules'
+            echo 'test'
         case 'switch'
             echo 'off on'
         case 'inherit'
             echo 'set update help'
         case 'witness'
-            echo 'stamp upgrade sigstore'
+            echo 'stamp upgrade sigstore sigstore-check'
         case 'check'
             echo 'declare run help'
         case 'audit'
@@ -34,7 +36,7 @@ function __mnema_commands --description 'the subcommands one level of the tree o
         case 'commit-hook'
             echo 'install uninstall suggest help'
         case 'record'
-            echo 'pull commit merge-tail help'
+            echo 'pull commit publish merge-tail help'
         case 'key'
             echo 'restore request enroll github sigstore revoke protect unprotect help'
         case 'tail'
@@ -98,6 +100,7 @@ complete -c mnema -f -n '__mnema_at ""' -a 'instructions' -d 'write the mnema in
 complete -c mnema -f -n '__mnema_at ""' -a 'switch' -d 'turn off, or back on, what mnema hands to a model unasked, and whether an agent may accept a decision'
 complete -c mnema -f -n '__mnema_at ""' -a 'inherit' -d 'read another repository’s decisions, pinned to one of its commits'
 complete -c mnema -f -n '__mnema_at ""' -a 'verify' -d 'verify this project\'s record: its committed tree and its private one'
+complete -c mnema -f -n '__mnema_at ""' -a 'prove' -d 'write the proof of one decision a stranger checks offline, or check one'
 complete -c mnema -f -n '__mnema_at ""' -a 'witness' -d 'ask an outside witness to date this record, and read where that stands'
 complete -c mnema -f -n '__mnema_at ""' -a 'check' -d 'give a rule a program that checks it, and record whether it held at a commit'
 complete -c mnema -f -n '__mnema_at ""' -a 'site' -d 'write the project\'s committed record as one HTML page that verifies itself in the browser (records nothing)'
@@ -107,11 +110,11 @@ complete -c mnema -f -n '__mnema_at ""' -a 'timeline' -d 'show an entity\'s hist
 complete -c mnema -f -n '__mnema_at ""' -a 'refs' -d 'show what an entity is connected to across the trees'
 complete -c mnema -f -n '__mnema_at ""' -a 'audit' -d 'ask the record who authorized what, what recurs, and what looks like a credential'
 complete -c mnema -f -n '__mnema_at ""' -a 'diagram' -d 'print a state machine, or an entity’s history or connections, as mermaid'
-complete -c mnema -f -n '__mnema_at ""' -a 'export' -d 'emit the record as an OCSF audit feed (NDJSON, envelope only, never a body)'
+complete -c mnema -f -n '__mnema_at ""' -a 'export' -d 'emit the record as an OCSF audit feed (NDJSON, envelope only, never a body), or with --madr write the decisions as MADR files'
 complete -c mnema -f -n '__mnema_at ""' -a 'usage' -d 'what each run cost, read from this machine\'s Claude Code transcripts'
 complete -c mnema -f -n '__mnema_at ""' -a 'resume' -d 'show where an actor left off, and the runs they still have open'
 complete -c mnema -f -n '__mnema_at ""' -a 'repl' -d 'open an interactive session that reads this project'
-complete -c mnema -f -n '__mnema_at ""' -a 'why' -d 'show under which decisions a file or a commit stands'
+complete -c mnema -f -n '__mnema_at ""' -a 'why' -d 'show under which decisions a file or a commit stands; for a file, also the verdict a write there would meet'
 complete -c mnema -f -n '__mnema_at ""' -a 'commits' -d 'show the commits that cite a decision and those that touched what it addresses'
 complete -c mnema -f -n '__mnema_at ""' -a 'aging' -d 'show accepted decisions whose addressed paths changed in many commits since'
 complete -c mnema -f -n '__mnema_at ""' -a 'trailer' -d 'print the commit trailer that ties a commit to a decision'
@@ -134,6 +137,8 @@ complete -c mnema -f -n '__mnema_at ""' -a 'corrections' -d 'record what a perso
 complete -c mnema -f -n '__mnema_at ""' -a 'after-a-write' -d 'copy a note of the host’s memory into the private tree, or name the door of a decision file, for a PostToolUse hook'
 complete -c mnema -f -n '__mnema_at ""' -a 'handback' -d 'check what a subagent hands back when it stops, or print the format it is checked by'
 complete -c mnema -f -n '__mnema_at ""' -a 'settled' -d 'say to the agent, after a question to the person was answered, which tool records a choice'
+complete -c mnema -f -n '__mnema_at ""' -a 'words' -d 'keep, on this machine and outside the record, what the person typed or chose, from a host’s hook'
+complete -c mnema -f -n '__mnema_at ""' -a 'dictated' -d 'say to the agent, beside a message that has the shape of a rule the person dictated, which tools record and accept it'
 complete -c mnema -f -n '__mnema_at ""' -a 'dispatched' -d 'record a session’s dispatches to other agents as one private task and a handoff each, for a PostToolUse or SessionEnd hook'
 complete -c mnema -f -n '__mnema_at ""' -a 'help' -d 'display help for command'
 complete -c mnema -f -n '__mnema_at ""' -s V -l version
@@ -160,6 +165,7 @@ complete -c mnema -f -n '__mnema_at "decision"' -a 'supersede' -d 'supersede a d
 complete -c mnema -f -n '__mnema_at "decision"' -a 'import' -d 'propose the decisions already written in this repository’s decision files'
 complete -c mnema -f -n '__mnema_at "decision"' -a 'help' -d 'display help for command'
 complete -c mnema -f -n '__mnema_at "decision"' -l alternatives -r
+complete -c mnema -f -n '__mnema_at "decision"' -l governs -r
 complete -c mnema -f -n '__mnema_at "decision"' -l scope -x -a 'public private global'
 complete -c mnema -f -n '__mnema_at "decision"' -l which -r
 complete -c mnema -f -n '__mnema_at "decision"' -l stdin
@@ -170,6 +176,7 @@ complete -c mnema -f -n '__mnema_at "decision"' -l color -x -a 'auto always neve
 
 # mnema decision record
 complete -c mnema -f -n '__mnema_at "decision record"' -l alternatives -r
+complete -c mnema -f -n '__mnema_at "decision record"' -l governs -r
 complete -c mnema -f -n '__mnema_at "decision record"' -l scope -x -a 'public private global'
 complete -c mnema -f -n '__mnema_at "decision record"' -l which -r
 complete -c mnema -f -n '__mnema_at "decision record"' -l stdin
@@ -461,14 +468,14 @@ complete -c mnema -f -n '__mnema_at "status"' -l color -x -a 'auto always never'
 
 # mnema brief
 complete -c mnema -f -n '__mnema_at "brief"' -l hook
-complete -c mnema -f -n '__mnema_at "brief"' -l host -x -a 'codex'
+complete -c mnema -f -n '__mnema_at "brief"' -l host -x -a 'vscode codex copilot opencode gemini qwen'
 complete -c mnema -f -n '__mnema_at "brief"' -s h -l help
 complete -c mnema -f -n '__mnema_at "brief"' -s V -l version
 complete -c mnema -f -n '__mnema_at "brief"' -l color -x -a 'auto always never'
 
 # mnema recall
 complete -c mnema -f -n '__mnema_at "recall"' -l hook
-complete -c mnema -f -n '__mnema_at "recall"' -l host -x -a 'codex'
+complete -c mnema -f -n '__mnema_at "recall"' -l host -x -a 'vscode codex copilot opencode gemini qwen'
 complete -c mnema -f -n '__mnema_at "recall"' -l session -r
 complete -c mnema -f -n '__mnema_at "recall"' -l after-a-compaction
 complete -c mnema -f -n '__mnema_at "recall"' -s h -l help
@@ -476,10 +483,17 @@ complete -c mnema -f -n '__mnema_at "recall"' -s V -l version
 complete -c mnema -f -n '__mnema_at "recall"' -l color -x -a 'auto always never'
 
 # mnema rules
+complete -c mnema -f -n '__mnema_at "rules"' -a 'test' -d 'check the verdicts a file declares for paths against the record’s rules'
+complete -c mnema -f -n '__mnema_at "rules"' -l coverage
 complete -c mnema -f -n '__mnema_at "rules"' -l json
 complete -c mnema -f -n '__mnema_at "rules"' -s h -l help
 complete -c mnema -f -n '__mnema_at "rules"' -s V -l version
 complete -c mnema -f -n '__mnema_at "rules"' -l color -x -a 'auto always never'
+
+# mnema rules test
+complete -c mnema -f -n '__mnema_at "rules test"' -s h -l help
+complete -c mnema -f -n '__mnema_at "rules test"' -s V -l version
+complete -c mnema -f -n '__mnema_at "rules test"' -l color -x -a 'auto always never'
 
 # mnema rules-file
 complete -c mnema -f -n '__mnema_at "rules-file"' -l host -x -a 'claude vscode cursor'
@@ -510,7 +524,7 @@ complete -c mnema -f -n '__mnema_at "switch off"' -l which -r
 complete -c mnema -f -n '__mnema_at "switch off"' -s h -l help
 complete -c mnema -f -n '__mnema_at "switch off"' -s V -l version
 complete -c mnema -f -n '__mnema_at "switch off"' -l color -x -a 'auto always never'
-complete -c mnema -f -n '__mnema_at "switch off"' -a 'brief-document recall-document edit-rules-push edit-asks-a-person edit-refuses-a-write agent-accepts edit-first-write-gate user-corrections choice-settled host-memory-mirror decision-file-written subagent-handback tool-call-count last-session private-rules after-a-compaction session-journal agent-mirror session-tally'
+complete -c mnema -f -n '__mnema_at "switch off"' -a 'brief-document recall-document edit-rules-push edit-asks-a-person edit-refuses-a-write agent-accepts edit-first-write-gate user-corrections opening-core choice-settled dictated-rule host-memory-mirror decision-file-written subagent-handback tool-call-count last-session private-rules after-a-compaction session-journal agent-mirror session-tally record-publish'
 
 # mnema switch on
 complete -c mnema -f -n '__mnema_at "switch on"' -l reason -r
@@ -519,7 +533,7 @@ complete -c mnema -f -n '__mnema_at "switch on"' -l which -r
 complete -c mnema -f -n '__mnema_at "switch on"' -s h -l help
 complete -c mnema -f -n '__mnema_at "switch on"' -s V -l version
 complete -c mnema -f -n '__mnema_at "switch on"' -l color -x -a 'auto always never'
-complete -c mnema -f -n '__mnema_at "switch on"' -a 'brief-document recall-document edit-rules-push edit-asks-a-person edit-refuses-a-write agent-accepts edit-first-write-gate user-corrections choice-settled host-memory-mirror decision-file-written subagent-handback tool-call-count last-session private-rules after-a-compaction session-journal agent-mirror session-tally'
+complete -c mnema -f -n '__mnema_at "switch on"' -a 'brief-document recall-document edit-rules-push edit-asks-a-person edit-refuses-a-write agent-accepts edit-first-write-gate user-corrections opening-core choice-settled dictated-rule host-memory-mirror decision-file-written subagent-handback tool-call-count last-session private-rules after-a-compaction session-journal agent-mirror session-tally record-publish'
 
 # mnema inherit
 complete -c mnema -f -n '__mnema_at "inherit"' -a 'set' -d 'point this project at a repository of decisions, at one commit'
@@ -557,10 +571,19 @@ complete -c mnema -f -n '__mnema_at "verify"' -s h -l help
 complete -c mnema -f -n '__mnema_at "verify"' -s V -l version
 complete -c mnema -f -n '__mnema_at "verify"' -l color -x -a 'auto always never'
 
+# mnema prove
+complete -c mnema -f -n '__mnema_at "prove"' -l out -r
+complete -c mnema -f -n '__mnema_at "prove"' -l private
+complete -c mnema -f -n '__mnema_at "prove"' -l check -r
+complete -c mnema -f -n '__mnema_at "prove"' -s h -l help
+complete -c mnema -f -n '__mnema_at "prove"' -s V -l version
+complete -c mnema -f -n '__mnema_at "prove"' -l color -x -a 'auto always never'
+
 # mnema witness
 complete -c mnema -f -n '__mnema_at "witness"' -a 'stamp' -d 'ask an outside witness to date each tail\'s last checkpoint (T3)'
 complete -c mnema -f -n '__mnema_at "witness"' -a 'upgrade' -d 'go back for every attestation this record is waiting on (T3)'
 complete -c mnema -f -n '__mnema_at "witness"' -a 'sigstore' -d 'countersign each tail\'s last checkpoint with a Sigstore certificate: who signed in, and when it was logged'
+complete -c mnema -f -n '__mnema_at "witness"' -a 'sigstore-check' -d 'check offline that the Sigstore countersignatures of this record name the identity you expect, as `cosign verify-blob` would'
 complete -c mnema -f -n '__mnema_at "witness"' -l global
 complete -c mnema -f -n '__mnema_at "witness"' -l json
 complete -c mnema -f -n '__mnema_at "witness"' -s h -l help
@@ -586,6 +609,15 @@ complete -c mnema -f -n '__mnema_at "witness sigstore"' -l global
 complete -c mnema -f -n '__mnema_at "witness sigstore"' -s h -l help
 complete -c mnema -f -n '__mnema_at "witness sigstore"' -s V -l version
 complete -c mnema -f -n '__mnema_at "witness sigstore"' -l color -x -a 'auto always never'
+
+# mnema witness sigstore-check
+complete -c mnema -f -n '__mnema_at "witness sigstore-check"' -l identity -r
+complete -c mnema -f -n '__mnema_at "witness sigstore-check"' -l issuer -r
+complete -c mnema -f -n '__mnema_at "witness sigstore-check"' -l message-dir -r
+complete -c mnema -f -n '__mnema_at "witness sigstore-check"' -l global
+complete -c mnema -f -n '__mnema_at "witness sigstore-check"' -s h -l help
+complete -c mnema -f -n '__mnema_at "witness sigstore-check"' -s V -l version
+complete -c mnema -f -n '__mnema_at "witness sigstore-check"' -l color -x -a 'auto always never'
 
 # mnema check
 complete -c mnema -f -n '__mnema_at "check"' -a 'declare' -d 'declare the program that checks a rule (no shell: the program and its arguments)'
@@ -650,7 +682,7 @@ complete -c mnema -f -n '__mnema_at "refs"' -l color -x -a 'auto always never'
 
 # mnema audit
 complete -c mnema -f -n '__mnema_at "audit"' -a 'accountability' -d 'show who authorized what across the record (optionally windowed/filtered)'
-complete -c mnema -f -n '__mnema_at "audit"' -a 'antipatterns' -d 'show recurring shapes in the record (reopens, supersessions, deprecations)'
+complete -c mnema -f -n '__mnema_at "audit"' -a 'antipatterns' -d 'show recurring shapes in the record (reopens, supersessions, deprecations, and what agents accepted)'
 complete -c mnema -f -n '__mnema_at "audit"' -a 'exposure' -d 'show which records hold something shaped like a credential (never the value)'
 complete -c mnema -f -n '__mnema_at "audit"' -a 'help' -d 'display help for command'
 complete -c mnema -f -n '__mnema_at "audit"' -s h -l help
@@ -690,6 +722,7 @@ complete -c mnema -f -n '__mnema_at "export"' -l from -r
 complete -c mnema -f -n '__mnema_at "export"' -l to -r
 complete -c mnema -f -n '__mnema_at "export"' -l who -r
 complete -c mnema -f -n '__mnema_at "export"' -l which -r
+complete -c mnema -f -n '__mnema_at "export"' -l madr -r
 complete -c mnema -f -n '__mnema_at "export"' -l global
 complete -c mnema -f -n '__mnema_at "export"' -s h -l help
 complete -c mnema -f -n '__mnema_at "export"' -s V -l version
@@ -766,6 +799,7 @@ complete -c mnema -f -n '__mnema_at "commit-hook suggest"' -l color -x -a 'auto 
 # mnema record
 complete -c mnema -f -n '__mnema_at "record"' -a 'pull' -d 'git pull over tails grown here and not yet committed'
 complete -c mnema -f -n '__mnema_at "record"' -a 'commit' -d 'commit the signed record to a branch for a pull request'
+complete -c mnema -f -n '__mnema_at "record"' -a 'publish' -d 'push the record branch and open its pull request, to a destination you name'
 complete -c mnema -f -n '__mnema_at "record"' -a 'merge-tail' -d 'the merge driver git runs for a tail\'s files'
 complete -c mnema -f -n '__mnema_at "record"' -a 'help' -d 'display help for command'
 complete -c mnema -f -n '__mnema_at "record"' -s h -l help
@@ -783,6 +817,14 @@ complete -c mnema -f -n '__mnema_at "record commit"' -l json
 complete -c mnema -f -n '__mnema_at "record commit"' -s h -l help
 complete -c mnema -f -n '__mnema_at "record commit"' -s V -l version
 complete -c mnema -f -n '__mnema_at "record commit"' -l color -x -a 'auto always never'
+
+# mnema record publish
+complete -c mnema -f -n '__mnema_at "record publish"' -l to -r
+complete -c mnema -f -n '__mnema_at "record publish"' -l through -r
+complete -c mnema -f -n '__mnema_at "record publish"' -l json
+complete -c mnema -f -n '__mnema_at "record publish"' -s h -l help
+complete -c mnema -f -n '__mnema_at "record publish"' -s V -l version
+complete -c mnema -f -n '__mnema_at "record publish"' -l color -x -a 'auto always never'
 
 # mnema record merge-tail
 complete -c mnema -f -n '__mnema_at "record merge-tail"' -s h -l help
@@ -1033,11 +1075,13 @@ complete -c mnema -f -n '__mnema_at "beside-a-write"' -s V -l version
 complete -c mnema -f -n '__mnema_at "beside-a-write"' -l color -x -a 'auto always never'
 
 # mnema tally
+complete -c mnema -f -n '__mnema_at "tally"' -l host -x -a 'claude vscode codex copilot gemini cursor qwen'
 complete -c mnema -f -n '__mnema_at "tally"' -s h -l help
 complete -c mnema -f -n '__mnema_at "tally"' -s V -l version
 complete -c mnema -f -n '__mnema_at "tally"' -l color -x -a 'auto always never'
 
 # mnema corrections
+complete -c mnema -f -n '__mnema_at "corrections"' -l host -x -a 'claude vscode codex copilot gemini cursor qwen'
 complete -c mnema -f -n '__mnema_at "corrections"' -s h -l help
 complete -c mnema -f -n '__mnema_at "corrections"' -s V -l version
 complete -c mnema -f -n '__mnema_at "corrections"' -l color -x -a 'auto always never'
@@ -1049,6 +1093,7 @@ complete -c mnema -f -n '__mnema_at "after-a-write"' -l color -x -a 'auto always
 
 # mnema handback
 complete -c mnema -f -n '__mnema_at "handback"' -l schema
+complete -c mnema -f -n '__mnema_at "handback"' -l host -x -a 'claude codex copilot'
 complete -c mnema -f -n '__mnema_at "handback"' -s h -l help
 complete -c mnema -f -n '__mnema_at "handback"' -s V -l version
 complete -c mnema -f -n '__mnema_at "handback"' -l color -x -a 'auto always never'
@@ -1058,6 +1103,17 @@ complete -c mnema -f -n '__mnema_at "settled"' -l reply -r
 complete -c mnema -f -n '__mnema_at "settled"' -s h -l help
 complete -c mnema -f -n '__mnema_at "settled"' -s V -l version
 complete -c mnema -f -n '__mnema_at "settled"' -l color -x -a 'auto always never'
+
+# mnema words
+complete -c mnema -f -n '__mnema_at "words"' -l host -x -a 'claude vscode cursor codex copilot opencode gemini qwen cursorIde antigravity droid goose'
+complete -c mnema -f -n '__mnema_at "words"' -s h -l help
+complete -c mnema -f -n '__mnema_at "words"' -s V -l version
+complete -c mnema -f -n '__mnema_at "words"' -l color -x -a 'auto always never'
+
+# mnema dictated
+complete -c mnema -f -n '__mnema_at "dictated"' -s h -l help
+complete -c mnema -f -n '__mnema_at "dictated"' -s V -l version
+complete -c mnema -f -n '__mnema_at "dictated"' -l color -x -a 'auto always never'
 
 # mnema dispatched
 complete -c mnema -f -n '__mnema_at "dispatched"' -s h -l help

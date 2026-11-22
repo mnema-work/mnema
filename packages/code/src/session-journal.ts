@@ -26,6 +26,9 @@
  * of those ends alone is NOT told: reading the whole file at each Stop is what the digests are there
  * to spare.
  *
+ * THE PERSON'S WORDS ARE NOT HERE: what the person typed and chose is kept by the hooks in a sibling
+ * file of its own (`persons-words.ts`), pruned with this one ({@link pruneSessions}).
+ *
  * PRIVATE TO THE PERSON: the file is 0600 and its directories 0700, whatever the umask.
  *
  * ONE LIFE: {@link PRUNE_AFTER_MS} and {@link PRUNE_KEEP}. Every write prunes the directory of its
@@ -408,6 +411,51 @@ export function takeTheFirstServing(
   }
 }
 
+/** The suffix of the file that says where the host keeps the session's transcript. */
+const TRANSCRIPT_SUFFIX = '.transcript';
+
+/**
+ * Keeps the path of the session's transcript beside its journal: the one thing a server with no hook
+ * payload in hand needs to read what the person said (`agent-accept-words.ts`). A PATH, never a word
+ * of the transcript: the file is 0600 like the journal, pruned with it, outside the record, and
+ * `verify` never reads it. A sibling file and not a field of the journal, because the journal is
+ * rewritten whole by whoever reads the transcript and a field that writer does not carry would be
+ * dropped. A path that cannot be kept is the accept not checked, never a failed hook. Never throws.
+ */
+export function rememberTranscript(trees: ResolvedTrees, session: string, path: string): void {
+  const file = journalFile(trees, session);
+  if (file === undefined || path === '' || path.includes('\n')) return;
+  const holder = `${file}${TRANSCRIPT_SUFFIX}`;
+  try {
+    if (readFileSync(holder, 'utf-8') === path) return;
+  } catch {
+    // None yet: made below.
+  }
+  try {
+    const dir = dirname(file);
+    mkdirSync(dir, { recursive: true, mode: DIRECTORY_MODE });
+    chmodSync(dir, DIRECTORY_MODE);
+    const staging = `${holder}.${process.pid}.tmp`;
+    writeFileSync(staging, path, { mode: FILE_MODE });
+    chmodSync(staging, FILE_MODE);
+    renameSync(staging, holder);
+  } catch {
+    // The accept will say its words were not checked.
+  }
+}
+
+/** The path of the transcript kept for `session`, when a hook left one and the file is still there. */
+export function transcriptOf(trees: ResolvedTrees, session: string): string | undefined {
+  const file = journalFile(trees, session);
+  if (file === undefined) return undefined;
+  try {
+    const path = readFileSync(`${file}${TRANSCRIPT_SUFFIX}`, 'utf-8');
+    return path !== '' && statSync(path).isFile() ? path : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** A journal that names a task the session's end never closed, with where it is. */
 export interface LeftOpen {
   readonly file: string;
@@ -441,30 +489,58 @@ export function leftOpen(trees: ResolvedTrees, own: string, now: Date): readonly
   return left;
 }
 
-/** Lets go of the journals older than {@link PRUNE_AFTER_MS} and of all but the newest {@link PRUNE_KEEP}. */
-function prune(dir: string, now: Date): void {
-  const kept: { path: string; mtime: number }[] = [];
+/** What a session's file of the person's words is called, beside its journal (`persons-words.ts`). */
+export const WORDS_SUFFIX = '.words.jsonl';
+
+/**
+ * Lets go of the journals older than {@link PRUNE_AFTER_MS} and of all but the newest
+ * {@link PRUNE_KEEP}, and of the file of the person's words and the path of the transcript that go with each journal let go (and
+ * of those older than {@link PRUNE_AFTER_MS} or beyond the newest {@link PRUNE_KEEP}). So the words of
+ * a session go with its journal, AND go on their own limits whether or not the journal remains: a
+ * words file with no journal is let go by the same age, and only the newest {@link PRUNE_KEEP} words
+ * files stay. Never throws on a file that is gone already.
+ */
+export function pruneSessions(dir: string, now: Date): void {
+  const kept: { path: string; mtime: number; id: string }[] = [];
+  const words: { path: string; mtime: number }[] = [];
+  const letGo = new Set<string>();
   for (const name of readdirSync(dir)) {
     if (
       !name.endsWith('.json') &&
       !name.endsWith('.tmp') &&
       !name.endsWith(SKIPPED_SUFFIX) &&
       !name.endsWith(ELSEWHERE_SUFFIX) &&
-      !name.endsWith(SERVED_SUFFIX)
+      !name.endsWith(SERVED_SUFFIX) &&
+      !name.endsWith(WORDS_SUFFIX) &&
+      !name.endsWith(TRANSCRIPT_SUFFIX)
     )
       continue;
     const path = join(dir, name);
     try {
       const mtime = statSync(path).mtimeMs;
-      if (now.getTime() - mtime > PRUNE_AFTER_MS) rmSync(path, { force: true });
-      else if (name.endsWith('.json')) kept.push({ path, mtime });
+      if (now.getTime() - mtime > PRUNE_AFTER_MS) {
+        rmSync(path, { force: true });
+        if (name.endsWith('.json')) letGo.add(name.slice(0, -'.json'.length));
+      } else if (name.endsWith('.json')) kept.push({ path, mtime, id: name.slice(0, -5) });
+      else if (name.endsWith(WORDS_SUFFIX)) words.push({ path, mtime });
     } catch {
       // Gone already: another session pruned it.
     }
   }
   kept.sort((a, b) => b.mtime - a.mtime);
-  for (const old of kept.slice(PRUNE_KEEP)) rmSync(old.path, { force: true });
+  for (const old of kept.slice(PRUNE_KEEP)) {
+    rmSync(old.path, { force: true });
+    letGo.add(old.id);
+  }
+  for (const id of letGo) {
+    rmSync(join(dir, `${id}${WORDS_SUFFIX}`), { force: true });
+    rmSync(join(dir, `${id}.json${TRANSCRIPT_SUFFIX}`), { force: true });
+  }
+  words.sort((a, b) => b.mtime - a.mtime);
+  for (const old of words.slice(PRUNE_KEEP)) rmSync(old.path, { force: true });
 }
+
+const prune = pruneSessions;
 
 /** The state a task is in while somebody works on it: typed, so a renamed state does not compile. */
 const IN_PROGRESS: TaskState = 'IN_PROGRESS';

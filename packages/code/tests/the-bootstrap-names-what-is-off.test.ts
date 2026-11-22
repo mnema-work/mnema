@@ -102,27 +102,37 @@ describe('the opening read names the channels that are off', () => {
   it('says which begin off, and that only a person turns one on', async () => {
     const line = offLine(await bootstrapBlocks());
     expect(line).toBe(
-      'Off on this machine: edit-first-write-gate, user-corrections. ' +
+      'Off on this machine: edit-first-write-gate, opening-core. ' +
         'Only a person turns one on, with `mnema switch on <name>`.',
     );
-    expect(line).toBe(offOnThisMachine([...STARTS_OFF]));
+    // `record-publish` also begins off, and is a verb for a person: the agent is not told of it.
+    expect(line).toBe(offOnThisMachine(STARTS_OFF.filter((name) => name !== 'record-publish')));
     // The line is the cheap half of the trade: well under sixty tokens.
     expect((line ?? '').length).toBeLessThan(4 * 60);
   });
 
   it('drops a channel a person switched on, and says no line when nothing is off', async () => {
+    // `user-corrections` began off until ADR-546 and was this case's means of showing a channel
+    // dropped from the line; the means is now a channel that switched off and on again.
+    await did('switch', 'off', 'user-corrections');
+    expect(offLine(await bootstrapBlocks())).toContain('user-corrections');
     await did('switch', 'on', 'user-corrections');
     expect(offLine(await bootstrapBlocks())).toBe(
-      'Off on this machine: edit-first-write-gate. Only a person turns one on, with `mnema switch on <name>`.',
+      'Off on this machine: edit-first-write-gate, opening-core. Only a person turns one on, with `mnema switch on <name>`.',
     );
     await did('switch', 'on', 'edit-first-write-gate');
+    await did('switch', 'on', 'opening-core');
     expect(offLine(await bootstrapBlocks())).toBeUndefined();
   });
 
   it('names a channel a person switched off, beside the ones that begin off', async () => {
     await did('switch', 'off', 'session-tally');
     const line = offLine(await bootstrapBlocks()) ?? '';
-    expect(line).toContain('edit-first-write-gate, user-corrections, session-tally');
+    expect(line).toContain('edit-first-write-gate, opening-core, session-tally');
+    await did('switch', 'off', 'user-corrections');
+    expect(offLine(await bootstrapBlocks()) ?? '').toContain(
+      'edit-first-write-gate, user-corrections, opening-core, session-tally',
+    );
   });
 
   it('reads the same off the session as it does off the reply', () => {
@@ -131,6 +141,8 @@ describe('the opening read names the channels that are off', () => {
       roots: [pathToFileURL(repo).href],
       env,
     });
-    expect(channelsOffHere(session)).toEqual([...STARTS_OFF]);
+    expect(channelsOffHere(session)).toEqual(
+      STARTS_OFF.filter((name) => name !== 'record-publish'),
+    );
   });
 });

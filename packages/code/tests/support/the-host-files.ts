@@ -23,6 +23,9 @@ import {
   type Capability,
   type Cell,
   does,
+  END_HOSTS,
+  ENDS,
+  type EndHost,
   HOST_NAMES,
   HOSTS,
   type HookHost,
@@ -101,9 +104,24 @@ function version(): string {
 // The hooks file
 // ---------------------------------------------------------------------------
 
+/** The two verbs of the end of a turn, told which host's payload they are handed. */
+const atTheEnd = (host: EndHost): Json[] => [
+  command('session-tally.mjs', ['--host', host, ...readsNoTranscript(host)]),
+  command('session-corrections.mjs', ['--host', host, ...readsNoTranscript(host)]),
+];
+
+/**
+ * `--reads no` for a host whose transcript this product does not read yet (`ENDS`, the row's
+ * `reads`): the handler ends before it starts `mnema` twice a turn for a verb that
+ * would only say so. The row is the one place it is said: the day a host's reader exists and its
+ * row says `reads: true`, the flag leaves the file and the verbs run.
+ */
+const readsNoTranscript = (host: EndHost): readonly string[] =>
+  ENDS[host].reads ? [] : ['--reads', 'no'];
+
 /** What the plugin's hooks file says it does, as the host shows it. */
 const HOOKS_DESCRIPTION =
-  "Hands the project's committed record to the session as it opens: the decisions in force and the adopted patterns, by name, and, beside it, the memories and observations recorded for the project, from every tree this machine holds, the ones that share a word with what the session touches first. At each edit, hands over the rules of the record addressed at that path, beside the result of that write (and where a rule of that record asks for it, pauses the write until a person decides, and where a rule refuses it, does not let the write happen, citing the rule either way) in Claude Code through a call into the server, and in VS Code, Cursor and Qwen Code, whose hooks are processes, through a command each: VS Code's that Claude Code and Cursor never match, and Cursor's and Qwen Code's, each of which runs only where its host says it is the host and refuses alone, since neither is asked to pause a write for a person. Every one of those is recorded as a fact of the chain. When a subagent starts, hands it the same document the session opened with. At the end of a response that wrote a file, says how many files the session's own tool calls wrote and how many decisions were recorded since it opened (a count, which records nothing), and keeps a small journal of the session on this machine, outside the record; right after a conversation was compacted, says what entered the project's record since that session opened (read from the journal, a count and the labels of its decisions, which records nothing). And, only where somebody switched it on, at the end of a response records the places where the person corrected the agent, and the answers the person gave to its questions, as proposed decisions in the machine's private tree. And, after a write in Claude Code, unless somebody switched it off, copies a note the host wrote to its own memory into the machine's private tree (never its index, never a note about the person); and beside a write to a file that holds decisions the record cites nowhere, names once per session the command that reads it in (a line, which records nothing). And, where a subagent is about to stop, sends it back once if its final reply does not end in the block of decisions the record asks it to hand over, with the format. And, after a question the agent asked the person was answered, hands the agent one sentence saying that a choice may have been settled there and which tool records it (it records nothing, and reads which tool ran, never the answer). And, after the host's agent tool ran and when a session ends, unless somebody switched it off, records the work the session handed to other agents as one private task for the session with a private handoff for each dispatch (its short description and the path of a brief file, never the prompt), and closes the task at the end. Each can be switched off with `mnema switch`, which records that it was.";
+  "Hands the project's committed record to the session as it opens: the decisions in force and the adopted patterns, by name, and, beside it, the memories and observations recorded for the project, from every tree this machine holds, the ones that share a word with what the session touches first. At each edit, hands over the rules of the record addressed at that path, beside the result of that write (and where a rule of that record asks for it, pauses the write until a person decides, and where a rule refuses it, does not let the write happen, citing the rule either way) in Claude Code through a call into the server, and in VS Code, Cursor and Qwen Code, whose hooks are processes, through a command each: VS Code's that Claude Code and Cursor never match, and Cursor's and Qwen Code's, each of which runs only where its host says it is the host and refuses alone, since neither is asked to pause a write for a person. Every one of those is recorded as a fact of the chain. When a subagent starts, hands it the same document the session opened with. At the end of a response that wrote a file, says how many files the session's own tool calls wrote and how many decisions were recorded since it opened (a count, which records nothing), and keeps a small journal of the session on this machine, outside the record (and, when a session opens, the path of its transcript beside it, so that an agent's accept can be checked against the words the person typed); right after a conversation was compacted, says what entered the project's record since that session opened (read from the journal, a count and the labels of its decisions, which records nothing). And, unless somebody switched it off, at the end of a response records the places where the person corrected the agent and the answers the person gave to its questions as proposed decisions in the machine's private tree (and, where the hook that follows is switched off, the messages that dictate a rule). And, when the person sends a message that is an instruction to keep (always, never, from now on or a partir de agora followed by a verb in the imperative, or put it as a rule), hands the agent one sentence saying that it has the shape of a rule, that only a rule the person typed is to be accepted, and which tools record and accept it, with none of the message's words (it records nothing). And, after a write in Claude Code, unless somebody switched it off, copies a note the host wrote to its own memory into the machine's private tree (never its index, never a note about the person); and beside a write to a file that holds decisions the record cites nowhere, names once per session the command that reads it in (a line, which records nothing). And, where a subagent is about to stop, sends it back once if its final reply does not end in the block of decisions the record asks it to hand over, with the format. And, after a question the agent asked the person was answered, hands the agent one sentence saying that a choice may have been settled there and which tool records it (it records nothing, and reads which tool ran, never the answer). And, in Cursor's command-line agent and in Qwen Code, runs the same two verbs of the end of a response on their own events, which for now do nothing, because their transcripts are not read. And, after the host's agent tool ran and when a session ends, unless somebody switched it off, records the work the session handed to other agents as one private task for the session with a private handoff for each dispatch (its short description and the path of a brief file, never the prompt), and closes the task at the end. Each can be switched off with `mnema switch`, which records that it was.";
 
 /** A variable the HOST expands in the files it reads: written as the host spells it, never ours. */
 const hostVariable = (name: string): string => `$${'{'}${name}}`;
@@ -261,9 +279,15 @@ const AFTER_A_DISPATCH: Json = [
   },
 ];
 
-/** The hooks a session opens with, the same two on every host that opens. */
+/** The hooks a session opens with: the document and the notes, and the one that keeps the transcript's path. */
 const SESSION_START: Json = [
-  { hooks: [command('session-start.mjs'), command('session-recall.mjs')] },
+  {
+    hooks: [
+      command('session-start.mjs'),
+      command('session-recall.mjs'),
+      command('session-tally.mjs'),
+    ],
+  },
   { matcher: 'compact', hooks: [command('session-compacted.mjs')] },
 ];
 
@@ -278,6 +302,31 @@ const stopsASubagent = (name: HostName): boolean => {
 };
 
 /**
+ * The variables of the hosts that read the plugin's hooks file and say they are there (Cursor, Qwen
+ * Code): named in `--unless` of a handler that was read for Claude Code's payload and no other's.
+ */
+function turnedAwayBySaying(): readonly string[] {
+  return HOST_NAMES.filter((n) => !readsItsOwn(n))
+    .map((n) => HOSTS[n] as Host)
+    .flatMap((host) => (host.saysItIsTheHost === undefined ? [] : [host.saysItIsTheHost]));
+}
+
+/** Whether a host has the hook on a message of the person's: its cell says it does. */
+const hearsAMessage = (name: HostName): boolean => {
+  const cell = (HOSTS[name] as Host).onAMessage;
+  return cell !== undefined && cell.held !== 'not ported' && cell.does;
+};
+
+/**
+ * The group on a message of the person's in the plugin's hooks file: `mnema dictated`, turned away
+ * first where another host says it is the host (`--unless`), as the group after a write is: the
+ * message and the reply are read for Claude Code's payload.
+ */
+function onAMessage(): readonly Json[] {
+  return [{ hooks: [command('rule-dictated.mjs', ['--unless', turnedAwayBySaying().join(',')])] }];
+}
+
+/**
  * The group after a write in Claude Code: `mnema after-a-write`. The handler reads the path out of
  * the payload itself and ends before `mnema` for a path that can be neither a note of the host's
  * memory nor a file that holds decisions (`plugin/hooks/after-a-write.mjs`), so the command is one
@@ -286,9 +335,7 @@ const stopsASubagent = (name: HostName): boolean => {
  * memory and payload.
  */
 function afterAWrite(): readonly Json[] {
-  const turnedAway = HOST_NAMES.filter((n) => !readsItsOwn(n))
-    .map((n) => HOSTS[n] as Host)
-    .flatMap((host) => (host.saysItIsTheHost === undefined ? [] : [host.saysItIsTheHost]));
+  const turnedAway = turnedAwayBySaying();
   return [
     {
       matcher: 'Write|Edit',
@@ -308,6 +355,61 @@ const startsASubagent = (name: HostName): boolean => {
   return cell !== undefined && 'does' in cell && cell.does;
 };
 
+/**
+ * The hooks at the end of a turn in the plugin's hooks file: Claude Code's `Stop`, unflagged (VS
+ * Code and Qwen Code read the same payload), and, for each host that reads this file, says it is
+ * there by a variable of its own and hands its payload in another shape (Cursor), a group of its own
+ * that names the host and runs only where that variable is set.
+ *
+ * THE FIRST GROUP YIELDS to those hosts (`--unless`), so one handler answers: a Cursor payload
+ * names the event `stop`, which Claude Code's reading would only turn away, after starting `mnema`.
+ * A host that reads a hooks file of its own (Codex, Copilot CLI, Gemini CLI) is written by the
+ * function of that file. The groups of the hosts after the first keep their place after it, so
+ * `hooks.ids.json`, which pins each hook by group and position, does not move.
+ */
+function atTheEndOfATurn(): readonly Json[] {
+  const own = END_HOSTS.filter((name) => {
+    const row = HOSTS[name] as Host;
+    return !readsItsOwn(name) && row.door === 'command' && row.saysItIsTheHost !== undefined;
+  });
+  const variables = own.map((name) => (HOSTS[name] as Host).saysItIsTheHost as string);
+  const handlers = ['session-tally.mjs', 'session-corrections.mjs'];
+  return [
+    {
+      // `--skip vscode` while the row of VS Code's agent says its transcript is not read: it reads
+      // this group too, sets no variable, and the handler turns its transcript away by where it is
+      // kept. The day the row says `reads: true` the flag leaves the file and the verb runs.
+      hooks: handlers.map((handler) =>
+        command(handler, [
+          ...(variables.length === 0 ? [] : ['--unless', variables.join(',')]),
+          ...(ENDS.vscode.reads ? [] : ['--skip', 'vscode']),
+        ]),
+      ),
+    },
+    ...own.map((name) => {
+      const variable = (HOSTS[name] as Host).saysItIsTheHost as string;
+      const yieldsTo = HOST_NAMES.slice(HOST_NAMES.indexOf(name) + 1).flatMap((other) => {
+        const row = HOSTS[other] as Host;
+        return row.door === 'command' && !readsItsOwn(other) && row.saysItIsTheHost !== undefined
+          ? [row.saysItIsTheHost]
+          : [];
+      });
+      return {
+        hooks: handlers.map((handler) =>
+          command(handler, [
+            '--host',
+            name,
+            '--where',
+            variable,
+            ...(yieldsTo.length === 0 ? [] : ['--unless', yieldsTo.join(',')]),
+            ...readsNoTranscript(name),
+          ]),
+        ),
+      };
+    }),
+  ];
+}
+
 /** The plugin's hooks file. */
 export function hooksJson(): string {
   const ordered = [...BEFORE_A_WRITE, ...HOST_NAMES.filter((n) => !BEFORE_A_WRITE.includes(n))];
@@ -315,7 +417,8 @@ export function hooksJson(): string {
     description: HOOKS_DESCRIPTION,
     hooks: {
       SessionStart: SESSION_START,
-      Stop: [{ hooks: [command('session-tally.mjs'), command('session-corrections.mjs')] }],
+      ...(hearsAMessage('claude') ? { UserPromptSubmit: onAMessage() } : {}),
+      Stop: atTheEndOfATurn(),
       PreToolUse: ordered.filter((n) => !readsItsOwn(n)).flatMap(beforeAWrite),
       PostToolUse: [
         ...(AFTER_A_QUESTION as readonly Json[]),
@@ -336,11 +439,12 @@ export function hooksJson(): string {
 
 /** What Codex's hooks file says it does, as the host shows it. */
 const CODEX_HOOKS_DESCRIPTION =
-  "Hands the project's committed record to the session as it opens: the decisions in force and the adopted patterns, by name, and, beside it, the memories and observations recorded for the project, from every tree this machine holds, the ones that share a word with what the session touches first. Before a patch is applied, where a rule of that record refuses a write at a path the patch touches, does not let the patch happen, citing the rule, and records the refusal as a fact of the chain; a rule that only asks for a person is let through in silence, since Codex does not pause a write for one. Where a patch goes through, the rules of the record addressed at a path it touches are handed to the model beside it, and the first time a session is handed them that is recorded as a fact of the chain. After a question the agent asked the person was answered, hands the agent one sentence saying that a choice may have been settled there and which tool records it (it records nothing). Each can be switched off with `mnema switch`, which records that it was.";
+  "Hands the project's committed record to the session as it opens: the decisions in force and the adopted patterns, by name, and, beside it, the memories and observations recorded for the project, from every tree this machine holds, the ones that share a word with what the session touches first. Before a patch is applied, where a rule of that record refuses a write at a path the patch touches, does not let the patch happen, citing the rule, and records the refusal as a fact of the chain; a rule that only asks for a person is let through in silence, since Codex does not pause a write for one. Where a patch goes through, the rules of the record addressed at a path it touches are handed to the model beside it, and the first time a session is handed them that is recorded as a fact of the chain. After a question the agent asked the person was answered, hands the agent one sentence saying that a choice may have been settled there and which tool records it (it records nothing). When the person sends a message that is an instruction to keep (always, never, from now on followed by a verb in the imperative, or put it as a rule), hands the agent one sentence saying that it has the shape of a rule, that only a rule the person typed is to be accepted, and which tools record and accept it, with none of the message's words (it records nothing). At the end of a turn, runs the verbs that count what the session wrote and that read what the person corrected; only Claude Code's transcript is read for now, so here they start nothing. When a subagent stops, sends it back once to end its final reply with the block of the decisions it settled, so they come back to the session that started it. Each can be switched off with `mnema switch`, which records that it was.";
 
 /**
- * Codex's hooks file: the opening, and the gate before a patch, no end-of-response count and no
- * corrections, which read a transcript in Claude Code's format, and Codex writes its own.
+ * Codex's hooks file: the opening, the gate before a patch, and the two verbs of the end of a turn,
+ * which name Codex to the verb and, since only Claude Code's transcript is read, answer that and
+ * do nothing else (`ENDS` in `host-hook.ts`).
  *
  * NO SHELL IN FRONT. Codex applies the matcher (`apply_patch`, the one name it hands a hook for a
  * file edit), and no other host reads this file, so the command starts only where it has
@@ -366,7 +470,14 @@ export function codexHooksJson(): string {
           hooks: [command('edit-refuses-a-write.mjs', ['--host', 'codex', ...signsAs('codex')])],
         },
       ],
+      ...(hearsAMessage('codex')
+        ? { UserPromptSubmit: [{ hooks: [command('rule-dictated.mjs')] }] }
+        : {}),
       PostToolUse: [{ matcher: ASKS_THROUGH.codex, hooks: [command('choice-settled.mjs')] }],
+      Stop: [{ hooks: atTheEnd('codex') }],
+      // A subagent's decisions come back to the session that started it: the host answers the
+      // decision the verb prints, with exit 0, and the payload is read as Codex hands it.
+      SubagentStop: [{ hooks: [command('subagent-stop.mjs', ['--host', 'codex'])] }],
     },
   };
   return `${printed(file)}\n`;
@@ -374,11 +485,12 @@ export function codexHooksJson(): string {
 
 /** What Copilot CLI's hooks file says it does, as the host shows it. */
 const COPILOT_HOOKS_DESCRIPTION =
-  "Hands the project's committed record to the session as it opens: the decisions in force and the adopted patterns, by name, and, beside it, the memories and observations recorded for the project, from every tree this machine holds, the ones that share a word with what the session touches first. Before a file is written, where a rule of that record refuses the write, does not let it happen, citing the rule, and where a rule asks for a person, pauses the write until one decides; each is recorded as a fact of the chain. After a question the agent asked the person was answered, hands the agent one sentence saying that a choice may have been settled there and which tool records it (it records nothing). Each can be switched off with `mnema switch`, which records that it was.";
+  "Hands the project's committed record to the session as it opens: the decisions in force and the adopted patterns, by name, and, beside it, the memories and observations recorded for the project, from every tree this machine holds, the ones that share a word with what the session touches first. Before a file is written, where a rule of that record refuses the write, does not let it happen, citing the rule, and where a rule asks for a person, pauses the write until one decides; each is recorded as a fact of the chain. After a question the agent asked the person was answered, hands the agent one sentence saying that a choice may have been settled there and which tool records it (it records nothing). At the end of a turn, runs the verbs that count what the session wrote and that read what the person corrected; they read only Claude Code's transcript for now, so here they say that on their second stream and do nothing else. When a subagent stops, sends it back to end its final reply with the block of the decisions it settled, so they come back to the session that started it (the host names no field that says a stop is the second, so it is not held to once). Each can be switched off with `mnema switch`, which records that it was.";
 
 /**
- * Copilot CLI's hooks file: the opening, and the gate before a write, no end-of-response count
- * and no corrections, which read a transcript in Claude Code's format.
+ * Copilot CLI's hooks file: the opening, the gate before a write, and the two verbs of the end of a
+ * turn, which name Copilot CLI to the verb and, since only Claude Code's transcript is read, answer
+ * that and do nothing else (`ENDS` in `host-hook.ts`).
  *
  * THE EVENTS ARE NAMED IN PASCAL CASE, which is what makes the host hand a hook the payload in
  * Claude Code's tool names and in snake_case, the one `host-hook.ts` reads. The opening is
@@ -391,13 +503,15 @@ export function copilotHooksJson(): string {
   const tools = writeToolsOf('copilot');
   const reply = HOSTS.copilot.openingReply;
   const handed = reply === undefined ? [] : ['--reply', reply];
+  // `--host` is the opening's alone: `mnema settled` takes `--reply` and nothing else.
+  const opening = [...handed, '--host', 'copilot'];
   const handler = does('copilot', 'asks') ? 'edit-asks-a-person.mjs' : 'edit-refuses-a-write.mjs';
   const file: Json = {
     description: COPILOT_HOOKS_DESCRIPTION,
     hooks: {
       SessionStart: [
         {
-          hooks: [command('session-start.mjs', handed), command('session-recall.mjs', handed)],
+          hooks: [command('session-start.mjs', opening), command('session-recall.mjs', opening)],
         },
       ],
       PreToolUse: [
@@ -433,6 +547,11 @@ export function copilotHooksJson(): string {
             ]
           : []),
       ],
+      Stop: [{ hooks: atTheEnd('copilot') }],
+      // A subagent's decisions come back to the session that started it. The hook is the one
+      // Copilot CLI documents for it under the PascalCase name; no `exit 0` is tacked on, since
+      // the host skips a hook that fails there, and the decision it reads is on stdout.
+      SubagentStop: [{ hooks: [command('subagent-stop.mjs', ['--host', 'copilot'])] }],
     },
   };
   return `${printed(file)}\n`;
@@ -604,7 +723,12 @@ function whoIsThere(cwd) {
  * project and a channel switched off are silence. \`cut\` says the run used up the budget.
  */
 function whatItSays(verb, cwd, until) {
-  const ran = run([verb, '--hook'], cwd, undefined, Math.max(1, until - Date.now()));
+  const ran = run(
+    [verb, '--hook', '--host', 'opencode'],
+    cwd,
+    undefined,
+    Math.max(1, until - Date.now()),
+  );
   if (ran.error !== undefined) {
     return /** @type {NodeJS.ErrnoException} */ (ran.error).code === 'ETIMEDOUT'
       ? { lines: [notConsulted(didNotAnswerIn(OPENING_WAIT))], cut: true }
@@ -823,7 +947,7 @@ export function geminiContextFile(): string {
 }
 
 /** The line that runs the extension's script, from the folder the host installed it to. */
-const geminiRuns = (mode: 'open' | 'gate' | 'settled' | 'beside'): string =>
+const geminiRuns = (mode: 'open' | 'gate' | 'settled' | 'beside' | 'dictated' | 'ended'): string =>
   `node "${hostVariable('extensionPath')}/hooks/mnema.mjs" ${mode}`;
 
 /**
@@ -837,7 +961,10 @@ const geminiRuns = (mode: 'open' | 'gate' | 'settled' | 'beside'): string =>
  */
 export function geminiHooksJson(): string {
   const tools = writeToolsOf('gemini');
-  const hook = (name: string, mode: 'open' | 'gate' | 'settled' | 'beside'): Json => ({
+  const hook = (
+    name: string,
+    mode: 'open' | 'gate' | 'settled' | 'beside' | 'dictated' | 'ended',
+  ): Json => ({
     name,
     type: 'command',
     command: geminiRuns(mode),
@@ -846,7 +973,13 @@ export function geminiHooksJson(): string {
   const file: Json = {
     hooks: {
       SessionStart: [{ hooks: [hook('mnema-opening', 'open')] }],
+      ...(hearsAMessage('gemini')
+        ? { BeforeAgent: [{ hooks: [hook('mnema-dictated', 'dictated')] }] }
+        : {}),
       BeforeTool: [{ matcher: `^(${tools.join('|')})$`, hooks: [hook('mnema-gate', 'gate')] }],
+      // THE END OF A TURN: `AfterAgent` cannot add context, so what runs there is the side effects
+      // that need none (the journal, the proposals), and a line the verbs say goes to the person.
+      AfterAgent: [{ hooks: [hook('mnema-ended', 'ended')] }],
       AfterTool: [
         { matcher: `^${ASKS_THROUGH.gemini}$`, hooks: [hook('mnema-settled', 'settled')] },
         // The rules beside the write, from the hook after it: `BeforeTool` has no field for text.
@@ -886,6 +1019,12 @@ const WRITES = new Set(${JSON.stringify(tools).replaceAll('"', "'").replaceAll('
 
 /** The tool Gemini CLI asks the person a question through. */
 const ASKS = '${ASKS_THROUGH.gemini}';
+
+/**
+ * Whether the transcript Gemini CLI names at the end of a turn is one \`mnema\` reads (\`ENDS\` in
+ * \`host-names.ts\`). Where it is not, \`ended\` starts nothing: not \`--identify\`, not the two verbs.
+ */
+const ENDED_READS = ${ENDS.gemini.reads};
 
 /** How long \`mnema\` is given to answer, in milliseconds. */
 const WAIT = ${TIMEOUT * 1000};
@@ -992,7 +1131,12 @@ function whoIsThere(cwd) {
  * @param {number} until the time, in milliseconds since the epoch, by which both verbs of the opening are done
  */
 function whatItSays(verb, cwd, until) {
-  const ran = run([verb, '--hook'], cwd, undefined, Math.max(1, until - Date.now()));
+  const ran = run(
+    [verb, '--hook', '--host', 'gemini'],
+    cwd,
+    undefined,
+    Math.max(1, until - Date.now()),
+  );
   if (ran.error !== undefined) {
     return /** @type {NodeJS.ErrnoException} */ (ran.error).code === 'ETIMEDOUT'
       ? { lines: [notConsulted(didNotAnswerIn(OPENING_WAIT))], cut: true }
@@ -1028,13 +1172,13 @@ function closedWhere(because, cwd, raw) {
  * \`AfterTool\` that carries context.
  * @param {string} line
  */
-function besideTheResult(line) {
-  return { hookSpecificOutput: { hookEventName: 'AfterTool', additionalContext: line } };
+function besideTheResult(line, event = 'AfterTool') {
+  return { hookSpecificOutput: { hookEventName: event, additionalContext: line } };
 }
 
 /**
  * What the hook answers for one payload, or nothing.
- * @param {string | undefined} mode \`open\`, \`gate\`, \`settled\` or \`beside\`
+ * @param {string | undefined} mode \`open\`, \`gate\`, \`settled\`, \`beside\`, \`dictated\` or \`ended\`
  * @param {string} raw what the host wrote to stdin
  */
 function answer(mode, raw) {
@@ -1045,9 +1189,11 @@ function answer(mode, raw) {
     return undefined;
   }
   const cwd = typeof input?.cwd === 'string' ? input.cwd : process.cwd();
+  if (mode === 'ended' && !ENDED_READS) return undefined;
   if (mode === 'gate' && !WRITES.has(input?.tool_name)) return undefined;
   if (mode === 'settled' && input?.tool_name !== ASKS) return undefined;
   if (mode === 'beside' && !WRITES.has(input?.tool_name)) return undefined;
+  if (mode === 'dictated' && input?.hook_event_name !== 'BeforeAgent') return undefined;
   // NO RULE CAN BE ADDRESSED AT THIS WRITE, SO NO \`mnema\` STARTS: neither \`--identify\` nor the verb, which
   // would answer nothing. Read from the stored lines of every tree, and any doubt goes on.
   if (mode === 'beside' && !aRuleReaches(cwd, process.env, raw, ADDRESSED)) return undefined;
@@ -1063,6 +1209,9 @@ function answer(mode, raw) {
   if (who === 'broken' && (mode === 'settled' || mode === 'beside')) {
     return besideTheResult(notConsulted('it did not answer \`mnema --identify\`.'));
   }
+  if (who === 'broken' && mode === 'dictated') {
+    return besideTheResult(notConsulted('it did not answer \`mnema --identify\`.'), 'BeforeAgent');
+  }
   if (who !== 'this') return undefined;
   if (mode === 'open') {
     const text = openingOf(cwd).join('\n\n');
@@ -1077,6 +1226,37 @@ function answer(mode, raw) {
     if (didNotRun(ran) || ran.status !== 0) return undefined;
     const said = JSON.parse(ran.stdout);
     return said.hookSpecificOutput === undefined ? undefined : said;
+  }
+  if (mode === 'dictated') {
+    // ON A MESSAGE: the verb reads the \`prompt\` field and says no word of it; every outcome that is
+    // not an answer is silence, and a record that did not answer is the one line that says so.
+    const ran = run(['dictated'], cwd, raw, GATE_WAIT);
+    const line = whatARunSays(ran, GATE_WAIT);
+    if (line !== null) return besideTheResult(line, 'BeforeAgent');
+    if (didNotRun(ran) || ran.status !== 0) return undefined;
+    const said = JSON.parse(ran.stdout);
+    return said.hookSpecificOutput === undefined ? undefined : said;
+  }
+  if (mode === 'ended') {
+    // THE END OF A TURN, in a host whose hook cannot add context (\`AfterAgent\`): the two verbs run
+    // for their side effects, one budget for both so the host's own cap is not met, and what they
+    // say goes to the person in \`systemMessage\`, never to the model. Every outcome that is not an
+    // answer is silence: nothing here can refuse or ask.
+    const until = Date.now() + OPENING_WAIT;
+    const said = [];
+    for (const verb of ['tally', 'corrections']) {
+      if (until - Date.now() <= 0) break;
+      const heard = run([verb, '--host', 'gemini'], cwd, raw, Math.max(1, until - Date.now()));
+      if (didNotRun(heard) || heard.status !== 0) continue;
+      let line;
+      try {
+        line = JSON.parse(heard.stdout).systemMessage;
+      } catch {
+        continue;
+      }
+      if (typeof line === 'string' && line !== '') said.push(line);
+    }
+    return said.length === 0 ? undefined : { systemMessage: said.join('\n') };
   }
   if (mode === 'beside') {
     // AFTER THE WRITE: nothing to close, so every outcome that is not an answer is silence. A
@@ -1126,7 +1306,9 @@ try {
     "// What Gemini CLI runs for this extension's hooks: `open` hands a session the project's committed",
     '// mnema record as it starts, `gate` refuses a write where a rule of that record refuses it, and',
     '// `settled`, after a question to the person was answered, says which tool records a choice, and',
-    '// `beside`, after a write, hands over the rules of the record addressed at the file.',
+    '// `beside`, after a write, hands over the rules of the record addressed at the file, and',
+    '// `ended`, at the end of a turn, runs the two verbs that count the session and read its corrections.',
+    "// `dictated`, on a message of the person's, says which tools record a rule it has the shape of.",
     '// It runs `mnema` from the PATH, and every outcome that is not an answer, such as no `mnema`, no',
     '// project or a program of that name that is not @mnema/code, leaves the session as it would',
     '// have been without it: nothing on stdout, exit 0. Two outcomes are not silence. A `mnema` that is',
@@ -1419,6 +1601,7 @@ const LEGEND = [
 /** The columns of the presence map, each a moment of the work, in the order the work goes. */
 const MOMENTS: readonly { readonly moment: Moment; readonly heading: string }[] = [
   { moment: 'choice', heading: 'A choice settled with the person' },
+  { moment: 'message', heading: 'A message of the person’s' },
   { moment: 'memory', heading: "The host's own memory" },
   { moment: 'file', heading: 'A plan or decision file' },
   { moment: 'opening', heading: 'The opening of a session' },
@@ -1439,6 +1622,18 @@ function presenceText(cell: Presence, base: string): string {
     default:
       return `${what}${cellText(cell, base)}`;
   }
+}
+
+/** What a host's row says of the session id in the environment of the MCP server it starts. */
+function sessionText(cell: Host['sessionVariable'], base: string): string | undefined {
+  if (cell === undefined) return undefined;
+  if (cell.held === 'a test') {
+    const held = `The MCP server reads its session from \`${cell.name}\` ([held by a test](${base}${cell.by}))`;
+    return cell.note === undefined ? `${held}.` : `${held}; ${cell.note}.`;
+  }
+  return cell.candidate === undefined
+    ? 'No session variable is shown in the MCP server’s environment yet, so the server does not know its session here.'
+    : `The MCP server does not read a session id here yet: \`${cell.candidate}\` is on the contract’s list, and it is read the day a run of the host shows it.`;
 }
 
 /** What a host's cells say of the moments the opening and the gate already cover. */
@@ -1509,7 +1704,17 @@ function withTheTable(page: string, base: string, path: string): string {
       host.afterAQuestion === undefined
         ? undefined
         : `After a question to the person is answered: ${cellText(host.afterAQuestion, base)}.`;
-    const said = [host.note, stops, asked].filter((text) => text !== undefined);
+    const said = [
+      host.note,
+      stops,
+      asked,
+      sessionText(host.sessionVariable, base),
+      host.hookTextUnmeasured === true
+        ? 'The ceiling on a hook’s text is not measured: the opening is cut to Claude Code’s 10,000 characters and says that it assumes it.'
+        : host.hookTextUnmeasured === 'not announced'
+          ? 'The ceiling on a hook’s text is not measured: the opening is cut to Claude Code’s 10,000 characters, assumed and not announced, because this host runs the hooks file Claude Code does, whose command names no host.'
+          : undefined,
+    ].filter((text) => text !== undefined);
     return said.length === 0 ? [] : [`**${host.title}.** ${said.join(' ')}`];
   });
   const under = notes.length === 0 ? '' : `${notes.join('\n\n')}\n\n`;

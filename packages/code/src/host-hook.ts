@@ -56,8 +56,23 @@
  * every other tool, and why the plugin puts a filter in front of the process.
  */
 
-import { type BesideHost, does, type HookHost } from './host-names.js';
+import {
+  type BesideHost,
+  does,
+  ENDS,
+  type EndHost,
+  HOSTS,
+  type HookHost,
+  type HostName,
+  hookTextIsAssumed,
+  hookTextOf,
+} from './host-names.js';
 import { type HookSaid, hookReply } from './mcp/hook-reply.js';
+import {
+  CLAUDE_CODE_CEILING,
+  type HookCeiling,
+  hookCeilingOf,
+} from './presentation/within-a-hook.js';
 
 /** How to read the paths out of one write tool's input, whatever shape the host handed it. */
 type PathsOf = (input: unknown) => readonly string[];
@@ -277,4 +292,78 @@ export function replyBeside(host: BesideHost, context: string | undefined): obje
     gemini: (s) => hookReply('AfterTool', s),
   };
   return reply[host](context === undefined ? {} : { context });
+}
+
+/** What a payload at the end of a turn says, read in the shape of the host it came from. */
+export type EndOfTurn =
+  | { readonly end: false }
+  | {
+      readonly end: true;
+      /** The event, by the host's name for it. */
+      readonly event: string;
+      /** The host's id for the session, where the payload carries one in the field the row names. */
+      readonly session: unknown;
+      /** The path of the transcript, where the payload carries one. */
+      readonly transcript: string | undefined;
+      /** Whether this product reads that host's transcript. */
+      readonly reads: boolean;
+      /** The host's name as a sentence writes it. */
+      readonly title: string;
+    };
+
+/**
+ * Where VS Code's agent keeps the transcript it names at the end of a turn: under its workspace
+ * storage, in the folder of the Copilot Chat extension. VS Code sets no variable a hook can ask
+ * for, and it reads Claude Code's hooks file, so a run that names no host and is handed a
+ * transcript from here is VS Code's, not Claude Code's. The plugin's handlers carry the same
+ * pattern (`hand-over.mjs`), held to this one by `the-end-of-a-turn-reaches-every-host.test.ts`.
+ *
+ * THE SOURCE of the folder name: VS Code's Copilot Chat extension writes the transcripts it hands a
+ * hook under `<workspaceStorage>/<hash>/<publisher.name of the extension>/transcripts/`, and the
+ * extension's publisher.name is `GitHub.copilot-chat` (`microsoft/vscode@794308978b6d`,
+ * `extensions/copilot`, `sessionTranscriptService.ts`). The match is case-insensitive: a file
+ * system that folds case can spell the folder either way.
+ */
+export const VSCODE_TRANSCRIPT =
+  /[\\/]workspaceStorage[\\/][^\\/]+[\\/]GitHub\.copilot-chat[\\/]transcripts[\\/]/i;
+
+/** The host a payload came from: the one asked for, or VS Code where a run naming none holds its transcript. */
+export function endHostOf(asked: EndHost, payload: Record<string, unknown>): EndHost {
+  const path = payload[ENDS[asked].transcript];
+  return asked === 'claude' && typeof path === 'string' && VSCODE_TRANSCRIPT.test(path)
+    ? 'vscode'
+    : asked;
+}
+
+/**
+ * Reads a payload as `host` hands it at the end of a turn: `{ end: false }` for any other event.
+ * Where no host is named (Claude Code's, which VS Code and Qwen Code share the hooks file of) and
+ * the transcript is the one VS Code keeps, the host is VS Code's: its transcript is not Claude
+ * Code's, and is not read as if it were.
+ */
+export function endOfTurnOf(asked: EndHost, payload: Record<string, unknown>): EndOfTurn {
+  const host = endHostOf(asked, payload);
+  const row = ENDS[host];
+  if (payload['hook_event_name'] !== row.event) return { end: false };
+  const named = payload[row.transcript];
+  return {
+    end: true,
+    event: row.event,
+    session: row.session === null ? undefined : payload[row.session],
+    transcript: typeof named === 'string' && named !== '' ? named : undefined,
+    reads: row.reads,
+    title: HOSTS[host].title,
+  };
+}
+
+/**
+ * The ceiling a `--host` run cuts a hook's text to: the host's own where its row measured one,
+ * Claude Code's where no host is named, and Claude Code's marked as assumed where the row says the
+ * host's was never measured.
+ */
+export function hookCeilingFor(host: HostName | null): HookCeiling {
+  if (host === null) return CLAUDE_CODE_CEILING;
+  const measured = hookTextOf(host);
+  if (measured !== undefined || !hookTextIsAssumed(host)) return hookCeilingOf(measured);
+  return { ...CLAUDE_CODE_CEILING, assumedFor: HOSTS[host].title };
 }

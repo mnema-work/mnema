@@ -89,7 +89,12 @@ try {
       else if (said !== null) process.stdout.write(reply('PostToolUse', said));
     }
   }
-} catch {
+} catch (fault) {
   // Silence: the one thing this handler must never do is make somebody else's session worse
-  // than it would have been without the plugin installed.
+  // than it would have been without the plugin installed. What failed is one line in the ledger of
+  // caught failures (`swallowed.mjs`), which `mnema doctor` reads.
+  await import('./swallowed.mjs').then(
+    (ledger) => ledger.noteSwallowed('hook.after-a-write', fault),
+    () => undefined,
+  );
 }
