@@ -259,9 +259,11 @@ describe("the record page's fonts", () => {
     for (const face of faces) {
       expect(dataOf(face)?.length).toBeGreaterThan(10_000);
       expect(face).toContain("format('woff2')");
-      expect(Buffer.from(dataOf(face) ?? '', 'base64').subarray(0, 4).toString('latin1')).toBe(
-        'wOF2',
-      );
+      expect(
+        Buffer.from(dataOf(face) ?? '', 'base64')
+          .subarray(0, 4)
+          .toString('latin1'),
+      ).toBe('wOF2');
     }
     expect(STYLE).not.toMatch(/url\((?!data:)/);
     expect(STYLE).not.toContain('@import');
@@ -271,7 +273,9 @@ describe("the record page's fonts", () => {
     const names = namesOf(woff2Tables(mono).get('name') ?? Buffer.alloc(0));
     // The names that name the font (the family, the style, the unique id, the full name, the PostScript name, the
     // typographic family and style): the copyright and licence records keep the authors' words, as the OFL asks.
-    const naming = [1, 2, 3, 4, 6, 16, 17].map((id) => names.get(id)).filter((n) => n !== undefined);
+    const naming = [1, 2, 3, 4, 6, 16, 17]
+      .map((id) => names.get(id))
+      .filter((n) => n !== undefined);
     expect(naming).toContain('mnema mono');
     for (const name of naming) expect(name).not.toMatch(/plex|ibm/i);
     expect(names.get(0)).toContain('Copyright 2017 IBM Corp.');
