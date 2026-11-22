@@ -355,8 +355,8 @@ describe('the line a caller sent is told from the answer to it', () => {
     // at all (asserted above), so there is no accent here to compare the echo against, and the
     // witness is the absence itself. A hue is a basic or bright foreground (30 to 37, 90 to 97) or
     // an index of the 256-colour palette outside its greys (0 to 231), or a true colour.
-    const hue = (escape: string): boolean => {
-      const code = escape.slice(2, -1);
+    const hue = (sequence: string): boolean => {
+      const code = sequence.slice(2, -1);
       if (/^(3[0-7]|9[0-7])$/.test(code)) return true;
       if (/^38;2;/.test(code)) return true;
       const indexed = /^38;5;(\d+)$/.exec(code);

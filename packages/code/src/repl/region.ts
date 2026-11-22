@@ -915,7 +915,7 @@ function Present({
  * its weight, the one bold stretch a row of this list can open with; a row without one is a
  * single faint row.
  */
-function dimmed(list: readonly string[]): ReactNode[] {
+export function dimmed(list: readonly string[]): ReactNode[] {
   return list.map((row, index) => {
     const key = String(index);
     const opened = row.indexOf(BOLD);

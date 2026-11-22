@@ -430,10 +430,6 @@ const UNWITNESSED: Readonly<Record<string, Debt>> = {
     reached: 'nobody imports it',
     why: 'The mutates/reads declaration pair: its one test borrows the RecordEffect type and then reads the MCP sources as bytes, asserting each tool spells the import rather than calling either function.',
   },
-  'packages/code/src/repl/region.ts': {
-    reached: 'nobody imports it',
-    why: "The console's layout: the two in-process renders that load it assert floor.ts's words and console.ts's fold width, while its caret and rules are measured only against dist in a pty.",
-  },
   'packages/code/src/wiring/accountability.ts': {
     reached: 'nobody imports it',
     why: "Registration and the one-level author summary; cli-e2e only scrapes this verb's output for a short anchor to prove identity forms, and never reads the counts it prints.",
@@ -704,7 +700,7 @@ const THE_SHAPE_OF_WHAT_IS_LEFT: Readonly<Record<string, number>> = {
   completion: 4,
   commands: 2,
   barrels: 3,
-  scattered: 10,
+  scattered: 9,
 };
 
 /** Which group of the shape above a debt row belongs to. One reading, so nothing falls in two. */
@@ -1431,7 +1427,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-first-write-is-held-once.test.ts': 12,
   'packages/code/tests/the-flags-reach-the-import.test.ts': 8,
   'packages/code/tests/the-floor-is-the-declaration.test.ts': 7,
-  'packages/code/tests/the-floor-is-where-the-name-is-drawn.test.ts': 25,
+  'packages/code/tests/the-floor-is-where-the-name-is-drawn.test.ts': 28,
   'packages/code/tests/the-format-lists-what-a-writer-leaves-at-the-root.test.ts': 7,
   'packages/code/tests/the-front-page-is-drawn-from-the-console.test.ts': 8,
   'packages/code/tests/the-front-page-pitch-holds-no-date-and-no-count.test.ts': 4,
@@ -2482,8 +2478,9 @@ describe('every file has a test that names it', () => {
     // 79 once the status printer's test imports it.
     // 80 with the record group's wiring, which a-tail-merges-and-pulls.test.ts drives through the binary.
     // 81 with the upgrade verb's wiring, which after-update.test.ts drives through the program.
-    expect(found.size).toBe(81);
-    expect(byReach('nobody imports it')).toBe(81);
+    // 80 once the console's layout is imported by the test that reads what it builds for the list.
+    expect(found.size).toBe(80);
+    expect(byReach('nobody imports it')).toBe(80);
     expect(byReach('imported, and no assertion observes it')).toBe(0);
   });
 
@@ -2505,7 +2502,7 @@ describe('every file has a test that names it', () => {
     // Announced in the header and, until now, kept by hand. A shared excuse is how a table
     // like this turns into a rubber stamp, and a row drained to a stub is how it starts.
     const reasons = Object.values(UNWITNESSED).map((one) => one.why);
-    expect(reasons).toHaveLength(81);
+    expect(reasons).toHaveLength(80);
     expect(new Set(reasons).size).toBe(reasons.length);
     // The shortest reason standing is 156 characters; the floor is under it and well over
     // anything that could be written without saying what reaches that file.

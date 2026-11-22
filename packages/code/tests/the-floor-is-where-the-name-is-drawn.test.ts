@@ -48,6 +48,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Box, Text } from 'ink';
+import type { ReactElement } from 'react';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { CompletionWord } from '../src/completion/tree.js';
 import { bannerFor } from '../src/presentation/banner.js';
@@ -61,6 +63,7 @@ import { verbsOffered } from '../src/repl/gate.js';
 import { insideTheMargin, THE_INSET } from '../src/repl/inset.js';
 import { CUT, PICK } from '../src/repl/palette.js';
 import { theShortestScreenFor } from '../src/repl/panel.js';
+import { dimmed } from '../src/repl/region.js';
 import { theSessionsOwnWords, tips } from '../src/repl/session.js';
 import { PREFIX } from '../src/session-words.js';
 import { REPL_VERB } from '../src/wiring/repl.js';
@@ -472,11 +475,13 @@ describe('the word in the list carries no paint of its own, with colour or witho
     const drawn = ran.bytes.slice(ran.at[1] as number, ran.at[2] as number).split('\r\n');
     const chosen = drawn.filter((row) => row.includes(PICK)).pop() as string;
     expect(chosen, 'no row of the list carries the marker on the page').toBeDefined();
+    const ANY_SGR = new RegExp(`${ESC}\\[([0-9;]*)m`, 'g');
+    const A_HUE = new RegExp(`${ESC}\\[3\\d`);
     // The intensity at a position: SGR 2 opens faint, 1 opens bold, 22 and 0 close both.
     const intensityAt = (row: string, at: number): { faint: boolean; bold: boolean } => {
       const state = { faint: false, bold: false };
-      for (const escape of row.slice(0, at).matchAll(/\u001b\[([0-9;]*)m/g)) {
-        for (const code of (escape[1] ?? '').split(';')) {
+      for (const sequence of row.slice(0, at).matchAll(ANY_SGR)) {
+        for (const code of (sequence[1] ?? '').split(';')) {
           if (code === '2') state.faint = true;
           else if (code === '1') state.bold = true;
           else if (code === '22' || code === '0' || code === '') {
@@ -487,8 +492,11 @@ describe('the word in the list carries no paint of its own, with colour or witho
       }
       return state;
     };
-    const bare = chosen.replace(/\u001b\[[0-9;]*m/g, '');
-    const [word, ...sentence] = bare.slice(bare.indexOf(PICK) + PICK.length).trim().split(/\s{2,}/);
+    const bare = chosen.replace(ANY_SGR, '');
+    const [word, ...sentence] = bare
+      .slice(bare.indexOf(PICK) + PICK.length)
+      .trim()
+      .split(/\s{2,}/);
     expect(sentence.join('  '), 'the chosen row has no description to test').not.toBe('');
     const markerAt = chosen.indexOf(PICK);
     expect(intensityAt(chosen, markerAt).bold, 'the marker is not bold').toBe(true);
@@ -502,8 +510,29 @@ describe('the word in the list carries no paint of its own, with colour or witho
       faint: true,
       bold: false,
     });
-    expect(chosen.slice(markerAt), 'the chosen word carries a hue').not.toMatch(/\u001b\[3\d/);
+    expect(chosen.slice(markerAt), 'the chosen word carries a hue').not.toMatch(A_HUE);
   }, 300_000);
+
+  it('lays a row with a bold marker out as the marker, then the rest in a faint span of its own', () => {
+    // THE SAME PROMISE, WITHOUT A TERMINAL: what the layout builds for each row, read as values.
+    // A row with a bold marker is a Box of two Texts, the marker on the first and no faint on it,
+    // the rest on the second with faint on; a row without one is one faint Text with the whole row.
+    const marked = `  ${ESC}[1m${PICK}${ESC}[22m  aging   show accepted decisions`;
+    const plain = '     audit   ask the record';
+    const [chosen, other] = dimmed([marked, plain]) as ReactElement<{
+      children?: ReactElement<{ children: string; dimColor?: boolean }>[];
+      dimColor?: boolean;
+    }>[];
+    expect(chosen?.type, 'the chosen row is not a Box of two spans').toBe(Box);
+    const [first, second] = chosen?.props.children ?? [];
+    expect(first?.props.children).toBe(`  ${ESC}[1m${PICK}${ESC}[22m`);
+    expect(first?.props.dimColor, 'the marker is inside the faint span').toBeUndefined();
+    expect(second?.props.children).toBe('  aging   show accepted decisions');
+    expect(second?.props.dimColor, 'the rest of the chosen row is not faint').toBe(true);
+    expect(other?.type, 'a row without a marker is not one Text').toBe(Text);
+    expect(other?.props.dimColor, 'a row without a marker is not faint').toBe(true);
+    expect(other?.props.children).toBe(plain);
+  });
 });
 
 // ---------------------------------------------------------------------------
