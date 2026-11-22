@@ -4,8 +4,9 @@
  * Five acts on a project's backup in a folder: `setup` says which folder keeps it, `run` copies
  * the trees into it, `status` says how far the copy is from them, `verify` reads the copy as a record
  * and sets it against the trees, and `restore` puts a copy back without overwriting anything (a copy of another record only after a person says yes at a terminal). None of
- * them records anything: the verb reads the record and writes a folder (or a tree that lost files),
- * so it is declared as a read.
+ * them records anything, but four of them write: `setup` the machine's assignment, `run` the folder,
+ * `restore` a tree that lost files and `hook` a file in `.git/hooks`. So the group answers member by
+ * member: `status` and `verify` read, the others are writes, and the console runs only the first two.
  *
  * THE FOLDER KEEPS THE TEXT IN CLEAR, and `setup` says so before it assigns anything (ADR-387): the
  * person confirms it by typing `yes` at the question, at a terminal and nowhere else. There is no
@@ -20,7 +21,7 @@ import { here } from './context.js';
 import { writeLines } from './io.js';
 import { onOneLine } from './on-one-line.js';
 import { reportRefusal } from './report.js';
-import { type Declared, readsTheRecord, type Wiring } from './verb.js';
+import { type Declared, groupOf, mutatesTheRecord, readsTheRecord, type Wiring } from './verb.js';
 
 /** The sentence a person confirms, and the page that says what to do about it. */
 export const KEPT_IN_CLEAR =
@@ -749,5 +750,19 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
       });
   }
 
-  return readsTheRecord(backup);
+  const member = (name: string): Command => {
+    const found = backup.commands.find((command) => command.name() === name);
+    if (found === undefined) throw new Error(`mnema backup has no ${name}`);
+    return found;
+  };
+  // None of them touches a chain, and four write outside it (a folder, a tree, a file of git): a
+  // write to the console, which a session advertised as read-only does not make, as `commit-hook` is.
+  return groupOf(backup, [
+    mutatesTheRecord(member('setup')),
+    mutatesTheRecord(member('run')),
+    readsTheRecord(member('status')),
+    readsTheRecord(member('verify')),
+    mutatesTheRecord(member('restore')),
+    mutatesTheRecord(hook),
+  ]);
 }

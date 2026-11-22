@@ -730,6 +730,7 @@ describe('every verb says if it writes', () => {
       'record',
       'key',
       'tail',
+      'backup',
       'mcp',
       'run',
       'before-a-write',
@@ -762,7 +763,6 @@ describe('every verb says if it writes', () => {
       'commits',
       'aging',
       'trailer',
-      'backup',
       'doctor',
       'upgrade',
       'report',
@@ -783,6 +783,7 @@ describe('every verb says if it writes', () => {
     // member that says it reads is run for real, in both forms, and counted in the chain.
     const grouped = DECLARED.filter((verb) => verb.members !== undefined);
     expect(grouped.map((verb) => verb.act.name()).sort()).toEqual([
+      'backup',
       'skill',
       'stack',
       'task',
@@ -803,6 +804,8 @@ describe('every verb says if it writes', () => {
       'stack show': () => ['stack', 'show', 'hello-stack', '--to', stackTo()],
       'stack diff': () => ['stack', 'diff', 'hello-stack', '--to', stackTo()],
       'stack check': () => ['stack', 'check', '--to', stackTo()],
+      'backup status': () => ['backup', 'status'],
+      'backup verify': () => ['backup', 'verify'],
       'witness sigstore-check': () => [
         'witness',
         'sigstore-check',
