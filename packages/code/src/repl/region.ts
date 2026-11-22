@@ -179,6 +179,10 @@ const IN_THE_MIDDLE = 'center';
  */
 const THE_MARGIN = 'hard';
 
+/** SGR 1 and SGR 22: the escapes that open and close the bold marker on the chosen row of the list. */
+const BOLD = '\u001b[1m';
+const NORMAL = '\u001b[22m';
+
 /**
  * WHICH OF THE TWO PAGES THIS FRAME IS, and it is a discriminant rather than a flag on one
  * value.
@@ -914,13 +918,16 @@ function Present({
 function dimmed(list: readonly string[]): ReactNode[] {
   return list.map((row, index) => {
     const key = String(index);
-    const split = /^([^\u001b]*\u001b\[1m[^\u001b]*\u001b\[22m)([\s\S]*)$/.exec(row);
-    if (split === null) return node(Text, { key, dimColor: true, wrap: THE_MARGIN }, row);
+    const opened = row.indexOf(BOLD);
+    const closed = opened < 0 ? -1 : row.indexOf(NORMAL, opened);
+    if (closed < 0) return node(Text, { key, dimColor: true, wrap: THE_MARGIN }, row);
+    const marker = row.slice(0, closed + NORMAL.length);
+    const rest = row.slice(closed + NORMAL.length);
     return node(
       Box,
       { key, flexDirection: 'row' },
-      node(Text, { wrap: THE_MARGIN }, split[1]),
-      node(Text, { dimColor: true, wrap: THE_MARGIN }, split[2]),
+      node(Text, { wrap: THE_MARGIN }, marker),
+      node(Text, { dimColor: true, wrap: THE_MARGIN }, rest),
     );
   });
 }
