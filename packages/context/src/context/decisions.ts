@@ -78,9 +78,34 @@ import {
   isUnannounced,
   newestFirst,
   type ProjectionCache,
+  type Scope,
   shortenAnchors,
 } from '@mnema/core';
+import type { ScopedCache } from '../sources.js';
 import { type Disposition, statesMeaning } from './disposition.js';
+
+/**
+ * Which tree each cache projects, for a reading that SAYS where a decision lives. A decision's
+ * `ADR-<n>` is numbered within one tree, so the public `ADR-78` and a private `ADR-78` are two
+ * decisions, and a printed label alone cannot tell them apart. Optional everywhere it is taken:
+ * a reading that is not given it (the committed brief, which carries the one tree that travels)
+ * names no tree, and that is the same as naming the public one.
+ */
+export type TreeOf = ReadonlyMap<ProjectionCache, Scope>;
+
+/** The {@link TreeOf} of the sources a read opened. */
+export function treeOf(sources: readonly ScopedCache[]): TreeOf {
+  return new Map(sources.map((source) => [source.cache, source.scope]));
+}
+
+/**
+ * `{ scope }` for a decision held outside the public tree, and nothing for one held in it: ABSENT
+ * is public, so a payload that carried no private rule is the payload it always was.
+ */
+function where(cache: ProjectionCache, trees: TreeOf | undefined): { readonly scope?: Scope } {
+  const scope = trees?.get(cache);
+  return scope === undefined || scope === 'public' ? {} : { scope };
+}
 
 /**
  * What each state of the decision machine means to a reader: TOTAL, so a fifth
@@ -217,6 +242,8 @@ export type NamedDecision =
       readonly adr: string;
       readonly title: string;
       readonly state: string;
+      /** The tree that holds it, when it is not the public one (see {@link TreeOf}). */
+      readonly scope?: Scope;
       /**
        * Present when an accept and a retirement of this decision crossed (ADR-121): the `state`
        * is what the fold kept, and the decision is in force nowhere, which a line that names it
@@ -233,12 +260,15 @@ export type NamedDecision =
  * the readings that serve many rules at a time (the rules addressed at a path), so a rule that
  * replaced another says so wherever it is told, and in the same words.
  */
-export function replacements(caches: readonly ProjectionCache[]): Map<string, NamedDecision> {
+export function replacements(
+  caches: readonly ProjectionCache[],
+  trees?: TreeOf,
+): Map<string, NamedDecision> {
   const named = new Map<string, NamedDecision>();
   for (const cache of caches) {
     for (const decision of cache.listDecisions()) {
       if (decision.supersedes === undefined || named.has(decision.id)) continue;
-      named.set(decision.id, nameDecision(caches, decision.supersedes));
+      named.set(decision.id, nameDecision(caches, decision.supersedes, trees));
     }
   }
   return named;
@@ -253,7 +283,11 @@ export function replacements(caches: readonly ProjectionCache[]): Map<string, Na
  * and never from raw events: the projection is where a decision's text is the one its first
  * judgement saw, so a title cannot differ between this line and the record it points at.
  */
-export function nameDecision(caches: readonly ProjectionCache[], id: string): NamedDecision {
+export function nameDecision(
+  caches: readonly ProjectionCache[],
+  id: string,
+  trees?: TreeOf,
+): NamedDecision {
   for (const cache of caches) {
     const held = cache.getDecision(id);
     if (held !== null) {
@@ -266,6 +300,7 @@ export function nameDecision(caches: readonly ProjectionCache[], id: string): Na
         adr: held.adr,
         title: held.title,
         state: held.state,
+        ...where(cache, trees),
         ...(apart ? { divergence: true as const } : {}),
       };
     }
@@ -293,6 +328,11 @@ export interface DecisionRef {
    * on its own, the committed document and the audit, report it there.
    */
   readonly adr: string;
+  /**
+   * The tree that holds it, when it is not the public one: ABSENT means public. It is what lets a
+   * reader print the label with its tree, since the same `ADR-<n>` is numbered in each.
+   */
+  readonly scope?: Scope;
   /** The decision's title: DISPLAY, and the trigger a reader recognizes. */
   readonly title: string;
   /**
@@ -341,16 +381,27 @@ export interface DecisionRef {
  * other's answer, and an opening context that stops mentioning a decision says
  * nothing about having stopped.
  */
-export function decisionsInForce(caches: readonly ProjectionCache[]): DecisionRef[] {
+export function decisionsInForce(
+  caches: readonly ProjectionCache[],
+  trees?: TreeOf,
+): DecisionRef[] {
   const all: DecisionProjection[] = [];
+  const holder = new Map<string, ProjectionCache>();
   const apart = disputedDecisionIds(caches);
   for (const cache of caches) {
     for (const state of IN_FORCE) {
-      all.push(...cache.listDecisionsByState(state).filter((one) => !apart.has(one.id)));
+      for (const one of cache.listDecisionsByState(state)) {
+        if (apart.has(one.id)) continue;
+        all.push(one);
+        holder.set(one.id, cache);
+      }
     }
   }
   const ruled = acceptances(caches);
-  return all.sort(bySettledDesc).map((decision) => toRef(decision, ruled.get(decision.id), caches));
+  return all.sort(bySettledDesc).map((decision) => ({
+    ...toRef(decision, ruled.get(decision.id), caches, trees),
+    ...where(holder.get(decision.id) as ProjectionCache, trees),
+  }));
 }
 
 /**
@@ -464,6 +515,8 @@ export interface DecisionAwaitingJudgement {
   readonly id: string;
   /** The citable `ADR-<n>` label: DISPLAY, never identity (see {@link DecisionRef.adr}). */
   readonly adr: string;
+  /** The tree that holds it, when it is not the public one (see {@link DecisionRef.scope}). */
+  readonly scope?: Scope;
   /** The decision's title: the trigger a reader recognizes. */
   readonly title: string;
   /**
@@ -493,6 +546,7 @@ export interface DecisionAwaitingJudgement {
  */
 export function decisionsAwaitingJudgement(
   caches: readonly ProjectionCache[],
+  trees?: TreeOf,
 ): DecisionAwaitingJudgement[] {
   const pending: DecisionAwaitingJudgement[] = [];
   for (const cache of caches) {
@@ -502,6 +556,7 @@ export function decisionsAwaitingJudgement(
           kind: 'decision',
           id: decision.id,
           adr: decision.adr,
+          ...where(cache, trees),
           title: decision.title,
           state,
           updatedAt: decision.updatedAt,
@@ -583,6 +638,7 @@ function toRef(
   decision: DecisionProjection,
   acceptance: Acceptance | undefined,
   caches: readonly ProjectionCache[],
+  trees?: TreeOf,
 ): DecisionRef {
   return {
     id: decision.id,
@@ -590,7 +646,7 @@ function toRef(
     title: decision.title,
     ...(acceptance !== undefined ? { acceptance } : {}),
     ...(decision.supersedes !== undefined
-      ? { supersedes: nameDecision(caches, decision.supersedes) }
+      ? { supersedes: nameDecision(caches, decision.supersedes, trees) }
       : {}),
   };
 }

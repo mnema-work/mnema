@@ -251,6 +251,7 @@ import {
   type DecisionRef,
   decisionsAwaitingJudgement,
   decisionsInForce,
+  type TreeOf,
 } from './decisions.js';
 import { type ActorScope, type Resume, resume } from './focus.js';
 import { type NewerLines, newerLinesOf } from './newer-lines.js';
@@ -427,7 +428,11 @@ export interface Bootstrap {
  * independent: an actor with no runs still gets the work list, and a record with
  * no patterns still gets the other four.
  */
-export function bootstrap(caches: readonly ProjectionCache[], scope: ActorScope): Bootstrap {
+export function bootstrap(
+  caches: readonly ProjectionCache[],
+  scope: ActorScope,
+  trees?: TreeOf,
+): Bootstrap {
   // Ordered HERE and not in `tasks.ts`, for the reason the awaiting halves give: the
   // order belongs to the list that is served and cut, and the same comparator settles
   // both, so "most recently moved first, ties by id DESC" is one rule in one function:
@@ -445,7 +450,7 @@ export function bootstrap(caches: readonly ProjectionCache[], scope: ActorScope)
   // differently. What the brief does differ in is the trees it asks about: it
   // carries only the one that travels, and it filters its own sources to do it, so
   // this answer keeps every tree the caller can see.
-  const decisions = capped(decisionsInForce(caches));
+  const decisions = capped(decisionsInForce(caches, trees));
   // ONE list from three machines, and the ordering happens HERE rather than in
   // any half: interleaving by when each item last moved is a property of the
   // composed list, and a half that sorted itself would be asserting an order this
@@ -454,7 +459,7 @@ export function bootstrap(caches: readonly ProjectionCache[], scope: ActorScope)
   const awaiting = capped(
     [
       ...tasksAwaitingJudgement(caches),
-      ...decisionsAwaitingJudgement(caches),
+      ...decisionsAwaitingJudgement(caches, trees),
       ...skillsAwaitingJudgement(caches),
     ].sort(byUpdatedDesc),
   );

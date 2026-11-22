@@ -249,6 +249,10 @@ No verb lists decisions: they are read with `mnema search --kind decision` and `
 word the `decision` group does not know points there. In a move the action goes before the id, and an id typed where
 the action goes is said so.
 
+## A label read in a tree that is not the public one
+
+Each tree numbers its own decisions, so a private `ADR-78` and the committed `ADR-78` are two decisions that read the same. Where a decision is shown to a person (`mnema status`, in force and awaiting a judgement; `show`, with the decisions it replaced or was replaced by; the heading of `mnema decision review`), the label of one held in the private or the global tree ends in its tree: `ADR-78 (private)`, `ADR-78 (global)`. The committed label stays `ADR-78`. This is only how the label is read: the label that is stored and signed does not change, a trailer still cites `ADR-78`, the line a write or a move prints keeps its shape (`Recorded decision ADR-78 (id)`), and a command that takes a label takes it as before (when two trees hold it, it is refused and names both ids).
+
 ## Recording the same decision twice
 
 The `decision record` command and the `record_decision` tool look, before they write, for a decision of the same tree that is

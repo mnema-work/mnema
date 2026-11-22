@@ -72,6 +72,7 @@ import type { DecisionsOutside, UnimportedBase } from '../outside-the-record.js'
 import { newerLinesSentence } from '../record-integrity.js';
 import { fact } from './detail.js';
 import { asId, column, itemLine } from './items.js';
+import { readLabel } from './label.js';
 import type { Render } from './render.js';
 import { lastRunPhrase, openRunsPhrase } from './runs.js';
 import { asState } from './state.js';
@@ -361,7 +362,7 @@ function decisionLines(
           `  ${accepted.agent} accepted by an agent, ${accepted.undeclared} with no agent declared.`,
         ]),
     ...status.decisions.map((item) =>
-      render(itemLine([asId(item.id), item.adr, oneLine(item.title)])),
+      render(itemLine([asId(item.id), readLabel(item.adr, item.scope), oneLine(item.title)])),
     ),
   ];
 }
@@ -424,7 +425,7 @@ function awaitingLines(render: Render, status: Bootstrap): string[] {
 function named(item: AwaitingJudgement): string {
   switch (item.kind) {
     case 'decision':
-      return `${item.adr} · ${item.title}`;
+      return `${readLabel(item.adr, item.scope)} · ${item.title}`;
     case 'skill':
       return item.name;
     case 'task':
