@@ -11,11 +11,11 @@ import type { Command } from 'commander';
 import type { InheritPlan, InheritRefused } from '../commands/inherit.js';
 import { here } from './context.js';
 import { writeLines } from './io.js';
-import { reportRefusal } from './report.js';
+import { NO_PROJECT, reportRefusal } from './report.js';
 import { type Declared, mutatesTheRecord, type Wiring } from './verb.js';
 
 const SAYS: Readonly<Record<InheritRefused['reason'], string>> = {
-  NO_PROJECT: 'No mnema project here. Run `mnema init` first.',
+  NO_PROJECT,
   ALREADY_INHERITING: 'This project already points at an origin. `mnema inherit update` moves it.',
   NOT_INHERITING: 'This project points at no origin yet. `mnema inherit set <origin>` names one.',
   POINTER_INVALID: 'The pointer file cannot be used.',

@@ -94,7 +94,7 @@ The block says when to call the mnema tools
 (`bootstrap` at the opening, `governing_rules` before changing a file, `record_decision` when a choice
 is settled, `capture_memory` for what the code does not show), that a decision is born `proposed` and,
 once accepted, is in force, that a decision the person dictated or chose among the options the agent offered is accepted
-at once by the agent, with a note quoting the answer, while one the agent concluded alone waits for the person (an agent's
+at once by the agent, with a note quoting their exact words, or the option they chose, between double quotes, while one the agent concluded alone waits for the person (an agent's
 acceptance is recorded as an agent's, and `mnema switch off agent-accepts` leaves every acceptance to a person), that a subagent hands its decisions back rather than recording them, the
 `mnema decision record` command where the tools are not connected, as an example that runs as it
 stands (with `--alternatives`), how a decision that replaces an earlier one says so
@@ -152,7 +152,7 @@ else, and the block it leaves still counts as mnema's (checked against prettier 
 `never` and `preserve`); a word changed, a line taken out or two lines run into one is your edit: it
 is left as it is, and said.
 
-The block sits between `<!-- mnema:begin v5 … -->` and `<!-- mnema:end -->`, after what your file
+The block sits between `<!-- mnema:begin v6 … -->` and `<!-- mnema:end -->`, after what your file
 holds, and nothing outside the markers changes; a file the block was all of is deleted by
 `--remove`, which takes out with the block the one line break that went in with it only where the
 block is the last thing in the file (a line you wrote after it is never glued to the one above), and

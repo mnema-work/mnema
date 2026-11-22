@@ -81,9 +81,11 @@ describe('the gate is decided once', () => {
     // refusal over asking, and calls this for the asking; a door that called it directly would
     // ask about a write a rule refuses.
     expectOnlyCallers('whatAWriteAsks', ['packages/code/src/what-a-write-meets.ts']);
-    // And the doors are the ones that decide what a write meets: the MCP tool and the command.
+    // And the doors are the ones that decide what a write meets: the MCP tool and the command,
+    // and `mnema rules test`, which asks the same function what a declared path would meet.
     expectOnlyCallers('whatAWriteMeets', [
       'packages/code/src/commands/before-a-write.ts',
+      'packages/code/src/commands/rules-test.ts',
       'packages/code/src/mcp/tools.ts',
     ]);
   });

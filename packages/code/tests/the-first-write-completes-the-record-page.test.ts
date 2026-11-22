@@ -145,7 +145,7 @@ describe('the server', () => {
     foundedWithoutThePage();
     const client = await connected();
     expect(lines(await client.callTool({ name: 'bootstrap', arguments: {} }))).toEqual([]);
-    expect(lines(await client.callTool({ name: 'search', arguments: { query: 'x' } }))).toEqual([]);
+    expect(lines(await client.callTool({ name: 'search', arguments: { term: 'x' } }))).toEqual([]);
     const refused = await client.callTool({
       name: 'capture_memory',
       arguments: { content: 'x'.repeat(70_000), scope: 'public' },
