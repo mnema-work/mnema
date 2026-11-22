@@ -14,6 +14,7 @@ import { join } from 'node:path';
 import { catalogUpcasters } from '@mnema/chain';
 import { type DiscoveryEnv, orderedEvents, projectDecisions, resolveTrees } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { type CliIo, run } from '../program.js';
 import { runDecision } from './decision.js';
 import { runDecisionImport } from './decision-import.js';
 import { runDecisionTransition } from './decision-transition.js';
@@ -225,5 +226,128 @@ describe('mnema export --madr', () => {
       ok: false,
       reason: 'NO_PROJECT',
     });
+  });
+});
+
+describe('mnema export --madr, typed on the command line', () => {
+  const before = { cwd: process.cwd(), home: process.env.HOME, run: process.env.MNEMA_RUN };
+  let repo: string;
+
+  beforeEach(() => {
+    process.env.HOME = env.home;
+    delete process.env.MNEMA_RUN;
+    repo = project('typed');
+    process.chdir(repo);
+  });
+
+  afterEach(() => {
+    process.chdir(before.cwd);
+    if (before.home === undefined) delete process.env.HOME;
+    else process.env.HOME = before.home;
+    if (before.run !== undefined) process.env.MNEMA_RUN = before.run;
+  });
+
+  async function mnema(
+    ...argv: string[]
+  ): Promise<{ out: string[]; err: string[]; failed: boolean }> {
+    const out: string[] = [];
+    const err: string[] = [];
+    let failed = false;
+    const io: CliIo = {
+      out: (line) => out.push(line),
+      err: (line) => err.push(line),
+      fail: () => {
+        failed = true;
+      },
+    };
+    await run(['--color=never', ...argv], io);
+    return { out, err, failed };
+  }
+
+  it('prints each file it wrote, then what the files are, and exits 0', async () => {
+    record(repo, ADOPTED);
+    record(repo, { title: 'Credits are a ledger', rationale: 'Balances are derived.' });
+    const out = join(sandbox, 'madr');
+    const done = await mnema('export', '--madr', out);
+    expect(done.failed).toBe(false);
+    const written = readdirSync(out).sort();
+    expect(written).toEqual([
+      'adr-1-keep-the-cache-in-sqlite-not-postgres.md',
+      'adr-2-credits-are-a-ledger.md',
+    ]);
+    // A fact is set in by two spaces, the way every verb prints one.
+    expect(done.out).toEqual(written.map((file) => `  ${out}/${file}`));
+    expect(done.err).toEqual([
+      '  wrote 2 decision file(s) from the committed record only: a reading of the record, not the record',
+    ]);
+  });
+
+  it('says on stderr, per decision, why it will not import as the same words', async () => {
+    const id = record(repo, { title: 'Star *title*', rationale: 'one\n## two' });
+    const done = await mnema('export', '--madr', join(sandbox, 'madr'));
+    expect(done.failed).toBe(false);
+    expect(done.err).toEqual([
+      '  wrote 1 decision file(s) from the committed record only: a reading of the record, not the record',
+      `  ${id} will not import as the same words: a line of the text starts with ## and the reader cuts there; the title holds a * the reader removes`,
+    ]);
+  });
+
+  it('refuses a folder inside the record, a file standing for the folder and a file it did not write, writing nothing', async () => {
+    record(repo, ADOPTED);
+    const inside = join(resolveTrees(repo, env).projectPublic as string, 'madr');
+    const inRecord = await mnema('export', '--madr', inside);
+    expect(inRecord.failed).toBe(true);
+    expect(inRecord.out).toEqual([]);
+    expect(inRecord.err).toEqual([
+      `Refused (OUT_IN_THE_RECORD): ${inside} is inside the record, and the record's folder holds only what is proof: name a folder outside it`,
+    ]);
+    expect(existsSync(inside)).toBe(false);
+
+    const afile = join(sandbox, 'a-file');
+    writeFileSync(afile, 'not a folder');
+    const isFile = await mnema('export', '--madr', afile);
+    expect(isFile.failed).toBe(true);
+    expect(isFile.err).toEqual([
+      `Refused (OUT_IS_A_FILE): ${afile} is a file, and --madr names the folder the decisions are written into`,
+    ]);
+    expect(readFileSync(afile, 'utf8')).toBe('not a folder');
+
+    const other = join(sandbox, 'other');
+    mkdirSync(other);
+    const mine = 'adr-1-keep-the-cache-in-sqlite-not-postgres.md';
+    writeFileSync(join(other, mine), '# Written by hand\n');
+    const foreign = await mnema('export', '--madr', other);
+    expect(foreign.failed).toBe(true);
+    expect(foreign.err).toHaveLength(1);
+    expect(foreign.err[0]).toContain('Refused (OUT_HOLDS_ANOTHER_FILE)');
+    expect(readFileSync(join(other, mine), 'utf8')).toBe('# Written by hand\n');
+  });
+
+  it('refuses the options of the feed beside --madr, naming each, and writes nothing', async () => {
+    record(repo, ADOPTED);
+    const out = join(sandbox, 'madr');
+    const one = await mnema('export', '--madr', out, '--from', '2026-01-01');
+    expect(one.failed).toBe(true);
+    expect(one.err).toEqual([
+      'Refused (MADR_TAKES_NO_FEED_OPTION): --madr writes the committed decisions as files and is not the feed: --from belongs to the feed',
+    ]);
+    const several = await mnema(
+      'export',
+      '--madr',
+      out,
+      '--to',
+      '2026-12-31',
+      '--who',
+      'x',
+      '--which',
+      'y',
+      '--global',
+    );
+    expect(several.failed).toBe(true);
+    expect(several.err).toEqual([
+      'Refused (MADR_TAKES_NO_FEED_OPTION): --madr writes the committed decisions as files and is not the feed: --to, --who, --which, --global belong to the feed',
+    ]);
+    expect(several.out).toEqual([]);
+    expect(existsSync(out)).toBe(false);
   });
 });

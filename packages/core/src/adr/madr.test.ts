@@ -51,6 +51,18 @@ describe('madrOf', () => {
     expect(readAdr(made.text)).toMatchObject({ ok: true, status: 'superseded by ADR-120' });
   });
 
+  it('names the decisions a link points at by their ids when it is given no way to label them', () => {
+    const made = madrOf({
+      ...BASE,
+      state: 'superseded',
+      supersededBy: 'new-id',
+      supersedes: 'older-id',
+    });
+    expect(made.text).toContain('status: superseded by new-id');
+    expect(made.text).toContain('superseded-by: new-id');
+    expect(made.text).toContain('supersedes: older-id');
+  });
+
   it('leaves the alternatives section out when the decision has none', () => {
     const { alternatives: _gone, ...bare } = BASE;
     const made = madrOf(bare);

@@ -949,7 +949,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/src/commands/decision-review.test.ts': 9,
   'packages/code/src/commands/decision-transition.test.ts': 12,
   'packages/code/src/commands/decision.test.ts': 8,
-  'packages/code/src/commands/export-madr.test.ts': 11,
+  'packages/code/src/commands/export-madr.test.ts': 12,
   'packages/code/src/commands/exposure.test.ts': 13,
   'packages/code/src/commands/guard.test.ts': 11,
   'packages/code/src/commands/handoff.test.ts': 10,
