@@ -45,11 +45,11 @@ fetches the package, runs one command and leaves no `mnema` on your `PATH`:
 
 ```sh
 mkdir mnema-try && cd mnema-try && git init -q
-npx --yes @mnema/code@0.1.8 init
-ADR=$(npx --yes @mnema/code@0.1.8 decision record "Keep money as integer cents" "Float sums drift; cents are exact." | grep -o -m1 'ADR-[0-9]*')
-npx --yes @mnema/code@0.1.8 decision move accept "$ADR" --note "Agreed in review."
-npx --yes @mnema/code@0.1.8 show "$ADR"
-npx --yes @mnema/code@0.1.8 verify
+npx --yes @mnema/code@0.1.9 init
+ADR=$(npx --yes @mnema/code@0.1.9 decision record "Keep money as integer cents" "Float sums drift; cents are exact." | grep -o -m1 'ADR-[0-9]*')
+npx --yes @mnema/code@0.1.9 decision move accept "$ADR" --note "Agreed in review."
+npx --yes @mnema/code@0.1.9 show "$ADR"
+npx --yes @mnema/code@0.1.9 verify
 ```
 
 In order: the record founded in `.mnema/` of the scratch folder; a decision, which enters proposed; accepting it;
