@@ -26,6 +26,9 @@
  * of those ends alone is NOT told: reading the whole file at each Stop is what the digests are there
  * to spare.
  *
+ * THE PERSON'S WORDS ARE NOT HERE: what the person typed and chose is kept by the hooks in a sibling
+ * file of its own (`persons-words.ts`), pruned with this one ({@link pruneSessions}).
+ *
  * PRIVATE TO THE PERSON: the file is 0600 and its directories 0700, whatever the umask.
  *
  * ONE LIFE: {@link PRUNE_AFTER_MS} and {@link PRUNE_KEEP}. Every write prunes the directory of its
@@ -486,9 +489,21 @@ export function leftOpen(trees: ResolvedTrees, own: string, now: Date): readonly
   return left;
 }
 
-/** Lets go of the journals older than {@link PRUNE_AFTER_MS} and of all but the newest {@link PRUNE_KEEP}. */
-function prune(dir: string, now: Date): void {
-  const kept: { path: string; mtime: number }[] = [];
+/** What a session's file of the person's words is called, beside its journal (`persons-words.ts`). */
+export const WORDS_SUFFIX = '.words.jsonl';
+
+/**
+ * Lets go of the journals older than {@link PRUNE_AFTER_MS} and of all but the newest
+ * {@link PRUNE_KEEP}, and of the file of the person's words and the path of the transcript that go with each journal let go (and
+ * of those older than {@link PRUNE_AFTER_MS} or beyond the newest {@link PRUNE_KEEP}). So the words of
+ * a session go with its journal, AND go on their own limits whether or not the journal remains: a
+ * words file with no journal is let go by the same age, and only the newest {@link PRUNE_KEEP} words
+ * files stay. Never throws on a file that is gone already.
+ */
+export function pruneSessions(dir: string, now: Date): void {
+  const kept: { path: string; mtime: number; id: string }[] = [];
+  const words: { path: string; mtime: number }[] = [];
+  const letGo = new Set<string>();
   for (const name of readdirSync(dir)) {
     if (
       !name.endsWith('.json') &&
@@ -496,21 +511,36 @@ function prune(dir: string, now: Date): void {
       !name.endsWith(SKIPPED_SUFFIX) &&
       !name.endsWith(ELSEWHERE_SUFFIX) &&
       !name.endsWith(SERVED_SUFFIX) &&
+      !name.endsWith(WORDS_SUFFIX) &&
       !name.endsWith(TRANSCRIPT_SUFFIX)
     )
       continue;
     const path = join(dir, name);
     try {
       const mtime = statSync(path).mtimeMs;
-      if (now.getTime() - mtime > PRUNE_AFTER_MS) rmSync(path, { force: true });
-      else if (name.endsWith('.json')) kept.push({ path, mtime });
+      if (now.getTime() - mtime > PRUNE_AFTER_MS) {
+        rmSync(path, { force: true });
+        if (name.endsWith('.json')) letGo.add(name.slice(0, -'.json'.length));
+      } else if (name.endsWith('.json')) kept.push({ path, mtime, id: name.slice(0, -5) });
+      else if (name.endsWith(WORDS_SUFFIX)) words.push({ path, mtime });
     } catch {
       // Gone already: another session pruned it.
     }
   }
   kept.sort((a, b) => b.mtime - a.mtime);
-  for (const old of kept.slice(PRUNE_KEEP)) rmSync(old.path, { force: true });
+  for (const old of kept.slice(PRUNE_KEEP)) {
+    rmSync(old.path, { force: true });
+    letGo.add(old.id);
+  }
+  for (const id of letGo) {
+    rmSync(join(dir, `${id}${WORDS_SUFFIX}`), { force: true });
+    rmSync(join(dir, `${id}.json${TRANSCRIPT_SUFFIX}`), { force: true });
+  }
+  words.sort((a, b) => b.mtime - a.mtime);
+  for (const old of words.slice(PRUNE_KEEP)) rmSync(old.path, { force: true });
 }
+
+const prune = pruneSessions;
 
 /** The state a task is in while somebody works on it: typed, so a renamed state does not compile. */
 const IN_PROGRESS: TaskState = 'IN_PROGRESS';

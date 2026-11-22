@@ -878,7 +878,7 @@ export const HANDED_OVER: Readonly<
   'docs/switches.md': { line: 27, name: 9 },
   'docs/switching-off-what-is-handed-to-a-model.md': { line: 1, name: 2 },
   'docs/the-ledger-of-caught-failures.md': { name: 6 },
-  'docs/the-session-journal-and-compaction.md': { line: 5, name: 5 },
+  'docs/the-session-journal-and-compaction.md': { line: 6, name: 6 },
   'docs/verify-without-installing.md': { line: 1, name: 1 },
   'docs/what-a-backup-keeps-and-what-it-loses.md': { line: 8, name: 13 },
   'docs/what-it-proves.md': { line: 17, name: 33 },

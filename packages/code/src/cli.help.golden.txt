@@ -140,6 +140,8 @@ $ mnema --help
 |                   format it is checked by
 |   settled         say to the agent, after a question to the person was answered,
 |                   which tool records a choice
+|   words           keep, on this machine and outside the record, what the person
+|                   typed or chose, from a host’s hook
 |   dictated        say to the agent, beside a message that has the shape of a
 |                   rule the person dictated, which tools record and accept it
 |   dispatched      record a session’s dispatches to other agents as one private
@@ -1821,6 +1823,27 @@ $ mnema settled --help
 |   with `mnema switch off choice-settled`.
 |   With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
 |   code alone on the first line of the error stream; typed by a person, nothing changes.
+
+### mnema words --help
+$ mnema words --help
+| Usage: mnema words [options]
+|
+| keep, on this machine and outside the record, what the person typed or chose,
+| from a host’s hook
+|
+| Options:
+|   --host <host>  the host whose hook runs this, and whose payload arrives on
+|                  stdin: claude, vscode, cursor, codex, copilot, opencode,
+|                  gemini, qwen, cursorIde, antigravity, droid, goose
+|   -h, --help     display help for command
+|
+| What it reads, what it keeps and what it prints:
+|   The JSON a host hands a hook on stdin: the prompt hook (UserPromptSubmit, BeforeAgent,
+|   userPromptSubmitted, beforeSubmitPrompt, an OpenCode plugin’s chat.message) or the hook
+|   after the host’s question tool. It appends the text of the prompt (typed), or the option
+|   labels chosen (chosen), to a file of this session on this machine: readable by you only,
+|   beside the session journal, and let go with it. It writes nothing to the record, prints
+|   {} and never the words. A host with neither hook is told so on the second stream.
 
 ### mnema dictated --help
 $ mnema dictated --help
