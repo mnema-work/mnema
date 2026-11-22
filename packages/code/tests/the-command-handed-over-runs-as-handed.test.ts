@@ -883,7 +883,7 @@ export const HANDED_OVER: Readonly<
   'docs/what-a-backup-keeps-and-what-it-loses.md': { line: 8, name: 13 },
   'docs/what-it-proves.md': { line: 17, name: 33 },
   'docs/what-comes-next.md': { name: 1 },
-  'docs/where-it-fits.md': { line: 1, name: 2 },
+  'docs/where-it-fits.md': { line: 3, name: 2 },
   'examples/rules/README.md': { line: 1, name: 1 },
   'packages/action/README.md': { line: 14, name: 12 },
   'packages/action/src/comment.ts': { name: 1 },
