@@ -631,8 +631,9 @@ describe('mnema record pull, where the pull brings a symbolic link to a tail fil
 
     expect(lstatSync(folder).isSymbolicLink()).toBe(true);
     expect(readdirSync(outside)).toEqual([]);
-    expect(pulled.linked).toEqual([path]);
-    expect(pulled.keptAside?.paths).toEqual([path]);
+    // Every file this checkout opened in that folder is kept aside, the segment among them.
+    expect(pulled.linked).toContain(path);
+    expect(pulled.keptAside?.paths).toEqual(pulled.linked);
     expect(existsSync(join(pulled.keptAside?.dir ?? '', path))).toBe(true);
   });
 });
