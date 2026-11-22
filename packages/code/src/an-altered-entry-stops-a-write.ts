@@ -14,8 +14,10 @@
  * that line is not answered here (the verb meets it and refuses as it always did), and an altered entry
  * in any other tree still is. A gap or a fork is not read here: it is told, never refused.
  *
- * ITS LIMIT, said where the reads say theirs: it is a check and then an append, and an alteration made
- * between the two is not seen, because the writer does not read the hash of the lines it resumes from.
+ * ITS LIMITS, said where the reads say theirs: it is a check and then an append, and an alteration made
+ * between the two is not seen, because the writer does not read the hash of the lines it resumes from. And it
+ * asks the cache the tree keeps, so it has the cache's limit: an entry rewritten to the same size with its
+ * modification time put back is not seen by a warm one, and the write goes through.
  */
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs';

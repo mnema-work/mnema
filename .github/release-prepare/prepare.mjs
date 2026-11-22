@@ -31,6 +31,7 @@ const GOLDEN = 'packages/code/src/cli.help.golden.txt';
 const PYPROJECT = 'packages/chain/verifier/pyproject.toml';
 const INSTALL_PAGE = 'docs/install.md';
 const PINNED = /^(npm i (?:-g|--ignore-scripts) @mnema\/code@)\d+\.\d+\.\d+( *)$/gm;
+const NPX_PINNED = /(npx --yes @mnema\/code@)\d+\.\d+\.\d+/g;
 const HOSTS_PAGE = 'docs/hosts.md';
 const OPENCODE_URL =
   /(raw\.githubusercontent\.com\/mnema-work\/mnema\/v)\d+\.\d+\.\d+(\/plugin\/opencode\/mnema\.js)/g;
@@ -181,7 +182,10 @@ export function plan(root, version, date) {
   if ([...install.matchAll(PINNED)].length !== 2) {
     throw new Error(`${INSTALL_PAGE}: expected two pinned install lines`);
   }
-  put(INSTALL_PAGE, install.replace(PINNED, `$1${version}$2`));
+  if ([...install.matchAll(NPX_PINNED)].length !== 5) {
+    throw new Error(`${INSTALL_PAGE}: expected five pinned npx lines`);
+  }
+  put(INSTALL_PAGE, install.replace(PINNED, `$1${version}$2`).replace(NPX_PINNED, `$1${version}`));
   // The hosts that read a file or a folder of this repository, not a marketplace, are told the tag.
   const hosts = read(HOSTS_PAGE);
   if (

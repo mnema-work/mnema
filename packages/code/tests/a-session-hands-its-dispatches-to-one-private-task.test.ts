@@ -209,6 +209,60 @@ afterEach(() => {
   rmSync(sandbox, { recursive: true, force: true });
 });
 
+/** Every event of the sandbox's trees whose kind is `kind`, read off the signed lines themselves. */
+function eventsOfKind(kind: string): { which?: string; data: unknown }[] {
+  const found: { which?: string; data: unknown }[] = [];
+  const walk = (at: string): void => {
+    for (const entry of readdirSync(at, { withFileTypes: true })) {
+      const path = join(at, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else if (entry.name.endsWith('.jsonl')) {
+        for (const line of readFileSync(path, 'utf-8').split('\n')) {
+          if (!line.includes(`"${kind}"`)) continue;
+          const { event } = JSON.parse(line) as { event?: { kind?: string; which?: string } };
+          if (event?.kind === kind) found.push(event as { which?: string; data: unknown });
+        }
+      }
+    }
+  };
+  walk(sandbox);
+  return found;
+}
+
+describe('the handoff a hook records', () => {
+  it(
+    'names the orchestrator as the agent that executed it, on the handoff and on its brief',
+    () => {
+      mirror(dispatch({ type: 'implementar' }));
+      const handoffs = eventsOfKind('handoff.recorded');
+      expect(handoffs).toHaveLength(1);
+      expect(handoffs[0]?.which).toBe('orchestrator');
+      const briefs = eventsOfKind('observation.recorded').filter((one) =>
+        JSON.stringify(one).includes('"brief"'),
+      );
+      expect(briefs.length).toBeGreaterThan(0);
+      for (const brief of briefs) expect(brief.which).toBe('orchestrator');
+    },
+    WAITS_ON_WRITES,
+  );
+
+  it(
+    'names it on the task it opens and on every move the hook makes of it, the end and a reopen included',
+    () => {
+      mirror(dispatch({ type: 'implementar' }));
+      mirror(theEnd());
+      mirror(dispatch({ type: 'revisar' }));
+      const born = eventsOfKind('task.created');
+      const moved = eventsOfKind('task.transitioned');
+      // Opened, submitted and started; completed at the end; reopened by the dispatch that came after.
+      expect(born).toHaveLength(1);
+      expect(moved.length).toBeGreaterThanOrEqual(4);
+      for (const one of [...born, ...moved]) expect(one.which).toBe('orchestrator');
+    },
+    WAITS_ON_WRITES,
+  );
+});
+
 describe('three dispatches of one session', () => {
   it(
     'make one private task in progress and three private handoffs with a brief each',

@@ -222,7 +222,7 @@ export const PAGES: Readonly<Record<string, number>> = {
   'docs/agent-hosts.md': 3,
   'docs/as-an-mcp-server.md': 1,
   'docs/cli-reference.md': 14,
-  'docs/committing-the-record.md': 7,
+  'docs/committing-the-record.md': 9,
   'docs/convergence.md': 8,
   'docs/first-record.md': 6,
   'docs/how-it-works.md': 1,

@@ -89,7 +89,7 @@ async function theTools(id: string): Promise<Record<string, string[]>> {
   };
   const answers = {
     bootstrap: await called('bootstrap'),
-    search: await called('search', { query: 'Postgres' }),
+    search: await called('search', { term: 'Postgres' }),
     read_record: await called('read_record', { id }),
     governing_rules: await called('governing_rules', { path: 'src/db.ts' }),
   };

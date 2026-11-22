@@ -130,7 +130,7 @@ describe('mnema retract', () => {
 
     const shown = (await did('show', taken)).out.join('\n');
     expect(shown).toContain(WRONG);
-    expect(shown).toMatch(/retracted \d{4}-\d\d-\d\dT\S+ by mnid:\S+ \(a person\)/);
+    expect(shown).toMatch(/retracted \d{4}-\d\d-\d\dT\S+ by mnid:\S+ \(no agent declared\)/);
     expect(shown).toContain(`why: ${WHY}`);
     expect((await did('show', kept)).out.join('\n')).not.toContain('retracted');
   });
