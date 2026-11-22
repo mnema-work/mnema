@@ -1773,7 +1773,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/core/src/workflow/a-gate-judges-the-chain-not-the-cache.test.ts': 14,
   'packages/core/src/workflow/a-gate-judges-the-record-as-it-stands.test.ts': 4,
   'packages/core/src/workflow/a-showing-is-a-persons.test.ts': 7,
-  'packages/core/src/workflow/a-stale-anchor-writes-nothing.test.ts': 21,
+  'packages/core/src/workflow/a-stale-anchor-writes-nothing.test.ts': 23,
   'packages/core/src/workflow/a-write-reads-what-arrived.test.ts': 12,
   'packages/core/src/workflow/adoption.test.ts': 12,
   'packages/core/src/workflow/as-the-record-stands.test.ts': 6,

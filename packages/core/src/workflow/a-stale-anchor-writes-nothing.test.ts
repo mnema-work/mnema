@@ -1,6 +1,7 @@
 import { cpSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import {
   anchorPath,
   catalogUpcasters,
@@ -14,7 +15,7 @@ import {
   TailDamagedError,
   writeAnchor,
 } from '@mnema/chain';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { declareCheck, enrollChecker, retireChecker } from '../checks/operations.js';
 import { requestAgentEnrollment, requestEnrollment } from '../identity/handshake.js';
 import { IdentityUnavailableError, rosterOf } from '../identity/membership.js';
@@ -33,6 +34,7 @@ import {
   retractNote,
 } from '../knowledge/operations.js';
 import { ProjectionCache } from '../projections/cache.js';
+import { keptCachePath } from '../projections/cache-home.js';
 import { chainArrivals, chainReplay, orderedEvents } from '../projections/order.js';
 import * as writeSurface from '../write.js';
 import {
@@ -104,6 +106,12 @@ import { adoptStack, removeStack } from './stack-operations.js';
  * from ~2.0–2.4 ms to ~2.9–3.9 ms and its private one by +0.2 to +0.9 ms, flat from 100 events to
  * 10,000. A connection whose first call writes has no cache and pays the replay.
  */
+
+// The replays of the chain a write asks for: the real `rosterOf`, counted.
+vi.mock('../identity/membership.js', async (original) => {
+  const real = await original<typeof import('../identity/membership.js')>();
+  return { ...real, rosterOf: vi.fn(real.rosterOf) };
+});
 
 const upcasters = catalogUpcasters();
 
@@ -776,6 +784,99 @@ describe('the roster a write asks is the one the caller hands it, when it hands 
     ).toBe(true);
     expect(captureMemory({ ...ctx, roster: () => undefined }, { content: 'z' }).ok).toBe(true);
     expect(rosterOf({ tree, upcasters }, anchor).has(fingerprint)).toBe(true);
+  });
+});
+
+describe('a refusal is confirmed by the chain where the write holds no roster of its own', () => {
+  /** A kept projection whose frontier covers the founding but whose membership does not count it. */
+  function staleKeptCache(): void {
+    const cache = ProjectionCache.open(tree, { upcasters, persist: true });
+    try {
+      cache.refresh();
+    } finally {
+      cache.close();
+    }
+    const db = new DatabaseSync(keptCachePath({ root: tree }));
+    try {
+      db.exec('DELETE FROM membership_facts');
+    } finally {
+      db.close();
+    }
+  }
+
+  it('writes when the kept projection says "not counted" and the chain says member', () => {
+    const k = keyRoot();
+    const ctx = contextOf(k);
+    const anchor = ensureFounded(ctx);
+    staleKeptCache();
+    expect(recordedAnchorOf(ctx)).toEqual({ anchor, counted: true });
+    expect(captureMemory(ctx, { content: 'after a stale reading' }).ok).toBe(true);
+  });
+
+  it('still refuses when the chain does not count the key either', () => {
+    const k = keyRoot();
+    const left = contextOf(k);
+    const anchor = ensureFounded(left);
+    const memberRoot = keyRoot();
+    join_(left, anchor, memberRoot);
+    expect(
+      revokeMember(contextOf(memberRoot), {
+        fingerprint: left.writer.signerFingerprint,
+        reason: 'r',
+      }).ok,
+    ).toBe(true);
+    staleKeptCache();
+    const asked = recordedAnchorOf(left);
+    if (asked === undefined || asked.counted) throw new Error('not refused');
+    expect(asked.refusal.code).toBe('STALE_ANCHOR');
+  });
+
+  it('a write that is allowed replays the chain for the roster no time, and a refusal exactly once', () => {
+    const k = keyRoot();
+    const ctx = contextOf(k);
+    ensureFounded(ctx);
+    // A kept projection that is current: the roster is read from it.
+    const cache = ProjectionCache.open(tree, { upcasters, persist: true });
+    try {
+      cache.refresh();
+    } finally {
+      cache.close();
+    }
+    const replays = vi.mocked(rosterOf);
+    replays.mockClear();
+    expect(captureMemory(ctx, { content: 'counted' }).ok).toBe(true);
+    expect(replays).toHaveBeenCalledTimes(0);
+
+    // The projection says "not counted" and the chain says member: one replay, and the write goes.
+    staleKeptCache();
+    replays.mockClear();
+    expect(recordedAnchorOf(ctx)?.counted).toBe(true);
+    expect(replays).toHaveBeenCalledTimes(1);
+  });
+
+  it('a refusal the chain upholds replays it exactly once', () => {
+    const left = contextOf(keyRoot());
+    const anchor = ensureFounded(left);
+    const memberRoot = keyRoot();
+    join_(left, anchor, memberRoot);
+    expect(
+      revokeMember(contextOf(memberRoot), {
+        fingerprint: left.writer.signerFingerprint,
+        reason: 'r',
+      }).ok,
+    ).toBe(true);
+    const cache = ProjectionCache.open(tree, { upcasters, persist: true });
+    try {
+      cache.refresh();
+    } finally {
+      cache.close();
+    }
+    const replays = vi.mocked(rosterOf);
+    replays.mockClear();
+    const asked = recordedAnchorOf(left);
+    if (asked === undefined || asked.counted) throw new Error('not refused');
+    // One for the confirmation; the refusal's own words replay through other readers.
+    expect(replays).toHaveBeenCalledTimes(1);
   });
 });
 
