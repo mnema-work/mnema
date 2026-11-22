@@ -94,6 +94,8 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'holds how a copy stands against its tree, over files laid out by hand; it reads the files and never the projection cache',
   'packages/code/tests/the-second-reader-reads-a-backup-copy.test.ts':
     'holds that the second reader reads a copy as this one does, over a copy the product made and one byte flipped; the second reader reads the files and has no projection cache',
+  'packages/code/src/commands/export-madr.test.ts':
+    'holds the files `mnema export --madr` writes and that `decision import` reads them back; the records are built, not damaged',
   'packages/code/src/commands/backup.test.ts':
     'holds whose folder keeps which project and that a key or a link planted in a tail stops a run; the copy reads the files and never the projection cache, and no verdict about the record is asked of what is planted',
   'packages/code/tests/a-backup-can-be-kept-in-a-git-repository.test.ts':

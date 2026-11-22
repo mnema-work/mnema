@@ -228,7 +228,7 @@ export const PAGES: Readonly<Record<string, number>> = {
   'docs/how-it-works.md': 1,
   'docs/importing-the-decisions-you-already-wrote.md': 2,
   'docs/install.md': 2,
-  'docs/mnema-next-to-a-folder-of-adrs.md': 3,
+  'docs/mnema-next-to-a-folder-of-adrs.md': 4,
   'docs/recording-decisions.md': 5,
   'docs/reference/cli/backup.md': 5,
   'docs/reference/cli/brief.md': 3,

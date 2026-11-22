@@ -1033,6 +1033,19 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'the trees this feed covered, joined from the closed scope vocabulary: the declaration that lets a filtered feed be told from a complete one',
   },
+  'export.ts «wrote {} decision file(s) from the committed record only: a reading of the record, not the record» #1':
+    {
+      verdict: 'minted',
+      why: 'the number of files the verb wrote, a count and no text',
+    },
+  'export.ts «{} will not import as the same words: {}» #1': {
+    verdict: 'collapsed',
+    why: 'the id of a decision and the reasons the verb worded itself',
+  },
+  'export.ts «{}/{}» #1': {
+    verdict: 'collapsed',
+    why: 'the folder the person typed and a file name the verb composed from the record',
+  },
   'timeline.ts «No history recorded for {}.» #1': {
     verdict: 'collapsed',
     why: 'the id positional, and this verb deliberately does not validate it',
@@ -1273,7 +1286,8 @@ describe('every line this wiring words is classified', () => {
     // 207 with the three lines `backup restore --global` prints, the two folder counts and the heading.
     // 208 with the line `decision review` prints before the rules in force it shows and marks.
     // 215 with the two lines `record publish` prints.
-    expect(FOUND.sites.length).toBe(215);
+    // 218 with the lines `export --madr` prints: the files it wrote, and, per decision, why it will not import as the same words.
+    expect(FOUND.sites.length).toBe(218);
   });
 
   it('reads the verdict off the source rather than believing the table', () => {
@@ -1293,9 +1307,9 @@ describe('every line this wiring words is classified', () => {
   it('found sites of both kinds, and the scanner sees a tag when there is one', () => {
     // Neither arm of the case above may be empty, or half of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
-    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(124);
-    expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(91);
-    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(124);
+    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(126);
+    expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(92);
+    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(126);
   });
 
   it('every reason says where the value comes from', () => {
@@ -1440,6 +1454,12 @@ describe('a value from outside cannot forge a second line', () => {
  * somebody closed and nobody drove, and the reconciliation below is what says so.
  */
 const UNREACHABLE: Readonly<Record<string, string>> = {
+  'export.ts «{}/{}» #1':
+    'the folder is the caller’s, so a break in it names a folder with a break; ' +
+    'no case types one yet, so the tag is what holds this line',
+  'export.ts «{} will not import as the same words: {}» #1':
+    'the id is minted by the record and the reasons are the verb’s own words; the line is reached only by a ' +
+    'decision whose text holds a heading line, which `core/src/adr/madr.test.ts` makes and this verb reports',
   'backup.ts «The backup of record {}... is kept in {}» #1':
     'the folder is the caller’s and is made by a run, so a break in it names a folder with a break; ' +
     'no case types one yet, so the tag is what holds this line',

@@ -65,7 +65,7 @@ _mnema_described() {
       'refs:show what an entity is connected to across the trees' \
       'audit:ask the record who authorized what, what recurs, and what looks like a credential' \
       'diagram:print a state machine, or an entity’s history or connections, as mermaid' \
-      'export:emit the record as an OCSF audit feed (NDJSON, envelope only, never a body)' \
+      'export:emit the record as an OCSF audit feed (NDJSON, envelope only, never a body), or with --madr write the decisions as MADR files' \
       'usage:what each run cost, read from this machine'\''s Claude Code transcripts' \
       'resume:show where an actor left off, and the runs they still have open' \
       'repl:open an interactive session that reads this project' \
@@ -264,7 +264,7 @@ _mnema_flags() {
     'audit antipatterns') echo '--json -h --help -V --version --color' ;;
     'audit exposure') echo '--json -h --help -V --version --color' ;;
     'diagram') echo '-h --help -V --version --color' ;;
-    'export') echo '--from --to --who --which --global -h --help -V --version --color' ;;
+    'export') echo '--from --to --who --which --madr --global -h --help -V --version --color' ;;
     'usage') echo '--tools -h --help -V --version --color' ;;
     'resume') echo '--actor --json -h --help -V --version --color' ;;
     'repl') echo '-h --help -V --version --color' ;;
