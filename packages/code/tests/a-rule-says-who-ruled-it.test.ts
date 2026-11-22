@@ -167,12 +167,17 @@ describe('the document names who accepted each rule', () => {
     const brief = mnema(atA, a, 'brief').stdout;
     const theirs = BRIEF_RULE('Release process').exec(brief)?.[0] ?? '';
     const ours = BRIEF_RULE('Our own call').exec(brief)?.[0] ?? '';
-    expect(theirs, brief).toContain('accepted by mnid:');
-    expect(theirs).toContain('(a person; unconfirmed)');
-    expect(ours).toContain('accepted by mnid:');
-    // The two are different identities, which is the whole of what the stranger's line owed.
-    const idOfLine = (line: string) => /accepted by (mnid:[0-9a-f]+)/.exec(line)?.[1];
-    expect(idOfLine(theirs)).not.toBe(idOfLine(ours));
+    // The header names the identity that accepted most rules (a tie goes to the newest), and a
+    // line names an identity only when it is another one: so exactly one of the two lines does.
+    const usual = /^The identity is (mnid:[0-9a-f]+)/m.exec(brief)?.[1];
+    expect(usual, brief).toBeDefined();
+    const named = [theirs, ours].filter((line) => line.includes('mnid:'));
+    expect(named, brief).toHaveLength(1);
+    expect(named[0]).not.toContain(usual as string);
+    // Both identities accepted only what they recorded themselves: the mark is said for the one in
+    // the header, and on the line of the other.
+    expect(brief).toContain('(marked unconfirmed, see below)');
+    expect(named[0]).toContain('(unconfirmed)');
     expect(brief).toContain('marked unconfirmed');
   }, 120_000);
 
@@ -197,7 +202,9 @@ describe('the document names who accepted each rule', () => {
 
     const brief = mnema(atA, a, 'brief').stdout;
     expect(brief).not.toContain('unconfirmed');
-    expect(BRIEF_RULE('A second call').exec(brief)?.[0]).toContain('accepted by mnid:');
+    expect(BRIEF_RULE('A second call').exec(brief)?.[0]).toMatch(
+      / · \d{4}-\d{2}-\d{2} · no agent declared$/,
+    );
   }, 120_000);
 });
 
@@ -222,14 +229,14 @@ describe('an agent may accept, and the trail says it', () => {
     expect(accepted.out).toContain('recorded as made by an agent (codex)');
 
     const shown = mnema(atA, a, 'show', id).out;
-    expect(shown).toMatch(/recorded by mnid:[0-9a-f]+ \(a person\)/);
+    expect(shown).toMatch(/recorded by mnid:[0-9a-f]+ \(no agent declared\)/);
     expect(shown).toMatch(/accepted by mnid:[0-9a-f]+ \(agent codex\)/);
 
     const brief = mnema(atA, a, 'brief').stdout;
     // The brief of a record with one identity does not mark the rule: nobody to confirm with.
-    expect(BRIEF_RULE('A call').exec(brief)?.[0]).toMatch(/\(agent codex\)/);
+    expect(BRIEF_RULE('A call').exec(brief)?.[0]).toMatch(/ · \d{4}-\d{2}-\d{2} · agent$/);
     expect(brief).not.toContain('unconfirmed');
-    expect(brief).toContain('1 of them was accepted by an agent');
+    expect(brief).toContain('1 of them was accepted by an agent and 0 with no agent declared');
   }, 120_000);
 
   it('through the server: the reply says so, and the next brief marks the rule', async () => {
@@ -248,9 +255,7 @@ describe('an agent may accept, and the trail says it', () => {
     expect(mnema(atA, a, 'show', id).out).toMatch(
       /accepted by mnid:[0-9a-f]+ \(agent claude-code\)/,
     );
-    expect(BRIEF_RULE('A call').exec(mnema(atA, a, 'brief').stdout)?.[0]).toContain(
-      'agent claude-code',
-    );
+    expect(BRIEF_RULE('A call').exec(mnema(atA, a, 'brief').stdout)?.[0]).toMatch(/ · agent$/);
   }, 120_000);
 
   it('adds nothing to the record: the envelope already said which agent', () => {

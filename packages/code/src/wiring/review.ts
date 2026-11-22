@@ -11,10 +11,18 @@
  * and a refusal on one decision is said and the review goes on to the next.
  */
 
+import { resolveTrees } from '@mnema/core';
 import type { AcceptState } from '../agent-accepts.js';
+import type { ProposalToReview, RuleToShow } from '../commands/decision-review.js';
+import { markShown } from '../commands/shown.js';
 import { agentKeyFromEnvironment, discoveryEnv } from '../env.js';
 import { fact } from '../presentation/detail.js';
-import { proposalLines, reviewedSummary } from '../presentation/reviewed.js';
+import {
+  proposalLines,
+  reviewedSummary,
+  ruleShownLines,
+  shownSummary,
+} from '../presentation/reviewed.js';
 import { linkBreakNotice } from './integrity.js';
 import { reportRefusal } from './report.js';
 import { PIN_REFUSED } from './run-pin.js';
@@ -82,8 +90,8 @@ export async function reviewDecisions(wiring: Wiring): Promise<void> {
     return;
   }
   for (const line of linkBreakNotice(read.linkBreaks)) io.err(render(line));
-  const { proposals, accepts } = read;
-  if (proposals.length === 0) {
+  const { proposals, toShow, accepts } = read;
+  if (proposals.length === 0 && toShow.length === 0) {
     io.out('Nothing awaiting a judgement.');
     return;
   }
@@ -92,7 +100,10 @@ export async function reviewDecisions(wiring: Wiring): Promise<void> {
     reportRefusal(wiring, {
       reason: 'REFUSED',
       code: NEEDS_A_PERSON,
-      message: reviewNeedsATerminal(proposals.length, ids, accepts),
+      message:
+        proposals.length > 0
+          ? reviewNeedsATerminal(proposals.length, ids, accepts)
+          : showingNeedsATerminal(toShow.length),
     });
     return;
   }
@@ -113,6 +124,20 @@ export async function reviewDecisions(wiring: Wiring): Promise<void> {
     );
   }
 
+  const quit = proposals.length > 0 ? await judgeProposals(wiring, proposals, ask, run) : false;
+  if (!quit && toShow.length > 0) await showRules(wiring, toShow, ask, run);
+}
+
+/** The first pass: each proposal judged, as `decision move` would. Answers whether the person quit. */
+async function judgeProposals(
+  wiring: Wiring,
+  proposals: readonly ProposalToReview[],
+  ask: (question: string) => Promise<string>,
+  run: string | undefined,
+): Promise<boolean> {
+  const { io, render } = wiring;
+  const ctx = { cwd: process.cwd(), env: discoveryEnv() };
+  let quit = false;
   const fallback = defaultReviewNote(new Date().toISOString().slice(0, 10));
   const typed = (await ask(`Note for the verdicts of this review [${fallback}]: `)).trim();
   const shared = typed !== '' ? typed : fallback;
@@ -133,6 +158,7 @@ export async function reviewDecisions(wiring: Wiring): Promise<void> {
     }
     if (verdict.action === 'quit') {
       counts.skipped += proposals.length - position + 1;
+      quit = true;
       break;
     }
     if (verdict.action === 'skip') {
@@ -160,4 +186,53 @@ export async function reviewDecisions(wiring: Wiring): Promise<void> {
   }
   io.out('');
   io.out(reviewedSummary(counts));
+  return quit;
+}
+
+/**
+ * The second pass (ADR-623): the rules in force this identity did not accept itself, newest accept
+ * first, each MARKED SHOWN as it is put on the screen, and nothing that was not. A refusal of the
+ * mark stops the pass, since every mark after it would be refused for the same reason.
+ */
+async function showRules(
+  wiring: Wiring,
+  rules: readonly RuleToShow[],
+  ask: (question: string) => Promise<string>,
+  run: string | undefined,
+): Promise<void> {
+  const { io, render } = wiring;
+  const trees = resolveTrees(process.cwd(), discoveryEnv());
+  io.out('');
+  io.out(
+    `${rules.length} rule(s) in force you did not accept yourself. Each one shown here is marked shown to you, in this machine's private record.`,
+  );
+  let shown = 0;
+  for (const rule of rules) {
+    io.out('');
+    for (const line of ruleShownLines(rule, shown + 1, rules.length)) io.out(render(line));
+    const marked = markShown(trees, {
+      decision: rule.id,
+      moves: rule.moves,
+      atATerminal: io.aPersonIsHere === true,
+      ...(run !== undefined ? { run } : {}),
+    });
+    if (!marked.ok) {
+      reportRefusal(wiring, { reason: 'REFUSED', code: marked.code, message: marked.message });
+      break;
+    }
+    shown += 1;
+    if (shown === rules.length) break;
+    const answer = (await ask('(n)ext, (q)uit: ')).trim().toLowerCase();
+    if (answer === 'q' || answer === 'quit') break;
+  }
+  io.out('');
+  io.out(shownSummary(shown, rules.length - shown));
+}
+
+/** What a review refuses with when only rules in force wait, and no person is at a terminal. */
+export function showingNeedsATerminal(count: number): string {
+  return (
+    `a review is asked at a terminal, and this is not one. ${count} rule(s) in force you did not accept yourself ` +
+    'are shown only at a terminal, which is what marks them shown. Nothing was written.'
+  );
 }

@@ -1,10 +1,11 @@
 /**
- * A correction becomes a proposal: with `user-corrections` switched on, the places where a person
- * corrected the agent are recorded, at `Stop`, as `proposed` decisions in the private tree, once
- * each, citing the line they came from.
+ * A correction becomes a proposal: with `user-corrections` on (it is on until switched off, since
+ * ADR-546), the places where a person corrected the agent are recorded (a rule they dictated is left to the hook of `dictated-rule`, ADR-605),
+ * at `Stop`, as `proposed` decisions in the private tree, once each, citing the line they came from.
  *
- * WHAT IS HELD HERE. The product's half: that nothing is read or recorded while the channel is off
- * (it starts off), that each opening the reader knows matches its probe and the ones that look like
+ * WHAT IS HELD HERE. The product's half: that a project that never touched the switch is read and
+ * recorded at `Stop`, that nothing is read or recorded once the channel is switched off, that each
+ * opening the reader knows matches its probe and the ones that look like
  * it and are not do not, that a correction is recorded once however many times the transcript is
  * read, that what is recorded is a proposal in the tree that stays on this machine and the reply
  * carries none of the person's words, and that the plugin's command reaches the verb.
@@ -216,11 +217,138 @@ describe('mnema corrections', () => {
     assistant(),
   ];
 
-  it('does nothing while the channel is off, which is how it starts', async () => {
+  it('records in a project that never touched the switch, which is how it begins', () => {
+    // BEGAN OFF UNTIL ADR-546: this case was "does nothing while the channel is off, which is how it
+    // starts", and it is inverted and renamed. No fact of a switch exists in this project.
+    const file = transcript(CORRECTED);
+    expect(answer(payload('Stop', file)).reply).toHaveProperty('systemMessage');
+    expect(decisionsIn('projectPrivate')).toHaveLength(1);
+    expect(decisionsIn('projectPublic')).toHaveLength(0);
+  });
+
+  it('does nothing once the channel is switched off, and reads nothing', async () => {
+    await did('switch', 'off', 'user-corrections');
     const file = transcript(CORRECTED);
     expect(answer(payload('Stop', file))).toEqual({ reply: {}, notes: [] });
     expect(decisionsIn('projectPrivate')).toHaveLength(0);
     expect(decisionsIn('projectPublic')).toHaveLength(0);
+  });
+
+  it('leaves a rule the person dictated to the hook: one record, no proposal', () => {
+    const file = transcript([
+      typed('Fix the build'),
+      assistant(),
+      typed('Ok. A partir de agora, sempre rode o lint antes do commit.'),
+      assistant(),
+      typed('Never use var.'),
+      assistant(),
+    ]);
+    expect(answer(payload('Stop', file))).toEqual({ reply: {}, notes: [] });
+    expect(decisionsIn('projectPrivate')).toHaveLength(0);
+    expect(decisionsIn('projectPublic')).toHaveLength(0);
+  });
+
+  it('keeps the correction of a message that also dictates a rule, and leaves only the rule', () => {
+    const file = transcript([
+      typed('Fix it'),
+      assistant(),
+      typed('No, wrong file. From now on, ask before deleting.'),
+      assistant(),
+    ]);
+    expect(answer(payload('Stop', file)).reply).toHaveProperty('systemMessage');
+    const proposals = decisionsIn('projectPrivate');
+    expect(proposals).toHaveLength(1);
+    expect(proposals[0]?.payload.title).toBe('Correction: No, wrong file.');
+    expect(proposals[0]?.payload.rationale).not.toContain('ask before deleting');
+  });
+
+  it('records a rule the person dictated as a proposal where the hook of the dictated rule is off', async () => {
+    await did('switch', 'off', 'dictated-rule');
+    const rules = [
+      'A partir de agora, sempre rode o lint antes do commit.',
+      'From now on, name branches after the change.',
+    ];
+    const file = transcript([
+      typed('Fix the build'),
+      assistant(),
+      typed(rules[0] as string),
+      assistant(),
+      typed(rules[1] as string),
+      assistant(),
+    ]);
+    expect(answer(payload('Stop', file)).reply).toHaveProperty('systemMessage');
+    expect(
+      decisionsIn('projectPrivate')
+        .map((one) => one.payload.title)
+        .sort(),
+    ).toEqual(rules.map((said) => `Rule: ${said}`).sort());
+    for (const one of decisionsIn('projectPrivate')) {
+      expect(one.payload.rationale).toContain('The person dictated a rule in a session');
+    }
+    expect(decisionsIn('projectPublic')).toHaveLength(0);
+  });
+
+  it('records the same message as a correction where the hook of the dictated rule is switched off', async () => {
+    await did('switch', 'off', 'dictated-rule');
+    const file = transcript([typed('Fix it'), assistant(), typed('Never use var.'), assistant()]);
+    expect(answer(payload('Stop', file)).reply).toHaveProperty('systemMessage');
+    const [recorded] = decisionsIn('projectPrivate');
+    expect(recorded?.payload.title).toBe('Correction: Never use var.');
+  });
+
+  it.each([
+    ['No, wrong file. From now on, ask before deleting.', 'Correction: No, wrong file.'],
+    ["Always use tabs; no, that's wrong", "Correction: no, that's wrong"],
+    ['Sempre rode lint, não use npm.', 'Correction: não use npm.'],
+    ["From now on use tabs - and don't touch the CI.", "Correction: don't touch the CI."],
+  ])(
+    'keeps the correction of "%s" where the hook of the dictated rule is on, and only that',
+    (said, title) => {
+      const file = transcript([typed('Fix it'), assistant(), typed(said), assistant()]);
+      expect(answer(payload('Stop', file)).reply).toHaveProperty('systemMessage');
+      expect(decisionsIn('projectPrivate').map((one) => one.payload.title)).toEqual([title]);
+    },
+  );
+
+  it.each([
+    [
+      'No, wrong file. From now on, ask before deleting.',
+      'Correction: No, wrong file.',
+      'Rule: From now on, ask before deleting.',
+    ],
+    [
+      "Always use tabs; no, that's wrong",
+      "Correction: Always use tabs; no, that's wrong",
+      'Rule: Always use tabs',
+    ],
+    [
+      "From now on use tabs - and don't touch the CI.",
+      "Correction: don't touch the CI.",
+      "Rule: From now on use tabs - and don't touch the CI.",
+    ],
+  ])(
+    'records both proposals for "%s" where the hook of the dictated rule is off',
+    async (said, correction, rule) => {
+      await did('switch', 'off', 'dictated-rule');
+      const file = transcript([typed('Fix it'), assistant(), typed(said), assistant()]);
+      expect(answer(payload('Stop', file)).reply).toHaveProperty('systemMessage');
+      const titles = decisionsIn('projectPrivate').map((one) => one.payload.title);
+      expect(titles).toHaveLength(2);
+      expect(titles).toContain(correction);
+      expect(titles.some((title) => title.startsWith('Rule: '))).toBe(true);
+      expect(titles).toContain(rule);
+    },
+  );
+
+  it('still records a correction that is not a rule dictated', () => {
+    const file = transcript([
+      typed('Fix it'),
+      assistant(),
+      typed('No, use pnpm instead of npm.'),
+      assistant(),
+    ]);
+    expect(answer(payload('Stop', file)).reply).toHaveProperty('systemMessage');
+    expect(decisionsIn('projectPrivate')).toHaveLength(1);
   });
 
   it('reads the agent the environment names, like any verb that writes: asked for one the private tree does not enrol, with the person’s key protected, it records nothing and says why', async () => {
@@ -413,7 +541,8 @@ describe('mnema corrections', () => {
     ]);
   });
 
-  it('records no answer while the channel is off, which is how it starts', () => {
+  it('records no answer once the channel is switched off', async () => {
+    await did('switch', 'off', 'user-corrections');
     const file = transcript([
       asks('Redis or memory?'),
       typed('Memory'),
@@ -554,7 +683,7 @@ describe('the verb as the command line routes it', () => {
 });
 
 describe('the plugin command a host runs at Stop', () => {
-  it('hands the payload to the verb, and records only where the channel was switched on', async () => {
+  it('hands the payload to the verb, and records only where the channel is on', async () => {
     const bin = join(sandbox, 'bin');
     mkdirSync(bin);
     writeFileSync(
@@ -574,6 +703,7 @@ describe('the plugin command a host runs at Stop', () => {
         },
       });
     const file = transcript([typed('No, use pnpm instead of npm.')]);
+    await did('switch', 'off', 'user-corrections');
     const off = host(payload('Stop', file));
     expect(off.status).toBe(0);
     expect(off.stdout).toBe('');

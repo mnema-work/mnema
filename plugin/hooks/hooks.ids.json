@@ -61,6 +61,12 @@
       "index": 0,
       "runs": "hooks/edit-refuses-a-write.mjs"
     },
+    "rule-dictated": {
+      "event": "UserPromptSubmit",
+      "group": 0,
+      "index": 0,
+      "runs": "hooks/rule-dictated.mjs"
+    },
     "choice-settled": {
       "event": "PostToolUse",
       "group": 0,

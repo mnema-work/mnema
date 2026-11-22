@@ -151,7 +151,7 @@ import { saysWhatTheAcceptRestedOn, whatTheAcceptRestsOn } from '../agent-accept
 import { type AcceptState, acceptStateHere, agentMayAccept } from '../agent-accepts.js';
 import { editRulesTold, firstWriteNotice, readThePush } from '../edit-rules-push.js';
 import { type FileBehindAPath, fileOfTheOrigin } from '../file-behind-a-path.js';
-import { reachOfAddress, readGoverningRules } from '../governed-tree.js';
+import { reachesOfGoverns, reachOfAddress, readGoverningRules } from '../governed-tree.js';
 import { inheritedNotReadLine, inheritedTreeOf } from '../inherited-record.js';
 import {
   projectEventsOf,
@@ -161,6 +161,7 @@ import {
 } from '../intelligence-source.js';
 import { type Addressed, addressed, resolveLabel } from '../label-as-address.js';
 import {
+  governsTargets,
   isLabelShaped,
   linkRefusal,
   locateLinkAsRecorded,
@@ -169,6 +170,7 @@ import {
   targetAsRecorded,
   targetRecordedAs,
 } from '../link-target.js';
+import { notHereInAWorktree } from '../linked-worktree.js';
 import {
   movedDisplay,
   rejectLeavesNothingInForce,
@@ -187,6 +189,7 @@ import {
   type CountedChannel,
   EDIT_PUSH_CHANNEL,
   FIRST_WRITE_GATE_CHANNEL,
+  RECORD_PUBLISH_CHANNEL,
   REFUSES_A_WRITE_CHANNEL,
   STARTS_OFF,
   SWITCHABLE_CHANNELS,
@@ -203,6 +206,7 @@ import {
 import {
   type FellIn,
   forwardReplacement,
+  type GovernedReach,
   type Landed,
   type PersonSigned,
   type Replacement,
@@ -325,6 +329,10 @@ export type RecordDecisionResult =
         readonly id: string;
         /** The citable `ADR-<n>` label frozen into the record: a decision's name. */
         readonly adr: string;
+        /** The paths it was recorded as governing, as the tree holds them: empty when none was given. */
+        readonly governs: readonly string[];
+        /** What each of those paths covers in the working tree, in the same order: a report, never a gate. */
+        readonly reaches: readonly GovernedReach[];
         /**
          * What the new decision OFFERS beside its acknowledgement, as lines (none when there is
          * nothing to offer): the paths this connection looked at it could be addressed at, and the
@@ -943,18 +951,31 @@ export function runRecordDecision(
     title: string;
     rationale: string;
     alternatives?: string;
+    /** Paths the decision governs, recorded as `governs` links in the same act. */
+    governs?: readonly string[];
     scope?: Scope;
     project?: string;
   },
 ): RecordDecisionResult {
   const route = routeWrite(session, 'decision.recorded', input);
   if (!route.ok) return route;
+  // The paths are held to the rules of a `governs` link before a writer is opened (the ones the
+  // command line asks, from the same function): one refused refuses the whole act.
+  const trees = route.target?.trees ?? session.trees;
+  const governs = governsTargets(
+    input.governs ?? [],
+    route.scope === 'public' && trees.projectPublic !== undefined
+      ? dirname(trees.projectPublic)
+      : undefined,
+  );
+  if (!governs.ok) return { ok: false, code: governs.code, message: governs.message };
   const { ctx, run, which } = openWrite(session, route.scope, route.target);
   const recorded = ctx.writer.exclusively(() => {
     const written = recordDecision(ctx, {
       title: input.title,
       rationale: input.rationale,
       ...(input.alternatives !== undefined ? { alternatives: input.alternatives } : {}),
+      ...(governs.targets.length > 0 ? { governs: governs.targets } : {}),
       which,
       run,
     });
@@ -978,7 +999,14 @@ export function runRecordDecision(
     scope: route.scope,
     ...routedTo(session, route),
     ...forwardReplacement(recorded),
-    offered: repeated ? [] : offersBesideADecision(session, route, input, recorded),
+    governs: repeated ? [] : governs.targets,
+    reaches:
+      repeated || trees.projectPublic === undefined
+        ? []
+        : reachesOfGoverns(governs.targets, dirname(trees.projectPublic)),
+    offered: repeated
+      ? []
+      : offersBesideADecision(session, route, input, recorded, governs.targets.length > 0),
     agentsAccept: agentsAcceptInThisSession(session),
     ...(repeated ? { alreadyRecorded: true as const } : {}),
   };
@@ -1001,9 +1029,10 @@ function offersBesideADecision(
   route: { readonly scope: Scope; readonly target?: WriteTarget },
   input: { title: string; rationale: string; alternatives?: string },
   recorded: { readonly id: string; readonly adr: string },
+  isAddressed: boolean,
 ): string[] {
   const own = route.target === undefined || route.target.dir === session.project;
-  const lines = own ? addressOfferLines(session.looked, recorded, route.scope) : [];
+  const lines = own && !isAddressed ? addressOfferLines(session.looked, recorded, route.scope) : [];
   try {
     const trees = route.target?.trees ?? session.trees;
     const sources = withCaches(session, recordTrees(trees, route.target?.dir ?? session.project));
@@ -1904,7 +1933,10 @@ export function countsToolCalls(session: Session): boolean {
 export function channelsOffHere(session: Session): readonly SwitchableChannel[] {
   try {
     const states = channelStates(scopedCaches(session), SWITCHABLE_CHANNELS, STARTS_OFF);
-    return SWITCHABLE_CHANNELS.filter((_channel, at) => states[at]?.on === false);
+    // `record-publish` is a verb for a person: an agent is not told it is off.
+    return SWITCHABLE_CHANNELS.filter(
+      (channel, at) => channel !== RECORD_PUBLISH_CHANNEL && states[at]?.on === false,
+    );
   } catch {
     return [];
   }
@@ -2670,7 +2702,8 @@ export function runReadRecordTool(session: Session, input: { id: string }): Read
  * defect measured on a directory name, one step closer to whoever is calling.
  */
 function notInAnyProject(session: Session, id: string): string {
-  return `no record with id "${oneLine(id)}" ${inEveryTreeThisSessionSees(session)}`;
+  const hint = notHereInAWorktree(session.project ?? process.cwd());
+  return `no record with id "${oneLine(id)}" ${inEveryTreeThisSessionSees(session)}${hint === undefined ? '' : `. ${hint}`}`;
 }
 
 /** An intelligence read's result: the derivation, or a refusal when no project. */

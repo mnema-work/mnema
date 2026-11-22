@@ -258,7 +258,7 @@ describe('what an accept rests on, with a transcript that is known', () => {
       'Yes, go ahead (Recommended)',
       'Sim, pode (Recommended)',
       'Pode ir (Recommended)',
-      'Entra na 0.1.9 (Recommended)',
+      'Entra na versão (Recommended)',
       'Pode ir (recomendado)',
     ]) {
       writeFileSync(transcript, `${chose('Which?', label)}\n`);
