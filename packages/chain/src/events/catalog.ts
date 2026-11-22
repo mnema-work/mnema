@@ -751,6 +751,37 @@ export interface SkillConsultedV1 extends Envelope {
 }
 
 /**
+ * A decision in force was SHOWN to the identity that signed this, at a terminal, with no agent
+ * declared: what `mnema decision review` writes for each rule it puts on the screen, and what an
+ * accept made at a terminal with no agent declared writes beside itself.
+ *
+ * WHAT IT SAYS, AND WHAT IT DOES NOT. It says that this identity's key signed, with no `which`,
+ * that the decision was shown, in a process whose stdin and stderr were terminals. The seat is
+ * asked and not recorded, as for an accept: a process an agent opens under a pseudo-terminal
+ * passes it. So the fact is never a proof that a person read the rule; it is what the list of
+ * rules a person did not accept themselves is folded from, and the list is a convenience.
+ *
+ * Its subject is the DECISION, as a consultation's is the skill: a showing has no identity worth
+ * minting, it is an entry in the decision's history.
+ *
+ * `moves` names the ACCEPTS it covers, by entry hash (FORMAT.md section 3), in ascending order:
+ * every accept of the decision applied when it was shown. Two machines that accepted one decision
+ * without seeing each other leave two accepts, and a showing covers both; an accept it does not
+ * name is not covered, so a decision accepted again elsewhere comes back to the list. The rule on
+ * the field is the envelope's `hashes?`, so both readers check the shape and neither needs a rule
+ * it does not know. A showing that names no accept covers none, and the product never writes one.
+ */
+export interface DecisionSeenV1 extends Envelope {
+  readonly kind: 'decision.seen';
+  readonly v: 1;
+  /** Subject is the decision that was shown. */
+  readonly payload: {
+    /** The entry hashes of the accepts the showing covers, ascending, none repeated. */
+    readonly moves?: readonly string[];
+  };
+}
+
+/**
  * A tail was authorized to be cut: the waiver that lets a reader tell an
  * authorized cut apart from a tail that went missing.
  *
@@ -1360,6 +1391,7 @@ export type CatalogEvent =
   | SkillCreatedV1
   | SkillTransitionedV1
   | SkillConsultedV1
+  | DecisionSeenV1
   | TailPrunedV1
   | TailRelinkedV1
   | ChannelSwitchedV1
@@ -1405,6 +1437,7 @@ export const LATEST_VERSION: { readonly [K in EventKind]: number } = {
   'skill.created': 1,
   'skill.transitioned': 1,
   'skill.consulted': 1,
+  'decision.seen': 1,
   'tail.pruned': 1,
   'tail.relinked': 1,
   'channel.switched': 1,

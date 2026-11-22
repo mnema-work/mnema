@@ -145,6 +145,9 @@ class Resolution(NamedTuple):
     # run.unannounced carries, signed by a key without the agent role - counted apart from
     # `declared`, since no client announced it.
     unannounced: list[tuple[str, int]]
+    # Section 6.2: how many accepted facts name no agent and are signed by a key without the agent
+    # role - no `which` on the envelope. Said as a count and never as a person having acted.
+    undeclared: int
     # Section 6.2: (agentFp, anchor that retired it, events) of every agent key a covered
     # agent.retired took out of the role that had signed an accepted fact before it - the count the
     # product's census names, said and never judged.
@@ -671,6 +674,7 @@ def resolve(
     attested: dict[str, int] = {}
     declared: dict[str, int] = {}
     unannounced: dict[str, int] = {}
+    undeclared = 0
     for tail, seq, agent_key, which, of_marked_run in judged:
         if (tail, seq) in refused:
             continue
@@ -679,6 +683,8 @@ def resolve(
         elif isinstance(which, str):
             named = unannounced if of_marked_run else declared
             named[which] = named.get(which, 0) + 1
+        elif which is None:
+            undeclared += 1
     # A key retired before it signed anything has nothing to name.
     retired_with_facts: list[tuple[str, str, int]] = []
     for agent, (by, upto) in retirements.items():
@@ -698,6 +704,7 @@ def resolve(
         [(fp, agents[fp][0], agents[fp][1], count) for fp, count in attested.items()],
         list(declared.items()),
         list(unannounced.items()),
+        undeclared,
         retired_with_facts,
     )
 

@@ -26,6 +26,7 @@ import { randomBytes } from 'node:crypto';
 import {
   closeSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   openSync,
   readdirSync,
@@ -778,6 +779,9 @@ export function mintInstallationId(
 export function readAnchor(layout: ChainLayout, fingerprint: string): string | null {
   const path = anchorPath(layout, fingerprint);
   if (!existsSync(path)) return null;
+  // A link is not followed: it can point at an anchor nobody here recorded. It reads as no anchor,
+  // as a dangling one does, and the reads that serve the record name it (`anchorLinksRefused`).
+  if (lstatSync(path, { throwIfNoEntry: false })?.isSymbolicLink()) return null;
   const value = readingWhatTheDiskLets(path, inKeys(path), () =>
     readFileSync(path, 'utf-8'),
   ).trim();

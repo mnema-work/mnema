@@ -8,8 +8,8 @@
  * is this machine, every project on it, or every machine that clones the
  * repository. Then the two acts, in the order they happened.
  *
- * An act with no agent reads as "a person", never as blank: an absent `which` is a
- * fact (someone acted directly), and a gap there would read as data the record
+ * An act with no agent reads as "no agent declared", never as blank: an absent `which` is a
+ * fact (nobody named an agent), and a gap there would read as data the record
  * failed to keep. The same-agent case is stated as what it is, one name on both
  * ends, and nothing here calls that good or bad; a reader with the context
  * decides, which is exactly why this report exists on the surface a person uses.
@@ -28,7 +28,7 @@
  */
 
 import type { PatternProvenance } from '@mnema/context';
-import { A_PERSON, oneLine } from '../one-line.js';
+import { NO_AGENT_DECLARED, oneLine } from '../one-line.js';
 import { consultedLine } from './consultation.js';
 import { asId, asScope, column, itemLine } from './items.js';
 import type { Render } from './render.js';
@@ -50,10 +50,10 @@ export function provenanceReport(
   }
   const lines = [`${patterns.length} pattern(s):`];
   for (const pattern of patterns) {
-    const acts = [`proposed by ${oneLine(pattern.proposedBy ?? A_PERSON)}`];
+    const acts = [`proposed by ${oneLine(pattern.proposedBy ?? NO_AGENT_DECLARED)}`];
     if (pattern.adoption !== undefined) {
       acts.push(
-        `adopted by ${oneLine(pattern.adoption.by ?? A_PERSON)}` +
+        `adopted by ${oneLine(pattern.adoption.by ?? NO_AGENT_DECLARED)}` +
           (pattern.selfAdopted ? ' (the same agent)' : ''),
       );
     }

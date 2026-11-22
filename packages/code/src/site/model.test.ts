@@ -23,7 +23,7 @@ import {
   taskCreated,
 } from '@mnema/chain';
 import { describe, expect, it } from 'vitest';
-import { A_PERSON } from '../one-line.js';
+import { NO_AGENT_DECLARED } from '../one-line.js';
 import { actWording, pageModel } from './model.js';
 
 const ALICE = 'mnid:aaaaaaaaaaaaaaaa';
@@ -188,7 +188,7 @@ describe('the model of the page', () => {
     expect(model.timeline.find((e) => e.kind === 'note-recorded')?.which).toBe('second-agent');
   });
 
-  it('words an act with no agent as a person and one with an agent as the agent', () => {
+  it('words an act with no agent as no agent declared and one with an agent as the agent', () => {
     const model = pageModel([
       ...decided(1, 'd-1', 'ADR-1', 'Keep money in cents', 'accepted'),
       memoryCaptured(at(5, 'm-1', ALICE), { content: 'by hand' }),
@@ -196,7 +196,7 @@ describe('the model of the page', () => {
     ]);
     const [by, byAgent] = model.otherNotes;
     expect(by?.which).toBeUndefined();
-    expect(actWording(by?.which)).toBe(A_PERSON);
+    expect(actWording(by?.which)).toBe(NO_AGENT_DECLARED);
     expect(byAgent?.which).toBe('claude-code');
     expect(actWording(byAgent?.which)).toBe('agent claude-code');
     // The accepting move came from an agent, the recording from a person.

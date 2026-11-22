@@ -10,7 +10,7 @@
 import type { DiscoveryEnv } from '@mnema/core';
 import type { SwitchableChannel } from '../record-framing.js';
 import { linkBreakSentences } from '../record-integrity.js';
-import { proposalsToReview } from './decision-review.js';
+import { proposalsToReview, type RuleToShow } from './decision-review.js';
 import { channelsOff } from './switch.js';
 
 /** What the summary rests on. `waiting` is absent outside a project and where the record cannot be read. */
@@ -19,6 +19,17 @@ export interface Summary {
   readonly founded: boolean;
   /** How many decisions await a judgement, when it could be read. */
   readonly waiting?: number;
+  /**
+   * The rules in force this machine's identity did not accept itself and has not been shown
+   * (ADR-623), when it could be read: the ones that entered force since its last review, newest
+   * first, and how many older ones are left. `lastShown` is absent before the first review, and
+   * then nothing is listed one by one.
+   */
+  readonly notSeen?: {
+    readonly since: readonly RuleToShow[];
+    readonly older: number;
+    readonly lastShown?: string;
+  };
   /** The channels that are off on this machine, in the product's order. Empty when they could not be read. */
   readonly off: readonly SwitchableChannel[];
   /** The facts of the parts of the record left out of what was counted, said first: absent when none was. */
@@ -31,6 +42,7 @@ export interface Summary {
 export function summaryHere(ctx: { readonly cwd: string; readonly env: DiscoveryEnv }): Summary {
   let founded = false;
   let waiting: number | undefined;
+  let notSeen: Summary['notSeen'];
   let left: readonly string[] = [];
   const unread: ('record' | 'switches')[] = [];
   try {
@@ -38,6 +50,16 @@ export function summaryHere(ctx: { readonly cwd: string; readonly env: Discovery
     founded = read.ok;
     if (read.ok) {
       waiting = read.proposals.length;
+      const last = read.lastShown;
+      const since = last === undefined ? [] : read.toShow.filter((rule) => rule.accepted.at > last);
+      // Absent when there is nothing on the list: the summary then says nothing of it.
+      if (read.toShow.length > 0) {
+        notSeen = {
+          since,
+          older: read.toShow.length - since.length,
+          ...(last !== undefined ? { lastShown: last } : {}),
+        };
+      }
       // What was read is counted, and what was left out is said first, as `status` says it.
       left = linkBreakSentences(read.linkBreaks);
     }
@@ -56,6 +78,7 @@ export function summaryHere(ctx: { readonly cwd: string; readonly env: Discovery
   return {
     founded,
     ...(waiting === undefined ? {} : { waiting }),
+    ...(notSeen === undefined ? {} : { notSeen }),
     off,
     ...(left.length === 0 ? {} : { left }),
     ...(unread.length === 0 ? {} : { unread }),

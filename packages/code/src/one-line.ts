@@ -25,7 +25,7 @@
  * `chain/src/one-line.test.ts` asserts over the source and
  * `tests/the-floor-is-the-declaration.test.ts` declares as the edge it is.
  *
- * WHAT STAYED IS WHAT HAS A MOUTH. {@link A_PERSON} is how a reading SPEAKS about an act
+ * WHAT STAYED IS WHAT HAS A MOUTH. {@link NO_AGENT_DECLARED} is how a reading SPEAKS about an act
  * with no agent on its envelope, and the proof engine neither speaks to a person nor
  * knows there is one. A rule about a string travels; a word does not.
  */
@@ -35,12 +35,13 @@ export { neutralized, oneLine } from '@mnema/chain/one-line';
 /**
  * How an act with no agent on its envelope is said out loud, on both surfaces.
  *
- * An absent `which` means a person acted directly (a fact, not a missing value)
- * and it is written once for the same reason the record contract is: the MCP
- * reply and the command line's report would drift into two different words for one
- * thing, and then a reader would have to learn which of them means what.
+ * An absent `which` says that no agent was declared and nothing more: the command line writes none
+ * whenever none was named, so a person at a terminal, a script and a hook leave the same envelope,
+ * and a reading that said "a person" would claim what nothing in the record holds. It is written
+ * once for the same reason the record contract is: the MCP reply and the command line's report
+ * would drift into two different words for one thing.
  */
-export const A_PERSON = 'a person';
+export const NO_AGENT_DECLARED = 'no agent declared';
 
 /**
  * What a reading says beside an agent name that no MCP client announced: the run that carried

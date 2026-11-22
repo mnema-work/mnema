@@ -9,7 +9,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -200,4 +200,38 @@ describe('the library door', () => {
     }
     expect(state(id)).toContain('(proposed)');
   });
+
+  it('marks no rule shown when a program accepts with no agent declared at a terminal', {
+    timeout: 60_000,
+  }, () => {
+    // The library is no person going through the rules: its seat counts for `agent-accepts` and
+    // its accept writes no `decision.seen` (ADR-623).
+    const id = aProposalWithTheSwitchOff();
+    // A program in plain JavaScript can leave the agent out, which the types alone do not stop.
+    const record = openRecord({
+      cwd: project,
+      agent: undefined as unknown as string,
+      env: { home },
+    });
+    const accepted = seatedAs(true, () => record.acceptDecision({ id, note: 'ok' }));
+    expect(accepted, JSON.stringify(accepted)).toMatchObject({ ok: true });
+    expect(state(id)).toContain('(accepted)');
+    expect(showingsUnder(sandbox)).toBe(0);
+  });
 });
+
+/** How many `decision.seen` lines the record files under `dir` hold, in any tree. */
+function showingsUnder(dir: string): number {
+  let found = 0;
+  const walk = (at: string): void => {
+    for (const name of readdirSync(at, { withFileTypes: true })) {
+      const path = join(at, name.name);
+      if (name.isDirectory()) walk(path);
+      else if (name.name.endsWith('.jsonl')) {
+        found += readFileSync(path, 'utf-8').split('"kind":"decision.seen"').length - 1;
+      }
+    }
+  };
+  walk(dir);
+  return found;
+}

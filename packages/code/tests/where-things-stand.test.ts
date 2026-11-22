@@ -41,7 +41,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { dirname, join, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import type { DiscoveryEnv } from '@mnema/core';
+import { type DiscoveryEnv, SEARCH_DEFAULT_LIMIT } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { closeSession, openSession, type Session } from '../src/mcp/session.js';
 import { runBootstrap } from '../src/mcp/tools.js';
@@ -336,6 +336,40 @@ describe('mnema status: the opening read, over a record that reaches every cell'
     // anything at all".
     expect(text).not.toContain('Not looked at here:');
   }, 60_000);
+
+  it('counts who accepted EVERY rule in force, and not only the ones the list serves', async () => {
+    const initiated = await mnema('init');
+    const identity = initiated.find((line) => line.trim().startsWith('identity:')) as string;
+    const anchor = identity.trim().slice('identity:'.length).trim();
+    const total = SEARCH_DEFAULT_LIMIT + 3;
+    const ids: string[] = [];
+    for (let i = 0; i < total; i += 1) {
+      ids.push(
+        bornId(
+          await mnema('decision', 'record', `Call number ${i}`, 'because'),
+          'Recorded decision ',
+        ),
+      );
+    }
+    // Two by an agent, the rest by a person: neither count is the whole, and the whole is more
+    // than the list the opening read serves.
+    await mnema(
+      'decision',
+      'move',
+      'accept',
+      ...ids.slice(0, 2),
+      '--note',
+      'ok',
+      '--which',
+      'codex',
+    );
+    await mnema('decision', 'move', 'accept', ...ids.slice(2), '--note', 'ok');
+
+    const printed = await mnema('status', '--actor', anchor);
+    const text = printed.join('\n');
+    expect(text).toContain(`${SEARCH_DEFAULT_LIMIT} of ${total} decision(s) in force:`);
+    expect(text).toContain(`  2 accepted by an agent, ${total - 2} with no agent declared.`);
+  }, 120_000);
 
   it('says every half is empty, in words, over a project that holds nothing', async () => {
     const initiated = await mnema('init');
