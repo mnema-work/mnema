@@ -76,10 +76,14 @@ describe('the README says the floor the code has', () => {
 
 /** The text of every tracked file under the given roots, by path, found by git and not by a list. */
 function textsUnder(...roots: string[]): Map<string, string> {
-  const listed = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', ...roots], {
-    cwd: ROOT,
-    encoding: 'utf-8',
-  })
+  const listed = execFileSync(
+    'git',
+    ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', ...roots],
+    {
+      cwd: ROOT,
+      encoding: 'utf-8',
+    },
+  )
     .split('\0')
     .filter((file) => file !== '' && /\.(?:mjs|js|ts|sh|json|yml|md)$/.test(file));
   return new Map(listed.map((file) => [file, readFileSync(join(ROOT, file), 'utf-8')]));
