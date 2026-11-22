@@ -24,7 +24,7 @@ mnema doctor
 
 One line to a finding, each with what to do about it: whether a `mnema` is on the `PATH` and which
 one runs, whether the first `node` on the `PATH` takes it (a hook starts `mnema` through `#!/usr/bin/env node`)
-and, where the Node Cursor's command-line agent carries is on this machine, what it leaves the plugin's hooks, whether the Claude Code plugin is installed and at what version, whether the MCP server is
+and, where the Node Cursor's command-line agent carries is on this machine, what it leaves the plugin's hooks, whether the Claude Code plugin is installed and at what version, and whether its files are the ones released with this binary (a host moves the files only when the label changes, so the same label over other content is named, with the update that puts the released files in; where the files cannot be read the line says it does not know), whether the MCP server is
 declared more than once (a session is offered every tool once per declaration), and whether a second
 `mnema`, or an npm package of that name, is installed (and, when the first one on the `PATH` is a
 script that shadows the other, which). It also says whether VS Code's user `settings.json` lists the
@@ -44,6 +44,8 @@ when your own key is still unprotected while an agent key exists.
 
 In a project it also names each macOS metadata file (`keys/._<name>.pub`) in the committed record: both verifiers skip
 it as they skip `.DS_Store`, and the line says you can delete it.
+
+It also lists, as something to do, each `keys/` or `locks/` folder the disk will not let this mnema open (the record's own `keys/`, the identity's `keys/`, and, inside a repository, the `locks/` and `keys/` kept in the git directory): the line names where it is and says every write is refused until it opens. It never writes there.
 
 In a project inside a git repository it also names each worktree that still holds private notes
 in `.mnema/private/`, where they lived before the private tree moved into the repository's git
@@ -144,6 +146,8 @@ What it looks at, and nothing else:
   each worktree’s .mnema/private/, where private notes lived before they moved into the
   repository’s git directory; and the agent keys this machine holds, against the record of
   each tree it reaches, with the `MNEMA_AGENT_KEY` of its own environment.
+It also reads the ledger of caught failures, <data directory>/log/swallowed.jsonl, for the last 7 days (kept on this
+machine and never sent: docs/the-ledger-of-caught-failures.md).
 Asked alone it writes nothing and exits 0 whatever it finds: each line says what to do.
 `--fix vscode` writes: it shows what it will change, keeps a copy of settings.json beside
 it, keeps the file’s comments, and refuses a file it cannot edit safely.

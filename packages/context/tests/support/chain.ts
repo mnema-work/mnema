@@ -436,10 +436,24 @@ export function moveDecisionAt(
  * Appends a `decision.transitioned {action: 'supersede'}` naming the successor, with
  * the `reason` the gate requires of that move.
  */
-export function supersedeDecision(b: Bench, id: string, by: string, from = 'accepted'): void {
+export function supersedeDecision(
+  b: Bench,
+  id: string,
+  by: string,
+  from = 'accepted',
+  // The agent that carried the supersede out, when a case is about that: omitted, the event
+  // declares none.
+  which?: string,
+): void {
   b.writer.append(
     decisionTransitioned(
-      { at: b.now(), who: b.who, signerFp: b.writer.signerFingerprint, subject: id },
+      {
+        at: b.now(),
+        who: b.who,
+        signerFp: b.writer.signerFingerprint,
+        subject: id,
+        ...(which !== undefined ? { which } : {}),
+      },
       { from, to: 'superseded', action: 'supersede', by, fields: { reason: 'replaced' } },
     ),
   );

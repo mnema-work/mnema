@@ -467,6 +467,26 @@ export function skillConsulted(envelope: EnvelopeInput): CatalogEvent {
 }
 
 /**
+ * Builds a `decision.seen` event (subject = the DECISION that was shown). `moves` are the entry
+ * hashes of the accepts the showing covers; they are sorted and deduplicated here, because the
+ * field's rule (`hashes?`) admits one spelling of a set and a caller holding them in the order it
+ * read them should not have to know that. An empty list leaves the field out, which covers no
+ * accept; the product never writes one.
+ */
+export function decisionSeen(
+  envelope: EnvelopeInput,
+  payload: { readonly moves: readonly string[] },
+): CatalogEvent {
+  const moves = [...new Set(payload.moves)].sort();
+  return {
+    v: 1,
+    kind: 'decision.seen',
+    ...envelopeFields(envelope),
+    payload: moves.length > 0 ? { moves } : {},
+  };
+}
+
+/**
  * Builds a `tail.pruned` event (subject = the ANCHOR the pruned tail spoke for).
  *
  * Every field of the payload is a claim ABOUT THE DISK, and none of them is checked

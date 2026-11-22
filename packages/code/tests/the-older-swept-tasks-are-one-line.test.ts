@@ -36,6 +36,14 @@ describe('status: the tasks a sweep blocked long ago', () => {
     );
   });
 
+  it('says the cut favours what is in progress, only when there is a cut', () => {
+    const work = [{ id: 'T-1', title: 'Live one', state: 'IN_PROGRESS' }];
+    expect(said(opening({ work, workTotal: 25 }))).toContain(
+      '1 of 25 live task(s), in progress first:',
+    );
+    expect(said(opening({ work, workTotal: 1 }))).toContain('1 live task(s):');
+  });
+
   it('says nothing about them when there are none', () => {
     expect(said(opening({})).join('\n')).not.toContain('older task');
   });

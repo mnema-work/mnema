@@ -22,6 +22,7 @@ import { fact } from '../presentation/detail.js';
 import {
   alreadyRecordedLine,
   RECORD_CONTRACT_HELP,
+  reachNotices,
   replacementNotice,
 } from '../recorded-content.js';
 import { addBodySourceOptions } from './body-source.js';
@@ -39,6 +40,7 @@ import { fromTheGroup, REFUSED, takesFromItsGroup } from './from-the-group.js';
 import { writeLines } from './io.js';
 import { createsBy } from './misuse.js';
 import { noSuchRecord } from './no-such-record.js';
+import { onOneLine } from './on-one-line.js';
 import {
   declaredAgent,
   INVALID,
@@ -70,6 +72,25 @@ const TURNED_DOWN_AT_BIRTH =
   'what a decision turned down is recorded with the decision itself: pass it to ' +
   '`mnema decision record` with the title and the rationale.';
 
+/**
+ * Why a move refuses the group's `--governs`: the paths a decision is addressed at are recorded
+ * with the decision, and a move records no decision. Later, `mnema link` adds one.
+ */
+const ADDRESSED_AT_BIRTH =
+  'the paths a decision governs are recorded with the decision itself: give them to the ' +
+  'verb that records it, or add one later with `mnema link <id> <path> --rel governs`.';
+
+/** What `--governs` is, said once for the group and for `record`, which both declare it. */
+const GOVERNS_HELP =
+  'a path of this project the decision governs, recorded as a `governs` link in the same act ' +
+  '(repeatable). It is held to the rules of a `governs` link: one refused refuses ' +
+  'the whole act and nothing is written.';
+
+/** Collects a repeatable flag. */
+function collected(value: string, previous: string[] = []): string[] {
+  return [...previous, value];
+}
+
 /** What `--alternatives` is, said once for the group and for `record`, which both declare it. */
 const ALTERNATIVES_HELP =
   'what was considered and turned down, and why not (optional). A decision ' +
@@ -83,6 +104,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
     .command('decision')
     .description('record a decision, or move one, in the current project')
     .option('--alternatives <text>', ALTERNATIVES_HELP)
+    .option('--governs <path>', GOVERNS_HELP, collected)
     .addOption(
       scopeOption(
         'decision',
@@ -105,6 +127,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
     .argument('<title>', 'the decision title')
     .argument('[rationale]', 'why the decision was made (or give it with --stdin or --body-file)')
     .option('--alternatives <text>', ALTERNATIVES_HELP)
+    .option('--governs <path>', GOVERNS_HELP, collected)
     .addOption(
       scopeOption(
         'decision',
@@ -118,6 +141,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
   record.action(async (title: string, typed: string | undefined) => {
     const given = await fromTheGroup<{
       alternatives?: string;
+      governs?: string[];
       scope?: string;
       which?: string;
       stdin?: boolean;
@@ -146,16 +170,19 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
       title,
       rationale,
       ...(given.alternatives !== undefined ? { alternatives: given.alternatives } : {}),
+      ...(given.governs !== undefined ? { governs: given.governs } : {}),
       ...(scope !== undefined ? { scope } : {}),
       ...(given.which !== undefined ? { which: given.which } : {}),
       ...(run !== undefined ? { run } : {}),
     });
     if (result.ok && result.alreadyRecorded) {
-      io.out(alreadyRecordedLine(result, result.scope));
+      io.out(alreadyRecordedLine(result, result.scope, given.governs?.length));
       return;
     }
     if (result.ok) {
       io.out(`Recorded decision ${result.adr} (${result.id})`);
+      if (result.governs.length > 0) io.out(onOneLine`Governs: ${result.governs.join(', ')}`);
+      for (const line of reachNotices(result.reaches)) io.out(line);
       io.out(stateBesideADecision(writing, given.which, result.id));
       reportRecorded(result, io);
       const text = {
@@ -193,7 +220,11 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
     .addHelpText('after', RECORD_CONTRACT_HELP);
   takesFromItsGroup(decisionMove, {
     takes: ['--which'],
-    refuses: { '--scope': A_MOVE_FOLLOWS_THE_DECISION, '--alternatives': TURNED_DOWN_AT_BIRTH },
+    refuses: {
+      '--scope': A_MOVE_FOLLOWS_THE_DECISION,
+      '--alternatives': TURNED_DOWN_AT_BIRTH,
+      '--governs': ADDRESSED_AT_BIRTH,
+    },
   });
   decisionMove.action(async (action: string, ids: string[], opts: { note?: string }) => {
     const given = await fromTheGroup<{ which?: string }>(decisionMove, wiring);
@@ -209,6 +240,8 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
     // the only thing that is one. Each id is moved or refused on its own account, and a refusal
     // does not stop the ones after it (an append-only record cannot take the ones before it
     // back, so stopping would only leave the rest undone for no reason the person gave).
+    const { sessionHere } = await import('../host-words.js');
+    const here = sessionHere(given.which, process.env);
     let moved = 0;
     for (const id of ids) {
       const result = runDecisionTransition(hereWriting(wiring), {
@@ -218,8 +251,10 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
         ...(given.which !== undefined ? { which: given.which } : {}),
         ...(run !== undefined ? { run } : {}),
         atATerminal: io.aPersonIsHere === true,
+        viaTheCommandLine: true,
+        ...(here !== undefined ? { hostSession: here.session, sessionHost: here.host } : {}),
       });
-      await reportDecisionMove(result, id, wiring);
+      await reportDecisionMove(result, id, wiring, action);
       if (result.ok) moved += 1;
     }
     if (ids.length > 1 && moved < ids.length) {
@@ -243,7 +278,11 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
       '\nAsks for one note at the start, used for every verdict unless you write another after the\n' +
         'letter (`a because the benchmark held`). Each verdict is the move `decision move` makes,\n' +
         'signed with your own key; a refusal on one decision is said and the review goes on. Without a\n' +
-        'terminal it writes nothing and prints the `decision move` command that rules the same decisions.',
+        'terminal it writes nothing and prints the `decision move` command that rules the same decisions.\n' +
+        '\nThen it shows the rules in force you did not accept yourself (an agent accepted them, or no\n' +
+        'agent was declared on the accept), newest first, and marks each one it shows as shown to you,\n' +
+        "in this machine's private record; `q` stops it, and what was not shown stays on the list.\n" +
+        'A mark says your key signed at a terminal with no agent declared, not that a person read it.',
     )
     .addHelpText('after', RECORD_CONTRACT_HELP);
   takesFromItsGroup(review, {
@@ -251,6 +290,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
       '--which': 'a review is a person’s: it signs with your own key, not an agent’s.',
       '--scope': A_MOVE_FOLLOWS_THE_DECISION,
       '--alternatives': TURNED_DOWN_AT_BIRTH,
+      '--governs': ADDRESSED_AT_BIRTH,
     },
   });
   review.action(async () => {
@@ -275,7 +315,11 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
     .addHelpText('after', RECORD_CONTRACT_HELP);
   takesFromItsGroup(supersede, {
     takes: ['--which'],
-    refuses: { '--scope': A_MOVE_FOLLOWS_THE_DECISION, '--alternatives': TURNED_DOWN_AT_BIRTH },
+    refuses: {
+      '--scope': A_MOVE_FOLLOWS_THE_DECISION,
+      '--alternatives': TURNED_DOWN_AT_BIRTH,
+      '--governs': ADDRESSED_AT_BIRTH,
+    },
   });
   supersede.action(async (oldId: string, newId: string, opts: { reason?: string }) => {
     const given = await fromTheGroup<{ which?: string }>(supersede, wiring);
@@ -390,6 +434,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
       '--alternatives':
         'what each proposal turned down is read from its own file, from a section such as ' +
         '`## Considered Options`.',
+      '--governs': ADDRESSED_AT_BIRTH,
     },
   });
   decisionImport.action(async (dir: string, opts: { write?: boolean; format?: string }) => {
@@ -466,6 +511,7 @@ async function reportDecisionMove(
   result: ReturnType<typeof runDecisionTransition>,
   id: string,
   to: Reporter,
+  action?: string,
 ): Promise<void> {
   if (result.ok) {
     const { movedLine } = await import('../moved-record.js');
@@ -478,7 +524,18 @@ async function reportDecisionMove(
     reportReplacement(result, to.io);
     return;
   }
-  reportRefusal(to, result, { UNKNOWN_DECISION: noSuchRecord('decision', id) });
+  // `move <id> accept`: the id is read as the action, and the action as an id. The word in the id's
+  // position is a verdict, so the sentence says which way round the line goes.
+  const swapped =
+    action !== undefined &&
+    !(DECISION_MOVE_ACTIONS as readonly string[]).includes(action) &&
+    (DECISION_MOVE_ACTIONS as readonly string[]).includes(id);
+  const none = noSuchRecord('decision', id);
+  reportRefusal(to, result, {
+    UNKNOWN_DECISION: swapped
+      ? `${none} The action goes before the id: mnema decision move ${id} <id>.`
+      : none,
+  });
 }
 
 /**

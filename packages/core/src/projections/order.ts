@@ -102,6 +102,7 @@ import {
   type WithheldRun,
 } from '@mnema/chain';
 import { notesRootOf } from '../topology/git-place.js';
+import { placedAt } from './entry-hashes.js';
 
 /**
  * What a reading collects of the parts of the record it SERVES AROUND: a collector to hand to the
@@ -1256,7 +1257,10 @@ function mergeStreams(
     const position = cursors[tail] as number;
     cursors[tail] = position + 1;
     const event = eventAt(tail, position);
-    if (isCatalogEvent(event)) placed.push({ event, tail, position });
+    if (isCatalogEvent(event)) {
+      placed.push({ event, tail, position });
+      placedAt(event, (streams[tail] as TailStream).hashes[position] as string);
+    }
   }
   const illegal = judged ? illegalMoves(placed, merged.held) : new Map();
   // A decision is the text its first judgment saw (FORMAT.md section 6.8): a writing before that
