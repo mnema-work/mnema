@@ -1,52 +1,79 @@
 // @reads-the-tree
 /**
- * THE FRONT PAGE IS DRAWN FROM THE CONSOLE: the pictures in `docs/assets/` are made by a script
- * from the same sources the console draws from, and painted in one accent.
+ * THE FRONT PAGE IS DRAWN FROM ITS SOURCES: the pictures of `docs/assets/` and of the packages are made by scripts from
+ * the brand's own pieces and from the product's own files, and painted in the brand's colours.
  *
- *   - THE BANNER is the console's wordmark: `.github/the-front-page/draw.mjs` reads the rows of
- *     `THE_BLOCKS` (`src/presentation/banner.ts`) and draws each glyph as geometry. Here the
- *     script runs again in memory over the rows the console draws today, and every picture it
- *     makes is held byte for byte to the one committed, so a wordmark changed in the console and
- *     not drawn again fails here, and so does a picture edited by hand.
- *   - THE ACCENT is one constant (`.github/the-front-page/accent.mjs`): `#c4a0f5` on a dark page,
- *     `#997dbf` on a light one. Every colour in every SVG of `docs/assets/` is either neutral (a
- *     grey, whose channels lie within {@link NEUTRAL_SPREAD} of each other) or the accent of the
- *     theme the file is named for. Any other hue fails, and so does a colour written in a form
- *     this does not read (a name, `rgb()`, `hsl()`), rather than pass unread.
- *   - THE PACKAGES: each published package but `@mnema/code` has its own picture, drawn by the
- *     same script into `packages/<p>/assets/` in the family's paint and motion, held byte for
- *     byte here and painted in the same accent; `@mnema/code`'s README shows the family. Every word
- *     on it is a literal of the product, found here in the file the script names for it; no
- *     text on it is anything else, and none is a host's name, a count that changes, or a
- *     promise the package does not make. The id a line of output prints is drawn elided, and a
- *     text inside a box sits on the box's middle by the size of its role.
- *   - THE FAMILY: the picture of `@mnema/code` and what stands around it, drawn into
- *     `docs/assets/`, is held to the same rules as a package's: its words are lines of the
- *     product, found in the files the script names, and nothing else.
- *   - THE BANNER, THE STEPS AND HOW MNEMA FITS: drawn in the family's paint and motion, and held to
- *     the family's guards of frame, middle, roles, keyframes, exit and arrows. Their words are said
- *     here by hand, in order, each piece a file says found in it; the banner's light is out in its
- *     last frame and moves nothing.
- *   - THE FAMILY ON THE FRONT PAGE: `README.md` holds, under "The mnema family", the block the script
- *     writes, byte for byte, at 880, by an absolute address on `main` with no version.
- *   - THE URL OF A PACKAGE'S PICTURE: the README of a package opens, under its title, with the
- *     block the script writes, pointing at the file on the repository's `main` branch by the
- *     address of the repository its `package.json` says, with no version in it, because a
- *     version that is not published yet is a picture that does not load. Hand-editing the
- *     address fails here.
- *   - THE BADGES: a shields.io badge in `README.md` or a package's README that sets a colour,
- *     in `color=` or in its path (`/badge/label-message-colour`), sets the light accent.
+ *   - THE BANNER is the lockup of the brand, the eye and the word beside it: `.github/the-brand/banner.mjs` draws
+ *     `docs/assets/banner-{dark,light}.svg`, and each is held here byte for byte to what the script draws, so a banner
+ *     edited by hand fails here. It draws no words and has no ground of its own. THE EYE BLINKS, AND STOPS WHEN ASKED TO:
+ *     the motion is SMIL, which a media query cannot stop, so the banner holds two copies of the eye, one that moves and
+ *     one at rest, and a media query inside the SVG swaps them under `prefers-reduced-motion`. `the banner blinks` below
+ *     holds the swap (the two copies, the one `<style>`, the still copy being the moving one without its `<animate>`s),
+ *     and `README.md` showing it with the text alternative the banner carries.
+ *   - THE DIAGRAMS are fourteen pictures, dark and light: how mnema works, how mnema fits and the family in `docs/assets/`,
+ *     and one for each published package but `@mnema/code` in `packages/<p>/assets/`, drawn by
+ *     `.github/the-brand/diagrams.mjs` and held byte for byte like the banner. THEIR TEXT IS OUTLINES. This guard used
+ *     to read the words of a picture from its `<text>` elements; GitHub shows an SVG as an image, and an image loads no
+ *     web font, so the diagrams carry no `<text>`: each line is the outline of its glyphs, drawn from the fonts committed
+ *     in `.github/the-brand/fonts/`, and carries the line it outlined in `data-said`, which is what is read here. The
+ *     premise that the words are in the `<text>` was falsified by the outline, and a guard that kept reading `<text>`
+ *     would read nothing and pass; every case that reads words fails when a picture has none.
+ *   - THE WORDS of the packages' diagrams and of the family's are literals of the product, each found here in the file
+ *     the script names for it; no text on one is anything else, and none is a host's name, a count that changes, or a
+ *     promise the package does not make. The two diagrams of the README say their own words, fixed here, in order.
+ *     The outline has one door (`say`), a role is a key of one table, and a line written there is the line the path
+ *     outlines.
+ *   - THE FONTS are the authors' own, intact: each file in `.github/the-brand/fonts/` is listed in its `SOURCES.md` with
+ *     the sha256 it has, and each face has its licence beside it.
+ *   - THE COLOURS: the sixteen pictures (the fourteen diagrams and the two banners) use no hue but `PALETTE.sulphur`
+ *     (`.github/the-brand/palette.mjs`) and no colour that is not a value of the palette, and no script of the brand
+ *     writes a hex colour but the palette.
+ *   - THE BLOCKS OF THE READMES: `README.md` holds, under "The mnema family", the block the script writes, and the
+ *     README of a package opens, under its title, with the block the script writes, pointing at the file on the
+ *     repository's `main` branch by the address the package's `package.json` says, with no version in it, because a
+ *     version that is not published yet is a picture that does not load. The `alt` of an image is the text alternative
+ *     the picture carries.
+ *   - THE BADGES: every shields.io badge in `README.md` or a package's README is in dark stone (`PALETTE.darkStone`),
+ *     except the one for the CI workflow, which carries no colour at all, so that shields.io paints it red when the build
+ *     fails.
+ *   - WHAT THE SITE IMPORTS AT A RELEASE TAG: `CELL`, `PAGE`, `inkFoot` and `socialCard` from `draw.mjs`, `ACCENT` from
+ *     `accent.mjs`, and `firstLetter` and `letterCells` from `packages/vscode/build/mark.mjs`, in a checkout with no
+ *     `node_modules`; their values and the bytes of the social card are held here by hand, so that taking the banner
+ *     out of `draw.mjs` moved none of them. This used to say that the extension's icon imports them too: since the
+ *     extension draws the eye, nothing else in the repository reads `ACCENT`, `firstLetter` or `letterCells`, and these
+ *     literals are what holds them.
  *
- * HOW THE PICTURES ARE MADE AGAIN, from the root of a built checkout (`pnpm build`):
+ * WHAT NO LONGER HOLDS, and why. THE GRID OF THE PIXEL (every stroke of one unit on the middle of a pixel, with the table
+ * of mutations that proved the reader of it) is gone whole, and no guard of a grid is written for the banner: the banner
+ * is shown at 640 pixels from a frame of 1280 units, so a unit is half a pixel, and it draws no stroke of one unit (the
+ * eye's are 9.5, 4.75 and 2.2 under a scale of 1.45, the word's 9, 8.46 and 7.92 under 1.69). The diagrams are shown
+ * scaled too (1200 units wide in a column of about 830 pixels), so the grid of the pixel, the middle of the frame and the
+ * margin do not apply to them; the drawing is a grid of columns on symmetric margins, not a mass centred in its frame.
+ * THE BANNER'S CASES OF FRAME AND OF CENTRING are gone with the banner the console's rows drew: their instruments
+ * (`nodesOf`, `boxesOf`, `transformOf`) leave out a `clipPath` on purpose, read no `<animate>` and read the first of two
+ * `translate`s, so on the lockup they would measure wrong; the centring is computed in one place, in
+ * `.github/the-brand/banner.mjs`, and the file is held byte for byte. THE CASES OF KEYFRAMES (`the banner rests as it is
+ * drawn`, which read the CSS `@keyframes` of the old banner) are gone because the banner's motion is SMIL now, and what
+ * holds it is the still copy and the swap. The case that drew every glyph of the console's wordmark is gone with the
+ * wordmark. The diagrams draw no arrow and no running dot, so the guards of arrows and of the exit of a loop are gone.
+ * They move, and stop when asked to: the eye blinks on the banner's cycle, a pulse runs along the lines and each sign
+ * sends out a ripple, and under `prefers-reduced-motion` none of that is drawn and the eye shows its still copy (the cases
+ * of `the motion`). A text no longer has a size of its own: it has a role, a key of the table `ROLES`, which the type of
+ * `say` checks (`pnpm typecheck`), so a guard of the sizes written is the compiler's.
  *
- *     node .github/the-front-page/draw.mjs          # writes docs/assets/*.svg
- *     node .github/the-front-page/draw.mjs --check  # exits 1 when a committed one differs
+ * HOW THE PICTURES ARE MADE AGAIN, from the root of a checkout:
  *
- * WHAT IT DOES NOT CHECK: how the pictures look. The geometry is held to its source, not to an
- * eye; a reviewer sees the picture in the pull request.
+ *     node .github/the-brand/diagrams.mjs          # the diagrams and the blocks of the READMEs
+ *     node .github/the-brand/diagrams.mjs --check  # exits 1 when a committed one differs
+ *     node .github/the-brand/banner.mjs            # the banner; it needs no `pnpm build`
+ *     node .github/the-brand/banner.mjs --check    # exits 1 when a committed one differs
+ *
+ * WHAT IT DOES NOT CHECK: how the pictures look. The geometry is held to its source, not to an eye; a reviewer sees the
+ * picture in the pull request.
  */
 
-import { readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -57,17 +84,28 @@ import { ROOT, read } from './support/published-examples.js';
 /** Named by a variable, because these are scripts of the repository and not modules of the product. */
 const DRAW = join(ROOT, '.github', 'the-front-page', 'draw.mjs');
 const ACCENT_FILE = join(ROOT, '.github', 'the-front-page', 'accent.mjs');
+const MARK = join(ROOT, 'packages', 'vscode', 'build', 'mark.mjs');
+const BRAND = join(ROOT, '.github', 'the-brand');
 
 type Line = readonly ({ said: string; where: string } | string)[];
+type Pen = Readonly<Record<string, unknown>>;
+const { CELL, PAGE, inkFoot, socialCard } = (await import(pathToFileURL(DRAW).href)) as {
+  CELL: { w: number; h: number };
+  PAGE: { dark: string; light: string };
+  inkFoot: (blocks: readonly string[]) => number;
+  socialCard: (o: { blocks: readonly string[]; pitch: { title: string; body: string } }) => string;
+};
+const { drawTheBanner } = (await import(pathToFileURL(join(BRAND, 'banner.mjs')).href)) as {
+  drawTheBanner: () => Record<string, string>;
+};
 const {
-  drawTheFrontPage,
-  drawThePackages,
+  drawTheDiagrams,
+  say,
   PACKAGE_PICTURES,
   FAMILY_LINES,
   SEPARATORS,
-  TYPE,
-  HALF_ROW,
   textOf,
+  DIGEST,
   pictureBlock,
   PICTURED_PAGES,
   FAMILY_PAGE,
@@ -75,15 +113,22 @@ const {
   FAMILY_HEADING,
   familyBlock,
   withFamilyBlock,
-} = (await import(pathToFileURL(DRAW).href)) as {
-  drawTheFrontPage: (blocks: readonly string[]) => Record<string, string>;
-  drawThePackages: (blocks: readonly string[]) => Record<string, string>;
+} = (await import(pathToFileURL(join(BRAND, 'diagrams.mjs')).href)) as {
+  drawTheDiagrams: () => Record<string, string>;
+  say: (
+    t: Pen,
+    words: Line,
+    x: number,
+    y: number,
+    role: string,
+    anchor: string,
+    ink: string,
+  ) => string;
   PACKAGE_PICTURES: readonly { dir: string; lines: Readonly<Record<string, Line>> }[];
   FAMILY_LINES: Readonly<Record<string, Line>>;
   SEPARATORS: readonly string[];
-  TYPE: Readonly<Record<string, { size: number; weight: string; centre: number }>>;
-  HALF_ROW: number;
   textOf: (line: Line) => string;
+  DIGEST: string;
   pictureBlock: (dir: string) => string;
   PICTURED_PAGES: readonly string[];
   FAMILY_PAGE: string;
@@ -92,8 +137,13 @@ const {
   familyBlock: () => string;
   withFamilyBlock: (readme: string, block: string) => string;
 };
-const { ACCENT } = (await import(pathToFileURL(ACCENT_FILE).href)) as {
-  ACCENT: { dark: string; light: string };
+const { outlineOf, ROLES } = (await import(pathToFileURL(join(BRAND, 'outline.mjs')).href)) as {
+  outlineOf: (text: string, role: string, x: number, y: number, anchor: string) => string;
+  ROLES: Readonly<Record<string, unknown>>;
+};
+const { PALETTE, DIAGRAM } = (await import(pathToFileURL(join(BRAND, 'palette.mjs')).href)) as {
+  PALETTE: Readonly<Record<string, string>>;
+  DIAGRAM: { light: Pen; dark: Pen };
 };
 
 const ASSETS = 'docs/assets';
@@ -134,13 +184,6 @@ function whyNot(colour: string, accent: readonly string[]): string | undefined {
   return `${colour}: a hue that is not the accent (${accent.join(' or ')})`;
 }
 
-/** The accent a file may use, by the theme its name says. */
-function accentFor(file: string): string[] {
-  if (file.endsWith('-dark.svg')) return [ACCENT.dark];
-  if (file.endsWith('-light.svg')) return [ACCENT.light];
-  return [ACCENT.dark, ACCENT.light];
-}
-
 /**
  * Every picture a page shows: the front page's, and each package's own. A contributor's avatar
  * (`contributor-<login>.svg`) is a photograph in a circle, not art drawn here, so it has no accent to hold.
@@ -160,527 +203,219 @@ const svgs = [
   }),
 ].filter((f) => f.endsWith('.svg'));
 
-describe('the front page is drawn from the console', () => {
-  const drawn = drawTheFrontPage(THE_BLOCKS);
+describe('the front page is drawn from its scripts', () => {
+  const drawn = drawTheBanner();
+  const diagrams = drawTheDiagrams();
 
-  it('draws the banner and the steps, dark and light', () => {
-    expect(Object.keys(drawn).sort()).toEqual([
-      'banner-dark.svg',
-      'banner-light.svg',
-      'how-it-works-dark.svg',
-      'how-it-works-light.svg',
-      'how-mnema-fits-dark.svg',
-      'how-mnema-fits-light.svg',
-      'the-family-dark.svg',
-      'the-family-light.svg',
-    ]);
+  it('draws the banner, dark and light, and no other picture', () => {
+    expect(Object.keys(drawn).sort()).toEqual([BANNER.dark, BANNER.light]);
+  });
+
+  it('draws exactly the fourteen diagrams, dark and light, by the paths they have always had', () => {
+    expect(Object.keys(diagrams).sort()).toEqual(
+      [
+        ...['how-it-works', 'how-mnema-fits', 'the-family'].map((p) => `${ASSETS}/${p}`),
+        ...['chain', 'context', 'core', 'stacks'].map((p) => `packages/${p}/assets/${p}`),
+      ].flatMap((p) => [`${p}-dark.svg`, `${p}-light.svg`]),
+    );
   });
 
   it('names the family in its text alternative, dark and light', () => {
     const alt = FAMILY_ALT;
     for (const theme of ['dark', 'light']) {
-      const svg = drawn[`the-family-${theme}.svg`] ?? '';
+      const svg = diagrams[`${ASSETS}/the-family-${theme}.svg`] ?? '';
       expect(svg).toContain(` aria-label="${alt}"`);
       expect(svg).toContain(`<title>${alt}</title>`);
     }
   });
 
-  it.each(Object.keys(drawn))('%s is what the script draws from the console today', (file) => {
-    expect(read(`${ASSETS}/${file}`)).toBe(drawn[file]);
+  // The eye sits on the diagram's axis, and what is central under it sits there too. The diagrams with such an element are
+  // the family (the record, r 22), fits (the ADR-2 point, r 15), context and stacks (the point of the record, r 18). Chain
+  // (a row of four), core (one point beside its sides) and how it works (four evenly spaced) have none.
+  const UNDER_THE_EYE: readonly (readonly [string, number])[] = [
+    [`${ASSETS}/the-family`, 22],
+    [`${ASSETS}/how-mnema-fits`, 15],
+    ['packages/context/assets/context', 18],
+    ['packages/stacks/assets/stacks', 18],
+  ];
+  it.each(
+    UNDER_THE_EYE.flatMap(([base, r]) =>
+      ['dark', 'light'].map((theme) => [`${base}-${theme}.svg`, r] as const),
+    ),
+  )('%s has its central point under the eye, within 0.5', (path, r) => {
+    const svg = diagrams[path] ?? '';
+    const eye = Number(/translate\(([\d.]+),44\) scale\(\.6\)/.exec(svg)?.[1]);
+    const centres = [
+      ...svg.matchAll(/<circle cx="([\d.]+)" cy="[\d.]+" r="([\d.]+)" fill="#e6da2e"[^>]*>/g),
+    ]
+      .filter((m) => Number(m[2]) === r)
+      .map((m) => Number(m[1]));
+    expect(eye).toBe(600);
+    expect(centres).toHaveLength(1);
+    expect(Math.abs((centres[0] ?? Number.NaN) - eye)).toBeLessThanOrEqual(0.5);
   });
 
-  it.each(Object.keys(drawn).filter((file) => !file.startsWith('the-family-')))(
-    '%s draws every stroke of one unit on the middle of a pixel',
-    (file) => {
-      expect(offTheGrid(drawn[file] ?? '').map((o) => `${file}: ${o}`)).toEqual([]);
-    },
-  );
-
-  it('reads a stroke of one unit on a whole coordinate as off the grid', () => {
-    const rect = (at: string) =>
-      `<svg><defs></defs><rect ${at} fill="none" stroke="#997dbf"/><rect ${at} stroke="#997dbf" stroke-width="2"/></svg>`;
-    expect(offTheGrid(rect('x="630" y="122" width="240" height="24"'))).toHaveLength(1);
-    expect(offTheGrid(rect('x="630.5" y="122.5" width="239" height="23"'))).toEqual([]);
-    expect(
-      offTheGrid('<svg><defs></defs><path d="M0 48H880" stroke="#997dbf"/></svg>'),
-    ).toHaveLength(1);
-    expect(offTheGrid('<svg><defs></defs><path d="M0 48.5H880" stroke="#997dbf"/></svg>')).toEqual(
-      [],
-    );
-  });
-
-  // Each stroke below is one unit wide and off the grid, laid into a copy of a picture the script
-  // draws; the guard names it, by its tag, and nothing else in the picture.
+  // The banner by the script that draws it, the three diagrams of the README by the one that draws them.
   it.each([
-    ['a cubic curve', '<path d="M10.5 10.5C20 10 30 10 40.5 10.5" stroke="#997dbf"/>', 'path'],
-    ['a quadratic curve', '<path d="M10.5 10.5Q20 30 40.5 10.5" stroke="#997dbf"/>', 'path'],
-    ['an arc', '<path d="M10.5 10.5A5 5 0 0 1 20.5 10.5" stroke="#997dbf"/>', 'path'],
-    ['a relative run across', '<path d="m0 48h880" stroke="#997dbf"/>', 'path'],
-    ['a relative run down', '<path d="M10.5 10.5l0.5 0v20" stroke="#997dbf"/>', 'path'],
-    ['the run that closes a path', '<path d="M10.5 10.5H40.5V20Z" stroke="#997dbf"/>', 'path'],
-    ['a line', '<line x1="0" y1="48" x2="880" y2="48" stroke="#997dbf"/>', 'line'],
-    ['a polyline', '<polyline points="10.5 10.5 40.5 10.5 40 30" stroke="#997dbf"/>', 'polyline'],
-    [
-      'a polygon',
-      '<polygon points="10 10.5 40.5 10.5 40.5 30.5 10 30.5" stroke="#997dbf"/>',
-      'polygon',
-    ],
-    [
-      'a shape a group moves by half a unit',
-      '<g transform="translate(0 0.5)"><path d="M0 48.5H880" stroke="#997dbf"/></g>',
-      'path',
-    ],
-    [
-      'a shape moved by its own transform',
-      '<rect transform="translate(0.5 0)" x="10.5" y="10.5" width="30" height="20" fill="none" stroke="#997dbf"/>',
-      'rect',
-    ],
-    [
-      'a shape a group scales to one unit',
-      '<g transform="scale(0.5)"><path d="M0 96H880" stroke="#997dbf" stroke-width="2"/></g>',
-      'path',
-    ],
-    [
-      'a shape a group rotates',
-      '<g transform="rotate(90)"><path d="M0 48.5H880" stroke="#997dbf"/></g>',
-      'path',
-    ],
-    ['a stroke painted by its group', '<g stroke="#997dbf"><path d="M0 48H880"/></g>', 'path'],
-    [
-      'a stroke whose width of one unit comes from its group',
-      '<g stroke-width="1"><path d="M0 48H880" stroke="#997dbf" stroke-width="inherit"/></g>',
-      'path',
-    ],
-    [
-      'a width of one unit set in its style',
-      '<path d="M0 48H880" stroke="#997dbf" stroke-width="2" style="stroke-width:1"/>',
-      'path',
-    ],
-    [
-      'a width this does not read',
-      '<path d="M0 48H880" stroke="#997dbf" stroke-width="1px"/>',
-      'path',
-    ],
-  ])('names %s that strokes one unit off the grid', (_, shape, tag) => {
-    const copy = (drawn['how-it-works-light.svg'] ?? '').replace('</svg>', `${shape}\n</svg>`);
-    const found = offTheGrid(copy);
-    expect(found).toHaveLength(1);
-    expect(found[0]).toMatch(new RegExp(`^${tag}#\\d+ `));
-  });
-
-  it('refuses a picture whose stylesheet sets a stroke', () => {
-    const copy = (drawn['how-it-works-light.svg'] ?? '').replace(
-      '</style>',
-      '.w{stroke-width:1}</style>',
-    );
-    expect(offTheGrid(copy)).toEqual(['the stylesheet sets a stroke, which this does not read']);
-  });
-
-  it('holds a stroke of one unit on the grid under a group that moves it by whole units', () => {
-    const copy = (drawn['how-it-works-light.svg'] ?? '').replace(
-      '</svg>',
-      '<g transform="translate(3 4)"><path d="M0 48.5H880" stroke="#997dbf"/><line x1="10.5" y1="0" x2="10.5" y2="40" stroke="#997dbf"/></g><g stroke-width="2"><path d="M0 48H880" stroke="#997dbf"/></g>\n</svg>',
-    );
-    expect(offTheGrid(copy)).toEqual([]);
-  });
-
-  // Each change below hides a stroke of one unit off the grid, or is a construction the guard does
-  // not read, in a copy of a picture the script draws; the guard refuses the picture and names the
-  // construction, where it once passed it.
-  const OFF = 'stroke="#997dbf"';
-  it.each([
-    [
-      'a <use> of a shape kept in the <defs>',
-      (s: string) =>
-        s
-          .replace('</defs>', `<path id="p" d="M0 48H880" ${OFF}/></defs>`)
-          .replace('</svg>', '<use href="#p"/></svg>'),
-      /^the <use> at character \d+ is an element this does not read$/,
-    ],
-    [
-      'a <symbol>',
-      (s: string) =>
-        s.replace('</defs>', `<symbol id="s"><path d="M0 48H880" ${OFF}/></symbol></defs>`),
-      /^the <symbol> at character \d+ is an element this does not read$/,
-    ],
-    [
-      'an <svg> inside the picture that moves its shapes by half a unit',
-      (s: string) =>
-        s.replace('</svg>', `<svg x="0.5" y="0.5"><path d="M0 48.5H880" ${OFF}/></svg></svg>`),
-      /^the <svg> at character \d+ is an element this does not read$/,
-    ],
-    [
-      'a transform in the style of a shape',
-      (s: string) =>
-        s.replace(
-          '</svg>',
-          `<path d="M0 48.5H880" ${OFF} style="transform:translate(0px,0.5px)"/></svg>`,
-        ),
-      /^the <path> at character \d+ sets in its style what this does not read: transform:/,
-    ],
-    [
-      'a translate in the style of a shape',
-      (s: string) =>
-        s.replace('</svg>', `<path d="M0 48.5H880" ${OFF} style="translate:0 0.5px"/></svg>`),
-      /^the <path> at character \d+ sets in its style what this does not read: translate:/,
-    ],
-    [
-      'a transform the stylesheet gives a class',
-      (s: string) =>
-        s
-          .replace('</style>', '.m{transform:translate(0px,0.5px)}</style>')
-          .replace('</svg>', `<path class="m" d="M0 48.5H880" ${OFF}/></svg>`),
-      /^the stylesheet moves a shape outside a keyframes, which this does not read$/,
-    ],
-    [
-      'an animation the stylesheet gives a class',
-      (s: string) =>
-        s
-          .replace(
-            '</style>',
-            '@keyframes mv{0%{transform:translate(0px,0.5px)}}.m{animation-name:mv}</style>',
-          )
-          .replace('</svg>', `<path class="m" d="M0 48.5H880" ${OFF}/></svg>`),
-      /^the stylesheet gives a shape an animation, which this does not read$/,
-    ],
-    [
-      'the animation shorthand in the style of a shape',
-      (s: string) =>
-        s
-          .replace('</style>', '@keyframes mv{0%{transform:translate(0px,0.5px)}}</style>')
-          .replace('</svg>', `<path style="animation:mv 1s" d="M0 48.5H880" ${OFF}/></svg>`),
-      /^the <path> at character \d+ sets in its style what this does not read: animation:/,
-    ],
-    [
-      'a keyframe that moves a shape after another declaration',
-      (s: string) =>
-        s
-          .replace(
-            '</style>',
-            '@keyframes mv{0%{opacity:1;transform:translate(0px,0.5px)}}</style>',
-          )
-          .replace('</svg>', `<path style="animation-name:mv" d="M0 48.5H880" ${OFF}/></svg>`),
-      /^path#\d+ is under a transform this does not read$/,
-    ],
-    [
-      'a keyframes written with from and to',
-      (s: string) =>
-        s
-          .replace('</style>', '@keyframes mv{from{transform:translate(0px,0.5px)}}</style>')
-          .replace('</svg>', `<path style="animation-name:mv" d="M0 48.5H880" ${OFF}/></svg>`),
-      /^the stylesheet has a keyframes this does not read$/,
-    ],
-    [
-      'a second stylesheet that sets a stroke',
-      (s: string) => s.replace('</svg>', '<style>.w{stroke-width:1}</style></svg>'),
-      /^the stylesheet sets a stroke, which this does not read$/,
-    ],
-    [
-      'a stroke on the outer <svg>',
-      (s: string) =>
-        s.replace('<svg ', `<svg ${OFF} `).replace('</svg>', '<path d="M0 48H880"/></svg>'),
-      /^the <svg> at character 0 sets stroke, which this does not read$/,
-    ],
-    [
-      'a stroke width on the outer <svg> a group scales to one unit',
-      (s: string) =>
-        s
-          .replace('<svg ', '<svg stroke-width="0.5" ')
-          .replace(
-            '</svg>',
-            `<g transform="scale(2)"><path d="M0 24H440" ${OFF} stroke-width="inherit"/></g></svg>`,
-          ),
-      /^the <svg> at character 0 sets stroke-width, which this does not read$/,
-    ],
-    [
-      'a stroke that does not scale with its group',
-      (s: string) =>
-        s.replace(
-          '</svg>',
-          `<g transform="scale(2)"><path d="M0 24H440" ${OFF} vector-effect="non-scaling-stroke"/></g></svg>`,
-        ),
-      /^the <path> at character \d+ sets vector-effect, which this does not read$/,
-    ],
-    [
-      'a picture without a </defs>',
-      (s: string) =>
-        s
-          .replace(/<defs>[\s\S]*?<\/defs>/, '')
-          .replace('</svg>', `<path d="M0 48H880" ${OFF}/></svg>`),
-      /^the picture has no <\/defs>, after which this reads$/,
-    ],
-    [
-      'a shape before the <defs>',
-      (s: string) => s.replace('<defs>', `<path d="M0 48H880" ${OFF}/><defs>`),
-      /^the <path> at character \d+ comes before the <defs>, where this does not read$/,
-    ],
-    [
-      'an attribute in single quotes',
-      (s: string) => s.replace('</svg>', `<path d='M0 48H880' stroke='#997dbf'/></svg>`),
-      /^the <path> at character \d+ writes an attribute this does not read/,
-    ],
-    [
-      'a > inside an attribute',
-      (s: string) => s.replace('</svg>', `<path data-x="a>b" d="M0 48H880" ${OFF}/></svg>`),
-      /^the <path> at character \d+ writes an attribute this does not read/,
-    ],
-    [
-      'a viewBox that moves the picture by half a unit',
-      (s: string) =>
-        s
-          .replace(/viewBox="0 0 /, 'viewBox="0.5 0.5 ')
-          .replace('</svg>', `<path d="M0 48.5H880" ${OFF}/></svg>`),
-      /^the <svg> at character 0 has a viewBox that does not start at 0 0: 0\.5 0\.5 /,
-    ],
-    [
-      'a group the guard does not know',
-      (s: string) => s.replace('</svg>', `<a ${OFF}><path d="M0 48H880"/></a></svg>`),
-      /^the <a> at character \d+ is an element this does not read$/,
-    ],
-    [
-      'a translate in the style of the outer <svg>',
-      (s: string) =>
-        s
-          .replace('<svg ', '<svg style="translate:0 0.5px" ')
-          .replace('</svg>', `<path d="M0 48.5H880" ${OFF}/></svg>`),
-      /^the <svg> at character 0 sets in its style what this does not read: translate:/,
-    ],
-    [
-      'an animation that moves the outer <svg>',
-      (s: string) =>
-        s
-          .replace('</style>', '@keyframes zz{0%{transform:translate(0px,0.5px)}}</style>')
-          .replace('<svg ', '<svg style="animation-name:zz" ')
-          .replace('</svg>', `<path d="M0 48.5H880" ${OFF}/></svg>`),
-      /^the <svg> at character 0 sets animation-name, which this does not read$/,
-    ],
-    [
-      'a path drawn by the style of a shape',
-      (s: string) =>
-        s.replace('</svg>', `<path style="d:path('M0 48H880')" d="M0 48.5H880" ${OFF}/></svg>`),
-      /^the <path> at character \d+ sets in its style d, which this does not read$/,
-    ],
-    [
-      'a path the stylesheet draws for a class',
-      (s: string) =>
-        s
-          .replace('</style>', '.q{d:path("M0 48H880")}</style>')
-          .replace('</svg>', `<path class="q" d="M0 48.5H880" ${OFF}/></svg>`),
-      /^the stylesheet sets d, which this does not read$/,
-    ],
-    [
-      'an offset path in the style of a shape',
-      (s: string) =>
-        s.replace(
-          '</svg>',
-          `<path style="offset-path:path('M0 0.5H1')" d="M0 48.5H880" ${OFF}/></svg>`,
-        ),
-      /^the <path> at character \d+ sets in its style offset-path, which this does not read$/,
-    ],
-    [
-      'a property the script does not write, in the style of a shape',
-      (s: string) => s.replace('</svg>', `<path style="inset:0" d="M0 48.5H880" ${OFF}/></svg>`),
-      /^the <path> at character \d+ sets in its style inset, which this does not read$/,
-    ],
-    [
-      'a </defs> without a <defs>',
-      (s: string) => s.replace(/<defs>[\s\S]*?<\/defs>/, `<path d="M0 48H880" ${OFF}/></defs>`),
-      /^the picture opens <defs> 0 times and closes it 1 times$/,
-    ],
-  ])('refuses a picture with %s, and names it', (_, change, named) => {
-    const found = offTheGrid(change(drawn['how-it-works-light.svg'] ?? ''));
-    expect(found).toHaveLength(1);
-    expect(found[0]).toMatch(named);
-  });
-
-  it('draws every glyph of the wordmark the console has', () => {
-    // A glyph the script skipped would leave the banner short of the console and the case above
-    // green, so the counts are asked of the rows themselves: one filled cell per full block, two
-    // strokes per double-line glyph.
-    const glyphs = [...THE_BLOCKS.join('')].filter((g) => g !== ' ');
-    const full = glyphs.filter((g) => g === '█').length;
-    const subpaths = (kind: string): number => {
-      const d = new RegExp(`data-of="${kind}"[^>]* d="([^"]*)"`).exec(
-        drawn['banner-dark.svg'] ?? '',
-      );
-      return (d?.[1] ?? '').match(/M/g)?.length ?? 0;
-    };
-    expect(full).toBeGreaterThan(100);
-    expect(subpaths('blocks')).toBe(full);
-    expect(subpaths('lines')).toBe(2 * (glyphs.length - full));
+    ...Object.keys(drawn).map((path) => [path, drawn[path]] as const),
+    ...Object.keys(diagrams)
+      .filter((path) => path.startsWith(`${ASSETS}/`))
+      .map((path) => [path, diagrams[path]] as const),
+  ])('%s is what the script draws today', (path, svg) => {
+    expect(svg?.length).toBeGreaterThan(1000);
+    expect(read(path)).toBe(svg);
   });
 });
 
-/** The text of every `<text>` of a picture, as a reader sees it. */
+/**
+ * The line a picture says in each `data-said`, as a reader sees it. A picture has no `<text>`: a `data-said` this does not
+ * read (one that is not on a `<path>` this reads) would pass unread, so the number read is the number written.
+ */
 function wordsOf(svg: string): string[] {
-  const texts = [...svg.matchAll(/<text\b[^>]*>([^<]*)<\/text>/g)].map((m) =>
+  const said = [...svg.matchAll(/<path\b[^>]*\bdata-said="([^"]*)"[^>]*\/>/g)].map((m) =>
     (m[1] as string)
       .replaceAll('&lt;', '<')
       .replaceAll('&gt;', '>')
       .replaceAll('&quot;', '"')
       .replaceAll('&amp;', '&'),
   );
-  // A text this does not read (one with a `<tspan>` inside) would pass unread.
-  expect(texts.length).toBe(svg.match(/<text\b/g)?.length ?? 0);
-  return texts;
+  expect(said.length).toBe(svg.match(/\bdata-said=/g)?.length ?? 0);
+  return said;
 }
 
+/** The three paths of a picture, by the stem of its file name: the file of each theme. */
+const themed = (stem: string) => ({ dark: `${stem}-dark.svg`, light: `${stem}-light.svg` });
+
 /**
- * Every picture whose words are lines of the product: each package's, and the family's, by the
- * path of each theme from the repository's root, with its frame, said here by hand: its width,
- * its height, where the band at its head ends (nothing under it is part of the drawing), the
- * fewest shapes it draws, and the least room left between what is drawn under the band and each
- * side of the frame (none for the family, whose lanes reach its edges).
+ * Every diagram whose words are lines of the product: each package's, and the family's, by the path of each theme from the
+ * repository's root, with its frame (width and height), said here by hand, and the fewest shapes it draws.
  */
 const LINED = [
   ...PACKAGE_PICTURES.map(({ dir, lines }) => ({
     id: dir,
     lines,
-    dark: `packages/${dir}/assets/${dir}-dark.svg`,
-    light: `packages/${dir}/assets/${dir}-light.svg`,
-    frame: { w: 720, h: 240, band: 41, shapes: 12, margin: 24 },
+    ...themed(`packages/${dir}/assets/${dir}`),
+    frame: dir === 'chain' ? { w: 720, h: 320 } : { w: 1200, h: 420 },
   })),
   {
     id: 'family',
     lines: FAMILY_LINES,
-    dark: `${ASSETS}/the-family-dark.svg`,
-    light: `${ASSETS}/the-family-light.svg`,
-    frame: { w: 880, h: 260, band: 0, shapes: 90, margin: 0 },
+    ...themed(`${ASSETS}/the-family`),
+    frame: { w: 1200, h: 340 },
   },
 ];
 
-/**
- * The front page's other pictures, with their frames said here by hand as `LINED` says its own: the
- * banner, the steps and how mnema fits. Each is drawn in the family's paint and motion; the banner
- * draws no text, and the other two draw cards whose text sits on their middle.
- */
+/** The README's two diagrams, whose words are their own and are said below in text and order. */
 const FRONT = [
-  {
-    id: 'banner',
-    dark: `${ASSETS}/banner-dark.svg`,
-    light: `${ASSETS}/banner-light.svg`,
-    frame: { w: 910.73, h: 151.5, band: 0, shapes: 20, margin: 8 },
-    words: false,
-  },
-  {
-    id: 'how-it-works',
-    dark: `${ASSETS}/how-it-works-dark.svg`,
-    light: `${ASSETS}/how-it-works-light.svg`,
-    frame: { w: 896, h: 212, band: 0, shapes: 30, margin: 8 },
-    words: true,
-  },
-  {
-    id: 'how-mnema-fits',
-    dark: `${ASSETS}/how-mnema-fits-dark.svg`,
-    light: `${ASSETS}/how-mnema-fits-light.svg`,
-    frame: { w: 896, h: 306, band: 0, shapes: 40, margin: 8 },
-    words: true,
-  },
+  { id: 'how-it-works', ...themed(`${ASSETS}/how-it-works`), frame: { w: 1200, h: 420 } },
+  { id: 'how-mnema-fits', ...themed(`${ASSETS}/how-mnema-fits`), frame: { w: 1200, h: 520 } },
 ] as const;
 
+/** The banner, which draws no text, and its frame, said here by hand. */
+const BANNER = { id: 'banner', ...themed(`${ASSETS}/banner`), frame: { w: 1280, h: 220 } };
+
+/** The fourteen diagrams, dark and light. */
+const FOURTEEN = [...LINED, ...FRONT].flatMap((p) => [p.dark, p.light]);
+
+/** The fourteen diagrams and the two banners: every picture drawn in the brand. */
+const SIXTEEN = [...FOURTEEN, BANNER.dark, BANNER.light];
+
 /**
- * Every text of the steps and of how mnema fits, in the order a reader meets it, said here by hand
- * apart from the script: a picture that says one word more, one less, or another, fails. Each piece
- * a file of the repository says is found in it; the rest is the picture's own words, unchanged.
+ * Every text of the README's two diagrams, in the order a reader meets it, said here by hand apart from the script: a
+ * picture that says one word more, one less, or another, fails. `ANCHORS` says which of a file's words each text uses.
  */
-const FRONT_WORDS: Readonly<
-  Record<string, readonly { text: string; said?: [string, string][] }[]>
-> = {
+const FRONT_WORDS: Readonly<Record<string, readonly string[]>> = {
   'how-it-works': [
-    { text: '1' },
-    { text: 'Record', said: [['Record', 'README.md']] },
-    { text: 'A decision, why it was' },
-    { text: 'made, and the options' },
-    { text: 'turned down.' },
-    { text: 'mnema decision', said: [['mnema decision', 'README.md']] },
-    { text: '2' },
-    { text: 'Rule', said: [['Rule', 'README.md']] },
-    { text: 'Accepted,' },
-    { text: 'then linked to the paths' },
-    { text: 'it governs.' },
-    { text: 'mnema link', said: [['mnema link', 'README.md']] },
-    { text: '3' },
-    { text: 'Hand over', said: [['Hand over', 'README.md']] },
-    { text: 'The plugin opens every' },
-    { text: 'session with it, and each' },
-    { text: 'edit meets its rules.' },
-    { text: 'refuses-a-write', said: [['refuses-a-write', 'recordings/a-write-refused.sh']] },
-    { text: '4' },
-    { text: 'Verify', said: [['Verify', 'README.md']] },
-    { text: 'Every fact is signed and' },
-    { text: 'hash-chained; anyone can' },
-    { text: 'check it.' },
-    { text: 'mnema verify', said: [['mnema verify', 'README.md']] },
+    'How mnema works',
+    '01',
+    'Record',
+    'A decision, why it was made,',
+    'and the options turned down.',
+    'mnema decision record',
+    '02',
+    'Rule',
+    'Accepted, then linked',
+    'to the paths it governs.',
+    'mnema link',
+    '03',
+    'Hand over',
+    'Every session opens with it,',
+    'and each edit meets its rules.',
+    'the plugin',
+    '04',
+    'Verify',
+    'Every fact is signed and',
+    'hash-chained; anyone can check.',
+    'mnema verify',
   ],
   'how-mnema-fits': [
-    { text: 'agent session', said: [['agent session', 'README.md']] },
-    { text: 'repository', said: [['repository', 'README.md']] },
-    {
-      text: 'Claude Code · VS Code · Cursor CLI',
-      said: [
-        ['Claude Code', 'README.md'],
-        ['VS Code', 'README.md'],
-        ['Cursor CLI', 'README.md'],
-      ],
-    },
-    { text: 'in force', said: [['in force', 'README.md']] },
-    { text: 'ADR-2', said: [['ADR-2', 'docs/agent-hosts.md']] },
-    { text: 'Keep money as integer cents', said: [['Keep money as integer cents', 'README.md']] },
-    { text: 'write', said: [['write', 'README.md']] },
-    { text: 'src/billing/total.ts' },
-    {
-      text: 'deny · refuses-a-write',
-      said: [
-        ['deny', 'packages/code/src/mcp/hook-reply.ts'],
-        ['refuses-a-write', 'recordings/a-write-refused.sh'],
-      ],
-    },
-    { text: 'write', said: [['write', 'README.md']] },
-    { text: 'src/cart/price.ts' },
-    { text: 'allowed', said: [['allowed', 'docs/cli-reference.md']] },
-    { text: 'record', said: [['record', 'README.md']] },
-    { text: 'ADR-3' },
-    {
-      text: 'signed · proposed',
-      said: [
-        ['signed', 'README.md'],
-        ['proposed', 'README.md'],
-      ],
-    },
-    { text: 'src/billing/total.ts' },
-    {
-      text: 'refuses-a-write · ADR-2',
-      said: [
-        ['refuses-a-write', 'recordings/a-write-refused.sh'],
-        ['ADR-2', 'docs/agent-hosts.md'],
-      ],
-    },
-    { text: 'src/cart/price.ts' },
-    { text: '.mnema/', said: [['.mnema/', 'docs/how-it-works.md']] },
-    { text: 'verified', said: [['verified', 'docs/how-it-works.md']] },
-    { text: '1  session opens', said: [['session opens', 'README.md']] },
-    { text: '2  write refused', said: [['write refused', 'README.md']] },
-    { text: '3  write lands' },
-    { text: '4  decision signed' },
-    { text: '5  record verified' },
+    'agent session',
+    '1 · opens with ADR-2 in force',
+    'repository',
+    '5 · record verified',
+    'ADR-2 · in force',
+    'Keep money as integer cents',
+    '2 · write refused',
+    'src/billing/total.ts',
+    '3 · write lands',
+    'src/cart/price.ts',
+    '4 · decision recorded',
+    'by the agent',
+    'refused',
+    'by ADR-2 · refuses-a-write',
+    'lands',
+    'no rule governs this path',
+    'signed · proposed',
+    'in .mnema/ as ADR-3',
+    'proposed',
+    'in force',
+    'write refused',
+    'verified',
   ],
 };
 
-describe('the banner, the steps and how mnema fits say what they said, in their words', () => {
-  const drawn = drawTheFrontPage(THE_BLOCKS);
-  const worded = FRONT.filter((p) => p.words).flatMap((p) => [
-    [p.id, p.dark] as const,
-    [p.id, p.light] as const,
-  ]);
+/**
+ * What the README's two diagrams say that a file of the repository says, by picture: each literal with the file that has it.
+ * A text that contains a literal is anchored on it.
+ */
+const ANCHORS: Readonly<Record<string, readonly (readonly [string, string])[]>> = {
+  'how-it-works': [
+    ['Record', 'README.md'],
+    ['Rule', 'README.md'],
+    ['Hand over', 'README.md'],
+    ['Verify', 'README.md'],
+    ['mnema decision record', 'README.md'],
+    ['mnema link', 'README.md'],
+    ['mnema verify', 'README.md'],
+  ],
+  'how-mnema-fits': [
+    ['agent session', 'README.md'],
+    ['repository', 'README.md'],
+    ['in force', 'README.md'],
+    ['Keep money as integer cents', 'README.md'],
+    ['write refused', 'README.md'],
+    ['signed', 'README.md'],
+    ['proposed', 'README.md'],
+    ['ADR-2', 'docs/agent-hosts.md'],
+    ['refuses-a-write', 'recordings/a-write-refused.sh'],
+    ['.mnema/', 'docs/how-it-works.md'],
+    ['verified', 'docs/how-it-works.md'],
+  ],
+};
+
+describe('the steps and how mnema fits say what they say, in their words', () => {
+  const diagrams = drawTheDiagrams();
+  const worded = FRONT.flatMap((p) => [[p.id, p.dark] as const, [p.id, p.light] as const]);
 
   it.each(worded)('%s: %s puts its words on the picture, in order, and no other', (id, path) => {
-    const words = wordsOf(drawn[path.slice(ASSETS.length + 1)] ?? '');
-    expect(words).toEqual((FRONT_WORDS[id] ?? []).map((w) => w.text));
+    expect(wordsOf(diagrams[path] ?? '')).toEqual(FRONT_WORDS[id]);
   });
 
-  const anchored = Object.entries(FRONT_WORDS).flatMap(([id, words]) =>
-    words.flatMap((w) =>
-      (w.said ?? []).map(([literal, where]) => [id, w.text, literal, where] as const),
+  const anchored = Object.entries(FRONT_WORDS).flatMap(([id, texts]) =>
+    texts.flatMap((text) =>
+      (ANCHORS[id] ?? [])
+        .filter(([literal]) => text.includes(literal))
+        .map(([literal, where]) => [id, text, literal, where] as const),
     ),
   );
 
@@ -689,36 +424,229 @@ describe('the banner, the steps and how mnema fits say what they said, in their 
     expect(read(where)).toContain(literal);
   });
 
-  it.each(['dark', 'light'])(
-    'the banner (%s) rests as it is drawn: every light over it is out in the last frame, and nothing moves',
-    (theme) => {
-      const svg = drawn[`banner-${theme}.svg`] ?? '';
-      const moving = nodesOf(svg).filter((n) =>
-        [n.at.style, ...n.groups.map((g) => g.style)].some((s) => /animation-name:/.test(s ?? '')),
-      );
-      expect(moving.length).toBeGreaterThan(10);
-      expect(moving.filter((n) => n.at.opacity !== '0').map((n) => n.at.d ?? n.at.x)).toEqual([]);
-      // The wordmark itself, its blocks and its lines, is never one of them.
-      expect(moving.filter((n) => n.at['data-of'] !== undefined)).toEqual([]);
-      const frames = keyframesOf(svg);
-      expect(
-        [...frames.values()].flat().filter((stop) => !stop.value.startsWith('opacity:')),
-      ).toEqual([]);
-    },
-  );
+  it('anchors every literal it lists on some text, so none is said for nothing', () => {
+    for (const [id, list] of Object.entries(ANCHORS))
+      for (const [literal] of list)
+        expect(
+          (FRONT_WORDS[id] ?? []).some((text) => text.includes(literal)),
+          `${id}: ${literal}`,
+        ).toBe(true);
+  });
 });
 
-describe('every package, and the family, draws what it is, in its own words', () => {
-  const packages = drawThePackages(THE_BLOCKS);
-  const drawn: Record<string, string> = {
-    ...packages,
-    ...Object.fromEntries(
-      Object.entries(drawTheFrontPage(THE_BLOCKS)).map(([file, svg]) => [`${ASSETS}/${file}`, svg]),
-    ),
+/** The text alternative of the banner, said here by hand: the README's `alt`, and the banner's own `aria-label` and `<title>`. */
+const BANNER_ALT = 'mnema: the decision record for AI coding agents';
+
+/**
+ * The whole of a group of a picture, by its class: from its opening tag to the `</g>` that closes it, counting the groups
+ * inside it.
+ */
+function groupOf(svg: string, className: string): string {
+  const open = `<g class="${className}">`;
+  const start = svg.indexOf(open);
+  expect(start, `no <g class="${className}">`).toBeGreaterThanOrEqual(0);
+  let depth = 0;
+  for (const m of svg.slice(start).matchAll(/<g\b[^>]*>|<\/g>/g)) {
+    depth += m[0] === '</g>' ? -1 : 1;
+    if (depth === 0) return svg.slice(start, start + (m.index ?? 0) + m[0].length);
+  }
+  throw new Error(`<g class="${className}"> is never closed`);
+}
+
+describe('the banner blinks, and stops when asked to', () => {
+  const drawn = drawTheBanner();
+  /** The phase of the blink is a constant of each file, said here by hand. */
+  const BEGIN = { dark: '-6.1s', light: '-0.8s' } as const;
+
+  /** The two classes the banner holds its eye in, read from the groups: the one that moves, then the one at rest. */
+  const classesOf = (svg: string): [string, string] => {
+    const found = [...svg.matchAll(/<g class="([^"]+)">/g)].map((m) => m[1] as string);
+    expect(found, 'two groups with a class: the eye that moves and the eye at rest').toHaveLength(
+      2,
+    );
+    return [found[0] as string, found[1] as string];
   };
-  const lined = LINED.flatMap((p) => [p.dark, p.light]);
-  // The front page's other pictures move as the family does, and leave as it does.
-  const moving = [...lined, ...FRONT.flatMap((p) => [p.dark, p.light])];
+
+  it.each(['dark', 'light'] as const)('banner-%s holds the eye twice, in one clip', (theme) => {
+    const svg = drawn[`${ASSETS}/banner-${theme}.svg`] ?? '';
+    const [moving, still] = classesOf(svg);
+    expect(svg.match(/<clipPath\b/g)).toHaveLength(1);
+    expect(svg.match(/clip-path="url\(#/g)).toHaveLength(1);
+    // Both copies are inside the one clip, the one that moves first.
+    const clipped = svg.slice(svg.indexOf('<g clip-path='));
+    expect(clipped.indexOf(`<g class="${moving}">`)).toBeGreaterThan(0);
+    expect(clipped.indexOf(`<g class="${still}">`)).toBeGreaterThan(
+      clipped.indexOf(`<g class="${moving}">`),
+    );
+  });
+
+  it.each(['dark', 'light'] as const)(
+    'banner-%s shows the eye at rest, and only that, under prefers-reduced-motion',
+    (theme) => {
+      const svg = drawn[`${ASSETS}/banner-${theme}.svg`] ?? '';
+      const [moving, still] = classesOf(svg);
+      // One stylesheet, and its text is the swap, built here from the two classes the groups carry.
+      expect([...svg.matchAll(/<style>([\s\S]*?)<\/style>/g)].map((m) => m[1])).toEqual([
+        `.${still}{display:none}@media (prefers-reduced-motion:reduce){.${moving}{display:none}.${still}{display:inline}}`,
+      ]);
+      // A media query does not stop SMIL, so nothing may move outside the group the swap hides.
+      const outside = svg.replace(groupOf(svg, moving), '');
+      expect(outside).not.toMatch(/<(?:animate|set|animateTransform|animateMotion)\b/);
+      expect(groupOf(svg, moving).match(/<animate\b/g)?.length).toBeGreaterThan(5);
+      // Nor may a stylesheet animate anything: the only motion there is, is the one the swap hides.
+      expect(svg).not.toMatch(/@keyframes|animation/);
+    },
+  );
+
+  it.each(['dark', 'light'] as const)(
+    'banner-%s rests as the first stop of the cycle: the moving eye without its <animate>s',
+    (theme) => {
+      const svg = drawn[`${ASSETS}/banner-${theme}.svg`] ?? '';
+      const [moving, still] = classesOf(svg);
+      const movingWithoutMotion = groupOf(svg, moving)
+        .replace(/<animate\b[^>]*\/>/g, '')
+        .replace(`<g class="${moving}">`, `<g class="${still}">`);
+      expect(groupOf(svg, still)).toBe(movingWithoutMotion);
+      for (const group of [groupOf(svg, moving), groupOf(svg, still)]) {
+        // The iris alone is an ellipse, and the six lines of the field are the paths: no glint, no pupil.
+        expect(group.match(/<ellipse\b/g)).toHaveLength(1);
+        expect(group.match(/<path\b/g)).toHaveLength(6);
+      }
+    },
+  );
+
+  it.each(['dark', 'light'] as const)('banner-%s moves on the cycle of nine seconds', (theme) => {
+    const svg = drawn[`${ASSETS}/banner-${theme}.svg`] ?? '';
+    const [moving] = classesOf(svg);
+    const animates = [...groupOf(svg, moving).matchAll(/<animate\b([^>]*)\/>/g)].map((m) =>
+      attributesOf(m[1] as string),
+    );
+    // The iris moves along the lines and closes; each of the six lines changes its shape.
+    expect(animates.map((a) => a.attributeName).sort()).toEqual(
+      ['cx', 'd', 'd', 'd', 'd', 'd', 'd', 'ry'].sort(),
+    );
+    for (const a of animates) {
+      expect(a.dur).toBe('9s');
+      expect(a.begin).toBe(BEGIN[theme]);
+      expect(a.repeatCount).toBe('indefinite');
+      expect(a.values?.split(';')).toHaveLength(16);
+    }
+  });
+
+  it.each(['dark', 'light'] as const)(
+    'banner-%s draws the ink of its theme, and no ground',
+    (theme) => {
+      const svg = drawn[`${ASSETS}/banner-${theme}.svg`] ?? '';
+      const ink = theme === 'dark' ? PALETTE.bone : PALETTE.charcoal;
+      // The lines of the eye and the word are in the ink; the iris is the sulphur.
+      expect(svg).toContain(`stroke="${ink}"`);
+      expect(svg).toContain(`fill="${ink}"`);
+      expect(svg).toContain(`fill="${PALETTE.sulphur}"`);
+      expect(svg).not.toContain('<rect');
+      // A light page gives the yellow 1.2 to 1, so the iris is ringed there and nowhere else.
+      const irises = [...svg.matchAll(/<ellipse\b([^>]*)>/g)].map((m) =>
+        attributesOf(m[1] as string),
+      );
+      expect(irises).toHaveLength(2);
+      for (const iris of irises) {
+        expect(iris.stroke).toBe(theme === 'light' ? PALETTE.charcoal : undefined);
+        expect(iris['stroke-width']).toBe(theme === 'light' ? '2.2' : undefined);
+      }
+    },
+  );
+
+  it.each(['dark', 'light'] as const)('banner-%s draws no word of its own', (theme) => {
+    const svg = drawn[`${ASSETS}/banner-${theme}.svg`] ?? '';
+    expect(svg).not.toContain('<text');
+    expect(svg).not.toContain('data-said');
+  });
+});
+
+describe('the README shows the banner', () => {
+  const readme = read('README.md');
+
+  it('has the picture once, the light one first and the dark one for a dark page, with the banner alt', () => {
+    expect(readme.match(/<img src="docs\/assets\/banner-light\.svg" alt="/g)).toHaveLength(1);
+    expect(readme.match(/srcset="docs\/assets\/banner-dark\.svg"/g)).toHaveLength(1);
+    const alt = /<img src="docs\/assets\/banner-light\.svg" alt="([^"]*)"/.exec(readme)?.[1];
+    expect(alt).toBe(BANNER_ALT);
+    // The `alt` is the `aria-label` the banner carries, in both of its files.
+    for (const theme of ['dark', 'light'])
+      expect(ariaOf(read(`${ASSETS}/banner-${theme}.svg`))).toBe(alt);
+  });
+
+  it('is read by the site as it reads it: a heading, the paragraph after it, and the banner alt', () => {
+    // The three expressions the site's page builder reads the top of the README with (`pitchOf`).
+    expect(/<h3>([\s\S]*?)<\/h3>/.exec(readme)?.[1]).toBe(
+      'mnema is the decision record for AI coding agents.',
+    );
+    expect(/<\/h3>\s*<p>([\s\S]*?)<\/p>/.exec(readme)?.[1]?.trim()).toMatch(
+      /^Who decided this, and why\?/,
+    );
+    expect(/<img src="docs\/assets\/banner-light\.svg" alt="([^"]*)"/.exec(readme)?.[1]).toBe(
+      BANNER_ALT,
+    );
+  });
+});
+
+describe('what the site imports at a release tag keeps its value', () => {
+  it('has the cell, the page and the foot of the wordmark it always had, and draws the social card byte for byte', () => {
+    expect(CELL).toEqual({ w: 12, h: 24 });
+    expect(PAGE).toEqual({ dark: '#0d1117', light: '#ffffff' });
+    expect(inkFoot(THE_BLOCKS)).toBe(135.5);
+    const card = socialCard({
+      blocks: THE_BLOCKS,
+      pitch: {
+        title: 'mnema is the decision record for AI coding agents.',
+        body: 'Who decided this, and why? What was turned down? Has it changed since?',
+      },
+    });
+    expect(createHash('sha256').update(card).digest('hex')).toBe(
+      '56366347a02b34ebaadeb48586124df42a8eb4db9e4408069fe1ea14b5e0b228',
+    );
+  });
+
+  it('has the accent it always had, which nothing but the social card and the site paints with now', async () => {
+    const { ACCENT } = (await import(pathToFileURL(ACCENT_FILE).href)) as {
+      ACCENT: { dark: string; light: string };
+    };
+    expect(ACCENT).toEqual({ dark: '#c4a0f5', light: '#997dbf' });
+  });
+
+  it("reads the M of the console's wordmark as it always did: eleven columns, and the 32 full blocks written out by hand", async () => {
+    const { firstLetter, letterCells } = (await import(pathToFileURL(MARK).href)) as {
+      firstLetter: (blocks: readonly string[]) => string[][];
+      letterCells: (blocks: readonly string[]) => [number, number][];
+    };
+    /** The M as the wordmark's full blocks draw it, ten columns by five rows, written out by hand. */
+    const THE_M = ['###....###', '####..####', '##.####.##', '##..##..##', '##......##'];
+    const cells = THE_M.flatMap((row, r) =>
+      [...row].flatMap((glyph, c) => (glyph === '#' ? [[c, r]] : [])),
+    );
+    expect(cells).toHaveLength(32);
+    expect(letterCells(THE_BLOCKS)).toEqual(cells);
+    expect(firstLetter(THE_BLOCKS).map((row) => row.length)).toEqual(THE_BLOCKS.map(() => 11));
+  });
+});
+
+/** The text alternative a picture carries, in its `aria-label`. */
+const ariaOf = (svg: string): string | undefined =>
+  /^<svg\b[^>]*\baria-label="([^"]*)"/
+    .exec(svg)?.[1]
+    ?.replaceAll('&quot;', '"')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&lt;', '<')
+    .replaceAll('&amp;', '&');
+
+/** The natural width a picture declares, as the text of the attribute. */
+const widthAttr = (svg: string): string | undefined =>
+  /^<svg\b[^>]*\bwidth="([^"]*)"/.exec(svg)?.[1];
+
+describe('every package, and the family, draws what it is, in its own words', () => {
+  const diagrams = drawTheDiagrams();
+  const packages = Object.fromEntries(
+    Object.entries(diagrams).filter(([path]) => path.startsWith('packages/')),
+  );
   const manifest = (dir: string): { name: string; version: string; repository: { url: string } } =>
     JSON.parse(read(`packages/${dir}/package.json`)) as {
       name: string;
@@ -736,85 +664,16 @@ describe('every package, and the family, draws what it is, in its own words', ()
   });
 
   it.each(Object.keys(packages))('%s is what the script draws today', (path) => {
-    expect(read(path)).toBe(drawn[path]);
-  });
-
-  it.each(moving)('%s moves by keyframes it defines', (path) => {
-    // A name with no keyframes leaves its element still, in the last frame, and the picture
-    // reads as drawn: one was written before the story that names the keyframes had run.
-    const svg = drawn[path] ?? '';
-    const named = [...svg.matchAll(/animation-name:([^"]+)"/g)].flatMap((m) =>
-      (m[1] as string).split(','),
-    );
-    const defined = new Set([...svg.matchAll(/@keyframes (\w+)\{/g)].map((m) => m[1]));
-    expect(named.length).toBeGreaterThan(10);
-    expect(named.filter((name) => !defined.has(name))).toEqual([]);
-  });
-
-  it.each(moving)('%s leaves no element alone at the end of the loop', (path) => {
-    // Every element there in the last frame fades out at the same moment; one that went out
-    // later stayed on the page by itself, the rest of the picture already gone.
-    const exits = [
-      ...(drawn[path] ?? '').matchAll(/@keyframes (\w+)\{((?:[\d.]+%\{opacity:[\d.]+\})+)\}/g),
-    ].map((m) => {
-      const stops = [...(m[2] as string).matchAll(/([\d.]+)%\{opacity:([\d.]+)\}/g)].map(
-        (s) => [Number(s[1]), Number(s[2])] as const,
-      );
-      let out = stops.length - 1;
-      while (out > 0 && stops[out - 1]?.[1] === 0) out--;
-      return { name: m[1] as string, at: stops[out]?.[0] ?? 0 };
-    });
-    const counts = new Map<number, number>();
-    for (const { at } of exits) counts.set(at, (counts.get(at) ?? 0) + 1);
-    const together = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 0;
-    expect(exits.length).toBeGreaterThan(10);
-    expect(together).toBeLessThan(100);
-    expect(exits.filter(({ at }) => at > together)).toEqual([]);
+    expect(read(path)).toBe(packages[path]);
   });
 
   it('draws the digest of the stack whole, as its README states it', () => {
     const digest = /`([0-9a-f]{64})`/.exec(read('packages/stacks/README.md'))?.[1];
+    expect(digest).toBe(DIGEST);
     for (const theme of ['dark', 'light']) {
       const words = wordsOf(read(`packages/stacks/assets/stacks-${theme}.svg`));
       expect(words.filter((w) => /^[0-9a-f]{32}$/.test(w)).join('')).toBe(digest);
     }
-  });
-
-  it.each(lined)('%s centres every text in its box by its role', (path) => {
-    // A text inside a box sits where one rule puts it: its baseline is the middle of the box,
-    // plus how far the middle of a line's ink sits above its baseline in that size, plus a whole
-    // number of half rows. A column of a box with a single line sits on the middle itself. A `y`
-    // set by hand lands off that lattice and fails here.
-    const svg = drawn[path] ?? '';
-    const num = (tag: string, name: string): number =>
-      Number(new RegExp(`\\b${name}="([-\\d.]+)"`).exec(tag)?.[1] ?? Number.NaN);
-    const rects = [...svg.matchAll(/<rect\b[^>]*>/g)]
-      .map((m) => m[0])
-      .filter((t) => /\bx="/.test(t))
-      .map((t) => ({ x: num(t, 'x'), y: num(t, 'y'), w: num(t, 'width'), h: num(t, 'height') }));
-    const centreOf = (size: number): number => {
-      const role = Object.values(TYPE).find((r) => r.size === size);
-      expect(role).toBeDefined();
-      return role?.centre ?? Number.NaN;
-    };
-    const inBox = [...svg.matchAll(/<text\b[^>]*>/g)].flatMap((m) => {
-      const t = m[0];
-      const [x, y] = [num(t, 'x'), num(t, 'y')];
-      const box = rects
-        .filter((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h)
-        .sort((a, b) => a.w * a.h - b.w * b.h)[0];
-      if (box === undefined) return [];
-      const off = y - (box.y + box.h / 2) - centreOf(num(t, 'font-size'));
-      return [{ key: `${box.x},${box.y},${box.w},${box.h}|${x}`, half: off / HALF_ROW }];
-    });
-    expect(inBox.length).toBeGreaterThan(0);
-    expect(inBox.filter(({ half }) => Math.abs(half - Math.round(half)) > 0.001)).toEqual([]);
-    const columns = new Map<string, Set<number>>();
-    for (const { key, half } of inBox)
-      columns.set(key, (columns.get(key) ?? new Set()).add(Math.round(half)));
-    const single = [...columns].filter(([, rows]) => rows.size === 1);
-    expect(single.length).toBeGreaterThan(0);
-    expect(single.filter(([, rows]) => !rows.has(0)).map(([key]) => key)).toEqual([]);
   });
 
   it('shows the family on the front page, under its heading, with exactly the block the script writes', () => {
@@ -826,7 +685,7 @@ describe('every package, and the family, draws what it is, in its own words', ()
     expect(readme.split(FAMILY_HEADING)).toHaveLength(2);
   });
 
-  it('points the front page at the family by an absolute address on main, at 880, without a version', () => {
+  it('points the front page at the family by an absolute address on main, at the width of the picture, without a version', () => {
     const readme = read('README.md');
     const block = /## The mnema family\n\n([\s\S]*?<\/div>)\n/.exec(readme)?.[1] ?? '';
     // Said here by hand, apart from the script that writes it.
@@ -838,8 +697,10 @@ describe('every package, and the family, draws what it is, in its own words', ()
     expect([img?.[1], img?.[2]?.replaceAll('&quot;', '"'), img?.[3]]).toEqual([
       `${base}/the-family-light.svg`,
       FAMILY_ALT,
-      '880',
+      '1200',
     ]);
+    // 1200 is what the picture declares, so no image is shown stretched or squashed.
+    expect(widthAttr(read(`${ASSETS}/the-family-light.svg`))).toBe('1200');
     expect(/@v?\d/.test(block)).toBe(false);
   });
 
@@ -879,15 +740,19 @@ describe('every package, and the family, draws what it is, in its own words', ()
               `${base}/packages/${dir}/assets/${dir}-light.svg`,
             ],
       );
-      // @mnema/code shows the family at the family's width, described as the family describes
-      // itself; every other package its own picture, described by its manifest.
+      // The `alt` is the text alternative the picture it shows carries, and the `width` is the
+      // width the picture declares: not the package's `description`, which does not describe it.
       const img = /<img src="[^"]+" alt="([^"]*)" width="(\d+)">/.exec(readme);
-      const description = (
-        JSON.parse(read(`packages/${dir}/package.json`)) as { description: string }
-      ).description;
-      expect([img?.[1]?.replaceAll('&quot;', '"'), img?.[2]]).toEqual(
-        dir === 'code' ? [FAMILY_ALT, '880'] : [description, '720'],
+      const shown = read(
+        dir === 'code'
+          ? `${ASSETS}/the-family-light.svg`
+          : `packages/${dir}/assets/${dir}-light.svg`,
       );
+      expect([img?.[1]?.replaceAll('&quot;', '"'), img?.[2]]).toEqual([
+        ariaOf(shown),
+        widthAttr(shown),
+      ]);
+      expect(img?.[2]).toBe(dir === 'chain' ? '720' : '1200');
     },
   );
 
@@ -976,7 +841,10 @@ describe('every package, and the family, draws what it is, in its own words', ()
   it.each(LINED)('$id puts no text on its picture but its lines', (picture) => {
     const said = new Set(Object.values(picture.lines).map((line) => textOf(line)));
     for (const path of [picture.dark, picture.light]) {
-      const words = wordsOf(drawn[path] ?? '');
+      const svg = diagrams[path] ?? '';
+      // A picture with a `<text>` says words this does not read.
+      expect(svg).not.toContain('<text');
+      const words = wordsOf(svg);
       expect(words.length).toBeGreaterThan(5);
       expect(words.filter((w) => !said.has(w))).toEqual([]);
     }
@@ -985,7 +853,7 @@ describe('every package, and the family, draws what it is, in its own words', ()
   it.each(LINED)(
     '$id draws no host, no count that changes and no promise the package does not make',
     (picture) => {
-      const words = wordsOf(drawn[picture.light] ?? '').join('\n');
+      const words = wordsOf(diagrams[picture.light] ?? '').join('\n');
       const hosts = Object.entries(HOSTS).flatMap(([key, host]) => [key, host.title]);
       expect(hosts.length).toBeGreaterThan(10);
       expect(hosts.filter((h) => words.toLowerCase().includes(h.toLowerCase()))).toEqual([]);
@@ -1014,7 +882,11 @@ function attributesOf(written: string): Record<string, string> {
 function nodesOf(svg: string): Node[] {
   const nodes: Node[] = [];
   const groups: Record<string, string>[] = [];
-  const body = svg.slice(svg.indexOf('</defs>'));
+  // The whole picture, but for what is defined and not drawn: a <defs> may sit in the middle of the body (a band of the
+  // field has one), and a clip, a mask and a gradient are shapes that paint nothing of their own.
+  const body = svg
+    .replace(/<defs\b[\s\S]*?<\/defs>/g, '')
+    .replace(/<(clipPath|mask|linearGradient|radialGradient)\b[\s\S]*?<\/\1>/g, '');
   for (const m of body.matchAll(
     /<(\/?)(g|rect|path|ellipse|circle|line|polyline|polygon|text)\b([^>]*?)(\/?)>(?:([^<]*)<\/text>)?/g,
   )) {
@@ -1027,342 +899,6 @@ function nodesOf(svg: string): Node[] {
     nodes.push({ tag, at: attributesOf(written), text, groups: [...groups] });
   }
   return nodes;
-}
-
-/** A translate and a uniform scale, as one map of a point: k times the point, then moved by (dx, dy). */
-type Placement = { k: number; dx: number; dy: number };
-
-/**
- * The placement a transform writes, when it is only translates and uniform scales (in a
- * `transform` attribute, or a keyframe's `transform:`, whose numbers may carry `px`), or nothing
- * when it is anything else.
- */
-function placementOf(written: string | undefined): Placement | undefined {
-  const text = (written ?? '').trim();
-  const calls = [...text.matchAll(/(\w+)\(([^)]*)\)/g)];
-  if (text.replace(/(\w+)\(([^)]*)\)/g, '').trim() !== '') return undefined;
-  let p: Placement = { k: 1, dx: 0, dy: 0 };
-  for (const [, fn, args = ''] of calls.reverse()) {
-    const v = args
-      .split(/[\s,]+/)
-      .filter(Boolean)
-      .map((a) => Number(a.replace(/px$/, '')));
-    if (v.length === 0 || v.length > 2 || !v.every(Number.isFinite)) return undefined;
-    const [a = 0, b] = v;
-    if (fn === 'translate') p = { k: p.k, dx: p.dx + a, dy: p.dy + (b ?? 0) };
-    else if (fn === 'scale' && (b === undefined || b === a))
-      p = { k: p.k * a, dx: p.dx * a, dy: p.dy * a };
-    else return undefined;
-  }
-  return p;
-}
-
-/**
- * The straight runs a shape's outline is drawn along, each from one point to the next, or why it
- * cannot be read as runs: a curve or an arc, a circle or an ellipse, a number or a command this
- * does not read.
- */
-function runsOf(node: Node): [number, number, number, number][] | string {
-  const { at } = node;
-  const num = (v: string | undefined): number => Number(v ?? 0);
-  const corners = (points: number[], closed: boolean): [number, number, number, number][] => {
-    const runs: [number, number, number, number][] = [];
-    for (let j = 0; j + 3 < points.length; j += 2)
-      runs.push(points.slice(j, j + 4) as [number, number, number, number]);
-    if (closed && points.length >= 4)
-      runs.push([
-        points[points.length - 2] as number,
-        points[points.length - 1] as number,
-        points[0] as number,
-        points[1] as number,
-      ]);
-    return runs;
-  };
-  if (node.tag === 'rect') {
-    const [x, y, w, h] = ['x', 'y', 'width', 'height'].map((k) => num(at[k])) as Box;
-    return corners([x, y, x + w, y, x + w, y + h, x, y + h], true);
-  }
-  if (node.tag === 'line') return [['x1', 'y1', 'x2', 'y2'].map((k) => num(at[k])) as Box];
-  if (node.tag === 'polyline' || node.tag === 'polygon') {
-    const points = (at.points ?? '')
-      .split(/[\s,]+/)
-      .filter(Boolean)
-      .map(Number);
-    if (points.length % 2 !== 0) return 'has points this does not read';
-    return corners(points, node.tag === 'polygon');
-  }
-  if (node.tag !== 'path') return `is a ${node.tag}, which this cannot hold to the grid`;
-  const tokens = [
-    ...(at.d ?? '').matchAll(/[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?|[A-Za-z]/g),
-  ].map((m) => m[0]);
-  const runs: [number, number, number, number][] = [];
-  const arity: Record<string, number> = {
-    M: 2,
-    L: 2,
-    H: 1,
-    V: 1,
-    C: 6,
-    S: 4,
-    Q: 4,
-    T: 2,
-    A: 7,
-    Z: 0,
-  };
-  let [x, y, sx, sy] = [0, 0, 0, 0];
-  let command = '';
-  let i = 0;
-  while (i < tokens.length) {
-    if (/[A-Za-z]/.test(tokens[i] as string)) command = tokens[i++] as string;
-    const up = command.toUpperCase();
-    const n = arity[up];
-    if (n === undefined) return `has a path command this does not read: ${command || tokens[i]}`;
-    const v = tokens.slice(i, i + n).map(Number);
-    if (v.length < n || !v.every(Number.isFinite)) return 'has path data this does not read';
-    i += n;
-    const [ox, oy] = command === up ? [0, 0] : [x, y];
-    if (up === 'Z') {
-      runs.push([x, y, sx, sy]);
-      [x, y] = [sx, sy];
-      if (i < tokens.length && !/[A-Za-z]/.test(tokens[i] as string))
-        return 'has path data this does not read';
-      continue;
-    }
-    if (['C', 'S', 'Q', 'T', 'A'].includes(up))
-      return `draws a curve (${command}), which this cannot hold to the grid`;
-    const [a = 0, b = 0] = v;
-    const [nx, ny] = up === 'H' ? [ox + a, y] : up === 'V' ? [x, oy + a] : [ox + a, oy + b];
-    if (up === 'M') {
-      [sx, sy] = [nx, ny];
-      command = command === up ? 'L' : 'l';
-    } else runs.push([x, y, nx, ny]);
-    [x, y] = [nx, ny];
-  }
-  return runs;
-}
-
-/** The elements `offTheGrid` reads after the first `</defs>`: shapes, groups, text and paint. */
-const READ_ELEMENTS = new Set([
-  'g',
-  'rect',
-  'path',
-  'ellipse',
-  'circle',
-  'line',
-  'polyline',
-  'polygon',
-  'text',
-  'defs',
-  'clipPath',
-  'linearGradient',
-  'radialGradient',
-  'stop',
-  'title',
-  'desc',
-  'style',
-]);
-
-/** A CSS declaration that moves a shape: a transform (or its origin or box), a translate, a rotate or a scale. */
-const MOVES = /(?:^|[^-\w])(?:transform(?:-\w+)?|translate|rotate|scale)\s*:/;
-
-/** The CSS properties the script writes, in a `style` and in its stylesheets: no other is read. */
-const CSS_THE_SCRIPT_WRITES = new Set([
-  'animation',
-  'animation-name',
-  'animation-duration',
-  'animation-iteration-count',
-  'animation-timing-function',
-  'opacity',
-  'transform',
-  'stroke-dashoffset',
-]);
-
-/**
- * The property each declaration of a run of them sets (`a:1;b:2`), or the whole declaration when it
- * does not start with a property's name (a comment, an escape, a stray word).
- */
-function propertiesOf(declarations: string): string[] {
-  return declarations
-    .split(';')
-    .filter((d) => d.trim() !== '')
-    .map((d) => /^\s*([A-Za-z][\w-]*)\s*:/.exec(d)?.[1] ?? d.trim());
-}
-
-/**
- * What in a picture `offTheGrid` does not read, each named; empty when it reads all of it. The
- * picture must have a `</defs>`, and as many `<defs>` as `</defs>`; every opening tag must write its
- * attributes as `name="value"`, with no `<` or `>` in a value; nothing but a title, a description and
- * a stylesheet may come before the first `<defs>`; every element but the outer `<svg>` must be one of
- * `READ_ELEMENTS` (so a `<use>`, a `<symbol>` and an `<svg>` inside the picture are refused); the
- * outer `<svg>` must not set a stroke, a stroke width, a transform, `vector-effect` or
- * `animation-name`, by attribute or in its style, and its `viewBox`, when it has one, must start at
- * 0 0; no element, the outer `<svg>` included, may set `vector-effect`, `transform-origin` or
- * `transform-box` as an attribute, nor in its style a transform, a translate, a rotate, a scale,
- * `vector-effect` or the `animation` shorthand, nor in its style any property but those of
- * `CSS_THE_SCRIPT_WRITES`, a stroke and a stroke width (a shape's are read); and the stylesheets
- * (every `<style>`) must not set a stroke, a stroke width or `vector-effect`, nor move a shape or name
- * an animation outside a keyframes, nor set, in any rule or keyframe, a property outside
- * `CSS_THE_SCRIPT_WRITES`, and each of their keyframes must be one this reads. Not read: the
- * selectors of a stylesheet (a rule of allowed properties applies to whatever it selects), the
- * condition of an `@media`, and what a stylesheet writes outside braces.
- */
-function unreadIn(svg: string): string[] {
-  if (!svg.includes('</defs>')) return ['the picture has no </defs>, after which this reads'];
-  const out: string[] = [];
-  const opens = (svg.match(/<defs\b/g) ?? []).length;
-  const closes = (svg.match(/<\/defs>/g) ?? []).length;
-  if (opens !== closes)
-    out.push(`the picture opens <defs> ${opens} times and closes it ${closes} times`);
-  const firstDefs = svg.indexOf('<defs');
-  const rootAt = svg.indexOf('<svg');
-  const tag = /<[A-Za-z][\w:-]*(?:\s+[\w:-]+="[^"<>]*")*\s*\/?>/y;
-  for (const m of svg.matchAll(/<([A-Za-z][\w:-]*)/g)) {
-    const name = m[1] as string;
-    const where = `the <${name}> at character ${m.index}`;
-    tag.lastIndex = m.index;
-    const written = tag.exec(svg)?.[0];
-    if (written === undefined) {
-      out.push(`${where} writes an attribute this does not read: only name="value" is read`);
-      continue;
-    }
-    const at = attributesOf(written);
-    const style = at.style ?? '';
-    if (m.index === rootAt) {
-      for (const k of ['stroke', 'stroke-width', 'transform', 'vector-effect', 'animation-name'])
-        if (k in at || new RegExp(`(?:^|;)\\s*${k}\\s*:`).test(style))
-          out.push(`${where} sets ${k}, which this does not read`);
-      const box = at.viewBox
-        ?.trim()
-        .split(/[\s,]+/)
-        .map(Number);
-      if (box && (box.length !== 4 || box[0] !== 0 || box[1] !== 0))
-        out.push(`${where} has a viewBox that does not start at 0 0: ${at.viewBox}`);
-    } else if (!READ_ELEMENTS.has(name)) {
-      out.push(`${where} is an element this does not read`);
-      continue;
-    } else if (m.index < firstDefs && !['title', 'desc', 'style', 'defs'].includes(name))
-      out.push(`${where} comes before the <defs>, where this does not read`);
-    for (const k of ['vector-effect', 'transform-origin', 'transform-box'])
-      if (k in at && !(m.index === rootAt && k === 'vector-effect'))
-        out.push(`${where} sets ${k}, which this does not read`);
-    const unlisted = propertiesOf(style).filter(
-      (p) => !CSS_THE_SCRIPT_WRITES.has(p) && p !== 'stroke' && p !== 'stroke-width',
-    );
-    if (MOVES.test(style) || /(?:^|;)\s*(?:vector-effect|animation)\s*:/.test(style))
-      out.push(`${where} sets in its style what this does not read: ${style}`);
-    else if (unlisted.length > 0)
-      out.push(`${where} sets in its style ${unlisted.join(', ')}, which this does not read`);
-  }
-  const sheet = [...svg.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/g)].map((s) => s[1]).join('\n');
-  if (/(?:^|[^-\w])(?:stroke(?:-width)?|vector-effect)\s*:/.test(sheet))
-    out.push('the stylesheet sets a stroke, which this does not read');
-  const outside = sheet.replace(/@keyframes\s*[\w-]+\s*\{(?:[^{}]*\{[^}]*\})*[^{}]*\}/g, '');
-  if (MOVES.test(outside))
-    out.push('the stylesheet moves a shape outside a keyframes, which this does not read');
-  if (/(?:^|[^-\w])(?:animation-name\s*:|animation\s*:\s*(?!none\b))/.test(outside))
-    out.push('the stylesheet gives a shape an animation, which this does not read');
-  if ((sheet.match(/@keyframes\b/g) ?? []).length !== keyframesOf(svg).size)
-    out.push('the stylesheet has a keyframes this does not read');
-  const declared = [...sheet.matchAll(/\{([^{}]*)\}/g)].flatMap((b) => propertiesOf(b[1] ?? ''));
-  for (const p of new Set(declared))
-    if (!CSS_THE_SCRIPT_WRITES.has(p) && !['stroke', 'stroke-width', 'vector-effect'].includes(p))
-      out.push(`the stylesheet sets ${p}, which this does not read`);
-  return out;
-}
-
-/**
- * Each shape whose stroke, as drawn, is one unit wide and does not lie on the middle of a pixel:
- * at a whole coordinate such a line spreads over two columns of pixels at one pixel per unit and
- * is half as strong as a border drawn on a half.
- *
- * A picture with anything `unreadIn` names is refused whole, by those names, and nothing else of it
- * is read. Otherwise the shapes after the first `</defs>` are read (text is not): a shape's stroke
- * and its width are its own or those of the nearest group that sets them, a `style` before an
- * attribute, and the width is one unit when nothing sets it. The translates and uniform scales of
- * the `transform` attributes of the shape and of its groups are applied to its points and to its
- * width, once for each place the keyframes its and its groups' `animation-name` styles name move it
- * to. A rectangle's four edges, and every run of a path (absolute or relative, the run that closes
- * it included), a line, a polyline and a polygon are read: a run across or down must lie on a half,
- * and a diagonal is named. Named too, not passed: a curve or an arc, a circle or an ellipse, any
- * other transform (a keyframe that moves a shape by anything but one `transform:` included), and a
- * width, a number or a command this does not read. Each shape is named once, by its first fault, as
- * its tag and its place among the shapes.
- */
-function offTheGrid(svg: string): string[] {
-  const half = (v: number) => Math.abs((((v % 1) + 1) % 1) - 0.5) < 0.001;
-  const found = unreadIn(svg);
-  if (found.length > 0) return found;
-  const frames = keyframesOf(svg);
-  const inherited = (node: Node, key: string): string | undefined => {
-    for (const at of [node.at, ...[...node.groups].reverse()]) {
-      const styled = new RegExp(`(?:^|;)\\s*${key}\\s*:\\s*([^;]+)`).exec(at.style ?? '')?.[1];
-      const value = styled?.trim() ?? at[key];
-      if (value !== undefined && value !== 'inherit') return value;
-    }
-    return undefined;
-  };
-  nodesOf(svg).forEach((node, i) => {
-    if (node.tag === 'text') return;
-    const name = `${node.tag}#${i}`;
-    const stroke = inherited(node, 'stroke');
-    if (stroke === undefined || stroke === 'none') return;
-    const written = inherited(node, 'stroke-width') ?? '1';
-    const width = /^\d*\.?\d+$/.test(written) ? Number(written) : Number.NaN;
-    if (!Number.isFinite(width)) {
-      found.push(`${name} has a stroke width this does not read: ${written}`);
-      return;
-    }
-    // Its own transform first, then each group's from the innermost out.
-    let placed: Placement | undefined = { k: 1, dx: 0, dy: 0 };
-    for (const t of [node.at.transform, ...[...node.groups].reverse().map((g) => g.transform)]) {
-      const p = placementOf(t);
-      placed = p &&
-        placed && { k: placed.k * p.k, dx: placed.dx * p.k + p.dx, dy: placed.dy * p.k + p.dy };
-    }
-    const moves = [node.at, ...node.groups]
-      .flatMap((g) => /animation-name:([^";]+)/.exec(g.style ?? '')?.[1]?.split(',') ?? [])
-      .flatMap((k) => frames.get(k) ?? [])
-      .filter((stop) => MOVES.test(stop.value))
-      .map((stop) =>
-        /^transform:[^;]*$/.test(stop.value)
-          ? placementOf(stop.value.slice('transform:'.length))
-          : undefined,
-      );
-    const places = (moves.length === 0 ? [{ k: 1, dx: 0, dy: 0 }] : moves).map(
-      (m) =>
-        m &&
-        placed && { k: placed.k * m.k, dx: placed.dx * m.k + m.dx, dy: placed.dy * m.k + m.dy },
-    );
-    if (places.some((p) => p === undefined)) {
-      found.push(`${name} is under a transform this does not read`);
-      return;
-    }
-    for (const p of places as Placement[]) {
-      if (Math.abs(width * p.k - 1) > 0.001) continue;
-      const runs = runsOf(node);
-      if (typeof runs === 'string') {
-        found.push(`${name} ${runs}`);
-        return;
-      }
-      for (const run of runs) {
-        const [x1, y1, x2, y2] = run.map((v, j) => v * p.k + (j % 2 === 0 ? p.dx : p.dy));
-        const across = Math.abs((y1 as number) - (y2 as number)) < 0.001;
-        const down = Math.abs((x1 as number) - (x2 as number)) < 0.001;
-        const fault =
-          across && down
-            ? undefined
-            : across
-              ? !half(y1 as number) && `runs along y=${y1}`
-              : down
-                ? !half(x1 as number) && `runs along x=${x1}`
-                : `is a diagonal from ${x1}, ${y1} to ${x2}, ${y2}`;
-        if (fault) {
-          found.push(`${name} ${fault}`);
-          return;
-        }
-      }
-    }
-  });
-  return found;
 }
 
 /** The stops of every keyframes of a picture, by name: each offset with its declarations. */
@@ -1384,7 +920,7 @@ type Box = [number, number, number, number];
 /** The points a path's data reaches, with each arc's whole circle: the box holds the path. */
 function pathPoints(d: string): [number, number][] {
   const points: [number, number][] = [];
-  const tokens = [...d.matchAll(/[MmLlHhVvCcAaZz]|-?\d*\.?\d+(?:e-?\d+)?/g)].map((m) => m[0]);
+  const tokens = [...d.matchAll(/[MmLlHhVvCcSsQqAaZz]|-?\d*\.?\d+(?:e-?\d+)?/g)].map((m) => m[0]);
   let x = 0;
   let y = 0;
   let start: [number, number] = [0, 0];
@@ -1415,6 +951,18 @@ function pathPoints(d: string): [number, number][] {
       case 'C':
         // A cubic curve lies inside the hull of its four points, so its two controls box it.
         for (let c = 0; c < 2; c++) points.push([ox + next(), oy + next()]);
+        x = ox + next();
+        y = oy + next();
+        break;
+      case 'S':
+        // A smooth curve's first control is the mirror of the one before it, inside the same hull.
+        points.push([ox + next(), oy + next()]);
+        x = ox + next();
+        y = oy + next();
+        break;
+      case 'Q':
+        // A quadratic curve lies inside the hull of its three points, so its control and its end box it.
+        points.push([ox + next(), oy + next()]);
         x = ox + next();
         y = oy + next();
         break;
@@ -1500,297 +1048,627 @@ function boxesOf(node: Node, frames: Map<string, { at: number; value: string }[]
   return moved.map(({ dx, dy }) => [box[0] + dx, box[1] + dy, box[2] + dx, box[3] + dy]);
 }
 
-/** Which way the record goes on each card's line, said here by hand, apart from the script. */
-const RELATIONS = [
-  { card: 'SDK', goes: 'both', apart: false },
-  { card: 'A VS Code extension', goes: 'both', apart: false },
-  { card: 'An agent in CI', goes: 'in', apart: false },
-  { card: 'The Action', goes: 'out', apart: false },
-  { card: 'mnema site', goes: 'out', apart: false },
-  { card: 'Stacks', goes: 'out', apart: true },
-] as const;
-
-/**
- * Every arrow of each package's picture, said here by hand, apart from the script: what it runs
- * from and what its head points at, each named by a text of the thing at that end (a text a box
- * holds, the caption over a box that holds none, or a text standing alone); whether a dot runs it,
- * and whether it stands apart, in grey and dashed long. The line back from what `@mnema/context`
- * composes stands apart and is struck: it writes nothing back.
- */
-const ARROWS: Readonly<
-  Record<string, readonly { from: string; to: string; dot: boolean; apart?: boolean }[]>
-> = {
-  chain: [
-    { from: 'checkpoint · Ed25519', to: 'verify', dot: true },
-    { from: 'checkpoint · Ed25519', to: 'mnema_verify.py', dot: true },
-  ],
-  core: [
-    { from: 'proposed', to: 'accepted', dot: true },
-    { from: 'proposed', to: 'superseded', dot: false },
-    { from: 'proposed', to: 'rejected', dot: false },
-    { from: 'accepted', to: 'superseded', dot: false },
-    { from: 'accept', to: 'rejected', dot: true },
-    { from: 'projectDecisions', to: 'ADR-2 · Keep money as integer cents · accepted', dot: true },
-  ],
-  context: [
-    { from: 'ADR-2 accepted', to: 'decisions', dot: true },
-    {
-      from: 'only READS and COMPOSES',
-      to: 'src/billing/total.ts → ADR-2',
-      dot: false,
-      apart: true,
-    },
-  ],
-  stacks: [{ from: 'path NUL sha256(file) LF', to: 'df9d8d71cdc13bd89b45af349e677ecf', dot: true }],
+/** The text alternative each package's diagram carries, said here by hand apart from the script. */
+const PACKAGE_ALT: Readonly<Record<string, string>> = {
+  chain:
+    '@mnema/chain: an entry of the chain was altered, so mnema verify finds the entry hash mismatch, nothing after it is verified, and the record reads local integrity FAILED: see issues',
+  core: '@mnema/core: a decision is proposed, then accepted, superseded or rejected, each move a new event and never an edit; accepting a rejected decision is refused',
+  context:
+    '@mnema/context: bootstrap reads decisions superseded, accepted and proposed, and composes what a session opens with: the decisions in force, those awaiting a judgement, and where the last session stopped; it writes nothing',
+  stacks:
+    '@mnema/stacks: validateStack reads the files of a stack, refuses an MCP server, and gives the digest that identifies the stack',
 };
 
-/** The arrows of the steps, said here by hand as `ARROWS` says a package's: each to the next step. */
-const FRONT_ARROWS: Readonly<
-  Record<string, readonly { from: string; to: string; dot: boolean; apart?: boolean }[]>
-> = {
-  'how-it-works': [
-    { from: 'Record', to: 'Rule', dot: true },
-    { from: 'Rule', to: 'Hand over', dot: true },
-    { from: 'Hand over', to: 'Verify', dot: true },
-  ],
-};
+/** The one hue of the diagrams, said here by hand, so a palette that changed it is read as the change it is. */
+const SULPHUR = '#e6da2e';
 
-/**
- * How mnema fits, said here by hand apart from the script: its two lanes, each by the things at its
- * ends and whether a head stands at each; and the packets that run them, in the order they set off,
- * each by where it leaves and where it arrives. The hub draws the wordmark and no text: an end
- * that reaches it is `mnema`.
- */
-const HERO_LANES = [
-  { ends: ['agent session', 'mnema'], heads: [true, true] },
-  { ends: ['mnema', 'repository'], heads: [false, true] },
-] as const;
-const HERO_PACKETS = [
-  ['mnema', 'agent session'],
-  ['agent session', 'mnema'],
-  ['mnema', 'agent session'],
-  ['mnema', 'repository'],
-  ['agent session', 'mnema'],
-  ['mnema', 'repository'],
-  ['agent session', 'mnema'],
-  ['mnema', 'repository'],
-] as const;
+describe('the diagrams are outlines of their words, drawn in the brand', () => {
+  const diagrams = drawTheDiagrams();
+  const banners = drawTheBanner();
+  /** A picture by its path: a diagram or a banner. */
+  const pictureOf = (path: string): string => diagrams[path] ?? banners[path] ?? '';
+  const frameOf = new Map(
+    [...LINED, ...FRONT, BANNER].flatMap((p) => [
+      [p.dark, p.frame] as const,
+      [p.light, p.frame] as const,
+    ]),
+  );
 
-/** The advance of a character of the monospace face every picture writes in, as a share of its size. */
-const ADVANCE = 0.6;
-/**
- * The sans face the steps and how mnema fits write their prose in is not monospace: a share of its
- * size no line of theirs is wider than per character, on average (the widest measured in Chromium,
- * a digit alone, is 0.572).
- */
-const SANS_ADVANCE = 0.58;
+  // N1: the words are in `data-said`, and not in a `<text>`; a value this does not read is a failure, not a pass.
+  it.each(FOURTEEN)('%s has no <text>, and every data-said it writes is read', (path) => {
+    const svg = diagrams[path] ?? '';
+    expect(svg).not.toContain('<text');
+    expect(wordsOf(svg).length).toBeGreaterThan(5);
+  });
 
-/** Everything the guards below read of one picture. */
-function drawing(svg: string) {
-  const nodes = nodesOf(svg);
-  const frames = keyframesOf(svg);
-  const named = (n: Node): string[] =>
-    [n.at.style, ...n.groups.map((g) => g.style)].flatMap(
-      (s) => /animation-name:([^"]+)/.exec(s ?? '')?.[1]?.split(',') ?? [],
-    );
-  // Every box but the page, which is the one rect with no place of its own.
-  const rects = nodes.filter((n) => n.tag === 'rect' && n.at.x !== undefined);
-  const centre = (r: Node): [number, number] => [
-    Number(r.at.x) + Number(r.at.width) / 2,
-    Number(r.at.y) + Number(r.at.height) / 2,
-  ];
-  const boxOf = (r: Node): Box => [
-    Number(r.at.x),
-    Number(r.at.y),
-    Number(r.at.x) + Number(r.at.width),
-    Number(r.at.y) + Number(r.at.height),
-  ];
-  const pulses = rects.filter((r) => r.at.opacity === '0' && r.at.fill === 'none');
-  const within = ([x, y]: [number, number], [x0, y0, x1, y1]: Box) =>
-    x >= x0 && x <= x1 && y >= y0 && y <= y1;
-  /** The boxes there in the last frame, each once: a card and the light laid on it are one box. */
-  const resting = rects
-    .filter((r) => r.at.opacity !== '0' && !r.groups.some((g) => g.opacity === '0'))
-    .filter((r, i, all) => all.findIndex((o) => boxOf(o).join() === boxOf(r).join()) === i);
-  const texts = nodes.filter((n) => n.tag === 'text');
-  const anchor = (t: Node): [number, number] => [Number(t.at.x), Number(t.at.y)];
-  const holding = (text: string): Node => {
-    const t = texts.find((n) => n.text === text);
-    expect(t, `no text ${text}`).toBeDefined();
-    const found = resting.filter((r) => t !== undefined && within(anchor(t), boxOf(r)));
-    expect(found, `the box around ${text}`).toHaveLength(1);
-    return found[0] as Node;
-  };
-  /** Where a text's ink lies, from its size, its anchor and the advance of the face. */
-  const inkOf = (t: Node): Box => {
-    const size = Number(t.at['font-size']);
-    const advance = (t.at['font-family'] ?? '').startsWith('ui-monospace') ? ADVANCE : SANS_ADVANCE;
-    const width =
-      [...t.text.replaceAll('&amp;', '&').replaceAll('&quot;', '"')].length * size * advance;
-    const x = Number(t.at.x) - (t.at['text-anchor'] === 'middle' ? width / 2 : 0);
-    const y = Number(t.at.y);
-    return [x, y - size * 0.75, x + width, y + size * 0.25];
-  };
-  // Each line from one thing to another: two points, dashed, in the width of a line.
-  const lines = nodes
-    .filter((n) => n.tag === 'path' && n.at['stroke-width'] === '1.5' && n.at['stroke-dasharray'])
-    .flatMap((n) => {
-      const m = /^M(-?[\d.]+) (-?[\d.]+)L(-?[\d.]+) (-?[\d.]+)$/.exec(n.at.d ?? '');
-      const [x1, y1, x2, y2] = (m ?? []).slice(1).map(Number);
-      return m
-        ? [
-            {
-              node: n,
-              ends: [
-                [x1, y1],
-                [x2, y2],
-              ] as [number, number][],
-            },
-          ]
-        : [];
-    });
-  // The heads: each a point with two strokes back from it.
-  const tips = nodes
-    .filter((n) => n.tag === 'path' && /^(?:M[-\d. ]+L[-\d. ]+L[-\d. ]+)+$/.test(n.at.d ?? ''))
-    .flatMap((n) =>
-      [...(n.at.d ?? '').matchAll(/M[-\d. ]+L(-?[\d.]+) (-?[\d.]+)L/g)].map(
-        (m) => [Number(m[1]), Number(m[2])] as [number, number],
-      ),
-    );
-  const near = (p: [number, number], q: [number, number], within = 0.01) =>
-    Math.hypot(p[0] - q[0], p[1] - q[1]) <= within;
-  const distance = (p: [number, number], b: Box) =>
-    Math.hypot(Math.max(b[0] - p[0], 0, p[0] - b[2]), Math.max(b[1] - p[1], 0, p[1] - b[3]));
-  /** When an animation's opacity first rises above nothing, as a percentage of the loop. */
-  const rises = (names: string[]): number | undefined => {
-    for (const name of names) {
-      const stops = (frames.get(name) ?? []).filter((s) => s.value.startsWith('opacity:'));
-      const i = stops.findIndex((s) => Number(s.value.slice(8)) > 0);
-      if (i > 0) return stops[i - 1]?.at;
-    }
-    return undefined;
-  };
-  const dots = nodes
-    .filter((n) => n.tag === 'circle' && n.at['fill-opacity'] === undefined)
-    .map((n) => {
-      const names = named(n);
-      const moves = names
-        .flatMap((name) => frames.get(name) ?? [])
-        .filter((s) => s.value.startsWith('transform:'))
-        .map((s) => ({ at: s.at, ...transformOf(s.value) }));
-      const opacity = names
-        .flatMap((name) => frames.get(name) ?? [])
-        .filter((s) => s.value.startsWith('opacity:'))
-        .map((s) => ({ at: s.at, o: Number(s.value.slice(8)) }));
-      return { moves, opacity, rise: rises(names) };
-    });
-  type Dot = (typeof dots)[number];
-  /** The dot whose way runs from one point to the other. */
-  const dotOn = (a: [number, number], b: [number, number]) =>
-    dots.find(
-      ({ moves }) =>
-        moves.some((m) => near([m.dx, m.dy], a)) && moves.some((m) => near([m.dx, m.dy], b)),
-    );
-  /** The places a dot is at while it shows, in order, each named by the end it is at. */
-  const wayOf = (
-    dot: Dot | undefined,
-    [a, an]: [[number, number], string],
-    [b, bn]: [[number, number], string],
-  ): string[] => {
-    const where = (p: [number, number]) =>
-      near(p, a, 0.5) ? an : near(p, b, 0.5) ? bn : 'between';
-    const visible = dot?.opacity.filter((s) => s.o > 0) ?? [];
-    const from = dot?.opacity[dot.opacity.findIndex((s) => s.o > 0) - 1]?.at ?? 0;
-    const until =
-      dot?.opacity.find((s, i) => i > 0 && s.o === 0 && (dot.opacity[i - 1]?.o ?? 0) > 0)?.at ??
-      100;
-    const position = (t: number): [number, number] => {
-      const moves = dot?.moves ?? [];
-      const j = moves.findIndex((m) => m.at >= t);
-      const after = moves[Math.max(j, 0)];
-      const before = moves[Math.max(j - 1, 0)];
-      if (!after || !before || after.at === before.at) return [after?.dx ?? 0, after?.dy ?? 0];
-      const f = (t - before.at) / (after.at - before.at);
-      return [before.dx + f * (after.dx - before.dx), before.dy + f * (after.dy - before.dy)];
+  it.each(SIXTEEN)('%s draws no outline that a number could not be written for', (path) => {
+    // The outline of a glyph at some coordinates came out as `NaN` from the library's own writer: a path with a
+    // `NaN` in it draws nothing from there on, and shows as a text cut short.
+    expect(pictureOf(path)).not.toMatch(/NaN|undefined|Infinity/);
+  });
+
+  // N2: a diagram moves, and stops when asked to. The eye blinks on the banner's cycle, a pulse runs along the lines, and
+  // each sign sends out a ripple as the pulse reaches it; under `prefers-reduced-motion` none of that is drawn and the
+  // eye shows its still copy.
+  describe('the motion', () => {
+    /** The stylesheets of a picture, whole. */
+    const sheetsOf = (svg: string): string[] =>
+      [...svg.matchAll(/<style>([\s\S]*?)<\/style>/g)].map((m) => m[1] as string);
+    /** The sheet with its keyframes taken out: the rules that name an animation or a class. */
+    const withoutKeyframes = (sheet: string): string =>
+      sheet.replace(/@keyframes\s+\w+\s*\{(?:[^{}]*\{[^{}]*\})*\}/g, '');
+    /** Every class that a pulse or a ripple carries in a picture, and the ones the eye carries. */
+    const classesOf = (svg: string, tag: string): string[] =>
+      [...svg.matchAll(new RegExp(`<${tag} class="([^"]+)"`, 'g'))].map((m) => m[1] as string);
+    const pulses = (svg: string): string[] =>
+      [...svg.matchAll(/<path class="kr?" [^>]*>/g)].map((m) => m[0]);
+    const ripples = (svg: string): { cx: number; r: number; delay: number }[] => {
+      const delays = new Map(
+        [...(sheetsOf(svg)[0] ?? '').matchAll(/\.(d\d+)\{animation-delay:([\d.]+)s\}/g)].map(
+          (m) => [m[1] as string, Number(m[2])] as const,
+        ),
+      );
+      return [...svg.matchAll(/<circle class="h (d\d+)" cx="([\d.]+)"[^>]* r="([\d.]+)"/g)].map(
+        (m) => ({
+          cx: Number(m[2]),
+          r: Number(m[3]),
+          delay: delays.get(m[1] as string) ?? Number.NaN,
+        }),
+      );
     };
-    const way = [
-      from,
-      ...(dot?.moves ?? []).map((m) => m.at).filter((t) => t > from && t < until),
-      until,
-    ]
-      .map((t) => where(position(t)))
-      .filter((p, i, all) => i === 0 || p !== all[i - 1]);
-    return visible.length > 0 ? way : [];
-  };
-  /**
-   * The texts that name the thing nearest a point: the texts of the nearest box there in the last
-   * frame (or, for a box that holds none, the caption just over it), or a text standing alone.
-   */
-  const namesNear = (p: [number, number]): string[] => {
-    const free = texts.filter((t) => !resting.some((r) => within(anchor(t), boxOf(r))));
-    const things = [
-      ...resting.map((r) => {
-        const b = boxOf(r);
-        const inside = texts.filter((t) => within(anchor(t), b)).map((t) => t.text);
-        const over = free
-          .filter((t) => {
-            const [x, y] = anchor(t);
-            return y >= b[1] - 20 && y <= b[1] && x >= b[0] - 1 && x <= b[2];
-          })
-          .map((t) => t.text);
-        return { names: inside.length > 0 ? inside : over, at: distance(p, b) };
-      }),
-      ...free.map((t) => ({ names: [t.text], at: distance(p, inkOf(t)) })),
-    ].sort((x, y) => x.at - y.at);
-    return things[0]?.names ?? [];
-  };
-  return {
-    nodes,
-    frames,
-    rects,
-    resting,
-    texts,
-    inkOf,
-    holding,
-    lines,
-    tips,
-    near,
-    distance,
-    dots,
-    dotOn,
-    wayOf,
-    namesNear,
-    pulses,
-    centre,
-    boxOf,
-  };
-}
 
-describe('every package, and the family, is drawn inside its frame, on its middle, in its roles', () => {
-  const drawn: Record<string, string> = {
-    ...drawThePackages(THE_BLOCKS),
-    ...Object.fromEntries(
-      Object.entries(drawTheFrontPage(THE_BLOCKS)).map(([file, svg]) => [`${ASSETS}/${file}`, svg]),
-    ),
-  };
-  // Each package and the family, and the front page's other pictures: whether it writes words, and
-  // whether it holds them in cards.
-  const pictures = [
-    ...LINED.map((p) => ({ ...p, words: true, cards: p.id !== 'family', front: false })),
-    ...FRONT.map((p) => ({ ...p, cards: p.words, front: true })),
-  ].flatMap((p) =>
-    (['dark', 'light'] as const).map((theme) => ({
-      path: p[theme],
-      frame: p.frame,
-      words: p.words,
-      cards: p.cards,
-      front: p.front,
-      svg: drawn[p[theme]] ?? '',
+    /**
+     * What a stylesheet of a diagram may be: class selectors only; no at-rule but `@keyframes` and the one `@media` of
+     * `prefers-reduced-motion: reduce`; no `@import`; and no text outside its rules.
+     */
+    const offTheForm = (sheet: string): string[] => {
+      const out: string[] = [];
+      const flat = withoutKeyframes(sheet).replace(
+        /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{((?:[^{}]*\{[^{}]*\})*)\}/g,
+        '$1',
+      );
+      for (const at of new Set(flat.match(/@[\w-]*/g) ?? [])) out.push(`uses ${at}`);
+      for (const r of flat.matchAll(/([^{}]*)\{[^{}]*\}/g)) {
+        const selector = (r[1] as string).trim();
+        if (!/^\.[\w-]+(?:\s*,\s*\.[\w-]+)*$/.test(selector)) out.push(`selector ${selector}`);
+      }
+      const stray = flat.replace(/[^{}]*\{[^{}]*\}/g, '').trim();
+      if (stray !== '') out.push(`stray ${stray}`);
+      return out;
+    };
+
+    it.each(FOURTEEN)(
+      '%s has the one rule that stops the motion, and shows the eye at rest under it',
+      (path) => {
+        const svg = diagrams[path] ?? '';
+        const [sheet = ''] = sheetsOf(svg);
+        expect(sheetsOf(svg)).toHaveLength(1);
+        const media = /@media \(prefers-reduced-motion: reduce\)\{([^@]*)\}$/.exec(sheet)?.[1];
+        expect(media, 'the reduced-motion rule').toBeDefined();
+        const hidden = new Set(
+          [...(media as string).matchAll(/([^{}]+)\{display:none\}/g)].flatMap((m) =>
+            (m[1] as string).split(','),
+          ),
+        );
+        // every class a pulse, a ripple or the blinking eye carries is hidden under it
+        const carried = [
+          ...classesOf(svg, 'path').filter((c) => /^kr?$/.test(c)),
+          ...classesOf(svg, 'circle').map((c) => c.split(' ')[0] as string),
+          ...classesOf(svg, 'g').filter((c) => c === 'ea'),
+        ];
+        expect(carried.length).toBeGreaterThan(5);
+        expect(carried.filter((c) => !hidden.has(`.${c}`))).toEqual([]);
+        // and the eye at rest is drawn, hidden where nothing asks for less motion, and shown under the rule
+        expect(media).toContain('.es{display:inline}');
+        expect(svg).toContain('<g class="es" display="none">');
+      },
+    );
+
+    it.each(FOURTEEN)('%s has a stylesheet of the form the front page reads', (path) => {
+      const sheets = sheetsOf(diagrams[path] ?? '');
+      expect(sheets.length).toBeGreaterThan(0);
+      for (const sheet of sheets) expect(offTheForm(sheet)).toEqual([]);
+    });
+
+    it('reads a stylesheet that is not of that form as one', () => {
+      expect(offTheForm('rect[width="1.5"]{opacity:0}')).toEqual(['selector rect[width="1.5"]']);
+      expect(offTheForm('@import url(a.css);.a{opacity:0}')).toContain('uses @import');
+      expect(offTheForm('@media (min-width:1px){.a{opacity:0}}')).toContain('uses @media');
+      expect(offTheForm('.a{opacity:0}loose')).toEqual(['stray loose']);
+    });
+
+    it.each(FOURTEEN)(
+      '%s names an animation only to run keyframes it defines, and defines no other',
+      (path) => {
+        const [sheet = ''] = sheetsOf(diagrams[path] ?? '');
+        const named = new Set(
+          [...withoutKeyframes(sheet).matchAll(/animation(?:-name)?:\s*(\w+)/g)].map(
+            (m) => m[1] as string,
+          ),
+        );
+        const defined = new Set(
+          [...sheet.matchAll(/@keyframes\s+(\w+)/g)].map((m) => m[1] as string),
+        );
+        expect(named.size).toBeGreaterThanOrEqual(2);
+        expect([...named].sort()).toEqual([...defined].sort());
+      },
+    );
+
+    it.each(FOURTEEN)('%s hides each pulse at rest, where the animation does not run', (path) => {
+      const found = pulses(diagrams[path] ?? '');
+      expect(found.length).toBeGreaterThan(2);
+      for (const pulse of found) {
+        expect(pulse).toContain('pathLength="100"');
+        expect(pulse).toContain('stroke-dasharray="9 200"');
+        expect(pulse).toContain('stroke-dashoffset="-100"');
+      }
+    });
+
+    it.each(FOURTEEN)(
+      '%s sends out each ripple as the pulse reaches its sign, from left to right',
+      (path) => {
+        const found = ripples(diagrams[path] ?? '');
+        expect(found.length).toBeGreaterThan(1);
+        expect(found.filter((r) => r.r < 7 || Number.isNaN(r.delay))).toEqual([]);
+        const byPlace = [...found].sort((a, b) => a.cx - b.cx);
+        expect(byPlace.filter((r, i) => i > 0 && r.delay < (byPlace[i - 1]?.delay ?? 0))).toEqual(
+          [],
+        );
+        expect(Math.max(...found.map((r) => r.delay))).toBeGreaterThan(
+          Math.min(...found.map((r) => r.delay)),
+        );
+        // the whole run is inside the share of the cycle in which the pulse crosses
+        expect(Math.max(...found.map((r) => r.delay))).toBeLessThanOrEqual(7 * 0.62);
+      },
+    );
+
+    it.each(FOURTEEN)(
+      '%s blinks the eye on the banner cycle, the lids and the iris and nothing else',
+      (path) => {
+        const svg = diagrams[path] ?? '';
+        const blinking = /<g class="ea">([\s\S]*?)<\/g><g class="es"/.exec(svg)?.[1] ?? '';
+        const animated = [
+          ...blinking.matchAll(/<animate attributeName="(\w+)" dur="(\w+)" begin="([^"]+)"/g),
+        ];
+        expect(animated.map((a) => a[1])).toEqual(['cx', 'ry', 'd', 'd', 'd', 'd', 'd', 'd']);
+        expect(new Set(animated.map((a) => `${a[2]} ${a[3]}`))).toEqual(new Set(['9s -1.5s']));
+        // the almond the lids are clipped to stays
+        expect(blinking).toContain('<path d="M-47,0Q0,-86 47,0Q0,86 -47,0Z"/>');
+        expect(blinking).not.toMatch(/<animate attributeName="(?:x|y|width|height|transform)"/);
+      },
+    );
+
+    it.each(FOURTEEN)('%s runs each pulse in a colour other than the line it copies', (path) => {
+      const svg = diagrams[path] ?? '';
+      // a line and the pulse drawn right after it, and a band's lines (the stroke on their group) and its pulses
+      const single = [
+        ...svg.matchAll(
+          /<path d="[^"]*"(?: fill="none")? stroke="(#\w+)"[^>]*\/><path class="kr?" [^>]* stroke="(#\w+)"/g,
+        ),
+      ].map((m) => [m[1], m[2]]);
+      const banded = [
+        ...svg.matchAll(
+          /<g mask="[^"]*" fill="none" stroke="(#\w+)"[^>]*>(?:<path d="[^"]*"\/>)+<\/g><g mask="[^"]*"><path class="kr?" [^>]* stroke="(#\w+)"/g,
+        ),
+      ].map((m) => [m[1], m[2]]);
+      expect(single.length + banded.length).toBeGreaterThan(0);
+      expect([...single, ...banded].filter(([line, pulse]) => line === pulse)).toEqual([]);
+    });
+
+    it('sends out no ripple from a sign of the legend', () => {
+      for (const theme of ['dark', 'light']) {
+        const svg = diagrams[`${ASSETS}/how-mnema-fits-${theme}.svg`] ?? '';
+        const at = (m: RegExpMatchArray) => `${m[1]},${m[2]}`;
+        // the legend's four signs are drawn at radius 7 along the foot
+        const legend = [...svg.matchAll(/<circle cx="([\d.]+)" cy="(494)" r="7"(?! class)/g)].map(
+          at,
+        );
+        expect(legend).toHaveLength(4);
+        const rippling = [
+          ...svg.matchAll(/<circle class="h d\d+" cx="([\d.]+)" cy="([\d.]+)"/g),
+        ].map(at);
+        expect(rippling.filter((p) => legend.includes(p))).toEqual([]);
+      }
+    });
+
+    // The eye at rest as the diagrams drew it before they moved, said here by its digest (the id of its clip left out).
+    const AT_REST = {
+      dark: '9c2b2efbdca012aa6509433d8852973ad08898a93ed8a3313764db28adacf27c',
+      light: 'c237a42785858e92285f557875a71e3bab7b5251a7e857bc1f4c63d3739fc53f',
+    } as const;
+
+    it.each(FOURTEEN)(
+      '%s keeps the eye at rest it had, looking down, as its still copy',
+      (path) => {
+        const svg = diagrams[path] ?? '';
+        const still =
+          /<g class="es" display="none">([\s\S]*)<\/g><\/g><\/svg>\n$/.exec(svg)?.[1] ?? '';
+        const theme = path.endsWith('-dark.svg') ? 'dark' : 'light';
+        const digest = createHash('sha256')
+          .update(still.replace(/[\w-]+-eye-\d+/g, 'ID'))
+          .digest('hex');
+        expect(digest).toBe(AT_REST[theme]);
+      },
+    );
+  });
+
+  // N2b: a diagram has no ground of its own. GitHub shows it on its own page (white, dark, dimmed), so a picture that paints
+  // a ground shows as a box of another colour; what has to hide a line under a sign is the page's colour of the file's theme.
+  describe('the ground', () => {
+    const PAGE = { dark: '#0d1117', light: '#ffffff' } as const;
+    const themeOf = (path: string): 'dark' | 'light' =>
+      path.endsWith('-dark.svg') ? 'dark' : 'light';
+    const hex6 = (c: string): string =>
+      /^#[0-9a-f]{3}$/i.test(c)
+        ? `#${[...c.slice(1)].map((h) => h + h).join('')}`.toLowerCase()
+        : c.toLowerCase();
+    const opaque = (n: Node): boolean =>
+      (n.at.fill ?? 'black') !== 'none' && (n.at['fill-opacity'] ?? '1') !== '0';
+
+    it.each(FOURTEEN)('%s paints no shape that covers its frame', (path) => {
+      const svg = read(path);
+      const [, vw, vh] = /viewBox="0 0 (\d+) (\d+)"/.exec(svg) ?? [];
+      const [w, h] = [Number(vw), Number(vh)];
+      const covering = nodesOf(svg)
+        .filter((n) => opaque(n))
+        .filter((n) => {
+          if (n.tag === 'rect')
+            return (
+              Number(n.at.x ?? 0) <= 0 &&
+              Number(n.at.y ?? 0) <= 0 &&
+              Number(n.at.width) >= w &&
+              Number(n.at.height) >= h
+            );
+          if (n.tag === 'circle') return Number(n.at.r) * 2 >= Math.max(w, h);
+          if (n.tag === 'ellipse') return Number(n.at.rx) * 2 >= w && Number(n.at.ry) * 2 >= h;
+          return false;
+        });
+      expect(covering.map((n) => n.tag)).toEqual([]);
+    });
+
+    // The banners have no rect to refuse: a ground could be a path. So a shape of any tag is boxed, and its fill is the
+    // nearest one written, on itself or on the group it is in.
+    const BANNERS = [BANNER.dark, BANNER.light];
+    const fillOf = (n: Node): string =>
+      [...n.groups.map((g) => g.fill), n.at.fill].filter((v) => v !== undefined).at(-1) ?? 'black';
+
+    it.each(BANNERS)('%s paints no shape, of any tag, that covers its frame', (path) => {
+      const svg = read(path);
+      const { w, h } = BANNER.frame;
+      const covering = nodesOf(svg)
+        .filter((n) => fillOf(n) !== 'none' && (n.at['fill-opacity'] ?? '1') !== '0')
+        .filter((n) =>
+          boxesOf(n, new Map()).some(
+            ([x0, y0, x1, y1]) => x0 <= 0 && y0 <= 0 && x1 >= w && y1 >= h,
+          ),
+        );
+      expect(covering.map((n) => `${n.tag} ${fillOf(n)}`)).toEqual([]);
+      // It does draw shapes, so that the check above reads something.
+      expect(nodesOf(svg).filter((n) => n.tag === 'path').length).toBeGreaterThan(6);
+    });
+
+    it.each(BANNERS)("%s fills with no page's colour, of either theme", (path) => {
+      const pages: string[] = Object.values(PAGE);
+      const fills = nodesOf(read(path)).flatMap((n) =>
+        [...n.groups.map((g) => g.fill), n.at.fill].flatMap((c) =>
+          c?.startsWith('#') ? [hex6(c)] : [],
+        ),
+      );
+      expect(fills.length).toBeGreaterThan(0);
+      expect(fills.filter((c) => pages.includes(c))).toEqual([]);
+    });
+
+    it.each(FOURTEEN)(
+      '%s names neither of the old grounds, nor the old tints of a panel',
+      (path) => {
+        expect(read(path).match(/#(?:1c1c1a|f6f3ec|252523|ebe7de)\b/gi) ?? []).toEqual([]);
+      },
+    );
+
+    it.each(FOURTEEN)("%s fills with no page's colour, of either theme", (path) => {
+      const pages: string[] = Object.values(PAGE);
+      const fills = nodesOf(read(path)).flatMap((n) =>
+        n.at.fill?.startsWith('#') ? [hex6(n.at.fill)] : [],
+      );
+      expect(fills.filter((c) => pages.includes(c))).toEqual([]);
+    });
+
+    it.each(FOURTEEN)(
+      "%s carries a page's colour only as the stroke of a light pulse gap",
+      (path) => {
+        const pages: string[] = Object.values(PAGE);
+        const found = nodesOf(read(path)).flatMap((n) =>
+          Object.entries(n.at)
+            .filter(([, v]) => v.startsWith('#') && pages.includes(hex6(v)))
+            .map(([k, v]) => `${n.at.class ?? n.tag} ${k}=${hex6(v)}`),
+        );
+        const gap = (c: string): boolean => /^kr? stroke=#ffffff$/.test(c);
+        expect(found.filter((c) => !gap(c))).toEqual([]);
+        // The dark theme has no gap of light: its pulse is drawn in the accent.
+        if (themeOf(path) === 'dark') expect(found).toEqual([]);
+      },
+    );
+
+    it.each(FOURTEEN)(
+      "%s tints a panel with the theme's ink, and not with a colour of its own",
+      (path) => {
+        const theme = themeOf(path);
+        const panels = nodesOf(read(path)).filter((n) => n.tag === 'rect' && n.at.rx !== undefined);
+        for (const p of panels) {
+          expect(p.at.fill, path).toBe(DIAGRAM[theme].ink);
+          const opacity = Number(p.at['fill-opacity']);
+          expect(opacity).toBeGreaterThan(0);
+          expect(opacity).toBeLessThanOrEqual(0.12);
+        }
+      },
+    );
+
+    it.each(['dark', 'light'])(
+      'chain-%s.svg crosses no dashed ring with a dotted segment',
+      (theme) => {
+        const nodes = nodesOf(read(`packages/chain/assets/chain-${theme}.svg`));
+        const rings = nodes.filter((n) => n.tag === 'circle' && n.at['stroke-dasharray'] === '3 3');
+        expect(rings.length).toBeGreaterThan(0);
+        const dotted = nodes.filter((n) => n.at['stroke-dasharray'] === '4 5');
+        expect(dotted.length).toBeGreaterThan(0);
+        const crossing: string[] = [];
+        for (const seg of dotted) {
+          const [, a, b] = /^M(-?[\d.]+),-?[\d.]+H(-?[\d.]+)$/.exec(seg.at.d ?? '') ?? [];
+          expect(a, seg.at.d).toBeDefined();
+          const [from, to] = [Number(a), Number(b)].sort((x, y) => x - y) as [number, number];
+          for (const ring of rings) {
+            const lo = Number(ring.at.cx) - Number(ring.at.r) - 1;
+            const hi = Number(ring.at.cx) + Number(ring.at.r) + 1;
+            if (from < hi && to > lo) crossing.push(`${seg.at.d} over ${ring.at.cx}`);
+          }
+        }
+        expect(crossing).toEqual([]);
+      },
+    );
+
+    it('has panels to read: the chips of the steps and of the states', () => {
+      const withPanels = FOURTEEN.filter((path) =>
+        nodesOf(read(path)).some((n) => n.tag === 'rect' && n.at.rx !== undefined),
+      );
+      expect(withPanels.map((p) => p.split('/').pop())).toEqual([
+        'core-dark.svg',
+        'core-light.svg',
+        'how-it-works-dark.svg',
+        'how-it-works-light.svg',
+      ]);
+    });
+  });
+
+  // N3: the fonts are the authors' own, listed with the sha256 they have, each with its licence.
+  describe('the fonts', () => {
+    const dir = '.github/the-brand/fonts';
+    const files = readdirSync(join(ROOT, dir))
+      .filter((f) => f !== 'SOURCES.md')
+      .sort();
+    const rows = [
+      ...read(`${dir}/SOURCES.md`).matchAll(/^\| `([^`]+)` \|.*\| `([0-9a-f]{64})` \|$/gm),
+    ].map((m) => [m[1] as string, m[2] as string] as const);
+
+    it('lists every file of the folder, and names no file that is not there', () => {
+      expect(files.length).toBeGreaterThanOrEqual(6);
+      expect(rows.map(([name]) => name).sort()).toEqual(files);
+    });
+
+    it.each(rows)('%s is the file whose sha256 SOURCES.md says', (name, sha) => {
+      const bytes = readFileSync(join(ROOT, dir, name));
+      expect(createHash('sha256').update(bytes).digest('hex')).toBe(sha);
+    });
+
+    it('has the licence of every face beside it', () => {
+      const faces = files.filter((f) => f.endsWith('.ttf')).map((f) => f.split(/[-[]/)[0]);
+      expect(new Set(faces)).toEqual(new Set(['Archivo', 'IBMPlexMono']));
+      for (const face of faces) expect(files).toContain(`OFL-${face}.txt`);
+      expect(read(`${dir}/SOURCES.md`)).toContain('SIL Open Font License');
+    });
+  });
+
+  // N4: the outline has one door, and what the door writes is what it outlined.
+  describe('the outline of the text', () => {
+    const scripts = readdirSync(BRAND)
+      .filter((f) => f.endsWith('.mjs'))
+      .map((f) => [f, read(`.github/the-brand/${f}`)] as const);
+
+    it('is called from one place, inside say', () => {
+      const calls = scripts.flatMap(([file, text]) =>
+        [...text.matchAll(/\boutlineOf\(/g)]
+          .filter((m) => !text.slice(0, m.index).endsWith('function '))
+          .map((m) => ({ file, at: m.index })),
+      );
+      expect(calls.map((c) => c.file)).toEqual(['diagrams.mjs']);
+      const diagramsText = scripts.find(([f]) => f === 'diagrams.mjs')?.[1] ?? '';
+      const from = diagramsText.indexOf('export function say(');
+      const to = diagramsText.indexOf('\n}\n', from);
+      expect(from).toBeGreaterThan(0);
+      expect(calls[0]?.at).toBeGreaterThan(from);
+      expect(calls[0]?.at).toBeLessThan(to);
+    });
+
+    it.each(Object.keys(ROLES))('says in data-said what it outlines, in the role %s', (role) => {
+      const text = 'mnema decision record & <the> "ADR-2"';
+      const written = say(DIAGRAM.light, [text], 120, 60, role, 'middle', 'ink');
+      const d = /^<path d="([^"]*)" /.exec(written)?.[1];
+      expect(wordsOf(written)).toEqual([text]);
+      expect(d).toBe(outlineOf(text, role, 120, 60, 'middle'));
+      expect(d?.length).toBeGreaterThan(200);
+    });
+
+    it('refuses a character the face has no glyph for, and never draws it as a box', () => {
+      expect(() => outlineOf('a\u2603b', 'note', 0, 0, 'start')).toThrow(/no glyph/);
+    });
+  });
+
+  // N5: the text of a chip sits on the chip's middle, and inside it.
+  it.each(FOURTEEN)('%s sets the text of each chip on the chip', (path) => {
+    const nodes = nodesOf(diagrams[path] ?? '');
+    const num = (v: string | undefined) => Number(v);
+    const chips = nodes.flatMap((n, i) =>
+      n.tag === 'rect' && n.at.rx !== undefined ? [{ chip: n, text: nodes[i + 1] }] : [],
+    );
+    const id = [...LINED, ...FRONT].find((p) => p.dark === path || p.light === path)?.id;
+    expect(chips.length, path).toBe(id === 'how-it-works' || id === 'core' ? 4 : 0);
+    const firstY = (d: string) => Number(/^M\S+[ ,](-?[\d.]+)/.exec(d)?.[1]);
+    const distances = chips.map(({ chip, text }) => {
+      expect(text?.at['data-said'], 'the chip has its text next to it').toBeDefined();
+      const d = text?.at.d ?? '';
+      const [x, y, w, h] = ['x', 'y', 'width', 'height'].map((k) => num(chip.at[k]));
+      const xs = pathPoints(d).map((p) => p[0]);
+      const [left, right] = [Math.min(...xs), Math.max(...xs)];
+      expect(
+        Math.abs((left + right) / 2 - ((x as number) + (w as number) / 2)),
+        `${text?.at['data-said']}`,
+      ).toBeLessThanOrEqual(1);
+      // inside the chip, with room for its round ends
+      expect(left - (x as number), `${text?.at['data-said']}`).toBeGreaterThanOrEqual(8);
+      expect(
+        (x as number) + (w as number) - right,
+        `${text?.at['data-said']}`,
+      ).toBeGreaterThanOrEqual(8);
+      // The baseline the text was drawn on is the first point of its outline less the first point it has drawn at 0.
+      const baseline =
+        firstY(d) -
+        firstY(
+          outlineOf(text?.at['data-said']?.replaceAll('&amp;', '&') ?? '', 'chip', 0, 0, 'start'),
+        );
+      return baseline - ((y as number) + (h as number) / 2);
+    });
+    if (distances.length > 0)
+      expect(Math.max(...distances) - Math.min(...distances)).toBeLessThanOrEqual(0.5);
+  });
+
+  // N6: a drawing is its bytes, and an id names one thing in one file.
+  it('draws the same bytes the second time in the same process', () => {
+    expect(drawTheDiagrams()).toEqual(diagrams);
+    expect(drawTheBanner()).toEqual(banners);
+  });
+
+  it.each(SIXTEEN)('%s names nothing twice and points only at what it names', (path) => {
+    const svg = pictureOf(path);
+    const ids = [...svg.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1] as string);
+    expect(ids.length).toBeGreaterThan(0);
+    expect(ids.filter((id, i) => ids.indexOf(id) !== i)).toEqual([]);
+    const pointed = [...svg.matchAll(/url\(#([^)]+)\)/g)].map((m) => m[1] as string);
+    expect(pointed.filter((id) => !ids.includes(id))).toEqual([]);
+  });
+
+  // N7: each diagram says what it is, and how big, and the block of a README says the same.
+  it.each(SIXTEEN)('%s is an image with a name, a title and a size', (path) => {
+    const svg = pictureOf(path);
+    const frame = frameOf.get(path);
+    expect(svg).toMatch(/^<svg [^>]*\brole="img"/);
+    expect(ariaOf(svg)?.length).toBeGreaterThan(10);
+    expect(/<title>([^<]+)<\/title>/.exec(svg)?.[1]?.length).toBeGreaterThan(3);
+    expect([widthAttr(svg), /^<svg\b[^>]*\bheight="([^"]*)"/.exec(svg)?.[1]]).toEqual([
+      String(frame?.w),
+      String(frame?.h),
+    ]);
+  });
+
+  it.each(Object.entries(PACKAGE_ALT))('says of %s what it says by hand', (dir, alt) => {
+    for (const theme of ['dark', 'light']) {
+      const svg = diagrams[`packages/${dir}/assets/${dir}-${theme}.svg`] ?? '';
+      expect(ariaOf(svg)).toBe(alt);
+      expect(svg).toContain(`<title>@mnema/${dir}</title>`);
+    }
+  });
+
+  it.each([BANNER.dark, BANNER.light])('says of %s what it says by hand', (path) => {
+    const svg = banners[path] ?? '';
+    expect(ariaOf(svg)).toBe(BANNER_ALT);
+    expect(svg).toContain(`<title>${BANNER_ALT}</title>`);
+  });
+
+  it('says of the README diagrams the words they have always said', () => {
+    const how = diagrams[`${ASSETS}/how-it-works-light.svg`] ?? '';
+    expect(ariaOf(how)).toBe('How mnema works: record, rule, hand over, verify');
+    expect(how).toContain('<title>How mnema works</title>');
+    const fits = diagrams[`${ASSETS}/how-mnema-fits-light.svg`] ?? '';
+    expect(ariaOf(fits)).toBe(
+      'How mnema fits: a session opens with the decisions in force, a write under a refusing rule is denied, a write elsewhere lands, a recorded decision is signed into the chain, and mnema verify checks it',
+    );
+    expect(fits).toContain(
+      '<title>How mnema fits between an agent session and the repository</title>',
+    );
+  });
+
+  it.each([...PICTURED_PAGES])(
+    'shows in the README of %s an alt that is the aria-label of the picture',
+    (dir) => {
+      const alt = /alt="([^"]*)"/.exec(pictureBlock(dir))?.[1]?.replaceAll('&quot;', '"');
+      const light =
+        dir === FAMILY_PAGE
+          ? `${ASSETS}/the-family-light.svg`
+          : `packages/${dir}/assets/${dir}-light.svg`;
+      expect(alt).toBe(ariaOf(diagrams[light] ?? ''));
+      // and the one the README holds, which a hand edit would change without the block the script writes
+      const held = /<img src="[^"]+" alt="([^"]*)"/.exec(read(`packages/${dir}/README.md`))?.[1];
+      expect(held?.replaceAll('&quot;', '"')).toBe(ariaOf(diagrams[light] ?? ''));
+      if (dir === FAMILY_PAGE)
+        expect(/alt="([^"]*)"/.exec(familyBlock())?.[1]?.replaceAll('&quot;', '"')).toBe(
+          ariaOf(diagrams[light] ?? ''),
+        );
+    },
+  );
+
+  // N8: the colours are the palette's, and only the palette writes one.
+  it('writes no hex colour in a script of the brand but the palette', () => {
+    const scripts = readdirSync(BRAND).filter((f) => f.endsWith('.mjs') && f !== 'palette.mjs');
+    expect(scripts.length).toBeGreaterThanOrEqual(5);
+    for (const file of scripts)
+      expect(
+        read(`.github/the-brand/${file}`).match(/#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?\b/g) ?? [],
+        file,
+      ).toEqual([]);
+  });
+
+  it('has a palette of greys and one hue, the sulphur', () => {
+    expect(PALETTE.sulphur).toBe(SULPHUR);
+    const hues = Object.entries(PALETTE).filter(([, value]) => whyNot(value, []) !== undefined);
+    expect(hues.map(([name]) => name)).toEqual(['sulphur']);
+  });
+
+  it.each(SIXTEEN)('%s uses no colour that is not a value of the palette', (path) => {
+    const values = new Set(Object.values(PALETTE));
+    // The committed file, not what the script would draw: a colour written by hand is read as one.
+    const foreign = coloursIn(read(path)).filter(
+      (c) => c !== 'none' && !values.has(c.toLowerCase()),
+    );
+    expect(foreign).toEqual([]);
+  });
+
+  it('is imported by no package: nothing of the brand or of the font reader enters a published one', () => {
+    const found = readdirSync(join(ROOT, 'packages'), { recursive: true, encoding: 'utf8' })
+      .map((p) => p.split('\\').join('/'))
+      .filter((p) => /^[^/]+\/src\/.+\.(?:ts|mts|mjs|js)$/.test(p))
+      .filter((p) => /the-brand|opentype/.test(read(`packages/${p}`)));
+    expect(found).toEqual([]);
+  });
+
+  it('leaves the script of the social card with the imports the site, built without node_modules, can resolve', () => {
+    const imports = [
+      ...read('.github/the-front-page/draw.mjs').matchAll(/^import [^;]*? from '([^']+)';$/gm),
+    ].map((m) => m[1]);
+    expect(imports).toEqual(['./accent.mjs']);
+  });
+});
+
+describe('every diagram is drawn inside its frame', () => {
+  const drawn: Record<string, string> = drawTheDiagrams();
+  const pictures = [...LINED, ...FRONT].flatMap((p) =>
+    [p.dark, p.light].map((path) => ({
+      path,
+      frame: { ...p.frame, shapes: 10 },
+      svg: drawn[path] ?? '',
     })),
   );
 
   it.each(pictures)('$path paints every shape inside its frame', ({ svg, frame }) => {
-    // A stroke past the edge of the frame is cut off: half of it is not drawn.
+    // A stroke past the edge of the frame is cut off: half of it is not drawn. The ink of a text is the box of the
+    // points of its outline.
     const frames = keyframesOf(svg);
     const shapes = nodesOf(svg).filter(
       (n) => n.tag !== 'text' && !(n.tag === 'rect' && n.at.x === undefined),
@@ -1806,336 +1684,203 @@ describe('every package, and the family, is drawn inside its frame, on its middl
     );
     expect(outside).toEqual([]);
   });
+});
 
-  /**
-   * How far left and right what is there in the last frame under the band at the head reaches,
-   * shapes and the ink of each text. The glow behind it is not counted: it is centred by itself,
-   * and as wide as it is it would hide a drawing set off the middle.
-   */
-  const reach = (
-    svg: string,
-    frame: { band: number },
-  ): { left: number; right: number; top: number; foot: number } => {
-    const d = drawing(svg);
-    const frames = keyframesOf(svg);
-    const still = d.nodes.filter(
-      (n) =>
-        n.at.opacity !== '0' &&
-        !n.groups.some((g) => g.opacity === '0') &&
-        !(n.tag === 'rect' && n.at.x === undefined) &&
-        !(n.at.fill ?? '').startsWith('url(#glow'),
-    );
-    const boxes = still
-      .flatMap((n) => (n.tag === 'text' ? [d.inkOf(n)] : boxesOf(n, frames)))
-      .filter((b) => b[3] > frame.band);
-    expect(boxes.length).toBeGreaterThan(10);
-    return {
-      left: Math.min(...boxes.map((b) => b[0])),
-      right: Math.max(...boxes.map((b) => b[2])),
-      top: Math.min(...boxes.map((b) => b[1])),
-      foot: Math.max(...boxes.map((b) => b[3])),
-    };
+describe('every diagram lays its texts on the edges they line up with', () => {
+  const PICTURES = [...LINED, ...FRONT].flatMap((p) =>
+    [p.dark, p.light].map((path) => ({ path, frame: p.frame })),
+  );
+  const themeOf = (path: string): 'dark' | 'light' =>
+    path.endsWith('-dark.svg') ? 'dark' : 'light';
+  const EDGE = 0.5;
+
+  /** The box of the points a path reaches: for an outlined text, the ink of the line. */
+  const boxOf = (n: Node): Box => {
+    const points = pathPoints(n.at.d ?? '');
+    const xs = points.map((p) => p[0]);
+    const ys = points.map((p) => p[1]);
+    return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+  };
+  /** Every line of text a picture says, with its ink: read from the outlines, as a reader sees it. */
+  const textsOf = (svg: string) =>
+    nodesOf(svg)
+      .filter((n) => n.at['data-said'] !== undefined)
+      .map((n) => ({ said: n.at['data-said'] as string, box: boxOf(n) }));
+  /** The rule of a picture: the one straight line across it in the colour of the theme's lines, from its two ends. */
+  const ruleOf = (svg: string, theme: 'dark' | 'light'): [number, number] | undefined => {
+    for (const n of nodesOf(svg)) {
+      const m = /^M(-?[\d.]+),-?[\d.]+H(-?[\d.]+)$/.exec(n.at.d ?? '');
+      if (m !== null && n.at.class === undefined && n.at.stroke === (DIAGRAM[theme].line as string))
+        return [Number(m[1]), Number(m[2])];
+    }
+    return undefined;
   };
 
-  it.each(pictures)('$path sets what it draws on the middle of its frame', ({ svg, frame }) => {
-    // It spans as far from the left edge as from the right.
-    const { left, right } = reach(svg, frame);
-    expect(Math.abs(left + right - frame.w) / 2, `${left}..${right}`).toBeLessThanOrEqual(0.5);
+  it.each(PICTURES)('$path says no text past the edges of its content', ({ path, frame }) => {
+    const svg = read(path);
+    // The edges are the ends of the rule, and where a picture has none, the margin of 40 units.
+    const [from, to] = ruleOf(svg, themeOf(path)) ?? [40, frame.w - 40];
+    const texts = textsOf(svg);
+    expect(texts.length).toBeGreaterThan(3);
+    expect(
+      texts
+        .filter(({ box }) => box[0] < from - EDGE || box[2] > to + EDGE)
+        .map(({ said, box }) => `${said}: ${box[0].toFixed(1)} to ${box[2].toFixed(1)}`),
+    ).toEqual([]);
   });
 
-  it.each(pictures.filter((p) => p.frame.margin > 0))(
-    '$path leaves room between what it draws and each side of its frame',
-    ({ svg, frame }) => {
-      const { left, right } = reach(svg, frame);
-      expect(
-        Math.min(left, frame.w - right),
-        `${left}..${right} in 0..${frame.w}`,
-      ).toBeGreaterThanOrEqual(frame.margin);
-    },
-  );
-
-  it.each(pictures.filter((p) => p.front))(
-    '$path sets what it draws on the middle of its frame from top to foot, the margin in from each',
-    ({ svg, frame }) => {
-      const { left, right, top, foot } = reach(svg, frame);
-      expect(Math.abs(top + foot - frame.h) / 2, `${top}..${foot}`).toBeLessThanOrEqual(0.5);
-      expect(
-        Math.min(left, top, frame.w - right, frame.h - foot),
-        `${left}..${right} x ${top}..${foot} in ${frame.w} x ${frame.h}`,
-      ).toBeGreaterThanOrEqual(frame.margin);
-    },
-  );
-
-  it.each(pictures.filter((p) => p.cards))(
-    "$path sets the text of each card on the card's middle, from its top to its foot",
-    ({ svg }) => {
-      // The ink of what a card holds in the last frame, from the top of its first line to the foot
-      // of its last, lies as far from the card's top edge as from its bottom one. A line that comes
-      // and goes is not counted: the card is drawn for what it holds at rest.
-      const d = drawing(svg);
-      const resting = d.texts.filter(
-        (t) => t.at.opacity !== '0' && !t.groups.some((g) => g.opacity === '0'),
-      );
-      const held = d.resting.flatMap((r) => {
-        const [x0, y0, x1, y1] = d.boxOf(r);
-        const inside = resting.filter((t) => {
-          const [x, y] = [Number(t.at.x), Number(t.at.y)];
-          return x >= x0 && x <= x1 && y >= y0 && y <= y1;
-        });
-        if (inside.length === 0) return [];
-        const top = Math.min(...inside.map((t) => d.inkOf(t)[1]));
-        const foot = Math.max(...inside.map((t) => d.inkOf(t)[3]));
-        return [{ card: inside.map((t) => t.text).join(' / '), off: (top + foot - y0 - y1) / 2 }];
-      });
-      expect(held.length).toBeGreaterThan(0);
-      expect(held.filter((h) => Math.abs(h.off) > 1)).toEqual([]);
-    },
-  );
-
-  it.each(pictures.filter((p) => p.words))(
-    '$path writes every text in the size and weight of a role',
-    ({ svg }) => {
-      const roles = new Set(Object.values(TYPE).map((r) => `${r.size}/${r.weight}`));
-      const written = drawing(svg).texts.map(
-        (t) => `${t.at['font-size']}/${t.at['font-weight'] ?? ''}`,
-      );
-      expect(written.length).toBeGreaterThan(5);
-      expect(written.filter((w) => !roles.has(w))).toEqual([]);
-    },
-  );
-});
-
-describe('every package draws which way each of its arrows goes', () => {
-  const packages = drawThePackages(THE_BLOCKS);
-
-  it('says the arrows of every package it draws', () => {
-    expect(Object.keys(ARROWS).sort()).toEqual(PACKAGE_PICTURES.map((p) => p.dir).sort());
-  });
-
-  const front = drawTheFrontPage(THE_BLOCKS);
-  const cases = [
-    ...PACKAGE_PICTURES.flatMap(({ dir }) =>
-      (['dark', 'light'] as const).map((theme) => ({
-        dir,
-        theme,
-        svg: packages[`packages/${dir}/assets/${dir}-${theme}.svg`] ?? '',
-      })),
-    ),
-    // The steps draw theirs as the packages do: each from a step to the next.
-    ...(['dark', 'light'] as const).map((theme) => ({
-      dir: 'how-it-works',
-      theme,
-      svg: front[`how-it-works-${theme}.svg`] ?? '',
-    })),
-  ];
-
-  it.each(cases)(
-    '$dir ($theme) draws each arrow from where it runs to where it points',
-    ({ dir, theme, svg }) => {
-      const d = drawing(svg);
-      const said = ARROWS[dir] ?? FRONT_ARROWS[dir] ?? [];
-      expect(said.length).toBeGreaterThan(0);
-      // No arrow on the picture that is not said here, and none said that is not on it.
-      expect(d.lines).toHaveLength(said.length);
-      const found = said.map((arrow) => {
-        const line = d.lines.filter(({ ends }) => {
-          const [a = [0, 0], b = [0, 0]] = ends;
-          const [na, nb] = [d.namesNear(a), d.namesNear(b)];
-          return (
-            (na.includes(arrow.from) && nb.includes(arrow.to)) ||
-            (na.includes(arrow.to) && nb.includes(arrow.from))
-          );
-        });
-        expect(line, `the line from ${arrow.from} to ${arrow.to}`).toHaveLength(1);
-        const [a = [0, 0], b = [0, 0]] = line[0]?.ends ?? [];
-        const [tail, head] = d.namesNear(a).includes(arrow.from) ? [a, b] : [b, a];
-        const dot = d.dotOn(tail, head);
-        return {
-          arrow: `${arrow.from} → ${arrow.to}`,
-          heads: [d.tips.some((t) => d.near(t, tail)), d.tips.some((t) => d.near(t, head))],
-          way: d.wayOf(dot, [tail, 'from'], [head, 'to']),
-          apart:
-            line[0]?.node.at['stroke-dasharray'] === '8 5' &&
-            line[0]?.node.at.stroke !== ACCENT[theme],
-        };
-      });
-      expect(found).toEqual(
-        said.map((arrow) => ({
-          arrow: `${arrow.from} → ${arrow.to}`,
-          heads: [false, true],
-          way: arrow.dot ? ['from', 'to'] : [],
-          apart: arrow.apart === true,
-        })),
-      );
-    },
-  );
-});
-
-describe('how mnema fits draws which way the record goes', () => {
-  const pictures = drawTheFrontPage(THE_BLOCKS);
-
-  it.each(['dark', 'light'] as const)(
-    'how mnema fits (%s) heads each lane, and runs each packet, the way the record goes',
-    (theme) => {
-      const d = drawing(pictures[`how-mnema-fits-${theme}.svg`] ?? '');
-      const nameOf = (p: [number, number]): string => {
-        const names = d.namesNear(p);
-        if (names.includes('agent session')) return 'agent session';
-        if (names.includes('repository')) return 'repository';
-        return names.length === 0 ? 'mnema' : names.join(' / ');
-      };
-      expect(d.lines).toHaveLength(HERO_LANES.length);
-      const lanes = d.lines
-        .map(({ ends }) => {
-          const [a = [0, 0], b = [0, 0]] = ends;
-          const [first, second] = a[0] <= b[0] ? [a, b] : [b, a];
-          return {
-            ends: [first, second] as const,
-            names: [nameOf(first), nameOf(second)],
-            heads: [d.tips.some((t) => d.near(t, first)), d.tips.some((t) => d.near(t, second))],
-          };
-        })
-        .sort((x, y) => x.ends[0][0] - y.ends[0][0]);
-      expect(lanes.map((l) => ({ ends: l.names, heads: l.heads }))).toEqual(
-        HERO_LANES.map((l) => ({ ends: [...l.ends], heads: [...l.heads] })),
-      );
-      const runs = (dot: (typeof d.dots)[number], p: readonly [number, number]) =>
-        dot.moves.some((m) => d.near([m.dx, m.dy], [p[0], p[1]]));
-      const packets = d.dots
-        .map((dot) => {
-          const lane = lanes.find((l) => runs(dot, l.ends[0]) && runs(dot, l.ends[1]));
-          expect(lane, 'a packet off both lanes').toBeDefined();
-          const [a = [0, 0], b = [0, 0]] = lane?.ends ?? [];
-          return {
-            rise: dot.rise ?? 0,
-            way: d.wayOf(dot, [a, lane?.names[0] ?? ''], [b, lane?.names[1] ?? '']),
-          };
-        })
-        .sort((x, y) => x.rise - y.rise);
-      expect(packets.map((p) => p.way)).toEqual(HERO_PACKETS.map((p) => [...p]));
-    },
-  );
-});
-
-describe('the family draws which way the record goes', () => {
-  const pictures = drawTheFrontPage(THE_BLOCKS);
-  const themes = (['dark', 'light'] as const).map((theme) => ({
-    theme,
-    svg: pictures[`the-family-${theme}.svg`] ?? '',
-  }));
-
-  /** Everything the guards below read of one theme's picture: the hub, and each card around it. */
-  function layout(svg: string) {
-    const d = drawing(svg);
-    const hub = d.holding('@mnema/code');
-    const cards = RELATIONS.map((relation) => {
-      const card = d.holding(relation.card);
-      const line = d.lines.find(({ ends }) => ends.some((e) => d.distance(e, d.boxOf(card)) <= 6));
-      expect(line, `the line of ${relation.card}`).toBeDefined();
-      const [a = [0, 0], b = [0, 0]] = line?.ends ?? [];
-      const [atCard, atHub] =
-        d.distance(a, d.boxOf(card)) <= d.distance(b, d.boxOf(card)) ? [a, b] : [b, a];
-      // The dot whose way runs from one end of this line to the other.
-      const dot = d.dotOn(atCard, atHub);
-      return {
-        ...relation,
-        box: card,
-        line: line?.node,
-        heads: [d.tips.some((t) => d.near(t, atCard)), d.tips.some((t) => d.near(t, atHub))],
-        way: d.wayOf(dot, [atCard, 'card'], [atHub, 'hub']),
-        rise: dot?.rise,
-      };
-    });
-    return { ...d, hub, cards };
-  }
-
-  it.each(themes)(
-    'puts the head of each line of the $theme picture where the record goes',
-    ({ svg }) => {
-      const { cards } = layout(svg);
-      expect(cards.map(({ card, heads }) => [card, heads[0], heads[1]])).toEqual(
-        cards.map(({ card, goes }) => [card, goes !== 'in', goes !== 'out']),
-      );
-    },
-  );
-
-  it.each(themes)(
-    'runs the dot of each line of the $theme picture the way the record goes',
-    ({ svg }) => {
-      const { cards } = layout(svg);
-      const ways = { both: ['card', 'hub', 'card'], in: ['card', 'hub'], out: ['hub', 'card'] };
-      expect(cards.map(({ card, way }) => [card, way])).toEqual(
-        cards.map(({ card, goes }) => [card, ways[goes]]),
-      );
-    },
-  );
-
-  it.each(themes)(
-    'draws Stacks apart in the $theme picture, in grey and dashed',
-    ({ theme, svg }) => {
-      const { cards, pulses, centre } = layout(svg);
-      const accent = ACCENT[theme];
-      const dashes = new Set(
-        cards.filter((c) => !c.apart).map((c) => c.line?.at['stroke-dasharray']),
-      );
-      expect(dashes.size).toBe(1);
-      for (const c of cards) {
-        expect(c.box.at.stroke === accent, c.card).toBe(!c.apart);
-        expect(c.box.at['stroke-dasharray'] !== undefined, `${c.card} dashed`).toBe(c.apart);
-        expect(c.line?.at.stroke === accent).toBe(!c.apart);
-        expect(dashes.has(c.line?.at['stroke-dasharray'])).toBe(!c.apart);
-        // The card lights when what goes out reaches it: in the accent, or in its own grey.
-        const lit = pulses.filter((p) => {
-          const [x, y] = centre(p);
-          const [cx, cy] = centre(c.box);
-          return Math.abs(x - cx) <= 0.5 && Math.abs(y - cy) <= 0.5;
-        });
-        expect(lit.map((p) => p.at.stroke)).toEqual(
-          c.goes === 'in' ? [] : [c.apart ? c.box.at.stroke : accent],
+  it.each(PICTURES)('$path keeps every text clear of the eye at its top', ({ path }) => {
+    const svg = read(path);
+    const { dx, dy, k } = transformOf(
+      /<g transform="(translate\([^"]*)"><g class="ea">/.exec(svg)?.[1],
+    );
+    const almond = /<clipPath id="[^"]*"><path d="(M[^"]*)"\/><\/clipPath>/.exec(svg)?.[1] ?? '';
+    // The almond is two quadratic curves, mirrors of each other: its half height is the first curve's, which at its
+    // middle is half of its control point's.
+    const [x0, y0, cx, cy, x1, y1] = [...almond.matchAll(/-?[\d.]+/g)]
+      .slice(0, 6)
+      .map((m) => Number(m[0]));
+    const top = Math.min(
+      ...Array.from({ length: 201 }, (_, i) => {
+        const s = i / 200;
+        return (
+          (1 - s) ** 2 * (y0 as number) + 2 * (1 - s) * s * (cy as number) + s ** 2 * (y1 as number)
         );
-      }
-    },
-  );
+      }),
+    );
+    expect([x0, x1, cx, top]).toEqual([-47, 47, 0, -43]);
+    const eye: Box = [-47 * k + dx, top * k + dy, 47 * k + dx, -top * k + dy];
+    expect(eye[3] - eye[1]).toBeGreaterThan(40);
+    const CLEAR = 6;
+    const touching = textsOf(svg).filter(
+      ({ box }) =>
+        box[0] < eye[2] + CLEAR &&
+        box[2] > eye[0] - CLEAR &&
+        box[1] < eye[3] + CLEAR &&
+        box[3] > eye[1] - CLEAR,
+    );
+    expect(
+      touching.map(
+        ({ said, box }) => `${said}: top ${box[1].toFixed(1)}, eye bottom ${eye[3].toFixed(1)}`,
+      ),
+    ).toEqual([]);
+  });
 
-  it.each(themes)(
-    'rings the hub of the $theme picture, around it, as a read leaves it',
-    ({ svg }) => {
-      const { cards, pulses, hub, centre, boxOf } = layout(svg);
-      const onCards = (p: Node) =>
-        cards.some((c) => {
-          const [x, y] = centre(p);
-          const [cx, cy] = centre(c.box);
-          return Math.abs(x - cx) <= 0.5 && Math.abs(y - cy) <= 0.5;
-        });
-      const rings = pulses.filter((p) => !onCards(p));
-      expect(rings.length).toBeGreaterThan(0);
-      const [hx0, hy0, hx1, hy1] = boxOf(hub);
-      for (const ring of rings) {
-        // Centred on the hub, and close around its edge.
-        const [x0, y0, x1, y1] = boxOf(ring);
-        const gaps = [hx0 - x0, hy0 - y0, x1 - hx1, y1 - hy1];
-        expect(
-          gaps.every((g) => g >= 0 && g <= 8),
-          `ring at ${x0},${y0}`,
-        ).toBe(true);
-        const [left = 0, top = 0, right = 0, bottom = 0] = gaps;
-        expect(Math.abs(left - right) + Math.abs(top - bottom)).toBeLessThanOrEqual(0.5);
-      }
-      // One ring for each read, as its dot leaves the hub; none for what writes, and none for
-      // Stacks, which the hub installs and does not read out.
-      const frames = keyframesOf(svg);
-      const ringRises = rings.map((r) => {
-        const stops = frames.get(/animation-name:(\w+)/.exec(r.at.style ?? '')?.[1] ?? '') ?? [];
-        return stops[stops.findIndex((s) => Number(s.value.slice(8)) > 0) - 1]?.at;
-      });
-      expect(ringRises.sort((x = 0, y = 0) => x - y)).toEqual(
-        cards
-          .filter((c) => c.goes === 'out' && !c.apart)
-          .map((c) => c.rise)
-          .sort((x = 0, y = 0) => x - y),
-      );
-    },
-  );
+  describe('the legend of how mnema fits', () => {
+    it.each(['dark', 'light'] as const)(
+      'how-mnema-fits-%s spans its rule, with the same gap between its four items',
+      (theme) => {
+        const svg = read(`${ASSETS}/how-mnema-fits-${theme}.svg`);
+        const rule = ruleOf(svg, theme);
+        expect(rule).toEqual([60, 1140]);
+        const nodes = nodesOf(svg);
+        // The legend's signs are the circles of radius 7, left to right, each with the edge its stroke gives it.
+        const signs = nodes
+          .filter((n) => n.tag === 'circle' && n.at.r === '7')
+          .map((n) => {
+            const stroked = n.at.stroke !== undefined && n.at.stroke !== 'none';
+            return Number(n.at.cx) - 7 - (stroked ? Number(n.at['stroke-width']) / 2 : 0);
+          })
+          .sort((a, b) => a - b);
+        const labels = textsOf(svg)
+          .filter(({ said }) =>
+            ['proposed', 'in force', 'write refused', 'verified'].includes(said),
+          )
+          .sort((a, b) => a.box[0] - b.box[0]);
+        expect(signs).toHaveLength(4);
+        expect(labels.map((l) => l.said)).toEqual([
+          'proposed',
+          'in force',
+          'write refused',
+          'verified',
+        ]);
+        const [from, to] = rule as [number, number];
+        expect(Math.abs((signs[0] as number) - from)).toBeLessThanOrEqual(EDGE);
+        expect(Math.abs((labels[3]?.box[2] as number) - to)).toBeLessThanOrEqual(EDGE);
+        const gaps = [0, 1, 2].map((i) => (signs[i + 1] as number) - (labels[i]?.box[2] as number));
+        for (const gap of gaps)
+          expect(Math.abs(gap - (gaps[0] as number))).toBeLessThanOrEqual(EDGE);
+        expect(gaps[0]).toBeGreaterThan(40);
+      },
+    );
+  });
+
+  describe('the lanes of how mnema fits', () => {
+    it.each(['dark', 'light'] as const)(
+      'how-mnema-fits-%s has its lanes symmetric about the eye, within 0.5',
+      (theme) => {
+        const svg = read(`${ASSETS}/how-mnema-fits-${theme}.svg`);
+        const eye = Number(/translate\(([\d.]+),44\) scale\(\.6\)/.exec(svg)?.[1]);
+        // A lane is the path of stroke 3 from its start, a round cap beyond it, to what ends it: the decision's ring.
+        const starts = [
+          ...svg.matchAll(
+            /<path d="M([\d.]+),[\d.]+C[^"]*" fill="none" stroke="#[0-9a-f]{6}" stroke-width="3"/g,
+          ),
+        ].map((m) => Number(m[1]) - 1.5);
+        const ends = nodesOf(svg)
+          .filter(
+            (n) =>
+              n.tag === 'circle' &&
+              n.at.r === '9' &&
+              n.at.fill === 'none' &&
+              n.at.class === undefined,
+          )
+          .map((n) => Number(n.at.cx) + 9 + Number(n.at['stroke-width']) / 2);
+        expect(starts).toHaveLength(3);
+        expect(ends).toHaveLength(1);
+        const left = Math.min(...starts);
+        const right = Math.max(...ends);
+        expect(eye).toBe(600);
+        expect(Math.abs((left + right) / 2 - eye)).toBeLessThanOrEqual(0.5);
+      },
+    );
+  });
+
+  describe('the family', () => {
+    it.each(['dark', 'light'] as const)(
+      'the-family-%s has the same gap between the columns on each side of the record, from 60 to 1140',
+      (theme) => {
+        const svg = read(`${ASSETS}/the-family-${theme}.svg`);
+        const nodes = nodesOf(svg);
+        const centres = [
+          ...new Set(
+            nodes
+              .filter((n) => n.tag === 'circle' && n.at.cy === '170')
+              .map((n) => Number(n.at.cx)),
+          ),
+        ].sort((a, b) => a - b);
+        expect(centres).toHaveLength(7);
+        // A column is what is said under its point, by the nearest one.
+        const columns = centres.map(() => [] as Box[]);
+        for (const { box } of textsOf(svg).filter(({ box: b }) => b[1] > 200)) {
+          const at = (box[0] + box[2]) / 2;
+          const nearest = centres.reduce(
+            (best, c, i) =>
+              Math.abs(c - at) < Math.abs((centres[best] as number) - at) ? i : best,
+            0,
+          );
+          (columns[nearest] as Box[]).push(box);
+        }
+        const spans = columns.map((boxes) => [
+          Math.min(...boxes.map((b) => b[0])),
+          Math.max(...boxes.map((b) => b[2])),
+        ]);
+        expect(columns.every((c) => c.length >= 3)).toBe(true);
+        expect(Math.abs((spans[0]?.[0] as number) - 60)).toBeLessThanOrEqual(EDGE);
+        expect(Math.abs((spans[6]?.[1] as number) - 1140)).toBeLessThanOrEqual(EDGE);
+        const gaps = [0, 1, 2, 3, 4, 5].map(
+          (i) => (spans[i + 1]?.[0] as number) - (spans[i]?.[1] as number),
+        );
+        // The record sits under the eye, so each side has its own gap: the three on the left are equal, the three on the right
+        // are equal, and they differ from one side to the other only because the columns' widths do.
+        for (const i of [1, 2])
+          expect(Math.abs((gaps[i] as number) - (gaps[0] as number))).toBeLessThanOrEqual(EDGE);
+        for (const i of [4, 5])
+          expect(Math.abs((gaps[i] as number) - (gaps[3] as number))).toBeLessThanOrEqual(EDGE);
+        expect(Math.min(...gaps)).toBeGreaterThan(20);
+      },
+    );
+  });
 });
 
 // A badge sets its colour in the query (`color=` / `colorB=`, after `?`, `&` or the `;` of an
@@ -2150,7 +1895,7 @@ function* badgeColours(url: string): Generator<string> {
   }
 }
 
-describe('the front page has one accent', () => {
+describe('the front page keeps to the one hue of the brand', () => {
   it('has pictures to read', () => {
     expect(svgs.length).toBeGreaterThanOrEqual(4);
   });
@@ -2159,55 +1904,119 @@ describe('the front page has one accent', () => {
     expect(svgs.filter((f) => f.startsWith('packages/')).length).toBe(8);
   });
 
-  it.each(svgs)('%s uses no hue but the accent of its theme', (file) => {
+  // The fourteen diagrams and the two banners are painted in the one hue of the brand, which each has; every picture
+  // there is, is one of the sixteen.
+  it('has no picture that is not one of the sixteen', () => {
+    expect([...svgs].sort()).toEqual([...SIXTEEN].sort());
+  });
+
+  it.each(svgs)('%s uses no hue but the sulphur', (file) => {
     const svg = read(file);
-    const accent = accentFor(file);
     const wrong = coloursIn(svg)
-      .map((c) => whyNot(c, accent))
+      .map((c) => whyNot(c, [SULPHUR]))
       .filter((w) => w !== undefined);
     expect(wrong).toEqual([]);
-    expect(svg.toLowerCase()).toContain(accent[0]);
+    expect(svg.toLowerCase()).toContain(SULPHUR);
   });
 
   it('reads a hue that is not the accent as one', () => {
-    expect(whyNot('#ff0000', [ACCENT.dark])).toBeDefined();
-    expect(whyNot('#997dbf', [ACCENT.dark])).toBeDefined();
-    expect(whyNot('red', [ACCENT.dark])).toBeDefined();
-    expect(whyNot('#9198a1', [ACCENT.dark])).toBeUndefined();
+    // A hue the front page once used, here as a plain hex: it is the accent of this case and nothing else.
+    const hue = '#c4a0f5';
+    expect(whyNot('#ff0000', [hue])).toBeDefined();
+    expect(whyNot('#997dbf', [hue])).toBeDefined();
+    expect(whyNot('red', [hue])).toBeDefined();
+    expect(whyNot('#9198a1', [hue])).toBeUndefined();
+    // The brand's hue passes against itself, and the old accent is a hue against it.
+    expect(whyNot(SULPHUR, [SULPHUR])).toBeUndefined();
+    expect(whyNot('#997dbf', [SULPHUR])).toBeDefined();
     expect(coloursIn('<rect style="fill: rgb(255, 0, 0)"/>').length).toBeGreaterThan(0);
     // A gradient is read by its stops; a paint that points at no gradient of the file is not read.
     const stops = (colour: string) =>
       `<linearGradient id="g"><stop stop-color="${colour}"/></linearGradient><rect fill="url(#g)"/>`;
-    expect(coloursIn(stops(ACCENT.dark)).map((c) => whyNot(c, [ACCENT.dark]))).toEqual([
-      undefined,
-      undefined,
-    ]);
-    expect(coloursIn(stops('#2da44e')).map((c) => whyNot(c, [ACCENT.dark]))).toContainEqual(
+    expect(coloursIn(stops(hue)).map((c) => whyNot(c, [hue]))).toEqual([undefined, undefined]);
+    expect(coloursIn(stops('#2da44e')).map((c) => whyNot(c, [hue]))).toContainEqual(
       expect.stringContaining('#2da44e'),
     );
     expect(whyNot(coloursIn('<rect fill="url(#elsewhere)"/>')[0] ?? '', [])).toBeDefined();
   });
+});
 
-  it('gives every shields.io badge that sets a colour the light accent', () => {
-    const pages = [
-      'README.md',
-      ...readdirSync(join(ROOT, 'packages'))
-        .map((p) => `packages/${p}/README.md`)
-        .filter((p) => {
-          try {
-            read(p);
-            return true;
-          } catch {
-            return false;
-          }
-        }),
-    ];
-    const colours = pages.flatMap((page) =>
-      [...read(page).matchAll(/https:\/\/img\.shields\.io\/[^\s)"'<>]*/g)].flatMap((m) =>
-        [...badgeColours(m[0])].map((c) => `${page}: ${c}`),
+describe('the badges are in dark stone', () => {
+  const pages = [
+    'README.md',
+    ...readdirSync(join(ROOT, 'packages'))
+      .map((p) => `packages/${p}/README.md`)
+      .filter((p) => {
+        try {
+          read(p);
+          return true;
+        } catch {
+          return false;
+        }
+      }),
+  ];
+  const badges = pages.flatMap((page) =>
+    [...read(page).matchAll(/https:\/\/img\.shields\.io\/[^\s)"'<>]*/g)].map((m) => ({
+      page,
+      url: m[0],
+      colours: [...badgeColours(m[0])],
+    })),
+  );
+  /** The badge of the CI workflow: one a colour must never be fixed on. */
+  const isCi = (url: string) =>
+    url.startsWith('https://img.shields.io/github/actions/workflow/status/');
+  /** The Scorecard badge: the other one, since shields.io colours it by the score it reads. */
+  const isScorecard = (url: string) => url.startsWith('https://img.shields.io/ossf-scorecard/');
+  /** A badge whose colour says something the page cannot know: it carries none. */
+  const isUncoloured = (url: string) => isCi(url) || isScorecard(url);
+  const stone = PALETTE.darkStone?.slice(1) ?? '';
+
+  it('reads nine pages and every badge on them: nine of CI, one of the Scorecard and twenty-seven others', () => {
+    // The counts are said by hand: a README the list did not reach, or a badge added without a colour, changes one.
+    expect(stone).toBe('6b6862');
+    expect(new Set(badges.map((b) => b.page)).size).toBe(9);
+    expect(pages).toHaveLength(9);
+    expect(badges.filter((b) => isCi(b.url))).toHaveLength(9);
+    expect(badges.filter((b) => isScorecard(b.url))).toHaveLength(1);
+    expect(badges.filter((b) => !isUncoloured(b.url))).toHaveLength(27);
+  });
+
+  it('gives the CI badge no colour at all, so that shields.io paints it red when the build fails', () => {
+    expect(
+      badges.filter((b) => isCi(b.url) && b.colours.length > 0).map((b) => `${b.page}: ${b.url}`),
+    ).toEqual([]);
+  });
+
+  it('gives the Scorecard badge no colour at all, so that shields.io paints it by the score', () => {
+    expect(
+      badges
+        .filter((b) => isScorecard(b.url) && b.colours.length > 0)
+        .map((b) => `${b.page}: ${b.url}`),
+    ).toEqual([]);
+  });
+
+  it('gives every other badge exactly one colour, and it is the dark stone', () => {
+    expect(
+      badges
+        .filter((b) => !isUncoloured(b.url) && (b.colours.length !== 1 || b.colours[0] !== stone))
+        .map((b) => `${b.page}: ${b.url}`),
+    ).toEqual([]);
+  });
+
+  it('reads a colour set in the query, escaped or not, and the last segment of a static badge', () => {
+    expect([
+      ...badgeColours('https://img.shields.io/npm/v/x?style=flat-square&amp;color=997dbf'),
+    ]).toEqual(['997dbf']);
+    expect([...badgeColours('https://img.shields.io/npm/v/x?color=997dbf&label=npm')]).toEqual([
+      '997dbf',
+    ]);
+    expect([
+      ...badgeColours('https://img.shields.io/badge/license-Apache--2.0-6b6862?style=flat-square'),
+    ]).toEqual(['6b6862']);
+    expect([
+      ...badgeColours(
+        'https://img.shields.io/github/actions/workflow/status/o/r/ci.yml?branch=main',
       ),
-    );
-    const light = ACCENT.light.slice(1);
-    expect(colours.filter((c) => !c.endsWith(`: ${light}`))).toEqual([]);
+    ]).toEqual([]);
   });
 });

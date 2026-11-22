@@ -9,9 +9,9 @@
  * workspace name is `@mnema/vscode`), no `private` (the workspace package is not sent to npm; the
  * file is what the stores take) and no development fields. The repository's own manifest is not
  * touched. Nothing here publishes: the file is written to disk and that is where it stops. The
- * icon is drawn by `icon.mjs` from the built console's wordmark into the scratch folder, and so is the
- * side bar's (`mark.mjs`, `media/mnema.svg`) and the status bar's font (`icon-font.mjs`,
- * `media/mnema-icons.ttf`): nothing drawn lives in the tree.
+ * icon is drawn by `icon.mjs` from the eye of the brand (`the-eye.mjs`) into the scratch folder, and so
+ * is the side bar's (`the-eye.mjs`, `media/mnema.svg`) and the status bar's font (`icon-font.mjs`,
+ * `media/mnema-icons.ttf`): nothing drawn lives in the tree, and nothing drawn needs the console built.
  */
 
 import { spawnSync } from 'node:child_process';
@@ -20,10 +20,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bundle } from './bundle.mjs';
-import { THE_BLOCKS } from '../../code/dist/presentation/banner.js';
 import { drawIcon } from './icon.mjs';
 import { drawIconFont } from './icon-font.mjs';
-import { drawActivityIcon } from './mark.mjs';
+import { drawActivityIcon } from './the-eye.mjs';
 import { EXTENSION_NAME } from './the-extension-name.mjs';
 
 const pkgDir = fileURLToPath(new URL('..', import.meta.url));
@@ -43,10 +42,10 @@ try {
   copyFileSync(join(pkgDir, 'NOTICE'), join(scratch, 'NOTICE'));
   copyFileSync(join(pkgDir, 'README.md'), join(scratch, 'README.md'));
   copyFileSync(join(pkgDir, 'CHANGELOG.md'), join(scratch, 'CHANGELOG.md'));
-  writeFileSync(join(scratch, 'icon.png'), drawIcon(THE_BLOCKS));
+  writeFileSync(join(scratch, 'icon.png'), drawIcon());
   cpSync(join(pkgDir, 'media'), join(scratch, 'media'), { recursive: true });
-  writeFileSync(join(scratch, 'media', 'mnema.svg'), drawActivityIcon(THE_BLOCKS));
-  writeFileSync(join(scratch, 'media', 'mnema-icons.ttf'), drawIconFont(THE_BLOCKS));
+  writeFileSync(join(scratch, 'media', 'mnema.svg'), drawActivityIcon());
+  writeFileSync(join(scratch, 'media', 'mnema-icons.ttf'), drawIconFont());
   const done = spawnSync(
     join(pkgDir, 'node_modules', '.bin', 'vsce'),
     ['package', '--no-dependencies', '--out', out],

@@ -20,7 +20,7 @@
     "decisions"
   ],
   "galleryBanner": {
-    "color": "#0d1117",
+    "color": "#131312",
     "theme": "dark"
   },
   "preview": true,
@@ -75,18 +75,18 @@
     "colors": [
       {
         "id": "mnema.recordFolder",
-        "description": "The badge and the name of the .mnema folder in the Explorer: the mnema accent.",
+        "description": "The badge and the name of the .mnema folder in the Explorer: the brand's yellow in a dark theme, charcoal in a light one.",
         "defaults": {
-          "dark": "#c4a0f5",
-          "light": "#997dbf",
-          "highContrast": "#c4a0f5",
-          "highContrastLight": "#5b3d99"
+          "dark": "#e6da2e",
+          "light": "#131312",
+          "highContrast": "#e6da2e",
+          "highContrastLight": "#131312"
         }
       }
     ],
     "icons": {
-      "mnema-m": {
-        "description": "The mnema mark",
+      "mnema-eye": {
+        "description": "The mnema eye",
         "default": {
           "fontPath": "media/mnema-icons.ttf",
           "fontCharacter": "\\E000"

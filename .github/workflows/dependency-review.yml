@@ -46,3 +46,9 @@ jobs:
           allow-licenses: >-
             MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, BlueOak-1.0.0,
             MPL-2.0, Artistic-2.0, Zlib, CC0-1.0
+          # One package accepted by name, not a license: argparse (Python-2.0, permissive and
+          # OSI-approved) is a development dependency of subset-font through wawoff2. Accepted by
+          # ADR-686; `allow-licenses` above stays as it is for every other package. The action matches
+          # the package by name, in ANY version (the @2.0.1 below is not a pin); a test holds the
+          # lockfile to argparse at 2.0.1 only, so a second version cannot ride in on this line.
+          allow-dependencies-licenses: pkg:npm/argparse@2.0.1

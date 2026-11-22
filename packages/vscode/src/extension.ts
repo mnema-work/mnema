@@ -960,7 +960,7 @@ export function activate(
     }),
   );
 
-  // The record's own folder wears a badge and the accent in the Explorer, and no file does: the
+  // The record's own folder wears a badge and its colour in the Explorer, and no file does: the
   // answer is a comparison of two paths, so it starts no process and reads nothing.
   const markChanged = keep(new api.EventEmitter<UriLike>());
   keep(

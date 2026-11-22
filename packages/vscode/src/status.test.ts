@@ -158,12 +158,12 @@ const UNREADABLE: Verdict = { kind: 'unreadable' };
 
 describe('the status bar item: the level and what awaits, short, with the detail in the tooltip', () => {
   it('says the level, then what awaits a judgment, by the same number as the badge', () => {
-    expect(bar(STRONG).text).toBe('$(mnema-m) fully-signed');
-    expect(bar(STRONG, { awaiting: 2 }).text).toBe('$(mnema-m) fully-signed · 2 to judge');
+    expect(bar(STRONG).text).toBe('$(mnema-eye) fully-signed');
+    expect(bar(STRONG, { awaiting: 2 }).text).toBe('$(mnema-eye) fully-signed · 2 to judge');
     expect(bar({ kind: 'verified', level: 'externally-witnessed' }, { awaiting: 1 }).text).toBe(
-      '$(mnema-m) externally-witnessed · 1 to judge',
+      '$(mnema-eye) externally-witnessed · 1 to judge',
     );
-    expect(bar(WEAK, { awaiting: 3 }).text).toBe('$(mnema-m) hash-chain-only · 3 to judge');
+    expect(bar(WEAK, { awaiting: 3 }).text).toBe('$(mnema-eye) hash-chain-only · 3 to judge');
     expect(bar(FAILED).text).toBe('$(error) verify failed');
     expect(bar(FAILED, { awaiting: 2 }).text).toBe('$(error) verify failed · 2 to judge');
     expect(bar(UNREADABLE).text).toBe('$(question) verify unreadable');
@@ -171,7 +171,7 @@ describe('the status bar item: the level and what awaits, short, with the detail
       '$(question) verify unreadable · 1 to judge',
     );
     // Nothing to count, or not counted: no suffix.
-    expect(bar(STRONG, { awaiting: 0 }).text).toBe('$(mnema-m) fully-signed');
+    expect(bar(STRONG, { awaiting: 0 }).text).toBe('$(mnema-eye) fully-signed');
   });
 
   it('keeps the text short whatever the state: no channel count, at most 40 characters before the icon is drawn', () => {
@@ -183,8 +183,8 @@ describe('the status bar item: the level and what awaits, short, with the detail
   });
 
   it('shows a codicon that follows the verdict, and never a seal of verification', () => {
-    expect(bar(STRONG).text).toMatch(/^\$\(mnema-m\) /);
-    expect(bar(WEAK).text).toMatch(/^\$\(mnema-m\) /);
+    expect(bar(STRONG).text).toMatch(/^\$\(mnema-eye\) /);
+    expect(bar(WEAK).text).toMatch(/^\$\(mnema-eye\) /);
     for (const name of ['verify-tampered', 'verify-empty-folder']) {
       expect(bar(readVerdict(printed(name))).text).toMatch(/^\$\(error\) verify failed/);
     }
@@ -199,18 +199,18 @@ describe('the status bar item: the level and what awaits, short, with the detail
     }
   });
 
-  it('wears the M of mnema only where verify was read, by value in the six readings of the bar', () => {
+  it('wears the eye of mnema only where verify was read, by value in the six readings of the bar', () => {
     const missing: CliState = { kind: 'missing', reason: 'it could not be started' };
     const icon = (cli: CliState, verdict: Verdict) =>
       /^\$\(([a-z-]+)\) /.exec(bar(verdict, { cli }).text)?.[1];
     const ready: CliState = { kind: 'ready' };
-    expect(icon(ready, STRONG)).toBe('mnema-m');
-    expect(icon(ready, { kind: 'verified', level: 'externally-witnessed' })).toBe('mnema-m');
-    expect(icon(ready, WEAK)).toBe('mnema-m');
+    expect(icon(ready, STRONG)).toBe('mnema-eye');
+    expect(icon(ready, { kind: 'verified', level: 'externally-witnessed' })).toBe('mnema-eye');
+    expect(icon(ready, WEAK)).toBe('mnema-eye');
     expect(icon(ready, FAILED)).toBe('error');
     expect(icon(ready, UNREADABLE)).toBe('question');
     expect(icon(missing, STRONG)).toBe('warning');
-    expect(iconFor(STRONG)).toBe('mnema-m');
+    expect(iconFor(STRONG)).toBe('mnema-eye');
     expect(iconFor(FAILED)).toBe('error');
   });
 

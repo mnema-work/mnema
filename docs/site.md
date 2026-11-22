@@ -16,6 +16,12 @@ Each act says which agent carried it out, in the words the `show` verb uses (`no
 and the name the act declared), next to the identity (`mnid:...`) the record holds. The badge is the act's own `which`
 as the record holds it, and the page does not check it any further; neither it nor an identity is a person's name.
 
+The page wears the mark and the type of mnema. The eye is in its header, still, and is the icon of the tab; the text is set
+in Archivo and the ids, hashes and code in a renamed subset of IBM Plex Mono (both under the SIL Open Font License, whose
+texts travel in the page's style and in the package's `THIRD-PARTY-NOTICES.md`). The eye and the fonts are inside the file as
+`data:` (the fonts as WOFF2), so the page still makes no request. Both faces are carried for Latin text (Basic Latin, Latin-1
+and general punctuation): a record written in another script is drawn in the system face.
+
 Every decision is on the page without JavaScript. With it, a filter opens on the decisions in force and narrows them
 by state, identity, agent or person, the day the decision was recorded, text (notes included) and path (by segment:
 `packages/code` matches an address `packages/code/src/x.ts` and an address `packages`, and does not match

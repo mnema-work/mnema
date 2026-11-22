@@ -1,5 +1,4 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { fileURLToPath, pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { RECORD_BADGE, RECORD_COLOR } from './record-mark.js';
 import { iconFor, type Verdict } from './status.js';
@@ -63,7 +62,7 @@ const { commands, menus, views, viewsWelcome } = manifest.contributes;
 describe('the extension manifest', () => {
   it('declares every icon of its own font that the code uses, and uses every one it declares', () => {
     const declared = Object.keys(manifest.contributes.icons ?? {}).sort();
-    expect(declared).toEqual(['mnema-m']);
+    expect(declared).toEqual(['mnema-eye']);
     const verdicts: Verdict[] = [
       { kind: 'verified', level: 'fully-signed' },
       { kind: 'verified', level: 'externally-witnessed' },
@@ -82,7 +81,7 @@ describe('the extension manifest', () => {
     expect([...used].sort()).toEqual(declared);
     // The font is the one the packer draws, and the character is in the private use area.
     const packer = readFileSync(new URL('../build/package-vsix.mjs', import.meta.url), 'utf8');
-    const icon = manifest.contributes.icons?.['mnema-m'];
+    const icon = manifest.contributes.icons?.['mnema-eye'];
     expect(packer).toContain(`join(scratch, 'media', 'mnema-icons.ttf')`);
     expect(icon?.default.fontPath).toBe('media/mnema-icons.ttf');
     expect(icon?.default.fontCharacter).toBe('\\E000');
@@ -327,7 +326,7 @@ describe('the extension manifest', () => {
     expect(last?.description).toContain('mnema verify');
   });
 
-  it('declares the colour the folder of the record wears, with a value for each kind of theme, the accent of the front page in the dark and light ones', async () => {
+  it('declares the colour the folder of the record wears, with a value for each kind of theme', () => {
     const colors = manifest.contributes.colors ?? [];
     expect(colors.map((c) => c.id)).toEqual([RECORD_COLOR]);
     const [color] = colors;
@@ -340,15 +339,8 @@ describe('the extension manifest', () => {
     for (const value of Object.values(color?.defaults ?? {}))
       expect(value).toMatch(/^#[0-9a-f]{6}$/);
     expect(color?.description).not.toBe('');
-    // The accent is the one the front page draws the wordmark with: one source, read from it.
-    const accent = fileURLToPath(
-      new URL('../../../.github/the-front-page/accent.mjs', import.meta.url),
-    );
-    const { ACCENT } = (await import(pathToFileURL(accent).href)) as {
-      ACCENT: { dark: string; light: string };
-    };
-    expect(color?.defaults.dark).toBe(ACCENT.dark);
-    expect(color?.defaults.light).toBe(ACCENT.light);
+    // Which value of the brand's palette each one is, is held where the brand's source may be read:
+    // `packages/code/tests/the-editor-and-the-record-page-wear-the-new-brand.test.ts`.
     expect(RECORD_BADGE.length).toBeLessThanOrEqual(2);
   });
 

@@ -1,75 +1,173 @@
 /**
- * The font that carries the M to the status bar: `drawIconFont(blocks)` returns a TrueType file as
- * a Buffer, written with `node:` alone.
+ * The font that carries the eye to the status bar: `drawIconFont()` returns a TrueType file as a
+ * Buffer, written with `node:` alone.
  *
  * The status bar draws text, and the only icons it can draw in text are glyphs of a font: the
- * editor's own codicons, or a font an extension names in `contributes.icons`. The M of the
- * repository's banner is not among the codicons, and a generator of fonts was refused as a
- * dependency, so this writes the one glyph by hand. The glyph is the same letter the side bar's
- * SVG and the store icon draw (`mark.mjs`: the full blocks of the wordmark's first letter, the
- * touching cells fused), so a letter changed in the wordmark is a letter changed here.
+ * editor's own codicons, or a font an extension names in `contributes.icons`. The eye of the brand
+ * is not among the codicons, and a generator of fonts was refused as a dependency, so this writes
+ * the one glyph by hand. The glyph is the eye at rest in one colour, the side bar's drawing
+ * (`the-eye.mjs`): the union of the iris and the lines, clipped to the almond, written as
+ * TrueType's own quadratic curves, so it keeps its shape at any density. Until this drawing the
+ * glyph was the letter M of the console's block wordmark, as rectangles on whole pixels.
+ *
+ * HOW THE CURVES ARE MADE. Each line of the eye, inside the almond, is one region between two
+ * edges over x: above, the lower of the line's top edge and the almond's (in the font, y grows
+ * upward); below, the higher of the two bottoms. Where an edge passes from the line to the almond
+ * there is a corner, and an on-curve point is put on it; between corners the edge is cut in spans
+ * until a parabola through the two ends and the middle (one quadratic, its off-curve point above
+ * the span's middle) stays within a quarter of a unit of the edge. The iris is eight quadratic
+ * arcs. Every point is rounded to a whole unit, and every outline runs clockwise, so the
+ * non-zero fill of TrueType unites the outlines that overlap.
  *
  * The file is built for the sanitizer the editor runs every web font through (OTS, in
  * Chromium), which throws away a font that lacks a table it asks for, and a thrown-away font
  * draws nothing: `OS/2`, `cmap` (format 4, U+E000 to glyph 1), `glyf`, `head`, `hhea`, `hmtx`,
  * `loca`, `maxp` (1.0), `name` and `post` (3.0), each with its checksum and the checksum of the
- * whole file in `head`. Glyph 0 is empty, glyph 1 is the M. The em is 320 units, 20 for each pixel
- * of the 16 pixel line the bar draws icons on, so a cell of the wordmark (12 by 24, here 1 by 2
- * pixels) has every edge on a whole pixel and the M is 10 by 10 pixels, centred in the em with the
- * same ascent and descent (all above the baseline) the codicons use. Outlines run clockwise, the
- * way TrueType fills; cells that touch are one rectangle where they share a whole side. There is
- * no timestamp, so the bytes are the same on every run. `package-vsix.mjs` puts the file in the
+ * whole file in `head`. Glyph 0 is empty, glyph 1 is the eye. The em is 320 units, 20 for each
+ * pixel of the 16 pixel line the bar draws icons on, with the ascent and descent the codicons use
+ * (all above the baseline); the eye's frame of 96 units takes 280 of them (14 of the 16 pixels),
+ * centred. The boxes in `head`, `hhea`, `hmtx` and `OS/2` are the glyph's own points. There is no
+ * timestamp, so the bytes are the same on every run. `package-vsix.mjs` puts the file in the
  * `.vsix` as `media/mnema-icons.ttf`, and the manifest names it in `contributes.icons`.
  */
 
-import { letterRuns } from './mark.mjs';
+import { almondEdges, EYE, lineEdges } from './the-eye.mjs';
 
 /** The line the status bar draws icons on, in pixels, and the units of the em for each pixel of it. */
 const LINE = 16;
 const PIXEL = 20;
 const EM = LINE * PIXEL;
-/** One cell of the wordmark is a pixel wide and two tall at this size. */
-const CELL_W = PIXEL;
-const CELL_H = 2 * PIXEL;
+/** The units of the em the eye's frame (96 units of its own) takes, centred: 14 of the 16 pixels. */
+const DRAWN = 280;
+const SCALE = DRAWN / 96;
+/** How far, in units of the em, a quadratic may stray from the edge it stands for before the span is cut. */
+const TOLERANCE = 0.25;
 const FAMILY = 'mnema-icons';
-/** The private-use code point the manifest maps to the M: `\E000`. */
-export const M_CODE_POINT = 0xe000;
+/** The private-use code point the manifest maps to the eye: `\E000`. */
+export const EYE_CODE_POINT = 0xe000;
 
-/** The rectangles of the letter in font units, y up, the cells that touch fused in both directions. */
-function rectangles(blocks) {
-  const runs = letterRuns(blocks);
-  if (runs.length === 0) throw new Error('the wordmark has no full block to draw');
-  const left = Math.min(...runs.map((r) => r.column));
-  const right = Math.max(...runs.map((r) => r.column + r.columns));
-  const top = Math.min(...runs.map((r) => r.row));
-  const bottom = Math.max(...runs.map((r) => r.row)) + 1;
-  const width = (right - left) * CELL_W;
-  const height = (bottom - top) * CELL_H;
-  if (width > EM || height > EM) throw new Error(`the letter does not fit the ${LINE} pixel line`);
-  // Centred on whole pixels: when the margin is odd the extra pixel goes right and above.
-  const x0 = Math.floor((EM - width) / 2 / PIXEL) * PIXEL;
-  const y0 = Math.floor((EM - height) / 2 / PIXEL) * PIXEL;
-  // A run that stands on a run of the same columns in the row above is one rectangle with it.
-  const open = new Map();
-  const done = [];
-  for (const run of runs) {
-    const key = `${run.column}:${run.columns}`;
-    const above = open.get(key);
-    if (above !== undefined && above.lastRow === run.row - 1) {
-      above.lastRow = run.row;
-    } else {
-      const made = { column: run.column, columns: run.columns, firstRow: run.row, lastRow: run.row };
-      open.set(key, made);
-      done.push(made);
-    }
+/** A point of the eye's frame (y down) in units of the em (y up), not yet rounded. */
+const toEm = (x, y) => [EM / 2 + x * SCALE, EM / 2 - y * SCALE];
+
+/** Where `f` changes sign between `a` and `b`, to within a billionth of a unit. */
+function rootOf(f, a, b) {
+  let lo = a;
+  let hi = b;
+  const below = f(lo) < 0;
+  for (let n = 0; n < 60 && hi - lo > 1e-9; n++) {
+    const mid = (lo + hi) / 2;
+    if (f(mid) < 0 === below) lo = mid;
+    else hi = mid;
   }
-  return done.map((r) => ({
-    x0: x0 + (r.column - left) * CELL_W,
-    x1: x0 + (r.column - left + r.columns) * CELL_W,
-    // The font's y grows upward; the wordmark's rows grow downward.
-    y0: y0 + (bottom - 1 - r.lastRow) * CELL_H,
-    y1: y0 + (bottom - r.firstRow) * CELL_H,
-  }));
+  return (lo + hi) / 2;
+}
+
+/** Every x in `[a, b]` where `f` changes sign, scanned at a sixteenth of a unit and then refined. */
+function rootsOf(f, a, b) {
+  const roots = [];
+  const step = 1 / 16;
+  let x0 = a;
+  let v0 = f(a);
+  for (let x1 = a + step; x0 < b; x1 = Math.min(b, x1 + step)) {
+    const v1 = f(x1);
+    if (v0 < 0 !== v1 < 0) roots.push(rootOf(f, x0, x1));
+    x0 = x1;
+    v0 = v1;
+    if (x1 === b) break;
+  }
+  return roots;
+}
+
+/**
+ * The edge `f` from `a` to `b` as quadratics, each `[off-curve point, on-curve end]` in the frame's units. The off-curve
+ * point stands over the middle of the span, so the quadratic is the parabola through the two ends and the middle.
+ */
+function quadratics(f, a, b, depth = 0) {
+  const m = (a + b) / 2;
+  const [fa, fm, fb] = [f(a), f(m), f(b)];
+  const c = 2 * fm - (fa + fb) / 2;
+  let stray = 0;
+  for (const s of [0.125, 0.25, 0.375, 0.625, 0.75, 0.875]) {
+    const drawn = (1 - s) ** 2 * fa + 2 * s * (1 - s) * c + s ** 2 * fb;
+    stray = Math.max(stray, Math.abs(drawn - f(a + (b - a) * s)));
+  }
+  if (stray * SCALE > TOLERANCE && depth < 16)
+    return [...quadratics(f, a, m, depth + 1), ...quadratics(f, m, b, depth + 1)];
+  return [
+    [
+      [m, c],
+      [b, fb],
+    ],
+  ];
+}
+
+/**
+ * The outlines of one line of the eye inside the almond, each a closed list of points `{ x, y, on }` in the frame's
+ * units, running clockwise as the font sees it: along the top from left to right, then along the bottom back.
+ */
+function lineOutlines(edges) {
+  const top = (x) => Math.max(edges.top(x), almondEdges.top(x));
+  const bottom = (x) => Math.min(edges.bottom(x), almondEdges.bottom(x));
+  const open = (x) => bottom(x) - top(x);
+  const { left, right } = almondEdges;
+  const bounds = [left, ...rootsOf(open, left, right), right];
+  const outlines = [];
+  for (let k = 0; k < bounds.length - 1; k++) {
+    const [a, b] = [bounds[k], bounds[k + 1]];
+    if (!(open((a + b) / 2) > 0)) continue;
+    /** The corners of an edge: where it passes between the line and the almond. */
+    const pieces = (f, g) => [a, ...rootsOf((x) => f(x) - g(x), a, b), b];
+    const along = (edge, corners) => {
+      const points = [];
+      for (let n = 0; n < corners.length - 1; n++)
+        for (const [off, end] of quadratics(edge, corners[n], corners[n + 1]))
+          points.push({ x: off[0], y: off[1], on: false }, { x: end[0], y: end[1], on: true });
+      return points;
+    };
+    const upper = along(top, pieces(edges.top, almondEdges.top));
+    const lower = along(bottom, pieces(edges.bottom, almondEdges.bottom));
+    // The bottom, walked back from b to a: the same quadratics, read the other way.
+    const back = [{ x: a, y: bottom(a), on: true }, ...lower].reverse();
+    outlines.push([{ x: a, y: top(a), on: true }, ...upper, ...back]);
+  }
+  return outlines;
+}
+
+/** The iris as eight quadratic arcs, clockwise as the font sees it: each on-curve point, then the off-curve one after it. */
+function irisOutline() {
+  const { cx, cy, r } = EYE.iris;
+  const reach = r / Math.cos(Math.PI / 8);
+  const points = [];
+  for (let k = 0; k < 8; k++) {
+    // In the frame y grows downward, so the angle grows to run clockwise once the font turns y upward.
+    const on = (k * Math.PI) / 4;
+    const off = on + Math.PI / 8;
+    points.push({ x: cx + r * Math.cos(on), y: cy + r * Math.sin(on), on: true });
+    points.push({ x: cx + reach * Math.cos(off), y: cy + reach * Math.sin(off), on: false });
+  }
+  return points;
+}
+
+/**
+ * The glyph's outlines in whole units of the em: the four lines inside the almond (the two outer lines of the six stay
+ * outside it) and the iris. A point that rounds onto the on-curve point before it is dropped, and so is the last point
+ * of an outline when it rounds onto the first.
+ */
+function outlinesInEm() {
+  const outlines = [...lineEdges.flatMap(lineOutlines), irisOutline()];
+  return outlines.map((outline) => {
+    const kept = [];
+    for (const point of outline) {
+      const [x, y] = toEm(point.x, point.y).map(Math.round);
+      const last = kept.at(-1);
+      if (last !== undefined && last.on && point.on && last.x === x && last.y === y) continue;
+      kept.push({ x, y, on: point.on });
+    }
+    const [first] = kept;
+    const last = kept.at(-1);
+    if (kept.length > 1 && first.x === last.x && first.y === last.y && last.on) kept.pop();
+    return kept;
+  });
 }
 
 const u16 = (n) => {
@@ -95,36 +193,39 @@ const checksum = (b) => {
   return total;
 };
 
-/** The simple glyph of the rectangles: one clockwise four-point contour each, every point on the curve. */
-function glyphOf(rects) {
-  const xs = rects.flatMap((r) => [r.x0, r.x1]);
-  const ys = rects.flatMap((r) => [r.y0, r.y1]);
-  const points = rects.flatMap((r) => [
-    [r.x0, r.y0],
-    [r.x0, r.y1],
-    [r.x1, r.y1],
-    [r.x1, r.y0],
-  ]);
+
+/**
+ * The simple glyph of the outlines: each point's flag says whether it is on the curve (bit 0) or the off-curve point of
+ * a quadratic, and its x and y are full 16 bit deltas from the point before.
+ */
+function glyphOf(outlines) {
+  const points = outlines.flat();
+  const xs = points.map((p) => p.x);
+  const ys = points.map((p) => p.y);
   const box = { xMin: Math.min(...xs), yMin: Math.min(...ys), xMax: Math.max(...xs), yMax: Math.max(...ys) };
+  let end = -1;
+  const ends = outlines.map((outline) => {
+    end += outline.length;
+    return u16(end);
+  });
   const parts = [
-    i16(rects.length),
+    i16(outlines.length),
     i16(box.xMin),
     i16(box.yMin),
     i16(box.xMax),
     i16(box.yMax),
-    ...rects.map((_, i) => u16(4 * i + 3)),
+    ...ends,
     u16(0), // no instructions
-    Buffer.alloc(points.length, 0x01), // on the curve, a full 16 bit delta on each axis
+    Buffer.from(points.map((p) => (p.on ? 0x01 : 0x00))), // a full 16 bit delta on each axis
   ];
-  let previous = [0, 0];
-  for (const axis of [0, 1]) {
-    previous = [0, 0];
+  for (const axis of ['x', 'y']) {
+    let previous = 0;
     for (const point of points) {
-      parts.push(i16((point[axis] ?? 0) - (previous[axis] ?? 0)));
-      previous = point;
+      parts.push(i16(point[axis] - previous));
+      previous = point[axis];
     }
   }
-  return { data: pad4(Buffer.concat(parts)), box, points: points.length, contours: rects.length };
+  return { data: pad4(Buffer.concat(parts)), box, points: points.length, contours: outlines.length };
 }
 
 /** `name` records are Windows, Unicode BMP, US English, sorted by id as the format asks. */
@@ -158,12 +259,12 @@ function cmapTable() {
     u16(4),
     u16(1),
     u16(0),
-    u16(M_CODE_POINT), // end codes
+    u16(EYE_CODE_POINT), // end codes
     u16(0xffff),
     u16(0), // reserved pad
-    u16(M_CODE_POINT), // start codes
+    u16(EYE_CODE_POINT), // start codes
     u16(0xffff),
-    u16(1 - M_CODE_POINT), // deltas: the code point plus the delta is the glyph
+    u16(1 - EYE_CODE_POINT), // deltas: the code point plus the delta is the glyph
     u16(1),
     u16(0), // no range offsets
     u16(0),
@@ -172,12 +273,11 @@ function cmapTable() {
 }
 
 /**
- * The font over the rows of the console's wordmark (`THE_BLOCKS`).
- * @param {readonly string[]} blocks
+ * The font, its one glyph the eye.
  * @returns {Buffer}
  */
-export function drawIconFont(blocks) {
-  const m = glyphOf(rectangles(blocks));
+export function drawIconFont() {
+  const m = glyphOf(outlinesInEm());
   const os2 = Buffer.alloc(96);
   os2.writeUInt16BE(4, 0); // version
   os2.writeInt16BE(EM, 2); // xAvgCharWidth
@@ -194,8 +294,8 @@ export function drawIconFont(blocks) {
   os2.writeUInt32BE(0x10000000, 46); // ulUnicodeRange2: bit 60, the private use area
   os2.write('NONE', 58, 'latin1'); // achVendID
   os2.writeUInt16BE(0x40, 62); // fsSelection: regular
-  os2.writeUInt16BE(M_CODE_POINT, 64);
-  os2.writeUInt16BE(M_CODE_POINT, 66);
+  os2.writeUInt16BE(EYE_CODE_POINT, 64);
+  os2.writeUInt16BE(EYE_CODE_POINT, 66);
   os2.writeInt16BE(EM, 68); // typo ascender: the line, all above the baseline
   os2.writeInt16BE(0, 70);
   os2.writeInt16BE(0, 72);

@@ -6,8 +6,6 @@
  */
 
 import { createHash } from 'node:crypto';
-import { dirname, join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { FakePage } from '../../tests/support/a-page-in-a-vm.js';
 import { NO_AGENT_DECLARED } from '../one-line.js';
@@ -23,10 +21,6 @@ import {
   STYLE,
   TEXT_FLOOR,
 } from './page.js';
-
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
-const source = async <T>(path: string): Promise<T> =>
-  (await import(pathToFileURL(join(ROOT, path)).href)) as T;
 
 const decision = (over: Partial<PageDecision>): PageDecision => ({
   id: 'd-1',
@@ -270,7 +264,7 @@ describe('the page', () => {
     expect(hostile).toContain('\\u003c/script>');
   });
 
-  it('names its one script and its one style by hash, and allows nothing else', () => {
+  it('names its one script and its one style by hash, and allows nothing else but data: for its fonts and its icon', () => {
     const script = 'globalThis.x = 1;';
     const page = renderPage(model([decision({})]), script);
     const policy = /Content-Security-Policy" content="([^"]*)"/
@@ -280,7 +274,7 @@ describe('the page', () => {
       `'sha256-${createHash('sha256').update(text).digest('base64')}'`;
     const style = /<style>(.*?)<\/style>/s.exec(page)?.[1] as string;
     expect(policy).toBe(
-      `default-src 'none'; script-src ${hashOf(script)}; style-src ${hashOf(style)}`,
+      `default-src 'none'; font-src data:; img-src data:; script-src ${hashOf(script)}; style-src ${hashOf(style)}`,
     );
     expect(page).toContain(`<script>${script}</script>`);
   });
@@ -449,28 +443,101 @@ describe('the colours', () => {
     expect(pairs).toBe(2 * 7 * 2);
   });
 
-  it("is the banner's: the accent and the ground are the front page's, and the accent as text is what the page's own rule gives", async () => {
-    const { ACCENT } = await source<{ ACCENT: Record<'dark' | 'light', string> }>(
-      '.github/the-front-page/accent.mjs',
-    );
-    const { PAGE } = await source<{ PAGE: Record<'dark' | 'light', string> }>(
-      '.github/the-front-page/draw.mjs',
-    );
+  it("takes the accent as text by the page's own rule, and a link has the colour of the text, told apart by its underline", () => {
+    // The equality of each value with the brand's palette is held where the brand's source may be read:
+    // `packages/code/tests/the-editor-and-the-record-page-wear-the-new-brand.test.ts`.
     for (const theme of ['dark', 'light'] as const) {
       const other = theme === 'dark' ? 'light' : 'dark';
-      expect(PALETTE[theme].accent).toBe(ACCENT[theme]);
-      expect(PALETTE[theme].bg).toBe(PAGE[theme]);
       expect(PALETTE[theme].accentText).toBe(
         textAccent({
-          ink: ACCENT[theme],
-          toward: PAGE[other],
+          ink: PALETTE[theme].accent,
+          toward: PALETTE[other].bg,
           grounds: [PALETTE[theme].bg, PALETTE[theme].surface],
           floor: TEXT_FLOOR,
         }),
       );
+      expect(PALETTE[theme].focus).toBe(PALETTE[theme].accentText);
+      expect(PALETTE[theme].accentText, theme).toBe(PALETTE[theme].text);
     }
-    // The accent as small text is darker than the banner's where the banner's does not read.
-    expect(PALETTE.light.accentText).not.toBe(ACCENT.light);
+    expect(STYLE).toContain('a { color: var(--accent-text); }');
+    // Every anchor the page can draw: the permalinks, the skip link, the back link, the reference links
+    // (a decision that names one it knows) and the timeline's "open" links, read from the render.
+    const page = new FakePage(
+      renderPage(
+        model(
+          [
+            { ...full, id: 'd-1' },
+            decision({ id: 'd-0', adr: 'ADR-0' }),
+            decision({ id: 'd-2', adr: 'ADR-2' }),
+          ],
+          {
+            timeline: [
+              entry('decision-recorded', 'd-1'),
+              entry('decision-moved', 'd-1'),
+              entry('note-recorded', 'n-1'),
+            ],
+          },
+        ),
+        '/*v*/',
+        '../index.html',
+      ),
+    );
+    const anchors = page.querySelectorAll('a');
+    const fields = new Set(anchors.map((a) => a.getAttribute('data-field') ?? ''));
+    for (const field of ['permalink', 'supersedes', 'superseded-by', 'entry-link']) {
+      expect(fields.has(field), `the render has an anchor drawn as ${field}`).toBe(true);
+    }
+    expect(anchors.some((a) => a.getAttribute('class') === 'skip')).toBe(true);
+    expect(anchors.some((a) => a.getAttribute('class') === null)).toBe(true);
+    const classes = new Set(
+      anchors.flatMap((a) => (a.getAttribute('class') ?? '').split(/\s+/)).filter((c) => c !== ''),
+    );
+    expect([...classes].sort()).toEqual(['permalink', 'skip']);
+    // A rule reaches an anchor when the last compound of any selector in its list, after the last
+    // combinator (`.decision a`, `h3 > a`), is `a` or carries a class an anchor has: `:hover` and
+    // `:focus` included. No rule is allowed to take the underline off, and none sets a colour instead.
+    const stylesAnchor = (selector: string) =>
+      selector
+        .split(',')
+        .map((part) =>
+          (
+            part
+              .trim()
+              .split(/\s*[\s>+~]\s*/)
+              .pop() ?? ''
+          ).trim(),
+        )
+        .some(
+          (last) =>
+            /^a(?![\w-])/.test(last) ||
+            [...classes].some((c) => new RegExp(`\\.${c}(?![\\w-])`).test(last)),
+        );
+    let seen = 0;
+    for (const m of STYLE.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      if (!stylesAnchor(m[1] as string)) continue;
+      seen++;
+      expect(m[2], (m[1] as string).trim()).not.toMatch(/text-decoration(-line)?:\s*none/);
+    }
+    expect(seen).toBeGreaterThanOrEqual(4);
+    expect(STYLE).toMatch(/\.permalink \{[^}]*text-decoration:\s*underline/);
+  });
+
+  it('keeps the red for a failure alone: a broken or unverified record and lists that differ, and nothing else', () => {
+    const rules = [...STYLE.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({
+      selector: (m[1] as string).trim(),
+      body: m[2] as string,
+    }));
+    const red = rules
+      .filter(({ body }) => body.includes('var(--bad)'))
+      .map(({ selector }) => selector);
+    expect(red).toEqual([
+      '#verdict-status[data-state="broken"], #verdict-status[data-state="unverified"], #lists-status[data-state="differ"]',
+    ]);
+    const colourOf = (selector: string) =>
+      rules.find((rule) => rule.selector === selector)?.body.match(/color:\s*([^;]+);/)?.[1];
+    // A decision rejected is not a failure, and neither is a note taken back: both are secondary text.
+    expect(colourOf('.state[data-state="rejected"]')).toBe('var(--muted)');
+    expect(colourOf('.retraction')).toBe('var(--muted)');
   });
 
   it('is in the style: every colour of the palette is written into it, once per theme', () => {

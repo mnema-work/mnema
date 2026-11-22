@@ -227,8 +227,8 @@ const INKED: { readonly [mark: string]: string } = {
  * are the same width to the column ({@link widthOfTheDrawing} is what the page is measured by,
  * and it answers forty-eight).
  *
- * Exported because the front page's banner is drawn from these rows and from nothing else
- * (`.github/the-front-page/draw.mjs`); a test holds the committed picture to them.
+ * Exported because the social card (`.github/the-front-page/draw.mjs`), the extension's icon and the site's favicon are
+ * drawn from these rows; a test holds the card to them. The README's banner is not: it is the brand's lockup.
  */
 export const THE_BLOCKS: readonly string[] = [
   '███╗   ███╗███╗   ██╗███████╗███╗   ███╗ █████╗',
