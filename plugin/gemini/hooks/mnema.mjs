@@ -4,6 +4,7 @@
 // mnema record as it starts, `gate` refuses a write where a rule of that record refuses it, and
 // `settled`, after a question to the person was answered, says which tool records a choice, and
 // `beside`, after a write, hands over the rules of the record addressed at the file, and
+// `ended`, at the end of a turn, runs the two verbs that count the session and read its corrections.
 // `dictated`, on a message of the person's, says which tools record a rule it has the shape of.
 // It runs `mnema` from the PATH, and every outcome that is not an answer, such as no `mnema`, no
 // project or a program of that name that is not @mnema/code, leaves the session as it would
@@ -839,6 +840,12 @@ const WRITES = new Set(['write_file', 'replace']);
 /** The tool Gemini CLI asks the person a question through. */
 const ASKS = 'ask_user';
 
+/**
+ * Whether the transcript Gemini CLI names at the end of a turn is one `mnema` reads (`ENDS` in
+ * `host-names.ts`). Where it is not, `ended` starts nothing: not `--identify`, not the two verbs.
+ */
+const ENDED_READS = false;
+
 /** How long `mnema` is given to answer, in milliseconds. */
 const WAIT = 15000;
 
@@ -991,7 +998,7 @@ function besideTheResult(line, event = 'AfterTool') {
 
 /**
  * What the hook answers for one payload, or nothing.
- * @param {string | undefined} mode `open`, `gate`, `settled`, `beside` or `dictated`
+ * @param {string | undefined} mode `open`, `gate`, `settled`, `beside`, `dictated` or `ended`
  * @param {string} raw what the host wrote to stdin
  */
 function answer(mode, raw) {
@@ -1002,6 +1009,7 @@ function answer(mode, raw) {
     return undefined;
   }
   const cwd = typeof input?.cwd === 'string' ? input.cwd : process.cwd();
+  if (mode === 'ended' && !ENDED_READS) return undefined;
   if (mode === 'gate' && !WRITES.has(input?.tool_name)) return undefined;
   if (mode === 'settled' && input?.tool_name !== ASKS) return undefined;
   if (mode === 'beside' && !WRITES.has(input?.tool_name)) return undefined;
@@ -1048,6 +1056,27 @@ function answer(mode, raw) {
     if (didNotRun(ran) || ran.status !== 0) return undefined;
     const said = JSON.parse(ran.stdout);
     return said.hookSpecificOutput === undefined ? undefined : said;
+  }
+  if (mode === 'ended') {
+    // THE END OF A TURN, in a host whose hook cannot add context (`AfterAgent`): the two verbs run
+    // for their side effects, one budget for both so the host's own cap is not met, and what they
+    // say goes to the person in `systemMessage`, never to the model. Every outcome that is not an
+    // answer is silence: nothing here can refuse or ask.
+    const until = Date.now() + OPENING_WAIT;
+    const said = [];
+    for (const verb of ['tally', 'corrections']) {
+      if (until - Date.now() <= 0) break;
+      const heard = run([verb, '--host', 'gemini'], cwd, raw, Math.max(1, until - Date.now()));
+      if (didNotRun(heard) || heard.status !== 0) continue;
+      let line;
+      try {
+        line = JSON.parse(heard.stdout).systemMessage;
+      } catch {
+        continue;
+      }
+      if (typeof line === 'string' && line !== '') said.push(line);
+    }
+    return said.length === 0 ? undefined : { systemMessage: said.join('\n') };
   }
   if (mode === 'beside') {
     // AFTER THE WRITE: nothing to close, so every outcome that is not an answer is silence. A
