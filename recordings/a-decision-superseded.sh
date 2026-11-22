@@ -11,13 +11,14 @@
 # WHAT ON THE PAGE IS NOT THE BINARY'S OWN SPELLING, each said here:
 #   - the sandbox's home is printed as `~`, so a path reads the way it would on a reader's own
 #     machine rather than as a directory under the temp directory;
-#   - long lines are folded at a space to fit the recording's 96 columns.
+#   - every line the binary prints is folded at a space to fit the recording's 96 columns, so a long
+#     line is not cut in the middle of a word by the terminal.
 #
 # HOW IT IS MADE, from the root of a built checkout (`pnpm build`):
 #
 #   asciinema rec --overwrite -q --cols 96 --rows 34 \
 #     -c "bash recordings/a-decision-superseded.sh $PWD/packages/code/dist/bundle/cli.js" recordings/a-decision-superseded.cast
-#   agg --theme github-dark --font-size 16 recordings/a-decision-superseded.cast recordings/a-decision-superseded.gif
+#   node .github/the-recordings/render.mjs recordings/a-decision-superseded.cast
 #
 # HOW IT IS HELD TO THE BINARY: packages/code/tests/the-recordings-are-what-the-binary-draws.test.ts
 # runs this same script with PACE=0 and compares what it prints with the text of the committed .cast.
@@ -66,10 +67,10 @@ typed "mnema init --all-hosts > /dev/null"
 mnema init --all-hosts >/dev/null
 typed 'mnema decision record "Keep money as integer cents" "Float sums drift; cents are exact."'
 OUT=$(mnema decision record "Keep money as integer cents" "Float sums drift; cents are exact.")
-echo "$OUT" | sed -n '1p' | tilde
+echo "$OUT" | sed -n '1p' | tilde | folded
 OLD=$(idIn <<<"$OUT")
 typed "mnema decision move accept $OLD --note \"Agreed.\""
-mnema decision move accept "$OLD" --note "Agreed." | tilde
+mnema decision move accept "$OLD" --note "Agreed." | tilde | folded
 pause 1.2
 
 say "what the next agent session opens with"
@@ -82,10 +83,10 @@ typed 'mnema decision record "Keep money as a Money of integer cents" \' \
   '"An amount never travels without its currency."'
 OUT=$(mnema decision record "Keep money as a Money of integer cents" \
   "An amount never travels without its currency.")
-echo "$OUT" | sed -n '1p' | tilde
+echo "$OUT" | sed -n '1p' | tilde | folded
 NEW=$(idIn <<<"$OUT")
 typed "mnema decision move accept $NEW --note \"Agreed.\""
-mnema decision move accept "$NEW" --note "Agreed." | tilde
+mnema decision move accept "$NEW" --note "Agreed." | tilde | folded
 typed "mnema decision supersede $OLD \\" \
   "$NEW --reason \"We bill in two currencies now.\""
 mnema decision supersede "$OLD" "$NEW" --reason "We bill in two currencies now." | tilde | folded

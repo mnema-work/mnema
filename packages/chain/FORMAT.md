@@ -319,10 +319,11 @@ readers").
 **The writer of this product refuses to write through a link.** Before the first byte of a write, with
 the tail's lock held and before anything is sealed, it asks for every directory it writes in (`tails/`,
 its own tail, `keys/`, `locks/`, wherever §4 says that one is kept) and every file it writes (the tail's segments, `checkpoints.jsonl`,
-`tailproof.json`, the key's public file in `keys/`, and in `locks/` the tail's lock, its notes
+`tailproof.json`, the key's public file in `keys/` and its local anchor `keys/<fingerprint>.anchor`, and in `locks/` the tail's lock, its notes
 `<tail>.head`, `<tail>.head.sig`, `<tail>.cited` and `<tail>.covered`, and the staging file each is written through; and the index `<tail>.citations` of each tail it reads, with its staging file, asked as that tail is read),
 and where one is a symbolic link it refuses with `RECORD_LINKED`, naming the path: nothing is written,
-nothing the link points at is opened, and it does not found a new tail in the link's place. The
+nothing the link points at is opened, and it does not found a new tail in the link's place. A `keys/<fingerprint>.anchor` that is a symbolic link (or a link to nothing) is refused the same way, with
+`RECORD_LINKED`, before anything is sealed or written; a key restore that meets one says "This restore did not complete, nothing was restored". The
 lock is asked before it is taken, since taking it is a write. A link elsewhere is for the readers
 above. This binds this product's writer and nothing else: another writer that puts a link in a record is
 still refused by both readers
@@ -1663,7 +1664,10 @@ this product's, and the tests named below hold both readers beside this document
   cache (`status`, `show`, `search`, `brief`, `rules`, `why`, the hooks, the console and the agent's tools)
   serve what they read, leave the line out, and name the part on the first line of every surface, with the tail, the line and the way out (a
   newer mnema's line: update mnema); the line after it breaks its tail's chain as it would in the verdict. A
-  symbolic link at a segment or a tail (§4) is named the same way, with the rest served, and so is a folder or a file
+  symbolic link at a segment or a tail (§4) is named the same way, with the rest served, and so is a
+  `keys/<fingerprint>.anchor` that is a symbolic link (`status`, `search` and `brief` name it, as
+  `a symbolic link (keys/<name>)`, and the anchor is read as absent, so the identity is the one the record proves or the key derives; `verify`
+  refuses it as `LINKED ENTRY`, as it does a link at any entry of `keys/`), and so is a folder or a file
   the disk will not let the product open (no permission, a file where a folder belongs, a loop of links): it is a part that
   was not read, and the system's own error never reaches a person in its place. The tools that audit the
   record (`export`, `exposure`, `antipatterns` and the agent's audit tools) read the tails themselves and still

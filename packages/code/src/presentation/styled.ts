@@ -87,27 +87,17 @@ const SENT_HUE = '\u001b[38;5;253m';
 const UNSHADE = '\u001b[49m';
 
 /**
- * THE ACCENT: SGR 35, magenta, the one hue on this surface that is not news, and the
- * only one a ROLE carries rather than a severity.
+ * NO ACCENT: this surface carries no hue of the product's own. It used to: SGR 35, magenta, the
+ * one hue that was not news, spent on the echo's prompt, the mark on a picked row and a word of
+ * the console's list of words, on the premise that *magenta says this is mnema*. That premise
+ * held while the mark had a colour in the terminal; the mark no longer does. The terminal carries
+ * the mark as WEIGHT only (the prompt and the picked mark are bold), and the three severities are
+ * the only hues left here (`tests/the-renderer-writes-no-accent.test.ts`).
  *
- * IT IS THE PRODUCT'S MARK AND NOT A VERDICT, which is what keeps the promise above whole
- * rather than making an exception to it. Red, green and yellow say how bad the news is;
- * magenta says *this is mnema*. It is what the console's own rules are drawn in
- * (`repl/region.ts`, `ACCENT`), and the only thing here that takes it is the PROMPT of an
- * echo: the console showing a caller what they sent (`echo.ts`). Nothing about the
- * record is ever wrapped in it, and nothing wrapped in it says anything a reader could
- * lose: strip the escapes and the prompt is still there, spelled out, which is the same
- * argument the three severities are painted under.
- *
- * AND IT IS THE SECOND SPELLING OF ONE ACCENT, which is the risk this constant carries
- * and the reason it is named here rather than left as a number. The layout says the WORD
- * `magenta` to the library that draws the rules; this says the escape a terminal reads.
- * Two spellings of one decision is how a surface comes to have two accents, so they are
- * not left agreeing by inspection: the echo's prompt is asserted to be wrapped in the
- * very escapes a rule of the input area carries, on the bytes of one frame
- * (`tests/the-page-shows-its-seams.test.ts`).
+ * THE CONSEQUENCE AT THE DOOR: an actor's field that holds its own `ESC[35m` is no longer a
+ * sequence this product writes, so the port that lets the product's own sequences through
+ * ({@link PAINTING}) escapes it like any other control byte.
  */
-const ACCENT = '\u001b[35m';
 
 /**
  * What opens each role, and the empty string for a role written bare.
@@ -148,30 +138,22 @@ const ACCENT = '\u001b[35m';
  *     `line.ts` FOR *why no third column joined them*: the scope is that third, it
  *     joined for this entry's own argument rather than for one of its own, and `line.ts`
  *     is where the premise it falsified is written out.
- *   - `prompt`: bare, and it is the one role that carries a HUE of its own
- *     ({@link TINTED_BY}). What a caller typed in front of is the product's mark on the
- *     page rather than a fact about the record, so it takes the accent and no weight: an
- *     echo emboldened at both ends would be a row shouting where a reader is looking for
- *     the words they typed.
- *   - `pick`: bare, and the second role that carries a HUE of its own
- *     ({@link TINTED_BY}). The mark on the row a caller chose is the console's own
- *     punctuation rather than a fact, so it takes the accent; what it does NOT take is a
- *     weight, because the glyph is already the whole answer and an emboldened mark would be
- *     the row shouting about being the row.
+ *   - `prompt`: bold. What a caller typed in front of is the product's mark on the page
+ *     rather than a fact about the record; the mark has no colour in the terminal, so weight
+ *     is all it carries, and it is the weight of the `typed` words that follow it.
+ *   - `pick`: bold. The mark on the row a caller chose is the console's own punctuation
+ *     rather than a fact; it carries weight and no hue, for the same reason as the prompt.
  *   - `typed`: bold, exactly like the `label` it is a refinement of, and the sameness is
  *     the point rather than a duplication to collapse. A caller scrolling a session is
  *     looking for the line they asked, in among the answer to it, and that is the same
  *     thing a reader scanning a log for a refusal is doing.
  *   - `sentmark` and `sent`: a command the caller has sent, as the roll keeps it: a quiet grey
  *     mark and the words in a lighter grey, on the band {@link shadedAcross} lays under the whole
- *     row. They carry no hue and no weight, because the accent says *this is mnema* and what a
- *     caller asked is not that; they are painted as a PAIR with the band ({@link SHADE}).
- *   - `word`: bare, and the THIRD role that carries a HUE of its own ({@link TINTED_BY}).
- *     A word a caller could type is the product's own vocabulary offered back rather than a
- *     fact about the record, so it takes the accent; what it does not take is a weight, for
- *     the reason the mark does not: a list where four rows are emboldened is four rows
- *     shouting, and what makes the word the subject of its row is that the description
- *     beside it is NOT painted.
+ *     row. They carry no hue and no weight, because what a
+ *     caller asked is not the product's mark; they are painted as a PAIR with the band ({@link SHADE}).
+ *   - `word`: bare. A word a caller could type is the product's own vocabulary offered back;
+ *     it takes neither a hue (the mark has none) nor a weight (a list where four rows are
+ *     emboldened is four rows shouting). The row is dimmed whole by the layout.
  */
 /**
  * Every sequence this renderer can write, for the port that must let them through while it
@@ -186,7 +168,6 @@ export const PAINTING: readonly string[] = [
   GREEN,
   YELLOW,
   DEFAULT_HUE,
-  ACCENT,
   SHADE,
   UNSHADE,
   MARK_HUE,
@@ -203,44 +184,30 @@ const OPENED_BY: { readonly [R in Role]: string } = {
   when: DIM,
   scope: DIM,
   state: '',
-  prompt: '',
+  prompt: BOLD,
   typed: BOLD,
   sentmark: '',
   sent: '',
-  pick: '',
+  pick: BOLD,
   word: '',
 };
 
 /**
  * What each role TINTS, and the empty string for every role that carries no hue of its
- * own, which is all of them but one.
+ * own, which is all of them but the two halves of a sent command's band.
  *
  * Total over {@link Role} by type, exactly like the two tables it sits between, and for
  * the third time the same reason: a role whose hue nobody stated would be painted by
  * whatever a fallback chose.
  *
- * IT IS ONE ACCENT ON THREE ROLES, AND THE SENTENCE BELOW SAID *all of them but one*. What
- * moved is not the count of hues, which is still one: the echo's prompt, the mark on a
- * picked row and a word in the console's list of words are the three parts of this surface
- * that are the PRODUCT rather than the record, and every one of them says *this is mnema*.
- * A fourth hue would be a second meaning; a third bearer of the one accent is the same
- * meaning said in one more place.
- *
- * IT IS A SECOND TABLE AND NOT A SECOND AXIS. Hue on this surface means one of two
- * things, and they may not meet: how bad the NEWS is, which is the call site's to say and
- * is {@link PAINTED_BY}; and *this is the product*, which is the accent and belongs to
- * the thing that says nothing about the record at all ({@link ACCENT}). A part that
- * carries news is painted by the news (the severity is read first below) and nothing
- * that takes the accent can carry one: an echo is what a caller sent, and a console
- * cannot have an opinion about it.
- *
- * THE DOC ABOVE {@link PAINTED_BY} SAID HUE WAS *the whole use of hue on this surface*,
- * and this is what falsified it. It was true while every hue this file wrote was a
- * severity; the accent was spent by the LAYOUT, in the layout's own vocabulary, on things
- * a renderer never saw. The echo is the first line of the page that is chrome and a LINE
- * at once (it is composed and rendered like everything else, which is what makes a caller
- * who asked for no colour get none of this either), so the accent had to become sayable
- * here. What did not move is the count: one accent, none of the three severities.
+ * THE ACCENT IS GONE FROM IT. This table used to say *one accent on three roles* (the echo's
+ * prompt, the mark on a picked row, a word of the list), on the premise that those three were
+ * the parts of the surface that are the product rather than the record and that each said
+ * *this is mnema* in magenta. What falsified it is the new brand: the mark carries no colour
+ * in the terminal, only weight, so the three roles moved to {@link OPENED_BY} (two of them
+ * bold, the word bare) and what is left here is the pair of greys over the band.
+ * `tests/the-renderer-writes-no-accent.test.ts` asserts, over every role, that no role writes
+ * SGR 35.
  */
 const TINTED_BY: { readonly [R in Role]: string } = {
   label: '',
@@ -252,18 +219,17 @@ const TINTED_BY: { readonly [R in Role]: string } = {
   when: '',
   scope: '',
   state: '',
-  prompt: ACCENT,
+  prompt: '',
   typed: '',
   sentmark: MARK_HUE,
   sent: SENT_HUE,
-  pick: ACCENT,
-  word: ACCENT,
+  pick: '',
+  word: '',
 };
 
 /**
- * What each severity paints, the use of hue this surface was built around, and one of
- * the two it has ({@link TINTED_BY} is the other, and says what falsified the sentence
- * that used to end this line: *and it is the whole use of hue on this surface*).
+ * What each severity paints: the whole use of hue on this surface again, now that the
+ * accent that was a second one is gone ({@link TINTED_BY} says what falsified it).
  *
  * Total over {@link Severity} by type, for the third time and the same reason: a
  * severity a call site could set and this map had no entry for would be news reported
@@ -298,10 +264,9 @@ const PAINTED_BY: { readonly [S in Severity]: string } = {
  *
  * THE NEWS WINS, and the order is the decision rather than an accident of the `??`. A
  * part that carries a severity is reporting something a reader has to act on, and a part
- * that carries the accent is saying which product they are looking at; if one part could
- * ever be both, the news is the half that may not be overwritten. Nothing produces such a
- * part today (the accent's one role is the echo's prompt, and no call site gives it a
- * severity), so this line states an order rather than resolving a collision.
+ * that carries a role's own hue (the grey of a sent command) says nothing about the record;
+ * if one part could ever be both, the news is the half that may not be overwritten. Nothing
+ * produces such a part today, so this line states an order rather than resolving a collision.
  *
  * A part that opens NOTHING is returned untouched, not wrapped in an empty pair, so
  * the styled line of a list of plain columns is byte for byte the plain one, and the

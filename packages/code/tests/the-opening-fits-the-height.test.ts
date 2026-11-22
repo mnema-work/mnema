@@ -397,9 +397,9 @@ const THE_GEOMETRIES: readonly {
   // there is no arrangement at all, and the console draws a smaller one instead.
   { columns: 80, rows: 24, form: 'bare' },
   // AND THREE ROWS OF THIS TABLE ANSWERED `bare` UNTIL THE DRAWING CHANGED. The biggest drawing
-  // is six rows where it was nine, so the arrangement that holds it BESIDE the text costs eight
-  // rows rather than eleven and its share wants twenty-four rather than thirty-three, which is
-  // a screen everybody has. What moved is the art, not the rule: the same third of the same
+  // was six rows then, where it had been nine (it is five now), so the arrangement that held it
+  // BESIDE the text cost eight rows rather than eleven and its share wanted twenty-four rather
+  // than thirty-three, which is a screen everybody has. What moved is the art, not the rule: the same third of the same
   // screen buys an arrangement now, and the three sizes are kept at their old numbers so that
   // the change is visible here rather than hidden by re-choosing them.
   // The title carries the version, so this row sits where the title's width puts it: the 105 was
@@ -637,14 +637,18 @@ function theAnswerOn(ran: Ran, columns: number, rows: number): Screen {
  * WITH THEM, which is the trade this delivery made in one line: a caller on a window between
  * the two floors gets a console at all now, and one on a taller window is unaffected. Measured
  * on a real terminal, at the floor.
+ *
+ * AND IT IS THIRTEEN, WHEN THE BRAND REDREW THE NAME IN FIVE ROWS. The floor is thirty-nine rows
+ * (measured in `THE_FLOOR`), the arrangement holds thirteen and the input area five, so twenty-one
+ * are left and thirteen of them are the answer's: measured on a real terminal, at the floor.
  */
-const SHOWS_OF_THE_ANSWER = 14;
+const SHOWS_OF_THE_ANSWER = 13;
 
 /**
  * WHAT THE ARRANGEMENT COSTS ON THAT SCREEN: the second stick, and the one that says the
  * identity survived.
  *
- * FOURTEEN ROWS, AND IT WAS EIGHT, AND THEN SEVENTEEN. Eight was the arrangement at the
+ * THIRTEEN ROWS, AND IT WAS EIGHT, AND THEN SEVENTEEN, AND THEN FOURTEEN. Eight was the arrangement at the
  * twenty-four-row floor: the letterspaced name on one row, the text beside it on six, and the
  * SEAM, the rule that closes the region and the row of breath under it (`repl/region.ts`,
  * `theTop`), on two. THE FIRST TRY AT THAT DELIVERY MADE IT NOUGHT: the arrangement was given
@@ -653,13 +657,16 @@ const SHOWS_OF_THE_ANSWER = 14;
  *
  * WHAT IS DRAWN AT THE FLOOR IS THE WHOLE NAME, which is what the floor MEANS, so nothing gives
  * way here at all: the rows of the art, the six the text takes under it in the stacked form, and
- * the two of the seam. That came to seventeen while the art was nine rows and it is fourteen
- * now that it is six, and the floor came with it, because the floor is three times this number
- * rather than a number of its own (`src/repl/floor.ts`). Fourteen is exactly a third of
- * forty-two: the bound, reached rather than approached, at the shortest window this console
+ * the two of the seam. That came to seventeen while the art was nine rows, fourteen while it was six,
+ * and it is thirteen now that it is five, and the floor came with it, because the floor is three times this number
+ * rather than a number of its own (`src/repl/floor.ts`). Thirteen is exactly a third of
+ * thirty-nine: the bound, reached rather than approached, at the shortest window this console
  * draws a page on.
  */
-const THE_ARRANGEMENT_COSTS = 14;
+const THE_ARRANGEMENT_COSTS = 13;
+
+/** The rows the text beside the mark takes: measured, six, and taller than the five-row drawing. */
+const THE_TEXT_BESIDE_THE_MARK = 6;
 
 describe('the answer a caller asked for is on the page, at the shortest window there is', () => {
   it('shows the list of verbs at the floor, where it showed none of it', async () => {
@@ -736,7 +743,7 @@ describe('the answer a caller asked for is on the page, at the shortest window t
       // assertions below are what say the opening really did leave), so it moves with the
       // size of the longest answer this session gives, which is what it has always been
       // worked out from. At twenty-four rows one read filled the window twice over; when
-      // the floor became forty-two, one read no longer pushed the opening past the top and
+      // the floor became forty-two (it is thirty-nine now), one read no longer pushed the opening past the top and
       // this became two. The document grew four rows when each heading started saying how
       // many are awaiting a judgement, and one read reaches past the top again.
       //
@@ -863,8 +870,12 @@ describe('the answer a caller asked for is on the page, at the shortest window t
     // the row of breath under it (`repl/panel.ts`, `THE_SEAM`): chrome, counted where the
     // drawing's rows are counted, because a row the layout draws and the arithmetic does not know
     // about is a frame taller than the screen.
+    // THE TEXT COLUMN IS NOW THE TALLER OF THE TWO: it is six rows (what the session is, where it
+    // stands and the record's heading and trees) beside a drawing of five, so what the opening
+    // costs beside the mark is the taller of them and the seam. Measured on the console at this
+    // size: eight.
     expect(openingAt(columns, rows).above, 'the arrangement costs something else here').toBe(
-      THE_DRAWING.length + THE_SEAM,
+      Math.max(THE_DRAWING.length, THE_TEXT_BESIDE_THE_MARK) + THE_SEAM,
     );
     expect(openingAt(columns, rows).above).toBeLessThanOrEqual(A_THIRD_OF(rows));
   }, 240_000);

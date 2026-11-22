@@ -5,7 +5,9 @@
  * WHERE THE REQUIREMENT CAME FROM: the name was asked to be drawn *better and more robust*,
  * now that a floor under the window guarantees the room for it. Four samples were drawn in the
  * real arrangement and one was chosen: full blocks with a contour round them, six rows by
- * forty-eight columns. What was turned down is worth as much as what was kept: the nine-row
+ * forty-eight columns. THE BRAND THEN REDREW THE LETTERS, and the console draws five rows of
+ * full blocks, fifty-two columns, with no contour; the argument below is about the floor and holds
+ * for whichever drawing there is. What was turned down is worth as much as what was kept: the nine-row
  * drawing whose last three rows are the dust of a drop shadow, which disappears in a thin font,
  * and a compact three-row one, which is the opposite of what was asked for.
  *
@@ -61,19 +63,19 @@ const THE_ART: readonly string[] = THE_BIGGEST_DRAWING.map(renderPlain);
 /** How many columns the drawing claims, asked of the function the page asks it of. */
 const ACROSS = widthOfTheDrawing(THE_BIGGEST_DRAWING);
 
-describe('the drawing is six rows of one width, in glyphs the product measures at one column', () => {
-  it('is forty-eight columns, and every row reaches them but the one whose letter ends in a blank', () => {
+describe('the drawing is five rows of one width, in glyphs the product measures at one column', () => {
+  it('is fifty-two columns, and every row reaches them but the one whose letter ends in a blank', () => {
     // THE WIDTH IS ASKED OF THE PRODUCT'S OWN MEASUREMENT: `widthOf`, which is what the panel
     // chooses an arrangement by and what the floor works its columns out of. Counting the
     // characters here instead would be this file's opinion about how wide a row is, and the
     // arrangement would go on believing its own.
-    expect(THE_BIGGEST_DRAWING).toHaveLength(6);
-    expect(ACROSS, 'the drawing is not forty-eight columns wide').toBe(48);
+    expect(THE_BIGGEST_DRAWING).toHaveLength(5);
+    expect(ACROSS, 'the drawing is not fifty-two columns wide').toBe(52);
 
     // AND EVERY ROW IS THAT WIDTH BUT ONE, WHICH IS THE TRIM RULE SEEN FROM THE OTHER END. No
     // row of a form may end in a blank (the layout trims what it writes, so a padded row would
     // arrive narrower than the arithmetic that chose it believes) and the last letter's top row
-    // ends in a blank of its own shape. So that blank came off with the padding and the top row
+    // ends a column before the rest of it. So that blank came off with the padding and the top row
     // is one column short of the rest. What matters is that NOTHING is wider than the drawing
     // says and nothing is short by more than that blank.
     const measured = THE_BIGGEST_DRAWING.map((row) => widthOf(row));
@@ -90,18 +92,19 @@ describe('the drawing is six rows of one width, in glyphs the product measures a
   });
 
   it('measures every glyph it is drawn with at one column, by the product own measurement', () => {
-    // WHAT THE HANDOFF ASKED FOR, ASKED OF THE PRODUCT RATHER THAN OF THE STANDARD: the blocks
-    // and the box drawing are EAST ASIAN AMBIGUOUS, which is one column here and two on a
-    // terminal in a CJK locale.
+    // ASKED OF THE PRODUCT RATHER THAN OF THE STANDARD: the block is EAST ASIAN AMBIGUOUS, which
+    // is one column here and two on a terminal in a CJK locale.
     //
     // AND THE ANSWER IS HALF AN ANSWER, WHICH IS WHY IT IS WRITTEN OUT. What the product
     // measures with counts CODE POINTS (`presentation/plain.ts`), so every one of these glyphs
     // is one column to it: the measurement is self-consistent, which is what keeps the
     // arrangement, the floor and the fold agreeing with each other, and it says nothing about
-    // what a CJK terminal draws. That debt is declared in the module and it did not change kind
-    // when this drawing arrived: it was one ambiguous glyph and it is seven.
+    // what a CJK terminal draws. That debt is declared in the module and it shrank when this drawing
+    // arrived: it was seven ambiguous glyphs (the block and six box-drawing ones) and it is one.
     const glyphs = [...new Set([...THE_ART.join('')])].filter((glyph) => glyph !== ' ');
-    expect(glyphs.length, 'the drawing is drawn with nothing at all').toBeGreaterThan(1);
+    expect(glyphs, 'the drawing is drawn with something other than the full block').toEqual([
+      '\u2588',
+    ]);
     for (const glyph of glyphs) {
       expect(widthOf(subjectLine(glyph)), `${JSON.stringify(glyph)} is not one column`).toBe(1);
     }
@@ -140,7 +143,9 @@ describe('the floor follows the drawing, because it is worked out from it', () =
     expect(THE_FLOOR, 'the floor is not what the drawing there is asks for').toEqual(
       theFloorFor(THE_BIGGEST_DRAWING),
     );
-    expect(THE_FLOOR.rows, 'the floor is not forty-two rows').toBe(42);
+    // THIRTY-NINE, MEASURED in `THE_FLOOR` after the five-row drawing went in: the six-row one asked
+    // for forty-two, and the arrangement round a drawing loses the row the drawing lost, three times.
+    expect(THE_FLOOR.rows, 'the floor is not thirty-nine rows').toBe(39);
     expect(
       theFloorFor(THE_NINE_ROW_DRAWING).rows,
       'the drawing this replaced does not put the floor back at fifty-one',
@@ -182,7 +187,7 @@ describe('the floor follows the drawing, because it is worked out from it', () =
     // AND A DRAWING TOO WIDE FOR THAT PAGE MOVES IT, which is what makes the maximum a
     // mechanism rather than a decoration on a constant. The fixture is as wide as the page has
     // room for and one column more.
-    const wide = aDrawingOf(6, insideTheMargin(THE_FLOOR.columns) + 1);
+    const wide = aDrawingOf(THE_BIGGEST_DRAWING.length, insideTheMargin(THE_FLOOR.columns) + 1);
     expect(theFloorFor(wide).columns, 'a drawing wider than the page left the floor alone').toBe(
       THE_FLOOR.columns + 1,
     );
@@ -395,5 +400,46 @@ describe('the ladder is total: every window gets a drawing, and never a richer o
     expect(forms[0], 'the richest form is not the drawing this file is about').toBe(
       THE_ART.join('\n'),
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The brand's drawing is what the console draws, and the old one is not
+// ---------------------------------------------------------------------------
+
+describe('the biggest drawing is the brand\u2019s five rows, and no box drawing is ever the console\u2019s', () => {
+  it('is five rows of the full block and blanks, fifty-two columns wide with the top row at fifty-one', () => {
+    expect(THE_BIGGEST_DRAWING).toHaveLength(5);
+    expect(ACROSS).toBe(52);
+    expect(widthOf(THE_BIGGEST_DRAWING[0] as Line)).toBe(51);
+    for (const row of THE_ART) {
+      expect(
+        [...row].every((glyph) => glyph === '\u2588' || glyph === ' '),
+        row,
+      ).toBe(true);
+      expect(row, 'a row ends in a blank').toBe(row.replace(/ +$/, ''));
+    }
+  });
+
+  it('draws no double-line corner or bar at any width or height, the old drawing\u2019s glyphs', () => {
+    // BOX DRAWINGS DOUBLE HORIZONTAL to DOUBLE UP AND LEFT, U+2550 to U+255D: the old drawing's
+    // outline. Walked over a grid of windows with every demand a page could make of a form, and
+    // the demand that is none, so a drawing put back anywhere on the ladder is found.
+    for (const needs of [() => 0, () => 1000]) {
+      for (let columns = 0; columns <= 200; columns += 1) {
+        for (const rows of [0, 20, 39, 60, 200]) {
+          for (const line of bannerFor({ columns, rows, needs })) {
+            const glyphs = [...renderPlain(line)];
+            expect(
+              glyphs.some((glyph) => {
+                const point = glyph.codePointAt(0) as number;
+                return point >= 0x2550 && point <= 0x255d;
+              }),
+              `${columns}x${rows}: ${renderPlain(line)}`,
+            ).toBe(false);
+          }
+        }
+      }
+    }
   });
 });

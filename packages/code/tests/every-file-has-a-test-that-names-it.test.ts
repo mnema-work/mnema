@@ -430,10 +430,6 @@ const UNWITNESSED: Readonly<Record<string, Debt>> = {
     reached: 'nobody imports it',
     why: 'The mutates/reads declaration pair: its one test borrows the RecordEffect type and then reads the MCP sources as bytes, asserting each tool spells the import rather than calling either function.',
   },
-  'packages/code/src/repl/region.ts': {
-    reached: 'nobody imports it',
-    why: "The console's layout: the two in-process renders that load it assert floor.ts's words and console.ts's fold width, while its caret and rules are measured only against dist in a pty.",
-  },
   'packages/code/src/wiring/accountability.ts': {
     reached: 'nobody imports it',
     why: "Registration and the one-level author summary; cli-e2e only scrapes this verb's output for a short anchor to prove identity forms, and never reads the counts it prints.",
@@ -704,7 +700,7 @@ const THE_SHAPE_OF_WHAT_IS_LEFT: Readonly<Record<string, number>> = {
   completion: 4,
   commands: 2,
   barrels: 3,
-  scattered: 10,
+  scattered: 9,
 };
 
 /** Which group of the shape above a debt row belongs to. One reading, so nothing falls in two. */
@@ -995,6 +991,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/src/every-refusal-is-red.test.ts': 8,
   'packages/code/src/file-behind-a-path.test.ts': 6,
   'packages/code/src/git-log.test.ts': 7,
+  'packages/code/src/host-names.test.ts': 5,
   'packages/code/src/key-file.test.ts': 2,
   'packages/code/src/linked-worktree.test.ts': 7,
   'packages/code/src/machine-state.test.ts': 6,
@@ -1091,6 +1088,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-line-this-mnema-cannot-read-is-said-first-and-the-rest-is-served.test.ts': 7,
   'packages/code/tests/a-link-can-be-retracted.test.ts': 12,
   'packages/code/tests/a-link-stays-inside-the-project.test.ts': 18,
+  'packages/code/tests/a-linked-local-anchor-is-said-by-every-read-and-refused-by-verify.test.ts': 8,
   'packages/code/tests/a-linked-worktree-is-told-where-the-record-is.test.ts': 11,
   'packages/code/tests/a-long-text-comes-from-one-place.test.ts': 8,
   'packages/code/tests/a-lost-tail-is-not-called-an-idle-agent.test.ts': 13,
@@ -1124,6 +1122,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-recorded-decision-says-when-to-accept.test.ts': 14,
   'packages/code/tests/a-refresh-landing-in-a-project-signs-as-the-agent.test.ts': 10,
   'packages/code/tests/a-refusal-is-one-line.test.ts': 7,
+  'packages/code/tests/a-refusal-leaves-both-trees-as-they-were.test.ts': 13,
   'packages/code/tests/a-refusal-leaves-nothing.test.ts': 14,
   'packages/code/tests/a-refused-group-flag-leaves-the-record.test.ts': 7,
   'packages/code/tests/a-relinked-tail-passes-since.test.ts': 8,
@@ -1162,7 +1161,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-tool-answers-without-indentation.test.ts': 11,
   'packages/code/tests/a-tool-description-moves-the-four-weights.test.ts': 8,
   'packages/code/tests/a-verb-that-went-under-a-noun-is-not-a-verb-any-more.test.ts': 3,
-  'packages/code/tests/a-write-is-refused-while-an-entry-is-altered.test.ts': 16,
+  'packages/code/tests/a-write-is-refused-while-an-entry-is-altered.test.ts': 17,
   'packages/code/tests/a-write-killed-at-any-point-is-signed-by-the-next.test.ts': 7,
   'packages/code/tests/a-write-no-rule-can-meet-starts-no-mnema.test.ts': 12,
   'packages/code/tests/a-write-routed-to-another-project-signs-as-the-agent.test.ts': 15,
@@ -1178,6 +1177,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/an-agent-key-signs-for-its-host.test.ts': 19,
   'packages/code/tests/an-agent-name-nobody-announced-says-so.test.ts': 14,
   'packages/code/tests/an-agent-request-says-the-kind-of-key-it-refuses-and-where-a-file-key-goes.test.ts': 7,
+  'packages/code/tests/an-agents-accept-rests-on-the-persons-words.test.ts': 16,
   'packages/code/tests/an-altered-entry-is-said-first-and-never-served.test.ts': 7,
   'packages/code/tests/an-altered-entry-leads-the-hooks-and-stops-the-edit-gate.test.ts': 9,
   'packages/code/tests/an-answer-says-the-path-of-a-project.test.ts': 11,
@@ -1407,10 +1407,11 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-cursor-editor-rises-only-with-a-capture.test.ts': 4,
   'packages/code/tests/the-difference-between-two-lists.test.ts': 2,
   'packages/code/tests/the-disk-probe-says-what-it-measured.test.ts': 7,
+  'packages/code/tests/the-doctor-relinks-over-the-destination-only.test.ts': 8,
   'packages/code/tests/the-document-is-a-function-of-the-record.test.ts': 6,
   'packages/code/tests/the-echo-names-the-record.test.ts': 13,
   'packages/code/tests/the-editor-and-the-record-page-wear-the-new-brand.test.ts': 8,
-  'packages/code/tests/the-evidence-page-cites-what-exists.test.ts': 4,
+  'packages/code/tests/the-evidence-page-cites-what-exists.test.ts': 5,
   'packages/code/tests/the-example-is-read-from-the-page.test.ts': 6,
   'packages/code/tests/the-example-is-type-checked.test.ts': 7,
   'packages/code/tests/the-example-rules-run.test.ts': 9,
@@ -1426,7 +1427,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-first-write-is-held-once.test.ts': 12,
   'packages/code/tests/the-flags-reach-the-import.test.ts': 8,
   'packages/code/tests/the-floor-is-the-declaration.test.ts': 7,
-  'packages/code/tests/the-floor-is-where-the-name-is-drawn.test.ts': 25,
+  'packages/code/tests/the-floor-is-where-the-name-is-drawn.test.ts': 28,
   'packages/code/tests/the-format-lists-what-a-writer-leaves-at-the-root.test.ts': 7,
   'packages/code/tests/the-front-page-is-drawn-from-the-console.test.ts': 8,
   'packages/code/tests/the-front-page-pitch-holds-no-date-and-no-count.test.ts': 4,
@@ -1448,6 +1449,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-hooks-that-answer-in-json-say-every-refusal.test.ts': 12,
   'packages/code/tests/the-host-contract-checks-have-stable-names.test.ts': 3,
   'packages/code/tests/the-host-files-are-generated.test.ts': 5,
+  'packages/code/tests/the-host-words-page-is-generated.test.ts': 5,
   'packages/code/tests/the-hosts-table-shows-the-vendors-own-logos.test.ts': 4,
   'packages/code/tests/the-hot-path-keeps-its-budget.test.ts': 6,
   'packages/code/tests/the-init-asks-which-host-files-to-write.test.ts': 16,
@@ -1465,7 +1467,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-install-line-of-a-host-is-what-its-section-says.test.ts': 4,
   'packages/code/tests/the-instructions-block-is-formatted-and-its-example-runs.test.ts': 9,
   'packages/code/tests/the-instructions-block-survives-a-formatter.test.ts': 6,
-  'packages/code/tests/the-instructions-block.test.ts': 8,
+  'packages/code/tests/the-instructions-block.test.ts': 9,
   'packages/code/tests/the-instructions-left-out-are-said.test.ts': 7,
   'packages/code/tests/the-instructions-verb-says-each-file.test.ts': 7,
   'packages/code/tests/the-issues-a-workflow-opens-carry-labels.test.ts': 4,
@@ -1524,6 +1526,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-record-asks-for-a-person.test.ts': 15,
   'packages/code/tests/the-record-is-kept-between-reads.test.ts': 7,
   'packages/code/tests/the-record-is-opened-and-closed-together.test.ts': 5,
+  'packages/code/tests/the-record-is-published-only-where-it-is-named.test.ts': 11,
   'packages/code/tests/the-record-keeps-an-editorconfig.test.ts': 6,
   'packages/code/tests/the-record-may-have-moved.test.ts': 11,
   'packages/code/tests/the-record-meets-the-git-log.test.ts': 13,
@@ -1533,16 +1536,19 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-record-reaches-git-through-a-pull-request.test.ts': 10,
   'packages/code/tests/the-record-travels.test.ts': 14,
   'packages/code/tests/the-record-you-can-see.test.ts': 18,
+  'packages/code/tests/the-recordings-are-a-pair-for-the-two-pages.test.ts': 6,
   'packages/code/tests/the-recordings-are-what-the-binary-draws.test.ts': 14,
   'packages/code/tests/the-red-says-why-it-went-red.test.ts': 7,
   'packages/code/tests/the-reference-pages-are-generated.test.ts': 8,
   'packages/code/tests/the-refusal-names-only-what-it-checked.test.ts': 12,
   'packages/code/tests/the-refusal-names-the-way-out.test.ts': 15,
+  'packages/code/tests/the-refusal-of-a-write-says-the-limit-of-the-cache-it-asks.test.ts': 8,
   'packages/code/tests/the-refusal-of-an-unenrolled-agent-says-why-the-persons-key-cannot-sign.test.ts': 11,
   'packages/code/tests/the-refused-run-is-refused-everywhere.test.ts': 13,
   'packages/code/tests/the-registry-entry-is-what-the-package-says.test.ts': 5,
   'packages/code/tests/the-release-prepare-writes-every-number.test.ts': 7,
   'packages/code/tests/the-release-workflow-publishes-without-a-token.test.ts': 4,
+  'packages/code/tests/the-renderer-writes-no-accent.test.ts': 3,
   'packages/code/tests/the-replaced-decision-is-named-where-it-is-read.test.ts': 17,
   'packages/code/tests/the-repository-says-where-it-lives.test.ts': 5,
   'packages/code/tests/the-rule-has-an-address.test.ts': 11,
@@ -1570,9 +1576,10 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-shell-knows-the-verbs.test.ts': 17,
   'packages/code/tests/the-short-line-of-a-tree.test.ts': 3,
   'packages/code/tests/the-star-is-suggested-once.test.ts': 8,
+  'packages/code/tests/the-status-paragraphs-fold.test.ts': 8,
   'packages/code/tests/the-strict-gate-catches-the-forgery.test.ts': 7,
   'packages/code/tests/the-suite-is-split-whole.test.ts': 4,
-  'packages/code/tests/the-switch-is-a-fact.test.ts': 29,
+  'packages/code/tests/the-switch-is-a-fact.test.ts': 30,
   'packages/code/tests/the-switch-pages-are-generated.test.ts': 5,
   'packages/code/tests/the-three-cache-states-answer-alike.test.ts': 8,
   'packages/code/tests/the-three-doors-are-one.test.ts': 31,
@@ -1886,6 +1893,7 @@ const PRODUCTION_FILES: readonly string[] = [
   'packages/chain/src/version.ts',
   'packages/code/src/a-new-identity.ts',
   'packages/code/src/a-write-over-an-altered-entry.ts',
+  'packages/code/src/agent-accept-words.ts',
   'packages/code/src/agent-accepts.ts',
   'packages/code/src/agent-skill.ts',
   'packages/code/src/an-altered-entry-stops-a-write.ts',
@@ -1942,6 +1950,7 @@ const PRODUCTION_FILES: readonly string[] = [
   'packages/code/src/commands/recall.ts',
   'packages/code/src/commands/record-commit.ts',
   'packages/code/src/commands/record-merge-tail.ts',
+  'packages/code/src/commands/record-publish.ts',
   'packages/code/src/commands/record-pull.ts',
   'packages/code/src/commands/references.ts',
   'packages/code/src/commands/report.ts',
@@ -2014,6 +2023,7 @@ const PRODUCTION_FILES: readonly string[] = [
   'packages/code/src/host-memory.ts',
   'packages/code/src/host-names.ts',
   'packages/code/src/host-rules-file.ts',
+  'packages/code/src/host-words.ts',
   'packages/code/src/inherited-record.ts',
   'packages/code/src/init/accepts.ts',
   'packages/code/src/init/detect.ts',
@@ -2468,8 +2478,9 @@ describe('every file has a test that names it', () => {
     // 79 once the status printer's test imports it.
     // 80 with the record group's wiring, which a-tail-merges-and-pulls.test.ts drives through the binary.
     // 81 with the upgrade verb's wiring, which after-update.test.ts drives through the program.
-    expect(found.size).toBe(81);
-    expect(byReach('nobody imports it')).toBe(81);
+    // 80 once the console's layout is imported by the test that reads what it builds for the list.
+    expect(found.size).toBe(80);
+    expect(byReach('nobody imports it')).toBe(80);
     expect(byReach('imported, and no assertion observes it')).toBe(0);
   });
 
@@ -2491,7 +2502,7 @@ describe('every file has a test that names it', () => {
     // Announced in the header and, until now, kept by hand. A shared excuse is how a table
     // like this turns into a rubber stamp, and a row drained to a stub is how it starts.
     const reasons = Object.values(UNWITNESSED).map((one) => one.why);
-    expect(reasons).toHaveLength(81);
+    expect(reasons).toHaveLength(80);
     expect(new Set(reasons).size).toBe(reasons.length);
     // The shortest reason standing is 156 characters; the floor is under it and well over
     // anything that could be written without saying what reaches that file.

@@ -26,7 +26,7 @@
 #
 #   asciinema rec --overwrite -q --cols 96 --rows 34 \
 #     -c "bash recordings/a-tamper-caught.sh $PWD/packages/code/dist/bundle/cli.js" recordings/a-tamper-caught.cast
-#   agg --theme github-dark --font-size 16 recordings/a-tamper-caught.cast recordings/a-tamper-caught.gif
+#   node .github/the-recordings/render.mjs recordings/a-tamper-caught.cast
 #
 # HOW IT IS HELD TO THE BINARY: packages/code/tests/the-recordings-are-what-the-binary-draws.test.ts
 # runs this same script with PACE=0 and compares what it prints with the text of the committed .cast.
@@ -47,7 +47,10 @@ mkdir -p "$H/your-repository"
 cd "$H/your-repository"
 git init -q .
 
-mnema() { env -u MNEMA_HOME -u MNEMA_RUN HOME="$H" NO_COLOR=1 node "$CLI" "$@"; }
+# stdin is /dev/null: under `asciinema` the script's stdin is a terminal, and at a terminal a write
+# marks the rule it showed (the private tree), so the second `verify` printed a `private:` verdict
+# line that the test, which runs this script with no terminal, never sees.
+mnema() { env -u MNEMA_HOME -u MNEMA_RUN HOME="$H" NO_COLOR=1 node "$CLI" "$@" </dev/null; }
 tilde() { sed "s|$H|~|g"; }
 folded() { fold -s -w 94; }
 # A tail's name is a 64-digit hash, a dash and 32 more digits: it is shown as its first eight.
@@ -77,12 +80,12 @@ mnema init --all-hosts >/dev/null
 typed 'mnema decision record "Keep money as integer cents" \' \
   '"Float sums drift; cents are exact."'
 OUT=$(mnema decision record "Keep money as integer cents" "Float sums drift; cents are exact.")
-echo "$OUT" | tilde
+echo "$OUT" | tilde | folded
 ID=$(grep -m1 -oE '[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}' <<<"$OUT")
 pause 1.2
 
 typed "mnema decision move accept $ID --note \"Agreed in review.\""
-mnema decision move accept "$ID" --note "Agreed in review." | tilde
+mnema decision move accept "$ID" --note "Agreed in review." | tilde | folded
 pause 1.2
 
 say "the record checks out"

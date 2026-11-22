@@ -80,20 +80,19 @@
  *   - `pick`: the mark on the row a caller CHOSE in the console's list of words
  *     (`repl/palette.ts`). It is the second part that is chrome rather than a fact, and it
  *     joined for the reason `prompt` did: it says *this is the row you are on* and nothing
- *     about the record, so it takes the accent and no weight. The COLUMN is what carries
+ *     about the record, so it takes the product's weight (bold) and no hue. The COLUMN is what carries
  *     the answer (a glyph in the text of the row, padded on every other row, so a reader
- *     in a pipe or on a monochrome terminal still knows which row it is) and the hue is a
+ *     in a pipe or on a monochrome terminal still knows which row it is) and the weight is a
  *     second axis over it rather than the carrier. That is why it is a role at all: a
  *     drawing that painted the row itself would need the layout to know WHICH row is
  *     picked, which is a second model of the pick beside the one that decides it.
  *   - `word`: a word a caller could TYPE, in the console's list of what can be typed
  *     (`repl/palette.ts`). It joined for `pick`'s reason and not for one of its own: the
  *     list of words says nothing about the record (it is the product's own vocabulary
- *     offered back), so a part of it may take the accent without hue meaning a second
- *     thing. What it buys is the row's SUBJECT: a word and what it does, both at the
+ *     offered back), so it is a role of its own. It takes neither a hue nor a weight now (it was the accent, and the
+ *     accent is gone). What it was bought for is the row's SUBJECT: a word and what it does, both at the
  *     weight of a `field`, is two columns competing, and it is the word a reader is
- *     choosing between. The description beside it stays a bare field for exactly that
- *     reason; paint both and neither is the subject.
+ *     choosing between. The description beside it stays a bare field; the row is dimmed whole by the layout.
  *   - `subject`: one part of {@link subjectLine}, which reads as a heading rather
  *     than as the columns of a table.
  *   - `clause`: one clause of a verdict that arrives in SEVERAL, after the first. The

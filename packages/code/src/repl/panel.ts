@@ -25,7 +25,7 @@
  * border, one was the blank row the stacked arrangement needed and the rest was the same
  * content stacked instead of beside. What is left is NINE, which was the height of the drawing
  * of the name at that measurement, so the chrome costs the mark and nothing else. The drawing
- * is six rows now (`presentation/banner.ts`) and the sentence is unchanged: what the chrome
+ * is five rows now (`presentation/banner.ts`; it was nine, then six) and the sentence is unchanged: what the chrome
  * costs is the mark, whatever the mark is.
  *
  * THE RIGHT-HAND SIDE HELD TWO SECTIONS AND HOLDS ONE. The second was `Hints`, and what

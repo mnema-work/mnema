@@ -126,8 +126,8 @@ export function asScope(text: string): Column {
  *
  * IT IS THE COLUMN THAT MAKES IT WORK AND THE HUE THAT MAKES IT QUICK, in that order. The
  * glyph is in the text of the row, so a reader in a pipe, on a monochrome terminal or with
- * the paint switched off reads which row it is off the same bytes; the accent the renderer
- * gives this role (`styled.ts`) is a second axis over that and carries nothing of its own. A
+ * the paint switched off reads which row it is off the same bytes; the weight the renderer
+ * gives this role (`styled.ts`, bold) is a second axis over that and carries nothing of its own. A
  * marker that painted the row instead would be a mark half those readers cannot see.
  *
  * It takes the text the call site composed, the glyph PADDED to the width of the column,
@@ -145,12 +145,12 @@ export function asPick(text: string): Column {
  * IT IS THE SUBJECT OF ITS ROW, which is the whole of what the marker buys. A row of that
  * list is a word and a sentence saying what the word does, and at one weight the two compete:
  * the eye lands in the middle of a table rather than on the thing being chosen between. The
- * accent the renderer gives this role (`styled.ts`) is what puts it back, and the description
- * beside it deliberately keeps none: two painted columns is one painted column twice over.
+ * list is dimmed whole by the layout and this role adds neither a hue nor a weight: the word is
+ * a subject only by subtraction, what the description beside it is dimmed to.
  *
- * WHAT IT IS NOT is a hue that says anything. Strip the escapes and the row is the same row,
- * with the same word in the same column; a reader in a pipe, on a monochrome terminal or with
- * the paint switched off loses a tint and no information, which is the rule every hue on this
+ * WHAT IT IS NOT is a hue, and it is no longer a tint either: it was the accent, and the accent is
+ * gone with the colour of the mark. Strip the escapes and the row is the same row, with the
+ * same word in the same column, which is the rule every paint on this
  * surface is spent under.
  *
  * It takes the text the call site composed, the word PADDED to the width of the column, for

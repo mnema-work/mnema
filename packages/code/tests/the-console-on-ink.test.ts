@@ -134,7 +134,7 @@ const CTRL_D = ENDS_THE_INPUT;
  * How tall the terminal every case here drives is: THE FLOOR'S OWN HEIGHT.
  *
  * IT WAS FORTY, which had room to spare while the shortest window this console drew a page on
- * was twenty-four rows. The floor is forty-two now: the height the name is drawn whole at,
+ * was twenty-four rows. The floor is thirty-nine now: the height the name is drawn whole at,
  * worked out from the drawing rather than written down (`src/repl/floor.ts`). So forty is under
  * it, and a case that opened there would be driving
  * the screen that says the window is too small. Read off the product rather than retyped, so

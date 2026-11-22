@@ -14,8 +14,8 @@
  * SO IT IS A LINE WITH PARTS, like everything else, and the three consequences are the
  * whole argument for the shape:
  *
- *   - IT CAN BE PAINTED. The prompt takes the accent (the hue this product is marked by,
- *     the one its rules are drawn in) and what the caller typed takes a weight of its
+ *   - IT CAN BE PAINTED. The prompt takes the product's weight (bold, with no hue: the mark
+ *     has no colour in the terminal) and what the caller typed takes a weight of its
  *     own. That is `styled.ts`'s table, not this file's: nothing here knows a colour.
  *   - A CALLER WHO ASKED FOR NO COLOUR GETS NONE, for free and by construction. Which
  *     renderer answers is resolved once, at the entry, out of the flag and the two
@@ -49,7 +49,7 @@
  * row a caller is writing is a break the terminal was going to make at the margin anyway
  * (`repl/console.ts`, `renderTyped`). So the same two parts are composed here for both (the
  * roll keeps one once the line has been sent, and the other is under the caller's fingers)
- * and the prompt carries the same accent in both places, which is what a caller asked for after
+ * and the prompt carries the same weight in both places, which is what a caller asked for after
  * seeing it in one of them.
  */
 
@@ -89,12 +89,12 @@ export const SENT_MARK = '❯ ';
  * A command that has been SENT, as the roll keeps it: the mark, then the words.
  *
  * IT IS NOT {@link echoLine}, AND THE TWO ARE ON THE PAGE AT ONCE. The echo is the row being
- * TYPED: the product's prompt, in the product's hue, under the caller's fingers. Once the row
+ * TYPED: the product's prompt, in bold, under the caller's fingers. Once the row
  * is sent it is something the session shows back, and in a terminal that paints it is a band
  * across the page: what a reader scrolling a long session looks for is where each of their
- * questions began, and a band is what the eye finds. The purple stays on the row being typed,
- * on the rules and on the top (the places that say *this is mnema*) and a sent command
- * carries none of it (`styled.ts`).
+ * questions began, and a band is what the eye finds. The bold stays on the prompt of the row being typed
+ * (the one place the product's own mark is written on the roll) and a sent command carries none
+ * of it (`styled.ts`).
  *
  * The words are the caller's own, so they are neutralized like every other part's; a line with
  * NOTHING typed is the mark alone, because a terminal shows what you sent.
@@ -111,8 +111,8 @@ export function sentLine(typed: string): Line {
 
 /**
  * The glyph that opens an answer on the roll, with the space after it. It is NEUTRAL: no hue and
- * no weight, because the purple on this page belongs to the places that say *this is mnema* and
- * an answer is not one of them. One column, measured by the authority over columns (`width.ts`).
+ * no weight, because the one weight the product's mark takes on this page belongs to the prompt and
+ * an answer is not one. One column, measured by the authority over columns (`width.ts`).
  */
 export const ANSWER_MARK = '● ';
 

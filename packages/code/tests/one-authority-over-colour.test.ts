@@ -106,14 +106,15 @@ const A_VERB = 'search';
 const RUN = '\u2500';
 
 /**
- * THE ACCENT AS BYTES: SGR 35, which is what the layout's word `magenta` becomes.
- *
- * Spelled here as the escape rather than the word, because what these cases read is a
- * stream: the two spellings of the one accent are held together on the bytes of a frame by
- * `the-page-shows-its-seams.test.ts`, and this reads the end of that link the library
- * writes.
+ * THE WITNESS THAT COLOUR IS ON: the weight the product writes on the prompt of the row being
+ * typed, SGR 1. IT WAS THE ACCENT (SGR 35, the layout's word `magenta` as bytes), and the
+ * premise that fell with it is that the rules and the mark are painted: the brand carries no
+ * colour in the terminal, so the page's edges are bare in every session and could no longer say
+ * whether the channel was on. The prompt is a line the product composes and renders
+ * (`presentation/echo.ts`), which is what the rule under test governs, and it is bold exactly
+ * where the caller allows paint.
  */
-const ACCENT = '\u001b[35m';
+const BOLD_PROMPT = `\u001b[1m${PROMPT}`;
 
 /** Every style sequence in some bytes, in the order they appear. */
 function sgrOf(text: string): string[] {
@@ -230,13 +231,37 @@ describe('a caller who asked for no colour gets none of it, anywhere on the page
     expect(ran.bytes, 'the page has no edges left').toContain(RUN);
 
     // NOT VACUOUS: the same session, same size, same steps, with nothing asking for quiet,
-    // and the LIBRARY's own accent is in it. That sequence is the one this delivery
-    // silenced, so its presence here is what makes the zero above a measurement.
+    // and the prompt is bold in it, so the zero above is a measurement of a channel that was on.
     const loud = await inPty(A_SESSION);
     expect(sgrOf(loud.bytes).length, 'nothing is painted even with colour on').toBeGreaterThan(0);
-    expect(loud.bytes, 'the layout painted nothing of its own even with colour on').toContain(
-      ACCENT,
-    );
+    expect(loud.bytes, 'the prompt was not bold even with colour on').toContain(BOLD_PROMPT);
+  }, 300_000);
+
+  it('writes no hue but the three severities and the greys, on a real frame with colour on', async () => {
+    // THE BRAND CARRIES NO COLOUR IN THE TERMINAL, asked of the bytes of a real session on a
+    // pseudo-terminal rather than of the renderer: the opening page, the rules, the prompt and the
+    // answer to a verb. What may be on the wire is weight (1, 2, 22), the three severities (31,
+    // 32, 33, closed by 39) and the sent command's band and its two greys (48;5;238, 38;5;246,
+    // 38;5;253, closed by 49); SGR 35, and any other hue, is the old accent coming back.
+    const loud = await inPty(A_SESSION);
+    const written = new Set(sgrOf(loud.bytes).map((sequence) => sequence.slice(2, -1)));
+    expect(written.size, 'the session wrote no style sequence at all').toBeGreaterThan(2);
+    const allowed = new Set([
+      '1',
+      '2',
+      '22',
+      '31',
+      '32',
+      '33',
+      '39',
+      '48;5;238',
+      '38;5;246',
+      '38;5;253',
+      '49',
+    ]);
+    const strangers = [...written].filter((code) => !allowed.has(code));
+    expect(strangers, `the page writes a hue nobody allowed: ${strangers.join(' ')}`).toEqual([]);
+    expect(written.has('35'), 'the accent is back on the page').toBe(false);
   }, 300_000);
 
   it('answers `--color=never` the same way, against a variable saying the opposite', async () => {
@@ -250,10 +275,10 @@ describe('a caller who asked for no colour gets none of it, anywhere on the page
     expect(left.length, `the flag was ignored: ${[...new Set(left)].join(' ')}`).toBe(0);
     expect(ran.bytes, 'the session never answered the verb').toContain('record(s)');
 
-    // NOT VACUOUS: the same environment WITHOUT the flag paints, and the accent in it is
-    // the library's, so what the flag turned off was the library and not the fixture.
+    // NOT VACUOUS: the same environment WITHOUT the flag paints, so what the flag turned off was
+    // the product's own weight and not the fixture.
     const loud = await inPty({ ...A_SESSION, environment: asked });
-    expect(loud.bytes, 'the variable alone paints nothing').toContain(ACCENT);
+    expect(loud.bytes, 'the variable alone paints nothing').toContain(BOLD_PROMPT);
   }, 300_000);
 
   it('takes a `dumb` terminal at its word, on the whole page and on both halves', async () => {
@@ -281,8 +306,8 @@ describe('a caller who asked for no colour gets none of it, anywhere on the page
     // It is also the non-vacuity of the zero above: the same fixture, one flag apart.
     const asked = await inPty({ ...A_SESSION, environment: dumb, asked: '--color=always' });
     expect(sgrOf(asked.bytes).length, 'the flag lost to the terminal').toBeGreaterThan(0);
-    expect(asked.bytes, 'the chrome stayed bare where the caller asked for colour').toContain(
-      ACCENT,
+    expect(asked.bytes, 'the prompt stayed bare where the caller asked for colour').toContain(
+      BOLD_PROMPT,
     );
   }, 300_000);
 });
@@ -291,8 +316,8 @@ describe('a caller who asked for no colour gets none of it, anywhere on the page
 // The loud direction, in a pipe
 // ---------------------------------------------------------------------------
 
-describe('a caller who asked for colour gets it on the chrome too, not only on the lines', () => {
-  it('paints the page’s own edges where the library would have painted nothing', async () => {
+describe('a caller who asked for colour gets it on the lines the product composes', () => {
+  it('paints the product’s own lines where the library would have painted nothing', async () => {
     // THE PREMISE, ASSERTED RATHER THAN ASSUMED: this process's output is not a terminal
     // and the library's channel is silent, which is the state in which that library paints
     // nothing. A case that ran with either of those false would be reading a fixture.
@@ -320,7 +345,16 @@ describe('a caller who asked for colour gets it on the chrome too, not only on t
     const rows = withoutLayout(terminal.bytes()).split('\n');
     const rules = rows.filter(isRule);
     expect(rules.length, 'the page drew no edge at all').toBeGreaterThan(0);
-    expect(rules[0], 'the chrome is unpainted where the caller asked for colour').toContain(ACCENT);
+    // THE EDGES CARRY NO HUE, which is the brand's whole colour in a terminal: bare, with colour
+    // asked for as much as without. What this case reads instead is the line the product composes.
+    expect(
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: the escape IS the subject.
+      /\u001b\[(?:3[0-7]|9[0-7])m/.test(rules[0] as string),
+      'a rule carries a hue',
+    ).toBe(false);
+    expect(terminal.bytes(), 'the prompt is unpainted where the caller asked for colour').toContain(
+      BOLD_PROMPT,
+    );
     // AND THE DECISION IS WHAT SAID SO: after a session that paints, the channel carries the
     // product's answer. It is the link between the page above and the module below.
     expect(process.env[WHAT_THE_LIBRARY_READS]).toBe(PAINTS);

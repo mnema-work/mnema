@@ -32,18 +32,19 @@
  *
  *     asciinema rec --overwrite -q --cols 96 --rows 34 \
  *       -c "bash recordings/first-record.sh $PWD/packages/code/dist/bundle/cli.js" recordings/first-record.cast
- *     agg --theme github-dark --font-size 16 recordings/first-record.cast recordings/first-record.gif
+ *     node .github/the-recordings/render.mjs recordings/first-record.cast
  *
  *     (and so for each command-line script, whose own header names the line that makes it)
  *
  *     RECORDING=console npx vitest run packages/code/tests/the-recordings-are-what-the-binary-draws.test.ts
- *     agg --theme github-dark --font-size 16 recordings/console.cast recordings/console.gif
+ *     node .github/the-recordings/render.mjs recordings/console.cast
  *
  * WHAT A RECORDING SHOWS THAT THE BINARY DID NOT WRITE, each said here:
  *   - the sandbox's home is spelled `~` (by the script for the command line, and by
  *     {@link spelledFromHome} for the console), so a path reads as it would on a reader's own
  *     machine; a case below holds that the respelling changes nothing on any page but that path;
- *   - `verify`'s lines are folded at a space by the command-line script, to fit 96 columns;
+ *   - every line the binary prints is folded at a space by the command-line script, to fit the
+ *     recording's 96 columns: a terminal would otherwise cut a long line in the middle of a word;
  *   - the console's recording opens on `$ mnema` typed at a shell, which is what a person types
  *     to reach it and which the pseudo-terminal's runner does not echo;
  *   - a line feed is written as the carriage return and line feed a terminal with `onlcr` hands its
@@ -54,8 +55,9 @@
  *     the pace is the script's.
  *
  * WHAT IT DOES NOT CHECK:
- *   - the GIFs. `agg` renders each from its cast and the suite has no `agg` to run; what ties a GIF
- *     to its cast is that one command makes both, and a reviewer sees both change in one diff;
+ *   - the GIFs. `agg` renders each cast twice (`-dark` and `-light`, by `.github/the-recordings/render.mjs`)
+ *     and the suite has no `agg` to run; what ties a GIF to its cast is that one command makes both
+ *     of the pair, and a reviewer sees them change in one diff;
  *   - a frame the console drew and replaced inside one step: a step is held by the page it
  *     LEAVES;
  *   - the times in a cast, beyond that they move forward.
@@ -87,12 +89,12 @@ const THE_WAY_BACK = {
   cli: (name: string): string =>
     `recordings/${name}.cast no longer shows what the binary prints. Make it again: ` +
     `asciinema rec --overwrite -q --cols 96 --rows 34 -c "bash recordings/${name}.sh ` +
-    `$PWD/packages/code/dist/bundle/cli.js" recordings/${name}.cast, then agg --theme github-dark --font-size 16 ` +
-    `recordings/${name}.cast recordings/${name}.gif`,
+    `$PWD/packages/code/dist/bundle/cli.js" recordings/${name}.cast, then ` +
+    `node .github/the-recordings/render.mjs recordings/${name}.cast`,
   console:
     'recordings/console.cast no longer shows what the console draws. Make it again: ' +
     'RECORDING=console npx vitest run packages/code/tests/the-recordings-are-what-the-binary-draws.test.ts, ' +
-    'then agg --theme github-dark --font-size 16 recordings/console.cast recordings/console.gif',
+    'then node .github/the-recordings/render.mjs recordings/console.cast',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -269,6 +271,26 @@ for (const recording of COMMAND_LINE_RECORDINGS) {
 
     it('prints today, line for line, what the committed cast shows', () => {
       expect(shown, THE_WAY_BACK.cli(recording.name)).toEqual(today);
+    });
+
+    it('breaks no line of the product mid-word: every line fits the width the cast was made at', () => {
+      // THE RECORDING IS 96 COLUMNS WIDE AND THE PRODUCT'S LONGEST LINES ARE WIDER (a key's path, a
+      // line of the opening), so the script folds every line the binary prints at a space and the
+      // terminal never cuts one. Asked of the text the script prints, the text the case above
+      // already holds to the cast.
+      const width = cast.header.width;
+      for (const line of today) {
+        expect(
+          [...line].length,
+          `a line of ${recording.name} is wider than its ${width} columns: ${line}`,
+        ).toBeLessThanOrEqual(width);
+        // A LINE OF THE FULL WIDTH THAT IS ONE WORD is a line somebody cut: a fold at a space
+        // leaves the word it could not split on a line of its own, shorter than the width.
+        expect(
+          [...line].length === width && !line.includes(' '),
+          `a line of ${recording.name} is one word as wide as the recording: ${line}`,
+        ).toBe(false);
+      }
     });
 
     it('reads the commands the script types, and a cast made at the size its header names', () => {
@@ -628,7 +650,7 @@ describe('the console recording', () => {
   });
 
   it('keeps the floor: the console is recorded at a size it opens at', () => {
-    // The console draws nothing but the size it lacks under 80 by 42 (`src/repl/floor.ts`), and a
+    // The console draws nothing but the size it lacks under the floor, `THE_FLOOR` (`src/repl/floor.ts`), and a
     // recording made under it would be a recording of that screen.
     expect(columns).toBeGreaterThanOrEqual(80);
     expect(rows).toBeGreaterThanOrEqual(42);

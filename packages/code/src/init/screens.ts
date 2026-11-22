@@ -11,7 +11,7 @@
  * THE LINES RUN DOWN A GUIDE, as a trail does: a `◆` marks the step being asked, a `◇` one that is
  * answered, and a `│` runs between them. Every row ends in text, so no sentence depends on the colour: the
  * picked row has the product's own pointer (`repl/palette.ts`), a box says `[x]` or `[ ]`, and a step is
- * named in words. The one accent is the product's (`pick`), the bold is the question, and the dim is
+ * named in words. The bold is the product's (`pick`, the mark) and the question, and the dim is
  * what a reader scans past (a path's state, a hint): `the-init-draws-its-frames.test.ts` counts
  * the sequences for every way a caller can ask for none.
  *
@@ -50,7 +50,7 @@ const BETWEEN_CLAUSES = ' · ';
 
 export const plain = (text: string): Part => ({ role: 'field', text });
 export const dim = (text: string): Part => ({ role: 'id', text });
-export const accent = (text: string): Part => ({ role: 'pick', text });
+export const marked = (text: string): Part => ({ role: 'pick', text });
 export const bold = (text: string): Part => ({ role: 'label', text });
 
 /** A line of the trail: the guide, then the parts, one separator apart. */
@@ -62,16 +62,16 @@ export const trail = (...parts: readonly Part[]): Line => ({
 /** The guide alone: the breath between two parts of the trail. */
 export const theGuide: Line = { indent: 0, parts: [plain(GUIDE)] };
 
-/** A step being asked: its mark in the accent, and the question in bold. */
+/** A step being asked: its mark in bold, and the question in bold. */
 export const step = (mark: string, words: string): Line => ({
   indent: 0,
-  parts: [accent(mark), bold(`  ${words}`)],
+  parts: [marked(mark), bold(`  ${words}`)],
 });
 
 /** A step that is answered, or a heading of what was found: the mark, and plain words. */
 export const heading = (mark: string, words: string): Line => ({
   indent: 0,
-  parts: [accent(mark), plain(words)],
+  parts: [marked(mark), plain(words)],
 });
 
 /** A paragraph of plain words under the guide, wrapped to the width. */
@@ -91,7 +91,7 @@ const keysOf = (...clauses: readonly string[]): string => clauses.join(BETWEEN_C
  * renderer that paints does not wrap blank space in the escapes that paint a pointer.
  */
 export function pointerCell(here: boolean, gap: number): Part {
-  return here ? accent(`${' '.repeat(gap + 2)}${PICK}`) : plain(' '.repeat(gap + 1));
+  return here ? marked(`${' '.repeat(gap + 2)}${PICK}`) : plain(' '.repeat(gap + 1));
 }
 
 // ---------------------------------------------------------------------------
@@ -256,7 +256,7 @@ export function hostsPage(
     const checked = state.marks.has(item.word);
     if (item.kind === 'host') {
       const why = around.detected.get(item.row.id);
-      const box = checked ? accent('  [x]') : plain('[ ]');
+      const box = checked ? marked('  [x]') : plain('[ ]');
       const note = why === undefined ? undefined : dim(`detected: ${why}`);
       lines.push(
         ...noted(
@@ -288,7 +288,7 @@ export function hostsPage(
           trail,
           [
             pointerCell(here, 0),
-            checked ? accent('       [x]') : plain('     [ ]'),
+            checked ? marked('       [x]') : plain('     [ ]'),
             plain(item.path as string),
           ],
           peek === undefined ? undefined : dim(stateOfAFile(peek, agentsWritten)),

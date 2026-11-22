@@ -102,6 +102,7 @@ carries the help the command prints, word for word.
 - [mnema record](cli/record.md): pull the record over events not yet committed, commit them for a pull request, and merge its tails for git
   - [mnema record pull](cli/record-pull.md): git pull over tails grown here and not yet committed
   - [mnema record commit](cli/record-commit.md): commit the signed record to a branch for a pull request
+  - [mnema record publish](cli/record-publish.md): push the record branch and open its pull request, to a destination you name
   - [mnema record merge-tail](cli/record-merge-tail.md): the merge driver git runs for a tail's files
 
 ## This machine

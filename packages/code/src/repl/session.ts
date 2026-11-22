@@ -134,7 +134,8 @@ import { type Standing, standing } from './standing.js';
  * the console has to do column arithmetic over to put the caret in the right place.* Both
  * halves were wrong in different ways. Carrying no fact is what makes it CHROME, which is a
  * reason to paint it rather than a reason not to: it is the mark of the product, and it is
- * the one role the accent is spent on (`presentation/styled.ts`). And the arithmetic never
+ * painted in the product's weight (bold; it took an accent until the brand dropped its colour from the
+ * terminal, `presentation/styled.ts`). And the arithmetic never
  * ran over the composed row at all: the console counts the caret's column over this string
  * and over what was typed, the two values it is handed (`repl/console.ts`, `Shown.column`).
  *

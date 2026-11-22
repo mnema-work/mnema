@@ -131,10 +131,12 @@ export function statusReport(
     ...unreadLines(status),
     ...outsideLines(outside),
     ...neverImportedLines(neverImported),
-    ...(notInGit === undefined ? [] : ['', 'Not in git yet:', `  ${saysEventsNotInGit(notInGit)}`]),
+    ...(notInGit === undefined
+      ? []
+      : ['', 'Not in git yet:', render(fact(saysEventsNotInGit(notInGit)))]),
     ...(forkKeptAside === undefined
       ? []
-      : ['', 'Kept aside by a pull:', `  ${saysForkKeptAside(forkKeptAside)}`]),
+      : ['', 'Kept aside by a pull:', render(fact(saysForkKeptAside(forkKeptAside)))]),
   ];
 }
 
@@ -358,7 +360,11 @@ function decisionLines(
     ...(accepted === undefined
       ? []
       : [
-          `  ${accepted.agent} accepted by an agent, ${accepted.undeclared} with no agent declared.`,
+          render(
+            fact(
+              `${accepted.agent} accepted by an agent, ${accepted.undeclared} with no agent declared.`,
+            ),
+          ),
         ]),
     ...status.decisions.map((item) =>
       render(itemLine([asId(item.id), item.adr, oneLine(item.title)])),

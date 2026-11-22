@@ -429,9 +429,6 @@ const HUES = [
   'whiteBright',
 ];
 
-/** The three that MEAN something about the record, and are therefore not chrome's to take. */
-const SEMANTIC = ['red', 'green', 'yellow'];
-
 /** Every `.ts` source of the product, recursively, tests excluded. */
 function sourcesOf(dir: string): string[] {
   const found: string[] = [];
@@ -477,36 +474,6 @@ function titleRow(page: string): string {
   return row as string;
 }
 
-/**
- * THE ACCENT AND THE ESCAPE THAT GIVES THE FOREGROUND BACK, read off the one row on the page
- * that carries nothing but them: a rule of the input area.
- *
- * IT WAS READ OFF THE BOX'S TOP EDGE (`boxLine`, found by the corner), and that worked for
- * a reason the frame's departure took away: a border is nothing but accent, so the first two
- * escapes on that row were the accent and its closer, adjacent. Every row the accent is on now
- * also carries a WEIGHT, because everything the panel paints came through a renderer that
- * emboldens a heading, so the second escape on the row is the bold, and a pair read from there
- * would be `magenta` and `bold` and would match nothing. Measured: two empty runs.
- *
- * A RULE IS WHAT IS LEFT that is drawn and not written (`region.ts`, `rule`), and reading the
- * pair there makes the case STRONGER rather than weaker: what is asserted below is that the
- * panel's chrome is wrapped in the very escapes the input area's rule is wrapped in, which is
- * `one accent` as a link instead of as two readings.
- */
-function theAccent(page: string): readonly [string, string] {
-  const row = withoutLayout(page)
-    .split('\n')
-    .find((line) => {
-      const bare = stripped(line).replace(/ +$/, '');
-      return bare.length > 0 && [...bare].every((glyph) => glyph === RUN);
-    });
-  expect(row, 'no rule of the input area was drawn').toBeDefined();
-  const [accent, closer] = sgrOf(row as string);
-  expect(accent, 'the rule carries no colour at all').toBeDefined();
-  expect(closer, 'the rule never gives the foreground back').toBeDefined();
-  return [accent as string, closer as string];
-}
-
 /** The row of the page holding `what`, with its escapes. */
 function rowHolding(page: string, what: string): string {
   const row = withoutLayout(page)
@@ -516,100 +483,68 @@ function rowHolding(page: string, what: string): string {
   return row as string;
 }
 
-/**
- * Everything the accent WRAPS on one row: each run between an opener and its closer.
- *
- * Asking which characters the accent is around, rather than whether the accent is on the
- * row at all, is the only question worth asking here: what may not happen is the accent around
- * a word of the RECORD, and a row can carry chrome and a fact at once; the title's row does,
- * beside the mark. THE REASON GIVEN USED TO BE THE FRAME: *a row of the box has the frame at
- * each end of it*, and the frame is gone; the question it justified is the one that survived.
- */
-function accented(row: string, accent: string, closer: string): string[] {
-  const wrapped: string[] = [];
-  for (let at = row.indexOf(accent); at >= 0; at = row.indexOf(accent, at + accent.length)) {
-    const from = at + accent.length;
-    const to = row.indexOf(closer, from);
-    wrapped.push(row.slice(from, to < 0 ? row.length : to));
-  }
-  return wrapped;
-}
-
-describe('the chrome spends exactly one hue, and it is none of the three severities', () => {
-  it('names one colour in the whole product, in one module', () => {
-    // THE GUARD. Two accents is a second thing a border could mean; an accent that is one
-    // of the severities is a frame that reads as a verdict about what it frames. The scan
-    // is over the SOURCE and over all of it, because "the chrome is one hue" is a statement
-    // about the product rather than about the file that happens to hold the box today.
+describe('the chrome spends no hue, and none of the three severities is its to take', () => {
+  it('names no colour anywhere in the product', () => {
+    // THE GUARD. The chrome used to spend one accent, named by a word in one module; the brand
+    // has no colour in the terminal, so the product names none. The scan is over the SOURCE and
+    // over all of it, because "the chrome carries no hue" is a statement about the product
+    // rather than about the file that happens to hold the layout today.
     const named = new Map<string, string[]>();
     for (const file of sourcesOf(SRC)) {
       const hues = huesIn(readFileSync(file, 'utf-8'));
       if (hues.length > 0) named.set(file, hues);
     }
-    const spent = [...new Set([...named.values()].flat())];
-    expect(spent).toHaveLength(1);
-    expect(SEMANTIC).not.toContain(spent[0]);
-    // And in ONE place, so there is no second module that could come to disagree with it.
-    expect([...named.keys()]).toHaveLength(1);
+    expect([...named.entries()]).toEqual([]);
+    // The layout names no colour as a PROP either: a hue is a quoted word or a variable that
+    // holds one, and the second is the shape a scan for words cannot see.
+    const layout = withoutComments(readFileSync(join(SRC, 'repl/region.ts'), 'utf-8'));
+    expect(layout).not.toMatch(/\b(?:color|borderColor|backgroundColor)\b\s*:/);
     // The scan read something: an empty corpus passes every line above saying nothing.
     expect(sourcesOf(SRC).length).toBeGreaterThan(50);
   });
 
-  it('would accuse a second hue and a semantic one', () => {
+  it('would accuse a hue, a semantic one included', () => {
     // The vacuous form is a scan whose pattern stopped matching. Composed against the two
-    // lines somebody would actually write: a border painted green, and an accent that
-    // acquired a companion.
+    // lines somebody would actually write: a border painted green, and an accent come back.
     expect(huesIn("node(Box, { borderColor: 'green' })")).toEqual(['green']);
     expect(huesIn("const A = 'cyan';\nconst B = 'magenta';")).toEqual(['cyan', 'magenta']);
     // And it accuses neither prose nor a word that is not a colour.
     expect(huesIn("/* the border is green */\nconst a = 'round';")).toEqual([]);
   });
 
-  it('paints the chrome in a hue no severity uses, and paints no line of the record', async () => {
-    // THE OTHER HALF, asked of the BYTES rather than of the source: what the chrome is wrapped
-    // in must not be what a verdict is wrapped in. The severities' escapes are taken from the
-    // renderer itself (what a severity ADDS to a line that has none), so nothing here is a
-    // number somebody typed.
-    //
-    // THE ACCENT USED TO BE READ OFF THE BOX'S TOP EDGE, and where it is read from now is
-    // {@link theAccent}, which says why.
+  it('paints no chrome and no line of the record outside the severities', async () => {
+    // THE OTHER HALF, asked of the BYTES rather than of the source. The severities' escapes
+    // are taken from the renderer itself (what a severity ADDS to a line that has none), so
+    // nothing here is a number somebody typed.
     const page = await openedAt(200, renderStyled);
-    const [accent, closer] = theAccent(page);
-    expect([...severityHues()]).not.toContain(accent);
-    // WHAT THE ACCENT IS AROUND, which is the only form of the question worth asking. What may
-    // not happen is the accent around a WORD OF THE RECORD.
-    const verdict = rowHolding(page, VERIFIED);
-    for (const run of accented(verdict, accent as string, closer as string)) {
-      expect(stripped(run), run).not.toContain(VERIFIED);
+    const severities = severityHues();
+    const hues = new Set(
+      sgrOf(withoutLayout(page)).filter((code) =>
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: the escape IS the subject.
+        /^\u001b\[(?:3[0-7]|9[0-7]|38|48)/.test(code),
+      ),
+    );
+    // THE GREYS OF A SENT COMMAND are the one other thing written: the band and its two
+    // foregrounds, painted as a pair and carrying no hue (`presentation/styled.ts`).
+    const greys = ['\u001b[48;5;238m', '\u001b[38;5;246m', '\u001b[38;5;253m'];
+    for (const hue of hues) {
+      expect(
+        [...severities, ...greys],
+        `the page writes ${JSON.stringify(hue)}, which is no severity and no grey`,
+      ).toContain(hue);
     }
-    // Not vacuous, in both directions. The verdict really is painted: by the severity it
-    // carries, on the row the accent was just cleared of…
-    expect([...severityHues()].some((hue) => sgrOf(verdict).includes(hue))).toBe(true);
-    // …and the accent really is around the two things that ARE chrome: what the session is,
-    // and the mark. A layout that had stopped painting would satisfy the loop above saying
-    // nothing.
-    //
-    // THE THIRD USED TO BE THE FRAME, and it was asserted by looking for a run of nothing
-    // but the frame's own glyph inside an accented span. There is no frame, so what is asked is
-    // the pair that is left, and the title is the one that MOVED into the switch this
-    // delivery, so a layout that had stopped painting it would go red here rather than quietly.
-    expect(
-      accented(titleRow(page), accent as string, closer as string).map(stripped),
-      'what the session is is not painted',
-    ).toContainEqual(expect.stringContaining(OPENED));
-    // THE MARK USED TO BE FOUND BY ITS GLYPH, and a change of drawing is what falsified
-    // that: the widest form was inked with diagonals rather than with blocks, so a page two
-    // hundred columns wide held no full block at all. AND THE DRAWING AFTER IT IS FULL OF
-    // BLOCKS AGAIN, which is exactly why the glyph is not what this asks: the art has changed
-    // twice under this case and both times the answer to *which glyph is the mark made of*
-    // moved. What the drawing IS is asked of the module that draws it, at the size this page
-    // was opened at, so the next form moves this case with it.
+    expect(withoutLayout(page), 'the accent is back on the page').not.toContain('\u001b[35m');
+    // NOT VACUOUS, in both directions. The verdict really is painted, by the severity it
+    // carries…
+    const verdict = rowHolding(page, VERIFIED);
+    expect([...severities].some((hue) => sgrOf(verdict).includes(hue))).toBe(true);
+    // …and the title and the drawing of the name arrive in bold with no hue of their own: the
+    // weight is all of the brand the terminal carries. A layout that had stopped emboldening
+    // them would go red here rather than quietly.
+    const title = titleRow(page);
+    expect(sgrOf(title)).toContain('\u001b[1m');
     const widest = drawnAt(200).reduce((most, row) => (row.length > most.length ? row : most));
-    const mark = rowHolding(page, widest);
-    expect(
-      accented(mark, accent as string, closer as string).some((run) => run.includes(widest)),
-      'the mark is not painted',
-    ).toBe(true);
+    expect(sgrOf(rowHolding(page, widest)), 'the mark is not bold').toContain('\u001b[1m');
   }, 120_000);
 });
 
@@ -816,7 +751,7 @@ describe('the form comes out of the content, and the narrowest still says the es
     // exception on one condition: where a narrower terminal is richer, the ART is what grew.
     //
     // AND THE EXCEPTION IS GONE, WHICH IS WHY THE NAME IS THE FIRST ONE AGAIN. Measured:
-    // the drawing is forty-eight columns now and the line under it, a project's path and an
+    // the drawing was forty-eight columns then and the line under it, a project's path and an
     // identity, is about forty-nine, so giving the art up buys the column almost nothing and
     // the stacked form is unreachable either way. The band closed by ARITHMETIC rather than by
     // anybody's intention, and the assertion is written as the count so that the day it
@@ -880,7 +815,7 @@ describe('the form comes out of the content, and the narrowest still says the es
     // WHAT THE NEW DRAWING BOUGHT, and the reason it is a case rather than a note: the box
     // gave the two columns up at 124 columns while the art was seventy wide, so a window of
     // a hundred and twenty (an ordinary one, and the one this was reported from) got the
-    // stacked form and nine blank rows beside the record. The art is forty-eight columns now and
+    // stacked form and nine blank rows beside the record. The art was forty-eight columns then (it is fifty-two now) and
     // the threshold is the content's, so it moved with it.
     //
     // THE THRESHOLD IS NOT WRITTEN HERE. {@link A_WORKING_TERMINAL} is a SIZE (a window a
@@ -1176,8 +1111,11 @@ describe('the panel is the plain panel, wrapped, and it is drawn once', () => {
 // What the chrome costs, and the floor under it
 // ---------------------------------------------------------------------------
 
+/** The rows the text beside the mark takes: measured, six. */
+const THE_TEXT_ROWS = 6;
+
 describe('the chrome costs the drawing of the name and nothing more', () => {
-  it('spends exactly the mark\u2019s rows whenever the text goes beside it', async () => {
+  it('spends the taller of the mark and the text whenever the text goes beside it', async () => {
     // WHAT THE FRAME'S DEPARTURE BOUGHT, as a property rather than as a number: with the text
     // beside the mark the panel is as tall as the TALLER of the two, and the mark is the taller
     // one on the terminal a person opens, so what the opening costs is the drawing the caller
@@ -1194,7 +1132,11 @@ describe('the chrome costs the drawing of the name and nothing more', () => {
     for (const columns of [200, 140, A_WORKING_TERMINAL, await narrowestFor(RICHNESS.columns)]) {
       const page = await openedAt(columns);
       expect(formOf(page, columns), `${columns}`).toBe('columns');
-      expect(openingRows(page), `${columns}`).toHaveLength(drawnAt(columns).length + THE_SEAM);
+      // THE MARK WAS THE TALLER ONE (six rows over a text of six and the seam), and the brand's
+      // five-row drawing is the SHORTER: the text, measured at six rows, is what the opening costs.
+      expect(openingRows(page), `${columns}`).toHaveLength(
+        Math.max(drawnAt(columns).length, THE_TEXT_ROWS) + THE_SEAM,
+      );
     }
   }, 300_000);
 

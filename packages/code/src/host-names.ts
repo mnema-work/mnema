@@ -130,6 +130,29 @@ export interface Host {
     readonly bytesPerTokenAt: string;
   };
   /**
+   * That the host's ceiling for a hook's text was never measured, so the opening is cut to Claude
+   * Code's 10,000 UTF-16 code units and says that it assumes it, or, as `not announced`, for a host
+   * that runs Claude Code's hooks file, whose command names no host, cuts to it without saying so. Absent where the host has a
+   * `hookText` of its own, and on rows no hook of the plugin's reaches.
+   */
+  readonly hookTextUnmeasured?: true | 'not announced';
+  /**
+   * The host's id for its session in the environment of the MCP server it starts: `a test` where a
+   * case of the host contract shows the variable there (`name`, and `by`, the case; `note` says
+   * what is not verified about its value), `not yet` where it is not shown. A `candidate` is a
+   * variable the contract's probe list asks about, and a candidate is not a promise: it becomes a
+   * `name` the day a run of the real host shows it. `hostSessionOf` reads the server's session
+   * from the `a test` rows alone.
+   */
+  readonly sessionVariable?:
+    | {
+        readonly held: 'a test';
+        readonly name: string;
+        readonly by: string;
+        readonly note?: string;
+      }
+    | { readonly held: 'not yet'; readonly candidate?: string };
+  /**
    * Where the host's hook can put text beside a write that goes through, for a host whose
    * `pushes` cell says yes: `after` is a hook that runs once the write is done (Copilot CLI's
    * `PostToolUse`, Gemini CLI's `AfterTool`), because the host's hook before a write has no field
@@ -271,6 +294,11 @@ export const HOSTS = {
       ],
     },
     door: 'mcp_tool',
+    sessionVariable: {
+      held: 'a test',
+      name: 'CLAUDE_CODE_SESSION_ID',
+      by: 'packages/code/tests/host-contract/what-the-host-hands-the-server.test.ts',
+    },
     subagentStop: { does: true, held: 'a test', by: HELD.claudeHandback },
     afterAQuestion: { does: true, held: 'a test', by: HELD.claudeSettled },
     onAMessage: { does: true, held: 'a test', by: HELD.claudeDictated },
@@ -294,6 +322,8 @@ export const HOSTS = {
       words: 'The Claude Code plugin, then `mnema doctor --fix vscode`',
     },
     door: 'command',
+    sessionVariable: { held: 'not yet' },
+    hookTextUnmeasured: 'not announced',
     cells: {
       server: {
         does: true,
@@ -349,6 +379,7 @@ export const HOSTS = {
       commands: ['codex plugin marketplace add mnema-work/mnema', 'codex plugin add mnema@mnema'],
     },
     door: 'command',
+    sessionVariable: { held: 'not yet', candidate: 'CODEX_THREAD_ID' },
     // Codex reads the plugin through a manifest of its own (`.codex-plugin/plugin.json`) that
     // names this hooks file, so no other host runs its command and none of theirs runs in Codex,
     // which they would: Codex matches `apply_patch` by `Write` and `Edit` too, and VS Code's
@@ -435,6 +466,13 @@ export const HOSTS = {
       ],
     },
     door: 'command',
+    sessionVariable: {
+      held: 'a test',
+      name: 'COPILOT_AGENT_SESSION_ID',
+      by: 'packages/code/tests/host-contract/what-the-host-hands-the-server.copilot.test.ts',
+      note: 'whether its value is the name of the folder under `~/.copilot/session-state/` that the hook payloads give as the session is not verified',
+    },
+    hookTextUnmeasured: true,
     pushesAt: 'after',
     // Copilot CLI reads the plugin through a manifest of its own (`.github/plugin/plugin.json`,
     // which it looks for before `.claude-plugin/plugin.json` and VS Code does not look for at all)
@@ -512,6 +550,8 @@ export const HOSTS = {
         'One file copied into `.opencode/plugins/`, and the server declared in `opencode.json`',
     },
     door: 'command',
+    sessionVariable: { held: 'not yet' },
+    hookTextUnmeasured: true,
     // OpenCode reads no hooks file and no manifest of this plugin: its hook is code, a JavaScript
     // module it loads from `.opencode/plugins/`. The module is generated from this row
     // (`plugin/opencode/mnema.js`), and no other host reads it.
@@ -572,6 +612,8 @@ export const HOSTS = {
       commands: ['gemini extensions install /path/to/mnema/plugin/gemini'],
     },
     door: 'command',
+    sessionVariable: { held: 'not yet', candidate: 'GEMINI_SESSION_ID' },
+    hookTextUnmeasured: true,
     pushesAt: 'after',
     // Gemini CLI reads no hooks file of this plugin's: it loads an extension, a folder with a
     // `gemini-extension.json` at its root and its hooks in `hooks/hooks.json`, the path the Claude
@@ -657,6 +699,8 @@ export const HOSTS = {
     title: 'Qwen Code',
     install: { at: 'qwen-code', commands: ['qwen extensions install /path/to/mnema/plugin'] },
     door: 'command',
+    sessionVariable: { held: 'not yet' },
+    hookTextUnmeasured: 'not announced',
     // Qwen Code converts a Claude Code plugin it is told to install into an extension of its own
     // and loads that plugin's `hooks/hooks.json`, so it reads the file every other host that
     // reads Claude Code's format reads, and it applies the matcher Claude Code applies (`Write`
@@ -939,7 +983,37 @@ export const RULES_FILE_HOSTS = HOST_NAMES.filter(
  * Every host whose row names a ceiling of its own for a hook's text, as the list `mnema brief
  * --hook --host` and `mnema recall --hook --host` enumerate.
  */
-export const HOOK_TEXT_HOSTS = HOST_NAMES.filter((name) => 'hookText' in HOSTS[name]);
+export const HOOK_TEXT_HOSTS = HOST_NAMES.filter(
+  (name) => 'hookText' in HOSTS[name] || 'hookTextUnmeasured' in HOSTS[name],
+);
+
+/** Whether a host's ceiling for a hook's text is Claude Code's, assumed because it was never measured. */
+export function hookTextIsAssumed(host: HostName): boolean {
+  const row: Host = HOSTS[host];
+  return row.hookTextUnmeasured !== undefined;
+}
+
+/** The variables a host contract showed a host leaves its MCP server, with the host that does. */
+export const SESSION_VARIABLES: readonly { readonly host: HostName; readonly name: string }[] =
+  HOST_NAMES.flatMap((host) => {
+    const row: Host = HOSTS[host];
+    const cell = row.sessionVariable;
+    return cell?.held === 'a test' ? [{ host, name: cell.name }] : [];
+  });
+
+/**
+ * The host's id for the session an MCP server was started in, read from the environment by the
+ * table of hosts: the first variable of {@link SESSION_VARIABLES} that is set and not empty.
+ */
+export function hostSessionOf(
+  env: Readonly<Record<string, string | undefined>>,
+): string | undefined {
+  for (const { name } of SESSION_VARIABLES) {
+    const value = env[name];
+    if (value !== undefined && value !== '') return value;
+  }
+  return undefined;
+}
 
 /** The ceiling a host's row names for a hook's text, or `undefined` where it names none. */
 export function hookTextOf(host: HostName): Host['hookText'] {

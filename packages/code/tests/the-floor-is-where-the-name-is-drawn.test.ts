@@ -34,8 +34,8 @@
  *     come apart.
  *   - THE PREVIEW: a bare slash shows four navigable words and says how many it could not, and
  *     the first letter narrows THAT list without moving the ceiling.
- *   - THE COLOUR: the accent is on the WORD and on nothing else beside it, and `NO_COLOR`
- *     takes the tone and leaves the word. Two real sessions, because the whole question is what
+ *   - THE COLOUR: the word carries no paint of its own (no accent, no weight), and `NO_COLOR`
+ *     takes the rest and leaves the word. Two real sessions, because the whole question is what
  *     a stream carries.
  *   - THE MARGIN: at the floor the widest thing the page draws is on it whole. A margin is
  *     columns of the PAGE, never a character of a line.
@@ -48,6 +48,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Box, Text } from 'ink';
+import type { ReactElement } from 'react';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { CompletionWord } from '../src/completion/tree.js';
 import { bannerFor } from '../src/presentation/banner.js';
@@ -61,6 +63,7 @@ import { verbsOffered } from '../src/repl/gate.js';
 import { insideTheMargin, THE_INSET } from '../src/repl/inset.js';
 import { CUT, PICK } from '../src/repl/palette.js';
 import { theShortestScreenFor } from '../src/repl/panel.js';
+import { dimmed } from '../src/repl/region.js';
 import { theSessionsOwnWords, tips } from '../src/repl/session.js';
 import { PREFIX } from '../src/session-words.js';
 import { REPL_VERB } from '../src/wiring/repl.js';
@@ -382,11 +385,11 @@ describe('a bare slash shows what there is, and the letter narrows THAT list', (
 });
 
 // ---------------------------------------------------------------------------
-// The word carries the accent, and NO_COLOR takes the tone
+// The word carries no paint of its own, and NO_COLOR takes the rest
 // ---------------------------------------------------------------------------
 
-describe('the word in the list carries the accent, and the description does not', () => {
-  it('paints the word in a session with colour, and leaves it spelled in one without', async () => {
+describe('the word in the list carries no paint of its own, with colour or without', () => {
+  it('leaves the word bare in a session with colour, and spelled the same in one without', async () => {
     // WHAT THE CALLER ASKED FOR: *the verbs in the search should have colour*. Both halves on
     // two REAL sessions, because the whole question is what a stream carries: the tone is the
     // renderer's and it obeys the channel the delivery before this one wired
@@ -420,23 +423,22 @@ describe('the word in the list carries the accent, and the description does not'
       expect(listRowsOn(screen, words).length, `the list is not legible ${said}`).toBe(4);
     }
 
-    // AND THE ACCENT IS ON THE WORD IN ONE AND NOWHERE IN THE OTHER. What is looked for is the
-    // accent IMMEDIATELY BEFORE a word (the word painted, rather than paint anywhere on a page
-    // that is full of it) and the escapes are read off a line the product composes rather than
-    // typed here (`src/presentation/styled.ts`).
-    const painted = renderStyled({ indent: 0, parts: [asWord('search')] });
-    const accent = painted.slice(0, painted.indexOf('search'));
-    expect(accent, 'the accent is not an escape at all').toContain(ESC);
-    const listed = words.filter((word) => withColour.bytes.includes(`${accent}${word}`));
-    expect(listed.length, 'no word of the list was painted in the accent').toBeGreaterThan(0);
+    // AND THE WORD CARRIES NO PAINT OF ITS OWN IN EITHER: no accent (the brand has no colour in the
+    // terminal) and no weight (the highlight by weight was refused). The escapes are read off a
+    // line the product composes rather than typed here (`src/presentation/styled.ts`): the role
+    // `word` renders bare, so a word on the page is preceded by nothing of its own.
+    expect(renderStyled({ indent: 0, parts: [asWord('search')] })).toBe('search');
+    const listed = words.filter((word) => withColour.bytes.includes(word));
+    expect(listed.length, 'no word of the list was on the page').toBeGreaterThan(0);
+    expect(withColour.bytes.includes(`${ESC}[35m`), 'the accent is back on the page').toBe(false);
     for (const word of listed) {
       expect(
-        without.bytes.includes(`${accent}${word}`),
-        `the accent on ${word} survived NO_COLOR`,
+        withColour.bytes.includes(`${ESC}[1m${word}`),
+        `${word} was emboldened: the highlight by weight was refused`,
       ).toBe(false);
     }
-    // AND THE DESCRIPTION BESIDE IT IS BARE, which is what makes the word the subject of its
-    // row: paint both and neither is. The row is read off the page rather than composed here.
+    // AND THE ROW IS THE LIST'S: dimmed whole by the layout, which is what the session with colour
+    // writes and the one without does not. The row is read off the page rather than composed here.
     const row = screenOf(
       withColour.bytes.slice(0, withColour.at[1] as number),
       columns,
@@ -444,10 +446,93 @@ describe('the word in the list carries the accent, and the description does not'
     ).rows.find((line) => listRowsOn({ rows: [line] }, words).length === 1);
     expect(row, 'no row of the list is on the page').toBeDefined();
     expect(row as string, 'the page carries the escapes rather than the glyphs').not.toContain(ESC);
-    // AND NOTHING PAINTED SURVIVES `NO_COLOR` ANYWHERE ON THAT PAGE, which is the standing rule
-    // this colour had to join rather than an exception to it.
-    expect(without.bytes.includes(accent), 'the accent survived NO_COLOR somewhere').toBe(false);
+    // AND NO SEVERITY OR WEIGHT SURVIVES `NO_COLOR` BEFORE A WORD: the standing rule.
+    for (const word of listed) {
+      expect(
+        without.bytes.includes(`${ESC}[2m${word}`) || without.bytes.includes(`${ESC}[1m${word}`),
+        `paint survived NO_COLOR on ${word}`,
+      ).toBe(false);
+    }
   }, 300_000);
+
+  it('keeps the chosen row faint from its marker to its description, the marker alone bold', async () => {
+    // THE LIST STAYS FAINT AS A WHOLE, and the chosen row is one of its rows. The marker is bold
+    // (SGR 1) and the escape that closes a bold is the one that closes a faint (SGR 22), so a
+    // marker closed carelessly leaves the word and the sentence beside it at full intensity: the
+    // chosen row would then shout where it was meant only to be marked. Read off the bytes a real
+    // session with colour writes, tracking the intensity the way a terminal does.
+    const ran = await inPty({
+      columns: 120,
+      rows: THE_FLOOR.rows,
+      steps: [
+        opens,
+        { types: PREFIX, until: arrivedSince(CUT), what: 'opened the preview' },
+        { types: MOVES_DOWN, until: arrivedSince(PICK), what: 'marked a row' },
+        { types: CLEARS_THE_LINE, until: () => true, what: 'abandoned the row' },
+        leaves,
+      ],
+    });
+    const drawn = ran.bytes.slice(ran.at[1] as number, ran.at[2] as number).split('\r\n');
+    const chosen = drawn.filter((row) => row.includes(PICK)).pop() as string;
+    expect(chosen, 'no row of the list carries the marker on the page').toBeDefined();
+    const ANY_SGR = new RegExp(`${ESC}\\[([0-9;]*)m`, 'g');
+    const A_HUE = new RegExp(`${ESC}\\[3\\d`);
+    // The intensity at a position: SGR 2 opens faint, 1 opens bold, 22 and 0 close both.
+    const intensityAt = (row: string, at: number): { faint: boolean; bold: boolean } => {
+      const state = { faint: false, bold: false };
+      for (const sequence of row.slice(0, at).matchAll(ANY_SGR)) {
+        for (const code of (sequence[1] ?? '').split(';')) {
+          if (code === '2') state.faint = true;
+          else if (code === '1') state.bold = true;
+          else if (code === '22' || code === '0' || code === '') {
+            state.faint = false;
+            state.bold = false;
+          }
+        }
+      }
+      return state;
+    };
+    const bare = chosen.replace(ANY_SGR, '');
+    const [word, ...sentence] = bare
+      .slice(bare.indexOf(PICK) + PICK.length)
+      .trim()
+      .split(/\s{2,}/);
+    expect(sentence.join('  '), 'the chosen row has no description to test').not.toBe('');
+    const markerAt = chosen.indexOf(PICK);
+    expect(intensityAt(chosen, markerAt).bold, 'the marker is not bold').toBe(true);
+    const wordAt = chosen.indexOf(word as string, markerAt + PICK.length);
+    const sentenceAt = chosen.indexOf(sentence[0] as string, wordAt);
+    expect(intensityAt(chosen, wordAt), 'the chosen word is not faint, or is bold').toEqual({
+      faint: true,
+      bold: false,
+    });
+    expect(intensityAt(chosen, sentenceAt), 'the chosen description is not faint').toEqual({
+      faint: true,
+      bold: false,
+    });
+    expect(chosen.slice(markerAt), 'the chosen word carries a hue').not.toMatch(A_HUE);
+  }, 300_000);
+
+  it('lays a row with a bold marker out as the marker, then the rest in a faint span of its own', () => {
+    // THE SAME PROMISE, WITHOUT A TERMINAL: what the layout builds for each row, read as values.
+    // A row with a bold marker is a Box of two Texts, the marker on the first and no faint on it,
+    // the rest on the second with faint on; a row without one is one faint Text with the whole row.
+    const marked = `  ${ESC}[1m${PICK}${ESC}[22m  aging   show accepted decisions`;
+    const plain = '     audit   ask the record';
+    const [chosen, other] = dimmed([marked, plain]) as ReactElement<{
+      children?: ReactElement<{ children: string; dimColor?: boolean }>[];
+      dimColor?: boolean;
+    }>[];
+    expect(chosen?.type, 'the chosen row is not a Box of two spans').toBe(Box);
+    const [first, second] = chosen?.props.children ?? [];
+    expect(first?.props.children).toBe(`  ${ESC}[1m${PICK}${ESC}[22m`);
+    expect(first?.props.dimColor, 'the marker is inside the faint span').toBeUndefined();
+    expect(second?.props.children).toBe('  aging   show accepted decisions');
+    expect(second?.props.dimColor, 'the rest of the chosen row is not faint').toBe(true);
+    expect(other?.type, 'a row without a marker is not one Text').toBe(Text);
+    expect(other?.props.dimColor, 'a row without a marker is not faint').toBe(true);
+    expect(other?.props.children).toBe(plain);
+  });
 });
 
 // ---------------------------------------------------------------------------

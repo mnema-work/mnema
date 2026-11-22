@@ -81,7 +81,7 @@
  *
  * WHAT THE ARGUMENT COULD NOT SUPPORT is the step from *the hue is not the carrier* to *there
  * is no hue*. The mark is chrome (it says which row you are on and nothing about the record),
- * so it takes the one accent this surface spends, as a ROLE
+ * so it takes the product's weight (bold, no hue), as a ROLE
  * (`presentation/line.ts`, `pick`), which is what makes it disappear under `NO_COLOR` while
  * the column stays exactly where it was. And it is a role rather than a drawing for the
  * reason the old sentence gave: the rows are dimmed by the layout (`region.ts`), one Text for
@@ -89,14 +89,17 @@
  * a second model of the pick beside the one that decides it. A part of a line knowing what it
  * is costs the layout nothing.
  *
- * AND THE WORD ITSELF CARRIES THE ACCENT, which is the second reading of that same argument
- * and the one a caller asked for out loud: *the verbs in the search should have colour*. A row
+ * AND THE WORD ITSELF CARRIES NOTHING NOW. IT CARRIED THE ACCENT, and what falsified that is the
+ * new brand: the terminal carries no colour of the mark and the highlighted word takes no
+ * weight either. It was the second reading of that same argument and the one a caller asked
+ * for out loud: *the verbs in the search should have colour*. A row
  * here is a word and a sentence about it, and at one weight the row has no subject: the eye
- * lands in the middle of a table instead of on the thing being chosen between. So the word is a
+ * lands in the middle of a table instead of on the thing being chosen between, and what puts the
+ * subject back is NOT paint: a highlight by subtraction is a decision of its own. The word stays a
  * PART WITH A ROLE (`presentation/items.ts`, `asWord`), the layout goes on knowing nothing about
- * it, and the description beside it keeps no hue at all: paint both columns and neither is the
- * subject. It obeys `NO_COLOR` for the reason the mark does (it is a role and not a drawing)
- * and what a reader without colour loses is the tone, never the word.
+ * it, and the description beside it is a bare field: the whole list is dimmed by the layout, and
+ * the word is a role (not a drawing) so that what a later decision paints it with reaches it
+ * without the layout learning anything.
  *
  * THE KEYS THAT MOVE IT ARE SAID UNDER IT, and that is the row this module gained. It arrives
  * composed, like a hint anywhere else on this surface (`session.ts`, `pickingTips`), and it is
@@ -428,7 +431,7 @@ function rowsOf(request: PaletteRequest): readonly Line[] {
   // THE WORD SAYS WHAT IT IS AND THE SENTENCE BESIDE IT DOES NOT, which is the whole of what
   // the role buys and the reason it is on one of the two columns. A row of this list is a word
   // and a description, and at one weight neither is the subject; the word is what a caller is
-  // choosing between, so it carries the role and takes the accent (`presentation/items.ts`,
+  // choosing between, so it carries the role and no paint (`presentation/items.ts`,
   // `asWord`). Painting both would be painting neither. Nothing about the bytes moves: a
   // `word` joins its neighbour by the same two spaces a bare column does, so the plain
   // rendering of a row is the one it always had.

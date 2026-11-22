@@ -23,7 +23,7 @@ _mnema_commands() {
     'check') echo 'declare run help' ;;
     'audit') echo 'accountability antipatterns exposure help' ;;
     'commit-hook') echo 'install uninstall suggest help' ;;
-    'record') echo 'pull commit merge-tail help' ;;
+    'record') echo 'pull commit publish merge-tail help' ;;
     'key') echo 'restore request enroll github sigstore revoke protect unprotect help' ;;
     'tail') echo 'list prune relink repair help' ;;
     'backup') echo 'setup run status verify restore hook help' ;;
@@ -154,6 +154,7 @@ _mnema_described() {
     'record') printf '%s\n' \
       'pull:git pull over tails grown here and not yet committed' \
       'commit:commit the signed record to a branch for a pull request' \
+      'publish:push the record branch and open its pull request, to a destination you name' \
       'merge-tail:the merge driver git runs for a tail'\''s files' \
       'help:display help for command' ;;
     'key') printf '%s\n' \
@@ -274,6 +275,7 @@ _mnema_flags() {
     'record') echo '-h --help -V --version --color' ;;
     'record pull') echo '-h --help -V --version --color' ;;
     'record commit') echo '--through --json -h --help -V --version --color' ;;
+    'record publish') echo '--to --through --json -h --help -V --version --color' ;;
     'record merge-tail') echo '-h --help -V --version --color' ;;
     'key') echo '-h --help -V --version --color' ;;
     'key restore') echo '--agent -h --help -V --version --color' ;;
@@ -385,9 +387,9 @@ _mnema_values() {
     'task guard:') echo 'submit start block unblock submit_review request_changes approve complete cancel reopen' ;;
     'promote:--color') echo 'auto always never' ;;
     'status:--color') echo 'auto always never' ;;
-    'brief:--host') echo 'codex' ;;
+    'brief:--host') echo 'vscode codex copilot opencode gemini qwen' ;;
     'brief:--color') echo 'auto always never' ;;
-    'recall:--host') echo 'codex' ;;
+    'recall:--host') echo 'vscode codex copilot opencode gemini qwen' ;;
     'recall:--color') echo 'auto always never' ;;
     'rules:--color') echo 'auto always never' ;;
     'rules-file:--host') echo 'claude vscode cursor' ;;
@@ -396,10 +398,10 @@ _mnema_values() {
     'switch:--color') echo 'auto always never' ;;
     'switch off:--scope') echo 'public private global' ;;
     'switch off:--color') echo 'auto always never' ;;
-    'switch off:') echo 'brief-document recall-document edit-rules-push edit-asks-a-person edit-refuses-a-write agent-accepts edit-first-write-gate user-corrections opening-core choice-settled dictated-rule host-memory-mirror decision-file-written subagent-handback tool-call-count last-session private-rules after-a-compaction session-journal agent-mirror session-tally' ;;
+    'switch off:') echo 'brief-document recall-document edit-rules-push edit-asks-a-person edit-refuses-a-write agent-accepts edit-first-write-gate user-corrections opening-core choice-settled dictated-rule host-memory-mirror decision-file-written subagent-handback tool-call-count last-session private-rules after-a-compaction session-journal agent-mirror session-tally record-publish' ;;
     'switch on:--scope') echo 'public private global' ;;
     'switch on:--color') echo 'auto always never' ;;
-    'switch on:') echo 'brief-document recall-document edit-rules-push edit-asks-a-person edit-refuses-a-write agent-accepts edit-first-write-gate user-corrections opening-core choice-settled dictated-rule host-memory-mirror decision-file-written subagent-handback tool-call-count last-session private-rules after-a-compaction session-journal agent-mirror session-tally' ;;
+    'switch on:') echo 'brief-document recall-document edit-rules-push edit-asks-a-person edit-refuses-a-write agent-accepts edit-first-write-gate user-corrections opening-core choice-settled dictated-rule host-memory-mirror decision-file-written subagent-handback tool-call-count last-session private-rules after-a-compaction session-journal agent-mirror session-tally record-publish' ;;
     'inherit:--color') echo 'auto always never' ;;
     'inherit set:--color') echo 'auto always never' ;;
     'inherit update:--color') echo 'auto always never' ;;
@@ -441,6 +443,7 @@ _mnema_values() {
     'record:--color') echo 'auto always never' ;;
     'record pull:--color') echo 'auto always never' ;;
     'record commit:--color') echo 'auto always never' ;;
+    'record publish:--color') echo 'auto always never' ;;
     'record merge-tail:--color') echo 'auto always never' ;;
     'key:--color') echo 'auto always never' ;;
     'key restore:--color') echo 'auto always never' ;;

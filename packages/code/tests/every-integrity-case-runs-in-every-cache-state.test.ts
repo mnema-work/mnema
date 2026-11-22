@@ -140,9 +140,13 @@ export const EXEMPT: Readonly<Record<string, string>> = {
   'packages/core/src/projections/an-entry-whose-hash-fails-is-left-out.test.ts':
     'is the cache’s own test: it opens the cache cold, with a connection that read before the alteration, and kept on disk, over one altered tail',
   'packages/code/tests/a-write-is-refused-while-an-entry-is-altered.test.ts':
-    'judges the write door, which asks the chain as it stands now in memory and over no cache the command line keeps; the one state a cache can vary for a write, a session that read before the alteration, is its own case',
+    'judges the write door, which asks the cache the tree keeps, as a warm read does (a global tree is replayed in memory); the cases plant over the cache the last write left, and the states where the cache can differ from the disk (a same-size rewrite with its time put back, warm and cold) are held by the-refusal-of-a-write-says-the-limit-of-the-cache-it-asks',
   'packages/code/tests/every-writer-passes-the-check-that-refuses-a-damaged-record.test.ts':
-    'judges the write door of every writer, which asks the chain as it stands now in memory and over no cache the command line keeps; the cache states of the door are held by a-write-is-refused-while-an-entry-is-altered',
+    'judges the write door of every writer, which asks the cache the tree keeps, as a warm read does; the cases plant over the cache the last write left, and the states where the cache can differ from the disk are held by the-refusal-of-a-write-says-the-limit-of-the-cache-it-asks',
+  'packages/code/tests/the-doctor-relinks-over-the-destination-only.test.ts':
+    'judges which tree the door of a write asks about when `doctor --fix private-tree` relinks: the one it writes into, in a git repository the case builds, over an entry altered after the cache the last write left; the states where the cache differs from the disk are held by the-refusal-of-a-write-says-the-limit-of-the-cache-it-asks',
+  'packages/code/tests/the-refusal-of-a-write-says-the-limit-of-the-cache-it-asks.test.ts':
+    'holds the limit of the cache for a write, which is the cache state itself: the first case runs the warm state (the limit) and then the cold one (the refusal) in one record, and the page is what the second reads',
   // Declared debt: damage a record and judge it, and run only in the state the last write left.
   'packages/code/tests/the-ci-recipe-catches-what-verify-cannot.test.ts':
     'DEBT: damaged records judged by the published CI recipe in a sandbox, a base clone and a bin directory built once in a beforeAll; each case needs its own found/damage/run split',
@@ -231,10 +235,14 @@ export const WRITES_BUT_PLANTS_NOTHING: Readonly<Record<string, string>> = {
     'copies a clone’s tails into the bench’s tree, as two clones meet, to hold which rules the list of what a person did not accept keeps when two machines accepted one decision; nothing is damaged, and every read is of a cache the bench rebuilds whole',
   'packages/code/tests/the-audit-verbs-fold-the-record-once.test.ts':
     'appends one line of a kind no version declares, signed by a checkpoint as a newer mnema writes it, and damages nothing: it holds that four verbs which open no cache fold the tails once and carry the same field, so no cache state changes what it reads',
+  'packages/code/tests/the-record-is-published-only-where-it-is-named.test.ts':
+    'appends one switch fact to the committed tree by hand to show that the verb does not read a switch there, and damages nothing: it holds what `record publish` refuses and pushes over a bare remote, so no cache state changes what it reads',
   'packages/chain/src/chain/a-tail-is-signed-as-soon-as-it-is-founded.test.ts':
     'holds which checkpoints the write that founds a tail signs, and what the fold of its checkpoints says of the tail with no note of this machine, in the functions of the chain alone; nothing is damaged and the chain has no projection cache (a clone of such a record is read by the binary in only-proven-events-reach-the-projection)',
   'packages/chain/src/chain/verify-reads-the-checkpoints-before-the-tail.test.ts':
     'holds the order in which the verdict of the chain reads a tail and its checkpoints, with a signed write landing between the two readings; nothing is damaged and the chain has no projection cache',
+  'packages/code/tests/a-refusal-leaves-both-trees-as-they-were.test.ts':
+    'writes records through the product, then holds that a refused write leaves every file of both trees as it was; it plants no damage and asks nothing of the cache beyond warming it with a write before the comparison',
 };
 
 /** What the guard reads of one test file. */

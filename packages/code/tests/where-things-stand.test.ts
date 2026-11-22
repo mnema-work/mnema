@@ -361,7 +361,7 @@ describe('mnema status: the opening read, over a record that reaches every cell'
       '--note',
       'ok',
       '--which',
-      'claude-code',
+      'codex',
     );
     await mnema('decision', 'move', 'accept', ...ids.slice(2), '--note', 'ok');
 

@@ -47,7 +47,7 @@
  *
  * SO THE ECHO IS A LINE LIKE EVERY OTHER (`presentation/echo.ts`), composed there, rendered
  * here, landed through the same door. What it buys is three things a string could not have:
- * the prompt carries the accent this product is marked by, `NO_COLOR` silences it through the
+ * the prompt carries the product's weight (bold), `NO_COLOR` silences it through the
  * rule that answers every other line, and a long paste folds between words instead of being
  * broken at the margin by the terminal. What it costs is nothing a reader can measure: the
  * plain rendering is the prompt followed by the line, byte for byte.
@@ -913,7 +913,7 @@ export function openConsole(request: ConsoleRequest): OpenConsole {
       rows,
       // WHAT THE CALLER IS TYPING, COMPOSED AND RENDERED LIKE EVERY OTHER LINE: the same
       // {@link echoLine} the roll's echo is made of, so the prompt they type in front of carries
-      // the accent in the place it is under their eyes and not only in the transcript above it.
+      // its weight in the place it is under their eyes and not only in the transcript above it.
       // It used to be `prompt + editing.typed`, a string built here, and what that cost is what
       // a caller reported about the echo one delivery earlier: the same `mnema>` came out of the
       // console two ways.
