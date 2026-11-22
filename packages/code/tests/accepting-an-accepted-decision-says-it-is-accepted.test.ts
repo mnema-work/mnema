@@ -44,7 +44,7 @@ function mnema(...argv: string[]): { status: number | null; stdout: string; stde
 }
 
 const ALREADY =
-  /ADR-1 is already accepted, by a person, at \d{4}-\d\d-\d\dT[\d:.]+Z: nothing changed\./;
+  /ADR-1 is already accepted \(no agent declared\) at \d{4}-\d\d-\d\dT[\d:.]+Z: nothing changed\./;
 
 describe('a decision accepted twice', () => {
   it('on the command line: the refusal keeps its code and says it is already accepted', () => {

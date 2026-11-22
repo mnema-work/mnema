@@ -29,7 +29,7 @@ so if two clones ever disagreed about it, the chain is the one that decides.
 
 - **`bootstrap`**: the opening context for a session, focused on one actor:
   where they left off (their latest run and open focus), the LIVE work by
-  NAME (id, title, state; freshest first, cut to a limit, with `workTotal` saying
+  NAME (id, title, state; a task IN_PROGRESS first, then the freshest, cut to a limit, with `workTotal` saying
   how many there were), the names of the adopted patterns to work by, the
   decisions IN FORCE by name (title, the citable `ADR-<n>` label, id; freshest
   first, cut to the same limit, with `decisionsTotal` saying how many there were),
@@ -205,7 +205,7 @@ const lastGoal = opening.resume.lastRun?.goal; // "ship the parser"
 const openFor = opening.resume.lastRun?.ageSeconds; // how long it has been open
 const didWrite = opening.resume.lastRun?.wrote; // WHAT went in: [{ kind, count }, …]
 // A run does not repeat the actor: `opening.resume.actor` says it once for all of them.
-const firstJob = opening.work[0]; // the freshest live task: a NAME
+const firstJob = opening.work[0]; // a live task, the one in progress first: a NAME
 const more = opening.workTotal > opening.work.length; // was the list cut?
 const patterns = opening.skills.map((s) => s.name); // names only, one line each
 const governing = opening.decisions.map((d) => `${d.adr} ${d.title}`); // names only
@@ -277,13 +277,16 @@ The ordinary `references` walk leaves both fields absent and its rows unchanged
   own),
   `focus`/`resume` (an actor's current and last work), `next-action`
   (the moves a state allows), `search` (finding what was recorded), and `skills`
-  (the patterns: the adopted ones, and the ones awaiting a ruling).
+  (the patterns: the adopted ones, and the ones awaiting a ruling), and `not-seen`
+  (`rulesNotSeenBy`: the rules in force that a person did not accept themselves and has not been shown).
 - **`intelligence/`**: the auditor's reads over every visible tree, `timeline`
   (an entity's history), `references` (what it connects to), `accountability`
   (who authorized what), `antipatterns` (recurring shapes), `exposure`
   (records holding a credential format), `provenance` (who proposed and who
   adopted each pattern), and `pattern-moves` (whether the run that moved a pattern
-  had been served its body, and, where nothing was listening, that nothing was).
+  had been served its body, and, where nothing was listening, that nothing was), and `agent-accepts` (what agents
+  accepted: the rules a person accepted that an agent took out of force, the chains of three decisions or more, and
+  the accepts whose note quotes no words of the person).
 - **`guard/`**: `guard`, the workflow gate exposed as a read-only consultation.
 
 To understand the boundary that justifies this being a package of its own, read

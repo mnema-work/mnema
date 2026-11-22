@@ -8,7 +8,7 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { FakePage } from '../../tests/support/a-page-in-a-vm.js';
-import { A_PERSON } from '../one-line.js';
+import { NO_AGENT_DECLARED } from '../one-line.js';
 import { contrastOf as ours, textAccent } from './colour.js';
 import type { DecisionMove, PageDecision, PageNote, TimelineEntry } from './model.js';
 import {
@@ -371,7 +371,7 @@ describe('what the page shows with no script', () => {
 });
 
 describe('the badge of an act', () => {
-  it("says agent <which> when an agent carried it out, and the product's word for a person when none did", () => {
+  it('says agent <which> when an agent carried it out, and no agent declared when none did', () => {
     const page = renderPage(
       model([
         decision({
@@ -385,7 +385,7 @@ describe('the badge of an act', () => {
       'Accepted by <code data-field="accepted-who">mnid:acc</code> <span class="badge" data-field="accepted-by">agent claude-code</span>',
     );
     expect(page).toContain(
-      `Recorded by <code data-field="recorded-who">mnid:rec</code> <span class="badge" data-field="recorded-by">${A_PERSON}</span>`,
+      `Recorded by <code data-field="recorded-who">mnid:rec</code> <span class="badge" data-field="recorded-by">${NO_AGENT_DECLARED}</span>`,
     );
   });
 });

@@ -438,7 +438,7 @@ export async function sayClassic(
       render(
         fact(
           recorded.as === 'accepted'
-            ? `Recorded ${recorded.adr}: agents ${recorded.switchedOff ? 'may not' : 'may'} accept what you choose, accepted as yours.`
+            ? `Recorded ${recorded.adr}: agents ${recorded.switchedOff ? 'may not' : 'may'} accept what you choose${recorded.how === undefined ? '' : ` (${recorded.how})`}.`
             : `Recorded ${recorded.adr} as the agent’s proposal: it waits for you (\`mnema decision review\`).`,
         ),
       ),

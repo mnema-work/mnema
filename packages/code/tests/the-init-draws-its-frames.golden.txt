@@ -194,8 +194,8 @@ mnema init  ·  0.0.0
 │       mnema decision import docs/decisions
 │    7  `mnema status` shows where things stand.
 │
-└  Off until switched on: edit-first-write-gate, user-corrections;
-   `mnema switch` turns one on.
+└  Off until switched on: edit-first-write-gate, opening-core; `mnema switch`
+   turns one on.
 
 --- the first screen (60 columns)
 mnema init  ·  0.0.0
@@ -443,4 +443,4 @@ mnema init  ·  0.0.0
 │    7  `mnema status` shows where things stand.
 │
 └  Off until switched on: edit-first-write-gate,
-   user-corrections; `mnema switch` turns one on.
+   opening-core; `mnema switch` turns one on.

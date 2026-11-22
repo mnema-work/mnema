@@ -123,6 +123,7 @@ import type {
   NamedDecision,
   PrivateRules,
 } from '@mnema/context';
+import { countAcceptances } from '@mnema/context';
 import type { DivergentMove } from '@mnema/core';
 import { isStackName, isStackVersion } from '@mnema/core';
 import type { BriefDone } from '../commands/brief.js';
@@ -132,7 +133,7 @@ import { oneLine } from '../one-line.js';
 import { DERIVED_FROM } from '../provenance.js';
 import { recordFraming } from '../record-framing.js';
 import { severalRecordsSentence } from '../record-integrity.js';
-import { acceptedBy } from './accepted-by.js';
+import { acceptedOnLine, usualIdentity } from './accepted-by.js';
 import { NAMED_TITLE_LIMIT, namedDecisionText } from './named-decision.js';
 import { toImport } from './status.js';
 import {
@@ -563,7 +564,9 @@ const WHERE_THE_RATIONALE_IS = [
 ];
 
 /**
- * WHO RULED EACH DECISION, said once above the list and then on every line of it.
+ * WHO RULED EACH DECISION, said in the counts above the list and then, per rule, by its day and
+ * whether an agent accepted it or no agent was declared. The identity is named once, in the header, and a line
+ * names one only when it is another identity's.
  *
  * WHY THE DOCUMENT SAYS IT. It hands decisions over as rules, and a rule is as good as whoever
  * made it one. Measured on the shipped binary, a clone with a key of its own recorded a
@@ -572,7 +575,7 @@ const WHERE_THE_RATIONALE_IS = [
  * The facts that tell the two apart were already in the chain (the accepting event names the
  * identity and, when one executed it, the agent) and this file did not carry them.
  *
- * IT SAYS WHAT THE ENVELOPE SAYS AND NOTHING MORE. `a person` is an act with no agent on it, not
+ * IT SAYS WHAT THE ENVELOPE SAYS AND NOTHING MORE. `no agent declared` is an act with no agent on it, never a claim about a person, and not
  * a claim that a human typed it; `agent <name>` is an act that had one. `unconfirmed` is the
  * record's shape and not a verdict on the rule (see {@link Acceptance}): an identity that has
  * only ever accepted what it recorded itself, with nobody else ruling on any of it. Every rule
@@ -586,15 +589,20 @@ const WHERE_THE_RATIONALE_IS = [
  */
 function whoRuled(decisions: Brief['decisions']): string[] {
   if (decisions.length === 0) return [];
-  const byAnAgent = decisions.filter((one) => one.acceptance?.agent !== undefined).length;
+  const { agent, undeclared } = countAcceptances(decisions);
   const unconfirmed = decisions.filter((one) => one.acceptance?.unconfirmed === true).length;
+  const usual = usualIdentity(decisions);
+  const usualUnconfirmed = decisions.some(
+    (one) => one.acceptance?.by === usual && one.acceptance?.unconfirmed === true,
+  );
   return [
-    'Each says who accepted it: the identity, and whether the act had an agent on it or not.',
-    ...(byAnAgent > 0
-      ? [
-          `${byAnAgent} of them ${byAnAgent === 1 ? 'was' : 'were'} accepted by an agent. The record keeps which, and \`mnema switch\` says whether an agent may accept.`,
-        ]
-      : []),
+    'Each line ends with the day it was accepted and whether an agent accepted it or no agent was declared.',
+    ...(usual === undefined
+      ? []
+      : [
+          `The identity is ${oneLine(usual)}${usualUnconfirmed ? ' (marked unconfirmed, see below)' : ''}, unless a line names another.`,
+        ]),
+    `${agent} of them ${agent === 1 ? 'was' : 'were'} accepted by an agent and ${undeclared} with no agent declared.${agent > 0 ? ' The record keeps which agent, and `mnema switch` says whether an agent may accept.' : ''}`,
     ...(unconfirmed > 0
       ? [
           `${unconfirmed} of them ${unconfirmed === 1 ? 'was' : 'were'} accepted by an identity marked unconfirmed: it has accepted only decisions it recorded itself, and no other identity has accepted any of them. That is who has looked, not a verdict on the rule.`,
@@ -800,6 +808,7 @@ export function briefWithin(
   formatter?: readonly string[],
   keptPrivate?: BriefDone['keptPrivate'],
   privateRules?: PrivateRules,
+  pulled?: PulledOpening,
 ): string[] {
   const late = [
     ...notInTheRecord(outside),
@@ -807,9 +816,21 @@ export function briefWithin(
     ...formatterSection(formatter),
     ...inheritedSection(inherited),
   ];
-  const committed = rulesIn(governance);
+  // PULLED, the decisions are the core and this machine's private rules are COUNTED, not listed:
+  // what the text hands over is what no session has to ask for, and the private tree is asked for.
+  const committed =
+    pulled === undefined
+      ? rulesIn(governance)
+      : governance.decisions.filter((decision) => pulled.core.has(decision.id)).length +
+        governance.skills.length;
+  const privateKept =
+    pulled !== undefined && privateRules !== undefined
+      ? { decisions: privateRules.decisions.length, patterns: privateRules.skills.length }
+      : keptPrivate;
   const mine =
-    privateRules === undefined ? 0 : privateRules.decisions.length + privateRules.skills.length;
+    privateRules === undefined || pulled !== undefined
+      ? 0
+      : privateRules.decisions.length + privateRules.skills.length;
   // ONE CUT OVER BOTH LISTS, the committed rules first: the private ones are the tail of the
   // order, so they are the first to be left out, and a committed rule is never dropped to make
   // room for a private one.
@@ -824,10 +845,16 @@ export function briefWithin(
         false,
         inherited,
         mine > 0 ? WHAT_TRAVELS_WITH_PRIVATE : WHAT_TRAVELS,
+        pulled,
       ),
       ...(mine > 0 && privateRules !== undefined
-        ? privateSection(privateRules, Math.max(0, shown - committed), ceiling)
-        : keptPrivateSection(keptPrivate)),
+        ? privateSection(
+            privateRules,
+            Math.max(0, shown - committed),
+            ceiling,
+            governance.decisions.length > 0,
+          )
+        : keptPrivateSection(privateKept)),
       ...late,
     ],
     ceiling.lengthOf,
@@ -840,6 +867,10 @@ const PRIVATE_RULES_ARE = [
   'a clone of the repository does not get them, and the headings above do not count them.',
 ];
 
+/** The shape of a private rule line, said where the committed list's header is not there to say it. */
+const PRIVATE_RULE_LINE =
+  'Each decision line ends with the day it was accepted, whether an agent accepted it or no agent was declared, and the identity.';
+
 /**
  * What the copy a hook carries lists of the rules recorded in this machine's private tree, after
  * the committed ones: one heading, the line that says whose they are, and each rule in the shape
@@ -850,7 +881,12 @@ const PRIVATE_RULES_ARE = [
  * about one machine's private tree. What did not fit is said the way {@link leftOut} says it,
  * with the doors that list the private tree.
  */
-function privateSection(rules: PrivateRules, shown: number, ceiling: HookCeiling): string[] {
+function privateSection(
+  rules: PrivateRules,
+  shown: number,
+  ceiling: HookCeiling,
+  formatSaid: boolean,
+): string[] {
   const decisions = rules.decisions.slice(0, shown);
   const skills = rules.skills.slice(0, Math.max(0, shown - rules.decisions.length));
   const items = [
@@ -872,6 +908,9 @@ function privateSection(rules: PrivateRules, shown: number, ceiling: HookCeiling
     `## Recorded privately on this machine (${items.length})`,
     '',
     ...PRIVATE_RULES_ARE,
+    // The committed list's header says the shape of a rule line; with no committed rule there is
+    // no header, so the line that would otherwise be unexplained is explained here.
+    ...(formatSaid || rules.decisions.length === 0 ? [] : [PRIVATE_RULE_LINE]),
     ...(items.length > 0 ? ['', ...items] : []),
     ...privateLeftOut(leftDecisions, leftPatterns, ceiling),
   ];
@@ -1094,6 +1133,58 @@ function inheritedSection(inherited: InheritedReading | undefined): string[] {
   ];
 }
 
+/**
+ * What the opening carries INSTEAD of the newest decisions while `opening-core` is on: the ids of
+ * the decisions in force whose acceptance note says the person dictated them (`decisionsTheyDictated`).
+ * A function of the record alone, so the text stays one a second reader can recompute.
+ */
+export interface PulledOpening {
+  readonly core: ReadonlySet<string>;
+}
+
+/**
+ * Why the list under the core heading is what it is: said once, in the words of what the text is.
+ * Counts of the whole record, so a cut copy still says how many decisions the core holds.
+ */
+function theCoreIs(governance: Brief, core: number): string[] {
+  return [
+    `This text hands over the core: the ${counted(core, 'decision', 'decisions')} in force, of ${governance.decisions.length}, whose acceptance note says the person dictated them,`,
+    'newest first. It does not hand over the rest; the section after the patterns says how to pull it.',
+  ];
+}
+
+/**
+ * The index of what else the record holds, as counts of the whole committed record and not of what
+ * the cut left in the text, so a reader holding only this knows how much is not in it.
+ */
+function whatElseIsThere(governance: Brief, core: number): string[] {
+  const decisions = governance.decisions.length;
+  return [
+    '',
+    '## What else the record holds',
+    '',
+    `- Decisions in force: ${decisions}, ${core} in the core and ${decisions - core} outside it.`,
+    `- Patterns adopted: ${governance.skills.length}.`,
+    `- Awaiting a judgement: ${counted(governance.decisionsAwaiting, 'decision', 'decisions')} and ${counted(governance.skillsAwaiting, 'pattern', 'patterns')}.`,
+    `- Rules with an address: ${governance.addressed}.`,
+  ];
+}
+
+/**
+ * How to pull what the text does not carry: the three reads that serve it, and the two facts that
+ * decide whether a search finds it. A fixed paragraph, so it costs the same whatever the record holds.
+ */
+const HOW_TO_PULL = [
+  '',
+  '## How to pull the rest',
+  '',
+  '- `search` finds a record by the words written in it, exactly as written: use the language of the',
+  '  titles above. With `kind` `decision` and `state` `accepted` it lists the decisions in force.',
+  '- `governing_rules` with a path lists the rules addressed at that path.',
+  '- `read_record` with an id serves one record whole, with its argument and what was turned down.',
+  '- A shell has the same three as `mnema search`, `mnema rules <path>` and `mnema show <id>`.',
+];
+
 /** How many rules the document can print: every decision in force and every pattern adopted. */
 function rulesIn(governance: Brief): number {
   return governance.decisions.length + governance.skills.length;
@@ -1143,9 +1234,17 @@ function composed(
   forAFile = true,
   inherited?: InheritedReading,
   travels: readonly string[] = WHAT_TRAVELS,
+  pulled?: PulledOpening,
 ): string[] {
-  const decisions = governance.decisions.slice(0, shown);
-  const skills = governance.skills.slice(0, Math.max(0, shown - governance.decisions.length));
+  // PULLED, THE DECISIONS LISTED ARE THE CORE alone, in the order the document already keeps
+  // (newest settled first): the rest of the record is counted and served by the doors.
+  const listed =
+    pulled === undefined
+      ? governance.decisions
+      : governance.decisions.filter((decision) => pulled.core.has(decision.id));
+  const decisions = listed.slice(0, shown);
+  const skills = governance.skills.slice(0, Math.max(0, shown - listed.length));
+  const usual = usualIdentity(listed);
   return [
     GENERATED,
     '',
@@ -1168,14 +1267,15 @@ function composed(
     ...HOW_A_DECISION_ENTERS,
     '',
     ...section(
-      'Decisions in force',
+      pulled === undefined ? 'Decisions in force' : 'Decisions in force: the core',
       decisions.length,
       [
         ...(governance.decisions.length === 0
           ? NO_DECISIONS
           : [
+              ...(pulled === undefined ? [] : theCoreIs(governance, listed.length)),
               ...WHERE_THE_RATIONALE_IS,
-              ...whoRuled(governance.decisions),
+              ...whoRuled(listed),
               ...ambiguousLabels(governance.collisions),
               ...movedApart(governance.divergent, 'decision'),
             ]),
@@ -1190,6 +1290,7 @@ function composed(
           decision.origin,
           decision.acceptance,
           decision.supersedes,
+          usual,
         ),
       ),
     ),
@@ -1203,11 +1304,10 @@ function composed(
       whatAwaitsAJudgement(governance.skillsAwaiting, PATTERNS_WAITING),
       skills.map((skill) => rule(skill.name, skill.id, skill.origin)),
     ),
-    ...leftOut(
-      governance.decisions.length - decisions.length,
-      governance.skills.length - skills.length,
-      ceiling,
-    ),
+    ...leftOut(listed.length - decisions.length, governance.skills.length - skills.length, ceiling),
+    ...(pulled === undefined
+      ? []
+      : [...whatElseIsThere(governance, listed.length), ...HOW_TO_PULL]),
   ];
 }
 
@@ -1292,9 +1392,10 @@ function rule(
   origin?: readonly string[],
   acceptance?: Acceptance,
   supersedes?: NamedDecision,
+  usual?: string,
 ): string {
   const from = (origin ?? []).map((target) => ` · ${DERIVED_FROM} \`${oneLine(target)}\``).join('');
-  const by = acceptance === undefined ? '' : ` · ${acceptedBy(acceptance)}`;
+  const by = acceptance === undefined ? '' : ` · ${acceptedOnLine(acceptance, usual)}`;
   // LAST, because the replaced decision's title is text somebody typed: whatever follows a free
   // title on the line is a field it could try to forge, and nothing follows this one.
   const replaced =

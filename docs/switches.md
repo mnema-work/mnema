@@ -2,9 +2,11 @@
 
 mnema puts the record in front of a model in several places without being asked: the document a
 session opens with, the rules at each edit, a line after a write, a hook at the end of a turn.
-Each of those is a **channel**, and each can be switched off with `mnema switch off <name>`. Two
-channels begin the other way round: they are **off until a person switches them on**, because what
-they do reads a conversation or holds a write.
+Each of those is a **channel**, and each can be switched off with `mnema switch off <name>`. One
+channel begins the other way round: it is **off until a person switches it on**, because what it does
+is hold a write. (`user-corrections`, which reads a conversation, began off too until 0.1.10: it is
+on now, because a capture that waits for a switch nobody turns on captures nothing, and what it
+records stays in this machine's private tree.)
 
 Switching is recorded: it is a signed, attributed, dated fact of the chain, committed with the
 repository by default, so a reader can tell *"no rule addressed that file"* from *"somebody turned
@@ -24,8 +26,10 @@ in [the guide on switching off what is handed to a model](switching-off-what-is-
 | `edit-refuses-a-write` | on | the refusal of a write where a rule of the record refuses one: such a write goes through, the rules go on arriving, and a rule that asks for a person still asks | `mnema switch off edit-refuses-a-write` |
 | `agent-accepts` | on | an agent ruling a decision in force: with it off, an `accept`, a `supersede`, an `adopt` or a `deprecate` that declares an agent is refused, and so is one that declares none unless it is made at a terminal (standard input and standard error both a TTY; through the MCP server never): only a person at a terminal accepts or replaces a decision or adopts or deprecates a pattern, and only a person at a terminal switches it back on (stopping it is anyone's), a proposed decision waits, and nothing else changes. A terminal is a heuristic for a person, not a proof of one | `mnema switch off agent-accepts` |
 | `edit-first-write-gate` | off | the hold on the first write of a session to a file a rule addresses: with it on, that write is refused once, with the rules in the reason, and the same write repeated goes through. Off until switched on; it holds in Claude Code, where the server remembers the session | `mnema switch on edit-first-write-gate` |
-| `user-corrections` | off | the proposals recorded from what a person typed into a session: with it on, a `Stop` hook reads the transcript, and each time the person corrected the agent a decision is recorded as proposed in this machine’s private tree, and so is each answer the person gave to a question the agent asked. Off until switched on | `mnema switch on user-corrections` |
+| `user-corrections` | on | the proposals recorded from what a person typed into a session: with it on, a `Stop` hook reads the transcript, and each time the person corrected the agent a decision is recorded as proposed in this machine’s private tree, and so is each answer the person gave to a question the agent asked, and, where `dictated-rule` is off, each message that has the shape of a rule dictated. On to begin with | `mnema switch off user-corrections` |
+| `opening-core` | off | the shape of the decisions a session opens with: with it on, the opening text hands over the decisions whose acceptance note says the person dictated them, an index of what else the record holds and how to pull it, instead of the newest decisions in force. Off until switched on; the file `mnema brief` prints is the same either way | `mnema switch on opening-core` |
 | `choice-settled` | on | the sentence handed to the agent after a question it asked the person was answered: that a choice may have been settled there, which tool records it and which accepts it (or that a person accepts it, where `agent-accepts` is off). It reads which tool ran and whether `agent-accepts` is on, and writes nothing | `mnema switch off choice-settled` |
+| `dictated-rule` | on | the sentence handed to the agent beside a message of the person’s that is an instruction to keep (always, never, from now on followed by a verb in the imperative, or put it as a rule): that only a rule the person typed is accepted, which tool records it and which accepts it, the note quoting the person’s own words (or that a person accepts it, where `agent-accepts` is off). It reads the message for that shape and whether `agent-accepts` is on, says none of the message’s words, and writes nothing | `mnema switch off dictated-rule` |
 | `host-memory-mirror` | on | the copy of the host’s own memory: with it on, a `PostToolUse` hook copies each note Claude Code writes to its memory directory into this machine’s private tree, once per content, leaving out the index `MEMORY.md` and the notes about the person (`type: user`) | `mnema switch off host-memory-mirror` |
 | `decision-file-written` | on | the line beside a write to a file that holds decisions (an ADR, a plan, a ledger, a rules file) the record cites nowhere, naming the command that reads it into the record, once per session and file | `mnema switch off decision-file-written` |
 | `subagent-handback` | on | the return of a subagent that ends its final reply without the block of decisions the record asks for: with it on, a `SubagentStop` hook sends the subagent back once, with the format; off, a subagent stops as it would without the plugin | `mnema switch off subagent-handback` |
@@ -42,3 +46,11 @@ in [the guide on switching off what is handed to a model](switching-off-what-is-
 A channel that begins on stays on until somebody records a switch off, and one that begins off
 stays off until somebody records a switch on. Where two trees disagree (the committed one and this
 machine's private one) and cannot be ordered, off wins.
+
+`opening-core` changes the SHAPE of the decisions in the text a session opens with (`mnema brief --hook`), and nothing
+else: on, that text lists the decisions whose acceptance note says the person dictated them ("Dictated by ...", "Accepted as dictated") instead of the newest ones in force,
+says by count what else the record holds, and says how to pull it with `search`, `governing_rules` and `read_record`.
+It reads the note of each decision's last accept; it does not read who typed the accept, a rule the person only chose
+among options an agent offered ("Chosen by ...") is not in it, and it cannot tell that a note that says the person
+dictated a rule is true. A text longer than the host's ceiling is cut at a whole rule, from the oldest of the
+core, and says how many it left out. The file `mnema brief` prints does not change.
