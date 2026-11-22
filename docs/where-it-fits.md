@@ -76,7 +76,7 @@ that it has a state, is accepted by someone, is superseded rather than rewritten
 the code it governs. So mnema does not decide what an agent remembers by meaning; it keeps the calls somebody may have to
 cite, and the notes recorded beside them.
 
-**Next to a folder of ADRs.** The files stay where they are, and nobody has to stop writing them. `mnema decision import`
+**Next to a folder of ADRs.** The files stay where they are, and nobody has to stop writing them. `mnema decision import docs/decisions`
 reads them in as decisions born `proposed`, whatever status a file states, so nothing is accepted on the team's behalf, and
 `mnema export --madr <dir>` writes the committed record back out as files, marked as a reading of the record and not its source.
 The page is [mnema next to a folder of ADRs](mnema-next-to-a-folder-of-adrs.md); it says what import reads, what an

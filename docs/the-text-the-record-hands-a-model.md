@@ -55,7 +55,7 @@ identity of its own, recorded a decision whose title was an instruction to a mod
 was the only rule in force in the first clone's opening text, with nothing to say who had put it there. It still can be in
 force, as the next section says; what changed is that the opening text now says who accepted it.
 
-## What it does not do
+## What it leaves alone
 
 - **It does not read the words.** The rules above look at bytes and shapes. A sentence addressed to a model comes out of
   mnema unchanged, in a title, a note or the body of a decision, and nothing scans for instructions.
