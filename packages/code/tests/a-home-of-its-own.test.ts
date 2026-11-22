@@ -296,7 +296,8 @@ describe('no test process inherits a host session variable', () => {
   const named = (): string[] => {
     const names: string[] = [];
     for (const row of Object.values(HOSTS)) {
-      const cell = (row as { sessionVariable?: { name?: string; candidate?: string } }).sessionVariable;
+      const cell = (row as { sessionVariable?: { name?: string; candidate?: string } })
+        .sessionVariable;
       if (cell?.name !== undefined) names.push(cell.name);
       if (cell?.candidate !== undefined) names.push(cell.candidate);
     }
@@ -317,7 +318,10 @@ describe('no test process inherits a host session variable', () => {
     for (const name of HOST_SESSION_VARIABLES) expect(process.env[name], name).toBeUndefined();
     const seen = execFileSync(
       process.execPath,
-      ['-e', `process.stdout.write(JSON.stringify(${JSON.stringify(HOST_SESSION_VARIABLES)}.filter((n) => n in process.env)))`],
+      [
+        '-e',
+        `process.stdout.write(JSON.stringify(${JSON.stringify(HOST_SESSION_VARIABLES)}.filter((n) => n in process.env)))`,
+      ],
       { encoding: 'utf-8' },
     );
     expect(JSON.parse(seen)).toEqual([]);
