@@ -1413,7 +1413,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-disk-probe-says-what-it-measured.test.ts': 7,
   'packages/code/tests/the-document-is-a-function-of-the-record.test.ts': 6,
   'packages/code/tests/the-echo-names-the-record.test.ts': 13,
-  'packages/code/tests/the-evidence-page-cites-what-exists.test.ts': 4,
+  'packages/code/tests/the-evidence-page-cites-what-exists.test.ts': 5,
   'packages/code/tests/the-example-is-read-from-the-page.test.ts': 6,
   'packages/code/tests/the-example-is-type-checked.test.ts': 7,
   'packages/code/tests/the-example-rules-run.test.ts': 9,
