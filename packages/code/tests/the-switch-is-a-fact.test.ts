@@ -79,6 +79,7 @@ import {
   HOST_MEMORY_MIRROR_CHANNEL,
   LAST_SESSION_CHANNEL,
   NOT_SWITCHABLE,
+  OPENING_CORE_CHANNEL,
   PRIVATE_RULES_CHANNEL,
   RECALL_CHANNEL,
   REFUSES_A_WRITE_CHANNEL,
@@ -399,6 +400,20 @@ const HONOURED: Readonly<
       return (
         !said.failed && said.out.join('\n').includes('## Recorded privately on this machine (')
       );
+    },
+  },
+  [OPENING_CORE_CHANNEL]: {
+    // THE SHAPE OF THE HOOK'S COPY of the document, driven the way the plugin asks for it: a rule in
+    // force whose accept note says the person dictated it, and `brief --hook`. It starts off, so the case
+    // switches it on first. "Speaks" is the core heading, which the copy has only while it is on.
+    setUp: async () => {
+      const id = idIn(await did('decision', 'record', 'A call the person dictated', 'why'));
+      await did('decision', 'move', 'accept', id, '--note', 'Chosen by the maintainer: "yes".');
+      await did('switch', 'on', OPENING_CORE_CHANNEL);
+    },
+    speaks: async () => {
+      const said = await mnema('brief', '--hook');
+      return !said.failed && said.out.join('\n').includes('## Decisions in force: the core (');
     },
   },
   [RECALL_CHANNEL]: {

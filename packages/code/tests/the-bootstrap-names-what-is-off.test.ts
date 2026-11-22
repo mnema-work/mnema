@@ -102,7 +102,7 @@ describe('the opening read names the channels that are off', () => {
   it('says which begin off, and that only a person turns one on', async () => {
     const line = offLine(await bootstrapBlocks());
     expect(line).toBe(
-      'Off on this machine: edit-first-write-gate. ' +
+      'Off on this machine: edit-first-write-gate, opening-core. ' +
         'Only a person turns one on, with `mnema switch on <name>`.',
     );
     expect(line).toBe(offOnThisMachine([...STARTS_OFF]));
@@ -117,19 +117,20 @@ describe('the opening read names the channels that are off', () => {
     expect(offLine(await bootstrapBlocks())).toContain('user-corrections');
     await did('switch', 'on', 'user-corrections');
     expect(offLine(await bootstrapBlocks())).toBe(
-      'Off on this machine: edit-first-write-gate. Only a person turns one on, with `mnema switch on <name>`.',
+      'Off on this machine: edit-first-write-gate, opening-core. Only a person turns one on, with `mnema switch on <name>`.',
     );
     await did('switch', 'on', 'edit-first-write-gate');
+    await did('switch', 'on', 'opening-core');
     expect(offLine(await bootstrapBlocks())).toBeUndefined();
   });
 
   it('names a channel a person switched off, beside the ones that begin off', async () => {
     await did('switch', 'off', 'session-tally');
     const line = offLine(await bootstrapBlocks()) ?? '';
-    expect(line).toContain('edit-first-write-gate, session-tally');
+    expect(line).toContain('edit-first-write-gate, opening-core, session-tally');
     await did('switch', 'off', 'user-corrections');
     expect(offLine(await bootstrapBlocks()) ?? '').toContain(
-      'edit-first-write-gate, user-corrections, session-tally',
+      'edit-first-write-gate, user-corrections, opening-core, session-tally',
     );
   });
 
