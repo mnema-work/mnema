@@ -23,7 +23,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { fixMergeDriver, mergeDriverLines } from '../src/commands/doctor-merge-driver.js';
 import { driverCommand, runRecordPull } from '../src/commands/record-pull.js';
@@ -591,6 +591,46 @@ describe('mnema record pull, where the pull brings a symbolic link to a tail fil
 
     expect(existsSync(elsewhere)).toBe(false);
     expect(lstatSync(join(local, path)).isSymbolicLink()).toBe(true);
+    expect(pulled.linked).toEqual([path]);
+    expect(pulled.keptAside?.paths).toEqual([path]);
+    expect(existsSync(join(pulled.keptAside?.dir ?? '', path))).toBe(true);
+  });
+
+  it('writes nothing through a folder the pull left as a link on the way to a file kept aside', () => {
+    const { local, other } = world();
+    const second = { ...env(), HOME: join(sandbox, 'second-home') };
+    mkdirSync(second.HOME, { recursive: true });
+    const write = (title: string) =>
+      spawnSync(process.execPath, [CLI, 'task', 'create', title], {
+        cwd: local,
+        encoding: 'utf-8',
+        env: second,
+      });
+    expect(write('from a second key').status).toBe(0);
+    carry(local, other);
+    expect(write('and one more').status).toBe(0);
+    const opened = git(local, 'status', '--porcelain', '--untracked-files=all', '.mnema')
+      .out.split('\n')
+      .filter((line) => line.startsWith('?? .mnema/tails/') && line.endsWith('000001.jsonl'))
+      .map((line) => line.slice(3));
+    expect(opened).toHaveLength(1);
+    const path = opened[0] as string;
+    const folder = join(local, dirname(path));
+    const outside = join(sandbox, 'outside');
+    mkdirSync(outside, { recursive: true });
+    // Between the pull and the putting back, the folder of the file is swapped for a link.
+    const hook = join(local, '.git', 'hooks', 'post-merge');
+    writeFileSync(
+      hook,
+      `#!/bin/sh\nmv '${folder}' '${folder}.swapped' && ln -s '${outside}' '${folder}'\n`,
+      { mode: 0o755 },
+    );
+
+    const pulled = pull(local);
+    if (!pulled.ok) throw new Error(JSON.stringify(pulled));
+
+    expect(lstatSync(folder).isSymbolicLink()).toBe(true);
+    expect(readdirSync(outside)).toEqual([]);
     expect(pulled.linked).toEqual([path]);
     expect(pulled.keptAside?.paths).toEqual([path]);
     expect(existsSync(join(pulled.keptAside?.dir ?? '', path))).toBe(true);

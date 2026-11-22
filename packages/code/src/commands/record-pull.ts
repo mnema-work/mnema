@@ -33,7 +33,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync 
 import { dirname, join } from 'node:path';
 import type { LevelRequirement } from '@mnema/chain';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
-import { isLinkAt } from '../linked-log.js';
+import { isLinkAlong } from '../linked-log.js';
 import { oneLine } from '../one-line.js';
 import { forkSentence, joinGrownTail, MERGE_DRIVER } from './record-merge-tail.js';
 import { runVerify, type VerifyDone } from './verify.js';
@@ -287,9 +287,10 @@ export function runRecordPull(ctx: RecordPullContext): RecordPullDone | RecordPu
   for (const path of aside) {
     const local = join(top, path);
     const ours = readFileSync(join(asideDir, path));
-    // A link the pull brought to this path (git carries them) is neither read nor written through:
-    // opening it would follow it out of the record, a dangling one too. What was kept stays aside.
-    if (isLinkAt(local)) {
+    // A link the pull brought to this path (git carries them), or to a folder on the way to it, is
+    // neither read nor written through: opening it would follow it out of the record, a dangling
+    // one too. What was kept stays aside.
+    if (isLinkAlong(top, path)) {
       kept.push(path);
       linked.push(path);
       continue;
