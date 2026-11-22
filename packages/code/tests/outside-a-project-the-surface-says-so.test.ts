@@ -218,6 +218,8 @@ const NO_SUCH_STACK_HERE =
   'it looks for a stack by name in the receipts of every tree that exists; outside a project the project trees have none, and it says that no such stack is installed';
 
 const REFUSES_SOMETHING_ELSE_FIRST: Readonly<Record<string, string>> = {
+  prove:
+    'run with nothing named it asks for a decision or a file before it looks for a project; `prove <decision>` outside one says there is none, and `prove --check` needs none',
   task: THE_PARSER_ANSWERED_FIRST,
   decision: THE_PARSER_ANSWERED_FIRST,
   skill: THE_PARSER_ANSWERED_FIRST,

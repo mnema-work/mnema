@@ -508,6 +508,10 @@ const UNWITNESSED: Readonly<Record<string, Debt>> = {
     reached: 'nobody imports it',
     why: 'The report verb\u2019s declaration and the lines it prints; a-report-is-built-from-an-allowlist.test.ts runs the verb through the program and asserts what it shows, and the values behind it are asserted on commands/report.ts.',
   },
+  'packages/code/src/wiring/prove.ts': {
+    reached: 'nobody imports it',
+    why: 'The prove verb\u2019s declaration and the lines it prints; a-decision-is-proven-in-one-file.test.ts runs prove --check through the program and asserts those lines, and what a proof holds and refuses is asserted on commands/prove.ts and on the chain.',
+  },
   'packages/code/src/wiring/export.ts': {
     reached: 'nobody imports it',
     why: "The only read with no --json and no summary; the feed test driving it is about context's OCSF mapping, and this verb appears in no golden and its adapter has no test of its own.",
@@ -700,7 +704,7 @@ const UNWITNESSED: Readonly<Record<string, Debt>> = {
  * reading, so nothing can fall in two.
  */
 const THE_SHAPE_OF_WHAT_IS_LEFT: Readonly<Record<string, number>> = {
-  wiring: 52,
+  wiring: 53,
   presentation: 7,
   projections: 3,
   completion: 4,
@@ -860,6 +864,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/chain/src/chain/ots.test.ts': 5,
   'packages/chain/src/chain/outside-vectors.test.ts': 11,
   'packages/chain/src/chain/pool.test.ts': 11,
+  'packages/chain/src/chain/proof.test.ts': 14,
   'packages/chain/src/chain/range.test.ts': 5,
   'packages/chain/src/chain/record-name.test.ts': 6,
   'packages/chain/src/chain/relink-plan.test.ts': 15,
@@ -925,7 +930,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/chain/src/events/unannounced.test.ts': 3,
   'packages/chain/src/events/upcaster.test.ts': 2,
   'packages/chain/src/events/workflow.test.ts': 4,
-  'packages/chain/src/format-doc.test.ts': 10,
+  'packages/chain/src/format-doc.test.ts': 11,
   'packages/chain/src/one-line.test.ts': 4,
   'packages/chain/src/readme-example.test.ts': 5,
   'packages/chain/tests/support/second-reader-session.ts': 4,
@@ -1073,6 +1078,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-commit-hook-only-suggests.test.ts': 10,
   'packages/code/tests/a-correction-becomes-a-proposal.test.ts': 15,
   'packages/code/tests/a-count-that-fails-is-said-once-in-the-ledger.test.ts': 13,
+  'packages/code/tests/a-decision-is-proven-in-one-file.test.ts': 12,
   'packages/code/tests/a-decision-is-recorded-with-the-paths-it-governs.test.ts': 12,
   'packages/code/tests/a-decision-recorded-twice-is-the-one-on-the-record.test.ts': 12,
   'packages/code/tests/a-dictated-rule-is-said.test.ts': 15,
@@ -1875,6 +1881,8 @@ const PRODUCTION_FILES: readonly string[] = [
   'packages/chain/src/chain/moves.ts',
   'packages/chain/src/chain/ots.ts',
   'packages/chain/src/chain/pool.ts',
+  'packages/chain/src/chain/proof-vector.ts',
+  'packages/chain/src/chain/proof.ts',
   'packages/chain/src/chain/range.ts',
   'packages/chain/src/chain/record-name.ts',
   'packages/chain/src/chain/relink-plan.ts',
@@ -1971,6 +1979,7 @@ const PRODUCTION_FILES: readonly string[] = [
   'packages/code/src/commands/next-actions.ts',
   'packages/code/src/commands/observe.ts',
   'packages/code/src/commands/promote.ts',
+  'packages/code/src/commands/prove.ts',
   'packages/code/src/commands/recall.ts',
   'packages/code/src/commands/record-commit.ts',
   'packages/code/src/commands/record-merge-tail.ts',
@@ -2250,6 +2259,7 @@ const PRODUCTION_FILES: readonly string[] = [
   'packages/code/src/wiring/options.ts',
   'packages/code/src/wiring/problem-report.ts',
   'packages/code/src/wiring/promote.ts',
+  'packages/code/src/wiring/prove.ts',
   'packages/code/src/wiring/recall.ts',
   'packages/code/src/wiring/record.ts',
   'packages/code/src/wiring/refs.ts',
@@ -2509,8 +2519,9 @@ describe('every file has a test that names it', () => {
     // 79 once the status printer's test imports it.
     // 80 with the record group's wiring, which a-tail-merges-and-pulls.test.ts drives through the binary.
     // 81 with the upgrade verb's wiring, which after-update.test.ts drives through the program.
-    expect(found.size).toBe(81);
-    expect(byReach('nobody imports it')).toBe(81);
+    // 82 with the prove verb's wiring, which a-decision-is-proven-in-one-file.test.ts drives.
+    expect(found.size).toBe(82);
+    expect(byReach('nobody imports it')).toBe(82);
     expect(byReach('imported, and no assertion observes it')).toBe(0);
   });
 
@@ -2532,7 +2543,7 @@ describe('every file has a test that names it', () => {
     // Announced in the header and, until now, kept by hand. A shared excuse is how a table
     // like this turns into a rubber stamp, and a row drained to a stub is how it starts.
     const reasons = Object.values(UNWITNESSED).map((one) => one.why);
-    expect(reasons).toHaveLength(81);
+    expect(reasons).toHaveLength(82);
     expect(new Set(reasons).size).toBe(reasons.length);
     // The shortest reason standing is 156 characters; the floor is under it and well over
     // anything that could be written without saying what reaches that file.

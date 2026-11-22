@@ -199,6 +199,11 @@ const PROBES: readonly Probe[] = [
     argv: ['commits', NAME],
     says: `No decision ${NAME} here.`,
   },
+  {
+    key: 'wiring/prove.ts decision #1',
+    argv: ['prove', NAME],
+    says: `No decision ${NAME} here.`,
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -295,7 +300,7 @@ describe('the sites are the source’s, not this file’s', () => {
     // would be counted and not keyed, and the reconciliation would pass while the site
     // it belongs to went unprobed.
     expect(FOUND.files).toBeGreaterThan(40);
-    expect(FOUND.sites.length).toBe(12);
+    expect(FOUND.sites.length).toBe(13);
     expect(FOUND.calls).toBe(FOUND.sites.length);
   });
 });

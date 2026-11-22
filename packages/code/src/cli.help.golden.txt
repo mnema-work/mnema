@@ -64,6 +64,8 @@ $ mnema --help
 | Verify:
 |   verify          verify this project's record: its committed tree and its
 |                   private one
+|   prove           write the proof of one decision a stranger checks offline, or
+|                   check one
 |   witness         ask an outside witness to date this record, and read where
 |                   that stands
 |   check           give a rule a program that checks it, and record whether it
@@ -889,6 +891,24 @@ $ mnema verify --help
 |                          unchanged: this changes the shape of the answer, never
 |                          the answer
 |   -h, --help             display help for command
+
+### mnema prove --help
+$ mnema prove --help
+| Usage: mnema prove [options] [decision]
+|
+| write the proof of one decision a stranger checks offline, or check one
+|
+| Arguments:
+|   decision        the decision: its id or its ADR label
+|
+| Options:
+|   --out <file>    write the proof to this file (refused when it exists) instead
+|                   of standard output
+|   --private       prove a decision of this machine's private tree, which no
+|                   clone carries (default: false)
+|   --check <file>  check a proof from the file alone, and say what it proves and
+|                   what it does not
+|   -h, --help      display help for command
 
 ### mnema witness --help
 $ mnema witness --help

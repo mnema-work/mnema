@@ -314,6 +314,8 @@ const INVOCATION: Readonly<Record<string, Invocation>> = {
   // It writes the person's instruction files, beside the record and never into it.
   instructions: { argv: () => ['instructions'] },
   trailer: { argv: () => ['trailer', 'ADR-1'] },
+  // It writes the proof of one decision to standard output, and nothing to the record.
+  prove: { argv: () => ['prove', 'ADR-1'] },
   // It writes a hook into a git repository, which this harness's fixture is not; refusing there
   // would measure a refusal. What it does to the record, nothing, and to the repository is
   // measured in `a-commit-hook-only-suggests.test.ts`.
@@ -744,6 +746,7 @@ describe('every verb says if it writes', () => {
       'rules-file',
       'instructions',
       'verify',
+      'prove',
       'site',
       'search',
       'show',

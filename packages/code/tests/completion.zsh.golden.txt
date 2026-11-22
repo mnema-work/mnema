@@ -12,7 +12,7 @@
 
 _mnema_commands() {
   case "$1" in
-    '') echo 'init decision link unlink memory observe retract skill stack task promote status brief recall rules rules-file instructions switch inherit verify witness check site search show timeline refs audit diagram export usage resume repl why commits aging trailer commit-hook record key tail backup doctor upgrade report completion tour mcp run before-a-write beside-a-write tally corrections after-a-write handback settled dictated dispatched help' ;;
+    '') echo 'init decision link unlink memory observe retract skill stack task promote status brief recall rules rules-file instructions switch inherit verify prove witness check site search show timeline refs audit diagram export usage resume repl why commits aging trailer commit-hook record key tail backup doctor upgrade report completion tour mcp run before-a-write beside-a-write tally corrections after-a-write handback settled dictated dispatched help' ;;
     'decision') echo 'record move review supersede import help' ;;
     'skill') echo 'create move export provenance help' ;;
     'stack') echo 'add remove list index show diff check export enable disable help' ;;
@@ -56,6 +56,7 @@ _mnema_described() {
       'switch:turn off, or back on, what mnema hands to a model unasked, and whether an agent may accept a decision' \
       'inherit:read another repository’s decisions, pinned to one of its commits' \
       'verify:verify this project'\''s record: its committed tree and its private one' \
+      'prove:write the proof of one decision a stranger checks offline, or check one' \
       'witness:ask an outside witness to date this record, and read where that stands' \
       'check:give a rule a program that checks it, and record whether it held at a commit' \
       'site:write the project'\''s committed record as one HTML page that verifies itself in the browser (records nothing)' \
@@ -248,6 +249,7 @@ _mnema_flags() {
     'inherit set') echo '--at --write -h --help -V --version --color' ;;
     'inherit update') echo '--to --write -h --help -V --version --color' ;;
     'verify') echo '--global --workspace --allow-no-record --require --since --against-github --against-sigstore --verbose --json -h --help -V --version --color' ;;
+    'prove') echo '--out --private --check -h --help -V --version --color' ;;
     'witness') echo '--global --json -h --help -V --version --color' ;;
     'witness stamp') echo '--calendar --global -h --help -V --version --color' ;;
     'witness upgrade') echo '--blocks --global -h --help -V --version --color' ;;
@@ -414,6 +416,7 @@ _mnema_values() {
     'inherit update:--color') echo 'auto always never' ;;
     'verify:--require') echo 'chained signed witnessed' ;;
     'verify:--color') echo 'auto always never' ;;
+    'prove:--color') echo 'auto always never' ;;
     'witness:--color') echo 'auto always never' ;;
     'witness stamp:--color') echo 'auto always never' ;;
     'witness upgrade:--color') echo 'auto always never' ;;

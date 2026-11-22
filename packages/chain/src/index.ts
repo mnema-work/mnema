@@ -173,6 +173,20 @@ export { RecordLinkedError, refuseToWriteThrough } from './chain/linked-write.js
 export { MigrationUnsettledError } from './chain/migration.js';
 export { illegalMoves, type PlacedEvent } from './chain/moves.js';
 export type { PoolOptions } from './chain/pool.js';
+export {
+  checkProof,
+  type ManifestMove,
+  PROOF_SCHEME,
+  type ProofManifest,
+  type ProofVerdict,
+  type ProveRefusal,
+  type ProveResult,
+  proveDecision,
+  type RecordToProve,
+  recordToProve,
+  type TailToProve,
+  WHAT_A_PROOF_DOES_NOT_COVER,
+} from './chain/proof.js';
 export type {
   Arrivals,
   RecordGroup,

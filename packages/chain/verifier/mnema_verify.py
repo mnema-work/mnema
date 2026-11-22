@@ -2,6 +2,7 @@
 """A second reader of the mnema chain format. Standard library only.
 
     python3 mnema_verify.py record <a record directory> [--require signed]
+    python3 mnema_verify.py proof <a proof of one decision>
     python3 mnema_verify.py vectors [canonical-vectors.json]
     python3 mnema_verify.py self-test
     python3 mnema_verify.py all [--record DIR ...] [--require signed]
@@ -39,7 +40,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
-from mnemaverify import gaps, record, selftest, vectors  # noqa: E402
+from mnemaverify import gaps, proof, record, selftest, vectors  # noqa: E402
 from mnemaverify.verdict import Report  # noqa: E402
 
 DEFAULT_VECTORS = os.path.normpath(os.path.join(HERE, "..", "canonical-vectors.json"))
@@ -56,6 +57,11 @@ def _build_parser() -> argparse.ArgumentParser:
     one = subs.add_parser("record", help="verify one record directory")
     one.add_argument("path")
     _add_require(one)
+
+    proved = subs.add_parser(
+        "proof", help="check the proof of one decision `mnema prove` wrote (FORMAT.md section 9)"
+    )
+    proved.add_argument("path")
 
     vecs = subs.add_parser("vectors", help="reproduce the published canonical vectors")
     vecs.add_argument("path", nargs="?", default=DEFAULT_VECTORS)
@@ -154,6 +160,9 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "record":
         heading.append(f"RECORD - {args.path}")
         record.verify_record(args.path, report, args.require)
+    elif args.command == "proof":
+        heading.append(f"PROOF OF ONE DECISION - {args.path}")
+        proof.verify_proof(args.path, report)
     elif args.command == "all":
         heading.append("SELF-TEST, VECTORS, then every record given")
         selftest.run(report)

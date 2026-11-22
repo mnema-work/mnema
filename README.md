@@ -244,7 +244,8 @@ claim about the agent hosts is held, and which are not held yet, is in [`docs/ev
   [VS Code extension](packages/vscode/README.md) · [Stacks](packages/stacks/README.md) · [The plugin](plugin/README.md) ·
   [Porting it to a host](plugin/porting-to-a-host.md)
 - **Project.** [How each claim is held](docs/evidence.md) · [The page that verifies itself](docs/site.md) ·
-  [Verify without installing](docs/verify-without-installing.md) · [What comes next](docs/what-comes-next.md) ·
+  [Verify without installing](docs/verify-without-installing.md) · [A proof of one decision](docs/a-proof-of-one-decision.md) ·
+  [What comes next](docs/what-comes-next.md) ·
   [North star](docs/north-star.md) · [Architecture](docs/architecture.md) · [Contributing](CONTRIBUTING.md) · [Build from source](docs/build-from-source.md) ·
   [Security policy](SECURITY.md) · [Changelog](CHANGELOG.md)
 

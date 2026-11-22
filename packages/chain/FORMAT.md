@@ -68,6 +68,9 @@ builds them again and requires the file to equal what it builds
 (`packages/chain/src/chain/signed-vectors.test.ts`), and the second reader reproduces each and
 verifies its signature (`python3 verifier/mnema_verify.py vectors`).
 
+And `proof-vector.json` is a proof of one decision (§9) signed by the same key, which the code
+builds again byte for byte and both readers check.
+
 The vectors are **exemplars, not a schema**: one event per kind, plus the cases that
 carry a rule of their own: a second `task.created` whose title is written in NFD, three
 `task.transitioned` (a birth, a move that carries proof fields, a move the task workflow
@@ -2005,6 +2008,115 @@ e-mail or workflow in a signature-covered `account.linked` with `service: "sigst
 (`packages/code/src/sigstore/sigstore.test.ts`): for an e-mail, the hash of the one the
 certificate names. The identity it names is public by construction: it is in Rekor's log and in
 the committed file, in clear; the hash §6.3 records protects the event, not the bundle.
+
+## 9. A proof of one decision
+
+A record proves itself to whoever holds it; a proof of one decision proves one decision to
+whoever receives ONE FILE, offline, without the repository. It is not a new signature: every
+byte in it that proves anything is a byte the record already holds and already signs, and a
+checker makes over it the checks it makes of a record, over the lines the file carries instead
+of a directory. `mnema prove <decision>` writes one; `mnema prove --check <file>` and the second
+reader (`python3 verifier/mnema_verify.py proof <file>`) check one
+(`packages/chain/src/chain/proof.test.ts`, `packages/code/tests/a-decision-is-proven-in-one-file.test.ts`).
+
+The file is the canonical serialization (§1) of one object, and one line feed:
+
+```json
+{"keys":["-----BEGIN PUBLIC KEY-----\n…"],
+ "manifest":{"adr":"…","alternatives":"…","decision":"…","moves":[{"action":"…","at":"…","by":"…","from":"…"|null,"seq":0,"tail":"…","to":"…","which":"…","who":"…"}],"rationale":"…","record":"…"|null,"state":"…"|null,"title":"…"},
+ "scheme":"mnema-proof/1",
+ "tails":[{"ranges":[{"checkpoint":"<a checkpoint line>","entries":["<a stored line>", …]}],"tail":"…","tailproof":"<the tail proof>"}]}
+```
+
+- `keys`: the PEM public keys (§6), in ascending order of the fingerprint each one's material
+  hashes to, which a checker recomputes.
+- `tails`: in ascending order of their ids, each with its tail proof (§6.1) as stored, and its
+  `ranges` in ascending `fromSeq`, the first beginning at `seq` 0 and each after it at the `seq`
+  after the one before it ends: **from the start, and no gap**, so a tail carries every line from its
+  first to the last it carries. A range is one
+  checkpoint line (§6) and EVERY stored line (§4) of its range, `fromSeq` to `toSeq`: a content root
+  folds every event of its range (§5), so the lines beside the decision's travel with it.
+- `manifest`: what the file claims, in words: the decision's text (§6.8), the moves §6.7 applies to
+  it in the merged order ("Reading many tails"), each with the place of its line, the state the last
+  of them reaches, and the record the carried tails name (§6.10), `null` where none of their
+  artifacts names one. `alternatives`, `by` and `which` are there exactly when the writing or the
+  move carries them.
+
+**What a prover puts in it.** Every `decision.recorded` and `decision.transitioned` of the decision;
+the birth of every decision a supersede of it names, since §6.7 applies a supersede only where its
+successor's birth is held; and, for every identity a carried line names as `who`, every
+`identity.founded`, `key.enrolled`, `key.revoked`, `agent.enrolled` and `agent.retired` whose
+`subject` is that identity (the roster facts), so that the fold of §6.2 has the facts that make each
+signing key valid for its anchor. Each of those lines brings its whole range; every tail it touches
+is carried from its `seq` 0, and every range between that and the last range the tail gives comes
+too, so nothing before or between carried lines (a move, a writing, a revocation, a retraction) can
+be left out; and each range brings the identities
+its lines name, until nothing new is needed. The keys are the key of every tail carried and every key
+a carried line names for its consent: `newFp` of a `key.enrolled`, `agentFp` of an `agent.enrolled`,
+and `checkerFp` of a `checker.enrolled` (which is no roster fact, since it grants a role and no
+membership, but which a carried range can hold, and whose consent §6.2 checks). This product refuses to write a proof while a
+line it needs is above its tail's last checkpoint, from a record its own `verify` calls broken, and
+when the carried lines would read the decision otherwise than the whole record does.
+
+**What a checker checks, in this order, refusing at the first cause.** The bytes are UTF-8 (a
+byte-order mark is a character, and the file that begins with one is not canonical); they end in
+exactly one line feed; what comes before it is JSON with no key twice (§1); it is an object; its
+`scheme` is one the checker knows (`mnema-proof/1`); it holds exactly the four keys above, and a key
+beside them is refused; and only then, its bytes are the canonical serialization of what it holds. A
+tail holds exactly its three keys and a range its two, and a key beside them is refused too. Each key's fingerprint, in order. For each tail: its id begins with
+the fingerprint of a key the file carries (§3); its tail proof verifies under that key and names it
+(§6.1); each checkpoint line is a checkpoint (§6), of this tail, signed by that key, carrying
+`toSeq - fromSeq + 1` lines; each line is a stored line (§4) whose event its declaration rebuilds
+(§4.1), of this tail, at its `seq`, whose entry hash holds (§3) and whose `prev` is the line carried
+before it on the tail, across a range's edge as inside one (and `null` exactly at `seq` 0); a range
+begins where the one before it on the tail ended, the first at `seq` 0: a tail whose first range
+begins later is refused, naming the tail and that `seq`, and a gap is refused, naming the tail and
+the `seq`s it leaves out; the content root and the signature verify (§5, §6); every
+event names the checkpoint's signer and none has a `which` that is its `who` (§6); a first-scheme
+checkpoint does not follow a tail proof or a checkpoint of the second (§6.10). The tails name one
+record at most. Then the fold of §6.2, over the lines the file carries and nothing else, every one of
+them covered, with no issue. Then the manifest a checker derives from those lines is the manifest
+the file holds, field by field: a word changed in a line breaks that line's bytes or its range's
+signature, and a word changed in the manifest breaks this comparison.
+
+**What a proof that checks proves.** That these keys signed these lines at these places of these
+tails, under a tail proof that binds each tail to its key and, where the artifacts name one, to one
+record; that on each tail it carries, nothing sits from the tail's first line to the last it carries
+that it does not carry; that the record held, at those places, the roster facts that made each key
+valid for the identity it signed for; and that those lines read as this decision, with this text, these moves and
+this state.
+
+**What it does not prove**, and both checkers say it beside every proof they accept:
+
+1. that nothing was written after the last range it carries on each tail: a later move (a
+   supersede, a rejection), a later writing or a revocation of a key sits after it, where this file
+   does not reach;
+2. that no tail it does not carry holds a move or a writing of this decision, or a roster fact of an
+   identity it names: the record is the set of its tails, and this file carries some of them;
+3. when anything was written: every time in it is the clock of the machine that wrote it, and no
+   external witness (§8) travels with it;
+4. that the person behind a key is who the key is named for: it proves which key signed, and that
+   the record enrolled that key for that identity.
+
+The record is linear: there is no path of logarithmic size to a checkpoint, as in a Merkle log, and a
+proof carries whole ranges with no gap between them. This product's writer signs each act in a
+checkpoint of its own, so a range is a handful of lines; but every tail a proof touches is carried
+from its first line to the last the decision needs, so a proof grows toward the size of the tails it
+touches.
+
+`proof-vector.json`, beside this file, is a proof built from a small record signed with the key of
+RFC 8032 section 7.1, whose secret the RFC publishes: one tail of eight lines (a founding, a decision
+recorded and born, a task, the decision's acceptance, a second decision recorded and born, and the
+supersede of the first by the second), each act its own range. The proof carries the task's range
+too, because it sits between two ranges the decision needs. The code builds the file again and
+requires the published one to be it, byte for byte, and both readers accept it and refuse it with
+one word of a line or of the manifest changed, with a range between two others taken out, or with the
+successor's birth taken out and the manifest said again over what is left, which would read the
+decision as accepted (`packages/chain/src/chain/proof.test.ts`).
+
+A proof is a file of its own, beside the record and never in it: no `kind`, no line and no field of
+the record changed for it, so §7.1 has nothing to promise of it to a version from before it, which
+reads the record exactly as it did and has no proof to read.
 
 ## Reading many tails
 

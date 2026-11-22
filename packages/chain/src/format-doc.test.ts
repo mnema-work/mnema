@@ -37,6 +37,7 @@ import { describe, expect, it } from 'vitest';
 
 import { NAMED_SCHEME, SCHEME } from './chain/checkpoint.js';
 import { ENTRY_DOMAIN, ROOT_DOMAIN } from './chain/hash.js';
+import { PROOF_SCHEME } from './chain/proof.js';
 import { RECORD_DOMAIN } from './chain/record-name.js';
 import { NAMED_TAILPROOF_SCHEME, TAILPROOF_SCHEME } from './chain/tailproof.js';
 import { SCHEMA_FILE, SCHEMA_FILE_NAME } from './events/schema.js';
@@ -77,8 +78,9 @@ describe('FORMAT.md names the versions the code hashes under', () => {
     expect(written.length).toBeGreaterThan(0);
     // Section 6.10 is the second section that arrived: each artifact has a second scheme,
     // naming the record, and both are read beside the first.
+    // Section 9 is the third: a proof of one decision is a file of its own, under its own scheme.
     expect([...new Set(written)].sort()).toEqual(
-      [SCHEME, NAMED_SCHEME, TAILPROOF_SCHEME, NAMED_TAILPROOF_SCHEME].sort(),
+      [SCHEME, NAMED_SCHEME, TAILPROOF_SCHEME, NAMED_TAILPROOF_SCHEME, PROOF_SCHEME].sort(),
     );
   });
 });

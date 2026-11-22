@@ -39,6 +39,8 @@ const HELPER = 'every-cache-state';
  * long cases; they are owed.
  */
 export const EXEMPT: Readonly<Record<string, string>> = {
+  'packages/code/tests/a-decision-is-proven-in-one-file.test.ts':
+    'appends one line no reader parses to a tail to hold that `prove` builds no proof from a record its verify calls broken; the verdict is asked of the chain with no cache, before any proof is read, so no cache state changes what the case asks',
   'packages/core/src/workflow/a-showing-is-a-persons.test.ts':
     'holds that a showing is refused before anything is read or written (no terminal, an agent declared) and lands when a person writes it; it opens no projection cache and damages nothing',
   'packages/chain/src/chain/a-part-the-disk-will-not-open-is-handed-to-a-collector.test.ts':
@@ -245,6 +247,8 @@ export const WRITES_BUT_PLANTS_NOTHING: Readonly<Record<string, string>> = {
     'appends one switch fact to the committed tree by hand to show that the verb does not read a switch there, and damages nothing: it holds what `record publish` refuses and pushes over a bare remote, so no cache state changes what it reads',
   'packages/chain/src/chain/a-tail-is-signed-as-soon-as-it-is-founded.test.ts':
     'holds which checkpoints the write that founds a tail signs, and what the fold of its checkpoints says of the tail with no note of this machine, in the functions of the chain alone; nothing is damaged and the chain has no projection cache (a clone of such a record is read by the binary in only-proven-events-reach-the-projection)',
+  'packages/chain/src/chain/proof.test.ts':
+    'writes records with the writer of the chain to prove a decision out of them, and plants every change it judges in the proof file it built, never in a tail; the chain has no projection cache',
   'packages/chain/src/chain/verify-reads-the-checkpoints-before-the-tail.test.ts':
     'holds the order in which the verdict of the chain reads a tail and its checkpoints, with a signed write landing between the two readings; nothing is damaged and the chain has no projection cache',
   'packages/code/src/commands/witness-sigstore-check.test.ts':

@@ -3095,6 +3095,11 @@ describe('the rule has one door and it is below both packages', () => {
     // to whoever asked to be told, which is a function the surfaces CALL and no `detail:` or sink
     // this walk follows.
     //
+    // `proof.ts` collapses once, where a check of a proof of one decision refuses: the refusal is
+    // worded out of what the file it checks holds (a tail id, a manifest's field), which somebody
+    // else handed over, and it leaves as a verdict's `refusal`, which no `detail:` or sink here
+    // follows.
+    //
     // `divergent-moves.ts` is the other: `divergenceSentence` words a sentence out of a record's
     // `who`, `at` and `to`, and it is a function the readings CALL, not a `detail:` or a sink this
     // walk follows, so each value goes through the door there and no site here holds it.
@@ -3102,6 +3107,7 @@ describe('the rule has one door and it is below both packages', () => {
       [
         ...collapsing,
         '@mnema/chain chain/disk-words.ts',
+        '@mnema/chain chain/proof.ts',
         '@mnema/core projections/search-store.ts',
         '@mnema/core projections/divergent-moves.ts',
       ].sort(),
@@ -3136,6 +3142,7 @@ describe('the rule has one door and it is below both packages', () => {
     // The same one, from the other direction: one collapse in the source, none at a site.
     expect(unaccounted).toEqual([
       '@mnema/chain chain/disk-words.ts: 1 in source, 0 classified',
+      '@mnema/chain chain/proof.ts: 1 in source, 0 classified',
       '@mnema/core projections/divergent-moves.ts: 3 in source, 0 classified',
       '@mnema/core projections/search-store.ts: 1 in source, 0 classified',
     ]);

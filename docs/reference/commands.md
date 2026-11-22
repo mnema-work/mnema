@@ -65,6 +65,7 @@ carries the help the command prints, word for word.
 ## Verify
 
 - [mnema verify](cli/verify.md): verify this project's record: its committed tree and its private one
+- [mnema prove](cli/prove.md): write the proof of one decision a stranger checks offline, or check one
 - [mnema witness](cli/witness.md): ask an outside witness to date this record, and read where that stands
   - [mnema witness stamp](cli/witness-stamp.md): ask an outside witness to date each tail's last checkpoint (T3)
   - [mnema witness upgrade](cli/witness-upgrade.md): go back for every attestation this record is waiting on (T3)
