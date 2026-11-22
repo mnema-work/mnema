@@ -6,7 +6,9 @@
  * one script allowed is the page's own, named by its hash, and no request may leave. A record
  * is text people wrote, and the page is where a stranger reads it, so the text is escaped
  * where it is written into the page ({@link escapeHtml}) and, behind that, a title that
- * somehow reached the page as markup would meet a policy that runs no script but ours.
+ * somehow reached the page as markup would meet a policy that runs no script but ours. The
+ * policy opens exactly two doors, both to `data:` (text inside the page, never an address): the
+ * fonts the style carries and the icon of the tab.
  *
  * THE LISTS ARE WRITTEN HERE, AND THE BROWSER DERIVES THEM AGAIN. The decisions, their notes and
  * the timeline are rendered by `mnema site` from the public tree's events (`model.ts`), as the trees
@@ -44,11 +46,27 @@
  * `the-editor-and-the-record-page-wear-the-new-brand.test.ts` (in `packages/code/tests/`) holds each one
  * equal to the brand's value for its role, and `page.test.ts` holds every pair of text and ground to
  * WCAG AA in both themes and the red to the failures alone.
+ *
+ * THE PAGE WEARS THE BRAND'S MARK AND TYPE (ADR-679). The eye is in its header and, in a dark square, is the
+ * icon of the tab, both inline and still; the text is set in Archivo and the ids, hashes and code in IBM Plex Mono, all
+ * carried inside the file as `data:` (`the-mark.ts`, which a script of the repository writes and a test holds equal to the
+ * brand's eye and fonts). Archivo is two static Latin instances, so a record in another script falls to the system face
+ * the stack names next; Plex Mono is the authors' Regular file whole, since its name is reserved. The licences go in the
+ * style, as the OFL asks.
  */
 
 import { createHash } from 'node:crypto';
 import { mix, textAccent } from './colour.js';
 import type { PageModel } from './model.js';
+import {
+  ARCHIVO_400,
+  ARCHIVO_700,
+  ARCHIVO_RANGE,
+  FAVICON,
+  FONT_LICENCES,
+  HEADER_EYE,
+  PLEX_MONO_400,
+} from './the-mark.js';
 import { listViews, NO_DECISIONS, type SiteTail, textOf, type VKid } from './view.js';
 
 export type { DecisionMove, PageDecision, PageModel, PageNote, TimelineEntry } from './model.js';
@@ -185,18 +203,42 @@ function variables(theme: Colours): string {
   ].join(' ');
 }
 
+/** The face of the page's text and its stack: Archivo, then what the machine has for a script Archivo does not hold. */
+const TEXT_FACE = "'Archivo', system-ui, sans-serif";
+/** The face of ids, hashes and code, and its stack. */
+const CODE_FACE = "'IBM Plex Mono', ui-monospace, monospace";
+
+/** One `@font-face` of a face carried inside the page as `data:`: nothing is requested. */
+function fontFace(
+  family: string,
+  weight: number,
+  mime: string,
+  format: string,
+  data: string,
+  range?: string,
+): string {
+  return `@font-face { font-family: '${family}'; font-style: normal; font-weight: ${weight}; font-display: swap; src: url(data:${mime};base64,${data}) format('${format}');${range === undefined ? '' : ` unicode-range: ${range};`} }`;
+}
+
 /** The page's style. A class or an attribute selects; nothing in the page carries a `style=`. */
 export const STYLE = `
-:root { color-scheme: light dark; ${variables(PALETTE.light)} font-family: system-ui, sans-serif; line-height: 1.55; }
+${fontFace('Archivo', 400, 'font/otf', 'opentype', ARCHIVO_400, ARCHIVO_RANGE)}
+${fontFace('Archivo', 700, 'font/otf', 'opentype', ARCHIVO_700, ARCHIVO_RANGE)}
+${fontFace('IBM Plex Mono', 400, 'font/ttf', 'truetype', PLEX_MONO_400)}
+:root { color-scheme: light dark; ${variables(PALETTE.light)} font-family: ${TEXT_FACE}; line-height: 1.55; }
 @media (prefers-color-scheme: dark) { :root { ${variables(PALETTE.dark)} } }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 body { max-width: 52rem; margin: 0 auto; padding: 1rem; background: var(--bg); color: var(--text); overflow-wrap: anywhere; }
 h1, h2, h3, h4 { line-height: 1.25; }
 h1 { margin: 0.5rem 0; }
+.head { display: flex; align-items: center; gap: 0.75rem; }
+.head h1 { margin: 0.5rem 0; }
+.mark { flex: none; width: 2.5rem; height: 2.5rem; color: var(--text); }
+@media (prefers-color-scheme: dark) { .mark ellipse { stroke: none; } }
 h2 { margin-top: 2rem; }
 a { color: var(--accent-text); }
-code, pre { font-family: ui-monospace, monospace; font-size: 0.85em; }
+code, pre { font-family: ${CODE_FACE}; font-size: 0.85em; }
 pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0.5rem 0; }
 code { overflow-wrap: anywhere; }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
@@ -232,6 +274,9 @@ code { overflow-wrap: anywhere; }
 .filters button { width: auto; align-self: flex-end; cursor: pointer; }
 details { margin: 0.5rem 0; }
 summary { cursor: pointer; }
+/* The faces above are carried as data, with their licences:
+
+${FONT_LICENCES.replaceAll('*/', '* /')}*/
 `;
 
 /**
@@ -321,6 +366,8 @@ export function renderPage(
   const fileCount = Object.keys(model.files).length;
   const policy = [
     "default-src 'none'",
+    'font-src data:',
+    'img-src data:',
     `script-src ${cspHash(script)}`,
     `style-src ${cspHash(STYLE)}`,
   ].join('; ');
@@ -347,11 +394,15 @@ export function renderPage(
 <meta http-equiv="Content-Security-Policy" content="${escapeHtml(policy)}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 ${headLines(head)}
+<link rel="icon" type="image/svg+xml" href="${FAVICON}">
 <style>${STYLE}</style>
 </head>
 <body>
 ${backLink === undefined ? '' : `<p><a href="${escapeHtml(backLink)}">Back</a></p>\n`}<a class="skip" href="#decisions">Skip to the decisions</a>
+<header class="head">
+${HEADER_EYE}
 <h1>The record</h1>
+</header>
 <main>
 <section id="verdict" role="status" aria-live="polite">
 <p><span id="verdict-status" data-state="pending">verifying…</span></p>

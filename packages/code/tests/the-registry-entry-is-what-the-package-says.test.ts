@@ -26,10 +26,13 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import {
+  ICON_PATH,
+  ICON_URL,
   NAME,
   PACKAGE,
   SCHEMA,
   serverJson,
+  TITLE,
 } from '../../../.github/release-prepare/server-json.mjs';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
@@ -45,6 +48,7 @@ const ENTRY = JSON.parse(read('server.json')) as {
   $schema: string;
   name: string;
   title: string;
+  icons?: { src: string; mimeType?: string; sizes?: string[] }[];
   description: string;
   version: string;
   packages: {
@@ -57,6 +61,27 @@ const ENTRY = JSON.parse(read('server.json')) as {
 };
 
 describe('the entry for the MCP Registry', () => {
+  it('is titled by the descriptor the banner says, and carries the eye as its one icon', () => {
+    expect(ENTRY.title).toBe('mnema: the decision record for AI coding agents');
+    expect(ENTRY.title).toBe(TITLE);
+    expect(ENTRY.icons).toHaveLength(1);
+    const [icon] = ENTRY.icons ?? [];
+    // The schema: an https address of at most 255 characters, and a type from its list.
+    expect(icon?.src).toBe(ICON_URL);
+    expect(icon?.src.startsWith('https://')).toBe(true);
+    expect(icon?.src.length).toBeLessThanOrEqual(255);
+    expect(icon?.mimeType).toBe('image/png');
+    expect(icon?.sizes).toEqual(['512x512']);
+    // The address is a file of this repository, on main once the brand is there: the plugin's icon, the eye.
+    expect(icon?.src).toBe(`https://raw.githubusercontent.com/mnema-work/mnema/main/${ICON_PATH}`);
+    const png = readFileSync(join(ROOT, ICON_PATH));
+    expect(png.subarray(1, 4).toString('latin1')).toBe('PNG');
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([512, 512]);
+    expect(png.equals(readFileSync(join(ROOT, 'plugin-server-only/.claude-plugin/icon.png')))).toBe(
+      true,
+    );
+  });
+
   it('is what the generator makes for the root version, byte for byte', () => {
     expect(read('server.json')).toBe(serverJson(ROOT_VERSION));
     expect(ENTRY.version).toBe(ROOT_VERSION);

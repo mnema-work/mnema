@@ -4,7 +4,8 @@
 // writes it, and `packages/code/tests/the-registry-entry-is-what-the-package-says.test.ts` fails if the
 // file on disk is not what this returns for the root version. The schema is the one the registry's
 // documentation names (`quickstart.mdx`, read 2 November 2026): `server.schema.json` of 2025-12-11, which
-// requires `name`, `description` (1 to 100 characters) and `version`, and allows a `title` of up to 100.
+// requires `name`, `description` (1 to 100 characters) and `version`, and allows a `title` of up to 100
+// and `icons`, each with an https `src` of at most 255 characters, a `mimeType` and `sizes`.
 //
 // The name is the one the package says it has (`mcpName` in `packages/code/package.json`): the registry
 // checks that the npm version it lists carries that very field, so the two are held equal by the test.
@@ -14,6 +15,15 @@ export const SCHEMA =
   'https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json';
 export const NAME = 'io.github.mnema-work/mnema';
 export const PACKAGE = '@mnema/code';
+/** The descriptor the banner's alt text says, after the name. */
+export const TITLE = 'mnema: the decision record for AI coding agents';
+/**
+ * The eye, as the registry shows it: the 512 pixel PNG the plugin's icon is (`.github/the-plugin-icon/make.mjs`), by the
+ * address it has on the main branch. The schema asks for an https address of at most 255 characters and lists
+ * `image/png` among the types a client must support.
+ */
+export const ICON_PATH = 'plugin/.claude-plugin/icon.png';
+export const ICON_URL = `https://raw.githubusercontent.com/mnema-work/mnema/main/${ICON_PATH}`;
 
 /**
  * @param {string} version
@@ -23,7 +33,8 @@ export function serverJson(version) {
   const entry = {
     $schema: SCHEMA,
     name: NAME,
-    title: 'mnema: decision records for AI coding agents',
+    title: TITLE,
+    icons: [{ src: ICON_URL, mimeType: 'image/png', sizes: ['512x512'] }],
     description:
       'Signed, append-only decision records for AI coding agents, over MCP. Verify them offline.',
     repository: {

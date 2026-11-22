@@ -1707,18 +1707,23 @@ describe('the badges are in dark stone', () => {
       colours: [...badgeColours(m[0])],
     })),
   );
-  /** The badge of the CI workflow: the one a colour must never be fixed on. */
+  /** The badge of the CI workflow: one a colour must never be fixed on. */
   const isCi = (url: string) =>
     url.startsWith('https://img.shields.io/github/actions/workflow/status/');
+  /** The Scorecard badge: the other one, since shields.io colours it by the score it reads. */
+  const isScorecard = (url: string) => url.startsWith('https://img.shields.io/ossf-scorecard/');
+  /** A badge whose colour says something the page cannot know: it carries none. */
+  const isUncoloured = (url: string) => isCi(url) || isScorecard(url);
   const stone = PALETTE.darkStone?.slice(1) ?? '';
 
-  it('reads nine pages and every badge on them: nine of CI and twenty-eight others', () => {
+  it('reads nine pages and every badge on them: nine of CI, one of the Scorecard and twenty-seven others', () => {
     // The counts are said by hand: a README the list did not reach, or a badge added without a colour, changes one.
     expect(stone).toBe('6b6862');
     expect(new Set(badges.map((b) => b.page)).size).toBe(9);
     expect(pages).toHaveLength(9);
     expect(badges.filter((b) => isCi(b.url))).toHaveLength(9);
-    expect(badges.filter((b) => !isCi(b.url))).toHaveLength(28);
+    expect(badges.filter((b) => isScorecard(b.url))).toHaveLength(1);
+    expect(badges.filter((b) => !isUncoloured(b.url))).toHaveLength(27);
   });
 
   it('gives the CI badge no colour at all, so that shields.io paints it red when the build fails', () => {
@@ -1727,10 +1732,18 @@ describe('the badges are in dark stone', () => {
     ).toEqual([]);
   });
 
+  it('gives the Scorecard badge no colour at all, so that shields.io paints it by the score', () => {
+    expect(
+      badges
+        .filter((b) => isScorecard(b.url) && b.colours.length > 0)
+        .map((b) => `${b.page}: ${b.url}`),
+    ).toEqual([]);
+  });
+
   it('gives every other badge exactly one colour, and it is the dark stone', () => {
     expect(
       badges
-        .filter((b) => !isCi(b.url) && (b.colours.length !== 1 || b.colours[0] !== stone))
+        .filter((b) => !isUncoloured(b.url) && (b.colours.length !== 1 || b.colours[0] !== stone))
         .map((b) => `${b.page}: ${b.url}`),
     ).toEqual([]);
   });

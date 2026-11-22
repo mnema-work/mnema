@@ -2,8 +2,10 @@
 
 The files in this folder are the authors' own, as published, untouched: not subsetted, not renamed inside the file, not
 converted. They are under the SIL Open Font License 1.1 (the two `OFL-*.txt` files are the licences of their authors).
-They are used only to draw the outline of the text of the pictures of this repository (`node .github/the-brand/diagrams.mjs`);
-no font file enters a published package.
+They draw the outline of the text of the pictures of this repository (`node .github/the-brand/diagrams.mjs`), and
+`node .github/the-brand/page.mjs` writes the copy the record page carries (`packages/code/src/site/the-mark.ts`): IBM Plex Mono
+Regular byte for byte, and two static Latin instances of Archivo (weights 400 and 700, which declares no reserved name).
+No font file is itself a file of a published package.
 
 The upstreams are `Omnibus-Type/Archivo` (commit `b5d63988ce19d044d3e10362de730af00526b672`) and `googlefonts/plex`
 (commit `9ab3b5b3b96325fb20f365ee0804adca92024cbf`). Each file below was fetched from the `google/fonts` repository at
