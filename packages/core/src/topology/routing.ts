@@ -105,6 +105,7 @@ export type RoutedKind =
   | 'decision.recorded'
   | 'skill.created'
   | 'skill.consulted'
+  | 'decision.seen'
   | 'handoff.recorded'
   | 'knowledge.linked'
   | 'memory.captured'
@@ -167,6 +168,12 @@ const TREE_BY_KIND: { readonly [K in RoutedKind]: Scope | typeof BY_ORIGIN } = {
   'decision.recorded': 'public',
   'skill.created': 'public',
   'skill.consulted': 'public',
+  // PRIVATE, and the one fact of a decision that is: a showing serves the person who was shown and
+  // no teammate (the list it feeds is per identity), and filed in the committed tree it would publish
+  // when each person read what, and stop every reader older than this kind on every page it names
+  // (ADR-623). What it costs is said where it is written: another clone or machine of the same
+  // person does not have it.
+  'decision.seen': 'private',
   'handoff.recorded': 'public',
   'knowledge.linked': 'public',
   'memory.captured': BY_ORIGIN,

@@ -78,6 +78,7 @@
  */
 
 import { existsSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { CodedError, UnreadableDiskError, UnreadableLineError } from '@mnema/chain';
 import { REFERENCE_DEFAULT_DEPTH, REFERENCE_MAX_DEPTH } from '@mnema/context';
 import {
@@ -122,11 +123,13 @@ import {
   RECORD_CONTRACT,
   type Replacement,
   reachNotice,
+  reachNotices,
   replacementNotice,
   subjectReachNotice,
 } from '../recorded-content.js';
 import { REFERENCE_DIRECTIONS } from '../reference-directions.js';
 import { patternsFraming, SERVED_PATTERN_CONTRACT } from '../served-patterns.js';
+import { noteSwallowed } from '../swallowed-ledger.js';
 import {
   countToolCall,
   flushToolCalls,
@@ -337,7 +340,7 @@ const OPEN_RUN_CONTRACT =
  * The agent a connection is recorded as when the client's own name is no name.
  *
  * On this transport an agent exists BY CONSTRUCTION: a stdio connection is a
- * program talking to a program, and "a person acted directly", what an absent
+ * program talking to a program, and "no agent declared", what an absent
  * `which` means everywhere else in mnema, cannot be true here. So a client that
  * announces nothing usable is recorded as an agent whose name we do not know, which
  * is honest, rather than as nobody, which is false.
@@ -432,7 +435,7 @@ export interface McpServerOptions {
   readonly cwd: string;
   /**
    * The host's id for the session this server was started in, where the host leaves one in the
-   * server's environment: what `mnema mcp` reads from `CLAUDE_CODE_SESSION_ID`. It names the
+   * server's environment: what `mnema mcp` reads through the host table (`hostSessionOf`: Claude Code's `CLAUDE_CODE_SESSION_ID`, Copilot CLI's `COPILOT_AGENT_SESSION_ID`). It names the
    * session journal a run takes its goal from and closes with the outcome of.
    */
   readonly hostSession?: string | undefined;
@@ -558,7 +561,7 @@ export function buildMcpServer(options: McpServerOptions): {
           `session opened: project=${opened.project ?? '(none: the global tree)'} ` +
             `(${landingOf(opened)}) ` +
             `workspaceProjects=${opened.workspaceProjects.length} ` +
-            `who=${opened.who ?? "(none yet: no key of this machine signs in this session's own trees)"} ` +
+            `who=${opened.who ?? "(no identity here yet: no key of this machine signs in this session's own trees, which is not an error)"} ` +
             'runs=(none: the first write to a tree opens that tree’s run)',
         ),
       );
@@ -796,8 +799,10 @@ function countedLocally<Input extends ZodRawShapeCompat | undefined>(
 ): ToolCallback<Input> {
   const called = handle as (...args: unknown[]) => unknown;
   const count = async (result: string): Promise<void> => {
+    let dataDir: string | undefined;
     try {
       const session = await ensureSession();
+      dataDir = dirname(session.trees.global);
       const file = toolCallsFile(session.trees);
       if (file === undefined || !countsToolCalls(session)) return;
       // WHERE THE MACHINE HAS NO KEY OF ITS OWN YET NOTHING IS KEPT, and the count makes no
@@ -812,8 +817,10 @@ function countedLocally<Input extends ZodRawShapeCompat | undefined>(
         effect: what.effect,
         result,
       });
-    } catch {
-      // A count that cannot be kept is not a reason for a tool to answer differently.
+    } catch (error) {
+      // A count that cannot be kept is not a reason for a tool to answer differently. It is said once,
+      // in the ledger of caught failures (`swallowed-ledger.ts`), which `mnema doctor` reads.
+      noteSwallowed('mcp.tool-call-count', error, dataDir === undefined ? {} : { dataDir });
     }
   };
   return (async (...args: unknown[]) => {
@@ -1367,7 +1374,10 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
         'project and lands PUBLIC: committed, so the team gets it on clone (global ' +
         'outside a project); it is born `proposed`, so recording one proposes it ' +
         'rather than settling it. Optionally pick the project it lands in, when the ' +
-        'workspace holds more than one. Returns the citable ADR-<n> label (a ' +
+        'workspace holds more than one. Optionally give `governs`, the paths of this ' +
+        'project it governs: each is recorded as a `governs` link in the same act, ' +
+        'under the rules of `link_knowledge`, and one refused refuses the whole call ' +
+        'with nothing written. Returns the citable ADR-<n> label (a ' +
         'decision has no short alias) and which tree it landed in.' +
         RECORD_CONTRACT,
       inputSchema: {
@@ -1382,16 +1392,25 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
               'name of a rejected option without its reason loses most of the value. ' +
               'Omit it when there was no real alternative.',
           ),
+        governs: z
+          .array(z.string().min(1))
+          .min(1)
+          .optional()
+          .describe(
+            'Paths of this project the decision governs, one `governs` link each, recorded ' +
+              'with the decision. Omit it when it governs no file.',
+          ),
         scope: scopeField('Where the decision lands; overrides the routing rule (public).'),
         project: PROJECT_ARG,
       },
     },
-    async ({ title, rationale, alternatives, scope, project }) => {
+    async ({ title, rationale, alternatives, governs, scope, project }) => {
       const active = await ensureSession();
       const result = runRecordDecision(active, {
         title,
         rationale,
         ...(alternatives !== undefined ? { alternatives } : {}),
+        ...(governs !== undefined ? { governs } : {}),
         ...(scope !== undefined ? { scope } : {}),
         ...(project !== undefined ? { project } : {}),
       });
@@ -1399,10 +1418,17 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
         return refused(active, result);
       }
       if (result.alreadyRecorded) {
-        return replied(active, [alreadyRecordedLine(result, result.scope)], { wrote: false });
+        return replied(active, [alreadyRecordedLine(result, result.scope, governs?.length)], {
+          wrote: false,
+        });
       }
       return recorded(active, `Recorded decision ${result.adr} (${result.id})`, result, {
-        after: [stateOfANewDecision(result.agentsAccept, 'agent-tool'), ...result.offered],
+        after: [
+          ...(result.governs.length > 0 ? [`Governs: ${oneLine(result.governs.join(', '))}`] : []),
+          ...reachNotices(result.reaches),
+          stateOfANewDecision(result.agentsAccept, 'agent-tool'),
+          ...result.offered,
+        ],
       });
     },
   );

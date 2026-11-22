@@ -12,6 +12,7 @@ In the help under **The git log**.
 | --- | --- |
 | [`mnema record pull`](record-pull.md) | git pull over tails grown here and not yet committed |
 | [`mnema record commit`](record-commit.md) | commit the signed record to a branch for a pull request |
+| [`mnema record publish`](record-publish.md) | push the record branch and open its pull request, to a destination you name |
 | [`mnema record merge-tail`](record-merge-tail.md) | the merge driver git runs for a tail's files |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
@@ -31,6 +32,7 @@ Options:
 Commands:
   pull                                          git pull over tails grown here and not yet committed
   commit [options]                              commit the signed record to a branch for a pull request
+  publish [options]                             push the record branch and open its pull request, to a destination you name
   merge-tail <ancestor> <ours> <theirs> [path]  the merge driver git runs for a tail's files
   help [command]                                display help for command
 ```

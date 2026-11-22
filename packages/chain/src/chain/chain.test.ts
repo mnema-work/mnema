@@ -691,7 +691,7 @@ describe('chain: tolerates a torn final line, rejects mid-file corruption', () =
     // it was not: a dropped fragment is what an interrupted append leaves AND what
     // an appended fragment leaves, so the reader is told and neither reading is
     // chosen for them. It is a census note, so `ok` is untouched.
-    expect(result.census).toEqual([
+    expect(result.census.filter((note) => note.kind !== 'undeclared-which')).toEqual([
       {
         kind: 'partial-final-line',
         tail: tailIdOf(root),
@@ -830,7 +830,7 @@ describe('chain: census crosses committed keys against tails on disk', () => {
       const result = verify(root);
       expect(result.ok).toBe(true);
       expect(result.tails).toHaveLength(2);
-      expect(result.census).toEqual([]);
+      expect(result.census.filter((note) => note.kind !== 'undeclared-which')).toEqual([]);
     } finally {
       rmSync(rootB, { recursive: true, force: true });
     }
@@ -863,8 +863,9 @@ describe('chain: census crosses committed keys against tails on disk', () => {
       expect(result.ok).toBe(true);
       expect(result.tails).toHaveLength(1);
       // The census flags the orphaned key by its fingerprint.
-      expect(result.census).toHaveLength(1);
-      const note = result.census[0];
+      const flagged = result.census.filter((note) => note.kind !== 'undeclared-which');
+      expect(flagged).toHaveLength(1);
+      const note = flagged[0];
       if (note?.kind !== 'key-without-tail') throw new Error(`census said ${note?.kind}`);
       expect(note.fingerprint).toBe(fpB);
       expect(result.summary).toMatch(/committed key\(s\) without a tail/);
@@ -900,7 +901,7 @@ describe('chain: census crosses committed keys against tails on disk', () => {
       expect(result.ok).toBe(true);
       expect(result.tails).toHaveLength(1);
       // Blind on purpose: no orphaned key means no census note.
-      expect(result.census).toEqual([]);
+      expect(result.census.filter((note) => note.kind !== 'undeclared-which')).toEqual([]);
     } finally {
       rmSync(rootB, { recursive: true, force: true });
     }
@@ -978,7 +979,7 @@ describe('chain: one key on several installations keeps distinct tails (copy-key
       expect(byTail.get(desktopTail)).toBe(3); // founding + 2 tasks
       expect(byTail.get(laptopTail)).toBe(2); // founding + 1 task
       // One committed key, so one identity: the census sees no orphan.
-      expect(result.census).toEqual([]);
+      expect(result.census.filter((note) => note.kind !== 'undeclared-which')).toEqual([]);
       expect(readdirSync(join(root, 'keys')).filter((n) => n.endsWith('.pub'))).toHaveLength(1);
     } finally {
       rmSync(laptopRoot, { recursive: true, force: true });
@@ -1068,7 +1069,7 @@ describe('chain: one key on several installations keeps distinct tails (copy-key
     expect(result.ok).toBe(true);
     expect(result.tails).toHaveLength(1);
     expect(result.tails[0]?.tail).toBe(fp);
-    expect(result.census).toEqual([]);
+    expect(result.census.filter((note) => note.kind !== 'undeclared-which')).toEqual([]);
   });
 });
 

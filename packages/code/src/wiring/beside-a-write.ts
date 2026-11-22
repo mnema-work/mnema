@@ -52,6 +52,8 @@ export function registerBesideAWrite(program: Command, wiring: Wiring): Declared
         '  write. It needs the `session_id` of the payload: the first reply of a session records one',
         '  `channel.served` and the others none, and a payload without one is handed no rules.',
         '  `mnema switch off edit-rules-push` stops it.',
+        '  With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its',
+        '  code alone on the first line of the error stream; typed by a person, nothing changes.',
       ].join('\n'),
     )
     .action(async (opts: { host: string; agentKey?: string }) => {

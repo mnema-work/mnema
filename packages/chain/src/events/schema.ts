@@ -69,6 +69,10 @@ import { WORKFLOWS, type Workflow } from './workflow.js';
  * - `fields?`: absent, or the transition-proof object declared by
  *   {@link TRANSITION_FIELDS_SCHEMA}, closed the same way and never empty.
  * - `string[]?`: absent, or a non-empty array of non-empty strings.
+ * - `hashes?`: absent, or a non-empty array of entry hashes, ascending with no repetition. It was
+ *   the envelope's alone (`after`) until `decision.seen` named the accepts it covers with it: a
+ *   rule both readers already applied, so a payload field under it asks no reader for a rule it
+ *   does not know.
  */
 export type FieldRule =
   | 'string'
@@ -77,11 +81,12 @@ export type FieldRule =
   | 'boolean'
   | 'count'
   | 'fields?'
-  | 'string[]?';
+  | 'string[]?'
+  | 'hashes?';
 
 /**
  * The vocabulary an ENVELOPE field rule is spelled in: the payload vocabulary
- * plus the two shapes only the envelope has.
+ * plus the shapes only the envelope has.
  *
  * - `version`: a whole number of at least one, selecting the payload contract
  *   together with `kind`.
@@ -91,12 +96,13 @@ export type FieldRule =
  *   `at` through the clock, which IS `toISOString`, so a well-formed `at` is not
  *   merely "some ISO-8601 string" but this one canonical spelling, which is what
  *   makes the ordering invariant enforceable rather than merely documented.
- * - `hashes?`: absent, or a non-empty array of entry hashes (64 lower-case hex
- *   characters each) in ascending order with no repetition. The order is fixed so
- *   that one set of citations has one spelling: an array's order is part of its
- *   canonical bytes (section 1), so a free order would give one set two digests.
+ *
+ * The envelope's `after` is under `hashes?` (64 lower-case hex characters each, in
+ * ascending order with no repetition). The order is fixed so that one set of
+ * citations has one spelling: an array's order is part of its canonical bytes
+ * (section 1), so a free order would give one set two digests.
  */
-export type EnvelopeRule = FieldRule | 'version' | 'kind' | 'instant' | 'hashes?';
+export type EnvelopeRule = FieldRule | 'version' | 'kind' | 'instant';
 
 /**
  * The envelope every kind carries, and the rule on each field.
@@ -204,6 +210,9 @@ export const PAYLOAD_SCHEMA: { readonly [K in EventKind]: PayloadSchemaOf<K> } =
   // No payload field at all: a consultation is entirely envelope. The empty row is
   // what makes ANY payload key on this kind a rejected line.
   'skill.consulted': {},
+  // The accepts a showing covers, by entry hash: the envelope's own rule for citations, so the shape
+  // is checked by both readers and a malformed hash is a refused line, never a covered accept.
+  'decision.seen': { moves: 'hashes?' },
   'tail.pruned': {
     tail: 'string',
     throughHash: 'string',

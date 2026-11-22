@@ -150,6 +150,13 @@
       }
     },
     {
+      "kind": "decision.seen",
+      "v": 1,
+      "payload": {
+        "moves": "hashes?"
+      }
+    },
+    {
       "kind": "decision.transitioned",
       "v": 1,
       "payload": {
