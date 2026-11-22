@@ -368,10 +368,14 @@ describe('the four workflows of the security checks', () => {
     ]);
   });
 
-  it('the README carries the scorecard badge in the style of the others', () => {
+  it('the README carries the scorecard badge in the style of the others, with no colour fixed on it', () => {
     const readme = read('README.md');
-    expect(readme).toMatch(
-      /<a href="https:\/\/scorecard\.dev\/viewer\/\?uri=github\.com\/mnema-work\/mnema"><img alt="OpenSSF Scorecard" src="https:\/\/img\.shields\.io\/ossf-scorecard\/github\.com\/mnema-work\/mnema\?[^"]*style=flat-square[^"]*color=6b6862[^"]*"><\/a>/,
-    );
+    const badge =
+      /<a href="https:\/\/scorecard\.dev\/viewer\/\?uri=github\.com\/mnema-work\/mnema"><img alt="OpenSSF Scorecard" src="https:\/\/img\.shields\.io\/ossf-scorecard\/github\.com\/mnema-work\/mnema\?([^"]*style=flat-square[^"]*)"><\/a>/.exec(
+        readme,
+      );
+    expect(badge).not.toBeNull();
+    // shields.io colours it by the score it reads; a colour in the query would hide a low one.
+    expect(badge?.[1]).not.toMatch(/color=/);
   });
 });

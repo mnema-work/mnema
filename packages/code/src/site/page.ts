@@ -208,23 +208,26 @@ const TEXT_FACE = "'Archivo', system-ui, sans-serif";
 /** The face of ids, hashes and code, and its stack. */
 const CODE_FACE = "'IBM Plex Mono', ui-monospace, monospace";
 
-/** One `@font-face` of a face carried inside the page as `data:`: nothing is requested. */
+/**
+ * One `@font-face` of a face carried inside the page as `data:`: nothing is requested. A TrueType file says so in a format
+ * hint; Archivo's files are CFF in an OpenType wrapper, which a browser tells from the bytes, so they carry none.
+ */
 function fontFace(
   family: string,
   weight: number,
   mime: string,
-  format: string,
   data: string,
   range?: string,
 ): string {
-  return `@font-face { font-family: '${family}'; font-style: normal; font-weight: ${weight}; font-display: swap; src: url(data:${mime};base64,${data}) format('${format}');${range === undefined ? '' : ` unicode-range: ${range};`} }`;
+  const hint = mime === 'font/ttf' ? " format('truetype')" : '';
+  return `@font-face { font-family: '${family}'; font-style: normal; font-weight: ${weight}; font-display: swap; src: url(data:${mime};base64,${data})${hint};${range === undefined ? '' : ` unicode-range: ${range};`} }`;
 }
 
 /** The page's style. A class or an attribute selects; nothing in the page carries a `style=`. */
 export const STYLE = `
-${fontFace('Archivo', 400, 'font/otf', 'opentype', ARCHIVO_400, ARCHIVO_RANGE)}
-${fontFace('Archivo', 700, 'font/otf', 'opentype', ARCHIVO_700, ARCHIVO_RANGE)}
-${fontFace('IBM Plex Mono', 400, 'font/ttf', 'truetype', PLEX_MONO_400)}
+${fontFace('Archivo', 400, 'font/otf', ARCHIVO_400, ARCHIVO_RANGE)}
+${fontFace('Archivo', 700, 'font/otf', ARCHIVO_700, ARCHIVO_RANGE)}
+${fontFace('IBM Plex Mono', 400, 'font/ttf', PLEX_MONO_400)}
 :root { color-scheme: light dark; ${variables(PALETTE.light)} font-family: ${TEXT_FACE}; line-height: 1.55; }
 @media (prefers-color-scheme: dark) { :root { ${variables(PALETTE.dark)} } }
 * { box-sizing: border-box; }
