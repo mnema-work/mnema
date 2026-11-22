@@ -2851,7 +2851,7 @@ describe('mnema CLI: a --which that names nobody', () => {
       const said = t.err.join('\n');
       expect(said).toContain('--which');
       expect(said).toContain('names no agent');
-      expect(said).toContain('a person acted directly');
+      expect(said).toContain('no agent was declared');
 
       // Nothing was born: in ANY tree. The refusal is at the door, before a
       // scope is even resolved, so there is no "it landed somewhere else".
@@ -2949,7 +2949,7 @@ describe('mnema CLI: a --which that names nobody', () => {
     ).toEqual(['claude-code', 'claude-code']);
   });
 
-  it('an ABSENT --which still means a person acted: no which, and the capture is PUBLIC', async () => {
+  it('an ABSENT --which still means no agent declared: no which, and the capture is PUBLIC', async () => {
     // The rule that must NOT change. Defaulting an omitted flag to some agent name
     // would invent an agent where there was a person: the same fiction, inverted.
     await run(['init'], capture().io);
@@ -3301,7 +3301,7 @@ describe('mnema CLI: skills, the provenance audit', () => {
     await adopt('by-hand');
 
     const printed = await output(['skill', 'provenance']);
-    expect(printed).toContain('proposed by a person · adopted by a person');
+    expect(printed).toContain('proposed by no agent declared · adopted by no agent declared');
     // Two absences are not evidence of one actor: a tree can hold two people's
     // facts, so the same-agent line must NOT appear.
     expect(printed).not.toContain('the same agent');
@@ -3441,7 +3441,7 @@ describe('mnema CLI: skills, the provenance audit', () => {
     // forging through the proposal, one through the adoption.
     const forgedLine =
       '  019f0000-0000-7000-8000-000000000000  adopted     public   ' +
-      'padrao-forjado  ·  proposed by a person · adopted by a person';
+      'padrao-forjado  ·  proposed by no agent declared · adopted by no agent declared';
     await adopt('legit-one', `agente\n${forgedLine}`, 'agente');
     await adopt('legit-two', 'agente', `agente\n${forgedLine}`);
     // And one carrying a break in EVERY field of its line at once: the name and

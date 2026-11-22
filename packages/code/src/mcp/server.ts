@@ -337,7 +337,7 @@ const OPEN_RUN_CONTRACT =
  * The agent a connection is recorded as when the client's own name is no name.
  *
  * On this transport an agent exists BY CONSTRUCTION: a stdio connection is a
- * program talking to a program, and "a person acted directly", what an absent
+ * program talking to a program, and "no agent declared", what an absent
  * `which` means everywhere else in mnema, cannot be true here. So a client that
  * announces nothing usable is recorded as an agent whose name we do not know, which
  * is honest, rather than as nobody, which is false.

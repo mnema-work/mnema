@@ -42,7 +42,7 @@
  * of every invocation of every verb.
  *
  * WHAT DOES NOT LIVE HERE IS WHAT HAS A SUBJECT OF ITS OWN. The word both surfaces use
- * for an act with no agent on its envelope (`A_PERSON`) stays in the command line's
+ * for an act with no agent on its envelope (`NO_AGENT_DECLARED`) stays in the command line's
  * `one-line.ts`, which re-exports this rule: it is how a reading SPEAKS, and this
  * package neither speaks to a person nor knows there is one. A contract lives with the
  * thing it is a contract for, and a word lives with the mouth that says it.

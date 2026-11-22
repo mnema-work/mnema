@@ -190,7 +190,7 @@ worked by.
 mnema skill provenance
 #> 2 pattern(s):
 #>   019faa06-30e1-…  adopted     public   stacked-prs  ·  proposed by claude-code · adopted by claude-code (the same agent)
-#>   019faa06-335f-…  adopted     public   trunk-based  ·  proposed by a person · adopted by a person
+#>   019faa06-335f-…  adopted     public   trunk-based  ·  proposed by no agent declared · adopted by no agent declared
 ```
 
 Adopting a pattern is not restricted: an agent can propose one and adopt it, the

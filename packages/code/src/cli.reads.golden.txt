@@ -1831,8 +1831,8 @@ $ mnema task guard complete <task-runbook> --actor <anchor> --note 'it is done' 
 | }
 $ mnema skill provenance
 | 2 pattern(s):
-|   <skill-slices>  adopted     public   One slice per PR  ·  proposed by a person · adopted by a person · never consulted
-|   <skill-fridays>  deprecated  private  Ship on Fridays  ·  proposed by a person · adopted by a person · never consulted
+|   <skill-slices>  adopted     public   One slice per PR  ·  proposed by no agent declared · adopted by no agent declared · never consulted
+|   <skill-fridays>  deprecated  private  Ship on Fridays  ·  proposed by no agent declared · adopted by no agent declared · never consulted
 $ mnema skill provenance --json
 | [
 |   {
@@ -2002,8 +2002,8 @@ $ mnema show <decision-runbook>
 | decision <decision-runbook>  ·  public
 |   ADR-1: Keep the runbook in the record (accepted)
 |   supersedes ADR-2: Keep the runbook in the wiki (superseded) · <decision-wiki>
-|   recorded by <anchor-short> (a person)
-|   accepted by <anchor-short> (a person)
+|   recorded by <anchor-short> (no agent declared)
+|   accepted by <anchor-short> (no agent declared)
 |
 | a wiki page nobody owns goes stale
 |
@@ -2017,7 +2017,7 @@ $ mnema show <decision-wiki>
 | decision <decision-wiki>  ·  public
 |   ADR-2: Keep the runbook in the wiki (superseded)
 |   superseded by ADR-1: Keep the runbook in the record (accepted) · <decision-runbook>
-|   recorded by <anchor-short> (a person)
+|   recorded by <anchor-short> (no agent declared)
 |
 | it is where we look
 |

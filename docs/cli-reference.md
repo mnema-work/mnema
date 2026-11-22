@@ -103,9 +103,9 @@ Each tool of the MCP server has its page, in [the tools](reference/mcp-tools.md)
   `index.html` from the committed (public) tree, by default under `.mnema/site/` (the record's own `.gitignore`
   keeps it out of git, and `mnema site` adds that line first to a record that lacks it); `--out <dir>` names another
   directory, and one inside the record and outside `site/` is refused. The page lists every decision as a card (its reasons,
-  who recorded and who accepted it, as a person or as an agent, its history and the paths it is addressed at) with the public
+  who recorded and who accepted it, as an agent or as no agent declared, its history and the paths it is addressed at) with the public
   notes that belong to it, and a timeline; with JavaScript a filter opens on the decisions in force and narrows them by state,
-  identity, agent or person, day, text and path, and the stored events of a tail are drawn when it is opened. The
+  identity, agent or no agent declared, day, text and path, and the stored events of a tail are drawn when it is opened. The
   page carries the record's files and runs the same verifier as `mnema verify` over them in
   the reader's browser, with no request and no key, and once the record verifies it derives the page's lists again from
   those files with the product's own code and names each difference from what the page shows. Nothing from a private or machine-global

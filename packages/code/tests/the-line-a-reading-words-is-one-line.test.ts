@@ -1300,7 +1300,7 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'this module’s own word, written above as a constant',
   },
-  'occurrence.ts «{} {}» oneLine(event.which ?? A_PERSON) #1': {
+  'occurrence.ts «{} {}» oneLine(event.which ?? NO_AGENT_DECLARED) #1': {
     verdict: 'collapsed',
     why: 'the agent on the envelope: text whoever opened the session wrote',
   },
@@ -1310,11 +1310,11 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'minted',
     why: 'how many patterns follow: the count the lines under it are counted by',
   },
-  'provenance.ts «proposed by {}» oneLine(pattern.proposedBy ?? A_PERSON) #1': {
+  'provenance.ts «proposed by {}» oneLine(pattern.proposedBy ?? NO_AGENT_DECLARED) #1': {
     verdict: 'collapsed',
     why: 'the agent that proposed it, or this surface’s word for a person',
   },
-  'provenance.ts «adopted by {}» oneLine(pattern.adoption.by ?? A_PERSON) #1': {
+  'provenance.ts «adopted by {}» oneLine(pattern.adoption.by ?? NO_AGENT_DECLARED) #1': {
     verdict: 'collapsed',
     why: 'the agent that adopted it, or this surface’s word for a person',
   },

@@ -186,7 +186,7 @@ $ mnema task create 'A task with a bad scope' --scope elsewhere
 ! Invalid --scope "elsewhere". Use one of: public, private, global.
 [exit 1]
 $ mnema task create 'A task an unnamed agent asked for' --which '   '
-! mnema task does not accept "   " for --which <agent>: it names no agent. Name the agent that executed this, or omit --which: omitted, the record says a person acted directly. (A `--which "$AGENT"` with the variable empty would otherwise credit you for an agent's work.)
+! mnema task does not accept "   " for --which <agent>: it names no agent. Name the agent that executed this, or omit --which: omitted, the record says no agent was declared. (A `--which "$AGENT"` with the variable empty would otherwise credit you for an agent's work.)
 !   mnema task [options] [command]
 [exit 1]
 $ mnema task move submit <task-runbook> --scope public
