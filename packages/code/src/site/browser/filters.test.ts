@@ -59,7 +59,7 @@ describe('a card under what was chosen', () => {
     );
     expect(cardShown(card, { ...NONE, state: 'rejected' })).toBe(false);
     expect(cardShown(card, { ...NONE, who: 'mnid:b' })).toBe(false);
-    expect(cardShown(card, { ...NONE, by: 'a person' })).toBe(false);
+    expect(cardShown(card, { ...NONE, by: 'no agent declared' })).toBe(false);
     expect(cardShown(card, { ...NONE, from: '2026-02-11' })).toBe(false);
     expect(cardShown(card, { ...NONE, to: '2026-02-09' })).toBe(false);
     expect(cardShown(card, { ...NONE, from: '2026-02-10', to: '2026-02-10' })).toBe(true);
@@ -206,9 +206,9 @@ describe('the filters of the page', () => {
     ]);
     expect(options(run, 'f-by')).toEqual([
       ['', 'Anyone'],
-      ['a person', 'a person'],
       ['agent claude-code', 'agent claude-code'],
       ['agent codex', 'agent codex'],
+      ['no agent declared', 'no agent declared'],
     ]);
   });
 

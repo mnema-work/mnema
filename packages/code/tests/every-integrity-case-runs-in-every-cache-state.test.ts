@@ -39,6 +39,8 @@ const HELPER = 'every-cache-state';
  * long cases; they are owed.
  */
 export const EXEMPT: Readonly<Record<string, string>> = {
+  'packages/core/src/workflow/a-showing-is-a-persons.test.ts':
+    'holds that a showing is refused before anything is read or written (no terminal, an agent declared) and lands when a person writes it; it opens no projection cache and damages nothing',
   'packages/chain/src/chain/a-part-the-disk-will-not-open-is-handed-to-a-collector.test.ts':
     'holds what the readers of the chain hand a collector, or throw, for a folder or a file the disk will not open; the chain has no projection cache (the cache states are asked of the binary in a-part-the-disk-will-not-open-is-named-and-never-an-errno)',
   'packages/code/tests/a-part-the-disk-will-not-open-is-named-and-never-an-errno.test.ts':
@@ -202,6 +204,8 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'DEBT: a read over a record whose last line was repeated, through the in-process CLI entry (run of program.ts); needs the split and an in-process run',
   'packages/code/tests/verify-json-says-whether-the-record-is-ok.test.ts':
     'DEBT: one fact rewritten, then verify --json through the built binary; a plain found/damage/run conversion that is owed',
+  'packages/code/tests/a-lost-tail-is-not-called-an-idle-agent.test.ts':
+    'DEBT: a whole tail removed, then the census of its key judged through the in-process CLI entry (run of program.ts); needs the split and an in-process run',
   'packages/code/tests/the-verdict-is-parts.test.ts':
     'DEBT: checkpoints emptied or cut, then the verdict painted, through the in-process CLI entry; needs the split and an in-process run',
   'packages/code/tests/a-key-whose-tail-was-cut-is-told-what-happened.test.ts':
@@ -219,6 +223,12 @@ export const EXEMPT: Readonly<Record<string, string>> = {
  * checkpoint by hand plants damage, wears the mark and belongs to EXEMPT, not here.
  */
 export const WRITES_BUT_PLANTS_NOTHING: Readonly<Record<string, string>> = {
+  'packages/core/src/workflow/the-anchor-follows-the-founding.test.ts':
+    'makes a first write fail between its steps (a lock file laid in locks/, an append patched to throw) and holds the order of the anchor and the founding; no byte of a tail is damaged, and it reads the tail directory only to say that a file is there',
+  'packages/chain/src/chain/staging.test.ts':
+    'creates and removes empty staging files and notes in a temporary locks/ folder and holds which of them the next writer of a tail clears; it writes into no tail and no checkpoints, so there is no record and no cache to judge',
+  'packages/context/src/context/not-seen.test.ts':
+    'copies a clone’s tails into the bench’s tree, as two clones meet, to hold which rules the list of what a person did not accept keeps when two machines accepted one decision; nothing is damaged, and every read is of a cache the bench rebuilds whole',
   'packages/code/tests/the-audit-verbs-fold-the-record-once.test.ts':
     'appends one line of a kind no version declares, signed by a checkpoint as a newer mnema writes it, and damages nothing: it holds that four verbs which open no cache fold the tails once and carry the same field, so no cache state changes what it reads',
   'packages/chain/src/chain/a-tail-is-signed-as-soon-as-it-is-founded.test.ts':
@@ -247,7 +257,7 @@ const TAG = /^\s*\/\/ @proves [a-z0-9-]+\s*$/m;
  */
 const A_WRITE =
   /\b(?:writeFileSync|appendFileSync|rmSync|truncateSync|ftruncateSync|writeSync|unlinkSync|renameSync|copyFileSync|cpSync|writeFile|appendFile|rm|truncate|copyFile|cp)\(/;
-const A_TAIL = /checkpoints|\d{6}\.jsonl|segment|\.head|tails/;
+const A_TAIL = /checkpoints|\d{6}\.jsonl|\bsegments?\b|\.head\b|\btails\b|\btailDir\b/;
 
 /** Whether a text has the shape of one that writes into tails or checkpoints. */
 export function writesIntoTails(text: string): boolean {
@@ -447,6 +457,7 @@ export const FROZEN: ReadonlySet<string> = new Set([
   'packages/context/src/context/decisions.test.ts',
   'packages/context/src/context/focus.test.ts',
   'packages/context/src/context/next-action.test.ts',
+  'packages/context/src/context/opening-core.test.ts',
   'packages/context/src/context/presence.test.ts',
   'packages/context/src/context/search.test.ts',
   'packages/context/src/context/skills.test.ts',
@@ -456,6 +467,7 @@ export const FROZEN: ReadonlySet<string> = new Set([
   'packages/context/src/context/unread.test.ts',
   'packages/context/src/guard/guard.test.ts',
   'packages/context/src/intelligence/accountability.test.ts',
+  'packages/context/src/intelligence/agent-accepts.test.ts',
   'packages/context/src/intelligence/antipatterns.test.ts',
   'packages/context/src/intelligence/consultation.test.ts',
   'packages/context/src/intelligence/governance.test.ts',
@@ -740,6 +752,20 @@ describe('the integrity tests and the states of the projection cache', () => {
       writesIntoTails("rmSync(join(repo, '.mnema', 'tails', tail), { recursive: true });"),
     ).toBe(true);
     expect(writesIntoTails("writeFileSync(join(dir, 'notes.txt'), 'x');")).toBe(false);
+    expect(writesIntoTails("writeFileSync(join(dir, 'details.txt'), headers.header);")).toBe(false);
+    expect(writesIntoTails("writeFileSync(join(dir, 'x'), 'the headline and the retails');")).toBe(
+      false,
+    );
+    expect(writesIntoTails("writeFileSync(join(dir, 'segmentation.txt'), 'x');")).toBe(false);
+    expect(writesIntoTails("writeFileSync(join(repo, '.mnema/tails/t/000001.jsonl'), 'x');")).toBe(
+      true,
+    );
+    expect(writesIntoTails("writeFileSync(join(locks, 't1.head'), 'x');")).toBe(true);
+    expect(writesIntoTails('rmSync(tailDir({ root }, tail), { recursive: true });')).toBe(true);
+    expect(writesIntoTails("rmSync(join(root, 'tailDirectory'), { recursive: true });")).toBe(
+      false,
+    );
+    expect(writesIntoTails("rmSync(join(repo, 'segments'), { recursive: true });")).toBe(true);
   });
 
   it('lets a file that writes and plants nothing say so, and accuses it once it plants or stops writing (the honest way out seen to fire)', () => {

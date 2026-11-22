@@ -17,7 +17,7 @@
  * decisions carry is `adrCollisions`'s to say. A copy of any of these in this file would be a
  * second reading of a rule that already has one.
  *
- * WHO DID IT IS WORDED ONE WAY. An act with no agent on its envelope is `A_PERSON`, the word
+ * WHO DID IT IS WORDED ONE WAY. An act with no agent on its envelope is `NO_AGENT_DECLARED`, the word
  * `mnema show` prints; with one it is `agent <which>`. The `which` is read off the EVENT (a
  * note's projection does not keep it). The page never says a name: the identity (`mnid:...`)
  * is what the record holds, and it is not one.
@@ -47,7 +47,7 @@ import {
   projectLinks,
   projectObservations,
 } from '@mnema/core';
-import { A_PERSON, NO_NAME_ANNOUNCED } from '../one-line.js';
+import { NO_AGENT_DECLARED, NO_NAME_ANNOUNCED } from '../one-line.js';
 
 /** Who acted on a decision, and what carried it out, as the event that did it says. */
 export interface PageActor {
@@ -171,11 +171,11 @@ export interface PageModel {
 }
 
 /**
- * How an act is said: a person when no agent carried it out, otherwise the agent by name, and
+ * How an act is said: `no agent declared` when the envelope names none, otherwise the agent by name, and
  * beside a name no MCP client announced, that it was not announced (FORMAT.md section 6.9).
  */
 export function actWording(which?: string, unannounced?: boolean): string {
-  if (which === undefined) return A_PERSON;
+  if (which === undefined) return NO_AGENT_DECLARED;
   return unannounced === true ? `agent ${which}, ${NO_NAME_ANNOUNCED}` : `agent ${which}`;
 }
 

@@ -413,7 +413,7 @@ describe('the decision transitions are gated against the chain', () => {
     expect(again).toMatchObject({ ok: false, code: 'ILLEGAL_TRANSITION' });
     if (again.ok) return;
     expect(again.message).toBe(
-      `${adr} is already accepted, by a person, at 2026-07-21T00:00:01.000Z: nothing changed.`,
+      `${adr} is already accepted (no agent declared) at 2026-07-21T00:00:01.000Z: nothing changed.`,
     );
     expect(orderedEvents({ root }, upcasters)).toHaveLength(events);
   });
@@ -430,7 +430,7 @@ describe('the decision transitions are gated against the chain', () => {
     expect(again).toMatchObject({ ok: false, code: 'ILLEGAL_TRANSITION' });
     if (again.ok) return;
     expect(again.message).toBe(
-      `${adr} is already accepted, by an agent (${WHICH}), at 2026-07-21T00:00:01.000Z: nothing changed.`,
+      `${adr} is already accepted (agent ${WHICH}) at 2026-07-21T00:00:01.000Z: nothing changed.`,
     );
   });
 

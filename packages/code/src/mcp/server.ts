@@ -78,6 +78,7 @@
  */
 
 import { existsSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { CodedError, UnreadableDiskError, UnreadableLineError } from '@mnema/chain';
 import { REFERENCE_DEFAULT_DEPTH, REFERENCE_MAX_DEPTH } from '@mnema/context';
 import {
@@ -128,6 +129,7 @@ import {
 } from '../recorded-content.js';
 import { REFERENCE_DIRECTIONS } from '../reference-directions.js';
 import { patternsFraming, SERVED_PATTERN_CONTRACT } from '../served-patterns.js';
+import { noteSwallowed } from '../swallowed-ledger.js';
 import {
   countToolCall,
   flushToolCalls,
@@ -338,7 +340,7 @@ const OPEN_RUN_CONTRACT =
  * The agent a connection is recorded as when the client's own name is no name.
  *
  * On this transport an agent exists BY CONSTRUCTION: a stdio connection is a
- * program talking to a program, and "a person acted directly", what an absent
+ * program talking to a program, and "no agent declared", what an absent
  * `which` means everywhere else in mnema, cannot be true here. So a client that
  * announces nothing usable is recorded as an agent whose name we do not know, which
  * is honest, rather than as nobody, which is false.
@@ -559,7 +561,7 @@ export function buildMcpServer(options: McpServerOptions): {
           `session opened: project=${opened.project ?? '(none: the global tree)'} ` +
             `(${landingOf(opened)}) ` +
             `workspaceProjects=${opened.workspaceProjects.length} ` +
-            `who=${opened.who ?? "(none yet: no key of this machine signs in this session's own trees)"} ` +
+            `who=${opened.who ?? "(no identity here yet: no key of this machine signs in this session's own trees, which is not an error)"} ` +
             'runs=(none: the first write to a tree opens that tree’s run)',
         ),
       );
@@ -797,8 +799,10 @@ function countedLocally<Input extends ZodRawShapeCompat | undefined>(
 ): ToolCallback<Input> {
   const called = handle as (...args: unknown[]) => unknown;
   const count = async (result: string): Promise<void> => {
+    let dataDir: string | undefined;
     try {
       const session = await ensureSession();
+      dataDir = dirname(session.trees.global);
       const file = toolCallsFile(session.trees);
       if (file === undefined || !countsToolCalls(session)) return;
       // WHERE THE MACHINE HAS NO KEY OF ITS OWN YET NOTHING IS KEPT, and the count makes no
@@ -813,8 +817,10 @@ function countedLocally<Input extends ZodRawShapeCompat | undefined>(
         effect: what.effect,
         result,
       });
-    } catch {
-      // A count that cannot be kept is not a reason for a tool to answer differently.
+    } catch (error) {
+      // A count that cannot be kept is not a reason for a tool to answer differently. It is said once,
+      // in the ledger of caught failures (`swallowed-ledger.ts`), which `mnema doctor` reads.
+      noteSwallowed('mcp.tool-call-count', error, dataDir === undefined ? {} : { dataDir });
     }
   };
   return (async (...args: unknown[]) => {

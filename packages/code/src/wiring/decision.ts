@@ -250,7 +250,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
         ...(run !== undefined ? { run } : {}),
         atATerminal: io.aPersonIsHere === true,
       });
-      await reportDecisionMove(result, id, wiring);
+      await reportDecisionMove(result, id, wiring, action);
       if (result.ok) moved += 1;
     }
     if (ids.length > 1 && moved < ids.length) {
@@ -274,7 +274,11 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
       '\nAsks for one note at the start, used for every verdict unless you write another after the\n' +
         'letter (`a because the benchmark held`). Each verdict is the move `decision move` makes,\n' +
         'signed with your own key; a refusal on one decision is said and the review goes on. Without a\n' +
-        'terminal it writes nothing and prints the `decision move` command that rules the same decisions.',
+        'terminal it writes nothing and prints the `decision move` command that rules the same decisions.\n' +
+        '\nThen it shows the rules in force you did not accept yourself (an agent accepted them, or no\n' +
+        'agent was declared on the accept), newest first, and marks each one it shows as shown to you,\n' +
+        "in this machine's private record; `q` stops it, and what was not shown stays on the list.\n" +
+        'A mark says your key signed at a terminal with no agent declared, not that a person read it.',
     )
     .addHelpText('after', RECORD_CONTRACT_HELP);
   takesFromItsGroup(review, {
@@ -503,6 +507,7 @@ async function reportDecisionMove(
   result: ReturnType<typeof runDecisionTransition>,
   id: string,
   to: Reporter,
+  action?: string,
 ): Promise<void> {
   if (result.ok) {
     const { movedLine } = await import('../moved-record.js');
@@ -515,7 +520,18 @@ async function reportDecisionMove(
     reportReplacement(result, to.io);
     return;
   }
-  reportRefusal(to, result, { UNKNOWN_DECISION: noSuchRecord('decision', id) });
+  // `move <id> accept`: the id is read as the action, and the action as an id. The word in the id's
+  // position is a verdict, so the sentence says which way round the line goes.
+  const swapped =
+    action !== undefined &&
+    !(DECISION_MOVE_ACTIONS as readonly string[]).includes(action) &&
+    (DECISION_MOVE_ACTIONS as readonly string[]).includes(id);
+  const none = noSuchRecord('decision', id);
+  reportRefusal(to, result, {
+    UNKNOWN_DECISION: swapped
+      ? `${none} The action goes before the id: mnema decision move ${id} <id>.`
+      : none,
+  });
 }
 
 /**

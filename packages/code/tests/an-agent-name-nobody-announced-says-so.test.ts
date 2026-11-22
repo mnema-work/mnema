@@ -142,7 +142,7 @@ describe('an agent name no client announced', () => {
     // The opening document: the rule the client with no handshake accepted.
     const brief = mnema('brief').stdout;
     const rule = /^- \*\*ADR-\d+: The first call\*\*.*$/m.exec(brief)?.[0] ?? '';
-    expect(rule, brief).toContain(`(agent unknown-agent, ${SAID}`);
+    expect(rule, brief).toContain(` · agent, ${SAID}`);
 
     // The account: the agent's facts, and how many of them no client announced.
     const account = mnema('audit', 'accountability').stdout;

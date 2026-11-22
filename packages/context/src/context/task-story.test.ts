@@ -111,11 +111,11 @@ describe('taskStanding', () => {
     expect(taskStanding(open(b), 't-1').owner).toEqual({ name: 'alice', via: 'start' });
   });
 
-  it('says a person when no agent started it: the anchor is not a name', () => {
+  it('says no agent declared when no agent started it: the anchor is not a name', () => {
     const b = bench();
     birthTask(b, 't-1', 'Ship it', 'READY');
     moveTask(b, 't-1', 'READY', 'IN_PROGRESS', 'start');
-    expect(taskStanding(open(b), 't-1').owner).toEqual({ name: 'a person', via: 'start' });
+    expect(taskStanding(open(b), 't-1').owner).toEqual({ name: 'no agent declared', via: 'start' });
   });
 
   it('has no owner for a task nobody started or was handed', () => {
