@@ -576,10 +576,12 @@ describe('an occurrence is one line, whatever the record holds', () => {
     }
   });
 
-  it('says a person when no agent did it, rather than leaving a gap', () => {
-    // An absent `which` is a FACT, somebody acted directly, and the word is the one the
-    // rest of the product uses for the same absence.
-    expect(renderPlain(occurrenceLine(event({})))).toContain('a person');
+  it('says no agent declared when none did it, rather than leaving a gap', () => {
+    // An absent `which` is a FACT, nobody named an agent, and the words are the ones the
+    // rest of the product uses for the same absence: never "a person", which nothing holds.
+    const said = renderPlain(occurrenceLine(event({})));
+    expect(said).toContain('by no agent declared');
+    expect(said).not.toContain('a person');
     expect(renderPlain(occurrenceLine(event({ which: 'an-agent' })))).toContain('an-agent');
   });
 });

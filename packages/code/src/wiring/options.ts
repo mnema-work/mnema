@@ -22,8 +22,8 @@ import { type Reporter, reportUsage } from './report.js';
  * `which` is the agent that EXECUTED, and it is DECLARED, not detected: there is
  * nothing on a command line to detect it from. (A shell that exports `MNEMA_AGENT_KEY` declares
  * it once for every verb that writes, and where the record enrols that agent's key the fact names
- * the agent as the record does, whatever this flag says.) Omitting it says a person acted
- * directly, which is what the record then asserts, so an agent driving the CLI (a
+ * the agent as the record does, whatever this flag says.) Omitting it says no agent was
+ * declared, which is all the record then asserts, so an agent driving the CLI (a
  * script, a CI step, an agent with no MCP server) has to name itself or the record
  * credits its work to the person. The MCP surface has the same field filled from
  * the connecting client's name; this is the CLI's way to say the same thing.
@@ -54,7 +54,7 @@ export const WHICH_HELP =
  */
 export const BLANK_WHICH_MESSAGE =
   'it names no agent. Name the agent that executed this, or omit --which: omitted, ' +
-  'the record says a person acted directly. (A `--which "$AGENT"` with the variable ' +
+  'the record says no agent was declared. (A `--which "$AGENT"` with the variable ' +
   "empty would otherwise credit you for an agent's work.)";
 
 /**
@@ -71,12 +71,11 @@ export const BLANK_WHICH_MESSAGE =
  * tree is a function of the KIND now, so the two questions cannot disagree: this
  * guard defends the envelope alone.
  *
- * The rule is NOT the absent flag's. On this surface an omitted `--which` means "a
- * person acted directly": legitimate, common, and what most people who type
- * `mnema` are. Defaulting it to some agent name would invent an agent where there
- * was a person: the same fiction, inverted, and worse. (The MCP surface DOES
- * default, for the opposite reason: a stdio connection is a program talking to a
- * program, so there "a person acted" cannot be true.)
+ * The rule is NOT the absent flag's. On this surface an omitted `--which` means "no
+ * agent declared": legitimate, common, and what most people who type `mnema` are. Defaulting
+ * it to some agent name would invent an agent where none was named: the same fiction,
+ * inverted, and worse. (The MCP surface DOES default, for the opposite reason: a stdio
+ * connection is a program talking to a program, so there an agent always acted.)
  *
  * "Names an agent" is decided by {@link canonicalIdentity} and never by a trim of
  * our own: that is the rule which decides what the chain records, so a value it

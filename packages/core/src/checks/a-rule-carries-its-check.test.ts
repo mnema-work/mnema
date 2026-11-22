@@ -275,7 +275,9 @@ describe('a rule carries its check', () => {
     const verdict = verify(root, upcasters);
     expect(verdict.issues).toEqual([]);
     expect(verdict.ok).toBe(true);
-    expect(verdict.census.map((note) => note.kind)).toEqual(['retired-checker']);
+    expect(
+      verdict.census.map((note) => note.kind).filter((kind) => kind !== 'undeclared-which'),
+    ).toEqual(['retired-checker']);
   });
 
   it('retires only a key the record enrolls as a checker, and a second time records nothing', () => {

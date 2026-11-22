@@ -63,6 +63,8 @@ describe('a decision', () => {
       proof: [{ action: 'accept', at: accepted.at, said: 'note: because' }],
       recordedBy: { who: 'mnid:aa', which: 'agent' },
       acceptedBy: { who: 'mnid:aa' },
+      // No reading placed these events, so the accept carries no entry hash (`entry-hashes.ts`).
+      accepts: [{ who: 'mnid:aa', at: accepted.at }],
     });
   });
 

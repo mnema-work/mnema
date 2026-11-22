@@ -118,7 +118,7 @@ async function theTools(id: string, other: string): Promise<Record<string, strin
     bootstrap: await called('bootstrap'),
     read_record: await called('read_record', { id }),
     read_another: await called('read_record', { id: other }),
-    search: await called('search', { query: 'Postgres' }),
+    search: await called('search', { term: 'Postgres' }),
     resume: await called('resume'),
     focus: await called('focus'),
     governing_rules: await called('governing_rules', { path: 'src/a.ts' }),

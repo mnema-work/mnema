@@ -19,8 +19,8 @@
  *
  * The executing agent (`which`) is an input, not an assumption. A caller that is
  * an AGENT operating the CLI (a script, a CI step, an agent with no MCP server)
- * says so, and the fact records it; a person acting directly names none and the
- * fact says a person acted. It is forwarded to the OPERATION alone (which records
+ * says so, and the fact records it; a caller that names none leaves the
+ * fact saying no agent was declared. It is forwarded to the OPERATION alone (which records
  * it and refuses when the agent IS the identity that authorizes the write) and no
  * longer to the routing rule: who executed a write and who the write is for are two
  * questions, and answering the second with the first is what left a project's

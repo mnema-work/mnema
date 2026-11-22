@@ -64,7 +64,8 @@ describe('a registration for an identity the record never founded', () => {
     const result = verify(root, undefined, { keyRoot });
 
     expect(result.ok).toBe(true);
-    expect(result.census.map((note) => note.kind)).toEqual(['key-without-tail']);
-    expect(result.census[0]).toMatchObject({ fingerprint: made.fingerprint });
+    const census = result.census.filter((note) => note.kind !== 'undeclared-which');
+    expect(census.map((note) => note.kind)).toEqual(['key-without-tail']);
+    expect(census[0]).toMatchObject({ fingerprint: made.fingerprint });
   });
 });

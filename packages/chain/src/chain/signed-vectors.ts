@@ -25,7 +25,7 @@ import {
   signCheckpoint,
 } from './checkpoint.js';
 import { writtenAsBuilt } from './hash.js';
-import { keyPairFromPrivatePem, publicKeyToPem } from './keys.js';
+import { type KeyPair, keyPairFromPrivatePem, publicKeyToPem } from './keys.js';
 import { RECORD_DOMAIN, recordName } from './record-name.js';
 import { serializeTailProof, signTailProof, type TailProof } from './tailproof.js';
 
@@ -75,16 +75,19 @@ function messageVector(name: string, artifact: Checkpoint | TailProof, line: str
   };
 }
 
-/** The vectors, built from the code that signs and reads them. */
-export function signedMessageVectors(): SignedMessageVectors {
+/** The key pair of {@link VECTOR_SECRET}: what every published signature is made with. */
+export function vectorKeyPair(): KeyPair {
   const privateKey = createPrivateKey({
     key: Buffer.from(PKCS8_ED25519_PREFIX + VECTOR_SECRET, 'hex'),
     format: 'der',
     type: 'pkcs8',
   });
-  const keyPair = keyPairFromPrivatePem(
-    privateKey.export({ format: 'pem', type: 'pkcs8' }).toString(),
-  );
+  return keyPairFromPrivatePem(privateKey.export({ format: 'pem', type: 'pkcs8' }).toString());
+}
+
+/** The vectors, built from the code that signs and reads them. */
+export function signedMessageVectors(): SignedMessageVectors {
+  const keyPair = vectorKeyPair();
   const tail = `${keyPair.fingerprint}-${'ab'.repeat(16)}`;
   const record = recordName(tail);
   const [first, second] = canonicalVectors();

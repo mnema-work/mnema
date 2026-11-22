@@ -294,10 +294,51 @@ function replace(path: string, bytes: Buffer): void {
   }
 }
 
+/** What a copy's manifest says, when it reads. */
+export interface ManifestRead {
+  readonly copiedAt: string | undefined;
+  readonly record: unknown;
+  readonly files: readonly { readonly path: string; readonly bytes: number }[];
+}
+
+/**
+ * The copy's manifest: `absent` when the copy has none, `unreadable` when it is there and the disk
+ * refuses it (EACCES, EISDIR), it is not JSON, is not an object with a list of files, or lists an
+ * entry with no path and size, and `whole` with what it says otherwise.
+ */
+export function readManifest(
+  folder: string,
+): { readonly state: 'absent' | 'unreadable' } | ({ readonly state: 'whole' } & ManifestRead) {
+  const path = join(folder, BACKUP_MANIFEST);
+  if (lstatSync(path, { throwIfNoEntry: false }) === undefined) return { state: 'absent' };
+  try {
+    const read: unknown = JSON.parse(readFileSync(path, 'utf-8'));
+    if (typeof read !== 'object' || read === null || Array.isArray(read)) throw new TypeError();
+    const said = read as { files?: unknown; copiedAt?: unknown; record?: unknown };
+    const listed = said.files ?? [];
+    if (!Array.isArray(listed)) throw new TypeError();
+    const files: { path: string; bytes: number }[] = [];
+    for (const one of listed as { path?: unknown; bytes?: unknown }[]) {
+      if (typeof one?.path !== 'string' || typeof one.bytes !== 'number') throw new TypeError();
+      files.push({ path: one.path, bytes: one.bytes });
+    }
+    return {
+      state: 'whole',
+      copiedAt: typeof said.copiedAt === 'string' ? said.copiedAt : undefined,
+      record: said.record,
+      files,
+    };
+  } catch {
+    return { state: 'unreadable' };
+  }
+}
+
 /** What a copy of a tree holds, and how far it is from the tree. */
 export interface CopyStanding {
   /** When the last run wrote the manifest, or undefined where there is no copy of this tree yet. */
   readonly copiedAt: string | undefined;
+  /** Whether the copy's manifest reads, is not there, or is there and does not read. */
+  readonly manifest: 'whole' | 'absent' | 'unreadable';
   /** The files the tree holds that the copy lacks or holds a shorter start of. */
   readonly behind: number;
   /** The files whose copy is not the start of what the tree holds: the next run refuses them. */
@@ -325,14 +366,7 @@ export function standingOfCopy(
     if (held !== undefined && !file.bytes.subarray(0, held.length).equals(held)) diverged += 1;
     else if (held === undefined || held.length !== file.bytes.length) behind += 1;
   }
-  let copiedAt: string | undefined;
-  try {
-    const manifest = JSON.parse(readFileSync(join(folder, BACKUP_MANIFEST), 'utf-8')) as {
-      copiedAt?: unknown;
-    };
-    if (typeof manifest.copiedAt === 'string') copiedAt = manifest.copiedAt;
-  } catch {
-    // No manifest, or one this cannot read: there is no last run to name.
-  }
-  return { copiedAt, behind, diverged, files: planned.length };
+  const manifest = readManifest(folder);
+  const copiedAt = manifest.state === 'whole' ? manifest.copiedAt : undefined;
+  return { copiedAt, manifest: manifest.state, behind, diverged, files: planned.length };
 }

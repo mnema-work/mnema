@@ -2,7 +2,7 @@
 
 <!-- This page is generated from the help of the command, written where the command is defined under packages/code/src/wiring/: edit it there, then run `pnpm vitest run packages/code/src/cli.golden.test.ts -u` (which rewrites packages/code/src/cli.help.golden.txt) and `pnpm vitest run packages/code/tests/the-reference-pages-are-generated.test.ts -u`. -->
 
-emit the record as an OCSF audit feed (NDJSON, envelope only, never a body)
+emit the record as an OCSF audit feed (NDJSON, envelope only, never a body), or with --madr write the decisions as MADR files
 
 In the help under **Read**.
 
@@ -14,6 +14,7 @@ In the help under **Read**.
 | `--to <iso>` | only facts at or before this ISO-8601 instant (inclusive) |
 | `--who <id>` | include only facts authorized by this identity: the `mnid:…` from `mnema audit accountability`, or the short form the reads print (any prefix that names one identity here) |
 | `--which <agent>` | include only facts executed by this agent |
+| `--madr <dir>` | write each decision of the committed record as a MADR file in &lt;dir>, bodies included, each marked as derived from the record; the feed and its filters are not used |
 | `--global` | also cover this machine's global tree (left out by default): it belongs to no project and is present in every one, and this is the only read that leaves the machine (default: false) |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
@@ -24,7 +25,8 @@ In the help under **Read**.
 ```text
 Usage: mnema export [options]
 
-emit the record as an OCSF audit feed (NDJSON, envelope only, never a body)
+emit the record as an OCSF audit feed (NDJSON, envelope only, never a body), or
+with --madr write the decisions as MADR files
 
 Options:
   --from <iso>     only facts at or after this ISO-8601 instant (inclusive)
@@ -33,6 +35,9 @@ Options:
                    from `mnema audit accountability`, or the short form the
                    reads print (any prefix that names one identity here)
   --which <agent>  include only facts executed by this agent
+  --madr <dir>     write each decision of the committed record as a MADR file in
+                   <dir>, bodies included, each marked as derived from the
+                   record; the feed and its filters are not used
   --global         also cover this machine's global tree (left out by default):
                    it belongs to no project and is present in every one, and
                    this is the only read that leaves the machine (default:

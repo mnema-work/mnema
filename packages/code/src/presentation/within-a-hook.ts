@@ -95,6 +95,11 @@ export interface HookCeiling {
    * tokens of so many bytes; the words are the composer's, the numbers are these.
    */
   readonly said: { readonly count: number; readonly bytesPerToken?: number };
+  /**
+   * The title of the host whose own ceiling was never measured, so that Claude Code's stands in
+   * for it: the declaration of a cut says that it is assumed, and for whom.
+   */
+  readonly assumedFor?: string;
 }
 
 /** Claude Code's ceiling, and every host's that the host table names none for. */
@@ -132,11 +137,17 @@ export function hookCeilingOf(
   };
 }
 
-/** A host's ceiling as a paragraph that declares a cut says it: characters, or tokens of so many bytes. */
+/**
+ * A host's ceiling as a paragraph that declares a cut says it: characters, or tokens of so many
+ * bytes, and where the number is Claude Code's assumed for another host, that it is assumed.
+ */
 export function ceilingInWords(ceiling: HookCeiling): string {
   const count = ceiling.said.count.toLocaleString('en-US');
   const bytes = ceiling.said.bytesPerToken;
-  return bytes === undefined ? `${count} characters` : `${count} tokens of ${bytes} bytes`;
+  const words = bytes === undefined ? `${count} characters` : `${count} tokens of ${bytes} bytes`;
+  return ceiling.assumedFor === undefined
+    ? words
+    : `${words} (Claude Code’s, assumed: ${ceiling.assumedFor}’s own ceiling has not been measured)`;
 }
 
 /**

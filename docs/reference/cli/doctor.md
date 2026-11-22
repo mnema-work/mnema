@@ -51,6 +51,14 @@ In a project inside a git repository it also names each worktree that still hold
 in `.mnema/private/`, where they lived before the private tree moved into the repository's git
 directory: nothing reads them there, and removing that worktree deletes them.
 
+On Windows, in a project, it also checks the record against the 260 characters Windows allows a whole path: the deepest path
+the record holds, and the longest name a witnessed record would add (`tails/<id>/witness/<digest>.sigstore.json`, 190
+characters below the record's folder). Where either passes 260 and git's `core.longpaths` (read with
+`git config --get core.longpaths`) is not true, the line **states** `git config --global core.longpaths true` and says
+the Python reader needs the system's `LongPathsEnabled` (registry key `HKLM\SYSTEM\CurrentControlSet\Control\FileSystem`).
+It never runs the command and never writes git's global configuration, `--fix` included: that configuration is yours.
+Off Windows it says nothing of this.
+
 It also says when the project lacks what `mnema init` leaves beside the record, which is the `.mnema/README.md`, the
 `.mnema/.editorconfig`, or the line `.mnema/` in a `.prettierignore` where prettier is declared. It writes none: each
 finding says to run `mnema init`, which adds exactly that. (`--fix` takes a named target, and these are not among them.)
@@ -146,6 +154,8 @@ What it looks at, and nothing else:
   each worktree’s .mnema/private/, where private notes lived before they moved into the
   repository’s git directory; and the agent keys this machine holds, against the record of
   each tree it reaches, with the `MNEMA_AGENT_KEY` of its own environment.
+It also reads the ledger of caught failures, <data directory>/log/swallowed.jsonl, for the last 7 days (kept on this
+machine and never sent: docs/the-ledger-of-caught-failures.md).
 Asked alone it writes nothing and exits 0 whatever it finds: each line says what to do.
 `--fix vscode` writes: it shows what it will change, keeps a copy of settings.json beside
 it, keeps the file’s comments, and refuses a file it cannot edit safely.

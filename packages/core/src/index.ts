@@ -51,6 +51,7 @@ export {
   readHostMemory,
   scanBridge,
 } from './adr/bridges.js';
+export { DERIVED_KEY, type MadrDocument, madrOf } from './adr/madr.js';
 // Reading a directory of decision documents somebody else already wrote: the
 // market's ADR form, turned into the four things this product records. It is a pure
 // READ of text and of a directory: no writer, no key, no event, and no model. What it
@@ -141,6 +142,7 @@ export {
 export { keepProductVersion } from './projections/cache-meta.js';
 export type { ChannelSwitchProjection } from './projections/channel.js';
 export {
+  type AcceptMove,
   type AdrCollision,
   adrCollisions,
   type DecisionActor,
@@ -216,6 +218,7 @@ export {
   type ReferenceRow,
   type ReferenceSeed,
   type ReferringRole,
+  type Showing,
   type SubjectRun,
   tallyAuthorship,
   walkReferences,
@@ -347,6 +350,7 @@ export {
   prepareRestore,
   privateTreesLeftBehind,
   privateTreeVisibility,
+  publicTreeIsLocal,
   type ResolvedTrees,
   type Restored,
   type RoutedKind,
@@ -374,6 +378,7 @@ export {
   type Undone,
   undoAside,
   undoCommandFor,
+  vanishedLocalTrees,
   whyNoProjectRootAt,
   whyNotADestination,
   whyNotARemote,
@@ -438,5 +443,6 @@ export {
   TRANSITIONS,
   type Transition,
   taskDisposition,
+  taskIsUnderway,
 } from './workflow/index.js';
 export { lastSeenOfSweptTask, sweptReason } from './workflow/swept-session.js';

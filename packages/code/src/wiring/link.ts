@@ -16,6 +16,7 @@ import {
   RECORD_CONTRACT_HELP,
   reachNotice,
   subjectReachNotice,
+  temporaryTargetNotice,
 } from '../recorded-content.js';
 import { hereWriting } from './context.js';
 import { scopeOption } from './enumerated.js';
@@ -108,6 +109,7 @@ export function registerLink(program: Command, wiring: Wiring): Declared {
               process.cwd(),
             ),
           );
+          writeLines(io, temporaryTargetNotice(result.target, result.targetIsTemporary));
           return;
         }
         reportRefusal(wiring, result);

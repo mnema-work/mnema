@@ -62,6 +62,7 @@
 
 import type { CatalogEvent } from '@mnema/chain';
 import { type AccumulatorFold, accumulate, jsonEncoding } from './accumulate.js';
+import { entryHashOf } from './entry-hashes.js';
 import { proofOf, type TransitionProof } from './proof.js';
 
 /** Current projected state of one decision. */
@@ -77,6 +78,16 @@ import { proofOf, type TransitionProof } from './proof.js';
 export interface DecisionActor {
   readonly who: string;
   readonly which?: string;
+}
+
+/**
+ * One accept of a decision the fold applied: who made it, when, and the entry hash a showing names
+ * it by (`decision.seen`). `hash` is absent only for an event no reading placed (a fold handed
+ * events directly), and an accept without one is covered by no showing.
+ */
+export interface AcceptMove extends DecisionActor {
+  readonly at: string;
+  readonly hash?: string;
 }
 
 export interface DecisionProjection {
@@ -121,6 +132,16 @@ export interface DecisionProjection {
    * still governs is the state's to say, and who ruled is the event's.
    */
   readonly acceptedBy?: DecisionActor;
+  /**
+   * EVERY accept of this decision the fold applied, in the chain's order: absent for a decision
+   * never accepted. The decision workflow has no way back into force once a decision leaves it
+   * (FORMAT.md section 6.7), so these are the accepts since it last entered force; there is more
+   * than one only where two machines accepted it without seeing each other. They are what a
+   * showing (`decision.seen`) covers, by hash, and what the list of the rules a person did not
+   * accept themselves is folded from: a decision is off it for an identity only when every accept
+   * here is covered.
+   */
+  readonly accepts?: readonly AcceptMove[];
 }
 
 /** A collision of the `adr` label: one label held by two or more decisions. */
@@ -145,6 +166,7 @@ export interface DecisionAccumulator {
   proof?: TransitionProof[];
   recordedBy?: DecisionActor;
   acceptedBy?: DecisionActor;
+  accepts?: AcceptMove[];
   /**
    * Whether a second `decision.recorded` of the id was met and not applied. A cache brought
    * forward reads it before it advances over the decision's first judgment, which binds the text
@@ -196,7 +218,16 @@ export const decisionFold: AccumulatorFold<DecisionAccumulator, DecisionProjecti
       const entry = of(event.subject);
       entry.state = event.payload.to;
       entry.updatedAt = event.at;
-      if (event.payload.to === ACCEPTED) entry.acceptedBy = actorOf(event);
+      if (event.payload.to === ACCEPTED) {
+        entry.acceptedBy = actorOf(event);
+        const hash = entryHashOf(event);
+        entry.accepts ??= [];
+        entry.accepts.push({
+          ...actorOf(event),
+          at: event.at,
+          ...(hash !== undefined ? { hash } : {}),
+        });
+      }
       const said = proofOf(event);
       if (said !== undefined) {
         entry.proof ??= [];
@@ -237,6 +268,7 @@ export const decisionFold: AccumulatorFold<DecisionAccumulator, DecisionProjecti
     if (entry.proof !== undefined) projection.proof = entry.proof;
     if (entry.recordedBy !== undefined) projection.recordedBy = entry.recordedBy;
     if (entry.acceptedBy !== undefined) projection.acceptedBy = entry.acceptedBy;
+    if (entry.accepts !== undefined) projection.accepts = entry.accepts;
     if (entry.alternatives !== undefined) projection.alternatives = entry.alternatives;
     if (entry.supersededBy !== undefined) projection.supersededBy = entry.supersededBy;
     if (entry.supersedes !== undefined) projection.supersedes = entry.supersedes;
