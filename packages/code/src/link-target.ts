@@ -18,7 +18,13 @@ import { homedir, tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, posix, win32 } from 'node:path';
 import type { UpcasterRegistry } from '@mnema/chain';
 import type { RecordedAs } from '@mnema/context';
-import { ADDRESS_RELATIONS, locateLinkScope, type ResolvedTrees, type Scope } from '@mnema/core';
+import {
+  ADDRESS_RELATIONS,
+  GOVERNS_RELATION,
+  locateLinkScope,
+  type ResolvedTrees,
+  type Scope,
+} from '@mnema/core';
 import { inAWorkTree } from './git-log.js';
 import { addressLiesOutside, addressRelativeToRoot } from './governed-tree.js';
 import { oneLine } from './one-line.js';
@@ -84,6 +90,45 @@ export function outsideTheProject(rel: string, target: string, root: string): st
 export function targetAsRecorded(rel: string, target: string, root: string): string {
   if (!(ADDRESS_RELATIONS as readonly string[]).includes(rel)) return target;
   return reducedToRoot(target, root);
+}
+
+/**
+ * The paths a decision is to govern, held to the rules a `governs` link is held to, for the doors
+ * that write the decision and its links in one act (`mnema decision record --governs`, the
+ * `governs` of `record_decision`). It asks the functions above and no rule of its own: a label
+ * shaped like a decision label is no path (said as such, whether or not a decision carries it), a path outside the project is refused in the public tree
+ * (`outsideTheProject`), and what that tree records is the path relative to the root
+ * (`targetAsRecorded`). `publicRoot` is the project's root when the decision lands in the public
+ * tree and `undefined` for any other tree, which takes any path, as a link does.
+ *
+ * The FIRST path refused refuses the whole act, with the same code and words the link gives, and
+ * the doors write nothing. A path typed twice is recorded once.
+ */
+export function governsTargets(
+  paths: readonly string[],
+  publicRoot: string | undefined,
+):
+  | { readonly ok: true; readonly targets: readonly string[] }
+  | { readonly ok: false; readonly code: string; readonly message: string } {
+  const targets: string[] = [];
+  for (const path of paths) {
+    // A label names a decision whether or not one carries it here, and this takes a path: the
+    // sentence is true for both, which the link's own (for a label no decision carries) is not.
+    if (isLabelShaped(path)) {
+      return {
+        ok: false,
+        code: 'NOT_A_REFERENCE',
+        message: `"${oneLine(path)}" is a decision label, not a path: governs takes a path in this project, such as src/billing. Nothing was recorded.`,
+      };
+    }
+    const outside =
+      publicRoot === undefined ? undefined : outsideTheProject(GOVERNS_RELATION, path, publicRoot);
+    if (outside !== undefined) return { ok: false, code: 'OUTSIDE_PROJECT', message: outside };
+    const recorded =
+      publicRoot === undefined ? path : targetAsRecorded(GOVERNS_RELATION, path, publicRoot);
+    if (!targets.includes(recorded)) targets.push(recorded);
+  }
+  return { ok: true, targets };
 }
 
 /** The one reduction: an absolute path goes relative to the root, anything else stays as it is. */

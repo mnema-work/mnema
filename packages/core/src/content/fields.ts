@@ -266,6 +266,9 @@ export const SUBJECT_TEXT = {
   'skill.created': 'identifier',
   'skill.transitioned': 'identifier',
   'skill.consulted': 'name',
+  // The decision a showing names, handed in by the review that read it, from whichever tree holds
+  // it: a name like a consultation's, answered by the door, never proved in the tree it lands in.
+  'decision.seen': 'name',
   'channel.switched': 'name',
   // The same string, from the same place, answered the same way: the two facts a channel
   // produces name it exactly as the fact somebody makes ABOUT it does, and this package
@@ -391,6 +394,9 @@ export const PAYLOAD_TEXT = {
   // not vacuous cover: the kind's SUBJECT is a name, and that is where its one
   // caller-supplied string is answered for.
   'skill.consulted': {},
+  // The accepts a showing covers are entry hashes read off the record by the product and matched
+  // byte for byte by the reading, so a scrubber there would make the showing cover nothing.
+  'decision.seen': { moves: 'identifier' },
   // The `tail` is a caller's string and it is still an IDENTIFIER, by the rule this
   // file states rather than by how it is spelled: the write door refuses the waiver
   // unless the record holds that exact tail, so what gets stored came out of the

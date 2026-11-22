@@ -182,7 +182,13 @@ export function restoreKey(input: RestoreInput): RestoreOk | RestoreErr {
     };
   }
 
-  writeAnchor({ root: input.tree }, keyPair.fingerprint, found.anchor);
+  // A link at the anchor's place is refused by `writeAnchor`, before anything is written here.
+  writeAnchor(
+    { root: input.tree },
+    keyPair.fingerprint,
+    found.anchor,
+    'This restore did not complete, nothing was restored',
+  );
   noteSettledHere(input.tree, keyPair.fingerprint);
   // A copy that was protected is installed protected, with the passphrase it was just opened by:
   // restoring a key must not be the way a protected one ends up in the clear.

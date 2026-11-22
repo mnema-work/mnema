@@ -17,7 +17,9 @@ export function registerWhy(program: Command, wiring: Wiring): Declared {
   const { io, render } = wiring;
   const why = program
     .command('why')
-    .description('show under which decisions a file or a commit stands')
+    .description(
+      'show under which decisions a file or a commit stands; for a file, also the verdict a write there would meet',
+    )
     .argument('<file|commit>', 'a path (it wins when it exists) or a commit name')
     .option('--json', 'emit the faithful reading as JSON')
     .action(async (target: string, opts: { json?: boolean }) => {

@@ -159,15 +159,67 @@ scrollback and your CI log, so the report has no field that could hold one.
 Right after "Recorded decision ADR-n (id)", the command that records a decision and the `record_decision` tool say that the decision is born
 `proposed`, so not yet in force, and who accepts it. To an agent (the tool, and the command with `--which`), while `agent-accepts` is on:
 if the person dictated it, or chose it among options the agent offered (a recommended one included), it accepts it at once, with
-`decision_transition` (action `accept`) or `mnema decision move accept <id> --which <agent>`, the note quoting the answer; one
+`decision_transition` (action `accept`) or `mnema decision move accept <id> --which <agent>`, the note quoting their exact words between double quotes; one
 it concluded alone waits for the person, who rules on it with `mnema decision review`. With `agent-accepts` off, the line says
 that only a person accepts here. To the command with no `--which`, it says that a person accepts it with `mnema decision review`.
 A decision recorded a second time wrote nothing and says nothing of its state. It is a sentence of words: the product reads
-no answer, and what the agent was told is not what the gate checks (`agent-accepts` is).
+no answer, and what the agent was told is not what the gate checks (`agent-accepts` is, and the words of the note, below).
+
+### An agent's accept rests on the person's words
+
+An accept by an agent (the tool, and the command with `--which`) stands when its note quotes words the person typed in this
+session, or an option the person chose in the host's question tool; otherwise it is refused with `ACCEPT_NEEDS_THE_PERSONS_WORDS`,
+nothing is written and the decision stays `proposed`, for a person to rule on with `mnema decision review` (or for the agent to
+accept again with a note that quotes the person). What is looked for are the passages the note puts between double quotes
+(straight, curly or Portuguese, 20 characters or more after folding case and spacing, and not pure assent such as "yes", "sim, pode", "ok" or "go ahead", judged against a small closed list of assent words in English and Portuguese, accents folded) in what the person said, read off the host's
+transcript: a line the host marks as typed by a person, and an answer in its question tool. One found passage is enough, and the
+reply says whether it was typed words or a chosen option (an option's label is the agent's own text: the choice is the person's). A short option label, under 20 characters, does not count on its own: quote the person's own words then. The agent's mark "(Recommended)" or "(recomendado)" is taken off a label, on both sides, before it is measured or judged for assent.
+Nothing is added to the record, the quotation is not stored, and a line that sits earlier in the same session still counts.
+
+The words are read for each host as its row says, in one table (`packages/code/src/host-words.ts`, a row for every host; a name is
+compared with case and separators folded, so `claude-code`, `Claude-Code`, `claude_code` and `claudecode` are one host). A row reads
+only where this tree holds the host's conversation format with a fixture; a host's conversation format is never guessed.
+
+<!-- The table below is generated from packages/code/src/host-words.ts: edit the words in the-host-words-page-is-generated.test.ts. -->
+
+| Host | Session id | Words |
+| --- | --- | --- |
+| Claude Code | `CLAUDE_CODE_SESSION_ID` | read: the transcript the plugin’s hooks name (`transcript_path`), read for the lines the host marks as typed by a person |
+| VS Code's agent | none read | not readable yet: it leaves no session id in the environment mnema reads, and its conversation file format has not been proved here with a fixture |
+| Cursor's command-line agent | none read | not readable yet: it leaves no session id in the environment mnema reads, and its conversation file format has not been proved here with a fixture |
+| Codex | none read | not readable yet: its conversation file format has not been proved here with a fixture, and no session id in its environment was read |
+| GitHub Copilot CLI | `COPILOT_AGENT_SESSION_ID` | not readable yet: it leaves COPILOT_AGENT_SESSION_ID in the environment (docs/evidence.md), but its conversation file format has not been proved here with a fixture |
+| OpenCode | none read | not readable yet: it leaves no session id in the environment mnema reads, and its conversation file format has not been proved here with a fixture |
+| Gemini CLI | none read | not readable yet: it leaves no session id in the environment mnema reads, and its conversation file format has not been proved here with a fixture |
+| Qwen Code | none read | not readable yet: it leaves no session id in the environment mnema reads, and its conversation file format has not been proved here with a fixture |
+| Cursor's editor | none read | not readable yet: Cursor’s editor was only read in its documentation, it leaves no session id in the environment mnema reads, and its conversation file format has not been proved here with a fixture |
+| Antigravity's command line (`agy`) | none read | not readable yet: it leaves no session id in the environment mnema reads, and its conversation file format has not been proved here with a fixture |
+| Factory Droid | none read | not readable yet: it leaves no session id in the environment mnema reads, and its conversation file format has not been proved here with a fixture |
+| Goose | none read | not readable yet: it leaves no session id in the environment mnema reads, and its conversation file format has not been proved here with a fixture |
+
+<!-- End of the generated table. -->
+
+An accept from a host that is not readable yet passes and the reply marks it "words not checked" (the audit reading of the note's form, when it lands, judges the note and nothing else). It applies only in Claude Code with the plugin: the `SessionStart` hook leaves the transcript's path beside the session journal
+(a path, never a word of it; `mnema switch off session-journal` stops it) and the command or the server finds it by the session
+id the host gives (`CLAUDE_CODE_SESSION_ID`). The command with `--which` naming Claude Code (case and separators folded: `claude-code`, `Claude-Code`, `claude_code`, `claudecode`) and no such id is refused the same way and
+writes nothing. What remains open is exactly this: with no variable of any host whose words are read, and a name no row of the table knows (or the name of a host not readable yet), the accept passes and the reply says "words not checked". The environment is believed over the declared name: where the session variable of a host whose words are read is set (`CLAUDE_CODE_SESSION_ID` today), the command is in that host, and the person's words are checked against that session whatever `--which` says (`--which codex` or an unknown name included). Every other host (any `--which` that is not Claude Code) and an accept with
+no agent declared keep what they had, and the reply says the words were not checked. A session variable that points at no conversation (the hook has not run, an invented id, a file that is gone) is refused at the command line with the same code, and says the conversation was not found; through the MCP server such an accept still passes as "words not checked". That holds for the server the host launches and for one an agent with a shell opens on its own (it can run `mnema mcp` and call `decision_transition` itself): an accept through such a server passes marked "words not checked" (the audit reading of the note's form, when it lands, judges the note and nothing else). The gate is a record of what was checked, not a lock against an agent with a shell. A session id of another recent session of the project can be read: a quote must still be the person's words there. It proves that the quoted words are in the
+transcript, not that a person typed them: an agent with a shell can write the transcript. An accept of another host passes marked "words not checked".
 
 A supersede whose successor is still `proposed` leaves nothing in force on that subject until it is accepted, and the
 move says so. Rejecting that successor leaves the decision it replaced `superseded`, by a decision that never governed,
 and the rejection says so too, naming it, from the command line and in `decision_transition`.
+
+## Recording a decision with the paths it governs
+
+The `--governs <path>` flag of `decision record` (repeatable) and the `governs` list of `record_decision` address the decision at
+one or more paths of the project in the same act that records it. The decision and one `governs` link per path are written
+in a single append, so they land together or not at all; the record keeps them as the two kinds of event they always were,
+the same ones `mnema link <id> <path> --rel governs` writes. A path is held to the rules that link applies: a path outside the
+project is refused in the public tree, one typed absolute under the project's root is recorded relative to it, and a label
+left raw (`ADR-3`) is no path. The first path refused refuses the whole act and nothing is written, the decision included. A
+path given twice is linked once. A decision recorded a second time writes nothing, links included, and says that no path was
+linked by that call. A decision addressed this way is not offered an address (below).
 
 ## What a recorded decision offers
 
@@ -187,9 +239,15 @@ line names the call that would do it.
   `rules_before_an_edit` before an edit, which only Claude Code does. The reply lists up to ten of them, the latest first,
   and the `link_knowledge` call with `rel: "governs"` that would address the decision at the latest. A path outside the
   project is not kept, and a restarted server starts with none. In a host that does not call `rules_before_an_edit` only the
-  paths asked of `governing_rules` appear. The command line has no connection and so no path to list: the command that records a decision always adds the two lines that say the decision is addressed at no path and that nothing was linked, and name the call, `mnema link <id> <path> --rel governs` (with `--scope private` for a decision in the private tree), to fill in with the files it governs.
+  paths asked of `governing_rules` appear. The command line has no connection and so no path to list: the command that records a decision without `--governs` adds the two lines that say the decision is addressed at no path and that nothing was linked, and name the call, `mnema link <id> <path> --rel governs` (with `--scope private` for a decision in the private tree), to fill in with the files it governs; with `--governs <path>` the decision and its links are written together and the two lines are not added.
 
 The working tree's changes are never read to find the paths: they could credit the session with what it did not do.
+
+## A mistyped verb says what it most likely meant
+
+No verb lists decisions: they are read with `mnema search --kind decision` and `mnema status`, and the refusal of a
+word the `decision` group does not know points there. In a move the action goes before the id, and an id typed where
+the action goes is said so.
 
 ## Recording the same decision twice
 

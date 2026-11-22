@@ -83,7 +83,7 @@ describe('README example', () => {
       const openFor = opening.resume.lastRun?.ageSeconds; // how long it has been open
       const didWrite = opening.resume.lastRun?.wrote; // WHAT went in: [{ kind, count }, …]
       // A run does not repeat the actor: `opening.resume.actor` says it once for all of them.
-      const firstJob = opening.work[0]; // the freshest live task: a NAME
+      const firstJob = opening.work[0]; // a live task, the one in progress first: a NAME
       const more = opening.workTotal > opening.work.length; // was the list cut?
       const patterns = opening.skills.map((s) => s.name); // names only, one line each
       const governing = opening.decisions.map((d) => `${d.adr} ${d.title}`); // names only

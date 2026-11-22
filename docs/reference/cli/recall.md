@@ -11,7 +11,7 @@ In the help under **Hand over**.
 | Option | What it does |
 | --- | --- |
 | `--hook` | print it for a Claude Code hook: whole notes up to what a hook carries, each section saying how many it left out, and a refusal opens with its code alone on the first line of the error stream (a refusal of usage, such as an invalid --host, carries none: the hook is silent for it) |
-| `--host <host>` | with --hook, the host whose own ceiling to cut the notes to: codex; without it, Claude Code’s |
+| `--host <host>` | with --hook, the host whose own ceiling to cut the notes to: vscode, codex, copilot, opencode, gemini, qwen; without it, Claude Code’s |
 | `--session <id>` | the host’s id for the session these notes are for: the journal that session keeps is not "the last session", which a hook passes from the payload |
 | `--after-a-compaction` | print, instead of the notes, what entered the record since the session named by --session opened, before its conversation was compacted, read from its journal: a sentence, or nothing |
 
@@ -62,11 +62,11 @@ ended, or its journal has been quiet for 15 minutes: a session that wrote a mome
 one that stopped) left a journal on this machine in the last 24 hours (see [The session journal](../../the-session-journal-and-compaction.md#the-session-journal)),
 `mnema recall` opens with a few lines read from it: how long ago it stopped, and whether it wrote to this record (a decision, a
 note copied or a task moved; a session that only edited files is said to have written nothing to it), its goal (the title of the first task it moved into progress), the decisions it recorded by their
-`ADR-<n>` label and where each stands, and what it left (files edited, files of decisions the record cites nowhere, questions
+`ADR-<n>` label and where each stands (the newest five are named and the rest counted), and what it left (files edited, files of decisions the record cites nowhere, questions
 answered with no decision recorded after, tasks in progress). About a hundred tokens, ids and counts and a title the record
 already holds. The hook passes the session's own id (`--session <id>`, read off its payload) so a session never reads its own
 journal back as "the last one", for instance after a compaction; a session that did nothing worth saying is skipped for an
-earlier one. It is its own switch: `mnema switch off last-session` stops the section and nothing else, and switching the
+earlier one. With `--hook`, when even the part that is always printed would not fit the 10,000 characters a hook carries, the verb hands nothing and says so on stderr, instead of a text the host would replace with a file path. It is its own switch: `mnema switch off last-session` stops the section and nothing else, and switching the
 journal off leaves it nothing to read.
 
 **A note that turned out wrong can be taken back, and is not erased.** `mnema retract`
@@ -114,7 +114,8 @@ Options:
                         as an invalid --host, carries none: the hook is silent
                         for it)
   --host <host>         with --hook, the host whose own ceiling to cut the notes
-                        to: codex; without it, Claude Code’s
+                        to: vscode, codex, copilot, opencode, gemini, qwen;
+                        without it, Claude Code’s
   --session <id>        the host’s id for the session these notes are for: the
                         journal that session keeps is not "the last session",
                         which a hook passes from the payload

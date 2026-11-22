@@ -30,18 +30,22 @@ import {
   type ChainLayout,
   type ChainWriter,
   decisionBirth,
+  decisionSeen,
   decisionTransitioned,
   type Entry,
+  GOVERNS_RELATION,
+  knowledgeLinked,
   type TransitionFields,
   type UpcasterRegistry,
 } from '@mnema/chain';
+import type { ReplacedClass } from '../content/personal.js';
 import {
   type ScreenedWrite,
   type ScreenRefusal,
   screenContent,
   screened,
 } from '../content/screen.js';
-import { resolveExecutingAgent } from '../identity/authority.js';
+import { resolveExecutingAgent, type SelfAuthorizedErr } from '../identity/authority.js';
 import { canonicalId, mintId } from '../identity/id.js';
 import { oneLine } from '../one-line.js';
 import { projectDecisions } from '../projections/decision.js';
@@ -120,6 +124,14 @@ export interface RecordInput {
    * same refusal any other blank text field earns.
    */
   readonly alternatives?: string;
+  /**
+   * The paths this decision is addressed at, each recorded as a `governs` link from the new
+   * decision in the SAME append as its birth pair: all of them land with the decision or none
+   * does. The paths are the caller's, already held to the rules of a link (`link-target.ts` in
+   * the command package); here they are screened as a link's target is and asked of the door.
+   * Absent when there is none, never empty.
+   */
+  readonly governs?: readonly string[];
   /** The agent that executed it, if any. `who` is derived from the writer's key. */
   readonly which?: string;
   /** The run this belongs to, if any. */
@@ -177,6 +189,20 @@ function isInForceOrProposed(state: string): boolean {
   return isDecisionState(state) && findDecisionTransition(state, 'supersede') !== undefined;
 }
 
+/** The paths a decision governs, screened as a link's target is. */
+function screenedPaths(paths: readonly string[]):
+  | {
+      readonly ok: true;
+      readonly paths: readonly string[];
+      readonly replaced: readonly ReplacedClass[];
+    }
+  | ScreenRefusal {
+  if (paths.length === 0) return { ok: true, paths, replaced: [] };
+  const screenedTargets = screenContent({ target: paths });
+  if (!screenedTargets.ok) return screenedTargets;
+  return { ok: true, paths: screenedTargets.fields.target, replaced: screenedTargets.replaced };
+}
+
 /**
  * Records a new decision: mints its id, derives the frozen `ADR-<n>` label from
  * the current decision count, then appends the birth pair (`decision.recorded`
@@ -209,6 +235,10 @@ export function recordDecision(
     run: input.run,
   });
   if (!text.ok) return text;
+  // The paths it governs are screened as a link's target is, one field per path, so a path that
+  // carries a credential refuses the whole act here, before anything is founded or appended.
+  const addressed = screenedPaths(input.governs ?? []);
+  if (!addressed.ok) return addressed;
 
   // `who` is derived from local material and the record, always a real anchor;
   // the only authority check left is that the executing agent is not that identity.
@@ -309,6 +339,20 @@ export function recordDecision(
                       ? { alternatives: text.fields.alternatives }
                       : {}),
                   },
+                ).concat(
+                  addressed.paths.map((target) =>
+                    knowledgeLinked(
+                      {
+                        at,
+                        who,
+                        signerFp: ctx.writer.signerFingerprint,
+                        subject: id,
+                        ...(which !== undefined ? { which } : {}),
+                        ...(text.fields.run !== undefined ? { run: text.fields.run } : {}),
+                      },
+                      { target, rel: GOVERNS_RELATION },
+                    ),
+                  ),
                 ),
               );
               if (!appended.ok) return appended;
@@ -318,7 +362,7 @@ export function recordDecision(
                 id,
                 adr,
                 entries: [e1, e2],
-                ...screened([...text.replaced, ...agent.replaced]),
+                ...screened([...text.replaced, ...agent.replaced, ...addressed.replaced]),
               };
             },
           },
@@ -421,8 +465,8 @@ function transition(
             code: 'ILLEGAL_TRANSITION',
             message:
               agent === undefined
-                ? `${oneLine(current.adr)} is already accepted, by a person, at ${oneLine(current.updatedAt)}: nothing changed.`
-                : `${oneLine(current.adr)} is already accepted, by an agent (${oneLine(agent)}), at ${oneLine(current.updatedAt)}: nothing changed.`,
+                ? `${oneLine(current.adr)} is already accepted (no agent declared) at ${oneLine(current.updatedAt)}: nothing changed.`
+                : `${oneLine(current.adr)} is already accepted (agent ${oneLine(agent)}) at ${oneLine(current.updatedAt)}: nothing changed.`,
           },
         };
       }
@@ -500,4 +544,101 @@ function transition(
       };
     },
   );
+}
+
+/** The code a showing carries when no person is at a terminal, or an agent is declared on it. */
+export const SEEN_NEEDS_A_PERSON = 'SEEN_NEEDS_A_PERSON';
+
+/** What the caller asks to record as a showing of a decision in force. */
+export interface DecisionSeenInput {
+  /** The decision that was shown (the event subject). It may live in another tree. */
+  readonly decision: string;
+  /** The entry hashes of the accepts of the decision applied when it was shown. */
+  readonly moves: readonly string[];
+  /**
+   * Whether the act is made at a terminal: the door's own answer (stdin and stderr TTYs on the
+   * command line). Asked and not recorded, as for an accept.
+   */
+  readonly atATerminal: boolean;
+  /** An agent, if one is declared: a showing with one is refused. */
+  readonly which?: string;
+  /** The run this belongs to, if any. */
+  readonly run?: string;
+}
+
+/** A showing was recorded: the fact was appended. */
+export interface DecisionSeenOk extends ScreenedWrite {
+  readonly ok: true;
+  readonly entry: Entry;
+}
+
+/**
+ * Records that a decision in force was SHOWN to the identity this writer signs as: one
+ * `decision.seen` whose subject is the decision and whose `moves` name the accepts it covers.
+ *
+ * IT IS A PERSON'S, ALWAYS, whatever `agent-accepts` says: a showing with an agent declared, or
+ * made with no terminal, is refused `SEEN_NEEDS_A_PERSON` and nothing is written, because a list
+ * of what a person did not accept is cleared only by that person. The seat is the one an accept is
+ * asked by (no `which`, a terminal), and it is a heuristic: a process an agent opens under a
+ * pseudo-terminal passes. So the fact says that this identity's key signed, with no agent declared,
+ * at a terminal; never that a person read the rule.
+ *
+ * The decision is not verified to exist, for the reason a consultation's skill is not: it is
+ * cross-tree (a showing lands in the private tree, the decision is most often public) and the
+ * caller has just read it. Its id goes through the door as the subject it becomes.
+ */
+export function recordDecisionSeen(
+  ctx: DecisionWriteContext,
+  input: DecisionSeenInput,
+): DecisionSeenOk | ScreenRefusal | AppendRefusal | SeenRefusal | SelfAuthorizedErr {
+  const named = screenContent({ subject: input.decision, run: input.run });
+  if (!named.ok) return named;
+  const who = authorizingAnchor(ctx);
+  const agent = resolveExecutingAgent(who, input.which);
+  if (!agent.ok) return agent;
+  if (agent.which !== undefined) {
+    return {
+      ok: false,
+      code: SEEN_NEEDS_A_PERSON,
+      message: `A rule in force is marked as shown only to a person at a terminal, and this is from an agent (${oneLine(agent.which)}). Nothing was written.`,
+    };
+  }
+  if (!input.atATerminal) {
+    return {
+      ok: false,
+      code: SEEN_NEEDS_A_PERSON,
+      message:
+        'A rule in force is marked as shown only to a person at a terminal, and there is no terminal here. Nothing was written.',
+    };
+  }
+  if (input.moves.length === 0) {
+    return {
+      ok: false,
+      code: SEEN_NEEDS_A_PERSON,
+      message:
+        'No accept of this decision was named, so a showing would cover none. Nothing was written.',
+    };
+  }
+  const decision = canonicalId(named.fields.subject) ?? named.fields.subject;
+  const appended = appendFact(ctx, ({ at }) =>
+    decisionSeen(
+      {
+        at,
+        who,
+        signerFp: ctx.writer.signerFingerprint,
+        subject: decision,
+        ...(named.fields.run !== undefined ? { run: named.fields.run } : {}),
+      },
+      { moves: input.moves },
+    ),
+  );
+  if (!appended.ok) return appended;
+  return { ok: true, entry: appended.entry, ...screened([...named.replaced, ...agent.replaced]) };
+}
+
+/** A showing refused: no person at a terminal, an agent declared, or no accept named. */
+export interface SeenRefusal {
+  readonly ok: false;
+  readonly code: typeof SEEN_NEEDS_A_PERSON;
+  readonly message: string;
 }

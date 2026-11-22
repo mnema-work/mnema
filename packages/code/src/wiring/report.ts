@@ -43,6 +43,7 @@
  * `every-refusal-is-red.test.ts` names and bounds.
  */
 
+import { noProjectInAWorktree } from '../linked-worktree.js';
 import { fact } from '../presentation/detail.js';
 import type { Line } from '../presentation/line.js';
 import type { Render } from '../presentation/render.js';
@@ -170,7 +171,10 @@ export function reportRefusal(
 ): void {
   if (hook) saysTheCode(to, refusal.code ?? refusal.reason);
   const wording =
-    said[refusal.reason] ?? (refusal.reason === 'NO_PROJECT' ? NO_PROJECT : undefined);
+    said[refusal.reason] ??
+    (refusal.reason === 'NO_PROJECT'
+      ? (noProjectInAWorktree(process.cwd()) ?? NO_PROJECT)
+      : undefined);
   // A worded reason is ONE sentence and takes no detail: "No task <id> here." has no
   // half after a colon to put the evidence in. It is still the same news, so it carries
   // the same severity: what a reader acts on is the redness of the line, not which of

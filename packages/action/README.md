@@ -15,7 +15,8 @@ a checkout of this repository, with the `mnema` of the `@mnema/code` that sits b
 - **One comment, kept current.** The first line of the comment is a marker; each later push
   replaces that comment instead of adding another. It shows the events the pull request adds to
   the record, counted by kind, and the decisions it proposes, accepts, rejects or supersedes, by
-  `ADR-<n>` and title.
+  `ADR-<n>` and title, a decision that no signed checkpoint covers yet (one after the last checkpoint) by its id alone, since a
+  title nobody signed does not reach a pull request's comment.
 - **Which changed files a rule addresses.** For each changed file it asks what `mnema rules` answers, and lists
   the files addressed by a rule in force: an accepted decision linked to the path with `governs`,
   `asks-for-a-person` or `refuses-a-write`, with the rule's name and id. The rules that judge the

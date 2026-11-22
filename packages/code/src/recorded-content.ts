@@ -37,7 +37,7 @@ import { ADDRESS_RELATIONS, RECOMMENDED_LINK_RELATIONS } from '@mnema/chain';
 import type { AddressReach } from '@mnema/context';
 import type { ReplacedClass, Scope } from '@mnema/core';
 import { EMAIL_PLACEHOLDER, FIELD_BYTE_LIMIT, secretPlaceholder } from '@mnema/core';
-import { inAWorkTree } from './git-log.js';
+import { git, inAWorkTree } from './git-log.js';
 import { oneLine } from './one-line.js';
 
 /**
@@ -72,20 +72,51 @@ import { oneLine } from './one-line.js';
  */
 export function reachNotice(reach: AddressReach | undefined): string[] {
   if (reach === undefined) return [];
+  const line = reachLine(reach);
+  return reach.address === undefined ? [line] : [line, FILES_ON_DISK_NOT_EDITS];
+}
+
+/** The qualification every count travels with, said from this one place so no surface rewrites it. */
+const FILES_ON_DISK_NOT_EDITS =
+  '  Files on disk, not edits: a directory nobody touches counts the same as a busy one.';
+
+/**
+ * The one line about what an address covers. `named` is the path as the caller gave it: the
+ * line for an address outside the project names it when the caller has several, since a reach
+ * outside the project carries no address of its own.
+ */
+function reachLine(reach: AddressReach, named?: string): string {
   if (reach.address === undefined) {
     // An address outside the project covers nothing here, and saying "0 of 1,204"
     // would report that as a narrow address rather than as a different question.
-    return [`  That address lies outside this project, so it covers nothing here.`];
+    return named === undefined
+      ? `  That address lies outside this project, so it covers nothing here.`
+      : `  ${oneLine(named)} lies outside this project, so it covers nothing here.`;
   }
   const counted = `${reach.under} of ${reach.counted} file(s)`;
   const floor = reach.truncated
     ? ` (the walk stopped at ${reach.counted}, so both are floors)`
     : '';
   const left = reach.skipped.length === 0 ? '' : `; not counted: ${[...reach.skipped].join(', ')}`;
-  return [
-    `  ${reach.address} covers ${counted} counted in the working tree${floor}${left}.`,
-    '  Files on disk, not edits: a directory nobody touches counts the same as a busy one.',
-  ];
+  return `  ${reach.address} covers ${counted} counted in the working tree${floor}${left}.`;
+}
+
+/** What one path of a decision's `governs` covers: the path as given, and its reach. */
+export interface GovernedReach {
+  readonly target: string;
+  readonly reach: AddressReach;
+}
+
+/**
+ * The lines a decision recorded with `governs` paths prints of what they cover: one line per
+ * path, naming it when it lies outside the project, and the qualification about files on disk
+ * once, after them all, only when at least one path is inside the project.
+ */
+export function reachNotices(reaches: readonly GovernedReach[]): string[] {
+  const lines = reaches.map(({ target, reach }) => oneLine(reachLine(reach, target)));
+  return reaches.some(({ reach }) => reach.address !== undefined)
+    ? [...lines, FILES_ON_DISK_NOT_EDITS]
+    : lines;
 }
 
 /**
@@ -217,6 +248,95 @@ function placeholderOf(replaced: ReplacedClass): string {
 const LANDED_PUBLIC_WITHOUT_GIT =
   "  Landed in the public tree: a folder of this project, not committed (there is no git here); it travels only as the project's files are copied.";
 
+/** What the public tree is when git excludes it and tracks nothing under it: a record local to this machine. */
+const LANDED_PUBLIC_LOCAL =
+  '  Landed in the public tree: git ignores .mnema/ here and tracks nothing under it, so it stays on this machine and no clone gets it.';
+
+/** What the disk says about a project's public tree, as far as the sentence after a write needs. */
+type PublicTreeFact = 'no-git' | 'local' | 'committed';
+
+/** One answer kept per project, with the files whose change makes it stale. */
+interface KnownFact {
+  readonly fact: PublicTreeFact;
+  readonly stamp: string;
+  readonly watched: readonly string[];
+}
+
+/** The process's memory of {@link publicTreeFact}: a long MCP server asks on every call. */
+const KNOWN_FACTS = new Map<string, KnownFact>();
+
+/** A change of size or time in any of `files` (an absent one counts as one state). */
+function stampOf(files: readonly string[]): string {
+  const { statSync } = process.getBuiltinModule('node:fs');
+  return files
+    .map((file) => {
+      try {
+        const at = statSync(file);
+        return `${at.mtimeMs}:${at.ctimeMs}:${at.size}`;
+      } catch {
+        return 'absent';
+      }
+    })
+    .join('|');
+}
+
+/**
+ * What is true of the project's public tree: no git, committed, or local.
+ *
+ * LOCAL IS THE RULE OF ADR-630: git excludes `.mnema` at the repository's top AND tracks no file
+ * under it (`git ls-files` is empty); when git does not answer, the tree counts as committed (say
+ * less, never more). It is written here inline: swap it for core's local-record helper once it
+ * exists.
+ *
+ * ONE `rev-parse` ANSWERS THE WORK TREE, THE TOP, THE GIT DIRECTORY AND THE COMMON ONE, and the
+ * exclusion and tracking questions are asked once per project and then remembered by the process:
+ * the answer is read again only when the common directory's `info/exclude`, the git directory's
+ * `index` or the top's `.gitignore` changed (a stat each), so a server that lives for hours does
+ * not start a git for every write. A project with no git is not remembered, so a later `git init`
+ * is seen. NOT WATCHED: `core.excludesFile` and `.git/config`; a stale answer, in either
+ * direction, corrects itself at the next change of the index. A git directory that is not absolute
+ * (an older git echoes the option it does not know) is answered and not kept.
+ */
+function publicTreeFact(project: string): PublicTreeFact {
+  const known = KNOWN_FACTS.get(project);
+  if (known !== undefined && stampOf(known.watched) === known.stamp) return known.fact;
+  const lines = git(project, [
+    'rev-parse',
+    '--is-inside-work-tree',
+    '--show-toplevel',
+    '--path-format=absolute',
+    '--absolute-git-dir',
+    '--git-common-dir',
+  ])
+    ?.trim()
+    .split('\n');
+  const top = lines?.[1];
+  const gitDir = lines?.[2];
+  // A linked worktree keeps its index in its own directory and reads `info/exclude` from the common one.
+  const commonDir = lines?.[3] ?? gitDir;
+  if (lines?.[0] !== 'true' || top === undefined || top === '' || gitDir === undefined) {
+    KNOWN_FACTS.delete(project);
+    return 'no-git';
+  }
+  const { isAbsolute, join } = process.getBuiltinModule('node:path');
+  // An older git echoes an option it does not know as a line of the answer, so a directory that is
+  // not absolute is not one: the answer is given, and not kept, because nothing can be watched.
+  const keep = isAbsolute(gitDir) && isAbsolute(commonDir ?? gitDir);
+  const watched = [
+    join(commonDir ?? gitDir, 'info', 'exclude'),
+    join(gitDir, 'index'),
+    join(top, '.gitignore'),
+  ];
+  const stamp = stampOf(watched);
+  const local =
+    git(top, ['check-ignore', '-q', '--', '.mnema']) !== null &&
+    git(top, ['ls-files', '--', '.mnema'])?.trim() === '';
+  const fact = local ? 'local' : 'committed';
+  if (keep) KNOWN_FACTS.set(project, { fact, stamp, watched });
+  else KNOWN_FACTS.delete(project);
+  return fact;
+}
+
 /**
  * WHERE the write landed, as the line that follows every confirmation.
  *
@@ -244,7 +364,11 @@ export function landedNotice(scope: Scope, project?: string): string {
       // Without git nothing is committed and no clone exists: the folder travels only as far as
       // the project's files are copied. Asked of the project the write fell in; with none named,
       // the sentence is the one a repository earns.
-      if (project !== undefined && !inAWorkTree(project)) return LANDED_PUBLIC_WITHOUT_GIT;
+      if (project !== undefined) {
+        const fact = publicTreeFact(project);
+        if (fact === 'no-git') return LANDED_PUBLIC_WITHOUT_GIT;
+        if (fact === 'local') return LANDED_PUBLIC_LOCAL;
+      }
       return '  Landed in the public tree: committed with the repository, so it reaches every clone.';
     case 'private':
       return "  Landed in the private tree: this machine's own; it is not committed and does not travel.";
@@ -261,8 +385,15 @@ export function landedNotice(scope: Scope, project?: string): string {
 export function alreadyRecordedLine(
   recorded: { readonly adr: string; readonly id: string },
   scope: Scope,
+  governsAsked = 0,
 ): string {
-  return `Decision ${recorded.adr} (${recorded.id}) is already recorded in the ${scope} tree with this title, rationale and alternatives. Nothing was written.`;
+  // A repeat writes nothing, the links the first act wrote included: said, so a path that was
+  // not part of that act is not taken for linked.
+  const unlinked =
+    governsAsked > 0
+      ? ` No path was linked by this call: \`governs\` is written only with a decision that is new, and \`link_knowledge\` or \`mnema link ${recorded.id} <path> --rel governs\` adds one.`
+      : '';
+  return `Decision ${recorded.adr} (${recorded.id}) is already recorded in the ${scope} tree with this title, rationale and alternatives. Nothing was written.${unlinked}`;
 }
 
 /**
