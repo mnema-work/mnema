@@ -1,0 +1,64 @@
+name: MCP Inspector
+
+# AN INDEPENDENT CLIENT ASKS THE SERVER FOR ITS TOOLS. `mnema mcp` speaks the Model Context Protocol
+# over stdio to many hosts, and the suite's own client shares the server's blind spots. This runs
+# the MCP Inspector's CLI, a client somebody else wrote, against the built binary
+# (`mcp-inspector --cli node <binary> mcp --method tools/list`), in an empty temporary HOME and an
+# empty project, and goes red when the call errors or lists no tools. It then asks the Inspector
+# about a command that does not speak MCP and goes red if that does NOT fail, so the check cannot
+# pass without being able to fail. The steps are `.github/mcp-inspector/run.sh`, so the same command
+# runs on a workstation.
+#
+# THE INSPECTOR IS PINNED EXACTLY (2.16.0, form 2 of its CLI: the server's command follows `--cli`),
+# in `.github/mcp-inspector/package.json`, and installed by `npm ci --ignore-scripts` from the
+# committed lockfile, which holds the integrity of every package it brings. Dependabot proposes the
+# next version.
+#
+# WHY NODE 24 AND NOT THE FLOOR. The Inspector asks for Node ^22.23.4 || ^24.22.1 || >=26.12.1, above
+# this repository's floor of 24.15.0, so this job sets up the latest 24. That is no claim about the
+# floor: the packed install and the suite run on it.
+#
+# WHAT IT DOES NOT PROVE. That the tool list is the right one (the suite holds that), or that any
+# host starts the server the way the Inspector does. It needs no secret and no account, and it is
+# not a required check.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  inspector:
+    name: the MCP Inspector lists the tools
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Install the Inspector at its pinned version
+        run: npm ci --ignore-scripts --no-audit --no-fund --prefix .github/mcp-inspector
+
+      - name: Ask the Inspector for the tools of the server, and for those of a command that is no server
+        run: bash .github/mcp-inspector/run.sh

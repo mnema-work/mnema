@@ -93,9 +93,9 @@ for (const key of Object.keys(baseEnv)) {
  *
  * @param {string} program
  * @param {string[]} args
- * @param {{ cwd?: string, env?: Record<string, string | undefined>, input?: string, shell?: boolean }} [options]
+ * @param {{ cwd?: string, env?: Record<string, string | undefined>, input?: string, shell?: boolean, timeout?: number }} [options]
  */
-function run(program, args, { cwd = root, env = baseEnv, input, shell = false } = {}) {
+function run(program, args, { cwd = root, env = baseEnv, input, shell = false, timeout = 300_000 } = {}) {
   const ran = spawnSync(program, shell ? args.map((arg) => `"${arg}"`) : args, {
     cwd,
     env,
@@ -103,7 +103,7 @@ function run(program, args, { cwd = root, env = baseEnv, input, shell = false } 
     encoding: 'utf-8',
     shell,
     stdio: ['pipe', 'pipe', 'pipe'],
-    timeout: 300_000,
+    timeout,
   });
   return {
     status: ran.status,
@@ -121,7 +121,7 @@ const pnpm = (args, cwd) => run('pnpm', args, { cwd, shell: WINDOWS });
 /**
  * @param {string[]} args
  * @param {string} cwd
- * @param {{ env?: Record<string, string | undefined>, input?: string }} [options]
+ * @param {{ env?: Record<string, string | undefined>, input?: string, timeout?: number }} [options]
  */
 const mnema = (args, cwd, options = {}) =>
   run(WINDOWS ? 'mnema.cmd' : 'mnema', args, { cwd, shell: WINDOWS, ...options });
@@ -418,6 +418,57 @@ try {
   section('doctor');
   const doctor = mustRun('mnema doctor', mnema(['doctor'], project));
   check(doctor.out.trim() !== '', 'doctor says something');
+
+  section('the MCP server answers over stdio');
+  // A host starts `mnema mcp` through the launcher npm wrote (a `.cmd` shim on Windows, a link on
+  // macOS) and talks to it over a pipe, one JSON message per line. The server ends its session by
+  // itself when its input ends, so the call returns; a minute is all it is given, so one that does
+  // not end fails the job in a minute and not in five.
+  const talk = [
+    {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: {
+        protocolVersion: '2025-06-18',
+        capabilities: {},
+        clientInfo: { name: 'the-other-systems-smoke', version: '0' },
+      },
+    },
+    { jsonrpc: '2.0', method: 'notifications/initialized' },
+    { jsonrpc: '2.0', id: 2, method: 'tools/list' },
+  ];
+  const served = mnema(['mcp'], project, {
+    input: `${talk.map((message) => JSON.stringify(message)).join('\n')}\n`,
+    timeout: 60_000,
+  });
+  console.log(`$ mnema mcp (stdin: initialize, initialized, tools/list)\n${served.err}`.slice(0, 1200));
+  /** @type {Array<{ id?: number, result?: { serverInfo?: unknown, tools?: Array<{ name?: string }> } }>} */
+  const answers = [];
+  for (const line of served.out.split(/\r?\n/)) {
+    if (line.trim() === '') continue;
+    try {
+      answers.push(JSON.parse(line));
+    } catch {
+      console.log(`  not a JSON message: ${line.slice(0, 200)}`);
+    }
+  }
+  const initialized = answers.find((answer) => answer.id === 1);
+  const listed = answers.find((answer) => answer.id === 2);
+  const names = (listed?.result?.tools ?? []).map((tool) => tool.name);
+  check(served.status === 0, `mnema mcp exits 0 when its input ends (exited ${served.status})`);
+  check(
+    initialized?.result?.serverInfo !== undefined,
+    'the answer to initialize names the server',
+  );
+  check(
+    names.length > 0 && names.includes('bootstrap') && names.includes('capture_memory'),
+    `tools/list answers with tools that include bootstrap and capture_memory (${names.length} listed)`,
+  );
+  check(
+    !/\n\s+at .+[:(]\d+/.test(served.err),
+    'the standard error of mnema mcp holds no stack trace',
+  );
 
   section('the plugin hook handlers on payloads written the way this system writes paths');
   const hooks = join(root, 'plugin', 'hooks');
