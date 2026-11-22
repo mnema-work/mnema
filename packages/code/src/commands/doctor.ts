@@ -90,6 +90,7 @@ import {
   relinkTails,
   wouldRelinkTails,
 } from '@mnema/core/write';
+import { breaksReadInMemory } from '../an-altered-entry-stops-a-write.js';
 import { agentKeyFromEnvironment } from '../env.js';
 import { readEventsNotInGit, saysEventsNotInGit } from '../events-not-in-git.js';
 import { readForkKeptAside, saysForkKeptAside } from '../fork-kept-aside.js';
@@ -97,7 +98,6 @@ import { HOOK_HOSTS, HOSTS } from '../host-names.js';
 import { declaredRange, floorRefusal } from '../node-floor.js';
 import { oneLine } from '../one-line.js';
 import { pluginTreeHash } from '../plugin-tree-hash.js';
-import { breaksReadInMemory } from '../an-altered-entry-stops-a-write.js';
 import { newerLinesSentence } from '../record-integrity.js';
 import {
   DAYS_READ,
