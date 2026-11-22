@@ -115,7 +115,7 @@ describe('record_decision, over a real client', () => {
     expect(lines[1]).toBe(
       '  Born proposed, so not yet in force. If the person dictated it, or chose it among options ' +
         'you offered (a recommended one included), accept it now with `decision_transition` ' +
-        '(action `accept`), the note quoting their answer; if you concluded it alone, it waits ' +
+        '(action `accept`), the note quoting their exact words between double quotes; if you concluded it alone, it waits ' +
         'for the person (`mnema decision review`).',
     );
     expect(lines[1]).toBe(WHEN_TO_ACCEPT);

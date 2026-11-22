@@ -69,6 +69,13 @@ beforeEach(() => {
   env = { home: join(sandbox, 'home') };
 });
 
+/** A copy of a folder of this checkout inside the sandbox, so a case reads a tree of its own and never the checkout's. */
+function aCopyOf(folder: string, name: string): string {
+  const to = join(sandbox, 'copies', name);
+  cpSync(folder, to, { recursive: true });
+  return to;
+}
+
 afterEach(() => {
   rmSync(sandbox, { recursive: true, force: true });
 });
@@ -234,7 +241,7 @@ describe('an honest page', { timeout: A_RECORD_IN_A_VM }, () => {
   });
 
   it('matches over the frozen witnessed record, which lists nothing', () => {
-    const root = join(FROZEN, 'witnessed-record');
+    const root = aCopyOf(join(FROZEN, 'witnessed-record'), 'witnessed-record');
     const files: Record<string, string> = {};
     const walk = (dir: string, prefix: string): void => {
       for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -294,16 +301,16 @@ describe('a server that lies about a list', { timeout: A_RECORD_IN_A_VM }, () =>
       /^ADR-1 \(note-text of note \S+\): the page says "half up in the ledger"; the events say "half to even in the ledger"$/,
     ],
     [
-      '(f) the badge of an acceptance, an agent made a person',
+      '(f) the badge of an acceptance, an agent made no agent declared',
       (html) =>
         withCard(html, 'ADR-2', (card) =>
           swapped(
             card,
             'data-field="accepted-by">agent claude-code<',
-            'data-field="accepted-by">a person<',
+            'data-field="accepted-by">no agent declared<',
           ),
         ),
-      /^ADR-2 \(accepted-by\): the page says "a person"; the events say "agent claude-code"$/,
+      /^ADR-2 \(accepted-by\): the page says "no agent declared"; the events say "agent claude-code"$/,
     ],
     [
       '(g) the line of counts',
@@ -540,8 +547,9 @@ describe('a record that did not verify', { timeout: A_RECORD_IN_A_VM }, () => {
 describe('what the script derives in the browser', { timeout: A_RECORD_IN_A_VM }, () => {
   it('is, value for value, what pageModel gives in Node over the same tree', () => {
     aRichRecord();
-    const own = join(HERE, '..', '..', '..', '..', '.mnema');
-    for (const root of [join(repo, '.mnema'), join(FROZEN, 'witnessed-record'), own]) {
+    const own = aCopyOf(join(HERE, '..', '..', '..', '..', '.mnema'), 'own');
+    const frozen = aCopyOf(join(FROZEN, 'witnessed-record'), 'witnessed-record');
+    for (const root of [join(repo, '.mnema'), frozen, own]) {
       const files: Record<string, string> = {};
       const walk = (dir: string, prefix: string): void => {
         for (const entry of readdirSync(dir, { withFileTypes: true })) {

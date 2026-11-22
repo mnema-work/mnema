@@ -191,8 +191,14 @@ describe('only the identity that recorded a link retracts it', () => {
 
     const verdict = verify(tree, upcasters);
     expect(verdict.ok).toBe(true);
-    expect(verdict.census.map((note) => note.kind)).toEqual(['foreign-link-retraction']);
-    expect(verdict.census[0]).toMatchObject({ link: EDGE, by: stranger, authors: [author] });
+    expect(
+      verdict.census.filter((note) => note.kind !== 'undeclared-which').map((note) => note.kind),
+    ).toEqual(['foreign-link-retraction']);
+    expect(verdict.census.filter((note) => note.kind !== 'undeclared-which')[0]).toMatchObject({
+      link: EDGE,
+      by: stranger,
+      authors: [author],
+    });
     expect(verdict.summary).toContain('not applied');
 
     // And the stranger's fact does not stand in the author's way.

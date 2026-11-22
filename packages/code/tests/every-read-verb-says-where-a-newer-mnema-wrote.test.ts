@@ -115,6 +115,7 @@ const NEED_NOT: Readonly<Record<string, string>> = {
   tally: A_HOOK,
   handback: A_HOOK,
   settled: A_HOOK,
+  dictated: A_HOOK,
   'stack list': ONE_OF_THE('the stacks installed'),
   'stack index': ONE_OF_THE('the stacks installed'),
   'stack show': ONE_OF_THE('the stacks installed'),

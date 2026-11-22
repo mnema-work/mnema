@@ -13,7 +13,8 @@
  * carries the badge that shows the version npm serves.
  */
 
-import { readdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -111,12 +112,18 @@ describe('the install line', () => {
   });
 
   it('is what `mnema doctor` says when there is no mnema on the PATH', () => {
-    const report = runDoctor({
-      cwd: REPO,
-      env: { home: join(REPO, 'no-home') },
-      processEnv: { PATH: '' },
-      running: { file: join(REPO, 'no-such-mnema'), version: '0.0.0' },
-    });
+    const sandbox = mkdtempSync(join(tmpdir(), 'mnema-install-line-'));
+    let report: ReturnType<typeof runDoctor>;
+    try {
+      report = runDoctor({
+        cwd: sandbox,
+        env: { home: join(sandbox, 'no-home') },
+        processEnv: { PATH: '' },
+        running: { file: join(sandbox, 'no-such-mnema'), version: '0.0.0' },
+      });
+    } finally {
+      rmSync(sandbox, { recursive: true, force: true });
+    }
     const line = report.findings.find((one) => one.topic === 'binary')?.line ?? '';
     expect(line).toContain(INSTALL_LINE);
     expect(line).toContain(PAGE_URL);

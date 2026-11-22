@@ -339,13 +339,20 @@ function writeFileAt(path: string): void {
 
 describe('the verb, end to end through the program', () => {
   let dir: string;
-  const saved = { HOME: process.env.HOME, MNEMA_HOME: process.env.MNEMA_HOME };
+  const saved = {
+    HOME: process.env.HOME,
+    MNEMA_HOME: process.env.MNEMA_HOME,
+    cwd: process.cwd(),
+  };
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'mnema-report-verb-'));
+    // The program resolves trees from the working directory: a sandbox, never the checkout.
+    process.chdir(dir);
     process.env.HOME = dir;
     process.env.MNEMA_HOME = join(dir, 'data');
   });
   afterEach(() => {
+    process.chdir(saved.cwd);
     process.env.HOME = saved.HOME;
     if (saved.MNEMA_HOME === undefined) delete process.env.MNEMA_HOME;
     else process.env.MNEMA_HOME = saved.MNEMA_HOME;

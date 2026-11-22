@@ -125,6 +125,7 @@ import { runObserve } from '../src/commands/observe.js';
 import { runRetract } from '../src/commands/retract.js';
 import { runRunEnd } from '../src/commands/run-end.js';
 import { runRunStart } from '../src/commands/run-start.js';
+import { markShown } from '../src/commands/shown.js';
 import { runSkill } from '../src/commands/skill.js';
 import { runSkillTransition } from '../src/commands/skill-transition.js';
 import {
@@ -186,7 +187,7 @@ const CODE_SRC = join(HERE, 'src');
  * (`foundedThenBuilt`), which every operation now reaches the founding and the append through.
  * 57 since the owner relinks a tail (`relinkTails`), which asks the readers' rule and no founding.
  */
-const CORE_OPERATIONS_THAT_APPEND = 57;
+const CORE_OPERATIONS_THAT_APPEND = 58;
 
 /** The stack the cases install. */
 const HELLO_STACK = fileURLToPath(new URL('../../stacks/fixtures/hello-stack', import.meta.url));
@@ -198,7 +199,7 @@ const HELLO_STACK = fileURLToPath(new URL('../../stacks/fixtures/hello-stack', i
  * relinked, by the verb (`runTailRelink`) and by the doctor before it moves a private tree
  * (`relinkLeftBehind`).
  */
-const SURFACE_WRITE_PATHS = 51;
+const SURFACE_WRITE_PATHS = 52;
 
 /** What `runInit` answered when it did not refuse; a refusal ends the setup. */
 function founded(result: InitResult | InitRefused): InitResult {
@@ -651,6 +652,20 @@ describe('every write path leaves the record fully signed', () => {
               id: decision,
               action: 'accept',
               proof: { note: 'we ship it' },
+            }),
+          ),
+      },
+      {
+        // A showing of the decision accepted above, as `decision review` writes one: in the
+        // private tree, at a terminal with no agent declared.
+        at: 'commands/shown.ts:markShown',
+        drive: () =>
+          void ok(
+            'markShown',
+            markShown(resolveTrees(project, env), {
+              decision,
+              moves: ['a'.repeat(64)],
+              atATerminal: true,
             }),
           ),
       },
