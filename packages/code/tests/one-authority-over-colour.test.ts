@@ -237,6 +237,23 @@ describe('a caller who asked for no colour gets none of it, anywhere on the page
     expect(loud.bytes, 'the prompt was not bold even with colour on').toContain(BOLD_PROMPT);
   }, 300_000);
 
+  it('writes no hue but the three severities and the greys, on a real frame with colour on', async () => {
+    // THE BRAND CARRIES NO COLOUR IN THE TERMINAL, asked of the bytes of a real session on a
+    // pseudo-terminal rather than of the renderer: the opening page, the rules, the prompt and the
+    // answer to a verb. What may be on the wire is weight (1, 2, 22), the three severities (31,
+    // 32, 33, closed by 39) and the sent command's band and its two greys (48;5;238, 38;5;246,
+    // 38;5;253, closed by 49); SGR 35, and any other hue, is the old accent coming back.
+    const loud = await inPty(A_SESSION);
+    const written = new Set(
+      sgrOf(loud.bytes).map((sequence) => sequence.slice(2, -1)),
+    );
+    expect(written.size, 'the session wrote no style sequence at all').toBeGreaterThan(2);
+    const allowed = new Set(['1', '2', '22', '31', '32', '33', '39', '48;5;238', '38;5;246', '38;5;253', '49']);
+    const strangers = [...written].filter((code) => !allowed.has(code));
+    expect(strangers, `the page writes a hue nobody allowed: ${strangers.join(' ')}`).toEqual([]);
+    expect(written.has('35'), 'the accent is back on the page').toBe(false);
+  }, 300_000);
+
   it('answers `--color=never` the same way, against a variable saying the opposite', async () => {
     // THE PRODUCT DECIDES, NOT THE VARIABLE THE LIBRARY READS. `FORCE_COLOR` is that
     // library's own channel and it is set to ON here, so a session that came back quiet is

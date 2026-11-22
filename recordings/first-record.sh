@@ -9,14 +9,15 @@
 # TWO THINGS ON THE PAGE ARE NOT THE BINARY'S OWN SPELLING, and both are said here:
 #   - the sandbox's home is printed as `~`, so a path reads the way it would on a reader's own
 #     machine rather than as a directory under the temp directory;
-#   - `verify`'s lines are folded at a space to fit the recording's 96 columns, where the
-#     terminal would otherwise cut them in the middle of a word.
+#   - every line the binary prints is folded at a space to fit the recording's 96 columns, where the
+#     terminal would otherwise cut a long one in the middle of a word (the backup key's path and a
+#     line of `brief` are longer than the recording is wide).
 #
 # HOW IT IS MADE, from the root of a built checkout (`pnpm build`):
 #
 #   asciinema rec --overwrite -q --cols 96 --rows 34 \
 #     -c "bash recordings/first-record.sh $PWD/packages/code/dist/bundle/cli.js" recordings/first-record.cast
-#   agg --theme github-dark --font-size 16 recordings/first-record.cast recordings/first-record.gif
+#   node .github/the-recordings/render.mjs recordings/first-record.cast
 #
 # HOW IT IS HELD TO THE BINARY: packages/code/tests/the-recordings-are-what-the-binary-draws.test.ts
 # runs this same script with PACE=0 (every pause and every per-character delay skipped, the
@@ -33,8 +34,9 @@ pause() { if [ "$PACE" != 0 ]; then sleep "$1"; fi; }
 
 export TERM=xterm-256color
 # One byte, one column, for every tool the script pipes through: `fold` counts bytes where coreutils
-# is built without multibyte support and characters where it is built with it, and the em dash in
-# `verify`'s lines is three bytes, so an unpinned locale folds the same output two ways.
+# is built without multibyte support and characters where it is built with it, and a wide character
+# in the product's lines (the middle dot of `brief`, the dash of `verify`) is more than one byte, so an
+# unpinned locale folds the same output two ways.
 export LC_ALL=C
 SB=$(realpath "$(mktemp -d "${TMPDIR:-/tmp}/mnema-first-record-XXXXXX")")
 trap 'rm -rf "$SB"' EXIT
@@ -47,6 +49,7 @@ git init -q .
 # test runs this script with no terminal, so the recording would print `verify` lines the test never sees.
 mnema() { env -u MNEMA_HOME -u MNEMA_RUN HOME="$H" NO_COLOR=1 node "$CLI" "$@" </dev/null; }
 tilde() { sed "s|$H|~|g"; }
+folded() { fold -s -w 94; }
 
 # A command line, typed: the prompt, then one character at a time, and a continuation line for
 # each further argument group, the way a person breaks a long command.
@@ -70,7 +73,7 @@ say "an empty repository, and nothing on the network"
 # `init` is typed with --all-hosts: it asks which host files to write when a person is at the terminal, and
 # this recording is one, so the option is what keeps the recording from stopping at the question.
 typed "mnema init --all-hosts"
-mnema init --all-hosts | tilde
+mnema init --all-hosts | tilde | folded
 pause 1.6
 
 say "write down a call, with the reasoning and what was turned down"
@@ -79,17 +82,17 @@ typed 'mnema decision record "Keep money as integer cents" \' \
   '--alternatives "A decimal library: slower, one more dependency."'
 OUT=$(mnema decision record "Keep money as integer cents" "Float sums drift; cents are exact." \
   --alternatives "A decimal library: slower, one more dependency.")
-echo "$OUT" | tilde
+echo "$OUT" | tilde | folded
 ID=$(grep -m1 -oE '[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}' <<<"$OUT")
 pause 1.6
 
 typed "mnema decision move accept $ID --note \"Agreed in review.\""
-mnema decision move accept "$ID" --note "Agreed in review." | tilde
+mnema decision move accept "$ID" --note "Agreed in review." | tilde | folded
 pause 1.6
 
 say "the decisions the plugin hands the next agent session as it opens"
 typed "mnema brief | sed -n '/Decisions in force/,/^- /p'"
-mnema brief | sed -n '/Decisions in force/,/^- /p' | tilde
+mnema brief | sed -n '/Decisions in force/,/^- /p' | tilde | folded
 pause 2.2
 
 say "and what the record can prove about itself: no key, no network"

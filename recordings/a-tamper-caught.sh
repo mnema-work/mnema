@@ -26,7 +26,7 @@
 #
 #   asciinema rec --overwrite -q --cols 96 --rows 34 \
 #     -c "bash recordings/a-tamper-caught.sh $PWD/packages/code/dist/bundle/cli.js" recordings/a-tamper-caught.cast
-#   agg --theme github-dark --font-size 16 recordings/a-tamper-caught.cast recordings/a-tamper-caught.gif
+#   node .github/the-recordings/render.mjs recordings/a-tamper-caught.cast
 #
 # HOW IT IS HELD TO THE BINARY: packages/code/tests/the-recordings-are-what-the-binary-draws.test.ts
 # runs this same script with PACE=0 and compares what it prints with the text of the committed .cast.
@@ -77,12 +77,12 @@ mnema init --all-hosts >/dev/null
 typed 'mnema decision record "Keep money as integer cents" \' \
   '"Float sums drift; cents are exact."'
 OUT=$(mnema decision record "Keep money as integer cents" "Float sums drift; cents are exact.")
-echo "$OUT" | tilde
+echo "$OUT" | tilde | folded
 ID=$(grep -m1 -oE '[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}' <<<"$OUT")
 pause 1.2
 
 typed "mnema decision move accept $ID --note \"Agreed in review.\""
-mnema decision move accept "$ID" --note "Agreed in review." | tilde
+mnema decision move accept "$ID" --note "Agreed in review." | tilde | folded
 pause 1.2
 
 say "the record checks out"

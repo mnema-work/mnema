@@ -400,3 +400,41 @@ describe('the ladder is total: every window gets a drawing, and never a richer o
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// The brand's drawing is what the console draws, and the old one is not
+// ---------------------------------------------------------------------------
+
+describe('the biggest drawing is the brand\u2019s five rows, and no box drawing is ever the console\u2019s', () => {
+  it('is five rows of the full block and blanks, fifty-two columns wide with the top row at fifty-one', () => {
+    expect(THE_BIGGEST_DRAWING).toHaveLength(5);
+    expect(ACROSS).toBe(52);
+    expect(widthOf(THE_BIGGEST_DRAWING[0] as Line)).toBe(51);
+    for (const row of THE_ART) {
+      expect([...row].every((glyph) => glyph === '\u2588' || glyph === ' '), row).toBe(true);
+      expect(row, 'a row ends in a blank').toBe(row.replace(/ +$/, ''));
+    }
+  });
+
+  it('draws no double-line corner or bar at any width or height, the old drawing\u2019s glyphs', () => {
+    // BOX DRAWINGS DOUBLE HORIZONTAL to DOUBLE UP AND LEFT, U+2550 to U+255D: the old drawing's
+    // outline. Walked over a grid of windows with every demand a page could make of a form, and
+    // the demand that is none, so a drawing put back anywhere on the ladder is found.
+    for (const needs of [() => 0, () => 1000]) {
+      for (let columns = 0; columns <= 200; columns += 1) {
+        for (const rows of [0, 20, 39, 60, 200]) {
+          for (const line of bannerFor({ columns, rows, needs })) {
+            const glyphs = [...renderPlain(line)];
+            expect(
+              glyphs.some((glyph) => {
+                const point = glyph.codePointAt(0) as number;
+                return point >= 0x2550 && point <= 0x255d;
+              }),
+              `${columns}x${rows}: ${renderPlain(line)}`,
+            ).toBe(false);
+          }
+        }
+      }
+    }
+  });
+});

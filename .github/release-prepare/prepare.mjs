@@ -15,7 +15,8 @@
 // `docs/install.md` (`npm i -g @mnema/code@x.y.z`, `npm i --ignore-scripts @mnema/code@x.y.z`), the OpenCode URL and the two
 // `git clone --branch vx.y.z` lines of `docs/hosts.md`, and the root
 // `server.json` the MCP Registry is sent, which `server-json.mjs` makes whole from the number. When the number moves it also
-// makes `recordings/console.cast` and its GIF again, because the console draws it.
+// makes `recordings/console.cast` and its pair of GIFs again (`console-dark.gif` and `console-light.gif`,
+// drawn by `.github/the-recordings/render.mjs`, the one place the theme is written), because the console draws it.
 // `packages/code/tests/the-release-prepare-writes-every-number.test.ts` holds all of this.
 
 import { execFileSync } from 'node:child_process';
@@ -250,7 +251,7 @@ function main() {
       `${check ? 'would ' : ''}${edits.get(where) === null ? 'remove' : 'write'}${check ? '' : 's'} ${where}`,
     );
   if (remake) {
-    console.log(`${check ? 'would make' : 'makes'} recordings/console.cast and console.gif again`);
+    console.log(`${check ? 'would make' : 'makes'} recordings/console.cast, console-dark.gif and console-light.gif again`);
   }
   if (check) {
     if (edits.size > 0 || remake) process.exit(1);
@@ -270,14 +271,7 @@ function main() {
       ['vitest', 'run', 'packages/code/tests/the-recordings-are-what-the-binary-draws.test.ts'],
       { RECORDING: 'console' },
     );
-    run('agg', [
-      '--theme',
-      'github-dark',
-      '--font-size',
-      '16',
-      'recordings/console.cast',
-      'recordings/console.gif',
-    ]);
+    run('node', ['.github/the-recordings/render.mjs', 'recordings/console.cast']);
   }
 }
 
