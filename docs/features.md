@@ -58,6 +58,16 @@ Each line says what it does and what it leaves unproven; the page it points to h
   where `agent-accepts` is off). It records nothing and reads which tool ran and that switch, never the answer; `mnema switch off
   choice-settled` turns it off. The other hosts' hooks files carry it on their own question tools,
   documented and not measured.
+- **A rule the person dictates is a moment the agent is told about.** In Claude Code (and, documented
+  and not measured, Codex and Gemini CLI), when the person's message has the shape of a rule (*from
+  now on …*, *never …*, *put it as a rule*, *a partir de agora …*, *nunca …*, *coloca como regra*),
+  `mnema dictated` hands the agent one sentence beside the message: it may be a rule, `record_decision`
+  records it and `decision_transition` accepts it with a note quoting the person's own words (a person
+  accepts it, where `agent-accepts` is off). The sentence is the product's own and carries no word
+  of the message; it records nothing and reads the message the host hands it, never the transcript.
+  `mnema switch off dictated-rule` turns it off. The reader of corrections at the end of a response
+  (`user-corrections`) is on too since 0.1.10 and leaves such a message to this hook, so a rule
+  the person dictates is one record, not that decision and a proposal besides.
 - **A task carries its description, and a handoff its brief.** The `--description` of `task create` and
   the `--brief` of `task handoff` (the `description` of `create_task` and the `brief` of `record_handoff`, for
   an agent) record the text, up to 64 KiB, in the same call as an observation about the task; the format
@@ -127,6 +137,11 @@ Each line says what it does and what it leaves unproven; the page it points to h
 - **A fault in mnema is not a refusal.** An internal error says it is one, and `mnema report` shows
   the report it would make, whole, with no record content, path or name in it. It sends nothing: at
   a terminal it prints a link to GitHub's issue form, and you decide.
+- **A copy of the record, kept elsewhere.** `mnema backup setup <folder>` names where a project's copy goes (a folder, or a git
+  remote), `run` copies the tails and the public keys, `status` says how far the copy is from the trees, `verify` reads it as a
+  record and sets it against them, and `restore` puts back what a tree lost, never over a file and, for a copy of another record,
+  only after a question at a terminal, with `--undo` to take it back. It is a copy, in clear, with no private key in it, and it
+  is not a second record anyone reads from. [What a backup keeps, and what it loses](what-a-backup-keeps-and-what-it-loses.md).
 - **Your machine, checked.** `mnema doctor` says whether a `mnema` is on the `PATH`, whether the first `node` there takes it (and the Node
   Cursor's command-line agent carries, where it is on this machine), whether the
   plugin is installed, whether VS Code's settings tell its agent where the plugin is, and whether the

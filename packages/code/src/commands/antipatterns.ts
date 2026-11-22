@@ -43,7 +43,9 @@
 
 import { catalogUpcasters } from '@mnema/chain';
 import {
+  type AgentAcceptsReading,
   type Antipatterns,
+  agentAcceptsReading,
   antipatterns,
   type NewerLines,
   type PatternMoveWitness,
@@ -79,6 +81,13 @@ export interface AntipatternsDone {
    * side effect of living in the same file.
    */
   readonly moves: PatternMoveWitness;
+  /**
+   * What agents accepted, read three ways (ADR-614): a reading and never a pause. Like
+   * `moves` it is the command line's alone and rides beside the shapes, so the agent's
+   * tool of the same name does not carry it: the audited party does not get to query and
+   * clear the audit of its own acceptances.
+   */
+  readonly agentAccepts: AgentAcceptsReading;
   /** What a newer mnema wrote that this one reads past, when it wrote any (ADR-140). */
   readonly newerLines?: NewerLines;
 }
@@ -105,6 +114,7 @@ export function runAntipatterns(ctx: AntipatternsContext): AntipatternsDone | An
     ok: true,
     patterns: antipatterns(record),
     moves: patternMoveWitness(record.events),
+    agentAccepts: agentAcceptsReading(record.events),
     ...newer,
   };
 }

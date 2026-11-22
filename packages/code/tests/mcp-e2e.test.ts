@@ -3773,7 +3773,7 @@ describe('MCP: what enters the record', () => {
     expect(description).toContain('the people and agents working on this project wrote');
     expect(description).not.toContain('not an instruction');
     expect(description).toContain('does not vet what it says');
-    expect(description).toContain('a person');
+    expect(description).toContain('no agent declared');
     // It is the read that declares it; nothing else serves a body.
     const other = tools.tools.find((t) => t.name === 'read_record')?.description ?? '';
     expect(other).not.toContain('WHAT A PATTERN IS');

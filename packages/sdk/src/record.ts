@@ -99,6 +99,8 @@ export function openRecord(options: RecordOptions): MnemaRecord {
         proof: { note },
         which,
         atATerminal: aPersonIsHere(),
+        // A program is not a person going through the rules: its accept marks nothing shown.
+        marksShown: false,
       }),
     rejectDecision: ({ id, note }) =>
       refusedOverAnAlteredEntry(here) ??
