@@ -27,6 +27,7 @@ import { createHash } from 'node:crypto';
 import {
   cpSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -47,6 +48,7 @@ import {
 } from '@mnema/chain';
 import { type DiscoveryEnv, resolveTrees, tailsHeld } from '@mnema/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { aSigstoreOfOurOwn } from '../../tests/support/a-sigstore-of-our-own.js';
 import { runInit } from './init.js';
 import { runMemory } from './memory.js';
 import {
@@ -1059,6 +1061,35 @@ describe('a link that appears after the read, where the act is about to file', (
     const detail = act.outcomes[0]?.detail as string;
     expect(detail.startsWith('nothing was signed: ')).toBe(true);
     expect(detail.slice('nothing was signed: '.length)).toMatch(SAID(tail, '[0-9a-f]{64}'));
+  });
+
+  it('sigstore asks again right before Rekor: a link that came during the sign-in logs nothing', async () => {
+    const { ctx, tail, name } = await stamped();
+    const root = publicRoot(ctx);
+    const witness = join(root, 'tails', tail, 'witness');
+    const sigstore = await aSigstoreOfOurOwn();
+    const asked: string[] = [];
+    const target = join(sandbox, 'outside', 'bundle.json');
+    const act = await runWitnessSigstore(ctx, {
+      fetch: async (url, init) => {
+        asked.push(String(url));
+        return sigstore.fetch(url, init);
+      },
+      // The person is signing in: the link appears in the witness folder meanwhile.
+      token: async () => {
+        mkdirSync(join(sandbox, 'outside'), { recursive: true });
+        symlinkSync(target, join(witness, `${name}.sigstore.json`));
+        return sigstore.token();
+      },
+    });
+    if (!act.ok) throw new Error(act.message);
+    expect(lstatSync(join(witness, `${name}.sigstore.json`)).isSymbolicLink()).toBe(true);
+    expect(asked.filter((url) => url.includes('rekor'))).toEqual([]);
+    expect(act.outcomes.map((o) => o.did)).toEqual(['failed']);
+    const detail = act.outcomes[0]?.detail as string;
+    expect(detail).toMatch(/was not logged: nothing was sent: tails\//);
+    expect(detail).toMatch(/is a symbolic link/);
+    expect(existsSync(target)).toBe(false);
   });
 
   it('anything else the guard throws is a fault of the product: stamp does not turn it into an outcome', async () => {

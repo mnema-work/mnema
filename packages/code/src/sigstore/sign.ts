@@ -83,6 +83,12 @@ export interface SigstoreNetwork {
   readonly openBrowser?: (url: string) => void;
   /** Says a line to the person while the act runs (the sign-in address). */
   readonly say?: (line: string) => void;
+  /**
+   * Asked right before each checkpoint goes to Rekor, which is public and does not forget: a
+   * reason it must not be logged (the place its bundle is filed became a link while the sign-in
+   * ran), or nothing.
+   */
+  readonly beforeLog?: (digest: string) => string | undefined;
 }
 
 /** One checkpoint to countersign: its digest, and the bytes it is the digest of. */
@@ -235,6 +241,11 @@ export async function signWithSigstore(
 
   const signed: SignedCheckpoint[] = [];
   for (const checkpoint of checkpoints) {
+    const refused = network.beforeLog?.(checkpoint.digest);
+    if (refused !== undefined) {
+      signed.push({ digest: checkpoint.digest, ok: false, why: refused });
+      continue;
+    }
     const signature = sign('sha256', checkpoint.message, key.privateKey).toString('base64');
     const logged = await post(fetch, `${SIGSTORE.rekor}/api/v1/log/entries`, {
       apiVersion: '0.0.1',

@@ -39,6 +39,10 @@ function aToken(claims: Record<string, unknown>): string {
 export interface TestSigstore {
   /** The trust root that reaches this Sigstore's doubles, as `trusted_root.json` holds one. */
   readonly trustedRoot: unknown;
+  /** The fetch that reaches the doubles, for an act that signs by itself. */
+  readonly fetch: Fetch;
+  /** An unsigned OpenID token of a public repository's workflow, which is all a double reads. */
+  readonly token: () => Promise<string>;
   /** A v0.3 bundle over `message`, whose SHA-256 is `digest`, signed as `identity`. */
   sign(message: Uint8Array, digest: string, identity?: string): Promise<SigstoreBundle>;
 }
@@ -96,8 +100,12 @@ export async function aSigstoreOfOurOwn(): Promise<TestSigstore> {
     ],
     timestampAuthorities: [],
   };
+  const token = async () =>
+    aToken({ iss: ACTIONS_ISSUER, sub: AUTHOR_WORKFLOW, repository_visibility: 'public' });
   return {
     trustedRoot,
+    fetch,
+    token,
     async sign(message, digest, identity = AUTHOR_WORKFLOW) {
       const signed = await signWithSigstore([{ digest, message }], {
         fetch,
