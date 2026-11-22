@@ -237,6 +237,8 @@ export const WRITES_BUT_PLANTS_NOTHING: Readonly<Record<string, string>> = {
     'holds which checkpoints the write that founds a tail signs, and what the fold of its checkpoints says of the tail with no note of this machine, in the functions of the chain alone; nothing is damaged and the chain has no projection cache (a clone of such a record is read by the binary in only-proven-events-reach-the-projection)',
   'packages/chain/src/chain/verify-reads-the-checkpoints-before-the-tail.test.ts':
     'holds the order in which the verdict of the chain reads a tail and its checkpoints, with a signed write landing between the two readings; nothing is damaged and the chain has no projection cache',
+  'packages/code/tests/a-refusal-leaves-both-trees-as-they-were.test.ts':
+    'writes records through the product, then holds that a refused write leaves every file of both trees as it was; it plants no damage and asks nothing of the cache beyond warming it with a write before the comparison',
 };
 
 /** What the guard reads of one test file. */

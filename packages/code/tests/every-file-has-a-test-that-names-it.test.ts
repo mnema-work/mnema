@@ -1128,6 +1128,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-recorded-decision-says-when-to-accept.test.ts': 14,
   'packages/code/tests/a-refresh-landing-in-a-project-signs-as-the-agent.test.ts': 10,
   'packages/code/tests/a-refusal-is-one-line.test.ts': 7,
+  'packages/code/tests/a-refusal-leaves-both-trees-as-they-were.test.ts': 13,
   'packages/code/tests/a-refusal-leaves-nothing.test.ts': 14,
   'packages/code/tests/a-refused-group-flag-leaves-the-record.test.ts': 7,
   'packages/code/tests/a-relinked-tail-passes-since.test.ts': 8,
