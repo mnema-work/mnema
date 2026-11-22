@@ -110,6 +110,7 @@ import {
   THE_AGENT_KEY_SEPARATES_NOTHING,
 } from '../the-persons-key-in-the-clear.js';
 import { isOlderThan } from '../version.js';
+import { longPathsLines } from './doctor-long-paths.js';
 import { mergeDriverLines } from './doctor-merge-driver.js';
 import { type Plan, planFix, readLocations, SETTING, settingsCandidates } from './doctor-vscode.js';
 import { checkInstructions, leftOut, leftOutLine, stateLine } from './instructions.js';
@@ -127,6 +128,8 @@ export interface DoctorContext {
   readonly running: { readonly file: string; readonly version: string };
   /** Which platform's places VS Code's settings are looked for in; this process's by default. */
   readonly platform?: NodeJS.Platform;
+  /** What git says to a read of `core.longpaths` (`doctor-long-paths.ts`); git itself is asked by default. */
+  readonly gitConfigLongPaths?: (cwd: string, args: readonly string[]) => string | undefined;
   /**
    * The version a `node` executable says it is, or undefined where it does not say one. By default
    * the executable is asked (`node -p process.versions.node`); a test hands its own.
@@ -166,6 +169,7 @@ export interface Finding {
     | 'instructions'
     | 'agent-key'
     | 'merge-driver'
+    | 'long-paths'
     | 'newer-mnema'
     | 'record-in-git'
     | 'fork-kept-aside'
@@ -1719,6 +1723,11 @@ export function runDoctor(ctx: DoctorContext): { readonly findings: readonly Fin
       ...mergeDriverLines(ctx).map((line) => ({
         topic: 'merge-driver' as const,
         state: 'attention' as const,
+        line,
+      })),
+      ...longPathsLines(ctx).map(({ state, line }) => ({
+        topic: 'long-paths' as const,
+        state,
         line,
       })),
       ...forkKeptAsideFindings(ctx),

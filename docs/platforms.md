@@ -38,7 +38,7 @@ stops at 260 for a whole path, drive and separators included, so the project fol
 Past that, `git checkout` or `git clone` can fail with `Filename too long` unless `git config core.longpaths true` is
 set, and the Python reader may fail to open the file unless the system's `LongPathsEnabled` is on. The job turns
 `core.longpaths` on for the repository's own fixtures, and its record holds no witness, so neither failure is
-exercised for the installed product.
+exercised for the installed product. On Windows, `mnema doctor` measures the record against that limit and, where git's `core.longpaths` is not true, says the command to run; it never writes git's global configuration.
 
 On Windows the hooks start `mnema.cmd` through `cmd.exe`, which cannot be given a `"`, a `%`, a `^` or a line break
 inside a word. A path of `mnema` (the plugin's `mnema_path`) that has one is not run: the opening is silent, and a

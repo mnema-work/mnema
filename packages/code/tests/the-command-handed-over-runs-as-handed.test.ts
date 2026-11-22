@@ -872,7 +872,7 @@ export const HANDED_OVER: Readonly<
   'docs/mnema-next-to-a-folder-of-adrs.md': { line: 7, name: 4 },
   'docs/north-star.md': { name: 1 },
   'docs/packages.md': { line: 2, name: 4 },
-  'docs/platforms.md': { line: 1, name: 3 },
+  'docs/platforms.md': { line: 1, name: 4 },
   'docs/recording-decisions.md': { line: 11, name: 9 },
   'docs/reference/cli/audit-antipatterns.md': { line: 1 },
   'docs/reference/cli/backup-restore.md': { line: 1, name: 1 },
