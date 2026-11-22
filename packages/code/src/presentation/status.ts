@@ -111,6 +111,7 @@ export function statusReport(
   asThisMachine = false,
   notInGit?: EventsNotInGit,
   forkKeptAside?: ForkKeptAside,
+  accepted?: { readonly agent: number; readonly undeclared: number },
 ): string[] {
   return [
     `${actor}, where things stand.`,
@@ -122,7 +123,7 @@ export function statusReport(
     '',
     ...workLines(render, status),
     '',
-    ...decisionLines(render, status),
+    ...decisionLines(render, status, accepted),
     '',
     ...skillLines(render, status),
     '',
@@ -299,7 +300,7 @@ function sessionLines(
 }
 
 /**
- * The live work: what a reader still has something to do about, freshest first.
+ * The live work: what a reader still has something to do about, a task IN_PROGRESS first, then the freshest.
  *
  * IT SAID `actionable` UNTIL THE WORD BECAME FALSE, and the rename is the point of
  * this paragraph rather than a tidy-up. The list used to mean "has a legal move", and
@@ -319,8 +320,11 @@ function workLines(render: Render, status: Bootstrap): string[] {
           `${swept} older task(s) blocked when a session stopped with no end are not listed; \`mnema search\` finds them.`,
         ];
   if (status.work.length === 0) return ['No live tasks.', ...older];
+  // Cut: the list is in-progress first, so a cut that leaves some out leaves out the rest, and with
+  // more in progress than the cut keeps, some of those too. The header says which way it favours.
+  const favouring = status.workTotal > status.work.length ? ', in progress first' : '';
   return [
-    `${served(status.work.length, status.workTotal)} live task(s):`,
+    `${served(status.work.length, status.workTotal)} live task(s)${favouring}:`,
     ...status.work.map((item) =>
       render(
         itemLine([asId(item.id), oneLine(item.title), asState(item.state), ...standingOf(item)]),
@@ -343,10 +347,19 @@ function standingOf(item: TaskStanding): string[] {
 }
 
 /** The decisions in force: accepted, and nothing else. */
-function decisionLines(render: Render, status: Bootstrap): string[] {
+function decisionLines(
+  render: Render,
+  status: Bootstrap,
+  accepted?: { readonly agent: number; readonly undeclared: number },
+): string[] {
   if (status.decisions.length === 0) return ['No decisions in force.'];
   return [
     `${served(status.decisions.length, status.decisionsTotal)} decision(s) in force:`,
+    ...(accepted === undefined
+      ? []
+      : [
+          `  ${accepted.agent} accepted by an agent, ${accepted.undeclared} with no agent declared.`,
+        ]),
     ...status.decisions.map((item) =>
       render(itemLine([asId(item.id), item.adr, oneLine(item.title)])),
     ),

@@ -89,7 +89,7 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
         '',
         'The copy is a folder per project, kept under the name of its record: the tails up to their',
         'last complete line and the public keys, and nothing else. The private tree is always copied;',
-        'the public tree only where the project is not in git, whose history is its own backup. No',
+        "the public tree only where git does not hold it (a project outside git, or a local record that a repository excludes), since a committed record's history is its own backup. No",
         'private key is copied: a run is refused whole if a file it would copy holds one, and so is a',
         'symbolic link in the tree or in the folder. A copy only grows. The folder keeps the text in',
         'clear, which `setup` asks a person to confirm at a terminal. A machine can have a folder per project; a project has the one it was set up with.',

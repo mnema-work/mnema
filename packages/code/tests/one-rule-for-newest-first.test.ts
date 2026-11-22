@@ -168,12 +168,18 @@ const THE_ORDERINGS: readonly Rostered[] = [
   { file: 'code/src/commands/verify-github.ts', by: 'byCodeUnit', means: OTHER },
   { file: 'code/src/repl/complete.ts', by: 'theOrder', means: OTHER },
   { file: 'code/src/transcripts.ts', by: 'oldestSessionFirst', means: OLDEST },
-  { file: 'context/src/context/bootstrap.ts', by: 'byUpdatedDesc', means: NEWEST },
+  {
+    file: 'context/src/context/bootstrap.ts',
+    by: 'inProgressThenNewest',
+    means: NEWEST,
+    via: 'byUpdatedDesc',
+  },
   { file: 'context/src/context/bootstrap.ts', by: 'byUpdatedDesc', means: NEWEST },
   { file: 'context/src/context/bootstrap.ts', by: 'byUpdatedDesc', means: NEWEST },
   { file: 'context/src/context/decisions.ts', by: 'bySettledDesc', means: NEWEST },
   { file: 'context/src/context/focus.ts', by: 'byStartedDesc', means: NEWEST },
   { file: 'context/src/context/focus.ts', by: 'byStartedDesc', means: NEWEST },
+  { file: 'context/src/context/not-seen.ts', by: 'byNewestAccept', means: NEWEST },
   { file: 'context/src/context/search.ts', by: 'byTarget', means: OTHER },
   {
     file: 'context/src/context/search.ts',
@@ -487,7 +493,7 @@ describe('one rule for newest first', () => {
     // what makes a scan that suddenly matches nothing a failure rather than a pass.
     expect(INSTALLED.length).toBeGreaterThanOrEqual(44);
     expect(NAMED.length).toBeGreaterThanOrEqual(20);
-    expect(THE_ORDERINGS.filter((each) => each.means === NEWEST)).toHaveLength(12);
+    expect(THE_ORDERINGS.filter((each) => each.means === NEWEST)).toHaveLength(13);
     expect(THE_ORDERINGS.filter((each) => each.means === OLDEST)).toHaveLength(4);
   });
 

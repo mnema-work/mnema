@@ -52,6 +52,7 @@ import {
   checkFailed,
   checkPassed,
   decisionRecorded,
+  decisionSeen,
   decisionTransitioned,
   handoffRecorded,
   identityFounded,
@@ -407,6 +408,16 @@ export const CANONICAL_VECTORS: {
       // envelope field that had no frozen bytes at all before.
       name: 'skill.consulted (empty payload, inside a run)',
       event: skillConsulted(agent(SKILL_ID, RUN_ID)),
+    },
+  ],
+  'decision.seen': [
+    {
+      // A person's showing: no `which`, the subject the decision, and the accepts it covers
+      // under the envelope's own rule for entry hashes, ascending.
+      name: 'decision.seen (two accepts covered, no agent declared)',
+      event: decisionSeen(person(RULE_ID), {
+        moves: [VECTOR_FROM_RECORD, VECTOR_THROUGH_HASH],
+      }),
     },
   ],
   'tail.pruned': [
