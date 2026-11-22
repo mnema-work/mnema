@@ -24,6 +24,11 @@ letter (`a because the benchmark held`). Each verdict is the move `decision move
 signed with your own key; a refusal on one decision is said and the review goes on. Without a
 terminal it writes nothing and prints the `decision move` command that rules the same decisions.
 
+Then it shows the rules in force you did not accept yourself (an agent accepted them, or no
+agent was declared on the accept), newest first, and marks each one it shows as shown to you,
+in this machine's private record; `q` stops it, and what was not shown stays on the list.
+A mark says your key signed at a terminal with no agent declared, not that a person read it.
+
 What recording means here:
   Permanent: mnema is append-only and nothing deletes a fact. A public record
   is committed and reaches every machine that clones the repository.
