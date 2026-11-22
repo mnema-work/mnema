@@ -56,8 +56,21 @@
  * every other tool, and why the plugin puts a filter in front of the process.
  */
 
-import { type BesideHost, does, type HookHost } from './host-names.js';
+import {
+  type BesideHost,
+  does,
+  HOSTS,
+  type HookHost,
+  type HostName,
+  hookTextIsAssumed,
+  hookTextOf,
+} from './host-names.js';
 import { type HookSaid, hookReply } from './mcp/hook-reply.js';
+import {
+  CLAUDE_CODE_CEILING,
+  type HookCeiling,
+  hookCeilingOf,
+} from './presentation/within-a-hook.js';
 
 /** How to read the paths out of one write tool's input, whatever shape the host handed it. */
 type PathsOf = (input: unknown) => readonly string[];
@@ -277,4 +290,16 @@ export function replyBeside(host: BesideHost, context: string | undefined): obje
     gemini: (s) => hookReply('AfterTool', s),
   };
   return reply[host](context === undefined ? {} : { context });
+}
+
+/**
+ * The ceiling a `--host` run cuts a hook's text to: the host's own where its row measured one,
+ * Claude Code's where no host is named, and Claude Code's marked as assumed where the row says the
+ * host's was never measured.
+ */
+export function hookCeilingFor(host: HostName | null): HookCeiling {
+  if (host === null) return CLAUDE_CODE_CEILING;
+  const measured = hookTextOf(host);
+  if (measured !== undefined || !hookTextIsAssumed(host)) return hookCeilingOf(measured);
+  return { ...CLAUDE_CODE_CEILING, assumedFor: HOSTS[host].title };
 }

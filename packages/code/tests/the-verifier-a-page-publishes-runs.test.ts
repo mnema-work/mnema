@@ -35,10 +35,11 @@
  * verifier that changes its actual one cannot drift apart quietly.
  *
  * THE RECORD IT IS AIMED AT IS THE ONE THE PAGE TEACHES, and that is not a detail: the
- * published `checks: 12 ok … 5 note` is true of a record founded by `mnema init` AND
+ * published `checks: 15 ok … 6 note` is true of a record founded by `mnema init` AND
  * carrying one decision, which is exactly the sequence the section above it publishes.
  * Measured on 21/09/2026: `init` alone verifies at `9 ok, 4 note`; the fifth note is the
- * backup `init` declares, said as one (FORMAT.md section 6.5); the twelfth ok is section 6.7's,
+ * backup `init` declares, said as one (FORMAT.md section 6.5), and the sixth, from 0.1.10, the count of the
+ * facts that name no agent; the twelfth ok is section 6.7's,
  * over the decision's one move, which `init` alone does not have. So this case founds the
  * page's own first record, and a page whose two halves stopped agreeing goes red here.
  *
