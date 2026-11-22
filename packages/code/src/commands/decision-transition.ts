@@ -58,6 +58,7 @@ import {
 } from '../moved-record.js';
 import { forwardReplacement, type Replacement } from '../recorded-content.js';
 import { locateEntityScopeKept, withScopedCaches } from '../tree-sources.js';
+import { markShown } from './shown.js';
 import { type AgentWrites, treesToWrite, whichOfTheWrite } from './write-as-the-agent.js';
 
 /** What the transition command needs: injected so it is testable. */
@@ -147,6 +148,12 @@ export function runDecisionTransition(
      * that does not say is not at one, so the accept it carries is the one the switch turns away.
      */
     atATerminal?: boolean;
+    /**
+     * Whether a person's accept at a terminal marks the rule shown to them (ADR-623). A door that is
+     * no person reviewing (the library, a program that happens to run in a terminal) passes `false`:
+     * its seat still counts for `agent-accepts`, and it marks nothing.
+     */
+    marksShown?: boolean;
   },
 ): DecisionTransitioned | DecisionTransitionRefused {
   const upcasters = catalogUpcasters();
@@ -263,6 +270,24 @@ export function runDecisionTransition(
   });
   if (!moved.ok) {
     return { ok: false, reason: 'REFUSED', code: moved.code, message: moved.message };
+  }
+  // A PERSON'S OWN ACCEPT AT A TERMINAL IS A RULE SHOWN TO THEM (ADR-623): the accept carries no
+  // seat, so without a showing beside it the rule would sit on that person's list of what they did
+  // not accept themselves. It covers the accept just made, in the private tree, and a refusal of it
+  // is said and leaves the accept as it landed.
+  if (
+    input.action === 'accept' &&
+    which === undefined &&
+    input.atATerminal === true &&
+    input.marksShown !== false
+  ) {
+    const shown = markShown(trees, {
+      decision: input.id,
+      moves: [moved.entry.link.hash],
+      atATerminal: true,
+      ...(input.run !== undefined ? { run: input.run } : {}),
+    });
+    if (!shown.ok) ctx.say?.(`The accept was not marked as shown to you: ${shown.message}`);
   }
 
   // Resolve the ADR from the projection: a decision has no alias, so its human

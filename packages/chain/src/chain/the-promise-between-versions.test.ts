@@ -68,7 +68,9 @@ describe('backward: a record an earlier binary wrote is read by this one', () =>
     expect(here.tails.map((t) => t.entryCount)).toEqual([27]);
     // The backup key `init` declares is the one census line such a record carries: no move
     // the workflow does not allow, no retraction by a stranger.
-    expect(here.census.map((note) => note.kind)).toEqual(['backup-key']);
+    expect(
+      here.census.map((note) => note.kind).filter((kind) => kind !== 'undeclared-which'),
+    ).toEqual(['backup-key']);
   });
 
   it('is verified by the second reader too, every move applied and nothing left unchecked', () => {

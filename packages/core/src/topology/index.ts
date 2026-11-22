@@ -98,6 +98,7 @@ export {
   withoutExcludeLines,
 } from './git-exclude.js';
 export { gitPlaceOf, isWithin, notesRootOf } from './git-place.js';
+export { publicTreeIsLocal, vanishedLocalTrees } from './local-record.js';
 export {
   type BirthProbe,
   type HeldTail,

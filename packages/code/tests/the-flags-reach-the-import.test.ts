@@ -171,7 +171,7 @@ describe('written after `import`', () => {
     const facts = aboutThese(recordedIds(imported.stdout));
     expect(facts).toHaveLength(6);
     expect(new Set(facts.map((fact) => fact.tree))).toEqual(new Set(['private']));
-    // Without an agent named, the record says a person acted: the flag's absence, unchanged.
+    // Without an agent named, the record says no agent was declared: the flag's absence, unchanged.
     expect(facts.map((fact) => fact.agent)).toEqual(Array(6).fill(undefined));
   });
 

@@ -113,19 +113,34 @@ describe('the answer of a person', { timeout: 60_000 }, () => {
   it('on the screen is recorded accepted by the person, in the public tree, and the note quotes the answer', async () => {
     const heard = await atATerminal(['init'], [ENTER, ENTER, ENTER]);
     expect(heard.failed).toBe(false);
+    // The screen draws its own frames and does not print the plain line of the verb: the note it signs is checked below.
     const decision = await showed();
     expect(decision).toContain('Agents may accept the decisions the person chooses (accepted)');
-    expect(decision).toMatch(/recorded by mnid:[0-9a-f]{8} \(a person\)/);
-    expect(decision).toMatch(/accepted by mnid:[0-9a-f]{8} \(a person\)/);
+    expect(decision).toMatch(/recorded by mnid:[0-9a-f]{8} \(no agent declared\)/);
+    expect(decision).toMatch(/accepted by mnid:[0-9a-f]{8} \(no agent declared\)/);
     expect(decision).toContain('·  public');
-    expect(decision).toContain('The person answered "Yes, accept at once what I choose"');
+    expect(decision).toContain(
+      '"Yes, accept at once what I choose" was chosen on the screen of mnema init',
+    );
+    expect(decision).not.toContain('The person');
     expect((await alone(['verify'])).failed).toBe(false);
   });
 
   it('as `--accepts no` is a decision and the switch that keeps it: an agent’s accept is refused afterwards', async () => {
     const heard = await alone(['init', '--hosts', 'none', '--accepts', 'no']);
     expect(heard.failed).toBe(false);
-    expect(await showed()).toContain('Every decision waits for a person to accept it (accepted)');
+    // The line the verb prints says what was given, as the signed note does, and claims no person.
+    expect(heard.out).toContain(
+      'Recorded ADR-1: agents may not accept what you choose (--accepts no was given to mnema init).',
+    );
+    expect(heard.out).not.toContain('accepted as yours');
+    const founding = await showed();
+    expect(founding).toContain('Every decision waits for a person to accept it (accepted)');
+    // No terminal is here, and a flag can come from a script: the note says what was given, not who gave it.
+    expect(founding).toContain(
+      '--accepts no was given to mnema init when the project was founded.',
+    );
+    expect(founding).not.toContain('The person gave');
     const switches = await alone(['switch']);
     expect(switches.out).toMatch(/agent-accepts\s+off/);
 

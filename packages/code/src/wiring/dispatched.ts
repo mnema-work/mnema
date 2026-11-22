@@ -42,6 +42,8 @@ export function registerDispatched(program: Command, wiring: Wiring): Declared {
         '  kept in the session journal, so `mnema switch off session-journal` stops it, and so does',
         '  `mnema switch off agent-mirror`. Nothing goes to the public tree.',
         '  On stdout, {}.',
+        '  With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its',
+        '  code alone on the first line of the error stream; typed by a person, nothing changes.',
       ].join('\n'),
     )
     .action(async () => {
