@@ -466,7 +466,7 @@ try {
   check(initialized?.result?.serverInfo !== undefined, 'the answer to initialize names the server');
   check(
     names.length > 0 && names.includes('bootstrap') && names.includes('capture_memory'),
-    `tools/list answers with tools that include bootstrap and capture_memory (${names.length} toolList)`,
+    `tools/list answers with tools that include bootstrap and capture_memory (${names.length} listed)`,
   );
   check(
     !/\n\s+at .+[:(]\d+/.test(served.err),
