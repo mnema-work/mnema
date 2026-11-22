@@ -1095,6 +1095,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-line-this-mnema-cannot-read-is-said-first-and-the-rest-is-served.test.ts': 7,
   'packages/code/tests/a-link-can-be-retracted.test.ts': 12,
   'packages/code/tests/a-link-stays-inside-the-project.test.ts': 18,
+  'packages/code/tests/a-link-to-a-temporary-folder-says-so.test.ts': 14,
   'packages/code/tests/a-linked-local-anchor-is-said-by-every-read-and-refused-by-verify.test.ts': 8,
   'packages/code/tests/a-linked-worktree-is-told-where-the-record-is.test.ts': 11,
   'packages/code/tests/a-long-text-comes-from-one-place.test.ts': 8,

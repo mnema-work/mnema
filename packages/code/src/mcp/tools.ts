@@ -163,6 +163,7 @@ import { type Addressed, addressed, resolveLabel } from '../label-as-address.js'
 import {
   governsTargets,
   isLabelShaped,
+  isUnderATemporaryFolder,
   linkRefusal,
   locateLinkAsRecorded,
   outsideTheProject,
@@ -688,6 +689,8 @@ export type LinkRecordedResult =
       readonly subjectScope?: Scope;
       /** True when the subject is a TASK, so the sentence about where it lives names what it is. */
       readonly subjectIsATask?: true;
+      /** True when the target is a path under a temporary folder. */
+      readonly targetIsTemporary?: true;
     })
   | Extract<FactRecordedResult, { readonly ok: false }>;
 
@@ -788,6 +791,7 @@ export function runLinkKnowledge(
     ...(recordedTarget !== target.id ? { recordedTarget } : {}),
     ...(subjectScope !== undefined ? { subjectScope } : {}),
     ...(subjectIsATask ? { subjectIsATask: true as const } : {}),
+    ...(isUnderATemporaryFolder(target.id, projectDir) ? { targetIsTemporary: true as const } : {}),
     ...forwardReplacement(recorded),
   };
 }

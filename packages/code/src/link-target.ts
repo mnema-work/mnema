@@ -13,8 +13,9 @@
  * is legitimately cross-tree, and an address may name a path the tree does not hold yet.
  */
 
-import { existsSync } from 'node:fs';
-import { dirname, isAbsolute, join } from 'node:path';
+import { existsSync, realpathSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
+import { dirname, isAbsolute, join, posix, win32 } from 'node:path';
 import type { UpcasterRegistry } from '@mnema/chain';
 import type { RecordedAs } from '@mnema/context';
 import {
@@ -182,4 +183,69 @@ export function locateLinkAsRecorded(
   // The public tree is searched first, so a `public` answer is the public tree's own.
   const scope = locateLinkScope(trees, { ...edge, target }, upcasters);
   return scope === 'public' ? { scope, target } : undefined;
+}
+
+/**
+ * Whether a target is a path under a temporary folder: `os.tmpdir()`, `/tmp`, `/var/tmp`, their macOS
+ * spellings (`/private/tmp`, `/private/var/folders`), `$TMPDIR` and the Windows `%TEMP%` and `%TMP%`.
+ * Such a folder is cleared by a reboot or a cleanup, so a link to a file there names something that may
+ * be gone when a reader follows it. Only an absolute path is asked (a relative one is read against a
+ * folder the link does not say), and a path under the project's own root never is: a project may live
+ * under a temporary folder and its files are its own.
+ *
+ * A path that exists is compared by where it really is (so `/tmp/p` and `/private/tmp/p` are one place
+ * on macOS, where the one is a link to the other), one that does not by its text, the way
+ * `addressLiesOutside` compares. A Windows path is compared by text only: a short 8.3 name is not
+ * expanded, and a `\\?\` prefix is dropped. A `$TMPDIR` that is `/`, the home folder or a folder
+ * holding the project is not read as a temporary folder: the rest of the machine is not one.
+ */
+export function isUnderATemporaryFolder(
+  target: string,
+  root: string | undefined,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+  tmp: string = tmpdir(),
+  home: string = homedir(),
+): boolean {
+  const bare = (path: string): string => path.replace(/^\\\\[?.]\\(?=[A-Za-z]:|UNC\\)/u, '');
+  const typed = bare(target);
+  const flavor = /^[A-Za-z]:[\\/]|^\\\\/u.test(typed) ? win32 : posix;
+  if (!flavor.isAbsolute(typed)) return false;
+  const where = (path: string): string =>
+    flavor === posix ? truthfully(flavor.resolve(path)) : flavor.resolve(bare(path));
+  const holds = (folder: string, path: string): boolean => {
+    const into = flavor.relative(where(folder), where(path));
+    return into === '' || (into.split(flavor.sep)[0] !== '..' && !flavor.isAbsolute(into));
+  };
+  if (root !== undefined && flavor.isAbsolute(root) && holds(root, typed)) return false;
+  const named = [tmp, env.TMPDIR, env.TEMP, env.TMP].filter(
+    (folder): folder is string =>
+      folder !== undefined &&
+      flavor.isAbsolute(folder) &&
+      flavor.resolve(folder) !== flavor.parse(flavor.resolve(folder)).root &&
+      !(flavor === posix && where(folder) === where(home)) &&
+      !(
+        root !== undefined &&
+        flavor.isAbsolute(root) &&
+        holds(folder, root) &&
+        !holds(root, folder)
+      ),
+  );
+  const folders = [...['/tmp', '/var/tmp', '/private/tmp', '/private/var/folders'], ...named];
+  return folders.some((folder) => holds(folder, typed));
+}
+
+/** A path as the file system has it: the deepest part that exists is resolved, the rest kept as typed. */
+function truthfully(path: string): string {
+  let head = path;
+  let rest = '';
+  for (;;) {
+    try {
+      return posix.join(realpathSync(head), rest);
+    } catch {
+      const up = dirname(head);
+      if (up === head) return path;
+      rest = posix.join(posix.basename(head), rest);
+      head = up;
+    }
+  }
 }
