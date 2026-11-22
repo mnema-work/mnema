@@ -146,13 +146,16 @@ function whereTheMessagesGo(
 ): { readonly ok: true; readonly real: string } | { readonly ok: false; readonly why: string } {
   const fold = (path: string): string => (foldsCase ? path.toLowerCase() : path);
   const given = resolve(dir);
-  const own = lstatSync(given, { throwIfNoEntry: false });
-  if (own?.isSymbolicLink()) {
-    return { ok: false, why: `${given} is a symbolic link: name the folder it points to instead` };
-  }
   const rest: string[] = [];
   let existing = given;
   try {
+    const own = lstatSync(given, { throwIfNoEntry: false });
+    if (own?.isSymbolicLink()) {
+      return {
+        ok: false,
+        why: `${given} is a symbolic link: name the folder it points to instead`,
+      };
+    }
     while (lstatSync(existing, { throwIfNoEntry: false }) === undefined) {
       rest.unshift(basename(existing));
       const up = dirname(existing);
