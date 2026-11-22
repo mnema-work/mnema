@@ -1091,6 +1091,7 @@ complete -c mnema -f -n '__mnema_at "after-a-write"' -l color -x -a 'auto always
 
 # mnema handback
 complete -c mnema -f -n '__mnema_at "handback"' -l schema
+complete -c mnema -f -n '__mnema_at "handback"' -l host -x -a 'claude codex copilot'
 complete -c mnema -f -n '__mnema_at "handback"' -s h -l help
 complete -c mnema -f -n '__mnema_at "handback"' -s V -l version
 complete -c mnema -f -n '__mnema_at "handback"' -l color -x -a 'auto always never'

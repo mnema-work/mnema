@@ -322,7 +322,7 @@ _mnema_flags() {
     'tally') echo '--host -h --help -V --version --color' ;;
     'corrections') echo '--host -h --help -V --version --color' ;;
     'after-a-write') echo '-h --help -V --version --color' ;;
-    'handback') echo '--schema -h --help -V --version --color' ;;
+    'handback') echo '--schema --host -h --help -V --version --color' ;;
     'settled') echo '--reply -h --help -V --version --color' ;;
     'dictated') echo '-h --help -V --version --color' ;;
     'dispatched') echo '-h --help -V --version --color' ;;
@@ -498,6 +498,7 @@ _mnema_values() {
     'corrections:--host') echo 'claude vscode codex copilot gemini cursor qwen' ;;
     'corrections:--color') echo 'auto always never' ;;
     'after-a-write:--color') echo 'auto always never' ;;
+    'handback:--host') echo 'claude codex copilot' ;;
     'handback:--color') echo 'auto always never' ;;
     'settled:--color') echo 'auto always never' ;;
     'dictated:--color') echo 'auto always never' ;;

@@ -925,7 +925,8 @@ export const WHAT_STOPS: { readonly [K in SwitchableChannel]: string } = {
     'session and file',
   'subagent-handback':
     'the return of a subagent that ends its final reply without the block of decisions the record ' +
-    'asks for: with it on, a `SubagentStop` hook sends the subagent back once, with the format; ' +
+    'asks for: with it on, a `SubagentStop` hook sends the subagent back once, with the format (Copilot ' +
+    'CLI names no field for a second stop, so there not once); ' +
     'off, a subagent stops as it would without the plugin',
   'tool-call-count':
     'the local count of tool calls: with it off, the server keeps no line of the calls it answers ' +
