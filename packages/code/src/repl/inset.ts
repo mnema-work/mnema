@@ -10,7 +10,7 @@
  * which is the defect this surface has paid for once already in the other direction (`area.ts`,
  * `ABOVE_THE_PALETTE`).
  *
- * WHY IT IS ZERO. The margin was six columns because a purple guide ran down it, drawn beside
+ * WHY IT IS ZERO. The margin was six columns because a guide ran down it, drawn beside
  * every row of the roll, marking the region a caller was reading. The guide is gone (what marks
  * where a caller's own words begin is a band behind each command, and what marks where an answer
  * begins is a glyph on its first row; see `echo.ts`, `region.ts`) and the six columns stayed as a

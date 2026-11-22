@@ -2,8 +2,8 @@
  * THE NAME, DRAWN: the one thing this surface prints that says nothing about the
  * record.
  *
- * It is ART, and that is the whole of what it is: six rows of full blocks with an outline
- * drawn round them, five rows of one block, or the name letterspaced, or the name. It carries
+ * It is ART, and that is the whole of what it is: five rows of full blocks in a heavy hand, five
+ * narrower rows of the same block, or the name letterspaced, or the name. It carries
  * no fact, so there is nothing in it a reader could be misled about, and that is what makes
  * the rule below safe to state.
  *
@@ -99,18 +99,14 @@
  * emboldens `show`'s subject line, and the plain renderer writes the drawing and nothing
  * else.
  *
- * IT DOES CARRY A HUE NOW, AND NOT ONE OF THIS FILE'S. The sentence here used to end
- * "colour on this surface means severity and nothing else, and a banner is the most
- * tempting place there is to spend a hue on decoration": the temptation was named
- * correctly and the rule it appealed to has since gained an axis. Colour means severity
- * wherever it says something about the RECORD, which is every line `presentation/`
- * produces; the console's opening panel paints this drawing and the row that says what the
- * session is in one accent, and that accent is CHROME: it is the layout's, it is spent in one
- * place, and it is a hue no severity uses (`repl/region.ts`, and the guard in
- * `tests/the-panel.test.ts`). IT USED TO PAINT A BORDER AND A TITLE ON IT as well, and the
- * frame is gone; the rule did not move, only what there is to spend it on. Nothing in this
- * module knows about it: the drawing is the
- * same parts either way, and a caller that puts it anywhere else gets a heading.
+ * IT CARRIES NO HUE, AND IT DID FOR A WHILE. The sentence here used to say the console's opening
+ * panel painted this drawing in one accent of the layout's, a hue no severity used, and before
+ * that it said "colour on this surface means severity and nothing else, and a banner is the most
+ * tempting place there is to spend a hue on decoration". What the first falsified is the new
+ * brand: the console carries no colour of the mark, only weight, so the drawing is bold (the
+ * heading weight below) and nothing else (`tests/the-panel.test.ts` holds that the layout names
+ * no colour). Nothing in this module knows about it: the drawing is the same parts either way,
+ * and a caller that puts it anywhere else gets a heading.
  */
 
 import { subjectLine } from './detail.js';
@@ -142,93 +138,61 @@ const INK = '\u2588';
  * are its.
  *
  * IT HELD FOUR SUBSTITUTIONS AND IT HOLDS ONE, because the drawing that needed the other
- * three is no longer written as a mask at all ({@link THE_BLOCKS}). One entry rather than
- * none: the five-row form is still a mask, and a table with one key is what keeps the inking
- * in one place for whichever mask is written next.
+ * three is no longer in this file's choice of forms ({@link THE_BLOCKS}). Every form is a
+ * mask of one mark, and a table with one key is what keeps the inking in one place for
+ * whichever mask is written next.
  */
 const INKED: { readonly [mark: string]: string } = {
   '#': INK,
 };
 
 /**
- * THE BIGGEST DRAWING, AS THE DRAWING: six rows of full blocks with an outline drawn round
- * them, forty-eight columns, and the one form in this file that is not written as a mask.
+ * THE BIGGEST FORM, AS A MASK: five rows of full blocks, fifty-two columns, and the top row is
+ * fifty-one because the top of the last letter ends a column before the rest of it.
  *
- * IT WAS NINE ROWS OF BLOCKS AND SHADES AND IT IS SIX, and the choice was made between
- * samples drawn in the real arrangement rather than in the abstract. What the nine-row one
- * spent its last three rows on was DUST, the light shades that make a drop shadow, and dust
- * is what disappears first in a thin font, so a third of the height was paying for something a
- * reader may not have at all. What is here instead is one weight of ink and a contour: the same
- * word, said in full blocks, at two thirds of the rows and two columns narrower. A drawing of
- * three rows was offered beside it and refused for the reason the requirement was made in: the
- * name was asked to be BIGGER, and a compact form is the other direction.
+ * IT WAS SIX ROWS WITH AN OUTLINE, AND THE BRAND CHANGED THE LETTERS: the M and the N were
+ * redrawn and shown before they were applied, and the six-row drawing with the double-line
+ * contour ({@link THE_BLOCKS}) is no longer what the console draws. One weight of ink, no
+ * contour, a mask of one mark ({@link INK}): the form is visible in a diff, which is the
+ * argument the other masks of this file are written under.
  *
- * AND THE ROWS ARE WHAT THE FLOOR IS MADE OF, which is why this is not only a change of
- * picture. The shortest window this console draws a page on is the height at which this drawing
- * is still chosen (`repl/floor.ts`), and that height is worked out FROM these rows, so three
- * rows of art fewer is a floor nine rows lower, without anybody editing a number. The old
- * drawing put back moves it back, which is a case rather than a claim
- * (`tests/the-name-in-full-blocks.test.ts`).
+ * AND THE ROWS ARE WHAT THE FLOOR IS MADE OF, which is why this is not only a change of picture.
+ * The shortest window this console draws a page on is the height at which this drawing is still
+ * chosen (`repl/floor.ts`), and that height is worked out FROM these rows, so a row of art fewer
+ * is a floor a row lower, without anybody editing a number
+ * (`tests/the-name-in-full-blocks.test.ts` measures it in `THE_FLOOR`).
  *
- * IT WOULD HAVE BEEN A MASK, AND A DRAWING OF EIGHT SHADES IS WHAT FALSIFIED THE PREMISE THAT
- * SAID SO. Every form here has been written as *characters an editor renders at one width and a
- * diff can show*, and the argument under that rule is that a reader sees the FORM. The nine-row
- * drawing was inked with EIGHT different blocks and shades: as a mask its first row read
- * ` ###_ _###% ###_    # %#####` (measured, by writing it out) and at eight marks the FORM is
- * the one thing that stops being visible. That drawing is gone and the premise stays
- * falsified: this one is inked with SEVEN glyphs, which is a mask of seven marks, and the
- * finding was never about the exact number.
+ * No row ends in a blank, and that is load-bearing rather than tidy: the layout trims the end
+ * of every row it writes, so a form padded on the right would arrive somewhere trimmed and be
+ * a different width than this file thinks it is. A case asserts the property.
+ */
+const BIGGEST_MASK: readonly string[] = [
+  '##      ##  ##     ##  #######  ##      ##   ######',
+  '###    ###  ###    ##  ##       ###    ###  ##    ##',
+  '## #  # ##  ## ##  ##  ######   ## #  # ##  ########',
+  '##  ##  ##  ##   ####  ##       ##  ##  ##  ##    ##',
+  '##      ##  ##     ##  #######  ##      ##  ##    ##',
+];
+
+/**
+ * THE OLD BIGGEST DRAWING, KEPT AND NOT DRAWN: six rows of full blocks with an outline, forty-eight
+ * columns, the console's opening until the new brand.
  *
- * WHAT THE DOCTRINE IS REALLY AGAINST IS A CHARACTER A READER CANNOT SEE: an escape, a NUL,
- * a zero-width space, the twenty-four bytes this bench has paid for, and a block is the
- * opposite of invisible. What replaces the mask is stronger than the mask was: an
- * ENUMERATION of the code points this module may hold, each one named, with any other
- * non-ASCII byte in the file ACCUSED (`tests/the-opening-fits-the-screen.test.ts`, which
- * also keeps a second copy of these rows so that an edit to the art is loud).
+ * IT IS EXPORTED FOR THE SITE AND FOR NOTHING ELSE. The site imports it, at the tag of a release,
+ * to draw its favicon, its header and its social card, and `packages/vscode/build/mark.mjs`
+ * finds the M in it by the second `\u255D` of the last row, which the new drawing does not
+ * have. It leaves {@link FORMS} and stops being what the floor is measured against; the export
+ * leaves when the site reads the new form (`tests/the-front-page-is-drawn-from-the-console.test.ts`
+ * holds the rows meanwhile, byte for byte). The sentence that was here saying the extension's
+ * icon is drawn from these rows was already false since the icon was redrawn from the mark.
  *
- *   - FULL BLOCK U+2588: the ink itself, and the one glyph this drawing shares with the mask
- *     under it ({@link INK})
- *   - BOX DRAWINGS DOUBLE HORIZONTAL U+2550 and DOUBLE VERTICAL U+2551
- *   - BOX DRAWINGS DOUBLE DOWN AND RIGHT U+2554, DOUBLE DOWN AND LEFT U+2557
- *   - BOX DRAWINGS DOUBLE UP AND RIGHT U+255A, DOUBLE UP AND LEFT U+255D
+ * Seven glyphs (the full block and the six double-line corners and bars: U+2550, U+2551, U+2554,
+ * U+2557, U+255A, U+255D), East Asian ambiguous, which is the declared risk the console no longer
+ * carries on screen: a CJK locale drew them twice as wide as `plain.ts` counts. The enumeration of
+ * the code points this module may hold stays at seven because this constant stays
+ * (`tests/the-opening-fits-the-screen.test.ts`).
  *
- * THEY ARE EAST ASIAN AMBIGUOUS, and that is the DECLARED RISK the one block has carried
- * since the first drawing rather than a new one: a terminal set to a CJK locale draws them
- * two cells wide, while {@link widthOfTheDrawing} counts what `plain.ts` counts, so the drawing
- * would be twice as wide as everything that measured it thinks. The six new ones are in the
- * same class as the block that was already here (the debt did not grow a kind, it grew a
- * count) and what the delivery that brought them did instead of asserting it was to ASK the
- * product's own measurement, glyph by glyph, rather than read the standard
- * (`tests/the-name-in-full-blocks.test.ts`).
- *
- * AND THE SENTENCE UNDER THAT ONE IS HALF FALSIFIED. It read: *closing it means a
- * character-width table for the whole surface, which is a delivery rather than a line.* The
- * surface has one authority over columns now and it is not a table anybody here wrote
- * (`width.js`, which asks the library the layout draws by), so the delivery happened, and it
- * did not close THIS. Ambiguous is ambiguous: the authority treats those glyphs as one cell,
- * on the standard's own recommendation for a context that cannot be established, and this
- * drawing is measured at one cell per glyph exactly as it always was. What the delivery changed
- * is that the risk is now the WHOLE of the debt instead of the visible half of it: under it
- * was East Asian WIDE, which is not ambiguous at all and was being counted as one cell in a
- * caller's own titles. The seven glyphs of this drawing are unchanged, byte for byte and column
- * for column, and a terminal in a CJK locale still draws them twice as wide as this thinks.
- *
- * No row ends in a blank, and that is load-bearing rather than tidy: the layout trims the
- * end of every row it writes, so a form padded on the right would arrive somewhere trimmed
- * and be a different width than this file thinks it is. The generator this was taken from
- * pads every row to the widest one; the padding came off before it was brought here, and a
- * case asserts the property rather than trusting that it was done.
- *
- * SO THE DRAWING IS FORTY-EIGHT COLUMNS AND ITS TOP ROW IS FORTY-SEVEN, which is that rule
- * seen from the other end rather than a row of the wrong width. The last letter's top row ends
- * in a blank (its own shape, in every generator this font exists in) and that blank is
- * padding at the end of the whole row, so it came off with the rest. What the two numbers mean
- * is that no terminal ever draws a forty-eighth column on that row, and the five rows under it
- * are the same width to the column ({@link widthOfTheDrawing} is what the page is measured by,
- * and it answers forty-eight).
- *
- * Exported because the social card (`.github/the-front-page/draw.mjs`), the extension's icon and the site's favicon are
- * drawn from these rows; a test holds the card to them. The README's banner is not: it is the brand's lockup.
+ * No row ends in a blank, and the first is forty-seven columns for the reason the mask above says.
  */
 export const THE_BLOCKS: readonly string[] = [
   '███╗   ███╗███╗   ██╗███████╗███╗   ███╗ █████╗',
@@ -276,10 +240,9 @@ const NAME_MASK: readonly string[] = ['mnema'];
 /**
  * Some rows as lines: every mark inked, everything else as it was written.
  *
- * ONE FUNCTION FOR THE MASKS AND FOR THE DRAWING, because the second half of that sentence
- * is what makes it total. A row of {@link THE_BLOCKS} holds no mark, so it comes back as
- * itself; a row of a mask holds nothing but marks and blanks. A second function for the form
- * that is not a mask would be a second answer to what a row of the name becomes.
+ * ONE FUNCTION FOR EVERY MASK, which is what keeps the answer to what a row of the name becomes
+ * in one place. A row of a mask holds nothing but marks and blanks; the old drawing
+ * ({@link THE_BLOCKS}) is not drawn any more and is not inked here.
  */
 function inked(rows: readonly string[]): readonly Line[] {
   return rows.map((row) =>
@@ -295,7 +258,7 @@ function inked(rows: readonly string[]): readonly Line[] {
 const NAME: readonly Line[] = inked(NAME_MASK);
 
 /**
- * THE BIGGEST FORM, AS LINES: the drawing itself, and the thing the shortest window this
+ * THE BIGGEST FORM, AS LINES: {@link BIGGEST_MASK} inked, and the thing the shortest window this
  * console draws on is worked out from.
  *
  * EXPORTED, AND THE EXPORT IS THE POINT OF THIS DELIVERY. The floor used to be a number
@@ -309,7 +272,7 @@ const NAME: readonly Line[] = inked(NAME_MASK);
  * two from disagreeing: a fifth form put above this one would be the biggest drawing and would
  * not be what the floor was measured against, and there is no way to write that here.
  */
-export const THE_BIGGEST_DRAWING: readonly Line[] = inked(THE_BLOCKS);
+export const THE_BIGGEST_DRAWING: readonly Line[] = inked(BIGGEST_MASK);
 
 /**
  * The four forms, biggest first: the order the choice below walks.

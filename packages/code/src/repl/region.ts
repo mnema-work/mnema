@@ -66,19 +66,18 @@
  * it is a line of the record, composed and rendered where every other one is
  * (`session.ts`) and only PLACED here, at the far end of its row, which is a position.
  *
- * THE SECOND IS THE ACCENT, AND IT IS CHROME. This sentence used to end "no line that
- * came from a renderer is touched, painted, padded or trimmed here", and the opening
- * panel is what falsified it: a box has a border, a border has a colour, and the title on
- * it and the mark inside it are the same object as the border, the frame the session
- * puts around itself. What survived, and what the guard now says, is the part that was
- * load-bearing: NO LINE OF THE RECORD is painted here. A verdict, a project's path, a
- * hint (everything that says something about what is written down) arrives with the
- * weight and the hue its renderer gave it and leaves with the same ones.
- *
- * AND THERE IS NO FRAME LEFT TO CARRY THE ACCENT. The box went (the console this was drawn
- * from writes its name and its context as text beside its logo and draws none), so what the
- * accent is spent on is the two things it was always really on: the MARK and the TITLE, which
- * say what the product is and nothing about the record.
+ * THE SECOND WAS AN ACCENT, AND THERE IS NONE NOW. This sentence used to say that the layout
+ * spent one hue, magenta, on the mark, the title and the two rules of the input area, on the
+ * premise that *magenta says this is mnema*; and before that "no line that came from a
+ * renderer is touched, painted, padded or trimmed here", which the opening panel's border had
+ * falsified. What falsified the accent is the new brand: the mark has no colour in the
+ * terminal. The drawing of the name and the title arrive in bold from the renderer
+ * (`presentation/banner.ts`, `subjectLine`), the rules are drawn in the terminal's own
+ * foreground and without weight, and this file names no colour at all
+ * (`tests/the-panel.test.ts`). What survived, and what the guard still says, is the part that was
+ * load-bearing: NO LINE OF THE RECORD is painted here. A verdict, a project's path, a hint
+ * (everything that says something about what is written down) arrives with the weight and the
+ * hue its renderer gave it and leaves with the same ones.
  *
  * AND THE EDGES ARE THE SEAMS OF THE PAGE, WHICH USED TO BE *the frame's last surviving
  * siblings*: two rules around the input row, and nothing else. There are three edges now and
@@ -86,8 +85,8 @@
  * region ({@link theTop}) and the two the input area sits between. A FOURTH WAS A GUIDE DOWN THE
  * MARGIN OF WHAT THE SESSION SAYS, and it is gone: what marks the roll now is not an edge but a
  * band behind each command and a glyph that opens each answer, neither of them drawn here and
- * neither of them purple (`presentation/styled.ts`, `echo.ts`). The count that matters did not
- * move: ONE hue, spent in this file, and none of the three severities.
+ * neither of them coloured (`presentation/styled.ts`, `echo.ts`). The count that matters moved
+ * to zero: no hue is spent in this file.
  *
  * AND THE PAGE HAS A LEFT EDGE NOW. What the session says, the arrangement at the top and the
  * roll under it, sits inside a margin, and the margin is a shared statement rather than a
@@ -96,27 +95,12 @@
  * area is outside it, because its rules are what say how wide the terminal is and the caret is
  * a column into the row being typed.
  *
- * SO COLOUR ON THIS SURFACE HAS TWO AXES NOW, and they may not meet. DATA is painted by
- * severity and by nothing else, which is `presentation/styled.ts` and unchanged. CHROME
- * is painted by ONE accent, spent here, and the accent is MAGENTA: the hue this product
- * is marked by. IT WAS CYAN, AND THE ARGUMENT FOR IT WAS *chosen by elimination rather
- * than by taste*: red, green and yellow are the three severities, blue is a link, and cyan
- * was what was left. Elimination NARROWS and it does not choose: magenta survives the same
- * elimination, so what the argument really said was that any survivor would do, and the mark
- * of the product is a better reason than alphabetical luck. Nothing about the rule moved:
- * `tests/the-panel.test.ts` holds both halves, exactly one hue in this file and it is none of
- * the three severities.
- *
- * AND THE ACCENT IS SAYABLE IN TWO ALPHABETS NOW, which is the one thing about that rule this
- * delivery did move. *Spent here* meant spent in this file, because everything the accent was
- * on was DRAWN: a border, in the library's own vocabulary, on a component. The echo is chrome
- * and a LINE at once: it is what a caller sent, so it is composed and rendered like every other
- * line, which is what makes `NO_COLOR` silence it, and a renderer cannot be handed the word
- * `magenta`, it writes an escape. So the same one hue is now written twice, once as a word here
- * and once as SGR 35 there (`presentation/styled.ts`, `ACCENT`), and the two are held together
- * on the bytes rather than by inspection: the echo's prompt is asserted to be wrapped in the
- * very escapes a rule of this file's drawing carries
- * (`tests/the-page-shows-its-seams.test.ts`).
+ * SO COLOUR ON THIS SURFACE HAS ONE AXIS: DATA is painted by severity and by nothing else
+ * (`presentation/styled.ts`), and the chrome carries no hue. IT WAS TWO, with the chrome painted
+ * by one accent (cyan, then magenta) spent here and sayable in two alphabets, the library's
+ * word `magenta` here and SGR 35 in the renderer. Both spellings are gone with the accent:
+ * `tests/the-panel.test.ts` asserts that this file names no colour, and
+ * `tests/the-renderer-writes-no-accent.test.ts` that the renderer writes none.
  */
 
 import { Box, Text, useCursor, useInput } from 'ink';
@@ -129,23 +113,6 @@ import type { Keystroke } from './editing.js';
 // took it. One constant, two readers.
 import { THE_INSET } from './inset.js';
 import { BETWEEN_COLUMNS, BETWEEN_SECTIONS, type Panel } from './panel.js';
-
-/**
- * The one hue this layout spends, on the things it draws: the mark, what the session is, and
- * the two rules the input area sits between.
- *
- * IT WAS SPENT ON A FRAME: the panel's border, the rule down the middle of it and the title
- * laid on its top edge. The frame is gone and the hue is not: what it is on is what the frame
- * was around.
- *
- * MAGENTA, and it is the mark of the product rather than the survivor of an elimination.
- * THE DOC HERE SAID *cyan by elimination* and the elimination is unchanged: the three
- * severities have red, green and yellow, so a frame in any of them would read as a verdict
- * about what it frames, and blue is a link. What that argument could not do is CHOOSE: it
- * leaves cyan and magenta both admissible, and this product is marked in one of the two.
- * There is still no second accent, and that is checked rather than intended.
- */
-const ACCENT = 'magenta';
 
 /**
  * How an EDGE is drawn: the library's own set, asked for by the only thing on this surface
@@ -542,7 +509,7 @@ function theThreeRegions(shown: Showing, tips: string): readonly ReactNode[] {
  * THE RULE IS THE SAME FUNCTION THE INPUT AREA'S TWO ARE ({@link rule}), and that is the
  * decision rather than a saving. There are three regions and one separator: a second way to
  * draw a line across the page would be a second thing to keep in step with the first, and
- * the accent, the style of the edge and the width would each have two places to be right in.
+ * the style of the edge and the width would each have two places to be right in.
  *
  * THE BREATH IS ONE ROW AND NOT TWO. It is what a caller asked for in as many words (a small
  * margin under the banner, so the first thing the session says does not sit against the rule)
@@ -737,13 +704,10 @@ function Middle({ window }: { readonly window: readonly string[] }): ReactNode {
 /**
  * Some already-rendered lines, one to a row, with nothing added to any of them.
  *
- * `accented` is the CHROME switch and it is false for everything that says something about
- * the record. What it is true for is the two things that say nothing about it: the mark (the
- * name drawn, which carries no fact) and the title, which says what the product and the
- * session are. IT WAS TRUE FOR THE MARK ALONE, and the border and the title on it were
- * painted where they were drawn; with the border gone the title is a row like any other, so
- * the switch is what carries the accent onto it. There is no third, and that is checked rather
- * than intended (`tests/the-panel.test.ts`).
+ * THERE IS NO CHROME SWITCH. A switch (`accented`) used to carry the accent onto the mark and the
+ * title and nothing else; with no accent to carry, every row is the same row, and a row that
+ * wants weight gets it from the renderer that made its text (the name and the title arrive
+ * bold).
  *
  * No width is set, unlike the rows above: inside the panel each group is as wide as its widest
  * child and the library measures a line the way a terminal does, so a painted line takes the
@@ -751,13 +715,9 @@ function Middle({ window }: { readonly window: readonly string[] }): ReactNode {
  * agree with the one the FORM was chosen by is the panel's whole geometry, and it is asserted
  * (`tests/the-panel.test.ts`).
  */
-function rows(lines: readonly string[], accented = false): ReactNode[] {
+function rows(lines: readonly string[]): ReactNode[] {
   return lines.map((line, index) =>
-    node(
-      Box,
-      { key: String(index), minHeight: 1 },
-      node(Text, accented ? { color: ACCENT, wrap: THE_MARGIN } : { wrap: THE_MARGIN }, line),
-    ),
+    node(Box, { key: String(index), minHeight: 1 }, node(Text, { wrap: THE_MARGIN }, line)),
   );
 }
 
@@ -778,7 +738,7 @@ function sideBySide(panel: Panel): ReactNode[] {
     node(
       Box,
       { key: 'mark', flexDirection: 'column', paddingRight: BETWEEN_COLUMNS },
-      ...rows(panel.mark, true),
+      ...rows(panel.mark),
     ),
     node(
       Box,
@@ -797,7 +757,7 @@ function sideBySide(panel: Panel): ReactNode[] {
  * FIRST here, because the frame drew it above everything.
  */
 function oneOverTheOther(panel: Panel): ReactNode[] {
-  return [group('mark', panel.mark, true), ...whatItSays(panel)];
+  return [group('mark', panel.mark), ...whatItSays(panel)];
 }
 
 /**
@@ -809,12 +769,12 @@ function oneOverTheOther(panel: Panel): ReactNode[] {
  * the text is five, so text BESIDE the mark costs the page the mark alone, and text under it
  * cost the page both.
  *
- * THE TITLE IS PAINTED AND THE OTHER TWO ARE NOT, which is the same switch the mark is drawn
- * with and the same reason: it says what the session is rather than anything about the record.
- * It is the accent's second and last place, exactly as it was when the border carried it.
+ * THE TITLE IS BOLD AND THE OTHER TWO ARE NOT, by the renderer that wrote it (`subjectLine`) and
+ * not by anything done here: it says what the session is rather than anything about the record.
+ * It used to be the accent's second place, and the accent is gone.
  */
 function whatItSays(panel: Panel): ReactNode[] {
-  return [group('title', [panel.title], true), group('standing', panel.standing), theRecord(panel)];
+  return [group('title', [panel.title]), group('standing', panel.standing), theRecord(panel)];
 }
 
 /**
@@ -824,8 +784,8 @@ function whatItSays(panel: Panel): ReactNode[] {
  * a row is identified inside its parent by its POSITION, so two groups sharing a parent would
  * each have a first row claiming the same place.
  */
-function group(key: string, lines: readonly string[], accented = false): ReactNode {
-  return node(Box, { key, flexDirection: 'column' }, ...rows(lines, accented));
+function group(key: string, lines: readonly string[]): ReactNode {
+  return node(Box, { key, flexDirection: 'column' }, ...rows(lines));
 }
 
 /**
@@ -881,7 +841,7 @@ function theRecord(panel: Panel): ReactNode {
  *
  * THE RULES ARE DRAWN AND NOT WRITTEN: a box with nothing in it and one edge switched on, so
  * the run of glyphs is the library's. A string of dashes typed here would be text a component
- * put on the page. They are CHROME and they take the one accent this file spends. THIS SAID
+ * put on the page. They are CHROME and they take the terminal's own foreground, with no hue and no weight. THIS SAID
  * *exactly as the one inside the panel is* and *like the frame they are the siblings of*, and
  * the panel has neither: the frame went. IT THEN SAID THESE TWO WERE *the only edges left on
  * the surface*, and what falsified that is the page showing its seams: the top region is
@@ -975,7 +935,6 @@ function breathing(): ReactNode {
 function rule(): ReactNode {
   return node(Box, {
     borderStyle: BORDER,
-    borderColor: ACCENT,
     borderBottom: false,
     borderLeft: false,
     borderRight: false,
