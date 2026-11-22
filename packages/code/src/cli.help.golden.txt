@@ -4,7 +4,7 @@ $ mnema
 | A mnema project is founded here.
 | 1 decision(s) await a judgement: `mnema decision review` goes through them.
 | 1 rule(s) in force you did not accept yourself, none shown to you yet: `mnema decision review` shows each one and marks it shown.
-| Off on this machine: edit-first-write-gate, opening-core. Turn one on with `mnema switch on <name>`.
+| Off on this machine: edit-first-write-gate, opening-core, record-publish. Turn one on with `mnema switch on <name>`.
 | Next:
 |   `mnema status`                                where things stand
 |   `mnema decision record <title> <rationale>`   record a choice that was settled
@@ -768,7 +768,7 @@ $ mnema switch --help
 |   What it carries is what stops arriving when it is off.
 |   An off switch says who made it and when, and whether a clone of this
 |   repository holds it: a switch recorded privately governs only this machine.
-|   A channel with no switch is on, except edit-first-write-gate and opening-core, which are off until switched on.
+|   A channel with no switch is on, except edit-first-write-gate, opening-core and record-publish, which are off until switched on.
 
 ### mnema inherit --help
 $ mnema inherit --help
@@ -1252,6 +1252,7 @@ $ mnema record --help
 | Commands:
 |   pull                                          git pull over tails grown here and not yet committed
 |   commit [options]                              commit the signed record to a branch for a pull request
+|   publish [options]                             push the record branch and open its pull request, to a destination you name
 |   merge-tail <ancestor> <ours> <theirs> [path]  the merge driver git runs for a tail's files
 |   help [command]                                display help for command
 
@@ -2473,7 +2474,7 @@ $ mnema switch off --help
 |                    host-memory-mirror, decision-file-written, subagent-handback,
 |                    tool-call-count, last-session, private-rules,
 |                    after-a-compaction, session-journal, agent-mirror,
-|                    session-tally)
+|                    session-tally, record-publish)
 |
 | Options:
 |   --reason <text>  why (recorded in the fact; never required)
@@ -2514,7 +2515,7 @@ $ mnema switch on --help
 |                    host-memory-mirror, decision-file-written, subagent-handback,
 |                    tool-call-count, last-session, private-rules,
 |                    after-a-compaction, session-journal, agent-mirror,
-|                    session-tally)
+|                    session-tally, record-publish)
 |
 | Options:
 |   --reason <text>  why (recorded in the fact; never required)
@@ -2813,6 +2814,28 @@ $ mnema record commit --help
 | signed checkpoint, with the key files the cut names; nothing of the private tree. It
 | verifies that tree, with --since the base, before it makes the branch, then prints the
 | git push and the command that opens the pull request. It pushes nothing.
+
+### mnema record publish --help
+$ mnema record publish --help
+| Usage: mnema record publish [options]
+|
+| push the record branch and open its pull request, to a destination you name
+|
+| Options:
+|   --to <remote/branch>  the branch the pull request asks to merge into, on its
+|                         remote
+|   --through <decision>  cut the tail that records this decision where it is
+|                         covered
+|   --json                emit what was published as JSON
+|   -h, --help            display help for command
+|
+| Off until `mnema switch on record-publish` (recorded for this machine only). It makes what
+| `mnema record commit` makes, on top of the remote-tracking ref you name (the destination is
+| never deduced from HEAD), then pushes that branch alone, without force, and opens the pull
+| request on GitHub through `gh`. It refuses, before it cuts anything, when this repository
+| sets no `user.email` of its own or sets the global one, and when a pull request that
+| changes only the record is open into the destination: it says how long ago it was opened,
+| and that it has stalled past 24 hours. It never merges.
 
 ### mnema record merge-tail --help
 $ mnema record merge-tail --help
