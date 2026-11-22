@@ -140,8 +140,8 @@ export function faviconSvg() {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-48 -48 96 96" width="96" height="96"><rect x="-48" y="-48" width="96" height="96" rx="22" fill="${PALETTE.charcoal}"/>${inside('favicon-eye', { ink: PALETTE.bone, iris: PALETTE.sulphur, ringInk: PALETTE.charcoal, ring: false })}</svg>`;
 }
 
-/** @param {Uint8Array | ArrayBuffer} b */
-const base64 = (b) => Buffer.from(b).toString('base64');
+/** @param {Uint8Array | string} b */
+const base64 = (b) => (typeof b === 'string' ? Buffer.from(b) : Buffer.from(b)).toString('base64');
 
 /** The CSS range the Archivo instances answer for, as `unicode-range` writes it. */
 export const archivoRange = () =>
