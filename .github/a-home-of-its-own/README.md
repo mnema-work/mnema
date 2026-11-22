@@ -23,6 +23,11 @@ workstation it is somebody's real record.
   resolve the machine's home (a `HOME` that is missing, empty, relative or the machine's own, or a
   `MNEMA_HOME` inside that home or equal to the value the suite was started with) is started with
   the test's `HOME` instead, and the case fails naming the line that started it;
+- removes the session variables of the hosts (`HOST_SESSION_VARIABLES`: `CLAUDE_CODE_SESSION_ID`,
+  `COPILOT_AGENT_SESSION_ID` and the candidates of the host table) from the environment before any
+  case, so a run inside a host's session sees none and the processes it starts inherit none; a
+  case that needs one sets it. `a-home-of-its-own.test.ts` fails when the host table names one the
+  list lacks;
 - lists the record places of the checkout the suite runs in (its `.mnema/`, and the `mnema/` of its
   own git directory, where a linked worktree keeps its installation id) when the file starts and
   when it ends, and fails the file if they differ, naming what appeared, was written or was

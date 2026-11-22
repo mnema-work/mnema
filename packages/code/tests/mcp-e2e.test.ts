@@ -588,6 +588,25 @@ describe('MCP session + tools: unit', () => {
     expect(events.find((e) => e.kind === 'handoff.recorded')?.which).toBe('claude-code');
   });
 
+  it('record_observation refuses the id of a real task with its last characters changed, and writes nothing', () => {
+    const project = makeProject('proj');
+    const session = openSession({
+      clientName: 'claude-code',
+      roots: [pathToFileURL(project).href],
+      env,
+    });
+    const task = aTaskIn(session);
+    const last = task.slice(-1);
+    const mistyped = task.slice(0, -1) + (last === '0' ? '1' : '0');
+    expect(mistyped).not.toBe(task);
+    const root = chainRootForScope(session.trees, 'public') as string;
+    const before = orderedEvents({ root }, catalogUpcasters()).length;
+    expect(
+      runRecordObservation(session, { about: mistyped, topic: 't', text: 'lost?' }),
+    ).toMatchObject({ ok: false, code: 'UNKNOWN_RECORD' });
+    expect(orderedEvents({ root }, catalogUpcasters()).length).toBe(before);
+  });
+
   it('record_handoff and record_observation refuse an id no tree of the workspace holds, and write nothing', () => {
     const project = makeProject('proj');
     const session = openSession({
@@ -634,6 +653,46 @@ describe('MCP session + tools: unit', () => {
     expect(
       runRecordObservation(session, { about: first.id, topic: 't', text: 'about the first' }).ok,
     ).toBe(true);
+  });
+
+  it('record_observation refuses the id of a real task whose last group was changed, and writes nothing', () => {
+    const project = makeProject('proj');
+    const session = openSession({
+      clientName: 'claude-code',
+      roots: [pathToFileURL(project).href],
+      env,
+    });
+    const task = aTaskIn(session);
+    const groups = task.split('-');
+    const last = groups[groups.length - 1] as string;
+    groups[groups.length - 1] = (last.startsWith('0') ? '1' : '0') + last.slice(1);
+    const mistyped = groups.join('-');
+    expect(mistyped).not.toBe(task);
+    const held = (): string =>
+      JSON.stringify(
+        (['public', 'private'] as const).map((scope) =>
+          orderedEvents(
+            { root: chainRootForScope(session.trees, scope as Scope) as string },
+            catalogUpcasters(),
+          ),
+        ),
+      );
+    const before = held();
+
+    for (const scope of [undefined, 'public', 'private'] as const) {
+      const given = scope === undefined ? {} : { scope };
+      const refused = runRecordObservation(session, {
+        about: mistyped,
+        topic: 't',
+        text: 'x',
+        ...given,
+      });
+      expect(refused).toMatchObject({ ok: false, code: 'UNKNOWN_RECORD' });
+      if (!refused.ok) expect(refused.message).toContain(mistyped);
+    }
+    expect(held()).toEqual(before);
+    // The right id is still accepted, so the refusal above is about the id and nothing else.
+    expect(runRecordObservation(session, { about: task, topic: 't', text: 'x' }).ok).toBe(true);
   });
 
   it('record_handoff refuses a scope absent here as data', () => {
@@ -3754,7 +3813,7 @@ describe('MCP: what enters the record', () => {
     expect(description).toContain('the people and agents working on this project wrote');
     expect(description).not.toContain('not an instruction');
     expect(description).toContain('does not vet what it says');
-    expect(description).toContain('a person');
+    expect(description).toContain('no agent declared');
     // It is the read that declares it; nothing else serves a body.
     const other = tools.tools.find((t) => t.name === 'read_record')?.description ?? '';
     expect(other).not.toContain('WHAT A PATTERN IS');

@@ -356,6 +356,26 @@ describe('a tail that cannot be relied on covers nothing', () => {
     expect(b.write().after).toEqual([a.head()]);
   });
 
+  it('a waiver this very act writes ends what the tail it names covered, in the act itself', () => {
+    const a = machine();
+    const y = machine();
+    const b = machine();
+    a.write();
+    y.write();
+    // y cites a, so y would cover a; b has cited nothing yet, and its first act is the waiver of y.
+    const act = b.put(
+      (envelope) =>
+        tailPruned(envelope, {
+          tail: y.writer.tail,
+          throughHash: y.head(),
+          eventCount: 1,
+          reason: 'cut',
+        }),
+      y.writer.anchor,
+    );
+    expect(act.after).toEqual([a.head(), y.head()].sort());
+  });
+
   it('a tail whose key the record does not commit covers nothing', () => {
     const a = machine();
     const c = machine();

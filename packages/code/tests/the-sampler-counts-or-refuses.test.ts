@@ -572,6 +572,7 @@ describe('the sampler names one issue per case that failed', () => {
       read: 10,
       expect: 10,
       perLabel: 10,
+      cut: 0,
       labels: [{ label: 'n', count: 10 }],
       cases: { least: 1, most: 1 },
       rows: [
@@ -683,6 +684,112 @@ describe('a broken night is told to somebody', () => {
     expect(tell).toContain('tally/ruler-issue.json');
     expect(tell).toContain('the night produced no tally [sampler-ruler-broken]');
     expect(tell).toContain('needs: [sample, summarise]');
+  });
+});
+
+/** Marks run `seq` of `label` as never started for want of time, as the workflow's loop does. */
+function cutBy(dir: string, label: string, ...seqs: number[]): void {
+  for (const seq of seqs) {
+    writeFileSync(
+      join(dir, `cut--${label}--${String(seq).padStart(2, '0')}.txt`),
+      'not started: the time budget could not hold another run\n',
+    );
+  }
+}
+
+describe('a repetition the time budget kept from starting is not a run that went missing', () => {
+  it('counts the runs a slow shard completed when the rest never started', () => {
+    const dir = night({
+      'node24-shard1': all('passed', 5),
+      'node24-shard2': all('passed', 4),
+    });
+    cutBy(dir, 'node24-shard2', 5);
+
+    const result = tally({ dir, root: RUNNER_ROOT, expect: 10, perLabel: 5 });
+
+    expect(result.verdict).toBe('CLEAN');
+    expect(result.broken).toEqual([]);
+    expect(result.read).toBe(9);
+    expect(result.cut).toBe(1);
+    expect(render(result)).toContain('1 further run was never started');
+  });
+
+  it('still refuses a run that started and wrote no report, even beside a cut one', () => {
+    const dir = night({ 'node24-shard1': all('passed', 3) });
+    cutBy(dir, 'node24-shard1', 5);
+
+    const result = tally({ dir, root: RUNNER_ROOT, expect: 5, perLabel: 5 });
+
+    expect(result.verdict).toBe('RULER BROKEN');
+    expect(result.broken.join('\n')).toContain('could read 3');
+    expect(result.broken.join('\n')).toContain('carries 3 runs, not the 4 asked for');
+  });
+
+  it('refuses a run both reported and marked never started', () => {
+    const dir = night({ 'node24-shard1': all('passed', 5) });
+    cutBy(dir, 'node24-shard1', 5);
+
+    const result = tally({ dir, root: RUNNER_ROOT, expect: 5, perLabel: 5 });
+
+    expect(result.verdict).toBe('RULER BROKEN');
+    expect(result.broken.join('\n')).toContain('both reported and marked as never started');
+  });
+
+  it('refuses a marker that names a run outside the count, or a label that ran nothing', () => {
+    const outside = night({ 'node24-shard1': all('passed', 5) });
+    cutBy(outside, 'node24-shard1', 6);
+    const none = night({ 'node24-shard1': all('passed', 5) });
+    cutBy(none, 'node24-shard2', 1, 2, 3, 4, 5);
+
+    expect(
+      tally({ dir: outside, root: RUNNER_ROOT, expect: 5, perLabel: 5 }).broken.join('\n'),
+    ).toContain('outside the 5 asked for');
+    expect(
+      tally({ dir: none, root: RUNNER_ROOT, expect: 10, perLabel: 5 }).broken.join('\n'),
+    ).toContain('reported no run at all');
+  });
+
+  it('refuses two markers for one run, however the sequence is written', () => {
+    const dir = night({ 'node24-shard1': all('passed', 3) });
+    cutBy(dir, 'node24-shard1', 4);
+    writeFileSync(join(dir, 'cut--node24-shard1--4.txt'), 'not started\n');
+
+    const result = tally({ dir, root: RUNNER_ROOT, expect: 5, perLabel: 5 });
+
+    expect(result.verdict).toBe('RULER BROKEN');
+    expect(result.broken.join('\n')).toContain('two cut markers claim "node24-shard1--4"');
+  });
+
+  it('refuses a marker before a reported run, which may have started and hung', () => {
+    const dir = night({ 'node24-shard1': all('passed', 5) });
+    rmSync(join(dir, 'run--node24-shard1--02.json'));
+    cutBy(dir, 'node24-shard1', 2);
+
+    const result = tally({ dir, root: RUNNER_ROOT, expect: 5, perLabel: 5 });
+
+    expect(result.verdict).toBe('RULER BROKEN');
+    expect(result.broken.join('\n')).toContain('precedes a reported run');
+  });
+
+  it('says up to N per label when a label ran fewer, and N per label otherwise', () => {
+    const cutDir = night({ 'node24-shard1': all('passed', 4) });
+    cutBy(cutDir, 'node24-shard1', 5);
+    const whole = night({ 'node24-shard1': all('passed', 5) });
+
+    expect(render(tally({ dir: cutDir, root: RUNNER_ROOT, expect: 5, perLabel: 5 }))).toContain(
+      'up to 5 per label',
+    );
+    const page = render(tally({ dir: whole, root: RUNNER_ROOT, expect: 5, perLabel: 5 }));
+    expect(page).toContain('5 per label');
+    expect(page).not.toContain('up to');
+  });
+
+  it('still refuses a shard that is short with no marker at all', () => {
+    const dir = night({ 'node24-shard1': all('passed', 5), 'node24-shard2': all('passed', 4) });
+
+    const result = tally({ dir, root: RUNNER_ROOT, expect: 10, perLabel: 5 });
+
+    expect(result.verdict).toBe('RULER BROKEN');
   });
 });
 

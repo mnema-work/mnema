@@ -13,8 +13,9 @@ For each tree it copies, the copy holds two kinds of file and nothing else:
 - the **public keys**: `keys/*.pub`, the public halves of the keys the tree's events name.
 
 A project's copy is `<folder>/<name of the record>/<tree>/`. The private tree is always copied; the
-public tree only where the project is not in git, because a repository's history is the public
-tree's own backup. The machine's **global tree** is a copy of its own, `<folder>/global/`, made only
+public tree only where git does not hold it: a project outside git, or a **local record**, one a
+repository excludes (`.git/info/exclude` names `.mnema/`) and holds no file of (`git ls-files -- .mnema` is empty). A committed record's
+history is the public tree's own backup. The machine's **global tree** is a copy of its own, `<folder>/global/`, made only
 by `mnema backup run --global` into the folder `mnema backup setup --global <folder>` gave it. It mixes the
 memory and the decisions of every project on the machine, so a project's run never copies it, and
 the folder of a project is not the folder of the global tree unless you name the same one for both.
@@ -34,6 +35,8 @@ finds otherwise stops and leaves the copy as it was.
   stay out of it until a study of what they hold decides whether a copy should carry them. The list
   of what is copied is a list of what is taken (tails and public keys), so a file added to a tree
   later is not copied until someone decides it should be.
+- **The ledger of caught failures** (`log/swallowed.jsonl`, in the machine's data directory and not in a tree). It holds facts about
+  this machine and is never copied: [what it keeps](the-ledger-of-caught-failures.md).
 - **Anything a symbolic link points at.** A link in a tree it copies from, or in the folder it
   copies to, stops the run, because a link can point outside what you meant.
 
@@ -90,7 +93,7 @@ question shows both names. On a yes, what the tree holds is **moved**, not copie
 never shows it; the move is checked before the copy goes in. `mnema backup restore --undo` puts the newest one back (and says how many others stay), and
 moves what stood there meanwhile into the same folder, so nothing is deleted. **No restore deletes a
 folder kept aside**: they stay in `<git directory>/mnema/` (or in `<mnema home>/before-restore/`, below) until you delete them by hand, and
-`mnema backup status` lists the ones of this project with their date and size, including a folder an undo emptied, which now holds only what stood there before it (`restored-<tree>/`). Only a project in a git
+`mnema backup status` lists the ones of this project with their date and size, including a folder an undo emptied, which now holds only what stood there before it (`restored-<tree>/`). Only a project in a git repository keeps them in its git directory.
 A project outside a git repository has no git directory to hold it, so its folder is
 `<mnema home>/before-restore/<UTC date>/` (the mnema home is `~/.mnema`, or `$MNEMA_HOME` when that is set; the date has no colon
 either), with the same marks and the same rules: the question at a terminal, `--undo`, the `restored-<tree>/` folders, the listing in `backup status`,
@@ -102,7 +105,16 @@ it by hand. The machine's global tree has its own restore, `mnema backup restore
 machine reads the global tree, and a global restore never touches a project's trees, nor a project's restore the global tree. The tree is checked by this mnema's reader before and after it
 moves; the second reader (the Python program) is not run on it.
 
-The same question is asked when a project has no record name at all: a project without git backs up its public tree, and
+A local record whose `.mnema/` folder is gone (`git clean -fdX` removes an excluded folder) is restored from the top of its
+repository: `mnema backup restore` finds the place where git still excludes `.mnema/`, takes the name of the record from the
+copy this machine has (`--from <record>` when it has more than one), and puts both trees back. It looks only at the top of the
+repository (a project in a subfolder with a local record is not restored from a folder that is gone), and only where
+git excludes the folder and holds none of it; a repository that commits its record has its history to restore from.
+
+`mnema doctor`, the tail repair and the place where a restore keeps what it replaces still take a project in a repository
+for one whose public tree git keeps, local record or not.
+
+The same question is asked when a project has no record name at all: a project without git, or with a local record, backs up its public tree, and
 when that tree lost its tails nothing names the record. `restore` then takes the name from the copy's manifest, shows it, and
 asks (when this machine has the copy of more than one record, it asks for `--from`). A copy that disagrees with itself (the folder, its
 manifest and its tails name different records) is refused, never asked.

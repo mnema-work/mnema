@@ -67,7 +67,7 @@ const HOSTS: Readonly<Record<string, Host>> = {
       description: t.description,
       input_schema: t.inputSchema,
     }),
-    overhead: { bytes: 1_272, tokens: 590 },
+    overhead: { bytes: 1_293, tokens: 601 },
   },
   'Gemini CLI': {
     file: 'weights/gemini.json',

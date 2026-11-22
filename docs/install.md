@@ -38,6 +38,29 @@ first reply an agent's connection gets carries a note for you to run it; a machi
 nothing. To run the `main` branch instead of the published version,
 see [Building it from source](build-from-source.md).
 
+## Try it without installing
+
+To see the whole loop once before you install anything, run it in a scratch repository with `npx`, which
+fetches the package, runs one command and leaves no `mnema` on your `PATH`:
+
+```sh
+mkdir mnema-try && cd mnema-try && git init -q
+npx --yes @mnema/code@0.1.9 init
+ADR=$(npx --yes @mnema/code@0.1.9 decision record "Keep money as integer cents" "Float sums drift; cents are exact." | grep -o -m1 'ADR-[0-9]*')
+npx --yes @mnema/code@0.1.9 decision move accept "$ADR" --note "Agreed in review."
+npx --yes @mnema/code@0.1.9 show "$ADR"
+npx --yes @mnema/code@0.1.9 verify
+```
+
+In order: the record founded in `.mnema/` of the scratch folder; a decision, which enters proposed; accepting it;
+reading it back; and `verify`, whose one line saying the record is intact is the green. `npx` keeps the package in
+npm's cache, and `init` makes your signing identity under `~/.mnema`, outside the scratch folder: deleting
+`mnema-try` removes the record, not that identity, which stays, with its backup key in `~/.mnema/identity/backup`,
+and is the one a later install uses. To remove them too, delete `~/.mnema` (it holds your keys for every project, so
+do that only if this was your first run). The pinned number is a published version; use one you mean to
+try. `.github/the-npx-recipe/run.sh` runs this block, read from this page, against the package packed from
+each commit of `main`.
+
 ## Check it
 
 ```sh
@@ -52,7 +75,7 @@ your `PATH` is the one you meant and whether the `node` it uses takes it. It wri
 ## Pin a version
 
 ```sh
-npm i -g @mnema/code@0.1.8
+npm i -g @mnema/code@0.1.9
 ```
 
 To update, run the unpinned install again, then `mnema upgrade` in each project.
@@ -65,7 +88,7 @@ install (it fails with `EAUDITGLOBAL`), so check the version you installed in an
 
 ```sh
 mkdir mnema-check && cd mnema-check && npm init -y > /dev/null
-npm i --ignore-scripts @mnema/code@0.1.8
+npm i --ignore-scripts @mnema/code@0.1.9
 npm audit signatures
 ```
 
@@ -73,6 +96,11 @@ It prints how many packages have verified registry signatures and how many have 
 attestations; `npm audit signatures --json --include-attestations` names each, and every
 `@mnema/*` package carries an SLSA provenance attestation. The registry serves one tarball per
 version, so this checks the same package a global install of that version fetches.
+
+From the release after 0.1.8, the GitHub release also carries a Sigstore provenance bundle for the five tarballs
+(`mnema-npm-packages-<version>.sigstore.json`) and one for the extension's `.vsix`
+(`mnema-<version>.vsix.sigstore.json`). Download a file and its bundle from the release page, then
+`gh attestation verify <file> --repo mnema-work/mnema` checks the file against its attestation.
 
 From 0.1.7, the `mnema` command is one bundle inside `@mnema/code`
 (`dist/bundle/`): the code of its dependencies is copied into it at build time, so the

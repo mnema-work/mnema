@@ -119,6 +119,10 @@ export interface ReferenceNode {
   readonly resolved: boolean;
   /** What kind of record it is, when the projections name one. */
   readonly kind?: SearchKind;
+  /** The title, filled only when the walk was asked to name what it reached. */
+  readonly title?: string;
+  /** The state, filled only when the walk was asked to name what it reached. */
+  readonly state?: string;
   /** The tree that holds it, when it resolves to a record. */
   readonly scope?: Scope;
   /**

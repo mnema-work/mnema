@@ -1,6 +1,6 @@
 import type { ServedSkill, SkillCatalogue } from '@mnema/context';
 import { describe, expect, it } from 'vitest';
-import { A_PERSON } from './one-line.js';
+import { NO_AGENT_DECLARED } from './one-line.js';
 import { patternsFraming, SERVED_PATTERN_CONTRACT } from './served-patterns.js';
 
 /**
@@ -57,7 +57,7 @@ describe('patternsFraming: what the surface says about a pattern it serves', () 
 
   it('says "a person" out loud when no agent adopted it, never a blank', () => {
     const lines = patternsFraming(bodies([skill('By hand')]));
-    expect(lines[1]).toBe(`  “By hand”: adopted by ${A_PERSON}`);
+    expect(lines[1]).toBe(`  “By hand”: adopted by ${NO_AGENT_DECLARED}`);
     // The absence is stated, not left as a dangling "adopted by".
     expect(lines[1]).not.toMatch(/adopted by\s*$/);
   });
@@ -149,7 +149,7 @@ describe('patternsFraming: what the surface says about a pattern it serves', () 
     // apart, and it is on the line.
     const lines = patternsFraming(bodies([candidate('Maybe this')]));
     expect(lines[1]).toBe('  “Maybe this”: proposed, adopted by nobody');
-    expect(lines.join('\n')).not.toContain(`adopted by ${A_PERSON}`);
+    expect(lines.join('\n')).not.toContain(`adopted by ${NO_AGENT_DECLARED}`);
     // And the state served is the state printed: `reviewed` is not `proposed`.
     expect(patternsFraming(bodies([candidate('Looked at', 'reviewed')]))[1]).toBe(
       '  “Looked at”: reviewed, adopted by nobody',
@@ -244,6 +244,6 @@ describe('SERVED_PATTERN_CONTRACT: the declaration a caller reads first', () => 
     expect(SERVED_PATTERN_CONTRACT).toContain('does not vet');
     // And that an act with no agent behind it is said as a person, in the same
     // words the reply uses.
-    expect(SERVED_PATTERN_CONTRACT).toContain(A_PERSON);
+    expect(SERVED_PATTERN_CONTRACT).toContain(NO_AGENT_DECLARED);
   });
 });
