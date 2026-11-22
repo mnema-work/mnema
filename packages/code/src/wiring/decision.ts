@@ -219,7 +219,7 @@ export function registerDecision(program: Command, wiring: Wiring): Declared {
         ...(run !== undefined ? { run } : {}),
         atATerminal: io.aPersonIsHere === true,
       });
-      await reportDecisionMove(result, id, wiring);
+      await reportDecisionMove(result, id, wiring, action);
       if (result.ok) moved += 1;
     }
     if (ids.length > 1 && moved < ids.length) {
@@ -470,6 +470,7 @@ async function reportDecisionMove(
   result: ReturnType<typeof runDecisionTransition>,
   id: string,
   to: Reporter,
+  action?: string,
 ): Promise<void> {
   if (result.ok) {
     const { movedLine } = await import('../moved-record.js');
@@ -482,7 +483,18 @@ async function reportDecisionMove(
     reportReplacement(result, to.io);
     return;
   }
-  reportRefusal(to, result, { UNKNOWN_DECISION: noSuchRecord('decision', id) });
+  // `move <id> accept`: the id is read as the action, and the action as an id. The word in the id's
+  // position is a verdict, so the sentence says which way round the line goes.
+  const swapped =
+    action !== undefined &&
+    !(DECISION_MOVE_ACTIONS as readonly string[]).includes(action) &&
+    (DECISION_MOVE_ACTIONS as readonly string[]).includes(id);
+  const none = noSuchRecord('decision', id);
+  reportRefusal(to, result, {
+    UNKNOWN_DECISION: swapped
+      ? `${none} The action goes before the id: mnema decision move ${id} <id>.`
+      : none,
+  });
 }
 
 /**
