@@ -336,6 +336,7 @@ describe('the four workflows of the security checks', () => {
     expect(text).toContain('fail-on-severity: moderate');
     expect(text).toContain('comment-summary-in-pr: on-failure');
     expect(text).toMatch(/allow-licenses: >-\n\s+MIT, Apache-2\.0, BSD-2-Clause/);
+    expect(text).toMatch(/^ {10}allow-dependencies-licenses: pkg:npm\/argparse@2\.0\.1$/m);
     expect(text).toMatch(/^ {6}pull-requests: write$/m);
   });
 
