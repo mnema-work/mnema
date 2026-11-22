@@ -521,8 +521,12 @@ export function readRecord(sources: readonly ScopedCache[], id: string): RecordB
     if (memory !== null) return { kind: 'memory', ...held, record: memory };
     const observation = cache.getObservation(id);
     if (observation !== null) return { kind: 'observation', ...held, record: observation };
-    const decision = cache.getDecision(id);
-    if (decision !== null) {
+    const kept = cache.getDecision(id);
+    if (kept !== null) {
+      // The accepts the fold keeps (their entry hashes) are what a showing is matched against, and
+      // nothing a reader of one record asks for: `acceptedBy` already says who ruled it. They are
+      // left out of the record served, as they were before the projection kept them.
+      const { accepts: _matchedOnly, ...decision } = kept;
       const caches = sources.map((source) => source.cache);
       const trees = treeOf(sources);
       return {

@@ -74,7 +74,11 @@ import {
   recordChannelServed,
   switchChannel,
 } from '../workflow/channel-operations.js';
-import { acceptDecision, recordDecision } from '../workflow/decision-operations.js';
+import {
+  acceptDecision,
+  recordDecision,
+  recordDecisionSeen,
+} from '../workflow/decision-operations.js';
 import {
   declareBackup,
   enrollKey,
@@ -288,6 +292,17 @@ const ARRIVALS: { readonly [K in EventKind]: Arrival } = {
   'skill.consulted': {
     setup: (_ctx, already) => already.skill,
     emit: (ctx, skill) => landed(recordConsultation(ctx, { skill: skill as string })),
+  },
+  'decision.seen': {
+    setup: (_ctx, already) => already.decision,
+    emit: (ctx, decision) =>
+      landed(
+        recordDecisionSeen(ctx, {
+          decision: decision as string,
+          moves: ['a'.repeat(64)],
+          atATerminal: true,
+        }),
+      ),
   },
   // A waiver may not name the tail it is written to, so a second tail has to exist
   // before the frontier is taken.

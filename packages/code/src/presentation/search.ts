@@ -16,7 +16,7 @@
  */
 
 import type { RecordSearch } from '@mnema/context';
-import { SEARCH_KINDS, SEARCH_MAX_LIMIT } from '@mnema/core';
+import { SEARCH_KINDS, SEARCH_MAX_LIMIT, wordsOf } from '@mnema/core';
 import { oneLine } from '../one-line.js';
 import { asId, asScope, asWhen, itemLine } from './items.js';
 import { replacementFact } from './record.js';
@@ -38,7 +38,11 @@ export function searchReport(
   // did not come out of the record at all.
   const forTerm = term !== undefined && term.trim() !== '' ? ` matching "${oneLine(term)}"` : '';
   if (result.hits.length === 0) {
-    return [term !== undefined ? `Nothing recorded${forTerm}.` : 'Nothing recorded here yet.'];
+    const first = term !== undefined ? `Nothing recorded${forTerm}.` : 'Nothing recorded here yet.';
+    if (term !== undefined && wordsOf(term).length > 1) {
+      return [first, 'Every word has to be in the same record: try fewer words.'];
+    }
+    return [first];
   }
   // "5 of 137" is the honest header when the limit cut the answer: a capped list
   // that does not say it was capped reads as everything there is.

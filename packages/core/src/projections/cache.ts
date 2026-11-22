@@ -89,12 +89,14 @@ import {
   listAuthors,
   listChargesAt,
   listReferences,
+  listShowings,
   listSubjectRuns,
   listUnannouncedRuns,
   type ReferenceDirection,
   type ReferenceEdgeRow,
   type ReferenceRow,
   type ReferenceSeed,
+  type Showing,
   type SubjectRun,
   tallyAuthorship,
   walkReferences,
@@ -1194,6 +1196,15 @@ export class ProjectionCache {
    */
   subjectRuns(kind: EventKind): SubjectRun[] {
     return listSubjectRuns(this.db, kind);
+  }
+
+  /**
+   * Every showing of a decision in force this tree holds (`decision.seen`), in its order: what the
+   * list of the rules a person did not accept themselves is folded from, beside the accepts each
+   * decision keeps ({@link DecisionProjection.accepts}).
+   */
+  showings(): Showing[] {
+    return listShowings(this.db);
   }
 
   /**

@@ -76,6 +76,8 @@ export {
 // owes a check to each rule in force. It asks `decisionsInForce`, so the rule is still decided once.
 export {
   type Acceptance,
+  acceptancesInForce,
+  countAcceptances,
   type DecisionRef,
   type DisputedDecision,
   decisionDisposition,
@@ -110,6 +112,10 @@ export {
   nextActions,
   nextActionsForTask,
 } from './context/next-action.js';
+// The list of the rules in force a person did not accept themselves (ADR-623): read by bare `mnema`
+// and by `decision review`, which marks what it shows.
+export { type NotSeen, type RuleNotSeen, rulesNotSeenBy } from './context/not-seen.js';
+export { decisionsTheyDictated } from './context/opening-core.js';
 export {
   A_RUN_IS_HERE_FOR_SECONDS,
   CLOCKS_MAY_DIFFER_BY_SECONDS,
@@ -189,6 +195,13 @@ export {
   type WhoAccount,
   type WorkspaceAccountability,
 } from './intelligence/accountability.js';
+export {
+  type AcceptWithoutTheirWords,
+  type AgentAcceptsReading,
+  agentAcceptsReading,
+  type PersonRuleSuperseded,
+  restsOnThePerson,
+} from './intelligence/agent-accepts.js';
 export {
   type Antipatterns,
   antipatterns,

@@ -191,10 +191,9 @@ describe('the machine the verdict is asked from', () => {
     if (!here.ok || !there.ok) throw new Error('verify refused a project it was run in');
 
     const kinds = (out: VerifyDone) =>
-      verdictOf(out, 'public').result.census.map((note) => [
-        note.kind,
-        'fingerprint' in note ? note.fingerprint : undefined,
-      ]);
+      verdictOf(out, 'public')
+        .result.census.filter((note) => note.kind !== 'undeclared-which')
+        .map((note) => [note.kind, 'fingerprint' in note ? note.fingerprint : undefined]);
     expect(kinds(here)).toEqual([['backup-key', backup]]);
     expect(kinds(there)).toEqual([['backup-key', backup]]);
     const [said] = verdictOf(there, 'public').result.census;

@@ -25,6 +25,7 @@ In the help under **Read**.
 | `--json` | emit the faithful index as JSON (one ordered list) |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
+A term of several words finds only the records that contain every one of them; when none does, the reply says so and suggests trying fewer words.
 
 When more records match than are shown, the header says `<shown> of <matched> record(s)` and the next line says how many matched. Below the ceiling the limit cut the list (20 by default), and the line points at `--limit` (up to 200). At the ceiling of 200 no limit reaches further and there is no offset: the line points at a window of dates, `--from <iso>` and `--to <iso>`. `--to` is inclusive, so the next window may repeat the instant it started from. `--json` carries the same count in `total`.
 <!-- End of the part written by hand. -->
