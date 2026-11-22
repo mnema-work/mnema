@@ -52,6 +52,7 @@ carries the help the command prints, word for word.
 - [mnema brief](cli/brief.md): print what governs the work here as markdown, for an agent to read
 - [mnema recall](cli/recall.md): print the notes recorded here as markdown, near ones first, for an agent to read
 - [mnema rules](cli/rules.md): show which recorded rules govern a path, and which address nothing
+  - [mnema rules test](cli/rules-test.md): check the verdicts a file declares for paths against the record’s rules
 - [mnema rules-file](cli/rules-file.md): print the rules addressed at a file as another host’s rules file, and why the rest are not
 - [mnema instructions](cli/instructions.md): write the mnema instructions into the files an agent host reads (AGENTS.md and its kin), check them, or remove them
 - [mnema switch](cli/switch.md): turn off, or back on, what mnema hands to a model unasked, and whether an agent may accept a decision

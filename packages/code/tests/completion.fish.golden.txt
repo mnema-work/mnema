@@ -21,6 +21,8 @@ function __mnema_commands --description 'the subcommands one level of the tree o
             echo 'add remove list index show diff check export enable disable help'
         case 'task'
             echo 'create move handoff next guard help'
+        case 'rules'
+            echo 'test'
         case 'switch'
             echo 'off on'
         case 'inherit'
@@ -479,10 +481,16 @@ complete -c mnema -f -n '__mnema_at "recall"' -s V -l version
 complete -c mnema -f -n '__mnema_at "recall"' -l color -x -a 'auto always never'
 
 # mnema rules
+complete -c mnema -f -n '__mnema_at "rules"' -a 'test' -d 'check the verdicts a file declares for paths against the record’s rules'
 complete -c mnema -f -n '__mnema_at "rules"' -l json
 complete -c mnema -f -n '__mnema_at "rules"' -s h -l help
 complete -c mnema -f -n '__mnema_at "rules"' -s V -l version
 complete -c mnema -f -n '__mnema_at "rules"' -l color -x -a 'auto always never'
+
+# mnema rules test
+complete -c mnema -f -n '__mnema_at "rules test"' -s h -l help
+complete -c mnema -f -n '__mnema_at "rules test"' -s V -l version
+complete -c mnema -f -n '__mnema_at "rules test"' -l color -x -a 'auto always never'
 
 # mnema rules-file
 complete -c mnema -f -n '__mnema_at "rules-file"' -l host -x -a 'claude vscode cursor'

@@ -891,7 +891,7 @@ export const HANDED_OVER: Readonly<
   'docs/reference/cli/usage.md': { line: 4, name: 3 },
   'docs/reference/cli/witness.md': { line: 1, name: 3 },
   'docs/rule-arrival.md': { line: 1 },
-  'docs/rules-and-the-commits-that-cite-them.md': { line: 7, name: 6, flag: 1 },
+  'docs/rules-and-the-commits-that-cite-them.md': { line: 8, name: 6, flag: 1 },
   'docs/site.md': { line: 3, name: 7 },
   'docs/switches.md': { line: 25, name: 9 },
   'docs/switching-off-what-is-handed-to-a-model.md': { line: 1, name: 2 },
@@ -1182,7 +1182,7 @@ describe('a name whose verb needs more is one somebody looked at', () => {
       .filter((command) => command.commands.length > 0 && actsOnItsOwn(command))
       .map((command) => command.name())
       .sort();
-    expect(acting).toEqual(['switch', 'witness']);
+    expect(acting).toEqual(['rules', 'switch', 'witness']);
     // And the source reads no private field of commander's.
     const source = readFileSync(new URL(import.meta.url), 'utf8');
     expect(codeOnly(source).includes(['_action', 'Handler'].join(''))).toBe(false);

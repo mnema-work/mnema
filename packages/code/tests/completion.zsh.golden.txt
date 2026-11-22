@@ -17,6 +17,7 @@ _mnema_commands() {
     'skill') echo 'create move export provenance help' ;;
     'stack') echo 'add remove list index show diff check export enable disable help' ;;
     'task') echo 'create move handoff next guard help' ;;
+    'rules') echo 'test' ;;
     'switch') echo 'off on' ;;
     'inherit') echo 'set update help' ;;
     'witness') echo 'stamp upgrade sigstore' ;;
@@ -126,6 +127,8 @@ _mnema_described() {
       'next:show the moves the workflow allows a task next (records nothing)' \
       'guard:dry-run the gate: would a move be allowed on a task, and if not, why?' \
       'help:display help for command' ;;
+    'rules') printf '%s\n' \
+      'test:check the verdicts a file declares for paths against the record’s rules' ;;
     'switch') printf '%s\n' \
       'off:stop a channel handing the record to a model unasked' \
       'on:let a channel hand the record to a model again' ;;
@@ -234,6 +237,7 @@ _mnema_flags() {
     'brief') echo '--hook --host -h --help -V --version --color' ;;
     'recall') echo '--hook --host --session --after-a-compaction -h --help -V --version --color' ;;
     'rules') echo '--json -h --help -V --version --color' ;;
+    'rules test') echo '-h --help -V --version --color' ;;
     'rules-file') echo '--host -h --help -V --version --color' ;;
     'instructions') echo '--check --remove --hosts --all-hosts -h --help -V --version --color' ;;
     'switch') echo '-h --help -V --version --color' ;;
@@ -392,6 +396,7 @@ _mnema_values() {
     'recall:--host') echo 'vscode codex copilot opencode gemini qwen' ;;
     'recall:--color') echo 'auto always never' ;;
     'rules:--color') echo 'auto always never' ;;
+    'rules test:--color') echo 'auto always never' ;;
     'rules-file:--host') echo 'claude vscode cursor' ;;
     'rules-file:--color') echo 'auto always never' ;;
     'instructions:--color') echo 'auto always never' ;;

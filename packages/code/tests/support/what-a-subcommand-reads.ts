@@ -45,4 +45,6 @@ export const WHAT_A_SUBCOMMAND_READS: Readonly<Record<string, readonly string[]>
   'witness sigstore': ['--global'],
   'witness stamp': ['--global'],
   'witness upgrade': ['--global'],
+  // `rules test` reads no group flag: `--json` is refused by name.
+  'rules test': [],
 };

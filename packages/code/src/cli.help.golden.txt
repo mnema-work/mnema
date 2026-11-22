@@ -683,16 +683,22 @@ $ mnema recall --help
 
 ### mnema rules --help
 $ mnema rules --help
-| Usage: mnema rules [options] <path>
+| Usage: mnema rules [options] [command] <path>
 |
 | show which recorded rules govern a path, and which address nothing
 |
 | Arguments:
-|   path        the path to ask about, relative to here or absolute
+|   path         the path to ask about, relative to here or absolute
 |
 | Options:
-|   --json      emit the faithful reading as JSON
-|   -h, --help  display help for command
+|   --json       emit the faithful reading as JSON
+|   -h, --help   display help for command
+|
+| Commands:
+|   test <file>  check the verdicts a file declares for paths against the record’s
+|                rules
+|
+| The word `test` after `rules` is the verb `rules test <file>`: a folder named test is asked as ./test.
 
 ### mnema rules-file --help
 $ mnema rules-file --help
@@ -2463,6 +2469,29 @@ $ mnema task guard --help
 | Also accepted here (declared on the parent group):
 |   --which <agent>  simulate an executing agent (must differ from --actor), as the
 |                    real move would be asked by an agent acting for that actor.
+
+### mnema rules test --help
+$ mnema rules test --help
+| Usage: mnema rules test [options] <file>
+|
+| check the verdicts a file declares for paths against the record’s rules
+|
+| Arguments:
+|   file        a JSON file: { "cases": [ { "path": "src/a.ts", "expect": "refuse"
+|               } ] }
+|
+| Options:
+|   -h, --help  display help for command
+|
+| Each case names a path, relative to the project root, and what it must meet:
+|   refuse   the gate refuses a write there
+|   ask      the gate holds a write there for a person
+|   governs  a rule is linked `governs` there, and none refuses or asks
+|   none     no rule stands over the path
+| The answer is the gate’s own, so a switch turned off changes it as it changes the gate.
+| Every case that does not meet its verdict is named, with the rules that stand there,
+| and the exit code is 1; a file with no case, a path that is absolute or leaves the project,
+| or a record the gate cannot read is refused. Nothing is written.
 
 ### mnema switch off --help
 $ mnema switch off --help
