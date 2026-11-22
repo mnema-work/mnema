@@ -170,6 +170,33 @@ describe('what is refused before any proof is checked or built', () => {
     });
   });
 
+  it('a record whose lines parse but do not verify is not proven from', () => {
+    const id = decide('Prove one decision in one file');
+    const tails = join(repo, '.mnema', 'tails');
+    const [tail] = readdirSync(tails);
+    const file = join(tails, tail as string, '000001.jsonl');
+    const lines = readFileSync(file, 'utf-8');
+    expect(lines).toContain('Prove one decision in one file');
+    writeFileSync(
+      file,
+      lines.replace('Prove one decision in one file', 'Prove one decision in one fail'),
+    );
+    expect(runProve({ cwd: repo, env }, { decision: id, private: false })).toEqual({
+      ok: false,
+      reason: 'RECORD_BROKEN',
+      scope: 'public',
+    });
+  });
+
+  it('a folder that is no project has nothing to prove', () => {
+    const bare = join(sandbox, 'bare');
+    mkdirSync(bare);
+    expect(runProve({ cwd: bare, env }, { decision: 'ADR-1', private: false })).toEqual({
+      ok: false,
+      reason: 'NO_PROJECT',
+    });
+  });
+
   it('a file that is not there, or not UTF-8, is no proof to check', () => {
     expect(runProveCheck(join(sandbox, 'nowhere.json'))).toMatchObject({
       ok: false,
@@ -257,5 +284,25 @@ describe('the verb, run by the program in the project', () => {
     const nowhere = await inTheProject('prove', 'not-a-decision');
     expect(nowhere.failed).toBe(true);
     expect(nowhere.err).toContain('No decision not-a-decision here.');
+  });
+
+  it('says why it cannot check a file, find a project, pick one label or trust a broken record', async () => {
+    const unreadable = await inTheProject('prove', '--check', join(sandbox, 'nowhere.json'));
+    expect(unreadable.failed).toBe(true);
+    expect(unreadable.err).toContain('UNREADABLE_PROOF');
+
+    decide('Held in the committed tree');
+    decide('Held in the private tree', 'private');
+    const twice = await inTheProject('prove', 'ADR-1', '--private');
+    expect(twice.failed).toBe(true);
+    expect(twice.err).toContain('ADR-1');
+    expect(twice.err).toContain('ADR-1 names 2 decisions here');
+
+    const tails = join(repo, '.mnema', 'tails');
+    const [tail] = readdirSync(tails);
+    appendFileSync(join(tails, tail as string, '000001.jsonl'), '{"event":{},"link":{}}\n');
+    const broken = await inTheProject('prove', 'not-a-decision');
+    expect(broken.failed).toBe(true);
+    expect(broken.err).toContain('does not verify, so no proof is built from it');
   });
 });

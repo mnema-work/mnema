@@ -349,6 +349,71 @@ const BROKEN: readonly Broken[] = [
     refusal: /whose checkpoint or entries is not of its type/,
   },
   {
+    name: 'a proof that is a list and not an object',
+    text: () => '[]\n',
+    refusal: /a proof that is not a JSON object/,
+  },
+  {
+    name: 'a key that is a number',
+    text: (t) =>
+      changed(t, (p) => {
+        p.keys = [7];
+      }),
+    refusal: /a key that is not a string/,
+  },
+  {
+    name: 'a tail carried twice',
+    text: (t) =>
+      changed(t, (p) => {
+        p.tails = [...(p.tails as Tail[]), ...(p.tails as Tail[])];
+      }),
+    refusal: /the tails are not in ascending order of their ids/,
+  },
+  {
+    name: 'a tail with no range',
+    text: (t) =>
+      changed(t, (p) => {
+        tailOf(p).ranges = [];
+      }),
+    refusal: /carries no range/,
+  },
+  {
+    name: 'a checkpoint that signs another tail',
+    text: (t) =>
+      changed(t, (p) => {
+        const range = tailOf(p).ranges[0] as { checkpoint: string };
+        const { tail } = tailOf(p);
+        const other = `${tail.slice(0, -1)}${tail.endsWith('0') ? '1' : '0'}`;
+        range.checkpoint = range.checkpoint.replace(`"tail":"${tail}"`, `"tail":"${other}"`);
+      }),
+    refusal: /signs the tail/,
+  },
+  {
+    name: 'a checkpoint signed by a key the tail id does not name',
+    text: (t) =>
+      changed(t, (p) => {
+        const range = tailOf(p).ranges[0] as { checkpoint: string };
+        range.checkpoint = range.checkpoint.replace(/"signerFp":"[0-9a-f]/, (found) =>
+          found.endsWith('0') ? `${found.slice(0, -1)}1` : `${found.slice(0, -1)}0`,
+        );
+      }),
+    refusal: /not the key its tail id names/,
+  },
+  {
+    name: 'a line that belongs to another tail',
+    text: (t) =>
+      changed(t, (p) => {
+        const range = tailOf(p).ranges[0] as { entries: string[] };
+        const { tail } = tailOf(p);
+        const other = `${tail.slice(0, -1)}${tail.endsWith('0') ? '1' : '0'}`;
+        range.entries[0] = (range.entries[0] as string).replace(
+          `"tail":"${tail}"`,
+          `"tail":"${other}"`,
+        );
+      }),
+    refusal: /link\.tail is/,
+  },
+  {
     name: 'the lines of a range in another order',
     text: (t) =>
       changed(t, (p) => {
