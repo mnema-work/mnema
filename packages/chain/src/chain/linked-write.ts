@@ -19,6 +19,7 @@ import { basename, join } from 'node:path';
 
 import { CodedError } from './coded-error.js';
 import {
+  anchorPath,
   type ChainLayout,
   checkpointsPath,
   isSegmentFile,
@@ -27,6 +28,9 @@ import {
   tailProofPath,
 } from './layout.js';
 import { LinkedRecordError, listedEntries, refuseLinks } from './store.js';
+
+/** What the refusal says of the act it stopped, when that act is a write of the record. */
+const WRITE_NOT_APPENDED = 'This write was not appended, nothing was written';
 
 /**
  * A WRITE THAT WOULD HAVE GONE THROUGH A SYMBOLIC LINK, refused with nothing written. `path` is the
@@ -37,10 +41,10 @@ export class RecordLinkedError extends CodedError {
   /** The link's place in the record, `/`-separated. */
   readonly path: string;
 
-  constructor(layout: ChainLayout, path: string) {
+  constructor(layout: ChainLayout, path: string, outcome: string = WRITE_NOT_APPENDED) {
     super(
       `${path} is a symbolic link (${join(layout.root, ...path.split('/'))}), and this mnema does not write ` +
-        'through a link, which can point outside the record. This write was not appended, nothing was written ' +
+        `through a link, which can point outside the record. ${outcome} ` +
         'and nothing the link points at was opened: replace the link with the folder or file it points to ' +
         '(copy what is there, remove the link, put the copy in its place), then write again.',
     );
@@ -50,11 +54,16 @@ export class RecordLinkedError extends CodedError {
 }
 
 /** Refuses with {@link RecordLinkedError} at the first of `places` (paths in the record) that is a link. */
-export function refuseToWriteThrough(layout: ChainLayout, places: readonly string[]): void {
+export function refuseToWriteThrough(
+  layout: ChainLayout,
+  places: readonly string[],
+  outcome?: string,
+): void {
   try {
     refuseLinks(layout, places);
   } catch (error) {
-    if (error instanceof LinkedRecordError) throw new RecordLinkedError(layout, error.path);
+    if (error instanceof LinkedRecordError)
+      throw new RecordLinkedError(layout, error.path, outcome);
     throw error;
   }
 }
@@ -71,7 +80,7 @@ export function refuseToLockThroughALink(shared: ChainLayout, tailId: string): v
 
 /**
  * Every other path the writer writes, for the tail `tailId` signing with `fingerprint`: the
- * directories first (`tails/`, the tail, `keys/`, `locks/`), then the public key, the notes in
+ * directories first (`tails/`, the tail, `keys/`, `locks/`), then the public key and the anchor (a founding writes the anchor right after it appends), the notes in
  * `locks/` with the staging file each is written through (named for `pid`, this process), and
  * the files of the tail directory, taken from its listing so that a segment the write has yet to
  * rotate to is asked as well. Asked under the lock and before the writer recovers or seals.
@@ -90,7 +99,10 @@ export function refuseToWriteThroughALink(
   ]);
   refuseToWriteThrough(layout, ['tails', `tails/${tailId}`, 'keys']);
   refuseToWriteThrough(shared, ['locks']);
-  refuseToWriteThrough(layout, [`keys/${basename(publicKeyPath(layout, fingerprint))}`]);
+  refuseToWriteThrough(layout, [
+    `keys/${basename(publicKeyPath(layout, fingerprint))}`,
+    `keys/${basename(anchorPath(layout, fingerprint))}`,
+  ]);
   refuseToWriteThrough(shared, [`locks/${tailId}.lock`, ...notes]);
   let entries: ReturnType<typeof listedEntries>;
   try {

@@ -855,6 +855,7 @@ describe('every option the CLI declares feeds something', () => {
       'mnema decision import --which <agent>',
       'mnema decision record --alternatives <text>',
       'mnema decision record --body-file <path>',
+      'mnema decision record --governs <path>',
       'mnema decision record --scope <scope>',
       'mnema decision record --stdin',
       'mnema decision record --which <agent>',
@@ -868,6 +869,7 @@ describe('every option the CLI declares feeds something', () => {
       'mnema task handoff --scope <scope>',
       'mnema task handoff --which <agent>',
       'mnema witness sigstore --global',
+      'mnema witness sigstore-check --global',
       'mnema witness stamp --global',
       'mnema witness upgrade --global',
     ]);

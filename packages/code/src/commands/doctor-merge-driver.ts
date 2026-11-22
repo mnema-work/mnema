@@ -68,6 +68,9 @@ const DRIVER_TAIL = ' record merge-tail %O %A %B %P';
 /** The form an earlier mnema wrote: the program found by the PATH. */
 const PATH_FORM = `mnema${DRIVER_TAIL}`;
 
+/** The form a single executable writes: one single-quoted absolute path, the program itself. */
+const QUOTED_SEA_FORM = /^'((?:[^']|'\\'')*)' record merge-tail %O %A %B %P$/;
+
 /** The form `driverCommand` writes: two single-quoted absolute paths. */
 const QUOTED_FORM = /^'((?:[^']|'\\'')*)' '((?:[^']|'\\'')*)' record merge-tail %O %A %B %P$/;
 
@@ -122,6 +125,11 @@ export function whyTheDriverCannotRun(
     if (!isAFile(script, false)) return `${oneLine(script)} is not a file`;
     return undefined;
   }
+  const alone = QUOTED_SEA_FORM.exec(value);
+  if (alone !== null) {
+    const exe = unquoted(alone[1] as string);
+    return isAFile(exe, true) ? undefined : `${oneLine(exe)} is not an executable file`;
+  }
   if (value === PATH_FORM) {
     return mnemaIsOnThePath(processEnv, platform)
       ? undefined
@@ -144,7 +152,7 @@ export function mergeSettings(driver: string): readonly (readonly [string, strin
 
 /** Whether a driver git holds is one mnema wrote, wherever it finds the program. */
 function isOurDriver(value: string): boolean {
-  return value === PATH_FORM || QUOTED_FORM.test(value);
+  return value === PATH_FORM || QUOTED_FORM.test(value) || QUOTED_SEA_FORM.test(value);
 }
 
 /** The sentence about the autoStash, said wherever the settings are offered or written. */

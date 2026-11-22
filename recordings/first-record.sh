@@ -43,7 +43,9 @@ mkdir -p "$H/your-repository"
 cd "$H/your-repository"
 git init -q .
 
-mnema() { env -u MNEMA_HOME -u MNEMA_RUN HOME="$H" NO_COLOR=1 node "$CLI" "$@"; }
+# stdin is /dev/null: at a terminal, `decision move` marks the rule shown (the private tree), and the
+# test runs this script with no terminal, so the recording would print `verify` lines the test never sees.
+mnema() { env -u MNEMA_HOME -u MNEMA_RUN HOME="$H" NO_COLOR=1 node "$CLI" "$@" </dev/null; }
 tilde() { sed "s|$H|~|g"; }
 
 # A command line, typed: the prompt, then one character at a time, and a continuation line for
