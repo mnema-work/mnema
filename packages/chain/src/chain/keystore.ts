@@ -413,6 +413,9 @@ export function unprotectPrivateKeys(layout: ChainLayout, passphrase: string): K
  */
 export function materializePublicKey(chainLayout: ChainLayout, key: PublicHalf): void {
   const path = publicKeyPath(chainLayout, key.fingerprint);
+  // Opening the file for writing follows a link, a dangling one too (which `existsSync` reads as
+  // absent), so a link at `keys/` or at the file is refused, with `RECORD_LINKED`, before anything.
+  refuseToWriteThrough(chainLayout, ['keys', inKeys(path)]);
   if (existsSync(path)) return;
   readingWhatTheDiskLets(path, inKeys(path), () => {
     mkdirSync(keysDir(chainLayout), { recursive: true });
@@ -856,6 +859,9 @@ const KEY_ROOT_GITIGNORE = [
  * `.gitignore`, by contrast, gains the one line it lacks, never more: see `ensureTree`.)
  */
 export function ensureKeyRootIgnored(keyRoot: ChainLayout): void {
+  // A link here is refused, a dangling one too (`existsSync` reads it as absent and the write
+  // would create what it points at): `RECORD_LINKED`, before the key's first byte is written.
+  refuseToWriteThrough(keyRoot, ['.gitignore']);
   mkdirSync(keyRoot.root, { recursive: true });
   const path = gitignorePath(keyRoot);
   if (existsSync(path)) return;

@@ -76,6 +76,10 @@ export const EXEMPT: Readonly<Record<string, string>> = {
     'holds which tail a write goes on with, through the binary; the tails are written by the product and never damaged, and what is planted is a branch, a worktree or a clone beside them',
   'packages/core/src/topology/base-branch.test.ts':
     'holds whether an entry is on the base branch of a repository built with git plumbing; the segment is a line committed by hand and nothing is read as a record',
+  'packages/chain/src/chain/the-key-and-witness-writers-do-not-write-through-a-link.test.ts':
+    'holds what the key, witness and key root writers do at a path that became a link: they ask the files before they write; the chain has no projection cache and the question is not asked of one',
+  'packages/code/tests/the-logs-of-the-data-dir-do-not-write-through-a-link.test.ts':
+    'holds what the data directory logs do at a path that became a link: they skip the write; the logs are outside the record and no projection cache is read',
   'packages/chain/src/chain/the-writer-does-not-write-through-a-link.test.ts':
     'holds what the chain writer does at a path that became a link: it asks the files, before it reads or writes; the chain has no projection cache and the question is not asked of one',
   'packages/code/tests/the-writer-refuses-a-linked-record.test.ts':

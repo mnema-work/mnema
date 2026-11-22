@@ -289,11 +289,13 @@ export {
   type ProvenCheckpoint,
   readStoredWitness,
   readWitness,
+  refuseWitnessThroughALink,
   type WalkedWitness,
   type WitnessedTail,
   type WitnessReading,
   witnessOfTail,
   witnessWalk,
+  writeSigstoreBundle,
   writeWitness,
 } from './chain/witness.js';
 export {

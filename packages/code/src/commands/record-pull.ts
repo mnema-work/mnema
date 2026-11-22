@@ -33,6 +33,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync 
 import { dirname, join } from 'node:path';
 import type { LevelRequirement } from '@mnema/chain';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
+import { isLinkAt } from '../linked-log.js';
 import { oneLine } from '../one-line.js';
 import { forkSentence, joinGrownTail, MERGE_DRIVER } from './record-merge-tail.js';
 import { runVerify, type VerifyDone } from './verify.js';
@@ -83,6 +84,8 @@ export interface RecordPullDone {
   readonly restored: readonly string[];
   /** Where the files are that could not be put back, when there are any. */
   readonly keptAside?: { readonly dir: string; readonly paths: readonly string[] };
+  /** The paths among those where the pull left a symbolic link: nothing was written through it. */
+  readonly linked?: readonly string[];
   /**
    * What the pull left unresolved although git answered 0: the paths git holds in conflict (the
    * autostash put back over a file of the record that is not a tail, which no driver joins), and
@@ -237,9 +240,17 @@ export function runRecordPull(ctx: RecordPullContext): RecordPullDone | RecordPu
   // pull left nothing at its path; where the upstream side is as long or longer, it stays.
   const restored: string[] = [];
   const kept: string[] = [];
+  const linked: string[] = [];
   for (const path of aside) {
     const local = join(top, path);
     const ours = readFileSync(join(asideDir, path));
+    // A link the pull brought to this path (git carries them) is neither read nor written through:
+    // opening it would follow it out of the record, a dangling one too. What was kept stays aside.
+    if (isLinkAt(local)) {
+      kept.push(path);
+      linked.push(path);
+      continue;
+    }
     const now = existsSync(local) ? readFileSync(local) : undefined;
     const joined = now === undefined ? undefined : joinGrownTail(ours, now);
     if (joined?.kind === 'fork') {
@@ -274,6 +285,7 @@ export function runRecordPull(ctx: RecordPullContext): RecordPullDone | RecordPu
     pulled,
     restored,
     ...(kept.length > 0 ? { keptAside: { dir: asideDir, paths: kept } } : {}),
+    ...(linked.length > 0 ? { linked } : {}),
     ...(conflicted.length > 0 || stashKept ? { unresolved: { conflicted, stashKept } } : {}),
   };
   if (pull.status !== 0 || done.unresolved !== undefined) return done;

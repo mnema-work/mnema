@@ -148,7 +148,8 @@ mnema doctor --fix merge-driver
 them first), and when a tail file here and on the branch followed is not one the start of the other,
 byte for byte: that is a fork, and it names each file and the line where the two sides part. Then it
 runs `git pull --autostash` with the merge driver given on that one command line, puts back a file
-of the record git did not track yet (a tail opened here) when this checkout's side is the longer,
+of the record git did not track yet (a tail opened here) when this checkout's side is the longer
+(where the pull left a symbolic link at that path it writes nothing through it, leaves the file in the folder it was kept in and says so),
 and verifies the record. It writes no git configuration. It fails, printing what git said, when the
 pull fails (branches that diverged with no `pull.rebase` set, say) and when git puts its autostash
 back with conflicts: a file of the record that is not a tail, `.gitattributes` for one, merges as

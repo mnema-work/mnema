@@ -945,6 +945,11 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
     verdict: 'collapsed',
     why: 'a folder under the git directory and the paths of files in the working tree',
   },
+  'record.ts «{}: a symbolic link stands there now, and this mnema does not write through a link, which can point outside the record: what this checkout held there was not put back and stays in the folder above. Replace the link with the file it points to, then copy that file back.» #1':
+    {
+      verdict: 'collapsed',
+      why: 'the paths of files in the working tree, which a name in it can carry',
+    },
   'record.ts «{}: put back as this checkout held it, the longer side or the only one» #1': {
     verdict: 'collapsed',
     why: 'the path of a file in the working tree, which a name in it can carry',
@@ -1287,7 +1292,8 @@ describe('every line this wiring words is classified', () => {
     // 208 with the line `decision review` prints before the rules in force it shows and marks.
     // 215 with the two lines `record publish` prints.
     // 218 with the lines `export --madr` prints: the files it wrote, and, per decision, why it will not import as the same words.
-    expect(FOUND.sites.length).toBe(218);
+    // 219 with the line a pull prints for a link that stands where an untracked tail was.
+    expect(FOUND.sites.length).toBe(219);
   });
 
   it('reads the verdict off the source rather than believing the table', () => {
@@ -1307,9 +1313,9 @@ describe('every line this wiring words is classified', () => {
   it('found sites of both kinds, and the scanner sees a tag when there is one', () => {
     // Neither arm of the case above may be empty, or half of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
-    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(126);
+    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(127);
     expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(92);
-    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(126);
+    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(127);
   });
 
   it('every reason says where the value comes from', () => {
@@ -1505,6 +1511,9 @@ const UNREACHABLE: Readonly<Record<string, string>> = {
   'record.ts «kept in {}, since the pull left another side there: {}» #1':
     'needs a file of the record that forked between the check and the pull, a race over a real ' +
     'remote; the tag is the fence for the paths',
+  'record.ts «{}: a symbolic link stands there now, and this mnema does not write through a link, which can point outside the record: what this checkout held there was not put back and stays in the folder above. Replace the link with the file it points to, then copy that file back.» #1':
+    'needs a link the pull brought to the path of an untracked tail, over a real remote; ' +
+    '`a-tail-merges-and-pulls.test.ts` proves the act leaves it alone and names the path',
   'record.ts «{}: put back as this checkout held it, the longer side or the only one» #1':
     'needs an untracked tail the branch followed already holds, over a real remote; the built binary ' +
     'prints it over real git in `a-tail-merges-and-pulls.test.ts`',

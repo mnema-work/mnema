@@ -101,6 +101,7 @@ import {
 import { z } from 'zod';
 import { acceptedByAnAgent, stateOfANewDecision } from '../agent-accepts.js';
 import { keyFileLineForAModel } from '../key-file.js';
+import { linkedLogSentence } from '../linked-log.js';
 import { movedLine } from '../moved-record.js';
 import { passedOverSentences } from '../not-a-project.js';
 import { neutralized, oneLine } from '../one-line.js';
@@ -638,7 +639,7 @@ export function buildMcpServer(options: McpServerOptions): {
   // are collected as they are registered, never listed beside the registrations, which
   // is the list that goes stale the one time it matters.
   const declaredTools: DeclaredTool[] = [];
-  registerTools(declaringInto(server, declaredTools, ensureSession), ensureSession);
+  registerTools(declaringInto(server, declaredTools, ensureSession, log), ensureSession);
 
   /**
    * Ends the connection's session: every run it opened, then its caches.
@@ -768,6 +769,7 @@ function declaringInto(
   server: McpServer,
   declared: DeclaredTool[],
   ensureSession: () => Promise<Session>,
+  say: (line: string) => void,
 ): ToolRegistrar {
   return (what, config, handle) => {
     declared.push(what);
@@ -801,6 +803,7 @@ function declaringInto(
         answeringThrownRefusals(refusingUnknownKeys, ensureSession, what.effect),
         ensureSession,
         what,
+        say,
       ),
     );
   };
@@ -834,6 +837,7 @@ function countedLocally<Input extends ZodRawShapeCompat | undefined>(
   handle: ToolCallback<Input>,
   ensureSession: () => Promise<Session>,
   what: DeclaredTool,
+  say: (line: string) => void,
 ): ToolCallback<Input> {
   const called = handle as (...args: unknown[]) => unknown;
   const count = async (result: string): Promise<void> => {
@@ -849,12 +853,16 @@ function countedLocally<Input extends ZodRawShapeCompat | undefined>(
       // `a-refusal-leaves-nothing.test.ts`), and the first write that signs is what makes the
       // key root: the calls from then on are counted, the ones before it are the cost.
       if (!existsSync(session.trees.keyRoot)) return;
-      countToolCall(file, {
-        at: new Date().toISOString(),
-        tool: what.act,
-        effect: what.effect,
-        result,
-      });
+      countToolCall(
+        file,
+        {
+          at: new Date().toISOString(),
+          tool: what.act,
+          effect: what.effect,
+          result,
+        },
+        (link) => say(linkedLogSentence(link, 'count of tool calls')),
+      );
     } catch (error) {
       // A count that cannot be kept is not a reason for a tool to answer differently. It is said once,
       // in the ledger of caught failures (`swallowed-ledger.ts`), which `mnema doctor` reads.

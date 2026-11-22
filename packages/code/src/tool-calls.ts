@@ -28,12 +28,15 @@
  *
  * A FAILURE TO WRITE IS SWALLOWED. A tool never fails because of its own count, and the line is
  * written after the reply has gone ({@link countToolCall}), so the count never slows an answer.
+ * A file that is a symbolic link is not written to (it can point outside the data directory) and
+ * is said once, to the function the count is handed.
  */
 
 import { createHash } from 'node:crypto';
 import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { ResolvedTrees } from '@mnema/core';
+import { isLinkAt } from './linked-log.js';
 import type { RecordEffect } from './record-effect.js';
 import { noteSwallowed } from './swallowed-ledger.js';
 
@@ -89,9 +92,27 @@ export function resultOf(reply: unknown): string {
   return code?.[1] ?? UNCODED_FAILURE;
 }
 
-/** Appends one line for `call` to `file`. Never throws: see the head of this file. */
-export function appendToolCall(file: string, call: ToolCall): void {
+/** The files whose link was already said, so a count that meets one says so once. */
+const saidLinked = new Set<string>();
+
+/**
+ * Appends one line for `call` to `file`. Never throws: see the head of this file. A `file` that is
+ * a symbolic link is not written to, and `onLinked` is told its path once, however many calls
+ * meet it.
+ */
+export function appendToolCall(
+  file: string,
+  call: ToolCall,
+  onLinked?: (file: string) => void,
+): void {
   try {
+    if (isLinkAt(file)) {
+      if (!saidLinked.has(file)) {
+        saidLinked.add(file);
+        onLinked?.(file);
+      }
+      return;
+    }
     mkdirSync(dirname(file), { recursive: true });
     appendFileSync(
       file,
@@ -105,7 +126,11 @@ export function appendToolCall(file: string, call: ToolCall): void {
 }
 
 /** The lines that wait to be written: a call is answered first and counted right after. */
-const waiting: { readonly file: string; readonly call: ToolCall }[] = [];
+const waiting: {
+  readonly file: string;
+  readonly call: ToolCall;
+  readonly onLinked?: ((file: string) => void) | undefined;
+}[] = [];
 let exitHooked = false;
 
 /**
@@ -117,8 +142,12 @@ let exitHooked = false;
  * lines still waiting, which is the time between a reply and the next turn of the event loop.
  * Never throws, like {@link appendToolCall}.
  */
-export function countToolCall(file: string, call: ToolCall): void {
-  waiting.push({ file, call });
+export function countToolCall(
+  file: string,
+  call: ToolCall,
+  onLinked?: (file: string) => void,
+): void {
+  waiting.push({ file, call, onLinked });
   if (!exitHooked) {
     exitHooked = true;
     process.once('exit', flushToolCalls);
@@ -128,7 +157,7 @@ export function countToolCall(file: string, call: ToolCall): void {
 
 /** Writes every line that waits, in the order the calls were answered. */
 export function flushToolCalls(): void {
-  for (const next of waiting.splice(0)) appendToolCall(next.file, next.call);
+  for (const next of waiting.splice(0)) appendToolCall(next.file, next.call, next.onLinked);
 }
 
 /** What reading the file gave: the calls, and how many lines were not one. */
