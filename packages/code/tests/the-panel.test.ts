@@ -429,9 +429,6 @@ const HUES = [
   'whiteBright',
 ];
 
-/** The three that MEAN something about the record, and are therefore not chrome's to take. */
-const SEMANTIC = ['red', 'green', 'yellow'];
-
 /** Every `.ts` source of the product, recursively, tests excluded. */
 function sourcesOf(dir: string): string[] {
   const found: string[] = [];
@@ -522,12 +519,19 @@ describe('the chrome spends no hue, and none of the three severities is its to t
     const page = await openedAt(200, renderStyled);
     const severities = severityHues();
     const hues = new Set(
-      sgrOf(withoutLayout(page)).filter((code) => /^\u001b\[(?:3[0-7]|9[0-7]|38|48)/.test(code)),
+      sgrOf(withoutLayout(page)).filter((code) =>
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: the escape IS the subject.
+        /^\u001b\[(?:3[0-7]|9[0-7]|38|48)/.test(code),
+      ),
     );
+    // THE GREYS OF A SENT COMMAND are the one other thing written: the band and its two
+    // foregrounds, painted as a pair and carrying no hue (`presentation/styled.ts`).
+    const greys = ['\u001b[48;5;238m', '\u001b[38;5;246m', '\u001b[38;5;253m'];
     for (const hue of hues) {
-      expect([...severities], `the page writes ${JSON.stringify(hue)}, which is no severity`).toContain(
-        hue,
-      );
+      expect(
+        [...severities, ...greys],
+        `the page writes ${JSON.stringify(hue)}, which is no severity and no grey`,
+      ).toContain(hue);
     }
     expect(withoutLayout(page), 'the accent is back on the page').not.toContain('\u001b[35m');
     // NOT VACUOUS, in both directions. The verdict really is painted, by the severity it
@@ -1107,8 +1111,11 @@ describe('the panel is the plain panel, wrapped, and it is drawn once', () => {
 // What the chrome costs, and the floor under it
 // ---------------------------------------------------------------------------
 
+/** The rows the text beside the mark takes: measured, six. */
+const THE_TEXT_ROWS = 6;
+
 describe('the chrome costs the drawing of the name and nothing more', () => {
-  it('spends exactly the mark\u2019s rows whenever the text goes beside it', async () => {
+  it('spends the taller of the mark and the text whenever the text goes beside it', async () => {
     // WHAT THE FRAME'S DEPARTURE BOUGHT, as a property rather than as a number: with the text
     // beside the mark the panel is as tall as the TALLER of the two, and the mark is the taller
     // one on the terminal a person opens, so what the opening costs is the drawing the caller
@@ -1125,7 +1132,11 @@ describe('the chrome costs the drawing of the name and nothing more', () => {
     for (const columns of [200, 140, A_WORKING_TERMINAL, await narrowestFor(RICHNESS.columns)]) {
       const page = await openedAt(columns);
       expect(formOf(page, columns), `${columns}`).toBe('columns');
-      expect(openingRows(page), `${columns}`).toHaveLength(drawnAt(columns).length + THE_SEAM);
+      // THE MARK WAS THE TALLER ONE (six rows over a text of six and the seam), and the brand's
+      // five-row drawing is the SHORTER: the text, measured at six rows, is what the opening costs.
+      expect(openingRows(page), `${columns}`).toHaveLength(
+        Math.max(drawnAt(columns).length, THE_TEXT_ROWS) + THE_SEAM,
+      );
     }
   }, 300_000);
 

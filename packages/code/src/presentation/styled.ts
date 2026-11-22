@@ -99,7 +99,6 @@ const UNSHADE = '\u001b[49m';
  * ({@link PAINTING}) escapes it like any other control byte.
  */
 
-
 /**
  * What opens each role, and the empty string for a role written bare.
  *

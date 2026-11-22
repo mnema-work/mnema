@@ -34,7 +34,8 @@ function recordingPictures(): { dark: string; light: string }[] {
       block[0],
     );
     const light = /<img src="(recordings\/[^"]+)"/.exec(block[0]);
-    if (dark !== null && light !== null) found.push({ dark: dark[1] as string, light: light[1] as string });
+    if (dark !== null && light !== null)
+      found.push({ dark: dark[1] as string, light: light[1] as string });
   }
   return found;
 }
@@ -75,7 +76,7 @@ describe('the README says the floor the code has', () => {
 
 /** The text of every tracked file under the given roots, by path, found by git and not by a list. */
 function textsUnder(...roots: string[]): Map<string, string> {
-  const listed = execFileSync('git', ['ls-files', '-z', '--', ...roots], {
+  const listed = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', ...roots], {
     cwd: ROOT,
     encoding: 'utf-8',
   })
@@ -84,10 +85,10 @@ function textsUnder(...roots: string[]): Map<string, string> {
   return new Map(listed.map((file) => [file, readFileSync(join(ROOT, file), 'utf-8')]));
 }
 
-describe('the theme of the recordings is written in one file', () => {
-  /** The option's spelling, assembled so this file does not write it either. */
-  const THE_OPTION = `--${'the'}me`;
+/** The option's spelling, assembled so this file does not write it either. */
+const THE_OPTION = `--${'the'}me`;
 
+describe('the theme of the recordings is written in one file', () => {
   it('is spelled by the renderer of the pair and by no other file of the instruments, the scripts or the tests', () => {
     const spelled = [...textsUnder('.github', 'recordings', 'packages/code/tests')]
       .filter(([, text]) => text.includes(THE_OPTION))

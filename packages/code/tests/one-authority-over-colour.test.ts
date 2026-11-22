@@ -244,11 +244,21 @@ describe('a caller who asked for no colour gets none of it, anywhere on the page
     // 32, 33, closed by 39) and the sent command's band and its two greys (48;5;238, 38;5;246,
     // 38;5;253, closed by 49); SGR 35, and any other hue, is the old accent coming back.
     const loud = await inPty(A_SESSION);
-    const written = new Set(
-      sgrOf(loud.bytes).map((sequence) => sequence.slice(2, -1)),
-    );
+    const written = new Set(sgrOf(loud.bytes).map((sequence) => sequence.slice(2, -1)));
     expect(written.size, 'the session wrote no style sequence at all').toBeGreaterThan(2);
-    const allowed = new Set(['1', '2', '22', '31', '32', '33', '39', '48;5;238', '38;5;246', '38;5;253', '49']);
+    const allowed = new Set([
+      '1',
+      '2',
+      '22',
+      '31',
+      '32',
+      '33',
+      '39',
+      '48;5;238',
+      '38;5;246',
+      '38;5;253',
+      '49',
+    ]);
     const strangers = [...written].filter((code) => !allowed.has(code));
     expect(strangers, `the page writes a hue nobody allowed: ${strangers.join(' ')}`).toEqual([]);
     expect(written.has('35'), 'the accent is back on the page').toBe(false);
@@ -337,7 +347,11 @@ describe('a caller who asked for colour gets it on the lines the product compose
     expect(rules.length, 'the page drew no edge at all').toBeGreaterThan(0);
     // THE EDGES CARRY NO HUE, which is the brand's whole colour in a terminal: bare, with colour
     // asked for as much as without. What this case reads instead is the line the product composes.
-    expect(rules[0], 'a rule carries a hue').not.toMatch(/\u001b\[(?:3[0-7]|9[0-7])m/);
+    expect(
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: the escape IS the subject.
+      /\u001b\[(?:3[0-7]|9[0-7])m/.test(rules[0] as string),
+      'a rule carries a hue',
+    ).toBe(false);
     expect(terminal.bytes(), 'the prompt is unpainted where the caller asked for colour').toContain(
       BOLD_PROMPT,
     );

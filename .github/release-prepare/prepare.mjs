@@ -251,7 +251,9 @@ function main() {
       `${check ? 'would ' : ''}${edits.get(where) === null ? 'remove' : 'write'}${check ? '' : 's'} ${where}`,
     );
   if (remake) {
-    console.log(`${check ? 'would make' : 'makes'} recordings/console.cast, console-dark.gif and console-light.gif again`);
+    console.log(
+      `${check ? 'would make' : 'makes'} recordings/console.cast, console-dark.gif and console-light.gif again`,
+    );
   }
   if (check) {
     if (edits.size > 0 || remake) process.exit(1);

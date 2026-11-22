@@ -436,6 +436,11 @@ describe('the word in the list carries no paint of its own, with colour or witho
     }
     // AND THE ROW IS THE LIST'S: dimmed whole by the layout, which is what the session with colour
     // writes and the one without does not. The row is read off the page rather than composed here.
+    const row = screenOf(
+      withColour.bytes.slice(0, withColour.at[1] as number),
+      columns,
+      rows,
+    ).rows.find((line) => listRowsOn({ rows: [line] }, words).length === 1);
     expect(row, 'no row of the list is on the page').toBeDefined();
     expect(row as string, 'the page carries the escapes rather than the glyphs').not.toContain(ESC);
     // AND NO SEVERITY OR WEIGHT SURVIVES `NO_COLOR` BEFORE A WORD: the standing rule.

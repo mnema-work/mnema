@@ -637,8 +637,12 @@ function theAnswerOn(ran: Ran, columns: number, rows: number): Screen {
  * WITH THEM, which is the trade this delivery made in one line: a caller on a window between
  * the two floors gets a console at all now, and one on a taller window is unaffected. Measured
  * on a real terminal, at the floor.
+ *
+ * AND IT IS THIRTEEN, WHEN THE BRAND REDREW THE NAME IN FIVE ROWS. The floor is thirty-nine rows
+ * (measured in `THE_FLOOR`), the arrangement holds thirteen and the input area five, so twenty-one
+ * are left and thirteen of them are the answer's: measured on a real terminal, at the floor.
  */
-const SHOWS_OF_THE_ANSWER = 14;
+const SHOWS_OF_THE_ANSWER = 13;
 
 /**
  * WHAT THE ARRANGEMENT COSTS ON THAT SCREEN: the second stick, and the one that says the
@@ -660,6 +664,9 @@ const SHOWS_OF_THE_ANSWER = 14;
  * draws a page on.
  */
 const THE_ARRANGEMENT_COSTS = 13;
+
+/** The rows the text beside the mark takes: measured, six, and taller than the five-row drawing. */
+const THE_TEXT_BESIDE_THE_MARK = 6;
 
 describe('the answer a caller asked for is on the page, at the shortest window there is', () => {
   it('shows the list of verbs at the floor, where it showed none of it', async () => {
@@ -863,8 +870,12 @@ describe('the answer a caller asked for is on the page, at the shortest window t
     // the row of breath under it (`repl/panel.ts`, `THE_SEAM`): chrome, counted where the
     // drawing's rows are counted, because a row the layout draws and the arithmetic does not know
     // about is a frame taller than the screen.
+    // THE TEXT COLUMN IS NOW THE TALLER OF THE TWO: it is six rows (what the session is, where it
+    // stands and the record's heading and trees) beside a drawing of five, so what the opening
+    // costs beside the mark is the taller of them and the seam. Measured on the console at this
+    // size: eight.
     expect(openingAt(columns, rows).above, 'the arrangement costs something else here').toBe(
-      THE_DRAWING.length + THE_SEAM,
+      Math.max(THE_DRAWING.length, THE_TEXT_BESIDE_THE_MARK) + THE_SEAM,
     );
     expect(openingAt(columns, rows).above).toBeLessThanOrEqual(A_THIRD_OF(rows));
   }, 240_000);

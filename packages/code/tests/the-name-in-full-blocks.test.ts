@@ -102,7 +102,9 @@ describe('the drawing is five rows of one width, in glyphs the product measures 
     // what a CJK terminal draws. That debt is declared in the module and it shrank when this drawing
     // arrived: it was seven ambiguous glyphs (the block and six box-drawing ones) and it is one.
     const glyphs = [...new Set([...THE_ART.join('')])].filter((glyph) => glyph !== ' ');
-    expect(glyphs, 'the drawing is drawn with something other than the full block').toEqual(['\u2588']);
+    expect(glyphs, 'the drawing is drawn with something other than the full block').toEqual([
+      '\u2588',
+    ]);
     for (const glyph of glyphs) {
       expect(widthOf(subjectLine(glyph)), `${JSON.stringify(glyph)} is not one column`).toBe(1);
     }
@@ -185,7 +187,7 @@ describe('the floor follows the drawing, because it is worked out from it', () =
     // AND A DRAWING TOO WIDE FOR THAT PAGE MOVES IT, which is what makes the maximum a
     // mechanism rather than a decoration on a constant. The fixture is as wide as the page has
     // room for and one column more.
-    const wide = aDrawingOf(6, insideTheMargin(THE_FLOOR.columns) + 1);
+    const wide = aDrawingOf(THE_BIGGEST_DRAWING.length, insideTheMargin(THE_FLOOR.columns) + 1);
     expect(theFloorFor(wide).columns, 'a drawing wider than the page left the floor alone').toBe(
       THE_FLOOR.columns + 1,
     );
@@ -411,7 +413,10 @@ describe('the biggest drawing is the brand\u2019s five rows, and no box drawing 
     expect(ACROSS).toBe(52);
     expect(widthOf(THE_BIGGEST_DRAWING[0] as Line)).toBe(51);
     for (const row of THE_ART) {
-      expect([...row].every((glyph) => glyph === '\u2588' || glyph === ' '), row).toBe(true);
+      expect(
+        [...row].every((glyph) => glyph === '\u2588' || glyph === ' '),
+        row,
+      ).toBe(true);
       expect(row, 'a row ends in a blank').toBe(row.replace(/ +$/, ''));
     }
   });
