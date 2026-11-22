@@ -8,14 +8,15 @@
 //     takes the ink of the page's text (`currentColor`) and the iris's sulphur, with the thin ring round the iris that a
 //     light ground needs (the page's style drops the ring on the dark ground); the favicon is the eye in its dark square, the
 //     store icon's drawing, which reads on a light tab and on a dark one.
-//   - ARCHIVO is the face of the page's text. It is a variable font of 658 KB whose only copy here is the authors' own, and
-//     a page embeds what it prints: Latin. So the file holds two static instances of it, at weight 400 and 700 and width
-//     100, each with only the glyphs of `ARCHIVO_RANGES` (the rest of a record's text, in another script, falls to the
-//     system face the page's font stack names next). The OFL's reserved-name clause binds a font that declares a reserved
-//     name; Archivo declares none (`./fonts/OFL-Archivo.txt`, first lines), so the instances keep the name Archivo.
+//   - THE FACES are WOFF2 subsets made by `subset-font` (HarfBuzz as WebAssembly): only the glyphs of `ARCHIVO_RANGES`, which
+//     is Latin, since a page embeds what it prints (a record's text in another script falls to the system face the page's
+//     font stack names next), and every layout feature of the font kept, kerning above all. The files of this folder are
+//     the authors' own; the page carries a Modified Version of each (OFL, FAQ 2.6 and 3.1).
+//   - ARCHIVO is a variable font of 658 KB: the file holds two static instances of it, at weight 400 and 700 and width 100.
+//     Archivo declares no reserved name (`./fonts/OFL-Archivo.txt`, first lines), so the instances keep the name Archivo.
 //   - IBM PLEX MONO is the face of ids, hashes and code. Its authors reserve the name "Plex" (`./fonts/OFL-IBMPlexMono.txt`,
-//     first line), and a Modified Version may not carry a reserved name, so the Regular file is embedded WHOLE, byte for byte,
-//     and no glyph is taken out of it.
+//     first line), and a Modified Version may not carry a reserved name: the subset is renamed inside the file to
+//     "mnema mono" (`MONO_NAME`), with no "Plex" and no "IBM" in any name record, and keeps the copyright and licence records.
 //   - THE LICENCES of the two travel with the page, as the OFL asks of every copy: both texts, in a comment of the page's style.
 //
 // From the root of the repository:
@@ -23,7 +24,7 @@
 //   node .github/the-brand/page.mjs          writes the file
 //   node .github/the-brand/page.mjs --check  writes nothing; exits 1 if the committed file differs
 //
-// The script needs no build, and the file it writes is the same bytes on every run (the writer's timestamp is pinned).
+// The script needs no build, and the file it writes is the same bytes on every run (the subsetter holds no clock).
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -45,86 +46,143 @@ export const ARCHIVO_RANGES = Object.freeze([
 ]);
 /** The weights of the instances, at width 100. */
 export const ARCHIVO_WEIGHTS = Object.freeze([400, 700]);
-/** Any fixed instant: the writer stamps the font with the time it was made, and the file must not change with it. */
-const STAMP = Date.UTC(2026, 10, 21);
-
-const spec = 'opentype.js';
-/** @type {any} */
-const loaded = await import(spec);
-/** @type {any} */
-const opentype = loaded.default ?? loaded;
+/** `subset-font` (HarfBuzz as WebAssembly) is a development dependency of the workspace. */
+const { default: subsetFont } = await import('subset-font');
 
 /** @param {string} name */
 const bytesOf = (name) => readFileSync(here(`./fonts/${name}`));
-/** @param {Buffer} b */
-const arrayOf = (b) => b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
 
-/** @param {number} weight the static instance of Archivo at that weight and width 100, as the bytes of an OpenType file */
-function archivoAt(weight) {
-  const font = opentype.parse(arrayOf(bytesOf('Archivo[wdth,wght].ttf')));
-  const em = font.unitsPerEm;
-  const variation = { wdth: 100, wght: weight };
-  /** The glyph drawn at the instance, upright again (a path from `getPath` runs y down) and in whole units. */
-  /** @param {any} glyph @param {number | undefined} unicode */
-  const redraw = (glyph, unicode) => {
-    const path = new opentype.Path();
-    /** @param {number | undefined} v */
-    const n = (v) => (v === undefined ? undefined : Math.round(v));
-    /** @param {number | undefined} v */
-    const y = (v) => (v === undefined ? undefined : -Math.round(v));
-    for (const c of glyph.getPath(0, 0, em, { variation }, font).commands) {
-      path.commands.push({
-        ...c,
-        x: n(c.x),
-        y: y(c.y),
-        x1: n(c.x1),
-        y1: y(c.y1),
-        x2: n(c.x2),
-        y2: y(c.y2),
-      });
-    }
-    const advance = Math.round(glyph.advanceWidth);
-    return new opentype.Glyph({
-      name:
-        unicode === undefined
-          ? '.notdef'
-          : `uni${unicode.toString(16).toUpperCase().padStart(4, '0')}`,
-      unicode,
-      advanceWidth: advance,
-      path,
+/** The Latin text a subsetter keeps the glyphs of: every codepoint of `ARCHIVO_RANGES`. */
+const latinText = () =>
+  ARCHIVO_RANGES.map(([from, to]) =>
+    Array.from({ length: to - from + 1 }, (_, i) => String.fromCodePoint(from + i)).join(''),
+  ).join('');
+
+/** The name ids a subset keeps: the copyright and licence records (the OFL asks for both) and the ones that name the font. */
+const KEPT_NAMES = [0, 1, 2, 3, 4, 5, 6, 13, 14];
+
+/** @param {Buffer} b the sum of its 32-bit words, the table is padded with zeros */
+const checksum = (b) => {
+  let total = 0;
+  const padded = Buffer.concat([b, Buffer.alloc((4 - (b.length % 4)) % 4)]);
+  for (let i = 0; i < padded.length; i += 4) total = (total + padded.readUInt32BE(i)) >>> 0;
+  return total;
+};
+
+/**
+ * A copy of an SFNT file with the records of its `name` table rewritten: `rewrite` maps a name id to its new text, or to
+ * `null` to drop the record; the other records are kept as they are. The checksums are recomputed; nothing else moves.
+ * @param {Buffer} sfnt @param {Record<number, string | null>} rewrite
+ */
+function renamed(sfnt, rewrite) {
+  const tables = [];
+  for (let i = 0; i < sfnt.readUInt16BE(4); i++) {
+    const at = 12 + i * 16;
+    const offset = sfnt.readUInt32BE(at + 8);
+    tables.push({
+      tag: sfnt.toString('latin1', at, at + 4),
+      data: Buffer.from(sfnt.subarray(offset, offset + sfnt.readUInt32BE(at + 12))),
     });
-  };
-  const glyphs = [redraw(font.glyphs.get(0), undefined)];
-  for (const [from, to] of ARCHIVO_RANGES) {
-    for (let code = from; code <= to; code++) {
-      const glyph = font.charToGlyph(String.fromCodePoint(code));
-      if (glyph.index === 0) continue;
-      glyphs.push(redraw(glyph, code));
-    }
   }
-  const instance = new opentype.Font({
-    familyName: 'Archivo',
-    styleName: weight === 700 ? 'Bold' : 'Regular',
-    unitsPerEm: em,
-    ascender: font.ascender,
-    descender: font.descender,
-    copyright:
-      'Copyright 2020 The Archivo Project Authors (https://github.com/Omnibus-Type/Archivo)',
-    license:
-      'This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://openfontlicense.org',
-    licenseURL: 'https://openfontlicense.org',
-    createdTimestamp: STAMP / 1000,
-    glyphs,
-  });
-  // The writer stamps the file's modified time from the clock: hold the clock still while it writes.
-  const realGetTime = Date.prototype.getTime;
-  Date.prototype.getTime = () => STAMP;
-  try {
-    return Buffer.from(instance.toArrayBuffer());
-  } finally {
-    Date.prototype.getTime = realGetTime;
+  const nameAt = tables.findIndex((t) => t.tag === 'name');
+  const old = /** @type {Buffer} */ (tables[nameAt]?.data);
+  const strings = old.readUInt16BE(4);
+  const records = [];
+  for (let i = 0; i < old.readUInt16BE(2); i++) {
+    const r = 6 + i * 12;
+    const id = old.readUInt16BE(r + 6);
+    const from = strings + old.readUInt16BE(r + 10);
+    const raw = old.subarray(from, from + old.readUInt16BE(r + 8));
+    const text = rewrite[id];
+    if (text === null) continue;
+    const value =
+      text === undefined
+        ? raw
+        : old.readUInt16BE(r) === 1
+          ? Buffer.from(text, 'latin1')
+          : Buffer.from(text, 'utf16le').swap16();
+    records.push({ id, kind: old.subarray(r, r + 6), value });
   }
+  const head = Buffer.alloc(6 + records.length * 12);
+  head.writeUInt16BE(records.length, 2);
+  head.writeUInt16BE(head.length, 4);
+  let offset = 0;
+  for (const [i, r] of records.entries()) {
+    const w = 6 + i * 12;
+    r.kind.copy(head, w);
+    head.writeUInt16BE(r.id, w + 6);
+    head.writeUInt16BE(r.value.length, w + 8);
+    head.writeUInt16BE(offset, w + 10);
+    offset += r.value.length;
+  }
+  tables[nameAt] = { tag: 'name', data: Buffer.concat([head, ...records.map((r) => r.value)]) };
+  const headTable = tables.find((t) => t.tag === 'head');
+  headTable?.data.writeUInt32BE(0, 8);
+  const directory = Buffer.alloc(12 + tables.length * 16);
+  sfnt.copy(directory, 0, 0, 12);
+  const parts = [directory];
+  let place = directory.length;
+  let headWhere = 0;
+  for (const [i, t] of tables.entries()) {
+    const w = 12 + i * 16;
+    directory.write(t.tag, w, 'latin1');
+    directory.writeUInt32BE(checksum(t.data), w + 4);
+    directory.writeUInt32BE(place, w + 8);
+    directory.writeUInt32BE(t.data.length, w + 12);
+    if (t === headTable) headWhere = place;
+    const padding = Buffer.alloc((4 - (t.data.length % 4)) % 4);
+    parts.push(t.data, padding);
+    place += t.data.length + padding.length;
+  }
+  const whole = Buffer.concat(parts);
+  if (headTable) whole.writeUInt32BE((0xb1b0afba - checksum(whole)) >>> 0, headWhere + 8);
+  return whole;
 }
+
+/**
+ * One face as a WOFF2 subset: the Latin glyphs of the page, every layout feature kept (kerning above all), and, when the
+ * authors' file is variable, pinned to one instance. The names inside are rewritten between the two passes.
+ * @param {string} file @param {Record<number, string | null>} rename @param {Record<string, number>} [pin]
+ */
+async function subsetOf(file, rename, pin) {
+  const text = latinText();
+  const options = { preserveNameIds: KEPT_NAMES };
+  const sfnt = await subsetFont(bytesOf(file), text, {
+    ...options,
+    ...(pin ? { variationAxes: pin } : {}),
+    targetFormat: 'sfnt',
+  });
+  return subsetFont(renamed(sfnt, rename), text, { ...options, targetFormat: 'woff2' });
+}
+
+/** The name of the mono inside its file: a Modified Version of IBM Plex Mono carries a name of ours, with no "Plex" and no "IBM". */
+export const MONO_NAME = 'mnema mono';
+const mnemaMono = await subsetOf('IBMPlexMono-Regular.ttf', {
+  1: MONO_NAME,
+  2: 'Regular',
+  3: `${MONO_NAME} 2.3`,
+  4: `${MONO_NAME} Regular`,
+  6: 'mnemamono-Regular',
+});
+/** @param {number} weight the static instance of Archivo at that weight and width 100, as WOFF2 */
+const archivoAt = (weight) => {
+  const style = weight === 700 ? 'Bold' : 'Regular';
+  return subsetOf(
+    'Archivo[wdth,wght].ttf',
+    {
+      1: 'Archivo',
+      2: style,
+      3: `Archivo ${style}`,
+      4: `Archivo ${style}`,
+      6: `Archivo-${style}`,
+      16: null,
+      17: null,
+    },
+    { wdth: 100, wght: weight },
+  );
+};
+const archivo400 = await archivoAt(400);
+const archivo700 = await archivoAt(700);
 
 /** The drawing of the eye at rest, still, as the inside of an SVG with the view box `-48 -48 96 96`. */
 /** @param {string} id @param {{ ink: string, iris: string, ringInk: string, ring: boolean }} options */
@@ -161,7 +219,6 @@ function constant(name, value) {
 export function theMark() {
   const licences = `${readFileSync(here('./fonts/OFL-Archivo.txt'), 'utf8').trim()}\n\n${readFileSync(here('./fonts/OFL-IBMPlexMono.txt'), 'utf8').trim()}\n`;
   if (licences.includes('*/')) throw new Error('a licence the comment cannot carry');
-  const [regular, bold] = ARCHIVO_WEIGHTS.map((w) => base64(archivoAt(w)));
   return `/**
  * What the record page wears of the brand, written by a script of the repository and held equal to it by a test:
  * do not edit. The eye of the header and of the favicon are the brand's eye at rest, still; the faces are Archivo
@@ -172,9 +229,9 @@ export function theMark() {
 ${constant('HEADER_EYE', headerEye())}
 ${constant('FAVICON', `data:image/svg+xml;base64,${base64(faviconSvg())}`)}
 ${constant('ARCHIVO_RANGE', archivoRange())}
-${constant('ARCHIVO_400', regular ?? '')}
-${constant('ARCHIVO_700', bold ?? '')}
-${constant('PLEX_MONO_400', base64(bytesOf('IBMPlexMono-Regular.ttf')))}
+${constant('ARCHIVO_400', base64(archivo400))}
+${constant('ARCHIVO_700', base64(archivo700))}
+${constant('MNEMA_MONO_400', base64(mnemaMono))}
 /** The licence of each face, as its authors wrote it: the page carries both. */
 ${constant('FONT_LICENCES', licences)}`;
 }

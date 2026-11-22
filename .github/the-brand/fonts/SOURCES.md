@@ -1,11 +1,13 @@
 # Where the fonts of the pictures come from
 
 The files in this folder are the authors' own, as published, untouched: not subsetted, not renamed inside the file, not
-converted. They are under the SIL Open Font License 1.1 (the two `OFL-*.txt` files are the licences of their authors).
+converted. (The record page carries Modified Versions of two of them, below.) They are under the SIL Open Font License 1.1 (the two `OFL-*.txt` files are the licences of their authors).
 They draw the outline of the text of the pictures of this repository (`node .github/the-brand/diagrams.mjs`), and
-`node .github/the-brand/page.mjs` writes the copy the record page carries (`packages/code/src/site/the-mark.ts`): IBM Plex Mono
-Regular byte for byte, and two static Latin instances of Archivo (weights 400 and 700, which declares no reserved name).
-No font file is itself a file of a published package.
+`node .github/the-brand/page.mjs` writes the copy the record page carries (`packages/code/src/site/the-mark.ts`), as WOFF2
+Latin subsets made with `subset-font`: two static instances of Archivo (weights 400 and 700, which declares no reserved
+name, so it keeps its name) and IBM Plex Mono Regular renamed inside to "mnema mono", since "Plex" is reserved. Those
+subsets are inside the published bundle (`dist/bundle/`), so `packages/code/THIRD-PARTY-NOTICES.md` carries both licences;
+the files of this folder are not themselves files of a published package.
 
 The upstreams are `Omnibus-Type/Archivo` (commit `b5d63988ce19d044d3e10362de730af00526b672`) and `googlefonts/plex`
 (commit `9ab3b5b3b96325fb20f365ee0804adca92024cbf`). Each file below was fetched from the `google/fonts` repository at
@@ -20,4 +22,5 @@ commit `7af0d90b4d532ffa4b041937b560c6df4e7b1e95`, under `https://raw.githubuser
 | `OFL-Archivo.txt` | `ofl/archivo/OFL.txt` | | 2026-11-16 | `108b4e57c9c796d3d38d0428ca7ee39de47ad93187302718d9b2d8864b9b716b` |
 | `OFL-IBMPlexMono.txt` | `ofl/ibmplexmono/OFL.txt` | | 2026-11-16 | `7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da` |
 
-"Plex" is a reserved font name of its authors, so no font file here is modified or renamed inside.
+"Plex" is a reserved font name of its authors, so no font file here is modified or renamed inside; the renamed subset the
+page carries is a Modified Version made from the file above.

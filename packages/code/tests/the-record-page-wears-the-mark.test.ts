@@ -7,20 +7,23 @@
  *   - THE EYE of the header is the brand's eye at rest: the almond, the iris and the six lines with their widths, read out of
  *     the page's own markup and compared with `EYE_AT_REST`. It carries no animation.
  *   - THE FAVICON is on the page, as `data:`, and it is the same eye in its dark square.
- *   - THE FONTS: Plex Mono is the authors' Regular file whole (the same bytes, so the same sha256 `SOURCES.md` lists), Archivo
- *     is a font that a reader other than the writer parses, named Archivo, holding every glyph of its range the brand's
- *     variable font holds, each as wide as the variable font is at that weight; and the style names both in its font
- *     stacks and carries both licences.
+ *   - THE FONTS are WOFF2 subsets, read out of the page's own bytes (the directory and the `name` and `GPOS` tables of each
+ *     file, by a reader of this file's own, not the one that wrote them): the mono carries a name of ours and none of the
+ *     reserved "Plex" or "IBM" in any name that names it, keeps the authors' copyright and licence records, and every glyph
+ *     of the range as wide as their file has it; Archivo is named Archivo, holds every glyph of its range as wide as the
+ *     variable font is at that weight, and keeps its kerning (a GPOS `kern` feature); the style names both in its stacks and
+ *     carries both licences; and the whole page stays under a size ceiling.
+ *   - THE NOTICES of the package list both fonts with their copyright and licence.
  *   - THE POLICY opens `data:` for fonts and images and nothing else.
  *
  * WHAT IS NOT HELD: how a browser draws the page (the shapes were looked at in a headless browser in both colour schemes
  * when this was written, not here), and the letterforms of the instances beyond their advance widths.
  */
 
-import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { brotliDecompressSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import { renderPage, STYLE } from '../src/site/page.js';
 import * as mark from '../src/site/the-mark.js';
@@ -41,6 +44,7 @@ const brandPage = await load<{
   TARGET: string;
   ARCHIVO_RANGES: readonly (readonly [number, number])[];
   ARCHIVO_WEIGHTS: readonly number[];
+  MONO_NAME: string;
 }>(join(BRAND, 'page.mjs'));
 const { PALETTE } = await load<{ PALETTE: Readonly<Record<string, string>> }>(
   join(BRAND, 'palette.mjs'),
@@ -69,6 +73,21 @@ const parse = <T>(bytes: Buffer): T =>
   opentype.parse(
     bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer,
   ) as T;
+
+/** A WOFF2 file as an SFNT one, through the subsetter, so that a reader of SFNT can read it (every glyph is kept). */
+const subsetSpec = 'subset-font';
+const { default: subsetFont } = (await import(subsetSpec)) as {
+  default: (
+    font: Buffer,
+    text: string | undefined,
+    options: { keepAllGlyphs: boolean; targetFormat: string },
+  ) => Promise<Buffer>;
+};
+const unwrap = (woff2: Buffer): Promise<Buffer> =>
+  subsetFont(woff2, undefined, { keepAllGlyphs: true, targetFormat: 'sfnt' });
+
+/** The size, in bytes, of the page of an empty record when the fonts went in as WOFF2 subsets, and 5% more. */
+const CEILING = 0;
 
 const emptyModel = {
   decisions: [],
@@ -162,37 +181,139 @@ describe("the record page's favicon", () => {
   });
 });
 
+/** What a WOFF2 file holds, read without a font library: the tables of its directory, decompressed (only `glyf`, `loca` and `hmtx` can be transformed, and no test here asks for them). */
+const WOFF2_TAGS =
+  'cmap head hhea hmtx maxp name OS/2 post cvt  fpgm glyf loca prep CFF  VORG EBDT EBLC gasp hdmx kern LTSH PCLT VDMX vhea vmtx BASE GDEF GPOS GSUB EBSC JSTF MATH CBDT CBLC COLR CPAL SVG  sbix acnt avar bdat bloc bsln cvar fdsc feat fmtx fvar gvar hsty just lcar mort morx opbd prop trak Zapf Silf Glat Gloc Feat Sill'.split(
+    ' ',
+  );
+function woff2Tables(bytes: Buffer): Map<string, Buffer> {
+  expect(bytes.subarray(0, 4).toString('latin1')).toBe('wOF2');
+  const count = bytes.readUInt16BE(12);
+  const compressed = bytes.readUInt32BE(20);
+  let at = 48;
+  const base128 = (): number => {
+    let value = 0;
+    for (let i = 0; i < 5; i++) {
+      const byte = bytes.readUInt8(at++);
+      value = value * 128 + (byte & 0x7f);
+      if ((byte & 0x80) === 0) return value;
+    }
+    throw new Error('a UIntBase128 that does not end');
+  };
+  const entries: { tag: string; length: number }[] = [];
+  for (let i = 0; i < count; i++) {
+    const flags = bytes.readUInt8(at++);
+    const index = flags & 0x3f;
+    let tag: string;
+    if (index === 63) {
+      tag = bytes.toString('latin1', at, at + 4);
+      at += 4;
+    } else tag = (WOFF2_TAGS[index] ?? '').padEnd(4, ' ');
+    const version = flags >> 6;
+    const original = base128();
+    const transformed = tag === 'glyf' || tag === 'loca' ? version === 0 : version !== 0;
+    entries.push({ tag, length: transformed ? base128() : original });
+  }
+  const whole = brotliDecompressSync(bytes.subarray(at, at + compressed));
+  const tables = new Map<string, Buffer>();
+  let from = 0;
+  for (const { tag, length } of entries) {
+    tables.set(tag.trim(), whole.subarray(from, from + length));
+    from += length;
+  }
+  return tables;
+}
+
+/** The records of a `name` table, as text, by name id. */
+function namesOf(name: Buffer): Map<number, string> {
+  const found = new Map<number, string>();
+  for (let i = 0; i < name.readUInt16BE(2); i++) {
+    const r = 6 + i * 12;
+    const from = name.readUInt16BE(4) + name.readUInt16BE(r + 10);
+    const raw = Buffer.from(name.subarray(from, from + name.readUInt16BE(r + 8)));
+    found.set(
+      name.readUInt16BE(r + 6),
+      name.readUInt16BE(r) === 1 ? raw.toString('latin1') : raw.swap16().toString('utf16le'),
+    );
+  }
+  return found;
+}
+
+/** The tags of the layout features a `GPOS` or `GSUB` table offers. */
+function featuresOf(table: Buffer): string[] {
+  const list = table.readUInt16BE(6);
+  return Array.from({ length: table.readUInt16BE(list) }, (_, i) =>
+    table.toString('latin1', list + 2 + i * 6, list + 6 + i * 6),
+  );
+}
+
 describe("the record page's fonts", () => {
   const faces = [...STYLE.matchAll(/@font-face \{([^}]*)\}/g)].map((m) => m[1] ?? '');
   const dataOf = (face: string) => /url\(data:[^;]+;base64,([A-Za-z0-9+/=]+)\)/.exec(face)?.[1];
+  const monoFace = faces.find((f) => f.includes("font-family: 'mnema mono'")) ?? '';
+  const mono = Buffer.from(dataOf(monoFace) ?? '', 'base64');
+  const archivoFaces = faces.filter((f) => f.includes("font-family: 'Archivo'"));
 
-  it('embeds three faces, each as data, and requests nothing', () => {
+  it('embeds three faces, each as WOFF2 data, and requests nothing', () => {
     expect(faces).toHaveLength(3);
-    for (const face of faces) expect(dataOf(face)?.length).toBeGreaterThan(10_000);
+    for (const face of faces) {
+      expect(dataOf(face)?.length).toBeGreaterThan(10_000);
+      expect(face).toContain("format('woff2')");
+      expect(Buffer.from(dataOf(face) ?? '', 'base64').subarray(0, 4).toString('latin1')).toBe(
+        'wOF2',
+      );
+    }
     expect(STYLE).not.toMatch(/url\((?!data:)/);
     expect(STYLE).not.toContain('@import');
   });
 
-  it("embeds IBM Plex Mono Regular as the authors' own file, byte for byte", () => {
-    const face = faces.find((f) => f.includes("font-family: 'IBM Plex Mono'")) ?? '';
-    const bytes = Buffer.from(dataOf(face) ?? '', 'base64');
-    expect(bytes.equals(readFileSync(join(BRAND, 'fonts', 'IBMPlexMono-Regular.ttf')))).toBe(true);
-    const listed = readFileSync(join(BRAND, 'fonts', 'SOURCES.md'), 'utf8').match(
-      /`IBMPlexMono-Regular\.ttf` \|.*\| `([0-9a-f]{64})` \|/,
-    )?.[1];
-    expect(createHash('sha256').update(bytes).digest('hex')).toBe(listed);
+  it('names no name of the mono "Plex" or "IBM": a Modified Version of a font whose name is reserved takes another', () => {
+    const names = namesOf(woff2Tables(mono).get('name') ?? Buffer.alloc(0));
+    // The names that name the font (the family, the style, the unique id, the full name, the PostScript name, the
+    // typographic family and style): the copyright and licence records keep the authors' words, as the OFL asks.
+    const naming = [1, 2, 3, 4, 6, 16, 17].map((id) => names.get(id)).filter((n) => n !== undefined);
+    expect(naming).toContain('mnema mono');
+    for (const name of naming) expect(name).not.toMatch(/plex|ibm/i);
+    expect(names.get(0)).toContain('Copyright 2017 IBM Corp.');
+    expect(names.get(13)).toContain('SIL Open Font License');
   });
 
-  it('embeds Archivo at 400 and 700, named Archivo, with the glyphs of its range as wide as the brand font is', () => {
+  it('keeps every glyph of its range in the mono, as wide as the authors file has it', async () => {
+    const authors = parse<Face>(readFileSync(join(BRAND, 'fonts', 'IBMPlexMono-Regular.ttf')));
+    const kept = parse<Face>(await unwrap(mono));
+    let checked = 0;
+    for (const [from, to] of brandPage.ARCHIVO_RANGES) {
+      for (let code = from; code <= to; code++) {
+        const char = String.fromCodePoint(code);
+        const whole = authors.charToGlyph(char);
+        if (whole.index === 0) continue;
+        const glyph = kept.charToGlyph(char);
+        expect(glyph.index, `U+${code.toString(16)} is missing`).toBeGreaterThan(0);
+        expect(glyph.advanceWidth).toBe(whole.advanceWidth);
+        checked++;
+      }
+    }
+    // NON-VACUITY
+    expect(checked).toBeGreaterThan(200);
+  });
+
+  it('names no family "Plex" or "IBM" anywhere in the page style', () => {
+    expect(STYLE).not.toMatch(/font-family: '[^']*(?:Plex|IBM)/);
+    expect(STYLE).toContain(`font-family: '${brandPage.MONO_NAME}'`);
+  });
+
+  it('embeds Archivo at 400 and 700, named Archivo, with the glyphs of its range as wide as the brand font is', async () => {
     const variable = parse<Variable>(readFileSync(join(BRAND, 'fonts', 'Archivo[wdth,wght].ttf')));
     const em = variable.unitsPerEm;
-    const inRange = faces.filter((f) => f.includes("font-family: 'Archivo'"));
-    expect(inRange.map((f) => /font-weight: (\d+)/.exec(f)?.[1])).toEqual(['400', '700']);
+    expect(archivoFaces.map((f) => /font-weight: (\d+)/.exec(f)?.[1])).toEqual(['400', '700']);
     let checked = 0;
-    for (const face of inRange) {
+    for (const face of archivoFaces) {
       const weight = Number(/font-weight: (\d+)/.exec(face)?.[1]);
-      const instance = parse<Face>(Buffer.from(dataOf(face) ?? '', 'base64'));
-      expect(instance.names.unicode?.fontFamily?.en).toBe('Archivo');
+      const bytes = Buffer.from(dataOf(face) ?? '', 'base64');
+      const names = namesOf(woff2Tables(bytes).get('name') ?? Buffer.alloc(0));
+      expect(names.get(1)).toBe('Archivo');
+      expect(names.get(4)).toBe(weight === 700 ? 'Archivo Bold' : 'Archivo Regular');
+      const instance = parse<Face>(await unwrap(bytes));
       for (const [from, to] of brandPage.ARCHIVO_RANGES) {
         for (let code = from; code <= to; code++) {
           const char = String.fromCodePoint(code);
@@ -218,9 +339,17 @@ describe("the record page's fonts", () => {
     expect(checked).toBeGreaterThan(400);
   }, 60_000);
 
-  it("names Archivo and IBM Plex Mono in the stacks of the page's text and of its code, and says Archivo's range", () => {
+  it('keeps the kerning of Archivo at both weights: its GPOS offers a kern feature', () => {
+    expect(archivoFaces).toHaveLength(2);
+    for (const face of archivoFaces) {
+      const tables = woff2Tables(Buffer.from(dataOf(face) ?? '', 'base64'));
+      expect(featuresOf(tables.get('GPOS') ?? Buffer.alloc(8))).toContain('kern');
+    }
+  });
+
+  it("names Archivo and mnema mono in the stacks of the page's text and of its code, and says Archivo's range", () => {
     expect(STYLE).toMatch(/:root \{[^}]*font-family: 'Archivo', system-ui, sans-serif;/);
-    expect(STYLE).toMatch(/code, pre \{ font-family: 'IBM Plex Mono', ui-monospace, monospace;/);
+    expect(STYLE).toMatch(/code, pre \{ font-family: 'mnema mono', ui-monospace, monospace;/);
     expect(STYLE).toContain(`unicode-range: ${mark.ARCHIVO_RANGE};`);
   });
 
@@ -228,6 +357,25 @@ describe("the record page's fonts", () => {
     expect(STYLE).toContain('Copyright 2020 The Archivo Project Authors');
     expect(STYLE).toContain('Copyright © 2017 IBM Corp. with Reserved Font Name "Plex"');
     expect(STYLE).toContain('SIL OPEN FONT LICENSE Version 1.1');
+  });
+
+  it(`stays under ${CEILING} bytes, the size measured when the fonts went in as WOFF2 subsets, and 5% more`, () => {
+    expect(Buffer.byteLength(page)).toBeLessThanOrEqual(CEILING);
+    // NON-VACUITY: the ceiling is not loose by an order of magnitude.
+    expect(Buffer.byteLength(page)).toBeGreaterThan(CEILING / 1.2);
+  });
+});
+
+describe("the notices of the package that carries the page's fonts", () => {
+  const notices = readFileSync(join(ROOT, 'packages/code/THIRD-PARTY-NOTICES.md'), 'utf8');
+
+  it('list both fonts, with their copyright and the OFL, and say the mono is a renamed subset', () => {
+    expect(notices).toContain('### Archivo');
+    expect(notices).toContain('### IBM Plex Mono');
+    expect(notices).toContain('Copyright 2020 The Archivo Project Authors');
+    expect(notices).toContain('Copyright © 2017 IBM Corp. with Reserved Font Name "Plex"');
+    expect(notices.match(/SIL OPEN FONT LICENSE Version 1\.1/g)).toHaveLength(2);
+    expect(notices).toMatch(/renamed subset[^.]*"mnema mono"/);
   });
 });
 

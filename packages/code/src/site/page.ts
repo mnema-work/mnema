@@ -48,11 +48,11 @@
  * WCAG AA in both themes and the red to the failures alone.
  *
  * THE PAGE WEARS THE BRAND'S MARK AND TYPE (ADR-679). The eye is in its header and, in a dark square, is the
- * icon of the tab, both inline and still; the text is set in Archivo and the ids, hashes and code in IBM Plex Mono, all
- * carried inside the file as `data:` (`the-mark.ts`, which a script of the repository writes and a test holds equal to the
- * brand's eye and fonts). Archivo is two static Latin instances, so a record in another script falls to the system face
- * the stack names next; Plex Mono is the authors' Regular file whole, since its name is reserved. The licences go in the
- * style, as the OFL asks.
+ * icon of the tab, both inline and still; the text is set in Archivo and the ids, hashes and code in "mnema mono", all
+ * carried inside the file as `data:` WOFF2 (`the-mark.ts`, which a script of the repository writes and a test holds equal to
+ * the brand's eye and fonts). Each is a Latin subset, so a record in another script falls to the system face the stack
+ * names next: Archivo is two static instances, and "mnema mono" is IBM Plex Mono Regular as a Modified Version under
+ * another name, since its authors reserve "Plex". The licences go in the style, as the OFL asks.
  */
 
 import { createHash } from 'node:crypto';
@@ -65,7 +65,7 @@ import {
   FAVICON,
   FONT_LICENCES,
   HEADER_EYE,
-  PLEX_MONO_400,
+  MNEMA_MONO_400,
 } from './the-mark.js';
 import { listViews, NO_DECISIONS, type SiteTail, textOf, type VKid } from './view.js';
 
@@ -206,12 +206,9 @@ function variables(theme: Colours): string {
 /** The face of the page's text and its stack: Archivo, then what the machine has for a script Archivo does not hold. */
 const TEXT_FACE = "'Archivo', system-ui, sans-serif";
 /** The face of ids, hashes and code, and its stack. */
-const CODE_FACE = "'IBM Plex Mono', ui-monospace, monospace";
+const CODE_FACE = "'mnema mono', ui-monospace, monospace";
 
-/**
- * One `@font-face` of a face carried inside the page as `data:`: nothing is requested. A TrueType file says so in a format
- * hint; Archivo's files are CFF in an OpenType wrapper, which a browser tells from the bytes, so they carry none.
- */
+/** One `@font-face` of a face carried inside the page as `data:` WOFF2: nothing is requested. */
 function fontFace(
   family: string,
   weight: number,
@@ -219,15 +216,14 @@ function fontFace(
   data: string,
   range?: string,
 ): string {
-  const hint = mime === 'font/ttf' ? " format('truetype')" : '';
-  return `@font-face { font-family: '${family}'; font-style: normal; font-weight: ${weight}; font-display: swap; src: url(data:${mime};base64,${data})${hint};${range === undefined ? '' : ` unicode-range: ${range};`} }`;
+  return `@font-face { font-family: '${family}'; font-style: normal; font-weight: ${weight}; font-display: swap; src: url(data:${mime};base64,${data}) format('woff2');${range === undefined ? '' : ` unicode-range: ${range};`} }`;
 }
 
 /** The page's style. A class or an attribute selects; nothing in the page carries a `style=`. */
 export const STYLE = `
-${fontFace('Archivo', 400, 'font/otf', ARCHIVO_400, ARCHIVO_RANGE)}
-${fontFace('Archivo', 700, 'font/otf', ARCHIVO_700, ARCHIVO_RANGE)}
-${fontFace('IBM Plex Mono', 400, 'font/ttf', PLEX_MONO_400)}
+${fontFace('Archivo', 400, 'font/woff2', ARCHIVO_400, ARCHIVO_RANGE)}
+${fontFace('Archivo', 700, 'font/woff2', ARCHIVO_700, ARCHIVO_RANGE)}
+${fontFace('mnema mono', 400, 'font/woff2', MNEMA_MONO_400)}
 :root { color-scheme: light dark; ${variables(PALETTE.light)} font-family: ${TEXT_FACE}; line-height: 1.55; }
 @media (prefers-color-scheme: dark) { :root { ${variables(PALETTE.dark)} } }
 * { box-sizing: border-box; }
@@ -369,6 +365,8 @@ export function renderPage(
   const fileCount = Object.keys(model.files).length;
   const policy = [
     "default-src 'none'",
+    // `data:` is the narrowest source a CSP can name for the tab's icon (a source expression carries no MIME type, and a hash
+    // does not apply to an image); the page has no other image, and the eye in its header is inline markup.
     'font-src data:',
     'img-src data:',
     `script-src ${cspHash(script)}`,
