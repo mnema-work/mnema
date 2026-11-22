@@ -196,3 +196,22 @@ mnema skill provenance
 Adopting a pattern is not restricted: an agent can propose one and adopt it, the
 same way it can submit a task and approve it. What this shows you is who did,
 which is the part that used to be invisible to everyone downstream.
+
+## The session the server knows
+
+The server takes the goal of a run from the session journal and closes the run with its outcome, which
+needs the host's own id for the session. It reads that id from the environment the host started it
+with, through the one table of hosts (`packages/code/src/host-names.ts`), and only from a variable a
+run of the real host showed there:
+
+| Host | Variable | Known |
+| --- | --- | --- |
+| Claude Code | `CLAUDE_CODE_SESSION_ID` | held by a test |
+| GitHub Copilot CLI | `COPILOT_AGENT_SESSION_ID` | held by a test; that its value is the name of the folder under `~/.copilot/session-state/` which the hook payloads give as the session is not verified |
+| Codex | none read; `CODEX_THREAD_ID` is on the contract's list | not yet |
+| Gemini CLI | none read; `GEMINI_SESSION_ID` is on the contract's list (Gemini sets it for its hooks, the contract asks whether the server gets it too) | not yet |
+| OpenCode, Qwen Code, VS Code | none | not yet |
+
+On a host with no variable the server has no session of its own: a run has no goal from the journal and
+no outcome. The id is a record of what the host handed the server, not a lock: it names a journal and
+reserves nothing, and a second session with the same id is not refused. The cell changes the day a run of the host in the host contract shows the variable.

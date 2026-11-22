@@ -6,12 +6,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.mjs\" --reply flat",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.mjs\" --reply flat --host copilot",
             "timeout": 15
           },
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-recall.mjs\" --reply flat",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-recall.mjs\" --reply flat --host copilot",
             "timeout": 15
           }
         ]

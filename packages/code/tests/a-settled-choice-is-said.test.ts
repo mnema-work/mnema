@@ -278,7 +278,7 @@ describe('the plugin hook a host runs after a question', () => {
    * before it runs the real one: the mark says whether `mnema` was started at all. The command is one
    * program and its arguments, so `node` starts whatever the tool and the handler ends before `mnema`.
    */
-  function host(input: string) {
+  function host(input: string, command: string = theGroup().hooks[0]?.command ?? 'exit 9') {
     const bin = join(sandbox, 'bin');
     mkdirSync(bin, { recursive: true });
     const mark = join(sandbox, 'mnema-started');
@@ -292,7 +292,7 @@ describe('the plugin hook a host runs after a question', () => {
       ].join('\n'),
     );
     chmodSync(join(bin, 'mnema'), 0o755);
-    const sent = spawnSync('/bin/sh', ['-c', theGroup().hooks[0]?.command ?? 'exit 9'], {
+    const sent = spawnSync('/bin/sh', ['-c', command], {
       cwd: repo,
       input,
       encoding: 'utf-8',
@@ -327,5 +327,39 @@ describe('the plugin hook a host runs after a question', () => {
     expect(sent.status).toBe(0);
     expect(sent.stdout).toBe('');
     expect(sent.started).toBe(false);
+  });
+
+  describe('the hooks file Copilot CLI reads', () => {
+    /** Every command of the generated file, with the event it runs on. */
+    function copilotCommands(): { event: string; command: string }[] {
+      const file = JSON.parse(readFileSync(join(PLUGIN, 'hooks', 'copilot.json'), 'utf-8')) as {
+        hooks: Record<string, { hooks: { command: string }[] }[]>;
+      };
+      return Object.entries(file.hooks).flatMap(([event, groups]) =>
+        groups.flatMap((group) => group.hooks.map(({ command }) => ({ event, command }))),
+      );
+    }
+    const theOne = (handler: string) => {
+      const found = copilotCommands().filter(({ command }) => command.includes(handler));
+      expect(found.length, handler).toBe(1);
+      return (found[0] as { command: string }).command;
+    };
+
+    it('answers the question hook with the sentence, flat, whatever else the file names', () => {
+      const sent = host(payload('AskUserQuestion'), theOne('choice-settled.mjs'));
+      expect(sent.status).toBe(0);
+      expect(JSON.parse(sent.stdout)).toEqual({ additionalContext: ACCEPTING });
+      expect(sent.started).toBe(true);
+    });
+
+    it('opens the session, flat, from the command the file hands Copilot', () => {
+      const sent = host(
+        JSON.stringify({ hook_event_name: 'SessionStart', session_id: 'abc123', cwd: repo }),
+        theOne('session-start.mjs'),
+      );
+      expect(sent.status).toBe(0);
+      expect(typeof JSON.parse(sent.stdout).additionalContext).toBe('string');
+      expect(sent.started).toBe(true);
+    });
   });
 });

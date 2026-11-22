@@ -997,6 +997,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/src/every-refusal-is-red.test.ts': 8,
   'packages/code/src/file-behind-a-path.test.ts': 6,
   'packages/code/src/git-log.test.ts': 7,
+  'packages/code/src/host-names.test.ts': 5,
   'packages/code/src/key-file.test.ts': 2,
   'packages/code/src/linked-worktree.test.ts': 7,
   'packages/code/src/machine-state.test.ts': 6,
