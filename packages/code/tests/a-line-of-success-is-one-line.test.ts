@@ -1090,6 +1090,24 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'collapsed',
       why: 'the identity the certificate names, inside the command that would claim it',
     },
+  'witness.ts «holds: {}» #1': {
+    verdict: 'collapsed',
+    why: 'the line `verify --against-sigstore` words for one bundle: the identity and issuer as the certificate said them, and a tail id',
+  },
+  'witness.ts «sigstore: the {} tree was not read: its verdict is a break, so which checkpoint a bundle is over is not settled» #1':
+    {
+      verdict: 'minted',
+      why: 'the scope is one of the closed words of this product',
+    },
+  'witness.ts «sigstore: {} checkpoint {}: the bundle holds but names {} ({}), not the identity and issuer expected» #1':
+    {
+      verdict: 'collapsed',
+      why: 'a tail id and the identity and issuer the certificate named, which is somebody else',
+    },
+  'witness.ts «{}» #3': {
+    verdict: 'collapsed',
+    why: 'the line for a bundle that does not hold, with the tail id and the library’s reason',
+  },
   'witness.ts «{} {}: {}» #1': {
     verdict: 'collapsed',
     why:
@@ -1293,7 +1311,8 @@ describe('every line this wiring words is classified', () => {
     // 215 with the two lines `record publish` prints.
     // 218 with the lines `export --madr` prints: the files it wrote, and, per decision, why it will not import as the same words.
     // 219 with the line a pull prints for a link that stands where an untracked tail was.
-    expect(FOUND.sites.length).toBe(219);
+    // 223 with the four lines `witness sigstore-check` words, over a bundle and over a tree it did not read.
+    expect(FOUND.sites.length).toBe(223);
   });
 
   it('reads the verdict off the source rather than believing the table', () => {
@@ -1313,9 +1332,9 @@ describe('every line this wiring words is classified', () => {
   it('found sites of both kinds, and the scanner sees a tag when there is one', () => {
     // Neither arm of the case above may be empty, or half of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
-    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(127);
-    expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(92);
-    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(127);
+    expect(verdicts.filter((verdict) => verdict === 'collapsed').length).toBe(130);
+    expect(verdicts.filter((verdict) => verdict === 'minted').length).toBe(93);
+    expect(FOUND.sites.filter((site) => site.tagged).length).toBe(130);
   });
 
   it('every reason says where the value comes from', () => {
@@ -1692,6 +1711,10 @@ const UNREACHABLE: Readonly<Record<string, string>> = {
   'witness.ts «{}» #2': 'the same act, once Fulcio answered',
   'witness.ts «No identity of this record names it, so the bundle dates the checkpoint and says nothing about who wrote it: \\`mnema key sigstore {}\\` names it.» #1':
     'the same act, once Fulcio answered',
+  'witness.ts «holds: {}» #1': 'the bundle that holds, read offline',
+  'witness.ts «sigstore: {} checkpoint {}: the bundle holds but names {} ({}), not the identity and issuer expected» #1':
+    'the bundle that holds and names another signer',
+  'witness.ts «{}» #3': 'the bundle that does not hold',
   'witness.ts «{} {}: {}» #1':
     'needs a proof already on disk whose pending attestation names the address, which ' +
     'no argv puts there: `stamp` writes whatever the calendar ANSWERED with, so reaching ' +

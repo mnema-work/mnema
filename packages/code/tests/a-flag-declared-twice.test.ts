@@ -211,6 +211,7 @@ const DECLARED_TWICE: Readonly<Record<string, Reading>> = {
   'decision import --scope': 'where it was written',
   'decision import --which': 'where it was written',
   'witness sigstore --global': 'where it was written',
+  'witness sigstore-check --global': 'where it was written',
   'witness stamp --global': 'where it was written',
   'witness upgrade --global': 'where it was written',
 };

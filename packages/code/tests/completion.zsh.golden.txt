@@ -20,7 +20,7 @@ _mnema_commands() {
     'rules') echo 'test' ;;
     'switch') echo 'off on' ;;
     'inherit') echo 'set update help' ;;
-    'witness') echo 'stamp upgrade sigstore' ;;
+    'witness') echo 'stamp upgrade sigstore sigstore-check' ;;
     'check') echo 'declare run help' ;;
     'audit') echo 'accountability antipatterns exposure help' ;;
     'commit-hook') echo 'install uninstall suggest help' ;;
@@ -139,7 +139,8 @@ _mnema_described() {
     'witness') printf '%s\n' \
       'stamp:ask an outside witness to date each tail'\''s last checkpoint (T3)' \
       'upgrade:go back for every attestation this record is waiting on (T3)' \
-      'sigstore:countersign each tail'\''s last checkpoint with a Sigstore certificate: who signed in, and when it was logged' ;;
+      'sigstore:countersign each tail'\''s last checkpoint with a Sigstore certificate: who signed in, and when it was logged' \
+      'sigstore-check:check offline that the Sigstore countersignatures of this record name the identity you expect, as `cosign verify-blob` would' ;;
     'check') printf '%s\n' \
       'declare:declare the program that checks a rule (no shell: the program and its arguments)' \
       'run:run the check of every rule in force and record each result (run by a checker key, in CI)' \
@@ -251,6 +252,7 @@ _mnema_flags() {
     'witness stamp') echo '--calendar --global -h --help -V --version --color' ;;
     'witness upgrade') echo '--blocks --global -h --help -V --version --color' ;;
     'witness sigstore') echo '--global -h --help -V --version --color' ;;
+    'witness sigstore-check') echo '--identity --issuer --message-dir --global -h --help -V --version --color' ;;
     'check') echo '-h --help -V --version --color' ;;
     'check declare') echo '--which -h --help -V --version --color' ;;
     'check run') echo '--key --timeout -h --help -V --version --color' ;;
@@ -416,6 +418,7 @@ _mnema_values() {
     'witness stamp:--color') echo 'auto always never' ;;
     'witness upgrade:--color') echo 'auto always never' ;;
     'witness sigstore:--color') echo 'auto always never' ;;
+    'witness sigstore-check:--color') echo 'auto always never' ;;
     'check:--color') echo 'auto always never' ;;
     'check declare:--color') echo 'auto always never' ;;
     'check run:--color') echo 'auto always never' ;;

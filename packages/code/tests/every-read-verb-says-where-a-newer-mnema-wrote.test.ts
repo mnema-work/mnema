@@ -116,6 +116,8 @@ const NEED_NOT: Readonly<Record<string, string>> = {
   tally: A_HOOK,
   handback: A_HOOK,
   settled: A_HOOK,
+  'witness sigstore-check':
+    'It reads the Sigstore bundles beside the checkpoints the verdict proved and no line of a record as content, and names a tree whose chain does not close as not read: where a newer mnema wrote is `mnema verify`\u2019s to say.',
   dictated: A_HOOK,
   'stack list': ONE_OF_THE('the stacks installed'),
   'stack index': ONE_OF_THE('the stacks installed'),

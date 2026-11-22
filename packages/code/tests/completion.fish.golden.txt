@@ -28,7 +28,7 @@ function __mnema_commands --description 'the subcommands one level of the tree o
         case 'inherit'
             echo 'set update help'
         case 'witness'
-            echo 'stamp upgrade sigstore'
+            echo 'stamp upgrade sigstore sigstore-check'
         case 'check'
             echo 'declare run help'
         case 'audit'
@@ -572,6 +572,7 @@ complete -c mnema -f -n '__mnema_at "verify"' -l color -x -a 'auto always never'
 complete -c mnema -f -n '__mnema_at "witness"' -a 'stamp' -d 'ask an outside witness to date each tail\'s last checkpoint (T3)'
 complete -c mnema -f -n '__mnema_at "witness"' -a 'upgrade' -d 'go back for every attestation this record is waiting on (T3)'
 complete -c mnema -f -n '__mnema_at "witness"' -a 'sigstore' -d 'countersign each tail\'s last checkpoint with a Sigstore certificate: who signed in, and when it was logged'
+complete -c mnema -f -n '__mnema_at "witness"' -a 'sigstore-check' -d 'check offline that the Sigstore countersignatures of this record name the identity you expect, as `cosign verify-blob` would'
 complete -c mnema -f -n '__mnema_at "witness"' -l global
 complete -c mnema -f -n '__mnema_at "witness"' -l json
 complete -c mnema -f -n '__mnema_at "witness"' -s h -l help
@@ -597,6 +598,15 @@ complete -c mnema -f -n '__mnema_at "witness sigstore"' -l global
 complete -c mnema -f -n '__mnema_at "witness sigstore"' -s h -l help
 complete -c mnema -f -n '__mnema_at "witness sigstore"' -s V -l version
 complete -c mnema -f -n '__mnema_at "witness sigstore"' -l color -x -a 'auto always never'
+
+# mnema witness sigstore-check
+complete -c mnema -f -n '__mnema_at "witness sigstore-check"' -l identity -r
+complete -c mnema -f -n '__mnema_at "witness sigstore-check"' -l issuer -r
+complete -c mnema -f -n '__mnema_at "witness sigstore-check"' -l message-dir -r
+complete -c mnema -f -n '__mnema_at "witness sigstore-check"' -l global
+complete -c mnema -f -n '__mnema_at "witness sigstore-check"' -s h -l help
+complete -c mnema -f -n '__mnema_at "witness sigstore-check"' -s V -l version
+complete -c mnema -f -n '__mnema_at "witness sigstore-check"' -l color -x -a 'auto always never'
 
 # mnema check
 complete -c mnema -f -n '__mnema_at "check"' -a 'declare' -d 'declare the program that checks a rule (no shell: the program and its arguments)'

@@ -18,7 +18,7 @@ _mnema_commands() {
     'rules') echo 'test' ;;
     'switch') echo 'off on' ;;
     'inherit') echo 'set update help' ;;
-    'witness') echo 'stamp upgrade sigstore' ;;
+    'witness') echo 'stamp upgrade sigstore sigstore-check' ;;
     'check') echo 'declare run help' ;;
     'audit') echo 'accountability antipatterns exposure help' ;;
     'commit-hook') echo 'install uninstall suggest help' ;;
@@ -88,6 +88,7 @@ _mnema_flags() {
     'witness stamp') echo '--calendar --global -h --help -V --version --color' ;;
     'witness upgrade') echo '--blocks --global -h --help -V --version --color' ;;
     'witness sigstore') echo '--global -h --help -V --version --color' ;;
+    'witness sigstore-check') echo '--identity --issuer --message-dir --global -h --help -V --version --color' ;;
     'check') echo '-h --help -V --version --color' ;;
     'check declare') echo '--which -h --help -V --version --color' ;;
     'check run') echo '--key --timeout -h --help -V --version --color' ;;
@@ -254,6 +255,7 @@ _mnema_values() {
     'witness stamp:--color') echo 'auto always never' ;;
     'witness upgrade:--color') echo 'auto always never' ;;
     'witness sigstore:--color') echo 'auto always never' ;;
+    'witness sigstore-check:--color') echo 'auto always never' ;;
     'check:--color') echo 'auto always never' ;;
     'check declare:--color') echo 'auto always never' ;;
     'check run:--color') echo 'auto always never' ;;

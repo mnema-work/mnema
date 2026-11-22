@@ -779,7 +779,12 @@ describe('every verb says if it writes', () => {
     // both directions (the members it declares are the subcommands the program holds) and each
     // member that says it reads is run for real, in both forms, and counted in the chain.
     const grouped = DECLARED.filter((verb) => verb.members !== undefined);
-    expect(grouped.map((verb) => verb.act.name()).sort()).toEqual(['skill', 'stack', 'task']);
+    expect(grouped.map((verb) => verb.act.name()).sort()).toEqual([
+      'skill',
+      'stack',
+      'task',
+      'witness',
+    ]);
     for (const group of grouped) {
       expect(
         (group.members ?? []).map((member) => member.act.name()).sort(),
@@ -795,7 +800,19 @@ describe('every verb says if it writes', () => {
       'stack show': () => ['stack', 'show', 'hello-stack', '--to', stackTo()],
       'stack diff': () => ['stack', 'diff', 'hello-stack', '--to', stackTo()],
       'stack check': () => ['stack', 'check', '--to', stackTo()],
+      'witness sigstore-check': () => [
+        'witness',
+        'sigstore-check',
+        '--identity',
+        'someone@example.com',
+        '--issuer',
+        'https://accounts.example',
+      ],
     };
+    // A reader whose answer over this fixture is a NO, on purpose: the fixture holds no Sigstore
+    // bundle, and a check that found nothing to check must not pass. It is still measured in the
+    // chain below: it may fail, and it may not write.
+    const FAILS_ON_THIS_FIXTURE: ReadonlySet<string> = new Set(['witness sigstore-check']);
     // The stack the four `stack` readers look at: installed into a folder of its own, which
     // records nothing, so the readers are measured against a receipt that really exists.
     const stackTo = (): string => join(sandbox, 'stack-to');
@@ -829,7 +846,9 @@ describe('every verb says if it writes', () => {
       const before = held(sandbox);
       for (const form of forms) {
         const outcome = await mnema(form);
-        expect(outcome.failed, `mnema ${form.join(' ')}: ${outcome.out.join(' / ')}`).toBe(false);
+        expect(outcome.failed, `mnema ${form.join(' ')}: ${outcome.out.join(' / ')}`).toBe(
+          FAILS_ON_THIS_FIXTURE.has(path),
+        );
       }
       const after = held(sandbox);
       expect(after.events - before.events, path).toBe(0);

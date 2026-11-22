@@ -573,6 +573,10 @@ export const SERVES_NO_RECORD_CONTENT: { readonly [path: string]: string } = {
     'its acts write witness files and refuse a tree below fully signed by the verifier\u2019s own ' +
     'verdict, which is where a break is said; what `witness sigstore` reads of the events is only ' +
     'whether an identity names the certificate\u2019s, and serves none of their content',
+  'wiring/witness.ts':
+    'its `sigstore-check` runs the verifier and then reads only the trees whose verdict was not a break, ' +
+    'naming a tree whose chain does not close as not read and failing the exit; the other verbs there ' +
+    'refuse a tree below fully signed by that same verdict, so a notice would be the verdict said a second time',
   'site/browser/entry.ts':
     'it IS the verdict, run in a page: it hands the chain\u2019s own sentence and every issue and ' +
     'census note to the page unchanged, so a notice about the chain would be that verdict ' +

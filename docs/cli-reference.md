@@ -674,6 +674,28 @@ prove** is who wrote the record: anybody can countersign the digest of a checkpo
 read. It is no witness level: the verdict, the level, `--require witnessed` and the exit are
 the ones `verify` gives without it.
 
+**Checking that countersignature as somebody who was not there.** `mnema witness sigstore-check
+--identity <e-mail or workflow> --issuer <url>` reads every bundle of a clone **offline** and exits
+0 only when there is a bundle, every one holds by Sigstore's own checks and its certificate names
+exactly that identity and that issuer (a bundle that holds and names somebody else is said by name
+and fails). What a bundle signs is the checkpoint's own signed message, recomputed from
+`checkpoints.jsonl` and never taken from the bundle, and its SHA-256 is the name the bundle is filed under.
+With `--message-dir <dir>` it writes each of those messages as `<sha256>.message` (a link among the folders above it is followed and the messages land at the real path; the folder itself may not be a symbolic link, and its real path may not lie inside a record, that is any `.mnema` or `.git` folder, compared without case on macOS and Windows, or the root of a record checked; folders are made only after every check passes, and a file already there is never overwritten: it is refused) and prints the
+line that checks the same bundle with [cosign](https://docs.sigstore.dev/cosign/verifying/verify/), so the
+answer does not rest on this binary alone:
+
+```text
+cosign verify-blob --bundle <repo>/.mnema/tails/<tail>/witness/<sha256>.sigstore.json \
+  --certificate-identity <identity> --certificate-oidc-issuer <issuer> <dir>/<sha256>.message
+```
+
+Offline in both: the certificate chain, the certificate-transparency timestamp, Rekor's signed
+promise and its proof of inclusion travel inside the bundle. Not offline: neither tool asks anybody
+whether the trust root it holds is still the current one or whether Rekor still holds the entry;
+mnema checks against the root this binary carries (a certificate from a root Sigstore rotated later
+reads `refused`: update mnema), and cosign fetches its root through TUF the first time it runs
+(`--trusted-root` points it at a file instead). The bundle is the Sigstore bundle v0.3: on cosign 2.x the printed line may need `--new-bundle-format` added, and that was not run here (unverified), so this page claims no cosign version. Like `--against-sigstore`, it says who signed in to Sigstore, not who wrote the record.
+
 ### Bold, dim, and what a pipe gets
 
 In a terminal, a verdict's label and a heading are **bold**, the half of a statement
