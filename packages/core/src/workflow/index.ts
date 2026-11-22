@@ -31,6 +31,8 @@ export {
 } from './decision-gate.js';
 export {
   acceptDecision,
+  type DecisionSeenInput,
+  type DecisionSeenOk,
   type DecisionTransitionInput,
   type DecisionTransitionOk,
   type DecisionWriteContext,
@@ -39,7 +41,10 @@ export {
   type RecordInput,
   type RecordOk,
   recordDecision,
+  recordDecisionSeen,
   rejectDecision,
+  SEEN_NEEDS_A_PERSON,
+  type SeenRefusal,
   type SupersedeInput,
   supersedeDecision,
 } from './decision-operations.js';

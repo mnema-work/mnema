@@ -46,7 +46,7 @@ describe('bootstrap: the opening context, focused on the actor', () => {
           state: 'IN_PROGRESS',
           updatedAt: expect.any(String),
           lastFact: { at: expect.any(String), line: 'start → IN_PROGRESS' },
-          owner: { name: 'a person', via: 'start' },
+          owner: { name: 'no agent declared', via: 'start' },
         },
       ]);
     } finally {
@@ -271,7 +271,7 @@ describe('bootstrap: the opening context, focused on the actor', () => {
           state: 'IN_REVIEW',
           updatedAt: expect.any(String),
           lastFact: { at: expect.any(String), line: 'submit_review → IN_REVIEW' },
-          owner: { name: 'a person', via: 'start' },
+          owner: { name: 'no agent declared', via: 'start' },
         },
       ]);
     } finally {
@@ -434,7 +434,11 @@ describe('bootstrap: the opening context, focused on the actor', () => {
           title: 'Hand-rolled arithmetic',
           // And WHO RULED IT, because the opening context hands the decision over as a rule: the
           // same field the committed document carries, from the same derivation.
-          acceptance: { by: expect.stringMatching(/^mnid:[0-9a-f]{8}$/), unconfirmed: false },
+          acceptance: {
+            by: expect.stringMatching(/^mnid:[0-9a-f]{8}$/),
+            unconfirmed: false,
+            day: '2026-01-01',
+          },
         },
       ]);
       // Neither half of the body enters the opening context. The fixture writes
@@ -606,7 +610,7 @@ describe('bootstrap: the opening context, focused on the actor', () => {
           state: 'IN_REVIEW',
           updatedAt: expect.any(String),
           lastFact: { at: expect.any(String), line: 'submit_review → IN_REVIEW' },
-          owner: { name: 'a person', via: 'start' },
+          owner: { name: 'no agent declared', via: 'start' },
         },
         {
           kind: 'skill',

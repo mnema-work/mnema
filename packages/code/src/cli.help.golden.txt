@@ -3,7 +3,8 @@ $ mnema
 | Your decisions, handed to your agents' sessions and held at the edits they govern: append-only and signed in the repository, and checkable by anyone.
 | A mnema project is founded here.
 | 1 decision(s) await a judgement: `mnema decision review` goes through them.
-| Off on this machine: edit-first-write-gate, user-corrections. Turn one on with `mnema switch on <name>`.
+| 1 rule(s) in force you did not accept yourself, none shown to you yet: `mnema decision review` shows each one and marks it shown.
+| Off on this machine: edit-first-write-gate. Turn one on with `mnema switch on <name>`.
 | Next:
 |   `mnema status`                                where things stand
 |   `mnema decision record <title> <rationale>`   record a choice that was settled
@@ -135,13 +136,15 @@ $ mnema --help
 |                   format it is checked by
 |   settled         say to the agent, after a question to the person was answered,
 |                   which tool records a choice
+|   dictated        say to the agent, beside a message that has the shape of a
+|                   rule the person dictated, which tools record and accept it
 |   dispatched      record a session’s dispatches to other agents as one private
 |                   task and a handoff each, for a PostToolUse or SessionEnd hook
 |
 | Help:
 |   help            display help for command
 $ mnema --version
-| 0.1.8
+| 0.1.9
 
 ### mnema init --help
 $ mnema init --help
@@ -764,7 +767,7 @@ $ mnema switch --help
 |   What it carries is what stops arriving when it is off.
 |   An off switch says who made it and when, and whether a clone of this
 |   repository holds it: a switch recorded privately governs only this machine.
-|   A channel with no switch is on, except edit-first-write-gate and user-corrections, which are off until switched on.
+|   A channel with no switch is on, except edit-first-write-gate, which is off until switched on.
 
 ### mnema inherit --help
 $ mnema inherit --help
@@ -933,10 +936,10 @@ $ mnema site --help
 | The page holds the committed (public) tree and nothing else: no private tree, no
 | machine-global tree, and all of that tree's text, so publish it only where the
 | repository itself may be read. It lists every decision as a card (its reasons, who
-| recorded it and who accepted it, a person or an agent, its history and the paths it
+| recorded it and who accepted it, an agent or no agent declared, its history and the paths it
 | is addressed at) with the public notes that belong to it, and a timeline of the
 | record. With JavaScript, a filter opens on the decisions in force and narrows them
-| by state, identity, agent or person, day, text and path, and the page says how many
+| by state, identity, agent or no agent declared, day, text and path, and the page says how many
 | it shows; without it, every decision is listed. The stored events of a tail are
 | drawn when it is opened, from the files the page carries, and are not written into
 | the page twice. Those files are what the record is made of, and the browser runs the
@@ -1045,7 +1048,8 @@ $ mnema audit --help
 |   accountability [options]  show who authorized what across the record
 |                             (optionally windowed/filtered)
 |   antipatterns [options]    show recurring shapes in the record (reopens,
-|                             supersessions, deprecations)
+|                             supersessions, deprecations, and what agents
+|                             accepted)
 |   exposure [options]        show which records hold something shaped like a
 |                             credential (never the value)
 |   help [command]            display help for command
@@ -1336,7 +1340,7 @@ $ mnema backup --help
 |
 | The copy is a folder per project, kept under the name of its record: the tails up to their
 | last complete line and the public keys, and nothing else. The private tree is always copied;
-| the public tree only where the project is not in git, whose history is its own backup. No
+| the public tree only where git does not hold it (a project outside git, or a local record that a repository excludes), since a committed record's history is its own backup. No
 | private key is copied: a run is refused whole if a file it would copy holds one, and so is a
 | symbolic link in the tree or in the folder. A copy only grows. The folder keeps the text in
 | clear, which `setup` asks a person to confirm at a terminal. A machine can have a folder per project; a project has the one it was set up with.
@@ -1388,6 +1392,8 @@ $ mnema doctor --help
 |   each worktree’s .mnema/private/, where private notes lived before they moved into the
 |   repository’s git directory; and the agent keys this machine holds, against the record of
 |   each tree it reaches, with the `MNEMA_AGENT_KEY` of its own environment.
+| It also reads the ledger of caught failures, <data directory>/log/swallowed.jsonl, for the last 7 days (kept on this
+| machine and never sent: docs/the-ledger-of-caught-failures.md).
 | Asked alone it writes nothing and exits 0 whatever it finds: each line says what to do.
 | `--fix vscode` writes: it shows what it will change, keeps a copy of settings.json beside
 | it, keeps the file’s comments, and refuses a file it cannot edit safely.
@@ -1580,6 +1586,8 @@ $ mnema before-a-write --help
 |   tree does that in every project of this machine. The switches read the
 |   same record, so they do not turn that off; update mnema, or restore the
 |   line.
+|   With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
+|   code alone on the first line of the error stream; typed by a person, nothing changes.
 
 ### mnema beside-a-write --help
 $ mnema beside-a-write --help
@@ -1609,6 +1617,8 @@ $ mnema beside-a-write --help
 |   write. It needs the `session_id` of the payload: the first reply of a session records one
 |   `channel.served` and the others none, and a payload without one is handed no rules.
 |   `mnema switch off edit-rules-push` stops it.
+|   With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
+|   code alone on the first line of the error stream; typed by a person, nothing changes.
 
 ### mnema tally --help
 $ mnema tally --help
@@ -1628,10 +1638,16 @@ $ mnema tally --help
 |   person, or {} when
 |   the hook is not Stop, the session wrote no file in the last response, there is no project
 |   here, or the transcript cannot be read.
+|   A response begins at a line Claude Code marks as typed by a person (origin.kind human):
+|   a compaction summary, a local command and “[Request interrupted by user]” never count, a
+|   slash command opens a response, and a transcript of an older Claude Code with no origin
+|   yields no typed line of the person’s.
 |   It writes nothing to the record. When the hook names its session it also keeps a small file on
 |   this machine, the session journal (ids and counts, never what was said), and reads the
 |   transcript from where the last reading stopped. `mnema switch off session-tally` stops the
 |   line and `mnema switch off session-journal` stops the file.
+|   With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
+|   code alone on the first line of the error stream; typed by a person, nothing changes.
 
 ### mnema corrections --help
 $ mnema corrections --help
@@ -1651,12 +1667,21 @@ $ mnema corrections --help
 |   after a response that ended in a question mark, quoted with the question), and records
 |   each as a proposed decision in this machine’s private tree, citing the session and the
 |   line, at most five
-|   at a time and never the same line twice. No model is called; a match is a guess that a
+|   at a time and never the same line twice. A message that has the shape of a rule
+|   dictated is left to `mnema dictated` while `dictated-rule` is on, so a rule is one
+|   record. No model is called; a match is a guess that a
 |   person accepts or rejects.
 |   On stdout, the reply the host reads: a `systemMessage` saying how many were recorded and
 |   under which labels, or {}.
-|   It does nothing until `mnema switch on user-corrections`, because it reads what a person
-|   typed. With the channel off, or outside a project, it records nothing.
+|   A typed line is the person’s only where Claude Code marks it origin.kind human: a
+|   compaction summary, a local command and “[Request interrupted by user]” never count, a
+|   slash command opens an answer but is never quoted, and a transcript of an older Claude
+|   Code with no origin yields no typed line. An option chosen in the question tool is read
+|   from the tool’s result, which carries no origin.
+|   It is on until `mnema switch off user-corrections`; it read nothing before 0.1.10 until a
+|   person switched it on. With the channel off, or outside a project, it records nothing.
+|   With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
+|   code alone on the first line of the error stream; typed by a person, nothing changes.
 
 ### mnema after-a-write --help
 $ mnema after-a-write --help
@@ -1680,6 +1705,8 @@ $ mnema after-a-write --help
 |   cites nowhere gets one line naming the command that reads it, once per session and
 |   file. Nothing is written for it.
 |   On stdout, the reply the host reads, or {}.
+|   With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
+|   code alone on the first line of the error stream; typed by a person, nothing changes.
 
 ### mnema handback --help
 $ mnema handback --help
@@ -1703,6 +1730,8 @@ $ mnema handback --help
 |   no project here, or the reply cannot be read.
 |   It reads, and writes nothing. It can be switched off with
 |   `mnema switch off subagent-handback`.
+|   With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
+|   code alone on the first line of the error stream; typed by a person, nothing changes.
 
 ### mnema settled --help
 $ mnema settled --help
@@ -1725,6 +1754,34 @@ $ mnema settled --help
 |   outside a project, or with the channel off, it prints {}.
 |   It reads which tool ran and never the answer, and writes nothing. It can be switched off
 |   with `mnema switch off choice-settled`.
+|   With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
+|   code alone on the first line of the error stream; typed by a person, nothing changes.
+
+### mnema dictated --help
+$ mnema dictated --help
+| Usage: mnema dictated [options]
+|
+| say to the agent, beside a message that has the shape of a rule the person
+| dictated, which tools record and accept it
+|
+| Options:
+|   -h, --help  display help for command
+|
+| What it reads and what it prints:
+|   The JSON a host hands a hook when the person sends a message (UserPromptSubmit, or
+|   BeforeAgent in Gemini CLI) on stdin. When the message is an instruction to keep (always,
+|   never, from now on, a partir de agora, nunca, sempre followed by a verb in the imperative,
+|   or put it as a rule, coloca como regra, in English or Portuguese), it prints the reply the
+|   host reads: an additionalContext saying that the message has the shape of a rule, that only
+|   a rule the person typed is to be accepted, that `record_decision` records it, that
+|   `decision_transition` accepts it with a note quoting the person, and that nothing was
+|   recorded from the message. It says no word of the message. A statement ("sempre dá
+|   timeout"), a question, quoted or pasted text, a message that sets instructions aside, a
+|   limit in time or place ("today", "here", "hoje", "aqui"), a step of the task ("then tell
+|   me") and a condition ("if it works, make it a rule") are not rules. Accents are optional.
+|   Otherwise, outside a project, or with the channel off, it prints {}.
+|   It reads the message the host hands it and never the transcript, and writes nothing. It
+|   can be switched off with `mnema switch off dictated-rule`.
 
 ### mnema dispatched --help
 $ mnema dispatched --help
@@ -1751,6 +1808,8 @@ $ mnema dispatched --help
 |   kept in the session journal, so `mnema switch off session-journal` stops it, and so does
 |   `mnema switch off agent-mirror`. Nothing goes to the public tree.
 |   On stdout, {}.
+|   With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
+|   code alone on the first line of the error stream; typed by a person, nothing changes.
 
 ### mnema decision record --help
 $ mnema decision record --help
@@ -1835,6 +1894,11 @@ $ mnema decision review --help
 | letter (`a because the benchmark held`). Each verdict is the move `decision move` makes,
 | signed with your own key; a refusal on one decision is said and the review goes on. Without a
 | terminal it writes nothing and prints the `decision move` command that rules the same decisions.
+|
+| Then it shows the rules in force you did not accept yourself (an agent accepted them, or no
+| agent was declared on the accept), newest first, and marks each one it shows as shown to you,
+| in this machine's private record; `q` stops it, and what was not shown stays on the list.
+| A mark says your key signed at a terminal with no agent declared, not that a person read it.
 |
 | What recording means here:
 |   Permanent: mnema is append-only and nothing deletes a fact. A public record
@@ -2052,7 +2116,8 @@ $ mnema skill provenance --help
 |   The `skills` tool on the MCP surface serves a pattern’s body to an agent.
 |   This verb reads who put each one there. `mnema show <id>` reads a body.
 |   Only an adopted pattern is served to an agent; the other states are not.
-|   An act with no agent behind it was a person acting directly.
+|   An act that declares no agent is shown as "no agent declared", not as a person:
+|   an agent run without `--which` leaves the same mark.
 |   A consultation is one run served the body, not that the work followed it,
 |   and counted in this project’s trees and the machine-global one, no other.
 |   It records nothing: no event, no consultation.
@@ -2399,10 +2464,10 @@ $ mnema switch off --help
 |   channel          the channel to switch (brief-document, recall-document,
 |                    edit-rules-push, edit-asks-a-person, edit-refuses-a-write,
 |                    agent-accepts, edit-first-write-gate, user-corrections,
-|                    choice-settled, host-memory-mirror, decision-file-written,
-|                    subagent-handback, tool-call-count, last-session,
-|                    private-rules, after-a-compaction, session-journal,
-|                    agent-mirror, session-tally)
+|                    choice-settled, dictated-rule, host-memory-mirror,
+|                    decision-file-written, subagent-handback, tool-call-count,
+|                    last-session, private-rules, after-a-compaction,
+|                    session-journal, agent-mirror, session-tally)
 |
 | Options:
 |   --reason <text>  why (recorded in the fact; never required)
@@ -2439,10 +2504,10 @@ $ mnema switch on --help
 |   channel          the channel to switch (brief-document, recall-document,
 |                    edit-rules-push, edit-asks-a-person, edit-refuses-a-write,
 |                    agent-accepts, edit-first-write-gate, user-corrections,
-|                    choice-settled, host-memory-mirror, decision-file-written,
-|                    subagent-handback, tool-call-count, last-session,
-|                    private-rules, after-a-compaction, session-journal,
-|                    agent-mirror, session-tally)
+|                    choice-settled, dictated-rule, host-memory-mirror,
+|                    decision-file-written, subagent-handback, tool-call-count,
+|                    last-session, private-rules, after-a-compaction,
+|                    session-journal, agent-mirror, session-tally)
 |
 | Options:
 |   --reason <text>  why (recorded in the fact; never required)
@@ -2660,7 +2725,8 @@ $ mnema audit accountability --help
 $ mnema audit antipatterns --help
 | Usage: mnema audit antipatterns [options]
 |
-| show recurring shapes in the record (reopens, supersessions, deprecations)
+| show recurring shapes in the record (reopens, supersessions, deprecations, and
+| what agents accepted)
 |
 | Options:
 |   --json      emit the faithful shapes with their evidence as JSON

@@ -17,6 +17,7 @@
  *   - A TREE NOBODY HAS WRITTEN TO KEEPS NOTHING, so a read never founds a directory.
  */
 
+import { createHash } from 'node:crypto';
 import {
   appendFileSync,
   chmodSync,
@@ -32,6 +33,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import {
   type CatalogEvent,
   catalogUpcasters,
@@ -44,7 +46,7 @@ import {
   UpcasterRegistry,
   type VersionedEvent,
 } from '@mnema/chain';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ensureSchema, PROJECTION_TABLES } from '../db/schema.js';
 import { IN_MEMORY, openDatabase, type SqliteDatabase } from '../db/sqlite.js';
 import { captureMemory, recordObservation, retractNote } from '../knowledge/operations.js';
@@ -54,6 +56,18 @@ import { createTask, transitionTask, type WriteContext } from '../workflow/opera
 import { endRun, startRun } from '../workflow/session-operations.js';
 import { createSkill } from '../workflow/skill-operations.js';
 import { ProjectionCache } from './cache.js';
+import { keepProductVersion, ownerOfTheFile } from './cache-meta.js';
+
+// Every open goes through the real thing; a case that needs the database to fail AFTER it was opened
+// asks the next open for a wrapper (`failingAfterTheOpen`).
+const theRealOpen = vi.hoisted(() => ({
+  open: undefined as undefined | ((path: string) => unknown),
+}));
+vi.mock('../db/sqlite.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../db/sqlite.js')>();
+  theRealOpen.open = actual.openDatabase;
+  return { ...actual, openDatabase: vi.fn(actual.openDatabase) };
+});
 
 const upcasters = catalogUpcasters();
 
@@ -166,6 +180,15 @@ function rowsOfAReplay(): Record<string, string[]> {
   const rows = rowsOf(memory);
   rmSync(scratch, { recursive: true, force: true });
   return rows;
+}
+
+/** The projection file as it is: its bytes and its modification time, which a rewrite moves. */
+function theFileAsItIs(): { bytes: string; mtimeNs: bigint } {
+  const path = projectionCachePath({ root });
+  return {
+    bytes: createHash('sha256').update(readFileSync(path)).digest('hex'),
+    mtimeNs: statSync(path, { bigint: true }).mtimeNs,
+  };
 }
 
 /** A row no replay of any chain writes: if it is still there, the cache was not built again. */
@@ -388,15 +411,58 @@ describe('a cache that cannot be vouched for is replaced, never trusted', () => 
     return ctx;
   }
 
-  it('written by other code: the stamp is not this code’s', () => {
+  it('written by other code: the file is left to that code and this process answers from memory', () => {
     aWarmFile();
     const db = openDatabase(projectionCachePath({ root }));
     db.prepare("UPDATE cache_meta SET value = 'another-product' WHERE key = 'stamp'").run();
     db.close();
+    const before = theFileAsItIs();
     const cache = persisted();
     cache.refresh();
+    expect(cache.leftTheFileToAnotherBuild).toBe(true);
     expect(theMarkerSurvived(cache)).toBe(false);
     expect(answersOf(cache)).toEqual(answersOf(replayed()));
+    cache.close();
+    expect(theFileAsItIs()).toEqual(before);
+  });
+
+  it('a build of another stamp never rewrites the file, and the build that owns it stays incremental', () => {
+    const ctx = writing();
+    aRecord(ctx);
+    const owner = persisted();
+    owner.refresh();
+    owner.close();
+    const mine = openDatabase(projectionCachePath({ root }));
+    const ownStamp = (
+      mine.prepare("SELECT value FROM cache_meta WHERE key = 'stamp'").get() as { value: string }
+    ).value;
+    mine.prepare("UPDATE cache_meta SET value = 'another-product' WHERE key = 'stamp'").run();
+    mine.close();
+    const before = theFileAsItIs();
+    // The record moves while the foreign build reads: it reads every arrival from memory.
+    for (let round = 0; round < 3; round += 1) {
+      landed(captureMemory(ctx, { content: `an arrival ${round}` }));
+      ctx.writer.checkpoint();
+      const foreign = persisted();
+      foreign.refresh();
+      expect(foreign.listMemories().map((memory) => memory.content)).toContain(
+        `an arrival ${round}`,
+      );
+      foreign.close();
+    }
+    // Writing through the record reads through this same file, so what is compared is the file
+    // as the foreign build left it, and the writes above did not move it either.
+    expect(theFileAsItIs()).toEqual(before);
+
+    // Back in the hands of its owner (the stamp it wrote), the same file is brought forward.
+    const back = openDatabase(projectionCachePath({ root }));
+    back.prepare("UPDATE cache_meta SET value = ? WHERE key = 'stamp'").run(ownStamp);
+    back.close();
+    plantAMarker();
+    const again = persisted();
+    again.refresh();
+    expect(again.leftTheFileToAnotherBuild).toBe(false);
+    expect(theMarkerSurvived(again)).toBe(true);
   });
 
   it('a tail that is gone', () => {
@@ -820,6 +886,214 @@ describe('two processes on one file', () => {
         .map((memory) => memory.content)
         .sort(),
     ).toEqual(['a memory already here', 'the first arrival', 'the second arrival']);
+  });
+});
+
+describe('who takes over a file another build’s code wrote', () => {
+  /** A warm file, then made to say it was written by `stamp` at `version` (no version row when undefined). */
+  function aFileWrittenBy(stamp: string, version: string | undefined): void {
+    const ctx = writing();
+    aRecord(ctx);
+    const warm = persisted();
+    warm.refresh();
+    warm.close();
+    const db = openDatabase(projectionCachePath({ root }));
+    db.prepare("UPDATE cache_meta SET value = ? WHERE key = 'stamp'").run(stamp);
+    db.prepare("DELETE FROM cache_meta WHERE key = 'version'").run();
+    if (version !== undefined) {
+      db.prepare("INSERT INTO cache_meta (key, value) VALUES ('version', ?)").run(version);
+    }
+    db.close();
+    plantAMarker();
+  }
+
+  function theMetaOfTheFile(): Record<string, string> {
+    const db = openDatabase(projectionCachePath({ root }));
+    try {
+      const rows = db
+        .prepare("SELECT key, value FROM cache_meta WHERE key IN ('stamp', 'version')")
+        .all() as { key: string; value: string }[];
+      return Object.fromEntries(rows.map((row) => [row.key, row.value]));
+    } finally {
+      db.close();
+    }
+  }
+
+  afterEach(() => keepProductVersion(undefined));
+
+  it('an update takes the file over once, and the file is incremental for it afterwards', () => {
+    aFileWrittenBy('the-build-before-the-update', '4.1.7');
+    keepProductVersion('4.1.8');
+    const updated = persisted();
+    updated.refresh();
+    expect(updated.leftTheFileToAnotherBuild).toBe(false);
+    expect(theMarkerSurvived(updated)).toBe(false);
+    expect(answersOf(updated)).toEqual(answersOf(replayed()));
+    updated.close();
+    const meta = theMetaOfTheFile();
+    expect(meta.version).toBe('4.1.8');
+    expect(meta.stamp).toMatch(/^[0-9a-f]{32}$/);
+    // The next process of that version reads what the file holds.
+    plantAMarker();
+    const next = persisted();
+    next.refresh();
+    expect(theMarkerSurvived(next)).toBe(true);
+  });
+
+  it('a file written by a build that stored no version is the oldest there is, and is taken over', () => {
+    aFileWrittenBy('a-build-that-said-nothing', undefined);
+    keepProductVersion('4.1.8');
+    const cache = persisted();
+    cache.refresh();
+    expect(cache.leftTheFileToAnotherBuild).toBe(false);
+    expect(theMarkerSurvived(cache)).toBe(false);
+    cache.close();
+    expect(theMetaOfTheFile().version).toBe('4.1.8');
+  });
+
+  it('two checkouts of one version with different code never rewrite each other’s file', () => {
+    aFileWrittenBy('the-other-checkout', '4.1.8');
+    keepProductVersion('4.1.8');
+    const before = theFileAsItIs();
+    const cache = persisted();
+    cache.refresh();
+    expect(cache.leftTheFileToAnotherBuild).toBe(true);
+    expect(answersOf(cache)).toEqual(answersOf(replayed()));
+    cache.close();
+    expect(theFileAsItIs()).toEqual(before);
+    expect(theMetaOfTheFile()).toEqual({ stamp: 'the-other-checkout', version: '4.1.8' });
+  });
+
+  it('an older version left beside a newer one leaves the newer one’s file alone', () => {
+    aFileWrittenBy('the-newer-build', '4.2.0');
+    keepProductVersion('4.1.8');
+    const before = theFileAsItIs();
+    const cache = persisted();
+    cache.refresh();
+    expect(cache.leftTheFileToAnotherBuild).toBe(true);
+    cache.close();
+    expect(theFileAsItIs()).toEqual(before);
+  });
+
+  it('versions are compared by their three numbers, not as text', () => {
+    aFileWrittenBy('the-build-before', '4.1.9');
+    keepProductVersion('4.1.10');
+    const cache = persisted();
+    cache.refresh();
+    expect(cache.leftTheFileToAnotherBuild).toBe(false);
+    expect(theMetaOfTheFile().version).toBe('4.1.10');
+  });
+
+  it('busy never rewrites: a file another process holds is left as it is and read in memory', {
+    timeout: 20_000,
+  }, () => {
+    aFileWrittenBy('the-owner', '4.1.8');
+    keepProductVersion('4.1.9');
+    const path = projectionCachePath({ root });
+    // A file in rollback-journal mode held exclusively cannot even be read by another process.
+    const holder = new DatabaseSync(path);
+    holder.exec('PRAGMA wal_checkpoint(TRUNCATE)');
+    holder.exec('PRAGMA journal_mode = DELETE');
+    holder.exec('BEGIN EXCLUSIVE');
+    let cache: ProjectionCache;
+    try {
+      cache = persisted();
+      cache.refresh();
+    } finally {
+      holder.exec('ROLLBACK');
+      holder.close();
+    }
+    expect(answersOf(cache)).toEqual(answersOf(replayed()));
+    cache.close();
+    expect(theMetaOfTheFile()).toEqual({ stamp: 'the-owner', version: '4.1.8' });
+    expect(rowsOf(path).memories?.some((row) => row.includes('a-marker'))).toBe(true);
+  });
+
+  /**
+   * The next open of a database hands back the real one with one statement made to fail with SQLITE_BUSY
+   * AFTER the open (so the failure is the one of the owner question or of the schema step, not of the
+   * pragmas the open itself runs).
+   */
+  function failingAfterTheOpen(which: 'prepare' | 'exec', pattern: RegExp): void {
+    const busy = (): never => {
+      throw Object.assign(new Error('database is locked'), {
+        code: 'ERR_SQLITE_ERROR',
+        errcode: 5,
+      });
+    };
+    vi.mocked(openDatabase).mockImplementationOnce((path: string) => {
+      const db = (theRealOpen.open as (path: string) => SqliteDatabase)(path);
+      return new Proxy(db, {
+        get(target, property) {
+          if (property === which) {
+            return (sql: string, ...rest: unknown[]) => {
+              if (pattern.test(sql)) return busy();
+              return (target[which] as (...args: unknown[]) => unknown).call(target, sql, ...rest);
+            };
+          }
+          const value = Reflect.get(target, property) as unknown;
+          return typeof value === 'function' ? value.bind(target) : value;
+        },
+      });
+    });
+  }
+
+  it('a file that cannot be asked who owns it is left as it is: the owner question fails busy after the open', () => {
+    aFileWrittenBy('the-owner', '4.1.8');
+    keepProductVersion('4.1.9');
+    const before = theFileAsItIs();
+    failingAfterTheOpen('prepare', /key IN/);
+    const cache = persisted();
+    cache.refresh();
+    // Were the failure read as "no owner", this newer version would take the file over.
+    expect(cache.leftTheFileToAnotherBuild).toBe(true);
+    expect(answersOf(cache)).toEqual(answersOf(replayed()));
+    cache.close();
+    expect(theFileAsItIs()).toEqual(before);
+    expect(theMetaOfTheFile()).toEqual({ stamp: 'the-owner', version: '4.1.8' });
+  });
+
+  it('a schema step that fails busy never drops the tables of the file: it is a held file, not one of another shape', () => {
+    const ctx = writing();
+    aRecord(ctx);
+    for (const suffix of ['', '-wal', '-shm']) {
+      rmSync(`${projectionCachePath({ root })}${suffix}`, { force: true });
+    }
+    const other = openDatabase(projectionCachePath({ root }));
+    other.exec('CREATE TABLE tasks (only_column TEXT)');
+    other.exec("INSERT INTO tasks (only_column) VALUES ('kept')");
+    other.close();
+    failingAfterTheOpen('exec', /CREATE TABLE/);
+    const cache = persisted();
+    cache.refresh();
+    expect(answersOf(cache)).toEqual(answersOf(replayed()));
+    cache.close();
+    const file = openDatabase(projectionCachePath({ root }));
+    try {
+      expect(file.prepare('SELECT only_column FROM tasks').all()).toEqual([
+        { only_column: 'kept' },
+      ]);
+    } finally {
+      file.close();
+    }
+  });
+
+  it('ownerOfTheFile: an error of the database that is not "no table" says unknown, and one that is says none', () => {
+    const failing = (errcode: number): SqliteDatabase =>
+      ({
+        prepare: () => {
+          throw Object.assign(new Error('failed'), { code: 'ERR_SQLITE_ERROR', errcode });
+        },
+      }) as unknown as SqliteDatabase;
+    for (const busy of [5, 6, 261, 10]) expect(ownerOfTheFile(failing(busy)).state).toBe('unknown');
+    for (const nobodys of [1, 26, 11]) expect(ownerOfTheFile(failing(nobodys)).state).toBe('none');
+    expect(() =>
+      ownerOfTheFile({
+        prepare: () => {
+          throw new TypeError('not the database');
+        },
+      } as unknown as SqliteDatabase),
+    ).toThrow(TypeError);
   });
 });
 

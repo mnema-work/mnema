@@ -231,7 +231,8 @@ claim about the agent hosts is held, and which are not held yet, is in [`docs/ev
   [A record that inherits another](docs/a-record-inheriting-another.md) ·
   [Importing the decisions you already wrote](docs/importing-the-decisions-you-already-wrote.md) ·
   [Switching off what is handed to a model](docs/switching-off-what-is-handed-to-a-model.md) ·
-  [The session journal and compaction](docs/the-session-journal-and-compaction.md) · [As an MCP server](docs/as-an-mcp-server.md) ·
+  [The session journal and compaction](docs/the-session-journal-and-compaction.md) ·
+  [The ledger of caught failures](docs/the-ledger-of-caught-failures.md) · [As an MCP server](docs/as-an-mcp-server.md) ·
   [Features](docs/features.md) · [Where it fits](docs/where-it-fits.md) ·
   [mnema next to a folder of ADRs](docs/mnema-next-to-a-folder-of-adrs.md) · [Windows and macOS](docs/platforms.md) ·
   [When two machines disagree](docs/convergence.md) · [Glossary](docs/glossary.md)

@@ -1291,6 +1291,11 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'collapsed',
       why: 'the head of the identity a stored `agent.enrolled` names as its subject',
     },
+  '@mnema/chain chain/verify.ts «{} fact(s) name no agent: no agent was declared, which does not say that a person acted» agents.undeclared #1':
+    {
+      verdict: 'minted',
+      why: 'a count the fold kept, of accepted facts that carry no `which`',
+    },
   '@mnema/chain chain/verify.ts «{} event(s) name the agent "{}": declared by the key that signed, not attested» named.events #1':
     {
       verdict: 'minted',
@@ -2583,6 +2588,11 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'collapsed',
       why: 'the action, in the refusal that says only `supersede` names one',
     },
+  '@mnema/core workflow/decision-operations.ts «A rule in force is marked as shown only to a person at a terminal, and this is from an agent ({}). Nothing was written.» oneLine(agent.which) #1':
+    {
+      verdict: 'collapsed',
+      why: 'the agent a caller declared on a showing, which is refused',
+    },
   '@mnema/core workflow/decision-operations.ts «decision "{}" does not exist» oneLine(input.id) #1':
     {
       verdict: 'collapsed',
@@ -2593,27 +2603,27 @@ const CLASSIFIED: Readonly<Record<string, { verdict: Verdict; why: string }>> = 
       verdict: 'collapsed',
       why: 'the successor `--by` named, which is the caller’s word until the record answers about it',
     },
-  '@mnema/core workflow/decision-operations.ts «{} is already accepted, by a person, at {}: nothing changed.» oneLine(current.adr) #1':
+  '@mnema/core workflow/decision-operations.ts «{} is already accepted (no agent declared) at {}: nothing changed.» oneLine(current.adr) #1':
     {
       verdict: 'collapsed',
       why: 'the label of a decision, read out of the record, in the refusal of an accept the state has already had',
     },
-  '@mnema/core workflow/decision-operations.ts «{} is already accepted, by a person, at {}: nothing changed.» oneLine(current.updatedAt) #1':
+  '@mnema/core workflow/decision-operations.ts «{} is already accepted (no agent declared) at {}: nothing changed.» oneLine(current.updatedAt) #1':
     {
       verdict: 'collapsed',
       why: 'the instant of the accepting move, read out of the record like every other field of it',
     },
-  '@mnema/core workflow/decision-operations.ts «{} is already accepted, by an agent ({}), at {}: nothing changed.» oneLine(current.adr) #1':
+  '@mnema/core workflow/decision-operations.ts «{} is already accepted (agent {}) at {}: nothing changed.» oneLine(current.adr) #1':
     {
       verdict: 'collapsed',
       why: 'the label of a decision, read out of the record, in the refusal of an accept the state has already had',
     },
-  '@mnema/core workflow/decision-operations.ts «{} is already accepted, by an agent ({}), at {}: nothing changed.» oneLine(agent) #1':
+  '@mnema/core workflow/decision-operations.ts «{} is already accepted (agent {}) at {}: nothing changed.» oneLine(agent) #1':
     {
       verdict: 'collapsed',
       why: 'the name of the agent that accepted it, free text read out of the record',
     },
-  '@mnema/core workflow/decision-operations.ts «{} is already accepted, by an agent ({}), at {}: nothing changed.» oneLine(current.updatedAt) #1':
+  '@mnema/core workflow/decision-operations.ts «{} is already accepted (agent {}) at {}: nothing changed.» oneLine(current.updatedAt) #1':
     {
       verdict: 'collapsed',
       why: 'the instant of the accepting move, read out of the record like every other field of it',
@@ -2909,9 +2919,9 @@ describe('every value the domain puts in a sentence is classified', () => {
     // are equal. The scale is stated, and so is what the HANDOFF said (twenty-three
     // sites, twelve in `core` and eleven in `chain`), because it counted sentences
     // written at a `message:` or a `detail:` directly, and a value is not a sentence.
-    expect(SITES.length).toBe(453);
-    expect(FOUND[0]?.sites.length).toBe(234);
-    expect(FOUND[1]?.sites.length).toBe(219);
+    expect(SITES.length).toBe(455);
+    expect(FOUND[0]?.sites.length).toBe(235);
+    expect(FOUND[1]?.sites.length).toBe(220);
     expect(FOUND.flatMap((layer) => layer.wording).length).toBeGreaterThan(15);
   });
 
@@ -2962,11 +2972,11 @@ describe('every value the domain puts in a sentence is classified', () => {
     // No arm of the case above may be empty, or that much of it is vacuous.
     const verdicts = Object.values(CLASSIFIED).map((said) => said.verdict);
     const count = (verdict: Verdict): number => verdicts.filter((said) => said === verdict).length;
-    expect(count('collapsed')).toBe(310);
-    expect(count('minted')).toBe(110);
+    expect(count('collapsed')).toBe(311);
+    expect(count('minted')).toBe(111);
     expect(count('composed')).toBe(33);
     expect(SITES.filter((site) => new RegExp(`\\b${DOOR}\\b`).test(site.expression))).toHaveLength(
-      310,
+      311,
     );
   });
 
