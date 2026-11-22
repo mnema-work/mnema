@@ -12,7 +12,7 @@
 function __mnema_commands --description 'the subcommands one level of the tree offers'
     switch "$argv[1]"
         case ''
-            echo 'init decision link unlink memory observe retract skill stack task promote status brief recall rules rules-file instructions switch inherit verify witness check site search show timeline refs audit diagram export usage resume repl why commits aging trailer commit-hook record key tail backup doctor upgrade report completion tour mcp run before-a-write beside-a-write tally corrections after-a-write handback settled dictated dispatched help'
+            echo 'init decision link unlink memory observe retract skill stack task promote status brief recall rules rules-file instructions switch inherit verify prove witness check site search show timeline refs audit diagram export usage resume repl why commits aging trailer commit-hook record key tail backup doctor upgrade report completion tour mcp run before-a-write beside-a-write tally corrections after-a-write handback settled dictated dispatched help'
         case 'decision'
             echo 'record move review supersede import help'
         case 'skill'
@@ -100,6 +100,7 @@ complete -c mnema -f -n '__mnema_at ""' -a 'instructions' -d 'write the mnema in
 complete -c mnema -f -n '__mnema_at ""' -a 'switch' -d 'turn off, or back on, what mnema hands to a model unasked, and whether an agent may accept a decision'
 complete -c mnema -f -n '__mnema_at ""' -a 'inherit' -d 'read another repository’s decisions, pinned to one of its commits'
 complete -c mnema -f -n '__mnema_at ""' -a 'verify' -d 'verify this project\'s record: its committed tree and its private one'
+complete -c mnema -f -n '__mnema_at ""' -a 'prove' -d 'write the proof of one decision a stranger checks offline, or check one'
 complete -c mnema -f -n '__mnema_at ""' -a 'witness' -d 'ask an outside witness to date this record, and read where that stands'
 complete -c mnema -f -n '__mnema_at ""' -a 'check' -d 'give a rule a program that checks it, and record whether it held at a commit'
 complete -c mnema -f -n '__mnema_at ""' -a 'site' -d 'write the project\'s committed record as one HTML page that verifies itself in the browser (records nothing)'
@@ -568,6 +569,14 @@ complete -c mnema -f -n '__mnema_at "verify"' -l json
 complete -c mnema -f -n '__mnema_at "verify"' -s h -l help
 complete -c mnema -f -n '__mnema_at "verify"' -s V -l version
 complete -c mnema -f -n '__mnema_at "verify"' -l color -x -a 'auto always never'
+
+# mnema prove
+complete -c mnema -f -n '__mnema_at "prove"' -l out -r
+complete -c mnema -f -n '__mnema_at "prove"' -l private
+complete -c mnema -f -n '__mnema_at "prove"' -l check -r
+complete -c mnema -f -n '__mnema_at "prove"' -s h -l help
+complete -c mnema -f -n '__mnema_at "prove"' -s V -l version
+complete -c mnema -f -n '__mnema_at "prove"' -l color -x -a 'auto always never'
 
 # mnema witness
 complete -c mnema -f -n '__mnema_at "witness"' -a 'stamp' -d 'ask an outside witness to date each tail\'s last checkpoint (T3)'
