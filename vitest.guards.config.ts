@@ -17,6 +17,8 @@ export default defineConfig({
     include: markedGuards(root),
     exclude: ['**/dist/**', '**/node_modules/**'],
     environment: 'node',
+    // A command-line flag overrides this default for smaller machines.
+    maxWorkers: 2,
     retry: retryFor(process.env),
     setupFiles: ['./.github/a-home-of-its-own/setup.mjs', './.github/the-property-seed/setup.mjs'],
   },
