@@ -1,7 +1,16 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.mnema-work/mnema",
-  "title": "mnema: decision records for AI coding agents",
+  "title": "mnema: the decision record for AI coding agents",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/mnema-work/mnema/main/plugin/.claude-plugin/icon.png",
+      "mimeType": "image/png",
+      "sizes": [
+        "512x512"
+      ]
+    }
+  ],
   "description": "Signed, append-only decision records for AI coding agents, over MCP. Verify them offline.",
   "repository": {
     "url": "https://github.com/mnema-work/mnema",

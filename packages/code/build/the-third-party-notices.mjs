@@ -63,6 +63,42 @@ function section(id, { manifest, dir }) {
   return lines.join('\n');
 }
 
+const FONTS = join(packageRoot, '..', '..', '.github', 'the-brand', 'fonts');
+
+/**
+ * The two faces the record page (`mnema site`) embeds as data, each a Modified Version of the authors' font under the
+ * SIL Open Font License 1.1: the copyright and the licence text, as the OFL asks of every copy.
+ */
+function fontsSection() {
+  const face = (name, file, said) => [
+    `### ${name}`,
+    '',
+    said,
+    '',
+    '```',
+    readFileSync(join(FONTS, file), 'utf-8').trim(),
+    '```',
+    '',
+  ];
+  return [
+    '# Fonts embedded in the record page',
+    '',
+    'The record page that mnema writes carries two typefaces as WOFF2 data, each a Latin subset of the authors\' font under the SIL',
+    'Open Font License 1.1, which is the text below each name.',
+    '',
+    ...face(
+      'Archivo',
+      'OFL-Archivo.txt',
+      'Archivo 2.001, Copyright 2020 The Archivo Project Authors. The page carries two static instances of the variable font (weights 400 and 700), each with only the Latin glyphs, and keeps the name Archivo.',
+    ),
+    ...face(
+      'IBM Plex Mono',
+      'OFL-IBMPlexMono.txt',
+      'IBM Plex Mono Regular 2.3, Copyright 2017 IBM Corp. "Plex" is a Reserved Font Name of its authors, so the page carries a renamed subset: a Modified Version with only the Latin glyphs, named "mnema mono" inside the file.',
+    ),
+  ].join('\n');
+}
+
 /** The text of the file for these packages. */
 export function noticesFor(packages) {
   return [
@@ -72,6 +108,7 @@ export function noticesFor(packages) {
     'packages below. Each is listed with its version and its license, as it ships them.',
     '',
     ...packages.map(([id, found]) => section(id, found)),
+    fontsSection(),
   ].join('\n');
 }
 

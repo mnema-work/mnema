@@ -410,7 +410,7 @@ describe('mnema site', () => {
     runSite({ cwd: repo, env }, { out });
     const page = pageOf(out);
     expect(page).toMatch(
-      /Content-Security-Policy" content="default-src &#39;none&#39;; script-src/,
+      /Content-Security-Policy" content="default-src &#39;none&#39;; font-src data:; img-src data:; script-src/,
     );
     expect(page).not.toMatch(/(?:src|href)=["']?(?:https?:)?\/\//);
     expect(page).toContain(theSiteVerifier());

@@ -264,7 +264,7 @@ describe('the page', () => {
     expect(hostile).toContain('\\u003c/script>');
   });
 
-  it('names its one script and its one style by hash, and allows nothing else', () => {
+  it('names its one script and its one style by hash, and allows nothing else but data: for its fonts and its icon', () => {
     const script = 'globalThis.x = 1;';
     const page = renderPage(model([decision({})]), script);
     const policy = /Content-Security-Policy" content="([^"]*)"/
@@ -274,7 +274,7 @@ describe('the page', () => {
       `'sha256-${createHash('sha256').update(text).digest('base64')}'`;
     const style = /<style>(.*?)<\/style>/s.exec(page)?.[1] as string;
     expect(policy).toBe(
-      `default-src 'none'; script-src ${hashOf(script)}; style-src ${hashOf(style)}`,
+      `default-src 'none'; font-src data:; img-src data:; script-src ${hashOf(script)}; style-src ${hashOf(style)}`,
     );
     expect(page).toContain(`<script>${script}</script>`);
   });

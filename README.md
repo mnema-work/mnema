@@ -20,7 +20,7 @@ Your decisions, handed to your agents' sessions and held at the edits they gover
 <a href="https://github.com/mnema-work/mnema/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/mnema-work/mnema/ci.yml?branch=main&amp;style=flat-square&amp;label=CI"></a>
 <a href="https://www.npmjs.com/package/@mnema/code"><img alt="npm: @mnema/code" src="https://img.shields.io/npm/v/@mnema/code?style=flat-square&amp;label=npm&amp;color=6b6862"></a>
 <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-6b6862?style=flat-square"></a>
-<a href="https://scorecard.dev/viewer/?uri=github.com/mnema-work/mnema"><img alt="OpenSSF Scorecard" src="https://img.shields.io/ossf-scorecard/github.com/mnema-work/mnema?style=flat-square&amp;label=OpenSSF%20Scorecard&amp;color=6b6862"></a>
+<a href="https://scorecard.dev/viewer/?uri=github.com/mnema-work/mnema"><img alt="OpenSSF Scorecard" src="https://img.shields.io/ossf-scorecard/github.com/mnema-work/mnema?style=flat-square&amp;label=OpenSSF%20Scorecard"></a>
 <img alt="Node 24.15.0 or a later 24, or 26.0.0 or later" src="https://img.shields.io/badge/node-%5E24.15.0%20%7C%7C%20%E2%89%A526.0.0-6b6862?style=flat-square">
 </p>
 
