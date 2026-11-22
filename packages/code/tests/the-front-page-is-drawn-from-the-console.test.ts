@@ -1805,6 +1805,37 @@ describe('every diagram lays its texts on the edges they line up with', () => {
     );
   });
 
+  describe('the lanes of how mnema fits', () => {
+    it.each(['dark', 'light'] as const)(
+      'how-mnema-fits-%s has its lanes symmetric about the eye, within 0.5',
+      (theme) => {
+        const svg = read(`${ASSETS}/how-mnema-fits-${theme}.svg`);
+        const eye = Number(/translate\(([\d.]+),44\) scale\(\.6\)/.exec(svg)?.[1]);
+        // A lane is the path of stroke 3 from its start, a round cap beyond it, to what ends it: the decision's ring.
+        const starts = [
+          ...svg.matchAll(
+            /<path d="M([\d.]+),[\d.]+C[^"]*" fill="none" stroke="#[0-9a-f]{6}" stroke-width="3"/g,
+          ),
+        ].map((m) => Number(m[1]) - 1.5);
+        const ends = nodesOf(svg)
+          .filter(
+            (n) =>
+              n.tag === 'circle' &&
+              n.at.r === '9' &&
+              n.at.fill === 'none' &&
+              n.at.class === undefined,
+          )
+          .map((n) => Number(n.at.cx) + 9 + Number(n.at['stroke-width']) / 2);
+        expect(starts).toHaveLength(3);
+        expect(ends).toHaveLength(1);
+        const left = Math.min(...starts);
+        const right = Math.max(...ends);
+        expect(eye).toBe(600);
+        expect(Math.abs((left + right) / 2 - eye)).toBeLessThanOrEqual(0.5);
+      },
+    );
+  });
+
   describe('the family', () => {
     it.each(['dark', 'light'] as const)(
       'the-family-%s has the same gap between the columns on each side of the record, from 60 to 1140',

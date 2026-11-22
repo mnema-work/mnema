@@ -408,7 +408,7 @@ function works(t) {
  */
 function fits(t) {
   const W = 1200;
-  const L = 330;
+  const L = 350;
   const R = 850;
   const yc = 265;
   const pitch = 19;
@@ -481,7 +481,7 @@ function fits(t) {
 }
 
 /**
- * The family: every door sits on the field, in seven columns with the same gap between them; the record is the one in the middle.
+ * The family: every door sits on the field, in seven columns; the record is the one in the middle, under the eye, with equal gaps on each side of it.
  * @param {Pen} t
  */
 function family(t) {
@@ -500,7 +500,7 @@ function family(t) {
     { name: L.stacks, rows: [L.stacksA, L.stacksB] },
   ];
   // The seven columns are laid out by the ink of their texts: the first column's left edge on 60, the last one's right edge
-  // on 1140, and the same gap between one column's widest line and the next one's.
+  // on 1140, the record under the eye, and the gaps equal on each side of it.
   /** @type {readonly (readonly (readonly [Line, Role])[])[]} */
   const blocks = doors.map((door) =>
     door === null

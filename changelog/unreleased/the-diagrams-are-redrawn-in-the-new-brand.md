@@ -10,5 +10,5 @@ Changed
   each sign sends out a ripple as it passes. Under `prefers-reduced-motion` the pulse and the ripples are not drawn and the eye stays
   open and still. The pictures have no ground of their own: they are transparent and sit on the page that shows them, whether GitHub's
   white, dark or dimmed page, and the panels behind the commands are a low tint of the picture's ink. Every text stays inside the edges
-  of its picture, the legend of how mnema fits spans the rule above it with the same gap between its four items, the family's seven
-  columns have the same gap between them, and the eye at the top of `@mnema/core`'s picture has room round it.
+  of its picture, the legend of how mnema fits spans the rule above it with the same gap between its four items, the family's record
+  sits under the eye with equal gaps on each side of it, and the eye at the top of `@mnema/core`'s picture has room round it.
