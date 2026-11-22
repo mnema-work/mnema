@@ -91,7 +91,7 @@ question shows both names. On a yes, what the tree holds is **moved**, not copie
 never shows it; the move is checked before the copy goes in. `mnema backup restore --undo` puts the newest one back (and says how many others stay), and
 moves what stood there meanwhile into the same folder, so nothing is deleted. **No restore deletes a
 folder kept aside**: they stay in `<git directory>/mnema/` (or in `<mnema home>/before-restore/`, below) until you delete them by hand, and
-`mnema backup status` lists the ones of this project with their date and size, including a folder an undo emptied, which now holds only what stood there before it (`restored-<tree>/`). Only a project in a git
+`mnema backup status` lists the ones of this project with their date and size, including a folder an undo emptied, which now holds only what stood there before it (`restored-<tree>/`). Only a project in a git repository keeps them in its git directory.
 A project outside a git repository has no git directory to hold it, so its folder is
 `<mnema home>/before-restore/<UTC date>/` (the mnema home is `~/.mnema`, or `$MNEMA_HOME` when that is set; the date has no colon
 either), with the same marks and the same rules: the question at a terminal, `--undo`, the `restored-<tree>/` folders, the listing in `backup status`,

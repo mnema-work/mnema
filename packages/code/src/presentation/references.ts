@@ -27,6 +27,10 @@
  * when the thing it names is not visible from here. And when the depth cut the
  * answer the last line says so: a bounded answer that does not say it was
  * bounded reads as everything there is.
+ *
+ * A node carrying a state and title names them beside its kind, with recorded
+ * text collapsed to one line. Without either, its row keeps its original bytes;
+ * `references.test.ts` holds both forms.
  */
 
 import type { ReferenceGraph } from '@mnema/context';
@@ -63,10 +67,10 @@ export function referenceReport(
     return lines;
   }
   // ONE EXIT, and it is what puts the collapse where the id enters the line rather
-  // than at four returns any one of which could be added to without it. What follows
-  // the id is a word of the walk's own vocabulary (`unresolved`, or a `SearchKind`)
-  // or nothing at all; the id itself came back out of the record, and every row this
-  // function words is an ITEM under a heading that counts the rows.
+  // than at four returns any one of which could be added to without it. The kind is
+  // the walk's own vocabulary; the optional state and title came back out of the
+  // record, as the id did, so each is collapsed where it enters the line. Every row
+  // this function words is an ITEM under a heading that counts the rows.
   const label = (id: string) => {
     const node = nodes.get(id);
     const said =
@@ -75,9 +79,10 @@ export function referenceReport(
         : !node.resolved
           ? ' (unresolved)'
           : node.kind !== undefined
-            ? ` (${node.kind})`
+            ? ` (${node.kind}${node.state !== undefined ? `, ${oneLine(node.state)}` : ''})`
             : '';
-    return `${oneLine(id)}${said}`;
+    const title = node?.title !== undefined ? ` ${oneLine(node.title)}` : '';
+    return `${oneLine(id)}${said}${title}`;
   };
   /** A heading naming the group and how much is in it, then its items. */
   const group = (heading: string, items: readonly string[]) => {

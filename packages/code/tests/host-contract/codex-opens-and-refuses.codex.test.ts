@@ -111,7 +111,9 @@ describe('codex opens with the record and refuses the write', () => {
     expect(text).toContain('at most 2,500 tokens of 4 bytes');
     const rules = text.split('\n').filter((line) => line.startsWith('- **'));
     expect(rules.length).toBeGreaterThan(0);
-    expect(rules.at(-1)).toMatch(/^- \*\*.+\*\* · `[0-9a-f-]{36}` · accepted by .+\)$/);
+    expect(rules.at(-1)).toMatch(
+      /^- \*\*.+\*\* · `[0-9a-f-]{36}`.* · \d{4}-\d{2}-\d{2} · (agent|no agent declared)/,
+    );
   }, 600_000);
 
   it('deny: the patch is not applied and the model reads the rule that refused it', async () => {
