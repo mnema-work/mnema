@@ -1663,7 +1663,10 @@ this product's, and the tests named below hold both readers beside this document
   cache (`status`, `show`, `search`, `brief`, `rules`, `why`, the hooks, the console and the agent's tools)
   serve what they read, leave the line out, and name the part on the first line of every surface, with the tail, the line and the way out (a
   newer mnema's line: update mnema); the line after it breaks its tail's chain as it would in the verdict. A
-  symbolic link at a segment or a tail (§4) is named the same way, with the rest served, and so is a folder or a file
+  symbolic link at a segment or a tail (§4) is named the same way, with the rest served, and so is a
+  `keys/<fingerprint>.anchor` that is a symbolic link (`status`, `search` and `brief` name it, as
+  `a symbolic link (keys/<name>)`, and the anchor is read as absent, so the identity is the one the record proves or the key derives; `verify`
+  refuses it as `LINKED ENTRY`, as it does a link at any entry of `keys/`), and so is a folder or a file
   the disk will not let the product open (no permission, a file where a folder belongs, a loop of links): it is a part that
   was not read, and the system's own error never reaches a person in its place. The tools that audit the
   record (`export`, `exposure`, `antipatterns` and the agent's audit tools) read the tails themselves and still

@@ -37,6 +37,7 @@ import {
   publicKeyFromCommittedText,
 } from './keys.js';
 import {
+  ANCHOR_SUFFIX,
   type ChainLayout,
   checkpointsPath,
   isSegmentFile,
@@ -409,6 +410,29 @@ export function keysTheDiskRefuses(layout: ChainLayout, refused: RefusedLine): b
     if (!(error instanceof UnreadableDiskError)) throw error;
     refused(error);
     return true;
+  }
+}
+
+/**
+ * Hands `refused` each local anchor (`keys/*.anchor`, and only those) that is a symbolic link, as the
+ * reads that serve the record hand it a linked segment. `verify` refuses it (`LINKED ENTRY`, as it does
+ * a link at any entry of the folder), and the reads said nothing of it. It is not read through
+ * either: {@link readAnchor} takes a link for no anchor, so the line's "this part was not read" is
+ * true. The other local files of the folder keep their own treatment (an installation id that is a
+ * link is `DanglingInstallationIdError`'s), and a folder the disk will not open is
+ * {@link keysTheDiskRefuses}'s to say, so neither is said here.
+ */
+export function anchorLinksRefused(layout: ChainLayout, refused: RefusedLine): void {
+  let entries: ListedEntry[];
+  try {
+    entries = listedEntries(keysDir(layout));
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    if (entry.link && entry.name.endsWith(ANCHOR_SUFFIX)) {
+      refused(new LinkedRecordError(layout, `keys/${entry.name}`));
+    }
   }
 }
 
