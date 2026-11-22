@@ -393,6 +393,10 @@ const RECORDS_NOTHING: Readonly<Record<string, string>> = {
     'not exercised here: it writes one hook file into a git repository, which the fixture is not: ' +
     'neither an event nor a key; `a-commit-hook-only-suggests.test.ts` drives it over a real ' +
     'repository',
+  backup:
+    'writes a folder, a tree that lost files, the machine’s assignment or a hook file, and the ' +
+    'exercise is its status, which reads: none appends an event or touches a key; ' +
+    '`wiring/backup.test.ts` drives `setup`, `run`, `verify` and `restore` over a real folder',
   record:
     'not exercised here: `pull` and `commit` need a git repository with a remote and `merge-tail` ' +
     'the files of a merge, which the fixture is not; none appends an event, ' +
@@ -816,9 +820,12 @@ describe('every verb says if it writes', () => {
       ],
     };
     // A reader whose answer over this fixture is a NO, on purpose: the fixture holds no Sigstore
-    // bundle, and a check that found nothing to check must not pass. It is still measured in the
+    // bundle (and no backup copy), and a check that found nothing to check must not pass. It is still measured in the
     // chain below: it may fail, and it may not write.
-    const FAILS_ON_THIS_FIXTURE: ReadonlySet<string> = new Set(['witness sigstore-check']);
+    const FAILS_ON_THIS_FIXTURE: ReadonlySet<string> = new Set([
+      'witness sigstore-check',
+      'backup verify',
+    ]);
     // The stack the four `stack` readers look at: installed into a folder of its own, which
     // records nothing, so the readers are measured against a receipt that really exists.
     const stackTo = (): string => join(sandbox, 'stack-to');
