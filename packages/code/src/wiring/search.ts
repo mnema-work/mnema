@@ -14,7 +14,14 @@ import { windowGloss, windowHelp } from '../vocabulary.js';
 import { here } from './context.js';
 import { enumeratedOption, listed, SCOPES, SEARCH_KINDS } from './enumerated.js';
 import { writeLines } from './io.js';
-import { INVALID, INVALID_LIMIT, parseLimit, parseScope } from './options.js';
+import {
+  INVALID,
+  INVALID_LIMIT,
+  INVALID_WINDOW,
+  parseLimit,
+  parseScope,
+  parseWindowOptions,
+} from './options.js';
 import { reportUsage } from './report.js';
 import { type Declared, readsTheRecord, type Wiring } from './verb.js';
 
@@ -68,13 +75,14 @@ export function registerSearch(program: Command, wiring: Wiring): Declared {
         if (scope === INVALID) return;
         const limit = parseLimit(opts.limit, wiring);
         if (limit === INVALID_LIMIT) return;
+        const window = parseWindowOptions(opts.from, opts.to, wiring);
+        if (window === INVALID_WINDOW) return;
         const result = runSearch(here(), {
           ...(term !== undefined ? { term } : {}),
           ...(opts.kind !== undefined ? { kind: opts.kind as SearchKind } : {}),
           ...(scope !== undefined ? { scope } : {}),
           ...(opts.state !== undefined ? { state: opts.state } : {}),
-          ...(opts.from !== undefined ? { from: opts.from } : {}),
-          ...(opts.to !== undefined ? { to: opts.to } : {}),
+          ...window,
           ...(limit !== undefined ? { limit } : {}),
         });
         if (!result.ok) {

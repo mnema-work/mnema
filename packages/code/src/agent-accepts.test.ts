@@ -199,7 +199,7 @@ describe('what a decision just recorded says of its state', () => {
     expect(stateOfANewDecision('on', 'agent-tool')).toBe(
       '  Born proposed, so not yet in force. If the person dictated it, or chose it among options ' +
         'you offered (a recommended one included), accept it now with `decision_transition` ' +
-        '(action `accept`), the note quoting their answer; if you concluded it alone, it waits ' +
+        '(action `accept`), the note quoting their exact words between double quotes; if you concluded it alone, it waits ' +
         'for the person (`mnema decision review`).',
     );
     expect(

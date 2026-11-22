@@ -7,13 +7,16 @@
  * goes through the rule of the line, so a reason with a newline in it is one line here.
  */
 
+import type { Scope } from '@mnema/core';
 import { oneLine } from '../one-line.js';
 import { fact, subjectLine } from './detail.js';
+import { readLabel } from './label.js';
 import type { Line } from './line.js';
 
 /** A decision as the review shows it. */
 export interface Shown {
   readonly adr: string;
+  readonly scope?: Scope;
   readonly id: string;
   readonly title: string;
   readonly rationale: string;
@@ -23,7 +26,7 @@ export interface Shown {
 /** The lines for the decision at `position` of `total`, in the order a person reads them. */
 export function proposalLines(shown: Shown, position: number, total: number): Line[] {
   return [
-    subjectLine(`${shown.adr} (${shown.id})`, `${position} of ${total}`),
+    subjectLine(`${readLabel(shown.adr, shown.scope)} (${shown.id})`, `${position} of ${total}`),
     fact(`Title: ${oneLine(shown.title)}`),
     fact(`Why: ${oneLine(shown.rationale)}`),
     ...(shown.alternatives !== undefined
@@ -39,4 +42,43 @@ export function reviewedSummary(counts: {
   readonly skipped: number;
 }): string {
   return `Reviewed: ${counts.accepted} accepted, ${counts.rejected} rejected, ${counts.skipped} skipped.`;
+}
+
+/** Who made an accept, as the list of the rules a person did not accept themselves words it. */
+export function acceptedByWords(accepted: {
+  readonly who: string;
+  readonly which?: string;
+  readonly at: string;
+}): string {
+  // An accept with no `which` is "no agent declared" (ADR-608): the seat it was made at is not
+  // recorded, so it is never worded as a person's.
+  const by =
+    accepted.which !== undefined ? `the agent ${oneLine(accepted.which)}` : 'no agent declared';
+  return `accepted ${accepted.at.slice(0, 10)}, ${by}`;
+}
+
+/** The lines for a rule in force the review shows and marks shown, at `position` of `total`. */
+export function ruleShownLines(
+  shown: Shown & {
+    readonly accepted: { readonly who: string; readonly which?: string; readonly at: string };
+  },
+  position: number,
+  total: number,
+): Line[] {
+  return [
+    subjectLine(`${shown.adr} (${shown.id})`, `${position} of ${total}`),
+    fact(`Title: ${oneLine(shown.title)}`),
+    fact(`In force: ${acceptedByWords(shown.accepted)}`),
+    fact(`Why: ${oneLine(shown.rationale)}`),
+    ...(shown.alternatives !== undefined
+      ? [fact(`Turned down: ${oneLine(shown.alternatives)}`)]
+      : []),
+  ];
+}
+
+/** The line the pass over the rules in force ends with: how many were shown and marked. */
+export function shownSummary(shown: number, left: number): string {
+  return left === 0
+    ? `Shown and marked: ${shown}.`
+    : `Shown and marked: ${shown}; ${left} not shown, still on the list.`;
 }

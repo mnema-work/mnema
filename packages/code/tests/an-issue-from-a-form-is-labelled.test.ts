@@ -27,7 +27,7 @@ const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const read = (path: string) => readFileSync(join(ROOT, path), 'utf8');
 
 const bug = (host: string) =>
-  `### Version\n\n0.1.9\n\n### Host\n\n${host}\n\n### System\n\nLinux\n\n### Steps to reproduce\n\n1. run it\n\n### Expected vs actual\n\nit broke`;
+  `### Version\n\n0.1.7\n\n### Host\n\n${host}\n\n### System\n\nLinux\n\n### Steps to reproduce\n\n1. run it\n\n### Expected vs actual\n\nit broke`;
 const feature = (area: string) => `### Area\n\n${area}\n\n### The problem\n\nI cannot do a thing`;
 
 describe('the answers are read from the body', () => {

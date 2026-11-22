@@ -69,6 +69,7 @@
  */
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { basename } from 'node:path';
 
 import { canonicalStringify } from '../events/canonical.js';
 import { holdsExactly, parseCanonicalLine } from '../events/stored-json.js';
@@ -76,8 +77,9 @@ import { oneLine } from '../one-line.js';
 import { headerCarriesRealWork, parseBlockHeader } from './bitcoin.js';
 import { checkpointHash } from './checkpoint.js';
 import type { ChainLayout } from './layout.js';
-import { witnessBlocksPath, witnessDir, witnessProofPath } from './layout.js';
+import { witnessBlocksPath, witnessDir, witnessProofPath, witnessSigstorePath } from './layout.js';
 import type { WitnessStatus } from './level.js';
+import { refuseToWriteThrough } from './linked-write.js';
 import {
   MAX_PROOF_BYTES,
   parseOtsProof,
@@ -291,6 +293,35 @@ export function serializeStoredHeader(height: number, header: Buffer): string {
 }
 
 /**
+ * Refuses, with `RECORD_LINKED` and nothing written, a symbolic link at any place a witness file
+ * of one checkpoint is written (a link to nothing too, which a write would create at its target):
+ * `tails/`, the tail, `witness/` and then each of `files` (`proof` is the `.ots`, `blocks` the
+ * headers beside it, `sigstore` the bundle). The acts that SEND something before they write (a
+ * stamp to the calendars, a signature to Rekor) ask it first, so a refusal costs nothing outside.
+ */
+export function refuseWitnessThroughALink(
+  layout: ChainLayout,
+  tailId: string,
+  checkpointHash: string,
+  files: readonly ('proof' | 'blocks' | 'sigstore')[],
+): void {
+  const inWitness = ['tails', tailId, 'witness'];
+  const named = {
+    proof: witnessProofPath,
+    blocks: witnessBlocksPath,
+    sigstore: witnessSigstorePath,
+  } as const;
+  refuseToWriteThrough(layout, [
+    'tails',
+    ['tails', tailId].join('/'),
+    inWitness.join('/'),
+    ...files.map((file) =>
+      [...inWitness, basename(named[file](layout, tailId, checkpointHash))].join('/'),
+    ),
+  ]);
+}
+
+/**
  * Stores a witness over one checkpoint: the proof, and the headers it needs.
  *
  * IT OVERWRITES, and that is what the naming is for. A proof is born incomplete and
@@ -308,15 +339,37 @@ export function writeWitness(
   checkpointHash: string,
   witness: { readonly proof: Buffer; readonly headers?: ReadonlyMap<number, Buffer> },
 ): void {
+  const headers = [...(witness.headers ?? new Map<number, Buffer>())].sort((a, b) => a[0] - b[0]);
+  refuseWitnessThroughALink(
+    layout,
+    tailId,
+    checkpointHash,
+    headers.length === 0 ? ['proof'] : ['proof', 'blocks'],
+  );
   mkdirSync(witnessDir(layout, tailId), { recursive: true });
   writeFileSync(witnessProofPath(layout, tailId, checkpointHash), witness.proof);
-  const headers = [...(witness.headers ?? new Map<number, Buffer>())].sort((a, b) => a[0] - b[0]);
   if (headers.length === 0) return;
   // Each line carries its own terminator rather than being joined by one, so the file
   // ends in a newline like every other line-per-record file this package writes, and
   // so this write holds no template that reads like a SENTENCE with a break in it.
   const lines = headers.map(([height, header]) => `${serializeStoredHeader(height, header)}\n`);
   writeFileSync(witnessBlocksPath(layout, tailId, checkpointHash), lines.join(''), 'utf-8');
+}
+
+/**
+ * Files the Sigstore bundle (`witness/<checkpoint>.sigstore.json`) of one checkpoint. Like
+ * {@link writeWitness} it asks the places it writes first and refuses a symbolic link there, a
+ * link to nothing too, with `RECORD_LINKED` and nothing written.
+ */
+export function writeSigstoreBundle(
+  layout: ChainLayout,
+  tailId: string,
+  checkpointHash: string,
+  text: string,
+): void {
+  refuseWitnessThroughALink(layout, tailId, checkpointHash, ['sigstore']);
+  mkdirSync(witnessDir(layout, tailId), { recursive: true });
+  writeFileSync(witnessSigstorePath(layout, tailId, checkpointHash), text, 'utf-8');
 }
 
 /**

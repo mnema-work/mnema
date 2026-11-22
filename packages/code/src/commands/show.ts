@@ -96,6 +96,12 @@ export interface ShowDone {
   /** How many runs consulted this pattern: present only for a skill. */
   readonly consultations?: number;
   /**
+   * The newest showing of a decision (`decision.seen`) with no agent declared, in any tree this
+   * machine holds: who signed it and when. Present only for a decision that has one. It says the
+   * key signed at a terminal with no agent declared, never that a person read the rule.
+   */
+  readonly shown?: { readonly who: string; readonly at: string };
+  /**
    * Which of a decision's two actors the record's own agent key signed for: the agent is then
    * attested by the key, and the line says so; where it is absent, the name is what the signing
    * key wrote (declared). Present only for a decision that has one.
@@ -198,6 +204,11 @@ export function runShow(ctx: ShowContext, input: { id: string }): ShowDone | Sho
     // A DECISION NAMES WHO RECORDED AND WHO RULED IT, so it prints identities and reads the
     // shortening from the tree it came off: the tree that holds the events naming them.
     if (found.kind !== 'memory' && found.kind !== 'skill') {
+      // A DECISION'S SHOWINGS ARE WRITTEN INTO THE PRIVATE TREE, not the decision's own, as a
+      // skill's consultations are written into the reading session's: so its page opens the trees
+      // that are left (`newer` does too) and names the newest one.
+      const newerOf = newer();
+      const shown = found.kind === 'decision' ? newestShowing(opened, id) : undefined;
       const anchors = found.kind === 'decision' ? anchorForms(opened) : NO_ANCHORS;
       const attested = holder === undefined ? {} : attestedActors(holder, found);
       const unannounced = holder === undefined ? {} : unannouncedActors(holder, found);
@@ -211,7 +222,8 @@ export function runShow(ctx: ShowContext, input: { id: string }): ShowDone | Sho
         anchors,
         linkBreaks: linkBreaksOf(opened, THE_READING_THAT_OPENED_THESE),
         divergent,
-        ...newer(),
+        ...newerOf,
+        ...(shown !== undefined ? { shown } : {}),
         ...(attested.recordedBy === true || attested.acceptedBy === true ? { attested } : {}),
         ...(unannounced.recordedBy === true || unannounced.acceptedBy === true
           ? { unannounced }
@@ -290,4 +302,21 @@ function attestedActors(
     ...(signedByItsAgent(recorded) ? { recordedBy: true as const } : {}),
     ...(signedByItsAgent(accepted) ? { acceptedBy: true as const } : {}),
   };
+}
+
+/** The newest showing of `id` with no agent declared, across the trees opened, or undefined. */
+function newestShowing(
+  opened: readonly ScopedCache[],
+  id: string,
+): { readonly who: string; readonly at: string } | undefined {
+  let newest: { who: string; at: string } | undefined;
+  for (const { cache } of opened) {
+    for (const showing of cache.showings()) {
+      if (showing.decision !== id || showing.which !== undefined) continue;
+      if (newest === undefined || showing.at > newest.at) {
+        newest = { who: showing.who, at: showing.at };
+      }
+    }
+  }
+  return newest;
 }

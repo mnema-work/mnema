@@ -34,7 +34,6 @@
  */
 
 import type { Command } from 'commander';
-import { hookTextOf } from '../host-names.js';
 import { fact } from '../presentation/detail.js';
 import { hookHostOf, hookHostOption, switchedOff } from './brief.js';
 import { here } from './context.js';
@@ -129,8 +128,9 @@ export function registerRecall(program: Command, wiring: Wiring): Declared {
         const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
         const { runRecall } = await import('../commands/recall.js');
         const { recallDocument, recallWithin } = await import('../presentation/recall.js');
-        const { hookCeilingOf, roomBeside } = await import('../presentation/within-a-hook.js');
-        const ceiling = hookCeilingOf(host === null ? undefined : hookTextOf(host));
+        const { roomBeside } = await import('../presentation/within-a-hook.js');
+        const { hookCeilingFor } = await import('../host-hook.js');
+        const ceiling = hookCeilingFor(host);
         const result = runRecall({ ...here(), session: opts.session });
         if (!result.ok) {
           reportRefusal(

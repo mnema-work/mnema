@@ -19,6 +19,8 @@ import {
   governingRules,
   pathInProject,
   refusesAWriteAt,
+  relationsCovering,
+  rulesInForceReach,
 } from './governance.js';
 
 let benches: Bench[] = [];
@@ -569,5 +571,55 @@ describe('pathInProject', () => {
     expect(pathInProject('/work/other/a.ts', root)).toBeUndefined();
     expect(pathInProject('/work/repo', root)).toBeUndefined();
     expect(pathInProject('.', root)).toBeUndefined();
+  });
+});
+
+describe('governance: every address of every rule in force, read once', () => {
+  function inForce(b: Bench, id: string, title: string): void {
+    birthDecision(b, id, title);
+    moveDecision(b, id, 'proposed', 'accepted', 'accept');
+  }
+
+  it('lists the addresses of the three relations, in force and inside the project only', () => {
+    const b = bench();
+    inForce(b, 'dec-root', 'The whole project is under a rule');
+    inForce(b, 'dec-ask', 'Somebody looks at billing');
+    inForce(b, 'dec-refuse', 'Nobody writes the ledger');
+    inForce(b, 'dec-old', 'Nobody writes the archive');
+    inForce(b, 'dec-new', 'The archive is written by the job only');
+    inForce(b, 'dec-foreign', 'A rule with another machine’s path');
+    link(b, 'dec-root', '.', 'governs');
+    link(b, 'dec-ask', 'src/billing', 'asks-for-a-person');
+    link(b, 'dec-refuse', 'src/ledger', 'refuses-a-write');
+    link(b, 'dec-old', 'src/archive', 'refuses-a-write');
+    link(b, 'dec-foreign', '/somebody/else/src/collate', 'governs');
+    supersedeDecision(b, 'dec-old', 'dec-new');
+
+    const reach = rulesInForceReach([tree(b)], { root: ROOT, onDisk: () => true });
+
+    expect(reach).toEqual([
+      { relation: 'governs', segments: [] },
+      { relation: 'asks-for-a-person', segments: ['src', 'billing'] },
+      { relation: 'refuses-a-write', segments: ['src', 'ledger'] },
+    ]);
+  });
+
+  it('says under which relations an address of the list covers a path', () => {
+    const reach = [
+      { relation: 'governs', segments: ['src'] },
+      { relation: 'asks-for-a-person', segments: ['src', 'billing'] },
+      { relation: 'refuses-a-write', segments: ['src', 'ledger'] },
+    ];
+
+    expect([...relationsCovering(reach, 'src/ledger/posting.ts')].sort()).toEqual([
+      'governs',
+      'refuses-a-write',
+    ]);
+    expect([...relationsCovering(reach, 'src/billing/invoice.ts')].sort()).toEqual([
+      'asks-for-a-person',
+      'governs',
+    ]);
+    expect([...relationsCovering(reach, 'src/other.ts')]).toEqual(['governs']);
+    expect([...relationsCovering(reach, 'README.md')]).toEqual([]);
   });
 });

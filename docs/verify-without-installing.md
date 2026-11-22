@@ -12,7 +12,7 @@ it checks:
 ```sh
 git clone https://github.com/mnema-work/mnema
 python3 mnema/packages/chain/verifier/mnema_verify.py record /path/to/a/repo/.mnema
-#> checks: 15 ok, 0 FAIL, 0 UNCHECKED, 5 note
+#> checks: 15 ok, 0 FAIL, 0 UNCHECKED, 6 note
 #> VERDICT: VERIFIED
 ```
 
@@ -44,3 +44,11 @@ A copy of either reader from before §6.7 applies every move and names none.
 What a second reader does not buy is worth saying here too: it is independent in
 the technical sense (another language, written from the document, sharing no
 code) and not in the social one, being the same author and the same repository.
+
+## One decision, in one file
+
+A person who should not need the repository at all can be handed the proof of one decision instead:
+`mnema prove <decision> --out <file>` writes it, and
+`python3 mnema/packages/chain/verifier/mnema_verify.py proof <file>` checks it with the same reader,
+from the file alone ([A proof of one decision](a-proof-of-one-decision.md), and
+[`FORMAT.md`](../packages/chain/FORMAT.md) section 9).

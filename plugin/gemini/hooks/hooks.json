@@ -12,6 +12,18 @@
         ]
       }
     ],
+    "BeforeAgent": [
+      {
+        "hooks": [
+          {
+            "name": "mnema-dictated",
+            "type": "command",
+            "command": "node \"${extensionPath}/hooks/mnema.mjs\" dictated",
+            "timeout": 15000
+          }
+        ]
+      }
+    ],
     "BeforeTool": [
       {
         "matcher": "^(write_file|replace)$",

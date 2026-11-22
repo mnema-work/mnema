@@ -10,10 +10,12 @@
  * decision, the state that exists for a person to accept or reject, citing the transcript line it
  * came from. No model is called.
  *
- * IT IS OFF UNTIL SOMEBODY SWITCHES IT ON (`mnema switch on user-corrections`), because it is the
- * one reader that reads a conversation's WORDS, and it writes. What it writes is quoted from the
- * person's own sentence, so the proposals go to the PRIVATE tree: a sentence typed into a chat is not
- * written to be committed, and a clone must never get it.
+ * IT WAS OFF UNTIL SOMEBODY SWITCHED IT ON, AND IS ON NOW (ADR-546; `mnema switch off user-corrections`
+ * stops it). The premise that kept it off was that it is the one reader that reads a conversation's
+ * WORDS, and it writes; what falsified it is that nobody switched it on and a rule the person said
+ * four times in a day never reached the record. The privacy is kept where it was always kept: what
+ * it writes is quoted from the person's own sentence, so the proposals go to the PRIVATE tree: a
+ * sentence typed into a chat is not written to be committed, and a clone must never get it.
  *
  * ONCE PER CORRECTION. A `Stop` fires after every response over the same transcript, so each
  * proposal carries the session and the line it came from, and a correction whose marker is already
@@ -28,9 +30,10 @@
 
 import { channelIsOn } from '@mnema/context';
 import { type DiscoveryEnv, resolveTrees, scrubEmails } from '@mnema/core';
+import { DICTATED_RULE_SHAPES } from '../dictated-rules.js';
 import { endOfTurnOf } from '../host-hook.js';
 import type { EndHost } from '../host-names.js';
-import { STARTS_OFF, USER_CORRECTIONS_CHANNEL } from '../record-framing.js';
+import { DICTATED_RULE_CHANNEL, STARTS_OFF, USER_CORRECTIONS_CHANNEL } from '../record-framing.js';
 import { withScopedCaches } from '../tree-sources.js';
 import { ANSWER_TO_A_QUESTION, type Correction, correctionsIn } from '../user-corrections.js';
 import { whatThePersonSaid } from '../what-the-session-did.js';
@@ -76,6 +79,10 @@ function silent(notes: readonly string[] = []): CorrectionsDone {
 /** Whether a finding is an answer to the agent's question rather than a correction. */
 const isAnAnswer = (correction: Correction): boolean => correction.shape === ANSWER_TO_A_QUESTION;
 
+/** Whether a finding is a rule the person dictated: the shape is a line of the table that finds those. */
+const isADictatedRule = (correction: Correction): boolean =>
+  DICTATED_RULE_SHAPES.some((shape) => shape.name === correction.shape);
+
 /**
  * The title a proposal is given: the opening of what the person said, cut on one line.
  *
@@ -89,15 +96,23 @@ function titleOf(correction: Correction): string {
     sentence.length <= TITLE_LENGTH
       ? sentence
       : `${sentence.slice(0, TITLE_LENGTH - 1).trimEnd()}…`;
-  return `${isAnAnswer(correction) ? 'Answer' : 'Correction'}: ${cut}`;
+  const kind = isAnAnswer(correction)
+    ? 'Answer'
+    : isADictatedRule(correction)
+      ? 'Rule'
+      : 'Correction';
+  return `${kind}: ${cut}`;
 }
 
 /** The reason a proposal carries: what was said, the shape it matched, where it is from. */
 function rationaleOf(correction: Correction): string {
   const said = isAnAnswer(correction)
     ? `The person answered a question the agent asked in a session, in these words: “${correction.sentence}”`
-    : `The person corrected the agent in a session, in these words: “${correction.sentence}”, ` +
-      `matched by the shape “${correction.shape}”`;
+    : isADictatedRule(correction)
+      ? `The person dictated a rule in a session, in these words: “${correction.sentence}”, ` +
+        `matched by the shape “${correction.shape}”`
+      : `The person corrected the agent in a session, in these words: “${correction.sentence}”, ` +
+        `matched by the shape “${correction.shape}”`;
   return `${said}. Nobody has ruled whether it is a decision to keep. Source: ${markerOf(correction)}.`;
 }
 
@@ -135,22 +150,24 @@ export function runCorrections(
   const trees = resolveTrees(ctx.cwd, ctx.env);
   if (trees.projectPublic === undefined) return silent();
 
-  // THE CHANNEL IS ASKED BEFORE THE TRANSCRIPT IS READ: this one starts off, so for most
-  // sessions the answer is no, and a conversation's words are never opened.
+  // THE CHANNEL IS ASKED BEFORE THE TRANSCRIPT IS READ: a tree that switched it off never has its
+  // conversation's words opened. (It was asked first because it began off, and for most sessions the
+  // answer was no; it begins on since ADR-546, and the order stays for the ones that switched it off.)
   const candidates = withScopedCaches(trees, (sources): readonly Correction[] => {
     if (!channelIsOn(sources, USER_CORRECTIONS_CHANNEL, STARTS_OFF)) return [];
     const recorded = sources
       .filter((source) => source.scope !== 'global')
       .flatMap((source) => source.cache.listDecisions().map((one) => one.rationale));
-    return correctionsIn(whatThePersonSaid(transcript)).filter(
-      (one) => !recorded.some((rationale) => rationale.includes(markerOf(one))),
-    );
+    return correctionsIn(whatThePersonSaid(transcript), {
+      skipWhatIsDictated: channelIsOn(sources, DICTATED_RULE_CHANNEL),
+    }).filter((one) => !recorded.some((rationale) => rationale.includes(markerOf(one))));
   });
   if (candidates.length === 0) return silent();
 
   const notes: string[] = [];
   const adrs: string[] = [];
   let answers = 0;
+  let rules = 0;
   for (const one of candidates.slice(0, MOST_PER_STOP)) {
     const done = runDecision(ctx, {
       title: titleOf(one),
@@ -162,6 +179,7 @@ export function runCorrections(
     if (done.ok) {
       adrs.push(done.adr);
       if (isAnAnswer(one)) answers += 1;
+      else if (isADictatedRule(one)) rules += 1;
     } else {
       notes.push(
         `The correction at line ${one.line} was not recorded: ${done.reason === 'REFUSED' ? done.message : done.reason}`,
@@ -171,7 +189,8 @@ export function runCorrections(
   if (adrs.length === 0) return silent(notes);
   const n = adrs.length;
   const what = [
-    ...counted(n - answers, 'correction', 'corrections', 'the person made'),
+    ...counted(n - answers - rules, 'correction', 'corrections', 'the person made'),
+    ...counted(rules, 'rule', 'rules', 'the person dictated'),
     ...counted(answers, 'answer', 'answers', 'the person gave to a question of the agent'),
   ].join(' and ');
   return {

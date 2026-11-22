@@ -16,7 +16,7 @@ import { itemLine } from '../presentation/items.js';
 import { windowGloss, windowHelp } from '../vocabulary.js';
 import { here } from './context.js';
 import { onOneLine } from './on-one-line.js';
-import { ACTOR_HELP } from './options.js';
+import { ACTOR_HELP, INVALID_WINDOW, parseWindowOptions } from './options.js';
 import { reportRefusal } from './report.js';
 import { type Declared, readsTheRecord, type Wiring } from './verb.js';
 
@@ -44,12 +44,13 @@ export function registerAccountability(program: Command, wiring: Wiring): Declar
         which?: string;
         json?: boolean;
       }) => {
+        const window = parseWindowOptions(opts.from, opts.to, wiring);
+        if (window === INVALID_WINDOW) return;
         const { anchorText } = await import('../anchors.js');
         const { linkBreakNotice, newerLinesNotice } = await import('./integrity.js');
         const { runAccountability } = await import('../commands/accountability.js');
         const result = runAccountability(here(), {
-          ...(opts.from !== undefined ? { from: opts.from } : {}),
-          ...(opts.to !== undefined ? { to: opts.to } : {}),
+          ...window,
           ...(opts.who !== undefined ? { who: opts.who } : {}),
           ...(opts.which !== undefined ? { which: opts.which } : {}),
         });

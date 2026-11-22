@@ -67,9 +67,9 @@ const reconcile = (hooksJson: string, idsJson: string): string[] => {
 const read = (name: string): string => readFileSync(join(HOOKS, name), 'utf-8');
 
 describe('the hooks of the plugin carry stable ids', () => {
-  it('finds nineteen hooks, so that the reconciliation below is not over nothing', () => {
-    expect(declaredHooks(read('hooks.json')).size).toBe(19);
-    expect(Object.keys((JSON.parse(read('hooks.ids.json')) as Ids).hooks)).toHaveLength(19);
+  it('finds twenty-one hooks, so that the reconciliation below is not over nothing', () => {
+    expect(declaredHooks(read('hooks.json')).size).toBe(21);
+    expect(Object.keys((JSON.parse(read('hooks.ids.json')) as Ids).hooks)).toHaveLength(21);
   });
 
   it('has no hook without an id, no id without a hook, and no id on a different hook', () => {

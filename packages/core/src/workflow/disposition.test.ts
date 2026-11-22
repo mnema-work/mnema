@@ -21,7 +21,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { TASK_DISPOSITION, type TaskDisposition } from './disposition.js';
+import { TASK_DISPOSITION, type TaskDisposition, taskIsUnderway } from './disposition.js';
 import { TASK_STATES, type TaskState } from './states.js';
 import { TRANSITIONS, type Transition } from './transitions.js';
 
@@ -159,6 +159,10 @@ describe('and each discriminant is the property it claims to be', () => {
       // the stalled one, whose single free exit only undoes it.
       expect(exits(state).length, state).toBeGreaterThan(1);
     }
+  });
+
+  it('calls only IN_PROGRESS underway, the one position where somebody does the work', () => {
+    expect(TASK_STATES.filter((state) => taskIsUnderway(state))).toEqual(['IN_PROGRESS']);
   });
 
   it('reads a table with rows in it, so none of the above is filtering nothing', () => {

@@ -56,8 +56,23 @@
  * every other tool, and why the plugin puts a filter in front of the process.
  */
 
-import { type BesideHost, does, ENDS, type EndHost, HOSTS, type HookHost } from './host-names.js';
+import {
+  type BesideHost,
+  does,
+  ENDS,
+  type EndHost,
+  HOSTS,
+  type HookHost,
+  type HostName,
+  hookTextIsAssumed,
+  hookTextOf,
+} from './host-names.js';
 import { type HookSaid, hookReply } from './mcp/hook-reply.js';
+import {
+  CLAUDE_CODE_CEILING,
+  type HookCeiling,
+  hookCeilingOf,
+} from './presentation/within-a-hook.js';
 
 /** How to read the paths out of one write tool's input, whatever shape the host handed it. */
 type PathsOf = (input: unknown) => readonly string[];
@@ -312,6 +327,14 @@ export type EndOfTurn =
 export const VSCODE_TRANSCRIPT =
   /[\\/]workspaceStorage[\\/][^\\/]+[\\/]GitHub\.copilot-chat[\\/]transcripts[\\/]/i;
 
+/** The host a payload came from: the one asked for, or VS Code where a run naming none holds its transcript. */
+export function endHostOf(asked: EndHost, payload: Record<string, unknown>): EndHost {
+  const path = payload[ENDS[asked].transcript];
+  return asked === 'claude' && typeof path === 'string' && VSCODE_TRANSCRIPT.test(path)
+    ? 'vscode'
+    : asked;
+}
+
 /**
  * Reads a payload as `host` hands it at the end of a turn: `{ end: false }` for any other event.
  * Where no host is named (Claude Code's, which VS Code and Qwen Code share the hooks file of) and
@@ -319,11 +342,7 @@ export const VSCODE_TRANSCRIPT =
  * Code's, and is not read as if it were.
  */
 export function endOfTurnOf(asked: EndHost, payload: Record<string, unknown>): EndOfTurn {
-  const path = payload[ENDS[asked].transcript];
-  const host: EndHost =
-    asked === 'claude' && typeof path === 'string' && VSCODE_TRANSCRIPT.test(path)
-      ? 'vscode'
-      : asked;
+  const host = endHostOf(asked, payload);
   const row = ENDS[host];
   if (payload['hook_event_name'] !== row.event) return { end: false };
   const named = payload[row.transcript];
@@ -335,4 +354,16 @@ export function endOfTurnOf(asked: EndHost, payload: Record<string, unknown>): E
     reads: row.reads,
     title: HOSTS[host].title,
   };
+}
+
+/**
+ * The ceiling a `--host` run cuts a hook's text to: the host's own where its row measured one,
+ * Claude Code's where no host is named, and Claude Code's marked as assumed where the row says the
+ * host's was never measured.
+ */
+export function hookCeilingFor(host: HostName | null): HookCeiling {
+  if (host === null) return CLAUDE_CODE_CEILING;
+  const measured = hookTextOf(host);
+  if (measured !== undefined || !hookTextIsAssumed(host)) return hookCeilingOf(measured);
+  return { ...CLAUDE_CODE_CEILING, assumedFor: HOSTS[host].title };
 }

@@ -130,6 +130,29 @@ export interface Host {
     readonly bytesPerTokenAt: string;
   };
   /**
+   * That the host's ceiling for a hook's text was never measured, so the opening is cut to Claude
+   * Code's 10,000 UTF-16 code units and says that it assumes it, or, as `not announced`, for a host
+   * that runs Claude Code's hooks file, whose command names no host, cuts to it without saying so. Absent where the host has a
+   * `hookText` of its own, and on rows no hook of the plugin's reaches.
+   */
+  readonly hookTextUnmeasured?: true | 'not announced';
+  /**
+   * The host's id for its session in the environment of the MCP server it starts: `a test` where a
+   * case of the host contract shows the variable there (`name`, and `by`, the case; `note` says
+   * what is not verified about its value), `not yet` where it is not shown. A `candidate` is a
+   * variable the contract's probe list asks about, and a candidate is not a promise: it becomes a
+   * `name` the day a run of the real host shows it. `hostSessionOf` reads the server's session
+   * from the `a test` rows alone.
+   */
+  readonly sessionVariable?:
+    | {
+        readonly held: 'a test';
+        readonly name: string;
+        readonly by: string;
+        readonly note?: string;
+      }
+    | { readonly held: 'not yet'; readonly candidate?: string };
+  /**
    * Where the host's hook can put text beside a write that goes through, for a host whose
    * `pushes` cell says yes: `after` is a hook that runs once the write is done (Copilot CLI's
    * `PostToolUse`, Gemini CLI's `AfterTool`), because the host's hook before a write has no field
@@ -152,6 +175,12 @@ export interface Host {
    * cells for the reason {@link subagentStop} is. Absent where the host was not read for it.
    */
   readonly afterAQuestion?: Cell;
+  /**
+   * What it does when the person sends a message: runs the plugin's hook on that event, which hands
+   * the agent one sentence where the message has the shape of a rule dictated. Apart from the cells
+   * for the reason {@link subagentStop} is. Absent where the host was not ported for it.
+   */
+  readonly onAMessage?: Cell;
   /** What it does with each {@link Capability}. */
   readonly cells: { readonly [C in Capability]: Cell };
   /** Where it reads the skills and the agents a stack brings. */
@@ -181,6 +210,7 @@ const HELD = {
   claudeSubagentStart:
     'packages/code/tests/host-contract/a-subagent-starts-with-the-record.test.ts',
   claudeSettled: 'packages/code/tests/host-contract/a-settled-choice-reaches-the-model.test.ts',
+  claudeDictated: 'packages/code/tests/host-contract/a-dictated-rule-reaches-the-model.test.ts',
   claudeMemory: 'packages/code/tests/host-contract/a-note-of-the-hosts-memory-is-copied.test.ts',
 } as const;
 
@@ -264,8 +294,14 @@ export const HOSTS = {
       ],
     },
     door: 'mcp_tool',
+    sessionVariable: {
+      held: 'a test',
+      name: 'CLAUDE_CODE_SESSION_ID',
+      by: 'packages/code/tests/host-contract/what-the-host-hands-the-server.test.ts',
+    },
     subagentStop: { does: true, held: 'a test', by: HELD.claudeHandback },
     afterAQuestion: { does: true, held: 'a test', by: HELD.claudeSettled },
+    onAMessage: { does: true, held: 'a test', by: HELD.claudeDictated },
     cells: {
       server: { does: true, held: 'a test', by: HELD.claudeServer },
       rulesFile: { does: true, held: 'a test', by: HELD.aRulesFile },
@@ -286,6 +322,8 @@ export const HOSTS = {
       words: 'The Claude Code plugin, then `mnema doctor --fix vscode`',
     },
     door: 'command',
+    sessionVariable: { held: 'not yet' },
+    hookTextUnmeasured: 'not announced',
     cells: {
       server: {
         does: true,
@@ -341,6 +379,7 @@ export const HOSTS = {
       commands: ['codex plugin marketplace add mnema-work/mnema', 'codex plugin add mnema@mnema'],
     },
     door: 'command',
+    sessionVariable: { held: 'not yet', candidate: 'CODEX_THREAD_ID' },
     // Codex reads the plugin through a manifest of its own (`.codex-plugin/plugin.json`) that
     // names this hooks file, so no other host runs its command and none of theirs runs in Codex,
     // which they would: Codex matches `apply_patch` by `Write` and `Edit` too, and VS Code's
@@ -380,6 +419,15 @@ export const HOSTS = {
       at: `${CODEX_SOURCE}/codex-rs/hooks/src/events/post_tool_use.rs#L43`,
       read: '21 October 2026',
     },
+    // A `UserPromptSubmit` hook is handed the message as `prompt` (`codex-rs/hooks/schema/generated/
+    // user-prompt-submit.command.input.schema.json`) and its `additionalContext` is kept for the
+    // model (`user_prompt_submit.rs`, lines 172-178). Read at the pinned commit, not run.
+    onAMessage: {
+      does: true,
+      held: 'documentation',
+      at: `${CODEX_SOURCE}/codex-rs/hooks/src/events/user_prompt_submit.rs#L172-L178`,
+      read: '19 November 2026',
+    },
     cells: {
       server: { does: true, held: 'a test', by: HELD.codexContract },
       rulesFile: {
@@ -418,6 +466,13 @@ export const HOSTS = {
       ],
     },
     door: 'command',
+    sessionVariable: {
+      held: 'a test',
+      name: 'COPILOT_AGENT_SESSION_ID',
+      by: 'packages/code/tests/host-contract/what-the-host-hands-the-server.copilot.test.ts',
+      note: 'whether its value is the name of the folder under `~/.copilot/session-state/` that the hook payloads give as the session is not verified',
+    },
+    hookTextUnmeasured: true,
     pushesAt: 'after',
     // Copilot CLI reads the plugin through a manifest of its own (`.github/plugin/plugin.json`,
     // which it looks for before `.claude-plugin/plugin.json` and VS Code does not look for at all)
@@ -495,6 +550,8 @@ export const HOSTS = {
         'One file copied into `.opencode/plugins/`, and the server declared in `opencode.json`',
     },
     door: 'command',
+    sessionVariable: { held: 'not yet' },
+    hookTextUnmeasured: true,
     // OpenCode reads no hooks file and no manifest of this plugin: its hook is code, a JavaScript
     // module it loads from `.opencode/plugins/`. The module is generated from this row
     // (`plugin/opencode/mnema.js`), and no other host reads it.
@@ -555,6 +612,8 @@ export const HOSTS = {
       commands: ['gemini extensions install /path/to/mnema/plugin/gemini'],
     },
     door: 'command',
+    sessionVariable: { held: 'not yet', candidate: 'GEMINI_SESSION_ID' },
+    hookTextUnmeasured: true,
     pushesAt: 'after',
     // Gemini CLI reads no hooks file of this plugin's: it loads an extension, a folder with a
     // `gemini-extension.json` at its root and its hooks in `hooks/hooks.json`, the path the Claude
@@ -600,6 +659,15 @@ export const HOSTS = {
       at: `${GEMINI_SOURCE}/packages/core/src/hooks/types.ts#L527-L533`,
       read: '21 October 2026',
     },
+    // A `BeforeAgent` hook is handed the message as `prompt` and its
+    // `hookSpecificOutput.additionalContext` is appended to the prompt for that turn
+    // (`docs/hooks/reference.md`, lines 145-153). Read at the pinned commit, not run.
+    onAMessage: {
+      does: true,
+      held: 'documentation',
+      at: `${GEMINI_SOURCE}/docs/hooks/reference.md#L145-L153`,
+      read: '19 November 2026',
+    },
     cells: {
       server: { does: true, held: 'a test', by: HELD.geminiContract },
       rulesFile: {
@@ -631,6 +699,8 @@ export const HOSTS = {
     title: 'Qwen Code',
     install: { at: 'qwen-code', commands: ['qwen extensions install /path/to/mnema/plugin'] },
     door: 'command',
+    sessionVariable: { held: 'not yet' },
+    hookTextUnmeasured: 'not announced',
     // Qwen Code converts a Claude Code plugin it is told to install into an extension of its own
     // and loads that plugin's `hooks/hooks.json`, so it reads the file every other host that
     // reads Claude Code's format reads, and it applies the matcher Claude Code applies (`Write`
@@ -954,7 +1024,37 @@ export const RULES_FILE_HOSTS = HOST_NAMES.filter(
  * Every host whose row names a ceiling of its own for a hook's text, as the list `mnema brief
  * --hook --host` and `mnema recall --hook --host` enumerate.
  */
-export const HOOK_TEXT_HOSTS = HOST_NAMES.filter((name) => 'hookText' in HOSTS[name]);
+export const HOOK_TEXT_HOSTS = HOST_NAMES.filter(
+  (name) => 'hookText' in HOSTS[name] || 'hookTextUnmeasured' in HOSTS[name],
+);
+
+/** Whether a host's ceiling for a hook's text is Claude Code's, assumed because it was never measured. */
+export function hookTextIsAssumed(host: HostName): boolean {
+  const row: Host = HOSTS[host];
+  return row.hookTextUnmeasured !== undefined;
+}
+
+/** The variables a host contract showed a host leaves its MCP server, with the host that does. */
+export const SESSION_VARIABLES: readonly { readonly host: HostName; readonly name: string }[] =
+  HOST_NAMES.flatMap((host) => {
+    const row: Host = HOSTS[host];
+    const cell = row.sessionVariable;
+    return cell?.held === 'a test' ? [{ host, name: cell.name }] : [];
+  });
+
+/**
+ * The host's id for the session an MCP server was started in, read from the environment by the
+ * table of hosts: the first variable of {@link SESSION_VARIABLES} that is set and not empty.
+ */
+export function hostSessionOf(
+  env: Readonly<Record<string, string | undefined>>,
+): string | undefined {
+  for (const { name } of SESSION_VARIABLES) {
+    const value = env[name];
+    if (value !== undefined && value !== '') return value;
+  }
+  return undefined;
+}
 
 /** The ceiling a host's row names for a hook's text, or `undefined` where it names none. */
 export function hookTextOf(host: HostName): Host['hookText'] {
@@ -975,6 +1075,7 @@ export function does(host: HostName, capability: Capability): boolean {
 /** One moment of the work in which the record can be present, one column of the presence map. */
 export type Moment =
   | 'choice'
+  | 'message'
   | 'memory'
   | 'file'
   | 'opening'
@@ -996,12 +1097,15 @@ export type Presence = (Cell | { readonly held: 'no channel' } | { readonly held
 /** The day the hosts below were read for the moments of the work. */
 const PRESENCE_READ_ON = '21 October 2026';
 
-/** A moment a host documents, read on {@link PRESENCE_READ_ON}. */
-const documented = (what: string, at: string): Presence => ({
+/** The day the study of the hosts' prompt events was made. */
+const PROMPT_EVENTS_READ_ON = '18 November 2026';
+
+/** A moment a host documents, read on {@link PRESENCE_READ_ON} unless `read` says another day. */
+const documented = (what: string, at: string, read: string = PRESENCE_READ_ON): Presence => ({
   does: true,
   held: 'documentation',
   at,
-  read: PRESENCE_READ_ON,
+  read,
   what,
 });
 
@@ -1039,6 +1143,12 @@ export const PRESENCE = {
       what: 'PostToolUse on the question tool',
     },
     // HELD AS IT SHIPS: `host-memory-mirror` begins on (ADR-39), and the contract switches nothing.
+    message: {
+      does: true,
+      held: 'a test',
+      by: HELD.claudeDictated,
+      what: 'UserPromptSubmit',
+    },
     memory: {
       does: true,
       held: 'a test',
@@ -1062,6 +1172,7 @@ export const PRESENCE = {
   },
   vscode: {
     choice: notRead,
+    message: notRead,
     memory: documented(
       'a memory folder of the host, the tool that writes it not read',
       VSCODE_MEMORY,
@@ -1076,6 +1187,7 @@ export const PRESENCE = {
   },
   cursor: {
     choice: noChannel(),
+    message: documented('beforeSubmitPrompt', CURSOR_HOOKS, PROMPT_EVENTS_READ_ON),
     memory: noChannel(),
     file: documented('postToolUse, with additional context', CURSOR_HOOKS),
     end: documented(
@@ -1087,6 +1199,7 @@ export const PRESENCE = {
   },
   codex: {
     choice: documented('PostToolUse on `request_user_input`', CODEX_HOOKS),
+    message: { ...HOSTS.codex.onAMessage, what: 'UserPromptSubmit' },
     memory: noChannel('its memories are made in the background, with no tool and no hook'),
     file: documented('PostToolUse on `apply_patch`', CODEX_HOOKS),
     end: documented(
@@ -1098,6 +1211,7 @@ export const PRESENCE = {
   },
   copilot: {
     choice: documented('postToolUse on `ask_user`', COPILOT_HOOKS),
+    message: documented('userPromptSubmitted', COPILOT_HOOKS, PROMPT_EVENTS_READ_ON),
     memory: documented('`store_memory`, which keeps it in the cloud', COPILOT_MEMORY),
     file: documented('postToolUse on a write', COPILOT_HOOKS),
     end: documented(
@@ -1109,6 +1223,7 @@ export const PRESENCE = {
   },
   gemini: {
     choice: documented('AfterTool on `ask_user`', GEMINI_TREE),
+    message: { ...HOSTS.gemini.onAMessage, what: 'BeforeAgent' },
     memory: documented(
       '`GEMINI.md`, kept by project, the tool that writes it not read',
       GEMINI_TREE,
@@ -1123,6 +1238,7 @@ export const PRESENCE = {
   },
   opencode: {
     choice: documented('`tool.execute.after` on `question`', OPENCODE_TREE),
+    message: notRead,
     memory: noChannel(),
     file: documented('`tool.execute.after`', OPENCODE_TREE),
     end: notRead,

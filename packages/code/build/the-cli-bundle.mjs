@@ -47,8 +47,11 @@ const PLUGIN_TREES = 'MNEMA_PLUGIN_TREES';
 const REQUIRE =
   "import { createRequire as __mnemaCreateRequire } from 'node:module'; const require = __mnemaCreateRequire(import.meta.url);";
 
-/** Writes the bundle into `outdir` (the build's own folder unless a test names another). */
-export async function bundleTheCli(outdir = BUNDLE_DIR) {
+/**
+ * What the build writes into the program as constants: the product stamp and the digest of each
+ * plugin folder. Shared with `the-single-executable.mjs`, which folds the same program into one file.
+ */
+export async function constantsOfTheBuild() {
   const { productStamp } = await import(
     new URL('../../core/dist/projections/cache-meta.js', here).href
   );
@@ -61,6 +64,15 @@ export async function bundleTheCli(outdir = BUNDLE_DIR) {
     if (digest === undefined) throw new Error(`the plugin folder ${folder} could not be read`);
     trees[name] = digest;
   }
+  return {
+    [STAMP]: JSON.stringify(productStamp()),
+    [PLUGIN_TREES]: JSON.stringify(JSON.stringify(trees)),
+  };
+}
+
+/** Writes the bundle into `outdir` (the build's own folder unless a test names another). */
+export async function bundleTheCli(outdir = BUNDLE_DIR) {
+  const define = await constantsOfTheBuild();
   rmSync(outdir, { recursive: true, force: true });
   return build({
     entryPoints: { cli: fileURLToPath(new URL('../dist/cli.js', here)) },
@@ -74,10 +86,7 @@ export async function bundleTheCli(outdir = BUNDLE_DIR) {
     minify: false,
     sourcemap: false,
     external: LEFT_OUTSIDE,
-    define: {
-      [STAMP]: JSON.stringify(productStamp()),
-      [PLUGIN_TREES]: JSON.stringify(JSON.stringify(trees)),
-    },
+    define,
     banner: { js: REQUIRE },
     logLevel: 'warning',
     // `import.meta` is ESM's own and the output is ESM: nothing is emptied.

@@ -26,7 +26,7 @@
 import { posix } from 'node:path';
 
 /** The version of the text {@link INSTRUCTIONS_BODY} is. */
-export const INSTRUCTIONS_VERSION = 'v5';
+export const INSTRUCTIONS_VERSION = 'v6';
 
 /**
  * What the block says. Every line is checked by `the-instructions-block.test.ts` against
@@ -142,24 +142,10 @@ const V4_BODY = [
 ].join('\n');
 
 /**
- * What the block says now: the fifth version, the fourth one's text with one sentence about starring the
- * repository, worded so an agent never stars it. The third version had the one sentence about when an agent accepts in
- * place of the parenthesis about the switch (a decision the person dictated or chose among options
- * the agent offered is accepted at once, with a note quoting the answer; one the agent concluded
- * alone waits). The block is a file and cannot obey the switch, so it still names it. Its form is the second version's:
- * set apart from its begin marker by a blank line
- * (a formatter run over a project's Markdown asks for it, and the block failed the project's
- * `format:check` without it), with the shell command as an example that runs as it stands
- * instead of a template, and with what to do when a decision replaces an earlier one.
- * The examples are indented code, not fenced: a person's file with a code fence that is never
- * closed is read as hiding no marker, and a fence of ours would close it and hide the begin
- * marker, so a second run would write a second block; and a formatter rewrites a `~~~` fence as
- * a backtick one, so no fence of ours is both safe there and left alone. The body ends with a
- * blank line before the end marker for the same reason a formatter puts one between a code block
- * and a comment. `the-instructions-block-is-formatted-and-its-example-runs.test.ts` runs the
- * examples against the binary and holds both edges to what a formatter leaves alone.
+ * The fifth version: the one before the sentence that tells an agent a note quotes the person's exact words between
+ * double quotes. Kept byte for byte, so a `v5` block is still the product's to replace.
  */
-export const INSTRUCTIONS_BODY = [
+const V5_BODY = [
   '',
   '## Recording the work (mnema)',
   '',
@@ -188,12 +174,37 @@ export const INSTRUCTIONS_BODY = [
   '',
 ].join('\n');
 
+/**
+ * What the block says now: the sixth version, the fifth one's text with the note of an agent's accept worded as the person's exact
+ * words between double quotes (the check at the accept looks for them, `agent-accept-words.ts`). The fifth version was
+ * the fourth one's text with one sentence about starring the repository, worded so an agent never stars it. The third version had the one sentence about when an agent accepts in
+ * place of the parenthesis about the switch (a decision the person dictated or chose among options
+ * the agent offered is accepted at once, with a note quoting the answer, which the sixth version words as their exact words between double quotes; one the agent concluded
+ * alone waits). The block is a file and cannot obey the switch, so it still names it. Its form is the second version's:
+ * set apart from its begin marker by a blank line
+ * (a formatter run over a project's Markdown asks for it, and the block failed the project's
+ * `format:check` without it), with the shell command as an example that runs as it stands
+ * instead of a template, and with what to do when a decision replaces an earlier one.
+ * The examples are indented code, not fenced: a person's file with a code fence that is never
+ * closed is read as hiding no marker, and a fence of ours would close it and hide the begin
+ * marker, so a second run would write a second block; and a formatter rewrites a `~~~` fence as
+ * a backtick one, so no fence of ours is both safe there and left alone. The body ends with a
+ * blank line before the end marker for the same reason a formatter puts one between a code block
+ * and a comment. `the-instructions-block-is-formatted-and-its-example-runs.test.ts` runs the
+ * examples against the binary and holds both edges to what a formatter leaves alone.
+ */
+export const INSTRUCTIONS_BODY = V5_BODY.replace(
+  'accept it now with `decision_transition` and a note quoting their answer; one you concluded alone',
+  'accept it now with `decision_transition` and a note quoting their exact words between double quotes; one you concluded alone',
+);
+
 /** Every text this product ever wrote between the markers, by the version its begin marker names. */
 export const KNOWN_BODIES: { readonly [version: string]: string } = {
   v1: V1_BODY,
   v2: V2_BODY,
   v3: V3_BODY,
   v4: V4_BODY,
+  v5: V5_BODY,
   [INSTRUCTIONS_VERSION]: INSTRUCTIONS_BODY,
 };
 

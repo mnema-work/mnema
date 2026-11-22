@@ -99,4 +99,33 @@ describe('a copy set against its tree', () => {
       `tails/${TAIL}/000001.jsonl`,
     ]);
   });
+
+  describe("the copy's manifest", () => {
+    const manifestPath = () => join(destination, RECORD, 'private', 'mnema-backup.json');
+
+    it('is whole when it reads', () => {
+      expect(readCopy(tree, destination, RECORD, 'private').manifest).toBe('whole');
+    });
+
+    it('is absent when there is none', () => {
+      rmSync(manifestPath());
+      const reading = readCopy(tree, destination, RECORD, 'private');
+      expect(reading).toMatchObject({ manifest: 'absent', copiedAt: undefined });
+    });
+
+    it.each([
+      ['JSON that is cut', '{'],
+      ['an empty file', ''],
+      ['a value that is not an object', '[1, 2]'],
+      ['files that are not a list', '{"files": "none"}'],
+      ['an entry of files with no valid path', '{"files": [{"path": 1, "bytes": 3}]}'],
+      ['an entry of files with no size', '{"files": [{"path": "keys/aa11.pub"}]}'],
+    ])('is unreadable when it holds %s', (_what, text) => {
+      writeFileSync(manifestPath(), text);
+      const reading = readCopy(tree, destination, RECORD, 'private');
+      expect(reading.manifest).toBe('unreadable');
+      expect(reading.copiedAt).toBeUndefined();
+      expect(reading.missing).toEqual([]);
+    });
+  });
 });

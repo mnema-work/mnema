@@ -38,6 +38,7 @@ import type { GoverningRules, NewerLines } from '@mnema/context';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
 import { readGoverningRulesWhereItLands } from '../governed-tree.js';
 import { type InheritedReading, withInheritedSource } from '../inherited-record.js';
+import { coverageByLayer, type RuleCoverage } from '../rule-coverage.js';
 import { rulesNotPushedLine } from '../rules-not-pushed.js';
 import {
   linkBreaksOf,
@@ -126,5 +127,36 @@ export function runRules(ctx: RulesContext, input: { path: string }): RulesDone 
         ...(notPushed !== undefined ? { notPushed } : {}),
       };
     }),
+  );
+}
+
+/** What `mnema rules --coverage` answers: the counts, and what the wiring says beside them. */
+export interface RulesCoverageDone extends Omit<RulesDone, 'governed' | 'notPushed'> {
+  readonly coverage: RuleCoverage;
+}
+
+/**
+ * Counts the project's files by the layer of the rules in force at each (`coverageByLayer`): the
+ * reading of the rules from the files' side, over the same trees `runRules` reads, the record the
+ * project inherits included. `ceiling` is overridable for a case that must reach it.
+ */
+export function runRulesCoverage(
+  ctx: RulesContext,
+  ceiling?: number,
+): RulesCoverageDone | RulesRefused {
+  const trees = resolveTrees(ctx.cwd, ctx.env);
+  if (trees.projectPublic === undefined) {
+    return { ok: false, reason: 'NO_PROJECT' };
+  }
+  const root = dirname(trees.projectPublic);
+  return withScopedCaches(trees, (sources) =>
+    withInheritedSource(trees, sources, (all, inherited) => ({
+      ok: true,
+      linkBreaks: linkBreaksOf(sources, THE_READING_THAT_OPENED_THESE),
+      ...newerLinesIn(sources),
+      coverage: coverageByLayer(all, root, ceiling),
+      severalRecords: all.flatMap((source) => source.cache.severalRecords()),
+      ...(inherited !== undefined ? { inherited } : {}),
+    })),
   );
 }
