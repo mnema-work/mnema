@@ -86,8 +86,8 @@ const { default: subsetFont } = (await import(subsetSpec)) as {
 const unwrap = (woff2: Buffer): Promise<Buffer> =>
   subsetFont(woff2, undefined, { keepAllGlyphs: true, targetFormat: 'sfnt' });
 
-/** The size, in bytes, of the page of an empty record when the fonts went in as WOFF2 subsets, and 5% more. */
-const CEILING = 0;
+/** The size, in bytes, of the page of an empty record: 81,900 when the fonts went in as WOFF2 subsets, and 5% more. */
+const CEILING = 86_000;
 
 const emptyModel = {
   decisions: [],
