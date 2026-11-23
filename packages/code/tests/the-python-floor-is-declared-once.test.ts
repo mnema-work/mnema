@@ -17,7 +17,8 @@
  *   - EVERY TRACKED FILE THAT STATES A PYTHON FLOOR, found by the claim and not by a list, in
  *     any file git carries: pages, docstrings, manifests and workflows alike.
  *   - EVERY WORKFLOW THAT SETS UP A PYTHON. The job that says it runs the floor sets up exactly
- *     that one, and no job anywhere sets up one below it.
+ *     that one (last, so `python3` is the floor), beside at most one newer Python that only the
+ *     type checker runs on, and no job anywhere sets up one below it.
  *   - THAT JOB RUNS EVERY TEST FILE THAT STARTS `python3`, found by the discriminant (a string
  *     literal that is the interpreter's name and nothing else), so a new file that starts the
  *     reader is red here until the job runs it too, and a file the job names that no longer
@@ -189,10 +190,16 @@ describe('CI runs the floor', () => {
       `no job sets up a Python and sets ${THE_JOB_SAYS}, so nothing runs the floor`,
     ).toHaveLength(1);
     const [job] = THE_FLOORS_JOB;
+    // THE FLOOR IS THE LAST ONE SET UP, so it is the first on PATH: `python3` is the floor. Before
+    // it, at most one newer Python, which only the type checker runs on (mypy 1.20 needs 3.10 to
+    // run and still targets 3.9; ADR-696).
+    const set = pythonsOf(job?.body ?? '');
+    expect(set.at(-1), `${job?.where} does not set up the floor last`).toBe(FLOOR);
+    expect(set.length, `${job?.where} sets up more than the floor and one checker Python`).toBeLessThanOrEqual(2);
     expect(
-      pythonsOf(job?.body ?? ''),
-      `${job?.where} sets up a Python other than the floor`,
-    ).toEqual([FLOOR]);
+      set.slice(0, -1).filter((said) => !reaches(said, FLOOR)),
+      `${job?.where} sets up a Python below the floor`,
+    ).toEqual([]);
   });
 
   it('and no job anywhere sets up a Python below it', () => {
@@ -251,6 +258,16 @@ describe('CI runs the floor', () => {
       new RegExp(
         `\\bmypy\\b[^\\n]*--python-version[\\s=]+${FLOOR.replace('.', '\\.')}\\b[^\\n]*\\spackages/chain/verifier/?(?:\\s|$)`,
       ),
+    );
+    // THE CHECKER RUNS ON ITS OWN PYTHON, NEVER THE FLOOR'S: its venv is made from the interpreter
+    // the checker's setup step reports, so mypy installs on a Python that can run it.
+    const checkerStep = /^\s*-\s+id:\s*([\w-]+)\s*\n\s+uses: actions\/setup-python@[^\n]*\n\s+with:\n\s+python-version:\s*\S+/m.exec(body);
+    expect(checkerStep?.[1], 'the floor job names no setup step for the checker Python').toBeDefined();
+    expect(
+      body,
+      'the checker venv is not made from the checker Python the job set up',
+    ).toMatch(
+      new RegExp(`CHECKER_PYTHON:\\s*\\$\\{\\{\\s*steps\\.${checkerStep?.[1]}\\.outputs\\.python-path\\s*\\}\\}[\\s\\S]*"\\$CHECKER_PYTHON" -m venv`),
     );
     // A CHECKER THAT FLOATS IS A CHECK THAT CHANGES UNDER THE SAME HEAD, and one release of it
     // already refuses the floor as a target.
