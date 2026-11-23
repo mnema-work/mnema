@@ -183,16 +183,19 @@ mnema init  ·  0.0.0
 │
 │  Then
 │    1  Commit `.mnema/` with the repository; every clone reads the record.
-│    2  Claude Code: claude plugin marketplace add mnema-work/mnema
+│    2  A plain `git pull` was not set up for the record: `mnema doctor --fix
+│       merge-driver` writes its settings, and `mnema record pull` pulls
+│       without them.
+│    3  Claude Code: claude plugin marketplace add mnema-work/mnema
 │                    claude plugin install mnema@mnema
-│    3  Cursor: its command-line agent reads the Claude Code plugin.
-│    4  Codex: codex plugin marketplace add mnema-work/mnema
+│    4  Cursor: its command-line agent reads the Claude Code plugin.
+│    5  Codex: codex plugin marketplace add mnema-work/mnema
 │              codex plugin add mnema@mnema
-│    5  In Claude Code or Codex, with the plugin in, ask the agent: "Which
+│    6  In Claude Code or Codex, with the plugin in, ask the agent: "Which
 │       mnema tools do you have?"
-│    6  1 decision file in docs/decisions is not in the record yet:
+│    7  1 decision file in docs/decisions is not in the record yet:
 │       mnema decision import docs/decisions
-│    7  `mnema status` shows where things stand.
+│    8  `mnema status` shows where things stand.
 │
 └  Off until switched on: edit-first-write-gate, opening-core, record-publish;
    `mnema switch` turns one on.
@@ -428,19 +431,23 @@ mnema init  ·  0.0.0
 │  Then
 │    1  Commit `.mnema/` with the repository; every clone
 │       reads the record.
-│    2  Claude Code:
+│    2  A plain `git pull` was not set up for the record:
+│       `mnema doctor --fix merge-driver` writes its
+│       settings, and `mnema record pull` pulls without
+│       them.
+│    3  Claude Code:
 │       claude plugin marketplace add mnema-work/mnema
 │       claude plugin install mnema@mnema
-│    3  Cursor: its command-line agent reads the Claude
+│    4  Cursor: its command-line agent reads the Claude
 │       Code plugin.
-│    4  Codex: codex plugin marketplace add mnema-work/mnema
+│    5  Codex: codex plugin marketplace add mnema-work/mnema
 │              codex plugin add mnema@mnema
-│    5  In Claude Code or Codex, with the plugin in, ask
+│    6  In Claude Code or Codex, with the plugin in, ask
 │       the agent: "Which mnema tools do you have?"
-│    6  1 decision file in docs/decisions is not in the
+│    7  1 decision file in docs/decisions is not in the
 │       record yet:
 │       mnema decision import docs/decisions
-│    7  `mnema status` shows where things stand.
+│    8  `mnema status` shows where things stand.
 │
 └  Off until switched on: edit-first-write-gate,
    opening-core, record-publish; `mnema switch` turns one

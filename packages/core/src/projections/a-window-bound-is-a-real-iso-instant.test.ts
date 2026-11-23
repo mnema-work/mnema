@@ -88,4 +88,19 @@ describe('a window of two bounds', () => {
   it('refuses on the first bound that is wrong, --from before --to', () => {
     expect(parseWindow({ from: 'x', to: 'y' })).toEqual({ ok: false, end: 'from', value: 'x' });
   });
+
+  it('refuses a from after the to, as typed, and takes the two ends of one day or of one instant', () => {
+    expect(parseWindow({ from: '2026-11-22', to: '2026-11-01' })).toEqual({
+      ok: false,
+      inverted: true,
+      from: '2026-11-22',
+      to: '2026-11-01',
+    });
+    expect(
+      parseWindow({ from: '2026-11-21T10:00:00-03:00', to: '2026-11-21T12:00:00Z' }),
+    ).toMatchObject({ ok: false, inverted: true });
+    expect(parseWindow({ from: '2026-11-21', to: '2026-11-21' }).ok).toBe(true);
+    expect(parseWindow({ from: '2026-11-21T10:00:00Z', to: '2026-11-21T10:00:00Z' }).ok).toBe(true);
+    expect(parseWindow({ from: '2026-11-22' }).ok).toBe(true);
+  });
 });

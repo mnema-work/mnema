@@ -23,9 +23,11 @@
  * recorder may be neither), and it names the agent without moving the tree.
  */
 
+import { dirname } from 'node:path';
 import { catalogUpcasters } from '@mnema/chain';
 import { chainRootForScope, type DiscoveryEnv, resolveScope, type Scope } from '@mnema/core';
 import { openTreeForWriting, recordHandoff } from '@mnema/core/write';
+import { briefIsATemporaryPath } from '../link-target.js';
 import { oneLine } from '../one-line.js';
 import { forwardReplacement, type Landed, type Replacement } from '../recorded-content.js';
 import { locateTaskScopeKept } from '../tree-sources.js';
@@ -55,6 +57,8 @@ export interface HandoffRecorded extends Replacement, Landed {
   readonly toAgent: string;
   /** The observation that carries the brief, when one was given. */
   readonly briefId?: string;
+  /** True when the brief is nothing but the path of a file under a temporary folder: said after the write. */
+  readonly briefIsTemporary?: true;
 }
 
 /** The record was refused. */
@@ -148,6 +152,13 @@ export function runHandoff(
     fromAgent: recorded.fromAgent,
     toAgent: recorded.toAgent,
     ...(recorded.briefId !== undefined ? { briefId: recorded.briefId } : {}),
+    ...(input.brief !== undefined &&
+    briefIsATemporaryPath(
+      input.brief,
+      trees.projectPublic === undefined ? undefined : dirname(trees.projectPublic),
+    )
+      ? { briefIsTemporary: true as const }
+      : {}),
     scope,
     ...forwardReplacement(recorded),
   };

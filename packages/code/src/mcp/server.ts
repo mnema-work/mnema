@@ -127,6 +127,7 @@ import {
   reachNotices,
   replacementNotice,
   subjectReachNotice,
+  temporaryBriefNotice,
   temporaryTargetNotice,
 } from '../recorded-content.js';
 import { REFERENCE_DIRECTIONS } from '../reference-directions.js';
@@ -1238,7 +1239,10 @@ function registerTools(tool: ToolRegistrar, ensureSession: () => Promise<Session
             ? `\n  The brief is observation ${result.briefId} about the task.`
             : ''),
         result,
-        result.followedNoTree !== undefined ? { after: [result.followedNoTree] } : {},
+        {
+          ...(result.followedNoTree !== undefined ? { after: [result.followedNoTree] } : {}),
+          last: temporaryBriefNotice(brief ?? '', result.briefIsTemporary),
+        },
       );
     },
   );

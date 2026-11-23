@@ -1034,7 +1034,7 @@ $ mnema search --help
 |   never by when one last moved, and never by the state it is in now.
 |   A bound is a date (YYYY-MM-DD, read as UTC: --from is the start of the day,
 |   --to its last millisecond) or a timestamp ending in Z or an offset
-|   (YYYY-MM-DDT10:30:00-03:00). Anything else is refused.
+|   (YYYY-MM-DDT10:30:00-03:00). Anything else is refused, and so is a --from after the --to.
 
 ### mnema show --help
 $ mnema show --help
@@ -1046,6 +1046,8 @@ $ mnema show --help
 |   id          the record id (from `mnema search`)
 |
 | Options:
+|   --full      for a task, print every note about it whole, not one line each (a
+|               note’s own id always prints whole)
 |   --json      emit the faithful record as JSON
 |   -h, --help  display help for command
 
@@ -1146,7 +1148,7 @@ $ mnema export --help
 |   by the instant each was recorded.
 |   A bound is a date (YYYY-MM-DD, read as UTC: --from is the start of the day,
 |   --to its last millisecond) or a timestamp ending in Z or an offset
-|   (YYYY-MM-DDT10:30:00-03:00). Anything else is refused.
+|   (YYYY-MM-DDT10:30:00-03:00). Anything else is refused, and so is a --from after the --to.
 
 ### mnema usage --help
 $ mnema usage --help
@@ -2891,7 +2893,7 @@ $ mnema audit accountability --help
 |   by the instant each was recorded.
 |   A bound is a date (YYYY-MM-DD, read as UTC: --from is the start of the day,
 |   --to its last millisecond) or a timestamp ending in Z or an offset
-|   (YYYY-MM-DDT10:30:00-03:00). Anything else is refused.
+|   (YYYY-MM-DDT10:30:00-03:00). Anything else is refused, and so is a --from after the --to.
 
 ### mnema audit antipatterns --help
 $ mnema audit antipatterns --help

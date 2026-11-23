@@ -171,6 +171,24 @@ describe('checking a Sigstore countersignature against who was expected', () => 
       expect(readdirSync(real)).toEqual([]);
     });
 
+    it('refuses, in a line and without a throw, a folder below a link that points nowhere', async () => {
+      symlinkSync(join(sandbox, 'gone'), join(sandbox, 'dangling'));
+      const { check } = await run(join(sandbox, 'dangling', 'inner'));
+      expect(check.ok).toBe(false);
+      expect(check.refusals).toEqual([
+        `${join(sandbox, 'dangling')} is not a folder, nor a link to one`,
+      ]);
+    });
+
+    it('refuses, in a line and without a throw, a folder below a file', async () => {
+      writeFileSync(join(sandbox, 'a-file'), 'x');
+      const { check } = await run(join(sandbox, 'a-file', 'inner'));
+      expect(check.ok).toBe(false);
+      expect(check.refusals).toEqual([
+        `${join(sandbox, 'a-file', 'inner')} cannot be a folder: a part of its path is a file`,
+      ]);
+    });
+
     it('accepts a folder under a linked ancestor, and the message lands at the real path', async () => {
       const real = join(sandbox, 'real');
       mkdirSync(real);

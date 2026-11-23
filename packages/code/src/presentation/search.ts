@@ -31,6 +31,7 @@ export function searchReport(
   render: Render,
   result: RecordSearch,
   term: string | undefined,
+  windowed = false,
 ): string[] {
   // THE TERM IS THE CALLER'S OWN WORDS, echoed back, and it rides the header that
   // counts the hits under it, so a break in it puts a line between the count and the
@@ -38,7 +39,11 @@ export function searchReport(
   // did not come out of the record at all.
   const forTerm = term !== undefined && term.trim() !== '' ? ` matching "${oneLine(term)}"` : '';
   if (result.hits.length === 0) {
-    const first = term !== undefined ? `Nothing recorded${forTerm}.` : 'Nothing recorded here yet.';
+    const first = windowed
+      ? `Nothing recorded${forTerm} in this window.`
+      : term !== undefined
+        ? `Nothing recorded${forTerm}.`
+        : 'Nothing recorded here yet.';
     if (term !== undefined && wordsOf(term).length > 1) {
       return [first, 'Every word has to be in the same record: try fewer words.'];
     }

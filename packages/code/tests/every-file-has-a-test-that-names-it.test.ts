@@ -1170,6 +1170,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/a-session-opens-where-nothing-signs.test.ts': 14,
   'packages/code/tests/a-session-says-what-it-wrote.test.ts': 15,
   'packages/code/tests/a-settled-choice-is-said.test.ts': 14,
+  'packages/code/tests/a-small-slip-is-told-what-to-type-instead.test.ts': 11,
   'packages/code/tests/a-stack-goes-where-nothing-is.test.ts': 8,
   'packages/code/tests/a-stack-is-handled-through-the-program.test.ts': 6,
   'packages/code/tests/a-stack-is-looked-at-against-its-receipt.test.ts': 8,

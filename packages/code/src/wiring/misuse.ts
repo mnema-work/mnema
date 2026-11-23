@@ -321,6 +321,7 @@ function excessArguments({ command }: Misuse): Line | undefined {
 const EXTRA_WORDS_MEAN = new Map<string, string>([
   ['memory', 'It takes one text: quote it, or give it with --stdin or --body-file.'],
   ['observe', 'The topic and the text go in flags: --topic <label> and --text <text>.'],
+  ['search', 'It takes one term: quote several words, as in mnema search "synthetic load".'],
 ]);
 
 /** Where to read decisions, for a group that has no verb that lists them. */

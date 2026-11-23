@@ -610,6 +610,8 @@ $ mnema show <task-runbook>
 | Notes (1, newest first):
 |   <observation-rollback>  review  the runbook needs a rollback section
 |
+| Every note whole: mnema show <task-runbook> --full
+|
 | What each move said:
 | complete · <at:18>
 | note: the first draft is in
@@ -1997,6 +1999,8 @@ $ mnema show <task-runbook>
 |
 | Notes (1, newest first):
 |   <observation-rollback>  review  the runbook needs a rollback section
+|
+| Every note whole: mnema show <task-runbook> --full
 |
 | What each move said:
 | complete · <at:18>

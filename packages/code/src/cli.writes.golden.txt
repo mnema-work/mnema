@@ -310,7 +310,7 @@ $ mnema switch
 $ mnema switch on edit-rules-push
 | Switched edit-rules-push on
 |   Landed in the public tree: a folder of this project, not committed (there is no git here); it travels only as the project's files are copied.
-|   edit-rules-push is now ON: it hands the record over as it did before.
+|   edit-rules-push is now ON: the rules addressed at a file are handed over beside each edit of it.
 $ mnema switch off no-such-channel
 ! mnema pushes no channel by that name: `mnema switch` lists them.
 [exit 1]

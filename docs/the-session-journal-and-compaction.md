@@ -47,8 +47,8 @@ It prints one sentence read from the session's journal, about sixty to a hundred
 the record's, not the journal's: those created since the session opened, in the state they have now, because the journal is written at the end
 of a response and one recorded or moved since is not in it. That is every decision that entered the record since the session opened,
 so one that came by a pull, or that another session recorded, is counted too: the sentence says "entered the record", not "recorded by
-this session". It names five at most (then `and N more`), and a label that two trees both number (each tree numbers its own) says
-which tree it is of, as `ADR-1 (private)`:
+this session". It names five at most (then `and N more`), and a decision held outside the committed tree says
+which tree it is of (each tree numbers its own), as `ADR-1 (private)`:
 
 ```text
 Before this conversation was compacted, this session had: 2 decisions entered this project’s record since this session opened (ADR-12: proposed; ADR-13: accepted); 1 note of this host’s memory copied into this machine’s private tree; 1 question answered with no decision recorded after; its own tool calls wrote 5 files.

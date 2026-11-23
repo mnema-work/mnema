@@ -390,10 +390,13 @@ mnema verify --workspace ~/work/api ~/work/web
 observation about the task, under the topics `description` and `brief`, and the reply names the observation's id.
 The record's format does not change: the text is a note, signed as a note is, and not a field of the task.
 `mnema show <task>` and `read_record` then serve the description, the last handoff (from, to and its brief) and the
-notes about the task, newest first, cut at eight with the count the cut left out. `mnema status`, `bootstrap` and
+notes about the task, newest first, one line each and cut at eight with the count the cut left out; `mnema show <task>
+--full` prints every note about the task whole, with no cut (a note's own id always prints whole, here or through `read_record`). `mnema status`, `bootstrap` and
 `next_actions` say of each task in flight who has it (the `to` of its last handoff, or whoever started it) and the last
 thing that happened to it, on one line; `next_actions` says it in two lines of its own after the list of moves. A
-handoff that names no `--scope` follows its task to the tree that holds it, brief included. `show` and
+handoff that names no `--scope` follows its task to the tree that holds it, brief included. A brief that is nothing but the
+path of a file under a temporary folder (`/tmp`, `$TMPDIR`, the system's own) is recorded all the same, and the reply
+adds that a reboot or a cleanup can clear it; the text of a brief that is prose is never read for paths. `show` and
 `read_record` count the notes about a task over every tree this machine holds. `mnema refs <path>` and `audit_refs`,
 for an id no tree authored that reads as a path under the project, add whether the file exists now and the SHA-256
 of its bytes: a reading of the working tree, written nowhere. A path that leads out of the project, even through a
