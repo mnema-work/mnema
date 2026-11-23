@@ -505,7 +505,7 @@ describe('the sentence for a command line and an extension on different versions
 
   it('compares number by number, not as text, and by minor and patch too', () => {
     expect(versionNotice('0.10.0', '0.9.0')).toContain('is newer');
-    expect(versionNotice('0.1.7', '0.1.10')).toContain('is older');
+    expect(versionNotice('0.1.7', '0.1.12')).toContain('is older');
   });
 
   it('says nothing for the same version, a pre-release suffix alone, or what is not a version', () => {
