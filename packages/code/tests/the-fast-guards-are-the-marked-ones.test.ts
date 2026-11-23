@@ -105,11 +105,12 @@ describe('the mark is read from the top of a file and nowhere else', () => {
 });
 
 describe('the script and the job run the marked files', () => {
-  it('names the config the marks are read by in package.json and in the workflow', () => {
+  it('keeps the worker default in the config and lets the script override it', () => {
     const manifest = JSON.parse(source('package.json')) as { scripts: Record<string, string> };
-    expect(manifest.scripts['test:guards']).toBe(
-      'vitest run --config vitest.guards.config.ts --maxWorkers=2',
-    );
+    const script = manifest.scripts['test:guards'];
+    expect(script).toBe('vitest run --config vitest.guards.config.ts');
+    expect(script).not.toMatch(/--maxWorkers(?:=|\s)/);
+    expect(source('vitest.guards.config.ts')).toMatch(/\bmaxWorkers:\s*2\b/);
     expect(source('.github/workflows/ci.yml')).toContain(
       'pnpm exec vitest run --config vitest.guards.config.ts --maxWorkers=2',
     );
