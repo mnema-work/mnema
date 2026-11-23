@@ -171,7 +171,7 @@ describe('the sentence, capped', () => {
 });
 
 describe('the read', () => {
-  it('says which tree a label is of when two trees number a decision the same', async () => {
+  it('says which tree a label is of for a decision outside the committed tree, the committed one staying bare', async () => {
     const pub = await doing('decision', 'record', 'Use UTC', 'The ledger is UTC');
     const priv = await doing(
       'decision',
@@ -194,7 +194,8 @@ describe('the read', () => {
       }),
     );
     const text = afterwards() ?? '';
-    expect(text).toContain('ADR-1 (public): proposed');
+    expect(text).toContain('ADR-1: proposed');
+    expect(text).not.toContain('(public)');
     expect(text).toContain('ADR-1 (private): proposed');
   });
 

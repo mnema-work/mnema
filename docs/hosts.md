@@ -82,7 +82,7 @@ JavaScript module, copied into the project, and the server is declared in the pr
 
 ```bash
 mkdir -p .opencode/plugins
-curl -fsSL https://raw.githubusercontent.com/mnema-work/mnema/v0.1.9/plugin/opencode/mnema.js \
+curl -fsSL https://raw.githubusercontent.com/mnema-work/mnema/v0.1.10/plugin/opencode/mnema.js \
   -o .opencode/plugins/mnema.js
 ```
 
@@ -127,7 +127,7 @@ installed from a checkout of this repository, where it is the folder `plugin/gem
 the release you run (`main` can be ahead of it):
 
 ```bash
-git clone --branch v0.1.9 https://github.com/mnema-work/mnema.git /path/to/mnema
+git clone --branch v0.1.10 https://github.com/mnema-work/mnema.git /path/to/mnema
 gemini extensions install /path/to/mnema/plugin/gemini
 ```
 
@@ -150,7 +150,7 @@ extension of its own and copies it into your home. From a checkout of this repos
 release you run (`main` can be ahead of it):
 
 ```bash
-git clone --branch v0.1.9 https://github.com/mnema-work/mnema.git /path/to/mnema
+git clone --branch v0.1.10 https://github.com/mnema-work/mnema.git /path/to/mnema
 qwen extensions install /path/to/mnema/plugin
 ```
 

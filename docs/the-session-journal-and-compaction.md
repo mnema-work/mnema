@@ -6,7 +6,7 @@ What a session keeps between its Stop hooks, what it is handed again after a com
 
 At each `Stop` `mnema tally` keeps a small file for the session, at
 `<data directory>/sessions/<digest of the project>/<the host's session id>.json` (`~/.mnema`, or `$MNEMA_HOME`), when the hook
-names the session (Claude Code does, as `session_id`). It lets the next `Stop` read the transcript from the byte where the last
+names the session (Claude Code does, as `session_id`; the end of a turn in VS Code's agent, Codex, Copilot CLI, Gemini CLI, Cursor's command-line agent and Qwen Code runs the same verb, which keeps no journal there, because only Claude Code's transcript is read so far). It lets the next `Stop` read the transcript from the byte where the last
 reading stopped instead of the whole conversation again, and it holds, in ids and counts, what the session did with the
 record: the decisions recorded since it opened (their ids and state), the notes of the host's memory copied into the private
 tree (their ids), how many questions the person answered with no decision recorded after, how many files that hold decisions
@@ -47,8 +47,8 @@ It prints one sentence read from the session's journal, about sixty to a hundred
 the record's, not the journal's: those created since the session opened, in the state they have now, because the journal is written at the end
 of a response and one recorded or moved since is not in it. That is every decision that entered the record since the session opened,
 so one that came by a pull, or that another session recorded, is counted too: the sentence says "entered the record", not "recorded by
-this session". It names five at most (then `and N more`), and a label that two trees both number (each tree numbers its own) says
-which tree it is of, as `ADR-1 (private)`:
+this session". It names five at most (then `and N more`), and a decision held outside the committed tree says
+which tree it is of (each tree numbers its own), as `ADR-1 (private)`:
 
 ```text
 Before this conversation was compacted, this session had: 2 decisions entered this project’s record since this session opened (ADR-12: proposed; ADR-13: accepted); 1 note of this host’s memory copied into this machine’s private tree; 1 question answered with no decision recorded after; its own tool calls wrote 5 files.
@@ -101,3 +101,47 @@ for each dispatch after the first, 860 ms for the first (it opens the task) and 
 is the start of the process (`mnema --version`); the numbers move with the load. The lock a dispatch takes on the journal is taken
 from a process that died holding it (older than fifteen seconds) by one process only, and the `Stop` that keeps the journal
 waits for it too.
+
+## What the person said
+
+`mnema words --host <host>` is a verb for a host's hook to run. It keeps what the person typed at the prompt, and which option
+they chose when the agent asked, in a file of this machine's, so that a reader that has to know what the person said does not
+depend on one host's transcript format. It reads the JSON the host hands the hook on standard input, prints `{}` and never the
+words, and exits 0. The plugin's hooks files do not run it yet: until they do, a hook of your own can (the same command, one
+line per host event in the table below).
+
+**What is kept.** The text of a prompt as the host's prompt hook delivered it, marked `typed`; and, from the hook after the
+host's question tool, the label of each option the person chose, marked `chosen` (an answer to a question the host marks
+secret, Codex's `is_secret`, is not kept). Each entry also holds the host and the instant. A long paste is cut at 65,536
+characters, and a session's file never passes 4 MiB (an entry that would cross it is not kept). Never the agent's words, a tool's output or the environment. A host's prompt
+hook can fire for a turn the host starts by itself, and the entry cannot tell: Claude Code documents that its hook does.
+
+**Where, and for how long.** `<data directory>/sessions/<digest of the project>/<the host's session id>.words.jsonl`, beside the
+[session journal](#the-session-journal), mode `0600` in a `0700` directory whatever the umask. The file is opened without following a link, and nothing is written when `sessions` or the project's directory under it is a link or not a directory of yours. These checks are best effort: they look at the path, and a process of your own user that races them is out of reach, so they are not a promise against one. It is outside the record: nothing
+is signed or written to the chain, `mnema verify` does not read it, it is never in the repository, and the verb prints none of
+it. When a journal is pruned (untouched for 30 days, or beyond the newest 50) its words go with it; and the words files have
+limits of their own, whether or not the journal remains: one untouched for 30 days goes, and only the newest 50 stay. Switching the session journal off does not stop
+it, and deleting the file loses nothing the record holds. The data is what you typed: it can hold anything you typed, so it is
+kept on this machine only.
+
+**Which host has which hook.** One table, `WORDS_HOOKS` in `packages/code/src/persons-words.ts`, keyed by the hosts of
+`packages/code/src/host-names.ts`, says it; the after-question column is that host's own `afterAQuestion` cell. Every shape
+below is the host's documented one and none was captured from a run of the host with this product, except Claude Code's
+question hook, which a test of this tree runs.
+
+| Host | Prompt hook it keeps | After a question it keeps |
+| --- | --- | --- |
+| Claude Code | `UserPromptSubmit`, field `prompt` | `PostToolUse` on `AskUserQuestion` |
+| VS Code's agent | `UserPromptSubmit`, field `prompt` (the shape is Copilot CLI's documented VS Code format; VS Code's own page shows no payload) | none |
+| Cursor's command-line agent | `beforeSubmitPrompt`, field `prompt`, session `conversation_id` | none |
+| Codex | `UserPromptSubmit`, field `prompt` | `PostToolUse` on `request_user_input` |
+| GitHub Copilot CLI | `userPromptSubmitted` (either format), field `prompt` | `PostToolUse` on `ask_user`; the shape of its answer was not read, so a result with no `answers` object keeps nothing |
+| OpenCode | `chat.message`, a plugin hook: the plugin hands the verb the session and the text parts the host does not mark synthetic or ignored | `tool.execute.after` on `question` |
+| Gemini CLI | `BeforeAgent`, field `prompt` | `AfterTool` on `ask_user` |
+| Qwen Code | `UserPromptSubmit`, field `prompt` | none |
+| Cursor's editor | none: no hook of this plugin reaches it | none |
+| Antigravity's command line (`agy`) | none: no hook of this plugin reaches it | none |
+| Factory Droid | none: the host documents a prompt hook and no hook of this plugin reaches it | none |
+| Goose | none: no hook of this plugin reaches it | none |
+
+For a host with neither hook the verb says so on the second stream and keeps nothing.

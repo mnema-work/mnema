@@ -31,7 +31,8 @@ Add the `export` line to your shell's startup file so it lasts.
 
 To update, run the same install again, then `mnema upgrade` in each project: it brings that project and this
 machine up to the new version and asks before anything that changes how the repository behaves (it may also remove
-the mnema server entry that your `~/.claude.json` declares a second time, after keeping a copy of the file)
+the mnema server entry that your `~/.claude.json` declares a second time, after keeping a copy of the file; with `--fix` it
+also removes a mnema server entry of any host whose command or folder is gone, the same way)
 ([what it does](reference/cli/upgrade.md#after-installing-a-newer-mnema)). Until `mnema upgrade` has run on a machine
 after a newer version was installed, the first command you run there at a terminal says so in one line, once, and the
 first reply an agent's connection gets carries a note for you to run it; a machine where mnema was just installed says
@@ -45,11 +46,11 @@ fetches the package, runs one command and leaves no `mnema` on your `PATH`:
 
 ```sh
 mkdir mnema-try && cd mnema-try && git init -q
-npx --yes @mnema/code@0.1.9 init
-ADR=$(npx --yes @mnema/code@0.1.9 decision record "Keep money as integer cents" "Float sums drift; cents are exact." | grep -o -m1 'ADR-[0-9]*')
-npx --yes @mnema/code@0.1.9 decision move accept "$ADR" --note "Agreed in review."
-npx --yes @mnema/code@0.1.9 show "$ADR"
-npx --yes @mnema/code@0.1.9 verify
+npx --yes @mnema/code@0.1.10 init
+ADR=$(npx --yes @mnema/code@0.1.10 decision record "Keep money as integer cents" "Float sums drift; cents are exact." | grep -o -m1 'ADR-[0-9]*')
+npx --yes @mnema/code@0.1.10 decision move accept "$ADR" --note "Agreed in review."
+npx --yes @mnema/code@0.1.10 show "$ADR"
+npx --yes @mnema/code@0.1.10 verify
 ```
 
 In order: the record founded in `.mnema/` of the scratch folder; a decision, which enters proposed; accepting it;
@@ -98,7 +99,7 @@ Node itself. `npm i -g @mnema/code` stays the way to install mnema and to get th
 ## Pin a version
 
 ```sh
-npm i -g @mnema/code@0.1.9
+npm i -g @mnema/code@0.1.10
 ```
 
 To update, run the unpinned install again, then `mnema upgrade` in each project.
@@ -111,7 +112,7 @@ install (it fails with `EAUDITGLOBAL`), so check the version you installed in an
 
 ```sh
 mkdir mnema-check && cd mnema-check && npm init -y > /dev/null
-npm i --ignore-scripts @mnema/code@0.1.9
+npm i --ignore-scripts @mnema/code@0.1.10
 npm audit signatures
 ```
 

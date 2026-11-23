@@ -472,6 +472,27 @@ describe('when Sigstore answers badly, or not at all', () => {
     expect(entry.inclusionProof.hashes).toEqual([]);
   });
 
+  it('asks the hook before each checkpoint, so one refused is not logged and the next still is', async () => {
+    const sigstore = await aSigstore();
+    const two = [aCheckpoint(7), aCheckpoint(8)];
+    const asked: string[] = [];
+    const signed = await signWithSigstore(two, {
+      fetch: sigstore.fetch,
+      token: async () => aToken(LOCAL_CLAIMS),
+      beforeLog: (digest) => {
+        asked.push(digest);
+        return digest === two[0]?.digest ? 'a link came while the sign-in was open' : undefined;
+      },
+    });
+    if (!signed.ok) throw new Error(`expected a signing, got ${signed.message}`);
+    expect(asked).toEqual([two[0]?.digest, two[1]?.digest]);
+    expect(signed.checkpoints.map((c) => [c.digest, c.ok ? 'signed' : c.why])).toEqual([
+      [two[0]?.digest, 'a link came while the sign-in was open'],
+      [two[1]?.digest, 'signed'],
+    ]);
+    expect(sigstore.asked.filter((a) => a.url === REKOR)).toHaveLength(1);
+  });
+
   it('proves the key over the e-mail for the issuers that vouch for one, the subject for any other', async () => {
     const google = { iss: 'https://accounts.google.com', email: 'g@example.com', sub: '1' };
     const other = { iss: 'https://gitlab.example', sub: 'project_path:o/r' };

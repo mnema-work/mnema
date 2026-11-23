@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.10
+
+- No change to the extension's code, only its version, so that it matches the command line it is released with.
+- The Accept button is not affected by the command line's new check of an agent's accept: the extension runs
+  `mnema decision move accept <id> --note <note>` with no `--which`, so no agent is declared and the person's words
+  are not asked for. With `agent-accepts` switched off the button is still refused, as in 0.1.9.
+- It still needs the `mnema` command line (`@mnema/code`) where the editor can start it, and it
+  adds no verifier of its own: what it shows is what `mnema` printed.
+
 ## 0.1.9
 
 - No change to the extension's code, only its version, so that it matches the command line it is released with.

@@ -12,7 +12,7 @@
 
 _mnema_commands() {
   case "$1" in
-    '') echo 'init decision link unlink memory observe retract skill stack task promote status brief recall rules rules-file instructions switch inherit verify prove witness check site search show timeline refs audit diagram export usage resume repl why commits aging trailer commit-hook record key tail backup doctor upgrade report completion tour mcp run before-a-write beside-a-write tally corrections after-a-write handback settled dictated dispatched help' ;;
+    '') echo 'init decision link unlink memory observe retract skill stack task promote status brief recall rules rules-file instructions switch inherit verify prove witness check site search show timeline refs audit diagram export usage resume repl why commits aging trailer commit-hook record key tail backup doctor upgrade report completion tour mcp run before-a-write beside-a-write tally corrections after-a-write handback settled words dictated dispatched help' ;;
     'decision') echo 'record move review supersede import help' ;;
     'skill') echo 'create move export provenance help' ;;
     'stack') echo 'add remove list index show diff check export enable disable help' ;;
@@ -93,6 +93,7 @@ _mnema_described() {
       'after-a-write:copy a note of the host’s memory into the private tree, or name the door of a decision file, for a PostToolUse hook' \
       'handback:check what a subagent hands back when it stops, or print the format it is checked by' \
       'settled:say to the agent, after a question to the person was answered, which tool records a choice' \
+      'words:keep, on this machine and outside the record, what the person typed or chose, from a host’s hook' \
       'dictated:say to the agent, beside a message that has the shape of a rule the person dictated, which tools record and accept it' \
       'dispatched:record a session’s dispatches to other agents as one private task and a handoff each, for a PostToolUse or SessionEnd hook' \
       'help:display help for command' ;;
@@ -182,7 +183,7 @@ _mnema_described() {
       'setup:say which folder keeps this project'\''s backup, after a person confirms at a terminal that it keeps the text in clear' \
       'run:copy this project'\''s trees into its folder, or with --global only the global tree' \
       'status:say where this project'\''s backup is and how far it is from the trees' \
-      'verify:read each copy as a record and say how it stands against this project'\''s trees, which it does not change' \
+      'verify:read each copy as a record and say how it stands against this project'\''s trees, which it does not change (a git destination'\''s clone cache is brought up to the remote first)' \
       'restore:put a copy back into the trees that lost files, never over a file the tree holds; a copy of another record is asked first, and --undo puts back what it replaced' \
       'hook:install or remove an optional git hook that runs the backup after a commit' \
       'help:display help for command' ;;
@@ -260,7 +261,7 @@ _mnema_flags() {
     'check run') echo '--key --timeout -h --help -V --version --color' ;;
     'site') echo '--out --back-link --head -h --help -V --version --color' ;;
     'search') echo '--kind --scope --state --from --to --limit --json -h --help -V --version --color' ;;
-    'show') echo '--json -h --help -V --version --color' ;;
+    'show') echo '--full --json -h --help -V --version --color' ;;
     'timeline') echo '--json -h --help -V --version --color' ;;
     'refs') echo '--direction --depth --json -h --help -V --version --color' ;;
     'audit') echo '-h --help -V --version --color' ;;
@@ -309,7 +310,7 @@ _mnema_flags() {
     'backup hook install') echo '-h --help -V --version --color' ;;
     'backup hook uninstall') echo '-h --help -V --version --color' ;;
     'doctor') echo '--fix --after-update --dry-run -h --help -V --version --color' ;;
-    'upgrade') echo '--dry-run -h --help -V --version --color' ;;
+    'upgrade') echo '--dry-run --fix -h --help -V --version --color' ;;
     'report') echo '--decline --off --on -h --help -V --version --color' ;;
     'completion') echo '-h --help -V --version --color' ;;
     'tour') echo '-h --help -V --version --color' ;;
@@ -319,11 +320,12 @@ _mnema_flags() {
     'run end') echo '--which --outcome -h --help -V --version --color' ;;
     'before-a-write') echo '--host --agent-key -h --help -V --version --color' ;;
     'beside-a-write') echo '--host --agent-key -h --help -V --version --color' ;;
-    'tally') echo '-h --help -V --version --color' ;;
-    'corrections') echo '-h --help -V --version --color' ;;
+    'tally') echo '--host -h --help -V --version --color' ;;
+    'corrections') echo '--host -h --help -V --version --color' ;;
     'after-a-write') echo '-h --help -V --version --color' ;;
-    'handback') echo '--schema -h --help -V --version --color' ;;
+    'handback') echo '--schema --host -h --help -V --version --color' ;;
     'settled') echo '--reply -h --help -V --version --color' ;;
+    'words') echo '--host -h --help -V --version --color' ;;
     'dictated') echo '-h --help -V --version --color' ;;
     'dispatched') echo '-h --help -V --version --color' ;;
   esac
@@ -493,11 +495,16 @@ _mnema_values() {
     'before-a-write:--color') echo 'auto always never' ;;
     'beside-a-write:--host') echo 'copilot gemini' ;;
     'beside-a-write:--color') echo 'auto always never' ;;
+    'tally:--host') echo 'claude vscode codex copilot gemini cursor qwen' ;;
     'tally:--color') echo 'auto always never' ;;
+    'corrections:--host') echo 'claude vscode codex copilot gemini cursor qwen' ;;
     'corrections:--color') echo 'auto always never' ;;
     'after-a-write:--color') echo 'auto always never' ;;
+    'handback:--host') echo 'claude codex copilot' ;;
     'handback:--color') echo 'auto always never' ;;
     'settled:--color') echo 'auto always never' ;;
+    'words:--host') echo 'claude vscode cursor codex copilot opencode gemini qwen cursorIde antigravity droid goose' ;;
+    'words:--color') echo 'auto always never' ;;
     'dictated:--color') echo 'auto always never' ;;
     'dispatched:--color') echo 'auto always never' ;;
   esac

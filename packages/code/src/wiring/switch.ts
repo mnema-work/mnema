@@ -42,11 +42,10 @@ import type { Command } from 'commander';
 import { fact } from '../presentation/detail.js';
 import {
   AGENT_ACCEPTS_CHANNEL,
-  DECISION_FILE_WRITTEN_CHANNEL,
-  HOST_MEMORY_MIRROR_CHANNEL,
   STARTS_OFF,
   SWITCHABLE_CHANNELS,
-  USER_CORRECTIONS_CHANNEL,
+  type SwitchableChannel,
+  WHAT_STARTS,
 } from '../record-framing.js';
 import { RECORD_CONTRACT_HELP } from '../recorded-content.js';
 import { here, hereWriting } from './context.js';
@@ -187,17 +186,7 @@ function position(group: Command, wiring: Wiring, word: 'off' | 'on', descriptio
         render(
           fact(
             result.effective.on
-              ? ofAnAct
-                ? `${result.channel} is now ON: an agent may accept a decision, as it did before.`
-                : result.channel === DECISION_FILE_WRITTEN_CHANNEL
-                  ? `${result.channel} is now ON: a write to a file that holds decisions the record cites nowhere is answered, once per session and file, with one line naming the command that reads it.`
-                  : result.channel === HOST_MEMORY_MIRROR_CHANNEL
-                    ? `${result.channel} is now ON: it copies each note this host writes to its own memory into this machine's private tree.`
-                    : result.channel === USER_CORRECTIONS_CHANNEL
-                      ? `${result.channel} is now ON: it records a person's corrections as proposed decisions in this machine's private tree, as it did before.`
-                      : (STARTS_OFF as readonly string[]).includes(result.channel)
-                        ? `${result.channel} is now ON: it was off until this switch, and it now acts where a rule addresses a file.`
-                        : `${result.channel} is now ON: it hands the record over as it did before.`
+              ? `${result.channel} is now ON: ${WHAT_STARTS[result.channel as SwitchableChannel]}`
               : ofAnAct
                 ? `${result.channel} is now OFF: an agent's accept is refused. The switch that decides it was made by ${anchorText(result.anchors, result.effective.by ?? '')} at ${result.effective.at ?? ''}.`
                 : `${result.channel} is now OFF: nothing of it reaches a model. The switch that decides it was made by ${anchorText(result.anchors, result.effective.by ?? '')} at ${result.effective.at ?? ''}.`,

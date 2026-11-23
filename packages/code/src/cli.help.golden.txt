@@ -140,6 +140,8 @@ $ mnema --help
 |                   format it is checked by
 |   settled         say to the agent, after a question to the person was answered,
 |                   which tool records a choice
+|   words           keep, on this machine and outside the record, what the person
+|                   typed or chose, from a host’s hook
 |   dictated        say to the agent, beside a message that has the shape of a
 |                   rule the person dictated, which tools record and accept it
 |   dispatched      record a session’s dispatches to other agents as one private
@@ -148,7 +150,7 @@ $ mnema --help
 | Help:
 |   help            display help for command
 $ mnema --version
-| 0.1.9
+| 0.1.10
 
 ### mnema init --help
 $ mnema init --help
@@ -1032,7 +1034,7 @@ $ mnema search --help
 |   never by when one last moved, and never by the state it is in now.
 |   A bound is a date (YYYY-MM-DD, read as UTC: --from is the start of the day,
 |   --to its last millisecond) or a timestamp ending in Z or an offset
-|   (YYYY-MM-DDT10:30:00-03:00). Anything else is refused.
+|   (YYYY-MM-DDT10:30:00-03:00). Anything else is refused, and so is a --from after the --to.
 
 ### mnema show --help
 $ mnema show --help
@@ -1044,6 +1046,8 @@ $ mnema show --help
 |   id          the record id (from `mnema search`)
 |
 | Options:
+|   --full      for a task, print every note about it whole, not one line each (a
+|               note’s own id always prints whole)
 |   --json      emit the faithful record as JSON
 |   -h, --help  display help for command
 
@@ -1144,7 +1148,7 @@ $ mnema export --help
 |   by the instant each was recorded.
 |   A bound is a date (YYYY-MM-DD, read as UTC: --from is the start of the day,
 |   --to its last millisecond) or a timestamp ending in Z or an offset
-|   (YYYY-MM-DDT10:30:00-03:00). Anything else is refused.
+|   (YYYY-MM-DDT10:30:00-03:00). Anything else is refused, and so is a --from after the --to.
 
 ### mnema usage --help
 $ mnema usage --help
@@ -1379,7 +1383,8 @@ $ mnema backup --help
 |                             from the trees
 |   verify [options]          read each copy as a record and say how it stands
 |                             against this project's trees, which it does not
-|                             change
+|                             change (a git destination's clone cache is brought
+|                             up to the remote first)
 |   restore [options]         put a copy back into the trees that lost files,
 |                             never over a file the tree holds; a copy of another
 |                             record is asked first, and --undo puts back what it
@@ -1400,6 +1405,7 @@ $ mnema backup --help
 | A destination may be a git remote (or the folder of a bare repository): `run` commits the copy to a clone of it
 | in the data directory and pushes it, one more commit each run, and never squashes, amends or forces: the
 | destination keeps the whole history. `hook install` adds an optional post-commit hook that runs the backup.
+| The session (`mnema repl`) runs `status`; `setup`, `run`, `verify`, `restore` and `hook` write outside the record (`verify`, over a git destination, brings its clone cache up to the remote) and are left to the shell.
 | The machine's global tree, which mixes the memory of every project, is never part of a project's
 | backup: `--global` copies it, and only it, into the folder `setup --global` gave it, as
 | <folder>/global/.
@@ -1436,14 +1442,16 @@ $ mnema doctor --help
 |   named `mnema` installed where the PATH points: the registry is not asked; VS Code’s user
 |   settings.json, for whether its agent is told where the plugin is; and the projects of
 |   ~/.claude.json (the one in $CLAUDE_CONFIG_DIR, when it is set) that still declare the
-|   server; and, in a project inside a git repository, git’s stash and index, for an
+|   server; the MCP config file each other host keeps in your home (Codex, Gemini CLI, Qwen
+|   Code, Copilot CLI, OpenCode, Cursor, VS Code), for a second or a dead mnema entry; and, in a project inside a git repository, git’s stash and index, for an
 |   autostash that holds a tail’s files or a tail file left in conflict by a pull (the fork
 |   git hides, which `mnema status` says too), and
 |   each worktree’s .mnema/private/, where private notes lived before they moved into the
 |   repository’s git directory; and the agent keys this machine holds, against the record of
 |   each tree it reaches, with the `MNEMA_AGENT_KEY` of its own environment.
 | It also reads the ledger of caught failures, <data directory>/log/swallowed.jsonl, for the last 7 days (kept on this
-| machine and never sent: docs/the-ledger-of-caught-failures.md).
+| machine and never sent: docs/the-ledger-of-caught-failures.md), and replays the record’s tails in
+| memory, writing nothing, to say when an entry was altered after it was written.
 | Asked alone it writes nothing and exits 0 whatever it finds: each line says what to do.
 | `--fix vscode` writes: it shows what it will change, keeps a copy of settings.json beside
 | it, keeps the file’s comments, and refuses a file it cannot edit safely.
@@ -1467,6 +1475,9 @@ $ mnema upgrade --help
 |
 | Options:
 |   --dry-run   show the plan and write nothing
+|   --fix       also remove, from the MCP config file of every host, the mnema
+|               entries whose command or folder no longer exists, after a copy of
+|               each file
 |   -h, --help  display help for command
 |
 | The same as `mnema doctor --after-update`. It does not install anything: `npm i -g @mnema/code` stays
@@ -1479,6 +1490,12 @@ $ mnema upgrade --help
 | It asks, at a terminal, before the merge driver and merge.autoStash and rebase.autoStash go into this
 | repository’s .git/config (they apply to every file of the clone); without a terminal it lists that as the
 | command to run. It says, and does not do, what a plugin a host keeps needs: the host updates it.
+| A mnema MCP server entry of a host whose command or folder is gone (Claude Code’s, Codex’s, Gemini CLI’s,
+| Qwen Code’s, Copilot CLI’s, OpenCode’s, Cursor’s, VS Code’s) is only named without `--fix`. With it, a file
+| in strict JSON loses that entry, after a copy of the file is kept beside it; a Codex config.toml, a file
+| with comments and a file the project commits are not edited: the exact line to remove is said. An entry
+| that works is never touched; a path that may come back, one with a $ in it and a bare name off the PATH are
+| unknown, not dead. A duplicate is cut only beside an entry verified to work.
 | A run that finished writes the version it brought things to into this machine’s state file.
 
 ### mnema report --help
@@ -1677,7 +1694,10 @@ $ mnema tally --help
 | answer a host’s Stop hook with what the session wrote and recorded
 |
 | Options:
-|   -h, --help  display help for command
+|   --host <host>  the host whose hook runs this, and whose payload arrives on
+|                  stdin: claude, vscode, codex, copilot, gemini, cursor, qwen;
+|                  Claude Code's when it is not given
+|   -h, --help     display help for command
 |
 | What it reads and what it prints:
 |   The JSON a host hands a hook on stdin, with the transcript it names. On stdout, the reply
@@ -1686,8 +1706,9 @@ $ mnema tally --help
 |   events of the record are in no git commit yet, how many (`mnema record commit` is what
 |   prepares them), and, on a second line, how many of those decisions still await a
 |   person, or {} when
-|   the hook is not Stop, the session wrote no file in the last response, there is no project
-|   here, or the transcript cannot be read.
+|   the hook is not the end of a turn, the session wrote no file in the last response, there is
+|   no project here, or the transcript cannot be read. Only Claude Code’s transcript is read
+|   today: for any other --host it says so on the second stream and counts and keeps nothing.
 |   A response begins at a line Claude Code marks as typed by a person (origin.kind human):
 |   a compaction summary, a local command and “[Request interrupted by user]” never count, a
 |   slash command opens a response, and a transcript of an older Claude Code with no origin
@@ -1709,7 +1730,10 @@ $ mnema corrections --help
 | hook
 |
 | Options:
-|   -h, --help  display help for command
+|   --host <host>  the host whose hook runs this, and whose payload arrives on
+|                  stdin: claude, vscode, codex, copilot, gemini, cursor, qwen;
+|                  Claude Code's when it is not given
+|   -h, --help     display help for command
 |
 | What it reads and what it does:
 |   The JSON a host hands a Stop hook on stdin, with the transcript it names. It finds the
@@ -1731,7 +1755,9 @@ $ mnema corrections --help
 |   Code with no origin yields no typed line. An option chosen in the question tool is read
 |   from the tool’s result, which carries no origin.
 |   It is on until `mnema switch off user-corrections`; it read nothing before 0.1.10 until a
-|   person switched it on. With the channel off, or outside a project, it records nothing.
+|   person switched it on. With the channel off, or outside a project, it records nothing. Only
+|   Claude Code’s transcript is read today: for any other --host it says so on the second stream
+|   and records nothing.
 |   With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
 |   code alone on the first line of the error stream; typed by a person, nothing changes.
 
@@ -1768,18 +1794,22 @@ $ mnema handback --help
 | checked by
 |
 | Options:
-|   --schema    print the JSON Schema of the block a hand-back ends in, and read
-|               nothing
-|   -h, --help  display help for command
+|   --schema       print the JSON Schema of the block a hand-back ends in, and
+|                  read nothing
+|   --host <host>  the host whose hook runs this, and whose payload arrives on
+|                  stdin: claude, codex, copilot; claude when none is named
+|   -h, --help     display help for command
 |
 | What it reads and what it prints:
-|   The JSON a host hands a SubagentStop hook on stdin. A subagent hands the decisions it
+|   The JSON a host hands a SubagentStop hook on stdin: Claude Code's, Codex's, or, with
+|   --host copilot, Copilot CLI's (under either spelling of its event). A subagent hands the decisions it
 |   settled back in its final reply, in one fenced block whose info string is
 |   `mnema-handback`, holding {"decisions":[{"settled","why","turnedDown"}]}, the list
 |   empty where it settled nothing. On stdout, the reply the host reads: a block decision
 |   with the reason, once per stop, when the final reply has no such block or the block is
 |   not in the format, or {} when it does, when the hook is not SubagentStop, when there is
-|   no project here, or the reply cannot be read.
+|   no project here, or the reply cannot be read. Copilot CLI names no field that says a stop
+|   is the second one, so there the check is not once per stop.
 |   It reads, and writes nothing. It can be switched off with
 |   `mnema switch off subagent-handback`.
 |   With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
@@ -1808,6 +1838,27 @@ $ mnema settled --help
 |   with `mnema switch off choice-settled`.
 |   With MNEMA_FOR_A_HOOK=1 in the environment (the hooks set it), a refusal opens with its
 |   code alone on the first line of the error stream; typed by a person, nothing changes.
+
+### mnema words --help
+$ mnema words --help
+| Usage: mnema words [options]
+|
+| keep, on this machine and outside the record, what the person typed or chose,
+| from a host’s hook
+|
+| Options:
+|   --host <host>  the host whose hook runs this, and whose payload arrives on
+|                  stdin: claude, vscode, cursor, codex, copilot, opencode,
+|                  gemini, qwen, cursorIde, antigravity, droid, goose
+|   -h, --help     display help for command
+|
+| What it reads, what it keeps and what it prints:
+|   The JSON a host hands a hook on stdin: the prompt hook (UserPromptSubmit, BeforeAgent,
+|   userPromptSubmitted, beforeSubmitPrompt, an OpenCode plugin’s chat.message) or the hook
+|   after the host’s question tool. It appends the text of the prompt (typed), or the option
+|   labels chosen (chosen), to a file of this session on this machine: readable by you only,
+|   beside the session journal, and let go with it. It writes nothing to the record, prints
+|   {} and never the words. A host with neither hook is told so on the second stream.
 
 ### mnema dictated --help
 $ mnema dictated --help
@@ -2845,7 +2896,7 @@ $ mnema audit accountability --help
 |   by the instant each was recorded.
 |   A bound is a date (YYYY-MM-DD, read as UTC: --from is the start of the day,
 |   --to its last millisecond) or a timestamp ending in Z or an offset
-|   (YYYY-MM-DDT10:30:00-03:00). Anything else is refused.
+|   (YYYY-MM-DDT10:30:00-03:00). Anything else is refused, and so is a --from after the --to.
 
 ### mnema audit antipatterns --help
 $ mnema audit antipatterns --help
@@ -3281,7 +3332,8 @@ $ mnema backup verify --help
 | Usage: mnema backup verify [options]
 |
 | read each copy as a record and say how it stands against this project's trees,
-| which it does not change
+| which it does not change (a git destination's clone cache is brought up to the
+| remote first)
 |
 | Options:
 |   --global    read the copy of the machine's global tree instead of this

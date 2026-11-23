@@ -102,7 +102,8 @@ its alerts are in the repository's Security tab, and the maintainer decides each
 `pnpm test:guards` runs only the cases that walk the whole tree (every page, every workflow,
 every file that needs a test), the ones a change breaks without touching them. Run it after
 a change to text, a page, the changelog or a list of files; it does not replace `pnpm test`, and
-`pnpm check:contribution` runs it for you.
+`pnpm check:contribution` runs it for you. On a small machine, run
+`pnpm test:guards --maxWorkers=1` to use one worker.
 A case joins it by carrying `// @reads-the-tree` as its first line.
 
 While you iterate, run `pnpm vitest run --changed`: it runs only the test files that import what you have

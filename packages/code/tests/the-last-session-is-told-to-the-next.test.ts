@@ -146,7 +146,7 @@ describe('the section', () => {
     expect(text).toMatch(/wrote to this record (\d+s|\d+m)/);
   });
 
-  it('says which tree each label is of when two trees number a decision the same', async () => {
+  it('says which tree each label is of for a decision outside the committed tree, the committed one staying bare', async () => {
     const idOf = (out: string[]) =>
       /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/.exec(out.join('\n'))?.[0] ??
       '';
@@ -168,9 +168,7 @@ describe('the section', () => {
       }),
     );
     const text = recalled(SECOND).join('\n');
-    expect(text).toContain(
-      '- Decisions it recorded: ADR-1 (public): proposed; ADR-1 (private): proposed',
-    );
+    expect(text).toContain('- Decisions it recorded: ADR-1: proposed; ADR-1 (private): proposed');
   });
 
   it('says it wrote to the record only when the session did: files edited alone are not a write', () => {

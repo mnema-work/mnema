@@ -434,7 +434,8 @@ jobs:
       # line they reach, and only one error at a time: the reader first failed here on import, on
       # a `bytes | str | None` alias, which is 3.9's grammar and 3.10's library. `mypy`, told the
       # floor, reads every line of the reader and names that class of error without running it.
-      # 1.19.1 is pinned: it is the last release that installs on 3.9, the only Python this job
+      # mypy 1.19.1 is pinned (with ruff and what they need, by the hash of every file, in
+      # `.github/python-tools/verifier-checks`): it is the last release that installs on 3.9, the only Python this job
       # sets up; 1.20 still targets 3.9 but needs 3.10 to run, and 2.0 refuses 3.9 as a target.
       # Installing a checker here does not break the reader's promise,
       # which is about what it needs to RUN, not to be checked; and it goes into a venv of its
@@ -445,11 +446,11 @@ jobs:
         id: types
         run: |
           python -m venv "$RUNNER_TEMP/types"
-          "$RUNNER_TEMP/types/bin/pip" install --disable-pip-version-check mypy==1.19.1
+          "$RUNNER_TEMP/types/bin/pip" install --disable-pip-version-check --require-hashes \
+            -r .github/python-tools/verifier-checks/requirements.txt
           "$RUNNER_TEMP/types/bin/mypy" --python-version 3.9 --warn-unused-ignores --cache-dir "$RUNNER_TEMP/types-cache" packages/chain/verifier/
           # The linter reads the rules in the reader's own `pyproject.toml`; it is in the same
           # venv, for the same reason as the type checker.
-          "$RUNNER_TEMP/types/bin/pip" install --disable-pip-version-check ruff==0.17.2
           "$RUNNER_TEMP/types/bin/ruff" check --no-cache packages/chain/verifier/
 
       # `vitest` and not the `test` script: `what-the-suite-left-behind` counts every step of this
@@ -685,7 +686,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install the oracle, pinned
-        run: python3 -m pip install skills-ref==0.1.1
+        run: python3 -m pip install --require-hashes -r .github/python-tools/skills-ref/requirements.txt
 
       - name: Both validators, the same verdict
         run: pnpm vitest run packages/stacks/tests/the-skills-ref-oracle-agrees.test.ts
@@ -723,7 +724,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install the oracle, pinned
-        run: python3 -m pip install skills-ref==0.1.1
+        run: python3 -m pip install --require-hashes -r .github/python-tools/skills-ref/requirements.txt
 
       - name: Build
         run: pnpm build

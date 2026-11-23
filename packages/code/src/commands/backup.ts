@@ -28,7 +28,7 @@
  */
 
 import { existsSync, lstatSync, statSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { dirname, join } from 'node:path';
 import { recordNamedIn } from '@mnema/chain';
 import {
   AsideError,
@@ -198,6 +198,33 @@ function refusedBy(error: unknown): BackupRefused {
     return { ok: false, reason: 'REFUSED', code: error.code, message: error.message };
   }
   throw error;
+}
+
+/** How a verify brought a destination's cache up to the remote: cloned it, or fetched into it. */
+export type CacheRefreshed = 'cloned' | 'fetched';
+
+/** What verify will do to the cache of a remote destination, found before it does it. */
+function refreshOf(stored: string, configPath: string): CacheRefreshed | undefined {
+  if (!isGitDestination(stored)) return undefined;
+  return existsSync(join(cacheOf(dirname(configPath), stored), '.git')) ? 'fetched' : 'cloned';
+}
+
+/**
+ * A refusal after a remote destination's cache was brought up to the remote: the "Nothing was
+ * written" a refusal of the copy ends with is not true of the cache, and is not said.
+ */
+function afterRefresh(
+  refused: BackupRefused,
+  refreshed: CacheRefreshed | undefined,
+): BackupRefused {
+  if (refreshed === undefined || !('message' in refused)) return refused;
+  return {
+    ...refused,
+    message: refused.message.replace(
+      / Nothing was written\.$/,
+      ` The cache of the destination was ${refreshed} to read it; no file of the record was written.`,
+    ),
+  };
 }
 
 /**
@@ -664,15 +691,18 @@ export interface BackupVerified {
   /** Whether every copy is a record the readers accept, no tree is shown cut, lost or forked, and no commit of a git destination's cache is left unpushed. */
   readonly sound: boolean;
   /** Where the destination is a git repository: how the cache stands against the remote just fetched. */
-  readonly git: (CacheStanding & { readonly cache: string }) | undefined;
+  readonly git:
+    | (CacheStanding & { readonly cache: string; readonly refreshed: CacheRefreshed })
+    | undefined;
 }
 
-/** Reads each copy as a record and sets it against its tree. Writes nothing. */
+/** Reads each copy as a record and sets it against its tree. Writes nothing of the record; a remote destination's cache is brought up to the remote first. */
 export function runBackupVerify(ctx: BackupContext): BackupVerified | BackupRefused {
   const project = projectOf(ctx);
   if ('ok' in project) return project;
   const stored = assigned(project);
   if (typeof stored !== 'string') return stored;
+  const refreshed = refreshOf(stored, project.configPath);
   const destination = folderFor(stored, project.configPath, true);
   if (typeof destination !== 'string') return destination;
   const trees: TreeReading[] = [];
@@ -687,18 +717,22 @@ export function runBackupVerify(ctx: BackupContext): BackupVerified | BackupRefu
       }
     }
   } catch (error) {
-    return refusedBy(error);
+    return afterRefresh(refusedBy(error), refreshed);
   }
-  const git = isGitDestination(stored)
-    ? { ...standingOfCache(stored, destination), cache: destination }
-    : undefined;
+  const git =
+    refreshed === undefined
+      ? undefined
+      : { ...standingOfCache(stored, destination), cache: destination, refreshed };
   if (!trees.some((one) => 'reading' in one)) {
-    return {
-      ok: false,
-      reason: 'REFUSED',
-      code: 'NO_COPY',
-      message: (trees[0] as { noCopy: string }).noCopy,
-    };
+    return afterRefresh(
+      {
+        ok: false,
+        reason: 'REFUSED',
+        code: 'NO_COPY',
+        message: (trees[0] as { noCopy: string }).noCopy,
+      },
+      refreshed,
+    );
   }
   return {
     ok: true,
@@ -712,18 +746,20 @@ export function runBackupVerify(ctx: BackupContext): BackupVerified | BackupRefu
   };
 }
 
-/** Reads the copy of the global tree as a record and sets it against the tree. Writes nothing. */
+/** Reads the copy of the global tree as a record and sets it against the tree. Writes nothing of the record; a remote destination's cache is brought up to the remote first. */
 export function runGlobalBackupVerify(ctx: BackupContext): BackupVerified | BackupRefused {
   const machine = machineOf(ctx);
   const stored = globalAssigned(machine);
   if (typeof stored !== 'string') return stored;
+  const refreshed = refreshOf(stored, machine.configPath);
   const destination = folderFor(stored, machine.configPath, true);
   if (typeof destination !== 'string') return destination;
   try {
     const reading = readCopy(machine.resolved.global, destination, undefined, 'global');
-    const git = isGitDestination(stored)
-      ? { ...standingOfCache(stored, destination), cache: destination }
-      : undefined;
+    const git =
+      refreshed === undefined
+        ? undefined
+        : { ...standingOfCache(stored, destination), cache: destination, refreshed };
     return {
       ok: true,
       record: undefined,
@@ -734,9 +770,12 @@ export function runGlobalBackupVerify(ctx: BackupContext): BackupVerified | Back
     };
   } catch (error) {
     if (error instanceof BackupRefusedError && error.code === 'NO_COPY') {
-      return { ok: false, reason: 'REFUSED', code: 'NO_COPY', message: error.message };
+      return afterRefresh(
+        { ok: false, reason: 'REFUSED', code: 'NO_COPY', message: error.message },
+        refreshed,
+      );
     }
-    return refusedBy(error);
+    return afterRefresh(refusedBy(error), refreshed);
   }
 }
 

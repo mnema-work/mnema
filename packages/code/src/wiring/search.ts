@@ -106,7 +106,15 @@ export function registerSearch(program: Command, wiring: Wiring): Declared {
           io.out(JSON.stringify(result.result, null, 2));
           return;
         }
-        writeLines(io, searchReport(render, result.result, term));
+        writeLines(
+          io,
+          searchReport(
+            render,
+            result.result,
+            term,
+            window.from !== undefined || window.to !== undefined,
+          ),
+        );
       },
     );
   return readsTheRecord(search);

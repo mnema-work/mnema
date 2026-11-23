@@ -35,6 +35,7 @@ mnema init
 #>     @MNEMA.md
 #>
 #>   Commit `.mnema/` with the repository: the record travels with it, and every clone reads it.
+#>   A plain `git pull` was not set up for the record: `mnema doctor --fix merge-driver` writes its settings, and `mnema record pull` pulls without them.
 #>   Off until switched on: edit-first-write-gate, opening-core, record-publish.
 #>   Turn one on with `mnema switch on <name>`; `mnema switch` lists every channel.
 #>   Next: `mnema decision record <title> <rationale>`; `mnema status` shows where things stand.

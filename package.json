@@ -1,6 +1,6 @@
 {
   "name": "mnema-workspace",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "private": true,
   "description": "Workspace for the mnema packages. @mnema/code is the one to install; @mnema/chain, @mnema/core and @mnema/context are what it is built from, and each is released in its own right so the proof engine stays separable.",
   "author": "Felipe Sauer (https://github.com/felipesauer)",
@@ -28,7 +28,7 @@
     "format": "biome format --write packages/",
     "test": "vitest run --reporter=default --reporter=./.github/why-it-went-red/ledger.mjs",
     "check:contribution": "node .github/check-contribution/run.mjs",
-    "test:guards": "vitest run --config vitest.guards.config.ts --maxWorkers=2",
+    "test:guards": "vitest run --config vitest.guards.config.ts",
     "test:watch": "vitest",
     "test:host-contract": "unshare -rn bash -c 'ip link set lo up && exec vitest run --config vitest.host-contract.config.ts \"$@\"' _",
     "test:coverage": "vitest run --coverage --reporter=default --reporter=./.github/why-it-went-red/ledger.mjs",
@@ -50,8 +50,8 @@
     "@biomejs/biome": "2.6.8",
     "@types/node": "^26.6.6",
     "@vitest/coverage-v8": "^4.1.12",
-    "dependency-cruiser": "18.7.2",
-    "fast-check": "^4.10.2",
+    "dependency-cruiser": "18.8.0",
+    "fast-check": "^4.10.3",
     "gpt-tokenizer": "^4.1.2",
     "typescript": "^7.0.2",
     "vitest": "^4.1.12"

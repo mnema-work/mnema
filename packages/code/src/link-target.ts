@@ -234,6 +234,17 @@ export function isUnderATemporaryFolder(
   return folders.some((folder) => holds(folder, typed));
 }
 
+/**
+ * Whether a handoff's brief IS a path under a temporary folder: the whole text, one word, an absolute
+ * path there. A brief that is prose is never read for paths (it may cite one in passing, and a
+ * sentence about `/tmp` is not a pointer); only a brief that is nothing but the path of a file, the
+ * form a long brief takes, is asked.
+ */
+export function briefIsATemporaryPath(brief: string, root: string | undefined): boolean {
+  const one = brief.trim();
+  return /^\S+$/u.test(one) && isUnderATemporaryFolder(one, root);
+}
+
 /** A path as the file system has it: the deepest part that exists is resolved, the rest kept as typed. */
 function truthfully(path: string): string {
   let head = path;

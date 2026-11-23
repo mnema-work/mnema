@@ -149,7 +149,7 @@ them first), and when a tail file here and on the branch followed is not one the
 byte for byte: that is a fork, and it names each file and the line where the two sides part. Then it
 runs `git pull --autostash` with the merge driver given on that one command line, puts back a file
 of the record git did not track yet (a tail opened here) when this checkout's side is the longer
-(where the pull left a symbolic link at that path it writes nothing through it, leaves the file in the folder it was kept in and says so),
+(where the pull left a symbolic link at that path, or at a folder on the way to it, it writes nothing through it, leaves the file in the folder it was kept in and says so),
 and verifies the record. It writes no git configuration. It fails, printing what git said, when the
 pull fails (branches that diverged with no `pull.rebase` set, say) and when git puts its autostash
 back with conflicts: a file of the record that is not a tail, `.gitattributes` for one, merges as
@@ -169,7 +169,8 @@ or any other extension `PATHEXT` lists.
 those before it merges, whatever the configuration says about merges. What makes it automatic is git's
 autostash, which stashes the events, pulls, and puts them back through the driver. `mnema doctor --fix
 merge-driver`, and the answer to the question `mnema init` asks in a repository with a remote (`--git-pull
-yes`, or `--yes`, which takes the default, yes), write four settings into this clone's `.git/config`,
+yes`, or `--yes`, which takes the default, yes; with no remote and no flag nothing is asked and nothing is written, and the
+founding says so in one line), write four settings into this clone's `.git/config`,
 the driver first, then the autoStash ones: the driver's name, the driver, `merge.autoStash` (read by a merge pull: `git pull`, `git pull
 --no-rebase`) and `rebase.autoStash` (read by `git pull --rebase`, which refuses without it). They are never
 written one without the driver: an autoStash alone leaves git exiting 0 over conflict markers inside signed

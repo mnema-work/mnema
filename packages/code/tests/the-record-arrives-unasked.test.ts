@@ -269,9 +269,11 @@ const ASKED_FIRST = '--identify';
  * addresses a path. Where one does (`addressed`) it runs its verb, which "runs the verbs it names"
  * reaches, and `a-write-no-rule-can-meet-starts-no-mnema.test.ts` holds both halves.
  */
-function callsOf(handler: string): string[] {
+function callsOf(handler: string, command = ''): string[] {
   const verb = VERB_OF[handler] as string;
   if (GATES.includes(handler)) return [];
+  // The pair of a host whose transcript is not read yet (`--reads no`) starts no verb at all.
+  if (command.includes('--reads no')) return [];
   return handler === TALLY_HOOK ||
     handler === COMPACTED_HOOK ||
     handler === CORRECTIONS_HOOK ||
@@ -304,7 +306,7 @@ function stdinOf(command: string, at: string): string {
   // transcript it cannot read is a note on the second stream and no byte on the first.
   if (handlerOf(command) === TALLY_HOOK || handlerOf(command) === CORRECTIONS_HOOK) {
     return JSON.stringify({
-      hook_event_name: 'Stop',
+      hook_event_name: command.includes('--host cursor') ? 'stop' : 'Stop',
       transcript_path: join(at, 'no-such-transcript.jsonl'),
       cwd: at,
     });
@@ -472,7 +474,10 @@ function runHook(command: string, at: string): Ran {
     env: {
       ...hostEnv(recordingTo),
       CLAUDE_PROJECT_DIR: at,
-      ...(handlerOf(command) === CURSOR_HOOK ? { CURSOR_VERSION: '2026.09.18' } : {}),
+      // Cursor's own hooks start only where Cursor says it is there (`--where CURSOR_VERSION`).
+      ...(handlerOf(command) === CURSOR_HOOK || command.includes('--where CURSOR_VERSION')
+        ? { CURSOR_VERSION: '2026.09.18' }
+        : {}),
     },
     encoding: 'utf-8',
   });
@@ -643,7 +648,7 @@ describe('the record arrives unasked', () => {
       // And it was TRIED. Without this line the case is green on a handler that runs
       // nothing at all, which is the shape a broken command path has. The gate is the one that
       // tries nothing here: outside a project no rule can be met (`callsOf`).
-      expect(ran.mnema, command).toEqual(callsOf(handlerOf(command)));
+      expect(ran.mnema, command).toEqual(callsOf(handlerOf(command), command));
     }
     // Every handler, which is what "every command" has to mean now: the gate included, which
     // starts no verb outside a project and writes no byte for it.
@@ -653,6 +658,10 @@ describe('the record arrives unasked', () => {
       TALLY_HOOK,
       COMPACTED_HOOK,
       DICTATED_HOOK,
+      TALLY_HOOK,
+      CORRECTIONS_HOOK,
+      TALLY_HOOK,
+      CORRECTIONS_HOOK,
       TALLY_HOOK,
       CORRECTIONS_HOOK,
       CURSOR_HOOK,
@@ -1568,6 +1577,10 @@ describe('the record arrives unasked', () => {
       'command:/hooks/session-tally.mjs',
       'command:/hooks/session-compacted.mjs',
       'command:/hooks/rule-dictated.mjs',
+      'command:/hooks/session-tally.mjs',
+      'command:/hooks/session-corrections.mjs',
+      'command:/hooks/session-tally.mjs',
+      'command:/hooks/session-corrections.mjs',
       'command:/hooks/session-tally.mjs',
       'command:/hooks/session-corrections.mjs',
       'mcp_tool:rules_before_an_edit',

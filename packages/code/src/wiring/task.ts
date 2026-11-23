@@ -178,7 +178,17 @@ export function registerTask(program: Command, wiring: Wiring): Declared {
         reportReplacement(result, io);
         return;
       }
-      reportRefusal(wiring, result, { UNKNOWN_TASK: noSuchRecord('task', id) });
+      // `move <id> approve`: the id is read as the action, and the action as an id. The word in
+      // the id's position is a verdict, so the sentence says which way round the line goes.
+      const swapped =
+        !(TASK_ACTIONS as readonly string[]).includes(action) &&
+        (TASK_ACTIONS as readonly string[]).includes(id);
+      const none = noSuchRecord('task', id);
+      reportRefusal(wiring, result, {
+        UNKNOWN_TASK: swapped
+          ? `${none} The action goes before the id: mnema task move ${id} <id>.`
+          : none,
+      });
     },
   );
 

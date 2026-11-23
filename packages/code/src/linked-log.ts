@@ -8,6 +8,7 @@
  */
 
 import { lstatSync } from 'node:fs';
+import { join, sep } from 'node:path';
 
 /** Whether `file` is a symbolic link, one to nothing too; a path that is not there is not. */
 export function isLinkAt(file: string): boolean {
@@ -16,6 +17,21 @@ export function isLinkAt(file: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Whether `relative` reaches a symbolic link under `root`, at the file or at any folder on the way
+ * to it (`root` itself is not looked at): a folder swapped for a link between two reads is followed
+ * by the next write, and `lstat` of the last component alone does not see it.
+ */
+export function isLinkAlong(root: string, relative: string): boolean {
+  let at = root;
+  for (const part of relative.split(sep).join('/').split('/')) {
+    if (part === '') continue;
+    at = join(at, part);
+    if (isLinkAt(at)) return true;
+  }
+  return false;
 }
 
 /** What is said of `file`, the place of the `what` it was to be written to, when it is a link. */

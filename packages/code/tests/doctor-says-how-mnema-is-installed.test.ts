@@ -312,6 +312,7 @@ describe('mnema doctor, as a person runs it', () => {
       'to do · plugin',
       'ok · vscode',
       'ok · mcp',
+      'ok · mcp',
       'ok · namesake',
     ]);
     expect(lines[1]).toContain('no “node” on the PATH');

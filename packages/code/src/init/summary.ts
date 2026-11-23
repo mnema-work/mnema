@@ -26,6 +26,7 @@ import { HOSTS } from '../host-names.js';
 import type { Line } from '../presentation/line.js';
 import { widthOfText } from '../presentation/width.js';
 import { STARTS_OFF } from '../record-framing.js';
+import { RECORD_STAYS_LOCAL } from '../recorded-content.js';
 import { onOneLine } from '../wiring/on-one-line.js';
 import type { WhoMayAcceptRecorded } from './accepts.js';
 import { fromTheFolder } from './detect.js';
@@ -194,12 +195,21 @@ function nextSteps(founded: Founded): readonly NextStep[] {
   const steps: NextStep[] = [];
   if (around?.gitRoot !== undefined) {
     steps.push({
-      says: 'Commit `.mnema/` with the repository; every clone reads the record.',
+      says:
+        around.recordIsLocal === true
+          ? RECORD_STAYS_LOCAL
+          : 'Commit `.mnema/` with the repository; every clone reads the record.',
       commands: [],
     });
     if (around.foundedBelowTheRoot) {
       steps.push({
         says: onOneLine`This is not the root of the git repository (${around.gitRoot}). A session opened at that root climbs from there and will not find a project founded below it: run \`mnema init\` there instead, unless the project is meant to live here.`,
+        commands: [],
+      });
+    }
+    if (founded.pulled === undefined) {
+      steps.push({
+        says: 'A plain `git pull` was not set up for the record: `mnema doctor --fix merge-driver` writes its settings, and `mnema record pull` pulls without them.',
         commands: [],
       });
     }

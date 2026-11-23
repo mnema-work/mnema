@@ -128,7 +128,7 @@ carries the help the command prints, word for word.
   - [mnema backup setup](cli/backup-setup.md): say which folder keeps this project's backup, after a person confirms at a terminal that it keeps the text in clear
   - [mnema backup run](cli/backup-run.md): copy this project's trees into its folder, or with --global only the global tree
   - [mnema backup status](cli/backup-status.md): say where this project's backup is and how far it is from the trees
-  - [mnema backup verify](cli/backup-verify.md): read each copy as a record and say how it stands against this project's trees, which it does not change
+  - [mnema backup verify](cli/backup-verify.md): read each copy as a record and say how it stands against this project's trees, which it does not change (a git destination's clone cache is brought up to the remote first)
   - [mnema backup restore](cli/backup-restore.md): put a copy back into the trees that lost files, never over a file the tree holds; a copy of another record is asked first, and --undo puts back what it replaced
   - [mnema backup hook](cli/backup-hook.md): install or remove an optional git hook that runs the backup after a commit
   - [mnema backup hook install](cli/backup-hook-install.md): add the post-commit hook that runs the backup (refuses a hook that is not a shell script, and a hooksPath inside the working tree)
@@ -152,5 +152,6 @@ carries the help the command prints, word for word.
 - [mnema after-a-write](cli/after-a-write.md): copy a note of the host’s memory into the private tree, or name the door of a decision file, for a PostToolUse hook
 - [mnema handback](cli/handback.md): check what a subagent hands back when it stops, or print the format it is checked by
 - [mnema settled](cli/settled.md): say to the agent, after a question to the person was answered, which tool records a choice
+- [mnema words](cli/words.md): keep, on this machine and outside the record, what the person typed or chose, from a host’s hook
 - [mnema dictated](cli/dictated.md): say to the agent, beside a message that has the shape of a rule the person dictated, which tools record and accept it
 - [mnema dispatched](cli/dispatched.md): record a session’s dispatches to other agents as one private task and a handoff each, for a PostToolUse or SessionEnd hook

@@ -10,6 +10,356 @@ with its own changelog.
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-11-23
+
+### Added
+
+- **A decision is recorded with the paths it governs, in the same act.** The `--governs <path>` flag of `decision record` (repeatable)
+  and the optional `governs` list of `record_decision` write the decision and one `governs` link per path in a single append,
+  so they land together or not at all; the format is unchanged, the two kinds of event are the ones a `governs` link
+  already is. The paths are held to the rules of that link, and a refused one refuses the whole act with nothing written. The
+  description of `record_decision` changed, and with it the weight of the tool definitions the hosts are sent.
+- **A few failures mnema catches and goes on from now leave one line that `mnema doctor` reads.** The MCP server's count of tool
+  calls (and the write of that count) and the outer catch of four hooks (session start, session recall, after a write, choice
+  settled) add a line to `<data directory>/log/swallowed.jsonl`: the instant, the place's name (from a fixed list), the error's class,
+  `code` and `syscall`, and the version. No message, no stack, no argument, no path and no word of yours. The file has a ceiling (128 KiB,
+  then it is renamed over `swallowed.1.jsonl` under a lock, two files at most), is mode `0600`, is made nowhere a machine has no key of
+  its own yet, never leaves the machine and is not copied by a backup. `mnema doctor` reads at most its last 256 KiB, says how many
+  failures the last 7 days hold and the places that did it most, prints nothing it did not write, and says nothing where there are none.
+  The other catch blocks do not write to it yet. See [The ledger of caught failures](docs/the-ledger-of-caught-failures.md).
+- **A backup now keeps a local record.** A clone whose `.mnema/` a repository excludes (`.git/info/exclude`) and never commits had
+  no copy of its public tree: the run copied only the private one and said git kept the rest. A record is local when git excludes
+  `.mnema/` and holds no file under it (`git ls-files -- .mnema` is empty); an exclude over files git tracks, a global
+  `core.excludesFile` included, leaves the record committed. `backup run` now copies the public tree of a local record,
+  `backup status` and `backup verify` read it, and `backup restore` brings it back into a project whose `.mnema/` folder is gone
+  (what `git clean -fdX` does to an excluded folder): it is found from the top of the repository, where git still excludes the
+  folder, and the name of the record comes from the copy this machine has (or `--from`). A restore over a `.mnema/` that is there
+  still asks when the copy is of another record. What does not change for a committed record: its public tree is not copied.
+  What this does not do: a project in a subfolder of a repository (a monorepo) with a local record is not restored from a
+  folder that is gone, only one at the top is; and `mnema doctor`, the tail repair and the place where a restore keeps what it
+  replaces still use the earlier test (a project in a repository), not this one.
+- **A module that keeps a marked block in a repository's `.git/info/exclude`, with no verb yet.** It reads and changes only the
+  lines between two marker lines (`# >>> mnema (managed by mnema; edit only outside these two lines)` and `# <<< mnema`) in the
+  exclude file of the common git directory, which every worktree of the repository shares; every byte outside the block is kept,
+  CRLF files get the block in CRLF, an absent file is created, and the block goes whole when its last line does. A block that is
+  not one block (an opening with no closing, a closing with no opening, two blocks) and a link in place of the file are refused
+  with the line named and nothing written. The file's bytes (UTF-8 or not) and its mode are kept, a write waits for a lock file beside it so two mnema processes lose no line,
+  and an empty block is removed by the next write. Nothing calls it yet: no command writes the exclude file today.
+- **`mnema prove`: the proof of one decision, in one file a stranger checks offline.** `mnema prove <decision>`
+  (an id or an `ADR-` label) writes one file holding the signed ranges of the record that hold the decision's
+  writings and moves, the roster facts that make each signing key valid for its identity, the tail proofs, the
+  public keys and a manifest of the decision's text, moves and state; `--out <file>` writes it to a file and never
+  replaces one. `mnema prove --check <file>` checks it from the file alone, and so does the second reader
+  (`python3 packages/chain/verifier/mnema_verify.py proof <file>`), which imports nothing of the product: one word
+  changed in a line or in the manifest is refused by both. Every tail it touches is carried from its first line to the
+  last range it needs, and both readers refuse a tail carried from a later line or with a gap, so nothing before or
+  between carried lines can be left out; the file grows with how far down its tails the decision sits (9 KB to 2.2 MB,
+  median 0.9 MB, over this repository's record). A proof says what it does
+  not prove beside every verdict: nothing written after the last range it carries on a tail (a later supersede or a
+  revoked key), nothing on a tail it does not carry, no time but the writer's clock, and not who held a key. A decision of this machine's private tree is
+  refused unless `--private` asks for it, and none is proven from a record `verify` calls broken. The format is
+  `FORMAT.md` section 9, with `proof-vector.json` as its published vector. See
+  [A proof of one decision](docs/a-proof-of-one-decision.md).
+- **An instruction the person gives to keep ("from now on, run the linter first") is followed by one sentence for the agent, and is one record.**
+  A new verb, `mnema dictated`, is run by a `UserPromptSubmit` hook (Claude Code and Codex) and by a `BeforeAgent` hook (Gemini CLI's
+  extension). It reads the `prompt` the host hands it, never the transcript, in the first 2,000 characters, a sentence at a time, for
+  *always*, *never*, *from now on*, *going forward*, *sempre*, *nunca*, *a partir de agora*, *daqui pra frente* or *de agora em diante*
+  followed by a verb in the imperative, or the words *put it as a rule*, *make it a rule*, *as a rule:*, *coloca como regra*, *isso é
+  regra* or *vira regra*; accents are optional. A statement ("sempre dá timeout no CI"), a limit in time or place ("today", "here",
+  "hoje", "aqui"), a step of the task ("then tell me"), a condition ("if it works, make it a rule"), a question, a fenced block, a sentence
+  that opens with a quote mark or a `>`, a message that tells the agent to ignore its instructions and a sentence that tells it to accept
+  decisions are not rules. A match makes one sentence of the product's own, with no word of the message: the message has the shape of a
+  rule, only a rule the person typed (not text pasted or quoted) is to be accepted, `record_decision` records it, `decision_transition`
+  accepts it with a note quoting the person's own words (a person accepts it, where `agent-accepts` is off), and nothing has been
+  recorded. The agent judges whether the message is a rule. It records nothing, is on until `mnema switch off dictated-rule`, and the
+  hook starts nothing where Cursor or Qwen Code say they are the host; VS Code also runs the Claude Code hooks file and was not read for
+  this event. The shapes are one table, `DICTATED_RULE_SHAPES`, which the verb and the reader of the transcript both read: that reader
+  takes the rule out of the message (the clause up to the next semicolon, comma or dash) while `dictated-rule` is on, so a dictated rule
+  is one record, and still reads what is left of the message for a correction (ADR-546, ADR-605, ADR-30, ADR-586).
+- **`mnema witness sigstore-check --identity <identity> --issuer <url>` checks, offline, that the Sigstore countersignatures of a record name exactly the identity you expect, the way `cosign verify-blob` does.** It exits 0 only when there is a bundle, every one holds by Sigstore's own checks (certificate chain, certificate-transparency timestamp, Rekor's promise and proof of inclusion, all inside the bundle) and the certificate names that identity and that issuer; a bundle that holds and names someone else, or does not hold, fails by name. With `--message-dir <dir>` it writes the message each bundle signs (the checkpoint's own signed message, recomputed from `checkpoints.jsonl`, named by its SHA-256) and prints the exact `cosign verify-blob` line for the same bundle. It checks against the trust root the binary carries and asks nobody whether that root is still current.
+- **A subagent's decisions come back to the session that started it on Codex and Copilot CLI too.** The `SubagentStop` hook that
+  runs `mnema handback` was wired for Claude Code alone; `codex.json` and `copilot.json` now run it, and `mnema handback` takes
+  `--host claude|codex|copilot` to read the payload each host documents (Copilot CLI's under either spelling of its event). On
+  those two hosts the reply is the decision itself on stdout with exit 0, the form their documentation reads. It is held by a
+  test fed the documented payloads, not by a run of either host. Copilot CLI documents no field that says a stop is the second
+  one, so there the check is not once per stop; the host's own limit of eight consecutive continuations is the bound. Gemini CLI
+  has no hook event for a subagent and OpenCode was not read for one, so the presence map and the plugin's page say that for them.
+- **An experimental single executable of `mnema` for Linux x64, built with Node's single executable applications.** `pnpm build:single-executable` (Node 25.7 or later; no new dependency, Node's own `--build-sea` writes it) folds the CLI into one file that holds its own Node, to run the record verbs, `verify` and the merge driver on a machine where the first `node` on the `PATH` is missing or too old (the plugins' hooks still start with `node`). It is unsigned and Linux only, and the release workflow attaches it, when it builds and runs, with a `.sha256` file and the hash in the release notes, marked experimental; `docs/install.md` says how to check the hash. `mnema stack index`, adding a built-in stack by name and `mnema site` read files the executable does not carry and do not work in it. A CI job (`Single executable`) builds it on every push to `main` and every pull request that touches what it is made of, and runs it with an empty HOME and a PATH that holds no Node through `init`, `decision record` and `verify`.
+- **`mnema audit antipatterns` reads what agents accepted.** Three signals, a reading and never a pause: the rules accepted
+  with no agent declared (or that carry an address) which an agent then took out of force, the chains of three decisions or more (A to B
+  to C), and the accepts, with an agent declared and with none in two totals, whose note holds no double-quoted passage of 20 characters or more that is not pure assent (the accept gate's definition of the person's words, judged by the note's form: the passage is not checked against the conversation here). Who accepted is the
+  `which` on the event, and none declared is not read as a person. The text lists at most 10 ids per signal; they are in the human page and, under `agentAccepts`, in
+  `--json`; the agent's `audit_antipatterns` tool is unchanged.
+- **On Windows, `mnema doctor` checks the record against the 260-character path limit and says what to run.** It measures the deepest path the record holds and the longest name a witnessed record would add, reads git's `core.longpaths` (`git config --get`, nothing written), and where a path passes 260 and the setting is not true it states `git config --global core.longpaths true`, with a note that the Python reader needs the system's `LongPathsEnabled`. It never writes git's global configuration, not even with `--fix`.
+- **`mnema export --madr <dir>` writes the decisions of the committed record as MADR files.** One file per decision, with its title, its status (a superseded decision says `superseded by ADR-<n>` and links both ways), its rationale under `## Decision Outcome` and what was turned down under `## Alternatives Considered`. Each file names the decision it was read from and says it is a reading of the signed record, not the source of truth. `mnema decision import` reads the folder back into another project with the same title, rationale and alternatives. This is a separate output from the feed: plain `mnema export` still carries the envelope and never a body, while `--madr` writes files that carry the bodies, reads only the committed tree (not the private or the global one), and refuses a folder inside the record or a file it did not write itself. It refuses to write through a symbolic link, and a folder inside `.git`. Superseded, rejected and deprecated decisions are exported but `import` skips them, an accepted one comes back `proposed`, and `superseded-by` is not relinked.
+- **`mnema rules test <file>` checks the verdicts a file declares for paths against the record's rules.** The file is
+  JSON, `{ "cases": [ { "path": "src/billing/invoice.ts", "expect": "refuse" } ] }`, with a path relative to the project
+  root and one of `refuse`, `ask`, `governs` or `none`. The answer is the gate's own (`refuse` and `ask` from the function
+  the per-edit hook asks, `governs` from the reading `why` shares), so a rule that stops covering a path, or a
+  channel switched off, shows as a `MISMATCH` naming what the path met and the rules behind it, with exit 1; a file with
+  no case, a path that is absolute or leaves the project, or a record the gate cannot read (which would deny every write) is refused, and `--json` is refused. It writes nothing. The word `test` after `rules` is now that verb and needs a file, so a folder named `test` is asked as `./test`. See
+  [Rules that are checked against paths](docs/rules-and-the-commits-that-cite-them.md#rules-that-are-checked-against-paths).
+- **`mnema why <file>` says the verdict a write there would meet, and which rule decided it.** The page and `--json` carry
+  `verdict` (`refuse`, `ask`, `governs` or `none`), and the rules are listed in the order the write gate applies them
+  (a refusal, then an asking, then the governing), each saying whether it `decides` (`decided` in JSON). The verdict is
+  the answer of the gate's own function, the one the hook before a write and `governing_rules` ask, so a rule outranked
+  or whose channel is switched off is listed as `does not decide`. A test is red when `why` and the gate disagree. When the record itself refuses the write (an altered entry, or a line this mnema cannot read), the verdict is `refuse` with the gate's own reason (`refusal`), and with `edit-rules-push` off the governing rules are said not to be handed to an agent (`notDelivered`).
+- **`mnema record publish --to <remote>/<branch>` pushes the record's branch and opens its pull request.** It makes what
+  `record commit` makes, on top of the remote-tracking ref you name (the destination is never deduced from HEAD), pushes that
+  branch alone without force, and opens the pull request on GitHub through `gh`. It is off until `mnema switch on
+  record-publish`, a switch recorded for this machine only (`--scope public` is refused, and an `on` in the committed
+  tree is not read), and it refuses, before it cuts anything: a repository that sets no `user.email` of its own or sets the
+  global one; a record pull request already open into the destination, found by what it changes (every file under the
+  record's folder) and not by its branch's name, said to have stalled once it is open past 24 hours; `gh` absent or a remote
+  that is not GitHub's, with the manual steps. A remote whose push address and read address name different repositories is refused too. A cut whose author or committer is another e-mail is never pushed. It never
+  merges and no hook runs it.
+- **`mnema rules --coverage` counts how many of the project's files fall under each layer of the rules, with no score.** Run with no path, it walks the files once (the walk that says what an address covers when it is recorded) and prints, in all and per top-level folder, how many are refused by a rule that refuses a write, how many ask for a person, how many are governed, and how many are under no rule. Each file counts once, under the strongest layer over it, and the count follows the gate's switches: with a layer's channel switched off its files count under the next layer, and the output says which channels are off. It prints numbers and no percentage; it names the folders left out as not hand-written, and past the walk ceiling of 50,000 files it says every count is a floor. `--json` gives the same.
+- **The end-of-turn hook is wired in every host that documents one, and says what each can do.** `mnema tally` and
+  `mnema corrections` take `--host` (`claude`, `vscode`, `codex`, `copilot`, `gemini`, `cursor`, `qwen`; Claude Code's
+  when it is not given, and VS Code's when the transcript the payload names is in the folder VS Code keeps its own,
+  since it sets no variable) and read the end of a turn in the shape the host hands it: `Stop` in Codex, Copilot CLI
+  (`agentStop`, configured as `Stop`), Qwen Code and VS Code's agent, `AfterAgent` in Gemini CLI, `stop` in Cursor. The
+  plugin wires them: `codex.json` and `copilot.json` at `Stop`, Gemini CLI's extension at `AfterAgent`, and
+  `hooks.json` with a pair each for Cursor and Qwen Code, run only where the host says it is there, Claude Code's pair
+  yielding to both. State per host, from the table of hosts: Claude Code's transcript is read, and the count, the
+  journal and the corrections work; the transcript of VS Code's agent, Codex, Copilot CLI, Gemini CLI, Cursor's
+  command-line agent and Qwen Code is not read yet (no reader of its format is built), so for them nothing is counted,
+  no journal is kept and no proposal is recorded. Where the row says so, the hooks file carries `--reads no` and the
+  handler ends before it starts `mnema` twice a turn (Gemini CLI's script does the same by a constant); run
+  by hand, the verbs say it on their second stream. VS Code's agent and Qwen Code, which share Claude Code's hooks file,
+  no longer have their transcripts parsed as Claude Code's.
+- **`mnema words --host <host>` keeps what the person typed at the prompt and which option they chose, from a host's hooks, in a file of this machine's.** It reads the payload of the host's prompt hook (Claude Code, Codex, Copilot CLI, Gemini CLI, Qwen Code, Cursor's command-line agent, VS Code's agent, OpenCode's plugin hook) or of the hook after its question tool (Claude Code, Codex, Copilot CLI, Gemini CLI, OpenCode), appends the text as `typed` or the option label as `chosen` to `<data directory>/sessions/<project>/<session>.words.jsonl` (mode `0600`, pruned with the session journal), prints `{}` and never the words, and writes nothing to the record. A host with neither hook is told so. `personsWordsFor(session, host)` reads the entries back in order. The plugin's hooks files do not run it yet; [what the person said](docs/the-session-journal-and-compaction.md#what-the-person-said) lists each host's state.
+- **A switch, `opening-core`, that changes what the opening text hands over.** Off until switched on (`mnema switch on
+  opening-core`), and off is exactly the text it was. On, the decisions in the text `mnema brief --hook` prints (the one a
+  session opens with and a subagent starts with) are no longer the newest ones in force: they are the decisions whose
+  acceptance note says the person dictated them ("Dictated by ...", "Accepted as dictated"; a rule the person only chose
+  among options an agent offered is not in it), newest first and cut at a whole rule when the host's ceiling is reached, followed by counts of what else the record holds
+  (decisions in force, patterns adopted, awaiting a judgement, rules with an address) and how to pull the rest (`search`,
+  `governing_rules`, `read_record`, and their shell forms). This machine's private rules are counted there and not
+  listed. The file `mnema brief` prints is the same bytes with the switch on or off, and nothing is written to the record
+  for it. Count the core of a record before switching it on: the core is the rules the person dictated, a part
+  of the record, and an explicit pin by the person to mark others is not read yet.
+- **A reader of the person's words for each host whose transcript format is documented in its source: Gemini CLI, Qwen Code and VS Code's agent mode, beside Claude Code.** One table keyed by host says which hosts have a reader, and the rest say so instead of borrowing Claude Code's shape. Each reader returns what the person typed and, where the host's source shows how an answer is stored (Claude Code and Gemini CLI), the option they chose in its question tool, marked as chosen; text the host injected, a tool's response and a compaction are not the person's. Each is held by a test whose lines are built from the host's source at a pinned commit; the state of every host is in `docs/hosts.md`. Nothing calls the readers yet.
+- **The rules in force you did not accept yourself.** `mnema decision review` shows, after the proposals, each rule in force
+  that an agent accepted or whose accept declared no agent, newest first, and marks each one it shows as shown to you; `q`
+  stops it, and what it did not show stays on the list. ANY accept made at a terminal with no agent declared (`decision
+  move accept`, `decision review`, and `mnema init` answering on its screen whether agents may accept) is marked the same
+  way, so it writes a `decision.seen` too; the library (`@mnema/sdk`) marks nothing. `mnema` with nothing after it lists
+  the ones that entered force since your last review or accept at a terminal and says how many older ones you have not
+  been shown; before a first mark it says the total. `mnema
+  show <id>` of a decision says when it was last marked shown. A mark says that your key signed at a terminal with no
+  agent declared, not that a person read the rule (`docs/what-it-proves.md`).
+- **A new kind, `decision.seen` v1 `{moves?}`**, in the catalog, `event-schema.json` and the published vectors (42). Its
+  subject is the decision and `moves` the entry hashes of the accepts it covers, under the envelope's own rule `hashes?`,
+  so both readers check it with no new rule (`FORMAT.md` section 4.1). It is written only in the private tree (outside a
+  project, the global one), never by the MCP server, and refused (`SEEN_NEEDS_A_PERSON`) with an agent declared or no
+  terminal. A rule accepted again on another machine, unseen by the mark, comes back to the list. A binary from 0.1.5 to
+  0.1.9 reads the line past and says on its reads of this machine's record that a newer mnema wrote it; 0.1.4 and earlier
+  refuse a record that holds one, which the private tree of a machine does once it ran a review, accepted a decision at a
+  terminal or answered `mnema init` on its screen. The edit hook of VS Code and Cursor reads such a line past as
+  `mnema` from 0.1.5 does, and still starts `mnema` where a line holds an address marker or is a version ahead of a kind it
+  reads.
+- **Two versions of mnema on one clone share one read cache file.** The cache (`projection.db`) is stamped with the code that
+  built it, and only the newer version takes the file over; a binary of an older or the same version (a terminal and an editor
+  extension, say) builds the cache in memory for that process and leaves the file alone, so it pays a replay of the record on each
+  command: that replay was measured, on a record of 3,449 lines, at 0.64 to 0.84 s a `status` against 0.21 s with the cache (ADR-633).
+- **A recipe to try mnema without installing it.** [Install](docs/install.md#try-it-without-installing) gives five
+  `npx --yes @mnema/code@<version>` lines for a scratch repository: found the record, record a decision, accept it, read
+  it back and verify. A job of CI runs the block, read from the page, against the package packed from the commit, so
+  the recipe cannot stop working unnoticed.
+- **`mnema upgrade --fix` removes a dead mnema MCP entry, and `mnema doctor` and `mnema upgrade` read every host's
+  config file.** An entry is dead when its command (an absolute path), the script `node` runs for it, its folder, or the
+  project folder it sits under in `~/.claude.json` is gone, and the system answers that it is not there (ENOENT or
+  ENOTDIR). An entry is dead, verified or unknown, and verified is an allowlist: a command whose basename is `mnema` (also `mnema.cmd`/`mnema.exe` on Windows), as an absolute path or a bare name on the PATH, that resolves to an executable regular file, with every absolute argument there; or `node`/`nodejs` whose first argument is an absolute path to an existing regular file. Every other program is unknown even by an absolute path (node22, bun, deno, tsx, npx, pnpm dlx, bunx, yarn dlx). What a `mnema` wrapper script calls is not followed, and an unknown entry is never removed. Without `--fix` each dead entry is named per host and nothing changes. With it, a file in strict
+  JSON (`~/.claude.json`, Gemini CLI and Qwen Code `settings.json`, Copilot CLI `mcp-config.json`, OpenCode
+  `opencode.json`, Cursor `mcp.json`, VS Code `mcp.json`) is edited byte for byte after a copy of it is kept beside it;
+  Codex's `config.toml`, a file with comments and the project's `opencode.json` are not edited, and the line says the
+  exact table or member to delete. `doctor` now also says, per host, whether the file declares no mnema server, one,
+  or more than one. See [`mnema upgrade`](docs/reference/cli/upgrade.md).
+  The copy is written readable by its owner alone (0600) and is not cleaned up. A path that cannot be read, one with a `# Changelog
+
+Notable changes to the packages in this repository are recorded here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+The line before this one, the 0.x alpha published as `@felipesauer/mnema`, is deprecated on
+npm and lives at [this commit](https://github.com/felipesauer/mnema/tree/ef736fc6b1f682a513f02f335ad5b7e2e338eca6),
+with its own changelog.
+
+
+  in it, a disk that is not mounted, a version a manager can install again (nvm, fnm, volta, asdf, pnpm, Homebrew, and the
+  Windows ones) and a bare name off the PATH are unknown, never dead. A duplicate in `~/.claude.json` is cut only beside
+  an entry verified to work, and the plan says which one stays; with none verified nothing is removed and it says why.
+- **`mnema verify --verbose` counts the facts that name no agent** (`census [undeclared-which]`), and the second reader says
+  the same number. It says no agent was declared, which does not say a person acted. A clean `verify` stays one line.
+
+### Changed
+
+- **A backup that finds another run on the same destination says which process holds the lock and how to clear it.** The refusal after 30 seconds now names the process that holds `<cache>.lock` and adds that, if it is not a mnema backup that is still running, you delete that file and run again. A process that still answers is never overruled, so a pid reused by an unrelated process keeps the lock until the file is deleted. Nothing is changed by the refused run.
+- **The link command and `link_knowledge` say when the target is a file under a temporary folder.** A target that is an
+  absolute path under `os.tmpdir()`, `/tmp`, `/var/tmp`, `$TMPDIR` or the Windows `%TEMP%` gets, after the write, "<path> is
+  under a temporary folder, which a reboot or a cleanup can clear, so the link may name a file nobody can open later. Copy the
+  file under the project and link that." In any tree and under any relation (a `derived-from` to a brief left in `/tmp` was
+  the case that went unsaid). The edge is still written. A path under the project's own root, a relative path and an id are
+  never warned about, and the text of a handoff brief is not read for paths. A file that exists is compared by where it really is, so `/tmp` and `/private/tmp` (macOS) are one place, and the project's own file is never warned about whichever way its path is spelled; a `$TMPDIR` that is `/`, the home folder or a folder holding the project is ignored.
+- **A read in a linked worktree says where the record is.** A record git keeps out of its commits is not carried into a new
+  worktree, and a read there said "Run `mnema init` first", which would have founded a second record. When the main
+  checkout holds a `.mnema` folder, the refusal now says so and names it. `show` and the `read_record` tool, for an id
+  they cannot find in a worktree, add that a record written in the main checkout and not yet committed is not there. Only a
+  hint: nothing is read from the main checkout's tree.
+- **A mistyped command says what it most likely meant.** `mnema decision move <id> accept` says the action goes before the id; `observe` given the topic as a word names `--topic` and `--text`; `memory` given two words says it takes one text; `decision list` also points at `mnema search --kind decision` and `mnema status`. The line after a write says the record stays on this machine when git excludes `.mnema/` and tracks nothing under it, instead of saying it reaches every clone. The MCP session log line for an identity that is not known yet no longer reads like a failure.
+- **A private or global decision's label is read with its tree, and a cut search says how to reach the rest.** Each tree numbers its own decisions, so a private `ADR-78` and the public `ADR-78` read the same. Where a decision is shown to a person (`mnema status`, in force and awaiting a judgement; `show`, including the decisions it replaced or was replaced by, and the same names on a `search` hit; the heading of `mnema decision review`) the label of one held outside the public tree now ends in its tree, `ADR-78 (private)` or `ADR-78 (global)`. The public label is unchanged, nothing stored or signed changes, a label is accepted as before, and the line a `decision` write or move prints keeps its shape, `Recorded decision ADR-78 (<id>)`. In the JSON of the MCP's `bootstrap` and of the decisions a record names, one outside the public tree carries `scope`, and a public one carries none. When `mnema search` finds more records than it shows, a line under the header says how many matched: below the ceiling it points at `--limit` (up to 200), and at the ceiling of 200 it points at a window of dates (`--from` and `--to`), since there is no offset.
+- **An act with no agent on it is read as "no agent declared", not as "a person".** The command line writes no `which`
+  whenever none was named, and a person at a terminal, a script and a hook leave the same envelope, so `show`, `brief`,
+  `status`, the console, the record page, the provenance of a pattern and the refusal of a second accept now say
+  `no agent declared`. No signed byte changes: records written before read the same way from this release.
+- **An agent's accept rests on the person's words, or it waits for the person.** In Claude Code with the plugin, an
+  `accept` by an agent (the `decision_transition` tool, and `mnema decision move accept <id> --which <agent>`) stands
+  when its note quotes, between double quotes, words the person typed in the session or an option the person chose in a
+  question; otherwise it is refused with `ACCEPT_NEEDS_THE_PERSONS_WORDS`, nothing is written and the decision stays
+  `proposed` for `mnema decision review`. The reply says which it found, typed words or a chosen option. The check
+  reads the host's transcript, whose path a `SessionStart` hook now leaves beside the session journal (a path, never a
+  word; `mnema tally` answers that event with `{}`); other hosts, a session with no path left, and an accept with no
+  agent declared are as before and say the words were not checked. It proves the words are in the transcript, not that
+  a person typed them. An agent with a shell can open the MCP server on its own, and an accept through it passes marked
+  "words not checked": the gate is a record of what was checked, not a lock against an agent with a shell. A quoted passage counts only with 20 characters or more after folding and when it is not pure
+  assent ("yes", "sim, pode", "go ahead"), so a short option label does not count on its own. The mark "(Recommended)" is taken off an option label before it is measured. The check keeps what it knows of each host in
+  one table, a row for every host (names folded for case and separators, the session id variable, whether the words
+  can be read): only Claude Code reads today, and the rest pass as "words not checked" until a format is proved. At the command line the environment is believed over
+  the declared name: where the session variable of a host whose words are read is set, the person's words are checked against
+  that session whatever `--which` says. A session variable that points at no conversation is refused there too. The command with
+  `--which` naming Claude Code in any spelling and no `CLAUDE_CODE_SESSION_ID` is refused as well, and writes nothing. See [Recording decisions](docs/recording-decisions.md).
+  The block of standing instructions that `mnema instructions` writes into `AGENTS.md` and the host rules files says it
+  too, and is now version v6; a v5 block is the product's to replace and is updated, not read as an edit.
+- **`mnema backup verify` now fails for a copy whose manifest does not read.** A `mnema-backup.json` that is there and is
+  not JSON, is not an object with a list of files, or lists an entry with no path and size used to be passed over without a
+  word, and the copy could verify; the command now names the file, says the copy is not sound and exits non-zero (and
+  `--json` carries the new `manifest` field, `whole`, `absent` or `unreadable`, in each tree's reading). A copy with no
+  manifest at all still passes, and now says so. `mnema backup restore` refuses such a copy too, with nothing written back, and `mnema backup status` says that the manifest
+  does not read instead of passing over it. A manifest the disk refuses (EACCES, a folder in its place) counts as unreadable. See [the backup reference](docs/reference/cli/backup.md).
+- **`user-corrections` is on until it is switched off.** It began off, on the premise that the one reader of a conversation's words had
+  to be asked for; nobody asked, and in one day the person had to say four times that a rule go to the record. A project that never
+  touched the switch now has the `Stop` hook record, as `proposed` decisions in this machine's private tree, the openings that correct
+  the agent and the answers to its questions. Nothing leaves the private tree and no model is called. `mnema switch off user-corrections`
+  stops it and the record of the switch is read first, so a tree that switched it off never has its transcript read. `mnema init` and
+  `mnema` with no argument name only `edit-first-write-gate` as off. Where `dictated-rule` is switched off the reader also records,
+  as a proposal titled `Rule: ...`, a message that is an instruction to keep (the shapes `mnema dictated` reads); while it is on, that
+  sentence is left to the hook and is not also a proposal, and the rest of the message is still read for a correction (ADR-546, ADR-605).
+- **`mnema init` says what was given to it, not who gave it.** The note of its first decision, and the reason of the switch
+  it turns off, read `--accepts no was given to mnema init when the project was founded` (or `"..." was chosen on the
+  screen of mnema init`) instead of `The person gave --accepts no`. Notes already written are not rewritten. The line `init` prints says the same (`Recorded ADR-1: agents may not accept what you choose (--accepts no was given to mnema init).`) in place of `accepted as yours`.
+- **The opening text and `mnema status` say how many of the rules in force an agent accepted and how many had no agent declared.** The
+  header of the decisions in force now carries the two counts and names the identity that accepted most of them once; each rule
+  line ends with the day it was accepted and `agent` or `no agent declared`, and names an identity (with its unconfirmed mark) only when it
+  is another than the header's, where it used to repeat `accepted by mnid:... (agent claude-code)` on every line. On this
+  repository's own record the same text is 13,496 characters shorter (214,724 to 201,228), and the hook's copy fits two more
+  rules inside its ceiling. `mnema status` prints the two counts (by an agent, with no agent declared), of every rule in force, above its list. An accepting act is an
+  agent's when its envelope carries a `which`, and "no agent declared" otherwise, never a person's, since the record cannot tell who typed what an agent ran; nothing new is recorded. The `rules` and `status` JSON
+  carry the day of the acceptance beside each rule in force (`acceptance.day`).
+- **Small phrases and refusals say what to type instead, or what was left undone.**
+  - `mnema brief --hook --host claude-code` (and `recall`) says Claude Code's own form is `--hook` without `--host`.
+  - `mnema search` given several unquoted words says to quote them as one term; `task move` given the id before the
+    action says the action goes first (as `decision move` already did).
+  - `--from` after `--to` is refused on `search`, `audit accountability` and `export` and on the `search` and
+    `audit_accountability` tools (code `INVALID_WINDOW`), naming both ends; a window that holds nothing answers
+    "Nothing recorded in this window." where `search` used to say "Nothing recorded here yet."
+  - `mnema init` says git ignores `.mnema/` (and that no clone gets it) where it does, instead of "Commit `.mnema/`",
+    and says a plain `git pull` was not set up where it was not asked for, with the two commands that cover it.
+  - `mnema switch on <channel>` prints that channel's own effect, one sentence for each channel, where most printed
+    "it hands the record over as it did before".
+  - `mnema show <task> --full` prints every note about the task whole, with no cut at eight; plain `show` now says so
+    under the list of notes.
+  - A handoff whose brief is nothing but the path of a file under a temporary folder says, after recording it, that a
+    reboot or a cleanup can clear the file (`task handoff` and `record_handoff`). The handoff is recorded all the
+    same, and a brief that is prose is not read for paths.
+  - A decision of the private or the global tree is read as `ADR-<n> (private)` or `ADR-<n> (global)` in the opening
+    text and in the compaction sentence, as it is everywhere else; the opening text used to say `private ADR-<n>`, and
+    the compaction sentence labelled a decision with its tree only when another tree held the same number.
+  - The tools no longer offer to address a decision at a path this connection looked at inside another agent's
+    worktree (`.claude/worktrees/<name>/`), which is a copy of another branch.
+- **The check that refuses a write over an altered entry asks the cache the tree keeps, as a warm read does.** An entry
+  rewritten to the same size with its modification time put back is not seen by it (see the entry on arming every
+  invocation).
+- **The refusal of a write over an altered entry is armed for every invocation, not for a list of verbs.** The door
+  stands at the writer, so an invocation that opens none is still never asked; one that opens a writer for an option
+  (`mnema doctor --fix private-tree`) is asked without being named anywhere. `what-it-proves.md` now says the refusal
+  asks the tree's cache, so an entry rewritten to the same size with its modification time put back is not seen by it
+  until the next read, which that write has made cold, or `verify` says it.
+- **The first write after an upgrade usually founds a tail.** A tail no mark of the worktree speaks of (written before marks were kept) is asked of the base branch once, and as the end of such a tail is usually not pushed, the first write after an upgrade usually founds a tail. The write is not refused and nothing in the record changes.
+- **The MCP server reads the host's session id from the table of hosts, not from Claude Code's variable alone.** The goal of a run
+  (from the session journal) and its outcome now also work in GitHub Copilot CLI, which leaves `COPILOT_AGENT_SESSION_ID` in the
+  server's environment (that its value is the session folder name the hook payloads give is not verified). Codex, Gemini CLI, Qwen Code,
+  OpenCode and VS Code are still without one: `CODEX_THREAD_ID` and `GEMINI_SESSION_ID` were added to the host contract's list, and
+  they are read the day a run of the host shows them.
+- **A hook's text ceiling that was never measured is said to be assumed.** For Copilot CLI, Gemini CLI, OpenCode, Qwen Code and VS Code
+  the opening stays cut at Claude Code's 10,000 characters, and its closing paragraph now says that the number is Claude Code's, assumed
+  for that host. The `--host` of `mnema brief --hook` and of `mnema recall --hook` takes those hosts, and the Copilot CLI, Gemini CLI and
+  OpenCode hooks name theirs. Qwen Code and VS Code share Claude Code's hooks file, so their opening is cut at the same assumed ceiling without saying so; the host table says it.
+- **The test suite clears the session variables of the hosts before any test.** Run from inside an agent's session
+  (`CLAUDE_CODE_SESSION_ID` set), the suite no longer reads the person's words at the accept gate and its spawned processes
+  inherit a clean environment, as on the CI. A guard fails when a host session variable named in the host table is not cleared.
+- **`mnema status` and the opening context list the task in progress first.** The live work used to be ordered by when each
+  task last moved, so a task being worked on, if it was older than twenty newer drafts, was left out of the list. A task
+  IN_PROGRESS now leads, the others follow freshest first, and the cut keeps it. When the list is cut, `status` heads it `N of M live task(s), in progress first`: with more tasks in progress than the cut keeps, the rest, and some of those, are left out. `status`, the `bootstrap` tool and the
+  hook's opening are one list, so they agree.
+- **What the dispatch hook records names the orchestrator.** The task the dispatch hook opens, its moves, and the handoff and brief it records carry `which: orchestrator` where they carried none.
+
+### Fixed
+
+- **A write is no longer refused `STALE_ANCHOR` because the kept projection lagged the record.** Where a command holds
+  no roster of its own, a refusal is now confirmed by reading the chain (the source `verify` reads) before it is given:
+  the write is refused only if the chain also does not count the key. Seen as eight simultaneous first writes of one
+  new key, one of which was refused while the record already counted its key. The check costs something only where a
+  write was about to be refused.
+- **`mnema witness sigstore-check --message-dir` refuses, in one line, a folder below a file or below a link that points
+  nowhere.** Both threw a raw error (`ENOTDIR`, `ENOENT`) from the check of where the messages go; nothing was written
+  either way, and now the refusal names the path and says why.
+- **A local anchor that is a symbolic link is now said by `status`, `search` and `brief`, and is not read.** `verify` has
+  always refused a link at any entry of `keys/` (`LINKED ENTRY`), but with `keys/<fingerprint>.anchor` a link the three
+  answered with no word that a part of the record was refused, and read the anchor through it: the identity `status` names
+  came from wherever the link pointed. They name it on the first line as they name a linked segment
+  (`a symbolic link (keys/<name>)`, with the way out), and the anchor reads as absent, as a dangling one does, so the
+  identity is the one the record proves or the key derives. Only `*.anchor` files; what `verify` accepts, the format and
+  how a write refuses are unchanged.
+- **In a repository kept in the `reftable` format, a write no longer asks git for the branch at every append.** The `HEAD` file of such a
+  repository names no branch, so git was asked (`git symbolic-ref`) for each line a write appended. The answer is now kept for the state
+  of the worktree's `reftable/tables.list` and asked again as soon as that list changes, as it does when a branch is switched; a git that
+  does not answer is not kept. No event, field, check or vector differs, and the second reader needs nothing.
+- **`--from` and `--to` are read as the date or timestamp they claim to be, and refused when they are not.** `mnema search`,
+  `mnema audit accountability` and `mnema export`, and the `search` and `audit_accountability` tools of the MCP server,
+  compared the bound as text, so `--to garbage` or `--to 2026-13-45` let every record through and looked like an answer.
+  A bound is now a date (`2026-11-21`, read as UTC: `--from` is the start of that day and `--to` its last millisecond, so
+  `--to 2026-11-21` includes the 21st) or a timestamp that ends in `Z` or an offset (`2026-11-21T10:30:00-03:00`, seconds
+  and fraction optional). Anything else, an impossible date included, is refused in one line that names the flag (the
+  tools refuse with the code `INVALID_WINDOW`). A date given to `--to` used to leave the whole of that day out.
+- **A key a tool does not take is refused by every MCP tool, not dropped.** `search` called with `query` for `term` was served
+  as a search with no term (the newest twenty records and a large total), because the server dropped the key its input did not
+  name; the same held for every one of the 27 tools. Now each tool refuses it with `Refused (UNKNOWN_INPUT_KEY)`, names the
+  key and the keys the tool does take, and runs nothing, so nothing is written, and on a tool that writes the reply says the
+  fact was not recorded. The schema each tool serves says `additionalProperties: false`, so a host knows before it sends.
+  A host that sent an extra key and was served is refused now: drop the key. The tool definitions a host sends weigh more
+  (Claude Code and Gemini CLI 1,043 bytes, Copilot CLI 1,138, OpenCode 260; Claude Code now 51,981 bytes, 11,833 tokens). A test calls every tool the
+  server serves with one unknown key and is red on any that does not refuse it.
+- **Recording the anchor no longer writes through a symbolic link.** A link at `keys/<fingerprint>.anchor` made a key restore write
+  the anchor into whatever the link points at, outside the record; and a link to nothing there was read as no anchor, so a founding
+  wrote through it too. Both now refuse, with the words a write of the record uses (`RECORD_LINKED`), before anything is written; a
+  restore says nothing was restored.
+- **A link that appears while a Sigstore sign-in is open, or in a folder on the way to a file `record pull` puts back, is not followed.** `mnema witness sigstore` looks again at where each bundle is filed right before the checkpoint goes to Rekor, so a link that came during the sign-in stops that checkpoint instead of leaving an entry in the public log whose bundle could not be filed. `mnema record pull` checks every folder from the repository's top to the file it writes back, not only the file, and keeps aside what it will not write through, as it already did for a link at the file.
+
+Changed
+
+- **The backup is declared member by member.** `backup setup`, `run`, `verify`, `restore` and `hook` write outside the record (`verify`, over a git destination, clones or fetches its cache in the data directory and reaches the network, and now says so on its last lines), so the session (`mnema repl`) no longer offers them as reads; only `backup status` is still run there.
+- **`mnema doctor` says when an entry of the record was altered after it was written.** Until now it exited 0 and said nothing of the line while every write was refused. The finding names the entry, the tree and the way out, and it replays the tails in memory: doctor still writes nothing.
+- **More writes no longer go through a symbolic link.** A link at the public key another member's enrollment materializes
+  (`keys/<fingerprint>.pub`), at a witness file (`tails/<tail>/witness/<checkpoint>.ots`, `.blocks` or `.sigstore.json`), at the checkout's migration mark (`migrated/<fingerprint>`) or at the key root's own
+  `.gitignore` made the write land wherever the link pointed (a link to nothing was created at its target). Each is now refused
+  by name, with `RECORD_LINKED`, before anything is written. The two logs of the data directory, the diagnostic log and the
+  count of tool calls, do the same without ever failing the call: a log that is a link is skipped, and the words say so once
+  (after an internal error, and on the MCP server's error stream), with nothing written and nothing the link points at opened.
+  A stamp, a Sigstore signature and a return visit ask about the link before anything is sent, so a link at the file costs no
+  publication to a calendar or to Rekor; and `record pull` writes nothing through a symbolic link that the pull brought to the
+  path of a tail file it kept aside (git carries links), leaving the file in the folder it was kept in and saying so.
+
 ## [0.1.9] - 2026-11-21
 
 ### Added
@@ -3567,6 +3917,7 @@ Requires Node ≥ 22.12.0; the packages are ESM-only.
   committed tree (`packages/chain/FORMAT.md` §4.1).
 
 [Unreleased]: https://github.com/mnema-work/mnema/commits/main
+[0.1.10]: https://github.com/mnema-work/mnema/releases/tag/v0.1.10
 [0.1.9]: https://github.com/mnema-work/mnema/releases/tag/v0.1.9
 [0.1.8]: https://github.com/mnema-work/mnema/releases/tag/v0.1.8
 [0.1.7]: https://github.com/mnema-work/mnema/releases/tag/v0.1.7
