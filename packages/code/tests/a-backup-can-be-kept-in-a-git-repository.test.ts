@@ -231,4 +231,28 @@ describe('what the verbs print of a git destination', () => {
     expect(status.text).toContain(remote);
     expect(git(remote, 'rev-list', '--count', 'main')).toBe('1');
   });
+
+  it('says, at verify, that it fetched the cache, or cloned it, and that no file of the record was written', async () => {
+    const a = project('alpha');
+    await mnema(a.cwd, 'backup', 'setup', remote);
+    await mnema(a.cwd, 'backup', 'run');
+    const fetched = await mnema(a.cwd, 'backup', 'verify');
+    expect(fetched.failed, fetched.text).toBe(false);
+    expect(fetched.text).toMatch(/git: the cache of the destination \(.*\) was fetched to read it/);
+    expect(fetched.text).toContain('no file of the record was written');
+    rmSync(join(sandbox, 'home', '.mnema', 'backup-git'), { recursive: true, force: true });
+    const cloned = await mnema(a.cwd, 'backup', 'verify');
+    expect(cloned.failed, cloned.text).toBe(false);
+    expect(cloned.text).toMatch(/was cloned to read it/);
+  });
+
+  it('does not end a refusal over a cache it just cloned with "Nothing was written"', () => {
+    const a = project('alpha');
+    runBackupSetup(a, remote);
+    const refused = runBackupVerify(a);
+    expect(refused).toMatchObject({ ok: false, code: 'NO_COPY' });
+    const said = refused.ok ? '' : ((refused as { message?: string }).message ?? '');
+    expect(said).not.toContain('Nothing was written.');
+    expect(said).toContain('The cache of the destination was cloned to read it');
+  });
 });

@@ -668,9 +668,20 @@ export async function runWitnessSigstore(
   if (asking.length === 0) return { ok: true, outcomes, trees };
 
   const { signWithSigstore } = await import('../sigstore/sign.js');
+  // The first look was before the sign-in, which can take minutes: a link may have come since.
+  const beforeLog = (digest: string): string | undefined => {
+    const { chain } = asking.find(({ ask }) => ask.digest === digest) as { chain: HeldChain };
+    try {
+      refuseWitnessThroughALink(chain.layout, chain.tail, digest, ['sigstore']);
+    } catch (error) {
+      if (!(error instanceof RecordLinkedError)) throw error;
+      return `nothing was sent: ${error.message}`;
+    }
+    return undefined;
+  };
   const signing = await signWithSigstore(
     asking.map(({ ask }) => ask),
-    network,
+    { ...network, beforeLog },
   );
   if (!signing.ok) return { ok: false, reason: signing.code, message: signing.message };
   signing.checkpoints.forEach((signed, at) => {

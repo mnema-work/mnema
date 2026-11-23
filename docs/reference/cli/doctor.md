@@ -165,7 +165,8 @@ What it looks at, and nothing else:
   repository’s git directory; and the agent keys this machine holds, against the record of
   each tree it reaches, with the `MNEMA_AGENT_KEY` of its own environment.
 It also reads the ledger of caught failures, <data directory>/log/swallowed.jsonl, for the last 7 days (kept on this
-machine and never sent: docs/the-ledger-of-caught-failures.md).
+machine and never sent: docs/the-ledger-of-caught-failures.md), and replays the record’s tails in
+memory, writing nothing, to say when an entry was altered after it was written.
 Asked alone it writes nothing and exits 0 whatever it finds: each line says what to do.
 `--fix vscode` writes: it shows what it will change, keeps a copy of settings.json beside
 it, keeps the file’s comments, and refuses a file it cannot edit safely.

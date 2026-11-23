@@ -39,6 +39,8 @@ const HELPER = 'every-cache-state';
  * long cases; they are owed.
  */
 export const EXEMPT: Readonly<Record<string, string>> = {
+  'packages/code/tests/doctor-says-an-altered-entry.test.ts':
+    'alters one line of a tail to hold that doctor says it, and that doctor writes nothing to find it out: it replays the tails in memory and opens no projection cache, so no cache state changes what the case asks',
   'packages/code/tests/a-decision-is-proven-in-one-file.test.ts':
     'appends one line no reader parses to a tail to hold that `prove` builds no proof from a record its verify calls broken; the verdict is asked of the chain with no cache, before any proof is read, so no cache state changes what the case asks',
   'packages/core/src/workflow/a-showing-is-a-persons.test.ts':

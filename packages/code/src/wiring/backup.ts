@@ -4,8 +4,11 @@
  * Five acts on a project's backup in a folder: `setup` says which folder keeps it, `run` copies
  * the trees into it, `status` says how far the copy is from them, `verify` reads the copy as a record
  * and sets it against the trees, and `restore` puts a copy back without overwriting anything (a copy of another record only after a person says yes at a terminal). None of
- * them records anything: the verb reads the record and writes a folder (or a tree that lost files),
- * so it is declared as a read.
+ * them records anything, but five of them write: `setup` the machine's assignment, `run` the folder,
+ * `restore` a tree that lost files, `hook` a file in `.git/hooks` and `verify`, which over a git
+ * destination clones or fetches its cache in the data directory (the network, and the cache's lock).
+ * So the group answers member by member: `status` reads, the others are writes, and the console runs
+ * only `status`.
  *
  * THE FOLDER KEEPS THE TEXT IN CLEAR, and `setup` says so before it assigns anything (ADR-387): the
  * person confirms it by typing `yes` at the question, at a terminal and nowhere else. There is no
@@ -20,7 +23,7 @@ import { here } from './context.js';
 import { writeLines } from './io.js';
 import { onOneLine } from './on-one-line.js';
 import { reportRefusal } from './report.js';
-import { type Declared, readsTheRecord, type Wiring } from './verb.js';
+import { type Declared, groupOf, mutatesTheRecord, readsTheRecord, type Wiring } from './verb.js';
 
 /** The sentence a person confirms, and the page that says what to do about it. */
 export const KEPT_IN_CLEAR =
@@ -107,6 +110,7 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
         'A destination may be a git remote (or the folder of a bare repository): `run` commits the copy to a clone of it',
         'in the data directory and pushes it, one more commit each run, and never squashes, amends or forces: the',
         'destination keeps the whole history. `hook install` adds an optional post-commit hook that runs the backup.',
+        'The session (`mnema repl`) runs `status`; `setup`, `run`, `verify`, `restore` and `hook` write outside the record (`verify`, over a git destination, brings its clone cache up to the remote) and are left to the shell.',
         "The machine's global tree, which mixes the memory of every project, is never part of a project's",
         'backup: `--global` copies it, and only it, into the folder `setup --global` gave it, as',
         '<folder>/global/.',
@@ -340,7 +344,7 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
   backup
     .command('verify')
     .description(
-      "read each copy as a record and say how it stands against this project's trees, which it does not change",
+      "read each copy as a record and say how it stands against this project's trees, which it does not change (a git destination's clone cache is brought up to the remote first)",
     )
     .option('--global', "read the copy of the machine's global tree instead of this project's")
     .option('--json', 'emit the faithful reading as JSON')
@@ -447,6 +451,11 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
       }
       if (result.git !== undefined) {
         for (const line of standingLines(result.git)) lines.push(fact(onOneLine`${line}`));
+        lines.push(
+          fact(
+            onOneLine`git: the cache of the destination (${result.git.cache}) was ${result.git.refreshed} to read it, which reaches the network and writes in the data directory; no file of the record was written`,
+          ),
+        );
       }
       lines.push(
         fact(
@@ -749,5 +758,19 @@ export function registerBackup(program: Command, wiring: Wiring): Declared {
       });
   }
 
-  return readsTheRecord(backup);
+  const member = (name: string): Command => {
+    const found = backup.commands.find((command) => command.name() === name);
+    if (found === undefined) throw new Error(`the backup group holds no member called ${name}`);
+    return found;
+  };
+  // None of them touches a chain, and four write outside it (a folder, a tree, a file of git): a
+  // write to the console, which a session advertised as read-only does not make, as `commit-hook` is.
+  return groupOf(backup, [
+    mutatesTheRecord(member('setup')),
+    mutatesTheRecord(member('run')),
+    readsTheRecord(member('status')),
+    mutatesTheRecord(member('verify')),
+    mutatesTheRecord(member('restore')),
+    mutatesTheRecord(hook),
+  ]);
 }

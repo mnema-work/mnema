@@ -398,6 +398,10 @@ const RECORDS_NOTHING: Readonly<Record<string, string>> = {
     'not exercised here: it writes one hook file into a git repository, which the fixture is not: ' +
     'neither an event nor a key; `a-commit-hook-only-suggests.test.ts` drives it over a real ' +
     'repository',
+  backup:
+    'writes a folder, a tree that lost files, the machine’s assignment or a hook file, and the ' +
+    'exercise is its status, which reads: none appends an event or touches a key; ' +
+    '`wiring/backup.test.ts` drives `setup`, `run`, `verify` and `restore` over a real folder',
   record:
     'not exercised here: `pull` and `commit` need a git repository with a remote and `merge-tail` ' +
     'the files of a merge, which the fixture is not; none appends an event, ' +
@@ -735,6 +739,7 @@ describe('every verb says if it writes', () => {
       'record',
       'key',
       'tail',
+      'backup',
       'mcp',
       'run',
       'before-a-write',
@@ -767,7 +772,6 @@ describe('every verb says if it writes', () => {
       'commits',
       'aging',
       'trailer',
-      'backup',
       'doctor',
       'upgrade',
       'report',
@@ -789,6 +793,7 @@ describe('every verb says if it writes', () => {
     // member that says it reads is run for real, in both forms, and counted in the chain.
     const grouped = DECLARED.filter((verb) => verb.members !== undefined);
     expect(grouped.map((verb) => verb.act.name()).sort()).toEqual([
+      'backup',
       'skill',
       'stack',
       'task',
@@ -809,6 +814,7 @@ describe('every verb says if it writes', () => {
       'stack show': () => ['stack', 'show', 'hello-stack', '--to', stackTo()],
       'stack diff': () => ['stack', 'diff', 'hello-stack', '--to', stackTo()],
       'stack check': () => ['stack', 'check', '--to', stackTo()],
+      'backup status': () => ['backup', 'status'],
       'witness sigstore-check': () => [
         'witness',
         'sigstore-check',
@@ -819,7 +825,7 @@ describe('every verb says if it writes', () => {
       ],
     };
     // A reader whose answer over this fixture is a NO, on purpose: the fixture holds no Sigstore
-    // bundle, and a check that found nothing to check must not pass. It is still measured in the
+    // bundle and a check that found nothing to check must not pass. It is still measured in the
     // chain below: it may fail, and it may not write.
     const FAILS_ON_THIS_FIXTURE: ReadonlySet<string> = new Set(['witness sigstore-check']);
     // The stack the four `stack` readers look at: installed into a folder of its own, which
