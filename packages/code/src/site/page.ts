@@ -233,7 +233,10 @@ h1, h2, h3, h4 { line-height: 1.25; }
 h1 { margin: 0.5rem 0; }
 .head { display: flex; align-items: center; gap: 0.75rem; }
 .head h1 { margin: 0.5rem 0; }
-.mark { flex: none; width: 2.5rem; height: 2.5rem; color: var(--text); }
+/* The eye is never inverted: bone lines on every page, in a charcoal seal where the page is light and none where it is dark. */
+.mark { flex: none; width: 2.5rem; height: 2.5rem; color: ${BRAND.bone}; }
+.mark .seal { fill: ${BRAND.charcoal}; }
+@media (prefers-color-scheme: dark) { .mark .seal { fill: none; } }
 h2 { margin-top: 2rem; }
 a { color: var(--accent-text); }
 code, pre { font-family: ${CODE_FACE}; font-size: 0.85em; }

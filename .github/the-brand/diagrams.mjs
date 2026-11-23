@@ -265,14 +265,19 @@ const watcher = (t, w) => {
     ink: t.ink,
     iris: PALETTE.sulphur,
     look: 5,
+    sealed: t.name === 'light',
   });
   const blinking = blinkingEye({
     id: t.id('eye'),
     ink: t.ink,
     iris: PALETTE.sulphur,
     begin: BLINK_BEGIN,
+    sealed: t.name === 'light',
   });
-  return `<g transform="translate(${w / 2},44) scale(.6)"><g class="ea">${blinking}</g><g class="es" display="none">${still}</g></g>`;
+  // The seal is a block, not an almond: at the eye's own scale it would reach 3 units lower and press on the line of text under
+  // it, so the sealed eye is drawn at the scale that gives the seal the height the almond had.
+  const scale = t.name === 'light' ? '.54' : '.6';
+  return `<g transform="translate(${w / 2},44) scale(${scale})"><g class="ea">${blinking}</g><g class="es" display="none">${still}</g></g>`;
 };
 
 /**

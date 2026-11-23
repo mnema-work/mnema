@@ -28,7 +28,7 @@
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { eye } from './eye.mjs';
+import { eye, sealRect } from './eye.mjs';
 import { PALETTE } from './palette.mjs';
 
 /** @param {string} path */
@@ -190,14 +190,18 @@ const archivo700 = await archivoAt(700);
 /** @param {string} id @param {{ ink: string, iris: string }} options */
 const inside = (id, options) => eye({ id, look: 0, ...options });
 
-/** The eye of the header: the ink of the page's text, the iris sulphur, no ring. */
+/**
+ * The eye of the header: the dark eye, never inverted. Its lines are the page's `--seal-ink` and the seal behind it is the
+ * page's `--seal`: on a dark page the seal is not painted and the lines are bone, on a light page it is charcoal under bone
+ * lines. The iris is sulphur, no ring.
+ */
 export function headerEye() {
-  return `<svg class="mark" xmlns="http://www.w3.org/2000/svg" viewBox="-48 -48 96 96" width="40" height="40" aria-hidden="true" focusable="false">${inside('mark-eye', { ink: 'currentColor', iris: PALETTE.sulphur })}</svg>`;
+  return `<svg class="mark" xmlns="http://www.w3.org/2000/svg" viewBox="-48 -48 96 96" width="40" height="40" aria-hidden="true" focusable="false">${sealRect({ className: 'seal' })}${inside('mark-eye', { ink: 'currentColor', iris: PALETTE.sulphur })}</svg>`;
 }
 
 /** The eye of the favicon: the eye in its dark rounded square. */
 export function faviconSvg() {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-48 -48 96 96" width="96" height="96"><rect x="-48" y="-48" width="96" height="96" rx="22" fill="${PALETTE.charcoal}"/>${inside('favicon-eye', { ink: PALETTE.bone, iris: PALETTE.sulphur })}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-48 -48 96 96" width="96" height="96">${sealRect({ fill: PALETTE.charcoal })}${inside('favicon-eye', { ink: PALETTE.bone, iris: PALETTE.sulphur })}</svg>`;
 }
 
 /** @param {Uint8Array | string} b */

@@ -1417,6 +1417,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-example-rules-run.test.ts': 9,
   'packages/code/tests/the-example-stacks-install.test.ts': 8,
   'packages/code/tests/the-exit-codes-page-is-what-the-code-says.test.ts': 6,
+  'packages/code/tests/the-eye-is-never-inverted.test.ts': 9,
   'packages/code/tests/the-fast-guards-are-the-marked-ones.test.ts': 6,
   'packages/code/tests/the-fast-guards-say-what-they-check.test.ts': 10,
   'packages/code/tests/the-feed-covers-this-project.test.ts': 10,

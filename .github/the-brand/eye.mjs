@@ -2,8 +2,13 @@
 // round a flat iris, clipped to the almond's own outline. It draws no glint and no pupil. `eye` is the eye at rest, with
 // its downward look; `blinkingEye` is the same eye on the banner's 9 s cycle, where only the lids and the iris move and
 // the almond stays. A diagram draws both and shows the one at rest under `prefers-reduced-motion`.
+//
+// THE EYE IS NEVER INVERTED. On a dark ground it is drawn as is: bone lines, a sulphur iris. On a light ground it is the
+// same dark eye in a charcoal seal, a rounded square (`SEAL`, the one the editor's and the plugin's icons draw): `eye` and
+// `blinkingEye` take `sealed: true` for it, and the lines are then bone whatever `ink` says.
 
 import { f, line, relative, smooth } from './field.mjs';
+import { PALETTE } from './palette.mjs';
 
 /** The six lines of the eye, as levels. */
 const LEVELS = [-38.75, -21.75, -4.75, 4.75, 21.75, 38.75];
@@ -11,6 +16,22 @@ const LEVELS = [-38.75, -21.75, -4.75, 4.75, 21.75, 38.75];
 const EYE = { a: 21, k: 1.45, r: 15.5 };
 /** The outline of the almond the eye is clipped to. */
 export const ALMOND = 'M-47,0Q0,-86 47,0Q0,86 -47,0Z';
+
+/**
+ * The seal of the eye on a light ground: a rounded square that fills the eye's frame, the view box `-48 -48 96 96`, with
+ * the corner radius the icons of the editor and of the plugin draw (22 units).
+ */
+export const SEAL = Object.freeze({ x: -48, y: -48, size: 96, rx: 22 });
+
+/**
+ * The seal as a `<rect>`. A caller that paints it by a stylesheet passes `className` and no `fill`.
+ * @param {{ fill?: string, className?: string }} [o]
+ */
+export function sealRect({ fill, className } = {}) {
+  const cls = className === undefined ? '' : ` class="${className}"`;
+  const paint = fill === undefined ? '' : ` fill="${fill}"`;
+  return `<rect${cls} x="${SEAL.x}" y="${SEAL.y}" width="${SEAL.size}" height="${SEAL.size}" rx="${SEAL.rx}"${paint}/>`;
+}
 
 /** The six lines, as path data, with the opening at the middle. */
 const LIDS = LEVELS.map((c) => smooth(line(c, [[0, 0, EYE.a, EYE.k]], -58, 58, 16)));
@@ -30,6 +51,18 @@ export const EYE_AT_REST = Object.freeze({
   ),
 });
 
+/**
+ * What a sealed eye is drawn with: the seal in charcoal, bone lines.
+ * @template {{ ink: string }} T
+ * @param {boolean | undefined} sealed
+ * @param {T} o
+ * @returns {{ seal: string, o: T }}
+ */
+const withSeal = (sealed, o) =>
+  sealed
+    ? { seal: sealRect({ fill: PALETTE.charcoal }), o: { ...o, ink: PALETTE.bone } }
+    : { seal: '', o };
+
 /** The width of line `i`, as the eye at rest gives it. @param {number} i */
 const widthOf = (i) => EYE_AT_REST.lines[i]?.width ?? 0;
 
@@ -37,12 +70,13 @@ const widthOf = (i) => EYE_AT_REST.lines[i]?.width ?? 0;
  * The eye as the inside of an `<svg>` with the view box `-48 -48 96 96`: its clip, and the iris and the lines drawn in it.
  * `look` shifts the iris down by a share of itself, as a glance does. The iris is plain sulphur on every ground and
  * carries no stroke.
- * @param {{ id: string, ink: string, iris: string, look: number }} o
+ * @param {{ id: string, ink: string, iris: string, look: number, sealed?: boolean }} o
  */
-export function eye({ id, ink, iris, look }) {
+export function eye({ id, ink, iris, look, sealed }) {
+  const drawn = withSeal(sealed, { ink });
   const ellipse = `<ellipse cx="0" cy="${f(look * 0.45)}" rx="${EYE.r}" ry="${EYE.r}" fill="${iris}"></ellipse>`;
   const lids = LIDS.map((d, i) => `<path d="${d}" stroke-width="${widthOf(i)}"></path>`).join('');
-  return `<clipPath id="${id}"><path d="${ALMOND}"/></clipPath><g clip-path="url(#${id})">${ellipse}<g fill="none" stroke="${ink}" stroke-linecap="round">${lids}</g></g>`;
+  return `${drawn.seal}<clipPath id="${id}"><path d="${ALMOND}"/></clipPath><g clip-path="url(#${id})">${ellipse}<g fill="none" stroke="${drawn.o.ink}" stroke-linecap="round">${lids}</g></g>`;
 }
 
 /**
@@ -133,8 +167,9 @@ export function blinkingInside({ ink, iris, begin }) {
 /**
  * The eye on the banner's cycle, as the inside of an `<svg>` with the view box `-48 -48 96 96`: the same clip, iris and
  * six lines as `eye`, with the lids and the iris moving.
- * @param {{ id: string, ink: string, iris: string, begin: number }} o
+ * @param {{ id: string, ink: string, iris: string, begin: number, sealed?: boolean }} o
  */
-export function blinkingEye({ id, ...rest }) {
-  return `<clipPath id="${id}"><path d="${ALMOND}"/></clipPath><g clip-path="url(#${id})">${blinkingInside(rest)}</g>`;
+export function blinkingEye({ id, sealed, ...rest }) {
+  const drawn = withSeal(sealed, rest);
+  return `${drawn.seal}<clipPath id="${id}"><path d="${ALMOND}"/></clipPath><g clip-path="url(#${id})">${blinkingInside(drawn.o)}</g>`;
 }

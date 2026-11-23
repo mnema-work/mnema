@@ -244,7 +244,7 @@ describe('the front page is drawn from its scripts', () => {
     ),
   )('%s has its central point under the eye, within 0.5', (path, r) => {
     const svg = diagrams[path] ?? '';
-    const eye = Number(/translate\(([\d.]+),44\) scale\(\.6\)/.exec(svg)?.[1]);
+    const eye = Number(/translate\(([\d.]+),44\) scale\(\.(?:6|54)\)/.exec(svg)?.[1]);
     const centres = [
       ...svg.matchAll(/<circle cx="([\d.]+)" cy="[\d.]+" r="([\d.]+)" fill="#e6da2e"[^>]*>/g),
     ]
@@ -538,11 +538,12 @@ describe('the banner blinks, and stops when asked to', () => {
     (theme) => {
       const svg = drawn[`${ASSETS}/banner-${theme}.svg`] ?? '';
       const ink = theme === 'dark' ? PALETTE.bone : PALETTE.charcoal;
-      // The lines of the eye and the word are in the ink; the iris is the sulphur.
-      expect(svg).toContain(`stroke="${ink}"`);
+      // The word is in the ink and the iris is the sulphur; the lines of the eye are bone on every ground, since the eye is
+      // never inverted: on the light banner it sits in a charcoal seal, and that seal is the one rect.
+      expect(svg).toContain(`stroke="${PALETTE.bone}"`);
       expect(svg).toContain(`fill="${ink}"`);
       expect(svg).toContain(`fill="${PALETTE.sulphur}"`);
-      expect(svg).not.toContain('<rect');
+      expect(svg.match(/<rect\b/g)?.length ?? 0).toBe(theme === 'dark' ? 0 : 1);
       // The iris is plain sulphur on every ground: it carries no ring, on a light page or a dark one.
       const irises = [...svg.matchAll(/<ellipse\b([^>]*)>/g)].map((m) =>
         attributesOf(m[1] as string),
@@ -1303,7 +1304,7 @@ describe('the diagrams are outlines of their words, drawn in the brand', () => {
     // The eye at rest, plain iris and no ring on either ground, said here by its digest (the id of its clip left out).
     const AT_REST = {
       dark: '9c2b2efbdca012aa6509433d8852973ad08898a93ed8a3313764db28adacf27c',
-      light: '3402771b1dd38445a5d4af66186b34164aeb5a560eb297e000bd2c41691ed49f',
+      light: '1d8d888302fe2ee95e6e5d6774bae62f59e6c4ac6fe2ae905a510b959d1db2a9',
     } as const;
 
     it.each(FOURTEEN)(
@@ -1422,7 +1423,9 @@ describe('the diagrams are outlines of their words, drawn in the brand', () => {
       "%s tints a panel with the theme's ink, and not with a colour of its own",
       (path) => {
         const theme = themeOf(path);
-        const panels = nodesOf(read(path)).filter((n) => n.tag === 'rect' && n.at.rx !== undefined);
+        const panels = nodesOf(read(path)).filter(
+          (n) => n.tag === 'rect' && n.at.rx !== undefined && n.at.x !== '-48',
+        );
         for (const p of panels) {
           expect(p.at.fill, path).toBe(DIAGRAM[theme].ink);
           const opacity = Number(p.at['fill-opacity']);
@@ -1457,7 +1460,9 @@ describe('the diagrams are outlines of their words, drawn in the brand', () => {
 
     it('has panels to read: the chips of the steps and of the states', () => {
       const withPanels = FOURTEEN.filter((path) =>
-        nodesOf(read(path)).some((n) => n.tag === 'rect' && n.at.rx !== undefined),
+        nodesOf(read(path)).some(
+          (n) => n.tag === 'rect' && n.at.rx !== undefined && n.at.x !== '-48',
+        ),
       );
       expect(withPanels.map((p) => p.split('/').pop())).toEqual([
         'core-dark.svg',
@@ -1536,7 +1541,9 @@ describe('the diagrams are outlines of their words, drawn in the brand', () => {
     const nodes = nodesOf(diagrams[path] ?? '');
     const num = (v: string | undefined) => Number(v);
     const chips = nodes.flatMap((n, i) =>
-      n.tag === 'rect' && n.at.rx !== undefined ? [{ chip: n, text: nodes[i + 1] }] : [],
+      n.tag === 'rect' && n.at.rx !== undefined && n.at.x !== '-48'
+        ? [{ chip: n, text: nodes[i + 1] }]
+        : [],
     );
     const id = [...LINED, ...FRONT].find((p) => p.dark === path || p.light === path)?.id;
     expect(chips.length, path).toBe(id === 'how-it-works' || id === 'core' ? 4 : 0);
@@ -1764,6 +1771,7 @@ describe('every diagram lays its texts on the edges they line up with', () => {
       /<g transform="(translate\([^"]*)"><g class="ea">/.exec(svg)?.[1],
     );
     const almond = /<clipPath id="[^"]*"><path d="(M[^"]*)"\/><\/clipPath>/.exec(svg)?.[1] ?? '';
+    const sealed = svg.includes('<rect x="-48" y="-48" width="96" height="96" rx="22"');
     // The almond is two quadratic curves, mirrors of each other: its half height is the first curve's, which at its
     // middle is half of its control point's.
     const [x0, y0, cx, cy, x1, y1] = [...almond.matchAll(/-?[\d.]+/g)]
@@ -1778,7 +1786,10 @@ describe('every diagram lays its texts on the edges they line up with', () => {
       }),
     );
     expect([x0, x1, cx, top]).toEqual([-47, 47, 0, -43]);
-    const eye: Box = [-47 * k + dx, top * k + dy, 47 * k + dx, -top * k + dy];
+    // On a light ground the eye is the seal: the rounded square that fills the frame of 96.
+    const eye: Box = sealed
+      ? [-48 * k + dx, -48 * k + dy, 48 * k + dx, 48 * k + dy]
+      : [-47 * k + dx, top * k + dy, 47 * k + dx, -top * k + dy];
     expect(eye[3] - eye[1]).toBeGreaterThan(40);
     const CLEAR = 6;
     const touching = textsOf(svg).filter(
@@ -1839,7 +1850,7 @@ describe('every diagram lays its texts on the edges they line up with', () => {
       'how-mnema-fits-%s has its lanes symmetric about the eye, within 0.5',
       (theme) => {
         const svg = read(`${ASSETS}/how-mnema-fits-${theme}.svg`);
-        const eye = Number(/translate\(([\d.]+),44\) scale\(\.6\)/.exec(svg)?.[1]);
+        const eye = Number(/translate\(([\d.]+),44\) scale\(\.(?:6|54)\)/.exec(svg)?.[1]);
         // A lane is the path of stroke 3 from its start, a round cap beyond it, to what ends it: the decision's ring.
         const starts = [
           ...svg.matchAll(
