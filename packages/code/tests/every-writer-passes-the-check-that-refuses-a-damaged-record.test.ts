@@ -454,6 +454,29 @@ const COMMAND_LINE: Readonly<Record<string, Outcome>> = {
     answers: { argv: () => ['check', 'run'] },
     because: 'it runs at a commit and this project is in no git repository',
   },
+  'backup setup': {
+    answers: { argv: () => ['backup', 'setup', join(sandbox, 'another-backup')] },
+    because:
+      'it names a folder in a file of the machine after a person confirms at a terminal, and writes no entry',
+  },
+  'backup run': {
+    answers: { argv: () => ['backup', 'run'] },
+    because:
+      'it copies the trees into a folder outside the record; a copy of a damaged record is still a copy',
+  },
+  'backup restore': {
+    answers: { argv: () => ['backup', 'restore'] },
+    because:
+      'it is the way back: it puts files back where a tree lost them, never over one it holds, and must run over damage',
+  },
+  'backup hook install': {
+    answers: { argv: () => ['backup', 'hook', 'install'] },
+    because: 'it writes a git hook, never the record, and this project is in no git repository',
+  },
+  'backup hook uninstall': {
+    answers: { argv: () => ['backup', 'hook', 'uninstall'] },
+    because: 'it removes a git hook, never the record, and this project is in no git repository',
+  },
   'commit-hook install': {
     answers: { argv: () => ['commit-hook', 'install'] },
     because: 'it writes a git hook, never the record, and this project is in no git repository',
@@ -687,25 +710,6 @@ describe('the writers of the agent', () => {
 const WRITES_ELSEWHERE: Readonly<
   Record<string, { readonly argv: () => readonly string[]; readonly because: string }>
 > = {
-  'backup setup': {
-    argv: () => ['backup', 'setup', join(sandbox, 'another-backup')],
-    because:
-      'it names a folder in a file of the machine after a person confirms at a terminal, and writes no entry',
-  },
-  'backup run': {
-    argv: () => ['backup', 'run'],
-    because:
-      'it copies the trees into a folder outside the record; a copy of a damaged record is still a copy',
-  },
-  'backup restore': {
-    argv: () => ['backup', 'restore'],
-    because:
-      'it is the way back: it puts files back where a tree lost them, never over one it holds, and must run over damage',
-  },
-  'backup hook install': {
-    argv: () => ['backup', 'hook', 'install'],
-    because: 'it writes a git hook, never the record',
-  },
   site: {
     argv: () => ['site', '--out', join(sandbox, 'site-out')],
     because: 'it writes one page under the folder it is given',

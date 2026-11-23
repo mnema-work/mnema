@@ -278,6 +278,8 @@ const VERBS_NOT_IN_THE_LIBRARY: Readonly<Record<string, string>> = {
     'it writes a file into a git repository’s hooks, which only a person at a shell asks for',
   record:
     'it runs git over the working tree (a pull) or is the merge driver git itself calls, which a person at a shell or git asks for',
+  backup:
+    'it copies the trees into a folder the person named, puts a copy back into a tree that lost files and writes a hook into the repository; none of it touches a chain, and a person at a shell asks for it, an agent may suggest the command',
   mcp: 'it serves the MCP door, which is the second of the three',
   check: 'a rule’s check is declared by a person and run by a machine with a key of its own',
   inherit: 'trusting another repository’s record is a person’s decision',
@@ -289,8 +291,6 @@ const VERBS_NOT_IN_THE_LIBRARY: Readonly<Record<string, string>> = {
  * is about the verbs that write the record; these are the ones it cannot ask.
  */
 const VERBS_THAT_WRITE_NOTHING_AND_ARE_NOT_TOOLS: Readonly<Record<string, string>> = {
-  backup:
-    'it copies the trees into a folder the person named and writes nothing to the record; a person at a shell asks for it, and an agent may suggest the command',
   upgrade:
     'it puts mnema’s own text of an earlier version at this one and asks before the merge driver goes into a clone’s git configuration; it writes nothing to the record, a person at a shell asks for it, and an agent may suggest the command',
 };
