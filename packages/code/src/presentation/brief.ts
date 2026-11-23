@@ -923,7 +923,7 @@ function privateSection(
  *
  * EACH CHAIN NUMBERS ITS OWN, so the private tree's `ADR-1` and the committed record's `ADR-1`
  * are two different decisions printed in one text. A bare label here would let a citation of one
- * mean the other; the word in front of it, and the id the line carries, keep them apart.
+ * mean the other; the suffix, and the id the line carries, keep them apart.
  */
 function privateLabel(adr: string): string {
   return readLabel(adr, 'private');

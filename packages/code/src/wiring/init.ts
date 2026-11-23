@@ -23,6 +23,7 @@ import type { WhoMayAcceptRecorded } from '../init/accepts.js';
 import { fact } from '../presentation/detail.js';
 import type { Render } from '../presentation/render.js';
 import { STARTS_OFF, SWITCH_ON_COMMAND } from '../record-framing.js';
+import { RECORD_STAYS_LOCAL } from '../recorded-content.js';
 import { here } from './context.js';
 import { enumeratedOption } from './enumerated.js';
 import type { CliIo } from './io.js';
@@ -302,7 +303,7 @@ export function whatComesNext(result: InitResult, pulled?: MergeDriverFixed): st
   if (around.gitRoot !== undefined) {
     lines.push(
       around.recordIsLocal === true
-        ? 'Git ignores `.mnema/` here: the record stays on this machine, and no clone gets it.'
+        ? RECORD_STAYS_LOCAL
         : 'Commit `.mnema/` with the repository: the record travels with it, and every clone reads it.',
     );
     if (around.foundedBelowTheRoot) {

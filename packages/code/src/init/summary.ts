@@ -26,6 +26,7 @@ import { HOSTS } from '../host-names.js';
 import type { Line } from '../presentation/line.js';
 import { widthOfText } from '../presentation/width.js';
 import { STARTS_OFF } from '../record-framing.js';
+import { RECORD_STAYS_LOCAL } from '../recorded-content.js';
 import { onOneLine } from '../wiring/on-one-line.js';
 import type { WhoMayAcceptRecorded } from './accepts.js';
 import { fromTheFolder } from './detect.js';
@@ -196,7 +197,7 @@ function nextSteps(founded: Founded): readonly NextStep[] {
     steps.push({
       says:
         around.recordIsLocal === true
-          ? 'Git ignores `.mnema/` here: the record stays on this machine and no clone gets it.'
+          ? RECORD_STAYS_LOCAL
           : 'Commit `.mnema/` with the repository; every clone reads the record.',
       commands: [],
     });

@@ -220,6 +220,10 @@ export function temporaryBriefNotice(brief: string, temporary: boolean | undefin
   ];
 }
 
+/** What a founding says where git ignores `.mnema/`: the one sentence both renderers print. */
+export const RECORD_STAYS_LOCAL =
+  'Git ignores `.mnema/` here: the record stays on this machine, and no clone gets it.';
+
 /** The one tree a clone of the repository gets. */
 const TRAVELS: Scope = 'public';
 
