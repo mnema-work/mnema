@@ -195,7 +195,10 @@ describe('CI runs the floor', () => {
     // run and still targets 3.9; ADR-696).
     const set = pythonsOf(job?.body ?? '');
     expect(set.at(-1), `${job?.where} does not set up the floor last`).toBe(FLOOR);
-    expect(set.length, `${job?.where} sets up more than the floor and one checker Python`).toBeLessThanOrEqual(2);
+    expect(
+      set.length,
+      `${job?.where} sets up more than the floor and one checker Python`,
+    ).toBeLessThanOrEqual(2);
     expect(
       set.slice(0, -1).filter((said) => !reaches(said, FLOOR)),
       `${job?.where} sets up a Python below the floor`,
@@ -261,13 +264,18 @@ describe('CI runs the floor', () => {
     );
     // THE CHECKER RUNS ON ITS OWN PYTHON, NEVER THE FLOOR'S: its venv is made from the interpreter
     // the checker's setup step reports, so mypy installs on a Python that can run it.
-    const checkerStep = /^\s*-\s+id:\s*([\w-]+)\s*\n\s+uses: actions\/setup-python@[^\n]*\n\s+with:\n\s+python-version:\s*\S+/m.exec(body);
-    expect(checkerStep?.[1], 'the floor job names no setup step for the checker Python').toBeDefined();
+    const checkerStep =
+      /^\s*-\s+id:\s*([\w-]+)\s*\n\s+uses: actions\/setup-python@[^\n]*\n\s+with:\n\s+python-version:\s*\S+/m.exec(
+        body,
+      );
     expect(
-      body,
-      'the checker venv is not made from the checker Python the job set up',
-    ).toMatch(
-      new RegExp(`CHECKER_PYTHON:\\s*\\$\\{\\{\\s*steps\\.${checkerStep?.[1]}\\.outputs\\.python-path\\s*\\}\\}[\\s\\S]*"\\$CHECKER_PYTHON" -m venv`),
+      checkerStep?.[1],
+      'the floor job names no setup step for the checker Python',
+    ).toBeDefined();
+    expect(body, 'the checker venv is not made from the checker Python the job set up').toMatch(
+      new RegExp(
+        `CHECKER_PYTHON:\\s*\\$\\{\\{\\s*steps\\.${checkerStep?.[1]}\\.outputs\\.python-path\\s*\\}\\}[\\s\\S]*"\\$CHECKER_PYTHON" -m venv`,
+      ),
     );
     // A CHECKER THAT FLOATS IS A CHECK THAT CHANGES UNDER THE SAME HEAD, and one release of it
     // already refuses the floor as a target.

@@ -654,7 +654,7 @@ def resolve(
             revoked = payload.get("revokedFp")
             # Section 4 refuses a key.revoked with no string revokedFp; if one got here anyway,
             # discarding None removes nothing.
-            keys_of(anchor).discard(revoked)  # type: ignore[arg-type]
+            keys_of(anchor).discard(revoked)
             covered_revoked.add(f"{anchor}|{revoked}")
             continue
 
