@@ -35,12 +35,12 @@ const widthOf = (i) => EYE_AT_REST.lines[i]?.width ?? 0;
 
 /**
  * The eye as the inside of an `<svg>` with the view box `-48 -48 96 96`: its clip, and the iris and the lines drawn in it.
- * `look` shifts the iris down by a share of itself, as a glance does. `ring` draws a thin ring round the iris, which a light
- * ground needs, since the iris gives little contrast on it.
- * @param {{ id: string, ink: string, iris: string, ringInk: string, ring: boolean, look: number }} o
+ * `look` shifts the iris down by a share of itself, as a glance does. The iris is plain sulphur on every ground and
+ * carries no stroke.
+ * @param {{ id: string, ink: string, iris: string, look: number }} o
  */
-export function eye({ id, ink, iris, ringInk, ring, look }) {
-  const ellipse = `<ellipse cx="0" cy="${f(look * 0.45)}" rx="${EYE.r}" ry="${EYE.r}" fill="${iris}"${ring ? ` stroke="${ringInk}" stroke-width="2.2"` : ''}></ellipse>`;
+export function eye({ id, ink, iris, look }) {
+  const ellipse = `<ellipse cx="0" cy="${f(look * 0.45)}" rx="${EYE.r}" ry="${EYE.r}" fill="${iris}"></ellipse>`;
   const lids = LIDS.map((d, i) => `<path d="${d}" stroke-width="${widthOf(i)}"></path>`).join('');
   return `<clipPath id="${id}"><path d="${ALMOND}"/></clipPath><g clip-path="url(#${id})">${ellipse}<g fill="none" stroke="${ink}" stroke-linecap="round">${lids}</g></g>`;
 }
@@ -104,16 +104,16 @@ const animate = (attribute, values, begin) =>
  * With no `begin` it is the same marking without the `<animate>`s, which is the first stop of the cycle: the eye the
  * banner shows to a reader who asks for less motion. `begin` is where in the cycle the eye starts: a fixed value, so
  * that a picture is its bytes.
- * @param {{ ink: string, iris: string, ringInk: string, ring: boolean, begin?: number }} o
+ * @param {{ ink: string, iris: string, begin?: number }} o
  */
-export function blinkingInside({ ink, iris, ringInk, ring, begin }) {
+export function blinkingInside({ ink, iris, begin }) {
   /**
    * @param {string} attribute
    * @param {readonly string[]} values
    */
   const move = (attribute, values) =>
     begin === undefined ? '' : animate(attribute, values, begin);
-  const ellipse = `<ellipse cx="0" cy="0" rx="${EYE.r}" ry="${EYE.r}" fill="${iris}"${ring ? ` stroke="${ringInk}" stroke-width="2.2"` : ''}>${move(
+  const ellipse = `<ellipse cx="0" cy="0" rx="${EYE.r}" ry="${EYE.r}" fill="${iris}">${move(
     'cx',
     KEY.map(([, dx]) => f(dx)),
   )}${move(
@@ -133,7 +133,7 @@ export function blinkingInside({ ink, iris, ringInk, ring, begin }) {
 /**
  * The eye on the banner's cycle, as the inside of an `<svg>` with the view box `-48 -48 96 96`: the same clip, iris and
  * six lines as `eye`, with the lids and the iris moving.
- * @param {{ id: string, ink: string, iris: string, ringInk: string, ring: boolean, begin: number }} o
+ * @param {{ id: string, ink: string, iris: string, begin: number }} o
  */
 export function blinkingEye({ id, ...rest }) {
   return `<clipPath id="${id}"><path d="${ALMOND}"/></clipPath><g clip-path="url(#${id})">${blinkingInside(rest)}</g>`;

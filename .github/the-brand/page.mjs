@@ -5,8 +5,8 @@
 // committed, and `the-record-page-wears-the-mark.test.ts` holds it equal to what this makes.
 //
 //   - THE EYE of the header and the favicon are the brand's eye at rest (`./eye.mjs`, `EYE_AT_REST`), still: the header's
-//     takes the ink of the page's text (`currentColor`) and the iris's sulphur, with the thin ring round the iris that a
-//     light ground needs (the page's style drops the ring on the dark ground); the favicon is the eye in its dark square, the
+//     takes the ink of the page's text (`currentColor`) and the iris's sulphur, with no ring round the iris on any ground;
+//     the favicon is the eye in its dark square, the
 //     store icon's drawing, which reads on a light tab and on a dark one.
 //   - THE FACES are WOFF2 subsets made by `subset-font` (HarfBuzz as WebAssembly): only the glyphs of `ARCHIVO_RANGES`, which
 //     is Latin, since a page embeds what it prints (a record's text in another script falls to the system face the page's
@@ -187,17 +187,17 @@ const archivo400 = await archivoAt(400);
 const archivo700 = await archivoAt(700);
 
 /** The drawing of the eye at rest, still, as the inside of an SVG with the view box `-48 -48 96 96`. */
-/** @param {string} id @param {{ ink: string, iris: string, ringInk: string, ring: boolean }} options */
+/** @param {string} id @param {{ ink: string, iris: string }} options */
 const inside = (id, options) => eye({ id, look: 0, ...options });
 
-/** The eye of the header: the ink of the page's text, the iris sulphur, a ring round the iris. */
+/** The eye of the header: the ink of the page's text, the iris sulphur, no ring. */
 export function headerEye() {
-  return `<svg class="mark" xmlns="http://www.w3.org/2000/svg" viewBox="-48 -48 96 96" width="40" height="40" aria-hidden="true" focusable="false">${inside('mark-eye', { ink: 'currentColor', iris: PALETTE.sulphur, ringInk: 'currentColor', ring: true })}</svg>`;
+  return `<svg class="mark" xmlns="http://www.w3.org/2000/svg" viewBox="-48 -48 96 96" width="40" height="40" aria-hidden="true" focusable="false">${inside('mark-eye', { ink: 'currentColor', iris: PALETTE.sulphur })}</svg>`;
 }
 
 /** The eye of the favicon: the eye in its dark rounded square. */
 export function faviconSvg() {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-48 -48 96 96" width="96" height="96"><rect x="-48" y="-48" width="96" height="96" rx="22" fill="${PALETTE.charcoal}"/>${inside('favicon-eye', { ink: PALETTE.bone, iris: PALETTE.sulphur, ringInk: PALETTE.charcoal, ring: false })}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-48 -48 96 96" width="96" height="96"><rect x="-48" y="-48" width="96" height="96" rx="22" fill="${PALETTE.charcoal}"/>${inside('favicon-eye', { ink: PALETTE.bone, iris: PALETTE.sulphur })}</svg>`;
 }
 
 /** @param {Uint8Array | string} b */

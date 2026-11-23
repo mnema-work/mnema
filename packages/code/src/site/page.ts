@@ -234,7 +234,6 @@ h1 { margin: 0.5rem 0; }
 .head { display: flex; align-items: center; gap: 0.75rem; }
 .head h1 { margin: 0.5rem 0; }
 .mark { flex: none; width: 2.5rem; height: 2.5rem; color: var(--text); }
-@media (prefers-color-scheme: dark) { .mark ellipse { stroke: none; } }
 h2 { margin-top: 2rem; }
 a { color: var(--accent-text); }
 code, pre { font-family: ${CODE_FACE}; font-size: 0.85em; }

@@ -10,7 +10,7 @@
 //
 // Every id and class is made from the file's own name and the part's role, and the phase of the blink is a constant of the
 // file, so drawing twice gives the same bytes. The light banner is the dark one inverted: the ink is charcoal and the iris
-// carries a thin ring of it, since the yellow gives little contrast on a light page.
+// stays plain sulphur, with no ring.
 //
 // From the root of the repository (it needs no build):
 //
@@ -36,12 +36,12 @@ const TOP = 35;
 const WORD_HEIGHT = 76;
 
 /**
- * What differs between the two banners: the ink, the ring of the iris, and where in the cycle the eye starts (a constant
+ * What differs between the two banners: the ink, and where in the cycle the eye starts (a constant
  * per file).
  */
 const THEMES = {
-  dark: { ink: PALETTE.bone, ring: false, begin: -6.1 },
-  light: { ink: PALETTE.charcoal, ring: true, begin: -0.8 },
+  dark: { ink: PALETTE.bone, begin: -6.1 },
+  light: { ink: PALETTE.charcoal, begin: -0.8 },
 };
 
 /**
@@ -49,7 +49,7 @@ const THEMES = {
  * @param {'dark' | 'light'} theme
  */
 const banner = (theme) => {
-  const { ink, ring, begin } = THEMES[theme];
+  const { ink, begin } = THEMES[theme];
   const almond = `banner-${theme}-almond`;
   const moving = `banner-${theme}-moving`;
   const still = `banner-${theme}-still`;
@@ -57,7 +57,7 @@ const banner = (theme) => {
   const [vx, vy, vw, vh] = word.box;
   const scale = WORD_HEIGHT / vh;
   const width = 150 + vw * scale;
-  const eyeFor = { ink, iris: PALETTE.sulphur, ringInk: PALETTE.charcoal, ring };
+  const eyeFor = { ink, iris: PALETTE.sulphur };
   const swap = `.${still}{display:none}@media (prefers-reduced-motion:reduce){.${moving}{display:none}.${still}{display:inline}}`;
   const eye = `<g transform="translate(60,60) scale(1.16)"><clipPath id="${almond}"><path d="${ALMOND}"/></clipPath><g clip-path="url(#${almond})"><g class="${moving}">${blinkingInside({ ...eyeFor, begin })}</g><g class="${still}">${blinkingInside(eyeFor)}</g></g></g>`;
   const letters = `<g transform="translate(140,22) scale(${f(scale)}) translate(${f(-vx)},${f(-vy)})">${word.body}</g>`;
