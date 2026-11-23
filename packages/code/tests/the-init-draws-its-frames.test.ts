@@ -282,6 +282,7 @@ describe('the founding list', () => {
   });
 
   it('says git ignores the record, in one sentence, where it does, and tells to commit where it does not', () => {
+    const { done } = { done: factsOfTheFolder().done };
     const around = done.result.around as { gitRoot?: string };
     const steps = (local: boolean) =>
       summaryPage(
