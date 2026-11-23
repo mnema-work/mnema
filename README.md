@@ -236,7 +236,9 @@ claim about the agent hosts is held, and which are not held yet, is in [`docs/ev
   [The session journal and compaction](docs/the-session-journal-and-compaction.md) ·
   [The ledger of caught failures](docs/the-ledger-of-caught-failures.md) · [As an MCP server](docs/as-an-mcp-server.md) ·
   [Features](docs/features.md) · [Where it fits](docs/where-it-fits.md) ·
-  [mnema next to a folder of ADRs](docs/mnema-next-to-a-folder-of-adrs.md) · [Windows and macOS](docs/platforms.md) ·
+  [mnema next to a folder of ADRs](docs/mnema-next-to-a-folder-of-adrs.md) ·
+  [The OWASP Top 10 for Agentic Applications](docs/owasp-agentic-top-10.md) ·
+  [The text the record hands a model](docs/the-text-the-record-hands-a-model.md) · [Windows and macOS](docs/platforms.md) ·
   [When two machines disagree](docs/convergence.md) · [Glossary](docs/glossary.md)
 - **Reference.** [Commands](docs/reference/commands.md) · [MCP tools](docs/reference/mcp-tools.md) · [Switches](docs/switches.md) ·
   [The command reference](docs/cli-reference.md) · [The record format](packages/chain/FORMAT.md) · [Packages](docs/packages.md) ·

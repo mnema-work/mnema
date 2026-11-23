@@ -25,24 +25,24 @@ import { endsInAComment, linesOf } from './support/reading-a-shell-line.js';
 import { writtenByHand } from './support/the-reference-pages.js';
 
 /**
- * The pages a newcomer pastes from, in the order they meet them. Other pages carry such comments
- * still; a page joins the list when
- * it is cleaned, and the list is never longer than what holds.
+ * The pages a reader pastes from: the front page, every page of `docs/`, the pages of the command
+ * reference, and the two READMEs that carry a block to run (the plugin's and the second reader's).
+ * A page added to `docs/` is read without anybody listing it. Pages outside these still carry
+ * such comments (the measurement kits, the captured scripts and the notes of `.github/`); a page
+ * joins the list when it is cleaned, and the list is never longer than what holds.
  */
 const PAGES = [
   'README.md',
-  'docs/install.md',
-  'docs/build-from-source.md',
-  'docs/first-record.md',
-  'docs/site.md',
-  'docs/rules-and-the-commits-that-cite-them.md',
-  'docs/committing-the-record.md',
-  'docs/mnema-next-to-a-folder-of-adrs.md',
-  'docs/cli-reference.md',
+  ...readdirSync(join(ROOT, 'docs'))
+    .filter((file) => file.endsWith('.md'))
+    .sort()
+    .map((file) => `docs/${file}`),
   ...readdirSync(join(ROOT, 'docs/reference/cli'))
     .filter((file) => file.endsWith('.md'))
     .sort()
     .map((file) => `docs/reference/cli/${file}`),
+  'plugin/README.md',
+  'packages/chain/verifier/README.md',
 ];
 
 /** The fence labels a reader pastes into a shell, and a fence with no label. */
@@ -56,7 +56,7 @@ function commentsAfterACommand(page: string, markdown: string): readonly string[
 }
 
 describe('a shell block a reader pastes', () => {
-  it('carries no comment after a command, on the pages a newcomer pastes from', () => {
+  it('carries no comment after a command, on the pages a reader pastes from', () => {
     const found = PAGES.flatMap((page) =>
       commentsAfterACommand(page, writtenByHand(page, read(page))),
     );
