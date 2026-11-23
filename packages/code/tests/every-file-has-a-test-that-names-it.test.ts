@@ -1599,6 +1599,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-second-reader-reads-a-backup-copy.test.ts': 9,
   'packages/code/tests/the-secret-classes-page-is-generated.test.ts': 4,
   'packages/code/tests/the-sentence-reaches-every-door.test.ts': 8,
+  'packages/code/tests/the-served-schemas-use-the-keywords-we-know.test.ts': 11,
   'packages/code/tests/the-server-keeps-its-own-projects-cache.test.ts': 12,
   'packages/code/tests/the-server-only-plugin-runs-no-hook.test.ts': 4,
   'packages/code/tests/the-session-journal-keeps-the-shape-not-the-words.test.ts': 16,
