@@ -213,7 +213,10 @@ function refreshOf(stored: string, configPath: string): CacheRefreshed | undefin
  * A refusal after a remote destination's cache was brought up to the remote: the "Nothing was
  * written" a refusal of the copy ends with is not true of the cache, and is not said.
  */
-function afterRefresh(refused: BackupRefused, refreshed: CacheRefreshed | undefined): BackupRefused {
+function afterRefresh(
+  refused: BackupRefused,
+  refreshed: CacheRefreshed | undefined,
+): BackupRefused {
   if (refreshed === undefined || !('message' in refused)) return refused;
   return {
     ...refused,
