@@ -264,16 +264,12 @@ const watcher = (t, w) => {
     id: t.id('eye'),
     ink: t.ink,
     iris: PALETTE.sulphur,
-    ringInk: PALETTE.charcoal,
-    ring: t.ring,
     look: 5,
   });
   const blinking = blinkingEye({
     id: t.id('eye'),
     ink: t.ink,
     iris: PALETTE.sulphur,
-    ringInk: PALETTE.charcoal,
-    ring: t.ring,
     begin: BLINK_BEGIN,
   });
   return `<g transform="translate(${w / 2},44) scale(.6)"><g class="ea">${blinking}</g><g class="es" display="none">${still}</g></g>`;

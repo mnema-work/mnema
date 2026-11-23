@@ -155,6 +155,13 @@ describe("the eye in the record page's header", () => {
     expect(STYLE).not.toContain('@keyframes');
   });
 
+  it('draws the iris with no ring, on a light page and on a dark one', () => {
+    const iris = /<ellipse\b[^>]*>/.exec(mark.HEADER_EYE)?.[0] ?? '';
+    expect(iris).toContain(`fill="${PALETTE.sulphur}"`);
+    expect(iris).not.toContain('stroke');
+    expect(STYLE).not.toMatch(/\.mark ellipse/);
+  });
+
   it('draws the iris sulphur and the lines in the ink of the page', () => {
     expect(mark.HEADER_EYE).toContain(`fill="${PALETTE.sulphur}"`);
     expect(mark.HEADER_EYE).toContain('stroke="currentColor"');

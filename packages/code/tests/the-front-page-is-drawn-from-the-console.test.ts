@@ -543,14 +543,14 @@ describe('the banner blinks, and stops when asked to', () => {
       expect(svg).toContain(`fill="${ink}"`);
       expect(svg).toContain(`fill="${PALETTE.sulphur}"`);
       expect(svg).not.toContain('<rect');
-      // A light page gives the yellow 1.2 to 1, so the iris is ringed there and nowhere else.
+      // The iris is plain sulphur on every ground: it carries no ring, on a light page or a dark one.
       const irises = [...svg.matchAll(/<ellipse\b([^>]*)>/g)].map((m) =>
         attributesOf(m[1] as string),
       );
       expect(irises).toHaveLength(2);
       for (const iris of irises) {
-        expect(iris.stroke).toBe(theme === 'light' ? PALETTE.charcoal : undefined);
-        expect(iris['stroke-width']).toBe(theme === 'light' ? '2.2' : undefined);
+        expect(iris.stroke).toBeUndefined();
+        expect(iris['stroke-width']).toBeUndefined();
       }
     },
   );
@@ -848,6 +848,35 @@ describe('every package, and the family, draws what it is, in its own words', ()
       expect(words.length).toBeGreaterThan(5);
       expect(words.filter((w) => !said.has(w))).toEqual([]);
     }
+  });
+
+  it.each(LINED)('$id draws the eye with a plain iris, no ring, dark or light', (picture) => {
+    for (const path of [picture.dark, picture.light]) {
+      const irises = [...(diagrams[path] ?? '').matchAll(/<ellipse\b([^>]*)>/g)].map((m) =>
+        attributesOf(m[1] as string),
+      );
+      expect(irises.length).toBeGreaterThan(0);
+      for (const iris of irises) {
+        expect(iris.fill).toBe(PALETTE.sulphur);
+        expect(iris.stroke).toBeUndefined();
+      }
+    }
+  });
+
+  it('keeps the thin charcoal ring on the yellow signs of the light diagrams, and on no dark one', () => {
+    const signs = (path: string) =>
+      [...(diagrams[path] ?? '').matchAll(/<circle\b([^>]*)>/g)]
+        .map((m) => attributesOf(m[1] as string))
+        .filter((c) => c.fill === PALETTE.sulphur);
+    let seen = 0;
+    for (const picture of LINED) {
+      for (const sign of signs(picture.light)) {
+        seen++;
+        expect(sign.stroke).toBe(PALETTE.charcoal);
+      }
+      for (const sign of signs(picture.dark)) expect(sign.stroke).toBeUndefined();
+    }
+    expect(seen).toBeGreaterThan(0);
   });
 
   it.each(LINED)(
@@ -1271,10 +1300,10 @@ describe('the diagrams are outlines of their words, drawn in the brand', () => {
       }
     });
 
-    // The eye at rest as the diagrams drew it before they moved, said here by its digest (the id of its clip left out).
+    // The eye at rest, plain iris and no ring on either ground, said here by its digest (the id of its clip left out).
     const AT_REST = {
       dark: '9c2b2efbdca012aa6509433d8852973ad08898a93ed8a3313764db28adacf27c',
-      light: 'c237a42785858e92285f557875a71e3bab7b5251a7e857bc1f4c63d3739fc53f',
+      light: '3402771b1dd38445a5d4af66186b34164aeb5a560eb297e000bd2c41691ed49f',
     } as const;
 
     it.each(FOURTEEN)(
