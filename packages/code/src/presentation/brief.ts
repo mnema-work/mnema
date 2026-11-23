@@ -134,6 +134,7 @@ import { DERIVED_FROM } from '../provenance.js';
 import { recordFraming } from '../record-framing.js';
 import { severalRecordsSentence } from '../record-integrity.js';
 import { acceptedOnLine, usualIdentity } from './accepted-by.js';
+import { readLabel } from './label.js';
 import { NAMED_TITLE_LIMIT, namedDecisionText } from './named-decision.js';
 import { toImport } from './status.js';
 import {
@@ -917,14 +918,15 @@ function privateSection(
 }
 
 /**
- * The label a private rule is printed with: `private ADR-<n>`, never the bare `ADR-<n>`.
+ * The label a private rule is printed with: `ADR-<n> (private)`, never the bare `ADR-<n>`: the one
+ * spelling `readLabel` gives it wherever a person reads it.
  *
  * EACH CHAIN NUMBERS ITS OWN, so the private tree's `ADR-1` and the committed record's `ADR-1`
  * are two different decisions printed in one text. A bare label here would let a citation of one
- * mean the other; the word in front of it, and the id the line carries, keep them apart.
+ * mean the other; the suffix, and the id the line carries, keep them apart.
  */
 function privateLabel(adr: string): string {
-  return `private ${adr}`;
+  return readLabel(adr, 'private');
 }
 
 /**

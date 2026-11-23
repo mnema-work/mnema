@@ -349,6 +349,11 @@ const INVOCATION: Readonly<Record<string, Invocation>> = {
   // The same on a message of the person's: in process it has no payload, answers `{}` and writes
   // nothing. What it answers to a payload is held in `a-dictated-rule-is-said.test.ts`.
   dictated: { argv: () => ['dictated'] },
+
+  // The same, for the verb that keeps a session's words in a file of the machine's: in process it
+  // has no payload, keeps nothing and answers `{}`. What it keeps is held in
+  // `the-persons-words-are-kept-by-the-hooks.test.ts`, and it never writes to the record.
+  words: { argv: () => ['words', '--host', 'claude'] },
   // The same, for the verb that WRITES when a host feeds it: in process it has no payload, answers
   // `{}` and records nothing. What it records is held with a transcript through the binary and the
   // plugin's command (`a-correction-becomes-a-proposal.test.ts`), and in the signing sweep.
@@ -775,6 +780,7 @@ describe('every verb says if it writes', () => {
       'tally',
       'handback',
       'settled',
+      'words',
       'dictated',
     ]);
     expect(verbsThat('mutates').length + verbsThat('reads').length).toBe(DECLARED.length);

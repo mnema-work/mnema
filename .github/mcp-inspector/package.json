@@ -1,0 +1,7 @@
+{
+  "name": "mnema-mcp-inspector",
+  "private": true,
+  "dependencies": {
+    "@modelcontextprotocol/inspector": "2.16.0"
+  }
+}

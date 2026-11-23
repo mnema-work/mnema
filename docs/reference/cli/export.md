@@ -49,5 +49,5 @@ The window:
   by the instant each was recorded.
   A bound is a date (YYYY-MM-DD, read as UTC: --from is the start of the day,
   --to its last millisecond) or a timestamp ending in Z or an offset
-  (YYYY-MM-DDT10:30:00-03:00). Anything else is refused.
+  (YYYY-MM-DDT10:30:00-03:00). Anything else is refused, and so is a --from after the --to.
 ```

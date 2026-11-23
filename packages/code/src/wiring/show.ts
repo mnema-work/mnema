@@ -23,8 +23,12 @@ export function registerShow(program: Command, wiring: Wiring): Declared {
     .command('show')
     .description('show one whole record by id (the body a search only pointed at)')
     .argument('<id>', 'the record id (from `mnema search`)')
+    .option(
+      '--full',
+      'for a task, print every note about it whole, not one line each (a note’s own id always prints whole)',
+    )
     .option('--json', 'emit the faithful record as JSON')
-    .action(async (id: string, opts: { json?: boolean }) => {
+    .action(async (id: string, opts: { json?: boolean; full?: boolean }) => {
       const { divergenceNotice, linkBreakNotice, newerLinesNotice } = await import(
         './integrity.js'
       );
@@ -32,7 +36,7 @@ export function registerShow(program: Command, wiring: Wiring): Declared {
       const { recordReport } = await import('../presentation/record.js');
       const named = await idOrRefuse(wiring, id);
       if (named === undefined) return;
-      const result = runShow(here(), { id: named });
+      const result = runShow(here(), { id: named, ...(opts.full === true ? { full: true } : {}) });
       if (!result.ok) {
         // The refusal says what the trees it read say about their proof, first: a record that
         // was written and is not found because its entry was left out is not a record that never was.

@@ -163,6 +163,7 @@ import {
 } from '../intelligence-source.js';
 import { type Addressed, addressed, resolveLabel } from '../label-as-address.js';
 import {
+  briefIsATemporaryPath,
   governsTargets,
   isLabelShaped,
   isUnderATemporaryFolder,
@@ -518,6 +519,8 @@ export type FactRecordedResult =
         readonly recorded: readonly string[];
         /** The observation that carries a handoff's brief, when one was given. */
         readonly briefId?: string;
+        /** True when a handoff's brief is nothing but the path of a file under a temporary folder. */
+        readonly briefIsTemporary?: true;
         /**
          * Present when a handoff named another project than the one that holds the task, so it
          * took the default tree there: the sentence the reply adds.
@@ -636,6 +639,7 @@ export function runRecordHandoff(
   }
   const opened = openWrite(session, route.scope, route.target);
   const { run, which } = opened;
+  const ctxTrees = route.target?.trees ?? session.trees;
   const ctx = unlessLocated(session, opened.ctx, 'task', input.task, located);
   const recorded = ctx.writer.exclusively(() => {
     const written = recordHandoff(ctx, {
@@ -659,6 +663,13 @@ export function runRecordHandoff(
     ok: true,
     recorded: [recorded.fromAgent, recorded.toAgent],
     ...(recorded.briefId !== undefined ? { briefId: recorded.briefId } : {}),
+    ...(input.brief !== undefined &&
+    briefIsATemporaryPath(
+      input.brief,
+      ctxTrees.projectPublic === undefined ? undefined : dirname(ctxTrees.projectPublic),
+    )
+      ? { briefIsTemporary: true as const }
+      : {}),
     ...(followedNoTree !== undefined ? { followedNoTree } : {}),
     scope: route.scope,
     ...routedTo(session, route),
@@ -1057,11 +1068,15 @@ function offersBesideADecision(
 /**
  * The path a connection was asked about, remembered for {@link Session.looked} when it is this
  * project's: spelled as an address spells it (`pathInProject`), the latest first, once, and no more
- * than {@link MOST_PATHS_REMEMBERED}. A path outside the project, or the root itself, is not kept.
+ * than {@link MOST_PATHS_REMEMBERED}. A path outside the project, the root itself, or a copy of another
+ * branch under `.claude/worktrees/`, is not kept.
  */
 function lookedAt(session: Session, path: string): void {
   const relative = pathInProject(path, session.project ?? '');
   if (relative === undefined) return;
+  // A copy of another branch (an agent's worktree under the project) is not this project's file:
+  // a rule addressed at it would govern nothing a clone has.
+  if (relative.startsWith('.claude/worktrees/')) return;
   const at = session.looked.indexOf(relative);
   if (at !== -1) session.looked.splice(at, 1);
   session.looked.unshift(relative);

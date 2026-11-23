@@ -52,6 +52,8 @@ export interface TaskNote {
   readonly line: string;
   /** When it was recorded. */
   readonly at: string;
+  /** Its whole text: present only where the story was asked for whole (see {@link taskStory}). */
+  readonly text?: string;
 }
 
 /** A task's prose and the hand-over it last went through. */
@@ -120,7 +122,11 @@ function said(
 }
 
 /** The story of one task, or undefined when nothing was written beside it. */
-export function taskStory(caches: readonly ProjectionCache[], id: string): TaskStory | undefined {
+export function taskStory(
+  caches: readonly ProjectionCache[],
+  id: string,
+  whole = false,
+): TaskStory | undefined {
   const notes = notesAbout(caches, id);
   const handoffs = handoffsOf(caches, id);
   const lastHandoff = handoffs[0];
@@ -151,11 +157,13 @@ export function taskStory(caches: readonly ProjectionCache[], id: string): TaskS
       : {}),
     notes: {
       total: rest.length,
-      items: rest.slice(0, NOTES_SHOWN).map((note) => ({
+      // Whole: every note, each with its full text, and no cut.
+      items: (whole ? rest : rest.slice(0, NOTES_SHOWN)).map((note) => ({
         id: note.id,
         topic: note.topic,
         line: excerptOf(note.text),
         at: note.recordedAt,
+        ...(whole ? { text: note.text } : {}),
       })),
     },
   };

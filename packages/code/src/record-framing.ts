@@ -925,7 +925,8 @@ export const WHAT_STOPS: { readonly [K in SwitchableChannel]: string } = {
     'session and file',
   'subagent-handback':
     'the return of a subagent that ends its final reply without the block of decisions the record ' +
-    'asks for: with it on, a `SubagentStop` hook sends the subagent back once, with the format; ' +
+    'asks for: with it on, a `SubagentStop` hook sends the subagent back once, with the format (Copilot ' +
+    'CLI names no field for a second stop, so there not once); ' +
     'off, a subagent stops as it would without the plugin',
   'tool-call-count':
     'the local count of tool calls: with it off, the server keeps no line of the calls it answers ' +
@@ -967,6 +968,56 @@ export const WHAT_STOPS: { readonly [K in SwitchableChannel]: string } = {
     'opens its pull request on GitHub, to a destination the person names, one pull request at ' +
     'a time. Off until switched on, and only this machine’s own trees switch it on: an on ' +
     'recorded in the tree a clone gets is not read',
+};
+
+/**
+ * What each switchable channel does from the moment it is switched ON: one sentence each, the one
+ * `mnema switch on` prints after the fact, so the line says what THIS channel does and not a
+ * sentence true of one of them. A channel added to the switchable union does not compile until it
+ * has answered, as with {@link WHAT_STOPS}. The channels that begin off say so, because for them
+ * the switch is the first time.
+ */
+export const WHAT_STARTS: { readonly [K in SwitchableChannel]: string } = {
+  'brief-document':
+    'the document `mnema brief` prints reaches a session as it opens and a subagent as it starts.',
+  'recall-document':
+    'the notes `mnema recall` prints reach a session as it opens, the ones near what it touches first.',
+  'edit-rules-push': 'the rules addressed at a file are handed over beside each edit of it.',
+  'edit-asks-a-person':
+    'a write where the record asks that a person look first pauses until one has.',
+  'edit-refuses-a-write': 'a write where a rule of the record refuses one is refused.',
+  'agent-accepts': 'an agent may accept a decision, as it did before.',
+  'session-tally':
+    "a session's Stop hook prints how many files it wrote and how many decisions it recorded.",
+  'after-a-compaction':
+    'a conversation is handed, right after it was compacted, what entered the record since its session opened.',
+  'subagent-handback':
+    'a subagent that ends its final reply without the block of decisions is sent back once, with the format.',
+  'edit-first-write-gate':
+    'it was off until this switch, and it now acts where a rule addresses a file.',
+  'user-corrections':
+    "it records a person's corrections as proposed decisions in this machine's private tree, as it did before.",
+  'host-memory-mirror':
+    "it copies each note this host writes to its own memory into this machine's private tree.",
+  'decision-file-written':
+    'a write to a file that holds decisions the record cites nowhere is answered, once per session and file, with one line naming the command that reads it.',
+  'choice-settled':
+    'the answer to a question the agent asked is followed by the sentence saying which tool records a choice settled there.',
+  'dictated-rule':
+    "a message of the person's that is an instruction to keep is followed by the sentence saying that only a rule the person typed is accepted.",
+  'tool-call-count':
+    'the server keeps a local count of the tool calls it answers, the name and the result of each.',
+  'session-journal':
+    'a file is kept on this machine of what a session did with the record, ids and counts and none of its words.',
+  'agent-mirror':
+    "a dispatch through the host's Agent tool is recorded as a private handoff on a private task for the session; it needs session-journal on.",
+  'last-session': 'the notes `mnema recall` prints say where the last session stopped.',
+  'private-rules':
+    "the text a session opens with lists, by name, the decisions in force and the patterns adopted of this machine's private tree.",
+  'opening-core':
+    'it was off until this switch, and the opening text now hands over the decisions the person dictated and an index of the rest.',
+  'record-publish':
+    'it was off until this switch, and `mnema record publish` can now push the branch `mnema record commit` makes.',
 };
 
 /**

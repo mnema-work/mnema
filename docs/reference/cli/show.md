@@ -16,6 +16,7 @@ In the help under **Read**.
 
 | Option | What it does |
 | --- | --- |
+| `--full` | for a task, print every note about it whole, not one line each (a note’s own id always prints whole) |
 | `--json` | emit the faithful record as JSON |
 
 <!-- Written by hand: the generator keeps what is between this line and the next marker. -->
@@ -32,6 +33,8 @@ Arguments:
   id          the record id (from `mnema search`)
 
 Options:
+  --full      for a task, print every note about it whole, not one line each (a
+              note’s own id always prints whole)
   --json      emit the faithful record as JSON
   -h, --help  display help for command
 ```

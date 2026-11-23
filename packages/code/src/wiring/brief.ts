@@ -112,7 +112,12 @@ export function hookHostOf(
   if (named === undefined) return null;
   const host = HOOK_TEXT_HOSTS.find((one) => one === named);
   if (host === undefined) {
-    reportUsage(wiring, `--host takes one of ${listed(HOOK_TEXT_HOSTS)}, not "${named}".`);
+    const claudes = named === 'claude' || named === 'claude-code';
+    reportUsage(
+      wiring,
+      `--host takes one of ${listed(HOOK_TEXT_HOSTS)}, not "${named}".` +
+        (claudes ? ' Claude Code’s own form is --hook without --host.' : ''),
+    );
     return false;
   }
   if (!hook) {

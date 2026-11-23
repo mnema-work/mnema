@@ -188,7 +188,7 @@ function retractionFacts(
  * neutralization every body goes through, under a heading that says which they are; the note lines
  * are cut to one line each and carry the id that serves the whole text.
  */
-function storyLines(render: Render, story: TaskStory): string[] {
+function storyLines(render: Render, story: TaskStory, taskId: string): string[] {
   const lines: string[] = [];
   // THE HAND-OVER IS A FACT, so it sits with the other facts under the subject; what was written
   // (the description, the brief) is prose and follows as bodies, each under its heading.
@@ -210,8 +210,18 @@ function storyLines(render: Render, story: TaskStory): string[] {
       '',
       `Notes (${items.length < total ? `${items.length} of ${total}, newest first` : `${total}, newest first`}):`,
     );
+    // Asked whole, each note is its header and then its text; otherwise one line each, and the way to
+    // the whole texts is said once under the list.
     for (const note of items) {
-      lines.push(render(itemLine([asId(note.id), oneLine(note.topic), oneLine(note.line)])));
+      if (note.text === undefined) {
+        lines.push(render(itemLine([asId(note.id), oneLine(note.topic), oneLine(note.line)])));
+      } else {
+        lines.push('', render(itemLine([asId(note.id), oneLine(note.topic), note.at])));
+        lines.push(neutralized(note.text));
+      }
+    }
+    if (items.every((note) => note.text === undefined)) {
+      lines.push('', `Every note whole: mnema show ${oneLine(taskId)} --full`);
     }
   }
   return lines;
@@ -323,7 +333,7 @@ export function recordReport(render: Render, body: RecordBody, context: RecordCo
       lines.push(
         render(fact(`created ${body.record.createdAt} · updated ${body.record.updatedAt}`)),
       );
-      if (body.story !== undefined) lines.push(...storyLines(render, body.story));
+      if (body.story !== undefined) lines.push(...storyLines(render, body.story, body.id));
       lines.push(...movesSaid(body.record.proof));
       break;
     case 'skill':

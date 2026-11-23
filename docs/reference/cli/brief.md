@@ -122,7 +122,7 @@ now means one thing only: the copy is stale. The document declares the scope in 
 own text, so nobody reads it as the whole of what governs. The copy `--hook` prints is
 the one place the private tree's rules appear: after the committed ones, a section
 headed `Recorded privately on this machine` lists the decisions in force and the adopted
-patterns of this machine's private tree by name, each decision labelled `private ADR-<n>`
+patterns of this machine's private tree by name, each decision labelled `ADR-<n> (private)`
 (the private tree numbers its own, so its `ADR-1` is not the committed one), says they are not committed, and is
 the first part cut at the hook's ceiling, saying what it left out. `mnema switch off
 private-rules` replaces it by one line that counts them. For the whole of it, ask the opening

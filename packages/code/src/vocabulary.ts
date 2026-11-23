@@ -257,7 +257,7 @@ export function windowHelp(subject: WindowSubject): string {
     ...WINDOW_IS_OVER[subject].map((line) => `  ${line}`),
     '  A bound is a date (YYYY-MM-DD, read as UTC: --from is the start of the day,',
     '  --to its last millisecond) or a timestamp ending in Z or an offset',
-    '  (YYYY-MM-DDT10:30:00-03:00). Anything else is refused.',
+    '  (YYYY-MM-DDT10:30:00-03:00). Anything else is refused, and so is a --from after the --to.',
   ].join('\n');
 }
 
@@ -266,9 +266,18 @@ export function windowHelp(subject: WindowSubject): string {
  * bound takes. Said once for the command line and the tools, so the two cannot drift.
  */
 export function windowRefusalSentence(
-  refused: { readonly end: 'from' | 'to'; readonly value: string },
+  refused:
+    | { readonly end: 'from' | 'to'; readonly value: string }
+    | { readonly inverted: true; readonly from: string; readonly to: string },
   named: 'flag' | 'field' = 'flag',
 ): string {
+  if ('inverted' in refused) {
+    const [from, to] = named === 'flag' ? ['--from', '--to'] : ['`from`', '`to`'];
+    return (
+      `${from} ${JSON.stringify(refused.from)} is after ${to} ${JSON.stringify(refused.to)}, ` +
+      `so no record can be inside the window: the earlier instant goes in ${from}.`
+    );
+  }
   const name = named === 'flag' ? `--${refused.end}` : `\`${refused.end}\``;
   return (
     `${name} takes a date (YYYY-MM-DD) or a timestamp ending in Z or an offset ` +

@@ -1000,7 +1000,7 @@ describe('the hook’s copy with this machine’s private rules', () => {
       skills: [],
     }).join('\n');
     expect(handed).toContain(
-      `- **private ADR-2: The new private call** · \`${decision(2).id}\` · supersedes private ADR-1 \`${replaced.id}\`: The old private call (superseded)`,
+      `- **ADR-2 (private): The new private call** · \`${decision(2).id}\` · supersedes ADR-1 (private) \`${replaced.id}\`: The old private call (superseded)`,
     );
     // The committed ADR-1 and ADR-2 of the same text stay bare.
     expect(handed).toContain('- **ADR-1: A call numbered 1**');

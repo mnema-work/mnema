@@ -439,7 +439,7 @@ export function hooksJson(): string {
 
 /** What Codex's hooks file says it does, as the host shows it. */
 const CODEX_HOOKS_DESCRIPTION =
-  "Hands the project's committed record to the session as it opens: the decisions in force and the adopted patterns, by name, and, beside it, the memories and observations recorded for the project, from every tree this machine holds, the ones that share a word with what the session touches first. Before a patch is applied, where a rule of that record refuses a write at a path the patch touches, does not let the patch happen, citing the rule, and records the refusal as a fact of the chain; a rule that only asks for a person is let through in silence, since Codex does not pause a write for one. Where a patch goes through, the rules of the record addressed at a path it touches are handed to the model beside it, and the first time a session is handed them that is recorded as a fact of the chain. After a question the agent asked the person was answered, hands the agent one sentence saying that a choice may have been settled there and which tool records it (it records nothing). When the person sends a message that is an instruction to keep (always, never, from now on followed by a verb in the imperative, or put it as a rule), hands the agent one sentence saying that it has the shape of a rule, that only a rule the person typed is to be accepted, and which tools record and accept it, with none of the message's words (it records nothing). At the end of a turn, runs the verbs that count what the session wrote and that read what the person corrected; only Claude Code's transcript is read for now, so here they start nothing. Each can be switched off with `mnema switch`, which records that it was.";
+  "Hands the project's committed record to the session as it opens: the decisions in force and the adopted patterns, by name, and, beside it, the memories and observations recorded for the project, from every tree this machine holds, the ones that share a word with what the session touches first. Before a patch is applied, where a rule of that record refuses a write at a path the patch touches, does not let the patch happen, citing the rule, and records the refusal as a fact of the chain; a rule that only asks for a person is let through in silence, since Codex does not pause a write for one. Where a patch goes through, the rules of the record addressed at a path it touches are handed to the model beside it, and the first time a session is handed them that is recorded as a fact of the chain. After a question the agent asked the person was answered, hands the agent one sentence saying that a choice may have been settled there and which tool records it (it records nothing). When the person sends a message that is an instruction to keep (always, never, from now on followed by a verb in the imperative, or put it as a rule), hands the agent one sentence saying that it has the shape of a rule, that only a rule the person typed is to be accepted, and which tools record and accept it, with none of the message's words (it records nothing). At the end of a turn, runs the verbs that count what the session wrote and that read what the person corrected; only Claude Code's transcript is read for now, so here they start nothing. When a subagent stops, sends it back once to end its final reply with the block of the decisions it settled, so they come back to the session that started it. Each can be switched off with `mnema switch`, which records that it was.";
 
 /**
  * Codex's hooks file: the opening, the gate before a patch, and the two verbs of the end of a turn,
@@ -475,6 +475,9 @@ export function codexHooksJson(): string {
         : {}),
       PostToolUse: [{ matcher: ASKS_THROUGH.codex, hooks: [command('choice-settled.mjs')] }],
       Stop: [{ hooks: atTheEnd('codex') }],
+      // A subagent's decisions come back to the session that started it: the host answers the
+      // decision the verb prints, with exit 0, and the payload is read as Codex hands it.
+      SubagentStop: [{ hooks: [command('subagent-stop.mjs', ['--host', 'codex'])] }],
     },
   };
   return `${printed(file)}\n`;
@@ -482,7 +485,7 @@ export function codexHooksJson(): string {
 
 /** What Copilot CLI's hooks file says it does, as the host shows it. */
 const COPILOT_HOOKS_DESCRIPTION =
-  "Hands the project's committed record to the session as it opens: the decisions in force and the adopted patterns, by name, and, beside it, the memories and observations recorded for the project, from every tree this machine holds, the ones that share a word with what the session touches first. Before a file is written, where a rule of that record refuses the write, does not let it happen, citing the rule, and where a rule asks for a person, pauses the write until one decides; each is recorded as a fact of the chain. After a question the agent asked the person was answered, hands the agent one sentence saying that a choice may have been settled there and which tool records it (it records nothing). At the end of a turn, runs the verbs that count what the session wrote and that read what the person corrected; they read only Claude Code's transcript for now, so here they say that on their second stream and do nothing else. Each can be switched off with `mnema switch`, which records that it was.";
+  "Hands the project's committed record to the session as it opens: the decisions in force and the adopted patterns, by name, and, beside it, the memories and observations recorded for the project, from every tree this machine holds, the ones that share a word with what the session touches first. Before a file is written, where a rule of that record refuses the write, does not let it happen, citing the rule, and where a rule asks for a person, pauses the write until one decides; each is recorded as a fact of the chain. After a question the agent asked the person was answered, hands the agent one sentence saying that a choice may have been settled there and which tool records it (it records nothing). At the end of a turn, runs the verbs that count what the session wrote and that read what the person corrected; they read only Claude Code's transcript for now, so here they say that on their second stream and do nothing else. When a subagent stops, sends it back to end its final reply with the block of the decisions it settled, so they come back to the session that started it (the host names no field that says a stop is the second, so it is not held to once). Each can be switched off with `mnema switch`, which records that it was.";
 
 /**
  * Copilot CLI's hooks file: the opening, the gate before a write, and the two verbs of the end of a
@@ -545,6 +548,10 @@ export function copilotHooksJson(): string {
           : []),
       ],
       Stop: [{ hooks: atTheEnd('copilot') }],
+      // A subagent's decisions come back to the session that started it. The hook is the one
+      // Copilot CLI documents for it under the PascalCase name; no `exit 0` is tacked on, since
+      // the host skips a hook that fails there, and the decision it reads is on stdout.
+      SubagentStop: [{ hooks: [command('subagent-stop.mjs', ['--host', 'copilot'])] }],
     },
   };
   return `${printed(file)}\n`;

@@ -280,6 +280,34 @@ describe('the founding list', () => {
       .join('\n');
     expect(steps).toContain('This is not the root of the');
   });
+
+  it('says git ignores the record, in one sentence, where it does, and tells to commit where it does not', () => {
+    const { done } = { done: factsOfTheFolder().done };
+    const around = done.result.around as { gitRoot?: string };
+    const steps = (local: boolean) =>
+      summaryPage(
+        {
+          ...done,
+          result: {
+            ...done.result,
+            around: {
+              ...around,
+              gitRoot: around.gitRoot ?? '/repo',
+              ...(local ? { recordIsLocal: true } : {}),
+            },
+          } as unknown as typeof done.result,
+        },
+        200,
+      )
+        .map((line) => renderPlain(line))
+        .join('\n');
+    expect(steps(true)).toContain(
+      'Git ignores `.mnema/` here: the record stays on this machine, and no clone gets it.',
+    );
+    expect(steps(true)).not.toContain('Commit `.mnema/`');
+    expect(steps(false)).toContain('Commit `.mnema/` with the repository');
+    expect(steps(false)).not.toContain('Git ignores');
+  });
 });
 
 describe('what a row says of a file', () => {

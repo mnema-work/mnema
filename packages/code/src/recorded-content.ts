@@ -208,6 +208,22 @@ export function temporaryTargetNotice(target: string, temporary: boolean | undef
   ];
 }
 
+/**
+ * THE WARNING FOR A BRIEF THAT IS THE PATH OF A FILE UNDER A TEMPORARY FOLDER. The handoff is recorded
+ * all the same; this says, while the brief can still be recorded again, that the next agent reads a
+ * file a reboot or a cleanup may have taken away.
+ */
+export function temporaryBriefNotice(brief: string, temporary: boolean | undefined): string[] {
+  if (temporary !== true) return [];
+  return [
+    `  The brief is the path ${oneLine(brief.trim())}, under a temporary folder, which a reboot or a cleanup can clear, so the next agent may find no file there. Copy the file under the project and name that path in the brief.`,
+  ];
+}
+
+/** What a founding says where git ignores `.mnema/`: the one sentence both renderers print. */
+export const RECORD_STAYS_LOCAL =
+  'Git ignores `.mnema/` here: the record stays on this machine, and no clone gets it.';
+
 /** The one tree a clone of the repository gets. */
 const TRAVELS: Scope = 'public';
 

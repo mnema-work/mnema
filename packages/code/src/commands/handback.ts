@@ -18,10 +18,13 @@
  * few keywords it uses, so the schema `--schema` prints is the rule the check applies and not a
  * description kept beside it.
  *
- * IT BLOCKS ONCE. A host that fires the event again after a hook sent the subagent back says so
- * (`stop_hook_active`), and the second time this lets the reply through: a subagent that cannot or
+ * IT BLOCKS ONCE WHERE THE HOST SAYS WHEN IT ASKS AGAIN. A host that fires the event again after a
+ * hook sent the subagent back says so (`stop_hook_active`), and the second time this lets the reply through: a subagent that cannot or
  * will not follow the format is not held forever, and the loop the host would otherwise run is not
  * this product's to start.
+ *
+ * WHICH HOST HANDED THE PAYLOAD is said by `--host` and read off `HANDBACKS` in `host-names.ts`: Claude
+ * Code and Codex, whose payloads are the same, and Copilot CLI, which names no field for a second stop.
  *
  * IT SPEAKS ONLY WHERE IT HAS STANDING. No project here, the channel switched off, an event that
  * is not `SubagentStop`, a payload without the reply: each is the empty reply, and what went
@@ -30,6 +33,7 @@
 
 import { channelIsOn } from '@mnema/context';
 import { type DiscoveryEnv, resolveTrees } from '@mnema/core';
+import { HANDBACKS, type HandbackHost } from '../host-names.js';
 import { neutralized } from '../one-line.js';
 import { SUBAGENT_HANDBACK_CHANNEL } from '../record-framing.js';
 import { withScopedCaches } from '../tree-sources.js';
@@ -37,7 +41,7 @@ import { withScopedCaches } from '../tree-sources.js';
 /** The info string of the fenced block a hand-back ends in. */
 export const HANDBACK_INFO = 'mnema-handback';
 
-/** The event this answers, by the name the host gives it in the payload. */
+/** The event this answers, in the words of a sentence. The name in a payload is the host's (`HANDBACKS`). */
 const SUBAGENT_STOP = 'SubagentStop';
 
 /** The keywords of JSON Schema the hand-back's schema uses, and nothing else. */
@@ -240,6 +244,29 @@ export interface HandbackContext {
   readonly env: DiscoveryEnv;
 }
 
+/** What the payload says, read in the shape of the host it came from (`HANDBACKS`). */
+type Stop =
+  | { readonly stop: false }
+  | { readonly stop: true; readonly again: boolean; readonly reply: unknown };
+
+/**
+ * Reads a payload as `host` hands it when a subagent stops: not a stop for any other event, and for
+ * the camelCase shape of Copilot CLI, which names no event, a stop where its reply field is there.
+ */
+function readStop(host: HandbackHost, payload: Record<string, unknown>): Stop {
+  const row: (typeof HANDBACKS)[HandbackHost] = HANDBACKS[host];
+  const named = payload['hook_event_name'];
+  if (named === undefined && row.bare !== null && row.bare in payload) {
+    return { stop: true, again: false, reply: payload[row.bare] };
+  }
+  if (named !== row.event) return { stop: false };
+  return {
+    stop: true,
+    again: row.again !== null && payload[row.again] === true,
+    reply: payload[row.reply],
+  };
+}
+
 /** The reply for the host, and what the run has to say beside it. */
 export interface HandbackDone {
   readonly ok: true;
@@ -257,7 +284,7 @@ function silent(notes: readonly string[] = []): HandbackDone {
 /** Answers the hook payload `input.payload`: `{}`, or the decision that sends the subagent back. */
 export function runHandback(
   ctx: HandbackContext,
-  input: { readonly payload: string },
+  input: { readonly payload: string; readonly host?: HandbackHost },
 ): HandbackDone {
   let payload: Record<string, unknown>;
   try {
@@ -267,10 +294,11 @@ export function runHandback(
   } catch {
     return silent(['The hook input was not JSON, so nothing was checked.']);
   }
-  if (payload['hook_event_name'] !== SUBAGENT_STOP) return silent();
+  const read = readStop(input.host ?? 'claude', payload);
+  if (!read.stop) return silent();
   // The host says it is already continuing because of a stop hook: once is the whole of it.
-  if (payload['stop_hook_active'] === true) return silent();
-  const reply = payload['last_assistant_message'];
+  if (read.again) return silent();
+  const reply = read.reply;
   if (typeof reply !== 'string') {
     return silent([`The ${SUBAGENT_STOP} input carried no final reply, so nothing was checked.`]);
   }
