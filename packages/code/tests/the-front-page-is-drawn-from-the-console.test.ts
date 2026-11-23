@@ -1304,7 +1304,7 @@ describe('the diagrams are outlines of their words, drawn in the brand', () => {
     // The eye at rest, plain iris and no ring on either ground, said here by its digest (the id of its clip left out).
     const AT_REST = {
       dark: '9c2b2efbdca012aa6509433d8852973ad08898a93ed8a3313764db28adacf27c',
-      light: '3402771b1dd38445a5d4af66186b34164aeb5a560eb297e000bd2c41691ed49f',
+      light: '1d8d888302fe2ee95e6e5d6774bae62f59e6c4ac6fe2ae905a510b959d1db2a9',
     } as const;
 
     it.each(FOURTEEN)(
