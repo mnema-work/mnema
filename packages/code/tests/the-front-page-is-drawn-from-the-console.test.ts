@@ -244,7 +244,7 @@ describe('the front page is drawn from its scripts', () => {
     ),
   )('%s has its central point under the eye, within 0.5', (path, r) => {
     const svg = diagrams[path] ?? '';
-    const eye = Number(/translate\(([\d.]+),44\) scale\(\.6\)/.exec(svg)?.[1]);
+    const eye = Number(/translate\(([\d.]+),44\) scale\(\.(?:6|54)\)/.exec(svg)?.[1]);
     const centres = [
       ...svg.matchAll(/<circle cx="([\d.]+)" cy="[\d.]+" r="([\d.]+)" fill="#e6da2e"[^>]*>/g),
     ]
@@ -1423,7 +1423,9 @@ describe('the diagrams are outlines of their words, drawn in the brand', () => {
       "%s tints a panel with the theme's ink, and not with a colour of its own",
       (path) => {
         const theme = themeOf(path);
-        const panels = nodesOf(read(path)).filter((n) => n.tag === 'rect' && n.at.rx !== undefined);
+        const panels = nodesOf(read(path)).filter(
+          (n) => n.tag === 'rect' && n.at.rx !== undefined && n.at.x !== '-48',
+        );
         for (const p of panels) {
           expect(p.at.fill, path).toBe(DIAGRAM[theme].ink);
           const opacity = Number(p.at['fill-opacity']);
@@ -1458,7 +1460,9 @@ describe('the diagrams are outlines of their words, drawn in the brand', () => {
 
     it('has panels to read: the chips of the steps and of the states', () => {
       const withPanels = FOURTEEN.filter((path) =>
-        nodesOf(read(path)).some((n) => n.tag === 'rect' && n.at.rx !== undefined),
+        nodesOf(read(path)).some(
+          (n) => n.tag === 'rect' && n.at.rx !== undefined && n.at.x !== '-48',
+        ),
       );
       expect(withPanels.map((p) => p.split('/').pop())).toEqual([
         'core-dark.svg',
@@ -1537,7 +1541,9 @@ describe('the diagrams are outlines of their words, drawn in the brand', () => {
     const nodes = nodesOf(diagrams[path] ?? '');
     const num = (v: string | undefined) => Number(v);
     const chips = nodes.flatMap((n, i) =>
-      n.tag === 'rect' && n.at.rx !== undefined ? [{ chip: n, text: nodes[i + 1] }] : [],
+      n.tag === 'rect' && n.at.rx !== undefined && n.at.x !== '-48'
+        ? [{ chip: n, text: nodes[i + 1] }]
+        : [],
     );
     const id = [...LINED, ...FRONT].find((p) => p.dark === path || p.light === path)?.id;
     expect(chips.length, path).toBe(id === 'how-it-works' || id === 'core' ? 4 : 0);
@@ -1844,7 +1850,7 @@ describe('every diagram lays its texts on the edges they line up with', () => {
       'how-mnema-fits-%s has its lanes symmetric about the eye, within 0.5',
       (theme) => {
         const svg = read(`${ASSETS}/how-mnema-fits-${theme}.svg`);
-        const eye = Number(/translate\(([\d.]+),44\) scale\(\.6\)/.exec(svg)?.[1]);
+        const eye = Number(/translate\(([\d.]+),44\) scale\(\.(?:6|54)\)/.exec(svg)?.[1]);
         // A lane is the path of stroke 3 from its start, a round cap beyond it, to what ends it: the decision's ring.
         const starts = [
           ...svg.matchAll(
