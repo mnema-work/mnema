@@ -99,8 +99,8 @@ const INK = '\u2588';
 const RUN = '\u2500';
 
 /**
- * EVERY GLYPH THE DRAWINGS MAY BE MADE OF, each named by its code point: the block, the six
- * pieces of the outline drawn round it, and nothing else.
+ * EVERY GLYPH THE DRAWINGS MAY BE MADE OF, each named by its code point: the block, and nothing
+ * else.
  *
  * THIS IS THE GUARD THAT REPLACED THE MASK, and it is stronger than the mask was. Every form
  * of the name used to be written as an ASCII mask, on the argument that a reader of the source
@@ -110,24 +110,17 @@ const RUN = '\u2500';
  * are ENUMERATED instead, here and in the module's own doc: one more non-ASCII byte anywhere in
  * that file is accused, which is a stronger statement than "the masks are ASCII" ever made.
  *
- * IT WAS EIGHT GLYPHS AND IT IS SEVEN, AND THE TWO SETS SHARE ONE MEMBER. The drawing this was
- * written for was nine rows of blocks and shades, whose last three rows were the dust of a drop
- * shadow; what replaced it is one weight of ink with a contour round it. So the four shades and
- * the four half blocks went, the FULL BLOCK stayed, and six pieces of box drawing arrived. The
- * COUNT was never the property: the property is that this list and the module's own bytes are
- * the same set, whatever is in it.
+ * IT WAS EIGHT GLYPHS, THEN SEVEN, AND IT IS ONE. The first drawing this was written for was
+ * nine rows of blocks and shades, whose last three rows were the dust of a drop shadow; the next
+ * was one weight of ink with a contour round it (the FULL BLOCK and six pieces of box drawing);
+ * the drawing now is one weight of ink and no contour. The COUNT was never the property: the
+ * property is that this list and the module's own bytes are the same set, whatever is in it.
  *
  * The names are the Unicode ones, so a reader can check a code point against the standard
  * rather than against this file.
  */
 const THE_NAMED: readonly { readonly name: string; readonly glyph: string }[] = [
   { name: 'FULL BLOCK', glyph: INK },
-  { name: 'BOX DRAWINGS DOUBLE HORIZONTAL', glyph: '\u2550' },
-  { name: 'BOX DRAWINGS DOUBLE VERTICAL', glyph: '\u2551' },
-  { name: 'BOX DRAWINGS DOUBLE DOWN AND RIGHT', glyph: '\u2554' },
-  { name: 'BOX DRAWINGS DOUBLE DOWN AND LEFT', glyph: '\u2557' },
-  { name: 'BOX DRAWINGS DOUBLE UP AND RIGHT', glyph: '\u255a' },
-  { name: 'BOX DRAWINGS DOUBLE UP AND LEFT', glyph: '\u255d' },
 ];
 
 /** Ctrl-C, which abandons the row being typed. Spelled as an escape, for the same reason. */
@@ -356,9 +349,8 @@ describe('the name has four drawings, and the widest that fits across is the one
       }
     }
     // NOT VACUOUS: the drawings really are made of a named glyph rather than of ASCII alone, so
-    // the enumeration is ruling on something. THE DRAWINGS USE ONE OF THE SEVEN NOW, the full
-    // block: the six pieces of outline belong to the old drawing, which is kept in the module
-    // for the site and drawn nowhere ({@link THE_NAMED}).
+    // the enumeration is ruling on something. THE DRAWINGS USE THE ONE NAMED GLYPH, the full
+    // block ({@link THE_NAMED}).
     const drawn = new Set(
       [...everyForm().flat().join('')].filter((g) => (g.codePointAt(0) ?? 0) >= 0x80),
     );

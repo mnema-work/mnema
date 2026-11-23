@@ -138,7 +138,7 @@ const INK = '\u2588';
  * are its.
  *
  * IT HELD FOUR SUBSTITUTIONS AND IT HOLDS ONE, because the drawing that needed the other
- * three is no longer in this file's choice of forms ({@link THE_BLOCKS}). Every form is a
+ * three is no longer in this file. Every form is a
  * mask of one mark, and a table with one key is what keeps the inking in one place for
  * whichever mask is written next.
  */
@@ -152,7 +152,7 @@ const INKED: { readonly [mark: string]: string } = {
  *
  * IT WAS SIX ROWS WITH AN OUTLINE, AND THE BRAND CHANGED THE LETTERS: the M and the N were
  * redrawn and shown before they were applied, and the six-row drawing with the double-line
- * contour ({@link THE_BLOCKS}) is no longer what the console draws. One weight of ink, no
+ * contour is gone from this file. One weight of ink, no
  * contour, a mask of one mark ({@link INK}): the form is visible in a diff, which is the
  * argument the other masks of this file are written under.
  *
@@ -172,35 +172,6 @@ const BIGGEST_MASK: readonly string[] = [
   '## #  # ##  ## ##  ##  ######   ## #  # ##  ########',
   '##  ##  ##  ##   ####  ##       ##  ##  ##  ##    ##',
   '##      ##  ##     ##  #######  ##      ##  ##    ##',
-];
-
-/**
- * THE OLD BIGGEST DRAWING, KEPT AND NOT DRAWN: six rows of full blocks with an outline, forty-eight
- * columns, the console's opening until the new brand.
- *
- * IT IS EXPORTED FOR THE SITE AND FOR NOTHING ELSE. The site imports it, at the tag of a release,
- * to draw its favicon, its header and its social card, and `packages/vscode/build/mark.mjs`
- * finds the M in it by the second `\u255D` of the last row, which the new drawing does not
- * have. It leaves {@link FORMS} and stops being what the floor is measured against; the export
- * leaves when the site reads the new form (`tests/the-front-page-is-drawn-from-the-console.test.ts`
- * holds the rows meanwhile, byte for byte). The sentence that was here saying the extension's
- * icon is drawn from these rows was already false since the icon was redrawn from the mark.
- *
- * Seven glyphs (the full block and the six double-line corners and bars: U+2550, U+2551, U+2554,
- * U+2557, U+255A, U+255D), East Asian ambiguous, which is the declared risk the console no longer
- * carries on screen: a CJK locale drew them twice as wide as `plain.ts` counts. The enumeration of
- * the code points this module may hold stays at seven because this constant stays
- * (`tests/the-opening-fits-the-screen.test.ts`).
- *
- * No row ends in a blank, and the first is forty-seven columns for the reason the mask above says.
- */
-export const THE_BLOCKS: readonly string[] = [
-  '███╗   ███╗███╗   ██╗███████╗███╗   ███╗ █████╗',
-  '████╗ ████║████╗  ██║██╔════╝████╗ ████║██╔══██╗',
-  '██╔████╔██║██╔██╗ ██║█████╗  ██╔████╔██║███████║',
-  '██║╚██╔╝██║██║╚██╗██║██╔══╝  ██║╚██╔╝██║██╔══██║',
-  '██║ ╚═╝ ██║██║ ╚████║███████╗██║ ╚═╝ ██║██║  ██║',
-  '╚═╝     ╚═╝╚═╝  ╚═══╝╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝',
 ];
 
 /**
@@ -241,8 +212,7 @@ const NAME_MASK: readonly string[] = ['mnema'];
  * Some rows as lines: every mark inked, everything else as it was written.
  *
  * ONE FUNCTION FOR EVERY MASK, which is what keeps the answer to what a row of the name becomes
- * in one place. A row of a mask holds nothing but marks and blanks; the old drawing
- * ({@link THE_BLOCKS}) is not drawn any more and is not inked here.
+ * in one place. A row of a mask holds nothing but marks and blanks.
  */
 function inked(rows: readonly string[]): readonly Line[] {
   return rows.map((row) =>
