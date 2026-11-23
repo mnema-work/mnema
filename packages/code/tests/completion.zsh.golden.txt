@@ -183,7 +183,7 @@ _mnema_described() {
       'setup:say which folder keeps this project'\''s backup, after a person confirms at a terminal that it keeps the text in clear' \
       'run:copy this project'\''s trees into its folder, or with --global only the global tree' \
       'status:say where this project'\''s backup is and how far it is from the trees' \
-      'verify:read each copy as a record and say how it stands against this project'\''s trees, which it does not change' \
+      'verify:read each copy as a record and say how it stands against this project'\''s trees, which it does not change (a git destination'\''s clone cache is brought up to the remote first)' \
       'restore:put a copy back into the trees that lost files, never over a file the tree holds; a copy of another record is asked first, and --undo puts back what it replaced' \
       'hook:install or remove an optional git hook that runs the backup after a commit' \
       'help:display help for command' ;;
