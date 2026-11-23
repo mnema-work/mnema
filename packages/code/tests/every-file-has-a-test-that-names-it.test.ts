@@ -1488,7 +1488,7 @@ const CLAUSES_PER_FILE: Readonly<Record<string, number>> = {
   'packages/code/tests/the-hot-path-keeps-its-budget.test.ts': 6,
   'packages/code/tests/the-init-asks-which-host-files-to-write.test.ts': 16,
   'packages/code/tests/the-init-completes-what-a-founded-project-lacks.test.ts': 8,
-  'packages/code/tests/the-init-draws-its-frames.test.ts': 18,
+  'packages/code/tests/the-init-draws-its-frames.test.ts': 17,
   'packages/code/tests/the-init-leaves-what-it-cannot-write.test.ts': 6,
   'packages/code/tests/the-init-offers-the-files-of-yours-as-marks.test.ts': 9,
   'packages/code/tests/the-init-records-who-may-accept.test.ts': 7,
