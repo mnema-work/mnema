@@ -815,7 +815,6 @@ describe('every verb says if it writes', () => {
       'stack diff': () => ['stack', 'diff', 'hello-stack', '--to', stackTo()],
       'stack check': () => ['stack', 'check', '--to', stackTo()],
       'backup status': () => ['backup', 'status'],
-      'backup verify': () => ['backup', 'verify'],
       'witness sigstore-check': () => [
         'witness',
         'sigstore-check',
@@ -826,11 +825,10 @@ describe('every verb says if it writes', () => {
       ],
     };
     // A reader whose answer over this fixture is a NO, on purpose: the fixture holds no Sigstore
-    // bundle (and no backup copy), and a check that found nothing to check must not pass. It is still measured in the
+    // bundle and a check that found nothing to check must not pass. It is still measured in the
     // chain below: it may fail, and it may not write.
     const FAILS_ON_THIS_FIXTURE: ReadonlySet<string> = new Set([
       'witness sigstore-check',
-      'backup verify',
     ]);
     // The stack the four `stack` readers look at: installed into a folder of its own, which
     // records nothing, so the readers are measured against a receipt that really exists.

@@ -469,6 +469,11 @@ const COMMAND_LINE: Readonly<Record<string, Outcome>> = {
     because:
       'it is the way back: it puts files back where a tree lost them, never over one it holds, and must run over damage',
   },
+  'backup verify': {
+    answers: { argv: () => ['backup', 'verify'] },
+    because:
+      'it reads a copy and, over a git destination, brings its clone cache in the data directory up to the remote; never the record',
+  },
   'backup hook install': {
     answers: { argv: () => ['backup', 'hook', 'install'] },
     because: 'it writes a git hook, never the record, and this project is in no git repository',

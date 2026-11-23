@@ -4,5 +4,5 @@ Fixed
 
 Changed
 
-- **The backup is declared member by member.** `backup setup`, `run`, `restore` and `hook` write outside the record, so the session (`mnema repl`) no longer offers them as reads; `backup status` and `backup verify` are still run there.
+- **The backup is declared member by member.** `backup setup`, `run`, `verify`, `restore` and `hook` write outside the record (`verify`, over a git destination, clones or fetches its cache in the data directory and reaches the network, and now says so on its last lines), so the session (`mnema repl`) no longer offers them as reads; only `backup status` is still run there.
 - **`mnema doctor` says when an entry of the record was altered after it was written.** Until now it exited 0 and said nothing of the line while every write was refused. The finding names the entry, the tree and the way out, and it replays the tails in memory: doctor still writes nothing.
