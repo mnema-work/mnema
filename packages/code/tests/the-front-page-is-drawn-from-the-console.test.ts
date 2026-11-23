@@ -36,12 +36,9 @@
  *   - THE BADGES: every shields.io badge in `README.md` or a package's README is in dark stone (`PALETTE.darkStone`),
  *     except the one for the CI workflow, which carries no colour at all, so that shields.io paints it red when the build
  *     fails.
- *   - WHAT THE SITE IMPORTS AT A RELEASE TAG: `CELL`, `PAGE`, `inkFoot` and `socialCard` from `draw.mjs`, `ACCENT` from
- *     `accent.mjs`, and `firstLetter` and `letterCells` from `packages/vscode/build/mark.mjs`, in a checkout with no
- *     `node_modules`; their values and the bytes of the social card are held here by hand, so that taking the banner
- *     out of `draw.mjs` moved none of them. This used to say that the extension's icon imports them too: since the
- *     extension draws the eye, nothing else in the repository reads `ACCENT`, `firstLetter` or `letterCells`, and these
- *     literals are what holds them.
+ *   - THE OLD BRAND IS GONE: the front page's `accent.mjs` and `draw.mjs`, the extension's `mark.mjs` and the console's
+ *     `THE_BLOCKS` are deleted, and no tracked file (but the released history of the changelog) names them or any export
+ *     they had. It replaces the guard that held their values by hand while the site still imported them.
  *
  * WHAT NO LONGER HOLDS, and why. THE GRID OF THE PIXEL (every stroke of one unit on the middle of a pixel, with the table
  * of mutations that proved the reader of it) is gone whole, and no guard of a grid is written for the banner: the banner
@@ -72,29 +69,20 @@
  * picture in the pull request.
  */
 
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { HOSTS } from '../src/host-names.js';
-import { THE_BLOCKS } from '../src/presentation/banner.js';
 import { ROOT, read } from './support/published-examples.js';
 
 /** Named by a variable, because these are scripts of the repository and not modules of the product. */
-const DRAW = join(ROOT, '.github', 'the-front-page', 'draw.mjs');
-const ACCENT_FILE = join(ROOT, '.github', 'the-front-page', 'accent.mjs');
-const MARK = join(ROOT, 'packages', 'vscode', 'build', 'mark.mjs');
 const BRAND = join(ROOT, '.github', 'the-brand');
 
 type Line = readonly ({ said: string; where: string } | string)[];
 type Pen = Readonly<Record<string, unknown>>;
-const { CELL, PAGE, inkFoot, socialCard } = (await import(pathToFileURL(DRAW).href)) as {
-  CELL: { w: number; h: number };
-  PAGE: { dark: string; light: string };
-  inkFoot: (blocks: readonly string[]) => number;
-  socialCard: (o: { blocks: readonly string[]; pitch: { title: string; body: string } }) => string;
-};
 const { drawTheBanner } = (await import(pathToFileURL(join(BRAND, 'banner.mjs')).href)) as {
   drawTheBanner: () => Record<string, string>;
 };
@@ -590,43 +578,56 @@ describe('the README shows the banner', () => {
   });
 });
 
-describe('what the site imports at a release tag keeps its value', () => {
-  it('has the cell, the page and the foot of the wordmark it always had, and draws the social card byte for byte', () => {
-    expect(CELL).toEqual({ w: 12, h: 24 });
-    expect(PAGE).toEqual({ dark: '#0d1117', light: '#ffffff' });
-    expect(inkFoot(THE_BLOCKS)).toBe(135.5);
-    const card = socialCard({
-      blocks: THE_BLOCKS,
-      pitch: {
-        title: 'mnema is the decision record for AI coding agents.',
-        body: 'Who decided this, and why? What was turned down? Has it changed since?',
-      },
-    });
-    expect(createHash('sha256').update(card).digest('hex')).toBe(
-      '56366347a02b34ebaadeb48586124df42a8eb4db9e4408069fe1ea14b5e0b228',
-    );
+describe('the old brand is gone, and nothing names it', () => {
+  /** The files and the names the old brand had: the front page's scripts, the extension's old mark, the console's old rows. */
+  const GONE_FILES = [
+    '.github/the-front-page/accent.mjs',
+    '.github/the-front-page/draw.mjs',
+    'packages/vscode/build/mark.mjs',
+    'packages/vscode/build/mark.d.mts',
+  ];
+  const GONE_NAMES =
+    /\bTHE_BLOCKS\b|\bheaderWordmark\b|\bsocialCard\b|\bletterCells\b|\bfirstLetter\b|\binkFoot\b|\.github\/the-front-page\/|vscode\/build\/mark\.mjs|the-front-page\/(?:accent|draw)\.mjs/;
+
+  /** Every tracked text file but the changelog's released history, the record, the lockfile and this guard. */
+  const theTrackedText = (): readonly string[] =>
+    execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf-8' })
+      .split('\n')
+      .filter(
+        (path) =>
+          path !== '' &&
+          path !== 'CHANGELOG.md' &&
+          path !== 'pnpm-lock.yaml' &&
+          !path.startsWith('.mnema/') &&
+          !path.endsWith('.png') &&
+          !path.endsWith('.ttf') &&
+          !path.endsWith('.vsix') &&
+          path !== 'packages/code/tests/the-front-page-is-drawn-from-the-console.test.ts',
+      );
+
+  it('has none of the files the site used to import from a release tag', () => {
+    expect(GONE_FILES.filter((file) => existsSync(join(ROOT, file)))).toEqual([]);
   });
 
-  it('has the accent it always had, which nothing but the social card and the site paints with now', async () => {
-    const { ACCENT } = (await import(pathToFileURL(ACCENT_FILE).href)) as {
-      ACCENT: { dark: string; light: string };
-    };
-    expect(ACCENT).toEqual({ dark: '#c4a0f5', light: '#997dbf' });
+  it('has no file that names a deleted export or imports a deleted file', () => {
+    const named = theTrackedText().filter(
+      (path) => existsSync(join(ROOT, path)) && GONE_NAMES.test(read(path)),
+    );
+    expect(named).toEqual([]);
   });
 
-  it("reads the M of the console's wordmark as it always did: eleven columns, and the 32 full blocks written out by hand", async () => {
-    const { firstLetter, letterCells } = (await import(pathToFileURL(MARK).href)) as {
-      firstLetter: (blocks: readonly string[]) => string[][];
-      letterCells: (blocks: readonly string[]) => [number, number][];
-    };
-    /** The M as the wordmark's full blocks draw it, ten columns by five rows, written out by hand. */
-    const THE_M = ['###....###', '####..####', '##.####.##', '##..##..##', '##......##'];
-    const cells = THE_M.flatMap((row, r) =>
-      [...row].flatMap((glyph, c) => (glyph === '#' ? [[c, r]] : [])),
+  it('reads a name of the old brand as one', () => {
+    for (const text of [
+      "import { THE_BLOCKS } from '../src/presentation/banner.js';",
+      "await load('.github/the-front-page/draw.mjs');",
+      "import('packages/vscode/build/mark.mjs')",
+      'const { socialCard, inkFoot } = draw;',
+    ]) {
+      expect(GONE_NAMES.test(text), text).toBe(true);
+    }
+    expect(GONE_NAMES.test("import { drawTheBanner } from '.github/the-brand/banner.mjs';")).toBe(
+      false,
     );
-    expect(cells).toHaveLength(32);
-    expect(letterCells(THE_BLOCKS)).toEqual(cells);
-    expect(firstLetter(THE_BLOCKS).map((row) => row.length)).toEqual(THE_BLOCKS.map(() => 11));
   });
 });
 
@@ -1682,13 +1683,6 @@ describe('the diagrams are outlines of their words, drawn in the brand', () => {
       .filter((p) => /^[^/]+\/src\/.+\.(?:ts|mts|mjs|js)$/.test(p))
       .filter((p) => /the-brand|opentype/.test(read(`packages/${p}`)));
     expect(found).toEqual([]);
-  });
-
-  it('leaves the script of the social card with the imports the site, built without node_modules, can resolve', () => {
-    const imports = [
-      ...read('.github/the-front-page/draw.mjs').matchAll(/^import [^;]*? from '([^']+)';$/gm),
-    ].map((m) => m[1]);
-    expect(imports).toEqual(['./accent.mjs']);
   });
 });
 

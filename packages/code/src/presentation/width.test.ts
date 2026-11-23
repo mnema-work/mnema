@@ -29,7 +29,7 @@
  *   - THE CONVENTION FOR AMBIGUOUS, DECLARED: one column, on the glyphs this surface really
  *     writes, read from where they are written. It is the authority's choice and not this
  *     product's, and it is asserted so that the day the authority changes its default, this
- *     surface is told rather than redrawn. The banner's seven glyphs have their own house
+ *     surface is told rather than redrawn. The banner's one glyph has its own house
  *     (`tests/the-name-in-full-blocks.test.ts`, which asks the product's own measurement of
  *     each).
  *   - THE PARTS SUM TO THE WHOLE. Everything that folds rests on it: the fold walks glyphs and
