@@ -122,6 +122,14 @@ document, delivered by the host instead of waited for.
   only the lines the host wrote since, and from which the MCP server gives a run its goal and closes it with an
   outcome (`mnema switch off session-journal` stops it; see
   [the reference](https://github.com/mnema-work/mnema/blob/main/docs/cli-reference.md#the-session-journal)).
+  The same two verbs are wired at the end of a turn in the other hosts that document one: Codex's `Stop`, Copilot
+  CLI's `agentStop` (configured as `Stop`), Gemini CLI's `AfterAgent` (which cannot add context, so a line would go to
+  the person), Cursor's `stop`, Qwen Code's `Stop` (a pair of its own in the shared hooks file, run only where
+  `QWEN_PROJECT_DIR` is set) and VS Code's agent (which sets no variable, so it is told apart by the folder its transcript
+  is kept in). Each is told its host with `--host`. Claude Code's transcript is read; the transcript of every one of
+  those hosts is not, because no reader of its format is built yet. The hooks files say it with `--reads no` (and the
+  Gemini CLI script with a constant), so for them nothing starts at all, and run by hand the verbs say so on their
+  second stream, count nothing, keep no journal and record no proposal. Documented, not measured against the host.
 - **A `SessionStart` hook that runs only after a compaction** (the `compact` matcher), `mnema recall
   --after-a-compaction`. It hands the conversation that continues one sentence, read from the session's journal: the
   decisions that entered the record since it opened (read from the record, by label and the state they have now), the notes copied, the questions answered with no decision after, the
@@ -142,8 +150,14 @@ document, delivered by the host instead of waited for.
   with no such block, or with one outside the schema, is sent back with the format as the reason (exit 2),
   once: the host's second stop of the same subagent is let through. It checks the shape and not whether the
   subagent settled something, calls no model and records nothing. Held against the real Claude Code binary
-  by `a-subagent-is-sent-back-for-its-handback.test.ts`; the other hosts that read this hooks file were not
-  measured on the event. `mnema switch off subagent-handback` stops it.
+  by `a-subagent-is-sent-back-for-its-handback.test.ts`. **Codex and Copilot CLI run it too** (`codex.json` and
+  `copilot.json` under `SubagentStop`, with `--host codex` and `--host copilot`), and there the reply is the
+  decision itself on stdout with exit 0, which is what each host's documentation reads (Copilot CLI makes exit 2 a
+  warning). That is held by a test fed the payload each host documents, not by a run of either host. Copilot CLI
+  documents no field for a second stop of the same subagent, so there the check is not once: only the host's own
+  limit of eight consecutive continuations bounds it (documented, not measured), and its built-in `general-purpose`
+  agent emits no such event. **Gemini CLI has no hook event for a subagent, and OpenCode was not read for one**, so
+  neither carries it (`docs/evidence.md`, the presence map). `mnema switch off subagent-handback` stops it.
 - **A `PostToolUse` hook after a question**, `mnema settled`. After the agent asked the person a
   question through `AskUserQuestion` and the answer came back, it hands the agent one sentence beside
   the answer: that a choice may have been settled there, that `record_decision` records it with

@@ -21,6 +21,25 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 2
+  - package-ecosystem: npm
+    directory: /.github/mcp-inspector
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 1
+  - package-ecosystem: pip
+    directory: /.github/python-tools/verifier-checks
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 1
+    ignore:
+      # The floor job type-checks on Python 3.9, which a mypy of the next major no longer targets.
+      - dependency-name: mypy
+        update-types: ['version-update:semver-major']
+  - package-ecosystem: pip
+    directory: /.github/python-tools/skills-ref
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 1
   - package-ecosystem: github-actions
     directory: /
     schedule:

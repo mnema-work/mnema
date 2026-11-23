@@ -657,13 +657,13 @@ describe('the verb as the command line routes it', () => {
     return seen;
   }
 
-  it('is a write, takes no option, and prints the reply as one JSON line', async () => {
+  it('is a write, takes one option (the host whose payload arrives), and prints the reply as one JSON line', async () => {
     const declared = registerCorrections(new Command('mnema'), {
       io: {},
       render: renderPlain,
     } as unknown as Parameters<typeof registerCorrections>[1]);
     expect(declared.effect).toBe('mutates');
-    expect(declared.act.options).toEqual([]);
+    expect(declared.act.options.map((option) => option.long)).toEqual(['--host']);
     await did('switch', 'on', 'user-corrections');
     const spoke = await typedInto(
       payload('Stop', transcript([typed('No, use pnpm instead of npm.')])),
