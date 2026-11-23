@@ -625,7 +625,9 @@ describe('the old brand is gone, and nothing names it', () => {
     ]) {
       expect(GONE_NAMES.test(text), text).toBe(true);
     }
-    expect(GONE_NAMES.test("import { drawTheBanner } from '.github/the-brand/banner.mjs';")).toBe(false);
+    expect(GONE_NAMES.test("import { drawTheBanner } from '.github/the-brand/banner.mjs';")).toBe(
+      false,
+    );
   });
 });
 

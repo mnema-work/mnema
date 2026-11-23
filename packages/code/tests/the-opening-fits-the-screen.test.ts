@@ -357,7 +357,7 @@ describe('the name has four drawings, and the widest that fits across is the one
     expect([...drawn], 'the console draws a glyph other than the full block').toEqual([INK]);
   });
 
-  it('holds those code points in the module and no other unusual byte', () => {
+  it('holds no unusual byte in the module: the one named glyph is written as an escape', () => {
     // THE GUARD THE MASK USED TO BE, over the bytes of the source rather than over the
     // drawing. What the doctrine is against is a character a reader cannot SEE (an escape, a
     // NUL, a zero-width space) and the enumeration is what makes "no other" checkable now
@@ -368,10 +368,11 @@ describe('the name has four drawings, and the widest that fits across is the one
     // makes, and the case below proves this one makes it.
     const code = withoutComments(readFileSync(BANNER, 'utf-8'));
     const unusual = new Set([...code].filter((glyph) => (glyph.codePointAt(0) as number) >= 0x80));
-    expect([...unusual].sort(), 'an unnamed byte is in the module').toEqual([...GLYPHS].sort());
-    // Not vacuous in either direction: there really are unusual bytes to find, and one more
-    // glyph (or an invisible one, which is what this exists for) would be accused.
-    expect(unusual.size).toBe(THE_NAMED.length);
+    expect([...unusual], 'an unusual byte is in the module').toEqual([]);
+    // Not vacuous in either direction: the named glyph is in the module, spelled as an escape
+    // that a reader sees, and one more glyph (or an invisible one, which is what this exists
+    // for) would be accused.
+    expect(code, 'the full block is not spelled as an escape').toContain(`'\\u2588'`);
     const unnamed = '▖';
     expect(GLYPHS, 'the probe glyph is one of the named ones').not.toContain(unnamed);
     const relapse = new Set(
