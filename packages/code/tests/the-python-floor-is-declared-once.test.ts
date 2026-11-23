@@ -254,8 +254,14 @@ describe('CI runs the floor', () => {
     );
     // A CHECKER THAT FLOATS IS A CHECK THAT CHANGES UNDER THE SAME HEAD, and one release of it
     // already refuses the floor as a target.
-    expect(body, 'the floor job installs a mypy whose version is not pinned').toMatch(
-      /\bmypy==\d+\.\d+\.\d+\b/,
+    const installs = /--require-hashes\s+\\?\s*-r\s+(\S+)/.exec(body);
+    expect(
+      installs?.[1],
+      'the floor job installs its checker without --require-hashes from a requirements file',
+    ).toBeDefined();
+    const pinned = readFileSync(join(ROOT, installs?.[1] ?? ''), 'utf-8');
+    expect(pinned, 'the requirements file the floor job installs does not pin mypy').toMatch(
+      /^mypy==\d+\.\d+\.\d+ \\$/m,
     );
   });
 });

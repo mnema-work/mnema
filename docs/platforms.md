@@ -16,6 +16,9 @@ drives the installed binary:
   does, and none is made there, nor a link at any other place a reader reads, nor a OneDrive placeholder (which both
   readers read as the file it holds) or a WSL link (a link to the binary from Node 24.16, whose libuv is 1.52, and not on the floor, 24.15);
 - `mnema doctor`;
+- the MCP server, started by the installed launcher as a host starts it: it must answer `initialize` and `tools/list`
+  over standard input and output (a list that holds `bootstrap` and `capture_memory`), end its session and exit 0 when
+  its input ends, and write no stack trace;
 - two of the plugin's hook scripts, started as Node starts them: `session-start.mjs` must hand over a decision in
   force, and `edit-refuses-a-write.mjs`, with Cursor's arguments (`--host cursor`) and a Cursor payload, must refuse
   a write under a rule, naming that rule (a refusal that says `mnema` could not answer fails the check), when the

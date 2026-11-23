@@ -10,6 +10,12 @@ name: Sigstore probe
 # record's Sigstore identity with `mnema key sigstore`, countersigns the record's checkpoint with
 # `mnema witness sigstore`, and reads the bundle back with `mnema verify --against-sigstore`.
 #
+# THE OFFLINE CHECK. It then runs `mnema witness sigstore-check` with this workflow's identity and
+# the issuer GitHub Actions tokens carry, which is the check a third party makes offline from the
+# bundle alone, and prints the `cosign verify-blob` line that checks the same bundle with cosign.
+# That is the one place the check meets a certificate Fulcio really issued: the suite's bundles
+# are signed by Sigstore's test doubles.
+#
 # WHEN IT FAILS. When `verify` exits non-zero, or when its JSON does not hold exactly what the act
 # promises: at least one bundle, every bundle read as `signed`, by this workflow's identity, and
 # named by an identity of the record, and carrying the repository, the commit and the run of THIS job
@@ -58,6 +64,8 @@ jobs:
         env:
           # The identity Fulcio writes into the certificate of a job of this workflow.
           IDENTITY: https://github.com/${{ github.workflow_ref }}
+          # The OpenID issuer of a GitHub Actions token, which Fulcio writes into the certificate.
+          ISSUER: https://token.actions.githubusercontent.com
         run: |
           set -euo pipefail
           bin="$GITHUB_WORKSPACE/packages/code/dist/bundle/cli.js"
@@ -74,6 +82,18 @@ jobs:
 
           node "$bin" verify --against-sigstore
           node "$bin" verify --against-sigstore --json > "$work/verify.json"
+
+          # The same bundle, checked offline against who a third party would expect: this
+          # workflow, vouched for by GitHub's token issuer. Exit 0 only when every bundle holds
+          # and names both; the line it prints for cosign is kept in the log to be run by hand.
+          node "$bin" witness sigstore-check \
+            --identity "$IDENTITY" \
+            --issuer "$ISSUER" \
+            --message-dir "$work/messages" | tee "$work/check.txt"
+          grep -q '^cosign verify-blob ' "$work/check.txt" || {
+            echo "sigstore-check printed no cosign verify-blob line" >&2
+            exit 1
+          }
 
           node -e '
             const fs = require("node:fs");
