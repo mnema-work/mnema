@@ -13,7 +13,7 @@ In the help under **This machine**.
 | [`mnema backup setup`](backup-setup.md) | say which folder keeps this project's backup, after a person confirms at a terminal that it keeps the text in clear |
 | [`mnema backup run`](backup-run.md) | copy this project's trees into its folder, or with --global only the global tree |
 | [`mnema backup status`](backup-status.md) | say where this project's backup is and how far it is from the trees |
-| [`mnema backup verify`](backup-verify.md) | read each copy as a record and say how it stands against this project's trees, which it does not change |
+| [`mnema backup verify`](backup-verify.md) | read each copy as a record and say how it stands against this project's trees, which it does not change (a git destination's clone cache is brought up to the remote first) |
 | [`mnema backup restore`](backup-restore.md) | put a copy back into the trees that lost files, never over a file the tree holds; a copy of another record is asked first, and --undo puts back what it replaced |
 | [`mnema backup hook`](backup-hook.md) | install or remove an optional git hook that runs the backup after a commit |
 
@@ -112,7 +112,8 @@ Commands:
                             from the trees
   verify [options]          read each copy as a record and say how it stands
                             against this project's trees, which it does not
-                            change
+                            change (a git destination's clone cache is brought
+                            up to the remote first)
   restore [options]         put a copy back into the trees that lost files,
                             never over a file the tree holds; a copy of another
                             record is asked first, and --undo puts back what it
@@ -133,7 +134,7 @@ what the tree held is kept aside (in the git directory, or in the mnema home for
 A destination may be a git remote (or the folder of a bare repository): `run` commits the copy to a clone of it
 in the data directory and pushes it, one more commit each run, and never squashes, amends or forces: the
 destination keeps the whole history. `hook install` adds an optional post-commit hook that runs the backup.
-The session (`mnema repl`) runs `status` and `verify`; `setup`, `run`, `restore` and `hook` write outside the record and are left to the shell.
+The session (`mnema repl`) runs `status`; `setup`, `run`, `verify`, `restore` and `hook` write outside the record (`verify`, over a git destination, brings its clone cache up to the remote) and are left to the shell.
 The machine's global tree, which mixes the memory of every project, is never part of a project's
 backup: `--global` copies it, and only it, into the folder `setup --global` gave it, as
 <folder>/global/.

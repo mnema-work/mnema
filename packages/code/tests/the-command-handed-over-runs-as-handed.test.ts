@@ -854,7 +854,7 @@ export const HANDED_OVER: Readonly<
   'docs/reference/cli/audit-antipatterns.md': { line: 1 },
   'docs/reference/cli/backup-restore.md': { line: 1, name: 1 },
   'docs/reference/cli/backup-verify.md': { line: 1, name: 1 },
-  'docs/reference/cli/backup.md': { line: 7, name: 3 },
+  'docs/reference/cli/backup.md': { line: 7, name: 4 },
   'docs/reference/cli/brief.md': { line: 5, name: 5 },
   'docs/reference/cli/completion.md': { line: 6, flag: 1 },
   'docs/reference/cli/doctor.md': { line: 5, name: 12 },

@@ -2,7 +2,7 @@
 
 <!-- This page is generated from the help of the command, written where the command is defined under packages/code/src/wiring/: edit it there, then run `pnpm vitest run packages/code/src/cli.golden.test.ts -u` (which rewrites packages/code/src/cli.help.golden.txt) and `pnpm vitest run packages/code/tests/the-reference-pages-are-generated.test.ts -u`. -->
 
-read each copy as a record and say how it stands against this project's trees, which it does not change
+read each copy as a record and say how it stands against this project's trees, which it does not change (a git destination's clone cache is brought up to the remote first)
 
 In the help under **This machine** · a command of [`mnema backup`](backup.md).
 
@@ -25,7 +25,8 @@ In the help under **This machine** · a command of [`mnema backup`](backup.md).
 Usage: mnema backup verify [options]
 
 read each copy as a record and say how it stands against this project's trees,
-which it does not change
+which it does not change (a git destination's clone cache is brought up to the
+remote first)
 
 Options:
   --global    read the copy of the machine's global tree instead of this
