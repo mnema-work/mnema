@@ -47,10 +47,13 @@ carry a hijack, and what mnema does and does not do to it on the way, is
 
 **What mnema does.** Where a rule in force is linked to a path with the relation `refuses-a-write`, the hook of a host
 stops the host's own file-editing tools at that path and hands the model the rule's id; with `asks-for-a-person` the
-host holds the write until somebody decides. Each refusal or pause is itself a signed fact of the record, written before
-the reply. The rung each host reaches is a table, one cell at a time, and some cells are "not ported" or "no".
-The MCP server of mnema has no tool that switches a channel or enrolls, revokes or restores a key, so an agent cannot
-turn off what governs its work through the door built for agents.
+host holds the write until somebody decides. Where it can be recorded, each refusal or pause is itself a signed fact of the record, written before
+the reply; a refusal that could not be recorded says so, a record the reader cannot read records nothing, and Cursor's
+agent, which ignores a pause, records nothing for a write that only asked. The rung each host reaches is a table, one cell at a time, and some cells are "not ported" or "no".
+The MCP server of mnema has no tool that switches a channel or enrolls, revokes or restores a key. It does have tools
+that change what governs: `retract_link` lets an identity retract a link it recorded, a `refuses-a-write` link included,
+and `decision_transition` can supersede a decision while `agent-accepts` is on. Each is a signed fact of the record, and
+none is a way round the gate in the moment, but an agent can end a rule's address or replace the rule.
 
 **What it does not.** It does not look at the shell: `sed -i` or a redirect on the same file goes round a refusal, and
 the refusal says so. Where no `mnema` is on the `PATH` the hook says nothing and the write goes. Cursor's
@@ -75,7 +78,7 @@ retired by any member, and the retirement is forward-only.
 **What it does not.** It is not access control: anyone who can run the command line writes as that machine's
 identity. Under one operating-system user an agent key keeps the person's own key out of the agent's reach only while
 that key is passphrase-protected with a passphrase no host is handed. The name on a fact signed with the person's
-key is whatever the client announced, which the record marks (`no name announced in an MCP handshake`) and which
+key is whatever the client announced, which the record marks (`no name announced in an MCP handshake`) only when the client announced none, and which
 proves that the identity which signed stated it, not that the agent did the work. Nothing checks which CI jobs are handed
 a key.
 
@@ -92,11 +95,11 @@ Sigstore provenance bundle for the tarballs and the extension, and the pages say
 ([Install](install.md#where-the-package-came-from)). Every action a workflow here uses is pinned by commit SHA, a
 scanner reads the repository's history for a credential and the lockfile for an advisory, and the scanners themselves
 are pinned by SHA-256. For a stack, the directory that brings skills, agents and declared hooks to an agent, the
-validator refuses a stack that carries an MCP server in any form, a hook it did not declare or that says it is enabled,
+validator refuses a stack that carries an MCP server in a `.mcp.json`, an `.mcpb` bundle, or the key or table that configures one in JSON, JSONC or TOML, a hook it did not declare or that says it is enabled,
 a symbolic link or a path that leaves the root, and files that do not match what the manifest says it brings.
 
 **What it does not.** It does not vet the tools, MCP servers, plugins or models an agent loads besides mnema, and it
-keeps no bill of materials for them. The validator checks the shape of a stack, not what a skill tells a model:
+keeps no bill of materials for them. The validator does not detect an MCP server described in any other format or in prose, and it checks the shape of a stack, not what a skill tells a model:
 the words of a skill are text a model reads, like any other. A provenance statement says where a package was built,
 not that its code is free of defects.
 
@@ -170,7 +173,7 @@ host has a timeout, and where it cannot answer it lets the write go or refuses i
 ## ASI09 Human-Agent Trust Exploitation
 
 **What mnema does.** A rule linked with `asks-for-a-person` makes the host hold a write until a person decides (in Claude Code, even
-under a permission mode that would skip other prompts); in a session with nobody to ask, the write is refused. Every rule
+under a permission mode that would skip other prompts); in a session with nobody to ask, the write is refused in Claude Code, while Cursor's agent lets an ask through. Every rule
 in force names who accepted it, the day, and whether the act had an agent on its envelope; an identity that only ever
 accepted its own decisions is marked `unconfirmed` once a second identity is in the record. A proposed decision reaches a
 model's opening text as a count, not as a rule.
@@ -189,7 +192,7 @@ acted. mnema does not detect that an agent persuaded a person, and a person who 
 
 **What mnema does.** After the fact, it makes what an agent recorded attributable and checkable: `verify` counts the facts
 signed by an agent key as attested, `mnema audit accountability` says who authorized what and which agent executed it
-(and who retired a checker key), and a revoked key's later writes are refused.
+(and who retired a checker key), and `verify` refuses a fact a retired key signs from its retirement on, judged by the time the key's own line carries: a leaked key that backdates a fact is not refused by that rule, and a machine that does not hold the retirement cannot refuse it.
 
 **What it does not.** It does not observe an agent's behaviour, detect one that has gone off its task, quarantine it or
 stop it. An agent that records nothing leaves nothing to see, and the count of tool calls it keeps is local, outside the

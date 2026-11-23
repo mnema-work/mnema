@@ -59,10 +59,11 @@ alternatives to it: a project can run any of them beside it, and where mnema tou
 | **How it changes** | A session is a log: it is added to. | A note is rewritten or dropped as it goes stale. | A file is edited, or marked superseded by hand. | Append-only: a decision is superseded by another that names it, and both stay. |
 | **What it can show a third party** | What the tool recorded, as the tool keeps it. | What the memory holds now. | The file, and git's history of it. | That the events are the ones that were signed, in order, with the level `verify` reached ([What it proves](what-it-proves.md)). |
 
-**Next to session capture.** mnema keeps no conversation. At each `Stop` a hook reads the transcript from where it last
-stopped, to find the times a person corrected the agent and to count what the session did with the record; it keeps a
-journal of ids and counts, outside the record, none of the session's words, and a correction becomes a decision born `proposed` in this
-machine's private tree, which a person still judges ([The session journal](the-session-journal-and-compaction.md),
+**Next to session capture.** mnema keeps no copy of the conversation. At each `Stop` a hook reads the transcript from where it last
+stopped, to find the times a person corrected the agent and to count what the session did with the record. The journal it
+keeps is ids and counts, outside the record. But a correction becomes a decision born `proposed` in this machine's private
+tree that quotes the person's own words, and so does a person's answer to a question the agent asked; that is on by default
+and `mnema switch off user-corrections` stops it, and a person still judges what is proposed ([The session journal](the-session-journal-and-compaction.md),
 [What is switched on](switches.md), the `user-corrections` row). What a capture tool records is the session; what mnema records is
 the call that came out of it, if somebody recorded one. They do not replace each other, and mnema does not read what
 another tool kept.
@@ -77,7 +78,8 @@ the code it governs. So mnema does not decide what an agent remembers by meaning
 cite, and the notes recorded beside them.
 
 **Next to a folder of ADRs.** The files stay where they are, and nobody has to stop writing them. `mnema decision import docs/decisions`
-reads them in as decisions born `proposed`, whatever status a file states, so nothing is accepted on the team's behalf, and
+prints a plan and writes nothing until it is run again with `--write`; it then reads them in as decisions born `proposed`,
+skipping a file whose status is superseded, rejected or deprecated, and whatever status the others state, so nothing is accepted on the team's behalf, and
 `mnema export --madr <dir>` writes the committed record back out as files, marked as a reading of the record and not its source.
 The page is [mnema next to a folder of ADRs](mnema-next-to-a-folder-of-adrs.md); it says what import reads, what an
 export loses, and what neither does: neither checks that the code follows a decision.
