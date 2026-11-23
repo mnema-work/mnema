@@ -59,7 +59,9 @@ export const EYE_AT_REST = Object.freeze({
  * @returns {{ seal: string, o: T }}
  */
 const withSeal = (sealed, o) =>
-  sealed ? { seal: sealRect({ fill: PALETTE.charcoal }), o: { ...o, ink: PALETTE.bone } } : { seal: '', o };
+  sealed
+    ? { seal: sealRect({ fill: PALETTE.charcoal }), o: { ...o, ink: PALETTE.bone } }
+    : { seal: '', o };
 
 /** The width of line `i`, as the eye at rest gives it. @param {number} i */
 const widthOf = (i) => EYE_AT_REST.lines[i]?.width ?? 0;

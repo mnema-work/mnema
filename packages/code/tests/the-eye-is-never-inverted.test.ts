@@ -49,8 +49,7 @@ const LIGHT = [
 
 /** The digests of the dark pictures as they were before the light ones took the seal: they must not move. */
 const DARK: Record<string, string> = {
-  'docs/assets/banner-dark.svg':
-    'cff6acbbd90918fddf42359ed2fdb3b1ba475dadafd261a34049deac9cbe0215',
+  'docs/assets/banner-dark.svg': 'cff6acbbd90918fddf42359ed2fdb3b1ba475dadafd261a34049deac9cbe0215',
   'docs/assets/how-it-works-dark.svg':
     'eeff49f1b82fca346bad7f580b750659ef18bd8f07ff38eac4585c940ea1be6d',
   'docs/assets/how-mnema-fits-dark.svg':
@@ -164,11 +163,10 @@ describe("the seal's proportions are the icons'", () => {
 describe('the record page header', () => {
   it('wears the seal where the page is light and none where it is dark, with bone lines in both', () => {
     expect(mark.HEADER_EYE).toContain('class="seal"');
-    expect(STYLE).toMatch(/:root \{[^}]*--seal: #131312;[^}]*--seal-ink: #efebe1;/);
-    expect(STYLE).toMatch(
-      /prefers-color-scheme: dark\) \{ :root \{[^}]*--seal: none;[^}]*--seal-ink: #efebe1;/,
+    expect(STYLE).toContain(
+      `.mark { flex: none; width: 2.5rem; height: 2.5rem; color: ${PALETTE.bone}; }`,
     );
-    expect(STYLE).toMatch(/\.mark \{[^}]*color: var\(--seal-ink\)/);
-    expect(STYLE).toMatch(/\.mark \.seal \{ fill: var\(--seal\); \}/);
+    expect(STYLE).toContain(`.mark .seal { fill: ${PALETTE.charcoal}; }`);
+    expect(STYLE).toContain('@media (prefers-color-scheme: dark) { .mark .seal { fill: none; } }');
   });
 });

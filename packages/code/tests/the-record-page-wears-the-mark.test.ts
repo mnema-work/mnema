@@ -165,7 +165,7 @@ describe("the eye in the record page's header", () => {
   it('draws the iris sulphur and the lines in the ink of the page', () => {
     expect(mark.HEADER_EYE).toContain(`fill="${PALETTE.sulphur}"`);
     expect(mark.HEADER_EYE).toContain('stroke="currentColor"');
-    expect(STYLE).toMatch(/\.mark \{[^}]*color: var\(--seal-ink\)/);
+    expect(STYLE).toMatch(/\.mark \{[^}]*color: #efebe1/);
   });
 });
 

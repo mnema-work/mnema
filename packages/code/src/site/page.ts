@@ -139,13 +139,9 @@ export interface Colours {
   readonly wait: string;
   /** The ring round a control or a link that has the keyboard: held to {@link FOCUS_FLOOR}. */
   readonly focus: string;
-  /** The seal behind the header's eye: charcoal on a light page, none on a dark one, where the eye is drawn as is. */
-  readonly seal: string;
-  /** The lines of the header's eye: always bone, since the eye is never inverted. */
-  readonly sealInk: string;
 }
 
-function themeOf(theme: 'dark' | 'light', rest: Omit<Colours, 'accentText' | 'focus' | 'seal' | 'sealInk'>): Colours {
+function themeOf(theme: 'dark' | 'light', rest: Omit<Colours, 'accentText' | 'focus'>): Colours {
   const other = theme === 'dark' ? 'light' : 'dark';
   const { accent } = rest;
   const accentText = textAccent({
@@ -154,13 +150,7 @@ function themeOf(theme: 'dark' | 'light', rest: Omit<Colours, 'accentText' | 'fo
     grounds: [rest.bg, rest.surface],
     floor: TEXT_FLOOR,
   });
-  return {
-    ...rest,
-    accentText,
-    focus: accentText,
-    seal: theme === 'dark' ? 'none' : BRAND.charcoal,
-    sealInk: BRAND.bone,
-  };
+  return { ...rest, accentText, focus: accentText };
 }
 
 /**
@@ -210,8 +200,6 @@ function variables(theme: Colours): string {
     `--bad: ${theme.bad};`,
     `--wait: ${theme.wait};`,
     `--focus: ${theme.focus};`,
-    `--seal: ${theme.seal};`,
-    `--seal-ink: ${theme.sealInk};`,
   ].join(' ');
 }
 
@@ -245,8 +233,10 @@ h1, h2, h3, h4 { line-height: 1.25; }
 h1 { margin: 0.5rem 0; }
 .head { display: flex; align-items: center; gap: 0.75rem; }
 .head h1 { margin: 0.5rem 0; }
-.mark { flex: none; width: 2.5rem; height: 2.5rem; color: var(--seal-ink); }
-.mark .seal { fill: var(--seal); }
+/* The eye is never inverted: bone lines on every page, in a charcoal seal where the page is light and none where it is dark. */
+.mark { flex: none; width: 2.5rem; height: 2.5rem; color: ${BRAND.bone}; }
+.mark .seal { fill: ${BRAND.charcoal}; }
+@media (prefers-color-scheme: dark) { .mark .seal { fill: none; } }
 h2 { margin-top: 2rem; }
 a { color: var(--accent-text); }
 code, pre { font-family: ${CODE_FACE}; font-size: 0.85em; }
