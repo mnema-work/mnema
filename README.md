@@ -21,6 +21,7 @@ Your decisions, handed to your agents' sessions and held at the edits they gover
 <a href="https://www.npmjs.com/package/@mnema/code"><img alt="npm: @mnema/code" src="https://img.shields.io/npm/v/@mnema/code?style=flat-square&amp;label=npm&amp;color=997dbf"></a>
 <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-997dbf?style=flat-square"></a>
 <a href="https://scorecard.dev/viewer/?uri=github.com/mnema-work/mnema"><img alt="OpenSSF Scorecard" src="https://img.shields.io/ossf-scorecard/github.com/mnema-work/mnema?style=flat-square&amp;label=OpenSSF%20Scorecard&amp;color=997dbf"></a>
+<a href="https://glama.ai/mcp/servers/mnema-work/mnema"><img alt="mnema-work/mnema MCP server on Glama" src="https://glama.ai/mcp/servers/mnema-work/mnema/badges/score.svg"></a>
 <img alt="Node 24.15.0 or a later 24, or 26.0.0 or later" src="https://img.shields.io/badge/node-%5E24.15.0%20%7C%7C%20%E2%89%A526.0.0-997dbf?style=flat-square">
 </p>
 
