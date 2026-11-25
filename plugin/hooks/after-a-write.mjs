@@ -63,13 +63,26 @@ const NAMED = [
 ];
 
 /**
+ * A path as the patterns below read it: Windows hands `C:\p\x.md`, and the patterns and the project
+ * guard are written with `/`. Only the checks read this; the payload goes on as it came.
+ * @param {string} path
+ */
+const slashed = (path) => path.replaceAll('\\', '/');
+
+/**
  * Whether a write to `path` can be one of the verb's kinds, in a project at `project`.
  * @param {string} path
  * @param {string} project
  */
 const canBeOne = (path, project) => {
-  if (NAMED.some((pattern) => pattern.test(path))) return true;
-  return !path.startsWith(`${project}/`) && path.endsWith('.md');
+  const seen = slashed(path);
+  if (NAMED.some((pattern) => pattern.test(seen))) return true;
+  const root = `${slashed(project).replace(/\/+$/, '')}/`;
+  // A project on a drive is on a volume that ignores case (`c:\p` is `C:\p`): both are read in one case.
+  const inside = /^[A-Za-z]:/.test(root)
+    ? seen.toLowerCase().startsWith(root.toLowerCase())
+    : seen.startsWith(root);
+  return !inside && seen.endsWith('.md');
 };
 
 try {
