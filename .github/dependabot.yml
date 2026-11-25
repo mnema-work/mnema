@@ -32,9 +32,10 @@ updates:
       interval: weekly
     open-pull-requests-limit: 1
     ignore:
-      # The floor job type-checks on Python 3.9, which a mypy of the next major no longer targets.
+      # The reader's floor stays Python 3.9 (ADR-696): the floor job checks it with `--python-version 3.9`,
+      # a target mypy 2.0 drops. Lift this when the floor rises.
       - dependency-name: mypy
-        update-types: ['version-update:semver-major']
+        versions: ['>=2.0']
   - package-ecosystem: pip
     directory: /.github/python-tools/skills-ref
     schedule:

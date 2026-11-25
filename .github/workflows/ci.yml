@@ -419,6 +419,14 @@ jobs:
           node-version: '24'
           cache: 'pnpm'
 
+      # THE CHECKER'S PYTHON, SET UP FIRST SO THE FLOOR'S IS THE LAST ONE ON `PATH`: `python3`, which
+      # the cases call, must stay the floor. The checker needs 3.10 to run (mypy 1.20) and still
+      # targets 3.9 with `--python-version 3.9`; it runs in a venv of this Python, below.
+      - id: checker-python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.9'
@@ -434,9 +442,9 @@ jobs:
       # line they reach, and only one error at a time: the reader first failed here on import, on
       # a `bytes | str | None` alias, which is 3.9's grammar and 3.10's library. `mypy`, told the
       # floor, reads every line of the reader and names that class of error without running it.
-      # mypy 1.19.1 is pinned (with ruff and what they need, by the hash of every file, in
-      # `.github/python-tools/verifier-checks`): it is the last release that installs on 3.9, the only Python this job
-      # sets up; 1.20 still targets 3.9 but needs 3.10 to run, and 2.0 refuses 3.9 as a target.
+      # mypy 1.20.2 is pinned (with ruff and what they need, by the hash of every file, in
+      # `.github/python-tools/verifier-checks`) and runs on the newer Python set up above: 1.20 still
+      # targets 3.9 but needs 3.10 to run, and 2.0 refuses 3.9 as a target (ADR-696).
       # Installing a checker here does not break the reader's promise,
       # which is about what it needs to RUN, not to be checked; and it goes into a venv of its
       # own, so the `python3` the cases call below still has nothing but the standard library.
@@ -444,8 +452,10 @@ jobs:
       # what the floor did.
       - name: Type-check the second reader against its floor
         id: types
+        env:
+          CHECKER_PYTHON: ${{ steps.checker-python.outputs.python-path }}
         run: |
-          python -m venv "$RUNNER_TEMP/types"
+          "$CHECKER_PYTHON" -m venv "$RUNNER_TEMP/types"
           "$RUNNER_TEMP/types/bin/pip" install --disable-pip-version-check --require-hashes \
             -r .github/python-tools/verifier-checks/requirements.txt
           "$RUNNER_TEMP/types/bin/mypy" --python-version 3.9 --warn-unused-ignores --cache-dir "$RUNNER_TEMP/types-cache" packages/chain/verifier/

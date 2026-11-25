@@ -53,7 +53,7 @@ jobs:
           # LICENSE") and skills-ref (no license detected). The list above is not widened; a new
           # version of any of them is reviewed again and its entry renewed here.
           allow-dependencies-licenses: >-
-            pkg:pypi/mypy@1.19.1,
+            pkg:pypi/mypy@1.20.2,
             pkg:pypi/typing-extensions@4.16.0,
             pkg:npm/%40modelcontextprotocol/inspector@2.16.0,
             pkg:pypi/skills-ref@0.1.1
