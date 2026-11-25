@@ -121,6 +121,8 @@ credential's name these go in verbatim too, each read as something else:
 - a value that is a plain path or an address (`webhook_secret=/T000/B000/abcdefgh`,
   a webhook URL whose secret is its path), read as where something lives;
 - a value of three digits or fewer (`password=123`), read as a count;
+- an issuer prefix alone, or with its body elided as `…` or `...` (`token: "agm_…"`), read as the
+  shape of a token (under a password's name the elided form is a password and is replaced);
 - a key of several lines without its `BEGIN` line (`private_key: |` and the body
   below it), whose lines are not on the name's line;
 - a short word with a digit or two after a colon and followed by more words
